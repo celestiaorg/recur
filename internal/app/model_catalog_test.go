@@ -1,7 +1,6 @@
 package app
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -615,14 +614,12 @@ func TestSetSettingsUsesCachedCatalog(t *testing.T) {
 	svc, _ := newTestServices(t)
 	svc.Settings.rememberCatalog([]cursor.Model{{ID: "composer-2.5", DisplayName: "Composer 2.5"}}, nil)
 
-	bin := filepath.Join(t.TempDir(), "cursor-sdk-bridge")
-	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
-		t.Fatalf("write fake bridge: %v", err)
-	}
+	dataDir := t.TempDir()
+	t.Setenv("RECUR_DATA_DIR", dataDir)
+	writeOwnedBridge(t, dataDir)
 
 	set := svc.Settings.GetSettings()
 	set.CursorAPIKey = "sk-x"
-	set.CursorBridgePath = bin
 	set.DisabledProviders = []string{domain.ProviderClaudeCode}
 	set.ModelAsk = "claude-code/sonnet"
 	set.ModelPlan = "claude-code/sonnet"

@@ -151,7 +151,3 @@ The e2e suite drives the real UI in headless Chromium with the Go bridge mocked,
 ## Contributing
 
 Read [`AGENTS.md`](AGENTS.md) for conventions, quality gates, and PR guidance. Keep changes small and focused, run `wails3 task check` before pushing, and include e2e when you touch the UI.
-
-## License
-
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text.

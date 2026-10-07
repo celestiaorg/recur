@@ -1687,6 +1687,9 @@ export class FileSearchResult {
  * Finding is a structured reviewer report (PRD §8.3 report_finding) driving convergence.
  */
 export class Finding {
+    /**
+     * UUID — internal storage key
+     */
     "id": string;
 
     /**
@@ -1783,10 +1786,10 @@ export class Finding {
      * Creates a new Finding instance from a string or object.
      */
     static createFrom($$source: any = {}): Finding {
-        const $$createField14_0 = $$createType29;
+        const $$createField15_0 = $$createType29;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("notes" in $$parsedSource) {
-            $$parsedSource["notes"] = $$createField14_0($$parsedSource["notes"]);
+            $$parsedSource["notes"] = $$createField15_0($$parsedSource["notes"]);
         }
         return new Finding($$parsedSource as Partial<Finding>);
     }

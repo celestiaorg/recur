@@ -64,6 +64,7 @@
   <div
     class="emoji-suggest user-mention"
     role="listbox"
+    tabindex="-1"
     aria-label="Mention suggestions"
     bind:this={listEl}
     style:top={box.top !== undefined ? `${box.top}px` : 'auto'}

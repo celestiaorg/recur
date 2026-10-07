@@ -831,12 +831,13 @@ func (l *Loop) hasPendingEscalation() bool {
 // watcher covers engine Shutdown / direct cancellation too).
 func (l *Loop) checkpoint(ctx context.Context) bool {
 	// Drain queued commands (their effect on paused/stopped was applied in send).
+drain:
 	for {
 		select {
 		case <-l.cmds:
 		default:
+			break drain
 		}
-		break
 	}
 
 	// Service an agent-raised escalation: block here until answered/stopped. This is
@@ -1355,7 +1356,7 @@ func (l *Loop) convergeBarPassed() bool {
 }
 
 // gatePlanApproval pauses a fresh run after planning for the human's sign-off
-//: Cautious and Balanced ask (decision #4);
+// : Cautious and Balanced ask (decision #4);
 // Aggressive proceeds. Only STRUCTURED plans gate — a run whose planner
 // degraded to prose (or nothing) proceeds as before rather than blocking on an
 // artifact that doesn't exist. Pre-approved plans skip the gate. The answer's
@@ -1468,15 +1469,13 @@ func (l *Loop) runPlanner(ctx context.Context) error {
 	if overlay := l.bundleSystemPrompt(l.phaseRoleID("planner"), "", l.Goal, ""); overlay != "" {
 		sysPrompt = overlay
 	}
-	planUser := l.Goal
-	planDisplay := l.goalLabel()
-	if expanded, display, err := l.expandPhasePrompt(ctx, "plan", l.Goal); err != nil {
+	planUser, display, err := l.expandPhasePrompt(ctx, "plan", l.Goal)
+	if err != nil {
 		return err
-	} else {
-		planUser = expanded
-		if display != "" {
-			planDisplay = display
-		}
+	}
+	planDisplay := l.goalLabel()
+	if display != "" {
+		planDisplay = display
 	}
 
 	spec := AgentSpec{
@@ -2207,8 +2206,8 @@ func (l *Loop) fail(ctx context.Context, err error) {
 		l.eng.failRetryable(l.ID, reason)
 		return
 	}
-	l.setState(domain.StateFailed, "failed")
 	l.eng.recordFailure(l.ID, err.Error(), false)
+	l.setState(domain.StateFailed, "failed")
 	l.emitFeed("MA", "Maestro", "Loop failed: "+html.EscapeString(err.Error()))
 }
 

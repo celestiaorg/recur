@@ -114,7 +114,7 @@ describe('HTML_PREVIEW_SCROLL_SCRIPT find reveal', () => {
     const iframe = document.createElement('iframe')
     document.body.append(iframe)
     const idoc = iframe.contentDocument
-    const iw = iframe.contentWindow
+    const iw = iframe.contentWindow as (Window & typeof globalThis) | null
     expect(idoc && iw).toBeTruthy()
     idoc!.body.innerHTML = '<p>needle</p>'
 

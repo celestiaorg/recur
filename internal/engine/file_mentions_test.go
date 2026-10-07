@@ -179,11 +179,11 @@ func TestSplitFileMentionChip(t *testing.T) {
 		t.Fatalf("plain: %q %d %d %d %d", path, start, end, sc, ec)
 	}
 	// :0 / invalid line → whole-file path (not "src/a.ts:0" as the path).
-	path, start, end, sc, ec = splitFileMentionChip("src/a.ts:0")
+	path, start, end, _, _ = splitFileMentionChip("src/a.ts:0")
 	if path != "src/a.ts" || start != 0 || end != 0 {
 		t.Fatalf(":0 fallback: %q %d %d", path, start, end)
 	}
-	path, start, end, sc, ec = splitFileMentionChip("src/a.ts:0-12")
+	path, start, end, _, _ = splitFileMentionChip("src/a.ts:0-12")
 	if path != "src/a.ts" || start != 0 || end != 0 {
 		t.Fatalf(":0-12 fallback: %q %d %d", path, start, end)
 	}
@@ -200,7 +200,7 @@ func TestSplitFileMentionChip(t *testing.T) {
 	if path != "src/a.ts" || start != 12 || end != 18 || sc != 0 || ec != 0 {
 		t.Fatalf("col-to-line: %q %d %d %d %d", path, start, end, sc, ec)
 	}
-	path, start, end, sc, ec = splitFileMentionChip("src/a.ts:12:0-12:18")
+	path, start, _, sc, ec = splitFileMentionChip("src/a.ts:12:0-12:18")
 	if path != "src/a.ts" || start != 12 || sc != 0 || ec != 0 {
 		t.Fatalf("bad cols keep line: %q %d %d %d", path, start, sc, ec)
 	}

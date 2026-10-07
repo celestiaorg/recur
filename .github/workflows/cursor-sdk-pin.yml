@@ -11,10 +11,13 @@ on:
 jobs:
   pin-check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -22,3 +25,15 @@ jobs:
         env:
           RECUR_CURSOR_SDK_PIN_CHECK: "1"
         run: go test ./internal/cursor -run CheckCursorSDKPinDrift -count=1 -v
+
+      # Also fires when PyPI is unreachable; the linked log says which.
+      - name: Open or update drift issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TITLE="cursor-sdk pin drift"
+          BODY="Pin check failed: $RUN_URL. Re-pin per .agents/skills/repin-cursor-sdk/SKILL.md."
+          N=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number -q '.[0].number')
+          if [ -n "$N" ]; then gh issue comment "$N" --body "$BODY"; else gh issue create --title "$TITLE" --body "$BODY"; fi

@@ -61,12 +61,6 @@ type menuThemesPayload struct {
 	TerminalSelected string           `json:"terminalSelected"`
 }
 
-type menuThemeStatePayload struct {
-	AppSelected      string `json:"appSelected"`
-	EditorSelected   string `json:"editorSelected"`
-	TerminalSelected string `json:"terminalSelected"`
-}
-
 // installAppMenu builds the native application menu and registers keyboard
 // accelerators. Menu clicks emit a "menu.action" event the frontend handles —
 // on macOS the menubar owns the key equivalents, so the webview may never see

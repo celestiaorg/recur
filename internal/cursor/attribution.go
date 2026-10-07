@@ -499,23 +499,16 @@ func patchAttributionFile(path string) (int, error) {
 
 func applySDKAnchors(src string) string {
 	for _, a := range sdkAttributionAnchors {
-		if strings.Contains(src, a.old) {
-			src = strings.Replace(src, a.old, a.neu, 1)
-		}
+		src = strings.Replace(src, a.old, a.neu, 1)
 	}
 	for _, a := range sdkSummaryDeltaAnchors {
-		if strings.Contains(src, a.old) {
-			src = strings.Replace(src, a.old, a.neu, 1)
-		}
+		src = strings.Replace(src, a.old, a.neu, 1)
 	}
 	// Prior unmarked rewrite stripped the skip and left a bare yield. Stamp
 	// the marker only when that yield is no longer behind `||` — a still-
 	// conditional skip (any operand order) keeps `||(yield…)` and must fail.
 	if !strings.Contains(src, summaryDeltaMarker) && !strings.Contains(src, "||"+sdkSummaryDeltaYield) {
-		marked := summaryDeltaPatchNeedle() + sdkSummaryDeltaYield
-		if strings.Contains(src, sdkSummaryDeltaYield) {
-			src = strings.Replace(src, sdkSummaryDeltaYield, marked, 1)
-		}
+		src = strings.Replace(src, sdkSummaryDeltaYield, summaryDeltaPatchNeedle()+sdkSummaryDeltaYield, 1)
 	}
 	return src
 }

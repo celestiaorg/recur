@@ -2309,6 +2309,7 @@ test.describe('PR agent chat dock', () => {
       if (l.id === hostId) continue
       l.state = 'paused'
       l.phase = 'idle'
+      if (l.group === 'needs') l.group = 'ready'
     }
     await installBridge(page, s, {
       resolvers: {

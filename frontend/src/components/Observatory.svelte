@@ -767,12 +767,12 @@
   let reviewDiffTotals = $state({ add: 0, del: 0 })
   let reviewFileCount = $state(0)
   let reviewRestore = $state<{ selectedPath: string; scrollTop: number } | null>(null)
-  let reviewSurface: {
+  let reviewSurface = $state<{
     getViewState: () => { tab: ReviewTab; selectedPath: string; scrollTop: number }
     clearCommitScope: () => void
     openWorkingScope: () => void
     openCommitScope: (c: Commit) => void
-  } | undefined
+  } | undefined>()
   function setMainSurface(next: 'editor' | 'review') {
     const pref = !isGit && next === 'review' ? 'editor' : next
     if (pref === mainSurfacePref) return

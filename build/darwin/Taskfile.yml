@@ -12,6 +12,9 @@ vars:
   # Docker image for cross-compilation (used when building on non-macOS)
   CROSS_IMAGE: wails-cross
 
+  # Packaged bundle is Recur.app; the executable inside stays APP_NAME (recur).
+  APP_BUNDLE_NAME: Recur
+
   # Wails compiles the WebKit inspector out of production. Opt in at package
   # time: RECUR_DEBUG=1 wails3 task package  (View → Open Developer Tools / ⌥⌘I).
   # That flag also skips frontend minify and emits sourcemaps.
@@ -155,19 +158,31 @@ tasks:
   create:app:bundle:
     summary: Creates an `.app` bundle
     cmds:
-      - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
-      - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
-      - cp build/darwin/icons.icns "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
+      # Also clears a stale lowercase recur.app on case-insensitive volumes.
+      - rm -rf "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app"
+      - mkdir -p "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/MacOS"
+      - mkdir -p "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/Resources"
+      - cp build/darwin/icons.icns "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/Resources"
       - |
         if [ -f build/darwin/Assets.car ]; then
-          cp build/darwin/Assets.car "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
+          cp build/darwin/Assets.car "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/Resources"
         fi
-      - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
+      - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/MacOS"
       - task: '{{if eq .UNIVERSAL "true"}}embed:cli:universal{{else}}embed:cli{{end}}'
         vars:
-          APP_BUNDLE: "{{.BIN_DIR}}/{{.APP_NAME}}.app"
-      - cp build/darwin/Info.plist "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents"
+          APP_BUNDLE: "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app"
+      - cp build/darwin/Info.plist "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents"
+      - task: stamp:version
+        vars:
+          PLIST: "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/Info.plist"
       - task: '{{if eq OS "darwin"}}codesign:adhoc{{else}}codesign:skip{{end}}'
+
+  stamp:version:
+    summary: Writes VERSION (RECUR_VERSION or git describe) into an Info.plist
+    internal: true
+    cmds:
+      - plutil -replace CFBundleShortVersionString -string "{{.VERSION}}" "{{.PLIST}}"
+      - plutil -replace CFBundleVersion -string "{{.VERSION}}" "{{.PLIST}}"
 
   embed:cli:
     summary: Builds the Recur CLI into Contents/MacOS/recur-cli (not the GUI)
@@ -216,11 +231,11 @@ tasks:
     internal: true
     cmds:
       - |
-        CLI="{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS/recur-cli"
+        CLI="{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/MacOS/recur-cli"
         if [ -f "$CLI" ]; then
           codesign --force --sign - "$CLI"
         fi
-      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.app"
+      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app"
 
   codesign:skip:
     summary: Skips codesigning when cross-compiling
@@ -242,6 +257,9 @@ tasks:
         vars:
           APP_BUNDLE: "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
       - cp "build/darwin/Info.dev.plist" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
+      - task: stamp:version
+        vars:
+          PLIST: "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
       - |
         CLI="{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/recur-cli"
         if [ -f "$CLI" ]; then
@@ -259,7 +277,7 @@ tasks:
       - task: package
     cmds:
       - task: sign:cli
-      - wails3 tool sign --input "{{.BIN_DIR}}/{{.APP_NAME}}.app" --identity "{{.SIGN_IDENTITY}}" {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}}
+      - wails3 tool sign --input "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app" --identity "{{.SIGN_IDENTITY}}" {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}}
     preconditions:
       - sh: '[ -n "{{.SIGN_IDENTITY}}" ]'
         msg: "SIGN_IDENTITY is required. Set it in the vars section at the top of build/darwin/Taskfile.yml"
@@ -269,7 +287,7 @@ tasks:
     internal: true
     cmds:
       - |
-        CLI="{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS/recur-cli"
+        CLI="{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/MacOS/recur-cli"
         if [ -f "$CLI" ]; then
           codesign --force --sign "{{.SIGN_IDENTITY}}" --timestamp --options runtime {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}} "$CLI"
         fi
@@ -286,7 +304,7 @@ tasks:
       - task: package
     cmds:
       - task: sign:cli
-      - wails3 tool sign --input "{{.BIN_DIR}}/{{.APP_NAME}}.app" --identity "{{.SIGN_IDENTITY}}" {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}} --notarize --keychain-profile {{.KEYCHAIN_PROFILE}}
+      - wails3 tool sign --input "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app" --identity "{{.SIGN_IDENTITY}}" {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}} --notarize --keychain-profile {{.KEYCHAIN_PROFILE}}
     preconditions:
       - sh: '[ -n "{{.SIGN_IDENTITY}}" ]'
         msg: "SIGN_IDENTITY is required. Set it in the vars section at the top of build/darwin/Taskfile.yml"

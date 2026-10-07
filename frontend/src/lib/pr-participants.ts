@@ -123,7 +123,7 @@ export function prFaceSlots(people: PRPerson[]): { shown: PRPerson[]; extra: num
   return { shown, extra: rest.length, rest }
 }
 
-function personKey(p: PRPerson): string {
+export function personKey(p: PRPerson): string {
   const login = (p.login ?? '').trim().toLowerCase()
   if (login) return `login:${login}`
   const name = (p.name ?? '').trim().toLowerCase()

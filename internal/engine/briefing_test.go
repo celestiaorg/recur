@@ -454,14 +454,14 @@ func TestChangedSinceViewedNeedsAPriorView(t *testing.T) {
 	// "Since you were here" cue — the user was never here.
 	if _, err := st.AddWorkspace(domain.Workspace{
 		ID: "W-fresh", ProjectID: "p1", Short: "f", State: domain.StatePaused,
-		LastActivityAt: 100, Last: "created",
+		LastActivityAt: 100, Last: "created", Diff: domain.DiffStat{Add: 1},
 	}); err != nil {
 		t.Fatal(err)
 	}
 	// Viewed at 100, then more activity: cue fires.
 	if _, err := st.AddWorkspace(domain.Workspace{
 		ID: "W-back", ProjectID: "p1", Short: "b", State: domain.StatePaused,
-		LastActivityAt: 200, SeenActivityAt: 100, Last: "Coder pushed a fix",
+		LastActivityAt: 200, SeenActivityAt: 100, Last: "Coder pushed a fix", Diff: domain.DiffStat{Add: 1},
 	}); err != nil {
 		t.Fatal(err)
 	}

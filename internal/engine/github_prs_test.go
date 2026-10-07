@@ -3041,7 +3041,7 @@ func TestHoistPRChatHostRekeysLastChatSurfaceForRetry(t *testing.T) {
 		ID: ws.ID + "-PA", WorkspaceID: ws.ID, Code: "PA", SessionID: "prov-live",
 	})
 	pr := domain.PR{
-		ID: "gh-acme-8h", WorkspaceID: ws.ID, ProjectID: projID, Number: 8,
+		ID: "gh-acme-8h", ProjectID: projID, Number: 8,
 		Source: domain.SourceGitHub, Title: "Already linked", Group: prGroupYou,
 		URL: "https://github.com/acme/app/pull/8", Branch: "feat", Base: "main",
 		State: "In review",
@@ -3064,6 +3064,9 @@ func TestHoistPRChatHostRekeysLastChatSurfaceForRetry(t *testing.T) {
 	}
 	st.UpsertAgent(host.ID, domain.Agent{ID: "a-pa", Code: "PA", Name: "Agent", WorkspaceID: host.ID})
 	_ = eng.SendWorkspaceMessage(host.ID, "PA", "what changed?", "sonnet", nil, nil, domain.ChatModeReview, "")
+	// Link after the host turn: an idle host whose PR is already linked is
+	// archived on unlock, so the send above would never run.
+	st.UpdatePR(pr.ID, func(p *domain.PR) { p.WorkspaceID = ws.ID })
 	if err := eng.hoistPRChatHost(host.ID, ws.ID); err != nil {
 		t.Fatalf("hoistPRChatHost: %v", err)
 	}

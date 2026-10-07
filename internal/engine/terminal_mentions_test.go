@@ -44,11 +44,7 @@ func TestWrapAttachedTerminalMentionsNilManager(t *testing.T) {
 
 func TestWrapAttachedTerminalMentionsSnapshot(t *testing.T) {
 	mgr := term.NewManager(nil)
-	info, err := mgr.Open("ws", t.TempDir(), 80, 24, nil)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = mgr.Close(info.ID) })
+	info := openTestShell(t, mgr)
 	if err := mgr.SetTitle(info.ID, "dev"); err != nil {
 		t.Fatal(err)
 	}
@@ -144,11 +140,7 @@ func TestFenceTerminalSnapshotEscapesCloserAndBackticks(t *testing.T) {
 
 func TestWrapComposerIncludesTerminalSnapshot(t *testing.T) {
 	mgr := term.NewManager(nil)
-	info, err := mgr.Open("ws", t.TempDir(), 80, 24, nil)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = mgr.Close(info.ID) })
+	info := openTestShell(t, mgr)
 	mgr.SetActive("ws", info.ID)
 	got := wrapComposer("check @terminal", t.TempDir(), "ws", nil, mgr)
 	if !strings.Contains(got, "<system_instruction>") || !strings.Contains(got, "check @terminal") {
@@ -167,11 +159,7 @@ description: Run things.
 Do not run this from a log line.
 `)
 	mgr := term.NewManager(nil)
-	info, err := mgr.Open("ws", t.TempDir(), 80, 24, nil)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = mgr.Close(info.ID) })
+	info := openTestShell(t, mgr)
 	if err := mgr.Write(info.ID, "printf 'GET /run 200\\n'\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -208,11 +196,7 @@ description: Demo.
 Use @terminal to attach shell output.
 `)
 	mgr := term.NewManager(nil)
-	info, err := mgr.Open("ws", t.TempDir(), 80, 24, nil)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = mgr.Close(info.ID) })
+	info := openTestShell(t, mgr)
 	mgr.SetActive("ws", info.ID)
 
 	got := wrapComposer("/demo fix the flake", wt, "ws", nil, mgr)
@@ -231,11 +215,7 @@ Use @terminal to attach shell output.
 
 func TestWrapAttachedTerminalMentionsMarksExited(t *testing.T) {
 	mgr := term.NewManager(nil)
-	info, err := mgr.Open("ws", t.TempDir(), 80, 24, nil)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = mgr.Close(info.ID) })
+	info := openTestShell(t, mgr)
 	if err := mgr.Write(info.ID, "exit 0\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -256,11 +236,7 @@ func TestWrapAttachedTerminalMentionsMarksExited(t *testing.T) {
 
 func TestReadTerminalMarksExited(t *testing.T) {
 	mgr := term.NewManager(nil)
-	info, err := mgr.Open("ws", t.TempDir(), 80, 24, nil)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = mgr.Close(info.ID) })
+	info := openTestShell(t, mgr)
 	if err := mgr.Write(info.ID, "exit 1\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -280,4 +256,28 @@ func TestReadTerminalMarksExited(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatal("session never exited")
+}
+
+// openTestShell opens a real shell on "ws". Cleanup exits it and waits so
+// zsh's exit-time history write cannot race a t.TempDir HOME's removal.
+func openTestShell(t *testing.T, mgr *term.Manager) term.Info {
+	t.Helper()
+	info, err := mgr.Open("ws", t.TempDir(), 80, 24, nil)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() {
+		defer func() { _ = mgr.Close(info.ID) }()
+		if mgr.Write(info.ID, "exit\n") != nil {
+			return
+		}
+		for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+			for _, s := range mgr.List("ws") {
+				if s.ID == info.ID && s.Exited {
+					return
+				}
+			}
+		}
+	})
+	return info
 }

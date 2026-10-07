@@ -203,7 +203,7 @@ test.describe('app shell', () => {
         },
       ],
     }
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: { GetProviderUsage: () => usage, RefreshProviderUsage: () => usage },
     })
     await gotoApp(page)
@@ -587,7 +587,7 @@ test.describe('app shell', () => {
   })
 
   test('opens an escalated loop into Loop chat with an inline question', async ({ page }) => {
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: {
         GetEscalation: () => ({
           ...seed.escByLoop['LOOP-2218'],
@@ -622,7 +622,7 @@ test.describe('app shell', () => {
   })
 
   test('plan-approval notes option waits for the text box', async ({ page }) => {
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: {
         GetEscalation: () => ({
           id: 'esc-plan',

@@ -159,7 +159,10 @@ func addProject(t *testing.T, st *store.Store, repo string) string {
 // waitFor polls until cond() is true or the deadline passes.
 func waitFor(t *testing.T, d time.Duration, what string, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(d)
+	// Deadlines are tuned on an idle machine; a loaded `go test ./...` runs
+	// git-heavy loops several times slower. 3x keeps the FSEvents waits (2s)
+	// under their 30s backstop.
+	deadline := time.Now().Add(3 * d)
 	for time.Now().Before(deadline) {
 		if cond() {
 			return

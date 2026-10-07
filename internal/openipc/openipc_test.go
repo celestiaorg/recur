@@ -9,7 +9,7 @@ import (
 )
 
 func TestCallRoundTrip(t *testing.T) {
-	t.Setenv("RECUR_DATA_DIR", t.TempDir())
+	shortDataDir(t)
 	sock, err := SockPath()
 	if err != nil {
 		t.Fatal(err)

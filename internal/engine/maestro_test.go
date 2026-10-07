@@ -535,7 +535,7 @@ func TestMaestroSteeringWithinRails(t *testing.T) {
 func TestMaestroSteerReachesNextAgentTurn(t *testing.T) {
 	repo := initRepo(t)
 	gate := make(chan struct{})
-	runner := &steerCaptureRunner{gate: gate}
+	runner := &steerCaptureRunner{gate: gate, gated: make(chan struct{}, 1)}
 	eng, st, _, _ := newTestEngine(t, runner)
 	projID := addProject(t, st, repo)
 
@@ -543,19 +543,18 @@ func TestMaestroSteerReachesNextAgentTurn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartWorkspace: %v", err)
 	}
-	waitFor(t, 3*time.Second, "coder turn blocked in gate", func() bool {
-		return eng.Governor().AgentsRunning() >= 1
-	})
+	select {
+	case <-runner.gated:
+	case <-time.After(5 * time.Second):
+		t.Fatal("coder turn never blocked in gate")
+	}
 
 	const steer = "Build on the existing in-progress worktree changes; do not start from scratch."
 	engineReporter{eng: eng}.Plan(workspaceID, maestroAgentCode, steer)
 
 	// Release the in-flight Coder: it should drain Inject after its tool_result.
 	close(gate)
-	waitFor(t, 5*time.Second, "loop to finish", func() bool {
-		l, ok := st.Workspace(workspaceID)
-		return ok && (l.State == domain.StatePROpen || l.State == domain.StateStopped || l.State == domain.StateFailed)
-	})
+	waitForState(t, st, workspaceID, "loop to finish", domain.StatePROpen, domain.StateStopped, domain.StateFailed)
 
 	specs := runner.allSpecs()
 	if len(specs) < 2 {
@@ -603,6 +602,7 @@ type steerCaptureRunner struct {
 	specs    []AgentSpec
 	injected []string
 	gate     chan struct{}
+	gated    chan struct{} // signalled once a specialist (Inject bound) waits on gate
 }
 
 func (r *steerCaptureRunner) Run(ctx context.Context, spec AgentSpec, emit func(ParsedEvent)) (Result, error) {
@@ -614,6 +614,10 @@ func (r *steerCaptureRunner) Run(ctx context.Context, spec AgentSpec, emit func(
 	}
 	if emit != nil {
 		emit(ParsedEvent{Kind: KindStep, Tool: "Bash", ToolInput: "working", ToolUseID: "t1"})
+	}
+	select {
+	case r.gated <- struct{}{}:
+	default:
 	}
 	select {
 	case <-r.gate:

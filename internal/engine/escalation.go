@@ -214,11 +214,6 @@ func (e *Engine) AnswerEscalationFor(workspaceID, agentCode, choice, freeText st
 	return e.answerEscalationTo(workspaceID, nil, agentCode, EscalationAnswer{Choice: choice, FreeText: freeText})
 }
 
-// answerEscalation is AnswerEscalation with an optional Grant (extend_rounds).
-func (e *Engine) answerEscalation(workspaceID string, ans EscalationAnswer) (domain.Escalation, bool) {
-	return e.answerEscalationTo(workspaceID, nil, "", ans)
-}
-
 // answerEscalationTo persists the workspace escalation and delivers to lp when
 // set (extend_rounds on a chat-suffixed walk). A nil lp delivers to agentCode,
 // then esc.AgentCode.

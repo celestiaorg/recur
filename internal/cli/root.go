@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Version is stamped at build time from build/config.yml via -ldflags -X.
+// Version is stamped at build time (RECUR_VERSION or git describe) via -ldflags -X.
 var Version = "dev"
 
 // Execute runs the recur CLI (os.Args). Returns a process exit code.

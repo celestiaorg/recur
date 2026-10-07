@@ -19,7 +19,7 @@ test.describe('toasts', () => {
   })
 
   test('a failed merge shows an error toast that auto-dismisses', async ({ page }) => {
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: { MergePR: () => new BridgeError('merge did not complete — see the loop activity feed for the reason') },
     })
     await gotoApp(page)
@@ -44,7 +44,7 @@ test.describe('toasts', () => {
     // Unbroken JSON/path payloads used to expand past the viewport and hide ✕.
     const longMsg =
       '{"message":"read /Users/josh/.recur/worktrees/caramel-cannoli/packages/contracts/lib/openzeppelin-contracts-upgradeable: is a directory","cause":{"Op":"read","Path":"/Users/josh/.recur/worktrees/caramel-cannoli/packages/contracts/lib/openzeppelin-contracts-upgradeable","Err":21},"kind":"RuntimeError"}'
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: { MergePR: () => new BridgeError(longMsg) },
     })
     await gotoApp(page)

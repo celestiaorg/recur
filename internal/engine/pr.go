@@ -2126,7 +2126,6 @@ func commitRefMatches(c domain.Commit, ref string) bool {
 // and GitHub-only fields stay on the matching stored row so we do not re-run
 // `git show` or drop verified/checks.
 func mergeCommitLog(existing, fresh []domain.Commit) []domain.Commit {
-	type key struct{ short, full string }
 	byShort := make(map[string]domain.Commit, len(existing))
 	byFull := make(map[string]domain.Commit, len(existing))
 	for _, c := range existing {

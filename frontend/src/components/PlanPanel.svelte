@@ -96,7 +96,7 @@
   }
 
   todoDrafts = draftsFromPlan()
-  lastTodoWs = workspaceId
+  lastTodoWs = untrack(() => workspaceId)
   lastTodoSig = planStepsSig()
   draftsReady = true
 
@@ -412,6 +412,7 @@
     aria-labelledby={`plan-tab-${tab}`}
   >
     {#if tab === 'details'}
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="plan-details-pane" onkeydown={onEditKeydown}>
         {#if editing}
           <div class="plan-edit" role="form" aria-label="Edit plan">

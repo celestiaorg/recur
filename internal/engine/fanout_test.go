@@ -170,11 +170,9 @@ func TestFanOutRunsIndependentStepsInChildWorkspaces(t *testing.T) {
 	repo := initRepo(t)
 	runner := &fanOutRunner{}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	installShippedLoopPack(t)
 	projID := addProject(t, st, repo)
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 
 	rec, acquired, err := eng.queueStartWorkspace(projID, "Build the importer", "", "", "", bundles.DefaultLoopID, "recur.policies.aggressive", nil)
 	if err != nil || !acquired {
@@ -326,11 +324,9 @@ func TestFailedChildIsNotRespawned(t *testing.T) {
 	repo := initRepo(t)
 	runner := &fanOutRunner{failOn: "Write the writer"}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	installShippedLoopPack(t)
 	projID := addProject(t, st, repo)
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 
 	rec, acquired, err := eng.queueStartWorkspace(projID, "Build the importer", "", "", "", bundles.DefaultLoopID, "recur.policies.aggressive", nil)
 	if err != nil || !acquired {
@@ -395,11 +391,9 @@ func TestFastChildUnblocksDependentWhileSiblingRuns(t *testing.T) {
 	runner := &fanOutRunner{slowOn: "Write the slow writer", slowDelay: 2 * time.Second,
 		markOn: []string{"Write the slow writer", "Wire the parser"}}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	installShippedLoopPack(t)
 	projID := addProject(t, st, repo)
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 
 	rec, acquired, err := eng.queueStartWorkspace(projID, "Build the importer", "", "", "", bundles.DefaultLoopID, "recur.policies.aggressive", nil)
 	if err != nil || !acquired {
@@ -463,11 +457,9 @@ func TestPlannerFiledPlanFansOut(t *testing.T) {
 	repo := initRepo(t)
 	runner := &plannedFanOutRunner{}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	installShippedLoopPack(t)
 	projID := addProject(t, st, repo)
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 
 	id, err := eng.StartWorkspaceWith(projID, "Build the importer", "", "", bundles.DefaultLoopID, "recur.policies.aggressive")
 	if err != nil {
@@ -528,11 +520,9 @@ func TestDocsLoopFansOutWithWriters(t *testing.T) {
 	repo := initRepo(t)
 	runner := &fanOutRunner{}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	installShippedLoopPack(t)
 	projID := addProject(t, st, repo)
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 
 	rec, acquired, err := eng.queueStartWorkspace(projID, "Write the docs", "", "", "", bundles.DocsLoopID, "recur.policies.aggressive", nil)
 	if err != nil || !acquired {
@@ -646,11 +636,9 @@ func TestBoardBootstrapThenFanOutThenTail(t *testing.T) {
 	repo := initRepo(t)
 	runner := &fanOutRunner{}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	installShippedLoopPack(t)
 	projID := addProject(t, st, repo)
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 
 	rec, acquired, err := eng.queueStartWorkspace(projID, "CSV to JSON", "", "", "", bundles.DefaultLoopID, "recur.policies.aggressive", nil)
 	if err != nil || !acquired {

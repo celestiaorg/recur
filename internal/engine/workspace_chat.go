@@ -758,18 +758,6 @@ func (e *Engine) dropEarlyTitles(ws domain.Workspace, code, nameFrom string) dom
 	return ws
 }
 
-// titleFromUserMessage is the tab-label fallback when no stored title exists:
-// first non-empty line of the message, capped for the sidebar.
-func titleFromUserMessage(text string) string {
-	for _, line := range strings.Split(text, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			return truncate(line, 60)
-		}
-	}
-	return ""
-}
-
 // sanitizeTitle cleans a model reply into a UI-safe title of at most maxLen.
 func sanitizeTitle(raw string, maxLen int) string {
 	s := strings.TrimSpace(raw)
@@ -1722,8 +1710,7 @@ func (e *Engine) newPairChat(ws domain.Workspace) string {
 // Returns the remaining tabs.
 func (e *Engine) CloseWorkspaceChat(workspaceID, code string) []domain.WorkspaceChatTab {
 	code = normalizePairChatCode(code)
-	ws, ok := e.Store.Workspace(workspaceID)
-	if !ok {
+	if _, ok := e.Store.Workspace(workspaceID); !ok {
 		return nil
 	}
 	unlock, held := e.lockChatLife(workspaceID, code)
@@ -1731,7 +1718,7 @@ func (e *Engine) CloseWorkspaceChat(workspaceID, code string) []domain.Workspace
 	if !held {
 		return e.ListWorkspaceChats(workspaceID)
 	}
-	ws, ok = e.Store.Workspace(workspaceID)
+	ws, ok := e.Store.Workspace(workspaceID)
 	if !ok {
 		return nil
 	}

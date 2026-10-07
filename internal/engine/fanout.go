@@ -32,8 +32,8 @@ import (
 // had just landed). It is a record of a dispatch, not a barrier: its children
 // merge independently and later waves start while it is still running.
 
-// fanOutPoll is how often a waiting parent re-checks its children.
-var fanOutPoll = 2 * time.Second
+// defaultFanOutPoll is how often a waiting parent re-checks its children.
+const defaultFanOutPoll = 2 * time.Second
 
 // fanOutChild / fanOutWave is the cockpit card payload (domain.FeedCardFanOut):
 // the children of one wave and, once each has merged, its outcome. Live state
@@ -414,7 +414,7 @@ func (l *Loop) waitAnyChild(ctx context.Context, ids []string) (settled []string
 		case <-ctx.Done():
 			l.stopRunningChildren(ids)
 			return nil, false
-		case <-time.After(fanOutPoll):
+		case <-time.After(l.eng.fanOutPoll):
 		}
 	}
 }
@@ -445,35 +445,6 @@ func stepIDs(steps []domain.PlanStep) string {
 		ids = append(ids, s.ID)
 	}
 	return strings.Join(ids, ", ")
-}
-
-// waitChildren blocks at loop checkpoints until every child has settled.
-// Returns false when the parent was stopped or cancelled; a human Stop also
-// stops the children so no orphan keeps burning agent slots.
-func (l *Loop) waitChildren(ctx context.Context, ids []string) bool {
-	l.setState(domain.StateCoding, fmt.Sprintf("waiting on %d child workspace(s)", len(ids)))
-	for {
-		if !l.checkpoint(ctx) {
-			l.stopRunningChildren(ids)
-			return false
-		}
-		settled := true
-		for _, id := range ids {
-			if !l.eng.childSettled(id) {
-				settled = false
-				break
-			}
-		}
-		if settled {
-			return true
-		}
-		select {
-		case <-ctx.Done():
-			l.stopRunningChildren(ids)
-			return false
-		case <-time.After(fanOutPoll):
-		}
-	}
 }
 
 // startStepChild creates and dispatches a child workspace for one step group:

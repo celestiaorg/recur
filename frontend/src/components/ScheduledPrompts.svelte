@@ -393,6 +393,7 @@
     {@const runs = workspacesOf(p)}
     {@const open = !!$scheduleExpanded[p.id]}
     <div class="sc-block">
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions, a11y_role_supports_aria_props_implicit -->
     <article
       class="ibrow scrow"
       class:read={p.paused}
@@ -451,6 +452,7 @@
       {@const bulkArmed = armedRemoveId === bulkId}
       <div class="sc-runs" class:can-pick={canPick} role="list" aria-label="Workspaces for {p.name}">
         {#if canPick}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
             class="sc-runs-bar"
             class:is-armed={bulkArmed}

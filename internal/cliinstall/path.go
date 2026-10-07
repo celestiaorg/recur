@@ -10,7 +10,7 @@ import (
 
 // EnsurePATH replaces launchd's stunted PATH with the user's login-shell PATH
 // so LookPath finds claude, gh, Homebrew, nvm, and the rest. Recur.app from
-// the Dock does not inherit zshrc; a CLI launch (`open bin/recur.app`) does.
+// the Dock does not inherit zshrc; a CLI launch (`open bin/Recur.app`) does.
 // Common directories are still merged in so a missing ~/.local/bin in the
 // captured PATH does not hide the native Claude installer.
 func EnsurePATH() {

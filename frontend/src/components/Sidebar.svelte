@@ -1413,6 +1413,7 @@
     {@const nestedLast = nest
       ? li === rows.length - 1
       : nested && !(rows[li + 1] && rows[li + 1].parentId === l.parentId && isNestedChild(rows[li + 1], rows))}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="tloop"
       class:tchild={nested}

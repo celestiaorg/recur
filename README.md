@@ -94,6 +94,16 @@ Recur Bundles are TextMate-inspired packs that extend the app. Each bundle is a 
 
 The bundles under `bundles/` are the reference implementations. User bundles live in `~/.recur/bundles` and override shipped ones by id. Full authoring guide: [`docs/bundles.md`](docs/bundles.md).
 
+## Installing
+
+Download `Recur-<version>-macos-arm64.zip` from [Releases](../../releases), unzip it, and move `Recur.app` to `/Applications`. Releases are not notarized yet, so macOS blocks the first launch. Clear the quarantine flag once per download:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Recur.app
+```
+
+Downloading with `gh release download` skips this step, since the GitHub CLI does not set the flag.
+
 ## Command line
 
 The app installs a `recur` command on your PATH at launch.

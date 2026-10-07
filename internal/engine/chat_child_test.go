@@ -146,11 +146,9 @@ func TestStandaloneWorkspaceKeepsFanOutTools(t *testing.T) {
 }
 
 func TestChildReportsToParentThenMergesOnRequest(t *testing.T) {
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 	runner := &captureRunner{linesFor: func(int) [][]byte { return maestroFixture("child", "Done.") }}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	proj := addProject(t, st, initRepo(t))
 	caller, err := eng.CreateWorkspace(proj, "parent", "")
 	if err != nil {
@@ -564,11 +562,9 @@ func TestDeletingParentRemovesItsChildren(t *testing.T) {
 }
 
 func TestChildReportPreservesParentModel(t *testing.T) {
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 	runner := &captureRunner{linesFor: func(int) [][]byte { return maestroFixture("child", "Done.") }}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	proj := addProject(t, st, initRepo(t))
 	caller, err := eng.CreateWorkspace(proj, "parent", "")
 	if err != nil {
@@ -649,11 +645,9 @@ func TestReportKeepsOutcomeSetDuringParentTurn(t *testing.T) {
 }
 
 func TestRearmDoesNotResendDeliveredReport(t *testing.T) {
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 	runner := &captureRunner{linesFor: func(int) [][]byte { return maestroFixture("child", "Done.") }}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	proj := addProject(t, st, initRepo(t))
 	caller, err := eng.CreateWorkspace(proj, "parent", "")
 	if err != nil {
@@ -687,11 +681,9 @@ func TestRearmDoesNotResendDeliveredReport(t *testing.T) {
 // TestReportedChildReportsAgainAfterNewTurn: a child the human retries after
 // it already reported (a usage limit) must wake the parent again.
 func TestReportedChildReportsAgainAfterNewTurn(t *testing.T) {
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 	runner := &captureRunner{linesFor: func(int) [][]byte { return maestroFixture("child", "Done.") }}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	proj := addProject(t, st, initRepo(t))
 	caller, err := eng.CreateWorkspace(proj, "parent", "")
 	if err != nil {
@@ -724,9 +716,6 @@ func (r *messageFromReportRunner) Run(ctx context.Context, spec AgentSpec, emit 
 // from the parent's report turn or a later turn, resumes it and the parent
 // gets another report each time.
 func TestMessageFinishedChildStartsNewTurn(t *testing.T) {
-	old := fanOutPoll
-	fanOutPoll = 50 * time.Millisecond
-	t.Cleanup(func() { fanOutPoll = old })
 	var eng *Engine
 	var parentID string
 	var parentRuns atomic.Int32
@@ -744,6 +733,7 @@ func TestMessageFinishedChildStartsNewTurn(t *testing.T) {
 		}
 	}
 	eng, st, _, _ := newTestEngine(t, runner)
+	eng.fanOutPoll = 50 * time.Millisecond
 	proj := addProject(t, st, initRepo(t))
 	caller, err := eng.CreateWorkspace(proj, "parent", "")
 	if err != nil {

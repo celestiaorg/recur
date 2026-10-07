@@ -58,6 +58,7 @@
   <div
     class="emoji-suggest"
     role="listbox"
+    tabindex="-1"
     aria-label="Emoji suggestions"
     bind:this={listEl}
     style:top={box.top !== undefined ? `${box.top}px` : 'auto'}

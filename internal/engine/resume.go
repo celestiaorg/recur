@@ -81,18 +81,10 @@ func (e *Engine) agentSessions(workspaceID string) map[string]string {
 	return m
 }
 
-// clearCheckpoint drops a loop's resume position. Called when the loop reaches a
-// terminal state: there is nothing left to resume, and a stale checkpoint would let
-// a later Resume re-enter a finished loop mid-machine.
-func (e *Engine) clearCheckpoint(id string) {
-	e.Store.UpdateWorkspace(id, func(l *domain.Workspace) {
-		l.Checkpoint = nil
-	})
-}
-
 // recordFailure persists the reason a loop failed and whether that reason is
 // retryable, so the UI can show what actually went wrong (a spend-limit message, not
-// "error_during_execution") and decide whether to offer Retry (D56).
+// "error_during_execution") and decide whether to offer Retry (D56). Call it before
+// setting StateFailed so anyone who observes the failed state also sees the reason.
 func (e *Engine) recordFailure(id, reason string, retryable bool) {
 	e.Store.UpdateWorkspace(id, func(l *domain.Workspace) {
 		l.LastError = reason
@@ -106,8 +98,8 @@ func (e *Engine) recordFailure(id, reason string, retryable bool) {
 // with an inbox row + notification, because this is a failure only the human can clear
 // (raise the limit, wait out the outage) and then Retry.
 func (e *Engine) failRetryable(id, reason string) {
-	e.setWorkspaceState(id, domain.StateFailed, "stopped: "+reason)
 	e.recordFailure(id, reason, true)
+	e.setWorkspaceState(id, domain.StateFailed, "stopped: "+reason)
 	e.markGroup(id, domain.GroupNeeds)
 	e.emitWorkspaceEvent(id, "MA", "Maestro",
 		"Loop stopped on a transient error — retry when it clears: "+html.EscapeString(reason))

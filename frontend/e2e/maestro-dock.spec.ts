@@ -51,7 +51,7 @@ test.describe('chat dock', () => {
 
     // Send through the dock: the message renders and the reply lands.
     await dock.locator('.chat-in .chat-composer').fill('steer from dock')
-    await dock.locator('.chat-in .send').click()
+    await dock.locator('.chat-in .send:not(.stop)').click()
     await expect(dock.locator('.chat-row.me', { hasText: 'steer from dock' })).toBeVisible()
 
     // Toggle closed and back open from the left toolbar.

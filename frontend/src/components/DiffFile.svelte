@@ -620,6 +620,7 @@
 </script>
 
 <div class="diff-file" class:selecting={!!selecting} bind:this={rootEl}>
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div
     class="df-head"
     class:collapsible
@@ -802,6 +803,7 @@
               data-cmt-line={left && leftN ? String(leftN) : undefined}
             >
               {#if left}
+                <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
                 <span class="ln" onclick={(e) => onLnClick(e, openLineNo(left.line))}>{left.line.old}</span>
                 <span class="cd">{@html left.line.codeHtml}</span>
                 {@render addCommentBtn(left.line, 'left')}
@@ -821,6 +823,7 @@
               data-cmt-line={right && rightN ? String(rightN) : undefined}
             >
               {#if right}
+                <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
                 <span class="ln" onclick={(e) => onLnClick(e, openLineNo(right.line))}>{right.line.new}</span>
                 <span class="cd">{@html right.line.codeHtml}</span>
                 {@render addCommentBtn(right.line, 'right')}
@@ -879,7 +882,9 @@
           data-cmt-side={cmtN ? cmtSide : undefined}
           data-cmt-line={cmtN ? String(cmtN) : undefined}
         >
+          <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
           <span class="ln" onclick={(e) => onLnClick(e, openLineNo(l))}>{l.old}</span>
+          <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
           <span class="ln" onclick={(e) => onLnClick(e, openLineNo(l))}>{l.new}</span>
           <span class="cd">{@html l.codeHtml}</span>
           {@render addCommentBtn(l, cmtSide)}

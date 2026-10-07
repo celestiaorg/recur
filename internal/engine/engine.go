@@ -122,6 +122,9 @@ type Engine struct {
 	// chatChildWatchers holds child ids with a live watchChatChild, so a
 	// reopened child and a restart rearm cannot both report it.
 	chatChildWatchers sync.Map
+	// fanOutPoll is how often fan-out waits and child watchers re-check
+	// children. Fixed after New; tests shorten it before spawning children.
+	fanOutPoll time.Duration
 	// mergeChildLocks serializes merge_child per parent workspace so two
 	// tabs cannot git-merge into the same worktree at once.
 	mergeChildLocks sync.Map
@@ -393,6 +396,7 @@ func New(st *store.Store) *Engine {
 		Bus:              NewBus(),
 		gov:              NewGovernor(domain.EffectiveMaxLoops(set.MaxLoops), domain.EffectiveMaxAgents(set.MaxAgents)),
 		worktreeRoot:     wtRoot,
+		fanOutPoll:       defaultFanOutPoll,
 		itersBase:        st.Resource().ItersToday, // seeded/persisted baseline (PRD §6.4)
 		appFocused:       true,                     // assume key until WindowLostFocus; zero-value would suppress all "seen"
 		modeContinues:    map[string]pendingModeContinue{},

@@ -104,8 +104,15 @@ func (s *Session) foregroundPgid() (int, bool) {
 	if closed || ptmx == nil {
 		return 0, false
 	}
-	pgid, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
-	if err != nil || pgid <= 1 {
+	rc, err := ptmx.SyscallConn()
+	if err != nil {
+		return 0, false
+	}
+	// Control pins the fd against a concurrent Close in reap/terminate.
+	var pgid int
+	if cerr := rc.Control(func(fd uintptr) {
+		pgid, err = unix.IoctlGetInt(int(fd), unix.TIOCGPGRP)
+	}); cerr != nil || err != nil || pgid <= 1 {
 		return 0, false
 	}
 	return pgid, true

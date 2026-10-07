@@ -4,6 +4,7 @@
     participantAvatarUrl,
     participantInitials,
     participantLabel,
+    personKey,
     prFaceSlots,
     prPeopleWithReviews,
     reviewStateLabel,
@@ -23,7 +24,7 @@
 <div class="pr-people" data-ui-tip="off">
   {#if people.length}
     <div class="pr-faces" aria-label="Participants: {people.map((person) => [participantLabel(person), reviewStateLabel(person.reviewState)].filter(Boolean).join(' — ')).filter(Boolean).join(', ')}">
-      {#each faces.shown as person (person.login || person.name || person.code)}
+      {#each faces.shown as person (personKey(person))}
         {@const url = participantAvatarUrl(person)}
         {@const rev = person.reviewState}
         <span class="pr-face" class:rev-ok={rev === 'approved'} class:rev-ask={rev === 'changes_requested'} class:rev-wait={rev === 'pending'} style={person.avatarCss || undefined}>
@@ -39,7 +40,7 @@
       {/if}
     </div>
     <div class="pr-people-pop" role="tooltip">
-      {#each people as person (person.login || person.name || person.code)}
+      {#each people as person (personKey(person))}
         {@const url = participantAvatarUrl(person)}
         {@const state = person.reviewState}
         {@const rev = reviewStateLabel(state)}

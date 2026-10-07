@@ -793,11 +793,22 @@ func TestCursorRunnerDeliveredSteerDuringHandoff(t *testing.T) {
 	cursor.BindClientForTest(b, srv.URL, "tok")
 
 	inject := make(chan string)
+	reserved := make(chan struct{}, 2)
+	testAfterSteerReserve = func() { reserved <- struct{}{} }
+	defer func() { testAfterSteerReserve = nil }()
 	var handoffOnce sync.Once
 	testBeforeFollowUpTake = func() {
 		handoffOnce.Do(func() {
+			for len(reserved) > 0 {
+				<-reserved // the first steer's reserve
+			}
 			inject <- "handoff steer"
-			time.Sleep(50 * time.Millisecond)
+			// The listener's post-cancel drain can also pick it up, in which
+			// case it rides the follow-up Send and is never reserved.
+			select {
+			case <-reserved:
+			case <-time.After(2 * time.Second):
+			}
 		})
 	}
 	defer func() { testBeforeFollowUpTake = nil }()
@@ -839,14 +850,13 @@ func TestCursorRunnerDeliveredSteerDuringHandoff(t *testing.T) {
 	textsMu.Lock()
 	gotTexts := append([]string(nil), sendTexts...)
 	textsMu.Unlock()
-	if len(gotTexts) >= 2 && strings.Contains(gotTexts[1], "handoff steer") {
-		t.Errorf("follow-up Send text = %v, delivered steer must not also fold into Send", gotTexts)
-	}
 	steerMu.Lock()
 	gotSteer := strings.Join(steerTexts, "\n")
 	steerMu.Unlock()
-	if !strings.Contains(gotSteer, "handoff steer") {
-		t.Errorf("SteerRun texts = %q, want handoff steer", gotSteer)
+	steered := strings.Contains(gotSteer, "handoff steer")
+	folded := len(gotTexts) >= 2 && strings.Contains(gotTexts[1], "handoff steer")
+	if steered == folded {
+		t.Errorf("handoff steer must be delivered exactly once: SteerRun=%q Send=%v", gotSteer, gotTexts)
 	}
 }
 

@@ -394,21 +394,6 @@ func imageAttachmentLocs(s string, byID map[string]UserImage) [][]int {
 	return out
 }
 
-// chatImageRefs builds UI attachment refs (served under /workspaces/…).
-func chatImageRefs(imgs []UserImage) []domain.ChatImageRef {
-	if len(imgs) == 0 {
-		return nil
-	}
-	out := make([]domain.ChatImageRef, len(imgs))
-	for i, img := range imgs {
-		out[i] = domain.ChatImageRef{
-			ID: img.ID, Name: img.Name, Mime: img.Mime,
-			URL: "/" + img.Path,
-		}
-	}
-	return out
-}
-
 // wrapAttachedImagesForCursor prepends a system_instruction that maps each
 // ⟦attachment:id⟧ marker to its ordinal in SDKUserMessage.images (marker order).
 // Markers stay in the body so the model knows where each image sits; the

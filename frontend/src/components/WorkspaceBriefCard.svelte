@@ -104,7 +104,7 @@
 {:else}
 <!-- Card variant: a single pinned workspace in a chat transcript
      (present_workspace). -->
-<article
+<div
   class="wbrief"
   role="button"
   tabindex="0"
@@ -130,5 +130,5 @@
       <div class="wbrief-next">{brief.now || brief.next}</div>
     {/if}
   </div>
-</article>
+</div>
 {/if}

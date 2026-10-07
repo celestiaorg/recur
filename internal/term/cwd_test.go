@@ -20,7 +20,9 @@ func TestProcessCwdReadsChildDirectory(t *testing.T) {
 	}
 	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
 
-	deadline := time.Now().Add(2 * time.Second)
+	// Each lsof attempt is capped at 400ms; under a loaded test run several
+	// in a row can miss it.
+	deadline := time.Now().Add(15 * time.Second)
 	var got string
 	for time.Now().Before(deadline) {
 		got = processCwd(cmd.Process.Pid)

@@ -38,14 +38,18 @@ Read before inventing architecture:
 
 ## Testing instructions
 
-CI today: `.github/workflows/e2e.yml` (Playwright only). Local quality gates are Taskfile-driven.
+CI: `.github/workflows/ci.yml` runs each task below as its own job (Go tests, `-race`, Go lint + govulncheck, bundles, frontend, e2e) and packages Recur.app, failing if committed bindings or `go.mod` are stale. Branch protection requires only its `CI success` job, so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are Taskfile-driven.
 
 | Task | What |
 |------|------|
-| `wails3 task check` | Fast gate: Go tests + bundle lint + bundle tests (no Playwright) |
+| `wails3 task check` | Fast gate: Go tests, `lint:go`, `lint:frontend`, bundle lint/tests, frontend unit (no Playwright) |
 | `wails3 task check:cursor-sdk-pin` | Network: fail if PyPI `cursor-sdk` is ahead of `pinnedSDKVersion` |
-| `wails3 task test` | Everything: `test:go`, `lint:bundles`, `test:bundles`, `test:e2e` |
+| `wails3 task check:vulns` | Network: govulncheck on reachable Go code |
+| `wails3 task test` | Everything in `check` plus `test:e2e` |
 | `wails3 task test:go` | `go test ./...` |
+| `wails3 task test:go:race` | `go test -race ./...` (slow) |
+| `wails3 task lint:go` | `go vet`, `gofmt`, staticcheck |
+| `wails3 task lint:frontend` | svelte-check |
 | `wails3 task lint:bundles` | Schema, TS compile, shebang, keyEquivalent collisions |
 | `wails3 task test:bundles` | Shipped bundle engine tests under `./bundles` |
 | `wails3 task test:e2e` | Frontend Playwright (mocked Wails bridge) |

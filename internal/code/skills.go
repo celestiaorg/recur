@@ -241,16 +241,6 @@ func frontmatterBlock(raw string) (fm, body string) {
 	return fm, body
 }
 
-// readSkillDescription pulls a short description from YAML frontmatter without
-// a YAML dependency (name/description keys only).
-func readSkillDescription(path string) string {
-	meta, _, ok := readSkillFile(path)
-	if !ok {
-		return ""
-	}
-	return truncateSkillDesc(meta.Description, 160)
-}
-
 func truncateSkillDesc(val string, max int) string {
 	val = strings.Join(strings.Fields(val), " ")
 	if max <= 0 || len(val) <= max {

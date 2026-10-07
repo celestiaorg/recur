@@ -132,16 +132,31 @@ export function portalMenuMods(
 
 export type MoreMenuBox = { top: number; right: number }
 
+/** Top for a portaled popover under its trigger, flipped above when
+ *  `menuHeight` would cross the bottom window edge. */
+export function popoverTop(
+  trigger: { top?: number; bottom: number },
+  opts: { menuHeight?: number; viewportHeight?: number; gap?: number; edge?: number } = {},
+): number {
+  const gap = opts.gap ?? MORE_MENU_GAP_PX
+  const edge = opts.edge ?? MENU_EDGE_PX
+  const vh = opts.viewportHeight ??
+    (typeof globalThis.window !== 'undefined' ? globalThis.window.innerHeight : 0)
+  const below = trigger.bottom + gap
+  const h = opts.menuHeight ?? 0
+  if (!h || trigger.top === undefined || below + h <= vh - edge) return below
+  return Math.max(edge, trigger.top - gap - h)
+}
+
 /** Viewport-fixed box for a portaled comment ⋯ menu, right-aligned to the trigger. */
 export function moreMenuFixedBox(
-  trigger: { bottom: number; right: number },
-  opts: { viewportWidth?: number; gap?: number; edge?: number } = {},
+  trigger: { top?: number; bottom: number; right: number },
+  opts: { menuHeight?: number; viewportWidth?: number; viewportHeight?: number; gap?: number; edge?: number } = {},
 ): MoreMenuBox {
-  const gap = opts.gap ?? MORE_MENU_GAP_PX
   const edge = opts.edge ?? MENU_EDGE_PX
   const vw = opts.viewportWidth ??
     (typeof globalThis.window !== 'undefined' ? globalThis.window.innerWidth : 0)
-  return { top: trigger.bottom + gap, right: Math.max(edge, vw - trigger.right) }
+  return { top: popoverTop(trigger, opts), right: Math.max(edge, vw - trigger.right) }
 }
 
 export type ClipRect = { top: number; right: number; bottom: number; left: number }
@@ -191,7 +206,7 @@ export function followMoreMenu(
         onHidden?.()
         return
       }
-      setBox(moreMenuFixedBox(trigger.getBoundingClientRect()))
+      setBox(moreMenuFixedBox(trigger.getBoundingClientRect(), { menuHeight: node.offsetHeight }))
     }
     place()
     return watchMenuViewport(place, node)

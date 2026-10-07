@@ -27,6 +27,7 @@ func TestRestartStoppedLoop(t *testing.T) {
 		l, ok := st.Workspace(id)
 		return ok && (l.State == domain.StateStopped || l.State == domain.StatePROpen)
 	})
+	waitLoopExited(t, eng, id)
 	rec, _ := st.Workspace(id)
 	if rec.State == domain.StatePROpen {
 		// The loop won the race and finished before Stop landed — restart must

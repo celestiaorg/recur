@@ -593,7 +593,7 @@ test.describe('new loop + settings', () => {
   })
 
   test('a failed policy save shows an error toast', async ({ page }) => {
-    await installBridge(page, seed, { resolvers: { SetSettings: () => new BridgeError('settings save failed') } })
+    await installBridge(page, structuredClone(seed), { resolvers: { SetSettings: () => new BridgeError('settings save failed') } })
     await gotoApp(page)
     await openSettings(page)
     await openSection(page, 'Loops')
@@ -647,6 +647,40 @@ test.describe('new loop + settings', () => {
 })
 
 test.describe('new workspace composer', () => {
+  test('a late project refresh does not reload branches or disable Create', async ({ page }) => {
+    let gate = false
+    let listBranches = 0
+    let releaseRefresh = () => {}
+    const refreshed = new Promise<void>((r) => { releaseRefresh = r })
+    await installBridge(page, structuredClone(seed), {
+      resolvers: {
+        // Boot list returns at once; the modal's open-time refresh lands late
+        // with fresh objects (renamed so the test can see it apply).
+        ListProjects: async (_a, s) => {
+          if (!gate) return s.projects
+          await refreshed
+          return s.projects.map((p) => ({ ...p, name: `${p.name}-late` }))
+        },
+        ListBranches: () => {
+          listBranches++
+          return [{ name: 'main', group: 'Local' }, { name: 'develop', group: 'Local' }]
+        },
+      },
+    })
+    await gotoApp(page)
+    gate = true
+    await page.keyboard.press('Meta+N')
+    const modal = page.locator('#v-newtask')
+    const go = modal.locator('.nt-go')
+    await expect(go).toBeEnabled()
+    const repoPicker = modal.locator('.sel-btn[aria-label="Repository"]')
+    await expect(repoPicker).not.toContainText('-late')
+    releaseRefresh()
+    await expect(repoPicker).toContainText('-late')
+    await expect(go).toBeEnabled()
+    expect(listBranches).toBe(1)
+  })
+
   test('slash menu offers prompts and skills; @ searches the project', async ({ page }) => {
     await installBridge(page, structuredClone(seed), {
       resolvers: {

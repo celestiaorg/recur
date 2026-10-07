@@ -40,7 +40,7 @@ func TestGHCLIAvailableCachesProbe(t *testing.T) {
 		return true
 	}
 	resetGHAvailCache()
-	if !ghCLIAvailable() || !ghCLIAvailable() {
+	if first, second := ghCLIAvailable(), ghCLIAvailable(); !first || !second {
 		t.Fatal("ghCLIAvailable() = false, want cached true")
 	}
 	if n != 1 {

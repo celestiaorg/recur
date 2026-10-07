@@ -3,7 +3,7 @@ import { installBridge } from './helpers/mock-bridge'
 
 test.describe('loading states', () => {
   test('the Loop chat renders session cards once the delayed fetch resolves', async ({ page }) => {
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: {
         WorkspaceSessions: async () => {
           await new Promise((r) => setTimeout(r, 300))

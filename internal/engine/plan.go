@@ -392,7 +392,7 @@ func (e *Engine) applyPlanStepUpdate(workspaceID, agentCode, stepID, status, not
 }
 
 // runProgress maps plan-step completion into the run's progress band
-//: once structured steps exist, the execution
+// : once structured steps exist, the execution
 // window (coding/reviewing) tracks steps done instead of the hardcoded
 // per-state constants — the ring is real. Planning floors at 0.15; verify/PR
 // keep their constants (they sit above the band's ceiling).

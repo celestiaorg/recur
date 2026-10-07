@@ -123,15 +123,16 @@
   // Chat tabs (Agent panel): MA (Loop) + PA* on one strip, one surface.
   // Seeded from the process-wide strip cache so a warm remount paints the
   // header immediately instead of waiting on ListWorkspaceChats.
-  const seededStrip = getChatStrip(boundWsId)
+  const seedWsId = untrack(() => boundWsId)
+  const seededStrip = getChatStrip(seedWsId)
   // Transcripts, composer drafts, and dock pickers — same heap snapshot.
-  bustHoistedDestHeap(boundWsId, takeHoistDestBust(boundWsId))
-  const seededHeap = getChatHeap<AgentMsg, ChatAttachmentDraft>(boundWsId)
+  bustHoistedDestHeap(seedWsId, takeHoistDestBust(seedWsId))
+  const seededHeap = getChatHeap<AgentMsg, ChatAttachmentDraft>(seedWsId)
   let tabsByWs = $state<Record<string, WorkspaceChatTab[]>>(
-    seededStrip?.tabs.length ? { [boundWsId]: seededStrip.tabs } : {},
+    seededStrip?.tabs.length ? { [seedWsId]: seededStrip.tabs } : {},
   )
   let closedTabsByWs = $state<Record<string, WorkspaceChatTab[]>>(
-    seededStrip?.closed?.length ? { [boundWsId]: seededStrip.closed } : {},
+    seededStrip?.closed?.length ? { [seedWsId]: seededStrip.closed } : {},
   )
   let recentsOpen = $state(false)
   const DELETE_ARM_MS = 3000
@@ -139,7 +140,7 @@
   let deleteArmTimer: ReturnType<typeof setTimeout> | undefined
   let activeCodeByWs = $state<Record<string, string>>(
     seededStrip?.tabs.length
-      ? { [boundWsId]: seededStrip.activeCode || restoredChatCode(boundWsId, seededStrip.tabs) }
+      ? { [seedWsId]: seededStrip.activeCode || restoredChatCode(seedWsId, seededStrip.tabs) }
       : {},
   )
   // Keep-alive remount: pin the saved strip offset instead of chasing the
@@ -1120,7 +1121,7 @@
     }
     return out
   })())
-  const simplifyFetched = new Set<string>(Object.keys(simplifyByKey))
+  const simplifyFetched = new Set<string>(Object.keys(untrack(() => simplifyByKey)))
   const simplifyGenByKey: Record<string, number> = {}
 
   function bumpSimplifyGen(key: string) {
@@ -1455,7 +1456,7 @@
   let observatory = $state<{
     getFocusedEditorContext: () => import('../lib/commands').EditorContext | null
     selectCodePanel: (next: CodePanelKey) => void | Promise<void>
-    openArtifact: (a: { id?: string; title?: string; kind?: string; path?: string }) => void | Promise<void>
+    openArtifact: (a: { id?: string; title?: string; kind?: string; path?: string }) => Promise<boolean>
     openTurnReview: (c: Commit) => void
     showAgentPanel: () => void
   } | undefined>()
@@ -1551,7 +1552,7 @@
     const code = activeCode
     untrack(() => sessionFeed.attach(id, code))
   })
-  const stopHoistLive = noteHoistLiveSource(boundWsId)
+  const stopHoistLive = noteHoistLiveSource(seedWsId)
   let queueOwner = true
   onDestroy(() => {
     stopHoistLive()

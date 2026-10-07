@@ -330,14 +330,10 @@ func graphQLToPRView(pr gqlSnapshotPR) ghPRViewJSON {
 		Assignees:        pr.Assignees.Nodes,
 	}
 	for _, n := range pr.Comments.Nodes {
-		view.Comments = append(view.Comments, ghViewComment{
-			ID: n.ID, URL: n.URL, Author: n.Author, Body: n.Body, CreatedAt: n.CreatedAt,
-		})
+		view.Comments = append(view.Comments, ghViewComment(n))
 	}
 	for _, n := range pr.Reviews.Nodes {
-		view.Reviews = append(view.Reviews, ghViewReview{
-			ID: n.ID, URL: n.URL, Author: n.Author, Body: n.Body, State: n.State, SubmittedAt: n.SubmittedAt,
-		})
+		view.Reviews = append(view.Reviews, ghViewReview(n))
 	}
 	for _, n := range pr.Commits.Nodes {
 		var authors []ghViewCommitAuthor

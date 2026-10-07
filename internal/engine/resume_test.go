@@ -66,6 +66,14 @@ func waitForState(t *testing.T, st *store.Store, id string, what string,
 	return l
 }
 
+// waitLoopExited waits for id's loop goroutine to deregister. A loop publishes
+// its settled state before it finishes recording failure marks and unwinds, so
+// a read or Retry/Restart right after waitForState can see a half-settled loop.
+func waitLoopExited(t *testing.T, eng *Engine, id string) {
+	t.Helper()
+	waitFor(t, 10*time.Second, "loop goroutine to exit", func() bool { return eng.runningLoopByID(id) == nil })
+}
+
 // TestResumeContinuesAtCheckpointIteration is the headline D55 test: a loop that died
 // while CODING iteration 3 must resume at iteration 3, not replay the loop from
 // planning at iteration 1. The scripted reviewer converges immediately, so exactly ONE
@@ -209,25 +217,6 @@ func TestResumeRestoresCoderSession(t *testing.T) {
 			t.Errorf("coder turn %d should start a fresh session, got %q", i+2, s)
 		}
 	}
-}
-
-// promptSpyRunner records the prompt the engine gave each coder turn.
-type promptSpyRunner struct {
-	mu           sync.Mutex
-	coderPrompts []string
-}
-
-func (r *promptSpyRunner) Run(ctx context.Context, spec AgentSpec, emit func(ParsedEvent)) (Result, error) {
-	if spec.Role == domain.RoleCoder {
-		r.mu.Lock()
-		r.coderPrompts = append(r.coderPrompts, spec.Prompt)
-		r.mu.Unlock()
-		sr := &ScriptedRunner{Edits: map[string]string{"work.txt": "edit\n"}}
-		if err := sr.applyEdits(spec.Worktree); err != nil {
-			return Result{}, err
-		}
-	}
-	return Result{Subtype: "success", SessionID: "s"}, nil
 }
 
 // TestAutoResumeIgnoresHumanPausedLoops pins the boundary that makes auto-resume safe:
@@ -409,7 +398,9 @@ func TestTransientLLMFailureIsRetryable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartWorkspace: %v", err)
 	}
-	failed := waitForState(t, st, id, "loop to fail on the spend limit", domain.StateFailed)
+	waitForState(t, st, id, "loop to fail on the spend limit", domain.StateFailed)
+	waitLoopExited(t, eng, id)
+	failed, _ := st.Workspace(id)
 
 	if !failed.Retryable {
 		t.Error("a spend-limit failure must be marked retryable")
@@ -462,7 +453,9 @@ func TestGenuineFailureIsNotRetryable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartWorkspace: %v", err)
 	}
-	failed := waitForState(t, st, id, "loop to fail", domain.StateFailed)
+	waitForState(t, st, id, "loop to fail", domain.StateFailed)
+	waitLoopExited(t, eng, id)
+	failed, _ := st.Workspace(id)
 
 	if failed.Retryable {
 		t.Error("a genuine failure must not be marked retryable")
@@ -543,7 +536,9 @@ func TestPlannerTransientFailureIsRetryable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartWorkspace: %v", err)
 	}
-	failed := waitForState(t, st, id, "loop to fail on the overloaded planner", domain.StateFailed)
+	waitForState(t, st, id, "loop to fail on the overloaded planner", domain.StateFailed)
+	waitLoopExited(t, eng, id)
+	failed, _ := st.Workspace(id)
 
 	if !failed.Retryable {
 		t.Error("an overloaded planner must be marked retryable")

@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import type { PRComment } from '../../bindings/recur/internal/domain/models'
   import { appOverlayOpen } from '../lib/stores'
-  import { portalToBody } from '../lib/menu-space'
+  import { popoverTop, portalToBody } from '../lib/menu-space'
   import {
     GH_REACTIONS,
     reactionIcon,
@@ -18,6 +19,7 @@
   const show = $derived(!!comment?.id && (pills.length > 0 || canReact))
   let open = $state(false)
   let box = $state<{ top: number; left: number } | null>(null)
+  let anchor: DOMRect | null = null
 
   $effect(() => {
     if ($appOverlayOpen) open = false
@@ -37,8 +39,17 @@
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const width = 252
     const left = Math.min(r.left, Math.max(8, window.innerWidth - width - 8))
-    box = { top: r.bottom + 4, left }
+    anchor = r
+    box = { top: popoverTop(r), left }
     open = true
+  }
+
+  function fitPicker(node: HTMLElement) {
+    const r = anchor
+    if (!r) return
+    untrack(() => {
+      if (box) box = { ...box, top: popoverTop(r, { menuHeight: node.offsetHeight }) }
+    })
   }
 
   async function react(content: string) {
@@ -86,7 +97,7 @@
 {/if}
 
 {#if open && box}
-  <div class="rxn-pick" style="top:{box.top}px;left:{box.left}px" role="menu" {@attach portalToBody} onmousedown={(e) => e.stopPropagation()}>
+  <div class="rxn-pick" style="top:{box.top}px;left:{box.left}px" role="menu" tabindex="-1" {@attach portalToBody} {@attach fitPicker} onmousedown={(e) => e.stopPropagation()}>
     {#each GH_REACTIONS as r (r.content)}
       <button
         type="button"

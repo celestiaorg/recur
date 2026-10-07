@@ -24,7 +24,7 @@ const bridgeRecentLines = 40
 
 // lineRing is a fixed-size ring of the most recent stderr lines.
 type lineRing struct {
-	mu   sync.Mutex
+	mu    sync.Mutex
 	lines []string
 	next  int
 	full  bool

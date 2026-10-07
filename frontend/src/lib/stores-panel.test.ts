@@ -2,16 +2,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { get } from 'svelte/store'
 import {
-  CODE_PANEL_KEYS, PANEL_DEFAULTS, codePanelSides, initCodePanelSides, obsToolbarMinWidth,
+  CODE_PANEL_KEYS, CODE_PANEL_SIDE_DEFAULTS, PANEL_DEFAULTS, codePanelSides, initCodePanelSides, obsToolbarMinWidth,
   panelWidths, setCodePanelSide, setPanelWidth,
 } from './stores'
 
 beforeEach(() => {
   localStorage.clear()
-  codePanelSides.set({
-    maestro: 'left', plan: 'left', findings: 'left',
-    files: 'right', scm: 'right', outline: 'right', search: 'right', refs: 'right', artifacts: 'right',
-  })
+  codePanelSides.set({ ...CODE_PANEL_SIDE_DEFAULTS })
   panelWidths.set({ ...PANEL_DEFAULTS })
 })
 

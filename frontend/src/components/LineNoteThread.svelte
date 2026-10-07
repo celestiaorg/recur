@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte'
+  import { onDestroy, untrack } from 'svelte'
   import type { PR, PRComment } from '../../bindings/recur/internal/domain/models'
   import { selectedPRId, prs, pushToast, appOverlayOpen } from '../lib/stores'
   import { PRsService, call } from '../lib/api'
@@ -36,7 +36,7 @@
   const replies = $derived(threadReplies(items, root.id))
   const canResolve = $derived(canResolveLineNote(pr, root))
   const canComment = $derived(!prConversationLocked(pr))
-  const held = threadEditorDraft(root.id)
+  const held = untrack(() => threadEditorDraft(root.id))
   let replyOpen = $state(held?.replyOpen ?? false)
   let replyDraft = $state(held?.reply ?? '')
   let resolving = $state(false)
@@ -357,7 +357,7 @@
   {@const target = moreTarget()}
   {@const canQuote = canComment && !!target && !!commentSource(target)}
   {@const link = commentPermalink(pr?.url, target)}
-  <div class="cmt-more-menu" style="top:{moreMenuBox.top}px;right:{moreMenuBox.right}px" role="menu" {@attach pinMore} {@attach portalToBody} onmousedown={(e) => e.stopPropagation()}>
+  <div class="cmt-more-menu" style="top:{moreMenuBox.top}px;right:{moreMenuBox.right}px" role="menu" tabindex="-1" {@attach pinMore} {@attach portalToBody} onmousedown={(e) => e.stopPropagation()}>
     {#if link}
       <button type="button" class="cmt-more-item" role="menuitem" onclick={() => void moreOpenGitHub()}><Icon name="github" />Open in GitHub</button>
       <button type="button" class="cmt-more-item" role="menuitem" onclick={() => void moreCopyLink()}><Icon name="copy" />Copy link</button>

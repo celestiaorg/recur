@@ -967,7 +967,16 @@ func TestRemoveAndDeleteWorkspaceService(t *testing.T) {
 		t.Error("expected Archived=true")
 	}
 
-	if err := svc.Workspaces.DeleteWorkspace("LOOP-2224"); err != nil {
+	// Remove's background teardown holds the id until it finishes.
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		err = svc.Workspaces.DeleteWorkspace("LOOP-2224")
+		if err == nil || !strings.Contains(err.Error(), "being removed") || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err != nil {
 		t.Fatalf("DeleteWorkspace: %v", err)
 	}
 	if _, err := svc.Workspaces.GetWorkspace("LOOP-2224"); err == nil {

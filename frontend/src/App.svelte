@@ -937,6 +937,7 @@
 </script>
 
 <div class="win">
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="titlebar" onmousedown={onTitlebarMouseDown}>
     <div class="tb-left">
       <div class="tb-traffic-clear"></div>

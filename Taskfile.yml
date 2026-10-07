@@ -11,8 +11,12 @@ vars:
   # Desktop app is {{.BIN_DIR}}/{{.APP_NAME}}; CLI is a separate binary.
   CLI_BIN: '{{.BIN_DIR}}/recur-cli'
   VERSION:
-    sh: >-
-      awk '/^  version:/ { gsub(/"/, "", $2); print $2 }' build/config.yml
+    sh: |
+      if [ -n "$RECUR_VERSION" ]; then echo "$RECUR_VERSION"; exit; fi
+      if tag=$(git describe --tags --match 'v[0-9]*' --exact-match 2>/dev/null); then echo "${tag#v}"; exit; fi
+      tag=$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || true)
+      v=${tag#v}
+      echo "${v:-0.0.0}+commit.$(git rev-parse --short=8 HEAD)"
   CLI_LDFLAGS: '-X recur/internal/cli.Version={{.VERSION}}'
 
 tasks:
@@ -56,10 +60,40 @@ tasks:
       - go test ./...
     # Match production Darwin min version (build/darwin/Taskfile.yml).
     # Setting CGO_* replaces Go's defaults, so keep `-O2 -g` and append the pin.
-    env:
+    env: &darwin_cgo_env
       CGO_CFLAGS: '{{if eq OS "darwin"}}-O2 -g -mmacosx-version-min=12.0{{end}}'
       CGO_LDFLAGS: '{{if eq OS "darwin"}}-O2 -g -mmacosx-version-min=12.0{{end}}'
       MACOSX_DEPLOYMENT_TARGET: '{{if eq OS "darwin"}}12.0{{end}}'
+
+  test:go:race:
+    summary: Runs Go unit tests with the race detector (slow; CI runs it)
+    cmds:
+      - go test -race -timeout 30m ./...
+    env: *darwin_cgo_env
+
+  lint:go:
+    summary: go vet, gofmt, and staticcheck
+    cmds:
+      - go vet ./...
+      - |
+        out=$(git ls-files '*.go' | xargs gofmt -l)
+        if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
+      - go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 ./...
+    env: *darwin_cgo_env
+
+  lint:frontend:
+    summary: Typechecks the frontend (svelte-check)
+    dir: frontend
+    deps:
+      - task: common:install:frontend:deps
+    cmds:
+      - pnpm run check
+
+  check:vulns:
+    summary: Reports known vulnerabilities reachable from Recur's Go code (network)
+    cmds:
+      - go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+    env: *darwin_cgo_env
 
   test:bundles:
     summary: Runs shipped Recur Bundle engine tests (needs node on PATH)
@@ -125,18 +159,22 @@ tasks:
       - node scripts/capture-splash.mjs {{.CLI_ARGS}}
 
   test:
-    summary: Runs all automated tests (Go, bundles lint+test, frontend unit + e2e)
+    summary: Runs all automated tests (Go, lints, bundles, frontend unit + e2e)
     cmds:
       - task: test:go
+      - task: lint:go
+      - task: lint:frontend
       - task: lint:bundles
       - task: test:bundles
       - task: test:frontend
       - task: test:e2e
 
   check:
-    summary: Fast quality gate (Go tests + bundle lint/test + frontend unit; no Playwright)
+    summary: Fast quality gate (Go tests, Go/frontend lint, bundle lint/test, frontend unit; no Playwright)
     cmds:
       - task: test:go
+      - task: lint:go
+      - task: lint:frontend
       - task: lint:bundles
       - task: test:bundles
       - task: test:frontend

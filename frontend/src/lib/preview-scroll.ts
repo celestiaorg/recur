@@ -93,14 +93,9 @@ export function createPreviewScrollStore() {
       const s = saved.get(path)
       if (!s) continue
       const prev = views[path]
-      const next: FileViewState = {
-        viewMode: prev?.viewMode ?? 'preview' as const,
-        line: prev?.line ?? 1,
-        col: prev?.col ?? 1,
-        scrollTop: prev?.scrollTop ?? 0,
-        scrollLeft: prev?.scrollLeft ?? 0,
-        ...prev,
-      }
+      const next: FileViewState = prev
+        ? { ...prev }
+        : { viewMode: 'preview', line: 1, col: 1, scrollTop: 0, scrollLeft: 0 }
       delete next.previewScrollTop
       delete next.previewScrollLeft
       delete next.previewZoom

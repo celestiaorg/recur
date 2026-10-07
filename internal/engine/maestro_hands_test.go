@@ -622,6 +622,7 @@ func TestResumeLoopStartsWalkWhenSiblingLive(t *testing.T) {
 		l.State = domain.StateStopped
 		l.Checkpoint = &domain.Checkpoint{PhaseID: "converge"}
 	})
+	st.UpsertAgent(ws.ID, domain.Agent{ID: ws.ID + "-PA", WorkspaceID: ws.ID, Code: "PA", Name: "Agent"})
 	ws, _ = st.Workspace(ws.ID)
 	sib := newHandLoop(ws.ID, "PA2")
 	eng.loops.Store(ws.ID+loopMapSep+"PA2", &runningLoop{loop: sib})
@@ -771,6 +772,7 @@ func TestReenterPhaseSameChatDoesNotDoubleDispatch(t *testing.T) {
 		l.State = domain.StatePaused
 		l.LoopChatCode = "PA"
 	})
+	st.UpsertAgent(ws.ID, domain.Agent{ID: ws.ID + "-PA", WorkspaceID: ws.ID, Code: "PA", Name: "Agent"})
 	g, reason := eng.resolveGuard("", "", domain.AutonomyBalanced)
 	if reason != "" {
 		t.Fatalf("resolveGuard: %s", reason)

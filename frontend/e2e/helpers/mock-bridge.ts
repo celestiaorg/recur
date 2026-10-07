@@ -2170,6 +2170,19 @@ export async function installBridge(page: Page, seed: Seed, opts: BridgeOptions 
     if (typeof next[2] === 'string') next[2] = peelChatSurface(next[2])
     return innerSendChat?.(next, s, t)
   }
+  // Engine.CancelChat also idles a run the cancelled tab owns (idleWalkByChat).
+  const pendingEvents: { name: string; data: unknown }[] = []
+  const innerCancel = table.CancelWorkspaceMessage
+  table.CancelWorkspaceMessage = (a, s, t) => {
+    const ws = s.loopById?.[String(a[0] ?? '')]
+    if (ws && (ws.loopChatCode || 'MA') === a[1] && ['queued', 'planning', 'coding', 'reviewing', 'verifying'].includes(ws.state)) {
+      Object.assign(ws, { state: 'paused', phase: 'idle' })
+      const row = s.loops.find((l: { id: string }) => l.id === ws.id)
+      if (row) Object.assign(row, { state: 'paused', phase: 'idle' })
+      pendingEvents.push({ name: 'workspace.updated', data: { workspaceId: ws.id, state: 'paused', phase: 'idle' } })
+    }
+    return innerCancel?.(a, s, t)
+  }
   const innerOcclude = table.SetChatUIOccluded
   table.SetChatUIOccluded = (a, s, t) => {
     const was = attn.occluded
@@ -2239,6 +2252,9 @@ export async function installBridge(page: Page, seed: Seed, opts: BridgeOptions 
         contentType: 'application/json',
         body: JSON.stringify(result ?? null),
       })
+      for (const evt of pendingEvents.splice(0)) {
+        await page.evaluate((e) => (window as any)._wails.dispatchWailsEvent(e), evt)
+      }
       const pub = pendingPublish
       pendingPublish = null
       if (pub) {

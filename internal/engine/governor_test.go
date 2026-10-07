@@ -135,7 +135,7 @@ func TestGovernorSetCapsWakesAgent(t *testing.T) {
 
 func TestGovernorSetCapsLowerDoesNotPreempt(t *testing.T) {
 	g := NewGovernor(2, 8)
-	if !g.TryAcquireLoop() || !g.TryAcquireLoop() {
+	if first, second := g.TryAcquireLoop(), g.TryAcquireLoop(); !first || !second {
 		t.Fatal("both slots should acquire")
 	}
 	g.SetCaps(1, 8)

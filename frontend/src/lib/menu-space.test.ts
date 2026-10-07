@@ -117,6 +117,14 @@ describe('moreMenuFixedBox', () => {
     expect(moreMenuFixedBox({ bottom: 40, right: 796 }, { viewportWidth: 800 }).right)
       .toBe(MENU_EDGE_PX)
   })
+
+  test('flips above the trigger when it would cross the bottom edge', () => {
+    const trigger = { top: 660, bottom: 680, right: 700 }
+    expect(moreMenuFixedBox(trigger, { menuHeight: 150, viewportWidth: 800, viewportHeight: 720 }).top)
+      .toBe(660 - MORE_MENU_GAP_PX - 150)
+    expect(moreMenuFixedBox(trigger, { menuHeight: 20, viewportWidth: 800, viewportHeight: 720 }).top)
+      .toBe(680 + MORE_MENU_GAP_PX)
+  })
 })
 
 describe('triggerVisibleInClip', () => {

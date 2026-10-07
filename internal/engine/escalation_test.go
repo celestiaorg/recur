@@ -756,6 +756,7 @@ func TestAnswerChatOwnedEscalationNoLiveLoop(t *testing.T) {
 		if _, err := st.AddWorkspace(rec); err != nil {
 			t.Fatalf("AddWorkspace: %v", err)
 		}
+		st.UpsertAgent(rec.ID, domain.Agent{ID: rec.ID + "-PA", WorkspaceID: rec.ID, Code: "PA", Name: "Agent"})
 		st.AddEscalation(domain.Escalation{
 			ID: "esc-pa", WorkspaceID: rec.ID, AgentCode: "PA", Status: "open", Question: "A or B?",
 		})
@@ -768,9 +769,9 @@ func TestAnswerChatOwnedEscalationNoLiveLoop(t *testing.T) {
 			l, found := st.Workspace(rec.ID)
 			return found && terminal(l.State)
 		})
-		if got := eng.Governor().LoopsRunning(); got != 0 {
-			t.Errorf("LoopsRunning=%d, want 0 after settle", got)
-		}
+		waitFor(t, 5*time.Second, "loop slot released", func() bool {
+			return eng.Governor().LoopsRunning() == 0
+		})
 	})
 
 	t.Run("redispatches answering chat", func(t *testing.T) {
@@ -830,9 +831,9 @@ func TestAnswerChatOwnedEscalationNoLiveLoop(t *testing.T) {
 		if got.Phase == "phase missing" {
 			t.Fatal("answering chat adopted sibling checkpoint and idled")
 		}
-		if n := eng.Governor().LoopsRunning(); n != 0 {
-			t.Errorf("LoopsRunning=%d, want 0 after settle", n)
-		}
+		waitFor(t, 5*time.Second, "loop slot released", func() bool {
+			return eng.Governor().LoopsRunning() == 0
+		})
 	})
 
 	t.Run("defers answering chat when slots full", func(t *testing.T) {

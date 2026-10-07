@@ -87,7 +87,7 @@ func TestResolveOpenArg(t *testing.T) {
 }
 
 func TestSendOrLaunchUsesSocket(t *testing.T) {
-	t.Setenv("RECUR_DATA_DIR", t.TempDir())
+	shortDataDir(t)
 	sock, err := openipc.SockPath()
 	if err != nil {
 		t.Fatal(err)
@@ -128,7 +128,7 @@ func TestSendOrLaunchUsesSocket(t *testing.T) {
 }
 
 func TestSendOrLaunchRetriesShutdown(t *testing.T) {
-	t.Setenv("RECUR_DATA_DIR", t.TempDir())
+	shortDataDir(t)
 	sock, err := openipc.SockPath()
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +172,7 @@ func TestSendOrLaunchRetriesShutdown(t *testing.T) {
 }
 
 func TestSendOrLaunchPermanentError(t *testing.T) {
-	t.Setenv("RECUR_DATA_DIR", t.TempDir())
+	shortDataDir(t)
 	sock, err := openipc.SockPath()
 	if err != nil {
 		t.Fatal(err)
@@ -203,7 +203,7 @@ func TestSendOrLaunchPermanentError(t *testing.T) {
 }
 
 func TestRootOpenArg(t *testing.T) {
-	t.Setenv("RECUR_DATA_DIR", t.TempDir())
+	shortDataDir(t)
 	sock, err := openipc.SockPath()
 	if err != nil {
 		t.Fatal(err)
@@ -244,4 +244,16 @@ func TestRootOpenArg(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("root command did not reach the socket")
 	}
+}
+
+// shortDataDir keeps open.sock under the macOS 104-byte sun_path limit,
+// which t.TempDir() plus a long test name can exceed.
+func shortDataDir(t *testing.T) {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "cli")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	t.Setenv("RECUR_DATA_DIR", dir)
 }

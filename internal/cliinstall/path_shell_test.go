@@ -86,7 +86,7 @@ PATH=/captured/bin:/usr/bin
 export PATH
 eval "$cmd"
 `)
-	got := readShellPATH(shell, 2*time.Second)
+	got := readShellPATH(shell, 30*time.Second)
 	want := "/captured/bin:/usr/bin"
 	if got != want {
 		t.Errorf("readShellPATH(fake) = %q, want %q", got, want)

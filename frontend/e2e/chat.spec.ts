@@ -939,7 +939,8 @@ test.describe('Chat live turn restore', () => {
 
     await simulateChatTurnIdle(page, working.id, 'MA')
     await expect(dock.locator('.chat-turn-elapsed')).toHaveCount(0)
-    await expect(dock.locator('.chat-in .send.stop')).toHaveCount(0)
+    // The seeded walk is still live, so Stop stays; Send leaves queue mode.
+    await expect(dock.locator('.chat-in .send:not(.stop)')).toHaveAttribute('aria-label', 'Send message')
   })
 
   // session.turn_end stamps "completed in" while Send / agentsRunning can still
@@ -1779,7 +1780,7 @@ test.describe('@ file mentions', () => {
   test('dragging a file from the explorer inserts an @file chip', async ({ page }) => {
     const sent: string[] = []
     const transcript: any[] = []
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: {
         ListLoopAgents: () => [],
         SendWorkspaceMessage: (a: any[]) => {
@@ -1831,7 +1832,7 @@ test.describe('@ file mentions', () => {
   })
 
   test('dragging a folder from the explorer inserts a folder chip', async ({ page }) => {
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: { ListLoopAgents: () => [] },
     })
     await gotoApp(page)
@@ -1865,7 +1866,7 @@ test.describe('@ file mentions', () => {
   test('dropping a file URI onto chat inserts an @file chip', async ({ page }) => {
     const sent: string[] = []
     const transcript: any[] = []
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: {
         ListLoopAgents: () => [],
         SendWorkspaceMessage: (a: any[]) => {
@@ -1905,7 +1906,7 @@ test.describe('@ file mentions', () => {
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
       'base64',
     )
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: { ListLoopAgents: () => [] },
     })
     await page.route('**/chat-image**', async (route) => {
@@ -1937,7 +1938,7 @@ test.describe('@ file mentions', () => {
 
   test('clicking an external file chip opens it in the editor', async ({ page }) => {
     const csv = 'a,b\n1,2\n'
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: { ListLoopAgents: () => [] },
     })
     await page.route('**/external-file**', async (route) => {
@@ -2560,7 +2561,9 @@ test.describe('Chat transcript UI state', () => {
         ListLoopAgents: () => [],
         WorkspaceChatItems: (a: any[]) => {
           const code = a[1] || 'MA'
-          return a[0] === working.id && code === 'MA' ? items : []
+          if (code !== 'MA') return []
+          if (a[0] === working.id) return items
+          return a[0] === other.id ? [{ role: 'assistant', kind: 'text', text: 'other earlier' }] : []
         },
         SendWorkspaceMessage: () => new Promise(() => { /* hang — in-flight while parked */ }),
       },
@@ -2583,6 +2586,8 @@ test.describe('Chat transcript UI state', () => {
 
     await openWorkspaceByGoal(page, other.goal)
     await expect(page.locator('#v-detail .obs-left .chat-row.me', { hasText: 'question 0' })).toHaveCount(0)
+    // Stream only after the other view's transcript load, or it replaces the live row.
+    await expect(page.locator('#v-detail .obs-left .chat-canvas', { hasText: 'other earlier' })).toBeVisible()
 
     const grown = `grown-tail ${'paragraph '.repeat(40)}`
     const visibleReply = `visible reply ${'paragraph '.repeat(40)}`

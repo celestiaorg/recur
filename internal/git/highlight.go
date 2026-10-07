@@ -43,11 +43,6 @@ func HighlightFiles(files []domain.FileDiff) bool {
 	return changed
 }
 
-func highlightFile(f *domain.FileDiff) bool {
-	c, _ := highlightFileBudget(f, maxHighlightLines)
-	return c
-}
-
 func highlightFileBudget(f *domain.FileDiff, budget int) (changed bool, used int) {
 	if budget > maxHighlightLines {
 		budget = maxHighlightLines

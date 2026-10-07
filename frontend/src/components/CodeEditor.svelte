@@ -186,7 +186,7 @@
     clean: Text | undefined
   }
   const tabs = new Map<string, TabSnapshot>()
-  const panePark = sessionTabPark<TabSnapshot>(parkPane)
+  const panePark = sessionTabPark<TabSnapshot>(untrack(() => parkPane))
   /** Set when Observatory parked this pane before swapping roots — skip a second park. */
   let parkedOutgoing = ''
   let mountedSession = ''

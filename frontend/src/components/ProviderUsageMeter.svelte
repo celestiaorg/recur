@@ -122,6 +122,7 @@
 
 <svelte:window onresize={fitPop} />
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="use-meter"
   class:open
@@ -304,7 +305,6 @@
     line-height: 1;
     min-width: 1.6em;
   }
-  .use-pct.ready { color: var(--muted); }
   .use-pop {
     position: absolute;
     bottom: calc(100% + 8px);
@@ -332,7 +332,7 @@
     font-weight: 600;
     color: var(--text);
   }
-  .use-ratio, .use-stale {
+  .use-stale {
     font-family: var(--mono);
     font-size: 11px;
     color: var(--muted);

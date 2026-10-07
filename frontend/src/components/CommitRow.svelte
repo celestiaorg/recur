@@ -42,6 +42,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
   class="commit"
   role={interactive ? 'button' : undefined}

@@ -21,7 +21,8 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Match the desktop app's default window (window_state.go), not Desktop Chrome's 1280x720.
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1380, height: 880 } } }],
   webServer: {
     command: 'pnpm run dev',
     url: 'http://localhost:9245',

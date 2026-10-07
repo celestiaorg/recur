@@ -11,7 +11,6 @@ package store
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -2055,20 +2054,6 @@ func (s *Store) SetResource(r domain.Resource) {
 	if s.db != nil {
 		_ = s.db.upsertSingleton("resource", r)
 	}
-}
-
-// workspacesByGroup returns loop IDs in a stable order for a group (helper for derivations).
-func (s *Store) workspacesByGroup(g domain.Group) []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	var ids []string
-	for _, l := range s.workspaces {
-		if l.Group == g {
-			ids = append(ids, l.ID)
-		}
-	}
-	sort.Strings(ids)
-	return ids
 }
 
 // ---- deep-copy helpers ----

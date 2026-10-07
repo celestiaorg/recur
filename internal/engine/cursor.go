@@ -251,6 +251,9 @@ func (r *CursorRunner) Run(ctx context.Context, spec AgentSpec, emit func(Parsed
 					if len(reserved) == 0 {
 						break
 					}
+					if testAfterSteerReserve != nil {
+						testAfterSteerReserve()
+					}
 					joined := followUpInjectText(spec, reserved)
 					if joined != "" && r.trySteer(steerCtx, st, joined) {
 						// Flush+KindUser before commit so waitReserved keeps the
@@ -573,6 +576,10 @@ func replyInject(spec AgentSpec, n int, ok bool) {
 // before steers.take(), so tests can inject a steer that captures the new
 // generation (TestCursorRunnerHandoffSteerDoesNotCancelFollowUp).
 var testBeforeFollowUpTake func()
+
+// testAfterSteerReserve, if set, runs once the listener owns a steer batch for
+// SteerRun, so a handoff test can wait for the reserve instead of sleeping.
+var testAfterSteerReserve func()
 
 func drainInject(ch <-chan string, steers *steerBuf) {
 	if ch == nil || steers == nil {

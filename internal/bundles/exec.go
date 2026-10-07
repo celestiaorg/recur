@@ -523,4 +523,3 @@ func ExpandMatching(text string, expands []ExpandAction, makeRC func(ExpandActio
 	}
 	return PromptResult{Prompt: trimmed}, nil
 }
-

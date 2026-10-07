@@ -26,6 +26,7 @@ const api = vi.hoisted(() => ({
   listChats: vi.fn(),
   remember: vi.fn(),
   send: vi.fn(),
+  titles: vi.fn(),
 }))
 
 vi.mock('./api', () => ({
@@ -34,6 +35,7 @@ vi.mock('./api', () => ({
     ListWorkspaceChats: (...args: unknown[]) => api.listChats(...args),
     RememberWorkspaceChatSelection: (...args: unknown[]) => api.remember(...args),
     SendWorkspaceMessage: (...args: unknown[]) => api.send(...args),
+    ApplyProvisionalChatTitles: (...args: unknown[]) => api.titles(...args),
   },
   ProjectsService: {
     ListBranchesForPath: (...args: unknown[]) => api.listBranchesForPath(...args),
@@ -80,10 +82,12 @@ beforeEach(() => {
   api.listChats.mockReset()
   api.remember.mockReset()
   api.send.mockReset()
+  api.titles.mockReset()
   api.create.mockResolvedValue({ id: 'WS-NEW', projectId: 'storefront' })
   api.listChats.mockResolvedValue([])
   api.remember.mockResolvedValue(undefined)
   api.send.mockResolvedValue('')
+  api.titles.mockResolvedValue(undefined)
   api.refreshProjects.mockResolvedValue(undefined)
   toasts.set([])
   api.listBranchesForPath.mockResolvedValue([
@@ -325,6 +329,7 @@ describe('startParkedOpening', () => {
     })
     expect(api.listChats).toHaveBeenCalledWith('WS-NEW')
     expect(api.remember).toHaveBeenCalledWith('WS-NEW', 'PA', 'sonnet', {}, 'agent', false)
+    expect(api.titles).toHaveBeenCalledWith('WS-NEW', 'PA', 'fix it')
     expect(api.send).toHaveBeenCalled()
   })
 

@@ -280,7 +280,7 @@
   onDestroy(() => { void BriefingService.SetAppChatFocus(false, active).catch(() => {}) })
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="app-chat"
   tabindex="-1"

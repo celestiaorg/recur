@@ -5,7 +5,7 @@ test.describe('welcome / first run', () => {
   const codexLoginSeed = { ...seed, settings: { ...seed.settings, codexChatGPTAuth: true } }
 
   test('a fresh app with a detected agent lands on step 2 and opens the project dialog', async ({ page }) => {
-    await installBridge(page, codexLoginSeed, { resolvers: { ListProjects: () => [], ListWorkspaces: () => [] } })
+    await installBridge(page, structuredClone(codexLoginSeed), { resolvers: { ListProjects: () => [], ListWorkspaces: () => [] } })
     await gotoApp(page)
     const welcome = page.locator('#v-welcome')
     await expect(welcome).toHaveClass(/on/)
@@ -20,7 +20,7 @@ test.describe('welcome / first run', () => {
   })
 
   test('without an agent, step 1 offers providers and can be skipped', async ({ page }) => {
-    await installBridge(page, codexLoginSeed, {
+    await installBridge(page, structuredClone(codexLoginSeed), {
       resolvers: { ListProjects: () => [], ListWorkspaces: () => [], DetectAgent: () => new BridgeError('no agent') },
     })
     await gotoApp(page)
@@ -73,7 +73,7 @@ test.describe('welcome / first run', () => {
   })
 
   test('a signed-in Codex counts and the Cursor connect link lands on Providers settings', async ({ page }) => {
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: {
         ListProjects: () => [], ListWorkspaces: () => [], DetectAgent: () => new BridgeError('no agent'),
         GetCodexStatus: () => ({ binInstalled: true, authenticated: true, loginMethod: 'ChatGPT', email: 'dev@example.com', error: '' }),
@@ -90,7 +90,7 @@ test.describe('welcome / first run', () => {
   test('agents are probed only while Get started is shown, and again on return from Settings', async ({ page }) => {
     let probes = 0
     let authed = false
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: {
         GetCodexStatus: () => {
           probes++
@@ -113,7 +113,7 @@ test.describe('welcome / first run', () => {
   })
 
   test('with a project but no workspace, a mode row opens an empty New workspace dialog in that mode', async ({ page }) => {
-    await installBridge(page, seed, { resolvers: { ListWorkspaces: () => [] } })
+    await installBridge(page, structuredClone(seed), { resolvers: { ListWorkspaces: () => [] } })
     await page.addInitScript(() => localStorage.setItem('recur.newWorkspaceMode', 'loop'))
     await gotoApp(page)
     await page.getByRole('button', { name: 'Get started', exact: true }).click()
@@ -122,15 +122,15 @@ test.describe('welcome / first run', () => {
     await expect(welcome.getByRole('button', { name: /^Start in .* mode$/ })).toHaveCount(5)
     await welcome.getByRole('button', { name: 'Start in Review mode' }).click()
     const modal = page.getByRole('dialog', { name: 'New workspace' })
-    await expect(modal.locator('.nt-in')).toHaveValue('')
+    await expect(modal.locator('.nt-in')).toHaveText('')
     await expect(modal.locator('.sel-btn[aria-label="Mode"]')).toContainText('Review')
     await modal.locator('.nt-in').fill('Review the auth changes.')
-    await expect(modal.locator('.nt-in')).toHaveValue('Review the auth changes.')
+    await expect(modal.locator('.nt-in')).toHaveText('Review the auth changes.')
   })
 
   test('a project whose only workspace is the working copy still needs a first task', async ({ page }) => {
     const main = { ...seed.loops[0], id: 'MAIN-storefront', isMain: true, archived: false, hostPrId: '' }
-    await installBridge(page, seed, { resolvers: { ListWorkspaces: () => [main] } })
+    await installBridge(page, structuredClone(seed), { resolvers: { ListWorkspaces: () => [main] } })
     await gotoApp(page)
     await page.getByRole('button', { name: 'Get started', exact: true }).click()
     const welcome = page.locator('#v-welcome')
@@ -139,7 +139,7 @@ test.describe('welcome / first run', () => {
   })
 
   test('opening and cancelling the New workspace dialog does not complete the first task', async ({ page }) => {
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: {
         ListWorkspaces: () => [],
         CreateWorkspace: (a) => ({ id: 'WS-NEW', projectId: a[0], type: 'solo', goal: 'New Workspace', short: 'New Workspace', statusLabel: 'Creating', phase: 'creating', branch: 'recur/new', baseBranch: 'main' }),
@@ -161,7 +161,7 @@ test.describe('welcome / first run', () => {
 
   test('a hand-driven workspace counts once its first message named it', async ({ page }) => {
     const solo = { ...seed.loops[0], id: 'WS-1', type: 'solo', runStarted: false, isMain: false, archived: false, hostPrId: '', goal: 'Add a timeout to the session refresh', short: 'Add a timeout', lastActivityAt: 0 }
-    await installBridge(page, seed, { resolvers: { ListWorkspaces: () => [solo] } })
+    await installBridge(page, structuredClone(seed), { resolvers: { ListWorkspaces: () => [solo] } })
     await gotoApp(page)
     await page.getByRole('button', { name: 'Get started', exact: true }).click()
     const welcome = page.locator('#v-welcome')
@@ -174,7 +174,7 @@ test.describe('welcome / first run', () => {
     await gotoApp(page)
     await page.keyboard.press('Meta+N')
     const modal = page.getByRole('dialog', { name: 'New workspace' })
-    await expect(modal.locator('.nt-in')).toHaveValue('')
+    await expect(modal.locator('.nt-in')).toHaveText('')
     await expect(modal.locator('.sel-btn[aria-label="Mode"]')).toContainText('Plan')
   })
 
@@ -196,7 +196,7 @@ test.describe('welcome / first run', () => {
   test('a set-up user does not see the setup flow while agents are still being probed', async ({ page }) => {
     let release = () => {}
     const gate = new Promise<void>((r) => { release = r })
-    await installBridge(page, seed, {
+    await installBridge(page, structuredClone(seed), {
       resolvers: { DetectAgent: () => gate.then(() => 'Claude Code · dev@example.com (Acme)') },
     })
     await gotoApp(page)
@@ -211,7 +211,7 @@ test.describe('welcome / first run', () => {
 
   test('fits a narrow pane in the light theme', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 760, height: 900 })
-    await installBridge(page, seed, { resolvers: { ListWorkspaces: () => [] } })
+    await installBridge(page, structuredClone(seed), { resolvers: { ListWorkspaces: () => [] } })
     await gotoApp(page)
     await page.evaluate(() => { document.documentElement.dataset.theme = 'paper' })
     await page.getByRole('button', { name: 'Get started', exact: true }).click()

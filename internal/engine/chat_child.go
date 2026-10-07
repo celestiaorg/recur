@@ -105,7 +105,7 @@ func (e *Engine) watchChatChild(parentID, childID string) {
 				return
 			}
 		}
-		time.Sleep(fanOutPoll)
+		time.Sleep(e.fanOutPoll)
 	}
 }
 

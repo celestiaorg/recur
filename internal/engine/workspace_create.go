@@ -456,10 +456,6 @@ func waitAlloc(alloc *creatingAlloc) {
 	}
 }
 
-func (e *Engine) cancelAndWaitCreating(id string) {
-	waitAlloc(e.cancelCreating(id))
-}
-
 func (e *Engine) allocateWorkspaceWorktree(ctx context.Context, rec domain.Workspace) error {
 	// Keep the spec visible to CreateWorkspaceFromPR until this allocate
 	// returns so a second click reuses the in-flight workspace.
@@ -665,29 +661,6 @@ func (e *Engine) creatingStillWanted(id string) bool {
 	}
 	ws, ok := e.Store.Workspace(id)
 	return ok && !ws.Archived
-}
-
-// finishCreatingAndRemoveDisk cancels an in-flight allocate, then tears down
-// whatever worktree actually exists. Teardown is skipped when WorktreePath is
-// still empty so a modal-cancel cannot run the project's teardown in the real
-// checkout.
-func (e *Engine) finishCreatingAndRemoveDisk(id string, isMain bool) {
-	e.cancelAndWaitCreating(id)
-	if isMain {
-		return
-	}
-	l, ok := e.Store.Workspace(id)
-	if !ok || l.IsMain || l.IsPRChatHost() {
-		return
-	}
-	if l.WorktreePath == "" {
-		e.cleanupPartialWorktree(l)
-		return
-	}
-	if proj, ok := e.Store.Project(l.ProjectID); ok {
-		e.runTeardownHook(l, proj)
-	}
-	e.removeLoopWorktree(l)
 }
 
 func (e *Engine) rollbackCreating(id string) {

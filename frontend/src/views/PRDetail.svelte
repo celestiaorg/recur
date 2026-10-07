@@ -2204,7 +2204,7 @@
     {@const canDelete = !!target && canDeleteComment(target)}
     {@const canQuote = !conversationLocked && !!target && !!commentSource(target)}
     {@const link = commentPermalink(pr?.url, target ?? { id: 'gh-description', kind: 'description' })}
-    <div class="cmt-more-menu" style="top:{moreMenuBox.top}px;right:{moreMenuBox.right}px" role="menu" {@attach pinMore} {@attach portalToBody} onmousedown={(e) => e.stopPropagation()}>
+    <div class="cmt-more-menu" style="top:{moreMenuBox.top}px;right:{moreMenuBox.right}px" role="menu" tabindex="-1" {@attach pinMore} {@attach portalToBody} onmousedown={(e) => e.stopPropagation()}>
       {#if link}
         <button type="button" class="cmt-more-item" role="menuitem" onclick={() => void moreOpenGitHub()}><Icon name="github" />Open in GitHub</button>
         <button type="button" class="cmt-more-item" role="menuitem" onclick={() => void moreCopyLink()}><Icon name="copy" />Copy link</button>

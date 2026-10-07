@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"recur/internal/bundles"
 )
@@ -492,9 +493,9 @@ func TestShippedChatLoopPrompts(t *testing.T) {
 	want := map[string]string{
 		"review-and-fix":  "recur.loops.converge",
 		"review-to-pr":    "recur.loops.converge-pr",
-		"to-a-pr":           "recur.loops.pr",
-		"write-docs":        "recur.loops.docs",
-		"security-review":   "recur.loops.security",
+		"to-a-pr":         "recur.loops.pr",
+		"write-docs":      "recur.loops.docs",
+		"security-review": "recur.loops.security",
 	}
 	found := map[string]bool{}
 	for _, p := range prompts {
@@ -506,7 +507,7 @@ func TestShippedChatLoopPrompts(t *testing.T) {
 		if p.Mode != bundles.PromptModeLoop || p.Loop != loop {
 			t.Errorf("/%s: mode=%q loop=%q, want mode=loop loop=%q", p.Slash, p.Mode, p.Loop, loop)
 		}
-		res, err := bundles.RunPromptShebang(context.Background(), p, bundles.PromptRunContext{
+		res, err := bundles.RunPromptShebang(shebangCtx(t), p, bundles.PromptRunContext{
 			BundleSupport: bundleDir,
 		})
 		if err != nil {
@@ -549,11 +550,11 @@ func TestShippedChatFreshSession(t *testing.T) {
 		"simplify-review": true,
 		"simplify-audit":  true,
 		"update":          true,
-		"review-and-fix": false,
-		"review-to-pr":   false,
-		"to-a-pr":           false,
-		"write-docs":        false,
-		"security-review":   false,
+		"review-and-fix":  false,
+		"review-to-pr":    false,
+		"to-a-pr":         false,
+		"write-docs":      false,
+		"security-review": false,
 	}
 	found := map[string]bool{}
 	for _, p := range prompts {
@@ -599,11 +600,11 @@ func TestShippedChatTabGroup(t *testing.T) {
 		"simplify-review": "simplify-review",
 		"simplify-audit":  "simplify-audit",
 		"re-review":       "",
-		"review-and-fix": "",
-		"review-to-pr":   "",
-		"to-a-pr":           "",
-		"write-docs":        "",
-		"security-review":   "",
+		"review-and-fix":  "",
+		"review-to-pr":    "",
+		"to-a-pr":         "",
+		"write-docs":      "",
+		"security-review": "",
 	}
 	found := map[string]bool{}
 	for _, p := range prompts {
@@ -1077,7 +1078,7 @@ func TestRunPromptCompleteShebang(t *testing.T) {
 		CompleteInterpreter: bundles.InterpreterShebang,
 		CompleteBody:        "#!/bin/sh\nprintf '%s\\n' '{\"hits\":[{\"insert\":\"ENG-1\",\"label\":\"ENG-1\",\"detail\":\"Fix login\",\"badge\":\"Issue\"},{\"label\":\"Connect Linear…\",\"action\":\"settings:integrations\"}],\"message\":\"ok\"}'\n",
 	}
-	res, err := bundles.RunPromptCompleteShebang(context.Background(), prompt, bundles.PromptRunContext{Args: "ENG"})
+	res, err := bundles.RunPromptCompleteShebang(shebangCtx(t), prompt, bundles.PromptRunContext{Args: "ENG"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1098,7 +1099,7 @@ func TestRunPromptCompleteShebangEmpty(t *testing.T) {
 		CompleteInterpreter: bundles.InterpreterShebang,
 		CompleteBody:        "#!/bin/sh\nprintf '\\n'\n",
 	}
-	res, err := bundles.RunPromptCompleteShebang(context.Background(), prompt, bundles.PromptRunContext{})
+	res, err := bundles.RunPromptCompleteShebang(shebangCtx(t), prompt, bundles.PromptRunContext{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1173,7 +1174,7 @@ func TestRunPromptShebang(t *testing.T) {
 		SelectedText: "sel",
 		Clipboard:    "clip",
 	}
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, rc)
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, rc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1194,7 +1195,7 @@ printf '{"prompt":"id=%s port=%s clip=%s","display":"Env"}' \
   "$RECUR_WORKSPACE_ID" "$RECUR_PORT" "$RECUR_CLIPBOARD"
 `,
 	}
-	res, err = bundles.RunPromptShebang(context.Background(), promptEnv, rc)
+	res, err = bundles.RunPromptShebang(shebangCtx(t), promptEnv, rc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1213,7 +1214,7 @@ printf '{"prompt":"base=%s method=%s","display":"Base"}' \
 	}
 	rc.BaseBranch = "origin/main"
 	rc.UpdateBaseMethod = "rebase"
-	res, err = bundles.RunPromptShebang(context.Background(), promptBase, rc)
+	res, err = bundles.RunPromptShebang(shebangCtx(t), promptBase, rc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1233,7 +1234,7 @@ printf '{"prompt":"id=%s num=%s src=%s","display":"PR"}' \
 	rc.PRID = "gh-7"
 	rc.PRNumber = 7
 	rc.PRSource = "gh"
-	res, err = bundles.RunPromptShebang(context.Background(), promptPR, rc)
+	res, err = bundles.RunPromptShebang(shebangCtx(t), promptPR, rc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1243,7 +1244,7 @@ printf '{"prompt":"id=%s num=%s src=%s","display":"PR"}' \
 }
 
 func TestRunPromptShebangRejectsTypeScript(t *testing.T) {
-	_, err := bundles.RunPromptShebang(context.Background(), bundles.PromptAction{
+	_, err := bundles.RunPromptShebang(shebangCtx(t), bundles.PromptAction{
 		ID: "p", Name: "X", Interpreter: bundles.InterpreterTypeScript, Body: "x",
 	}, bundles.PromptRunContext{})
 	if err == nil || !strings.Contains(err.Error(), "CompiledPromptModule") {
@@ -1252,14 +1253,14 @@ func TestRunPromptShebangRejectsTypeScript(t *testing.T) {
 }
 
 func TestRunPromptShebangBadJSONAndEmptyPrompt(t *testing.T) {
-	_, err := bundles.RunPromptShebang(context.Background(), bundles.PromptAction{
+	_, err := bundles.RunPromptShebang(shebangCtx(t), bundles.PromptAction{
 		ID: "p", Name: "X", Interpreter: bundles.InterpreterShebang,
 		Body: "#!/bin/sh\necho not-json\n",
 	}, bundles.PromptRunContext{WorkDir: t.TempDir()})
 	if err == nil || !strings.Contains(err.Error(), "JSON") {
 		t.Fatalf("RunPromptShebang(bad JSON) err=%v, want JSON error", err)
 	}
-	res, err := bundles.RunPromptShebang(context.Background(), bundles.PromptAction{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), bundles.PromptAction{
 		ID: "p2", Name: "X", Interpreter: bundles.InterpreterShebang,
 		Body: "#!/bin/sh\nprintf '{\"prompt\":\"\",\"display\":\"Updated with latest main\"}'\n",
 	}, bundles.PromptRunContext{WorkDir: t.TempDir()})
@@ -1308,7 +1309,7 @@ set -e
 printf '{"prompt":"ok=%s","display":"Src"}' "$HELPER_OK"
 `,
 	}
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		WorkDir: dir, BundleSupport: dir,
 	})
 	if err != nil {
@@ -1519,13 +1520,13 @@ func TestUpdatePromptShebangCleanAndConflict(t *testing.T) {
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		BaseBranch: "main", UpdateBaseMethod: "merge",
 	}
-	if _, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	if _, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		BaseBranch: "no-such-branch", UpdateBaseMethod: "merge",
 	}); err == nil {
 		t.Fatal("RunPromptShebang(update invalid base) err=nil, want error")
 	}
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, rc)
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, rc)
 	if err != nil {
 		t.Fatalf("RunPromptShebang(update clean) err=%v, want nil", err)
 	}
@@ -1553,7 +1554,7 @@ func TestUpdatePromptShebangCleanAndConflict(t *testing.T) {
 	run(repo, "add", "README.md")
 	run(repo, "commit", "-m", "feature readme")
 
-	res, err = bundles.RunPromptShebang(context.Background(), prompt, rc)
+	res, err = bundles.RunPromptShebang(shebangCtx(t), prompt, rc)
 	if err != nil {
 		t.Fatalf("RunPromptShebang(update conflict) err=%v, want nil", err)
 	}
@@ -1620,7 +1621,7 @@ func TestUpdatePromptShebangDirtyWorktreeDefersToAgent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		BaseBranch: "main", UpdateBaseMethod: "merge",
 	})
@@ -1693,7 +1694,7 @@ func TestOpenPRPromptShebangEmbedsDiffAndOpenPRTool(t *testing.T) {
 	run(repo, "add", "feature.txt")
 	run(repo, "commit", "-m", "feature")
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		BaseBranch: "main",
 	})
@@ -1738,7 +1739,7 @@ func TestOpenPRPromptShebangFastFailsWhenPRAlreadyOpen(t *testing.T) {
 		BundleDir:   bundleDir,
 		Body:        string(body),
 	}
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: bundleDir,
 		PRID: "gh-12", PRNumber: 12, PRSource: "gh",
 	})
@@ -1791,7 +1792,7 @@ func TestOpenPRPromptShebangDoesNotFastFailOnLocalPR(t *testing.T) {
 	run("add", "f.txt")
 	run("commit", "-m", "init")
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		PRID: "7", PRNumber: 7, PRSource: "local",
 		BaseBranch: "main",
@@ -1845,7 +1846,7 @@ func TestOpenDraftPRPromptShebangAsksForDraftToolArg(t *testing.T) {
 	run("add", "f.txt")
 	run("commit", "-m", "init")
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		BaseBranch: "main",
 	})
@@ -1911,7 +1912,7 @@ func TestFixChecksPromptShebangEmbedsFailingChecks(t *testing.T) {
 	prompt := chatFixChecksPrompt(t)
 	installFakeGHChecks(t, `[{"name":"lint","state":"FAILURE","bucket":"fail","link":"https://example.com/lint","description":"exit 1"},{"name":"build","state":"SUCCESS","bucket":"pass","link":"https://example.com/build","description":""}]`)
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		PRNumber: 12, PRSource: "gh", PRURL: "https://github.com/acme/r/pull/12",
 		PRTitle: "OAuth", PRBranch: "feat/oauth",
@@ -1948,7 +1949,7 @@ func TestFixChecksPromptShebangFocusesNamedCheck(t *testing.T) {
 	prompt := chatFixChecksPrompt(t)
 	installFakeGHChecks(t, `[{"name":"lint","state":"FAILURE","bucket":"fail","link":"https://example.com/lint","description":"exit 1"},{"name":"typecheck","state":"FAILURE","bucket":"fail","link":"https://example.com/ts","description":"tsc"}]`)
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		PRNumber: 12, PRSource: "gh", Args: "lint",
 	})
@@ -1976,7 +1977,7 @@ func TestFixChecksPromptShebangFastFailsWhenPassing(t *testing.T) {
 	prompt := chatFixChecksPrompt(t)
 	installFakeGHChecks(t, `[{"name":"lint","state":"SUCCESS","bucket":"pass","link":"https://example.com/lint","description":""}]`)
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		PRNumber: 12, PRSource: "gh",
 	})
@@ -1993,7 +1994,7 @@ func TestFixChecksPromptShebangFastFailsWhenPassing(t *testing.T) {
 
 func TestFixChecksPromptShebangFastFailsWithoutGitHubPR(t *testing.T) {
 	prompt := chatFixChecksPrompt(t)
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 	})
 	if err != nil {
@@ -2009,7 +2010,7 @@ func TestFixChecksPromptShebangFastFailsWithoutGitHubPR(t *testing.T) {
 
 func TestFixChecksPromptShebangFastFailsOnPRHost(t *testing.T) {
 	prompt := chatFixChecksPrompt(t)
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		PRNumber: 12, PRSource: "gh", PRHost: true,
 	})
@@ -2028,7 +2029,7 @@ func TestFixChecksPromptShebangTreatsAllAsUnfocused(t *testing.T) {
 	prompt := chatFixChecksPrompt(t)
 	installFakeGHChecks(t, `[{"name":"lint","state":"FAILURE","bucket":"fail","link":"https://example.com/lint","description":"exit 1"},{"name":"typecheck","state":"FAILURE","bucket":"fail","link":"https://example.com/ts","description":"tsc"}]`)
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		PRNumber: 12, PRSource: "gh", Args: "all",
 	})
@@ -2050,7 +2051,7 @@ func TestFixChecksPromptShebangPrefersNamedParam(t *testing.T) {
 	prompt := chatFixChecksPrompt(t)
 	installFakeGHChecks(t, `[{"name":"lint","state":"FAILURE","bucket":"fail","link":"https://example.com/lint","description":"exit 1"},{"name":"typecheck","state":"FAILURE","bucket":"fail","link":"https://example.com/ts","description":"tsc"}]`)
 
-	res, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		PRNumber: 12, PRSource: "gh", Args: "all", Params: map[string]string{"check": "lint"},
 	})
@@ -2088,7 +2089,7 @@ func TestFixChecksCompleteListsAllAndFailing(t *testing.T) {
 	prompt := chatFixChecksComplete(t)
 	installFakeGHChecks(t, `[{"name":"lint","state":"FAILURE","bucket":"fail"},{"name":"build","state":"SUCCESS","bucket":"pass"},{"name":"typecheck","state":"FAILURE","bucket":"fail"}]`)
 
-	res, err := bundles.RunPromptCompleteShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptCompleteShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		PRNumber: 12, PRSource: "gh", CompleteArg: "check",
 	})
@@ -2117,7 +2118,7 @@ func TestFixChecksCompleteFiltersByTerm(t *testing.T) {
 	prompt := chatFixChecksComplete(t)
 	installFakeGHChecks(t, `[{"name":"lint","state":"FAILURE","bucket":"fail"},{"name":"typecheck","state":"FAILURE","bucket":"fail"}]`)
 
-	res, err := bundles.RunPromptCompleteShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptCompleteShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		PRNumber: 12, PRSource: "gh", CompleteArg: "check", Args: "lint",
 	})
@@ -2131,7 +2132,7 @@ func TestFixChecksCompleteFiltersByTerm(t *testing.T) {
 
 func TestFixChecksCompleteWithoutGitHubPR(t *testing.T) {
 	prompt := chatFixChecksComplete(t)
-	res, err := bundles.RunPromptCompleteShebang(context.Background(), prompt, bundles.PromptRunContext{
+	res, err := bundles.RunPromptCompleteShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: t.TempDir(), WorkDir: t.TempDir(), BundleSupport: prompt.BundleDir,
 		CompleteArg: "check",
 	})
@@ -2185,7 +2186,7 @@ func TestReviewPromptAdaptsToSurface(t *testing.T) {
 	run("add", "f.txt")
 	run("commit", "-m", "init")
 
-	ws, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	ws, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		Surface: "workspace", BaseBranch: "main",
 	})
@@ -2221,7 +2222,7 @@ exit 1
 	}
 	t.Setenv("PATH", ghBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	gh, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	gh, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		Surface: "github_pr", PRNumber: 42, PRURL: "https://github.com/acme/r/pull/42",
 		PRTitle: "OAuth", PRHost: true, PRBase: "main", PRBranch: "feat",
@@ -2247,7 +2248,7 @@ exit 1
 		t.Errorf("review github prompt still used worktree wording, got %q", gh.Prompt)
 	}
 
-	local, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+	local, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 		Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 		Surface: "local_pr", PRNumber: 7, PRTitle: "WIP", BaseBranch: "main",
 	})
@@ -2305,7 +2306,7 @@ func TestSimplifyReviewAndAuditPrompts(t *testing.T) {
 			BundleDir:   bundleDir,
 			Body:        string(body),
 		}
-		got, err := bundles.RunPromptShebang(context.Background(), prompt, bundles.PromptRunContext{
+		got, err := bundles.RunPromptShebang(shebangCtx(t), prompt, bundles.PromptRunContext{
 			Worktree: repo, WorkDir: repo, BundleSupport: bundleDir,
 			Surface: "workspace", BaseBranch: "main",
 		})
@@ -2390,7 +2391,7 @@ exit 1
 	if err != nil {
 		t.Fatalf("read simplify-audit.sh: %v", err)
 	}
-	host, err := bundles.RunPromptShebang(context.Background(), bundles.PromptAction{
+	host, err := bundles.RunPromptShebang(shebangCtx(t), bundles.PromptAction{
 		ID: "recur.chat.simplify-audit", Name: "audit",
 		Interpreter: bundles.InterpreterShebang,
 		BundleDir:   bundleDir,
@@ -2424,4 +2425,12 @@ exit 1
 	if strings.Contains(host.Prompt, "mcp__recur__report_finding") {
 		t.Errorf("simplify-audit github_pr refusal must not ask to file findings, got %q", host.Prompt)
 	}
+}
+
+// shebangCtx outlives the production prompt budget: under full-suite load,
+// spawning fresh temp scripts plus python3 can exceed a few seconds on macOS.
+func shebangCtx(t *testing.T) context.Context {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	t.Cleanup(cancel)
+	return ctx
 }

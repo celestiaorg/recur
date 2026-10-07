@@ -93,9 +93,7 @@ func TestCancelChatIdlesLoopWalk(t *testing.T) {
 	if got.State == domain.StateStopped {
 		t.Fatal("composer Stop parked StateStopped; want idle so the conductor can reenter")
 	}
-	if eng.runningLoopByID(ws.ID) != nil {
-		t.Fatal("walk still registered after composer Stop")
-	}
+	waitLoopExited(t, eng, ws.ID)
 	waitFor(t, 2*time.Second, "agent slot released", func() bool {
 		return eng.Governor().AgentsRunning() == 0
 	})
@@ -144,9 +142,9 @@ func TestCancelMaestroMessage(t *testing.T) {
 	done := make(chan string, 1)
 	go func() { done <- eng.SendMaestroMessage(ws.ID, "status?", nil) }()
 
-	waitFor(t, 3*time.Second, "maestro directing", func() bool {
-		a, ok := st.Agent(ws.ID, maestroAgentCode)
-		return ok && a.Status == "directing"
+	// Not Status == "directing": ensureMaestroAgent sets that before the turn registers.
+	waitFor(t, 3*time.Second, "maestro turn registered", func() bool {
+		return eng.liveChatTurn(ws.ID, maestroAgentCode) != nil
 	})
 
 	if !eng.CancelChat(ws.ID, maestroAgentCode) {

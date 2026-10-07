@@ -171,6 +171,7 @@
     >
       <span class="fp">{fileDiffPathLabel(f)}</span>
       {#if notes}
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
         <span
           class="obs-comment-flag"
           title="{notes} unresolved comment{notes === 1 ? '' : 's'}"
@@ -225,6 +226,7 @@
         <span class="fp">{f ? fileDiffTreeLabel(f) : e.name}</span>
       </span>
       {#if notes}
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
         <span
           class="obs-comment-flag"
           class:dir={e.dir}

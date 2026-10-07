@@ -250,8 +250,12 @@
 
   // Load local + remote branches whenever the selected repo changes; default to
   // the project's configured base branch (or the first listed branch).
+  // Primitives, not `repo`: the open-time refreshProjects() hands back new
+  // objects, which must not reload branches (disabling Create) or reset a pick.
+  const branchRepoId = $derived(repo?.id ?? '')
+  const branchFallback = $derived(repo?.baseBranch || 'main')
   $effect(() => {
-    const id = repo?.id
+    const id = branchRepoId
     if (!id) {
       branches = []
       baseBranch = ''
@@ -259,7 +263,7 @@
     }
     let cancelled = false
     loadingBranches = true
-    const fallback = repo.baseBranch || 'main'
+    const fallback = branchFallback
     baseBranch = fallback
     ProjectsService.ListBranches(id)
       .then((list) => {

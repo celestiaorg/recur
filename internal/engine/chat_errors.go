@@ -42,10 +42,6 @@ func isChatRetryDisplay(s string) bool {
 // new Run. Word joiner + "inject" — keep in sync with frontend CHAT_INJECTED_REPLY.
 const chatInjectedSentinel = "\u2060inject"
 
-func isChatInjectedReply(s string) bool {
-	return s == chatInjectedSentinel
-}
-
 // chatTurnTimedOutReply is the note when chatTurn's wedged-turn deadline fires.
 // Prefer this over surfacing Go's bare "context deadline exceeded".
 const chatTurnTimedOutReply = chatAgentErrorPrefix +

@@ -80,7 +80,8 @@ func writeFakeBridge(t *testing.T, dir string) string {
 	bin := filepath.Join(dir, "cursor-sdk-bridge")
 	const script = `#!/usr/bin/env python3
 import json, os, sys, time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler
+from socketserver import TCPServer
 
 class H(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -100,7 +101,7 @@ class H(BaseHTTPRequestHandler):
         pass
 
 print("bridge boot noise", file=sys.stderr, flush=True)
-httpd = HTTPServer(("127.0.0.1", 0), H)
+httpd = TCPServer(("127.0.0.1", 0), H)
 port = httpd.server_address[1]
 disc = {
     "schemaVersion": 1,

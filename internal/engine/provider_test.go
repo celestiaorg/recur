@@ -549,7 +549,8 @@ func writeFakeCursorBridge(t *testing.T, dataDir string) string {
 	}
 	const script = `#!/usr/bin/env python3
 import json, os, sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler
+from socketserver import TCPServer
 
 class H(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -568,7 +569,7 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-httpd = HTTPServer(("127.0.0.1", 0), H)
+httpd = TCPServer(("127.0.0.1", 0), H)
 port = httpd.server_address[1]
 ws = os.getcwd()
 for i, a in enumerate(sys.argv):

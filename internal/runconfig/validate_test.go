@@ -15,12 +15,17 @@ import (
 	"time"
 )
 
+// devServerCmd serves HTTP on $RECUR_PORT. It avoids `python3 -m http.server`,
+// whose HTTPServer.server_bind does a getfqdn reverse lookup that stalls for
+// 30s+ on macOS CI runners.
+const devServerCmd = `python3 -c 'import http.server as h, socketserver as s, sys; s.TCPServer(("", int(sys.argv[1])), h.SimpleHTTPRequestHandler).serve_forever()' $RECUR_PORT`
+
 // happyDevCmd returns a shell command that serves HTTP on $RECUR_PORT, using
 // python3 if available, otherwise a tiny inline Go server via `go run`.
 func happyDevCmd(t *testing.T) string {
 	t.Helper()
 	if _, err := exec.LookPath("python3"); err == nil {
-		return "python3 -m http.server $RECUR_PORT"
+		return devServerCmd
 	}
 	t.Skip("python3 not available; skipping happy-path run-config test")
 	return ""
@@ -127,7 +132,7 @@ func TestBootUsesProvidedPort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FreePort: %v", err)
 	}
-	booted, err := Boot(context.Background(), "python3 -m http.server $RECUR_PORT",
+	booted, err := Boot(context.Background(), devServerCmd,
 		"http://localhost:$RECUR_PORT", BootOptions{
 			Port:         port,
 			ProbeTimeout: 15 * time.Second,

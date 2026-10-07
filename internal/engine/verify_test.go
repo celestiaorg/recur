@@ -154,9 +154,10 @@ func verifyDevProject(t *testing.T, st *store.Store, repo string) string {
 	if _, err := exec.LookPath("python3"); err != nil {
 		t.Skip("python3 not available; verify phase needs a bootable dev server")
 	}
+	// Not `python3 -m http.server`: its getfqdn reverse lookup stalls 30s+ on macOS CI.
 	p := domain.Project{
 		ID: "proj", Name: "proj", RepoPath: repo, BaseBranch: "main",
-		RunCommands: []domain.RunCommand{{Name: "dev", Cmd: "python3 -m http.server $RECUR_PORT"}},
+		RunCommands: []domain.RunCommand{{Name: "dev", Cmd: `python3 -c 'import http.server as h, socketserver as s, sys; s.TCPServer(("", int(sys.argv[1])), h.SimpleHTTPRequestHandler).serve_forever()' $RECUR_PORT`}},
 		AppURL:      "http://localhost:$RECUR_PORT",
 	}
 	saved := addRunProject(t, st, p)

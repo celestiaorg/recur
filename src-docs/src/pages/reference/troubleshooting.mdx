@@ -1,0 +1,65 @@
+---
+title: Troubleshooting
+description: Fix provider sign-in, missing models, failed turns, and GitHub access
+---
+
+# Troubleshooting
+
+Start in **Settings → Providers**. Each provider shows its status (Connected, Not connected, or an error) with the path and version Recur found. Reopen Settings after fixing something in a terminal to refresh the status.
+
+For anything else, **Settings → Data → Reveal in Finder** opens `recur.log` (under `~/Library/Application Support/Recur/logs/`), which records crashes and agent failures.
+
+## A provider's models are missing from the picker
+
+A provider's models appear only when it is turned on in **Settings → Providers** and configured:
+
+- **Claude Code**: installed and signed in.
+- **Cursor**: connected with **Connect**.
+- **Codex**: **Use ChatGPT login** on, or an API key saved.
+- **Compatible endpoint**: a base URL and at least one model ID.
+
+Turning a provider off keeps its credentials, so turning it back on restores its models.
+
+## A turn fails with "turned off" or "not configured"
+
+A mode or loop role is set to a model from a provider that is off or not signed in. Recur fails the turn instead of silently running a different provider you did not choose. Either fix the provider in **Settings → Providers**, or pick another model in the composer or in **Settings → Models**.
+
+## Claude Code
+
+- **Claude Code not detected**: install Claude Code, then reopen Settings. If you installed it while Recur was running and it still is not found, quit and reopen Recur so it picks up your shell's `PATH`.
+- **Not logged in**: run `claude auth login` in a terminal, then reopen Settings.
+- **Status check timed out**: `claude auth status` did not answer in time. Run it in a terminal to see what it is waiting on.
+- **Wrong account**: run `claude auth login` again to switch. Recur uses whatever account Claude Code is signed in with.
+
+## Cursor
+
+- **Not connected**: click **Connect** and finish signing in in your browser. If sign-in stalls, **Cancel** and try again.
+- **Connected, SDK not installed**: click **Install SDK**. Cursor agents run through a local bridge (about 50 MB download) that Recur installs into its data folder.
+- **Bridge not installed, patch failed, or lacks a capability**: click **Update** or **Reinstall** next to **SDK**.
+- **Plan usage stops updating, or Cursor turns fail with an auth error**: click **Reconnect**. If that fails, **Disconnect** and **Connect** again.
+- **Agent ignores or follows project rules unexpectedly**: **Ignore project Cursor config** controls whether Cursor agents read the repo's `.cursor/rules`, `AGENTS.md`, and your `~/.cursor` settings.
+
+## Codex
+
+- **Not configured**: turn on **Use ChatGPT login** (after running `codex login` in a terminal) or save an API key. **Test** checks the key before you save it.
+- **Binary not found**: install with `brew install --cask codex`, or set **Binary** to the full path of the native `codex` executable. Pointing at a copied `codex` file or an npm wrapper script can start but fail when editing files; use the binary inside its full install.
+- **Commands cannot reach the network in Agent mode**: turn on **Sandbox network access**.
+
+## Compatible endpoints
+
+- Click **Test** on the provider card. It sends a small request to `{base URL}/v1/responses` with the first model ID.
+- The server must support the Responses API with tool calls. Servers that only offer Chat Completions do not work.
+- Enter the base URL without a trailing slash and without `/v1`.
+- Model IDs must match what the server serves. For Ollama, use a model you have pulled.
+- The slugs `claude-code`, `cursor`, `codex`, `anthropic`, `gemini`, and `ollama` are reserved; use something like `local-ollama`.
+
+## Agents stop partway through
+
+- **Turn hit the time limit**: raise **Settings → General → Turn time limit**.
+- **Mac went to sleep**: turn on **Settings → General → Prevent sleep while agents run**.
+- **Turns wait before starting**: they are queued behind **Max concurrent agents** or **Max concurrent loops** in **Settings → General**.
+- **Agent keeps asking for permission**: answer in the chat, or turn on **Settings → Providers → Bypass tool permissions** for Claude Code and Codex. [Inbox](/concepts/inbox) lists every task waiting on you.
+
+## Pull requests and GitHub
+
+Recur talks to GitHub through the `gh` CLI. If PRs do not sync or `/open-pr` fails, install `gh` and run `gh auth login` in a terminal. Recur uses that account for every GitHub action.

@@ -126,6 +126,15 @@ tasks:
       # beta.9+ defaults -windowsfilename to build/windows/icon.ico; empty skips it.
       - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename= -iconcomposerinput appicon.icon -macassetdir darwin
 
+  generate:help-skill:
+    summary: Copies the user docs (src-docs) into the shipped recur-help skill before go:embed picks it up.
+    sources:
+      - "src-docs/src/pages/**/*.mdx"
+    generates:
+      - "recur-skills/recur-help/references/**/*.mdx"
+    cmds:
+      - rsync -a --delete --include='*/' --include='*.mdx' --exclude='*' src-docs/src/pages/ recur-skills/recur-help/references/
+
   dev:frontend:
     summary: Runs the frontend in development mode
     dir: frontend

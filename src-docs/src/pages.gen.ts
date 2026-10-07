@@ -27,8 +27,10 @@ type Page =
   | { path: '/'; render: 'static' }
   | { path: '/reference/agents'; render: 'static' }
   | { path: '/reference/integrations'; render: 'static' }
+  | { path: '/reference/settings'; render: 'static' }
   | { path: '/reference/skills'; render: 'static' }
   | { path: '/reference/themes'; render: 'static' }
+  | { path: '/reference/troubleshooting'; render: 'static' }
 
 // prettier-ignore
 declare module 'waku/router' {

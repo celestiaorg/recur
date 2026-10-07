@@ -22,6 +22,9 @@ build/darwin/Assets.car
 .recur/.env.local
 TODO.md
 
+# Copied from src-docs by `generate:help-skill` before go:embed.
+recur-skills/recur-help/references/
+
 # Playwright e2e
 frontend/playwright-report
 frontend/test-results

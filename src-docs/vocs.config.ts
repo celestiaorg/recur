@@ -71,7 +71,9 @@ export default defineConfig({
       items: [
         { text: "Providers", link: "/reference/agents" },
         { text: "Integrations & MCP", link: "/reference/integrations" },
+        { text: "Settings", link: "/reference/settings" },
         { text: "Themes & shortcuts", link: "/reference/themes" },
+        { text: "Troubleshooting", link: "/reference/troubleshooting" },
       ],
     },
   ],

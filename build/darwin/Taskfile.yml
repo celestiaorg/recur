@@ -47,6 +47,7 @@ tasks:
           RECUR_DEBUG:
             ref: .RECUR_DEBUG
       - task: common:generate:icons
+      - task: common:generate:help-skill
     cmds:
       - go build {{.BUILD_FLAGS}} -o "{{.OUTPUT}}"
     vars:
@@ -70,6 +71,7 @@ tasks:
           RECUR_DEBUG:
             ref: .RECUR_DEBUG
       - task: common:generate:icons
+      - task: common:generate:help-skill
     preconditions:
       - sh: docker info > /dev/null 2>&1
         msg: "Docker is required for cross-compilation. Please install Docker."

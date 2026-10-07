@@ -54,7 +54,8 @@ const planSubmitAppendPrompt = planAppendPrompt + " When the plan is ready, call
 const skillsToolsAppendPrompt = "The following skills provide specialized instructions for specific tasks. " +
 	"When a task matches a skill's description, call mcp__recur__list_skills for the catalog, " +
 	"then mcp__recur__activate_skill with the skill's name to load its full instructions. " +
-	"If the user message already includes <skill_content>, follow that and do not re-activate."
+	"If the user message already includes <skill_content>, follow that and do not re-activate. " +
+	"For questions about using Recur itself, activate recur-help."
 
 // skillMCPTools are allowlisted wherever workspace chat can use skills.
 var skillMCPTools = []string{mcpListSkills, mcpActivateSkill}

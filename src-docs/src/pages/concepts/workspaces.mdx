@@ -1,0 +1,53 @@
+---
+title: Workspaces
+description: Working copy, isolated task worktrees, and how work lands
+---
+
+# Workspaces
+
+A **workspace** is the unit of work in Recur: a checkout plus the UI around it (chat, editor, terminal, Observatory, PRs).
+
+## Working copy vs task workspaces
+
+- **Working copy**: your project's real git checkout. Titlebar actions are **Commit**, **Update**, and **Push**. It cannot Merge or open a PR (it *is* the project tree), and it does not offer Loop mode.
+- **Task workspaces**: isolated git worktrees on their own branches. Run any [chat mode](/concepts/modes) here without colliding with other tasks.
+
+## Isolation & parallelism
+
+- Separate worktrees, so parallel workspaces never share a dirty tree
+- Setup, teardown, named Runs, and env live in committed [`.recur/project.toml`](/concepts/project-toml)
+- Inside a workspace, open multiple agent chats, each with its own mode
+
+[Child workspaces](/concepts/modes#child-workspaces) started from an Agent chat or a [Loop](/concepts/loop) nest under their parent in the sidebar. Use [Inbox](/concepts/inbox) to find work across projects, or [Schedules](/concepts/schedules) to start tasks automatically while Recur is open.
+
+## Landing the work
+
+- **Hand-driven** workspaces (no Loop engaged) can **Merge** straight onto the local base. Merge is hidden when GitHub branch protection requires a pull request.
+- Loops that end in a PR open a GitHub PR, or a Local PR when the project's **Open PRs on GitHub** setting is off. Other loops stop after review and fixes. See [Pull requests](/concepts/pull-requests).
+- Merge and PR creation refuse to run while there are uncommitted changes.
+
+## Open a project or file
+
+- **File → Open…** (`⌥⌘O`), `recur .`, or `recur <path>` finds or creates the project and opens its Working copy
+- Files outside any project open as absolute-path tabs; they do not create a project
+- **Open In…** (`⌘O`) opens the worktree in Finder, Terminal, and other apps
+- To keep a project out of the sidebar, turn on **Hide from sidebar** in its project settings. The eye button in the Projects header shows hidden projects again
+
+## Editor
+
+- **Quick Open** (`⌘P`) finds files; **Go to Symbol** (`⌘⇧O`) jumps to a symbol
+- Language servers supply completions and diagnostics. Recur installs most shipped servers on first use; others, such as Solidity's, must be on your `PATH`
+- Preview Markdown, HTML, SVG, Mermaid, and PDF files. `⌘F` searches inside Markdown, HTML, SVG, and Mermaid previews
+- The source control panel shows changes as a collapsible tree or a flat list
+- Drag files in the explorer to move them
+- `⌘F` in a terminal tab opens a find panel
+
+## What persists
+
+Coming back to Recur restores the last workspace, active chat tab, chat UI state, and terminal sessions (with replay).
+
+For per-turn diffs and restoring earlier work, see [Review & checkpoints](/concepts/review).
+
+## Pointing the agent
+
+Mention files, folders, and terminals with `@`, drag files into chat, and tag Diff or editor selections with **⌘L** so the agent sees the exact context. See [Chat context](/concepts/chat-context).

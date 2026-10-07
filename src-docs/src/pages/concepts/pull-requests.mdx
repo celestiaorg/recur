@@ -1,0 +1,44 @@
+---
+title: Pull requests
+description: Review, comment, fix checks, and merge pull requests from any source
+---
+
+# Pull requests
+
+Open **Pull requests** in the sidebar to see PRs across your projects. The list syncs from GitHub and includes PRs opened outside Recur, not just the ones Recur opened.
+
+Recur talks to GitHub through the `gh` CLI, so it uses the account you have already authenticated with `gh auth login`.
+
+## The dashboard
+
+PRs are grouped into **Needs your attention**, **Workspace is responding**, **Open**, and **Merged**. A PR needs your attention when:
+
+- your review was requested
+- you were assigned
+- changes were requested on your PR
+- your checks are failing
+
+Filter by project, by status (Open, Draft, Merged, Closed, All), or by review and check state. Sort by recently updated, newest, oldest, or title.
+
+## Reviewing
+
+Open a PR to get its files, the full diff, commits, and the conversation. Leave line comments, then submit them together as a comment, an approval, or a request for changes. Reply to threads, resolve them, react, and mention people with autocomplete. Findings from reviewer agents show up alongside human comments.
+
+A PR without a workspace gets its own chat for Ask, Plan, and Review against the project checkout. New chats on a PR start in Review. Run `/review` there to have an agent review it.
+
+## Acting on a PR
+
+From the PR titlebar you can:
+
+- **Create workspace** to check out the PR into a task workspace so an agent can work on it, or **View workspace** when one exists.
+- Mark a draft **Ready for review**, or **Convert to draft**.
+- Merge with a merge commit, squash, or rebase, limited to the methods the repository allows.
+- See how far the branch is behind its base and update it by merge or rebase.
+- **Fix checks** starts an agent on the failing checks.
+- Pull or push updates between the workspace and GitHub.
+
+In a workspace chat, `/fix-checks` investigates failing checks and `/update` brings the branch up to date with its base. `/open-pr` and `/open-draft-pr` open a PR with an agent-written title and summary.
+
+## Settings
+
+Each project's page has **Open PRs on GitHub**. When it is off, loops open a Local PR inside Recur instead of a GitHub PR. Merge method, update method, and commit message defaults live under **Settings → Pull requests**, and each project can override them.

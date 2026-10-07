@@ -1,0 +1,29 @@
+---
+title: Review & checkpoints
+description: Inspect diffs, follow up on findings, and restore a chat turn
+---
+
+# Review & checkpoints
+
+Use **Review** mode to inspect a worktree diff and file findings. Local and GitHub [pull requests](/concepts/pull-requests) use the same review surface, with findings and line comments tied to the work. Send feedback back into the workspace when changes are needed.
+
+## Review actions
+
+- `/review` starts a review pass.
+- `/fix-findings` routes fixes into Agent mode.
+- `/re-review` reviews workspace changes since the previous review checkpoint when it can resume the same review session. Without a usable checkpoint or resumed session, it falls back to a fresh review.
+- `/simplify-review` and `/simplify-audit` focus on unnecessary complexity and overengineering.
+
+These are [bundle prompt actions](/bundles/prompts). Available actions depend on which contributions are enabled.
+
+## See what changed in one turn
+
+Each chat turn records start and end checkpoints of the worktree, including tracked and untracked files. Use **Changes this turn** from the turn footer to inspect that turn's diff in the review panel.
+
+## Reset to here
+
+**Reset to here** rewinds the chat to the **end** of any earlier turn and removes the turns after it. When those later turns changed files, the worktree is restored to that turn's end checkpoint too; otherwise files are left alone. Later file changes are replaced, so inspect the checkpoint and preserve any work you want to keep before resetting. Reset is not available on a Loop's Maestro chat.
+
+The next send starts a fresh provider session using the retained chat context. Checkpoints do not move your branch's HEAD or create ordinary commits. They also do not snapshot staging state, so resetting a turn does not restore the previous index.
+
+You can also fork a chat from a turn to take the conversation in another direction. **Fork chat** stays in the same workspace and shares its worktree. **Fork to new workspace** gives the fork its own worktree when you need isolated file changes.

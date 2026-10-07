@@ -1,0 +1,47 @@
+---
+title: Output & save hooks
+description: Output routing, newDocument preview, and willSave formatters
+---
+
+# Output & save hooks
+
+## Output routing
+
+Set `output` on the command (or override from a TypeScript `MacroResult`):
+
+| Routing | Effect |
+| --- | --- |
+| `discard` | Ignore stdout for the buffer |
+| `replaceSelection` | Replace selection |
+| `replaceDocument` | Replace whole document |
+| `replaceInput` | Replace whatever was used as input |
+| `insertText` | Insert at cursor |
+| `insertSnippet` | Insert as snippet |
+| `newDocument` | Open a scratch tab |
+| `showAsTooltip` | Tooltip |
+| `copyToClipboard` | Clipboard |
+| `showAsToast` | Toast |
+
+`showAsHTML` was removed. Use `newDocument` with `language` + optional `openInPreview` (HTML preview is a sandboxed iframe).
+
+## `newDocument` language & preview
+
+Scratch tabs need a highlighter. Set `language` on the command (extension / lang id: `diff`, `json`, `ts`, `md`, `html`, `svg`, …) or return it from a TypeScript macro:
+
+```ts
+return { text, output: Output.newDocument, language: 'diff' }
+```
+
+Runtime `language` wins over the manifest. Default is `txt` (plain).
+
+Set `openInPreview = true` (manifest) or `openInPreview: true` (macro result) to open the scratch on the **Preview** chip when the language supports it (`html`, `htm`, `md` / `markdown` / `mdx`, `svg`, `mmd` / `mermaid`). Otherwise it opens on **Code**. Macro result wins over the manifest.
+
+`recur bundles lint` errors if the manifest sets `openInPreview` without `output = "newDocument"` or with a non-previewable `language`.
+
+## willSave
+
+`triggers = ["willSave"]` (often with formatters) runs **before** `WriteFile` under a ~15s overall budget (each command `timeoutMs` ≤ 12s).
+
+On failure/timeout, empty stdout, or shrinking the document by more than ~90% (when the original is >100 chars), Recur writes the **original** document and shows a toast. The transform is discarded.
+
+Shipped examples: `JSON` Format on Save; `Go` / `Rust` / `Python` / `JavaScript` / `Shell` formatters (pass through if the tool is missing from `PATH`).

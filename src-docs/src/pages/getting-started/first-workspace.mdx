@@ -1,0 +1,37 @@
+---
+title: Your first workspace
+description: Open a project, pick a mode, and start working
+---
+
+# Your first workspace
+
+## Open a project
+
+Add a local git repository from the welcome screen, or open one with **File → Open…** (`⌥⌘O`) or `recur .`. Recur finds or creates the project and opens the **Working copy**.
+
+Configure setup, named Runs, and env in [`.recur/project.toml`](/concepts/project-toml) (also editable from the Project page) so each task workspace can install dependencies and run your app.
+
+## Task workspace vs Working copy
+
+| Surface | What it is |
+| --- | --- |
+| **Working copy** | Your real checkout: Commit / Update / Push |
+| **Task workspace** | Isolated worktree + branch for any chat mode, including Loop |
+
+A task workspace gets chat, editor, terminal, Observatory, and a path to review. Merge it locally or open a [pull request](/concepts/pull-requests).
+
+Choose a [provider and model](/reference/agents) in the chat composer before sending your task.
+
+## Pick a mode
+
+Modes live on the chat, not on the workspace. Pick one from the mode menu in the composer:
+
+| Mode | Best for |
+| --- | --- |
+| **Ask** | Read-only questions about the repo |
+| **Plan** | Investigate and draft a plan before edits |
+| **Agent** | Day-to-day chat-driven coding |
+| **Review** | Critique the worktree diff |
+| **Loop** | Hand the task to specialist agents, such as the To a PR loop |
+
+Switch whenever the task changes. Open multiple chats if you want different modes running side by side. Point the agent at [files, Diff lines, and terminals](/concepts/chat-context) when you need precise context.

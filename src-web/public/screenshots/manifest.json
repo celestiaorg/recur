@@ -1,0 +1,749 @@
+{
+  "version": 1,
+  "captures": [
+    {
+      "id": "workspace-paper",
+      "file": "workspace-paper.png",
+      "title": "Build beside your agent",
+      "placement": "Hero product image",
+      "theme": "paper",
+      "settings": {
+        "id": "workspace",
+        "title": "Build beside your agent",
+        "placement": "Hero product image",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": true,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 440,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail .cm-content",
+          "text": "refreshSession"
+        },
+        "theme": {
+          "app": "paper",
+          "editor": "paper"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "4de00b0e567839c3d52722b6efdee441f81372c69b079549d1f6ce752e644273",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "workspace-charcoal",
+      "file": "workspace-charcoal.png",
+      "title": "Build beside your agent",
+      "placement": "Hero product image",
+      "theme": "charcoal",
+      "settings": {
+        "id": "workspace",
+        "title": "Build beside your agent",
+        "placement": "Hero product image",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": true,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 440,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail .cm-content",
+          "text": "refreshSession"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "d8de1119b8280f20eb9f1449b0c70540600774a5131ac34449709804b2ef8326",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "changes-paper",
+      "file": "changes-paper.png",
+      "title": "Review the change",
+      "placement": "Review changes tour stop",
+      "theme": "paper",
+      "settings": {
+        "id": "changes",
+        "title": "Review the change",
+        "placement": "Review changes tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA2",
+        "file": "src/main.go",
+        "surface": "review",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 400,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail .obs-review-surface",
+          "text": "context.WithTimeout"
+        },
+        "theme": {
+          "app": "paper",
+          "editor": "paper"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "b05007aef1080d8ed889620791def3e0ef45c3e15ccd2a96f27e8e7c2e29717f",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "changes-charcoal",
+      "file": "changes-charcoal.png",
+      "title": "Review the change",
+      "placement": "Review changes tour stop",
+      "theme": "charcoal",
+      "settings": {
+        "id": "changes",
+        "title": "Review the change",
+        "placement": "Review changes tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA2",
+        "file": "src/main.go",
+        "surface": "review",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 400,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail .obs-review-surface",
+          "text": "context.WithTimeout"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "65d865d32ee6d58e3d1bd3c4eeb72caddaf93b4314bdd7bde9ac728b5c42e278",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "loop-paper",
+      "file": "loop-paper.png",
+      "title": "Parallel work, reviewed together",
+      "placement": "Loop mode tour stop",
+      "theme": "paper",
+      "settings": {
+        "id": "loop",
+        "title": "Parallel work, reviewed together",
+        "placement": "Loop mode tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "MA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 650,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail .fanout-card",
+          "text": "2 of 3 merged"
+        },
+        "theme": {
+          "app": "paper",
+          "editor": "paper"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "5e1974ec8a88d9a15b1cd34e48901a7cd86de6eb5ef5d63406d90688cc5e85e2",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "loop-charcoal",
+      "file": "loop-charcoal.png",
+      "title": "Parallel work, reviewed together",
+      "placement": "Loop mode tour stop",
+      "theme": "charcoal",
+      "settings": {
+        "id": "loop",
+        "title": "Parallel work, reviewed together",
+        "placement": "Loop mode tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "MA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 650,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail .fanout-card",
+          "text": "2 of 3 merged"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "1e19fb11d5f1e90dab3b2d582692e03a651ef52aa547d9266438f3c5686b4c9b",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "pull-request-paper",
+      "file": "pull-request-paper.png",
+      "title": "A pull request ready for you",
+      "placement": "Dedicated PR section",
+      "theme": "paper",
+      "settings": {
+        "id": "pull-request",
+        "title": "A pull request ready for you",
+        "placement": "Dedicated PR section",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "pr",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-prdetail .prpane.on",
+          "text": "stalled providers"
+        },
+        "theme": {
+          "app": "paper",
+          "editor": "paper"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "2660fe67b985546fa1bf7c92c90b46d0c4704e4e08400c61707715be38228623",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "pull-request-charcoal",
+      "file": "pull-request-charcoal.png",
+      "title": "A pull request ready for you",
+      "placement": "Dedicated PR section",
+      "theme": "charcoal",
+      "settings": {
+        "id": "pull-request",
+        "title": "A pull request ready for you",
+        "placement": "Dedicated PR section",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "pr",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-prdetail .prpane.on",
+          "text": "stalled providers"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "cea7dc9ca6e4ef309002a694eb27929158b0eaf779a167982409c1bfdc026f39",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "inbox-paper",
+      "file": "inbox-paper.png",
+      "title": "Everything that needs you",
+      "placement": "Inbox tour stop",
+      "theme": "paper",
+      "settings": {
+        "id": "inbox",
+        "title": "Everything that needs you",
+        "placement": "Inbox tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Choose how long invitation links stay valid"
+        },
+        "theme": {
+          "app": "paper",
+          "editor": "paper"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "002421fb2969a952dd612f2dbd737aeb7169969e43020eec084f130992717212",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "inbox-charcoal",
+      "file": "inbox-charcoal.png",
+      "title": "Everything that needs you",
+      "placement": "Inbox tour stop",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox",
+        "title": "Everything that needs you",
+        "placement": "Inbox tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Choose how long invitation links stay valid"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "a06accd017feb07218bb38ab09b06ad9a53f1f5e6387187882bd4008a9279542",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "schedules-paper",
+      "file": "schedules-paper.png",
+      "title": "Put recurring work on a schedule",
+      "placement": "Schedules tour stop",
+      "theme": "paper",
+      "settings": {
+        "id": "schedules",
+        "title": "Put recurring work on a schedule",
+        "placement": "Schedules tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "schedules",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-schedules",
+          "text": "Morning code review"
+        },
+        "theme": {
+          "app": "paper",
+          "editor": "paper"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "403a3dcfeb73a4468da20f688c2794d2a3d51644439cf52c42bfbff0b7f53344",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "schedules-charcoal",
+      "file": "schedules-charcoal.png",
+      "title": "Put recurring work on a schedule",
+      "placement": "Schedules tour stop",
+      "theme": "charcoal",
+      "settings": {
+        "id": "schedules",
+        "title": "Put recurring work on a schedule",
+        "placement": "Schedules tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "schedules",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-schedules",
+          "text": "Morning code review"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "747f1378c75f5239438c7a6074f39159356682afd9da19c24d8b9b934413ba84",
+      "source": {
+        "commit": "04c7db9c857961de1a08312603d893a9c635c86e",
+        "appDirty": true,
+        "datasetSha256": "dac467c1b8744c808db1e6cad569cf2a472d45863304307bb3c43fa6fc268b93",
+        "presetsSha256": "744aa6e9520c210afdeff2005c6b14e824b23169ea5226e685c44dc4fbefdb64",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    }
+  ]
+}

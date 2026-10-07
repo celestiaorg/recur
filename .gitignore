@@ -1,10 +1,16 @@
 .task
 .DS_Store
+node_modules/
 /bin/
 frontend/dist/*
 !frontend/dist/.gitkeep
-node_modules/
 frontend/.vite-build-mode
+frontend/node_modules
+src-web/dist
+src-web/node_modules
+src-docs/dist
+src-docs/node_modules
+node_modules/
 build/linux/appimage/build
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 # Compiled by `wails3 generate icons` from appicon.icon (actool); non-deterministic
@@ -22,3 +28,6 @@ frontend/test-results
 frontend/blob-report
 frontend/.playwright
 /test-results/
+
+# Real frontend browser demo, rebuilt with src-web.
+src-web/public/demo/

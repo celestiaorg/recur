@@ -1,0 +1,31 @@
+/* Charcoal alignment with the Recur app default theme */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  --vocs-font-family: "Inter", system-ui, sans-serif;
+  --vocs-font-family-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo,
+    monospace;
+
+  --vocs-background-color-primary: #141414;
+  --vocs-background-color-surface: #1c1c1c;
+  --vocs-background-color-surfaceMuted: #181818;
+  --vocs-background-color-surfaceTint: #262626;
+
+  --vocs-text-color-primary: #e6e4e1;
+  --vocs-text-color-secondary: #969490;
+  --vocs-text-color-muted: #686662;
+  --vocs-text-color-heading: #e6e4e1;
+
+  --vocs-border-color-primary: #2e2e2e;
+  --vocs-border-color-secondary: #222222;
+
+  --vocs-background-color-code-block: #1c1c1c;
+  --vocs-background-color-inline-code: #262626;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Space Grotesk", var(--vocs-font-family);
+  letter-spacing: -0.02em;
+}

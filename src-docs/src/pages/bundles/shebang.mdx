@@ -1,0 +1,61 @@
+---
+title: Shebang commands
+description: Run OS tools from a bundle with RECUR_* environment variables
+---
+
+# Shebang commands
+
+Set `interpreter = "shebang"` and point `script` at an executable with a `#!` line (`sh`, `perl`, `awk`, `node`, `python`, …). Prefer shebang when you need the real filesystem, network, or a tool on `PATH`.
+
+Stdin is the command input. Stdout is the result text (subject to [output routing](/bundles/output)).
+
+## Environment
+
+| Variable | Meaning |
+| --- | --- |
+| `RECUR_SELECTED_TEXT` | Selection |
+| `RECUR_CURRENT_LINE` | Current line |
+| `RECUR_LINE_NUMBER` | 1-based line |
+| `RECUR_COLUMN_NUMBER` | Column |
+| `RECUR_CURRENT_WORD` | Word at cursor |
+| `RECUR_FILEPATH` | Absolute path |
+| `RECUR_FILENAME` | Basename |
+| `RECUR_DIRECTORY` | File directory |
+| `RECUR_PROJECT_DIRECTORY` | Project root |
+| `RECUR_SCOPE` | Language / scope hint |
+| `RECUR_TAB_SIZE` | Tab size |
+| `RECUR_SOFT_TABS` | Soft tabs flag |
+| `RECUR_CLIPBOARD` | Clipboard text |
+| `RECUR_BUNDLE_SUPPORT` | Bundle support path |
+| `RECUR_INPUT_<NAME>` | Extra named inputs |
+
+## Timeouts
+
+Shebang commands run in a process group with a **30s** default deadline (`timeoutMs` on the run context can lower it; `willSave` uses ≤12s per command). There is no cancel button; when the deadline hits, the process group is killed.
+
+## Exit codes
+
+| Exit | Behavior |
+| --- | --- |
+| `0` | Apply the routed output |
+| non-zero | Toast stderr; **discard** buffer-mutating routings (`replace*` / `insert*` / `newDocument`) |
+
+`showAsToast` / `showAsTooltip` / `copyToClipboard` may still fire when stdout is non-empty.
+
+Tools that use exit `1` as a normal outcome (e.g. `diff`) must normalize to `0` before returning. See the shipped `bundles/Diff/bin/diff-clipboard.sh`.
+
+## Example
+
+```toml
+[[command]]
+id = "my.pack.prefix-lines"
+name = "Prefix Lines"
+category = "MyPack"
+order = 20
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/prefix-lines.sh"
+```

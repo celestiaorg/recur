@@ -1,0 +1,47 @@
+---
+title: Bundles overview
+description: Extend the Recur editor with TextMate-inspired command packs
+---
+
+# Bundles
+
+**Bundles** extend Recur with editor commands, languages, themes, snippets, chat prompts, and Loop workflows. Each bundle is a directory with a `bundle.toml` manifest and any scripts or supporting files it needs.
+
+Shipped packs under the app’s embedded `bundles/` tree are the reference. For your own work, prefer **`~/.recur/bundles`**.
+
+## What you can build
+
+- **Palette commands**: appear in **Run Command** (⌘⇧P), optionally with a keybinding
+- **Format-on-save**: `willSave` triggers that transform the buffer before write
+- **TypeScript macros**: sandboxed Worker + `@recur/sdk`
+- **Shebang tools**: real OS subprocess (`sh`, `python`, `node`, …) with `RECUR_*` env
+- **Chat prompts**: reusable slash actions with optional arguments and mode routing
+- **Languages and appearance**: grammars, language servers, editor/terminal themes, and snippets
+- **Loops**: loops, roles, and policies for plan, code, review, and verification phases
+- **Settings, search, and task expansion**: saved values and secrets for scripts, `⌘K` search groups, and new-task expanders
+
+## Quick start
+
+The desktop app includes the `recur` CLI. Launch Recur once to install it on your `PATH`.
+
+```bash
+recur bundles create MyPack   # → ~/.recur/bundles/MyPack
+recur bundles lint MyPack
+recur bundles test MyPack
+```
+
+After creating or editing a bundle, choose **Navigate → Reload Bundles** to pick up its changes without restarting. Enable or disable individual contributions under **Settings → Bundles**.
+
+## In this section
+
+- [Create a bundle](/bundles/create): scaffold, layout, directories
+- [Manifest](/bundles/manifest): `bundle.toml` schema, inputs, outputs, keybindings
+- [TypeScript macros](/bundles/typescript): `@recur/sdk`, Worker contract
+- [Shebang commands](/bundles/shebang): subprocess env, timeouts, exit codes
+- [Chat prompts](/bundles/prompts): `[[prompt]]` slash verbs (`/commit`, `/review`, …)
+- [Output & save hooks](/bundles/output): routing, `newDocument`, `willSave`
+- [Testing & CLI](/bundles/testing): `tests/*.toml`, `recur bundles …`
+
+## Security
+
+Shebang commands run as **your user** with full OS access. TypeScript macros run in a Worker with a sealed context. Only install bundles you trust. File writes go through Recur’s worktree-gated code service.

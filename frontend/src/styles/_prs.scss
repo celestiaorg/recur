@@ -2500,6 +2500,15 @@ button.tl-sha:hover {
   color: #f0c3b5;
 }
 
+/* The pastel diff text above is for dark surfaces. Keep plain diff lines
+   readable on Paper, in both unified and split layouts. */
+[data-theme="paper"] .hline.add .cd,
+[data-theme="paper"] .hline.del .cd,
+[data-theme="paper"] .hline.split .side.add .cd,
+[data-theme="paper"] .hline.split .side.del .cd {
+  color: var(--text);
+}
+
 .hline.split {
   grid-template-columns: 1fr 1fr;
 }

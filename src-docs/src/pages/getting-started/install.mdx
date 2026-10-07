@@ -1,0 +1,27 @@
+---
+title: Install
+description: Get Recur running on your Mac
+---
+
+# Install
+
+Recur is a native macOS app.
+
+1. Download the latest build from [recur.build](https://recur.build/#download).
+2. Open the `.dmg` and drag **Recur** into Applications.
+3. Launch Recur and complete first-run setup.
+
+At launch the app installs a `recur` command on your `PATH` (a symlink in `/usr/local/bin` when writable, and in `~/.local/bin`). Use `recur .` or `recur <path>` to open a folder or file in Recur, `recur` alone to bring Recur forward, and `recur bundles …` to [author bundles](/bundles/testing).
+
+## Requirements
+
+- macOS (Apple Silicon or Intel)
+- A configured provider: Claude Code, Cursor, Codex, or a compatible endpoint
+- Git 2.31 or newer available on your `PATH`
+- Optional: the GitHub CLI (`gh`), signed in, for GitHub pull requests
+
+## Connect your agent
+
+Use first-run setup, then **Settings → Providers** to configure authentication and available models. Existing coding-agent logins can be reused where supported. See [Providers](/reference/agents) for Codex authentication and compatible endpoint requirements.
+
+Your code stays on this Mac except for calls to your chosen agent provider and GitHub when you use them.

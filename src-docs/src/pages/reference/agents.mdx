@@ -1,0 +1,31 @@
+---
+title: Providers
+description: Configure coding agents and compatible model endpoints
+---
+
+# Providers
+
+Open **Settings → Providers** to turn providers on or off, check their status, and configure authentication. Pick a model per chat in the composer, and set each mode's default under **Settings → Models**.
+
+| Provider | Setup |
+| --- | --- |
+| **Claude Code** | Install Claude Code and run `claude auth login`. Recur uses that login and shows its status in Providers. |
+| **Cursor** | Click **Connect** in Providers and sign in through your browser. Recur runs Cursor's agent through a local bridge it downloads when needed. The model list, including Grok and other Cursor models, comes from your Cursor account. |
+| **Codex** | Install the Codex CLI (`brew install --cask codex`) or set its path. Sign in with your ChatGPT login from `codex login`, or add an API key. The model list comes from Codex. |
+| **Compatible endpoint** | Add a provider with a base URL, model IDs, and an API key when the server requires one. |
+
+## Compatible endpoints and local models
+
+The compatible provider sends requests to **`{base URL}/v1/responses`**. The endpoint must support the Responses API and the tool calls needed for coding. A server that only implements Chat Completions is not enough. Recur runs the coding tools itself, inside the workspace's worktree.
+
+Choose **Add provider**, then a preset (**OpenAI**, **OpenRouter**, **Groq**) or **Custom**. Enter the base URL without a trailing slash and add at least one model ID supported by that server. Extra headers are available for endpoints that require them. **Test** sends a small request to check the connection.
+
+For a local server such as Ollama, use Custom with your own provider slug such as `local-ollama` (the slug `ollama` is reserved), the server address (for example `http://localhost:11434`), and an installed model ID. The server version and model must support the Responses API and tools. Leave the API key empty when the endpoint does not require one.
+
+## Where work runs
+
+Repositories, worktrees, file edits, and tool processes run on your Mac. Cloud providers receive the prompts and code context sent to them. A local inference server can keep model requests local too. Recur does not require a hosted checkout.
+
+## Questions and permissions
+
+Agents can ask questions and request tool permissions in chat. Answer there to continue the work. Use [Inbox](/concepts/inbox) to find tasks waiting for you across projects.

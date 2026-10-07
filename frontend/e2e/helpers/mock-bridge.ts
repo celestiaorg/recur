@@ -48,7 +48,7 @@ function parseInlineTable(raw: string): Record<string, string> {
   return out
 }
 
-function parseTomlArrayTables(src: string, name: string): Record<string, unknown>[] {
+export function parseTomlArrayTables(src: string, name: string): Record<string, unknown>[] {
   const parts = src.split(new RegExp(`(?:^|\\n)\\[\\[${name}\\]\\]\\s*`))
   const tables: Record<string, unknown>[] = []
   for (const part of parts.slice(1)) {
@@ -424,7 +424,7 @@ const nowComment = (bodyHtml: string) => ({
 
 // Resolvers keyed by Go method NAME. Getters return fixture data; mutations return a
 // sane, shape-correct value so the UI's optimistic updates work without a backend.
-const resolvers: Record<string, Resolver> = {
+export const resolvers: Record<string, Resolver> = {
   // Projects
   ListProjects: (_a, s) => s.projects,
   ListProjectGroups: (_a, s) => s.projectGroups ?? [],

@@ -1,0 +1,68 @@
+---
+title: Testing & CLI
+description: Bundle tests, lint, and the recur bundles commands
+---
+
+# Testing & CLI
+
+## CLI
+
+The desktop app includes the `recur` CLI and installs its symlink on launch. Open Recur first, then use it from your terminal:
+
+```bash
+recur bundles create MyPack          # → ~/.recur/bundles/MyPack
+recur bundles test MyPack            # name under bundles-dir
+recur bundles test Text              # also resolves ./bundles/Text
+recur bundles test ./bundles         # every child with bundle.toml
+recur bundles lint ./bundles         # schema, TS compile, shebang, keyEquivalent
+```
+
+### Config
+
+| Key | Env | Default |
+| --- | --- | --- |
+| `bundles-dir` | `RECUR_BUNDLES_DIR` | `~/.recur/bundles` |
+
+Optional file: `~/.recur/config.yaml` (`bundles-dir: …`).
+
+TypeScript tests compile with the same esbuild path as the app, then run in `node` as a twin of the Worker, so `node` must be on your `PATH`. Shebang cases use the same runner as the app.
+
+## Test files
+
+Put cases next to the bundle under `tests/*.toml`. External authors use the same layout under `~/.recur/bundles/MyPack/tests/`. Runtime seeding skips `tests/` so DataDir stays lean.
+
+Payloads can be **inline** or **files** (paths relative to the TOML). Use one or the other per field, not both.
+
+```toml
+# Inline
+[[test]]
+name = "uppercases selection"
+command = "Uppercase Selection"
+[test.context]
+input = "Hello"
+selectedText = "Hello"
+[test.expect]
+stdout = "HELLO"
+output = "replaceSelection"
+
+# File payloads
+[[test]]
+name = "sorts lines ascending"
+command = "Sort Lines Ascending"
+[test.context]
+inputFile = "sort-asc/input.txt"
+selectedTextFile = "sort-asc/input.txt"
+[test.expect]
+stdoutFile = "sort-asc/expect.txt"
+output = "replaceSelection"
+```
+
+Optional expect fields: `language`, `openInPreview` (effective values after manifest defaults + macro overrides). Optional `*File` fields: `inputFile`, `selectedTextFile`, `documentFile`, `currentLineFile`, `currentWordFile`, `clipboardFile`, `stdoutFile`, `stderrFile`. Other context knobs stay inline (`scope`, `tabSize`, `softTabs`, `prompts`, …).
+
+Non-deterministic commands may set `skipStdout = true` (still checks exit / output).
+
+Shipped packs under `bundles/*/tests/` are the reference suite (also covered by `go test ./internal/bundles`).
+
+## Lint
+
+`recur bundles lint` checks schema, TypeScript compile, shebang scripts, `keyEquivalent` collisions with app chords, and `openInPreview` / `language` consistency.

@@ -1,0 +1,111 @@
+---
+title: Manifest
+description: bundle.toml schema, inputs, outputs, triggers, and keybindings
+---
+
+# Manifest
+
+Manifests use **TOML** so script bodies can sit in `'''…'''` literals without escaping.
+
+## Minimal shape
+
+```toml
+[bundle]
+name = "Text"
+id = "my.text"             # filename-safe: ≤80 chars; letters/digits/_-.; no / \ or ..
+version = "1.0.0"
+author = "You"
+
+[[command]]
+id = "my.text.sort"        # same id rules (used for BundleCache paths)
+name = "Sort Lines Ascending"
+category = "Text"
+order = 10
+input = "selection"         # none | selection | document | line | word
+fallbackInput = "document"
+output = "replaceInput"
+# language = "diff"         # optional; scratch-tab highlighter for newDocument
+# openInPreview = true      # optional; open newDocument on Preview
+triggers = ["palette"]      # palette | willSave
+# keyEquivalent = "cmd+shift+u"
+interpreter = "typescript"  # typescript | shebang
+script = "src/sort-lines-asc.ts"
+# Or inline: body = ''' … '''
+```
+
+## Other contributions
+
+A bundle can also contribute these arrays of tables alongside commands:
+
+| Table | Contribution |
+| --- | --- |
+| `[[prompt]]` | Chat slash actions; see [Chat prompts](/bundles/prompts) |
+| `[[grammar]]` | TextMate syntax grammars |
+| `[[languageData]]` | Comments, indentation, and language behavior |
+| `[[snippet]]` | Tab-triggered or keybound snippets |
+| `[[symbol]]` | Symbol extraction for the file outline |
+| `[[theme]]` / `[[terminalTheme]]` | Editor and terminal palettes |
+| `[[languageServer]]` | Language server configuration |
+| `[[setting]]` | Settings and secrets for integrations |
+| `[[search]]` | A result group in Go to (`⌘K`) |
+| `[[expand]]` | Expands a pasted reference into a full new-task prompt |
+| `[[role]]` / `[[loop]]` / `[[policy]]` | Loop roles, loops, and policies |
+
+Use stable `id` values for bundles and contributions. The shipped packs in the Recur repository are complete examples; validate your manifest with `recur bundles lint`.
+
+## Inputs
+
+| `input` | Meaning |
+| --- | --- |
+| `none` | No buffer text |
+| `selection` | Current selection |
+| `document` | Whole file |
+| `line` | Current line |
+| `word` | Current word |
+
+`fallbackInput` is used when the primary input is empty (e.g. no selection → document).
+
+## Outputs
+
+See [Output & save hooks](/bundles/output) for the full routing list (`replaceInput`, `newDocument`, toasts, …).
+
+## Triggers
+
+| Trigger | When |
+| --- | --- |
+| `palette` | Listed in ⌘⇧P / keybindings |
+| `willSave` | Runs before the file is written (format-on-save) |
+
+A command may list both.
+
+## Interpreters
+
+| Value | Runtime |
+| --- | --- |
+| `typescript` | esbuild → cache → classic Worker + frozen `MacroContext` |
+| `shebang` | OS subprocess; stdin = input; `RECUR_*` env |
+
+`js` and `native` are **rejected**. Plain JS-shaped code still uses `interpreter = "typescript"` (esbuild’s TS loader accepts it).
+
+## Keybindings
+
+Optional `keyEquivalent` uses explicit macOS chord syntax:
+
+| Token | Meaning |
+| --- | --- |
+| `cmd` | ⌘ Command |
+| `ctrl` | ⌃ Control |
+| `opt` | ⌥ Option |
+| `shift` | ⇧ Shift |
+| `fn` | Fn |
+| key | `a` to `z`, `0` to `9`, `f1` to `f12`, `enter`, `esc`, `tab`, `space`, arrows, `delete`, `backspace`, … |
+
+Examples: `cmd+shift+u`, `opt+cmd+j`. Modifier order doesn’t matter; matching is case-insensitive.
+
+**App chords win.** If a bundle claims Save, Quick Open, Run Command, etc., that binding is dropped at runtime; the command stays in ⌘⇧P. `recur bundles lint` reports the collision.
+
+**Sharing is allowed.** When several palette commands share a chord (after scope / `fileGlob` filtering), the editor shows a TextMate-style menu grouped by category with numbered picks (`1` to `9`). A single match runs immediately. Bindings only fire while the editor has focus.
+
+## Scope (optional)
+
+Commands may restrict when they appear via scope / `fileGlob` fields on the command (see shipped packs and `recur bundles lint` for validation). Use these so a Go formatter doesn’t show up in a Markdown file.

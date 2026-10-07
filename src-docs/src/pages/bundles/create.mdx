@@ -1,0 +1,51 @@
+---
+title: Create a bundle
+description: Scaffold a user bundle under ~/.recur/bundles
+---
+
+# Create a bundle
+
+## Scaffold
+
+```bash
+recur bundles create MyPack
+```
+
+This copies the embedded scaffold into `~/.recur/bundles/MyPack` with:
+
+| Path | Role |
+| --- | --- |
+| `bundle.toml` | Manifest (name, id, commands) |
+| `src/uppercase.ts` | Sample TypeScript command |
+| `bin/prefix-lines.sh` | Sample shebang command |
+| `tests/*.toml` | Sample tests |
+
+Placeholders (`{{BUNDLE_NAME}}`, IDs, …) are filled in by the CLI.
+
+## Directories Recur scans
+
+| Root | Path | Notes |
+| --- | --- | --- |
+| Default | `<DataDir>/Bundles` | Seeded from shipped packs and content-hashed, so updates replace the seed |
+| **User** | `~/.recur/bundles` | **Prefer this** for custom packs; same ID wins over default |
+| Cache | `<DataDir>/BundleCache` | Compiled TypeScript Worker JS |
+
+After creating or editing a pack, choose **Navigate → Reload Bundles** to load it without restarting. Malformed packs under a scan root are **skipped** (other bundles still load). See **Settings → Bundles → Skipped packs** or run `recur bundles lint`.
+
+## Layout conventions
+
+```
+MyPack/
+  bundle.toml
+  src/                 # TypeScript command scripts
+  bin/                 # shebang scripts
+  tests/               # optional; *.toml cases (not seeded into DataDir)
+```
+
+## Categories & palette
+
+`category` on each command is a free-form label (e.g. `"Text"`). Multiple bundles can share a category. **Run Command** (⌘⇧P) groups by category; a **Recent** section sits on top (last-used + frecency). ⌘K remains go-to for workspaces / PRs / projects.
+
+## Settings
+
+**Settings → Bundles** groups contributions into Commands, Prompt actions, Grammars, Themes, Snippets, and Language servers. Toggle individual contributions, including `willSave` formatters. Disabled IDs persist in app settings. There is no whole-bundle master switch.

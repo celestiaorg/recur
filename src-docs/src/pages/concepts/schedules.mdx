@@ -1,0 +1,45 @@
+---
+title: Schedules
+description: Run saved prompts once or on a recurring schedule
+---
+
+# Schedules
+
+Use **Schedules** in the app sidebar to manage scheduled prompts across projects. You can also manage a project's schedules from its Project page.
+
+## Create a schedule
+
+1. Choose the repository and base branch, and write the prompt.
+2. Choose **Once** for a specific date and time, or **Cron** for recurring work.
+3. Set the time zone and check the next-run preview.
+4. Choose the chat mode. For Ask, Plan, Agent, or Review, pick the model. For Loop, pick the loop and policy. Set Simplify for this task.
+5. Save the schedule.
+
+Each occurrence creates a fresh task workspace from the base branch, runs normal project setup, and starts the saved prompt or loop. Configure [`.recur/project.toml`](/concepts/project-toml) so those workspaces are ready to run.
+
+A Loop schedule needs no one at the keyboard to start it, for example a nightly Review & fix or a weekly Security review & fix.
+
+## Cron examples
+
+| Expression | When |
+| --- | --- |
+| `0 9 * * MON-FRI` | Weekdays at 09:00 in the selected time zone |
+| `*/15 9-17 * * MON-FRI` | Every 15 minutes during weekday hours |
+| `0 9 1,15 * *` | The 1st and 15th at 09:00 |
+| `@daily`, `@hourly`, `@weekly`, `@monthly` | Common cadences |
+| `@every 2h30m` | A fixed interval |
+| `@reboot` | Every time Recur starts |
+
+Cron takes five fields (`minute hour day month weekday`), or six with a leading seconds field, and accepts lists, ranges, steps, and names such as `MON` or `JAN`.
+
+## Recur must be open
+
+Schedules run while Recur is open. Recur does not install a background scheduling daemon. An occurrence that comes due while Recur is closed or the machine is asleep is marked **missed**; missed runs are not replayed later.
+
+If the previous run is still active or waiting for your answer, the next occurrence is **skipped**. Follow each run's workspace in the sidebar and [Inbox](/concepts/inbox).
+
+## Manage schedules
+
+**Run now** starts a run immediately. **Pause** stops future occurrences until you **Resume**. Deleting a schedule stops future occurrences and keeps the workspaces it already created.
+
+**Settings → General → Keep scheduled workspaces** keeps the last N live workspaces per schedule and removes older settled runs. `0` keeps all.

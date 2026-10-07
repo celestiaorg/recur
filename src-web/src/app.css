@@ -1,0 +1,362 @@
+/* Recur marketing: base reset, LoopFlow graph, and theme pickers. Page layout lives in App.svelte. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Match app default — Charcoal (clay accent) */
+  --bg: #141414;
+  --pane: #1c1c1c;
+  --pane-2: #262626;
+  --line: #2e2e2e;
+  --line-soft: #222222;
+  --line-bright: #3d3d3d;
+  --text: #e6e4e1;
+  --muted: #969490;
+  --faint: #686662;
+  --amber: #e07a5f;
+  --amber-d: rgba(224, 122, 95, 0.14);
+  --amber-bright: #ef8f74;
+  --cyan: #6eb6ff;
+  --emerald: #4ade80;
+  --coral: #f87171;
+  --indigo: #a78bfa;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --ui: "Inter", system-ui, sans-serif;
+  --disp: "Space Grotesk", var(--ui);
+  --max: 1080px;
+  --gutter: clamp(20px, 4vw, 40px);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 16px;
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(224, 122, 95, 0.35);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ── Loop flow: animated branch graph ── */
+.loop-flow {
+  padding: 24px 20px 18px;
+  background: var(--pane);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+}
+.lfg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.lfg .trunk {
+  stroke: var(--amber);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+.lfg .br { stroke: var(--cyan); }
+.lfg .mg { stroke: var(--indigo); }
+.lfg .br,
+.lfg .mg {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.lfg .draw {
+  /* gap longer than the path + a hair of extra offset so no round cap peeks out */
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 1.05;
+  transition: stroke-dashoffset 0.9s ease;
+}
+.lfg .draw.on { stroke-dashoffset: 0; }
+.lfg .pop {
+  opacity: 0;
+  transition: opacity 0.45s ease 0.35s;
+}
+.lfg .pop.on { opacity: 1; }
+/* .late/.later stagger: either on a .pop itself or on children of a .pop group */
+.lfg .pop.mid,
+.lfg .draw.mid { transition-delay: 0.6s; }
+.lfg .pop.late,
+.lfg .draw.late { transition-delay: 1.2s; }
+.lfg .pop.later { transition-delay: 2.2s; }
+/* the stagger is for arriving; leaving (the cycle ending at merge) is immediate */
+.lfg .pop.later:not(.on) { transition-delay: 0s; }
+.lfg .pop .late,
+.lfg .pop .later {
+  opacity: 0;
+  transition: opacity 0.45s ease 0.9s;
+}
+.lfg .pop .later { transition-delay: 1.5s; }
+.lfg .pop.on .late,
+.lfg .pop.on .later { opacity: 1; }
+.lfg .node { stroke: var(--pane); stroke-width: 2; }
+.lfg .ghost {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+  animation: lf-spin 1.5s linear infinite;
+}
+.lfg .node.amber { fill: var(--amber); }
+.lfg .node.cyan { fill: var(--cyan); }
+.lfg .node.indigo { fill: var(--indigo); }
+.lfg .node.coral { fill: var(--coral); }
+.lfg .node.emerald { fill: var(--emerald); }
+/* code ⇄ review: a dashed loop circulating through the two dots. The offset is a
+   whole number of dash periods (2+3) so the cycle wraps without a jump. */
+.lfg .cyc {
+  fill: color-mix(in srgb, var(--indigo) 10%, transparent);
+  stroke: color-mix(in srgb, var(--cyan) 45%, var(--indigo));
+  stroke-width: 1.6;
+  stroke-dasharray: 2 3;
+  animation: lf-spin 1.5s linear infinite;
+}
+@keyframes lf-spin {
+  to { stroke-dashoffset: -15; }
+}
+.lfg .lbl {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--text);
+}
+.lfg .lbl.dim { fill: var(--faint); font-size: 9px; }
+.lfg .lbl.cyan { fill: var(--cyan); font-weight: 600; }
+.lfg .lbl.indigo { fill: var(--indigo); }
+.lfg .lbl.amber { fill: var(--amber); }
+.lfg .replan { fill: var(--amber); stroke: var(--pane); stroke-width: 2; }
+.lfg .trunk-lbl { fill: var(--amber); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.lf-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 24px;
+  align-items: center;
+  margin-top: 10px;
+}
+.lf-cap {
+  min-height: 2.4em;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.lf-cap b { color: var(--text); font-weight: 600; }
+.lf-dots {
+  display: flex;
+  gap: 6px;
+}
+.lf-dots button {
+  width: 22px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-bright);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.lf-dots button.past { background: color-mix(in srgb, var(--amber) 45%, var(--line-bright)); }
+.lf-dots button.on { background: var(--amber); }
+
+.theme-pickers {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 auto 18px;
+  width: min(var(--max), 100%);
+}
+
+.theme-picker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.theme-picker-label {
+  flex: none;
+  width: 4.5rem;
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+.theme-scroll {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-scroll::before,
+.theme-scroll::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.theme-scroll::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg), transparent);
+}
+
+.theme-scroll::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg), transparent);
+}
+
+.theme-scroll.fade-l::before,
+.theme-scroll.fade-r::after {
+  opacity: 1;
+}
+
+.theme-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px 14px;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+  padding: 2px 2px 4px;
+}
+
+.theme-row::-webkit-scrollbar {
+  display: none;
+}
+
+.theme-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  width: 76px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.theme-swatch-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-chip {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.theme-swatch:hover .theme-chip {
+  transform: translateY(-2px);
+  border-color: var(--line-bright);
+}
+
+.theme-swatch.on .theme-chip {
+  border-color: var(--amber);
+  box-shadow:
+    0 0 0 2px var(--amber-d, rgba(224, 122, 95, 0.22)),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.theme-swatch.on .theme-swatch-name {
+  color: var(--text);
+}
+
+.theme-chip i {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  bottom: 8px;
+  right: 8px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+
+.theme-chip.editor {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  padding-bottom: 10px;
+}
+
+.theme-chip.editor i {
+  position: static;
+  width: 8px;
+  height: 8px;
+  box-shadow: none;
+}
+
+
+.cust-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 16px;
+}

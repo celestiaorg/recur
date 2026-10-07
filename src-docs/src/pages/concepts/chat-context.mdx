@@ -1,0 +1,30 @@
+---
+title: Chat context
+description: Files, Diff lines, and terminal output in agent chat
+---
+
+# Chat context
+
+Besides the prompt text, you can give the agent files, folders, code selections, terminal output, and artifacts.
+
+## Files and folders
+
+- Type `@` to mention a file or folder. Folder chips end in `/`, such as `@src/lib/`
+- Drag files or folders from the explorer (or elsewhere) into the composer
+- File chips open the path in the editor when you need to jump back
+
+## Diff & editor selections
+
+- Select lines in the Diff or editor and press **⌘L** to tag them into the composer
+- Whole-line chips look like `@path:12` or `@path:12-40`; mid-line selections can include column ranges
+- Clicking a chip restores that selection (including Diff)
+
+## Terminal
+
+- Mention a terminal tab so the agent can read its recent output
+- Drop files from the explorer onto a terminal to paste their paths
+- Terminal sessions persist across restarts; expand a tab when you want the full log
+
+## HTML artifacts
+
+Agents can create and present interactive HTML artifacts in the Observatory. Previews run scripted content in a sandboxed frame. Rename, delete, or reveal an artifact in Finder from the artifacts list, and open a preview full screen (`Esc` exits).

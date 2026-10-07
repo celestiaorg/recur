@@ -1,0 +1,56 @@
+---
+title: TypeScript macros
+description: Author editor commands with @recur/sdk in a sandboxed Worker
+---
+
+# TypeScript macros
+
+TypeScript commands compile with esbuild (in Go), cache under `<DataDir>/BundleCache`, and run in a classic Worker with a frozen `MacroContext`.
+
+## Import the SDK
+
+Import only from **`@recur/sdk`**. The authoring copy lives at `bundles/sdk/` in the Recur repo; compile resolves the same module and bundles it into the Worker JS.
+
+IDE path mapping for the repo: `bundles/tsconfig.json`.
+
+```ts
+import { Output, replaceEdited, type MacroContext, type MacroResult } from '@recur/sdk'
+
+export default function (ctx: MacroContext): MacroResult {
+  return replaceEdited(ctx, ctx.input.toUpperCase())
+  // or: return { text: "…", output: Output.showAsToast }
+}
+```
+
+Bare statement bodies (`body = '''…'''` in the manifest) are auto-wrapped with a default `@recur/sdk` import and `export default async function (ctx) { … }`.
+
+## Context
+
+`MacroContext` includes (among others):
+
+- `input`, `selectedText`, `document`
+- `currentLine`, `lineNumber`, `column`, `currentWord`
+- `filepath`, `filename`, `scope`
+- `clipboard`, `tabSize`, `softTabs`
+- `prompts`: answers from any prompt UI
+
+## Results
+
+`MacroResult` is either a `string` (uses the command’s manifest `output`) or:
+
+```ts
+{
+  text: string
+  output?: OutputRouting   // override manifest routing
+  language?: string        // for newDocument scratch highlighter
+  openInPreview?: boolean  // open Preview chip when supported
+}
+```
+
+Route output with the frozen `Output` map, such as `Output.replaceSelection`, not raw string literals.
+
+`replaceEdited(ctx, text)` replaces the selection when one exists, otherwise the whole document.
+
+## Helpers
+
+The SDK also exports utilities used by shipped packs (e.g. `stripJSONC` for JSONC format/validate). Prefer reading `bundles/sdk/index.ts` and the shipped `bundles/*/src/*.ts` commands as examples.

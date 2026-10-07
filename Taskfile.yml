@@ -103,6 +103,23 @@ tasks:
     cmds:
       - pnpm run e2e
 
+  test:splash:
+    summary: Builds the splash page and checks the real interactive app demo
+    deps:
+      - task: common:install:frontend:deps
+    cmds:
+      - npm --prefix src-web ci --ignore-scripts
+      - npm --prefix src-web run build
+      - node scripts/check-splash.mjs
+
+  capture:splash:
+    summary: Captures the app using the product dataset and named screen presets
+    deps:
+      - task: common:install:frontend:deps
+    cmds:
+      - cd frontend && pnpm exec vite build --config showcase/vite.config.ts
+      - node scripts/capture-splash.mjs {{.CLI_ARGS}}
+
   test:
     summary: Runs all automated tests (Go, bundles lint+test, frontend unit + e2e)
     cmds:

@@ -1,0 +1,53 @@
+---
+title: Project config
+description: Share workspace setup, run commands, and environment configuration
+---
+
+# Project config
+
+Run configuration lives in **`.recur/project.toml`** at the repository root. Edit it from the Project page or in your editor, and commit it to share the setup with your team.
+
+## Example
+
+For a project using pnpm and Vite:
+
+```toml
+setup_cmd = "pnpm install"
+app_url = "http://localhost:$RECUR_PORT"
+copy_files = """
+.env.local
+"""
+env = """
+NODE_ENV=development
+"""
+
+[[run]]
+name = "Dev"
+cmd = "pnpm dev --host 127.0.0.1 --port $RECUR_PORT"
+
+[[run]]
+name = "Test"
+cmd = "pnpm test"
+```
+
+Adapt the commands to your repository. `env` and `copy_files` are multiline strings, not TOML tables or arrays. Keep secret values in ignored dotenv files rather than committing them here.
+
+## Workspace setup
+
+`copy_files` contains newline-separated paths or globs to copy from the project checkout into a new task worktree. It can include ignored files, such as `.env.local`. Existing destination files are skipped. Copying happens before `setup_cmd`; negated patterns beginning with `!` are not supported.
+
+`setup_cmd` runs for a new workspace, with a ten-minute timeout. Optional `teardown_cmd` is a best-effort cleanup hook when the task worktree is removed, also with a ten-minute timeout.
+
+## Runs and ports
+
+Each `[[run]]` defines a named command for the titlebar Run menu and for agents. Bind development servers to **`$RECUR_PORT`** so parallel workspaces can use separate ports. Set `app_url` to the matching address (default `http://localhost:$RECUR_PORT`) for loops that open your app in a browser. Browser verification boots the run named `dev` (any case), otherwise the default run.
+
+Workspace processes also receive `PORT`, `RECUR_WORKSPACE_ID`, `RECUR_WORKTREE`, `RECUR_PROJECT_ID`, and `RECUR_BRANCH`.
+
+## Environment and secrets
+
+The `env` text is injected into setup, teardown, runs, and terminals. Values can reference the Recur variables above, `$HOME`, and keys from gitignored `.env` files. It cannot override protected variables such as `PATH`, `HOME`, `SHELL`, `LD_*`, or `DYLD_*`.
+
+Recur does not export the contents of `.env` files. Keep secrets in gitignored dotenv files, copy them into each worktree with `copy_files`, and let your app load them the way it normally does.
+
+Repository paths, sidebar preferences, enabled project skills, and merge/GitHub PR preferences are app settings rather than fields in this file.

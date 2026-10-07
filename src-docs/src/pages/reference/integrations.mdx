@@ -1,0 +1,33 @@
+---
+title: Integrations & MCP
+description: Connect Linear and custom tool servers to agent chats
+---
+
+# Integrations & MCP
+
+MCP servers provide tools that agents can use in chat. Configure machine defaults under **Settings → MCP**, then use the Project page for project-specific enable/disable overrides.
+
+## Linear
+
+1. Add your Linear API key under **Settings → Integrations**. Optionally set a default team key so bare numbers like `1234` resolve to `ENG-1234`.
+2. Enable **Linear** under **Settings → MCP** to give agents Linear tools.
+3. Check the project's MCP override if the tools are unavailable there.
+
+Ask, Plan, and Review chats can look up issues. Agent and Loop chats can also update them.
+
+The API key also enables:
+
+- `/linear` in the composer, with issue search as you type, to start work on an issue
+- Linear issue search in **Go to** (`⌘K`)
+- Pasting an issue ID or Linear URL into a new task expands it into the full issue
+
+## Custom servers
+
+Under **Settings → MCP → Your servers**, choose:
+
+- **Add HTTP** for an MCP endpoint URL, with an optional Authorization value such as a Bearer token.
+- **Add stdio** for a locally installed command and its arguments.
+
+Give the server a name, save it, and enable it for the projects where it is needed. A stdio server runs on your machine; an HTTP server receives the tool requests sent to its endpoint.
+
+Model endpoints belong in [Settings → Providers](/reference/agents), while MCP endpoints belong here. A model provider supplies inference; an MCP server supplies tools.

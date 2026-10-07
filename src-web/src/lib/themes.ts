@@ -1,0 +1,364 @@
+/** Splash theme catalogs — mirrors frontend Settings pickers (stores.ts / cm-themes.ts). */
+
+export type AppTheme = {
+  key: string;
+  name: string;
+  bg: string;
+  pane: string;
+  pane2: string;
+  rail: string;
+  titlebar: string;
+  statusbar: string;
+  line: string;
+  lineSoft: string;
+  lineBright: string;
+  text: string;
+  muted: string;
+  faint: string;
+  accent: string;
+  accentDim: string;
+  cyan: string;
+  emerald: string;
+  coral: string;
+  indigo: string;
+  light?: boolean;
+};
+
+export type EditorTheme = {
+  key: string;
+  name: string;
+  bg: string;
+  fg: string;
+  a: string;
+  b: string;
+  c: string;
+  comment: string;
+  line: string;
+  light?: boolean;
+};
+
+export const appThemes: AppTheme[] = [
+  {
+    key: "default",
+    name: "Charcoal",
+    bg: "#141414",
+    pane: "#1c1c1c",
+    pane2: "#262626",
+    rail: "#181818",
+    titlebar: "#181818",
+    statusbar: "#161616",
+    line: "#2e2e2e",
+    lineSoft: "#222222",
+    lineBright: "#3d3d3d",
+    text: "#e6e4e1",
+    muted: "#969490",
+    faint: "#686662",
+    accent: "#e07a5f",
+    accentDim: "rgba(224,122,95,.14)",
+    cyan: "#6eb6ff",
+    emerald: "#4ade80",
+    coral: "#f87171",
+    indigo: "#a78bfa",
+  },
+  {
+    key: "paper",
+    name: "Paper",
+    bg: "#ebecef",
+    pane: "#f7f8fa",
+    pane2: "#e4e6eb",
+    rail: "#f0f1f4",
+    titlebar: "#f0f1f4",
+    statusbar: "#e8e9ed",
+    line: "#cfd3db",
+    lineSoft: "#dde0e6",
+    lineBright: "#b4bac6",
+    text: "#1a1c20",
+    muted: "#5a616c",
+    faint: "#8b929e",
+    accent: "#d4634a",
+    accentDim: "rgba(212,99,74,.12)",
+    cyan: "#2a7eb5",
+    emerald: "#2d9a5a",
+    coral: "#d14b4b",
+    indigo: "#6b5bd4",
+    light: true,
+  },
+  {
+    key: "slate",
+    name: "Slate",
+    bg: "#0A0C10",
+    pane: "#101319",
+    pane2: "#161A21",
+    rail: "#0C0E13",
+    titlebar: "#11141A",
+    statusbar: "#0E1116",
+    line: "#212732",
+    lineSoft: "#191E26",
+    lineBright: "#2C343F",
+    text: "#DBE2EA",
+    muted: "#7C8896",
+    faint: "#4E5864",
+    accent: "#F2B33D",
+    accentDim: "rgba(242,179,61,.12)",
+    cyan: "#4CC6D6",
+    emerald: "#5DBE7E",
+    coral: "#EB7A5C",
+    indigo: "#9486F4",
+  },
+  {
+    key: "coolglow",
+    name: "Cool Glow",
+    bg: "#0a0c22",
+    pane: "#0e1130",
+    pane2: "#161a3c",
+    rail: "#0c0e28",
+    titlebar: "#0c0e28",
+    statusbar: "#080a1c",
+    line: "#1c2348",
+    lineSoft: "#141836",
+    lineBright: "#2a3460",
+    text: "#d8dce8",
+    muted: "#6e7d9a",
+    faint: "#4e5670",
+    accent: "#45c4b8",
+    accentDim: "rgba(69,196,184,.12)",
+    cyan: "#6eb8d4",
+    emerald: "#6ecf8a",
+    coral: "#e87890",
+    indigo: "#a78bc4",
+  },
+  {
+    key: "catppuccin",
+    name: "Catppuccin",
+    bg: "#0e0e16",
+    pane: "#181825",
+    pane2: "#262637",
+    rail: "#13131d",
+    titlebar: "#13131d",
+    statusbar: "#0c0c14",
+    line: "#313244",
+    lineSoft: "#1e1e2e",
+    lineBright: "#45475a",
+    text: "#e0e6f8",
+    muted: "#7f849c",
+    faint: "#585b70",
+    accent: "#cba6f7",
+    accentDim: "rgba(203,166,247,.14)",
+    cyan: "#89dceb",
+    emerald: "#a6e3a1",
+    coral: "#f38ba8",
+    indigo: "#b4befe",
+  },
+  {
+    key: "nord",
+    name: "Nord",
+    bg: "#181c24",
+    pane: "#222730",
+    pane2: "#2e3440",
+    rail: "#1c2129",
+    titlebar: "#1c2129",
+    statusbar: "#14181f",
+    line: "#3b4252",
+    lineSoft: "#2a303a",
+    lineBright: "#4c566a",
+    text: "#eceff4",
+    muted: "#7b88a1",
+    faint: "#4c566a",
+    accent: "#88c0d0",
+    accentDim: "rgba(136,192,208,.14)",
+    cyan: "#8fbcbb",
+    emerald: "#a3be8c",
+    coral: "#bf616a",
+    indigo: "#b48ead",
+  },
+];
+
+export const editorThemes: EditorTheme[] = [
+  {
+    key: "recur",
+    name: "Charcoal",
+    bg: "#0e0e0e",
+    fg: "#e6e4e1",
+    a: "#e07a5f",
+    b: "#c4a0f5",
+    c: "#9fe3b5",
+    comment: "#686662",
+    line: "#222",
+  },
+  {
+    key: "paper",
+    name: "Paper",
+    bg: "#f7f8fa",
+    fg: "#1a1c20",
+    a: "#d4634a",
+    b: "#7c5cbf",
+    c: "#2d9a5a",
+    comment: "#8b929e",
+    line: "#e4e6eb",
+    light: true,
+  },
+  {
+    key: "cool-glow",
+    name: "Cool Glow",
+    bg: "#06071D",
+    fg: "#E0E0E0",
+    a: "#2BF1DC",
+    b: "#B683CA",
+    c: "#8DFF8E",
+    comment: "#5a6480",
+    line: "#12142e",
+  },
+  {
+    key: "made-of-code",
+    name: "Made of Code",
+    bg: "#080a15",
+    fg: "#F8F8F8",
+    a: "#FF3854",
+    b: "#00FFBC",
+    c: "#8FFF58",
+    comment: "#5a6a88",
+    line: "#12152a",
+  },
+  {
+    key: "dracula",
+    name: "Dracula",
+    bg: "#282a36",
+    fg: "#f8f8f2",
+    a: "#bd93f9",
+    b: "#ff79c6",
+    c: "#50fa7b",
+    comment: "#6272a4",
+    line: "#343746",
+  },
+  {
+    key: "github-dark",
+    name: "GitHub Dark",
+    bg: "#0d1117",
+    fg: "#e6edf3",
+    a: "#2f81f7",
+    b: "#ff7b72",
+    c: "#7ee787",
+    comment: "#8b949e",
+    line: "#161b22",
+  },
+  {
+    key: "github-light",
+    name: "GitHub Light",
+    bg: "#ffffff",
+    fg: "#1f2328",
+    a: "#0969da",
+    b: "#cf222e",
+    c: "#1a7f37",
+    comment: "#656d76",
+    line: "#eaeef2",
+    light: true,
+  },
+  {
+    key: "tokyo-night",
+    name: "Tokyo Night",
+    bg: "#1a1b26",
+    fg: "#c0caf5",
+    a: "#7aa2f7",
+    b: "#bb9af7",
+    c: "#9ece6a",
+    comment: "#565f89",
+    line: "#24283b",
+  },
+  {
+    key: "nord",
+    name: "Nord",
+    bg: "#2e3440",
+    fg: "#d8dee9",
+    a: "#88c0d0",
+    b: "#b48ead",
+    c: "#a3be8c",
+    comment: "#616e88",
+    line: "#3b4252",
+  },
+  {
+    key: "gruvbox",
+    name: "Gruvbox",
+    bg: "#282828",
+    fg: "#ebdbb2",
+    a: "#fe8019",
+    b: "#d3869b",
+    c: "#b8bb26",
+    comment: "#928374",
+    line: "#3c3836",
+  },
+  {
+    key: "monokai",
+    name: "Monokai",
+    bg: "#272822",
+    fg: "#f8f8f2",
+    a: "#f92672",
+    b: "#a6e22e",
+    c: "#e6db74",
+    comment: "#75715e",
+    line: "#3e3d32",
+  },
+  {
+    key: "material",
+    name: "Material",
+    bg: "#263238",
+    fg: "#eeffff",
+    a: "#89ddff",
+    b: "#c792ea",
+    c: "#c3e88d",
+    comment: "#546e7a",
+    line: "#2e3c43",
+  },
+  {
+    key: "vscode",
+    name: "VS Code Dark",
+    bg: "#1e1e1e",
+    fg: "#d4d4d4",
+    a: "#569cd6",
+    b: "#c586c0",
+    c: "#ce9178",
+    comment: "#6a9955",
+    line: "#2a2a2a",
+  },
+  {
+    key: "solarized-dark",
+    name: "Solarized Dark",
+    bg: "#002b36",
+    fg: "#839496",
+    a: "#268bd2",
+    b: "#d33682",
+    c: "#859900",
+    comment: "#586e75",
+    line: "#073642",
+  },
+  {
+    key: "solarized-light",
+    name: "Solarized Light",
+    bg: "#fdf6e3",
+    fg: "#657b83",
+    a: "#268bd2",
+    b: "#d33682",
+    c: "#859900",
+    comment: "#93a1a1",
+    line: "#eee8d5",
+    light: true,
+  },
+  {
+    key: "aura",
+    name: "Aura",
+    bg: "#15141b",
+    fg: "#edecee",
+    a: "#a277ff",
+    b: "#ffca85",
+    c: "#61ffca",
+    comment: "#6d6d6d",
+    line: "#211f29",
+  },
+];
+
+export function appThemeByKey(key: string): AppTheme {
+  return appThemes.find((t) => t.key === key) ?? appThemes[0]!;
+}
+
+export function editorThemeByKey(key: string): EditorTheme {
+  return editorThemes.find((t) => t.key === key) ?? editorThemes[0]!;
+}

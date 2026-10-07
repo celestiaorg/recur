@@ -1,0 +1,58 @@
+---
+title: Chat prompts
+description: Reusable slash actions, arguments, and chat routing
+---
+
+# Chat prompts
+
+Bundles can ship **`[[prompt]]`** actions in the chat composer. These are separate from editor commands and [Agent Skills](/reference/skills).
+
+Type `/` at the start of the composer to see available actions. Actions without arguments run on selection. Actions with arguments let you fill them before sending.
+
+## Shipped actions
+
+| Prompt | Purpose |
+| --- | --- |
+| `/review` | Review the workspace or pull request and file findings |
+| `/re-review` | Re-review after fixes, reusing the previous review session when it can |
+| `/fix-findings` | Fix or dispute open findings in Agent mode |
+| `/simplify-review` | Review the diff for unnecessary complexity |
+| `/simplify-audit` | Audit the whole repository for unnecessary complexity |
+| `/commit`, `/commit-push` | Commit all changes, optionally pushing them |
+| `/open-pr`, `/open-draft-pr` | Open a GitHub pull request or draft with an agent-written description |
+| `/fix-checks` | Investigate and fix failing GitHub checks |
+| `/update` | Bring the branch up to date with its base; an agent steps in only for conflicts |
+| `/linear` | Work on a Linear issue (Linear bundle) |
+
+These start a [Loop](/concepts/loop) in a Loop chat:
+
+| Prompt | Loop |
+| --- | --- |
+| `/to-a-pr` | To a PR |
+| `/review-and-fix` | Review & fix |
+| `/review-to-pr` | Review & fix to a PR |
+| `/security-review` | Security review & fix |
+| `/write-docs` | Docs |
+
+## Author an action
+
+Add a prompt to `bundle.toml`:
+
+```toml
+[[prompt]]
+id = "my.pack.explain"
+name = "Explain selection"
+slash = "explain-selection"
+mode = "ask"
+takesArgs = false
+interpreter = "typescript"
+script = "src/explain.ts"
+```
+
+The script returns `{ prompt, display? }`. Its context includes workspace environment and an editor snapshot. Start from a script in the shipped Chat bundle when you need context fields or SDK helpers.
+
+Optional `mode` (`ask`, `plan`, `agent`, `review`, or `loop`) routes the action to that mode. With `mode = "loop"`, set `loop` to a `[[loop]]` id to start that loop. `tab_group` routes actions into the nearest idle chat in the same group; without a group, mode routing reuses the nearest idle chat in that mode. `fresh_session = true` starts fresh provider context while keeping the chat UI. It cannot be used with Loop mode.
+
+For arguments, use `takesArgs = true`, or declare named `[[prompt.arg]]` tables. Named arguments imply `takesArgs` and are available in `ctx.params`; the combined argument text is in `ctx.args`. Keep the prompt's scalar fields before its nested argument tables in TOML.
+
+Validate with `recur bundles lint`. The Recur repository's `docs/bundles.md` documents the full authoring contract, and `bundles/Chat` provides working scripts and manifests.

@@ -7,13 +7,13 @@ Recur is built with [Wails v3](https://v3.wails.io/) (Go backend) and Svelte 5 /
 ## What it does
 
 - **Workspaces.** Every workspace is a git worktree on its own branch. Agents work in isolation, and you land their commits when you are satisfied.
-- **Chats.** Run as many chats as you like at once, across workspaces or side by side in the same one. Each chat picks its own agent and one of four modes: Ask (read-only Q&A), Plan (read-only, produces a plan), Review (read-only, reports findings), or Agent (read and edit).
-- **Loops.** Hand a task to a team of specialist agents instead of one. A loop is a graph of phases, each run by a role with its own prompt and tools, that repeats until the result clears a bar you set. The shipped loops plan, implement, review, fix, and open a PR, but a loop can be any shape you declare. See [Loops](#loops) below.
+- **Chats.** Run as many chats as you like at once, across workspaces or side by side in the same one. Each chat picks its own agent and one of five modes: Ask (read-only Q&A), Plan (read-only, produces a plan), Review (read-only, reports findings), Agent (read and edit), or Loop (runs a loop in the chat).
+- **Loops.** In Loop mode, a chat hands the task to a team of specialist agents instead of one. A loop is a graph of phases, each run by a role with its own prompt and tools, that repeats until the result clears a bar you set. The shipped loops plan, implement, review, fix, and open a PR, but a loop can be any shape you declare. See [Loops](#loops) below.
 - **Child workspaces.** An agent can spawn a child worktree for a subtask, then read, merge, or archive its result.
 - **Review surface.** Diff viewer with inline comments and an approve flow, so review happens where the code is.
 - **Editor.** A CodeMirror editor with TextMate grammars, themes, snippets, symbol outlines, and language servers, all supplied by bundles.
 - **Providers.** Claude Code, Cursor, OpenAI Codex, and any OpenAI-compatible `/v1/responses` endpoint. See `docs/` for how each is wired.
-- **Pull requests.** A PR dashboard for each project that pulls in every open PR on the repo, not just the ones Recur opened. Review, comment, approve, fix checks, and merge without leaving the app. See [Pull requests](#pull-requests) below.
+- **Pull requests.** A PR dashboard across your projects that pulls in every open PR on each repo, not just the ones Recur opened. Review, comment, approve, fix checks, and merge without leaving the app. See [Pull requests](#pull-requests) below.
 - **Schedules.** Save a prompt or loop to run on a cron cadence, once at a set time, or every time Recur starts. Each run gets its own fresh workspace. See [Schedules](#schedules) below.
 - **Integrations.** Linear via MCP, with issue search and `/linear` straight from the composer. Recur's own MCP host tools let agents report findings, artifacts, and permission requests back to the app.
 
@@ -61,7 +61,7 @@ Recur treats the pull request as the boundary where a human signs off. Everythin
 
 **Opening.** `/open-pr` and `/open-draft-pr` commit, push, and open a pull request with an agent-written title and summary. The ensure_pr phase in a loop does the same and updates the PR on later rounds. Recur talks to GitHub through the `gh` CLI, so it uses whatever account you have already authenticated.
 
-**The dashboard.** Each project has a PR list synced from GitHub. It includes PRs opened outside Recur, groups them into yours, loop-opened, open, and merged, and flags the ones that need you: a review was requested, you were assigned, changes were requested on your PR, or your checks are failing. Sort by created or last updated.
+**The dashboard.** The Pull requests view lists PRs across your projects, synced from GitHub. It includes PRs opened outside Recur, groups them into needs your attention, workspace is responding, open, and merged, and flags the ones that need you: a review was requested, you were assigned, changes were requested on your PR, or your checks are failing. Filter by project, status, review, or check state, and sort by updated, newest, oldest, or title.
 
 **Reviewing.** Open any PR into the review surface. You get the file list, the full diff with syntax highlighting, commits, and the conversation. Leave line comments, batch them into a review, then submit it as a comment, an approval, or a request for changes. Reply to threads, resolve them, react, and mention people with autocomplete. Findings filed by reviewer agents show up alongside human comments.
 
@@ -71,7 +71,7 @@ Recur treats the pull request as the boundary where a human signs off. Everythin
 
 A schedule is a saved prompt that Recur runs on its own clock. Each occurrence creates a fresh workspace from the base branch you chose, starts the chat or loop, and records the outcome.
 
-A schedule has a name, a prompt, a project and base branch, a provider model, and a mode. The mode is any of the four chat modes or Loop. Loop schedules also pick a loop and a policy, so a nightly "review and fix" or a weekly "security review" needs no one at the keyboard to start it.
+A schedule has a name, a prompt, a project and base branch, a provider model, and a mode. The mode is any of the five chat modes. Loop schedules also pick a loop and a policy, so a nightly "review and fix" or a weekly "security review" needs no one at the keyboard to start it.
 
 Cadences:
 

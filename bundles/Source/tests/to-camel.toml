@@ -1,0 +1,23 @@
+[[test]]
+name = "snake to camel"
+command = "To camelCase"
+
+[test.context]
+input = "foo_bar_baz"
+selectedText = "foo_bar_baz"
+
+[test.expect]
+stdout = "fooBarBaz"
+output = "replaceInput"
+
+[[test]]
+name = "kebab to camel"
+command = "To camelCase"
+
+[test.context]
+input = "foo-bar"
+selectedText = "foo-bar"
+
+[test.expect]
+stdout = "fooBar"
+output = "replaceInput"

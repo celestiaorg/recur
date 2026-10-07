@@ -1,0 +1,7 @@
+[[test]]
+name = "hard-break"
+command = "Hard Linebreak"
+
+[test.expect]
+stdout = "  \n"
+output = "insertText"

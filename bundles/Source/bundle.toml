@@ -1,0 +1,196 @@
+[bundle]
+name = "Source"
+id = "recur.source"
+version = "1.0.0"
+author = "Recur"
+
+[[command]]
+id = "recur.source.spaces-to-tabs"
+name = "Convert Spaces to Tabs"
+category = "Source"
+order = 10
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+tab"
+interpreter = "typescript"
+script = "src/spaces-to-tabs.ts"
+
+[[command]]
+id = "recur.source.tabs-to-spaces"
+name = "Convert Tabs to Spaces"
+category = "Source"
+order = 11
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+tab"
+interpreter = "typescript"
+script = "src/tabs-to-spaces.ts"
+
+[[command]]
+id = "recur.source.to-camel"
+name = "To camelCase"
+category = "Source"
+order = 20
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+c"
+interpreter = "typescript"
+script = "src/to-camel.ts"
+
+[[command]]
+id = "recur.source.to-snake"
+name = "To snake_case"
+category = "Source"
+order = 21
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+c"
+interpreter = "typescript"
+script = "src/to-snake.ts"
+
+[[command]]
+id = "recur.source.to-pascal"
+name = "To PascalCase"
+category = "Source"
+order = 22
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+c"
+interpreter = "typescript"
+script = "src/to-pascal.ts"
+
+[[command]]
+id = "recur.source.to-kebab"
+name = "To kebab-case"
+category = "Source"
+order = 23
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+c"
+interpreter = "typescript"
+script = "src/to-kebab.ts"
+
+[[command]]
+id = "recur.source.toggle-quotes"
+name = "Toggle Quotes"
+category = "Source"
+order = 24
+input = "selection"
+fallbackInput = "line"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+'"
+interpreter = "typescript"
+script = "src/toggle-quotes.ts"
+
+[[command]]
+id = "recur.source.toggle-smart-quotes"
+name = "Toggle Smart Quotes"
+category = "Source"
+order = 25
+input = "selection"
+fallbackInput = "line"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+'"
+interpreter = "typescript"
+script = "src/toggle-smart-quotes.ts"
+
+[[command]]
+id = "recur.source.align-assignments"
+name = "Align Assignments"
+category = "Source"
+order = 30
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/align-assignments.ts"
+
+[[command]]
+id = "recur.source.wrap-braces"
+name = "Wrap / Unwrap Braces"
+category = "Source"
+order = 40
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/wrap-braces.ts"
+
+[[command]]
+id = "recur.source.wrap-parens"
+name = "Wrap / Unwrap Parentheses"
+category = "Source"
+order = 41
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/wrap-parens.ts"
+
+[[command]]
+id = "recur.source.wrap-brackets"
+name = "Wrap / Unwrap Brackets"
+category = "Source"
+order = 42
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/wrap-brackets.ts"
+
+# --- snippets ----------------------------------------------------------------
+
+[[snippet]]
+id = "recur.source.quote"
+name = "Wrap Quotes"
+tabTrigger = "quote"
+order = 10
+body = '''
+"${1:$TM_SELECTED_TEXT}"
+'''
+
+# --- symbols (TextMate showInSymbolList; token scopes, not line regex) -------
+
+[[symbol]]
+id = "recur.symbols.source.function"
+scope = "entity.name.function"
+kind = "func"
+
+[[symbol]]
+id = "recur.symbols.source.type-class"
+scope = "entity.name.type.class"
+kind = "class"
+
+[[symbol]]
+id = "recur.symbols.source.toc"
+scope = "meta.toc-list"
+kind = "heading"
+
+[[symbol]]
+id = "recur.symbols.source.hide-calls"
+scope = "meta.function-call entity.name.function"
+show = false
+
+[[symbol]]
+id = "recur.symbols.source.hide-support"
+scope = "entity.name.function.support"
+show = false
+

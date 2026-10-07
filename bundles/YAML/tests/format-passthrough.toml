@@ -1,0 +1,37 @@
+[[test]]
+name = "passes through canonical yaml when formatter missing"
+command = "Format YAML on Save"
+
+[test.context]
+input = '''
+foo: bar
+'''
+selectedText = '''
+foo: bar
+'''
+filename = "config.yaml"
+
+[test.expect]
+stdout = '''
+foo: bar
+'''
+output = "replaceDocument"
+
+[[test]]
+name = "palette format passes through canonical yaml when formatter missing"
+command = "Format YAML"
+
+[test.context]
+input = '''
+foo: bar
+'''
+selectedText = '''
+foo: bar
+'''
+filename = "config.yaml"
+
+[test.expect]
+stdout = '''
+foo: bar
+'''
+output = "replaceInput"

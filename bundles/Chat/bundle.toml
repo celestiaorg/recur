@@ -1,0 +1,207 @@
+[bundle]
+name = "Chat"
+id = "recur.chat"
+version = "1.0.0"
+author = "Recur"
+
+[[prompt]]
+id = "recur.chat.fix-findings"
+name = "Fix Findings"
+description = "Fix or dispute open reviewer findings"
+slash = "fix-findings"
+mode = "agent"
+tab_group = "ops"
+fresh_session = true
+interpreter = "typescript"
+script = "src/fix-findings.ts"
+
+[[prompt]]
+id = "recur.chat.commit"
+name = "Commit"
+description = "Stage and commit all worktree changes"
+slash = "commit"
+mode = "agent"
+tab_group = "ops"
+fresh_session = true
+interpreter = "typescript"
+script = "src/commit.ts"
+
+[[prompt]]
+id = "recur.chat.commit-push"
+name = "Commit Push"
+description = "Commit all changes and push to remote"
+slash = "commit-push"
+mode = "agent"
+tab_group = "ops"
+fresh_session = true
+interpreter = "typescript"
+script = "src/commit-push.ts"
+
+[[prompt]]
+id = "recur.chat.open-pr"
+name = "Open PR"
+description = "Open a GitHub pull request with an agent-written description"
+slash = "open-pr"
+mode = "agent"
+timeoutMs = 15000
+tab_group = "ops"
+fresh_session = true
+interpreter = "shebang"
+script = "src/open-pr.sh"
+
+[[prompt]]
+id = "recur.chat.fix-checks"
+name = "Fix checks"
+description = "Investigate and fix failing GitHub checks on this pull request"
+slash = "fix-checks"
+mode = "agent"
+takesArgs = true
+argPlaceholder = "all or a failing check"
+timeoutMs = 15000
+tab_group = "ops"
+fresh_session = true
+interpreter = "shebang"
+script = "src/fix-checks.sh"
+complete = "src/complete-checks.sh"
+icon = "icon-github.svg"
+
+[[prompt.arg]]
+name = "check"
+placeholder = "all or a failing check"
+optional = true
+
+[[prompt]]
+id = "recur.chat.open-draft-pr"
+name = "Open draft PR"
+description = "Open a GitHub draft pull request with an agent-written description"
+slash = "open-draft-pr"
+mode = "agent"
+timeoutMs = 15000
+tab_group = "ops"
+fresh_session = true
+interpreter = "shebang"
+script = "src/open-pr.sh"
+
+[[prompt]]
+id = "recur.chat.review"
+name = "Review"
+description = "Review the current surface (workspace or pull request) and file findings"
+slash = "review"
+mode = "review"
+timeoutMs = 30000
+tab_group = "review"
+fresh_session = true
+interpreter = "shebang"
+script = "src/review.sh"
+
+[[prompt]]
+id = "recur.chat.re-review"
+name = "Re-review"
+description = "Re-review the current surface after fixes"
+slash = "re-review"
+mode = "review"
+timeoutMs = 30000
+fresh_session = true
+interpreter = "shebang"
+script = "src/re-review.sh"
+
+[[prompt]]
+id = "recur.chat.simplify-review"
+name = "Simplify review"
+description = "Review the current surface for over-engineering and file findings"
+slash = "simplify-review"
+mode = "review"
+timeoutMs = 30000
+tab_group = "simplify-review"
+fresh_session = true
+interpreter = "shebang"
+script = "src/simplify-review.sh"
+
+[[prompt]]
+id = "recur.chat.simplify-audit"
+name = "Simplify audit"
+description = "Audit the whole repository for over-engineering and file findings"
+slash = "simplify-audit"
+mode = "review"
+timeoutMs = 30000
+tab_group = "simplify-audit"
+fresh_session = true
+interpreter = "shebang"
+script = "src/simplify-audit.sh"
+
+[[prompt]]
+id = "recur.chat.update"
+name = "Update with base"
+description = "Bring this branch up to date with its merge base"
+slash = "update"
+mode = "agent"
+timeoutMs = 30000
+tab_group = "ops"
+fresh_session = true
+interpreter = "shebang"
+script = "src/update.sh"
+
+[[prompt]]
+id = "recur.chat.review-and-fix"
+name = "Review & fix"
+description = "Review the current worktree and fix until the bar passes"
+slash = "review-and-fix"
+mode = "loop"
+loop = "recur.loops.converge"
+interpreter = "shebang"
+body = '''
+#!/bin/sh
+printf '%s\n' '{"prompt":"The human already wrote this change. Review the current worktree, then fix and re-review until the policy bar passes. Do not reopen scope, do not plan a new feature, and do not open a PR.","display":"Review & fix"}'
+'''
+
+[[prompt]]
+id = "recur.chat.review-to-pr"
+name = "Review & fix to a PR"
+description = "Review and fix the current diff, then open a PR"
+slash = "review-to-pr"
+mode = "loop"
+loop = "recur.loops.converge-pr"
+interpreter = "shebang"
+body = '''
+#!/bin/sh
+printf '%s\n' '{"prompt":"The human already wrote this change. Review the current worktree, then fix and re-review until the policy bar passes, then open a PR. Do not reopen scope and do not plan a new feature.","display":"Review & fix to a PR"}'
+'''
+
+[[prompt]]
+id = "recur.chat.to-a-pr"
+name = "To a PR"
+description = "Plan, implement, review, and open a pull request"
+slash = "to-a-pr"
+mode = "loop"
+loop = "recur.loops.pr"
+interpreter = "shebang"
+body = '''
+#!/bin/sh
+printf '%s\n' '{"prompt":"Ship a correct, reviewable change to a pull request. Plan first when there is no approved plan, then implement and review until the policy bar passes, then open the PR. Do not reopen scope the human already closed.","display":"To a PR"}'
+'''
+
+[[prompt]]
+id = "recur.chat.write-docs"
+name = "Write docs"
+description = "Plan, write, and edit documentation — no PR"
+slash = "write-docs"
+mode = "loop"
+loop = "recur.loops.docs"
+interpreter = "shebang"
+body = '''
+#!/bin/sh
+printf '%s\n' '{"prompt":"Write the documentation the human asked for. Do not change product code unless the docs require it. Do not open a PR — the write-up lives in this worktree.","display":"Write docs"}'
+'''
+
+[[prompt]]
+id = "recur.chat.security-review"
+name = "Security review & fix"
+description = "Review and fix auth, secrets, and permissions until the bar passes"
+slash = "security-review"
+mode = "loop"
+loop = "recur.loops.security"
+interpreter = "shebang"
+body = '''
+#!/bin/sh
+printf '%s\n' '{"prompt":"Review the current worktree for auth, secrets, tokens, and permission checks. Fix real findings. Do not reopen product scope, and do not open a PR.","display":"Security review & fix"}'
+'''

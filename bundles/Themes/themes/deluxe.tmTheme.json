@@ -1,0 +1,222 @@
+{
+  "name": "Deluxe",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#000000F2",
+    "editor.foreground": "#F9F9F5",
+    "editor.selectionBackground": "#334D51",
+    "editor.lineHighlightBackground": "#4F4E41",
+    "editorCursor.foreground": "#F9F9F3",
+    "editorWhitespace.foreground": "#4C4A41"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#F9F9F5",
+        "background": "#000000F2"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#888471",
+        "fontStyle": "italic"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFC78",
+        "background": "#353532F2"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#BD99FF"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#BD99FF"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#7EFDE6"
+      },
+      "name": "User-defined constant",
+      "scope": [
+        "constant.character",
+        "constant.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#00FDFF"
+      },
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#EFD88E"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {},
+      "name": "class name",
+      "scope": "variable.other"
+    },
+    {
+      "settings": {
+        "foreground": "#FD4485"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#99E9F2",
+        "fontStyle": "italic"
+      },
+      "name": "Storage type",
+      "scope": "storage.type"
+    },
+    {
+      "settings": {
+        "foreground": "#B3E43B",
+        "fontStyle": "bold underline"
+      },
+      "name": "Class name",
+      "scope": "entity.name.class"
+    },
+    {
+      "settings": {
+        "foreground": "#B3E43B",
+        "fontStyle": "bold underline"
+      },
+      "name": "Module Name",
+      "scope": "entity.name.type.module"
+    },
+    {
+      "settings": {
+        "foreground": "#B3E43B",
+        "fontStyle": "italic underline"
+      },
+      "name": "Inherited class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#4E88FF",
+        "fontStyle": "bold"
+      },
+      "name": "Function name",
+      "scope": "entity.name.function"
+    },
+    {
+      "settings": {
+        "foreground": "#FFA727",
+        "fontStyle": "italic"
+      },
+      "name": "Function argument",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {
+        "foreground": "#5DF8FA"
+      },
+      "name": "Tag name",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#B3E43B"
+      },
+      "name": "Tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#75E0F2"
+      },
+      "name": "Library function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#9DEFBC"
+      },
+      "name": "Library constant",
+      "scope": "support.constant"
+    },
+    {
+      "settings": {
+        "foreground": "#FFE553",
+        "fontStyle": "italic"
+      },
+      "name": "Library class/type",
+      "scope": [
+        "support.type",
+        "support.class"
+      ]
+    },
+    {
+      "settings": {},
+      "name": "Library variable",
+      "scope": "support.other.variable"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F3",
+        "background": "#FD4485"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F3",
+        "background": "#BD99FF"
+      },
+      "name": "Invalid deprecated",
+      "scope": "invalid.deprecated"
+    },
+    {
+      "settings": {
+        "foreground": "#99A8FA"
+      },
+      "name": "Operator",
+      "scope": [
+        "keyword.operator",
+        "declaration.function.operator",
+        "meta.preprocessor.c.include",
+        "punctuation.separator.operator"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FC8981"
+      },
+      "name": "Array Punctuation",
+      "scope": [
+        "meta.group.braces.square punctuation.section.scope",
+        "meta.group.braces.square meta.delimiter.object.comma",
+        "meta.brace.square",
+        "punctuation.separator.array",
+        "punctuation.section.array",
+        "punctuation.definition.array",
+        "punctuation.definition.constant.range"
+      ]
+    }
+  ]
+}

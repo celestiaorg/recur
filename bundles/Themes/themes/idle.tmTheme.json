@@ -1,0 +1,157 @@
+{
+  "name": "IDLE",
+  "type": "light",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#000000",
+    "editor.selectionBackground": "#C6DFFE",
+    "editor.lineHighlightBackground": "#00000012",
+    "editorCursor.foreground": "#000000",
+    "editorWhitespace.foreground": "#CBCBCB"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#A2A2A2"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#00AF50"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {},
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#B650BC"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {},
+      "name": "User-defined constant",
+      "scope": [
+        "constant.character",
+        "constant.other"
+      ]
+    },
+    {
+      "settings": {},
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FF6D00"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#FF6D00"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#2B59AC"
+      },
+      "name": "Type name",
+      "scope": "entity.name.type"
+    },
+    {
+      "settings": {},
+      "name": "Inherited class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#2B59AC"
+      },
+      "name": "Function name",
+      "scope": "entity.name.function"
+    },
+    {
+      "settings": {},
+      "name": "Function argument",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {},
+      "name": "Tag name",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {},
+      "name": "Tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#B650BC"
+      },
+      "name": "Library function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#B650BC"
+      },
+      "name": "Library constant",
+      "scope": "support.constant"
+    },
+    {
+      "settings": {
+        "foreground": "#B650BC"
+      },
+      "name": "Library class/type",
+      "scope": [
+        "support.type",
+        "support.class"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#B650BC"
+      },
+      "name": "Library variable",
+      "scope": "support.variable"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#AB1500"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#AB1500"
+      },
+      "name": "String interpolation",
+      "scope": "constant.other.placeholder.py"
+    }
+  ]
+}

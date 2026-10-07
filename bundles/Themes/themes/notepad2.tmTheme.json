@@ -1,0 +1,151 @@
+{
+  "name": "Notepad 2",
+  "type": "light",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#000000",
+    "editor.selectionBackground": "#A7D6FF",
+    "editor.lineHighlightBackground": "#FFC46359",
+    "editorCursor.foreground": "#000000",
+    "editorWhitespace.foreground": "#CBCBCB"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#FF9300",
+        "background": "#FFFFFF"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#008F00"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#FF2600"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "fontStyle": "bold"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {},
+      "name": "User-defined constant",
+      "scope": [
+        "constant.character",
+        "constant.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#011893",
+        "fontStyle": "italic"
+      },
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#942192"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#942192"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {},
+      "name": "Class name",
+      "scope": "entity.name.class"
+    },
+    {
+      "settings": {},
+      "name": "Inherited class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "Function name",
+      "scope": "entity.name.function"
+    },
+    {
+      "settings": {},
+      "name": "Function argument",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {
+        "foreground": "#0223BD"
+      },
+      "name": "Tag name",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#DA1E00"
+      },
+      "name": "Tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#942192"
+      },
+      "name": "Library function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {},
+      "name": "Library constant",
+      "scope": "support.constant"
+    },
+    {
+      "settings": {},
+      "name": "Library class/type",
+      "scope": [
+        "support.type",
+        "support.class"
+      ]
+    },
+    {
+      "settings": {},
+      "name": "Library variable",
+      "scope": "support.other.variable"
+    },
+    {
+      "settings": {
+        "fontStyle": "bold"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    }
+  ]
+}

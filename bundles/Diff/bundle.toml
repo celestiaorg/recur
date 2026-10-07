@@ -1,0 +1,21 @@
+[bundle]
+name = "Diff"
+id = "recur.diff"
+version = "1.0.0"
+author = "Recur"
+
+# --- interpreter = "shebang" + script pointer (sibling file) ----------------
+
+[[command]]
+id = "recur.diff.diff-clipboard"
+name = "Diff with Clipboard"
+category = "Diff"
+order = 10
+input = "selection"
+fallbackInput = "document"
+output = "newDocument"
+language = "diff"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+d"
+interpreter = "shebang"
+script = "bin/diff-clipboard.sh"

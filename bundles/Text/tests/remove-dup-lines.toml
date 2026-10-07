@@ -1,0 +1,27 @@
+[[test]]
+name = "removes duplicate lines keep order"
+command = "Remove Duplicate Lines"
+
+[test.context]
+input = '''
+a
+b
+a
+c
+b
+'''
+selectedText = '''
+a
+b
+a
+c
+b
+'''
+
+[test.expect]
+stdout = '''
+a
+b
+c
+'''
+output = "replaceSelection"

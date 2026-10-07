@@ -1,0 +1,125 @@
+{
+  "name": "Happydeluxe",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#101928",
+    "editor.foreground": "#FFFFFF",
+    "editor.selectionBackground": "#1B386D",
+    "editor.lineHighlightBackground": "#00000078",
+    "editorCursor.foreground": "#FFFFFF",
+    "editorWhitespace.foreground": "#777B84"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#101928"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#445D8F"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#FF84FA"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FFA100"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#FFA100"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#FF4600"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#00E2DA"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#00E2DA"
+      },
+      "name": "Class name",
+      "scope": "entity.name.class"
+    },
+    {
+      "settings": {
+        "foreground": "#00E2DA"
+      },
+      "name": "Inherited class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#00E2DA"
+      },
+      "name": "Tag name",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#00E2DA"
+      },
+      "name": "Library function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#00E2DA"
+      },
+      "name": "Library constant",
+      "scope": "support.constant"
+    },
+    {
+      "settings": {
+        "foreground": "#00E2DA"
+      },
+      "name": "Library class/type",
+      "scope": [
+        "support.type",
+        "support.class"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#00E2DA"
+      },
+      "name": "Library variable",
+      "scope": "support.other.variable"
+    }
+  ]
+}

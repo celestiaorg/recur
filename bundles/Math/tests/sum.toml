@@ -1,0 +1,35 @@
+[[test]]
+name = "sums integers"
+command = "Sum Numbers"
+
+[test.context]
+input = "1 2 3"
+selectedText = "1 2 3"
+
+[test.expect]
+stdout = "6"
+output = "replaceSelection"
+
+[[test]]
+name = "sums floats on separate lines"
+command = "Sum Numbers"
+
+[test.context]
+input = "1.5\n2.5"
+selectedText = "1.5\n2.5"
+
+[test.expect]
+stdout = "4"
+output = "replaceSelection"
+
+[[test]]
+name = "subtracts remaining from the first"
+command = "Subtract Numbers"
+
+[test.context]
+input = "10 3 2"
+selectedText = "10 3 2"
+
+[test.expect]
+stdout = "5"
+output = "replaceSelection"

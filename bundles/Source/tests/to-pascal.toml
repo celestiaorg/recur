@@ -1,0 +1,11 @@
+[[test]]
+name = "snake to pascal"
+command = "To PascalCase"
+
+[test.context]
+input = "foo_bar"
+selectedText = "foo_bar"
+
+[test.expect]
+stdout = "FooBar"
+output = "replaceInput"

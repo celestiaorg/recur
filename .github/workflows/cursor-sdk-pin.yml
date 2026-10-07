@@ -1,0 +1,24 @@
+name: Cursor SDK pin
+
+# Flags when PyPI publishes a cursor-sdk newer than pinnedSDKVersion so the
+# attribution minify anchors can be refreshed deliberately (not on every PR).
+on:
+  schedule:
+    # Mondays 15:00 UTC
+    - cron: "0 15 * * 1"
+  workflow_dispatch:
+
+jobs:
+  pin-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Compare pin to PyPI latest
+        env:
+          RECUR_CURSOR_SDK_PIN_CHECK: "1"
+        run: go test ./internal/cursor -run CheckCursorSDKPinDrift -count=1 -v

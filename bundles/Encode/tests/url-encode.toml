@@ -1,0 +1,11 @@
+[[test]]
+name = "url encodes"
+command = "URL Encode"
+
+[test.context]
+input = "a b=c"
+selectedText = "a b=c"
+
+[test.expect]
+stdout = "a%20b%3Dc"
+output = "replaceSelection"

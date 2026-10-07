@@ -1,0 +1,69 @@
+{
+  "name": "Starlight",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#2C496CF2",
+    "editor.foreground": "#CCC3B7",
+    "editor.selectionBackground": "#6286AC",
+    "editor.lineHighlightBackground": "#0000001F",
+    "editorCursor.foreground": "#D9CB8B",
+    "editorWhitespace.foreground": "#CBCBCB"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#CCC3B7",
+        "background": "#2C496CF2"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#BCBCBC"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#C6B097"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#C6B097"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#B39687"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#C5BBB0"
+      },
+      "name": "Entity"
+    },
+    {
+      "settings": {
+        "foreground": "#B1AA95"
+      },
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#F6DC63"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    }
+  ]
+}

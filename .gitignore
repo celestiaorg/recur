@@ -1,0 +1,24 @@
+.task
+.DS_Store
+/bin/
+frontend/dist/*
+!frontend/dist/.gitkeep
+node_modules/
+frontend/.vite-build-mode
+build/linux/appimage/build
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+# Compiled by `wails3 generate icons` from appicon.icon (actool); non-deterministic
+# across machines/worktrees, so tracking it just dirties every `task dev`.
+build/darwin/Assets.car
+.env
+.env.local
+.recur/.env
+.recur/.env.local
+TODO.md
+
+# Playwright e2e
+frontend/playwright-report
+frontend/test-results
+frontend/blob-report
+frontend/.playwright
+/test-results/

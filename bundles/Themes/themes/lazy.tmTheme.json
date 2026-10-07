@@ -1,0 +1,178 @@
+{
+  "name": "LAZY",
+  "type": "light",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#000000",
+    "editor.selectionBackground": "#E8FA9E",
+    "editor.lineHighlightBackground": "#F2FBB58F",
+    "editorCursor.foreground": "#8F8F8F",
+    "editorWhitespace.foreground": "#C3C3C3"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#9E98A0"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#4B72C2"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#4B72C2"
+      },
+      "name": "Entity",
+      "scope": "entity"
+    },
+    {
+      "settings": {
+        "foreground": "#E04134"
+      },
+      "name": "Latex Entity",
+      "scope": "text.tex.latex entity"
+    },
+    {
+      "settings": {
+        "foreground": "#FF8C00"
+      },
+      "name": "Keyword",
+      "scope": [
+        "keyword",
+        "storage"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#4DA824"
+      },
+      "name": "String",
+      "scope": [
+        "string",
+        "meta.verbatim"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#4B72C2"
+      },
+      "name": "Support",
+      "scope": "support"
+    },
+    {
+      "settings": {},
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#AB1500",
+        "fontStyle": "italic"
+      },
+      "name": "Invalid – Deprecated",
+      "scope": "invalid.deprecated"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#AF2F1A"
+      },
+      "name": "Invalid – Illegal",
+      "scope": "invalid.illegal"
+    },
+    {
+      "settings": {
+        "foreground": "#4B72C2",
+        "fontStyle": "italic"
+      },
+      "name": "Superclass",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#7C3AC7"
+      },
+      "name": "String interpolation",
+      "scope": "string constant.other.placeholder"
+    },
+    {
+      "settings": {
+        "foreground": "#4F576B"
+      },
+      "name": "meta.function-call.py",
+      "scope": "meta.function-call.py"
+    },
+    {
+      "settings": {
+        "foreground": "#4A5D77"
+      },
+      "name": "meta.tag",
+      "scope": [
+        "meta.tag",
+        "meta.tag entity"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#91A2B9"
+      },
+      "name": "OCaml variant",
+      "scope": "keyword.type.variant"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "OCaml operator",
+      "scope": "source.ocaml keyword.operator"
+    },
+    {
+      "settings": {
+        "foreground": "#4B72C2"
+      },
+      "name": "OCaml infix operator",
+      "scope": "source.ocaml keyword.operator.symbol.infix"
+    },
+    {
+      "settings": {
+        "foreground": "#4B72C2"
+      },
+      "name": "OCaml prefix operator",
+      "scope": "source.ocaml keyword.operator.symbol.prefix"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "OCaml infix f-p operator",
+      "scope": "source.ocaml keyword.operator.symbol.infix.floating-point"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "OCaml prefix f-p operator",
+      "scope": "source.ocaml keyword.operator.symbol.prefix.floating-point"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "OCaml f-p constant",
+      "scope": "source.ocaml constant.numeric.floating-point"
+    }
+  ]
+}

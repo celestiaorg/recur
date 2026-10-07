@@ -1,0 +1,11 @@
+[[test]]
+name = "slugifies text"
+command = "Slugify"
+
+[test.context]
+input = "Hello, World!"
+selectedText = "Hello, World!"
+
+[test.expect]
+stdout = "hello-world"
+output = "replaceSelection"

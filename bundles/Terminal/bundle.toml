@@ -1,0 +1,113 @@
+[bundle]
+name = "Terminal"
+id = "recur.terminal"
+version = "1.0.0"
+author = "Recur"
+
+# xterm.js ITheme palettes (https://xtermjs.org/docs/api/terminal/interfaces/itheme/).
+# Classic consoles, then retro machines, then popular iTerm staples.
+
+[[terminalTheme]]
+id = "vga"
+name = "VGA"
+path = "themes/vga.json"
+uiTheme = "dark"
+order = 10
+
+[[terminalTheme]]
+id = "xterm"
+name = "xterm"
+path = "themes/xterm.json"
+uiTheme = "dark"
+order = 20
+
+[[terminalTheme]]
+id = "tango-dark"
+name = "Tango Dark"
+path = "themes/tango-dark.json"
+uiTheme = "dark"
+order = 30
+
+[[terminalTheme]]
+id = "tango-light"
+name = "Tango Light"
+path = "themes/tango-light.json"
+uiTheme = "light"
+order = 40
+
+[[terminalTheme]]
+id = "campbell"
+name = "Campbell"
+path = "themes/campbell.json"
+uiTheme = "dark"
+order = 50
+
+[[terminalTheme]]
+id = "solarized-dark"
+name = "Solarized Dark"
+path = "themes/solarized-dark.json"
+uiTheme = "dark"
+order = 60
+
+[[terminalTheme]]
+id = "solarized-light"
+name = "Solarized Light"
+path = "themes/solarized-light.json"
+uiTheme = "light"
+order = 70
+
+[[terminalTheme]]
+id = "homebrew"
+name = "Homebrew"
+path = "themes/homebrew.json"
+uiTheme = "dark"
+order = 80
+
+[[terminalTheme]]
+id = "c64"
+name = "C64"
+path = "themes/c64.json"
+uiTheme = "dark"
+order = 90
+
+[[terminalTheme]]
+id = "ubuntu"
+name = "Ubuntu"
+path = "themes/ubuntu.json"
+uiTheme = "dark"
+order = 100
+
+[[terminalTheme]]
+id = "man-page"
+name = "Man Page"
+path = "themes/man-page.json"
+uiTheme = "light"
+order = 110
+
+[[terminalTheme]]
+id = "tomorrow-night"
+name = "Tomorrow Night"
+path = "themes/tomorrow-night.json"
+uiTheme = "dark"
+order = 120
+
+[[terminalTheme]]
+id = "tomorrow-night-eighties"
+name = "Tomorrow Night Eighties"
+path = "themes/tomorrow-night-eighties.json"
+uiTheme = "dark"
+order = 130
+
+[[terminalTheme]]
+id = "snazzy"
+name = "Snazzy"
+path = "themes/snazzy.json"
+uiTheme = "dark"
+order = 140
+
+[[terminalTheme]]
+id = "ir-black"
+name = "IR Black"
+path = "themes/ir-black.json"
+uiTheme = "dark"
+order = 150

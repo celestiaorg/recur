@@ -1,0 +1,193 @@
+{
+  "name": "Funky Dashboard",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#000000D9",
+    "editor.foreground": "#D6D6D6",
+    "editor.selectionBackground": "#424242BF",
+    "editor.lineHighlightBackground": "#0000001A",
+    "editorCursor.foreground": "#D783FF",
+    "editorWhitespace.foreground": "#C0C0C0F4"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#D6D6D6",
+        "background": "#000000D9"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#73FA79"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#FF7E79"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#73FDFF"
+      },
+      "name": "Regular expression",
+      "scope": "string.regexp"
+    },
+    {
+      "settings": {
+        "foreground": "#7A81FF"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#FF85FF"
+      },
+      "name": "Identifier",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#FF9300"
+      },
+      "name": "Exception",
+      "scope": "support.class.exception"
+    },
+    {
+      "settings": {
+        "foreground": "#FFD479"
+      },
+      "name": "Function name",
+      "scope": "entity.name.function"
+    },
+    {
+      "settings": {
+        "foreground": "#D6D6D6",
+        "fontStyle": "bold underline"
+      },
+      "name": "Class name",
+      "scope": "entity.name.class"
+    },
+    {
+      "settings": {
+        "foreground": "#D6D6D6",
+        "fontStyle": "italic"
+      },
+      "name": "Arguments",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {
+        "foreground": "#797979",
+        "fontStyle": "italic"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#FF2F92",
+        "background": "#EE32124D"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "background": "#EE321200"
+      },
+      "name": "Trailing whitespace",
+      "scope": "invalid.deprecated.trailing-whitespace"
+    },
+    {
+      "settings": {
+        "foreground": "#D6D6D6",
+        "background": "#FBFBFBFC"
+      },
+      "name": "Embedded source",
+      "scope": "text source"
+    },
+    {
+      "settings": {
+        "foreground": "#7A81FF"
+      },
+      "name": "Tag",
+      "scope": [
+        "meta.tag",
+        "declaration.tag"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#7A97DC"
+      },
+      "name": "Constant",
+      "scope": [
+        "constant",
+        "support.constant"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#7A81FF",
+        "fontStyle": "bold"
+      },
+      "name": "Support",
+      "scope": "support"
+    },
+    {
+      "settings": {
+        "foreground": "#D6D6D6",
+        "fontStyle": "bold"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#521B93",
+        "background": "#F1F1F1D9",
+        "fontStyle": "bold"
+      },
+      "name": "Section name",
+      "scope": "entity.name.section"
+    },
+    {
+      "settings": {
+        "foreground": "#D6D6D6",
+        "fontStyle": "bold"
+      },
+      "name": "Frame title",
+      "scope": "entity.name.frame"
+    },
+    {
+      "settings": {
+        "foreground": "#797979"
+      },
+      "name": "XML Declaration",
+      "scope": "meta.tag.preprocessor.xml"
+    },
+    {
+      "settings": {
+        "foreground": "#417DD6",
+        "fontStyle": "italic"
+      },
+      "name": "Tag Attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#D6D6D6",
+        "fontStyle": "bold"
+      },
+      "name": "Tag Name",
+      "scope": "entity.name.tag"
+    }
+  ]
+}

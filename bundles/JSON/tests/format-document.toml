@@ -1,0 +1,26 @@
+[[test]]
+name = "formats document on save"
+command = "Format JSON on Save"
+
+[test.context]
+input = '{"a":1}'
+softTabs = true
+tabSize = 2
+
+[test.expect]
+stdout = '''
+{
+  "a": 1
+}'''
+output = "replaceDocument"
+
+[[test]]
+name = "pass through invalid json on save"
+command = "Format JSON on Save"
+
+[test.context]
+input = "{nope"
+
+[test.expect]
+stdout = "{nope"
+output = "replaceDocument"

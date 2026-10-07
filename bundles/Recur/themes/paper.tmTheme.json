@@ -1,0 +1,223 @@
+{
+  "name": "Paper",
+  "type": "light",
+  "colors": {
+    "editor.background": "#f7f8fa",
+    "editor.foreground": "#1a1c20",
+    "editor.selectionBackground": "#d3d7df",
+    "editor.lineHighlightBackground": "#0000000a",
+    "editorCursor.foreground": "#d4634a",
+    "editorLineNumber.foreground": "#8b929e",
+    "editorGutter.background": "#ebecef",
+    "editor.findMatchBackground": "#d4634a38",
+    "editor.findMatchHighlightBackground": "#d4634a66"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#1a1c20",
+        "background": "#f7f8fa"
+      }
+    },
+    {
+      "name": "Comments",
+      "scope": ["comment", "punctuation.definition.comment", "string.comment"],
+      "settings": { "foreground": "#8b929e", "fontStyle": "italic" }
+    },
+    {
+      "name": "Strings",
+      "scope": [
+        "string",
+        "string.quoted",
+        "string.template",
+        "punctuation.definition.string"
+      ],
+      "settings": { "foreground": "#2d9a5a" }
+    },
+    {
+      "name": "RegExp",
+      "scope": ["string.regexp", "constant.character.escape"],
+      "settings": { "foreground": "#a67c52" }
+    },
+    {
+      "name": "Numbers and constants",
+      "scope": [
+        "constant.numeric",
+        "constant.language",
+        "constant.character",
+        "constant.other",
+        "constant.other.placeholder",
+        "variable.other.constant",
+        "variable.other.enummember",
+        "entity.name.constant",
+        "keyword.other.unit",
+        "support.constant"
+      ],
+      "settings": { "foreground": "#a67c52" }
+    },
+    {
+      "name": "Keywords and storage",
+      "scope": [
+        "keyword",
+        "keyword.control",
+        "keyword.operator.word",
+        "storage",
+        "storage.type",
+        "storage.modifier",
+        "variable.language"
+      ],
+      "settings": { "foreground": "#7c5cbf" }
+    },
+    {
+      "name": "Functions",
+      "scope": ["entity.name.function", "support.function"],
+      "settings": { "foreground": "#d4634a" }
+    },
+    {
+      "name": "Types and classes",
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "entity.other.inherited-class",
+        "support.type",
+        "support.class",
+        "support.class.component",
+        "entity.name.namespace",
+        "support.variable"
+      ],
+      "settings": { "foreground": "#2a7eb5" }
+    },
+    {
+      "name": "HTML/XML/JSX tags",
+      "scope": ["entity.name.tag"],
+      "settings": { "foreground": "#7c5cbf" }
+    },
+    {
+      "name": "Attributes and property names",
+      "scope": [
+        "entity.other.attribute-name",
+        "invalid.deprecated.entity.other.attribute-name.html",
+        "support.type.property-name",
+        "meta.property-name",
+        "meta.object-literal.key"
+      ],
+      "settings": { "foreground": "#2a7eb5" }
+    },
+    {
+      "name": "Parameters",
+      "scope": ["variable.parameter"],
+      "settings": { "foreground": "#1a1c20", "fontStyle": "italic" }
+    },
+    {
+      "name": "Variables",
+      "scope": ["variable", "variable.other"],
+      "settings": { "foreground": "#1a1c20" }
+    },
+    {
+      "name": "Operators and punctuation",
+      "scope": ["keyword.operator", "punctuation", "meta.brace"],
+      "settings": { "foreground": "#5a616c" }
+    },
+    {
+      "name": "dotenv keys and $vars",
+      "scope": [
+        "variable.key.dotenv",
+        "variable.other.dotenv",
+        "variable.interpolation.dotenv"
+      ],
+      "settings": { "foreground": "#2a7eb5" }
+    },
+    {
+      "name": "dotenv values",
+      "scope": ["property.value.dotenv"],
+      "settings": { "foreground": "#2d9a5a" }
+    },
+    {
+      "name": "dotenv assignment",
+      "scope": ["keyword.operator.assignment.dotenv"],
+      "settings": { "foreground": "#5a616c" }
+    },
+    {
+      "name": "Embedded / template punctuation",
+      "scope": [
+        "punctuation.definition.template-expression",
+        "punctuation.section.embedded"
+      ],
+      "settings": { "foreground": "#7c5cbf" }
+    },
+    {
+      "name": "Markup headings",
+      "scope": [
+        "markup.heading",
+        "markup.heading entity.name",
+        "entity.name.section",
+        "punctuation.definition.heading"
+      ],
+      "settings": { "foreground": "#2a7eb5", "fontStyle": "bold" }
+    },
+    {
+      "name": "Markup bold",
+      "scope": ["markup.bold", "strong"],
+      "settings": { "fontStyle": "bold" }
+    },
+    {
+      "name": "Markup italic",
+      "scope": ["markup.italic", "emphasis"],
+      "settings": { "fontStyle": "italic" }
+    },
+    {
+      "name": "Markup underline",
+      "scope": ["markup.underline"],
+      "settings": { "fontStyle": "underline" }
+    },
+    {
+      "name": "Markup strikethrough",
+      "scope": ["markup.strikethrough"],
+      "settings": { "fontStyle": "strikethrough" }
+    },
+    {
+      "name": "Markup quotes and inline code",
+      "scope": [
+        "markup.quote",
+        "markup.inline.raw",
+        "markup.raw",
+        "markup.fenced_code"
+      ],
+      "settings": { "foreground": "#2d9a5a" }
+    },
+    {
+      "name": "Markup links",
+      "scope": [
+        "markup.underline.link",
+        "string.other.link",
+        "meta.link.inline.markdown"
+      ],
+      "settings": { "foreground": "#2a7eb5" }
+    },
+    {
+      "name": "Markup lists",
+      "scope": ["punctuation.definition.list.begin.markdown"],
+      "settings": { "foreground": "#d4634a" }
+    },
+    {
+      "name": "Invalid",
+      "scope": ["invalid"],
+      "settings": { "foreground": "#d14b4b" }
+    },
+    {
+      "name": "Diff inserted",
+      "scope": ["markup.inserted"],
+      "settings": { "foreground": "#2d9a5a" }
+    },
+    {
+      "name": "Diff deleted",
+      "scope": ["markup.deleted"],
+      "settings": { "foreground": "#c45c4c" }
+    },
+    {
+      "name": "Diff changed",
+      "scope": ["markup.changed"],
+      "settings": { "foreground": "#a67c52" }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+[[test]]
+name = "lowercases selection"
+command = "Lowercase"
+
+[test.context]
+input = "Hello"
+selectedText = "Hello"
+
+[test.expect]
+stdout = "hello"
+output = "replaceSelection"

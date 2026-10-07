@@ -1,0 +1,55 @@
+[bundle]
+name = "Linear"
+id = "recur.linear"
+version = "1.0.0"
+author = "Recur"
+
+[[setting]]
+id = "recur.linear.api-key"
+name = "api_key"
+label = "API key"
+description = "Personal API key for /linear, New Task paste-expand, ⌘K issue search, and Linear MCP tools when enabled in Settings → MCP. Create one in Linear → Settings → API."
+secret = true
+placeholder = "lin_api_…"
+url = "https://linear.app/settings/api"
+urlLabel = "Open Linear"
+
+[[setting]]
+id = "recur.linear.team-key"
+name = "team_key"
+label = "Default team key"
+description = "Optional prefix so bare numbers like 1234 resolve as ENG-1234."
+placeholder = "ENG"
+
+[[prompt]]
+id = "recur.linear.work"
+name = "Linear issue"
+description = "Work on a Linear issue"
+slash = "linear"
+takesArgs = true
+argPlaceholder = "TEAM-123 or paste a Linear URL"
+timeoutMs = 15000
+interpreter = "shebang"
+script = "src/linear.sh"
+complete = "src/complete.sh"
+icon = "icon.svg"
+
+[[prompt.arg]]
+name = "issue"
+placeholder = "TEAM-123 or paste a Linear URL"
+
+[[search]]
+id = "recur.linear.search"
+name = "Linear"
+icon = "icon.svg"
+interpreter = "shebang"
+script = "src/complete.sh"
+timeoutMs = 4000
+
+[[expand]]
+id = "recur.linear.expand"
+name = "Linear issue"
+match = '''(?i)^(https?://\S*linear\.app\S*|/linear(?:\s|$)|[A-Z][A-Z0-9]+-\d+\b|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|\d+(?:\s|$))'''
+interpreter = "shebang"
+script = "src/linear.sh"
+timeoutMs = 15000

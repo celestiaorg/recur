@@ -1,0 +1,11 @@
+[[test]]
+name = "camel to kebab"
+command = "To kebab-case"
+
+[test.context]
+input = "fooBar"
+selectedText = "fooBar"
+
+[test.expect]
+stdout = "foo-bar"
+output = "replaceInput"

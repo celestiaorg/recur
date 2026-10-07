@@ -1,0 +1,161 @@
+{
+  "name": "Why’s Poignant",
+  "type": "light",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#FFFEFA",
+    "editor.foreground": "#397AAA",
+    "editor.selectionBackground": "#499BD74D",
+    "editor.lineHighlightBackground": "#FFFDCA80",
+    "editorCursor.foreground": "#440521",
+    "editorWhitespace.foreground": "#FFACD4"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#397AAA",
+        "background": "#FFFEFA"
+      }
+    },
+    {
+      "settings": {
+        "fontStyle": "bold"
+      },
+      "name": "Why’s (Poignant) Guide to Ruby",
+      "scope": "markup.bold"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "http://poignantguide.net/ruby/",
+      "scope": [
+        "meta.link",
+        "markup.underline"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#632300",
+        "fontStyle": "bold"
+      },
+      "name": "Class name",
+      "scope": [
+        "entity.name.class",
+        "entity.name.type.class",
+        "support.class",
+        "constant.language",
+        "variable.other.constant",
+        "entity.other.attribute-name",
+        "punctuation.definition.entity"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "Symbol",
+      "scope": [
+        "constant.character",
+        "constant.other",
+        "punctuation.definition.constant"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#8A2C5A",
+        "fontStyle": "bold"
+      },
+      "name": "Keyword",
+      "scope": [
+        "keyword",
+        "keyword.operator.setter",
+        "keyword.other.special-method",
+        "punctuation.delimiter.method",
+        "entity.name.tag"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#AF4879"
+      },
+      "name": "Punctuation",
+      "scope": [
+        "punctuation",
+        "punctuation.definition.string",
+        "variable.other",
+        "meta.tag",
+        "support.type.property-name"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#AF4879",
+        "background": "#FFFEFA"
+      },
+      "name": "String Punctuation",
+      "scope": "punctuation.definition.string"
+    },
+    {
+      "settings": {
+        "foreground": "#30A879"
+      },
+      "name": "Number",
+      "scope": [
+        "constant.numeric",
+        "constant.character.entity",
+        "constant.character.entity punctuation.definition.entity"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#30A879",
+        "background": "#ECF7F7"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#564468",
+        "background": "#ECF4F7"
+      },
+      "name": "Regex",
+      "scope": "string.regexp"
+    },
+    {
+      "settings": {
+        "foreground": "#397AAA"
+      },
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other",
+        "variable.parameter.function",
+        "keyword.other.special-method",
+        "variable.other.block"
+      ]
+    },
+    {
+      "settings": {
+        "fontStyle": "bold"
+      },
+      "name": "Misc",
+      "scope": [
+        "constant.character",
+        "punctuation.definition.comment",
+        "punctuation.delimiter.object"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#686868"
+      },
+      "name": "Comment",
+      "scope": [
+        "comment",
+        "punctuation.definition.comment"
+      ]
+    }
+  ]
+}

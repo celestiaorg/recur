@@ -1,0 +1,470 @@
+{
+  "name": "Dominion Day",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#000000",
+    "editor.foreground": "#C6BDDF",
+    "editor.selectionBackground": "#496C4D",
+    "editor.lineHighlightBackground": "#200423",
+    "editorCursor.foreground": "#B0FCB5",
+    "editorWhitespace.foreground": "#592573"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#C6BDDF",
+        "background": "#000000"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD",
+        "background": "#39114D"
+      },
+      "name": "              Dominion Day",
+      "scope": "absolutely none"
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD",
+        "background": "#39114D"
+      },
+      "name": "  a uniquely harmonious theme for folks",
+      "scope": "absolutely none"
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD",
+        "background": "#39114D"
+      },
+      "name": "     who don't work in bright rooms",
+      "scope": "absolutely none"
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD",
+        "background": "#39114D"
+      },
+      "name": "          http://khiltd.com",
+      "scope": "absolutely none"
+    },
+    {
+      "settings": {
+        "foreground": "#471B5C",
+        "background": "#A8307B"
+      },
+      "name": "Unauthorized redistribution is prohibited",
+      "scope": "absolutely none"
+    },
+    {
+      "settings": {
+        "foreground": "#6F71FF"
+      },
+      "name": "Keyword",
+      "scope": [
+        "keyword - keyword.operator",
+        "keyword.operator.logical"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#6F71FF"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#6863AD"
+      },
+      "name": "Comment",
+      "scope": [
+        "comment",
+        "string.quoted.double.block.python",
+        "string.unquoted.cdata.xml"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "Constant",
+      "scope": [
+        "constant",
+        "variable.other.constant.ruby"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "Function",
+      "scope": [
+        "entity.name.function",
+        "meta.function-call"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "Support",
+      "scope": "support"
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "Entity",
+      "scope": "entity"
+    },
+    {
+      "settings": {
+        "foreground": "#6EA270"
+      },
+      "name": "Variable",
+      "scope": [
+        "variable.parameter",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#B0FCB5",
+        "background": "#FF26002E"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#B4B4D0"
+      },
+      "name": "Operators",
+      "scope": "keyword.operator"
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "Python Magic Variables",
+      "scope": "support.variable.magic.python"
+    },
+    {
+      "settings": {
+        "foreground": "#DDB8F6"
+      },
+      "name": "Python Function Args",
+      "scope": [
+        "variable.parameter.function.python",
+        "meta.function-call.arguments.python"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#C6BDDF"
+      },
+      "name": "Python Parenthesis",
+      "scope": [
+        "punctuation.definition.arguments.begin.python",
+        "punctuation.definition.arguments.end.python"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#6EA270"
+      },
+      "name": "Python Function Decorators",
+      "scope": [
+        "meta.function.decorator.python",
+        "entity.name.function.decorator.python",
+        "meta.function.decorator.arguments.python"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#C6BDDF"
+      },
+      "name": "Ruby Function Args",
+      "scope": "variable.parameter.function.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#7A349C"
+      },
+      "name": "Ruby Global",
+      "scope": "variable.other.readwrite.global.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "Ruby Class Variables",
+      "scope": "variable.other.readwrite.class.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#D0B3DF"
+      },
+      "name": "Ruby Instance Variables",
+      "scope": "variable.other.readwrite.instance.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#5A2075"
+      },
+      "name": "Generic Tag names",
+      "scope": [
+        "entity.name.tag",
+        "punctuation.definition.tag"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#7A2DA0"
+      },
+      "name": "Generic Tag attributes",
+      "scope": [
+        "entity.other.attribute-name",
+        "meta.tag.any.html"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#5A2075"
+      },
+      "name": "HTML Block Tags",
+      "scope": [
+        "meta.tag.block.any.html",
+        "entity.name.tag.block.any.html"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD"
+      },
+      "name": "HTML Structure Tags",
+      "scope": [
+        "meta.tag.structure.any.html punctuation.definition.tag.html",
+        "meta.tag.structure.any.html",
+        "entity.name.tag.structure.any.html"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "HTML Doctype",
+      "scope": [
+        "meta.tag.sgml.html",
+        "entity.name.tag.doctype.html",
+        "string.quoted.double.doctype.identifiers-and-DTDs.html"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "HTML Inline Tags",
+      "scope": [
+        "meta.tag.inline.any.html",
+        "meta.tag.inline.any.html punctuation.definition.tag.html",
+        "meta.tag.inline.any.html entity.other.attribute-name.html",
+        "entity.name.tag.inline.any.html"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#7A2DA0"
+      },
+      "name": "HTML Inline Tag Attributes",
+      "scope": "meta.tag.inline.any.html entity.other.attribute-name.html"
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "HTML Script Tags",
+      "scope": [
+        "source.js.embedded.html punctuation.definition.tag.html",
+        "entity.name.tag.script"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "XML Namespace",
+      "scope": [
+        "entity.name.tag.namespace.xml",
+        "entity.other.attribute-name.namespace.xml",
+        "meta.tag.xml",
+        "meta.tag.no-content.xml",
+        "meta.tag.preprocessor.xml"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "XML Localname",
+      "scope": "entity.name.tag.localname.xml"
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD"
+      },
+      "name": "XML Namespace Separator",
+      "scope": "punctuation.separator.namespace.xml"
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "PHP Tags",
+      "scope": [
+        "punctuation.definition.embedded.begin.php",
+        "meta.consecutive-tags.php",
+        "punctuation.definition.embedded.end.php"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "PHP Globals",
+      "scope": [
+        "variable.other.global.php",
+        "variable.other.global.safer.php"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "PHP Variable Definition",
+      "scope": "punctuation.definition.variable.php"
+    },
+    {
+      "settings": {
+        "foreground": "#D0B3DF"
+      },
+      "name": "PHP Variables",
+      "scope": "variable.other.php"
+    },
+    {
+      "settings": {
+        "foreground": "#676DFF"
+      },
+      "name": "JavaScript Keywords",
+      "scope": [
+        "variable.language.js",
+        "keyword.operator.new.js"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD"
+      },
+      "name": "JavaScript Arrays",
+      "scope": "meta.brace.square.js"
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "CSS Selectors",
+      "scope": "entity.name.tag.css"
+    },
+    {
+      "settings": {
+        "foreground": "#A937B1"
+      },
+      "name": "YAML Entity",
+      "scope": "source.yaml entity.name.tag.yaml"
+    },
+    {
+      "settings": {
+        "foreground": "#7A349C"
+      },
+      "name": "CSS Class & ID Selectors",
+      "scope": [
+        "entity.other.attribute-name.class.css",
+        "entity.other.attribute-name.id.css",
+        "entity.other.attribute-name.attribute.css"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#9669AD"
+      },
+      "name": "CSS Properties",
+      "scope": "support.type.property-name.css"
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "CSS Combinators & Attribute Selectors",
+      "scope": [
+        "punctuation.definition.entity.css",
+        "meta.selector.css"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "CSS Units",
+      "scope": "keyword.other.unit.css"
+    },
+    {
+      "settings": {
+        "foreground": "#C288DE"
+      },
+      "name": "CSS URLs",
+      "scope": "variable.parameter.url.css"
+    },
+    {
+      "settings": {
+        "foreground": "#D0B3DF"
+      },
+      "name": "CSS Constants",
+      "scope": [
+        "constant.numeric.css",
+        "constant.other.color.rgb-value.css",
+        "variable.parameter.misc.css"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#D0B3DF"
+      },
+      "name": "CSS Punctuation",
+      "scope": [
+        "meta.property-value.css",
+        "meta.property-list.css",
+        "source.css",
+        "string.quoted.double.attribute-value.css"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#6EA270"
+      },
+      "name": "CSS Pseudoelements & Pseudoclasses",
+      "scope": [
+        "entity.other.attribute-name.pseudo-element.css",
+        "entity.other.attribute-name.pseudo-class.css"
+      ]
+    }
+  ]
+}

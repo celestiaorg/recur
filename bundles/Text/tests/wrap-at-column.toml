@@ -1,0 +1,22 @@
+[[test]]
+name = "wraps at column"
+command = "Wrap at Column"
+
+[test.context]
+input = '''
+hello world forever
+'''
+selectedText = '''
+hello world forever
+'''
+
+[test.context.prompts]
+width = "8"
+
+[test.expect]
+stdout = '''
+hello 
+world 
+forever
+'''
+output = "replaceInput"

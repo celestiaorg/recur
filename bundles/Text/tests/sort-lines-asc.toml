@@ -1,0 +1,12 @@
+# Example: multi-line payloads via *File (paths relative to this TOML).
+[[test]]
+name = "sorts lines ascending"
+command = "recur.text.sort-lines-asc"
+
+[test.context]
+inputFile = "sort-asc/input.txt"
+selectedTextFile = "sort-asc/input.txt"
+
+[test.expect]
+stdoutFile = "sort-asc/expect.txt"
+output = "replaceSelection"

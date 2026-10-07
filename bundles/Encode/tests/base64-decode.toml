@@ -1,0 +1,11 @@
+[[test]]
+name = "base64 decodes"
+command = "Base64 Decode"
+
+[test.context]
+input = "aGk="
+selectedText = "aGk="
+
+[test.expect]
+stdout = "hi"
+output = "replaceSelection"

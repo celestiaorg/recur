@@ -1,0 +1,201 @@
+/* ===== theme tokens ===== */
+:root {
+  /* Charcoal — default: neutral grey surfaces, clay accent, high contrast */
+  --bg: #141414;
+  --pane: #1c1c1c;
+  --pane-2: #262626;
+  --rail: #181818;
+  --titlebar: #181818;
+  --statusbar: #161616;
+  --line: #2e2e2e;
+  --line-soft: #222222;
+  --line-bright: #3d3d3d;
+  --text: #e6e4e1;
+  --muted: #969490;
+  --faint: #686662;
+  --amber: #e07a5f;
+  --amber-d: rgba(224, 122, 95, .14);
+  --cyan: #6eb6ff;
+  --emerald: #4ade80;
+  --coral: #f87171;
+  --coral-d: rgba(248, 113, 113, .14);
+  --indigo: #a78bfa;
+  --warn: #fbbf24;
+  --coral-line: color-mix(in srgb, var(--coral) 42%, var(--line));
+  /* Git status letters — theme-stable (not remapped with --amber/--emerald/--coral). */
+  --git-m: #e6c84a;
+  --git-a: #5dbe7e;
+  --git-d: #f07178;
+  --git-u: #5dbe7e;
+  --scrollbar-size: 11px;
+  --scrollbar-thumb: #3a3a3a;
+  --scrollbar-thumb-hover: #4d4d4d;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --ui: 'Inter', system-ui, sans-serif;
+  --disp: 'Space Grotesk', var(--ui);
+}
+
+/* ===== themes (color only — identity & layout stay constant) ===== */
+:root[data-theme="slate"] {
+  --bg: #0A0C10;
+  --pane: #101319;
+  --pane-2: #161A21;
+  --rail: #0C0E13;
+  --titlebar: #11141A;
+  --statusbar: #0E1116;
+  --line: #212732;
+  --line-soft: #191E26;
+  --line-bright: #2C343F;
+  --text: #DBE2EA;
+  --muted: #7C8896;
+  --faint: #4E5864;
+  --amber: #F2B33D;
+  --amber-d: rgba(242, 179, 61, .12);
+  --cyan: #4CC6D6;
+  --emerald: #5DBE7E;
+  --coral: #EB7A5C;
+  --coral-d: rgba(235, 122, 92, .15);
+  --indigo: #9486F4;
+  --scrollbar-thumb: #2C343F;
+  --scrollbar-thumb-hover: #3A4452;
+}
+
+/* Cool Glow — deep navy with soft teal accent (glow, not neon). */
+:root[data-theme="coolglow"] {
+  --bg: #0a0c22;
+  --pane: #0e1130;
+  --pane-2: #161a3c;
+  --rail: #0c0e28;
+  --titlebar: #0c0e28;
+  --statusbar: #080a1c;
+  --line: #1c2348;
+  --line-soft: #141836;
+  --line-bright: #2a3460;
+  --text: #d8dce8;
+  --muted: #6e7d9a;
+  --faint: #4e5670;
+  --amber: #45c4b8;
+  --amber-d: rgba(69, 196, 184, .12);
+  --cyan: #6eb8d4;
+  --emerald: #6ecf8a;
+  --coral: #e87890;
+  --coral-d: rgba(232, 120, 144, .18);
+  --indigo: #a78bc4;
+  --warn: #d4c98a;
+  --scrollbar-thumb: #2a3460;
+  --scrollbar-thumb-hover: #3a4578;
+}
+
+/* Catppuccin Mocha — slightly brighter text / darker muted for observatory chrome. */
+:root[data-theme="catppuccin"] {
+  --bg: #0e0e16;
+  --pane: #181825;
+  --pane-2: #262637;
+  --rail: #13131d;
+  --titlebar: #13131d;
+  --statusbar: #0c0c14;
+  --line: #313244;
+  --line-soft: #1e1e2e;
+  --line-bright: #45475a;
+  --text: #e0e6f8;
+  --muted: #7f849c;
+  --faint: #585b70;
+  --amber: #cba6f7;
+  --amber-d: rgba(203, 166, 247, .14);
+  --cyan: #89dceb;
+  --emerald: #a6e3a1;
+  --coral: #f38ba8;
+  --coral-d: rgba(243, 139, 168, .16);
+  --indigo: #b4befe;
+  --warn: #f9e2af;
+  --scrollbar-thumb: #45475a;
+  --scrollbar-thumb-hover: #585b70;
+}
+
+/* Paper — cool daylight twin of Charcoal; clay accent on light grey paper (not cream). */
+:root[data-theme="paper"] {
+  color-scheme: light;
+  --bg: #ebecef;
+  --pane: #f7f8fa;
+  --pane-2: #e4e6eb;
+  --rail: #f0f1f4;
+  --titlebar: #f0f1f4;
+  --statusbar: #e8e9ed;
+  --line: #cfd3db;
+  --line-soft: #dde0e6;
+  --line-bright: #b4bac6;
+  --text: #1a1c20;
+  --muted: #5a616c;
+  --faint: #8b929e;
+  --amber: #d4634a;
+  --amber-d: rgba(212, 99, 74, .12);
+  --cyan: #2a7eb5;
+  --emerald: #2d9a5a;
+  --coral: #d14b4b;
+  --coral-d: rgba(209, 75, 75, .11);
+  --indigo: #6b5bd4;
+  --warn: #b8860b;
+  --git-m: #a68512;
+  --git-a: #2d9a5a;
+  --git-d: #d14b4b;
+  --git-u: #2d9a5a;
+  --scrollbar-thumb: #c5cad3;
+  --scrollbar-thumb-hover: #aeb5c0;
+}
+
+:root[data-theme="paper"] .toolbar, :root[data-theme="paper"] .prh {
+  background: rgba(247, 248, 250, .88);
+}
+
+:root[data-theme="paper"] .lgroup, :root[data-theme="paper"] .kcol-h {
+  background: rgba(0, 0, 0, .03);
+}
+
+:root[data-theme="paper"] .set-nav-item:hover, :root[data-theme="paper"] .mm-radio:hover {
+  background: rgba(0, 0, 0, .04);
+  color: var(--text);
+}
+
+:root[data-theme="paper"] .set-nav-item.on {
+  background: rgba(0, 0, 0, .07);
+  color: var(--text);
+}
+
+:root[data-theme="paper"] .chat-composer-chip-x:hover {
+  background: rgba(0, 0, 0, .06);
+  color: var(--text);
+}
+
+:root[data-theme="paper"] .skel::after {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, .06), transparent);
+}
+
+:root[data-theme="paper"] .obs-editor-pane:not(.lit) .cm-selectionBackground, :root[data-theme="paper"] .obs-editor-pane:not(.lit) .cm-content ::selection {
+  background-color: rgba(0, 0, 0, .1)!important;
+}
+
+/* Nord — darker polar night so frost accents read with more punch. */
+:root[data-theme="nord"] {
+  --bg: #181c24;
+  --pane: #222730;
+  --pane-2: #2e3440;
+  --rail: #1c2129;
+  --titlebar: #1c2129;
+  --statusbar: #14181f;
+  --line: #3b4252;
+  --line-soft: #2a303a;
+  --line-bright: #4c566a;
+  --text: #eceff4;
+  --muted: #7b88a1;
+  --faint: #4c566a;
+  --amber: #88c0d0;
+  --amber-d: rgba(136, 192, 208, .14);
+  --cyan: #8fbcbb;
+  --emerald: #a3be8c;
+  --coral: #bf616a;
+  --coral-d: rgba(191, 97, 106, .18);
+  --indigo: #b48ead;
+  --warn: #ebcb8b;
+  --scrollbar-thumb: #4c566a;
+  --scrollbar-thumb-hover: #5e6a80;
+}

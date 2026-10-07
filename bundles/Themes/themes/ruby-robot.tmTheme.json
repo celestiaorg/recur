@@ -1,0 +1,152 @@
+{
+  "name": "RubyRobot",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#000000",
+    "editor.foreground": "#FFFFFF",
+    "editor.selectionBackground": "#5A9FE2B3",
+    "editor.lineHighlightBackground": "#4A49007A",
+    "editorCursor.foreground": "#FFFFFF",
+    "editorWhitespace.foreground": "#515151"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#000000"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#F1F1F1",
+        "background": "#000000"
+      },
+      "name": "Text",
+      "scope": "text"
+    },
+    {
+      "settings": {
+        "background": "#000000"
+      },
+      "name": "Source",
+      "scope": "source"
+    },
+    {
+      "settings": {
+        "foreground": "#B29388"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#B29388",
+        "background": "#171717"
+      },
+      "name": "Block comment",
+      "scope": "comment.block"
+    },
+    {
+      "settings": {
+        "foreground": "#438C23"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#DB3442"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#B8B8B8"
+      },
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#3C98C6"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#B8B8B8"
+      },
+      "name": "Function name",
+      "scope": "entity.name.function"
+    },
+    {
+      "settings": {
+        "foreground": "#CECECE"
+      },
+      "name": "Function argument",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {
+        "foreground": "#6DF100"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#DFE700"
+      },
+      "name": "Regular expression",
+      "scope": "string.regexp"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "Type name",
+      "scope": "entity.name.type"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "Class inheritance",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#B8B8B8"
+      },
+      "name": "Tag name",
+      "scope": [
+        "meta.tag",
+        "meta.tag entity"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#438C23"
+      },
+      "name": "Tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#D5CEBE"
+      },
+      "name": "Support function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#E7995F"
+      },
+      "name": "Support class",
+      "scope": "support.class"
+    }
+  ]
+}

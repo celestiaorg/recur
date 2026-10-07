@@ -1,0 +1,379 @@
+[bundle]
+name = "JavaScript"
+id = "recur.javascript"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "typescript-language-server"
+languages = ["typescript", "javascript", "typescriptreact", "javascriptreact", "tsx", "jsx", "vue"]
+fileGlob = ["*.{js,jsx,mjs,cjs,ts,tsx,vue}"]
+command = "typescript-language-server"
+args = ["--stdio"]
+managed = "typescript-language-server"
+
+[[command]]
+id = "recur.javascript.format-on-save"
+name = "Format on Save"
+category = "JavaScript"
+order = 10
+# No single scope — covers JS and TS via fileGlob brace expansion.
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "shebang"
+body = '''
+#!/usr/bin/env bash
+# Prefer deno fmt, then prettier; pass through if neither is available.
+tmp=$(mktemp "${TMPDIR:-/tmp}/recur-fmt.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+cat >"$tmp"
+# Preserve extension so tools pick a parser.
+ext="${RECUR_FILENAME##*.}"
+case "$ext" in
+  js|jsx|mjs|cjs|ts|tsx|json) ;;
+  *) ext="js" ;;
+esac
+named="${tmp}.${ext}"
+mv "$tmp" "$named"
+trap 'rm -f "$named" "$named.out"' EXIT
+if command -v deno >/dev/null 2>&1; then
+  if deno fmt --quiet "$named" 2>/dev/null; then
+    cat "$named"
+    exit 0
+  fi
+fi
+if command -v prettier >/dev/null 2>&1; then
+  # Write via a file (not $(…)) so trailing newlines are preserved.
+  if prettier "$named" >"$named.out" 2>/dev/null; then
+    cat "$named.out"
+    exit 0
+  fi
+fi
+cat "$named"
+'''
+
+# --- snippets ----------------------------------------------------------------
+
+[[snippet]]
+id = "recur.javascript.log"
+name = "console.log"
+tabTrigger = "log"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 10
+body = '''
+console.log(${1:$TM_SELECTED_TEXT});
+'''
+
+[[snippet]]
+id = "recur.javascript.forof"
+name = "for…of"
+tabTrigger = "forof"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 20
+body = '''
+for (${1:variable} of ${2:iterable}) {
+	$3
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.class"
+name = "class"
+tabTrigger = "class"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 30
+body = '''
+class ${1:ClassName} {
+	constructor($2) {
+		$3
+	}
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.fun"
+name = "function"
+tabTrigger = "fun"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 40
+body = '''
+function ${1:functionName}($2) {
+	$0
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.try"
+name = "try/catch"
+tabTrigger = "try"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 50
+body = '''
+try {
+	$1
+} catch (${2:e}) {
+	$3
+} finally {
+	$4
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.ife"
+name = "if … else"
+tabTrigger = "ife"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 60
+body = '''
+if (${1:true}) {
+	${2:$TM_SELECTED_TEXT}
+} else {
+	$3
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.if"
+name = "if"
+tabTrigger = "if"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 61
+body = '''
+if (${1:true}) {
+	${2:$TM_SELECTED_TEXT}
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.else"
+name = "else"
+tabTrigger = "else"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 62
+body = '''
+else {
+	${1:$TM_SELECTED_TEXT}
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.for"
+name = "for"
+tabTrigger = "for"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 21
+body = '''
+for (var ${1:i} = 0; $1 < ${2:Things}.length; $1++) {
+	${2:Things}[$1]
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.for-rev"
+name = "for reverse"
+tabTrigger = "for"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 22
+body = '''
+for (var ${1:i} = ${2:Things}.length - 1; $1 >= 0; $1--) {
+	${2:Things}[$1]
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.forin"
+name = "for…in"
+tabTrigger = "forin"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 23
+body = '''
+for (${1:variable} in ${2:object}) {
+	if (${2:object}.hasOwnProperty(${1:variable})) {
+		${0:$TM_SELECTED_TEXT}
+	}
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.f"
+name = "Anonymous Function"
+tabTrigger = "f"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 41
+body = '''
+function ($1) {
+	${0:$TM_SELECTED_TEXT}
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.iife"
+name = "IIFE"
+tabTrigger = "iife"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 42
+body = '''
+(function() {
+	${1:$TM_SELECTED_TEXT}
+}());
+'''
+
+[[snippet]]
+id = "recur.javascript.proto"
+name = "Prototype"
+tabTrigger = "proto"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 43
+body = '''
+${1:ClassName}.prototype.${2:methodName} = function ($3) {
+	$0
+};
+'''
+
+[[snippet]]
+id = "recur.javascript.do"
+name = "do"
+tabTrigger = "do"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 24
+body = '''
+do {
+	${2:$TM_SELECTED_TEXT}
+} while (${1:true});
+'''
+
+[[snippet]]
+id = "recur.javascript.while"
+name = "while"
+tabTrigger = "while"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 25
+body = '''
+while (${1:true}) {
+	${2:$TM_SELECTED_TEXT}
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.switch"
+name = "switch"
+tabTrigger = "switch"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 26
+body = '''
+switch (${1:expression}) {
+case ${2:expression}:
+	$4
+	break;
+default:
+	${3:$TM_SELECTED_TEXT}
+}
+'''
+
+[[snippet]]
+id = "recur.javascript.case"
+name = "case"
+tabTrigger = "case"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 27
+body = '''
+case ${1:expression}:
+	$2
+	break;
+'''
+
+[[snippet]]
+id = "recur.javascript.error"
+name = "console.error"
+tabTrigger = "error"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 11
+body = '''
+console.error(${1:$TM_SELECTED_TEXT});
+'''
+
+[[snippet]]
+id = "recur.javascript.warn"
+name = "console.warn"
+tabTrigger = "warn"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 12
+body = '''
+console.warn(${1:$TM_SELECTED_TEXT});
+'''
+
+[[snippet]]
+id = "recur.javascript.throw"
+name = "throw"
+tabTrigger = "throw"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 13
+body = '''
+throw new ${1:Error}(${2:$TM_SELECTED_TEXT});
+'''
+
+[[snippet]]
+id = "recur.javascript.timeout"
+name = "setTimeout"
+tabTrigger = "timeout"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 70
+body = '''
+setTimeout(function () {
+	${2:$TM_SELECTED_TEXT}
+}, ${1:10});
+'''
+
+[[snippet]]
+id = "recur.javascript.interval"
+name = "setInterval"
+tabTrigger = "interval"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 71
+body = '''
+setInterval(function () {
+	${2:$TM_SELECTED_TEXT}
+}, ${1:10});
+'''
+
+[[snippet]]
+id = "recur.javascript.get-id"
+name = "getElementById"
+tabTrigger = "get"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 80
+body = '''
+getElementById(${1:'${2:id}'})
+'''
+
+[[snippet]]
+id = "recur.javascript.get-class"
+name = "getElementsByClassName"
+tabTrigger = "get"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 81
+body = '''
+getElementsByClassName(${1:'${2:className}'})
+'''
+
+[[snippet]]
+id = "recur.javascript.get-name"
+name = "getElementsByName"
+tabTrigger = "get"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 82
+body = '''
+getElementsByName(${1:'${2:name}'})
+'''
+
+[[snippet]]
+id = "recur.javascript.get-tag"
+name = "getElementsByTagName"
+tabTrigger = "get"
+fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
+order = 83
+body = '''
+getElementsByTagName(${1:'${2:tagName}'})
+'''

@@ -1,0 +1,1 @@
+Ship a correct, reviewable change to a pull request. Plan first when there is no approved plan, then implement and review until the policy bar passes, then open the PR. Do not reopen scope the human already closed.

@@ -1,0 +1,503 @@
+[bundle]
+name = "Go"
+id = "recur.go"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "gopls"
+languages = ["go", "go.mod", "go.work", "go.sum", "gomod", "gowork"]
+fileGlob = ["*.go", "go.mod", "go.work", "go.sum"]
+command = "gopls"
+args = ["serve"]
+managed = "gopls"
+
+[[command]]
+id = "recur.go.gofmt-on-save"
+name = "Gofmt on Save"
+category = "Go"
+order = 10
+scope = "source.go"
+fileGlob = "*.go"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "shebang"
+body = '''
+#!/usr/bin/env bash
+# Format stdin with gofmt; pass through unchanged if gofmt is missing.
+# Write via a file (not $(…)) so trailing newlines are preserved.
+if ! command -v gofmt >/dev/null 2>&1; then
+  cat
+  exit 0
+fi
+tmp=$(mktemp)
+trap 'rm -f "$tmp" "$tmp.out"' EXIT
+cat >"$tmp"
+if gofmt "$tmp" >"$tmp.out" 2>/dev/null; then
+  cat "$tmp.out"
+else
+  cat "$tmp"
+fi
+'''
+
+# --- snippets (Tab + optional keyEquivalent) --------------------------------
+
+[[snippet]]
+id = "recur.go.ife"
+name = "If Err"
+tabTrigger = "ife"
+scope = "source.go"
+fileGlob = "*.go"
+order = 10
+body = '''
+if ${1:err} != nil {
+	${2:log.Fatal(${1:err})}
+}
+'''
+
+[[snippet]]
+id = "recur.go.func"
+name = "Function"
+tabTrigger = "func"
+scope = "source.go"
+fileGlob = "*.go"
+order = 20
+body = '''
+func ${1:name}(${2:params}) ${3:type} {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.meth"
+name = "Method"
+tabTrigger = "meth"
+scope = "source.go"
+fileGlob = "*.go"
+order = 21
+body = '''
+func (${1:receiver} ${2:type}) ${3:name}(${4:params}) ${5:type} {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.for"
+name = "For Loop"
+tabTrigger = "for"
+scope = "source.go"
+fileGlob = "*.go"
+order = 30
+body = '''
+for ${1:condition} {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.forr"
+name = "For Range Loop"
+tabTrigger = "forr"
+scope = "source.go"
+fileGlob = "*.go"
+order = 31
+body = '''
+for ${2:name} := range ${1:collection} {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.fori"
+name = "For Index Loop"
+tabTrigger = "fori"
+scope = "source.go"
+fileGlob = "*.go"
+order = 32
+body = '''
+for ${2:i} := 0; $2 < ${1:count}; ${3:i++} {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.st"
+name = "Struct"
+tabTrigger = "st"
+scope = "source.go"
+fileGlob = "*.go"
+order = 40
+body = '''
+type ${1:Foo} struct {
+	${2:Bar} ${0:string}
+}
+'''
+
+[[snippet]]
+id = "recur.go.main"
+name = "Main Function"
+tabTrigger = "main"
+scope = "source.go"
+fileGlob = "*.go"
+order = 50
+body = '''
+func main() {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.test"
+name = "Test"
+tabTrigger = "test"
+scope = "source.go"
+fileGlob = "*.go"
+order = 51
+body = '''
+package ${1:main}
+
+import (
+	"testing"
+)
+
+func Test${2:Name}(t *testing.T) {
+	${0}t.Fatal("no test body")
+}
+'''
+
+[[snippet]]
+id = "recur.go.imp"
+name = "Import"
+tabTrigger = "imp"
+scope = "source.go"
+fileGlob = "*.go"
+order = 60
+body = '''
+import ${2:package} "${1:package}"
+'''
+
+[[snippet]]
+id = "recur.go.imps"
+name = "Imports"
+tabTrigger = "imps"
+scope = "source.go"
+fileGlob = "*.go"
+order = 61
+body = '''
+import (
+	"${0:package}"
+)
+'''
+
+[[snippet]]
+id = "recur.go.fmt"
+name = "Print line"
+tabTrigger = "fmt"
+scope = "source.go"
+fileGlob = "*.go"
+order = 70
+body = '''
+fmt.Println(${1:"${2:Hello World!}"})
+'''
+
+[[snippet]]
+id = "recur.go.if"
+name = "If Statement"
+tabTrigger = "if"
+scope = "source.go"
+fileGlob = "*.go"
+order = 12
+body = '''
+if ${1:condition} {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.case"
+name = "Case Clause"
+tabTrigger = "case"
+scope = "source.go"
+fileGlob = "*.go"
+order = 13
+body = '''
+case ${1:condition}:
+	${0://body}
+'''
+
+[[snippet]]
+id = "recur.go.def"
+name = "Default Clause"
+tabTrigger = "def"
+scope = "source.go"
+fileGlob = "*.go"
+order = 14
+body = '''
+default:
+	${0://body}
+'''
+
+[[snippet]]
+id = "recur.go.sw"
+name = "Switch Statement"
+tabTrigger = "sw"
+scope = "source.go"
+fileGlob = "*.go"
+order = 15
+body = '''
+switch ${1:expression} {
+case$0
+}
+'''
+
+[[snippet]]
+id = "recur.go.sel"
+name = "Select Statement"
+tabTrigger = "sel"
+scope = "source.go"
+fileGlob = "*.go"
+order = 16
+body = '''
+select {
+case$0
+}
+'''
+
+[[snippet]]
+id = "recur.go.init"
+name = "Init Function"
+tabTrigger = "init"
+scope = "source.go"
+fileGlob = "*.go"
+order = 52
+body = '''
+func init() {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.funcv"
+name = "Function w/ result vars"
+tabTrigger = "funcv"
+scope = "source.go"
+fileGlob = "*.go"
+order = 22
+body = '''
+func ${1:name}(${2:params}) (${3:type}) {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.methv"
+name = "Method w/ result vars"
+tabTrigger = "methv"
+scope = "source.go"
+fileGlob = "*.go"
+order = 23
+body = '''
+func (${1:receiver} ${2:type}) ${3:name}(${4:params}) (${5:type}) {
+	${0:// body}
+}
+'''
+
+[[snippet]]
+id = "recur.go.fun"
+name = "Function Type"
+tabTrigger = "fun"
+scope = "source.go"
+fileGlob = "*.go"
+order = 24
+body = '''
+func(${1:params}) ${2:type}
+'''
+
+[[snippet]]
+id = "recur.go.go"
+name = "Goroutine Call"
+tabTrigger = "go"
+scope = "source.go"
+fileGlob = "*.go"
+order = 25
+body = '''
+go ${1:func(${2:params}) {
+	${0:// body}
+}(${3:values})}
+'''
+
+[[snippet]]
+id = "recur.go.de"
+name = "Deferred Goroutine Call"
+tabTrigger = "de"
+scope = "source.go"
+fileGlob = "*.go"
+order = 26
+body = '''
+defer ${1:func(${2:params}) {
+	${0:// body}
+}(${3:values})}
+'''
+
+[[snippet]]
+id = "recur.go.ch"
+name = "Channel"
+tabTrigger = "ch"
+scope = "source.go"
+fileGlob = "*.go"
+order = 80
+body = '''
+chan ${1:valtype}
+'''
+
+[[snippet]]
+id = "recur.go.map"
+name = "Map"
+tabTrigger = "map"
+scope = "source.go"
+fileGlob = "*.go"
+order = 81
+body = '''
+map[${1:keytype}]${2:valtype}
+'''
+
+[[snippet]]
+id = "recur.go.in"
+name = "Empty Interface"
+tabTrigger = "in"
+scope = "source.go"
+fileGlob = "*.go"
+order = 82
+body = '''
+interface {}
+'''
+
+[[snippet]]
+id = "recur.go.inte"
+name = "Interface"
+tabTrigger = "inte"
+scope = "source.go"
+fileGlob = "*.go"
+order = 83
+body = '''
+interface {
+	${0:method}
+}
+'''
+
+[[snippet]]
+id = "recur.go.con"
+name = "Constant"
+tabTrigger = "con"
+scope = "source.go"
+fileGlob = "*.go"
+order = 84
+body = '''
+const ${1:name} ${2:type} = ${0:value}
+'''
+
+[[snippet]]
+id = "recur.go.cons"
+name = "Constants"
+tabTrigger = "cons"
+scope = "source.go"
+fileGlob = "*.go"
+order = 85
+body = '''
+const (
+	${1:name} ${2:type} = ${0:value}
+)
+'''
+
+[[snippet]]
+id = "recur.go.var"
+name = "Variable"
+tabTrigger = "var"
+scope = "source.go"
+fileGlob = "*.go"
+order = 86
+body = '''
+var ${1:name} ${2:type} = ${0:value}
+'''
+
+[[snippet]]
+id = "recur.go.vars"
+name = "Variables"
+tabTrigger = "vars"
+scope = "source.go"
+fileGlob = "*.go"
+order = 87
+body = '''
+var (
+	${1:name} ${2:type} = ${0:value}
+)
+'''
+
+[[snippet]]
+id = "recur.go.type"
+name = "Type"
+tabTrigger = "type"
+scope = "source.go"
+fileGlob = "*.go"
+order = 88
+body = '''
+type ${1:name} ${0:definition}
+'''
+
+[[snippet]]
+id = "recur.go.types"
+name = "Types"
+tabTrigger = "types"
+scope = "source.go"
+fileGlob = "*.go"
+order = 89
+body = '''
+type (
+	${1:name} ${0:definition}
+)
+'''
+
+[[snippet]]
+id = "recur.go.mk"
+name = "Make"
+tabTrigger = "mk"
+scope = "source.go"
+fileGlob = "*.go"
+order = 90
+body = '''
+${1:name} := make(${2:reftype})
+'''
+
+[[snippet]]
+id = "recur.go.new"
+name = "New"
+tabTrigger = "new"
+scope = "source.go"
+fileGlob = "*.go"
+order = 91
+body = '''
+${1:name} := new(${2:type})
+'''
+
+[[snippet]]
+id = "recur.go.pkg"
+name = "Package"
+tabTrigger = "pkg"
+scope = "source.go"
+fileGlob = "*.go"
+order = 5
+body = '''
+package ${1:main}
+'''
+
+[[snippet]]
+id = "recur.go.ret"
+name = "Return Statement"
+tabTrigger = "ret"
+scope = "source.go"
+fileGlob = "*.go"
+order = 92
+body = '''
+return ${1:value}
+'''

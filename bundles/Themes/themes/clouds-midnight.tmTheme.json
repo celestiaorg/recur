@@ -1,0 +1,230 @@
+{
+  "name": "Clouds Midnight",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#212121",
+    "editor.foreground": "#A3A3A3",
+    "editor.selectionBackground": "#000000",
+    "editor.lineHighlightBackground": "#DFDFDF08",
+    "editorCursor.foreground": "#8FB5E3",
+    "editorWhitespace.foreground": "#CBCBCB"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#A3A3A3",
+        "background": "#212121"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#4D514C"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#6FA3D7"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#54B105"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#45A37D"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {},
+      "name": "User-defined constant",
+      "scope": [
+        "constant.character",
+        "constant.other"
+      ]
+    },
+    {
+      "settings": {},
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A38E70"
+      },
+      "name": "Keyword",
+      "scope": [
+        "keyword",
+        "support.constant.property-value",
+        "constant.other.color"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#437F22"
+      },
+      "name": "Keyword -> Unit",
+      "scope": "keyword.other.unit"
+    },
+    {
+      "settings": {
+        "foreground": "#B47C76"
+      },
+      "name": "HTML Attribute",
+      "scope": "entity.other.attribute-name.html"
+    },
+    {
+      "settings": {
+        "foreground": "#5D5D5D"
+      },
+      "name": "Keyword -> Operator",
+      "scope": "keyword.operator"
+    },
+    {
+      "settings": {
+        "foreground": "#F0463B"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {},
+      "name": "Class name",
+      "scope": "entity.name.class"
+    },
+    {
+      "settings": {
+        "foreground": "#979797"
+      },
+      "name": "Inherited class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {},
+      "name": "Function name",
+      "scope": "entity.name.function"
+    },
+    {
+      "settings": {},
+      "name": "Function argument",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {
+        "foreground": "#737373"
+      },
+      "name": "Tag name",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#B27DBA"
+      },
+      "name": "HTML Entity",
+      "scope": "constant.character.entity"
+    },
+    {
+      "settings": {
+        "foreground": "#B27DBA"
+      },
+      "name": "JS Support Class",
+      "scope": "support.class.js"
+    },
+    {
+      "settings": {
+        "foreground": "#737373"
+      },
+      "name": "Tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#F0463B"
+      },
+      "name": "CSS Selector",
+      "scope": [
+        "meta.selector.css",
+        "entity.name.tag.css",
+        "entity.other.attribute-name.id.css",
+        "entity.other.attribute-name.class.css"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#747474"
+      },
+      "name": "CSS Property",
+      "scope": "meta.property-name.css"
+    },
+    {
+      "settings": {
+        "foreground": "#F0463B"
+      },
+      "name": "Library function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {},
+      "name": "Library constant",
+      "scope": "support.constant"
+    },
+    {
+      "settings": {},
+      "name": "Library class/type",
+      "scope": [
+        "support.type",
+        "support.class"
+      ]
+    },
+    {
+      "settings": {},
+      "name": "Library variable",
+      "scope": "support.other.variable"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#F0463B"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#F0463B"
+      },
+      "name": "Punctuation/Widgets",
+      "scope": "punctuation.section.embedded"
+    },
+    {
+      "settings": {
+        "foreground": "#737373"
+      },
+      "name": "Punctuation (Tags)",
+      "scope": "punctuation.definition.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#B27DBA"
+      },
+      "name": "Keyword -> CSS",
+      "scope": [
+        "constant.other.color.rgb-value.css",
+        "support.constant.property-value.css"
+      ]
+    }
+  ]
+}

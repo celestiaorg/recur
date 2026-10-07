@@ -1,0 +1,69 @@
+[bundle]
+name = "JSON"
+id = "recur.json"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "vscode-json-language-server"
+languages = ["json", "jsonc"]
+fileGlob = ["*.json", "*.jsonc", "*.json5"]
+command = "vscode-json-language-server"
+args = ["--stdio"]
+managed = "vscode-json-language-server"
+
+[[command]]
+id = "recur.json.format"
+name = "Format JSON"
+category = "JSON"
+order = 10
+scope = "source.json"
+fileGlob = "*.json"
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+j"
+interpreter = "typescript"
+script = "src/format.ts"
+
+[[command]]
+id = "recur.json.minify"
+name = "Minify JSON"
+category = "JSON"
+order = 11
+scope = "source.json"
+fileGlob = "*.json"
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/minify.ts"
+
+[[command]]
+id = "recur.json.validate"
+name = "Validate JSON"
+category = "JSON"
+order = 12
+scope = "source.json"
+fileGlob = "*.json"
+input = "selection"
+fallbackInput = "document"
+output = "showAsToast"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/validate.ts"
+
+[[command]]
+id = "recur.json.format-document"
+name = "Format JSON on Save"
+category = "JSON"
+order = 1
+scope = "source.json"
+fileGlob = "*.json"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "typescript"
+script = "src/format-document.ts"

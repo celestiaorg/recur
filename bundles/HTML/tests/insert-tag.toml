@@ -1,0 +1,86 @@
+[[test]]
+name = "empty word inserts p pair"
+command = "recur.html.insert-tag"
+[test.context]
+input = ""
+[test.expect]
+stdout = '<${1:p}>$2</$1>'
+output = "insertSnippet"
+
+[[test]]
+name = "div becomes open/close pair"
+command = "recur.html.insert-tag"
+[test.context]
+input = "div"
+currentWord = "div"
+[test.expect]
+stdout = "<div>$1</div>"
+output = "insertSnippet"
+
+[[test]]
+name = "span from selection"
+command = "recur.html.insert-tag"
+[test.context]
+input = "span"
+selectedText = "span"
+[test.expect]
+stdout = "<span>$1</span>"
+output = "insertSnippet"
+
+[[test]]
+name = "img is a void tag with attribute stop"
+command = "recur.html.insert-tag"
+[test.context]
+input = "img"
+[test.expect]
+stdout = "<img $1>"
+output = "insertSnippet"
+
+[[test]]
+name = "br has no close tag"
+command = "recur.html.insert-tag"
+[test.context]
+input = "br"
+[test.expect]
+stdout = "<br>"
+output = "insertSnippet"
+
+[[test]]
+name = "hr has no close tag"
+command = "recur.html.insert-tag"
+[test.context]
+input = "hr"
+[test.expect]
+stdout = "<hr>"
+output = "insertSnippet"
+
+[[test]]
+name = "namespaced tag"
+command = "recur.html.insert-tag"
+[test.context]
+input = "svg:rect"
+[test.expect]
+stdout = "<svg:rect>$1</svg:rect>"
+output = "insertSnippet"
+
+[[test]]
+name = "caret in the middle of a word"
+command = "recur.html.insert-tag"
+[test.context]
+input = "divspan"
+currentWord = "divspan"
+currentLine = "divspan"
+column = 4
+[test.expect]
+stdout = "<div>$1</div>span"
+output = "insertSnippet"
+
+[[test]]
+name = "dollar selection is literal text, not a snippet field"
+command = "recur.html.insert-tag"
+[test.context]
+input = "$1"
+selectedText = "$1"
+[test.expect]
+stdout = "$1<p></p>"
+output = "insertText"

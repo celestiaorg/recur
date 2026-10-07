@@ -1,0 +1,199 @@
+{
+  "name": "Coda",
+  "type": "light",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#000000",
+    "editor.selectionBackground": "#B5D5FF",
+    "editor.lineHighlightBackground": "#F1F4F7",
+    "editorCursor.foreground": "#000000",
+    "editorWhitespace.foreground": "#CBCBCB"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#4A903A",
+        "fontStyle": "italic"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#F28B2C"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#1441F8"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#A37620"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#A37620"
+      },
+      "name": "User-defined constant",
+      "scope": [
+        "constant.character",
+        "constant.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A37620"
+      },
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#BA3776"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#BA3776"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#D76101"
+      },
+      "name": "Class name",
+      "scope": "entity.name.class"
+    },
+    {
+      "settings": {
+        "foreground": "#D76101"
+      },
+      "name": "Inherited class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#00457C"
+      },
+      "name": "Function name",
+      "scope": "entity.name.function"
+    },
+    {
+      "settings": {
+        "foreground": "#00457C"
+      },
+      "name": "Function argument",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {
+        "foreground": "#9C2A93"
+      },
+      "name": "Tag name",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#9C2A93"
+      },
+      "name": "Tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#893BBD"
+      },
+      "name": "Library function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "Class Variable",
+      "scope": [
+        "variable.other",
+        "variable.js",
+        "punctuation.separator.variable"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "Language Constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#F64225"
+      },
+      "name": "Meta Brace",
+      "scope": [
+        "punctuation.section.embedded -(source string source punctuation.section.embedded)",
+        "meta.brace.erb.html"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#F24123"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#A37600"
+      },
+      "name": "Normal Variable",
+      "scope": [
+        "variable.other.php",
+        "variable.other.normal"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#1B457C"
+      },
+      "name": "Function Call",
+      "scope": "meta.function-call"
+    },
+    {
+      "settings": {
+        "foreground": "#BA3776"
+      },
+      "name": "Keyword Control",
+      "scope": "keyword.control"
+    }
+  ]
+}

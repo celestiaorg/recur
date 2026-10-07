@@ -1,0 +1,28 @@
+# Example: JSON fixtures as files (same *File pattern as Text/Source).
+[[test]]
+name = "formats json"
+command = "Format JSON"
+
+[test.context]
+inputFile = "format/input.json"
+selectedTextFile = "format/input.json"
+tabSize = 2
+softTabs = true
+
+[test.expect]
+stdoutFile = "format/expect.json"
+output = "replaceSelection"
+
+[[test]]
+name = "formats jsonc (comments + trailing comma)"
+command = "Format JSON"
+
+[test.context]
+inputFile = "jsonc/input.jsonc"
+selectedTextFile = "jsonc/input.jsonc"
+tabSize = 2
+softTabs = true
+
+[test.expect]
+stdoutFile = "jsonc/expect-format.json"
+output = "replaceSelection"

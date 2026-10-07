@@ -1,0 +1,35 @@
+[[test]]
+name = "numbers plain lines"
+command = "Number List"
+
+[test.context]
+input = "alpha\nbeta"
+selectedText = "alpha\nbeta"
+
+[test.expect]
+stdout = "1. alpha\n2. beta"
+output = "replaceSelection"
+
+[[test]]
+name = "renumbers existing bullets"
+command = "Number List"
+
+[test.context]
+input = "- alpha\n- beta"
+selectedText = "- alpha\n- beta"
+
+[test.expect]
+stdout = "1. alpha\n2. beta"
+output = "replaceSelection"
+
+[[test]]
+name = "strips numbering"
+command = "Unnumber List"
+
+[test.context]
+input = "1. alpha\n2. beta"
+selectedText = "1. alpha\n2. beta"
+
+[test.expect]
+stdout = "alpha\nbeta"
+output = "replaceSelection"

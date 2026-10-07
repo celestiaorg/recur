@@ -1,0 +1,11 @@
+[[test]]
+name = "capitalizes first char"
+command = "Capitalize"
+
+[test.context]
+input = "hello"
+selectedText = "hello"
+
+[test.expect]
+stdout = "Hello"
+output = "replaceSelection"

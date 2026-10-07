@@ -1,0 +1,23 @@
+[[test]]
+name = "strips trailing whitespace"
+command = "Strip Trailing Whitespace"
+
+[test.context]
+input = '''
+a  
+b	
+c
+'''
+selectedText = '''
+a  
+b	
+c
+'''
+
+[test.expect]
+stdout = '''
+a
+b
+c
+'''
+output = "replaceSelection"

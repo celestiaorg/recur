@@ -1,0 +1,190 @@
+{
+  "name": "Merbivore Soft",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#252525",
+    "editor.foreground": "#EBE7E3",
+    "editor.selectionBackground": "#4A3055E0",
+    "editor.lineHighlightBackground": "#424445",
+    "editorCursor.foreground": "#FFFFFF",
+    "editorWhitespace.foreground": "#515151"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#EBE7E3",
+        "background": "#252525"
+      }
+    },
+    {
+      "settings": {},
+      "name": "Source",
+      "scope": "source"
+    },
+    {
+      "settings": {
+        "foreground": "#BC66C5",
+        "fontStyle": "italic"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#FF944A"
+      },
+      "name": "Keyword",
+      "scope": [
+        "keyword",
+        "storage"
+      ]
+    },
+    {
+      "settings": {},
+      "name": "Function (definition)",
+      "scope": [
+        "entity.name.function",
+        "keyword.other.name-of-parameter.objc"
+      ]
+    },
+    {
+      "settings": {},
+      "name": "Class (definition)",
+      "scope": "entity.name"
+    },
+    {
+      "settings": {
+        "foreground": "#D49AD6"
+      },
+      "name": "Class inheritence",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#8FCD8B"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {},
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#78CCE0"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {},
+      "name": "Constant (other variable)",
+      "scope": "variable.other.constant"
+    },
+    {
+      "settings": {
+        "foreground": "#E7CF94"
+      },
+      "name": "Constant (built-in)",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#9ECD72"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {},
+      "name": "Library function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#78CCE0"
+      },
+      "name": "Library type",
+      "scope": "support.type"
+    },
+    {
+      "settings": {
+        "foreground": "#9ECD72"
+      },
+      "name": "Library constant",
+      "scope": "support.constant"
+    },
+    {
+      "settings": {
+        "foreground": "#FF944A"
+      },
+      "name": "Markup tag",
+      "scope": [
+        "meta.tag",
+        "declaration.tag",
+        "entity.name.tag"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#EEF2B2"
+      },
+      "name": "Markup tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#FF5147"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#BFE8C1"
+      },
+      "name": "String interpolation",
+      "scope": [
+        "constant.character.escaped",
+        "constant.character.escape",
+        "string source",
+        "string source.ruby"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#EBE7E3",
+        "background": "#7FCD9D"
+      },
+      "name": "Diff Add",
+      "scope": "markup.inserted"
+    },
+    {
+      "settings": {
+        "foreground": "#EBE7E3",
+        "background": "#BC4C44"
+      },
+      "name": "Diff Remove",
+      "scope": "markup.deleted"
+    },
+    {
+      "settings": {
+        "background": "#6BAFE7"
+      },
+      "name": "Diff Header",
+      "scope": [
+        "meta.diff.header",
+        "meta.separator.diff",
+        "meta.diff.index",
+        "meta.diff.range"
+      ]
+    }
+  ]
+}

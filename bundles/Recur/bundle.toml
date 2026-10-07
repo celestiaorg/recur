@@ -1,0 +1,23 @@
+[bundle]
+name = "Recur"
+id = "recur"
+version = "1.0.0"
+author = "Recur"
+
+# First-party editor themes (Settings order 10–20).
+
+[[theme]]
+id = "recur"
+name = "Charcoal"
+path = "themes/charcoal.tmTheme.json"
+uiTheme = "dark"
+order = 10
+preview = { bg = "#0e0e0e", fg = "#e6e4e1", fn = "#c4a0f5", name = "#e07a5f", string = "#9fe3b5" }
+
+[[theme]]
+id = "paper"
+name = "Paper"
+path = "themes/paper.tmTheme.json"
+uiTheme = "light"
+order = 20
+preview = { bg = "#f7f8fa", fg = "#1a1c20", fn = "#7c5cbf", name = "#d4634a", string = "#2d9a5a" }

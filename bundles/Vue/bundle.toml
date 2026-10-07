@@ -1,0 +1,13 @@
+[bundle]
+name = "Vue"
+id = "recur.vue"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "vue-language-server"
+languages = ["vue"]
+fileGlob = ["*.vue"]
+command = "vue-language-server"
+args = ["--stdio"]
+managed = "vue-language-server"

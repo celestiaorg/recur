@@ -1,0 +1,70 @@
+[[test]]
+name = "formats a compact document"
+command = "Format XML"
+
+[test.context]
+input = "<root><a>1</a></root>\n"
+selectedText = "<root><a>1</a></root>\n"
+filename = "doc.xml"
+
+[test.expect]
+stdout = '''
+<?xml version="1.0"?>
+<root>
+  <a>1</a>
+</root>
+'''
+output = "replaceInput"
+
+[[test]]
+name = "format on save leaves already-pretty xml"
+command = "Format XML on Save"
+
+[test.context]
+input = '''
+<?xml version="1.0"?>
+<root>
+  <a>1</a>
+</root>
+'''
+selectedText = '''
+<?xml version="1.0"?>
+<root>
+  <a>1</a>
+</root>
+'''
+filename = "doc.xml"
+
+[test.expect]
+stdout = '''
+<?xml version="1.0"?>
+<root>
+  <a>1</a>
+</root>
+'''
+output = "replaceDocument"
+
+[[test]]
+name = "validate accepts well-formed xml"
+command = "Validate XML"
+
+[test.context]
+input = "<root/>\n"
+selectedText = "<root/>\n"
+
+[test.expect]
+stdout = "Valid XML\n"
+output = "showAsToast"
+
+[[test]]
+name = "validate rejects malformed xml"
+command = "Validate XML"
+
+[test.context]
+input = "<root>\n"
+selectedText = "<root>\n"
+
+[test.expect]
+exitCode = 1
+skipStdout = true
+output = "showAsToast"

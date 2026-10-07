@@ -1,0 +1,512 @@
+[bundle]
+name = "HTML"
+id = "recur.html"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "vscode-html-language-server"
+languages = ["html"]
+fileGlob = ["*.html", "*.htm"]
+command = "vscode-html-language-server"
+args = ["--stdio"]
+managed = "vscode-html-language-server"
+
+[[languageServer]]
+id = "vscode-css-language-server"
+languages = ["css", "scss", "less"]
+fileGlob = ["*.css", "*.scss", "*.sass", "*.less"]
+command = "vscode-css-language-server"
+args = ["--stdio"]
+managed = "vscode-css-language-server"
+
+# Tab-trigger snippets from TextMate HTML.tmbundle (HTML5 + HTML 4.01
+# doctypes; no XHTML) + wrap-selection (⌃W) + insert tag pair (⌃<) +
+# <br> (⌃↩). Grammar lives in Languages.
+#
+# Markup commands/snippets (insert-tag, wrap, element tabs) also apply to
+# JSX/TSX, Astro, MDX, and Handlebars. Document-level snippets (doctype,
+# html/head/body, script/style/meta) stay on HTML / Svelte / Vue.
+
+[[command]]
+id = "recur.html.insert-tag"
+name = "Insert Open/Close Tag"
+category = "HTML"
+order = 5
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+input = "selection"
+fallbackInput = "word"
+output = "insertSnippet"
+triggers = ["palette"]
+keyEquivalent = "ctrl+<"
+interpreter = "typescript"
+script = "src/insert-tag.ts"
+
+[[snippet]]
+id = "recur.html.wrap"
+name = "Wrap Selection in Tag"
+keyEquivalent = "ctrl+w"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 10
+body = '''
+<${1:p}>${2:$TM_SELECTED_TEXT}</$1>
+'''
+
+[[snippet]]
+id = "recur.html.em"
+name = "Emphasize"
+keyEquivalent = "cmd+i"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 11
+body = '''
+<em>${1:$TM_SELECTED_TEXT}</em>
+'''
+
+[[snippet]]
+id = "recur.html.nbsp"
+name = "Non-Breaking Space"
+keyEquivalent = "opt+space"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 12
+body = '''
+&nbsp;
+'''
+
+[[snippet]]
+id = "recur.html.br"
+name = "Br"
+tabTrigger = "br"
+keyEquivalent = "ctrl+enter"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 13
+body = '''
+<br>
+'''
+
+[[snippet]]
+id = "recur.html.doctype"
+name = "HTML5 doctype"
+tabTrigger = "doctype"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 20
+body = '''
+<!DOCTYPE html>
+'''
+
+[[snippet]]
+id = "recur.html.doctype-html4-strict"
+name = "HTML 4.01 Strict"
+tabTrigger = "doctype"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 21
+body = '''
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+	"http://www.w3.org/TR/html4/strict.dtd">
+'''
+
+[[snippet]]
+id = "recur.html.doctype-html4-transitional"
+name = "HTML 4.01 Transitional"
+tabTrigger = "doctype"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 22
+body = '''
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+	"http://www.w3.org/TR/html4/loose.dtd">
+'''
+
+[[snippet]]
+id = "recur.html.html"
+name = "HTML5 document"
+tabTrigger = "html"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 21
+body = '''
+<!DOCTYPE html>
+<html lang="${1:en}">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<title>$2</title>
+
+	$3
+</head>
+<body>
+	$0
+</body>
+</html>
+'''
+
+[[snippet]]
+id = "recur.html.head"
+name = "Head"
+tabTrigger = "head"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 22
+body = '''
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<title>${1:Page Title}</title>
+	$0
+</head>
+'''
+
+[[snippet]]
+id = "recur.html.body"
+name = "Body"
+tabTrigger = "body"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 23
+body = '''
+<body${1: id="${2:id}"}>
+	$0
+</body>
+'''
+
+[[snippet]]
+id = "recur.html.title"
+name = "Title"
+tabTrigger = "title"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 24
+body = '''
+<title>${1:Page Title}</title>
+'''
+
+[[snippet]]
+id = "recur.html.div"
+name = "div"
+tabTrigger = "div"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 30
+body = '''
+<div${1: id="${2:name}"}>
+	${0:$TM_SELECTED_TEXT}
+</div>
+'''
+
+[[snippet]]
+id = "recur.html.a"
+name = "Anchor"
+tabTrigger = "a"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 31
+body = '''
+<a href="${1:#}">${2:$TM_SELECTED_TEXT}</a>
+'''
+
+[[snippet]]
+id = "recur.html.mailto"
+name = "Mail Anchor"
+tabTrigger = "mailto"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 32
+body = '''
+<a href="mailto:${1:joe@example.com}?subject=${2:feedback}">${3:email me}</a>
+'''
+
+[[snippet]]
+id = "recur.html.link"
+name = "stylesheet link"
+tabTrigger = "link"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 33
+body = '''
+<link rel="${1:stylesheet}" href="${2:/css/master.css}">
+'''
+
+[[snippet]]
+id = "recur.html.script"
+name = "script"
+tabTrigger = "script"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 34
+body = '''
+<script>
+	$0
+</script>
+'''
+
+[[snippet]]
+id = "recur.html.scriptsrc"
+name = "script src"
+tabTrigger = "scriptsrc"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 35
+body = '''
+<script src="$1"></script>
+'''
+
+[[snippet]]
+id = "recur.html.style"
+name = "style"
+tabTrigger = "style"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 36
+body = '''
+<style>
+	$0
+</style>
+'''
+
+[[snippet]]
+id = "recur.html.meta"
+name = "Meta"
+tabTrigger = "meta"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 37
+body = '''
+<meta name="${1:name}" content="${2:content}">
+'''
+
+[[snippet]]
+id = "recur.html.base"
+name = "Base"
+tabTrigger = "base"
+scope = "text.html, source.svelte, source.vue"
+fileGlob = "*.{html,htm,svelte,vue}"
+order = 38
+body = '''
+<base href="$1"${2: target="$3"}>
+'''
+
+[[snippet]]
+id = "recur.html.h1"
+name = "Heading"
+tabTrigger = "h1"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 40
+body = '''
+<h1>${1:$TM_SELECTED_TEXT}</h1>
+'''
+
+[[snippet]]
+id = "recur.html.ul"
+name = "Unordered List"
+tabTrigger = "ul"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 41
+body = '''
+<ul>
+	<li>${1:first item}</li>$0
+</ul>
+'''
+
+[[snippet]]
+id = "recur.html.ol"
+name = "Ordered List"
+tabTrigger = "ol"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 42
+body = '''
+<ol>
+	<li>${1:first item}</li>$0
+</ol>
+'''
+
+[[snippet]]
+id = "recur.html.dl"
+name = "Description List"
+tabTrigger = "dl"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 43
+body = '''
+<dl>
+	<dt>${1:first item}</dt>
+	<dd>
+		${2:description}
+	</dd>$0
+</dl>
+'''
+
+[[snippet]]
+id = "recur.html.table"
+name = "Table"
+tabTrigger = "table"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 44
+body = '''
+<table>
+	<caption>${1:Description}</caption>
+	<thead>
+		<tr>
+			<th scope="${2|col,row|}">${3:Header Title}</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>$4</td>$0
+		</tr>
+	</tbody>
+</table>
+'''
+
+[[snippet]]
+id = "recur.html.form"
+name = "Form"
+tabTrigger = "form"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 50
+body = '''
+<form action="${1}" method="${2:get}" accept-charset="utf-8">
+	$0
+
+	<p><input type="submit" value="Continue &rarr;"></p>
+</form>
+'''
+
+[[snippet]]
+id = "recur.html.fieldset"
+name = "Fieldset"
+tabTrigger = "fieldset"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 51
+body = '''
+<fieldset${1: id="${2:id}"}>
+	<legend>${3:$TM_SELECTED_TEXT}</legend>
+	$0
+</fieldset>
+'''
+
+[[snippet]]
+id = "recur.html.input"
+name = "Input"
+tabTrigger = "input"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 52
+body = '''
+<input type="${1|text,submit,hidden,button|}" name="${2:some_name}" value="$3"${4: id="${5:$2}"}>
+'''
+
+[[snippet]]
+id = "recur.html.input-label"
+name = "Input with Label"
+tabTrigger = "input"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 53
+body = '''
+<label for="${2:id}">${1:label}</label><input type="${3|text,submit,hidden,button|}" name="${4:$2}" value="$5"${6: id="${7:$2}"}>
+'''
+
+[[snippet]]
+id = "recur.html.select"
+name = "Select Box"
+tabTrigger = "select"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 54
+body = '''
+<select name="${1:some_name}" id="${2:$1}">
+	<option value="${3:option1}">${4:$3}</option>
+	<option value="${5:option2}">${6:$5}</option>
+	$0
+</select>
+'''
+
+[[snippet]]
+id = "recur.html.opt"
+name = "Option"
+tabTrigger = "opt"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 55
+body = '''
+<option${1: value="${2:option}"}>${3:$2}</option>
+'''
+
+[[snippet]]
+id = "recur.html.textarea"
+name = "Text Area"
+tabTrigger = "textarea"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 56
+body = '''
+<textarea name="${1:Name}" rows="${2:8}" cols="${3:40}">$0</textarea>
+'''
+
+[[snippet]]
+id = "recur.html.audio"
+name = "Audio"
+tabTrigger = "audio"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 60
+body = '''
+<audio controls>
+	<source src="${1:example.mp3}" type="audio/mp3">
+
+	<p>Your browser doesn't support HTML5 audio. Here is
+		a <a href="${1:example.mp3}">link to the audio</a> instead.</p>
+</audio>
+'''
+
+[[snippet]]
+id = "recur.html.video"
+name = "Video"
+tabTrigger = "video"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 61
+body = '''
+<video controls>
+	<source src="${1:example.mp4}" type="video/mp4">
+
+	<p>Your browser doesn't support HTML5 video. Here is
+		a <a href="${1:example.mp4}">link to the video</a> instead.</p>
+</video>
+'''
+
+[[snippet]]
+id = "recur.html.source"
+name = "Source"
+tabTrigger = "source"
+scope = "text.html, source.svelte, source.vue, source.tsx, source.js.jsx, source.astro"
+fileGlob = "*.{html,htm,svelte,vue,tsx,jsx,astro,mdx,hbs,handlebars}"
+order = 62
+body = '''
+<source src="${1:example.mp4}" type="video/mp4">
+'''
+
+[[symbol]]
+id = "recur.symbols.html.id"
+scope = "meta.attribute.id.html > string"
+kind = "id"
+transform = '''
+s/^["']|["']$//g
+s/^/ID: /
+'''

@@ -1,0 +1,23 @@
+[[test]]
+name = "em dashes to colons with spacing"
+command = "Em Dashes to Colons"
+
+[test.context]
+input = "AI — famously uses them"
+selectedText = "AI — famously uses them"
+
+[test.expect]
+stdout = "AI: famously uses them"
+output = "replaceSelection"
+
+[[test]]
+name = "tight em dash becomes colon space"
+command = "Em Dashes to Colons"
+
+[test.context]
+input = "note—important"
+selectedText = "note—important"
+
+[test.expect]
+stdout = "note: important"
+output = "replaceSelection"

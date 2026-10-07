@@ -1,0 +1,215 @@
+{
+  "name": "Cool Glow",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#040727FA",
+    "editor.foreground": "#E6E6E6",
+    "editor.selectionBackground": "#1744C7",
+    "editor.lineHighlightBackground": "#FFFFFF0F",
+    "editorCursor.foreground": "#FFFFFFA6",
+    "editorWhitespace.foreground": "#FFFFFF42"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#E6E6E6",
+        "background": "#040727FA"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#BCBCBC"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#70EBC9"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#B0EFFF"
+      },
+      "name": "Entity",
+      "scope": "entity"
+    },
+    {
+      "settings": {
+        "foreground": "#25F1E3"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#F9FABE"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#9BFB9F"
+      },
+      "name": "String",
+      "scope": [
+        "string",
+        "meta.verbatim"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#71B5F4"
+      },
+      "name": "Support",
+      "scope": "support"
+    },
+    {
+      "settings": {
+        "foreground": "#C499D4"
+      },
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#BB3D26",
+        "fontStyle": "italic"
+      },
+      "name": "Invalid – Deprecated",
+      "scope": "invalid.deprecated"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#BD341D"
+      },
+      "name": "Invalid – Illegal",
+      "scope": "invalid.illegal"
+    },
+    {
+      "settings": {
+        "foreground": "#6DFCDB",
+        "fontStyle": "italic"
+      },
+      "name": "Superclass",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#A0FCB2"
+      },
+      "name": "String interpolation",
+      "scope": "string constant.other.placeholder"
+    },
+    {
+      "settings": {
+        "foreground": "#C9D7EB"
+      },
+      "name": "meta.function-call.py",
+      "scope": "meta.function-call.py"
+    },
+    {
+      "settings": {
+        "foreground": "#8CBAD4"
+      },
+      "name": "meta.tag",
+      "scope": [
+        "meta.tag",
+        "meta.tag entity"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "entity.name.section",
+      "scope": "entity.name.section"
+    },
+    {
+      "settings": {
+        "foreground": "#DDE6F6"
+      },
+      "name": "OCaml variant",
+      "scope": "keyword.type.variant"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9"
+      },
+      "name": "OCaml operator",
+      "scope": "source.ocaml keyword.operator.symbol"
+    },
+    {
+      "settings": {
+        "foreground": "#9EB6D7"
+      },
+      "name": "OCaml infix operator",
+      "scope": "source.ocaml keyword.operator.symbol.infix"
+    },
+    {
+      "settings": {
+        "foreground": "#9EB6D7"
+      },
+      "name": "OCaml prefix operator",
+      "scope": "source.ocaml keyword.operator.symbol.prefix"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "OCaml f-p infix operator",
+      "scope": "source.ocaml keyword.operator.symbol.infix.floating-point"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "OCaml f-p prefix operator",
+      "scope": "source.ocaml keyword.operator.symbol.prefix.floating-point"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "OCaml f-p constant",
+      "scope": "source.ocaml constant.numeric.floating-point"
+    },
+    {
+      "settings": {
+        "background": "#FFFFFF08"
+      },
+      "name": "LaTeX environment",
+      "scope": "text.latex meta.environment"
+    },
+    {
+      "settings": {
+        "background": "#8CAAFB08"
+      },
+      "name": "LaTeX environment (nested)",
+      "scope": "text.latex meta.environment meta.environment"
+    },
+    {
+      "settings": {
+        "foreground": "#FCE239"
+      },
+      "name": "Latex support",
+      "scope": "text.latex support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "PList unquoted string",
+      "scope": [
+        "source.plist string.unquoted",
+        "source.plist keyword.operator"
+      ]
+    }
+  ]
+}

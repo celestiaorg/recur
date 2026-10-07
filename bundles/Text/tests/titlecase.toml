@@ -1,0 +1,11 @@
+[[test]]
+name = "titlecases words"
+command = "Titlecase"
+
+[test.context]
+input = "hello WORLD"
+selectedText = "hello WORLD"
+
+[test.expect]
+stdout = "Hello World"
+output = "replaceSelection"

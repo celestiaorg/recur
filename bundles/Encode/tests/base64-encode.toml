@@ -1,0 +1,11 @@
+[[test]]
+name = "base64 encodes"
+command = "Base64 Encode"
+
+[test.context]
+input = "hi"
+selectedText = "hi"
+
+[test.expect]
+stdout = "aGk="
+output = "replaceSelection"

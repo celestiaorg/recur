@@ -1,0 +1,93 @@
+# Recur project settings
+
+setup_cmd = """
+set -e
+# install deps
+go mod download
+wails3 task common:install:frontend:deps
+
+# Recur uses WAL. Byte-copying recur.db misses in-WAL rows (often hours).
+# VACUUM INTO snapshots through the WAL; retry if Recur's writer is busy.
+SRC="$HOME/Library/Application Support/Recur"
+DEST="$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID"
+rm -rf "$DEST"
+mkdir -p "$DEST"
+copied=
+for i in 1 2 3 4 5; do
+  rm -f "$DEST/recur.db"
+  if sqlite3 "$SRC/recur.db" "PRAGMA busy_timeout=60000; VACUUM INTO '$DEST/recur.db';"; then
+    copied=1
+    break
+  fi
+  sleep 2
+done
+test -n "$copied"
+rsync -a --exclude 'recur.db*' --exclude 'open.sock' "$SRC/" "$DEST/"
+
+# remove running agents (don't want them to auto resume)
+sqlite3 "$DEST/recur.db" <<'SQL'
+UPDATE workspaces
+SET doc_json = json_set(
+  json_remove(doc_json, '$.checkpoint'),
+  '$.state', 'paused',
+  '$.phase', 'copied for dogfood'
+)
+WHERE COALESCE(json_extract(doc_json, '$.archived'), 0) = 0
+  AND (
+    json_extract(doc_json, '$.state') IN (
+      'planning', 'coding', 'reviewing', 'verifying', 'responding', 'queued'
+    )
+    OR (
+      json_extract(doc_json, '$.state') = 'paused'
+      AND json_extract(doc_json, '$.phase') = 'interrupted'
+    )
+  );
+
+UPDATE agents
+SET doc_json = json_remove(
+  json_set(doc_json, '$.status', 'idle'),
+  '$.sessionId'
+)
+WHERE json_extract(doc_json, '$.status') IN ('working', 'directing', 'planning')
+   OR json_extract(doc_json, '$.sessionId') IS NOT NULL;
+SQL
+"""
+
+teardown_cmd = 'rm -rf "$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID"'
+app_url = ""
+
+# Secrets: .env, .env.local, .recur/.env, .recur/.env.local (gitignored).
+env = """
+RECUR_DATA_DIR=$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID
+WAILS_VITE_PORT=$RECUR_PORT
+RECUR_INSTANCE_LABEL=$RECUR_BRANCH
+"""
+copy_files = ''
+
+[[run]]
+name = "dev"
+cmd = "wails3 task dev"
+
+[[run]]
+name = "test:go"
+cmd = "wails3 task test:go"
+
+[[run]]
+name = "test:frontend"
+cmd = "wails3 task test:frontend"
+
+[[run]]
+name = "test:all"
+cmd = "wails3 task test"
+
+[[run]]
+name = "check"
+cmd = "wails3 task check"
+
+[[run]]
+name = "check cursor sdk"
+cmd = "wails3 task check:cursor-sdk-pin"
+
+[[run]]
+name = "tidy"
+cmd = "wails3 task common:go:mod:tidy"

@@ -1,0 +1,166 @@
+{
+  "name": "All Hallow's Eve",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#000000",
+    "editor.foreground": "#FFFFFF",
+    "editor.selectionBackground": "#876E91E0",
+    "editor.lineHighlightBackground": "#424100",
+    "editorCursor.foreground": "#FFFFFF",
+    "editorWhitespace.foreground": "#515151"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#000000"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#555454"
+      },
+      "name": "Text base",
+      "scope": "text"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#000000"
+      },
+      "name": "Source base",
+      "scope": "source"
+    },
+    {
+      "settings": {
+        "foreground": "#AB51D6"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#3E9AD6"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#D78B42"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#D9DAFF"
+      },
+      "name": "Pre-processor Line",
+      "scope": "meta.preprocessor.c"
+    },
+    {
+      "settings": {},
+      "name": "Pre-processor Directive",
+      "scope": "keyword.control.import"
+    },
+    {
+      "settings": {},
+      "name": "Function name",
+      "scope": "entity.name.function"
+    },
+    {
+      "settings": {
+        "fontStyle": "italic"
+      },
+      "name": "Function argument",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#ABABAB"
+      },
+      "name": "Block comment",
+      "scope": "source comment.block"
+    },
+    {
+      "settings": {
+        "foreground": "#75D142"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#B8B8B8"
+      },
+      "name": "String escapes",
+      "scope": "string constant.character.escape"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#D5D341"
+      },
+      "name": "String (executed)",
+      "scope": "string.interpolated"
+    },
+    {
+      "settings": {
+        "foreground": "#D5D341"
+      },
+      "name": "Regular expression",
+      "scope": "string.regexp"
+    },
+    {
+      "settings": {
+        "foreground": "#D5D341"
+      },
+      "name": "String (literal)",
+      "scope": "string.literal"
+    },
+    {
+      "settings": {
+        "foreground": "#686868"
+      },
+      "name": "String escapes (executed)",
+      "scope": "string.interpolated constant.character.escape"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "Type name",
+      "scope": "entity.name.type"
+    },
+    {
+      "settings": {
+        "fontStyle": "italic underline"
+      },
+      "name": "Class inheritance",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "Tag name",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {},
+      "name": "Tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#D44D3E"
+      },
+      "name": "Support function",
+      "scope": "support.function"
+    }
+  ]
+}

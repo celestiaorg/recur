@@ -1,0 +1,25 @@
+[[test]]
+name = "copies matching lines"
+command = "Copy Matching Lines"
+
+[test.context]
+input = '''
+keep
+skip
+keep2
+'''
+selectedText = '''
+keep
+skip
+keep2
+'''
+
+[test.context.prompts]
+pattern = "keep"
+
+[test.expect]
+stdout = '''
+keep
+keep2
+'''
+output = "newDocument"

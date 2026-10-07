@@ -1,0 +1,10 @@
+{
+  "displayName": "SVG",
+  "name": "svg",
+  "patterns": [
+    {
+      "include": "text.xml"
+    }
+  ],
+  "scopeName": "text.xml.svg"
+}

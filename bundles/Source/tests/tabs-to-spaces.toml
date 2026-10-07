@@ -1,0 +1,21 @@
+[[test]]
+name = "converts leading tabs to spaces"
+command = "Convert Tabs to Spaces"
+
+[test.context]
+input = '''
+	hi
+		there
+'''
+selectedText = '''
+	hi
+		there
+'''
+tabSize = 4
+
+[test.expect]
+stdout = '''
+    hi
+        there
+'''
+output = "replaceSelection"

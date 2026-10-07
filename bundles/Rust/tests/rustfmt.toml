@@ -1,0 +1,19 @@
+[[test]]
+name = "formats with rustfmt"
+command = "Rustfmt on Save"
+
+[test.context]
+input = '''
+fn main(){println!("x");}
+'''
+selectedText = '''
+fn main(){println!("x");}
+'''
+
+[test.expect]
+stdout = '''
+fn main() {
+    println!("x");
+}
+'''
+output = "replaceDocument"

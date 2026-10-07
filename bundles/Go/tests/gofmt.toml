@@ -1,0 +1,21 @@
+[[test]]
+name = "formats with gofmt"
+command = "Gofmt on Save"
+
+[test.context]
+input = '''
+package main
+func main(){println("x")}
+'''
+selectedText = '''
+package main
+func main(){println("x")}
+'''
+
+[test.expect]
+stdout = '''
+package main
+
+func main() { println("x") }
+'''
+output = "replaceDocument"

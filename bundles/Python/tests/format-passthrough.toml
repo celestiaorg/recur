@@ -1,0 +1,17 @@
+[[test]]
+name = "passes through when formatter missing"
+command = "Format on Save"
+
+[test.context]
+input = '''
+x=1
+'''
+selectedText = '''
+x=1
+'''
+
+[test.expect]
+stdout = '''
+x=1
+'''
+output = "replaceDocument"

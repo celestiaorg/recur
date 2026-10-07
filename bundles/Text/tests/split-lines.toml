@@ -1,0 +1,17 @@
+[[test]]
+name = "splits on delimiter"
+command = "Split Lines"
+
+[test.context]
+input = "a,b,c"
+selectedText = "a,b,c"
+
+[test.context.prompts]
+delimiter = ","
+
+[test.expect]
+stdout = '''
+a
+b
+c'''
+output = "replaceSelection"

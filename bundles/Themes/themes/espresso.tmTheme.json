@@ -1,0 +1,219 @@
+{
+  "name": "Espresso",
+  "type": "light",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#000000",
+    "editor.selectionBackground": "#90D2FF",
+    "editor.lineHighlightBackground": "#CCE8FA",
+    "editorCursor.foreground": "#000000",
+    "editorWhitespace.foreground": "#515151"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "Source",
+      "scope": "source"
+    },
+    {
+      "settings": {
+        "foreground": "#B8B8B8",
+        "fontStyle": "italic"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#3B83AF",
+        "background": "#F7FBFF",
+        "fontStyle": "bold"
+      },
+      "name": "Keyword",
+      "scope": [
+        "keyword",
+        "storage"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#5FAFD9"
+      },
+      "name": "Function (definition)",
+      "scope": [
+        "entity.name.function",
+        "keyword.other.name-of-parameter.objc"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#DA6672"
+      },
+      "name": "Class (definition)",
+      "scope": "entity.name"
+    },
+    {
+      "settings": {
+        "foreground": "#877BD4",
+        "background": "#F8F7FF",
+        "fontStyle": "italic"
+      },
+      "name": "Class inheritence",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#3B83AF",
+        "fontStyle": "bold"
+      },
+      "name": "Support",
+      "scope": "support"
+    },
+    {
+      "settings": {
+        "foreground": "#DA6672",
+        "fontStyle": "bold"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#DA6672",
+        "fontStyle": "bold"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#DA6672"
+      },
+      "name": "Constant (other variable)",
+      "scope": "variable.other.constant"
+    },
+    {
+      "settings": {
+        "foreground": "#0367B5",
+        "fontStyle": "bold"
+      },
+      "name": "Constant (built-in)",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#DA6672",
+        "background": "#FFF3F3"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#E12D01",
+        "fontStyle": "bold"
+      },
+      "name": "Library function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#0367B5"
+      },
+      "name": "Library type",
+      "scope": "support.type"
+    },
+    {
+      "settings": {
+        "foreground": "#3B83AF",
+        "background": "#F7FBFF"
+      },
+      "name": "Markup tag",
+      "scope": [
+        "entity.name.tag",
+        "declaration.tag"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#5FAFD9",
+        "fontStyle": "italic"
+      },
+      "name": "Tag Attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "Meta Tag",
+      "scope": "meta.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#AB1500"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#FFF3F3"
+      },
+      "name": "String interpolation",
+      "scope": [
+        "constant.character.escaped",
+        "constant.character.escape",
+        "string source",
+        "string source.ruby"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#EBE7E3",
+        "background": "#91D2FF"
+      },
+      "name": "Diff Add",
+      "scope": "markup.inserted"
+    },
+    {
+      "settings": {
+        "foreground": "#EBE7E3",
+        "background": "#DC4D4D"
+      },
+      "name": "Diff Remove",
+      "scope": "markup.deleted"
+    },
+    {
+      "settings": {
+        "background": "#75B792"
+      },
+      "name": "Diff Header",
+      "scope": [
+        "meta.diff.header",
+        "meta.separator.diff",
+        "meta.diff.index",
+        "meta.diff.range"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,283 @@
+[bundle]
+name = "Shell"
+id = "recur.shell"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "bash-language-server"
+languages = ["shellscript", "shell", "bash"]
+fileGlob = ["*.sh", "*.bash", "*.zsh"]
+command = "bash-language-server"
+args = ["start"]
+managed = "bash-language-server"
+
+[[command]]
+id = "recur.shell.shfmt-on-save"
+name = "Shfmt on Save"
+category = "Shell"
+order = 10
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "shebang"
+body = '''
+#!/usr/bin/env bash
+# Format stdin with shfmt; pass through unchanged if missing/failing.
+if ! command -v shfmt >/dev/null 2>&1; then
+  cat
+  exit 0
+fi
+tmp=$(mktemp)
+trap 'rm -f "$tmp" "$tmp.out"' EXIT
+cat >"$tmp"
+if shfmt "$tmp" >"$tmp.out" 2>/dev/null; then
+  cat "$tmp.out"
+else
+  cat "$tmp"
+fi
+'''
+
+[[command]]
+id = "recur.shell.execute"
+name = "Execute Selection"
+category = "Shell"
+order = 20
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+input = "selection"
+fallbackInput = "line"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/execute.sh"
+
+[[command]]
+id = "recur.shell.execute-keep"
+name = "Execute and Keep"
+category = "Shell"
+order = 21
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+input = "selection"
+fallbackInput = "line"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/execute-keep.sh"
+
+[[command]]
+id = "recur.shell.validate"
+name = "Validate Syntax"
+category = "Shell"
+order = 22
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+input = "selection"
+fallbackInput = "document"
+output = "showAsToast"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/validate.sh"
+
+[[command]]
+id = "recur.shell.make-executable"
+name = "Make Executable"
+category = "Shell"
+order = 23
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+input = "none"
+output = "showAsToast"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/make-executable.sh"
+
+# --- snippets ----------------------------------------------------------------
+
+[[snippet]]
+id = "recur.shell.bash"
+name = "bash shebang"
+tabTrigger = "bash"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 10
+body = '''
+#!/usr/bin/env bash
+'''
+
+[[snippet]]
+id = "recur.shell.zsh"
+name = "zsh shebang"
+tabTrigger = "zsh"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 11
+body = '''
+#!/usr/bin/env zsh
+'''
+
+[[snippet]]
+id = "recur.shell.if"
+name = "if"
+tabTrigger = "if"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 20
+body = '''
+if ${2:[[ ${1:condition} ]]}; then
+	${0:#statements}
+fi
+'''
+
+[[snippet]]
+id = "recur.shell.case"
+name = "case"
+tabTrigger = "case"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 21
+body = '''
+case ${1:word} in
+${2:pattern})
+	$0;;
+esac
+'''
+
+[[snippet]]
+id = "recur.shell.for"
+name = "for"
+tabTrigger = "for"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 22
+body = '''
+for (( i = 0; i < ${1:10}; i++ )); do
+	${0:#statements}
+done
+'''
+
+[[snippet]]
+id = "recur.shell.while"
+name = "while"
+tabTrigger = "while"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 23
+body = '''
+while ${2:[[ ${1:condition} ]]}; do
+	${0:#statements}
+done
+'''
+
+[[snippet]]
+id = "recur.shell.tmpf"
+name = "temp file"
+tabTrigger = "tmpf"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 30
+body = '''
+${1:TMPFILE}="$(mktemp -t ${2:untitled})"
+trap '${3:rm -f "$TMPFILE"}' EXIT INT HUP TERM
+'''
+
+[[snippet]]
+id = "recur.shell.sh"
+name = "sh shebang"
+tabTrigger = "sh"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 12
+body = '''
+#!/bin/sh
+'''
+
+[[snippet]]
+id = "recur.shell.env"
+name = "env shebang"
+tabTrigger = "env"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 13
+body = '''
+#!/usr/bin/env ${1:bash}
+'''
+
+[[snippet]]
+id = "recur.shell.elif"
+name = "elif"
+tabTrigger = "elif"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 24
+body = '''
+elif [[ ${1:condition} ]]; then
+	${0:#statements}
+'''
+
+[[snippet]]
+id = "recur.shell.until"
+name = "until"
+tabTrigger = "until"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 25
+body = '''
+until [[ ${1:condition} ]]; do
+	${0:#statements}
+done
+'''
+
+[[snippet]]
+id = "recur.shell.do"
+name = "do…done"
+tabTrigger = "do"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 26
+body = '''
+do
+	${0:#statements}
+done
+'''
+
+[[snippet]]
+id = "recur.shell.forin"
+name = "for in"
+tabTrigger = "forin"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 27
+body = '''
+for ${1:i} in ${2:words}; do
+	${0:#statements}
+done
+'''
+
+[[snippet]]
+id = "recur.shell.here"
+name = "Here Document"
+tabTrigger = "here"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 28
+body = '''
+<<-${1:TOKEN}
+	$0
+${1:TOKEN}
+'''
+
+[[snippet]]
+id = "recur.shell.tmpd"
+name = "temp dir"
+tabTrigger = "tmpd"
+scope = "source.shell"
+fileGlob = "*.{sh,bash,zsh}"
+order = 31
+body = '''
+${1:TMPDIR}="$(mktemp -d -t ${2:untitled})"
+trap '${3:rm -rf "$TMPDIR"}' EXIT INT HUP TERM
+'''

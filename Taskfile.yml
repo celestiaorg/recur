@@ -1,0 +1,126 @@
+version: '3'
+
+includes:
+  common: ./build/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+
+vars:
+  APP_NAME: "recur"
+  BIN_DIR: "bin"
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  # Desktop app is {{.BIN_DIR}}/{{.APP_NAME}}; CLI is a separate binary.
+  CLI_BIN: '{{.BIN_DIR}}/recur-cli'
+
+tasks:
+  build:
+    summary: Builds the application
+    cmds:
+      - task: "{{OS}}:build"
+
+  build:cli:
+    summary: Builds the Recur CLI (authoring tools) to {{.CLI_BIN}}
+    sources:
+      - cmd/recur/**/*.go
+      - internal/cli/**/*
+      - internal/bundles/**/*
+      - go.mod
+      - go.sum
+    generates:
+      - '{{.CLI_BIN}}'
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - go build -o {{.CLI_BIN}} ./cmd/recur
+
+  package:
+    summary: Packages a production build (RECUR_DEBUG=1 keeps the web inspector and skips frontend minify)
+    cmds:
+      - task: "{{OS}}:package"
+
+  run:
+    summary: Runs the application
+    cmds:
+      - task: "{{OS}}:run"
+
+  dev:
+    summary: Runs the application in development mode
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+
+  test:go:
+    summary: Runs Go unit tests
+    cmds:
+      - go test ./...
+    # Match production Darwin min version (build/darwin/Taskfile.yml).
+    # Setting CGO_* replaces Go's defaults, so keep `-O2 -g` and append the pin.
+    env:
+      CGO_CFLAGS: '{{if eq OS "darwin"}}-O2 -g -mmacosx-version-min=12.0{{end}}'
+      CGO_LDFLAGS: '{{if eq OS "darwin"}}-O2 -g -mmacosx-version-min=12.0{{end}}'
+      MACOSX_DEPLOYMENT_TARGET: '{{if eq OS "darwin"}}12.0{{end}}'
+
+  test:bundles:
+    summary: Runs shipped Recur Bundle engine tests (needs node on PATH)
+    deps:
+      - build:cli
+    cmds:
+      - '{{.CLI_BIN}} bundles test ./bundles'
+
+  lint:bundles:
+    summary: Lints shipped Recur Bundles (schema, TS compile, shebang, keybindings)
+    deps:
+      - build:cli
+    cmds:
+      - '{{.CLI_BIN}} bundles lint ./bundles'
+
+  fetch:tm-grammars:
+    summary: Re-fetch TextMate grammars from shikijs/textmate-grammars-themes into bundles/Languages
+    cmds:
+      - node scripts/fetch-tm-grammars.mjs
+
+  fetch:tm-themes:
+    summary: Re-fetch pack TextMate themes from shikijs/tm-themes (+ Aura) into bundles/Themes
+    cmds:
+      - node scripts/fetch-tm-themes.mjs
+
+  port:filmgirl-themes:
+    summary: Convert filmgirl TextMate plists into local theme ports (skips mods; does not fetch Shiki)
+    cmds:
+      - node scripts/port-filmgirl-themes.mjs
+      - node scripts/fetch-tm-themes.mjs --local-only
+
+  test:frontend:
+    summary: Runs frontend Vitest unit tests
+    dir: frontend
+    deps:
+      - task: common:install:frontend:deps
+    cmds:
+      - pnpm test
+
+  test:e2e:
+    summary: Runs frontend Playwright e2e tests
+    dir: frontend
+    deps:
+      - task: common:install:frontend:deps
+    cmds:
+      - pnpm run e2e
+
+  test:
+    summary: Runs all automated tests (Go, bundles lint+test, frontend unit + e2e)
+    cmds:
+      - task: test:go
+      - task: lint:bundles
+      - task: test:bundles
+      - task: test:frontend
+      - task: test:e2e
+
+  check:
+    summary: Fast quality gate (Go tests + bundle lint/test + frontend unit; no Playwright)
+    cmds:
+      - task: test:go
+      - task: lint:bundles
+      - task: test:bundles
+      - task: test:frontend
+
+  check:cursor-sdk-pin:
+    summary: Fail if PyPI cursor-sdk is ahead of pinnedSDKVersion (network; flags re-pin)
+    cmds:
+      - RECUR_CURSOR_SDK_PIN_CHECK=1 go test ./internal/cursor -run CheckCursorSDKPinDrift -count=1

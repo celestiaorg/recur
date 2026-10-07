@@ -1,0 +1,23 @@
+[[test]]
+name = "enumerates lines"
+command = "Enumerate Lines"
+
+[test.context]
+input = '''
+a
+b
+c
+'''
+selectedText = '''
+a
+b
+c
+'''
+
+[test.expect]
+stdout = '''
+1  a
+2  b
+3  c
+'''
+output = "replaceSelection"

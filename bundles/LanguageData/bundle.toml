@@ -1,0 +1,260 @@
+[bundle]
+name = "LanguageData"
+id = "recur.language-data"
+version = "1.0.0"
+author = "Recur"
+
+# Comment tokens, indent patterns, and extra closeBrackets for TextMate scopes.
+# Regexes are JavaScript (not Oniguruma (?x)); user packs override by id, then scopeName.
+
+# --- C-like: // + /* */ and brace indent (Go/C also indent case/default) ------
+
+[[languageData]]
+id = "recur.langdata.go"
+scopeName = "source.go"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$|^\\s*(?:case|default)\\b.*$"
+decreaseIndentPattern = "^\\s*(?:[})\\]]|(?:case|default)\\b)"
+
+[[languageData]]
+id = "recur.langdata.c"
+scopeName = "source.c"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$|^\\s*(?:case|default)\\b.*$"
+decreaseIndentPattern = "^\\s*(?:[})\\]]|(?:case|default)\\b)"
+zeroIndentPattern = "^\\s*#"
+
+[[languageData]]
+id = "recur.langdata.cpp"
+scopeName = "source.cpp"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$|^\\s*(?:case|default)\\b.*$"
+decreaseIndentPattern = "^\\s*(?:[})\\]]|(?:case|default)\\b)"
+zeroIndentPattern = "^\\s*#"
+
+[[languageData]]
+id = "recur.langdata.javascript"
+scopeName = "source.js"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.typescript"
+scopeName = "source.ts"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.tsx"
+scopeName = "source.tsx"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.jsx"
+scopeName = "source.js.jsx"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.rust"
+scopeName = "source.rust"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.php"
+scopeName = "source.php"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+# --- CSS family: block comments only -----------------------------------------
+
+[[languageData]]
+id = "recur.langdata.css"
+scopeName = "source.css"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.less"
+scopeName = "source.css.less"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.scss"
+scopeName = "source.css.scss"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.postcss"
+scopeName = "source.css.postcss"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+
+# --- HTML / XML / Markdown (HTML comments; Markdown is not # headings) -------
+
+[[languageData]]
+id = "recur.langdata.html"
+scopeName = "text.html.basic"
+blockCommentStart = "<!--"
+blockCommentEnd = "-->"
+increaseIndentPattern = "<(?!\\/)(?!area\\b|base\\b|br\\b|col\\b|embed\\b|hr\\b|img\\b|input\\b|link\\b|meta\\b|param\\b|source\\b|track\\b|wbr\\b)[A-Za-z][-A-Za-z0-9]*(?:\\s[^>]*)?>\\s*$"
+decreaseIndentPattern = "^\\s*<\\/[A-Za-z][-A-Za-z0-9]*>"
+closeBrackets = ["<"]
+
+[[languageData]]
+id = "recur.langdata.html-derivative"
+scopeName = "text.html.derivative"
+blockCommentStart = "<!--"
+blockCommentEnd = "-->"
+increaseIndentPattern = "<(?!\\/)(?!area\\b|base\\b|br\\b|col\\b|embed\\b|hr\\b|img\\b|input\\b|link\\b|meta\\b|param\\b|source\\b|track\\b|wbr\\b)[A-Za-z][-A-Za-z0-9]*(?:\\s[^>]*)?>\\s*$"
+decreaseIndentPattern = "^\\s*<\\/[A-Za-z][-A-Za-z0-9]*>"
+closeBrackets = ["<"]
+
+[[languageData]]
+id = "recur.langdata.markdown"
+scopeName = "text.html.markdown"
+blockCommentStart = "<!--"
+blockCommentEnd = "-->"
+closeBrackets = ["<", "_", "*"]
+
+[[languageData]]
+id = "recur.langdata.xml"
+scopeName = "text.xml"
+blockCommentStart = "<!--"
+blockCommentEnd = "-->"
+increaseIndentPattern = "<(?!\\/)[A-Za-z][-A-Za-z0-9._]*(?:\\s[^>]*)?>\\s*$"
+decreaseIndentPattern = "^\\s*<\\/[A-Za-z][-A-Za-z0-9._]*>"
+closeBrackets = ["<"]
+
+[[languageData]]
+id = "recur.langdata.vue"
+scopeName = "text.html.vue"
+blockCommentStart = "<!--"
+blockCommentEnd = "-->"
+closeBrackets = ["<"]
+
+[[languageData]]
+id = "recur.langdata.svelte"
+scopeName = "source.svelte"
+blockCommentStart = "<!--"
+blockCommentEnd = "-->"
+closeBrackets = ["<"]
+
+# --- Hash line comments ------------------------------------------------------
+
+[[languageData]]
+id = "recur.langdata.python"
+scopeName = "source.python"
+lineComment = "#"
+increaseIndentPattern = "^\\s*(?:class|(?:async\\s+)?(?:def|for|with)|elif|else|except|finally|if|match|case|try|while)\\b.*:\\s*(?:#.*)?$|[{[]\\s*(?:#.*)?$"
+decreaseIndentPattern = "^\\s*(?:elif|else|except|finally)\\b|^\\s*[}\\]]"
+disableIndentCorrections = true
+
+[[languageData]]
+id = "recur.langdata.yaml"
+scopeName = "source.yaml"
+lineComment = "#"
+increaseIndentPattern = "^\\s*.*(:|-)\\s?(?:&\\w+)?(?:\\{[^}\"']*|\\([^)\"']*)?$"
+decreaseIndentPattern = "^\\s+\\}$"
+disableIndentCorrections = true
+
+[[languageData]]
+id = "recur.langdata.makefile"
+scopeName = "source.makefile"
+lineComment = "#"
+increaseIndentPattern = "^[^\\t ]+:"
+disableIndentCorrections = true
+
+[[languageData]]
+id = "recur.langdata.shell"
+scopeName = "source.shell"
+lineComment = "#"
+
+[[languageData]]
+id = "recur.langdata.toml"
+scopeName = "source.toml"
+lineComment = "#"
+
+[[languageData]]
+id = "recur.langdata.ruby"
+scopeName = "source.ruby"
+lineComment = "#"
+
+[[languageData]]
+id = "recur.langdata.dotenv"
+scopeName = "source.dotenv"
+lineComment = "#"
+
+# --- SQL: -- + /* */ ---------------------------------------------------------
+
+[[languageData]]
+id = "recur.langdata.sql"
+scopeName = "source.sql"
+lineComment = "--"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+
+# --- JSON: no comments. jsonc/json5 may use // -------------------------------
+
+[[languageData]]
+id = "recur.langdata.json"
+scopeName = "source.json"
+increaseIndentPattern = "[{(\\[]\\s*$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.jsonc"
+scopeName = "source.json.comments"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[languageData]]
+id = "recur.langdata.json5"
+scopeName = "source.json5"
+lineComment = "//"
+blockCommentStart = "/*"
+blockCommentEnd = "*/"
+increaseIndentPattern = "[{(\\[]\\s*(?://.*)?$"
+decreaseIndentPattern = "^\\s*[})\\]]"
+
+[[symbol]]
+id = "recur.symbols.css.selector"
+scope = "source.css meta.selector, source.css meta.at-rule.media"
+kind = "selector"

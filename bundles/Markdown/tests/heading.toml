@@ -1,0 +1,47 @@
+[[test]]
+name = "increases paragraph to h1"
+command = "Increase Heading"
+
+[test.context]
+input = "Title"
+selectedText = "Title"
+
+[test.expect]
+stdout = "# Title"
+output = "replaceSelection"
+
+[[test]]
+name = "increases h1 to h2"
+command = "Increase Heading"
+
+[test.context]
+input = "# Title"
+selectedText = "# Title"
+
+[test.expect]
+stdout = "## Title"
+output = "replaceSelection"
+
+[[test]]
+name = "decreases h2 to h1"
+command = "Decrease Heading"
+
+[test.context]
+input = "## Title"
+selectedText = "## Title"
+
+[test.expect]
+stdout = "# Title"
+output = "replaceSelection"
+
+[[test]]
+name = "decreases h1 to paragraph"
+command = "Decrease Heading"
+
+[test.context]
+input = "# Title"
+selectedText = "# Title"
+
+[test.expect]
+stdout = "Title"
+output = "replaceSelection"

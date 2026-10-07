@@ -1,0 +1,25 @@
+[[test]]
+name = "sort and unique"
+command = "Sort & Unique"
+
+[test.context]
+input = '''
+b
+a
+b
+c
+'''
+selectedText = '''
+b
+a
+b
+c
+'''
+
+[test.expect]
+stdout = '''
+a
+b
+c
+'''
+output = "replaceSelection"

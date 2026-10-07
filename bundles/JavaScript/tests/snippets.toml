@@ -1,0 +1,267 @@
+[[test]]
+name = "log"
+snippet = "recur.javascript.log"
+[test.expect]
+stdout = '''
+console.log(${1:$TM_SELECTED_TEXT});
+'''
+
+[[test]]
+name = "forof"
+snippet = "recur.javascript.forof"
+[test.expect]
+stdout = '''
+for (${1:variable} of ${2:iterable}) {
+	$3
+}
+'''
+
+[[test]]
+name = "class"
+snippet = "recur.javascript.class"
+[test.expect]
+stdout = '''
+class ${1:ClassName} {
+	constructor($2) {
+		$3
+	}
+}
+'''
+
+[[test]]
+name = "fun"
+snippet = "recur.javascript.fun"
+[test.expect]
+stdout = '''
+function ${1:functionName}($2) {
+	$0
+}
+'''
+
+[[test]]
+name = "try"
+snippet = "recur.javascript.try"
+[test.expect]
+stdout = '''
+try {
+	$1
+} catch (${2:e}) {
+	$3
+} finally {
+	$4
+}
+'''
+
+[[test]]
+name = "ife"
+snippet = "recur.javascript.ife"
+[test.expect]
+stdout = '''
+if (${1:true}) {
+	${2:$TM_SELECTED_TEXT}
+} else {
+	$3
+}
+'''
+
+[[test]]
+name = "if"
+snippet = "recur.javascript.if"
+[test.expect]
+stdout = '''
+if (${1:true}) {
+	${2:$TM_SELECTED_TEXT}
+}
+'''
+
+[[test]]
+name = "else"
+snippet = "recur.javascript.else"
+[test.expect]
+stdout = '''
+else {
+	${1:$TM_SELECTED_TEXT}
+}
+'''
+
+[[test]]
+name = "for"
+snippet = "recur.javascript.for"
+[test.expect]
+stdout = '''
+for (var ${1:i} = 0; $1 < ${2:Things}.length; $1++) {
+	${2:Things}[$1]
+}
+'''
+
+[[test]]
+name = "for-rev"
+snippet = "recur.javascript.for-rev"
+[test.expect]
+stdout = '''
+for (var ${1:i} = ${2:Things}.length - 1; $1 >= 0; $1--) {
+	${2:Things}[$1]
+}
+'''
+
+[[test]]
+name = "forin"
+snippet = "recur.javascript.forin"
+[test.expect]
+stdout = '''
+for (${1:variable} in ${2:object}) {
+	if (${2:object}.hasOwnProperty(${1:variable})) {
+		${0:$TM_SELECTED_TEXT}
+	}
+}
+'''
+
+[[test]]
+name = "f"
+snippet = "recur.javascript.f"
+[test.expect]
+stdout = '''
+function ($1) {
+	${0:$TM_SELECTED_TEXT}
+}
+'''
+
+[[test]]
+name = "iife"
+snippet = "recur.javascript.iife"
+[test.expect]
+stdout = '''
+(function() {
+	${1:$TM_SELECTED_TEXT}
+}());
+'''
+
+[[test]]
+name = "proto"
+snippet = "recur.javascript.proto"
+[test.expect]
+stdout = '''
+${1:ClassName}.prototype.${2:methodName} = function ($3) {
+	$0
+};
+'''
+
+[[test]]
+name = "do"
+snippet = "recur.javascript.do"
+[test.expect]
+stdout = '''
+do {
+	${2:$TM_SELECTED_TEXT}
+} while (${1:true});
+'''
+
+[[test]]
+name = "while"
+snippet = "recur.javascript.while"
+[test.expect]
+stdout = '''
+while (${1:true}) {
+	${2:$TM_SELECTED_TEXT}
+}
+'''
+
+[[test]]
+name = "switch"
+snippet = "recur.javascript.switch"
+[test.expect]
+stdout = '''
+switch (${1:expression}) {
+case ${2:expression}:
+	$4
+	break;
+default:
+	${3:$TM_SELECTED_TEXT}
+}
+'''
+
+[[test]]
+name = "case"
+snippet = "recur.javascript.case"
+[test.expect]
+stdout = '''
+case ${1:expression}:
+	$2
+	break;
+'''
+
+[[test]]
+name = "error"
+snippet = "recur.javascript.error"
+[test.expect]
+stdout = '''
+console.error(${1:$TM_SELECTED_TEXT});
+'''
+
+[[test]]
+name = "warn"
+snippet = "recur.javascript.warn"
+[test.expect]
+stdout = '''
+console.warn(${1:$TM_SELECTED_TEXT});
+'''
+
+[[test]]
+name = "throw"
+snippet = "recur.javascript.throw"
+[test.expect]
+stdout = '''
+throw new ${1:Error}(${2:$TM_SELECTED_TEXT});
+'''
+
+[[test]]
+name = "timeout"
+snippet = "recur.javascript.timeout"
+[test.expect]
+stdout = '''
+setTimeout(function () {
+	${2:$TM_SELECTED_TEXT}
+}, ${1:10});
+'''
+
+[[test]]
+name = "interval"
+snippet = "recur.javascript.interval"
+[test.expect]
+stdout = '''
+setInterval(function () {
+	${2:$TM_SELECTED_TEXT}
+}, ${1:10});
+'''
+
+[[test]]
+name = "get-id"
+snippet = "recur.javascript.get-id"
+[test.expect]
+stdout = '''
+getElementById(${1:'${2:id}'})
+'''
+
+[[test]]
+name = "get-class"
+snippet = "recur.javascript.get-class"
+[test.expect]
+stdout = '''
+getElementsByClassName(${1:'${2:className}'})
+'''
+
+[[test]]
+name = "get-name"
+snippet = "recur.javascript.get-name"
+[test.expect]
+stdout = '''
+getElementsByName(${1:'${2:name}'})
+'''
+
+[[test]]
+name = "get-tag"
+snippet = "recur.javascript.get-tag"
+[test.expect]
+stdout = '''
+getElementsByTagName(${1:'${2:tagName}'})
+'''

@@ -1,0 +1,294 @@
+{
+  "name": "Vibrant Ink",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#000000",
+    "editor.foreground": "#FFFFFF",
+    "editor.selectionBackground": "#445A4DE0",
+    "editor.lineHighlightBackground": "#424100",
+    "editorCursor.foreground": "#FFFFFF",
+    "editorWhitespace.foreground": "#515151"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#000000"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#121212"
+      },
+      "name": "Text base",
+      "scope": "text"
+    },
+    {
+      "settings": {
+        "background": "#000000"
+      },
+      "name": "Inline Ruby Html",
+      "scope": "source.ruby.rails.embedded.html"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#141414"
+      },
+      "name": "Ruby Html",
+      "scope": "text.html.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#D4FB41"
+      },
+      "name": "Ruby Number",
+      "scope": "constant.numeric.ruby"
+    },
+    {
+      "settings": {},
+      "name": "Ruby source",
+      "scope": "source.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#000000"
+      },
+      "name": "Source base",
+      "scope": "source"
+    },
+    {
+      "settings": {
+        "foreground": "#AB51D6"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#3DA8A9"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#FF7C00"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#F0F9FA"
+      },
+      "name": "Pre-processor Line",
+      "scope": "keyword.preprocessor"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "Pre-processor Directive",
+      "scope": "keyword.preprocessor directive"
+    },
+    {
+      "settings": {
+        "foreground": "#FFD300"
+      },
+      "name": "Function name",
+      "scope": [
+        "entity.name.function",
+        "storage.type.function.js"
+      ]
+    },
+    {
+      "settings": {
+        "fontStyle": "italic"
+      },
+      "name": "Function argument",
+      "scope": "variable.parameter"
+    },
+    {
+      "settings": {
+        "foreground": "#8B47C4",
+        "background": "#050505"
+      },
+      "name": "Block comment",
+      "scope": "source comment.block"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "Variable",
+      "scope": "variable.other"
+    },
+    {
+      "settings": {
+        "foreground": "#A9A879"
+      },
+      "name": "ActiveRecord Function",
+      "scope": "support.function.activerecord.rails"
+    },
+    {
+      "settings": {
+        "foreground": "#73FA00"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#B8B8B8"
+      },
+      "name": "String escapes",
+      "scope": "string constant.character.escape"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#D5D341"
+      },
+      "name": "String (executed)",
+      "scope": "string.interpolated"
+    },
+    {
+      "settings": {
+        "foreground": "#51C0D6"
+      },
+      "name": "Regular expression",
+      "scope": "string.regexp"
+    },
+    {
+      "settings": {
+        "foreground": "#D5D341"
+      },
+      "name": "String (literal)",
+      "scope": "string.literal"
+    },
+    {
+      "settings": {
+        "foreground": "#686868"
+      },
+      "name": "String escapes (executed)",
+      "scope": "string.interpolated constant.character.escape"
+    },
+    {
+      "settings": {
+        "fontStyle": "underline"
+      },
+      "name": "Class name",
+      "scope": [
+        "entity.name.class",
+        "support.class.js"
+      ]
+    },
+    {
+      "settings": {
+        "fontStyle": "italic underline"
+      },
+      "name": "Class inheritance",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {},
+      "name": "Tag name",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#FF7C00"
+      },
+      "name": "Html Meta",
+      "scope": [
+        "meta.tag.inline.any.html",
+        "meta.tag.block.any.html"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A8D4A9",
+        "fontStyle": "italic"
+      },
+      "name": "Tag attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#E3EA4D"
+      },
+      "name": "Other Keywords",
+      "scope": "keyword.other"
+    },
+    {
+      "settings": {
+        "foreground": "#FF7C00"
+      },
+      "name": "CSS Selector",
+      "scope": [
+        "meta.selector.css",
+        "entity.other.attribute-name.pseudo-class.css",
+        "entity.name.tag.wildcard.css",
+        "entity.other.attribute-name.id.css",
+        "entity.other.attribute-name.class.css"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#A9A879"
+      },
+      "name": "CSS Property",
+      "scope": "support.type.property-name.css"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "CSS Other",
+      "scope": [
+        "keyword.other.unit.css",
+        "constant.other.rgb-value.css",
+        "constant.numeric.css"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "Javascript Events",
+      "scope": "support.function.event-handler.js"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "Javascript Operators",
+      "scope": "keyword.operator.js"
+    },
+    {
+      "settings": {
+        "foreground": "#D5D379"
+      },
+      "name": "Javascript Keywords",
+      "scope": "keyword.control.js"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF"
+      },
+      "name": "Prototype Objects",
+      "scope": "support.class.prototype.js"
+    },
+    {
+      "settings": {
+        "foreground": "#FF7C00"
+      },
+      "name": "Prototype Methods",
+      "scope": "object.property.function.prototype.js"
+    }
+  ]
+}

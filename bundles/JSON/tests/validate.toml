@@ -1,0 +1,23 @@
+[[test]]
+name = "validates json"
+command = "Validate JSON"
+
+[test.context]
+input = "{\"ok\":true}"
+selectedText = "{\"ok\":true}"
+
+[test.expect]
+stdout = "Valid JSON"
+output = "showAsToast"
+
+[[test]]
+name = "validates jsonc (comments + trailing comma)"
+command = "Validate JSON"
+
+[test.context]
+inputFile = "jsonc/input.jsonc"
+selectedTextFile = "jsonc/input.jsonc"
+
+[test.expect]
+stdout = "Valid JSON"
+output = "showAsToast"

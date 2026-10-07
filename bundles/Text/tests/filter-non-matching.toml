@@ -1,0 +1,24 @@
+[[test]]
+name = "copies non-matching lines"
+command = "Copy Non-Matching Lines"
+
+[test.context]
+input = '''
+keep
+skip
+keep2
+'''
+selectedText = '''
+keep
+skip
+keep2
+'''
+
+[test.context.prompts]
+pattern = "keep"
+
+[test.expect]
+stdout = '''
+skip
+'''
+output = "newDocument"

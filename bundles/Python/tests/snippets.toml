@@ -1,0 +1,167 @@
+[[test]]
+name = "def"
+snippet = "recur.python.def"
+[test.expect]
+stdout = '''
+def ${1:fname}(${2}):
+	"""${3:docstring for ${1:fname}}"""
+	${0:pass}
+'''
+
+[[test]]
+name = "class"
+snippet = "recur.python.class"
+[test.expect]
+stdout = '''
+class ${1:ClassName}(${2:object}):
+	"""${3:docstring for ${1:ClassName}}"""
+	def __init__(self, ${4:arg}):
+		${5:super(${1:ClassName}, self).__init__()}
+		self.${4:arg} = ${4:arg}
+		$0
+'''
+
+[[test]]
+name = "ifmain"
+snippet = "recur.python.ifmain"
+[test.expect]
+stdout = '''
+if __name__ == '__main__':
+	${1:main()}$0
+'''
+
+[[test]]
+name = "py3"
+snippet = "recur.python.py3"
+[test.expect]
+stdout = '''
+#!/usr/bin/env python3
+'''
+
+[[test]]
+name = "try"
+snippet = "recur.python.try"
+[test.expect]
+stdout = '''
+try:
+	${1:pass}
+except ${2:Exception} as ${3:e}:
+	${4:raise $3}
+'''
+
+[[test]]
+name = "py"
+snippet = "recur.python.py"
+[test.expect]
+stdout = '''
+#!/usr/bin/env python
+'''
+
+[[test]]
+name = "defs"
+snippet = "recur.python.defs"
+[test.expect]
+stdout = '''
+def ${1:mname}(self, ${2:arg}):
+	${3:pass}
+'''
+
+[[test]]
+name = "prop"
+snippet = "recur.python.prop"
+[test.expect]
+stdout = '''
+@property
+def ${1:name}(self):
+	"""The ${1:name} property."""
+	${0:return self._${1:name}}
+'''
+
+[[test]]
+name = "magic"
+snippet = "recur.python.magic"
+[test.expect]
+stdout = '''
+__${1:init}__
+'''
+
+[[test]]
+name = "as"
+snippet = "recur.python.as"
+[test.expect]
+stdout = '''
+self.assert_(${1:boolean expression}${2:, '${3:message}'})$0
+'''
+
+[[test]]
+name = "ase"
+snippet = "recur.python.ase"
+[test.expect]
+stdout = '''
+self.assertEqual(${1:expected}, ${2:actual}${3:, '${4:message}'})$0
+'''
+
+[[test]]
+name = "asne"
+snippet = "recur.python.asne"
+[test.expect]
+stdout = '''
+self.assertNotEqual(${1:expected}, ${2:actual}${3:, '${4:message}'})$0
+'''
+
+[[test]]
+name = "asr"
+snippet = "recur.python.asr"
+[test.expect]
+stdout = '''
+self.assertRaises(${1:exception}, ${2:callable})$0
+'''
+
+[[test]]
+name = "fail"
+snippet = "recur.python.fail"
+[test.expect]
+stdout = '''
+self.fail('${1:message}')$0
+'''
+
+[[test]]
+name = "try-else"
+snippet = "recur.python.try-else"
+[test.expect]
+stdout = '''
+try:
+	${1:pass}
+except ${2:Exception} as ${3:e}:
+	${4:raise $3}
+else:
+	${5:pass}
+'''
+
+[[test]]
+name = "try-finally"
+snippet = "recur.python.try-finally"
+[test.expect]
+stdout = '''
+try:
+	${1:pass}
+except ${2:Exception} as ${3:e}:
+	${4:raise $3}
+finally:
+	${5:pass}
+'''
+
+[[test]]
+name = "try-all"
+snippet = "recur.python.try-all"
+[test.expect]
+stdout = '''
+try:
+	${1:pass}
+except ${2:Exception} as ${3:e}:
+	${4:raise}
+else:
+	${5:pass}
+finally:
+	${6:pass}
+'''

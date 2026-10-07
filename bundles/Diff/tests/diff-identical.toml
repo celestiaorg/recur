@@ -1,0 +1,12 @@
+[[test]]
+name = "empty diff when identical"
+command = "Diff with Clipboard"
+
+[test.context]
+input = "same"
+selectedText = "same"
+clipboard = "same"
+
+[test.expect]
+stdout = ""
+output = "newDocument"

@@ -1,0 +1,352 @@
+[[test]]
+name = "wrap"
+snippet = "recur.html.wrap"
+[test.expect]
+stdout = '''
+<${1:p}>${2:$TM_SELECTED_TEXT}</$1>
+'''
+
+[[test]]
+name = "em"
+snippet = "recur.html.em"
+[test.expect]
+stdout = '''
+<em>${1:$TM_SELECTED_TEXT}</em>
+'''
+
+[[test]]
+name = "nbsp"
+snippet = "recur.html.nbsp"
+[test.expect]
+stdout = '''
+&nbsp;
+'''
+
+[[test]]
+name = "br"
+snippet = "recur.html.br"
+[test.expect]
+stdout = '''
+<br>
+'''
+
+[[test]]
+name = "doctype"
+snippet = "recur.html.doctype"
+[test.expect]
+stdout = '''
+<!DOCTYPE html>
+'''
+
+[[test]]
+name = "doctype-html4-strict"
+snippet = "recur.html.doctype-html4-strict"
+[test.expect]
+stdout = '''
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+	"http://www.w3.org/TR/html4/strict.dtd">
+'''
+
+[[test]]
+name = "doctype-html4-transitional"
+snippet = "recur.html.doctype-html4-transitional"
+[test.expect]
+stdout = '''
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+	"http://www.w3.org/TR/html4/loose.dtd">
+'''
+
+[[test]]
+name = "html"
+snippet = "recur.html.html"
+[test.expect]
+stdout = '''
+<!DOCTYPE html>
+<html lang="${1:en}">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<title>$2</title>
+
+	$3
+</head>
+<body>
+	$0
+</body>
+</html>
+'''
+
+[[test]]
+name = "head"
+snippet = "recur.html.head"
+[test.expect]
+stdout = '''
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<title>${1:Page Title}</title>
+	$0
+</head>
+'''
+
+[[test]]
+name = "body"
+snippet = "recur.html.body"
+[test.expect]
+stdout = '''
+<body${1: id="${2:id}"}>
+	$0
+</body>
+'''
+
+[[test]]
+name = "title"
+snippet = "recur.html.title"
+[test.expect]
+stdout = '''
+<title>${1:Page Title}</title>
+'''
+
+[[test]]
+name = "div"
+snippet = "recur.html.div"
+[test.expect]
+stdout = '''
+<div${1: id="${2:name}"}>
+	${0:$TM_SELECTED_TEXT}
+</div>
+'''
+
+[[test]]
+name = "a"
+snippet = "recur.html.a"
+[test.expect]
+stdout = '''
+<a href="${1:#}">${2:$TM_SELECTED_TEXT}</a>
+'''
+
+[[test]]
+name = "mailto"
+snippet = "recur.html.mailto"
+[test.expect]
+stdout = '''
+<a href="mailto:${1:joe@example.com}?subject=${2:feedback}">${3:email me}</a>
+'''
+
+[[test]]
+name = "link"
+snippet = "recur.html.link"
+[test.expect]
+stdout = '''
+<link rel="${1:stylesheet}" href="${2:/css/master.css}">
+'''
+
+[[test]]
+name = "script"
+snippet = "recur.html.script"
+[test.expect]
+stdout = '''
+<script>
+	$0
+</script>
+'''
+
+[[test]]
+name = "scriptsrc"
+snippet = "recur.html.scriptsrc"
+[test.expect]
+stdout = '''
+<script src="$1"></script>
+'''
+
+[[test]]
+name = "style"
+snippet = "recur.html.style"
+[test.expect]
+stdout = '''
+<style>
+	$0
+</style>
+'''
+
+[[test]]
+name = "meta"
+snippet = "recur.html.meta"
+[test.expect]
+stdout = '''
+<meta name="${1:name}" content="${2:content}">
+'''
+
+[[test]]
+name = "base"
+snippet = "recur.html.base"
+[test.expect]
+stdout = '''
+<base href="$1"${2: target="$3"}>
+'''
+
+[[test]]
+name = "h1"
+snippet = "recur.html.h1"
+[test.expect]
+stdout = '''
+<h1>${1:$TM_SELECTED_TEXT}</h1>
+'''
+
+[[test]]
+name = "ul"
+snippet = "recur.html.ul"
+[test.expect]
+stdout = '''
+<ul>
+	<li>${1:first item}</li>$0
+</ul>
+'''
+
+[[test]]
+name = "ol"
+snippet = "recur.html.ol"
+[test.expect]
+stdout = '''
+<ol>
+	<li>${1:first item}</li>$0
+</ol>
+'''
+
+[[test]]
+name = "dl"
+snippet = "recur.html.dl"
+[test.expect]
+stdout = '''
+<dl>
+	<dt>${1:first item}</dt>
+	<dd>
+		${2:description}
+	</dd>$0
+</dl>
+'''
+
+[[test]]
+name = "table"
+snippet = "recur.html.table"
+[test.expect]
+stdout = '''
+<table>
+	<caption>${1:Description}</caption>
+	<thead>
+		<tr>
+			<th scope="${2|col,row|}">${3:Header Title}</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>$4</td>$0
+		</tr>
+	</tbody>
+</table>
+'''
+
+[[test]]
+name = "form"
+snippet = "recur.html.form"
+[test.expect]
+stdout = '''
+<form action="${1}" method="${2:get}" accept-charset="utf-8">
+	$0
+
+	<p><input type="submit" value="Continue &rarr;"></p>
+</form>
+'''
+
+[[test]]
+name = "fieldset"
+snippet = "recur.html.fieldset"
+[test.expect]
+stdout = '''
+<fieldset${1: id="${2:id}"}>
+	<legend>${3:$TM_SELECTED_TEXT}</legend>
+	$0
+</fieldset>
+'''
+
+[[test]]
+name = "input"
+snippet = "recur.html.input"
+[test.expect]
+stdout = '''
+<input type="${1|text,submit,hidden,button|}" name="${2:some_name}" value="$3"${4: id="${5:$2}"}>
+'''
+
+[[test]]
+name = "input-label"
+snippet = "recur.html.input-label"
+[test.expect]
+stdout = '''
+<label for="${2:id}">${1:label}</label><input type="${3|text,submit,hidden,button|}" name="${4:$2}" value="$5"${6: id="${7:$2}"}>
+'''
+
+[[test]]
+name = "select"
+snippet = "recur.html.select"
+[test.expect]
+stdout = '''
+<select name="${1:some_name}" id="${2:$1}">
+	<option value="${3:option1}">${4:$3}</option>
+	<option value="${5:option2}">${6:$5}</option>
+	$0
+</select>
+'''
+
+[[test]]
+name = "opt"
+snippet = "recur.html.opt"
+[test.expect]
+stdout = '''
+<option${1: value="${2:option}"}>${3:$2}</option>
+'''
+
+[[test]]
+name = "textarea"
+snippet = "recur.html.textarea"
+[test.expect]
+stdout = '''
+<textarea name="${1:Name}" rows="${2:8}" cols="${3:40}">$0</textarea>
+'''
+
+[[test]]
+name = "audio"
+snippet = "recur.html.audio"
+[test.expect]
+stdout = '''
+<audio controls>
+	<source src="${1:example.mp3}" type="audio/mp3">
+
+	<p>Your browser doesn't support HTML5 audio. Here is
+		a <a href="${1:example.mp3}">link to the audio</a> instead.</p>
+</audio>
+'''
+
+[[test]]
+name = "video"
+snippet = "recur.html.video"
+[test.expect]
+stdout = '''
+<video controls>
+	<source src="${1:example.mp4}" type="video/mp4">
+
+	<p>Your browser doesn't support HTML5 video. Here is
+		a <a href="${1:example.mp4}">link to the video</a> instead.</p>
+</video>
+'''
+
+[[test]]
+name = "source"
+snippet = "recur.html.source"
+[test.expect]
+stdout = '''
+<source src="${1:example.mp4}" type="video/mp4">
+'''

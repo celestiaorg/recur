@@ -1,0 +1,60 @@
+[[test]]
+name = "execute replaces with stdout"
+command = "Execute Selection"
+
+[test.context]
+input = "printf 'hello\\n'"
+selectedText = "printf 'hello\\n'"
+
+[test.expect]
+stdout = "hello\n"
+output = "replaceInput"
+
+[[test]]
+name = "execute and keep prepends source"
+command = "Execute and Keep"
+
+[test.context]
+input = "printf 'hello\\n'"
+selectedText = "printf 'hello\\n'"
+
+[test.expect]
+stdout = "printf 'hello\\n'\nhello\n"
+output = "replaceInput"
+
+[[test]]
+name = "validate accepts a simple script"
+command = "Validate Syntax"
+
+[test.context]
+input = "echo hi\n"
+selectedText = "echo hi\n"
+
+[test.expect]
+stdout = "Shell syntax OK\n"
+output = "showAsToast"
+
+[[test]]
+name = "validate rejects a syntax error"
+command = "Validate Syntax"
+
+[test.context]
+input = "if then\n"
+selectedText = "if then\n"
+
+[test.expect]
+exitCode = 1
+skipStdout = true
+output = "showAsToast"
+
+[[test]]
+name = "chmod fails without a path"
+command = "Make Executable"
+
+[test.context]
+filepath = ""
+
+[test.expect]
+exitCode = 1
+skipStdout = true
+output = "showAsToast"

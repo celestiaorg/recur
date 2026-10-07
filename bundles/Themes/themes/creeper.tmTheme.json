@@ -1,0 +1,243 @@
+{
+  "name": "Creeper",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#000000",
+    "editor.foreground": "#EDEDED",
+    "editor.selectionBackground": "#85858561",
+    "editor.lineHighlightBackground": "#FFFFFF2B",
+    "editorCursor.foreground": "#D6D6D6",
+    "editorWhitespace.foreground": "#5A5A5A"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#EDEDED",
+        "background": "#000000"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#686868"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#686868"
+      },
+      "name": "Comment Block",
+      "scope": "comment.block"
+    },
+    {
+      "settings": {
+        "foreground": "#808080"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#A4715E"
+      },
+      "name": "Entity",
+      "scope": "entity"
+    },
+    {
+      "settings": {
+        "foreground": "#A4715E"
+      },
+      "name": "Operators",
+      "scope": "keyword.operator"
+    },
+    {
+      "settings": {
+        "foreground": "#808080"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#95A7AB"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#808080"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#737F64"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#808080"
+      },
+      "name": "Support",
+      "scope": "support"
+    },
+    {
+      "settings": {
+        "foreground": "#EDEDED"
+      },
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#F87554"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#F3F3F3"
+      },
+      "name": "Embedded Source",
+      "scope": "text source"
+    },
+    {
+      "settings": {
+        "foreground": "#F3F3F3"
+      },
+      "name": "Embedded Source (Bright)",
+      "scope": "text.html.ruby source"
+    },
+    {
+      "settings": {
+        "foreground": "#A4715E"
+      },
+      "name": "Entity inherited-class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#737F64"
+      },
+      "name": "String embedded-source",
+      "scope": "string.quoted source"
+    },
+    {
+      "settings": {
+        "foreground": "#737F64"
+      },
+      "name": "String constant",
+      "scope": "string constant"
+    },
+    {
+      "settings": {
+        "foreground": "#8E9E7B"
+      },
+      "name": "String.regexp",
+      "scope": "string.regexp"
+    },
+    {
+      "settings": {
+        "foreground": "#A4715E"
+      },
+      "name": "String variable",
+      "scope": "string variable"
+    },
+    {
+      "settings": {
+        "foreground": "#A4715E"
+      },
+      "name": "Support.function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#808080"
+      },
+      "name": "Support.constant",
+      "scope": "support.constant"
+    },
+    {
+      "settings": {
+        "foreground": "#808080"
+      },
+      "name": "C/C++ Preprocessor Line",
+      "scope": "other.preprocessor.c"
+    },
+    {
+      "settings": {
+        "foreground": "#808080"
+      },
+      "name": "C/C++ Preprocessor Directive",
+      "scope": "other.preprocessor.c entity"
+    },
+    {
+      "settings": {
+        "foreground": "#808080"
+      },
+      "name": "Doctype/XML Processing",
+      "scope": [
+        "declaration.sgml.html declaration.doctype",
+        "declaration.sgml.html declaration.doctype entity",
+        "declaration.sgml.html declaration.doctype string",
+        "declaration.xml-processing",
+        "declaration.xml-processing entity",
+        "declaration.xml-processing string"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#9BADB0"
+      },
+      "name": "Meta.tag.A",
+      "scope": [
+        "declaration.tag",
+        "declaration.tag entity",
+        "meta.tag",
+        "meta.tag entity"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#0F2E40"
+      },
+      "name": "diff.header",
+      "scope": [
+        "meta.diff",
+        "meta.diff.header"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#DB4C29"
+      },
+      "name": "diff.deleted",
+      "scope": "markup.deleted"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#CFBD5C"
+      },
+      "name": "diff.changed",
+      "scope": "markup.changed"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#4DB34F"
+      },
+      "name": "diff.inserted",
+      "scope": "markup.inserted"
+    }
+  ]
+}

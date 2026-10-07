@@ -1,0 +1,24 @@
+[[test]]
+name = "joins with separator"
+command = "Join Lines"
+
+[test.context]
+input = '''
+a
+b
+c
+'''
+selectedText = '''
+a
+b
+c
+'''
+
+[test.context.prompts]
+separator = "|"
+
+[test.expect]
+stdout = '''
+a|b|c
+'''
+output = "replaceSelection"

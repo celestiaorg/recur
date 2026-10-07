@@ -1,0 +1,10 @@
+[[test]]
+name = "counts words lines chars"
+command = "recur.text.word-count"
+
+[test.context]
+input = "one two three"
+
+[test.expect]
+stdout = "3 words · 0 lines · 13 chars\n"
+output = "showAsToast"

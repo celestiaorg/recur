@@ -1,0 +1,1810 @@
+[
+  {
+    "id": "cool-glow",
+    "name": "Cool Glow",
+    "file": "cool-glow.tmTheme.json",
+    "plist": "Cool Glow.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#040727FA",
+      "fg": "#E6E6E6",
+      "fn": "#25F1E3",
+      "name": "#FCE239",
+      "string": "#9BFB9F"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Cool%20Glow.tmTheme",
+    "order": 30
+  },
+  {
+    "id": "cobalt",
+    "name": "Cobalt",
+    "file": "cobalt.tmTheme.json",
+    "plist": "Cobalt.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#002F51",
+      "fg": "#FFFFFF",
+      "fn": "#FFAD00",
+      "name": "#FFBD66",
+      "string": "#40DB00"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Cobalt.tmTheme",
+    "order": 60
+  },
+  {
+    "id": "vibrant-ink",
+    "name": "Vibrant Ink",
+    "file": "vibrant-ink.tmTheme.json",
+    "plist": "Vibrant Ink.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#FFFFFF",
+      "fn": "#FF7C00",
+      "name": "#FFD300",
+      "string": "#73FA00"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Vibrant%20Ink.tmTheme",
+    "order": 61
+  },
+  {
+    "id": "sunburst",
+    "name": "Sunburst",
+    "file": "sunburst.tmTheme.json",
+    "plist": "Sunburst.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#F9F9F9",
+      "fn": "#E99C77",
+      "name": "#E1D797",
+      "string": "#76BA53"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Sunburst.tmTheme",
+    "order": 63
+  },
+  {
+    "id": "idle-fingers",
+    "name": "idleFingers",
+    "file": "idle-fingers.tmTheme.json",
+    "plist": "idleFingers.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#414141",
+      "fg": "#FFFFFF",
+      "fn": "#D78B42",
+      "name": "#C74932",
+      "string": "#B3CB74"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/idleFingers.tmTheme",
+    "order": 64
+  },
+  {
+    "id": "ir-black",
+    "name": "IR_Black",
+    "file": "ir-black.tmTheme.json",
+    "plist": "IR_Black.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#F1F1F1",
+      "fn": "#A5D5FE",
+      "name": "#E1D797",
+      "string": "#B4FB73"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/IR_Black.tmTheme",
+    "order": 65
+  },
+  {
+    "id": "railscasts",
+    "name": "Railscasts",
+    "file": "railscasts.tmTheme.json",
+    "plist": "Railscasts.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#393939",
+      "fg": "#EBE7E3",
+      "fn": "#D78B42",
+      "name": "#FFD080",
+      "string": "#B3CB74"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Railscasts.tmTheme",
+    "order": 66
+  },
+  {
+    "id": "pastels-on-dark",
+    "name": "Pastels on Dark",
+    "file": "pastels-on-dark.tmTheme.json",
+    "plist": "Pastels on Dark.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#2C2828",
+      "fg": "#E1E1E1",
+      "fn": "#B1B4FF",
+      "name": "#B1B4FF",
+      "string": "#BCA374"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Pastels%20on%20Dark.tmTheme",
+    "order": 67
+  },
+  {
+    "id": "monokai",
+    "name": "Monokai",
+    "file": "monokai.tmTheme.json",
+    "plist": "Monokai.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#34352D",
+      "fg": "#F9F9F5",
+      "fn": "#FD4485",
+      "name": "#B3E43B",
+      "string": "#EBE086"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Monokai.tmTheme",
+    "order": 68
+  },
+  {
+    "id": "monokai-dark",
+    "name": "Monokai Dark",
+    "file": "monokai-dark.tmTheme.json",
+    "plist": "Monokai Dark.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0F0F0F",
+      "fg": "#F9F9F5",
+      "fn": "#FD4485",
+      "name": "#B3E43B",
+      "string": "#FFF0A9"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Monokai%20Dark.tmTheme",
+    "order": 69
+  },
+  {
+    "id": "argonaut",
+    "name": "[ Argonaut ]",
+    "file": "argonaut.tmTheme.json",
+    "plist": "[ Argonaut ].tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#1B1B1B",
+      "fg": "#BFBFBF",
+      "fn": "#FFFFFF",
+      "name": "#FFD200",
+      "string": "#76A8D0"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/[%20Argonaut%20].tmTheme",
+    "order": 70
+  },
+  {
+    "id": "active4d",
+    "name": "Active4D",
+    "file": "active4d.tmTheme.json",
+    "plist": "Active4D.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#007AAA",
+      "name": "#2B59AC",
+      "string": "#797979"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Active4D.tmTheme",
+    "order": 71
+  },
+  {
+    "id": "all-hallows-eve",
+    "name": "All Hallow's Eve",
+    "file": "all-hallows-eve.tmTheme.json",
+    "plist": "All Hallow's Eve.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#FFFFFF",
+      "fn": "#D78B42",
+      "name": "#D44D3E",
+      "string": "#75D142"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/All%20Hallow's%20Eve.tmTheme",
+    "order": 72
+  },
+  {
+    "id": "amy",
+    "name": "Amy",
+    "file": "amy.tmTheme.json",
+    "plist": "Amy.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#2B042B",
+      "fg": "#D9DAFF",
+      "fn": "#B098FF",
+      "name": "#60AFB0",
+      "string": "#A9A9A9"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Amy.tmTheme",
+    "order": 73
+  },
+  {
+    "id": "bbedit",
+    "name": "BBEdit",
+    "file": "bbedit.tmTheme.json",
+    "plist": "BBEdit.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#0433FF",
+      "name": "#0220B2",
+      "string": "#FF2F92"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/BBEdit.tmTheme",
+    "order": 74
+  },
+  {
+    "id": "bespin",
+    "name": "Bespin",
+    "file": "bespin.tmTheme.json",
+    "plist": "Bespin.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#352C25",
+      "fg": "#C7BCAE",
+      "fn": "#6FB6EE",
+      "name": "#E1D797",
+      "string": "#62C50C"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Bespin.tmTheme",
+    "order": 75
+  },
+  {
+    "id": "black-pearl",
+    "name": "Black Pearl",
+    "file": "black-pearl.tmTheme.json",
+    "plist": "Black Pearl.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#FFFFFF",
+      "fn": "#9BB5CC",
+      "name": "#FFFFFF",
+      "string": "#D783FF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Black%20Pearl.tmTheme",
+    "order": 76
+  },
+  {
+    "id": "black-pearl-ii",
+    "name": "Black Pearl II",
+    "file": "black-pearl-ii.tmTheme.json",
+    "plist": "Black Pearl II.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#FFFFFF",
+      "fn": "#FAC500",
+      "name": "#FFFFFF",
+      "string": "#D783FF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Black%20Pearl%20II.tmTheme",
+    "order": 77
+  },
+  {
+    "id": "blackboard",
+    "name": "Blackboard",
+    "file": "blackboard.tmTheme.json",
+    "plist": "Blackboard.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0D152C",
+      "fg": "#F9F9F9",
+      "fn": "#FCE239",
+      "name": "#FCE239",
+      "string": "#70D34C"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Blackboard.tmTheme",
+    "order": 78
+  },
+  {
+    "id": "blackboard-black",
+    "name": "Blackboard Black",
+    "file": "blackboard-black.tmTheme.json",
+    "plist": "Blackboard Black.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#292929",
+      "fg": "#F9F9F9",
+      "fn": "#FCE239",
+      "name": "#FCE239",
+      "string": "#70D34C"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Blackboard%20Black.tmTheme",
+    "order": 79
+  },
+  {
+    "id": "black-light",
+    "name": "BlackLight",
+    "file": "black-light.tmTheme.json",
+    "plist": "BlackLight.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#CCCCCC",
+      "fn": "#A46D90",
+      "name": "#919191",
+      "string": "#73FCD6"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/BlackLight.tmTheme",
+    "order": 80
+  },
+  {
+    "id": "bongzilla",
+    "name": "Bongzilla",
+    "file": "bongzilla.tmTheme.json",
+    "plist": "Bongzilla.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#292929",
+      "fg": "#F9F9F9",
+      "fn": "#FFD479",
+      "name": "#FFFFFFA6",
+      "string": "#88D5A2"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Bongzilla.tmTheme",
+    "order": 81
+  },
+  {
+    "id": "brilliance-black",
+    "name": "Brilliance Black",
+    "file": "brilliance-black.tmTheme.json",
+    "plist": "Brilliance Black.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0F0F0FFA",
+      "fg": "#F1F1F1",
+      "fn": "#00F900",
+      "name": "#FF3098",
+      "string": "#FFFA92"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Brilliance%20Black.tmTheme",
+    "order": 82
+  },
+  {
+    "id": "brilliance-dull",
+    "name": "Brilliance Dull",
+    "file": "brilliance-dull.tmTheme.json",
+    "plist": "Brilliance Dull.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#030303FA",
+      "fg": "#D6D6D6",
+      "fn": "#B571B4",
+      "name": "#B77092",
+      "string": "#DBD9B9"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Brilliance%20Dull.tmTheme",
+    "order": 83
+  },
+  {
+    "id": "choco",
+    "name": "choco",
+    "file": "choco.tmTheme.json",
+    "plist": "choco.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#200E0D",
+      "fg": "#CEC9A8",
+      "fn": "#C1A36F",
+      "name": "#CEA876",
+      "string": "#8DB276"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/choco.tmTheme",
+    "order": 84
+  },
+  {
+    "id": "claire",
+    "name": "Claire",
+    "file": "claire.tmTheme.json",
+    "plist": "Claire.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#EDEDED",
+      "fn": "#FF50A1",
+      "name": "#59D6FF",
+      "string": "#7FEC19"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Claire.tmTheme",
+    "order": 85
+  },
+  {
+    "id": "close-to-the-sea",
+    "name": "Close to the Sea",
+    "file": "close-to-the-sea.tmTheme.json",
+    "plist": "close_to_the_sea.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#1E2B30",
+      "fg": "#FFFFFB",
+      "fn": "#71A2AA",
+      "name": "#F06822",
+      "string": "#4895D2"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/close_to_the_sea.tmTheme",
+    "order": 86
+  },
+  {
+    "id": "clouds",
+    "name": "Clouds",
+    "file": "clouds.tmTheme.json",
+    "plist": "Clouds.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#BDA582",
+      "name": "#D23C33",
+      "string": "#6FA3D7"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Clouds.tmTheme",
+    "order": 87
+  },
+  {
+    "id": "clouds-midnight",
+    "name": "Clouds Midnight",
+    "file": "clouds-midnight.tmTheme.json",
+    "plist": "Clouds Midnight.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#212121",
+      "fg": "#A3A3A3",
+      "fn": "#A38E70",
+      "name": "#F0463B",
+      "string": "#6FA3D7"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Clouds%20Midnight.tmTheme",
+    "order": 88
+  },
+  {
+    "id": "coal-graal",
+    "name": "Coal Graal",
+    "file": "coal-graal.tmTheme.json",
+    "plist": "Coal Graal.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#2D2D2D",
+      "fg": "#DFE0DA",
+      "fn": "#E3CCF1",
+      "name": "#E6D4A5",
+      "string": "#BAD1DF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Coal%20Graal.tmTheme",
+    "order": 89
+  },
+  {
+    "id": "coda",
+    "name": "Coda",
+    "file": "coda.tmTheme.json",
+    "plist": "Coda.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#BA3776",
+      "name": "#00457C",
+      "string": "#F28B2C"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Coda.tmTheme",
+    "order": 90
+  },
+  {
+    "id": "creeper",
+    "name": "Creeper",
+    "file": "creeper.tmTheme.json",
+    "plist": "Creeper.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#EDEDED",
+      "fn": "#808080",
+      "name": "#A4715E",
+      "string": "#737F64"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Creeper.tmTheme",
+    "order": 91
+  },
+  {
+    "id": "cssedit",
+    "name": "CSSEdit",
+    "file": "cssedit.tmTheme.json",
+    "plist": "CSSEdit.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#595959",
+      "fn": "#568DC8",
+      "name": "#000000",
+      "string": "#6EA436"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/CSSEdit.tmTheme",
+    "order": 92
+  },
+  {
+    "id": "dawn",
+    "name": "Dawn",
+    "file": "dawn.tmTheme.json",
+    "plist": "Dawn.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FAFAFA",
+      "fg": "#060606",
+      "fn": "#8D5C48",
+      "name": "#7D4B1E",
+      "string": "#DA6B34"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Dawn.tmTheme",
+    "order": 93
+  },
+  {
+    "id": "deluxe",
+    "name": "Deluxe",
+    "file": "deluxe.tmTheme.json",
+    "plist": "Deluxe.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000F2",
+      "fg": "#F9F9F5",
+      "fn": "#EFD88E",
+      "name": "#4E88FF",
+      "string": "#FFFC78"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Deluxe.tmTheme",
+    "order": 94
+  },
+  {
+    "id": "django-smoothy",
+    "name": "Django (Smoothy)",
+    "file": "django-smoothy.tmTheme.json",
+    "plist": "Django (Smoothy).tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#2E6141",
+      "fg": "#F9F9F9",
+      "fn": "#A5E04B",
+      "name": "#FFEA75",
+      "string": "#E6FDC4"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Django%20(Smoothy).tmTheme",
+    "order": 95
+  },
+  {
+    "id": "django-dark",
+    "name": "Django Dark",
+    "file": "django-dark.tmTheme.json",
+    "plist": "Django Dark.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#082517",
+      "fg": "#F9F9F9",
+      "fn": "#84C100",
+      "name": "#FFC066",
+      "string": "#A1C6AE"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Django%20Dark.tmTheme",
+    "order": 96
+  },
+  {
+    "id": "dominion-day",
+    "name": "Dominion Day",
+    "file": "dominion-day.tmTheme.json",
+    "plist": "Dominion Day.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#C6BDDF",
+      "fn": "#6F71FF",
+      "name": "#A937B1",
+      "string": "#9669AD"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Dominion%20Day.tmTheme",
+    "order": 97
+  },
+  {
+    "id": "eiffel",
+    "name": "Eiffel",
+    "file": "eiffel.tmTheme.json",
+    "plist": "Eiffel.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#0224C3",
+      "name": "#0220B2",
+      "string": "#E22200"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Eiffel.tmTheme",
+    "order": 98
+  },
+  {
+    "id": "emacs-strict",
+    "name": "Emacs Strict",
+    "file": "emacs-strict.tmTheme.json",
+    "plist": "Emacs Strict.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000EB",
+      "fg": "#DBDBDB",
+      "fn": "#A2FBAA",
+      "name": "#91D7FA",
+      "string": "#FFAF8D"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Emacs%20Strict.tmTheme",
+    "order": 99
+  },
+  {
+    "id": "erebus",
+    "name": "Erebus",
+    "file": "erebus.tmTheme.json",
+    "plist": "Erebus.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#1A0A0A",
+      "fg": "#F9F9F5",
+      "fn": "#E26E6A",
+      "name": "#F6BCF0",
+      "string": "#FFC1BF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Erebus.tmTheme",
+    "order": 100
+  },
+  {
+    "id": "espresso",
+    "name": "Espresso",
+    "file": "espresso.tmTheme.json",
+    "plist": "Espresso.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#3B83AF",
+      "name": "#5FAFD9",
+      "string": "#DA6672"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Espresso.tmTheme",
+    "order": 101
+  },
+  {
+    "id": "espresso-libre",
+    "name": "Espresso Libre",
+    "file": "espresso-libre.tmTheme.json",
+    "plist": "Espresso Libre.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#382C25",
+      "fg": "#C9BCAD",
+      "fn": "#50B8F1",
+      "name": "#FFA56A",
+      "string": "#00A708"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Espresso%20Libre.tmTheme",
+    "order": 102
+  },
+  {
+    "id": "espresso-tutti",
+    "name": "Espresso Tutti",
+    "file": "espresso-tutti.tmTheme.json",
+    "plist": "Espresso Tutti.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#3B83AF",
+      "name": "#4B2F85",
+      "string": "#84BA06"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Espresso%20Tutti.tmTheme",
+    "order": 103
+  },
+  {
+    "id": "fade-to-grey",
+    "name": "Fade to Grey",
+    "file": "fade-to-grey.tmTheme.json",
+    "plist": "Fade to Grey.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#FFFFFF",
+      "fn": "#DB3442",
+      "name": "#B8B8B8",
+      "string": "#E8E86A"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Fade%20to%20Grey.tmTheme",
+    "order": 104
+  },
+  {
+    "id": "fluidvision",
+    "name": "Fluidvision",
+    "file": "fluidvision.tmTheme.json",
+    "plist": "Fluidvision.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#F6F6F6F2",
+      "fg": "#000000",
+      "fn": "#6DA4E7",
+      "name": "#2161AD",
+      "string": "#981B0A"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Fluidvision.tmTheme",
+    "order": 105
+  },
+  {
+    "id": "freckle",
+    "name": "Freckle",
+    "file": "freckle.tmTheme.json",
+    "plist": "Freckle.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#EF5F92",
+      "name": "#40A3B7",
+      "string": "#797C74"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Freckle.tmTheme",
+    "order": 106
+  },
+  {
+    "id": "friendship-bracelet",
+    "name": "Friendship Bracelet",
+    "file": "friendship-bracelet.tmTheme.json",
+    "plist": "Friendship Bracelet.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#292929",
+      "fg": "#F4F4F4",
+      "fn": "#FF9F68",
+      "name": "#44ABE1",
+      "string": "#F5F8AA"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Friendship%20Bracelet.tmTheme",
+    "order": 107
+  },
+  {
+    "id": "funky-dashboard",
+    "name": "Funky Dashboard",
+    "file": "funky-dashboard.tmTheme.json",
+    "plist": "Funky_Dashboard.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000D9",
+      "fg": "#D6D6D6",
+      "fn": "#7A81FF",
+      "name": "#FFD479",
+      "string": "#73FA79"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Funky_Dashboard.tmTheme",
+    "order": 108
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "file": "github.tmTheme.json",
+    "plist": "GitHub.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#F9FAFF",
+      "fg": "#000000",
+      "fn": "#000000",
+      "name": "#AB1500",
+      "string": "#E62C55"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/GitHub.tmTheme",
+    "order": 109
+  },
+  {
+    "id": "glitter-bomb",
+    "name": "GlitterBomb",
+    "file": "glitter-bomb.tmTheme.json",
+    "plist": "GlitterBomb.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0B0A0A",
+      "fg": "#D8D8D8",
+      "fn": "#E3C200",
+      "name": "#A57136",
+      "string": "#5F7747"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/GlitterBomb.tmTheme",
+    "order": 110
+  },
+  {
+    "id": "glow",
+    "name": "Glow",
+    "file": "glow.tmTheme.json",
+    "plist": "Glow.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#D6D6D6",
+      "fn": "#FFFFFF",
+      "name": "#FFFFFF",
+      "string": "#8FD55B"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Glow.tmTheme",
+    "order": 111
+  },
+  {
+    "id": "happy-happy-joy-joy-2",
+    "name": "Happy happy joy joy 2",
+    "file": "happy-happy-joy-joy-2.tmTheme.json",
+    "plist": "Happy happy joy joy 2.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#EAEAEA",
+      "fg": "#373737",
+      "fn": "#6C826A",
+      "name": "#704879",
+      "string": "#A32A16"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Happy%20happy%20joy%20joy%202.tmTheme",
+    "order": 112
+  },
+  {
+    "id": "happydeluxe",
+    "name": "Happydeluxe",
+    "file": "happydeluxe.tmTheme.json",
+    "plist": "happydeluxe.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#101928",
+      "fg": "#FFFFFF",
+      "fn": "#FFA100",
+      "name": "#00E2DA",
+      "string": "#FF84FA"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/happydeluxe.tmTheme",
+    "order": 113
+  },
+  {
+    "id": "heroku",
+    "name": "Heroku",
+    "file": "heroku.tmTheme.json",
+    "plist": "Heroku.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#FFFFFF",
+      "fn": "#9D92F9",
+      "name": "#CAC6EC",
+      "string": "#CEF40E"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Heroku.tmTheme",
+    "order": 114
+  },
+  {
+    "id": "idle",
+    "name": "IDLE",
+    "file": "idle.tmTheme.json",
+    "plist": "IDLE.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#FF6D00",
+      "name": "#2B59AC",
+      "string": "#00AF50"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/IDLE.tmTheme",
+    "order": 115
+  },
+  {
+    "id": "imathis",
+    "name": "imathis",
+    "file": "imathis.tmTheme.json",
+    "plist": "imathis.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#FFFFFF",
+      "fn": "#B63D37",
+      "name": "#E6DDAA",
+      "string": "#76BA53"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/imathis.tmTheme",
+    "order": 116
+  },
+  {
+    "id": "iplastic",
+    "name": "iPlastic",
+    "file": "iplastic.tmTheme.json",
+    "plist": "iPlastic.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#F1F1F1EB",
+      "fg": "#000000",
+      "fn": "#0433FF",
+      "name": "#FF9300",
+      "string": "#00A642"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/iPlastic.tmTheme",
+    "order": 117
+  },
+  {
+    "id": "ir-white",
+    "name": "IR_White",
+    "file": "ir-white.tmTheme.json",
+    "plist": "IR_White.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#007AA3",
+      "name": "#8D8231",
+      "string": "#00AC8B"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/IR_White.tmTheme",
+    "order": 118
+  },
+  {
+    "id": "juicy",
+    "name": "Juicy",
+    "file": "juicy.tmTheme.json",
+    "plist": "Juicy.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#F4F4F4",
+      "fg": "#000000",
+      "fn": "#AB4500",
+      "name": "#FF2600",
+      "string": "#FF7C00"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Juicy.tmTheme",
+    "order": 119
+  },
+  {
+    "id": "kr-theme",
+    "name": "krTheme",
+    "file": "kr-theme.tmTheme.json",
+    "plist": "krTheme.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0B0A08",
+      "fg": "#FDFEE6",
+      "fn": "#A5AB9D",
+      "name": "#97974A",
+      "string": "#D2B4B0B5"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/krTheme.tmTheme",
+    "order": 120
+  },
+  {
+    "id": "lazy",
+    "name": "LAZY",
+    "file": "lazy.tmTheme.json",
+    "plist": "LAZY.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#FF8C00",
+      "name": "#8F8F8F",
+      "string": "#4DA824"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/LAZY.tmTheme",
+    "order": 121
+  },
+  {
+    "id": "lowlight",
+    "name": "Lowlight",
+    "file": "lowlight.tmTheme.json",
+    "plist": "Lowlight.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#282828",
+      "fg": "#D4D4D4",
+      "fn": "#A09C1D",
+      "name": "#F1D95F",
+      "string": "#B58F6F"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Lowlight.tmTheme",
+    "order": 122
+  },
+  {
+    "id": "mac-classic",
+    "name": "Mac Classic",
+    "file": "mac-classic.tmTheme.json",
+    "plist": "Mac Classic.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#0433FF",
+      "name": "#0220B2",
+      "string": "#007A04"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Mac%20Classic.tmTheme",
+    "order": 123
+  },
+  {
+    "id": "magicwb-amiga",
+    "name": "MagicWB (Amiga)",
+    "file": "magicwb-amiga.tmTheme.json",
+    "plist": "MagicWB (Amiga).tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#A7A7A7",
+      "fg": "#000000",
+      "fn": "#497DB2",
+      "name": "#000000",
+      "string": "#FFFFFF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/MagicWB%20(Amiga).tmTheme",
+    "order": 124
+  },
+  {
+    "id": "menage-a-trois",
+    "name": "Menage A Trois",
+    "file": "menage-a-trois.tmTheme.json",
+    "plist": "Menage A Trois.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#12141A",
+      "fg": "#B6AEB7",
+      "fn": "#E0E2F1",
+      "name": "#FFD59A",
+      "string": "#8BFDFF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Menage%20A%20Trois.tmTheme",
+    "order": 125
+  },
+  {
+    "id": "merbivore",
+    "name": "Merbivore",
+    "file": "merbivore.tmTheme.json",
+    "plist": "Merbivore.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#1D1D1D",
+      "fg": "#EBE7E3",
+      "fn": "#FF8401",
+      "name": "#FFFFFF",
+      "string": "#9BFA03"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Merbivore.tmTheme",
+    "order": 126
+  },
+  {
+    "id": "merbivore-soft",
+    "name": "Merbivore Soft",
+    "file": "merbivore-soft.tmTheme.json",
+    "plist": "Merbivore Soft.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#252525",
+      "fg": "#EBE7E3",
+      "fn": "#FF944A",
+      "name": "#FFFFFF",
+      "string": "#9ECD72"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Merbivore%20Soft.tmTheme",
+    "order": 127
+  },
+  {
+    "id": "midnight",
+    "name": "Midnight",
+    "file": "midnight.tmTheme.json",
+    "plist": "Midnight.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0A0329E3",
+      "fg": "#F9F9F9",
+      "fn": "#6AB0FF",
+      "name": "#FCE239",
+      "string": "#00EE4A"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Midnight.tmTheme",
+    "order": 128
+  },
+  {
+    "id": "minimal-theme",
+    "name": "minimal Theme",
+    "file": "minimal-theme.tmTheme.json",
+    "plist": "minimal Theme.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#3F3B32",
+      "fg": "#FDFEE6",
+      "fn": "#A5AB9D",
+      "name": "#97974A",
+      "string": "#D2B4B0B5"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/minimal%20Theme.tmTheme",
+    "order": 129
+  },
+  {
+    "id": "monoindustrial",
+    "name": "monoindustrial",
+    "file": "monoindustrial.tmTheme.json",
+    "plist": "monoindustrial.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#2D3A35",
+      "fg": "#FFFFFF",
+      "fn": "#CF5000",
+      "name": "#B6C0B9",
+      "string": "#FFFFFF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/monoindustrial.tmTheme",
+    "order": 130
+  },
+  {
+    "id": "notebook",
+    "name": "Notebook",
+    "file": "notebook.tmTheme.json",
+    "plist": "Notebook.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#CAC2AD",
+      "fg": "#000000BF",
+      "fn": "#D23C33",
+      "name": "#000000",
+      "string": "#000000BF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Notebook.tmTheme",
+    "order": 131
+  },
+  {
+    "id": "notepad2",
+    "name": "Notepad 2",
+    "file": "notepad2.tmTheme.json",
+    "plist": "Notepad2.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#942192",
+      "name": "#000000",
+      "string": "#008F00"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Notepad2.tmTheme",
+    "order": 132
+  },
+  {
+    "id": "offy",
+    "name": "Offy",
+    "file": "offy.tmTheme.json",
+    "plist": "Offy.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#00053CCC",
+      "fg": "#FFFFFF",
+      "fn": "#FF2600",
+      "name": "#FF7C01",
+      "string": "#3DA600"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Offy.tmTheme",
+    "order": 133
+  },
+  {
+    "id": "pastie",
+    "name": "Pastie",
+    "file": "pastie.tmTheme.json",
+    "plist": "Pastie.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#029901",
+      "name": "#048BCE",
+      "string": "#E12D01"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Pastie.tmTheme",
+    "order": 134
+  },
+  {
+    "id": "pengwynn",
+    "name": "Pengwynn",
+    "file": "pengwynn.tmTheme.json",
+    "plist": "Pengwynn.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#EBE7E3",
+      "fn": "#FF9100",
+      "name": "#FFD080",
+      "string": "#B3CB74"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Pengwynn.tmTheme",
+    "order": 135
+  },
+  {
+    "id": "plum-dumb",
+    "name": "Plum Dumb",
+    "file": "plum-dumb.tmTheme.json",
+    "plist": "Plum Dumb.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#00000BF7",
+      "fg": "#FFFFFF",
+      "fn": "#D5D379",
+      "name": "#73FCD6",
+      "string": "#A6FB79"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Plum%20Dumb.tmTheme",
+    "order": 136
+  },
+  {
+    "id": "putty",
+    "name": "Putty",
+    "file": "putty.tmTheme.json",
+    "plist": "Putty.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#302F2D",
+      "fg": "#EAE7E3",
+      "fn": "#EDF0CD",
+      "name": "#DF6E5D",
+      "string": "#8BC5DF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Putty.tmTheme",
+    "order": 137
+  },
+  {
+    "id": "rails-envy",
+    "name": "Rails Envy",
+    "file": "rails-envy.tmTheme.json",
+    "plist": "Rails Envy.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#171714",
+      "fg": "#F9F9F5",
+      "fn": "#4DAF99",
+      "name": "#B3E43B",
+      "string": "#FFFC78"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Rails%20Envy.tmTheme",
+    "order": 138
+  },
+  {
+    "id": "rdark",
+    "name": "RDark",
+    "file": "rdark.tmTheme.json",
+    "plist": "RDark.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#243032",
+      "fg": "#C5C9C3",
+      "fn": "#6CB1D8",
+      "name": "#FFB84E",
+      "string": "#69E648"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/RDark.tmTheme",
+    "order": 139
+  },
+  {
+    "id": "resesif",
+    "name": "Resesif",
+    "file": "resesif.tmTheme.json",
+    "plist": "Resesif.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#393939",
+      "fg": "#EBE7E3",
+      "fn": "#C2CB5F",
+      "name": "#E29549",
+      "string": "#BDD379"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Resesif.tmTheme",
+    "order": 140
+  },
+  {
+    "id": "ruby-blue",
+    "name": "Ruby Blue",
+    "file": "ruby-blue.tmTheme.json",
+    "plist": "Ruby Blue.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#162940",
+      "fg": "#FFFFFF",
+      "fn": "#FAC500",
+      "name": "#C3524E",
+      "string": "#0EC81B"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Ruby%20Blue.tmTheme",
+    "order": 141
+  },
+  {
+    "id": "ruby-robot",
+    "name": "RubyRobot",
+    "file": "ruby-robot.tmTheme.json",
+    "plist": "RubyRobot.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#FFFFFF",
+      "fn": "#DB3442",
+      "name": "#B8B8B8",
+      "string": "#6DF100"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/RubyRobot.tmTheme",
+    "order": 142
+  },
+  {
+    "id": "ryan-light",
+    "name": "Ryan Light",
+    "file": "ryan-light.tmTheme.json",
+    "plist": "ryan-light.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#007A06",
+      "name": "#9625A6",
+      "string": "#009DA1"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/ryan-light.tmTheme",
+    "order": 143
+  },
+  {
+    "id": "sidewalk-chalk",
+    "name": "Sidewalk Chalk",
+    "file": "sidewalk-chalk.tmTheme.json",
+    "plist": "SidewalkChalk.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#393B3C",
+      "fg": "#FBFBFB",
+      "fn": "#72C35F",
+      "name": "#B2B2B2",
+      "string": "#719BC5"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/SidewalkChalk.tmTheme",
+    "order": 144
+  },
+  {
+    "id": "slush-and-poppies",
+    "name": "Slush & Poppies",
+    "file": "slush-and-poppies.tmTheme.json",
+    "plist": "Slush & Poppies.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#F4F4F4",
+      "fg": "#000000",
+      "fn": "#2775B0",
+      "name": "#941100",
+      "string": "#CD453E"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Slush%20&%20Poppies.tmTheme",
+    "order": 145
+  },
+  {
+    "id": "smoothy",
+    "name": "Smoothy",
+    "file": "smoothy.tmTheme.json",
+    "plist": "Smoothy.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#000000",
+      "fn": "#E0BD35",
+      "name": "#65B3EE",
+      "string": "#84604E"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Smoothy.tmTheme",
+    "order": 146
+  },
+  {
+    "id": "solarized-dark",
+    "name": "Solarized (dark)",
+    "file": "solarized-dark.tmTheme.json",
+    "plist": "Solarized (dark).tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#002B36",
+      "fg": "#93A1A1",
+      "fn": "#96A600",
+      "name": "#2C9EDB",
+      "string": "#2FAFA9"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Solarized%20(dark).tmTheme",
+    "order": 147
+  },
+  {
+    "id": "solarized-light",
+    "name": "Solarized (light)",
+    "file": "solarized-light.tmTheme.json",
+    "plist": "Solarized (light).tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FEF7E8",
+      "fg": "#6A8188",
+      "fn": "#96A600",
+      "name": "#2C9EDB",
+      "string": "#2FAFA9"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Solarized%20(light).tmTheme",
+    "order": 148
+  },
+  {
+    "id": "space-cadet",
+    "name": "SpaceCadet",
+    "file": "space-cadet.tmTheme.json",
+    "plist": "SpaceCadet.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0F0F0F",
+      "fg": "#E3EAD8",
+      "fn": "#ADC873",
+      "name": "#931B70",
+      "string": "#936E8B"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/SpaceCadet.tmTheme",
+    "order": 149
+  },
+  {
+    "id": "spectacular",
+    "name": "Spectacular",
+    "file": "spectacular.tmTheme.json",
+    "plist": "Spectacular.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0B0A0A",
+      "fg": "#F5F5F5",
+      "fn": "#FFB700",
+      "name": "#FFC066",
+      "string": "#B6E659"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Spectacular.tmTheme",
+    "order": 150
+  },
+  {
+    "id": "starlight",
+    "name": "Starlight",
+    "file": "starlight.tmTheme.json",
+    "plist": "Starlight.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#2C496CF2",
+      "fg": "#CCC3B7",
+      "fn": "#B39687",
+      "name": "#D9CB8B",
+      "string": "#C6B097"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Starlight.tmTheme",
+    "order": 151
+  },
+  {
+    "id": "succulent-1",
+    "name": "Succulent",
+    "file": "succulent-1.tmTheme.json",
+    "plist": "Succulent_1.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#F9F9F9",
+      "fn": "#FF7C6B",
+      "name": "#F4DE62",
+      "string": "#9EFB71"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Succulent_1.tmTheme",
+    "order": 152
+  },
+  {
+    "id": "summer-camp-daybreak",
+    "name": "Summer Camp Daybreak",
+    "file": "summer-camp-daybreak.tmTheme.json",
+    "plist": "Summer Camp Daybreak.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#15120A",
+      "fg": "#F4F8D5",
+      "fn": "#B0ED60",
+      "name": "#8CE014",
+      "string": "#F7AB1E"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Summer%20Camp%20Daybreak.tmTheme",
+    "order": 153
+  },
+  {
+    "id": "summer-sun",
+    "name": "Summer Sun",
+    "file": "summer-sun.tmTheme.json",
+    "plist": "Summer Sun.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#15120A",
+      "fg": "#F4F8D5",
+      "fn": "#B0ED60",
+      "name": "#8CE014",
+      "string": "#F7AB1E"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Summer%20Sun.tmTheme",
+    "order": 154
+  },
+  {
+    "id": "swyphs-ii",
+    "name": "Swyphs II",
+    "file": "swyphs-ii.tmTheme.json",
+    "plist": "Swyphs II.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000FA",
+      "fg": "#CCCCCC",
+      "fn": "#A46D90",
+      "name": "#90747B",
+      "string": "#DFDFDF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Swyphs%20II.tmTheme",
+    "order": 155
+  },
+  {
+    "id": "tango",
+    "name": "Tango",
+    "file": "tango.tmTheme.json",
+    "plist": "Tango.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#3F4446",
+      "fn": "#3F4446",
+      "name": "#704879",
+      "string": "#B81800"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tango.tmTheme",
+    "order": 156
+  },
+  {
+    "id": "tango-in-twilight",
+    "name": "Tango in Twilight",
+    "file": "tango-in-twilight.tmTheme.json",
+    "plist": "Tango in Twilight.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000F2",
+      "fg": "#F9FFF8",
+      "fn": "#CFAE00",
+      "name": "#E1D797",
+      "string": "#5EA701"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tango%20in%20Twilight.tmTheme",
+    "order": 157
+  },
+  {
+    "id": "tek",
+    "name": "Tek",
+    "file": "tek.tmTheme.json",
+    "plist": "Tek.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#3C6162",
+      "fg": "#E1FEF9",
+      "fn": "#FFFFFF",
+      "name": "#FFFFFF",
+      "string": "#FFFCD8"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tek.tmTheme",
+    "order": 158
+  },
+  {
+    "id": "text-ex-machina",
+    "name": "Text Ex Machina",
+    "file": "text-ex-machina.tmTheme.json",
+    "plist": "Text Ex Machina.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#1B1B1B",
+      "fg": "#EBEBEB",
+      "fn": "#8A90C0",
+      "name": "#D4FB79",
+      "string": "#76D6FF"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Text%20Ex%20Machina.tmTheme",
+    "order": 159
+  },
+  {
+    "id": "tomorrow",
+    "name": "Tomorrow",
+    "file": "tomorrow.tmTheme.json",
+    "plist": "Tomorrow.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFFFF",
+      "fg": "#605F5E",
+      "fn": "#9C71B7",
+      "name": "#5286BC",
+      "string": "#839B00"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow.tmTheme",
+    "order": 160
+  },
+  {
+    "id": "tomorrow-night",
+    "name": "Tomorrow Night",
+    "file": "tomorrow-night.tmTheme.json",
+    "plist": "Tomorrow-Night.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#27292C",
+      "fg": "#D0D2D0",
+      "fn": "#C0A7C7",
+      "name": "#92B2CA",
+      "string": "#C2C77B"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow-Night.tmTheme",
+    "order": 161
+  },
+  {
+    "id": "tomorrow-night-blue",
+    "name": "Tomorrow Night - Blue",
+    "file": "tomorrow-night-blue.tmTheme.json",
+    "plist": "Tomorrow-Night-Blue.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#003264",
+      "fg": "#FFFFFF",
+      "fn": "#F0CAFF",
+      "name": "#C6E2FF",
+      "string": "#D9F2B7"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow-Night-Blue.tmTheme",
+    "order": 162
+  },
+  {
+    "id": "tomorrow-night-bright",
+    "name": "Tomorrow Night - Bright",
+    "file": "tomorrow-night-bright.tmTheme.json",
+    "plist": "Tomorrow-Night-Bright.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000",
+      "fg": "#E4E4E4",
+      "fn": "#CFABE0",
+      "name": "#8CB6E1",
+      "string": "#C5D15C"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow-Night-Bright.tmTheme",
+    "order": 163
+  },
+  {
+    "id": "tomorrow-night-eighties",
+    "name": "Tomorrow Night - Eighties",
+    "file": "tomorrow-night-eighties.tmTheme.json",
+    "plist": "Tomorrow-Night-Eighties.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#3B3B3B",
+      "fg": "#D6D6D6",
+      "fn": "#D7ACD6",
+      "name": "#A8D5D6",
+      "string": "#A8D4A9"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow-Night-Eighties.tmTheme",
+    "order": 164
+  },
+  {
+    "id": "tubster",
+    "name": "Tubster",
+    "file": "tubster.tmTheme.json",
+    "plist": "Tubster.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#2F2F2F",
+      "fg": "#EBE7E3",
+      "fn": "#D77B42",
+      "name": "#FFD441",
+      "string": "#A8D241"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Tubster.tmTheme",
+    "order": 165
+  },
+  {
+    "id": "twilight",
+    "name": "Twilight",
+    "file": "twilight.tmTheme.json",
+    "plist": "Twilight.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#1A1A1A",
+      "fg": "#F9F9F9",
+      "fn": "#D7B67C",
+      "name": "#E1D797",
+      "string": "#A0AB7D"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Twilight.tmTheme",
+    "order": 166
+  },
+  {
+    "id": "upstream-sunburst",
+    "name": "Upstream Sunburst",
+    "file": "upstream-sunburst.tmTheme.json",
+    "plist": "Upstream Sunburst.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#000000F7",
+      "fg": "#F9F9F9",
+      "fn": "#9B856E",
+      "name": "#E1D797",
+      "string": "#BEDB39"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Upstream%20Sunburst.tmTheme",
+    "order": 167
+  },
+  {
+    "id": "venom",
+    "name": "Venom",
+    "file": "venom.tmTheme.json",
+    "plist": "Venom.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#0F0F0F",
+      "fg": "#CBCBCB",
+      "fn": "#7C9ACB",
+      "name": "#7660B7",
+      "string": "#379A4D"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Venom.tmTheme",
+    "order": 168
+  },
+  {
+    "id": "vintage-aurora",
+    "name": "Vintage Aurora",
+    "file": "vintage-aurora.tmTheme.json",
+    "plist": "Vintage Aurora.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#3D0632DE",
+      "fg": "#F9EFDE",
+      "fn": "#E4C089",
+      "name": "#FCE239",
+      "string": "#65BE92"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Vintage%20Aurora.tmTheme",
+    "order": 169
+  },
+  {
+    "id": "whys-poignant",
+    "name": "Why’s Poignant",
+    "file": "whys-poignant.tmTheme.json",
+    "plist": "Whys Poignant.tmTheme",
+    "uiTheme": "light",
+    "preview": {
+      "bg": "#FFFEFA",
+      "fg": "#397AAA",
+      "fn": "#8A2C5A",
+      "name": "#440521",
+      "string": "#30A879"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Whys%20Poignant.tmTheme",
+    "order": 170
+  },
+  {
+    "id": "zenburn",
+    "name": "zenburn",
+    "file": "zenburn.tmTheme.json",
+    "plist": "zenburn.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#494949",
+      "fg": "#E4E4E4",
+      "fn": "#FFDEBD",
+      "name": "#FFFB98",
+      "string": "#DF9A98"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/zenburn.tmTheme",
+    "order": 171
+  },
+  {
+    "id": "zenburnesque",
+    "name": "Zenburnesque",
+    "file": "zenburnesque.tmTheme.json",
+    "plist": "Zenburnesque.tmTheme",
+    "uiTheme": "dark",
+    "preview": {
+      "bg": "#515151",
+      "fg": "#E4E4E4",
+      "fn": "#FFFDAF",
+      "name": "#FFD479",
+      "string": "#FF3A29"
+    },
+    "source": "https://github.com/filmgirl/TextMate-Themes/blob/master/Zenburnesque.tmTheme",
+    "order": 172
+  }
+]

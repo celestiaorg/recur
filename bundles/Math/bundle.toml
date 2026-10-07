@@ -1,0 +1,113 @@
+[bundle]
+name = "Math"
+id = "recur.math"
+version = "1.0.0"
+author = "Recur"
+
+[[command]]
+id = "recur.math.evaluate"
+name = "Evaluate Selection"
+category = "Math"
+order = 10
+input = "selection"
+fallbackInput = "line"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/evaluate.ts"
+
+[[command]]
+id = "recur.math.hex-to-dec"
+name = "Hex to Decimal"
+category = "Math"
+order = 20
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/hex-to-dec.ts"
+
+[[command]]
+id = "recur.math.dec-to-hex"
+name = "Decimal to Hex"
+category = "Math"
+order = 21
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/dec-to-hex.ts"
+
+[[command]]
+id = "recur.math.bin-to-dec"
+name = "Binary to Decimal"
+category = "Math"
+order = 22
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/bin-to-dec.ts"
+
+[[command]]
+id = "recur.math.dec-to-bin"
+name = "Decimal to Binary"
+category = "Math"
+order = 23
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/dec-to-bin.ts"
+
+[[command]]
+id = "recur.math.oct-to-dec"
+name = "Octal to Decimal"
+category = "Math"
+order = 24
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/oct-to-dec.ts"
+
+[[command]]
+id = "recur.math.dec-to-oct"
+name = "Decimal to Octal"
+category = "Math"
+order = 25
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/dec-to-oct.ts"
+
+[[command]]
+id = "recur.math.sum-numbers"
+name = "Sum Numbers"
+category = "Math"
+order = 30
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/sum-numbers.ts"
+
+[[command]]
+id = "recur.math.subtract-numbers"
+name = "Subtract Numbers"
+category = "Math"
+order = 31
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/subtract-numbers.ts"

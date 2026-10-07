@@ -1,0 +1,41 @@
+[bundle]
+name = "Rust"
+id = "recur.rust"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "rust-analyzer"
+languages = ["rust"]
+fileGlob = ["*.rs"]
+command = "rust-analyzer"
+managed = "rust-analyzer"
+
+[[command]]
+id = "recur.rust.rustfmt-on-save"
+name = "Rustfmt on Save"
+category = "Rust"
+order = 10
+scope = "source.rust"
+fileGlob = "*.rs"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "shebang"
+body = '''
+#!/usr/bin/env bash
+# Format stdin with rustfmt; pass through unchanged if missing/failing.
+# rustfmt reads stdin (avoids --emit stdout path headers); file out keeps newlines.
+if ! command -v rustfmt >/dev/null 2>&1; then
+  cat
+  exit 0
+fi
+tmp=$(mktemp)
+trap 'rm -f "$tmp" "$tmp.out"' EXIT
+cat >"$tmp"
+if rustfmt <"$tmp" >"$tmp.out" 2>/dev/null; then
+  cat "$tmp.out"
+else
+  cat "$tmp"
+fi
+'''

@@ -1,0 +1,21 @@
+[[test]]
+name = "shuffles without error"
+command = "Randomize Lines"
+
+[test.context]
+input = '''
+a
+b
+c
+d
+'''
+selectedText = '''
+a
+b
+c
+d
+'''
+
+[test.expect]
+skipStdout = true
+output = "replaceSelection"

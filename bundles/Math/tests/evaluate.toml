@@ -1,0 +1,47 @@
+[[test]]
+name = "evaluates multiply before add"
+command = "Evaluate Selection"
+
+[test.context]
+input = "2+3*4"
+selectedText = "2+3*4"
+
+[test.expect]
+stdout = "14"
+output = "replaceSelection"
+
+[[test]]
+name = "evaluates parentheses and power"
+command = "Evaluate Selection"
+
+[test.context]
+input = "(2+3)*2^3"
+selectedText = "(2+3)*2^3"
+
+[test.expect]
+stdout = "40"
+output = "replaceSelection"
+
+[[test]]
+name = "evaluates hex literal"
+command = "Evaluate Selection"
+
+[test.context]
+input = "0x10 + 2"
+selectedText = "0x10 + 2"
+
+[test.expect]
+stdout = "18"
+output = "replaceSelection"
+
+[[test]]
+name = "evaluates division"
+command = "Evaluate Selection"
+
+[test.context]
+input = "10 / 4"
+selectedText = "10 / 4"
+
+[test.expect]
+stdout = "2.5"
+output = "replaceSelection"

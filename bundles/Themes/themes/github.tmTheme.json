@@ -1,0 +1,392 @@
+{
+  "name": "GitHub",
+  "type": "light",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#F9FAFF",
+    "editor.foreground": "#000000",
+    "editor.selectionBackground": "#C7DEFB",
+    "editor.lineHighlightBackground": "#00000012",
+    "editorCursor.foreground": "#000000",
+    "editorWhitespace.foreground": "#CBCBCB"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#F9FAFF"
+      }
+    },
+    {
+      "settings": {
+        "background": "#F9FAFF"
+      },
+      "name": "Source",
+      "scope": "source"
+    },
+    {
+      "settings": {
+        "foreground": "#A9A99A",
+        "fontStyle": "italic"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "Keyword",
+      "scope": [
+        "keyword",
+        "storage"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "Keyword operator",
+      "scope": "keyword.operator.assignment"
+    },
+    {
+      "settings": {},
+      "name": "keyword like new",
+      "scope": "keyword.other.special-method"
+    },
+    {
+      "settings": {
+        "foreground": "#AB1500",
+        "fontStyle": "bold"
+      },
+      "name": "Function (definition)",
+      "scope": [
+        "entity.name.function",
+        "keyword.other.name-of-parameter.objc"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#556A9A",
+        "fontStyle": "bold"
+      },
+      "name": "Class (definition)",
+      "scope": "entity.name"
+    },
+    {
+      "settings": {
+        "foreground": "#00A8A9"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#00999A"
+      },
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#009899"
+      },
+      "name": "Variable",
+      "scope": "variable.other.constant.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#E62C55"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#009899"
+      },
+      "name": "Inherited class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "Inherited class seperator",
+      "scope": "punctuation.separator.inheritance"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "punctuation block",
+      "scope": "punctuation.separator.variable"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "array brackets",
+      "scope": "punctuation.section.array"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "hash separator",
+      "scope": "punctuation.separator.key-value"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "() brackets",
+      "scope": "punctuation.section.function"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "hash brackets",
+      "scope": "punctuation.section.scope"
+    },
+    {
+      "settings": {
+        "fontStyle": "bold"
+      },
+      "name": "Special ruby method",
+      "scope": "keyword.other.special-method.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#BA469E"
+      },
+      "name": "symbol",
+      "scope": "constant.other.symbol"
+    },
+    {
+      "settings": {
+        "foreground": "#009192"
+      },
+      "name": "Support class",
+      "scope": "support.class.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#00A632"
+      },
+      "name": "String.regexp",
+      "scope": "string.regexp"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "String embedded source",
+      "scope": "string.quoted source"
+    },
+    {
+      "settings": {
+        "foreground": "#A9A9A9",
+        "fontStyle": "bold"
+      },
+      "name": "doctype punctation",
+      "scope": "meta.tag.sgml.html"
+    },
+    {
+      "settings": {
+        "foreground": "#A9A9A9",
+        "fontStyle": "bold"
+      },
+      "name": "doctype declaration",
+      "scope": "entity.name.tag.doctype"
+    },
+    {
+      "settings": {
+        "foreground": "#A9A9A9",
+        "fontStyle": "bold"
+      },
+      "name": "doctype string",
+      "scope": "string.quoted.double.doctype"
+    },
+    {
+      "settings": {
+        "foreground": "#18259B"
+      },
+      "name": "html tag punctuation",
+      "scope": "punctuation.definition.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#18259B"
+      },
+      "name": "html tag punctuation",
+      "scope": "entity.name.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#009697"
+      },
+      "name": "html attribute",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#009697"
+      },
+      "name": "html attribute punctation",
+      "scope": "entity.other.attribute-name"
+    },
+    {
+      "settings": {
+        "foreground": "#A9A9A9",
+        "fontStyle": "bold"
+      },
+      "name": "erb tags",
+      "scope": "punctuation.section.embedded.ruby"
+    },
+    {
+      "settings": {
+        "foreground": "#DA2951"
+      },
+      "name": "ruby string interpolation",
+      "scope": "source.ruby.embedded.source punctuation.section.embedded.ruby"
+    },
+    {
+      "settings": {},
+      "name": "css brackets",
+      "scope": "punctuation.section.property-list.css"
+    },
+    {
+      "settings": {
+        "fontStyle": "bold"
+      },
+      "name": "css property",
+      "scope": "support.type.property-name.css"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "css property punctuation",
+      "scope": "punctuation.separator.key-value.css"
+    },
+    {
+      "settings": {
+        "foreground": "#00A8A9"
+      },
+      "name": "css property value",
+      "scope": [
+        "meta.property-value",
+        "constant.other.color"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "css ending",
+      "scope": "punctuation.terminator.rule.css"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "css font",
+      "scope": "support.constant.font-name"
+    },
+    {
+      "settings": {
+        "foreground": "#00A8A9"
+      },
+      "name": "css keyword",
+      "scope": "keyword.other.unit"
+    },
+    {
+      "settings": {
+        "foreground": "#000000"
+      },
+      "name": "pseudo class",
+      "scope": "entity.other.attribute-name.pseudo-class"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "fontStyle": "bold"
+      },
+      "name": "css constant property value",
+      "scope": "support.constant.property-value"
+    },
+    {
+      "settings": {
+        "foreground": "#556A9A",
+        "fontStyle": "bold"
+      },
+      "name": "css attribute class",
+      "scope": "entity.other.attribute-name.class"
+    },
+    {
+      "settings": {
+        "foreground": "#AB1500",
+        "fontStyle": "bold"
+      },
+      "name": "css attribute id",
+      "scope": "entity.other.attribute-name.id"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#FFE4E4"
+      },
+      "name": "diff header from",
+      "scope": "meta.diff.header.from-file"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#E3FEE4"
+      },
+      "name": "diff header to",
+      "scope": "meta.diff.header.to-file"
+    },
+    {
+      "settings": {
+        "background": "#E3FEE4"
+      },
+      "name": "diff inserted",
+      "scope": "markup.inserted.diff"
+    },
+    {
+      "settings": {
+        "foreground": "#000000",
+        "background": "#FFE4E4"
+      },
+      "name": "diff deleted",
+      "scope": "markup.deleted.diff"
+    }
+  ]
+}

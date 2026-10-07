@@ -1,0 +1,185 @@
+THIRD-PARTY SOFTWARE NOTICES
+
+Themes in this pack are vendored from shikijs/textmate-grammars-themes
+(plus featured local TextMate ports and Aura). Full Shiki license texts:
+https://github.com/shikijs/textmate-grammars-themes/blob/main/packages/tm-themes/NOTICE
+
+Per-theme attribution (also see provenance.json):
+
+made-of-code — see upstream — https://github.com/mkdynamic/made-of-code-tmbundle
+birds-of-paradise — see upstream — Joe Bergantine, Birds of Paradise.tmTheme
+cool-glow — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Cool%20Glow.tmTheme
+cobalt — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Cobalt.tmTheme
+vibrant-ink — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Vibrant%20Ink.tmTheme
+sunburst — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Sunburst.tmTheme
+idle-fingers — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/idleFingers.tmTheme
+ir-black — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/IR_Black.tmTheme
+railscasts — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Railscasts.tmTheme
+pastels-on-dark — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Pastels%20on%20Dark.tmTheme
+monokai — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Monokai.tmTheme
+monokai-dark — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Monokai%20Dark.tmTheme
+argonaut — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/[%20Argonaut%20].tmTheme
+active4d — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Active4D.tmTheme
+all-hallows-eve — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/All%20Hallow's%20Eve.tmTheme
+amy — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Amy.tmTheme
+bbedit — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/BBEdit.tmTheme
+bespin — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Bespin.tmTheme
+black-pearl — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Black%20Pearl.tmTheme
+black-pearl-ii — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Black%20Pearl%20II.tmTheme
+blackboard — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Blackboard.tmTheme
+blackboard-black — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Blackboard%20Black.tmTheme
+black-light — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/BlackLight.tmTheme
+bongzilla — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Bongzilla.tmTheme
+brilliance-black — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Brilliance%20Black.tmTheme
+brilliance-dull — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Brilliance%20Dull.tmTheme
+choco — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/choco.tmTheme
+claire — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Claire.tmTheme
+close-to-the-sea — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/close_to_the_sea.tmTheme
+clouds — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Clouds.tmTheme
+clouds-midnight — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Clouds%20Midnight.tmTheme
+coal-graal — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Coal%20Graal.tmTheme
+coda — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Coda.tmTheme
+creeper — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Creeper.tmTheme
+cssedit — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/CSSEdit.tmTheme
+dawn — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Dawn.tmTheme
+deluxe — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Deluxe.tmTheme
+django-smoothy — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Django%20(Smoothy).tmTheme
+django-dark — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Django%20Dark.tmTheme
+dominion-day — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Dominion%20Day.tmTheme
+eiffel — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Eiffel.tmTheme
+emacs-strict — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Emacs%20Strict.tmTheme
+erebus — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Erebus.tmTheme
+espresso — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Espresso.tmTheme
+espresso-libre — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Espresso%20Libre.tmTheme
+espresso-tutti — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Espresso%20Tutti.tmTheme
+fade-to-grey — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Fade%20to%20Grey.tmTheme
+fluidvision — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Fluidvision.tmTheme
+freckle — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Freckle.tmTheme
+friendship-bracelet — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Friendship%20Bracelet.tmTheme
+funky-dashboard — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Funky_Dashboard.tmTheme
+github — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/GitHub.tmTheme
+glitter-bomb — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/GlitterBomb.tmTheme
+glow — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Glow.tmTheme
+happy-happy-joy-joy-2 — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Happy%20happy%20joy%20joy%202.tmTheme
+happydeluxe — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/happydeluxe.tmTheme
+heroku — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Heroku.tmTheme
+idle — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/IDLE.tmTheme
+imathis — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/imathis.tmTheme
+iplastic — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/iPlastic.tmTheme
+ir-white — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/IR_White.tmTheme
+juicy — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Juicy.tmTheme
+kr-theme — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/krTheme.tmTheme
+lazy — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/LAZY.tmTheme
+lowlight — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Lowlight.tmTheme
+mac-classic — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Mac%20Classic.tmTheme
+magicwb-amiga — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/MagicWB%20(Amiga).tmTheme
+menage-a-trois — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Menage%20A%20Trois.tmTheme
+merbivore — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Merbivore.tmTheme
+merbivore-soft — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Merbivore%20Soft.tmTheme
+midnight — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Midnight.tmTheme
+minimal-theme — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/minimal%20Theme.tmTheme
+monoindustrial — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/monoindustrial.tmTheme
+notebook — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Notebook.tmTheme
+notepad2 — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Notepad2.tmTheme
+offy — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Offy.tmTheme
+pastie — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Pastie.tmTheme
+pengwynn — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Pengwynn.tmTheme
+plum-dumb — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Plum%20Dumb.tmTheme
+putty — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Putty.tmTheme
+rails-envy — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Rails%20Envy.tmTheme
+rdark — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/RDark.tmTheme
+resesif — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Resesif.tmTheme
+ruby-blue — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Ruby%20Blue.tmTheme
+ruby-robot — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/RubyRobot.tmTheme
+ryan-light — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/ryan-light.tmTheme
+sidewalk-chalk — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/SidewalkChalk.tmTheme
+slush-and-poppies — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Slush%20&%20Poppies.tmTheme
+smoothy — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Smoothy.tmTheme
+solarized-dark — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Solarized%20(dark).tmTheme
+solarized-light — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Solarized%20(light).tmTheme
+space-cadet — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/SpaceCadet.tmTheme
+spectacular — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Spectacular.tmTheme
+starlight — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Starlight.tmTheme
+succulent-1 — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Succulent_1.tmTheme
+summer-camp-daybreak — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Summer%20Camp%20Daybreak.tmTheme
+summer-sun — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Summer%20Sun.tmTheme
+swyphs-ii — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Swyphs%20II.tmTheme
+tango — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tango.tmTheme
+tango-in-twilight — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tango%20in%20Twilight.tmTheme
+tek — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tek.tmTheme
+text-ex-machina — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Text%20Ex%20Machina.tmTheme
+tomorrow — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow.tmTheme
+tomorrow-night — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow-Night.tmTheme
+tomorrow-night-blue — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow-Night-Blue.tmTheme
+tomorrow-night-bright — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow-Night-Bright.tmTheme
+tomorrow-night-eighties — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tomorrow-Night-Eighties.tmTheme
+tubster — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Tubster.tmTheme
+twilight — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Twilight.tmTheme
+upstream-sunburst — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Upstream%20Sunburst.tmTheme
+venom — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Venom.tmTheme
+vintage-aurora — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Vintage%20Aurora.tmTheme
+whys-poignant — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Whys%20Poignant.tmTheme
+zenburn — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/zenburn.tmTheme
+zenburnesque — see upstream — https://github.com/filmgirl/TextMate-Themes/blob/master/Zenburnesque.tmTheme
+aura — see upstream — https://raw.githubusercontent.com/daltonmenezes/aura-theme/main/packages/vscode/themes/aura-dark-color-theme.json
+andromeeda — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/andromeeda.json
+ayu-dark — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/ayu-dark.json
+ayu-light — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/ayu-light.json
+ayu-mirage — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/ayu-mirage.json
+catppuccin-frappe — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/catppuccin-frappe.json
+catppuccin-latte — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/catppuccin-latte.json
+catppuccin-macchiato — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/catppuccin-macchiato.json
+catppuccin-mocha — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/catppuccin-mocha.json
+dark-plus — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/dark-plus.json
+dracula-soft — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/dracula-soft.json
+dracula — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/dracula.json
+everforest-dark — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/everforest-dark.json
+everforest-light — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/everforest-light.json
+github-dark-default — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/github-dark-default.json
+github-dark-dimmed — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/github-dark-dimmed.json
+github-dark-high-contrast — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/github-dark-high-contrast.json
+github-dark — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/github-dark.json
+github-light-default — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/github-light-default.json
+github-light-high-contrast — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/github-light-high-contrast.json
+github-light — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/github-light.json
+gruvbox-dark-hard — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/gruvbox-dark-hard.json
+gruvbox-dark-medium — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/gruvbox-dark-medium.json
+gruvbox-dark-soft — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/gruvbox-dark-soft.json
+gruvbox-light-hard — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/gruvbox-light-hard.json
+gruvbox-light-medium — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/gruvbox-light-medium.json
+gruvbox-light-soft — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/gruvbox-light-soft.json
+horizon-bright — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/horizon-bright.json
+horizon — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/horizon.json
+houston — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/houston.json
+kanagawa-dragon — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/kanagawa-dragon.json
+kanagawa-lotus — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/kanagawa-lotus.json
+kanagawa-wave — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/kanagawa-wave.json
+laserwave — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/laserwave.json
+light-plus — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/light-plus.json
+material-theme-darker — Apache-2.0 — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/material-theme-darker.json
+material-theme-lighter — Apache-2.0 — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/material-theme-lighter.json
+material-theme-ocean — Apache-2.0 — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/material-theme-ocean.json
+material-theme-palenight — Apache-2.0 — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/material-theme-palenight.json
+material-theme — Apache-2.0 — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/material-theme.json
+min-dark — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/min-dark.json
+min-light — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/min-light.json
+night-owl-light — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/night-owl-light.json
+night-owl — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/night-owl.json
+nord — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/nord.json
+one-dark-pro — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/one-dark-pro.json
+one-light — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/one-light.json
+plastic — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/plastic.json
+poimandres — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/poimandres.json
+red — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/red.json
+rose-pine-dawn — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/rose-pine-dawn.json
+rose-pine-moon — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/rose-pine-moon.json
+rose-pine — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/rose-pine.json
+slack-dark — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/slack-dark.json
+slack-ochin — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/slack-ochin.json
+snazzy-light — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/snazzy-light.json
+synthwave-84 — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/synthwave-84.json
+tokyo-night — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/tokyo-night.json
+vesper — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/vesper.json
+vitesse-black — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/vitesse-black.json
+vitesse-dark — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/vitesse-dark.json
+vitesse-light — MIT — https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/main/packages/tm-themes/themes/vitesse-light.json

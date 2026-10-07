@@ -1,0 +1,11 @@
+[[test]]
+name = "url decodes"
+command = "URL Decode"
+
+[test.context]
+input = "a%20b%3Dc"
+selectedText = "a%20b%3Dc"
+
+[test.expect]
+stdout = "a b=c"
+output = "replaceSelection"

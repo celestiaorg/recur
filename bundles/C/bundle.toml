@@ -1,0 +1,32 @@
+[bundle]
+name = "C"
+id = "recur.c"
+version = "1.0.0"
+author = "Recur"
+
+[[command]]
+id = "recur.c.clang-format-on-save"
+name = "Clang-Format on Save"
+category = "C"
+order = 10
+fileGlob = "*.{c,h,cc,cpp,cxx,hpp,hxx,hh}"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "shebang"
+body = '''
+#!/usr/bin/env bash
+# Format stdin with clang-format; pass through unchanged if missing/failing.
+if ! command -v clang-format >/dev/null 2>&1; then
+  cat
+  exit 0
+fi
+tmp=$(mktemp)
+trap 'rm -f "$tmp" "$tmp.out"' EXIT
+cat >"$tmp"
+if clang-format "$tmp" >"$tmp.out" 2>/dev/null; then
+  cat "$tmp.out"
+else
+  cat "$tmp"
+fi
+'''

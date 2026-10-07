@@ -1,0 +1,1 @@
+Investigate the repo and file a structured plan for this task: a short summary plus ordered steps and a definition of done. Name the files you will touch. Use the object form for steps ({title, files, depends_on}) so independent steps can run in parallel in child workspaces; steps that share files or depend on each other must say so. Do not write code.

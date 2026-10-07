@@ -1,0 +1,2318 @@
+{
+  "agentsByLoop": {
+    "LOOP-2218": [],
+    "LOOP-2224": [],
+    "LOOP-2229": [],
+    "LOOP-2231": [
+      {
+        "id": "LOOP-2231-MA",
+        "workspaceId": "LOOP-2231",
+        "code": "MA",
+        "name": "Maestro",
+        "role": "orchestrator · plans & delegates",
+        "model": "opus",
+        "status": "directing",
+        "sessionId": "",
+        "color": "var(--amber)",
+        "task": "Coordinating iteration 3 → verification → PR.",
+        "cur": -1,
+        "steps": [
+          {
+            "kind": "plan",
+            "text": "Decomposed task into config PR + UI PR"
+          },
+          {
+            "kind": "spawn",
+            "text": "Created Reviewer, Coder, Tester, QA on demand"
+          },
+          {
+            "kind": "watch",
+            "text": "Monitoring QA verification, then will open PRs"
+          }
+        ]
+      },
+      {
+        "id": "LOOP-2231-CO",
+        "workspaceId": "LOOP-2231",
+        "code": "CO",
+        "name": "Coder",
+        "role": "writes & edits code",
+        "model": "sonnet",
+        "status": "idle",
+        "sessionId": "",
+        "color": "var(--cyan)",
+        "task": "Last: resolve reviewer finding on token refresh.",
+        "cur": -1,
+        "steps": [
+          {
+            "kind": "read",
+            "text": "src/auth/oauth.ts"
+          },
+          {
+            "kind": "read",
+            "text": "src/hooks/useOAuthSession.ts"
+          },
+          {
+            "kind": "edit",
+            "text": "src/hooks/useOAuthSession.ts",
+            "diff": {
+              "add": 34,
+              "del": 12
+            }
+          },
+          {
+            "kind": "run",
+            "text": "pnpm test auth → 6 passed",
+            "state": "ok"
+          },
+          {
+            "kind": "done",
+            "text": "handed back to Maestro"
+          }
+        ]
+      },
+      {
+        "id": "LOOP-2231-QA",
+        "workspaceId": "LOOP-2231",
+        "code": "QA",
+        "name": "QA / Browser",
+        "role": "drives the live app like a user",
+        "model": "sonnet",
+        "status": "working",
+        "sessionId": "",
+        "color": "var(--coral)",
+        "task": "Verify Apple & Google sign-in end to end in the browser.",
+        "cur": 4,
+        "steps": [
+          {
+            "kind": "run",
+            "text": "pnpm dev --port 5173 → ready",
+            "state": "run"
+          },
+          {
+            "kind": "open",
+            "text": "navigated to http://localhost:5173/checkout",
+            "state": "read"
+          },
+          {
+            "kind": "click",
+            "text": "“Sign in with Apple” → Apple consent screen",
+            "state": "ok"
+          },
+          {
+            "kind": "check",
+            "text": "redirect returned a valid session ✓",
+            "state": "ok"
+          },
+          {
+            "kind": "click",
+            "text": "“Sign in with Google” …",
+            "state": "cur"
+          }
+        ]
+      },
+      {
+        "id": "LOOP-2231-RV",
+        "workspaceId": "LOOP-2231",
+        "code": "RV",
+        "name": "Reviewer",
+        "role": "critiques diffs, files findings",
+        "model": "opus",
+        "status": "idle",
+        "sessionId": "",
+        "color": "var(--indigo)",
+        "task": "Last: re-review after iteration 3.",
+        "cur": -1,
+        "steps": [
+          {
+            "kind": "read",
+            "text": "diff for #482 (+218 −12)"
+          },
+          {
+            "kind": "note",
+            "text": "iter 1: 12 findings (secrets, error handling)"
+          },
+          {
+            "kind": "note",
+            "text": "iter 3: 0 findings"
+          },
+          {
+            "kind": "done",
+            "text": "approved · re-requested human review"
+          }
+        ]
+      }
+    ],
+    "LOOP-2235": []
+  },
+  "escByLoop": {
+    "LOOP-2218": {
+      "id": "esc-2218",
+      "workspaceId": "LOOP-2218",
+      "question": "When a client goes over the rate limit, what should happen?",
+      "context": "The ticket says <i>\"limit bursts to protect the API\"</i> but doesn't define the over-limit behavior. I've built the limiter middleware and tested the under-limit path — this one decision is all that's blocking the rest. I won't guess on something that changes the API's public contract.",
+      "options": [
+        {
+          "text": "Reject with <code style=\"font-family:var(--mono)\">429</code>",
+          "tag": "simplest",
+          "desc": "Clear to clients and easy to reason about. Can feel harsh during legitimate spikes."
+        },
+        {
+          "text": "Queue & delay",
+          "tag": "smoothest",
+          "desc": "Absorbs short bursts without errors. Adds latency and some memory pressure under load."
+        },
+        {
+          "text": "Token bucket with refill",
+          "tag": "recommended",
+          "desc": "Fair, industry-standard, predictable. Slightly more to implement — I can do it in this loop."
+        }
+      ],
+      "answer": "",
+      "status": "open",
+      "askedAgo": "12m"
+    }
+  },
+  "feedByLoop": {
+    "LOOP-2218": null,
+    "LOOP-2224": null,
+    "LOOP-2229": null,
+    "LOOP-2231": [
+      {
+        "id": "f1",
+        "agentCode": "MA",
+        "name": "Maestro",
+        "text": "Review converged at 0 findings — advancing to live verification before opening PR #2.",
+        "time": "45s",
+        "kind": "outcome",
+        "isDeviation": false
+      },
+      {
+        "id": "f2",
+        "agentCode": "QA",
+        "name": "QA / Browser",
+        "text": "Booted dev server on <code>:5173</code>, navigating to <code>/checkout</code> to test the Apple flow.",
+        "time": "38s",
+        "kind": "outcome",
+        "clickAgent": "QA",
+        "isDeviation": false
+      },
+      {
+        "id": "f3",
+        "agentCode": "QA",
+        "name": "QA / Browser",
+        "text": "Clicked “Sign in with Apple” → redirect OK → returned with valid session. <span style=\"color:var(--emerald)\">✓ pass</span>",
+        "time": "12s",
+        "kind": "outcome",
+        "clickAgent": "QA",
+        "isDeviation": false
+      },
+      {
+        "id": "f4",
+        "agentCode": "",
+        "name": "Maestro",
+        "text": "Spawned a second, security-focused reviewer for this iteration.",
+        "time": "1m",
+        "kind": "deviation",
+        "isDeviation": true,
+        "rule": "default = one reviewer",
+        "why": "diff touches <code>auth/oauth.ts</code> — created on demand, then retired."
+      },
+      {
+        "id": "f5",
+        "agentCode": "CO",
+        "name": "Coder",
+        "text": "Resolved reviewer finding: extracted token refresh into <code>useOAuthSession</code>.",
+        "time": "1m",
+        "kind": "outcome",
+        "clickAgent": "CO",
+        "isDeviation": false
+      },
+      {
+        "id": "f6",
+        "agentCode": "RV",
+        "name": "Reviewer",
+        "text": "Re-reviewed diff after iteration 3 — no remaining findings. Approving.",
+        "time": "1m",
+        "kind": "outcome",
+        "clickAgent": "RV",
+        "isDeviation": false
+      },
+      {
+        "id": "f7",
+        "agentCode": "",
+        "name": "Maestro",
+        "text": "Split the task into 2 PRs instead of 1.",
+        "time": "2m",
+        "kind": "deviation",
+        "isDeviation": true,
+        "rule": "default = one PR",
+        "why": "mixed secrets-config with UI wiring — separate PRs are easier to review."
+      },
+      {
+        "id": "f8",
+        "agentCode": "TE",
+        "name": "Tester",
+        "text": "Added 6 tests for Apple + Google providers — all green.",
+        "time": "3m",
+        "kind": "note",
+        "clickAgent": "TE",
+        "isDeviation": false
+      }
+    ],
+    "LOOP-2235": null
+  },
+  "inbox": [
+    {
+      "id": "ib1",
+      "group": "needs",
+      "kind": "pause",
+      "color": "var(--coral)",
+      "title": "<b>LOOP-2218</b> paused — needs your decision",
+      "sub": "Rate-limit the public API · over-limit behavior",
+      "time": "12m",
+      "action": "Answer",
+      "actionClass": "urgent",
+      "unread": true,
+      "target": "loop:LOOP-2218",
+      "workspaceId": "LOOP-2218"
+    },
+    {
+      "id": "ib2",
+      "group": "ready",
+      "kind": "pr",
+      "color": "var(--emerald)",
+      "title": "<b>#482</b> is ready for review",
+      "sub": "Add OAuth provider config · verified in browser · checks ✓",
+      "time": "2m",
+      "action": "Review",
+      "actionClass": "go",
+      "unread": true,
+      "target": "pr:482",
+      "workspaceId": "LOOP-2231"
+    },
+    {
+      "id": "ib3",
+      "group": "ready",
+      "kind": "loop",
+      "color": "var(--cyan)",
+      "title": "Coder pushed a fix on <b>#482</b>",
+      "sub": "Resolved your comment on oauth.ts · re-requested review",
+      "time": "1m",
+      "action": "Review",
+      "actionClass": "go",
+      "unread": true,
+      "target": "pr:482",
+      "workspaceId": "LOOP-2231"
+    },
+    {
+      "id": "ib4",
+      "group": "ready",
+      "kind": "pr",
+      "color": "var(--emerald)",
+      "title": "<b>#479</b> converged — ready for review",
+      "sub": "Stabilize flaky E2E tests · local PR · 0 findings",
+      "time": "18m",
+      "action": "Review",
+      "actionClass": "go",
+      "unread": true,
+      "target": "view:pr",
+      "workspaceId": "LOOP-2224"
+    },
+    {
+      "id": "ib5",
+      "group": "upd",
+      "kind": "loop",
+      "color": "var(--indigo)",
+      "title": "<b>LOOP-2235</b> logged a deviation",
+      "sub": "Spawned an extra reviewer for a contrast pass · iteration 1",
+      "time": "24m",
+      "action": "View",
+      "actionClass": "",
+      "unread": false,
+      "target": "workspace:LOOP-2235",
+      "workspaceId": "LOOP-2235"
+    },
+    {
+      "id": "ib6",
+      "group": "upd",
+      "kind": "merge",
+      "color": "var(--indigo)",
+      "title": "<b>#471</b> merged to main",
+      "sub": "Add idempotency keys to the orders API",
+      "time": "1d",
+      "action": "View",
+      "actionClass": "",
+      "unread": false,
+      "target": "view:pr",
+      "workspaceId": "LOOP-2202"
+    }
+  ],
+  "loopById": {
+    "LOOP-2218": {
+      "id": "LOOP-2218",
+      "projectId": "payments",
+      "group": "needs",
+      "goal": "Rate-limit the public API",
+      "short": "Rate-limit the public API",
+      "definitionOfDone": "",
+      "state": "escalated",
+      "statusLabel": "Needs you",
+      "phase": "asking a question",
+      "iteration": 6,
+      "progress": 0.85,
+      "autonomy": "balanced",
+      "branch": "recur/rate-limit",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "agentCodes": [
+        "MA"
+      ],
+      "last": "escalated: ambiguous burst-limit spec",
+      "elapsedLabel": "paused 12m",
+      "convergence": null,
+      "archived": false
+    },
+    "LOOP-2224": {
+      "id": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "ready",
+      "goal": "Fix flaky checkout E2E tests",
+      "short": "Fix flaky E2E tests",
+      "definitionOfDone": "",
+      "state": "pr_open",
+      "statusLabel": "Ready",
+      "phase": "PR #479 open",
+      "iteration": 5,
+      "progress": 1,
+      "autonomy": "balanced",
+      "branch": "recur/fix-e2e",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "agentCodes": [
+        "MA",
+        "TE"
+      ],
+      "last": "converged · awaiting your review",
+      "elapsedLabel": "1h 02m",
+      "convergence": null,
+      "archived": false
+    },
+    "LOOP-2229": {
+      "id": "LOOP-2229",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Migrate analytics to Postgres 16",
+      "short": "Migrate analytics to PG16",
+      "definitionOfDone": "",
+      "state": "coding",
+      "statusLabel": "Coding",
+      "phase": "iteration 2",
+      "iteration": 2,
+      "progress": 0.45,
+      "autonomy": "balanced",
+      "branch": "recur/pg16",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 540,
+        "del": 110
+      },
+      "agentCodes": [
+        "MA",
+        "CO"
+      ],
+      "last": "Coder: rewriting migration 0042…",
+      "elapsedLabel": "31m",
+      "convergence": null,
+      "archived": false
+    },
+    "LOOP-2231": {
+      "id": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Add Apple & Google sign-in to checkout",
+      "short": "Add Apple & Google sign-in",
+      "definitionOfDone": "",
+      "state": "verifying",
+      "statusLabel": "Verifying",
+      "phase": "browsing the app",
+      "iteration": 3,
+      "progress": 0.72,
+      "autonomy": "balanced",
+      "branch": "recur/oauth-checkout",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 218,
+        "del": 12
+      },
+      "agentCodes": [
+        "MA",
+        "CO",
+        "QA",
+        "RV"
+      ],
+      "last": "QA: clicking “Sign in with Apple”…",
+      "elapsedLabel": "14m 09s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false
+    },
+    "LOOP-2235": {
+      "id": "LOOP-2235",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Dark mode for the dashboard",
+      "short": "Dark mode for dashboard",
+      "definitionOfDone": "",
+      "state": "reviewing",
+      "statusLabel": "Reviewing",
+      "phase": "iteration 1",
+      "iteration": 1,
+      "progress": 0.3,
+      "autonomy": "balanced",
+      "branch": "recur/dark-mode",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 96,
+        "del": 8
+      },
+      "agentCodes": [
+        "MA",
+        "CO",
+        "RV"
+      ],
+      "last": "Reviewer: 7 findings on contrast…",
+      "elapsedLabel": "8m",
+      "convergence": null,
+      "archived": false
+    }
+  },
+  "loops": [
+    {
+      "id": "LOOP-2218",
+      "projectId": "payments",
+      "group": "needs",
+      "goal": "Rate-limit the public API",
+      "short": "Rate-limit the public API",
+      "definitionOfDone": "",
+      "state": "escalated",
+      "statusLabel": "Needs you",
+      "phase": "asking a question",
+      "iteration": 6,
+      "progress": 0.85,
+      "autonomy": "balanced",
+      "branch": "recur/rate-limit",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "agentCodes": [
+        "MA"
+      ],
+      "last": "escalated: ambiguous burst-limit spec",
+      "elapsedLabel": "paused 12m",
+      "convergence": null,
+      "archived": false
+    },
+    {
+      "id": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Add Apple & Google sign-in to checkout",
+      "short": "Add Apple & Google sign-in",
+      "definitionOfDone": "",
+      "state": "verifying",
+      "statusLabel": "Verifying",
+      "phase": "browsing the app",
+      "iteration": 3,
+      "progress": 0.72,
+      "autonomy": "balanced",
+      "branch": "recur/oauth-checkout",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 218,
+        "del": 12
+      },
+      "agentCodes": [
+        "MA",
+        "CO",
+        "QA",
+        "RV"
+      ],
+      "last": "QA: clicking “Sign in with Apple”…",
+      "elapsedLabel": "14m 09s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false
+    },
+    {
+      "id": "LOOP-2229",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Migrate analytics to Postgres 16",
+      "short": "Migrate analytics to PG16",
+      "definitionOfDone": "",
+      "state": "coding",
+      "statusLabel": "Coding",
+      "phase": "iteration 2",
+      "iteration": 2,
+      "progress": 0.45,
+      "autonomy": "balanced",
+      "branch": "recur/pg16",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 540,
+        "del": 110
+      },
+      "agentCodes": [
+        "MA",
+        "CO"
+      ],
+      "last": "Coder: rewriting migration 0042…",
+      "elapsedLabel": "31m",
+      "convergence": null,
+      "archived": false
+    },
+    {
+      "id": "LOOP-2235",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Dark mode for the dashboard",
+      "short": "Dark mode for dashboard",
+      "definitionOfDone": "",
+      "state": "reviewing",
+      "statusLabel": "Reviewing",
+      "phase": "iteration 1",
+      "iteration": 1,
+      "progress": 0.3,
+      "autonomy": "balanced",
+      "branch": "recur/dark-mode",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 96,
+        "del": 8
+      },
+      "agentCodes": [
+        "MA",
+        "CO",
+        "RV"
+      ],
+      "last": "Reviewer: 7 findings on contrast…",
+      "elapsedLabel": "8m",
+      "convergence": null,
+      "archived": false
+    },
+    {
+      "id": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "ready",
+      "goal": "Fix flaky checkout E2E tests",
+      "short": "Fix flaky E2E tests",
+      "definitionOfDone": "",
+      "state": "pr_open",
+      "statusLabel": "Ready",
+      "phase": "PR #479 open",
+      "iteration": 5,
+      "progress": 1,
+      "autonomy": "balanced",
+      "branch": "recur/fix-e2e",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "agentCodes": [
+        "MA",
+        "TE"
+      ],
+      "last": "converged · awaiting your review",
+      "elapsedLabel": "1h 02m",
+      "convergence": null,
+      "archived": false
+    }
+  ],
+  "policy": {
+    "autonomy": "balanced",
+    "rails": null
+  },
+  "prById": {
+    "471": {
+      "id": "471",
+      "workspaceId": "LOOP-2202",
+      "projectId": "storefront",
+      "group": "merged",
+      "number": 471,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/471",
+      "branch": "recur/idempotency",
+      "base": "main",
+      "title": "Add idempotency keys to the orders API",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "Merged",
+      "diff": {
+        "add": 156,
+        "del": 9
+      },
+      "fileCount": 7,
+      "checksOk": true,
+      "when": "1d",
+      "createdAt": "2026-08-27T09:52:00Z",
+      "updatedAt": "2026-08-27T09:52:00Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null
+    },
+    "479": {
+      "id": "479",
+      "workspaceId": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 479,
+      "source": "local",
+      "branch": "recur/fix-e2e",
+      "base": "main",
+      "title": "Stabilize flaky checkout E2E tests",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "fileCount": 5,
+      "checksOk": true,
+      "when": "18m",
+      "createdAt": "2026-08-28T09:34:00Z",
+      "updatedAt": "2026-08-28T09:34:00Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null,
+      "participants": [
+        {
+          "name": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "code": "CO"
+        }
+      ]
+    },
+    "482": {
+      "id": "482",
+      "workspaceId": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 482,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/482",
+      "branch": "recur/oauth-checkout",
+      "base": "main",
+      "title": "Add OAuth provider config + secrets handling",
+      "summary": [
+        {
+          "kind": "p",
+          "html": "Adds <b>Apple and Google sign-in</b> to checkout. Provider config and secret handling ship in this PR; the sign-in buttons in the checkout UI follow in <code>#483</code>."
+        },
+        {
+          "kind": "p",
+          "html": "<b>What changed</b>"
+        },
+        {
+          "kind": "bullets",
+          "items": [
+            "New OAuth provider registry in <code>auth/oauth.ts</code> for Apple + Google.",
+            "Client secrets now resolved from the secrets manager at startup — never read from <code>process.env</code> or logged.",
+            "Session/token refresh extracted into a reusable <code>useOAuthSession</code> hook."
+          ]
+        },
+        {
+          "kind": "p",
+          "html": "<b>Key decision:</b> tokens are stored in an httpOnly cookie rather than localStorage, so they're not reachable from JS. Flagging because it changes how the client reads auth state."
+        }
+      ],
+      "focus": {
+        "title": "Where to focus your review",
+        "body": "The token-refresh race in <code>useOAuthSession.ts</code> (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
+      },
+      "state": "In review",
+      "diff": {
+        "add": 218,
+        "del": 12
+      },
+      "fileCount": 3,
+      "checksOk": true,
+      "when": "2m",
+      "createdAt": "2026-08-28T09:50:00Z",
+      "updatedAt": "2026-08-28T09:50:00Z",
+      "commits": [
+        {
+          "hash": "e8d34b1",
+          "message": "Add tests for Apple + Google providers",
+          "authorRole": "Tester",
+          "agentCode": "TE",
+          "color": "var(--emerald)",
+          "iterLabel": "verify pass",
+          "diff": {
+            "add": 6,
+            "del": 0
+          },
+          "when": "4m",
+          "files": [
+            {
+              "path": "src/auth/__tests__/oauth.test.ts",
+              "status": "a",
+              "diff": {
+                "add": 6,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,6 @@ new file"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "<span class=\"fn\">test</span>(<span class=\"str\">'apple sign-in returns a session'</span>, <span class=\"kw\">async</span> () =&gt; {"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": "  <span class=\"kw\">const</span> s = <span class=\"kw\">await</span> <span class=\"fn\">signIn</span>(<span class=\"str\">'apple'</span>)"
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "  <span class=\"fn\">expect</span>(s.user).<span class=\"fn\">toBeDefined</span>()"
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "<span class=\"fn\">test</span>(<span class=\"str\">'google sign-in returns a session'</span>, <span class=\"kw\">async</span> () =&gt; { <span class=\"cm\">/* … */</span> })"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "a3f91c2",
+          "message": "Resolve client secret via secrets manager",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 3 · review fix",
+          "diff": {
+            "add": 10,
+            "del": 6
+          },
+          "when": "6m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "m",
+              "diff": {
+                "add": 10,
+                "del": 6
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -10,6 +10,9 @@ provider registry"
+                },
+                {
+                  "old": "10",
+                  "new": "10",
+                  "type": "ctx",
+                  "codeHtml": "<span class=\"kw\">import</span> { secrets } <span class=\"kw\">from</span> <span class=\"str\">'../lib/secrets'</span>"
+                },
+                {
+                  "old": "11",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "<span class=\"kw\">const</span> secret = process.env.<span class=\"nm\">OAUTH_CLIENT_SECRET</span>"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "<span class=\"kw\">const</span> secret = <span class=\"kw\">await</span> secrets.<span class=\"fn\">get</span>(<span class=\"str\">'oauth/client_secret'</span>)"
+                },
+                {
+                  "old": "12",
+                  "new": "12",
+                  "type": "ctx",
+                  "codeHtml": "<span class=\"kw\">export const</span> <span class=\"fn\">providers</span> = {"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "4b7f0d2",
+          "message": "Harden error handling on token exchange",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 2 · review fix",
+          "diff": {
+            "add": 28,
+            "del": 6
+          },
+          "when": "14m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "m",
+              "diff": {
+                "add": 28,
+                "del": 6
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -22,4 +22,12 @@ token exchange"
+                },
+                {
+                  "old": "22",
+                  "new": "22",
+                  "type": "ctx",
+                  "codeHtml": "<span class=\"kw\">async function</span> <span class=\"fn\">exchange</span>(provider, code) {"
+                },
+                {
+                  "old": "23",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "  <span class=\"kw\">const</span> res = <span class=\"kw\">await</span> <span class=\"fn\">fetch</span>(tokenUrl, { method: <span class=\"str\">'POST'</span> })"
+                },
+                {
+                  "old": "24",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "  <span class=\"kw\">return</span> res.<span class=\"fn\">json</span>()"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "  <span class=\"kw\">try</span> {"
+                },
+                {
+                  "old": "",
+                  "new": "24",
+                  "type": "add",
+                  "codeHtml": "    <span class=\"kw\">const</span> res = <span class=\"kw\">await</span> <span class=\"fn\">fetch</span>(tokenUrl, { method: <span class=\"str\">'POST'</span> })"
+                },
+                {
+                  "old": "",
+                  "new": "25",
+                  "type": "add",
+                  "codeHtml": "    <span class=\"kw\">if</span> (!res.ok) <span class=\"kw\">throw new</span> <span class=\"ty\">OAuthError</span>(res.status)"
+                },
+                {
+                  "old": "",
+                  "new": "26",
+                  "type": "add",
+                  "codeHtml": "    <span class=\"kw\">return</span> res.<span class=\"fn\">json</span>()"
+                },
+                {
+                  "old": "",
+                  "new": "27",
+                  "type": "add",
+                  "codeHtml": "  } <span class=\"kw\">catch</span> (e) {"
+                },
+                {
+                  "old": "",
+                  "new": "28",
+                  "type": "add",
+                  "codeHtml": "    logger.<span class=\"fn\">warn</span>(<span class=\"str\">'token exchange failed'</span>, { provider })"
+                },
+                {
+                  "old": "",
+                  "new": "29",
+                  "type": "add",
+                  "codeHtml": "    <span class=\"kw\">throw</span> e"
+                },
+                {
+                  "old": "",
+                  "new": "30",
+                  "type": "add",
+                  "codeHtml": "  }"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "9c2e1a4",
+          "message": "Add Apple & Google OAuth providers",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 1",
+          "diff": {
+            "add": 180,
+            "del": 0
+          },
+          "when": "22m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "a",
+              "diff": {
+                "add": 180,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,180 @@ new file"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "<span class=\"kw\">export const</span> <span class=\"fn\">appleProvider</span> = (secret) =&gt; ({"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": "  id: <span class=\"str\">'apple'</span>, <span class=\"fn\">authorize</span>, <span class=\"fn\">exchange</span>,"
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "<span class=\"kw\">export const</span> <span class=\"fn\">googleProvider</span> = (secret) =&gt; ({"
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "  id: <span class=\"str\">'google'</span>, <span class=\"fn\">authorize</span>, <span class=\"fn\">exchange</span>,"
+                },
+                {
+                  "old": "",
+                  "new": "6",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "7",
+                  "type": "add",
+                  "codeHtml": "<span class=\"cm\">// … 174 more lines (authorize / exchange / token parsing)</span>"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "path": "src/auth/oauth.ts",
+          "status": "m",
+          "diff": {
+            "add": 96,
+            "del": 8
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -1,6 +1,9 @@ provider registry"
+            },
+            {
+              "old": "11",
+              "new": "11",
+              "type": "ctx",
+              "codeHtml": "<span class=\"kw\">import</span> { secrets } <span class=\"kw\">from</span> <span class=\"str\">'../lib/secrets'</span>"
+            },
+            {
+              "old": "12",
+              "new": "",
+              "type": "del",
+              "codeHtml": "<span class=\"kw\">const</span> secret = process.env.<span class=\"nm\">OAUTH_CLIENT_SECRET</span>"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": "<span class=\"kw\">const</span> secret = <span class=\"kw\">await</span> secrets.<span class=\"fn\">get</span>(<span class=\"str\">'oauth/client_secret'</span>)",
+              "extraHtml": "<div class=\"icmt\"><div class=\"icmt-pad\"><div class=\"cmt\" style=\"padding:0;border:none\"><div class=\"ca\" style=\"background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)\">AR</div><div class=\"cc\"><div class=\"ch\"><span class=\"cn\">Avery Rourke</span><span class=\"ct\">2m</span></div><div class=\"cm\">Good — this was reading from <code>process.env</code> before. Confirm the secrets client is initialised before any provider loads?</div><span class=\"react\" style=\"margin-top:8px\"><span style=\"width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block\"></span>Coder: yes — <code>secrets.init()</code> runs in <code>bootstrap.ts</code> before providers register. ✓ resolved</span></div></div></div></div>"
+            },
+            {
+              "old": "13",
+              "new": "13",
+              "type": "ctx",
+              "codeHtml": "<span class=\"kw\">export const</span> <span class=\"fn\">providers</span> = {"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "  apple: <span class=\"fn\">appleProvider</span>(secret),"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "  google: <span class=\"fn\">googleProvider</span>(secret),"
+            },
+            {
+              "old": "14",
+              "new": "16",
+              "type": "ctx",
+              "codeHtml": "}"
+            }
+          ]
+        },
+        {
+          "path": "src/hooks/useOAuthSession.ts",
+          "status": "a",
+          "diff": {
+            "add": 88,
+            "del": 0
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -0,0 +1,12 @@ new file"
+            },
+            {
+              "old": "",
+              "new": "1",
+              "type": "add",
+              "codeHtml": "<span class=\"kw\">export function</span> <span class=\"fn\">useOAuthSession</span>() {"
+            },
+            {
+              "old": "",
+              "new": "2",
+              "type": "add",
+              "codeHtml": "  <span class=\"kw\">const</span> [session, setSession] = <span class=\"fn\">useState</span>&lt;<span class=\"ty\">Session</span> | <span class=\"kw\">null</span>&gt;(<span class=\"kw\">null</span>)",
+              "extraHtml": "<div class=\"flag\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M21 21l-4-4\" stroke-linecap=\"round\"/></svg><div><div class=\"ft\">Reviewer flagged this region for human eyes</div><div class=\"fm\">token refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.</div></div></div>"
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "  <span class=\"kw\">const</span> refreshing = <span class=\"fn\">useRef</span>(<span class=\"kw\">false</span>) <span class=\"cm\">// mutex guard</span>"
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "  <span class=\"kw\">async function</span> <span class=\"fn\">refresh</span>() {"
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": "    <span class=\"kw\">if</span> (refreshing.current) <span class=\"kw\">return</span>"
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": "    refreshing.current = <span class=\"kw\">true</span>"
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": "    <span class=\"kw\">try</span> { setSession(<span class=\"kw\">await</span> <span class=\"fn\">rotateTokens</span>()) }"
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "    <span class=\"kw\">finally</span> { refreshing.current = <span class=\"kw\">false</span> }"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "  }"
+            }
+          ]
+        },
+        {
+          "path": "src/checkout/SignInButtons.tsx",
+          "status": "m",
+          "diff": {
+            "add": 34,
+            "del": 4
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -8,4 +8,12 @@ checkout buttons"
+            },
+            {
+              "old": "8",
+              "new": "8",
+              "type": "ctx",
+              "codeHtml": "<span class=\"kw\">return</span> ("
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "  &lt;<span class=\"ty\">AppleButton</span> onClick={() =&gt; <span class=\"fn\">signIn</span>(<span class=\"str\">'apple'</span>)} /&gt;"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "  &lt;<span class=\"ty\">GoogleButton</span> onClick={() =&gt; <span class=\"fn\">signIn</span>(<span class=\"str\">'google'</span>)} /&gt;"
+            },
+            {
+              "old": "9",
+              "new": "11",
+              "type": "ctx",
+              "codeHtml": ")"
+            }
+          ]
+        }
+      ],
+      "comments": [
+        {
+          "id": "gh-description",
+          "code": "LO",
+          "author": "loopbot",
+          "authorLogin": "loopbot",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "2m",
+          "bodyHtml": "",
+          "kind": "description",
+          "bodyMd": "Adds Apple and Google sign-in to checkout. Provider config and secret handling ship in this PR.",
+          "url": "https://github.com/acme/app/pull/482#issue-482001",
+          "reactions": [
+            {
+              "content": "hooray",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "id": "c1",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "2m",
+          "bodyHtml": "Left a comment on <code>oauth.ts</code> about the client secret — see Files changed.",
+          "verb": "commented",
+          "bodyMd": "Left a comment on oauth.ts about the client secret — see Files changed.",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1001",
+          "reactions": [
+            {
+              "content": "+1",
+              "count": 2
+            },
+            {
+              "content": "heart",
+              "count": 1,
+              "mine": true
+            }
+          ]
+        },
+        {
+          "id": "c2",
+          "code": "MA",
+          "author": "Maestro",
+          "avatarCss": "background:var(--amber);color:#0A0C10",
+          "time": "2m",
+          "bodyHtml": "Got the review notes — I'll address the client-secret comment.",
+          "verb": "commented",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1002"
+        },
+        {
+          "id": "c3",
+          "code": "CO",
+          "author": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "time": "now",
+          "bodyHtml": "Pushed <code>a3f91c2</code> — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
+          "verb": "commented",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1003"
+        },
+        {
+          "id": "gh-review-99",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "1m",
+          "bodyHtml": "",
+          "verb": "commented",
+          "bodyMd": "testing again",
+          "url": "https://github.com/acme/app/pull/482#pullrequestreview-99"
+        },
+        {
+          "id": "gh-inline-1",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "1m",
+          "bodyHtml": "<code>src/auth/oauth.ts:11-12</code>",
+          "verb": "commented",
+          "bodyMd": "hmm",
+          "url": "https://github.com/acme/app/pull/482#discussion_r1",
+          "parentId": "gh-review-99",
+          "reviewId": "99",
+          "path": "src/auth/oauth.ts",
+          "line": 12,
+          "side": "RIGHT",
+          "diffHunk": "@@ -4,9 +4,9 @@ provider registry\n import { secrets } from './vault'\n const providers = []\n function register() {\n   return providers\n }\n const unused = 1\n const unused2 = 2\n const unused3 = 3\n-const secret = process.env.OAUTH_CLIENT_SECRET\n+const secret = await secrets.get('oauth/client_secret')",
+          "startLine": 11,
+          "threadId": "PRRT_seed99",
+          "reactions": [
+            {
+              "content": "eyes",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "verify": [
+        {
+          "html": "Booted the app, opened <b>/checkout</b> on a clean session",
+          "passed": true
+        },
+        {
+          "html": "<b>Sign in with Apple</b> → consent → returned with a valid session",
+          "passed": true
+        },
+        {
+          "html": "<b>Sign in with Google</b> → consent → returned with a valid session",
+          "passed": true
+        },
+        {
+          "html": "Reloaded — session persisted; no token in <b>localStorage</b> or logs",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "name": "test",
+          "detail": "1m 12s",
+          "passed": true,
+          "status": "pass"
+        },
+        {
+          "name": "lint",
+          "detail": "8s",
+          "passed": true,
+          "status": "pass"
+        },
+        {
+          "name": "typecheck",
+          "detail": "22s",
+          "passed": true,
+          "status": "pass"
+        }
+      ],
+      "authorLogin": "loopbot",
+      "participants": [
+        {
+          "login": "loopbot",
+          "name": "loopbot",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "LO"
+        },
+        {
+          "login": "avery",
+          "name": "Avery Rourke",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "AR"
+        },
+        {
+          "login": "sam",
+          "name": "sam"
+        },
+        {
+          "name": "PR Responder",
+          "avatarCss": "background:#b08bd8;color:#0A0C10",
+          "code": "PR"
+        },
+        {
+          "name": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "code": "CO"
+        }
+      ],
+      "reviewers": [
+        {
+          "login": "avery",
+          "name": "Avery Rourke",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "AR",
+          "state": "pending"
+        },
+        {
+          "login": "sam",
+          "name": "sam",
+          "state": "approved"
+        }
+      ],
+      "viewerLogin": "avery",
+      "viewerCanWrite": true,
+      "reviewRequested": true,
+      "attentionReasons": [
+        "review_requested"
+      ]
+    }
+  },
+  "projects": [
+    {
+      "id": "storefront",
+      "name": "storefront",
+      "pic": "S",
+      "color": "var(--cyan)",
+      "open": true,
+      "idle": false,
+      "repoPath": "~/code/storefront",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "prOnGithub": false,
+      "isGit": true
+    },
+    {
+      "id": "payments",
+      "name": "payments-api",
+      "pic": "P",
+      "color": "var(--amber)",
+      "open": true,
+      "idle": false,
+      "repoPath": "~/code/payments-api",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "prOnGithub": false,
+      "isGit": true
+    },
+    {
+      "id": "marketing",
+      "name": "marketing-site",
+      "pic": "M",
+      "color": "var(--indigo)",
+      "open": false,
+      "idle": true,
+      "repoPath": "~/code/marketing-site",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "prOnGithub": false,
+      "isGit": true
+    }
+  ],
+  "prs": [
+    {
+      "id": "482",
+      "workspaceId": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 482,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/482",
+      "branch": "recur/oauth-checkout",
+      "base": "main",
+      "title": "Add OAuth provider config + secrets handling",
+      "summary": [
+        {
+          "kind": "p",
+          "html": "Adds <b>Apple and Google sign-in</b> to checkout. Provider config and secret handling ship in this PR; the sign-in buttons in the checkout UI follow in <code>#483</code>."
+        },
+        {
+          "kind": "p",
+          "html": "<b>What changed</b>"
+        },
+        {
+          "kind": "bullets",
+          "items": [
+            "New OAuth provider registry in <code>auth/oauth.ts</code> for Apple + Google.",
+            "Client secrets now resolved from the secrets manager at startup — never read from <code>process.env</code> or logged.",
+            "Session/token refresh extracted into a reusable <code>useOAuthSession</code> hook."
+          ]
+        },
+        {
+          "kind": "p",
+          "html": "<b>Key decision:</b> tokens are stored in an httpOnly cookie rather than localStorage, so they're not reachable from JS. Flagging because it changes how the client reads auth state."
+        }
+      ],
+      "focus": {
+        "title": "Where to focus your review",
+        "body": "The token-refresh race in <code>useOAuthSession.ts</code> (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
+      },
+      "state": "In review",
+      "diff": {
+        "add": 218,
+        "del": 12
+      },
+      "fileCount": 3,
+      "checksOk": true,
+      "when": "2m",
+      "createdAt": "2026-08-28T09:50:00Z",
+      "updatedAt": "2026-08-28T09:50:00Z",
+      "commits": [
+        {
+          "hash": "e8d34b1",
+          "message": "Add tests for Apple + Google providers",
+          "authorRole": "Tester",
+          "agentCode": "TE",
+          "color": "var(--emerald)",
+          "iterLabel": "verify pass",
+          "diff": {
+            "add": 6,
+            "del": 0
+          },
+          "when": "4m",
+          "files": [
+            {
+              "path": "src/auth/__tests__/oauth.test.ts",
+              "status": "a",
+              "diff": {
+                "add": 6,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,6 @@ new file"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "<span class=\"fn\">test</span>(<span class=\"str\">'apple sign-in returns a session'</span>, <span class=\"kw\">async</span> () =&gt; {"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": "  <span class=\"kw\">const</span> s = <span class=\"kw\">await</span> <span class=\"fn\">signIn</span>(<span class=\"str\">'apple'</span>)"
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "  <span class=\"fn\">expect</span>(s.user).<span class=\"fn\">toBeDefined</span>()"
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "<span class=\"fn\">test</span>(<span class=\"str\">'google sign-in returns a session'</span>, <span class=\"kw\">async</span> () =&gt; { <span class=\"cm\">/* … */</span> })"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "a3f91c2",
+          "message": "Resolve client secret via secrets manager",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 3 · review fix",
+          "diff": {
+            "add": 10,
+            "del": 6
+          },
+          "when": "6m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "m",
+              "diff": {
+                "add": 10,
+                "del": 6
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -10,6 +10,9 @@ provider registry"
+                },
+                {
+                  "old": "10",
+                  "new": "10",
+                  "type": "ctx",
+                  "codeHtml": "<span class=\"kw\">import</span> { secrets } <span class=\"kw\">from</span> <span class=\"str\">'../lib/secrets'</span>"
+                },
+                {
+                  "old": "11",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "<span class=\"kw\">const</span> secret = process.env.<span class=\"nm\">OAUTH_CLIENT_SECRET</span>"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "<span class=\"kw\">const</span> secret = <span class=\"kw\">await</span> secrets.<span class=\"fn\">get</span>(<span class=\"str\">'oauth/client_secret'</span>)"
+                },
+                {
+                  "old": "12",
+                  "new": "12",
+                  "type": "ctx",
+                  "codeHtml": "<span class=\"kw\">export const</span> <span class=\"fn\">providers</span> = {"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "4b7f0d2",
+          "message": "Harden error handling on token exchange",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 2 · review fix",
+          "diff": {
+            "add": 28,
+            "del": 6
+          },
+          "when": "14m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "m",
+              "diff": {
+                "add": 28,
+                "del": 6
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -22,4 +22,12 @@ token exchange"
+                },
+                {
+                  "old": "22",
+                  "new": "22",
+                  "type": "ctx",
+                  "codeHtml": "<span class=\"kw\">async function</span> <span class=\"fn\">exchange</span>(provider, code) {"
+                },
+                {
+                  "old": "23",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "  <span class=\"kw\">const</span> res = <span class=\"kw\">await</span> <span class=\"fn\">fetch</span>(tokenUrl, { method: <span class=\"str\">'POST'</span> })"
+                },
+                {
+                  "old": "24",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "  <span class=\"kw\">return</span> res.<span class=\"fn\">json</span>()"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "  <span class=\"kw\">try</span> {"
+                },
+                {
+                  "old": "",
+                  "new": "24",
+                  "type": "add",
+                  "codeHtml": "    <span class=\"kw\">const</span> res = <span class=\"kw\">await</span> <span class=\"fn\">fetch</span>(tokenUrl, { method: <span class=\"str\">'POST'</span> })"
+                },
+                {
+                  "old": "",
+                  "new": "25",
+                  "type": "add",
+                  "codeHtml": "    <span class=\"kw\">if</span> (!res.ok) <span class=\"kw\">throw new</span> <span class=\"ty\">OAuthError</span>(res.status)"
+                },
+                {
+                  "old": "",
+                  "new": "26",
+                  "type": "add",
+                  "codeHtml": "    <span class=\"kw\">return</span> res.<span class=\"fn\">json</span>()"
+                },
+                {
+                  "old": "",
+                  "new": "27",
+                  "type": "add",
+                  "codeHtml": "  } <span class=\"kw\">catch</span> (e) {"
+                },
+                {
+                  "old": "",
+                  "new": "28",
+                  "type": "add",
+                  "codeHtml": "    logger.<span class=\"fn\">warn</span>(<span class=\"str\">'token exchange failed'</span>, { provider })"
+                },
+                {
+                  "old": "",
+                  "new": "29",
+                  "type": "add",
+                  "codeHtml": "    <span class=\"kw\">throw</span> e"
+                },
+                {
+                  "old": "",
+                  "new": "30",
+                  "type": "add",
+                  "codeHtml": "  }"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "9c2e1a4",
+          "message": "Add Apple & Google OAuth providers",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 1",
+          "diff": {
+            "add": 180,
+            "del": 0
+          },
+          "when": "22m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "a",
+              "diff": {
+                "add": 180,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,180 @@ new file"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "<span class=\"kw\">export const</span> <span class=\"fn\">appleProvider</span> = (secret) =&gt; ({"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": "  id: <span class=\"str\">'apple'</span>, <span class=\"fn\">authorize</span>, <span class=\"fn\">exchange</span>,"
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "<span class=\"kw\">export const</span> <span class=\"fn\">googleProvider</span> = (secret) =&gt; ({"
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "  id: <span class=\"str\">'google'</span>, <span class=\"fn\">authorize</span>, <span class=\"fn\">exchange</span>,"
+                },
+                {
+                  "old": "",
+                  "new": "6",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "7",
+                  "type": "add",
+                  "codeHtml": "<span class=\"cm\">// … 174 more lines (authorize / exchange / token parsing)</span>"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "path": "src/auth/oauth.ts",
+          "status": "m",
+          "diff": {
+            "add": 96,
+            "del": 8
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -1,6 +1,9 @@ provider registry"
+            },
+            {
+              "old": "11",
+              "new": "11",
+              "type": "ctx",
+              "codeHtml": "<span class=\"kw\">import</span> { secrets } <span class=\"kw\">from</span> <span class=\"str\">'../lib/secrets'</span>"
+            },
+            {
+              "old": "12",
+              "new": "",
+              "type": "del",
+              "codeHtml": "<span class=\"kw\">const</span> secret = process.env.<span class=\"nm\">OAUTH_CLIENT_SECRET</span>"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": "<span class=\"kw\">const</span> secret = <span class=\"kw\">await</span> secrets.<span class=\"fn\">get</span>(<span class=\"str\">'oauth/client_secret'</span>)",
+              "extraHtml": "<div class=\"icmt\"><div class=\"icmt-pad\"><div class=\"cmt\" style=\"padding:0;border:none\"><div class=\"ca\" style=\"background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)\">AR</div><div class=\"cc\"><div class=\"ch\"><span class=\"cn\">Avery Rourke</span><span class=\"ct\">2m</span></div><div class=\"cm\">Good — this was reading from <code>process.env</code> before. Confirm the secrets client is initialised before any provider loads?</div><span class=\"react\" style=\"margin-top:8px\"><span style=\"width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block\"></span>Coder: yes — <code>secrets.init()</code> runs in <code>bootstrap.ts</code> before providers register. ✓ resolved</span></div></div></div></div>"
+            },
+            {
+              "old": "13",
+              "new": "13",
+              "type": "ctx",
+              "codeHtml": "<span class=\"kw\">export const</span> <span class=\"fn\">providers</span> = {"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "  apple: <span class=\"fn\">appleProvider</span>(secret),"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "  google: <span class=\"fn\">googleProvider</span>(secret),"
+            },
+            {
+              "old": "14",
+              "new": "16",
+              "type": "ctx",
+              "codeHtml": "}"
+            }
+          ]
+        },
+        {
+          "path": "src/hooks/useOAuthSession.ts",
+          "status": "a",
+          "diff": {
+            "add": 88,
+            "del": 0
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -0,0 +1,12 @@ new file"
+            },
+            {
+              "old": "",
+              "new": "1",
+              "type": "add",
+              "codeHtml": "<span class=\"kw\">export function</span> <span class=\"fn\">useOAuthSession</span>() {"
+            },
+            {
+              "old": "",
+              "new": "2",
+              "type": "add",
+              "codeHtml": "  <span class=\"kw\">const</span> [session, setSession] = <span class=\"fn\">useState</span>&lt;<span class=\"ty\">Session</span> | <span class=\"kw\">null</span>&gt;(<span class=\"kw\">null</span>)",
+              "extraHtml": "<div class=\"flag\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M21 21l-4-4\" stroke-linecap=\"round\"/></svg><div><div class=\"ft\">Reviewer flagged this region for human eyes</div><div class=\"fm\">token refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.</div></div></div>"
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "  <span class=\"kw\">const</span> refreshing = <span class=\"fn\">useRef</span>(<span class=\"kw\">false</span>) <span class=\"cm\">// mutex guard</span>"
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "  <span class=\"kw\">async function</span> <span class=\"fn\">refresh</span>() {"
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": "    <span class=\"kw\">if</span> (refreshing.current) <span class=\"kw\">return</span>"
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": "    refreshing.current = <span class=\"kw\">true</span>"
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": "    <span class=\"kw\">try</span> { setSession(<span class=\"kw\">await</span> <span class=\"fn\">rotateTokens</span>()) }"
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "    <span class=\"kw\">finally</span> { refreshing.current = <span class=\"kw\">false</span> }"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "  }"
+            }
+          ]
+        },
+        {
+          "path": "src/checkout/SignInButtons.tsx",
+          "status": "m",
+          "diff": {
+            "add": 34,
+            "del": 4
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -8,4 +8,12 @@ checkout buttons"
+            },
+            {
+              "old": "8",
+              "new": "8",
+              "type": "ctx",
+              "codeHtml": "<span class=\"kw\">return</span> ("
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "  &lt;<span class=\"ty\">AppleButton</span> onClick={() =&gt; <span class=\"fn\">signIn</span>(<span class=\"str\">'apple'</span>)} /&gt;"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "  &lt;<span class=\"ty\">GoogleButton</span> onClick={() =&gt; <span class=\"fn\">signIn</span>(<span class=\"str\">'google'</span>)} /&gt;"
+            },
+            {
+              "old": "9",
+              "new": "11",
+              "type": "ctx",
+              "codeHtml": ")"
+            }
+          ]
+        }
+      ],
+      "comments": [
+        {
+          "id": "gh-description",
+          "code": "LO",
+          "author": "loopbot",
+          "authorLogin": "loopbot",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "2m",
+          "bodyHtml": "",
+          "kind": "description",
+          "bodyMd": "Adds Apple and Google sign-in to checkout. Provider config and secret handling ship in this PR.",
+          "url": "https://github.com/acme/app/pull/482#issue-482001",
+          "reactions": [
+            {
+              "content": "hooray",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "id": "c1",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "2m",
+          "bodyHtml": "Left a comment on <code>oauth.ts</code> about the client secret — see Files changed.",
+          "verb": "commented",
+          "bodyMd": "Left a comment on oauth.ts about the client secret — see Files changed.",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1001",
+          "reactions": [
+            {
+              "content": "+1",
+              "count": 2
+            },
+            {
+              "content": "heart",
+              "count": 1,
+              "mine": true
+            }
+          ]
+        },
+        {
+          "id": "c2",
+          "code": "MA",
+          "author": "Maestro",
+          "avatarCss": "background:var(--amber);color:#0A0C10",
+          "time": "2m",
+          "bodyHtml": "Got the review notes — I'll address the client-secret comment.",
+          "verb": "commented",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1002"
+        },
+        {
+          "id": "c3",
+          "code": "CO",
+          "author": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "time": "now",
+          "bodyHtml": "Pushed <code>a3f91c2</code> — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
+          "verb": "commented",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1003"
+        },
+        {
+          "id": "gh-review-99",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "1m",
+          "bodyHtml": "",
+          "verb": "commented",
+          "bodyMd": "testing again",
+          "url": "https://github.com/acme/app/pull/482#pullrequestreview-99"
+        },
+        {
+          "id": "gh-inline-1",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "1m",
+          "bodyHtml": "<code>src/auth/oauth.ts:11-12</code>",
+          "verb": "commented",
+          "bodyMd": "hmm",
+          "url": "https://github.com/acme/app/pull/482#discussion_r1",
+          "parentId": "gh-review-99",
+          "reviewId": "99",
+          "path": "src/auth/oauth.ts",
+          "line": 12,
+          "side": "RIGHT",
+          "diffHunk": "@@ -4,9 +4,9 @@ provider registry\n import { secrets } from './vault'\n const providers = []\n function register() {\n   return providers\n }\n const unused = 1\n const unused2 = 2\n const unused3 = 3\n-const secret = process.env.OAUTH_CLIENT_SECRET\n+const secret = await secrets.get('oauth/client_secret')",
+          "startLine": 11,
+          "threadId": "PRRT_seed99",
+          "reactions": [
+            {
+              "content": "eyes",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "verify": [
+        {
+          "html": "Booted the app, opened <b>/checkout</b> on a clean session",
+          "passed": true
+        },
+        {
+          "html": "<b>Sign in with Apple</b> → consent → returned with a valid session",
+          "passed": true
+        },
+        {
+          "html": "<b>Sign in with Google</b> → consent → returned with a valid session",
+          "passed": true
+        },
+        {
+          "html": "Reloaded — session persisted; no token in <b>localStorage</b> or logs",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "name": "test",
+          "detail": "1m 12s",
+          "passed": true,
+          "status": "pass"
+        },
+        {
+          "name": "lint",
+          "detail": "8s",
+          "passed": true,
+          "status": "pass"
+        },
+        {
+          "name": "typecheck",
+          "detail": "22s",
+          "passed": true,
+          "status": "pass"
+        }
+      ],
+      "authorLogin": "loopbot",
+      "participants": [
+        {
+          "login": "loopbot",
+          "name": "loopbot",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "LO"
+        },
+        {
+          "login": "avery",
+          "name": "Avery Rourke",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "AR"
+        },
+        {
+          "login": "sam",
+          "name": "sam"
+        },
+        {
+          "name": "PR Responder",
+          "avatarCss": "background:#b08bd8;color:#0A0C10",
+          "code": "PR"
+        },
+        {
+          "name": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "code": "CO"
+        }
+      ],
+      "reviewers": [
+        {
+          "login": "avery",
+          "name": "Avery Rourke",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "AR",
+          "state": "pending"
+        },
+        {
+          "login": "sam",
+          "name": "sam",
+          "state": "approved"
+        }
+      ],
+      "viewerLogin": "avery",
+      "viewerCanWrite": true,
+      "reviewRequested": true,
+      "attentionReasons": [
+        "review_requested"
+      ]
+    },
+    {
+      "id": "479",
+      "workspaceId": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 479,
+      "source": "local",
+      "branch": "recur/fix-e2e",
+      "base": "main",
+      "title": "Stabilize flaky checkout E2E tests",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "fileCount": 5,
+      "checksOk": true,
+      "when": "18m",
+      "createdAt": "2026-08-28T09:34:00Z",
+      "updatedAt": "2026-08-28T09:34:00Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null,
+      "participants": [
+        {
+          "name": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "code": "CO"
+        }
+      ]
+    },
+    {
+      "id": "471",
+      "workspaceId": "LOOP-2202",
+      "projectId": "storefront",
+      "group": "merged",
+      "number": 471,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/471",
+      "branch": "recur/idempotency",
+      "base": "main",
+      "title": "Add idempotency keys to the orders API",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "Merged",
+      "diff": {
+        "add": 156,
+        "del": 9
+      },
+      "fileCount": 7,
+      "checksOk": true,
+      "when": "1d",
+      "createdAt": "2026-08-27T09:52:00Z",
+      "updatedAt": "2026-08-27T09:52:00Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null
+    }
+  ],
+  "resource": {
+    "loopsRunning": 3,
+    "needsYou": 1,
+    "itersToday": 37
+  },
+  "settings": {
+    "modelAsk": "claude-code/claude-sonnet-5-5",
+    "modelPlan": "claude-code/claude-sonnet-5-5",
+    "modelAgent": "claude-code/claude-sonnet-5-5",
+    "modelReview": "claude-code/claude-sonnet-5-5",
+    "modelLoop": "claude-code/claude-sonnet-5-5",
+    "modelWorkspaceTitle": "claude-code/claude-haiku-4-5-20251001",
+    "flagsAsk": {
+      "effort": "high"
+    },
+    "flagsPlan": {
+      "effort": "high"
+    },
+    "flagsAgent": {
+      "effort": "high"
+    },
+    "flagsReview": {
+      "effort": "high"
+    },
+    "flagsLoop": {
+      "effort": "high"
+    },
+    "flagsWorkspaceTitle": {
+      "effort": "low"
+    },
+    "bypassPermissions": false,
+    "maxLoops": 4,
+    "maxAgents": 8,
+    "defaultMergeMethod": "merge",
+    "defaultUpdateBaseMethod": "merge",
+    "defaultSquashCommitMessage": "title-and-commits",
+    "defaultMergeCommitMessage": "title"
+  }
+}

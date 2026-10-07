@@ -1,0 +1,82 @@
+[bundle]
+name = "XML"
+id = "recur.xml"
+version = "1.0.0"
+author = "Recur"
+
+[[command]]
+id = "recur.xml.format"
+name = "Format XML"
+category = "XML"
+order = 10
+scope = "text.xml"
+fileGlob = "*.xml"
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/format.sh"
+
+[[command]]
+id = "recur.xml.format-on-save"
+name = "Format XML on Save"
+category = "XML"
+order = 11
+scope = "text.xml"
+fileGlob = "*.xml"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "shebang"
+script = "bin/format.sh"
+
+[[command]]
+id = "recur.xml.validate"
+name = "Validate XML"
+category = "XML"
+order = 20
+scope = "text.xml"
+fileGlob = "*.xml"
+input = "selection"
+fallbackInput = "document"
+output = "showAsToast"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/validate.sh"
+
+# --- snippets ----------------------------------------------------------------
+
+[[snippet]]
+id = "recur.xml.xml"
+name = "XML declaration"
+tabTrigger = "xml"
+scope = "text.xml"
+fileGlob = "*.xml"
+order = 10
+body = '''
+<?xml version="1.0" encoding="UTF-8"?>
+'''
+
+[[snippet]]
+id = "recur.xml.cdata"
+name = "CDATA"
+tabTrigger = "cdata"
+scope = "text.xml"
+fileGlob = "*.xml"
+order = 20
+body = '''
+<![CDATA[$0]]>
+'''
+
+[[snippet]]
+id = "recur.xml.wrap"
+name = "Wrap Tag"
+tabTrigger = "tag"
+scope = "text.xml"
+fileGlob = "*.xml"
+order = 30
+body = '''
+<${1:name}>$TM_SELECTED_TEXT</$1>
+'''
+

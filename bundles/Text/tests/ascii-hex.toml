@@ -1,0 +1,47 @@
+[[test]]
+name = "strips accents"
+command = "Transliterate to ASCII"
+
+[test.context]
+input = "café"
+selectedText = "café"
+
+[test.expect]
+stdout = "cafe"
+output = "replaceSelection"
+
+[[test]]
+name = "chars to hex"
+command = "Characters to Hex"
+
+[test.context]
+input = "hi"
+selectedText = "hi"
+
+[test.expect]
+stdout = "68 69"
+output = "replaceSelection"
+
+[[test]]
+name = "hex to chars"
+command = "Hex to Characters"
+
+[test.context]
+input = "68 69"
+selectedText = "68 69"
+
+[test.expect]
+stdout = "hi"
+output = "replaceSelection"
+
+[[test]]
+name = "strips unprintable but keeps tab and newline"
+command = "Strip Unprintable"
+
+[test.context]
+input = "a\u0000b\tc\nd"
+selectedText = "a\u0000b\tc\nd"
+
+[test.expect]
+stdout = "ab\tc\nd"
+output = "replaceSelection"

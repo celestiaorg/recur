@@ -1,0 +1,150 @@
+{
+  "name": "Tomorrow",
+  "type": "light",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#605F5E",
+    "editor.selectionBackground": "#DEDEDE",
+    "editor.lineHighlightBackground": "#F2F2F2",
+    "editorCursor.foreground": "#BCBDBB",
+    "editorWhitespace.foreground": "#DADADA"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#605F5E",
+        "background": "#FFFFFF"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#9FA19E"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#797C7C"
+      },
+      "name": "Foreground",
+      "scope": [
+        "keyword.operator.class",
+        "constant.other",
+        "source.php.embedded.line"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#D43E35"
+      },
+      "name": "Variable, String Link, Regular Expression, Tag Name",
+      "scope": [
+        "variable",
+        "support.other.variable",
+        "string.other.link",
+        "string.regexp",
+        "entity.name.tag",
+        "entity.other.attribute-name"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#F99927"
+      },
+      "name": "Number, Constant, Function Argument, Tag Attribute, Embedded",
+      "scope": [
+        "constant.numeric",
+        "constant.language",
+        "support.constant",
+        "constant.character",
+        "variable.parameter",
+        "punctuation.section.embedded",
+        "keyword.other.unit"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#D4AC00"
+      },
+      "name": "Class, Support",
+      "scope": [
+        "entity.name.class",
+        "entity.name.type.class",
+        "support.type",
+        "support.class"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#839B00"
+      },
+      "name": "String, Symbols, Inherited Class, Markup Heading",
+      "scope": [
+        "string",
+        "constant.other.symbol",
+        "entity.other.inherited-class",
+        "markup.heading"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#4BA8AF"
+      },
+      "name": "Operator, Misc",
+      "scope": [
+        "keyword.operator",
+        "constant.other.color"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#5286BC"
+      },
+      "name": "Function, Special Method, Block Level",
+      "scope": [
+        "entity.name.function",
+        "meta.function-call",
+        "support.function",
+        "keyword.other.special-method",
+        "meta.block-level"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#9C71B7"
+      },
+      "name": "Keyword, Storage",
+      "scope": [
+        "keyword",
+        "storage",
+        "storage.type"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#D43E35"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#5286BC"
+      },
+      "name": "Separator",
+      "scope": "meta.separator"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#9C71B7"
+      },
+      "name": "Deprecated",
+      "scope": "invalid.deprecated"
+    }
+  ]
+}

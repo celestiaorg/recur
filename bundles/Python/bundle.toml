@@ -1,0 +1,281 @@
+[bundle]
+name = "Python"
+id = "recur.python"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "basedpyright"
+languages = ["python"]
+fileGlob = ["*.py", "*.pyi", "*.pyw"]
+command = "basedpyright-langserver"
+args = ["--stdio"]
+managed = "basedpyright"
+
+[[languageServer]]
+id = "ruff"
+languages = ["python"]
+fileGlob = ["*.py", "*.pyi", "*.pyw"]
+command = "ruff"
+args = ["server"]
+managed = "ruff"
+
+[[command]]
+id = "recur.python.format-on-save"
+name = "Format on Save"
+category = "Python"
+order = 10
+scope = "source.python"
+fileGlob = "*.py"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "shebang"
+body = '''
+#!/usr/bin/env bash
+# Prefer ruff format, then black; pass through if neither is available.
+tmp=$(mktemp)
+named="${tmp}.py"
+trap 'rm -f "$tmp" "$named"' EXIT
+cat >"$tmp"
+mv "$tmp" "$named"
+if command -v ruff >/dev/null 2>&1; then
+  if ruff format --quiet "$named" 2>/dev/null; then
+    cat "$named"
+    exit 0
+  fi
+fi
+if command -v black >/dev/null 2>&1; then
+  if black -q "$named" 2>/dev/null; then
+    cat "$named"
+    exit 0
+  fi
+fi
+cat "$named"
+'''
+
+# --- snippets ----------------------------------------------------------------
+
+[[snippet]]
+id = "recur.python.def"
+name = "def"
+tabTrigger = "def"
+scope = "source.python"
+fileGlob = "*.py"
+order = 10
+body = '''
+def ${1:fname}(${2}):
+	"""${3:docstring for ${1:fname}}"""
+	${0:pass}
+'''
+
+[[snippet]]
+id = "recur.python.class"
+name = "class"
+tabTrigger = "class"
+scope = "source.python"
+fileGlob = "*.py"
+order = 20
+body = '''
+class ${1:ClassName}(${2:object}):
+	"""${3:docstring for ${1:ClassName}}"""
+	def __init__(self, ${4:arg}):
+		${5:super(${1:ClassName}, self).__init__()}
+		self.${4:arg} = ${4:arg}
+		$0
+'''
+
+[[snippet]]
+id = "recur.python.ifmain"
+name = "if main"
+tabTrigger = "ifmain"
+scope = "source.python"
+fileGlob = "*.py"
+order = 30
+body = '''
+if __name__ == '__main__':
+	${1:main()}$0
+'''
+
+[[snippet]]
+id = "recur.python.py3"
+name = "python3 shebang"
+tabTrigger = "py3"
+scope = "source.python"
+fileGlob = "*.py"
+order = 40
+body = '''
+#!/usr/bin/env python3
+'''
+
+[[snippet]]
+id = "recur.python.try"
+name = "try/except"
+tabTrigger = "try"
+scope = "source.python"
+fileGlob = "*.py"
+order = 50
+body = '''
+try:
+	${1:pass}
+except ${2:Exception} as ${3:e}:
+	${4:raise $3}
+'''
+
+[[snippet]]
+id = "recur.python.py"
+name = "python shebang"
+tabTrigger = "py"
+scope = "source.python"
+fileGlob = "*.py"
+order = 41
+body = '''
+#!/usr/bin/env python
+'''
+
+[[snippet]]
+id = "recur.python.defs"
+name = "def method"
+tabTrigger = "defs"
+scope = "source.python"
+fileGlob = "*.py"
+order = 11
+body = '''
+def ${1:mname}(self, ${2:arg}):
+	${3:pass}
+'''
+
+[[snippet]]
+id = "recur.python.prop"
+name = "property"
+tabTrigger = "prop"
+scope = "source.python"
+fileGlob = "*.py"
+order = 12
+body = '''
+@property
+def ${1:name}(self):
+	"""The ${1:name} property."""
+	${0:return self._${1:name}}
+'''
+
+[[snippet]]
+id = "recur.python.magic"
+name = "__magic__"
+tabTrigger = "__"
+scope = "source.python"
+fileGlob = "*.py"
+order = 13
+body = '''
+__${1:init}__
+'''
+
+[[snippet]]
+id = "recur.python.as"
+name = "Assert"
+tabTrigger = "as"
+scope = "source.python"
+fileGlob = "*.py"
+order = 60
+body = '''
+self.assert_(${1:boolean expression}${2:, '${3:message}'})$0
+'''
+
+[[snippet]]
+id = "recur.python.ase"
+name = "Assert Equal"
+tabTrigger = "ase"
+scope = "source.python"
+fileGlob = "*.py"
+order = 61
+body = '''
+self.assertEqual(${1:expected}, ${2:actual}${3:, '${4:message}'})$0
+'''
+
+[[snippet]]
+id = "recur.python.asne"
+name = "Assert Not Equal"
+tabTrigger = "asne"
+scope = "source.python"
+fileGlob = "*.py"
+order = 62
+body = '''
+self.assertNotEqual(${1:expected}, ${2:actual}${3:, '${4:message}'})$0
+'''
+
+[[snippet]]
+id = "recur.python.asr"
+name = "Assert Raises"
+tabTrigger = "asr"
+scope = "source.python"
+fileGlob = "*.py"
+order = 63
+body = '''
+self.assertRaises(${1:exception}, ${2:callable})$0
+'''
+
+[[snippet]]
+id = "recur.python.fail"
+name = "Fail"
+tabTrigger = "fail"
+scope = "source.python"
+fileGlob = "*.py"
+order = 64
+body = '''
+self.fail('${1:message}')$0
+'''
+
+[[snippet]]
+id = "recur.python.try-else"
+name = "try/except/else"
+tabTrigger = "try"
+scope = "source.python"
+fileGlob = "*.py"
+order = 51
+body = '''
+try:
+	${1:pass}
+except ${2:Exception} as ${3:e}:
+	${4:raise $3}
+else:
+	${5:pass}
+'''
+
+[[snippet]]
+id = "recur.python.try-finally"
+name = "try/except/finally"
+tabTrigger = "try"
+scope = "source.python"
+fileGlob = "*.py"
+order = 52
+body = '''
+try:
+	${1:pass}
+except ${2:Exception} as ${3:e}:
+	${4:raise $3}
+finally:
+	${5:pass}
+'''
+
+[[snippet]]
+id = "recur.python.try-all"
+name = "try/except/else/finally"
+tabTrigger = "try"
+scope = "source.python"
+fileGlob = "*.py"
+order = 53
+body = '''
+try:
+	${1:pass}
+except ${2:Exception} as ${3:e}:
+	${4:raise}
+else:
+	${5:pass}
+finally:
+	${6:pass}
+'''
+
+[[symbol]]
+id = "recur.symbols.python.hide-decorator"
+scope = "entity.name.function.decorator"
+show = false

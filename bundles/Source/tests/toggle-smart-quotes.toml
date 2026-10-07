@@ -1,0 +1,23 @@
+[[test]]
+name = "curlifies straight doubles"
+command = "Toggle Smart Quotes"
+
+[test.context]
+input = '"hello"'
+selectedText = '"hello"'
+
+[test.expect]
+stdout = "“hello”"
+output = "replaceSelection"
+
+[[test]]
+name = "straightens curly doubles"
+command = "Toggle Smart Quotes"
+
+[test.context]
+input = "“hello”"
+selectedText = "“hello”"
+
+[test.expect]
+stdout = '"hello"'
+output = "replaceSelection"

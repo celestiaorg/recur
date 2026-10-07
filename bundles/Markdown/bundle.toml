@@ -1,0 +1,168 @@
+[bundle]
+name = "Markdown"
+id = "recur.markdown"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "marksman"
+languages = ["markdown"]
+fileGlob = ["*.md", "*.markdown", "*.mdx"]
+command = "marksman"
+args = ["server"]
+managed = "marksman"
+
+[[command]]
+id = "recur.markdown.hard-break"
+name = "Hard Linebreak"
+category = "Markdown"
+order = 5
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "none"
+output = "insertText"
+triggers = ["palette"]
+keyEquivalent = "ctrl+enter"
+interpreter = "typescript"
+script = "src/hard-break.ts"
+
+[[command]]
+id = "recur.markdown.bold"
+name = "Bold"
+category = "Markdown"
+order = 10
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/bold.ts"
+
+[[command]]
+id = "recur.markdown.italic"
+name = "Italic"
+category = "Markdown"
+order = 11
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/italic.ts"
+
+[[command]]
+id = "recur.markdown.strikethrough"
+name = "Strikethrough"
+category = "Markdown"
+order = 12
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/strikethrough.ts"
+
+[[command]]
+id = "recur.markdown.inline-code"
+name = "Inline Code"
+category = "Markdown"
+order = 13
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "word"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/inline-code.ts"
+
+[[command]]
+id = "recur.markdown.link"
+name = "Link"
+category = "Markdown"
+order = 14
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "word"
+output = "insertSnippet"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/link.ts"
+
+[[command]]
+id = "recur.markdown.increase-heading"
+name = "Increase Heading"
+category = "Markdown"
+order = 20
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "line"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/increase-heading.ts"
+
+[[command]]
+id = "recur.markdown.decrease-heading"
+name = "Decrease Heading"
+category = "Markdown"
+order = 21
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "line"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/decrease-heading.ts"
+
+[[command]]
+id = "recur.markdown.number-list"
+name = "Number List"
+category = "Markdown"
+order = 30
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/number-list.ts"
+
+[[command]]
+id = "recur.markdown.unnumber-list"
+name = "Unnumber List"
+category = "Markdown"
+order = 31
+scope = "text.html.markdown"
+fileGlob = "*.{md,markdown,mdown,mdx}"
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/unnumber-list.ts"
+
+[[symbol]]
+id = "recur.symbols.markdown.heading"
+scope = "markup.heading.markdown"
+kind = "heading"
+# TextMate: extra # → em-space indent so Go to Symbol / Outline nest by level.
+transform = '''
+s/^\s{0,3}######\s+/\u2003\u2003\u2003\u2003\u2003/
+s/^\s{0,3}#####\s+/\u2003\u2003\u2003\u2003/
+s/^\s{0,3}####\s+/\u2003\u2003\u2003/
+s/^\s{0,3}###\s+/\u2003\u2003/
+s/^\s{0,3}##\s+/\u2003/
+s/^\s{0,3}#\s+//
+s/\s+#+\s*$//
+'''

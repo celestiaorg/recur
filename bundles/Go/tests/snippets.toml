@@ -1,0 +1,347 @@
+[[test]]
+name = "ife"
+snippet = "recur.go.ife"
+[test.expect]
+stdout = '''
+if ${1:err} != nil {
+	${2:log.Fatal(${1:err})}
+}
+'''
+
+[[test]]
+name = "func"
+snippet = "recur.go.func"
+[test.expect]
+stdout = '''
+func ${1:name}(${2:params}) ${3:type} {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "meth"
+snippet = "recur.go.meth"
+[test.expect]
+stdout = '''
+func (${1:receiver} ${2:type}) ${3:name}(${4:params}) ${5:type} {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "for"
+snippet = "recur.go.for"
+[test.expect]
+stdout = '''
+for ${1:condition} {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "forr"
+snippet = "recur.go.forr"
+[test.expect]
+stdout = '''
+for ${2:name} := range ${1:collection} {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "fori"
+snippet = "recur.go.fori"
+[test.expect]
+stdout = '''
+for ${2:i} := 0; $2 < ${1:count}; ${3:i++} {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "st"
+snippet = "recur.go.st"
+[test.expect]
+stdout = '''
+type ${1:Foo} struct {
+	${2:Bar} ${0:string}
+}
+'''
+
+[[test]]
+name = "main"
+snippet = "recur.go.main"
+[test.expect]
+stdout = '''
+func main() {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "test"
+snippet = "recur.go.test"
+[test.expect]
+stdout = '''
+package ${1:main}
+
+import (
+	"testing"
+)
+
+func Test${2:Name}(t *testing.T) {
+	${0}t.Fatal("no test body")
+}
+'''
+
+[[test]]
+name = "imp"
+snippet = "recur.go.imp"
+[test.expect]
+stdout = '''
+import ${2:package} "${1:package}"
+'''
+
+[[test]]
+name = "imps"
+snippet = "recur.go.imps"
+[test.expect]
+stdout = '''
+import (
+	"${0:package}"
+)
+'''
+
+[[test]]
+name = "fmt"
+snippet = "recur.go.fmt"
+[test.expect]
+stdout = '''
+fmt.Println(${1:"${2:Hello World!}"})
+'''
+
+[[test]]
+name = "if"
+snippet = "recur.go.if"
+[test.expect]
+stdout = '''
+if ${1:condition} {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "case"
+snippet = "recur.go.case"
+[test.expect]
+stdout = '''
+case ${1:condition}:
+	${0://body}
+'''
+
+[[test]]
+name = "def"
+snippet = "recur.go.def"
+[test.expect]
+stdout = '''
+default:
+	${0://body}
+'''
+
+[[test]]
+name = "sw"
+snippet = "recur.go.sw"
+[test.expect]
+stdout = '''
+switch ${1:expression} {
+case$0
+}
+'''
+
+[[test]]
+name = "sel"
+snippet = "recur.go.sel"
+[test.expect]
+stdout = '''
+select {
+case$0
+}
+'''
+
+[[test]]
+name = "init"
+snippet = "recur.go.init"
+[test.expect]
+stdout = '''
+func init() {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "funcv"
+snippet = "recur.go.funcv"
+[test.expect]
+stdout = '''
+func ${1:name}(${2:params}) (${3:type}) {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "methv"
+snippet = "recur.go.methv"
+[test.expect]
+stdout = '''
+func (${1:receiver} ${2:type}) ${3:name}(${4:params}) (${5:type}) {
+	${0:// body}
+}
+'''
+
+[[test]]
+name = "fun"
+snippet = "recur.go.fun"
+[test.expect]
+stdout = '''
+func(${1:params}) ${2:type}
+'''
+
+[[test]]
+name = "go"
+snippet = "recur.go.go"
+[test.expect]
+stdout = '''
+go ${1:func(${2:params}) {
+	${0:// body}
+}(${3:values})}
+'''
+
+[[test]]
+name = "de"
+snippet = "recur.go.de"
+[test.expect]
+stdout = '''
+defer ${1:func(${2:params}) {
+	${0:// body}
+}(${3:values})}
+'''
+
+[[test]]
+name = "ch"
+snippet = "recur.go.ch"
+[test.expect]
+stdout = '''
+chan ${1:valtype}
+'''
+
+[[test]]
+name = "map"
+snippet = "recur.go.map"
+[test.expect]
+stdout = '''
+map[${1:keytype}]${2:valtype}
+'''
+
+[[test]]
+name = "in"
+snippet = "recur.go.in"
+[test.expect]
+stdout = '''
+interface {}
+'''
+
+[[test]]
+name = "inte"
+snippet = "recur.go.inte"
+[test.expect]
+stdout = '''
+interface {
+	${0:method}
+}
+'''
+
+[[test]]
+name = "con"
+snippet = "recur.go.con"
+[test.expect]
+stdout = '''
+const ${1:name} ${2:type} = ${0:value}
+'''
+
+[[test]]
+name = "cons"
+snippet = "recur.go.cons"
+[test.expect]
+stdout = '''
+const (
+	${1:name} ${2:type} = ${0:value}
+)
+'''
+
+[[test]]
+name = "var"
+snippet = "recur.go.var"
+[test.expect]
+stdout = '''
+var ${1:name} ${2:type} = ${0:value}
+'''
+
+[[test]]
+name = "vars"
+snippet = "recur.go.vars"
+[test.expect]
+stdout = '''
+var (
+	${1:name} ${2:type} = ${0:value}
+)
+'''
+
+[[test]]
+name = "type"
+snippet = "recur.go.type"
+[test.expect]
+stdout = '''
+type ${1:name} ${0:definition}
+'''
+
+[[test]]
+name = "types"
+snippet = "recur.go.types"
+[test.expect]
+stdout = '''
+type (
+	${1:name} ${0:definition}
+)
+'''
+
+[[test]]
+name = "mk"
+snippet = "recur.go.mk"
+[test.expect]
+stdout = '''
+${1:name} := make(${2:reftype})
+'''
+
+[[test]]
+name = "new"
+snippet = "recur.go.new"
+[test.expect]
+stdout = '''
+${1:name} := new(${2:type})
+'''
+
+[[test]]
+name = "pkg"
+snippet = "recur.go.pkg"
+[test.expect]
+stdout = '''
+package ${1:main}
+'''
+
+[[test]]
+name = "ret"
+snippet = "recur.go.ret"
+[test.expect]
+stdout = '''
+return ${1:value}
+'''

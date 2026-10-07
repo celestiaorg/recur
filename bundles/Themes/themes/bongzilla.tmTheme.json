@@ -1,0 +1,135 @@
+{
+  "name": "Bongzilla",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#292929",
+    "editor.foreground": "#F9F9F9",
+    "editor.selectionBackground": "#304E89",
+    "editor.lineHighlightBackground": "#FFFFFF0F",
+    "editorCursor.foreground": "#FFFFFFA6",
+    "editorWhitespace.foreground": "#FFFFFF40"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#292929"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#BCBCBC"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#FF714E"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#FF7A00"
+      },
+      "name": "Entity",
+      "scope": "entity"
+    },
+    {
+      "settings": {
+        "foreground": "#FFD479"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#FFD479"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#88D5A2"
+      },
+      "name": "String",
+      "scope": [
+        "string",
+        "meta.verbatim"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#9EB6D7"
+      },
+      "name": "Support",
+      "scope": "support"
+    },
+    {
+      "settings": {
+        "foreground": "#C8F6A6"
+      },
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#BB3D26",
+        "fontStyle": "italic"
+      },
+      "name": "Invalid – Deprecated",
+      "scope": "invalid.deprecated"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#AF2F1A"
+      },
+      "name": "Invalid – Illegal",
+      "scope": "invalid.illegal"
+    },
+    {
+      "settings": {
+        "foreground": "#FF7A00",
+        "fontStyle": "italic"
+      },
+      "name": "Superclass",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#FF7A00"
+      },
+      "name": "String interpolation",
+      "scope": "string constant.other.placeholder"
+    },
+    {
+      "settings": {
+        "foreground": "#C9D7EB"
+      },
+      "name": "meta.function-call.py",
+      "scope": "meta.function-call.py"
+    },
+    {
+      "settings": {
+        "foreground": "#91A2B9"
+      },
+      "name": "meta.tag",
+      "scope": [
+        "meta.tag",
+        "meta.tag entity"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FAFFFF"
+      },
+      "name": "entity.name.section",
+      "scope": "entity.name.section"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+[[test]]
+name = "xml"
+snippet = "recur.xml.xml"
+[test.expect]
+stdout = '''
+<?xml version="1.0" encoding="UTF-8"?>
+'''
+
+[[test]]
+name = "cdata"
+snippet = "recur.xml.cdata"
+[test.expect]
+stdout = '''
+<![CDATA[$0]]>
+'''
+
+[[test]]
+name = "wrap"
+snippet = "recur.xml.wrap"
+[test.expect]
+stdout = '''
+<${1:name}>$TM_SELECTED_TEXT</$1>
+'''

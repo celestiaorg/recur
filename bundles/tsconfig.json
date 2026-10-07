@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "lib": ["ES2020", "DOM"],
+    "skipLibCheck": true,
+    "types": [],
+    "paths": {
+      "@recur/sdk": ["./sdk/index.ts"]
+    },
+    "baseUrl": "."
+  },
+  "include": ["sdk/**/*.ts", "Text/src/**/*.ts", "Source/src/**/*.ts", "Encode/src/**/*.ts", "JSON/src/**/*.ts"]
+}

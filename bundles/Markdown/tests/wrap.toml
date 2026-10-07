@@ -1,0 +1,107 @@
+[[test]]
+name = "wraps in bold"
+command = "Bold"
+
+[test.context]
+input = "hi"
+selectedText = "hi"
+
+[test.expect]
+stdout = "**hi**"
+output = "replaceSelection"
+
+[[test]]
+name = "unwraps bold"
+command = "Bold"
+
+[test.context]
+input = "**hi**"
+selectedText = "**hi**"
+
+[test.expect]
+stdout = "hi"
+output = "replaceSelection"
+
+[[test]]
+name = "wraps in italic"
+command = "Italic"
+
+[test.context]
+input = "hi"
+selectedText = "hi"
+
+[test.expect]
+stdout = "_hi_"
+output = "replaceSelection"
+
+[[test]]
+name = "unwraps italic"
+command = "Italic"
+
+[test.context]
+input = "_hi_"
+selectedText = "_hi_"
+
+[test.expect]
+stdout = "hi"
+output = "replaceSelection"
+
+[[test]]
+name = "wraps strikethrough"
+command = "Strikethrough"
+
+[test.context]
+input = "old"
+selectedText = "old"
+
+[test.expect]
+stdout = "~~old~~"
+output = "replaceSelection"
+
+[[test]]
+name = "unwraps strikethrough"
+command = "Strikethrough"
+
+[test.context]
+input = "~~old~~"
+selectedText = "~~old~~"
+
+[test.expect]
+stdout = "old"
+output = "replaceSelection"
+
+[[test]]
+name = "wraps inline code"
+command = "Inline Code"
+
+[test.context]
+input = "x"
+selectedText = "x"
+
+[test.expect]
+stdout = "`x`"
+output = "replaceSelection"
+
+[[test]]
+name = "unwraps inline code"
+command = "Inline Code"
+
+[test.context]
+input = "`x`"
+selectedText = "`x`"
+
+[test.expect]
+stdout = "x"
+output = "replaceSelection"
+
+[[test]]
+name = "link snippet around selection"
+command = "Link"
+
+[test.context]
+input = "docs"
+selectedText = "docs"
+
+[test.expect]
+stdout = "[docs](${1:url})"
+output = "insertSnippet"

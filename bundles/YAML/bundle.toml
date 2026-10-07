@@ -1,0 +1,59 @@
+[bundle]
+name = "YAML"
+id = "recur.yaml"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "yaml-language-server"
+languages = ["yaml"]
+fileGlob = ["*.yaml", "*.yml"]
+command = "yaml-language-server"
+args = ["--stdio"]
+managed = "yaml-language-server"
+
+[[command]]
+id = "recur.yaml.format"
+name = "Format YAML"
+category = "YAML"
+order = 10
+scope = "source.yaml"
+fileGlob = "*.{yml,yaml}"
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/format.sh"
+
+[[command]]
+id = "recur.yaml.format-on-save"
+name = "Format YAML on Save"
+category = "YAML"
+order = 11
+scope = "source.yaml"
+fileGlob = "*.{yml,yaml}"
+input = "document"
+output = "replaceDocument"
+triggers = ["willSave"]
+interpreter = "shebang"
+script = "bin/format.sh"
+
+[[command]]
+id = "recur.yaml.sort-keys"
+name = "Sort Mapping Keys"
+category = "YAML"
+order = 20
+scope = "source.yaml"
+fileGlob = "*.{yml,yaml}"
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/sort-keys.ts"
+
+[[symbol]]
+id = "recur.symbols.yaml.key"
+scope = "entity.name.tag.yaml"
+kind = "key"

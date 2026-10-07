@@ -1,0 +1,11 @@
+[[test]]
+name = "em and en dashes to hyphens"
+command = "Em Dashes to Hyphens"
+
+[test.context]
+input = "AI — famously; range 2020–2021"
+selectedText = "AI — famously; range 2020–2021"
+
+[test.expect]
+stdout = "AI - famously; range 2020-2021"
+output = "replaceSelection"

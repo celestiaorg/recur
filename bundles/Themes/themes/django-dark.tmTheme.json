@@ -1,0 +1,277 @@
+{
+  "name": "Django Dark",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#082517",
+    "editor.foreground": "#F9F9F9",
+    "editor.selectionBackground": "#224722",
+    "editor.lineHighlightBackground": "#020D084A",
+    "editorCursor.foreground": "#407654",
+    "editorWhitespace.foreground": "#598A6B"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#082517"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#2E6141",
+        "fontStyle": "italic"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#598A6B"
+      },
+      "name": "Constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#84C100"
+      },
+      "name": "Keyword",
+      "scope": "keyword"
+    },
+    {
+      "settings": {
+        "foreground": "#FFD06A"
+      },
+      "name": "Entity",
+      "scope": "entity"
+    },
+    {
+      "settings": {
+        "foreground": "#FFEA75",
+        "fontStyle": "bold"
+      },
+      "name": "Storage",
+      "scope": "storage"
+    },
+    {
+      "settings": {
+        "foreground": "#A1C6AE"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#AAF2AF"
+      },
+      "name": "Support",
+      "scope": "support"
+    },
+    {
+      "settings": {
+        "foreground": "#FDAB5D",
+        "fontStyle": "italic"
+      },
+      "name": "Variable",
+      "scope": "variable"
+    },
+    {
+      "settings": {
+        "foreground": "#FFFFFF",
+        "background": "#FF7801"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "background": "#BEC0C614"
+      },
+      "name": "Embedded Source",
+      "scope": "text source"
+    },
+    {
+      "settings": {
+        "background": "#BEC0C621"
+      },
+      "name": "Embedded Source (Bright)",
+      "scope": "text.html.ruby source"
+    },
+    {
+      "settings": {
+        "foreground": "#BA6902",
+        "fontStyle": "underline"
+      },
+      "name": "Entity inherited-class",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "foreground": "#AAF2AF"
+      },
+      "name": "String embedded-source",
+      "scope": "string.quoted source"
+    },
+    {
+      "settings": {
+        "foreground": "#FFEA75"
+      },
+      "name": "String constant",
+      "scope": "string constant"
+    },
+    {
+      "settings": {
+        "foreground": "#FFC066"
+      },
+      "name": "String.regexp",
+      "scope": "string.regexp"
+    },
+    {
+      "settings": {
+        "foreground": "#F0F08F"
+      },
+      "name": "String variable",
+      "scope": "string variable"
+    },
+    {
+      "settings": {
+        "foreground": "#FFC066"
+      },
+      "name": "Support.function",
+      "scope": "support.function"
+    },
+    {
+      "settings": {
+        "foreground": "#F1A6AA"
+      },
+      "name": "Support.constant",
+      "scope": "support.constant"
+    },
+    {
+      "settings": {
+        "foreground": "#869390"
+      },
+      "name": "Doctype/XML Processing",
+      "scope": [
+        "declaration.sgml.html declaration.doctype",
+        "declaration.sgml.html declaration.doctype entity",
+        "declaration.sgml.html declaration.doctype string",
+        "declaration.xml-processing",
+        "declaration.xml-processing entity",
+        "declaration.xml-processing string"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#598A6B"
+      },
+      "name": "Meta.tag.A",
+      "scope": [
+        "declaration.tag",
+        "declaration.tag entity",
+        "meta.tag",
+        "meta.tag entity"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#BA6902"
+      },
+      "name": "css tag-name",
+      "scope": "meta.selector.css entity.name.tag"
+    },
+    {
+      "settings": {
+        "foreground": "#FFD06A"
+      },
+      "name": "css#id",
+      "scope": "meta.selector.css entity.other.attribute-name.id"
+    },
+    {
+      "settings": {
+        "foreground": "#4DB34F"
+      },
+      "name": "css.class",
+      "scope": "meta.selector.css entity.other.attribute-name.class"
+    },
+    {
+      "settings": {
+        "foreground": "#84C100"
+      },
+      "name": "css property-name:",
+      "scope": "support.type.property-name.css"
+    },
+    {
+      "settings": {
+        "foreground": "#FFEA75",
+        "fontStyle": "italic"
+      },
+      "name": "css property-value;",
+      "scope": [
+        "meta.property-group support.constant.property-value.css",
+        "meta.property-value support.constant.property-value.css"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FFEA75"
+      },
+      "name": "css additional-constants",
+      "scope": [
+        "meta.property-value support.constant.named-color.css",
+        "meta.property-value constant"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#FF7801"
+      },
+      "name": "css @at-rule",
+      "scope": "meta.preprocessor.at-rule keyword.control.at-rule"
+    },
+    {
+      "settings": {
+        "foreground": "#F1A9A9"
+      },
+      "name": "css constructor.argument",
+      "scope": "meta.constructor.argument.css"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#083D2B",
+        "fontStyle": "italic"
+      },
+      "name": "diff.header",
+      "scope": [
+        "meta.diff",
+        "meta.diff.header"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#F1A9A9",
+        "background": "#FFE3E4"
+      },
+      "name": "diff.deleted",
+      "scope": "markup.deleted"
+    },
+    {
+      "settings": {
+        "foreground": "#F9F9F9",
+        "background": "#CFBD5C"
+      },
+      "name": "diff.changed",
+      "scope": "markup.changed"
+    },
+    {
+      "settings": {
+        "foreground": "#4DB34F",
+        "background": "#A9F1A9"
+      },
+      "name": "diff.inserted",
+      "scope": "markup.inserted"
+    }
+  ]
+}

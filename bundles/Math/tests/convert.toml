@@ -1,0 +1,83 @@
+[[test]]
+name = "hex ff to decimal"
+command = "Hex to Decimal"
+
+[test.context]
+input = "FF"
+selectedText = "FF"
+
+[test.expect]
+stdout = "255"
+output = "replaceSelection"
+
+[[test]]
+name = "hex 0xff to decimal"
+command = "Hex to Decimal"
+
+[test.context]
+input = "0xff"
+selectedText = "0xff"
+
+[test.expect]
+stdout = "255"
+output = "replaceSelection"
+
+[[test]]
+name = "decimal to hex"
+command = "Decimal to Hex"
+
+[test.context]
+input = "255"
+selectedText = "255"
+
+[test.expect]
+stdout = "0xff"
+output = "replaceSelection"
+
+[[test]]
+name = "binary to decimal"
+command = "Binary to Decimal"
+
+[test.context]
+input = "0b101"
+selectedText = "0b101"
+
+[test.expect]
+stdout = "5"
+output = "replaceSelection"
+
+[[test]]
+name = "decimal to binary"
+command = "Decimal to Binary"
+
+[test.context]
+input = "5"
+selectedText = "5"
+
+[test.expect]
+stdout = "0b101"
+output = "replaceSelection"
+
+[[test]]
+name = "octal to decimal"
+command = "Octal to Decimal"
+
+[test.context]
+input = "0o10"
+selectedText = "0o10"
+
+[test.expect]
+stdout = "8"
+output = "replaceSelection"
+
+[[test]]
+name = "decimal to octal"
+command = "Decimal to Octal"
+
+[test.context]
+input = "8"
+selectedText = "8"
+
+[test.expect]
+stdout = "0o10"
+output = "replaceSelection"

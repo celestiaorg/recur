@@ -1,0 +1,1428 @@
+[bundle]
+name = "Themes"
+id = "recur.themes"
+version = "1.0.0"
+author = "Recur"
+
+# Editor colour themes. Charcoal/Paper live in bundles/Recur (order 10–20).
+# Featured local ports: Cool Glow / Made of Code / Aura / classic TM (30–…).
+# Full Shiki tm-themes catalog starts at order 1000 (alpha by fetch index).
+# Refresh: wails3 task fetch:tm-themes
+# Local filmgirl ports: node scripts/port-filmgirl-themes.mjs
+# Theme id is the Settings preference value.
+
+[[theme]]
+id = "cool-glow"
+name = "Cool Glow"
+path = "themes/cool-glow.tmTheme.json"
+uiTheme = "dark"
+order = 30
+preview = { bg = "#040727FA", fg = "#E6E6E6", fn = "#25F1E3", name = "#FCE239", string = "#9BFB9F" }
+
+[[theme]]
+id = "made-of-code"
+name = "Made of Code"
+path = "themes/made-of-code.tmTheme.json"
+uiTheme = "dark"
+order = 40
+preview = { bg = "#08091D", fg = "#F9F9F9", fn = "#F4DE62", name = "#FF5366", string = "#9DFA6B" }
+
+[[theme]]
+id = "aura"
+name = "Aura"
+path = "themes/aura.tmTheme.json"
+uiTheme = "dark"
+order = 50
+preview = { bg = "#15141b", fg = "#edecee", fn = "#ffca85", name = "#a277ff", string = "#61ffca" }
+
+[[theme]]
+id = "cobalt"
+name = "Cobalt"
+path = "themes/cobalt.tmTheme.json"
+uiTheme = "dark"
+order = 60
+preview = { bg = "#002F51", fg = "#FFFFFF", fn = "#FFAD00", name = "#FFBD66", string = "#40DB00" }
+
+[[theme]]
+id = "vibrant-ink"
+name = "Vibrant Ink"
+path = "themes/vibrant-ink.tmTheme.json"
+uiTheme = "dark"
+order = 61
+preview = { bg = "#000000", fg = "#FFFFFF", fn = "#FF7C00", name = "#FFD300", string = "#73FA00" }
+
+[[theme]]
+id = "birds-of-paradise"
+name = "Birds of Paradise"
+path = "themes/birds-of-paradise.tmTheme.json"
+uiTheme = "dark"
+order = 62
+preview = { bg = "#473431", fg = "#EBE6CF", fn = "#F47440", name = "#F3B940", string = "#E0DC75" }
+
+[[theme]]
+id = "sunburst"
+name = "Sunburst"
+path = "themes/sunburst.tmTheme.json"
+uiTheme = "dark"
+order = 63
+preview = { bg = "#000000", fg = "#F9F9F9", fn = "#E99C77", name = "#E1D797", string = "#76BA53" }
+
+[[theme]]
+id = "idle-fingers"
+name = "idleFingers"
+path = "themes/idle-fingers.tmTheme.json"
+uiTheme = "dark"
+order = 64
+preview = { bg = "#414141", fg = "#FFFFFF", fn = "#D78B42", name = "#C74932", string = "#B3CB74" }
+
+[[theme]]
+id = "ir-black"
+name = "IR Black"
+path = "themes/ir-black.tmTheme.json"
+uiTheme = "dark"
+order = 65
+preview = { bg = "#000000", fg = "#F1F1F1", fn = "#A5D5FE", name = "#E1D797", string = "#B4FB73" }
+
+[[theme]]
+id = "railscasts"
+name = "Railscasts"
+path = "themes/railscasts.tmTheme.json"
+uiTheme = "dark"
+order = 66
+preview = { bg = "#393939", fg = "#EBE7E3", fn = "#D78B42", name = "#FFD080", string = "#B3CB74" }
+
+[[theme]]
+id = "pastels-on-dark"
+name = "Pastels on Dark"
+path = "themes/pastels-on-dark.tmTheme.json"
+uiTheme = "dark"
+order = 67
+preview = { bg = "#2C2828", fg = "#E1E1E1", fn = "#B1B4FF", name = "#B1B4FF", string = "#BCA374" }
+
+[[theme]]
+id = "monokai"
+name = "Monokai"
+path = "themes/monokai.tmTheme.json"
+uiTheme = "dark"
+order = 68
+preview = { bg = "#34352D", fg = "#F9F9F5", fn = "#FD4485", name = "#B3E43B", string = "#EBE086" }
+
+[[theme]]
+id = "monokai-dark"
+name = "Monokai Dark"
+path = "themes/monokai-dark.tmTheme.json"
+uiTheme = "dark"
+order = 69
+preview = { bg = "#0F0F0F", fg = "#F9F9F5", fn = "#FD4485", name = "#B3E43B", string = "#FFF0A9" }
+
+[[theme]]
+id = "argonaut"
+name = "[ Argonaut ]"
+path = "themes/argonaut.tmTheme.json"
+uiTheme = "dark"
+order = 70
+preview = { bg = "#1B1B1B", fg = "#BFBFBF", fn = "#FFFFFF", name = "#FFD200", string = "#76A8D0" }
+
+[[theme]]
+id = "active4d"
+name = "Active4D"
+path = "themes/active4d.tmTheme.json"
+uiTheme = "light"
+order = 71
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#007AAA", name = "#2B59AC", string = "#797979" }
+
+[[theme]]
+id = "all-hallows-eve"
+name = "All Hallow's Eve"
+path = "themes/all-hallows-eve.tmTheme.json"
+uiTheme = "dark"
+order = 72
+preview = { bg = "#000000", fg = "#FFFFFF", fn = "#D78B42", name = "#D44D3E", string = "#75D142" }
+
+[[theme]]
+id = "amy"
+name = "Amy"
+path = "themes/amy.tmTheme.json"
+uiTheme = "dark"
+order = 73
+preview = { bg = "#2B042B", fg = "#D9DAFF", fn = "#B098FF", name = "#60AFB0", string = "#A9A9A9" }
+
+[[theme]]
+id = "bbedit"
+name = "BBEdit"
+path = "themes/bbedit.tmTheme.json"
+uiTheme = "light"
+order = 74
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#0433FF", name = "#0220B2", string = "#FF2F92" }
+
+[[theme]]
+id = "bespin"
+name = "Bespin"
+path = "themes/bespin.tmTheme.json"
+uiTheme = "dark"
+order = 75
+preview = { bg = "#352C25", fg = "#C7BCAE", fn = "#6FB6EE", name = "#E1D797", string = "#62C50C" }
+
+[[theme]]
+id = "black-pearl"
+name = "Black Pearl"
+path = "themes/black-pearl.tmTheme.json"
+uiTheme = "dark"
+order = 76
+preview = { bg = "#000000", fg = "#FFFFFF", fn = "#9BB5CC", name = "#FFFFFF", string = "#D783FF" }
+
+[[theme]]
+id = "black-pearl-ii"
+name = "Black Pearl II"
+path = "themes/black-pearl-ii.tmTheme.json"
+uiTheme = "dark"
+order = 77
+preview = { bg = "#000000", fg = "#FFFFFF", fn = "#FAC500", name = "#FFFFFF", string = "#D783FF" }
+
+[[theme]]
+id = "blackboard"
+name = "Blackboard"
+path = "themes/blackboard.tmTheme.json"
+uiTheme = "dark"
+order = 78
+preview = { bg = "#0D152C", fg = "#F9F9F9", fn = "#FCE239", name = "#FCE239", string = "#70D34C" }
+
+[[theme]]
+id = "blackboard-black"
+name = "Blackboard Black"
+path = "themes/blackboard-black.tmTheme.json"
+uiTheme = "dark"
+order = 79
+preview = { bg = "#292929", fg = "#F9F9F9", fn = "#FCE239", name = "#FCE239", string = "#70D34C" }
+
+[[theme]]
+id = "black-light"
+name = "BlackLight"
+path = "themes/black-light.tmTheme.json"
+uiTheme = "dark"
+order = 80
+preview = { bg = "#000000", fg = "#CCCCCC", fn = "#A46D90", name = "#919191", string = "#73FCD6" }
+
+[[theme]]
+id = "bongzilla"
+name = "Bongzilla"
+path = "themes/bongzilla.tmTheme.json"
+uiTheme = "dark"
+order = 81
+preview = { bg = "#292929", fg = "#F9F9F9", fn = "#FFD479", name = "#FFFFFFA6", string = "#88D5A2" }
+
+[[theme]]
+id = "brilliance-black"
+name = "Brilliance Black"
+path = "themes/brilliance-black.tmTheme.json"
+uiTheme = "dark"
+order = 82
+preview = { bg = "#0F0F0FFA", fg = "#F1F1F1", fn = "#00F900", name = "#FF3098", string = "#FFFA92" }
+
+[[theme]]
+id = "brilliance-dull"
+name = "Brilliance Dull"
+path = "themes/brilliance-dull.tmTheme.json"
+uiTheme = "dark"
+order = 83
+preview = { bg = "#030303FA", fg = "#D6D6D6", fn = "#B571B4", name = "#B77092", string = "#DBD9B9" }
+
+[[theme]]
+id = "choco"
+name = "Choco"
+path = "themes/choco.tmTheme.json"
+uiTheme = "dark"
+order = 84
+preview = { bg = "#200E0D", fg = "#CEC9A8", fn = "#C1A36F", name = "#CEA876", string = "#8DB276" }
+
+[[theme]]
+id = "claire"
+name = "Claire"
+path = "themes/claire.tmTheme.json"
+uiTheme = "dark"
+order = 85
+preview = { bg = "#000000", fg = "#EDEDED", fn = "#FF50A1", name = "#59D6FF", string = "#7FEC19" }
+
+[[theme]]
+id = "close-to-the-sea"
+name = "Close to the Sea"
+path = "themes/close-to-the-sea.tmTheme.json"
+uiTheme = "dark"
+order = 86
+preview = { bg = "#1E2B30", fg = "#FFFFFB", fn = "#71A2AA", name = "#F06822", string = "#4895D2" }
+
+[[theme]]
+id = "clouds"
+name = "Clouds"
+path = "themes/clouds.tmTheme.json"
+uiTheme = "light"
+order = 87
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#BDA582", name = "#D23C33", string = "#6FA3D7" }
+
+[[theme]]
+id = "clouds-midnight"
+name = "Clouds Midnight"
+path = "themes/clouds-midnight.tmTheme.json"
+uiTheme = "dark"
+order = 88
+preview = { bg = "#212121", fg = "#A3A3A3", fn = "#A38E70", name = "#F0463B", string = "#6FA3D7" }
+
+[[theme]]
+id = "coal-graal"
+name = "Coal Graal"
+path = "themes/coal-graal.tmTheme.json"
+uiTheme = "dark"
+order = 89
+preview = { bg = "#2D2D2D", fg = "#DFE0DA", fn = "#E3CCF1", name = "#E6D4A5", string = "#BAD1DF" }
+
+[[theme]]
+id = "coda"
+name = "Coda"
+path = "themes/coda.tmTheme.json"
+uiTheme = "light"
+order = 90
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#BA3776", name = "#00457C", string = "#F28B2C" }
+
+[[theme]]
+id = "creeper"
+name = "Creeper"
+path = "themes/creeper.tmTheme.json"
+uiTheme = "dark"
+order = 91
+preview = { bg = "#000000", fg = "#EDEDED", fn = "#808080", name = "#A4715E", string = "#737F64" }
+
+[[theme]]
+id = "cssedit"
+name = "CSSEdit"
+path = "themes/cssedit.tmTheme.json"
+uiTheme = "light"
+order = 92
+preview = { bg = "#FFFFFF", fg = "#595959", fn = "#568DC8", name = "#000000", string = "#6EA436" }
+
+[[theme]]
+id = "dawn"
+name = "Dawn"
+path = "themes/dawn.tmTheme.json"
+uiTheme = "light"
+order = 93
+preview = { bg = "#FAFAFA", fg = "#060606", fn = "#8D5C48", name = "#7D4B1E", string = "#DA6B34" }
+
+[[theme]]
+id = "deluxe"
+name = "Deluxe"
+path = "themes/deluxe.tmTheme.json"
+uiTheme = "dark"
+order = 94
+preview = { bg = "#000000F2", fg = "#F9F9F5", fn = "#EFD88E", name = "#4E88FF", string = "#FFFC78" }
+
+[[theme]]
+id = "django-smoothy"
+name = "Django (Smoothy)"
+path = "themes/django-smoothy.tmTheme.json"
+uiTheme = "dark"
+order = 95
+preview = { bg = "#2E6141", fg = "#F9F9F9", fn = "#A5E04B", name = "#FFEA75", string = "#E6FDC4" }
+
+[[theme]]
+id = "django-dark"
+name = "Django Dark"
+path = "themes/django-dark.tmTheme.json"
+uiTheme = "dark"
+order = 96
+preview = { bg = "#082517", fg = "#F9F9F9", fn = "#84C100", name = "#FFC066", string = "#A1C6AE" }
+
+[[theme]]
+id = "dominion-day"
+name = "Dominion Day"
+path = "themes/dominion-day.tmTheme.json"
+uiTheme = "dark"
+order = 97
+preview = { bg = "#000000", fg = "#C6BDDF", fn = "#6F71FF", name = "#A937B1", string = "#9669AD" }
+
+[[theme]]
+id = "eiffel"
+name = "Eiffel"
+path = "themes/eiffel.tmTheme.json"
+uiTheme = "light"
+order = 98
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#0224C3", name = "#0220B2", string = "#E22200" }
+
+[[theme]]
+id = "emacs-strict"
+name = "Emacs Strict"
+path = "themes/emacs-strict.tmTheme.json"
+uiTheme = "dark"
+order = 99
+preview = { bg = "#000000EB", fg = "#DBDBDB", fn = "#A2FBAA", name = "#91D7FA", string = "#FFAF8D" }
+
+[[theme]]
+id = "erebus"
+name = "Erebus"
+path = "themes/erebus.tmTheme.json"
+uiTheme = "dark"
+order = 100
+preview = { bg = "#1A0A0A", fg = "#F9F9F5", fn = "#E26E6A", name = "#F6BCF0", string = "#FFC1BF" }
+
+[[theme]]
+id = "espresso"
+name = "Espresso"
+path = "themes/espresso.tmTheme.json"
+uiTheme = "light"
+order = 101
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#3B83AF", name = "#5FAFD9", string = "#DA6672" }
+
+[[theme]]
+id = "espresso-libre"
+name = "Espresso Libre"
+path = "themes/espresso-libre.tmTheme.json"
+uiTheme = "dark"
+order = 102
+preview = { bg = "#382C25", fg = "#C9BCAD", fn = "#50B8F1", name = "#FFA56A", string = "#00A708" }
+
+[[theme]]
+id = "espresso-tutti"
+name = "Espresso Tutti"
+path = "themes/espresso-tutti.tmTheme.json"
+uiTheme = "light"
+order = 103
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#3B83AF", name = "#4B2F85", string = "#84BA06" }
+
+[[theme]]
+id = "fade-to-grey"
+name = "Fade to Grey"
+path = "themes/fade-to-grey.tmTheme.json"
+uiTheme = "dark"
+order = 104
+preview = { bg = "#000000", fg = "#FFFFFF", fn = "#DB3442", name = "#B8B8B8", string = "#E8E86A" }
+
+[[theme]]
+id = "fluidvision"
+name = "Fluidvision"
+path = "themes/fluidvision.tmTheme.json"
+uiTheme = "light"
+order = 105
+preview = { bg = "#F6F6F6F2", fg = "#000000", fn = "#6DA4E7", name = "#2161AD", string = "#981B0A" }
+
+[[theme]]
+id = "freckle"
+name = "Freckle"
+path = "themes/freckle.tmTheme.json"
+uiTheme = "light"
+order = 106
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#EF5F92", name = "#40A3B7", string = "#797C74" }
+
+[[theme]]
+id = "friendship-bracelet"
+name = "Friendship Bracelet"
+path = "themes/friendship-bracelet.tmTheme.json"
+uiTheme = "dark"
+order = 107
+preview = { bg = "#292929", fg = "#F4F4F4", fn = "#FF9F68", name = "#44ABE1", string = "#F5F8AA" }
+
+[[theme]]
+id = "funky-dashboard"
+name = "Funky Dashboard"
+path = "themes/funky-dashboard.tmTheme.json"
+uiTheme = "dark"
+order = 108
+preview = { bg = "#000000D9", fg = "#D6D6D6", fn = "#7A81FF", name = "#FFD479", string = "#73FA79" }
+
+[[theme]]
+id = "github"
+name = "GitHub"
+path = "themes/github.tmTheme.json"
+uiTheme = "light"
+order = 109
+preview = { bg = "#F9FAFF", fg = "#000000", fn = "#000000", name = "#AB1500", string = "#E62C55" }
+
+[[theme]]
+id = "glitter-bomb"
+name = "GlitterBomb"
+path = "themes/glitter-bomb.tmTheme.json"
+uiTheme = "dark"
+order = 110
+preview = { bg = "#0B0A0A", fg = "#D8D8D8", fn = "#E3C200", name = "#A57136", string = "#5F7747" }
+
+[[theme]]
+id = "glow"
+name = "Glow"
+path = "themes/glow.tmTheme.json"
+uiTheme = "dark"
+order = 111
+preview = { bg = "#000000", fg = "#D6D6D6", fn = "#FFFFFF", name = "#FFFFFF", string = "#8FD55B" }
+
+[[theme]]
+id = "happy-happy-joy-joy-2"
+name = "Happy happy joy joy 2"
+path = "themes/happy-happy-joy-joy-2.tmTheme.json"
+uiTheme = "light"
+order = 112
+preview = { bg = "#EAEAEA", fg = "#373737", fn = "#6C826A", name = "#704879", string = "#A32A16" }
+
+[[theme]]
+id = "happydeluxe"
+name = "Happydeluxe"
+path = "themes/happydeluxe.tmTheme.json"
+uiTheme = "dark"
+order = 113
+preview = { bg = "#101928", fg = "#FFFFFF", fn = "#FFA100", name = "#00E2DA", string = "#FF84FA" }
+
+[[theme]]
+id = "heroku"
+name = "Heroku"
+path = "themes/heroku.tmTheme.json"
+uiTheme = "dark"
+order = 114
+preview = { bg = "#000000", fg = "#FFFFFF", fn = "#9D92F9", name = "#CAC6EC", string = "#CEF40E" }
+
+[[theme]]
+id = "idle"
+name = "IDLE"
+path = "themes/idle.tmTheme.json"
+uiTheme = "light"
+order = 115
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#FF6D00", name = "#2B59AC", string = "#00AF50" }
+
+[[theme]]
+id = "imathis"
+name = "Imathis"
+path = "themes/imathis.tmTheme.json"
+uiTheme = "dark"
+order = 116
+preview = { bg = "#000000", fg = "#FFFFFF", fn = "#B63D37", name = "#E6DDAA", string = "#76BA53" }
+
+[[theme]]
+id = "iplastic"
+name = "iPlastic"
+path = "themes/iplastic.tmTheme.json"
+uiTheme = "light"
+order = 117
+preview = { bg = "#F1F1F1EB", fg = "#000000", fn = "#0433FF", name = "#FF9300", string = "#00A642" }
+
+[[theme]]
+id = "ir-white"
+name = "IR White"
+path = "themes/ir-white.tmTheme.json"
+uiTheme = "light"
+order = 118
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#007AA3", name = "#8D8231", string = "#00AC8B" }
+
+[[theme]]
+id = "juicy"
+name = "Juicy"
+path = "themes/juicy.tmTheme.json"
+uiTheme = "light"
+order = 119
+preview = { bg = "#F4F4F4", fg = "#000000", fn = "#AB4500", name = "#FF2600", string = "#FF7C00" }
+
+[[theme]]
+id = "kr-theme"
+name = "krTheme"
+path = "themes/kr-theme.tmTheme.json"
+uiTheme = "dark"
+order = 120
+preview = { bg = "#0B0A08", fg = "#FDFEE6", fn = "#A5AB9D", name = "#97974A", string = "#D2B4B0B5" }
+
+[[theme]]
+id = "lazy"
+name = "LAZY"
+path = "themes/lazy.tmTheme.json"
+uiTheme = "light"
+order = 121
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#FF8C00", name = "#8F8F8F", string = "#4DA824" }
+
+[[theme]]
+id = "lowlight"
+name = "Lowlight"
+path = "themes/lowlight.tmTheme.json"
+uiTheme = "dark"
+order = 122
+preview = { bg = "#282828", fg = "#D4D4D4", fn = "#A09C1D", name = "#F1D95F", string = "#B58F6F" }
+
+[[theme]]
+id = "mac-classic"
+name = "Mac Classic"
+path = "themes/mac-classic.tmTheme.json"
+uiTheme = "light"
+order = 123
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#0433FF", name = "#0220B2", string = "#007A04" }
+
+[[theme]]
+id = "magicwb-amiga"
+name = "MagicWB (Amiga)"
+path = "themes/magicwb-amiga.tmTheme.json"
+uiTheme = "light"
+order = 124
+preview = { bg = "#A7A7A7", fg = "#000000", fn = "#497DB2", name = "#000000", string = "#FFFFFF" }
+
+[[theme]]
+id = "menage-a-trois"
+name = "Menage A Trois"
+path = "themes/menage-a-trois.tmTheme.json"
+uiTheme = "dark"
+order = 125
+preview = { bg = "#12141A", fg = "#B6AEB7", fn = "#E0E2F1", name = "#FFD59A", string = "#8BFDFF" }
+
+[[theme]]
+id = "merbivore"
+name = "Merbivore"
+path = "themes/merbivore.tmTheme.json"
+uiTheme = "dark"
+order = 126
+preview = { bg = "#1D1D1D", fg = "#EBE7E3", fn = "#FF8401", name = "#FFFFFF", string = "#9BFA03" }
+
+[[theme]]
+id = "merbivore-soft"
+name = "Merbivore Soft"
+path = "themes/merbivore-soft.tmTheme.json"
+uiTheme = "dark"
+order = 127
+preview = { bg = "#252525", fg = "#EBE7E3", fn = "#FF944A", name = "#FFFFFF", string = "#9ECD72" }
+
+[[theme]]
+id = "midnight"
+name = "Midnight"
+path = "themes/midnight.tmTheme.json"
+uiTheme = "dark"
+order = 128
+preview = { bg = "#0A0329E3", fg = "#F9F9F9", fn = "#6AB0FF", name = "#FCE239", string = "#00EE4A" }
+
+[[theme]]
+id = "minimal-theme"
+name = "minimal Theme"
+path = "themes/minimal-theme.tmTheme.json"
+uiTheme = "dark"
+order = 129
+preview = { bg = "#3F3B32", fg = "#FDFEE6", fn = "#A5AB9D", name = "#97974A", string = "#D2B4B0B5" }
+
+[[theme]]
+id = "monoindustrial"
+name = "Monoindustrial"
+path = "themes/monoindustrial.tmTheme.json"
+uiTheme = "dark"
+order = 130
+preview = { bg = "#2D3A35", fg = "#FFFFFF", fn = "#CF5000", name = "#B6C0B9", string = "#FFFFFF" }
+
+[[theme]]
+id = "notebook"
+name = "Notebook"
+path = "themes/notebook.tmTheme.json"
+uiTheme = "light"
+order = 131
+preview = { bg = "#CAC2AD", fg = "#000000BF", fn = "#D23C33", name = "#000000", string = "#000000BF" }
+
+[[theme]]
+id = "notepad2"
+name = "Notepad 2"
+path = "themes/notepad2.tmTheme.json"
+uiTheme = "light"
+order = 132
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#942192", name = "#000000", string = "#008F00" }
+
+[[theme]]
+id = "offy"
+name = "Offy"
+path = "themes/offy.tmTheme.json"
+uiTheme = "dark"
+order = 133
+preview = { bg = "#00053CCC", fg = "#FFFFFF", fn = "#FF2600", name = "#FF7C01", string = "#3DA600" }
+
+[[theme]]
+id = "pastie"
+name = "Pastie"
+path = "themes/pastie.tmTheme.json"
+uiTheme = "light"
+order = 134
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#029901", name = "#048BCE", string = "#E12D01" }
+
+[[theme]]
+id = "pengwynn"
+name = "Pengwynn"
+path = "themes/pengwynn.tmTheme.json"
+uiTheme = "dark"
+order = 135
+preview = { bg = "#000000", fg = "#EBE7E3", fn = "#FF9100", name = "#FFD080", string = "#B3CB74" }
+
+[[theme]]
+id = "plum-dumb"
+name = "Plum Dumb"
+path = "themes/plum-dumb.tmTheme.json"
+uiTheme = "dark"
+order = 136
+preview = { bg = "#00000BF7", fg = "#FFFFFF", fn = "#D5D379", name = "#73FCD6", string = "#A6FB79" }
+
+[[theme]]
+id = "putty"
+name = "Putty"
+path = "themes/putty.tmTheme.json"
+uiTheme = "dark"
+order = 137
+preview = { bg = "#302F2D", fg = "#EAE7E3", fn = "#EDF0CD", name = "#DF6E5D", string = "#8BC5DF" }
+
+[[theme]]
+id = "rails-envy"
+name = "Rails Envy"
+path = "themes/rails-envy.tmTheme.json"
+uiTheme = "dark"
+order = 138
+preview = { bg = "#171714", fg = "#F9F9F5", fn = "#4DAF99", name = "#B3E43B", string = "#FFFC78" }
+
+[[theme]]
+id = "rdark"
+name = "RDark"
+path = "themes/rdark.tmTheme.json"
+uiTheme = "dark"
+order = 139
+preview = { bg = "#243032", fg = "#C5C9C3", fn = "#6CB1D8", name = "#FFB84E", string = "#69E648" }
+
+[[theme]]
+id = "resesif"
+name = "Resesif"
+path = "themes/resesif.tmTheme.json"
+uiTheme = "dark"
+order = 140
+preview = { bg = "#393939", fg = "#EBE7E3", fn = "#C2CB5F", name = "#E29549", string = "#BDD379" }
+
+[[theme]]
+id = "ruby-blue"
+name = "Ruby Blue"
+path = "themes/ruby-blue.tmTheme.json"
+uiTheme = "dark"
+order = 141
+preview = { bg = "#162940", fg = "#FFFFFF", fn = "#FAC500", name = "#C3524E", string = "#0EC81B" }
+
+[[theme]]
+id = "ruby-robot"
+name = "RubyRobot"
+path = "themes/ruby-robot.tmTheme.json"
+uiTheme = "dark"
+order = 142
+preview = { bg = "#000000", fg = "#FFFFFF", fn = "#DB3442", name = "#B8B8B8", string = "#6DF100" }
+
+[[theme]]
+id = "ryan-light"
+name = "Ryan Light"
+path = "themes/ryan-light.tmTheme.json"
+uiTheme = "light"
+order = 143
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#007A06", name = "#9625A6", string = "#009DA1" }
+
+[[theme]]
+id = "sidewalk-chalk"
+name = "Sidewalk Chalk"
+path = "themes/sidewalk-chalk.tmTheme.json"
+uiTheme = "dark"
+order = 144
+preview = { bg = "#393B3C", fg = "#FBFBFB", fn = "#72C35F", name = "#B2B2B2", string = "#719BC5" }
+
+[[theme]]
+id = "slush-and-poppies"
+name = "Slush & Poppies"
+path = "themes/slush-and-poppies.tmTheme.json"
+uiTheme = "light"
+order = 145
+preview = { bg = "#F4F4F4", fg = "#000000", fn = "#2775B0", name = "#941100", string = "#CD453E" }
+
+[[theme]]
+id = "smoothy"
+name = "Smoothy"
+path = "themes/smoothy.tmTheme.json"
+uiTheme = "light"
+order = 146
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#E0BD35", name = "#65B3EE", string = "#84604E" }
+
+[[theme]]
+id = "solarized-dark"
+name = "Solarized (dark)"
+path = "themes/solarized-dark.tmTheme.json"
+uiTheme = "dark"
+order = 147
+preview = { bg = "#002B36", fg = "#93A1A1", fn = "#96A600", name = "#2C9EDB", string = "#2FAFA9" }
+
+[[theme]]
+id = "solarized-light"
+name = "Solarized (light)"
+path = "themes/solarized-light.tmTheme.json"
+uiTheme = "light"
+order = 148
+preview = { bg = "#FEF7E8", fg = "#6A8188", fn = "#96A600", name = "#2C9EDB", string = "#2FAFA9" }
+
+[[theme]]
+id = "space-cadet"
+name = "SpaceCadet"
+path = "themes/space-cadet.tmTheme.json"
+uiTheme = "dark"
+order = 149
+preview = { bg = "#0F0F0F", fg = "#E3EAD8", fn = "#ADC873", name = "#931B70", string = "#936E8B" }
+
+[[theme]]
+id = "spectacular"
+name = "Spectacular"
+path = "themes/spectacular.tmTheme.json"
+uiTheme = "dark"
+order = 150
+preview = { bg = "#0B0A0A", fg = "#F5F5F5", fn = "#FFB700", name = "#FFC066", string = "#B6E659" }
+
+[[theme]]
+id = "starlight"
+name = "Starlight"
+path = "themes/starlight.tmTheme.json"
+uiTheme = "dark"
+order = 151
+preview = { bg = "#2C496CF2", fg = "#CCC3B7", fn = "#B39687", name = "#D9CB8B", string = "#C6B097" }
+
+[[theme]]
+id = "succulent-1"
+name = "Succulent"
+path = "themes/succulent-1.tmTheme.json"
+uiTheme = "dark"
+order = 152
+preview = { bg = "#000000", fg = "#F9F9F9", fn = "#FF7C6B", name = "#F4DE62", string = "#9EFB71" }
+
+[[theme]]
+id = "summer-camp-daybreak"
+name = "Summer Camp Daybreak"
+path = "themes/summer-camp-daybreak.tmTheme.json"
+uiTheme = "dark"
+order = 153
+preview = { bg = "#15120A", fg = "#F4F8D5", fn = "#B0ED60", name = "#8CE014", string = "#F7AB1E" }
+
+[[theme]]
+id = "summer-sun"
+name = "Summer Sun"
+path = "themes/summer-sun.tmTheme.json"
+uiTheme = "dark"
+order = 154
+preview = { bg = "#15120A", fg = "#F4F8D5", fn = "#B0ED60", name = "#8CE014", string = "#F7AB1E" }
+
+[[theme]]
+id = "swyphs-ii"
+name = "Swyphs II"
+path = "themes/swyphs-ii.tmTheme.json"
+uiTheme = "dark"
+order = 155
+preview = { bg = "#000000FA", fg = "#CCCCCC", fn = "#A46D90", name = "#90747B", string = "#DFDFDF" }
+
+[[theme]]
+id = "tango"
+name = "Tango"
+path = "themes/tango.tmTheme.json"
+uiTheme = "light"
+order = 156
+preview = { bg = "#FFFFFF", fg = "#3F4446", fn = "#3F4446", name = "#704879", string = "#B81800" }
+
+[[theme]]
+id = "tango-in-twilight"
+name = "Tango in Twilight"
+path = "themes/tango-in-twilight.tmTheme.json"
+uiTheme = "dark"
+order = 157
+preview = { bg = "#000000F2", fg = "#F9FFF8", fn = "#CFAE00", name = "#E1D797", string = "#5EA701" }
+
+[[theme]]
+id = "tek"
+name = "Tek"
+path = "themes/tek.tmTheme.json"
+uiTheme = "dark"
+order = 158
+preview = { bg = "#3C6162", fg = "#E1FEF9", fn = "#FFFFFF", name = "#FFFFFF", string = "#FFFCD8" }
+
+[[theme]]
+id = "text-ex-machina"
+name = "Text Ex Machina"
+path = "themes/text-ex-machina.tmTheme.json"
+uiTheme = "dark"
+order = 159
+preview = { bg = "#1B1B1B", fg = "#EBEBEB", fn = "#8A90C0", name = "#D4FB79", string = "#76D6FF" }
+
+[[theme]]
+id = "tomorrow"
+name = "Tomorrow"
+path = "themes/tomorrow.tmTheme.json"
+uiTheme = "light"
+order = 160
+preview = { bg = "#FFFFFF", fg = "#605F5E", fn = "#9C71B7", name = "#5286BC", string = "#839B00" }
+
+[[theme]]
+id = "tomorrow-night"
+name = "Tomorrow Night"
+path = "themes/tomorrow-night.tmTheme.json"
+uiTheme = "dark"
+order = 161
+preview = { bg = "#27292C", fg = "#D0D2D0", fn = "#C0A7C7", name = "#92B2CA", string = "#C2C77B" }
+
+[[theme]]
+id = "tomorrow-night-blue"
+name = "Tomorrow Night - Blue"
+path = "themes/tomorrow-night-blue.tmTheme.json"
+uiTheme = "dark"
+order = 162
+preview = { bg = "#003264", fg = "#FFFFFF", fn = "#F0CAFF", name = "#C6E2FF", string = "#D9F2B7" }
+
+[[theme]]
+id = "tomorrow-night-bright"
+name = "Tomorrow Night - Bright"
+path = "themes/tomorrow-night-bright.tmTheme.json"
+uiTheme = "dark"
+order = 163
+preview = { bg = "#000000", fg = "#E4E4E4", fn = "#CFABE0", name = "#8CB6E1", string = "#C5D15C" }
+
+[[theme]]
+id = "tomorrow-night-eighties"
+name = "Tomorrow Night - Eighties"
+path = "themes/tomorrow-night-eighties.tmTheme.json"
+uiTheme = "dark"
+order = 164
+preview = { bg = "#3B3B3B", fg = "#D6D6D6", fn = "#D7ACD6", name = "#A8D5D6", string = "#A8D4A9" }
+
+[[theme]]
+id = "tubster"
+name = "Tubster"
+path = "themes/tubster.tmTheme.json"
+uiTheme = "dark"
+order = 165
+preview = { bg = "#2F2F2F", fg = "#EBE7E3", fn = "#D77B42", name = "#FFD441", string = "#A8D241" }
+
+[[theme]]
+id = "twilight"
+name = "Twilight"
+path = "themes/twilight.tmTheme.json"
+uiTheme = "dark"
+order = 166
+preview = { bg = "#1A1A1A", fg = "#F9F9F9", fn = "#D7B67C", name = "#E1D797", string = "#A0AB7D" }
+
+[[theme]]
+id = "upstream-sunburst"
+name = "Upstream Sunburst"
+path = "themes/upstream-sunburst.tmTheme.json"
+uiTheme = "dark"
+order = 167
+preview = { bg = "#000000F7", fg = "#F9F9F9", fn = "#9B856E", name = "#E1D797", string = "#BEDB39" }
+
+[[theme]]
+id = "venom"
+name = "Venom"
+path = "themes/venom.tmTheme.json"
+uiTheme = "dark"
+order = 168
+preview = { bg = "#0F0F0F", fg = "#CBCBCB", fn = "#7C9ACB", name = "#7660B7", string = "#379A4D" }
+
+[[theme]]
+id = "vintage-aurora"
+name = "Vintage Aurora"
+path = "themes/vintage-aurora.tmTheme.json"
+uiTheme = "dark"
+order = 169
+preview = { bg = "#3D0632DE", fg = "#F9EFDE", fn = "#E4C089", name = "#FCE239", string = "#65BE92" }
+
+[[theme]]
+id = "whys-poignant"
+name = "Why’s Poignant"
+path = "themes/whys-poignant.tmTheme.json"
+uiTheme = "light"
+order = 170
+preview = { bg = "#FFFEFA", fg = "#397AAA", fn = "#8A2C5A", name = "#440521", string = "#30A879" }
+
+[[theme]]
+id = "zenburn"
+name = "Zenburn"
+path = "themes/zenburn.tmTheme.json"
+uiTheme = "dark"
+order = 171
+preview = { bg = "#494949", fg = "#E4E4E4", fn = "#FFDEBD", name = "#FFFB98", string = "#DF9A98" }
+
+[[theme]]
+id = "zenburnesque"
+name = "Zenburnesque"
+path = "themes/zenburnesque.tmTheme.json"
+uiTheme = "dark"
+order = 172
+preview = { bg = "#515151", fg = "#E4E4E4", fn = "#FFFDAF", name = "#FFD479", string = "#FF3A29" }
+
+[[theme]]
+id = "andromeeda"
+name = "Andromeeda"
+path = "themes/andromeeda.tmTheme.json"
+uiTheme = "dark"
+order = 1000
+preview = { bg = "#23262E", fg = "#D5CED9", fn = "#c74ded", name = "#FFE66D", string = "#96E072" }
+
+[[theme]]
+id = "ayu-dark"
+name = "Ayu Dark"
+path = "themes/ayu-dark.tmTheme.json"
+uiTheme = "dark"
+order = 1001
+preview = { bg = "#10141c", fg = "#bfbdb6", fn = "#ff8f40", name = "#ffb454", string = "#aad94c" }
+
+[[theme]]
+id = "ayu-light"
+name = "Ayu Light"
+path = "themes/ayu-light.tmTheme.json"
+uiTheme = "light"
+order = 1002
+preview = { bg = "#fcfcfc", fg = "#5c6166", fn = "#fa8532", name = "#eba400", string = "#86b300" }
+
+[[theme]]
+id = "ayu-mirage"
+name = "Ayu Mirage"
+path = "themes/ayu-mirage.tmTheme.json"
+uiTheme = "dark"
+order = 1003
+preview = { bg = "#242936", fg = "#cccac2", fn = "#ffa659", name = "#ffcd66", string = "#d5ff80" }
+
+[[theme]]
+id = "catppuccin-frappe"
+name = "Catppuccin Frappé"
+path = "themes/catppuccin-frappe.tmTheme.json"
+uiTheme = "dark"
+order = 1004
+preview = { bg = "#303446", fg = "#c6d0f5", fn = "#ca9ee6", name = "#8caaee", string = "#a6d189" }
+
+[[theme]]
+id = "catppuccin-latte"
+name = "Catppuccin Latte"
+path = "themes/catppuccin-latte.tmTheme.json"
+uiTheme = "light"
+order = 1005
+preview = { bg = "#eff1f5", fg = "#4c4f69", fn = "#8839ef", name = "#1e66f5", string = "#40a02b" }
+
+[[theme]]
+id = "catppuccin-macchiato"
+name = "Catppuccin Macchiato"
+path = "themes/catppuccin-macchiato.tmTheme.json"
+uiTheme = "dark"
+order = 1006
+preview = { bg = "#24273a", fg = "#cad3f5", fn = "#c6a0f6", name = "#8aadf4", string = "#a6da95" }
+
+[[theme]]
+id = "catppuccin-mocha"
+name = "Catppuccin Mocha"
+path = "themes/catppuccin-mocha.tmTheme.json"
+uiTheme = "dark"
+order = 1007
+preview = { bg = "#1e1e2e", fg = "#cdd6f4", fn = "#cba6f7", name = "#89b4fa", string = "#a6e3a1" }
+
+[[theme]]
+id = "dark-plus"
+name = "Dark Plus"
+path = "themes/dark-plus.tmTheme.json"
+uiTheme = "dark"
+order = 1008
+preview = { bg = "#1E1E1E", fg = "#D4D4D4", fn = "#569cd6", name = "#DCDCAA", string = "#ce9178" }
+
+[[theme]]
+id = "dracula-soft"
+name = "Dracula Theme Soft"
+path = "themes/dracula-soft.tmTheme.json"
+uiTheme = "dark"
+order = 1009
+preview = { bg = "#282A36", fg = "#f6f6f4", fn = "#f286c4", name = "#62e884", string = "#e7ee98" }
+
+[[theme]]
+id = "dracula"
+name = "Dracula Theme"
+path = "themes/dracula.tmTheme.json"
+uiTheme = "dark"
+order = 1010
+preview = { bg = "#282A36", fg = "#F8F8F2", fn = "#FF79C6", name = "#50FA7B", string = "#F1FA8C" }
+
+[[theme]]
+id = "everforest-dark"
+name = "Everforest Dark"
+path = "themes/everforest-dark.tmTheme.json"
+uiTheme = "dark"
+order = 1011
+preview = { bg = "#2d353b", fg = "#d3c6aa", fn = "#e67e80", name = "#a7c080", string = "#dbbc7f" }
+
+[[theme]]
+id = "everforest-light"
+name = "Everforest Light"
+path = "themes/everforest-light.tmTheme.json"
+uiTheme = "light"
+order = 1012
+preview = { bg = "#fdf6e3", fg = "#5c6a72", fn = "#f85552", name = "#8da101", string = "#dfa000" }
+
+[[theme]]
+id = "github-dark-default"
+name = "GitHub Dark Default"
+path = "themes/github-dark-default.tmTheme.json"
+uiTheme = "dark"
+order = 1013
+preview = { bg = "#0d1117", fg = "#e6edf3", fn = "#ff7b72", name = "#d2a8ff", string = "#a5d6ff" }
+
+[[theme]]
+id = "github-dark-dimmed"
+name = "GitHub Dark Dimmed"
+path = "themes/github-dark-dimmed.tmTheme.json"
+uiTheme = "dark"
+order = 1014
+preview = { bg = "#22272e", fg = "#adbac7", fn = "#f47067", name = "#dcbdfb", string = "#96d0ff" }
+
+[[theme]]
+id = "github-dark-high-contrast"
+name = "GitHub Dark High Contrast"
+path = "themes/github-dark-high-contrast.tmTheme.json"
+uiTheme = "dark"
+order = 1015
+preview = { bg = "#0a0c10", fg = "#f0f3f6", fn = "#ff9492", name = "#dbb7ff", string = "#addcff" }
+
+[[theme]]
+id = "github-dark"
+name = "GitHub Dark"
+path = "themes/github-dark.tmTheme.json"
+uiTheme = "dark"
+order = 1016
+preview = { bg = "#24292e", fg = "#e1e4e8", fn = "#f97583", name = "#c8e1ff", string = "#9ecbff" }
+
+[[theme]]
+id = "github-light-default"
+name = "GitHub Light Default"
+path = "themes/github-light-default.tmTheme.json"
+uiTheme = "light"
+order = 1017
+preview = { bg = "#ffffff", fg = "#1f2328", fn = "#cf222e", name = "#8250df", string = "#0a3069" }
+
+[[theme]]
+id = "github-light-high-contrast"
+name = "GitHub Light High Contrast"
+path = "themes/github-light-high-contrast.tmTheme.json"
+uiTheme = "light"
+order = 1018
+preview = { bg = "#ffffff", fg = "#0e1116", fn = "#a0111f", name = "#622cbc", string = "#032563" }
+
+[[theme]]
+id = "github-light"
+name = "GitHub Light"
+path = "themes/github-light.tmTheme.json"
+uiTheme = "light"
+order = 1019
+preview = { bg = "#fff", fg = "#24292e", fn = "#d73a49", name = "#044289", string = "#032f62" }
+
+[[theme]]
+id = "gruvbox-dark-hard"
+name = "Gruvbox Dark Hard"
+path = "themes/gruvbox-dark-hard.tmTheme.json"
+uiTheme = "dark"
+order = 1020
+preview = { bg = "#1d2021", fg = "#ebdbb2", fn = "#fb4934", name = "#fabd2f", string = "#b8bb26" }
+
+[[theme]]
+id = "gruvbox-dark-medium"
+name = "Gruvbox Dark Medium"
+path = "themes/gruvbox-dark-medium.tmTheme.json"
+uiTheme = "dark"
+order = 1021
+preview = { bg = "#282828", fg = "#ebdbb2", fn = "#fb4934", name = "#fabd2f", string = "#b8bb26" }
+
+[[theme]]
+id = "gruvbox-dark-soft"
+name = "Gruvbox Dark Soft"
+path = "themes/gruvbox-dark-soft.tmTheme.json"
+uiTheme = "dark"
+order = 1022
+preview = { bg = "#32302f", fg = "#ebdbb2", fn = "#fb4934", name = "#fabd2f", string = "#b8bb26" }
+
+[[theme]]
+id = "gruvbox-light-hard"
+name = "Gruvbox Light Hard"
+path = "themes/gruvbox-light-hard.tmTheme.json"
+uiTheme = "light"
+order = 1023
+preview = { bg = "#f9f5d7", fg = "#3c3836", fn = "#9d0006", name = "#b57614", string = "#79740e" }
+
+[[theme]]
+id = "gruvbox-light-medium"
+name = "Gruvbox Light Medium"
+path = "themes/gruvbox-light-medium.tmTheme.json"
+uiTheme = "light"
+order = 1024
+preview = { bg = "#fbf1c7", fg = "#3c3836", fn = "#9d0006", name = "#b57614", string = "#79740e" }
+
+[[theme]]
+id = "gruvbox-light-soft"
+name = "Gruvbox Light Soft"
+path = "themes/gruvbox-light-soft.tmTheme.json"
+uiTheme = "light"
+order = 1025
+preview = { bg = "#f2e5bc", fg = "#3c3836", fn = "#9d0006", name = "#b57614", string = "#79740e" }
+
+[[theme]]
+id = "horizon-bright"
+name = "Horizon Bright"
+path = "themes/horizon-bright.tmTheme.json"
+uiTheme = "light"
+order = 1026
+preview = { bg = "#FDF0ED", fg = "#333333", fn = "#8A31B9", name = "#1D8991", string = "#F6661E" }
+
+[[theme]]
+id = "horizon"
+name = "Horizon"
+path = "themes/horizon.tmTheme.json"
+uiTheme = "dark"
+order = 1027
+preview = { bg = "#1C1E26", fg = "#cccccc", fn = "#B877DBE6", name = "#25B0BCE6", string = "#FAB795E6" }
+
+[[theme]]
+id = "houston"
+name = "Houston"
+path = "themes/houston.tmTheme.json"
+uiTheme = "dark"
+order = 1028
+preview = { bg = "#17191e", fg = "#eef0f9", fn = "#54b9ff", name = "#00daef", string = "#ffd493" }
+
+[[theme]]
+id = "kanagawa-dragon"
+name = "Kanagawa Dragon"
+path = "themes/kanagawa-dragon.tmTheme.json"
+uiTheme = "dark"
+order = 1029
+preview = { bg = "#181616", fg = "#C5C9C5", fn = "#8992A7", name = "#8BA4B0", string = "#8A9A7B" }
+
+[[theme]]
+id = "kanagawa-lotus"
+name = "Kanagawa Lotus"
+path = "themes/kanagawa-lotus.tmTheme.json"
+uiTheme = "light"
+order = 1030
+preview = { bg = "#F2ECBC", fg = "#545464", fn = "#624C83", name = "#4D699B", string = "#6F894E" }
+
+[[theme]]
+id = "kanagawa-wave"
+name = "Kanagawa Wave"
+path = "themes/kanagawa-wave.tmTheme.json"
+uiTheme = "dark"
+order = 1031
+preview = { bg = "#1F1F28", fg = "#DCD7BA", fn = "#957FB8", name = "#7E9CD8", string = "#98BB6C" }
+
+[[theme]]
+id = "laserwave"
+name = "LaserWave"
+path = "themes/laserwave.tmTheme.json"
+uiTheme = "dark"
+order = 1032
+preview = { bg = "#27212e", fg = "#ffffff", fn = "#40b4c4", name = "#EB64B9", string = "#b4dce7" }
+
+[[theme]]
+id = "light-plus"
+name = "Light Plus"
+path = "themes/light-plus.tmTheme.json"
+uiTheme = "light"
+order = 1033
+preview = { bg = "#FFFFFF", fg = "#000000", fn = "#0000ff", name = "#795E26", string = "#a31515" }
+
+[[theme]]
+id = "material-theme-darker"
+name = "Material Theme Darker"
+path = "themes/material-theme-darker.tmTheme.json"
+uiTheme = "dark"
+order = 1034
+preview = { bg = "#212121", fg = "#EEFFFF", fn = "#89DDFF", name = "#82AAFF", string = "#C3E88D" }
+
+[[theme]]
+id = "material-theme-lighter"
+name = "Material Theme Lighter"
+path = "themes/material-theme-lighter.tmTheme.json"
+uiTheme = "light"
+order = 1035
+preview = { bg = "#FAFAFA", fg = "#90A4AE", fn = "#39ADB5", name = "#6182B8", string = "#91B859" }
+
+[[theme]]
+id = "material-theme-ocean"
+name = "Material Theme Ocean"
+path = "themes/material-theme-ocean.tmTheme.json"
+uiTheme = "dark"
+order = 1036
+preview = { bg = "#0F111A", fg = "#babed8", fn = "#89DDFF", name = "#82AAFF", string = "#C3E88D" }
+
+[[theme]]
+id = "material-theme-palenight"
+name = "Material Theme Palenight"
+path = "themes/material-theme-palenight.tmTheme.json"
+uiTheme = "dark"
+order = 1037
+preview = { bg = "#292D3E", fg = "#babed8", fn = "#89DDFF", name = "#82AAFF", string = "#C3E88D" }
+
+[[theme]]
+id = "material-theme"
+name = "Material Theme"
+path = "themes/material-theme.tmTheme.json"
+uiTheme = "dark"
+order = 1038
+preview = { bg = "#263238", fg = "#EEFFFF", fn = "#89DDFF", name = "#82AAFF", string = "#C3E88D" }
+
+[[theme]]
+id = "min-dark"
+name = "Min Dark"
+path = "themes/min-dark.tmTheme.json"
+uiTheme = "dark"
+order = 1039
+preview = { bg = "#1f1f1f", fg = "#cccccc", fn = "#f97583", name = "#b392f0", string = "#9db1c5" }
+
+[[theme]]
+id = "min-light"
+name = "Min Light"
+path = "themes/min-light.tmTheme.json"
+uiTheme = "light"
+order = 1040
+preview = { bg = "#ffffff", fg = "#212121", fn = "#D32F2F", name = "#6f42c1", string = "#2b5581" }
+
+[[theme]]
+id = "night-owl-light"
+name = "Night Owl Light"
+path = "themes/night-owl-light.tmTheme.json"
+uiTheme = "light"
+order = 1041
+preview = { bg = "#FBFBFB", fg = "#403f53", fn = "#994cc3", name = "#994cc3", string = "#4876d6" }
+
+[[theme]]
+id = "night-owl"
+name = "Night Owl"
+path = "themes/night-owl.tmTheme.json"
+uiTheme = "dark"
+order = 1042
+preview = { bg = "#011627", fg = "#d6deeb", fn = "#c792ea", name = "#c792ea", string = "#ecc48d" }
+
+[[theme]]
+id = "nord"
+name = "Nord"
+path = "themes/nord.tmTheme.json"
+uiTheme = "dark"
+order = 1043
+preview = { bg = "#2e3440", fg = "#d8dee9", fn = "#81A1C1", name = "#88C0D0", string = "#A3BE8C" }
+
+[[theme]]
+id = "one-dark-pro"
+name = "One Dark Pro"
+path = "themes/one-dark-pro.tmTheme.json"
+uiTheme = "dark"
+order = 1044
+preview = { bg = "#282c34", fg = "#abb2bf", fn = "#c678dd", name = "#61afef", string = "#98c379" }
+
+[[theme]]
+id = "one-light"
+name = "One Light"
+path = "themes/one-light.tmTheme.json"
+uiTheme = "light"
+order = 1045
+preview = { bg = "#FAFAFA", fg = "#383A42", fn = "#A626A4", name = "#0184BC", string = "#50A14F" }
+
+[[theme]]
+id = "plastic"
+name = "Plastic"
+path = "themes/plastic.tmTheme.json"
+uiTheme = "dark"
+order = 1046
+preview = { bg = "#21252B", fg = "#A9B2C3", fn = "#E06C75", name = "#B57EDC", string = "#98C379" }
+
+[[theme]]
+id = "poimandres"
+name = "Poimandres"
+path = "themes/poimandres.tmTheme.json"
+uiTheme = "dark"
+order = 1047
+preview = { bg = "#1b1e28", fg = "#a6accd", fn = "#a6accd", name = "#ADD7FF", string = "#5DE4c7" }
+
+[[theme]]
+id = "red"
+name = "Red"
+path = "themes/red.tmTheme.json"
+uiTheme = "dark"
+order = 1048
+preview = { bg = "#390000", fg = "#F8F8F8", fn = "#f12727ff", name = "#ffb454ff", string = "#cd8d8dff" }
+
+[[theme]]
+id = "rose-pine-dawn"
+name = "Rosé Pine Dawn"
+path = "themes/rose-pine-dawn.tmTheme.json"
+uiTheme = "light"
+order = 1049
+preview = { bg = "#faf4ed", fg = "#575279", fn = "#286983", name = "#b4637a", string = "#ea9d34" }
+
+[[theme]]
+id = "rose-pine-moon"
+name = "Rosé Pine Moon"
+path = "themes/rose-pine-moon.tmTheme.json"
+uiTheme = "dark"
+order = 1050
+preview = { bg = "#232136", fg = "#e0def4", fn = "#3e8fb0", name = "#eb6f92", string = "#f6c177" }
+
+[[theme]]
+id = "rose-pine"
+name = "Rosé Pine"
+path = "themes/rose-pine.tmTheme.json"
+uiTheme = "dark"
+order = 1051
+preview = { bg = "#191724", fg = "#e0def4", fn = "#31748f", name = "#eb6f92", string = "#f6c177" }
+
+[[theme]]
+id = "slack-dark"
+name = "Slack Dark"
+path = "themes/slack-dark.tmTheme.json"
+uiTheme = "dark"
+order = 1052
+preview = { bg = "#222222", fg = "#E6E6E6", fn = "#569cd6", name = "#DCDCAA", string = "#ce9178" }
+
+[[theme]]
+id = "slack-ochin"
+name = "Slack Ochin"
+path = "themes/slack-ochin.tmTheme.json"
+uiTheme = "light"
+order = 1053
+preview = { bg = "#FFF", fg = "#000", fn = "#7b30d0", name = "#7eb233", string = "#a44185" }
+
+[[theme]]
+id = "snazzy-light"
+name = "Snazzy Light"
+path = "themes/snazzy-light.tmTheme.json"
+uiTheme = "light"
+order = 1054
+preview = { bg = "#FAFBFC", fg = "#565869", fn = "#F767BB", name = "#09A1ED", string = "#CF9C00" }
+
+[[theme]]
+id = "synthwave-84"
+name = "Synthwave '84"
+path = "themes/synthwave-84.tmTheme.json"
+uiTheme = "dark"
+order = 1055
+preview = { bg = "#262335", fg = "#cccccc", fn = "#fede5d", name = "#36f9f6", string = "#848bbd" }
+
+[[theme]]
+id = "tokyo-night"
+name = "Tokyo Night"
+path = "themes/tokyo-night.tmTheme.json"
+uiTheme = "dark"
+order = 1056
+preview = { bg = "#1a1b26", fg = "#a9b1d6", fn = "#bb9af7", name = "#7aa2f7", string = "#9ece6a" }
+
+[[theme]]
+id = "vesper"
+name = "Vesper"
+path = "themes/vesper.tmTheme.json"
+uiTheme = "dark"
+order = 1057
+preview = { bg = "#101010", fg = "#FFF", fn = "#A0A0A0", name = "#FFC799", string = "#99FFE4" }
+
+[[theme]]
+id = "vitesse-black"
+name = "Vitesse Black"
+path = "themes/vitesse-black.tmTheme.json"
+uiTheme = "dark"
+order = 1058
+preview = { bg = "#000", fg = "#dbd7cacc", fn = "#4d9375", name = "#80a665", string = "#c98a7d" }
+
+[[theme]]
+id = "vitesse-dark"
+name = "Vitesse Dark"
+path = "themes/vitesse-dark.tmTheme.json"
+uiTheme = "dark"
+order = 1059
+preview = { bg = "#121212", fg = "#dbd7caee", fn = "#4d9375", name = "#80a665", string = "#c98a7d" }
+
+[[theme]]
+id = "vitesse-light"
+name = "Vitesse Light"
+path = "themes/vitesse-light.tmTheme.json"
+uiTheme = "light"
+order = 1060
+preview = { bg = "#ffffff", fg = "#393a34", fn = "#1e754f", name = "#59873a", string = "#b56959" }

@@ -1,0 +1,90 @@
+# AGENTS.md
+
+Guidance for coding agents working in this repo. Prefer the Taskfile over ad-hoc scripts.
+
+## What this is
+
+Recur is a Wails v3 desktop app (Go backend + Svelte 5 / TypeScript frontend) with an optional authoring CLI and TextMate-inspired **Recur Bundles** under `bundles/`.
+
+Read before inventing architecture:
+
+- `docs/bundles.md` — bundle authoring, keybindings, CLI
+- `docs/` — living provider docs
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `main.go`, `app_menu.go`, `window_state.go` | Desktop app entry / chrome |
+| `internal/` | Go packages (engine, store, mcp, bundles, cli, …) |
+| `frontend/` | Svelte 5 + Vite UI |
+| `bundles/` | Shipped Recur Bundles (reference implementations) |
+| `cmd/recur` | CLI (`recur .` opens a path; `recur bundles …` authors bundles) |
+| `Taskfile.yml` | Root tasks (`wails3 task …`) |
+| `build/` | Wails build tasks / platform packaging |
+
+## Dev environment tips
+
+- Orchestrator is **Task via `wails3 task`** (root `Taskfile.yml`). go-task is not required separately.
+- Task names use **`verb:object`** (`test:bundles`, `lint:bundles`, `build:cli`).
+- Dev app: `wails3 task dev` (or `wails3 task run` / `wails3 task build`).
+- Dogfood: `.recur/project.toml` sets `RECUR_INSTANCE_LABEL=$RECUR_BRANCH`. When that env is present, Recur paints a `dev` chip with the branch in the titlebar gap (packaged Recur omits it).
+- Packaged debug build: `RECUR_DEBUG=1 wails3 task package` keeps the web inspector and skips frontend minification (sourcemaps included).
+- Desktop binary: `bin/recur`. Dev CLI: `bin/recur-cli` via `wails3 task build:cli` — do not overwrite one with the other. Packaged apps also embed `Contents/MacOS/recur-cli` (same `./cmd/recur` binary) and symlink it onto PATH at launch (D-cli-install).
+- Frontend deps live in `frontend/` (`pnpm` / `pnpm-lock.yaml` there). Typecheck: `cd frontend && pnpm run check`.
+- After changing Go methods exposed to the UI, regenerate bindings through the Wails build path (committed `.ts` bindings are authoritative).
+- Bundles need `node` on `PATH` for TypeScript macros and engine tests.
+- Multi-agent coordination (optional): gitignored `TODO.md` — claim work there so sessions do not collide.
+
+## Testing instructions
+
+CI today: `.github/workflows/e2e.yml` (Playwright only). Local quality gates are Taskfile-driven.
+
+| Task | What |
+|------|------|
+| `wails3 task check` | Fast gate: Go tests + bundle lint + bundle tests (no Playwright) |
+| `wails3 task check:cursor-sdk-pin` | Network: fail if PyPI `cursor-sdk` is ahead of `pinnedSDKVersion` |
+| `wails3 task test` | Everything: `test:go`, `lint:bundles`, `test:bundles`, `test:e2e` |
+| `wails3 task test:go` | `go test ./...` |
+| `wails3 task lint:bundles` | Schema, TS compile, shebang, keyEquivalent collisions |
+| `wails3 task test:bundles` | Shipped bundle engine tests under `./bundles` |
+| `wails3 task test:e2e` | Frontend Playwright (mocked Wails bridge) |
+| `wails3 task build:cli` | Build `bin/recur-cli` |
+
+### Cursor SDK pin
+
+Recur pins `cursor-sdk` (`pinnedSDKVersion`) so the attribution minify patch stays valid. A weekly GitHub Action (`.github/workflows/cursor-sdk-pin.yml`) and `wails3 task check:cursor-sdk-pin` compare the pin to PyPI latest. On drift, follow `.agents/skills/repin-cursor-sdk/SKILL.md` (bump pin + refresh `sdkAttributionAnchors` together). Details: `docs/cursor-provider.md`.
+
+Focused runs:
+
+```bash
+go test ./internal/bundles/...
+go test -run TestName ./internal/cli/...
+cd frontend && pnpm run e2e          # or pnpm run e2e:ui
+bin/recur-cli bundles test ./bundles/JSON
+bin/recur-cli bundles lint ./bundles
+```
+
+Expectations:
+
+- Before merging non-trivial changes, `wails3 task check` should be green; run `wails3 task test` (or at least `test:e2e`) when touching UI.
+- Add or update tests for the code you change.
+- Bundle changes: keep `lint:bundles` clean (errors fail; shared keyEquivalents may log info).
+- After store seed / domain shape changes that affect e2e fixtures: `cd frontend && pnpm run e2e:seed`.
+
+## Scope
+
+- Solve the stated task with the smallest change that does the job. Do not widen scope into speculative robustness work (extra platforms, hypothetical edge cases, new abstractions) unless asked.
+- Review findings about hypothetical cases are optional follow-ups to mention, not requirements to implement. Successive review rounds must not balloon a small fix.
+- If a branch's diff looks disproportionate to the ask, reset to HEAD and re-derive the minimal fix rather than trimming incrementally.
+
+## Voice
+
+- Do not use em dashes (U+2014). Prefer a period, comma, colon, or hyphen.
+
+## PR instructions
+
+- Prefer small, focused PRs; match existing commit tone (why over noise).
+- Run `wails3 task check` before pushing; include e2e when frontend behavior changes.
+- Update `docs/bundles.md` for author-facing bundle behavior.
+- Do not commit secrets, `bin/`, Vite output under `frontend/dist/` (keep `.gitkeep`), or the gitignored `TODO.md`.

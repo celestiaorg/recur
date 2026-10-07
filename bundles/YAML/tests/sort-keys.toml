@@ -1,0 +1,53 @@
+[[test]]
+name = "sorts top-level keys"
+command = "Sort Mapping Keys"
+
+[test.context]
+input = '''
+c: 3
+a: 1
+b: 2
+'''
+selectedText = '''
+c: 3
+a: 1
+b: 2
+'''
+
+[test.expect]
+stdout = '''
+a: 1
+b: 2
+c: 3
+'''
+output = "replaceSelection"
+
+[[test]]
+name = "sorts nested mapping keys"
+command = "Sort Mapping Keys"
+
+[test.context]
+input = '''
+c: 3
+a:
+  z: 1
+  b: 2
+b: 1
+'''
+selectedText = '''
+c: 3
+a:
+  z: 1
+  b: 2
+b: 1
+'''
+
+[test.expect]
+stdout = '''
+a:
+  b: 2
+  z: 1
+b: 1
+c: 3
+'''
+output = "replaceSelection"

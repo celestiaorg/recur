@@ -1,0 +1,7 @@
+[[test]]
+name = "quote"
+snippet = "recur.source.quote"
+[test.expect]
+stdout = '''
+"${1:$TM_SELECTED_TEXT}"
+'''

@@ -1,0 +1,20 @@
+[[test]]
+name = "unified diff vs clipboard"
+command = "Diff with Clipboard"
+
+[test.context]
+input = "hello"
+selectedText = "hello"
+clipboard = "hallo"
+
+[test.expect]
+stdout = '''
+--- selection
++++ clipboard
+@@ -1 +1 @@
+-hello
+\ No newline at end of file
++hallo
+\ No newline at end of file
+'''
+output = "newDocument"

@@ -1,0 +1,369 @@
+[bundle]
+name = "Text"
+id = "recur.text"
+version = "1.0.0"
+author = "Recur"
+
+# Interpreters: typescript (esbuild → Worker) or shebang (OS subprocess).
+# These commands are the reference for authoring your own bundles — copy a
+# src/*.ts file or a shebang body and adapt.
+# Typescript macros import from @recur/sdk (see bundles/sdk/index.ts).
+
+# --- typescript via script= (preferred for real macros) ---------------------
+
+[[command]]
+id = "recur.text.sort-lines-asc"
+name = "Sort Lines Ascending"
+category = "Text"
+order = 10
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+f5"
+interpreter = "typescript"
+script = "src/sort-lines-asc.ts"
+
+[[command]]
+id = "recur.text.sort-lines-desc"
+name = "Sort Lines Descending"
+category = "Text"
+order = 11
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+f5"
+interpreter = "typescript"
+script = "src/sort-lines-desc.ts"
+
+[[command]]
+id = "recur.text.sort-unique"
+name = "Sort & Unique"
+category = "Text"
+order = 12
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/sort-unique.ts"
+
+[[command]]
+id = "recur.text.reverse-lines"
+name = "Reverse Lines"
+category = "Text"
+order = 13
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/reverse-lines.ts"
+
+[[command]]
+id = "recur.text.remove-dup-lines"
+name = "Remove Duplicate Lines"
+category = "Text"
+order = 14
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/remove-dup-lines.ts"
+
+[[command]]
+id = "recur.text.uppercase"
+name = "Uppercase"
+category = "Text"
+order = 20
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+u"
+interpreter = "typescript"
+script = "src/uppercase.ts"
+
+[[command]]
+id = "recur.text.lowercase"
+name = "Lowercase"
+category = "Text"
+order = 21
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+u"
+interpreter = "typescript"
+script = "src/lowercase.ts"
+
+[[command]]
+id = "recur.text.titlecase"
+name = "Titlecase"
+category = "Text"
+order = 22
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+opt+u"
+interpreter = "typescript"
+script = "src/titlecase.ts"
+
+[[command]]
+id = "recur.text.capitalize"
+name = "Capitalize"
+category = "Text"
+order = 23
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/capitalize.ts"
+
+[[command]]
+id = "recur.text.em-dashes-to-hyphens"
+name = "Em Dashes to Hyphens"
+category = "Text"
+order = 24
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/em-dashes-to-hyphens.ts"
+
+[[command]]
+id = "recur.text.em-dashes-to-colons"
+name = "Em Dashes to Colons"
+category = "Text"
+order = 25
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/em-dashes-to-colons.ts"
+
+[[command]]
+id = "recur.text.strip-trailing-ws"
+name = "Strip Trailing Whitespace"
+category = "Text"
+order = 30
+input = "document"
+output = "replaceDocument"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+w"
+interpreter = "typescript"
+script = "src/strip-trailing-ws.ts"
+
+[[command]]
+id = "recur.text.slugify"
+name = "Slugify"
+category = "Text"
+order = 40
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/slugify.ts"
+
+[[command]]
+id = "recur.text.enumerate-lines"
+name = "Enumerate Lines"
+category = "Text"
+order = 50
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/enumerate-lines.ts"
+
+[[command]]
+id = "recur.text.randomize-lines"
+name = "Randomize Lines"
+category = "Text"
+order = 51
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/randomize-lines.ts"
+
+[[command]]
+id = "recur.text.join-lines"
+name = "Join Lines"
+category = "Text"
+order = 52
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+j"
+interpreter = "typescript"
+script = "src/join-lines.ts"
+prompts = [
+  { name = "separator", label = "Join with", type = "text", default = " " },
+]
+
+[[command]]
+id = "recur.text.split-lines"
+name = "Split Lines"
+category = "Text"
+order = 53
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/split-lines.ts"
+prompts = [
+  { name = "delimiter", label = "Split on", type = "text", default = "," },
+]
+
+[[command]]
+id = "recur.text.filter-matching"
+name = "Copy Matching Lines"
+category = "Text"
+order = 54
+input = "selection"
+fallbackInput = "document"
+output = "newDocument"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/filter-matching.ts"
+prompts = [
+  { name = "pattern", label = "Regex", type = "text", default = "" },
+]
+
+[[command]]
+id = "recur.text.filter-non-matching"
+name = "Copy Non-Matching Lines"
+category = "Text"
+order = 55
+input = "selection"
+fallbackInput = "document"
+output = "newDocument"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/filter-non-matching.ts"
+prompts = [
+  { name = "pattern", label = "Regex", type = "text", default = "" },
+]
+
+# --- shebang + inline body --------------------------------------------------
+
+[[command]]
+id = "recur.text.word-count"
+name = "Word Count"
+category = "Text"
+order = 90
+input = "selection"
+fallbackInput = "document"
+output = "showAsToast"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+n"
+interpreter = "shebang"
+body = '''
+#!/usr/bin/env bash
+# Count words / lines / chars of stdin.
+text=$(cat)
+words=$(printf '%s' "$text" | wc -w | tr -d ' ')
+lines=$(printf '%s' "$text" | wc -l | tr -d ' ')
+chars=$(printf '%s' "$text" | wc -c | tr -d ' ')
+printf '%s words · %s lines · %s chars\n' "$words" "$lines" "$chars"
+'''
+
+[[command]]
+id = "recur.text.wrap-at-column"
+name = "Wrap at Column"
+category = "Text"
+order = 80
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "shebang"
+prompts = [
+  { name = "width", label = "Column width", type = "text", default = "80" },
+]
+body = '''
+#!/usr/bin/env bash
+width="${RECUR_INPUT_WIDTH:-80}"
+fold -s -w "$width"
+'''
+
+[[command]]
+id = "recur.text.transliterate-ascii"
+name = "Transliterate to ASCII"
+category = "Text"
+order = 60
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/transliterate-ascii.ts"
+
+[[command]]
+id = "recur.text.chars-to-hex"
+name = "Characters to Hex"
+category = "Text"
+order = 61
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/chars-to-hex.ts"
+
+[[command]]
+id = "recur.text.hex-to-chars"
+name = "Hex to Characters"
+category = "Text"
+order = 62
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/hex-to-chars.ts"
+
+[[command]]
+id = "recur.text.strip-unprintable"
+name = "Strip Unprintable"
+category = "Text"
+order = 63
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "typescript"
+script = "src/strip-unprintable.ts"
+
+# --- snippets ----------------------------------------------------------------
+
+[[snippet]]
+id = "recur.text.lorem"
+name = "Lorem ipsum"
+tabTrigger = "lorem"
+order = 10
+body = '''
+Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+'''
+
+[[snippet]]
+id = "recur.text.isoD"
+name = "ISO date"
+tabTrigger = "isoD"
+order = 20
+body = '''
+$ISO_DATE
+'''
+

@@ -1,0 +1,71 @@
+[[test]]
+name = "wraps braces"
+command = "Wrap / Unwrap Braces"
+
+[test.context]
+input = "foo"
+selectedText = "foo"
+
+[test.expect]
+stdout = "{foo}"
+output = "replaceSelection"
+
+[[test]]
+name = "unwraps braces"
+command = "Wrap / Unwrap Braces"
+
+[test.context]
+input = "{foo}"
+selectedText = "{foo}"
+
+[test.expect]
+stdout = "foo"
+output = "replaceSelection"
+
+[[test]]
+name = "wraps parens"
+command = "Wrap / Unwrap Parentheses"
+
+[test.context]
+input = "foo"
+selectedText = "foo"
+
+[test.expect]
+stdout = "(foo)"
+output = "replaceSelection"
+
+[[test]]
+name = "unwraps parens"
+command = "Wrap / Unwrap Parentheses"
+
+[test.context]
+input = "(foo)"
+selectedText = "(foo)"
+
+[test.expect]
+stdout = "foo"
+output = "replaceSelection"
+
+[[test]]
+name = "wraps brackets"
+command = "Wrap / Unwrap Brackets"
+
+[test.context]
+input = "foo"
+selectedText = "foo"
+
+[test.expect]
+stdout = "[foo]"
+output = "replaceSelection"
+
+[[test]]
+name = "unwraps brackets"
+command = "Wrap / Unwrap Brackets"
+
+[test.context]
+input = "[foo]"
+selectedText = "[foo]"
+
+[test.expect]
+stdout = "foo"
+output = "replaceSelection"

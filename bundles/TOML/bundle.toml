@@ -1,0 +1,13 @@
+[bundle]
+name = "TOML"
+id = "recur.toml"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "taplo"
+languages = ["toml"]
+fileGlob = ["*.toml"]
+command = "taplo"
+args = ["lsp", "stdio"]
+managed = "taplo"

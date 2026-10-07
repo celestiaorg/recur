@@ -1,0 +1,24 @@
+# Example: multi-line payloads via *File (paths relative to this TOML).
+[[test]]
+name = "aligns equals"
+command = "Align Assignments"
+
+[test.context]
+inputFile = "align/input.txt"
+selectedTextFile = "align/input.txt"
+
+[test.expect]
+stdoutFile = "align/expect.txt"
+output = "replaceSelection"
+
+[[test]]
+name = "skips equality comparisons"
+command = "Align Assignments"
+
+[test.context]
+inputFile = "align/eq-input.txt"
+selectedTextFile = "align/eq-input.txt"
+
+[test.expect]
+stdoutFile = "align/eq-expect.txt"
+output = "replaceSelection"

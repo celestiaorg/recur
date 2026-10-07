@@ -1,0 +1,150 @@
+{
+  "name": "Summer Camp Daybreak",
+  "type": "dark",
+  "colorSpaceName": "sRGB",
+  "colors": {
+    "editor.background": "#15120A",
+    "editor.foreground": "#F4F8D5",
+    "editor.selectionBackground": "#413B22BF",
+    "editor.lineHighlightBackground": "#332D1ACC",
+    "editorCursor.foreground": "#F4F8D5",
+    "editorWhitespace.foreground": "#F78B24"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#F4F8D5",
+        "background": "#15120A"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#6E643B",
+        "fontStyle": "italic"
+      },
+      "name": "Comment",
+      "scope": "comment"
+    },
+    {
+      "settings": {
+        "foreground": "#B0ED60"
+      },
+      "name": "Keyword",
+      "scope": [
+        "keyword",
+        "storage"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#4CB3F1"
+      },
+      "name": "Number",
+      "scope": "constant.numeric"
+    },
+    {
+      "settings": {
+        "foreground": "#47A6E3"
+      },
+      "name": "User-defined constant",
+      "scope": "constant"
+    },
+    {
+      "settings": {
+        "foreground": "#419BD4"
+      },
+      "name": "Built-in constant",
+      "scope": "constant.language"
+    },
+    {
+      "settings": {
+        "foreground": "#A5EE07"
+      },
+      "name": "Entity",
+      "scope": "entity"
+    },
+    {
+      "settings": {
+        "foreground": "#F8741D"
+      },
+      "name": "Variable",
+      "scope": [
+        "variable.language",
+        "variable.other"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#F7AB1E"
+      },
+      "name": "String",
+      "scope": "string"
+    },
+    {
+      "settings": {
+        "foreground": "#F78B24"
+      },
+      "name": "String interpolation",
+      "scope": [
+        "constant.character.escape",
+        "string source"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#F7AB1E"
+      },
+      "name": "Preprocessor line",
+      "scope": "meta.preprocessor"
+    },
+    {
+      "settings": {
+        "foreground": "#F78B24"
+      },
+      "name": "Preprocessor directive",
+      "scope": "keyword.control.import"
+    },
+    {
+      "settings": {
+        "foreground": "#8CE014"
+      },
+      "name": "Function name",
+      "scope": [
+        "entity.name.function",
+        "support.function.any-method"
+      ]
+    },
+    {
+      "settings": {
+        "foreground": "#F1F7A1",
+        "fontStyle": "italic"
+      },
+      "name": "Type name",
+      "scope": "entity.name.type"
+    },
+    {
+      "settings": {
+        "foreground": "#F1F7A1",
+        "fontStyle": "italic"
+      },
+      "name": "Inherited class name",
+      "scope": "entity.other.inherited-class"
+    },
+    {
+      "settings": {
+        "background": "#F83A1F",
+        "fontStyle": "italic"
+      },
+      "name": "Invalid",
+      "scope": "invalid"
+    },
+    {
+      "settings": {
+        "background": "#F85343",
+        "fontStyle": "italic"
+      },
+      "name": "Invalid trailing whitespace",
+      "scope": "invalid.deprecated.trailing-whitespace"
+    }
+  ]
+}

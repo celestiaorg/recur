@@ -1,0 +1,275 @@
+/* ===== first-run / welcome ===== */
+#v-welcome .scroll {
+  position: relative;
+}
+
+#v-welcome .wwash {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 420px;
+  pointer-events: none;
+  background: radial-gradient(ellipse 640px 320px at calc(50% - 220px) 0, color-mix(in srgb, var(--amber) 14%, transparent), transparent 72%);
+}
+
+.welcome {
+  position: relative;
+  max-width: 720px;
+  margin: 52px auto 0;
+  padding: 0 28px 56px;
+}
+
+.whead {
+  position: relative;
+  margin-bottom: 28px;
+}
+
+.wmark {
+  width: 172px;
+  height: 41px;
+  margin: 0 0 36px;
+  background: var(--text);
+  -webkit-mask: var(--wmark) center / contain no-repeat;
+  mask: var(--wmark) center / contain no-repeat;
+}
+
+.whead h1 {
+  font-family: var(--disp);
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -.038em;
+  line-height: 1.05;
+  margin: 0 0 14px;
+  text-wrap: balance;
+  font-feature-settings: "kern" 1;
+  text-rendering: optimizeLegibility;
+}
+
+.whead h1 em {
+  font-style: normal;
+  color: var(--amber);
+}
+
+.whead h1 .wmany {
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--amber);
+  letter-spacing: -.06em;
+  margin-left: .06em;
+}
+
+.whead p {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+  max-width: 36ch;
+  margin: 0;
+}
+
+.wmodes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  margin: 0 0 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--line-soft);
+}
+
+.wmode {
+  position: relative;
+  background: var(--pane);
+  padding: 18px 16px 20px;
+  border-right: 1px solid var(--line-soft);
+  min-width: 0;
+}
+
+.wmode:last-child {
+  border-right: none;
+}
+
+.wmode::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--mode-accent);
+  opacity: .88;
+}
+
+.wmode .wm-h {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: var(--faint);
+  margin: 0 0 12px;
+  line-height: 1.35;
+}
+
+.wmode .wm-n {
+  font-family: var(--disp);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.03em;
+  color: var(--mode-accent);
+  margin: 0 0 8px;
+}
+
+.wmode .wm-d {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0;
+  max-width: 16ch;
+}
+
+.wstat {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pane) 86%, transparent);
+  overflow: hidden;
+}
+
+.wrow {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.wrow-k {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.wrow-v {
+  display: flex;
+  align-items: center;
+  gap: 10px 14px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.wvals {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.wmuted {
+  font-size: 13px;
+  color: var(--faint);
+}
+
+.wcta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.wcta .tbtn {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.wcta .tbtn .kbd {
+  margin-left: 6px;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, #0A0C10 14%, transparent);
+  border: 1px solid color-mix(in srgb, #0A0C10 20%, transparent);
+  color: inherit;
+  opacity: .8;
+}
+
+.welcome .detected {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.welcome .detected.bad {
+  color: var(--coral);
+}
+
+@media (prefers-reduced-motion:no-preference) {
+  #v-welcome.on .whead, #v-welcome.on .wmodes, #v-welcome.on .wstat {
+    animation: win .55s cubic-bezier(.2, .8, .2, 1) both;
+  }
+
+  #v-welcome.on .wmodes {
+    animation-delay: .07s;
+  }
+
+  #v-welcome.on .wstat {
+    animation-delay: .14s;
+  }
+
+  @keyframes win {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* empty states */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 72px 20px;
+  gap: 7px;
+}
+
+.empty .ei {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--pane);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+}
+
+.empty .ei svg {
+  width: 22px;
+  height: 22px;
+  color: var(--faint);
+}
+
+.empty .et {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty .ed {
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+.empty .ea {
+  margin-top: 14px;
+}

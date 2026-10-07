@@ -1,0 +1,83 @@
+[bundle]
+name = "Encode"
+id = "recur.encode"
+version = "1.0.0"
+author = "Recur"
+
+[[command]]
+id = "recur.encode.url-encode"
+name = "URL Encode"
+category = "Encode"
+order = 10
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+e"
+interpreter = "typescript"
+script = "src/url-encode.ts"
+
+[[command]]
+id = "recur.encode.url-decode"
+name = "URL Decode"
+category = "Encode"
+order = 11
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+e"
+interpreter = "typescript"
+script = "src/url-decode.ts"
+
+[[command]]
+id = "recur.encode.html-encode"
+name = "HTML Encode Entities"
+category = "Encode"
+order = 20
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+h"
+interpreter = "typescript"
+script = "src/html-encode.ts"
+
+[[command]]
+id = "recur.encode.html-decode"
+name = "HTML Decode Entities"
+category = "Encode"
+order = 21
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+h"
+interpreter = "typescript"
+script = "src/html-decode.ts"
+
+[[command]]
+id = "recur.encode.base64-encode"
+name = "Base64 Encode"
+category = "Encode"
+order = 30
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+b"
+interpreter = "typescript"
+script = "src/base64-encode.ts"
+
+[[command]]
+id = "recur.encode.base64-decode"
+name = "Base64 Decode"
+category = "Encode"
+order = 31
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+keyEquivalent = "ctrl+shift+b"
+interpreter = "typescript"
+script = "src/base64-decode.ts"

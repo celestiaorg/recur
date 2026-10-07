@@ -1,0 +1,12 @@
+[bundle]
+name = "Solidity"
+id = "recur.solidity"
+version = "1.0.0"
+author = "Recur"
+
+[[languageServer]]
+id = "solidity-language-server"
+languages = ["solidity"]
+fileGlob = ["*.sol"]
+command = "solidity-language-server"
+args = ["--stdio"]

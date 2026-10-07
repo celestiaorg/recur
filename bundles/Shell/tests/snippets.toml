@@ -1,0 +1,139 @@
+[[test]]
+name = "bash"
+snippet = "recur.shell.bash"
+[test.expect]
+stdout = '''
+#!/usr/bin/env bash
+'''
+
+[[test]]
+name = "zsh"
+snippet = "recur.shell.zsh"
+[test.expect]
+stdout = '''
+#!/usr/bin/env zsh
+'''
+
+[[test]]
+name = "if"
+snippet = "recur.shell.if"
+[test.expect]
+stdout = '''
+if ${2:[[ ${1:condition} ]]}; then
+	${0:#statements}
+fi
+'''
+
+[[test]]
+name = "case"
+snippet = "recur.shell.case"
+[test.expect]
+stdout = '''
+case ${1:word} in
+${2:pattern})
+	$0;;
+esac
+'''
+
+[[test]]
+name = "for"
+snippet = "recur.shell.for"
+[test.expect]
+stdout = '''
+for (( i = 0; i < ${1:10}; i++ )); do
+	${0:#statements}
+done
+'''
+
+[[test]]
+name = "while"
+snippet = "recur.shell.while"
+[test.expect]
+stdout = '''
+while ${2:[[ ${1:condition} ]]}; do
+	${0:#statements}
+done
+'''
+
+[[test]]
+name = "tmpf"
+snippet = "recur.shell.tmpf"
+[test.expect]
+stdout = '''
+${1:TMPFILE}="$(mktemp -t ${2:untitled})"
+trap '${3:rm -f "$TMPFILE"}' EXIT INT HUP TERM
+'''
+
+[[test]]
+name = "sh"
+snippet = "recur.shell.sh"
+[test.expect]
+stdout = '''
+#!/bin/sh
+'''
+
+[[test]]
+name = "env"
+snippet = "recur.shell.env"
+[test.expect]
+stdout = '''
+#!/usr/bin/env ${1:bash}
+'''
+
+[[test]]
+name = "elif"
+snippet = "recur.shell.elif"
+[test.expect]
+stdout = '''
+elif [[ ${1:condition} ]]; then
+	${0:#statements}
+'''
+
+[[test]]
+name = "until"
+snippet = "recur.shell.until"
+[test.expect]
+stdout = '''
+until [[ ${1:condition} ]]; do
+	${0:#statements}
+done
+'''
+
+[[test]]
+name = "do"
+snippet = "recur.shell.do"
+[test.expect]
+stdout = '''
+do
+	${0:#statements}
+done
+'''
+
+[[test]]
+name = "forin"
+snippet = "recur.shell.forin"
+[test.expect]
+stdout = '''
+for ${1:i} in ${2:words}; do
+	${0:#statements}
+done
+'''
+
+[[test]]
+name = "here"
+snippet = "recur.shell.here"
+[test.expect]
+stdout = '''
+<<-${1:TOKEN}
+	$0
+${1:TOKEN}
+'''
+
+[[test]]
+name = "tmpd"
+snippet = "recur.shell.tmpd"
+[test.expect]
+stdout = '''
+${1:TMPDIR}="$(mktemp -d -t ${2:untitled})"
+trap '${3:rm -rf "$TMPDIR"}' EXIT INT HUP TERM
+'''

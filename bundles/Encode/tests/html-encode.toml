@@ -1,0 +1,11 @@
+[[test]]
+name = "html encodes"
+command = "HTML Encode Entities"
+
+[test.context]
+input = "<a & \"b\">"
+selectedText = "<a & \"b\">"
+
+[test.expect]
+stdout = "&lt;a &amp; &quot;b&quot;&gt;"
+output = "replaceSelection"

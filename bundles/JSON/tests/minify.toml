@@ -1,0 +1,31 @@
+[[test]]
+name = "minifies json"
+command = "Minify JSON"
+
+[test.context]
+input = '''
+{
+  "a": 1
+}
+'''
+selectedText = '''
+{
+  "a": 1
+}
+'''
+
+[test.expect]
+stdout = "{\"a\":1}"
+output = "replaceSelection"
+
+[[test]]
+name = "minifies jsonc (comments + trailing comma)"
+command = "Minify JSON"
+
+[test.context]
+inputFile = "jsonc/input.jsonc"
+selectedTextFile = "jsonc/input.jsonc"
+
+[test.expect]
+stdoutFile = "jsonc/expect-minify.json"
+output = "replaceSelection"

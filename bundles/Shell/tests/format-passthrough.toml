@@ -1,0 +1,17 @@
+[[test]]
+name = "passes through when shfmt missing"
+command = "Shfmt on Save"
+
+[test.context]
+input = '''
+echo hi
+'''
+selectedText = '''
+echo hi
+'''
+
+[test.expect]
+stdout = '''
+echo hi
+'''
+output = "replaceDocument"

@@ -1,0 +1,223 @@
+{
+  "name": "Charcoal",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#0e0e0e",
+    "editor.foreground": "#e6e4e1",
+    "editor.selectionBackground": "#3c3936",
+    "editor.lineHighlightBackground": "#ffffff0f",
+    "editorCursor.foreground": "#e07a5f",
+    "editorLineNumber.foreground": "#686662",
+    "editorGutter.background": "#161616",
+    "editor.findMatchBackground": "#e07a5f47",
+    "editor.findMatchHighlightBackground": "#e07a5f80"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#e6e4e1",
+        "background": "#0e0e0e"
+      }
+    },
+    {
+      "name": "Comments",
+      "scope": ["comment", "punctuation.definition.comment", "string.comment"],
+      "settings": { "foreground": "#686662", "fontStyle": "italic" }
+    },
+    {
+      "name": "Strings",
+      "scope": [
+        "string",
+        "string.quoted",
+        "string.template",
+        "punctuation.definition.string"
+      ],
+      "settings": { "foreground": "#9fe3b5" }
+    },
+    {
+      "name": "RegExp",
+      "scope": ["string.regexp", "constant.character.escape"],
+      "settings": { "foreground": "#e0b88a" }
+    },
+    {
+      "name": "Numbers and constants",
+      "scope": [
+        "constant.numeric",
+        "constant.language",
+        "constant.character",
+        "constant.other",
+        "constant.other.placeholder",
+        "variable.other.constant",
+        "variable.other.enummember",
+        "entity.name.constant",
+        "keyword.other.unit",
+        "support.constant"
+      ],
+      "settings": { "foreground": "#e0b88a" }
+    },
+    {
+      "name": "Keywords and storage",
+      "scope": [
+        "keyword",
+        "keyword.control",
+        "keyword.operator.word",
+        "storage",
+        "storage.type",
+        "storage.modifier",
+        "variable.language"
+      ],
+      "settings": { "foreground": "#c4a0f5" }
+    },
+    {
+      "name": "Functions",
+      "scope": ["entity.name.function", "support.function"],
+      "settings": { "foreground": "#e07a5f" }
+    },
+    {
+      "name": "Types and classes",
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "entity.other.inherited-class",
+        "support.type",
+        "support.class",
+        "support.class.component",
+        "entity.name.namespace",
+        "support.variable"
+      ],
+      "settings": { "foreground": "#6eb6ff" }
+    },
+    {
+      "name": "HTML/XML/JSX tags",
+      "scope": ["entity.name.tag"],
+      "settings": { "foreground": "#c4a0f5" }
+    },
+    {
+      "name": "Attributes and property names",
+      "scope": [
+        "entity.other.attribute-name",
+        "invalid.deprecated.entity.other.attribute-name.html",
+        "support.type.property-name",
+        "meta.property-name",
+        "meta.object-literal.key"
+      ],
+      "settings": { "foreground": "#6eb6ff" }
+    },
+    {
+      "name": "Parameters",
+      "scope": ["variable.parameter"],
+      "settings": { "foreground": "#e6e4e1", "fontStyle": "italic" }
+    },
+    {
+      "name": "Variables",
+      "scope": ["variable", "variable.other"],
+      "settings": { "foreground": "#e6e4e1" }
+    },
+    {
+      "name": "Operators and punctuation",
+      "scope": ["keyword.operator", "punctuation", "meta.brace"],
+      "settings": { "foreground": "#969490" }
+    },
+    {
+      "name": "dotenv keys and $vars",
+      "scope": [
+        "variable.key.dotenv",
+        "variable.other.dotenv",
+        "variable.interpolation.dotenv"
+      ],
+      "settings": { "foreground": "#6eb6ff" }
+    },
+    {
+      "name": "dotenv values",
+      "scope": ["property.value.dotenv"],
+      "settings": { "foreground": "#9fe3b5" }
+    },
+    {
+      "name": "dotenv assignment",
+      "scope": ["keyword.operator.assignment.dotenv"],
+      "settings": { "foreground": "#969490" }
+    },
+    {
+      "name": "Embedded / template punctuation",
+      "scope": [
+        "punctuation.definition.template-expression",
+        "punctuation.section.embedded"
+      ],
+      "settings": { "foreground": "#c4a0f5" }
+    },
+    {
+      "name": "Markup headings",
+      "scope": [
+        "markup.heading",
+        "markup.heading entity.name",
+        "entity.name.section",
+        "punctuation.definition.heading"
+      ],
+      "settings": { "foreground": "#6eb6ff", "fontStyle": "bold" }
+    },
+    {
+      "name": "Markup bold",
+      "scope": ["markup.bold", "strong"],
+      "settings": { "fontStyle": "bold" }
+    },
+    {
+      "name": "Markup italic",
+      "scope": ["markup.italic", "emphasis"],
+      "settings": { "fontStyle": "italic" }
+    },
+    {
+      "name": "Markup underline",
+      "scope": ["markup.underline"],
+      "settings": { "fontStyle": "underline" }
+    },
+    {
+      "name": "Markup strikethrough",
+      "scope": ["markup.strikethrough"],
+      "settings": { "fontStyle": "strikethrough" }
+    },
+    {
+      "name": "Markup quotes and inline code",
+      "scope": [
+        "markup.quote",
+        "markup.inline.raw",
+        "markup.raw",
+        "markup.fenced_code"
+      ],
+      "settings": { "foreground": "#9fe3b5" }
+    },
+    {
+      "name": "Markup links",
+      "scope": [
+        "markup.underline.link",
+        "string.other.link",
+        "meta.link.inline.markdown"
+      ],
+      "settings": { "foreground": "#6eb6ff" }
+    },
+    {
+      "name": "Markup lists",
+      "scope": ["punctuation.definition.list.begin.markdown"],
+      "settings": { "foreground": "#e07a5f" }
+    },
+    {
+      "name": "Invalid",
+      "scope": ["invalid"],
+      "settings": { "foreground": "#f87171" }
+    },
+    {
+      "name": "Diff inserted",
+      "scope": ["markup.inserted"],
+      "settings": { "foreground": "#9fe3b5" }
+    },
+    {
+      "name": "Diff deleted",
+      "scope": ["markup.deleted"],
+      "settings": { "foreground": "#f0a892" }
+    },
+    {
+      "name": "Diff changed",
+      "scope": ["markup.changed"],
+      "settings": { "foreground": "#e0b88a" }
+    }
+  ]
+}

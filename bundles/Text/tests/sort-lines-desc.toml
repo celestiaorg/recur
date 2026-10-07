@@ -1,0 +1,23 @@
+[[test]]
+name = "sorts lines descending"
+command = "Sort Lines Descending"
+
+[test.context]
+input = '''
+a
+c
+b
+'''
+selectedText = '''
+a
+c
+b
+'''
+
+[test.expect]
+stdout = '''
+c
+b
+a
+'''
+output = "replaceSelection"

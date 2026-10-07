@@ -38,7 +38,7 @@ func (s *Store) CreateSession(sess domain.Session) (domain.Session, error) {
 		return domain.Session{}, fmt.Errorf("session store requires a database")
 	}
 	if sess.ID == "" {
-		sess.ID = uuid.NewString()
+		sess.ID = uuid.Must(uuid.NewV7()).String()
 	}
 	now := time.Now().UnixMilli()
 	if sess.CreatedAt == 0 {
@@ -367,7 +367,7 @@ func (s *Store) CreateMessage(sessionID string, m domain.Message) (string, error
 	sessionMu.Lock()
 	defer sessionMu.Unlock()
 	if m.ID == "" {
-		m.ID = uuid.NewString()
+		m.ID = uuid.Must(uuid.NewV7()).String()
 	}
 	if m.OriginSessionID == "" {
 		m.OriginSessionID = sessionID
@@ -602,7 +602,7 @@ func (s *Store) AppendContentBlock(messageID string, b domain.ContentBlock) erro
 	sessionMu.Lock()
 	defer sessionMu.Unlock()
 	if b.ID == "" {
-		b.ID = uuid.NewString()
+		b.ID = uuid.Must(uuid.NewV7()).String()
 	}
 	return s.db.appendContentBlock(messageID, b)
 }
@@ -1017,7 +1017,7 @@ func (d *db) streamingAppSessions() ([]domain.Session, error) {
 func (d *db) writeSessionContext(sessionID, summary, lastCompactedMessageID string) (domain.SessionContext, error) {
 	now := time.Now().UnixMilli()
 	ctx := domain.SessionContext{
-		ID:                     uuid.NewString(),
+		ID:                     uuid.Must(uuid.NewV7()).String(),
 		SessionID:              sessionID,
 		Summary:                summary,
 		LastCompactedMessageID: lastCompactedMessageID,
@@ -1188,7 +1188,7 @@ func nextSessionIdxTx(tx *sql.Tx, sessionID string) (int, error) {
 
 func (d *db) appendMessage(sessionID string, m domain.Message) (domain.Message, error) {
 	if m.ID == "" {
-		m.ID = uuid.NewString()
+		m.ID = uuid.Must(uuid.NewV7()).String()
 	}
 	if m.OriginSessionID == "" {
 		m.OriginSessionID = sessionID
@@ -1216,7 +1216,7 @@ func (d *db) appendMessage(sessionID string, m domain.Message) (domain.Message, 
 	}
 	for bi, b := range m.Content {
 		if b.ID == "" {
-			b.ID = uuid.NewString()
+			b.ID = uuid.Must(uuid.NewV7()).String()
 			m.Content[bi].ID = b.ID
 		}
 		if err := insertContentBlockTx(tx, m.ID, bi, b); err != nil {
@@ -1257,7 +1257,7 @@ func insertSessionMessageTx(x execer, sessionID, messageID string, idx int) erro
 
 func insertContentBlockTx(x execer, messageID string, idx int, b domain.ContentBlock) error {
 	if b.ID == "" {
-		b.ID = uuid.NewString()
+		b.ID = uuid.Must(uuid.NewV7()).String()
 	}
 	if len(b.ContentJSON) == 0 {
 		b.ContentJSON = []byte(`{}`)
@@ -1414,7 +1414,7 @@ func (d *db) forkSession(parentID, forkMessageID, destWorkspaceID, kind, configJ
 	}
 	now := time.Now().UnixMilli()
 	child := domain.Session{
-		ID:              uuid.NewString(),
+		ID:              uuid.Must(uuid.NewV7()).String(),
 		WorkspaceID:     workspaceID,
 		Kind:            kind,
 		ParentSessionID: parent.ID,
@@ -1481,7 +1481,7 @@ func copySessionContextTx(tx *sql.Tx, parentContextID, childSessionID string, no
 	if n == 0 {
 		return "", nil
 	}
-	ctxID := uuid.NewString()
+	ctxID := uuid.Must(uuid.NewV7()).String()
 	if _, err := tx.Exec(
 		`INSERT INTO session_context (id, session_id, summary, last_compacted_message_id, created_at)
 		 VALUES (?,?,?,?,?)`,

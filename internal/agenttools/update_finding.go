@@ -81,7 +81,7 @@ func (updateFindingTool) Execute(c Call) (string, error) {
 		UpdatedBy    string    `json:"updatedBy,omitempty"`
 		Notes        []noteRow `json:"notes,omitempty"`
 	}{
-		ID: f.ID, Status: f.Status, File: f.File, Line: f.Line, EndLine: f.EndLine,
+		ID: f.PublicID(), Status: f.Status, File: f.File, Line: f.Line, EndLine: f.EndLine,
 		Severity: string(f.Severity), Message: f.Message, Summary: f.Summary,
 		StatusReason: f.StatusReason, UpdatedBy: f.UpdatedBy, Notes: notes,
 	}

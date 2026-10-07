@@ -93,7 +93,7 @@ func (reportFindingTool) Execute(c Call) (string, error) {
 		Summary  string `json:"summary,omitempty"`
 		Status   string `json:"status"`
 	}{
-		ID: f.ID, File: f.File, Line: f.Line, EndLine: f.EndLine,
+		ID: f.PublicID(), File: f.File, Line: f.Line, EndLine: f.EndLine,
 		Severity: string(f.Severity), Message: f.Message, Summary: f.Summary,
 		Status: f.Status,
 	}

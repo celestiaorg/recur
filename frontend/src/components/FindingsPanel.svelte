@@ -8,7 +8,7 @@
   import MarkdownHtml from './MarkdownHtml.svelte'
   import Icon from './Icon.svelte'
   import Kbd from './Kbd.svelte'
-  import { findingBodyNeeded, findingSevIcon, findingTitle } from '../lib/findings-ui'
+  import { findingBodyNeeded, findingMatchesRef, findingSevIcon, findingTitle } from '../lib/findings-ui'
   import { formatRelativeAge } from '../lib/format'
   import { isCmdOrCtrl } from '../lib/shortcut'
 
@@ -124,13 +124,18 @@
 
   const selected = $derived(visible.find((f) => f.id === selectedId) ?? null)
 
+  function resolveFindingId(ref: string): string {
+    return findings.find((f) => findingMatchesRef(f, ref))?.id || ref
+  }
+
   $effect(() => {
     // Keep selection inside the filtered list; default to the first row.
     // Prefer an in-flight deep-link so it wins over the default pick.
     const keep = new Set(visible.map((f) => f.id))
     const jump = expandIds.find(Boolean) || focusNoteId
-    if (jump && keep.has(jump)) {
-      if (selectedId !== jump) selectedId = jump
+    const jumpRow = jump ? visible.find((f) => findingMatchesRef(f, jump)) : undefined
+    if (jumpRow) {
+      if (selectedId !== jumpRow.id) selectedId = jumpRow.id
     } else if (selectedId && !keep.has(selectedId)) {
       selectedId = visible[0]?.id ?? ''
     } else if (!selectedId && visible.length) {
@@ -157,7 +162,7 @@
 
   async function scrollSelectedIntoView(id: string) {
     await tick()
-    const el = listEl?.querySelector(`[data-finding-id="${CSS.escape(id)}"]`) as HTMLElement | null
+    const el = listEl?.querySelector(`[data-finding-id="${CSS.escape(resolveFindingId(id))}"]`) as HTMLElement | null
     el?.scrollIntoView({ block: 'nearest' })
   }
 
@@ -176,9 +181,10 @@
   }
 
   async function openCompose(id: string) {
-    composeFor = id
-    if (!(id in draftById)) draftById = { ...draftById, [id]: '' }
-    await focusNoteInput(id)
+    const key = resolveFindingId(id)
+    composeFor = key
+    if (!(key in draftById)) draftById = { ...draftById, [key]: '' }
+    await focusNoteInput(key)
     await tick()
     updateScrollFade()
   }

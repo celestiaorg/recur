@@ -960,7 +960,7 @@ func (m *sessionMirror) Event(ev ParsedEvent) {
 		}
 		m.ensure("assistant")
 		m.noteProviderUUID(ev.UUID)
-		internal := uuid.NewString()
+		internal := uuid.Must(uuid.NewV7()).String()
 		if ev.ToolUseID != "" {
 			m.toolIDs[ev.ToolUseID] = internal
 		}

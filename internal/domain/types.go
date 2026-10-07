@@ -800,7 +800,8 @@ type FindingNote struct {
 
 // Finding is a structured reviewer report (PRD §8.3 report_finding) driving convergence.
 type Finding struct {
-	ID           string        `json:"id"`
+	ID           string        `json:"id"`      // UUID — internal storage key
+	ShortID      string        `json:"shortId"` // find_… — agents and humans; unique per workspace
 	WorkspaceID  string        `json:"workspaceId"`
 	Iteration    int           `json:"iteration"`
 	File         string        `json:"file"`
@@ -818,6 +819,20 @@ type Finding struct {
 	// Source is "user" for operator notes from the Observatory review surface;
 	// empty means a reviewer/agent finding.
 	Source string `json:"source,omitempty"`
+}
+
+// PublicID is the identifier agents use (short id). Falls back to ID for
+// legacy rows that have not been backfilled.
+func (f Finding) PublicID() string {
+	if f.ShortID != "" {
+		return f.ShortID
+	}
+	return f.ID
+}
+
+// MatchesRef reports whether ref is this finding's UUID or public short id.
+func (f Finding) MatchesRef(ref string) bool {
+	return ref != "" && (f.ID == ref || f.ShortID == ref)
 }
 
 // FindingLoc formats file[:line] or file:start-end for display/prompts.

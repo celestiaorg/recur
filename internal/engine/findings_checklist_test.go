@@ -18,7 +18,7 @@ func TestCoderDoneRefusesOpenFindings(t *testing.T) {
 	}
 
 	rep := engineReporter{eng: eng}
-	st.AddFinding(domain.Finding{
+	stored := st.AddFinding(domain.Finding{
 		ID: "F1", WorkspaceID: "L-fc", Iteration: 1,
 		File: "a.go", Line: 1, Severity: domain.SevHigh, Message: "bug",
 		Status: string(domain.FindingOpen),
@@ -28,11 +28,11 @@ func TestCoderDoneRefusesOpenFindings(t *testing.T) {
 	if err == nil {
 		t.Fatal("done should refuse while findings are open")
 	}
-	if !strings.Contains(err.Error(), "F1") {
+	if !strings.Contains(err.Error(), stored.PublicID()) {
 		t.Errorf("done error should list open finding ids, got %v", err)
 	}
 
-	if _, err := rep.UpdateFinding("L-fc", "CO", "F1", "resolved", ""); err != nil {
+	if _, err := rep.UpdateFinding("L-fc", "CO", stored.PublicID(), "resolved", ""); err != nil {
 		t.Fatalf("update_finding resolved: %v", err)
 	}
 	got := st.Findings("L-fc")[0]

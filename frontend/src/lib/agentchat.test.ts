@@ -1265,6 +1265,39 @@ describe('agent error replies', () => {
     ])
   })
 
+  test('stillOpenFindingsForTurn closes a short-id filing when update_finding uses the UUID', () => {
+    const uuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+    const shortId = 'find_k7mq2xf9'
+    const filed = {
+      id: uuid,
+      shortId,
+      file: 'store.go',
+      line: 10,
+      message: 'nil deref',
+      status: 'open',
+    }
+    const msgs = [
+      { me: true, body: 'review this' },
+      {
+        tool: 'mcp__recur__report_finding',
+        result: JSON.stringify({
+          id: uuid,
+          file: filed.file,
+          line: filed.line,
+          message: filed.message,
+          status: 'open',
+        }),
+      },
+      {
+        tool: 'mcp__recur__update_finding',
+        input: JSON.stringify({ finding_id: uuid, status: 'resolved' }),
+        result: '{}',
+      },
+      { turnEnd: true },
+    ]
+    expect(stillOpenFindingsForTurn(msgs, 3, [filed])).toEqual([])
+  })
+
   test('mapChatItems keeps a Codex turn footer so the findings digest can render', () => {
     const mapped = mapChatItems([
       { role: 'user', kind: 'text', text: 'review this' },

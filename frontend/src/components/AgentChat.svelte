@@ -222,7 +222,7 @@
   import WorkspaceBriefCard from './WorkspaceBriefCard.svelte'
   import Kbd from './Kbd.svelte'
   import {
-    findingBodyNeeded, findingLocLabel, findingLocSuffix as locSuffixOf, findingSevIcon, findingSeverityTally,
+    findingBodyNeeded, findingLocLabel, findingLocSuffix as locSuffixOf, findingMatchesRef, findingSevIcon, findingSeverityTally,
     findingTitle, parseListedFinding, resolveListFindings,
     type ListedFinding, type ListedFindings,
   } from '../lib/findings-ui'
@@ -3199,7 +3199,7 @@
   }
   function findingFromStore(id: string): ListedFinding | null {
     if (!id) return null
-    const f = findings.find((x) => x.id === id)
+    const f = findings.find((x) => findingMatchesRef(x, id))
     return f ? parseListedFinding(f) : null
   }
   // finding_id is in the tool input — look up file/message/severity from the
@@ -3383,7 +3383,7 @@
   }
 
   function jumpToFinding(id: string, focusNote = false) {
-    const f = id ? findings.find((x) => x.id === id) : undefined
+    const f = id ? findings.find((x) => findingMatchesRef(x, id)) : undefined
     observatoryJump.set({
       workspaceId: workspaceId || undefined,
       projectId: projectId || undefined,
@@ -3429,7 +3429,7 @@
   async function deleteDigestNote(findingId: string, noteId: string) {
     if (!workspaceId || !findingId || !noteId || digestCommentBusy) return
     const current = digestNotesById[findingId]
-      ?? findings.find((f) => f.id === findingId)?.notes
+      ?? findings.find((f) => findingMatchesRef(f, findingId))?.notes
       ?? []
     digestCommentBusy = findingId
     applyDigestNotes(findingId, current.filter((n) => n.id !== noteId))

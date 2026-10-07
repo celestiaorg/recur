@@ -65,6 +65,7 @@
   import { attachChatSurface, chatSurfaceForView } from '../lib/chat-surface'
   import { latestTodosFromMessages } from '../lib/todos'
   import { removeWorkspace } from '../lib/remove-workspace'
+  import { uuidv7 } from '../lib/uuid'
 
   // Bound workspace (sidebar selection or the PR's linked workspace). Chat
   // maps stay on this instance so switching detail ↔ PR does not reset a turn.
@@ -2088,7 +2089,7 @@
     if (boundWsId === id && activeCode === code) chatInput = ''
     inputByKey = { ...inputByKey, [key]: '' }
     const pending: PendingChatSend = {
-      id: crypto.randomUUID(),
+      id: uuidv7(),
       marked: prompt,
       plain: display,
       drafts: [],
@@ -2348,7 +2349,7 @@
       }
 
       const prepared: HeldPromptSend = {
-        holdId: crypto.randomUUID(),
+        holdId: uuidv7(),
         workspaceId: ws.id,
         actionId: info.id,
         slash: (info.slash || slashName).replace(/^\//, '').trim(),
@@ -2532,7 +2533,7 @@
 
     const openingLabel = (opts?.displayText ?? '').trim()
     const pending: PendingChatSend = {
-      id: crypto.randomUUID(),
+      id: uuidv7(),
       marked,
       plain,
       drafts: drafts.slice(),
@@ -2634,7 +2635,7 @@
     // send it as the retry payload. Loop on a PA* tab means "engage", which
     // Retry must not do — send agent so the run-lock still applies.
     dispatchSend(id, code, key, {
-      id: crypto.randomUUID(),
+      id: uuidv7(),
       marked: CHAT_RETRY_DISPLAY,
       plain: '',
       drafts: [],

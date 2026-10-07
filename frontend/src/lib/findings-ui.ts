@@ -3,6 +3,22 @@
 import { matchFindingPath, rightDiffHasRange } from './finding-paths'
 import type { IconName } from './icons'
 
+/** Finding identity fields used when matching UUID vs public short id. */
+export type FindingRef = {
+  id?: string
+  shortId?: string
+}
+
+/** Public id agents use (short id), falling back to the internal UUID. */
+export function findingPublicId(f: FindingRef): string {
+  return f.shortId || f.id || ''
+}
+
+/** True when ref is this finding's UUID or public short id. */
+export function findingMatchesRef(f: FindingRef, ref: string): boolean {
+  return !!ref && (f.id === ref || (!!f.shortId && f.shortId === ref))
+}
+
 /** Severity → Tabler icon used in dense finding rows. */
 export function findingSevIcon(severity: string | undefined): IconName {
   switch ((severity || '').toLowerCase()) {

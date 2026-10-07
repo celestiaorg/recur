@@ -39,7 +39,7 @@ func (e *Engine) SaveScheduledPrompt(p domain.ScheduledPrompt) (domain.Scheduled
 			return p, fmt.Errorf("a schedule cannot change projects")
 		}
 	} else {
-		p.ID = uuid.NewString()
+		p.ID = uuid.Must(uuid.NewV7()).String()
 	}
 	next, err := domain.NextScheduledTime(p, e.now())
 	if err != nil {
@@ -154,7 +154,7 @@ func (e *Engine) RunScheduledPromptNow(id string) (string, error) {
 		}
 		p.NextRunAt = scheduledMillis(next)
 	}
-	r := domain.ScheduledPromptRun{ID: uuid.NewString(), ScheduleID: id, DueAt: now.UnixMilli(), Status: "running"}
+	r := domain.ScheduledPromptRun{ID: uuid.Must(uuid.NewV7()).String(), ScheduleID: id, DueAt: now.UnixMilli(), Status: "running"}
 	claimed, err := e.Store.ClaimScheduledPrompt(p, r)
 	if err != nil {
 		return "", err
@@ -338,7 +338,7 @@ func (e *Engine) tickScheduledPrompts(now time.Time, startup bool) error {
 		if p.Paused || (onStartup && !startup) || (!onStartup && (p.NextRunAt == 0 || p.NextRunAt > now.UnixMilli())) {
 			continue
 		}
-		r := domain.ScheduledPromptRun{ID: uuid.NewString(), ScheduleID: p.ID, DueAt: p.NextRunAt, Status: "running"}
+		r := domain.ScheduledPromptRun{ID: uuid.Must(uuid.NewV7()).String(), ScheduleID: p.ID, DueAt: p.NextRunAt, Status: "running"}
 		if onStartup {
 			r.DueAt = now.UnixMilli()
 		}

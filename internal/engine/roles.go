@@ -284,7 +284,7 @@ func coderFixPrompt(task string, findings []domain.Finding) string {
 	b.WriteString("\n\nReviewer findings to fix:\n")
 	for i, f := range findings {
 		loc := domain.FindingLoc(f.File, f.Line, f.EndLine)
-		id := f.ID
+		id := f.PublicID()
 		if id == "" {
 			id = "?"
 		}
@@ -325,7 +325,7 @@ func coderOpenFindingsNudgePrompt(task string, open []domain.Finding) string {
 	b.WriteString("\n\nOpen findings:\n")
 	for i, f := range open {
 		loc := domain.FindingLoc(f.File, f.Line, f.EndLine)
-		b.WriteString(fmt.Sprintf("%d. id=%s [%s] %s — %s\n", i+1, f.ID, f.Severity, loc, f.Message))
+		b.WriteString(fmt.Sprintf("%d. id=%s [%s] %s — %s\n", i+1, f.PublicID(), f.Severity, loc, f.Message))
 	}
 	return b.String()
 }

@@ -149,7 +149,7 @@ func (m *Manager) ensureSpec(workspaceID, rootPath string, spec ServerSpec) (Ses
 		}
 	}
 
-	id := uuid.NewString()
+	id := uuid.Must(uuid.NewV7()).String()
 	rootPath = CanonPath(rootPath)
 	rootURI := PathToURI(rootPath)
 	s, err := startSession(id, workspaceID, rootPath, rootURI, resolved, m.wrapEmit(id, key))

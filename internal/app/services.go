@@ -240,7 +240,7 @@ func (s *ProjectsService) AddProjectGroup(g domain.ProjectGroup) (domain.Project
 		g.Name = "New group"
 	}
 	if g.ID == "" {
-		g.ID = uuid.NewString()
+		g.ID = uuid.Must(uuid.NewV7()).String()
 	}
 	if !s.st().HasProjectGroup(g.ID) {
 		g.Open = true

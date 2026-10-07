@@ -21,6 +21,7 @@ import (
 
 	"recur/internal/domain"
 	"recur/internal/projfile"
+	"recur/internal/shortid"
 )
 
 // Store is the single source of truth for loops, PRs, projects, inbox, policy, etc.
@@ -1027,8 +1028,9 @@ func (s *Store) Findings(workspaceID string) []domain.Finding {
 	return out
 }
 
-// AddFinding records a new reviewer finding for a loop, persisting it. The engine
-// assigns the id/iteration/status before calling (an agent can't forge them).
+// AddFinding records a new reviewer finding for a loop, persisting it. The
+// engine stamps iteration/status; the store assigns a UUID and a public
+// find_… short id (unique per workspace, collision-retried on insert).
 // Returns the stored copy.
 func (s *Store) AddFinding(f domain.Finding) domain.Finding {
 	s.mu.Lock()
@@ -1036,13 +1038,46 @@ func (s *Store) AddFinding(f domain.Finding) domain.Finding {
 	if f.CreatedAt == "" {
 		f.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 	}
-	list := s.findings[f.WorkspaceID]
-	sort := len(list)
-	s.findings[f.WorkspaceID] = append(list, f)
-	if s.db != nil {
-		_ = s.db.upsertFinding(f, sort)
+	if f.ID == "" {
+		f.ID = uuid.Must(uuid.NewV7()).String()
 	}
+	list := s.findings[f.WorkspaceID]
+	ord := len(list)
+	assignFindingShortID(&f, list)
+	if s.db != nil {
+		var err error
+		for range shortid.DefaultAttempts {
+			err = s.db.upsertFinding(f, ord)
+			if err == nil || !isUniqueConstraint(err) {
+				break
+			}
+			f.ShortID = ""
+			assignFindingShortID(&f, list)
+		}
+		if err != nil {
+			return f
+		}
+	}
+	s.findings[f.WorkspaceID] = append(list, f)
 	return f
+}
+
+// assignFindingShortID fills ShortID when missing or already taken in list.
+func assignFindingShortID(f *domain.Finding, list []domain.Finding) {
+	taken := func(id string) bool {
+		for _, existing := range list {
+			if existing.ShortID == id {
+				return true
+			}
+		}
+		return false
+	}
+	if f.ShortID != "" && !taken(f.ShortID) {
+		return
+	}
+	if sid, err := domain.NewUniqueID(domain.TypeFinding, taken); err == nil {
+		f.ShortID = sid
+	}
 }
 
 // ResolveFindings marks every still-open finding for a loop resolved (engine bulk
@@ -1092,11 +1127,11 @@ func (s *Store) AddFindingNote(workspaceID, findingID, body, author string) (dom
 	defer s.mu.Unlock()
 	list := s.findings[workspaceID]
 	for i := range list {
-		if list[i].ID != findingID {
+		if !list[i].MatchesRef(findingID) {
 			continue
 		}
 		note := domain.FindingNote{
-			ID:        uuid.NewString(),
+			ID:        uuid.Must(uuid.NewV7()).String(),
 			Author:    author,
 			Body:      body,
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
@@ -1122,7 +1157,7 @@ func (s *Store) DeleteFindingNote(workspaceID, findingID, noteID string) (domain
 	defer s.mu.Unlock()
 	list := s.findings[workspaceID]
 	for i := range list {
-		if list[i].ID != findingID {
+		if !list[i].MatchesRef(findingID) {
 			continue
 		}
 		notes := list[i].Notes
@@ -1188,7 +1223,7 @@ func (s *Store) UpdateFindingStatus(workspaceID, findingID, status, reason, acto
 	defer s.mu.Unlock()
 	list := s.findings[workspaceID]
 	for i := range list {
-		if list[i].ID != findingID {
+		if !list[i].MatchesRef(findingID) {
 			continue
 		}
 		cur := list[i]

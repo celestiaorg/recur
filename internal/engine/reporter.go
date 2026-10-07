@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"recur/internal/code"
 	"recur/internal/domain"
@@ -84,9 +83,8 @@ type engineReporter struct {
 }
 
 // ReportFinding records one reviewer finding for the loop's CURRENT review
-// iteration. The engine stamps the id/iteration/status; the agent supplies only
-// file/line/severity/message. It is collected for the iteration's convergence
-// decision, persisted (PRD §14), and surfaced in the activity feed.
+// iteration. The engine stamps iteration/status; the store assigns the UUID
+// and public short id. The agent supplies only file/line/severity/message.
 func (r engineReporter) ReportFinding(workspaceID, agentCode string, f mcp.Finding) domain.Finding {
 	lp := r.eng.runningLoopByID(workspaceID)
 	iter := 1
@@ -102,7 +100,6 @@ func (r engineReporter) ReportFinding(workspaceID, agentCode string, f mcp.Findi
 	}
 
 	df := domain.Finding{
-		ID:          fmt.Sprintf("F-%s-%d", workspaceID, time.Now().UnixNano()),
 		WorkspaceID: workspaceID,
 		Iteration:   iter,
 		File:        f.File,
@@ -138,7 +135,7 @@ func (r engineReporter) Done(workspaceID, agentCode, summary, notes string) erro
 					"(resolved or invalid with reason), then call done again.\n", len(open)))
 			for i, f := range open {
 				loc := domain.FindingLoc(f.File, f.Line, f.EndLine)
-				b.WriteString(fmt.Sprintf("%d. id=%s [%s] %s — %s\n", i+1, f.ID, f.Severity, loc, f.Message))
+				b.WriteString(fmt.Sprintf("%d. id=%s [%s] %s — %s\n", i+1, f.PublicID(), f.Severity, loc, f.Message))
 				for _, n := range f.Notes {
 					body := strings.TrimSpace(n.Body)
 					if body == "" {

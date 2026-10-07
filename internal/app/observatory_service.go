@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"recur/internal/domain"
 	"recur/internal/engine"
@@ -101,7 +100,6 @@ func (s *ObservatoryService) CreateFinding(workspaceID, file string, line int, m
 		iter = ws.Iteration
 	}
 	f := s.st().AddFinding(domain.Finding{
-		ID:          fmt.Sprintf("F-%s-%d", workspaceID, time.Now().UnixNano()),
 		WorkspaceID: workspaceID,
 		Iteration:   iter,
 		File:        file,

@@ -304,7 +304,7 @@ func (e *Engine) sendWorkspaceTurn(workspaceID, code, text, model string, flags 
 	}
 	// The user message id is minted here so the worktree can be checkpointed
 	// under it before the agent touches anything (checkpoint.go).
-	userMsgID := uuid.NewString()
+	userMsgID := uuid.Must(uuid.NewV7()).String()
 	resumeTurn := displayText == chatResumeDisplay
 	spec := AgentSpec{
 		WorkspaceID:                 workspaceID,

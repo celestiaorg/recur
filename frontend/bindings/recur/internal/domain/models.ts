@@ -1688,6 +1688,11 @@ export class FileSearchResult {
  */
 export class Finding {
     "id": string;
+
+    /**
+     * find_… — agents and humans; unique per workspace
+     */
+    "shortId": string;
     "workspaceId": string;
     "iteration": number;
     "file": string;
@@ -1745,6 +1750,9 @@ export class Finding {
     constructor($$source: Partial<Finding> = {}) {
         if (!("id" in $$source)) {
             this["id"] = "";
+        }
+        if (!("shortId" in $$source)) {
+            this["shortId"] = "";
         }
         if (!("workspaceId" in $$source)) {
             this["workspaceId"] = "";

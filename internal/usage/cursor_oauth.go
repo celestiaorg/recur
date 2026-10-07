@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -42,20 +44,17 @@ func generateCursorPKCE(loginBase string) (pkceLogin, error) {
 	verifier := base64.RawURLEncoding.EncodeToString(raw)
 	sum := sha256.Sum256([]byte(verifier))
 	challenge := base64.RawURLEncoding.EncodeToString(sum[:])
-	id := make([]byte, 16)
-	if _, err := rand.Read(id); err != nil {
+	uid, err := uuid.NewV7()
+	if err != nil {
 		return pkceLogin{}, err
 	}
-	// UUID-shaped id without importing google/uuid (usage stays stdlib here).
-	id[6] = (id[6] & 0x0f) | 0x40
-	id[8] = (id[8] & 0x3f) | 0x80
-	uuid := fmt.Sprintf("%x-%x-%x-%x-%x", id[0:4], id[4:6], id[6:8], id[8:10], id[10:16])
+	id := uid.String()
 	// redirectTarget is Cursor's portal label, not a protocol switch.
 	// sdk: "Sign in to an app using the Cursor SDK" / "return to your app".
 	// cli made the page say Cursor CLI.
 	q := url.Values{
 		"challenge":      {challenge},
-		"uuid":           {uuid},
+		"uuid":           {id},
 		"mode":           {"login"},
 		"redirectTarget": {"sdk"},
 	}
@@ -65,7 +64,7 @@ func generateCursorPKCE(loginBase string) (pkceLogin, error) {
 	return pkceLogin{
 		Verifier:  verifier,
 		Challenge: challenge,
-		UUID:      uuid,
+		UUID:      id,
 		LoginURL:  loginBase + "?" + q.Encode(),
 	}, nil
 }

@@ -54,7 +54,7 @@ func (e *Engine) CreateArtifact(workspaceID, agentCode string, req mcp.CreateArt
 		return domain.Artifact{}, err
 	}
 	// UUID filenames avoid silent overwrite collisions on same-title creates.
-	id := uuid.NewString()
+	id := uuid.Must(uuid.NewV7()).String()
 	ext := artifactExt[kind]
 	filename := id + ext
 	full := filepath.Join(dir, filename)

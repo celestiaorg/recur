@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"recur/internal/domain"
 	"recur/internal/projfile"
 )
@@ -1076,10 +1078,12 @@ func TestUpdateFindingStatusEngineResolvesOpenOnly(t *testing.T) {
 }
 
 func TestAddFindingNote(t *testing.T) {
-	s := openTemp(t, t.TempDir())
+	dir := t.TempDir()
+	s := openTemp(t, dir)
 	s.AddFinding(domain.Finding{
 		ID: "F-n", WorkspaceID: "L1", Iteration: 1,
-		File: "a.go", Line: 1, Severity: domain.SevLow, Message: "bug", Status: string(domain.FindingOpen),
+		File: "a.go", Line: 1, EndLine: 4, Severity: domain.SevLow, Message: "bug",
+		Summary: "short", Status: string(domain.FindingOpen),
 	})
 
 	got, err := s.AddFindingNote("L1", "F-n", "  check the timeout path  ", domain.FindingActorHuman)
@@ -1105,6 +1109,260 @@ func TestAddFindingNote(t *testing.T) {
 	}
 	if _, err := s.AddFindingNote("L1", "missing", "x", domain.FindingActorHuman); err == nil {
 		t.Fatal("expected missing finding error")
+	}
+	s.Close()
+
+	s2, err := open(filepath.Join(dir, "recur.db"))
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer s2.Close()
+	reloaded := s2.Findings("L1")
+	if len(reloaded) != 1 {
+		t.Fatalf("reloaded findings: got %d, want 1", len(reloaded))
+	}
+	f := reloaded[0]
+	if f.File != "a.go" || f.Line != 1 || f.EndLine != 4 || f.Message != "bug" || f.Summary != "short" {
+		t.Errorf("reloaded columns: %+v", f)
+	}
+	if len(f.Notes) != 2 || f.Notes[0].Body != "check the timeout path" || f.Notes[1].Body != "second" {
+		t.Errorf("reloaded notes: %+v", f.Notes)
+	}
+	var docCol int
+	if err := s2.db.sql.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('findings') WHERE name = 'doc_json'`).Scan(&docCol); err != nil {
+		t.Fatalf("pragma: %v", err)
+	}
+	if docCol != 0 {
+		t.Error("findings.doc_json should be gone")
+	}
+}
+
+func TestAddFindingAssignsUUIDAndShortID(t *testing.T) {
+	dir := t.TempDir()
+	s := openTemp(t, dir)
+	first := s.AddFinding(domain.Finding{
+		WorkspaceID: "L1", Iteration: 1,
+		File: "a.go", Line: 1, Severity: domain.SevHigh, Message: "one",
+		Status: string(domain.FindingOpen),
+	})
+	if parsed, err := uuid.Parse(first.ID); err != nil {
+		t.Fatalf("AddFinding() id = %q, want a UUID: %v", first.ID, err)
+	} else if parsed.Version() != 7 {
+		t.Fatalf("AddFinding() id version = %d, want 7", parsed.Version())
+	}
+	if !domain.ValidID(first.ShortID, domain.TypeFinding) {
+		t.Fatalf("AddFinding() short_id = %q, want a valid find_ id", first.ShortID)
+	}
+	second := s.AddFinding(domain.Finding{
+		WorkspaceID: "L1", File: "b.go", Message: "two", Status: "open",
+	})
+	if first.ShortID == second.ShortID {
+		t.Fatalf("AddFinding() reused short_id %q in the same workspace", first.ShortID)
+	}
+	otherWS := s.AddFinding(domain.Finding{
+		WorkspaceID: "L2", ShortID: first.ShortID, File: "c.go", Message: "three", Status: "open",
+	})
+	if otherWS.ShortID != first.ShortID {
+		t.Fatalf("AddFinding() short_id = %q, want %q (unique per workspace)", otherWS.ShortID, first.ShortID)
+	}
+	s.Close()
+
+	s2, err := open(filepath.Join(dir, "recur.db"))
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer s2.Close()
+	reloaded := s2.Findings("L1")
+	if len(reloaded) != 2 {
+		t.Fatalf("reloaded findings: got %d, want 2", len(reloaded))
+	}
+	if reloaded[0].ID != first.ID || reloaded[0].ShortID != first.ShortID {
+		t.Errorf("reloaded[0] = %+v, want id=%s shortId=%s", reloaded[0], first.ID, first.ShortID)
+	}
+	if _, err := s2.SetFindingStatus("L1", first.ShortID, string(domain.FindingIgnored)); err != nil {
+		t.Fatalf("SetFindingStatus by short_id: %v", err)
+	}
+	if _, err := s2.SetFindingStatus("L1", second.ID, string(domain.FindingIgnored)); err != nil {
+		t.Fatalf("SetFindingStatus by uuid: %v", err)
+	}
+}
+
+func TestAddFindingRetriesShortIDCollision(t *testing.T) {
+	s := openTemp(t, t.TempDir())
+	first := s.AddFinding(domain.Finding{
+		WorkspaceID: "L1", ShortID: "find_aaaaaa", File: "a.go", Message: "one", Status: "open",
+	})
+	if first.ShortID != "find_aaaaaa" {
+		t.Fatalf("AddFinding() short_id = %q, want find_aaaaaa", first.ShortID)
+	}
+	second := s.AddFinding(domain.Finding{
+		WorkspaceID: "L1", ShortID: "find_aaaaaa", File: "b.go", Message: "two", Status: "open",
+	})
+	if second.ShortID == first.ShortID {
+		t.Fatalf("AddFinding() did not retry colliding short_id %q", first.ShortID)
+	}
+	if !domain.ValidID(second.ShortID, domain.TypeFinding) {
+		t.Fatalf("AddFinding() retry short_id = %q, want a valid find_ id", second.ShortID)
+	}
+}
+
+func TestAddFindingRetriesPersistedShortIDCollision(t *testing.T) {
+	s := openTemp(t, t.TempDir())
+	if _, err := s.db.sql.Exec(
+		`INSERT INTO findings (id, short_id, workspace_id, file, message, status, sort) VALUES (?,?,?,?,?,?,?)`,
+		"id-disk", "find_aaaaaa", "L1", "a.go", "one", "open", 0,
+	); err != nil {
+		t.Fatalf("insert disk row: %v", err)
+	}
+	got := s.AddFinding(domain.Finding{
+		WorkspaceID: "L1", ShortID: "find_aaaaaa", File: "b.go", Message: "two", Status: "open",
+	})
+	if got.ShortID == "find_aaaaaa" {
+		t.Fatalf("AddFinding() did not retry disk-colliding short_id %q", got.ShortID)
+	}
+	if !domain.ValidID(got.ShortID, domain.TypeFinding) {
+		t.Fatalf("AddFinding() retry short_id = %q, want a valid find_ id", got.ShortID)
+	}
+	found := false
+	for _, f := range s.Findings("L1") {
+		if f.ID == got.ID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("AddFinding() did not cache after unique retry")
+	}
+}
+
+func TestAddFindingDoesNotCachePersistFailure(t *testing.T) {
+	s := openTemp(t, t.TempDir())
+	if err := s.db.sql.Close(); err != nil {
+		t.Fatalf("close db: %v", err)
+	}
+	s.AddFinding(domain.Finding{
+		WorkspaceID: "WS-persist-fail", File: "a.go", Message: "x", Status: "open",
+	})
+	if got := s.Findings("WS-persist-fail"); len(got) != 0 {
+		t.Fatalf("cached unpersisted finding: %+v", got)
+	}
+}
+
+func TestIsUniqueConstraint(t *testing.T) {
+	s := openTemp(t, t.TempDir())
+	_, notNull := s.db.sql.Exec(
+		`INSERT INTO findings (id, short_id, workspace_id, file, message, status, sort) VALUES (?,?,?,?,?,?,?)`,
+		"x", "find_bbbbbb", "W", nil, "m", "open", 0,
+	)
+	if notNull == nil {
+		t.Fatal("NULL file: want NOT NULL error")
+	}
+	if isUniqueConstraint(notNull) {
+		t.Errorf("NOT NULL error matched isUniqueConstraint: %v", notNull)
+	}
+
+	if _, err := s.db.sql.Exec(
+		`INSERT INTO findings (id, short_id, workspace_id, file, message, status, sort) VALUES (?,?,?,?,?,?,?)`,
+		"a", "find_cccccc", "W", "a.go", "one", "open", 0,
+	); err != nil {
+		t.Fatalf("insert first: %v", err)
+	}
+	_, unique := s.db.sql.Exec(
+		`INSERT INTO findings (id, short_id, workspace_id, file, message, status, sort) VALUES (?,?,?,?,?,?,?)`,
+		"b", "find_cccccc", "W", "b.go", "two", "open", 1,
+	)
+	if unique == nil {
+		t.Fatal("duplicate short_id: want unique error")
+	}
+	if !isUniqueConstraint(unique) {
+		t.Errorf("unique error did not match isUniqueConstraint: %v", unique)
+	}
+}
+
+func TestFindingIdentityBackfill(t *testing.T) {
+	dir := t.TempDir()
+	s1 := openTemp(t, dir)
+	if _, err := s1.db.sql.Exec(
+		`INSERT INTO findings (id, short_id, workspace_id, file, message, status, sort) VALUES (?,?,?,?,?,?,?)`,
+		"F-legacy-123", "", "WS1", "a.go", "bug", "open", 0,
+	); err != nil {
+		t.Fatalf("insert legacy: %v", err)
+	}
+	s1.Close()
+
+	s2, err := open(filepath.Join(dir, "recur.db"))
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer s2.Close()
+	got := s2.Findings("WS1")
+	if len(got) != 1 {
+		t.Fatalf("backfilled findings: got %d, want 1", len(got))
+	}
+	if got[0].ID != "F-legacy-123" {
+		t.Errorf("backfill id = %q, want F-legacy-123 (transcript refs)", got[0].ID)
+	}
+	if !domain.ValidID(got[0].ShortID, domain.TypeFinding) {
+		t.Errorf("backfill short_id = %q, want a valid find_ id", got[0].ShortID)
+	}
+}
+
+func TestFindingsColumnsMigrateFromDocJSON(t *testing.T) {
+	dir := t.TempDir()
+	s1 := openTemp(t, dir)
+	path := filepath.Join(dir, "recur.db")
+	s1.Close()
+
+	raw, err := openDB(path)
+	if err != nil {
+		t.Fatalf("reopen raw: %v", err)
+	}
+	stmts := []string{
+		`DROP TABLE finding_notes`,
+		`DROP TABLE findings`,
+		`CREATE TABLE findings (
+			id TEXT PRIMARY KEY,
+			workspace_id TEXT NOT NULL,
+			doc_json TEXT NOT NULL,
+			sort INTEGER NOT NULL DEFAULT 0
+		)`,
+		`INSERT INTO findings (id, workspace_id, doc_json, sort) VALUES (
+			'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+			'WS1',
+			'{"id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","shortId":"find_abcxyz","workspaceId":"WS1","iteration":2,"file":"x.go","line":9,"endLine":12,"severity":"high","message":"nil","summary":"n","status":"open","notes":[{"id":"note-1","author":"human","body":"look","createdAt":"2026-01-01T00:00:01Z"}]}',
+			0
+		)`,
+		`DELETE FROM __migrations WHERE version = 18`,
+	}
+	for _, q := range stmts {
+		if _, err := raw.sql.Exec(q); err != nil {
+			raw.close()
+			t.Fatalf("simulate pre-columns (%q): %v", q, err)
+		}
+	}
+	raw.close()
+
+	s2, err := open(path)
+	if err != nil {
+		t.Fatalf("reopen after columns migration: %v", err)
+	}
+	defer s2.Close()
+	got := s2.Findings("WS1")
+	if len(got) != 1 {
+		t.Fatalf("migrated findings: got %d, want 1", len(got))
+	}
+	f := got[0]
+	if f.ID != "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" || f.ShortID != "find_abcxyz" {
+		t.Errorf("migrated ids: %+v", f)
+	}
+	if f.Iteration != 2 || f.File != "x.go" || f.Line != 9 || f.EndLine != 12 {
+		t.Errorf("migrated location: %+v", f)
+	}
+	if string(f.Severity) != "high" || f.Message != "nil" || f.Summary != "n" || f.Status != "open" {
+		t.Errorf("migrated body: %+v", f)
+	}
+	if len(f.Notes) != 1 || f.Notes[0].ID != "note-1" || f.Notes[0].Body != "look" {
+		t.Errorf("migrated notes: %+v", f.Notes)
 	}
 }
 

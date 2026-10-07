@@ -6,6 +6,7 @@ import type { AgentMsg, ChatAttachmentDraft } from '../components/AgentChat.svel
 import type { ChatItem } from '../../bindings/recur/internal/domain/models'
 import type { WorkspaceStep } from './api'
 import { isSubagentTool, isSubagentLaunchAck } from './subagent'
+import { findingMatchesRef, findingPublicId } from './findings-ui'
 
 /** Marker embedded in wire/transcript text at paste sites (matches Go). */
 export const ATTACHMENT_MARKER_RE = /⟦attachment:([^⟧]+)⟧/g
@@ -543,6 +544,7 @@ export type TurnDigestFinding = {
 /** Minimal finding fields the turn digest needs from the workspace store. */
 export type DigestFindingRef = {
   id: string
+  shortId?: string
   file?: string
   line?: number
   endLine?: number
@@ -606,9 +608,9 @@ function resolveReportedFinding(
       const raw = JSON.parse(m.result)
       if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.id) {
         const id = String(raw.id)
-        const fromStore = findings.find((f) => f.id === id)
+        const fromStore = findings.find((f) => findingMatchesRef(f, id))
         return {
-          id,
+          id: findingPublicId(fromStore ?? { id }),
           file: fromStore?.file || (typeof raw.file === 'string' ? raw.file : ''),
           line: (fromStore?.line && fromStore.line > 0 ? fromStore.line : 0)
             || (typeof raw.line === 'number' ? raw.line : 0),
@@ -646,7 +648,7 @@ function resolveReportedFinding(
   }
   if (match) {
     return {
-      id: match.id,
+      id: findingPublicId(match),
       file: match.file || file,
       line: (match.line && match.line > 0 ? match.line : 0) || line,
       endLine: (match.endLine && match.endLine > 0 ? match.endLine : 0) || endLine,
@@ -703,7 +705,10 @@ export function stillOpenFindingsForTurn(
       const p = parseToolInput(m.input)
       const id = typeof p?.finding_id === 'string' ? p.finding_id : ''
       const status = typeof p?.status === 'string' ? p.status : ''
-      if (id && (status === 'resolved' || status === 'invalid')) closed.add(id)
+      if (id && (status === 'resolved' || status === 'invalid')) {
+        const live = findings.find((f) => findingMatchesRef(f, id))
+        closed.add(findingPublicId(live ?? { id }))
+      }
     }
   }
   const out: TurnDigestFinding[] = []
@@ -720,7 +725,7 @@ export function stillOpenFindingsForTurn(
     let message = normFindingText(f.message)
     let summary = normFindingText(f.summary)
     if (f.id) {
-      const live = findings.find((x) => x.id === f.id)
+      const live = findings.find((x) => findingMatchesRef(x, f.id))
       if (live && (live.status || 'open') !== 'open') continue
       if (live?.notes?.length) notes = digestNotes(live.notes)
       const lm = normFindingText(live?.message)

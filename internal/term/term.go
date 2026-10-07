@@ -271,7 +271,7 @@ func (m *Manager) OpenWith(workspaceID, cwd string, cols, rows int, extraEnv []s
 		title = strings.TrimSpace(opts.Title)
 	}
 	s := &Session{
-		id:          uuid.NewString(),
+		id:          uuid.Must(uuid.NewV7()).String(),
 		workspaceID: workspaceID,
 		cwd:         cwd,
 		shell:       shell,

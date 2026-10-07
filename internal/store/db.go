@@ -3,11 +3,13 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
 
-	_ "modernc.org/sqlite" // pure-Go SQLite driver (DECISIONS D5: no cgo)
+	"modernc.org/sqlite" // pure-Go SQLite driver (DECISIONS D5: no cgo)
+	sqlite3 "modernc.org/sqlite/lib"
 
 	"recur/internal/domain"
 )
@@ -18,8 +20,9 @@ import (
 // loops, policy, settings, inbox, escalations) are normalized into columns;
 // the rich nested aggregates (a PR's commits/files/diff lines, an agent's steps,
 // a loop's feed items, convergence series) are stored as JSON blobs in a single
-// column. v1 reads/writes whole aggregates rather than querying their interiors,
-// so JSON keeps the schema small without losing fidelity. See DECISIONS.
+// column. Findings are normalized into columns (plus finding_notes). v1 reads/writes
+// other aggregates whole rather than querying their interiors, so JSON keeps those
+// schemas small without losing fidelity. See DECISIONS.
 type db struct {
 	sql *sql.DB
 
@@ -54,6 +57,10 @@ func openDB(path string) (*db, error) {
 		sqlDB.Close()
 		return nil, err
 	}
+	if err := d.backfillFindingIdentities(); err != nil {
+		sqlDB.Close()
+		return nil, err
+	}
 	if err := d.seedFeedSort(); err != nil {
 		sqlDB.Close()
 		return nil, err
@@ -62,6 +69,14 @@ func openDB(path string) (*db, error) {
 	// the main file so a crash or a file copy is not a last-checkpoint view.
 	d.checkpoint()
 	return d, nil
+}
+
+func isUniqueConstraint(err error) bool {
+	var se *sqlite.Error
+	if !errors.As(err, &se) {
+		return false
+	}
+	return se.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE
 }
 
 // seedFeedSort primes the prepend counter from what is already persisted, so
@@ -131,7 +146,7 @@ func (d *db) deleteByWorkspace(table, workspaceID string) error {
 // comes back). PR numbers keep climbing so a wipe cannot reuse #1.
 func (d *db) clearData() error {
 	// "session" cascades message/message_content/session_context (FKs ON).
-	for _, t := range []string{"github_branch_rules", "projects", "project_groups", "workspaces", "agents", "feed", "prs", "escalations", "inbox", "findings", "events", "analysis", "session"} {
+	for _, t := range []string{"github_branch_rules", "projects", "project_groups", "workspaces", "agents", "feed", "prs", "escalations", "inbox", "finding_notes", "findings", "events", "analysis", "session"} {
 		if _, err := d.sql.Exec(`DELETE FROM ` + t); err != nil {
 			return fmt.Errorf("clear %s: %w", t, err)
 		}
@@ -406,27 +421,156 @@ func loadDocByWorkspace[T any](d *db, table string) (map[string][]T, error) {
 	return out, rows.Err()
 }
 
+const findingSelectCols = `id, short_id, workspace_id, iteration, file, line, end_line,
+	severity, message, summary, status, status_reason, created_at, updated_by, updated_at`
+
+func scanFinding(scan func(dest ...any) error) (domain.Finding, error) {
+	var f domain.Finding
+	if err := scan(
+		&f.ID, &f.ShortID, &f.WorkspaceID, &f.Iteration, &f.File, &f.Line, &f.EndLine,
+		&f.Severity, &f.Message, &f.Summary, &f.Status, &f.StatusReason,
+		&f.CreatedAt, &f.UpdatedBy, &f.UpdatedAt,
+	); err != nil {
+		return domain.Finding{}, err
+	}
+	ensureFindingCreatedAt(&f)
+	return f, nil
+}
+
 // loadFindings rebuilds the per-loop findings map from the findings table.
 func loadFindings(d *db) (map[string][]domain.Finding, error) {
-	rows, err := d.sql.Query(`SELECT workspace_id, doc_json FROM findings ORDER BY workspace_id, sort, id`)
+	rows, err := d.sql.Query(`SELECT ` + findingSelectCols + ` FROM findings ORDER BY workspace_id, sort, id`)
 	if err != nil {
 		return nil, fmt.Errorf("query findings: %w", err)
 	}
 	defer rows.Close()
 	out := map[string][]domain.Finding{}
+	type pos struct {
+		ws string
+		i  int
+	}
+	index := map[string]pos{}
 	for rows.Next() {
-		var workspaceID, doc string
-		if err := rows.Scan(&workspaceID, &doc); err != nil {
+		f, err := scanFinding(rows.Scan)
+		if err != nil {
 			return nil, fmt.Errorf("scan finding: %w", err)
 		}
-		var f domain.Finding
-		if err := json.Unmarshal([]byte(doc), &f); err != nil {
-			return nil, fmt.Errorf("unmarshal finding: %w", err)
+		list := out[f.WorkspaceID]
+		index[f.ID] = pos{ws: f.WorkspaceID, i: len(list)}
+		out[f.WorkspaceID] = append(list, f)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	notes, err := loadFindingNotes(d)
+	if err != nil {
+		return nil, err
+	}
+	for findingID, ns := range notes {
+		p, ok := index[findingID]
+		if !ok {
+			continue
 		}
-		ensureFindingCreatedAt(&f)
-		out[workspaceID] = append(out[workspaceID], f)
+		out[p.ws][p.i].Notes = ns
+	}
+	return out, nil
+}
+
+func loadFindingNotes(d *db) (map[string][]domain.FindingNote, error) {
+	rows, err := d.sql.Query(`SELECT id, finding_id, author, body, created_at FROM finding_notes ORDER BY finding_id, sort, created_at`)
+	if err != nil {
+		return nil, fmt.Errorf("query finding notes: %w", err)
+	}
+	defer rows.Close()
+	out := map[string][]domain.FindingNote{}
+	for rows.Next() {
+		var n domain.FindingNote
+		var findingID string
+		if err := rows.Scan(&n.ID, &findingID, &n.Author, &n.Body, &n.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan finding note: %w", err)
+		}
+		out[findingID] = append(out[findingID], n)
 	}
 	return out, rows.Err()
+}
+
+// backfillFindingIdentities fills short_id (and CreatedAt) on legacy finding
+// rows. Existing ids stay put so transcript refs keep resolving. Safe to run
+// on every open.
+func (d *db) backfillFindingIdentities() error {
+	rows, err := d.sql.Query(`SELECT id, workspace_id, short_id, created_at, updated_at FROM findings`)
+	if err != nil {
+		return fmt.Errorf("query findings for identity backfill: %w", err)
+	}
+	type findingRow struct {
+		id, workspaceID, shortID, createdAt, updatedAt string
+	}
+	var list []findingRow
+	used := map[string]map[string]bool{}
+	for rows.Next() {
+		var r findingRow
+		if err := rows.Scan(&r.id, &r.workspaceID, &r.shortID, &r.createdAt, &r.updatedAt); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan finding for identity backfill: %w", err)
+		}
+		list = append(list, r)
+		if r.shortID == "" {
+			continue
+		}
+		if used[r.workspaceID] == nil {
+			used[r.workspaceID] = map[string]bool{}
+		}
+		used[r.workspaceID][r.shortID] = true
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return fmt.Errorf("iterate findings for identity backfill: %w", err)
+	}
+	rows.Close()
+	if len(list) == 0 {
+		return nil
+	}
+
+	tx, err := d.sql.Begin()
+	if err != nil {
+		return fmt.Errorf("begin finding identity backfill: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op after Commit
+
+	for _, r := range list {
+		f := domain.Finding{
+			ID: r.id, ShortID: r.shortID, WorkspaceID: r.workspaceID,
+			CreatedAt: r.createdAt, UpdatedAt: r.updatedAt,
+		}
+		ensureFindingCreatedAt(&f)
+		if f.ShortID == "" {
+			wsUsed := used[r.workspaceID]
+			sid, err := domain.NewUniqueID(domain.TypeFinding, func(id string) bool {
+				return wsUsed[id]
+			})
+			if err != nil {
+				return fmt.Errorf("mint finding short id: %w", err)
+			}
+			f.ShortID = sid
+		}
+		if used[r.workspaceID] == nil {
+			used[r.workspaceID] = map[string]bool{}
+		}
+		used[r.workspaceID][f.ShortID] = true
+		if f.ShortID == r.shortID && f.CreatedAt == r.createdAt {
+			continue
+		}
+		if _, err := tx.Exec(
+			`UPDATE findings SET short_id=?, created_at=? WHERE id=?`,
+			f.ShortID, f.CreatedAt, r.id,
+		); err != nil {
+			return fmt.Errorf("backfill finding %q: %w", r.id, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit finding identity backfill: %w", err)
+	}
+	return nil
 }
 
 func loadSingleton[T any](d *db, table string, dst *T) error {
@@ -613,9 +757,18 @@ func (d *db) appendEvent(e domain.StoredEvent) (int64, error) {
 }
 
 // upsertFinding inserts or replaces one finding row (matched by id), keyed by
-// workspace_id with a stable sort for ordering.
+// workspace_id with a stable sort for ordering. Notes are replaced in the same
+// transaction so a finding never persists without its comments.
 func (d *db) upsertFinding(f domain.Finding, sort int) error {
-	return upsertFindingTx(d.sql, f, f.WorkspaceID, sort)
+	tx, err := d.sql.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op after Commit
+	if err := upsertFindingTx(tx, f, f.WorkspaceID, sort); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (d *db) upsertAnalysis(a domain.AnalysisRun) error {
@@ -659,44 +812,51 @@ func loadAnalysis(d *db) ([]domain.AnalysisRun, error) {
 	return out, rows.Err()
 }
 
-// upsertFindingTx writes one finding via any execer (db or tx).
+// upsertFindingTx writes one finding and replaces its notes via any execer (db or tx).
 func upsertFindingTx(x execer, f domain.Finding, workspaceID string, sort int) error {
-	doc, err := json.Marshal(f)
-	if err != nil {
-		return err
-	}
-	_, err = x.Exec(
-		`INSERT INTO findings (id, workspace_id, doc_json, sort) VALUES (?,?,?,?)
-			ON CONFLICT(id) DO UPDATE SET doc_json=excluded.doc_json, workspace_id=excluded.workspace_id`,
-		f.ID, workspaceID, string(doc), sort,
+	_, err := x.Exec(
+		`INSERT INTO findings (
+			id, short_id, workspace_id, iteration, file, line, end_line,
+			severity, message, summary, status, status_reason,
+			created_at, updated_by, updated_at, sort
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			ON CONFLICT(id) DO UPDATE SET
+				short_id=excluded.short_id,
+				workspace_id=excluded.workspace_id,
+				iteration=excluded.iteration,
+				file=excluded.file,
+				line=excluded.line,
+				end_line=excluded.end_line,
+				severity=excluded.severity,
+				message=excluded.message,
+				summary=excluded.summary,
+				status=excluded.status,
+				status_reason=excluded.status_reason,
+				created_at=excluded.created_at,
+				updated_by=excluded.updated_by,
+				updated_at=excluded.updated_at`,
+		f.ID, f.ShortID, workspaceID, f.Iteration, f.File, f.Line, f.EndLine,
+		string(f.Severity), f.Message, f.Summary, f.Status, f.StatusReason,
+		f.CreatedAt, f.UpdatedBy, f.UpdatedAt, sort,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert finding %q: %w", f.ID, err)
 	}
+	if _, err := x.Exec(`DELETE FROM finding_notes WHERE finding_id = ?`, f.ID); err != nil {
+		return fmt.Errorf("clear finding notes %q: %w", f.ID, err)
+	}
+	for i, n := range f.Notes {
+		if n.ID == "" {
+			continue
+		}
+		if _, err := x.Exec(
+			`INSERT INTO finding_notes (id, finding_id, author, body, created_at, sort) VALUES (?,?,?,?,?,?)`,
+			n.ID, f.ID, n.Author, n.Body, n.CreatedAt, i,
+		); err != nil {
+			return fmt.Errorf("insert finding note %q: %w", n.ID, err)
+		}
+	}
 	return nil
-}
-
-// findingsForWorkspace returns a loop's findings in insertion order.
-func (d *db) findingsForWorkspace(workspaceID string) ([]domain.Finding, error) {
-	rows, err := d.sql.Query(`SELECT doc_json FROM findings WHERE workspace_id = ? ORDER BY sort, id`, workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("query findings for %q: %w", workspaceID, err)
-	}
-	defer rows.Close()
-	var out []domain.Finding
-	for rows.Next() {
-		var doc string
-		if err := rows.Scan(&doc); err != nil {
-			return nil, fmt.Errorf("scan finding: %w", err)
-		}
-		var f domain.Finding
-		if err := json.Unmarshal([]byte(doc), &f); err != nil {
-			return nil, fmt.Errorf("unmarshal finding: %w", err)
-		}
-		ensureFindingCreatedAt(&f)
-		out = append(out, f)
-	}
-	return out, rows.Err()
 }
 
 // eventsForWorkspace returns every durable event for a loop in insertion order.

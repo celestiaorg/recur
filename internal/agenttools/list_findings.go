@@ -91,7 +91,7 @@ func (listFindingsTool) Execute(c Call) (string, error) {
 			})
 		}
 		out.Findings = append(out.Findings, row{
-			ID: f.ID, File: f.File, Line: f.Line, EndLine: f.EndLine,
+			ID: f.PublicID(), File: f.File, Line: f.Line, EndLine: f.EndLine,
 			Severity: string(f.Severity), Message: f.Message, Summary: f.Summary,
 			Status: f.Status, StatusReason: f.StatusReason, UpdatedBy: f.UpdatedBy,
 			Notes: notes,

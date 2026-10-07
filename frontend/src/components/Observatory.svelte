@@ -123,7 +123,7 @@
   import Icon, { type IconName } from './Icon.svelte'
   import Kbd from './Kbd.svelte'
   import { addUnseenArtifactId, artifactFromEvent, artifactIdFromScratchPath, clearUnseenArtifactIds } from '../lib/artifacts'
-  import { findingFlagForPath, findingSevIcon, findingTitle, severityRank, type FindingFlag } from '../lib/findings-ui'
+  import { findingFlagForPath, findingMatchesRef, findingSevIcon, findingTitle, severityRank, type FindingFlag } from '../lib/findings-ui'
   import type { EditorFindingMark } from '../lib/cm-findings-gutter'
   import { filePreviewFindActive, previewKindForPath, PREVIEW_IFRAME_FIND_KEY, type PreviewKind } from '../lib/preview'
   import { createPreviewScrollStore } from '../lib/preview-scroll'
@@ -6360,7 +6360,7 @@
         if (id) {
           findingsExpandIds = [id]
           findingsFocusNoteId = focusNote ? id : ''
-          const f = list.find((x) => x.id === id)
+          const f = list.find((x) => findingMatchesRef(x, id))
           if (f?.file) openPath(f.file, f.line ?? 0, false, f.endLine || 0)
           // Clear after FindingsPanel applies so the same id can deep-link again
           // and so expand/focus props don't keep re-applying.

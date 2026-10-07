@@ -1,6 +1,11 @@
 package store
 
-import "recur/internal/domain"
+import (
+	"os"
+
+	"recur/internal/codex"
+	"recur/internal/domain"
+)
 
 // CSS color vars.
 const (
@@ -31,6 +36,17 @@ func (s *Store) seed() {
 	s.seedDemo()
 }
 
+// hasCodexLogin reports whether `codex login` has run on this machine, so a
+// fresh install reuses it without enabling Codex for users who never signed in.
+func hasCodexLogin() bool {
+	p := codex.DefaultSeedAuthPath()
+	if p == "" {
+		return false
+	}
+	_, err := os.Stat(p)
+	return err == nil
+}
+
 // seedDefaults sets the config a brand-new app needs regardless of demo data:
 // the global policy (autonomy only — rails retired; [[policy]] is the guard),
 // agent/provider settings + caps, and a ZEROED resource so a clean app's status
@@ -59,6 +75,7 @@ func (s *Store) seedDefaults() {
 		FlagsLoop:                  highFlags(),
 		FlagsWorkspaceTitle:        map[string]string{"effort": "low"},
 		BypassPermissions:          false,
+		CodexChatGPTAuth:           hasCodexLogin(),
 		MaxLoops:                   4,
 		MaxAgents:                  8,
 		DefaultMergeMethod:         domain.MergeMethodMerge,

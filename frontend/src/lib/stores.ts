@@ -9,7 +9,7 @@ import { fallbackEnabledEditorThemeId, resolveEditorThemeKey, editorThemesForCyc
 import { setDisabledBundleContribs } from './tm-registry'
 import { LANGUAGE_INDENT_DEFAULTS } from './cm-lang'
 import { LEGACY_FONT_FACE_KEYS, monoFontStack } from './mono-fonts'
-import { wsMainBlocked } from './modes'
+import { wsMainBlocked, type ChatMode } from './modes'
 import { neighborWorkspaceId, sidebarWorkspaceIds, SCAN_COMMIT_MS, projectIdFromMainScan } from './workspace-nav'
 import { persistShellState, snapshotShell, type ShellView } from './shell-state'
 import { prAgentWorkspaceId, prIdForChatWorkspace } from './pr-workspace'
@@ -1542,11 +1542,13 @@ export function gitProjectForNewWorkspace(): Project | undefined {
 }
 
 // openNewTask opens the New workspace modal, optionally pre-selecting a project
-// and pre-filling the goal (e.g. a Linear issue prompt from ⌘K). When repoId is
+// and pre-filling the goal and/or mode (e.g. a Linear issue prompt from ⌘K, or a
+// mode picked on Getting Started). When repoId is
 // omitted, default to the focused project so ⌘N lands in the project you're in.
-export const newTaskDraft = writable<{ text: string; display?: string } | null>(null)
+export type NewTaskDraft = { text: string; display?: string; mode?: ChatMode }
+export const newTaskDraft = writable<NewTaskDraft | null>(null)
 
-export function openNewTask(repoId = '', draft?: { text: string; display?: string }) {
+export function openNewTask(repoId = '', draft?: NewTaskDraft) {
   newTaskRepoId.set(repoId || focusedProjectId())
   newTaskDraft.set(draft ?? null)
   paletteOpen.set(false)

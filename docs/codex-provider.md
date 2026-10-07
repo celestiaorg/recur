@@ -51,7 +51,8 @@ There is no per-role provider setting. Role models are `ModelRef`s
 Settings → Providers **and** configured:
 
 - `Settings.CodexAPIKey` non-empty, **or**
-- `Settings.CodexChatGPTAuth` true (reuse `codex login`)
+- `Settings.CodexChatGPTAuth` true (reuse `codex login`). On by default for a
+  fresh install when `~/.codex/auth.json` exists (a prior `codex login`).
 
 Turning Codex off keeps the key / ChatGPT-auth flag; it just leaves the
 pickers and the engine will not start it.

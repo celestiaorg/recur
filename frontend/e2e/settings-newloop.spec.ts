@@ -408,6 +408,36 @@ test.describe('new loop + settings', () => {
     await expect(page.locator('.tproj .pn', { hasText: 'quick-app' })).toBeVisible()
   })
 
+  test('Providers warns when Cursor is connected without the SDK and installs it', async ({ page }) => {
+    let installed = false
+    const status = () => ({ bridgeInstalled: installed, authenticated: installed, email: installed ? 'dev@example.com' : '', error: installed ? '' : 'cursor-sdk-bridge not found' })
+    const usage = {
+      fetchedAt: Date.now(),
+      stale: false,
+      providers: [{ id: 'cursor', name: 'Cursor', email: 'dev@example.com', source: 'Cursor Connect', sourceId: 'cursor_connect', windows: [] }],
+    }
+    await installBridge(page, {
+      ...structuredClone(seed),
+      settings: { ...seed.settings, cursorApiKey: 'crsr_test' },
+    }, {
+      resolvers: {
+        GetCursorStatus: status,
+        InstallCursorBridge: () => { installed = true; return status() },
+        GetProviderUsage: () => usage,
+        RefreshProviderUsage: () => usage,
+      },
+    })
+    await gotoApp(page)
+    await openSettings(page)
+    await openSection(page, 'Providers')
+    const note = page.locator('#v-settings .acct-sdk-note')
+    await expect(page.locator('#v-settings .acct-status-head.warn')).toContainText('SDK not installed')
+    await expect(note).toContainText('Cursor SDK is not installed')
+    await note.getByRole('button', { name: 'Install SDK' }).click()
+    await expect(note).toHaveCount(0)
+    await expect(page.locator('#v-settings .acct-status-head.warn')).toHaveCount(0)
+  })
+
   test('changing the agent model is accepted', async ({ page }) => {
     await gotoApp(page)
     await openSettings(page)

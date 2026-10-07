@@ -252,6 +252,8 @@
   let codexBusy = $state(false)
   const codexConfigured = $derived(!!($settings?.codexApiKey || $settings?.codexChatGPTAuth))
   const cursorReady = $derived(cursorSignedIn)
+  // Connected but unable to run anything: the SDK bridge is fetched on demand.
+  const cursorSdkMissing = $derived(cursorOn && cursorSignedIn && !!cursorStatus && !cursorStatus.bridgeInstalled)
   const codexReady = $derived(!!codexStatus?.authenticated)
   const compatibleProviders = $derived($settings?.compatibleProviders ?? [])
   const extraReady = $derived(
@@ -1594,6 +1596,11 @@
                         <div class="acct-status-bar">
                           {#if cursorConnecting}
                             <div class="acct-status-head muted">Waiting for browser sign-in…</div>
+                          {:else if cursorSdkMissing}
+                            <div class="acct-status-head warn">
+                              <span class="acct-status-dot" aria-hidden="true"></span>
+                              Connected, SDK not installed
+                            </div>
                           {:else if cursorSignedIn}
                             <div class="acct-status-head ok">
                               <span class="acct-status-dot" aria-hidden="true"></span>
@@ -1620,6 +1627,21 @@
                             {/if}
                           </div>
                         </div>
+                        {#if cursorSdkMissing}
+                          <div class="set-note warn acct-sdk-note" role="status">
+                            <Icon name="triangle-alert" />
+                            <span>
+                              {#if installing}
+                                {installMsg || 'Installing…'}{installPct >= 0 ? ` · ${installPct}%` : ''}
+                              {:else}
+                                The Cursor SDK is not installed, so Cursor agents cannot run yet. About 50 MB to download.
+                              {/if}
+                            </span>
+                            <button class="tbtn" type="button" disabled={installing} onclick={installBridge}>
+                              {installing ? 'Installing…' : 'Install SDK'}
+                            </button>
+                          </div>
+                        {/if}
                         {#if cursorSignedIn && (cursorAccountName || cursorAccountEmail)}
                           <dl class="acct-status-table">
                             {#if cursorAccountName}

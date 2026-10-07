@@ -315,6 +315,7 @@
     if (!$newTaskOpen) return
     const d = $newTaskDraft
     if (!d) return
+    if (d.mode) untrack(() => pickMode(d.mode!))
     seedDisplay = (d.display ?? '').trim()
     seedWire = seedDisplay ? d.text : ''
     task = seedDisplay || d.text

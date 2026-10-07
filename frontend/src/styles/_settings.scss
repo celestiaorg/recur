@@ -1127,6 +1127,33 @@
   background: var(--coral);
 }
 
+.acct-status-head.warn .acct-status-dot {
+  background: var(--amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent);
+}
+
+.acct-sdk-note {
+  align-items: center;
+  margin: 12px 0 0;
+  background: color-mix(in srgb, var(--amber) 7%, var(--pane));
+  border-color: color-mix(in srgb, var(--amber) 35%, var(--line));
+  color: var(--text);
+}
+
+.acct-sdk-note svg {
+  margin-top: 0;
+  color: var(--amber);
+}
+
+.acct-sdk-note > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.acct-sdk-note .tbtn {
+  flex: none;
+}
+
 .acct-status-table {
   margin: 0;
   border: 1px solid var(--line);

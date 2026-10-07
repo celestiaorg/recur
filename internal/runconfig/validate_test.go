@@ -18,7 +18,7 @@ import (
 // devServerCmd serves HTTP on $RECUR_PORT. It avoids `python3 -m http.server`,
 // whose HTTPServer.server_bind does a getfqdn reverse lookup that stalls for
 // 30s+ on macOS CI runners.
-const devServerCmd = `python3 -c 'import http.server as h, socketserver as s, sys; s.TCPServer(("", int(sys.argv[1])), h.SimpleHTTPRequestHandler).serve_forever()' $RECUR_PORT`
+const devServerCmd = `python3 -c 'import http.server as h, socketserver as s, sys; s.TCPServer.allow_reuse_address = True; s.TCPServer(("", int(sys.argv[1])), h.SimpleHTTPRequestHandler).serve_forever()' $RECUR_PORT`
 
 // happyDevCmd returns a shell command that serves HTTP on $RECUR_PORT, using
 // python3 if available, otherwise a tiny inline Go server via `go run`.

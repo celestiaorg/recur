@@ -155,9 +155,10 @@ func verifyDevProject(t *testing.T, st *store.Store, repo string) string {
 		t.Skip("python3 not available; verify phase needs a bootable dev server")
 	}
 	// Not `python3 -m http.server`: its getfqdn reverse lookup stalls 30s+ on macOS CI.
+	// allow_reuse_address: verify reboots on the workspace's durable port (TIME_WAIT).
 	p := domain.Project{
 		ID: "proj", Name: "proj", RepoPath: repo, BaseBranch: "main",
-		RunCommands: []domain.RunCommand{{Name: "dev", Cmd: `python3 -c 'import http.server as h, socketserver as s, sys; s.TCPServer(("", int(sys.argv[1])), h.SimpleHTTPRequestHandler).serve_forever()' $RECUR_PORT`}},
+		RunCommands: []domain.RunCommand{{Name: "dev", Cmd: `python3 -c 'import http.server as h, socketserver as s, sys; s.TCPServer.allow_reuse_address = True; s.TCPServer(("", int(sys.argv[1])), h.SimpleHTTPRequestHandler).serve_forever()' $RECUR_PORT`}},
 		AppURL:      "http://localhost:$RECUR_PORT",
 	}
 	saved := addRunProject(t, st, p)

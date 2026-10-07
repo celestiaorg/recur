@@ -2310,8 +2310,12 @@ func (e *Engine) setWorkspaceState(id string, state domain.WorkspaceState, phase
 		case domain.StateStopped, domain.StateFailed:
 			l.Last = string(state)
 			l.ElapsedLabel = string(state)
-			// Leaving "needs you" — a terminal loop is no longer waiting on the human.
-			if l.Group == domain.GroupNeeds {
+			// Leaving "needs you" — a terminal loop is no longer waiting on the human,
+			// unless it failed retryably and the human must clear it and Retry (D56).
+			// Same update as State so nobody observes failed-but-not-needs.
+			if state == domain.StateFailed && l.Retryable {
+				l.Group = domain.GroupNeeds
+			} else if l.Group == domain.GroupNeeds {
 				l.Group = domain.GroupActive
 			}
 			// A stopped loop is done by the human's choice — drop its resume position. A

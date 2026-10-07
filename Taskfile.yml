@@ -10,6 +10,10 @@ vars:
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
   # Desktop app is {{.BIN_DIR}}/{{.APP_NAME}}; CLI is a separate binary.
   CLI_BIN: '{{.BIN_DIR}}/recur-cli'
+  VERSION:
+    sh: >-
+      awk '/^  version:/ { gsub(/"/, "", $2); print $2 }' build/config.yml
+  CLI_LDFLAGS: '-X recur/internal/cli.Version={{.VERSION}}'
 
 tasks:
   build:
@@ -29,7 +33,7 @@ tasks:
       - '{{.CLI_BIN}}'
     cmds:
       - mkdir -p {{.BIN_DIR}}
-      - go build -o {{.CLI_BIN}} ./cmd/recur
+      - go build -ldflags="{{.CLI_LDFLAGS}}" -o {{.CLI_BIN}} ./cmd/recur
 
   package:
     summary: Packages a production build (RECUR_DEBUG=1 keeps the web inspector and skips frontend minify)

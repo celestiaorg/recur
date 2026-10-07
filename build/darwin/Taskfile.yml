@@ -172,7 +172,7 @@ tasks:
     internal: true
     cmds:
       - mkdir -p "{{.APP_BUNDLE}}/Contents/MacOS"
-      - go build -trimpath -buildvcs=false -ldflags="-w -s" -o "{{.APP_BUNDLE}}/Contents/MacOS/recur-cli" ./cmd/recur
+      - go build -trimpath -buildvcs=false -ldflags="-w -s {{.CLI_LDFLAGS}}" -o "{{.APP_BUNDLE}}/Contents/MacOS/recur-cli" ./cmd/recur
       - chmod +x "{{.APP_BUNDLE}}/Contents/MacOS/recur-cli"
     env:
       CGO_ENABLED: "0"
@@ -186,8 +186,8 @@ tasks:
     internal: true
     cmds:
       - mkdir -p "{{.APP_BUNDLE}}/Contents/MacOS"
-      - CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags="-w -s" -o "{{.APP_BUNDLE}}/Contents/MacOS/recur-cli-amd64" ./cmd/recur
-      - CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -buildvcs=false -ldflags="-w -s" -o "{{.APP_BUNDLE}}/Contents/MacOS/recur-cli-arm64" ./cmd/recur
+      - CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags="-w -s {{.CLI_LDFLAGS}}" -o "{{.APP_BUNDLE}}/Contents/MacOS/recur-cli-amd64" ./cmd/recur
+      - CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -buildvcs=false -ldflags="-w -s {{.CLI_LDFLAGS}}" -o "{{.APP_BUNDLE}}/Contents/MacOS/recur-cli-arm64" ./cmd/recur
       - task: '{{if eq OS "darwin"}}embed:cli:lipo:native{{else}}embed:cli:lipo:go{{end}}'
         vars:
           APP_BUNDLE:

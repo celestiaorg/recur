@@ -10,6 +10,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Version is stamped at build time from build/config.yml via -ldflags -X.
+var Version = "dev"
+
 // Execute runs the recur CLI (os.Args). Returns a process exit code.
 func Execute() int {
 	return execute(os.Args[1:])
@@ -39,6 +42,7 @@ func newRootCmd() *cobra.Command {
   recur ./path/to/file         open a file or folder
   recur                        focus Recur (launch if needed)
   recur bundles test …         author Recur Bundles`,
+		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,

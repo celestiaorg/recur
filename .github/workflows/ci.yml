@@ -53,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
+      - run: sudo apt-get update && sudo apt-get install -y libxml2-utils
       - run: go build -o bin/recur-cli ./cmd/recur
       - run: bin/recur-cli bundles lint ./bundles
       - run: bin/recur-cli bundles test ./bundles

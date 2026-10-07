@@ -75,8 +75,10 @@ jobs:
   # Playwright drives the real Svelte UI in headless Chromium against a mocked
   # Wails bridge (frontend/e2e/helpers/mock-bridge.ts) seeded from the committed
   # fixture, so it needs no Go backend, no `claude`, and no native window.
+  # macOS because the specs assume ⌘ chords, CodeMirror's mac keymap, and mac
+  # native editing (Meta+A); Linux Chromium sends Ctrl for ControlOrMeta.
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: macos-26
     defaults:
       run:
         working-directory: frontend

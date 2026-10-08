@@ -104,8 +104,9 @@ func trunc(s string, n int) string {
 }
 
 func TestOpenInFinder(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("open folder is macOS-only")
+	want := map[string]string{"darwin": "open", "linux": "xdg-open"}[runtime.GOOS]
+	if want == "" {
+		t.Skip("open folder is macOS/Linux-only")
 	}
 	dir := t.TempDir()
 	var gotName string
@@ -121,18 +122,18 @@ func TestOpenInFinder(t *testing.T) {
 	if err := OpenIn(dir, "finder"); err != nil {
 		t.Fatalf("OpenIn finder: %v", err)
 	}
-	if gotName != "open" || len(gotArgs) != 1 || gotArgs[0] != dir {
-		t.Fatalf("OpenIn(finder) = %s %v, want open [%s]", gotName, gotArgs, dir)
+	if gotName != want || len(gotArgs) != 1 || gotArgs[0] != dir {
+		t.Fatalf("OpenIn(finder) = %s %v, want %s [%s]", gotName, gotArgs, want, dir)
 	}
 }
 
-func TestOpenInRequiresDarwin(t *testing.T) {
-	if runtime.GOOS == "darwin" {
-		t.Skip("macOS is supported")
+func TestOpenInFinderUnsupportedOS(t *testing.T) {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+		t.Skip("open folder is supported")
 	}
 	dir := t.TempDir()
 	if err := OpenIn(dir, "finder"); err == nil {
-		t.Fatal("OpenIn(finder) error = nil, want error off macOS")
+		t.Fatal("OpenIn(finder) error = nil, want error off macOS/Linux")
 	}
 }
 

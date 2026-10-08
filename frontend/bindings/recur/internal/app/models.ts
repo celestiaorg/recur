@@ -10,6 +10,46 @@ import { Create as $Create } from "@wailsio/runtime";
 import * as lsp$0 from "../lsp/models.js";
 
 /**
+ * AssignedIssue is one open issue assigned to the user, from GitHub or Linear.
+ */
+export class AssignedIssue {
+    "source": string;
+    "ref": string;
+    "title": string;
+    "url": string;
+    "updatedAt": string;
+
+    /** Creates a new AssignedIssue instance. */
+    constructor($$source: Partial<AssignedIssue> = {}) {
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("ref" in $$source)) {
+            this["ref"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+        if (!("updatedAt" in $$source)) {
+            this["updatedAt"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AssignedIssue instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AssignedIssue {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AssignedIssue($$parsedSource as Partial<AssignedIssue>);
+    }
+}
+
+/**
  * AppChatSelection is the last Ask Recur model picker. Mode is always ask.
  */
 export class AppChatSelection {

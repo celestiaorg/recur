@@ -1704,6 +1704,9 @@
     <button class="nav inbox-nav" class:on={active === 'briefing'} onclick={() => go('briefing')}>
       <Icon name="inbox" />Inbox<span class="ct" class:zero={unread === 0}>{unread}</span>
     </button>
+    <button class="nav" class:on={active === 'issues'} onclick={() => go('issues')}>
+      <Icon name="circle-dot" />Issues
+    </button>
     <button class="nav" class:on={active === 'pr'} onclick={() => go('pr')}>
       {#if prHostRunning > 0}
         <span class="sd pulse" title="Agent running" aria-label="Agent running"></span>

@@ -263,3 +263,10 @@ const $$createType9 = $models.ModelGroup.createFrom;
 const $$createType10 = $Create.Array($$createType9);
 const $$createType11 = $Create.Array($Create.Any);
 const $$createType12 = $models.CompatibleTestResult.createFrom;
+
+/**
+ * ListAssignedIssues merges open GitHub and Linear issues assigned to the user.
+ */
+export function ListAssignedIssues(): $CancellablePromise<$models.AssignedIssue[]> {
+    return $Call.ByName("recur/internal/app.SettingsService.ListAssignedIssues") as $CancellablePromise<$models.AssignedIssue[]>;
+}

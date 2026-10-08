@@ -74,6 +74,7 @@
   import ScheduledPrompts from './components/ScheduledPrompts.svelte'
   import ScheduleEditor from './components/ScheduleEditor.svelte'
   import PRList from './views/PRList.svelte'
+  import Issues from './components/Issues.svelte'
   import PRDetail from './views/PRDetail.svelte'
   import Briefing from './views/Briefing.svelte'
   import Welcome from './views/Welcome.svelte'
@@ -1242,6 +1243,11 @@
       <Settings />
       <Project />
       <PRList />
+      {#if $view === 'issues'}
+        <section class="view on briefing" id="v-issues" aria-label="Issues">
+          <Issues />
+        </section>
+      {/if}
       {#if $view === 'schedules'}
         <section class="view on briefing" id="v-schedules" aria-label="Schedules">
           <ScheduledPrompts />

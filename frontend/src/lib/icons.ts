@@ -227,6 +227,10 @@ export const icons = {
       '<rect x="3" y="14" width="7" height="7" rx="1.5"/>' +
       '<rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   },
+  // lucide circle-dot
+  'circle-dot': {
+    body: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/>',
+  },
   inbox: {
     body:
       '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>' +

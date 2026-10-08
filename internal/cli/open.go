@@ -167,7 +167,10 @@ func launchRecur(abs string) error {
 	if bin, err := lookDesktopBinary(); err == nil {
 		return exec.Command(bin, extra...).Start()
 	}
-	return fmt.Errorf("Recur.app not found")
+	if runtime.GOOS == "darwin" {
+		return fmt.Errorf("Recur.app not found")
+	}
+	return fmt.Errorf("Recur desktop binary not found (set RECUR_APP)")
 }
 
 func lookDesktopBinary() (string, error) {

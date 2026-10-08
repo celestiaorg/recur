@@ -19,6 +19,7 @@ type openInApp struct {
 	name       string
 	darwin     []string // .app bundle names (e.g. "Cursor.app")
 	bins       []string // PATH fallbacks
+	dirFlag    string   // prefix for the folder argument when a bin takes no positional path
 	darwinOnly bool
 	always     bool // skip install check (system apps)
 }
@@ -29,7 +30,7 @@ func openInCatalog() []openInApp {
 		{id: "vscode", name: "Visual Studio Code", darwin: []string{"Visual Studio Code.app", "Code.app"}, bins: []string{"code"}},
 		{id: "zed", name: "Zed", darwin: []string{"Zed.app"}, bins: []string{"zed"}},
 		{id: "xcode", name: "Xcode", darwin: []string{"Xcode.app"}, darwinOnly: true},
-		{id: "ghostty", name: "Ghostty", darwin: []string{"Ghostty.app"}, bins: []string{"ghostty"}},
+		{id: "ghostty", name: "Ghostty", darwin: []string{"Ghostty.app"}, bins: []string{"ghostty"}, dirFlag: "--working-directory="},
 		{id: "iterm", name: "iTerm", darwin: []string{"iTerm.app", "iTerm2.app"}, darwinOnly: true},
 		{id: "terminal", name: "Terminal", darwin: []string{"Terminal.app"}, darwinOnly: true, always: runtime.GOOS == "darwin"},
 		{id: "warp", name: "Warp", darwin: []string{"Warp.app"}, bins: []string{"warp"}},
@@ -108,32 +109,35 @@ func appPresent(app openInApp) bool {
 	if app.darwinOnly && runtime.GOOS != "darwin" {
 		return false
 	}
-	if len(app.darwin) > 0 && macAppInstalled(app.darwin...) {
+	if runtime.GOOS == "darwin" && len(app.darwin) > 0 && macAppInstalled(app.darwin...) {
 		return true
 	}
-	if runtime.GOOS == "darwin" {
-		for _, bin := range app.bins {
-			if _, err := lookPath(bin); err == nil {
-				return true
-			}
+	for _, bin := range app.bins {
+		if _, err := lookPath(bin); err == nil {
+			return true
 		}
 	}
 	return false
 }
 
 func fileManagerTarget() domain.OpenInTarget {
+	name := "Finder"
+	if runtime.GOOS != "darwin" {
+		name = "Files"
+	}
 	return domain.OpenInTarget{
 		ID:   "finder",
-		Name: "Finder",
+		Name: name,
 		Kind: "app",
 		Icon: cachedAppIcon(finderAppPath()),
 	}
 }
 
 // ListOpenInTargets returns installed apps that can open a workspace folder.
-// Finder is first. Copy-path is a frontend-only action. Open In is macOS-only.
+// The file manager is first. Copy-path is a frontend-only action. Off macOS
+// only apps with a PATH binary are listed.
 func ListOpenInTargets() []domain.OpenInTarget {
-	if runtime.GOOS != "darwin" {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		return nil
 	}
 	out := []domain.OpenInTarget{fileManagerTarget()}
@@ -180,17 +184,17 @@ func OpenIn(absPath, targetID string) error {
 }
 
 func openFileManager(path string) error {
-	if runtime.GOOS != "darwin" {
-		return fmt.Errorf("open folder not supported on %s", runtime.GOOS)
+	switch runtime.GOOS {
+	case "darwin":
+		return startDetached("open", path)
+	case "linux":
+		return startDetached("xdg-open", path)
 	}
-	return startDetached("open", path)
+	return fmt.Errorf("open folder not supported on %s", runtime.GOOS)
 }
 
 func openWithApp(path string, app openInApp) error {
-	if runtime.GOOS != "darwin" {
-		return fmt.Errorf("open in %s is only supported on macOS", app.name)
-	}
-	if len(app.darwin) > 0 {
+	if runtime.GOOS == "darwin" && len(app.darwin) > 0 {
 		for _, bundle := range app.darwin {
 			if !app.always && !macAppInstalled(bundle) {
 				continue
@@ -206,7 +210,7 @@ func openWithApp(path string, app openInApp) error {
 			last = err
 			continue
 		}
-		if err := startDetached(p, path); err != nil {
+		if err := startDetached(p, app.dirFlag+path); err != nil {
 			last = err
 			continue
 		}

@@ -61,11 +61,29 @@ type menuThemesPayload struct {
 	TerminalSelected string           `json:"terminalSelected"`
 }
 
+// nativeMenuAccelerators reports whether menu items may carry native key
+// equivalents. macOS: the menubar owns ⌘ chords and the webview may never see
+// them, so the accelerator is the binding. Linux: GTK4 dispatches application
+// accelerators in the window's capture phase, before WebKit, and CmdOrCtrl is
+// Ctrl there, so every accelerator would steal its chord from a focused
+// terminal tab (Ctrl+C interrupt, Ctrl+W delete-word, Ctrl+R history). The
+// frontend handles every chord on keydown with the focused pane deciding
+// first, so off macOS the menu lists the items without native bindings.
+var nativeMenuAccelerators = runtime.GOOS == "darwin"
+
+// accel attaches chord to item where native accelerators are in use.
+func accel(item *application.MenuItem, chord string) *application.MenuItem {
+	if nativeMenuAccelerators {
+		item.SetAccelerator(chord)
+	}
+	return item
+}
+
 // installAppMenu builds the native application menu and registers keyboard
 // accelerators. Menu clicks emit a "menu.action" event the frontend handles —
 // on macOS the menubar owns the key equivalents, so the webview may never see
-// those keydowns. Contextual items start disabled; the frontend pushes
-// "menu.state" as focus/tabs change.
+// those keydowns (see nativeMenuAccelerators for Linux). Contextual items
+// start disabled; the frontend pushes "menu.state" as focus/tabs change.
 func installAppMenu(wapp *application.App) {
 	emit := func(action string) func(*application.Context) {
 		return func(*application.Context) {
@@ -86,8 +104,7 @@ func installAppMenu(wapp *application.App) {
 		appMenu := menu.AddSubmenu("Recur")
 		appMenu.AddRole(application.About)
 		appMenu.AddSeparator()
-		appMenu.Add("Settings…").
-			SetAccelerator("CmdOrCtrl+,").
+		accel(appMenu.Add("Settings…"), "CmdOrCtrl+,").
 			OnClick(emit("settings"))
 		appMenu.AddSeparator()
 		appMenu.AddRole(application.ServicesMenu)
@@ -101,11 +118,9 @@ func installAppMenu(wapp *application.App) {
 
 	// —— File ——
 	file := menu.AddSubmenu("File")
-	file.Add("Open…").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+O").
+	accel(file.Add("Open…"), "CmdOrCtrl+OptionOrAlt+O").
 		OnClick(emit("open-path"))
-	file.Add("New Workspace").
-		SetAccelerator("CmdOrCtrl+N").
+	accel(file.Add("New Workspace"), "CmdOrCtrl+N").
 		OnClick(emit("new-loop"))
 	// No CmdOrCtrl+Shift+N accelerator: on macOS the menubar would own that
 	// chord and the webview would never see it, so Explorer's ⇧⌘N New Folder
@@ -114,17 +129,14 @@ func installAppMenu(wapp *application.App) {
 		OnClick(emit("new-blank-workspace"))
 	// Contextual: new terminal tab or solo/pair agent chat when that dock is
 	// focused. Disabled otherwise (editor file tabs open via Quick Open / tree).
-	items.newTab = file.Add("New Tab").
-		SetAccelerator("CmdOrCtrl+T").
+	items.newTab = accel(file.Add("New Tab"), "CmdOrCtrl+T").
 		SetEnabled(false).
 		OnClick(emit("new-tab"))
-	items.save = file.Add("Save").
-		SetAccelerator("CmdOrCtrl+S").
+	items.save = accel(file.Add("Save"), "CmdOrCtrl+S").
 		SetEnabled(false).
 		OnClick(emit("save"))
 	file.AddSeparator()
-	items.openIn = file.Add("Open In…").
-		SetAccelerator("CmdOrCtrl+O").
+	items.openIn = accel(file.Add("Open In…"), "CmdOrCtrl+O").
 		SetEnabled(false).
 		OnClick(emit("open-in"))
 	items.copyPath = file.Add("Copy Path").
@@ -133,13 +145,23 @@ func installAppMenu(wapp *application.App) {
 	file.AddSeparator()
 	// Contextual close: terminal / agent / file tab for the focused context.
 	// Deliberately not Close Window — ⌘W is the tab-close chord.
-	items.closeTab = file.Add("Close Tab").
-		SetAccelerator("CmdOrCtrl+W").
+	items.closeTab = accel(file.Add("Close Tab"), "CmdOrCtrl+W").
 		SetEnabled(false).
 		OnClick(emit("close-tab"))
+	if runtime.GOOS != "darwin" {
+		file.AddSeparator()
+		// Not the Quit role: it binds CmdOrCtrl+Q natively, and on Linux Ctrl+Q
+		// is the shell's XON (resume after Ctrl+S). Close the window to quit.
+		file.Add("Quit").OnClick(func(*application.Context) { wapp.Quit() })
+	}
 
 	// —— Edit ——
-	menu.AddRole(application.EditMenu)
+	// macOS only: the Edit roles route ⌘Z/X/C/V/A through the responder chain,
+	// which WKWebView needs. Off macOS their items are no-ops that would still
+	// bind Ctrl+C/V/X/Z/A natively; WebKitGTK handles those chords itself.
+	if nativeMenuAccelerators {
+		menu.AddRole(application.EditMenu)
+	}
 
 	// —— View ——
 	view := menu.AddSubmenu("View")
@@ -155,49 +177,38 @@ func installAppMenu(wapp *application.App) {
 	items.editorThemeLight.Add("Loading…").SetEnabled(false)
 	items.terminalThemeMenu.Add("Loading…").SetEnabled(false)
 	appearance.AddSeparator()
-	appearance.Add("Previous Editor Theme").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+[").
+	accel(appearance.Add("Previous Editor Theme"), "CmdOrCtrl+OptionOrAlt+[").
 		OnClick(emit("prev-editor-theme"))
-	appearance.Add("Next Editor Theme").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+]").
+	accel(appearance.Add("Next Editor Theme"), "CmdOrCtrl+OptionOrAlt+]").
 		OnClick(emit("next-editor-theme"))
 
 	view.AddSeparator()
-	view.Add("Toggle Sidebar").
-		SetAccelerator("CmdOrCtrl+B").
+	accel(view.Add("Toggle Sidebar"), "CmdOrCtrl+B").
 		OnClick(emit("toggle-sidebar"))
-	items.toggleLeftPanel = view.Add("Toggle Left Panel").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+B").
+	items.toggleLeftPanel = accel(view.Add("Toggle Left Panel"), "CmdOrCtrl+OptionOrAlt+B").
 		SetEnabled(false).
 		OnClick(emit("toggle-left-panel"))
-	items.toggleRightPanel = view.Add("Toggle Right Panel").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+Shift+B").
+	items.toggleRightPanel = accel(view.Add("Toggle Right Panel"), "CmdOrCtrl+OptionOrAlt+Shift+B").
 		SetEnabled(false).
 		OnClick(emit("toggle-right-panel"))
-	items.toggleEditor = view.Add("Toggle Editor").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+E").
+	items.toggleEditor = accel(view.Add("Toggle Editor"), "CmdOrCtrl+OptionOrAlt+E").
 		SetEnabled(false).
 		OnClick(emit("toggle-editor"))
-	items.toggleTerminal = view.Add("Toggle Terminal").
-		SetAccelerator("Ctrl+`").
+	items.toggleTerminal = accel(view.Add("Toggle Terminal"), "Ctrl+`").
 		SetEnabled(false).
 		OnClick(emit("toggle-terminal"))
-	items.maximizeTerminal = view.Add("Maximize Terminal").
-		SetAccelerator("Ctrl+Shift+`").
+	items.maximizeTerminal = accel(view.Add("Maximize Terminal"), "Ctrl+Shift+`").
 		SetEnabled(false).
 		OnClick(emit("maximize-terminal"))
-	items.runDev = view.Add("Run…").
-		SetAccelerator("CmdOrCtrl+R").
+	items.runDev = accel(view.Add("Run…"), "CmdOrCtrl+R").
 		SetEnabled(false).
 		OnClick(emit("run-dev"))
-	items.stopRun = view.Add("Stop Run").
-		SetAccelerator("CmdOrCtrl+Shift+R").
+	items.stopRun = accel(view.Add("Stop Run"), "CmdOrCtrl+Shift+R").
 		SetEnabled(false).
 		OnClick(emit("stop-run"))
 	if runtime.GOOS != "darwin" {
 		view.AddSeparator()
-		view.Add("Settings…").
-			SetAccelerator("CmdOrCtrl+,").
+		accel(view.Add("Settings…"), "CmdOrCtrl+,").
 			OnClick(emit("settings"))
 	}
 	if inspectorAvailable {
@@ -207,55 +218,47 @@ func installAppMenu(wapp *application.App) {
 
 	// —— Navigate ——
 	nav := menu.AddSubmenu("Navigate")
-	nav.Add("Go to…").
-		SetAccelerator("CmdOrCtrl+K").
+	accel(nav.Add("Go to…"), "CmdOrCtrl+K").
 		OnClick(emit("palette"))
-	nav.Add("Run Command…").
-		SetAccelerator("CmdOrCtrl+Shift+P").
+	accel(nav.Add("Run Command…"), "CmdOrCtrl+Shift+P").
 		OnClick(emit("run-command"))
-	nav.Add("Keyboard Shortcuts…").
-		SetAccelerator("CmdOrCtrl+Shift+/").
+	accel(nav.Add("Keyboard Shortcuts…"), "CmdOrCtrl+Shift+/").
 		OnClick(emit("shortcuts"))
 	nav.Add("Reload Bundles").
 		OnClick(emit("reload-bundles"))
-	nav.Add("Quick Open…").
-		SetAccelerator("CmdOrCtrl+P").
+	accel(nav.Add("Quick Open…"), "CmdOrCtrl+P").
 		OnClick(emit("quick-open"))
-	nav.Add("Go to Symbol…").
-		SetAccelerator("CmdOrCtrl+Shift+O").
+	accel(nav.Add("Go to Symbol…"), "CmdOrCtrl+Shift+O").
 		OnClick(emit("go-symbol"))
 	nav.AddSeparator()
-	items.focusAgent = nav.Add("Focus Agent Panel").
-		SetAccelerator("CmdOrCtrl+1").
+	items.focusAgent = accel(nav.Add("Focus Agent Panel"), "CmdOrCtrl+1").
 		SetEnabled(false).
 		OnClick(emit("focus-agent"))
-	items.focusEditor = nav.Add("Focus Editor").
-		SetAccelerator("CmdOrCtrl+2").
+	items.focusEditor = accel(nav.Add("Focus Editor"), "CmdOrCtrl+2").
 		SetEnabled(false).
 		OnClick(emit("focus-editor"))
-	items.focusTerminal = nav.Add("Focus Terminal").
-		SetAccelerator("CmdOrCtrl+3").
+	items.focusTerminal = accel(nav.Add("Focus Terminal"), "CmdOrCtrl+3").
 		SetEnabled(false).
 		OnClick(emit("focus-terminal"))
 	nav.AddSeparator()
-	items.prevTab = nav.Add("Previous Tab").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+Left").
+	items.prevTab = accel(nav.Add("Previous Tab"), "CmdOrCtrl+OptionOrAlt+Left").
 		SetEnabled(false).
 		OnClick(emit("prev-tab"))
-	items.nextTab = nav.Add("Next Tab").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+Right").
+	items.nextTab = accel(nav.Add("Next Tab"), "CmdOrCtrl+OptionOrAlt+Right").
 		SetEnabled(false).
 		OnClick(emit("next-tab"))
 	nav.AddSeparator()
-	nav.Add("Previous Workspace").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+Up").
+	accel(nav.Add("Previous Workspace"), "CmdOrCtrl+OptionOrAlt+Up").
 		OnClick(emit("prev-workspace"))
-	nav.Add("Next Workspace").
-		SetAccelerator("CmdOrCtrl+OptionOrAlt+Down").
+	accel(nav.Add("Next Workspace"), "CmdOrCtrl+OptionOrAlt+Down").
 		OnClick(emit("next-workspace"))
 
 	// —— Window ——
-	menu.AddRole(application.WindowMenu)
+	// macOS only: off macOS the role's Minimize / Close items bind Ctrl+M
+	// (shell Enter) and Ctrl+W natively; the window manager covers both.
+	if nativeMenuAccelerators {
+		menu.AddRole(application.WindowMenu)
+	}
 
 	wapp.Menu.Set(menu)
 
@@ -311,9 +314,19 @@ func applyMenuState(items *menuItems, data any) {
 	set(items.nextTab, "nextTab")
 	set(items.runDev, "runDev")
 	set(items.stopRun, "stopRun")
-	if items.root != nil {
-		items.root.Update()
+	items.refresh(false)
+}
+
+// refresh rebuilds the native menubar after item changes. Linux applies
+// SetEnabled/SetChecked live, and Wails' Linux Menu.Update touches GTK from the
+// calling goroutine (macOS hops to the main thread itself), which segfaults
+// from an event handler. So Linux rebuilds only for structural changes, and
+// always on the main thread.
+func (items *menuItems) refresh(structural bool) {
+	if items.root == nil || (!structural && runtime.GOOS != "darwin") {
+		return
 	}
+	application.InvokeSync(items.root.Update)
 }
 
 func decodeThemesPayload(data any) (menuThemesPayload, bool) {
@@ -432,9 +445,7 @@ func applyMenuThemes(items *menuItems, data any, emit func(string) func(*applica
 		}
 	}
 
-	if items.root != nil {
-		items.root.Update()
-	}
+	items.refresh(true)
 }
 
 func applyMenuThemeState(items *menuItems, data any) {
@@ -456,7 +467,5 @@ func applyMenuThemeState(items *menuItems, data any) {
 	for key, item := range items.terminalThemeItems {
 		item.SetChecked(key == termSel)
 	}
-	if items.root != nil {
-		items.root.Update()
-	}
+	items.refresh(false)
 }

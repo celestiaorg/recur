@@ -2,7 +2,7 @@
 
 Recur is a desktop app for running coding agents on your own repositories. Each task gets an isolated git worktree, an agent of your choice, and a place to read the diff, review the result, and merge it back.
 
-Recur is built with [Wails v3](https://v3.wails.io/) (Go backend) and Svelte 5 / TypeScript (frontend). It runs on macOS today.
+Recur is built with [Wails v3](https://v3.wails.io/) (Go backend) and Svelte 5 / TypeScript (frontend). It runs on macOS and Linux.
 
 ## What it does
 
@@ -104,6 +104,14 @@ xattr -dr com.apple.quarantine /Applications/Recur.app
 
 Downloading with `gh release download` skips this step, since the GitHub CLI does not set the flag.
 
+On Linux (Ubuntu 24.04+ / Debian 13), install the GTK and WebKit runtime, then run `recur` from `Recur-<version>-linux-amd64.tar.gz` (or `-linux-arm64`):
+
+```bash
+sudo apt install libgtk-4-1 libwebkitgtk-6.0-4
+tar xzf Recur-<version>-linux-amd64.tar.gz
+./recur-linux-amd64/recur
+```
+
 ## Command line
 
 The app installs a `recur` command on your PATH at launch.
@@ -134,6 +142,8 @@ wails3 task build:cli    # build the standalone CLI to bin/recur-cli
 ```
 
 Set `RECUR_DEBUG=1` before `wails3 task package` to keep the web inspector and skip frontend minification.
+
+Linux builds need `libgtk-4-dev` and `libwebkitgtk-6.0-dev`. `wails3 task linux:package` writes `bin/recur-linux-<arch>.tar.gz`; on a Mac it builds in Docker, and `wails3 task linux:run` opens the Linux app in a browser-based desktop.
 
 ## Testing
 

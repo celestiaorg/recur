@@ -13,8 +13,8 @@ import (
 func TestListOpenInTargetsIncludesFileManager(t *testing.T) {
 	targets := ListOpenInTargets()
 	if runtime.GOOS != "darwin" {
-		if len(targets) != 0 {
-			t.Fatalf("ListOpenInTargets() = %v, want empty off macOS", targets)
+		if len(targets) == 0 || targets[0].ID != "finder" || targets[0].Name != "Files" {
+			t.Fatalf("ListOpenInTargets() = %v, want finder/Files first", targets)
 		}
 		return
 	}
@@ -58,8 +58,9 @@ func TestListOpenInTargetsFiltersInstalled(t *testing.T) {
 		ids[tgt.ID] = true
 	}
 	if runtime.GOOS != "darwin" {
-		if len(ids) != 0 {
-			t.Fatalf("ListOpenInTargets() = %v, want empty off macOS", ids)
+		// .app bundles only count on macOS; nothing is on PATH here.
+		if len(ids) != 1 || !ids["finder"] {
+			t.Fatalf("ListOpenInTargets() = %v, want only finder", ids)
 		}
 		return
 	}
@@ -197,5 +198,26 @@ func TestOpenInPropagatesStartError(t *testing.T) {
 	t.Cleanup(func() { startDetached = orig })
 	if err := OpenIn(dir, "finder"); err == nil {
 		t.Fatal("expected start error")
+	}
+}
+
+func TestOpenInGhosttyBinPassesWorkingDirectory(t *testing.T) {
+	dir := t.TempDir()
+	origMac, origLook, origStart := macAppInstalled, lookPath, startDetached
+	t.Cleanup(func() { macAppInstalled, lookPath, startDetached = origMac, origLook, origStart })
+	macAppInstalled = func(...string) bool { return false }
+	lookPath = func(bin string) (string, error) { return "/usr/bin/" + bin, nil }
+	var gotName string
+	var gotArgs []string
+	startDetached = func(name string, args ...string) error {
+		gotName, gotArgs = name, append([]string{}, args...)
+		return nil
+	}
+
+	if err := OpenIn(dir, "ghostty"); err != nil {
+		t.Fatalf("OpenIn ghostty: %v", err)
+	}
+	if gotName != "/usr/bin/ghostty" || len(gotArgs) != 1 || gotArgs[0] != "--working-directory="+dir {
+		t.Fatalf("got %s %v", gotName, gotArgs)
 	}
 }

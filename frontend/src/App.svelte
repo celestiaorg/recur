@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
-  import { Events } from '@wailsio/runtime'
+  import { Events, System } from '@wailsio/runtime'
   import { loadInitial, wireEvents, WorkspacesService, PRsService, call, upsertWorkspace, onWorkspaceFs, onAppFocused, onGithubBranchRules } from './lib/api'
   import { applyOpenPathResult, pickAndOpenPath } from './lib/open-path'
   import { wireFileIndexEvents } from './lib/file-index'
@@ -83,6 +83,10 @@
   const titlebarPR = $derived($prs.find((p) => p.id === $selectedPRId))
   const showLoopBack = $derived($view === 'detail')
   const showPRBack = $derived($view === 'prdetail')
+  // Wails sets the OS only after the page loads, so keep the macOS spacer until it says otherwise.
+  const offMac = () => System.IsLinux() || System.IsWindows()
+  let trafficClear = $state(!offMac())
+  window.addEventListener('wails:runtime-config-ready', () => (trafficClear = !offMac()), { once: true })
   let pendingPRCreate = $state<{ prId: string; wsId: string } | null>(null)
   const creatingThisPR = $derived(!!titlebarPR?.id && pendingPRCreate?.prId === titlebarPR.id)
 
@@ -855,6 +859,11 @@
         toggleRail()
         return
       }
+      if (isCmdOrCtrl(e) && !e.shiftKey && !e.altKey && e.code === 'Comma') {
+        e.preventDefault()
+        go('settings')
+        return
+      }
       // ⌥⌘↑ / ⌥⌘↓ — previous / next workspace in sidebar order (wraps).
       // Same modifiers as tab cycling; vertical because the tree is vertical.
       // CmdOrCtrl (⌘ on Mac, Ctrl elsewhere) — not ctrl-as-cmd. Add-cursor is
@@ -940,7 +949,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="titlebar" onmousedown={onTitlebarMouseDown}>
     <div class="tb-left">
-      <div class="tb-traffic-clear"></div>
+      {#if trafficClear}<div class="tb-traffic-clear"></div>{/if}
       <button
         type="button"
         class="tb-rail"

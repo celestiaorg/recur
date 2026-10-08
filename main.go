@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -43,6 +44,11 @@ var shippedBundles embed.FS
 //
 //go:embed all:recur-skills
 var shippedSkills embed.FS
+
+// Window/taskbar icon on Linux; macOS takes it from the .app bundle.
+//
+//go:embed build/appicon.png
+var appIcon []byte
 
 func main() {
 	// Clicking an OS notification (or re-opening Recur.app) starts a new
@@ -213,6 +219,9 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
+	}
+	if runtime.GOOS != "darwin" {
+		opts.Icon = appIcon
 	}
 	if appLog != nil {
 		opts.Logger = slog.New(slog.NewTextHandler(appLog, nil))
@@ -426,8 +435,10 @@ func dockBadgeCount(inboxUnread, unseenChats int) int {
 // path requires a signed, bundled .app (main() only calls this expecting the native
 // leg to work when runningInAppBundle(); see its comment for the crash this guards
 // against), so unbundled runs (dev, `go run .`) skip straight to
-// `osascript -e 'display notification'` (darwin, best-effort, bounded so a hung
-// osascript can never wedge anything; failures are logged only).
+// `osascript -e 'display notification'` (darwin) or `notify-send` (Linux, where
+// the Wails service is skipped because it aborts startup without a D-Bus
+// session). Best-effort and bounded so a hung helper can never wedge anything;
+// failures are logged only.
 func sendOSNotification(notif *notifications.NotificationService, title, body string) {
 	if title == "" {
 		return
@@ -443,8 +454,12 @@ func sendOSNotification(notif *notifications.NotificationService, title, body st
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	script := fmt.Sprintf("display notification %q with title %q", body, title)
-	if out, oerr := exec.CommandContext(ctx, "osascript", "-e", script).CombinedOutput(); oerr != nil {
+	cmd := exec.CommandContext(ctx, "notify-send", "--app-name=Recur", title, body)
+	if runtime.GOOS == "darwin" {
+		script := fmt.Sprintf("display notification %q with title %q", body, title)
+		cmd = exec.CommandContext(ctx, "osascript", "-e", script)
+	}
+	if out, oerr := cmd.CombinedOutput(); oerr != nil {
 		log.Printf("notification failed: %v: %s", oerr, out)
 	}
 }

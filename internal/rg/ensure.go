@@ -24,11 +24,13 @@ const ReleaseVersion = "15.2.0"
 
 const releaseBase = "https://github.com/BurntSushi/ripgrep/releases/download/"
 
-// releaseSHA256 pins expected digests for ReleaseVersion darwin tarballs
-// (from the upstream .sha256 assets). Bump these together with ReleaseVersion.
+// releaseSHA256 pins expected digests for ReleaseVersion tarballs (from the
+// upstream .sha256 assets). Linux uses the static musl builds. Bump these together with ReleaseVersion.
 var releaseSHA256 = map[string]string{
-	"ripgrep-15.2.0-aarch64-apple-darwin.tar.gz": "3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4",
-	"ripgrep-15.2.0-x86_64-apple-darwin.tar.gz":  "af7825fcc69a2afc7a7aea55fc9af90e26421d8f20fe59df32e233c0b8a231c1",
+	"ripgrep-15.2.0-aarch64-apple-darwin.tar.gz":       "3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4",
+	"ripgrep-15.2.0-x86_64-apple-darwin.tar.gz":        "af7825fcc69a2afc7a7aea55fc9af90e26421d8f20fe59df32e233c0b8a231c1",
+	"ripgrep-15.2.0-aarch64-unknown-linux-musl.tar.gz": "800b1e7206afe799dfb5a6901f23147cfaabe0e52210538100f61e86e1740915",
+	"ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz":  "33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c",
 }
 
 // VersionFileName sits next to the managed binary so we can detect stale installs.
@@ -168,6 +170,10 @@ func releaseAsset() (string, error) {
 		triple = "aarch64-apple-darwin"
 	case "darwin/amd64":
 		triple = "x86_64-apple-darwin"
+	case "linux/arm64":
+		triple = "aarch64-unknown-linux-musl"
+	case "linux/amd64":
+		triple = "x86_64-unknown-linux-musl"
 	default:
 		return "", fmt.Errorf("rg ensure: unsupported platform %s/%s (install ripgrep on PATH)", runtime.GOOS, runtime.GOARCH)
 	}

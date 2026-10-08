@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -21,12 +22,18 @@ const RelBundledCLI = "Contents/MacOS/recur-cli"
 const LinkName = "recur"
 
 // BundledCLI returns the CLI path next to a GUI executable that lives at
-// …/Something.app/Contents/MacOS/<name>. ok is false when exe is not in a
+// …/Something.app/Contents/MacOS/<name> (macOS) or in a flat package
+// directory beside recur-cli (Linux). ok is false when exe is not in a
 // bundle or the CLI file is missing.
 func BundledCLI(exe string) (string, bool) {
 	exe = strings.TrimSpace(exe)
 	if exe == "" {
 		return "", false
+	}
+	if runtime.GOOS != "darwin" {
+		cli := filepath.Join(filepath.Dir(exe), filepath.Base(RelBundledCLI))
+		st, err := os.Stat(cli)
+		return cli, err == nil && !st.IsDir()
 	}
 	// …/App.app/Contents/MacOS/recur → …/App.app
 	macos := filepath.Dir(exe)
@@ -46,15 +53,23 @@ func BundledCLI(exe string) (string, bool) {
 	return cli, true
 }
 
-// IsDevBundle reports a Wails `*.dev.app` (local `wails3 task run`), which
-// should not steal the user's production `recur` symlink.
+// IsDevBundle reports a Wails `*.dev.app` or a repo checkout's bin/ (local
+// `wails3 task run`), which should not steal the user's production `recur`
+// symlink.
 func IsDevBundle(exe string) bool {
-	return strings.Contains(exe, ".dev.app/")
+	if strings.Contains(exe, ".dev.app/") {
+		return true
+	}
+	_, err := os.Stat(filepath.Join(filepath.Dir(filepath.Dir(exe)), "go.mod"))
+	return err == nil
 }
 
-// IsBundledCLIPath reports whether p looks like a Recur.app-shipped CLI, so
-// we only retarget our own stale symlinks and never clobber Homebrew / go install.
+// IsBundledCLIPath reports whether p looks like a Recur-shipped CLI, so we
+// only retarget our own stale symlinks and never clobber Homebrew / go install.
 func IsBundledCLIPath(p string) bool {
+	if runtime.GOOS != "darwin" && filepath.Base(p) == filepath.Base(RelBundledCLI) {
+		return true
+	}
 	p = filepath.ToSlash(p)
 	if strings.Contains(p, ".app/"+filepath.ToSlash(RelBundledCLI)) {
 		return true
@@ -199,5 +214,38 @@ func InstallFromApp(exe string) error {
 	if n == 0 && last != nil {
 		return last
 	}
+	if runtime.GOOS == "linux" {
+		return ensureDesktopEntry(exe)
+	}
 	return nil
+}
+
+// desktopEntryName matches the GTK application id Wails derives from the app
+// name ("org.wails.recur"), so Wayland docks pair the window with its icon.
+const desktopEntryName = "org.wails.recur.desktop"
+
+// ensureDesktopEntry writes the app-menu launcher for a Linux package
+// directory: Exec is exe, Icon the recur.png shipped beside it.
+func ensureDesktopEntry(exe string) error {
+	dir := os.Getenv("XDG_DATA_HOME")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		dir = filepath.Join(home, ".local", "share")
+	}
+	dir = filepath.Join(dir, "applications")
+	quote := strings.NewReplacer(`\`, `\\\\`, `"`, `\"`, "`", "\\`", "$", `\$`, "%", "%%")
+	body := "[Desktop Entry]\nType=Application\nName=Recur\nComment=Run autonomous AI coding loops locally.\n" +
+		"Exec=\"" + quote.Replace(exe) + "\"\nIcon=" + filepath.Join(filepath.Dir(exe), "recur.png") +
+		"\nCategories=Development;\nTerminal=false\n"
+	dest := filepath.Join(dir, desktopEntryName)
+	if old, err := os.ReadFile(dest); err == nil && string(old) == body {
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(dest, []byte(body), 0o644)
 }

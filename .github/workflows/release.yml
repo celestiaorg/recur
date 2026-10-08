@@ -80,3 +80,30 @@ jobs:
           ditto -c -k --keepParent bin/Recur.app "$ZIP"
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
           gh release upload "$GITHUB_REF_NAME" "$ZIP" --clobber
+
+  # Runs after `release` so the GitHub release already exists. Each arch builds
+  # natively (the app is cgo + GTK), so arm64 needs an arm runner.
+  release-linux:
+    needs: release
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          wails: "true"
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+      - run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task linux:package
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TGZ="bin/Recur-${GITHUB_REF_NAME#v}-linux-${{ matrix.arch }}.tar.gz"
+          mv bin/recur-linux-${{ matrix.arch }}.tar.gz "$TGZ"
+          gh release upload "$GITHUB_REF_NAME" "$TGZ" --clobber

@@ -341,6 +341,27 @@ describe('textmate highlighting in a live EditorView', () => {
     view.destroy()
   })
 
+  it('repaints lines a fillSync tokenized behind a budget-cut first paint', async () => {
+    // First paint runs out of budget after line 1 (cold grammar on a slow
+    // machine); the outline then fills the rest silently via fillSync.
+    const orig = engine.tokenizeViewport.bind(engine)
+    const spy = vi.spyOn(engine, 'tokenizeViewport').mockImplementationOnce((id, from) => orig(id, from, from))
+    const key = `src/edit${seq + 1}.ts`
+    const view = mount('const a = 1\nconst b = 2\nconst c = 3')
+    spy.mockRestore()
+    engine.fillSync(key)
+    await new Promise((r) => setTimeout(r, 120))
+
+    const doc = view.state.doc
+    const covered = new Set<number>()
+    for (const set of view.state.facet(EditorView.decorations)) {
+      const d = typeof set === 'function' ? set(view) : set
+      for (const iter = d.iter(); iter.value; iter.next()) covered.add(doc.lineAt(iter.from).number)
+    }
+    expect([...covered].sort()).toEqual([1, 2, 3])
+    view.destroy()
+  })
+
   it('retokenizes after an edit instead of reusing stale tokens', () => {
     const view = mount('const s = 1\nconst t = 2\n')
     /** Colour index per token on the given line. */

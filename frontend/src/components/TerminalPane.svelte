@@ -283,7 +283,9 @@
     // Keys the app owns rather than the shell. ⌘ combos are app-level on macOS
     // (palette, new task, save), and ⌃` / ⌃⇧` are the dock show and maximize
     // toggles — returning false stops xterm consuming them so they reach the
-    // window handler in App.svelte.
+    // window handler in App.svelte. Every other ⌃ chord stays with the shell;
+    // off macOS the dock claims its own Ctrl+Shift chords in capture phase
+    // before this handler runs (TerminalDock.onDockKey).
     term.attachCustomKeyEventHandler((e) => {
       if (e.metaKey) return false
       if (e.ctrlKey && !e.altKey && isBackquote(e)) return false
@@ -466,6 +468,12 @@
   })
 
   export function focus() { term?.focus() }
+
+  /** Selected text in the viewport, for the dock's Ctrl+Shift+C off macOS. */
+  export function getSelection(): string { return term?.getSelection() ?? '' }
+
+  /** Paste as the user typing it (bracketed paste when the shell asks). */
+  export function paste(text: string) { term?.paste(text) }
 
   /** Clears the screen and the Go-side replay buffer, so re-attaching stays clear. */
   export function clear() {

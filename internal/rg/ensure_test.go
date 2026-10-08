@@ -78,8 +78,8 @@ func TestEnsurePrefersEnvOverStaleManaged(t *testing.T) {
 	}
 }
 
-func TestReleaseSHA256CoversDarwinAssets(t *testing.T) {
-	for _, arch := range []string{"aarch64-apple-darwin", "x86_64-apple-darwin"} {
+func TestReleaseSHA256CoversAssets(t *testing.T) {
+	for _, arch := range []string{"aarch64-apple-darwin", "x86_64-apple-darwin", "aarch64-unknown-linux-musl", "x86_64-unknown-linux-musl"} {
 		asset := "ripgrep-" + ReleaseVersion + "-" + arch + ".tar.gz"
 		sum, ok := releaseSHA256[asset]
 		if !ok || len(sum) != 64 {

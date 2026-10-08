@@ -30,6 +30,8 @@ Read before inventing architecture:
 - Dev app: `wails3 task dev` (or `wails3 task run` / `wails3 task build`).
 - Dogfood: `.recur/project.toml` sets `RECUR_INSTANCE_LABEL=$RECUR_BRANCH`. When that env is present, Recur paints a `dev` chip with the branch in the titlebar gap (packaged Recur omits it).
 - Packaged debug build: `RECUR_DEBUG=1 wails3 task package` keeps the web inspector and skips frontend minification (sourcemaps included).
+- Linux: `wails3 task linux:build` / `linux:package` (GTK4 + WebKitGTK 6.0, so Debian 13 / Ubuntu 24.04+). On a Mac it builds inside `build/linux/Dockerfile` (Docker or OrbStack) for the host arch into `bin/recur-linux-<arch>/`, never `bin/recur`. The package is `bin/recur-linux-<arch>.tar.gz` (`recur` + `recur-cli`); running `recur` from it links `~/.local/bin/recur` to the CLI and writes an app-menu entry (`~/.local/share/applications/org.wails.recur.desktop`).
+- Try the Linux app from a Mac: `wails3 task linux:run` builds it and opens a throwaway Linux desktop (Xvfb + noVNC) in the browser at `http://127.0.0.1:6080`. Its home persists in the `recur-linux-home-<arch>` Docker volume; Ctrl+C or File > Quit stops it.
 - Desktop binary: `bin/recur`. Dev CLI: `bin/recur-cli` via `wails3 task build:cli` — do not overwrite one with the other. Packaged apps also embed `Contents/MacOS/recur-cli` (same `./cmd/recur` binary) and symlink it onto PATH at launch (D-cli-install).
 - Frontend deps live in `frontend/` (`pnpm` / `pnpm-lock.yaml` there). Typecheck: `cd frontend && pnpm run check`.
 - After changing Go methods exposed to the UI, regenerate bindings through the Wails build path (committed `.ts` bindings are authoritative).
@@ -38,7 +40,7 @@ Read before inventing architecture:
 
 ## Testing instructions
 
-CI: `.github/workflows/ci.yml` runs each task below as its own job (Go tests, `-race`, Go lint + govulncheck, bundles, frontend, e2e) and packages Recur.app, failing if committed bindings or `go.mod` are stale. Branch protection requires only its `CI success` job, so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are Taskfile-driven.
+CI: `.github/workflows/ci.yml` runs Go lint + govulncheck + tests on macOS (`go-mac`) and Go lint + tests on Ubuntu 24.04 (`go-linux`), `-race` on Ubuntu (`go-race`), bundles, frontend, and e2e as separate jobs, and packages Recur.app and the Linux tarball (`package-mac`, `package-linux`), failing if committed bindings or `go.mod` are stale. Branch protection requires only its `CI success` job, so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are Taskfile-driven.
 
 | Task | What |
 |------|------|

@@ -9,6 +9,11 @@ vars:
   # KEYCHAIN_PROFILE: "my-notarize-profile"
   # ENTITLEMENTS: "build/darwin/entitlements.plist"
 
+  # Local builds are ad-hoc signed, so macOS forgets folder permissions on every
+  # rebuild. Set RECUR_SIGN_IDENTITY to a code-signing cert name (a self-signed
+  # one from Keychain Access works) to keep them across builds.
+  LOCAL_SIGN_IDENTITY: '{{.RECUR_SIGN_IDENTITY | default "-"}}'
+
   # Docker image for cross-compilation (used when building on non-macOS)
   CROSS_IMAGE: wails-cross
 
@@ -233,9 +238,9 @@ tasks:
       - |
         CLI="{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/MacOS/recur-cli"
         if [ -f "$CLI" ]; then
-          codesign --force --sign - "$CLI"
+          codesign --force --sign "{{.LOCAL_SIGN_IDENTITY}}" "$CLI"
         fi
-      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app"
+      - codesign --force --deep --sign "{{.LOCAL_SIGN_IDENTITY}}" "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app"
 
   codesign:skip:
     summary: Skips codesigning when cross-compiling
@@ -263,9 +268,9 @@ tasks:
       - |
         CLI="{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/recur-cli"
         if [ -f "$CLI" ]; then
-          codesign --force --sign - "$CLI"
+          codesign --force --sign "{{.LOCAL_SIGN_IDENTITY}}" "$CLI"
         fi
-      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
+      - codesign --force --deep --sign "{{.LOCAL_SIGN_IDENTITY}}" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
       - '"{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}"'
 
   sign:

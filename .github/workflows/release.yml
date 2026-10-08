@@ -1,13 +1,16 @@
 name: Release
 
 # Pushing a vX.Y.Z tag builds Recur.app, stamps X.Y.Z into Info.plist, and
-# attaches the zip to the GitHub release. With the secrets below it is
-# Developer ID signed and notarized; without them it ships ad-hoc signed
-# (users clear quarantine per README "Installing").
+# attaches the zip to the GitHub release. With all the secrets below it is
+# Developer ID signed and notarized. With only the MACOS_* ones it is signed
+# but not notarized, which still keeps users' macOS folder permissions across
+# updates. With none it ships ad-hoc signed. Unless notarized, users clear
+# quarantine per README "Installing".
 #
 # Signing secrets:
-#   MACOS_CERT_P12_BASE64  Developer ID Application cert + key, `base64 -i cert.p12`
+#   MACOS_CERT_P12_BASE64  code-signing cert + key, `base64 -i cert.p12`
 #   MACOS_CERT_PASSWORD    password for that .p12
+#   MACOS_SIGN_IDENTITY    cert common name, defaults to "Developer ID Application"
 #   APPLE_ID               Apple ID email used for notarization
 #   APPLE_TEAM_ID          10-character team ID
 #   APPLE_APP_PASSWORD     app-specific password for APPLE_ID
@@ -23,6 +26,8 @@ jobs:
     runs-on: macos-26
     env:
       HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
+      HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
+      SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || 'Developer ID Application' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -50,17 +55,23 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KC_PW" "$KC"
           security list-keychains -d user -s "$KC"
           security default-keychain -s "$KC"
-          xcrun notarytool store-credentials recur-notary \
-            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" \
-            --keychain "$KC"
+          if [ "$HAS_NOTARY" = true ]; then
+            xcrun notarytool store-credentials recur-notary \
+              --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" \
+              --keychain "$KC"
+          fi
 
-      # The temp keychain holds exactly one Developer ID identity, so the
-      # common-name prefix is enough for codesign to select it.
+      # The temp keychain holds exactly one identity, so the common-name prefix
+      # is enough for codesign to select it.
       - name: Build, sign, notarize
-        if: env.HAS_SIGNING == 'true'
+        if: env.HAS_NOTARY == 'true'
         run: |
           RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign:notarize \
-            SIGN_IDENTITY="Developer ID Application" KEYCHAIN_PROFILE=recur-notary
+            SIGN_IDENTITY="$SIGN_IDENTITY" KEYCHAIN_PROFILE=recur-notary
+
+      - name: Build, sign
+        if: env.HAS_SIGNING == 'true' && env.HAS_NOTARY != 'true'
+        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign SIGN_IDENTITY="$SIGN_IDENTITY"
 
       - name: Build (ad-hoc signed)
         if: env.HAS_SIGNING != 'true'
@@ -69,7 +80,7 @@ jobs:
       - name: Verify
         run: |
           codesign --verify --deep --strict bin/Recur.app
-          if [ "$HAS_SIGNING" = true ]; then spctl --assess --type execute bin/Recur.app; fi
+          if [ "$HAS_NOTARY" = true ]; then spctl --assess --type execute bin/Recur.app; fi
           plutil -extract CFBundleShortVersionString raw bin/Recur.app/Contents/Info.plist
 
       - name: Publish

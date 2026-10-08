@@ -37,11 +37,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libxml2-utils
       - uses: ./.github/actions/setup
         with:
           node: "false"
           wails: "true"
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libxml2-utils
       - run: wails3 task test:go:race
 
   bundles:
@@ -121,11 +121,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libxml2-utils
       - uses: ./.github/actions/setup
         with:
           node: "false"
           wails: "true"
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libxml2-utils
       - run: wails3 task lint:go
       - run: wails3 task test:go
 
@@ -134,10 +134,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
       - uses: ./.github/actions/setup
         with:
           wails: "true"
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
       - run: wails3 task linux:package
       - uses: actions/upload-artifact@v7
         with:

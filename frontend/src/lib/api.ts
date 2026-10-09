@@ -11,7 +11,7 @@ import {
 import {
   projectGroups, projects, workspaces, prs, inbox, briefing, attention, policy, settings, resource, providerUsage, pushToast, booted,
   workspacesRunning, agentsRunning, permissionRequests, userQuestions, applyTerminalDockChrome, instanceLabel,
-  pendingChatFocus,
+  pendingChatFocus, issuesStale,
 } from './stores'
 import { get, writable } from 'svelte/store'
 import { wireTerminalEvents } from './terminal'
@@ -101,6 +101,28 @@ export async function setProjectHidden(projectId: string, hidden: boolean) {
   if (!p) return
   const saved = await call(ProjectsService.UpdateProjectRunConfig({ ...p, hidden } as any), 'Could not save project view')
   if (saved) projects.update((arr) => arr.map((x) => (x.id === projectId ? { ...x, hidden: saved.hidden } : x)))
+}
+
+/** Link a workspace to a tracker issue. Best effort: an abandoned pending
+ *  workspace is already gone by the time this lands. The link shows at once;
+ *  the Issues list refreshes once the backend has assigned the issue. */
+export async function linkWorkspaceIssue(workspaceId: string, issue: { source: string; id: string; key?: string }) {
+  if (!workspaceId || !issue?.source || !issue.id) return
+  const ref = { key: '', ...issue }
+  workspaces.update((arr) => arr.map((w) => (w.id === workspaceId ? { ...w, issue: ref } : w)))
+  const ws = await WorkspacesService.SetWorkspaceIssue(workspaceId, ref).catch(() => null)
+  if (ws) issuesStale.update((n) => n + 1)
+}
+
+/** Append a Linear project name / team key to a project's LinearProjects. */
+export async function linkLinearProject(projectId: string, key: string) {
+  const p = get(projects).find((x) => x.id === projectId)
+  if (!p || !key) return
+  const cur = (p.linearProjects ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+  if (cur.some((s) => s.toLowerCase() === key.toLowerCase())) return
+  const linearProjects = [...cur, key].join(', ')
+  const saved = await call(ProjectsService.UpdateProjectRunConfig({ ...p, linearProjects } as any), 'Could not link Linear project')
+  if (saved) projects.update((arr) => arr.map((x) => (x.id === projectId ? { ...x, linearProjects: saved.linearProjects } : x)))
 }
 
 /** Fold one project into the live list (autosave / OpenPath). */

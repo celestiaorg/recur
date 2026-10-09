@@ -1002,14 +1002,15 @@ func githubOwnerRepoForRemote(ctx context.Context, repoPath, remote string) (str
 	if err != nil {
 		return "", err
 	}
-	ownerRepo, ok := ownerRepoFromRemoteURL(out)
+	ownerRepo, ok := OwnerRepoFromRemoteURL(out)
 	if !ok {
 		return "", fmt.Errorf("remote %s is not a GitHub URL", remote)
 	}
 	return ownerRepo, nil
 }
 
-func ownerRepoFromRemoteURL(raw string) (string, bool) {
+// OwnerRepoFromRemoteURL parses owner/repo from a GitHub ssh or https remote URL.
+func OwnerRepoFromRemoteURL(raw string) (string, bool) {
 	s := strings.TrimSpace(raw)
 	if s == "" || strings.HasPrefix(s, "/") || strings.HasPrefix(s, ".") {
 		return "", false

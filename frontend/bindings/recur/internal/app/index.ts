@@ -46,6 +46,7 @@ export {
 
 export {
     AppChatSelection,
+    AssignedIssue,
     BundleSettingInfo,
     BundleSkipInfo,
     ClaudeStatus,
@@ -64,6 +65,7 @@ export {
     FlagDimension,
     FlagOption,
     GrammarInfo,
+    IssueLabel,
     LanguageServerInfo,
     LoopInfo,
     ModelChoice,

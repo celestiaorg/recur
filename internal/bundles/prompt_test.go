@@ -1243,6 +1243,19 @@ printf '{"prompt":"id=%s num=%s src=%s","display":"PR"}' \
 	}
 }
 
+func TestRunPromptShebangIssue(t *testing.T) {
+	res, err := bundles.RunPromptShebang(shebangCtx(t), bundles.PromptAction{
+		ID: "p", Name: "X", Interpreter: bundles.InterpreterShebang,
+		Body: "#!/bin/sh\necho '{\"prompt\":\"go\",\"issue\":{\"source\":\"linear\",\"id\":\"uuid-1\",\"key\":\"ENG-1\"}}'\n",
+	}, bundles.PromptRunContext{Worktree: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Issue == nil || res.Issue.Source != "linear" || res.Issue.ID != "uuid-1" || res.Issue.Key != "ENG-1" {
+		t.Fatalf("issue=%+v", res.Issue)
+	}
+}
+
 func TestRunPromptShebangRejectsTypeScript(t *testing.T) {
 	_, err := bundles.RunPromptShebang(shebangCtx(t), bundles.PromptAction{
 		ID: "p", Name: "X", Interpreter: bundles.InterpreterTypeScript, Body: "x",

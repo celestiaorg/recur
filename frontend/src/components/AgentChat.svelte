@@ -142,7 +142,7 @@
     isCaretAfterFileChip, isCaretAfterSkillChip, isCaretAfterTerminalChip, isCaretAfterArtifactChip,
     insertComposerParagraphBreak,
     insertComposerChip, makeAttachmentChip, makeFileChip, makeSkillChip, makeTerminalChip, makeArtifactChip,
-    findPromptChip, focusPromptChipArg, promptChipInputs, readPromptChipValues, serializePromptChip, parsePromptChipValues, isDirChipPath, type PromptChipSpec,
+    findPromptChip, focusPromptChipArg, promptChipInputs, readPromptChipValues, serializePromptChip, promptChipArgsWithTrailing, parsePromptChipValues, isDirChipPath, type PromptChipSpec,
   } from '../lib/composerDom'
   import { Events } from '@wailsio/runtime'
   import {
@@ -930,6 +930,9 @@
       composerRendered = key
       return
     }
+    // Seeded `/prompt args` needs the lazy prompt index to chip as a prompt;
+    // the specKey change rehydrates once it lands.
+    if (input.startsWith('/')) untrack(() => void ensurePromptIndex())
     // Restore @path + /skill chips from a persisted draft; never for live typing.
     const hadFocus = document.activeElement === el
     hydrateComposer(el, input, attachments, {
@@ -1556,9 +1559,8 @@
   function promptChipArgs(slash: string, fallback: string): string {
     const chip = composerEl ? findPromptChip(composerEl) : null
     if (!chip) return fallback
-    const wire = serializePromptChip(chip)
-    const prefix = `/${slash}`
-    return wire.startsWith(prefix) ? wire.slice(prefix.length).trim() : fallback
+    if (!serializePromptChip(chip).startsWith(`/${slash}`)) return fallback
+    return promptChipArgsWithTrailing(composerEl!, chip)
   }
 
   function applyPromptArgs(slash: string, args: string, invoke: boolean) {

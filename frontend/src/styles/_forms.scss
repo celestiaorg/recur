@@ -855,6 +855,42 @@
   max-height: min(220px, calc(78vh - 80px));
 }
 
+.nt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--faint);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nt-link svg {
+  width: 12px;
+  height: 12px;
+}
+
+.nt-link:hover {
+  background: var(--pane-2);
+  color: var(--text);
+}
+
+.nt-link.on {
+  color: var(--amber);
+}
+
+.nt-link:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
 .nt-foot {
   display: flex;
   align-items: center;

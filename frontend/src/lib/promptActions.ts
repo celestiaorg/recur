@@ -17,6 +17,7 @@ import { skillQueryAt } from './agentchat'
 import { parsePromptChipValues, type PromptChipArg } from './composerDom'
 import { get, writable } from 'svelte/store'
 import { settings } from './stores'
+import { linkWorkspaceIssue } from './api'
 import type { ChatSurface } from './chat-surface'
 
 export type { PromptActionInfo, PromptCompleteHit }
@@ -422,14 +423,19 @@ export async function runPromptAction(
   signal?: AbortSignal,
 ): Promise<PromptResult> {
   const timeoutMs = (info.timeoutMs ?? 0) > 0 ? info.timeoutMs! : DEFAULT_PROMPT_TIMEOUT_MS
+  let out: PromptResult
   if (info.interpreter === 'typescript') {
     const code = await BundleService.CompiledPromptModule(info.id)
-    return runPromptModule(code, ctx, info.name, timeoutMs, signal)
+    out = await runPromptModule(code, ctx, info.name, timeoutMs, signal)
+  } else {
+    const res = await BundleService.RunPromptAction(info.id, toDTO(ctx, timeoutMs))
+    out = {
+      prompt: res.prompt ?? '',
+      display: normalizePromptDisplay(res.display ?? '', info.name),
+      freshSession: res.freshSession ?? undefined,
+      issue: res.issue ?? undefined,
+    }
   }
-  const res = await BundleService.RunPromptAction(info.id, toDTO(ctx, timeoutMs))
-  return {
-    prompt: res.prompt ?? '',
-    display: normalizePromptDisplay(res.display ?? '', info.name),
-    freshSession: res.freshSession ?? undefined,
-  }
+  if (out.issue) void linkWorkspaceIssue(ctx.workspaceId, out.issue)
+  return out
 }

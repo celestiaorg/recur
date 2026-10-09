@@ -161,6 +161,18 @@ export function InstallCursorBridge(): $CancellablePromise<$models.CursorStatus>
 }
 
 /**
+ * ListAssignedIssues merges open GitHub issues (via `gh`) and Linear issues
+ * (via the configured API key) that are assigned to the user, plus unassigned
+ * ones in the user's project repos and Linear teams, newest first. A source
+ * that is unavailable or fails is skipped; the others still show.
+ */
+export function ListAssignedIssues(): $CancellablePromise<$models.AssignedIssue[]> {
+    return $Call.ByID(892580006).then(($result: any) => {
+        return $$createType10($result);
+    });
+}
+
+/**
  * ListModelCatalog returns the grouped model list for the pickers.
  * 
  * Each provider appears only when it is on in Settings → Providers. Claude Code
@@ -175,7 +187,7 @@ export function InstallCursorBridge(): $CancellablePromise<$models.CursorStatus>
  */
 export function ListModelCatalog(): $CancellablePromise<$models.ModelGroup[]> {
     return $Call.ByID(119155786).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType12($result);
     });
 }
 
@@ -186,7 +198,7 @@ export function ListModelCatalog(): $CancellablePromise<$models.ModelGroup[]> {
  */
 export function ListMonospaceFonts(): $CancellablePromise<string[]> {
     return $Call.ByID(2980539313).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType13($result);
     });
 }
 
@@ -195,6 +207,16 @@ export function ListMonospaceFonts(): $CancellablePromise<string[]> {
  */
 export function LogsPath(): $CancellablePromise<string> {
     return $Call.ByID(2054947398);
+}
+
+/**
+ * OpenLinearInApp opens a linear.app URL in the Linear desktop app. False
+ * means the caller should open it in the browser instead.
+ * simplify: macOS only (open fails when no app handles linear://). Add an
+ * xdg-mime handler check for Linux if Linear ships a desktop build there.
+ */
+export function OpenLinearInApp(raw: string): $CancellablePromise<boolean> {
+    return $Call.ByID(1829118463, raw);
 }
 
 /**
@@ -235,7 +257,7 @@ export function TestCodexKey(apiKey: string, chatGPTAuth: boolean): $Cancellable
  */
 export function TestCompatibleProvider(p: domain$0.CompatibleProvider): $CancellablePromise<$models.CompatibleTestResult> {
     return $Call.ByID(2350671109, p).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType14($result);
     });
 }
 
@@ -259,14 +281,9 @@ const $$createType5 = $models.CursorStatus.createFrom;
 const $$createType6 = usage$0.Snapshot.createFrom;
 const $$createType7 = domain$0.Resource.createFrom;
 const $$createType8 = domain$0.Settings.createFrom;
-const $$createType9 = $models.ModelGroup.createFrom;
+const $$createType9 = $models.AssignedIssue.createFrom;
 const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = $Create.Array($Create.Any);
-const $$createType12 = $models.CompatibleTestResult.createFrom;
-
-/**
- * ListAssignedIssues merges open GitHub and Linear issues assigned to the user.
- */
-export function ListAssignedIssues(): $CancellablePromise<$models.AssignedIssue[]> {
-    return $Call.ByName("recur/internal/app.SettingsService.ListAssignedIssues") as $CancellablePromise<$models.AssignedIssue[]>;
-}
+const $$createType11 = $models.ModelGroup.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = $Create.Array($Create.Any);
+const $$createType14 = $models.CompatibleTestResult.createFrom;

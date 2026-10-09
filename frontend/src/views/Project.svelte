@@ -385,7 +385,7 @@
       {
         group: 'Project',
         items: [
-          { id: 'general', label: 'General', icon: 'general', keywords: 'name avatar pic color icon identity repository path git repo checkout worktree default branch group sidebar' },
+          { id: 'general', label: 'General', icon: 'general', keywords: 'name avatar pic color icon identity repository path git repo checkout worktree default branch group sidebar issues linear github' },
           { id: 'run', label: 'Run', icon: 'run', keywords: 'setup teardown script app url env environment verify browser project.toml copy files glob dotenv workspace' },
           { id: 'schedules', label: 'Schedules', icon: 'schedules', keywords: 'schedule automation prompt daily weekdays recurring timer' },
           { id: 'prs', label: 'Pull requests', icon: 'prs', keywords: 'github merge squash rebase update base delete branch commit message title description' },
@@ -509,6 +509,7 @@
       copyFiles: form.copyFiles ?? '',
       prOnGithub: !!form.prOnGithub,
       deleteBranchOnRemove: !!form.deleteBranchOnRemove,
+      linearProjects: form.linearProjects ?? '',
       mergeMethod: form.mergeMethod ?? '',
       updateBaseMethod: form.updateBaseMethod ?? '',
       squashCommitMessage: form.squashCommitMessage ?? '',
@@ -840,6 +841,19 @@
                     </div>
                   </div>
                 {/if}
+              </div>
+            </SettingsGroup>
+            <SettingsGroup title="Issues" blurb="Which assigned issues belong to this project. GitHub issues match this repo's git remotes automatically.">
+              <div class="set-rows">
+                <div class="set-row">
+                  <div class="set-copy">
+                    <div class="set-title">Linear projects</div>
+                    <div class="set-desc">Comma-separated Linear project names or team keys. A project name match wins over a team key.</div>
+                  </div>
+                  <div class="set-ctrl">
+                    <input class="inp" bind:value={form.linearProjects} placeholder="Houston, ENG" aria-label="Linear projects" />
+                  </div>
+                </div>
               </div>
             </SettingsGroup>
           </SettingsGroups>

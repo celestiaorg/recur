@@ -214,7 +214,7 @@ func clampShellState(st ShellState) ShellState {
 	case "project":
 		st.WorkspaceID = ""
 		st.PRID = ""
-	case "inbox", "briefing", "settings", "pr", "schedules":
+	case "inbox", "briefing", "settings", "pr", "schedules", "issues":
 		st.WorkspaceID = ""
 		st.PRID = ""
 		st.ProjectID = ""
@@ -229,7 +229,7 @@ func clampShellState(st ShellState) ShellState {
 // only and is intentionally omitted).
 func knownShellView(v string) bool {
 	switch v {
-	case "detail", "escalation", "prdetail", "project", "inbox", "briefing", "settings", "pr", "schedules":
+	case "detail", "escalation", "prdetail", "project", "inbox", "briefing", "settings", "pr", "schedules", "issues":
 		return true
 	}
 	return false

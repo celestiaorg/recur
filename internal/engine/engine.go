@@ -1137,14 +1137,17 @@ func (e *Engine) dispatch(rec domain.Workspace) error {
 		rec.Phase = "starting"
 	}
 	rec.Group = domain.GroupActive
-	// Preserve live LoopChatCode so a close during worktree add is not undone.
+	// Preserve live LoopChatCode so a close during worktree add is not undone,
+	// and live Issue so a link set during worktree add survives.
 	// lp.ChatCode stays as published — concurrent stop/sibling checks read it.
 	if updated, ok := e.Store.UpdateWorkspace(rec.ID, func(w *domain.Workspace) {
-		keep := w.LoopChatCode
+		keep, issue := w.LoopChatCode, w.Issue
 		*w = rec
 		w.LoopChatCode = keep
+		w.Issue = issue
 	}); ok {
 		rec.LoopChatCode = updated.LoopChatCode
+		rec.Issue = updated.Issue
 	} else if _, err := e.Store.AddWorkspace(rec); err != nil {
 		cleanup()
 		return err

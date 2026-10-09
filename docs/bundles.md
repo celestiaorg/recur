@@ -624,8 +624,9 @@ stores the full wire as `text` and the short label as `display_text`. An empty
 chat turn (used by `/update` when git finishes cleanly). An optional
 `"issue": {"source": "linear", "id": "<stable tracker id>", "key": "ENG-123"}`
 links the workspace the prompt runs in (or the one New Task creates) to that
-issue, so the Issues view shows View workspace for it. Use the tracker's
-stable id (Linear issue UUID, GitHub issue node id), not the human key.
+issue, so the Issues view shows View workspace for it. If nobody is assigned
+yet, linking also assigns the issue to the user on GitHub or Linear. Use the
+tracker's stable id (Linear issue UUID, GitHub issue node id), not the human key.
 
 Shipped flagships live in `bundles/Chat`: `/fix-findings` (`mode=agent`,
 `tab_group = "ops"`, `fresh_session`; invoke from the review chat and it

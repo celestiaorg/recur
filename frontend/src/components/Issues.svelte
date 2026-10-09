@@ -188,7 +188,7 @@
     <button
       type="button"
       class="tbtn iss-start"
-      title="Create a Recur workspace for this issue"
+      title="Create a Recur workspace for this issue (assigns it to you if unassigned)"
       onclick={(e) => { e.stopPropagation(); startWorkspace(i) }}
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation() }}
     ><Icon name="plus" />Create workspace</button>

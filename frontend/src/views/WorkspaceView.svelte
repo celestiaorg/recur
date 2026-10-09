@@ -7,7 +7,7 @@
   import {
     WorkspacesService, ObservatoryService, EscalationService, BriefingService, onSessionDelta, onSessionStep, onSessionThinking,
     onSessionToolResult, onSessionToolInput, onSessionContextUsage, onSessionTurnEnd, onSessionCompact, onSessionNotice, onSessionUser, onSessionFallback, onWorkspaceChatTab, onAttentionTab, onAgent,
-    onFindingsUpdated, onChatsChanged, onChatModeChanged, onQuestionAnswered, onQuestionAnswerFailed, onEscalationRaised, onEscalationResolved, call, callOk, answerQuestion, answerEscalation, setWorkspacesFromList, upsertWorkspace, isAgentRunningStatus, type WorkspaceStep,
+    onFindingsUpdated, onChatsChanged, onChatModeChanged, onQuestionAnswered, onQuestionAnswerFailed, onEscalationRaised, onEscalationResolved, call, callOk, answerQuestion, answerEscalation, setWorkspacesFromList, upsertWorkspace, isAgentRunningStatus, linkWorkspaceIssue, type WorkspaceStep,
   } from '../lib/api'
   import { mapChatItems, mergePersistedWithLive, retainOptimisticUsers, appendStream as appendStreamRow, applyStream, addTool as addToolRow, addUser, attachToolResult, patchToolInput, finishTurn as finishTurnRows, noteThinkingTokens, endTurn as endTurnRow, applyCompact as applyCompactRow, applyNotice as applyNoticeRow, applyFallback as applyFallbackRow, dropOpenCompact, toSendAttachments, stripAttachmentMarkers, composeMarkedText, isChatStoppedReply, isChatInjectedReply, displayUserChatText, pendingSendBubbleBody, formatAskUserDisplayText, dropLiveAfterFooter, shouldRefreshTurnStamp, shouldSkipIdleTranscriptReset, currentTurnHasEnded, dropOptimisticUser, mergeRejectedSteerDraft, mergeRejectedSteerAttachments, CHAT_RETRY_DISPLAY } from '../lib/agentchat'
   import {
@@ -2343,6 +2343,7 @@
 
       const result = await runPromptAction(info, ctx, signal)
       if (signal.aborted) return
+      if (result.issue) void linkWorkspaceIssue(ws.id, result.issue)
       const display = result.display || info.name
       if (!result.prompt.trim()) {
         pushToast('success', display)

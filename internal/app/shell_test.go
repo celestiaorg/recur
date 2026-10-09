@@ -25,6 +25,11 @@ func TestClampShellState(t *testing.T) {
 		t.Fatalf("schedules should drop ids: %+v", got)
 	}
 
+	got = clampShellState(ShellState{View: "issues", WorkspaceID: "WS-1"})
+	if got != (ShellState{View: "issues"}) {
+		t.Fatalf("issues should drop ids: %+v", got)
+	}
+
 	got = clampShellState(ShellState{View: "briefing", WorkspaceID: "WS-1"})
 	if got != (ShellState{View: "briefing"}) {
 		t.Fatalf("briefing should drop ids: %+v", got)

@@ -429,6 +429,31 @@ func TestDispatchFreshLoopDoesNotRestoreLeftoverBranch(t *testing.T) {
 	}
 }
 
+func TestDispatchKeepsIssueLinkedDuringWorktreeAdd(t *testing.T) {
+	eng, st, _, _ := newTestEngine(t, &convergeRunner{findingsPerIter: []int{0}})
+	projID := addProject(t, st, initRepo(t))
+	rec := domain.Workspace{
+		ID: "issue-link", ProjectID: projID, Goal: "linked",
+		RunStarted: true, BaseBranch: "main",
+		State: domain.StateQueued, StatusLabel: "Queued", Group: domain.GroupActive,
+	}
+	if _, err := st.AddWorkspace(rec); err != nil {
+		t.Fatal(err)
+	}
+	issue := &domain.IssueRef{Source: "linear", ID: "lin-1", Key: "ENG-1"}
+	st.UpdateWorkspace(rec.ID, func(w *domain.Workspace) { w.Issue = issue })
+	if !eng.gov.TryAcquireLoop() {
+		t.Fatal("TryAcquireLoop failed")
+	}
+	if err := eng.dispatch(rec); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	ws, _ := st.Workspace(rec.ID)
+	if ws.Issue == nil || *ws.Issue != *issue {
+		t.Fatalf("Issue after dispatch = %+v, want %+v", ws.Issue, issue)
+	}
+}
+
 func pinKitchenPair(t *testing.T, adj, dish string) {
 	t.Helper()
 	oldAdj, oldDish := kitchenAdjectives, kitchenDishes

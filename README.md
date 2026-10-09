@@ -96,7 +96,7 @@ The bundles under `bundles/` are the reference implementations. User bundles liv
 
 ## Installing
 
-Download `Recur-<version>-macos-arm64.zip` from [Releases](../../releases), unzip it, and move `Recur.app` to `/Applications`. Releases are not notarized yet, so macOS blocks the first launch. Clear the quarantine flag once per download:
+Download `Recur-<version>-macos-universal.dmg` from [Releases](../../releases), open it, and drag Recur to Applications. Releases are not notarized yet, so macOS blocks the first launch. Clear the quarantine flag once per download:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Recur.app

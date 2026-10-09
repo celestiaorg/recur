@@ -20,6 +20,11 @@ vars:
   # Packaged bundle is Recur.app; the executable inside stays APP_NAME (recur).
   APP_BUNDLE_NAME: Recur
 
+  # dmg-background.tiff holds 1x and 2x renders of dmg-background.svg:
+  #   rsvg-convert -w 540 / -w 1080 | magick - -attenuate 0.7 +noise Uniform -strip
+  #   (dithers the glow's banding), then tiffutil -cathidpicheck 1x.png 2x.png
+  DMG_BACKGROUND: build/darwin/dmg-background.tiff
+
   # Wails compiles the WebKit inspector out of production. Opt in at package
   # time: RECUR_DEBUG=1 wails3 task package  (View → Open Developer Tools / ⌥⌘I).
   # That flag also skips frontend minify and emits sourcemaps.
@@ -117,7 +122,8 @@ tasks:
 
   build:universal:
     summary: Builds darwin universal binary (arm64 + amd64)
-    deps:
+    # Sequential: parallel builds race on frontend/dist and the bindings.
+    cmds:
       - task: build
         vars:
           ARCH: amd64
@@ -126,7 +132,6 @@ tasks:
         vars:
           ARCH: arm64
           OUTPUT: "{{.BIN_DIR}}/{{.APP_NAME}}-arm64"
-    cmds:
       - task: '{{if eq OS "darwin"}}build:universal:lipo:native{{else}}build:universal:lipo:go{{end}}'
 
   build:universal:lipo:native:
@@ -159,6 +164,21 @@ tasks:
         vars:
           UNIVERSAL: "true"
 
+
+  package:dmg:
+    summary: Packages the application into a styled `.dmg`
+    deps:
+      - task: package
+    cmds:
+      - task: create:dmg
+
+  create:dmg:
+    summary: Creates a `.dmg` from the `.app` bundle (Recur.app + Applications link)
+    platforms: [darwin]
+    cmds:
+      - >-
+        wails3 tool package --format dmg --name "{{.APP_BUNDLE_NAME}}" --out "{{.BIN_DIR}}"
+        --background "{{.DMG_BACKGROUND}}" --volume-icon build/darwin/icons.icns
 
   create:app:bundle:
     summary: Creates an `.app` bundle
@@ -279,7 +299,7 @@ tasks:
       Signs the .app bundle for distribution.
       Configure SIGN_IDENTITY in the vars section at the top of this file.
     deps:
-      - task: package
+      - task: 'package{{if eq .UNIVERSAL "true"}}:universal{{end}}'
     cmds:
       - task: sign:cli
       - wails3 tool sign --input "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app" --identity "{{.SIGN_IDENTITY}}" {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}}
@@ -306,7 +326,7 @@ tasks:
       Setup (one-time):
         wails3 signing credentials --apple-id "you@email.com" --team-id "TEAMID" --password "app-specific-password" --profile "my-profile"
     deps:
-      - task: package
+      - task: 'package{{if eq .UNIVERSAL "true"}}:universal{{end}}'
     cmds:
       - task: sign:cli
       - wails3 tool sign --input "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app" --identity "{{.SIGN_IDENTITY}}" {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}} --notarize --keychain-profile {{.KEYCHAIN_PROFILE}}

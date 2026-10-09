@@ -375,8 +375,9 @@ fire when stdout is non-empty. Tools that use exit `1` as a normal outcome
 `bundles/Diff/bin/diff-clipboard.sh`.
 
 `showAsHTML` was removed — use `newDocument` with `language` + optional
-`openInPreview` (HTML Preview is a sandboxed iframe: `allow-scripts`,
-CSP-constrained, no `allow-same-origin`).
+`openInPreview` (HTML Preview is a sandboxed iframe: `allow-scripts allow-forms`,
+no `allow-same-origin`; https CDN scripts/styles and `fetch` to https work,
+`localStorage` is in-memory only).
 
 ### `newDocument` language & preview
 

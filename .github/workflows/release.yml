@@ -1,14 +1,15 @@
 name: Release
 
-# Pushing a vX.Y.Z tag builds Recur.app (stamping X.Y.Z into Info.plist) and
-# the Linux tarballs in parallel. Only once every build succeeds does `publish`
-# create the GitHub release and attach them all, so a failed build never leaves
-# a partial release.
+# Pushing a vX.Y.Z tag builds a universal Recur.app (stamping X.Y.Z into
+# Info.plist) in a styled DMG, and the Linux tarballs, in parallel. Only once
+# every build succeeds does `publish` create the GitHub release and attach them
+# all, so a failed build never leaves a partial release.
 #
-# With all the secrets below Recur.app is Developer ID signed and notarized.
-# With only the MACOS_* ones it is signed but not notarized, which still keeps
-# users' macOS folder permissions across updates. With none it ships ad-hoc
-# signed. Unless notarized, users clear quarantine per README "Installing".
+# With all the secrets below Recur.app and the DMG are Developer ID signed,
+# notarized, and stapled. With only the MACOS_* ones they are signed but not
+# notarized, which still keeps users' macOS folder permissions across updates.
+# With none it ships ad-hoc signed. Unless notarized, users clear quarantine per
+# README "Installing".
 #
 # Signing secrets:
 #   MACOS_CERT_P12_BASE64  code-signing cert + key, `base64 -i cert.p12`
@@ -69,28 +70,42 @@ jobs:
       - name: Build, sign, notarize
         if: env.HAS_NOTARY == 'true'
         run: |
-          RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign:notarize \
+          RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign:notarize UNIVERSAL=true \
             SIGN_IDENTITY="$SIGN_IDENTITY" KEYCHAIN_PROFILE=recur-notary
 
       - name: Build, sign
         if: env.HAS_SIGNING == 'true' && env.HAS_NOTARY != 'true'
-        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign SIGN_IDENTITY="$SIGN_IDENTITY"
+        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign UNIVERSAL=true SIGN_IDENTITY="$SIGN_IDENTITY"
 
       - name: Build (ad-hoc signed)
         if: env.HAS_SIGNING != 'true'
-        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task package
+        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:package:universal
 
       - name: Verify
         run: |
           codesign --verify --deep --strict bin/Recur.app
           if [ "$HAS_NOTARY" = true ]; then spctl --assess --type execute bin/Recur.app; fi
           plutil -extract CFBundleShortVersionString raw bin/Recur.app/Contents/Info.plist
+          for bin in recur recur-cli; do lipo bin/Recur.app/Contents/MacOS/$bin -verify_arch arm64 x86_64; done
 
-      - run: ditto -c -k --keepParent bin/Recur.app "bin/Recur-${GITHUB_REF_NAME#v}-macos-arm64.zip"
+      # Notarizing the DMG as well as the app lets Gatekeeper pass the
+      # download offline once the ticket is stapled.
+      - name: DMG
+        run: |
+          DMG="bin/Recur-${GITHUB_REF_NAME#v}-macos-universal.dmg"
+          wails3 task darwin:create:dmg
+          mv bin/Recur.dmg "$DMG"
+          if [ "$HAS_SIGNING" = true ]; then codesign --sign "$SIGN_IDENTITY" --timestamp "$DMG"; fi
+          if [ "$HAS_NOTARY" = true ]; then
+            xcrun notarytool submit "$DMG" --keychain-profile recur-notary --wait
+            xcrun stapler staple "$DMG"
+            spctl --assess --type open --context context:primary-signature "$DMG"
+          fi
+          hdiutil verify "$DMG"
       - uses: actions/upload-artifact@v7
         with:
-          name: release-macos-arm64
-          path: bin/Recur-*-macos-arm64.zip
+          name: release-macos-universal
+          path: bin/Recur-*-macos-universal.dmg
           if-no-files-found: error
 
   # Each arch builds natively (the app is cgo + GTK), so arm64 needs an arm runner.

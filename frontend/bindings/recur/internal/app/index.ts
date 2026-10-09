@@ -66,6 +66,7 @@ export {
     FlagOption,
     GrammarInfo,
     IssueLabel,
+    IssuesView,
     LanguageServerInfo,
     LoopInfo,
     ModelChoice,

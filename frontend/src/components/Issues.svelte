@@ -1,6 +1,13 @@
+<script module lang="ts">
+  import type { IssuesView } from '../../bindings/recur/internal/app/models'
+
+  // Last view this session, so switching back is instant; disk covers reloads.
+  let savedView: IssuesView | null = null
+</script>
+
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { SettingsService } from '../../bindings/recur/internal/app'
+  import { SettingsService, ShellService } from '../../bindings/recur/internal/app'
   import type { AssignedIssue } from '../../bindings/recur/internal/app/models'
   import { formatRelativeAge } from '../lib/format'
   import { openExternalUrl } from '../lib/open-external'
@@ -35,8 +42,29 @@
   let groupIds = $state<string[]>([])
   let sort = $state('updated')
   let projectIds = $state<string[]>([])
-  const LAYOUT_KEY = 'recur.issuesLayout'
-  let layout = $state(localStorage.getItem(LAYOUT_KEY) === 'board' ? 'board' : 'list')
+  let layout = $state('list')
+  let viewReady = $state(false)
+
+  function applyView(v: IssuesView | null) {
+    const one = (opts: { id: string }[], x: string | undefined, d: string) => (opts.some((o) => o.id === x) ? x! : d)
+    const strs = (a: unknown) => (Array.isArray(a) ? a.filter((x): x is string => typeof x === 'string') : [])
+    seg = one(SEGS, v?.source, 'all')
+    owner = one(OWNER_SEGS, v?.owner, 'all')
+    groupIds = strs(v?.groups)
+    sort = one(SORTS, v?.sort, 'updated')
+    projectIds = strs(v?.projects)
+    layout = v?.layout === 'board' ? 'board' : 'list'
+    viewReady = true
+  }
+  if (savedView) applyView(savedView)
+  else ShellService.GetIssuesView().then(applyView, () => applyView(null))
+
+  $effect(() => {
+    const v = { layout, source: seg, owner, groups: groupIds, sort, projects: projectIds }
+    if (!viewReady) return
+    savedView = v
+    void ShellService.SetIssuesView(v).catch(() => {})
+  })
 
   const hasLinear = $derived(issues.some((i) => i.source === 'linear'))
   const hasGithub = $derived(issues.some((i) => i.source === 'github'))
@@ -46,11 +74,15 @@
     const opts = $projects.filter((p) => ids.has(p.id)).map((p) => ({ value: p.id, label: p.name || p.id }))
     return ids.has(UNLINKED) ? [...opts, { value: UNLINKED, label: 'Unlinked' }] : opts
   })
+  // Recalled filters can outlive their control (a removed project, a source
+  // with no issues left); ignore those instead of hiding everything.
+  const activeProjects = $derived(projectIds.filter((id) => projectOptions.some((o) => o.value === id)))
+  const activeSeg = $derived(hasLinear && hasGithub ? seg : 'all')
   const visible = $derived(
     issues.filter((i) =>
-      (seg === 'all' || i.source === seg)
+      (activeSeg === 'all' || i.source === activeSeg)
       && (owner === 'all' || (owner === 'mine') === !!i.assignees?.length)
-      && (projectIds.length === 0 || projectIds.includes(i.projectId || UNLINKED))),
+      && (activeProjects.length === 0 || activeProjects.includes(i.projectId || UNLINKED))),
   )
   // One column per status (merged by name across teams), in list order:
   // In progress → Todo → Backlog, furthest Linear workflow position first.
@@ -74,7 +106,6 @@
 
   function setLayout(v: string) {
     layout = v
-    localStorage.setItem(LAYOUT_KEY, v)
   }
 
   const ms = (t: string) => Date.parse(t) || 0
@@ -176,7 +207,7 @@
           multiple
           ghost
           class="briefing-proj-filter"
-          values={projectIds}
+          values={activeProjects}
           options={projectOptions}
           label="Filter by project"
           placeholder="All projects"

@@ -1232,6 +1232,41 @@ export class IssueLabel {
 }
 
 /**
+ * IssuesView is the Issues page's layout and filters. The frontend validates
+ * values on load, so an unknown or stale entry falls back to its default.
+ */
+export class IssuesView {
+    "layout"?: string;
+    "source"?: string;
+    "owner"?: string;
+    "groups"?: string[];
+    "sort"?: string;
+    "projects"?: string[];
+
+    /** Creates a new IssuesView instance. */
+    constructor($$source: Partial<IssuesView> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new IssuesView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): IssuesView {
+        const $$createField3_0 = $$createType5;
+        const $$createField5_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("groups" in $$parsedSource) {
+            $$parsedSource["groups"] = $$createField3_0($$parsedSource["groups"]);
+        }
+        if ("projects" in $$parsedSource) {
+            $$parsedSource["projects"] = $$createField5_0($$parsedSource["projects"]);
+        }
+        return new IssuesView($$parsedSource as Partial<IssuesView>);
+    }
+}
+
+/**
  * LanguageServerInfo is one discovered / builtin language server for Settings.
  */
 export class LanguageServerInfo {

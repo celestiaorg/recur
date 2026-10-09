@@ -15,6 +15,7 @@ import (
 const (
 	shellStateFile      = "shell.json"
 	scheduleViewFile    = "schedule-view.json"
+	issuesViewFile      = "issues-view.json"
 	shellSaveDebounce   = 250 * time.Millisecond
 	shellSaveBackoffMax = 30 * time.Second
 )
@@ -304,11 +305,50 @@ func loadScheduleView() scheduleView {
 }
 
 func saveScheduleView(st scheduleView) error {
-	path, err := scheduleViewPath()
+	return writeDataJSON(scheduleViewFile, st)
+}
+
+// IssuesView is the Issues page's layout and filters. The frontend validates
+// values on load, so an unknown or stale entry falls back to its default.
+type IssuesView struct {
+	Layout   string   `json:"layout,omitempty"`
+	Source   string   `json:"source,omitempty"`
+	Owner    string   `json:"owner,omitempty"`
+	Groups   []string `json:"groups,omitempty"`
+	Sort     string   `json:"sort,omitempty"`
+	Projects []string `json:"projects,omitempty"`
+}
+
+// GetIssuesView returns the saved Issues view, or a zero value when none
+// exists or the file is corrupt.
+func (s *ShellService) GetIssuesView() IssuesView {
+	var v IssuesView
+	root, err := store.DataDir()
+	if err != nil {
+		return v
+	}
+	data, err := os.ReadFile(filepath.Join(root, issuesViewFile))
+	if err != nil || json.Unmarshal(data, &v) != nil {
+		return IssuesView{}
+	}
+	return v
+}
+
+// SetIssuesView records the Issues view next to shell.json.
+func (s *ShellService) SetIssuesView(v IssuesView) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return writeDataJSON(issuesViewFile, v)
+}
+
+// writeDataJSON atomically writes v as indented JSON to name under DataDir.
+func writeDataJSON(name string, v any) error {
+	root, err := store.DataDir()
 	if err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(st, "", "  ")
+	path := filepath.Join(root, name)
+	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}

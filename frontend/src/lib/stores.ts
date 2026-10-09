@@ -1546,9 +1546,10 @@ export function gitProjectForNewWorkspace(): Project | undefined {
 // and pre-filling the goal and/or mode (e.g. a Linear issue prompt from ⌘K, or a
 // mode picked on Getting Started). When repoId is
 // omitted, default to the focused project so ⌘N lands in the project you're in.
-/** linearKey: an unlinked Linear project name / team key the modal offers to
- *  save on the chosen project (Project → Issues). */
-export type NewTaskDraft = { text: string; display?: string; mode?: ChatMode; linearKey?: string }
+/** linearKey: the issue's Linear project name (or team key when it has none).
+ *  The modal offers to save it on the chosen project when that differs from
+ *  linkedProjectId, the project the issue routes to today. */
+export type NewTaskDraft = { text: string; display?: string; mode?: ChatMode; linearKey?: string; linkedProjectId?: string }
 export const newTaskDraft = writable<NewTaskDraft | null>(null)
 /** Bumped when an issue's assignment may have changed; the Issues view reloads. */
 export const issuesStale = writable(0)

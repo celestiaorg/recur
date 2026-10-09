@@ -129,8 +129,8 @@
 
   function startWorkspace(i: AssignedIssue) {
     const text = `/${i.source} ${i.ref}`
-    const linearKey = i.source === 'linear' && !i.projectId ? i.linearProject || i.linearTeam : undefined
-    openNewTask(i.projectId, { text, linearKey })
+    const linearKey = i.source === 'linear' ? i.linearProject || i.linearTeam : undefined
+    openNewTask(i.projectId, { text, linearKey, linkedProjectId: i.projectId })
   }
 
   function hex(c: string): string {

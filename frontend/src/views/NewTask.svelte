@@ -55,6 +55,7 @@
   let attachments = $state<ChatAttachmentDraft[]>([])
   let starting = $state(false)
   let linearKey = $state('')
+  let linkedProjectId = $state('')
   let linkLinear = $state(true)
   let issueRef: { source: string; id: string; key?: string } | undefined
   let repoId = $state('')
@@ -239,6 +240,7 @@
   })
 
   const repo = $derived(gitProjects.find((p) => p.id === repoId) ?? gitProjects[0])
+  const offerLinearLink = $derived(!!linearKey && !!repo && repo.id !== linkedProjectId)
   // Loop needs a task description (it becomes the run's goal); every other mode
   // only needs a repo + base (an opening prompt is optional — the agent names
   // the workspace via MCP on the first session).
@@ -327,6 +329,7 @@
     seedWire = seedDisplay ? d.text : ''
     task = seedDisplay || d.text
     linearKey = d.linearKey ?? ''
+    linkedProjectId = d.linkedProjectId ?? ''
     linkLinear = true
     newTaskDraft.set(null)
     queueMicrotask(() => composer?.focusComposer())
@@ -489,7 +492,7 @@
         return // create failed — stay on the modal
       }
       upsertWorkspace(ws)
-      if (linearKey && linkLinear) void linkLinearProject(repo!.id, linearKey)
+      if (offerLinearLink && linkLinear) void linkLinearProject(repo!.id, linearKey)
       if (issueRef) void linkWorkspaceIssue(ws.id, issueRef)
       task = ''
       attachments = []
@@ -544,7 +547,7 @@
                 <Icon name="git-branch" />
               {/snippet}
             </Select>
-            {#if linearKey && repo}
+            {#if offerLinearLink && repo}
               <button
                 type="button"
                 class="nt-link"

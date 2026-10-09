@@ -851,7 +851,7 @@
                     <div class="set-desc">Comma-separated Linear project names or team keys. A project name match wins over a team key.</div>
                   </div>
                   <div class="set-ctrl">
-                    <input class="inp" bind:value={form.linearProjects} placeholder="Houston, ENG" aria-label="Linear projects" />
+                    <input class="inp" bind:value={form.linearProjects} placeholder="Mobile App, ENG" aria-label="Linear projects" />
                   </div>
                 </div>
               </div>

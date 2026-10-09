@@ -116,13 +116,17 @@ export async function linkWorkspaceIssue(workspaceId: string, issue: { source: s
 
 /** Append a Linear project name / team key to a project's LinearProjects. */
 export async function linkLinearProject(projectId: string, key: string) {
-  const p = get(projects).find((x) => x.id === projectId)
-  if (!p || !key) return
-  const cur = (p.linearProjects ?? '').split(',').map((s) => s.trim()).filter(Boolean)
-  if (cur.some((s) => s.toLowerCase() === key.toLowerCase())) return
-  const linearProjects = [...cur, key].join(', ')
-  const saved = await call(ProjectsService.UpdateProjectRunConfig({ ...p, linearProjects } as any), 'Could not link Linear project')
-  if (saved) projects.update((arr) => arr.map((x) => (x.id === projectId ? { ...x, linearProjects: saved.linearProjects } : x)))
+  if (!key) return
+  const same = (s: string) => s.toLowerCase() === key.toLowerCase()
+  for (const p of get(projects)) {
+    const cur = (p.linearProjects ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+    const has = cur.some(same)
+    // A key routes to one project, so linking it here moves it off any other.
+    if (has === (p.id === projectId)) continue
+    const linearProjects = (has ? cur.filter((s) => !same(s)) : [...cur, key]).join(', ')
+    const saved = await call(ProjectsService.UpdateProjectRunConfig({ ...p, linearProjects } as any), 'Could not link Linear project')
+    if (saved) projects.update((arr) => arr.map((x) => (x.id === p.id ? { ...x, linearProjects: saved.linearProjects } : x)))
+  }
 }
 
 /** Fold one project into the live list (autosave / OpenPath). */

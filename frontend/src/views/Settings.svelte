@@ -651,7 +651,7 @@
       group: 'App',
       items: [
         { id: 'general' as const, label: 'General', icon: 'general', keywords: 'general simplify default yagni stdlib sleep caffeinate awake power prevent idle mac agent turn timeout minutes limit deadline concurrent loops agents slots cap governor branch prefix git workspace name github schedule keep last' },
-        { id: 'appearance' as const, label: 'Appearance', icon: 'appearance', keywords: 'theme color palette chrome app editor theme dark light charcoal slate cool glow catppuccin paper nord terminal xterm ansi solarized vga tango campbell homebrew snazzy ubuntu' },
+        { id: 'appearance' as const, label: 'Appearance', icon: 'appearance', keywords: 'theme color palette chrome app editor theme dark light charcoal slate cool glow catppuccin mocha latte paper nord terminal xterm ansi solarized vga tango campbell homebrew snazzy ubuntu' },
         { id: 'editor' as const, label: 'Code editor', icon: 'editor', keywords: 'editor code font size face wrap tab indent spaces go python typescript keymap vim emacs whitespace caret ruler panel left right files scm source control outline problems search refs explorer exclude glob hidden max open tabs gutter diff hints terminal' },
         { id: 'skills' as const, label: 'Skills', icon: 'skills', keywords: 'skills agent skill slash disable enable claude cursor codex recur' },
         { id: 'data' as const, label: 'Data', icon: 'data', keywords: 'clear wipe reset delete logs log reveal finder' },

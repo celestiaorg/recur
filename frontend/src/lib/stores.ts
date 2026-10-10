@@ -36,20 +36,21 @@ export const themes: Theme[] = [
   { key: 'paper', name: 'Paper', d: 'light', bg: '#ebecef', pane: '#f7f8fa', text: '#1a1c20', a: '#d4634a', ok: '#2d9a5a', warn: '#d14b4b' },
   { key: 'slate', name: 'Slate', d: 'cool', bg: '#0A0C10', pane: '#161A21', text: '#DBE2EA', a: '#F2B33D', ok: '#5DBE7E', warn: '#EB7A5C' },
   { key: 'coolglow', name: 'Cool Glow', d: 'navy', bg: '#0a0c22', pane: '#0e1130', text: '#d8dce8', a: '#45c4b8', ok: '#6ecf8a', warn: '#e87890' },
-  { key: 'catppuccin', name: 'Catppuccin', d: 'mocha', bg: '#0e0e16', pane: '#181825', text: '#e0e6f8', a: '#cba6f7', ok: '#a6e3a1', warn: '#f38ba8' },
+  { key: 'catppuccin-mocha', name: 'Catppuccin Mocha', d: 'mocha', bg: '#0e0e16', pane: '#181825', text: '#e0e6f8', a: '#cba6f7', ok: '#a6e3a1', warn: '#f38ba8' },
+  { key: 'catppuccin-latte', name: 'Catppuccin Latte', d: 'latte', bg: '#e6e9ef', pane: '#eff1f5', text: '#4c4f69', a: '#8839ef', ok: '#40a02b', warn: '#d20f39' },
   { key: 'nord', name: 'Nord', d: 'frost', bg: '#181c24', pane: '#222730', text: '#eceff4', a: '#88c0d0', ok: '#a3be8c', warn: '#bf616a' },
 ]
 const THEME_KEY = 'recur.theme'
 // Legacy keys map to Charcoal / Cool Glow (Gruvbox / Charcoal named key → default Charcoal;
 // Tokyo Night app chrome → Cool Glow). Unknown keys (e.g. removed everforest) fall through to Charcoal.
 const THEME_ALIASES: Record<string, string> = {
-  gruvbox: 'default', conductor: 'default', charcoal: 'default', tokyonight: 'coolglow',
+  gruvbox: 'default', conductor: 'default', charcoal: 'default', tokyonight: 'coolglow', catppuccin: 'catppuccin-mocha',
 }
 export const theme = writable<string>('default')
 
 /** True for light app-chrome palettes (affects mermaid, file-icons, terminal selection). */
 export function isLightTheme(key: string): boolean {
-  return key === 'paper'
+  return key === 'paper' || key === 'catppuccin-latte'
 }
 
 // setTheme applies a theme to the document root and persists the choice. 'default'

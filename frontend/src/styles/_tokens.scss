@@ -87,7 +87,7 @@
 }
 
 /* Catppuccin Mocha — slightly brighter text / darker muted for observatory chrome. */
-:root[data-theme="catppuccin"] {
+:root[data-theme="catppuccin-mocha"] {
   --bg: #0e0e16;
   --pane: #181825;
   --pane-2: #262637;
@@ -110,6 +110,37 @@
   --warn: #f9e2af;
   --scrollbar-thumb: #45475a;
   --scrollbar-thumb-hover: #585b70;
+}
+
+/* Catppuccin Latte — official light palette (base/mantle/crust surfaces, mauve accent). */
+:root[data-theme="catppuccin-latte"] {
+  color-scheme: light;
+  --bg: #e6e9ef;
+  --pane: #eff1f5;
+  --pane-2: #dce0e8;
+  --rail: #e6e9ef;
+  --titlebar: #e6e9ef;
+  --statusbar: #dce0e8;
+  --line: #ccd0da;
+  --line-soft: #dce0e8;
+  --line-bright: #bcc0cc;
+  --text: #4c4f69;
+  --muted: #6c6f85;
+  --faint: #8c8fa1;
+  --amber: #8839ef;
+  --amber-d: rgba(136, 57, 239, .12);
+  --cyan: #209fb5;
+  --emerald: #40a02b;
+  --coral: #d20f39;
+  --coral-d: rgba(210, 15, 57, .11);
+  --indigo: #7287fd;
+  --warn: #df8e1d;
+  --git-m: #df8e1d;
+  --git-a: #40a02b;
+  --git-d: #d20f39;
+  --git-u: #40a02b;
+  --scrollbar-thumb: #bcc0cc;
+  --scrollbar-thumb-hover: #acb0be;
 }
 
 /* Paper — cool daylight twin of Charcoal; clay accent on light grey paper (not cream). */
@@ -143,34 +174,34 @@
   --scrollbar-thumb-hover: #aeb5c0;
 }
 
-:root[data-theme="paper"] .toolbar, :root[data-theme="paper"] .prh {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .toolbar, :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .prh {
   background: rgba(247, 248, 250, .88);
 }
 
-:root[data-theme="paper"] .lgroup, :root[data-theme="paper"] .kcol-h {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .lgroup, :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .kcol-h {
   background: rgba(0, 0, 0, .03);
 }
 
-:root[data-theme="paper"] .set-nav-item:hover, :root[data-theme="paper"] .mm-radio:hover {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .set-nav-item:hover, :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .mm-radio:hover {
   background: rgba(0, 0, 0, .04);
   color: var(--text);
 }
 
-:root[data-theme="paper"] .set-nav-item.on {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .set-nav-item.on {
   background: rgba(0, 0, 0, .07);
   color: var(--text);
 }
 
-:root[data-theme="paper"] .chat-composer-chip-x:hover {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .chat-composer-chip-x:hover {
   background: rgba(0, 0, 0, .06);
   color: var(--text);
 }
 
-:root[data-theme="paper"] .skel::after {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .skel::after {
   background: linear-gradient(90deg, transparent, rgba(0, 0, 0, .06), transparent);
 }
 
-:root[data-theme="paper"] .obs-editor-pane:not(.lit) .cm-selectionBackground, :root[data-theme="paper"] .obs-editor-pane:not(.lit) .cm-content ::selection {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .obs-editor-pane:not(.lit) .cm-selectionBackground, :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .obs-editor-pane:not(.lit) .cm-content ::selection {
   background-color: rgba(0, 0, 0, .1)!important;
 }
 

@@ -53,12 +53,69 @@ export function isLightTheme(key: string): boolean {
   return key === 'paper'
 }
 
-const THEME_AUTO_KEY = 'recur.themeAuto'
-const THEME_LIGHT_KEY = 'recur.themeLight'
-const THEME_DARK_KEY = 'recur.themeDark'
-export const themeAuto = writable(false)
-export const themeLight = writable('paper')
-export const themeDark = writable('default')
+// ---- "Sync with system": light/dark picks for app, editor and terminal themes ----
+// The webview's prefers-color-scheme can miss the desktop setting (WebKitGTK in a
+// container), so the native answer from Wails wins whenever it is available.
+export const systemDark = writable(false)
+let nativeDark: boolean | null = null
+
+function updateSystemDark() {
+  const media = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches
+  systemDark.set(nativeDark ?? media)
+}
+
+async function refreshNativeDark() {
+  try {
+    const dark = await System.IsDarkMode()
+    if (typeof dark === 'boolean') { nativeDark = dark; updateSystemDark() }
+  } catch { /* no native bridge (browser) */ }
+}
+
+function watchSystemDark() {
+  updateSystemDark()
+  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', updateSystemDark)
+  void refreshNativeDark()
+  Events.On('system.theme', (e: any) => { if (typeof e.data === 'boolean') { nativeDark = e.data; updateSystemDark() } })
+  window.addEventListener('focus', () => { void refreshNativeDark() })
+}
+
+// A sync holds the mode plus the light and dark pick for one kind of theme (persisted
+// as recur.<name>Auto / Light / Dark) and re-applies the matching pick on every change.
+function createSystemSync(name: string, defaults: { light: string; dark: string }, apply: (key: string) => void) {
+  const auto = writable(false)
+  const light = writable(defaults.light)
+  const dark = writable(defaults.dark)
+  const key = (suffix: string) => `recur.${name}${suffix}`
+  const save = (suffix: string, value: string) => {
+    try { localStorage.setItem(key(suffix), value) } catch { /* ignore */ }
+  }
+  const run = () => { if (get(auto)) apply(get(get(systemDark) ? dark : light)) }
+  systemDark.subscribe(run)
+  return {
+    auto, light, dark,
+    setAuto(on: boolean) { auto.set(on); save('Auto', on ? '1' : '0'); run() },
+    setPick(mode: 'light' | 'dark', value: string) {
+      (mode === 'dark' ? dark : light).set(value)
+      save(mode === 'dark' ? 'Dark' : 'Light', value)
+      run()
+    },
+    load() {
+      try {
+        light.set(localStorage.getItem(key('Light')) ?? defaults.light)
+        dark.set(localStorage.getItem(key('Dark')) ?? defaults.dark)
+        auto.set(localStorage.getItem(key('Auto')) === '1')
+      } catch { /* ignore */ }
+      run()
+    },
+  }
+}
+
+const appSync = createSystemSync('theme', { light: 'paper', dark: 'default' }, applyTheme)
+export const themeAuto = appSync.auto
+export const themeLight = appSync.light
+export const themeDark = appSync.dark
+export const setThemeAuto = appSync.setAuto
+export const setSystemTheme = appSync.setPick
 
 function applyTheme(key: string) {
   const resolved = THEME_ALIASES[key] ?? key
@@ -67,28 +124,6 @@ function applyTheme(key: string) {
   if (valid === 'default') document.documentElement.removeAttribute('data-theme')
   else document.documentElement.setAttribute('data-theme', valid)
   try { localStorage.setItem(THEME_KEY, valid) } catch { /* ignore */ }
-  return valid
-}
-
-// The webview's prefers-color-scheme can miss the desktop setting (WebKitGTK in a
-// container), so the native answer from Wails wins whenever it is available.
-let nativeDark: boolean | null = null
-
-function applySystemTheme() {
-  const dark = nativeDark ?? window.matchMedia('(prefers-color-scheme: dark)').matches
-  applyTheme(get(dark ? themeDark : themeLight))
-}
-
-function setNativeDark(dark: boolean) {
-  nativeDark = dark
-  if (get(themeAuto)) applySystemTheme()
-}
-
-async function refreshNativeDark() {
-  try {
-    const dark = await System.IsDarkMode()
-    if (typeof dark === 'boolean') setNativeDark(dark)
-  } catch { /* no native bridge (browser) */ }
 }
 
 // setTheme applies a theme to the document root and persists the choice. 'default'
@@ -99,48 +134,36 @@ export function setTheme(key: string) {
   setThemeAuto(false)
 }
 
-// setThemeAuto switches between a fixed theme and following the OS light/dark setting.
-export function setThemeAuto(on: boolean) {
-  themeAuto.set(on)
-  try { localStorage.setItem(THEME_AUTO_KEY, on ? '1' : '0') } catch { /* ignore */ }
-  if (on) applySystemTheme()
-}
-
-// setSystemTheme picks the theme used while the OS is in `mode`.
-export function setSystemTheme(mode: 'light' | 'dark', key: string) {
-  (mode === 'dark' ? themeDark : themeLight).set(key)
-  try { localStorage.setItem(mode === 'dark' ? THEME_DARK_KEY : THEME_LIGHT_KEY, key) } catch { /* ignore */ }
-  if (get(themeAuto)) applySystemTheme()
-}
-
 // initTheme reads the saved theme and applies it. Called before mount to avoid a
 // flash of the default palette on startup.
 export function initTheme() {
   let saved = 'default'
-  try {
-    saved = localStorage.getItem(THEME_KEY) ?? 'default'
-    themeLight.set(localStorage.getItem(THEME_LIGHT_KEY) ?? 'paper')
-    themeDark.set(localStorage.getItem(THEME_DARK_KEY) ?? 'default')
-    themeAuto.set(localStorage.getItem(THEME_AUTO_KEY) === '1')
-  } catch { /* ignore */ }
+  try { saved = localStorage.getItem(THEME_KEY) ?? 'default' } catch { /* ignore */ }
   applyTheme(saved)
-  if (get(themeAuto)) applySystemTheme()
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (get(themeAuto)) applySystemTheme()
-  })
-  void refreshNativeDark()
-  Events.On('system.theme', (e: any) => { if (typeof e.data === 'boolean') setNativeDark(e.data) })
-  window.addEventListener('focus', () => { void refreshNativeDark() })
+  watchSystemDark()
+  appSync.load()
 }
 
 // ---- code editor theme (independent of app chrome theme) ----
 const EDITOR_THEME_KEY = 'recur.editorTheme'
 export const editorTheme = writable<string>('recur')
 
-export function setEditorTheme(key: string) {
+function applyEditorTheme(key: string) {
   const valid = resolveEditorThemeKey(key)
   editorTheme.set(valid)
   try { localStorage.setItem(EDITOR_THEME_KEY, valid) } catch { /* ignore */ }
+}
+
+const editorSync = createSystemSync('editorTheme', { light: 'paper', dark: 'recur' }, applyEditorTheme)
+export const editorThemeAuto = editorSync.auto
+export const editorThemeLight = editorSync.light
+export const editorThemeDark = editorSync.dark
+export const setEditorThemeAuto = editorSync.setAuto
+export const setSystemEditorTheme = editorSync.setPick
+
+export function setEditorTheme(key: string) {
+  applyEditorTheme(key)
+  setEditorThemeAuto(false)
 }
 
 /** Step through editor themes: dark A–Z (Charcoal first), then light A–Z (Paper first). */
@@ -155,7 +178,8 @@ export function cycleEditorTheme(delta: 1 | -1): { key: string; name: string } {
 export function initEditorTheme() {
   let saved = 'recur'
   try { saved = localStorage.getItem(EDITOR_THEME_KEY) ?? 'recur' } catch { /* ignore */ }
-  setEditorTheme(saved)
+  applyEditorTheme(saved)
+  editorSync.load()
 }
 
 // ---- code editor layout prefs (font / wrap / tab / indent) ----
@@ -440,10 +464,26 @@ function normalizeTerminalPrefs(raw: Partial<TerminalPrefs> | null): TerminalPre
 
 export const terminalPrefs = writable<TerminalPrefs>({ ...DEFAULT_TERMINAL_PREFS })
 
-export function setTerminalPrefs(next: Partial<TerminalPrefs>) {
+function patchTerminalPrefs(next: Partial<TerminalPrefs>) {
   const merged = normalizeTerminalPrefs({ ...get(terminalPrefs), ...next })
   terminalPrefs.set(merged)
   try { localStorage.setItem(TERMINAL_PREFS_KEY, JSON.stringify(merged)) } catch { /* ignore */ }
+}
+
+// '' (TERMINAL_MATCH_EDITOR) follows the app chrome, which already follows the system.
+const terminalSync = createSystemSync(
+  'terminalTheme', { light: TERMINAL_MATCH_EDITOR, dark: TERMINAL_MATCH_EDITOR },
+  (id) => patchTerminalPrefs({ theme: id }),
+)
+export const terminalThemeAuto = terminalSync.auto
+export const terminalThemeLight = terminalSync.light
+export const terminalThemeDark = terminalSync.dark
+export const setTerminalThemeAuto = terminalSync.setAuto
+export const setSystemTerminalTheme = terminalSync.setPick
+
+export function setTerminalPrefs(next: Partial<TerminalPrefs>) {
+  patchTerminalPrefs(next)
+  if ('theme' in next) setTerminalThemeAuto(false)
 }
 
 export function initTerminalPrefs() {
@@ -453,6 +493,7 @@ export function initTerminalPrefs() {
     if (raw) parsed = JSON.parse(raw) as Partial<TerminalPrefs>
   } catch { /* ignore */ }
   terminalPrefs.set(normalizeTerminalPrefs(parsed))
+  terminalSync.load()
 }
 
 /** Resolves the terminal's effective font, applying the "match editor" fallbacks. */
@@ -1323,7 +1364,7 @@ settings.subscribe((s) => {
   const current = get(editorTheme)
   if (!disabledThemes.has(current)) return
   const next = fallbackEnabledEditorThemeId(disabledThemes, current)
-  if (next !== current) setEditorTheme(next)
+  if (next !== current) applyEditorTheme(next)
 })
 export const resource = writable<Resource | null>(null)
 // Optional RECUR_INSTANCE_LABEL (dogfood titlebar chip). Empty in packaged Recur.

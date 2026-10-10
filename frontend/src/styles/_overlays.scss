@@ -732,6 +732,10 @@
   color: var(--muted);
 }
 
+.edth-box {
+  display: contents;
+}
+
 .edth-list {
   border: 1px solid var(--line);
   border-radius: 9px;

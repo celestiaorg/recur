@@ -4,16 +4,16 @@
   import {
     view, policy, settings, go, themes, theme, setTheme, themeAuto, setThemeAuto, isLightTheme, themeLight, themeDark, setSystemTheme, providerUsage,
     settingsSection, type SettingsSection,
-    editorTheme, setEditorTheme, editorPrefs, setEditorPrefs, setEditorIndentForLang, pushToast, toastEditorTheme,
+    editorTheme, setEditorTheme, editorThemeAuto, setEditorThemeAuto, editorThemeLight, editorThemeDark, setSystemEditorTheme, editorPrefs, setEditorPrefs, setEditorIndentForLang, pushToast, toastEditorTheme,
     EDITOR_FONT_SIZES, EDITOR_TAB_SIZES, EDITOR_INDENT_OPTIONS, editorFontStack,
     EDITOR_WHITESPACE_OPTIONS, EDITOR_LINE_HEIGHTS, EDITOR_LINE_HEIGHT_LABELS,
     EDITOR_RULER_COLUMNS, EDITOR_KEYMAP_OPTIONS,
     resolveEditorIndent, editorIndentLabel,
     CODE_PANEL_KEYS, CODE_PANEL_LABELS, codePanelSides, setCodePanelSide,
     explorerPrefs, setExplorerExclude, resetExplorerExclude,
-    terminalPrefs, setTerminalPrefs, TERMINAL_LINE_HEIGHTS, TERMINAL_LINE_HEIGHT_LABELS,
+    terminalPrefs, setTerminalPrefs, terminalThemeAuto, setTerminalThemeAuto, terminalThemeLight, terminalThemeDark, setSystemTerminalTheme, TERMINAL_LINE_HEIGHTS, TERMINAL_LINE_HEIGHT_LABELS,
     TERMINAL_MATCH_EDITOR, resolveTerminalFont,
-    type CodePanelKey, type PanelSide,
+    type CodePanelKey, type PanelSide, type Theme,
   } from '../lib/stores'
   import { skillKind as classifySkill, skillLocation, mapSkillRows, toggleDisabledName, type SkillRow } from '../lib/skills'
   import {
@@ -92,11 +92,14 @@
     editorThemeCards.find((t) => t.key === $editorTheme) ?? null,
   )
   const appChromeTheme = $derived(themes.find((x) => x.key === $theme) ?? themes[0])
-  let editorThemeListEl = $state<HTMLDivElement | undefined>()
+  const lightEditorThemes = $derived(filterEditorThemesForList(editorThemeCards, editorThemeQuery, 'light'))
+  const darkEditorThemes = $derived(filterEditorThemesForList(editorThemeCards, editorThemeQuery, 'dark'))
+  let editorThemeBoxEl = $state<HTMLDivElement | undefined>()
+  const appThemeFor = (mode: 'light' | 'dark') =>
+    themes.find((x) => x.key === (mode === 'light' ? $themeLight : $themeDark)) ?? themes[0]
 
   function scrollSelectedEditorThemeIntoView() {
-    const row = editorThemeListEl?.querySelector('.edth-row.on') as HTMLElement | null
-    row?.scrollIntoView({ block: 'nearest' })
+    editorThemeBoxEl?.querySelectorAll('.edth-row.on').forEach((row) => row.scrollIntoView({ block: 'nearest' }))
   }
 
   function revealSelectedEditorTheme() {
@@ -1461,6 +1464,85 @@
   }
 </script>
 
+{#snippet themeModeRow(auto: boolean, setAuto: (on: boolean) => void)}
+  <div class="set-row">
+    <div class="set-copy">
+      <div class="set-title">Theme mode</div>
+    </div>
+    <div class="set-ctrl">
+      <div class="seg" role="group" aria-label="Theme mode">
+        <button type="button" class:on={!auto} aria-pressed={!auto} onclick={() => setAuto(false)}>Single theme</button>
+        <button type="button" class:on={auto} aria-pressed={auto} onclick={() => setAuto(true)}>Sync with system</button>
+      </div>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet editorThemeRows(list: EditorThemeCard[], current: string, pick: (t: EditorThemeCard) => void)}
+  {#if list.length === 0}
+    <div class="edth-empty">No themes match.</div>
+  {:else}
+    <div class="edth-list" role="listbox" aria-label="Editor themes">
+      {#each list as t, i (t.key)}
+        {#if t.pinned && i === 0}
+          <div class="edth-label">Recur</div>
+        {:else if !t.pinned && (i === 0 || list[i - 1]?.pinned)}
+          <div class="edth-label">All themes</div>
+        {/if}
+        <button
+          type="button"
+          class="edth-row"
+          class:on={current === t.key}
+          class:pinned={t.pinned}
+          role="option"
+          aria-selected={current === t.key}
+          onclick={() => pick(t)}
+        >
+          <span class="edth-swatch" style="background:{t.bg}" aria-hidden="true">
+            <i style="background:{t.b}"></i>
+            <i style="background:{t.a}"></i>
+            <i style="background:{t.c}"></i>
+          </span>
+          <span class="edth-name">{t.name}</span>
+          <span class="edth-kind">{t.kind}</span>
+          <Icon name="check" class="edth-check" strokeWidth={2.6} />
+        </button>
+      {/each}
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet terminalGrid(current: string, pick: (id: string) => void, app: Theme, mode?: 'light' | 'dark')}
+  <div class="thgrid">
+    <button type="button" class="thcard" class:on={current === TERMINAL_MATCH_EDITOR} onclick={() => pick(TERMINAL_MATCH_EDITOR)} aria-pressed={current === TERMINAL_MATCH_EDITOR}>
+      <div class="thprev" style="background:{app.bg}">
+        <div class="throw">
+          <span class="thdot" style="background:{app.a}"></span>
+          <span class="thdot" style="background:{app.ok}"></span>
+          <span class="thdot" style="background:{app.warn}"></span>
+        </div>
+        <span class="tha" style="color:{app.text}">ls<span style="color:{app.ok}"> ~</span></span>
+      </div>
+      <div class="thmeta"><span class="thn">Match app</span>
+        <Icon name="check" class="thcheck" strokeWidth={2.6} /></div>
+    </button>
+    {#each $terminalThemeCatalog.filter((t) => !mode || (t.uiTheme === 'light') === (mode === 'light')) as t (t.id)}
+      <button type="button" class="thcard" class:on={current === t.id} onclick={() => pick(t.id)} aria-pressed={current === t.id}>
+        <div class="thprev" style="background:{t.palette.background}">
+          <div class="throw">
+            <span class="thdot" style="background:{t.palette.red || t.palette.foreground}"></span>
+            <span class="thdot" style="background:{t.palette.green || t.palette.foreground}"></span>
+            <span class="thdot" style="background:{t.palette.blue || t.palette.foreground}"></span>
+          </div>
+          <span class="tha" style="color:{t.palette.foreground}">ls<span style="color:{t.palette.green || t.palette.foreground}"> ~</span></span>
+        </div>
+        <div class="thmeta"><span class="thn">{t.name}</span>
+          <Icon name="check" class="thcheck" strokeWidth={2.6} /></div>
+      </button>
+    {/each}
+  </div>
+{/snippet}
+
 {#snippet themeGrid(current: string, pick: (key: string) => void, mode?: 'light' | 'dark')}
   <div class="thgrid">
     {#each themes.filter((t) => !mode || isLightTheme(t.key) === (mode === 'light')) as t (t.key)}
@@ -2302,17 +2384,7 @@
         {#if $settingsSection === 'appearance'}
           <SettingsGroups>
             <SettingsGroup title="App theme" blurb="Chrome, sidebars, and panels.">
-              <div class="set-row">
-                <div class="set-copy">
-                  <div class="set-title">Theme mode</div>
-                </div>
-                <div class="set-ctrl">
-                  <div class="seg" role="group" aria-label="Theme mode">
-                    <button type="button" class:on={!$themeAuto} aria-pressed={!$themeAuto} onclick={() => setThemeAuto(false)}>Single theme</button>
-                    <button type="button" class:on={$themeAuto} aria-pressed={$themeAuto} onclick={() => setThemeAuto(true)}>Sync with system</button>
-                  </div>
-                </div>
-              </div>
+              {@render themeModeRow($themeAuto, setThemeAuto)}
               {#if $themeAuto}
                 {#each [{ mode: 'light' as const, label: 'Light mode', cur: $themeLight }, { mode: 'dark' as const, label: 'Dark mode', cur: $themeDark }] as row (row.mode)}
                   <div class="thauto-l">{row.label}</div>
@@ -2323,7 +2395,8 @@
               {/if}
             </SettingsGroup>
             <SettingsGroup title="Code editor theme" blurb="How code looks in the editor.">
-              {#if selectedEditorTheme}
+              {@render themeModeRow($editorThemeAuto, setEditorThemeAuto)}
+              {#if !$editorThemeAuto && selectedEditorTheme}
                 <button
                   type="button"
                   class="edth-current"
@@ -2351,89 +2424,39 @@
                   bind:value={editorThemeQuery}
                   aria-label="Search editor themes"
                 />
-                <div class="seg" role="group" aria-label="Filter by kind">
-                  {#each editorThemeKindFilters as k (k)}
-                    <button
-                      type="button"
-                      class:on={editorThemeKindFilter === k}
-                      onclick={() => { editorThemeKindFilter = k }}
-                    >{k === 'all' ? 'All' : k === 'dark' ? 'Dark' : 'Light'}</button>
-                  {/each}
-                </div>
+                {#if !$editorThemeAuto}
+                  <div class="seg" role="group" aria-label="Filter by kind">
+                    {#each editorThemeKindFilters as k (k)}
+                      <button
+                        type="button"
+                        class:on={editorThemeKindFilter === k}
+                        onclick={() => { editorThemeKindFilter = k }}
+                      >{k === 'all' ? 'All' : k === 'dark' ? 'Dark' : 'Light'}</button>
+                    {/each}
+                  </div>
+                {/if}
               </div>
-              {#if editorThemeList.length === 0}
-                <div class="edth-empty">No themes match.</div>
-              {:else}
-                <div class="edth-list" role="listbox" aria-label="Editor themes" bind:this={editorThemeListEl}>
-                  {#each editorThemeList as t, i (t.key)}
-                    {#if t.pinned && i === 0}
-                      <div class="edth-label">Recur</div>
-                    {:else if !t.pinned && (i === 0 || editorThemeList[i - 1]?.pinned)}
-                      <div class="edth-label">All themes</div>
-                    {/if}
-                    <button
-                      type="button"
-                      class="edth-row"
-                      class:on={$editorTheme === t.key}
-                      class:pinned={t.pinned}
-                      role="option"
-                      aria-selected={$editorTheme === t.key}
-                      onclick={() => { setEditorTheme(t.key); toastEditorTheme(t.name) }}
-                    >
-                      <span class="edth-swatch" style="background:{t.bg}" aria-hidden="true">
-                        <i style="background:{t.b}"></i>
-                        <i style="background:{t.a}"></i>
-                        <i style="background:{t.c}"></i>
-                      </span>
-                      <span class="edth-name">{t.name}</span>
-                      <span class="edth-kind">{t.kind}</span>
-                      <Icon name="check" class="edth-check" strokeWidth={2.6} />
-                    </button>
-                  {/each}
-                </div>
-              {/if}
+              <div class="edth-box" bind:this={editorThemeBoxEl}>
+                {#if $editorThemeAuto}
+                  <div class="thauto-l">Light mode</div>
+                  {@render editorThemeRows(lightEditorThemes, $editorThemeLight, (t) => setSystemEditorTheme('light', t.key))}
+                  <div class="thauto-l">Dark mode</div>
+                  {@render editorThemeRows(darkEditorThemes, $editorThemeDark, (t) => setSystemEditorTheme('dark', t.key))}
+                {:else}
+                  {@render editorThemeRows(editorThemeList, $editorTheme, (t) => { setEditorTheme(t.key); toastEditorTheme(t.name) })}
+                {/if}
+              </div>
             </SettingsGroup>
             <SettingsGroup title="Terminal theme" blurb="ANSI colours in the dock. Match app follows the chrome palette.">
-              <div class="thgrid">
-                <button
-                  type="button"
-                  class="thcard"
-                  class:on={$terminalPrefs.theme === TERMINAL_MATCH_EDITOR}
-                  onclick={() => setTerminalPrefs({ theme: TERMINAL_MATCH_EDITOR })}
-                  aria-pressed={$terminalPrefs.theme === TERMINAL_MATCH_EDITOR}
-                >
-                  <div class="thprev" style="background:{appChromeTheme.bg}">
-                    <div class="throw">
-                      <span class="thdot" style="background:{appChromeTheme.a}"></span>
-                      <span class="thdot" style="background:{appChromeTheme.ok}"></span>
-                      <span class="thdot" style="background:{appChromeTheme.warn}"></span>
-                    </div>
-                    <span class="tha" style="color:{appChromeTheme.text}">ls<span style="color:{appChromeTheme.ok}"> ~</span></span>
-                  </div>
-                  <div class="thmeta"><span class="thn">Match app</span>
-                    <Icon name="check" class="thcheck" strokeWidth={2.6} /></div>
-                </button>
-                {#each $terminalThemeCatalog as t (t.id)}
-                  <button
-                    type="button"
-                    class="thcard"
-                    class:on={$terminalPrefs.theme === t.id}
-                    onclick={() => setTerminalPrefs({ theme: t.id })}
-                    aria-pressed={$terminalPrefs.theme === t.id}
-                  >
-                    <div class="thprev" style="background:{t.palette.background}">
-                      <div class="throw">
-                        <span class="thdot" style="background:{t.palette.red || t.palette.foreground}"></span>
-                        <span class="thdot" style="background:{t.palette.green || t.palette.foreground}"></span>
-                        <span class="thdot" style="background:{t.palette.blue || t.palette.foreground}"></span>
-                      </div>
-                      <span class="tha" style="color:{t.palette.foreground}">ls<span style="color:{t.palette.green || t.palette.foreground}"> ~</span></span>
-                    </div>
-                    <div class="thmeta"><span class="thn">{t.name}</span>
-                      <Icon name="check" class="thcheck" strokeWidth={2.6} /></div>
-                  </button>
-                {/each}
-              </div>
+              {@render themeModeRow($terminalThemeAuto, setTerminalThemeAuto)}
+              {#if $terminalThemeAuto}
+                <div class="thauto-l">Light mode</div>
+                {@render terminalGrid($terminalThemeLight, (id) => setSystemTerminalTheme('light', id), $themeAuto ? appThemeFor('light') : appChromeTheme, 'light')}
+                <div class="thauto-l">Dark mode</div>
+                {@render terminalGrid($terminalThemeDark, (id) => setSystemTerminalTheme('dark', id), $themeAuto ? appThemeFor('dark') : appChromeTheme, 'dark')}
+              {:else}
+                {@render terminalGrid($terminalPrefs.theme, (id) => setTerminalPrefs({ theme: id }), appChromeTheme)}
+              {/if}
             </SettingsGroup>
           </SettingsGroups>
         {/if}

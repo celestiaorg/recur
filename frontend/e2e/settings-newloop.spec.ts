@@ -485,6 +485,32 @@ test.describe('new loop + settings', () => {
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/)
   })
 
+  test('match system appearance uses the chosen light and dark themes', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await gotoApp(page)
+    await openSettings(page)
+    await openSection(page, 'Appearance')
+
+    await page.getByRole('button', { name: 'Sync with system' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper')
+
+    const grids = page.locator('#v-settings .thgrid')
+    await expect(grids.nth(0).locator('.thcard')).toHaveCount(1)
+    await expect(grids.nth(1).locator('.thcard')).toHaveCount(5)
+    await grids.nth(1).locator('.thcard', { hasText: 'Nord' }).click()
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'nord')
+
+    await grids.nth(1).locator('.thcard', { hasText: 'Charcoal' }).click()
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/)
+
+    // Unchecking shows one grid again and a manual pick sticks.
+    await page.getByRole('button', { name: 'Single theme' }).click()
+    await page.locator('#v-settings .thgrid').first().locator('.thcard', { hasText: 'Slate' }).click()
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'slate')
+  })
+
   test('terminal theme picker is independent and persists', async ({ page }) => {
     await gotoApp(page)
     await openSettings(page)

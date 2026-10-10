@@ -1,6 +1,7 @@
 // Reactive app state. Data stores are populated from the bound Go services
 // (lib/api.ts) and updated live by events.
 import { writable, derived, get } from 'svelte/store'
+import { Events, System } from '@wailsio/runtime'
 import type {
   Project, ProjectGroup, Workspace, PR, InboxItem, Policy, Settings, Resource, PermissionRequest, UserQuestion,
   ScheduledPrompt,
@@ -52,23 +53,84 @@ export function isLightTheme(key: string): boolean {
   return key === 'paper'
 }
 
-// setTheme applies a theme to the document root and persists the choice. 'default'
-// removes the attribute so the base :root palette applies.
-export function setTheme(key: string) {
+const THEME_AUTO_KEY = 'recur.themeAuto'
+const THEME_LIGHT_KEY = 'recur.themeLight'
+const THEME_DARK_KEY = 'recur.themeDark'
+export const themeAuto = writable(false)
+export const themeLight = writable('paper')
+export const themeDark = writable('default')
+
+function applyTheme(key: string) {
   const resolved = THEME_ALIASES[key] ?? key
   const valid = themes.some((t) => t.key === resolved) ? resolved : 'default'
   theme.set(valid)
   if (valid === 'default') document.documentElement.removeAttribute('data-theme')
   else document.documentElement.setAttribute('data-theme', valid)
   try { localStorage.setItem(THEME_KEY, valid) } catch { /* ignore */ }
+  return valid
+}
+
+// The webview's prefers-color-scheme can miss the desktop setting (WebKitGTK in a
+// container), so the native answer from Wails wins whenever it is available.
+let nativeDark: boolean | null = null
+
+function applySystemTheme() {
+  const dark = nativeDark ?? window.matchMedia('(prefers-color-scheme: dark)').matches
+  applyTheme(get(dark ? themeDark : themeLight))
+}
+
+function setNativeDark(dark: boolean) {
+  nativeDark = dark
+  if (get(themeAuto)) applySystemTheme()
+}
+
+async function refreshNativeDark() {
+  try {
+    const dark = await System.IsDarkMode()
+    if (typeof dark === 'boolean') setNativeDark(dark)
+  } catch { /* no native bridge (browser) */ }
+}
+
+// setTheme applies a theme to the document root and persists the choice. 'default'
+// removes the attribute so the base :root palette applies. An explicit pick turns
+// system-follow off.
+export function setTheme(key: string) {
+  applyTheme(key)
+  setThemeAuto(false)
+}
+
+// setThemeAuto switches between a fixed theme and following the OS light/dark setting.
+export function setThemeAuto(on: boolean) {
+  themeAuto.set(on)
+  try { localStorage.setItem(THEME_AUTO_KEY, on ? '1' : '0') } catch { /* ignore */ }
+  if (on) applySystemTheme()
+}
+
+// setSystemTheme picks the theme used while the OS is in `mode`.
+export function setSystemTheme(mode: 'light' | 'dark', key: string) {
+  (mode === 'dark' ? themeDark : themeLight).set(key)
+  try { localStorage.setItem(mode === 'dark' ? THEME_DARK_KEY : THEME_LIGHT_KEY, key) } catch { /* ignore */ }
+  if (get(themeAuto)) applySystemTheme()
 }
 
 // initTheme reads the saved theme and applies it. Called before mount to avoid a
 // flash of the default palette on startup.
 export function initTheme() {
   let saved = 'default'
-  try { saved = localStorage.getItem(THEME_KEY) ?? 'default' } catch { /* ignore */ }
-  setTheme(saved)
+  try {
+    saved = localStorage.getItem(THEME_KEY) ?? 'default'
+    themeLight.set(localStorage.getItem(THEME_LIGHT_KEY) ?? 'paper')
+    themeDark.set(localStorage.getItem(THEME_DARK_KEY) ?? 'default')
+    themeAuto.set(localStorage.getItem(THEME_AUTO_KEY) === '1')
+  } catch { /* ignore */ }
+  applyTheme(saved)
+  if (get(themeAuto)) applySystemTheme()
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (get(themeAuto)) applySystemTheme()
+  })
+  void refreshNativeDark()
+  Events.On('system.theme', (e: any) => { if (typeof e.data === 'boolean') setNativeDark(e.data) })
+  window.addEventListener('focus', () => { void refreshNativeDark() })
 }
 
 // ---- code editor theme (independent of app chrome theme) ----

@@ -2,7 +2,7 @@
   import { untrack } from 'svelte'
   import { get } from 'svelte/store'
   import {
-    view, policy, settings, go, themes, theme, setTheme, providerUsage,
+    view, policy, settings, go, themes, theme, setTheme, themeAuto, setThemeAuto, isLightTheme, themeLight, themeDark, setSystemTheme, providerUsage,
     settingsSection, type SettingsSection,
     editorTheme, setEditorTheme, editorPrefs, setEditorPrefs, setEditorIndentForLang, pushToast, toastEditorTheme,
     EDITOR_FONT_SIZES, EDITOR_TAB_SIZES, EDITOR_INDENT_OPTIONS, editorFontStack,
@@ -1461,6 +1461,22 @@
   }
 </script>
 
+{#snippet themeGrid(current: string, pick: (key: string) => void, mode?: 'light' | 'dark')}
+  <div class="thgrid">
+    {#each themes.filter((t) => !mode || isLightTheme(t.key) === (mode === 'light')) as t (t.key)}
+      <button type="button" class="thcard" class:on={current === t.key} onclick={() => pick(t.key)} aria-pressed={current === t.key}>
+        <div class="thprev" style="background:{t.bg}">
+          <div class="throw"><span class="thdot" style="background:{t.a}"></span><span class="thdot" style="background:{t.ok}"></span><span class="thdot" style="background:{t.warn}"></span></div>
+          <span class="tha" style="color:{t.text}">recur<span style="color:{t.a}">_</span></span>
+        </div>
+        <div class="thmeta"><span class="thn">{t.name}</span>
+          <Icon name="check" class="thcheck" strokeWidth={2.6} /></div>
+      </button>
+    {/each}
+  </div>
+{/snippet}
+
+
 <section class="view" class:on={$view === 'settings'} id="v-settings">
   <div class="set-shell">
     <aside class="set-nav">
@@ -2286,18 +2302,25 @@
         {#if $settingsSection === 'appearance'}
           <SettingsGroups>
             <SettingsGroup title="App theme" blurb="Chrome, sidebars, and panels.">
-              <div class="thgrid">
-                  {#each themes as t (t.key)}
-                    <button type="button" class="thcard" class:on={$theme === t.key} onclick={() => setTheme(t.key)} aria-pressed={$theme === t.key}>
-                      <div class="thprev" style="background:{t.bg}">
-                        <div class="throw"><span class="thdot" style="background:{t.a}"></span><span class="thdot" style="background:{t.ok}"></span><span class="thdot" style="background:{t.warn}"></span></div>
-                        <span class="tha" style="color:{t.text}">recur<span style="color:{t.a}">_</span></span>
-                      </div>
-                      <div class="thmeta"><span class="thn">{t.name}</span>
-                        <Icon name="check" class="thcheck" strokeWidth={2.6} /></div>
-                    </button>
-                  {/each}
+              <div class="set-row">
+                <div class="set-copy">
+                  <div class="set-title">Theme mode</div>
                 </div>
+                <div class="set-ctrl">
+                  <div class="seg" role="group" aria-label="Theme mode">
+                    <button type="button" class:on={!$themeAuto} aria-pressed={!$themeAuto} onclick={() => setThemeAuto(false)}>Single theme</button>
+                    <button type="button" class:on={$themeAuto} aria-pressed={$themeAuto} onclick={() => setThemeAuto(true)}>Sync with system</button>
+                  </div>
+                </div>
+              </div>
+              {#if $themeAuto}
+                {#each [{ mode: 'light' as const, label: 'Light mode', cur: $themeLight }, { mode: 'dark' as const, label: 'Dark mode', cur: $themeDark }] as row (row.mode)}
+                  <div class="thauto-l">{row.label}</div>
+                  {@render themeGrid(row.cur, (key) => setSystemTheme(row.mode, key), row.mode)}
+                {/each}
+              {:else}
+                {@render themeGrid($theme, setTheme)}
+              {/if}
             </SettingsGroup>
             <SettingsGroup title="Code editor theme" blurb="How code looks in the editor.">
               {#if selectedEditorTheme}

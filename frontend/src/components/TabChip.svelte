@@ -44,6 +44,7 @@
     onclose,
     onkeydown,
     onpointerdown,
+    oncontextmenu,
   }: {
     label: string
     title?: string
@@ -75,6 +76,7 @@
     onclose?: (e: MouseEvent) => void
     onkeydown?: (e: KeyboardEvent) => void
     onpointerdown?: (e: PointerEvent) => void
+    oncontextmenu?: (e: MouseEvent) => void
   } = $props()
 
   function onChipKeydown(e: KeyboardEvent) {
@@ -108,6 +110,7 @@
   onclick={onclick}
   onkeydown={onChipKeydown}
   onpointerdown={onpointerdown}
+  {oncontextmenu}
   draggable="false"
 >
   <span class="tab-chip-body">

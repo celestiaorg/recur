@@ -709,7 +709,7 @@
   let loadedDirs = $state<Set<string>>(new Set())
   let loadingDirs = $state<Set<string>>(new Set())
   /** Right-click menu on a tree entry (path '' = empty/root area). */
-  let ctxMenu = $state<null | { x: number; y: number; path: string; dir: boolean; name: string }>(null)
+  let ctxMenu = $state<null | { x: number; y: number; path: string; dir: boolean; name: string; tab?: boolean }>(null)
   /** Inline rename / new-file / new-folder name field in the tree. */
   let draftEdit = $state<null | {
     mode: 'rename' | 'new-file' | 'new-folder'
@@ -1648,17 +1648,17 @@
     ctxMenu = null
   }
 
-  function openCtx(e: MouseEvent, path: string, dir: boolean, name: string) {
+  function openCtx(e: MouseEvent, path: string, dir: boolean, name: string, tab = false) {
     e.preventDefault()
     e.stopPropagation()
     const pad = 8
     const mw = 220
-    const mh = 360
+    const mh = tab ? 110 : 360
     let x = e.clientX
     let y = e.clientY
     if (x + mw > window.innerWidth - pad) x = window.innerWidth - mw - pad
     if (y + mh > window.innerHeight - pad) y = window.innerHeight - mh - pad
-    ctxMenu = { x: Math.max(pad, x), y: Math.max(pad, y), path, dir, name }
+    ctxMenu = { x: Math.max(pad, x), y: Math.max(pad, y), path, dir, name, tab }
   }
 
   async function softRefresh(parents: string[]) {
@@ -5699,27 +5699,38 @@
       .catch((err: any) => pushToast('error', `Copy failed: ${err?.message ?? String(err)}`))
   }
 
-  async function closeMRU(path: string, e?: MouseEvent) {
+  function closeMRU(path: string, e?: MouseEvent) {
     e?.stopPropagation()
-    if (tabIsDirty(path) && !(await askConfirm('Unsaved edits', 'Discard unsaved edits?', 'Discard'))) return
-    dropStash(path)
-    closedTabs = [path, ...closedTabs.filter((p) => p !== path)].slice(0, 20)
-    const idx = openFiles.indexOf(path)
-    const wasSelected = path === selectedPath
-    openFiles = openFiles.filter((p) => p !== path)
-    if (isScratchPath(path)) {
-      const next = { ...scratchDocs }
-      delete next[path]
-      scratchDocs = next
+    return closeTabs([path])
+  }
+
+  /** Close several tabs in one pass; one discard prompt, and at most one neighbor load. */
+  async function closeTabs(paths: string[]) {
+    const gone = new Set(paths.filter((p) => openFiles.includes(p)))
+    if (!gone.size) return
+    const dirty = [...gone].filter(tabIsDirty).length
+    if (dirty) {
+      const msg = dirty === 1 ? 'Discard unsaved edits?' : `Discard unsaved edits in ${dirty} tabs?`
+      if (!(await askConfirm('Unsaved edits', msg, 'Discard'))) return
     }
-    if (splitPath === path) closeSplit()
-    if (tabBuffers[path]) {
-      const nextBuf = { ...tabBuffers }
+    const idx = openFiles.indexOf(selectedPath)
+    const wasSelected = gone.has(selectedPath)
+    const remaining = openFiles.filter((p) => !gone.has(p))
+    closedTabs = [...gone, ...closedTabs.filter((p) => !gone.has(p))].slice(0, 20)
+    openFiles = remaining
+    const nextBuf = { ...tabBuffers }
+    const nextScratch = { ...scratchDocs }
+    for (const path of gone) {
+      dropStash(path)
+      delete nextScratch[path]
       delete nextBuf[path]
-      tabBuffers = nextBuf
+      markTabDirty(path, false)
+      if (editorPath === path) editorPath = ''
+      if (treePath === path && wasSelected) treePath = ''
     }
-    markTabDirty(path, false)
-    if (editorPath === path) editorPath = ''
+    tabBuffers = nextBuf
+    scratchDocs = nextScratch
+    if (splitPath && gone.has(splitPath)) closeSplit()
     if (wasSelected) {
       file = null
       selectedIsDir = false
@@ -5728,17 +5739,16 @@
       selectedPath = ''
       draft = ''
       savedContent = ''
-      if (treePath === path) treePath = ''
       // Activate the neighbor that slid into this slot (right, or left if last) —
       // same as the terminal dock; not always the first tab.
-      const next = idx >= 0 ? openFiles[Math.min(idx, openFiles.length - 1)] : openFiles[0]
+      const next = remaining[Math.min(Math.max(idx, 0), remaining.length - 1)]
       if (next) void openPath(next)
       else detachLsp()
     }
     // Closed tab = dropped undo (like the buffer itself). Deferred past the
     // flush so an editor unmount's capture can't re-add what we just forgot.
     const scope = editorSessionKey
-    void tick().then(() => forgetEditorHistoryTree(scope, path))
+    void tick().then(() => { for (const path of gone) forgetEditorHistoryTree(scope, path) })
     if (!openFiles.length) persistOrClearEditorSession()
   }
 
@@ -6914,6 +6924,7 @@
                 if (!mainBlocked) openPath(p)
               }}
               onclose={mainBlocked ? undefined : (e) => closeMRU(p, e)}
+              oncontextmenu={mainBlocked ? undefined : (e) => openCtx(e, p, false, name, true)}
               onpointerdown={(e) => fileTabDrag.onPointerDown(e, p)}
               onkeydown={(e) => fileTabDrag.onKeydown(e, p)}
             />
@@ -8271,7 +8282,12 @@
     tabindex="-1"
     onmousedown={(e) => e.stopPropagation()}
   >
-    {#if treeWritable}
+    {#if m.tab}
+      {@render ctxBtn('Close', '', () => { const p = m.path; closeCtx(); void closeMRU(p) })}
+      {@render ctxBtn('Close others', '', () => { const p = m.path; closeCtx(); void closeTabs(openFiles.filter((f) => f !== p)) }, openFiles.length < 2)}
+      <div class="obs-ctx-sep"></div>
+      {@render ctxBtn('Close all', '', () => { closeCtx(); void closeTabs([...openFiles]) })}
+    {:else if treeWritable}
       {@render ctxBtn('New File', '⌥⌘N', () => startNew('file', into))}
       {@render ctxBtn('New Folder', '⇧⌘N', () => startNew('folder', into))}
       <div class="obs-ctx-sep"></div>
@@ -8297,7 +8313,7 @@
       {@render ctxBtn('Copy', '⌘C', () => clipCopy(m.path, m.dir))}
       <div class="obs-ctx-sep"></div>
     {/if}
-    {#if m.path}
+    {#if m.path && !m.tab}
       {@render ctxBtn('Copy Path', '⌥⌘C', () => copyAbsPath(m.path))}
       {@render ctxBtn('Copy Relative Path', '⇧⌥⌘C', () => copyRelPath(m.path))}
       {@render ctxBtn('Reveal in Finder', '⌥⌘R', () => revealPath(m.path))}

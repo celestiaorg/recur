@@ -1254,6 +1254,52 @@ test.describe('code observatory', () => {
     await expect(stripAgain.locator('.obs-filechip').nth(1)).toHaveAttribute('data-tab-key', firstKey!)
   })
 
+  test('file tab context menu closes others and all', async ({ page }) => {
+    await installBridge(page, structuredClone(seed), {
+      resolvers: {
+        ListLoopAgents: () => [],
+        ListTree: (a: unknown[]) => {
+          const path = (a[2] as string) || ''
+          if (!path) return [{ name: 'src', path: 'src', dir: true }]
+          if (path === 'src') {
+            return [
+              { name: 'main.go', path: 'src/main.go', dir: false },
+              { name: 'other.go', path: 'src/other.go', dir: false },
+            ]
+          }
+          return []
+        },
+        ListChangedFiles: () => ['src/main.go', 'src/other.go'],
+        GitStatus: () => ({ 'src/main.go': 'm', 'src/other.go': 'm' }),
+        ReadFile: (a: unknown[]) => {
+          const p = (a[2] as string) || 'src/main.go'
+          return { path: p, language: 'go', content: 'package main\n', html: '', lines: [], size: 13, writable: !!a[1] }
+        },
+      },
+    })
+    await gotoApp(page)
+    const working = seed.loops.find((l) => l.group === 'active')!
+    await openWorkspaceByGoal(page, working.goal)
+
+    const filesBtn = page.locator('#v-detail button[aria-label="Files"]')
+    if (await filesBtn.getAttribute('aria-pressed') !== 'true') await filesBtn.click()
+    await page.locator('#v-detail .obs-files .obs-node', { hasText: 'main.go' }).click()
+    await page.locator('#v-detail .obs-files .obs-node', { hasText: 'other.go' }).click()
+    const chips = page.locator('#v-detail .obs-tb-center .obs-filechip')
+    await expect(chips).toHaveCount(2)
+
+    await chips.first().click({ button: 'right' })
+    await expect(page.locator('.obs-ctx button')).toHaveText(['Close', 'Close others', 'Close all'])
+    await page.locator('.obs-ctx button', { hasText: 'Close others' }).click()
+    await expect(chips).toHaveCount(1)
+    await expect(chips.first()).toContainText('main.go')
+
+    await chips.first().click({ button: 'right' })
+    await expect(page.locator('.obs-ctx button', { hasText: 'Close others' })).toBeDisabled()
+    await page.locator('.obs-ctx button', { hasText: 'Close all' }).click()
+    await expect(chips).toHaveCount(0)
+  })
+
   test('branch review shows files changed and commits without a PR', async ({ page }) => {
     await gotoApp(page)
     const working = seed.loops.find((l) => l.group === 'active')!

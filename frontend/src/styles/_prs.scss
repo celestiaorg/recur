@@ -47,17 +47,20 @@
 /* Ghost triggers size to their label; cap them so comma-joined selections
    cannot shove sort + lifecycle chips past the pane edge. */
 #v-pr .briefing-proj-filter,
-#v-pr .pr-status-filter {
+#v-pr .pr-status-filter,
+#v-issues .briefing-proj-filter {
   max-width: 11rem;
 }
 
 #v-pr .briefing-proj-filter .sel-btn,
-#v-pr .pr-status-filter .sel-btn {
+#v-pr .pr-status-filter .sel-btn,
+#v-issues .briefing-proj-filter .sel-btn {
   max-width: 100%;
 }
 
 #v-pr .briefing-proj-filter .sel-val,
-#v-pr .pr-status-filter .sel-val {
+#v-pr .pr-status-filter .sel-val,
+#v-issues .briefing-proj-filter .sel-val {
   flex: 0 1 auto;
   min-width: 0;
 }

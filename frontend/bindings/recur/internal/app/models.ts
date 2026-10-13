@@ -7,6 +7,9 @@ import { Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as domain$0 from "../domain/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as lsp$0 from "../lsp/models.js";
 
 /**
@@ -35,6 +38,151 @@ export class AppChatSelection {
             $$parsedSource["flags"] = $$createField1_0($$parsedSource["flags"]);
         }
         return new AppChatSelection($$parsedSource as Partial<AppChatSelection>);
+    }
+}
+
+/**
+ * AssignedIssue is one open issue that is assigned to the user or unassigned
+ * in their repos / Linear teams, from GitHub or Linear.
+ */
+export class AssignedIssue {
+    /**
+     * "github" | "linear"
+     */
+    "source": string;
+
+    /**
+     * stable tracker id; matches Workspace.Issue.ID
+     */
+    "id": string;
+
+    /**
+     * owner/repo#12 or ENG-123
+     */
+    "ref": string;
+    "title": string;
+    "url": string;
+    "createdAt": string;
+    "updatedAt": string;
+
+    /**
+     * "progress" | "todo" | "backlog"
+     */
+    "group": string;
+    "state": string;
+    "stateColor": string;
+
+    /**
+     * Linear workflow order within a team
+     */
+    "statePosition": number;
+
+    /**
+     * Linear: 0 none, 1 urgent … 4 low
+     */
+    "priority": number;
+    "priorityLabel": string;
+
+    /**
+     * owner/repo, or Linear project / team
+     */
+    "project": string;
+    "labels": IssueLabel[];
+    "comments": number;
+    "assignees": domain$0.PRParticipant[];
+
+    /**
+     * ProjectID is the Recur project this issue belongs to, or "" when no
+     * project's git remotes (GitHub) or LinearProjects setting (Linear) match.
+     */
+    "projectId": string;
+    "linearProject": string;
+
+    /**
+     * team key, e.g. ENG
+     */
+    "linearTeam": string;
+
+    /** Creates a new AssignedIssue instance. */
+    constructor($$source: Partial<AssignedIssue> = {}) {
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("ref" in $$source)) {
+            this["ref"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "";
+        }
+        if (!("updatedAt" in $$source)) {
+            this["updatedAt"] = "";
+        }
+        if (!("group" in $$source)) {
+            this["group"] = "";
+        }
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("stateColor" in $$source)) {
+            this["stateColor"] = "";
+        }
+        if (!("statePosition" in $$source)) {
+            this["statePosition"] = 0;
+        }
+        if (!("priority" in $$source)) {
+            this["priority"] = 0;
+        }
+        if (!("priorityLabel" in $$source)) {
+            this["priorityLabel"] = "";
+        }
+        if (!("project" in $$source)) {
+            this["project"] = "";
+        }
+        if (!("labels" in $$source)) {
+            this["labels"] = [];
+        }
+        if (!("comments" in $$source)) {
+            this["comments"] = 0;
+        }
+        if (!("assignees" in $$source)) {
+            this["assignees"] = [];
+        }
+        if (!("projectId" in $$source)) {
+            this["projectId"] = "";
+        }
+        if (!("linearProject" in $$source)) {
+            this["linearProject"] = "";
+        }
+        if (!("linearTeam" in $$source)) {
+            this["linearTeam"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AssignedIssue instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AssignedIssue {
+        const $$createField14_0 = $$createType2;
+        const $$createField16_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("labels" in $$parsedSource) {
+            $$parsedSource["labels"] = $$createField14_0($$parsedSource["labels"]);
+        }
+        if ("assignees" in $$parsedSource) {
+            $$parsedSource["assignees"] = $$createField16_0($$parsedSource["assignees"]);
+        }
+        return new AssignedIssue($$parsedSource as Partial<AssignedIssue>);
     }
 }
 
@@ -363,8 +511,8 @@ export class CommandInfo {
      * Creates a new CommandInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): CommandInfo {
-        const $$createField9_0 = $$createType1;
-        const $$createField10_0 = $$createType3;
+        const $$createField9_0 = $$createType5;
+        const $$createField10_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("triggers" in $$parsedSource) {
             $$parsedSource["triggers"] = $$createField9_0($$parsedSource["triggers"]);
@@ -408,7 +556,7 @@ export class CommandPromptDTO {
      * Creates a new CommandPromptDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): CommandPromptDTO {
-        const $$createField4_0 = $$createType1;
+        const $$createField4_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("choices" in $$parsedSource) {
             $$parsedSource["choices"] = $$createField4_0($$parsedSource["choices"]);
@@ -709,10 +857,10 @@ export class EditorSession {
      * Creates a new EditorSession instance from a string or object.
      */
     static createFrom($$source: any = {}): EditorSession {
-        const $$createField0_0 = $$createType1;
-        const $$createField4_0 = $$createType5;
-        const $$createField5_0 = $$createType7;
-        const $$createField6_0 = $$createType9;
+        const $$createField0_0 = $$createType5;
+        const $$createField4_0 = $$createType9;
+        const $$createField5_0 = $$createType11;
+        const $$createField6_0 = $$createType13;
         const $$createField7_0 = $$createType0;
         const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
@@ -791,10 +939,10 @@ export class EditorSessionMeta {
      * Creates a new EditorSessionMeta instance from a string or object.
      */
     static createFrom($$source: any = {}): EditorSessionMeta {
-        const $$createField0_0 = $$createType1;
-        const $$createField4_0 = $$createType9;
-        const $$createField5_0 = $$createType10;
-        const $$createField6_0 = $$createType10;
+        const $$createField0_0 = $$createType5;
+        const $$createField4_0 = $$createType13;
+        const $$createField5_0 = $$createType14;
+        const $$createField6_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("openFiles" in $$parsedSource) {
             $$parsedSource["openFiles"] = $$createField0_0($$parsedSource["openFiles"]);
@@ -834,11 +982,11 @@ export class EditorSessionPatch {
      * Creates a new EditorSessionPatch instance from a string or object.
      */
     static createFrom($$source: any = {}): EditorSessionPatch {
-        const $$createField0_0 = $$createType12;
-        const $$createField1_0 = $$createType7;
-        const $$createField2_0 = $$createType1;
-        const $$createField3_0 = $$createType5;
-        const $$createField4_0 = $$createType1;
+        const $$createField0_0 = $$createType16;
+        const $$createField1_0 = $$createType11;
+        const $$createField2_0 = $$createType5;
+        const $$createField3_0 = $$createType9;
+        const $$createField4_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("meta" in $$parsedSource) {
             $$parsedSource["meta"] = $$createField0_0($$parsedSource["meta"]);
@@ -907,7 +1055,7 @@ export class EnsureResult {
      * Creates a new EnsureResult instance from a string or object.
      */
     static createFrom($$source: any = {}): EnsureResult {
-        const $$createField9_0 = $$createType14;
+        const $$createField9_0 = $$createType18;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("extra" in $$parsedSource) {
             $$parsedSource["extra"] = $$createField9_0($$parsedSource["extra"]);
@@ -943,7 +1091,7 @@ export class FlagDimension {
      * Creates a new FlagDimension instance from a string or object.
      */
     static createFrom($$source: any = {}): FlagDimension {
-        const $$createField2_0 = $$createType16;
+        const $$createField2_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("options" in $$parsedSource) {
             $$parsedSource["options"] = $$createField2_0($$parsedSource["options"]);
@@ -1034,10 +1182,10 @@ export class GrammarInfo {
      * Creates a new GrammarInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): GrammarInfo {
-        const $$createField4_0 = $$createType1;
-        const $$createField6_0 = $$createType1;
+        const $$createField4_0 = $$createType5;
+        const $$createField6_0 = $$createType5;
         const $$createField7_0 = $$createType0;
-        const $$createField18_0 = $$createType1;
+        const $$createField18_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("fileTypes" in $$parsedSource) {
             $$parsedSource["fileTypes"] = $$createField4_0($$parsedSource["fileTypes"]);
@@ -1052,6 +1200,69 @@ export class GrammarInfo {
             $$parsedSource["closeBrackets"] = $$createField18_0($$parsedSource["closeBrackets"]);
         }
         return new GrammarInfo($$parsedSource as Partial<GrammarInfo>);
+    }
+}
+
+/**
+ * IssueLabel is a label chip; Color is a hex string with or without '#'.
+ */
+export class IssueLabel {
+    "name": string;
+    "color": string;
+
+    /** Creates a new IssueLabel instance. */
+    constructor($$source: Partial<IssueLabel> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("color" in $$source)) {
+            this["color"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new IssueLabel instance from a string or object.
+     */
+    static createFrom($$source: any = {}): IssueLabel {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new IssueLabel($$parsedSource as Partial<IssueLabel>);
+    }
+}
+
+/**
+ * IssuesView is the Issues page's layout and filters. The frontend validates
+ * values on load, so an unknown or stale entry falls back to its default.
+ */
+export class IssuesView {
+    "layout"?: string;
+    "source"?: string;
+    "owner"?: string;
+    "groups"?: string[];
+    "sort"?: string;
+    "projects"?: string[];
+
+    /** Creates a new IssuesView instance. */
+    constructor($$source: Partial<IssuesView> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new IssuesView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): IssuesView {
+        const $$createField3_0 = $$createType5;
+        const $$createField5_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("groups" in $$parsedSource) {
+            $$parsedSource["groups"] = $$createField3_0($$parsedSource["groups"]);
+        }
+        if ("projects" in $$parsedSource) {
+            $$parsedSource["projects"] = $$createField5_0($$parsedSource["projects"]);
+        }
+        return new IssuesView($$parsedSource as Partial<IssuesView>);
     }
 }
 
@@ -1096,7 +1307,7 @@ export class LanguageServerInfo {
      * Creates a new LanguageServerInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): LanguageServerInfo {
-        const $$createField1_0 = $$createType1;
+        const $$createField1_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("languages" in $$parsedSource) {
             $$parsedSource["languages"] = $$createField1_0($$parsedSource["languages"]);
@@ -1187,7 +1398,7 @@ export class ModelChoice {
      * Creates a new ModelChoice instance from a string or object.
      */
     static createFrom($$source: any = {}): ModelChoice {
-        const $$createField2_0 = $$createType18;
+        const $$createField2_0 = $$createType22;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("flags" in $$parsedSource) {
             $$parsedSource["flags"] = $$createField2_0($$parsedSource["flags"]);
@@ -1234,7 +1445,7 @@ export class ModelGroup {
      * Creates a new ModelGroup instance from a string or object.
      */
     static createFrom($$source: any = {}): ModelGroup {
-        const $$createField2_0 = $$createType20;
+        const $$createField2_0 = $$createType24;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("models" in $$parsedSource) {
             $$parsedSource["models"] = $$createField2_0($$parsedSource["models"]);
@@ -1262,7 +1473,7 @@ export class PaletteSearchDTO {
      * Creates a new PaletteSearchDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PaletteSearchDTO {
-        const $$createField0_0 = $$createType22;
+        const $$createField0_0 = $$createType26;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("groups" in $$parsedSource) {
             $$parsedSource["groups"] = $$createField0_0($$parsedSource["groups"]);
@@ -1295,7 +1506,7 @@ export class PaletteSearchGroupDTO {
      * Creates a new PaletteSearchGroupDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PaletteSearchGroupDTO {
-        const $$createField2_0 = $$createType24;
+        const $$createField2_0 = $$createType28;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hits" in $$parsedSource) {
             $$parsedSource["hits"] = $$createField2_0($$parsedSource["hits"]);
@@ -1411,7 +1622,7 @@ export class PromptActionInfo {
      * Creates a new PromptActionInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptActionInfo {
-        const $$createField15_0 = $$createType26;
+        const $$createField15_0 = $$createType30;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("args" in $$parsedSource) {
             $$parsedSource["args"] = $$createField15_0($$parsedSource["args"]);
@@ -1544,7 +1755,7 @@ export class PromptCompleteResultDTO {
      * Creates a new PromptCompleteResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptCompleteResultDTO {
-        const $$createField0_0 = $$createType24;
+        const $$createField0_0 = $$createType28;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hits" in $$parsedSource) {
             $$parsedSource["hits"] = $$createField0_0($$parsedSource["hits"]);
@@ -1684,6 +1895,12 @@ export class PromptResultDTO {
      */
     "freshSession"?: boolean | null;
 
+    /**
+     * Issue is the tracker issue the prompt is about (e.g. /linear). The UI
+     * links it to the workspace the prompt runs in.
+     */
+    "issue"?: domain$0.IssueRef | null;
+
     /** Creates a new PromptResultDTO instance. */
     constructor($$source: Partial<PromptResultDTO> = {}) {
         if (!("prompt" in $$source)) {
@@ -1700,7 +1917,11 @@ export class PromptResultDTO {
      * Creates a new PromptResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptResultDTO {
+        const $$createField3_0 = $$createType32;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("issue" in $$parsedSource) {
+            $$parsedSource["issue"] = $$createField3_0($$parsedSource["issue"]);
+        }
         return new PromptResultDTO($$parsedSource as Partial<PromptResultDTO>);
     }
 }
@@ -1747,7 +1968,7 @@ export class RoleInfo {
      * Creates a new RoleInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): RoleInfo {
-        const $$createField5_0 = $$createType1;
+        const $$createField5_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("tools" in $$parsedSource) {
             $$parsedSource["tools"] = $$createField5_0($$parsedSource["tools"]);
@@ -2140,7 +2361,7 @@ export class TerminalThemeInfo {
      * Creates a new TerminalThemeInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): TerminalThemeInfo {
-        const $$createField5_0 = $$createType27;
+        const $$createField5_0 = $$createType33;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("palette" in $$parsedSource) {
             $$parsedSource["palette"] = $$createField5_0($$parsedSource["palette"]);
@@ -2193,7 +2414,7 @@ export class ThemeInfo {
      * Creates a new ThemeInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ThemeInfo {
-        const $$createField5_0 = $$createType28;
+        const $$createField5_0 = $$createType34;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("preview" in $$parsedSource) {
             $$parsedSource["preview"] = $$createField5_0($$parsedSource["preview"]);
@@ -2263,31 +2484,37 @@ export class WorkspaceChatSelection {
 
 // Private type creation functions
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
-const $$createType1 = $Create.Array($Create.Any);
-const $$createType2 = CommandPromptDTO.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = EditorScratchDoc.createFrom;
-const $$createType5 = $Create.Map($Create.Any, $$createType4);
-const $$createType6 = EditorBuffer.createFrom;
-const $$createType7 = $Create.Map($Create.Any, $$createType6);
-const $$createType8 = EditorFileView.createFrom;
+const $$createType1 = IssueLabel.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = domain$0.PRParticipant.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $Create.Array($Create.Any);
+const $$createType6 = CommandPromptDTO.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = EditorScratchDoc.createFrom;
 const $$createType9 = $Create.Map($Create.Any, $$createType8);
-const $$createType10 = $Create.Nullable($$createType0);
-const $$createType11 = EditorSessionMeta.createFrom;
-const $$createType12 = $Create.Nullable($$createType11);
-const $$createType13 = lsp$0.SessionInfo.createFrom;
-const $$createType14 = $Create.Array($$createType13);
-const $$createType15 = FlagOption.createFrom;
-const $$createType16 = $Create.Array($$createType15);
-const $$createType17 = FlagDimension.createFrom;
+const $$createType10 = EditorBuffer.createFrom;
+const $$createType11 = $Create.Map($Create.Any, $$createType10);
+const $$createType12 = EditorFileView.createFrom;
+const $$createType13 = $Create.Map($Create.Any, $$createType12);
+const $$createType14 = $Create.Nullable($$createType0);
+const $$createType15 = EditorSessionMeta.createFrom;
+const $$createType16 = $Create.Nullable($$createType15);
+const $$createType17 = lsp$0.SessionInfo.createFrom;
 const $$createType18 = $Create.Array($$createType17);
-const $$createType19 = ModelChoice.createFrom;
+const $$createType19 = FlagOption.createFrom;
 const $$createType20 = $Create.Array($$createType19);
-const $$createType21 = PaletteSearchGroupDTO.createFrom;
+const $$createType21 = FlagDimension.createFrom;
 const $$createType22 = $Create.Array($$createType21);
-const $$createType23 = PromptCompleteHitDTO.createFrom;
+const $$createType23 = ModelChoice.createFrom;
 const $$createType24 = $Create.Array($$createType23);
-const $$createType25 = PromptArgInfo.createFrom;
+const $$createType25 = PaletteSearchGroupDTO.createFrom;
 const $$createType26 = $Create.Array($$createType25);
-const $$createType27 = TerminalPaletteInfo.createFrom;
-const $$createType28 = ThemePreviewInfo.createFrom;
+const $$createType27 = PromptCompleteHitDTO.createFrom;
+const $$createType28 = $Create.Array($$createType27);
+const $$createType29 = PromptArgInfo.createFrom;
+const $$createType30 = $Create.Array($$createType29);
+const $$createType31 = domain$0.IssueRef.createFrom;
+const $$createType32 = $Create.Nullable($$createType31);
+const $$createType33 = TerminalPaletteInfo.createFrom;
+const $$createType34 = ThemePreviewInfo.createFrom;

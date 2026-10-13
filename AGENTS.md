@@ -35,6 +35,7 @@ Read before inventing architecture:
 - Desktop binary: `bin/recur`. Dev CLI: `bin/recur-cli` via `wails3 task build:cli` — do not overwrite one with the other. Packaged apps also embed `Contents/MacOS/recur-cli` (same `./cmd/recur` binary) and symlink it onto PATH at launch (D-cli-install).
 - Frontend deps live in `frontend/` (`pnpm` / `pnpm-lock.yaml` there). Typecheck: `cd frontend && pnpm run check`.
 - After changing Go methods exposed to the UI, regenerate bindings through the Wails build path (committed `.ts` bindings are authoritative).
+- UI view state that should survive view switches or reloads (filters, sort, layout, expanded rows) is persisted on disk, never `localStorage`/`sessionStorage`. Add a JSON file under `store.DataDir()` via `ShellService` in `internal/app/shell.go` (see `shell.json`, `schedule-view.json`, `issues-view.json`, written with `writeDataJSON`). Webview storage is wiped on dev↔packaged origin changes.
 - Bundles need `node` on `PATH` for TypeScript macros and engine tests.
 - Multi-agent coordination (optional): gitignored `TODO.md` — claim work there so sessions do not collide.
 

@@ -124,6 +124,10 @@ type Project struct {
 	// after Remove tears down the worktree. Default false. Remote branches are
 	// never deleted. Machine-local (extra_json), not project.toml.
 	DeleteBranchOnRemove bool `json:"deleteBranchOnRemove,omitempty"`
+	// LinearProjects is a comma-separated list of Linear project names or team
+	// keys whose assigned issues belong to this project. GitHub issues match by
+	// git remote instead. Machine-local (extra_json).
+	LinearProjects string `json:"linearProjects,omitempty"`
 	// MergeMethod overrides the global default merge strategy for this project.
 	// Empty = inherit Settings.DefaultMergeMethod (D53).
 	MergeMethod MergeMethod `json:"mergeMethod,omitempty"`
@@ -243,6 +247,15 @@ func RunActive(s WorkspaceState) bool {
 	return false
 }
 
+// IssueRef points at a tracker issue. ID is the tracker's stable id (Linear
+// issue UUID, GitHub issue node id) so team moves, repo renames, and
+// transfers keep the link; Key is the human ref shown in the UI.
+type IssueRef struct {
+	Source string `json:"source"` // "github" | "linear"
+	ID     string `json:"id"`
+	Key    string `json:"key,omitempty"` // BOTFUN-152, owner/repo#12
+}
+
 // Workspace is the single unit of work (PRD §2): a git worktree + branch plus the surfaces
 // around it (feed, Observatory, PRs, chat tabs). There are no workspace types —
 // what varies is each chat session's MODE (ask/plan/agent/review/loop), and
@@ -278,8 +291,11 @@ type Workspace struct {
 	// the project's checkout as cwd (Ask/Plan/Review only). CreateWorkspaceFromPR
 	// promotes the same row — HostPRID is cleared once a real worktree lands.
 	HostPRID string `json:"hostPrId,omitempty"`
-	Group    Group  `json:"group"`
-	Goal     string `json:"goal"`
+	// Issue is the tracker issue this workspace works on, set when it is
+	// created from the Issues view or a prompt (/linear) reports one.
+	Issue *IssueRef `json:"issue,omitempty"`
+	Group Group     `json:"group"`
+	Goal  string    `json:"goal"`
 	// GoalDisplay is the short UI label when Goal is expanded wire (a prompt
 	// action such as "Linear ENG-123 · title"). Empty means Goal is already
 	// human-facing. The model still receives Goal.

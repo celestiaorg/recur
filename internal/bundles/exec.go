@@ -13,6 +13,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"recur/internal/domain"
 )
 
 // DefaultTimeout is the per-command wall-clock limit when the caller does not
@@ -167,6 +169,8 @@ type PromptResult struct {
 	Prompt  string `json:"prompt"`
 	Display string `json:"display"`
 	Skip    bool   `json:"skip,omitempty"`
+	// Issue, when set, links the workspace the prompt ran in to that issue.
+	Issue *domain.IssueRef `json:"issue,omitempty"`
 }
 
 // RunPromptShebang executes a shebang prompt action and parses stdout JSON
@@ -264,9 +268,10 @@ func parsePromptResultJSON(stdout, fallbackName string) (PromptResult, error) {
 		return PromptResult{}, fmt.Errorf("prompt stdout empty (want JSON {\"prompt\",\"display\"})")
 	}
 	var parsed struct {
-		Prompt  string `json:"prompt"`
-		Display string `json:"display"`
-		Skip    bool   `json:"skip"`
+		Prompt  string           `json:"prompt"`
+		Display string           `json:"display"`
+		Skip    bool             `json:"skip"`
+		Issue   *domain.IssueRef `json:"issue"`
 	}
 	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
 		return PromptResult{}, fmt.Errorf("prompt stdout is not valid JSON: %w", err)
@@ -277,6 +282,7 @@ func parsePromptResultJSON(stdout, fallbackName string) (PromptResult, error) {
 		Prompt:  strings.TrimSpace(parsed.Prompt),
 		Display: NormalizePromptDisplay(parsed.Display, fallbackName),
 		Skip:    parsed.Skip,
+		Issue:   parsed.Issue,
 	}, nil
 }
 

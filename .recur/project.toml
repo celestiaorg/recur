@@ -8,8 +8,12 @@ wails3 task common:install:frontend:deps
 
 # Recur uses WAL. Byte-copying recur.db misses in-WAL rows (often hours).
 # VACUUM INTO snapshots through the WAL; retry if Recur's writer is busy.
-SRC="$HOME/Library/Application Support/Recur"
-DEST="$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID"
+if [ "$(uname)" = Darwin ]; then
+  SRC="$HOME/Library/Application Support/Recur"
+else
+  SRC="${XDG_CONFIG_HOME:-$HOME/.config}/Recur"
+fi
+DEST="$HOME/.recur/data/$RECUR_WORKSPACE_ID"
 rm -rf "$DEST"
 mkdir -p "$DEST"
 copied=
@@ -53,12 +57,12 @@ WHERE json_extract(doc_json, '$.status') IN ('working', 'directing', 'planning')
 SQL
 """
 
-teardown_cmd = 'rm -rf "$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID"'
+teardown_cmd = 'rm -rf "$HOME/.recur/data/$RECUR_WORKSPACE_ID"'
 app_url = ""
 
 # Secrets: .env, .env.local, .recur/.env, .recur/.env.local (gitignored).
 env = """
-RECUR_DATA_DIR=$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID
+RECUR_DATA_DIR=$HOME/.recur/data/$RECUR_WORKSPACE_ID
 WAILS_VITE_PORT=$RECUR_PORT
 RECUR_INSTANCE_LABEL=$RECUR_BRANCH
 """

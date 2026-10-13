@@ -22,7 +22,7 @@ import { type PRListLife, type PRListSort, PR_LIST_SEGS, PR_LIST_SORT_DEFAULT, P
 
 export type ViewName =
   | 'detail' | 'settings' | 'project'
-  | 'pr' | 'schedules' | 'prdetail' | 'inbox' | 'briefing' | 'welcome' | 'escalation'
+  | 'pr' | 'issues' | 'schedules' | 'prdetail' | 'inbox' | 'briefing' | 'welcome' | 'escalation'
 
 // ---- appearance / theme ----
 // Themes are color-only (identity & layout stay constant). Each entry carries the
@@ -1410,6 +1410,7 @@ function crumbFor(v: ViewName): string {
       return `<b>${crumbEsc(l?.projectId ?? '')}</b> / <span class="on">${name}</span>${branch}`
     }
     case 'schedules': return '<b class="on">Schedules</b>'
+    case 'issues': return '<b class="on">Issues</b>'
     case 'pr': return '<b class="on">Pull requests</b>'
     case 'prdetail': {
       const id = get(selectedPRId)
@@ -1545,8 +1546,13 @@ export function gitProjectForNewWorkspace(): Project | undefined {
 // and pre-filling the goal and/or mode (e.g. a Linear issue prompt from ⌘K, or a
 // mode picked on Getting Started). When repoId is
 // omitted, default to the focused project so ⌘N lands in the project you're in.
-export type NewTaskDraft = { text: string; display?: string; mode?: ChatMode }
+/** linearKey: the issue's Linear project name (or team key when it has none).
+ *  The modal offers to save it on the chosen project when that differs from
+ *  linkedProjectId, the project the issue routes to today. */
+export type NewTaskDraft = { text: string; display?: string; mode?: ChatMode; linearKey?: string; linkedProjectId?: string }
 export const newTaskDraft = writable<NewTaskDraft | null>(null)
+/** Bumped when an issue's assignment may have changed; the Issues view reloads. */
+export const issuesStale = writable(0)
 
 export function openNewTask(repoId = '', draft?: NewTaskDraft) {
   newTaskRepoId.set(repoId || focusedProjectId())

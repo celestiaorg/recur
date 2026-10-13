@@ -74,6 +74,7 @@ describe('resolveShellRestore', () => {
     expect(resolveShellRestore({ view: 'settings' }, live)).toEqual({ action: 'view', view: 'settings' })
     expect(resolveShellRestore({ view: 'pr' }, live)).toEqual({ action: 'view', view: 'pr' })
     expect(resolveShellRestore({ view: 'schedules' }, live)).toEqual({ action: 'view', view: 'schedules' })
+    expect(resolveShellRestore({ view: 'issues' }, live)).toEqual({ action: 'view', view: 'issues' })
     expect(resolveShellRestore({ view: 'welcome' }, live)).toEqual({ action: 'none' })
     expect(resolveShellRestore({ view: 'project', projectId: 'storefront' }, live)).toEqual({
       action: 'project',

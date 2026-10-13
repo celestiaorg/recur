@@ -1648,7 +1648,7 @@ func (l *Loop) runPlanner(ctx context.Context) error {
 // pathological/runaway response can't grow the stored loop record unboundedly.
 // Note the activity FEED uses the smaller feedInputLimit instead (see runPlanner)
 // so a single plan entry doesn't dwarf every other feed entry.
-const planMaxPersistChars = 20000
+const planMaxPersistChars = 256 << 10
 
 // runCoder spawns the Coder agent in the worktree, streams its steps to the feed,
 // then has the ENGINE commit the worktree changes (deterministic, testable — not

@@ -201,6 +201,8 @@ export type PromptResult = {
   display: string
   /** Host override of the manifest fresh_session flag (shebang prompts only). */
   freshSession?: boolean
+  /** Tracker issue the prompt is about; the host links it to the workspace. */
+  issue?: { source: string; id: string; key?: string }
 }
 
 export type PromptCompleteContext = {

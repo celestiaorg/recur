@@ -1,15 +1,57 @@
 package app
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+
+	"golang.org/x/image/tiff"
 
 	"recur/internal/code"
 )
+
+// transcodeTIFF is true where the webview cannot decode image/tiff
+// (WebKitGTK, WebView2). WKWebView renders it natively.
+var transcodeTIFF = runtime.GOOS != "darwin"
+
+// maxTIFFPixels caps decoded size so a small compressed TIFF cannot balloon
+// into gigabytes of RGBA.
+const maxTIFFPixels = 1 << 26
+
+// writeTIFFAsPNG serves a TIFF as PNG for preview. The file is not modified.
+func writeTIFFAsPNG(w http.ResponseWriter, src io.Reader) {
+	img, err := decodeTIFF(src)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "no-cache")
+	_ = png.Encode(w, img)
+}
+
+func decodeTIFF(src io.Reader) (image.Image, error) {
+	data, err := io.ReadAll(src)
+	if err != nil {
+		return nil, err
+	}
+	cfg, err := tiff.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Width > maxTIFFPixels/cfg.Height {
+		return nil, fmt.Errorf("image too large (%dx%d)", cfg.Width, cfg.Height)
+	}
+	return tiff.Decode(bytes.NewReader(data))
+}
 
 // ServeWorkspaceFile streams a project/worktree file into the webview asset
 // server at /workspace-file?project=&workspace=&path=. Bodies stay off the
@@ -67,6 +109,10 @@ func ServeWorkspaceFile(s *CodeService, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	defer f.Close() //nolint:errcheck
+	if mime == "image/tiff" && transcodeTIFF {
+		writeTIFFAsPNG(w, f)
+		return
+	}
 	if mime == "" {
 		if err := code.RewindBinaryCheck(f); err != nil {
 			http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
@@ -113,8 +159,12 @@ func serveWorkspaceImageAtBase(s *CodeService, w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", mime)
 	w.Header().Set("Cache-Control", "no-cache")
 	dst := io.Writer(cw)
+	var tiffBuf *bytes.Buffer
 	if r.Method == http.MethodHead {
 		dst = nil
+	} else if mime == "image/tiff" && transcodeTIFF {
+		tiffBuf = new(bytes.Buffer)
+		dst = tiffBuf
 	}
 	if err := code.ImageAtBase(r.Context(), root, base, rel, dst); err != nil {
 		status := http.StatusBadRequest
@@ -128,6 +178,10 @@ func serveWorkspaceImageAtBase(s *CodeService, w http.ResponseWriter, r *http.Re
 		if cw.n == 0 {
 			http.Error(w, err.Error(), status)
 		}
+		return
+	}
+	if tiffBuf != nil {
+		writeTIFFAsPNG(w, tiffBuf)
 		return
 	}
 	if r.Method == http.MethodHead {
@@ -223,6 +277,10 @@ func ServeExternalFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer f.Close() //nolint:errcheck
+	if mime == "image/tiff" && transcodeTIFF {
+		writeTIFFAsPNG(w, f)
+		return
+	}
 	if mime == "" {
 		if err := code.RewindBinaryCheck(f); err != nil {
 			http.Error(w, err.Error(), http.StatusUnsupportedMediaType)

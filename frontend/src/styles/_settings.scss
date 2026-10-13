@@ -1845,3 +1845,15 @@ a.ct:hover {
   border-color: color-mix(in srgb, var(--amber) 55%, var(--line));
   color: var(--text);
 }
+
+.ui-scale-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ui-scale-val {
+  min-width: 4ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

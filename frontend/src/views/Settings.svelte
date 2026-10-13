@@ -3,6 +3,7 @@
   import { get } from 'svelte/store'
   import {
     view, policy, settings, go, themes, theme, setTheme, providerUsage,
+    uiScale, setUiScale, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP,
     settingsSection, type SettingsSection,
     editorTheme, setEditorTheme, editorPrefs, setEditorPrefs, setEditorIndentForLang, pushToast, toastEditorTheme,
     EDITOR_FONT_SIZES, EDITOR_TAB_SIZES, EDITOR_INDENT_OPTIONS, editorFontStack,
@@ -73,6 +74,7 @@
   import { ensureTerminalThemes, terminalThemeCatalog } from '../lib/terminal'
 
   type Section = SettingsSection
+  let scaleDraft = $state($uiScale)
   let query = $state('')
   let clearing = $state(false)
   let confirmingClear = $state(false)
@@ -2285,6 +2287,26 @@
 
         {#if $settingsSection === 'appearance'}
           <SettingsGroups>
+            <SettingsGroup title="Interface scale" blurb="Zoom the whole interface to fit your display.">
+              <div class="set-row">
+                <div class="set-copy">
+                  <div class="set-title">Scale</div>
+                </div>
+                <div class="set-ctrl ui-scale-ctrl">
+                  <input
+                    type="range"
+                    min={UI_SCALE_MIN}
+                    max={UI_SCALE_MAX}
+                    step={UI_SCALE_STEP}
+                    bind:value={scaleDraft}
+                    aria-label="Interface scale"
+                  />
+                  <span class="ui-scale-val">{scaleDraft}%</span>
+                  <button type="button" class="rbtn" disabled={scaleDraft === $uiScale} onclick={() => setUiScale(scaleDraft)}>Apply</button>
+                  <button type="button" class="rbtn" disabled={$uiScale === 100 && scaleDraft === 100} onclick={() => { scaleDraft = 100; setUiScale(100) }}>Reset</button>
+                </div>
+              </div>
+            </SettingsGroup>
             <SettingsGroup title="App theme" blurb="Chrome, sidebars, and panels.">
               <div class="thgrid">
                   {#each themes as t (t.key)}

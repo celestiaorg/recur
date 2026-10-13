@@ -3,13 +3,14 @@ import { mount } from 'svelte'
 import App from './App.svelte'
 import {
   initTheme, initEditorTheme, initEditorPrefs, initPanelWidths, initCodePanelSides,
-  initExplorerPrefs, initRailCollapsed, initTerminalPrefs,
+  initExplorerPrefs, initRailCollapsed, initTerminalPrefs, initUiScale,
 } from './lib/stores'
 import { wireExternalLinks } from './lib/open-external'
 import { ignoreLaunchChromeFocus } from './lib/chrome-focus'
 
 // Apply the saved theme / panel widths before mount so there's no layout flash.
 initTheme()
+initUiScale()
 initEditorTheme()
 initEditorPrefs()
 initPanelWidths()

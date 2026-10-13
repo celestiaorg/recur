@@ -71,6 +71,33 @@ export function initTheme() {
   setTheme(saved)
 }
 
+// ---- interface scale (whole-UI zoom, percent) ----
+export const UI_SCALE_MIN = 50
+export const UI_SCALE_MAX = 150
+export const UI_SCALE_STEP = 5
+const UI_SCALE_KEY = 'recur.uiScale'
+export const uiScale = writable<number>(100)
+
+export function normalizeUiScale(v: unknown): number {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return 100
+  const stepped = Math.round(n / UI_SCALE_STEP) * UI_SCALE_STEP
+  return Math.min(UI_SCALE_MAX, Math.max(UI_SCALE_MIN, stepped))
+}
+
+export function setUiScale(v: number) {
+  const pct = normalizeUiScale(v)
+  uiScale.set(pct)
+  document.body.style.zoom = pct === 100 ? '' : String(pct / 100)
+  try { localStorage.setItem(UI_SCALE_KEY, String(pct)) } catch { /* ignore */ }
+}
+
+export function initUiScale() {
+  let saved: string | null = null
+  try { saved = localStorage.getItem(UI_SCALE_KEY) } catch { /* ignore */ }
+  setUiScale(saved === null ? 100 : Number(saved))
+}
+
 // ---- code editor theme (independent of app chrome theme) ----
 const EDITOR_THEME_KEY = 'recur.editorTheme'
 export const editorTheme = writable<string>('recur')

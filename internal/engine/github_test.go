@@ -1384,15 +1384,15 @@ func TestOwnerRepoFromRemoteURL(t *testing.T) {
 		{"", ""},
 	}
 	for _, c := range cases {
-		got, ok := ownerRepoFromRemoteURL(c.in)
+		got, ok := OwnerRepoFromRemoteURL(c.in)
 		if c.want == "" {
 			if ok {
-				t.Errorf("ownerRepoFromRemoteURL(%q) = %q ok=true, want false", c.in, got)
+				t.Errorf("OwnerRepoFromRemoteURL(%q) = %q ok=true, want false", c.in, got)
 			}
 			continue
 		}
 		if !ok || got != c.want {
-			t.Errorf("ownerRepoFromRemoteURL(%q) = %q ok=%v, want %q true", c.in, got, ok, c.want)
+			t.Errorf("OwnerRepoFromRemoteURL(%q) = %q ok=%v, want %q true", c.in, got, ok, c.want)
 		}
 	}
 }

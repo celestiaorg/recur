@@ -43,6 +43,7 @@ export {
     Group,
     ImpactItem,
     InboxItem,
+    IssueRef,
     MCPServer,
     MergeCommitMessage,
     MergeMethod,

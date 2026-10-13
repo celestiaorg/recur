@@ -487,6 +487,17 @@ export function SetWorkspaceChatFocus(workspaceID: string, code: string): $Cance
 }
 
 /**
+ * SetWorkspaceIssue links a workspace to a tracker issue (replacing any link)
+ * and assigns the issue to the user when nobody owns it yet. The claim runs
+ * before returning so the caller can refresh the issue list afterwards.
+ */
+export function SetWorkspaceIssue(workspaceID: string, issue: domain$0.IssueRef): $CancellablePromise<domain$0.Workspace> {
+    return $Call.ByID(1075882675, workspaceID, issue).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * SetWorkspaceLoopPolicy stamps the dock pickers onto a workspace that has
  * not engaged yet. After HasRun() the ids are pinned — switching is a restart.
  */

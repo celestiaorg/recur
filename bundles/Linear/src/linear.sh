@@ -30,6 +30,7 @@ UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 BARE = re.compile(r"^\d+$")
 ISSUE_QUERY = """query Issue($id: String!) {
   issue(id: $id) {
+    id
     identifier
     title
     description
@@ -241,5 +242,8 @@ if comments:
             head += " (reply)"
         lines += [scrub(head), scrub((n.get("body") or "").strip()), ""]
 lines += [close_m, ""]
-print(json.dumps({"prompt": "\n".join(lines), "display": display}, ensure_ascii=False))
+out = {"prompt": "\n".join(lines), "display": display}
+if issue.get("id"):
+    out["issue"] = {"source": "linear", "id": issue["id"], "key": ident}
+print(json.dumps(out, ensure_ascii=False))
 '

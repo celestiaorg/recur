@@ -2,7 +2,7 @@ module recur
 
 go 1.25.0
 
-toolchain go1.26.8
+toolchain go1.26.9
 
 require (
 	github.com/alecthomas/chroma/v2 v2.27.0
@@ -22,7 +22,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/go-cmp v0.7.0
 	github.com/robfig/cron/v3 v3.0.1
-	golang.org/x/image v0.41.0
+	golang.org/x/image v0.43.0
 )
 
 require (

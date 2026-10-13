@@ -621,7 +621,12 @@ that must not be scanned (git diffs, etc.) in nonce-paired
 contain those strings). Markers are stripped before storage/provider. Session
 stores the full wire as `text` and the short label as `display_text`. An empty
 `prompt` is a no-send success: the host toasts `display` and does not start a
-chat turn (used by `/update` when git finishes cleanly).
+chat turn (used by `/update` when git finishes cleanly). An optional
+`"issue": {"source": "linear", "id": "<stable tracker id>", "key": "ENG-123"}`
+links the workspace the prompt runs in (or the one New Task creates) to that
+issue, so the Issues view shows View workspace for it. If nobody is assigned
+yet, linking also assigns the issue to the user on GitHub or Linear. Use the
+tracker's stable id (Linear issue UUID, GitHub issue node id), not the human key.
 
 Shipped flagships live in `bundles/Chat`: `/fix-findings` (`mode=agent`,
 `tab_group = "ops"`, `fresh_session`; invoke from the review chat and it
@@ -654,6 +659,11 @@ GraphQL `searchIssues`). The same script is the pack’s `[[search]]` for ⌘K;
 `[[expand]]` (`src/linear.sh`) paste-expands New Task / ⌘K picks when `match`
 hits. Host only runs matching expanders — prose goals are unchanged.
 Agent Linear tools (backlog / triage) are Settings → MCP (`D-user-mcp`), not shebang.
+`bundles/GitHub` ships `/github` (`takesArgs`, shebang over the `gh` CLI, no
+API key): `#12` resolves against the workspace repo, plus `owner/repo#12` and
+issue URLs; pull requests are rejected. Its `[[expand]]` paste-expands issue
+URLs and `owner/repo#12` in New Task. Both `/linear` and `/github` return
+`issue`, so the workspace is linked to the issue it works on.
 
 User bundles may
 shadow slash names (user > default after id dedupe). Typed

@@ -12,7 +12,7 @@ import { ShellState as BoundShellState } from '../../bindings/recur/internal/app
 
 export type ShellView =
   | 'detail' | 'settings' | 'project'
-  | 'pr' | 'schedules' | 'prdetail' | 'inbox' | 'briefing' | 'welcome' | 'escalation'
+  | 'pr' | 'schedules' | 'issues' | 'prdetail' | 'inbox' | 'briefing' | 'welcome' | 'escalation'
 
 export type ShellState = {
   view?: string
@@ -34,7 +34,7 @@ export type ShellRestore =
   | { action: 'project'; id: string }
   | { action: 'view'; view: ShellView }
 
-const TOP_VIEWS = new Set<ShellView>(['inbox', 'briefing', 'settings', 'pr', 'schedules'])
+const TOP_VIEWS = new Set<ShellView>(['inbox', 'briefing', 'settings', 'pr', 'schedules', 'issues'])
 
 /** Build the snapshot written on each navigation. */
 export function snapshotShell(

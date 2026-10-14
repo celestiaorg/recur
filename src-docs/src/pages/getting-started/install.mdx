@@ -34,7 +34,7 @@ Each release lists a `SHA256SUMS` file covering every download:
 sha256sum --check --ignore-missing SHA256SUMS
 ```
 
-Packages are signed with the [Recur release key](/recur-signing-key.asc):
+Packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc):
 
 ```
 1643 D8F4 CED9 E15A 8779  8A9F 3CDB 8273 A037 2B19
@@ -43,7 +43,7 @@ Packages are signed with the [Recur release key](/recur-signing-key.asc):
 To check an `.rpm` signature:
 
 ```bash
-sudo rpm --import https://docs.recur.build/recur-signing-key.asc
+sudo rpm --import https://recur.build/docs/recur-signing-key.asc
 rpm --checksig Recur-<version>-linux-amd64.rpm
 ```
 

@@ -14,7 +14,7 @@ Open Settings with **⌘,** (or **Recur → Settings…**). Type in the search f
 - **Simplify**: **Default Simplify** turns Simplify on for new chats. Simplify keeps agents from over-building: they reuse what is already in the repo and ship the smallest change that works. You can still toggle it per chat in the composer.
 - **Concurrency**: **Max concurrent loops** (default 4) and **Max concurrent agents** (default 8). Extra loops and agent turns wait in a queue until a slot frees. 0 is unlimited.
 - **Agents**: **Turn time limit** stops an agent turn after this many minutes (default 240, max 10080). **Queue follow-ups while an agent runs** decides what ⏎ does while a turn is running: off, ⏎ steers the running turn and ⌘⏎ queues; on, ⏎ queues and ⌘⏎ steers.
-- **Power**: **Prevent sleep while agents run** keeps your Mac awake (via `caffeinate`) so idle sleep cannot interrupt a turn.
+- **Power**: **Prevent sleep while agents run** keeps your Mac awake (via `caffeinate`, macOS only) so idle sleep cannot interrupt a turn.
 - **Workspaces**: **Branch name prefix** is prepended to new workspace branches. Presets are **Recur** (`recur/`), **GitHub** (your `gh` login), or **None**. **Keep scheduled workspaces** keeps the last N workspaces per schedule and removes older finished runs. 0 keeps all.
 
 ### Appearance

@@ -111,7 +111,7 @@ sudo apt install ./Recur-<version>-linux-amd64.deb
 sudo dnf install ./Recur-<version>-linux-amd64.rpm
 ```
 
-Elsewhere, install GTK 4 and WebKitGTK 6.0, then run `recur` from `Recur-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS` for its downloads, and the packages are signed with the [Recur release key](https://docs.recur.build/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
+Elsewhere, install GTK 4 and WebKitGTK 6.0, then run `recur` from `Recur-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
 
 ## Command line
 

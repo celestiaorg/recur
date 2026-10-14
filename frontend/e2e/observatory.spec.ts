@@ -1254,7 +1254,7 @@ test.describe('code observatory', () => {
     await expect(stripAgain.locator('.obs-filechip').nth(1)).toHaveAttribute('data-tab-key', firstKey!)
   })
 
-  test('file tab context menu closes others and all', async ({ page }) => {
+  async function openTwoTabs(page: Page) {
     await installBridge(page, structuredClone(seed), {
       resolvers: {
         ListLoopAgents: () => [],
@@ -1273,7 +1273,8 @@ test.describe('code observatory', () => {
         GitStatus: () => ({ 'src/main.go': 'm', 'src/other.go': 'm' }),
         ReadFile: (a: unknown[]) => {
           const p = (a[2] as string) || 'src/main.go'
-          return { path: p, language: 'go', content: 'package main\n', html: '', lines: [], size: 13, writable: !!a[1] }
+          const content = `package ${p === 'src/main.go' ? 'main' : 'other'}\n`
+          return { path: p, language: 'go', content, html: '', lines: [], size: content.length, writable: !!a[1] }
         },
       },
     })
@@ -1283,21 +1284,52 @@ test.describe('code observatory', () => {
 
     const filesBtn = page.locator('#v-detail button[aria-label="Files"]')
     if (await filesBtn.getAttribute('aria-pressed') !== 'true') await filesBtn.click()
-    await page.locator('#v-detail .obs-files .obs-node', { hasText: 'main.go' }).click()
-    await page.locator('#v-detail .obs-files .obs-node', { hasText: 'other.go' }).click()
+    const codeSeg = page.locator('#v-detail .obs-view-seg button', { hasText: 'Code' })
+    for (const name of ['main', 'other']) {
+      await page.locator('#v-detail .obs-files .obs-node', { hasText: `${name}.go` }).click()
+      if (await codeSeg.count()) await codeSeg.click()
+      await expect(codeContent(page)).toContainText(`package ${name}`)
+    }
     const chips = page.locator('#v-detail .obs-tb-center .obs-filechip')
     await expect(chips).toHaveCount(2)
+    return chips
+  }
+
+  test('file tab context menu closes others and all', async ({ page }) => {
+    const chips = await openTwoTabs(page)
 
     await chips.first().click({ button: 'right' })
     await expect(page.locator('.obs-ctx button')).toHaveText(['Close', 'Close others', 'Close all'])
     await page.locator('.obs-ctx button', { hasText: 'Close others' }).click()
     await expect(chips).toHaveCount(1)
-    await expect(chips.first()).toContainText('main.go')
+    await expect(page.locator('#v-detail .obs-filechip.on')).toContainText('main.go')
+    await expect(codeContent(page)).toContainText('package main')
 
     await chips.first().click({ button: 'right' })
     await expect(page.locator('.obs-ctx button', { hasText: 'Close others' })).toBeDisabled()
     await page.locator('.obs-ctx button', { hasText: 'Close all' }).click()
     await expect(chips).toHaveCount(0)
+  })
+
+  test('file tab close all asks once for dirty tabs and cancel keeps them', async ({ page }) => {
+    const chips = await openTwoTabs(page)
+    await codeContent(page).click()
+    await page.keyboard.type(' // edit')
+    await chips.first().click()
+    await expect(codeContent(page)).toContainText('package main')
+    await codeContent(page).click()
+    await page.keyboard.type(' // edit')
+    await expect(chips.locator('.dot')).toHaveCount(2)
+
+    // The mocked runtime answers the dialog with no choice, i.e. Cancel.
+    const prompt = page.waitForRequest(
+      (r) => r.url().includes('/wails/runtime') && (r.postData() ?? '').includes('Discard unsaved edits in 2 tabs?'),
+    )
+    await chips.first().click({ button: 'right' })
+    await page.locator('.obs-ctx button', { hasText: 'Close all' }).click()
+    await prompt
+    await expect(chips).toHaveCount(2)
+    await expect(chips.locator('.dot')).toHaveCount(2)
   })
 
   test('branch review shows files changed and commits without a PR', async ({ page }) => {

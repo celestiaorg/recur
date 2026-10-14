@@ -5706,7 +5706,7 @@
 
   /** Close several tabs in one pass; one discard prompt, and at most one neighbor load. */
   async function closeTabs(paths: string[]) {
-    const gone = new Set(paths.filter((p) => openFiles.includes(p)))
+    const gone = new Set(paths.filter((p) => openFiles.includes(p) || (p && p === selectedPath)))
     if (!gone.size) return
     const dirty = [...gone].filter(tabIsDirty).length
     if (dirty) {

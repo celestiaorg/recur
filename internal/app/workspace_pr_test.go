@@ -1407,6 +1407,93 @@ func TestWorkspaceUpdateWithBaseMergeDoesNotForceGitHubPR(t *testing.T) {
 	}
 }
 
+// TestWorkspacePushCrossRepoPRPushesToFork covers a fork PR (head in
+// auricom/recur): Push updates lands on the fork, never creates the branch on
+// origin, and ahead/behind compares against pull/N/head, not origin/<branch>.
+func TestWorkspacePushCrossRepoPRPushesToFork(t *testing.T) {
+	clone, bare := initGitRepoWithRemote(t)
+	root := t.TempDir()
+	origin := filepath.Join(root, "celestiaorg", "recur.git")
+	fork := filepath.Join(root, "auricom", "recur.git")
+	runGit(t, root, "clone", "--bare", bare, origin)
+	runGit(t, root, "clone", "--bare", bare, fork)
+	runGit(t, clone, "remote", "set-url", "origin", origin)
+
+	eng := engine.New(store.NewInMemory())
+	eng.SetWorktreeRoot(t.TempDir())
+	eng.SetRunner(&engine.ScriptedRunner{})
+	svc := NewServices(eng)
+	projectID := svcAddProject(t, eng, clone)
+
+	ws, err := svc.Workspaces.CreateWorkspace(projectID, "fork PR", "", "agent", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateWorkspace: %v", err)
+	}
+	ws = waitWorkspaceReady(t, eng, ws.ID)
+	if err := svc.Code.WriteFile(projectID, ws.ID, "feature.txt", "the feature\n"); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if res, err := svc.Code.Commit(t.Context(), projectID, ws.ID, "fork: feature"); err != nil || !res.Committed {
+		t.Fatalf("Commit: res=%+v err=%v", res, err)
+	}
+	const head = "recur/tab-close-context-menu"
+	runGit(t, ws.WorktreePath, "push", fork, "HEAD:refs/heads/"+head)
+	runGit(t, ws.WorktreePath, "push", origin, "HEAD:refs/pull/9/head")
+
+	if _, err := eng.Store.AddPR(domain.PR{
+		ID: "gh-9", WorkspaceID: ws.ID, Group: "you", Number: 9,
+		Source: domain.SourceGitHub, Branch: head, Base: "main",
+		Title: "feat", State: "In review", IsCrossRepository: true,
+	}); err != nil {
+		t.Fatalf("AddPR: %v", err)
+	}
+	if err := svc.Code.WriteFile(projectID, ws.ID, "local.txt", "local\n"); err != nil {
+		t.Fatalf("WriteFile local: %v", err)
+	}
+	if res, err := svc.Code.Commit(t.Context(), projectID, ws.ID, "fork: local"); err != nil || !res.Committed {
+		t.Fatalf("Commit local: res=%+v err=%v", res, err)
+	}
+
+	land := svc.Workspaces.FetchWorkingCopyUpstream(ws.ID)
+	if land.AheadRemote != 1 || land.BehindRemote != 0 {
+		t.Fatalf("FetchWorkingCopyUpstream() ahead=%d behind=%d, want 1 0 vs pull/9/head", land.AheadRemote, land.BehindRemote)
+	}
+
+	ghDir := t.TempDir()
+	gh := filepath.Join(ghDir, "gh")
+	t.Setenv("PATH", ghDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	if err := os.WriteFile(gh, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Workspaces.OpenWorkspacePR(ws.ID, false); err == nil || !strings.Contains(err.Error(), "fork") {
+		t.Errorf("OpenWorkspacePR(unresolved fork) err = %v, want fork resolution error", err)
+	}
+
+	script := `#!/bin/sh
+if [ "$1 $2 $3" = "pr view 9" ]; then
+  echo '{"headRepository":{"name":"recur"},"headRepositoryOwner":{"login":"auricom"}}'
+  exit 0
+fi
+exit 1
+`
+	if err := os.WriteFile(gh, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Workspaces.OpenWorkspacePR(ws.ID, false); err != nil {
+		t.Fatalf("OpenWorkspacePR(fork PR): %v", err)
+	}
+	if got, err := exec.Command("git", "-C", fork, "show", head+":local.txt").CombinedOutput(); err != nil || strings.TrimSpace(string(got)) != "local" {
+		t.Errorf("fork %s:local.txt = %q (err %v), want local", head, got, err)
+	}
+	if out, err := exec.Command("git", "-C", origin, "rev-parse", "--verify", "refs/heads/"+head).CombinedOutput(); err == nil {
+		t.Errorf("origin gained branch %s for a fork PR: %s", head, out)
+	}
+	land = svc.Workspaces.WorkspaceLandState(ws.ID)
+	if land.AheadRemote != 0 || land.BehindRemote != 0 {
+		t.Errorf("WorkspaceLandState() after push ahead=%d behind=%d, want 0 0", land.AheadRemote, land.BehindRemote)
+	}
+}
+
 func prCommentDescription(pr domain.PR) string {
 	for _, c := range pr.Comments {
 		if c.Kind == "description" {

@@ -58,10 +58,6 @@ func (e *Engine) fetchOpenPRRemote(ws domain.Workspace) {
 	if !ok || pr.Source != domain.SourceGitHub || pr.State == "Merged" || pr.Group == "merged" {
 		return
 	}
-	_, remote, short := githubPRTrackingRef(pr.Branch)
-	if remote == "" || short == "" {
-		return
-	}
 	proj, pok := e.Store.Project(ws.ProjectID)
 	if !pok || proj.RepoPath == "" {
 		return
@@ -69,7 +65,7 @@ func (e *Engine) fetchOpenPRRemote(ws domain.Workspace) {
 	mgr := gitpkg.NewManager(proj.RepoPath, e.worktreeRoot)
 	ctx, cancel := context.WithTimeout(context.Background(), gitpkg.RemoteFetchTimeout)
 	defer cancel()
-	_ = mgr.FetchRemoteBranch(ctx, remote, short)
+	fetchGitHubPRHead(ctx, mgr, pr)
 }
 
 // UpdateWorkingCopyFromRemote fetches the main working copy's upstream and

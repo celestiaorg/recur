@@ -1,9 +1,10 @@
 name: Release
 
 # Pushing a vX.Y.Z tag builds a universal Recur.app (stamping X.Y.Z into
-# Info.plist) in a styled DMG, and the Linux tarballs, in parallel. Only once
-# every build succeeds does `publish` create the GitHub release and attach them
-# all, so a failed build never leaves a partial release.
+# Info.plist) in a styled DMG, and the Linux tarballs, .debs and .rpms, in
+# parallel. Only once every build succeeds does `publish` create the GitHub
+# release and attach them all with a SHA256SUMS, so a failed build never leaves
+# a partial release.
 #
 # With all the secrets below Recur.app and the DMG are Developer ID signed,
 # notarized, and stapled. With only the MACOS_* ones they are signed but not
@@ -18,6 +19,11 @@ name: Release
 #   APPLE_ID               Apple ID email used for notarization
 #   APPLE_TEAM_ID          10-character team ID
 #   APPLE_APP_PASSWORD     app-specific password for APPLE_ID
+#
+# With LINUX_PGP_KEY the .deb and .rpm are PGP-signed (nfpm, at package time);
+# without it they ship unsigned.
+#   LINUX_PGP_KEY          armored private key, `gpg --armor --export-secret-keys <id>`
+#   LINUX_PGP_PASSPHRASE   its passphrase, if any
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -118,18 +124,32 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    env:
+      HAS_PGP: ${{ secrets.LINUX_PGP_KEY != '' }}
     steps:
       - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
       - uses: ./.github/actions/setup
         with:
           wails: "true"
-      - run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task linux:package
-      - run: mv bin/recur-linux-${{ matrix.arch }}.tar.gz "bin/Recur-${GITHUB_REF_NAME#v}-linux-${{ matrix.arch }}.tar.gz"
+      - name: Write PGP signing key
+        if: env.HAS_PGP == 'true'
+        env:
+          LINUX_PGP_KEY: ${{ secrets.LINUX_PGP_KEY }}
+        run: |
+          printf '%s\n' "$LINUX_PGP_KEY" > "$RUNNER_TEMP/pgp.asc"
+          echo "RECUR_PGP_KEY=$RUNNER_TEMP/pgp.asc" >> "$GITHUB_ENV"
+      - env:
+          NFPM_PASSPHRASE: ${{ secrets.LINUX_PGP_PASSPHRASE }}
+        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task linux:package
+      - run: |
+          for ext in tar.gz deb rpm; do
+            mv "bin/recur-linux-${{ matrix.arch }}.$ext" "bin/Recur-${GITHUB_REF_NAME#v}-linux-${{ matrix.arch }}.$ext"
+          done
       - uses: actions/upload-artifact@v7
         with:
           name: release-linux-${{ matrix.arch }}
-          path: bin/Recur-*-linux-${{ matrix.arch }}.tar.gz
+          path: bin/Recur-*-linux-${{ matrix.arch }}.*
           if-no-files-found: error
 
   publish:
@@ -145,5 +165,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          (cd dist && sha256sum * > SHA256SUMS)
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber

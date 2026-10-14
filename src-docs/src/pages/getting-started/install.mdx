@@ -1,11 +1,13 @@
 ---
 title: Install
-description: Get Recur running on your Mac
+description: Get Recur running on macOS or Linux
 ---
 
 # Install
 
-Recur is a native macOS app.
+Recur is a native desktop app for macOS and Linux.
+
+## macOS
 
 1. Download the latest build from [recur.build](https://recur.build/#download).
 2. Open the `.dmg` and drag **Recur** into Applications.
@@ -13,9 +15,41 @@ Recur is a native macOS app.
 
 At launch the app installs a `recur` command on your `PATH` (a symlink in `/usr/local/bin` when writable, and in `~/.local/bin`). Use `recur .` or `recur <path>` to open a folder or file in Recur, `recur` alone to bring Recur forward, and `recur bundles …` to [author bundles](/bundles/testing).
 
+## Linux
+
+Download the `.deb` or `.rpm` for your architecture (`linux-amd64` or `linux-arm64`) from [GitHub Releases](https://github.com/celestiaorg/recur/releases) and install it. The package pulls in GTK 4 and WebKitGTK 6.0, installs Recur to `/opt/recur`, and adds `recur` to your `PATH` and Recur to your app menu.
+
+```bash
+sudo apt install ./Recur-<version>-linux-amd64.deb   # Ubuntu 24.04+, Debian 13
+sudo dnf install ./Recur-<version>-linux-amd64.rpm   # Fedora 40+
+```
+
+On other distributions, install GTK 4 and WebKitGTK 6.0, extract `Recur-<version>-linux-amd64.tar.gz`, and run `recur` from it. At launch it links `recur` into `~/.local/bin` and adds an app-menu entry.
+
+### Verify a download
+
+Each release lists a `SHA256SUMS` file covering every download:
+
+```bash
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+Packages are signed with the [Recur release key](/recur-signing-key.asc):
+
+```
+1643 D8F4 CED9 E15A 8779  8A9F 3CDB 8273 A037 2B19
+```
+
+To check an `.rpm` signature:
+
+```bash
+sudo rpm --import https://docs.recur.build/recur-signing-key.asc
+rpm --checksig Recur-<version>-linux-amd64.rpm
+```
+
 ## Requirements
 
-- macOS (Apple Silicon or Intel)
+- macOS (Apple Silicon or Intel), or Linux with GTK 4 and WebKitGTK 6.0 (x86_64 or arm64)
 - A configured provider: Claude Code, Cursor, Codex, or a compatible endpoint
 - Git 2.31 or newer available on your `PATH`
 - Optional: the GitHub CLI (`gh`), signed in, for GitHub pull requests
@@ -24,4 +58,4 @@ At launch the app installs a `recur` command on your `PATH` (a symlink in `/usr/
 
 Use first-run setup, then **Settings → Providers** to configure authentication and available models. Existing coding-agent logins can be reused where supported. See [Providers](/reference/agents) for Codex authentication and compatible endpoint requirements.
 
-Your code stays on this Mac except for calls to your chosen agent provider and GitHub when you use them.
+Your code stays on this machine except for calls to your chosen agent provider and GitHub when you use them.

@@ -297,6 +297,17 @@ var sdkAttributionAnchors = []struct {
 	neu string
 }{
 	{
+		// cjs 464.js (@cursor/sdk 1.0.37): options object `l` sits in a const
+		// chain, so inject via a comma expression on the executor assignment.
+		old: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new OS(l):new dx(l,a);",
+		neu: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis." + attributionProviderMarker + "||{get:()=>({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new OS(l):new dx(l,a));",
+	},
+	{
+		// esm 464.js (@cursor/sdk 1.0.37): same shape as cjs
+		old: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new MS(l):new lx(l,a);",
+		neu: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis." + attributionProviderMarker + "||{get:()=>({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new MS(l):new lx(l,a));",
+	},
+	{
 		// cjs (@cursor/sdk 1.0.31 chunk) — options object is `n`
 		old: "getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Pb(n):new yx(n,m)",
 		neu: "getAgentSkills:r.workspaceServices.getAgentSkills};n.attributionConfigProvider=globalThis." + attributionProviderMarker + "||{get:()=>({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})};return void 0===m?new Pb(n):new yx(n,m)",
@@ -427,12 +438,17 @@ func sdkTreeHasSummaryDelta(bridgeRoot, rel string) bool {
 // sdkSummaryDeltaAnchors restore the documented onDelta contract.
 // InteractionUpdate (the type passed to agent.send's onDelta) includes
 // SummaryUpdate, SummaryStartedUpdate, and SummaryCompletedUpdate.
-// cursor-sdk 1.0.28–1.0.31's RunInteractionAccumulator.apply still skips
+// cursor-sdk 1.0.28–1.0.37's RunInteractionAccumulator.apply still skips
 // those three types, so compact cards and session_context never see them.
 var sdkSummaryDeltaAnchors = []struct {
 	old string
 	neu string
 }{
+	{
+		// 1.0.37: async/await instead of the generator yield
+		old: `function(t){return"summary"===t.type||"summary-started"===t.type||"summary-completed"===t.type}(t)||await(this.options.onDelta?.({update:t}))`,
+		neu: summaryDeltaPatchNeedle() + `await(this.options.onDelta?.({update:t}))`,
+	},
 	{
 		old: `function(e){return"summary"===e.type||"summary-started"===e.type||"summary-completed"===e.type}(e)||` + sdkSummaryDeltaYield,
 		neu: summaryDeltaPatchNeedle() + sdkSummaryDeltaYield,

@@ -598,7 +598,7 @@ func TestShutdownCompletedTurnGoesIdle(t *testing.T) {
 	}
 }
 
-func TestAutoResumeDefersAgentChatWhenLoopResumes(t *testing.T) {
+func TestAutoResumeAgentChatAlongsideLoop(t *testing.T) {
 	runner := &captureRunner{
 		linesFor: func(int) [][]byte {
 			return maestroFixture("sess-loop", "ok")
@@ -631,75 +631,14 @@ func TestAutoResumeDefersAgentChatWhenLoopResumes(t *testing.T) {
 		got, ok := st.Workspace(ws.ID)
 		return ok && !(got.State == domain.StatePaused && got.Phase == phaseInterrupted)
 	})
-	time.Sleep(200 * time.Millisecond)
-	for _, spec := range runner.specsWithRole(domain.RoleCoder) {
-		if strings.Contains(spec.Prompt, "Recur restarted") || spec.DisplayText == chatResumeDisplay {
-			t.Fatalf("agent-mode PA must not auto-resume into a worktree the loop owns: %+v", spec)
-		}
-	}
-	a, ok := st.Agent(ws.ID, pairAgentCode)
-	if !ok {
-		t.Fatal("Agent(PA) missing after AutoResume")
-	}
-	if a.Status != "idle" {
-		t.Errorf("Agent(PA).Status = %q, want idle (run-lock skip, not a refused send)", a.Status)
-	}
-}
-
-func TestChatResumeBlockedByRunLock(t *testing.T) {
-	eng, _, _, _ := newTestEngine(t, &captureRunner{})
-	cases := []struct {
-		name string
-		ws   domain.Workspace
-		mode string
-		want bool
-	}{
-		{
-			name: "agent paused interrupted",
-			ws:   domain.Workspace{RunStarted: true, State: domain.StatePaused, Phase: phaseInterrupted},
-			mode: domain.ChatModeAgent,
-			want: true,
-		},
-		{
-			name: "agent coding",
-			ws:   domain.Workspace{RunStarted: true, State: domain.StateCoding},
-			mode: domain.ChatModeAgent,
-			want: true,
-		},
-		{
-			name: "agent queued",
-			ws:   domain.Workspace{RunStarted: true, State: domain.StateQueued},
-			mode: domain.ChatModeAgent,
-			want: true,
-		},
-		{
-			name: "ask paused interrupted",
-			ws:   domain.Workspace{RunStarted: true, State: domain.StatePaused, Phase: phaseInterrupted},
-			mode: domain.ChatModeAsk,
-			want: false,
-		},
-		{
-			name: "agent no run",
-			ws:   domain.Workspace{Type: domain.WorkspaceSolo, State: domain.StatePaused, Phase: phaseInterrupted},
-			mode: domain.ChatModeAgent,
-			want: false,
-		},
-		{
-			name: "agent human paused",
-			ws:   domain.Workspace{RunStarted: true, State: domain.StatePaused, Phase: "paused by you"},
-			mode: domain.ChatModeAgent,
-			want: false,
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := eng.chatResumeBlockedByRunLock(tc.ws, tc.mode)
-			if got != tc.want {
-				t.Errorf("chatResumeBlockedByRunLock(state=%s phase=%q mode=%s) = %v, want %v",
-					tc.ws.State, tc.ws.Phase, tc.mode, got, tc.want)
+	waitFor(t, 8*time.Second, "agent-mode PA to auto-resume alongside the loop", func() bool {
+		for _, spec := range runner.specsWithRole(domain.RoleCoder) {
+			if spec.DisplayText == chatResumeDisplay {
+				return true
 			}
-		})
-	}
+		}
+		return false
+	})
 }
 
 type holdAfterSuccess struct {

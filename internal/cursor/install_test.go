@@ -20,7 +20,7 @@ func TestPinnedSDKVersionInPyPIURL(t *testing.T) {
 	}
 	// Attribution anchors were validated against this release — keep the pin
 	// and sdkAttributionAnchors in lockstep when bumping.
-	if pinnedSDKVersion != "1.0.31" {
+	if pinnedSDKVersion != "1.0.37" {
 		t.Fatalf("pinnedSDKVersion = %q; update this test (and attribution anchors) deliberately when bumping", pinnedSDKVersion)
 	}
 	if got := PinnedSDKVersion(); got != pinnedSDKVersion {

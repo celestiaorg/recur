@@ -48,6 +48,7 @@ export default defineConfig({
         { text: "Loop mode", link: "/concepts/loop" },
         { text: "Review & checkpoints", link: "/concepts/review" },
         { text: "Pull requests", link: "/concepts/pull-requests" },
+        { text: "Issues", link: "/concepts/issues" },
         { text: "Inbox", link: "/concepts/inbox" },
         { text: "Schedules", link: "/concepts/schedules" },
       ],

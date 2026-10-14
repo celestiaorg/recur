@@ -7,7 +7,13 @@
     eager = false,
   }: {
     screen:
-      "workspace" | "changes" | "loop" | "pull-request" | "inbox" | "schedules";
+      | "workspace"
+      | "changes"
+      | "loop"
+      | "pull-request"
+      | "inbox"
+      | "issues"
+      | "schedules";
     theme: "paper" | "charcoal";
     eager?: boolean;
   } = $props();

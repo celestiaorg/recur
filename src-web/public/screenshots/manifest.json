@@ -622,6 +622,130 @@
       }
     },
     {
+      "id": "issues-paper",
+      "file": "issues-paper.png",
+      "title": "Issues across GitHub and Linear",
+      "placement": "Issues tour stop",
+      "theme": "paper",
+      "settings": {
+        "id": "issues",
+        "title": "Issues across GitHub and Linear",
+        "placement": "Issues tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "issues",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-issues .prlist",
+          "text": "Team invites with expiring links"
+        },
+        "theme": {
+          "app": "paper",
+          "editor": "paper"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "5cfdf118f30dc53f80c62038486fbb101eb12b155b61b1d6ab2cdabe0a4537ca",
+      "source": {
+        "commit": "0c73fab00c7ad842b9b4142da9b4e285cacb18bf",
+        "appDirty": false,
+        "datasetSha256": "6bc7311b373db6ffccf3ab505029f2490146cab681549b2722bf790581231bf2",
+        "presetsSha256": "50a88fd702d705444b90841a9cf2f2a3f64c930d11c8f1cca86873db808e5e04",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
+      "id": "issues-charcoal",
+      "file": "issues-charcoal.png",
+      "title": "Issues across GitHub and Linear",
+      "placement": "Issues tour stop",
+      "theme": "charcoal",
+      "settings": {
+        "id": "issues",
+        "title": "Issues across GitHub and Linear",
+        "placement": "Issues tour stop",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "issues",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-issues .prlist",
+          "text": "Team invites with expiring links"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      },
+      "sha256": "ec857347bd7427f72939a98aa86ca9461d8004d3aba76a00b177cbfa05464824",
+      "source": {
+        "commit": "0c73fab00c7ad842b9b4142da9b4e285cacb18bf",
+        "appDirty": false,
+        "datasetSha256": "6bc7311b373db6ffccf3ab505029f2490146cab681549b2722bf790581231bf2",
+        "presetsSha256": "50a88fd702d705444b90841a9cf2f2a3f64c930d11c8f1cca86873db808e5e04",
+        "browser": "149.0.7827.55",
+        "platform": "darwin",
+        "clock": "2026-09-10T09:00:00Z"
+      }
+    },
+    {
       "id": "schedules-paper",
       "file": "schedules-paper.png",
       "title": "Put recurring work on a schedule",

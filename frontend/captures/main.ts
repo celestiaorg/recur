@@ -82,6 +82,7 @@ async function capture() {
     prDetailTab.set(screen.prTab as "conv" | "files" | "commits" | "checks");
   } else if (screen.view === "inbox") go("briefing");
   else if (screen.view === "schedules") go("schedules");
+  else if (screen.view === "issues") go("issues");
   else openWorkspaceChat(workspaceId, screen.chat);
   await tick();
   document.documentElement.dataset.captureReady = screen.id;

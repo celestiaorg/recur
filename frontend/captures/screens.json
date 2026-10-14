@@ -193,6 +193,42 @@
       }
     },
     {
+      "id": "issues",
+      "title": "Issues across GitHub and Linear",
+      "placement": "Issues tour stop",
+      "viewport": {
+        "width": 1440,
+        "height": 800
+      },
+      "target": ".win",
+      "view": "issues",
+      "chat": "PA",
+      "file": "src/main.go",
+      "surface": "editor",
+      "prTab": "conv",
+      "panes": {
+        "sidebar": true,
+        "chat": false,
+        "files": false,
+        "prChat": false
+      },
+      "widths": {
+        "rail": 280,
+        "maestroDock": 390,
+        "obsSide": 180,
+        "prFileList": 220
+      },
+      "editorPrefs": {
+        "fontSize": 13,
+        "lineWrapping": true,
+        "cursorBlink": false
+      },
+      "ready": {
+        "selector": "#v-issues .prlist",
+        "text": "Team invites with expiring links"
+      }
+    },
+    {
       "id": "schedules",
       "title": "Put recurring work on a schedule",
       "placement": "Schedules tour stop",

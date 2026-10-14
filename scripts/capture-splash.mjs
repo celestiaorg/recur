@@ -69,7 +69,7 @@ for (const screen of presets.screens) {
   );
   assert.ok(screen.viewport.width >= 640 && screen.viewport.width <= 2560);
   assert.ok(screen.viewport.height >= 400 && screen.viewport.height <= 1600);
-  assert.ok(["workspace", "pr", "inbox", "schedules"].includes(screen.view));
+  assert.ok(["workspace", "pr", "inbox", "issues", "schedules"].includes(screen.view));
   assert.ok(["editor", "review"].includes(screen.surface));
   assert.ok(["conv", "files", "commits", "checks"].includes(screen.prTab));
   assert.ok(

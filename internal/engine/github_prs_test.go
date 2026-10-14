@@ -775,6 +775,71 @@ func TestLinkUnlinkedGitHubPRsViaUpstream(t *testing.T) {
 	}
 }
 
+// A local branch re-pointed with `git branch -u` outside Recur links to the
+// replacement PR on the next sweep, and the open PR wins over the closed one
+// still linked to the workspace.
+func TestSweepGitHubPRsLinksUpstreamSetLater(t *testing.T) {
+	eng, st, sink, _ := newTestEngine(t, nil)
+	clone := initCloneTrackingRemoteBranch(t, "recur/tab-close", "me/roasted-risotto")
+	runGitIn(t, clone, "branch", "--unset-upstream")
+	if _, err := st.AddProject(domain.Project{ID: "acme", Name: "acme", RepoPath: clone, BaseBranch: "main"}); err != nil {
+		t.Fatalf("AddProject: %v", err)
+	}
+	if _, err := st.AddWorkspace(domain.Workspace{
+		ID: "ws-r", ProjectID: "acme", Branch: "me/roasted-risotto", WorktreePath: clone,
+	}); err != nil {
+		t.Fatalf("AddWorkspace: %v", err)
+	}
+	if _, err := st.AddPR(domain.PR{
+		ID: "gh-acme-9", WorkspaceID: "ws-r", ProjectID: "acme", Number: 9, Source: domain.SourceGitHub,
+		Branch: "recur/tab-close", Base: "main", State: "Closed", Group: prGroupMerged,
+	}); err != nil {
+		t.Fatalf("AddPR: %v", err)
+	}
+
+	origList := listGitHubPRsFn
+	t.Cleanup(func() { listGitHubPRsFn = origList })
+	listGitHubPRsFn = func(_ context.Context, _, state string, _ int) ([]ghListedPR, error) {
+		if state != "open" {
+			return nil, nil
+		}
+		return []ghListedPR{{
+			Number: 13, Title: "Tab close menu", URL: "https://github.com/acme/app/pull/13",
+			HeadRefName: "recur/tab-close", BaseRefName: "main", State: "OPEN",
+			UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+		}}, nil
+	}
+
+	eng.sweepGitHubPRs()
+	if got, _ := st.PR("gh-acme-13"); got.WorkspaceID != "" {
+		t.Fatalf("before upstream: #13 WorkspaceID = %q, want unlinked", got.WorkspaceID)
+	}
+
+	runGitIn(t, clone, "branch", "-u", "origin/recur/tab-close")
+	eng.sweepGitHubPRs()
+	if got, _ := st.PR("gh-acme-13"); got.WorkspaceID != "ws-r" {
+		t.Fatalf("after upstream: #13 WorkspaceID = %q, want ws-r", got.WorkspaceID)
+	}
+	if got, _ := st.PR("gh-acme-9"); got.WorkspaceID != "ws-r" {
+		t.Errorf("closed #9 WorkspaceID = %q, want ws-r kept", got.WorkspaceID)
+	}
+	var land domain.WorkspaceLandState
+	eng.attachOpenPRLand(context.Background(), &land, "ws-r", "", nil)
+	if land.PRNumber != 13 {
+		t.Errorf("land PRNumber = %d, want open #13", land.PRNumber)
+	}
+	linked := false
+	for _, ev := range sink.byName("pr.updated") {
+		d, _ := ev.Data.(map[string]any)
+		if d["prId"] == "gh-acme-13" && d["workspaceId"] == "ws-r" {
+			linked = true
+		}
+	}
+	if !linked {
+		t.Error("no pr.updated carrying #13's workspace link")
+	}
+}
+
 func TestLinkWorkspaceToMatchingPRsViaUpstream(t *testing.T) {
 	eng, st, _, _ := newTestEngine(t, nil)
 	clone := initCloneTrackingRemoteBranch(t, "feat/oauth", "local-oauth")

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -640,6 +641,17 @@ func (e *Engine) lookupWorkspaceUpstreamBranch(ctx context.Context, ws domain.Wo
 		s, _ := v.(string)
 		return s
 	}
+	return e.refreshWorkspaceUpstreamBranch(ctx, ws)
+}
+
+// refreshWorkspaceUpstreamBranch re-reads @{upstream} and overwrites the cache
+// entry in place, so a tracking ref set outside Recur (git branch -u) is seen
+// without a window where the entry is missing.
+func (e *Engine) refreshWorkspaceUpstreamBranch(ctx context.Context, ws domain.Workspace) string {
+	path := strings.TrimSpace(ws.WorktreePath)
+	if path == "" {
+		return ""
+	}
 	if ctx == nil {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
@@ -685,7 +697,7 @@ func (e *Engine) indexWorkspacesByPRHead(ctx context.Context, projectID string) 
 	}
 	for _, w := range live {
 		local := normalizePRBranch(w.Branch)
-		up := e.lookupWorkspaceUpstreamBranch(ctx, w)
+		up := e.refreshWorkspaceUpstreamBranch(ctx, w)
 		if up == "" || up == local || (base != "" && up == base) {
 			continue
 		}
@@ -1146,6 +1158,45 @@ func (e *Engine) SyncGitHubPRs() []domain.PR {
 	// the first import should still attach so the dashboard shows View workspace.
 	e.linkUnlinkedGitHubPRs()
 	return e.Store.PRs()
+}
+
+// githubPRSweepInterval is how often the running app re-lists GitHub PRs so a
+// PR opened outside Recur appears (and links to its workspace) without a click.
+var githubPRSweepInterval = 3 * time.Minute
+
+// RunGitHubPRSweep runs sweepGitHubPRs on a ticker until shutdown. Call it in a
+// goroutine once the event bus is wired.
+func (e *Engine) RunGitHubPRSweep() {
+	t := time.NewTicker(githubPRSweepInterval)
+	defer t.Stop()
+	for range t.C {
+		if e.isShuttingDown() {
+			return
+		}
+		if ghCLIAvailableFn() {
+			e.sweepGitHubPRs()
+		}
+	}
+}
+
+// sweepGitHubPRs is SyncGitHubPRs plus pr.updated for every row it added or
+// changed, since no frontend call is waiting on the returned list. A change to
+// When alone does not count: that relative age drifts on every sweep.
+func (e *Engine) sweepGitHubPRs() {
+	before := make(map[string]domain.PR)
+	for _, p := range e.Store.PRs() {
+		before[p.ID] = p
+	}
+	for _, p := range e.SyncGitHubPRs() {
+		old, ok := before[p.ID]
+		if ok {
+			old.When = p.When
+			if reflect.DeepEqual(old, p) {
+				continue
+			}
+		}
+		e.publishPRUpdated(p.ID)
+	}
 }
 
 // reconcileMissingGitHubPRs settles GitHub PRs that disappeared from both the

@@ -321,12 +321,13 @@ type Engine struct {
 	prHeadCheckout sync.Map // workspaceID -> prHeadCheckoutSpec
 
 	// wsUpstreamCache is @{upstream}'s branch name per workspace (empty string
-	// means none). Filled by lookupWorkspaceUpstreamBranch; dropped when the
-	// live checkout branch changes.
+	// means none). Filled by lookupWorkspaceUpstreamBranch, overwritten by each
+	// PR sweep's indexWorkspacesByPRHead; dropped when the live checkout branch
+	// changes.
 	wsUpstreamCache sync.Map // workspaceID -> string
 
 	// syncGitHubPRsMu / syncGitHubPRsWait collapse concurrent SyncGitHubPRs
-	// into one sweep (boot + PR-list open). syncGitHubPRsAt is last finish
+	// into one sweep (boot, PR-list open, background ticker). syncGitHubPRsAt is last finish
 	// time so a short TTL can skip a repeat `gh pr list` storm.
 	syncGitHubPRsMu   sync.Mutex
 	syncGitHubPRsWait chan struct{}

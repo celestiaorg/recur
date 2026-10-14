@@ -15,6 +15,7 @@ type Page =
   | { path: '/bundles/typescript'; render: 'static' }
   | { path: '/concepts/chat-context'; render: 'static' }
   | { path: '/concepts/inbox'; render: 'static' }
+  | { path: '/concepts/issues'; render: 'static' }
   | { path: '/concepts/loop'; render: 'static' }
   | { path: '/concepts/modes'; render: 'static' }
   | { path: '/concepts/project-toml'; render: 'static' }

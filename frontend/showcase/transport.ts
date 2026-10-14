@@ -136,6 +136,8 @@ const local: Record<string, (args: any[]) => unknown> = {
   SyncGitHubPRs: () => responses.ListPRs,
   Outline: () => [{ name: "refreshSession", kind: "func", line: 13 }],
   ListFindings: () => dataset.findings,
+  ListAssignedIssues: () => dataset.issues,
+  GetIssuesView: () => null,
 };
 const emptyLists = new Set([
   "WorkspaceSessions",
@@ -153,7 +155,7 @@ const emptyLists = new Set([
   "StagedFiles",
 ]);
 const preferences =
-  /^(WatchWorkspace|MarkWorkspaceViewed|SetAppChatFocus|MarkAppChatSeen|SetShellState|UpdateEditorSession|ClearEditorSession|SetWorkspaceChatFocus|SetChatUIOccluded|MarkWorkspaceChatSeen|RememberWorkspaceChatSelection|RememberWorkspaceChatSimplify|RememberChatPromptGroup|RememberChatLoopPolicy|SetFileIndexExclude|MarkInboxRead|MarkAllInboxRead)$/;
+  /^(WatchWorkspace|MarkWorkspaceViewed|SetAppChatFocus|MarkAppChatSeen|SetShellState|UpdateEditorSession|ClearEditorSession|SetWorkspaceChatFocus|SetChatUIOccluded|MarkWorkspaceChatSeen|RememberWorkspaceChatSelection|RememberWorkspaceChatSimplify|RememberChatPromptGroup|RememberChatLoopPolicy|SetFileIndexExclude|MarkInboxRead|MarkAllInboxRead|SetIssuesView)$/;
 
 setTransport({
   async call(objectID, _method, _window, request: any) {

@@ -58,6 +58,7 @@
     | "loop"
     | "pull-request"
     | "inbox"
+    | "issues"
     | "schedules";
   const screens: { label: string; screen: Screen; caption: string }[] = [
     {
@@ -91,6 +92,12 @@
         "Every workspace in one list, grouped into needs you, working, and ready to pick up.",
     },
     {
+      label: "Issues",
+      screen: "issues",
+      caption:
+        "GitHub and Linear issues assigned to you or open in your projects. Start a workspace from any of them.",
+    },
+    {
       label: "Schedules",
       screen: "schedules",
       caption:
@@ -103,8 +110,8 @@
   const steps = [
     {
       title: "Task",
-      body: "Describe it, or pull in a Linear issue from the palette.",
-      code: "/linear",
+      body: "Describe it, or start from a GitHub or Linear issue.",
+      code: "/linear ENG-123",
     },
     {
       title: "Workspace",
@@ -272,7 +279,7 @@
         <div class="b-intro">
           <p>
             Recur is a desktop app that runs <strong>Claude Code</strong>,
-            <strong>Cursor</strong>, and <strong>Codex</strong> in isolated git
+            <strong>Cursor</strong>, or <strong>Codex</strong> in isolated git
             worktrees, each task on its own branch. Review the diff, work the
             findings, and open the pull request without leaving the window.
           </p>
@@ -519,7 +526,7 @@ Release notes draft    once Oct 1 09:00  Agent</pre>
               Recur Bundles are TextMate-inspired directories with one
               <code>bundle.toml</code>. Slash commands, loops, roles, policies,
               editor macros, grammars, snippets, language servers, themes, and
-              Linear search all ship this way. Copy a shipped bundle into
+              GitHub and Linear issue lookup all ship this way. Copy a shipped bundle into
               <code>~/.recur/bundles</code> to override it by id, then pick
               Navigate → Reload Bundles to load it without restarting.
             </p>

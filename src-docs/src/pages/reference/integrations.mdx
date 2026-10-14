@@ -1,11 +1,15 @@
 ---
 title: Integrations & MCP
-description: Connect Linear and custom tool servers to agent chats
+description: Connect GitHub, Linear, and custom tool servers to agent chats
 ---
 
 # Integrations & MCP
 
 MCP servers provide tools that agents can use in chat. Configure machine defaults under **Settings → MCP**, then use the Project page for project-specific enable/disable overrides.
+
+## GitHub
+
+Recur uses the `gh` CLI for GitHub, as the account you authenticated with `gh auth login`. That covers [pull requests](/concepts/pull-requests), the [Issues](/concepts/issues) view, and `/github` in the composer, which starts work on an issue from `#12`, `owner/repo#12`, or an issue URL.
 
 ## Linear
 
@@ -17,6 +21,7 @@ Ask, Plan, and Review chats can look up issues. Agent and Loop chats can also up
 
 The API key also enables:
 
+- Linear issues in the [Issues](/concepts/issues) view
 - `/linear` in the composer, with issue search as you type, to start work on an issue
 - Linear issue search in **Go to** (`⌘K`)
 - Pasting an issue ID or Linear URL into a new task expands it into the full issue

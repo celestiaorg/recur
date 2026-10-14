@@ -68,6 +68,7 @@ try {
       "Loop",
       "Pull request",
       "Inbox",
+      "Issues",
       "Schedules",
     ]) {
       const button = page
@@ -82,6 +83,7 @@ try {
         Loop: "loop",
         "Pull request": "pull-request",
         Inbox: "inbox",
+        Issues: "issues",
         Schedules: "schedules",
       }[name];
       await expect(image).toHaveAttribute(
@@ -220,6 +222,7 @@ try {
       "Loop",
       "Pull request",
       "Inbox",
+      "Issues",
       "Schedules",
     ]) {
       await page

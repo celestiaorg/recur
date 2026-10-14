@@ -122,7 +122,12 @@
         }
       ],
       "archived": false,
-      "runStarted": true
+      "runStarted": true,
+      "issue": {
+        "source": "github",
+        "id": "I_storefront_471",
+        "key": "#471"
+      }
     },
     {
       "id": "LOOP-2235",
@@ -148,7 +153,12 @@
       "last": "Choose how long invitation links stay valid",
       "elapsedLabel": "42s",
       "convergence": null,
-      "archived": false
+      "archived": false,
+      "issue": {
+        "source": "linear",
+        "id": "lin-sto-212",
+        "key": "STO-212"
+      }
     },
     {
       "id": "LOOP-2224",
@@ -396,7 +406,12 @@
         }
       ],
       "archived": false,
-      "runStarted": true
+      "runStarted": true,
+      "issue": {
+        "source": "linear",
+        "id": "lin-pay-88",
+        "key": "PAY-88"
+      }
     },
     {
       "id": "payments-idempotency",
@@ -2721,6 +2736,244 @@
           "codeHtml": "}"
         }
       ]
+    }
+  ],
+  "issues": [
+    {
+      "source": "github",
+      "id": "I_storefront_471",
+      "ref": "acme/storefront#471",
+      "title": "Sign-in hangs when the session provider stalls",
+      "url": "https://github.com/acme/storefront/issues/471",
+      "createdAt": "2026-09-08T14:10:00Z",
+      "updatedAt": "2026-09-10T08:40:00Z",
+      "group": "todo",
+      "state": "Open",
+      "stateColor": "",
+      "statePosition": 0,
+      "priority": 0,
+      "priorityLabel": "",
+      "project": "acme/storefront",
+      "labels": [
+        {
+          "name": "bug",
+          "color": "d73a4a"
+        }
+      ],
+      "comments": 4,
+      "assignees": [
+        {
+          "name": "Sam Rivera"
+        }
+      ],
+      "projectId": "storefront",
+      "linearProject": "",
+      "linearTeam": ""
+    },
+    {
+      "source": "linear",
+      "id": "lin-sto-212",
+      "ref": "STO-212",
+      "title": "Team invites with expiring links",
+      "url": "https://linear.app/acme/issue/STO-212",
+      "createdAt": "2026-09-03T10:00:00Z",
+      "updatedAt": "2026-09-10T08:55:00Z",
+      "group": "progress",
+      "state": "In Progress",
+      "stateColor": "f2c94c",
+      "statePosition": 2,
+      "priority": 2,
+      "priorityLabel": "High",
+      "project": "Storefront",
+      "labels": [
+        {
+          "name": "Feature",
+          "color": "5e6ad2"
+        }
+      ],
+      "comments": 6,
+      "assignees": [
+        {
+          "name": "Sam Rivera"
+        }
+      ],
+      "projectId": "storefront",
+      "linearProject": "Storefront",
+      "linearTeam": "STO"
+    },
+    {
+      "source": "linear",
+      "id": "lin-pay-88",
+      "ref": "PAY-88",
+      "title": "Retry failed webhook deliveries with backoff",
+      "url": "https://linear.app/acme/issue/PAY-88",
+      "createdAt": "2026-09-01T09:00:00Z",
+      "updatedAt": "2026-09-10T07:20:00Z",
+      "group": "progress",
+      "state": "In Review",
+      "stateColor": "0f783c",
+      "statePosition": 3,
+      "priority": 1,
+      "priorityLabel": "Urgent",
+      "project": "Payments",
+      "labels": [
+        {
+          "name": "Bug",
+          "color": "eb5757"
+        }
+      ],
+      "comments": 3,
+      "assignees": [
+        {
+          "name": "Sam Rivera"
+        }
+      ],
+      "projectId": "payments-api",
+      "linearProject": "Payments",
+      "linearTeam": "PAY"
+    },
+    {
+      "source": "github",
+      "id": "I_storefront_463",
+      "ref": "acme/storefront#463",
+      "title": "Checkout E2E flakes on slow card authorization",
+      "url": "https://github.com/acme/storefront/issues/463",
+      "createdAt": "2026-09-05T16:00:00Z",
+      "updatedAt": "2026-09-09T18:30:00Z",
+      "group": "todo",
+      "state": "Open",
+      "stateColor": "",
+      "statePosition": 0,
+      "priority": 0,
+      "priorityLabel": "",
+      "project": "acme/storefront",
+      "labels": [
+        {
+          "name": "bug",
+          "color": "d73a4a"
+        },
+        {
+          "name": "tests",
+          "color": "0e8a16"
+        }
+      ],
+      "comments": 2,
+      "assignees": [],
+      "projectId": "storefront",
+      "linearProject": "",
+      "linearTeam": ""
+    },
+    {
+      "source": "linear",
+      "id": "lin-sto-219",
+      "ref": "STO-219",
+      "title": "Dark mode for the dashboard",
+      "url": "https://linear.app/acme/issue/STO-219",
+      "createdAt": "2026-09-06T11:00:00Z",
+      "updatedAt": "2026-09-09T15:00:00Z",
+      "group": "todo",
+      "state": "Todo",
+      "stateColor": "8a8f98",
+      "statePosition": 1,
+      "priority": 3,
+      "priorityLabel": "Medium",
+      "project": "Storefront",
+      "labels": [
+        {
+          "name": "Feature",
+          "color": "5e6ad2"
+        }
+      ],
+      "comments": 1,
+      "assignees": [
+        {
+          "name": "Sam Rivera"
+        }
+      ],
+      "projectId": "storefront",
+      "linearProject": "Storefront",
+      "linearTeam": "STO"
+    },
+    {
+      "source": "linear",
+      "id": "lin-pay-91",
+      "ref": "PAY-91",
+      "title": "Idempotency keys for refunds",
+      "url": "https://linear.app/acme/issue/PAY-91",
+      "createdAt": "2026-09-07T13:00:00Z",
+      "updatedAt": "2026-09-09T12:00:00Z",
+      "group": "todo",
+      "state": "Todo",
+      "stateColor": "8a8f98",
+      "statePosition": 1,
+      "priority": 2,
+      "priorityLabel": "High",
+      "project": "Payments",
+      "labels": [
+        {
+          "name": "Feature",
+          "color": "5e6ad2"
+        }
+      ],
+      "comments": 2,
+      "assignees": [],
+      "projectId": "payments-api",
+      "linearProject": "Payments",
+      "linearTeam": "PAY"
+    },
+    {
+      "source": "github",
+      "id": "I_payments-api_29",
+      "ref": "acme/payments-api#29",
+      "title": "Document the refund API",
+      "url": "https://github.com/acme/payments-api/issues/29",
+      "createdAt": "2026-08-30T10:00:00Z",
+      "updatedAt": "2026-09-08T09:00:00Z",
+      "group": "todo",
+      "state": "Open",
+      "stateColor": "",
+      "statePosition": 0,
+      "priority": 0,
+      "priorityLabel": "",
+      "project": "acme/payments-api",
+      "labels": [
+        {
+          "name": "docs",
+          "color": "0075ca"
+        }
+      ],
+      "comments": 0,
+      "assignees": [],
+      "projectId": "payments-api",
+      "linearProject": "",
+      "linearTeam": ""
+    },
+    {
+      "source": "linear",
+      "id": "lin-sto-198",
+      "ref": "STO-198",
+      "title": "Cache product images at the edge",
+      "url": "https://linear.app/acme/issue/STO-198",
+      "createdAt": "2026-08-20T10:00:00Z",
+      "updatedAt": "2026-09-04T10:00:00Z",
+      "group": "backlog",
+      "state": "Backlog",
+      "stateColor": "8a8f98",
+      "statePosition": 0,
+      "priority": 4,
+      "priorityLabel": "Low",
+      "project": "Storefront",
+      "labels": [
+        {
+          "name": "Performance",
+          "color": "f2994a"
+        }
+      ],
+      "comments": 0,
+      "assignees": [],
+      "projectId": "storefront",
+      "linearProject": "Storefront",
+      "linearTeam": "STO"
     }
   ]
 }

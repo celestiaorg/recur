@@ -515,7 +515,7 @@ func (c *Client) Send(ctx context.Context, agentID, text string, images []Image,
 		"message": msg,
 		// enableDeltas attaches onDelta. InteractionUpdate includes summary,
 		// summary-started, summary-completed, and turn-ended; Recur's minify
-		// patch is required because stock 1.0.31 still skips the summary types.
+		// patch is required because stock 1.0.37 still skips the summary types.
 		"options": map[string]any{"enableDeltas": true},
 	}
 	return c.stream(ctx, svcAgent, "Send", req, c.decodeRunStream(onEvent))

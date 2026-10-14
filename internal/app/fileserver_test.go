@@ -1,6 +1,10 @@
 package app
 
 import (
+	"bytes"
+	"encoding/binary"
+	"image"
+	"image/png"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/image/tiff"
 
 	"recur/internal/code"
 	"recur/internal/domain"
@@ -398,4 +404,89 @@ func TestServeExternalFile(t *testing.T) {
 			t.Fatalf("ServeExternalFile(undropped) status = %d, want 403", rec.Code)
 		}
 	})
+}
+
+func TestServeWorkspaceFileTIFF(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	prev := transcodeTIFF
+	t.Cleanup(func() { transcodeTIFF = prev })
+
+	encode := func(w, h int) []byte {
+		var buf bytes.Buffer
+		if err := tiff.Encode(&buf, image.NewGray(image.Rect(0, 0, w, h)), &tiff.Options{Compression: tiff.Deflate}); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Bytes()
+	}
+	small := encode(3, 2)
+	// 0xFFFFFFFF x 0xFFFFFFFF gray strip: width*height wraps negative as int.
+	overflow := binary.LittleEndian.AppendUint32([]byte("II*\x00"), 8)
+	overflow = binary.LittleEndian.AppendUint16(overflow, 6)
+	for _, e := range [][3]uint32{{256, 4, 0xFFFFFFFF}, {257, 4, 0xFFFFFFFF}, {258, 3, 8}, {262, 3, 1}, {273, 4, 86}, {279, 4, 1}} {
+		overflow = binary.LittleEndian.AppendUint16(overflow, uint16(e[0]))
+		overflow = binary.LittleEndian.AppendUint16(overflow, uint16(e[1]))
+		overflow = binary.LittleEndian.AppendUint32(overflow, 1)
+		overflow = binary.LittleEndian.AppendUint32(overflow, e[2])
+	}
+	overflow = append(binary.LittleEndian.AppendUint32(overflow, 0), 0)
+	root := t.TempDir()
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.com",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.com",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	run("init", "-b", "main")
+	for name, data := range map[string][]byte{"scan.tif": small, "huge.tiff": encode(1<<13, 1<<13+1), "overflow.tif": overflow} {
+		if err := os.WriteFile(filepath.Join(root, name), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run("add", ".")
+	run("commit", "-m", "init")
+
+	st := store.NewInMemory()
+	p, err := st.AddProject(domain.Project{ID: "p-tiff", Name: "TIFF", RepoPath: root, BaseBranch: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := NewServices(engine.New(st))
+	get := func(query string) *http.Response {
+		rec := httptest.NewRecorder()
+		ServeWorkspaceFile(svc.Code, rec, httptest.NewRequest(http.MethodGet, "/workspace-file?project="+p.ID+"&"+query, nil))
+		return rec.Result()
+	}
+
+	for _, query := range []string{"path=scan.tif", "path=scan.tif&at=base"} {
+		transcodeTIFF = true
+		res := get(query)
+		img, err := png.Decode(res.Body)
+		if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "image/png" || err != nil {
+			t.Fatalf("transcode %s: status %d, Content-Type %q, decode err %v", query, res.StatusCode, res.Header.Get("Content-Type"), err)
+		}
+		if b := img.Bounds(); b.Dx() != 3 || b.Dy() != 2 {
+			t.Fatalf("transcode %s: bounds %v, want 3x2", query, b)
+		}
+
+		transcodeTIFF = false
+		res = get(query)
+		got, _ := io.ReadAll(res.Body)
+		if res.Header.Get("Content-Type") != "image/tiff" || !bytes.Equal(got, small) {
+			t.Fatalf("passthrough %s: Content-Type %q, %d bytes, want original %d", query, res.Header.Get("Content-Type"), len(got), len(small))
+		}
+	}
+
+	transcodeTIFF = true
+	for _, name := range []string{"huge.tiff", "overflow.tif"} {
+		if res := get("path=" + name); res.StatusCode != http.StatusUnsupportedMediaType {
+			t.Fatalf("%s status = %d, want 415", name, res.StatusCode)
+		}
+	}
 }

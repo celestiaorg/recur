@@ -10,7 +10,7 @@ import (
 )
 
 func TestRefreshSingleFlight(t *testing.T) {
-	started := make(chan struct{})
+	started := make(chan struct{}, 1)
 	release := make(chan struct{})
 	var n atomic.Int32
 	f := &Fetcher{

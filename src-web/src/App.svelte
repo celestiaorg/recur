@@ -7,9 +7,36 @@
   import { appThemeByKey, editorThemeByKey } from "./lib/themes";
   const wordmark = "/images/recur-wordmark.png";
   const icon = "/images/recur-icon.png";
-  const download = "https://recur.build/download/recur.dmg";
-  const docs = "https://docs.recur.build";
-  const source = "https://github.com/mycodecrafting/recur";
+  const downloads =
+    import.meta.env.VITE_DOWNLOADS_URL ||
+    "https://github.com/celestiaorg/recur-releases/releases/latest/download";
+  const linuxBuilds = [
+    { arch: "amd64", label: "x64" },
+    { arch: "arm64", label: "arm64" },
+  ];
+  const linuxFormats = ["deb", "rpm", "tar.gz"];
+  const ua = navigator.userAgent;
+  const onLinux = /Linux/.test(ua) && !/Android/.test(ua);
+  const linuxFormat = /Fedora|Red Hat|CentOS|SUSE|Mageia/i.test(ua)
+    ? "rpm"
+    : "deb";
+  // Chromium freezes the UA to x86_64, so ask Client Hints for the real arch.
+  let linuxArch = $state(/aarch64|arm64|armv8/i.test(ua) ? "arm64" : "amd64");
+  if (onLinux)
+    navigator.userAgentData
+      ?.getHighEntropyValues(["architecture"])
+      .then(({ architecture }) => {
+        if (architecture === "arm") linuxArch = "arm64";
+      });
+  const download = $derived(
+    onLinux
+      ? `${downloads}/Recur-linux-${linuxArch}.${linuxFormat}`
+      : `${downloads}/Recur-macos-universal.dmg`,
+  );
+  const downloadLabel = onLinux
+    ? `Download .${linuxFormat} for Linux`
+    : "Download for Mac";
+  const docs = "/docs/";
 
   let dark = $state(
     new URLSearchParams(location.search).get("theme") === "charcoal",
@@ -31,6 +58,7 @@
     | "loop"
     | "pull-request"
     | "inbox"
+    | "issues"
     | "schedules";
   const screens: { label: string; screen: Screen; caption: string }[] = [
     {
@@ -64,6 +92,12 @@
         "Every workspace in one list, grouped into needs you, working, and ready to pick up.",
     },
     {
+      label: "Issues",
+      screen: "issues",
+      caption:
+        "GitHub and Linear issues assigned to you or open in your projects. Start a workspace from any of them.",
+    },
+    {
       label: "Schedules",
       screen: "schedules",
       caption:
@@ -76,8 +110,8 @@
   const steps = [
     {
       title: "Task",
-      body: "Describe it, or pull in a Linear issue from the palette.",
-      code: "/linear",
+      body: "Describe it, or start from a GitHub or Linear issue.",
+      code: "/linear ENG-123",
     },
     {
       title: "Workspace",
@@ -168,6 +202,20 @@
 
 <svelte:head><meta name="theme-color" content={app.bg} /></svelte:head>
 
+{#snippet platforms()}
+  <p class="b-meta">
+    macOS: <a href="{downloads}/Recur-macos-universal.dmg">.dmg</a> (12 or later, Apple Silicon
+    and Intel)
+    {#each linuxBuilds as build (build.arch)}
+      <br />Linux {build.label}:
+      {#each linuxFormats as format, i (format)}{i ? " · " : ""}<a
+          href="{downloads}/Recur-linux-{build.arch}.{format}">.{format}</a
+        >{/each}
+    {/each}
+    <br />Linux needs GTK 4 and WebKitGTK 6.0 (Ubuntu 24.04+, Debian 13+)
+  </p>
+{/snippet}
+
 <div
   id="top"
   class="built"
@@ -207,7 +255,7 @@
         ><a class="b-nav-secondary" href="#review">Pull requests</a><a
           class="b-nav-secondary"
           href={docs}>Docs ↗</a
-        ><a class="b-nav-secondary" href={source}>Source ↗</a>
+        >
         <div class="b-themes" role="group" aria-label="Page theme">
           <button
             type="button"
@@ -225,28 +273,23 @@
     <main id="main">
       <section class="b-hero">
         <div class="b-eyebrow">
-          <span class="b-dot"></span>Mac app · Open source · Apache 2.0
+          <span class="b-dot"></span>macOS and Linux · Local worktrees
         </div>
         <h1>Run coding agents in parallel.<br /><em>One worktree each.</em></h1>
         <div class="b-intro">
           <p>
-            Recur is a Mac app that runs <strong>Claude Code</strong>,
-            <strong>Cursor</strong>, and <strong>Codex</strong> in isolated git
+            Recur is a desktop app that runs <strong>Claude Code</strong>,
+            <strong>Cursor</strong>, or <strong>Codex</strong> in isolated git
             worktrees, each task on its own branch. Review the diff, work the
             findings, and open the pull request without leaving the window.
           </p>
           <div>
             <div class="b-actions">
               <a class="b-button" href={download}
-                >Download for Mac <span aria-hidden="true">↓</span></a
-              ><a class="b-button b-ghost" href={docs}>Docs ↗</a><a
-                class="b-button b-ghost"
-                href={source}>Source ↗</a
-              >
+                >{downloadLabel} <span aria-hidden="true">↓</span></a
+              ><a class="b-button b-ghost" href={docs}>Docs ↗</a>
             </div>
-            <p class="b-meta">
-              macOS 12 or later · Apple Silicon and Intel
-            </p>
+            {@render platforms()}
           </div>
         </div>
       </section>
@@ -483,7 +526,7 @@ Release notes draft    once Oct 1 09:00  Agent</pre>
               Recur Bundles are TextMate-inspired directories with one
               <code>bundle.toml</code>. Slash commands, loops, roles, policies,
               editor macros, grammars, snippets, language servers, themes, and
-              Linear search all ship this way. Copy a shipped bundle into
+              GitHub and Linear issue lookup all ship this way. Copy a shipped bundle into
               <code>~/.recur/bundles</code> to override it by id, then pick
               Navigate → Reload Bundles to load it without restarting.
             </p>
@@ -556,19 +599,18 @@ reviewer = "recur.roles.reviewer"</pre>
 
       <section class="b-download" id="download">
         <div class="b-download-copy">
-          <h2>Local and<br />open source.</h2>
+          <h2>Local by<br />design.</h2>
           <ul class="b-list">
             <li>Workspaces are git worktrees on your disk.</li>
             <li>Model calls go straight to the provider you picked.</li>
             <li>GitHub goes through your own <code>gh</code> login.</li>
-            <li>Licensed under Apache 2.0.</li>
           </ul>
           <div class="b-actions">
             <a class="b-button" href={download}
-              >Download for Mac <span aria-hidden="true">↓</span></a
-            ><a class="b-button b-ghost" href={source}>Source ↗</a>
+              >{downloadLabel} <span aria-hidden="true">↓</span></a
+            >
           </div>
-          <p class="b-meta">macOS 12 or later · Apple Silicon and Intel</p>
+          {@render platforms()}
         </div>
         <img src={icon} alt="Recur app icon" width="204" height="204" />
       </section>
@@ -582,9 +624,9 @@ reviewer = "recur.roles.reviewer"</pre>
           width="720"
           height="172"
         /></a
-      ><span class="b-eyebrow">Apache 2.0</span>
+      >
       <nav aria-label="Footer">
-        <a href={docs}>Docs ↗</a><a href={source}>Source ↗</a>
+        <a href={docs}>Docs ↗</a>
       </nav>
     </footer>
   </div>
@@ -759,6 +801,10 @@ reviewer = "recur.roles.reviewer"</pre>
     font: 10px/1.8 var(--mono);
     color: var(--muted);
     margin-top: 12px;
+  }
+  .b-meta a {
+    color: inherit;
+    text-decoration: underline;
   }
 
   .b-product {
@@ -1279,10 +1325,6 @@ reviewer = "recur.roles.reviewer"</pre>
     color: #f8f5f2;
     border-color: #191716;
   }
-  .b-download .b-ghost {
-    background: transparent;
-    color: #191716;
-  }
   .b-download .b-meta {
     color: #382a25;
   }
@@ -1303,9 +1345,6 @@ reviewer = "recur.roles.reviewer"</pre>
   }
   .b-footer .b-wordmark {
     width: 93px;
-  }
-  .b-footer > .b-eyebrow {
-    font-size: 9px;
   }
   .b-footer nav {
     display: flex;
@@ -1564,10 +1603,6 @@ reviewer = "recur.roles.reviewer"</pre>
       flex-wrap: wrap;
       gap: 18px;
       padding: 26px 0;
-    }
-    .b-footer > .b-eyebrow {
-      order: 3;
-      flex-basis: 100%;
     }
   }
   @media (prefers-reduced-motion: reduce) {

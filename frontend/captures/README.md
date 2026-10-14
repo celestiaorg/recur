@@ -25,7 +25,7 @@ the previous output intact.
 
 `dataset.json` is the dedicated, fictional product dataset. It owns the project,
 workspaces (including fan-out children), PRs, code, diffs, transcripts, loop wave,
-review findings, inbox notifications, schedules, and settings.
+review findings, inbox notifications, issues, schedules, and settings.
 The example includes two projects, a fan-out with two merged children and one
 working child, and a three-file review (+41/−7). `baseFiles` and `files` hold the
 before/after source; `diffs` supplies the changed-file rows shared by all views.
@@ -56,6 +56,7 @@ initials, with no external avatar URLs or GitHub logins.
 | `loop` | 1440 × 800 | Sidebar, wider loop chat, editor; files pane closed |
 | `pull-request` | 1440 × 800 | Sidebar and PR conversation; agent dock closed |
 | `inbox` | 1440 × 800 | Needs you, working, and ready-for-review tasks |
+| `issues` | 1440 × 800 | GitHub and Linear issues, some linked to workspaces |
 | `schedules` | 1440 × 800 | Recurring reviews, dependency audits, and release notes |
 
 All tour presets share a 1440 × 800 window and a 280px sidebar. The capture

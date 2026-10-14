@@ -110,6 +110,7 @@
         } as Cmd]
       : []),
     { g: 'Go to', icon: 'inbox', label: 'Inbox', run: () => go('briefing') },
+    { g: 'Go to', icon: 'circle-dot', label: 'Issues', run: () => go('issues') },
     { g: 'Go to', icon: 'git-pull-request', label: 'Pull requests', run: () => go('pr') },
     { g: 'Go to', icon: 'clock', label: 'Schedules', run: () => go('schedules') },
     { g: 'Go to', icon: 'settings', label: 'Settings · policy', run: () => go('settings') },

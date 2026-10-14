@@ -80,7 +80,7 @@ tasks:
         sh: go env GOMODCACHE
 
   package:
-    summary: Packages bin/recur-linux-<arch>.tar.gz (recur + recur-cli + icon)
+    summary: Packages bin/recur-linux-<arch>.tar.gz (recur + recur-cli + icon), .deb and .rpm
     cmds:
       - rm -rf "{{.PKG_DIR}}" && mkdir -p "{{.PKG_DIR}}"
       - task: build
@@ -91,6 +91,8 @@ tasks:
       - CGO_ENABLED=0 GOOS=linux GOARCH={{.TARGET_ARCH}} go build -trimpath -buildvcs=false -ldflags="-w -s {{.CLI_LDFLAGS}}" -o "{{.PKG_DIR}}/recur-cli" ./cmd/recur
       - cp build/appicon.png "{{.PKG_DIR}}/recur.png"
       - tar -C "{{.BIN_DIR}}" -czf "{{.PKG_DIR}}.tar.gz" "{{.APP_NAME}}-linux-{{.TARGET_ARCH}}"
+      - for: [deb, rpm]
+        cmd: GOARCH={{.TARGET_ARCH}} RECUR_VERSION={{.VERSION}} PKG_DIR="{{.PKG_DIR}}" wails3 tool package -name "{{.APP_NAME}}-linux-{{.TARGET_ARCH}}" -format {{.ITEM}} -config build/linux/nfpm.yaml -out "{{.BIN_DIR}}"
     vars:
       TARGET_ARCH: '{{.ARCH | default ARCH}}'
       PKG_DIR: '{{.BIN_DIR}}/{{.APP_NAME}}-linux-{{.TARGET_ARCH}}'
@@ -128,7 +130,7 @@ tasks:
         docker run --rm --init --name recur-linux --platform linux/{{.TARGET_ARCH}} \
           -p 127.0.0.1:{{.VNC_PORT}}:6080 \
           -v recur-linux-home-{{.TARGET_ARCH}}:/home/dev \
-          -v "{{.ROOT_DIR}}/{{.APP_DIR}}:/opt/recur:ro" \
+          -v "{{.ROOT_DIR}}/{{.APP_DIR}}:/srv/recur:ro" \
           recur-linux-desktop:{{.TARGET_ARCH}}
     vars:
       TARGET_ARCH: '{{.ARCH | default ARCH}}'

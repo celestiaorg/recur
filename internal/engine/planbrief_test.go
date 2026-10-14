@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -347,6 +349,37 @@ func TestTruncateRuneSafe(t *testing.T) {
 	}
 	if len(got) > planMaxPersistChars+3 { // +3 for the ellipsis rune's bytes, minus what was trimmed
 		t.Errorf("truncate(long, planMaxPersistChars) = %d bytes, want roughly <= %d", len(got), planMaxPersistChars)
+	}
+}
+
+// TestPlanCapFitsExecArg: a role system prompt carrying a plan at the cap must
+// not reach claude as one argv string over Linux's 128 KiB MAX_ARG_STRLEN.
+func TestPlanCapFitsExecArg(t *testing.T) {
+	plan := truncate(strings.Repeat("x", 2*planMaxPersistChars), planMaxPersistChars)
+	sys := coderSystemPrompt("task", plan, false)
+	args, cleanup, err := spillAppendPrompt((&ClaudeRunner{}).args(AgentSpec{Prompt: "go", SystemPrompt: sys}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range args {
+		if len(a) >= 128<<10 {
+			t.Fatalf("argv string of %d bytes exceeds MAX_ARG_STRLEN", len(a))
+		}
+	}
+	i := slices.Index(args, "--append-system-prompt-file")
+	if i < 0 {
+		t.Fatalf("large system prompt not spilled to a file: %v", args[:5])
+	}
+	if got, err := os.ReadFile(args[i+1]); err != nil || string(got) != sys {
+		t.Fatalf("spilled prompt mismatch (err %v, %d bytes, want %d)", err, len(got), len(sys))
+	}
+	cleanup()
+	if _, err := os.Stat(args[i+1]); !os.IsNotExist(err) {
+		t.Fatalf("cleanup left %s behind", args[i+1])
+	}
+	small, _, _ := spillAppendPrompt((&ClaudeRunner{}).args(AgentSpec{Prompt: "go", SystemPrompt: "short"}))
+	if !containsPair(small, "--append-system-prompt", "short") {
+		t.Fatalf("small prompt should stay inline: %v", small)
 	}
 }
 

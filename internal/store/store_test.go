@@ -1930,6 +1930,9 @@ func TestOpenPRByWorkspacePrefersGitHubOverLocal(t *testing.T) {
 	if !ok || got.ID != local.ID {
 		t.Errorf("OpenPRByWorkspace after GitHub merge = id %q ok=%v, want leftover Local %q", got.ID, ok, local.ID)
 	}
+	if got, _ := s.PRByWorkspace("ws-dup"); got.ID != gh.ID {
+		t.Errorf("PRByWorkspace after GitHub merge = %q, want merged GitHub %q over open Local", got.ID, gh.ID)
+	}
 }
 
 func TestPRByWorkspacePrefersOpenOverClosed(t *testing.T) {

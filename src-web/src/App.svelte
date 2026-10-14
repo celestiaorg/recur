@@ -8,7 +8,8 @@
   const wordmark = "/images/recur-wordmark.png";
   const icon = "/images/recur-icon.png";
   const downloads =
-    import.meta.env.VITE_DOWNLOADS_URL || "https://recur.build/download";
+    import.meta.env.VITE_DOWNLOADS_URL ||
+    "https://github.com/celestiaorg/recur-releases/releases/latest/download";
   const linuxBuilds = [
     { arch: "amd64", label: "x64" },
     { arch: "arm64", label: "arm64" },
@@ -29,8 +30,8 @@
       });
   const download = $derived(
     onLinux
-      ? `${downloads}/recur-linux-${linuxArch}.${linuxFormat}`
-      : `${downloads}/recur.dmg`,
+      ? `${downloads}/Recur-linux-${linuxArch}.${linuxFormat}`
+      : `${downloads}/Recur-macos-universal.dmg`,
   );
   const downloadLabel = onLinux
     ? `Download .${linuxFormat} for Linux`
@@ -196,12 +197,12 @@
 
 {#snippet platforms()}
   <p class="b-meta">
-    macOS: <a href="{downloads}/recur.dmg">.dmg</a> (12 or later, Apple Silicon
+    macOS: <a href="{downloads}/Recur-macos-universal.dmg">.dmg</a> (12 or later, Apple Silicon
     and Intel)
     {#each linuxBuilds as build (build.arch)}
       <br />Linux {build.label}:
       {#each linuxFormats as format, i (format)}{i ? " · " : ""}<a
-          href="{downloads}/recur-linux-{build.arch}.{format}">.{format}</a
+          href="{downloads}/Recur-linux-{build.arch}.{format}">.{format}</a
         >{/each}
     {/each}
     <br />Linux needs GTK 4 and WebKitGTK 6.0 (Ubuntu 24.04+, Debian 13+)

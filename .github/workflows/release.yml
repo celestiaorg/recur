@@ -24,6 +24,15 @@ name: Release
 # without it they ship unsigned.
 #   LINUX_PGP_KEY          armored private key, `gpg --armor --export-secret-keys <id>`
 #   LINUX_PGP_PASSPHRASE   its passphrase, if any
+#
+# Public release secrets:
+#   RELEASES_TOKEN         token with contents:write on celestiaorg/recur-releases,
+#                          the public binaries-only repo every release is mirrored
+#                          to (public download page + in-app updater). It needs
+#                          one commit so release tags can be cut.
+#   UPDATER_SIGNING_KEY    `wails3 updater genkey` private key matching
+#                          build/updater.key.pub (rotate both together). Without
+#                          it and RELEASES_TOKEN, builds ship without the updater.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -38,6 +47,7 @@ jobs:
       HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
       HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
       SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || 'Developer ID Application' }}
+      RECUR_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' && 'https://github.com/celestiaorg/recur-releases/releases/latest/download/manifest.json' || '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -108,10 +118,13 @@ jobs:
             spctl --assess --type open --context context:primary-signature "$DMG"
           fi
           hdiutil verify "$DMG"
+      # The in-app updater swaps Recur.app in place, so it installs the zip, not the DMG.
+      # Without --norsrc --noextattr, xattrs land as ._* files that break the signature.
+      - run: ditto -c -k --norsrc --noextattr --keepParent bin/Recur.app "bin/Recur-${GITHUB_REF_NAME#v}-macos-universal.zip"
       - uses: actions/upload-artifact@v7
         with:
           name: release-macos-universal
-          path: bin/Recur-*-macos-universal.dmg
+          path: bin/Recur-*-macos-universal.*
           if-no-files-found: error
 
   # Each arch builds natively (the app is cgo + GTK), so arm64 needs an arm runner.
@@ -155,12 +168,43 @@ jobs:
   publish:
     needs: [build-mac, build-linux]
     runs-on: ubuntu-24.04
+    env:
+      HAS_PUBLIC: ${{ secrets.RELEASES_TOKEN != '' }}
+      HAS_UPDATER: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' }}
     steps:
+      - if: env.HAS_UPDATER == 'true'
+        uses: actions/checkout@v7
+      # go install wails3 needs these through cgo pkg-config.
+      - if: env.HAS_UPDATER == 'true'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+      - if: env.HAS_UPDATER == 'true'
+        uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
       - uses: actions/download-artifact@v8
         with:
           pattern: release-*
           path: dist
           merge-multiple: true
+      - name: Sign update manifest
+        if: env.HAS_UPDATER == 'true'
+        env:
+          UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }}
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          printf '%s\n' "$UPDATER_SIGNING_KEY" > "$RUNNER_TEMP/updater.key"
+          wails3 updater manifest -version "$V" -name "Recur $V" -key "$RUNNER_TEMP/updater.key" \
+            -url-prefix "https://github.com/celestiaorg/recur-releases/releases/download/$GITHUB_REF_NAME" \
+            -output dist/manifest.json "dist/Recur-$V-macos-universal.zip"
+          rm "$RUNNER_TEMP/updater.key"
+          wails3 updater verify -manifest dist/manifest.json -publickey build/updater.key.pub
+      # Unversioned copies give the download page stable
+      # releases/latest/download/<name> links.
+      - name: Latest-download aliases
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          cd dist && for f in Recur-"$V"-*.{dmg,deb,rpm,tar.gz}; do cp "$f" "${f/-$V/}"; done
       - env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -168,3 +212,17 @@ jobs:
           (cd dist && sha256sum * > SHA256SUMS)
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+
+      # This repo is private, so the download page and the updater read the
+      # same files from a public, binaries-only mirror. It stays a draft until
+      # every asset is up, so latest/download/manifest.json never points at a
+      # missing zip.
+      - name: Publish public release
+        if: env.HAS_PUBLIC == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          GH_REPO: celestiaorg/recur-releases
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --title "Recur ${GITHUB_REF_NAME#v}" --notes ""
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest

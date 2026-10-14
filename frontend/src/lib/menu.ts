@@ -35,6 +35,7 @@ export type MenuAction =
   | 'quick-open'
   | 'go-symbol'
   | 'settings'
+  | 'check-updates'
   | 'reload-bundles'
   | 'run-dev'
   | 'stop-run'

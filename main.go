@@ -21,6 +21,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/services/dock"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
+	"github.com/wailsapp/wails/v3/pkg/updater"
 
 	"recur/internal/app"
 	"recur/internal/bundles"
@@ -51,6 +52,11 @@ var shippedSkills embed.FS
 var appIcon []byte
 
 func main() {
+	// Updater.Restart re-execs this binary as the swap helper while Recur
+	// still holds the instance lock; application.New would divert it too
+	// late, after claimOrHandoff handed it off to the running app.
+	updater.HandleHelperMode()
+
 	// Clicking an OS notification (or re-opening Recur.app) starts a new
 	// process. Own the data dir (flock + socket) before opening the store —
 	// a second Recover() would park in-flight loops. Claim is atomic; a
@@ -369,7 +375,7 @@ func main() {
 		eng.Shutdown()
 	})
 
-	installAppMenu(wapp)
+	installAppMenu(wapp, installUpdater(wapp))
 
 	if err := wapp.Run(); err != nil {
 		log.Fatal(err)

@@ -28,6 +28,7 @@
   import { isBackquote, isCmdOrCtrl, isLetterKey } from './lib/shortcut'
   import { closeRailPeek, railPeek } from './lib/rail-peek'
   import { createBlankWorkspace } from './lib/new-workspace'
+  import { checkForUpdates, wireUpdaterEvents } from './lib/updater'
   import { onMenuAction, wireMenuEvents, pushMenuThemes, pushMenuThemeState, setMenuState, terminalIdFromMenu } from './lib/menu'
   import { applyShellRestore, loadShellState, resolveShellRestore } from './lib/shell-state'
   import { loadScheduleExpanded } from './lib/schedule-expanded'
@@ -723,6 +724,7 @@
     wireEvents()
     wireFileIndexEvents()
     wireMenuEvents()
+    wireUpdaterEvents()
     Events.On('app.open', (e: any) => {
       applyOpenPathResult(e?.data)
     })
@@ -785,6 +787,9 @@
           return
         case 'settings':
           go('settings')
+          return
+        case 'check-updates':
+          checkForUpdates()
           return
         case 'reload-bundles':
           void import('./lib/bundle-reload')

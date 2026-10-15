@@ -1520,9 +1520,13 @@ func (e *Engine) Shutdown() {
 		v.(*runningLoop).cancel()
 		return true
 	})
+	var turnsEnded []<-chan struct{}
 	e.chats.Range(func(_, v any) bool {
 		if turn, ok := v.(*chatTurn); ok && turn != nil && turn.cancel != nil {
 			turn.cancel()
+			if turn.ended != nil {
+				turnsEnded = append(turnsEnded, turn.ended)
+			}
 		}
 		return true
 	})
@@ -1531,6 +1535,9 @@ func (e *Engine) Shutdown() {
 		e.scheduleWG.Wait()
 		e.loopWG.Wait()
 		e.teardownWG.Wait()
+		for _, ended := range turnsEnded {
+			<-ended
+		}
 		close(done)
 	}()
 	select {

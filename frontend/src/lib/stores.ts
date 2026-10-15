@@ -7,7 +7,7 @@ import type {
   ScheduledPrompt,
 } from '../../bindings/recur/internal/domain/models'
 import { fallbackEnabledEditorThemeId, resolveEditorThemeKey, editorThemesForCycle, cycleEditorThemeKey } from './cm-themes'
-import { setDisabledBundleContribs } from './tm-registry'
+import { disabledThemeIdSet, setDisabledBundleContribs } from './tm-registry'
 import { LANGUAGE_INDENT_DEFAULTS } from './cm-lang'
 import { LEGACY_FONT_FACE_KEYS, monoFontStack } from './mono-fonts'
 import { wsMainBlocked, type ChatMode } from './modes'
@@ -55,9 +55,19 @@ export function isLightTheme(key: string): boolean {
 
 // ---- "Sync with system": light/dark picks for app, editor and terminal themes ----
 // The webview's prefers-color-scheme can miss the desktop setting (WebKitGTK in a
-// container), so the native answer from Wails wins whenever it is available.
+// container), so the native answer from Wails wins whenever it is available. The
+// media query is only a fallback in a plain browser: on Linux without
+// xdg-desktop-portal, Wails reports light rather than an error. The last native
+// answer is persisted so startup paints the right pick before the bridge replies.
+const SYSTEM_DARK_KEY = 'recur.systemDark'
 export const systemDark = writable(false)
 let nativeDark: boolean | null = null
+
+function setNativeDark(dark: boolean) {
+  nativeDark = dark
+  updateSystemDark()
+  try { localStorage.setItem(SYSTEM_DARK_KEY, dark ? '1' : '0') } catch { /* ignore */ }
+}
 
 function updateSystemDark() {
   const media = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -67,15 +77,19 @@ function updateSystemDark() {
 async function refreshNativeDark() {
   try {
     const dark = await System.IsDarkMode()
-    if (typeof dark === 'boolean') { nativeDark = dark; updateSystemDark() }
+    if (typeof dark === 'boolean') setNativeDark(dark)
   } catch { /* no native bridge (browser) */ }
 }
 
 function watchSystemDark() {
+  try {
+    const saved = localStorage.getItem(SYSTEM_DARK_KEY)
+    if (saved) nativeDark = saved === '1'
+  } catch { /* ignore */ }
   updateSystemDark()
   window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', updateSystemDark)
   void refreshNativeDark()
-  Events.On('system.theme', (e: any) => { if (typeof e.data === 'boolean') { nativeDark = e.data; updateSystemDark() } })
+  Events.On('system.theme', (e: any) => { if (typeof e.data === 'boolean') setNativeDark(e.data) })
   window.addEventListener('focus', () => { void refreshNativeDark() })
 }
 
@@ -148,8 +162,8 @@ export function initTheme() {
 const EDITOR_THEME_KEY = 'recur.editorTheme'
 export const editorTheme = writable<string>('recur')
 
-function applyEditorTheme(key: string) {
-  const valid = resolveEditorThemeKey(key)
+export function applyEditorTheme(key: string) {
+  const valid = fallbackEnabledEditorThemeId(disabledThemeIdSet(), resolveEditorThemeKey(key))
   editorTheme.set(valid)
   try { localStorage.setItem(EDITOR_THEME_KEY, valid) } catch { /* ignore */ }
 }
@@ -1360,11 +1374,8 @@ settings.subscribe((s) => {
   const grammarIds = s?.disabledBundleGrammars ?? []
   const themeIds = s?.disabledBundleThemes ?? []
   setDisabledBundleContribs({ grammarIds, themeIds })
-  const disabledThemes = new Set(themeIds.filter(Boolean))
   const current = get(editorTheme)
-  if (!disabledThemes.has(current)) return
-  const next = fallbackEnabledEditorThemeId(disabledThemes, current)
-  if (next !== current) applyEditorTheme(next)
+  if (themeIds.includes(current)) applyEditorTheme(current)
 })
 export const resource = writable<Resource | null>(null)
 // Optional RECUR_INSTANCE_LABEL (dogfood titlebar chip). Empty in packaged Recur.

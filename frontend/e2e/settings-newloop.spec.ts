@@ -507,7 +507,7 @@ test.describe('new loop + settings', () => {
     // Unchecking shows one grid again and a manual pick sticks.
     await page.getByRole('button', { name: 'Single theme' }).first().click()
     await page.locator('#v-settings .thgrid').first().locator('.thcard', { hasText: 'Slate' }).click()
-    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.emulateMedia({ colorScheme: 'light' })
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'slate')
   })
 

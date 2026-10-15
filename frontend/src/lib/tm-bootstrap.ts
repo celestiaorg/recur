@@ -9,7 +9,7 @@ import {
 } from '../../bindings/recur/internal/app/bundleservice'
 import { get } from 'svelte/store'
 import type { GrammarInfo, ThemeInfo } from '../../bindings/recur/internal/app/models'
-import { editorTheme, setEditorTheme, settings } from './stores'
+import { applyEditorTheme, editorTheme, settings } from './stores'
 import {
   addGrammar,
   forgetBundleContribs,
@@ -63,7 +63,7 @@ export function ensureTextMateBootstrap(reload = false): Promise<void> {
       listThemeMeta().find((t) => t.uiTheme === 'dark' && !disabled.has(t.id)) ??
       listThemeMeta().find((t) => !disabled.has(t.id))
     if (preferred) {
-      if (preferred.id !== savedKey) setEditorTheme(preferred.id)
+      if (preferred.id !== savedKey) applyEditorTheme(preferred.id)
       const parsed = await loadAndRegisterTheme(preferred, () => ReadTheme(preferred.id))
       setActiveTheme(parsed.rawTheme)
       setActiveEditorBackground(parsed.colors['editor.background'] ?? '#1e1e1e')

@@ -190,3 +190,24 @@ func TestInstallFromApp(t *testing.T) {
 		t.Fatalf("InstallFromApp(unbundled) = %v, want nil", err)
 	}
 }
+
+func TestEnsureDesktopEntry(t *testing.T) {
+	data := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", data)
+	exe := "/opt/my apps/recur-linux-amd64/recur"
+	if err := ensureDesktopEntry(exe); err != nil {
+		t.Fatalf("ensureDesktopEntry: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(data, "applications", desktopEntryName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"Exec=\"/opt/my apps/recur-linux-amd64/recur\"\n",
+		"Icon=/opt/my apps/recur-linux-amd64/recur.png\n",
+	} {
+		if !strings.Contains(string(b), want) {
+			t.Fatalf("desktop entry missing %q:\n%s", want, b)
+		}
+	}
+}

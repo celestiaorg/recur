@@ -100,7 +100,6 @@ func (e *Engine) recordFailure(id, reason string, retryable bool) {
 func (e *Engine) failRetryable(id, reason string) {
 	e.recordFailure(id, reason, true)
 	e.setWorkspaceState(id, domain.StateFailed, "stopped: "+reason)
-	e.markGroup(id, domain.GroupNeeds)
 	e.emitWorkspaceEvent(id, "MA", "Maestro",
 		"Loop stopped on a transient error — retry when it clears: "+html.EscapeString(reason))
 

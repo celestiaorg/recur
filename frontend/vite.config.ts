@@ -95,5 +95,6 @@ export default defineConfig({
     // Unit tests for pure lib helpers. Playwright e2e stays under e2e/.
     include: ["src/**/*.test.ts"],
     environment: "node",
+    setupFiles: ["src/vitest-setup.ts"],
   },
 });

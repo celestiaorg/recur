@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
-  import { Events } from '@wailsio/runtime'
+  import { Events, System } from '@wailsio/runtime'
   import { loadInitial, wireEvents, WorkspacesService, PRsService, call, upsertWorkspace, onWorkspaceFs, onAppFocused, onGithubBranchRules } from './lib/api'
   import { applyOpenPathResult, pickAndOpenPath } from './lib/open-path'
   import { wireFileIndexEvents } from './lib/file-index'
@@ -28,6 +28,7 @@
   import { isBackquote, isCmdOrCtrl, isLetterKey } from './lib/shortcut'
   import { closeRailPeek, railPeek } from './lib/rail-peek'
   import { createBlankWorkspace } from './lib/new-workspace'
+  import { checkForUpdates, wireUpdaterEvents } from './lib/updater'
   import { onMenuAction, wireMenuEvents, pushMenuThemes, pushMenuThemeState, setMenuState, terminalIdFromMenu } from './lib/menu'
   import { applyShellRestore, loadShellState, resolveShellRestore } from './lib/shell-state'
   import { loadScheduleExpanded } from './lib/schedule-expanded'
@@ -74,6 +75,7 @@
   import ScheduledPrompts from './components/ScheduledPrompts.svelte'
   import ScheduleEditor from './components/ScheduleEditor.svelte'
   import PRList from './views/PRList.svelte'
+  import Issues from './components/Issues.svelte'
   import PRDetail from './views/PRDetail.svelte'
   import Briefing from './views/Briefing.svelte'
   import Welcome from './views/Welcome.svelte'
@@ -83,6 +85,10 @@
   const titlebarPR = $derived($prs.find((p) => p.id === $selectedPRId))
   const showLoopBack = $derived($view === 'detail')
   const showPRBack = $derived($view === 'prdetail')
+  // Wails sets the OS only after the page loads, so keep the macOS spacer until it says otherwise.
+  const offMac = () => System.IsLinux() || System.IsWindows()
+  let trafficClear = $state(!offMac())
+  window.addEventListener('wails:runtime-config-ready', () => (trafficClear = !offMac()), { once: true })
   let pendingPRCreate = $state<{ prId: string; wsId: string } | null>(null)
   const creatingThisPR = $derived(!!titlebarPR?.id && pendingPRCreate?.prId === titlebarPR.id)
 
@@ -718,6 +724,7 @@
     wireEvents()
     wireFileIndexEvents()
     wireMenuEvents()
+    wireUpdaterEvents()
     Events.On('app.open', (e: any) => {
       applyOpenPathResult(e?.data)
     })
@@ -780,6 +787,9 @@
           return
         case 'settings':
           go('settings')
+          return
+        case 'check-updates':
+          checkForUpdates()
           return
         case 'reload-bundles':
           void import('./lib/bundle-reload')
@@ -853,6 +863,11 @@
       if (isCmdOrCtrl(e) && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         toggleRail()
+        return
+      }
+      if (isCmdOrCtrl(e) && !e.shiftKey && !e.altKey && e.code === 'Comma') {
+        e.preventDefault()
+        go('settings')
         return
       }
       // ⌥⌘↑ / ⌥⌘↓ — previous / next workspace in sidebar order (wraps).
@@ -940,7 +955,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="titlebar" onmousedown={onTitlebarMouseDown}>
     <div class="tb-left">
-      <div class="tb-traffic-clear"></div>
+      {#if trafficClear}<div class="tb-traffic-clear"></div>{/if}
       <button
         type="button"
         class="tb-rail"
@@ -1233,6 +1248,11 @@
       <Settings />
       <Project />
       <PRList />
+      {#if $view === 'issues'}
+        <section class="view on briefing" id="v-issues" aria-label="Issues">
+          <Issues />
+        </section>
+      {/if}
       {#if $view === 'schedules'}
         <section class="view on briefing" id="v-schedules" aria-label="Schedules">
           <ScheduledPrompts />

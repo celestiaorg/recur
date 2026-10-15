@@ -1,0 +1,30 @@
+[bundle]
+name = "GitHub"
+id = "recur.github"
+version = "1.0.0"
+author = "Recur"
+
+[[prompt]]
+id = "recur.github.work"
+name = "GitHub issue"
+description = "Work on a GitHub issue"
+slash = "github"
+takesArgs = true
+argPlaceholder = "#12, owner/repo#12, or paste an issue URL"
+timeoutMs = 15000
+interpreter = "shebang"
+script = "src/issue.sh"
+complete = "src/complete.sh"
+icon = "icon.svg"
+
+[[prompt.arg]]
+name = "issue"
+placeholder = "#12, owner/repo#12, or paste an issue URL"
+
+[[expand]]
+id = "recur.github.expand"
+name = "GitHub issue"
+match = '''(?i)^(https?://github\.com/[^/\s]+/[^/\s]+/issues/\d+|/github(?:\s|$)|[\w.-]+/[\w.-]+#\d+\b)'''
+interpreter = "shebang"
+script = "src/issue.sh"
+timeoutMs = 15000

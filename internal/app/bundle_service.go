@@ -379,6 +379,9 @@ type PromptResultDTO struct {
 	// FreshSession, when set, overrides the manifest fresh_session flag for
 	// this send (a /re-review continuing the same chat's review resumes it).
 	FreshSession *bool `json:"freshSession,omitempty"`
+	// Issue is the tracker issue the prompt is about (e.g. /linear). The UI
+	// links it to the workspace the prompt runs in.
+	Issue *domain.IssueRef `json:"issue,omitempty"`
 }
 
 // ListPromptActions discovers all [[prompt]] entries (alphabetical by slash).
@@ -482,7 +485,7 @@ func (s *BundleService) RunPromptAction(id string, rc PromptContextDTO) (PromptR
 	if err != nil {
 		return PromptResultDTO{}, err
 	}
-	out.Prompt, out.Display = res.Prompt, res.Display
+	out.Prompt, out.Display, out.Issue = res.Prompt, res.Display, res.Issue
 	return out, nil
 }
 
@@ -654,7 +657,7 @@ func (s *BundleService) ExpandGoal(text string) (PromptResultDTO, error) {
 	if err != nil {
 		return PromptResultDTO{}, err
 	}
-	return PromptResultDTO{Prompt: res.Prompt, Display: res.Display}, nil
+	return PromptResultDTO{Prompt: res.Prompt, Display: res.Display, Issue: res.Issue}, nil
 }
 
 // RunCommand looks up a shebang command by id and executes it as a subprocess.

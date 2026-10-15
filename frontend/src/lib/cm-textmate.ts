@@ -318,9 +318,12 @@ function tmPlugin(scopeName: string): Extension {
             this.stopFill?.()
             this.stopFill = null
           }
-          if (!changed) return
+          // engine.fillSync (outline / symbols) can tokenize lines our last
+          // paint skipped without telling us, so this sweep finds nothing
+          // changed. Repaint once at the end so those lines are not left plain.
           const win = viewportWindow(this.view)
-          if (changed.to < win.from || changed.from > win.to) return
+          const visible = !!changed && changed.to >= win.from && changed.from <= win.to
+          if (!visible && !done) return
           this.paintViewport(this.view, false)
           this.redrawSoon()
         })

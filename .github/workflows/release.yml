@@ -1,16 +1,38 @@
 name: Release
 
-# Pushing a vX.Y.Z tag builds Recur.app, stamps X.Y.Z into Info.plist, and
-# attaches the zip to the GitHub release. With the secrets below it is
-# Developer ID signed and notarized; without them it ships ad-hoc signed
-# (users clear quarantine per README "Installing").
+# Pushing a vX.Y.Z tag builds a universal Recur.app (stamping X.Y.Z into
+# Info.plist) in a styled DMG, and the Linux tarballs, .debs and .rpms, in
+# parallel. Only once every build succeeds does `publish` create the GitHub
+# release and attach them all with a SHA256SUMS, so a failed build never leaves
+# a partial release.
+#
+# With all the secrets below Recur.app and the DMG are Developer ID signed,
+# notarized, and stapled. With only the MACOS_* ones they are signed but not
+# notarized, which still keeps users' macOS folder permissions across updates.
+# With none it ships ad-hoc signed. Unless notarized, users clear quarantine per
+# README "Installing".
 #
 # Signing secrets:
-#   MACOS_CERT_P12_BASE64  Developer ID Application cert + key, `base64 -i cert.p12`
+#   MACOS_CERT_P12_BASE64  code-signing cert + key, `base64 -i cert.p12`
 #   MACOS_CERT_PASSWORD    password for that .p12
+#   MACOS_SIGN_IDENTITY    cert common name, defaults to "Developer ID Application"
 #   APPLE_ID               Apple ID email used for notarization
 #   APPLE_TEAM_ID          10-character team ID
 #   APPLE_APP_PASSWORD     app-specific password for APPLE_ID
+#
+# With LINUX_PGP_KEY the .deb and .rpm are PGP-signed (nfpm, at package time);
+# without it they ship unsigned.
+#   LINUX_PGP_KEY          armored private key, `gpg --armor --export-secret-keys <id>`
+#   LINUX_PGP_PASSPHRASE   its passphrase, if any
+#
+# Public release secrets:
+#   RELEASES_TOKEN         token with contents:write on celestiaorg/recur-releases,
+#                          the public binaries-only repo every release is mirrored
+#                          to (public download page + in-app updater). It needs
+#                          one commit so release tags can be cut.
+#   UPDATER_SIGNING_KEY    `wails3 updater genkey` private key matching
+#                          build/updater.key.pub (rotate both together). Without
+#                          it and RELEASES_TOKEN, builds ship without the updater.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -19,10 +41,13 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build-mac:
     runs-on: macos-26
     env:
       HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
+      HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
+      SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || 'Developer ID Application' }}
+      RECUR_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' && 'https://github.com/celestiaorg/recur-releases/releases/latest/download/manifest.json' || '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -50,33 +75,154 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KC_PW" "$KC"
           security list-keychains -d user -s "$KC"
           security default-keychain -s "$KC"
-          xcrun notarytool store-credentials recur-notary \
-            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" \
-            --keychain "$KC"
+          if [ "$HAS_NOTARY" = true ]; then
+            xcrun notarytool store-credentials recur-notary \
+              --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" \
+              --keychain "$KC"
+          fi
 
-      # The temp keychain holds exactly one Developer ID identity, so the
-      # common-name prefix is enough for codesign to select it.
+      # The temp keychain holds exactly one identity, so the common-name prefix
+      # is enough for codesign to select it.
       - name: Build, sign, notarize
-        if: env.HAS_SIGNING == 'true'
+        if: env.HAS_NOTARY == 'true'
         run: |
-          RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign:notarize \
-            SIGN_IDENTITY="Developer ID Application" KEYCHAIN_PROFILE=recur-notary
+          RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign:notarize UNIVERSAL=true \
+            SIGN_IDENTITY="$SIGN_IDENTITY" KEYCHAIN_PROFILE=recur-notary
+
+      - name: Build, sign
+        if: env.HAS_SIGNING == 'true' && env.HAS_NOTARY != 'true'
+        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign UNIVERSAL=true SIGN_IDENTITY="$SIGN_IDENTITY"
 
       - name: Build (ad-hoc signed)
         if: env.HAS_SIGNING != 'true'
-        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task package
+        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:package:universal
 
       - name: Verify
         run: |
           codesign --verify --deep --strict bin/Recur.app
-          if [ "$HAS_SIGNING" = true ]; then spctl --assess --type execute bin/Recur.app; fi
+          if [ "$HAS_NOTARY" = true ]; then spctl --assess --type execute bin/Recur.app; fi
           plutil -extract CFBundleShortVersionString raw bin/Recur.app/Contents/Info.plist
+          for bin in recur recur-cli; do lipo bin/Recur.app/Contents/MacOS/$bin -verify_arch arm64 x86_64; done
 
-      - name: Publish
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # Notarizing the DMG as well as the app lets Gatekeeper pass the
+      # download offline once the ticket is stapled.
+      - name: DMG
         run: |
-          ZIP="bin/Recur-${GITHUB_REF_NAME#v}-macos-arm64.zip"
-          ditto -c -k --keepParent bin/Recur.app "$ZIP"
+          DMG="bin/Recur-${GITHUB_REF_NAME#v}-macos-universal.dmg"
+          wails3 task darwin:create:dmg
+          mv bin/Recur.dmg "$DMG"
+          if [ "$HAS_SIGNING" = true ]; then codesign --sign "$SIGN_IDENTITY" --timestamp "$DMG"; fi
+          if [ "$HAS_NOTARY" = true ]; then
+            xcrun notarytool submit "$DMG" --keychain-profile recur-notary --wait
+            xcrun stapler staple "$DMG"
+            spctl --assess --type open --context context:primary-signature "$DMG"
+          fi
+          hdiutil verify "$DMG"
+      # The in-app updater swaps Recur.app in place, so it installs the zip, not the DMG.
+      # Without --norsrc --noextattr, xattrs land as ._* files that break the signature.
+      - run: ditto -c -k --norsrc --noextattr --keepParent bin/Recur.app "bin/Recur-${GITHUB_REF_NAME#v}-macos-universal.zip"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-macos-universal
+          path: bin/Recur-*-macos-universal.*
+          if-no-files-found: error
+
+  # Each arch builds natively (the app is cgo + GTK), so arm64 needs an arm runner.
+  build-linux:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      HAS_PGP: ${{ secrets.LINUX_PGP_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+      - uses: ./.github/actions/setup
+        with:
+          wails: "true"
+      - name: Write PGP signing key
+        if: env.HAS_PGP == 'true'
+        env:
+          LINUX_PGP_KEY: ${{ secrets.LINUX_PGP_KEY }}
+        run: |
+          printf '%s\n' "$LINUX_PGP_KEY" > "$RUNNER_TEMP/pgp.asc"
+          echo "RECUR_PGP_KEY=$RUNNER_TEMP/pgp.asc" >> "$GITHUB_ENV"
+      - env:
+          NFPM_PASSPHRASE: ${{ secrets.LINUX_PGP_PASSPHRASE }}
+        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task linux:package
+      - run: |
+          for ext in tar.gz deb rpm; do
+            mv "bin/recur-linux-${{ matrix.arch }}.$ext" "bin/Recur-${GITHUB_REF_NAME#v}-linux-${{ matrix.arch }}.$ext"
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-linux-${{ matrix.arch }}
+          path: bin/Recur-*-linux-${{ matrix.arch }}.*
+          if-no-files-found: error
+
+  publish:
+    needs: [build-mac, build-linux]
+    runs-on: ubuntu-24.04
+    env:
+      HAS_PUBLIC: ${{ secrets.RELEASES_TOKEN != '' }}
+      HAS_UPDATER: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' }}
+    steps:
+      - if: env.HAS_UPDATER == 'true'
+        uses: actions/checkout@v7
+      # go install wails3 needs these through cgo pkg-config.
+      - if: env.HAS_UPDATER == 'true'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+      - if: env.HAS_UPDATER == 'true'
+        uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Sign update manifest
+        if: env.HAS_UPDATER == 'true'
+        env:
+          UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }}
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          printf '%s\n' "$UPDATER_SIGNING_KEY" > "$RUNNER_TEMP/updater.key"
+          wails3 updater manifest -version "$V" -name "Recur $V" -key "$RUNNER_TEMP/updater.key" \
+            -url-prefix "https://github.com/celestiaorg/recur-releases/releases/download/$GITHUB_REF_NAME" \
+            -output dist/manifest.json "dist/Recur-$V-macos-universal.zip"
+          rm "$RUNNER_TEMP/updater.key"
+          wails3 updater verify -manifest dist/manifest.json -publickey build/updater.key.pub
+      # Unversioned copies give the download page stable
+      # releases/latest/download/<name> links.
+      - name: Latest-download aliases
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          cd dist && for f in Recur-"$V"-*.{dmg,deb,rpm,tar.gz}; do cp "$f" "${f/-$V/}"; done
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          (cd dist && sha256sum * > SHA256SUMS)
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
-          gh release upload "$GITHUB_REF_NAME" "$ZIP" --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+
+      # This repo is private, so the download page and the updater read the
+      # same files from a public, binaries-only mirror. It stays a draft until
+      # every asset is up, so latest/download/manifest.json never points at a
+      # missing zip.
+      - name: Publish public release
+        if: env.HAS_PUBLIC == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          GH_REPO: celestiaorg/recur-releases
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --target main --title "Recur ${GITHUB_REF_NAME#v}" --notes ""
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest

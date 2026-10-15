@@ -995,7 +995,12 @@ func loginShell() string {
 	if sh := os.Getenv("SHELL"); sh != "" {
 		return sh
 	}
-	return "/bin/zsh"
+	for _, sh := range []string{"/bin/zsh", "/bin/bash"} {
+		if _, err := os.Stat(sh); err == nil {
+			return sh
+		}
+	}
+	return "/bin/sh"
 }
 
 // ptyEnv is the app environment plus the terminal capability advertisement. TERM

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -20,6 +21,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/services/dock"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
+	"github.com/wailsapp/wails/v3/pkg/updater"
 
 	"recur/internal/app"
 	"recur/internal/bundles"
@@ -44,7 +46,17 @@ var shippedBundles embed.FS
 //go:embed all:recur-skills
 var shippedSkills embed.FS
 
+// Window/taskbar icon on Linux; macOS takes it from the .app bundle.
+//
+//go:embed build/appicon.png
+var appIcon []byte
+
 func main() {
+	// Updater.Restart re-execs this binary as the swap helper while Recur
+	// still holds the instance lock; application.New would divert it too
+	// late, after claimOrHandoff handed it off to the running app.
+	updater.HandleHelperMode()
+
 	// Clicking an OS notification (or re-opening Recur.app) starts a new
 	// process. Own the data dir (flock + socket) before opening the store —
 	// a second Recover() would park in-flight loops. Claim is atomic; a
@@ -214,6 +226,9 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	}
+	if runtime.GOOS != "darwin" {
+		opts.Icon = appIcon
+	}
 	if appLog != nil {
 		opts.Logger = slog.New(slog.NewTextHandler(appLog, nil))
 	}
@@ -255,6 +270,12 @@ func main() {
 			// Off the bus goroutine: SetBadge uses dispatch_sync(main).
 			go syncDockBadge()
 		}
+	})
+
+	// The webview's own prefers-color-scheme can miss the desktop setting (WebKitGTK in
+	// a container), so the frontend follows the native one.
+	wapp.Event.OnApplicationEvent(events.Common.ThemeChanged, func(*application.ApplicationEvent) {
+		wapp.Event.Emit("system.theme", wapp.Env.IsDarkMode())
 	})
 
 	// After Run is pumping: request notification+badge auth (bundled .app only —
@@ -360,7 +381,7 @@ func main() {
 		eng.Shutdown()
 	})
 
-	installAppMenu(wapp)
+	installAppMenu(wapp, installUpdater(wapp))
 
 	if err := wapp.Run(); err != nil {
 		log.Fatal(err)
@@ -426,8 +447,10 @@ func dockBadgeCount(inboxUnread, unseenChats int) int {
 // path requires a signed, bundled .app (main() only calls this expecting the native
 // leg to work when runningInAppBundle(); see its comment for the crash this guards
 // against), so unbundled runs (dev, `go run .`) skip straight to
-// `osascript -e 'display notification'` (darwin, best-effort, bounded so a hung
-// osascript can never wedge anything; failures are logged only).
+// `osascript -e 'display notification'` (darwin) or `notify-send` (Linux, where
+// the Wails service is skipped because it aborts startup without a D-Bus
+// session). Best-effort and bounded so a hung helper can never wedge anything;
+// failures are logged only.
 func sendOSNotification(notif *notifications.NotificationService, title, body string) {
 	if title == "" {
 		return
@@ -443,8 +466,12 @@ func sendOSNotification(notif *notifications.NotificationService, title, body st
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	script := fmt.Sprintf("display notification %q with title %q", body, title)
-	if out, oerr := exec.CommandContext(ctx, "osascript", "-e", script).CombinedOutput(); oerr != nil {
+	cmd := exec.CommandContext(ctx, "notify-send", "--app-name=Recur", title, body)
+	if runtime.GOOS == "darwin" {
+		script := fmt.Sprintf("display notification %q with title %q", body, title)
+		cmd = exec.CommandContext(ctx, "osascript", "-e", script)
+	}
+	if out, oerr := cmd.CombinedOutput(); oerr != nil {
 		log.Printf("notification failed: %v: %s", oerr, out)
 	}
 }

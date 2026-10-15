@@ -268,7 +268,9 @@ func stripCmdWrap(s string) string {
 // already-open GitHub PR tracks (PR.Branch, frozen at create). Local renames therefore
 // do not orphan the open PR — commits keep landing on the same remote head.
 // force uses --force-with-lease (rebase onto main, then update the PR).
-func pushGitHubHead(ctx context.Context, worktree, repoPath, remoteHead string, force bool) error {
+// A fork PR (IsCrossRepository) pushes to the head repo, never origin, leases
+// against refs/recur/pr/N, and advances that ref so ahead/behind sees the push.
+func pushGitHubHead(ctx context.Context, worktree, repoPath string, pr domain.PR, remoteHead string, force bool) error {
 	if strings.TrimSpace(remoteHead) == "" {
 		return fmt.Errorf("empty remote head")
 	}
@@ -276,13 +278,78 @@ func pushGitHubHead(ctx context.Context, worktree, repoPath, remoteHead string, 
 	if pushDir == "" {
 		pushDir = repoPath
 	}
+	remote, lease := "origin", "--force-with-lease"
+	prRef := gitpkg.PRHeadRef(pr.Number)
+	if pr.IsCrossRepository {
+		url, err := githubPRHeadRepoURL(ctx, repoPath, pr.Number)
+		if err != nil {
+			return fmt.Errorf("could not resolve the fork for PR #%d: %w", pr.Number, err)
+		}
+		remote = url
+		if force {
+			sha, err := runGit(ctx, pushDir, "rev-parse", "--verify", prRef)
+			if err != nil {
+				return fmt.Errorf("no fetched head for PR #%d to lease against: %w", pr.Number, err)
+			}
+			lease += "=refs/heads/" + remoteHead + ":" + strings.TrimSpace(sha)
+		}
+	}
 	args := []string{"push"}
 	if force {
-		args = append(args, "--force-with-lease")
+		args = append(args, lease)
 	}
-	args = append(args, "origin", "HEAD:refs/heads/"+remoteHead)
-	_, err := runGit(ctx, pushDir, args...)
-	return err
+	args = append(args, remote, "HEAD:refs/heads/"+remoteHead)
+	if _, err := runGit(ctx, pushDir, args...); err != nil {
+		return err
+	}
+	if pr.IsCrossRepository {
+		_, _ = runGit(ctx, pushDir, "update-ref", prRef, "HEAD")
+	}
+	return nil
+}
+
+// githubPRHeadRepoURL is the push URL of a fork PR's head repo, in origin's
+// URL scheme (ssh or https).
+func githubPRHeadRepoURL(ctx context.Context, repoPath string, number int) (string, error) {
+	out, err := runGH(ctx, repoPath, "pr", "view", strconv.Itoa(number), "--json", "headRepositoryOwner,headRepository")
+	if err != nil {
+		return "", err
+	}
+	var head struct {
+		Owner struct {
+			Login string `json:"login"`
+		} `json:"headRepositoryOwner"`
+		Repo struct {
+			Name string `json:"name"`
+		} `json:"headRepository"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &head); err != nil || head.Owner.Login == "" || head.Repo.Name == "" {
+		return "", fmt.Errorf("gh pr view %d returned no head repository", number)
+	}
+	origin, err := runGit(ctx, repoPath, "remote", "get-url", "origin")
+	if err != nil {
+		return "", err
+	}
+	url, ok := forkRemoteURL(origin, head.Owner.Login, head.Repo.Name)
+	if !ok {
+		return "", fmt.Errorf("cannot derive a fork URL from origin %q", strings.TrimSpace(origin))
+	}
+	return url, nil
+}
+
+// forkRemoteURL replaces the trailing owner/repo of a remote URL
+// (git@host:owner/repo.git, https://host/owner/repo) with owner/repo.git.
+func forkRemoteURL(remoteURL, owner, repo string) (string, bool) {
+	s := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(remoteURL), "/"), ".git")
+	i := strings.LastIndexByte(s, '/')
+	if i <= 0 {
+		return "", false
+	}
+	j := strings.LastIndexAny(s[:i], "/:")
+	if j < 0 || j == i-1 {
+		return "", false
+	}
+	return s[:j+1] + owner + "/" + repo + ".git", true
 }
 
 // githubPRBase is the branch name `gh pr create/edit --base` accepts. base is a
@@ -1002,14 +1069,15 @@ func githubOwnerRepoForRemote(ctx context.Context, repoPath, remote string) (str
 	if err != nil {
 		return "", err
 	}
-	ownerRepo, ok := ownerRepoFromRemoteURL(out)
+	ownerRepo, ok := OwnerRepoFromRemoteURL(out)
 	if !ok {
 		return "", fmt.Errorf("remote %s is not a GitHub URL", remote)
 	}
 	return ownerRepo, nil
 }
 
-func ownerRepoFromRemoteURL(raw string) (string, bool) {
+// OwnerRepoFromRemoteURL parses owner/repo from a GitHub ssh or https remote URL.
+func OwnerRepoFromRemoteURL(raw string) (string, bool) {
 	s := strings.TrimSpace(raw)
 	if s == "" || strings.HasPrefix(s, "/") || strings.HasPrefix(s, ".") {
 		return "", false

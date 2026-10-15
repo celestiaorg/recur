@@ -82,6 +82,10 @@ func RevealInFinder(absPath string) error {
 	case "darwin":
 		cmd = exec.Command("open", "-R", target)
 	case "linux":
+		// xdg-open has no "select"; open the containing folder instead of the file.
+		if st, err := os.Stat(target); err == nil && !st.IsDir() {
+			target = filepath.Dir(target)
+		}
 		cmd = exec.Command("xdg-open", target)
 	default:
 		return fmt.Errorf("reveal not supported on %s", runtime.GOOS)

@@ -2561,11 +2561,9 @@ test.describe('PR agent chat dock', () => {
     await expect.poll(() => mockChatAttention(page)?.occluded).toBe(true)
 
     await simulateChatTurnIdle(page, hostId, code)
-    // The host workspace has no Overview card, so its notification lands in
-    // the Elsewhere section of the unified Briefing list.
-    const row = page.locator('#v-briefing .briefing-elsewhere .ibrow', { hasText: 'finished a reply' })
-    await expect(row).toBeVisible()
-    await expect(row).toContainText('#808')
+    // Like the engine, the unseen chat earns the host workspace a Briefing card.
+    const card = page.locator('#v-briefing .wbrief-row', { hasText: 'Imported checkout review' })
+    await expect(card.locator('.wbrief-unread')).toHaveAttribute('title', /finished a reply/)
     await expect(page.locator(`.tloop[data-workspace-id="${hostId}"]`)).toHaveCount(0)
     const prNav = page.locator('.nav', { hasText: 'Pull requests' })
     await expect(prNav.locator('.ct.unseen')).toHaveText('1')
@@ -2576,11 +2574,11 @@ test.describe('PR agent chat dock', () => {
     await expect(page.locator('#v-pr .prrow', { hasText: '#808' }).locator('.ct')).toHaveText('1')
 
     await page.locator('.nav.inbox-nav').click()
-    await row.click()
+    await card.click()
     await expect(page.locator('#v-prdetail')).toHaveClass(/on/)
     await expect(page.locator('#prd-agent .obs-left')).toBeVisible()
     await expect.poll(() => mockChatAttention(page)?.focusWs).toBe(hostId)
-    await expect(page.locator('#v-briefing .briefing-elsewhere .ibrow', { hasText: 'finished a reply' })).toHaveCount(0)
+    await expect(card).toHaveCount(0)
     await expect(prNav.locator('.ct.unseen')).toHaveCount(0)
   })
 

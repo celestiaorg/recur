@@ -35,6 +35,8 @@ var imageMIME = map[string]string{
 	".ico":  "image/x-icon",
 	".bmp":  "image/bmp",
 	".avif": "image/avif",
+	".tif":  "image/tiff",
+	".tiff": "image/tiff",
 }
 
 // chatImageMIME is the paste / Finder-drop set (matches engine.chatImageMIME).

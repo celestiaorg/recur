@@ -11,9 +11,9 @@ import (
 )
 
 // TestLoopModeEngagesRunOnWorkspace: Loop mode on a chat tab engages the
-// autopilot on this workspace (one chat = one loop). The run-lock refuses
-// agent-mode edits while the run is active. A second Loop tab stays here
-// and does not inherit the live run.
+// autopilot on this workspace (one chat = one loop). Agent-mode sends on the
+// loop's own tab refuse while the run is active; sibling tabs keep working.
+// A second Loop tab stays here and does not inherit the live run.
 func TestLoopModeEngagesRunOnWorkspace(t *testing.T) {
 	runner := &captureRunner{
 		linesFor: func(call int) [][]byte { return maestroFixture("engage-sess", "OK.") },
@@ -73,15 +73,17 @@ func TestLoopModeEngagesRunOnWorkspace(t *testing.T) {
 		t.Errorf("PA selection mode = %q, want loop", mode)
 	}
 
-	// Run-lock (decision #3): agent-mode sends refuse while the run is active…
 	lock := eng.SendWorkspaceMessage(ws.ID, "PA", "edit something", "", nil, nil, "agent", "")
 	if !strings.Contains(lock, "loop is running") {
-		t.Fatalf("agent-mode send should be run-locked, got %q", lock)
+		t.Fatalf("agent-mode send on the loop tab should be locked, got %q", lock)
 	}
-	// …but read-only modes keep working.
 	ask := eng.SendWorkspaceMessage(ws.ID, "PA", "what changed?", "", nil, nil, "ask", "")
 	if strings.Contains(ask, "loop is running") {
-		t.Fatalf("ask mode must not be run-locked, got %q", ask)
+		t.Fatalf("ask mode must not be locked, got %q", ask)
+	}
+	sibling := eng.CreateWorkspaceChat(ws.ID)
+	if free := eng.SendWorkspaceMessage(ws.ID, sibling.Code, "edit something", "", nil, nil, "agent", ""); strings.Contains(free, "loop is running") {
+		t.Fatalf("agent-mode send on a sibling tab must not be locked, got %q", free)
 	}
 
 	// A second Loop tab is its own loop on this workspace.
@@ -99,6 +101,35 @@ func TestLoopModeEngagesRunOnWorkspace(t *testing.T) {
 	}
 	if !eng.chatLoopStarted(ws.ID, tabB.Code) {
 		t.Fatal("second Loop chat should be marked started")
+	}
+}
+
+// A tab whose own loop settled is not locked while a sibling tab's loop runs.
+func TestSettledLoopTabNotLockedBySiblingLoop(t *testing.T) {
+	runner := &captureRunner{
+		linesFor: func(call int) [][]byte { return maestroFixture("settled-sess", "OK.") },
+	}
+	eng, st, _, _ := newTestEngine(t, runner)
+	projID := addProject(t, st, initRepo(t))
+	ws, err := eng.CreateWorkspace(projID, "scratch", "")
+	if err != nil {
+		t.Fatalf("CreateWorkspace: %v", err)
+	}
+	eng.stampChatLoop(ws.ID, "PA", "", "", "", "", true)
+	owner := eng.CreateWorkspaceChat(ws.ID)
+	if _, ok := st.UpdateWorkspace(ws.ID, func(w *domain.Workspace) {
+		w.RunStarted = true
+		w.LoopChatCode = owner.Code
+		w.State = domain.StateQueued
+	}); !ok {
+		t.Fatal("UpdateWorkspace")
+	}
+
+	if lock := eng.SendWorkspaceMessage(ws.ID, owner.Code, "edit something", "", nil, nil, "agent", ""); !strings.Contains(lock, "loop is running") {
+		t.Fatalf("agent-mode send on the owner tab should be locked, got %q", lock)
+	}
+	if free := eng.SendWorkspaceMessage(ws.ID, "PA", "edit something", "", nil, nil, "agent", ""); strings.Contains(free, "loop is running") {
+		t.Fatalf("settled loop tab must not be locked by a sibling's loop, got %q", free)
 	}
 }
 

@@ -1137,14 +1137,17 @@ func (e *Engine) dispatch(rec domain.Workspace) error {
 		rec.Phase = "starting"
 	}
 	rec.Group = domain.GroupActive
-	// Preserve live LoopChatCode so a close during worktree add is not undone.
+	// Preserve live LoopChatCode so a close during worktree add is not undone,
+	// and live Issue so a link set during worktree add survives.
 	// lp.ChatCode stays as published — concurrent stop/sibling checks read it.
 	if updated, ok := e.Store.UpdateWorkspace(rec.ID, func(w *domain.Workspace) {
-		keep := w.LoopChatCode
+		keep, issue := w.LoopChatCode, w.Issue
 		*w = rec
 		w.LoopChatCode = keep
+		w.Issue = issue
 	}); ok {
 		rec.LoopChatCode = updated.LoopChatCode
+		rec.Issue = updated.Issue
 	} else if _, err := e.Store.AddWorkspace(rec); err != nil {
 		cleanup()
 		return err
@@ -1517,9 +1520,13 @@ func (e *Engine) Shutdown() {
 		v.(*runningLoop).cancel()
 		return true
 	})
+	var turnsEnded []<-chan struct{}
 	e.chats.Range(func(_, v any) bool {
 		if turn, ok := v.(*chatTurn); ok && turn != nil && turn.cancel != nil {
 			turn.cancel()
+			if turn.ended != nil {
+				turnsEnded = append(turnsEnded, turn.ended)
+			}
 		}
 		return true
 	})
@@ -1528,6 +1535,9 @@ func (e *Engine) Shutdown() {
 		e.scheduleWG.Wait()
 		e.loopWG.Wait()
 		e.teardownWG.Wait()
+		for _, ended := range turnsEnded {
+			<-ended
+		}
 		close(done)
 	}()
 	select {
@@ -2310,8 +2320,12 @@ func (e *Engine) setWorkspaceState(id string, state domain.WorkspaceState, phase
 		case domain.StateStopped, domain.StateFailed:
 			l.Last = string(state)
 			l.ElapsedLabel = string(state)
-			// Leaving "needs you" — a terminal loop is no longer waiting on the human.
-			if l.Group == domain.GroupNeeds {
+			// Leaving "needs you" — a terminal loop is no longer waiting on the human,
+			// unless it failed retryably and the human must clear it and Retry (D56).
+			// Same update as State so nobody observes failed-but-not-needs.
+			if state == domain.StateFailed && l.Retryable {
+				l.Group = domain.GroupNeeds
+			} else if l.Group == domain.GroupNeeds {
 				l.Group = domain.GroupActive
 			}
 			// A stopped loop is done by the human's choice — drop its resume position. A

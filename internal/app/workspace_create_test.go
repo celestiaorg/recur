@@ -57,6 +57,7 @@ func TestCreateSoloWorkspace(t *testing.T) {
 	if len(list) < 2 || list[0].ID != newer.ID {
 		t.Fatalf("ListWorkspaces newest-first: first=%q, want %q", list[0].ID, newer.ID)
 	}
+	waitWorkspaceReady(t, eng, newer.ID)
 
 	// Its Observatory is writable via the shared CodeService (workspace id in the
 	// scope slot) — the bare project checkout is not.

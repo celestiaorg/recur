@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsevents"
-
 	gitpkg "recur/internal/git"
 )
 
@@ -23,9 +21,8 @@ import (
 // debounced SHALLOW re-list of what's on screen (expanded dirs, changed files,
 // git status) — the VS Code model — never a full-tree rebuild per event.
 //
-// Fast path: FSEvents directly (github.com/fsnotify/fsevents — Recur is
-// macOS-only): ONE recursive kernel stream per worktree root (not kqueue's
-// fd-per-directory), with kernel-side coalescing via the stream's Latency, and
+// Fast path on macOS: FSEvents directly (fswatch_darwin.go): ONE recursive
+// kernel stream per worktree root (not kqueue's fd-per-directory), with kernel-side coalescing via the stream's Latency, and
 // the MustScanSubDirs flag honored as a forced refresh when the kernel dropped
 // events. NoDefer delivers the first event after idle immediately (interactive
 // explorer) and still coalesces bursts into one batch per Latency window. The
@@ -38,12 +35,20 @@ import (
 // changes (commits, branch switches) — and doubles as the worktree-deleted
 // detector (Stat). Non-git working copies skip the fingerprint entirely;
 // FSEvents is their only refresh signal. Stream-start failure is logged and
-// degrades to that backstop (a nil channel never receives).
+// degrades to that backstop (a nil channel never receives). Other platforms use
+// fsnotify (fswatch_fsnotify.go) behind the same startFSWatch contract.
 
-// fsEventLatency is the FSEvents kernel-side coalescing window: bursts (an agent
-// writing many files, npm install) arrive as one batch per window. Isolated
-// events after idle skip this wait because the stream sets NoDefer.
+// fsEventLatency is the coalescing window: bursts (an agent writing many files,
+// npm install) arrive as one batch per window. Isolated events after idle skip
+// this wait (FSEvents NoDefer; the fsnotify batcher flushes the first event).
 var fsEventLatency = 400 * time.Millisecond
+
+// fsEvent is one watcher notification: an absolute, symlink-resolved path, or
+// Rescan when the platform dropped events and the whole tree must be re-listed.
+type fsEvent struct {
+	Path   string
+	Rescan bool
+}
 
 // fsPollBackstop is the slow fingerprint-poll cadence. Vars so tests can shrink.
 var fsPollBackstop = 7 * time.Second
@@ -106,21 +111,12 @@ func (e *Engine) watchLoop(ctx context.Context, id, worktree string) {
 	}
 	ignoreRoot := watchRoot
 
-	es := &fsevents.EventStream{
-		Paths:   []string{watchRoot},
-		Latency: fsEventLatency,
-		Flags:   fsevents.FileEvents | fsevents.WatchRoot | fsevents.NoDefer,
-	}
-	if dev, err := fsevents.DeviceForPath(watchRoot); err == nil {
-		es.Device = dev
-	}
-	var batches chan []fsevents.Event
-	if err := es.Start(); err != nil {
-		log.Printf("recur: FSEvents watch on %s failed (%v) — falling back to %s fingerprint poll",
+	batches, stopWatch, err := startFSWatch(watchRoot)
+	if err != nil {
+		log.Printf("recur: fs watch on %s failed (%v) — falling back to %s fingerprint poll",
 			watchRoot, err, fsPollBackstop)
 	} else {
-		batches = es.Events
-		defer es.Stop()
+		defer stopWatch()
 	}
 	// Classify once: a sticky IsRepo avoids flapping the fingerprint through the
 	// "nogit" sentinel on a transient `git status` failure (timeout / spawn blip),
@@ -160,9 +156,9 @@ func (e *Engine) watchLoop(ctx context.Context, id, worktree string) {
 			var rels []string
 			seen := map[string]bool{}
 			for _, ev := range batch {
-				p := fsPath(ev.Path)
+				p := ev.Path
 				switch {
-				case ev.Flags&fsevents.MustScanSubDirs != 0:
+				case ev.Rescan:
 					// The kernel DROPPED events for this subtree — a churny checkout
 					// or rebase is exactly when that happens, so the .git/HEAD rewrite
 					// may be among the dropped events. Sync the branch too, not just
@@ -219,14 +215,6 @@ func (e *Engine) watchLoop(ctx context.Context, id, worktree string) {
 			baselined = true
 		}
 	}
-}
-
-// fsPath normalizes an FSEvents path (delivered without the leading slash).
-func fsPath(p string) string {
-	if !strings.HasPrefix(p, "/") {
-		return "/" + p
-	}
-	return p
 }
 
 // fsIgnored filters watch-stream noise: everything under .git (also breaks the

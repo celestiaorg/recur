@@ -10,7 +10,7 @@ description: >-
 # Recur help
 
 Recur's user docs are in `references/` next to this file (the same pages as
-docs.recur.build). Read the page that matches the question before answering.
+recur.build/docs). Read the page that matches the question before answering.
 Do not answer Recur questions from memory: Recur is new, and models have no
 training data on it.
 

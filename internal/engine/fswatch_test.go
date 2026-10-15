@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/fsnotify/fsevents"
 )
 
 // TestWatchWorkspaceFiresOnDiskChange covers the active-worktree watcher: after
@@ -103,27 +101,18 @@ func skipUnlessFSEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	es := &fsevents.EventStream{
-		Paths:   []string{dir},
-		Latency: 20 * time.Millisecond,
-		Flags:   fsevents.FileEvents | fsevents.WatchRoot | fsevents.NoDefer,
+	events, stop, err := startFSWatch(dir)
+	if err != nil {
+		t.Skipf("startFSWatch: %v", err)
 	}
-	if dev, err := fsevents.DeviceForPath(dir); err == nil {
-		es.Device = dev
-	}
-	if err := es.Start(); err != nil {
-		t.Skipf("FSEvents Start: %v", err)
-	}
+	defer stop()
 	if err := os.WriteFile(filepath.Join(dir, "probe.txt"), []byte("x"), 0o644); err != nil {
-		es.Stop()
 		t.Fatal(err)
 	}
 	select {
-	case <-es.Events:
-		es.Stop()
+	case <-events:
 	case <-time.After(2 * time.Second):
-		es.Stop()
-		t.Skip("FSEvents not delivering in this environment")
+		t.Skip("fs watch not delivering in this environment")
 	}
 }
 
@@ -205,28 +194,106 @@ func TestFSEventsStreamCreateLatency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	es := &fsevents.EventStream{
-		Paths:   []string{dir},
-		Latency: 400 * time.Millisecond,
-		Flags:   fsevents.FileEvents | fsevents.WatchRoot | fsevents.NoDefer,
+	events, stop, err := startFSWatch(dir)
+	if err != nil {
+		t.Skipf("startFSWatch: %v", err)
 	}
-	if dev, err := fsevents.DeviceForPath(dir); err == nil {
-		es.Device = dev
-	}
-	if err := es.Start(); err != nil {
-		t.Skipf("FSEvents Start: %v", err)
-	}
-	t.Cleanup(es.Stop)
+	t.Cleanup(stop)
 
 	start := time.Now()
 	if err := os.WriteFile(filepath.Join(dir, "new.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	select {
-	case batch := <-es.Events:
+	case batch := <-events:
 		t.Logf("create delivered after %s (%d events)", time.Since(start).Round(time.Millisecond), len(batch))
 	case <-time.After(3 * time.Second):
-		t.Skip("FSEvents not delivering in this environment")
+		t.Skip("fs watch not delivering in this environment")
+	}
+}
+
+// TestFSWatchSeesFileInNewSubdir pins recursion on per-directory backends
+// (inotify): a directory created after arming must be watched too, and files
+// written into it before its watch is added must still be reported.
+func TestFSWatchSeesFileInNewSubdir(t *testing.T) {
+	skipUnlessFSEvents(t)
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	events, stop, err := startFSWatch(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(stop)
+
+	sub := filepath.Join(dir, "a", "b")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(sub, "deep.txt")
+	if err := os.WriteFile(want, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.After(3 * time.Second)
+	for {
+		select {
+		case batch := <-events:
+			for _, ev := range batch {
+				if ev.Path == want {
+					return
+				}
+			}
+		case <-deadline:
+			t.Fatalf("no event for %s", want)
+		}
+	}
+}
+
+// TestFSWatchFollowsRenamedDir pins that a directory moved inside the root
+// keeps reporting under its new path, including its own direct children.
+func TestFSWatchFollowsRenamedDir(t *testing.T) {
+	skipUnlessFSEvents(t)
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "src", "old", "deep"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	events, stop, err := startFSWatch(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(stop)
+
+	newDir := filepath.Join(dir, "src", "new")
+	if err := os.Rename(filepath.Join(dir, "src", "old"), newDir); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond)
+	want := map[string]bool{
+		filepath.Join(newDir, "a.txt"):         false,
+		filepath.Join(newDir, "deep", "b.txt"): false,
+	}
+	for p := range want {
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deadline := time.After(3 * time.Second)
+	for missing := len(want); missing > 0; {
+		select {
+		case batch := <-events:
+			for _, ev := range batch {
+				if seen, ok := want[ev.Path]; ok && !seen {
+					want[ev.Path] = true
+					missing--
+				}
+			}
+		case <-deadline:
+			t.Fatalf("missing events: %v", want)
+		}
 	}
 }
 

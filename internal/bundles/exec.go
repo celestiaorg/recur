@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"recur/internal/domain"
 )
 
 // DefaultTimeout is the per-command wall-clock limit when the caller does not
@@ -63,26 +66,11 @@ func Run(ctx context.Context, cmd Command, rc RunContext) (RunResult, error) {
 	if !hasShebang(body) {
 		body = "#!/usr/bin/env bash\n" + body
 	}
-	f, err := os.CreateTemp("", "recur-cmd-*")
+	scriptPath, err := writeTempScript("recur-cmd-*", body)
 	if err != nil {
-		return RunResult{}, fmt.Errorf("temp script: %w", err)
-	}
-	scriptPath := f.Name()
-	cleanup := func() { _ = os.Remove(scriptPath) }
-	if _, err := f.WriteString(body); err != nil {
-		_ = f.Close()
-		cleanup()
 		return RunResult{}, err
 	}
-	if err := f.Close(); err != nil {
-		cleanup()
-		return RunResult{}, err
-	}
-	if err := os.Chmod(scriptPath, 0o700); err != nil {
-		cleanup()
-		return RunResult{}, err
-	}
-	defer cleanup()
+	defer func() { _ = os.Remove(scriptPath) }()
 
 	workDir := rc.WorkDir
 	if workDir == "" {
@@ -158,11 +146,31 @@ func hasShebang(body string) bool {
 	return len(body) >= 2 && body[0] == '#' && body[1] == '!'
 }
 
+// writeTempScript writes an executable temp script. ForkLock keeps concurrent
+// forks from inheriting the write fd, which makes exec fail with ETXTBSY on Linux.
+func writeTempScript(pattern, body string) (string, error) {
+	syscall.ForkLock.RLock()
+	defer syscall.ForkLock.RUnlock()
+	f, err := os.CreateTemp("", pattern)
+	if err != nil {
+		return "", fmt.Errorf("temp script: %w", err)
+	}
+	_, werr := f.WriteString(body)
+	cerr := f.Close()
+	if err := errors.Join(werr, cerr, os.Chmod(f.Name(), 0o700)); err != nil {
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
+}
+
 // PromptResult is the validated outcome of a shebang [[prompt]] action.
 type PromptResult struct {
 	Prompt  string `json:"prompt"`
 	Display string `json:"display"`
 	Skip    bool   `json:"skip,omitempty"`
+	// Issue, when set, links the workspace the prompt ran in to that issue.
+	Issue *domain.IssueRef `json:"issue,omitempty"`
 }
 
 // RunPromptShebang executes a shebang prompt action and parses stdout JSON
@@ -205,26 +213,11 @@ func RunPromptShebang(ctx context.Context, prompt PromptAction, rc PromptRunCont
 	if !hasShebang(body) {
 		body = "#!/usr/bin/env bash\n" + body
 	}
-	f, err := os.CreateTemp("", "recur-prompt-*")
+	scriptPath, err := writeTempScript("recur-prompt-*", body)
 	if err != nil {
-		return PromptResult{}, fmt.Errorf("temp script: %w", err)
-	}
-	scriptPath := f.Name()
-	cleanup := func() { _ = os.Remove(scriptPath) }
-	if _, err := f.WriteString(body); err != nil {
-		_ = f.Close()
-		cleanup()
 		return PromptResult{}, err
 	}
-	if err := f.Close(); err != nil {
-		cleanup()
-		return PromptResult{}, err
-	}
-	if err := os.Chmod(scriptPath, 0o700); err != nil {
-		cleanup()
-		return PromptResult{}, err
-	}
-	defer cleanup()
+	defer func() { _ = os.Remove(scriptPath) }()
 
 	workDir := rc.WorkDir
 	if workDir == "" {
@@ -275,9 +268,10 @@ func parsePromptResultJSON(stdout, fallbackName string) (PromptResult, error) {
 		return PromptResult{}, fmt.Errorf("prompt stdout empty (want JSON {\"prompt\",\"display\"})")
 	}
 	var parsed struct {
-		Prompt  string `json:"prompt"`
-		Display string `json:"display"`
-		Skip    bool   `json:"skip"`
+		Prompt  string           `json:"prompt"`
+		Display string           `json:"display"`
+		Skip    bool             `json:"skip"`
+		Issue   *domain.IssueRef `json:"issue"`
 	}
 	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
 		return PromptResult{}, fmt.Errorf("prompt stdout is not valid JSON: %w", err)
@@ -288,6 +282,7 @@ func parsePromptResultJSON(stdout, fallbackName string) (PromptResult, error) {
 		Prompt:  strings.TrimSpace(parsed.Prompt),
 		Display: NormalizePromptDisplay(parsed.Display, fallbackName),
 		Skip:    parsed.Skip,
+		Issue:   parsed.Issue,
 	}, nil
 }
 
@@ -335,26 +330,11 @@ func RunPromptCompleteShebang(ctx context.Context, prompt PromptAction, rc Promp
 	if !hasShebang(body) {
 		body = "#!/usr/bin/env bash\n" + body
 	}
-	f, err := os.CreateTemp("", "recur-prompt-complete-*")
+	scriptPath, err := writeTempScript("recur-prompt-complete-*", body)
 	if err != nil {
-		return PromptCompleteResult{}, fmt.Errorf("temp script: %w", err)
-	}
-	scriptPath := f.Name()
-	cleanup := func() { _ = os.Remove(scriptPath) }
-	if _, err := f.WriteString(body); err != nil {
-		_ = f.Close()
-		cleanup()
 		return PromptCompleteResult{}, err
 	}
-	if err := f.Close(); err != nil {
-		cleanup()
-		return PromptCompleteResult{}, err
-	}
-	if err := os.Chmod(scriptPath, 0o700); err != nil {
-		cleanup()
-		return PromptCompleteResult{}, err
-	}
-	defer cleanup()
+	defer func() { _ = os.Remove(scriptPath) }()
 
 	workDir := rc.WorkDir
 	if workDir == "" {

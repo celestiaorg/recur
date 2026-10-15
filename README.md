@@ -2,7 +2,7 @@
 
 Recur is a desktop app for running coding agents on your own repositories. Each task gets an isolated git worktree, an agent of your choice, and a place to read the diff, review the result, and merge it back.
 
-Recur is built with [Wails v3](https://v3.wails.io/) (Go backend) and Svelte 5 / TypeScript (frontend). It runs on macOS today.
+Recur is built with [Wails v3](https://v3.wails.io/) (Go backend) and Svelte 5 / TypeScript (frontend). It runs on macOS and Linux.
 
 ## What it does
 
@@ -96,13 +96,22 @@ The bundles under `bundles/` are the reference implementations. User bundles liv
 
 ## Installing
 
-Download `Recur-<version>-macos-arm64.zip` from [Releases](../../releases), unzip it, and move `Recur.app` to `/Applications`. Releases are not notarized yet, so macOS blocks the first launch. Clear the quarantine flag once per download:
+Download `Recur-<version>-macos-universal.dmg` from [Releases](../../releases), open it, and drag Recur to Applications. Releases are not notarized yet, so macOS blocks the first launch. Clear the quarantine flag once per download:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Recur.app
 ```
 
 Downloading with `gh release download` skips this step, since the GitHub CLI does not set the flag.
+
+On Linux (Ubuntu 24.04+ / Debian 13 / Fedora 40+), install the `.deb` or `.rpm` (`-linux-amd64` or `-linux-arm64`). It pulls in the GTK and WebKit runtime and puts `recur` on PATH and in the app menu:
+
+```bash
+sudo apt install ./Recur-<version>-linux-amd64.deb
+sudo dnf install ./Recur-<version>-linux-amd64.rpm
+```
+
+Elsewhere, install GTK 4 and WebKitGTK 6.0, then run `recur` from `Recur-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
 
 ## Command line
 
@@ -134,6 +143,8 @@ wails3 task build:cli    # build the standalone CLI to bin/recur-cli
 ```
 
 Set `RECUR_DEBUG=1` before `wails3 task package` to keep the web inspector and skip frontend minification.
+
+Linux builds need `libgtk-4-dev` and `libwebkitgtk-6.0-dev`. `wails3 task linux:package` writes `bin/recur-linux-<arch>.tar.gz`; on a Mac it builds in Docker, and `wails3 task linux:run` opens the Linux app in a browser-based desktop.
 
 ## Testing
 

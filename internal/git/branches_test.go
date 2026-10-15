@@ -257,6 +257,11 @@ func TestMergeCreatesLocalFromSelectedRemote(t *testing.T) {
 		t.Fatalf("Commit: %v", err)
 	}
 
+	// Merge commits as the user's own git identity; a fresh Linux runner has none.
+	t.Setenv("GIT_AUTHOR_NAME", "test")
+	t.Setenv("GIT_AUTHOR_EMAIL", "test@example.com")
+	t.Setenv("GIT_COMMITTER_NAME", "test")
+	t.Setenv("GIT_COMMITTER_EMAIL", "test@example.com")
 	if _, err := m.Merge(ctx, wt.Branch, "upstream/main", "merge up", "merge"); err != nil {
 		t.Fatalf("Merge onto upstream/main: %v", err)
 	}

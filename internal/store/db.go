@@ -296,6 +296,7 @@ type projectExtra struct {
 	Hidden               bool                       `json:"hidden,omitempty"`
 	PROnGitHub           bool                       `json:"prOnGithub"`
 	DeleteBranchOnRemove bool                       `json:"deleteBranchOnRemove,omitempty"`
+	LinearProjects       string                     `json:"linearProjects,omitempty"`
 	MergeMethod          domain.MergeMethod         `json:"mergeMethod,omitempty"`
 	UpdateBaseMethod     domain.UpdateBaseMethod    `json:"updateBaseMethod,omitempty"`
 	SquashCommitMessage  domain.SquashCommitMessage `json:"squashCommitMessage,omitempty"`
@@ -346,6 +347,7 @@ func (d *db) loadProjects() ([]domain.Project, error) {
 		}
 		p.Pic, p.Color, p.Open, p.Idle, p.Hidden = e.Pic, e.Color, e.Open, e.Idle, e.Hidden
 		p.PROnGitHub, p.DeleteBranchOnRemove = e.PROnGitHub, e.DeleteBranchOnRemove
+		p.LinearProjects = e.LinearProjects
 		p.MergeMethod, p.UpdateBaseMethod = e.MergeMethod, e.UpdateBaseMethod
 		p.SquashCommitMessage, p.MergeCommitMessage = e.SquashCommitMessage, e.MergeCommitMessage
 		p.PinnedRun = e.PinnedRun
@@ -910,7 +912,8 @@ func upsertProjectTx(x execer, p domain.Project, sort int) error {
 	extra, err := json.Marshal(domain.Project{
 		Pic: p.Pic, Color: p.Color, Open: p.Open, Idle: p.Idle, Hidden: p.Hidden,
 		PROnGitHub: p.PROnGitHub, DeleteBranchOnRemove: p.DeleteBranchOnRemove,
-		MergeMethod: p.MergeMethod, UpdateBaseMethod: p.UpdateBaseMethod,
+		LinearProjects: p.LinearProjects,
+		MergeMethod:    p.MergeMethod, UpdateBaseMethod: p.UpdateBaseMethod,
 		SquashCommitMessage: p.SquashCommitMessage, MergeCommitMessage: p.MergeCommitMessage,
 		PinnedRun:      p.PinnedRun,
 		DisabledSkills: p.DisabledSkills, EnabledSkills: p.EnabledSkills,

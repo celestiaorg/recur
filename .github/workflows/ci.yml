@@ -5,7 +5,8 @@ name: CI
 #
 # Go jobs run on macos-26: the app is cgo + WebKit, and `wails3 generate icons`
 # compiles build/appicon.icon with actool, which needs Xcode 26+. Jobs that
-# only need Node or the pure-Go CLI run on Linux.
+# only need Node or the pure-Go CLI run on Linux. The *-linux jobs build the
+# Linux app (GTK4 + WebKitGTK 6.0, Ubuntu 24.04+).
 on:
   push:
     branches: [main]
@@ -17,27 +18,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  go-test:
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
-      - run: wails3 task test:go
-
-  go-race:
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
-      - run: wails3 task test:go:race
-
-  go-lint:
+  go-mac:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
@@ -47,12 +28,28 @@ jobs:
           wails: "true"
       - run: wails3 task lint:go
       - run: wails3 task check:vulns
+      - run: wails3 task test:go
+
+  # Race detector on Linux: the slowest job, on the cheapest runner. Covers the
+  # shared engine and the Linux-only paths; darwin-only code (FSEvents, cgo
+  # titlebar) is not raced.
+  go-race:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libxml2-utils
+      - uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+      - run: wails3 task test:go:race
 
   bundles:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
+      - run: sudo apt-get update && sudo apt-get install -y libxml2-utils
       - run: go build -o bin/recur-cli ./cmd/recur
       - run: bin/recur-cli bundles lint ./bundles
       - run: bin/recur-cli bundles test ./bundles
@@ -74,8 +71,10 @@ jobs:
   # Playwright drives the real Svelte UI in headless Chromium against a mocked
   # Wails bridge (frontend/e2e/helpers/mock-bridge.ts) seeded from the committed
   # fixture, so it needs no Go backend, no `claude`, and no native window.
+  # macOS because the specs assume ⌘ chords, CodeMirror's mac keymap, and mac
+  # native editing (Meta+A); Linux Chromium sends Ctrl for ControlOrMeta.
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: macos-26
     defaults:
       run:
         working-directory: frontend
@@ -95,31 +94,70 @@ jobs:
           path: frontend/playwright-report
           retention-days: 14
 
-  # Ad-hoc signed arm64 Recur.app. Also fails if the build regenerates
+  # Ad-hoc signed arm64 Recur.app in a DMG. Also fails if the build regenerates
   # committed Wails bindings or go.mod/go.sum (someone forgot to commit them).
-  package:
+  package-mac:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         with:
           wails: "true"
-      - run: wails3 task package
+      - run: wails3 task darwin:package:dmg
       - name: Committed bindings and go.mod are current
         run: |
           drift=$(git status --porcelain -- frontend/bindings go.mod go.sum)
           if [ -n "$drift" ]; then echo "$drift"; git diff -- frontend/bindings go.mod go.sum; exit 1; fi
-      - run: ditto -c -k --keepParent bin/Recur.app bin/Recur-macos-arm64.zip
+      - run: mv bin/Recur.dmg bin/Recur-macos-arm64.dmg
       - uses: actions/upload-artifact@v7
         with:
           name: Recur-macos-arm64
-          path: bin/Recur-macos-arm64.zip
+          path: bin/Recur-macos-arm64.dmg
+          retention-days: 14
+
+  # Lint and test the Linux build: the fsnotify watcher and other non-darwin
+  # code only compile here.
+  go-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libxml2-utils
+      - uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+      - run: wails3 task lint:go
+      - run: wails3 task test:go
+
+  # bin/recur-linux-amd64.tar.gz: recur + recur-cli + icon.
+  package-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+      - uses: ./.github/actions/setup
+        with:
+          wails: "true"
+      - run: wails3 task linux:package
+      - name: Install the .deb
+        run: |
+          sudo apt-get install -y ./bin/recur-linux-amd64.deb desktop-file-utils
+          test "$(readlink -f /usr/bin/recur)" = /opt/recur/recur-cli
+          recur --version
+          desktop-file-validate /usr/share/applications/org.wails.recur.desktop
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Recur-linux-amd64
+          path: |
+            bin/recur-linux-amd64.tar.gz
+            bin/recur-linux-amd64.deb
+            bin/recur-linux-amd64.rpm
           retention-days: 14
 
   ci-success:
     name: CI success
     if: always()
-    needs: [go-test, go-race, go-lint, bundles, frontend, e2e, package]
+    needs: [go-mac, go-race, bundles, frontend, e2e, package-mac, go-linux, package-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any required job failed or was cancelled

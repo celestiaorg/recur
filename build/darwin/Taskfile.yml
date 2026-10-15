@@ -9,11 +9,21 @@ vars:
   # KEYCHAIN_PROFILE: "my-notarize-profile"
   # ENTITLEMENTS: "build/darwin/entitlements.plist"
 
+  # Local builds are ad-hoc signed, so macOS forgets folder permissions on every
+  # rebuild. Set RECUR_SIGN_IDENTITY to a code-signing cert name (a self-signed
+  # one from Keychain Access works) to keep them across builds.
+  LOCAL_SIGN_IDENTITY: '{{.RECUR_SIGN_IDENTITY | default "-"}}'
+
   # Docker image for cross-compilation (used when building on non-macOS)
   CROSS_IMAGE: wails-cross
 
   # Packaged bundle is Recur.app; the executable inside stays APP_NAME (recur).
   APP_BUNDLE_NAME: Recur
+
+  # dmg-background.tiff holds 1x and 2x renders of dmg-background.svg:
+  #   rsvg-convert -w 540 / -w 1080 | magick - -attenuate 0.7 +noise Uniform -strip
+  #   (dithers the glow's banding), then tiffutil -cathidpicheck 1x.png 2x.png
+  DMG_BACKGROUND: build/darwin/dmg-background.tiff
 
   # Wails compiles the WebKit inspector out of production. Opt in at package
   # time: RECUR_DEBUG=1 wails3 task package  (View → Open Developer Tools / ⌥⌘I).
@@ -54,7 +64,7 @@ tasks:
     cmds:
       - go build {{.BUILD_FLAGS}} -o "{{.OUTPUT}}"
     vars:
-      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EFFECTIVE_EXTRA_TAGS}}-tags {{.EFFECTIVE_EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EFFECTIVE_EXTRA_TAGS}},{{.EFFECTIVE_EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s"{{end}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EFFECTIVE_EXTRA_TAGS}}-tags {{.EFFECTIVE_EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EFFECTIVE_EXTRA_TAGS}},{{.EFFECTIVE_EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s {{.APP_LDFLAGS}}"{{end}}'
       DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
     env:
@@ -112,7 +122,8 @@ tasks:
 
   build:universal:
     summary: Builds darwin universal binary (arm64 + amd64)
-    deps:
+    # Sequential: parallel builds race on frontend/dist and the bindings.
+    cmds:
       - task: build
         vars:
           ARCH: amd64
@@ -121,7 +132,6 @@ tasks:
         vars:
           ARCH: arm64
           OUTPUT: "{{.BIN_DIR}}/{{.APP_NAME}}-arm64"
-    cmds:
       - task: '{{if eq OS "darwin"}}build:universal:lipo:native{{else}}build:universal:lipo:go{{end}}'
 
   build:universal:lipo:native:
@@ -154,6 +164,21 @@ tasks:
         vars:
           UNIVERSAL: "true"
 
+
+  package:dmg:
+    summary: Packages the application into a styled `.dmg`
+    deps:
+      - task: package
+    cmds:
+      - task: create:dmg
+
+  create:dmg:
+    summary: Creates a `.dmg` from the `.app` bundle (Recur.app + Applications link)
+    platforms: [darwin]
+    cmds:
+      - >-
+        wails3 tool package --format dmg --name "{{.APP_BUNDLE_NAME}}" --out "{{.BIN_DIR}}"
+        --background "{{.DMG_BACKGROUND}}" --volume-icon build/darwin/icons.icns
 
   create:app:bundle:
     summary: Creates an `.app` bundle
@@ -233,9 +258,9 @@ tasks:
       - |
         CLI="{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app/Contents/MacOS/recur-cli"
         if [ -f "$CLI" ]; then
-          codesign --force --sign - "$CLI"
+          codesign --force --sign "{{.LOCAL_SIGN_IDENTITY}}" "$CLI"
         fi
-      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app"
+      - codesign --force --deep --sign "{{.LOCAL_SIGN_IDENTITY}}" "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app"
 
   codesign:skip:
     summary: Skips codesigning when cross-compiling
@@ -263,9 +288,9 @@ tasks:
       - |
         CLI="{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/recur-cli"
         if [ -f "$CLI" ]; then
-          codesign --force --sign - "$CLI"
+          codesign --force --sign "{{.LOCAL_SIGN_IDENTITY}}" "$CLI"
         fi
-      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
+      - codesign --force --deep --sign "{{.LOCAL_SIGN_IDENTITY}}" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
       - '"{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}"'
 
   sign:
@@ -274,7 +299,7 @@ tasks:
       Signs the .app bundle for distribution.
       Configure SIGN_IDENTITY in the vars section at the top of this file.
     deps:
-      - task: package
+      - task: 'package{{if eq .UNIVERSAL "true"}}:universal{{end}}'
     cmds:
       - task: sign:cli
       - wails3 tool sign --input "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app" --identity "{{.SIGN_IDENTITY}}" {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}}
@@ -301,7 +326,7 @@ tasks:
       Setup (one-time):
         wails3 signing credentials --apple-id "you@email.com" --team-id "TEAMID" --password "app-specific-password" --profile "my-profile"
     deps:
-      - task: package
+      - task: 'package{{if eq .UNIVERSAL "true"}}:universal{{end}}'
     cmds:
       - task: sign:cli
       - wails3 tool sign --input "{{.BIN_DIR}}/{{.APP_BUNDLE_NAME}}.app" --identity "{{.SIGN_IDENTITY}}" {{if .ENTITLEMENTS}}--entitlements {{.ENTITLEMENTS}}{{end}} --notarize --keychain-profile {{.KEYCHAIN_PROFILE}}

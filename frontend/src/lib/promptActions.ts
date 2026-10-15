@@ -431,5 +431,6 @@ export async function runPromptAction(
     prompt: res.prompt ?? '',
     display: normalizePromptDisplay(res.display ?? '', info.name),
     freshSession: res.freshSession ?? undefined,
+    issue: res.issue ?? undefined,
   }
 }

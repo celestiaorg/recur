@@ -85,6 +85,8 @@ describe('isBinaryImagePath', () => {
     expect(isBinaryImagePath('assets/icon.png')).toBe(true)
     expect(isBinaryImagePath('photo.JPEG')).toBe(true)
     expect(isBinaryImagePath('scratch://artifact-1.webp')).toBe(true)
+    expect(isBinaryImagePath('scan.TIF')).toBe(true)
+    expect(isBinaryImagePath('scan.tiff')).toBe(true)
     expect(isBinaryImagePath('logo.svg')).toBe(false)
     expect(isBinaryImagePath('src/main.go')).toBe(false)
     expect(isBinaryImagePath('docs/guide.pdf')).toBe(false)

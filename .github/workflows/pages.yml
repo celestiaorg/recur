@@ -1,0 +1,62 @@
+name: Pages
+
+# Publishes the splash page (src-web) at the Pages root with the docs
+# (src-docs) under /docs. The site URL comes from the repo's Pages settings.
+on:
+  push:
+    branches: [main]
+    paths: ["src-web/**", "src-docs/**", "frontend/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          go: "false"
+
+      - id: pages
+        uses: actions/configure-pages@v6
+
+      # simplify: the splash and its demo use root-absolute asset paths, so the
+      # site needs a custom domain or private Pages. A project path like
+      # /recur would need a Vite base on src-web and frontend/showcase.
+      - name: Require a root-hosted site
+        if: steps.pages.outputs.base_path != ''
+        run: |
+          echo "::error::Pages serves at ${{ steps.pages.outputs.base_url }}; set a custom domain or private visibility"
+          exit 1
+
+      - run: pnpm --dir src-web install --frozen-lockfile
+      - run: pnpm --dir src-web run build
+        env:
+          VITE_DOWNLOADS_URL: ${{ vars.DOWNLOADS_URL }}
+      - run: pnpm --dir src-docs install --frozen-lockfile
+      - run: pnpm --dir src-docs run build
+        env:
+          DOCS_URL: ${{ steps.pages.outputs.base_url }}/docs
+      - run: cp -R src-docs/dist/public src-web/dist/docs
+      # simplify: vocs (through 2.10.3) fetches page markdown from /assets/md
+      # without its basePath, so View as Markdown and Copy page for AI need a
+      # root copy. Drop this once vocs prefixes basePath in getMarkdownAssetPath.
+      - run: mkdir -p src-web/dist/assets && cp -R src-docs/dist/public/assets/md src-web/dist/assets/
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: src-web/dist
+      - id: deployment
+        uses: actions/deploy-pages@v5

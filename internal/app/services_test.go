@@ -544,6 +544,7 @@ func TestStartWorkspaceServiceEndToEnd(t *testing.T) {
 		},
 	})
 	eng.SetWorktreeRoot(filepath.Join(dataDir, "worktrees"))
+	t.Cleanup(eng.Shutdown)
 
 	repo := initGitRepo(t)
 	saved := svcAddProject(t, eng, repo)

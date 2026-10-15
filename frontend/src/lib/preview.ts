@@ -44,14 +44,18 @@ export function svgDataUrl(src: string): string {
 
 /**
  * CSP for HTML Preview srcdoc (D-html-preview-scripts).
- * Blocks subresource/fetch network (remote scripts, XHR/fetch, workers, frames).
- * Does not block iframe self-navigation (`location` / meta-refresh) — accepted residual risk.
- * Combined with iframe sandbox="allow-scripts" (no allow-same-origin).
+ * Opens https:/wss: so CDN libraries and public APIs work, like claude.ai artifacts or CodePen.
+ * The app's own origin (wails:// on macOS/Linux, http://wails.localhost on Windows) and
+ * Recur's http://localhost servers stay unreachable to fetch/subresources because only
+ * https:/wss:/data:/blob: are listed.
+ * Does not block iframe self-navigation (`location` / meta-refresh), accepted residual risk.
+ * Combined with iframe sandbox="allow-scripts allow-forms" (no allow-same-origin),
+ * so the page gets an opaque origin and cannot touch the parent DOM or its storage.
  */
 export const HTML_PREVIEW_CSP =
-  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; " +
-  "img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; " +
-  "form-action 'none'; base-uri 'none'; frame-src 'none'; object-src 'none'; worker-src 'none'"
+  "default-src https: data: blob:; script-src https: data: blob: 'unsafe-inline' 'unsafe-eval'; " +
+  "style-src https: data: blob: 'unsafe-inline'; connect-src https: wss: data: blob:; " +
+  "form-action 'none'; base-uri 'none'; object-src 'none'"
 
 const CSP_META = `<meta http-equiv="Content-Security-Policy" content="${HTML_PREVIEW_CSP}">`
 
@@ -65,6 +69,16 @@ export const PREVIEW_IFRAME_FIND_KEY = 'recur-preview-find-key'
 const HTML_PREVIEW_FIND_STYLE =
   '<style>::highlight(preview-find){background-color:#e6cc7788}' +
   '::highlight(preview-find-current){background-color:#e6a817;color:#111}</style>'
+
+// simplify: opaque origins throw on localStorage/sessionStorage, so pages get in-memory
+// stand-ins that reset on every reload. Persist per file via postMessage if anyone needs it.
+export const HTML_PREVIEW_STORAGE_SHIM =
+  `try{localStorage}catch(_){(function(){var mk=function(){var d=new Map();return{get length(){return d.size},` +
+  `key:function(i){var k=Array.from(d.keys())[i];return k===undefined?null:k},` +
+  `getItem:function(k){k=String(k);return d.has(k)?d.get(k):null},setItem:function(k,v){d.set(String(k),String(v))},` +
+  `removeItem:function(k){d.delete(String(k))},clear:function(){d.clear()}}};` +
+  `Object.defineProperty(window,'localStorage',{value:mk(),configurable:true});` +
+  `Object.defineProperty(window,'sessionStorage',{value:mk(),configurable:true})})()}`
 
 export const HTML_PREVIEW_SCROLL_SCRIPT =
   `(function(){var T='${PREVIEW_IFRAME_SCROLL}',R='${PREVIEW_IFRAME_RESTORE}',` +
@@ -121,5 +135,5 @@ export const HTML_PREVIEW_SCROLL_SCRIPT =
  */
 export function htmlPreviewSrcdoc(html: string): string {
   const src = html ?? ''
-  return `<!DOCTYPE html><html><head>${CSP_META}${HTML_PREVIEW_FIND_STYLE}<script>${HTML_PREVIEW_SCROLL_SCRIPT}</script></head><body>${src}</body></html>`
+  return `<!DOCTYPE html><html><head>${CSP_META}${HTML_PREVIEW_FIND_STYLE}<script>${HTML_PREVIEW_STORAGE_SHIM}${HTML_PREVIEW_SCROLL_SCRIPT}</script></head><body>${src}</body></html>`
 }

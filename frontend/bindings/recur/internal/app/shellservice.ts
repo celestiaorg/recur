@@ -39,13 +39,23 @@ export function GetExpandedSchedules(): $CancellablePromise<string[]> {
 }
 
 /**
+ * GetIssuesView returns the saved Issues view, or a zero value when none
+ * exists or the file is corrupt.
+ */
+export function GetIssuesView(): $CancellablePromise<$models.IssuesView> {
+    return $Call.ByID(2708200642).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
  * GetShellState returns the last persisted shell, or a zero value when none
  * exists (first run / corrupt file). The frontend treats an empty View as
  * "stay on the default Inbox" unless first-run routing sends Welcome.
  */
 export function GetShellState(): $CancellablePromise<$models.ShellState> {
     return $Call.ByID(2642875780).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -54,6 +64,13 @@ export function GetShellState(): $CancellablePromise<$models.ShellState> {
  */
 export function SetExpandedSchedules(ids: string[]): $CancellablePromise<void> {
     return $Call.ByID(246865068, ids);
+}
+
+/**
+ * SetIssuesView records the Issues view next to shell.json.
+ */
+export function SetIssuesView(v: $models.IssuesView): $CancellablePromise<void> {
+    return $Call.ByID(2907698150, v);
 }
 
 /**
@@ -67,4 +84,5 @@ export function SetShellState(st: $models.ShellState): $CancellablePromise<void>
 
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
-const $$createType1 = $models.ShellState.createFrom;
+const $$createType1 = $models.IssuesView.createFrom;
+const $$createType2 = $models.ShellState.createFrom;

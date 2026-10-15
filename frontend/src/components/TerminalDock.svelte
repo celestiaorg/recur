@@ -20,7 +20,9 @@
   import ResizeHandle from './ResizeHandle.svelte'
   import { call, callOk, bridgeErrorMessage } from '../lib/api'
   import { TabStripDrag } from '../lib/tab-strip-drag.svelte'
+  import { System } from '@wailsio/runtime'
   import { isCmdOrCtrl, isLetterKey } from '../lib/shortcut'
+  import { copyText, readText } from '../lib/clipboard'
   import { PREVIEW_FIND_CAP, previewFindCountLabel } from '../lib/preview-find'
   import {
     setTerminalDockOpen, terminalDockMaximizedBy, setTerminalDockMaximized,
@@ -358,6 +360,12 @@
   // they'd steal the bindings from the rest of the app. Capture phase so we run
   // before xterm's own capture listener, which would otherwise swallow the ⌃
   // variants (⌘ combos are already declined by TerminalPane).
+  //
+  // Off macOS there is only Ctrl, and the shell owns the bare chords (Ctrl+T
+  // transpose, Ctrl+W delete-word, Ctrl+F forward, Ctrl+C interrupt), so the
+  // dock follows the terminal-emulator convention instead: Ctrl+Shift+T / W /
+  // F, Ctrl+Shift+G / H for find next / previous, and Ctrl+Shift+C / V for
+  // copy and paste (GNOME Terminal, Konsole, VS Code).
   function selectTab(id: string) {
     activeId = id
     panes[id]?.focus()
@@ -450,16 +458,38 @@
       closeFind()
       return
     }
-    if (mod && !e.altKey && !e.shiftKey && isLetterKey(e, 'f')) {
+    // The dock's letter chords: ⌘-letter on macOS, Ctrl+Shift+letter elsewhere.
+    const mac = System.IsMac()
+    const dockChord = mod && !e.altKey && (mac ? !e.shiftKey : e.shiftKey)
+    if (dockChord && isLetterKey(e, 'f')) {
       e.preventDefault()
       e.stopPropagation()
       void openFind()
       return
     }
-    if (findOpen && mod && !e.altKey && isLetterKey(e, 'g')) {
+    if (findOpen && mod && !e.altKey) {
+      // ⌘G / ⇧⌘G on macOS; Ctrl+Shift+G / Ctrl+Shift+H elsewhere.
+      const dir = mac
+        ? (isLetterKey(e, 'g') ? (e.shiftKey ? -1 : 1) : 0)
+        : (e.shiftKey && isLetterKey(e, 'g') ? 1 : e.shiftKey && isLetterKey(e, 'h') ? -1 : 0)
+      if (dir) {
+        e.preventDefault()
+        e.stopPropagation()
+        stepFind(dir)
+        return
+      }
+    }
+    if (!mac && dockChord && !inFind && isLetterKey(e, 'c')) {
       e.preventDefault()
       e.stopPropagation()
-      stepFind(e.shiftKey ? -1 : 1)
+      const sel = panes[activeId]?.getSelection()
+      if (sel) void copyText(sel)
+      return
+    }
+    if (!mac && dockChord && !inFind && isLetterKey(e, 'v')) {
+      e.preventDefault()
+      e.stopPropagation()
+      void readText().then((text) => { if (text) panes[activeId]?.paste(text) })
       return
     }
     if (inFind && mod && e.altKey && !e.shiftKey && isLetterKey(e, 'c')) {
@@ -478,25 +508,24 @@
       return
     }
 
-    if (!mod || e.shiftKey) return
-    const key = e.key.toLowerCase()
+    if (!mod) return
 
     // ⌥⌘← / ⌥⌘→ — previous / next tab (wraps).
-    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    if (e.altKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       e.preventDefault()
       e.stopPropagation()
       rotateTab(e.key === 'ArrowLeft' ? -1 : 1)
       return
     }
-    if (e.altKey) return
+    if (!dockChord) return
 
-    if (key === 't') {
+    if (isLetterKey(e, 't')) {
       e.preventDefault()
       e.stopPropagation()
       void spawn()
       return
     }
-    if (key === 'w' && activeId) {
+    if (isLetterKey(e, 'w') && activeId) {
       e.preventDefault()
       e.stopPropagation()
       void closeTab(activeId)

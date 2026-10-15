@@ -7,10 +7,10 @@ import (
 )
 
 func TestEnsureBridgeShellEnvKeepsGoodShell(t *testing.T) {
-	env := []string{"PATH=/usr/bin", "SHELL=/bin/zsh"}
+	env := []string{"PATH=/usr/bin", "SHELL=/bin/sh"}
 	got := ensureBridgeShellEnv(env)
-	if envValue(got, "SHELL") != "/bin/zsh" {
-		t.Fatalf("SHELL=%q, want /bin/zsh", envValue(got, "SHELL"))
+	if envValue(got, "SHELL") != "/bin/sh" {
+		t.Fatalf("SHELL=%q, want /bin/sh", envValue(got, "SHELL"))
 	}
 }
 

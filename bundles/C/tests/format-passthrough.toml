@@ -1,18 +1,18 @@
 [[test]]
-name = "passes through when clang-format missing"
+name = "passes through canonical C when clang-format missing"
 command = "Clang-Format on Save"
 
 [test.context]
 input = '''
-int main(){return 0;}
+int main() { return 0; }
 '''
 selectedText = '''
-int main(){return 0;}
+int main() { return 0; }
 '''
 filename = "main.c"
 
 [test.expect]
 stdout = '''
-int main(){return 0;}
+int main() { return 0; }
 '''
 output = "replaceDocument"

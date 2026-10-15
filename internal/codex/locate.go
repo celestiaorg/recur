@@ -64,10 +64,12 @@ func Locate(configured string) (string, error) {
 			return p, nil
 		}
 	}
-	return "", fmt.Errorf(
-		"codex binary not found (looked in: %s) — install the Codex cask (`brew install --cask codex`) or set %s",
-		strings.Join(tried, ", "), EnvBinPath,
-	)
+	hint := "install a native codex binary from https://github.com/openai/codex/releases"
+	if runtime.GOOS == "darwin" {
+		hint = "install the Codex cask (`brew install --cask codex`)"
+	}
+	return "", fmt.Errorf("codex binary not found (looked in: %s) — %s or set %s",
+		strings.Join(tried, ", "), hint, EnvBinPath)
 }
 
 func resolveCandidate(p string) string {

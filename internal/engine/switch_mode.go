@@ -263,7 +263,7 @@ func (e *Engine) maybeContinueAfterModeSwitch(workspaceID, code string, turn *ch
 	if !ok {
 		return
 	}
-	if e.isShuttingDown() || turn.isStopped() {
+	if turn.isStopped() {
 		e.uncountModeRemount(workspaceID, code)
 		e.dropContinueGen(p.epoch)
 		return
@@ -274,7 +274,17 @@ func (e *Engine) maybeContinueAfterModeSwitch(workspaceID, code string, turn *ch
 		return
 	}
 	from, to, epoch := p.from, p.to, p.epoch
+	e.teardownMu.Lock()
+	if e.shuttingDown {
+		e.teardownMu.Unlock()
+		e.uncountModeRemount(workspaceID, code)
+		e.dropContinueGen(epoch)
+		return
+	}
+	e.teardownWG.Add(1)
+	e.teardownMu.Unlock()
 	go func() {
+		defer e.teardownWG.Done()
 		time.Sleep(50 * time.Millisecond)
 		e.resumeAfterModeSwitch(workspaceID, code, from, to, epoch)
 	}()
@@ -315,12 +325,12 @@ func (e *Engine) flagChatUnseen(workspaceID, code string, loopFinished bool) {
 	if e == nil || !isChatAttentionCode(code) || e.isChatFocused(workspaceID, code) {
 		return
 	}
+	e.chatUnseenMu.Lock()
+	defer e.chatUnseenMu.Unlock()
 	e.Store.UpdateAgent(workspaceID, code, func(a *domain.Agent) {
 		a.Unseen = true
 	})
 	kept := e.emitChatInbox(workspaceID, code, loopFinished)
-	e.chatUnseenMu.Lock()
-	defer e.chatUnseenMu.Unlock()
 	if e.isChatFocused(workspaceID, code) {
 		hadUnseen := false
 		if a, ok := e.Store.Agent(workspaceID, code); ok && a.Unseen {

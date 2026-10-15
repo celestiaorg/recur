@@ -206,6 +206,7 @@
                           class:ok={checks.kind === 'pass'}
                           class:fail={checks.kind === 'fail'}
                           class:pending={checks.kind === 'pending'}
+                          class:spin={checks.kind === 'pending'}
                           title={checks.kind === 'fail' ? 'Checks failing' : checks.kind === 'pending' ? 'Checks in progress' : 'Checks passing'}
                         >
                           <Icon name={checks.icon} strokeWidth={2.4} />

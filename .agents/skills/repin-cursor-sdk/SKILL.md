@@ -41,11 +41,11 @@ Re-pin progress:
    ```
 
 3. **Find minify anchors** in `$BRIDGE/node_modules/@cursor/sdk/dist/{cjs,esm}/*.js`.
-   Search for `getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===`.
-   Capture the full `return void 0===…?new …(…):new …(…)` site for **cjs** and **esm** (minifier names change between releases).
+   Search for `getAgentSkills:r.workspaceServices.getAgentSkills`.
+   Capture the options-object close through the `void 0===…?new …(…):new …(…)` executor construction for **cjs** and **esm** (minifier names change between releases). Up to 1.0.31 it is `…};return void 0===…`; from 1.0.37 it is `…,...i},u=void 0===…;` inside a `const` chain.
 
 4. **Update code**
-   - `sdkAttributionAnchors` in `internal/cursor/attribution.go` — both `old` needles and `neu` replacements (inject `attributionConfigProvider` on the options object before the `return`, same pattern as the existing entries).
+   - `sdkAttributionAnchors` in `internal/cursor/attribution.go`: both `old` needles and `neu` replacements (assign `attributionConfigProvider` on the options object before the executor is constructed: a statement before `return`, or a comma expression when the site is inside a `const` chain; copy the closest existing entry). Also check `sdkSummaryDeltaAnchors` and `steerRunMountOld`.
    - `pinnedSDKVersion` in `internal/cursor/install.go`.
    - The deliberate hardcode in `TestPinnedSDKVersionInPyPIURL` (`internal/cursor/install_test.go`).
    - Comments that name the old version (anchors, docs).

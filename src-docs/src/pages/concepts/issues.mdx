@@ -1,0 +1,43 @@
+---
+title: Issues
+description: Browse GitHub and Linear issues and start workspaces from them
+---
+
+# Issues
+
+Open **Issues** in the sidebar to see open issues from GitHub and Linear in one place:
+
+- issues assigned to you
+- unassigned issues in your projects' GitHub repositories
+- unassigned issues in your Linear teams
+
+GitHub issues come through the `gh` CLI, using the account you authenticated with `gh auth login`. Linear issues need an API key under **Settings → Integrations** (see [Integrations](/reference/integrations)).
+
+## The list
+
+Issues are grouped by status into **In progress**, **Todo**, and **Backlog**, with one section per status name, so Linear states like In Review get their own heading. Open GitHub issues sit under Todo.
+
+Choose **Mine**, **Unassigned**, or **All**. When both sources have issues, filter to **GitHub** or **Linear**. You can also filter by project and status group, and sort by recently updated, newest, oldest, priority, or title. Switch between a list and a board with the layout toggle. Recur keeps your filters and layout between sessions.
+
+Click an issue to open it in the browser. On macOS, Linear issues open in the Linear desktop app when it is installed.
+
+## Starting work
+
+**Create workspace** opens New Task, in the issue's project when it maps to one, with `/github` or `/linear` and the issue reference filled in. Starting the task links the workspace to the issue. If nobody is assigned yet, Recur assigns the issue to you.
+
+Linked issues show **View workspace** instead, so you can jump back to the work in progress.
+
+You can also start from the composer without opening the Issues view:
+
+- `/github` takes `#12`, `owner/repo#12`, or an issue URL. Pasting a GitHub issue URL into New Task expands it the same way.
+- `/linear` takes an issue ID like `ENG-123` or a Linear URL.
+
+Either way, the new workspace is linked to the issue.
+
+## Matching issues to projects
+
+GitHub issues match a project through its git remotes. Nothing needs configuring.
+
+Linear issues need a mapping. On a project's page, under **General → Issues**, list **Linear projects** as comma-separated Linear project names or team keys, such as `Mobile App, ENG`. A project name match wins over a team key. Issues without a match show under **Unlinked** in the project filter.
+
+When you create a workspace from a Linear issue in a different project than the one it maps to, New Task offers **Remember for** that project name or team key. Leave it on to route those issues to the chosen project from now on. Each key routes to one project, so saving it moves it off any other.

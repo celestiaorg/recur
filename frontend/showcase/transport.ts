@@ -8,7 +8,7 @@ const responses = fixtures.responses as Record<string, any>;
 const methods = fixtures.methods as Record<number, string>;
 export const { workspaceId, prId } = dataset;
 const files: Record<string, string> = structuredClone(dataset.files);
-const { diffs, transcript } = dataset;
+const { diffs, transcript, prReview } = dataset;
 const gitStatus = Object.fromEntries(
   diffs.map((diff) => [diff.path, diff.status]),
 );
@@ -54,7 +54,7 @@ const local: Record<string, (args: any[]) => unknown> = {
   ],
   ListScheduledPrompts: (a) =>
     dataset.schedules.filter((s) => !a[0] || s.projectId === a[0]),
-  AppChatItems: () => [],
+  AppChatItems: () => dataset.appChat,
   AppChatSelection: () => ({
     mode: "ask",
     model: "claude-code/claude-sonnet-4-6",
@@ -112,7 +112,11 @@ const local: Record<string, (args: any[]) => unknown> = {
   ListCommits: () => dataset.commits,
   CommitDiff: () => diffs,
   WorkspaceChatItems: (a) =>
-    a[0] === workspaceId && a[1] === "MA" ? dataset.loopTranscript : transcript,
+    a[0] === prReview.workspaceId
+      ? prReview.transcript
+      : a[0] === workspaceId && a[1] === "MA"
+        ? dataset.loopTranscript
+        : transcript,
   WorkspaceFacts: (a) =>
     a[0] === workspaceId
       ? dataset.facts.map((fact) => ({
@@ -122,12 +126,18 @@ const local: Record<string, (args: any[]) => unknown> = {
       : [],
   WorkspaceSessions: () => dataset.sessions,
   WorkspaceChatSelection: (a) => ({
-    mode: a[1] === "MA" ? "loop" : a[1] === "PA2" ? "review" : "agent",
+    mode:
+      a[1] === "MA"
+        ? "loop"
+        : a[1] === "PA2" || a[0] === prReview.workspaceId
+          ? "review"
+          : "agent",
     model: "claude-code/claude-sonnet-4-6",
     flags: {},
     simplify: true,
   }),
-  ListWorkspaceChats: () => dataset.tabs,
+  ListWorkspaceChats: (a) =>
+    a[0] === prReview.workspaceId ? prReview.tabs : dataset.tabs,
   WorkspaceChatTurnDiff: () => ({
     hash: "9a0e6c1",
     message: "Bound session refresh",
@@ -136,6 +146,8 @@ const local: Record<string, (args: any[]) => unknown> = {
   SyncGitHubPRs: () => responses.ListPRs,
   Outline: () => [{ name: "refreshSession", kind: "func", line: 13 }],
   ListFindings: () => dataset.findings,
+  ListAssignedIssues: () => dataset.issues,
+  GetIssuesView: () => null,
 };
 const emptyLists = new Set([
   "WorkspaceSessions",
@@ -153,7 +165,7 @@ const emptyLists = new Set([
   "StagedFiles",
 ]);
 const preferences =
-  /^(WatchWorkspace|MarkWorkspaceViewed|SetAppChatFocus|MarkAppChatSeen|SetShellState|UpdateEditorSession|ClearEditorSession|SetWorkspaceChatFocus|SetChatUIOccluded|MarkWorkspaceChatSeen|RememberWorkspaceChatSelection|RememberWorkspaceChatSimplify|RememberChatPromptGroup|RememberChatLoopPolicy|SetFileIndexExclude|MarkInboxRead|MarkAllInboxRead)$/;
+  /^(WatchWorkspace|MarkWorkspaceViewed|SetAppChatFocus|MarkAppChatSeen|SetShellState|UpdateEditorSession|ClearEditorSession|SetWorkspaceChatFocus|SetChatUIOccluded|MarkWorkspaceChatSeen|RememberWorkspaceChatSelection|RememberWorkspaceChatSimplify|RememberChatPromptGroup|RememberChatLoopPolicy|SetFileIndexExclude|MarkInboxRead|MarkAllInboxRead|SetIssuesView)$/;
 
 setTransport({
   async call(objectID, _method, _window, request: any) {

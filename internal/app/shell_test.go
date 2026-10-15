@@ -25,6 +25,11 @@ func TestClampShellState(t *testing.T) {
 		t.Fatalf("schedules should drop ids: %+v", got)
 	}
 
+	got = clampShellState(ShellState{View: "issues", WorkspaceID: "WS-1"})
+	if got != (ShellState{View: "issues"}) {
+		t.Fatalf("issues should drop ids: %+v", got)
+	}
+
 	got = clampShellState(ShellState{View: "briefing", WorkspaceID: "WS-1"})
 	if got != (ShellState{View: "briefing"}) {
 		t.Fatalf("briefing should drop ids: %+v", got)
@@ -221,5 +226,29 @@ func TestExpandedSchedulesCorrupt(t *testing.T) {
 	}
 	if got := (&ShellService{}).GetExpandedSchedules(); len(got) != 0 {
 		t.Fatalf("corrupt file should empty: %v", got)
+	}
+}
+
+func TestIssuesViewRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("RECUR_DATA_DIR", dir)
+	svc := &ShellService{}
+	if got := svc.GetIssuesView(); got.Layout != "" || got.Groups != nil {
+		t.Fatalf("empty data dir: %+v", got)
+	}
+	want := IssuesView{Layout: "board", Source: "linear", Owner: "mine", Groups: []string{"todo"}, Sort: "priority", Projects: []string{"p1"}}
+	if err := svc.SetIssuesView(want); err != nil {
+		t.Fatal(err)
+	}
+	got := (&ShellService{}).GetIssuesView()
+	if got.Layout != "board" || got.Source != "linear" || got.Owner != "mine" || got.Sort != "priority" ||
+		len(got.Groups) != 1 || got.Groups[0] != "todo" || len(got.Projects) != 1 || got.Projects[0] != "p1" {
+		t.Fatalf("reload: %+v", got)
+	}
+	if err := os.WriteFile(filepath.Join(dir, issuesViewFile), []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := svc.GetIssuesView(); got.Layout != "" {
+		t.Fatalf("corrupt file should zero: %+v", got)
 	}
 }

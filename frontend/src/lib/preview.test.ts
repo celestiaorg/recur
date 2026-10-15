@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, expect, it } from 'vitest'
-import { HTML_PREVIEW_CSP, HTML_PREVIEW_SCROLL_SCRIPT, PREVIEW_IFRAME_FIND, PREVIEW_IFRAME_FIND_KEY, PREVIEW_IFRAME_FIND_RESULT, PREVIEW_IFRAME_SCROLL, filePreviewFindActive, htmlPreviewSrcdoc, previewKindForPath } from './preview'
+import { HTML_PREVIEW_CSP, HTML_PREVIEW_SCROLL_SCRIPT, HTML_PREVIEW_STORAGE_SHIM, PREVIEW_IFRAME_FIND, PREVIEW_IFRAME_FIND_KEY, PREVIEW_IFRAME_FIND_RESULT, PREVIEW_IFRAME_SCROLL, filePreviewFindActive, htmlPreviewSrcdoc, previewKindForPath } from './preview'
 
 describe('previewKindForPath', () => {
   it('maps html and htm to html', () => {
@@ -26,15 +26,12 @@ describe('filePreviewFindActive', () => {
 })
 
 describe('HTML_PREVIEW_CSP', () => {
-  it('allows inline script/style and blocks subresource/fetch network hosts', () => {
-    expect(HTML_PREVIEW_CSP).toContain("script-src 'unsafe-inline'")
-    expect(HTML_PREVIEW_CSP).toContain("style-src 'unsafe-inline'")
-    expect(HTML_PREVIEW_CSP).toContain("connect-src 'none'")
-    expect(HTML_PREVIEW_CSP).toContain("default-src 'none'")
-    expect(HTML_PREVIEW_CSP).toContain("frame-src 'none'")
-    expect(HTML_PREVIEW_CSP).toContain("worker-src 'none'")
-    expect(HTML_PREVIEW_CSP).not.toContain('https:')
-    expect(HTML_PREVIEW_CSP).not.toContain('http:')
+  it('allows inline and https subresources but never the app origin or localhost http', () => {
+    expect(HTML_PREVIEW_CSP).toContain("script-src https: data: blob: 'unsafe-inline' 'unsafe-eval'")
+    expect(HTML_PREVIEW_CSP).toContain("style-src https: data: blob: 'unsafe-inline'")
+    expect(HTML_PREVIEW_CSP).toContain('connect-src https: wss: data: blob:')
+    expect(HTML_PREVIEW_CSP).toContain("form-action 'none'")
+    expect(HTML_PREVIEW_CSP).not.toMatch(/http:|ws:|wails|localhost|\*/)
   })
 })
 
@@ -42,7 +39,7 @@ describe('htmlPreviewSrcdoc', () => {
   const findStyle =
     '<style>::highlight(preview-find){background-color:#e6cc7788}' +
     '::highlight(preview-find-current){background-color:#e6a817;color:#111}</style>'
-  const shellPrefix = `<!DOCTYPE html><html><head><meta http-equiv="Content-Security-Policy" content="${HTML_PREVIEW_CSP}">${findStyle}<script>${HTML_PREVIEW_SCROLL_SCRIPT}</script></head><body>`
+  const shellPrefix = `<!DOCTYPE html><html><head><meta http-equiv="Content-Security-Policy" content="${HTML_PREVIEW_CSP}">${findStyle}<script>${HTML_PREVIEW_STORAGE_SHIM}${HTML_PREVIEW_SCROLL_SCRIPT}</script></head><body>`
   const shellSuffix = `</body></html>`
 
   it('always wraps content in a CSP-first document shell', () => {

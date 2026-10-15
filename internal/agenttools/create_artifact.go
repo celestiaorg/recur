@@ -23,9 +23,10 @@ func (createArtifactTool) Name() string { return "create_artifact" }
 func (createArtifactTool) Description() string {
 	return "Create a standalone analytical artifact (html, svg, mermaid, png, jpeg, csv, json, or " +
 		"md) stored under the workspace data dir. Prefer this over dumping large tables into chat " +
-		"markdown. HTML may include self-contained interactive JS; preview runs it in an opaque " +
-		"sandboxed iframe with a restrictive CSP (no parent access; no subresource/fetch network; " +
-		"self-navigation still possible). Returns the artifact id and path."
+		"markdown. HTML may include interactive JS; preview runs it in an opaque sandboxed iframe " +
+		"(no parent access). https CDN scripts/styles and https/wss fetch work; http and localhost " +
+		"do not; localStorage is in-memory only; self-navigation still possible. Returns the " +
+		"artifact id and path."
 }
 
 func (createArtifactTool) Schema() json.RawMessage { return schemaCreateArtifact }

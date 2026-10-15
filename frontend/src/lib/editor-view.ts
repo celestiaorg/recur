@@ -20,7 +20,7 @@ export type EditorViewMode = 'code' | 'diff' | 'preview'
  * Raster image tabs in the observatory — matches Go `imageMIME`.
  * SVG is omitted: it stays editable text with Code + Preview.
  */
-const BINARY_IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|ico|bmp|avif)$/i
+const BINARY_IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|ico|bmp|avif|tiff?)$/i
 
 export function isBinaryImagePath(path: string): boolean {
   const base = path.trim().split(/[\\/]/).pop() ?? ''

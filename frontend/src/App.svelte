@@ -28,6 +28,7 @@
   import { isBackquote, isCmdOrCtrl, isLetterKey } from './lib/shortcut'
   import { closeRailPeek, railPeek } from './lib/rail-peek'
   import { createBlankWorkspace } from './lib/new-workspace'
+  import { checkForUpdates, wireUpdaterEvents } from './lib/updater'
   import { onMenuAction, wireMenuEvents, pushMenuThemes, pushMenuThemeState, setMenuState, terminalIdFromMenu } from './lib/menu'
   import { applyShellRestore, loadShellState, resolveShellRestore } from './lib/shell-state'
   import { loadScheduleExpanded } from './lib/schedule-expanded'
@@ -74,6 +75,7 @@
   import ScheduledPrompts from './components/ScheduledPrompts.svelte'
   import ScheduleEditor from './components/ScheduleEditor.svelte'
   import PRList from './views/PRList.svelte'
+  import Issues from './components/Issues.svelte'
   import PRDetail from './views/PRDetail.svelte'
   import Briefing from './views/Briefing.svelte'
   import Welcome from './views/Welcome.svelte'
@@ -722,6 +724,7 @@
     wireEvents()
     wireFileIndexEvents()
     wireMenuEvents()
+    wireUpdaterEvents()
     Events.On('app.open', (e: any) => {
       applyOpenPathResult(e?.data)
     })
@@ -784,6 +787,9 @@
           return
         case 'settings':
           go('settings')
+          return
+        case 'check-updates':
+          checkForUpdates()
           return
         case 'reload-bundles':
           void import('./lib/bundle-reload')
@@ -1242,6 +1248,11 @@
       <Settings />
       <Project />
       <PRList />
+      {#if $view === 'issues'}
+        <section class="view on briefing" id="v-issues" aria-label="Issues">
+          <Issues />
+        </section>
+      {/if}
       {#if $view === 'schedules'}
         <section class="view on briefing" id="v-schedules" aria-label="Schedules">
           <ScheduledPrompts />

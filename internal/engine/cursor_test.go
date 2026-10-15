@@ -615,7 +615,7 @@ func TestCursorTurnResultError(t *testing.T) {
 	}
 }
 
-// The real bridge (cursor-sdk-bridge 1.0.0 / sdk ≤1.0.31) never puts `error`
+// The real bridge (cursor-sdk-bridge 1.0.0 / sdk ≤1.0.37) never puts `error`
 // on the wire RunResult — the proto has no such field. The provider's reason
 // arrives earlier, as SDKStatusMessage{status:"ERROR", message}, and the
 // terminal frame is a bare ERROR. Recur must stitch the two together or the

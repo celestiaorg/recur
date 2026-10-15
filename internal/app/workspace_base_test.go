@@ -37,6 +37,7 @@ func TestSetWorkspaceBaseBranch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateWorkspace: %v", err)
 	}
+	ws = waitWorkspaceReady(t, eng, ws.ID)
 	if ws.BaseBranch != "main" {
 		t.Fatalf("CreateWorkspace BaseBranch = %q, want main", ws.BaseBranch)
 	}
@@ -76,6 +77,7 @@ func TestSetWorkspaceBaseBranchRefuses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateWorkspace: %v", err)
 	}
+	ws = waitWorkspaceReady(t, eng, ws.ID)
 
 	cases := []struct {
 		name, id, base string
@@ -221,6 +223,7 @@ func TestSetWorkspaceBaseBranchTrims(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateWorkspace: %v", err)
 	}
+	ws = waitWorkspaceReady(t, eng, ws.ID)
 	got, err := svc.Workspaces.SetWorkspaceBaseBranch(ws.ID, "  develop  ")
 	if err != nil {
 		t.Fatalf("SetWorkspaceBaseBranch(padded): %v", err)
@@ -259,6 +262,7 @@ func TestSetWorkspaceBaseBranchAcceptsRemoteTracking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateWorkspace: %v", err)
 	}
+	ws = waitWorkspaceReady(t, eng, ws.ID)
 	got, err := svc.Workspaces.SetWorkspaceBaseBranch(ws.ID, "origin/main")
 	if err != nil {
 		t.Fatalf("SetWorkspaceBaseBranch(origin/main): %v", err)

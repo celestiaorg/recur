@@ -82,13 +82,9 @@ func (l *Loop) openPR(ctx context.Context) (string, error) {
 		branch = l.Branch
 	}
 	l.Branch = branch
-	ghRemoteHead := ""
 	var ghPR domain.PR
 	if source == domain.SourceGitHub {
-		if existing, ok := l.eng.Store.PRByWorkspace(l.ID); ok {
-			ghRemoteHead = existing.Branch
-			ghPR = existing
-		}
+		ghPR, _ = l.eng.Store.PRByWorkspace(l.ID)
 	}
 	notes := []string{"Loop policy bar passed — ready for review."}
 	if loop.VerifyState == verifyStatePassed {
@@ -121,7 +117,7 @@ func (l *Loop) openPR(ctx context.Context) (string, error) {
 			l.emitFeed("MA", "Maestro", "GitHub PR not opened ("+html.EscapeString(reason)+") — opening a Local PR instead.")
 		}
 	} else if source == domain.SourceGitHub {
-		head := ghRemoteHead
+		head := ghPR.Branch
 		if head == "" {
 			head = branch
 		}

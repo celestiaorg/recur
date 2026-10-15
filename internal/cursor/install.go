@@ -27,7 +27,7 @@ import (
 // patch in attribution.go matches minified anchors from this build — fetching
 // "latest" would silently break those anchors on the next Cursor publish.
 // Bump this only together with refreshed sdkAttributionAnchors.
-const pinnedSDKVersion = "1.0.31"
+const pinnedSDKVersion = "1.0.37"
 
 // PinnedSDKVersion is the cursor-sdk release Recur installs.
 func PinnedSDKVersion() string { return pinnedSDKVersion }

@@ -41,7 +41,7 @@ import (
 //     mapped onto Cursor's "plan" mode, which is the closest equivalent; other
 //     roles run with the full tool set inside the loop's isolated worktree.
 //
-// Inject IS honoured. Cursor 1.0.31's run.steer appends a user message to the
+// Inject IS honoured. Cursor's run.steer appends a user message to the
 // turn in flight (SteerRun). complete_delivered keeps the current Send.
 // revert_to_followup, a missing RPC, or any other failure maps to CancelRun
 // plus a follow-up Send of the concatenated steers on the SAME agentId —

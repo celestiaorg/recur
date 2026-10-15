@@ -139,10 +139,19 @@ jobs:
         with:
           wails: "true"
       - run: wails3 task linux:package
+      - name: Install the .deb
+        run: |
+          sudo apt-get install -y ./bin/recur-linux-amd64.deb desktop-file-utils
+          test "$(readlink -f /usr/bin/recur)" = /opt/recur/recur-cli
+          recur --version
+          desktop-file-validate /usr/share/applications/org.wails.recur.desktop
       - uses: actions/upload-artifact@v7
         with:
           name: Recur-linux-amd64
-          path: bin/recur-linux-amd64.tar.gz
+          path: |
+            bin/recur-linux-amd64.tar.gz
+            bin/recur-linux-amd64.deb
+            bin/recur-linux-amd64.rpm
           retention-days: 14
 
   ci-success:

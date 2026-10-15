@@ -179,8 +179,8 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   diff. The runner folds frames into exactly one step and one result per call id.
 - **A failed tool call gets NO terminal frame at all**, despite the SDK's own
   type saying otherwise. `SDKToolUseMessage.status` is documented as
-  `"running" | "completed" | "error"`, but on SDK 1.0.31 (Recur's pinned
-  bridge wheel) a read of a missing file emits `running` and then
+  `"running" | "completed" | "error"`, but on SDK 1.0.31 (1.0.37 maps tool
+  status the same way) a read of a missing file emits `running` and then
   nothing. Cursor sends `running`
   and then simply stops: no result, no error status, and the run still finishes
   successfully. The failure is mentioned only in the model's own prose ("None of
@@ -220,7 +220,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   The SDK's `enableDeltas` flag is ON so Recur's `onDelta` sees
   `InteractionUpdate` as documented: `turn-ended` (context meter) and
   `summary` / `summary-started` / `summary-completed` (compact cards).
-  Stock cursor-sdk 1.0.31's `RunInteractionAccumulator.apply` still skips
+  Stock cursor-sdk 1.0.37's `RunInteractionAccumulator.apply` still skips
   those summary members of the union; Recur's install minify patch
   restores the documented callback. `SDKMessage` `type: "task"` is
   task/subagent status (`SDKTaskMessage`), not compaction — even though
@@ -281,7 +281,7 @@ inside `<role-instructions>` tags. Follow-up Sends on a resumed agent omit
 the fence (the history already has it). A CreateAgent fallback after a
 failed resume still includes it.
 
-**Mid-turn steering (D49) prefers `run.steer`.** Cursor 1.0.31 can append a
+**Mid-turn steering (D49) prefers `run.steer`.** Cursor's SDK can append a
 user message to a run in flight (`SteerRun` on Recur's patched bridge).
 `complete_delivered` means the turn has the text — Recur does not CancelRun or
 resend. `revert_to_followup`, a missing RPC, or any other failure maps to

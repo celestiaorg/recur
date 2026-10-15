@@ -234,14 +234,14 @@ func (e *Engine) attachOpenPRLand(ctx context.Context, st *domain.WorkspaceLandS
 	if pr.Source != domain.SourceGitHub || worktree == "" || mgr == nil {
 		return
 	}
-	ref, _, _ := githubPRTrackingRef(pr.Branch)
+	ref, _, _ := githubPRTrackingRef(pr)
 	if ref == "" {
 		return
 	}
 	if n, err := mgr.CommitsAhead(ctx, worktree, ref); err == nil {
 		st.AheadRemote = n
 	} else if st.AheadBase > 0 {
-		// origin/<branch> may not exist yet (offline, never fetched). Treat
+		// The tracking ref may not exist yet (offline, never fetched). Treat
 		// unique local commits as unpushed so Push updates still shows.
 		st.AheadRemote = st.AheadBase
 	}
@@ -251,14 +251,29 @@ func (e *Engine) attachOpenPRLand(ctx context.Context, st *domain.WorkspaceLandS
 }
 
 // githubPRTrackingRef is origin/<short> for a frozen GitHub PR.Branch
-// (recur/foo, not the local branch of the same name).
-func githubPRTrackingRef(branch string) (ref, remote, short string) {
-	short = strings.TrimSpace(branch)
+// (recur/foo, not the local branch of the same name). A fork PR's head is not
+// on origin, so it tracks refs/recur/pr/N with empty remote and short.
+func githubPRTrackingRef(pr domain.PR) (ref, remote, short string) {
+	if pr.IsCrossRepository {
+		return gitpkg.PRHeadRef(pr.Number), "", ""
+	}
+	short = strings.TrimSpace(pr.Branch)
 	short = strings.TrimPrefix(short, "origin/")
 	if short == "" {
 		return "", "", ""
 	}
 	return "origin/" + short, "origin", short
+}
+
+// fetchGitHubPRHead refreshes githubPRTrackingRef(pr) from GitHub.
+func fetchGitHubPRHead(ctx context.Context, mgr *gitpkg.Manager, pr domain.PR) {
+	if pr.IsCrossRepository {
+		_, _ = mgr.FetchPRHead(ctx, pr.Number)
+		return
+	}
+	if _, remote, short := githubPRTrackingRef(pr); short != "" {
+		_ = mgr.FetchRemoteBranch(ctx, remote, short)
+	}
 }
 
 func (e *Engine) mainWorkingCopyLandState(ws domain.Workspace) domain.WorkspaceLandState {
@@ -404,7 +419,7 @@ func (e *Engine) PullWorkspacePR(workspaceID string) (domain.UpdateWorkspaceResu
 	if !ok || proj.RepoPath == "" {
 		return domain.UpdateWorkspaceResult{}, fmt.Errorf("project for workspace %q not found", workspaceID)
 	}
-	ref, remote, short := githubPRTrackingRef(pr.Branch)
+	ref, _, _ := githubPRTrackingRef(pr)
 	if ref == "" {
 		return domain.UpdateWorkspaceResult{}, fmt.Errorf("the open PR has no remote branch")
 	}
@@ -416,7 +431,7 @@ func (e *Engine) PullWorkspacePR(workspaceID string) (domain.UpdateWorkspaceResu
 	if mgr.UpdateInProgress(ctx, ws.WorktreePath) {
 		return domain.UpdateWorkspaceResult{Status: domain.UpdateWorkspaceConflict, Workspace: ws, Base: ref}, nil
 	}
-	_ = mgr.FetchRemoteBranch(ctx, remote, short)
+	fetchGitHubPRHead(ctx, mgr, pr)
 	behind, _ := mgr.CommitsBehind(ctx, ws.WorktreePath, ref)
 	if behind == 0 {
 		return domain.UpdateWorkspaceResult{Status: domain.UpdateWorkspaceNoop, Workspace: ws, Base: ref}, nil

@@ -36,10 +36,32 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   const url = new URL(process.argv[2] ?? "http://127.0.0.1:5183");
 
+  const isDark = () =>
+    page.locator(".built").evaluate((el) => el.classList.contains("dark"));
+  await page.goto(url.href);
+  for (const scheme of ["dark", "light"]) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await expect.poll(isDark).toBe(scheme === "dark");
+  }
+  await page.getByRole("button", { name: "◐ Charcoal" }).click();
+  await page.reload();
+  assert.equal(await isDark(), true, "A picked theme overrides the system");
+  await page.evaluate(() => localStorage.removeItem("vocs-theme"));
+
+  await page
+    .locator(".b-hero")
+    .getByRole("button", { name: /Other downloads/ })
+    .click();
+  const downloads = page.locator("#hero-downloads");
+  await expect(downloads).toBeVisible();
+  await expect(downloads.getByRole("link", { name: ".rpm" })).toHaveCount(2);
+  await page.keyboard.press("Escape");
+  await expect(downloads).toBeHidden();
+
   for (const theme of ["paper", "charcoal"]) {
     url.searchParams.set("theme", theme);
     await page.goto(url.href);
-    assert.match(await page.locator("h1").innerText(), /One worktree each/);
+    assert.match(await page.locator("h1").innerText(), /until it’s right/);
     assert.equal(
       await page
         .locator(".built")
@@ -68,6 +90,7 @@ try {
       "Loop",
       "Pull request",
       "Inbox",
+      "Issues",
       "Schedules",
     ]) {
       const button = page
@@ -82,6 +105,7 @@ try {
         Loop: "loop",
         "Pull request": "pull-request",
         Inbox: "inbox",
+        Issues: "issues",
         Schedules: "schedules",
       }[name];
       await expect(image).toHaveAttribute(
@@ -118,10 +142,32 @@ try {
         .press("Escape");
       await expect(viewer).toHaveCount(0);
     }
+    // The hero viewer pages through the tour like a slideshow and reuses the
+    // inline caption.
+    await page.locator(".b-window .capture-trigger").click();
+    const slideshow = page.getByRole("dialog");
+    await expect(slideshow.locator(".position")).toHaveText("7 / 7");
+    await expect(slideshow.locator("header p")).toHaveText(
+      await page.locator(".b-product-caption p").innerText(),
+    );
+    await slideshow.getByRole("button", { name: "Next screenshot" }).click();
+    await expect(slideshow.locator(".position")).toHaveText("1 / 7");
+    await expect(slideshow.locator("img")).toHaveAttribute(
+      "src",
+      `/screenshots/workspace-${theme}.png`,
+    );
+    await expect(slideshow.locator("header p")).toHaveText(
+      await page.locator(".b-product-caption p").innerText(),
+    );
+    await page.keyboard.press("ArrowLeft");
+    await expect(slideshow.locator(".position")).toHaveText("7 / 7");
+    await page.keyboard.press("Escape");
+    await expect(slideshow).toHaveCount(0);
+
     await expect(
       page.locator(".b-window iframe, .b-review iframe"),
     ).toHaveCount(0);
-    const prImage = page.locator(".b-review .capture-trigger img");
+    const prImage = page.locator("#review .b-review .capture-trigger img");
     await prImage.scrollIntoViewIfNeeded();
     await expect(prImage).toHaveAttribute(
       "src",
@@ -130,7 +176,7 @@ try {
     await expect
       .poll(() => prImage.evaluate((el) => el.complete && el.naturalWidth > 0))
       .toBe(true);
-    await page.locator(".b-review .capture-trigger").click();
+    await page.locator("#review .b-review .capture-trigger").click();
     await page
       .getByRole("button", { name: "Close screenshot", exact: true })
       .click();
@@ -220,12 +266,15 @@ try {
       "Loop",
       "Pull request",
       "Inbox",
+      "Issues",
       "Schedules",
     ]) {
-      await page
+      const tab = page
         .locator(".b-screen-tabs")
-        .getByRole("button", { name, exact: true })
-        .click();
+        .getByRole("button", { name, exact: true });
+      await tab.click();
+      // The tour swaps once the next capture has decoded.
+      await expect(tab).toHaveAttribute("aria-pressed", "true");
       await page
         .locator(".b-window .capture-trigger img")
         .evaluate((img) => img.decode());
@@ -277,6 +326,27 @@ try {
     [],
     "Demo must not contact a native backend",
   );
+
+  // Without reduced motion the hero tour advances itself until clicked.
+  const tour = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+    reducedMotion: "no-preference",
+  });
+  url.searchParams.delete("theme");
+  await tour.goto(url.href);
+  const tabs = tour.locator(".b-screen-tabs");
+  await expect(
+    tabs.getByRole("button", { name: "Workspace" }).locator(".b-tour-progress"),
+  ).toHaveCount(1);
+  await tabs.locator(".b-tour-progress").dispatchEvent("animationend");
+  await expect(tabs.getByRole("button", { name: "Diff" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await tabs.getByRole("button", { name: "Inbox" }).click();
+  await expect(tabs.locator(".b-tour-progress")).toHaveCount(0);
+  await tour.close();
+
   console.log(
     "Splash checks passed: captured screenshots, full-size links, themes, visual pickers, modes, responsive layout, and loop animation.",
   );

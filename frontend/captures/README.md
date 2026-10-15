@@ -25,7 +25,7 @@ the previous output intact.
 
 `dataset.json` is the dedicated, fictional product dataset. It owns the project,
 workspaces (including fan-out children), PRs, code, diffs, transcripts, loop wave,
-review findings, inbox notifications, schedules, and settings.
+review findings, inbox notifications, issues, schedules, and settings.
 The example includes two projects, a fan-out with two merged children and one
 working child, and a three-file review (+41/−7). `baseFiles` and `files` hold the
 before/after source; `diffs` supplies the changed-file rows shared by all views.
@@ -35,8 +35,10 @@ PR screens. The interactive showcase uses this dataset too.
 Edit the dataset directly to change the story. Keep IDs and references consistent:
 `workspaceId` and `prId` choose the featured records; PR `workspaceId` links to its
 workspace. PR timestamps are ISO strings; chat timestamps are milliseconds.
-The diff, commit, and PR file records should agree. Participant names use local
-initials, with no external avatar URLs or GitHub logins.
+The diff, commit, and PR file records should agree. Participants use local
+initials, except mycodecrafting (Recur's author), whose avatar lives in
+`avatars/` and is inlined at build time. Never reference a remote avatar URL:
+captures reject network requests.
 
 ## Screen presets
 
@@ -55,7 +57,8 @@ initials, with no external avatar URLs or GitHub logins.
 | `changes` | 1440 × 800 | Whole window and sidebar; agent and right files pane closed |
 | `loop` | 1440 × 800 | Sidebar, wider loop chat, editor; files pane closed |
 | `pull-request` | 1440 × 800 | Sidebar and PR conversation; agent dock closed |
-| `inbox` | 1440 × 800 | Needs you, working, and ready-for-review tasks |
+| `inbox` | 1440 × 800 | Needs you, working, and ready-for-review tasks, with Ask Recur open |
+| `issues` | 1440 × 800 | GitHub and Linear issues, some linked to workspaces |
 | `schedules` | 1440 × 800 | Recurring reviews, dependency audits, and release notes |
 
 All tour presets share a 1440 × 800 window and a 280px sidebar. The capture

@@ -299,13 +299,6 @@ func (e *Engine) resumeInterruptedChat(workspaceID, code string) {
 	// Reuse the tab's dock selection. Empty model/mode falls back to Settings'
 	// role default (often Claude) while Agent.SessionID may still be a Cursor
 	// agent-… id — Claude then rejects `claude -p --resume agent-…`.
-	ws, ok := e.Store.Workspace(workspaceID)
-	if !ok {
-		return
-	}
-	if e.chatResumeBlockedByRunLock(ws, mode) {
-		return
-	}
 	if !e.chatResumeStillIdle(workspaceID, code) {
 		return
 	}
@@ -320,19 +313,6 @@ func (e *Engine) resumeInterruptedChat(workspaceID, code string) {
 // conversational only.
 func maestroResumeNeedsLoop(ws domain.Workspace) bool {
 	return domain.RunActive(ws.State) || resumable(ws)
-}
-
-// chatResumeBlockedByRunLock is true when an agent-mode continuation would
-// edit a worktree the autopilot owns or is about to own (paused/interrupted
-// is not RunActive yet, but AutoResume is about to dispatch the Coder).
-func (e *Engine) chatResumeBlockedByRunLock(ws domain.Workspace, mode string) bool {
-	if domain.NormalizeChatMode(mode) != domain.ChatModeAgent || !ws.HasRun() {
-		return false
-	}
-	if domain.RunActive(ws.State) {
-		return true
-	}
-	return ws.State == domain.StatePaused && ws.Phase == phaseInterrupted
 }
 
 // chatResumeStillIdle is true when Recover's queued tab is still waiting: the

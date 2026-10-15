@@ -69,7 +69,7 @@ for (const screen of presets.screens) {
   );
   assert.ok(screen.viewport.width >= 640 && screen.viewport.width <= 2560);
   assert.ok(screen.viewport.height >= 400 && screen.viewport.height <= 1600);
-  assert.ok(["workspace", "pr", "inbox", "schedules"].includes(screen.view));
+  assert.ok(["workspace", "pr", "inbox", "issues", "schedules"].includes(screen.view));
   assert.ok(["editor", "review"].includes(screen.surface));
   assert.ok(["conv", "files", "commits", "checks"].includes(screen.prTab));
   assert.ok(
@@ -222,7 +222,11 @@ try {
           await expect(page.locator("#v-detail .obs-side"))[
             screen.panes.files ? "toBeVisible" : "toBeHidden"
           ]();
-        } else if (screen.view === "pr")
+        } else if (screen.view === "inbox")
+          await expect(page.locator("#v-briefing .briefing-ask"))[
+            screen.panes.chat ? "toBeVisible" : "toBeHidden"
+          ]();
+        else if (screen.view === "pr")
           await expect(page.locator("#prd-agent"))[
             screen.panes.prChat ? "toBeVisible" : "toBeHidden"
           ]();

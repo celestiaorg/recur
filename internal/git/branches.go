@@ -213,7 +213,7 @@ func (m *Manager) FetchPRHead(ctx context.Context, number int) (string, error) {
 	if remote == "" {
 		remote = "origin"
 	}
-	dst := fmt.Sprintf("refs/recur/pr/%d", number)
+	dst := PRHeadRef(number)
 	src := fmt.Sprintf("+pull/%d/head:%s", number, dst)
 	if _, err := m.runEnv(ctx, []string{"GIT_TERMINAL_PROMPT=0"}, "fetch", "--end-of-options", remote, src); err != nil {
 		return "", fmt.Errorf("git fetch %s pull/%d/head: %w", remote, number, err)
@@ -222,6 +222,11 @@ func (m *Manager) FetchPRHead(ctx context.Context, number int) (string, error) {
 		return "", fmt.Errorf("git fetch %s pull/%d/head: missing %s", remote, number, dst)
 	}
 	return dst, nil
+}
+
+// PRHeadRef is where FetchPRHead stores GitHub's pull/N/head.
+func PRHeadRef(number int) string {
+	return fmt.Sprintf("refs/recur/pr/%d", number)
 }
 
 // Upstream is a branch's configured remote-tracking ref (origin/main).

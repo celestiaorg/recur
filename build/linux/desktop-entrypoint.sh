@@ -10,4 +10,4 @@ openbox &
 dunst >/dev/null 2>&1 &
 x11vnc -display :1 -forever -shared -nopw -quiet -rfbport 5900 >/dev/null 2>&1 &
 websockify --web /usr/share/novnc 6080 localhost:5900 >/dev/null 2>&1 &
-exec /opt/recur/recur
+exec /srv/recur/recur

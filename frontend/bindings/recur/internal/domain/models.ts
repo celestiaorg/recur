@@ -2042,6 +2042,44 @@ export class InboxItem {
 }
 
 /**
+ * IssueRef points at a tracker issue. ID is the tracker's stable id (Linear
+ * issue UUID, GitHub issue node id) so team moves, repo renames, and
+ * transfers keep the link; Key is the human ref shown in the UI.
+ */
+export class IssueRef {
+    /**
+     * "github" | "linear"
+     */
+    "source": string;
+    "id": string;
+
+    /**
+     * BOTFUN-152, owner/repo#12
+     */
+    "key"?: string;
+
+    /** Creates a new IssueRef instance. */
+    constructor($$source: Partial<IssueRef> = {}) {
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new IssueRef instance from a string or object.
+     */
+    static createFrom($$source: any = {}): IssueRef {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new IssueRef($$parsedSource as Partial<IssueRef>);
+    }
+}
+
+/**
  * MCPServer is one extra MCP server the user added or enabled (a shipped preset).
  */
 export class MCPServer {
@@ -3265,6 +3303,13 @@ export class Project {
     "deleteBranchOnRemove"?: boolean;
 
     /**
+     * LinearProjects is a comma-separated list of Linear project names or team
+     * keys whose assigned issues belong to this project. GitHub issues match by
+     * git remote instead. Machine-local (extra_json).
+     */
+    "linearProjects"?: string;
+
+    /**
      * MergeMethod overrides the global default merge strategy for this project.
      * Empty = inherit Settings.DefaultMergeMethod (D53).
      */
@@ -3362,25 +3407,25 @@ export class Project {
      */
     static createFrom($$source: any = {}): Project {
         const $$createField11_0 = $$createType62;
-        const $$createField26_0 = $$createType12;
         const $$createField27_0 = $$createType12;
         const $$createField28_0 = $$createType12;
         const $$createField29_0 = $$createType12;
+        const $$createField30_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("runCommands" in $$parsedSource) {
             $$parsedSource["runCommands"] = $$createField11_0($$parsedSource["runCommands"]);
         }
         if ("disabledSkills" in $$parsedSource) {
-            $$parsedSource["disabledSkills"] = $$createField26_0($$parsedSource["disabledSkills"]);
+            $$parsedSource["disabledSkills"] = $$createField27_0($$parsedSource["disabledSkills"]);
         }
         if ("enabledSkills" in $$parsedSource) {
-            $$parsedSource["enabledSkills"] = $$createField27_0($$parsedSource["enabledSkills"]);
+            $$parsedSource["enabledSkills"] = $$createField28_0($$parsedSource["enabledSkills"]);
         }
         if ("disabledMCP" in $$parsedSource) {
-            $$parsedSource["disabledMCP"] = $$createField28_0($$parsedSource["disabledMCP"]);
+            $$parsedSource["disabledMCP"] = $$createField29_0($$parsedSource["disabledMCP"]);
         }
         if ("enabledMCP" in $$parsedSource) {
-            $$parsedSource["enabledMCP"] = $$createField29_0($$parsedSource["enabledMCP"]);
+            $$parsedSource["enabledMCP"] = $$createField30_0($$parsedSource["enabledMCP"]);
         }
         return new Project($$parsedSource as Partial<Project>);
     }
@@ -4775,6 +4820,12 @@ export class Workspace {
      * promotes the same row — HostPRID is cleared once a real worktree lands.
      */
     "hostPrId"?: string;
+
+    /**
+     * Issue is the tracker issue this workspace works on, set when it is
+     * created from the Issues view or a prompt (/linear) reports one.
+     */
+    "issue"?: IssueRef | null;
     "group": Group;
     "goal": string;
 
@@ -5035,46 +5086,50 @@ export class Workspace {
      * Creates a new Workspace instance from a string or object.
      */
     static createFrom($$source: any = {}): Workspace {
-        const $$createField27_0 = $$createType2;
-        const $$createField28_0 = $$createType12;
-        const $$createField34_0 = $$createType74;
-        const $$createField36_0 = $$createType12;
-        const $$createField37_0 = $$createType76;
-        const $$createField41_0 = $$createType44;
-        const $$createField44_0 = $$createType78;
+        const $$createField8_0 = $$createType74;
+        const $$createField28_0 = $$createType2;
+        const $$createField29_0 = $$createType12;
+        const $$createField35_0 = $$createType76;
+        const $$createField37_0 = $$createType12;
+        const $$createField38_0 = $$createType78;
+        const $$createField42_0 = $$createType44;
         const $$createField45_0 = $$createType80;
         const $$createField46_0 = $$createType82;
-        const $$createField49_0 = $$createType12;
+        const $$createField47_0 = $$createType84;
+        const $$createField50_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("issue" in $$parsedSource) {
+            $$parsedSource["issue"] = $$createField8_0($$parsedSource["issue"]);
+        }
         if ("diff" in $$parsedSource) {
-            $$parsedSource["diff"] = $$createField27_0($$parsedSource["diff"]);
+            $$parsedSource["diff"] = $$createField28_0($$parsedSource["diff"]);
         }
         if ("agentCodes" in $$parsedSource) {
-            $$parsedSource["agentCodes"] = $$createField28_0($$parsedSource["agentCodes"]);
+            $$parsedSource["agentCodes"] = $$createField29_0($$parsedSource["agentCodes"]);
         }
         if ("convergence" in $$parsedSource) {
-            $$parsedSource["convergence"] = $$createField34_0($$parsedSource["convergence"]);
+            $$parsedSource["convergence"] = $$createField35_0($$parsedSource["convergence"]);
         }
         if ("parentStepIds" in $$parsedSource) {
-            $$parsedSource["parentStepIds"] = $$createField36_0($$parsedSource["parentStepIds"]);
+            $$parsedSource["parentStepIds"] = $$createField37_0($$parsedSource["parentStepIds"]);
         }
         if ("fanOut" in $$parsedSource) {
-            $$parsedSource["fanOut"] = $$createField37_0($$parsedSource["fanOut"]);
+            $$parsedSource["fanOut"] = $$createField38_0($$parsedSource["fanOut"]);
         }
         if ("verify" in $$parsedSource) {
-            $$parsedSource["verify"] = $$createField41_0($$parsedSource["verify"]);
+            $$parsedSource["verify"] = $$createField42_0($$parsedSource["verify"]);
         }
         if ("testResult" in $$parsedSource) {
-            $$parsedSource["testResult"] = $$createField44_0($$parsedSource["testResult"]);
+            $$parsedSource["testResult"] = $$createField45_0($$parsedSource["testResult"]);
         }
         if ("checkpoint" in $$parsedSource) {
-            $$parsedSource["checkpoint"] = $$createField45_0($$parsedSource["checkpoint"]);
+            $$parsedSource["checkpoint"] = $$createField46_0($$parsedSource["checkpoint"]);
         }
         if ("plan" in $$parsedSource) {
-            $$parsedSource["plan"] = $$createField46_0($$parsedSource["plan"]);
+            $$parsedSource["plan"] = $$createField47_0($$parsedSource["plan"]);
         }
         if ("chatTabOrder" in $$parsedSource) {
-            $$parsedSource["chatTabOrder"] = $$createField49_0($$parsedSource["chatTabOrder"]);
+            $$parsedSource["chatTabOrder"] = $$createField50_0($$parsedSource["chatTabOrder"]);
         }
         return new Workspace($$parsedSource as Partial<Workspace>);
     }
@@ -5148,8 +5203,8 @@ export class WorkspaceBrief {
      */
     static createFrom($$source: any = {}): WorkspaceBrief {
         const $$createField6_0 = $$createType12;
-        const $$createField29_0 = $$createType83;
-        const $$createField30_0 = $$createType84;
+        const $$createField29_0 = $$createType85;
+        const $$createField30_0 = $$createType86;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("reasons" in $$parsedSource) {
             $$parsedSource["reasons"] = $$createField6_0($$parsedSource["reasons"]);
@@ -5428,15 +5483,17 @@ const $$createType69 = CompatibleProvider.createFrom;
 const $$createType70 = $Create.Array($$createType69);
 const $$createType71 = TreeEntry.createFrom;
 const $$createType72 = $Create.Array($$createType71);
-const $$createType73 = ConvPoint.createFrom;
-const $$createType74 = $Create.Array($$createType73);
-const $$createType75 = ChildFanOut.createFrom;
-const $$createType76 = $Create.Nullable($$createType75);
-const $$createType77 = TestResult.createFrom;
+const $$createType73 = IssueRef.createFrom;
+const $$createType74 = $Create.Nullable($$createType73);
+const $$createType75 = ConvPoint.createFrom;
+const $$createType76 = $Create.Array($$createType75);
+const $$createType77 = ChildFanOut.createFrom;
 const $$createType78 = $Create.Nullable($$createType77);
-const $$createType79 = Checkpoint.createFrom;
+const $$createType79 = TestResult.createFrom;
 const $$createType80 = $Create.Nullable($$createType79);
-const $$createType81 = Plan.createFrom;
+const $$createType81 = Checkpoint.createFrom;
 const $$createType82 = $Create.Nullable($$createType81);
-const $$createType83 = BriefAction.createFrom;
-const $$createType84 = $Create.Array($$createType83);
+const $$createType83 = Plan.createFrom;
+const $$createType84 = $Create.Nullable($$createType83);
+const $$createType85 = BriefAction.createFrom;
+const $$createType86 = $Create.Array($$createType85);

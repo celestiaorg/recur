@@ -495,6 +495,59 @@ test.describe('new loop + settings', () => {
     expect(await page.evaluate(() => localStorage.getItem('recur.theme'))).toBe('catppuccin-mocha')
   })
 
+  test('match system appearance uses the chosen light and dark themes', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await gotoApp(page)
+    await openSettings(page)
+    await openSection(page, 'Appearance')
+
+    await page.getByRole('button', { name: 'Sync with system' }).first().click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper')
+
+    const grids = page.locator('#v-settings .thgrid')
+    await expect(grids.nth(0).locator('.thcard')).toHaveCount(2)
+    await expect(grids.nth(1).locator('.thcard')).toHaveCount(5)
+    await grids.nth(1).locator('.thcard', { hasText: 'Nord' }).click()
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'nord')
+
+    await grids.nth(1).locator('.thcard', { hasText: 'Charcoal' }).click()
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/)
+
+    // Unchecking shows one grid again and a manual pick sticks.
+    await page.getByRole('button', { name: 'Single theme' }).first().click()
+    await page.locator('#v-settings .thgrid').first().locator('.thcard', { hasText: 'Slate' }).click()
+    await page.emulateMedia({ colorScheme: 'light' })
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'slate')
+  })
+
+  test('editor and terminal themes can sync with the system', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await gotoApp(page)
+    await openSettings(page)
+    await openSection(page, 'Appearance')
+
+    const sync = page.getByRole('button', { name: 'Sync with system' })
+    const lsGet = (k: string) => page.evaluate((key) => localStorage.getItem(key), k)
+
+    // Editor: light mode picks Paper by default, dark mode picks Charcoal.
+    await sync.nth(1).click()
+    const edLists = page.locator('#v-settings .edth-list')
+    await expect(edLists).toHaveCount(2)
+    await expect.poll(() => lsGet('recur.editorTheme')).toBe('paper')
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expect.poll(() => lsGet('recur.editorTheme')).toBe('recur')
+
+    // Terminal: dark mode uses its own pick, light mode falls back to Match app.
+    await sync.nth(2).click()
+    const termDark = page.locator('#v-settings .thgrid').nth(2).locator('.thcard', { hasText: 'Homebrew' })
+    await expect(termDark).toBeVisible({ timeout: 15_000 })
+    await termDark.click()
+    await expect.poll(async () => JSON.parse((await lsGet('recur.terminalPrefs')) || '{}').theme).toBe('homebrew')
+    await page.emulateMedia({ colorScheme: 'light' })
+    await expect.poll(async () => JSON.parse((await lsGet('recur.terminalPrefs')) || '{}').theme).toBe('')
+  })
+
   test('terminal theme picker is independent and persists', async ({ page }) => {
     await gotoApp(page)
     await openSettings(page)

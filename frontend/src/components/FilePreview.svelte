@@ -37,7 +37,7 @@
   } = $props()
 
   const svgSrc = $derived(kind === 'svg' ? svgDataUrl(content) : '')
-  // allow-scripts only — never allow-same-origin for untrusted agent HTML (D-html-preview-scripts).
+  // allow-scripts + allow-forms only — never allow-same-origin for untrusted agent HTML (D-html-preview-scripts).
   const htmlSrcdoc = $derived(kind === 'html' ? htmlPreviewSrcdoc(content) : '')
 
   let findOpen = $state(false)
@@ -351,7 +351,7 @@
         bind:this={iframeEl}
         title={path || 'HTML preview'}
         aria-label={path || 'HTML preview'}
-        sandbox="allow-scripts"
+        sandbox="allow-scripts allow-forms"
         srcdoc={htmlSrcdoc}
         onload={() => { if (findOpen && active) sendQuery() }}
       ></iframe>

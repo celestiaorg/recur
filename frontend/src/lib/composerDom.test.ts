@@ -11,6 +11,8 @@ import {
   normalizeComposerDom,
   serializeComposer,
   composerCaretClientRect,
+  findPromptChip,
+  promptChipArgsWithTrailing,
 } from './composerDom'
 
 describe('makeFileChip', () => {
@@ -378,5 +380,30 @@ describe('composerCaretClientRect', () => {
     document.body.appendChild(root)
     expect(composerCaretClientRect(root)).toBeNull()
     root.remove()
+  })
+})
+
+describe('promptChipArgsWithTrailing', () => {
+  const chips = [{ slash: 'linear', args: [{ name: 'issue' }] }]
+  function setup(text: string) {
+    const root = document.createElement('div')
+    hydrateComposer(root, text, [], { promptChips: chips })
+    return { root, chip: findPromptChip(root)! }
+  }
+
+  test('chip only', () => {
+    const { root, chip } = setup('/linear ENG-1')
+    expect(promptChipArgsWithTrailing(root, chip)).toBe('ENG-1')
+  })
+
+  test('text after the chip on the same line', () => {
+    const { root, chip } = setup('/linear ENG-1')
+    chip.after(document.createTextNode(' skip mobile'))
+    expect(promptChipArgsWithTrailing(root, chip)).toBe('ENG-1 skip mobile')
+  })
+
+  test('text on following lines', () => {
+    const { root, chip } = setup('/linear ENG-1\nskip mobile\nkeep it small')
+    expect(promptChipArgsWithTrailing(root, chip)).toBe('ENG-1\nskip mobile\nkeep it small')
   })
 })

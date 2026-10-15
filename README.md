@@ -104,13 +104,14 @@ xattr -dr com.apple.quarantine /Applications/Recur.app
 
 Downloading with `gh release download` skips this step, since the GitHub CLI does not set the flag.
 
-On Linux (Ubuntu 24.04+ / Debian 13), install the GTK and WebKit runtime, then run `recur` from `Recur-<version>-linux-amd64.tar.gz` (or `-linux-arm64`):
+On Linux (Ubuntu 24.04+ / Debian 13 / Fedora 40+), install the `.deb` or `.rpm` (`-linux-amd64` or `-linux-arm64`). It pulls in the GTK and WebKit runtime and puts `recur` on PATH and in the app menu:
 
 ```bash
-sudo apt install libgtk-4-1 libwebkitgtk-6.0-4
-tar xzf Recur-<version>-linux-amd64.tar.gz
-./recur-linux-amd64/recur
+sudo apt install ./Recur-<version>-linux-amd64.deb
+sudo dnf install ./Recur-<version>-linux-amd64.rpm
 ```
+
+Elsewhere, install GTK 4 and WebKitGTK 6.0, then run `recur` from `Recur-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
 
 ## Command line
 

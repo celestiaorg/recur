@@ -19,6 +19,8 @@ vars:
       v=${tag#v}
       echo "${v:-0.0.0}+commit.$(git rev-parse --short=8 HEAD)"
   CLI_LDFLAGS: '-X recur/internal/cli.Version={{.VERSION}}'
+  # Release builds set RECUR_UPDATE_URL to turn on the in-app updater (updater.go).
+  APP_LDFLAGS: '-X main.version={{.VERSION}} -X main.updateManifestURL={{.RECUR_UPDATE_URL}}'
 
 tasks:
   build:

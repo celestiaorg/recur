@@ -5,7 +5,7 @@
     projects, workspaces, openNewProject, newTaskRepoId,
     newTaskOpen, closeNewTask, newTaskDraft, settings, pushToast,
   } from '../lib/stores'
-  import { WorkspacesService, ProjectsService, call, refreshProjects, upsertWorkspace, dropWorkspace, bridgeErrorMessage } from '../lib/api'
+  import { WorkspacesService, ProjectsService, call, refreshProjects, upsertWorkspace, dropWorkspace, bridgeErrorMessage, linkLinearProject, linkWorkspaceIssue } from '../lib/api'
   import * as BundleService from '../../bindings/recur/internal/app/bundleservice'
   import { simplifyEnabled } from '../lib/simplify'
   import type { Workspace } from '../../bindings/recur/internal/domain/models'
@@ -54,6 +54,10 @@
   let seedDisplay = ''
   let attachments = $state<ChatAttachmentDraft[]>([])
   let starting = $state(false)
+  let linearKey = $state('')
+  let linkedProjectId = $state('')
+  let linkLinear = $state(true)
+  let issueRef: { source: string; id: string; key?: string } | undefined
   let repoId = $state('')
   let baseBranch = $state('')
   let branches = $state<{ name: string; group: string }[]>([])
@@ -236,6 +240,7 @@
   })
 
   const repo = $derived(gitProjects.find((p) => p.id === repoId) ?? gitProjects[0])
+  const offerLinearLink = $derived(!!linearKey && !!repo && repo.id !== linkedProjectId)
   // Loop needs a task description (it becomes the run's goal); every other mode
   // only needs a repo + base (an opening prompt is optional — the agent names
   // the workspace via MCP on the first session).
@@ -323,6 +328,9 @@
     seedDisplay = (d.display ?? '').trim()
     seedWire = seedDisplay ? d.text : ''
     task = seedDisplay || d.text
+    linearKey = d.linearKey ?? ''
+    linkedProjectId = d.linkedProjectId ?? ''
+    linkLinear = true
     newTaskDraft.set(null)
     queueMicrotask(() => composer?.focusComposer())
   })
@@ -330,6 +338,8 @@
   $effect(() => {
     if ($newTaskOpen) return
     promptCtl?.abort()
+    linearKey = ''
+    issueRef = undefined
   })
 
   function goAddProject() {
@@ -403,6 +413,7 @@
       const result = await runPromptAction(info, ctx, ac.signal)
       if (ac.signal.aborted || !get(newTaskOpen) || repo?.id !== projectId || pendingId !== invokedPendingId) return
       const display = result.display || info.name
+      if (result.issue) issueRef = result.issue
       if (!result.prompt.trim()) {
         pushToast('success', display)
         return
@@ -441,6 +452,7 @@
           const expanded = seedWire && prompt === seedDisplay
             ? { prompt: seedWire, display: seedDisplay }
             : await BundleService.ExpandGoal(prompt)
+          if ('issue' in expanded && expanded.issue) issueRef = expanded.issue
           const out = openingChatSeed(prompt, { wire: seedWire, display: seedDisplay }, expanded)
           prompt = out.text
           display = out.display
@@ -480,6 +492,8 @@
         return // create failed — stay on the modal
       }
       upsertWorkspace(ws)
+      if (offerLinearLink && linkLinear) void linkLinearProject(repo!.id, linearKey)
+      if (issueRef) void linkWorkspaceIssue(ws.id, issueRef)
       task = ''
       attachments = []
       closeNewTask()
@@ -533,6 +547,18 @@
                 <Icon name="git-branch" />
               {/snippet}
             </Select>
+            {#if offerLinearLink && repo}
+              <button
+                type="button"
+                class="nt-link"
+                class:on={linkLinear}
+                aria-pressed={linkLinear}
+                title="{linkLinear ? 'Will send' : 'Send'} Linear “{linearKey}” issues to {repo.name || repo.id} from now on"
+                onclick={() => (linkLinear = !linkLinear)}
+              >
+                <Icon name="link" />Remember for {linearKey}
+              </button>
+            {/if}
           </div>
         {:else}
           <div class="nt-empty">No git projects yet — <button type="button" class="lnk" onclick={goAddProject}>add a repository first</button></div>

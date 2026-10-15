@@ -138,6 +138,43 @@
         "sidebar": true,
         "chat": false,
         "files": false,
+        "prChat": true
+      },
+      "widths": {
+        "rail": 280,
+        "maestroDock": 390,
+        "obsSide": 180,
+        "prFileList": 220
+      },
+      "editorPrefs": {
+        "fontSize": 13,
+        "lineWrapping": true,
+        "cursorBlink": false
+      },
+      "ready": {
+        "selector": "#v-prdetail",
+        "text": "post these to the PR"
+      },
+      "pr": "486"
+    },
+    {
+      "id": "inbox",
+      "title": "Everything that needs you",
+      "placement": "Inbox tour stop",
+      "viewport": {
+        "width": 1440,
+        "height": 800
+      },
+      "target": ".win",
+      "view": "inbox",
+      "chat": "PA",
+      "file": "src/main.go",
+      "surface": "editor",
+      "prTab": "conv",
+      "panes": {
+        "sidebar": true,
+        "chat": true,
+        "files": false,
         "prChat": false
       },
       "widths": {
@@ -152,20 +189,20 @@
         "cursorBlink": false
       },
       "ready": {
-        "selector": "#v-prdetail .prpane.on",
-        "text": "stalled providers"
+        "selector": "#v-briefing",
+        "text": "What needs me before lunch?"
       }
     },
     {
-      "id": "inbox",
-      "title": "Everything that needs you",
-      "placement": "Inbox tour stop",
+      "id": "issues",
+      "title": "Issues across GitHub and Linear",
+      "placement": "Issues tour stop",
       "viewport": {
         "width": 1440,
         "height": 800
       },
       "target": ".win",
-      "view": "inbox",
+      "view": "issues",
       "chat": "PA",
       "file": "src/main.go",
       "surface": "editor",
@@ -188,8 +225,8 @@
         "cursorBlink": false
       },
       "ready": {
-        "selector": "#v-briefing",
-        "text": "Choose how long invitation links stay valid"
+        "selector": "#v-issues .prlist",
+        "text": "Team invites with expiring links"
       }
     },
     {

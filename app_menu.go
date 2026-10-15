@@ -84,7 +84,7 @@ func accel(item *application.MenuItem, chord string) *application.MenuItem {
 // on macOS the menubar owns the key equivalents, so the webview may never see
 // those keydowns (see nativeMenuAccelerators for Linux). Contextual items
 // start disabled; the frontend pushes "menu.state" as focus/tabs change.
-func installAppMenu(wapp *application.App) {
+func installAppMenu(wapp *application.App, updates bool) {
 	emit := func(action string) func(*application.Context) {
 		return func(*application.Context) {
 			wapp.Event.Emit("menu.action", action)
@@ -103,6 +103,9 @@ func installAppMenu(wapp *application.App) {
 	if runtime.GOOS == "darwin" {
 		appMenu := menu.AddSubmenu("Recur")
 		appMenu.AddRole(application.About)
+		if updates {
+			appMenu.Add("Check for Updates…").OnClick(emit("check-updates"))
+		}
 		appMenu.AddSeparator()
 		accel(appMenu.Add("Settings…"), "CmdOrCtrl+,").
 			OnClick(emit("settings"))
@@ -458,6 +461,9 @@ func applyMenuThemeState(items *menuItems, data any) {
 	appSel := strField(m, "appSelected")
 	edSel := strField(m, "editorSelected")
 	termSel := strField(m, "terminalSelected")
+	if dark, ok := m["chromeDark"].(bool); ok {
+		setNativeChromeDark(dark)
+	}
 	for key, item := range items.appThemeItems {
 		item.SetChecked(key == appSel)
 	}

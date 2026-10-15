@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -63,7 +64,12 @@ func (r *ClaudeRunner) Run(ctx context.Context, spec AgentSpec, emit func(Parsed
 
 	// We manage cancellation ourselves (process-group kill) rather than letting
 	// exec.CommandContext SIGKILL only the leader, which would orphan children.
-	cmd := exec.Command(bin, r.args(spec)...) //nolint:gosec // argv built from app-owned spec
+	args, cleanup, err := spillAppendPrompt(r.args(spec))
+	if err != nil {
+		return Result{}, err
+	}
+	defer cleanup()
+	cmd := exec.Command(bin, args...) //nolint:gosec // argv built from app-owned spec
 	cmd.Dir = spec.Worktree
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Env = withoutLinearAPIKey(os.Environ())
@@ -500,6 +506,37 @@ func claudeImageBlock(img UserImage) map[string]any {
 			"data":       img.Data,
 		},
 	}
+}
+
+// maxInlineAppendPrompt keeps --append-system-prompt well under Linux's 128 KiB
+// single-argument exec limit (MAX_ARG_STRLEN, E2BIG). A plan-heavy role prompt
+// can exceed it, so larger prompts go through --append-system-prompt-file.
+const maxInlineAppendPrompt = 64 << 10
+
+// spillAppendPrompt moves an oversized --append-system-prompt value into a
+// private temp file. cleanup removes it and must run after the process exits.
+func spillAppendPrompt(args []string) ([]string, func(), error) {
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] != "--append-system-prompt" || len(args[i+1]) <= maxInlineAppendPrompt {
+			continue
+		}
+		f, err := os.CreateTemp("", "recur-system-prompt-*.md")
+		if err != nil {
+			return nil, nil, fmt.Errorf("claude system prompt file: %w", err)
+		}
+		_, werr := f.WriteString(args[i+1])
+		if cerr := f.Close(); werr == nil {
+			werr = cerr
+		}
+		if werr != nil {
+			_ = os.Remove(f.Name())
+			return nil, nil, fmt.Errorf("claude system prompt file: %w", werr)
+		}
+		out := slices.Clone(args)
+		out[i], out[i+1] = "--append-system-prompt-file", f.Name()
+		return out, func() { _ = os.Remove(f.Name()) }, nil
+	}
+	return args, func() {}, nil
 }
 
 // args builds the `claude -p` argv from a spec (headless ref §1, §8; DECISIONS D8).

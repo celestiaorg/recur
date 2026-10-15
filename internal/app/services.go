@@ -537,6 +537,21 @@ func (s *WorkspacesService) SetWorkspaceBaseBranch(workspaceID, baseBranch strin
 	return s.eng.SetWorkspaceBaseBranch(workspaceID, baseBranch)
 }
 
+// SetWorkspaceIssue links a workspace to a tracker issue (replacing any link)
+// and assigns the issue to the user when nobody owns it yet. The claim runs
+// before returning so the caller can refresh the issue list afterwards.
+func (s *WorkspacesService) SetWorkspaceIssue(workspaceID string, issue domain.IssueRef) (domain.Workspace, error) {
+	if issue.Source == "" || issue.ID == "" {
+		return domain.Workspace{}, fmt.Errorf("issue source and id are required")
+	}
+	ws, ok := s.st().UpdateWorkspace(workspaceID, func(w *domain.Workspace) { w.Issue = &issue })
+	if !ok {
+		return domain.Workspace{}, fmt.Errorf("workspace %q not found", workspaceID)
+	}
+	claimIssue(issue, s.st().Settings())
+	return ws, nil
+}
+
 // OpenMainWorkspace returns the project's singleton "main working copy"
 // workspace — the Observatory scoped to the project's real checkout (not a
 // managed worktree) — creating it on first open. It has no Loop mode and no PRs;

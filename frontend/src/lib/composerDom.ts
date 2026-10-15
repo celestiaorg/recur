@@ -342,6 +342,21 @@ export function serializePromptChip(chip: HTMLElement): string {
   return encodePromptWire(slash, readPromptChipValues(chip))
 }
 
+/** Chip args plus any composer text typed after the chip, so a note after
+ *  `/linear ENG-1` reaches the prompt (multi-arg prompts fold it into the last arg). */
+export function promptChipArgsWithTrailing(root: HTMLElement, chip: HTMLElement): string {
+  const wire = serializePromptChip(chip)
+  const slash = `/${chip.dataset.promptSlash || ''}`
+  const args = wire.startsWith(slash) ? wire.slice(slash.length).trim() : ''
+  const full = serializeComposer(root)
+  const at = full.indexOf(wire)
+  const rest = at >= 0 ? full.slice(at + wire.length) : ''
+  const tail = rest.trim()
+  if (!tail) return args
+  if (!args) return tail
+  return args + (/^[^\S\n]*\n/.test(rest) ? '\n' : ' ') + tail
+}
+
 export function focusPromptChipArg(chip: HTMLElement, index = 0): HTMLInputElement | null {
   const inputs = promptChipInputs(chip)
   const el = inputs[Math.max(0, Math.min(index, inputs.length - 1))]

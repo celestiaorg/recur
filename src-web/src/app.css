@@ -360,3 +360,9 @@ button {
   color: var(--faint);
   margin-bottom: 16px;
 }
+
+/* Hero tour crossfade (document.startViewTransition in App.svelte). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.45s;
+}

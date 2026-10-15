@@ -242,6 +242,7 @@ func TestEnsureAttributionPatchAgainstPinnedWheel(t *testing.T) {
 	if err := EnsureAttributionPatch(root); err != nil {
 		t.Fatalf("idempotent EnsureAttributionPatch: %v", err)
 	}
+	patched := []string{attributionPreloadRel, attributionEntrypointRel, steerRunServerRel}
 	for _, rel := range []string{
 		filepath.Join("node_modules", "@cursor", "sdk", "dist", "cjs"),
 		filepath.Join("node_modules", "@cursor", "sdk", "dist", "esm"),
@@ -263,6 +264,7 @@ func TestEnsureAttributionPatchAgainstPinnedWheel(t *testing.T) {
 			if strings.Contains(string(b), "attributionConfigProvider=globalThis."+attributionProviderMarker) {
 				found = true
 				assertAgentSkillsStubbed(t, filepath.Join(rel, e.Name()), string(b))
+				patched = append(patched, filepath.Join(rel, e.Name()))
 				t.Logf("patched %s/%s", rel, e.Name())
 				break
 			}
@@ -288,6 +290,7 @@ func TestEnsureAttributionPatchAgainstPinnedWheel(t *testing.T) {
 		if !strings.Contains(s, marker) {
 			t.Errorf("%s missing summary onDelta marker", rel)
 		}
+		patched = append(patched, rel)
 	}
 	preload, err := os.ReadFile(filepath.Join(root, attributionPreloadRel))
 	if err != nil {
@@ -302,6 +305,29 @@ func TestEnsureAttributionPatchAgainstPinnedWheel(t *testing.T) {
 	}
 	if !strings.Contains(string(server), "__recurInstallSteerRun") {
 		t.Error("dist/server.js missing SteerRun hook")
+	}
+
+	// Run the patched output on the wheel's own Node: string checks cannot see
+	// a rewrite that no longer parses or a preload whose imports moved.
+	node := filepath.Join(root, "bin", "node")
+	for _, rel := range patched {
+		if out, err := exec.Command(node, "--check", filepath.Join(root, rel)).CombinedOutput(); err != nil {
+			t.Errorf("node --check %s: %v\n%s", rel, err, out)
+		}
+	}
+	smoke := exec.Command(node, "--input-type=module", "-e", `
+await import("./recur-attribution-provider.mjs");
+const { SdkAgentService } = await import("@anysphere/proto/sdk/v1/sdk_agent_service_connect.js");
+if (!globalThis.`+attributionProviderMarker+`?.get().attribution) throw new Error("attribution provider not installed");
+const impl = {};
+globalThis.__recurInstallSteerRun(SdkAgentService, impl, { getRun: () => undefined });
+if (SdkAgentService.methods.steerRun?.name !== "SteerRun") throw new Error("SteerRun not registered");
+const res = await impl.steerRun({ runId: "r", text: "t" });
+if (res.outcome !== "revert_to_followup") throw new Error("steerRun outcome " + res.outcome);
+`)
+	smoke.Dir = filepath.Join(root, "dist")
+	if out, err := smoke.CombinedOutput(); err != nil {
+		t.Errorf("preload smoke test: %v\n%s", err, out)
 	}
 }
 
@@ -402,6 +428,43 @@ func TestEnsureAttributionPatchUpgradesUnmarkedSummaryDelta(t *testing.T) {
 	}
 }
 
+func TestEnsureAttributionPatchStillMatchesSDK1031(t *testing.T) {
+	root := t.TempDir()
+	writeMinimalBridgeForPatch(t, root)
+	dist := filepath.Join(root, "node_modules", "@cursor", "sdk", "dist")
+	files := map[string]string{
+		filepath.Join(dist, "cjs", "616.js"):   "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Pb(n):new yx(n,m);suffix",
+		filepath.Join(dist, "esm", "357.js"):   "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===b?new n.DvK(o):new l(o,b);suffix",
+		filepath.Join(dist, "cjs", "index.js"): "prefix;" + sdkSummaryDeltaAnchors[1].old + ";suffix",
+		filepath.Join(dist, "esm", "index.js"): "prefix;" + sdkSummaryDeltaAnchors[1].old + ";suffix",
+	}
+	for path, body := range files {
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := EnsureAttributionPatch(root); err != nil {
+		t.Fatalf("EnsureAttributionPatch() error = %v, want nil for 1.0.31", err)
+	}
+	for path := range files {
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := string(body)
+		if strings.HasSuffix(path, "index.js") {
+			if !strings.Contains(s, summaryDeltaPatchNeedle()) {
+				t.Errorf("%s missing summary onDelta marker", path)
+			}
+			continue
+		}
+		if !strings.Contains(s, "attributionConfigProvider=globalThis."+attributionProviderMarker) {
+			t.Errorf("%s not patched", path)
+		}
+		assertAgentSkillsStubbed(t, path, s)
+	}
+}
+
 func TestEnsureAttributionPatchStillMatchesSDK1028CJS(t *testing.T) {
 	root := t.TempDir()
 	writeMinimalBridgeForPatch(t, root)
@@ -497,8 +560,8 @@ func writeMinimalBridgeForPatch(t *testing.T, root string) {
 			t.Fatal(err)
 		}
 	}
-	cjsBody := "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Pb(n):new yx(n,m);suffix"
-	esmBody := "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===b?new n.DvK(o):new l(o,b);suffix"
+	cjsBody := "prefix;getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new OS(l):new dx(l,a);suffix"
+	esmBody := "prefix;getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new MS(l):new lx(l,a);suffix"
 	if err := os.WriteFile(cjs, []byte(cjsBody), 0o644); err != nil {
 		t.Fatal(err)
 	}

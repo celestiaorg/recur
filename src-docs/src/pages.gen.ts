@@ -10,11 +10,13 @@ type Page =
   | { path: '/bundles/manifest'; render: 'static' }
   | { path: '/bundles/output'; render: 'static' }
   | { path: '/bundles/prompts'; render: 'static' }
+  | { path: '/bundles/loops'; render: 'static' }
   | { path: '/bundles/shebang'; render: 'static' }
   | { path: '/bundles/testing'; render: 'static' }
   | { path: '/bundles/typescript'; render: 'static' }
   | { path: '/concepts/chat-context'; render: 'static' }
   | { path: '/concepts/inbox'; render: 'static' }
+  | { path: '/concepts/issues'; render: 'static' }
   | { path: '/concepts/loop'; render: 'static' }
   | { path: '/concepts/modes'; render: 'static' }
   | { path: '/concepts/project-toml'; render: 'static' }
@@ -28,6 +30,7 @@ type Page =
   | { path: '/reference/agents'; render: 'static' }
   | { path: '/reference/integrations'; render: 'static' }
   | { path: '/reference/settings'; render: 'static' }
+  | { path: '/reference/shortcuts'; render: 'static' }
   | { path: '/reference/skills'; render: 'static' }
   | { path: '/reference/themes'; render: 'static' }
   | { path: '/reference/troubleshooting'; render: 'static' }

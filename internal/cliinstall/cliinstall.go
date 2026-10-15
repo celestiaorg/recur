@@ -192,10 +192,15 @@ func sameFilePath(a, b string) bool {
 	return os.SameFile(fa, fb)
 }
 
+// PackagedDir is where the Linux .deb/.rpm install Recur. The package ships
+// /usr/bin/recur and the menu entry itself (build/linux/nfpm.yaml).
+const PackagedDir = "/opt/recur"
+
 // InstallFromApp finds the CLI next to the running GUI exe and symlinks it
-// onto PATH. Missing bundle / dev.app / missing CLI is a no-op (nil).
+// onto PATH. Missing bundle / dev.app / missing CLI / package install is a
+// no-op (nil).
 func InstallFromApp(exe string) error {
-	if exe == "" || IsDevBundle(exe) {
+	if exe == "" || IsDevBundle(exe) || filepath.Dir(exe) == PackagedDir {
 		return nil
 	}
 	cli, ok := BundledCLI(exe)

@@ -154,7 +154,7 @@ test('main navigation shows schedules across projects and restores after reload'
   } })
   await gotoApp(page)
   const nav = page.locator('.rail-top')
-  await expect(nav.locator('button.nav')).toHaveText([/Inbox/, /Pull requests/, /Schedules/])
+  await expect(nav.locator('button.nav')).toHaveText([/Inbox/, /Issues/, /Pull requests/, /Schedules/])
   await nav.locator('button.nav', { hasText: 'Schedules' }).click()
   const panel = page.locator('#v-schedules')
   await expect(nav.locator('button.nav', { hasText: 'Schedules' })).toHaveClass(/on/)

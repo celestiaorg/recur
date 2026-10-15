@@ -8,11 +8,12 @@
     prFaceSlots,
     prPeopleWithReviews,
     reviewStateLabel,
+    type PRPerson,
   } from '../lib/pr-participants'
 
-  let { pr }: { pr: PR } = $props()
+  let { pr, people: given }: { pr?: PR; people?: PRPerson[] } = $props()
 
-  const people = $derived(prPeopleWithReviews(pr))
+  const people = $derived(given ?? (pr ? prPeopleWithReviews(pr) : []))
   const faces = $derived(prFaceSlots(people))
 
   function hideBrokenAvatar(e: Event) {

@@ -1962,6 +1962,26 @@ func TestPRByWorkspacePrefersOpenOverClosed(t *testing.T) {
 	}
 }
 
+func TestPRByWorkspaceKeepsLocalNewerThanClosedGitHub(t *testing.T) {
+	s := NewInMemory()
+	if _, err := s.AddPR(domain.PR{
+		ID: "gh-9", WorkspaceID: "ws-l", Number: 9, Source: domain.SourceGitHub,
+		State: "Closed", Group: "merged",
+	}); err != nil {
+		t.Fatalf("AddPR(closed) err=%v", err)
+	}
+	local, err := s.AddPR(domain.PR{
+		ID: "10", WorkspaceID: "ws-l", Number: 10, Source: domain.SourceLocal,
+		State: "In review", Group: "you",
+	})
+	if err != nil {
+		t.Fatalf("AddPR(local) err=%v", err)
+	}
+	if got, _ := s.PRByWorkspace("ws-l"); got.ID != local.ID {
+		t.Errorf("PRByWorkspace(ws-l) = %q, want open Local %q newer than closed GitHub", got.ID, local.ID)
+	}
+}
+
 func TestDeletePR(t *testing.T) {
 	s := NewInMemory()
 	pr, err := s.AddPR(domain.PR{ID: "gone", WorkspaceID: "ws-x", Number: 9, Source: domain.SourceLocal, State: "In review"})

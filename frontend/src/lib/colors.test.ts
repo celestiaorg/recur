@@ -157,6 +157,12 @@ describe('prForWorkspace', () => {
     expect(prForWorkspace([github, local], 'ws-c')).toEqual(github)
   })
 
+  it('prefers the newer PR on a tie', () => {
+    const closed = { workspaceId: 'ws-d', id: 'gh-9', source: 'gh', group: 'merged', state: 'Closed' }
+    const merged = { workspaceId: 'ws-d', id: 'gh-13', source: 'gh', group: 'merged', state: 'Merged' }
+    expect(prForWorkspace([closed, merged], 'ws-d')).toEqual(merged)
+  })
+
   it('prefers an open GitHub PR over an open Local PR', () => {
     const local = { workspaceId: 'ws-c', id: '4', source: 'local', group: 'you', state: 'In review' }
     const github = { workspaceId: 'ws-c', id: 'gh-156', source: 'gh', group: 'you', state: 'In review' }

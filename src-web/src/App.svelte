@@ -712,7 +712,7 @@ uses = "ensure_pr"`);
 
       <section class="b-control" id="review">
         <div class="b-control-copy">
-          <h2>Every PR,<br />one place.</h2>
+          <h2>Every PR,<br /><em>one place.</em></h2>
           <ul class="b-list">
             <li>
               Every open PR across your projects, not just the ones Recur
@@ -743,7 +743,7 @@ uses = "ensure_pr"`);
 
       <section class="b-control b-flip" id="inbox">
         <div class="b-control-copy">
-          <h2>One inbox,<br />every agent.</h2>
+          <h2>One inbox,<br /><em>every agent.</em></h2>
           <ul class="b-list">
             <li>
               Every project, every workspace, sorted and filtered. Find what
@@ -774,7 +774,7 @@ uses = "ensure_pr"`);
 
       <section class="b-split" id="schedules">
         <div>
-          <h2>Put the chores on a schedule.</h2>
+          <h2>Put the chores<br /><em>on a schedule.</em></h2>
           <p>
             Nightly review passes, weekly security sweeps, a morning report. Any
             prompt or loop can run on its own clock, each time in a fresh

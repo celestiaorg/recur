@@ -128,9 +128,14 @@ that kind has exactly one slot of that kind. Otherwise use
 - `gate = "plan_approval"` on `plan` honors the **policy**
   `plan_approval` value.
 - `when` on on-demand phases is conductor guidance, not an engine trigger.
-- Prompt values: a composer slash (`/review`) or a pack-relative path
-  (`prompts/security-review.md`). Paths must exist. Do not write
-  `prompt = { a, b }`.
+- Prompt values: a composer slash (`/review`), a pack-relative path
+  (`prompts/security-review.md`), or inline text (anything with a space,
+  or without a `/` and not ending in `.md`). Paths must exist. Do not
+  write `prompt = { a, b }`.
+- A phase prompt replaces the engine's built-in turn text for that slot.
+  The built-in `fix` text carries the open findings, so a custom `fix`
+  must tell the implementer to call `list_findings` and close each one
+  with `update_finding`, or keep `fix = "/fix-findings"`.
 
 `[[loop]] prompt` (mission) is standing instructions for the **conductor
 session** when the human talks — charter, whether to open a PR, whether

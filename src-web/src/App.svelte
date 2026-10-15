@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { flushSync } from "svelte";
+  import manifest from "../public/screenshots/manifest.json";
   import ProductScreenshot from "./lib/components/ProductScreenshot.svelte";
   import ThemePreview from "./lib/components/ThemePreview.svelte";
   import LoopFlow from "./lib/components/LoopFlow.svelte";
   import ProviderIcon from "./lib/components/ProviderIcon.svelte";
   import ThemePickers from "./lib/components/ThemePickers.svelte";
   import { appThemeByKey, editorThemeByKey } from "./lib/themes";
+  import { highlightToml } from "./lib/toml";
   const wordmark = "/images/recur-wordmark.png";
   const icon = "/images/recur-icon.png";
   const downloads =
@@ -38,9 +41,33 @@
     : "Download for Mac";
   const docs = "/docs/";
 
-  let dark = $state(
-    new URLSearchParams(location.search).get("theme") === "charcoal",
+  // Follow the system until the visitor picks a theme. The choice shares the
+  // docs' Vocs key so the splash and docs stay in step; ?theme= wins unsaved.
+  const themeKey = "vocs-theme";
+  const param = new URLSearchParams(location.search).get("theme");
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(themeKey);
+  } catch {}
+  let picked = $state<"light" | "dark" | null>(
+    param === "charcoal"
+      ? "dark"
+      : param === "paper"
+        ? "light"
+        : stored === "light" || stored === "dark"
+          ? stored
+          : null,
   );
+  const systemQuery = matchMedia("(prefers-color-scheme: dark)");
+  let systemDark = $state(systemQuery.matches);
+  systemQuery.addEventListener("change", (e) => (systemDark = e.matches));
+  const dark = $derived(picked ? picked === "dark" : systemDark);
+  function pick(theme: "light" | "dark") {
+    picked = theme;
+    try {
+      localStorage.setItem(themeKey, theme);
+    } catch {}
+  }
   const app = $derived(appThemeByKey(dark ? "default" : "paper"));
   const editor = $derived(editorThemeByKey(dark ? "recur" : "paper"));
   let playing = $state(true);
@@ -105,33 +132,71 @@
     },
   ];
   let screen = $state<Screen>("workspace");
-  const selected = $derived(screens.find((item) => item.screen === screen)!);
+  const screenIndex = $derived(
+    screens.findIndex((item) => item.screen === screen),
+  );
+  const selected = $derived(screens[screenIndex]);
+  // The tour advances on its own until the visitor takes over. Each tab's
+  // progress bar times its stop, so pausing the animation pauses the tour.
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let tourAuto = $state(!reducedMotion);
+  let tourHover = $state(false);
+  let tourFocus = $state(false);
+  let tourHidden = $state(false);
+  function observeTour(node: HTMLElement) {
+    const obs = new IntersectionObserver(([e]) => {
+      tourHidden = !e.isIntersecting;
+    });
+    obs.observe(node);
+    return () => obs.disconnect();
+  }
+  const captureSrc = (id: string) =>
+    `/screenshots/${manifest.captures.find((c) => c.id === id)!.file}`;
+  // Warm every tour stop for the current theme so a switch never waits on
+  // the network.
+  $effect(() => {
+    const theme = dark ? "charcoal" : "paper";
+    for (const item of screens)
+      new Image().src = captureSrc(`${item.screen}-${theme}`);
+  });
 
-  const steps = [
+  // Decode the next capture first, then crossfade where the browser can.
+  async function showScreen(next: Screen) {
+    if (next === screen) return;
+    const image = new Image();
+    image.src = captureSrc(`${next}-${dark ? "charcoal" : "paper"}`);
+    await image.decode().catch(() => {});
+    if (reducedMotion || !document.startViewTransition) {
+      screen = next;
+      return;
+    }
+    document.startViewTransition(() => flushSync(() => (screen = next)));
+  }
+  function stepScreen(delta: number) {
+    const next = (screenIndex + delta + screens.length) % screens.length;
+    void showScreen(screens[next].screen);
+  }
+
+  const pillars = [
     {
-      title: "Task",
-      body: "Describe it, or start from a GitHub or Linear issue.",
-      code: "/linear ENG-123",
+      title: "Done means reviewed.",
+      body: "Every change gets a second set of eyes that can’t touch the code. Problems get fixed, or argued down, before they reach you.",
+      code: "/review-and-fix",
     },
     {
-      title: "Workspace",
-      body: "A fresh git worktree off your base branch.",
-      code: "main → recur/team-invites",
+      title: "Nothing is final.",
+      body: "Every turn is a checkpoint. Rewind the chat and the code to any point, or branch off and try it another way.",
+      code: "Reset to here",
     },
     {
-      title: "Agent",
-      body: "Pick a provider, a model, and a mode for each chat.",
-      code: "Claude Code · Agent",
+      title: "Your process, your rules.",
+      body: "How agents plan, build, and review lives in plain files. Make it strict, make it fast, make it yours.",
+      code: "bundle.toml",
     },
     {
-      title: "Review",
-      body: "Inline comments on the diff. Review chats file findings.",
-      code: "/review",
-    },
-    {
-      title: "Pull request",
-      body: "Commit, push, and open it with an agent-written summary.",
-      code: "/open-pr",
+      title: "Works while you sleep.",
+      body: "Put the chores on a schedule. Wake up to fixed findings, fresh PRs, and a short list of what needs you.",
+      code: "@daily",
     },
   ];
 
@@ -191,6 +256,85 @@
     ["Balanced", "medium+", "if structured", "4, escalate"],
     ["Aggressive", "high+", "never", "6, proceed"],
   ];
+  const loopExample = highlightToml(`# ~/.recur/bundles/Team/bundle.toml
+[[role]]
+id = "team.roles.api-reviewer"
+name = "API reviewer"
+code = "AR"
+mode = "review"
+prompt = """
+Review public API changes only. File a finding with
+report_finding for each breaking change, missing
+version bump, or undocumented error. Breaking is high.
+"""
+
+[[loop]]
+id = "team.loops.api-change"
+name = "API change"
+conductor = "recur.roles.maestro"
+entry = "plan"
+
+[[loop.phase]]
+id = "plan"
+uses = "plan"
+role = "recur.roles.planner"
+prompt = "Plan from the OpenAPI spec. List every endpoint that changes."
+gate = "plan_approval"
+next = "build"
+
+[[loop.phase]]
+id = "build"
+uses = "converge"
+next = "check"
+
+[loop.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "team.roles.api-reviewer"
+
+[loop.phase.prompts]
+implement = "Update the OpenAPI spec first, then the handlers."
+fix = "/fix-findings"
+
+[[loop.phase]]
+id = "check"
+uses = "verify"
+role = "recur.roles.qa"
+prompt = "Call each changed endpoint and attach the responses."
+next = "pr"
+
+[[loop.phase]]
+id = "pr"
+uses = "ensure_pr"`);
+  // Lucide paths for modifier glyphs: fonts draw ⌘ ⇧ ⌥ at uneven sizes.
+  const keyIcons: Record<string, string[]> = {
+    "⌘": [
+      "M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3",
+    ],
+    "⇧": ["M9 18v-6H5l7-7 7 7h-4v6H9z"],
+    "⌥": ["M3 3h6l6 18h6", "M14 3h7"],
+    "⌃": ["m18 15-6-6-6 6"],
+    "⌫": [
+      "M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z",
+      "m12 9 6 6",
+      "m18 9-6 6",
+    ],
+    "↑": ["m5 12 7-7 7 7", "M12 19V5"],
+    "↓": ["M12 5v14", "m19 12-7 7-7-7"],
+  };
+  const keys: [string[], string][] = [
+    [["⌘N"], "New workspace"],
+    [["⌘K"], "Go to any workspace or PR"],
+    [["⌘P"], "Open a file"],
+    [["⌘⇧P"], "Run a bundle command"],
+    [["⌘."], "Switch chat mode"],
+    [["⌘L"], "Add the selection to chat"],
+    [["⌘1", "⌘2", "⌘3"], "Focus chat, editor, terminal"],
+    [["⌥⌘↑", "⌥⌘↓"], "Previous / next workspace"],
+    [["J", "K"], "Next / previous file in review"],
+    [["⌘R"], "Start a project run"],
+    [["⌘⇧⌫"], "Stop the agent"],
+    [["⌃`"], "Toggle the terminal"],
+  ];
   const loops = [
     "/to-a-pr",
     "/review-and-fix",
@@ -202,18 +346,82 @@
 
 <svelte:head><meta name="theme-color" content={app.bg} /></svelte:head>
 
-{#snippet platforms()}
-  <p class="b-meta">
-    macOS: <a href="{downloads}/Recur-macos-universal.dmg">.dmg</a> (12 or later, Apple Silicon
-    and Intel)
-    {#each linuxBuilds as build (build.arch)}
-      <br />Linux {build.label}:
-      {#each linuxFormats as format, i (format)}{i ? " · " : ""}<a
-          href="{downloads}/Recur-linux-{build.arch}.{format}">.{format}</a
-        >{/each}
-    {/each}
-    <br />Linux needs GTK 4 and WebKitGTK 6.0 (Ubuntu 24.04+, Debian 13+)
-  </p>
+{#snippet external()}<svg
+    class="b-icon"
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    ><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path
+      d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+    /></svg
+  >{/snippet}
+
+{#snippet docLink(path: string, label: string)}<a
+    class="b-doc-link"
+    href="{docs}{path}">{label} {@render external()}</a
+  >{/snippet}
+
+{#snippet keycap(chord: string)}<kbd role="img" aria-label={chord}
+    >{#each [...chord] as ch, i (i)}{#if keyIcons[ch]}<svg
+          class="b-key-icon"
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.25"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          >{#each keyIcons[ch] as d (d)}<path {d} />{/each}</svg
+        >{:else}{ch}{/if}{/each}</kbd
+  >{/snippet}
+
+{#snippet downloadIcon()}<svg
+    class="b-icon"
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    ><path d="M12 17V3" /><path d="m6 11 6 6 6-6" /><path d="M19 21H5" /></svg
+  >{/snippet}
+
+{#snippet platforms(id: string)}
+  <button
+    type="button"
+    class="b-more"
+    popovertarget={id}
+    style:anchor-name="--{id}">Other downloads ▾</button
+  >
+  <div {id} class="b-downloads" popover="auto" style:position-anchor="--{id}">
+    <dl>
+      <div>
+        <dt>macOS</dt>
+        <dd>
+          <a href="{downloads}/Recur-macos-universal.dmg">.dmg</a>
+          <span>12+, Apple Silicon and Intel</span>
+        </dd>
+      </div>
+      {#each linuxBuilds as build (build.arch)}<div>
+          <dt>Linux {build.label}</dt>
+          <dd>
+            {#each linuxFormats as format (format)}<a
+                href="{downloads}/Recur-linux-{build.arch}.{format}"
+                >.{format}</a
+              >{/each}
+          </dd>
+        </div>{/each}
+    </dl>
+    <p>
+      Linux needs GTK 4 and WebKitGTK 6.0 (Ubuntu 24.04+, Debian 13+). See the
+      <a href="{docs}getting-started/install">install guide</a>.
+    </p>
+  </div>
 {/snippet}
 
 <div
@@ -235,6 +443,10 @@
   style:--emerald={app.emerald}
   style:--coral={app.coral}
   style:--indigo={app.indigo}
+  style:--syn-a={editor.a}
+  style:--syn-b={editor.b}
+  style:--syn-c={editor.c}
+  style:--syn-comment={editor.comment}
 >
   <a class="b-skip" href="#main">Skip to content</a>
   <div class="b-wrap">
@@ -254,17 +466,20 @@
           href="#loops">Loops</a
         ><a class="b-nav-secondary" href="#review">Pull requests</a><a
           class="b-nav-secondary"
-          href={docs}>Docs ↗</a
+          href="#inbox">Inbox</a
+        ><a
+          class="b-nav-secondary"
+          href={docs}>Docs {@render external()}</a
         >
         <div class="b-themes" role="group" aria-label="Page theme">
           <button
             type="button"
             aria-pressed={!dark}
-            onclick={() => (dark = false)}>☀ Paper</button
+            onclick={() => pick("light")}>☀ Paper</button
           ><button
             type="button"
             aria-pressed={dark}
-            onclick={() => (dark = true)}>◐ Charcoal</button
+            onclick={() => pick("dark")}>◐ Charcoal</button
           >
         </div>
         <a class="b-nav-download" href={download}>Download</a>
@@ -272,38 +487,55 @@
     </header>
     <main id="main">
       <section class="b-hero">
-        <div class="b-eyebrow">
-          <span class="b-dot"></span>macOS and Linux · Local worktrees
-        </div>
-        <h1>Run coding agents in parallel.<br /><em>One worktree each.</em></h1>
+        <h1>Agents that don’t stop<br /><em>until it’s right.</em></h1>
         <div class="b-intro">
           <p>
-            Recur is a desktop app that runs <strong>Claude Code</strong>,
-            <strong>Cursor</strong>, or <strong>Codex</strong> in isolated git
-            worktrees, each task on its own branch. Review the diff, work the
-            findings, and open the pull request without leaving the window.
+            <strong>Agent work should arrive finished.</strong> Recur runs your
+            agents through your processes, every task, every time. Stay in
+            charge and ship more.
           </p>
           <div>
             <div class="b-actions">
               <a class="b-button" href={download}
-                >{downloadLabel} <span aria-hidden="true">↓</span></a
-              ><a class="b-button b-ghost" href={docs}>Docs ↗</a>
+                >{downloadLabel} {@render downloadIcon()}</a
+              ><a class="b-button b-ghost" href={docs}>Docs {@render external()}</a>
             </div>
-            {@render platforms()}
+            {@render platforms("hero-downloads")}
           </div>
         </div>
       </section>
 
-      <section class="b-product" id="product" aria-label="Recur screens">
+      <section
+        class="b-product"
+        id="product"
+        aria-label="Recur screens"
+        onpointerenter={() => (tourHover = true)}
+        onpointerleave={() => (tourHover = false)}
+        onpointerdown={() => (tourAuto = false)}
+        onfocusin={() => (tourFocus = true)}
+        {@attach observeTour}
+        onfocusout={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node))
+            tourFocus = false;
+        }}
+      >
         <div class="b-product-bar">
           <div class="b-screen-tabs" role="group" aria-label="Recur screens">
             {#each screens as item (item.screen)}<button
                 type="button"
                 aria-pressed={screen === item.screen}
-                onclick={() => (screen = item.screen)}>{item.label}</button
+                onclick={() => {
+                  tourAuto = false;
+                  void showScreen(item.screen);
+                }}
+                >{item.label}{#if tourAuto && screen === item.screen}<span
+                    class="b-tour-progress"
+                    class:paused={tourHover || tourFocus || tourHidden}
+                    aria-hidden="true"
+                    onanimationend={() => stepScreen(1)}
+                  ></span>{/if}</button
               >{/each}
           </div>
-          <span class="b-eyebrow">Real captures · {app.name}</span>
         </div>
         <div class="b-window-scroll">
           <div class="b-window">
@@ -311,11 +543,21 @@
               {screen}
               theme={dark ? "charcoal" : "paper"}
               eager
+              caption={selected.caption}
+              position="{screenIndex + 1} / {screens.length}"
+              onprev={() => {
+                tourAuto = false;
+                stepScreen(-1);
+              }}
+              onnext={() => {
+                tourAuto = false;
+                stepScreen(1);
+              }}
             />
           </div>
         </div>
         <div class="b-product-caption">
-          <p aria-live="polite">{selected.caption}</p>
+          <p aria-live={tourAuto ? "off" : "polite"}>{selected.caption}</p>
           <span>Click to view full size ↗</span>
         </div>
       </section>
@@ -329,19 +571,19 @@
             class="b-compatible"
             >+ OpenAI-compatible: OpenAI, OpenRouter, Groq, or a custom URL
             such as Ollama</span
-          >
+          >{@render docLink("reference/agents", "Provider setup")}
         </div>
       </div>
 
       <section class="b-flow" aria-labelledby="flow-title">
-        <h2 id="flow-title" class="b-eyebrow">From task to pull request</h2>
+        <h2 id="flow-title" class="b-eyebrow">Why Recur</h2>
         <ol>
-          {#each steps as step, i (step.title)}
+          {#each pillars as pillar, i (pillar.title)}
             <li>
               <span class="b-step">{i + 1}</span>
-              <h3>{step.title}</h3>
-              <p>{step.body}</p>
-              <code>{step.code}</code>
+              <h3>{pillar.title}</h3>
+              <p>{pillar.body}</p>
+              <code>{pillar.code}</code>
             </li>
           {/each}
         </ol>
@@ -351,10 +593,12 @@
         <div class="b-heading">
           <h2>Pick a mode<br /><em>for each chat.</em></h2>
           <p>
-            Every chat picks its own provider, model, and mode, and you can
-            switch mid-chat. Run as many chats as you like, side by side in one
-            workspace or across many. PR chats stay read-only: Ask, Plan, and
-            Review.
+            Sometimes you want an answer, sometimes a plan, sometimes a second
+            opinion. Every chat picks its own agent and how far it’s allowed to
+            go. Run as many as you like.
+            <span class="b-doc-links"
+              >{@render docLink("concepts/modes", "Chat modes docs")}</span
+            >
           </p>
         </div>
         <div class="b-mode-tabs" role="group" aria-label="Chat modes">
@@ -385,12 +629,18 @@
 
       <section class="b-section" id="loops">
         <div class="b-heading">
-          <h2>Loops hand the task<br /><em>to a team of agents.</em></h2>
+          <h2>Set the bar.<br /><em>The loop keeps going.</em></h2>
           <p>
-            A loop is a graph of phases declared in a bundle. Each phase is run
-            by a role with its own prompt, mode, and tools. The Maestro conducts:
-            it reports status, edits the plan, extends rounds, and dispatches
-            on-demand phases, but never does the phase work itself.
+            Hand a task to a team instead of one agent. A planner scopes it, a
+            coder builds it, a reviewer tears into it, and they go round until
+            it’s right or they need you. A Maestro keeps it moving, and you can
+            reshape any of it.
+            <span class="b-doc-links"
+              >{@render docLink("concepts/loop", "Loop mode docs")}{@render docLink(
+                "bundles/loops",
+                "Write your own loop",
+              )}</span
+            >
           </p>
         </div>
         <div class="b-graph-heading">
@@ -462,28 +712,24 @@
 
       <section class="b-control" id="review">
         <div class="b-control-copy">
-          <h2>Review and merge<br />pull requests.</h2>
+          <h2>Every PR,<br />one place.</h2>
           <ul class="b-list">
             <li>
-              One Pull requests view across every project, including PRs opened
-              outside Recur. It flags review requests, assignments, requested
-              changes, and failing checks.
+              Every open PR across your projects, not just the ones Recur
+              opened, with the ones waiting on you surfaced.
             </li>
             <li>
-              Line comments batched into a review. Approve, request changes,
-              reply, resolve, and react. Agent findings sit next to human
-              comments.
+              Review the way you already do. Agent findings sit right next to
+              human comments.
             </li>
             <li>
-              Mark ready, then squash, rebase, or merge. <code>/fix-checks</code>
-              starts an agent on red CI; <code>/update</code> catches the branch
-              up.
-            </li>
-            <li>
-              Check out any PR into a new workspace. GitHub goes through the
-              <code>gh</code> CLI, as the account you already use.
+              Red CI? Hand it to an agent. Behind base? One command. Any PR can
+              become a workspace.
             </li>
           </ul>
+          <span class="b-doc-links"
+            >{@render docLink("concepts/pull-requests", "Pull request docs")}</span
+          >
         </div>
         <div class="b-review-scroll">
           <div class="b-review">
@@ -495,15 +741,47 @@
         </div>
       </section>
 
+      <section class="b-control b-flip" id="inbox">
+        <div class="b-control-copy">
+          <h2>One inbox,<br />every agent.</h2>
+          <ul class="b-list">
+            <li>
+              Every project, every workspace, sorted and filtered. Find what
+              needs you, what’s in progress, and what is ready to pick up.
+            </li>
+            <li>
+              Questions and permission requests rise to the top, so no agent
+              sits waiting on a tab you forgot to check.
+            </li>
+            <li>
+              Unsure of where you were? Ask Recur about your work right from the
+              inbox.
+            </li>
+          </ul>
+          <span class="b-doc-links"
+            >{@render docLink("concepts/inbox", "Inbox docs")}</span
+          >
+        </div>
+        <div class="b-review-scroll">
+          <div class="b-review">
+            <ProductScreenshot
+              screen="inbox"
+              theme={dark ? "charcoal" : "paper"}
+            />
+          </div>
+        </div>
+      </section>
+
       <section class="b-split" id="schedules">
         <div>
-          <h2>Run prompts on a schedule.</h2>
+          <h2>Put the chores on a schedule.</h2>
           <p>
-            Save a prompt or a loop with a project, base branch, model, and
-            mode. Each occurrence gets a fresh workspace. Recur previews the
-            next three run times before you save, marks runs missed while it was
-            closed instead of replaying them, and skips a run while the last one
-            is still going.
+            Nightly review passes, weekly security sweeps, a morning report. Any
+            prompt or loop can run on its own clock, each time in a fresh
+            workspace, so the results are ready when you sit down.
+            <span class="b-doc-links"
+              >{@render docLink("concepts/schedules", "Schedule docs")}</span
+            >
           </p>
         </div>
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this code sample.) -->
@@ -523,12 +801,16 @@ Release notes draft    once Oct 1 09:00  Agent</pre>
           <div>
             <h2>Extend it<br /><em>with bundles.</em></h2>
             <p>
-              Recur Bundles are TextMate-inspired directories with one
-              <code>bundle.toml</code>. Slash commands, loops, roles, policies,
-              editor macros, grammars, snippets, language servers, themes, and
-              GitHub and Linear issue lookup all ship this way. Copy a shipped bundle into
-              <code>~/.recur/bundles</code> to override it by id, then pick
-              Navigate → Reload Bundles to load it without restarting.
+              Recur is built from TextMate-inspired bundles, and so is almost
+              everything in it: slash commands, loops, roles, issue lookup,
+              languages, themes. Copy one, change it, and reload without
+              restarting.
+              <span class="b-doc-links"
+                >{@render docLink("bundles", "Bundle docs")}{@render docLink(
+                  "bundles/loops",
+                  "Write your own loop",
+                )}</span
+              >
             </p>
             <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this code sample.) -->
             <pre
@@ -541,33 +823,16 @@ recur bundles test ./bundles/JSON</pre>
           </div>
           <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this code sample.) -->
           <pre
-            class="b-code"
+            class="b-code b-toml"
             tabindex="0"
-            aria-label="Excerpt from bundles/Loop/bundle.toml"><span
-              class="b-dim"># bundles/Loop/bundle.toml</span>
-[[loop]]
-id = "recur.loops.converge"
-name = "Review &amp; fix"
-conductor = "recur.roles.maestro"
-entry = "converge"
-
-[[loop.phase]]
-id = "converge"
-uses = "converge"
-start = "review"
-on_max_rounds = "escalate"
-
-[loop.phase.roles]
-implementer = "recur.roles.coder"
-reviewer = "recur.roles.reviewer"</pre>
+            aria-label="Example custom loop in a user bundle">{#each loopExample as token, i (i)}<span
+                class="t-{token.kind}">{token.text}</span
+              >{/each}</pre>
         </div>
         <div class="b-customize">
           <div class="b-customize-head">
             <h3>Themes are bundles too.</h3>
-            <p>
-              App and editor themes are picked separately. This is the real UI
-              running in your browser.
-            </p>
+            {@render docLink("reference/themes", "Theme docs")}
           </div>
           <ThemePickers
             bind:appKey={() => customApp.key, (key) => (customAppKey = key)}
@@ -587,14 +852,30 @@ reviewer = "recur.roles.reviewer"</pre>
             </div>
           </div>
           <p class="b-swipe">Swipe to explore the editor →</p>
-          <div class="b-shortcuts">
-            <span><kbd>⌘K</kbd> Go to workspaces and PRs</span><span
-              ><kbd>⌘⇧P</kbd> Run a bundle command</span
-            ><span><kbd>⌘N</kbd> New workspace</span><span
-              ><kbd>Vim / Emacs</kbd> Editor keymaps</span
-            >
-          </div>
         </div>
+      </section>
+
+      <section class="b-section" id="keyboard">
+        <div class="b-heading">
+          <h2>Keep your hands<br /><em>on the keys.</em></h2>
+          <p>
+            Every workspace, file, chat, and command is a chord away, and the
+            editor speaks Vim and Emacs. Press {@render keycap("⌘⇧/")} in the app
+            for the full list. On Linux, {@render keycap("⌘")} is {@render keycap(
+              "Ctrl",
+            )}.
+            <span class="b-doc-links"
+              >{@render docLink("reference/shortcuts", "All keyboard shortcuts")}</span
+            >
+          </p>
+        </div>
+        <ul class="b-keys">
+          {#each keys as [chords, label] (label)}<li>
+              <span class="b-chords"
+                >{#each chords as chord (chord)}{@render keycap(chord)}{/each}</span
+              >{label}
+            </li>{/each}
+        </ul>
       </section>
 
       <section class="b-download" id="download">
@@ -607,10 +888,10 @@ reviewer = "recur.roles.reviewer"</pre>
           </ul>
           <div class="b-actions">
             <a class="b-button" href={download}
-              >{downloadLabel} <span aria-hidden="true">↓</span></a
+              >{downloadLabel} {@render downloadIcon()}</a
             >
           </div>
-          {@render platforms()}
+          {@render platforms("footer-downloads")}
         </div>
         <img src={icon} alt="Recur app icon" width="204" height="204" />
       </section>
@@ -626,7 +907,7 @@ reviewer = "recur.roles.reviewer"</pre>
         /></a
       >
       <nav aria-label="Footer">
-        <a href={docs}>Docs ↗</a>
+        <a href={docs}>Docs {@render external()}</a>
       </nav>
     </footer>
   </div>
@@ -710,6 +991,13 @@ reviewer = "recur.roles.reviewer"</pre>
     border: 1px solid var(--line-bright);
     padding: 9px 14px;
     border-radius: 4px;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s;
+  }
+  .b-nav-download:hover {
+    background: var(--pane-2);
+    border-color: var(--muted);
   }
   .b-themes {
     display: flex;
@@ -735,23 +1023,13 @@ reviewer = "recur.roles.reviewer"</pre>
     text-transform: uppercase;
     color: var(--muted);
   }
-  .b-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    background: var(--amber);
-    border-radius: 50%;
-    margin-right: 9px;
-    vertical-align: 1px;
-  }
-
   .b-hero {
     padding: 44px 0 34px;
   }
   .b-hero h1 {
     font: 600 clamp(44px, 5.4vw, 78px)/1.02 var(--display);
     letter-spacing: -0.05em;
-    margin: 18px 0 26px;
+    margin: 0 0 26px;
   }
   .b-intro {
     display: grid;
@@ -787,30 +1065,113 @@ reviewer = "recur.roles.reviewer"</pre>
     padding: 13px 18px;
     border: 1px solid var(--text);
     border-radius: 4px;
-    transition: transform 0.2s;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s;
   }
   .b-button:hover {
-    transform: translateY(-2px);
+    background: color-mix(in srgb, var(--text) 82%, var(--bg));
+    border-color: color-mix(in srgb, var(--text) 82%, var(--bg));
   }
   .b-ghost {
     background: transparent;
     color: var(--text);
     border-color: var(--line-bright);
   }
-  .b-meta {
-    font: 10px/1.8 var(--mono);
-    color: var(--muted);
-    margin-top: 12px;
+  .b-ghost:hover {
+    background: var(--pane-2);
+    border-color: var(--muted);
   }
-  .b-meta a {
-    color: inherit;
+  .b-icon {
+    width: 0.85em;
+    height: 0.85em;
+    margin-left: 0.15em;
+    vertical-align: -0.08em;
+  }
+  .b-button .b-icon {
+    margin-left: 0;
+  }
+  .b-more {
+    margin-top: 12px;
+    padding: 0;
+    background: none;
+    border: 0;
+    font: 12px var(--mono);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .b-more:hover {
+    color: var(--text);
+  }
+  .b-downloads {
+    width: min(380px, calc(100vw - 32px));
+    padding: 16px 18px;
+    background: var(--pane);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  }
+  @supports (anchor-name: --a) {
+    .b-downloads {
+      inset: auto;
+      top: anchor(bottom);
+      left: anchor(left);
+      margin: 8px 0;
+      position-try-fallbacks: flip-block, flip-inline;
+    }
+  }
+  .b-downloads dl > div {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .b-downloads dt {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .b-downloads dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+  }
+  .b-downloads dd a {
+    padding: 4px 9px;
+    border: 1px solid var(--line-bright);
+    border-radius: 4px;
+    font: 12px var(--mono);
+  }
+  .b-downloads dd a:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .b-downloads span,
+  .b-downloads p {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .b-downloads p {
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+  .b-downloads p a {
+    color: var(--text);
     text-decoration: underline;
   }
 
   .b-product {
     padding: 12px 14px 0;
-    background: color-mix(in srgb, var(--amber) 14%, var(--bg));
-    border: 1px solid color-mix(in srgb, var(--amber) 26%, var(--line));
+    background:
+      radial-gradient(
+        120% 70% at 50% 0%,
+        color-mix(in srgb, var(--amber) 7%, transparent),
+        transparent 70%
+      ),
+      var(--pane);
+    border: 1px solid var(--line);
     border-radius: 9px;
   }
   .b-product-bar {
@@ -820,24 +1181,42 @@ reviewer = "recur.roles.reviewer"</pre>
     padding: 0 1px 12px;
     gap: 20px;
   }
-  .b-product-bar > .b-eyebrow {
-    font-size: 9px;
-  }
   .b-screen-tabs {
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
   }
   .b-screen-tabs button {
+    position: relative;
+    overflow: hidden;
     font-size: 12px;
     padding: 7px 12px;
     border-radius: 4px;
     color: var(--muted);
   }
+  .b-tour-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 2px;
+    background: rgb(255 255 255 / 0.6);
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: b-tour 6s linear forwards;
+  }
+  .b-tour-progress.paused {
+    animation-play-state: paused;
+  }
+  @keyframes b-tour {
+    to {
+      transform: scaleX(1);
+    }
+  }
   .b-screen-tabs button[aria-pressed="true"] {
-    background: var(--pane);
-    color: var(--text);
-    box-shadow: 0 1px 3px #0001;
+    background: var(--amber);
+    color: #fff;
+    font-weight: 600;
   }
   .b-window-scroll {
     overflow: auto;
@@ -887,7 +1266,7 @@ reviewer = "recur.roles.reviewer"</pre>
     font-size: 16px;
     font-weight: 600;
   }
-  .b-providers :global(svg) {
+  .b-providers > div > span :global(svg) {
     height: 18px;
     width: 18px;
   }
@@ -909,7 +1288,7 @@ reviewer = "recur.roles.reviewer"</pre>
   .b-flow ol {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     margin-top: 18px;
     border-top: 1px solid var(--line);
   }
@@ -1184,6 +1563,12 @@ reviewer = "recur.roles.reviewer"</pre>
   .b-control h2 {
     margin-bottom: 24px;
   }
+  .b-flip {
+    grid-template-columns: 1.7fr 1fr;
+  }
+  .b-flip .b-control-copy {
+    order: 2;
+  }
   .b-list {
     list-style: none;
     display: grid;
@@ -1245,6 +1630,24 @@ reviewer = "recur.roles.reviewer"</pre>
   .b-dim {
     color: var(--muted);
   }
+  .b-toml {
+    max-height: 420px;
+  }
+  .b-toml .t-comment {
+    color: var(--syn-comment);
+  }
+  .b-toml .t-table {
+    color: var(--syn-a);
+  }
+  .b-toml .t-key {
+    color: var(--syn-b);
+  }
+  .b-toml .t-string {
+    color: var(--syn-c);
+  }
+  .b-toml .t-literal {
+    color: var(--syn-a);
+  }
 
   .b-customize {
     margin-top: 56px;
@@ -1257,10 +1660,6 @@ reviewer = "recur.roles.reviewer"</pre>
     gap: 8px 30px;
     margin-bottom: 20px;
   }
-  .b-customize-head p {
-    font-size: 13px;
-    color: var(--muted);
-  }
   .b-customize :global(.theme-pickers) {
     width: 100%;
     margin-bottom: 18px;
@@ -1269,28 +1668,75 @@ reviewer = "recur.roles.reviewer"</pre>
     height: 400px;
     min-width: 1000px;
   }
-  .b-shortcuts {
+  .b-doc-links {
     display: flex;
-    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 16px 20px;
-    margin-top: 20px;
-    color: var(--muted);
-    font-size: 11px;
+    gap: 8px 20px;
+    margin-top: 14px;
   }
-  .b-shortcuts > span {
-    display: flex;
-    gap: 10px;
+  .b-doc-link {
+    display: inline-flex;
     align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--amber);
   }
-  .b-shortcuts kbd {
-    font-size: 10px;
+  .b-doc-link :global(.b-icon) {
+    margin-left: 0;
+  }
+  #keyboard kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    vertical-align: middle;
+    min-width: 2.2em;
+    padding: 3px 8px;
+    font:
+      500 13px/1.4 system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+    letter-spacing: 0.02em;
+    text-align: center;
+    color: var(--text);
     background: var(--pane);
     border: 1px solid var(--line-bright);
-    box-shadow: 0 2px var(--line);
-    padding: 4px 8px;
-    border-radius: 4px;
-    color: var(--text);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+  }
+  .b-key-icon {
+    width: 0.92em;
+    height: 0.92em;
+    flex: none;
+  }
+  #keyboard .b-heading kbd {
+    font-size: 12px;
+    padding: 1px 6px;
+  }
+  .b-keys {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 40px;
+    border-top: 1px solid var(--line);
+  }
+  .b-keys li {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .b-chords {
+    display: flex;
+    gap: 5px;
+    flex: none;
+    min-width: 140px;
   }
 
   .b-download {
@@ -1325,7 +1771,11 @@ reviewer = "recur.roles.reviewer"</pre>
     color: #f8f5f2;
     border-color: #191716;
   }
-  .b-download .b-meta {
+  .b-download .b-button:hover {
+    background: #3a302c;
+    border-color: #3a302c;
+  }
+  .b-download .b-more {
     color: #382a25;
   }
   .b-download > img {
@@ -1369,6 +1819,9 @@ reviewer = "recur.roles.reviewer"</pre>
   }
 
   @media (max-width: 1050px) {
+    .b-keys {
+      grid-template-columns: 1fr 1fr;
+    }
     .b-wrap {
       width: calc(100% - 48px);
     }
@@ -1385,14 +1838,17 @@ reviewer = "recur.roles.reviewer"</pre>
       grid-template-columns: 1fr;
       gap: 26px;
     }
+    .b-flip .b-control-copy {
+      order: 0;
+    }
     .b-heading > p {
       justify-self: start;
     }
     .b-flow ol {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       row-gap: 24px;
     }
-    .b-flow li:nth-child(4) {
+    .b-flow li:nth-child(3) {
       padding-left: 0;
       border-left: 0;
     }
@@ -1437,10 +1893,7 @@ reviewer = "recur.roles.reviewer"</pre>
     }
     .b-hero h1 {
       font-size: clamp(36px, 10.4vw, 56px);
-      margin: 16px 0 18px;
-    }
-    .b-hero .b-eyebrow {
-      font-size: 9px;
+      margin: 0 0 18px;
     }
     .b-intro > p {
       font-size: 15px;
@@ -1456,9 +1909,6 @@ reviewer = "recur.roles.reviewer"</pre>
     }
     .b-product-bar {
       padding-bottom: 8px;
-    }
-    .b-product-bar > .b-eyebrow {
-      display: none;
     }
     .b-screen-tabs {
       gap: 2px;
@@ -1576,15 +2026,8 @@ reviewer = "recur.roles.reviewer"</pre>
     .b-custom-window {
       height: 380px;
     }
-    .b-shortcuts {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px 12px;
-    }
-    .b-shortcuts > span {
-      font-size: 10px;
-      flex-wrap: wrap;
-      gap: 6px;
+    .b-keys {
+      grid-template-columns: 1fr;
     }
     .b-swipe {
       display: block;

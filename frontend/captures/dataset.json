@@ -455,6 +455,50 @@
       ],
       "archived": false,
       "runStarted": true
+    },
+    {
+      "id": "WS-HOST-486",
+      "projectId": "storefront",
+      "group": "",
+      "goal": "Review #486",
+      "short": "Review #486",
+      "definitionOfDone": "",
+      "state": "paused",
+      "statusLabel": "Review",
+      "phase": "idle",
+      "iteration": 3,
+      "progress": 75,
+      "autonomy": "balanced",
+      "branch": "dana/login-rate-limit",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront-pr-486",
+      "diff": {
+        "add": 60,
+        "del": 0
+      },
+      "agentCodes": [],
+      "last": "Ready for review",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": true,
+      "hostPrId": "486"
     }
   ],
   "pullRequests": [
@@ -493,16 +537,16 @@
           "author": "Coder",
           "agentCode": "CO",
           "diff": {
-            "add": 41,
+            "add": 38,
             "del": 7
           },
-          "when": "2m",
+          "when": "29m",
           "files": [
             {
               "path": "src/main.go",
               "status": "m",
               "diff": {
-                "add": 17,
+                "add": 14,
                 "del": 3
               },
               "lines": [
@@ -510,7 +554,7 @@
                   "old": "",
                   "new": "",
                   "type": "hunk",
-                  "codeHtml": "@@ -2,12 +2,26 @@"
+                  "codeHtml": "@@ -2,12 +2,23 @@"
                 },
                 {
                   "old": "2",
@@ -660,29 +704,11 @@
                   "old": "",
                   "new": "23",
                   "type": "add",
-                  "codeHtml": "    if res.StatusCode != http.StatusOK {"
-                },
-                {
-                  "old": "",
-                  "new": "24",
-                  "type": "add",
-                  "codeHtml": "        return fmt.Errorf(\"refresh failed: %s\", res.Status)"
-                },
-                {
-                  "old": "",
-                  "new": "25",
-                  "type": "add",
-                  "codeHtml": "    }"
-                },
-                {
-                  "old": "",
-                  "new": "26",
-                  "type": "add",
                   "codeHtml": "    return nil"
                 },
                 {
                   "old": "13",
-                  "new": "27",
+                  "new": "24",
                   "type": "ctx",
                   "codeHtml": "}"
                 }
@@ -950,6 +976,77 @@
                   "old": "",
                   "new": "28",
                   "type": "add",
+                  "codeHtml": "}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "c47d2e8",
+          "sha": "c47d2e8",
+          "message": "Fail session refresh on non-200 responses",
+          "author": "mycodecrafting",
+          "diff": {
+            "add": 3,
+            "del": 0
+          },
+          "when": "8m",
+          "files": [
+            {
+              "path": "src/main.go",
+              "status": "m",
+              "diff": {
+                "add": 3,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -21,4 +21,7 @@"
+                },
+                {
+                  "old": "21",
+                  "new": "21",
+                  "type": "ctx",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "22",
+                  "new": "22",
+                  "type": "ctx",
+                  "codeHtml": "    defer res.Body.Close()"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "    if res.StatusCode != http.StatusOK {"
+                },
+                {
+                  "old": "",
+                  "new": "24",
+                  "type": "add",
+                  "codeHtml": "        return fmt.Errorf(\"refresh failed: %s\", res.Status)"
+                },
+                {
+                  "old": "",
+                  "new": "25",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "23",
+                  "new": "26",
+                  "type": "ctx",
+                  "codeHtml": "    return nil"
+                },
+                {
+                  "old": "24",
+                  "new": "27",
+                  "type": "ctx",
                   "codeHtml": "}"
                 }
               ]
@@ -1419,18 +1516,112 @@
         {
           "id": "gh-description",
           "kind": "description",
-          "code": "CO",
-          "author": "Coder",
-          "time": "2m",
-          "bodyMd": "Adds an eight-second deadline to session refresh. Covers successful refreshes, expired sessions, and stalled providers."
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "30m",
+          "at": "2026-09-10T08:30:00Z",
+          "bodyMd": "## Summary\n\nSign-in could hang indefinitely when the session provider stalled. This bounds the refresh request with an eight-second deadline and surfaces provider errors instead of dropping them.\n\n- Add `refreshTimeout` and pass a deadline-bound context to the request\n- Return wrapped errors for request, transport, and non-200 failures\n- Cover successful refreshes, expired sessions, and stalled providers in tests\n\n## Testing\n\n- `go test ./...`",
+          "reactions": [
+            {
+              "content": "rocket",
+              "count": 1
+            }
+          ],
+          "bodyHtml": ""
         },
         {
-          "id": "review-1",
-          "code": "RV",
-          "author": "Reviewer",
-          "verb": "reviewed",
-          "time": "1m",
-          "bodyHtml": "The request respects the caller’s context. Timeout and non-200 responses are covered by tests. Ready for your review."
+          "id": "gh-commit-9a0e6c1",
+          "kind": "action",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "29m",
+          "at": "2026-09-10T08:31:00Z",
+          "bodyMd": "Bound session refresh and cover provider failures",
+          "commitSha": "9a0e6c1",
+          "verified": true,
+          "checkStatus": "pass",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-review-1",
+          "verb": "requested changes",
+          "author": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff",
+          "time": "19m",
+          "at": "2026-09-10T08:41:00Z",
+          "bodyMd": "Nice catch on the hang. One thing before this goes in.",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-inline-1",
+          "parentId": "gh-review-1",
+          "reviewId": "gh-review-1",
+          "threadId": "gh-thread-1",
+          "author": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff",
+          "time": "19m",
+          "at": "2026-09-10T08:41:01Z",
+          "path": "src/main.go",
+          "line": 22,
+          "side": "RIGHT",
+          "diffHunk": "@@ -10,3 +17,6 @@ func refreshSession(ctx context.Context, token string) error {\n     req.Header.Set(\"Authorization\", \"Bearer \" + token)\n-    _, err := http.DefaultClient.Do(req)\n-    return err\n+    res, err := http.DefaultClient.Do(req)\n+    if err != nil {\n+        return fmt.Errorf(\"refresh session: %w\", err)\n+    }\n+    defer res.Body.Close()",
+          "bodyMd": "If the provider answers with a 500 we still treat the refresh as a success. Can we fail on any non-200 here?",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-inline-2",
+          "parentId": "gh-review-1",
+          "inReplyToId": "gh-inline-1",
+          "threadId": "gh-thread-1",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "13m",
+          "at": "2026-09-10T08:47:00Z",
+          "path": "src/main.go",
+          "line": 22,
+          "side": "RIGHT",
+          "bodyMd": "Good call. Any non-200 now fails the refresh, and the tests cover a 503.",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-commit-c47d2e8",
+          "kind": "action",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "8m",
+          "at": "2026-09-10T08:52:00Z",
+          "bodyMd": "Fail session refresh on non-200 responses",
+          "commitSha": "c47d2e8",
+          "verified": true,
+          "checkStatus": "pass",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-comment-1",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "5m",
+          "at": "2026-09-10T08:55:00Z",
+          "bodyMd": "Pushed the non-200 fix. Ready for another look.",
+          "reactions": [
+            {
+              "content": "+1",
+              "count": 1
+            }
+          ],
+          "bodyHtml": ""
         }
       ],
       "checks": [
@@ -1449,14 +1640,31 @@
           "passed": true
         }
       ],
-      "authorLogin": "",
-      "participants": [],
-      "reviewers": [],
-      "viewerLogin": "avery",
+      "authorLogin": "mycodecrafting",
+      "participants": [
+        {
+          "login": "mycodecrafting",
+          "avatarUrl": "avatars/mycodecrafting.jpg"
+        },
+        {
+          "name": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff"
+        }
+      ],
+      "reviewers": [
+        {
+          "name": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff",
+          "state": "changes_requested"
+        }
+      ],
+      "viewerLogin": "mycodecrafting",
       "viewerCanWrite": true,
-      "reviewRequested": true,
+      "reviewRequested": false,
       "attentionReasons": [
-        "review_requested"
+        "changes_requested"
       ]
     },
     {
@@ -1492,6 +1700,938 @@
       "participants": [],
       "authorLogin": "",
       "reviewers": []
+    },
+    {
+      "id": "486",
+      "workspaceId": "",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 486,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/486",
+      "branch": "dana/login-rate-limit",
+      "base": "main",
+      "title": "Rate limit failed sign-in attempts",
+      "summary": [
+        {
+          "kind": "text",
+          "html": "Limits failed sign-ins to five per client per minute."
+        }
+      ],
+      "state": "In review",
+      "diff": {
+        "add": 60,
+        "del": 0
+      },
+      "fileCount": 2,
+      "checksOk": true,
+      "when": "12m",
+      "createdAt": "2026-09-10T08:40:00Z",
+      "updatedAt": "2026-09-10T08:48:00Z",
+      "commits": [
+        {
+          "hash": "5e1b7a2",
+          "sha": "5e1b7a2",
+          "message": "Add a sliding-window login limiter",
+          "author": "dana",
+          "diff": {
+            "add": 41,
+            "del": 0
+          },
+          "when": "20m",
+          "files": [
+            {
+              "path": "src/ratelimit.go",
+              "status": "a",
+              "diff": {
+                "add": 41,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,41 @@"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "package main"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "import ("
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "    \"net/http\""
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "    \"sync\""
+                },
+                {
+                  "old": "",
+                  "new": "6",
+                  "type": "add",
+                  "codeHtml": "    \"time\""
+                },
+                {
+                  "old": "",
+                  "new": "7",
+                  "type": "add",
+                  "codeHtml": ")"
+                },
+                {
+                  "old": "",
+                  "new": "8",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "9",
+                  "type": "add",
+                  "codeHtml": "const ("
+                },
+                {
+                  "old": "",
+                  "new": "10",
+                  "type": "add",
+                  "codeHtml": "    loginLimit  = 5"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "    loginWindow = time.Minute"
+                },
+                {
+                  "old": "",
+                  "new": "12",
+                  "type": "add",
+                  "codeHtml": ")"
+                },
+                {
+                  "old": "",
+                  "new": "13",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "14",
+                  "type": "add",
+                  "codeHtml": "type limiter struct {"
+                },
+                {
+                  "old": "",
+                  "new": "15",
+                  "type": "add",
+                  "codeHtml": "    mu       sync.Mutex"
+                },
+                {
+                  "old": "",
+                  "new": "16",
+                  "type": "add",
+                  "codeHtml": "    attempts map[string][]time.Time"
+                },
+                {
+                  "old": "",
+                  "new": "17",
+                  "type": "add",
+                  "codeHtml": "}"
+                },
+                {
+                  "old": "",
+                  "new": "18",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "19",
+                  "type": "add",
+                  "codeHtml": "func (l *limiter) allow(key string, now time.Time) bool {"
+                },
+                {
+                  "old": "",
+                  "new": "20",
+                  "type": "add",
+                  "codeHtml": "    l.mu.Lock()"
+                },
+                {
+                  "old": "",
+                  "new": "21",
+                  "type": "add",
+                  "codeHtml": "    defer l.mu.Unlock()"
+                },
+                {
+                  "old": "",
+                  "new": "22",
+                  "type": "add",
+                  "codeHtml": "    recent := l.attempts[key][:0]"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "    for _, t := range l.attempts[key] {"
+                },
+                {
+                  "old": "",
+                  "new": "24",
+                  "type": "add",
+                  "codeHtml": "        if now.Sub(t) &lt; loginWindow {"
+                },
+                {
+                  "old": "",
+                  "new": "25",
+                  "type": "add",
+                  "codeHtml": "            recent = append(recent, t)"
+                },
+                {
+                  "old": "",
+                  "new": "26",
+                  "type": "add",
+                  "codeHtml": "        }"
+                },
+                {
+                  "old": "",
+                  "new": "27",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "28",
+                  "type": "add",
+                  "codeHtml": "    if len(recent) &gt;= loginLimit {"
+                },
+                {
+                  "old": "",
+                  "new": "29",
+                  "type": "add",
+                  "codeHtml": "        l.attempts[key] = recent"
+                },
+                {
+                  "old": "",
+                  "new": "30",
+                  "type": "add",
+                  "codeHtml": "        return false"
+                },
+                {
+                  "old": "",
+                  "new": "31",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "32",
+                  "type": "add",
+                  "codeHtml": "    l.attempts[key] = append(recent, now)"
+                },
+                {
+                  "old": "",
+                  "new": "33",
+                  "type": "add",
+                  "codeHtml": "    return true"
+                },
+                {
+                  "old": "",
+                  "new": "34",
+                  "type": "add",
+                  "codeHtml": "}"
+                },
+                {
+                  "old": "",
+                  "new": "35",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "36",
+                  "type": "add",
+                  "codeHtml": "func clientKey(r *http.Request) string {"
+                },
+                {
+                  "old": "",
+                  "new": "37",
+                  "type": "add",
+                  "codeHtml": "    if ip := r.Header.Get(\"X-Forwarded-For\"); ip != \"\" {"
+                },
+                {
+                  "old": "",
+                  "new": "38",
+                  "type": "add",
+                  "codeHtml": "        return ip"
+                },
+                {
+                  "old": "",
+                  "new": "39",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "40",
+                  "type": "add",
+                  "codeHtml": "    return r.RemoteAddr"
+                },
+                {
+                  "old": "",
+                  "new": "41",
+                  "type": "add",
+                  "codeHtml": "}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "b08c3f4",
+          "sha": "b08c3f4",
+          "message": "Test the limiter blocks the sixth attempt",
+          "author": "dana",
+          "diff": {
+            "add": 19,
+            "del": 0
+          },
+          "when": "14m",
+          "files": [
+            {
+              "path": "src/ratelimit_test.go",
+              "status": "a",
+              "diff": {
+                "add": 19,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,19 @@"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "package main"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "import ("
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "    \"testing\""
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "    \"time\""
+                },
+                {
+                  "old": "",
+                  "new": "6",
+                  "type": "add",
+                  "codeHtml": ")"
+                },
+                {
+                  "old": "",
+                  "new": "7",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "8",
+                  "type": "add",
+                  "codeHtml": "func TestLimiterBlocksAfterFiveAttempts(t *testing.T) {"
+                },
+                {
+                  "old": "",
+                  "new": "9",
+                  "type": "add",
+                  "codeHtml": "    l := &amp;limiter{attempts: map[string][]time.Time{}}"
+                },
+                {
+                  "old": "",
+                  "new": "10",
+                  "type": "add",
+                  "codeHtml": "    now := time.Now()"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "    for i := 0; i &lt; loginLimit; i++ {"
+                },
+                {
+                  "old": "",
+                  "new": "12",
+                  "type": "add",
+                  "codeHtml": "        if !l.allow(\"1.2.3.4\", now) {"
+                },
+                {
+                  "old": "",
+                  "new": "13",
+                  "type": "add",
+                  "codeHtml": "            t.Fatalf(\"attempt %d was blocked\", i+1)"
+                },
+                {
+                  "old": "",
+                  "new": "14",
+                  "type": "add",
+                  "codeHtml": "        }"
+                },
+                {
+                  "old": "",
+                  "new": "15",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "16",
+                  "type": "add",
+                  "codeHtml": "    if l.allow(\"1.2.3.4\", now) {"
+                },
+                {
+                  "old": "",
+                  "new": "17",
+                  "type": "add",
+                  "codeHtml": "        t.Fatal(\"sixth attempt was allowed\")"
+                },
+                {
+                  "old": "",
+                  "new": "18",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "19",
+                  "type": "add",
+                  "codeHtml": "}"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "path": "src/ratelimit.go",
+          "status": "a",
+          "diff": {
+            "add": 41,
+            "del": 0
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -0,0 +1,41 @@"
+            },
+            {
+              "old": "",
+              "new": "1",
+              "type": "add",
+              "codeHtml": "package main"
+            },
+            {
+              "old": "",
+              "new": "2",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "import ("
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": "    \"net/http\""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "    \"sync\""
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": "    \"time\""
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": ")"
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "const ("
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "    loginLimit  = 5"
+            },
+            {
+              "old": "",
+              "new": "11",
+              "type": "add",
+              "codeHtml": "    loginWindow = time.Minute"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": ")"
+            },
+            {
+              "old": "",
+              "new": "13",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "type limiter struct {"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "    mu       sync.Mutex"
+            },
+            {
+              "old": "",
+              "new": "16",
+              "type": "add",
+              "codeHtml": "    attempts map[string][]time.Time"
+            },
+            {
+              "old": "",
+              "new": "17",
+              "type": "add",
+              "codeHtml": "}"
+            },
+            {
+              "old": "",
+              "new": "18",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "19",
+              "type": "add",
+              "codeHtml": "func (l *limiter) allow(key string, now time.Time) bool {"
+            },
+            {
+              "old": "",
+              "new": "20",
+              "type": "add",
+              "codeHtml": "    l.mu.Lock()"
+            },
+            {
+              "old": "",
+              "new": "21",
+              "type": "add",
+              "codeHtml": "    defer l.mu.Unlock()"
+            },
+            {
+              "old": "",
+              "new": "22",
+              "type": "add",
+              "codeHtml": "    recent := l.attempts[key][:0]"
+            },
+            {
+              "old": "",
+              "new": "23",
+              "type": "add",
+              "codeHtml": "    for _, t := range l.attempts[key] {"
+            },
+            {
+              "old": "",
+              "new": "24",
+              "type": "add",
+              "codeHtml": "        if now.Sub(t) &lt; loginWindow {"
+            },
+            {
+              "old": "",
+              "new": "25",
+              "type": "add",
+              "codeHtml": "            recent = append(recent, t)"
+            },
+            {
+              "old": "",
+              "new": "26",
+              "type": "add",
+              "codeHtml": "        }"
+            },
+            {
+              "old": "",
+              "new": "27",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "28",
+              "type": "add",
+              "codeHtml": "    if len(recent) &gt;= loginLimit {"
+            },
+            {
+              "old": "",
+              "new": "29",
+              "type": "add",
+              "codeHtml": "        l.attempts[key] = recent"
+            },
+            {
+              "old": "",
+              "new": "30",
+              "type": "add",
+              "codeHtml": "        return false"
+            },
+            {
+              "old": "",
+              "new": "31",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "32",
+              "type": "add",
+              "codeHtml": "    l.attempts[key] = append(recent, now)"
+            },
+            {
+              "old": "",
+              "new": "33",
+              "type": "add",
+              "codeHtml": "    return true"
+            },
+            {
+              "old": "",
+              "new": "34",
+              "type": "add",
+              "codeHtml": "}"
+            },
+            {
+              "old": "",
+              "new": "35",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "36",
+              "type": "add",
+              "codeHtml": "func clientKey(r *http.Request) string {"
+            },
+            {
+              "old": "",
+              "new": "37",
+              "type": "add",
+              "codeHtml": "    if ip := r.Header.Get(\"X-Forwarded-For\"); ip != \"\" {"
+            },
+            {
+              "old": "",
+              "new": "38",
+              "type": "add",
+              "codeHtml": "        return ip"
+            },
+            {
+              "old": "",
+              "new": "39",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "40",
+              "type": "add",
+              "codeHtml": "    return r.RemoteAddr"
+            },
+            {
+              "old": "",
+              "new": "41",
+              "type": "add",
+              "codeHtml": "}"
+            }
+          ]
+        },
+        {
+          "path": "src/ratelimit_test.go",
+          "status": "a",
+          "diff": {
+            "add": 19,
+            "del": 0
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -0,0 +1,19 @@"
+            },
+            {
+              "old": "",
+              "new": "1",
+              "type": "add",
+              "codeHtml": "package main"
+            },
+            {
+              "old": "",
+              "new": "2",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "import ("
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": "    \"testing\""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "    \"time\""
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": ")"
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": "func TestLimiterBlocksAfterFiveAttempts(t *testing.T) {"
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "    l := &amp;limiter{attempts: map[string][]time.Time{}}"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "    now := time.Now()"
+            },
+            {
+              "old": "",
+              "new": "11",
+              "type": "add",
+              "codeHtml": "    for i := 0; i &lt; loginLimit; i++ {"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": "        if !l.allow(\"1.2.3.4\", now) {"
+            },
+            {
+              "old": "",
+              "new": "13",
+              "type": "add",
+              "codeHtml": "            t.Fatalf(\"attempt %d was blocked\", i+1)"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "        }"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "16",
+              "type": "add",
+              "codeHtml": "    if l.allow(\"1.2.3.4\", now) {"
+            },
+            {
+              "old": "",
+              "new": "17",
+              "type": "add",
+              "codeHtml": "        t.Fatal(\"sixth attempt was allowed\")"
+            },
+            {
+              "old": "",
+              "new": "18",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "19",
+              "type": "add",
+              "codeHtml": "}"
+            }
+          ]
+        }
+      ],
+      "comments": [
+        {
+          "id": "gh-description",
+          "kind": "description",
+          "author": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff",
+          "time": "20m",
+          "at": "2026-09-10T08:40:00Z",
+          "bodyMd": "## Summary\n\nCredential stuffing against `/login` showed up in last week's logs. This adds a small in-memory limiter: five failed sign-in attempts per client per minute, then `429 Too Many Requests` until the window clears.\n\n- `limiter.allow` keeps a sliding one-minute window per client key\n- `clientKey` identifies the client for the limit\n- Wired into the sign-in handler for failed attempts only\n\n## Testing\n\n- `go test ./...`\n- Tried six bad passwords locally; the sixth returns 429",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-commit-5e1b7a2",
+          "kind": "action",
+          "author": "dana",
+          "code": "DA",
+          "time": "20m",
+          "at": "2026-09-10T08:40:30Z",
+          "bodyMd": "Add a sliding-window login limiter",
+          "commitSha": "5e1b7a2",
+          "verified": true,
+          "checkStatus": "pass",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-commit-b08c3f4",
+          "kind": "action",
+          "author": "dana",
+          "code": "DA",
+          "time": "14m",
+          "at": "2026-09-10T08:46:00Z",
+          "bodyMd": "Test the limiter blocks the sixth attempt",
+          "commitSha": "b08c3f4",
+          "verified": true,
+          "checkStatus": "pass",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-review-request",
+          "kind": "action",
+          "author": "dana",
+          "code": "DA",
+          "time": "12m",
+          "at": "2026-09-10T08:48:00Z",
+          "bodyMd": "requested a review from mycodecrafting",
+          "bodyHtml": ""
+        }
+      ],
+      "checks": [
+        {
+          "name": "Go tests",
+          "status": "pass",
+          "detail": "4 tests passed",
+          "duration": "1.4s",
+          "passed": true
+        },
+        {
+          "name": "Lint",
+          "status": "pass",
+          "detail": "No issues found",
+          "duration": "0.7s",
+          "passed": true
+        }
+      ],
+      "authorLogin": "dana",
+      "participants": [
+        {
+          "name": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff"
+        },
+        {
+          "login": "mycodecrafting",
+          "avatarUrl": "avatars/mycodecrafting.jpg"
+        }
+      ],
+      "reviewers": [
+        {
+          "login": "mycodecrafting",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "state": "pending"
+        }
+      ],
+      "viewerLogin": "mycodecrafting",
+      "viewerCanWrite": true,
+      "reviewRequested": true,
+      "attentionReasons": [
+        "review_requested"
+      ]
     }
   ],
   "inbox": [
@@ -2975,5 +4115,76 @@
       "linearProject": "Storefront",
       "linearTeam": "STO"
     }
-  ]
+  ],
+  "appChat": [
+    {
+      "role": "user",
+      "kind": "text",
+      "text": "What needs me before lunch?",
+      "ts": 1000
+    },
+    {
+      "role": "assistant",
+      "kind": "text",
+      "text": "Two things:\n\n1. **Team invites** is waiting on you. It needs to know how long invitation links stay valid before it can finish.\n2. **Idempotency keys** in payments-api is ready for review (+38 −9).\n\nEverything else is still working. Session refresh merged two branches and is running its failure-path tests.",
+      "ts": 2000
+    }
+  ],
+  "prReview": {
+    "workspaceId": "WS-HOST-486",
+    "tabs": [
+      {
+        "code": "PA",
+        "title": "Review",
+        "mode": "review"
+      }
+    ],
+    "transcript": [
+      {
+        "role": "user",
+        "kind": "text",
+        "text": "Review this PR. Is the limiter safe to ship?",
+        "ts": 1000
+      },
+      {
+        "kind": "tool",
+        "tool": "Bash",
+        "input": "gh pr diff 486 --name-only",
+        "result": "src/ratelimit.go\nsrc/ratelimit_test.go",
+        "ts": 2000
+      },
+      {
+        "kind": "tool",
+        "tool": "Read",
+        "input": "src/ratelimit.go",
+        "result": "package main\n\nimport (\n    \"net/http\"\n    \"sync\"\n    \"time\"\n)\n\nconst (\n    loginLimit  = 5\n    loginWindow = time.Minute\n)\n\ntype limiter struct {\n    mu       sync.Mutex\n    attempts map[string][]time.Time\n}\n\nfunc (l *limiter) allow(key string, now time.Time) bool {\n    l.mu.Lock()\n    defer l.mu.Unlock()\n    recent := l.attempts[key][:0]\n    for _, t := range l.attempts[key] {\n        if now.Sub(t) < loginWindow {\n            recent = append(recent, t)\n        }\n    }\n    if len(recent) >= loginLimit {\n        l.attempts[key] = recent\n        return false\n    }\n    l.attempts[key] = append(recent, now)\n    return true\n}\n\nfunc clientKey(r *http.Request) string {\n    if ip := r.Header.Get(\"X-Forwarded-For\"); ip != \"\" {\n        return ip\n    }\n    return r.RemoteAddr\n}\n",
+        "ts": 3000
+      },
+      {
+        "kind": "tool",
+        "tool": "mcp__recur__report_finding",
+        "input": "{\"severity\": \"medium\", \"file\": \"src/ratelimit.go\", \"line\": 37, \"message\": \"clientKey trusts X-Forwarded-For, so a client can send a new value on every attempt and never hit the limit.\"}",
+        "result": "{\"id\": \"F-12\", \"severity\": \"medium\", \"file\": \"src/ratelimit.go\", \"line\": 37, \"message\": \"clientKey trusts X-Forwarded-For, so a client can send a new value on every attempt and never hit the limit.\"}",
+        "ts": 4000
+      },
+      {
+        "kind": "tool",
+        "tool": "mcp__recur__report_finding",
+        "input": "{\"severity\": \"low\", \"file\": \"src/ratelimit.go\", \"line\": 21, \"message\": \"attempts keeps an entry for every key it has seen. Drop keys whose window is empty.\"}",
+        "result": "{\"id\": \"F-13\", \"severity\": \"low\", \"file\": \"src/ratelimit.go\", \"line\": 21, \"message\": \"attempts keeps an entry for every key it has seen. Drop keys whose window is empty.\"}",
+        "ts": 5000
+      },
+      {
+        "role": "assistant",
+        "kind": "text",
+        "text": "The window logic is sound and the test covers the sixth attempt. Two findings:\n\n- **medium**: `clientKey` trusts `X-Forwarded-For`, so a client can rotate the header and skip the limit. Use the proxy's trusted client IP instead.\n- **low**: `attempts` keeps an entry for every key it has seen. Drop keys whose window is empty.\n\nWant me to post these to the PR as a review?",
+        "ts": 6000
+      },
+      {
+        "kind": "turn",
+        "durationMs": 38000,
+        "ts": 6100
+      }
+    ]
+  }
 }

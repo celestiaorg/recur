@@ -41,7 +41,7 @@ async function capture() {
     setPanelWidthLive(key as PanelKey, width);
   railCollapsed.set(!screen.panes.sidebar);
   prAgentDockOpen.set(screen.panes.prChat);
-  inboxChatOpen.set(false);
+  inboxChatOpen.set(screen.view === "inbox" && screen.panes.chat);
   setPreviewEditorSession({
     openFiles: [screen.file],
     selectedPath: screen.file,
@@ -78,7 +78,7 @@ async function capture() {
   await tick();
   setEditorTheme(theme.editor);
   if (screen.view === "pr") {
-    openPR(prId);
+    openPR(("pr" in screen && screen.pr) || prId);
     prDetailTab.set(screen.prTab as "conv" | "files" | "commits" | "checks");
   } else if (screen.view === "inbox") go("briefing");
   else if (screen.view === "schedules") go("schedules");

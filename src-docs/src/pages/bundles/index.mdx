@@ -17,7 +17,7 @@ Shipped packs under the app’s embedded `bundles/` tree are the reference. For 
 - **Shebang tools**: real OS subprocess (`sh`, `python`, `node`, …) with `RECUR_*` env
 - **Chat prompts**: reusable slash actions with optional arguments and mode routing
 - **Languages and appearance**: grammars, language servers, editor/terminal themes, and snippets
-- **Loops**: loops, roles, and policies for plan, code, review, and verification phases
+- **Loops**: your own workflows, with custom roles, a prompt for each phase, and policies. See [Loops, roles & policies](/bundles/loops)
 - **Settings, search, and task expansion**: saved values and secrets for scripts, `⌘K` search groups, and new-task expanders
 
 ## Quick start
@@ -39,6 +39,7 @@ After creating or editing a bundle, choose **Navigate → Reload Bundles** to pi
 - [TypeScript macros](/bundles/typescript): `@recur/sdk`, Worker contract
 - [Shebang commands](/bundles/shebang): subprocess env, timeouts, exit codes
 - [Chat prompts](/bundles/prompts): `[[prompt]]` slash verbs (`/commit`, `/review`, …)
+- [Loops, roles & policies](/bundles/loops): `[[loop]]`, `[[role]]`, and `[[policy]]` workflows
 - [Output & save hooks](/bundles/output): routing, `newDocument`, `willSave`
 - [Testing & CLI](/bundles/testing): `tests/*.toml`, `recur bundles …`
 

@@ -30,6 +30,7 @@
   --scrollbar-size: 11px;
   --scrollbar-thumb: #3a3a3a;
   --scrollbar-thumb-hover: #4d4d4d;
+  --on-amber: #0A0C10;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --ui: 'Inter', system-ui, sans-serif;
   --disp: 'Space Grotesk', var(--ui);
@@ -112,7 +113,7 @@
   --scrollbar-thumb-hover: #585b70;
 }
 
-/* Catppuccin Latte — official light palette (base/mantle/crust surfaces, mauve accent). */
+/* Catppuccin Latte: official light palette (base/mantle/crust surfaces, mauve accent). */
 :root[data-theme="catppuccin-latte"] {
   color-scheme: light;
   --bg: #e6e9ef;
@@ -129,13 +130,14 @@
   --faint: #8c8fa1;
   --amber: #8839ef;
   --amber-d: rgba(136, 57, 239, .12);
+  --on-amber: #eff1f5;
   --cyan: #209fb5;
   --emerald: #40a02b;
   --coral: #d20f39;
   --coral-d: rgba(210, 15, 57, .11);
   --indigo: #7287fd;
-  --warn: #df8e1d;
-  --git-m: #df8e1d;
+  --warn: #a86a10;
+  --git-m: #a86a10;
   --git-a: #40a02b;
   --git-d: #d20f39;
   --git-u: #40a02b;

@@ -2620,7 +2620,7 @@ button.tl-sha:hover {
   height: var(--addc-size);
   border-radius: 4px;
   background: var(--amber);
-  color: #0A0C10;
+  color: var(--on-amber);
   display: grid;
   place-items: center;
   font-size: 13px;
@@ -3030,7 +3030,7 @@ button.pending-chip:hover {
 .commit .cav.wip,
 .commit-hd .cav.wip {
   background: var(--amber);
-  color: #0A0C10;
+  color: var(--on-amber);
   font-size: 8px;
   letter-spacing: 0.02em;
 }

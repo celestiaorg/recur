@@ -651,7 +651,7 @@ func (e *Engine) syncExistingWorkspacePR(ctx context.Context, ws domain.Workspac
 		if head == "" {
 			head = branch
 		}
-		if perr := pushGitHubHead(ctx, ws.WorktreePath, proj.RepoPath, head, force); perr != nil {
+		if perr := pushGitHubHead(ctx, ws.WorktreePath, proj.RepoPath, existing, head, force); perr != nil {
 			note := "Could not push to GitHub: " + html.EscapeString(strings.TrimSpace(perr.Error()))
 			e.emitWorkspaceEvent(ws.ID, "AR", "You", note)
 			return "", "", fmt.Errorf("push to GitHub: %w", perr)

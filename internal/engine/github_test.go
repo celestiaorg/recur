@@ -1642,3 +1642,16 @@ exit 1
 		t.Fatalf("fetchGitHubBranchRequiresPR classic reviews = require %v known=%v, want true true", require, known)
 	}
 }
+
+func TestForkRemoteURL(t *testing.T) {
+	for _, c := range []struct{ origin, want string }{
+		{"git@github.com:celestiaorg/recur.git", "git@github.com:auricom/recur.git"},
+		{"https://github.com/celestiaorg/recur", "https://github.com/auricom/recur.git"},
+		{"https://github.com/celestiaorg/recur.git/", "https://github.com/auricom/recur.git"},
+		{"ssh://git@ghe.example.com/celestiaorg/recur.git", "ssh://git@ghe.example.com/auricom/recur.git"},
+	} {
+		if got := forkRemoteURL(c.origin, "auricom/recur"); got != c.want {
+			t.Errorf("forkRemoteURL(%q) = %q, want %q", c.origin, got, c.want)
+		}
+	}
+}

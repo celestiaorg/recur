@@ -268,7 +268,9 @@ func stripCmdWrap(s string) string {
 // already-open GitHub PR tracks (PR.Branch, frozen at create). Local renames therefore
 // do not orphan the open PR — commits keep landing on the same remote head.
 // force uses --force-with-lease (rebase onto main, then update the PR).
-func pushGitHubHead(ctx context.Context, worktree, repoPath, remoteHead string, force bool) error {
+// A fork PR's head lives in the fork, so the push goes there instead of origin,
+// leased against refs/recur/pr/<n> (the head Recur last fetched or pushed).
+func pushGitHubHead(ctx context.Context, worktree, repoPath string, pr domain.PR, remoteHead string, force bool) error {
 	if strings.TrimSpace(remoteHead) == "" {
 		return fmt.Errorf("empty remote head")
 	}
@@ -276,13 +278,44 @@ func pushGitHubHead(ctx context.Context, worktree, repoPath, remoteHead string, 
 	if pushDir == "" {
 		pushDir = repoPath
 	}
+	remote, lease, prRef := "origin", "--force-with-lease", ""
+	if pr.IsCrossRepository && pr.Number > 0 {
+		nwo, err := runGH(ctx, repoPath, "pr", "view", strconv.Itoa(pr.Number), "--json", "headRepository", "--jq", ".headRepository.nameWithOwner")
+		if err != nil {
+			return err
+		}
+		origin, err := runGit(ctx, pushDir, "remote", "get-url", "origin")
+		if err != nil {
+			return err
+		}
+		remote = forkRemoteURL(strings.TrimSpace(origin), strings.TrimSpace(nwo))
+		prRef = fmt.Sprintf("refs/recur/pr/%d", pr.Number)
+		lease = "--force-with-lease=refs/heads/" + remoteHead + ":" + prRef
+	}
 	args := []string{"push"}
 	if force {
-		args = append(args, "--force-with-lease")
+		args = append(args, lease)
 	}
-	args = append(args, "origin", "HEAD:refs/heads/"+remoteHead)
-	_, err := runGit(ctx, pushDir, args...)
-	return err
+	args = append(args, remote, "HEAD:refs/heads/"+remoteHead)
+	if _, err := runGit(ctx, pushDir, args...); err != nil {
+		return err
+	}
+	if prRef != "" {
+		_, _ = runGit(ctx, pushDir, "update-ref", prRef, "HEAD")
+	}
+	return nil
+}
+
+// forkRemoteURL swaps the owner/repo in originURL for nwo, keeping the host and
+// protocol: git@github.com:base/repo.git + fork/repo -> git@github.com:fork/repo.git.
+func forkRemoteURL(originURL, nwo string) string {
+	u := strings.TrimSuffix(strings.TrimRight(originURL, "/"), ".git")
+	i := strings.LastIndexAny(u, "/:")
+	if i <= 0 {
+		return "https://github.com/" + nwo + ".git"
+	}
+	j := strings.LastIndexAny(u[:i], "/:")
+	return u[:j+1] + nwo + ".git"
 }
 
 // githubPRBase is the branch name `gh pr create/edit --base` accepts. base is a

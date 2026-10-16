@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -261,6 +262,78 @@ func TestSyncGitHubPRsImportsAndDedupes(t *testing.T) {
 	}
 	if you != 1 || open != 1 || merged != 1 {
 		t.Errorf("acme groups you=%d open=%d merged=%d, want 1/1/1", you, open, merged)
+	}
+}
+
+func TestSyncGitHubPRsListsProjectsConcurrently(t *testing.T) {
+	eng, st, _, _ := newTestEngine(t, nil)
+	for _, id := range []string{"a", "b"} {
+		if _, err := st.AddProject(domain.Project{ID: id, Name: id, RepoPath: initRepo(t), BaseBranch: "main"}); err != nil {
+			t.Fatalf("AddProject: %v", err)
+		}
+	}
+	origList, origLogin := listGitHubPRsFn, githubLoginFn
+	t.Cleanup(func() { listGitHubPRsFn, githubLoginFn = origList, origLogin })
+	githubLoginFn = func(context.Context) string { return "avery" }
+	var mu sync.Mutex
+	openRepos := map[string]bool{}
+	bothOpen := make(chan struct{})
+	listGitHubPRsFn = func(ctx context.Context, repoPath, state string, _ int) ([]ghListedPR, error) {
+		if state != "open" {
+			return nil, nil
+		}
+		mu.Lock()
+		openRepos[repoPath] = true
+		if len(openRepos) == 2 {
+			close(bothOpen)
+		}
+		mu.Unlock()
+		select {
+		case <-bothOpen:
+			return nil, nil
+		case <-time.After(5 * time.Second):
+			return nil, fmt.Errorf("projects listed sequentially")
+		}
+	}
+	start := time.Now()
+	eng.SyncGitHubPRs()
+	if time.Since(start) >= 5*time.Second {
+		t.Fatal("SyncGitHubPRs listed projects one at a time")
+	}
+}
+
+func TestSyncGitHubPRsStreamsSlimProjectRows(t *testing.T) {
+	eng, st, sink, _ := newTestEngine(t, nil)
+	repo := initRepo(t)
+	if _, err := st.AddProject(domain.Project{ID: "acme", Name: "acme", RepoPath: repo, BaseBranch: "main"}); err != nil {
+		t.Fatalf("AddProject: %v", err)
+	}
+	if _, err := st.AddPR(domain.PR{
+		ID: githubImportedPRID("acme", 12), ProjectID: "acme", Number: 12, Source: domain.SourceGitHub,
+		URL: "https://github.com/acme/app/pull/12", Files: []domain.FileDiff{{Path: "big.go"}},
+	}); err != nil {
+		t.Fatalf("AddPR: %v", err)
+	}
+	origList, origLogin := listGitHubPRsFn, githubLoginFn
+	t.Cleanup(func() { listGitHubPRsFn, githubLoginFn = origList, origLogin })
+	githubLoginFn = func(context.Context) string { return "avery" }
+	listGitHubPRsFn = func(_ context.Context, _, state string, _ int) ([]ghListedPR, error) {
+		if state != "open" {
+			return nil, nil
+		}
+		return []ghListedPR{{Number: 12, Title: "Fresh title", URL: "https://github.com/acme/app/pull/12", State: "OPEN", HeadRefName: "feat", BaseRefName: "main"}}, nil
+	}
+	eng.SyncGitHubPRs()
+	evs := sink.byName("prs.synced")
+	if len(evs) != 1 {
+		t.Fatalf("prs.synced events = %d, want 1", len(evs))
+	}
+	rows, _ := evs[0].Data.(map[string]any)["prs"].([]domain.PR)
+	if len(rows) != 1 || rows[0].Title != "Fresh title" || rows[0].Files != nil {
+		t.Fatalf("prs.synced rows = %+v, want one slim row titled Fresh title", rows)
+	}
+	if got, _ := st.PR(githubImportedPRID("acme", 12)); len(got.Files) != 1 {
+		t.Errorf("stored Files = %v, want untouched", got.Files)
 	}
 }
 

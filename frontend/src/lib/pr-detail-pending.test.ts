@@ -40,6 +40,17 @@ describe('prFilesPending', () => {
   })
 })
 
+describe('local PR list rows without diff fields', () => {
+  test('pending only while GetPR is in flight', () => {
+    expect(prFilesPending({ source: 'local', files: null as any }, true)).toBe(true)
+    expect(prCommitsPending({ source: 'local', commits: null as any }, true)).toBe(true)
+    expect(prFilesPending({ source: 'local', files: null as any }, false)).toBe(false)
+    expect(prCommitsPending({ source: 'local', commits: null as any }, false)).toBe(false)
+    expect(prFilesPending({ source: 'local', files: [] }, true)).toBe(false)
+    expect(prCommitsPending({ source: 'local', commits: [] }, true)).toBe(false)
+  })
+})
+
 describe('prCommitsPending / prChecksPending', () => {
   test('commits skeleton only while GetPR is in flight', () => {
     expect(prCommitsPending({ source: 'gh', commits: [] }, true)).toBe(true)

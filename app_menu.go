@@ -461,6 +461,9 @@ func applyMenuThemeState(items *menuItems, data any) {
 	appSel := strField(m, "appSelected")
 	edSel := strField(m, "editorSelected")
 	termSel := strField(m, "terminalSelected")
+	if dark, ok := m["chromeDark"].(bool); ok {
+		setNativeChromeDark(dark)
+	}
 	for key, item := range items.appThemeItems {
 		item.SetChecked(key == appSel)
 	}

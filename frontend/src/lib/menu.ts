@@ -3,7 +3,7 @@
 // Enabled state is pushed back to Go via menu.state so contextual items grey out.
 import { Events } from '@wailsio/runtime'
 import { get } from 'svelte/store'
-import { themes, theme, editorTheme, terminalPrefs } from './stores'
+import { themes, theme, editorTheme, terminalPrefs, isLightTheme } from './stores'
 import { allEditorThemesForPicker, compareEditorThemesForCycle } from './cm-themes'
 import { terminalThemeCatalog } from './terminal'
 
@@ -144,6 +144,7 @@ export function pushMenuThemes() {
 /** Update Appearance radio checks without rebuilding the catalog. */
 export function pushMenuThemeState() {
   void Events.Emit('menu.themeState', {
+    chromeDark: !isLightTheme(get(theme)),
     appSelected: get(theme),
     editorSelected: get(editorTheme),
     terminalSelected: terminalMenuKey(get(terminalPrefs).theme),

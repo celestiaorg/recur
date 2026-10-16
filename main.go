@@ -272,6 +272,12 @@ func main() {
 		}
 	})
 
+	// The webview's own prefers-color-scheme can miss the desktop setting (WebKitGTK in
+	// a container), so the frontend follows the native one.
+	wapp.Event.OnApplicationEvent(events.Common.ThemeChanged, func(*application.ApplicationEvent) {
+		wapp.Event.Emit("system.theme", wapp.Env.IsDarkMode())
+	})
+
 	// After Run is pumping: request notification+badge auth (bundled .app only —
 	// UNUserNotificationCenter SIGABRTs unbundled binaries), then apply.
 	go func() {

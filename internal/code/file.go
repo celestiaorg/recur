@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,6 +40,16 @@ var imageMIME = map[string]string{
 	".tiff": "image/tiff",
 }
 
+// videoMIME maps lowercase extensions to MIME types played in the observatory
+// with <video>. Served with Range support, so no size cap applies.
+var videoMIME = map[string]string{
+	".mp4":  "video/mp4",
+	".m4v":  "video/mp4",
+	".mov":  "video/quicktime",
+	".webm": "video/webm",
+	".ogv":  "video/ogg",
+}
+
 // chatImageMIME is the paste / Finder-drop set (matches engine.chatImageMIME).
 // Narrower than imageMIME: ico/bmp/avif preview in the observatory but cannot
 // be pasted into chat.
@@ -57,17 +68,28 @@ func ImageMIME(path string) string {
 	return imageMIME[strings.ToLower(filepath.Ext(path))]
 }
 
-// PreviewMIME is ImageMIME plus application/pdf for .pdf. Used when serving
+// PreviewMIME is ImageMIME plus application/pdf and video types. Used when serving
 // file bytes into the observatory preview — not for raster-only ops
 // (ImageAtBase, Outline skip, chat images).
 func PreviewMIME(path string) string {
 	if mime := ImageMIME(path); mime != "" {
 		return mime
 	}
-	if strings.ToLower(filepath.Ext(path)) == ".pdf" {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == ".pdf" {
 		return "application/pdf"
 	}
-	return ""
+	return videoMIME[ext]
+}
+
+func previewLimit(mime string) int64 {
+	switch {
+	case strings.HasPrefix(mime, "video/"):
+		return math.MaxInt64
+	case mime != "":
+		return maxImageBytes
+	}
+	return maxReadBytes
 }
 
 // ImageAtBase streams an image at the merge-base of baseBranch and HEAD
@@ -264,11 +286,7 @@ func PrepareExternal(abs string) (clean string, mime string, err error) {
 		return "", "", fmt.Errorf("not a regular file")
 	}
 	mime = PreviewMIME(clean)
-	limit := int64(maxReadBytes)
-	if mime != "" {
-		limit = maxImageBytes
-	}
-	if st.Size() > limit {
+	if st.Size() > previewLimit(mime) {
 		return "", "", fmt.Errorf("file too large (%d bytes)", st.Size())
 	}
 	return clean, mime, nil
@@ -310,11 +328,7 @@ func statFile(root, rel string) (abs string, mime string, st os.FileInfo, err er
 		return "", "", nil, fmt.Errorf("%s is a directory", rel)
 	}
 	mime = PreviewMIME(rel)
-	limit := int64(maxReadBytes)
-	if mime != "" {
-		limit = maxImageBytes
-	}
-	if st.Size() > limit {
+	if st.Size() > previewLimit(mime) {
 		return "", "", nil, fmt.Errorf("file too large (%d bytes)", st.Size())
 	}
 	return abs, mime, st, nil

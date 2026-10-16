@@ -221,6 +221,23 @@ func TestReadFileImages(t *testing.T) {
 	}
 }
 
+func TestReadFileVideo(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "clip.MOV"), []byte{0x00, 0x00, 0x00, 0x14, 'f', 't', 'y', 'p'}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fc, err := ReadFile(root, "clip.MOV", false)
+	if err != nil {
+		t.Fatalf("ReadFile(clip.MOV) error = %v, want nil", err)
+	}
+	if fc.Mime != "video/quicktime" || fc.Content != "" {
+		t.Errorf("ReadFile(clip.MOV) = mime %q, content len %d; want video/quicktime, empty", fc.Mime, len(fc.Content))
+	}
+	if previewLimit("video/mp4") <= maxReadBytes {
+		t.Error("video preview should not be size-capped")
+	}
+}
+
 func TestReadFilePDF(t *testing.T) {
 	root := t.TempDir()
 	pdf := []byte("%PDF-1.4\n")

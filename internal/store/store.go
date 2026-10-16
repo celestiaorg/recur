@@ -1375,17 +1375,35 @@ func (s *Store) PR(id string) (domain.PR, bool) {
 }
 
 // PRByWorkspace returns the PR linked to a loop, if any (one PR per loop in v1 — the
-// engine creates exactly one at pr_open and reworks it in place). Newest match in
-// store order wins.
+// engine creates exactly one at pr_open and reworks it in place). A Local row older
+// than a GitHub row is a leftover fallback and never wins. Otherwise the newest open
+// match wins, so a replacement PR beats a closed one still linked to the same
+// workspace; otherwise the newest match in store order.
 func (s *Store) PRByWorkspace(workspaceID string) (domain.PR, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	last, seenGitHub := -1, false
 	for i := len(s.prs) - 1; i >= 0; i-- {
-		if s.prs[i].WorkspaceID == workspaceID {
-			return clonePR(s.prs[i]), true
+		p := s.prs[i]
+		if p.WorkspaceID != workspaceID {
+			continue
+		}
+		if p.Source == domain.SourceGitHub {
+			seenGitHub = true
+		} else if seenGitHub {
+			continue
+		}
+		if prIsUnmerged(p) {
+			return clonePR(p), true
+		}
+		if last < 0 {
+			last = i
 		}
 	}
-	return domain.PR{}, false
+	if last < 0 {
+		return domain.PR{}, false
+	}
+	return clonePR(s.prs[last]), true
 }
 
 func prIsUnmerged(p domain.PR) bool {

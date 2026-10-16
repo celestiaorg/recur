@@ -335,6 +335,10 @@ export const icons = {
     strokeWidth: 1.75,
     body: '<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>',
   },
+  'zoom-in': {
+    strokeWidth: 1.75,
+    body: '<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4M11 8v6M8 11h6"/>',
+  },
   // lucide fold-vertical / unfold-vertical — review collapse-all
   'fold-vertical': {
     body:

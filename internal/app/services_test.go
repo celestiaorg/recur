@@ -91,6 +91,24 @@ func TestSeedDataShape(t *testing.T) {
 	}
 }
 
+func TestGetPROmitsCommitDiffs(t *testing.T) {
+	svc, _ := newTestServices(t)
+	files := []domain.FileDiff{{Path: "a.go", Status: "m"}}
+	if _, ok := svc.PRs.st().UpdatePR("482", func(p *domain.PR) {
+		p.Commits = []domain.Commit{{Hash: "abc1234", Files: files}}
+	}); !ok {
+		t.Fatal("UpdatePR 482")
+	}
+	pr, err := svc.PRs.GetPR("482")
+	if err != nil || len(pr.Commits) != 1 || pr.Commits[0].Files != nil {
+		t.Fatalf("GetPR commits = %+v (err=%v), want one commit without files", pr.Commits, err)
+	}
+	c, err := svc.PRs.GetCommitDiff("482", "abc1234")
+	if err != nil || len(c.Files) != 1 {
+		t.Fatalf("GetCommitDiff files = %d (err=%v), want 1", len(c.Files), err)
+	}
+}
+
 func TestBusFanOut(t *testing.T) {
 	eng := engine.New(store.NewInMemory())
 	var got []string

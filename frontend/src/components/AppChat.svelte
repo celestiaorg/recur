@@ -3,7 +3,7 @@
   import { BriefingService, appChatAgentId, onSessionDelta, onSessionStep, onSessionThinking, onSessionToolResult, onSessionToolInput, onSessionTurnEnd, onSessionNotice, onSessionFallback, onSessionCompact, type WorkspaceStep } from '../lib/api'
   import { mapChatItems, mergePersistedWithLive, appendStream as appendStreamRow, applyStream, addTool as addToolRow, attachToolResult, patchToolInput, endTurn as endTurnRow, applyCompact as applyCompactRow, applyNotice as applyNoticeRow, applyFallback as applyFallbackRow, dropLiveAfterFooter, noteThinkingTokens } from '../lib/agentchat'
   import { contextUsageFromChatItems, contextUsageFromTurn, type ContextUsage } from '../lib/contextUsage'
-  import { loadModelCatalog, peekModelCatalog, normalizeFlags, flagsForModel, type CatalogModel } from '../lib/models'
+  import { loadModelCatalog, modelCatalogRev, peekModelCatalog, normalizeFlags, flagsForModel, type CatalogModel } from '../lib/models'
   import { resolvedDefaultForMode, chatModeMeta } from '../lib/modes'
   import { settings, setInboxChatOpen, agentsRunning } from '../lib/stores'
   import type { WorkspaceChatTab } from '../../bindings/recur/internal/domain/models'
@@ -127,7 +127,7 @@
   })
 
   $effect(() => {
-    if (catalogModels.length) return
+    void $modelCatalogRev
     let cancelled = false
     loadModelCatalog().then((models) => { if (!cancelled) catalogModels = models })
     return () => { cancelled = true }

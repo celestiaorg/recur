@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte'
+  import Select from './Select.svelte'
   import { SettingsService } from '../../bindings/recur/internal/app'
   import type { CompatibleFlagDim, CompatibleModel, CompatibleProvider } from '../../bindings/recur/internal/domain/models'
   import { persistableFlags, persistableHeaders, persistableModels, unusedKey, COMPATIBLE_WIRES } from '../lib/compatible-providers'
@@ -83,8 +84,25 @@
     return 'custom'
   }
 
+  const CONTROL_PRESETS = [
+    { value: '', label: 'None' },
+    { value: 'effort', label: 'Effort' },
+    { value: 'openai', label: 'Effort, verbosity' },
+    { value: 'custom', label: 'Custom…' },
+  ]
+  const WIRE_OPTIONS = [{ value: '', label: '(not sent)' }, ...COMPATIBLE_WIRES]
+
+  let customizing = $state<Set<number>>(new Set())
+
+  function controlsKind(m: CompatibleModel, i: number): string {
+    const kind = flagKind(m)
+    return kind && customizing.has(i) ? 'custom' : kind
+  }
+
   async function applyFlags(i: number, kind: string) {
+    customizing = new Set([...customizing].filter((j) => j !== i))
     if (kind === 'custom') {
+      customizing = new Set([...customizing, i])
       const cur = rows[i]?.flags ?? []
       if (cur.length) return
       setModel(i, { flags: [{ id: 'effort', label: 'Effort', wire: 'reasoning.effort', options: [] }] })
@@ -112,7 +130,7 @@
     const m = rows[modelIdx]
     const flags = m.flags ?? []
     const id = unusedKey(flags.map((f) => f.id ?? ''), 'flag')
-    setModel(modelIdx, { flags: [...flags, { id, label: id, wire: '', options: [] }] })
+    setModel(modelIdx, { flags: [...flags, { id, label: 'New control', wire: '', options: [] }] })
   }
 
   function removeFlag(modelIdx: number, dimIdx: number) {
@@ -268,7 +286,11 @@
       <div class="set-desc">Each id is stored as <code>{provider.id}/id</code>. Slash in the id is allowed (OpenRouter).</div>
     </div>
     <div class="compat-models">
+      <div class="compat-model compat-cols" aria-hidden="true">
+        <span>Model id</span><span>Label</span><span title="Shown in the chat context meter. Not sent to the server.">Context window</span><span>Picker controls</span><span></span>
+      </div>
       {#each rows as m, i (i)}
+        {@const kind = controlsKind(m, i)}
         <div class="compat-model-block">
           <div class="compat-model">
             <input
@@ -296,7 +318,7 @@
               type="number"
               min="0"
               step="1"
-              placeholder="ctx"
+              placeholder="128000"
               autocomplete="off"
               aria-label="Context window tokens"
               value={m.contextWindow || ''}
@@ -305,23 +327,19 @@
                 setModel(i, { contextWindow: Number.isFinite(n) && n > 0 ? Math.round(n) : 0 })
               }}
             />
-            <select
-              class="inp"
-              aria-label="Flag preset"
-              value={flagKind(m)}
-              onchange={(e) => void applyFlags(i, e.currentTarget.value)}
-            >
-              <option value="">No flags</option>
-              <option value="effort">Effort</option>
-              <option value="openai">Effort + verbosity</option>
-              <option value="custom">Custom</option>
-            </select>
+            <Select
+              label="Picker controls"
+              value={kind}
+              options={CONTROL_PRESETS}
+              onchange={(v) => void applyFlags(i, v)}
+            />
             <button
               type="button"
               class="exclude-rm"
               aria-label="Remove model"
               disabled={rows.length <= 1 || (i < saved.length && saved.length <= 1)}
               onclick={() => {
+                customizing = new Set([...customizing].filter((j) => j !== i).map((j) => (j > i ? j - 1 : j)))
                 const n = saved.length
                 if (i < n) {
                   const next = saved.filter((_, j) => j !== i)
@@ -334,86 +352,97 @@
               <Icon name="trash" />
             </button>
           </div>
-          {#if (m.flags ?? []).length}
+          {#if kind && kind !== 'custom'}
+            <div class="compat-flag-summary">
+              <div class="compat-flag-summary-lead">
+                Adds {(m.flags ?? []).length === 1 ? 'this dropdown' : 'these dropdowns'} to the composer's model picker. Choose Custom… to edit.
+              </div>
+              {#each m.flags ?? [] as dim (dim.id)}
+                <span class="compat-flag-name">{dim.label || dim.id}</span>
+                <span>
+                  {#each dim.options ?? [] as opt, oi (opt.value)}{oi ? ', ' : ''}<span class:compat-flag-default={opt.default}>{opt.label || opt.value}{opt.default ? ' (default)' : ''}</span>{/each}
+                </span>
+                <span>{#if dim.wire}sends <code>{dim.wire}</code>{:else}not sent{/if}</span>
+              {/each}
+            </div>
+          {:else if kind === 'custom'}
             <div class="compat-flags">
+              <div class="set-desc">
+                Each control is a dropdown in the composer's model picker. The chosen value is sent as the request field.
+              </div>
               {#each m.flags ?? [] as dim, di (dim.id || di)}
-                <div class="compat-flag">
-                  <input
-                    class="inp"
-                    type="text"
-                    placeholder="id"
-                    autocomplete="off"
-                    spellcheck="false"
-                    aria-label="Flag id"
-                    value={dim.id}
-                    onchange={(e) => setFlag(i, di, { id: e.currentTarget.value, label: dim.label || e.currentTarget.value })}
-                  />
-                  <input
-                    class="inp"
-                    type="text"
-                    placeholder="Label"
-                    autocomplete="off"
-                    spellcheck="false"
-                    aria-label="Flag label"
-                    value={dim.label}
-                    onchange={(e) => setFlag(i, di, { label: e.currentTarget.value })}
-                  />
-                  <select
-                    class="inp"
-                    aria-label="Flag wire"
-                    value={dim.wire ?? ''}
-                    onchange={(e) => setFlag(i, di, { wire: e.currentTarget.value || undefined })}
-                  >
-                    <option value="">(display only)</option>
-                    {#each COMPATIBLE_WIRES as w (w.value)}
-                      <option value={w.value}>{w.label}</option>
-                    {/each}
-                  </select>
-                  <button type="button" class="exclude-rm" aria-label="Remove flag" onclick={() => removeFlag(i, di)}>
-                    <Icon name="trash" />
-                  </button>
-                </div>
-                <div class="compat-flag-opts">
-                  {#each dim.options ?? [] as opt, oi (opt.value || oi)}
+                <div class="compat-flag-card">
+                  <div class="compat-flag">
                     <input
-                      class="inp"
+                      class="inp compat-flag-label"
                       type="text"
-                      placeholder="value"
+                      placeholder="Control name"
                       autocomplete="off"
                       spellcheck="false"
-                      aria-label="Flag option value"
-                      value={opt.value}
-                      onchange={(e) => setOption(i, di, oi, { value: e.currentTarget.value, label: opt.label || e.currentTarget.value })}
+                      aria-label="Control name"
+                      value={dim.label}
+                      onchange={(e) => setFlag(i, di, { label: e.currentTarget.value })}
                     />
-                    <input
-                      class="inp"
-                      type="text"
-                      placeholder="Label"
-                      autocomplete="off"
-                      spellcheck="false"
-                      aria-label="Flag option label"
-                      value={opt.label}
-                      onchange={(e) => setOption(i, di, oi, { label: e.currentTarget.value })}
+                    <span class="compat-cols">sent as</span>
+                    <Select
+                      size="sm"
+                      label="Request field"
+                      value={dim.wire ?? ''}
+                      options={WIRE_OPTIONS}
+                      onchange={(v) => setFlag(i, di, { wire: v || undefined })}
                     />
-                    <label class="compat-default">
-                      <input
-                        type="checkbox"
-                        checked={!!opt.default}
-                        onchange={(e) => setOption(i, di, oi, { default: e.currentTarget.checked })}
-                      />
-                      default
-                    </label>
-                    <button type="button" class="exclude-rm" aria-label="Remove option" onclick={() => removeOption(i, di, oi)}>
+                    <button type="button" class="exclude-rm" aria-label="Remove control" onclick={() => removeFlag(i, di)}>
                       <Icon name="trash" />
                     </button>
-                  {/each}
-                  <button type="button" class="tbtn" onclick={() => addOption(i, di)}>
+                  </div>
+                  <div class="compat-flag-opts">
+                    <span class="compat-cols" aria-hidden="true">Default</span>
+                    <span class="compat-cols" aria-hidden="true">Value sent</span>
+                    <span class="compat-cols" aria-hidden="true">Shown as</span>
+                    <span></span>
+                    {#each dim.options ?? [] as opt, oi (opt.value || oi)}
+                      <button
+                        type="button"
+                        class="compat-default"
+                        class:on={opt.default}
+                        aria-label="Default {opt.label || opt.value}"
+                        aria-pressed={!!opt.default}
+                        onclick={() => setOption(i, di, oi, { default: !opt.default })}
+                      >
+                        <Icon name="check" strokeWidth={3} />
+                      </button>
+                      <input
+                        class="inp"
+                        type="text"
+                        placeholder="value"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-label="Option value"
+                        value={opt.value}
+                        onchange={(e) => setOption(i, di, oi, { value: e.currentTarget.value, label: opt.label || e.currentTarget.value })}
+                      />
+                      <input
+                        class="inp"
+                        type="text"
+                        placeholder="Label"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-label="Option label"
+                        value={opt.label}
+                        onchange={(e) => setOption(i, di, oi, { label: e.currentTarget.value })}
+                      />
+                      <button type="button" class="exclude-rm" aria-label="Remove option" onclick={() => removeOption(i, di, oi)}>
+                        <Icon name="trash" />
+                      </button>
+                    {/each}
+                  </div>
+                  <button type="button" class="tbtn compat-add" onclick={() => addOption(i, di)}>
                     <Icon name="plus" />Add option
                   </button>
                 </div>
               {/each}
-              <button type="button" class="tbtn" onclick={() => addFlag(i)}>
-                <Icon name="plus" />Add dimension
+              <button type="button" class="tbtn compat-add" onclick={() => addFlag(i)}>
+                <Icon name="plus" />Add control
               </button>
             </div>
           {/if}

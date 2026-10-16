@@ -15,7 +15,6 @@ import (
 	"recur/internal/store"
 )
 
-const defaultHarnessRounds = 40
 const harnessParallelLimit = 8
 
 var parallelToolNames = map[string]bool{
@@ -103,10 +102,6 @@ func (r *HarnessRunner) Run(ctx context.Context, spec AgentSpec, emit func(Parse
 	var text strings.Builder
 	var lastID string
 	rounds := 0
-	maxRounds := spec.MaxTurns
-	if maxRounds <= 0 {
-		maxRounds = defaultHarnessRounds
-	}
 
 	emit(ParsedEvent{Kind: KindInit, Provider: spec.Provider, Model: model, SessionID: spec.RecurSessionID})
 
@@ -115,7 +110,7 @@ func (r *HarnessRunner) Run(ctx context.Context, spec AgentSpec, emit func(Parse
 			return r.result(spec, start, text.String(), usage, lastID), err
 		}
 		rounds++
-		if rounds > maxRounds {
+		if spec.MaxTurns > 0 && rounds > spec.MaxTurns {
 			res := r.result(spec, start, text.String(), usage, lastID)
 			res.IsError = true
 			res.Subtype = "error_max_turns"

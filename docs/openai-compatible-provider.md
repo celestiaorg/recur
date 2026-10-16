@@ -70,7 +70,8 @@ Settings → Providers → **Add provider**. Presets:
 | Custom | (you fill in) |
 
 Per card: enable toggle, display name, base URL, API key, extra headers, models
-(with optional Effort / Effort+verbosity flags), Test, Remove.
+(with optional picker controls: Effort, Effort + verbosity, or Custom to edit each
+control and its options), Test, Remove.
 
 **Test** POSTs a tiny `store:false` request to `{base}/v1/responses` using the
 first model id. It does not persist settings.

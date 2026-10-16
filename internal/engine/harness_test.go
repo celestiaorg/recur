@@ -51,6 +51,38 @@ func TestHarnessInstructionsAlwaysIncludeCodingPrompt(t *testing.T) {
 	}
 }
 
+func TestHarnessInstructionsIncludeEnvAndRepoRules(t *testing.T) {
+	wt := t.TempDir()
+	if err := os.WriteFile(filepath.Join(wt, "CLAUDE.md"), []byte("claude rules"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := harnessInstructions(AgentSpec{Worktree: wt})
+	if !strings.Contains(got, "Worktree (Bash cwd): "+wt) || !strings.Contains(got, "claude rules") {
+		t.Errorf("harnessInstructions() missing env or CLAUDE.md fallback: %q", got)
+	}
+
+	if err := os.WriteFile(filepath.Join(wt, "AGENTS.md"), []byte("agents rules"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got = harnessInstructions(AgentSpec{Worktree: wt})
+	if !strings.Contains(got, "agents rules") || strings.Contains(got, "claude rules") {
+		t.Errorf("harnessInstructions() should prefer AGENTS.md: %q", got)
+	}
+
+	secret := filepath.Join(t.TempDir(), "secret")
+	if err := os.WriteFile(secret, []byte("hunter2"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	os.Remove(filepath.Join(wt, "AGENTS.md"))
+	os.Remove(filepath.Join(wt, "CLAUDE.md"))
+	if err := os.Symlink(secret, filepath.Join(wt, "AGENTS.md")); err != nil {
+		t.Fatal(err)
+	}
+	if got := harnessInstructions(AgentSpec{Worktree: wt}); strings.Contains(got, "hunter2") {
+		t.Errorf("harnessInstructions() followed an AGENTS.md symlink: %q", got)
+	}
+}
+
 func TestHarnessAskModeOmitsEdit(t *testing.T) {
 	r := &HarnessRunner{Provider: testCompatibleProvider("http://example.invalid")}
 	reg := agenttools.NewRegistry(append(agenttools.HostTools(), agenttools.CodingTools()...)...)

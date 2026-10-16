@@ -98,6 +98,8 @@ The OpenAI preset is effort + verbosity. Unknown wires are dropped at save.
 | Thinking | `reasoning*` SSE deltas → `KindThinking` / `KindThinkingDelta` |
 | Coding tools | Canonical Claude names so `toolview.go` cards work |
 | Host tools | In-process `agenttools.Tool` (same Execute as MCP HTTP) |
+| Environment | Worktree path, platform, and date appended to the base prompt |
+| Repo rules | Worktree `AGENTS.md` (else `CLAUDE.md`) inlined, 32 KiB cap, regular files only |
 | Ask mode | Allowlist omits Edit/Write/Bash |
 | `ask_user` / `switch_mode` | Halt the Responses loop after a successful call |
 | Session | `ContextModeApp` — rebuild input from the Recur transcript |

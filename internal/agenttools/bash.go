@@ -20,7 +20,7 @@ type bashTool struct{}
 
 func (bashTool) Name() string { return "Bash" }
 func (bashTool) Description() string {
-	return "Run a shell command in the worktree. Destructive commands require permission when Bypass Permissions is off."
+	return "Run a non-interactive bash command in the worktree root. Each call is a fresh shell: cd and env vars do not carry over, and nothing can prompt for input. Optional timeout is in seconds. Destructive commands require permission when Bypass Permissions is off."
 }
 func (bashTool) Schema() json.RawMessage { return schemaBash }
 func (bashTool) Execute(c Call) (string, error) {

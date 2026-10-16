@@ -16,7 +16,7 @@ type globTool struct{}
 
 func (globTool) Name() string { return "Glob" }
 func (globTool) Description() string {
-	return "Find files by glob pattern under the worktree (or path). Prefer this over shell find."
+	return "Find files by glob pattern (relative to path, default the worktree root). Respects .gitignore and includes hidden files. Prefer this over shell find."
 }
 func (globTool) Schema() json.RawMessage { return schemaGlob }
 func (globTool) Execute(c Call) (string, error) {
@@ -30,27 +30,17 @@ func (globTool) Execute(c Call) (string, error) {
 	if in.Pattern == "" {
 		return "", fmt.Errorf("pattern is required")
 	}
-	root := c.Worktree
-	if strings.TrimSpace(in.Path) != "" {
-		abs, err := resolvePath(c.Worktree, in.Path)
-		if err != nil {
-			return "", err
-		}
-		root = abs
+	dir, target, err := searchRoot(c.Worktree, in.Path)
+	if err != nil {
+		return "", err
 	}
 	rgPath, err := rg.Locate(dataDir())
 	if err != nil {
-		return walkGlob(root, in.Pattern)
+		return walkGlob(dir, in.Pattern)
 	}
-	var matches []string
-	g := in.Pattern
-	if !strings.Contains(g, "/") && !strings.HasPrefix(g, "*") {
-		g = "**/" + g
-	}
-	err = rg.Files(c.ctx(), rgPath, root, []string{g}, func(rel string) error {
-		matches = append(matches, rel)
-		return nil
-	})
+	args := append([]string{"--files", "--no-config", "--no-messages", "--color", "never", "--hidden", "--glob", "!.git"},
+		globArgs(in.Pattern)...)
+	matches, _, err := runRg(c.ctx(), rgPath, c.Worktree, dir, append(args, target), 0)
 	if err != nil {
 		return "", err
 	}

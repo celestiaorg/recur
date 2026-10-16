@@ -33,6 +33,7 @@ export type PRListRow = PRAttention & {
   group?: string
   draft?: boolean
   mergeStateStatus?: string
+  mergeQueued?: boolean
   when?: string
   createdAt?: string
   updatedAt?: string
@@ -52,8 +53,10 @@ export const PR_LIST_SORTS: { id: PRListSort; label: string; icon: IconName }[] 
   { id: 'title', label: 'Title A–Z', icon: 'arrow-up-az' },
 ]
 
+/** Queued PRs are still open on GitHub, so they list and count as open. */
 export function prListLifecycle(pr: PRListRow | null | undefined): PRLifecycle | null {
-  return prLifecycle(pr)
+  const life = prLifecycle(pr)
+  return life === 'queued' ? 'open' : life
 }
 
 export function prMatchesLife(pr: PRListRow | null | undefined, life: PRListLife): boolean {

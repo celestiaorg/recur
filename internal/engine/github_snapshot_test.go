@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +30,8 @@ func TestParseGitHubPRSnapshotGraphQL(t *testing.T) {
 	        "mergeable": "MERGEABLE",
 	        "mergeStateStatus": "CLEAN",
 	        "isDraft": false,
+	        "isMergeQueueEnabled": true,
+	        "isInMergeQueue": true,
 	        "url": "https://github.com/acme/app/pull/12",
 	        "headRefOid": "abc123",
 	        "headRefName": "oauth",
@@ -73,6 +76,9 @@ func TestParseGitHubPRSnapshotGraphQL(t *testing.T) {
 
 	if snap.Title != "Add OAuth" || snap.State != "OPEN" || snap.AuthorLogin != "loopbot" || snap.NodeID != "PR_1" {
 		t.Errorf("parseGitHubPRSnapshotGraphQL() snapshot = %+v, want Add OAuth OPEN loopbot PR_1", snap)
+	}
+	if !snap.MergeQueueEnabled || !snap.MergeQueued {
+		t.Errorf("parseGitHubPRSnapshotGraphQL() MergeQueueEnabled=%v MergeQueued=%v, want true true", snap.MergeQueueEnabled, snap.MergeQueued)
 	}
 	if snap.ViewerLogin != "loopbot" || !snap.ViewerCanWrite {
 		t.Errorf("parseGitHubPRSnapshotGraphQL() viewer = login %q write %v, want loopbot true", snap.ViewerLogin, snap.ViewerCanWrite)
@@ -135,6 +141,25 @@ func TestParseGitHubPRSnapshotGraphQL(t *testing.T) {
 	}
 	if copilot.ID == "" || copilot.Author != "Copilot" {
 		t.Errorf("finishGitHubPRSnapshot() Copilot event = %+v, want Copilot started work on behalf of avery", copilot)
+	}
+}
+
+func TestParseGitHubPRSnapshotGraphQLAutoMergeQueued(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		queueEnabled bool
+		want         bool
+	}{{false, false}, {true, true}} {
+		gql := fmt.Sprintf(`{"data":{"viewer":{"login":"me"},"repository":{"pullRequest":{
+		  "id":"PR_1","state":"OPEN","url":"https://github.com/acme/app/pull/1",
+		  "isMergeQueueEnabled":%v,"isInMergeQueue":false,"autoMergeRequest":{"enabledAt":"2026-08-21T11:00:00Z"}}}}}`, tc.queueEnabled)
+		snap, err := parseGitHubPRSnapshotGraphQL(gql, time.Now())
+		if err != nil {
+			t.Fatalf("parseGitHubPRSnapshotGraphQL() error = %v", err)
+		}
+		if snap.MergeQueued != tc.want {
+			t.Errorf("auto-merge with isMergeQueueEnabled=%v: MergeQueued = %v, want %v", tc.queueEnabled, snap.MergeQueued, tc.want)
+		}
 	}
 }
 

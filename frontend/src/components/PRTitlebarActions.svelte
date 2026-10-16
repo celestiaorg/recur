@@ -34,7 +34,7 @@
   }
   const pr = $derived($prs.find((p) => p.id === $selectedPRId))
   const mergeMethodKeys = $derived(allowedMergeMethods(pr))
-  const showMergeMenu = $derived(mergeMethodKeys.length > 1)
+  const showMergeMenu = $derived(mergeMethodKeys.length > 1 && !pr?.mergeQueueEnabled)
   const isLocal = $derived(pr?.source === 'local')
   const behindBase = $derived(pr?.behindBase ?? 0)
   const updatingBase = $derived(pr?.updatingBase ?? '')
@@ -234,7 +234,7 @@
     return pickAllowedMergeMethod(preferred, mergeMethodKeys)
   })
   const mergeMethod = $derived(pickAllowedMergeMethod(mergeMethodOverride ?? resolvedMergeMethod, mergeMethodKeys))
-  const mergeLabel = $derived(mergeMethodLabels[mergeMethod] ?? 'Merge')
+  const mergeLabel = $derived(pr?.mergeQueueEnabled ? 'Add to merge queue' : (mergeMethodLabels[mergeMethod] ?? 'Merge'))
   const resolvedUpdateMethod = $derived.by(() => {
     const loop = $workspaces.find((l) => l.id === pr?.workspaceId)
     const proj = loop
@@ -276,9 +276,16 @@
     const prevGroup = pr.group
     const method = mergeMethod
     mergeBusy = true
-    prs.update((arr) => arr.map((p) => (p.id === id ? { ...p, state: 'Merged', group: 'merged' } : p)))
+    if (!pr.mergeQueueEnabled) {
+      prs.update((arr) => arr.map((p) => (p.id === id ? { ...p, state: 'Merged', group: 'merged' } : p)))
+    }
     const mergedPR = await call(PRsService.MergePR(id, method), 'Merge failed')
     mergeBusy = false
+    if (mergedPR && prLifecycle(mergedPR) === 'queued') {
+      prs.update((arr) => arr.map((p) => (p.id === mergedPR.id ? mergedPR : p)))
+      pushToast('success', 'Added to merge queue')
+      return
+    }
     if (mergedPR) {
       prs.update((arr) => arr.map((p) => (p.id === mergedPR.id ? keepMergedPR(p, mergedPR) : p)))
       pushToast('success', 'PR merged')
@@ -481,6 +488,8 @@
       <button class="tbtn solid" title={action.title} disabled={busy || draftBusy} onclick={() => void setDraft(false)}><Icon name="git-pull-request" />Ready for review</button>
     {:else if action.kind === 'checks'}
       <button class="tbtn solid" title={action.title} onclick={fixChecks}><Icon name="wrench" />Fix checks</button>
+    {:else if action.kind === 'queued'}
+      <button class="tbtn" disabled title={action.title}><Icon name="git-merge-queued" />{action.label}</button>
     {:else if action.kind === 'conflicts' || action.kind === 'blocked'}
       <button class="tbtn" disabled title={action.title}><Icon name="circle-alert" />{action.label}</button>
     {:else if action.kind === 'merge'}

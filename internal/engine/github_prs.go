@@ -973,6 +973,10 @@ func (e *Engine) applyListedGitHubPRIndexed(projectID string, row ghListedPR, vi
 			wantChecks, refreshChecks = reconcileListedChecks(existing.Checks, listed)
 		}
 		wantHasChecks := hasChecks || len(wantChecks) > 0
+		// gh pr list has no merge-queue fields; the per-PR snapshot does.
+		if existing.MergeQueued || (existing.MergeQueueEnabled && wantUpdated != existing.UpdatedAt) {
+			e.ScheduleRefreshPRConversation(existing.ID)
+		}
 		if !refreshChecks && existing.ProjectID == projectID && existing.WorkspaceID == wantWS &&
 			existing.Title == wantTitle && existing.URL == wantURL &&
 			existing.Branch == wantBranch && existing.Base == wantBase &&

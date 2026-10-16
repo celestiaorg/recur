@@ -67,6 +67,8 @@ type ghPRSnapshot struct {
 	ViewerLogin         string
 	ViewerCanWrite      bool
 	AllowedMergeMethods []string
+	MergeQueueEnabled   bool
+	MergeQueued         bool
 	NodeID              string
 	CreatedAt           string // GitHub PR opened-at (RFC3339)
 	UpdatedAt           string // GitHub PR last-activity (RFC3339)
@@ -2257,7 +2259,7 @@ func (e *Engine) RefreshPRConversation(prID string) bool {
 		pr.ReviewDecision == snap.ReviewDecision && pr.Draft == snap.IsDraft &&
 		pr.ReviewRequested == reviewReq && slices.Equal(pr.AttentionReasons, reasons) &&
 		slices.Equal(pr.Participants, people) && slices.Equal(pr.Reviewers, reviewers) &&
-		slices.Equal(pr.AllowedMergeMethods, snap.AllowedMergeMethods) {
+		slices.Equal(pr.AllowedMergeMethods, snap.AllowedMergeMethods) && pr.MergeQueueEnabled == snap.MergeQueueEnabled && pr.MergeQueued == snap.MergeQueued {
 		return false
 	}
 	becameMerged := state == "Merged" && pr.State != "Merged"
@@ -2290,6 +2292,8 @@ func (e *Engine) RefreshPRConversation(prID string) bool {
 		p.Reviewers = reviewers
 		p.Draft = snap.IsDraft
 		p.AllowedMergeMethods = snap.AllowedMergeMethods
+		p.MergeQueueEnabled = snap.MergeQueueEnabled
+		p.MergeQueued = snap.MergeQueued
 		if createdAt != "" {
 			p.CreatedAt = createdAt
 		}

@@ -780,6 +780,7 @@
   .sc-run-ico :global(.br.pr-draft) { color: var(--cyan); }
   .sc-run-ico :global(.br.pr-merged) { color: var(--indigo); }
   .sc-run-ico :global(.br.pr-closed) { color: var(--coral); }
+  .sc-run-ico :global(.br.pr-queued) { color: var(--warn); }
   .sc-run-main { min-width: 0; }
   .sc-run-t { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text); }
   .sc-run-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -36,13 +36,14 @@ export const prGroupLabel: Record<string, string> = {
 }
 
 /** GitHub-style PR lifecycle for chrome (sidebar icon tint). */
-export type PRLifecycle = 'open' | 'draft' | 'merged' | 'closed'
+export type PRLifecycle = 'open' | 'draft' | 'queued' | 'merged' | 'closed'
 
 type PRChrome = {
   state?: string
   group?: string
   draft?: boolean
   mergeStateStatus?: string
+  mergeQueued?: boolean
 }
 
 export function prLifecycle(pr: PRChrome | null | undefined): PRLifecycle | null {
@@ -51,13 +52,16 @@ export function prLifecycle(pr: PRChrome | null | undefined): PRLifecycle | null
   if (state.includes('merged')) return 'merged'
   if (state.includes('closed')) return 'closed'
   if (pr.group === 'merged') return 'merged'
+  if (pr.mergeQueued) return 'queued'
   if (pr.draft || (pr.mergeStateStatus ?? '').toUpperCase() === 'DRAFT') return 'draft'
   return 'open'
 }
 
 /** Label for the PR status chip. Drafts are Draft, not the underlying review state. */
 export function prStatusLabel(pr: PRChrome | null | undefined): string {
-  if (prLifecycle(pr) === 'draft') return 'Draft'
+  const life = prLifecycle(pr)
+  if (life === 'draft') return 'Draft'
+  if (life === 'queued') return 'Queued'
   return (pr?.state ?? '').trim()
 }
 
@@ -76,10 +80,11 @@ export function keepMergedPR<T extends PRChrome>(prev: T | undefined | null, nex
   return next
 }
 
-/** Chrome glyph for a PR — draft dotted, closed crossed, merged git-merge. */
-export function prIconName(pr?: PRChrome | null): 'git-pull-request' | 'git-pull-request-draft' | 'git-pull-request-closed' | 'git-merge' {
+/** Chrome glyph for a PR — draft dotted, closed crossed, merged git-merge, queued dashed git-merge. */
+export function prIconName(pr?: PRChrome | null): 'git-pull-request' | 'git-pull-request-draft' | 'git-pull-request-closed' | 'git-merge' | 'git-merge-queued' {
   const life = prLifecycle(pr)
   if (life === 'merged') return 'git-merge'
+  if (life === 'queued') return 'git-merge-queued'
   if (life === 'closed') return 'git-pull-request-closed'
   return life === 'draft' ? 'git-pull-request-draft' : 'git-pull-request'
 }
@@ -89,6 +94,8 @@ export function prChromeColor(pr: PRChrome | null | undefined): string {
   switch (prLifecycle(pr)) {
     case 'merged':
       return 'var(--indigo)'
+    case 'queued':
+      return 'var(--warn)'
     case 'closed':
       return 'var(--coral)'
     case 'draft':
@@ -104,7 +111,7 @@ function prChangesRequested(pr: PRChrome | null | undefined): boolean {
 }
 
 function isLivePR(life: PRLifecycle | null): boolean {
-  return life === 'open' || life === 'draft'
+  return life === 'open' || life === 'draft' || life === 'queued'
 }
 
 type WorkspacePR = {

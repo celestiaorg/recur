@@ -280,6 +280,16 @@ export const icons = {
       '<circle cx="18" cy="16" r="3"/>' +
       '<path d="M6 9v6M9 6h6a3 3 0 0 1 3 3v4"/>',
   },
+  // git-merge with a dashed merge-back line: waiting in the merge queue
+  'git-merge-queued': {
+    strokeWidth: 2,
+    body:
+      '<circle cx="6" cy="6" r="3"/>' +
+      '<circle cx="6" cy="18" r="3"/>' +
+      '<circle cx="18" cy="16" r="3"/>' +
+      '<path d="M6 9v6"/>' +
+      '<path d="M9 6h6a3 3 0 0 1 3 3v4" stroke-dasharray="2.3 1.85" stroke-linecap="butt"/>',
+  },
   // lucide-weight git-branch — out right, then up (tip inset, no arrowhead)
   'git-branch': {
     strokeWidth: 2,

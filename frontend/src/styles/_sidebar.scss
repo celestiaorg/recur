@@ -940,6 +940,10 @@ body.dragging-projects .tloop-acts, body.dragging-groups .tloop-acts {
   color: var(--coral);
 }
 
+.tloop .br.pr-queued {
+  color: var(--warn);
+}
+
 /* Amber running indicator — same 14px slot as the branch icon it replaces. */
 .tloop .sd, .nav .sd, .pr-ico .sd {
   width: 14px;

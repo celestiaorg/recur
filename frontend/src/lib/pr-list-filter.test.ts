@@ -25,6 +25,7 @@ const openReview = {
 describe('prMatchesLife', () => {
   test('Open hides drafts, merged, and closed', () => {
     expect(prMatchesLife(openReview, 'open')).toBe(true)
+    expect(prMatchesLife({ ...openReview, mergeQueued: true }, 'open')).toBe(true)
     expect(prMatchesLife({ ...openReview, draft: true }, 'open')).toBe(false)
     expect(prMatchesLife({ group: 'merged', state: 'Merged' }, 'open')).toBe(false)
     expect(prMatchesLife({ state: 'Closed' }, 'open')).toBe(false)

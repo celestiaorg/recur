@@ -11,7 +11,7 @@ import {
 import {
   projectGroups, projects, workspaces, prs, inbox, briefing, attention, policy, settings, resource, providerUsage, pushToast, booted,
   workspacesRunning, agentsRunning, permissionRequests, userQuestions, applyTerminalDockChrome, instanceLabel,
-  pendingChatFocus, issuesStale,
+  pendingChatFocus, issuesStale, routeTarget,
 } from './stores'
 import { get, writable } from 'svelte/store'
 import { wireTerminalEvents } from './terminal'
@@ -695,6 +695,14 @@ export function wireEvents() {
   Events.On('resource.updated', (e: any) => {
     resource.set(e.data ?? null)
     noteGitWarning(e.data)
+  })
+
+  Events.On('notification.open', (e: any) => {
+    if (typeof e.data !== 'string') return
+    const target = e.data
+    for (const it of get(inbox)) if (it.target === target && it.unread) InboxService.MarkInboxRead(it.id)
+    inbox.update((arr) => arr.map((i) => (i.target === target ? { ...i, unread: false } : i)))
+    routeTarget(target)
   })
 
   Events.On('inbox.updated', () => {

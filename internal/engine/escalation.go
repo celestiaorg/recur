@@ -177,8 +177,9 @@ func (e *Engine) raiseEscalation(workspaceID, agentCode string, req mcp.Escalati
 	// notification so a backgrounded window still surfaces "a loop needs you". The
 	// engine stays Wails-free — it just publishes the event.
 	e.Bus.Publish(Event{Name: "notify", Data: map[string]any{
-		"title": "A loop needs you",
-		"body":  truncate(req.Question, 120),
+		"title":  "A loop needs you",
+		"body":   truncate(req.Question, 120),
+		"target": "workspace:" + workspaceID,
 	}})
 	return esc
 }

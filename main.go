@@ -263,7 +263,8 @@ func main() {
 			if data, ok := ev.Data.(map[string]any); ok {
 				title, _ := data["title"].(string)
 				body, _ := data["body"].(string)
-				go sendOSNotification(notif, title, body) // never block the bus
+				target, _ := data["target"].(string)
+				go sendOSNotification(notif, title, body, target) // never block the bus
 			}
 		}
 		if ev.Name == "inbox.updated" || ev.Name == "attention.updated" {
@@ -317,9 +318,13 @@ func main() {
 	win := wapp.Window.NewWithOptions(windowOptionsFromState(loadWindowState()))
 	wireOpenHub(wapp, win, hub)
 	// Notification clicks are delivered here when macOS activates this
-	// process instead of spawning another. Focus the existing window.
-	notif.OnNotificationResponse(func(notifications.NotificationResult) {
+	// process instead of spawning another. Focus the existing window and
+	// route to the notification's inbox target (same as clicking the row).
+	notif.OnNotificationResponse(func(res notifications.NotificationResult) {
 		go hub.bringForward()
+		if target, _ := res.Response.UserInfo["target"].(string); target != "" {
+			wapp.Event.Emit("notification.open", target)
+		}
 	})
 	persistWindowGeometry(win)
 	wireTitlebarDoubleClick(wapp, win)
@@ -451,7 +456,7 @@ func dockBadgeCount(inboxUnread, unseenChats int) int {
 // the Wails service is skipped because it aborts startup without a D-Bus
 // session). Best-effort and bounded so a hung helper can never wedge anything;
 // failures are logged only.
-func sendOSNotification(notif *notifications.NotificationService, title, body string) {
+func sendOSNotification(notif *notifications.NotificationService, title, body, target string) {
 	if title == "" {
 		return
 	}
@@ -460,6 +465,7 @@ func sendOSNotification(notif *notifications.NotificationService, title, body st
 			ID:    fmt.Sprintf("recur-%d", time.Now().UnixNano()),
 			Title: title,
 			Body:  body,
+			Data:  map[string]any{"target": target},
 		}); err == nil {
 			return
 		}

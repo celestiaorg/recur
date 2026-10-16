@@ -349,8 +349,9 @@ func (e *Engine) publishAskUserRequested(q domain.UserQuestion) {
 		"question":    q,
 	}})
 	e.Bus.Publish(Event{Name: "notify", Data: map[string]any{
-		"title": "An agent has a question",
-		"body":  truncate(q.Question, 120),
+		"title":  "An agent has a question",
+		"body":   truncate(q.Question, 120),
+		"target": "question:" + q.ID,
 	}})
 }
 

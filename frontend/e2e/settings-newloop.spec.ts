@@ -438,6 +438,44 @@ test.describe('new loop + settings', () => {
     await expect(page.locator('#v-settings .acct-status-head.warn')).toHaveCount(0)
   })
 
+  test('adding a compatible provider shows its models in an already-loaded picker', async ({ page }) => {
+    await installBridge(page, structuredClone(seed), {
+      resolvers: {
+        ListModelCatalog: (_a, s) => [
+          { provider: 'claude-code', label: 'Claude Code', models: [{ ref: 'claude-code/claude-opus-5-5', label: 'Opus 5.5', flags: [] }] },
+          ...(s.settings.compatibleProviders ?? []).map((p: { id: string; name: string; models: { id: string; label: string }[] }) => ({
+            provider: p.id,
+            label: p.name,
+            models: p.models.map((m) => ({ ref: `${p.id}/${m.id}`, label: m.label, flags: [] })),
+          })),
+        ],
+      },
+    })
+    await gotoApp(page)
+    const modal = page.locator('#v-newtask')
+    const modelBtn = modal.locator('.sel-btn[aria-label="Model"]')
+    const options = page.locator('body > .sel-menu .sel-opt')
+    await page.keyboard.press('Meta+N')
+    await modelBtn.click()
+    await expect(options.filter({ hasText: 'Opus 5.5' })).toBeVisible()
+    await expect(options.filter({ hasText: 'GPT-4o' })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Escape')
+    await expect(modal).toHaveCount(0)
+
+    await openSettings(page)
+    await openSection(page, 'Providers')
+    await page.locator('#v-settings').getByRole('button', { name: 'Add provider' }).click()
+    const add = page.locator('#v-compat-provider')
+    await add.getByRole('button', { name: 'OpenRouter' }).click()
+    await add.locator('.nt-go').click()
+    await expect(add).toHaveCount(0)
+
+    await page.keyboard.press('Meta+N')
+    await modelBtn.click()
+    await expect(options.filter({ hasText: 'GPT-4o' })).toBeVisible()
+  })
+
   test('changing the agent model is accepted', async ({ page }) => {
     await gotoApp(page)
     await openSettings(page)

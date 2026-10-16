@@ -43,7 +43,7 @@
   import { openExternalUrl } from '../lib/open-external'
   import { canDisconnectCursor, cursorQuota, snapshotHasProviderError } from '../lib/providerUsage'
   import {
-    loadModelCatalog, peekModelCatalog, invalidateModelCatalog,
+    loadModelCatalog, peekModelCatalog, invalidateModelCatalog, modelCatalogRev,
     normalizeFlags, flagsEqual, flagsForModel,
     type CatalogModel,
   } from '../lib/models'
@@ -268,7 +268,6 @@
   let compatTesting = $state<Record<string, boolean>>({})
 
   function saveCompatible(list: CompatibleProvider[]) {
-    invalidateModelCatalog()
     return patchSettings({ compatibleProviders: list })
   }
 
@@ -406,7 +405,6 @@
   function saveCodexKey() {
     codexKeyDirty = false
     codexKeyTest = null
-    invalidateModelCatalog()
     codexBusy = true
     patchSettings({ codexApiKey: codexKeyDraft })
       .then((s) => {
@@ -466,6 +464,7 @@
     void claudeOn
     void cursorOn
     void codexOn
+    void $modelCatalogRev
     let cancelled = false
     loadModelCatalog()
       .then((models) => { if (!cancelled) catalogModels = models })
@@ -1407,10 +1406,11 @@
       pushToast('error', 'Keep at least one provider on')
       return
     }
-    invalidateModelCatalog()
     void patchSettings({ disabledProviders: toggleDisabledName($settings.disabledProviders, slug, on) })
       .then(() => { void refreshProviderUsage() })
   }
+
+  const catalogPatchKeys: (keyof SettingsPatch)[] = ['compatibleProviders', 'disabledProviders', 'codexApiKey', 'codexChatGPTAuth', 'codexBinPath']
 
   function patchSettings(patch: SettingsPatch): Promise<typeof $settings | null> {
     if (!$settings) return Promise.resolve(null)
@@ -1428,7 +1428,11 @@
     })
     if (!changed) return Promise.resolve($settings)
     return call(SettingsService.SetSettings(next as any), 'Could not save settings').then((s) => {
-      if (s) { settings.set(s); pushToast('success', 'Settings saved') }
+      if (s) {
+        settings.set(s)
+        if (catalogPatchKeys.some((k) => k in patch)) invalidateModelCatalog()
+        pushToast('success', 'Settings saved')
+      }
       return s
     })
   }
@@ -1906,7 +1910,6 @@
                         aria-pressed={!!$settings.codexChatGPTAuth}
                         onclick={() => {
                           const next = !$settings!.codexChatGPTAuth
-                          invalidateModelCatalog()
                           codexBusy = true
                           // Turning ChatGPT login on clears a leftover API key so
                           // the (now-hidden) key cannot keep winning in the runner.

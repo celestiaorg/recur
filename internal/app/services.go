@@ -1306,6 +1306,11 @@ func (s *PRsService) GetPR(id string) (domain.PR, error) {
 	s.eng.ScheduleRefreshPRConversation(id)
 	p, _ := s.st().PR(id)
 	s.ensurePREnriched(&p)
+	// The checks poll calls GetPR every 15s; per-commit diffs can be tens of MB
+	// and stall the webview. The UI loads them lazily via GetCommitDiff.
+	for i := range p.Commits {
+		p.Commits[i].Files = nil
+	}
 	return p, nil
 }
 

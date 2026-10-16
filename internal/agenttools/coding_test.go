@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"recur/internal/rg"
 )
 
 func TestReadEditWriteSandbox(t *testing.T) {
@@ -83,6 +86,80 @@ func TestGrepAndGlob(t *testing.T) {
 	}
 	if !strings.Contains(got, "a.go") {
 		t.Errorf("Glob() = %q, want a.go", got)
+	}
+}
+
+func TestGrepAndGlobRipgrep(t *testing.T) {
+	if _, err := rg.Locate(dataDir()); err != nil {
+		t.Skip("rg not found")
+	}
+	wt := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", wt).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v %s", err, out)
+	}
+	files := map[string]string{
+		".gitignore":          "ignored.go\n",
+		"ignored.go":          "func Alpha()\n",
+		".github/ci.yml":      "Alpha: true\n",
+		"sub/deep/b.go":       "one\nfunc Alpha()\nthree\n",
+		"sub/deep/notes.txt":  "Alpha\n",
+		"sub/deep/regexp.txt": "a(\n",
+	}
+	for name, body := range files {
+		p := filepath.Join(wt, name)
+		_ = os.MkdirAll(filepath.Dir(p), 0o755)
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg := NewRegistry(CodingTools()...)
+	grep, _ := reg.Get("Grep")
+	run := func(args string) string {
+		t.Helper()
+		got, err := grep.Execute(Call{Worktree: wt, Args: []byte(args)})
+		if err != nil {
+			t.Fatalf("Grep(%s): %v", args, err)
+		}
+		return got
+	}
+
+	got := run(`{"pattern":"Alpha"}`)
+	if !strings.Contains(got, ".github/ci.yml:1:Alpha: true") || strings.Contains(got, "ignored.go") {
+		t.Errorf("Grep() = %q, want hidden files and no gitignored files", got)
+	}
+	if got := run(`{"pattern":"Alpha","glob":"*.go"}`); !strings.Contains(got, "sub/deep/b.go") || strings.Contains(got, "ignored.go") {
+		t.Errorf("Grep(glob) = %q, want glob filter to keep gitignored files out", got)
+	}
+	if got := run(`{"pattern":"alpha"}`); got != "No matches." {
+		t.Errorf("Grep(case sensitive) = %q, want No matches.", got)
+	}
+	if got := run(`{"pattern":"alpha","-i":true,"path":"sub","glob":"deep/*.go"}`); strings.TrimSpace(got) != "sub/deep/b.go:2:func Alpha()" {
+		t.Errorf("Grep(-i, path, glob) = %q, want worktree-relative b.go hit", got)
+	}
+	if got := run(`{"pattern":"Alpha","path":"sub/deep/b.go","-C":1}`); !strings.Contains(got, "sub/deep/b.go-1-one") || !strings.Contains(got, "sub/deep/b.go-3-three") {
+		t.Errorf("Grep(-C, file path) = %q, want context lines", got)
+	}
+	if got := run(`{"pattern":"Alpha","path":"sub","output_mode":"files_with_matches"}`); !strings.Contains(got, "sub/deep/notes.txt") || strings.Contains(got, ":") {
+		t.Errorf("Grep(files_with_matches) = %q, want paths only", got)
+	}
+	if _, err := grep.Execute(Call{Worktree: wt, Args: []byte(`{"pattern":"a("}`)}); err == nil || !strings.Contains(err.Error(), "regex parse error") {
+		t.Errorf("Grep(bad regex) error = %v, want regex parse error", err)
+	}
+
+	glob, _ := reg.Get("Glob")
+	got, err := glob.Execute(Call{Worktree: wt, Args: []byte(`{"pattern":"*.go"}`)})
+	if err != nil {
+		t.Fatalf("Glob: %v", err)
+	}
+	if !strings.Contains(got, "sub/deep/b.go") || strings.Contains(got, "ignored.go") {
+		t.Errorf("Glob() = %q, want b.go and no gitignored files", got)
+	}
+	got, err = glob.Execute(Call{Worktree: wt, Args: []byte(`{"pattern":"deep/*.txt","path":"sub"}`)})
+	if err != nil {
+		t.Fatalf("Glob(path): %v", err)
+	}
+	if !strings.Contains(got, "sub/deep/notes.txt") {
+		t.Errorf("Glob(path) = %q, want worktree-relative sub/deep/notes.txt", got)
 	}
 }
 

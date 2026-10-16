@@ -2,7 +2,13 @@ package engine
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"recur/internal/domain"
 	"recur/internal/responses"
@@ -10,8 +16,46 @@ import (
 
 const maxHistoryBytes = 8 << 20
 
+// maxRepoRulesBytes matches Codex's default AGENTS.md budget.
+const maxRepoRulesBytes = 32 << 10
+
 func harnessInstructions(spec AgentSpec) string {
-	return joinSystemParts(recurCodingPrompt, spec.SystemPrompt, spec.AppendSystemPrompt, spec.TurnAppendPrompt)
+	return joinSystemParts(recurCodingPrompt, harnessEnv(spec.Worktree), repoRules(spec.Worktree),
+		spec.SystemPrompt, spec.AppendSystemPrompt, spec.TurnAppendPrompt)
+}
+
+func harnessEnv(worktree string) string {
+	if worktree == "" {
+		return ""
+	}
+	return fmt.Sprintf("## Environment\nWorktree (Bash cwd): %s\nPlatform: %s/%s\nToday's date: %s",
+		worktree, runtime.GOOS, runtime.GOARCH, time.Now().Format("2006-01-02"))
+}
+
+// repoRules inlines the worktree's AGENTS.md (or CLAUDE.md), which Claude Code,
+// Codex, and Cursor load on their own.
+func repoRules(worktree string) string {
+	if worktree == "" {
+		return ""
+	}
+	for _, name := range []string{"AGENTS.md", "CLAUDE.md"} {
+		p := filepath.Join(worktree, name)
+		// Regular files only: a symlinked AGENTS.md could point outside the
+		// worktree and ship a secret to the provider.
+		if st, err := os.Lstat(p); err != nil || !st.Mode().IsRegular() {
+			continue
+		}
+		f, err := os.Open(p)
+		if err != nil {
+			continue
+		}
+		b, _ := io.ReadAll(io.LimitReader(f, maxRepoRulesBytes))
+		f.Close()
+		if body := strings.TrimSpace(string(b)); body != "" {
+			return "## Repo instructions (" + name + ")\n" + body
+		}
+	}
+	return ""
 }
 
 func joinSystemParts(parts ...string) string {

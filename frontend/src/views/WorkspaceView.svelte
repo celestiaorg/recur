@@ -31,7 +31,7 @@
   import { getObservatorySnapshot, observatoryCacheKey } from '../lib/caches/observatory-cache'
   import { dropTranscriptUI } from '../lib/caches/chat-transcript-ui'
   import {
-    loadModelCatalog, peekModelCatalog, normalizeFlags, flagsForModel, flagsEqual,
+    loadModelCatalog, peekModelCatalog, modelCatalogRev, normalizeFlags, flagsForModel, flagsEqual,
     type CatalogModel,
   } from '../lib/models'
   import { modelProvider, providerEnabled, chatSteerFollowUp } from '../lib/providers'
@@ -1193,7 +1193,7 @@
   }
 
   $effect(() => {
-    if (catalogModels.length) return
+    void $modelCatalogRev
     let cancelled = false
     loadModelCatalog()
       .then((models) => { if (!cancelled) catalogModels = models })

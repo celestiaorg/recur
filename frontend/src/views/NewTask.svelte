@@ -15,7 +15,7 @@
   } from '../lib/modes'
   import { isCmdOrCtrl } from '../lib/shortcut'
   import {
-    loadModelCatalog, peekModelCatalog, normalizeFlags, flagsForModel,
+    loadModelCatalog, peekModelCatalog, modelCatalogRev, normalizeFlags, flagsForModel,
     type CatalogModel,
   } from '../lib/models'
   import { openingChatSeed, openingSeedText, revealCreatedWorkspace, eagerCreateInput, startEagerCreate, endEagerCreate, takeEagerWorkspace } from '../lib/new-workspace'
@@ -159,7 +159,8 @@
   })
 
   $effect(() => {
-    if (!$newTaskOpen || catalogModels.length) return
+    if (!$newTaskOpen) return
+    void $modelCatalogRev
     let cancelled = false
     loadModelCatalog()
       .then((models) => {

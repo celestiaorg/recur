@@ -2470,6 +2470,18 @@ export class PR {
      */
     "allowedMergeMethods"?: string[];
 
+    /**
+     * MergeQueueEnabled is GitHub's isMergeQueueEnabled: the base branch
+     * requires a merge queue, so Merge enqueues instead of merging.
+     */
+    "mergeQueueEnabled"?: boolean;
+
+    /**
+     * MergeQueued is true while the PR sits in GitHub's merge queue or waits
+     * on auto-merge to join it.
+     */
+    "mergeQueued"?: boolean;
+
     /** Creates a new PR instance. */
     constructor($$source: Partial<PR> = {}) {
         if (!("id" in $$source)) {

@@ -18,6 +18,13 @@ describe('prMergeAction', () => {
     expect(prMergeAction(gh({ state: 'Closed' })).kind).toBe('hidden')
   })
 
+  it('labels merge-queue branches and disables Queued while waiting', () => {
+    expect(prMergeAction(gh({ mergeStateStatus: 'CLEAN', mergeQueueEnabled: true })).label).toBe('Add to merge queue')
+    const queued = prMergeAction(gh({ mergeQueueEnabled: true, mergeQueued: true }))
+    expect(queued.kind).toBe('queued')
+    expect(queued.disabled).toBe(true)
+  })
+
   it('shows Updating while catching up', () => {
     expect(prMergeAction(gh({ updatingBase: 'git' })).kind).toBe('updating')
     expect(prMergeAction(gh(), { awaitingUpdate: true }).kind).toBe('updating')

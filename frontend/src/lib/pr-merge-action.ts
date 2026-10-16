@@ -23,6 +23,8 @@ export type PRMergeInput = {
   reviewDecision?: string
   allowedMergeMethods?: string[]
   base?: string
+  mergeQueueEnabled?: boolean
+  mergeQueued?: boolean
 }
 
 export type MergeActionKind =
@@ -33,6 +35,7 @@ export type MergeActionKind =
   | 'conflicts'
   | 'checks'
   | 'blocked'
+  | 'queued'
   | 'merge'
 
 export type MergeAction = {
@@ -85,6 +88,10 @@ export function prMergeAction(pr: PRMergeInput | null | undefined, opts?: { awai
       title: 'Local merge — you are the only gate; merges the branch into the base on disk',
       disabled: false,
     }
+  }
+
+  if (pr.mergeQueued) {
+    return { kind: 'queued', label: 'Queued', title: 'Waiting in the GitHub merge queue', disabled: true }
   }
 
   const status = upper(pr.mergeStateStatus)
@@ -146,6 +153,14 @@ export function prMergeAction(pr: PRMergeInput | null | undefined, opts?: { awai
   }
 
   const unstable = status === 'UNSTABLE'
+  if (pr.mergeQueueEnabled) {
+    return {
+      kind: 'merge',
+      label: 'Add to merge queue',
+      title: 'The base branch requires a merge queue; GitHub merges the PR once it passes the queue',
+      disabled: false,
+    }
+  }
   return {
     kind: 'merge',
     label: 'Merge',

@@ -24,7 +24,7 @@ const githubPRSnapshotGraphQL = `query($o:String!,$r:String!,$n:Int!){
     squashMergeAllowed
     rebaseMergeAllowed
     pullRequest(number:$n){
-      id title body state reviewDecision mergeable mergeStateStatus isDraft
+      id title body state reviewDecision mergeable mergeStateStatus isDraft isMergeQueueEnabled isInMergeQueue autoMergeRequest { enabledAt }
       url headRefOid headRefName baseRefName createdAt updatedAt
       author { login avatarUrl }
       reactionGroups { content viewerHasReacted reactors { totalCount } }
@@ -93,6 +93,9 @@ type gqlSnapshotPR struct {
 	Mergeable        string      `json:"mergeable"`
 	MergeStateStatus string      `json:"mergeStateStatus"`
 	IsDraft          bool        `json:"isDraft"`
+	IsMergeQueue     bool        `json:"isMergeQueueEnabled"`
+	IsInMergeQueue   bool        `json:"isInMergeQueue"`
+	AutoMerge        *struct{}   `json:"autoMergeRequest"`
 	HeadRefOid       string      `json:"headRefOid"`
 	HeadRefName      string      `json:"headRefName"`
 	BaseRefName      string      `json:"baseRefName"`
@@ -307,6 +310,8 @@ func parseGitHubPRSnapshotGraphQL(raw string, now time.Time) (ghPRSnapshot, erro
 	snap.ViewerLogin = viewer.Login
 	snap.ViewerCanWrite = viewer.CanWrite
 	snap.AllowedMergeMethods = viewer.AllowedMergeMethods
+	snap.MergeQueueEnabled = pr.IsMergeQueue
+	snap.MergeQueued = pr.IsInMergeQueue || (pr.IsMergeQueue && pr.AutoMerge != nil)
 	return snap, nil
 }
 

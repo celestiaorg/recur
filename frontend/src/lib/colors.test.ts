@@ -111,6 +111,13 @@ describe('prIconName', () => {
     expect(prIconName({ group: 'merged', draft: true })).toBe('git-merge')
   })
 
+  it('uses the dashed git-merge while queued, git-merge once merged', () => {
+    expect(prIconName({ state: 'In review', mergeQueued: true })).toBe('git-merge-queued')
+    expect(prIconName({ state: 'Merged', group: 'merged', mergeQueued: true })).toBe('git-merge')
+    expect(prChromeColor({ state: 'In review', mergeQueued: true })).toBe('var(--warn)')
+    expect(prStatusLabel({ state: 'In review', mergeQueued: true })).toBe('Queued')
+  })
+
   it('uses git-pull-request-closed when the PR is closed', () => {
     expect(prIconName({ state: 'Closed' })).toBe('git-pull-request-closed')
     expect(prIconName({ state: 'Closed', draft: true })).toBe('git-pull-request-closed')

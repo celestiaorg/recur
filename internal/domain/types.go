@@ -1238,6 +1238,12 @@ type PR struct {
 	// AllowedMergeMethods is the repo's enabled GitHub merge types
 	// (merge / squash / rebase). Empty means unknown — show all three.
 	AllowedMergeMethods []string `json:"allowedMergeMethods,omitempty"`
+	// MergeQueueEnabled is GitHub's isMergeQueueEnabled: the base branch
+	// requires a merge queue, so Merge enqueues instead of merging.
+	MergeQueueEnabled bool `json:"mergeQueueEnabled,omitempty"`
+	// MergeQueued is true while the PR sits in GitHub's merge queue or waits
+	// on auto-merge to join it.
+	MergeQueued bool `json:"mergeQueued,omitempty"`
 }
 
 // ViewerIsAuthor reports whether the authenticated gh user opened this PR.

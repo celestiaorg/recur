@@ -901,16 +901,23 @@
   z-index: 220;
   background: rgba(5, 7, 10, .72);
   backdrop-filter: blur(8px);
+}
+
+/* Scrolls inside the blurred backdrop, which would otherwise anchor fixed actions to the scroller. */
+.chat-att-lb-scroll {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 32px;
+  overflow: auto;
   cursor: zoom-out;
 }
 
+/* Auto margins center without clipping the top/left of an actual-size image. */
 .chat-att-lb-img {
-  max-width: min(960px, 100%);
-  max-height: min(86vh, 100%);
+  margin: auto;
+  max-width: 100%;
+  max-height: 100%;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -918,6 +925,17 @@
   box-shadow: 0 24px 80px -20px rgba(0, 0, 0, .85);
   cursor: default;
   background: var(--pane-2);
+}
+
+.chat-att-lb-img.zoomable {
+  cursor: zoom-in;
+}
+
+.chat-att-lb.actual .chat-att-lb-img {
+  flex: none;
+  max-width: none;
+  max-height: none;
+  cursor: zoom-out;
 }
 
 .chat-att-lb-actions {

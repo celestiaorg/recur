@@ -222,7 +222,11 @@ try {
           await expect(page.locator("#v-detail .obs-side"))[
             screen.panes.files ? "toBeVisible" : "toBeHidden"
           ]();
-        } else if (screen.view === "pr")
+        } else if (screen.view === "inbox")
+          await expect(page.locator("#v-briefing .briefing-ask"))[
+            screen.panes.chat ? "toBeVisible" : "toBeHidden"
+          ]();
+        else if (screen.view === "pr")
           await expect(page.locator("#prd-agent"))[
             screen.panes.prChat ? "toBeVisible" : "toBeHidden"
           ]();

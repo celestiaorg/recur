@@ -3273,3 +3273,20 @@ func TestArchiveOnePRChatHostRevalidatesLink(t *testing.T) {
 		t.Fatalf("session on live keep = %+v ok=%v, want %s", moved, ok, sess.ID)
 	}
 }
+
+func TestForkRemoteURL(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ in, want string }{
+		{"git@github.com:celestiaorg/recur.git", "git@github.com:auricom/recur.git"},
+		{"https://github.com/celestiaorg/recur", "https://github.com/auricom/recur.git"},
+		{"https://github.com/celestiaorg/recur.git/\n", "https://github.com/auricom/recur.git"},
+		{"ssh://git@github.com/celestiaorg/recur.git", "ssh://git@github.com/auricom/recur.git"},
+		{"/tmp/x/celestiaorg/recur.git", "/tmp/x/auricom/recur.git"},
+		{"recur", ""},
+	} {
+		got, ok := forkRemoteURL(tc.in, "auricom", "recur")
+		if got != tc.want || ok != (tc.want != "") {
+			t.Errorf("forkRemoteURL(%q) = %q, %v; want %q", tc.in, got, ok, tc.want)
+		}
+	}
+}

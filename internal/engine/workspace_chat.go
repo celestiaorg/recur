@@ -132,7 +132,7 @@ func (e *Engine) sendWorkspaceTurn(workspaceID, code, text, model string, flags 
 	if retry && mode == domain.ChatModeLoop {
 		// Loop on a regular tab means "engage the autopilot", which Retry must
 		// not do. Fall back to the tab's persisted non-loop mode (or agent) so
-		// the run-lock and tool shape still apply.
+		// the loop-tab lock and tool shape still apply.
 		if persisted := domain.NormalizeChatMode(e.chatModeFor(workspaceID, code)); persisted != "" && persisted != domain.ChatModeLoop {
 			mode = persisted
 		} else {
@@ -201,11 +201,12 @@ func (e *Engine) sendWorkspaceTurn(workspaceID, code, text, model string, flags 
 			}
 		}
 	}
-	if mode == domain.ChatModeAgent && ws.HasRun() && domain.RunActive(ws.State) {
-		// The run-lock (§3.3, decision #3): an active run owns the worktree.
-		// Read-only modes keep working; edits wait for a pause.
-		return "A loop is running in this workspace — the run owns the worktree, so Agent-mode edits are " +
-			"locked until it pauses or settles. Ask, Plan, and Review modes still work."
+	if mode == domain.ChatModeAgent && ws.HasRun() && domain.RunActive(ws.State) &&
+		(loopOwnerCode(ws) == code || e.chatDrivesLiveLoop(workspaceID, code)) {
+		// Only the tab driving the loop is locked; sibling tabs share the
+		// worktree the same way sibling Loop tabs already do.
+		return "A loop is running in this tab, so Agent-mode edits here wait until it pauses or settles. " +
+			"Other tabs keep working."
 	}
 	set := e.settings()
 	defModel, defFlags := set.ModelForChatMode(mode)

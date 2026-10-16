@@ -2635,7 +2635,7 @@
     // Engine replays the last stored wire prompt (and images). The bubble body
     // is display_text — a prompt-action label or ask_user answer — so do not
     // send it as the retry payload. Loop on a PA* tab means "engage", which
-    // Retry must not do — send agent so the run-lock still applies.
+    // Retry must not do — send agent so the loop-tab lock still applies.
     dispatchSend(id, code, key, {
       id: uuidv7(),
       marked: CHAT_RETRY_DISPLAY,

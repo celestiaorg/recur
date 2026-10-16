@@ -1,0 +1,126 @@
+---
+title: Keyboard shortcuts
+description: Every app, editor, explorer, and terminal shortcut in Recur
+---
+
+# Keyboard shortcuts
+
+Recur can be driven from the keyboard: create and switch workspaces, open files, move between the chat, editor, and terminal, change chat modes, and run commands without the mouse.
+
+Press **⌘⇧/** in the app to search every shortcut. On Linux, **⌘** is **Ctrl** and **⌥** is **Alt**.
+
+## Everyday flow
+
+| Do this | Press |
+| --- | --- |
+| Start a new workspace | `⌘N` |
+| Jump to any workspace or pull request | `⌘K` |
+| Open a file | `⌘P` |
+| Run a bundle command or snippet | `⌘⇧P` |
+| Switch the chat mode (Ask, Plan, Agent, Review, Loop) | `⌘.` |
+| Add the selected code or file to the chat | `⌘L` |
+| Focus the chat, editor, or terminal | `⌘1` `⌘2` `⌘3` |
+| Previous or next workspace | `⌥⌘↑` `⌥⌘↓` |
+| Next or previous file in review | `J` `K` |
+| Start a project run, such as your dev server | `⌘R` |
+| Stop the agent | `⌘⇧⌫` |
+
+## General
+
+| Action | Shortcut |
+| --- | --- |
+| Keyboard shortcuts | `⌘⇧/` |
+| Go to (workspaces and PRs) | `⌘K` |
+| Run command or snippet | `⌘⇧P` |
+| New workspace | `⌘N` |
+| New blank workspace | `⇧⌘N` |
+| Open file or folder | `⌥⌘O` |
+| Open in another app | `⌘O` |
+| Toggle sidebar | `⌘B` |
+| Settings | `⌘,` |
+| Back | `Esc` |
+
+## Navigation
+
+| Action | Shortcut |
+| --- | --- |
+| Quick Open | `⌘P` |
+| Go to symbol | `⌘⇧O` |
+| Focus agent panel | `⌘1` |
+| Focus editor | `⌘2` |
+| Focus terminal | `⌘3` |
+| Add file or selection to chat | `⌘L` |
+| Previous / next tab | `⌥⌘←` `⌥⌘→` |
+| Previous / next workspace | `⌥⌘↑` `⌥⌘↓` |
+
+## Workbench
+
+| Action | Shortcut |
+| --- | --- |
+| Toggle left panel | `⌥⌘B` |
+| Toggle right panel | `⌥⌘⇧B` |
+| Toggle editor | `⌥⌘E` |
+| Toggle review | `⌥⌘R` |
+| Review: next / previous file | `J` `K` |
+| Open diff line in editor | `⌘`-click |
+| Toggle terminal | ``⌃` `` |
+| Maximize terminal | ``⌃⇧` `` |
+| New tab | `⌘T` |
+| Close tab | `⌘W` |
+| Reopen closed editor tab | `⌘⇧T` |
+| Stop agent | `⌘⇧⌫` |
+| Cycle agent mode | `⌘.` |
+| Split editor | `⌘\` |
+| Run… | `⌘R` |
+| Stop run | `⌘⇧R` |
+| Reload from disk | `F5` |
+
+## Editor
+
+| Action | Shortcut |
+| --- | --- |
+| Cycle view (code, diff, preview) | `⌘⇧V` |
+| Previous / next editor theme | `⌥⌘[` `⌥⌘]` |
+| Save | `⌘S` |
+| Find | `⌘F` |
+| Find next / previous | `⌘G` `⇧⌘G` |
+| Go to line | `⌥⌘G` |
+| Revert diff hunk | `⌥⌘Z` |
+| Match case (find) | `⌥⌘C` |
+| Regexp (find) | `⌥⌘R` |
+| Whole word (find) | `⌥⌘W` |
+| Select next occurrence | `⌘D` |
+| Add cursor above / below | `⌃⇧↑` `⌃⇧↓` |
+| Toggle comment | `⌘/` |
+| Go to definition | `F12` |
+
+The editor also has **Vim** and **Emacs** keymaps. Choose one under **Settings → Code editor**.
+
+## Explorer
+
+| Action | Shortcut |
+| --- | --- |
+| Open file | `⌘↓` |
+| New file | `⌥⌘N` |
+| New folder | `⇧⌘N` |
+| Rename | `↩` |
+| Delete | `⌘⌫` |
+| Cut / copy / paste | `⌘X` `⌘C` `⌘V` |
+| Duplicate | `⌘D` |
+| Copy path | `⌥⌘C` |
+| Copy relative path | `⇧⌥⌘C` |
+| Reveal in Finder | `⌥⌘R` |
+
+## Terminal
+
+| Action | Shortcut |
+| --- | --- |
+| New terminal tab | `⌘T` |
+| Close terminal tab | `⌘W` |
+| Previous / next tab | `⌥⌘←` `⌥⌘→` |
+
+## Bundle commands
+
+Bundle commands can declare their own key bindings with `keyEquivalent`. App shortcuts take priority, and commands that share a chord show a numbered picker. See [Manifest](/bundles/manifest#keybindings).
+
+App shortcuts cannot be remapped yet.

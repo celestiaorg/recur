@@ -132,7 +132,7 @@
   }
   .cmd-prompts-actions .primary {
     background: var(--accent, var(--amber));
-    color: #0A0C10;
+    color: var(--on-amber);
     border: 0;
     border-radius: 6px;
     padding: 6px 12px;

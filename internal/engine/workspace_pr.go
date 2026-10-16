@@ -580,7 +580,7 @@ func (e *Engine) openWorkspacePR(workspaceID, title, body string, draft, force b
 		if ghNum, ghOK, reason := e.CreateGitHubPR(ctx, proj.RepoPath, ws.WorktreePath, branch, base, title, ghBody, draft); ghOK {
 			source = domain.SourceGitHub
 			prNum = ghNum
-			prID = fmt.Sprintf("gh-%d", ghNum)
+			prID = githubImportedPRID(ws.ProjectID, ghNum)
 			kind := "GitHub PR"
 			if draft {
 				kind = "GitHub draft PR"

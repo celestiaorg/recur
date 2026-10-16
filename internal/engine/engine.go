@@ -489,8 +489,9 @@ func (e *Engine) publishPermissionRequested(req domain.PermissionRequest) {
 	})
 	e.Bus.Publish(Event{Name: "inbox.updated", Data: map[string]any{"unread": e.Store.UnreadCount()}})
 	e.Bus.Publish(Event{Name: "notify", Data: map[string]any{
-		"title": "Permission needed",
-		"body":  req.Summary,
+		"title":  "Permission needed",
+		"body":   req.Summary,
+		"target": "workspace:" + req.WorkspaceID,
 	}})
 	e.publishResource()
 }

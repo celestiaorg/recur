@@ -123,8 +123,9 @@ func (e *Engine) failRetryable(id, reason string) {
 	})
 	e.Bus.Publish(Event{Name: "inbox.updated", Data: map[string]any{"unread": e.Store.UnreadCount()}})
 	e.Bus.Publish(Event{Name: "notify", Data: map[string]any{
-		"title": "A loop stopped — retry available",
-		"body":  truncate(reason, 120),
+		"title":  "A loop stopped — retry available",
+		"body":   truncate(reason, 120),
+		"target": "workspace:" + id,
 	}})
 }
 

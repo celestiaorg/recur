@@ -848,8 +848,9 @@ func (e *Engine) emitWorkspacePRInbox(pr domain.PR, name string) {
 	})
 	e.Bus.Publish(Event{Name: "inbox.updated", Data: map[string]any{"unread": e.Store.UnreadCount()}})
 	e.Bus.Publish(Event{Name: "notify", Data: map[string]any{
-		"title": fmt.Sprintf("PR #%d is ready for review", pr.Number),
-		"body":  truncate(strings.TrimSpace(name), 120),
+		"title":  fmt.Sprintf("PR #%d is ready for review", pr.Number),
+		"body":   truncate(strings.TrimSpace(name), 120),
+		"target": "pr:" + pr.ID,
 	}})
 }
 

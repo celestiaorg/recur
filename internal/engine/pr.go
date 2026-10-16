@@ -1931,8 +1931,9 @@ func (e *Engine) emitPRReadyInbox(pr domain.PR) {
 	// Generic "notify" bus event (Phase 3.6): main.go turns this into a native OS
 	// notification. Wording mirrors the inbox row title, minus the HTML markup.
 	e.Bus.Publish(Event{Name: "notify", Data: map[string]any{
-		"title": fmt.Sprintf("PR #%d is ready for review", pr.Number),
-		"body":  truncate(prTitle(prGoal(e, pr.WorkspaceID)), 120),
+		"title":  fmt.Sprintf("PR #%d is ready for review", pr.Number),
+		"body":   truncate(prTitle(prGoal(e, pr.WorkspaceID)), 120),
+		"target": "pr:" + pr.ID,
 	}})
 }
 

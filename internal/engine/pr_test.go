@@ -222,8 +222,13 @@ func TestPROpenPublishesNotify(t *testing.T) {
 		l, ok := st.Workspace(id)
 		return ok && l.State == domain.StatePROpen
 	})
-	if !sink.has("notify") {
-		t.Error("expected a notify event when the PR opened")
+	evs := sink.byName("notify")
+	if len(evs) == 0 {
+		t.Fatal("expected a notify event when the PR opened")
+	}
+	data, _ := evs[0].Data.(map[string]any)
+	if target, _ := data["target"].(string); !strings.HasPrefix(target, "pr:") {
+		t.Errorf("notify target = %q, want pr:<id> so a click opens the PR", target)
 	}
 }
 

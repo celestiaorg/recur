@@ -445,26 +445,50 @@ func planGitHubMerge(pr domain.PR, method domain.MergeMethod) githubMergePlan {
 	return githubMergePlan{kind: githubMergeCLI, cliArgs: ghMergeArgs(pr.Number, githubMergeCLIFlag(method), mergeCommitText{})}
 }
 
-// mergeGitHubPR executes a GitHub merge. Tests replace this.
+// mergeGitHubPR executes a GitHub merge. queued is true when the base branch
+// requires a merge queue and the PR was enqueued instead of merged. Tests
+// replace this.
 var mergeGitHubPR = doMergeGitHubPR
 
-func doMergeGitHubPR(ctx context.Context, repoPath string, pr domain.PR, method domain.MergeMethod) error {
+func doMergeGitHubPR(ctx context.Context, repoPath string, pr domain.PR, method domain.MergeMethod) (queued bool, err error) {
 	if _, err := exec.LookPath("gh"); err != nil {
-		return fmt.Errorf("the gh CLI is not installed")
+		return false, fmt.Errorf("the gh CLI is not installed")
+	}
+	if pr.MergeQueueEnabled {
+		return enqueueGitHubPR(ctx, repoPath, pr)
 	}
 	plan := planGitHubMerge(pr, method)
 	switch plan.kind {
 	case githubMergeREST:
-		return retryGitHubRESTMerge(ctx, func() error {
+		err = retryGitHubRESTMerge(ctx, func() error {
 			_, err := runGH(ctx, repoPath, plan.restArgs...)
 			return err
 		})
 	case githubMergeGraphQL:
-		return mergeGitHubGraphQL(ctx, repoPath, plan.nodeID, method)
+		err = mergeGitHubGraphQL(ctx, repoPath, plan.nodeID, method)
 	default:
-		_, err := runGH(ctx, repoPath, plan.cliArgs...)
-		return err
+		_, err = runGH(ctx, repoPath, plan.cliArgs...)
 	}
+	// The queue was enabled after the last snapshot; the merge APIs refuse it.
+	if err != nil && strings.Contains(strings.ToLower(err.Error()), "merge queue") {
+		return enqueueGitHubPR(ctx, repoPath, pr)
+	}
+	return false, err
+}
+
+// enqueueGitHubPR adds the PR to its base branch's merge queue, or enables
+// auto-merge until required checks pass. The queue owns the merge method.
+func enqueueGitHubPR(ctx context.Context, repoPath string, pr domain.PR) (bool, error) {
+	_, err := runGH(ctx, repoPath, ghEnqueueArgs(pr)...)
+	return err == nil, err
+}
+
+func ghEnqueueArgs(pr domain.PR) []string {
+	target := pr.URL
+	if target == "" {
+		target = fmt.Sprintf("%d", pr.Number)
+	}
+	return []string{"pr", "merge", target}
 }
 
 // githubMergeRetryDelay is the pause between REST merge attempts while GitHub
@@ -532,7 +556,8 @@ func mergeGitHubGraphQL(ctx context.Context, repoPath, nodeID string, method dom
 // not blocked on `gh auth status` + `gh pr merge` mergeable polling. The CLI
 // is still required (`gh api`); a missing binary fails fast without an auth
 // probe. method maps to merge/squash/rebase. On success it marks the PR merged
-// locally so the UI reflects the merge.
+// locally so the UI reflects the merge. A merge-queue branch enqueues the PR
+// and leaves it open; the PR sweep marks it merged once the queue lands it.
 func (e *Engine) mergeGitHub(pr domain.PR, method domain.MergeMethod) (domain.PR, bool) {
 	proj, ok := e.Store.Project(e.prProjectID(pr))
 	repoPath := ""
@@ -548,9 +573,23 @@ func (e *Engine) mergeGitHub(pr domain.PR, method domain.MergeMethod) (domain.PR
 		return pr, false
 	}
 
-	if err := mergeGitHubPR(ctx, repoPath, pr, method); err != nil {
+	queued, err := mergeGitHubPR(ctx, repoPath, pr, method)
+	if err != nil {
 		e.emitWorkspaceEvent(pr.WorkspaceID, "MA", "Maestro", githubMergeFailureNote(err))
 		return pr, false
+	}
+	if queued {
+		if updated, ok := e.Store.UpdatePR(pr.ID, func(p *domain.PR) {
+			p.MergeQueueEnabled = true
+			p.MergeQueued = true
+		}); ok {
+			pr = updated
+		}
+		e.publishPRUpdated(pr.ID)
+		e.ScheduleRefreshPRConversation(pr.ID)
+		e.emitWorkspaceEvent(pr.WorkspaceID, "MA", "Maestro", fmt.Sprintf(
+			"Added GitHub PR <code>#%d</code> to the merge queue.", pr.Number))
+		return pr, true
 	}
 	label := domain.MergeMethodLabel(method)
 	merged := e.markMerged(pr.ID, "")

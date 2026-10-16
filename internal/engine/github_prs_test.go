@@ -462,6 +462,50 @@ func TestApplyListedGitHubPRReopensClosedPR(t *testing.T) {
 	}
 }
 
+func TestApplyListedGitHubPRRefreshesQueuedPR(t *testing.T) {
+	eng, st, _, _ := newTestEngine(t, nil)
+	if _, err := st.AddProject(domain.Project{ID: "acme", Name: "acme", RepoPath: "/tmp/acme", BaseBranch: "main"}); err != nil {
+		t.Fatalf("AddProject: %v", err)
+	}
+	if _, err := st.AddPR(domain.PR{
+		ID: "gh-acme-12", ProjectID: "acme", Number: 12, Source: domain.SourceGitHub,
+		Title: "OAuth", URL: "https://github.com/acme/app/pull/12",
+		Branch: "feat/oauth", State: "Open", Group: prGroupOpen,
+		MergeQueueEnabled: true, MergeQueued: true,
+	}); err != nil {
+		t.Fatalf("AddPR: %v", err)
+	}
+	prevSnap := getGitHubPRSnapshot
+	t.Cleanup(func() { getGitHubPRSnapshot = prevSnap })
+	snapped := make(chan struct{}, 1)
+	getGitHubPRSnapshot = func(context.Context, string, int) (ghPRSnapshot, error) {
+		select {
+		case snapped <- struct{}{}:
+		default:
+		}
+		return ghPRSnapshot{State: "OPEN", Title: "OAuth", URL: "https://github.com/acme/app/pull/12", MergeQueueEnabled: true}, nil
+	}
+
+	eng.applyListedGitHubPR("acme", ghListedPR{
+		Number: 12, Title: "OAuth", URL: "https://github.com/acme/app/pull/12",
+		HeadRefName: "feat/oauth", BaseRefName: "main", State: "OPEN",
+		Author: ghListedActor{Login: "sam"},
+	}, "avery", time.Now())
+	select {
+	case <-snapped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("sweep did not refresh the queued PR's snapshot")
+	}
+	for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+		if _, busy := eng.prConvBusy.Load("gh-acme-12"); !busy {
+			break
+		}
+	}
+	if got, _ := st.PR("gh-acme-12"); got.MergeQueued {
+		t.Error("MergeQueued still true after snapshot reported the PR left the queue")
+	}
+}
+
 func TestApplyListedGitHubPRLinksMatchingWorkspace(t *testing.T) {
 	eng, st, _, _ := newTestEngine(t, nil)
 	if _, err := st.AddProject(domain.Project{ID: "acme", Name: "acme", RepoPath: "/tmp/acme", BaseBranch: "main"}); err != nil {

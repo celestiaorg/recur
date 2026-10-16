@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -333,13 +334,13 @@ func TestMergeGitHubMarksMergedWithoutAuthProbe(t *testing.T) {
 	t.Cleanup(func() { mergeGitHubPR = prev })
 	var gotMethod domain.MergeMethod
 	var called bool
-	mergeGitHubPR = func(_ context.Context, _ string, p domain.PR, method domain.MergeMethod) error {
+	mergeGitHubPR = func(_ context.Context, _ string, p domain.PR, method domain.MergeMethod) (bool, error) {
 		called = true
 		gotMethod = method
 		if p.ID != pr.ID {
 			t.Errorf("merge PR id = %q, want %q", p.ID, pr.ID)
 		}
-		return nil
+		return false, nil
 	}
 
 	merged, ok := eng.MergePR(pr.ID, domain.MergeMethodSquash)
@@ -356,6 +357,61 @@ func TestMergeGitHubMarksMergedWithoutAuthProbe(t *testing.T) {
 	case <-snapped:
 	case <-time.After(2 * time.Second):
 		t.Error("ScheduleRefreshPRConversation was not started after merge")
+	}
+}
+
+func TestMergeGitHubQueuedLeavesPROpen(t *testing.T) {
+	eng, st, _, _ := newTestEngine(t, &ScriptedRunner{})
+	projID := addProject(t, st, initRepo(t))
+	ws, err := eng.CreateWorkspace(projID, "gh-merge-queue", "")
+	if err != nil {
+		t.Fatalf("CreateWorkspace: %v", err)
+	}
+	pr, err := st.AddPR(domain.PR{
+		ID: "gh-merge-queue", WorkspaceID: ws.ID, Number: 20, Source: domain.SourceGitHub,
+		Title: "queued", State: "In review", Group: "you",
+		URL: "https://github.com/acme/app/pull/20",
+	})
+	if err != nil {
+		t.Fatalf("AddPR: %v", err)
+	}
+
+	prevSnap := getGitHubPRSnapshot
+	t.Cleanup(func() { getGitHubPRSnapshot = prevSnap })
+	snapped := make(chan struct{}, 1)
+	getGitHubPRSnapshot = func(context.Context, string, int) (ghPRSnapshot, error) {
+		select {
+		case snapped <- struct{}{}:
+		default:
+		}
+		return ghPRSnapshot{State: "OPEN", Title: "queued", URL: pr.URL}, nil
+	}
+	prev := mergeGitHubPR
+	t.Cleanup(func() { mergeGitHubPR = prev })
+	mergeGitHubPR = func(context.Context, string, domain.PR, domain.MergeMethod) (bool, error) {
+		return true, nil
+	}
+
+	got, ok := eng.MergePR(pr.ID, domain.MergeMethodSquash)
+	if !ok || !got.MergeQueueEnabled || !got.MergeQueued {
+		t.Fatalf("MergePR ok=%v mergeQueueEnabled=%v mergeQueued=%v, want all true", ok, got.MergeQueueEnabled, got.MergeQueued)
+	}
+	if got.State == "Merged" || got.Group == "merged" {
+		t.Errorf("state=%q group=%q, want PR left open while queued", got.State, got.Group)
+	}
+	select {
+	case <-snapped:
+	case <-time.After(2 * time.Second):
+		t.Error("ScheduleRefreshPRConversation was not started after enqueue")
+	}
+}
+
+func TestGHEnqueueArgs(t *testing.T) {
+	if got := ghEnqueueArgs(domain.PR{Number: 20, URL: "https://github.com/acme/app/pull/20"}); !slices.Equal(got, []string{"pr", "merge", "https://github.com/acme/app/pull/20"}) {
+		t.Errorf("with URL = %v", got)
+	}
+	if got := ghEnqueueArgs(domain.PR{Number: 20}); !slices.Equal(got, []string{"pr", "merge", "20"}) {
+		t.Errorf("without URL = %v", got)
 	}
 }
 

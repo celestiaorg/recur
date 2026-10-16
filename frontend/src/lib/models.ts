@@ -2,6 +2,7 @@
 // grouped list across every enabled, configured provider, including per-model
 // flag dimensions. See internal/app/model_catalog.go.
 
+import { writable } from 'svelte/store'
 import { SettingsService } from '../../bindings/recur/internal/app'
 
 export type FlagOption = { value: string; label: string; default?: boolean }
@@ -86,11 +87,15 @@ export function peekModelCatalog(): CatalogModel[] {
   return catalogCache ?? []
 }
 
+/** Bumped by invalidateModelCatalog so open pickers re-fetch. */
+export const modelCatalogRev = writable(0)
+
 /** Drop the cache so the next loadModelCatalog() hits the server (e.g. after a
  *  Cursor Connect (minted key) adds/removes the Cursor group). */
 export function invalidateModelCatalog() {
   catalogCache = null
   catalogInflight = null
+  modelCatalogRev.update((n) => n + 1)
 }
 
 /** Fetch (or reuse) the model catalogue. Concurrent callers share one request. */
@@ -102,11 +107,11 @@ export async function loadModelCatalog(opts?: { force?: boolean }): Promise<Cata
     if (catalogCache) return catalogCache
     if (catalogInflight) return catalogInflight
   }
-  const req = (async () => {
-    const groups = await SettingsService.ListModelCatalog()
-    catalogCache = flattenModelCatalog(groups)
-    return catalogCache
-  })()
+  const req: Promise<CatalogModel[]> = Promise.resolve(SettingsService.ListModelCatalog()).then((groups) => {
+    const models = flattenModelCatalog(groups)
+    if (catalogInflight === req) catalogCache = models
+    return models
+  })
   catalogInflight = req
   try {
     return await req

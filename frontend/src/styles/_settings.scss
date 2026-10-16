@@ -1777,7 +1777,7 @@ a.ct:hover {
 }
 
 .compat-model {
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 5.5rem minmax(0, 0.9fr) auto;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 5.5rem 11rem 28px;
 }
 
 .compat-model-block {
@@ -1789,8 +1789,58 @@ a.ct:hover {
 .compat-flags {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-left: 8px;
+  gap: 8px;
+  padding-left: 12px;
+}
+
+.compat-cols {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.compat-flag-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.compat-models .compat-flag-card .inp {
+  min-height: 30px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.compat-flag-label.inp {
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.compat-add {
+  align-self: flex-start;
+}
+
+.compat-flag-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.compat-flag-summary-lead {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+}
+
+.compat-flag-name,
+.compat-flag-default {
+  color: var(--text);
 }
 
 .compat-flag,
@@ -1801,20 +1851,49 @@ a.ct:hover {
 }
 
 .compat-flag {
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 28px;
 }
 
 .compat-flag-opts {
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto auto;
+  grid-template-columns: 3.25rem minmax(0, 1fr) minmax(0, 1fr) 28px;
+  row-gap: 4px;
 }
 
 .compat-default {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line-bright);
+  border-radius: 50%;
+  background: none;
+  color: transparent;
+  cursor: pointer;
+}
+
+.compat-default:hover {
   color: var(--muted);
-  white-space: nowrap;
+}
+
+.compat-default.on {
+  border-color: var(--amber);
+  background: var(--amber);
+  color: var(--bg);
+}
+
+.compat-default svg {
+  width: 12px;
+  height: 12px;
+}
+
+.compat-flag-card .sel-btn {
+  font-family: var(--mono);
+}
+
+.compat-model .sel-btn {
+  height: 36px;
 }
 
 .compat-header {
@@ -1825,7 +1904,7 @@ a.ct:hover {
   min-height: 36px;
 }
 
-.compat-model select.inp {
+.compat-models select.inp {
   padding-top: 0;
   padding-bottom: 0;
 }

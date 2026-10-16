@@ -24,9 +24,9 @@ export function externalFileURL(absPath: string, mtime = 0): string {
   return `${EXTERNAL_FILE_PATH}?${q}`
 }
 
-/** Raster or PDF — stream via the asset server; do not treat as editable text. */
+/** Raster, PDF, or video — stream via the asset server; do not treat as editable text. */
 export function isBinaryPreviewMime(mime?: string): boolean {
-  return !!mime && (mime.startsWith('image/') || mime === 'application/pdf')
+  return !!mime && (mime.startsWith('image/') || mime.startsWith('video/') || mime === 'application/pdf')
 }
 
 /** True when ReadFile returned metadata only — body must be fetched. */

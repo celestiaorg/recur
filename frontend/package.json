@@ -40,10 +40,10 @@
     "@xterm/addon-webgl": "^0.20.0-beta.300",
     "@xterm/xterm": "^6.1.0-beta.304",
     "codemirror": "^6.0.2",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.16",
     "lucide": "^1.33.0",
     "marked": "^18.0.7",
-    "mermaid": "^11.16.0",
+    "mermaid": "^11.16.1",
     "pdfjs-dist": "^6.3.289",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"
@@ -66,6 +66,6 @@
     "tslib": "^2.6.2",
     "typescript": "^5.2.2",
     "vite": "^8.0.5",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.3"
   }
 }

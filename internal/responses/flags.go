@@ -24,6 +24,7 @@ func ApplyFlags(dst map[string]any, dims []domain.CompatibleFlagDim, flags map[s
 		setWire(dst, d.Wire, coerceWireValue(d.Wire, val))
 	}
 	ensureReasoningSummary(dst)
+	ensureTextFormat(dst)
 }
 
 func coerceWireValue(wire, val string) any {
@@ -75,5 +76,17 @@ func ensureReasoningSummary(dst map[string]any) {
 	}
 	if _, ok := m["summary"]; !ok {
 		m["summary"] = "auto"
+	}
+}
+
+// ensureTextFormat sets text.format={type:text} when text is present but format
+// is unset. OpenAI defaults it; LM Studio rejects the request without it.
+func ensureTextFormat(dst map[string]any) {
+	m, ok := dst["text"].(map[string]any)
+	if !ok {
+		return
+	}
+	if _, ok := m["format"]; !ok {
+		m["format"] = map[string]any{"type": "text"}
 	}
 }

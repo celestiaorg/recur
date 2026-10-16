@@ -31,6 +31,7 @@ export default defineConfig({
         { text: "Introduction", link: "/" },
         { text: "Install", link: "/getting-started/install" },
         { text: "Your first workspace", link: "/getting-started/first-workspace" },
+        { text: "Workflows", link: "/getting-started/workflows" },
       ],
     },
     {

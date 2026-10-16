@@ -36,6 +36,19 @@ export function isPdfPath(path: string): boolean {
   return name.toLowerCase().endsWith('.pdf')
 }
 
+/** Played with <video> — matches Go `videoMIME`. */
+export function isVideoPath(path: string): boolean {
+  const base = path.trim().split(/[\\/]/).pop() ?? ''
+  const q = base.lastIndexOf('?')
+  const name = q >= 0 ? base.slice(0, q) : base
+  return /\.(mp4|m4v|mov|webm|ogv)$/i.test(name)
+}
+
+/** PDF or video: Preview only, no Code or Diff. */
+export function isMediaPath(path: string): boolean {
+  return isPdfPath(path) || isVideoPath(path)
+}
+
 /** Enabled chip options in crumb-bar order (Code, Diff, Preview). */
 export function editorViewModes(opts: {
   hasFile: boolean

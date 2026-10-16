@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
-  editorViewModes, isBinaryImagePath, isPdfPath, mergeViewCurrent, mergeViewReady, nextEditorViewMode,
+  editorViewModes, isBinaryImagePath, isMediaPath, isPdfPath, mergeViewCurrent, mergeViewReady, nextEditorViewMode,
   scmGutterBase, shouldHydrateRestoredCurrent,
 } from './editor-view'
 
@@ -90,6 +90,16 @@ describe('isBinaryImagePath', () => {
     expect(isBinaryImagePath('logo.svg')).toBe(false)
     expect(isBinaryImagePath('src/main.go')).toBe(false)
     expect(isBinaryImagePath('docs/guide.pdf')).toBe(false)
+  })
+})
+
+describe('isMediaPath', () => {
+  test('matches pdf and video, not rasters', () => {
+    expect(isMediaPath('docs/guide.pdf')).toBe(true)
+    expect(isMediaPath('demo/Clip.MOV')).toBe(true)
+    expect(isMediaPath('a.webm?t=1')).toBe(true)
+    expect(isMediaPath('assets/icon.png')).toBe(false)
+    expect(isMediaPath('notes.mp4.bak')).toBe(false)
   })
 })
 

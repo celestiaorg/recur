@@ -489,6 +489,12 @@ test.describe('code observatory', () => {
     await expect(page.locator('#v-detail .obs-diff')).toHaveCount(0)
     await expect(page.locator('#v-detail .obs-image.compare')).toHaveCount(0)
     await expect(findBtn).toBeDisabled()
+    await expect(page.locator('#v-detail button[aria-label="Full screen"]')).toBeVisible()
+    await page.locator('#v-detail .obs-image img').click()
+    const lb = page.locator('.chat-att-lb')
+    await expect(lb.locator('img')).toHaveAttribute('src', /path=src%2Fshot\.png/)
+    await page.keyboard.press('Escape')
+    await expect(lb).toHaveCount(0)
 
     await page.locator('#v-detail .obs-files .obs-node', { hasText: 'icon.png' }).click()
     const seg = page.locator('#v-detail .obs-view-seg')
@@ -514,6 +520,34 @@ test.describe('code observatory', () => {
     await expect(page.locator('#v-detail .obs-image img')).toHaveCount(1)
     await expect(page.locator('#v-detail .obs-image img').first()).toHaveAttribute('src', /at=base/)
     await expect(findBtn).toBeDisabled()
+  })
+
+  test('videos play in Preview and zoom into the lightbox', async ({ page }) => {
+    await page.route('**/workspace-file?*', (route) => route.fulfill({ status: 200, contentType: 'video/mp4', body: '' }))
+    await installBridge(page, structuredClone(seed), {
+      resolvers: {
+        ListTree: (a) => (a[2] ? [] : [{ name: 'clip.mp4', path: 'clip.mp4', dir: false, status: 'u' }]),
+        ListChangedFiles: () => ['clip.mp4'],
+        GitStatus: () => ({ 'clip.mp4': 'u' }),
+        WorkingStatus: () => ({ 'clip.mp4': 'u' }),
+        ReadFile: (a) => ({ path: String(a[2]), language: '', content: '', size: 2048, writable: !!a[1], mime: 'video/mp4' }),
+      },
+    })
+    await gotoApp(page)
+    const working = seed.loops.find((l) => l.group === 'active')!
+    await openWorkspaceByGoal(page, working.goal)
+
+    await page.locator('#v-detail .obs-files .obs-node', { hasText: 'clip.mp4' }).click()
+    await expect(page.locator('#v-detail .obs-image video')).toHaveAttribute('src', /path=clip\.mp4/)
+    await expect(page.locator('#v-detail .obs-view-seg button', { hasText: 'Code' })).toHaveCount(0)
+    await expect(page.locator('#v-detail button[aria-label="Full screen"]')).toBeVisible()
+
+    await page.locator('#v-detail button[aria-label="Zoom video"]').click()
+    const lb = page.locator('.chat-att-lb')
+    await expect(lb.locator('video')).toHaveAttribute('src', /path=clip\.mp4/)
+    await expect(lb.locator('button[aria-label="Copy image"]')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(lb).toHaveCount(0)
   })
 
   test('⌘⇧V cycles Code, Diff, and Preview when the chip offers all three', async ({ page }) => {

@@ -112,6 +112,7 @@
   import MergeEditor from './MergeEditor.svelte'
   import FilePreview from './FilePreview.svelte'
   import PdfPreview from './PdfPreview.svelte'
+  import AttachmentLightbox from './AttachmentLightbox.svelte'
   import QuickOpen from './QuickOpen.svelte'
   import ResizeHandle from './ResizeHandle.svelte'
   import TerminalDock from './TerminalDock.svelte'
@@ -127,7 +128,7 @@
   import type { EditorFindingMark } from '../lib/cm-findings-gutter'
   import { filePreviewFindActive, previewKindForPath, PREVIEW_IFRAME_FIND_KEY, type PreviewKind } from '../lib/preview'
   import { createPreviewScrollStore } from '../lib/preview-scroll'
-  import { editorViewModes, isBinaryImagePath, isPdfPath, mergeViewCurrent, mergeViewReady, nextEditorViewMode, scmGutterBase, shouldHydrateRestoredCurrent, type EditorViewMode } from '../lib/editor-view'
+  import { editorViewModes, isBinaryImagePath, isMediaPath, isPdfPath, mergeViewCurrent, mergeViewReady, nextEditorViewMode, scmGutterBase, shouldHydrateRestoredCurrent, type EditorViewMode } from '../lib/editor-view'
   import { readReviewTab, writeReviewTab, readFileListMode, writeFileListMode, type ReviewTab, type FileListMode } from '../lib/review-diff'
   import { buildTreeFromPaths, capVisibleTree, flattenVisibleTree, pathsUnderDir } from '../lib/changed-tree'
   import { stickyFolderFades } from '../lib/tree-sticky'
@@ -1382,7 +1383,7 @@
   })
   const currentSymbol = $derived(symbolAtLine(outline, cursorLine))
   const pathCrumbs = $derived(activePath ? activePath.split('/').filter(Boolean) : [])
-  const canShowDiff = $derived(!!selectedGitStatus && !isBinaryImagePath(selectedPath) && !isPdfPath(selectedPath))
+  const canShowDiff = $derived(!!selectedGitStatus && !isBinaryImagePath(selectedPath) && !isMediaPath(selectedPath))
   const canShowImageDiff = $derived(
     isBinaryImagePath(selectedPath) && (selectedGitStatus === 'm' || selectedGitStatus === 'd'),
   )
@@ -1409,7 +1410,7 @@
   const showDiff = $derived(viewMode === 'diff' && mergeReady)
   /** Diff selected but base or current still in flight — show a load state, not the code view. */
   const diffPending = $derived(
-    viewMode === 'diff' && !!selectedPath && !mergeReady && !isBinaryImagePath(selectedPath) && !isPdfPath(selectedPath),
+    viewMode === 'diff' && !!selectedPath && !mergeReady && !isBinaryImagePath(selectedPath) && !isMediaPath(selectedPath),
   )
   // A file can stop being diffable while Diff is up (agent reverts it, status
   // refresh clears it) — fall back to Code instead of a blank/loading pane.
@@ -1419,7 +1420,7 @@
   $effect(() => {
     if (viewMode !== 'diff' || !selectedPath) return
     if (!gitStatusReady) return
-    if (isBinaryImagePath(selectedPath) || isPdfPath(selectedPath)) {
+    if (isBinaryImagePath(selectedPath) || isMediaPath(selectedPath)) {
       if (!canShowImageDiff) viewMode = 'preview'
       return
     }
@@ -1427,7 +1428,7 @@
   })
   // Rasters have no Code surface — map a restored/stale 'code' chip to Preview.
   $effect(() => {
-    if (!isBinaryImagePath(selectedPath) && !isPdfPath(selectedPath)) return
+    if (!isBinaryImagePath(selectedPath) && !isMediaPath(selectedPath)) return
     if (viewMode === 'code') viewMode = 'preview'
   })
   // Keep active tabs valid when Settings moves panels between sides.
@@ -1460,6 +1461,7 @@
 
   const isImage = $derived(!!file?.mime?.startsWith('image/'))
   const isPdf = $derived(file?.mime === 'application/pdf' || isPdfPath(selectedPath))
+  const isVideo = $derived(!!file?.mime?.startsWith('video/'))
   const imageSrc = $derived.by(() => {
     if (!isImage || !file) return ''
     if (file.path.startsWith('scratch://') && file.content) {
@@ -1470,8 +1472,8 @@
     }
     return workspaceFileURL(projectId, workspaceId, file.path, file.mtime ?? 0)
   })
-  const pdfSrc = $derived.by(() => {
-    if (!isPdf || !file) return ''
+  const mediaSrc = $derived.by(() => {
+    if ((!isPdf && !isVideo) || !file) return ''
     if (file.path.startsWith('scratch://') && file.content) {
       return `data:${file.mime};base64,${file.content}`
     }
@@ -1505,19 +1507,29 @@
   const showPdfPane = $derived(
     isPdf && !!file && file.path === selectedPath && selectedGitStatus !== 'd',
   )
-  const showSplitLayout = $derived(splitOpen && !showDiff && !showImagePane && !showPdfPane)
+  const showVideoPane = $derived(
+    isVideo && !!file && file.path === selectedPath && selectedGitStatus !== 'd',
+  )
+  let mediaZoom = $state<{ src: string; name: string; video?: boolean; startTime?: number } | null>(null)
+  let paneVideo = $state<HTMLVideoElement>()
+  function zoomVideo() {
+    if (!paneVideo || !file) return
+    paneVideo.pause()
+    mediaZoom = { src: mediaSrc, name: file.path, video: true, startTime: paneVideo.currentTime }
+  }
+  const showSplitLayout = $derived(splitOpen && !showDiff && !showImagePane && !showPdfPane && !showVideoPane)
   const previewKind = $derived<PreviewKind | null>(
     file && !isBinaryPreviewMime(file.mime) ? previewKindForPath(file.path) : null,
   )
   /** Enabled crumb-bar chips — ⌘⇧V cycles this list. */
   const availableViewModes = $derived(editorViewModes({
-    hasFile: !!file || ((isBinaryImagePath(selectedPath) || isPdfPath(selectedPath)) && selectedGitStatus !== 'd'),
+    hasFile: !!file || ((isBinaryImagePath(selectedPath) || isMediaPath(selectedPath)) && selectedGitStatus !== 'd'),
     deleted: selectedGitStatus === 'd',
     canShowDiff: canShowDiff || canShowImageDiff,
-    hasPreview: isBinaryImagePath(selectedPath) || isPdfPath(selectedPath)
+    hasPreview: isBinaryImagePath(selectedPath) || isMediaPath(selectedPath)
       ? selectedGitStatus !== 'd'
       : !!previewKind,
-    isImage: isImage || isBinaryImagePath(selectedPath) || isPdf || isPdfPath(selectedPath),
+    isImage: isImage || isBinaryImagePath(selectedPath) || isPdf || isVideo || isMediaPath(selectedPath),
   }))
   const showPreview = $derived(!!previewKind && viewMode === 'preview')
   const dirty = $derived(!!file && !isBinaryPreviewMime(file.mime) && (mainEditorDirty || !editorTextEq(draft, savedContent)))
@@ -2520,12 +2532,12 @@
 
   /** Warm FileAtBase for the code-view gutter without blocking paint or toasting. */
   function prefetchBaseDoc(path: string) {
-    if (!isGit || !path || isScratchPath(path) || isAbsFilesystemPath(path) || isBinaryImagePath(path) || isPdfPath(path)) return
+    if (!isGit || !path || isScratchPath(path) || isAbsFilesystemPath(path) || isBinaryImagePath(path) || isMediaPath(path)) return
     void fetchBaseDoc(path)
   }
 
   async function loadBaseDoc(path: string) {
-    if (isBinaryImagePath(path) || isPdfPath(path)) return
+    if (isBinaryImagePath(path) || isMediaPath(path)) return
     const cached = baseDocCache.get(path)
     if (cached != null) {
       baseDoc = cached
@@ -3757,18 +3769,18 @@
     // clean file would flash Diff on every cold restore.
     const pendingDiff = restoringSessionViews && !gitStatusReady && saved === 'diff'
     const image = isBinaryImagePath(path)
-    const pdf = isPdfPath(path)
+    const media = isMediaPath(path)
     const status = gitStatus[path] || ''
     return resolveRestoredViewMode(saved, {
       wantDiff: opts.wantDiff,
-      deleted: pdf ? false : opts.deleted,
-      canDiff: pdf
+      deleted: media ? false : opts.deleted,
+      canDiff: media
         ? false
         : image
           ? status === 'm' || status === 'd' || !!opts.deleted || pendingDiff
           : !!(status || opts.deleted || pendingDiff),
-      canPreview: (image || pdf) ? status !== 'd' && !opts.deleted : !!previewKindForPath(path),
-      isImage: image || pdf,
+      canPreview: (image || media) ? status !== 'd' && !opts.deleted : !!previewKindForPath(path),
+      isImage: image || media,
     })
   }
 
@@ -4015,7 +4027,7 @@
     if (workspaceId && editorHidden) setEditorHidden(workspaceId, false)
     const st = gitStatus[path] || ''
     const imagePath = isBinaryImagePath(path)
-    const pdfPath = isPdfPath(path)
+    const mediaPath = isMediaPath(path)
     const wantDiff = preferDiff || st === 'd'
     skipViewRestore = line > 0
     if (line > 0) editorRevealGen++
@@ -4023,7 +4035,7 @@
     // With a split open, tree / Quick Open / tabs land in the focused pane
     // (Diff / deleted files stay on the main pane — merge UI is single-pane).
     // Scratch buffers always open as their own main-pane tabs.
-    if (splitOpen && focusedPane === 'split' && !wantDiff && !imagePath && !pdfPath && !isScratchPath(path)) {
+    if (splitOpen && focusedPane === 'split' && !wantDiff && !imagePath && !mediaPath && !isScratchPath(path)) {
       await openInSplit(path, line, endLine, explorer, fromDisk, startCol, endCol)
       return
     }
@@ -4083,8 +4095,8 @@
       outline = []
       detachLsp()
       ensureOpenTab(path)
-      viewMode = pdfPath ? 'preview' : 'diff'
-      if (!imagePath && !pdfPath) await loadBaseDoc(path)
+      viewMode = mediaPath ? 'preview' : 'diff'
+      if (!imagePath && !mediaPath) await loadBaseDoc(path)
       if (gen !== navGen) return
     } else if (wantDiff) {
       // Diff-first (Changed tab / explicit prefer): base + current in parallel.
@@ -4095,7 +4107,7 @@
       if (imagePath) {
         viewMode = (st === 'm' || st === 'd') ? 'diff' : 'preview'
         await hydrateFile(path, line, endLine, startCol, endCol)
-      } else if (pdfPath) {
+      } else if (mediaPath) {
         viewMode = 'preview'
         await hydrateFile(path, line, endLine, startCol, endCol)
       } else {
@@ -4870,7 +4882,7 @@
   }
 
   const canToggleFind = $derived.by(() => {
-    if (showImagePane || showPdfPane) return false
+    if (showImagePane || showPdfPane || showVideoPane) return false
     if (showDiff) return !!selectedPath
     if (focusedPane === 'split' && splitOpen) return !!splitPath
     if (showPreview && previewKind === 'svg') return false
@@ -7228,7 +7240,7 @@
             <button type="button" class="obs-icon-btn" title="Reload from disk (F5)" aria-label="Reload" onclick={() => reloadFromDisk()}>
               <Icon name="refresh" />
             </button>
-            {#if previewKind || selectedArtifactId}
+            {#if previewKind || selectedArtifactId || showImagePane || showPdfPane || showVideoPane}
               <button type="button" class="obs-icon-btn" title="Full screen" aria-label="Full screen" onclick={async () => { if (previewKind) await setViewMode('preview'); await setEditorFullscreen(true) }}>
                 <Icon name="maximize" />
               </button>
@@ -7257,22 +7269,26 @@
               {#if imageCompare}
                 <div class="obs-image-pair">
                   <figure class="obs-image-pane">
+                    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
                     <img
                       src={imageBaseSrc}
                       alt=""
                       onerror={() => { imageBaseFailedSrc = imageBaseSrc }}
+                      onclick={() => { mediaZoom = { src: imageBaseSrc, name: `${selectedPath} (previous)` } }}
                     />
                     <figcaption>Previous</figcaption>
                   </figure>
                   {#if file && selectedGitStatus !== 'd'}
                     <figure class="obs-image-pane">
-                      <img src={imageSrc} alt={file.path} />
+                      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+                      <img src={imageSrc} alt={file.path} onclick={() => { mediaZoom = { src: imageSrc, name: file?.path ?? '' } }} />
                       <figcaption>Current</figcaption>
                     </figure>
                   {/if}
                 </div>
               {:else if file && selectedGitStatus !== 'd'}
-                <img src={imageSrc} alt={file.path} />
+                <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+                <img src={imageSrc} alt={file.path} onclick={() => { mediaZoom = { src: imageSrc, name: file?.path ?? '' } }} />
               {:else}
                 <div class="obs-empty pad">This image was deleted.</div>
               {/if}
@@ -7280,15 +7296,32 @@
                 <span class="path">{file?.path || selectedPath}</span>
                 {#if file}
                   <span class="meta">{file.mime} · {formatBytes(file.size)}</span>
+                  {#if selectedGitStatus !== 'd'}
+                    <button type="button" class="obs-icon-btn" title="Zoom" aria-label="Zoom image" onclick={() => { mediaZoom = { src: imageSrc, name: file?.path ?? '' } }}>
+                      <Icon name="zoom-in" />
+                    </button>
+                  {/if}
                 {/if}
               </div>
             </div>
           {:else if showPdfPane && file}
             <div class="obs-pdf">
-              <PdfPreview src={pdfSrc} path={file.path} />
+              <PdfPreview src={mediaSrc} path={file.path} />
               <div class="obs-image-meta">
                 <span class="path">{file.path}</span>
                 <span class="meta">{file.mime} · {formatBytes(file.size)}</span>
+              </div>
+            </div>
+          {:else if showVideoPane && file}
+            <div class="obs-image">
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <video bind:this={paneVideo} src={mediaSrc} controls></video>
+              <div class="obs-image-meta">
+                <span class="path">{file.path}</span>
+                <span class="meta">{file.mime} · {formatBytes(file.size)}</span>
+                <button type="button" class="obs-icon-btn" title="Zoom" aria-label="Zoom video" onclick={zoomVideo}>
+                  <Icon name="zoom-in" />
+                </button>
               </div>
             </div>
           {:else}
@@ -7554,6 +7587,15 @@
             <Icon name="minimize" />
           </button>
         </div>
+      {/if}
+      {#if mediaZoom}
+        <AttachmentLightbox
+          {...mediaZoom}
+          onclose={(t) => {
+            if (mediaZoom?.video && paneVideo && t !== undefined) paneVideo.currentTime = t
+            mediaZoom = null
+          }}
+        />
       {/if}
     </main>
 

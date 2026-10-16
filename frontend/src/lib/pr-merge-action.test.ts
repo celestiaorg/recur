@@ -67,18 +67,19 @@ describe('prMergeAction', () => {
     expect(prMergeAction(gh({ behindBase: 2 })).kind).toBe('merge')
   })
 
-  it('disables Conflicts when dirty even if the branch is also behind', () => {
-    expect(prMergeAction(gh({
-      mergeStateStatus: 'DIRTY', mergeable: 'CONFLICTING', behindBase: 1,
-    })).kind).toBe('conflicts')
+  it('offers Resolve conflicts through update-with-base when a workspace exists', () => {
+    const pr = gh({ mergeStateStatus: 'DIRTY', mergeable: 'CONFLICTING', behindBase: 0 })
+    const act = prMergeAction(pr)
+    expect(act).toMatchObject({ kind: 'resolve', label: 'Resolve conflicts', disabled: false })
+    expect(showPRUpdate(pr, act)).toBe(true)
   })
 
   it('does not offer Update with base without a workspace', () => {
     expect(prMergeAction(gh({ workspaceId: '', mergeStateStatus: 'BEHIND' })).kind).not.toBe('update-base')
   })
 
-  it('disables Conflicts when dirty and not behind', () => {
-    const act = prMergeAction(gh({ mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' }))
+  it('disables Conflicts when dirty without a workspace', () => {
+    const act = prMergeAction(gh({ workspaceId: '', mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' }))
     expect(act.kind).toBe('conflicts')
     expect(act.disabled).toBe(true)
   })

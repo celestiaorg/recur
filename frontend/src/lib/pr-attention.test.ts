@@ -45,6 +45,12 @@ describe('prAttentionLabels', () => {
     })).toEqual(['Needs your review', 'Assigned to you'])
     expect(prAttentionLabels({ group: 'you' })).toEqual(['Needs your review'])
   })
+
+  it('flags GitHub merge conflicts, drafts included', () => {
+    expect(prAttentionLabels({ mergeable: 'CONFLICTING' })).toEqual(['Merge conflicts'])
+    expect(prAttentionLabels({ draft: true, mergeStateStatus: 'DIRTY' })).toEqual(['Merge conflicts'])
+    expect(prAttentionLabels({ mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN' })).toEqual([])
+  })
 })
 
 describe('prHasReviewRequest', () => {

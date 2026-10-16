@@ -750,6 +750,36 @@ func TestApplyListedGitHubPRKeepsLocalBehindBase(t *testing.T) {
 	}
 }
 
+func TestApplyListedGitHubPRTracksConflicts(t *testing.T) {
+	eng, st, _, _ := newTestEngine(t, nil)
+	if _, err := st.AddProject(domain.Project{ID: "acme", Name: "acme", RepoPath: "/tmp/acme", BaseBranch: "main"}); err != nil {
+		t.Fatalf("AddProject: %v", err)
+	}
+	pr := domain.PR{
+		ID: "gh-acme-12", ProjectID: "acme", Number: 12, Source: domain.SourceGitHub,
+		Title: "OAuth", URL: "https://github.com/acme/app/pull/12", Branch: "feat/oauth", Base: "main",
+		Group: prGroupOpen, State: "Open", AuthorLogin: "sam", Mergeable: "MERGEABLE", MergeStateStatus: "CLEAN",
+	}
+	if _, err := st.AddPR(pr); err != nil {
+		t.Fatalf("AddPR: %v", err)
+	}
+	apply := func(mergeable, status string) domain.PR {
+		eng.applyListedGitHubPR("acme", ghListedPR{
+			Number: 12, Title: "OAuth", URL: "https://github.com/acme/app/pull/12",
+			HeadRefName: "feat/oauth", BaseRefName: "main", State: "OPEN",
+			Author: ghListedActor{Login: "sam"}, Mergeable: mergeable, MergeStateStatus: status,
+		}, "avery", time.Now())
+		got, _ := st.PR(pr.ID)
+		return got
+	}
+	if got := apply("CONFLICTING", "DIRTY"); got.Mergeable != "CONFLICTING" || got.MergeStateStatus != "DIRTY" {
+		t.Fatalf("after DIRTY listing = %q/%q, want CONFLICTING/DIRTY", got.Mergeable, got.MergeStateStatus)
+	}
+	if got := apply("UNKNOWN", "UNKNOWN"); got.Mergeable != "CONFLICTING" || got.MergeStateStatus != "DIRTY" {
+		t.Errorf("UNKNOWN listing = %q/%q, want the known conflict kept", got.Mergeable, got.MergeStateStatus)
+	}
+}
+
 func TestLinkUnlinkedGitHubPRsAttachesExistingWorkspace(t *testing.T) {
 	eng, st, _, _ := newTestEngine(t, nil)
 	if _, err := st.AddProject(domain.Project{ID: "acme", Name: "acme", RepoPath: "/tmp/acme", BaseBranch: "main"}); err != nil {

@@ -73,7 +73,7 @@ describe('checksHeading', () => {
 describe('checksRollup', () => {
   it('is fail, then pending, then pass', () => {
     expect(checksRollup([{ passed: false, status: 'fail' }]).kind).toBe('fail')
-    expect(checksRollup([{ passed: false, status: 'pending' }])).toMatchObject({ kind: 'pending', icon: 'clock' })
+    expect(checksRollup([{ passed: false, status: 'pending' }])).toMatchObject({ kind: 'pending', icon: 'loader' })
     expect(checksRollup([{ passed: true, status: 'pass' }])).toMatchObject({ kind: 'pass', icon: 'check', color: 'var(--emerald)' })
     expect(checksRollup([
       { passed: false, status: 'fail' },

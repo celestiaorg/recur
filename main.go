@@ -307,6 +307,7 @@ func main() {
 		log.Printf("scheduled prompts: %v", err)
 	}
 	go eng.AutoResume()
+	go eng.RunGitHubPRSweep()
 
 	// Production .app only: symlink the bundled CLI onto PATH (D-cli-install).
 	// Dev / `go run` / missing Contents/MacOS/recur-cli are no-ops.

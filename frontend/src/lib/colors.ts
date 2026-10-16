@@ -115,7 +115,7 @@ type WorkspacePR = {
   source?: string
 }
 
-/** Lower is better: GitHub over Local, then live over settled. */
+/** Lower is better: GitHub over Local, then live over settled. Ties go to the later (newer) entry. */
 function workspacePRRank(p: WorkspacePR): number {
   const github = p.source === 'gh' ? 0 : 1
   const live = isLivePR(prLifecycle(p)) ? 0 : 1
@@ -135,7 +135,7 @@ export function prForWorkspace<T extends WorkspacePR>(
   for (const p of list) {
     if (p.workspaceId !== workspaceId) continue
     const rank = workspacePRRank(p)
-    if (!best || rank < bestRank) {
+    if (!best || rank <= bestRank) {
       best = p
       bestRank = rank
     }

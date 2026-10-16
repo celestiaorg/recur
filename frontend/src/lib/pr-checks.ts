@@ -46,7 +46,7 @@ export type ChecksRollupKind = 'none' | 'fail' | 'pending' | 'pass'
 
 export type ChecksRollup = {
   kind: ChecksRollupKind
-  icon: 'check' | 'x' | 'clock'
+  icon: 'check' | 'x' | 'loader'
   color: string
 }
 
@@ -59,7 +59,7 @@ export function checksRollup(
   if (list.length) {
     const failed = list.some((c) => !c.passed && !isSkippedCheck(c) && !isPendingCheck(c))
     if (failed) return { kind: 'fail', icon: 'x', color: 'var(--coral)' }
-    if (list.some((c) => isPendingCheck(c))) return { kind: 'pending', icon: 'clock', color: 'var(--amber)' }
+    if (list.some((c) => isPendingCheck(c))) return { kind: 'pending', icon: 'loader', color: 'var(--amber)' }
     return { kind: 'pass', icon: 'check', color: 'var(--emerald)' }
   }
   if (opts?.checksOk === false) return { kind: 'fail', icon: 'x', color: 'var(--coral)' }

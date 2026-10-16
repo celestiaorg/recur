@@ -32,6 +32,7 @@ export type MergeActionKind =
   | 'updating'
   | 'ready'
   | 'update-base'
+  | 'resolve'
   | 'conflicts'
   | 'checks'
   | 'blocked'
@@ -113,16 +114,24 @@ export function prMergeAction(pr: PRMergeInput | null | undefined, opts?: { awai
 
   if (knownViewer && !canWrite) return HIDDEN
 
+  const hasWorkspace = !!(pr.workspaceId ?? '').trim()
+  const base = (pr.base ?? 'base').trim() || 'base'
+  if (dirty && hasWorkspace) {
+    return {
+      kind: 'resolve',
+      label: 'Resolve conflicts',
+      title: `Update with ${shortBaseName(base)}; a Coder resolves the conflicts in this workspace`,
+      disabled: false,
+    }
+  }
   if (dirty) {
     return {
       kind: 'conflicts',
       label: 'Conflicts',
-      title: 'Conflicts — resolve them on the branch, then refresh',
+      title: 'Conflicts with the base branch. Open this PR in a workspace to resolve them.',
       disabled: true,
     }
   }
-  const hasWorkspace = !!(pr.workspaceId ?? '').trim()
-  const base = (pr.base ?? 'base').trim() || 'base'
   if (hasWorkspace && status === 'BEHIND') {
     return {
       kind: 'update-base',
@@ -175,7 +184,7 @@ export function prMergeAction(pr: PRMergeInput | null | undefined, opts?: { awai
 export function showPRUpdate(pr: PRMergeInput | null | undefined, action: MergeAction): boolean {
   if (!pr || !(pr.workspaceId ?? '').trim()) return false
   if (action.kind === 'updating') return false
-  if (action.kind === 'update-base') return true
+  if (action.kind === 'update-base' || action.kind === 'resolve') return true
   if ((pr.behindBase ?? 0) <= 0) return false
   const state = pr.state ?? ''
   if (state === 'Merged' || pr.group === 'merged' || state === 'Closed') return false

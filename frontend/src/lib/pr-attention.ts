@@ -23,6 +23,7 @@ export type PRAttention = {
   hasChecks?: boolean
   checks?: unknown[]
   draft?: boolean
+  mergeable?: string
   mergeStateStatus?: string
 }
 
@@ -54,11 +55,17 @@ export function prAttentionCodes(pr: PRAttention | null | undefined): string[] {
   return out
 }
 
+function prHasConflicts(pr: PRAttention | null | undefined): boolean {
+  return (pr?.mergeable ?? '').toUpperCase() === 'CONFLICTING' || (pr?.mergeStateStatus ?? '').toUpperCase() === 'DIRTY'
+}
+
 /** Labels for the list/detail — CI pass/fail is a check/x, not copy. */
 export function prAttentionLabels(pr: PRAttention | null | undefined): string[] {
-  return prAttentionCodes(pr)
+  const labels = prAttentionCodes(pr)
     .filter((c) => c !== ATTENTION_CHECKS_FAILING)
     .map((c) => LABELS[c] ?? c.replaceAll('_', ' '))
+  if (prHasConflicts(pr)) labels.push('Merge conflicts')
+  return labels
 }
 
 export function prHasReviewRequest(pr: PRAttention | null | undefined): boolean {

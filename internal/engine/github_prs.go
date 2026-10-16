@@ -52,6 +52,7 @@ type ghListedPR struct {
 	Assignees         []ghListedActor  `json:"assignees"`
 	LatestReviews     []ghListedReview `json:"latestReviews"`
 	State             string           `json:"state"`
+	Mergeable         string           `json:"mergeable"`
 	MergeStateStatus  string           `json:"mergeStateStatus"`
 	StatusCheckRollup json.RawMessage  `json:"statusCheckRollup"`
 }
@@ -85,7 +86,7 @@ func fetchGitHubPRList(ctx context.Context, repoPath, state string, limit int) (
 	if state == "" {
 		state = "open"
 	}
-	jsonFields := "number,title,url,headRefName,baseRefName,author,isDraft,isCrossRepository,createdAt,updatedAt,additions,deletions,changedFiles,reviewDecision,reviewRequests,assignees,latestReviews,state,mergeStateStatus,statusCheckRollup"
+	jsonFields := "number,title,url,headRefName,baseRefName,author,isDraft,isCrossRepository,createdAt,updatedAt,additions,deletions,changedFiles,reviewDecision,reviewRequests,assignees,latestReviews,state,mergeable,mergeStateStatus,statusCheckRollup"
 	args := []string{"pr", "list", "--limit", fmt.Sprintf("%d", limit), "--json", jsonFields}
 	if state == "merged" {
 		// Default `gh pr list --state merged` orders by created-at, so a
@@ -417,6 +418,18 @@ func conversationAttention(pr domain.PR, snap ghPRSnapshot, state, group string)
 		nextGroup = prGroupOpen
 	}
 	return
+}
+
+// listedMergeField keeps the last known value while GitHub recomputes
+// mergeability (UNKNOWN), so a list sweep does not erase a known conflict.
+func listedMergeField(prev, listed string) string {
+	v := strings.ToUpper(strings.TrimSpace(listed))
+	if v == "" || v == "UNKNOWN" {
+		if prev != "" {
+			return prev
+		}
+	}
+	return v
 }
 
 func listedBehind(row ghListedPR) int {
@@ -963,6 +976,8 @@ func (e *Engine) applyListedGitHubPRIndexed(projectID string, row ghListedPR, vi
 		if existing.UpdatingBase == "" && !e.prHasLocalBehind(wantWS) {
 			wantBehind = listedBehind(row)
 		}
+		wantMergeable := listedMergeField(existing.Mergeable, row.Mergeable)
+		wantMergeState := listedMergeField(existing.MergeStateStatus, row.MergeStateStatus)
 		wantViewer := existing.ViewerLogin
 		if strings.TrimSpace(viewer) != "" {
 			wantViewer = viewer
@@ -982,7 +997,7 @@ func (e *Engine) applyListedGitHubPRIndexed(projectID string, row ghListedPR, vi
 			existing.Branch == wantBranch && existing.Base == wantBase &&
 			existing.Draft == row.IsDraft && existing.AuthorLogin == author &&
 			existing.ViewerLogin == wantViewer &&
-			existing.ReviewDecision == row.ReviewDecision && existing.MergeStateStatus == row.MergeStateStatus &&
+			existing.ReviewDecision == row.ReviewDecision && existing.Mergeable == wantMergeable && existing.MergeStateStatus == wantMergeState &&
 			existing.IsCrossRepository == row.IsCrossRepository &&
 			existing.Diff.Add == row.Additions && existing.Diff.Del == row.Deletions &&
 			existing.FileCount == wantFiles && existing.ChecksOK == checksOK &&
@@ -1012,7 +1027,8 @@ func (e *Engine) applyListedGitHubPRIndexed(projectID string, row ghListedPR, vi
 			p.AttentionReasons = reasons
 			p.Participants = people
 			p.Reviewers = reviewers
-			p.MergeStateStatus = row.MergeStateStatus
+			p.Mergeable = wantMergeable
+			p.MergeStateStatus = wantMergeState
 			p.IsCrossRepository = row.IsCrossRepository
 			p.Diff = domain.DiffStat{Add: row.Additions, Del: row.Deletions}
 			p.FileCount = wantFiles
@@ -1062,7 +1078,8 @@ func (e *Engine) applyListedGitHubPRIndexed(projectID string, row ghListedPR, vi
 		AttentionReasons:  reasons,
 		Participants:      listedParticipants(row),
 		Reviewers:         listedReviewers(row),
-		MergeStateStatus:  row.MergeStateStatus,
+		Mergeable:         listedMergeField("", row.Mergeable),
+		MergeStateStatus:  listedMergeField("", row.MergeStateStatus),
 		IsCrossRepository: row.IsCrossRepository,
 		BehindBase:        listedBehind(row),
 	}

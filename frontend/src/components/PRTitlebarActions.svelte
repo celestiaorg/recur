@@ -403,9 +403,9 @@
         <button
           class="tbtn solid"
           disabled={busy}
-          title={action.kind === 'update-base' ? action.title : `${behindBase} commit${behindBase === 1 ? '' : 's'} on ${updateBaseName} not in this branch`}
+          title={action.kind === 'update-base' || action.kind === 'resolve' ? action.title : `${behindBase} commit${behindBase === 1 ? '' : 's'} on ${updateBaseName} not in this branch`}
           onclick={updateWithBase}
-        ><Icon name="arrow-up" />{updateLabel}</button>
+        ><Icon name="arrow-up" />{action.kind === 'resolve' ? action.label : updateLabel}</button>
         <button
           type="button"
           class="tbtn solid update-chev"

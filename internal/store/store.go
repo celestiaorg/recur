@@ -1349,12 +1349,16 @@ func (s *Store) LatestAnalysis(projectID, workspaceID string) (domain.AnalysisRu
 
 // ---- PRs ----
 
+// PRs returns list rows: every field except Commits and Files, which can run
+// to tens of megabytes per PR. PR(id) returns the full record.
 func (s *Store) PRs() []domain.PR {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]domain.PR, len(s.prs))
 	for i := range s.prs {
-		out[i] = clonePR(s.prs[i])
+		row := s.prs[i]
+		row.Commits, row.Files = nil, nil
+		out[i] = clonePR(row)
 	}
 	return out
 }

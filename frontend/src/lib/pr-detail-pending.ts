@@ -21,7 +21,7 @@ export function prFilesPending(
   giveUp = false,
 ): boolean {
   if (!pr) return !giveUp
-  if (pr.source !== 'gh') return false
+  if (pr.source !== 'gh') return refreshing && pr.files == null
   if ((pr.files?.length ?? 0) > 0) return false
   if (giveUp) return false
   return (pr.fileCount ?? 0) > 0 || refreshing
@@ -32,7 +32,7 @@ export function prCommitsPending(
   refreshing = false,
 ): boolean {
   if (!pr) return true
-  if (pr.source !== 'gh') return false
+  if (pr.source !== 'gh') return refreshing && pr.commits == null
   if ((pr.commits?.length ?? 0) > 0) return false
   return refreshing
 }

@@ -149,25 +149,43 @@ export function githubPRSyncDue(): boolean {
   return Date.now() - lastGitHubPRSync >= githubPRSyncMinMs
 }
 
-/** Merge a GitHub-sync snapshot. The payload is the persisted store, so server
- *  files/comments win; pendingComments is the only client-only field. */
+/** Merge a GitHub-sync snapshot. Rows come without commits/files (GetPR loads
+ *  those), so loaded ones stay; pendingComments is the only client-only field. */
 export function setPRsFromSync(list: PR[]) {
   lastGitHubPRSync = Date.now()
   prs.update((arr) => {
     const prevById = new Map(arr.map((p) => [p.id, p]))
     return (list ?? []).map((p) => {
       const prev = prevById.get(p.id)
-      if (!prev) return p
-      return {
-        ...p,
-        workspaceId: p.workspaceId || prev.workspaceId,
-        projectId: p.projectId || prev.projectId,
-        comments: p.comments ?? prev.comments,
-        files: p.files ?? prev.files,
-        commits: keepCommitFiles(prev.commits, p.commits ?? []),
-        pendingComments: prev.pendingComments,
-      }
+      return prev ? mergeSyncedPR(prev, p) : p
     })
+  })
+}
+
+function mergeSyncedPR(prev: PR, p: PR): PR {
+  return {
+    ...p,
+    workspaceId: p.workspaceId || prev.workspaceId,
+    projectId: p.projectId || prev.projectId,
+    comments: p.comments ?? prev.comments,
+    files: p.files ?? prev.files,
+    commits: p.commits ? keepCommitFiles(prev.commits, p.commits) : prev.commits,
+    pendingComments: prev.pendingComments,
+  }
+}
+
+/** Fold one project's rows from a sweep still in flight (prs.synced). */
+export function mergeProjectPRsSync(list: PR[]) {
+  if (!list?.length) return
+  prs.update((arr) => {
+    const incoming = new Map(list.map((p) => [p.id, p]))
+    const next = arr.map((prev) => {
+      const p = incoming.get(prev.id)
+      if (!p) return prev
+      incoming.delete(prev.id)
+      return mergeSyncedPR(prev, p)
+    })
+    return [...next, ...incoming.values()]
   })
 }
 
@@ -779,6 +797,10 @@ export function wireEvents() {
     // Pending-comment writes are local; skip GetPR (gh checks / conversation).
     if (!d.pendingOnly) prRefreshListeners.forEach((fn) => fn(d.prId))
     scheduleBriefingRefresh()
+  })
+
+  Events.On('prs.synced', (e: any) => {
+    mergeProjectPRsSync(e.data?.prs ?? [])
   })
 
   Events.On('pr.removed', (e: any) => {

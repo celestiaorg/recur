@@ -1112,6 +1112,8 @@ func (e *Engine) SyncGitHubPRs() []domain.PR {
 		defer cancel()
 		viewer := githubLoginFn(ctx)
 		now := time.Now()
+		var projWG sync.WaitGroup
+		sem := make(chan struct{}, githubPRSyncProjectConcurrency)
 		for _, proj := range e.Store.Projects() {
 			if proj.ID == domain.FilesProjectID || strings.TrimSpace(proj.RepoPath) == "" {
 				continue
@@ -1119,45 +1121,65 @@ func (e *Engine) SyncGitHubPRs() []domain.PR {
 			if !gitpkg.IsRepo(proj.RepoPath) {
 				continue
 			}
-			var openRows, mergedRows []ghListedPR
-			var err, mergedErr error
-			var listWG sync.WaitGroup
-			listWG.Add(2)
-			go func() {
-				defer listWG.Done()
-				openRows, err = listGitHubPRsFn(ctx, proj.RepoPath, "open", githubOpenPRLimit)
-			}()
-			go func() {
-				defer listWG.Done()
-				mergedRows, mergedErr = listGitHubPRsFn(ctx, proj.RepoPath, "merged", githubMergedPRLimit)
-			}()
-			listWG.Wait()
-			if err != nil {
-				continue
-			}
-			idx := e.indexWorkspacesByPRHead(ctx, proj.ID)
-			stored := e.indexStoredGitHubPRs()
-			seen := make(map[int]struct{}, len(openRows)+len(mergedRows))
-			for _, row := range openRows {
-				e.applyListedGitHubPRIndexed(proj.ID, row, viewer, now, idx, stored)
-				if row.Number > 0 {
-					seen[row.Number] = struct{}{}
-				}
-			}
-			for _, row := range mergedRows {
-				e.applyListedGitHubPRIndexed(proj.ID, row, viewer, now, idx, stored)
-				if row.Number > 0 {
-					seen[row.Number] = struct{}{}
-				}
-			}
-			skipReconcile := mergedErr != nil || len(openRows) >= githubOpenPRLimit || len(mergedRows) >= githubMergedPRLimit
-			e.reconcileMissingGitHubPRs(ctx, proj.ID, proj.RepoPath, seen, skipReconcile)
+			sem <- struct{}{}
+			projWG.Go(func() {
+				defer func() { <-sem }()
+				e.syncGitHubProjectPRs(ctx, proj, viewer, now)
+			})
 		}
+		projWG.Wait()
 	}
 	// Even without gh: a workspace created (or renamed) onto a PR head after
 	// the first import should still attach so the dashboard shows View workspace.
 	e.linkUnlinkedGitHubPRs()
 	return e.Store.PRs()
+}
+
+// githubPRSyncProjectConcurrency bounds projects listed at once. Each project
+// runs two `gh pr list` calls, so this is up to 2x gh processes in flight.
+const githubPRSyncProjectConcurrency = 8
+
+func (e *Engine) syncGitHubProjectPRs(ctx context.Context, proj domain.Project, viewer string, now time.Time) {
+	var openRows, mergedRows []ghListedPR
+	var err, mergedErr error
+	var listWG sync.WaitGroup
+	listWG.Go(func() {
+		openRows, err = listGitHubPRsFn(ctx, proj.RepoPath, "open", githubOpenPRLimit)
+	})
+	listWG.Go(func() {
+		mergedRows, mergedErr = listGitHubPRsFn(ctx, proj.RepoPath, "merged", githubMergedPRLimit)
+	})
+	listWG.Wait()
+	if err != nil {
+		return
+	}
+	idx := e.indexWorkspacesByPRHead(ctx, proj.ID)
+	stored := e.indexStoredGitHubPRs()
+	seen := make(map[int]struct{}, len(openRows)+len(mergedRows))
+	for _, row := range slices.Concat(openRows, mergedRows) {
+		e.applyListedGitHubPRIndexed(proj.ID, row, viewer, now, idx, stored)
+		if row.Number > 0 {
+			seen[row.Number] = struct{}{}
+		}
+	}
+	skipReconcile := mergedErr != nil || len(openRows) >= githubOpenPRLimit || len(mergedRows) >= githubMergedPRLimit
+	e.reconcileMissingGitHubPRs(ctx, proj.ID, proj.RepoPath, seen, skipReconcile)
+	e.publishProjectPRsSynced(proj.ID)
+}
+
+// publishProjectPRsSynced streams one project's list rows to the dashboard so
+// it updates before the whole sweep finishes.
+func (e *Engine) publishProjectPRsSynced(projectID string) {
+	var rows []domain.PR
+	for _, p := range e.Store.PRs() {
+		if e.prProjectID(p) == projectID {
+			rows = append(rows, p)
+		}
+	}
+	if len(rows) == 0 {
+		return
+	}
+	e.Bus.Publish(Event{Name: "prs.synced", Data: map[string]any{"projectId": projectID, "prs": rows}})
 }
 
 // githubPRSweepInterval is how often the running app re-lists GitHub PRs so a

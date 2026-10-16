@@ -942,7 +942,6 @@
   const prLife = $derived(prLifecycle(pr))
   const checkGroups = $derived(groupChecks(pr?.checks ?? []))
   const checksSummary = $derived(checksRollup(pr?.checks, { checksOk: pr?.checksOk, hasChecks: pr?.hasChecks }))
-  const checksSummaryIcon = $derived<IconName>(checksSummary.kind === 'pending' ? 'loader' : checksSummary.icon)
   const checksPassedCount = $derived((pr?.checks ?? []).filter((c) => c.passed).length)
   const checksTotal = $derived(pr?.checks?.length ?? 0)
   const checksSummaryHref = $derived(isGitHubPR ? githubPRChecksTabUrl(pr?.url) : '')
@@ -1564,7 +1563,7 @@
     <button class="prtab" class:on={prtab === 'conv'} class:lit={prTabsLit} onclick={() => setTab('conv')}><Icon name="message" />Conversation{#if convPending}<span class="tc skel"></span>{:else}<span class="tc">{timeline.length + (description ? 1 : 0)}</span>{/if}</button>
     <button class="prtab" class:on={prtab === 'commits'} class:lit={prTabsLit} onclick={() => setTab('commits')}><Icon name="git-commit" />Commits{#if commitsPending}<span class="tc skel"></span>{:else}<span class="tc">{pr?.commits?.length ?? 0}</span>{/if}</button>
     <button class="prtab" class:on={prtab === 'files'} class:lit={prTabsLit} onclick={() => setTab('files')}><Icon name="file-diff" />Files changed<span class="tc">{pr?.files?.length || pr?.fileCount || 0}</span></button>
-    <button class="prtab" class:on={prtab === 'checks'} class:lit={prTabsLit} onclick={() => setTab('checks')}><span class="prtab-check" class:spin={!checksPending && checksSummary.kind === 'pending'} data-kind={checksPending ? 'none' : checksSummary.kind} style:color={checksPending ? 'var(--faint)' : checksSummary.color}><Icon name={checksPending ? 'clock' : checksSummaryIcon} /></span>Checks{#if checksPending}<span class="tc skel"></span>{:else}<span class="tc" style:color={checksSummary.kind === 'none' ? undefined : checksSummary.color}>{checksPassedCount}/{checksTotal}</span>{/if}</button>
+    <button class="prtab" class:on={prtab === 'checks'} class:lit={prTabsLit} onclick={() => setTab('checks')}><span class="prtab-check" class:spin={!checksPending && checksSummary.kind === 'pending'} data-kind={checksPending ? 'none' : checksSummary.kind} style:color={checksPending ? 'var(--faint)' : checksSummary.color}><Icon name={checksPending ? 'clock' : checksSummary.icon} /></span>Checks{#if checksPending}<span class="tc skel"></span>{:else}<span class="tc" style:color={checksSummary.kind === 'none' ? undefined : checksSummary.color}>{checksPassedCount}/{checksTotal}</span>{/if}</button>
   </div>
 
   <!-- Conversation -->
@@ -2292,7 +2291,7 @@
   {@const g = checkGroups}
   <div class="card" class:checks-scroll={scroll}>
     <div class="card-h checks-h">
-      <span class="checks-h-ico" class:spin={checksSummary.kind === 'pending'} data-kind={checksSummary.kind} style:color={checksSummary.color}><Icon name={checksSummaryIcon} /></span>
+      <span class="checks-h-ico" class:spin={checksSummary.kind === 'pending'} data-kind={checksSummary.kind} style:color={checksSummary.color}><Icon name={checksSummary.icon} /></span>
       {#if checksSummaryHref}
         <a class="checks-h-link" href={checksSummaryHref} title="Open run on GitHub">{checksHeading(pr?.checks, pr?.source)}</a>
       {:else}

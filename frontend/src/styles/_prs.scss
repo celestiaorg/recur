@@ -2505,10 +2505,10 @@ button.tl-sha:hover {
 
 /* The pastel diff text above is for dark surfaces. Keep plain diff lines
    readable on Paper, in both unified and split layouts. */
-[data-theme="paper"] .hline.add .cd,
-[data-theme="paper"] .hline.del .cd,
-[data-theme="paper"] .hline.split .side.add .cd,
-[data-theme="paper"] .hline.split .side.del .cd {
+:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .hline.add .cd,
+:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .hline.del .cd,
+:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .hline.split .side.add .cd,
+:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .hline.split .side.del .cd {
   color: var(--text);
 }
 
@@ -2623,7 +2623,7 @@ button.tl-sha:hover {
   height: var(--addc-size);
   border-radius: 4px;
   background: var(--amber);
-  color: #0A0C10;
+  color: var(--on-amber);
   display: grid;
   place-items: center;
   font-size: 13px;
@@ -3033,7 +3033,7 @@ button.pending-chip:hover {
 .commit .cav.wip,
 .commit-hd .cav.wip {
   background: var(--amber);
-  color: #0A0C10;
+  color: var(--on-amber);
   font-size: 8px;
   letter-spacing: 0.02em;
 }

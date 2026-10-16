@@ -1930,6 +1930,56 @@ func TestOpenPRByWorkspacePrefersGitHubOverLocal(t *testing.T) {
 	if !ok || got.ID != local.ID {
 		t.Errorf("OpenPRByWorkspace after GitHub merge = id %q ok=%v, want leftover Local %q", got.ID, ok, local.ID)
 	}
+	if got, _ := s.PRByWorkspace("ws-dup"); got.ID != gh.ID {
+		t.Errorf("PRByWorkspace after GitHub merge = %q, want merged GitHub %q over open Local", got.ID, gh.ID)
+	}
+}
+
+func TestPRByWorkspacePrefersOpenOverClosed(t *testing.T) {
+	s := NewInMemory()
+	open, err := s.AddPR(domain.PR{
+		ID: "gh-13", WorkspaceID: "ws-r", Number: 13, Source: domain.SourceGitHub,
+		State: "Open", Group: "open",
+	})
+	if err != nil {
+		t.Fatalf("AddPR(open) err=%v", err)
+	}
+	if _, err := s.AddPR(domain.PR{
+		ID: "gh-9", WorkspaceID: "ws-r", Number: 9, Source: domain.SourceGitHub,
+		State: "Closed", Group: "merged",
+	}); err != nil {
+		t.Fatalf("AddPR(closed) err=%v", err)
+	}
+	if got, _ := s.PRByWorkspace("ws-r"); got.ID != open.ID {
+		t.Errorf("PRByWorkspace(ws-r) = %q, want open %q", got.ID, open.ID)
+	}
+	s.UpdatePR(open.ID, func(p *domain.PR) {
+		p.State = "Merged"
+		p.Group = "merged"
+	})
+	if got, _ := s.PRByWorkspace("ws-r"); got.ID != "gh-9" {
+		t.Errorf("PRByWorkspace(ws-r) with none open = %q, want newest gh-9", got.ID)
+	}
+}
+
+func TestPRByWorkspaceKeepsLocalNewerThanClosedGitHub(t *testing.T) {
+	s := NewInMemory()
+	if _, err := s.AddPR(domain.PR{
+		ID: "gh-9", WorkspaceID: "ws-l", Number: 9, Source: domain.SourceGitHub,
+		State: "Closed", Group: "merged",
+	}); err != nil {
+		t.Fatalf("AddPR(closed) err=%v", err)
+	}
+	local, err := s.AddPR(domain.PR{
+		ID: "10", WorkspaceID: "ws-l", Number: 10, Source: domain.SourceLocal,
+		State: "In review", Group: "you",
+	})
+	if err != nil {
+		t.Fatalf("AddPR(local) err=%v", err)
+	}
+	if got, _ := s.PRByWorkspace("ws-l"); got.ID != local.ID {
+		t.Errorf("PRByWorkspace(ws-l) = %q, want open Local %q newer than closed GitHub", got.ID, local.ID)
+	}
 }
 
 func TestDeletePR(t *testing.T) {

@@ -68,7 +68,8 @@ export const APP_CHROME_EDITOR_THEME: Record<string, string> = {
   paper: 'paper',
   slate: 'github-dark-default',
   coolglow: 'cool-glow',
-  catppuccin: 'catppuccin-mocha',
+  'catppuccin-mocha': 'catppuccin-mocha',
+  'catppuccin-latte': 'catppuccin-latte',
   nord: 'nord',
 }
 
@@ -79,7 +80,7 @@ export const APP_CHROME_EDITOR_THEME: Record<string, string> = {
 export function editorThemeIdForAppChrome(appThemeKey: string): string {
   const preferred = APP_CHROME_EDITOR_THEME[appThemeKey] ?? 'recur'
   if (usableEditorTheme(preferred)) return preferred
-  const fallback = appThemeKey === 'paper' ? 'paper' : 'recur'
+  const fallback = appThemeKey === 'paper' || appThemeKey === 'catppuccin-latte' ? 'paper' : 'recur'
   if (fallback !== preferred && usableEditorTheme(fallback)) return fallback
   return preferred
 }

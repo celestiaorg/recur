@@ -146,11 +146,11 @@
   background: var(--pane-2);
 }
 
-:root[data-theme="paper"] .cm-recur-search-input {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .cm-recur-search-input {
   background: var(--pane);
 }
 
-:root[data-theme="paper"] .cm-recur-search-textbtn {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .cm-recur-search-textbtn {
   background: var(--pane);
 }
 
@@ -363,7 +363,7 @@
   padding: 4px 0!important;
 }
 
-:root[data-theme="paper"] .cm-tooltip {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .cm-tooltip {
   box-shadow: 0 12px 28px rgba(0, 0, 0, .12)!important;
 }
 
@@ -542,6 +542,6 @@
   }
 }
 
-:root[data-theme="paper"] .ui-tip {
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .ui-tip {
   box-shadow: 0 10px 24px rgba(0, 0, 0, .12), 0 0 0 1px color-mix(in srgb, var(--amber) 16%, transparent);
 }

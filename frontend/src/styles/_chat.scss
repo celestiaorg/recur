@@ -94,7 +94,7 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   background: var(--amber);
-  color: #0A0C10;
+  color: var(--on-amber);
   padding: 1px 5px;
   border-radius: 3px;
   font-weight: 700;
@@ -2037,7 +2037,7 @@
   border: 1px solid var(--amber);
   border-radius: 7px;
   background: var(--amber);
-  color: #0A0C10;
+  color: var(--on-amber);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -3855,7 +3855,7 @@ button.tc-file {
 
 .chat-in .send:hover:not(:disabled) {
   background: var(--amber);
-  color: #0A0C10;
+  color: var(--on-amber);
 }
 
 .chat-in .send:disabled {

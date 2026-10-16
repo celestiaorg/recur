@@ -1,12 +1,13 @@
 // Reactive app state. Data stores are populated from the bound Go services
 // (lib/api.ts) and updated live by events.
 import { writable, derived, get } from 'svelte/store'
+import { Events, System } from '@wailsio/runtime'
 import type {
   Project, ProjectGroup, Workspace, PR, InboxItem, Policy, Settings, Resource, PermissionRequest, UserQuestion,
   ScheduledPrompt,
 } from '../../bindings/recur/internal/domain/models'
 import { fallbackEnabledEditorThemeId, resolveEditorThemeKey, editorThemesForCycle, cycleEditorThemeKey } from './cm-themes'
-import { setDisabledBundleContribs } from './tm-registry'
+import { disabledThemeIdSet, setDisabledBundleContribs } from './tm-registry'
 import { LANGUAGE_INDENT_DEFAULTS } from './cm-lang'
 import { LEGACY_FONT_FACE_KEYS, monoFontStack } from './mono-fonts'
 import { wsMainBlocked, type ChatMode } from './modes'
@@ -36,25 +37,102 @@ export const themes: Theme[] = [
   { key: 'paper', name: 'Paper', d: 'light', bg: '#ebecef', pane: '#f7f8fa', text: '#1a1c20', a: '#d4634a', ok: '#2d9a5a', warn: '#d14b4b' },
   { key: 'slate', name: 'Slate', d: 'cool', bg: '#0A0C10', pane: '#161A21', text: '#DBE2EA', a: '#F2B33D', ok: '#5DBE7E', warn: '#EB7A5C' },
   { key: 'coolglow', name: 'Cool Glow', d: 'navy', bg: '#0a0c22', pane: '#0e1130', text: '#d8dce8', a: '#45c4b8', ok: '#6ecf8a', warn: '#e87890' },
-  { key: 'catppuccin', name: 'Catppuccin', d: 'mocha', bg: '#0e0e16', pane: '#181825', text: '#e0e6f8', a: '#cba6f7', ok: '#a6e3a1', warn: '#f38ba8' },
+  { key: 'catppuccin-mocha', name: 'Catppuccin Mocha', d: 'mocha', bg: '#0e0e16', pane: '#181825', text: '#e0e6f8', a: '#cba6f7', ok: '#a6e3a1', warn: '#f38ba8' },
+  { key: 'catppuccin-latte', name: 'Catppuccin Latte', d: 'latte', bg: '#e6e9ef', pane: '#eff1f5', text: '#4c4f69', a: '#8839ef', ok: '#40a02b', warn: '#d20f39' },
   { key: 'nord', name: 'Nord', d: 'frost', bg: '#181c24', pane: '#222730', text: '#eceff4', a: '#88c0d0', ok: '#a3be8c', warn: '#bf616a' },
 ]
 const THEME_KEY = 'recur.theme'
 // Legacy keys map to Charcoal / Cool Glow (Gruvbox / Charcoal named key → default Charcoal;
 // Tokyo Night app chrome → Cool Glow). Unknown keys (e.g. removed everforest) fall through to Charcoal.
 const THEME_ALIASES: Record<string, string> = {
-  gruvbox: 'default', conductor: 'default', charcoal: 'default', tokyonight: 'coolglow',
+  gruvbox: 'default', conductor: 'default', charcoal: 'default', tokyonight: 'coolglow', catppuccin: 'catppuccin-mocha',
 }
 export const theme = writable<string>('default')
 
 /** True for light app-chrome palettes (affects mermaid, file-icons, terminal selection). */
 export function isLightTheme(key: string): boolean {
-  return key === 'paper'
+  return key === 'paper' || key === 'catppuccin-latte'
 }
 
-// setTheme applies a theme to the document root and persists the choice. 'default'
-// removes the attribute so the base :root palette applies.
-export function setTheme(key: string) {
+// ---- "Sync with system": light/dark picks for app, editor and terminal themes ----
+// The webview's prefers-color-scheme can miss the desktop setting (WebKitGTK in a
+// container), so the native answer from Wails wins whenever it is available. The
+// media query is only a fallback in a plain browser: on Linux without
+// xdg-desktop-portal, Wails reports light rather than an error. The last native
+// answer is persisted so startup paints the right pick before the bridge replies.
+const SYSTEM_DARK_KEY = 'recur.systemDark'
+export const systemDark = writable(false)
+let nativeDark: boolean | null = null
+
+function setNativeDark(dark: boolean) {
+  nativeDark = dark
+  updateSystemDark()
+  try { localStorage.setItem(SYSTEM_DARK_KEY, dark ? '1' : '0') } catch { /* ignore */ }
+}
+
+function updateSystemDark() {
+  const media = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches
+  systemDark.set(nativeDark ?? media)
+}
+
+async function refreshNativeDark() {
+  try {
+    const dark = await System.IsDarkMode()
+    if (typeof dark === 'boolean') setNativeDark(dark)
+  } catch { /* no native bridge (browser) */ }
+}
+
+function watchSystemDark() {
+  try {
+    const saved = localStorage.getItem(SYSTEM_DARK_KEY)
+    if (saved) nativeDark = saved === '1'
+  } catch { /* ignore */ }
+  updateSystemDark()
+  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', updateSystemDark)
+  void refreshNativeDark()
+  Events.On('system.theme', (e: any) => { if (typeof e.data === 'boolean') setNativeDark(e.data) })
+  window.addEventListener('focus', () => { void refreshNativeDark() })
+}
+
+// A sync holds the mode plus the light and dark pick for one kind of theme (persisted
+// as recur.<name>Auto / Light / Dark) and re-applies the matching pick on every change.
+function createSystemSync(name: string, defaults: { light: string; dark: string }, apply: (key: string) => void) {
+  const auto = writable(false)
+  const light = writable(defaults.light)
+  const dark = writable(defaults.dark)
+  const key = (suffix: string) => `recur.${name}${suffix}`
+  const save = (suffix: string, value: string) => {
+    try { localStorage.setItem(key(suffix), value) } catch { /* ignore */ }
+  }
+  const run = () => { if (get(auto)) apply(get(get(systemDark) ? dark : light)) }
+  systemDark.subscribe(run)
+  return {
+    auto, light, dark,
+    setAuto(on: boolean) { auto.set(on); save('Auto', on ? '1' : '0'); run() },
+    setPick(mode: 'light' | 'dark', value: string) {
+      (mode === 'dark' ? dark : light).set(value)
+      save(mode === 'dark' ? 'Dark' : 'Light', value)
+      run()
+    },
+    load() {
+      try {
+        light.set(localStorage.getItem(key('Light')) ?? defaults.light)
+        dark.set(localStorage.getItem(key('Dark')) ?? defaults.dark)
+        auto.set(localStorage.getItem(key('Auto')) === '1')
+      } catch { /* ignore */ }
+      run()
+    },
+  }
+}
+
+const appSync = createSystemSync('theme', { light: 'paper', dark: 'default' }, applyTheme)
+export const themeAuto = appSync.auto
+export const themeLight = appSync.light
+export const themeDark = appSync.dark
+export const setThemeAuto = appSync.setAuto
+export const setSystemTheme = appSync.setPick
+
+function applyTheme(key: string) {
   const resolved = THEME_ALIASES[key] ?? key
   const valid = themes.some((t) => t.key === resolved) ? resolved : 'default'
   theme.set(valid)
@@ -63,22 +141,44 @@ export function setTheme(key: string) {
   try { localStorage.setItem(THEME_KEY, valid) } catch { /* ignore */ }
 }
 
+// setTheme applies a theme to the document root and persists the choice. 'default'
+// removes the attribute so the base :root palette applies. An explicit pick turns
+// system-follow off.
+export function setTheme(key: string) {
+  applyTheme(key)
+  setThemeAuto(false)
+}
+
 // initTheme reads the saved theme and applies it. Called before mount to avoid a
 // flash of the default palette on startup.
 export function initTheme() {
   let saved = 'default'
   try { saved = localStorage.getItem(THEME_KEY) ?? 'default' } catch { /* ignore */ }
-  setTheme(saved)
+  applyTheme(saved)
+  watchSystemDark()
+  appSync.load()
 }
 
 // ---- code editor theme (independent of app chrome theme) ----
 const EDITOR_THEME_KEY = 'recur.editorTheme'
 export const editorTheme = writable<string>('recur')
 
-export function setEditorTheme(key: string) {
-  const valid = resolveEditorThemeKey(key)
+export function applyEditorTheme(key: string) {
+  const valid = fallbackEnabledEditorThemeId(disabledThemeIdSet(), resolveEditorThemeKey(key))
   editorTheme.set(valid)
   try { localStorage.setItem(EDITOR_THEME_KEY, valid) } catch { /* ignore */ }
+}
+
+const editorSync = createSystemSync('editorTheme', { light: 'paper', dark: 'recur' }, applyEditorTheme)
+export const editorThemeAuto = editorSync.auto
+export const editorThemeLight = editorSync.light
+export const editorThemeDark = editorSync.dark
+export const setEditorThemeAuto = editorSync.setAuto
+export const setSystemEditorTheme = editorSync.setPick
+
+export function setEditorTheme(key: string) {
+  applyEditorTheme(key)
+  setEditorThemeAuto(false)
 }
 
 /** Step through editor themes: dark A–Z (Charcoal first), then light A–Z (Paper first). */
@@ -93,7 +193,8 @@ export function cycleEditorTheme(delta: 1 | -1): { key: string; name: string } {
 export function initEditorTheme() {
   let saved = 'recur'
   try { saved = localStorage.getItem(EDITOR_THEME_KEY) ?? 'recur' } catch { /* ignore */ }
-  setEditorTheme(saved)
+  applyEditorTheme(saved)
+  editorSync.load()
 }
 
 // ---- code editor layout prefs (font / wrap / tab / indent) ----
@@ -378,10 +479,26 @@ function normalizeTerminalPrefs(raw: Partial<TerminalPrefs> | null): TerminalPre
 
 export const terminalPrefs = writable<TerminalPrefs>({ ...DEFAULT_TERMINAL_PREFS })
 
-export function setTerminalPrefs(next: Partial<TerminalPrefs>) {
+function patchTerminalPrefs(next: Partial<TerminalPrefs>) {
   const merged = normalizeTerminalPrefs({ ...get(terminalPrefs), ...next })
   terminalPrefs.set(merged)
   try { localStorage.setItem(TERMINAL_PREFS_KEY, JSON.stringify(merged)) } catch { /* ignore */ }
+}
+
+// '' (TERMINAL_MATCH_EDITOR) follows the app chrome, which already follows the system.
+const terminalSync = createSystemSync(
+  'terminalTheme', { light: TERMINAL_MATCH_EDITOR, dark: TERMINAL_MATCH_EDITOR },
+  (id) => patchTerminalPrefs({ theme: id }),
+)
+export const terminalThemeAuto = terminalSync.auto
+export const terminalThemeLight = terminalSync.light
+export const terminalThemeDark = terminalSync.dark
+export const setTerminalThemeAuto = terminalSync.setAuto
+export const setSystemTerminalTheme = terminalSync.setPick
+
+export function setTerminalPrefs(next: Partial<TerminalPrefs>) {
+  patchTerminalPrefs(next)
+  if ('theme' in next) setTerminalThemeAuto(false)
 }
 
 export function initTerminalPrefs() {
@@ -391,6 +508,7 @@ export function initTerminalPrefs() {
     if (raw) parsed = JSON.parse(raw) as Partial<TerminalPrefs>
   } catch { /* ignore */ }
   terminalPrefs.set(normalizeTerminalPrefs(parsed))
+  terminalSync.load()
 }
 
 /** Resolves the terminal's effective font, applying the "match editor" fallbacks. */
@@ -1257,11 +1375,8 @@ settings.subscribe((s) => {
   const grammarIds = s?.disabledBundleGrammars ?? []
   const themeIds = s?.disabledBundleThemes ?? []
   setDisabledBundleContribs({ grammarIds, themeIds })
-  const disabledThemes = new Set(themeIds.filter(Boolean))
   const current = get(editorTheme)
-  if (!disabledThemes.has(current)) return
-  const next = fallbackEnabledEditorThemeId(disabledThemes, current)
-  if (next !== current) setEditorTheme(next)
+  if (themeIds.includes(current)) applyEditorTheme(current)
 })
 export const resource = writable<Resource | null>(null)
 // Optional RECUR_INSTANCE_LABEL (dogfood titlebar chip). Empty in packaged Recur.

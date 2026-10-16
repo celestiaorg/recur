@@ -10,15 +10,10 @@ export default defineConfig({
   baseUrl,
   basePath,
   renderStrategy: "full-static",
-  accentColor: "#e07a5f",
-  colorScheme: "dark",
+  accentColor: "light-dark(#d4634a, #e07a5f)",
+  colorScheme: "light dark",
   iconUrl: `${basePath}/recur-icon.png`,
   logoUrl: `${basePath}/recur-icon.png`,
-  head: {
-    meta: {
-      themeColor: "#141414",
-    },
-  },
   codeHighlight: {
     themes: {
       light: "github-light",
@@ -62,6 +57,7 @@ export default defineConfig({
         { text: "TypeScript macros", link: "/bundles/typescript" },
         { text: "Shebang commands", link: "/bundles/shebang" },
         { text: "Chat prompts", link: "/bundles/prompts" },
+        { text: "Loops, roles & policies", link: "/bundles/loops" },
         { text: "Output & save hooks", link: "/bundles/output" },
         { text: "Testing & CLI", link: "/bundles/testing" },
       ],
@@ -78,7 +74,8 @@ export default defineConfig({
         { text: "Providers", link: "/reference/agents" },
         { text: "Integrations & MCP", link: "/reference/integrations" },
         { text: "Settings", link: "/reference/settings" },
-        { text: "Themes & shortcuts", link: "/reference/themes" },
+        { text: "Themes", link: "/reference/themes" },
+        { text: "Keyboard shortcuts", link: "/reference/shortcuts" },
         { text: "Troubleshooting", link: "/reference/troubleshooting" },
       ],
     },

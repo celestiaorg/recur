@@ -5,6 +5,10 @@
     screen,
     theme,
     eager = false,
+    caption,
+    position,
+    onprev,
+    onnext,
   }: {
     screen:
       | "workspace"
@@ -16,7 +20,25 @@
       | "schedules";
     theme: "paper" | "charcoal";
     eager?: boolean;
+    /** Shown in the enlarged view; defaults to the capture title. */
+    caption?: string;
+    /** Slideshow counter such as "2 / 7"; with onprev/onnext, adds paging. */
+    position?: string;
+    onprev?: () => void;
+    onnext?: () => void;
   } = $props();
+  const slideshow = $derived(Boolean(onprev && onnext));
+
+  function onkeydown(event: KeyboardEvent) {
+    if (!slideshow) return;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      onprev!();
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      onnext!();
+    }
+  }
 
   const capture = $derived(
     manifest.captures.find((item) => item.id === `${screen}-${theme}`)!,
@@ -53,13 +75,41 @@
   bind:this={dialog}
   aria-label={capture.title}
   style:--image-width="{displayWidth}px"
+  {onkeydown}
 >
   <header>
-    <span>{capture.title}</span><button
-      type="button"
-      onclick={() => dialog.close()}
-      aria-label="Close screenshot">Close ×</button
-    >
+    <p aria-live="polite">{caption ?? capture.title}</p>
+    <div class="controls">
+      {#if slideshow}
+        {#if position}<span class="position">{position}</span>{/if}
+        <button type="button" onclick={onprev} aria-label="Previous screenshot"
+          ><svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg
+          ></button
+        ><button type="button" onclick={onnext} aria-label="Next screenshot"
+          ><svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
+          ></button
+        >
+      {/if}
+      <button
+        type="button"
+        onclick={() => dialog.close()}
+        aria-label="Close screenshot">Close ×</button
+      >
+    </div>
   </header>
   <img
     {src}
@@ -111,11 +161,33 @@
     background: var(--pane);
     font-size: 13px;
   }
-  header button {
+  header p {
+    line-height: 1.5;
+  }
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     flex: none;
+  }
+  .position {
+    margin-right: 6px;
+    font: 12px var(--mono);
+    color: var(--muted);
+  }
+  header button {
+    display: inline-flex;
+    align-items: center;
     padding: 8px 12px;
     border-radius: 5px;
     background: var(--pane-2);
     color: var(--text);
+  }
+  header button:hover {
+    background: var(--line);
+  }
+  header button svg {
+    width: 16px;
+    height: 16px;
   }
 </style>

@@ -138,7 +138,7 @@
         "sidebar": true,
         "chat": false,
         "files": false,
-        "prChat": false
+        "prChat": true
       },
       "widths": {
         "rail": 280,
@@ -152,9 +152,10 @@
         "cursorBlink": false
       },
       "ready": {
-        "selector": "#v-prdetail .prpane.on",
-        "text": "stalled providers"
-      }
+        "selector": "#v-prdetail",
+        "text": "post these to the PR"
+      },
+      "pr": "486"
     },
     {
       "id": "inbox",
@@ -172,7 +173,7 @@
       "prTab": "conv",
       "panes": {
         "sidebar": true,
-        "chat": false,
+        "chat": true,
         "files": false,
         "prChat": false
       },
@@ -189,7 +190,7 @@
       },
       "ready": {
         "selector": "#v-briefing",
-        "text": "Choose how long invitation links stay valid"
+        "text": "What needs me before lunch?"
       }
     },
     {

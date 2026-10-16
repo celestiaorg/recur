@@ -1,4 +1,4 @@
-import dataset from "../captures/dataset.json";
+import rawDataset from "../captures/dataset.json";
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { readFileSync, readdirSync } from "node:fs";
@@ -9,6 +9,17 @@ import { resolvers, parseTomlArrayTables } from "../e2e/helpers/mock-bridge";
 // Build the real frontend for the website. Only the service transport changes.
 // Reuse the browser tests' backend-shaped fixtures, never their DOM or styling.
 const root = resolve(import.meta.dirname, "..");
+// Avatars ship as local files and inline as data URLs: captures reject network.
+const dataset: typeof rawDataset = JSON.parse(
+  JSON.stringify(rawDataset).replace(
+    /"(avatars\/[\w-]+\.jpg)"/g,
+    (_, path) =>
+      JSON.stringify(
+        "data:image/jpeg;base64," +
+          readFileSync(resolve(root, "captures", path)).toString("base64"),
+      ),
+  ),
+);
 const seed = {
   projects: dataset.projects,
   loops: dataset.workspaces,

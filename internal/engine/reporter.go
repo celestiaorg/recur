@@ -518,6 +518,11 @@ func (e *Engine) runningLoopByChat(workspaceID, code string) *Loop {
 	return nil
 }
 
+func (e *Engine) chatDrivesLiveLoop(workspaceID, code string) bool {
+	lp := e.runningLoopByChat(workspaceID, code)
+	return lp != nil && lp.ChatCode == strings.TrimSpace(code)
+}
+
 // runningLoopForHand is the Maestro-hand target: this chat's walk when
 // agentCode is set, else any walk on the workspace (UI / tests).
 func (e *Engine) runningLoopForHand(workspaceID, agentCode string) *Loop {

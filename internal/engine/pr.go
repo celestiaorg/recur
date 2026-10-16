@@ -82,11 +82,9 @@ func (l *Loop) openPR(ctx context.Context) (string, error) {
 		branch = l.Branch
 	}
 	l.Branch = branch
-	ghRemoteHead := ""
+	var ghPR domain.PR
 	if source == domain.SourceGitHub {
-		if existing, ok := l.eng.Store.PRByWorkspace(l.ID); ok {
-			ghRemoteHead = existing.Branch
-		}
+		ghPR, _ = l.eng.Store.PRByWorkspace(l.ID)
 	}
 	notes := []string{"Loop policy bar passed — ready for review."}
 	if loop.VerifyState == verifyStatePassed {
@@ -119,14 +117,14 @@ func (l *Loop) openPR(ctx context.Context) (string, error) {
 			l.emitFeed("MA", "Maestro", "GitHub PR not opened ("+html.EscapeString(reason)+") — opening a Local PR instead.")
 		}
 	} else if source == domain.SourceGitHub {
-		head := ghRemoteHead
+		head := ghPR.Branch
 		if head == "" {
 			head = branch
 		}
 		// Regular push only — divergence must not force-push. A reviewer's
 		// suggestion commit on the PR would be dropped, and unlike the
 		// titlebar there is no human clicking Force push.
-		if err := pushGitHubHead(ctx, l.Worktree, proj.RepoPath, head, false); err != nil {
+		if err := pushGitHubHead(ctx, l.Worktree, proj.RepoPath, ghPR, head, false); err != nil {
 			l.emitFeed("MA", "Maestro", "Could not push the rework to GitHub: "+html.EscapeString(strings.TrimSpace(err.Error())))
 		}
 		// Keep PR.Branch as the frozen GitHub remote head.

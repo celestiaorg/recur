@@ -463,9 +463,9 @@ test.describe('new loop + settings', () => {
     await openSettings(page)
     await openSection(page, 'Appearance')
 
-    // App theme cards — six chrome themes; Charcoal starts selected.
+    // App theme cards: seven chrome themes; Charcoal starts selected.
     const appCards = page.locator('#v-settings .thgrid').first().locator('.thcard')
-    await expect(appCards).toHaveCount(6)
+    await expect(appCards).toHaveCount(7)
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/)
 
     // Picking Nord sets data-theme, marks the card active, and persists to storage.
@@ -480,9 +480,19 @@ test.describe('new loop + settings', () => {
     await expect(appCards.filter({ hasText: 'Paper' })).toHaveClass(/on/)
     expect(await page.evaluate(() => localStorage.getItem('recur.theme'))).toBe('paper')
 
+    await appCards.filter({ hasText: 'Catppuccin Latte' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'catppuccin-latte')
+
     // Back to Charcoal removes the attribute again.
     await appCards.filter({ hasText: 'Charcoal' }).click()
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/)
+  })
+
+  test('legacy catppuccin theme key migrates to Catppuccin Mocha', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('recur.theme', 'catppuccin'))
+    await gotoApp(page)
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'catppuccin-mocha')
+    expect(await page.evaluate(() => localStorage.getItem('recur.theme'))).toBe('catppuccin-mocha')
   })
 
   test('match system appearance uses the chosen light and dark themes', async ({ page }) => {
@@ -495,7 +505,7 @@ test.describe('new loop + settings', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper')
 
     const grids = page.locator('#v-settings .thgrid')
-    await expect(grids.nth(0).locator('.thcard')).toHaveCount(1)
+    await expect(grids.nth(0).locator('.thcard')).toHaveCount(2)
     await expect(grids.nth(1).locator('.thcard')).toHaveCount(5)
     await grids.nth(1).locator('.thcard', { hasText: 'Nord' }).click()
     await page.emulateMedia({ colorScheme: 'dark' })

@@ -161,6 +161,7 @@ describe('editorThemeIdForAppChrome', () => {
       ['github-dark-default', 'GitHub Dark Default', 'dark'],
       ['cool-glow', 'Cool Glow', 'dark'],
       ['catppuccin-mocha', 'Catppuccin Mocha', 'dark'],
+      ['catppuccin-latte', 'Catppuccin Latte', 'light'],
       ['nord', 'Nord', 'dark'],
     ] as const) {
       registerThemeMeta(
@@ -172,7 +173,8 @@ describe('editorThemeIdForAppChrome', () => {
     expect(editorThemeIdForAppChrome('paper')).toBe('paper')
     expect(editorThemeIdForAppChrome('slate')).toBe('github-dark-default')
     expect(editorThemeIdForAppChrome('coolglow')).toBe('cool-glow')
-    expect(editorThemeIdForAppChrome('catppuccin')).toBe('catppuccin-mocha')
+    expect(editorThemeIdForAppChrome('catppuccin-mocha')).toBe('catppuccin-mocha')
+    expect(editorThemeIdForAppChrome('catppuccin-latte')).toBe('catppuccin-latte')
     expect(editorThemeIdForAppChrome('nord')).toBe('nord')
     expect(editorThemeIdForAppChrome('unknown')).toBe('recur')
     _resetTmRegistryForTests()

@@ -28,8 +28,9 @@ func TestApplyFlagsWiresNestedPaths(t *testing.T) {
 		t.Errorf("ApplyFlags reasoning = %v, want effort=high summary=auto", r)
 	}
 	tx, _ := dst["text"].(map[string]any)
-	if tx["verbosity"] != "low" {
-		t.Errorf("ApplyFlags text = %v, want verbosity=low", tx)
+	format, _ := tx["format"].(map[string]any)
+	if tx["verbosity"] != "low" || format["type"] != "text" {
+		t.Errorf("ApplyFlags text = %v, want verbosity=low format.type=text", tx)
 	}
 	if dst["temperature"] != 0.2 {
 		t.Errorf("ApplyFlags temperature = %v, want 0.2", dst["temperature"])

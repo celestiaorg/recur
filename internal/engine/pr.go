@@ -112,7 +112,7 @@ func (l *Loop) openPR(ctx context.Context) (string, error) {
 		if ok {
 			source = domain.SourceGitHub
 			prNum = ghNum
-			prID = fmt.Sprintf("gh-%d", ghNum)
+			prID = githubImportedPRID(l.ProjectID, ghNum)
 		} else {
 			l.emitFeed("MA", "Maestro", "GitHub PR not opened ("+html.EscapeString(reason)+") — opening a Local PR instead.")
 		}

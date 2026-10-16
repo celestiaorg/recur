@@ -26,6 +26,7 @@ type Page =
   | { path: '/concepts/workspaces'; render: 'static' }
   | { path: '/getting-started/first-workspace'; render: 'static' }
   | { path: '/getting-started/install'; render: 'static' }
+  | { path: '/getting-started/workflows'; render: 'static' }
   | { path: '/'; render: 'static' }
   | { path: '/reference/agents'; render: 'static' }
   | { path: '/reference/integrations'; render: 'static' }

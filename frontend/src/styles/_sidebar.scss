@@ -916,31 +916,31 @@ body.dragging-projects .tloop-acts, body.dragging-groups .tloop-acts {
   background: var(--amber);
 }
 
-.tloop .br {
+.tloop .br, .iss-ctx .br {
   width: 14px;
   height: 14px;
   color: var(--faint);
   flex: none;
 }
 
-.tloop .br.pr-open {
+.tloop .br.pr-open, .iss-ctx .br.pr-open {
   color: var(--emerald);
 }
 
-.tloop .br.pr-draft {
+.tloop .br.pr-draft, .iss-ctx .br.pr-draft {
   color: var(--cyan);
 }
 
 .tloop.merged .br,
-.tloop .br.pr-merged {
+.tloop .br.pr-merged, .iss-ctx .br.pr-merged {
   color: var(--indigo);
 }
 
-.tloop .br.pr-closed {
+.tloop .br.pr-closed, .iss-ctx .br.pr-closed {
   color: var(--coral);
 }
 
-.tloop .br.pr-queued {
+.tloop .br.pr-queued, .iss-ctx .br.pr-queued {
   color: var(--warn);
 }
 

@@ -538,8 +538,9 @@ func (s *WorkspacesService) SetWorkspaceBaseBranch(workspaceID, baseBranch strin
 }
 
 // SetWorkspaceIssue links a workspace to a tracker issue (replacing any link)
-// and assigns the issue to the user when nobody owns it yet. The claim runs
-// before returning so the caller can refresh the issue list afterwards.
+// and assigns the issue to the user when nobody owns it yet. An issue belongs
+// to one workspace, so the link moves off any other workspace that had it. The
+// claim runs before returning so the caller can refresh the issue list afterwards.
 func (s *WorkspacesService) SetWorkspaceIssue(workspaceID string, issue domain.IssueRef) (domain.Workspace, error) {
 	if issue.Source == "" || issue.ID == "" {
 		return domain.Workspace{}, fmt.Errorf("issue source and id are required")
@@ -548,7 +549,21 @@ func (s *WorkspacesService) SetWorkspaceIssue(workspaceID string, issue domain.I
 	if !ok {
 		return domain.Workspace{}, fmt.Errorf("workspace %q not found", workspaceID)
 	}
+	for _, w := range s.st().Workspaces() {
+		if w.ID != workspaceID && w.Issue != nil && w.Issue.Source == issue.Source && w.Issue.ID == issue.ID {
+			s.st().UpdateWorkspace(w.ID, func(w *domain.Workspace) { w.Issue = nil })
+		}
+	}
 	claimIssue(issue, s.st().Settings())
+	return ws, nil
+}
+
+// ClearWorkspaceIssue removes a workspace's tracker issue link.
+func (s *WorkspacesService) ClearWorkspaceIssue(workspaceID string) (domain.Workspace, error) {
+	ws, ok := s.st().UpdateWorkspace(workspaceID, func(w *domain.Workspace) { w.Issue = nil })
+	if !ok {
+		return domain.Workspace{}, fmt.Errorf("workspace %q not found", workspaceID)
+	}
 	return ws, nil
 }
 

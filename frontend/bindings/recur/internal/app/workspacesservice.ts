@@ -48,13 +48,22 @@ export function CancelWorkspaceMessage(workspaceID: string, code: string): $Canc
 }
 
 /**
+ * ClearWorkspaceIssue removes a workspace's tracker issue link.
+ */
+export function ClearWorkspaceIssue(workspaceID: string): $CancellablePromise<domain$0.Workspace> {
+    return $Call.ByID(4206598506, workspaceID).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
  * CloseWorkspaceChat closes a coding-agent chat tab. History stays in the session
  * store (reopen via ReopenWorkspaceChat / recents). Closing the last tab resets
  * to a fresh empty chat. Returns remaining tabs.
  */
 export function CloseWorkspaceChat(workspaceID: string, code: string): $CancellablePromise<domain$0.WorkspaceChatTab[]> {
     return $Call.ByID(2025652766, workspaceID, code).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -72,7 +81,7 @@ export function CloseWorkspaceChat(workspaceID: string, code: string): $Cancella
  */
 export function CreateWorkspace(projectID: string, name: string, baseBranch: string, mode: string, prompt: string, autonomy: string, simplify: boolean | null): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(1421786062, projectID, name, baseBranch, mode, prompt, autonomy, simplify).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -81,7 +90,7 @@ export function CreateWorkspace(projectID: string, name: string, baseBranch: str
  */
 export function CreateWorkspaceChat(workspaceID: string): $CancellablePromise<domain$0.WorkspaceChatTab> {
     return $Call.ByID(1131323024, workspaceID).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -95,7 +104,7 @@ export function CreateWorkspaceChat(workspaceID: string): $CancellablePromise<do
  */
 export function CreateWorkspaceWith(projectID: string, name: string, baseBranch: string, mode: string, prompt: string, autonomy: string, loopID: string, policyID: string, simplify: boolean | null, attachments: domain$0.ChatAttachment[]): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(4232812426, projectID, name, baseBranch, mode, prompt, autonomy, loopID, policyID, simplify, attachments).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -106,7 +115,7 @@ export function CreateWorkspaceWith(projectID: string, name: string, baseBranch:
  */
 export function DeleteClosedWorkspaceChat(workspaceID: string, code: string): $CancellablePromise<domain$0.WorkspaceChatTab[]> {
     return $Call.ByID(3685879929, workspaceID, code).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -156,7 +165,7 @@ export function FetchWorkingCopyUpstream(id: string): $CancellablePromise<domain
  */
 export function ForkWorkspaceChat(workspaceID: string, code: string, messageID: string): $CancellablePromise<domain$0.WorkspaceChatTab> {
     return $Call.ByID(182131948, workspaceID, code, messageID).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -166,13 +175,13 @@ export function ForkWorkspaceChat(workspaceID: string, code: string, messageID: 
  */
 export function ForkWorkspaceChatToWorkspace(workspaceID: string, code: string, messageID: string): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(2880542422, workspaceID, code, messageID).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
 export function GetWorkspace(id: string): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(3911800828, id).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -204,7 +213,7 @@ export function LastAssistantText(workspaceID: string): $CancellablePromise<stri
  */
 export function ListClosedWorkspaceChats(workspaceID: string): $CancellablePromise<domain$0.WorkspaceChatTab[]> {
     return $Call.ByID(3565237565, workspaceID).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -222,7 +231,7 @@ export function ListOpenInTargets(): $CancellablePromise<domain$0.OpenInTarget[]
  */
 export function ListWorkspaceChats(workspaceID: string): $CancellablePromise<domain$0.WorkspaceChatTab[]> {
     return $Call.ByID(3504527821, workspaceID).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -259,7 +268,7 @@ export function MarkWorkspaceChatSeen(workspaceID: string, code: string): $Cance
  */
 export function MergeWorkspace(workspaceID: string, method: string): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(1946915052, workspaceID, method).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -271,7 +280,7 @@ export function MergeWorkspace(workspaceID: string, method: string): $Cancellabl
  */
 export function OpenMainWorkspace(projectID: string): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(2694410985, projectID).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -335,7 +344,7 @@ export function PullWorkspacePR(workspaceID: string): $CancellablePromise<domain
  */
 export function PushWorkingCopy(workspaceID: string): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(3116150333, workspaceID).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -378,7 +387,7 @@ export function RememberWorkspaceChatSimplify(workspaceID: string, code: string,
  */
 export function RemoveWorkspace(id: string): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(680516334, id).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -388,7 +397,7 @@ export function RemoveWorkspace(id: string): $CancellablePromise<domain$0.Worksp
  */
 export function ReopenWorkspaceChat(workspaceID: string, code: string): $CancellablePromise<domain$0.WorkspaceChatTab[]> {
     return $Call.ByID(4218135611, workspaceID, code).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -474,7 +483,7 @@ export function SetChatUIOccluded(occluded: boolean): $CancellablePromise<void> 
  */
 export function SetWorkspaceBaseBranch(workspaceID: string, baseBranch: string): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(3242020125, workspaceID, baseBranch).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -488,12 +497,13 @@ export function SetWorkspaceChatFocus(workspaceID: string, code: string): $Cance
 
 /**
  * SetWorkspaceIssue links a workspace to a tracker issue (replacing any link)
- * and assigns the issue to the user when nobody owns it yet. The claim runs
- * before returning so the caller can refresh the issue list afterwards.
+ * and assigns the issue to the user when nobody owns it yet. An issue belongs
+ * to one workspace, so the link moves off any other workspace that had it. The
+ * claim runs before returning so the caller can refresh the issue list afterwards.
  */
 export function SetWorkspaceIssue(workspaceID: string, issue: domain$0.IssueRef): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(1075882675, workspaceID, issue).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -503,7 +513,7 @@ export function SetWorkspaceIssue(workspaceID: string, issue: domain$0.IssueRef)
  */
 export function SetWorkspaceLoopPolicy(workspaceID: string, loopID: string, policyID: string): $CancellablePromise<domain$0.Workspace> {
     return $Call.ByID(933907400, workspaceID, loopID, policyID).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
 }
 
@@ -667,15 +677,15 @@ export function WorkspaceSessions(workspaceID: string, ownerCode: string, agentC
 
 // Private type creation functions
 const $$createType0 = domain$0.AttentionCounts.createFrom;
-const $$createType1 = domain$0.WorkspaceChatTab.createFrom;
-const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = domain$0.Workspace.createFrom;
+const $$createType1 = domain$0.Workspace.createFrom;
+const $$createType2 = domain$0.WorkspaceChatTab.createFrom;
+const $$createType3 = $Create.Array($$createType2);
 const $$createType4 = domain$0.WorkspaceLandState.createFrom;
 const $$createType5 = domain$0.FeedItem.createFrom;
 const $$createType6 = $Create.Array($$createType5);
 const $$createType7 = domain$0.OpenInTarget.createFrom;
 const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = $Create.Array($$createType3);
+const $$createType9 = $Create.Array($$createType1);
 const $$createType10 = domain$0.OpenPathResult.createFrom;
 const $$createType11 = domain$0.UpdateWorkspaceResult.createFrom;
 const $$createType12 = domain$0.ChatItem.createFrom;

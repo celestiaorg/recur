@@ -115,6 +115,21 @@ describe('tokenizeLineRange early-stop', () => {
     expect(cache.tokensAt(4)).toEqual([0, 4])
   })
 
+  it('re-tokenizes every replaced line when the first one re-converges', () => {
+    const cache = new TmStackCache()
+    let texts = ['aa', 'bb', 'cc', 'dd', 'ee']
+    const run = () =>
+      tokenizeLineRange({ lineText: (n) => texts[n - 1], cache, tokenize, fromLine: 1, toLine: 5, stopWhenStable: true })
+    run()
+    // Full-document replace with the same line count: line 1 is unchanged, so
+    // its end stack matches, but lines 2..5 hold new text.
+    texts = ['aa', 'bx', 'cc', 'dd', 'eeee']
+    cache.splice(1, 5, 5)
+    run()
+    expect(cache.tokensAt(5)).toEqual([0, 4])
+    expect(cache.filled).toBe(5)
+  })
+
   it('shifts later checkpoints when a line is inserted', () => {
     const cache = new TmStackCache()
     for (let n = 1; n <= 4; n++) cache.remember(n, stack(n), [0, n])

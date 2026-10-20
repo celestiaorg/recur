@@ -89,6 +89,11 @@ export class TmStackCache {
       // RangeError (max call stack) on a large file.
       this.after = spliceHoles(this.after, i, del, ins)
       this.tokens = spliceHoles(this.tokens, i, del, ins)
+    } else {
+      // Replaced lines keep their stale stacks but not their tokens, so
+      // `markStable` cannot carry an early-stop on the first replaced line
+      // over the rest of them (a full-document live refresh replaces all).
+      for (let n = i; n < i + ins; n++) this.tokens[n] = undefined
     }
     this.filledThrough = Math.min(this.filledThrough, i - 1)
   }

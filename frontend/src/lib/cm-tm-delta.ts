@@ -12,7 +12,7 @@ export type LineReplace = {
   newLines: string[]
 }
 
-/** Bounding line-replace covering every changed range, or null if none. */
+/** Narrowed line-replace covering the lines whose text differs, or null if none. */
 export function lineReplaceFromChanges(
   oldDoc: Text,
   newDoc: Text,
@@ -30,10 +30,30 @@ export function lineReplaceFromChanges(
   })
   if (fromA === Infinity) return null
 
-  const oldFromLine = oldDoc.lineAt(Math.min(fromA, oldDoc.length)).number
-  const oldToLine = oldDoc.lineAt(Math.min(Math.max(toA, fromA), oldDoc.length)).number
-  const newFromLine = newDoc.lineAt(Math.min(fromB, newDoc.length)).number
-  const newToLine = newDoc.lineAt(Math.min(Math.max(toB, fromB), newDoc.length)).number
+  let oldFromLine = oldDoc.lineAt(Math.min(fromA, oldDoc.length)).number
+  let oldToLine = oldDoc.lineAt(Math.min(Math.max(toA, fromA), oldDoc.length)).number
+  let newFromLine = newDoc.lineAt(Math.min(fromB, newDoc.length)).number
+  let newToLine = newDoc.lineAt(Math.min(Math.max(toB, fromB), newDoc.length)).number
+
+  // A live refresh replaces the whole document; narrow it to the lines whose
+  // text actually differs so the engine keeps tokens for the rest.
+  while (
+    oldFromLine <= oldToLine &&
+    newFromLine <= newToLine &&
+    oldDoc.line(oldFromLine).text === newDoc.line(newFromLine).text
+  ) {
+    oldFromLine++
+    newFromLine++
+  }
+  while (
+    oldToLine >= oldFromLine &&
+    newToLine >= newFromLine &&
+    oldDoc.line(oldToLine).text === newDoc.line(newToLine).text
+  ) {
+    oldToLine--
+    newToLine--
+  }
+  if (oldToLine < oldFromLine && newToLine < newFromLine) return null
 
   const newLines: string[] = []
   for (let n = newFromLine; n <= newToLine; n++) newLines.push(newDoc.line(n).text)

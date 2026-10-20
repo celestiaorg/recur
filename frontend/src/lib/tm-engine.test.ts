@@ -45,9 +45,9 @@ describe('TmEngine', () => {
       oldLineCount: 1,
       newLines: ['  const y = x + 99'],
     })
-    // The pre-edit token array for line 37 is deliberately kept so a
-    // re-tokenize can `equals` the old end state and stop early. It must not
-    // count as fresh — treating it as usable repainted the viewport from
+    // The pre-edit stack for line 37 is deliberately kept so a re-tokenize
+    // can `equals` the old end state and stop early. Line 37 must not count
+    // as fresh — treating it as usable repainted the viewport from
     // pre-edit tokens and left the correction to the idle sweep.
     expect(engine.hasFreshTokens('d1', 1, 80)).toBe(false)
 

@@ -33,6 +33,22 @@ describe('lineReplaceFromChanges', () => {
     })
   })
 
+  it('narrows a whole-document replace to the lines that differ', () => {
+    const before = EditorState.create({ doc: 'a\nb\nc\nd\ne' })
+    const tr = before.update({ changes: { from: 0, to: before.doc.length, insert: 'a\nB\nc\nx\nd\ne' } })
+    expect(lineReplaceFromChanges(before.doc, tr.state.doc, tr.changes)).toEqual({
+      fromLine: 2,
+      oldLineCount: 2,
+      newLines: ['B', 'c', 'x'],
+    })
+  })
+
+  it('returns null for a whole-document replace with identical text', () => {
+    const before = EditorState.create({ doc: 'a\nb' })
+    const tr = before.update({ changes: { from: 0, to: before.doc.length, insert: 'a\nb' } })
+    expect(lineReplaceFromChanges(before.doc, tr.state.doc, tr.changes)).toBeNull()
+  })
+
   it('returns null when nothing changed', () => {
     const state = EditorState.create({ doc: 'hello' })
     const tr = state.update({})

@@ -170,11 +170,6 @@ type Engine struct {
 	// loop they belong to is what AutoResume re-dispatches.
 	interruptedChats []interruptedChat
 
-	// updatingBase tracks in-flight lightweight "Update with base" Coder turns
-	// (D54 conflict fallback) keyed by prID, so a double-click cannot start two
-	// concurrent conflict-resolution turns. Clean path (git-only) never touches this.
-	updatingBase sync.Map
-
 	// prConvBusy / prConvLast throttle GitHub conversation snapshots so GetPR
 	// (polled for live checks) cannot spawn a parallel gh snapshot every tick.
 	prConvBusy sync.Map // prID → struct{}

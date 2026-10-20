@@ -211,13 +211,13 @@ export function UpdatePRDetails(prID: string, title: string, body: string): $Can
 
 /**
  * UpdateWithBase integrates the latest base tip into the PR worktree (D54).
- * Clean path is a direct git merge/rebase; conflicts fall back to a single Coder
- * turn. method is "merge" or "rebase";
+ * Clean path is a direct git merge/rebase; conflicts leave markers and return
+ * Status=conflict so the UI invokes /update. method is "merge" or "rebase";
  * empty uses project/settings UpdateBaseMethod prefs.
  */
-export function UpdateWithBase(prID: string, method: string): $CancellablePromise<domain$0.PR> {
+export function UpdateWithBase(prID: string, method: string): $CancellablePromise<domain$0.UpdateWorkspaceResult> {
     return $Call.ByID(1944879580, prID, method).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType12($result);
     });
 }
 
@@ -234,3 +234,4 @@ const $$createType8 = $Create.Array($$createType7);
 const $$createType9 = $Create.Array($$createType2);
 const $$createType10 = domain$0.PRParticipant.createFrom;
 const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = domain$0.UpdateWorkspaceResult.createFrom;

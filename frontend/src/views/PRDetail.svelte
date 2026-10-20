@@ -673,11 +673,6 @@
     document.querySelector<HTMLElement>('#prd-agent button.prd-chat-toggle')?.focus()
   }
 
-  function openPRWorkspace() {
-    const id = pr?.workspaceId
-    if (id) openWorkspace(id)
-  }
-
   // Refresh the full PR from Go when the detail opens or its id changes. Engine-
   // created PRs carry their real diff/commits/thread only on the full record, so we
   // pull GetPR and merge it into the prs store (the list rows carry the summary).
@@ -1572,13 +1567,7 @@
       {#if isUpdating}
         <div class="rework">
           <div class="rw-ico"><Icon name="refresh-cw" class="spin" /></div>
-          {#if updatingBase === 'coder'}
-            <div class="rw-tx"><div class="rw-t">Coder resolving conflicts</div><div class="rw-d">Update with base hit conflicts · a single Coder turn is resolving them (no review/verify)</div></div>
-            <div class="rw-ag"><span class="ava" style="background:var(--cyan)">CO</span></div>
-            <button class="rbtn" onclick={openPRWorkspace}>Watch on Activity →</button>
-          {:else}
-            <div class="rw-tx"><div class="rw-t">Updating with latest {updateBaseName}</div><div class="rw-d">Integrating <code>{updateBaseName}</code> into this branch…</div></div>
-          {/if}
+          <div class="rw-tx"><div class="rw-t">Updating with latest {updateBaseName}</div><div class="rw-d">Integrating <code>{updateBaseName}</code> into this branch…</div></div>
         </div>
       {/if}
 

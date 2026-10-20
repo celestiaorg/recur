@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { prs, selectedPRId, projects, settings, workspaces, workspacesRunning, prDetailTab, pushToast, openPRReview, closePRReview, prReviewDraft, type PRReviewKind } from '../lib/stores'
+  import { prs, selectedPRId, projects, settings, workspaces, workspacesRunning, prDetailTab, prAgentDockOpen, pushToast, openPRReview, closePRReview, prReviewDraft, type PRReviewKind } from '../lib/stores'
   import { PRsService, WorkspacesService, call, onWorkspaceFs, onAppFocused } from '../lib/api'
   import { wsHasRun } from '../lib/modes'
   import { openExternalUrl } from '../lib/open-external'
@@ -251,15 +251,13 @@
     awaitingUpdate = true
     updateMenuOpen = false
     prDetailTab.set('conv')
-    const ok = await call(PRsService.UpdateWithBase($selectedPRId, updateMethod), 'Update with base failed')
+    const res = await call(PRsService.UpdateWithBase($selectedPRId, updateMethod), 'Update with base failed')
     awaitingUpdate = false
-    if (ok === null) return
-    if (ok.updatingBase === 'coder') {
-      pushToast('info', 'Coder resolving merge conflicts')
-    } else if (!ok.behindBase) {
+    if (res?.status === 'conflict' && res.workspace?.id) {
+      prAgentDockOpen.set(true)
+      requestPromptAction(res.workspace.id, 'update')
+    } else if (res?.status === 'updated') {
       pushToast('success', `Updated with latest ${updateBaseName}`)
-    } else {
-      pushToast('success', `Updating with latest ${updateBaseName}`)
     }
   }
 

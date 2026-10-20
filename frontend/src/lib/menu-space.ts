@@ -119,10 +119,12 @@ export function portalMenuMods(
   if (root?.closest('.nt-autonomy')) cls.push('sel-menu-compact')
   if (root?.closest('.font-sel') || root?.classList.contains('font-sel')) cls.push('sel-menu-font')
   if (root?.closest('.model-pickers')) cls.push('sel-menu-model')
+  if (root?.closest('.issue-pick')) cls.push('sel-menu-issue')
   if (opts.hinted) cls.push('sel-menu-hinted')
   let minWidth = 0
   if (cls.includes('sel-menu-hinted')) minWidth = HINT_MENU_MIN_WIDTH
   else if (cls.includes('sel-menu-model')) minWidth = 240
+  else if (cls.includes('sel-menu-issue')) minWidth = 360
   else if (cls.includes('sel-menu-compact')) minWidth = 140
   else if (cls.includes('sel-menu-sm') || cls.includes('sel-menu-ghost') || cls.includes('sel-menu-wide')) {
     minWidth = 220

@@ -109,9 +109,17 @@ export async function setProjectHidden(projectId: string, hidden: boolean) {
 export async function linkWorkspaceIssue(workspaceId: string, issue: { source: string; id: string; key?: string }) {
   if (!workspaceId || !issue?.source || !issue.id) return
   const ref = { key: '', ...issue }
-  workspaces.update((arr) => arr.map((w) => (w.id === workspaceId ? { ...w, issue: ref } : w)))
+  // One workspace per issue: the backend moves the link, so mirror that here.
+  const same = (w: Workspace) => w.issue?.source === ref.source && w.issue.id === ref.id
+  workspaces.update((arr) => arr.map((w) => (w.id === workspaceId ? { ...w, issue: ref } : same(w) ? { ...w, issue: undefined } : w)))
   const ws = await WorkspacesService.SetWorkspaceIssue(workspaceId, ref).catch(() => null)
   if (ws) issuesStale.update((n) => n + 1)
+}
+
+/** Remove a workspace's tracker issue link. */
+export async function unlinkWorkspaceIssue(workspaceId: string) {
+  const ws = await call(WorkspacesService.ClearWorkspaceIssue(workspaceId), 'Could not unlink issue')
+  if (ws) workspaces.update((arr) => arr.map((w) => (w.id === workspaceId ? { ...w, issue: undefined } : w)))
 }
 
 /** Append a Linear project name / team key to a project's LinearProjects. */

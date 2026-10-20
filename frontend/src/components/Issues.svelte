@@ -10,12 +10,16 @@
   import { SettingsService, ShellService } from '../../bindings/recur/internal/app'
   import type { AssignedIssue } from '../../bindings/recur/internal/app/models'
   import { formatRelativeAge } from '../lib/format'
-  import { openExternalUrl } from '../lib/open-external'
+  import { openIssueUrl } from '../lib/issue-link'
   import Icon from './Icon.svelte'
   import PRPeopleStack from './PRPeopleStack.svelte'
   import Select from './Select.svelte'
   import { PR_LIST_SORTS } from '../lib/pr-list-filter'
-  import { issuesStale, projects, openNewTask, openWorkspace, workspaces } from '../lib/stores'
+  import { portalToBody } from '../lib/menu-space'
+  import { linkWorkspaceIssue, unlinkWorkspaceIssue } from '../lib/api'
+  import { issuesStale, projects, prs, openNewTask, openWorkspace, workspaces } from '../lib/stores'
+  import { prForWorkspace, prIconName, prLifecycle } from '../lib/colors'
+  import type { Workspace } from '../../bindings/recur/internal/domain/models'
 
   const GROUPS = [
     { id: 'progress', label: 'In progress', color: 'var(--amber)' },
@@ -122,15 +126,57 @@
     return ms(b.updatedAt) - ms(a.updatedAt)
   }
 
-  async function openIssue(i: AssignedIssue) {
-    if (i.source === 'linear' && (await SettingsService.OpenLinearInApp(i.url).catch(() => false))) return
-    await openExternalUrl(i.url)
-  }
+  const openIssue = (i: AssignedIssue) => openIssueUrl(i.source, i.url)
 
   function startWorkspace(i: AssignedIssue) {
     const text = `/${i.source} ${i.ref}`
     const linearKey = i.source === 'linear' ? i.linearProject || i.linearTeam : undefined
     openNewTask(i.projectId, { text, linearKey, linkedProjectId: i.projectId })
+  }
+
+  const linkedWorkspace = (i: AssignedIssue) => $workspaces.find((w) => w.issue?.source === i.source && w.issue.id === i.id)
+  const wsName = (w: Workspace) => w.short || w.branch || w.id
+
+  let menu = $state<null | { x: number; y: number; issue: AssignedIssue; linked?: Workspace; choices: Workspace[] }>(null)
+
+  function openMenu(e: MouseEvent, i: AssignedIssue) {
+    e.preventDefault()
+    const choices = $workspaces.filter((w) => !w.archived && !w.isMain && (!i.projectId || w.projectId === i.projectId))
+    const pad = 8
+    const h = Math.min(360, (choices.length + 3) * 44)
+    menu = {
+      x: Math.max(pad, Math.min(e.clientX, window.innerWidth - 300 - pad)),
+      y: Math.max(pad, Math.min(e.clientY, window.innerHeight - h - pad)),
+      issue: i,
+      linked: linkedWorkspace(i),
+      choices,
+    }
+  }
+
+  $effect(() => {
+    if (!menu) return
+    const onDown = (ev: MouseEvent) => {
+      if (!(ev.target as HTMLElement | null)?.closest?.('.obs-ctx')) menu = null
+    }
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') menu = null
+    }
+    window.addEventListener('mousedown', onDown, true)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      window.removeEventListener('mousedown', onDown, true)
+      window.removeEventListener('keydown', onKey, true)
+    }
+  })
+
+  function linkTo(w: Workspace, i: AssignedIssue) {
+    menu = null
+    void linkWorkspaceIssue(w.id, { source: i.source, id: i.id, key: i.ref })
+  }
+
+  function unlink(w: Workspace) {
+    menu = null
+    void unlinkWorkspaceIssue(w.id)
   }
 
   function hex(c: string): string {
@@ -175,7 +221,7 @@
 {/snippet}
 
 {#snippet action(i: AssignedIssue)}
-  {@const ws = $workspaces.find((w) => w.issue?.source === i.source && w.issue.id === i.id)}
+  {@const ws = linkedWorkspace(i)}
   {#if ws}
     <button
       type="button"
@@ -235,7 +281,7 @@
           <Icon name={SORTS.find((s) => s.id === sort)?.icon ?? 'clock-arrow-down'} />
         {/snippet}
       </Select>
-      <button type="button" class="tbtn" onclick={load} disabled={loading} title="Refresh issues" aria-label="Refresh issues"><Icon name="refresh-cw" /></button>
+      <button type="button" class="tbtn" onclick={() => issuesStale.update((n) => n + 1)} disabled={loading} title="Refresh issues" aria-label="Refresh issues"><Icon name="refresh-cw" /></button>
       <div class="seg" role="group" aria-label="Filter issues by assignee">
         {#each OWNER_SEGS as s (s.id)}
           <button type="button" class:on={owner === s.id} onclick={() => (owner = s.id)}>{s.label}</button>
@@ -261,7 +307,7 @@
             <div class="iss-col-body">
               {#each g.items as i (i.url)}
                 {@const tint = i.source === 'github' ? 'var(--emerald)' : hex(i.stateColor)}
-                <div class="iss-card" role="button" tabindex="0" onclick={() => void openIssue(i)} onkeydown={(e) => e.key === 'Enter' && void openIssue(i)}>
+                <div class="iss-card" role="button" tabindex="0" onclick={() => void openIssue(i)} oncontextmenu={(e) => openMenu(e, i)} onkeydown={(e) => e.key === 'Enter' && void openIssue(i)}>
                   <div class="pr-main">
                     <div class="pr-t">
                       {@render ref(i)}
@@ -305,7 +351,7 @@
               <div class="briefing-h"><span class="bdot" style="background:{g.color}"></span><span class="briefing-h-lbl">{g.label}</span><span class="briefing-h-n">{g.items.length}</span></div>
               {#each g.items as i (i.url)}
                 {@const tint = i.source === 'github' ? 'var(--emerald)' : hex(i.stateColor)}
-                <div class="prrow iss" role="button" tabindex="0" onclick={() => void openIssue(i)} onkeydown={(e) => e.key === 'Enter' && void openIssue(i)}>
+                <div class="prrow iss" role="button" tabindex="0" onclick={() => void openIssue(i)} oncontextmenu={(e) => openMenu(e, i)} onkeydown={(e) => e.key === 'Enter' && void openIssue(i)}>
                   <div class="pr-ico" style="background:color-mix(in srgb, {tint} 12%, transparent);color:{tint}">
                     <Icon name="circle-dot" />
                   </div>
@@ -331,6 +377,40 @@
     {/if}
   </div>
 </div>
+
+{#if menu}
+  {@const m = menu}
+  <div class="obs-ctx iss-ctx" style="left:{m.x}px;top:{m.y}px" role="menu" {@attach portalToBody}>
+    {#if m.linked}
+      <button type="button" role="menuitem" onclick={() => { menu = null; openWorkspace(m.linked!.id) }}>
+        <span class="obs-ctx-label">View workspace</span>
+      </button>
+      <button type="button" role="menuitem" onclick={() => unlink(m.linked!)}>
+        <span class="obs-ctx-label">Unlink from {wsName(m.linked)}</span>
+      </button>
+      <div class="obs-ctx-sep"></div>
+    {/if}
+    <div class="iss-ctx-h">{m.linked ? 'Move to workspace' : 'Link to workspace'}</div>
+    {#each m.choices as w (w.id)}
+      {@const wsPR = prForWorkspace($prs, w.id)}
+      {@const life = prLifecycle(wsPR) ?? (w.state === 'merged' ? 'merged' : null)}
+      <button type="button" role="menuitem" disabled={w.id === m.linked?.id} onclick={() => linkTo(w, m.issue)}>
+        {#if life}
+          <Icon class="br pr-{life}" name={wsPR ? prIconName(wsPR) : 'git-merge'} />
+        {:else}
+          <Icon class="br" name="git-branch" />
+        {/if}
+        <span class="obs-ctx-label iss-ctx-ws">
+          <span>{wsName(w)}</span>
+          {#if w.branch && w.branch !== wsName(w)}<span class="iss-ctx-branch">{w.branch}</span>{/if}
+        </span>
+        {#if w.id === m.linked?.id}<Icon name="check" />{/if}
+      </button>
+    {:else}
+      <button type="button" role="menuitem" disabled><span class="obs-ctx-label">No workspaces in this project</span></button>
+    {/each}
+  </div>
+{/if}
 
 <style>
   .iss {
@@ -422,4 +502,11 @@
   }
   .iss-card-foot { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .iss-card-foot .iss-start { height: 24px; padding: 0 8px; }
+  .iss-ctx { max-height: 360px; overflow-y: auto; }
+  .iss-ctx button { gap: 10px; align-items: flex-start; line-height: 16px; }
+  .iss-ctx button :global(.br) { margin-top: 1px; }
+  .iss-ctx-h { padding: 6px 10px 4px; font-size: 10.5px; color: var(--faint); }
+  .iss-ctx-ws { display: flex; flex-direction: column; gap: 2px; }
+  .iss-ctx-ws > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .iss-ctx-branch { font-family: var(--mono); font-size: 10.5px; line-height: 14px; color: var(--faint); }
 </style>

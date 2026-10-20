@@ -52,6 +52,7 @@
   import DecodeText from './components/DecodeText.svelte'
   import Icon from './components/Icon.svelte'
   import WorkspaceBaseSelect from './components/WorkspaceBaseSelect.svelte'
+  import WorkspaceIssueButton from './components/WorkspaceIssueButton.svelte'
 
   import Sidebar from './components/Sidebar.svelte'
   import CommandPalette from './components/CommandPalette.svelte'
@@ -1201,6 +1202,9 @@
                   </div>
                 {/if}
               </div>
+      {/if}
+      {#if $view === 'detail' && selectedLoop && !selectedLoop.isMain}
+        <WorkspaceIssueButton workspace={selectedLoop} />
       {/if}
       {#if showViewWorkspacePR}
         <button

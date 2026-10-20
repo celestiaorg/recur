@@ -415,6 +415,15 @@ func TestGHEnqueueArgs(t *testing.T) {
 	}
 }
 
+func TestIsGitHubAutoMergeDisallowed(t *testing.T) {
+	if !isGitHubAutoMergeDisallowed(fmt.Errorf("gh pr merge https://github.com/celestiaorg/recur/pull/37: GraphQL: Auto merge is not allowed for this repository (enablePullRequestAutoMerge)")) {
+		t.Error("auto-merge disabled error not detected")
+	}
+	if isGitHubAutoMergeDisallowed(fmt.Errorf("GraphQL: Required status check \"test\" is expected")) {
+		t.Error("unrelated error detected as auto-merge disabled")
+	}
+}
+
 func TestGitHubMergeFailureNote(t *testing.T) {
 	cases := []struct {
 		err     string

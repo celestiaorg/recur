@@ -15,6 +15,7 @@ vi.mock('../../bindings/recur/internal/app/lspservice', () => ({
 }))
 
 vi.mock('./stores', () => ({ pushToast: vi.fn() }))
+vi.mock('./promptActions', () => ({ requestPromptAction: vi.fn() }))
 
 import {
   RecurWorkspace,

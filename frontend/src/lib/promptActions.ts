@@ -17,6 +17,7 @@ import { skillQueryAt } from './agentchat'
 import { parsePromptChipValues, type PromptChipArg } from './composerDom'
 import { get, writable } from 'svelte/store'
 import { settings } from './stores'
+import { lspProblems, lspProblemsForWorkspace, lspProblemArgs } from './lsp-problems'
 import type { ChatSurface } from './chat-surface'
 
 export type { PromptActionInfo, PromptCompleteHit }
@@ -391,7 +392,8 @@ export async function completePromptArgs(
   const completeCtx = { args: args ?? '', arg: opts?.arg, params: opts?.params }
   if (info.completeInterpreter === 'typescript') {
     const code = await BundleService.CompiledCompleteModule(info.id)
-    return runCompleteModule(code, completeCtx, timeoutMs, opts?.signal)
+    const diagnostics = lspProblemsForWorkspace(get(lspProblems), opts?.workspaceId ?? '').map(lspProblemArgs)
+    return runCompleteModule(code, { ...completeCtx, diagnostics }, timeoutMs, opts?.signal)
   }
   const res = await raceAbort(
     BundleService.RunPromptComplete(info.id, {

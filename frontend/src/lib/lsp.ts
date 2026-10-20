@@ -20,8 +20,9 @@ import { CloseLSP, EnsureLSP, WriteLSP } from '../../bindings/recur/internal/app
 import type { OutlineSymbol, SymbolRef } from '../../bindings/recur/internal/domain/models'
 import { lspLanguageIdForPath } from './lsp-lang'
 import { sanitizeLspHTML } from './sanitize-lsp'
-import { setLspProblemsForUri, clearLspProblems, peekLspProblems, type LspProblem } from './lsp-problems'
+import { setLspProblemsForUri, clearLspProblems, peekLspProblems, lspProblemArgs, type LspProblem } from './lsp-problems'
 import { pushToast } from './stores'
+import { requestPromptAction } from './promptActions'
 
 async function soft<T>(p: Promise<T>): Promise<T | null> {
   try {
@@ -466,6 +467,10 @@ function paintMergedDiagnostics(uri: string) {
       to: posToOffset(doc, { line: p.endLine - 1, character: p.endCharacter }),
       severity: p.severity === 'hint' ? 'hint' : p.severity,
       message: p.message,
+      actions: [
+        { name: 'Fix', apply: () => void applyLspQuickFix(p) },
+        ...(p.workspaceId ? [{ name: 'Fix with AI', apply: () => fixProblemWithAI(p) }] : []),
+      ],
     }))
   view.dispatch(setDiagnostics(view.state, diags))
 }
@@ -1422,6 +1427,45 @@ export function clientForProblem(problem: LspProblem): LSPClient | null {
     if (s) return s.client
   }
   return clientForUri(problem.uri)
+}
+
+/** Apply the server's first editable quick fix for problem; toasts the outcome. */
+export async function applyLspQuickFix(problem: LspProblem, fallback?: LSPClient | null): Promise<boolean> {
+  const client = clientForProblem(problem) ?? fallback
+  if (!client) {
+    pushToast('info', 'No language server for this file')
+    return false
+  }
+  const view = client.workspace.getFile(problem.uri)?.getView()
+  const doc = view?.state.doc
+  const actions = await lspCodeActions(client, problem)
+  if (view && view.state.doc !== doc) {
+    pushToast('info', 'Document changed; retry the fix')
+    return false
+  }
+  let withEdit = actions.find((a) => a.edit)
+  if (!withEdit) {
+    const pending = actions.find((a) => a.data != null)
+    if (pending) withEdit = await resolveCodeAction(client, pending)
+  }
+  if (!withEdit?.edit) {
+    pushToast('info', actions.length ? 'No applyable quick fix' : 'No quick fixes')
+    return false
+  }
+  if (view && view.state.doc !== doc) {
+    pushToast('info', 'Document changed; retry the fix')
+    return false
+  }
+  if (!await applyWorkspaceEdit(client, withEdit.edit)) {
+    pushToast('info', 'Could not apply fix to every file')
+    return false
+  }
+  pushToast('success', withEdit.title)
+  return true
+}
+
+export function fixProblemWithAI(problem: LspProblem) {
+  requestPromptAction(problem.workspaceId ?? '', 'fix-problem', lspProblemArgs(problem))
 }
 
 function saveIncludesText(client: LSPClient): boolean {

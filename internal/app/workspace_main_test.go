@@ -730,6 +730,7 @@ func TestMainWorkingCopyRemoteRefusedOnLoop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateWorkspace: %v", err)
 	}
+	waitWorkspaceReady(t, eng, ws.ID)
 	if _, err := svc.Workspaces.UpdateWorkingCopyFromRemote(ws.ID, ""); err == nil {
 		t.Error("UpdateWorkingCopyFromRemote on a non-main workspace should error")
 	}

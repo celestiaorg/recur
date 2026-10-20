@@ -85,6 +85,8 @@ export type PromptCompleteContext = {
   arg?: string
   /** All named [[prompt.arg]] values so far. */
   params?: Record<string, string>
+  /** Workspace LSP diagnostics as `path:line:col severity (source): message`. TypeScript complete only. */
+  diagnostics?: string[]
 }
 
 export type PromptCompleteHit = {

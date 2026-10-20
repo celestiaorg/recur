@@ -43,3 +43,5 @@ Commit the resulting `generated/` changes.
 - Upstream `file-icons.woff2` is missing a few codepoints still referenced by CSS
   (notably `dotenv` / U+EBB8). `dotenv-fix.css` remaps that icon to Octicons key
   so `.env` files are not blank in the tree.
+- The DB also uses a few Atom core `icon-*` Octicon classes (`icon-file-text` for
+  `.txt`, …) that file-icons/atom does not style. `atom-octicons.css` defines them.

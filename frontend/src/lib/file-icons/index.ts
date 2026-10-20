@@ -8,6 +8,7 @@ import './generated/fonts.css'
 import './generated/colors.css'
 import './generated/icons.css'
 import './dotenv-fix.css'
+import './atom-octicons.css'
 
 import { get } from 'svelte/store'
 import { isLightTheme, theme } from '../stores'

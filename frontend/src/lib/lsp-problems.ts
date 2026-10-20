@@ -108,3 +108,9 @@ export function clearLspProblemsForSessionUris(uris: string[]) {
 export function peekLspProblems(): LspProblem[] {
   return get(lspProblems)
 }
+
+/** `/fix-problem` args: location, severity, source, and message. */
+export function lspProblemArgs(p: LspProblem): string {
+  const from = [p.source, p.code != null && p.code !== '' ? String(p.code) : ''].filter(Boolean).join(' ')
+  return `${p.path}:${p.line}:${p.character + 1} ${p.severity}${from ? ` (${from})` : ''}: ${p.message.replace(/\s+/g, ' ').trim()}`
+}

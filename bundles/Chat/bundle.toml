@@ -16,6 +16,20 @@ interpreter = "typescript"
 script = "src/fix-findings.ts"
 
 [[prompt]]
+id = "recur.chat.fix-problem"
+name = "Fix problem"
+description = "Fix a language server diagnostic"
+slash = "fix-problem"
+mode = "agent"
+takesArgs = true
+argPlaceholder = "path:line and the diagnostic"
+tab_group = "ops"
+fresh_session = true
+interpreter = "typescript"
+script = "src/fix-problem.ts"
+complete = "src/complete-problem.ts"
+
+[[prompt]]
 id = "recur.chat.commit"
 name = "Commit"
 description = "Stage and commit all worktree changes"

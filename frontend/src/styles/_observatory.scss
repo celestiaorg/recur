@@ -3291,7 +3291,7 @@
 
 .obs-problem-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 4px;
   align-items: start;
   border-bottom: 1px solid var(--line-soft);

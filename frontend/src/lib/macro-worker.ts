@@ -209,6 +209,7 @@ export type PromptCompleteContext = {
   args: string
   arg?: string
   params?: Record<string, string>
+  diagnostics?: string[]
 }
 
 export type PromptCompleteHit = {

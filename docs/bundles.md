@@ -529,7 +529,7 @@ composer is generic. Optional `icon = "icon.svg"` (pack-relative, static SVG)
 replaces the default hash glyph on those complete rows and on ⌘K hits for
 that slash. Hardcoded `fill="#…"` is rewritten to `currentColor`. Interpreter is inferred from the extension (`.ts` / `.js` →
 frontend Worker; anything else → shebang). TypeScript complete must not touch
-secrets (Worker sandbox). Shebang complete gets the same env as the invoke
+secrets (Worker sandbox); it also gets `ctx.diagnostics`, the workspace's LSP problems. Shebang complete gets the same env as the invoke
 script (`RECUR_PROMPT_ARGS`, named `RECUR_PROMPT_ARG_*`, `RECUR_PROMPT_PARAMS`,
 `RECUR_PROMPT_COMPLETE_ARG` for the focused slot, and that bundle’s
 `[[setting]]` values as `RECUR_SETTING_<NAME>` / `RECUR_BUNDLE_SETTINGS`) and runs in the workspace worktree. Timeout 4s; at most
@@ -633,7 +633,8 @@ Shipped flagships live in `bundles/Chat`: `/fix-findings` (`mode=agent`,
 `tab_group = "ops"`, `fresh_session`; invoke from the review chat and it
 jumps to the ops tab),
 `/commit` + `/commit-push` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; message from the
-diff), `/fix-checks` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; GitHub failing checks), `/open-pr` + `/open-draft-pr`
+diff), `/fix-checks` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; GitHub failing checks), `/fix-problem`
+(`mode=agent`, `tab_group = "ops"`, `fresh_session`; one LSP diagnostic, sent by the Problems panel's AI button; `complete` lists the workspace's current diagnostics from `ctx.diagnostics`), `/open-pr` + `/open-draft-pr`
 (`mode=agent`, `tab_group = "ops"`, `fresh_session`, shebang: same `open-pr.sh`; `/open-draft-pr` sets
 `RECUR_PR_DRAFT=1` so the agent calls `mcp__recur__open_pr` with `draft: true`.
 Embeds git status/diff so the agent writes the GitHub title/body from the

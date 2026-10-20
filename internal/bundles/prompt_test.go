@@ -595,6 +595,7 @@ func TestShippedChatTabGroup(t *testing.T) {
 		"open-pr":         "ops",
 		"open-draft-pr":   "ops",
 		"fix-checks":      "ops",
+		"fix-problem":     "ops",
 		"update":          "ops",
 		"review":          "review",
 		"simplify-review": "simplify-review",

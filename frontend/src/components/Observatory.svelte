@@ -96,7 +96,7 @@
   } from '../lib/syntax-mode'
   import {
     attachLsp, setLspDisplayFile, setLspFileIO, clearLspForWorkspace, lspOutline, lspReferences,
-    lspCodeActions, resolveCodeAction, applyWorkspaceEdit, clientForProblem,
+    applyLspQuickFix, fixProblemWithAI,
     notifyDidSave, lspHasDocumentSymbol, type LspAttach, uriToRelPath,
   } from '../lib/lsp'
   import {
@@ -4794,43 +4794,11 @@
 
   async function applyProblemFix(problem: LspProblem) {
     if (problem.workspaceId && problem.workspaceId !== workspaceId) return
-    const client = clientForProblem(problem) ?? lspAttach?.client
-    if (!client) {
-      pushToast('info', 'No language server for this file')
-      return
-    }
-    const key = `${problem.uri}:${problem.line}:${problem.message}`
-    problemFixBusy = key
+    problemFixBusy = `${problem.uri}:${problem.line}:${problem.message}`
     try {
-      const view = client.workspace.getFile(problem.uri)?.getView()
-      const doc = view?.state.doc
-      const actions = await lspCodeActions(client, problem)
-      if (view && view.state.doc !== doc) {
-        pushToast('info', 'Document changed; retry the fix')
-        return
-      }
-      let withEdit = actions.find((a) => a.edit)
-      if (!withEdit) {
-        const pending = actions.find((a) => a.data != null)
-        if (pending) withEdit = await resolveCodeAction(client, pending)
-      }
-      if (!withEdit?.edit) {
-        pushToast('info', actions.length ? 'No applyable quick fix' : 'No quick fixes')
-        return
-      }
-      if (view && view.state.doc !== doc) {
-        pushToast('info', 'Document changed; retry the fix')
-        return
-      }
-      const ok = await applyWorkspaceEdit(client, withEdit.edit)
-      if (!ok) {
-        pushToast('info', 'Could not apply fix to every file')
-        return
-      }
-      if (selectedPath && editor) {
+      if (await applyLspQuickFix(problem, lspAttach?.client) && selectedPath && editor) {
         draft = editor.getDoc()
       }
-      pushToast('success', withEdit.title)
     } finally {
       problemFixBusy = ''
     }
@@ -8013,6 +7981,13 @@
               onclick={() => applyProblemFix(p)}
               title="Apply quick fix"
             >{fixing ? '…' : 'Fix'}</button>
+            <button
+              type="button"
+              class="obs-problem-fix"
+              onclick={() => fixProblemWithAI(p)}
+              title="Ask the agent to fix this"
+              aria-label="Fix with AI"
+            ><Icon name="sparkle" size={12} /></button>
           </div>
         {:else}
           {#if problemCounts.total === 0 && lspAttach}

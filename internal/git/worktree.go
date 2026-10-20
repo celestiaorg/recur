@@ -1043,8 +1043,7 @@ func (m *Manager) mergeRebase(ctx context.Context, branch, baseBranch string) (M
 
 // UpdateWorktreeWithBase brings a loop worktree up to date with baseBranch using
 // either a merge commit or a rebase (D54). On conflict the git op is aborted so
-// the worktree is left clean, and an error is returned for the caller to fall
-// back to a lightweight Coder turn.
+// the worktree is left clean, and an error is returned.
 //
 // method is "merge" (default) or "rebase". Unlike Merge (which lands a branch
 // onto the base checkout), this operates inside the worktree and leaves the

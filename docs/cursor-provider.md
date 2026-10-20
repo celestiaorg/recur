@@ -179,7 +179,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   diff. The runner folds frames into exactly one step and one result per call id.
 - **A failed tool call gets NO terminal frame at all**, despite the SDK's own
   type saying otherwise. `SDKToolUseMessage.status` is documented as
-  `"running" | "completed" | "error"`, but on SDK 1.0.31 (1.0.37 maps tool
+  `"running" | "completed" | "error"`, but on SDK 1.0.31 (1.0.38 maps tool
   status the same way) a read of a missing file emits `running` and then
   nothing. Cursor sends `running`
   and then simply stops: no result, no error status, and the run still finishes
@@ -220,7 +220,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   The SDK's `enableDeltas` flag is ON so Recur's `onDelta` sees
   `InteractionUpdate` as documented: `turn-ended` (context meter) and
   `summary` / `summary-started` / `summary-completed` (compact cards).
-  Stock cursor-sdk 1.0.37's `RunInteractionAccumulator.apply` still skips
+  Stock cursor-sdk 1.0.38's `RunInteractionAccumulator.apply` still skips
   those summary members of the union; Recur's install minify patch
   restores the documented callback. `SDKMessage` `type: "task"` is
   task/subagent status (`SDKTaskMessage`), not compaction — even though

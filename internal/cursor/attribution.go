@@ -297,6 +297,16 @@ var sdkAttributionAnchors = []struct {
 	neu string
 }{
 	{
+		// cjs 748.js (@cursor/sdk 1.0.38): same const-chain shape as 1.0.37
+		old: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new JE(l):new NP(l,a);",
+		neu: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis." + attributionProviderMarker + "||{get:()=>({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new JE(l):new NP(l,a));",
+	},
+	{
+		// esm 748.js (@cursor/sdk 1.0.38): same shape as cjs
+		old: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new GE(l):new DP(l,a);",
+		neu: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis." + attributionProviderMarker + "||{get:()=>({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new GE(l):new DP(l,a));",
+	},
+	{
 		// cjs 464.js (@cursor/sdk 1.0.37): options object `l` sits in a const
 		// chain, so inject via a comma expression on the executor assignment.
 		old: "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new OS(l):new dx(l,a);",
@@ -438,7 +448,7 @@ func sdkTreeHasSummaryDelta(bridgeRoot, rel string) bool {
 // sdkSummaryDeltaAnchors restore the documented onDelta contract.
 // InteractionUpdate (the type passed to agent.send's onDelta) includes
 // SummaryUpdate, SummaryStartedUpdate, and SummaryCompletedUpdate.
-// cursor-sdk 1.0.28–1.0.37's RunInteractionAccumulator.apply still skips
+// cursor-sdk 1.0.28–1.0.38's RunInteractionAccumulator.apply still skips
 // those three types, so compact cards and session_context never see them.
 var sdkSummaryDeltaAnchors = []struct {
 	old string

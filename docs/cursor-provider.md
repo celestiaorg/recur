@@ -220,7 +220,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   The SDK's `enableDeltas` flag is ON so Recur's `onDelta` sees
   `InteractionUpdate` as documented: `turn-ended` (context meter) and
   `summary` / `summary-started` / `summary-completed` (compact cards).
-  Stock cursor-sdk 1.0.37's `RunInteractionAccumulator.apply` still skips
+  Stock cursor-sdk 1.0.38's `RunInteractionAccumulator.apply` still skips
   those summary members of the union; Recur's install minify patch
   restores the documented callback. `SDKMessage` `type: "task"` is
   task/subagent status (`SDKTaskMessage`), not compaction — even though

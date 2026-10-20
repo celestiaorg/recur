@@ -179,7 +179,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   diff. The runner folds frames into exactly one step and one result per call id.
 - **A failed tool call gets NO terminal frame at all**, despite the SDK's own
   type saying otherwise. `SDKToolUseMessage.status` is documented as
-  `"running" | "completed" | "error"`, but on SDK 1.0.31 (1.0.37 maps tool
+  `"running" | "completed" | "error"`, but on SDK 1.0.31 (1.0.38 maps tool
   status the same way) a read of a missing file emits `running` and then
   nothing. Cursor sends `running`
   and then simply stops: no result, no error status, and the run still finishes

@@ -478,9 +478,20 @@ func doMergeGitHubPR(ctx context.Context, repoPath string, pr domain.PR, method 
 
 // enqueueGitHubPR adds the PR to its base branch's merge queue, or enables
 // auto-merge until required checks pass. The queue owns the merge method.
+// `gh pr merge` enqueues via enablePullRequestAutoMerge, which repos with
+// auto-merge disabled refuse, so those fall back to enqueuePullRequest.
 func enqueueGitHubPR(ctx context.Context, repoPath string, pr domain.PR) (bool, error) {
 	_, err := runGH(ctx, repoPath, ghEnqueueArgs(pr)...)
+	if id := strings.TrimSpace(pr.NodeID); err != nil && id != "" && isGitHubAutoMergeDisallowed(err) {
+		err = runGitHubGraphQLMutation(ctx, repoPath, "enqueuePullRequest",
+			`mutation($id:ID!){enqueuePullRequest(input:{pullRequestId:$id}){mergeQueueEntry{id}}}`,
+			map[string]any{"id": id})
+	}
 	return err == nil, err
+}
+
+func isGitHubAutoMergeDisallowed(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "auto merge is not allowed")
 }
 
 func ghEnqueueArgs(pr domain.PR) []string {
@@ -527,26 +538,29 @@ func isGitHubMergeabilityPending(err error) bool {
 }
 
 func mergeGitHubGraphQL(ctx context.Context, repoPath, nodeID string, method domain.MergeMethod) error {
+	return runGitHubGraphQLMutation(ctx, repoPath, "mergePullRequest",
+		`mutation($id:ID!,$method:PullRequestMergeMethod!){mergePullRequest(input:{pullRequestId:$id,mergeMethod:$method}){pullRequest{merged}}}`,
+		map[string]any{
+			"id":     nodeID,
+			"method": githubGraphQLMergeMethod(method),
+		})
+}
+
+func runGitHubGraphQLMutation(ctx context.Context, repoPath, name, query string, variables map[string]any) error {
 	payload := struct {
 		Query     string         `json:"query"`
 		Variables map[string]any `json:"variables"`
-	}{
-		Query: `mutation($id:ID!,$method:PullRequestMergeMethod!){mergePullRequest(input:{pullRequestId:$id,mergeMethod:$method}){pullRequest{merged}}}`,
-		Variables: map[string]any{
-			"id":     nodeID,
-			"method": githubGraphQLMergeMethod(method),
-		},
-	}
+	}{Query: query, Variables: variables}
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 	out, err := runGHWithStdin(ctx, repoPath, string(raw), "api", "graphql", "--input", "-")
 	if err != nil {
-		return fmt.Errorf("gh api graphql mergePullRequest: %w", err)
+		return fmt.Errorf("gh api graphql %s: %w", name, err)
 	}
 	if strings.Contains(out, `"errors"`) {
-		return fmt.Errorf("gh api graphql mergePullRequest: %s", strings.TrimSpace(out))
+		return fmt.Errorf("gh api graphql %s: %s", name, strings.TrimSpace(out))
 	}
 	return nil
 }

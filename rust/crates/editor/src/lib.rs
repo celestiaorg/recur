@@ -13,6 +13,7 @@ pub mod commands;
 pub mod diff;
 pub mod display;
 pub mod element;
+pub mod emacs;
 pub mod fold;
 pub mod gutters;
 pub mod highlight;

@@ -1171,15 +1171,30 @@ impl EditorView {
         }
         drop(l);
 
-        // Cursors (drawSelection cursor layer) and the drop cursor.
-        if focused && (self.blink_on || self.metrics.cursor_blink_ms == 0) {
+        // Cursors (drawSelection cursor layer, or the modal block cursor)
+        // and the drop cursor.
+        let blink_visible = self.blink_on || self.metrics.cursor_blink_ms == 0;
+        if let Some(fat) = self.fat_cursor_mode() {
+            if !focused || blink_visible {
+                self.plan_fat_cursors(&mut plan, fat, focused, text_left, doc_top, &tb, window);
+            }
+        } else if focused && blink_visible {
             let caret = h(theme.caret);
             let heads: Vec<(usize, i32)> = self
                 .state
                 .selection
                 .ranges
                 .iter()
-                .map(|r| (r.head(), if r.assoc() == 0 { 1 } else { r.assoc() }))
+                .map(|r| {
+                    let assoc = if r.is_empty() {
+                        r.assoc()
+                    } else if r.head() > r.anchor() {
+                        -1
+                    } else {
+                        1
+                    };
+                    (r.head(), if assoc == 0 { 1 } else { assoc })
+                })
                 .collect();
             for (head, assoc) in heads {
                 if let Some(r) = self.caret_rect(head, assoc, text_left, doc_top, &tb, window) {
@@ -1261,6 +1276,112 @@ impl EditorView {
         }
         plan.crosshair = self.prefs.rectangular_select && window.modifiers().alt;
         plan
+    }
+
+    /// The modal keymap's block cursor, when it replaces the caret: `Some(true)`
+    /// for the half-height pending form.
+    pub(crate) fn fat_cursor_mode(&self) -> Option<bool> {
+        self.emacs.as_ref().map(crate::emacs::Emacs::pending)
+    }
+
+    /// `BlockCursorPlugin`: a `.cm-fat-cursor` per range, the character
+    /// under it drawn on top in its own style.
+    #[allow(clippy::too_many_arguments)]
+    fn plan_fat_cursors(
+        &self,
+        plan: &mut Plan,
+        partial: bool,
+        focused: bool,
+        text_left: f32,
+        doc_top: f32,
+        tb: &TextBox,
+        window: &Window,
+    ) {
+        let fat = h(gpui_kit::rgb(0xff9696));
+        let doc = &self.state.doc;
+        let h_coeff = if partial { 0.5 } else { 1.0 };
+        for r in self.state.selection.ranges.clone() {
+            let head = r.head();
+            let mut letter: Option<String> = (head < doc.len()).then(|| {
+                doc.slice(
+                    head,
+                    doc.clamp_to_char(head + 1).max(head + 1).min(doc.len()),
+                )
+            });
+            if letter.as_deref().is_some_and(|l| l.is_empty()) {
+                letter = None;
+            }
+            let (top, _) = self.with_layout_view(window, |lv| lv.row_box(head, 1));
+            let mut left = text_left + self.with_layout_view(window, |lv| lv.x_at(head, 1));
+            let letter = match letter.as_deref() {
+                None | Some("\n") | Some("\r") => "\u{a0}".to_string(),
+                Some("\t") => {
+                    if head < doc.len() {
+                        let next =
+                            text_left + self.with_layout_view(window, |lv| lv.x_at(head + 1, -1));
+                        left = next - (next - left) / self.state.tab_size().max(1) as f32;
+                    }
+                    "\u{a0}".to_string()
+                }
+                Some(l) => l.to_string(),
+            };
+            let line = doc.line_at(head);
+            let (color, bold, italic) = self
+                .layout
+                .borrow()
+                .measured(line.number)
+                .map(|m| {
+                    let runs = line_styles(self, line.number, m, line.from);
+                    let d = m.display.disp_of(head - line.from, 1);
+                    let mut pos = 0;
+                    for run in &runs {
+                        if d >= pos && d < pos + run.len {
+                            return (run.color, run.bold, run.italic);
+                        }
+                        pos += run.len;
+                    }
+                    (h(self.theme.foreground), false, false)
+                })
+                .unwrap_or((h(self.theme.foreground), false, false));
+            let hh = tb.height();
+            let y = doc_top + top + tb.top() + hh * (1.0 - h_coeff);
+            let box_h = hh * h_coeff;
+            let style = StyleRun {
+                len: letter.len(),
+                color,
+                bold,
+                italic,
+                underline: false,
+                strike: false,
+            };
+            let shaped = window.text_system().shape_line(
+                SharedString::from(letter.clone()),
+                px(self.metrics.font_size),
+                &[run_of(&self.font, &style)],
+                None,
+            );
+            let w = f32::from(shaped.width);
+            if focused {
+                plan.overlay
+                    .push(Op::Quad(fill(rect(left, y, w, box_h), fat)));
+            } else {
+                plan.overlay.push(Op::Quad(quad(
+                    rect(left - 1.0, y - 1.0, w + 2.0, box_h + 2.0),
+                    Corners::default(),
+                    gpui_kit::transparent_black(),
+                    Edges::all(px(1.0)),
+                    fat,
+                    BorderStyle::Solid,
+                )));
+            }
+            if focused && !partial {
+                plan.overlay.push(Op::Text {
+                    line: Box::new(shaped),
+                    origin: point(px(left), px(y)),
+                    line_height: px(box_h),
+                });
+            }
+        }
     }
 
     /// Caret rectangle for a position (`coordsAtPos` + caret width/nudge).

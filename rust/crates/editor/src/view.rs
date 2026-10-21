@@ -278,6 +278,7 @@ pub struct EditorView {
     pub(crate) tab_focus: i64,
     pub(crate) drop_cursor: Option<usize>,
     pub(crate) announcement: Option<String>,
+    pub(crate) emacs: Option<crate::emacs::Emacs>,
     pub(crate) gutter_hover: Option<(crate::element::GutterKind, usize)>,
     pub(crate) collapsed_hover: Option<usize>,
     pub(crate) chip_hover: bool,
@@ -401,6 +402,7 @@ impl EditorView {
             tab_focus: -1,
             drop_cursor: None,
             announcement: None,
+            emacs: None,
             gutter_hover: None,
             collapsed_hover: None,
             chip_hover: false,
@@ -432,6 +434,7 @@ impl EditorView {
         if let Some(vs) = options.view_state.as_ref() {
             view.apply_view_state(vs, window, cx);
         }
+        view.sync_keymap_mode();
         view
     }
 
@@ -665,6 +668,11 @@ impl EditorView {
             self.format_since = Some(since.compose(&tr.changes));
         }
         self.map_drag(&tr);
+        if tr.doc_changed()
+            && let Some(e) = self.emacs.as_mut()
+        {
+            e.doc_changed(&tr.changes.desc());
+        }
         for e in &tr.effects {
             match e {
                 Effect::ScrollIntoView(t) => self.pending_scroll = Some(*t),
@@ -1059,6 +1067,7 @@ impl EditorView {
             window,
             cx,
         );
+        self.sync_keymap_mode();
         if !self.prefs.diff_gutter && self.state.gutters.diff_base.is_some() {
             self.set_diff_base(None, window, cx);
         }
@@ -1606,6 +1615,19 @@ impl EditorView {
     /// Current announcement for the accessibility live region.
     pub fn announcement(&self) -> Option<&str> {
         self.announcement.as_deref()
+    }
+
+    /// Install or drop the modal keymap for the `keymap` pref.
+    pub(crate) fn sync_keymap_mode(&mut self) {
+        use crate::prefs::EditorKeymap;
+        match self.prefs.keymap {
+            EditorKeymap::Emacs => {
+                if self.emacs.is_none() {
+                    self.emacs = Some(crate::emacs::Emacs::new());
+                }
+            }
+            EditorKeymap::Vim | EditorKeymap::Default => self.emacs = None,
+        }
     }
 
     /// Rebuild the keymap (LSP attached or detached).

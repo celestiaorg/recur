@@ -606,6 +606,9 @@ impl EditorView {
         if self.run_keymap(&key, "editor", window, cx) {
             return true;
         }
+        if self.emacs.is_some() && crate::emacs::key_down(self, &key, ev, window, cx) {
+            return true;
+        }
         self.clipboard_key(&key, window, cx)
     }
 
@@ -1147,6 +1150,9 @@ impl EditorView {
         let Some((x, y)) = self.content_xy(e.position) else {
             return;
         };
+        if let Some(em) = self.emacs.as_mut() {
+            em.mouse_down();
+        }
         self.focus(window, cx);
         cx.stop_propagation();
         if e.button != MouseButton::Left {
@@ -2366,7 +2372,7 @@ impl EditorView {
         cx.notify();
     }
 
-    /// The modal keymap (vim / emacs) sees keys first.
+    /// Vim's highest-precedence key handler.
     fn modal_key_down(
         &mut self,
         _key: &KeyEvent,

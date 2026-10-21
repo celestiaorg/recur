@@ -15,11 +15,15 @@ struct Harness<'a> {
 }
 
 fn mount<'a>(cx: &'a mut TestAppContext, path: &str, doc: &str, kind: EditorKind) -> Harness<'a> {
+    let mut options = EditorOptions::new(path, doc);
+    options.kind = kind;
+    mount_with(cx, options)
+}
+
+fn mount_with(cx: &mut TestAppContext, options: EditorOptions) -> Harness<'_> {
     cx.update(gpui_kit::init);
     let events = Rc::new(RefCell::new(Vec::new()));
     let sink = events.clone();
-    let mut options = EditorOptions::new(path, doc);
-    options.kind = kind;
     let (view, cx) = cx.add_window_view(move |window, cx| {
         let view = EditorView::new(options, window, cx);
         let sink = sink.clone();
@@ -202,4 +206,27 @@ fn wheel_scrolls(cx: &mut TestAppContext) {
     });
     h.settle();
     assert!(h.view.read_with(h.cx, |v, _| v.scroll_top()) > 200.0);
+}
+
+#[gpui::test]
+fn emacs_chains_and_words(cx: &mut TestAppContext) {
+    let mut options = EditorOptions::new("a.txt", "one two three");
+    options.prefs.keymap = recur_editor::prefs::EditorKeymap::Emacs;
+    let mut h = mount_with(cx, options);
+    h.cx.simulate_keystrokes("alt-f");
+    h.settle();
+    assert_eq!(h.sel(), (3, 3));
+    h.cx.simulate_keystrokes("ctrl-x h");
+    h.settle();
+    assert_eq!(h.sel(), (0, 13));
+    h.cx.simulate_keystrokes("ctrl-g");
+    h.settle();
+    assert_eq!(h.sel(), (13, 13));
+    h.cx.simulate_keystrokes("ctrl-a");
+    h.cx.simulate_keystrokes("alt-d");
+    h.settle();
+    assert_eq!(h.doc(), " two three");
+    h.cx.simulate_keystrokes("ctrl-y");
+    h.settle();
+    assert_eq!(h.doc(), "one two three");
 }

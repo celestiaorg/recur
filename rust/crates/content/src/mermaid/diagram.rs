@@ -49,6 +49,9 @@ pub struct Run {
     pub spacing: f32,
     #[serde(default)]
     pub decoration: String,
+    /// WebKit's advance for the run, in user units.
+    #[serde(default)]
+    pub advance: f32,
 }
 
 #[derive(Deserialize)]
@@ -59,6 +62,8 @@ struct Measured {
     y: f32,
     runs: Vec<Run>,
     raster: Vec<usize>,
+    /// The SVG with WebKit's resolved paint inlined.
+    svg: String,
 }
 
 pub struct Diagram {
@@ -72,7 +77,7 @@ pub struct Diagram {
     /// `width="100%"`: the SVG fills its box up to `natural_width`.
     pub fluid: bool,
     pub runs: Vec<Run>,
-    raster: RefCell<Option<((u32, u32), Arc<RenderImage>)>>,
+    raster: RefCell<Option<((u32, u32, u32, u32), Arc<RenderImage>)>>,
 }
 
 fn is_svg(h: &Handle, tag: &str) -> bool {
@@ -168,9 +173,11 @@ impl Diagram {
         let natural_width = max_width
             .or_else(|| px_len(&width_attr))
             .unwrap_or(m.width);
+        let painted = dom::parse_fragment_in_div(&sanitize_svg(&m.svg));
+        let painted_svg = find_svg(&painted.root).ok_or("Mermaid returned no SVG")?;
         let mut xml = String::new();
         let mut ix = 0;
-        to_xml(&svg, true, &mut ix, &m.raster, &mut xml);
+        to_xml(&painted_svg, true, &mut ix, &m.raster, &mut xml);
         let tree = crate::svg::parse(&xml)?;
         let vb = (m.x, m.y, m.width, m.height);
         let bb = tree.root().abs_stroke_bounding_box();
@@ -207,7 +214,7 @@ impl Diagram {
             self.natural_width.min(max_w)
         };
         let none = gpui_kit::Hsla::default();
-        self.element(w, self.height_at(w), &HashMap::new(), (none, none), window)
+        self.element(w, self.height_at(w), &HashMap::new(), (none, none), (0., 0.), window)
     }
 
     /// The text blocks find searches: all labels form one block (the SVG is the nearest
@@ -239,7 +246,8 @@ impl Diagram {
             if a >= b {
                 continue;
             }
-            let t = |x: &str| label_text(r, x, s).measure(None, window);
+            let tracking = run_tracking(r, s, window);
+            let t = |x: &str| label_text(r, x, s, tracking).measure(None, window);
             let (_, h, m) = t(&r.text);
             let x0 = t(&r.text[..a - start]).0;
             let x1 = t(&r.text[..b - start]).0;
@@ -250,48 +258,58 @@ impl Diagram {
         out
     }
 
-    fn rasterize(&self, w: u32, h: u32, s: f32, scale: f32) -> Option<Arc<RenderImage>> {
-        if let Some((sz, img)) = self.raster.borrow().as_ref()
-            && *sz == (w, h)
+    /// The geometry at display scale `s`, offset by the device-pixel fraction `frac` WebKit
+    /// paints at (it never snaps a transformed SVG to the pixel grid).
+    fn rasterize(&self, w: u32, h: u32, s: f32, scale: f32, frac: (f32, f32)) -> Option<Arc<RenderImage>> {
+        let key = (w, h, frac.0.to_bits(), frac.1.to_bits());
+        if let Some((k, img)) = self.raster.borrow().as_ref()
+            && *k == key
         {
             return Some(img.clone());
         }
         let k = s * scale;
         let (cx, cy, _, _) = self.content;
-        let ts = tiny_skia::Transform::from_row(k, 0., 0., k, -(cx - self.view_box.0) * k, -(cy - self.view_box.1) * k)
-            .pre_translate(0., 0.);
+        let ts = tiny_skia::Transform::from_row(
+            k,
+            0.,
+            0.,
+            k,
+            frac.0 - (cx - self.view_box.0) * k,
+            frac.1 - (cy - self.view_box.1) * k,
+        );
         let img = crate::svg::to_render_image(crate::svg::rasterize(&self.tree, ts, w, h)?, w, h)?;
-        *self.raster.borrow_mut() = Some(((w, h), img.clone()));
+        *self.raster.borrow_mut() = Some((key, img.clone()));
         Some(img)
     }
 
     /// The diagram at `w`×`h` CSS px, with find highlights (`(range, current)`) under labels.
+    /// `nudge` is the sub-pixel part of the element's offset that layout snapped away.
     pub fn element(
         self: &Rc<Self>,
         w: f32,
         h: f32,
         highlights: &HashMap<usize, Vec<(Range<usize>, bool)>>,
         colors: (gpui_kit::Hsla, gpui_kit::Hsla),
+        nudge: (f32, f32),
         window: &Window,
     ) -> AnyElement {
         let s = if self.view_box.2 > 0. { w / self.view_box.2 } else { 1. };
         let me = self.clone();
         let (cx, cy, cw, ch) = self.content;
-        let off = ((cx - self.view_box.0) * s, (cy - self.view_box.1) * s);
+        let off = ((cx - self.view_box.0) * s + nudge.0, (cy - self.view_box.1) * s + nudge.1);
         let ext = (cw * s, ch * s);
         let geometry = canvas(
             |_, _, _| {},
             move |b: Bounds<Pixels>, _, window, _| {
                 let scale = window.scale_factor();
-                let dw = (ext.0 * scale).round() as u32;
-                let dh = (ext.1 * scale).round() as u32;
-                if let Some(img) = me.rasterize(dw, dh, s, scale) {
-                    let o = point(b.origin.x + px(off.0), b.origin.y + px(off.1));
+                let ox = (f32::from(b.origin.x) + off.0) * scale;
+                let oy = (f32::from(b.origin.y) + off.1) * scale;
+                let frac = (ox - ox.floor(), oy - oy.floor());
+                let dw = (ext.0 * scale + frac.0).ceil() as u32;
+                let dh = (ext.1 * scale + frac.1).ceil() as u32;
+                if let Some(img) = me.rasterize(dw, dh, s, scale, frac) {
                     let r = Bounds {
-                        origin: point(
-                            px((f32::from(o.x) * scale).round() / scale),
-                            px((f32::from(o.y) * scale).round() / scale),
-                        ),
+                        origin: point(px(ox.floor() / scale), px(oy.floor() / scale)),
                         size: size(px(dw as f32 / scale), px(dh as f32 / scale)),
                     };
                     let _ = window.paint_image(r, r, Corners::default(), img, 0, false);
@@ -319,10 +337,10 @@ impl Diagram {
             }
         }
         for r in &self.runs {
-            let text = label_text(r, &r.text, s);
+            let text = label_text(r, &r.text, s, run_tracking(r, s, window));
             let (tw, _, m) = text.measure(None, window);
-            let left = (r.x - self.view_box.0) * s;
-            let top = (r.y - self.view_box.1) * s - m.baseline;
+            let left = (r.x - self.view_box.0) * s + nudge.0;
+            let top = (r.y - self.view_box.1) * s - m.baseline + nudge.1;
             // `pre`-like: spaces kept, never wrapped.
             let dp = 1. / window.scale_factor();
             let boxed = div().flex_none().w(px((tw / dp).ceil() * dp + dp)).child(text);
@@ -362,7 +380,19 @@ fn family(stack: &str) -> Family {
     }
 }
 
-fn label_text(r: &Run, text: &str, s: f32) -> recur_ui::Text {
+/// WebKit shapes SVG text at the device-scaled font size, whose tracking differs from the CSS
+/// size's, so the run's spacing absorbs the difference to land on WebKit's advance.
+fn run_tracking(r: &Run, s: f32, window: &Window) -> f32 {
+    let base = r.spacing * s;
+    let n = r.text.chars().count();
+    if r.advance <= 0. || n == 0 {
+        return base;
+    }
+    let (w, _, _) = label_text(r, &r.text, s, base).measure(None, window);
+    base + (r.advance * s - w) / n as f32
+}
+
+fn label_text(r: &Run, text: &str, s: f32, tracking: f32) -> recur_ui::Text {
     let fill = Color::parse(&r.fill).unwrap_or(recur_ui::hex(0x000000));
     let alpha = fill.a * r.fill_opacity * r.opacity;
     let mut t = recur_ui::text(text.to_string())
@@ -371,7 +401,7 @@ fn label_text(r: &Run, text: &str, s: f32) -> recur_ui::Text {
         .weight(r.weight)
         .leading_normal()
         .color(fill.with_alpha(alpha))
-        .tracking_px(r.spacing * s)
+        .tracking_px(tracking)
         .pre_wrap();
     if r.italic {
         t = t.italic();

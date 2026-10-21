@@ -34,6 +34,9 @@ pub const HOST_JS: &str = r#"
       if (n.style) n.style.overflow = 'visible';
     });
   }
+  // Paint WebKit resolved, inlined so the native rasterizer needs no selector support.
+  var PAINT = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray',
+    'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'opacity', 'display', 'visibility'];
   function collapse(s) { return s.replace(/[\n\r\t]/g, ' ').replace(/ +/g, ' '); }
   function measure(html) {
     var host = document.getElementById('m');
@@ -81,6 +84,7 @@ pub const HOST_JS: &str = r#"
         if (li === leaves.length - 1) trimmed = trimmed.replace(/ $/, '');
         if (trimmed.length !== n) { ok = false; break; }
         var p = el.getStartPositionOfChar(0);
+        var end = el.getEndPositionOfChar(n - 1);
         var op = 1;
         for (var e = el; e && e !== svg; e = e.parentElement) op *= parseFloat(getComputedStyle(e).opacity);
         mine.push({
@@ -89,12 +93,20 @@ pub const HOST_JS: &str = r#"
           italic: cs.fontStyle === 'italic' || cs.fontStyle === 'oblique', fill: cs.fill,
           fillOpacity: parseFloat(cs.fillOpacity), opacity: op,
           spacing: cs.letterSpacing === 'normal' ? 0 : parseFloat(cs.letterSpacing) || 0,
-          decoration: cs.textDecorationLine, text_index: ti
+          decoration: cs.textDecorationLine, advance: (end.x - p.x) * m.a, text_index: ti
         });
       }
       if (ok) runs = runs.concat(mine); else raster.push(ti);
     }
-    return { width: w, height: h, x: ox, y: oy, runs: runs, raster: raster, texts: texts.length };
+    var els = svg.querySelectorAll('*');
+    var styles = Array.prototype.map.call(els, function (el) {
+      var cs = getComputedStyle(el);
+      return PAINT.map(function (p) { return cs.getPropertyValue(p); });
+    });
+    for (var ei = 0; ei < els.length; ei++) {
+      for (var pi = 0; pi < PAINT.length; pi++) els[ei].style.setProperty(PAINT[pi], styles[ei][pi]);
+    }
+    return { width: w, height: h, x: ox, y: oy, runs: runs, raster: raster, texts: texts.length, svg: svg.outerHTML };
   }
   window.recur = async function (op) {
     await document.fonts.ready;
@@ -218,7 +230,7 @@ mod mac {
     /// Mermaid's text measurement depends on the device scale (glyph advances round to device
     /// pixels), so the page renders at the scale of the display the diagram goes to.
     fn set_scale(web: &WKWebView, op: &Value) {
-        let scale = op.get("scale").and_then(Value::as_f64).unwrap_or_else(main_screen_scale);
+        let scale = op.get("scale").and_then(Value::as_f64).unwrap_or(1.);
         let sel = objc2::sel!(_setOverrideDeviceScaleFactor:);
         // SAFETY: a WebKit SPI with a CGFloat argument, called only when the class has it.
         unsafe {
@@ -227,12 +239,6 @@ mod mac {
                 let _: () = objc2::msg_send![web, _setOverrideDeviceScaleFactor: scale];
             }
         }
-    }
-
-    fn main_screen_scale() -> f64 {
-        MainThreadMarker::new()
-            .and_then(objc2_app_kit::NSScreen::mainScreen)
-            .map_or(2., |s| s.backingScaleFactor())
     }
 
     fn invoke(web: &WKWebView, mtm: MainThreadMarker, op: &Value, done: impl Fn(Result<Value, EngineError>) + 'static) {

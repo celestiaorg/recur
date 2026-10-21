@@ -97,11 +97,11 @@ impl MermaidPreview {
         let theme = Theme::of(cx).clone();
         let src = content.to_string();
         if super::blocking(cx) {
-            let res = super::render_blocking(Origin::File, &src, &theme, Some(window.scale_factor()));
+            let res = super::render_blocking(Origin::File, &src, &theme, window.scale_factor());
             self.finish(res, cx);
             return;
         }
-        let scale = Some(window.scale_factor());
+        let scale = window.scale_factor();
         self.task = Some(cx.spawn(async move |this, cx| {
             let res = super::render(Origin::File, src, theme, scale).await;
             let _ = this.update(cx, |p, cx| p.finish(res, cx));
@@ -368,11 +368,14 @@ impl Render for MermaidPreview {
         let stage = self.diagram.clone().map(|d| {
             let (nw, nh) = (d.view_box.2, d.view_box.3);
             let colors = (t.amber.fade(0.4).into(), t.amber.into());
+            // WebKit paints the translated stage unsnapped.
+            let dev = window.scale_factor();
+            let nudge = (self.tx - (self.tx * dev).round() / dev, self.ty - (self.ty * dev).round() / dev);
             div()
                 .absolute()
                 .left(px(self.tx))
                 .top(px(self.ty))
-                .child(d.element(nw * self.scale, nh * self.scale, &self.highlights, colors, window))
+                .child(d.element(nw * self.scale, nh * self.scale, &self.highlights, colors, nudge, window))
         });
         let hidden = self.pending || !self.error.is_empty();
         let viewport = div()

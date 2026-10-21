@@ -73,12 +73,8 @@ fn next_id(origin: Origin) -> String {
     }
 }
 
-fn render_op(origin: Origin, source: &str, theme: &Theme, scale: Option<f32>) -> Value {
-    let mut op = json!({ "op": "render", "id": next_id(origin), "source": source, "config": config(theme) });
-    if let Some(s) = scale {
-        op["scale"] = json!(s);
-    }
-    op
+fn render_op(origin: Origin, source: &str, theme: &Theme, scale: f32) -> Value {
+    json!({ "op": "render", "id": next_id(origin), "source": source, "config": config(theme), "scale": scale })
 }
 
 fn error_of(v: &Value) -> Option<String> {
@@ -86,7 +82,7 @@ fn error_of(v: &Value) -> Option<String> {
 }
 
 /// Render `source` and build the diagram (async: resolves on the app's run loop).
-pub async fn render(origin: Origin, source: String, theme: Theme, scale: Option<f32>) -> Result<Rc<Diagram>, String> {
+pub async fn render(origin: Origin, source: String, theme: Theme, scale: f32) -> Result<Rc<Diagram>, String> {
     let out = engine::call(render_op(origin, &source, &theme, scale))
         .await
         .map_err(|_| "Mermaid render failed".to_string())?
@@ -104,7 +100,7 @@ pub async fn render(origin: Origin, source: String, theme: Theme, scale: Option<
 }
 
 /// [`render`], spinning the main run loop until done (headless renders and tests).
-pub fn render_blocking(origin: Origin, source: &str, theme: &Theme, scale: Option<f32>) -> Result<Rc<Diagram>, String> {
+pub fn render_blocking(origin: Origin, source: &str, theme: &Theme, scale: f32) -> Result<Rc<Diagram>, String> {
     let out = engine::call_blocking(render_op(origin, source, theme, scale)).map_err(|e| e.0)?;
     if let Some(e) = error_of(&out) {
         return Err(e);
@@ -139,7 +135,7 @@ pub enum Hydration {
 
 /// `hydrateMermaid`: each placeholder in order; empty sources are hidden; failures keep the
 /// source with the error border.
-pub fn hydrate(sources: Vec<String>, scale: Option<f32>, cx: &mut Context<MarkdownView>) -> Hydration {
+pub fn hydrate(sources: Vec<String>, scale: f32, cx: &mut Context<MarkdownView>) -> Hydration {
     let theme = Theme::of(cx).clone();
     if blocking(cx) {
         return Hydration::Done(

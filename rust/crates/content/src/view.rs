@@ -52,7 +52,7 @@ pub struct MarkdownView {
     pub(crate) mermaid: Vec<MermaidSlot>,
     mermaid_task: Option<Task<()>>,
     width: f32,
-    /// The window's device scale, from the last frame (Mermaid lays out per scale).
+    /// The window's device scale, from the last frame.
     scale: Option<f32>,
     hover_link: Option<(usize, usize)>,
     highlights: HashMap<usize, Vec<(std::ops::Range<usize>, bool)>>,
@@ -256,10 +256,11 @@ impl MarkdownView {
         let sources = mermaid_sources(&self.doc);
         self.mermaid = vec![MermaidSlot::Pending; sources.len()];
         self.mermaid_task = None;
-        if sources.is_empty() {
+        // Mermaid lays out per device scale, known from the first frame on.
+        let Some(scale) = self.scale.filter(|_| !sources.is_empty()) else {
             return;
-        }
-        match crate::mermaid::hydrate(sources, self.scale, cx) {
+        };
+        match crate::mermaid::hydrate(sources, scale, cx) {
             crate::mermaid::Hydration::Done(slots) => self.mermaid = slots,
             crate::mermaid::Hydration::Running(task) => self.mermaid_task = Some(task),
         }
@@ -442,9 +443,8 @@ impl Render for MarkdownView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         if self.scale != Some(window.scale_factor()) {
-            let first = self.scale.is_none();
             self.scale = Some(window.scale_factor());
-            if !first && self.enhance {
+            if self.enhance {
                 self.hydrate_mermaid(cx);
             }
         }

@@ -278,3 +278,7 @@ fn frontmatter_scalar<'a>(fm: &'a str, key: &str) -> Option<&'a str> {
             .map(|v| v.trim().trim_matches(['"', '\'']))
     })
 }
+
+#[cfg(test)]
+#[path = "skills_tests.rs"]
+mod tests;

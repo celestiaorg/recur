@@ -12,6 +12,7 @@
 
 mod changed;
 mod collate;
+pub mod copyfiles;
 mod drop_allow;
 mod error;
 mod file;
@@ -36,6 +37,10 @@ mod symbols;
 mod tree;
 mod walk;
 
+#[cfg(test)]
+mod code_tests;
+#[cfg(test)]
+mod ops_tests;
 #[cfg(test)]
 mod testutil;
 

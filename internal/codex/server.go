@@ -205,7 +205,12 @@ func seedAuth(from, to string) error {
 	raw, err := os.ReadFile(from)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("codex ChatGPT auth: %s not found — run `codex login` or set an API key", from)
+			// Browser sign-in can create Recur-owned credentials without a
+			// machine-wide CLI login. Importing that login is optional then.
+			if dst, derr := os.Stat(to); derr == nil && dst.Size() > 0 {
+				return nil
+			}
+			return fmt.Errorf("codex ChatGPT auth: sign in with ChatGPT in Settings, run `codex login`, or set an API key (%s not found)", from)
 		}
 		return err
 	}
@@ -323,6 +328,8 @@ func (r *lineRing) String() string {
 
 func serverLaunchEnv(base []string, home, apiKey string) []string {
 	env := dropEnvKey(base, "LINEAR_API_KEY")
+	env = dropEnvKey(env, "CODEX_API_KEY")
+	env = dropEnvKey(env, "OPENAI_API_KEY")
 	env = append(env, "CODEX_HOME="+home)
 	if apiKey != "" {
 		env = append(env, "CODEX_API_KEY="+apiKey)

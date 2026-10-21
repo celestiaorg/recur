@@ -206,7 +206,7 @@ func (e *Engine) applyChatFork(workspaceID, code string, spec *AgentSpec, resume
 	if spec.ResumeSession != "" {
 		return false
 	}
-	if e.settings().IsCompatibleSlug(dest) {
+	if e.settings().UsesNativeHarness(dest) {
 		// App-mode harness rebuilds Responses input from the copied transcript.
 		return false
 	}

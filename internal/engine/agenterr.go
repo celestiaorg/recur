@@ -81,7 +81,7 @@ var transientMarkers = []string{
 	"network is unreachable",
 	// Cursor Send treated a dropped stream as success, then Run invents this.
 	"ended without a result",
-	// Codex ChatGPT session expired; Retry works after `codex login`.
+	// Codex ChatGPT session expired; Retry works after signing in again.
 	"failed to refresh token",
 	"login expired",
 }
@@ -116,7 +116,7 @@ func classifyAgentError(err error, res Result) (reason string, transient bool) {
 }
 
 // Keep in sync with frontend CODEX_LOGIN_EXPIRED.
-const codexLoginExpiredMsg = "Codex login expired — run `codex login` in a terminal, then retry."
+const codexLoginExpiredMsg = "Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry."
 
 // agentFailureReason builds the message shown to the user for a failed turn,
 // preferring the provider's own text (stderr tail, then the result text) and falling

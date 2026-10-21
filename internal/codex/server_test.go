@@ -56,6 +56,20 @@ func TestSeedAuthCopiesWhenMissing(t *testing.T) {
 	}
 }
 
+func TestSeedAuthUsesRecurLoginWithoutMachineLogin(t *testing.T) {
+	dir := t.TempDir()
+	to := filepath.Join(dir, "auth.json")
+	if err := os.WriteFile(to, []byte(`{"tokens":{"access_token":"recur-login"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := seedAuth(filepath.Join(dir, "missing-machine-auth.json"), to); err != nil {
+		t.Fatalf("Recur-owned login required a machine login: %v", err)
+	}
+	if err := seedAuth(filepath.Join(dir, "missing-machine-auth.json"), filepath.Join(dir, "missing-auth.json")); err == nil {
+		t.Fatal("missing both logins should still report an error")
+	}
+}
+
 func TestEnsureTrustedProject(t *testing.T) {
 	home := t.TempDir()
 	wt := t.TempDir()
@@ -99,5 +113,18 @@ func TestServerLaunchEnvStripsLinearAPIKey(t *testing.T) {
 	}
 	if !strings.Contains(joined, "PATH=/bin") {
 		t.Fatalf("serverLaunchEnv dropped PATH: %v", got)
+	}
+}
+
+func TestServerLaunchEnvUsesOnlyChosenAPIKey(t *testing.T) {
+	base := []string{"PATH=/bin", "CODEX_API_KEY=ambient-codex", "OPENAI_API_KEY=ambient-openai"}
+	for _, key := range []string{"", "chosen-key"} {
+		env := serverLaunchEnv(base, "/tmp/codex-home", key)
+		for _, entry := range env {
+			if strings.HasPrefix(entry, "OPENAI_API_KEY=") ||
+				(strings.HasPrefix(entry, "CODEX_API_KEY=") && (key == "" || entry != "CODEX_API_KEY="+key)) {
+				t.Errorf("key %q: unexpected inherited credential %q", key, entry)
+			}
+		}
 	}
 }

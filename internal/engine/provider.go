@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -442,6 +443,19 @@ func (e *Engine) resolveRunner(ctx context.Context, provider, worktree string) (
 		if err != nil {
 			return nil, err
 		}
+		return r, nil
+	case domain.ProviderChatGPT:
+		set := e.settings()
+		if !set.ProviderEnabled(provider) || !set.ChatGPTConfigured() {
+			return nil, fmt.Errorf("connect ChatGPT in Settings → Providers → OpenAI")
+		}
+		client, err := e.ChatGPTClient()
+		if err != nil {
+			return nil, err
+		}
+		r := e.newHarnessRunner(set.ChatGPTProvider())
+		r.Client.ChatGPT = true
+		r.Client.Authorize = func(req *http.Request) error { return client.Authorize(req, set.ChatGPTAccountID) }
 		return r, nil
 	case domain.ProviderClaudeCode, "":
 		if !e.settings().ProviderEnabled(domain.ProviderClaudeCode) {

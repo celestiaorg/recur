@@ -206,10 +206,17 @@ func AppChatDir() (string, error) {
 	return dir, nil
 }
 
-// RecurSkillsDir returns the seeded Recur-owned skills root (~/.recur/recur-skills),
-// creating it if needed. Shipped skills are embedded in the binary and synced here
-// on boot (same stamp pattern as bundles).
+// RecurSkillsDir returns the seeded Recur-owned skills root. Alternate data
+// profiles keep it under that root, so isolation does not require replacing HOME
+// and hiding the user's desktop/browser preferences.
 func RecurSkillsDir() (string, error) {
+	if root := os.Getenv(dataDirEnv); root != "" {
+		dir := filepath.Join(root, "recur-skills")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return "", err
+		}
+		return dir, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

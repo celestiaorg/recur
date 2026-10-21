@@ -1,5 +1,8 @@
 # Codex provider
 
+For browser sign-in **without installing Codex**, use the separate
+[direct ChatGPT provider](chatgpt-provider.md) in Settings → Providers → OpenAI → ChatGPT account.
+
 Recur can run loops with OpenAI Codex via **`codex app-server`** (direct
 JSON-RPC over stdio). This is option **D** from the Codex integration
 comparison — a Go client, not the process-per-turn `codex exec` CLI and not a
@@ -41,7 +44,7 @@ Isolation (Cursor’s hard lesson):
 | `internal/codex/mcp.go` | `--config mcp_servers…` argv builder |
 | `internal/engine/codex.go` | `CodexRunner` — `AgentSpec` ⇄ app-server |
 | `internal/engine/provider.go` | `ProviderCodex` routing through `runnerFor` |
-| `internal/app/codex_service.go` | Settings probes |
+| `internal/app/codex_service.go`, `codex_login.go` | Settings probes and managed browser sign-in |
 | `internal/app/model_catalog.go` | Live `model/list` → picker group |
 
 ## Selecting Codex
@@ -51,11 +54,34 @@ There is no per-role provider setting. Role models are `ModelRef`s
 Settings → Providers **and** configured:
 
 - `Settings.CodexAPIKey` non-empty, **or**
-- `Settings.CodexChatGPTAuth` true (reuse `codex login`). On by default for a
+- `Settings.CodexChatGPTAuth` true (browser sign-in or reuse `codex login`). On by default for a
   fresh install when `~/.codex/auth.json` exists (a prior `codex login`).
 
 Turning Codex off keeps the key / ChatGPT-auth flag; it just leaves the
 pickers and the engine will not start it.
+
+### Browser sign-in
+
+In **Settings → Providers → OpenAI → Codex runtime**, choose **Sign in with ChatGPT**. Recur opens
+the system browser and waits for sign-in. On success it selects ChatGPT auth,
+clears any saved API key, and refreshes the account and model catalogue.
+**Switch ChatGPT account** starts the same flow for another account.
+
+This uses the official app-server `account/login/start` method with
+`type: "chatgpt"`. Codex owns the localhost callback, credential persistence, and
+token refresh. Credentials are stored in `<dataDir>/codex-home/auth.json`; Recur
+does not write `~/.codex/auth.json`. A prior terminal login is not required.
+An existing CLI login can still be imported by the **Use ChatGPT login** toggle.
+
+The login process stays alive for up to five minutes. **Cancel sign-in**, leaving
+the Providers pane, and app shutdown cancel the attempt and reap its process.
+Failed or cancelled attempts do not change the saved authentication settings.
+The Codex binary is still required.
+
+If sign-in cannot start, the provider card shows the error instead of disabling
+the sign-in button. After installing Codex or saving a native **Binary** path,
+discovery refreshes in place. Confirm the Binary row says **Found** and retry
+**Sign in with ChatGPT**.
 
 Binary: install the Homebrew cask (`brew install --cask codex`), set
 `Settings.CodexBinPath`, or `$RECUR_CODEX`. The broken npm JS shim that
@@ -125,4 +151,69 @@ Live smoke (optional):
 export RECUR_CODEX=/path/to/native/codex
 export RECUR_CODEX_E2E=1
 go test ./internal/engine -run CodexE2E -count=1
+```
+
+To check browser-login URL generation and cancellation against the real Codex
+binary without opening a browser or signing in:
+
+```sh
+RECUR_CODEX=/path/to/native/codex RECUR_CODEX_LOGIN_E2E=1 \
+go test ./internal/app -run '^TestCodexBrowserLoginLive$' -count=1 -timeout=60s
+```
+
+### Build and verify alongside an installed Recur
+
+Use a separate test data directory and launch the repository's unbundled
+binary directly. It has its own database, window state, Codex credentials, skills,
+and instance lock, so the downloaded Recur can stay installed and running. Local `bin/`
+builds skip CLI-link installation. Use `./bin/recur`, not the installed `recur`
+command or a packaged `.app`, for this check.
+
+Prerequisites: Go (the toolchain in `go.mod`), Node.js, pnpm, Wails v3 matching
+`go.mod`, and a native Codex installation. On macOS use Xcode 26+ with its command-line
+tools enabled (icon generation uses `actool`); on Linux install `gcc`, `pkg-config`, `libgtk-4-dev`,
+`libwebkitgtk-6.0-dev`, and `rsync` (Debian 13 / Ubuntu 24.04 or newer).
+The bundle test suite also needs `xmllint` (`libxml2-utils` on Linux).
+
+From the repository root:
+
+```sh
+# One-time Wails installation, if needed.
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.24
+export PATH="$(go env GOPATH)/bin:$PATH"
+
+# Build into this checkout's bin/recur.
+wails3 task build
+
+# Launch with isolated state and the normal desktop browser preferences.
+wails3 task run:isolated PROFILE_DIR="$HOME/.recur-codex-browser-test"
+```
+
+Keep `HOME` unchanged so the system URL opener uses your default browser and its
+existing session. Quit a test instance previously launched with a fake `HOME`
+before relaunching. If Codex is installed in a location that is not on the
+inherited `PATH`, set its absolute Binary path in the test app.
+
+Manual verification:
+
+1. Open Settings → Providers → OpenAI → Codex runtime. Set its Binary path if it is not
+   discovered automatically.
+2. Choose **Sign in with ChatGPT**, complete the browser flow, and confirm
+   **Connected**, your email, and your plan. ChatGPT auth should be selected.
+3. Select a Codex model in a chat and send a short prompt.
+4. Quit the test instance, launch it with the same command, and confirm the login
+   still works without running `codex login`.
+5. Start **Switch ChatGPT account**, then cancel. Repeat and navigate away from
+   Providers. Both attempts should stop and leave the saved auth settings alone.
+
+The test state remains in `$HOME/.recur-codex-browser-test` for repeat runs.
+The normal downloaded app continues to use its usual data directory and launcher.
+
+Automated checks:
+
+```sh
+wails3 task check
+wails3 task test:e2e
+# Focused UI coverage: run from frontend/.
+pnpm exec playwright test e2e/codex-login.spec.ts
 ```

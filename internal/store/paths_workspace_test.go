@@ -48,6 +48,7 @@ func TestWorkspaceDataDirs(t *testing.T) {
 func TestRecurSkillsDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv(dataDirEnv, "")
 	dir, err := RecurSkillsDir()
 	if err != nil {
 		t.Fatal(err)
@@ -55,5 +56,24 @@ func TestRecurSkillsDir(t *testing.T) {
 	want := filepath.Join(home, ".recur", "recur-skills")
 	if dir != want {
 		t.Fatalf("got %q want %q", dir, want)
+	}
+}
+
+func TestRecurSkillsDirIsolatesDataWithoutChangingHome(t *testing.T) {
+	home, data := t.TempDir(), t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv(dataDirEnv, data)
+	dir, err := RecurSkillsDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dir != filepath.Join(data, "recur-skills") {
+		t.Fatalf("skills = %q, want the isolated data profile", dir)
+	}
+	if os.Getenv("HOME") != home {
+		t.Fatal("data isolation changed desktop preferences")
+	}
+	if _, err := os.Stat(filepath.Join(home, ".recur", "recur-skills")); !os.IsNotExist(err) {
+		t.Fatal("isolated profile touched the normal skills directory")
 	}
 }

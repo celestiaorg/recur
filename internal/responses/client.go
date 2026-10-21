@@ -19,10 +19,18 @@ type Client struct {
 	APIKey       string
 	ExtraHeaders map[string]string
 	HTTP         *http.Client
+	// Token is evaluated on every request so rotating OAuth tokens are never
+	// frozen into a runner. ChatGPT enables the Codex subscription contract.
+	Token     func(context.Context) (string, error)
+	ChatGPT   bool
+	Authorize func(*http.Request) error
 }
 
 // Endpoint returns the Responses URL for this client.
 func (c *Client) Endpoint() string {
+	if c.ChatGPT {
+		return strings.TrimRight(strings.TrimSpace(c.BaseURL), "/") + "/responses"
+	}
 	return strings.TrimRight(strings.TrimSpace(c.BaseURL), "/") + "/v1/responses"
 }
 
@@ -39,6 +47,14 @@ func (c *Client) Stream(ctx context.Context, req Request, emit func(Event)) erro
 }
 
 func (c *Client) do(ctx context.Context, body []byte, stream bool, emit func(Event)) error {
+	if c.ChatGPT {
+		var err error
+		body, err = chatGPTBody(body)
+		if err != nil {
+			return err
+		}
+		stream = true
+	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.Endpoint(), bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -47,7 +63,9 @@ func (c *Client) do(ctx context.Context, body []byte, stream bool, emit func(Eve
 	if stream {
 		httpReq.Header.Set("Accept", "text/event-stream")
 	}
-	c.applyAuth(httpReq)
+	if err := c.applyAuth(httpReq); err != nil {
+		return err
+	}
 
 	client := c.streamHTTP()
 	resp, err := client.Do(httpReq)
@@ -114,7 +132,9 @@ func (c *Client) Ping(ctx context.Context, model string) error {
 		return err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	c.applyAuth(httpReq)
+	if err := c.applyAuth(httpReq); err != nil {
+		return err
+	}
 	client := c.HTTP
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
@@ -159,8 +179,16 @@ func (c *Client) Ping(ctx context.Context, model string) error {
 	return nil
 }
 
-func (c *Client) applyAuth(req *http.Request) {
-	if k := strings.TrimSpace(c.APIKey); k != "" {
+func (c *Client) applyAuth(req *http.Request) error {
+	k := strings.TrimSpace(c.APIKey)
+	if c.Token != nil {
+		var err error
+		k, err = c.Token(req.Context())
+		if err != nil {
+			return err
+		}
+	}
+	if k != "" {
 		req.Header.Set("Authorization", "Bearer "+k)
 	}
 	for k, v := range c.ExtraHeaders {
@@ -169,6 +197,10 @@ func (c *Client) applyAuth(req *http.Request) {
 		}
 		req.Header.Set(k, v)
 	}
+	if c.Authorize != nil {
+		return c.Authorize(req)
+	}
+	return nil
 }
 
 func looksLikeSSE(raw []byte) bool {

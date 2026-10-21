@@ -52,6 +52,17 @@ tasks:
     cmds:
       - task: "{{OS}}:run"
 
+  run:isolated:
+    summary: Runs the local binary with isolated Recur state and normal desktop/browser preferences
+    cmds:
+      - '"{{.BIN_DIR}}/{{.APP_NAME}}"'
+    vars:
+      PROFILE_DIR: '{{.PROFILE_DIR | default (printf "%s/.recur-chatgpt-direct-test" .HOME)}}'
+    env:
+      RECUR_DATA_DIR: '{{.PROFILE_DIR}}/data'
+      RECUR_WORKTREES_DIR: '{{.PROFILE_DIR}}/worktrees'
+      RECUR_INSTANCE_LABEL: 'openai-test'
+
   dev:
     summary: Runs the application in development mode
     cmds:

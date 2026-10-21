@@ -1,6 +1,7 @@
 //! GPUI terminal view rendering `recur-term` sessions: the port of `TerminalPane.svelte` and its
 //! xterm.js 6 configuration (fit, search, web-links and WebGL addons).
 
+mod atlas;
 mod backend;
 mod blink;
 #[rustfmt::skip]
@@ -9,6 +10,8 @@ mod custom_glyphs;
 mod element;
 mod find_bar;
 mod font;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 mod park;
 mod scrollbar;
 mod theme;

@@ -11,7 +11,7 @@ use super::overline;
 use super::theme::Rgba;
 use super::{CursorStyle, Screen};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UnderlineStyle {
     Single,
     Double,
@@ -40,6 +40,9 @@ pub struct Glyph {
     pub strikethrough: bool,
     /// SGR 53, drawn along the top of the character box in the glyph colour.
     pub overline: bool,
+    /// The resolved background (colour and background flags) differs from the previous cell's,
+    /// so the renderer clips whatever the glyph draws left of its cell (`GlyphRenderer`).
+    pub clip_left: bool,
     /// Box drawing, block and powerline glyphs (drawn procedurally to fill the cell).
     pub codepoint: u32,
 }
@@ -229,6 +232,7 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
         let line = Line(row as i32 - ybase as i32);
         let grid_row = &s.term.grid()[line];
         let mut last_cursor_x: Option<usize> = None;
+        let mut last_bg = None;
         for x in 0..cols {
             let cell = &grid_row[Column(x)];
             let mut a = attrs(cell);
@@ -347,6 +351,11 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
                 };
             }
 
+            // xterm's packed `result.bg`: colour mode and the background flags.
+            let bg_key = (a.bg, a.italic, a.dim, a.overline, a.extended);
+            let clip_left = x > 0 && last_bg != Some(bg_key);
+            last_bg = Some(bg_key);
+
             // RectangleRenderer: a rect wherever xterm's packed bg is non-zero, or inverse.
             let bg_nonzero = a.bg != Mode::Default || a.italic || a.dim || a.overline || a.extended;
             if bg_nonzero || a.inverse {
@@ -431,6 +440,7 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
                 underline,
                 strikethrough: a.strike,
                 overline: a.overline,
+                clip_left,
                 codepoint: cp,
             });
         }

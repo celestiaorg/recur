@@ -18,12 +18,15 @@
   import Resize from './scenes/Resize.svelte'
   import Overlays from './scenes/Overlays.svelte'
   import Scrollbars from './scenes/Scrollbars.svelte'
+  import Terminal from './scenes/Terminal.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
   const variant = $derived(name.split('/').slice(1).join('/'))
   let ready = $state(false)
   onMount(() => {
+    // Terminal scenes report readiness once xterm has drawn their input.
+    if (kind === 'terminal') return
     requestAnimationFrame(() => requestAnimationFrame(() => (ready = true)))
   })
 </script>
@@ -65,6 +68,8 @@
     <Overlays {variant} />
   {:else if kind === 'scrollbar'}
     <Scrollbars />
+  {:else if kind === 'terminal'}
+    <Terminal {name} onready={() => (ready = true)} />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

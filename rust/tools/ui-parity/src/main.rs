@@ -62,6 +62,24 @@ fn keystroke(key: &str) -> String {
     }
 }
 
+/// Every scene: recur-ui's widgets, then the terminal's.
+fn all_specs() -> Vec<SceneSpec> {
+    let mut specs = gallery::specs();
+    specs.extend(recur_terminal_view::gallery::specs());
+    specs
+}
+
+fn exists(name: &str) -> bool {
+    gallery::exists(name) || recur_terminal_view::gallery::exists(name)
+}
+
+fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyView> {
+    if recur_terminal_view::gallery::exists(name) {
+        return recur_terminal_view::gallery::build(name, window, cx);
+    }
+    gallery::build(name, window, cx)
+}
+
 fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
     std::fs::create_dir_all(out)?;
     let mut cx = HeadlessAppContext::with_platform(
@@ -72,6 +90,7 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
     cx.update(|cx| {
         gpui_kit::init(cx);
         recur_ui::init(cx);
+        recur_terminal_view::init(cx);
     });
     for spec in specs {
         cx.update(|cx| {
@@ -90,7 +109,7 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
         };
         let handle = cx.update(|cx| {
             cx.open_window(options, |window, cx| {
-                let view = gallery::build(&name, window, cx)
+                let view = build(&name, window, cx)
                     .unwrap_or_else(|| cx.new(|_| recur_ui::gallery::Missing).into());
                 let document = cx.focus_handle();
                 window.focus(&document, cx);
@@ -504,7 +523,7 @@ fn main() -> Result<()> {
     let (cmd, names) = args
         .split_first()
         .map_or(("check", &[][..]), |(c, n)| (c.as_str(), n));
-    let mut specs = gallery::specs();
+    let mut specs = all_specs();
     if !names.is_empty() {
         specs.retain(|s| {
             names
@@ -515,7 +534,7 @@ fn main() -> Result<()> {
     let unknown: Vec<&str> = specs
         .iter()
         .map(|s| s.name.as_str())
-        .filter(|n| !gallery::exists(n))
+        .filter(|n| !exists(n))
         .collect();
     if !unknown.is_empty() {
         bail!("scenes without a Rust builder: {unknown:?}");

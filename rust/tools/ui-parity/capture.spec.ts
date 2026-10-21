@@ -12,7 +12,13 @@ import { installBridge, loadSeed } from '../../../frontend/e2e/helpers/mock-brid
 const here = dirname(fileURLToPath(import.meta.url))
 const fontsDir = join(here, '..', '..', 'crates', 'ui', 'assets', 'fonts')
 const out = join(here, 'out', 'reference')
-const { scenes } = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as { scenes: Scene[] }
+const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
+  scenes: Scene[]
+  terminal?: Scene[]
+  terminalInputs?: Record<string, string>
+}
+// Terminal scenes replay `terminalInputs[input]` as the session's attach bytes.
+const scenes = [...spec.scenes, ...(spec.terminal ?? [])]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
 
@@ -24,7 +30,15 @@ type Step =
   | { key: string }
   | { type: string }
   | { wait: number }
-type Scene = { name: string; width: number; height: number; theme: string; steps?: Step[]; animationTime?: number }
+type Scene = {
+  name: string
+  width: number
+  height: number
+  theme: string
+  steps?: Step[]
+  animationTime?: number
+  input?: string
+}
 
 const FAMILY: Record<string, string> = {
   Inter: 'Inter', SpaceGrotesk: 'Space Grotesk', JetBrainsMono: 'JetBrains Mono',
@@ -72,7 +86,10 @@ for (const scene of scenes) {
     await page.route('**/__fonts/*', (r) =>
       r.fulfill({ contentType: 'font/ttf', body: readFileSync(join(fontsDir, new URL(r.request().url()).pathname.split('/').pop()!)) }),
     )
-    await installBridge(page, structuredClone(seed))
+    const replay = scene.input === undefined ? undefined : spec.terminalInputs?.[scene.input]
+    await installBridge(page, structuredClone(seed), replay === undefined ? {} : {
+      resolvers: { AttachTerminal: () => Buffer.from(replay, 'utf8').toString('base64') },
+    })
     await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}`)
     await page.waitForSelector('[data-scene-ready]')
     // Faces load on first use; wait until every declared face is in (icon fonts included).
@@ -82,6 +99,12 @@ for (const scene of scenes) {
       await document.fonts.ready
     })
     for (const step of scene.steps ?? []) await run(page, step)
+    if (replay !== undefined) {
+      // xterm draws on the next frames; and the reference must be the WebGL renderer the app
+      // ships, not the DOM fallback.
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      if (await page.locator('.xterm-rows').count()) throw new Error('xterm fell back to the DOM renderer')
+    }
     // Freeze every animation: finite ones at their end (or at `animationTime`), infinite ones
     // at `animationTime` (default 0). The Rust renderer freezes recur-ui motion the same way.
     await page.evaluate((t) => {

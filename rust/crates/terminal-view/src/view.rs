@@ -272,6 +272,9 @@ pub struct TerminalView {
     dock_focus: Option<FocusHandle>,
     pub(crate) layout: Option<GridLayout>,
     replayed: bool,
+    /// A replay that arrived before the first layout: xterm.js refits before attaching, so the
+    /// replay lands on the fitted grid.
+    pending_replay: Option<Result<Vec<u8>, String>>,
     queued: Vec<Vec<u8>>,
     unacked: usize,
     disposed: bool,
@@ -352,6 +355,7 @@ impl TerminalView {
             dock_focus: opts.dock_focus,
             layout: None,
             replayed: false,
+            pending_replay: None,
             queued: Vec::new(),
             unacked: 0,
             disposed: false,
@@ -437,6 +441,11 @@ impl TerminalView {
     /// replay is on screen. The replay itself is not acked: the session never counted it.
     fn replayed(&mut self, replay: Result<Vec<u8>, String>, cx: &mut Context<Self>) {
         if self.disposed {
+            return;
+        }
+        if self.layout.is_none() {
+            self.pending_replay = Some(replay);
+            cx.notify();
             return;
         }
         if let Ok(bytes) = replay
@@ -599,6 +608,9 @@ impl TerminalView {
             rows,
         };
         self.layout = Some(layout);
+        if let Some(replay) = self.pending_replay.take() {
+            self.replayed(replay, cx);
+        }
         if self.latest_ydisp == Some(self.screen.viewport_top()) {
             self.scrollbar.set_dimensions(
                 layout.grid_height(),

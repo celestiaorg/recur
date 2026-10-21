@@ -13,6 +13,7 @@ use gpui_kit::{
 };
 use recur_term::screen::{CursorShape, Frame, Glyph, Rgba, UnderlineStyle};
 
+use crate::atlas::{self, FontKey, GlyphKey};
 use crate::custom_glyphs;
 use crate::font::{CellMetrics, mono_font_stack};
 use crate::view::{GridLayout, TerminalView};
@@ -39,6 +40,7 @@ pub(crate) struct Prepaint {
     layout: GridLayout,
     frame: Frame,
     fonts: Fonts,
+    atlas_font: FontKey,
     /// None while the pane is hidden: hidden tabs take no pointer events.
     hitboxes: Option<(Hitbox, Hitbox)>,
 }
@@ -144,6 +146,7 @@ impl Element for TerminalElement {
             layout,
             frame,
             fonts: Fonts { regular, size },
+            atlas_font: FontKey::new(&font.face, &metrics, font.line_height),
             hitboxes,
         }
     }
@@ -221,7 +224,15 @@ impl Element for TerminalElement {
                 ));
             }
             for g in &p.frame.glyphs {
-                paint_glyph(window, g, cell(g.col, g.row), &m, &p.fonts);
+                paint_glyph(
+                    window,
+                    g,
+                    cell(g.col, g.row),
+                    &m,
+                    &p.fonts,
+                    &p.atlas_font,
+                    p.frame.background,
+                );
             }
             if let Some(link) = &link {
                 let (x1, y1) = (link.start.0 - 1, link.start.1 - 1 - ydisp);
@@ -342,12 +353,59 @@ impl Element for TerminalElement {
     }
 }
 
+/// One cell's glyph, as the WebGL renderer's texture atlas draws it (`atlas`). Custom glyphs
+/// are painted procedurally, with their decorations from the atlas.
+#[cfg(target_os = "macos")]
+fn paint_glyph(
+    window: &mut Window,
+    g: &Glyph,
+    origin: Point<Pixels>,
+    m: &CellMetrics,
+    _fonts: &Fonts,
+    font: &FontKey,
+    backdrop: Rgba,
+) {
+    let custom = custom_glyphs::paint(window, g.codepoint, origin, g.width, m, gpui_color(g.fg));
+    if custom && g.underline.is_none() && !g.strikethrough && !g.overline {
+        return;
+    }
+    let dotted = g
+        .underline
+        .is_some_and(|u| u.style == UnderlineStyle::Dotted);
+    let key = GlyphKey {
+        font: font.clone(),
+        text: g.text.clone(),
+        bold: g.bold,
+        italic: g.italic,
+        fg: g.fg,
+        underline: g.underline.map(|u| (u.style, u.color)),
+        // CellColorResolver: `x * cellWidth % (round(lineWidth) * 2)`.
+        variant_offset: if dotted {
+            let period = (m.underline_width().round() * 2.0) as u32;
+            (g.col as u32 * m.cell_width as u32) % period
+        } else {
+            0
+        },
+        strikethrough: g.strikethrough,
+        overline: g.overline,
+        width: g.width,
+        custom,
+        backdrop,
+    };
+    let (dx, dy) = atlas::canvas_origin(&key, m);
+    let o = point(origin.x + px(dx / m.dpr), origin.y + px(dy / m.dpr));
+    atlas::paint(window, &key, o, g.clip_left.then_some(origin.x));
+}
+
+#[cfg(not(target_os = "macos"))]
 fn paint_glyph(
     window: &mut Window,
     g: &Glyph,
     origin: Point<Pixels>,
     m: &CellMetrics,
     fonts: &Fonts,
+    _font: &FontKey,
+    _backdrop: Rgba,
 ) {
     let dpr = m.dpr;
     let dev = |v: f32| px(v / dpr);

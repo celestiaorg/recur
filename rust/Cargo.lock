@@ -7132,6 +7132,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-view-core"
+version = "0.0.0"
+dependencies = [
+ "gpui-kit",
+ "gpui-pre",
+ "pretty_assertions",
+ "recur-domain",
+ "recur-editor",
+ "recur-services",
+ "recur-term",
+ "recur-ui",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
+name = "recur-view-sidebar"
+version = "0.0.0"
+dependencies = [
+ "gpui-kit",
+ "recur-domain",
+ "recur-services",
+ "recur-ui",
+ "recur-view-core",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"

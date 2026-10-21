@@ -4,6 +4,16 @@ Every surface of the Go/Svelte app that the Rust port must carry over. Nothing h
 
 Legend: `[ ]` not started, `[~]` in progress, `[x]` ported and verified.
 
+## Open follow-ups
+
+Gaps found while porting that are not yet owned by a slice. Each must be closed before promotion.
+
+- [ ] **Linux: Mermaid and PDF.** `recur-content` runs mermaid.js and pdf.js in a hidden WebKit page on macOS only; Linux builds show an error in their place. Add the WebKitGTK 6.0 path (the Go app already depends on it).
+- [ ] **Linux build and CI.** Nothing in `rust/` is built or tested on Linux yet. Add a `rust-linux` CI job (Ubuntu 24.04) and fix what it finds.
+- [ ] **`recur_ui::text`: inline code chip at a wrap start** keeps its left padding on the previous line (`file-preview/markdown`, 514 hard pixels).
+- [ ] **`overlays/palette`:** keycaps at fractional offsets in a scrolled list and the list thumb's end land one device pixel off (388 hard pixels).
+- [ ] **Editor LSP adapter.** `recur-lsp` is a transport; the app layer needs the adapter that implements `recur_editor::lsp::LspClient` (request ids, `initialize`, document versions, change batching). Owned by the code-editor view port.
+
 ## Application services (former Wails bindings)
 
 Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/app`. Rust home: `recur-services`. The contract is `recur_services::api` (one async trait per service, annotated below with `Trait::method`); `recur_services::mock` answers all of it for views today. Items tick when the real implementation over the engine (slice SV) lands.

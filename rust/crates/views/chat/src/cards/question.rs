@@ -275,7 +275,8 @@ impl Render for QuestionCard {
                     .gap(px(1.))
                     .w_full()
                     .px(px(8.))
-                    .py(px(5.))
+                    // `.perm.inline .perm-btn` (6px 8px) wins over the component's 5px 8px.
+                    .py(px(6.))
                     .rounded(px(6.))
                     .border_1()
                     .border_color(hsla(border))
@@ -329,10 +330,30 @@ impl Render for QuestionCard {
                 .flex()
                 .px(px(8.))
                 .py(px(6.))
-                .child(recur_ui::style::text_field(&self.input, &ph, recur_ui::style::UA_PLACEHOLDER, Family::Ui, 12., window, cx))
+                // `font: inherit` hands the input the card's 1.45: a 17.4px line, text centered.
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .h(px(12. * 1.45))
+                        .flex()
+                        .items_center()
+                        .child(recur_ui::style::text_field(&self.input, &ph, recur_ui::style::UA_PLACEHOLDER, Family::Ui, 12., window, cx)),
+                )
                 .into_any_element()
         };
         let amber = t.amber;
+        let card_bg = t.amber.mix(0.06, t.pane);
+        // `:disabled { opacity: .45 }` fades the button as one layer.
+        let (fill, label_fg) = if can_answer {
+            (amber, t.on_amber)
+        } else {
+            use recur_ui::style::faded;
+            (
+                faded(amber, recur_ui::color::TRANSPARENT, 0.45, card_bg),
+                faded(t.on_amber, amber, 0.45, card_bg),
+            )
+        };
         let answer = div()
             .id(SharedString::from(format!("{id}-answer")))
             .flex_none()
@@ -341,10 +362,9 @@ impl Render for QuestionCard {
             .py(px(6.))
             .rounded(px(6.))
             .border_1()
-            .border_color(hsla(amber))
-            .bg(hsla(amber))
-            .child(recur_ui::style::button_label("Answer", 11.5, 600.).color(t.on_amber))
-            .when(!can_answer, |d| d.opacity(0.45))
+            .border_color(hsla(fill))
+            .bg(hsla(fill))
+            .child(recur_ui::style::button_label("Answer", 11.5, 600.).color(label_fg))
             .when(can_answer, |d| {
                 d.cursor_pointer()
                     .hover(move |s| s.bg(hsla(amber.brightness(1.07))).border_color(hsla(amber.brightness(1.07))))
@@ -359,8 +379,7 @@ impl Render for QuestionCard {
                 .child(field)
                 .child(answer),
         );
-        let bg = t.amber.mix(0.06, t.pane);
-        recur_ui::style::card(bg, t.amber.mix(0.45, t.line), 9.)
+        recur_ui::style::card(card_bg, t.amber.mix(0.45, t.line), 9.)
             .w_full()
             .max_w(px(36. * 16.))
             .pt(px(11.))

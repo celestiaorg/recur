@@ -231,7 +231,7 @@ impl Build<'_, '_> {
             if let Some(l) = st.link
                 && self.env.hover_link == Some((block, l))
             {
-                color = t.text;
+                color = if self.env.sheet.muted { t.cyan } else { t.text };
             }
             let ib = st.code.then_some(InlineBox {
                 pad_top: 1.,
@@ -314,6 +314,9 @@ impl Build<'_, '_> {
             .color(hsla(ink(self.env.t, flow.ink)));
         if has_break {
             t = t.pre_wrap();
+        }
+        if self.env.sheet.tracking != 0. {
+            t = t.tracking(self.env.sheet.tracking);
         }
         if anywhere {
             t = t.break_anywhere();
@@ -857,6 +860,7 @@ impl Build<'_, '_> {
             };
             div()
                 .id(("md-copy", ix))
+                .debug_selector(|| "md-copy".into())
                 .absolute()
                 .top(px(inset))
                 .right(px(inset))
@@ -883,6 +887,7 @@ impl Build<'_, '_> {
         });
         div()
             .id(("md-fence", ix))
+            .debug_selector(|| "md-fence".into())
             .relative()
             .on_hover(move |h, window, cx| on_hover((ix, *h), window, cx))
             .child(block)

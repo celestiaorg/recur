@@ -72,6 +72,15 @@ The `content` list in `scenes.json` holds the rich-content components (`markdown
 
 Scenes: chat markdown in `default` and `paper` (headings, lists with nesting and tasks, a table, fences in four languages, inline code, a blockquote, links, an image, long wrapping), a stream mid-reply, a Mermaid flowchart (whole-file preview) and sequence diagram (inline), one PDF page, a markdown and an SVG file preview, and the lightbox over a message.
 
+## Chat scenes
+
+The `chat` list in `scenes.json` holds the agent chat (`chat/…`) over the fixtures in `rust/tools/ui-parity/content/chat.json`: `WorkspaceChatItems` rows and cockpit facts per scene, reduced on both sides by the same reducers (`mapChatItems` / `applyStream` / `mergeLoopCockpit` and their `recur_engine::view` ports).
+
+- **Reference.** `web/scenes/Chat.svelte` mounts `AgentChat` as the workspace dock does (compact, the Loop or agent tab's copy, the `view` store on `detail` so inline permission and question cards show) with the dock's mode toolbar on the `mode-*` scenes (the chat mode `Select`, then `ModelPickers` or `LoopPolicyPickers`), and `AppChat` under the Briefing body's `--obs-chrome-h`. It is ready once the model catalog has loaded and the prompt index and file icons have painted.
+- **Candidate.** `recur_view_chat::gallery` (feature `gallery`) builds the same `AgentChat` / `AppChat` over `MockBridge::fresh` and clears the transcript UI cache per scene (scenes share one app).
+
+Scenes: the empty chat; a finished turn with a file chip, a thought, tool calls with results (group opened by a click), markdown with a fence, a list, a link and the turn footer, in `default` and `paper`; a reply streaming mid-turn with the turn clock; inline permission, question, plan and fan-out cards; the composer with file chips and the `/` menu open; each mode's composer toolbar (`ask`, `plan`, `agent`, `review`, `loop`, and `agent` in `paper`); the model picker open; and Ask Recur in `default` and `paper`.
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -107,6 +116,9 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 - **Native checkbox.** A task list's checked, disabled `<input type=checkbox>` is WebKit's native control; recur-content draws its look (fill, border and check calibrated per theme), and the edge pixels of the rounded box and check differ.
 - **Inline boxes across a wrap.** When an inline code span starts a new line, WebKit carries its left padding to that line; recur-ui's text keeps the padding on the line before, so the chip sits a padding's width left (`file-preview/markdown`). The fix belongs in `recur_ui::text` line breaking.
 - **Image resampling.** Scaled images (the lightbox, PDF pages stretched to their slot, the inline chart) are sampled by GPUI's bilinear texture filter where WebKit uses CoreGraphics interpolation; internal edges differ by a few levels, counted as anti-aliasing.
+- **Hover color transitions.** The chat's `transition: color/background .12s–.15s` hovers snap: recur-ui animates opacity and transforms through `motion`, not every hover color. Captures are static, so no scene depends on it.
+- **Fractional line boxes.** WebKit lays out in 1/64 px and snaps borders at paint; GPUI rounds every box to device pixels. After a fractional line (12px × 1.45 = 17.4, 11px × 1.35 = 14.85) the following borders and chips can land one device pixel apart, counted as hard where the edge is a border (chat cards and pickers, below).
+- **Truncation ellipsis.** WebKit drops the space before a `text-overflow: ellipsis` cut; recur-ui keeps it, so a truncated mono line (the collapsed thought's meta) ends `out …` instead of `out…`. Counted as text.
 - **Lightbox backdrop blur.** `backdrop-filter: blur(8px)` is not drawn (no backdrop filters in GPUI); the scrim color matches.
 
 ## Hard-pixel allowances
@@ -127,6 +139,16 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 | `markdown/chat`, `markdown/paper` | 95, 131 | The native task checkbox's edges (above) and a few edge pixels of WebKit's synthesized list bullets |
 | `file-preview/markdown` | 514 | An inline code chip that starts a wrapped line keeps its padding on the line before (above) |
 | `pdf/page` | 15 | The page field's number, which gpui-base's editor draws (typed input text, above) |
+| `chat/empty`, `chat/mode-loop` | 7 | Curved-edge coverage at the composer card and send button corners |
+| `chat/transcript`, `chat/transcript-paper` | 446, 451 | The fence's bottom border and two tool-row icons one device pixel apart after the 1.45 tool rows (fractional line boxes, above) |
+| `chat/streaming` | 114 | The turn row's dots and clock one device pixel apart after the streaming reply's fractional lines |
+| `chat/permission` | 776 | The button row's borders one device pixel apart after the 12.5 × 1.45 tool and summary lines |
+| `chat/question` | 11824 | Option, field and card borders: each option's 11 × 1.35 description rounds, and the offsets add up down the card |
+| `chat/plan` | 2508 | Step badges and file-chip borders one device pixel apart after the 1.45 step lines |
+| `chat/fanout` | 8882 | Row borders and step chips: the 12 × 1.45 header rounds half a pixel taller, moving every row below it |
+| `chat/composer` | 1140 | Composer chip borders at fractional x after the 12.5px prose, and the menu's corners over its shadow |
+| `chat/pickers` | 3053 | The open model menu's border and selected row one device pixel apart (its height follows the fractional trigger position) |
+| `chat/app`, `chat/app-paper` | 60 | Curved-edge coverage of the ask chips' pill borders |
 
 ## Results
 
@@ -212,9 +234,29 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `file-preview/markdown` | 514 | 8290 | 206 | 9350 | 514 |
 | `file-preview/svg` | 0 | 0 | 0 | 0 | 0 |
 | `lightbox/image` | 0 | 22 | 14684 | 16180 | 0 |
+| `chat/empty` | 7 | 46 | 212 | 290 | 7 |
+| `chat/transcript` | 446 | 22453 | 1135 | 25950 | 446 |
+| `chat/transcript-paper` | 451 | 22449 | 1868 | 26750 | 451 |
+| `chat/streaming` | 114 | 5353 | 623 | 6580 | 114 |
+| `chat/permission` | 776 | 7021 | 1199 | 9050 | 776 |
+| `chat/question` | 11824 | 17433 | 2995 | 22480 | 11824 |
+| `chat/plan` | 2508 | 9335 | 547 | 10880 | 2508 |
+| `chat/fanout` | 8882 | 12233 | 1013 | 14580 | 8882 |
+| `chat/composer` | 1140 | 2345 | 1347 | 4070 | 1140 |
+| `chat/mode-ask` | 0 | 1048 | 132 | 1300 | 0 |
+| `chat/mode-plan` | 0 | 340 | 132 | 520 | 0 |
+| `chat/mode-agent` | 0 | 775 | 132 | 1000 | 0 |
+| `chat/mode-review` | 0 | 437 | 132 | 630 | 0 |
+| `chat/mode-loop` | 7 | 399 | 212 | 680 | 7 |
+| `chat/mode-agent-paper` | 0 | 787 | 200 | 1090 | 0 |
+| `chat/pickers` | 3053 | 10317 | 1644 | 13160 | 3053 |
+| `chat/app` | 60 | 1865 | 745 | 2880 | 60 |
+| `chat/app-paper` | 60 | 1881 | 619 | 2750 | 60 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
 Terminal tolerances: every grid difference left is synthetic-italic edge coverage (above). `terminal/search` adds the find field: curved-edge coverage at the corners of its 2px `--amber-d` ring and the query, which gpui-base's editor draws (typed input text, above).
 
 Content tolerances: text is glyph subpixel phase in prose, code and diagram labels; anti-aliasing is image resampling (the PDF page, the lightbox, the inline chart), shape edges inside PDF pages and Mermaid strokes, and rounded fence and table corners.
+
+Chat tolerances: text is glyph subpixel phase in transcript prose, code, chips and labels; anti-aliasing is icon, chip and card edges and the composer's shadow. The hard counts are the fractional line-box offsets and corners listed above.

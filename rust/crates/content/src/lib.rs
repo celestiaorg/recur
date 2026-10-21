@@ -30,6 +30,6 @@ pub use lightbox::{AttachmentLightbox, LightboxEvent};
 pub use mermaid::MermaidPreview;
 pub use pdf::PdfPreview;
 pub use preview::view::{FilePreview, FilePreviewEvent, SharedScroll};
-pub use render::style::MarkdownClass;
+pub use render::style::{MarkdownClass, Sheet};
 pub use streaming::StreamingMarkdown;
 pub use view::{MarkdownEvent, MarkdownView};

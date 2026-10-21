@@ -149,6 +149,7 @@ pub struct Select {
     query: SharedString,
     trigger_bounds: Option<Bounds<Pixels>>,
     list_scroll: ScrollHandle,
+    display_override: Option<SharedString>,
     _subs: Vec<Subscription>,
 }
 
@@ -262,6 +263,7 @@ impl Select {
             query: SharedString::default(),
             trigger_bounds: None,
             list_scroll: ScrollHandle::new(),
+            display_override: None,
             _subs: vec![sub],
         }
     }
@@ -276,6 +278,12 @@ impl Select {
     }
     pub fn set_values(&mut self, values: Vec<SharedString>, cx: &mut Context<Self>) {
         self.values = values;
+        cx.notify();
+    }
+    /// The closed trigger's text, when the owner summarizes the selection itself
+    /// (`ModelFlagsSelect`'s `Fast · High`).
+    pub fn set_display(&mut self, display: Option<SharedString>, cx: &mut Context<Self>) {
+        self.display_override = display;
         cx.notify();
     }
     pub fn value(&self) -> &SharedString {
@@ -368,6 +376,9 @@ impl Select {
     }
 
     fn display(&self) -> SharedString {
+        if let Some(d) = &self.display_override {
+            return d.clone();
+        }
         let chosen = self.chosen();
         let shown: SharedString = if self.multiple {
             chosen

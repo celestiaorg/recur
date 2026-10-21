@@ -137,6 +137,98 @@ pub fn ws_main_blocked(w: Option<&Workspace>) -> bool {
     ws_creating(w)
 }
 
+use recur_engine::view::modes as rules;
+pub use recur_engine::view::modes::{
+    CatalogModel, ModelPick, NEW_CHAT_TITLE, chat_has_started, default_model_for_mode,
+    is_mode_default_selection, picker_after_mode_change, resolved_default_for_mode, ws_chat_held,
+    ws_create_failed, ws_setup_status,
+};
+
+/// How a chat tab's agent may act. The mode belongs to the chat session; the rules over it
+/// are `recur_engine::view::modes`, this adds the dock's icon and tint.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ChatMode {
+    Ask,
+    Plan,
+    Agent,
+    Review,
+    Loop,
+}
+
+impl ChatMode {
+    /// Unknown and empty modes degrade to agent.
+    pub fn from_key(m: &str) -> ChatMode {
+        match rules::normalize_chat_mode(m) {
+            "ask" => ChatMode::Ask,
+            "plan" => ChatMode::Plan,
+            "review" => ChatMode::Review,
+            "loop" => ChatMode::Loop,
+            _ => ChatMode::Agent,
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            ChatMode::Ask => "ask",
+            ChatMode::Plan => "plan",
+            ChatMode::Agent => "agent",
+            ChatMode::Review => "review",
+            ChatMode::Loop => "loop",
+        }
+    }
+
+    fn meta(self) -> rules::ChatModeOption {
+        rules::chat_mode_meta(self.key())
+    }
+
+    pub fn label(self) -> &'static str {
+        self.meta().label
+    }
+
+    pub fn hint(self) -> &'static str {
+        self.meta().hint
+    }
+
+    pub fn icon(self) -> recur_ui::IconName {
+        use recur_ui::IconName;
+        match self {
+            ChatMode::Ask => IconName::MessageQuestion,
+            ChatMode::Plan => IconName::Notebook,
+            ChatMode::Agent => IconName::MessageCode,
+            ChatMode::Review => IconName::GitCompare,
+            ChatMode::Loop => IconName::RefreshCw,
+        }
+    }
+
+    /// The mode's `tint` (`var(--emerald)`, Plan's literal `#facc15`, …) as a color.
+    pub fn tint(self, t: &recur_ui::Tokens) -> recur_ui::Color {
+        match self {
+            ChatMode::Ask => t.emerald,
+            ChatMode::Plan => recur_ui::hex(0xfacc15),
+            ChatMode::Agent => t.cyan,
+            ChatMode::Review => t.indigo,
+            ChatMode::Loop => t.amber,
+        }
+    }
+
+    /// `cycleChatMode`.
+    pub fn cycle(self, exclude_loop: bool, exclude_agent: bool) -> ChatMode {
+        ChatMode::from_key(rules::cycle_chat_mode(
+            self.key(),
+            exclude_loop,
+            exclude_agent,
+        ))
+    }
+
+    /// `chatModeOptions`.
+    pub fn options(exclude_loop: bool, exclude_agent: bool) -> Vec<ChatMode> {
+        rules::chat_mode_options(exclude_loop, exclude_agent)
+            .iter()
+            .map(|o| ChatMode::from_key(o.value))
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -339,5 +431,14 @@ mod tests {
         assert!(!can(&solo, true));
         assert!(!can(&run("paused", "idle"), true));
         assert!(!workspace_can_remove(None, false));
+    }
+
+    #[test]
+    fn modes_follow_the_engine_rules() {
+        assert_eq!(ChatMode::from_key(""), ChatMode::Agent);
+        assert_eq!(ChatMode::Review.cycle(false, false), ChatMode::Loop);
+        assert_eq!(ChatMode::Review.cycle(true, false), ChatMode::Ask);
+        assert_eq!(ChatMode::options(true, true).len(), 3);
+        assert_eq!(ChatMode::Agent.label(), "Agent");
     }
 }

@@ -1593,5 +1593,176 @@
       "theme": "default",
       "tolerance": 16180
     }
+  ],
+  "chat": [
+    {
+      "name": "chat/empty",
+      "width": 560,
+      "height": 420,
+      "theme": "default",
+      "tolerance": 290,
+      "hardTolerance": 7
+    },
+    {
+      "name": "chat/transcript",
+      "width": 640,
+      "height": 900,
+      "theme": "default",
+      "tolerance": 25950,
+      "steps": [
+        {
+          "click": [
+            110,
+            122
+          ]
+        }
+      ],
+      "hardTolerance": 446
+    },
+    {
+      "name": "chat/transcript-paper",
+      "width": 640,
+      "height": 900,
+      "theme": "paper",
+      "tolerance": 26750,
+      "steps": [
+        {
+          "click": [
+            110,
+            122
+          ]
+        }
+      ],
+      "hardTolerance": 451
+    },
+    {
+      "name": "chat/streaming",
+      "width": 560,
+      "height": 480,
+      "theme": "default",
+      "tolerance": 6580,
+      "animationTime": 0,
+      "hardTolerance": 114
+    },
+    {
+      "name": "chat/permission",
+      "width": 560,
+      "height": 560,
+      "theme": "default",
+      "tolerance": 9050,
+      "hardTolerance": 776
+    },
+    {
+      "name": "chat/question",
+      "width": 560,
+      "height": 600,
+      "theme": "default",
+      "tolerance": 22480,
+      "hardTolerance": 11824
+    },
+    {
+      "name": "chat/plan",
+      "width": 560,
+      "height": 560,
+      "theme": "default",
+      "tolerance": 10880,
+      "hardTolerance": 2508
+    },
+    {
+      "name": "chat/fanout",
+      "width": 560,
+      "height": 520,
+      "theme": "default",
+      "tolerance": 14580,
+      "hardTolerance": 8882
+    },
+    {
+      "name": "chat/composer",
+      "width": 560,
+      "height": 420,
+      "theme": "default",
+      "tolerance": 4070,
+      "steps": [
+        {
+          "type": "/"
+        }
+      ],
+      "hardTolerance": 1140
+    },
+    {
+      "name": "chat/mode-ask",
+      "width": 560,
+      "height": 300,
+      "theme": "default",
+      "tolerance": 1300
+    },
+    {
+      "name": "chat/mode-plan",
+      "width": 560,
+      "height": 300,
+      "theme": "default",
+      "tolerance": 520
+    },
+    {
+      "name": "chat/mode-agent",
+      "width": 560,
+      "height": 300,
+      "theme": "default",
+      "tolerance": 1000
+    },
+    {
+      "name": "chat/mode-review",
+      "width": 560,
+      "height": 300,
+      "theme": "default",
+      "tolerance": 630
+    },
+    {
+      "name": "chat/mode-loop",
+      "width": 560,
+      "height": 300,
+      "theme": "default",
+      "tolerance": 680,
+      "hardTolerance": 7
+    },
+    {
+      "name": "chat/mode-agent-paper",
+      "width": 560,
+      "height": 300,
+      "theme": "paper",
+      "tolerance": 1090
+    },
+    {
+      "name": "chat/pickers",
+      "width": 560,
+      "height": 520,
+      "theme": "default",
+      "tolerance": 13160,
+      "steps": [
+        {
+          "click": [
+            160,
+            485
+          ]
+        }
+      ],
+      "hardTolerance": 3053
+    },
+    {
+      "name": "chat/app",
+      "width": 420,
+      "height": 640,
+      "theme": "default",
+      "tolerance": 2880,
+      "hardTolerance": 60
+    },
+    {
+      "name": "chat/app-paper",
+      "width": 420,
+      "height": 640,
+      "theme": "paper",
+      "tolerance": 2750,
+      "hardTolerance": 60
+    }
   ]
 }

@@ -13,13 +13,16 @@ recur-ui.workspace = true
 recur-editor.workspace = true
 recur-services.workspace = true
 recur-domain.workspace = true
+recur-engine.workspace = true
 recur-term.workspace = true
 regex.workspace = true
 serde.workspace = true
 tracing.workspace = true
 serde_json.workspace = true
+futures.workspace = true
 
 [dev-dependencies]
+parking_lot.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["mock"] }
 pretty_assertions.workspace = true

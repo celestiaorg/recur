@@ -6746,6 +6746,7 @@ dependencies = [
  "recur-services",
  "recur-store",
  "recur-ui",
+ "recur-view-chat",
  "recur-view-core",
  "tokio",
  "tracing",
@@ -7205,6 +7206,7 @@ dependencies = [
  "recur-editor",
  "recur-terminal-view",
  "recur-ui",
+ "recur-view-chat",
  "serde",
  "serde_json",
 ]
@@ -7235,14 +7237,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-view-chat"
+version = "0.0.0"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "futures",
+ "gpui-kit",
+ "gpui-pre",
+ "parking_lot",
+ "pretty_assertions",
+ "recur-agent",
+ "recur-agent-tools",
+ "recur-app",
+ "recur-bundles",
+ "recur-content",
+ "recur-domain",
+ "recur-engine",
+ "recur-forge",
+ "recur-issues",
+ "recur-services",
+ "recur-textmate",
+ "recur-ui",
+ "recur-view-chat",
+ "recur-view-core",
+ "regex",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "tracing",
+ "unicode-linebreak",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "recur-view-core"
 version = "0.0.0"
 dependencies = [
+ "futures",
  "gpui-kit",
  "gpui-pre",
+ "parking_lot",
  "pretty_assertions",
  "recur-domain",
  "recur-editor",
+ "recur-engine",
  "recur-services",
  "recur-term",
  "recur-ui",

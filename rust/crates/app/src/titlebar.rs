@@ -562,7 +562,12 @@ impl Shell {
                     .disabled(Some(backdrop))
                     .title("Stop the workspace first");
             }
-            right = right.child(no_drag(div().id("tb-remove-wrap").child(btn)));
+            right = right.child(no_drag(
+                div()
+                    .id("tb-remove-wrap")
+                    .debug_selector(|| "tb-remove".into())
+                    .child(btn),
+            ));
         }
         right.into_any_element()
     }

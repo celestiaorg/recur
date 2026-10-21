@@ -1,4 +1,4 @@
-//! Compact number labels for UI chrome (`lib/format.ts`).
+//! Compact labels for UI chrome (`lib/format.ts`).
 
 /// `formatCompactCount`: 460, 1.2k, 184k, 1.6M.
 pub fn format_compact_count(n: f64) -> String {
@@ -19,9 +19,32 @@ pub fn format_compact_count(n: f64) -> String {
     format!("{}M", one_decimal(v / 1_000_000.))
 }
 
+/// The live turn clock: `0:00` … `59:59`, then `h:mm:ss` (`formatElapsed`).
+pub fn format_elapsed(sec: i64) -> String {
+    let sec = sec.max(0);
+    let s = sec % 60;
+    if sec >= 3600 {
+        return format!("{}:{:02}:{s:02}", sec / 3600, (sec % 3600) / 60);
+    }
+    format!("{}:{s:02}", sec / 60)
+}
+
 #[cfg(test)]
 mod tests {
     use super::format_compact_count as f;
+    use super::format_elapsed;
+
+    #[test]
+    fn elapsed_clock() {
+        assert_eq!(format_elapsed(0), "0:00");
+        assert_eq!(format_elapsed(5), "0:05");
+        assert_eq!(format_elapsed(65), "1:05");
+        assert_eq!(format_elapsed(59 * 60 + 59), "59:59");
+        assert_eq!(format_elapsed(3600), "1:00:00");
+        assert_eq!(format_elapsed(3600 + 16), "1:00:16");
+        assert_eq!(format_elapsed(117 * 60 + 16), "1:57:16");
+        assert_eq!(format_elapsed(25 * 3600 + 3 * 60), "25:03:00");
+    }
 
     #[test]
     fn compact_counts() {

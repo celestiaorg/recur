@@ -242,6 +242,11 @@ pub enum ShellEvent {
     AppFocused(String),
     /// A backend `app.open` landed and was applied.
     PathOpened(Box<OpenPathResult>),
+    /// `onQuestionAnswered`: the UI accepted an `ask_user` answer, before the RPC returns
+    /// (paint the user bubble before the resume streams).
+    QuestionAnswered(Box<(recur_domain::UserQuestion, crate::chat::AskUserAnswer)>),
+    /// `onQuestionAnswerFailed`: the backend rejected that answer.
+    QuestionAnswerFailed(Box<(recur_domain::UserQuestion, crate::chat::AskUserAnswer)>),
 }
 
 /// Holds the app-wide [`AppState`] entity.
@@ -365,6 +370,7 @@ pub struct AppState {
     pub(crate) busy_watch: HashMap<String, Task<()>>,
     pub(crate) drop_hook: Option<DropHook>,
     pub(crate) commands: crate::commands::CommandRegistry,
+    pub(crate) chat: crate::chat::ChatStores,
 }
 
 impl EventEmitter<ShellEvent> for AppState {}
@@ -492,6 +498,7 @@ impl AppState {
             busy_watch: HashMap::new(),
             drop_hook: None,
             commands: Default::default(),
+            chat: Default::default(),
             storage,
         };
         state.init_themes();
@@ -520,6 +527,10 @@ impl AppState {
 
     pub fn storage(&self) -> &LocalStorage {
         &self.storage
+    }
+
+    pub fn storage_mut(&mut self) -> &mut LocalStorage {
+        &mut self.storage
     }
 
     /// The desktop's hook for Finder drops (allowlisting them for file serving).

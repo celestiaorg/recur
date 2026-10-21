@@ -67,6 +67,16 @@ pub struct Sheet {
     pub em_muted: bool,
     /// `.chat-canvas .mdref` card styles (the doc sheet has none).
     pub mdref_card: bool,
+    /// `--text: var(--muted)` (the chat's thought and compaction bodies): text-colored runs
+    /// paint muted and hovered links stay cyan.
+    pub muted: bool,
+    /// The body weight a host's `font: inherit` hands down (400 by default).
+    pub weight: f32,
+    /// `letter-spacing` in em inherited from the host (0 by default).
+    pub tracking: f32,
+    /// The first and last blocks' outer margins collapse into a host without padding or
+    /// border whose own margins are at least as large (a chat row), instead of padding the view.
+    pub collapse_edges: bool,
 }
 
 const fn h(scale: f32, margin_top: f32, margin_bottom: f32, muted: bool) -> Heading {
@@ -121,6 +131,10 @@ impl Sheet {
             strong_weight: 600.,
             em_muted: true,
             mdref_card: true,
+            muted: false,
+            weight: 400.,
+            tracking: 0.,
+            collapse_edges: false,
         }
     }
 
@@ -165,6 +179,10 @@ impl Sheet {
             strong_weight: 700.,
             em_muted: false,
             mdref_card: false,
+            muted: false,
+            weight: 400.,
+            tracking: 0.,
+            collapse_edges: false,
         }
     }
 }

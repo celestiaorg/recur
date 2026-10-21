@@ -92,6 +92,11 @@ impl StreamingMarkdown {
         self.update(cx);
     }
 
+    /// The inner canvas's sheet (`MarkdownView::set_sheet`).
+    pub fn set_sheet(&mut self, sheet: crate::Sheet, cx: &mut Context<Self>) {
+        self.view.update(cx, |v, cx| v.set_sheet(sheet, cx));
+    }
+
     /// `document.hidden` (the app window hidden or minimized).
     pub fn set_document_visible(&mut self, visible: bool, cx: &mut Context<Self>) {
         self.visible = visible;

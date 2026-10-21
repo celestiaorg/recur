@@ -10,5 +10,6 @@ pub mod shhl;
 pub mod strip;
 pub mod subagent;
 pub mod surface;
+pub mod tools;
 pub mod transcript_ui;
 pub mod window;

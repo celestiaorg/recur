@@ -88,7 +88,12 @@ fn session_row(c: &Connection, q: &str, p: impl rusqlite::Params) -> Result<Opti
     c.query_row(q, p, scan_session).optional().bare()
 }
 
-fn session_list(c: &Connection, q: &str, p: impl rusqlite::Params, ctx: impl Fn() -> String) -> Result<Vec<Session>> {
+fn session_list(
+    c: &Connection,
+    q: &str,
+    p: impl rusqlite::Params,
+    ctx: impl Fn() -> String,
+) -> Result<Vec<Session>> {
     let mut stmt = c.prepare(q).ctx(&ctx)?;
     let rows = stmt.query_map(p, scan_session).ctx(&ctx)?;
     let mut out = Vec::new();
@@ -101,7 +106,9 @@ fn session_list(c: &Connection, q: &str, p: impl rusqlite::Params, ctx: impl Fn(
 fn sessions_for_loop_query(c: &Connection, workspace_id: &str) -> Result<Vec<Session>> {
     session_list(
         c,
-        &format!("SELECT {SESSION_COLS} FROM session WHERE workspace_id = ? ORDER BY created_at, id"),
+        &format!(
+            "SELECT {SESSION_COLS} FROM session WHERE workspace_id = ? ORDER BY created_at, id"
+        ),
         [workspace_id],
         || format!("query sessions for loop {workspace_id:?}"),
     )
@@ -215,7 +222,12 @@ fn insert_message_tx(c: &Connection, m: &Message) -> Result<()> {
     Ok(())
 }
 
-fn insert_session_message_tx(c: &Connection, session_id: &str, message_id: &str, idx: i64) -> Result<()> {
+fn insert_session_message_tx(
+    c: &Connection,
+    session_id: &str,
+    message_id: &str,
+    idx: i64,
+) -> Result<()> {
     c.execute(
         "INSERT INTO session_message (session_id, message_id, idx) VALUES (?,?,?)",
         params![session_id, message_id, idx],
@@ -224,9 +236,22 @@ fn insert_session_message_tx(c: &Connection, session_id: &str, message_id: &str,
     Ok(())
 }
 
-fn insert_content_block_tx(c: &Connection, message_id: &str, idx: i64, b: &ContentBlock) -> Result<()> {
-    let id = if b.id.is_empty() { new_id() } else { b.id.clone() };
-    let content = if b.content_json.is_empty() { "{}" } else { &b.content_json };
+fn insert_content_block_tx(
+    c: &Connection,
+    message_id: &str,
+    idx: i64,
+    b: &ContentBlock,
+) -> Result<()> {
+    let id = if b.id.is_empty() {
+        new_id()
+    } else {
+        b.id.clone()
+    };
+    let content = if b.content_json.is_empty() {
+        "{}"
+    } else {
+        &b.content_json
+    };
     c.execute(
         "INSERT INTO message_content (id, message_id, idx, type, content_json, created_at)
 		VALUES (?,?,?,?,?,?)",
@@ -245,7 +270,8 @@ fn scan_message(r: &Row<'_>) -> rusqlite::Result<Message> {
     let s = |i: usize| -> rusqlite::Result<String> {
         Ok(r.get::<_, Option<String>>(i)?.unwrap_or_default())
     };
-    let n = |i: usize| -> rusqlite::Result<i64> { Ok(r.get::<_, Option<i64>>(i)?.unwrap_or_default()) };
+    let n =
+        |i: usize| -> rusqlite::Result<i64> { Ok(r.get::<_, Option<i64>>(i)?.unwrap_or_default()) };
     Ok(Message {
         id: r.get(0)?,
         origin_session_id: r.get(1)?,
@@ -299,9 +325,15 @@ impl Store {
     /// A session header (no transcript).
     pub fn get_session(&self, id: &str) -> Option<Session> {
         let db = self.db.as_ref()?;
-        db.with(|c| session_row(c, &format!("SELECT {SESSION_COLS} FROM session WHERE id = ?"), [id]))
-            .ok()
-            .flatten()
+        db.with(|c| {
+            session_row(
+                c,
+                &format!("SELECT {SESSION_COLS} FROM session WHERE id = ?"),
+                [id],
+            )
+        })
+        .ok()
+        .flatten()
     }
 
     /// The newest session of a kind bound to a workspace.
@@ -343,7 +375,9 @@ impl Store {
     /// strip). `None` when there are none (Go's nil).
     pub fn sessions_for_app_kind(&self, kind: &str) -> Option<Vec<Session>> {
         let db = self.db.as_ref().filter(|_| !kind.is_empty())?;
-        sessions_for_app_kind(db, kind).ok().filter(|l| !l.is_empty())
+        sessions_for_app_kind(db, kind)
+            .ok()
+            .filter(|l| !l.is_empty())
     }
 
     /// Session headers grouped by workspace, newest-updated first, at most 8
@@ -423,7 +457,12 @@ impl Store {
     /// config_json.code (and matching ownerCode) so two transcripts that
     /// shared a tab code stay distinct. Empty dest sessions whose code is
     /// kept are dropped so the hoisted row wins.
-    pub fn reassign_workspace_sessions(&self, from_id: &str, to_id: &str, remap: &BTreeMap<String, String>) -> Result<()> {
+    pub fn reassign_workspace_sessions(
+        &self,
+        from_id: &str,
+        to_id: &str,
+        remap: &BTreeMap<String, String>,
+    ) -> Result<()> {
         let from_id = from_id.trim();
         let to_id = to_id.trim();
         if from_id.is_empty() || to_id.is_empty() || from_id == to_id {
@@ -446,7 +485,10 @@ impl Store {
             let remapped = |code: &str| remap.get(code).filter(|n| !n.is_empty()).cloned();
             for s in &dest {
                 let cfg = chat_cfg(&s.config_json);
-                if cfg.code.is_empty() || !from_codes.contains(&cfg.code) || remapped(&cfg.code).is_some() {
+                if cfg.code.is_empty()
+                    || !from_codes.contains(&cfg.code)
+                    || remapped(&cfg.code).is_some()
+                {
                     continue;
                 }
                 if session_has_messages_query(&tx, &s.id) {
@@ -476,7 +518,8 @@ impl Store {
                 }
                 q.push_str(" WHERE id = ?");
                 args.push(s.id.clone());
-                tx.execute(&q, rusqlite::params_from_iter(args.iter())).ctx(ctx)?;
+                tx.execute(&q, rusqlite::params_from_iter(args.iter()))
+                    .ctx(ctx)?;
             }
             tx.commit().ctx(ctx)
         })
@@ -502,7 +545,12 @@ impl Store {
     }
 
     /// The specialist session for this conductor tab.
-    pub fn session_for_chat_agent(&self, workspace_id: &str, owner: &str, code: &str) -> Option<Session> {
+    pub fn session_for_chat_agent(
+        &self,
+        workspace_id: &str,
+        owner: &str,
+        code: &str,
+    ) -> Option<Session> {
         let db = self.db.as_ref().filter(|_| !code.is_empty())?;
         db.with(|c| {
             session_row(
@@ -529,7 +577,12 @@ impl Store {
             .filter(|l| !l.is_empty())
     }
 
-    fn exec_update(&self, q: &str, p: impl rusqlite::Params, ctx: impl FnOnce() -> String) -> Result<()> {
+    fn exec_update(
+        &self,
+        q: &str,
+        p: impl rusqlite::Params,
+        ctx: impl FnOnce() -> String,
+    ) -> Result<()> {
         match &self.db {
             None => Ok(()),
             Some(db) => db.with(|c| {
@@ -578,7 +631,11 @@ impl Store {
         if id.is_empty() {
             return Ok(());
         }
-        let cfg = if config_json.is_empty() { "{}" } else { config_json };
+        let cfg = if config_json.is_empty() {
+            "{}"
+        } else {
+            config_json
+        };
         self.exec_update(
             "UPDATE session SET config_json = ?, updated_at = ? WHERE id = ?",
             params![cfg, now_ms(), id],
@@ -588,7 +645,12 @@ impl Store {
 
     /// Inserts a compaction watermark and points active_context_id at it.
     /// Full history is untouched.
-    pub fn write_session_context(&self, session_id: &str, summary: &str, last_compacted_message_id: &str) -> Result<SessionContext> {
+    pub fn write_session_context(
+        &self,
+        session_id: &str,
+        summary: &str,
+        last_compacted_message_id: &str,
+    ) -> Result<SessionContext> {
         let db = self.sdb()?;
         let summary = summary.trim();
         if session_id.is_empty() || summary.is_empty() || last_compacted_message_id.is_empty() {
@@ -706,7 +768,12 @@ impl Store {
 
     /// json_patch the dock fields, then replace flags (json_set) in the same
     /// UPDATE. Empty flags_json leaves flags untouched.
-    pub fn patch_session_config_dock(&self, id: &str, patch_json: &str, flags_json: &str) -> Result<()> {
+    pub fn patch_session_config_dock(
+        &self,
+        id: &str,
+        patch_json: &str,
+        flags_json: &str,
+    ) -> Result<()> {
         if id.is_empty() || self.db.is_none() {
             return Ok(());
         }
@@ -731,7 +798,11 @@ impl Store {
         if id.is_empty() {
             return Ok(());
         }
-        let flags = if flags_json.trim().is_empty() { "{}" } else { flags_json };
+        let flags = if flags_json.trim().is_empty() {
+            "{}"
+        } else {
+            flags_json
+        };
         self.exec_update(
             "UPDATE session SET config_json = json_set(COALESCE(NULLIF(config_json, ''), '{}'), '$.flags', json(?)), updated_at = ? WHERE id = ?",
             params![flags, now_ms(), id],
@@ -852,7 +923,9 @@ impl Store {
     pub fn delete_closed_chat(&self, workspace_id: &str, code: &str) -> Result<()> {
         let db = self.sdb()?;
         if workspace_id.is_empty() || code.is_empty() {
-            return Err(Error::msg("delete closed chat: workspace and code are required"));
+            return Err(Error::msg(
+                "delete closed chat: workspace and code are required",
+            ));
         }
         let _g = self.session_mu.lock();
         let mut s = self.state.write();
@@ -905,7 +978,11 @@ impl Store {
     /// Unlinks every message after message_id (chat "reset to this point");
     /// message rows are deleted only when no fork still references them.
     /// Returns the unlinked ids (`None` when none).
-    pub fn truncate_session_after(&self, session_id: &str, message_id: &str) -> Result<Option<Vec<String>>> {
+    pub fn truncate_session_after(
+        &self,
+        session_id: &str,
+        message_id: &str,
+    ) -> Result<Option<Vec<String>>> {
         let Some(db) = &self.db else {
             return Ok(None);
         };
@@ -922,7 +999,9 @@ impl Store {
                     )
                     .bare()?;
                 let rows = stmt
-                    .query_map([session_id, session_id, message_id], |r| r.get::<_, String>(0))
+                    .query_map([session_id, session_id, message_id], |r| {
+                        r.get::<_, String>(0)
+                    })
                     .bare()?;
                 rows.collect::<rusqlite::Result<_>>().bare()?
             };
@@ -933,13 +1012,19 @@ impl Store {
                 )
                 .bare()?;
                 let refs: i64 = tx
-                    .query_row("SELECT COUNT(*) FROM session_message WHERE message_id = ?", [id], |r| r.get(0))
+                    .query_row(
+                        "SELECT COUNT(*) FROM session_message WHERE message_id = ?",
+                        [id],
+                        |r| r.get(0),
+                    )
                     .bare()?;
                 if refs > 0 {
                     continue;
                 }
-                tx.execute("DELETE FROM message_content WHERE message_id = ?", [id]).bare()?;
-                tx.execute("DELETE FROM message WHERE id = ?", [id]).bare()?;
+                tx.execute("DELETE FROM message_content WHERE message_id = ?", [id])
+                    .bare()?;
+                tx.execute("DELETE FROM message WHERE id = ?", [id])
+                    .bare()?;
             }
             Ok((!ids.is_empty()).then_some(ids))
         })
@@ -992,12 +1077,16 @@ impl Store {
             let Some((id, payload)) = row else {
                 return Ok(());
             };
-            let mut tu: ToolUsePayload = serde_json::from_str(&payload)
-                .map_err(json_err(format!("decode tool_use {internal_tool_use_id:?}")))?;
+            let mut tu: ToolUsePayload = serde_json::from_str(&payload).map_err(json_err(
+                format!("decode tool_use {internal_tool_use_id:?}"),
+            ))?;
             tu.input = input.to_owned();
             let b = marshal(&tu).map_err(json_err(""))?;
-            c.execute("UPDATE message_content SET content_json = ? WHERE id = ?", [&b, &id])
-                .ctx(|| format!("patch tool_use {internal_tool_use_id:?}"))?;
+            c.execute(
+                "UPDATE message_content SET content_json = ? WHERE id = ?",
+                [&b, &id],
+            )
+            .ctx(|| format!("patch tool_use {internal_tool_use_id:?}"))?;
             Ok(())
         })
     }
@@ -1033,15 +1122,22 @@ impl Store {
             }
             p.from = from.to_owned();
             let b = marshal(&p).map_err(json_err(""))?;
-            c.execute("UPDATE message_content SET content_json = ? WHERE id = ?", [&b, &id])
-                .ctx(|| format!("patch fallback {message_id}"))?;
+            c.execute(
+                "UPDATE message_content SET content_json = ? WHERE id = ?",
+                [&b, &id],
+            )
+            .ctx(|| format!("patch fallback {message_id}"))?;
             Ok(())
         })
     }
 
     /// The newest tool_use in a session whose name ends with suffix (e.g.
     /// `__ask_user`), compared exactly (LIKE would treat `_` as a wildcard).
-    pub fn latest_tool_use_by_name_suffix(&self, session_id: &str, suffix: &str) -> Option<ToolUsePayload> {
+    pub fn latest_tool_use_by_name_suffix(
+        &self,
+        session_id: &str,
+        suffix: &str,
+    ) -> Option<ToolUsePayload> {
         let db = self.db.as_ref()?;
         if session_id.is_empty() || suffix.is_empty() {
             return None;
@@ -1152,7 +1248,13 @@ impl Store {
     /// including fork_message_id (a copy of the join rows, not the
     /// messages). kind and config_json override the parent's (empty keeps
     /// them). The child starts idle with no provider resume ref.
-    pub fn fork_session(&self, parent_id: &str, fork_message_id: &str, kind: &str, config_json: &str) -> Result<Session> {
+    pub fn fork_session(
+        &self,
+        parent_id: &str,
+        fork_message_id: &str,
+        kind: &str,
+        config_json: &str,
+    ) -> Result<Session> {
         self.fork_session_to(parent_id, fork_message_id, "", kind, config_json)
     }
 
@@ -1166,9 +1268,17 @@ impl Store {
         config_json: &str,
     ) -> Result<Session> {
         if dest_workspace_id.trim().is_empty() {
-            return Err(Error::msg("fork session: destination workspace is required"));
+            return Err(Error::msg(
+                "fork session: destination workspace is required",
+            ));
         }
-        self.fork_session_to(parent_id, fork_message_id, dest_workspace_id, kind, config_json)
+        self.fork_session_to(
+            parent_id,
+            fork_message_id,
+            dest_workspace_id,
+            kind,
+            config_json,
+        )
     }
 
     fn fork_session_to(
@@ -1181,11 +1291,19 @@ impl Store {
     ) -> Result<Session> {
         let db = self.sdb()?;
         if parent_id.is_empty() || fork_message_id.is_empty() {
-            return Err(Error::msg("fork session: parent and fork message are required"));
+            return Err(Error::msg(
+                "fork session: parent and fork message are required",
+            ));
         }
         let _g = self.session_mu.lock();
         let parent = db
-            .with(|c| session_row(c, &format!("SELECT {SESSION_COLS} FROM session WHERE id = ?"), [parent_id]))
+            .with(|c| {
+                session_row(
+                    c,
+                    &format!("SELECT {SESSION_COLS} FROM session WHERE id = ?"),
+                    [parent_id],
+                )
+            })
             .map_err(|e| Error::msg(format!("fork session: load parent: {e}")))?
             .ok_or_else(|| Error::msg("fork session: load parent: sql: no rows in result set"))?;
         let fork_idx: Option<i64> = db
@@ -1204,7 +1322,11 @@ impl Store {
                 "fork session: message {fork_message_id:?} is not in session {parent_id:?}"
             )));
         };
-        let kind = if kind.trim().is_empty() { parent.kind.clone() } else { kind.to_owned() };
+        let kind = if kind.trim().is_empty() {
+            parent.kind.clone()
+        } else {
+            kind.to_owned()
+        };
         let mut config_json = config_json.to_owned();
         if config_json.is_empty() {
             config_json = parent.config_json.clone();
@@ -1346,7 +1468,11 @@ impl Store {
                 let Ok(p) = serde_json::from_str::<TextPayload>(&payload) else {
                     continue;
                 };
-                let shown = if p.display_text.is_empty() { p.text } else { p.display_text };
+                let shown = if p.display_text.is_empty() {
+                    p.text
+                } else {
+                    p.display_text
+                };
                 if shown.trim().is_empty() {
                     continue;
                 }
@@ -1409,7 +1535,12 @@ impl Store {
 /// Clones the parent's active compaction row onto the child when the
 /// watermark message was copied. Empty means the fork point is before the
 /// compact, so the child has no active context.
-fn copy_session_context_tx(c: &Connection, parent_context_id: &str, child_id: &str, now: i64) -> Result<String> {
+fn copy_session_context_tx(
+    c: &Connection,
+    parent_context_id: &str,
+    child_id: &str,
+    now: i64,
+) -> Result<String> {
     let row: Option<(String, String)> = c
         .query_row(
             "SELECT summary, last_compacted_message_id FROM session_context WHERE id = ?",
@@ -1438,7 +1569,10 @@ fn copy_session_context_tx(c: &Connection, parent_context_id: &str, child_id: &s
         params![id, child_id, summary, watermark, now],
     )
     .ctx(|| "fork session: copy context".into())?;
-    c.execute("UPDATE session SET active_context_id = ? WHERE id = ?", [&id, child_id])
-        .ctx(|| "fork session: set child context".into())?;
+    c.execute(
+        "UPDATE session SET active_context_id = ? WHERE id = ?",
+        [&id, child_id],
+    )
+    .ctx(|| "fork session: set child context".into())?;
     Ok(id)
 }

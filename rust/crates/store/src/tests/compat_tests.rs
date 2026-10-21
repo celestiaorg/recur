@@ -119,7 +119,11 @@ fn dump(s: &Store) -> Value {
         let ids: Vec<String> = st.projects.iter().map(|p| p.id.clone()).collect();
         (st.pr_number_seq, rules, ids)
     };
-    ws_ids.extend(s.session_headers_by_workspace().unwrap_or_default().into_keys());
+    ws_ids.extend(
+        s.session_headers_by_workspace()
+            .unwrap_or_default()
+            .into_keys(),
+    );
 
     let mut session_ids = Vec::new();
     let mut by_workspace = BTreeMap::new();
@@ -152,7 +156,11 @@ fn dump(s: &Store) -> Value {
         workspaces: s.workspaces(),
         by_workspace,
         prs: s.prs(),
-        pr_by_id: s.prs().into_iter().map(|p| (p.id.clone(), s.pr(&p.id).unwrap())).collect(),
+        pr_by_id: s
+            .prs()
+            .into_iter()
+            .map(|p| (p.id.clone(), s.pr(&p.id).unwrap()))
+            .collect(),
         inbox: s.inbox(),
         policy: s.policy(),
         settings: s.settings(),
@@ -217,7 +225,10 @@ fn table_dump(path: &Path) -> BTreeMap<String, Vec<Vec<String>>> {
         let mut stmt = c
             .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
             .unwrap();
-        stmt.query_map([], |r| r.get(0)).unwrap().map(Result::unwrap).collect()
+        stmt.query_map([], |r| r.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
     };
     let mut out = BTreeMap::new();
     for t in tables {
@@ -234,7 +245,8 @@ fn table_dump(path: &Path) -> BTreeMap<String, Vec<Vec<String>>> {
                             rusqlite::types::ValueRef::Null => "NULL".to_owned(),
                             rusqlite::types::ValueRef::Integer(v) => v.to_string(),
                             rusqlite::types::ValueRef::Real(v) => v.to_string(),
-                            rusqlite::types::ValueRef::Text(v) | rusqlite::types::ValueRef::Blob(v) => {
+                            rusqlite::types::ValueRef::Text(v)
+                            | rusqlite::types::ValueRef::Blob(v) => {
                                 String::from_utf8_lossy(v).into_owned()
                             }
                         })
@@ -267,7 +279,9 @@ fn schema_dump(path: &Path) -> Value {
         .unwrap()
         .map(Result::unwrap)
         .collect();
-    let mut stmt = c.prepare("SELECT version, name FROM __migrations ORDER BY version").unwrap();
+    let mut stmt = c
+        .prepare("SELECT version, name FROM __migrations ORDER BY version")
+        .unwrap();
     let migrations: Vec<Value> = stmt
         .query_map([], |r| {
             Ok(serde_json::json!({"version": r.get::<_, i64>(0)?, "name": r.get::<_, String>(1)?}))
@@ -305,7 +319,10 @@ fn go_json_columns_reencode_byte_for_byte() {
     let c = Connection::open(fixtures().join("go_store.db")).unwrap();
     let docs = |q: &str| -> Vec<String> {
         let mut stmt = c.prepare(q).unwrap();
-        stmt.query_map([], |r| r.get(0)).unwrap().map(Result::unwrap).collect()
+        stmt.query_map([], |r| r.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
     };
     let mut n = 0;
     let mut each = |q: &str, f: &dyn Fn(&str)| {
@@ -314,17 +331,37 @@ fn go_json_columns_reencode_byte_for_byte() {
         n += rows.len();
         rows.iter().for_each(|d| f(d));
     };
-    each("SELECT doc_json FROM workspaces", &|d| reencodes::<Workspace>("workspaces", d));
+    each("SELECT doc_json FROM workspaces", &|d| {
+        reencodes::<Workspace>("workspaces", d)
+    });
     each("SELECT doc_json FROM prs", &|d| reencodes::<Pr>("prs", d));
-    each("SELECT doc_json FROM inbox", &|d| reencodes::<InboxItem>("inbox", d));
-    each("SELECT doc_json FROM agents", &|d| reencodes::<Agent>("agents", d));
-    each("SELECT doc_json FROM feed", &|d| reencodes::<FeedItem>("feed", d));
-    each("SELECT doc_json FROM escalations", &|d| reencodes::<Escalation>("escalations", d));
-    each("SELECT doc_json FROM analysis", &|d| reencodes::<AnalysisRun>("analysis", d));
-    each("SELECT doc_json FROM policy", &|d| reencodes::<Policy>("policy", d));
-    each("SELECT doc_json FROM settings", &|d| reencodes::<Settings>("settings", d));
-    each("SELECT doc_json FROM resource", &|d| reencodes::<Resource>("resource", d));
-    each("SELECT extra_json FROM projects", &|d| reencodes::<Project>("projects.extra_json", d));
+    each("SELECT doc_json FROM inbox", &|d| {
+        reencodes::<InboxItem>("inbox", d)
+    });
+    each("SELECT doc_json FROM agents", &|d| {
+        reencodes::<Agent>("agents", d)
+    });
+    each("SELECT doc_json FROM feed", &|d| {
+        reencodes::<FeedItem>("feed", d)
+    });
+    each("SELECT doc_json FROM escalations", &|d| {
+        reencodes::<Escalation>("escalations", d)
+    });
+    each("SELECT doc_json FROM analysis", &|d| {
+        reencodes::<AnalysisRun>("analysis", d)
+    });
+    each("SELECT doc_json FROM policy", &|d| {
+        reencodes::<Policy>("policy", d)
+    });
+    each("SELECT doc_json FROM settings", &|d| {
+        reencodes::<Settings>("settings", d)
+    });
+    each("SELECT doc_json FROM resource", &|d| {
+        reencodes::<Resource>("resource", d)
+    });
+    each("SELECT extra_json FROM projects", &|d| {
+        reencodes::<Project>("projects.extra_json", d)
+    });
     let typed = [
         (BLOCK_TEXT, "text"),
         (BLOCK_THINKING, "thinking"),
@@ -384,7 +421,11 @@ fn rust_rewrite_of_go_db_changes_nothing() {
         }
         for (k, r) in &rules {
             let mut parts = k.split('\x00');
-            let (p, repo, branch) = (parts.next().unwrap(), parts.next().unwrap(), parts.next().unwrap());
+            let (p, repo, branch) = (
+                parts.next().unwrap(),
+                parts.next().unwrap(),
+                parts.next().unwrap(),
+            );
             d.upsert_github_branch_rule(p, repo, branch, *r).unwrap();
         }
         d.set_pr_number_seq(seq).unwrap();
@@ -424,7 +465,11 @@ fn rust_written_db_reads_like_go() {
         let dir = tmp();
         let path = copy_db("rust_written.db", dir.path());
         let st = Store::open(&path).unwrap();
-        assert_same(&dump(&st), &read_json("go_reads_rust.json"), "rust_written.db");
+        assert_same(
+            &dump(&st),
+            &read_json("go_reads_rust.json"),
+            "rust_written.db",
+        );
     });
 }
 
@@ -498,7 +543,8 @@ fn populate_from_rust(st: &Store) {
     .unwrap();
     st.delete_closed_chat("W-rust", "PA2").unwrap();
     st.delete_workspace("LOOP-2235").unwrap();
-    st.update_workspace("LOOP-2231", |w| w.phase = "rust phase".into()).unwrap();
+    st.update_workspace("LOOP-2231", |w| w.phase = "rust phase".into())
+        .unwrap();
     st.upsert_agent(
         "W-rust",
         Agent {
@@ -522,8 +568,10 @@ fn populate_from_rust(st: &Store) {
             },
         );
     }
-    st.patch_feed_by_tool_use_id("W-rust", "tu-r2", |it| it.tool_result = "rust patched".into())
-        .unwrap();
+    st.patch_feed_by_tool_use_id("W-rust", "tu-r2", |it| {
+        it.tool_result = "rust patched".into()
+    })
+    .unwrap();
     let f = st.add_finding(Finding {
         id: "F-rust-1".into(),
         workspace_id: "W-rust".into(),
@@ -534,8 +582,10 @@ fn populate_from_rust(st: &Store) {
         status: "open".into(),
         ..Default::default()
     });
-    st.add_finding_note("W-rust", &f.id, "human note", "").unwrap();
-    st.add_finding_note("W-rust", &f.short_id, "coder note", FINDING_ACTOR_CODER).unwrap();
+    st.add_finding_note("W-rust", &f.id, "human note", "")
+        .unwrap();
+    st.add_finding_note("W-rust", &f.short_id, "coder note", FINDING_ACTOR_CODER)
+        .unwrap();
     st.add_finding(Finding {
         id: "F-rust-2".into(),
         workspace_id: "W-rust".into(),
@@ -545,7 +595,8 @@ fn populate_from_rust(st: &Store) {
         status: "open".into(),
         ..Default::default()
     });
-    st.set_finding_status("W-rust", "F-rust-2", "ignored").unwrap();
+    st.set_finding_status("W-rust", "F-rust-2", "ignored")
+        .unwrap();
     st.resolve_findings("W-go");
     st.add_escalation(Escalation {
         id: "esc-rust".into(),
@@ -597,7 +648,10 @@ fn populate_from_rust(st: &Store) {
         summary: "rust".into(),
         ..Default::default()
     });
-    for (i, t) in ["workspace.event", "workspace.updated"].into_iter().enumerate() {
+    for (i, t) in ["workspace.event", "workspace.updated"]
+        .into_iter()
+        .enumerate()
+    {
         st.append_event(&StoredEvent {
             workspace_id: "W-rust".into(),
             r#type: t.into(),
@@ -638,9 +692,13 @@ fn populate_from_rust(st: &Store) {
             },
         )
         .unwrap();
-    st.append_content_block(&mid, ContentBlock::text("on it")).unwrap();
-    st.append_content_block(&mid, ContentBlock::tool_use("tu-rust", "toolu_r", "Bash", r#"{ "cmd": "ls" }"#))
+    st.append_content_block(&mid, ContentBlock::text("on it"))
         .unwrap();
+    st.append_content_block(
+        &mid,
+        ContentBlock::tool_use("tu-rust", "toolu_r", "Bash", r#"{ "cmd": "ls" }"#),
+    )
+    .unwrap();
     st.complete_message(
         &mid,
         STREAM_COMPLETE,
@@ -651,11 +709,14 @@ fn populate_from_rust(st: &Store) {
         },
     )
     .unwrap();
-    st.write_session_context(&sess.id, "rust summary", &user.id).unwrap();
+    st.write_session_context(&sess.id, "rust summary", &user.id)
+        .unwrap();
     st.update_session_ref(&sess.id, "rust-ref").unwrap();
     st.patch_session_config_title(&sess.id, "Rust tab").unwrap();
-    st.fork_session(&sess.id, &mid, "coder", r#"{"code":"CO","ownerCode":"PA"}"#).unwrap();
-    st.update_session_config_json("sess-go-app", r#"{"code":"APP"}"#).unwrap();
+    st.fork_session(&sess.id, &mid, "coder", r#"{"code":"CO","ownerCode":"PA"}"#)
+        .unwrap();
+    st.update_session_config_json("sess-go-app", r#"{"code":"APP"}"#)
+        .unwrap();
     st.create_session(Session {
         id: "rust-app".into(),
         kind: SESSION_KIND_APP.into(),

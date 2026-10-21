@@ -35,11 +35,18 @@ pub(crate) fn db(s: &Store) -> &Db {
 
 /// Runs raw SQL on the store's connection.
 pub(crate) fn exec(s: &Store, q: &str) -> crate::Result<()> {
-    db(s).with(|c| c.execute_batch(q).map_err(|source| crate::Error::Sql { context: String::new(), source }))
+    db(s).with(|c| {
+        c.execute_batch(q).map_err(|source| crate::Error::Sql {
+            context: String::new(),
+            source,
+        })
+    })
 }
 
 pub(crate) fn query_i64(s: &Store, q: &str) -> i64 {
-    db(s).with(|c| Ok(c.query_row(q, [], |r| r.get::<_, i64>(0)).unwrap())).unwrap()
+    db(s)
+        .with(|c| Ok(c.query_row(q, [], |r| r.get::<_, i64>(0)).unwrap()))
+        .unwrap()
 }
 
 /// Runs statements on a bare migrated DB (Go's openDB) and closes it.

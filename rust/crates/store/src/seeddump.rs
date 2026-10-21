@@ -6,7 +6,9 @@
 use std::collections::BTreeMap;
 use std::io;
 
-use recur_domain::{Agent, Escalation, FeedItem, InboxItem, Policy, Pr, Project, Resource, Settings, Workspace};
+use recur_domain::{
+    Agent, Escalation, FeedItem, InboxItem, Policy, Pr, Project, Resource, Settings, Workspace,
+};
 use serde::Serialize;
 use serde_json::ser::{Formatter, PrettyFormatter};
 
@@ -74,7 +76,10 @@ pub fn dump(st: &Store) -> String {
         }
     }
     let mut out = Vec::new();
-    let mut ser = serde_json::Serializer::with_formatter(&mut out, GoIndent(PrettyFormatter::with_indent(b"  ")));
+    let mut ser = serde_json::Serializer::with_formatter(
+        &mut out,
+        GoIndent(PrettyFormatter::with_indent(b"  ")),
+    );
     // Plain domain structs: encoding cannot fail.
     if d.serialize(&mut ser).is_err() {
         return String::new();
@@ -109,7 +114,11 @@ impl Formatter for GoIndent<'_> {
         end_object_value();
     }
 
-    fn write_string_fragment<W: ?Sized + io::Write>(&mut self, w: &mut W, fragment: &str) -> io::Result<()> {
+    fn write_string_fragment<W: ?Sized + io::Write>(
+        &mut self,
+        w: &mut W,
+        fragment: &str,
+    ) -> io::Result<()> {
         let mut start = 0;
         for (i, c) in fragment.char_indices() {
             let esc = match c {

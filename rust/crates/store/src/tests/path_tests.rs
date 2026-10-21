@@ -11,7 +11,10 @@ fn worktrees_dir_uses_data_dir_when_overridden() {
     let data = tempfile::tempdir().unwrap();
     run_isolated(
         "worktrees_dir_uses_data_dir_when_overridden",
-        &[(DATA_DIR_ENV, data.path()), (WORKTREES_DIR_ENV, Path::new(""))],
+        &[
+            (DATA_DIR_ENV, data.path()),
+            (WORKTREES_DIR_ENV, Path::new("")),
+        ],
         || {
             let data = std::env::var(DATA_DIR_ENV).unwrap();
             assert_eq!(worktrees_dir().unwrap(), Path::new(&data).join("worktrees"));
@@ -57,10 +60,19 @@ fn defaults_are_side_by_side_roots() {
                 worktrees_dir().unwrap(),
                 Path::new(&home).join(".recur/worktrees-next")
             );
-            assert_eq!(recur_skills_dir().unwrap(), Path::new(&home).join(".recur/recur-skills"));
-            assert_eq!(user_bundles_dir().unwrap(), Path::new(&home).join(".recur/bundles"));
+            assert_eq!(
+                recur_skills_dir().unwrap(),
+                Path::new(&home).join(".recur/recur-skills")
+            );
+            assert_eq!(
+                user_bundles_dir().unwrap(),
+                Path::new(&home).join(".recur/bundles")
+            );
             assert_eq!(bundles_dir().unwrap(), cfg.join("RecurNext/Bundles"));
-            assert_eq!(bundles_cache_dir().unwrap(), cfg.join("RecurNext/BundleCache"));
+            assert_eq!(
+                bundles_cache_dir().unwrap(),
+                cfg.join("RecurNext/BundleCache")
+            );
             assert_eq!(open_sock_path().unwrap(), cfg.join("RecurNext/open.sock"));
             assert_eq!(open_files_dir().unwrap(), cfg.join("RecurNext/open-files"));
             assert_eq!(
@@ -147,19 +159,27 @@ fn workspace_data_dirs() {
 #[test]
 fn recur_skills_dir_under_home() {
     let home = tempfile::tempdir().unwrap();
-    run_isolated("recur_skills_dir_under_home", &[("HOME", home.path())], || {
-        let home = std::env::var("HOME").unwrap();
-        assert_eq!(
-            recur_skills_dir().unwrap(),
-            Path::new(&home).join(".recur").join("recur-skills")
-        );
-    });
+    run_isolated(
+        "recur_skills_dir_under_home",
+        &[("HOME", home.path())],
+        || {
+            let home = std::env::var("HOME").unwrap();
+            assert_eq!(
+                recur_skills_dir().unwrap(),
+                Path::new(&home).join(".recur").join("recur-skills")
+            );
+        },
+    );
 }
 
 #[test]
 fn missing_home_is_an_error() {
-    run_isolated("missing_home_is_an_error", &[("HOME", Path::new(""))], || {
-        assert!(recur_skills_dir().is_err());
-        assert_eq!(codex_default_seed_auth_path(), "");
-    });
+    run_isolated(
+        "missing_home_is_an_error",
+        &[("HOME", Path::new(""))],
+        || {
+            assert!(recur_skills_dir().is_err());
+            assert_eq!(codex_default_seed_auth_path(), "");
+        },
+    );
 }

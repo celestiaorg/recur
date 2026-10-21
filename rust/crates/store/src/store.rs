@@ -247,21 +247,21 @@ fn pr_list_row(p: &Pr) -> Pr {
         workspace_id: workspace_id.clone(),
         project_id: project_id.clone(),
         group: group.clone(),
-        number: number.clone(),
+        number: *number,
         source: source.clone(),
         url: url.clone(),
         head_sha: head_sha.clone(),
-        draft: draft.clone(),
+        draft: *draft,
         branch: branch.clone(),
         base: base.clone(),
         title: title.clone(),
         summary: summary.clone(),
         focus: focus.clone(),
         state: state.clone(),
-        diff: diff.clone(),
-        file_count: file_count.clone(),
-        checks_ok: checks_ok.clone(),
-        has_checks: has_checks.clone(),
+        diff: *diff,
+        file_count: *file_count,
+        checks_ok: *checks_ok,
+        has_checks: *has_checks,
         when: when.clone(),
         created_at: created_at.clone(),
         updated_at: updated_at.clone(),
@@ -269,24 +269,24 @@ fn pr_list_row(p: &Pr) -> Pr {
         pending_comments: pending_comments.clone(),
         verify: verify.clone(),
         checks: checks.clone(),
-        behind_base: behind_base.clone(),
+        behind_base: *behind_base,
         updating_base: updating_base.clone(),
         impact: impact.clone(),
         author_login: author_login.clone(),
         participants: participants.clone(),
         reviewers: reviewers.clone(),
         viewer_login: viewer_login.clone(),
-        viewer_can_write: viewer_can_write.clone(),
+        viewer_can_write: *viewer_can_write,
         node_id: node_id.clone(),
         mergeable: mergeable.clone(),
         merge_state_status: merge_state_status.clone(),
         review_decision: review_decision.clone(),
-        review_requested: review_requested.clone(),
+        review_requested: *review_requested,
         attention_reasons: attention_reasons.clone(),
-        is_cross_repository: is_cross_repository.clone(),
+        is_cross_repository: *is_cross_repository,
         allowed_merge_methods: allowed_merge_methods.clone(),
-        merge_queue_enabled: merge_queue_enabled.clone(),
-        merge_queued: merge_queued.clone(),
+        merge_queue_enabled: *merge_queue_enabled,
+        merge_queued: *merge_queued,
         commits: None,
         files: None,
     }
@@ -322,7 +322,11 @@ pub(crate) fn inbox_targets_workspace(target: &str, workspace_id: &str) -> bool 
 
 /// The hard-delete cascade predicate: workspace deep-links plus `pr:` rows
 /// for PRs deleted with the workspace.
-fn inbox_targets_deleted_workspace(target: &str, workspace_id: &str, pr_ids: &BTreeSet<String>) -> bool {
+fn inbox_targets_deleted_workspace(
+    target: &str,
+    workspace_id: &str,
+    pr_ids: &BTreeSet<String>,
+) -> bool {
     if inbox_targets_workspace(target, workspace_id) {
         return true;
     }
@@ -511,7 +515,9 @@ impl Store {
                 return Err(Error::msg(format!("reorder groups: unknown group {id:?}")));
             };
             if !seen.insert(id) {
-                return Err(Error::msg(format!("reorder groups: duplicate group {id:?}")));
+                return Err(Error::msg(format!(
+                    "reorder groups: duplicate group {id:?}"
+                )));
             }
             next.push(g.clone());
         }
@@ -532,7 +538,13 @@ impl Store {
     }
 
     pub fn project(&self, id: &str) -> Option<Project> {
-        let p = self.state.read().projects.iter().find(|p| p.id == id).cloned()?;
+        let p = self
+            .state
+            .read()
+            .projects
+            .iter()
+            .find(|p| p.id == id)
+            .cloned()?;
         Some(projfile::overlay(p))
     }
 
@@ -722,7 +734,12 @@ impl Store {
 
     /// Workspaces in insertion order (oldest first).
     pub fn workspaces(&self) -> Vec<Workspace> {
-        self.state.read().workspaces.iter().map(clone_workspace).collect()
+        self.state
+            .read()
+            .workspaces
+            .iter()
+            .map(clone_workspace)
+            .collect()
     }
 
     pub fn workspace(&self, id: &str) -> Option<Workspace> {
@@ -799,7 +816,11 @@ impl Store {
 
     fn persist_agents(&self, s: &State, workspace_id: &str) {
         if let Some(db) = &self.db {
-            let list = s.agents.get(workspace_id).map(Vec::as_slice).unwrap_or_default();
+            let list = s
+                .agents
+                .get(workspace_id)
+                .map(Vec::as_slice)
+                .unwrap_or_default();
             let _ = db.replace_list("agents", workspace_id, list);
         }
     }
@@ -846,7 +867,12 @@ impl Store {
     /// rewrites source codes that collided with a dest transcript. Dest
     /// placeholder tabs (same code, no provider session) take the source's
     /// resumable fields; moved agents get dest identity.
-    pub fn move_workspace_agents(&self, from_id: &str, to_id: &str, remap: &BTreeMap<String, String>) {
+    pub fn move_workspace_agents(
+        &self,
+        from_id: &str,
+        to_id: &str,
+        remap: &BTreeMap<String, String>,
+    ) {
         let from_id = from_id.trim();
         let to_id = to_id.trim();
         if from_id.is_empty() || to_id.is_empty() || from_id == to_id {
@@ -858,8 +884,11 @@ impl Store {
             return;
         }
         let mut dest = s.agents.get(to_id).cloned().unwrap_or_default();
-        let mut have: BTreeMap<String, usize> =
-            dest.iter().enumerate().map(|(i, a)| (a.code.clone(), i)).collect();
+        let mut have: BTreeMap<String, usize> = dest
+            .iter()
+            .enumerate()
+            .map(|(i, a)| (a.code.clone(), i))
+            .collect();
         for a in &from {
             let mut a = clone_agent(a);
             if let Some(next) = remap.get(&a.code).filter(|n| !n.is_empty()) {
@@ -894,14 +923,12 @@ impl Store {
         };
         let n = src.len();
         let dest = s.findings.entry(to_id.to_owned()).or_default();
-        let mut sort = dest.len();
-        for mut f in src {
+        for (sort, mut f) in (dest.len()..).zip(src) {
             f.workspace_id = to_id.to_owned();
             if let Some(db) = &self.db {
                 let _ = db.upsert_finding(&f, sort);
             }
             dest.push(f);
-            sort += 1;
         }
         n
     }
@@ -910,7 +937,14 @@ impl Store {
 
     /// Newest first; `None` when empty (Go's nil).
     pub fn feed(&self, workspace_id: &str) -> Option<Vec<FeedItem>> {
-        nil_if_empty(self.state.read().feed.get(workspace_id).cloned().unwrap_or_default())
+        nil_if_empty(
+            self.state
+                .read()
+                .feed
+                .get(workspace_id)
+                .cloned()
+                .unwrap_or_default(),
+        )
     }
 
     /// Adds an item to the front (newest first). The DB write is one INSERT
@@ -1082,13 +1116,24 @@ impl Store {
     }
 
     /// Human Ignore / Mark invalid / Reopen.
-    pub fn set_finding_status(&self, workspace_id: &str, finding_id: &str, status: &str) -> Result<Finding> {
+    pub fn set_finding_status(
+        &self,
+        workspace_id: &str,
+        finding_id: &str,
+        status: &str,
+    ) -> Result<Finding> {
         self.update_finding_status(workspace_id, finding_id, status, "", FINDING_ACTOR_HUMAN)
     }
 
     /// Appends an operator comment (non-empty after trim). author defaults
     /// to human.
-    pub fn add_finding_note(&self, workspace_id: &str, finding_id: &str, body: &str, author: &str) -> Result<Finding> {
+    pub fn add_finding_note(
+        &self,
+        workspace_id: &str,
+        finding_id: &str,
+        body: &str,
+        author: &str,
+    ) -> Result<Finding> {
         let body = body.trim();
         if body.is_empty() {
             return Err(Error::msg("finding note body is required"));
@@ -1096,14 +1141,18 @@ impl Store {
         let author = match author {
             FINDING_ACTOR_HUMAN | FINDING_ACTOR_CODER | FINDING_ACTOR_ENGINE => author,
             "" => FINDING_ACTOR_HUMAN,
-            _ => return Err(Error::msg(format!("invalid finding note author {author:?}"))),
+            _ => {
+                return Err(Error::msg(format!(
+                    "invalid finding note author {author:?}"
+                )));
+            }
         };
         let mut s = self.state.write();
-        let Some((i, f)) = s
-            .findings
-            .get_mut(workspace_id)
-            .and_then(|l| l.iter_mut().enumerate().find(|(_, f)| f.matches_ref(finding_id)))
-        else {
+        let Some((i, f)) = s.findings.get_mut(workspace_id).and_then(|l| {
+            l.iter_mut()
+                .enumerate()
+                .find(|(_, f)| f.matches_ref(finding_id))
+        }) else {
             return Err(Error::msg(format!("finding {finding_id:?} not found")));
         };
         f.notes.push(FindingNote {
@@ -1119,17 +1168,22 @@ impl Store {
     }
 
     /// Removes one operator note by id.
-    pub fn delete_finding_note(&self, workspace_id: &str, finding_id: &str, note_id: &str) -> Result<Finding> {
+    pub fn delete_finding_note(
+        &self,
+        workspace_id: &str,
+        finding_id: &str,
+        note_id: &str,
+    ) -> Result<Finding> {
         let note_id = note_id.trim();
         if note_id.is_empty() {
             return Err(Error::msg("finding note id is required"));
         }
         let mut s = self.state.write();
-        let Some((i, f)) = s
-            .findings
-            .get_mut(workspace_id)
-            .and_then(|l| l.iter_mut().enumerate().find(|(_, f)| f.matches_ref(finding_id)))
-        else {
+        let Some((i, f)) = s.findings.get_mut(workspace_id).and_then(|l| {
+            l.iter_mut()
+                .enumerate()
+                .find(|(_, f)| f.matches_ref(finding_id))
+        }) else {
             return Err(Error::msg(format!("finding {finding_id:?} not found")));
         };
         let before = f.notes.len();
@@ -1161,19 +1215,26 @@ impl Store {
         }
         let reason = reason.trim();
         let actor = match actor {
-            FINDING_ACTOR_HUMAN | FINDING_ACTOR_CODER | FINDING_ACTOR_REVIEWER | FINDING_ACTOR_ENGINE => actor,
+            FINDING_ACTOR_HUMAN
+            | FINDING_ACTOR_CODER
+            | FINDING_ACTOR_REVIEWER
+            | FINDING_ACTOR_ENGINE => actor,
             "" => FINDING_ACTOR_HUMAN,
             _ => return Err(Error::msg(format!("invalid finding actor {actor:?}"))),
         };
         let agent_actor = actor == FINDING_ACTOR_CODER || actor == FINDING_ACTOR_REVIEWER;
         if agent_actor {
-            if status != FindingStatus::Resolved.as_str() && status != FindingStatus::Invalid.as_str() {
+            if status != FindingStatus::Resolved.as_str()
+                && status != FindingStatus::Invalid.as_str()
+            {
                 return Err(Error::msg(format!(
                     "{actor} may only set status resolved or invalid, got {status:?}"
                 )));
             }
             if status == FindingStatus::Invalid.as_str() && reason.is_empty() {
-                return Err(Error::msg("reason is required when marking a finding invalid"));
+                return Err(Error::msg(
+                    "reason is required when marking a finding invalid",
+                ));
             }
         }
         if actor == FINDING_ACTOR_ENGINE && status != FindingStatus::Resolved.as_str() {
@@ -1183,11 +1244,11 @@ impl Store {
         }
 
         let mut s = self.state.write();
-        let Some((i, f)) = s
-            .findings
-            .get_mut(workspace_id)
-            .and_then(|l| l.iter_mut().enumerate().find(|(_, f)| f.matches_ref(finding_id)))
-        else {
+        let Some((i, f)) = s.findings.get_mut(workspace_id).and_then(|l| {
+            l.iter_mut()
+                .enumerate()
+                .find(|(_, f)| f.matches_ref(finding_id))
+        }) else {
             return Err(Error::msg(format!("finding {finding_id:?} not found")));
         };
         if agent_actor && f.status == FindingStatus::Ignored.as_str() {
@@ -1233,7 +1294,11 @@ impl Store {
     /// Findings matching status, or all for "" / "all"; `None` when none.
     pub fn findings_by_status(&self, workspace_id: &str, status: &str) -> Option<Vec<Finding>> {
         let s = self.state.read();
-        let all = s.findings.get(workspace_id).map(Vec::as_slice).unwrap_or_default();
+        let all = s
+            .findings
+            .get(workspace_id)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
         let out: Vec<Finding> = if status.is_empty() || status == "all" {
             all.to_vec()
         } else {
@@ -1243,11 +1308,11 @@ impl Store {
     }
 
     pub fn open_findings_count(&self, workspace_id: &str) -> usize {
-        self.state
-            .read()
-            .findings
-            .get(workspace_id)
-            .map_or(0, |l| l.iter().filter(|f| f.status == FindingStatus::Open.as_str()).count())
+        self.state.read().findings.get(workspace_id).map_or(0, |l| {
+            l.iter()
+                .filter(|f| f.status == FindingStatus::Open.as_str())
+                .count()
+        })
     }
 
     // ---- Analysis (observatory) ----
@@ -1268,7 +1333,8 @@ impl Store {
     pub fn latest_analysis(&self, project_id: &str, workspace_id: &str) -> Option<AnalysisRun> {
         let s = self.state.read();
         let hit = s.analysis.iter().find(|a| {
-            a.project_id == project_id && (workspace_id.is_empty() || a.workspace_id == workspace_id)
+            a.project_id == project_id
+                && (workspace_id.is_empty() || a.workspace_id == workspace_id)
         });
         if let Some(a) = hit {
             return Some(a.clone());
@@ -1297,7 +1363,12 @@ impl Store {
     }
 
     pub fn pr(&self, id: &str) -> Option<Pr> {
-        self.state.read().prs.iter().find(|p| p.id == id).map(clone_pr)
+        self.state
+            .read()
+            .prs
+            .iter()
+            .find(|p| p.id == id)
+            .map(clone_pr)
     }
 
     /// The PR linked to a workspace. A Local row older than a GitHub row is
@@ -1433,7 +1504,8 @@ impl Store {
         let s = self.state.read();
         let prefix = format!("{workspace_id}{ESCALATION_KEY_SEP}");
         s.escalations.iter().any(|(k, e)| {
-            e.status == "open" && (e.workspace_id == workspace_id || k == workspace_id || k.starts_with(&prefix))
+            e.status == "open"
+                && (e.workspace_id == workspace_id || k == workspace_id || k.starts_with(&prefix))
         })
     }
 
@@ -1452,7 +1524,12 @@ impl Store {
     /// Resolves the workspace's open escalation. Idempotent: an already
     /// answered (or missing) escalation returns `(record, false)` so a
     /// settled loop is never re-dispatched.
-    pub fn answer_escalation(&self, workspace_id: &str, choice: &str, free_text: &str) -> (Option<Escalation>, bool) {
+    pub fn answer_escalation(
+        &self,
+        workspace_id: &str,
+        choice: &str,
+        free_text: &str,
+    ) -> (Option<Escalation>, bool) {
         self.answer_escalation_for(workspace_id, "", choice, free_text)
     }
 
@@ -1475,7 +1552,12 @@ impl Store {
         }
         let choice = choice.trim();
         let free_text = free_text.trim();
-        e.answer = if free_text.is_empty() { choice } else { free_text }.to_owned();
+        e.answer = if free_text.is_empty() {
+            choice
+        } else {
+            free_text
+        }
+        .to_owned();
         e.choice = choice.to_owned();
         e.free_text = free_text.to_owned();
         e.status = "answered".to_owned();
@@ -1565,7 +1647,11 @@ impl Store {
             }
         }
         let inbox_unread = s.inbox.iter().filter(|i| i.unread).count() as i64;
-        let other_unread = s.inbox.iter().filter(|i| i.unread && i.kind != "chat").count() as i64;
+        let other_unread = s
+            .inbox
+            .iter()
+            .filter(|i| i.unread && i.kind != "chat")
+            .count() as i64;
         let mut app_unseen = 0;
         if let Some(db) = &self.db
             && let Ok(list) = crate::sessions::sessions_for_app_kind(db, SESSION_KIND_APP)
@@ -1722,7 +1808,12 @@ impl Store {
     // ---- GitHub branch rules ----
 
     /// The cached "pull request required" rule and when it was checked.
-    pub fn github_branch_require_pr(&self, project_id: &str, repo: &str, branch: &str) -> Option<(bool, DateTime<Utc>)> {
+    pub fn github_branch_require_pr(
+        &self,
+        project_id: &str,
+        repo: &str,
+        branch: &str,
+    ) -> Option<(bool, DateTime<Utc>)> {
         self.state
             .read()
             .github_branch_rules
@@ -1732,7 +1823,13 @@ impl Store {
 
     /// Caches the rule (blank ids are ignored). The DB write happens after
     /// the store lock is released.
-    pub fn set_github_branch_require_pr(&self, project_id: &str, repo: &str, branch: &str, require: bool) {
+    pub fn set_github_branch_require_pr(
+        &self,
+        project_id: &str,
+        repo: &str,
+        branch: &str,
+        require: bool,
+    ) {
         let (project_id, repo, branch) = (project_id.trim(), repo.trim(), branch.trim());
         if project_id.is_empty() || repo.is_empty() || branch.is_empty() {
             return;
@@ -1761,7 +1858,11 @@ impl Drop for Store {
 /// row, else a workspace row it owns or that has no owner. Without: the
 /// lowest-keyed open row for the workspace, else the workspace row, else any
 /// row for the workspace.
-fn lookup_escalation(s: &State, workspace_id: &str, agent_code: &str) -> Option<(String, Escalation)> {
+fn lookup_escalation(
+    s: &State,
+    workspace_id: &str,
+    agent_code: &str,
+) -> Option<(String, Escalation)> {
     let agent_code = agent_code.trim();
     if !agent_code.is_empty() {
         let key = escalation_key(workspace_id, agent_code);

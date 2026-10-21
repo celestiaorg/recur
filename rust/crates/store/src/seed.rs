@@ -90,7 +90,15 @@ pub(crate) fn seed_defaults(s: &mut State) {
     s.resource = Resource::default();
 }
 
-fn project(id: &str, name: &str, pic: &str, color: &str, open: bool, idle: bool, repo: &str) -> Project {
+fn project(
+    id: &str,
+    name: &str,
+    pic: &str,
+    color: &str,
+    open: bool,
+    idle: bool,
+    repo: &str,
+) -> Project {
     Project {
         id: id.into(),
         name: name.into(),
@@ -147,9 +155,33 @@ fn workspace(
 /// inbox) plus the demo status-bar numbers.
 pub(crate) fn seed_demo(s: &mut State) {
     s.projects = vec![
-        project("storefront", "storefront", "S", C_CYAN, true, false, "~/code/storefront"),
-        project("payments", "payments-api", "P", C_AMBER, true, false, "~/code/payments-api"),
-        project("marketing", "marketing-site", "M", C_INDIGO, false, true, "~/code/marketing-site"),
+        project(
+            "storefront",
+            "storefront",
+            "S",
+            C_CYAN,
+            true,
+            false,
+            "~/code/storefront",
+        ),
+        project(
+            "payments",
+            "payments-api",
+            "P",
+            C_AMBER,
+            true,
+            false,
+            "~/code/payments-api",
+        ),
+        project(
+            "marketing",
+            "marketing-site",
+            "M",
+            C_INDIGO,
+            false,
+            true,
+            "~/code/marketing-site",
+        ),
     ];
 
     let mut w2231 = workspace(
@@ -366,7 +398,11 @@ fn seed_agents(s: &mut State) {
                 4,
                 vec![
                     step_state("run", "pnpm dev --port 5173 → ready", "run"),
-                    step_state("open", "navigated to http://localhost:5173/checkout", "read"),
+                    step_state(
+                        "open",
+                        "navigated to http://localhost:5173/checkout",
+                        "read",
+                    ),
                     step_state("click", "“Sign in with Apple” → Apple consent screen", "ok"),
                     step_state("check", "redirect returned a valid session ✓", "ok"),
                     step_state("click", "“Sign in with Google” …", "cur"),
@@ -392,7 +428,15 @@ fn seed_agents(s: &mut State) {
     );
 }
 
-fn feed(id: &str, code: &str, name: &str, kind: &str, text: &str, time: &str, click: &str) -> FeedItem {
+fn feed(
+    id: &str,
+    code: &str,
+    name: &str,
+    kind: &str,
+    text: &str,
+    time: &str,
+    click: &str,
+) -> FeedItem {
     FeedItem {
         id: id.into(),
         agent_code: code.into(),

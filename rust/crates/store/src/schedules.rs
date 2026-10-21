@@ -34,7 +34,8 @@ pub(crate) fn millis_from_iso(s: &str) -> Result<i64> {
         .map_err(|e| Error::msg(format!("bad timestamp {s:?}: {e}")))
 }
 
-const SCHEDULE_COLUMNS: &str = "id, project_id, name, prompt, base_branch, mode, model, simplify, loop_id, policy_id,
+const SCHEDULE_COLUMNS: &str =
+    "id, project_id, name, prompt, base_branch, mode, model, simplify, loop_id, policy_id,
 	cadence, cron, run_date, run_time, time_zone, paused, next_run_at";
 
 /// The query behind [`Store::active_scheduled_prompt_runs`].
@@ -136,10 +137,16 @@ fn upsert_schedule(c: &Connection, p: &ScheduledPrompt) -> Result<()> {
         )
         .bare()?;
     if n == 0 {
-        return Err(Error::msg(format!("schedule {} belongs to another project", p.id)));
+        return Err(Error::msg(format!(
+            "schedule {} belongs to another project",
+            p.id
+        )));
     }
-    c.execute("DELETE FROM scheduled_prompt_flag WHERE schedule_id=?", [&p.id])
-        .bare()?;
+    c.execute(
+        "DELETE FROM scheduled_prompt_flag WHERE schedule_id=?",
+        [&p.id],
+    )
+    .bare()?;
     for (k, v) in &p.flags {
         c.execute(
             "INSERT INTO scheduled_prompt_flag(schedule_id, key, value) VALUES(?,?,?)",
@@ -174,14 +181,21 @@ impl Store {
             if out.is_empty() {
                 return Ok(out);
             }
-            let by_id: BTreeMap<String, usize> =
-                out.iter().enumerate().map(|(i, p)| (p.id.clone(), i)).collect();
+            let by_id: BTreeMap<String, usize> = out
+                .iter()
+                .enumerate()
+                .map(|(i, p)| (p.id.clone(), i))
+                .collect();
             let mut stmt = c
                 .prepare("SELECT schedule_id, key, value FROM scheduled_prompt_flag")
                 .bare()?;
             let rows = stmt
                 .query_map([], |r| {
-                    Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                    ))
                 })
                 .bare()?;
             for row in rows {
@@ -206,8 +220,11 @@ impl Store {
         if out.is_empty() {
             return Ok(out);
         }
-        let by_id: BTreeMap<String, usize> =
-            out.iter().enumerate().map(|(i, p)| (p.id.clone(), i)).collect();
+        let by_id: BTreeMap<String, usize> = out
+            .iter()
+            .enumerate()
+            .map(|(i, p)| (p.id.clone(), i))
+            .collect();
         // Latest occurrence per schedule (most recently created row).
         let last = db.with(|c| {
             query_runs(
@@ -227,7 +244,11 @@ impl Store {
 
     /// The scheduler tick set: unpaused schedules that are due, plus
     /// `@reboot` cron schedules on startup. Skips last-run history.
-    pub fn due_scheduled_prompts(&self, now: DateTime<Utc>, startup: bool) -> Result<Vec<ScheduledPrompt>> {
+    pub fn due_scheduled_prompts(
+        &self,
+        now: DateTime<Utc>,
+        startup: bool,
+    ) -> Result<Vec<ScheduledPrompt>> {
         let now = iso_from_millis(now.timestamp_millis());
         let start = i64::from(startup);
         self.query_schedules(
@@ -250,7 +271,8 @@ impl Store {
     pub fn delete_scheduled_prompt(&self, id: &str) -> Result<()> {
         let db = self.db.as_ref().ok_or_else(requires_db)?;
         db.with(|c| {
-            c.execute("DELETE FROM scheduled_prompt WHERE id=?", [id]).bare()?;
+            c.execute("DELETE FROM scheduled_prompt WHERE id=?", [id])
+                .bare()?;
             Ok(())
         })
     }
@@ -259,7 +281,9 @@ impl Store {
     pub fn scheduled_prompt_runs(&self) -> Result<Vec<ScheduledPromptRun>> {
         match &self.db {
             None => Ok(Vec::new()),
-            Some(db) => db.with(|c| query_runs(c, &format!("{RUN_SELECT} ORDER BY created_at, rowid"))),
+            Some(db) => {
+                db.with(|c| query_runs(c, &format!("{RUN_SELECT} ORDER BY created_at, rowid")))
+            }
         }
     }
 
@@ -278,7 +302,11 @@ impl Store {
 
     /// Atomically records the occurrence and advances the schedule. A
     /// duplicate due time is a no-op returning false, even after a restart.
-    pub fn claim_scheduled_prompt(&self, p: &ScheduledPrompt, r: &ScheduledPromptRun) -> Result<bool> {
+    pub fn claim_scheduled_prompt(
+        &self,
+        p: &ScheduledPrompt,
+        r: &ScheduledPromptRun,
+    ) -> Result<bool> {
         let db = self.db.as_ref().ok_or_else(requires_db)?;
         db.with(|c| {
             let tx = c.transaction().bare()?;

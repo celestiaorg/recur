@@ -19,9 +19,9 @@ use chrono::{DateTime, TimeZone as _, Utc};
 use parking_lot::Mutex;
 use recur_domain::json::to_string as marshal;
 use recur_domain::{
-    AnalysisRun, Escalation, Finding, FindingNote, IdType, MergeCommitMessage,
-    MergeMethod, Project, ProjectGroup, Severity, SquashCommitMessage, StoredEvent,
-    UpdateBaseMethod, new_unique_id,
+    AnalysisRun, Escalation, Finding, FindingNote, IdType, MergeCommitMessage, MergeMethod,
+    Project, ProjectGroup, Severity, SquashCommitMessage, StoredEvent, UpdateBaseMethod,
+    new_unique_id,
 };
 use rusqlite::{Connection, OptionalExtension as _, Transaction, params};
 use serde::de::DeserializeOwned;
@@ -57,8 +57,8 @@ impl Db {
     /// backfills finding identities, primes the feed counter and flushes the
     /// WAL.
     pub fn open(path: &Path) -> Result<Self> {
-        let mut conn = Connection::open(path)
-            .ctx(|| format!("open sqlite {:?}", path.to_string_lossy()))?;
+        let mut conn =
+            Connection::open(path).ctx(|| format!("open sqlite {:?}", path.to_string_lossy()))?;
         // A transient lock (a just-closed connection's WAL checkpoint, a quick
         // close→reopen) should wait briefly rather than fail with SQLITE_BUSY,
         // and must cover the migration DDL too.
@@ -265,9 +265,7 @@ impl Db {
             return Ok(());
         }
         self.with(|c| {
-            let tx = c
-                .transaction()
-                .ctx(|| "backfill PR times".into())?;
+            let tx = c.transaction().ctx(|| "backfill PR times".into())?;
             for &i in &dirty {
                 upsert_doc_tx(&tx, "prs", &s.prs[i].id, &s.prs[i], i)?;
             }
@@ -307,17 +305,28 @@ impl Db {
         self.tx(|tx| {
             for (i, id) in ids.iter().enumerate() {
                 let n = tx
-                    .execute(&format!("UPDATE {table} SET sort = ? WHERE id = ?"), params![i as i64, id])
+                    .execute(
+                        &format!("UPDATE {table} SET sort = ? WHERE id = ?"),
+                        params![i as i64, id],
+                    )
                     .ctx(|| format!("set {label} sort {id:?}"))?;
                 if n == 0 {
-                    return Err(Error::msg(format!("set {label} sort: unknown {noun} {id:?}")));
+                    return Err(Error::msg(format!(
+                        "set {label} sort: unknown {noun} {id:?}"
+                    )));
                 }
             }
             Ok(())
         })
     }
 
-    pub fn upsert_doc<T: Serialize>(&self, table: &str, id: &str, v: &T, sort: usize) -> Result<()> {
+    pub fn upsert_doc<T: Serialize>(
+        &self,
+        table: &str,
+        id: &str,
+        v: &T,
+        sort: usize,
+    ) -> Result<()> {
         self.with(|c| upsert_doc_tx(c, table, id, v, sort))
     }
 
@@ -354,7 +363,12 @@ impl Db {
     }
 
     /// Swaps all rows for a workspace in a per-workspace list table.
-    pub fn replace_list<T: Serialize>(&self, table: &str, workspace_id: &str, items: &[T]) -> Result<()> {
+    pub fn replace_list<T: Serialize>(
+        &self,
+        table: &str,
+        workspace_id: &str,
+        items: &[T],
+    ) -> Result<()> {
         self.tx(|tx| replace_list_tx(tx, table, workspace_id, items))
     }
 
@@ -445,7 +459,9 @@ impl Db {
 }
 
 /// Go's `json.Unmarshal` leaves a field at its zero value for JSON `null`.
-fn nullable<'de, D: Deserializer<'de>, T: Deserialize<'de> + Default>(d: D) -> std::result::Result<T, D::Error> {
+fn nullable<'de, D: Deserializer<'de>, T: Deserialize<'de> + Default>(
+    d: D,
+) -> std::result::Result<T, D::Error> {
     Ok(Option::<T>::deserialize(d)?.unwrap_or_default())
 }
 
@@ -579,15 +595,24 @@ fn query_strings(c: &Connection, q: &str, table: &str) -> Result<Vec<String>> {
 }
 
 fn load_doc_list<T: DeserializeOwned>(c: &Connection, table: &str) -> Result<Vec<T>> {
-    query_strings(c, &format!("SELECT doc_json FROM {table} ORDER BY sort"), table)?
-        .iter()
-        .map(|doc| serde_json::from_str(doc).map_err(json_err(format!("unmarshal {table}"))))
-        .collect()
+    query_strings(
+        c,
+        &format!("SELECT doc_json FROM {table} ORDER BY sort"),
+        table,
+    )?
+    .iter()
+    .map(|doc| serde_json::from_str(doc).map_err(json_err(format!("unmarshal {table}"))))
+    .collect()
 }
 
-fn load_doc_by_workspace<T: DeserializeOwned>(c: &Connection, table: &str) -> Result<BTreeMap<String, Vec<T>>> {
+fn load_doc_by_workspace<T: DeserializeOwned>(
+    c: &Connection,
+    table: &str,
+) -> Result<BTreeMap<String, Vec<T>>> {
     let mut stmt = c
-        .prepare(&format!("SELECT workspace_id, doc_json FROM {table} ORDER BY sort"))
+        .prepare(&format!(
+            "SELECT workspace_id, doc_json FROM {table} ORDER BY sort"
+        ))
         .ctx(|| format!("query {table}"))?;
     let rows = stmt
         .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
@@ -634,7 +659,9 @@ fn load_findings(c: &Connection) -> Result<BTreeMap<String, Vec<Finding>>> {
             "SELECT {FINDING_SELECT_COLS} FROM findings ORDER BY workspace_id, sort, id"
         ))
         .ctx(|| "query findings".into())?;
-    let rows = stmt.query_map([], scan_finding).ctx(|| "query findings".into())?;
+    let rows = stmt
+        .query_map([], scan_finding)
+        .ctx(|| "query findings".into())?;
     let mut out: BTreeMap<String, Vec<Finding>> = BTreeMap::new();
     let mut index: BTreeMap<String, (String, usize)> = BTreeMap::new();
     for f in rows {
@@ -750,12 +777,17 @@ fn backfill_finding_identities(conn: &mut Connection) -> Result<()> {
         )
         .ctx(|| format!("backfill finding {:?}", r.id))?;
     }
-    tx.commit().ctx(|| "commit finding identity backfill".into())
+    tx.commit()
+        .ctx(|| "commit finding identity backfill".into())
 }
 
 fn load_singleton<T: DeserializeOwned>(c: &Connection, table: &str) -> Result<Option<T>> {
     let doc: Option<String> = c
-        .query_row(&format!("SELECT doc_json FROM {table} WHERE id = 1"), [], |r| r.get(0))
+        .query_row(
+            &format!("SELECT doc_json FROM {table} WHERE id = 1"),
+            [],
+            |r| r.get(0),
+        )
         .optional()
         .ctx(|| format!("query {table}"))?;
     match doc {
@@ -767,18 +799,25 @@ fn load_singleton<T: DeserializeOwned>(c: &Connection, table: &str) -> Result<Op
 }
 
 fn load_pr_number_seq(c: &Connection) -> Result<i64> {
-    Ok(c
-        .query_row("SELECT last_number FROM pr_seq WHERE id = 1", [], |r| r.get(0))
+    Ok(
+        c.query_row("SELECT last_number FROM pr_seq WHERE id = 1", [], |r| {
+            r.get(0)
+        })
         .optional()
         .ctx(|| "query pr_seq".into())?
-        .unwrap_or(0))
+        .unwrap_or(0),
+    )
 }
 
 fn load_analysis(c: &Connection) -> Result<Vec<AnalysisRun>> {
-    query_strings(c, "SELECT doc_json FROM analysis ORDER BY ts DESC", "analysis")?
-        .iter()
-        .map(|doc| serde_json::from_str(doc).map_err(json_err("unmarshal analysis")))
-        .collect()
+    query_strings(
+        c,
+        "SELECT doc_json FROM analysis ORDER BY ts DESC",
+        "analysis",
+    )?
+    .iter()
+    .map(|doc| serde_json::from_str(doc).map_err(json_err("unmarshal analysis")))
+    .collect()
 }
 
 fn load_github_branch_rules(c: &Connection) -> Result<BTreeMap<String, GithubBranchRule>> {
@@ -799,13 +838,15 @@ fn load_github_branch_rules(c: &Connection) -> Result<BTreeMap<String, GithubBra
         .ctx(ctx)?;
     let mut out = BTreeMap::new();
     for row in rows {
-        let (p, repo, branch, require, checked) =
-            row.ctx(|| "scan github_branch_rules".into())?;
+        let (p, repo, branch, require, checked) = row.ctx(|| "scan github_branch_rules".into())?;
         out.insert(
             github_branch_rule_key(&p, &repo, &branch),
             GithubBranchRule {
                 require: require != 0,
-                at: Utc.timestamp_millis_opt(checked).single().unwrap_or_default(),
+                at: Utc
+                    .timestamp_millis_opt(checked)
+                    .single()
+                    .unwrap_or_default(),
             },
         );
     }
@@ -818,7 +859,14 @@ pub(crate) fn upsert_project_group_tx(c: &Connection, g: &ProjectGroup, sort: us
 		VALUES (?,?,?,?,?,?)
 		ON CONFLICT(id) DO UPDATE SET
 			name=excluded.name, open=excluded.open, updated_at=excluded.updated_at",
-        params![g.id, g.name, i64::from(g.open), sort as i64, g.created_at, g.updated_at],
+        params![
+            g.id,
+            g.name,
+            i64::from(g.open),
+            sort as i64,
+            g.created_at,
+            g.updated_at
+        ],
     )
     .ctx(|| format!("upsert project_group {:?}", g.id))?;
     Ok(())
@@ -854,13 +902,27 @@ pub(crate) fn upsert_project_tx(c: &Connection, p: &Project, sort: usize) -> Res
 		ON CONFLICT(id) DO UPDATE SET
 			name=excluded.name, repo_path=excluded.repo_path, base_branch=excluded.base_branch,
 			group_id=excluded.group_id, extra_json=excluded.extra_json",
-        params![p.id, p.name, p.repo_path, p.base_branch, p.group_id, extra, sort as i64],
+        params![
+            p.id,
+            p.name,
+            p.repo_path,
+            p.base_branch,
+            p.group_id,
+            extra,
+            sort as i64
+        ],
     )
     .ctx(|| format!("upsert project {:?}", p.id))?;
     Ok(())
 }
 
-pub(crate) fn upsert_doc_tx<T: Serialize>(c: &Connection, table: &str, id: &str, v: &T, sort: usize) -> Result<()> {
+pub(crate) fn upsert_doc_tx<T: Serialize>(
+    c: &Connection,
+    table: &str,
+    id: &str,
+    v: &T,
+    sort: usize,
+) -> Result<()> {
     let doc = marshal(v).map_err(json_err(""))?;
     c.execute(
         &format!(
@@ -907,9 +969,17 @@ fn set_pr_number_seq_tx(c: &Connection, n: i64) -> Result<()> {
     Ok(())
 }
 
-fn replace_list_tx<T: Serialize>(c: &Connection, table: &str, workspace_id: &str, items: &[T]) -> Result<()> {
-    c.execute(&format!("DELETE FROM {table} WHERE workspace_id = ?"), [workspace_id])
-        .ctx(|| format!("clear {table} for {workspace_id:?}"))?;
+fn replace_list_tx<T: Serialize>(
+    c: &Connection,
+    table: &str,
+    workspace_id: &str,
+    items: &[T],
+) -> Result<()> {
+    c.execute(
+        &format!("DELETE FROM {table} WHERE workspace_id = ?"),
+        [workspace_id],
+    )
+    .ctx(|| format!("clear {table} for {workspace_id:?}"))?;
     for (i, it) in items.iter().enumerate() {
         let doc = marshal(it).map_err(json_err(""))?;
         c.execute(
@@ -933,7 +1003,12 @@ fn upsert_analysis_tx(c: &Connection, a: &AnalysisRun) -> Result<()> {
 }
 
 /// Writes one finding and replaces its notes.
-pub(crate) fn upsert_finding_tx(c: &Connection, f: &Finding, workspace_id: &str, sort: usize) -> Result<()> {
+pub(crate) fn upsert_finding_tx(
+    c: &Connection,
+    f: &Finding,
+    workspace_id: &str,
+    sort: usize,
+) -> Result<()> {
     c.execute(
         "INSERT INTO findings (
 			id, short_id, workspace_id, iteration, file, line, end_line,

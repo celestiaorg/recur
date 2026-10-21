@@ -12,7 +12,10 @@ const CHILD: &str = "RECUR_SEEDDUMP_CHILD";
 
 fn main() -> ExitCode {
     if std::env::var_os(CHILD).is_some() {
-        print!("{}", recur_store::seeddump::dump(&recur_store::Store::new_in_memory()));
+        print!(
+            "{}",
+            recur_store::seeddump::dump(&recur_store::Store::new_in_memory())
+        );
         return ExitCode::SUCCESS;
     }
     let run = || -> std::io::Result<std::process::ExitStatus> {

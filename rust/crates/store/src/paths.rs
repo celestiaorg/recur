@@ -95,7 +95,10 @@ pub fn worktrees_dir() -> io::Result<PathBuf> {
     let dir = home()?.join(".recur").join(WORKTREES_DIR_NAME);
     mkdir_all(&dir)?;
     if let Ok(cfg) = user_config_dir() {
-        migrate_legacy_worktrees(&PathBuf::from(cfg).join(APP_DIR_NAME).join("worktrees"), &dir);
+        migrate_legacy_worktrees(
+            &PathBuf::from(cfg).join(APP_DIR_NAME).join("worktrees"),
+            &dir,
+        );
     }
     Ok(dir)
 }
@@ -132,7 +135,10 @@ pub(crate) fn migrate_legacy_worktrees(legacy: &Path, new_root: &Path) {
 /// live here, not inside the git worktree.
 pub fn workspace_dir(root: &Path, workspace_id: &str) -> io::Result<PathBuf> {
     if workspace_id.is_empty() {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid argument"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "invalid argument",
+        ));
     }
     let dir = root.join("workspaces").join(workspace_id);
     mkdir_all(&dir)?;

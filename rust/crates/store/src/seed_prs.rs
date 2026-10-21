@@ -47,7 +47,16 @@ fn check(name: &str, detail: &str) -> Check {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn comment(id: &str, url: &str, code: &str, author: &str, login: &str, css: &str, time: &str, verb: &str) -> PrComment {
+fn comment(
+    id: &str,
+    url: &str,
+    code: &str,
+    author: &str,
+    login: &str,
+    css: &str,
+    time: &str,
+    verb: &str,
+) -> PrComment {
     PrComment {
         id: id.into(),
         url: url.into(),
@@ -213,7 +222,12 @@ pub(crate) fn seed_prs(s: &mut State) {
             when: "18m".into(),
             created_at: "2026-08-28T09:34:00Z".into(),
             updated_at: "2026-08-28T09:34:00Z".into(),
-            participants: vec![participant("", "Coder", "CO", "background:var(--cyan);color:#0A0C10")],
+            participants: vec![participant(
+                "",
+                "Coder",
+                "CO",
+                "background:var(--cyan);color:#0A0C10",
+            )],
             ..Default::default()
         },
         Pr {
@@ -246,7 +260,13 @@ pub(crate) fn seed_prs(s: &mut State) {
         .fold(s.pr_number_seq, i64::max);
 }
 
-fn file(path: &str, status: &str, add: i64, del: i64, lines: Vec<recur_domain::DiffLine>) -> FileDiff {
+fn file(
+    path: &str,
+    status: &str,
+    add: i64,
+    del: i64,
+    lines: Vec<recur_domain::DiffLine>,
+) -> FileDiff {
     FileDiff {
         path: path.into(),
         status: status.into(),
@@ -259,43 +279,152 @@ fn file(path: &str, status: &str, add: i64, del: i64, lines: Vec<recur_domain::D
 /// The Files-changed diff for #482.
 fn pr482_files() -> Vec<FileDiff> {
     vec![
-        file("src/auth/oauth.ts", "m", 96, 8, vec![
-            h("", "", "hunk", "@@ -1,6 +1,9 @@ provider registry"),
-            h("11", "11", "ctx", r#"<span class="kw">import</span> { secrets } <span class="kw">from</span> <span class="str">'../lib/secrets'</span>"#),
-            h("12", "", "del", r#"<span class="kw">const</span> secret = process.env.<span class="nm">OAUTH_CLIENT_SECRET</span>"#),
-            hx("", "12", "add", r#"<span class="kw">const</span> secret = <span class="kw">await</span> secrets.<span class="fn">get</span>(<span class="str">'oauth/client_secret'</span>)"#,
-                r#"<div class="icmt"><div class="icmt-pad"><div class="cmt" style="padding:0;border:none"><div class="ca" style="background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)">AR</div><div class="cc"><div class="ch"><span class="cn">Avery Rourke</span><span class="ct">2m</span></div><div class="cm">Good — this was reading from <code>process.env</code> before. Confirm the secrets client is initialised before any provider loads?</div><span class="react" style="margin-top:8px"><span style="width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block"></span>Coder: yes — <code>secrets.init()</code> runs in <code>bootstrap.ts</code> before providers register. ✓ resolved</span></div></div></div></div>"#),
-            h("13", "13", "ctx", r#"<span class="kw">export const</span> <span class="fn">providers</span> = {"#),
-            h("", "14", "add", r#"  apple: <span class="fn">appleProvider</span>(secret),"#),
-            h("", "15", "add", r#"  google: <span class="fn">googleProvider</span>(secret),"#),
-            h("14", "16", "ctx", "}"),
-        ]),
-        file("src/hooks/useOAuthSession.ts", "a", 88, 0, vec![
-            h("", "", "hunk", "@@ -0,0 +1,12 @@ new file"),
-            h("", "1", "add", r#"<span class="kw">export function</span> <span class="fn">useOAuthSession</span>() {"#),
-            hx("", "2", "add", r#"  <span class="kw">const</span> [session, setSession] = <span class="fn">useState</span>&lt;<span class="ty">Session</span> | <span class="kw">null</span>&gt;(<span class="kw">null</span>)"#,
-                r#"<div class="flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><div><div class="ft">Reviewer flagged this region for human eyes</div><div class="fm">token refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.</div></div></div>"#),
-            h("", "3", "add", r#"  <span class="kw">const</span> refreshing = <span class="fn">useRef</span>(<span class="kw">false</span>) <span class="cm">// mutex guard</span>"#),
-            h("", "4", "add", ""),
-            h("", "5", "add", r#"  <span class="kw">async function</span> <span class="fn">refresh</span>() {"#),
-            h("", "6", "add", r#"    <span class="kw">if</span> (refreshing.current) <span class="kw">return</span>"#),
-            h("", "7", "add", r#"    refreshing.current = <span class="kw">true</span>"#),
-            h("", "8", "add", r#"    <span class="kw">try</span> { setSession(<span class="kw">await</span> <span class="fn">rotateTokens</span>()) }"#),
-            h("", "9", "add", r#"    <span class="kw">finally</span> { refreshing.current = <span class="kw">false</span> }"#),
-            h("", "10", "add", "  }"),
-        ]),
-        file("src/checkout/SignInButtons.tsx", "m", 34, 4, vec![
-            h("", "", "hunk", "@@ -8,4 +8,12 @@ checkout buttons"),
-            h("8", "8", "ctx", r#"<span class="kw">return</span> ("#),
-            h("", "9", "add", r#"  &lt;<span class="ty">AppleButton</span> onClick={() =&gt; <span class="fn">signIn</span>(<span class="str">'apple'</span>)} /&gt;"#),
-            h("", "10", "add", r#"  &lt;<span class="ty">GoogleButton</span> onClick={() =&gt; <span class="fn">signIn</span>(<span class="str">'google'</span>)} /&gt;"#),
-            h("9", "11", "ctx", ")"),
-        ]),
+        file(
+            "src/auth/oauth.ts",
+            "m",
+            96,
+            8,
+            vec![
+                h("", "", "hunk", "@@ -1,6 +1,9 @@ provider registry"),
+                h(
+                    "11",
+                    "11",
+                    "ctx",
+                    r#"<span class="kw">import</span> { secrets } <span class="kw">from</span> <span class="str">'../lib/secrets'</span>"#,
+                ),
+                h(
+                    "12",
+                    "",
+                    "del",
+                    r#"<span class="kw">const</span> secret = process.env.<span class="nm">OAUTH_CLIENT_SECRET</span>"#,
+                ),
+                hx(
+                    "",
+                    "12",
+                    "add",
+                    r#"<span class="kw">const</span> secret = <span class="kw">await</span> secrets.<span class="fn">get</span>(<span class="str">'oauth/client_secret'</span>)"#,
+                    r#"<div class="icmt"><div class="icmt-pad"><div class="cmt" style="padding:0;border:none"><div class="ca" style="background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)">AR</div><div class="cc"><div class="ch"><span class="cn">Avery Rourke</span><span class="ct">2m</span></div><div class="cm">Good — this was reading from <code>process.env</code> before. Confirm the secrets client is initialised before any provider loads?</div><span class="react" style="margin-top:8px"><span style="width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block"></span>Coder: yes — <code>secrets.init()</code> runs in <code>bootstrap.ts</code> before providers register. ✓ resolved</span></div></div></div></div>"#,
+                ),
+                h(
+                    "13",
+                    "13",
+                    "ctx",
+                    r#"<span class="kw">export const</span> <span class="fn">providers</span> = {"#,
+                ),
+                h(
+                    "",
+                    "14",
+                    "add",
+                    r#"  apple: <span class="fn">appleProvider</span>(secret),"#,
+                ),
+                h(
+                    "",
+                    "15",
+                    "add",
+                    r#"  google: <span class="fn">googleProvider</span>(secret),"#,
+                ),
+                h("14", "16", "ctx", "}"),
+            ],
+        ),
+        file(
+            "src/hooks/useOAuthSession.ts",
+            "a",
+            88,
+            0,
+            vec![
+                h("", "", "hunk", "@@ -0,0 +1,12 @@ new file"),
+                h(
+                    "",
+                    "1",
+                    "add",
+                    r#"<span class="kw">export function</span> <span class="fn">useOAuthSession</span>() {"#,
+                ),
+                hx(
+                    "",
+                    "2",
+                    "add",
+                    r#"  <span class="kw">const</span> [session, setSession] = <span class="fn">useState</span>&lt;<span class="ty">Session</span> | <span class="kw">null</span>&gt;(<span class="kw">null</span>)"#,
+                    r#"<div class="flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><div><div class="ft">Reviewer flagged this region for human eyes</div><div class="fm">token refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.</div></div></div>"#,
+                ),
+                h(
+                    "",
+                    "3",
+                    "add",
+                    r#"  <span class="kw">const</span> refreshing = <span class="fn">useRef</span>(<span class="kw">false</span>) <span class="cm">// mutex guard</span>"#,
+                ),
+                h("", "4", "add", ""),
+                h(
+                    "",
+                    "5",
+                    "add",
+                    r#"  <span class="kw">async function</span> <span class="fn">refresh</span>() {"#,
+                ),
+                h(
+                    "",
+                    "6",
+                    "add",
+                    r#"    <span class="kw">if</span> (refreshing.current) <span class="kw">return</span>"#,
+                ),
+                h(
+                    "",
+                    "7",
+                    "add",
+                    r#"    refreshing.current = <span class="kw">true</span>"#,
+                ),
+                h(
+                    "",
+                    "8",
+                    "add",
+                    r#"    <span class="kw">try</span> { setSession(<span class="kw">await</span> <span class="fn">rotateTokens</span>()) }"#,
+                ),
+                h(
+                    "",
+                    "9",
+                    "add",
+                    r#"    <span class="kw">finally</span> { refreshing.current = <span class="kw">false</span> }"#,
+                ),
+                h("", "10", "add", "  }"),
+            ],
+        ),
+        file(
+            "src/checkout/SignInButtons.tsx",
+            "m",
+            34,
+            4,
+            vec![
+                h("", "", "hunk", "@@ -8,4 +8,12 @@ checkout buttons"),
+                h("8", "8", "ctx", r#"<span class="kw">return</span> ("#),
+                h(
+                    "",
+                    "9",
+                    "add",
+                    r#"  &lt;<span class="ty">AppleButton</span> onClick={() =&gt; <span class="fn">signIn</span>(<span class="str">'apple'</span>)} /&gt;"#,
+                ),
+                h(
+                    "",
+                    "10",
+                    "add",
+                    r#"  &lt;<span class="ty">GoogleButton</span> onClick={() =&gt; <span class="fn">signIn</span>(<span class="str">'google'</span>)} /&gt;"#,
+                ),
+                h("9", "11", "ctx", ")"),
+            ],
+        ),
     ]
 }
 
 #[allow(clippy::too_many_arguments)]
-fn commit(hash: &str, message: &str, role: &str, code: &str, color: &str, iter: &str, add: i64, del: i64, when: &str, files: Vec<FileDiff>) -> Commit {
+fn commit(
+    hash: &str,
+    message: &str,
+    role: &str,
+    code: &str,
+    color: &str,
+    iter: &str,
+    add: i64,
+    del: i64,
+    when: &str,
+    files: Vec<FileDiff>,
+) -> Commit {
     Commit {
         hash: hash.into(),
         message: message.into(),
@@ -313,58 +442,236 @@ fn commit(hash: &str, message: &str, role: &str, code: &str, color: &str, iter: 
 /// The agent-authored commits for #482 with per-commit diffs.
 fn pr482_commits() -> Vec<Commit> {
     vec![
-        commit("e8d34b1", "Add tests for Apple + Google providers", "Tester", "TE", C_EMERALD, "verify pass", 6, 0, "4m", vec![
-            file("src/auth/__tests__/oauth.test.ts", "a", 6, 0, vec![
-                h("", "", "hunk", "@@ -0,0 +1,6 @@ new file"),
-                h("", "1", "add", r#"<span class="fn">test</span>(<span class="str">'apple sign-in returns a session'</span>, <span class="kw">async</span> () =&gt; {"#),
-                h("", "2", "add", r#"  <span class="kw">const</span> s = <span class="kw">await</span> <span class="fn">signIn</span>(<span class="str">'apple'</span>)"#),
-                h("", "3", "add", r#"  <span class="fn">expect</span>(s.user).<span class="fn">toBeDefined</span>()"#),
-                h("", "4", "add", "})"),
-                h("", "5", "add", r#"<span class="fn">test</span>(<span class="str">'google sign-in returns a session'</span>, <span class="kw">async</span> () =&gt; { <span class="cm">/* … */</span> })"#),
-            ]),
-        ]),
-        commit("a3f91c2", "Resolve client secret via secrets manager", "Coder", "CO", C_CYAN, "iteration 3 · review fix", 10, 6, "6m", vec![
-            file("src/auth/oauth.ts", "m", 10, 6, vec![
-                h("", "", "hunk", "@@ -10,6 +10,9 @@ provider registry"),
-                h("10", "10", "ctx", r#"<span class="kw">import</span> { secrets } <span class="kw">from</span> <span class="str">'../lib/secrets'</span>"#),
-                h("11", "", "del", r#"<span class="kw">const</span> secret = process.env.<span class="nm">OAUTH_CLIENT_SECRET</span>"#),
-                h("", "11", "add", r#"<span class="kw">const</span> secret = <span class="kw">await</span> secrets.<span class="fn">get</span>(<span class="str">'oauth/client_secret'</span>)"#),
-                h("12", "12", "ctx", r#"<span class="kw">export const</span> <span class="fn">providers</span> = {"#),
-            ]),
-        ]),
-        commit("4b7f0d2", "Harden error handling on token exchange", "Coder", "CO", C_CYAN, "iteration 2 · review fix", 28, 6, "14m", vec![
-            file("src/auth/oauth.ts", "m", 28, 6, vec![
-                h("", "", "hunk", "@@ -22,4 +22,12 @@ token exchange"),
-                h("22", "22", "ctx", r#"<span class="kw">async function</span> <span class="fn">exchange</span>(provider, code) {"#),
-                h("23", "", "del", r#"  <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(tokenUrl, { method: <span class="str">'POST'</span> })"#),
-                h("24", "", "del", r#"  <span class="kw">return</span> res.<span class="fn">json</span>()"#),
-                h("", "23", "add", r#"  <span class="kw">try</span> {"#),
-                h("", "24", "add", r#"    <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(tokenUrl, { method: <span class="str">'POST'</span> })"#),
-                h("", "25", "add", r#"    <span class="kw">if</span> (!res.ok) <span class="kw">throw new</span> <span class="ty">OAuthError</span>(res.status)"#),
-                h("", "26", "add", r#"    <span class="kw">return</span> res.<span class="fn">json</span>()"#),
-                h("", "27", "add", r#"  } <span class="kw">catch</span> (e) {"#),
-                h("", "28", "add", r#"    logger.<span class="fn">warn</span>(<span class="str">'token exchange failed'</span>, { provider })"#),
-                h("", "29", "add", r#"    <span class="kw">throw</span> e"#),
-                h("", "30", "add", "  }"),
-            ]),
-        ]),
-        commit("9c2e1a4", "Add Apple & Google OAuth providers", "Coder", "CO", C_CYAN, "iteration 1", 180, 0, "22m", vec![
-            file("src/auth/oauth.ts", "a", 180, 0, vec![
-                h("", "", "hunk", "@@ -0,0 +1,180 @@ new file"),
-                h("", "1", "add", r#"<span class="kw">export const</span> <span class="fn">appleProvider</span> = (secret) =&gt; ({"#),
-                h("", "2", "add", r#"  id: <span class="str">'apple'</span>, <span class="fn">authorize</span>, <span class="fn">exchange</span>,"#),
-                h("", "3", "add", "})"),
-                h("", "4", "add", r#"<span class="kw">export const</span> <span class="fn">googleProvider</span> = (secret) =&gt; ({"#),
-                h("", "5", "add", r#"  id: <span class="str">'google'</span>, <span class="fn">authorize</span>, <span class="fn">exchange</span>,"#),
-                h("", "6", "add", "})"),
-                h("", "7", "add", r#"<span class="cm">// … 174 more lines (authorize / exchange / token parsing)</span>"#),
-            ]),
-        ]),
+        commit(
+            "e8d34b1",
+            "Add tests for Apple + Google providers",
+            "Tester",
+            "TE",
+            C_EMERALD,
+            "verify pass",
+            6,
+            0,
+            "4m",
+            vec![file(
+                "src/auth/__tests__/oauth.test.ts",
+                "a",
+                6,
+                0,
+                vec![
+                    h("", "", "hunk", "@@ -0,0 +1,6 @@ new file"),
+                    h(
+                        "",
+                        "1",
+                        "add",
+                        r#"<span class="fn">test</span>(<span class="str">'apple sign-in returns a session'</span>, <span class="kw">async</span> () =&gt; {"#,
+                    ),
+                    h(
+                        "",
+                        "2",
+                        "add",
+                        r#"  <span class="kw">const</span> s = <span class="kw">await</span> <span class="fn">signIn</span>(<span class="str">'apple'</span>)"#,
+                    ),
+                    h(
+                        "",
+                        "3",
+                        "add",
+                        r#"  <span class="fn">expect</span>(s.user).<span class="fn">toBeDefined</span>()"#,
+                    ),
+                    h("", "4", "add", "})"),
+                    h(
+                        "",
+                        "5",
+                        "add",
+                        r#"<span class="fn">test</span>(<span class="str">'google sign-in returns a session'</span>, <span class="kw">async</span> () =&gt; { <span class="cm">/* … */</span> })"#,
+                    ),
+                ],
+            )],
+        ),
+        commit(
+            "a3f91c2",
+            "Resolve client secret via secrets manager",
+            "Coder",
+            "CO",
+            C_CYAN,
+            "iteration 3 · review fix",
+            10,
+            6,
+            "6m",
+            vec![file(
+                "src/auth/oauth.ts",
+                "m",
+                10,
+                6,
+                vec![
+                    h("", "", "hunk", "@@ -10,6 +10,9 @@ provider registry"),
+                    h(
+                        "10",
+                        "10",
+                        "ctx",
+                        r#"<span class="kw">import</span> { secrets } <span class="kw">from</span> <span class="str">'../lib/secrets'</span>"#,
+                    ),
+                    h(
+                        "11",
+                        "",
+                        "del",
+                        r#"<span class="kw">const</span> secret = process.env.<span class="nm">OAUTH_CLIENT_SECRET</span>"#,
+                    ),
+                    h(
+                        "",
+                        "11",
+                        "add",
+                        r#"<span class="kw">const</span> secret = <span class="kw">await</span> secrets.<span class="fn">get</span>(<span class="str">'oauth/client_secret'</span>)"#,
+                    ),
+                    h(
+                        "12",
+                        "12",
+                        "ctx",
+                        r#"<span class="kw">export const</span> <span class="fn">providers</span> = {"#,
+                    ),
+                ],
+            )],
+        ),
+        commit(
+            "4b7f0d2",
+            "Harden error handling on token exchange",
+            "Coder",
+            "CO",
+            C_CYAN,
+            "iteration 2 · review fix",
+            28,
+            6,
+            "14m",
+            vec![file(
+                "src/auth/oauth.ts",
+                "m",
+                28,
+                6,
+                vec![
+                    h("", "", "hunk", "@@ -22,4 +22,12 @@ token exchange"),
+                    h(
+                        "22",
+                        "22",
+                        "ctx",
+                        r#"<span class="kw">async function</span> <span class="fn">exchange</span>(provider, code) {"#,
+                    ),
+                    h(
+                        "23",
+                        "",
+                        "del",
+                        r#"  <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(tokenUrl, { method: <span class="str">'POST'</span> })"#,
+                    ),
+                    h(
+                        "24",
+                        "",
+                        "del",
+                        r#"  <span class="kw">return</span> res.<span class="fn">json</span>()"#,
+                    ),
+                    h("", "23", "add", r#"  <span class="kw">try</span> {"#),
+                    h(
+                        "",
+                        "24",
+                        "add",
+                        r#"    <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(tokenUrl, { method: <span class="str">'POST'</span> })"#,
+                    ),
+                    h(
+                        "",
+                        "25",
+                        "add",
+                        r#"    <span class="kw">if</span> (!res.ok) <span class="kw">throw new</span> <span class="ty">OAuthError</span>(res.status)"#,
+                    ),
+                    h(
+                        "",
+                        "26",
+                        "add",
+                        r#"    <span class="kw">return</span> res.<span class="fn">json</span>()"#,
+                    ),
+                    h(
+                        "",
+                        "27",
+                        "add",
+                        r#"  } <span class="kw">catch</span> (e) {"#,
+                    ),
+                    h(
+                        "",
+                        "28",
+                        "add",
+                        r#"    logger.<span class="fn">warn</span>(<span class="str">'token exchange failed'</span>, { provider })"#,
+                    ),
+                    h("", "29", "add", r#"    <span class="kw">throw</span> e"#),
+                    h("", "30", "add", "  }"),
+                ],
+            )],
+        ),
+        commit(
+            "9c2e1a4",
+            "Add Apple & Google OAuth providers",
+            "Coder",
+            "CO",
+            C_CYAN,
+            "iteration 1",
+            180,
+            0,
+            "22m",
+            vec![file(
+                "src/auth/oauth.ts",
+                "a",
+                180,
+                0,
+                vec![
+                    h("", "", "hunk", "@@ -0,0 +1,180 @@ new file"),
+                    h(
+                        "",
+                        "1",
+                        "add",
+                        r#"<span class="kw">export const</span> <span class="fn">appleProvider</span> = (secret) =&gt; ({"#,
+                    ),
+                    h(
+                        "",
+                        "2",
+                        "add",
+                        r#"  id: <span class="str">'apple'</span>, <span class="fn">authorize</span>, <span class="fn">exchange</span>,"#,
+                    ),
+                    h("", "3", "add", "})"),
+                    h(
+                        "",
+                        "4",
+                        "add",
+                        r#"<span class="kw">export const</span> <span class="fn">googleProvider</span> = (secret) =&gt; ({"#,
+                    ),
+                    h(
+                        "",
+                        "5",
+                        "add",
+                        r#"  id: <span class="str">'google'</span>, <span class="fn">authorize</span>, <span class="fn">exchange</span>,"#,
+                    ),
+                    h("", "6", "add", "})"),
+                    h(
+                        "",
+                        "7",
+                        "add",
+                        r#"<span class="cm">// … 174 more lines (authorize / exchange / token parsing)</span>"#,
+                    ),
+                ],
+            )],
+        ),
     ]
 }
 
 #[allow(clippy::too_many_arguments)]
-fn inbox(id: &str, group: &str, unread: bool, kind: &str, color: &str, title: &str, sub: &str, time: &str, action: &str, class: &str, target: &str, ws: &str) -> InboxItem {
+fn inbox(
+    id: &str,
+    group: &str,
+    unread: bool,
+    kind: &str,
+    color: &str,
+    title: &str,
+    sub: &str,
+    time: &str,
+    action: &str,
+    class: &str,
+    target: &str,
+    ws: &str,
+) -> InboxItem {
     InboxItem {
         id: id.into(),
         group: group.into(),
@@ -383,11 +690,89 @@ fn inbox(id: &str, group: &str, unread: bool, kind: &str, color: &str, title: &s
 
 pub(crate) fn seed_inbox(s: &mut State) {
     s.inbox = vec![
-        inbox("ib1", "needs", true, "pause", C_CORAL, "<b>LOOP-2218</b> paused — needs your decision", "Rate-limit the public API · over-limit behavior", "12m", "Answer", "urgent", "loop:LOOP-2218", "LOOP-2218"),
-        inbox("ib2", "ready", true, "pr", C_EMERALD, "<b>#482</b> is ready for review", "Add OAuth provider config · verified in browser · checks ✓", "2m", "Review", "go", "pr:482", "LOOP-2231"),
-        inbox("ib3", "ready", true, "loop", C_CYAN, "Coder pushed a fix on <b>#482</b>", "Resolved your comment on oauth.ts · re-requested review", "1m", "Review", "go", "pr:482", "LOOP-2231"),
-        inbox("ib4", "ready", true, "pr", C_EMERALD, "<b>#479</b> converged — ready for review", "Stabilize flaky E2E tests · local PR · 0 findings", "18m", "Review", "go", "view:pr", "LOOP-2224"),
-        inbox("ib5", "upd", false, "loop", C_INDIGO, "<b>LOOP-2235</b> logged a deviation", "Spawned an extra reviewer for a contrast pass · iteration 1", "24m", "View", "", "workspace:LOOP-2235", "LOOP-2235"),
-        inbox("ib6", "upd", false, "merge", C_INDIGO, "<b>#471</b> merged to main", "Add idempotency keys to the orders API", "1d", "View", "", "view:pr", "LOOP-2202"),
+        inbox(
+            "ib1",
+            "needs",
+            true,
+            "pause",
+            C_CORAL,
+            "<b>LOOP-2218</b> paused — needs your decision",
+            "Rate-limit the public API · over-limit behavior",
+            "12m",
+            "Answer",
+            "urgent",
+            "loop:LOOP-2218",
+            "LOOP-2218",
+        ),
+        inbox(
+            "ib2",
+            "ready",
+            true,
+            "pr",
+            C_EMERALD,
+            "<b>#482</b> is ready for review",
+            "Add OAuth provider config · verified in browser · checks ✓",
+            "2m",
+            "Review",
+            "go",
+            "pr:482",
+            "LOOP-2231",
+        ),
+        inbox(
+            "ib3",
+            "ready",
+            true,
+            "loop",
+            C_CYAN,
+            "Coder pushed a fix on <b>#482</b>",
+            "Resolved your comment on oauth.ts · re-requested review",
+            "1m",
+            "Review",
+            "go",
+            "pr:482",
+            "LOOP-2231",
+        ),
+        inbox(
+            "ib4",
+            "ready",
+            true,
+            "pr",
+            C_EMERALD,
+            "<b>#479</b> converged — ready for review",
+            "Stabilize flaky E2E tests · local PR · 0 findings",
+            "18m",
+            "Review",
+            "go",
+            "view:pr",
+            "LOOP-2224",
+        ),
+        inbox(
+            "ib5",
+            "upd",
+            false,
+            "loop",
+            C_INDIGO,
+            "<b>LOOP-2235</b> logged a deviation",
+            "Spawned an extra reviewer for a contrast pass · iteration 1",
+            "24m",
+            "View",
+            "",
+            "workspace:LOOP-2235",
+            "LOOP-2235",
+        ),
+        inbox(
+            "ib6",
+            "upd",
+            false,
+            "merge",
+            C_INDIGO,
+            "<b>#471</b> merged to main",
+            "Add idempotency keys to the orders API",
+            "1d",
+            "View",
+            "",
+            "view:pr",
+            "LOOP-2202",
+        ),
     ]
 }

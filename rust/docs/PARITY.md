@@ -770,20 +770,39 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 - [ ] `internal/openipc`: 1 files, 286 lines, 1 test files
 - [ ] `internal/osfonts`: 4 files, 382 lines, 1 test files
 - [ ] `internal/power`: 1 files, 173 lines, 1 test files
-- [ ] `internal/projfile`: 2 files, 466 lines, 1 test files
+- [x] `internal/projfile`: 2 files, 466 lines, 1 test files → `recur_project::projfile` (test file ported, plus golden cases recorded from Go)
+  - [x] Path/Exists/Overlay/Apply: run-config comes only from `.recur/project.toml`; missing file clears it, malformed file sets `ProjectFileError` (`parse .recur/project.toml: toml: …`) and is logged once per mtime; mtime+size parse cache; `~` repo paths
+  - [x] Write: repo-path checks with Go's messages, `.recur/` creation, atomic temp-file + rename, fresh files with the standard header encoded exactly like go-toml (literal-first strings, `multiline` fields, `[[run]]` blocks)
+  - [x] Comment-preserving merge into an existing file: `recur_project::tomledit` ports go-toml `unstable/edit` (span index, attached comments, insertion points, deletes with trailing-blank absorption, CRLF, inline arrays/tables, validation after every edit) on `toml_parser`, the parser under toml_edit; `[run.N]` healing, `dev_cmd` removal, malformed-file rewrite. 21 edit scenarios and 14 Write outputs replay byte for byte against Go (`tests/fixtures/gen_projfile.go.txt`)
 - [ ] `internal/responses`: 4 files, 795 lines, 2 test files
 - [ ] `internal/rg`: 2 files, 403 lines, 2 test files
-- [ ] `internal/runconfig`: 1 files, 333 lines, 1 test files
+- [x] `internal/runconfig`: 1 files, 333 lines, 1 test files → `recur_project::runconfig` (test file ported)
+  - [x] Boot: free or persisted port, `$RECUR_PORT`/`${PORT}` substitution, own process group, single reaper, probe until any HTTP response (2s per request, redirects, no proxy for loopback), exits/timeouts/cancel tear down; the server outlives the boot token and `Booted::stop` is idempotent (SIGTERM, 2s grace, SIGKILL)
+  - [x] RunCmd/RunCmdOutput: parent-owned pipe for stdout+stderr, 4 KiB tail, 100ms drain wait without SIGPIPE-ing background children, cancel vs deadline errors (Go's `context canceled` / `context deadline exceeded`), Go `exit status N` / `signal: NAME` text
+  - [x] FreePort, Go `Duration.String` for messages
 - [x] `internal/shortid`: 1 files, 111 lines, 1 test files → `recur_domain::shortid` (test file ported)
   - [x] New (prefix/length validation, letter-first suffix, unbiased rejection sampling over OS randomness), NewUnique (attempt budget, Collision error), IsValid / VALID_PATTERN, MinLength/MaxLength/DefaultAttempts
 - [ ] `internal/simplify`: 1 files, 56 lines, 1 test files
-- [ ] `internal/store`: 9 files, 6229 lines, 6 test files
+- [x] `internal/store`: 9 files, 6229 lines, 6 test files → `recur-store` (all 6 Go test files ported; 148 unit tests + seeddump integration test)
+  - [x] SQLite via rusqlite (bundled), one connection behind a mutex like Go's single pooled connection; busy_timeout 5s, WAL, foreign_keys, TRUNCATE checkpoint on open and close
+  - [x] Migrations embedded from `internal/store/migrations/` with Go's `__migrations` bookkeeping (one transaction per migration); schema guard refuses a DB that recorded unknown migrations (`Error::NewerSchema`)
+  - [x] Open sequence: migrate, finding identity backfill, feed-sort seed, seed defaults on a DB without settings, else load (with PR time backfill)
+  - [x] Every Store method: project groups, projects (project.toml overlay, `write_project_file`, pinned-run validation, extra_json), reorder, cascading deletes, clear-all, workspaces, agents (incl. move/merge), feed (prepend/upsert/patch off the store lock), events, findings (UUIDv7 + per-workspace short ids with UNIQUE retry, notes, actor rules), analysis, PRs (list rows without diffs, deep copies with Go nil semantics, open/linked PR rules, Local number sequence), escalations (chat-keyed lookup), inbox, attention counts, policy/settings/resource, GitHub branch rules
+  - [x] Sessions: create/get/lookups by kind/agent/owner, headers, streaming recovery, reassign with code remap, config json_set/json_patch patches, messages and blocks with idx allocation under the session lock, truncate/drop/delete with fork-aware orphan cleanup, delete closed chat, forks with context copy, compaction contexts, tool_use/fallback patches, transcript load, first prompt / last assistant text
+  - [x] Schedules: ISO-millis columns, flags, latest run, due and active queries (partial index), claim, link, update
+  - [x] Paths: `<UserConfigDir>/RecurNext` and `~/.recur/worktrees-next` defaults, `RECUR_DATA_DIR`/`RECUR_WORKTREES_DIR` overrides as in Go, legacy worktree migration, per-workspace dirs; `codex.DefaultSeedAuthPath` lives here as `paths::codex_default_seed_auth_path`
+  - [x] App log: rotating `logs/recur.log` (2 MiB, also mid-session), tee writer for `tracing` with Go's log line format, panics written to the log
+  - [x] Seed defaults and the demo dataset (`seed.go`, `seed_prs.go`)
+  - [x] Go compatibility (`tests/fixtures/gen_store.go.txt`): a Go-populated DB reads back exactly as Go reads it, its JSON columns re-encode byte for byte, rewriting every row leaves every table unchanged; a recur-store-written DB passes the Go verifier and Go reads it exactly as recur-store does; a fresh DB matches Go's schema dump and bookkeeping
 - [ ] `internal/term`: 7 files, 1797 lines, 6 test files
 - [ ] `internal/usage`: 12 files, 2911 lines, 3 test files
-- [ ] `internal/wsenv`: 2 files, 325 lines, 2 test files
+- [x] `internal/wsenv`: 2 files, 325 lines, 2 test files → `recur_project::wsenv` (both test files ported)
+  - [x] Vars/FromWorkspace/RecurMap/Environ: host → Recur vars → project env, two-pass expansion that never re-expands substituted values, protected keys stripped for project.toml env and dotenv
+  - [x] Dotenv parsing and loading (`.env`, `.env.local`, `.recur/.env`, `.recur/.env.local`, repo then worktree, 256 KiB cap), Go `os.Expand` syntax, `expand_known`
+  - [x] `git.ExpandHome` as `recur_project::home::expand_home`, with Go's `os.UserHomeDir` / `os.UserConfigDir` and `filepath.Clean`/`Join`/`Abs`
 - [ ] `cmd/recur`: 1 files, 22 lines, 0 test files
 - [ ] `cmd/bundles`: 1 files, 15 lines, 0 test files
-- [ ] `cmd/seeddump`: 1 files, 86 lines, 0 test files
+- [x] `cmd/seeddump`: 1 files, 86 lines, 0 test files → `recur_store::seeddump` + bin `seeddump` (`cargo run -p recur-store --bin seeddump`); output equals `frontend/e2e/fixtures/seed.json` byte for byte (`tests/seeddump.rs`)
 
 ### Root desktop entry (`*.go` at repo root)
 

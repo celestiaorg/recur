@@ -3,9 +3,9 @@ use std::fs;
 use std::path::Path;
 
 use recur_domain::{
-    Agent, AutonomyLevel, Escalation, FINDING_ACTOR_ENGINE,
-    FINDING_ACTOR_HUMAN, FeedItem, FileDiff, Finding, FindingStatus, IdType, InboxItem, Pr,
-    PrSource, Project, ProjectGroup, RunCommand, Severity, Workspace, valid_id, verify_dev_cmd,
+    Agent, AutonomyLevel, Escalation, FINDING_ACTOR_ENGINE, FINDING_ACTOR_HUMAN, FeedItem,
+    FileDiff, Finding, FindingStatus, IdType, InboxItem, Pr, PrSource, Project, ProjectGroup,
+    RunCommand, Severity, Workspace, valid_id, verify_dev_cmd,
 };
 use recur_project::projfile;
 
@@ -45,7 +45,17 @@ fn read_toml(repo: &Path) -> String {
     fs::read_to_string(repo.join(projfile::REL_PATH)).unwrap()
 }
 
-fn finding(id: &str, ws: &str, iter: i64, file: &str, line: i64, sev: Severity, msg: &str, status: &str) -> Finding {
+#[allow(clippy::too_many_arguments)]
+fn finding(
+    id: &str,
+    ws: &str,
+    iter: i64,
+    file: &str,
+    line: i64,
+    sev: Severity,
+    msg: &str,
+    status: &str,
+) -> Finding {
     Finding {
         id: id.into(),
         workspace_id: ws.into(),
@@ -129,7 +139,9 @@ fn add_project_persists_across_reopen() {
             assert_eq!(verify_dev_cmd(&got), "make dev PORT=$RECUR_PORT");
             assert_eq!(got.repo_path, "~/code/widgets");
             assert_eq!(got.teardown_cmd, "make clean-wt");
-            assert!(got.env.contains("WAILS_VITE_PORT=$RECUR_PORT") && got.env.contains("# dogfood"));
+            assert!(
+                got.env.contains("WAILS_VITE_PORT=$RECUR_PORT") && got.env.contains("# dogfood")
+            );
         },
     );
 }
@@ -158,7 +170,12 @@ fn reorder_projects_rejects_bad_id_set() {
     extra.push("nope".into());
     assert!(st.reorder_projects(&extra).is_err());
     let dup = vec![before[0].clone(), before[0].clone(), before[1].clone()];
-    assert!(st.reorder_projects(&dup).unwrap_err().to_string().contains("duplicate"));
+    assert!(
+        st.reorder_projects(&dup)
+            .unwrap_err()
+            .to_string()
+            .contains("duplicate")
+    );
     assert_eq!(ids(&all_projects(&st)), before);
 }
 
@@ -169,13 +186,14 @@ fn add_project_db_error_leaves_cache_unchanged() {
     let st = open_temp(dir.path());
     let before = all_projects(&st).len();
     db(&st).close().unwrap();
-    assert!(st
-        .add_project(Project {
+    assert!(
+        st.add_project(Project {
             id: "ghost".into(),
             name: "ghost".into(),
             ..Default::default()
         })
-        .is_err());
+        .is_err()
+    );
     assert_eq!(all_projects(&st).len(), before);
     assert!(st.project("ghost").is_none());
 }
@@ -227,7 +245,10 @@ fn update_project_run_config_persists() {
     s1.close().unwrap();
     let s2 = open_temp(dir.path());
     let got = s2.project("app").unwrap();
-    assert_eq!(verify_dev_cmd(&got), "pnpm dev --port $RECUR_PORT --strictPort");
+    assert_eq!(
+        verify_dev_cmd(&got),
+        "pnpm dev --port $RECUR_PORT --strictPort"
+    );
     assert_eq!(got.app_url, "http://127.0.0.1:$RECUR_PORT/health");
 }
 
@@ -492,7 +513,10 @@ fn project_toml_does_not_rewrite_hand_file_on_open_toggle() {
 fn update_project_open_does_not_revert_pulled_toml() {
     let dir = tmp();
     let repo = tmp();
-    write_toml(repo.path(), "# keep me\n[[run]]\nname = \"dev\"\ncmd = \"old\"\n");
+    write_toml(
+        repo.path(),
+        "# keep me\n[[run]]\nname = \"dev\"\ncmd = \"old\"\n",
+    );
     let st = open_temp(dir.path());
     let mut p = st
         .add_project(Project {
@@ -579,12 +603,13 @@ fn project_groups_crud_persists() {
     assert_eq!(groups[0].created_at, created_at);
     assert!(!groups[0].updated_at.is_empty());
     assert_eq!(s2.project("storefront").unwrap().group_id, "work");
-    assert!(s2
-        .update_project_group(ProjectGroup {
+    assert!(
+        s2.update_project_group(ProjectGroup {
             id: "nope".into(),
             ..Default::default()
         })
-        .is_err());
+        .is_err()
+    );
 }
 
 #[test]
@@ -625,7 +650,12 @@ fn reorder_project_groups_persists() {
     assert!(s1.reorder_project_groups(&order[..1]).is_err());
     s1.close().unwrap();
     let s2 = open_temp(dir.path());
-    let got: Vec<String> = s2.project_groups().unwrap().into_iter().map(|g| g.id).collect();
+    let got: Vec<String> = s2
+        .project_groups()
+        .unwrap()
+        .into_iter()
+        .map(|g| g.id)
+        .collect();
     assert_eq!(got, order);
 }
 
@@ -687,14 +717,22 @@ fn mark_escalation_applied_persists() {
     let dir = tmp();
     let s1 = open_temp(dir.path());
     s1.mark_escalation_applied("LOOP-2218");
-    assert!(!s1.escalation("LOOP-2218").unwrap().applied, "open rows are not applied");
+    assert!(
+        !s1.escalation("LOOP-2218").unwrap().applied,
+        "open rows are not applied"
+    );
     s1.answer_escalation("LOOP-2218", "Queue & delay", "  free  ");
     let e = s1.escalation("LOOP-2218").unwrap();
     assert_eq!(e.answer, "free");
     assert_eq!(e.free_text, "free");
     s1.mark_escalation_applied("LOOP-2218");
     s1.close().unwrap();
-    assert!(open_temp(dir.path()).escalation("LOOP-2218").unwrap().applied);
+    assert!(
+        open_temp(dir.path())
+            .escalation("LOOP-2218")
+            .unwrap()
+            .applied
+    );
 }
 
 fn esc(id: &str, ws: &str, agent: &str, status: &str, question: &str) -> Escalation {
@@ -742,12 +780,30 @@ fn findings_persist_and_resolve() {
     let dir = tmp();
     let s1 = open_temp(dir.path());
     for (i, c) in ['a', 'b', 'c'].into_iter().enumerate() {
-        s1.add_finding(finding(&format!("F-1-{c}"), "L1", 1, "main.go", i as i64 + 1, Severity::High, "bug", "open"));
+        s1.add_finding(finding(
+            &format!("F-1-{c}"),
+            "L1",
+            1,
+            "main.go",
+            i as i64 + 1,
+            Severity::High,
+            "bug",
+            "open",
+        ));
     }
     assert_eq!(s1.open_findings_count("L1"), 3);
     s1.resolve_findings("L1");
     assert_eq!(s1.open_findings_count("L1"), 0);
-    s1.add_finding(finding("F-2-a", "L1", 2, "x.go", 9, Severity::Low, "smell", "open"));
+    s1.add_finding(finding(
+        "F-2-a",
+        "L1",
+        2,
+        "x.go",
+        9,
+        Severity::Low,
+        "smell",
+        "open",
+    ));
     assert_eq!(s1.open_findings_count("L1"), 1);
     s1.close().unwrap();
 
@@ -768,16 +824,47 @@ fn findings_persist_and_resolve() {
 fn set_finding_status() {
     let dir = tmp();
     let st = open_temp(dir.path());
-    st.add_finding(finding("F-a", "L1", 1, "a.go", 1, Severity::High, "bug", "open"));
-    st.add_finding(finding("F-b", "L1", 1, "b.go", 2, Severity::Low, "nit", "open"));
+    st.add_finding(finding(
+        "F-a",
+        "L1",
+        1,
+        "a.go",
+        1,
+        Severity::High,
+        "bug",
+        "open",
+    ));
+    st.add_finding(finding(
+        "F-b",
+        "L1",
+        1,
+        "b.go",
+        2,
+        Severity::Low,
+        "nit",
+        "open",
+    ));
     let got = st.set_finding_status("L1", "F-a", "ignored").unwrap();
     assert_eq!(got.status, "ignored");
     st.set_finding_status("L1", "F-b", "invalid").unwrap();
     assert_eq!(st.open_findings_count("L1"), 0);
 
-    st.add_finding(finding("F-c", "L1", 2, "c.go", 3, Severity::Medium, "x", "open"));
+    st.add_finding(finding(
+        "F-c",
+        "L1",
+        2,
+        "c.go",
+        3,
+        Severity::Medium,
+        "x",
+        "open",
+    ));
     st.resolve_findings("L1");
-    let by: BTreeMap<String, String> = st.findings("L1").into_iter().map(|f| (f.id, f.status)).collect();
+    let by: BTreeMap<String, String> = st
+        .findings("L1")
+        .into_iter()
+        .map(|f| (f.id, f.status))
+        .collect();
     assert_eq!(by["F-a"], "ignored");
     assert_eq!(by["F-b"], "invalid");
     assert_eq!(by["F-c"], "resolved");
@@ -792,9 +879,36 @@ fn set_finding_status() {
 fn update_finding_status_engine_resolves_open_only() {
     let dir = tmp();
     let st = open_temp(dir.path());
-    st.add_finding(finding("F-open", "L1", 1, "a.go", 1, Severity::High, "bug", "open"));
-    st.add_finding(finding("F-ig", "L1", 1, "b.go", 2, Severity::Low, "nit", "ignored"));
-    st.add_finding(finding("F-inv", "L1", 1, "c.go", 3, Severity::Medium, "x", "invalid"));
+    st.add_finding(finding(
+        "F-open",
+        "L1",
+        1,
+        "a.go",
+        1,
+        Severity::High,
+        "bug",
+        "open",
+    ));
+    st.add_finding(finding(
+        "F-ig",
+        "L1",
+        1,
+        "b.go",
+        2,
+        Severity::Low,
+        "nit",
+        "ignored",
+    ));
+    st.add_finding(finding(
+        "F-inv",
+        "L1",
+        1,
+        "c.go",
+        3,
+        Severity::Medium,
+        "x",
+        "invalid",
+    ));
     let got = st
         .update_finding_status("L1", "F-open", "resolved", "", FINDING_ACTOR_ENGINE)
         .unwrap();
@@ -808,27 +922,64 @@ fn update_finding_status_engine_resolves_open_only() {
         .update_finding_status("L1", "F-inv", "resolved", "", FINDING_ACTOR_ENGINE)
         .unwrap();
     assert_eq!(got.status, "invalid");
-    assert!(st
-        .update_finding_status("L1", "F-open", "ignored", "", FINDING_ACTOR_ENGINE)
-        .is_err());
+    assert!(
+        st.update_finding_status("L1", "F-open", "ignored", "", FINDING_ACTOR_ENGINE)
+            .is_err()
+    );
 }
 
 #[test]
 fn update_finding_status_agent_rules() {
     let st = Store::new_in_memory();
-    st.add_finding(finding("F-1", "L1", 1, "a.go", 1, Severity::High, "bug", "open"));
-    st.add_finding(finding("F-2", "L1", 1, "a.go", 2, Severity::High, "bug", "ignored"));
-    assert!(st.update_finding_status("L1", "F-1", "open", "", "coder").is_err());
-    assert!(st.update_finding_status("L1", "F-1", "invalid", "  ", "reviewer").is_err());
-    assert!(st.update_finding_status("L1", "F-1", "resolved", "", "bot").is_err());
-    assert!(st.update_finding_status("L1", "F-2", "resolved", "", "coder").is_err());
-    let got = st.update_finding_status("L1", "F-1", "invalid", "wrong file", "coder").unwrap();
+    st.add_finding(finding(
+        "F-1",
+        "L1",
+        1,
+        "a.go",
+        1,
+        Severity::High,
+        "bug",
+        "open",
+    ));
+    st.add_finding(finding(
+        "F-2",
+        "L1",
+        1,
+        "a.go",
+        2,
+        Severity::High,
+        "bug",
+        "ignored",
+    ));
+    assert!(
+        st.update_finding_status("L1", "F-1", "open", "", "coder")
+            .is_err()
+    );
+    assert!(
+        st.update_finding_status("L1", "F-1", "invalid", "  ", "reviewer")
+            .is_err()
+    );
+    assert!(
+        st.update_finding_status("L1", "F-1", "resolved", "", "bot")
+            .is_err()
+    );
+    assert!(
+        st.update_finding_status("L1", "F-2", "resolved", "", "coder")
+            .is_err()
+    );
+    let got = st
+        .update_finding_status("L1", "F-1", "invalid", "wrong file", "coder")
+        .unwrap();
     assert_eq!(got.status_reason, "wrong file");
     assert_eq!(got.updated_by, "coder");
-    let same = st.update_finding_status("L1", "F-1", "invalid", "different", "reviewer").unwrap();
+    let same = st
+        .update_finding_status("L1", "F-1", "invalid", "different", "reviewer")
+        .unwrap();
     assert_eq!(same.status_reason, "different");
     assert_eq!(same.updated_by, "reviewer");
-    let human = st.update_finding_status("L1", "F-1", "resolved", "", "").unwrap();
+    let human = st
+        .update_finding_status("L1", "F-1", "resolved", "", "")
+        .unwrap();
     assert_eq!(human.updated_by, FINDING_ACTOR_HUMAN);
     assert_eq!(human.status_reason, "");
 }
@@ -842,16 +993,34 @@ fn add_finding_note() {
         summary: "short".into(),
         ..finding("F-n", "L1", 1, "a.go", 1, Severity::Low, "bug", "open")
     });
-    let got = st.add_finding_note("L1", "F-n", "  check the timeout path  ", FINDING_ACTOR_HUMAN).unwrap();
+    let got = st
+        .add_finding_note(
+            "L1",
+            "F-n",
+            "  check the timeout path  ",
+            FINDING_ACTOR_HUMAN,
+        )
+        .unwrap();
     assert_eq!(got.notes.len(), 1);
     let n = &got.notes[0];
-    assert!(!n.id.is_empty() && n.body == "check the timeout path" && n.author == FINDING_ACTOR_HUMAN && !n.created_at.is_empty());
+    assert!(
+        !n.id.is_empty()
+            && n.body == "check the timeout path"
+            && n.author == FINDING_ACTOR_HUMAN
+            && !n.created_at.is_empty()
+    );
     st.add_finding_note("L1", "F-n", "second", "").unwrap();
     let all = st.findings("L1");
     assert_eq!(all.len(), 1);
     assert_eq!(all[0].notes.len(), 2);
-    assert!(st.add_finding_note("L1", "F-n", "   ", FINDING_ACTOR_HUMAN).is_err());
-    assert!(st.add_finding_note("L1", "missing", "x", FINDING_ACTOR_HUMAN).is_err());
+    assert!(
+        st.add_finding_note("L1", "F-n", "   ", FINDING_ACTOR_HUMAN)
+            .is_err()
+    );
+    assert!(
+        st.add_finding_note("L1", "missing", "x", FINDING_ACTOR_HUMAN)
+            .is_err()
+    );
     assert!(st.add_finding_note("L1", "F-n", "x", "reviewer").is_err());
     st.close().unwrap();
 
@@ -859,12 +1028,21 @@ fn add_finding_note() {
     let reloaded = s2.findings("L1");
     assert_eq!(reloaded.len(), 1);
     let f = &reloaded[0];
-    assert!(f.file == "a.go" && f.line == 1 && f.end_line == 4 && f.message == "bug" && f.summary == "short");
+    assert!(
+        f.file == "a.go"
+            && f.line == 1
+            && f.end_line == 4
+            && f.message == "bug"
+            && f.summary == "short"
+    );
     assert_eq!(f.notes.len(), 2);
     assert_eq!(f.notes[0].body, "check the timeout path");
     assert_eq!(f.notes[1].body, "second");
     assert_eq!(
-        query_i64(&s2, "SELECT COUNT(*) FROM pragma_table_info('findings') WHERE name = 'doc_json'"),
+        query_i64(
+            &s2,
+            "SELECT COUNT(*) FROM pragma_table_info('findings') WHERE name = 'doc_json'"
+        ),
         0,
         "findings.doc_json should be gone"
     );
@@ -886,7 +1064,11 @@ fn add_finding_assigns_uuid_and_short_id() {
     });
     let parsed = uuid::Uuid::parse_str(&first.id).unwrap();
     assert_eq!(parsed.get_version_num(), 7);
-    assert!(valid_id(&first.short_id, &IdType::Finding), "{}", first.short_id);
+    assert!(
+        valid_id(&first.short_id, &IdType::Finding),
+        "{}",
+        first.short_id
+    );
     assert!(!first.created_at.is_empty());
     let second = st.add_finding(Finding {
         workspace_id: "L1".into(),
@@ -912,7 +1094,8 @@ fn add_finding_assigns_uuid_and_short_id() {
     assert_eq!(reloaded.len(), 2);
     assert_eq!(reloaded[0].id, first.id);
     assert_eq!(reloaded[0].short_id, first.short_id);
-    s2.set_finding_status("L1", &first.short_id, "ignored").unwrap();
+    s2.set_finding_status("L1", &first.short_id, "ignored")
+        .unwrap();
     s2.set_finding_status("L1", &second.id, "ignored").unwrap();
 }
 
@@ -950,7 +1133,10 @@ fn add_finding_retries_persisted_short_id_collision() {
     let got = st.add_finding(bare_finding("L1", "find_aaaaaa", "b.go", "two"));
     assert_ne!(got.short_id, "find_aaaaaa");
     assert!(valid_id(&got.short_id, &IdType::Finding));
-    assert!(st.findings("L1").iter().any(|f| f.id == got.id), "cached after unique retry");
+    assert!(
+        st.findings("L1").iter().any(|f| f.id == got.id),
+        "cached after unique retry"
+    );
 }
 
 #[test]
@@ -1053,7 +1239,12 @@ fn findings_columns_migrate_from_doc_json() {
     assert_eq!(f.id, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
     assert_eq!(f.short_id, "find_abcxyz");
     assert!(f.iteration == 2 && f.file == "x.go" && f.line == 9 && f.end_line == 12);
-    assert!(f.severity.as_str() == "high" && f.message == "nil" && f.summary == "n" && f.status == "open");
+    assert!(
+        f.severity.as_str() == "high"
+            && f.message == "nil"
+            && f.summary == "n"
+            && f.status == "open"
+    );
     assert_eq!(f.notes.len(), 1);
     assert!(f.notes[0].id == "note-1" && f.notes[0].body == "look");
 }
@@ -1062,9 +1253,22 @@ fn findings_columns_migrate_from_doc_json() {
 fn delete_finding_note() {
     let dir = tmp();
     let st = open_temp(dir.path());
-    st.add_finding(finding("F-d", "L1", 1, "a.go", 1, Severity::Low, "bug", "open"));
-    let first = st.add_finding_note("L1", "F-d", "keep", FINDING_ACTOR_HUMAN).unwrap();
-    let second = st.add_finding_note("L1", "F-d", "drop", FINDING_ACTOR_HUMAN).unwrap();
+    st.add_finding(finding(
+        "F-d",
+        "L1",
+        1,
+        "a.go",
+        1,
+        Severity::Low,
+        "bug",
+        "open",
+    ));
+    let first = st
+        .add_finding_note("L1", "F-d", "keep", FINDING_ACTOR_HUMAN)
+        .unwrap();
+    let second = st
+        .add_finding_note("L1", "F-d", "drop", FINDING_ACTOR_HUMAN)
+        .unwrap();
     let drop_id = second.notes[1].id.clone();
     let got = st.delete_finding_note("L1", "F-d", &drop_id).unwrap();
     assert_eq!(got.notes.len(), 1);
@@ -1099,15 +1303,27 @@ fn github_branch_require_pr_persists() {
     st.set_github_branch_require_pr(&id, "acme/app", "develop", false);
     st.set_github_branch_require_pr(&id, "acme/parent", "main", false);
     st.set_github_branch_require_pr(&id, " ", "main", true);
-    let (got, at) = st.github_branch_require_pr(&id, "acme/app", "main").unwrap();
+    let (got, at) = st
+        .github_branch_require_pr(&id, "acme/app", "main")
+        .unwrap();
     assert!(got && at.timestamp() > 0);
     st.close().unwrap();
 
     let s2 = open_temp(dir.path());
-    let (got, at) = s2.github_branch_require_pr(&id, "acme/app", "main").unwrap();
+    let (got, at) = s2
+        .github_branch_require_pr(&id, "acme/app", "main")
+        .unwrap();
     assert!(got && at.timestamp() > 0);
-    assert_eq!(s2.github_branch_require_pr(&id, "acme/app", "develop").map(|r| r.0), Some(false));
-    assert_eq!(s2.github_branch_require_pr(&id, "acme/parent", "main").map(|r| r.0), Some(false));
+    assert_eq!(
+        s2.github_branch_require_pr(&id, "acme/app", "develop")
+            .map(|r| r.0),
+        Some(false)
+    );
+    assert_eq!(
+        s2.github_branch_require_pr(&id, "acme/parent", "main")
+            .map(|r| r.0),
+        Some(false)
+    );
     assert!(s2.github_branch_require_pr(&id, "", "main").is_none());
 }
 
@@ -1125,7 +1341,10 @@ fn clear_all_wipes_data_keeps_policy() {
     assert_eq!(st.resource(), Default::default());
     st.close().unwrap();
     let s2 = open_temp(dir.path());
-    assert!(s2.projects().is_none(), "demo came back after clear_all+reopen");
+    assert!(
+        s2.projects().is_none(),
+        "demo came back after clear_all+reopen"
+    );
     assert_eq!(s2.policy().autonomy, AutonomyLevel::Balanced);
 }
 
@@ -1159,7 +1378,11 @@ fn delete_workspace_cascades() {
     assert!(st.agents("LOOP-2231").is_empty());
     assert!(st.feed("LOOP-2231").is_none());
     for it in st.inbox().unwrap() {
-        assert!(it.target != "loop:LOOP-2231" && it.target != "pr:482", "{}", it.id);
+        assert!(
+            it.target != "loop:LOOP-2231" && it.target != "pr:482",
+            "{}",
+            it.id
+        );
     }
     st.close().unwrap();
     let s2 = open_temp(dir.path());
@@ -1198,7 +1421,8 @@ fn feed_prepend_order_survives_reload() {
         );
     }
     let mut want: Vec<String> = (0..25).rev().map(|i| format!("item-{i:02}")).collect();
-    let feed_ids = |st: &Store| -> Vec<String> { st.feed(WS).unwrap().into_iter().map(|f| f.id).collect() };
+    let feed_ids =
+        |st: &Store| -> Vec<String> { st.feed(WS).unwrap().into_iter().map(|f| f.id).collect() };
     assert_eq!(feed_ids(&s1), want, "in memory");
     s1.close().unwrap();
     let s2 = open_temp(dir.path());
@@ -1222,7 +1446,12 @@ fn feed_prepend_order_survives_reload() {
     s2.close().unwrap();
     let s3 = open_temp(dir.path());
     assert_eq!(feed_ids(&s3), want, "after patch + prepend, reloaded");
-    let patched = s3.feed(WS).unwrap().into_iter().find(|f| f.id == "item-10").unwrap();
+    let patched = s3
+        .feed(WS)
+        .unwrap()
+        .into_iter()
+        .find(|f| f.id == "item-10")
+        .unwrap();
     assert_eq!(patched.text, "patched");
 }
 
@@ -1238,7 +1467,8 @@ fn upsert_feed_replaces_or_prepends() {
     s1.upsert_feed("W", item("card", "one"));
     s1.upsert_feed("W", item("other", "x"));
     s1.upsert_feed("W", item("card", "two"));
-    let texts = |st: &Store| -> Vec<String> { st.feed("W").unwrap().into_iter().map(|f| f.text).collect() };
+    let texts =
+        |st: &Store| -> Vec<String> { st.feed("W").unwrap().into_iter().map(|f| f.text).collect() };
     assert_eq!(texts(&s1), ["x", "two"]);
     s1.close().unwrap();
     assert_eq!(texts(&open_temp(dir.path())), ["x", "two"]);
@@ -1370,7 +1600,9 @@ fn update_pr_does_not_infer_activity_from_writes() {
         })
         .unwrap();
     assert_eq!(got.updated_at, FROZEN);
-    let got = st.update_pr("p1", |p| p.updated_at = "2026-08-20T12:00:00Z".into()).unwrap();
+    let got = st
+        .update_pr("p1", |p| p.updated_at = "2026-08-20T12:00:00Z".into())
+        .unwrap();
     assert_eq!(got.updated_at, "2026-08-20T12:00:00Z");
 
     let gh = st
@@ -1384,7 +1616,9 @@ fn update_pr_does_not_infer_activity_from_writes() {
     st.update_pr(&gh.id, |p| p.updated_at.clear()).unwrap();
     let got = st.update_pr(&gh.id, |p| p.behind_base = 3).unwrap();
     assert_eq!(got.updated_at, "", "empty GitHub UpdatedAt stays empty");
-    let got = st.update_pr(&gh.id, |p| p.updated_at = "2026-08-27T09:00:00Z".into()).unwrap();
+    let got = st
+        .update_pr(&gh.id, |p| p.updated_at = "2026-08-27T09:00:00Z".into())
+        .unwrap();
     assert_eq!(got.updated_at, "2026-08-27T09:00:00Z");
     assert!(st.update_pr("missing", |_| {}).is_none());
 }
@@ -1435,7 +1669,8 @@ fn load_backfills_missing_pr_times() {
         ..pr("legacy-created", "", 10, PrSource::Local)
     })
     .unwrap();
-    s1.update_pr("legacy-created", |p| p.updated_at.clear()).unwrap();
+    s1.update_pr("legacy-created", |p| p.updated_at.clear())
+        .unwrap();
     s1.close().unwrap();
 
     let s2 = open_temp(dir.path());
@@ -1448,7 +1683,10 @@ fn load_backfills_missing_pr_times() {
 
     let s3 = open_temp(dir.path());
     let again = s3.pr("legacy-created").unwrap();
-    assert_eq!(again.updated_at, "2026-01-15T00:00:00Z", "backfill persisted");
+    assert_eq!(
+        again.updated_at, "2026-01-15T00:00:00Z",
+        "backfill persisted"
+    );
     let still = s3.pr("legacy-local").unwrap();
     assert!(still.created_at.is_empty() && still.updated_at.is_empty());
 }
@@ -1582,23 +1820,32 @@ fn next_pr_number_persists_after_workspace_delete() {
 fn pr_seq_migration_backfills_from_existing_prs() {
     let dir = tmp();
     let st = open_temp(dir.path());
-    st.add_pr(pr("gh-9000", "LOOP-2224", 9000, PrSource::GitHub)).unwrap();
+    st.add_pr(pr("gh-9000", "LOOP-2224", 9000, PrSource::GitHub))
+        .unwrap();
     // A promoted Local PR keeps the issued Local id; source/number become GitHub.
-    st.add_pr(pr("500", "LOOP-2224", 9001, PrSource::GitHub)).unwrap();
+    st.add_pr(pr("500", "LOOP-2224", 9001, PrSource::GitHub))
+        .unwrap();
     st.close().unwrap();
     raw(
         &db_file(dir.path()),
-        &["DROP TABLE pr_seq", "DELETE FROM __migrations WHERE version = 12"],
+        &[
+            "DROP TABLE pr_seq",
+            "DELETE FROM __migrations WHERE version = 12",
+        ],
     );
     let s2 = open_temp(dir.path());
-    assert_eq!(query_i64(&s2, "SELECT last_number FROM pr_seq WHERE id = 1"), 500);
+    assert_eq!(
+        query_i64(&s2, "SELECT last_number FROM pr_seq WHERE id = 1"),
+        500
+    );
 }
 
 #[test]
 fn next_pr_number_allocations_are_monotonic() {
     let st = Store::new_in_memory();
     let n1 = st.next_pr_number();
-    st.add_pr(pr(&n1.to_string(), "LOOP-2224", n1, PrSource::Local)).unwrap();
+    st.add_pr(pr(&n1.to_string(), "LOOP-2224", n1, PrSource::Local))
+        .unwrap();
     assert!(st.delete_pr(&n1.to_string()));
     assert!(st.next_pr_number() > n1);
 }
@@ -1625,7 +1872,8 @@ fn clear_all_does_not_reclaim_pr_numbers() {
 fn github_pr_number_does_not_ratchet_local_seq() {
     let st = Store::new_in_memory();
     let before = st.next_pr_number();
-    st.add_pr(pr("gh-9000", "LOOP-2224", 9000, PrSource::GitHub)).unwrap();
+    st.add_pr(pr("gh-9000", "LOOP-2224", 9000, PrSource::GitHub))
+        .unwrap();
     assert_eq!(st.next_pr_number(), before + 1);
 }
 
@@ -1633,7 +1881,8 @@ fn github_pr_number_does_not_ratchet_local_seq() {
 fn promote_to_github_does_not_ratchet_local_seq() {
     let st = Store::new_in_memory();
     let n = st.next_pr_number();
-    st.add_pr(pr(&n.to_string(), "LOOP-2224", n, PrSource::Local)).unwrap();
+    st.add_pr(pr(&n.to_string(), "LOOP-2224", n, PrSource::Local))
+        .unwrap();
     st.update_pr(&n.to_string(), |p| {
         p.source = PrSource::GitHub;
         p.number = 9000;
@@ -1653,7 +1902,8 @@ fn checkpoint_flushes_wal_into_main_file() {
     let path = db_file(dir.path());
     db(&st)
         .with(|c| {
-            c.query_row("PRAGMA wal_autocheckpoint=0", [], |_| Ok(())).unwrap();
+            c.query_row("PRAGMA wal_autocheckpoint=0", [], |_| Ok(()))
+                .unwrap();
             Ok(())
         })
         .unwrap();
@@ -1666,13 +1916,19 @@ fn checkpoint_flushes_wal_into_main_file() {
     .unwrap();
     let stale = dir.path().join("stale.db");
     fs::copy(&path, &stale).unwrap();
-    assert!(!workspace_in_file(&stale, "wal-probe"), "main-file copy already has wal-probe");
+    assert!(
+        !workspace_in_file(&stale, "wal-probe"),
+        "main-file copy already has wal-probe"
+    );
     let _ = fs::remove_file(&stale);
     let _ = fs::remove_file(dir.path().join("stale.db-wal"));
     let _ = fs::remove_file(dir.path().join("stale.db-shm"));
     db(&st).checkpoint();
     fs::copy(&path, &stale).unwrap();
-    assert!(workspace_in_file(&stale, "wal-probe"), "checkpoint did not flush wal-probe");
+    assert!(
+        workspace_in_file(&stale, "wal-probe"),
+        "checkpoint did not flush wal-probe"
+    );
 }
 
 #[test]
@@ -1680,7 +1936,9 @@ fn workspace_update_and_count_group() {
     let dir = tmp();
     let s1 = open_temp(dir.path());
     assert_eq!(s1.count_group(&recur_domain::Group::Active), 3);
-    let got = s1.update_workspace("LOOP-2229", |w| w.phase = "iteration 3".into()).unwrap();
+    let got = s1
+        .update_workspace("LOOP-2229", |w| w.phase = "iteration 3".into())
+        .unwrap();
     assert_eq!(got.phase, "iteration 3");
     assert!(s1.update_workspace("missing", |_| {}).is_none());
     let added = s1
@@ -1690,7 +1948,10 @@ fn workspace_update_and_count_group() {
             ..Default::default()
         })
         .unwrap();
-    assert!(added.agent_codes.is_none(), "clone turns an empty slice into nil like Go");
+    assert!(
+        added.agent_codes.is_none(),
+        "clone turns an empty slice into nil like Go"
+    );
     s1.add_workspace(Workspace {
         id: "W-new".into(),
         goal: "updated".into(),
@@ -1720,7 +1981,13 @@ fn agents_upsert_update_delete_persist() {
     let s1 = open_temp(dir.path());
     s1.upsert_agent("W", agent("W-PA", "W", "PA"));
     s1.upsert_agent("W", agent("W-CO", "W", "CO"));
-    s1.upsert_agent("W", Agent { name: "renamed".into(), ..agent("W-PA", "W", "PA") });
+    s1.upsert_agent(
+        "W",
+        Agent {
+            name: "renamed".into(),
+            ..agent("W-PA", "W", "PA")
+        },
+    );
     s1.update_agent("W", "CO", |a| a.unseen = true);
     s1.update_agent("W", "missing", |a| a.unseen = true);
     assert_eq!(s1.unseen_chat_count(), 1);
@@ -1787,7 +2054,11 @@ fn move_workspace_agents_remaps_colliding_code() {
             ..agent("l-PA", "W-live", "PA")
         },
     );
-    st.move_workspace_agents("W-host", "W-live", &BTreeMap::from([("PA".to_owned(), "PA2".to_owned())]));
+    st.move_workspace_agents(
+        "W-host",
+        "W-live",
+        &BTreeMap::from([("PA".to_owned(), "PA2".to_owned())]),
+    );
     assert_eq!(st.agent("W-live", "PA").unwrap().session_id, "sess-live");
     let host = st.agent("W-live", "PA2").unwrap();
     assert_eq!(host.session_id, "sess-host");
@@ -1803,8 +2074,26 @@ fn move_workspace_agents_remaps_colliding_code() {
 fn reassign_workspace_findings() {
     let dir = tmp();
     let st = open_temp(dir.path());
-    st.add_finding(finding("F-host", "W-host", 0, "a.go", 1, Severity::High, "bug", "open"));
-    st.add_finding(finding("F-live", "W-live", 0, "b.go", 2, Severity::Low, "nit", "open"));
+    st.add_finding(finding(
+        "F-host",
+        "W-host",
+        0,
+        "a.go",
+        1,
+        Severity::High,
+        "bug",
+        "open",
+    ));
+    st.add_finding(finding(
+        "F-live",
+        "W-live",
+        0,
+        "b.go",
+        2,
+        Severity::Low,
+        "nit",
+        "open",
+    ));
     assert_eq!(st.reassign_workspace_findings("W-host", "W-live"), 1);
     let got = st.findings("W-live");
     assert_eq!(got.len(), 2);
@@ -1827,11 +2116,17 @@ fn pin_claude_default_models_migration_rewrites_legacy_aliases() {
     set.model_workspace_title = "claude-code/haiku".into();
     st.set_settings(set);
     st.close().unwrap();
-    raw(&db_file(dir.path()), &["DELETE FROM __migrations WHERE version = 17"]);
+    raw(
+        &db_file(dir.path()),
+        &["DELETE FROM __migrations WHERE version = 17"],
+    );
     let got = open_temp(dir.path()).settings();
     assert_eq!(got.model_ask, "claude-code/claude-sonnet-5-5");
     assert_eq!(got.model_agent, "codex/gpt-5");
-    assert_eq!(got.model_workspace_title, "claude-code/claude-haiku-4-5-20251001");
+    assert_eq!(
+        got.model_workspace_title,
+        "claude-code/claude-haiku-4-5-20251001"
+    );
 }
 
 #[test]
@@ -1886,7 +2181,13 @@ fn events_append_and_read_back() {
 #[test]
 fn attention_counts_roll_up() {
     let st = Store::new_in_memory();
-    st.upsert_agent("LOOP-2231", Agent { unseen: true, ..agent("x", "LOOP-2231", "PA") });
+    st.upsert_agent(
+        "LOOP-2231",
+        Agent {
+            unseen: true,
+            ..agent("x", "LOOP-2231", "PA")
+        },
+    );
     st.add_workspace(Workspace {
         id: "W-arch".into(),
         project_id: "storefront".into(),
@@ -1894,7 +2195,13 @@ fn attention_counts_roll_up() {
         ..Default::default()
     })
     .unwrap();
-    st.upsert_agent("W-arch", Agent { unseen: true, ..agent("y", "W-arch", "PA") });
+    st.upsert_agent(
+        "W-arch",
+        Agent {
+            unseen: true,
+            ..agent("y", "W-arch", "PA")
+        },
+    );
     st.add_inbox_item(InboxItem {
         id: "ib-chat-1".into(),
         kind: "chat".into(),
@@ -1916,10 +2223,15 @@ fn schema_guard_refuses_newer_database() {
     open_temp(dir.path()).close().unwrap();
     raw(
         &db_file(dir.path()),
-        &["INSERT INTO __migrations (version, name, applied_at) VALUES (9999, 'from_the_future', 0)"],
+        &[
+            "INSERT INTO __migrations (version, name, applied_at) VALUES (9999, 'from_the_future', 0)",
+        ],
     );
     let err = Store::open(&db_file(dir.path())).err().unwrap();
-    assert!(matches!(err, crate::Error::NewerSchema { ref versions } if versions == &[9999]), "{err}");
+    assert!(
+        matches!(err, crate::Error::NewerSchema { ref versions } if versions == &[9999]),
+        "{err}"
+    );
     assert!(err.to_string().contains("9999"), "{err}");
 }
 

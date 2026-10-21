@@ -204,7 +204,10 @@ pub fn tee_app_log(root: &Path) -> (Option<AppLogWriter>, AppLogGuard) {
 ///
 /// Fail-open: with an empty root or an unopenable file the writer is `None`,
 /// the guard is a no-op, and nothing changes.
-pub fn tee_app_log_to(root: &Path, prev: Box<dyn Write + Send>) -> (Option<AppLogWriter>, AppLogGuard) {
+pub fn tee_app_log_to(
+    root: &Path,
+    prev: Box<dyn Write + Send>,
+) -> (Option<AppLogWriter>, AppLogGuard) {
     let Some(file) = open_app_log(root) else {
         return (
             None,
@@ -233,7 +236,8 @@ pub fn tee_app_log_to(root: &Path, prev: Box<dyn Write + Send>) -> (Option<AppLo
         }));
     }
 
-    let _ = w.write_all(go_log_line(&format!("recur: logging to {}", file.path.display())).as_bytes());
+    let _ =
+        w.write_all(go_log_line(&format!("recur: logging to {}", file.path.display())).as_bytes());
     (
         Some(w),
         AppLogGuard {
@@ -264,7 +268,12 @@ where
     S: tracing::Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
-    fn format_event(&self, ctx: &FmtContext<'_, S, N>, mut writer: Writer<'_>, event: &tracing::Event<'_>) -> std::fmt::Result {
+    fn format_event(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        mut writer: Writer<'_>,
+        event: &tracing::Event<'_>,
+    ) -> std::fmt::Result {
         let mut msg = String::new();
         ctx.format_fields(Writer::new(&mut msg), event)?;
         writer.write_str(&go_log_line(&msg))
@@ -335,7 +344,10 @@ mod tests {
             )
         });
         let got = std::fs::read_to_string(app_log_path(root.path())).unwrap();
-        assert!(!got.contains("msg=\"") && !got.contains("\\ngoroutine"), "{got}");
+        assert!(
+            !got.contains("msg=\"") && !got.contains("\\ngoroutine"),
+            "{got}"
+        );
         assert!(got.contains("\ngoroutine 1 [running]:"), "{got}");
         let line = got.lines().last().unwrap();
         assert!(!line.contains("WARN"), "{got}");
@@ -372,7 +384,10 @@ mod tests {
         assert_eq!(r.write(b"hello\n").unwrap(), 6);
         let second = vec![b'x'; 64];
         assert_eq!(r.write(&second).unwrap(), 64);
-        assert_eq!(std::fs::read(format!("{}.old", path.display())).unwrap(), b"hello\n");
+        assert_eq!(
+            std::fs::read(format!("{}.old", path.display())).unwrap(),
+            b"hello\n"
+        );
         assert_eq!(std::fs::read(&path).unwrap(), second);
     }
 

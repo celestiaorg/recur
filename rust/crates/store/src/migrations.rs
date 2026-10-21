@@ -65,11 +65,13 @@ pub(crate) fn load_migrations() -> Result<Vec<Migration>> {
 pub(crate) fn parse_migration_name(file: &str) -> Result<(i64, String)> {
     let base = file.strip_suffix(".sql").unwrap_or(file);
     let Some((num, rest)) = base.split_once('_') else {
-        return Err(Error::msg(format!("migration {file:?}: want NNNN_name.sql")));
+        return Err(Error::msg(format!(
+            "migration {file:?}: want NNNN_name.sql"
+        )));
     };
-    let version = num.parse::<i64>().map_err(|e| {
-        Error::msg(format!("migration {file:?}: bad version prefix: {e}"))
-    })?;
+    let version = num
+        .parse::<i64>()
+        .map_err(|e| Error::msg(format!("migration {file:?}: bad version prefix: {e}")))?;
     Ok((version, rest.to_owned()))
 }
 
@@ -166,7 +168,10 @@ mod tests {
         assert_eq!(ms[0].version, 1);
         assert_eq!(ms[0].name, "v1_baseline");
         assert!(ms.windows(2).all(|w| w[0].version < w[1].version));
-        assert!(!ms.iter().any(|m| m.version == 3), "0003 was skipped on purpose");
+        assert!(
+            !ms.iter().any(|m| m.version == 3),
+            "0003 was skipped on purpose"
+        );
         assert_eq!(latest_schema_version(), ms.last().unwrap().version);
     }
 

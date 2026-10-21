@@ -5,7 +5,11 @@ fn seeddump_matches_committed_fixture() {
     let out = std::process::Command::new(env!("CARGO_BIN_EXE_seeddump"))
         .output()
         .expect("run seeddump");
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     let got = String::from_utf8(out.stdout).unwrap();
     let want = include_str!("../../../../frontend/e2e/fixtures/seed.json");
     if got != want {

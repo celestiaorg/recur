@@ -90,16 +90,34 @@ fn due_and_active_scheduled_prompt_queries() {
     }
     let now = Utc.timestamp_millis_opt(200).unwrap();
     let got = st.due_scheduled_prompts(now, false).unwrap();
-    assert_eq!(got.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(), ["due"]);
+    assert_eq!(
+        got.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(),
+        ["due"]
+    );
     assert_eq!(st.due_scheduled_prompts(now, true).unwrap().len(), 2);
 
-    assert!(st.claim_scheduled_prompt(&due, &run("r1", "due", 50, "running")).unwrap());
-    assert!(st.claim_scheduled_prompt(&due, &run("r2", "due", 10, "finished")).unwrap());
+    assert!(
+        st.claim_scheduled_prompt(&due, &run("r1", "due", 50, "running"))
+            .unwrap()
+    );
+    assert!(
+        st.claim_scheduled_prompt(&due, &run("r2", "due", 10, "finished"))
+            .unwrap()
+    );
     let active = st.active_scheduled_prompt_runs().unwrap();
-    assert_eq!(active.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(), ["r1"]);
-    assert!(st.claim_scheduled_prompt(&due, &run("r3", "due", 60, "interrupted")).unwrap());
+    assert_eq!(
+        active.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+        ["r1"]
+    );
+    assert!(
+        st.claim_scheduled_prompt(&due, &run("r3", "due", 60, "interrupted"))
+            .unwrap()
+    );
     let active = st.active_scheduled_prompt_runs().unwrap();
-    assert_eq!(active.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(), ["r1", "r3"]);
+    assert_eq!(
+        active.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+        ["r1", "r3"]
+    );
     assert_eq!(active[1].due_at, 60);
 }
 
@@ -173,10 +191,20 @@ fn schedule_project_is_fixed_and_delete_drops_history() {
         st.save_scheduled_prompt(&moved).unwrap_err().to_string(),
         "schedule s1 belongs to another project"
     );
-    let unsimplified = ScheduledPrompt { simplify: None, ..p.clone() };
+    let unsimplified = ScheduledPrompt {
+        simplify: None,
+        ..p.clone()
+    };
     st.save_scheduled_prompt(&unsimplified).unwrap();
-    assert_eq!(st.scheduled_prompts().unwrap()[0].simplify, Some(true), "nil simplify saves as on");
-    assert!(st.claim_scheduled_prompt(&p, &run("r", "s1", 5, "running")).unwrap());
+    assert_eq!(
+        st.scheduled_prompts().unwrap()[0].simplify,
+        Some(true),
+        "nil simplify saves as on"
+    );
+    assert!(
+        st.claim_scheduled_prompt(&p, &run("r", "s1", 5, "running"))
+            .unwrap()
+    );
     st.delete_scheduled_prompt("s1").unwrap();
     assert!(st.scheduled_prompts().unwrap().is_empty());
     assert!(st.scheduled_prompt_runs().unwrap().is_empty());
@@ -185,10 +213,22 @@ fn schedule_project_is_fixed_and_delete_drops_history() {
 #[test]
 fn iso_millis_round_trip() {
     assert_eq!(iso_from_millis(0), "");
-    assert_eq!(iso_from_millis(1_757_423_100_000), "2025-09-09T13:05:00.000Z");
-    assert_eq!(iso_from_millis(1_757_423_100_123), "2025-09-09T13:05:00.123Z");
+    assert_eq!(
+        iso_from_millis(1_757_423_100_000),
+        "2025-09-09T13:05:00.000Z"
+    );
+    assert_eq!(
+        iso_from_millis(1_757_423_100_123),
+        "2025-09-09T13:05:00.123Z"
+    );
     assert_eq!(millis_from_iso("").unwrap(), 0);
-    assert_eq!(millis_from_iso("2025-09-09T13:05:00.123Z").unwrap(), 1_757_423_100_123);
-    assert_eq!(millis_from_iso("2025-09-09T15:05:00+02:00").unwrap(), 1_757_423_100_000);
+    assert_eq!(
+        millis_from_iso("2025-09-09T13:05:00.123Z").unwrap(),
+        1_757_423_100_123
+    );
+    assert_eq!(
+        millis_from_iso("2025-09-09T15:05:00+02:00").unwrap(),
+        1_757_423_100_000
+    );
     assert!(millis_from_iso("nope").is_err());
 }

@@ -8,6 +8,7 @@ pub mod glance;
 pub mod heap;
 pub mod hoist;
 pub mod session_events;
+pub mod session_feed;
 pub mod shhl;
 pub mod strip;
 pub mod subagent;

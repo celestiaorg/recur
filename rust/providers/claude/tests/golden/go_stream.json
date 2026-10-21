@@ -1,0 +1,1415 @@
+[
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"init\",\"session_id\":\"sess-abc\",\"uuid\":\"u1\",\"model\":\"claude-sonnet-4-6\",\"tools\":[\"Read\",\"Edit\"],\"mcp_servers\":[{\"name\":\"recur\",\"status\":\"connected\"},null,{\"name\":\"x\"}],\"cwd\":\"/tmp/wt\",\"permissionMode\":\"dontAsk\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "init",
+    "mcp": [
+     [
+      "recur",
+      "connected"
+     ],
+     [
+      "",
+      ""
+     ],
+     [
+      "x",
+      ""
+     ]
+    ],
+    "model": "claude-sonnet-4-6",
+    "sessionId": "sess-abc"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"init\",\"session_id\":null,\"mcp_servers\":null}",
+  "error": false,
+  "events": [
+   {
+    "kind": "init",
+    "mcp": [],
+    "model": "",
+    "sessionId": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"init\",\"session_id\":5}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"uuid\":\"u2\",\"session_id\":\"sess-abc\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll edit the file.\"},{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"Edit\",\"input\":{\"file_path\":\"src/app.go\",\"old_string\":\"a\",\"new_string\":\"b\"}}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "I'll edit the file.",
+    "uuid": "u2"
+   },
+   {
+    "id": "toolu_1",
+    "input": "{\"file_path\":\"src/app.go\",\"old_string\":\"a\",\"new_string\":\"b\"}",
+    "kind": "step",
+    "name": "Edit",
+    "parent": "",
+    "summary": "src/app.go",
+    "uuid": "u2"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"thinking\",\"thinking\":\"weigh options\",\"signature\":\"sig-1\"},{\"type\":\"text\",\"text\":\"Here's the plan.\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking",
+    "parent": "",
+    "signature": "sig-1",
+    "text": "weigh options",
+    "uuid": ""
+   },
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "Here's the plan.",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"EtoCC\"},{\"type\":\"thinking\",\"thinking\":\"  \"},{\"type\":\"text\",\"text\":\"  \"},null,{\"type\":\"image\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking",
+    "parent": "",
+    "signature": "EtoCC",
+    "text": "",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"thinking_tokens\",\"estimated_tokens\":88,\"estimated_tokens_delta\":38}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking_tokens",
+    "parent": "",
+    "tokens": 88,
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"thinking_tokens\",\"uuid\":\"evt-tick\",\"estimated_tokens\":88}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking_tokens",
+    "parent": "",
+    "tokens": 88,
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"thinking_tokens\",\"estimated_tokens\":-1}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"thinking_tokens\",\"estimated_tokens\":1.5}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"\",\"estimated_tokens\":50}}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking_tokens",
+    "parent": "",
+    "tokens": 50,
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"This\",\"estimated_tokens\":null}}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking_delta",
+    "parent": "",
+    "text": "This"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"uuid\":\"evt-1\",\"event\":{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"Act\"}}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking_delta",
+    "parent": "",
+    "text": "Act"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"uuid\":\"evt-2\",\"event\":{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi\"}}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text_delta",
+    "parent": "",
+    "text": "Hi"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"\"}}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_delta\",\"delta\":null}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":null}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_delta\",\"delta\":{\"type\":\"thinking_delta\",\"estimated_tokens\":\"x\"}}}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"t2\",\"name\":\"Bash\",\"input\":{\"command\":\"go test ./...\"}}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "t2",
+    "input": "{\"command\":\"go test ./...\"}",
+    "kind": "step",
+    "name": "Bash",
+    "parent": "",
+    "summary": "go test ./...",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"t3\",\"name\":\"Grep\",\"input\":{ \"pattern\" : \"a\\\"b\", \"path\" : \"src\" }}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "t3",
+    "input": "{ \"pattern\" : \"a\\\"b\", \"path\" : \"src\" }",
+    "kind": "step",
+    "name": "Grep",
+    "parent": "",
+    "summary": "\"a\\\"b\" in src",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"t4\",\"name\":\"Read\",\"input\":null},{\"type\":\"tool_use\",\"name\":\"Read\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "t4",
+    "input": "null",
+    "kind": "step",
+    "name": "Read",
+    "parent": "",
+    "summary": "null",
+    "uuid": ""
+   },
+   {
+    "id": "",
+    "input": "",
+    "kind": "step",
+    "name": "Read",
+    "parent": "",
+    "summary": "",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_1\",\"content\":[{\"type\":\"text\",\"text\":\"ok\"}],\"is_error\":false}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "toolu_1",
+    "input": "",
+    "isError": false,
+    "kind": "tool_result",
+    "name": "",
+    "parent": "",
+    "text": "ok",
+    "truncated": false,
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"user\",\"uuid\":\"uu\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"a\",\"content\":\"plain\",\"is_error\":true},{\"type\":\"tool_result\",\"tool_use_id\":\"b\",\"content\":null},{\"type\":\"tool_result\",\"tool_use_id\":\"c\",\"content\":{\"k\": 1}},{\"type\":\"tool_result\",\"tool_use_id\":\"d\",\"content\":[{\"text\":5}]},{\"type\":\"tool_result\",\"tool_use_id\":\"e\",\"content\":[{\"type\":\"text\",\"text\":\"x\"},null,{\"type\":\"text\",\"text\":\"  \"},{\"type\":\"text\",\"text\":\"y\"}]},{\"type\":\"text\",\"text\":\"ignored\"},null]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "a",
+    "input": "",
+    "isError": true,
+    "kind": "tool_result",
+    "name": "",
+    "parent": "",
+    "text": "plain",
+    "truncated": false,
+    "uuid": "uu"
+   },
+   {
+    "id": "b",
+    "input": "",
+    "isError": false,
+    "kind": "tool_result",
+    "name": "",
+    "parent": "",
+    "text": "",
+    "truncated": false,
+    "uuid": "uu"
+   },
+   {
+    "id": "c",
+    "input": "",
+    "isError": false,
+    "kind": "tool_result",
+    "name": "",
+    "parent": "",
+    "text": "{\"k\": 1}",
+    "truncated": false,
+    "uuid": "uu"
+   },
+   {
+    "id": "d",
+    "input": "",
+    "isError": false,
+    "kind": "tool_result",
+    "name": "",
+    "parent": "",
+    "text": "[{\"text\":5}]",
+    "truncated": false,
+    "uuid": "uu"
+   },
+   {
+    "id": "e",
+    "input": "",
+    "isError": false,
+    "kind": "tool_result",
+    "name": "",
+    "parent": "",
+    "text": "x\ny",
+    "truncated": false,
+    "uuid": "uu"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"is_error\":\"no\"}]}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"t9\",\"name\":\"mcp__recur__done\",\"input\":{\"summary\":\"Created a full-featured terminal Tetris game (tetris.py) using Python's curses module, with all 7 tetromino types.\"}}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "t9",
+    "input": "{\"summary\":\"Created a full-featured terminal Tetris game (tetris.py) using Python's curses module, with all 7 tetromino types.\"}",
+    "kind": "step",
+    "name": "mcp__recur__done",
+    "parent": "",
+    "summary": "Created a full-featured terminal Tetris game (tetris.py) using Python's curses module, with all 7 tetromino types.",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"hello\"}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"user\",\"message\":{\"content\":null}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"user\",\"message\":null}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"sess-abc\",\"duration_ms\":4200,\"duration_api_ms\":3900,\"is_error\":false,\"num_turns\":3,\"result\":\"Done editing.\",\"total_cost_usd\":0.0123,\"stop_reason\":\"end_turn\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 4200,
+     "in": 0,
+     "isError": false,
+     "numTurns": 3,
+     "out": 0,
+     "sessionId": "sess-abc",
+     "stderr": "",
+     "subtype": "success",
+     "text": "Done editing."
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"s\",\"duration_ms\":1,\"is_error\":false,\"num_turns\":1,\"result\":\"\",\"stop_reason\":\"tool_deferred\",\"deferred_tool_use\":{\"id\":\"toolu_bash\"}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"s\",\"duration_ms\":1,\"is_error\":false,\"num_turns\":1,\"result\":\"\",\"queued_turn_count\":1}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"s\",\"duration_ms\":12,\"is_error\":false,\"num_turns\":1,\"result\":\"\",\"terminal_reason\":\"background_requested\"}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"s\",\"duration_ms\":12,\"is_error\":false,\"num_turns\":1,\"result\":\"\",\"terminal_reason\":\"tool_deferred\"}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"s\",\"duration_ms\":31,\"is_error\":false,\"num_turns\":0,\"result\":\"\",\"stop_reason\":null,\"origin\":{\"kind\":\"task-notification\"},\"queued_turn_count\":0}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"s\",\"duration_ms\":31,\"is_error\":true,\"num_turns\":0,\"result\":\"\",\"origin\":{\"kind\":\"task-notification\"}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 31,
+     "in": 0,
+     "isError": true,
+     "numTurns": 0,
+     "out": 0,
+     "sessionId": "s",
+     "stderr": "",
+     "subtype": "success",
+     "text": ""
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"s\",\"duration_ms\":4200,\"is_error\":false,\"num_turns\":1,\"result\":\"done\",\"stop_reason\":\"end_turn\",\"origin\":{\"kind\":\"task-notification\"}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 4200,
+     "in": 0,
+     "isError": false,
+     "numTurns": 1,
+     "out": 0,
+     "sessionId": "s",
+     "stderr": "",
+     "subtype": "success",
+     "text": "done"
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"s\",\"duration_ms\":5,\"is_error\":false,\"num_turns\":1,\"result\":\"ok\",\"deferred_tool_use\":null}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 5,
+     "in": 0,
+     "isError": false,
+     "numTurns": 1,
+     "out": 0,
+     "sessionId": "s",
+     "stderr": "",
+     "subtype": "success",
+     "text": "ok"
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"session_id\":\"sess-u\",\"duration_ms\":100,\"is_error\":false,\"num_turns\":1,\"result\":\"ok\",\"total_cost_usd\":0.01,\"usage\":{\"input_tokens\":120,\"output_tokens\":40,\"cache_creation_input_tokens\":500,\"cache_read_input_tokens\":18000},\"modelUsage\":{\"claude-sonnet-4-6\":{\"inputTokens\":120,\"outputTokens\":40,\"cacheCreationInputTokens\":500,\"cacheReadInputTokens\":18000,\"contextWindow\":200000},\"b\":null,\"c\":{\"contextWindow\":300000}}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 500,
+     "cr": 18000,
+     "cw": 300000,
+     "durationMs": 100,
+     "in": 120,
+     "isError": false,
+     "numTurns": 1,
+     "out": 40,
+     "sessionId": "sess-u",
+     "stderr": "",
+     "subtype": "success",
+     "text": "ok"
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"error_max_turns\",\"session_id\":\"sess-xyz\",\"duration_ms\":9000,\"is_error\":true,\"num_turns\":12,\"total_cost_usd\":0.5}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 9000,
+     "in": 0,
+     "isError": true,
+     "numTurns": 12,
+     "out": 0,
+     "sessionId": "sess-xyz",
+     "stderr": "",
+     "subtype": "error_max_turns",
+     "text": ""
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"error_during_execution\",\"is_error\":false,\"error\":\"You've hit your org's monthly spend limit\",\"result\":\"r\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 0,
+     "in": 0,
+     "isError": true,
+     "numTurns": 0,
+     "out": 0,
+     "sessionId": "",
+     "stderr": "",
+     "subtype": "error_during_execution",
+     "text": "You've hit your org's monthly spend limit"
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"error_during_execution\",\"result\":\"from result\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 0,
+     "in": 0,
+     "isError": true,
+     "numTurns": 0,
+     "out": 0,
+     "sessionId": "",
+     "stderr": "",
+     "subtype": "error_during_execution",
+     "text": "from result"
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"result\",\"subtype\":\"success\",\"num_turns\":1.5}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"result\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "result",
+    "result": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 0,
+     "in": 0,
+     "isError": true,
+     "numTurns": 0,
+     "out": 0,
+     "sessionId": "",
+     "stderr": "",
+     "subtype": "",
+     "text": ""
+    }
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"compactMetadata\":{\"trigger\":\"auto\",\"preTokens\":167219}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 167219,
+    "status": "done",
+    "summary": "",
+    "trigger": "auto",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"compact_metadata\":{\"trigger\":\"manual\",\"pre_tokens\":18875}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 18875,
+    "status": "done",
+    "summary": "",
+    "trigger": "manual",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"compactMetadata\":{\"trigger\":\"auto\",\"pre_tokens\":9}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 9,
+    "status": "done",
+    "summary": "",
+    "trigger": "auto",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"compact_metadata\":{\"trigger\":\"auto\",\"preTokens\":11}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 11,
+    "status": "done",
+    "summary": "",
+    "trigger": "auto",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"compactMetadata\":{\"trigger\":\"auto\",\"pre_tokens\":9},\"compact_metadata\":{\"trigger\":\"x\",\"pre_tokens\":7}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 9,
+    "status": "done",
+    "summary": "",
+    "trigger": "auto",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"compactMetadata\":null,\"compact_metadata\":{\"trigger\":\"x\",\"pre_tokens\":7}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 7,
+    "status": "done",
+    "summary": "",
+    "trigger": "x",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_started\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 0,
+    "status": "started",
+    "summary": "",
+    "trigger": "",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"compactMetadata\":5}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"status\",\"status\":\"compacting\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 0,
+    "status": "started",
+    "summary": "",
+    "trigger": "manual",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"status\",\"status\":\"COMPACTING\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "compact",
+    "parent": "",
+    "preTokens": 0,
+    "status": "started",
+    "summary": "",
+    "trigger": "manual",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"status\",\"status\":\"idle\"}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"status\",\"status\":4}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"model\":\"claude-opus-4-8\",\"content\":[{\"type\":\"fallback\",\"from\":{\"model\":\"claude-fable-5\"},\"to\":{\"model\":\"claude-opus-4-8\"}},{\"type\":\"text\",\"text\":\"continuing on Opus.\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [],
+    "to": "claude-opus-4-8",
+    "uuid": ""
+   },
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "continuing on Opus.",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"uuid\":\"asst-1\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-sonnet-4-6\",\"content\":[{\"type\":\"text\",\"text\":\"hello\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "hello",
+    "uuid": "asst-1"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"uuid\":\"opus-frame\",\"supersedes\":[\"fable-frame\"],\"message\":{\"model\":\"claude-opus-4-8\",\"content\":[{\"type\":\"fallback\",\"from\":{\"model\":\"claude-fable-5\"},\"to\":{\"model\":\"claude-opus-4-8\"}},{\"type\":\"text\",\"text\":\"replacement\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [
+     "fable-frame"
+    ],
+    "to": "claude-opus-4-8",
+    "uuid": "opus-frame"
+   },
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "replacement",
+    "uuid": "opus-frame"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"uuid\":\"opus-frame\",\"supersedes\":[\"fable-frame\"],\"message\":{\"model\":\"claude-opus-4-8\",\"content\":[{\"type\":\"text\",\"text\":\"replacement\"}],\"usage\":{\"iterations\":[{\"type\":\"message\",\"model\":\"claude-fable-5\"},{\"type\":\"fallback_message\",\"model\":\"claude-opus-4-8\"}]}}}",
+  "error": false,
+  "events": [
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [
+     "fable-frame"
+    ],
+    "to": "claude-opus-4-8",
+    "uuid": "opus-frame"
+   },
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "replacement",
+    "uuid": "opus-frame"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"uuid\":\"u\",\"supersedes\":[\" a \",\"\",null],\"message\":{\"model\":\" claude-opus-4-8 \",\"content\":[]}}",
+  "error": false,
+  "events": [
+   {
+    "from": "",
+    "kind": "fallback",
+    "retracted": [
+     "a"
+    ],
+    "to": "claude-opus-4-8",
+    "uuid": "u"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"uuid\":\"asst-1\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"ok\"}],\"usage\":{\"iterations\":[{\"type\":\"message\",\"model\":\"claude-fable-5\"},{\"type\":\"fallback_message\",\"model\":\"claude-opus-4-8\"},{\"type\":\"fallback_message\",\"model\":\"claude-opus-4-7\"},null,{\"type\":\"message\",\"model\":\"late\"}]}}}",
+  "error": false,
+  "events": [
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [],
+    "to": "claude-opus-4-7",
+    "uuid": "asst-1"
+   },
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "ok",
+    "uuid": "asst-1"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"fallback\",\"from\":\"a\",\"to\":\" b \"},{\"type\":\"fallback\",\"from\":{\"model\":\"x\"},\"to\":{\"model\":\"\"}},{\"type\":\"fallback\",\"to\":null}]}}",
+  "error": false,
+  "events": [
+   {
+    "from": "a",
+    "kind": "fallback",
+    "retracted": [],
+    "to": "b",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"fallback\",\"from\":{\"model\":\"one\"},\"to\":{\"model\":\"two\"}},{\"type\":\"fallback\",\"from\":{\"model\":\"three\"},\"to\":{\"model\":\"four\"}}]}}",
+  "error": false,
+  "events": [
+   {
+    "from": "three",
+    "kind": "fallback",
+    "retracted": [],
+    "to": "four",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"model_refusal_fallback\",\"uuid\":\"sys-1\",\"original_model\":\"claude-fable-5\",\"fallback_model\":\"claude-opus-4-8\",\"retracted_message_uuids\":[\"fable-frame\"]}",
+  "error": false,
+  "events": [
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [
+     "fable-frame"
+    ],
+    "to": "claude-opus-4-8",
+    "uuid": "sys-1"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"model_refusal_fallback\",\"originalModel\":\"claude-fable-5\",\"fallbackModel\":\"claude-opus-4-8\",\"retractedMessageUuids\":[\"a\"]}",
+  "error": false,
+  "events": [
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [
+     "a"
+    ],
+    "to": "claude-opus-4-8",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"model_refusal_fallback\",\"uuid\":\" u \",\"retracted_message_uuids\":[\" x \",null]}",
+  "error": false,
+  "events": [
+   {
+    "from": "",
+    "kind": "fallback",
+    "retracted": [
+     " x ",
+     ""
+    ],
+    "to": "",
+    "uuid": "u"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"model_refusal_fallback\",\"original_model\":\"x\"}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"uuid\":\"e1\",\"event\":{\"type\":\"content_block_start\",\"content_block\":{\"type\":\"fallback\",\"from\":{\"model\":\"claude-fable-5\"},\"to\":{\"model\":\"claude-opus-4-8\"}}}}",
+  "error": false,
+  "events": [
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [],
+    "to": "claude-opus-4-8",
+    "uuid": "e1"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_start\",\"content_block\":{\"type\":\"fallback\",\"to\":{\"model\":\"\"}}}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_start\",\"content_block\":{\"type\":\"text\"}}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"model\":\"claude-opus-4-8\",\"content\":[{\"type\":\"text\",\"text\":\"served by Opus.\"}],\"usage\":{\"input_tokens\":10,\"output_tokens\":4,\"iterations\":[{\"type\":\"message\",\"model\":\"claude-fable-5\"},{\"type\":\"fallback_message\",\"model\":\"claude-opus-4-8\"}]}}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "usage",
+    "usage": {
+     "cc": 0,
+     "cr": 0,
+     "cw": 0,
+     "durationMs": 0,
+     "in": 10,
+     "isError": false,
+     "numTurns": 0,
+     "out": 4,
+     "sessionId": "",
+     "stderr": "",
+     "subtype": "",
+     "text": ""
+    }
+   },
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [],
+    "to": "claude-opus-4-8",
+    "uuid": ""
+   },
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "served by Opus.",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"fallback\",\"from\":{\"model\":\"claude-fable-5\"},\"to\":{\"model\":\"claude-opus-4-8\"}},{\"type\":\"text\",\"text\":\"ok\"}],\"usage\":{\"iterations\":[{\"type\":\"fallback_message\",\"model\":\"claude-opus-4-8\"}]}}}",
+  "error": false,
+  "events": [
+   {
+    "from": "claude-fable-5",
+    "kind": "fallback",
+    "retracted": [],
+    "to": "claude-opus-4-8",
+    "uuid": ""
+   },
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "ok",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"api_retry\",\"attempt\":3,\"max_retries\":10,\"retry_delay_ms\":2000,\"error_status\":null,\"error\":\"unknown\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "notice",
+    "text": "API request failed (unknown), retrying 3/10…"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"api_retry\",\"attempt\":1,\"max_retries\":10,\"error_status\":529,\"error\":\"server_error\"}",
+  "error": false,
+  "events": [
+   {
+    "kind": "notice",
+    "text": "API request failed (server_error 529), retrying 1/10…"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"api_retry\",\"attempt\":2,\"max_retries\":5}",
+  "error": false,
+  "events": [
+   {
+    "kind": "notice",
+    "text": "API request failed (error), retrying 2/5…"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"api_retry\",\"attempt\":0}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"api_retry\",\"attempt\":\"1\"}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"totally_unknown\"}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"plugin_install\"}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "   ",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "\r\n",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "null",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{not json",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "[1]",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "\"str\"",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":5}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"subtype\":[\"x\"]}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"uuid\":5}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":5}]}}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":\"text\"}}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"usage\":null,\"content\":null}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hel\"}}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text_delta",
+    "parent": "",
+    "text": "Hel"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"event\":{\"type\":\"content_block_delta\",\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{}\"}}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"parent_tool_use_id\":\"toolu_task_1\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"I'll grep the UI.\"},{\"type\":\"tool_use\",\"id\":\"t_nested\",\"name\":\"Grep\",\"input\":{\"pattern\":\"PRDetail\"}}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text",
+    "parent": "toolu_task_1",
+    "signature": "",
+    "text": "I'll grep the UI.",
+    "uuid": ""
+   },
+   {
+    "id": "t_nested",
+    "input": "{\"pattern\":\"PRDetail\"}",
+    "kind": "step",
+    "name": "Grep",
+    "parent": "toolu_task_1",
+    "summary": "\"PRDetail\"",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"user\",\"parent_tool_use_id\":\"toolu_task_1\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t_nested\",\"content\":[{\"type\":\"text\",\"text\":\"src/PR.svelte\"}],\"is_error\":false}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "t_nested",
+    "input": "",
+    "isError": false,
+    "kind": "tool_result",
+    "name": "",
+    "parent": "toolu_task_1",
+    "text": "src/PR.svelte",
+    "truncated": false,
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"parent_tool_use_id\":\"toolu_task_1\",\"event\":{\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"inside\"}}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text_delta",
+    "parent": "toolu_task_1",
+    "text": "inside"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"stream_event\",\"parent_tool_use_id\":\"toolu_task_1\",\"event\":{\"type\":\"content_block_start\",\"content_block\":{\"type\":\"fallback\",\"to\":{\"model\":\"m\"}}}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"thinking_tokens\",\"parent_tool_use_id\":\"toolu_task_1\",\"estimated_tokens\":12}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking_tokens",
+    "parent": "toolu_task_1",
+    "tokens": 12,
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"parent_tool_use_id\":\"toolu_task_1\"}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"result\",\"parent_tool_use_id\":\"toolu_task_1\",\"subtype\":\"success\",\"session_id\":\"sub\",\"is_error\":false,\"result\":\"subagent done\",\"total_cost_usd\":0.1}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"system\",\"subtype\":\"init\",\"parent_tool_use_id\":\"toolu_task_1\",\"session_id\":\"sub\",\"model\":\"sonnet\",\"mcp_servers\":[]}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"parent_tool_use_id\":\"toolu_task_1\",\"uuid\":\"n1\",\"message\":{\"usage\":{\"input_tokens\":5},\"content\":[{\"type\":\"fallback\",\"to\":{\"model\":\"m\"}},{\"type\":\"thinking\",\"thinking\":\"t\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "thinking",
+    "parent": "toolu_task_1",
+    "signature": "",
+    "text": "t",
+    "uuid": "n1"
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"parent_tool_use_id\":\"toolu_task_1\",\"uuid\":5}",
+  "error": true,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"parent_tool_use_id\":null,\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_task_1\",\"name\":\"Task\",\"input\":{\"description\":\"Map PR detail UI structure\",\"subagent_type\":\"Explore\",\"prompt\":\"Search the Svelte frontend.\"}}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "toolu_task_1",
+    "input": "{\"description\":\"Map PR detail UI structure\",\"subagent_type\":\"Explore\",\"prompt\":\"Search the Svelte frontend.\"}",
+    "kind": "step",
+    "name": "Task",
+    "parent": "",
+    "summary": "Explore",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"parent_tool_use_id\":\"  \",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"x\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "x",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"parent_tool_use_id\":7,\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"x\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "x",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"parent_tool_use_id\":\" p \",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"x\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "text",
+    "parent": "p",
+    "signature": "",
+    "text": "x",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_task_1\",\"content\":[{\"type\":\"text\",\"text\":\"Async agent launched successfully.\\n(This tool result is internal metadata – never quote or paste any part of it, including the agentId below, into a user-facing reply.)\\n\\nagentId: a2a1c3c855409bb10\\n\"}],\"is_error\":false}]}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t_read\",\"content\":[{\"type\":\"text\",\"text\":\"see Async agent launched successfully plus agentId and internal metadata in comments\"}],\"is_error\":false}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "t_read",
+    "input": "",
+    "isError": false,
+    "kind": "tool_result",
+    "name": "",
+    "parent": "",
+    "text": "see Async agent launched successfully plus agentId and internal metadata in comments",
+    "truncated": false,
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-sonnet-5\",\"usage\":{\"input_tokens\":100,\"output_tokens\":20,\"cache_creation_input_tokens\":5,\"cache_read_input_tokens\":80000},\"content\":[{\"type\":\"text\",\"text\":\"hi\"}]}}",
+  "error": false,
+  "events": [
+   {
+    "kind": "usage",
+    "usage": {
+     "cc": 5,
+     "cr": 80000,
+     "cw": 0,
+     "durationMs": 0,
+     "in": 100,
+     "isError": false,
+     "numTurns": 0,
+     "out": 20,
+     "sessionId": "",
+     "stderr": "",
+     "subtype": "",
+     "text": ""
+    }
+   },
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "hi",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"uuid\":\"f\",\"message\":{\"usage\":{\"output_tokens\":20},\"content\":[]}}",
+  "error": false,
+  "events": []
+ },
+ {
+  "line": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"x\",\"name\":\"TodoWrite\",\"input\":{\"todos\":[{\"content\":\"a\",\"status\":\"in_progress\"}]}},{\"type\":\"tool_use\",\"id\":\"y\",\"name\":\"mcp__recur__report_finding\",\"input\":{\"severity\":\"low\",\"file\":\"a.go\",\"line\":4,\"message\":\"m\"}}]}}",
+  "error": false,
+  "events": [
+   {
+    "id": "x",
+    "input": "{\"todos\":[{\"content\":\"a\",\"status\":\"in_progress\"}]}",
+    "kind": "step",
+    "name": "TodoWrite",
+    "parent": "",
+    "summary": "0/1 · a",
+    "uuid": ""
+   },
+   {
+    "id": "y",
+    "input": "{\"severity\":\"low\",\"file\":\"a.go\",\"line\":4,\"message\":\"m\"}",
+    "kind": "step",
+    "name": "mcp__recur__report_finding",
+    "parent": "",
+    "summary": "low · a.go:4 · m",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "  \t{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"\u003ctag\u003e \u0026 \u2028 é\"}]}}\t\r\n",
+  "error": false,
+  "events": [
+   {
+    "kind": "text",
+    "parent": "",
+    "signature": "",
+    "text": "\u003ctag\u003e \u0026 \u2028 é",
+    "uuid": ""
+   }
+  ]
+ },
+ {
+  "line": "   ",
+  "error": false,
+  "events": []
+ }
+]

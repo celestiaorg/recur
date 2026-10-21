@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "providers/*", "tools/*"]
+# `crates/views` holds view crates, not a manifest, so `crates/*` skips it.
+members = ["crates/[!v]*", "crates/views/*", "providers/*", "tools/*"]
 default-members = ["crates/desktop", "crates/cli"]
 
 [workspace.package]
@@ -37,6 +38,8 @@ recur-ui = { path = "crates/ui" }
 recur-editor = { path = "crates/editor" }
 recur-terminal-view = { path = "crates/terminal-view" }
 recur-app = { path = "crates/app" }
+recur-view-core = { path = "crates/views/core" }
+recur-view-sidebar = { path = "crates/views/sidebar" }
 
 # UI. gpui-kit pins an exact gpui-pre snapshot; bump only together with it.
 gpui-kit = "0.8.0"

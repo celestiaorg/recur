@@ -32,8 +32,12 @@ rust/
     ui/                 recur-ui           design system on gpui-kit (frontend styles, shared components)
     editor/             recur-editor       code + merge editor       (CodeEditor, MergeEditor, cm-*)
     terminal-view/      recur-terminal-view terminal rendering        (TerminalPane, xterm)
-    app/                recur-app          windows and views         (App.svelte, views/, components/)
-    desktop/            bin `recur`        desktop entry point       (main.go and root *.go)
+    views/
+      core/             recur-view-core    shared app state, routing (lib/stores.ts, api.ts, commands.ts, workspace-nav.ts, …)
+      sidebar/          recur-view-sidebar the app sidebar           (Sidebar.svelte, ProviderUsageMeter.svelte)
+      <area>/           recur-view-<area>  one crate per view area   (views/*.svelte and the components only they use)
+    app/                recur-app          the window shell          (App.svelte: titlebar, routing, overlays, menu, keys)
+    desktop/            bin `recur`        desktop entry point       (main.go, open_boot.go)
     cli/                bin `recur-cli`    command line              (cmd/recur, internal/cli)
   providers/
     claude/ codex/ cursor/ compatible/     one crate per agent provider
@@ -42,7 +46,7 @@ rust/
 
 Remaining Go packages map as follows: `observe` and `simplify` live as modules of `recur-engine` (or `recur-code` for pure file logic) unless their consumers show a better home; record the final home in `PARITY.md`.
 
-When `recur-app` grows past comfortable compile times, split views into crates under `crates/views/<area>` (`chat`, `review`, `prs`, `observatory`, `settings`, `schedules`, `briefing`, `palettes`) that depend on `recur-ui` and `recur-services` only. `crates/*` globbing picks them up only if they sit directly under `crates/`, so add `crates/views/*` to `members` when the first one lands.
+Views live in their own crates under `crates/views/<area>` (see "View crates" below). The workspace `members` list `crates/[!v]*` and `crates/views/*`: `crates/views` itself has no manifest, so a plain `crates/*` glob would fail.
 
 ## Layering
 
@@ -50,7 +54,9 @@ Dependencies point down only:
 
 ```
 desktop, cli
-app ──────────────► editor, terminal-view, ui
+app ──────────────► views/*, editor, terminal-view, ui
+views/* ──────────► views/core, editor, terminal-view, ui, services, domain
+views/core ───────► ui, editor, services, domain
 services ─────────► engine, providers/*, forge, issues, usage, lsp, platform
 engine ───────────► agent, agent-tools, mcp, bundles, code, git, store, term
 agent, forge, issues, bundles, git, code, store, project ─► domain
@@ -60,7 +66,8 @@ textmate, term, ui ─ standalone
 Rules:
 
 - `recur-domain` has no I/O and no async.
-- Nothing below `recur-services` knows about GPUI. Nothing below `recur-app` renders.
+- Nothing below `recur-services` knows about GPUI. Only `recur-app`, the view crates and the widget crates (`recur-ui`, `recur-editor`, `recur-terminal-view`) render.
+- View crates never depend on each other or on `recur-app`. What two views share (state, navigation, pure rules) lives in `recur-view-core`; what they show in common lives in `recur-ui`.
 - `recur-engine` depends on the `recur-agent::Provider`, `recur-forge::Forge` and `recur-issues::IssueTracker` traits, never on a concrete implementation. `recur-services` is the composition root that registers the shipped providers, forges and trackers.
 
 ## Extension points
@@ -92,6 +99,58 @@ The engine port is planned slice by slice in `docs/engine-port-plan.md`.
 - Theme inputs: chrome tokens come from the `recur_ui::Theme` global (followed as it changes); code colors from the parsed TextMate theme, which the view makes the catalog's active theme (`TextMate::activate_theme`).
 
 **What hosts provide.** `recur_ui::init` and `recur_ui::Assets`, the view inside `style::window_root` with a `TitleTooltip` as the last child (panel and gutter titles use `recur_ui::tooltip::titled`); a `SharedTextMate` with every grammar registered (`gallery::shipped_textmate` shows the conversion from `recur-bundles`) and the editor theme parsed; a `SnippetProvider` over bundle snippets; handling of `EditorEvent`s (save, toasts, finding and definition navigation); and an `LspClient` adapter over `recur_lsp::Manager` that owns request ids, `initialize`, document versions and `didChange` batching, applying `recur_lsp::protocol` around `Manager::write`.
+
+## View crates
+
+`recur-app` is the window shell: App.svelte's titlebar (breadcrumbs, land chrome, run splits), the native menu, global keys, the overlays host, toasts, boot and shell-state restore. Every main-area view, overlay and palette is a crate under `crates/views/<area>` that plugs into the shell through `recur_view_core::ViewRegistry`. The sidebar is the first one (`recur-view-sidebar`); the shell mounts it directly because it is always on screen.
+
+**Shared state.** `recur_view_core::AppState` is the port of `lib/stores.ts` plus the module state of `lib/api.ts`: projects, groups, workspaces, PRs, inbox, attention, settings, the current route (`view`, `selected_workspace_id`, `selected_pr_id`, `crumb`), overlays, panel sizes, themes, the run store and the command registry. It is one GPUI entity per window, installed by the shell. Read it with `state.read(cx)`, re-render on change with `cx.observe(&state, …)`, and change it through its methods (`go`, `open_workspace`, `open_pr`, `open_project`, `open_new_task`, `set_panel`, `upsert_workspace`, `remove_workspace`, …), which mirror the store functions of the same names. Never cache store data in a view; derive it in `render`.
+
+**Registering a view.** A view crate exports one `register` function that the desktop calls on its registry before the window opens:
+
+```rust
+// crates/views/prs/src/lib.rs
+use recur_view_core::{OverlaySlot, TitlebarParts, ViewContext, ViewName, ViewRegistry};
+
+pub fn register(r: &mut ViewRegistry) {
+    // Actions and key bindings, once at startup (scoped to the view's key context).
+    r.init(|cx| {
+        cx.bind_keys([gpui_kit::KeyBinding::new("cmd-enter", MergePr, Some("PrDetail"))]);
+    });
+    // The routes this view renders; the shell builds it once and shows it while one is current.
+    r.view(&[ViewName::Pr], |ctx: &ViewContext, window, cx| {
+        cx.new(|cx| PrList::new(ctx.clone(), window, cx)).into()
+    })
+    // Optional titlebar parts: `left` after the breadcrumb, `right` leading `.tb-right`.
+    .titlebar(|ctx, _, cx| TitlebarParts {
+        left: Some(cx.new(|cx| PrListTitlebar::new(ctx.clone(), cx)).into()),
+        right: None,
+    });
+    // Overlays go in App.svelte's slot so their paint order is preserved.
+    r.overlay(OverlaySlot::PrReviewModal, |ctx, window, cx| {
+        cx.new(|cx| PrReviewModal::new(ctx.clone(), window, cx)).into()
+    });
+}
+
+// crates/desktop/src/main.rs
+fn registry() -> ViewRegistry {
+    let mut r = ViewRegistry::default();
+    recur_view_prs::register(&mut r);
+    r
+}
+```
+
+- `view(routes, build)` returns the entry for chaining: `.keep_laid_out()` keeps it laid out (hidden) while another route shows, as `#v-detail` does so editors and terminals keep their size; `.titlebar(f)` adds titlebar parts. Routes nobody registered render an empty main area.
+- `overlay(slot, build)`: the overlay view decides its own visibility from `AppState::overlays` (or its own request field, e.g. `schedule_editor`) and renders nothing when closed. The shell paints overlays in `OverlaySlot` order, then toasts, then the title tooltip.
+- `init(f)`: actions and key bindings, in the view's own key context. The shell's global keys (`keys.rs`) stand down while focus is in a text-entry context (`Input`, `RecurEditor`, `Terminal`, `TerminalFind`, `TextEntry`); gpui-base inputs, the editor and the terminal already set theirs, and any other element that takes typing sets `key_context("TextEntry")`.
+
+**What a view gets.** `ViewContext { state, services }`: the `AppState` entity and the `Services` handle for backend calls (`services.workspaces.…`) and events (`services.subscribe()`). Prefer AppState's methods over calling services directly when one exists: they apply the same store updates the Svelte API helpers did. Use `recur_view_core::call(cx, fut, "Could not …")` for calls whose failure is an error toast, as `api.ts`' `call()` was.
+
+**Shell events.** `AppState` emits `ShellEvent`s (`cx.subscribe(&state, …)`): `MenuAction(name)` for native menu items and accelerators the view owns (the shell handles the app-level ones first: themes, palettes, navigation, sidebar, settings; views handle `save`, `new-tab`, `close-tab`, panel toggles, focus moves), `PrOpened`, `WorkspaceGone` (drop per-workspace client state), `AppFocused` and `PathOpened`. A view that owns menu items reports their enabled state with `AppState::set_menu_state(MenuState { … })`; the shell rebuilds the native menu from it.
+
+**Hooks back into the shell.** Views that the shell's commands need register themselves on the state: `set_macro_runner` (bundle TypeScript macros), `set_editor_command_handler` and `set_editor_focus_provider` (the focused editor for bundle commands), `set_chat_occluder` (an overlay covers the chat, so it stops counting as seen), and `set_drop_hook` (the desktop allows dropped files).
+
+**Tests and parity.** A view crate tests itself against `MockBridge` the way `crates/app/tests/shell.rs` does: install `AppState` over mock services, open the view (or the whole `Shell` with a registry holding it) in a `VisualTestContext`, find elements by `debug_selector` and drive them with simulated input. Parity scenes for a view go in `rust/tools/ui-parity/scenes.json`; full-window scenes (`shell/…`) build the shell in `recur_app::gallery::build`; add the view to the registry built there to capture it in context.
 
 ## Runtime model
 

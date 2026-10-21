@@ -1,0 +1,29 @@
+[package]
+name = "recur-view-core"
+description = "The state every view shares (data stores, navigation, overlays, prefs) and the seam views register with the shell through."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-editor.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-term.workspace = true
+regex.workspace = true
+serde.workspace = true
+tracing.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["mock"] }
+pretty_assertions.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

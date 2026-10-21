@@ -52,6 +52,16 @@ The grid does not draw through `recur_ui::text`: xterm.js does not lay text out 
 - **Compositing.** WebGL clears to the palette background, fills the background runs, blends glyph texels in cell order with `SRC_ALPHA, ONE_MINUS_SRC_ALPHA` on colour and alpha (so glyph edges leave the canvas partly transparent), draws the cursor, and WebKit composites the canvas as premultiplied over `.xterm`'s background. A glyph edge of coverage `a` therefore carries an extra `a(1 - a)` of that background, which no straight-alpha GPU blend can add over an arbitrary colour (it saturates on bright channels). `tiles.rs` runs the same 8-bit math on the CPU per row and paints each row as an image; a row's tile depends on it and its two neighbours (rasters spill a few pixels) and is cached by content, so scrolling and unchanged rows reuse tiles. Glyph overhang left of a cell whose resolved background (colour and background flags) differs from the previous cell's is clipped, as `GlyphRenderer` does.
 - **Above the canvas.** Link underlines, the IME composition and the scrollbar slider are GPUI primitives over the tiles, as they are separate layers over the canvas in the web pane. Custom glyphs (box drawing, blocks, powerline), which xterm draws into the atlas, are painted procedurally over the tiles with their decorations in the tiles; no scene covers them yet (`PARITY.md`).
 
+## Shell scenes
+
+The `shell` list in `scenes.json` holds full-window scenes (`shell/…`): the titlebar, the sidebar and an empty main area, at 1280px wide. Unported routes render nothing on the Rust side, so the reference hides them too.
+
+- **Reference.** `web/scenes/Shell.svelte` mounts the real `App.svelte` after the inits `frontend/src/main.ts` runs, over the e2e seed, with every `.main > *` hidden. `capture.spec.ts` applies the scene's `seed` edits before installing the bridge (`projects`, `loops` and `prs` upsert rows by id, mirrored into `loopById` / `prById`; `projectGroups` and `inbox` replace; `settings` merges) and its `storage` (plus `recur.theme`) as local storage before the page loads. `treeScroll` scrolls the project tree once it has loaded.
+- **Candidate.** `recur_app::gallery` (feature `gallery`) builds the `Shell` over a `MockBridge` holding the same edited seed (`gallery::patch_seed`, `gallery::scene_seed`) and an in-memory `LocalStorage` with the same entries, then scrolls the tree's `ScrollHandle` once the shell has booted.
+- **Harness toolchain.** The harness pins `esrap` to the frontend's version (`pnpm.overrides`): newer `esrap` prints optional snippet parameters with their `?` (`Settings.svelte`'s `themeGrid`), which WebKit cannot parse, while the app's build strips it.
+
+Scenes: three themes (`default`, `paper`, `nord`), the collapsed rail and its flyout (`peek`, after hovering the left edge), groups (an open group, a collapsed group with a needs-you chip, a non-git project, a hidden project with Show hidden on), the tree (every status icon, open / draft / queued / merged / closed PR icons, a working copy with branch and diff, child rows with step badges and connectors, the Scheduled subgroup expanded), a hovered row with its actions, and a scrolled tree (a stuck project header with its under-fade, the bottom mask, the scrollbar after it fades).
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -80,6 +90,8 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 - **Editor code text.** The editor's content is a custom element that shapes and paints lines through GPUI's text system (as CodeMirror owns its DOM); its chrome (panels, tooltips, the vim panel) goes through recur-ui text. Glyph rasterization differences in code count as text.
 - **Synthetic italics.** WebKit's synthetic-oblique glyphs and CoreGraphics' differ on a couple of edge pixels per italic glyph run (the slanted top of an `i` dot, a `t` bar); every skew construction, angle and snapping variant tried leaves those pixels as they are or moves more of them. Counted as anti-aliasing (max 18 levels).
 - **Frosted terminal cells.** With transparent cells (the maximized dock on a dark palette) the canvas is composited over the frosted dock, which the grid cannot read, so glyph edges miss the backdrop light described above. Opaque palettes are exact.
+- **Sticky headers.** GPUI has no `position: sticky`. The sidebar lays its tree out from fixed row heights and paints group and project headers in an absolute layer at their sticky positions, with the `::before` full-bleed band and `::after` under-fade as separate elements; the bottom `mask-image` fade is a rail-colored gradient over the scrollport (identical over the rail's opaque background).
+- **Pointer events during transitions.** A collapsing rail slides out over 160ms; WebKit stops hit-testing it at once (`pointer-events: none`), GPUI keeps it hit-testable until it is gone. No scene or test depends on that window.
 - **Overlay scroller.** The tab strip's `scrollbar-width: thin` scroller follows macOS overlay scrollers: it shows only after wheel scrolling, so programmatic reveals do not flash it.
 
 ## Hard-pixel allowances
@@ -93,6 +105,9 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 | `overlays/misc-paper` | 15 | Curved-edge coverage of the popover and field corners over the light shadow |
 | `editor/find` | 59 | Curved-edge coverage of the focused find field's corners and ring, and the typed query, which gpui-base's editor draws |
 | `editor/vim` | 132 | The vim panel's generic `monospace` resolves to Courier in both engines, but GPUI picks a heavier Courier face than WebKit, so the `:` prefix and the typed command differ |
+| `shell/paper` | 6 | The far tail of the running dot's 5px amber glow over the light rail: two levels per channel past the soft-edge rule |
+| `shell/tree`, `shell/hover` | 1 | Curved-edge coverage at the working copy branch chip's rounded left border |
+| `shell/scrolled` | 1 | Gradient dither inside a stuck header's under-fade |
 | `overlays/palette` | 388 | Keycaps centered at fractional positions inside a scrolled list land one device pixel apart (their row offset is not probed), and the list thumb's end rounds differently |
 
 ## Results
@@ -161,5 +176,16 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `terminal/decorations` | 0 | 0 | 6 | 10 | 0 |
 | `terminal/solarized-light` | 0 | 0 | 7 | 10 | 0 |
 | `terminal/solarized-dark` | 0 | 0 | 8 | 10 | 0 |
+| `shell/default` | 0 | 1942 | 799 | 3020 | 0 |
+| `shell/paper` | 6 | 1990 | 756 | 3030 | 6 |
+| `shell/nord` | 0 | 1930 | 782 | 2990 | 0 |
+| `shell/collapsed` | 0 | 598 | 52 | 720 | 0 |
+| `shell/peek` | 0 | 1942 | 799 | 3020 | 0 |
+| `shell/groups` | 0 | 1842 | 902 | 3020 | 0 |
+| `shell/tree` | 1 | 2842 | 980 | 4210 | 1 |
+| `shell/hover` | 1 | 2708 | 949 | 4030 | 1 |
+| `shell/scrolled` | 1 | 2294 | 1305 | 3960 | 1 |
+
+Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
 Terminal tolerances: every grid difference left is synthetic-italic edge coverage (above). `terminal/search` adds the find field: curved-edge coverage at the corners of its 2px `--amber-d` ring and the query, which gpui-base's editor draws (typed input text, above).

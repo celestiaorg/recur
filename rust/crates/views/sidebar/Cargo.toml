@@ -1,0 +1,18 @@
+[package]
+name = "recur-view-sidebar"
+description = "The app sidebar: nav, project tree, footer and provider usage meter."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-view-core.workspace = true
+
+[lints]
+workspace = true

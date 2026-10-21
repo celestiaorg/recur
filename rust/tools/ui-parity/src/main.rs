@@ -66,10 +66,11 @@ fn keystroke(key: &str) -> String {
 }
 
 /// Every scene: recur-ui's widgets (including the editor's, built by
-/// `recur_editor::gallery`), then the terminal's.
+/// `recur_editor::gallery`), then the terminal's, then the app shell's.
 fn all_specs() -> Vec<SceneSpec> {
     let mut specs = gallery::specs();
     specs.extend(recur_terminal_view::gallery::specs());
+    specs.extend(recur_app::gallery::specs());
     specs
 }
 
@@ -77,11 +78,15 @@ fn exists(name: &str) -> bool {
     gallery::exists(name)
         || recur_editor::gallery::exists(name)
         || recur_terminal_view::gallery::exists(name)
+        || recur_app::gallery::exists(name)
 }
 
 fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyView> {
     if recur_terminal_view::gallery::exists(name) {
         return recur_terminal_view::gallery::build(name, window, cx);
+    }
+    if recur_app::gallery::exists(name) {
+        return recur_app::gallery::build(name, window, cx);
     }
     recur_editor::gallery::build(name, window, cx).or_else(|| gallery::build(name, window, cx))
 }

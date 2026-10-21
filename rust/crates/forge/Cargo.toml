@@ -7,9 +7,28 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# FakeForge for engine and services tests.
+testing = []
+
 [dependencies]
 recur-domain.workspace = true
-recur-git.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+chrono.workspace = true
+futures.workspace = true
+parking_lot.workspace = true
+regex.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

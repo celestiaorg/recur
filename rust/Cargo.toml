@@ -40,6 +40,8 @@ recur-app = { path = "crates/app" }
 gpui-kit = "0.8.0"
 
 anyhow = "1"
+async-trait = "0.1"
+base64 = "0.22"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -56,12 +58,14 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 parking_lot = "0.12"
 regex = "1"
+reqwest = "0.13"
 clap = { version = "4", features = ["derive"] }
 include_dir = "0.7"
 notify = "8"
 cron = "0.15"
 tempfile = "3"
 pretty_assertions = "1"
+url = "2"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

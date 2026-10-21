@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 recur-domain.workspace = true
 recur-git.workspace = true
+recur-chroma.workspace = true
 base64.workspace = true
 flate2.workspace = true
 hex.workspace = true

@@ -392,10 +392,10 @@ Source: `Events.On(...)` in `frontend/src`. Rust home: `recur_services::AppEvent
 - [ ] `session.turn_end`
 - [ ] `session.user`
 - [ ] `system.theme`
-- [ ] `term.busy`
-- [ ] `term.data`
-- [ ] `term.exit`
-- [ ] `term.idle`
+- [x] `term.busy`: `Event::Busy { id, workspace_id }` when the shell loses the foreground process group (idle watcher, 25ms to 1s backoff).
+- [x] `term.data`: `Event::Data { id, data }`, raw bytes coalesced 8ms / 64KiB, flow-controlled by `ack` (256KiB high water), routed to the pane by `route_event`.
+- [x] `term.exit`: `Event::Exit { id, workspace_id, exit_code }` once after the reader drains; the pane emits `TerminalEvent::Exit`.
+- [x] `term.idle`: `Event::Idle { id, workspace_id }` when the shell regains the foreground.
 - [ ] `updater.check`
 - [ ] `wails:updater:error`
 - [ ] `wails:updater:no-update`
@@ -506,7 +506,26 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `TabChip.svelte` (293 lines)
 - [ ] `TabStrip.svelte` (290 lines)
 - [ ] `TerminalDock.svelte` (856 lines)
-- [ ] `TerminalPane.svelte` (581 lines)
+- [~] `TerminalPane.svelte` (581 lines): `recur_terminal_view::TerminalView` + `TerminalElement`
+  - [x] Attach on mount, paint replay, queue live output until the replay lands, ack in 32KiB batches (`tests/view.rs`)
+  - [x] Fit: `termFitSize` over the padded content box (6/0/6/8), grid pinned to the bottom, 100ms debounced `resize` (`font.rs`, `tests/view.rs`)
+  - [x] xterm options: font stack with ligatures off, size, line height, cell metrics from WebGL `_updateDimensions`, 10000 scrollback, `macOptionIsMeta`, `macOptionClickForcesSelection`, `rightClickSelectsWord` on mac, bar cursor with blink, `minimumContrastRatio` 1 (`font.rs`, `screen/render.rs`)
+  - [x] WebGL colour pipeline: bold-as-bright, dim, inverse, hidden, selection at 30% with inactive variant, block cursor override, underline styles (single/double/curly/dotted/dashed) and colours, strikethrough, custom box/block/powerline glyphs (`screen/render.rs`, `custom_glyphs.rs`)
+  - [x] Cursor styles (DECSCUSR), blink manager (600ms, idle stop at 5 min, pause on blur) (`blink.rs`)
+  - [x] Keyboard: xterm `Keyboard.ts` evaluation, custom key handler (⌘ chords to the app, Ctrl+` to the dock, third-level chars as text), app cursor keys, PageUp/PageDown scroll (`input.rs`, `tests/view.rs`)
+  - [x] IME: marked text drawn at the cursor, commit writes once, candidate window at the cursor cell (`tests/view.rs`)
+  - [x] Copy (⌘C with selection), paste (⌘V, bracketed paste, `\n` to `\r`), Linux primary selection and middle-click paste
+  - [x] Mouse: selection (click, double word, triple line, shift extend, alt column, drag autoscroll), alt-click moves the prompt cursor, mouse reporting X10/1000/1002/1003 in default/SGR/SGR-pixels, wheel reporting and alt-screen arrow keys (`tests/view.rs`, `screen/tests.rs`)
+  - [x] Scrollbar: VS Code 14px slider, 50px wheel units, trackpad accumulation, track click and drag, 500ms hide with fades (`scrollbar.rs`, `tests/view.rs`)
+  - [x] Search addon: regex/case/whole word, xterm's highlight limit, active match, result counts, incremental refresh (`screen/search.rs`, `tests/view.rs`)
+  - [x] Find bar UI (`TerminalFindBar`): toggles, count label, Enter/Shift+Enter, Escape, ⌥⌘C/R/W
+  - [x] Web links addon: URL regex, hover underline and pointer, ⌘/click opens http(s) in the browser; OSC 8 hyperlinks underline but do not open (the webview never showed xterm's confirm) (`screen/links.rs`)
+  - [x] Focus: dock focus routing (`termDockOwnsFocus`), DECSET 1004 reports, window activation; hidden panes take no pointer events (`tests/view.rs`)
+  - [x] Theme and font changes repaint without remount; frosted (transparent) cells when maximized on dark palettes (`theme.rs`, `tests/view.rs`)
+  - [x] Explorer drops type quoted paths; title and exit events reach the dock; clear wipes screen and replay; dispose detaches (`tests/view.rs`)
+  - [x] Query replies answered in the emulator (DA1/DA2, XTVERSION, DSR/CPR, DECRQM, DECRQSS, OSC 4/10/11/12, CSI t) (`screen/scanner.rs`)
+  - [ ] SGR 53 overline: alacritty_terminal cells have no overline flag, so it is parsed and dropped
+  - [ ] Pixel parity screenshot against the web pane (needs the app shell and screen recording permission)
 - [ ] `TitleTooltip.svelte` (309 lines)
 - [ ] `Toasts.svelte` (55 lines)
 - [ ] `UserMentionSuggest.svelte` (105 lines)
@@ -528,7 +547,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/artifacts.ts` (198 lines)
 - [ ] `lib/autosize-textarea.ts` (29 lines)
 - [ ] `lib/bridge-bench.ts` (98 lines)
-- [ ] `lib/briefingtools.ts` (345 lines)
+- [x] `lib/briefingtools.ts` (345 lines) → `recur_agent_tools::display::briefing_tools` (detectors, brief/context/present parsing incl. legacy `Opening`/`Presented` strings, hydration, labels; `briefingtools.test.ts` ported)
 - [ ] `lib/bundle-reload.ts` (25 lines)
 - [ ] `lib/caches/byte-lru.ts` (189 lines)
 - [ ] `lib/caches/chat-heap-cache.ts` (211 lines)
@@ -536,7 +555,11 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/caches/chat-transcript-ui.ts` (324 lines)
 - [ ] `lib/caches/cm-session-tabs.ts` (112 lines)
 - [ ] `lib/caches/observatory-cache.ts` (150 lines)
-- [ ] `lib/caches/term-park.ts` (123 lines)
+- [x] `lib/caches/term-park.ts` (123 lines): `recur_terminal_view::Park` + `TerminalPark` global
+  - [x] Stash/take, 1MiB per entry, 48MiB budget with LRU eviction returning evicted views to detach (`park.rs`)
+  - [x] Discard flag for closed tabs, `should_dispose` consumed on unmount, prune by live workspace ids (`park.rs`)
+  - [x] Parked panes stay attached and keep updating (`tests/view.rs`)
+  - Pane hooks (`bindTermPaneHooks`) are the view entity itself: the dock calls its methods directly.
 - [ ] `lib/caches/workspace-land-cache.ts` (90 lines)
 - [ ] `lib/changed-tree.ts` (118 lines)
 - [ ] `lib/chat-glance.ts` (48 lines)
@@ -546,7 +569,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/chat-tab-reorder.ts` (74 lines)
 - [ ] `lib/chat-tab-session.ts` (84 lines)
 - [ ] `lib/chat-window.ts` (36 lines)
-- [ ] `lib/check-duration.ts` (90 lines)
+- [x] `lib/check-duration.ts` (90 lines) → `recur_forge::view` (`format_check_seconds`, `parse_check_duration`, `live_check_detail`, `PendingClock`, `prune_pending_clocks`, `check_clock_key`); test file ported
 - [ ] `lib/chrome-focus.ts` (89 lines)
 - [ ] `lib/clipboard.ts` (69 lines)
 - [ ] `lib/cm-diff-gutter.ts` (207 lines)
@@ -580,14 +603,14 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/commands.ts` (489 lines)
 - [ ] `lib/comment-header.ts` (22 lines)
 - [ ] `lib/comment-hunk.ts` (107 lines)
-- [ ] `lib/comment-permalink.ts` (91 lines)
-- [ ] `lib/comment-reactions.ts` (137 lines)
+- [x] `lib/comment-permalink.ts` (91 lines) → `recur_forge::github::{comment_permalink, commit_url, blob_url, ui_node_database_id}`, reached through `Forge::{comment_url, commit_url, blob_url}`; test file ported (UI node-id decoding kept separate from the backend's: BigInt-sized ids, printable legacy ids)
+- [~] `lib/comment-reactions.ts` (137 lines) → pure rules in `recur_forge::view` (`REACTIONS` picker table, `reaction_icon`, `reaction_label`, `visible_reactions`, `apply_comment_reactions`, `apply_reaction_holds`; normalize/toggle/mine are `recur_domain::reaction`); test file ported. Left for `recur-app`: the optimistic toggle with its 120 s hold map and store painting
 - [ ] `lib/comment-thread.ts` (372 lines)
 - [ ] `lib/commit-meta.ts` (12 lines)
 - [ ] `lib/compatible-providers.ts` (81 lines)
 - [ ] `lib/composerDom.ts` (1582 lines)
 - [ ] `lib/composerUndo.ts` (102 lines)
-- [ ] `lib/contextUsage.ts` (90 lines)
+- [x] `lib/contextUsage.ts` (90 lines) → `recur_agent::context_usage` (ContextUsage used/ready/after_compact, from_turn, from_chat_items, format_tokens with JS `toFixed`/`Math.round` rounding; `contextUsage.test.ts` ported)
 - [ ] `lib/dialog-focus.ts` (84 lines)
 - [ ] `lib/editor-dirty.ts` (60 lines)
 - [ ] `lib/editor-session.ts` (870 lines)
@@ -611,10 +634,10 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/hoverGate.ts` (50 lines)
 - [ ] `lib/icons.ts` (1003 lines)
 - [ ] `lib/inbox-read.ts` (28 lines)
-- [ ] `lib/issue-link.ts` (36 lines)
+- [~] `lib/issue-link.ts` (36 lines) → `recur_issues::view::{issue_key, issue_url}` (tracker fallback via `IssueTracker::issue_url`); tested. Left for `recur-app`: the `trackerIssues` cache keyed on `issuesStale` and `openIssueUrl` (services `OpenLinearInApp` uses `IssueTracker::app_url`)
 - [ ] `lib/keybinding-menu.ts` (27 lines)
 - [ ] `lib/keyequiv.ts` (285 lines)
-- [ ] `lib/lineartools.ts` (320 lines)
+- [x] `lib/lineartools.ts` (320 lines) → `recur_issues::linear::tools`; test file ported
 - [ ] `lib/loop-cockpit.ts` (432 lines)
 - [ ] `lib/loops.ts` (183 lines)
 - [ ] `lib/lsp-lang.ts` (86 lines)
@@ -626,7 +649,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/markdown-parse.ts` (191 lines)
 - [ ] `lib/markdown-worker.ts` (20 lines)
 - [ ] `lib/markdown.ts` (51 lines)
-- [ ] `lib/mcp.ts` (69 lines)
+- [x] `lib/mcp.ts` (69 lines) → `recur_agent::mcp` over `recur_domain::McpServer` (untrimmed id rule, slug, global off-list, Linear upsert, custom list, enable/remove/update keeping the id; `mcp.test.ts` ported)
 - [ ] `lib/mdcopy.ts` (88 lines)
 - [ ] `lib/menu-space.ts` (248 lines)
 - [ ] `lib/menu.ts` (152 lines)
@@ -638,19 +661,23 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/open-external.ts` (81 lines)
 - [ ] `lib/open-in-pref.ts` (34 lines)
 - [ ] `lib/open-path.ts` (48 lines)
-- [ ] `lib/open-pr-tool.ts` (70 lines)
+- [x] `lib/open-pr-tool.ts` (70 lines) → `recur_agent_tools::display::open_pr_tool` (`open-pr-tool.test.ts` ported)
 - [ ] `lib/overlay-scrollbar.ts` (141 lines)
 - [ ] `lib/pdf-preview.ts` (85 lines)
-- [ ] `lib/permissionTools.ts` (60 lines)
-- [ ] `lib/plantools.ts` (120 lines)
+- [x] `lib/permissionTools.ts` (60 lines) → `recur_agent_tools::display::permission_tools::permission_tool_label`
+- [x] `lib/plantools.ts` (120 lines) → `recur_agent_tools::display::plan_tools` (step/attachment/body parsing, labels, ack title recovery)
 - [ ] `lib/pr-attention.ts` (98 lines)
 - [ ] `lib/pr-checks.ts` (139 lines)
+- [ ] `lib/permissionTools.ts` (60 lines)
+- [ ] `lib/plantools.ts` (120 lines)
+- [x] `lib/pr-attention.ts` (98 lines) → `recur_forge::view` (`pr_attention_codes`, `pr_attention_labels`, `pr_has_review_request`, `pr_has_check_status`, `pr_checks_rollup`, `pr_checks_passing`); test file ported
+- [x] `lib/pr-checks.ts` (139 lines) → `recur_forge::view` (`is_pending_check`, `is_skipped_check`, `group_checks`, `checks_rollup` → `RollupKind`, `checks_heading` with the forge label, `check_group_collapsed`, `checks_box_byline`) and `Forge::{checks_url, check_run_url}`; test file ported
 - [ ] `lib/pr-commits.ts` (23 lines)
 - [ ] `lib/pr-detail-pending.ts` (48 lines)
 - [ ] `lib/pr-fix-checks.ts` (53 lines)
 - [ ] `lib/pr-list-filter.ts` (190 lines)
 - [ ] `lib/pr-merge-action.ts` (276 lines)
-- [ ] `lib/pr-participants.ts` (165 lines)
+- [x] `lib/pr-participants.ts` (165 lines) → `recur_forge::view` (`PrPerson`, `PR_FACE_CAP`, `pr_participants`, `pr_people_with_reviews`, `reviewer_summary`, `review_state_label`, `participant_label`, `participant_initials`, `participant_avatar_url` via `Forge::avatar_url(.., 40)`, `pr_face_slots`, `person_key`); test file ported
 - [ ] `lib/pr-thread-resolved.ts` (43 lines)
 - [ ] `lib/pr-workspace.ts` (107 lines)
 - [ ] `lib/preview-find.ts` (260 lines)
@@ -661,7 +688,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/providerUsage.ts` (141 lines)
 - [ ] `lib/providers.ts` (76 lines)
 - [ ] `lib/rail-peek.ts` (106 lines)
-- [ ] `lib/reenter-phase-tool.ts` (32 lines)
+- [x] `lib/reenter-phase-tool.ts` (32 lines) → `recur_agent_tools::display::reenter_phase_tool` (`reenter-phase-tool.test.ts` ported)
 - [ ] `lib/remove-workspace.ts` (72 lines)
 - [ ] `lib/review-diff.ts` (131 lines)
 - [ ] `lib/review-scope.ts` (47 lines)
@@ -689,10 +716,18 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/syntax-mode.ts` (213 lines)
 - [ ] `lib/tab-strip-drag.svelte.ts` (392 lines)
 - [ ] `lib/tab-strip-scroll.ts` (174 lines)
-- [ ] `lib/tasktools.ts` (340 lines)
+- [x] `lib/tasktools.ts` (340 lines) → `recur_agent::display::tasks` (args, TaskCreate id, TaskList JSON/line parse with `[blocked by]`/`(owner)` suffixes, TaskGet JSON/multiline parse, labels, meta, chip status, has-body, ack rules; regex semantics hand-ported; `tasktools.test.ts` ported)
 - [ ] `lib/term-fit.ts` (35 lines)
 - [ ] `lib/term-focus.ts` (15 lines)
 - [ ] `lib/terminal.ts` (206 lines)
+- [ ] `lib/tasktools.ts` (340 lines)
+- [x] `lib/term-fit.ts` (35 lines): `term_fit_size`, `TERM_FIT_*` constants; the content box comes from the element's padded bounds (`font.rs`)
+- [x] `lib/term-focus.ts` (15 lines): `TerminalOptions::dock_focus` + `TerminalView::try_focus_if_dock_owns_keys` / `set_dock_focus`: the dock passes its focus handle and panes only take focus while it is focused
+- [~] `lib/terminal.ts` (206 lines)
+  - [x] `wireTerminalEvents` / `onTerminalData` / `onTerminalExit`: `Router` global + `route_event`; bytes stay raw, so `decodeTermBytes` has no counterpart
+  - [x] `ackWriter`: acks after the emulator parses, batched at `ACK_THRESHOLD` (`tests/view.rs`)
+  - [x] `terminalTheme`, `resolveTerminalTheme`, `terminalSurfaceBg`, `terminalFrosts`: `theme.rs` (`ThemeContext`, ported tests)
+  - [ ] `terminalThemeCatalog` / `ensureTerminalThemes`: the app loads `ListTerminalThemes` and passes the catalog in `ThemeContext`
 - [ ] `lib/textarea-caret.ts` (58 lines)
 - [ ] `lib/title-tooltip.ts` (248 lines)
 - [ ] `lib/titlebar.ts` (30 lines)
@@ -703,13 +738,13 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/tm-scope-selector.ts` (121 lines)
 - [ ] `lib/tm-symbols.ts` (297 lines)
 - [ ] `lib/tm-theme.ts` (590 lines)
-- [ ] `lib/todos.ts` (38 lines)
+- [x] `lib/todos.ts` (38 lines) → `recur_agent::display::todos` (parse, counts, latest over `ChatItem`s; `todos.test.ts` ported)
 - [ ] `lib/tree-sticky.ts` (137 lines)
 - [ ] `lib/updater.ts` (42 lines)
-- [ ] `lib/user-mention.ts` (200 lines)
+- [~] `lib/user-mention.ts` (200 lines) → pure rules in `recur_forge::view` (`mention_login`, `mention_people`, `suggest_user_mentions` taking the fuzzy ranker from `lib/fuzzy.ts`'s port, `merge_mention_hits`); test cases ported. Left for `recur-app`: the textarea typeahead (caret tracking, 150 ms remote search via `Forge::mentionable_users`, keys) and `mentionQueryAt` (`lib/agentchat.ts`, E2)
 - [ ] `lib/uuid.ts` (16 lines)
 - [ ] `lib/wait-for-worktree.ts` (38 lines)
-- [ ] `lib/webtools.ts` (87 lines)
+- [x] `lib/webtools.ts` (87 lines) → `recur_agent::display::web` (WebFetch URL/prompt, WebSearch query, `compact_url` on the WHATWG `url` crate, JSON sniff; `webtools.test.ts` ported)
 - [ ] `lib/workspace-file.ts` (96 lines)
 - [ ] `lib/workspace-nav.ts` (350 lines)
 - [ ] `lib/workspace-path.ts` (31 lines)
@@ -728,7 +763,13 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `styles/_prs.scss`
 - [ ] `styles/_settings.scss`
 - [ ] `styles/_sidebar.scss`
-- [ ] `styles/_terminal.scss`
+- [~] `styles/_terminal.scss`
+  - [x] Pane padding, bottom-pinned grid, inactive panes hidden and absolutely positioned (`view.rs`)
+  - [x] Scrollbar slider colours from the palette, hover/active states (`element.rs`)
+  - [x] Find bar (`cm-recur-search` look): field, toggles, count, buttons (`find_bar.rs`)
+  - [x] Terminal tokens read from a local `_tokens.scss` table until `recur-ui` exposes them (`tokens.rs`)
+  - [ ] Dock chrome (tab strip, maximize, beside layout) belongs to the `TerminalDock.svelte` port
+  - [ ] Pixel parity screenshot
 - [ ] `styles/_tokens.scss`
 - [ ] `styles/_welcome.scss`
 - [ ] `styles/app.scss`
@@ -737,36 +778,188 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 
 Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: port its cases alongside the code.
 
-- [ ] `internal/agenttools`: 52 files, 3802 lines, 3 test files
+- [ ] `internal/agenttools`: 52 files, 3802 lines, 3 test files → `recur-agent-tools` (all three Go test files ported)
+  - [x] `Host` trait (engine seam) with Go `noopReporter` as default bodies (`NoopHost`), all request types, `HostError`; `Tool`/`Permitter`/`Call`/`Registry`, `advertised_name`, `bare_name`, `HALT_NAMES`, `halt_after`; `mcp__recur__*` and bare tool-name constants (`names`, `names::mcp`)
+  - [x] All 42 host tools (`host_tools()` in `tools/list` order): names, descriptions and schemas byte-identical to Go (`tests/catalog.rs`), and 623 recorded calls replayed for identical result text, error text and host calls (`tests/host_golden.rs`, fixtures from `tests/golden/golden_gen_test.go.txt`)
+  - [x] Go `encoding/json` decode semantics for tool args (`json`): scanner syntax errors, `Decoder` vs `Unmarshal`, case-insensitive and Kelvin/long-s field folding, first error wins, decode into existing values on duplicate keys, `UnmarshalTypeError` text with Go type names, `json.RawMessage`, `DisallowUnknownFields`; `%q` (`strconv.Quote`) and Go's per-byte U+FFFD handling (`gostr`)
+  - [x] Worktree sandbox (`path`): `code.SafeJoin`, `filepath` Clean/Join/Rel/Abs/Dir/Base, `EvalSymlinks`, nearest-existing-ancestor resolution, `MkdirAll`, `*PathError` text
+  - [x] Read, Edit, Write, Bash, TodoWrite + `TodoStore`: 75 recorded Go cases replayed (`tests/coding_golden.rs`); Bash keeps process-group kill on cancel/timeout, `WaitDelay` (2 s), capped capture, `exit: …` text with Go signal names per platform
+  - [ ] Glob and Grep enabled by default: complete and tested (ripgrep and Go-walk fallback, `filepath.Match`), but behind the `code` feature until `recur-code` exports `rg::locate`/`search_opts` and the store port exports `data_dir` (slice C / store; see engine-port-plan 5.3 T)
 - [ ] `internal/app`: 25 files, 8921 lines, 27 test files
+  - [x] `instance.go` + test: `recur_platform::identity::{instance_label, window_title}` (title falls back to `Recur Next` side by side)
+  - `open_path.go` stays with `recur-services`: it is WorkspacesService logic (store, engine, git), not OS path handling. Platform takes its result through `open_boot::attach_open_ipc` / `apply_cold_opens`.
+  - [x] `model_catalog.go` catalog types → `recur_agent::catalog` (FlagOption, FlagDimension, ModelChoice, ModelGroup serde-identical; `defaultFlagsFromDims`). Per-provider lists, merge and fallbacks belong to P1/P2/P3 and SV
+  - [x] `gh_image.go` → `recur_forge::github` behind `Forge::fetch_image` (allow-list, S3-only redirects with credentials dropped off-host, 5-redirect cap, 20 s bound, 8 MiB cap, content-type and sniffing, cached `gh auth token`); `gh_image_test.go` ported with a fake `ImageTransport`. The `/gh-image` HTTP handler (method check, missing `url` → 400, `Cache-Control`) is services (`fileserver`)
+  - [x] `issues.go` trackers → `recur_issues::{github::GitHubIssues, linear::Linear}` (gh search batches of 5 repos, remote → project map, Linear assigned + paged unassigned to 300, claim, `linear://` links, GraphQL error handling) and `recur_issues::{list_assigned, claim}`; `issues_test.go`, the claim half of `workspace_issue_test.go`, and Go-generated golden fixtures (`tests/golden/linear.json`) ported. `ListAssignedIssues` / `OpenLinearInApp` service wrappers are SV
+  - [x] `model_catalog.go` Claude branch → `recur_provider_claude::flags::catalog` (pinned ids, effort + 200K/1M context dims, context windows); Codex branch → `recur_provider_codex::catalog` (hidden/id-less dropped, friendly model and effort labels, effort/272K-1M/Fast dims with the real boost tier id). Both behind `Provider::{models, cached_models}`; Codex remembers the last good `model/list` (from `models` and `status`). Go-matched in `go_claude_app.json` / `go_codex_app.json`. Merge, fallbacks and remap stay SV
+  - [x] `claude_status.go` + test → `recur_provider_claude::status` (`--version` and `auth status` each 5 s, logged-out JSON vs missing binary vs timeout, provider/login labels, `detect_agent` for `DetectAgent`) behind `Provider::status`. The `GetClaudeStatus` / `DetectAgent` service methods are SV
+  - [x] `codex_service.go` → `recur_provider_codex::status` (throwaway app-server probe with 60 s budget, account/read + model/list, login method, plan names, ChatGPT-auth precedence, `test_key` draft fallback to saved key) behind `Provider::{status, test_credentials, models}`. The `GetCodexStatus` / `TestCodexKey` service methods are SV
 - [ ] `internal/bundles`: 19 files, 6525 lines, 20 test files
 - [ ] `internal/cli`: 7 files, 830 lines, 2 test files
-- [ ] `internal/cliinstall`: 3 files, 568 lines, 3 test files
+- [x] `internal/bundles`: 19 files, 6525 lines, 20 test files → `recur-bundles` (all 148 Go test functions ported: 14 unit, 131 in `tests/suite` mirroring the Go files, 5 env-mutating in `tests/env_serial`, plus 2 compile-parity tests)
+  - [x] Manifest schema (`manifest.rs`): `[bundle]`, `[[command]]` (input/fallbackInput/output/interpreter/triggers/keyEquivalent/language/openInPreview/prompts, inline `body` XOR `script`), `[[prompt]]` (slash default from name, mode/loop/fresh_session/tab_group/timeoutMs/takesArgs/argPlaceholder/`[[prompt.arg]]`/complete/icon), `[[search]]`, `[[expand]]` (RE2 `match`), `[[languageServer]]`; every validation message byte-identical (Go `%q`, `*fs.PathError` text)
+  - [x] TOML decoding with go-toml v2 semantics: unknown keys ignored, case-insensitive key match (`tomlx.rs`)
+  - [x] Go semantics the messages depend on (`go.rs`): `strconv.Quote`, `filepath.Clean/Join/Rel/Base/Dir/Ext/Abs/Match` (byte-level, `ErrBadPattern`), `os.Getwd` (`$PWD`), `strconv.Atoi`, `strings.ToLower/ToUpper` simple case mapping, RE2 regexps (ASCII `\d \s \w \b`, `\Q…\E`, literal `[ & ~` in classes)
+  - [x] Registry (`registry.rs`): default root then user root, user wins by id for every kind; grammar and language-data scopeName collapse (user wins); prompt slash collisions (user > default, then bundle id, then prompt id) with skip reasons; role-code collisions; skip reasons for missing/unreadable/invalid manifests; every Go sort order
+  - [x] Seeding (`seed.rs`): `seed_defaults` stamp/sync (`.recur-seed` = SHA-256 of `path\0len\0bytes\0`, whole-dir replace on change, loose root files overwritten on change, dotfiles and `tests/` skipped, `.sh` and `bin/` executable) over embedded (`SHIPPED_BUNDLES`, `SHIPPED_SKILLS` via `include_dir!` from repo `bundles/` and `recur-skills/`), on-disk (`DirSource`) or in-memory (`MapSource`) trees; embedded stamps equal the repo-tree stamps
+  - [x] TypeScript compile (`compile.rs`): swc in-process instead of the esbuild Go library. TS strip with esbuild defaults (unused/type-only imports dropped, define semantics for class fields), ES2021/2022 lowered for the ES2020 target, ESM → CommonJS, `@recur/sdk` (embedded `macro_sdk.ts`) compiled once and inlined where required; only `@recur/sdk` resolves (imports, `require`, `require.resolve`, dynamic `import()`), "No matching export" for missing SDK names, ES2020 top-level-await error, esbuild's `file:line:col` locations (cwd-relative path); same cache file names and pruning; `tests/compile_parity.rs` runs all 72 `.ts` files under `bundles/` through both compilers (reference: `tests/esbuild_ref`, compile.go's exact esbuild build) across 3320 node executions with identical results. Only syntax-error wording differs from esbuild
+  - [x] Shebang execution (`exec.rs`, `env.rs`): process group, stdin input, `RECUR_*` env (stale `RECUR_*`/`PORT` stripped, 64 KiB blob cap with Go byte truncation, settings env + JSON), 30s default deadline, SIGTERM → 500ms → SIGKILL, partial output kept on timeout; prompt/complete/search/expand runners and Go JSON decoding (case-insensitive fields, Go type-error text); `collect_search_groups` concurrent, `expand_matching` skip chain; `RunCtx` is Go's deadline + cancel context
+  - [x] Prompt actions (`prompt_run.rs`): TypeScript prompts under node with the Worker boot, shebang otherwise
+  - [x] Bundle tests (`testcase.rs`, `testrun.rs`): `tests/*.toml` with inline or `*File` payloads, command XOR snippet, TypeScript macros under node (WORKER_BOOT twin), checks and report text/colors identical
+  - [x] Lint (`lint.rs`): schema, grammar/theme/terminal-theme conventions and JSON shape, language data, snippet and command keyEquivalents (parse errors, reserved app chords), shared chords (info), Oniguruma symbol transforms, loop conductor/verifier/role-mode/findings checks, openInPreview, TS compile, shebang `#!`, prompt slash/mode/loop/tab_group/timeout rules, cross-bundle slash duplicates; report text identical
+  - [x] Loops/roles/policies (`loops.rs`), grammars/themes/terminal themes (`grammar.rs`), language data (`langdata.rs`), snippets (`snippet.rs`), symbols (`symbol.rs`), settings and secrets (`setting.rs`), scopes and file globs (`scope.rs`), key equivalents (`keyequiv.rs`), language server declarations
+  - [x] `bundles test` / `bundles lint` over repo `bundles/` are byte-identical to `bin/recur-cli` (258 passed; 0 errors, 7 info)
+- [x] `internal/cli`: 7 files, 830 lines, 2 test files → `recur-cli` (both Go test files ported: `tests/cli.rs`, `tests/env_serial.rs`; `tests/golden.rs` compares against `go build ./cmd/recur`)
+  - [x] Cobra/pflag behavior the Go CLI exposed (`cobra.rs`): `Find`/`stripFlags` with lazily defined help/version flags, legacy and explicit arg validators and their messages, pflag long/short/grouped parsing, `--`, `=` values, bool `ParseBool`, every flag error text, help/usage/version rendering, `help [command]`, silenced errors printed red by `exitCode`
+  - [x] `completion bash|zsh|fish|powershell [--no-descriptions]` (cobra's templates verbatim) and the hidden `__complete` / `__completeNoDesc` protocol (subcommand, flag-name and help-topic completion, directives, `COBRA_*`/`RECUR_*` env, `BASH_COMP_DEBUG_FILE`)
+  - [x] Viper config (`config.rs`): `--bundles-dir` > `$RECUR_BUNDLES_DIR` > first `~/.recur/config.{json,toml,yaml,…}` or `config` parsed as YAML > `~/.recur/bundles`
+  - [x] `resolve.rs`, `create.rs` (embedded `internal/cli/scaffold`, Go replacer and modes), `open.rs` (recur-platform `openipc` client, retry on shutdown, launch via `$RECUR_APP` / `open -b build.recur.next` / `open -a "Recur Next"` / desktop binary, Go `net` error text), `color.rs` (`NO_COLOR`, `FORCE_COLOR`, char-device check)
+  - Data-dir paths (`paths.rs`: `RecurNext`, `$RECUR_DATA_DIR`, socket, bundle roots) and `CanonPath` live in the CLI until recur-store / recur-git land
+- [x] `internal/cliinstall`: 3 files, 568 lines, 3 test files (`recur_platform::cliinstall`, 25 tests)
+  - [x] `bundled_cli`: `.app/Contents/MacOS/recur-cli` on macOS, sibling `recur-cli` on Linux
+  - [x] `is_dev_bundle`: `*.dev.app`, Go checkout `bin/` (`go.mod`), plus a cargo `target/` dir in a workspace checkout
+  - [x] `is_bundled_cli_path`, `ensure_link` (atomic `.tmp` + rename, same-file no-op, refuses regular files and foreign links)
+  - [x] `destinations`: writable `/usr/local/bin` first, then `~/.local/bin`; link name `recur-next` side by side
+  - [x] `install_from_app` / `install_bundled_cli`: no-op for dev builds, unbundled exes and `/opt/recur-next` package installs; Linux desktop entry (`build.recur.next.desktop`, Exec quoting, unchanged-file skip)
+  - [x] `ensure_path`: login-shell PATH (marker-wrapped probe, fish syntax, 5s timeout with process-group kill, `$SHELL` → `id -P` → `/etc/passwd` → default shell), common user/system bin dirs, path_helper fallback, merge order and dedup
 - [ ] `internal/code`: 18 files, 4497 lines, 7 test files
-- [ ] `internal/codex`: 6 files, 1173 lines, 5 test files
+- [x] `internal/codex`: 6 files, 1173 lines, 5 test files → `recur-provider-codex` (all 5 test files ported)
+  - [x] `types.go` → `types` (wire structs with Go field order and `omitempty`, `format_plan`)
+  - [x] `rpc.go` → `rpc` (newline JSON-RPC without `jsonrpc`, ordered reader task, sync notification handler, server requests on tasks with `-32000` errors, pending calls fail `-32001` on EOF, `null` results decode as defaults, `Ctx` = Go context cancel + deadline). After EOF new calls fail fast instead of waiting on their context
+  - [x] `client.go` → `client` (account/read, model/list, thread start/resume, turn start/steer/interrupt). `DecodeNotification` (unused in Go) not ported
+  - [x] `server.go` → `server` (Recur `CODEX_HOME`, seeded `auth.json` only when newer, trusted-project entry, `app-server -c …` in its own process group, env scrub + `CODEX_HOME`/`CODEX_API_KEY`, 45 s handshake, 80-line stderr ring, auto-approve failsafe, SIGTERM → 2 s → SIGKILL close)
+  - [x] `locate.go` → `locate` (`$RECUR_CODEX`, Settings path, PATH, Homebrew cask dirs; Mach-O/ELF magic rejects the npm shim; `home_dir`)
+  - [x] `mcp.go` → `mcp` (`-c mcp_servers…` overrides, TOML escaping, automation defaults incl. skills/multi-agent off)
 - [ ] `internal/copyfiles`: 1 files, 414 lines, 1 test files
 - [ ] `internal/cursor`: 12 files, 3691 lines, 17 test files
-- [ ] `internal/domain`: 15 files, 4945 lines, 16 test files
+- [x] `internal/domain`: 15 files, 4945 lines, 16 test files → `recur-domain` (all 16 Go test files ported as unit tests)
+  - [x] Serde parity: every one of the 107 exported structs decodes Go `json.Marshal` output (zero and fully populated) and re-encodes byte for byte (`tests/go_parity.rs`, `tests/fixtures/go_types.json`); the e2e `seed.json` round-trips (`tests/seed_round_trip.rs`)
+  - [x] `omitempty` → `skip_serializing_if`; non-`omitempty` slices/maps are `Option<…>` so Go's nil still encodes as `null`; `json::to_string` matches `json.Marshal` (HTML-safe escaping, compacted raw JSON, integral floats without `.0`)
+  - [x] String enums with an `Other(String)` escape hatch (empty Go zero value is `Default`): AutonomyLevel, WorkspaceState, Group, AgentRole, Severity, FindingStatus, MergeMethod, UpdateBaseMethod, SquashCommitMessage, MergeCommitMessage, PrSource, ArtifactKind, BranchPrefixMode, IdType
+  - [x] Plain string const groups kept as `&str` consts: chat modes, plan step statuses, feed kinds/cards, finding actors, attention reasons, review states, update-workspace statuses, workspace type markers, providers, stream statuses, block types, context modes, compact statuses, briefing buckets/reasons/actions, MCP ids/transports/URLs, permission modes, child-workspace-model values, Linear setting ids
+  - [x] `workspace`: Workspace (HasRun, GoalLabel, ReplaceGoal, IsPRChatHost), WorkspaceType, RunActive, IssueRef, ChildFanOut, Checkpoint, ConvPoint, DiffStat, WorkspaceLandState, UpdateWorkspaceResult, Resource
+  - [x] `plan`: Plan Text/Board/Progress/Ready, PlanStep, PlanAttachment
+  - [x] `project`: Project, ProjectGroup, BranchChoice, CopyFilesPreview, OpenPathResult, FilesProjectID, RunCommand with EffectiveRuns/DefaultRun/VerifyDevCmd/RunsKey (name uniquifying)
+  - [x] `merge`: Normalize/Effective for merge method, update-base method, squash and merge-commit message formats; MergeMethodPermitted; labels
+  - [x] `agent`, `finding`, `escalation`, `artifact`, `policy`: Agent, AgentStep, FeedItem, StoredEvent, Finding (PublicID, MatchesRef, CoversLine), FindingLoc, ValidFindingStatus, FindingNote, Escalation (legacy `applied` decode), UserQuestion(+Answer), PermissionRequest/Decision, Artifact, Rail, Policy, InboxItem
+  - [x] `pr` + `reaction`: PR permission rules (edit details, approve, edit/delete/react comment, resolve thread, conversation lock), PRComment shapes, Commit, FileDiff(+Result), DiffLine, PendingLineComment, participants, reviewers, VerifyStep, Check; reaction normalize/GraphQL mapping/toggle/sort/mine/equal
+  - [x] `session`: Session, SessionContext, Message, ContentBlock constructors and typed decoders (Go null-tolerant), ParentToolUseID, WithParent (sorted keys like Go), payload types, chat modes, WorkspaceChatTab, AttentionCounts, SessionView, ChatItem, ChatAttachment, ChatImageRef
+  - [x] `transcript`: TranscriptXML for messages and transcripts (tool-result folding, assistant merge, CDATA rules, omit thinking, clip tools, max-bytes oldest-first dropping, image root via `filepath.Join` clean)
+  - [x] `settings` + `providers` + `compatible` + `mcp` + `skills`: every Settings field and method (models/flags per mode, loop role aliases, bundle value migration, turn timeout clamp, governor caps, permission mode, branch prefix incl. legacy modes, provider enable/offer/normalize/remap/catalog fallback), compatible providers (slug rules, `net/url.Parse`-exact base URL validation checked against Go in `tests/go_rules.rs`, header/model/flag normalization, presets, wire allowlist), MCP catalog/validation/normalization/Linear URL, skill roots and override rules
+  - [x] `schedule`: ScheduledPrompt(+Run), OnStartup, NextScheduledTime with a robfig/cron v3 port (seconds-optional fields, names, steps, descriptors, `@every`, `CRON_TZ=`/`TZ=`, five-year limit) and Go `time.Date` DST resolution on embedded tzdata (chrono-tz); 2,844 Go-computed cases in `tests/go_rules.rs`
+  - [x] `briefing`, `observatory`, `model`, `ids`: briefing snapshot types and codes, observatory/search/metrics types, ModelRef (ParseModelRef, String, IsZero, NewModelRef), ProviderLabel, BuiltinProvider, NewID/NewUniqueID/ValidID
 - [ ] `internal/engine`: 88 files, 47557 lines, 106 test files
+  - [x] Slice A (agent contracts) → `recur-agent` + `recur_provider_claude::{stream, testing}`; Go-generated golden fixtures in `crates/agent/tests/golden/go_agent.json` and `providers/claude/tests/golden/go_stream.json` (generators committed as `.go.txt`)
+    - [x] `runner.go` → `recur_agent::{turn, event}` (TurnRequest, SessionRoute, McpAttach, `standing_in_user_prompt`, AgentEvent for every ParsedKind, TurnResult with Go JSON tags, McpServerStatus); `TurnMirror` and `Inject*` become `TurnContext` sink/steer
+    - [x] `toolview.go` → `Provider::{display_tool, display_tool_result}` + `recur_agent::display::{display_tool_result, summarize_display_input, canonical_claude_tool}`; the Codex and Cursor mappings are P1/P2 impls
+    - [x] `agenterr.go` classification → `recur_agent::error` (transient markers, `classifyAgentError` incl. the provider-set transient kind, `agentFailureReason`, `knownAgentError`, `tidyAgentError`, CLI log prefix, `firstLine`, `term.StripVT` byte for byte, Codex login sentence). `turnError` / `transientFailure` are E3 (`has_transient_marker` is their scan)
+    - [x] `attachments.go` markers → `recur_agent::attach` (marker, parse/strip/ensure, UserImage, `userContentBlocks` incl. foreign markers and the image-first hidden sentinel, marker order, ordinals, id sanitizing, MIME table). Disk I/O is E2; Claude/Cursor instructions are P1/P2
+    - [x] `permission.go` labels → `recur_agent::permission` (prompt tool name, Recur tool labels, label, summary). Broker is E2; Claude flags are P1
+    - [x] `streamjson.go` → parser in `recur_provider_claude::stream`; display helpers, limits and listing compactors in `recur_agent::display` (with `createPlanBody`/`isCreatePlanTool` from `cursortools.go`, which both need)
+    - [x] `scripted.go` → `recur_agent::testing::ScriptedProvider` + `recur_provider_claude::testing::{NdjsonScript, fixture_lines}` (`testing` features)
+    - [x] `mirror.go` `contextUsageTracker` / `preferContextUsage` / `contextUsedTokens` → `ContextUsageTracker`, `TokenUsage::{prefer_context, context_used}`
+    - [x] `loop.go` steer text used by providers → `recur_agent::Steer` + `turn::{format_steer_user_message, follow_up_text}`
+    - [x] Tests: `streamjson_test.go`, `standing_test.go`, `context_usage_test.go` (parser + tracker cases), `permission_test.go` (label/summary cases), `attachments_test.go` (marker/content-block cases)
+  - [x] Slice F (forge): `recur-forge` with the `Forge` trait, `github::GitHub` and `testing::FakeForge` (replaces `listGitHubPRsFn`, `githubLoginFn`, `githubPRViewStateFn`, `ghCLIAvailableFn`, `probeGHCLIFn`, `getGitHubPRSnapshot`, `getGitHubPRChecks`, `postGitHubPRCommentFn`, `submitGitHubPRReviewFn`, `editGitHubPRFn`, `editGitHubPRCommentFn`, `deleteGitHubPRCommentFn`, `replyGitHubPRCommentFn`, `setGitHubReviewThreadFn`, `setGitHubReactionFn`, `githubViewerFn`, `setGitHubPRDraftFn`, `mergeGitHubPR`, `fetchGitHubMergeFieldsFn`, `fetchGitHubBranchRequiresPRFn`)
+    - [x] `github.go` forge half: gh availability (30 s cache), login, create (title sanitize 256 → retry 80 on "title is too long", push error kept, head lookup by `pr list`), push head (fork URL, lease against `refs/recur/pr/N`), merge (REST with mergeability retries, GraphQL, CLI, merge queue / `enqueuePullRequest` fallback), failure notes and diagnostics, checks (GraphQL rollup with rulesets/protection/queued suites, CLI fallback, Checks-tab links, durations), branch rules probe, owner/repo parsing, retarget base, merge fields
+    - [x] `github_prs.go` forge half: `gh pr list` (open, merged by update time), rollup checks, participants, reviewers, state probe; forge-neutral rules in `recur_forge::model` (attention reasons, state/group, merge-field stickiness, behind, check reconciliation, compact ages)
+    - [x] `github_thread.go` forge half: view/inline/timeline parsing, node ids and permalinks, avatars, review nesting and reply-only hiding, review threads, commit rollup, mentionable users, every mutation, comment merging (`merge_comments`); conversation state/attention, `comments_equal`, `commits_equal`, commit enrichment in `model`
+    - [x] `github_snapshot.go`, `github_reaction.go` forge half, `pr_participants.go`, `pr_reviewers.go`
+    - [x] Linear half of `user_mcp.go` → `IssueTracker::{mcp_preset, agent_mcp, agent_hint, secret_env}`; `linearIssueMeta` → `recur_issues::goal_meta`
+    - [x] Tests: forge halves of `github_test.go`, `github_thread_test.go`, `github_reaction_test.go`; `github_snapshot_test.go`, `github_mentions_test.go`, `pr_participants_test.go`, `pr_reviewers_test.go`, Linear cases of `user_mcp_test.go`; `github_snapshot_live_test.go` as `#[ignore]` env-gated tests; fake-`gh` runs of every command path; Go-generated golden fixtures (`crates/forge/tests/golden/github.json`: queries, a full snapshot + timeline, checks, list rows, merge messages)
+  - [x] Slice P1 (Claude + Codex providers) → `recur-provider-claude`, `recur-provider-codex`; Go-generated golden fixtures in `providers/{claude,codex}/tests/golden/` (generators committed as `.go.txt`)
+    - [x] `claude.go` → `ClaudeProvider` (`runner`, `args`, `input`): argv incl. stream-json input for steers/images/large prompts, `--append-system-prompt-file` spill over 64 KiB, inline `--mcp-config` + `--strict-mcp-config`, env scrub, process group with single reaper and SIGTERM → 2 s → SIGKILL, 8 KiB stderr tail, Go error wording for no-result exits, steers flushed at the next `tool_result` (plain steers ack after the write, conductor steers on receipt, pending plain steers flushed at the result or nacked on unwind), stdin closed on the result, background-task result hold with the 10-minute ceiling
+    - [x] `claude_flags.go` → `flags` (`[1m]` rules, context windows, `has_context_flag`, labels, `--effort`)
+    - [x] `permission.go` Claude flags → `args` (`permission_args` with the `dontAsk` fallback, `disallowed_edit_tools`, `disallowed_tools`); allowlist translation documented on the module
+    - [x] `attachments.go` Claude half → `input` (content blocks at markers, attachment-id instruction)
+    - [x] `codex.go` → `CodexProvider` (`runner`, `items`, `approvals`, `display`): per-turn app-server, thread start/resume fallback, developer instructions vs in-band append notes, notifications to events behind a closing emit gate, `turn/steer` (30 s), interrupt on cancel, usage meter (last request vs thread-total delta), wall-clock duration floored at 1 ms, error results without turn-end duration, sandbox/approval policy, approvals routed to `PermissionAsker` (elicitations auto-accept, `dontAsk` declines), file-change enrichment, Codex display boundary
+    - [x] Tests: `claude_flags_test.go`, `claude_inject_test.go` (fake `claude` scripts, plus steer delivery, group kill, no-result errors), `codex_test.go`, `codex_smoke_test.go` (`RECUR_CODEX_E2E`-gated), Claude cases of `permission_test.go` and `models_test.go`, `mcpConfigJSON` cases of `user_mcp_test.go`, the Claude content case of `attachments_test.go`, the spill case of `planbrief_test.go`; Codex turns, probes, approvals and crashes against fake app-server scripts. `permission_wiring_test.go` asserts an engine invariant over real loop turns (E2/E3); `TestRealClaudeSmoke` and `permission_e2e_test.go` drive the engine and MCP server (E1/E2)
+    - [ ] `Provider::usage_probe` for Claude and Codex: deferred edge until `recur-usage` (P3) lands
 - [ ] `internal/git`: 12 files, 4392 lines, 14 test files
+- [x] `internal/git`: 12 files, 4392 lines, 14 test files → `recur-git` (all 14 Go test files ported: 160 unit tests, 3 environment-isolated tests in `tests/env_isolated.rs`, 2 Go-parity fixture tests in `tests/highlight_parity.rs`)
+  - [x] Command runner (`command.go`): every git process runs with `GIT_OPTIONAL_LOCKS=0` (inherited and extra values stripped), leads its own process group, gets SIGTERM to the group on cancel (future dropped or `deadline`) and SIGKILL to the leader after the 2s grace, and treats inherited pipes still open after a clean exit (ssh ControlMaster) as success; error text matches Go (`exit status N`, `signal: terminated`, `exec: "git": executable file not found in $PATH`); `output` carries stderr like `ExitError.Stderr`, `combined_output` interleaves through one pipe
+  - [x] Version (`version.go`): `parse_version` (Apple/windows suffixes, `2.45.GIT`), `MIN_VERSION` 2.31, `probe` once per process with a 3s timeout, `message_if_unsupported`, `unsupported_alert` titles, `--diff-merges=first-parent` gating
+  - [x] Worktrees (`worktree.go`): `Manager` with branch prefix (default `recur`, explicit none), `add` (unique `prefix/slug[-N]` from one `branch --list`, D/F-conflict refusal, stale registration and moved/orphan directory repair, unborn-repo initial commit as the git identity, remote base fetch with 15s sub-timeout and stale-tip fallback), `add_at_ref` (fast-forward ancestor, fallback on diverged or checked-out), `restore` (recorded branch, historical `recur/<slug>` default), `try_set_upstream`, `remove` (managed-root guard with symlink-resolved prefixes, locked worktrees, nested project dir pruning), `delete_branch_if_at_base`, `delete_local_branch`, `list`, `commit` (MERGE_HEAD-only commits), `changed_diff`, `merge` (merge/squash/rebase onto the base checkout, remote-tracking bases without DWIM, `DirtyBaseError` with overwritten paths, rebase cleanup that never resets away dirty work), update-with-base begin/finish/abort/autostash/stash-tip/in-progress, `merge_into` (conflicts left in progress), discard risk, `is_repo`/`repo_root`/`canon_path`/`path_has_prefix`/`same_path`/`align_under_root` (macOS case-folded inode checks), workspace id → path, branch sanitizing with `check-ref-format`, `current_branch`, `rename_branch`
+  - [x] Branches and remotes (`branches.go`): remotes, remote branches, longest-prefix remote-tracking parse, `compare_ref`, `fetch_compare_ref`, `behind_base`, fetch with prompts disabled, PR heads into `refs/recur/pr/N` (force-updated), upstream fetch/push (HEAD to the upstream branch), `push_branch`, `suggest_base_branch` (+ for any repo path)
+  - [x] SCM (`scm.go`): identity from `git var GIT_AUTHOR_IDENT` with no fallback, discard file/all (fresh status, never a coalesced one), stage/unstage with old-git fallbacks, `commit_staged`, staged paths/diff for non-git folders, recent subjects
+  - [x] Status (`status.go`, `status_coalesce.go`): porcelain letters with rename/copy and quoting rules; in-flight coalescing of `status_map` and `change_status` per directory (and base), detached 15s work that survives a cancelled caller, no caching after landing
+  - [x] Ignore (`ignore.go`): `check-ignore -z --stdin` for any byte in names
+  - [x] Diffs (`diff.go`, `working_diff.go`): diffstat vs base with untracked text lines (file/byte caps, binary sniffing), PR diff, working diff vs base (unborn HEAD → empty tree, untracked synthetic adds with path/body/byte caps, omitted rows, truncation flag), commit log with one `git log --numstat` (role/code/iteration/color, author initials with Go's Unicode letter/number/upper tables, relative time), commit diffs with and without `--first-parent`, unified diff parser (header vs content dashes, binary, renames, GitHub-style hunk labels), single-file working diff with staged-only fallback, change letters vs merge-base, file size/stream/contents at a revision (raw bytes)
+  - [x] Checkpoints (`checkpoint.go`): private-index snapshots under `refs/recur/checkpoints/`, list (commit and tree oids), delete, diff, restore with untracked cleanup
+  - [x] Highlighting (`highlight.go`): `highlight_files` (500-line per-file and 4,000-line per-patch budgets, already-highlighted lines skipped), `lexer_name`, token palette mapping. Go used chroma, so recur-git ports chroma's lexer engine (registry order and priorities, filename globs via Go `filepath.Match`, include/combined/push/pop, ByGroups/ByGroupNames/Using/UsingSelf/UsingByGroup, coalescing, delegating and remapping lexers, Markdown frontmatter, HTTP bodies, rst code blocks, Haxe preprocessor, the Raku lexer's runtime rule replacement) and the regexp2 .NET regex engine it runs on (parser, writer and backtracking interpreter with variable-length lookbehind, Go Unicode 15 tables, 250ms match timeout). chroma's 297 lexers are vendored under `crates/git/chroma` with `regenerate.sh`; all 336 chroma lexer test files match token for token, and Go `highlightLine` output matches byte for byte on 1,779 fixture lines
+  - [x] `ExpandHome` is a private `home` module duplicate of `recur_project::expand_home`, to dedupe on merge
 - [ ] `internal/lsp`: 5 files, 916 lines, 4 test files
-- [ ] `internal/mcp`: 6 files, 839 lines, 3 test files
+- [x] `internal/mcp`: 6 files, 839 lines, 3 test files → `recur-mcp` (`server_test.go`, `tools_briefing_test.go`, `wrap_test.go` ported in full)
+  - [x] `McpServer` on hyper HTTP/1.1: `POST /<token>/mcp`, stable token per agent reused across turns, extra tokens for overlapping registrations, 404 when inactive or unknown, 405 + `Allow: POST`, Go `ServeMux` path cleaning (307), `http.Error` bodies and headers, 202 for notifications, 32 MiB body cap, 10 s header timeout, request cancellation on client disconnect, 3 s graceful close
+  - [x] JSON-RPC framing (`protocol`): id echoed verbatim (compacted), protocol version echo, error codes, `isError` tool results; 79 HTTP exchanges recorded from the Go server replayed byte for byte, including the `tools/list` body snapshot (`tests/http_golden.rs`)
+  - [x] `names_from_allowed_tools` (never null), `append_permission_request`, 128-bit hex tokens
 - [ ] `internal/observe`: 5 files, 1030 lines, 1 test files
+- [x] `internal/openipc`: 1 files, 286 lines, 1 test files (`recur_platform::openipc`, 10 tests)
+  - [x] Wire format: one JSON request / response, Go tags (`projectId`, `workspaceId`, omitempty), `null` request tolerated, `invalid request` reply
+  - [x] `Instance::claim(data_dir)`: live-socket probe, exclusive flock on `instance.lock`, bind `open.sock` 0600; `Held` when another process owns the dir; close unlinks before releasing the flock
+  - [x] `serve` never steals a live socket; `serve_listener` runs handlers off the async runtime, unlinks on stop and drains in-flight handlers
+  - [x] `call`: 400ms dial timeout, 60s absolute call deadline, dial errors distinguishable (`is_dial`), `retryable` for `shutting down`
+- [x] `internal/osfonts`: 4 files, 382 lines, 1 test files (`recur_platform::osfonts`, 7 tests)
+  - [x] fontconfig `fc-list :spacing=mono family` (PATH, Homebrew, Cellar glob; 3s timeout) filtered by junk list and mono-name regex
+  - [x] Font-dir scan: sfnt header, `name` table family ranking, `post.isFixedPitch` at offset 12, OS/2 PANOSE proportion 9
+  - [x] Case-insensitive dedup, first-localized-name cleanup, dot-prefixed system faces dropped, sorted output
+- [x] `internal/power`: 1 files, 173 lines, 1 test files (`recur_platform::power::Keeper`, 3 tests)
+  - [x] `caffeinate -i -w <pid>` in its own process group, idempotent `set`, `stop`, terminal `close`; no-op off macOS
+  - [x] Reaped-state tracking (no signals to recycled pids), SIGTERM then SIGKILL after 2s off the caller's thread
+- [ ] `internal/projfile`: 2 files, 466 lines, 1 test files
 - [ ] `internal/openipc`: 1 files, 286 lines, 1 test files
 - [ ] `internal/osfonts`: 4 files, 382 lines, 1 test files
 - [ ] `internal/power`: 1 files, 173 lines, 1 test files
-- [ ] `internal/projfile`: 2 files, 466 lines, 1 test files
+- [x] `internal/projfile`: 2 files, 466 lines, 1 test files → `recur_project::projfile` (test file ported, plus golden cases recorded from Go)
+  - [x] Path/Exists/Overlay/Apply: run-config comes only from `.recur/project.toml`; missing file clears it, malformed file sets `ProjectFileError` (`parse .recur/project.toml: toml: …`) and is logged once per mtime; mtime+size parse cache; `~` repo paths
+  - [x] Write: repo-path checks with Go's messages, `.recur/` creation, atomic temp-file + rename, fresh files with the standard header encoded exactly like go-toml (literal-first strings, `multiline` fields, `[[run]]` blocks)
+  - [x] Comment-preserving merge into an existing file: `recur_project::tomledit` ports go-toml `unstable/edit` (span index, attached comments, insertion points, deletes with trailing-blank absorption, CRLF, inline arrays/tables, validation after every edit) on `toml_parser`, the parser under toml_edit; `[run.N]` healing, `dev_cmd` removal, malformed-file rewrite. 21 edit scenarios and 14 Write outputs replay byte for byte against Go (`tests/fixtures/gen_projfile.go.txt`)
 - [ ] `internal/responses`: 4 files, 795 lines, 2 test files
 - [ ] `internal/rg`: 2 files, 403 lines, 2 test files
-- [ ] `internal/runconfig`: 1 files, 333 lines, 1 test files
-- [ ] `internal/shortid`: 1 files, 111 lines, 1 test files
+- [x] `internal/runconfig`: 1 files, 333 lines, 1 test files → `recur_project::runconfig` (test file ported)
+  - [x] Boot: free or persisted port, `$RECUR_PORT`/`${PORT}` substitution, own process group, single reaper, probe until any HTTP response (2s per request, redirects, no proxy for loopback), exits/timeouts/cancel tear down; the server outlives the boot token and `Booted::stop` is idempotent (SIGTERM, 2s grace, SIGKILL)
+  - [x] RunCmd/RunCmdOutput: parent-owned pipe for stdout+stderr, 4 KiB tail, 100ms drain wait without SIGPIPE-ing background children, cancel vs deadline errors (Go's `context canceled` / `context deadline exceeded`), Go `exit status N` / `signal: NAME` text
+  - [x] FreePort, Go `Duration.String` for messages
+- [x] `internal/shortid`: 1 files, 111 lines, 1 test files → `recur_domain::shortid` (test file ported)
+  - [x] New (prefix/length validation, letter-first suffix, unbiased rejection sampling over OS randomness), NewUnique (attempt budget, Collision error), IsValid / VALID_PATTERN, MinLength/MaxLength/DefaultAttempts
 - [ ] `internal/simplify`: 1 files, 56 lines, 1 test files
 - [ ] `internal/store`: 9 files, 6229 lines, 6 test files
+- [x] `internal/term`: 7 files, 1797 lines, 6 test files → `recur-term`
+  - [x] `term.go`: login shell spawn with env/cwd/size, `TERM`/`COLORTERM`/`TERM_PROGRAM`, write, resize clamp, list/reorder/active, titles, detach vs close, close_all, tombstones (max 4), restore trailer, replay seeding (`manager.rs`, `manager_tests.rs`)
+  - [x] Coalescing (8ms / 64KiB), flow control with ack and 256KiB high water counted at ingest
+  - [x] Busy/idle watcher with backoff; foreground group detection (`process.rs`)
+  - [x] `interrupt.go`: SIGINT, then SIGTERM, then SIGKILL escalation over the process tree (`process.rs`)
+  - [x] `ring.go`: 1MiB replay ring (`ring.rs`)
+  - [x] `cwd.go`: lsof / `/proc` cwd with timeout (`cwd.rs`)
+  - [x] `osc7.go`: OSC 7 cwd tracking with local host check (`osc7.rs`)
+  - [x] `plain.go`: VT stripping and plain tail for `read_terminal` (`plain.rs`)
+  - [x] `queries.go`: OSC 10/11/12 and CPR answered in-process for detached sessions (`queries.rs`)
+  - [x] Emulator state (`screen/`): alacritty_terminal behind xterm.js semantics, UI-free and tested
+- [ ] `internal/usage`: 12 files, 2911 lines, 3 test files
+  - [x] `types.go` → `recur_agent::quota` (Snapshot, ProviderQuota, Window, ModelRow, CursorUsageConnect serde-identical, provider/source/window/bucket constants, EmptySnapshot, setSource, clampPct) plus the `UsageProbe` trait
+- [ ] `internal/wsenv`: 2 files, 325 lines, 2 test files
+- [x] `internal/store`: 9 files, 6229 lines, 6 test files → `recur-store` (all 6 Go test files ported; 148 unit tests + seeddump integration test)
+  - [x] SQLite via rusqlite (bundled), one connection behind a mutex like Go's single pooled connection; busy_timeout 5s, WAL, foreign_keys, TRUNCATE checkpoint on open and close
+  - [x] Migrations embedded from `internal/store/migrations/` with Go's `__migrations` bookkeeping (one transaction per migration); schema guard refuses a DB that recorded unknown migrations (`Error::NewerSchema`)
+  - [x] Open sequence: migrate, finding identity backfill, feed-sort seed, seed defaults on a DB without settings, else load (with PR time backfill)
+  - [x] Every Store method: project groups, projects (project.toml overlay, `write_project_file`, pinned-run validation, extra_json), reorder, cascading deletes, clear-all, workspaces, agents (incl. move/merge), feed (prepend/upsert/patch off the store lock), events, findings (UUIDv7 + per-workspace short ids with UNIQUE retry, notes, actor rules), analysis, PRs (list rows without diffs, deep copies with Go nil semantics, open/linked PR rules, Local number sequence), escalations (chat-keyed lookup), inbox, attention counts, policy/settings/resource, GitHub branch rules
+  - [x] Sessions: create/get/lookups by kind/agent/owner, headers, streaming recovery, reassign with code remap, config json_set/json_patch patches, messages and blocks with idx allocation under the session lock, truncate/drop/delete with fork-aware orphan cleanup, delete closed chat, forks with context copy, compaction contexts, tool_use/fallback patches, transcript load, first prompt / last assistant text
+  - [x] Schedules: ISO-millis columns, flags, latest run, due and active queries (partial index), claim, link, update
+  - [x] Paths: `<UserConfigDir>/RecurNext` and `~/.recur/worktrees-next` defaults, `RECUR_DATA_DIR`/`RECUR_WORKTREES_DIR` overrides as in Go, legacy worktree migration, per-workspace dirs; `codex.DefaultSeedAuthPath` lives here as `paths::codex_default_seed_auth_path`
+  - [x] App log: rotating `logs/recur.log` (2 MiB, also mid-session), tee writer for `tracing` with Go's log line format, panics written to the log
+  - [x] Seed defaults and the demo dataset (`seed.go`, `seed_prs.go`)
+  - [x] Go compatibility (`tests/fixtures/gen_store.go.txt`): a Go-populated DB reads back exactly as Go reads it, its JSON columns re-encode byte for byte, rewriting every row leaves every table unchanged; a recur-store-written DB passes the Go verifier and Go reads it exactly as recur-store does; a fresh DB matches Go's schema dump and bookkeeping
 - [ ] `internal/term`: 7 files, 1797 lines, 6 test files
 - [ ] `internal/usage`: 12 files, 2911 lines, 3 test files
-- [ ] `internal/wsenv`: 2 files, 325 lines, 2 test files
+- [x] `internal/wsenv`: 2 files, 325 lines, 2 test files → `recur_project::wsenv` (both test files ported)
+  - [x] Vars/FromWorkspace/RecurMap/Environ: host → Recur vars → project env, two-pass expansion that never re-expands substituted values, protected keys stripped for project.toml env and dotenv
+  - [x] Dotenv parsing and loading (`.env`, `.env.local`, `.recur/.env`, `.recur/.env.local`, repo then worktree, 256 KiB cap), Go `os.Expand` syntax, `expand_known`
+  - [x] `git.ExpandHome` as `recur_project::home::expand_home`, with Go's `os.UserHomeDir` / `os.UserConfigDir` and `filepath.Clean`/`Join`/`Abs`
 - [ ] `cmd/recur`: 1 files, 22 lines, 0 test files
 - [ ] `cmd/bundles`: 1 files, 15 lines, 0 test files
+- [x] `cmd/seeddump`: 1 files, 86 lines, 0 test files → `recur_store::seeddump` + bin `seeddump` (`cargo run -p recur-store --bin seeddump`); output equals `frontend/e2e/fixtures/seed.json` byte for byte (`tests/seeddump.rs`)
+- [x] `cmd/recur`: 1 files, 22 lines, 0 test files → `recur-cli` binary (`src/main.rs`)
+- [x] `cmd/bundles`: 1 files, 15 lines, 0 test files → deprecated `bundles` forwarder binary (`src/bin/bundles.rs`, same stderr note)
 - [ ] `cmd/seeddump`: 1 files, 86 lines, 0 test files
 
 ### Root desktop entry (`*.go` at repo root)
@@ -774,12 +967,36 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 - [ ] `app_menu.go`
 - [ ] `debug_devtools.go`
 - [ ] `debug_devtools_off.go`
-- [ ] `main.go`
-- [ ] `open_boot.go`
-- [ ] `updater.go`
+- [~] `main.go` (OS helpers ported; window, menu, service and webview wiring belong to `recur-desktop` / `recur-app`)
+  - [x] `runningInAppBundle` → `recur_platform::running_in_app_bundle`
+  - [x] `installBundledCLI` → `cliinstall::install_bundled_cli`
+  - [x] `sendOSNotification`: native `UNUserNotificationCenter` from a bundle (`recur-<nanos>` id, `target` userInfo, default sound, 5s), else `osascript` with Go `%q` quoting or `notify-send --app-name=Recur Next` (3s, logged) → `notify::send_os_notification`
+  - [x] Notification delegate (banner/list/sound while frontmost, click responses with `DEFAULT_ACTION` mapping and userInfo), authorization check (15s) and request with badge (180s), bundle-id guard → `notify::{start, on_response, check_authorization, request_authorization}`
+  - [x] Dock badge `SetBadge` / `RemoveBadge` (regular activation policy only, `●` for empty, main-queue dispatch, no-op on Linux), `dockBadgeCount`, `syncDockBadge` → `dock::{set_badge, remove_badge, badge_count, sync_badge}`
+  - `serveWorkspaceData` and the other asset middleware are webview HTTP routes; GPUI reads files directly, so they move with `recur-app` / `recur-services`
+- [x] `open_boot.go` + test (`recur_platform::open_boot`, 25 tests)
+  - [x] `peel_open_args` (`--open PATH`, `--open=PATH`, dangling flag dropped)
+  - [x] `handoff_to_running_instance`: focus-only empty path, every path must be accepted, shutting-down and connected drops are not a handoff
+  - [x] `claim_or_handoff` with `CLAIM_RETRY_FOR` (call timeout + 8s) and 50ms retry
+  - [x] `IpcGate`: parks requests until `set`, authoritative `stop`
+  - [x] `OpenHub`: replay last open once the UI is ready, `bring_forward` waits for the posted show to apply, `drop_ui` / `wait_focus` semantics, `revoke_open_ui`
+  - [x] `start_open_ipc` (stop revokes, cancels and joins), `attach_open_ipc`, `apply_cold_opens`
+- [x] `updater.go` + test, and Wails `pkg/updater` in headless (`WindowNone`) mode (`recur_platform::updater`, 82 tests)
+  - [x] `RecurUpdater::install`: release builds only (version + manifest URL + app bundle), pinned `build/updater.key.pub`, 30s connect and response-header timeouts without a body timeout, check after 1 minute then every 6 hours, `check_now` only from idle / up-to-date / error
+  - [x] `SignedOnly` rejects manifests without a signature
+  - [x] Updater state machine, provider fallback chain, skip version, event names and JSON payloads (`wails:updater:*`), user actions only inside a check-and-install session, state replay with `meta`
+  - [x] Download into `wails-update-*` with streaming sha256/sha512 (sha512 for ed25519ph), throttled progress, cleanup on every failure, filename neutralising
+  - [x] Verification: constant-time digest, ed25519, ed25519ph, ecdsa-p256 (raw or DER, trailing data rejected), raw or PKIX/PEM keys, fail closed without algo or key
+  - [x] `.zip` / `.tar.gz` extraction: single top-level entry, zip-slip and symlink escape checks, symlinks last, entry and size caps
+  - [x] Restart: helper re-exec in a new session with `WAILS_UPDATER_HELPER*` env, readiness file with timeout, quit only after ready; `handle_helper_mode` swap with backup, exec-bit restore, 20 retries, restore paths and exit codes, helper env scrubbed from relaunches, `open -n` for bundles
+  - [x] Endpoint provider: placeholders and sorted query params, Accept and configured headers (same-host, no downgrade; reqwest strips Authorization on cross-host redirects), 204/404 up to date, schemaVersion, channel, semver (`x/mod/semver` rules), artifact aliases, relative URLs, base64 raw/std
+  - Not ported (unused by Recur): built-in and BYO update windows, `CheckInterval` polling, GitHub / AppCast / keygen providers, Windows helper paths
 - [ ] `window_chrome_linux.go`
 - [ ] `window_chrome_stub.go`
-- [ ] `window_state.go`
+- [x] `window_state.go` + test (`recur_platform::window_state`, 6 tests)
+  - [x] `window.json` format (camelCase, two-space indent), missing/malformed fallback, Go zero-value decoding, undersized clamp
+  - [x] `WindowOptions::from_state`: size, min size, position or centred, background, titlebar height, file drop, instance-label title
+  - [x] `GeometryTracker`: records only normal geometry, keeps maximised flag, zoom once on first show; 250ms save debounce constant for the window layer
 - [ ] `window_titlebar.go`
 - [ ] `window_titlebar_darwin.go`
 - [ ] `window_titlebar_stub.go`
@@ -837,48 +1054,50 @@ Source: `app_menu.go`. Rust home: `recur-app::menu`. Every item, accelerator, en
 
 Source: `internal/agenttools`. Rust home: `recur-agent-tools`, served by `recur-mcp`. Names, schemas and descriptions must be byte-identical so prompts and bundles keep working.
 
-- [ ] `activate_skill`
-- [ ] `ask_user`
-- [ ] `attach_evidence`
-- [ ] `list_workspace_briefs`
-- [ ] `get_workspace_context`
-- [ ] `present_workspace`
-- [ ] `create_artifact`
-- [ ] `create_workspace`
-- [ ] `dispatch_specialist`
-- [ ] `done`
-- [ ] `edit_plan`
-- [ ] `escalate`
-- [ ] `extend_iterations`
-- [ ] `extend_rounds`
-- [ ] `list_artifacts`
-- [ ] `list_findings`
-- [ ] `list_skills`
-- [ ] `list_terminals`
-- [ ] `merge_child`
-- [ ] `open_pr`
-- [ ] `permission_request`
-- [ ] `plan`
-- [ ] `present_artifact`
-- [ ] `read_artifact`
-- [ ] `read_child`
-- [ ] `archive_child`
-- [ ] `message_child`
-- [ ] `read_terminal`
-- [ ] `reenter_phase`
-- [ ] `rename_branch`
-- [ ] `rename_session`
-- [ ] `rename_workspace`
-- [ ] `report_finding`
-- [ ] `report_result`
-- [ ] `rerun_review`
-- [ ] `resume_loop`
-- [ ] `run_phase`
-- [ ] `send_back`
-- [ ] `submit_plan`
-- [ ] `switch_mode`
-- [ ] `update_finding`
-- [ ] `update_plan_step`
+Checked against Go-generated fixtures: catalog text (`crates/agent-tools/tests/catalog.rs`), every tool's validation, result and host-call behavior (`tests/host_golden.rs`), and the served `tools/list` body (`crates/mcp/tests/http_golden.rs`).
+
+- [x] `activate_skill`
+- [x] `ask_user`
+- [x] `attach_evidence`
+- [x] `list_workspace_briefs`
+- [x] `get_workspace_context`
+- [x] `present_workspace`
+- [x] `create_artifact`
+- [x] `create_workspace`
+- [x] `dispatch_specialist`
+- [x] `done`
+- [x] `edit_plan`
+- [x] `escalate`
+- [x] `extend_iterations`
+- [x] `extend_rounds`
+- [x] `list_artifacts`
+- [x] `list_findings`
+- [x] `list_skills`
+- [x] `list_terminals`
+- [x] `merge_child`
+- [x] `open_pr`
+- [x] `permission_request`
+- [x] `plan`
+- [x] `present_artifact`
+- [x] `read_artifact`
+- [x] `read_child`
+- [x] `archive_child`
+- [x] `message_child`
+- [x] `read_terminal`
+- [x] `reenter_phase`
+- [x] `rename_branch`
+- [x] `rename_session`
+- [x] `rename_workspace`
+- [x] `report_finding`
+- [x] `report_result`
+- [x] `rerun_review`
+- [x] `resume_loop`
+- [x] `run_phase`
+- [x] `send_back`
+- [x] `submit_plan`
+- [x] `switch_mode`
+- [x] `update_finding`
+- [x] `update_plan_step`
 
 ## Behavior specs to port
 
@@ -910,8 +1129,8 @@ Frontend unit tests (`vitest`, 170 files) are logic specs for the matching `lib/
 
 ## Shipped content (unchanged, embedded by the Rust app)
 
-- [ ] `bundles/` seeded into the data dir exactly as `bundles.SeedDefaults` does (stamp/sync semantics)
-- [ ] `recur-skills/` seeded into `~/.recur/recur-skills`
+- [x] `bundles/` seeded into the data dir exactly as `bundles.SeedDefaults` does (stamp/sync semantics): `recur_bundles::seed_defaults(dir, &SHIPPED_BUNDLES, ".")`; the boot call belongs with the `main.go` port
+- [x] `recur-skills/` seeded into `~/.recur/recur-skills`: `seed_defaults(dir, &SHIPPED_SKILLS, ".")`
 - [ ] `internal/store/migrations/*.sql` applied by `recur-store` (same files, same order, same `schema_migrations` bookkeeping)
 - [ ] `frontend/src/lib/file-icons` icon font and mapping
 - [ ] lucide icon set used by `lib/icons.ts`
@@ -919,12 +1138,14 @@ Frontend unit tests (`vitest`, 170 files) are logic specs for the matching `lib/
 
 ## CLI
 
-Source: `cmd/recur`, `internal/cli`. Rust home: `crates/cli`.
+Source: `cmd/recur`, `internal/cli`. Rust home: `crates/cli`. Output and exit codes are byte-identical to the Go CLI (`tests/golden.rs`).
 
-- [ ] `recur bundles`
-- [ ] `recur test [name|path]...`
-- [ ] `recur lint [name|path]...`
-- [ ] `recur create <Name>`
-- [ ] `recur open [path]`
-- [ ] `recur recur [path]`
+- [x] `recur [path]`: no path focuses the app, a path-like arg opens it, anything else is `unknown command` (exit 1); `--bundles-dir`, `-h/--help`, `-v/--version`
+- [x] `recur open [path]`: resolve (exit 2), send over open IPC, launch and retry for 30s (exit 1)
+- [x] `recur bundles`: help (also for unknown subcommands)
+- [x] `recur bundles test [name|path]...`: target resolution (exit 2), run tests, report, exit 1 on failure
+- [x] `recur bundles lint [name|path]...`: target resolution (exit 2), lint report, exit 1 on errors
+- [x] `recur bundles create <Name> [--dir] [--force]`: scaffold, messages, exit codes
+- [x] `recur help [command]`
+- [x] `recur completion bash|zsh|fish|powershell [--no-descriptions]` and hidden `recur __complete` / `__completeNoDesc`
 

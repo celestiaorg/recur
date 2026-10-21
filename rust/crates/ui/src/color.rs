@@ -115,10 +115,16 @@ impl Color {
         0.2126 * lin(self.r) + 0.7152 * lin(self.g) + 0.0722 * lin(self.b)
     }
 
+    /// The 8-bit `[r, g, b, a]` a browser stores (CSS alpha rounds to the nearest of 255).
+    pub fn to_rgba8(self) -> [u8; 4] {
+        let c = |x: f32| (x * 255.).round().clamp(0., 255.) as u8;
+        [c(self.r), c(self.g), c(self.b), c(self.a)]
+    }
+
     /// Lowercase `#rrggbb` of the 8-bit color a browser would paint.
     pub fn to_hex(self) -> String {
-        let c = |x: f32| (x * 255.).round().clamp(0., 255.) as u8;
-        format!("#{:02x}{:02x}{:02x}", c(self.r), c(self.g), c(self.b))
+        let [r, g, b, _] = self.to_rgba8();
+        format!("#{r:02x}{g:02x}{b:02x}")
     }
 
     /// CSS serialization used when a color is written into generated SVG markup.

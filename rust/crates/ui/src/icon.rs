@@ -166,8 +166,13 @@ fn source_hash(s: &Source) -> u64 {
 
 fn rgba8(c: Hsla) -> [u8; 4] {
     let r = gpui_kit::Rgba::from(c);
-    let q = |x: f32| (x * 255.).round().clamp(0., 255.) as u8;
-    [q(r.r), q(r.g), q(r.b), q(r.a)]
+    Color {
+        r: r.r,
+        g: r.g,
+        b: r.b,
+        a: r.a,
+    }
+    .to_rgba8()
 }
 
 impl Element for Icon {

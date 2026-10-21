@@ -1,0 +1,58 @@
+// Generator for rust/crates/issues/tests/golden/linear.json. To regenerate,
+// copy into internal/app as zz_issues_golden_test.go and run from the repo
+// root:
+//
+//	RECUR_ISSUES_GOLDEN=$PWD/rust/crates/issues/tests/golden/linear.json \
+//	  go test ./internal/app -run TestDumpIssuesGolden -count=1
+//
+// then delete the copy.
+package app
+
+import (
+	"encoding/json"
+	"os"
+	"testing"
+)
+
+const goldenLinearNodes = `[
+{"id":"u1","identifier":"ENG-1","title":"One","url":"https://linear.app/x/issue/ENG-1","createdAt":"c1","updatedAt":"u1","priority":1,"priorityLabel":"Urgent",
+ "assignee":{"name":"Josh D","displayName":"","avatarUrl":"https://a/1.png"},"state":{"name":"Doing","type":"started","color":"#f00","position":1.25},
+ "labels":{"nodes":[{"name":"bug","color":"#eb5757"}]},"project":{"name":"Houston"},"team":{"key":"ENG","name":"Engineering"}},
+{"id":"u2","identifier":"ENG-2","title":"Two","priority":0,"assignee":null,"state":{"name":"Triage","type":"triage","color":"","position":0},
+ "labels":{"nodes":[]},"project":{"name":""},"team":{"key":"OPS","name":"Operations"}},
+{"id":"u3","identifier":"ENG-3","state":{"type":"unstarted","position":3},"team":{"key":"","name":""}}]`
+
+func TestDumpIssuesGolden(t *testing.T) {
+	path := os.Getenv("RECUR_ISSUES_GOLDEN")
+	if path == "" {
+		t.Skip()
+	}
+	var nodes []linearIssueNode
+	if err := json.Unmarshal([]byte(goldenLinearNodes), &nodes); err != nil {
+		t.Fatal(err)
+	}
+	var apps [][]any
+	for _, raw := range []string{
+		"https://linear.app/botfun/issue/BOTFUN-152/sold-coins?x=1", " https://linear.app/a/b ", "https://linear.app",
+		"https://linear.app/?", "https://u@linear.app/x?y=1#frag", "HTTPS://linear.app/x", "https://LINEAR.app/x",
+		"https://linear.app:443/x", "http://linear.app/x", "https://linear.app.evil/x", "linear://x", "",
+	} {
+		got, ok := linearAppURL(raw)
+		apps = append(apps, []any{raw, got, ok})
+	}
+	out := map[string]any{
+		"assignedQuery":   linearAssignedQuery,
+		"unassignedQuery": linearUnassignedQuery,
+		"teamsQuery":      linearTeamsQuery,
+		"nodes":           goldenLinearNodes,
+		"issues":          linearToIssues(nodes),
+		"appURLs":         apps,
+	}
+	raw, err := json.MarshalIndent(out, "", " ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

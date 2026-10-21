@@ -593,6 +593,21 @@ pub(crate) fn init(cx: &mut App) {
 mod tests {
     use super::*;
 
+    /// What `recur-terminal-view`'s local token copy asserts, so it can swap to these.
+    #[test]
+    fn terminal_token_values() {
+        let t = |k: &str| ThemeId::from_key(k).tokens();
+        assert_eq!(t("anything"), t("default"));
+        assert_eq!(t("default").bg.to_rgba8(), [0x14, 0x14, 0x14, 255]);
+        assert_eq!(t("default").amber_d.to_rgba8(), [224, 122, 95, 36]);
+        assert_eq!(t("slate").warn.to_rgba8(), [0xfb, 0xbf, 0x24, 255]);
+        assert!(ThemeId::from_key("paper").is_light());
+        assert!(ThemeId::from_key("catppuccin-latte").is_light());
+        assert!(!ThemeId::from_key("nord").is_light());
+        let d = t("default");
+        assert_eq!(d.amber.mix(0.55, d.line).to_rgba8(), [144, 88, 73, 255]);
+    }
+
     #[test]
     fn keys_and_aliases_round_trip() {
         for id in ThemeId::ALL {

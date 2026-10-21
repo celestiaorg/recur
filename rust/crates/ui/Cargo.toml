@@ -21,7 +21,7 @@ unicode-linebreak.workspace = true
 resvg.workspace = true
 smallvec.workspace = true
 base64.workspace = true
-image.workspace = true
+image = { workspace = true, features = ["png"] }
 serde_json.workspace = true
 serde.workspace = true
 

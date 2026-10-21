@@ -702,3 +702,32 @@ pub fn fail_agent_runner() -> Arc<dyn Provider> {
         })
     })
 }
+
+/// A shebang `[[prompt]]` bundle under the default bundles root (Go
+/// `writePromptBundle`).
+pub fn write_prompt_bundle(t: &crate::testing::TestEngine, slash: &str, body: &str, id: &str) {
+    let dir = Path::new(&t.engine.bundle_roots().default_dir).join("ChatTest");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    let script = dir.join("src").join("act.sh");
+    std::fs::write(&script, body).unwrap();
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    std::fs::write(
+        dir.join("bundle.toml"),
+        format!(
+            "[bundle]\nname = \"ChatTest\"\nid = \"recur.chattest\"\nversion = \"1.0.0\"\n\n[[prompt]]\nid = \"{id}\"\nname = \"Act\"\nslash = \"{slash}\"\ninterpreter = \"shebang\"\nscript = \"src/act.sh\"\n"
+        ),
+    )
+    .unwrap();
+}
+
+/// The first user text bubble of a session (Go `contentItems(...)` scan).
+pub async fn first_user_bubble(eng: &crate::Engine, ws: &str, code: &str) -> String {
+    crate::turn::transcript::content_items(&eng.workspace_chat_items(ws, code).await)
+        .into_iter()
+        .find(|it| it.role == "user" && it.kind == "text")
+        .map(|it| it.text)
+        .unwrap_or_default()
+}

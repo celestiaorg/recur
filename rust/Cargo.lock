@@ -6662,6 +6662,7 @@ dependencies = [
 name = "recur-content"
 version = "0.0.0"
 dependencies = [
+ "futures",
  "gpui-kit",
  "html5ever",
  "markup5ever_rcdom",

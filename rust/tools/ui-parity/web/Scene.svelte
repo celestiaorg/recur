@@ -16,6 +16,7 @@
   import Selects from './scenes/Selects.svelte'
   import IconPick from './scenes/IconPick.svelte'
   import Resize from './scenes/Resize.svelte'
+  import Overlays from './scenes/Overlays.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
@@ -59,6 +60,8 @@
     <IconPick />
   {:else if kind === 'resize-handle'}
     <Resize />
+  {:else if kind === 'overlays'}
+    <Overlays {variant} />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

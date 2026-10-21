@@ -94,6 +94,34 @@
       "tolerance": 0
     },
     {
+      "name": "overlays/misc",
+      "width": 620,
+      "height": 260,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "overlays/misc-paper",
+      "width": 620,
+      "height": 260,
+      "theme": "paper",
+      "tolerance": 0
+    },
+    {
+      "name": "overlays/modal",
+      "width": 720,
+      "height": 400,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "overlays/palette",
+      "width": 700,
+      "height": 420,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
       "name": "project-pic/default",
       "width": 200,
       "height": 42,

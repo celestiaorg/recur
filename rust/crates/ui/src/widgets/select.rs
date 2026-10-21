@@ -13,14 +13,16 @@ use crate::motion::{self, Easing};
 use crate::style::{faded, is_focus_visible};
 use crate::text::{LineHeight, TextStyled, text};
 use crate::theme::Theme;
-use gpui_kit::base::input::{Input, InputEditorStyle, InputEvent, InputState};
+use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::{
-    AnyElement, App, AppContext, Bounds, ClickEvent, Context, Entity, EventEmitter, FocusHandle,
-    Focusable, Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseMoveEvent, ParentElement,
-    Pixels, Render, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Subscription,
-    Window, canvas, deferred, div, prelude::FluentBuilder, px,
+    AnyElement, App, Bounds, ClickEvent, Context, Entity, EventEmitter, FocusHandle, Focusable,
+    Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseMoveEvent, ParentElement, Pixels,
+    Render, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Subscription, Window,
+    canvas, deferred, div, prelude::FluentBuilder, px,
 };
 use std::time::{Duration, Instant};
+
+const SEARCH_PLACEHOLDER: &str = "Search…";
 
 /// `SelectOption`.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -164,43 +166,23 @@ pub(crate) fn search_input(
     cx: &mut App,
     placeholder: &str,
 ) -> Entity<InputState> {
-    let placeholder: SharedString = placeholder.to_string().into();
-    cx.new(|cx| InputState::new(window, cx).placeholder(placeholder))
+    crate::style::text_input(&placeholder.to_string().into(), window, cx)
 }
 
 pub(crate) fn style_search_input(input: &Entity<InputState>, cx: &mut App) {
-    let t = Theme::of(cx).tokens;
-    // The capture hides the caret (`caret: 'hide'`); frozen motion means a capture.
-    // gpui-base reads a fully transparent color as unset, so the hidden caret is nearly so.
-    let caret = if motion::is_frozen(cx) {
-        t.text.with_alpha(0.001).into()
-    } else {
-        t.text.into()
-    };
-    input.update(cx, |s, _| {
-        s.set_editor_style(InputEditorStyle {
-            foreground: t.text.into(),
-            muted_foreground: t.faint.into(),
-            background: Hsla::transparent_black(),
-            border: Hsla::transparent_black(),
-            selection: t.amber.fade(0.3).into(),
-            caret,
-            ..Default::default()
-        })
-    });
+    crate::style::style_text_input(input, cx);
 }
 
 /// `.sel-search`, flush with the menu's border: its `margin: -4px -4px 0` cancels the menu
 /// padding, which a menu with a search header moves onto its list instead (Taffy sizes a flex
 /// column wrongly around negative margins).
-pub(crate) fn search_header(input: &Entity<InputState>, window: &Window, cx: &App) -> AnyElement {
+pub(crate) fn search_header(
+    input: &Entity<InputState>,
+    placeholder: &SharedString,
+    window: &Window,
+    cx: &App,
+) -> AnyElement {
     let t = Theme::of(cx).tokens;
-    // An `<input>` lays its line out at `line-height: normal`.
-    let (_, _, line) = text("x")
-        .ui()
-        .size(12.5)
-        .line_height(LineHeight::Normal)
-        .measure(None, window);
     div()
         .flex()
         .flex_none()
@@ -212,17 +194,15 @@ pub(crate) fn search_header(input: &Entity<InputState>, window: &Window, cx: &Ap
         .border_b(px(1.))
         .border_color(Hsla::from(t.line))
         .child(icon(IconName::Search).size(px(13.)).color(t.faint))
-        .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .font_family(UI)
-                .h(px(line.height))
-                .text_size(px(12.5))
-                .line_height(px(line.height))
-                .text_color(t.text)
-                .child(Input::new(input)),
-        )
+        .child(crate::style::text_field(
+            input,
+            placeholder,
+            t.faint,
+            crate::fonts::Family::Ui,
+            12.5,
+            window,
+            cx,
+        ))
         .into_any_element()
 }
 
@@ -234,7 +214,7 @@ struct Row {
 
 impl Select {
     pub fn new(options: Vec<SelectOption>, window: &mut Window, cx: &mut Context<Self>) -> Select {
-        let search = search_input(window, cx, "Search…");
+        let search = search_input(window, cx, SEARCH_PLACEHOLDER);
         let sub = cx.subscribe_in(
             &search,
             window,
@@ -1013,7 +993,12 @@ impl Select {
         if self.searchable {
             menu = menu
                 .p_0()
-                .child(search_header(&self.search, window, cx))
+                .child(search_header(
+                    &self.search,
+                    &SEARCH_PLACEHOLDER.into(),
+                    window,
+                    cx,
+                ))
                 .on_key_down(cx.listener(|this, e: &KeyDownEvent, window, cx| {
                     if this.on_key(e, true, window, cx) {
                         cx.stop_propagation();

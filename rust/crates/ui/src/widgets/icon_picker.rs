@@ -20,6 +20,8 @@ use gpui_kit::{
     canvas, deferred, div, prelude::FluentBuilder, px,
 };
 
+const SEARCH_PLACEHOLDER: &str = "Search icons…";
+
 pub const COLS: usize = 8;
 pub const SEARCH_LIMIT: usize = 80;
 
@@ -79,7 +81,7 @@ impl IconPicker {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let search = search_input(window, cx, "Search icons…");
+        let search = search_input(window, cx, SEARCH_PLACEHOLDER);
         let sub = cx.subscribe_in(
             &search,
             window,
@@ -440,7 +442,12 @@ impl IconPicker {
                     cx.stop_propagation();
                 }
             }))
-            .child(search_header(&self.search, window, cx))
+            .child(search_header(
+                &self.search,
+                &SEARCH_PLACEHOLDER.into(),
+                window,
+                cx,
+            ))
             .child(
                 div()
                     .flex_auto()

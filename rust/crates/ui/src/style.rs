@@ -4,14 +4,15 @@
 //! them. View-specific rules stay with their views.
 
 use crate::color::{Color, rgba};
-use crate::fonts::{MONO, UI, weight};
+use crate::fonts::{Family, MONO, UI, weight};
 use crate::shadow::{CssShadow, css_box_shadow};
 use crate::text::{InlineBox, LineHeight, Span, Text, TextStyled, span, text};
 use crate::theme::{Theme, Tokens};
+use gpui_kit::base::input::{Input, InputEditorStyle, InputState};
 use gpui_kit::{
-    App, BoxShadow, Div, ElementId, Fill, FocusHandle, Hsla, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Stateful, Styled, Window, div, point, prelude::FluentBuilder, px,
-    relative,
+    App, BoxShadow, Div, ElementId, Entity, Fill, FocusHandle, Hsla, InteractiveElement,
+    IntoElement, ParentElement, Pixels, SharedString, Stateful, Styled, Window, div, point,
+    prelude::FluentBuilder, px, relative,
 };
 
 impl From<Color> for Fill {
@@ -575,9 +576,9 @@ pub fn panel(cx: &App) -> Div {
         .rounded(px(8.))
 }
 
-/// `.nt-bg` / `.palette-bg`: the modal scrim, `rgba(5, 7, 10, .55)` with a 2px backdrop blur.
-/// GPUI has no backdrop filter; see `ui-parity.md`.
-pub fn modal_scrim() -> Div {
+/// The overlay scrim, `rgba(5, 7, 10, .55)` with a 2px backdrop blur (GPUI has no backdrop
+/// filter; see `ui-parity.md`), centering its card at the top.
+fn scrim() -> Div {
     div()
         .absolute()
         .top_0()
@@ -587,6 +588,18 @@ pub fn modal_scrim() -> Div {
         .flex()
         .justify_center()
         .items_start()
+}
+
+/// `.nt-bg`: the modal scrim, `padding: 22vh 16px 24px`.
+pub fn modal_scrim(window: &Window) -> Div {
+    let vh = f32::from(window.viewport_size().height) / 100.;
+    scrim().pt(px(22. * vh)).px(px(16.)).pb(px(24.))
+}
+
+/// `.palette-bg`: the command palette scrim, `padding-top: 11vh`.
+pub fn palette_scrim(window: &Window) -> Div {
+    let vh = f32::from(window.viewport_size().height) / 100.;
+    scrim().pt(px(11. * vh))
 }
 
 /// A rounded card with a 1px border over its background, as WebKit paints one (see
@@ -605,6 +618,130 @@ pub const MODAL_SHADOW: [CssShadow; 1] = [css_box_shadow(0., 32., 90., -20., rgb
 /// `.palette`'s shadow.
 pub const PALETTE_SHADOW: [CssShadow; 1] =
     [css_box_shadow(0., 28., 80., -18., rgba(0, 0, 0, 0.75))];
+/// The editor state behind a [`text_field`] or [`input_box`].
+pub fn text_input(
+    placeholder: &SharedString,
+    window: &mut Window,
+    cx: &mut App,
+) -> Entity<InputState> {
+    let placeholder = placeholder.clone();
+    gpui_kit::AppContext::new(cx, |cx| {
+        InputState::new(window, cx).placeholder(placeholder)
+    })
+}
+
+/// WebKit's default `::placeholder` color, for inputs whose class does not style it.
+pub const UA_PLACEHOLDER: Color = crate::color::hex(0xa9a9a9);
+
+/// A text `<input>` in `family` at `size` px: gpui-base's editor draws the typed text and caret
+/// at `line-height: normal`; the placeholder is recur-ui text in `placeholder_color` (GPUI's own
+/// is hidden by [`style_text_input`]). Fills the row it sits in.
+pub fn text_field(
+    input: &Entity<InputState>,
+    placeholder: &SharedString,
+    placeholder_color: Color,
+    family: Family,
+    size: f32,
+    window: &Window,
+    cx: &App,
+) -> Div {
+    let t = tokens(cx);
+    let (_, _, line) = text("x")
+        .family(family.clone())
+        .size(size)
+        .line_height(LineHeight::Normal)
+        .measure(None, window);
+    let placeholder = input
+        .read(cx)
+        .value()
+        .is_empty()
+        .then(|| placeholder.clone());
+    div()
+        .relative()
+        .flex_1()
+        .min_w_0()
+        .h(px(line.height))
+        .font_family(
+            family
+                .font(weight::REGULAR, false, Default::default())
+                .family,
+        )
+        .text_size(px(size))
+        .line_height(px(line.height))
+        .text_color(t.text)
+        .child(Input::new(input))
+        .when_some(placeholder, |d, p| {
+            d.child(
+                div().absolute().top_0().left_0().child(
+                    text(p)
+                        .family(family)
+                        .size(size)
+                        .line_height(LineHeight::Normal)
+                        .color(placeholder_color)
+                        .nowrap(),
+                ),
+            )
+        })
+}
+
+/// `.inp`: the bordered settings field, mono 12px, `--pane` on `--line` (amber 50% while
+/// focused), radius 6, padding 9px 12px. Read-only fields mute their text and keep the border.
+pub fn input_box(
+    input: &Entity<InputState>,
+    placeholder: &SharedString,
+    readonly: bool,
+    window: &Window,
+    cx: &App,
+) -> Div {
+    let t = tokens(cx);
+    let focused = gpui_kit::Focusable::focus_handle(input.read(cx), cx).is_focused(window);
+    let border = if focused && !readonly {
+        rgba(242, 179, 61, 0.5)
+    } else {
+        t.line
+    };
+    card(t.pane, border, 6.)
+        .w_full()
+        .flex()
+        .py(px(9.))
+        .px(px(12.))
+        .font_family(MONO)
+        .text_color(if readonly { t.muted } else { t.text })
+        .child(text_field(
+            input,
+            placeholder,
+            UA_PLACEHOLDER,
+            Family::Mono,
+            12.,
+            window,
+            cx,
+        ))
+}
+
+/// Colors a [`text_field`]'s editor; call each render, as themes change. gpui-base reads a fully
+/// transparent color as unset, so what is hidden (its placeholder; the caret in a parity capture,
+/// which hides carets) is nearly transparent instead.
+pub fn style_text_input(input: &Entity<InputState>, cx: &mut App) {
+    let t = tokens(cx);
+    let hidden: Hsla = t.text.with_alpha(0.001).into();
+    let caret = if crate::motion::is_frozen(cx) {
+        hidden
+    } else {
+        t.text.into()
+    };
+    input.update(cx, |s, _| {
+        s.set_editor_style(InputEditorStyle {
+            foreground: t.text.into(),
+            muted_foreground: hidden,
+            background: Hsla::transparent_black(),
+            border: Hsla::transparent_black(),
+            selection: t.amber.fade(0.3).into(),
+            caret,
+            ..Default::default()
+        })
+    });
+}
+
 /// `.nt-tip-pop`'s shadow.
 pub const POPOVER_SHADOW: [CssShadow; 1] = [css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))];
 /// `.emoji-suggest`'s shadow.
@@ -619,10 +756,14 @@ pub fn modal_panel(cx: &App) -> Div {
     card(t.pane, t.line_bright, 16.).flex().flex_col()
 }
 
-/// `.palette`: 580px command palette card, radius 13 ([`PALETTE_SHADOW`]).
-pub fn palette_panel(cx: &App) -> Div {
+/// `.palette`: the command palette card, radius 13, at most 64vh tall. Wrap it in
+/// [`crate::shadow::with_shadow`] with [`PALETTE_SHADOW`], the wrapper
+/// [`palette_width`] wide.
+pub fn palette_panel(window: &Window, cx: &App) -> Div {
     let t = tokens(cx);
     card(t.pane, t.line_bright, 13.)
+        .w_full()
+        .max_h(px(f32::from(window.viewport_size().height) * 0.64))
         .overflow_hidden()
         .flex()
         .flex_col()
@@ -659,6 +800,26 @@ pub fn palette_input_row(dense: bool, cx: &App) -> Div {
         .px(px(pxx))
         .border_b(px(1.))
         .border_color(Hsla::from(t.line))
+}
+
+/// `.pal-in input`: the palette's 14.5px query field. It resets only the border, so WebKit's
+/// default 1px input padding remains.
+pub fn palette_input(
+    input: &Entity<InputState>,
+    placeholder: &SharedString,
+    window: &Window,
+    cx: &App,
+) -> Div {
+    let t = tokens(cx);
+    div().flex_1().min_w_0().flex().p(px(1.)).child(text_field(
+        input,
+        placeholder,
+        t.faint,
+        Family::Ui,
+        14.5,
+        window,
+        cx,
+    ))
 }
 
 /// `.pal-g`: mono 9px uppercase group label with .12em tracking.
@@ -698,6 +859,58 @@ pub fn palette_row(
         d = d.bg(t.pane_2);
     }
     d
+}
+
+/// `.pal-row .pic`: the row's 24px leading tile; its icon is `--muted`, `--amber` when selected.
+pub fn palette_pic(name: crate::icon_name::IconName, selected: bool, cx: &App) -> Div {
+    let t = tokens(cx);
+    palette_tile(selected, cx).child(crate::icon::icon(name).size(px(14.)).color(if selected {
+        t.amber
+    } else {
+        t.muted
+    }))
+}
+
+/// `.pal-row .pic` holding something else: a `.dot` ([`palette_dot`]) or a project picture
+/// (`PicBox::PALETTE`).
+pub fn palette_tile(selected: bool, cx: &App) -> Div {
+    let t = tokens(cx);
+    div()
+        .flex_none()
+        .size(px(24.))
+        .rounded(px(6.))
+        .bg(if selected {
+            rgba(242, 179, 61, 0.15)
+        } else {
+            t.pane_2
+        })
+        .flex()
+        .items_center()
+        .justify_center()
+}
+
+/// `.pal-row .pic .dot`: a 7px status dot.
+pub fn palette_dot(color: Color) -> Div {
+    div().size(px(7.)).rounded_full().bg(color)
+}
+
+/// `.pal-row .pl`: the row label, 13px `--text`, taking the free width.
+pub fn palette_label(label: impl Into<gpui_kit::SharedString>, cx: &App) -> Div {
+    div()
+        .flex_1()
+        .min_w_0()
+        .child(text(label).size(13.).color(tokens(cx).text).nowrap())
+}
+
+/// `.pal-row .psub`: mono 10px `--faint` context after the label.
+pub fn palette_sub(label: impl Into<gpui_kit::SharedString>, cx: &App) -> Div {
+    div().flex_none().ml(px(8.)).child(
+        text(label)
+            .mono()
+            .size(10.)
+            .color(tokens(cx).faint)
+            .nowrap(),
+    )
 }
 
 /// `.pal-row .pk` / `.sc-row .pk`: a keycap chip on a palette row.

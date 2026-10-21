@@ -47,6 +47,7 @@ pub(super) const NAMES: &[&str] = &[
     "select/*",
     "icon-picker/*",
     "resize-handle/*",
+    "overlays/*",
 ];
 
 pub(super) fn matches(pattern: &str, name: &str) -> bool {
@@ -95,6 +96,7 @@ pub(super) fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<Any
                     .into_any_element()
             })
         }
+        ("overlays", v) => overlay_scenes(v, window, cx),
         ("resize-handle", _) => {
             let (side, dock) = (
                 cx.focus_handle().tab_stop(true),
@@ -916,4 +918,150 @@ fn resize_handles(
                 .child(resize_handle("dock", Axis::Y, Edge::Start, 60., dock)),
         )
         .into_any_element()
+}
+
+/// The generic overlay styles: the command palette, the modal card, and a page of fields,
+/// skeleton rows, a progress bar, a hint and a popover.
+fn overlay_scenes(variant: &str, window: &mut Window, cx: &mut App) -> Content {
+    use crate::shadow::with_shadow;
+    use crate::style::{
+        MODAL_SHADOW, PALETTE_SHADOW, POPOVER_SHADOW, input_box, modal_panel, modal_scrim,
+        palette_dot, palette_group, palette_input, palette_label, palette_panel, palette_pic,
+        palette_row, palette_scrim, palette_sub, palette_tile, palette_width, popover, progress,
+        skeleton, skeleton_row, style_text_input,
+    };
+    let field = |p: &str, window: &mut Window, cx: &mut App| {
+        let p: gpui_kit::SharedString = p.to_string().into();
+        (crate::style::text_input(&p, window, cx), p)
+    };
+    match variant {
+        "palette" => {
+            let (input, placeholder) = field("Search workspaces, PRs, or projects…", window, cx);
+            Box::new(move |window, cx| {
+                style_text_input(&input, cx);
+                let t = Theme::of(cx).tokens;
+                let list = div()
+                    .p(px(6.))
+                    .child(palette_group("Workspaces", false, cx))
+                    .child(
+                        palette_row("r1", true, false, cx)
+                            .child(palette_pic(IconName::GitBranch, true, cx))
+                            .child(palette_label("honeyed-cannoli", cx))
+                            .child(palette_sub("recur", cx))
+                            .child(palette_key("⌘1", true, cx)),
+                    )
+                    .child(
+                        palette_row("r2", false, false, cx)
+                            .child(palette_tile(false, cx).child(palette_dot(t.emerald)))
+                            .child(palette_label("main", cx))
+                            .child(palette_sub("recur", cx)),
+                    )
+                    .child(palette_group("Projects", false, cx))
+                    .child(
+                        palette_row("r3", false, false, cx)
+                            .child(palette_tile(false, cx).child(project_pic(
+                                "",
+                                "var(--cyan)",
+                                "recur",
+                                PicBox::PALETTE,
+                            )))
+                            .child(palette_label("recur", cx))
+                            .child(palette_key("⌘⇧R", false, cx)),
+                    );
+                let panel = palette_panel(window, cx)
+                    .child(
+                        palette_input_row(false, cx)
+                            .child(icon(IconName::Search).size(px(16.)).color(t.faint))
+                            .child(palette_input(&input, &placeholder, window, cx))
+                            .child(esc_key(false, cx)),
+                    )
+                    .child(
+                        div()
+                            .flex_auto()
+                            .min_h_0()
+                            .flex()
+                            .flex_col()
+                            .child(crate::widgets::scroll_area("pal-list").child(list)),
+                    )
+                    .child(
+                        palette_footer(false, cx)
+                            .child(Text::from_spans(vec![
+                                footer_key("↑↓", cx),
+                                span("navigate"),
+                            ]))
+                            .child(Text::from_spans(vec![footer_key("↵", cx), span("open")]))
+                            .child(Text::from_spans(vec![footer_key("esc", cx), span("close")])),
+                    );
+                body(cx)
+                    .size_full()
+                    .relative()
+                    .child(palette_scrim(window).child(
+                        with_shadow(panel, &PALETTE_SHADOW, 13.).w(px(palette_width(window))),
+                    ))
+                    .into_any_element()
+            })
+        }
+        "modal" => Box::new(|window, cx| {
+            let panel =
+                modal_panel(cx).child(div().p(px(20.)).child(text("New workspace").size(14.)));
+            body(cx)
+                .size_full()
+                .relative()
+                .child(
+                    modal_scrim(window).child(
+                        with_shadow(panel, &MODAL_SHADOW, 16.)
+                            .w(px(640.))
+                            .max_w_full(),
+                    ),
+                )
+                .into_any_element()
+        }),
+        _ => {
+            let (path, path_ph) = field("~/Development/recur", window, cx);
+            let (locked, locked_ph) = field("read only", window, cx);
+            Box::new(move |window, cx| {
+                style_text_input(&path, cx);
+                style_text_input(&locked, cx);
+                let skel_row = |w: f32, window: &mut Window, cx: &App| {
+                    skeleton_row(cx)
+                        .child(skeleton(window, cx).size(px(24.)))
+                        .child(skeleton(window, cx).w(px(w)))
+                };
+                let col = div()
+                    .w(px(260.))
+                    .flex()
+                    .flex_col()
+                    .gap(px(10.))
+                    .child(input_box(&path, &path_ph, false, window, cx))
+                    .child(input_box(&locked, &locked_ph, true, window, cx))
+                    .child(skel_row(140., window, cx))
+                    .child(skel_row(90., window, cx))
+                    .child(progress(0.4, cx))
+                    .child(crate::style::hint("Nothing here yet", cx));
+                let pop = with_shadow(
+                    popover(cx).child(text(
+                        "Workspaces get their own branch and worktree, so agents never collide.",
+                    )),
+                    &POPOVER_SHADOW,
+                    9.,
+                )
+                .absolute()
+                .left_0()
+                .bottom(gpui_kit::relative(1.))
+                .mb(px(8.));
+                body(cx)
+                    .size_full()
+                    .child(
+                        div()
+                            .p(px(16.))
+                            .flex()
+                            .items_start()
+                            .gap(px(16.))
+                            .child(col)
+                            .child(div().relative().mt(px(140.)).child(pop)),
+                    )
+                    .into_any_element()
+            })
+        }
+    }
 }

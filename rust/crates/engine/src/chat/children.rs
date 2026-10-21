@@ -182,7 +182,7 @@ impl Engine {
         )
     }
 
-    fn chat_child_ready_to_report(&self, child: &Workspace) -> bool {
+    pub(crate) fn chat_child_ready_to_report(&self, child: &Workspace) -> bool {
         if chat_child_outcome_done(child) || !self.child_settled_for_chat(&child.id) {
             return false;
         }
@@ -425,7 +425,7 @@ impl Engine {
     /// the human sees. Delivery is the notice persisted on the parent tab,
     /// not the reply text (empty for a parked ask_user, "Stopped by user"
     /// on Stop). A send the engine refused persists nothing and is retried.
-    async fn report_child(&self, parent_id: &str, child: &Workspace) -> bool {
+    pub(crate) async fn report_child(&self, parent_id: &str, child: &Workspace) -> bool {
         self.set_chat_child_outcome(parent_id, &child.id, CHILD_OUTCOME_REPORT_PENDING, "");
         let chat = child_chat(child);
         let before = self.notice_count(parent_id, &chat, child).await;
@@ -464,13 +464,23 @@ impl Engine {
         false
     }
 
-    async fn notice_delivered(&self, parent_id: &str, chat: &str, child: &Workspace) -> bool {
+    pub(crate) async fn notice_delivered(
+        &self,
+        parent_id: &str,
+        chat: &str,
+        child: &Workspace,
+    ) -> bool {
         self.notice_count(parent_id, chat, child).await > 0
     }
 
     /// The child's notices on the parent tab (a reopened child reports again
     /// under the same display text).
-    async fn notice_count(&self, parent_id: &str, chat: &str, child: &Workspace) -> usize {
+    pub(crate) async fn notice_count(
+        &self,
+        parent_id: &str,
+        chat: &str,
+        child: &Workspace,
+    ) -> usize {
         let want = child_notice_display(child);
         let want = want.trim();
         self.workspace_chat_items(parent_id, chat)
@@ -482,7 +492,7 @@ impl Engine {
 
     /// Moves report-pending to settled. The parent's report turn may
     /// already have merged, closed or conflicted the child; those stand.
-    fn mark_child_reported(&self, parent_id: &str, child_id: &str, note: Option<&str>) {
+    pub(crate) fn mark_child_reported(&self, parent_id: &str, child_id: &str, note: Option<&str>) {
         let updated = self.store.update_workspace(child_id, |w| {
             if let Some(f) = w.fan_out.as_mut()
                 && f.outcome == CHILD_OUTCOME_REPORT_PENDING
@@ -591,7 +601,12 @@ impl Engine {
     /// The read_child body: state, final reply, handoff, plan, findings,
     /// changes against the parent branch (with the diff when `with_diff`)
     /// and artifacts, then the verbs that act on the child.
-    async fn child_report(&self, parent_id: &str, child: &Workspace, with_diff: bool) -> String {
+    pub(crate) async fn child_report(
+        &self,
+        parent_id: &str,
+        child: &Workspace,
+        with_diff: bool,
+    ) -> String {
         let mut b = String::new();
         let running = !child.archived && !self.child_settled_for_chat(&child.id);
         if running {

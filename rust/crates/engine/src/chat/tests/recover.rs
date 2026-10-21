@@ -9,9 +9,9 @@ use std::time::Duration;
 
 use recur_agent::TurnResult;
 use recur_domain::{
-    Agent, AgentRole, CHAT_MODE_AGENT, CHAT_MODE_PLAN, Checkpoint, Escalation,
-    Flags, Message, PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, STREAM_STREAMING, Session,
-    UserQuestion, UserQuestionAnswer, Workspace, WorkspaceState,
+    Agent, AgentRole, CHAT_MODE_AGENT, CHAT_MODE_PLAN, Checkpoint, Escalation, Flags, Message,
+    PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, STREAM_STREAMING, Session, UserQuestion,
+    UserQuestionAnswer, Workspace, WorkspaceState,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -21,9 +21,7 @@ use crate::codes::MAESTRO_AGENT_CODE;
 use crate::lifecycle::PHASE_INTERRUPTED;
 use crate::loops::test_support::{AsyncProvider, ctx_runner};
 use crate::testing::wait_for;
-use crate::turn::finalize::{
-    CHAT_INTERRUPTED_REPLY, CHAT_RESUME_DISPLAY, CHAT_STOPPED_REPLY,
-};
+use crate::turn::finalize::{CHAT_INTERRUPTED_REPLY, CHAT_RESUME_DISPLAY, CHAT_STOPPED_REPLY};
 use crate::turn::transcript::flatten_transcript;
 
 fn persist_working_chat(fx: &Fx, ws: &str, code: &str) -> Session {
@@ -33,10 +31,19 @@ fn persist_working_chat(fx: &Fx, ws: &str, code: &str) -> Session {
         .store
         .update_agent(ws, code, |a| a.status = "working".into());
     let sess = eng
-        .ensure_agent_session(ws, AgentRole::Coder.as_str(), code, "Agent", PROVIDER_CLAUDE_CODE)
+        .ensure_agent_session(
+            ws,
+            AgentRole::Coder.as_str(),
+            code,
+            "Agent",
+            PROVIDER_CLAUDE_CODE,
+        )
         .unwrap();
     persist_streaming_tool(fx, &sess.id, "tu-crash", "toolu_crash");
-    fx.te.store.set_session_status(&sess.id, "streaming").unwrap();
+    fx.te
+        .store
+        .set_session_status(&sess.id, "streaming")
+        .unwrap();
     sess
 }
 
@@ -57,7 +64,12 @@ fn persist_streaming_tool(fx: &Fx, session_id: &str, id: &str, provider_id: &str
         .store
         .append_content_block(
             &msg,
-            recur_domain::ContentBlock::tool_use(id, provider_id, "Bash", r#"{"command":"sleep 999"}"#),
+            recur_domain::ContentBlock::tool_use(
+                id,
+                provider_id,
+                "Bash",
+                r#"{"command":"sleep 999"}"#,
+            ),
         )
         .unwrap();
 }
@@ -95,8 +107,17 @@ async fn stop_heals_a_zombie_working_agent() {
     assert!(fx.eng().cancel_chat(&ws.id, "PA").await, "the zombie heals");
     assert_eq!(fx.te.store.agent(&ws.id, "PA").unwrap().status, "idle");
     let items = fx.eng().workspace_chat_items(&ws.id, "PA").await;
-    assert!(items.iter().any(|it| it.kind == "text" && it.text == CHAT_STOPPED_REPLY));
-    assert!(!items.iter().any(|it| it.kind == "tool" && it.result_pending), "{items:?}");
+    assert!(
+        items
+            .iter()
+            .any(|it| it.kind == "text" && it.text == CHAT_STOPPED_REPLY)
+    );
+    assert!(
+        !items
+            .iter()
+            .any(|it| it.kind == "tool" && it.result_pending),
+        "{items:?}"
+    );
     fx.te.close().await;
 }
 
@@ -109,8 +130,16 @@ async fn recover_idles_an_interrupted_chat_and_closes_its_stream() {
     assert_eq!(fx.te.store.agent(&ws.id, "PA").unwrap().status, "idle");
     assert_eq!(fx.te.store.get_session(&sess.id).unwrap().status, "idle");
     let items = fx.eng().workspace_chat_items(&ws.id, "PA").await;
-    assert!(items.iter().any(|it| it.kind == "text" && it.text == CHAT_INTERRUPTED_REPLY));
-    assert!(!items.iter().any(|it| it.kind == "tool" && it.result_pending));
+    assert!(
+        items
+            .iter()
+            .any(|it| it.kind == "text" && it.text == CHAT_INTERRUPTED_REPLY)
+    );
+    assert!(
+        !items
+            .iter()
+            .any(|it| it.kind == "tool" && it.result_pending)
+    );
     assert_eq!(queued(&fx), ["PA"]);
     fx.te.close().await;
 }
@@ -126,9 +155,18 @@ async fn auto_resume_continues_an_interrupted_chat() {
     fx.te
         .store
         .update_agent(&ws.id, "PA", |a| a.session_id = CURSOR_RESUME.into());
-    let f: Flags = [("effort".to_owned(), "high".to_owned())].into_iter().collect();
+    let f: Flags = [("effort".to_owned(), "high".to_owned())]
+        .into_iter()
+        .collect();
     fx.eng()
-        .remember_workspace_chat_selection(&ws.id, "PA", "cursor/composer-2.5", Some(&f), "agent", None)
+        .remember_workspace_chat_selection(
+            &ws.id,
+            "PA",
+            "cursor/composer-2.5",
+            Some(&f),
+            "agent",
+            None,
+        )
         .await;
     fx.eng().recover();
     fx.eng().auto_resume().await;
@@ -140,7 +178,10 @@ async fn auto_resume_continues_an_interrupted_chat() {
     })
     .await;
     let spec = c.with_role(AgentRole::Coder).remove(0);
-    assert_eq!(spec.resume_session, CURSOR_RESUME, "a restart resumes, never injects");
+    assert_eq!(
+        spec.resume_session, CURSOR_RESUME,
+        "a restart resumes, never injects"
+    );
     assert!(!spec.prompt.contains("<transcript>"));
     assert_eq!(spec.display_text, CHAT_RESUME_DISPLAY);
     assert!(!spec.skip_record_user, "no open turn to reuse");
@@ -176,10 +217,11 @@ async fn a_restart_resume_never_displaces_a_live_turn() {
         )
         .await;
     assert_eq!(reply, "");
-    assert!(fx
-        .eng()
-        .live_chat_turn(&ws.id, "PA")
-        .is_some_and(|t| Arc::ptr_eq(&t, &turn)));
+    assert!(
+        fx.eng()
+            .live_chat_turn(&ws.id, "PA")
+            .is_some_and(|t| Arc::ptr_eq(&t, &turn))
+    );
     assert!(!cancel.is_cancelled());
     fx.te.close().await;
 }
@@ -207,7 +249,10 @@ async fn auto_resume_drops_a_foreign_cursor_handle_on_claude() {
     .await;
     let spec = c.with_role(AgentRole::Coder).remove(0);
     assert!(spec.resume_session.is_empty());
-    assert!(spec.prompt.contains("<transcript>"), "a foreign handle injects history");
+    assert!(
+        spec.prompt.contains("<transcript>"),
+        "a foreign handle injects history"
+    );
     fx.te.close().await;
 }
 
@@ -232,7 +277,10 @@ async fn auto_resume_continues_the_maestro_on_a_settled_loop() {
             .is_some_and(|s| s.prompt.contains("Recur restarted"))
     })
     .await;
-    assert_eq!(c.with_role(AgentRole::Maestro)[0].display_text, CHAT_RESUME_DISPLAY);
+    assert_eq!(
+        c.with_role(AgentRole::Maestro)[0].display_text,
+        CHAT_RESUME_DISPLAY
+    );
     fx.te.close().await;
 }
 
@@ -247,15 +295,31 @@ fn the_maestro_resume_needs_a_loop_rule() {
     for (name, ws, want) in [
         ("queued", w(WorkspaceState::Queued, "", false), true),
         ("coding", w(WorkspaceState::Coding, "", false), true),
-        ("paused interrupted", w(WorkspaceState::Paused, PHASE_INTERRUPTED, false), true),
-        ("paused by you", w(WorkspaceState::Paused, "paused by you", false), true),
+        (
+            "paused interrupted",
+            w(WorkspaceState::Paused, PHASE_INTERRUPTED, false),
+            true,
+        ),
+        (
+            "paused by you",
+            w(WorkspaceState::Paused, "paused by you", false),
+            true,
+        ),
         (
             "answered waiting",
-            w(WorkspaceState::Paused, "answered — waiting to resume", false),
+            w(
+                WorkspaceState::Paused,
+                "answered — waiting to resume",
+                false,
+            ),
             true,
         ),
         ("escalated", w(WorkspaceState::Escalated, "", false), true),
-        ("retryable failed", w(WorkspaceState::Failed, "", true), true),
+        (
+            "retryable failed",
+            w(WorkspaceState::Failed, "", true),
+            true,
+        ),
         ("pr_open", w(WorkspaceState::PrOpen, "", false), false),
         ("merged", w(WorkspaceState::Merged, "", false), false),
         ("stopped", w(WorkspaceState::Stopped, "", false), false),
@@ -267,7 +331,11 @@ fn the_maestro_resume_needs_a_loop_rule() {
 
 #[tokio::test]
 async fn an_interrupted_maestro_skips_a_parked_loop() {
-    for case in ["queued", "escalated unanswered", "answered waiting to resume"] {
+    for case in [
+        "queued",
+        "escalated unanswered",
+        "answered waiting to resume",
+    ] {
         let c = capture_same("sess-ma-parked", "should not run");
         let fx = Fx::new(Some(c.provider()));
         let ws = fx.workspace("parked-ma").await;
@@ -385,7 +453,10 @@ async fn a_resume_skips_a_live_user_turn() {
     })
     .await;
     fx.eng().resume_interrupted_chat(&ws.id, "PA").await;
-    assert!(fx.eng().cancel_chat(&ws.id, "PA").await, "the user turn is still registered");
+    assert!(
+        fx.eng().cancel_chat(&ws.id, "PA").await,
+        "the user turn is still registered"
+    );
     assert_eq!(join3(done, "user turn").await, CHAT_STOPPED_REPLY);
     fx.te.close().await;
 }
@@ -421,7 +492,13 @@ async fn recover_closes_a_specialists_pending_tools() {
     );
     let sess = fx
         .eng()
-        .ensure_agent_session(&ws.id, AgentRole::Coder.as_str(), "CO", "Coder", PROVIDER_CLAUDE_CODE)
+        .ensure_agent_session(
+            &ws.id,
+            AgentRole::Coder.as_str(),
+            "CO",
+            "Coder",
+            PROVIDER_CLAUDE_CODE,
+        )
         .unwrap();
     persist_streaming_tool(&fx, &sess.id, "tu-co", "toolu_co");
     fx.eng().recover();
@@ -433,8 +510,17 @@ async fn recover_closes_a_specialists_pending_tools() {
         .unwrap()
         .unwrap_or_default();
     let items = flatten_transcript(fx.eng().providers(), &msgs, "", &Flags::new());
-    assert!(!items.iter().any(|it| it.kind == "tool" && it.result_pending), "{items:?}");
-    assert!(items.iter().any(|it| it.kind == "tool" && !it.result.is_empty()));
+    assert!(
+        !items
+            .iter()
+            .any(|it| it.kind == "tool" && it.result_pending),
+        "{items:?}"
+    );
+    assert!(
+        items
+            .iter()
+            .any(|it| it.kind == "tool" && !it.result.is_empty())
+    );
     fx.te.close().await;
 }
 
@@ -524,9 +610,20 @@ async fn an_ask_user_resume_keeps_the_dock_provider() {
     set.model_agent = "claude-code/sonnet".into();
     fx.te.store.set_settings(set);
     let ws = fx.workspace("ask-resume").await;
-    let f: Flags = [("fast".to_owned(), "true".to_owned())].into_iter().collect();
+    let f: Flags = [("fast".to_owned(), "true".to_owned())]
+        .into_iter()
+        .collect();
     fx.eng()
-        .send_workspace_message(&ws.id, "PA", "plan the work", "cursor/composer-2.5", Some(&f), &[], CHAT_MODE_PLAN, "")
+        .send_workspace_message(
+            &ws.id,
+            "PA",
+            "plan the work",
+            "cursor/composer-2.5",
+            Some(&f),
+            &[],
+            CHAT_MODE_PLAN,
+            "",
+        )
         .await;
     fx.eng().set_agent_session(&ws.id, "PA", CURSOR_AGENT);
     let before = c.with_role(AgentRole::Coder).len();
@@ -549,13 +646,20 @@ async fn an_ask_user_resume_keeps_the_dock_provider() {
     assert!(specs.len() > before);
     let got = specs.last().unwrap();
     assert_eq!(
-        fx.te.store.session_for_loop_agent(&ws.id, "PA").unwrap().provider,
+        fx.te
+            .store
+            .session_for_loop_agent(&ws.id, "PA")
+            .unwrap()
+            .provider,
         PROVIDER_CURSOR,
         "the dock's Cursor, not the Settings Claude"
     );
     assert_eq!(got.model, "composer-2.5");
     assert_eq!(got.resume_session, CURSOR_AGENT);
-    assert!(got.prompt.contains("Which depth?") && got.prompt.contains("Write the full comparison plan"));
+    assert!(
+        got.prompt.contains("Which depth?")
+            && got.prompt.contains("Write the full comparison plan")
+    );
     assert!(got.append_system_prompt.contains("PLAN mode"));
     fx.te.close().await;
 }

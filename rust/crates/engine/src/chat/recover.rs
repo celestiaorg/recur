@@ -85,7 +85,7 @@ impl Engine {
     /// whose worktree still exists. A scheduled run's interrupted first turn
     /// is not replayed; a subagent's is (its parent waits for a report). A
     /// missing path must not spawn a turn that fails on cwd.
-    fn should_auto_resume_chat(&self, ws: &Workspace, a: &Agent) -> bool {
+    pub(crate) fn should_auto_resume_chat(&self, ws: &Workspace, a: &Agent) -> bool {
         if ws.scheduled_prompt_pending && !is_chat_child(ws) {
             return false;
         }

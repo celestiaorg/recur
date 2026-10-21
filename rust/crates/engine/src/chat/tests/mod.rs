@@ -2,6 +2,7 @@
 //! `workspace_chat_test.go` split by group).
 
 mod cancel;
+mod children;
 mod fork;
 mod modes_send;
 mod recover;

@@ -707,15 +707,55 @@ pub fn count_chip(count: u64, attention: bool, cx: &App) -> Div {
     )
 }
 
-/// `.skel`: a loading placeholder with the shimmer sweep.
-pub fn skeleton(cx: &App) -> Div {
+/// `.skel`: a loading placeholder with the shimmer sweep (`::after`, 1.4s, `translateX`
+/// from -100% to 100%). Every skeleton sweeps in step, from the first one drawn.
+pub fn skeleton(window: &mut Window, cx: &App) -> Div {
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     let t = tokens(cx);
-    div()
+    let skel = div()
         .relative()
         .overflow_hidden()
         .bg(t.pane_2)
         .rounded(px(5.))
-        .min_h(px(12.))
+        .min_h(px(12.));
+    if crate::motion::reduced(cx) {
+        return skel;
+    }
+    if !crate::motion::is_frozen(cx) {
+        window.request_animation_frame();
+    }
+    let period = 1.4;
+    let elapsed = crate::motion::elapsed(*START.get_or_init(std::time::Instant::now), cx);
+    let p = (elapsed.as_secs_f32() % period) / period;
+    // `ease`, the animation's default timing function.
+    let x = -1. + 2. * crate::motion::Easing::EASE.apply(p);
+    let sheen = if Theme::of(cx).id.is_light() {
+        rgba(0, 0, 0, 0.06)
+    } else {
+        rgba(255, 255, 255, 0.045)
+    };
+    // GPUI gradients take two stops, so each half of the three-stop sweep is its own box.
+    let half = |from: Color, to: Color| {
+        div()
+            .h_full()
+            .w(relative(0.5))
+            .bg(gpui_kit::linear_gradient(
+                90.,
+                gpui_kit::linear_color_stop(from, 0.),
+                gpui_kit::linear_color_stop(to, 1.),
+            ))
+    };
+    skel.child(
+        div()
+            .absolute()
+            .top_0()
+            .bottom_0()
+            .left(relative(x))
+            .w_full()
+            .flex()
+            .child(half(sheen.fade(0.), sheen))
+            .child(half(sheen, sheen.fade(0.))),
+    )
 }
 
 /// `.skelrow`.

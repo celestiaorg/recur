@@ -15,7 +15,6 @@ use crate::font::CellMetrics;
 const PAD: usize = 2;
 const PADDING: usize = PAD * 2;
 /// WebKit's synthetic oblique angle, degrees.
-#[cfg(target_os = "macos")]
 const SYNTHETIC_OBLIQUE: f64 = 14.0;
 /// Rasters kept before the cache starts over (`clearTextureAtlas` when the atlas fills).
 const MAX_RASTERS: usize = 16_384;
@@ -66,18 +65,15 @@ impl FontKey {
         }
     }
 
-    #[cfg(target_os = "macos")]
     fn font_size(&self) -> f32 {
         f32::from_bits(self.size)
     }
 
-    #[cfg(target_os = "macos")]
     fn dpr(&self) -> f32 {
         f32::from_bits(self.dpr)
     }
 
     /// Underline and overline width (`max(1, floor(fontSize * dpr / 15))`).
-    #[cfg(target_os = "macos")]
     fn line_width(&self) -> f64 {
         (self.font_size() * self.dpr() / 15.0).floor().max(1.0) as f64
     }
@@ -194,17 +190,10 @@ fn bounding_box(
     (right >= left && bottom >= top && bottom < height).then_some((left, top, right, bottom))
 }
 
-#[cfg(target_os = "macos")]
 fn draw(key: &GlyphKey, width: usize, height: usize) -> Option<Vec<u8>> {
     mac::draw(key, width, height)
 }
 
-#[cfg(not(target_os = "macos"))]
-fn draw(_: &GlyphKey, _: usize, _: usize) -> Option<Vec<u8>> {
-    None
-}
-
-#[cfg(target_os = "macos")]
 mod mac {
     use super::*;
     use core_foundation::attributed_string::CFMutableAttributedString;

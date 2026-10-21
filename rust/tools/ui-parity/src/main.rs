@@ -133,9 +133,7 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
                 // before the next.
                 Step::Type(text) => {
                     for ch in text.chars() {
-                        cx.update_window(any, |_, window, cx| {
-                            window.input(&ch.to_string(), cx)
-                        })?;
+                        cx.update_window(any, |_, window, cx| window.input(&ch.to_string(), cx))?;
                         cx.run_until_parked();
                     }
                 }

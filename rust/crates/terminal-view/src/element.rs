@@ -15,6 +15,7 @@ use gpui_kit::{
 use recur_term::screen::{CursorShape, Glyph, UnderlineStyle};
 use recur_term::screen::{Frame, Rgba};
 
+#[cfg(target_os = "macos")]
 use crate::atlas::FontKey;
 use crate::custom_glyphs;
 use crate::font::{CellMetrics, mono_font_stack};
@@ -44,6 +45,7 @@ pub(crate) struct Prepaint {
     layout: GridLayout,
     frame: Frame,
     fonts: Fonts,
+    #[cfg(target_os = "macos")]
     atlas_font: FontKey,
     /// None while the pane is hidden: hidden tabs take no pointer events.
     hitboxes: Option<(Hitbox, Hitbox)>,
@@ -151,6 +153,7 @@ impl Element for TerminalElement {
             layout,
             frame,
             fonts: Fonts { regular, size },
+            #[cfg(target_os = "macos")]
             atlas_font: FontKey::new(&font.face, &metrics, font.line_height),
             hitboxes,
         }

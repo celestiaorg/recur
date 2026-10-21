@@ -885,5 +885,3 @@ fn overline_handler_delegates_everything_else() {
         assert_eq!(screen_out, bare_out, "{name:?}");
     }
 }
-
-

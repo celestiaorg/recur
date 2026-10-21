@@ -51,6 +51,14 @@ struct Placed {
     clip_left: bool,
 }
 
+/// A glyph raster at its grid position (device pixels), clipped left of `clip_left`.
+struct Positioned {
+    raster: Arc<Raster>,
+    left: i64,
+    top: i64,
+    clip_left: Option<i64>,
+}
+
 /// A device-pixel rectangle on the grid with its colour.
 #[derive(Hash)]
 struct Fill {
@@ -176,7 +184,18 @@ pub(crate) fn paint(
             let id = h.finish();
             if !cache.tiles.contains_key(&id) {
                 let glyphs = band.flat_map(|r| rows[r].1.iter());
-                let image = compose(
+                let glyphs = glyphs.filter_map(|p| {
+                    let raster = atlas::raster(&p.key)?;
+                    let (ox, oy) = atlas::canvas_origin(&p.key, m);
+                    let cell_x = p.col as i64 * cw;
+                    Some(Positioned {
+                        left: cell_x + ox + raster.left as i64,
+                        top: p.row as i64 * ch + oy + raster.top as i64,
+                        clip_left: p.clip_left.then_some(cell_x),
+                        raster,
+                    })
+                });
+                let pixels = compose(
                     row as i64 * ch,
                     width,
                     ch,
@@ -185,8 +204,13 @@ pub(crate) fn paint(
                     rows[row].0.iter(),
                     glyphs,
                     cursor.iter().filter(|_| cursor_row == Some(row)),
-                    m,
                 );
+                let image = image::RgbaImage::from_raw(width as u32, ch as u32, pixels)
+                    .unwrap_or_else(|| image::RgbaImage::new(width as u32, ch as u32));
+                let image = Arc::new(RenderImage::new(SmallVec::from_elem(
+                    image::Frame::new(image),
+                    1,
+                )));
                 let bytes = (width * ch * 4) as usize;
                 cache.bytes += bytes;
                 cache.tiles.insert(
@@ -244,10 +268,9 @@ fn compose<'a>(
     background: Rgba,
     backdrop: Rgba,
     rects: impl Iterator<Item = &'a Fill>,
-    glyphs: impl Iterator<Item = &'a Placed>,
+    glyphs: impl Iterator<Item = Positioned>,
     cursor: impl Iterator<Item = &'a Fill>,
-    m: &CellMetrics,
-) -> Arc<RenderImage> {
+) -> Vec<u8> {
     let (w, h) = (width as usize, height as usize);
     // The WebGL drawing buffer: 8-bit colour and alpha, cleared to transparent black.
     let mut buf = vec![0u8; w * h * 4];
@@ -283,24 +306,16 @@ fn compose<'a>(
     for r in rects {
         fill(&mut buf, r);
     }
-    let (cw, ch) = (m.cell_width as i64, m.cell_height as i64);
-    for p in glyphs {
-        let Some(raster) = atlas::raster(&p.key) else {
-            continue;
-        };
-        let (ox, oy) = atlas::canvas_origin(&p.key, m);
-        let cell_x = p.col as i64 * cw;
-        let left = cell_x + ox + raster.left as i64;
-        let top = p.row as i64 * ch + oy + raster.top as i64;
+    for g in glyphs {
         blend_raster(
             &mut buf,
-            &raster,
-            left,
-            top,
+            &g.raster,
+            g.left,
+            g.top,
             y0,
             width,
             height,
-            p.clip_left.then_some(cell_x),
+            g.clip_left,
             &blend,
         );
     }
@@ -329,12 +344,7 @@ fn compose<'a>(
         };
         out.extend_from_slice(&[c(2), c(1), c(0), a as u8]);
     }
-    let image = image::RgbaImage::from_raw(w as u32, h as u32, out)
-        .unwrap_or_else(|| image::RgbaImage::new(w as u32, h as u32));
-    Arc::new(RenderImage::new(SmallVec::from_elem(
-        image::Frame::new(image),
-        1,
-    )))
+    out
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -366,5 +376,173 @@ fn blend_raster(
                 blend(buf, x, y, [t[0], t[1], t[2]], t[3]);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn raster(w: usize, texels: &[[u8; 4]]) -> Arc<Raster> {
+        Arc::new(Raster {
+            texels: texels.concat(),
+            left: 0,
+            top: 0,
+            w,
+            h: texels.len() / w,
+        })
+    }
+
+    fn at(raster: Arc<Raster>, left: i64, clip_left: Option<i64>) -> Positioned {
+        Positioned {
+            raster,
+            left,
+            top: 0,
+            clip_left,
+        }
+    }
+
+    const BG: Rgba = Rgba::rgb(20, 20, 20);
+
+    /// BGRA pixels back to RGB.
+    fn rgb(px: &[u8]) -> Vec<[u8; 3]> {
+        px.chunks_exact(4).map(|p| [p[2], p[1], p[0]]).collect()
+    }
+
+    #[test]
+    fn glyph_edges_carry_the_backdrop_through_the_canvas_alpha() {
+        let glyph = raster(1, &[[230, 228, 255, 128]]);
+        let px = compose(
+            0,
+            1,
+            1,
+            BG,
+            BG,
+            std::iter::empty(),
+            [at(glyph, 0, None)].into_iter(),
+            std::iter::empty(),
+        );
+        // Blend: 230·a + 20·(1 - a) = 125; canvas alpha 128·a + 255·(1 - a) = 191; the page
+        // adds (1 - 191/255) · 20.
+        assert_eq!(rgb(&px), vec![[130, 129, 143]]);
+        assert_eq!(px[3], 255);
+    }
+
+    #[test]
+    fn rects_glyphs_and_cursor_draw_in_renderer_order() {
+        let fill = Fill {
+            x: 1,
+            y: 0,
+            w: 1,
+            h: 1,
+            color: Rgba::rgb(0, 0, 200),
+        };
+        let cursor = Fill {
+            x: 2,
+            y: 0,
+            w: 1,
+            h: 1,
+            color: Rgba::rgb(255, 0, 0),
+        };
+        let a = raster(3, &[[255, 255, 255, 255]; 3]);
+        let b = raster(1, &[[0, 255, 0, 255]]);
+        let px = compose(
+            0,
+            3,
+            1,
+            BG,
+            BG,
+            [&fill].into_iter(),
+            [at(a, 0, None), at(b, 1, None)].into_iter(),
+            [&cursor].into_iter(),
+        );
+        assert_eq!(
+            rgb(&px),
+            vec![[255, 255, 255], [0, 255, 0], [255, 0, 0]],
+            "later glyphs over earlier ones, the cursor over both"
+        );
+    }
+
+    #[test]
+    fn overhang_left_of_a_background_change_is_clipped() {
+        let wide = raster(2, &[[255, 255, 255, 255]; 2]);
+        let px = compose(
+            0,
+            2,
+            1,
+            BG,
+            BG,
+            std::iter::empty(),
+            [at(wide, 0, Some(1))].into_iter(),
+            std::iter::empty(),
+        );
+        assert_eq!(rgb(&px), vec![[20, 20, 20], [255, 255, 255]]);
+    }
+
+    #[test]
+    fn transparent_cells_stay_translucent() {
+        let clear = Rgba::new(0, 0, 0, 0);
+        let glyph = raster(2, &[[200, 100, 50, 255], [200, 100, 50, 0]]);
+        let px = compose(
+            0,
+            2,
+            1,
+            clear,
+            clear,
+            std::iter::empty(),
+            [at(glyph, 0, None)].into_iter(),
+            std::iter::empty(),
+        );
+        assert_eq!(&px[..4], &[50, 100, 200, 255]);
+        assert_eq!(px[7], 0);
+    }
+
+    fn key(text: &str, overline: bool, strikethrough: bool, size: f32) -> GlyphKey {
+        // JetBrains Mono at 2x.
+        let m = CellMetrics::compute(size * 0.6, size * 1.02, size * 0.3, size, 1.15, 2.0);
+        GlyphKey {
+            font: FontKey::new("JetBrains Mono", &m, 1.15),
+            text: text.into(),
+            bold: false,
+            italic: false,
+            fg: Rgba::rgb(255, 255, 255),
+            underline: None,
+            variant_offset: 0,
+            strikethrough,
+            overline,
+            width: 1,
+            custom: false,
+        }
+    }
+
+    #[test]
+    fn overline_strokes_the_top_row_of_the_character_box() {
+        let k = key(" ", true, false, 12.0);
+        let r = atlas::raster(&k).expect("an overlined blank is not empty");
+        // One device pixel (12px · 2 / 15 floors to 1) at the canvas padding, the character
+        // width long.
+        assert_eq!((r.left, r.top, r.w, r.h), (4, 4, 14, 1));
+        assert!(r.texels.chunks_exact(4).all(|t| t[3] == 255));
+        assert!(atlas::raster(&key(" ", false, false, 12.0)).is_none());
+    }
+
+    #[test]
+    fn overline_width_moves_the_strikethrough_like_the_canvas_state_does() {
+        // At 16px the overline is 2 device pixels wide and leaves the context line width even,
+        // so the strikethrough is not shifted half a pixel and straddles a pixel boundary.
+        let rows = |k: &GlyphKey| {
+            let r = atlas::raster(k).unwrap();
+            (0..r.h)
+                .filter(|y| (0..r.w).any(|x| r.texels[(y * r.w + x) * 4 + 3] != 0))
+                .map(|y| (y + r.top, r.texels[(y * r.w + r.w / 2) * 4 + 3]))
+                .collect::<Vec<_>>()
+        };
+        let strike = rows(&key(" ", false, true, 16.0));
+        assert_eq!(strike.len(), 3);
+        assert!(strike.iter().all(|(_, a)| *a == 255));
+        let both = rows(&key(" ", true, true, 16.0));
+        let struck: Vec<_> = both.iter().filter(|(y, _)| *y > 6).collect();
+        assert_eq!(struck.len(), 4);
+        assert!(struck.first().is_some_and(|(_, a)| *a < 255));
     }
 }

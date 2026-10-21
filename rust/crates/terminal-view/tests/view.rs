@@ -5,8 +5,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    Entity, Modifiers, MouseButton, Point, ScrollDelta, ScrollWheelEvent, TestAppContext,
-    TouchPhase, VisualTestContext, point, px,
+    AppContext, Entity, Modifiers, MouseButton, Point, ScrollDelta, ScrollWheelEvent,
+    TestAppContext, TouchPhase, VisualTestContext, point, px,
 };
 use parking_lot::Mutex;
 use recur_term::screen::{Rgba, Theme};
@@ -668,4 +668,72 @@ fn theme_changes_repaint_the_palette(cx: &mut TestAppContext) {
     });
     h.settle();
     assert_eq!(background(&mut h), Rgba::rgb(0x10, 0x20, 0x30));
+}
+
+/// Shows a pane only once `shown` is set, so its attach can finish before the first layout.
+struct Host {
+    pane: Entity<TerminalView>,
+    shown: bool,
+}
+
+impl gpui::Render for Host {
+    fn render(
+        &mut self,
+        _: &mut gpui::Window,
+        _: &mut gpui::Context<Self>,
+    ) -> impl gpui::IntoElement {
+        use gpui::{ParentElement, Styled};
+        gpui::div()
+            .size_full()
+            .children(self.shown.then(|| self.pane.clone()))
+    }
+}
+
+#[gpui::test]
+fn replay_lands_on_the_fitted_grid(cx: &mut TestAppContext) {
+    // TerminalPane refits before attaching, so a cursor-addressed replay is laid out at the
+    // pane's size even when the attach answers before the first layout.
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        recur_ui::init(cx);
+        recur_terminal_view::init(cx);
+    });
+    let backend = Arc::new(Recorder {
+        replay: b"\x1b[999CX".to_vec(),
+        ..Default::default()
+    });
+    let (host, cx) = cx.add_window_view(move |window, cx| {
+        let pane = cx.new(|cx| {
+            TerminalView::new(
+                TerminalOptions {
+                    session_id: "s".into(),
+                    workspace_id: "w".into(),
+                    active: true,
+                    frosted: false,
+                    font: TerminalFont::default(),
+                    theme: ThemeContext::default(),
+                    workspace_root: String::new(),
+                    dock_focus: None,
+                },
+                backend,
+                window,
+                cx,
+            )
+        });
+        Host { pane, shown: false }
+    });
+    cx.run_until_parked();
+    let pane = host.read_with(cx, |h, _| h.pane.clone());
+    assert!(pane.read_with(cx, |v, _| {
+        v.screen().viewport_text().iter().all(|r| r.is_empty())
+    }));
+    host.update(cx, |h, cx| {
+        h.shown = true;
+        cx.notify();
+    });
+    cx.run_until_parked();
+    let (cols, text) = pane.read_with(cx, |v, _| (v.size().0, v.screen().viewport_text()));
+    assert_ne!(cols, 80);
+    let row = text.iter().find(|r| r.ends_with('X')).unwrap();
+    assert_eq!(row.chars().count(), cols);
 }

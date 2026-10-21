@@ -55,6 +55,7 @@ fn lookup(cp: u32) -> Option<&'static [P]> {
 }
 
 /// Whether `cp` has a custom definition.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub(crate) fn has(cp: u32) -> bool {
     lookup(cp).is_some()
 }

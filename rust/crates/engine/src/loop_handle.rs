@@ -16,11 +16,12 @@ use std::sync::Arc;
 use parking_lot::{Mutex, MutexGuard};
 use recur_agent::{Steer, SteerInbox};
 use recur_agent_tools::{EscalationRequest, Evidence};
-use recur_bundles::Role;
-use recur_domain::WorkspaceState;
+use recur_bundles::{LoopPhase, Role};
+use recur_domain::{AutonomyLevel, WorkspaceState};
 use tokio::sync::{Notify, mpsc};
 use tokio_util::sync::CancellationToken;
 
+use crate::guard::ResolvedGuard;
 use crate::roles::{RoleSpec, slot_role_spec};
 
 /// A control message to a running loop (PRD §6.2).
@@ -93,6 +94,17 @@ pub struct LoopState {
     /// This walk's last setState (siblings overwrite the workspace row).
     pub exit_state: WorkspaceState,
     pub exit_phase: String,
+    /// The walk's last setState / setIteration (the workspace row is shared
+    /// with sibling walks). Empty before the first setState.
+    pub walk_state: WorkspaceState,
+    pub walk_iter: i64,
+    /// The `[[loop.phase]]` the walk is inside right now.
+    pub current_phase: LoopPhase,
+
+    /// Fixed at dispatch: the run's goal, autonomy and resolved guard.
+    pub goal: String,
+    pub autonomy: AutonomyLevel,
+    pub guard: Arc<ResolvedGuard>,
 
     pub roles: RoleView,
 }

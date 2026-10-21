@@ -233,6 +233,15 @@ pub struct Engine {
     /// The persisted "iters today" baseline captured at construction.
     pub(crate) iters_base: i64,
 
+    /// The rename nudge computed at loop engage, for the planner turn.
+    pub(crate) loop_rename_nudge: Mutex<HashMap<String, String>>,
+    /// Titles stamped from a queued message before its send ran.
+    pub(crate) early_titles: Mutex<crate::chat_shared::EarlyTitles>,
+    /// Escalation raised/answered counters.
+    pub(crate) esc_precision: crate::loops::escalation::EscPrecision,
+    /// How often a fan-out parent re-checks its children.
+    pub(crate) fan_out_poll: Mutex<Duration>,
+
     pub tasks: Tasks,
     pub(crate) hooks: Mutex<TestHooks>,
 }
@@ -331,6 +340,10 @@ impl Engine {
                 keep_awake: Keeper::new(),
                 keep_awake_mu: Mutex::new(()),
                 iters_base,
+                loop_rename_nudge: Mutex::new(HashMap::new()),
+                early_titles: Mutex::new(crate::chat_shared::EarlyTitles::default()),
+                esc_precision: crate::loops::escalation::EscPrecision::default(),
+                fan_out_poll: Mutex::new(crate::loops::fanout::DEFAULT_FAN_OUT_POLL),
                 tasks: Tasks::default(),
                 hooks: Mutex::new(TestHooks::default()),
             }
@@ -526,6 +539,11 @@ impl Engine {
             adjectives.iter().map(|s| (*s).to_owned()).collect(),
             dishes.iter().map(|s| (*s).to_owned()).collect(),
         ));
+    }
+
+    /// Shrinks the fan-out parent's child poll (Go `fanOutPoll`).
+    pub fn set_fan_out_poll(&self, d: Duration) {
+        *self.fan_out_poll.lock() = d;
     }
 
     /// Shrinks the fswatch coalescing window and fingerprint poll.

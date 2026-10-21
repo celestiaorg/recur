@@ -6,34 +6,18 @@
 //! the body with the real call when its module lands and deletes the hook's
 //! entry from the plan's deferred list.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use chrono::{DateTime, Local};
-use recur_domain::{ChatAttachment, UserQuestion, Workspace};
+use recur_domain::{
+    ChatAttachment, Check, FeedItem, Pr, PrSource, Project, UserQuestion, Workspace,
+};
 
 use crate::Engine;
 use crate::chatlife::ChatTurn;
-use crate::loop_handle::LoopHandle;
 
 impl Engine {
-    // ---- E3: loops
-
-    /// Go `drainQueued`: promote the oldest queued loop into a free slot.
-    /// E3 (`loops::lifecycle`).
-    pub(crate) async fn drain_queued(&self) {}
-
-    /// Go `Loop.emitSettledWrapUp`: the Maestro's wrap-up for a settled
-    /// walk. E3.
-    pub(crate) fn emit_settled_wrap_up(&self, _handle: &Arc<LoopHandle>) {}
-
-    /// Go `retireOpenEscalations`: answer-close a stopped run's open
-    /// escalations. E3 (`loops::escalation`).
-    pub(crate) fn retire_open_escalations(&self, _workspace_id: &str) {}
-
-    /// Go `maybeDispatchAfterAllocate`: start a run stamped while the
-    /// worktree was still allocating. E3 (`loops::lifecycle`).
-    pub(crate) async fn maybe_dispatch_after_allocate(&self, _workspace_id: &str) {}
-
     // ---- E4: chat and coordination
 
     /// Go `resumeAfterAskUser`'s send: the answer as a new turn on the
@@ -98,6 +82,30 @@ impl Engine {
     ) {
     }
 
+    /// Go `ReconstructFeed`: the reload-path activity feed from sessions and
+    /// the events table, read when the live feed is empty (the Maestro's
+    /// recent activity). E4 (`feed`).
+    pub(crate) fn reconstruct_feed(&self, _workspace_id: &str) -> Vec<FeedItem> {
+        Vec::new()
+    }
+
+    /// Go AutoResume's `launchInterruptedChatsExcept(hold)`: continue the
+    /// interrupted chats `recover_interrupted_chats` queued, except those on
+    /// workspaces whose loop AutoResume resumes first. E4 (`chat::recover`).
+    pub(crate) async fn launch_interrupted_chats_except(&self, _hold: &HashSet<String>) {}
+
+    /// Go `launchInterruptedChatsFor(id)`: the held chats of a workspace,
+    /// right after its loop's Resume returned. E4 (`chat::recover`).
+    pub(crate) async fn launch_interrupted_chats_for(&self, _workspace_id: &str) {}
+
+    /// Go `launchInterruptedChats(e.interruptedChats)` + clearing the queue:
+    /// whatever is still queued after the loop pass. E4 (`chat::recover`).
+    pub(crate) async fn launch_remaining_interrupted_chats(&self) {}
+
+    /// Go `rearmChatChildren`: re-arm subagent watchers after interrupted
+    /// chats launched. E4 (`chat::children`).
+    pub(crate) async fn rearm_chat_children(&self) {}
+
     // ---- E5: pull requests
 
     /// Go `maybeArchiveLinkedPRChatHost`: archive a PR chat host once its
@@ -114,4 +122,57 @@ impl Engine {
 
     /// Go `fetchOpenPRRemote`: refresh an open forge PR's head ref. E5.
     pub(crate) async fn fetch_open_pr_remote(&self, _ws: &Workspace) {}
+
+    /// Go `CreateGitHubPR` (+ `githubPRBase`, `githubImportedPRID`): push the
+    /// branch and open the PR on the project's forge for a project that
+    /// opts in. `None` while no forge PR glue exists, so the walk stays on a
+    /// Local PR; `Err((forge label, reason))` is the fallback note. E5
+    /// (`prs::ops`).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn create_forge_pr(
+        &self,
+        _proj: &Project,
+        _worktree: &str,
+        _branch: &str,
+        _base: &str,
+        _title: &str,
+        _body: &str,
+        _draft: bool,
+    ) -> Option<Result<ForgePrCreated, (String, String)>> {
+        None
+    }
+
+    /// Go `pushGitHubHead`: push a rework onto an open forge PR's remote
+    /// head. `Err((forge label, reason))`. Only reached for a forge PR, which
+    /// E5 creates. E5 (`prs::ops`).
+    pub(crate) async fn push_forge_pr_head(
+        &self,
+        _worktree: &str,
+        _repo_path: &str,
+        _pr: &Pr,
+        _head: &str,
+        _force: bool,
+    ) -> Result<(), (String, String)> {
+        Ok(())
+    }
+
+    /// Go `githubPRChecks`: the forge's check rollup at PR open; a fetch
+    /// error is an empty rollup that counts as passing (unknown is not a
+    /// failure), which is also the answer with no forge glue. E5.
+    pub(crate) async fn forge_pr_checks(
+        &self,
+        _source: &PrSource,
+        _repo_path: &str,
+        _number: i64,
+    ) -> (Vec<Check>, bool) {
+        (Vec::new(), true)
+    }
+}
+
+/// A PR the forge opened (`create_forge_pr`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ForgePrCreated {
+    pub source: PrSource,
+    pub number: i64,
+    pub pr_id: String,
 }

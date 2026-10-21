@@ -137,6 +137,19 @@ pub fn add_run_project(store: &Store, p: Project) -> Project {
     store.add_project(p).expect("add project")
 }
 
+fn copy_dir(src: &Path, dst: &Path) {
+    std::fs::create_dir_all(dst).expect("mkdir");
+    for e in std::fs::read_dir(src).expect("read_dir") {
+        let e = e.expect("dir entry");
+        let to = dst.join(e.file_name());
+        if e.file_type().expect("file type").is_dir() {
+            copy_dir(&e.path(), &to);
+        } else {
+            std::fs::copy(e.path(), &to).expect("copy");
+        }
+    }
+}
+
 /// Polls `cond` every 5 ms for 3× `d` (Go's loaded-machine headroom).
 pub async fn wait_for(d: Duration, what: &str, mut cond: impl FnMut() -> bool) {
     let deadline = tokio::time::Instant::now() + d * 3;
@@ -377,6 +390,43 @@ impl TestEngine {
     /// The fixture pack (Go `installFixturePack`).
     pub fn install_fixture_pack(&self) {
         self.install_test_pack("TestLoops", TEST_LOOPS_TOML);
+    }
+
+    /// Copies the shipped `bundles/Loop` pack under the default bundles
+    /// root (Go `installShippedLoopPack`).
+    pub fn install_shipped_loop_pack(&self) {
+        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../bundles/Loop");
+        assert!(
+            src.join("bundle.toml").exists(),
+            "shipped Loop pack missing at {src:?}"
+        );
+        let dst = Path::new(&self.engine.bundle_roots().default_dir).join("Loop");
+        copy_dir(&src, &dst);
+    }
+
+    /// A second engine over the same store and data dir (Go `New(st)` after
+    /// a simulated restart), with its own bus.
+    pub fn reopen(&self, provider: Option<Arc<dyn Provider>>) -> Arc<Engine> {
+        self.reopen_on(Arc::clone(&self.store), provider)
+    }
+
+    /// [`Self::reopen`] over `store` (a store reopened from disk).
+    pub fn reopen_on(&self, store: Arc<Store>, provider: Option<Arc<dyn Provider>>) -> Arc<Engine> {
+        Engine::build(
+            store,
+            Arc::new(Bus::new()),
+            GitSetup {
+                worktree_root: self.engine.worktree_root().to_owned(),
+                ..GitSetup::default()
+            },
+            self.engine.bundle_roots().clone(),
+            None,
+            ProviderRegistry::pinned(provider),
+            ForgeRegistry::new(Vec::new()),
+            TrackerRegistry::new(Vec::new()),
+            self.data_dir.clone(),
+            None,
+        )
     }
 
     /// Joins the engine's tasks before the temp dirs go (Go's

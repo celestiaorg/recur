@@ -3,7 +3,8 @@
 //! `lib/inbox-read.ts`), so the GPUI views do not re-derive them. The
 //! submodules hold E2's chat-surface rules (`lib/agentchat.ts`,
 //! `lib/session-live.ts`, `lib/artifacts.ts`, `lib/promptActions.ts` and the
-//! text half of `lib/composerDom.ts`).
+//! text half of `lib/composerDom.ts`) and E3's loop pickers and cockpit
+//! (`lib/loops.ts`, `lib/loop-cockpit.ts`).
 
 pub mod artifacts;
 pub mod chat;
@@ -11,6 +12,8 @@ pub mod composer;
 pub mod digest;
 pub mod js;
 pub mod live;
+pub mod loop_cockpit;
+pub mod loops;
 pub mod mentions;
 pub mod prompts;
 

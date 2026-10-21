@@ -558,6 +558,14 @@ impl AgentChat {
             }
         }));
         subs.push(cx.observe_window_activation(window, |_, _, cx| cx.notify()));
+        // Unmount parks the chrome under the key, as the resetKey effect's cleanup does.
+        subs.push(cx.on_release(|this: &mut Self, cx| {
+            let key = this.props.reset_key.clone();
+            if !key.is_empty() {
+                let snap = this.capture_transcript_ui(&key, cx);
+                TranscriptUiCache::global(cx).save(&key, snap);
+            }
+        }));
         subs.push(Self::intercept_keys(cx));
         let mut this = AgentChat {
             state,
@@ -677,13 +685,12 @@ impl AgentChat {
             _subs: subs,
             _events: None,
         };
-        if let Some(u) = &initial {
-            let m = this.block_h_by_chat.entry(props.reset_key.clone()).or_default();
-            restore_block_heights(m, &u.block_heights);
-        }
         this.listen(cx);
         this.props.reset_key = props.reset_key.clone();
         this.set_props(props, cx);
+        if initial.is_some() {
+            this.restore_transcript_ui(initial, cx);
+        }
         this
     }
 
@@ -1083,7 +1090,7 @@ impl AgentChat {
         TranscriptUiCache::global(cx).save_scroll(&k, top, near);
     }
 
-    fn capture_transcript_ui(&mut self, key: &str, cx: &mut Context<Self>) -> TranscriptUiState {
+    fn capture_transcript_ui(&self, key: &str, cx: &mut App) -> TranscriptUiState {
         let heights = self.block_h_by_chat.get(key).cloned().unwrap_or_default();
         let prev = TranscriptUiCache::global(cx).load(key);
         snapshot_transcript_ui(

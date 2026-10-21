@@ -303,7 +303,18 @@ impl Host {
         .detach();
     }
 
-    /// Unmount and remount the chat (a panel toggle), as the host re-creates it.
+    /// Unmount: swap in a keyless placeholder so the mounted chat is released.
+    pub fn unmount(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let vcx = ViewContext {
+            state: self.chat.read(cx).state.clone(),
+            services: self.services.clone(),
+        };
+        self.chat = cx.new(|cx| AgentChat::new(&vcx, ChatProps::default(), window, cx));
+        self._sub = cx.subscribe(&self.chat, |h: &mut Host, _, e: &ChatEvent, cx| h.on_event(e, cx));
+        cx.notify();
+    }
+
+    /// Mount a fresh chat on the current props, as the host re-creates it.
     pub fn remount(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let vcx = ViewContext {
             state: self.chat.read(cx).state.clone(),
@@ -347,7 +358,6 @@ pub struct H<'a> {
     pub state: Entity<AppState>,
     pub bridge: Arc<MockBridge>,
     pub host: Entity<Host>,
-    pub chat: Entity<AgentChat>,
     pub events: Rc<RefCell<Vec<ChatEvent>>>,
     pub cx: &'a mut VisualTestContext,
 }
@@ -445,12 +455,10 @@ pub fn boot_with<'a>(
             _sub,
         }
     });
-    let chat = host.read_with(vcx_cx, |h, _| h.chat.clone());
     let mut h = H {
         state,
         bridge,
         host,
-        chat,
         events,
         cx: vcx_cx,
     };
@@ -513,7 +521,7 @@ impl H<'_> {
     }
 
     pub fn focus_composer(&mut self) {
-        let chat = self.chat.clone();
+        let chat = self.chat();
         self.cx.update(|window, cx| chat.update(cx, |c, cx| c.focus_composer(window, cx)));
         self.settle();
     }
@@ -529,7 +537,7 @@ impl H<'_> {
 
     /// `fill`: replace the draft.
     pub fn fill(&mut self, s: &str) {
-        let chat = self.chat.clone();
+        let chat = self.chat();
         let s = s.to_string();
         self.cx.update(|_, cx| chat.update(cx, |c, cx| c.set_draft(s, Vec::new(), cx)));
         self.focus_composer();
@@ -551,18 +559,26 @@ impl H<'_> {
     }
 
     pub fn input(&mut self) -> String {
-        self.chat.read_with(self.cx, |c, _| c.input().to_string())
+        let chat = self.chat();
+        chat.read_with(self.cx, |c, _| c.input().to_string())
     }
 
     pub fn read<R>(&mut self, f: impl FnOnce(&AgentChat) -> R) -> R {
-        self.chat.read_with(self.cx, |c, _| f(c))
+        let chat = self.chat();
+        chat.read_with(self.cx, |c, _| f(c))
     }
 
-    /// Remount the chat; the handle follows the new entity.
+    /// The mounted chat.
+    pub fn chat(&mut self) -> Entity<AgentChat> {
+        self.host.read_with(self.cx, |h, _| h.chat.clone())
+    }
+
+    /// Hide the panel (the chat unmounts and parks its chrome), then show it again.
     pub fn remount(&mut self) {
         let host = self.host.clone();
+        self.cx.update(|window, cx| host.update(cx, |h, cx| h.unmount(window, cx)));
+        self.settle();
         self.cx.update(|window, cx| host.update(cx, |h, cx| h.remount(window, cx)));
-        self.chat = self.host.read_with(self.cx, |h, _| h.chat.clone());
         self.settle();
     }
 
@@ -603,7 +619,7 @@ impl H<'_> {
 
     /// Scroll the transcript to `top` the way a wheel would, and let the chat record it.
     pub fn scroll_to(&mut self, top: f32) {
-        let chat = self.chat.clone();
+        let chat = self.chat();
         self.cx.update(|_, cx| {
             chat.update(cx, |c, cx| {
                 c.scroll.set_offset(point(px(0.), px(-top)));

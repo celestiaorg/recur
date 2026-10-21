@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use gpui::TestAppContext;
+use gpui_kit::AppContext as _;
 use parking_lot::Mutex;
 use recur_services::mock::{MockOptions, Release, Reply};
 use serde_json::{Value, json};
@@ -252,7 +253,8 @@ async fn slash_fix_findings_shows_a_short_label_while_sending_the_full_checklist
     assert_eq!(prompt_actions(&h), ["fix-findings"]);
     // Enter keeps focus on the composer while the /query clears.
     assert!(h.input().is_empty());
-    let focused = h.cx.update(|window, cx| h.chat.read(cx).focus.is_focused(window));
+    let chat = h.chat();
+    let focused = h.cx.update(|window, cx| chat.read(cx).focus.is_focused(window));
     assert!(focused);
     assert_eq!(h.read(|c| c.doc.caret), 0);
 }
@@ -913,7 +915,7 @@ async fn transcript_file_chip_does_not_select_a_file_that_is_filtered_out_of_the
 }
 
 fn drop_explorer(h: &mut H, paths: &[&str]) {
-    let chat = h.chat.clone();
+    let chat = h.chat();
     let paths: Vec<String> = paths.iter().map(|s| s.to_string()).collect();
     h.cx.update(|window, cx| chat.update(cx, |c, cx| {
         c.file_drop_over = true;
@@ -1033,4 +1035,412 @@ async fn typing_at_lists_artifacts_and_inserts_a_chip(cx: &mut TestAppContext) {
     assert!(h.has("chip:Notes"));
     h.click("chat-send");
     assert!(texts(&sent)[0].contains("@artifact:art-notes-1"));
+}
+
+// ---- Chat tab persistence ----
+// The strip and its saved state are the workspace view's; these port the rules it applies.
+
+use recur_engine::view::chat_tab_session::{ACTIVE_CHAT_TAB_KEY, ActiveChatTabs};
+use recur_view_core::LocalStorage;
+
+fn reload(storage: &LocalStorage) -> ActiveChatTabs {
+    ActiveChatTabs::parse(storage.get(ACTIVE_CHAT_TAB_KEY))
+}
+
+#[test]
+fn reopening_a_workspace_after_reload_restores_the_last_active_chat_tab() {
+    let mut storage = LocalStorage::in_memory();
+    let mut tabs = reload(&storage);
+    assert_eq!(tabs.restored_chat_code(WS, &["MA", "PA"]), "MA");
+    tabs.save(WS, "PA");
+    storage.set(ACTIVE_CHAT_TAB_KEY, tabs.encode().unwrap());
+    assert_eq!(reload(&storage).restored_chat_code(WS, &["MA", "PA"]), "PA");
+}
+
+#[test]
+fn a_newly_opened_chat_tab_stays_selected_after_reload() {
+    let mut storage = LocalStorage::in_memory();
+    let mut tabs = reload(&storage);
+    tabs.save(WS, "PA2");
+    storage.set(ACTIVE_CHAT_TAB_KEY, tabs.encode().unwrap());
+    assert_eq!(reload(&storage).restored_chat_code(WS, &["MA", "PA", "PA2"]), "PA2");
+}
+
+#[gpui::test]
+async fn dragging_a_chat_tab_reorders_the_strip_and_survives_reload(cx: &mut TestAppContext) {
+    use recur_ui::widgets::tab_strip::{reorder_by_insert, restore_strip_order};
+    let saved = calls();
+    let s2 = saved.clone();
+    let opts = MockOptions::default().resolver("ReorderWorkspaceChats", move |a, s, _| {
+        s2.lock().push(a.to_vec());
+        s.chat_order_by_loop.insert(a[0].as_str().unwrap().into(), serde_json::from_value(a[1].clone()).unwrap());
+        Reply::null()
+    });
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), false);
+    let strip = ["MA", "PA", "PA2"];
+    let next = reorder_by_insert(&strip, 1, 0);
+    assert_eq!(next, ["PA", "MA", "PA2"]);
+    let codes: Vec<String> = next.iter().map(|s| s.to_string()).collect();
+    let services = h.bridge.services();
+    h.cx.update(|_, cx| cx.background_spawn(async move { services.workspaces.reorder_workspace_chats(WS, &codes).await }))
+        .detach();
+    h.settle();
+    assert_eq!(saved.lock()[0][1], json!(["PA", "MA", "PA2"]));
+    // After reload the server order wins over a stale live order.
+    assert_eq!(restore_strip_order(&strip, &next, |s| *s), ["PA", "MA", "PA2"]);
+    let order = h.bridge.with_seed(|s| s.chat_order_by_loop.get(WS).cloned());
+    assert_eq!(order.unwrap(), ["PA", "MA", "PA2"]);
+}
+
+#[test]
+fn switching_workspaces_restores_agent_tab_strip_scroll() {
+    use recur_ui::widgets::tab_strip::next_strip_scroll_left;
+    // A restored offset stays put when the active chip is in view...
+    assert_eq!(next_strip_scroll_left(120., 300., 1000., 200., 100.), 120.);
+    // ...and selecting the last chip scrolls it into view.
+    let left = next_strip_scroll_left(120., 300., 1000., 900., 100.);
+    assert!(900. >= left && 1000. <= left + 300.);
+}
+
+// ---- Chat transcript UI state ----
+
+fn tool_items() -> Value {
+    json!([
+        {"role": "user", "kind": "text", "text": "run the check"},
+        {"role": "assistant", "kind": "tool", "tool": "Bash", "toolInput": "python3 -m py_compile tetris.py",
+         "description": "Compile check", "input": "{\"command\":\"python3 -m py_compile tetris.py && echo OK\"}", "result": "OK"},
+    ])
+}
+
+fn tall(n: usize, line: &str, para: &str) -> Value {
+    let mut v = Vec::new();
+    for i in 0..n {
+        v.push(json!({"role": "user", "kind": "text", "text": format!("question {i}\n{line}")}));
+        v.push(json!({"role": "assistant", "kind": "text", "text": format!("answer {i}\n{para}")}));
+    }
+    Value::Array(v)
+}
+
+fn tall_transcript() -> Value {
+    tall(20, &"line ".repeat(6), &"paragraph ".repeat(18))
+}
+
+fn windowed_transcript() -> Value {
+    tall((crate::window::CHAT_HYDRATE_ALL_BELOW + 4).div_ceil(2), &"line ".repeat(6), &"paragraph ".repeat(18))
+}
+
+fn tool_head(key: &str) -> String {
+    format!("tc-head:tc-{key}-1")
+}
+
+fn tool_open(h: &mut H) -> bool {
+    h.read(|c| c.open_rows.get("1").copied().unwrap_or(false))
+}
+
+#[gpui::test]
+async fn expanded_tool_calls_stay_expanded_after_switching_chat_tabs(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(tool_items()));
+    let head = tool_head(&format!("{WS}:MA"));
+    assert!(h.has(&head));
+    assert!(!tool_open(&mut h));
+    h.click(&head);
+    assert!(tool_open(&mut h));
+    h.host(|h, cx| h.switch("PA", cx));
+    assert!(!h.has(&head));
+    h.host(|h, cx| h.switch("MA", cx));
+    assert!(h.has(&head));
+    assert!(tool_open(&mut h));
+}
+
+#[gpui::test]
+async fn expanded_tool_calls_stay_expanded_after_switching_workspaces(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(tool_items()));
+    let head = tool_head(&format!("{WS}:MA"));
+    h.click(&head);
+    assert!(tool_open(&mut h));
+    h.host(|h, cx| h.switch_ws("LOOP-2229", cx));
+    assert!(!h.has(&head));
+    h.host(|h, cx| h.switch_ws(WS, cx));
+    assert!(h.has(&head));
+    assert!(tool_open(&mut h));
+}
+
+/// `leaveMidScroll`: an unpinned offset that survives a frame.
+fn leave_mid_scroll(h: &mut H, top: f32) -> f32 {
+    assert!(h.max_scroll() > top + 80.);
+    h.scroll_to(top);
+    h.settle();
+    assert!(!h.read(|c| c.near_bottom));
+    assert!(h.dist_from_bottom() > 80.);
+    h.scroll_top()
+}
+
+fn assert_restored_mid(h: &mut H, saved: f32) {
+    let top = h.scroll_top();
+    assert!((top - saved).abs() < 80., "restored {top} vs saved {saved}");
+    assert!(h.dist_from_bottom() > 80.);
+}
+
+#[gpui::test]
+async fn scroll_offset_is_restored_after_switching_chat_tabs(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(tall_transcript()));
+    assert!(h.me("question 0"));
+    let saved = leave_mid_scroll(&mut h, 360.);
+    h.host(|h, cx| h.switch("PA", cx));
+    assert!(!h.me("question 0"));
+    h.host(|h, cx| h.switch("MA", cx));
+    assert!(h.me("question 0"));
+    assert_restored_mid(&mut h, saved);
+}
+
+#[gpui::test]
+async fn scroll_offset_is_restored_after_switching_tabs_on_a_windowed_transcript(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(windowed_transcript()));
+    assert!(h.read(|c| c.window_chat()));
+    let saved = leave_mid_scroll(&mut h, 360.);
+    h.host(|h, cx| h.switch("PA", cx));
+    assert!(!h.read(|c| c.window_chat()));
+    h.host(|h, cx| h.switch("MA", cx));
+    assert!(h.read(|c| c.window_chat()));
+    assert_restored_mid(&mut h, saved);
+}
+
+#[gpui::test]
+async fn scroll_offset_is_restored_after_hiding_the_agent_panel_on_a_windowed_transcript(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(windowed_transcript()));
+    let saved = leave_mid_scroll(&mut h, 360.);
+    h.remount();
+    assert!(h.read(|c| c.window_chat()));
+    assert_restored_mid(&mut h, saved);
+}
+
+#[gpui::test]
+async fn a_small_scroll_up_from_the_tail_is_not_pulled_back_on_a_windowed_transcript(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(tall(
+        (crate::window::CHAT_HYDRATE_ALL_BELOW + 4).div_ceil(2),
+        &"line\n".repeat(8),
+        &"paragraph\n".repeat(16),
+    )));
+    assert!(h.read(|c| c.window_chat()));
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+    let top = h.scroll_top();
+    h.scroll_to((top - 40.).max(0.));
+    h.wait(50);
+    assert!(h.dist_from_bottom() > 20.);
+}
+
+#[gpui::test]
+async fn scroll_offset_is_restored_after_switching_workspaces(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(tall_transcript()));
+    let saved = leave_mid_scroll(&mut h, 360.);
+    h.host(|h, cx| h.switch_ws("LOOP-2229", cx));
+    assert!(!h.me("question 0"));
+    h.host(|h, cx| h.switch_ws(WS, cx));
+    assert!(h.me("question 0"));
+    assert_restored_mid(&mut h, saved);
+}
+
+#[gpui::test]
+async fn parked_workspace_chat_stays_live_and_only_its_owner_reloads_on_idle(cx: &mut TestAppContext) {
+    let reloads = calls();
+    let r2 = reloads.clone();
+    let text = Arc::new(Mutex::new("initial owned transcript".to_string()));
+    let t2 = text.clone();
+    let opts = MockOptions::default().resolver("WorkspaceChatItems", move |a, _, _| {
+        r2.lock().push(a.to_vec());
+        Reply::value(json!([{"role": "assistant", "kind": "text", "text": t2.lock().clone()}]))
+    });
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.set_messages(items(json!([{"role": "assistant", "kind": "text", "text": "initial owned transcript"}])));
+    assert!(h.assistant("initial owned transcript"));
+    // Parked: hidden but still mounted and fed.
+    h.host(|h, cx| {
+        h.base.presentation_active = false;
+        h.working(cx);
+        h.live_text("parked live reply", cx);
+    });
+    assert!(bodies(&mut h).iter().any(|b| b == "parked live reply"));
+    *text.lock() = "settled owned transcript".into();
+    reloads.lock().clear();
+    h.host(|h, cx| h.idle(cx));
+    h.host(|h, cx| {
+        h.base.presentation_active = true;
+        h.push(cx);
+    });
+    assert!(h.assistant("settled owned transcript"));
+    let got: Vec<Vec<Value>> = reloads.lock().clone();
+    assert_eq!(got, [vec![json!(WS), json!("MA")]]);
+}
+
+#[gpui::test]
+async fn a_bottom_pinned_in_flight_chat_stays_on_the_tail_after_growth_while_parked(cx: &mut TestAppContext) {
+    let mut h = boot(cx, hang_opts(Store::default(), calls()), ws_props(), ws_hooks(), true);
+    h.set_messages(items(tall_transcript()));
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+    h.fill("keep going");
+    h.click("chat-send");
+    assert!(h.has("chat-stop"));
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+    h.host(|h, cx| h.switch_ws("LOOP-2229", cx));
+    // The parked tab grows while another workspace shows.
+    h.host(|h, cx| {
+        let key = format!("{WS}:MA");
+        let grown = format!("grown-tail {}", "paragraph ".repeat(40));
+        let tab = h.tabs.get_mut(&key).unwrap();
+        tab.msgs = recur_engine::view::chat::apply_stream(
+            &tab.msgs,
+            recur_engine::view::chat::StreamKind::Text,
+            &grown,
+            &Default::default(),
+        );
+        h.push(cx);
+    });
+    h.host(|h, cx| h.switch_ws(WS, cx));
+    assert!(h.has("streaming:grown-tail paragraph paragraph paragraph paragraph paragraph"));
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+}
+
+#[gpui::test]
+async fn a_bottom_pinned_transcript_stays_pinned_after_switching_chat_tabs(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(tall_transcript()));
+    assert!(h.max_scroll() > 400.);
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+    h.host(|h, cx| h.switch("PA", cx));
+    h.host(|h, cx| h.switch("MA", cx));
+    assert!(h.me("question 0"));
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+}
+
+#[gpui::test]
+async fn a_mid_scrolled_shorter_tab_is_not_pinned_when_entered_from_a_longer_tab(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    let long = items(tall_transcript());
+    let short: Vec<_> = long[..24].to_vec();
+    h.set_messages(long);
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+    h.host(|h, cx| h.switch("PA", cx));
+    h.set_messages(short);
+    assert!(h.me("question 0"));
+    let saved = leave_mid_scroll(&mut h, 320.);
+    h.host(|h, cx| h.switch("MA", cx));
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+    h.host(|h, cx| h.switch("PA", cx));
+    assert!(h.me("question 0"));
+    assert_restored_mid(&mut h, saved);
+}
+
+#[gpui::test]
+async fn transcript_fades_an_edge_only_while_more_content_sits_past_it(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(tall_transcript()));
+    assert!(h.max_scroll() > 400.);
+    assert!(h.dist_from_bottom() < crate::transcript_ui::NEAR_BOTTOM_PX);
+    assert!(h.has("fade-top") && !h.has("fade-bot"));
+    h.scroll_to(0.);
+    assert!(!h.has("fade-top") && h.has("fade-bot"));
+    leave_mid_scroll(&mut h, 360.);
+    assert!(h.has("fade-top") && h.has("fade-bot"));
+}
+
+// ---- Turn-end findings digest ----
+
+fn finding_transcript(footer: bool) -> Value {
+    let input = json!({"file": "store.go", "line": 1276, "end_line": 1286, "severity": "high",
+        "message": "activity hook can miss a turn", "summary": "Hook misses turn"}).to_string();
+    let result = json!({"id": "f-hook", "file": "store.go", "line": 1276, "endLine": 1286, "severity": "high",
+        "message": "activity hook can miss a turn", "summary": "Hook misses turn", "status": "open"}).to_string();
+    let mut v = vec![
+        json!({"role": "user", "kind": "text", "text": "review this"}),
+        json!({"role": "assistant", "kind": "tool", "tool": "mcp__recur__report_finding", "input": input, "result": result}),
+        json!({"role": "assistant", "kind": "text", "text": "Filed 1 finding."}),
+    ];
+    if footer {
+        v.push(json!({"role": "assistant", "kind": "turn", "durationMs": 8400}));
+    }
+    Value::Array(v)
+}
+
+#[gpui::test]
+async fn renders_the_findings_summary_widget_after_a_codex_style_report_finding_turn(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(finding_transcript(true)));
+    assert!(h.has("turn-end"));
+    assert!(h.has("turn-end-link:1 finding"));
+    assert!(h.has("findings-filed"));
+    let digest = h.read(|c| c.turn_digest_visible(&c.props.messages, c.props.messages.len() - 1));
+    assert_eq!(digest[0].message, "activity hook can miss a turn");
+}
+
+#[gpui::test]
+async fn does_not_render_the_findings_widget_when_the_turn_footer_is_missing(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(finding_transcript(false)));
+    assert!(h.assistant("Filed 1 finding."));
+    assert!(!h.has("findings-filed"));
+}
+
+// ---- Chat fork ----
+
+fn fork_transcript() -> Value {
+    json!([
+        {"role": "user", "kind": "text", "text": "ship it"},
+        {"role": "assistant", "kind": "text", "text": "done"},
+        {"role": "assistant", "kind": "turn", "durationMs": 1200, "messageId": "msg-turn-1"},
+    ])
+}
+
+#[gpui::test]
+async fn fork_control_on_a_finished_turn_opens_a_new_chat_tab(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(fork_transcript()));
+    assert!(h.has("turn-end"));
+    h.click("turn-end-fork");
+    h.click("fork-item:Fork chat");
+    assert!(h.events().contains(&ChatEvent::Fork("msg-turn-1".into())));
+    assert!(!h.has("fork-item:Fork chat"));
+}
+
+#[gpui::test]
+async fn fork_to_new_workspace_opens_the_created_workspace(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(fork_transcript()));
+    h.click("turn-end-fork");
+    h.click("fork-item:Fork to new workspace");
+    assert!(h.events().contains(&ChatEvent::ForkToWorkspace("msg-turn-1".into())));
+}
+
+// ---- External markdown links ----
+
+#[gpui::test]
+async fn http_links_in_agent_output_open_in_the_os_browser(cx: &mut TestAppContext) {
+    let opts = bridge_opts(Store::default(), calls(), Pending::default(), |_, _| {
+        Some("See [the docs](https://example.com/guide) for details.".into())
+    });
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.fill("link please");
+    h.click("chat-send");
+    assert!(h.assistant("See [the docs](https://example.com/guide) for details."));
+    let chat = h.chat();
+    let at = h.cx.update(|window, cx| {
+        let chat = chat.read(cx);
+        chat.markdown.values().find_map(|v| {
+            let v = v.read(cx);
+            v.text_blocks().into_iter().find_map(|(id, text)| {
+                let start = text.find("the docs")?;
+                v.range_bounds(id, start..start + "the docs".len(), window)
+            })
+        })
+    });
+    let at = at.expect("link bounds").center();
+    h.cx.simulate_click(at, gpui::Modifiers::none());
+    h.settle();
+    assert_eq!(h.cx.opened_url().as_deref(), Some("https://example.com/guide"));
 }

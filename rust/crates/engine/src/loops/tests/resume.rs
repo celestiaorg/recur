@@ -624,3 +624,45 @@ async fn set_workspace_state_preserves_phase_id() {
     );
     t.close().await;
 }
+
+/// Go `restart_test.go`: Restart re-dispatches a deliberately stopped loop
+/// (Resume/Retry refuse it); other states get a named refusal.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn restart_stopped_loop() {
+    let repo = init_repo();
+    let runner = ConvergeRunner::new(&[0]);
+    let t = TestEngine::new(Some(runner.provider()));
+    let proj = add_project(&t.store, &repo.path);
+    let id = start(&t, &proj, "Feature to stop and restart").await;
+    t.engine.stop(&id).await;
+    wait_for_state(
+        &t.store,
+        &id,
+        "loop stopped",
+        &[WorkspaceState::Stopped, WorkspaceState::PrOpen],
+    )
+    .await;
+    wait_loop_exited(&t, &id).await;
+    if t.store.workspace(&id).unwrap().state == WorkspaceState::PrOpen {
+        // The walk finished before Stop landed.
+        let s = t.engine.restart(&id).await;
+        assert!(
+            s.contains("Send Back") || s.contains("reenter_phase"),
+            "{s}"
+        );
+        t.close().await;
+        return;
+    }
+    let status = t.engine.restart(&id).await;
+    assert!(status.contains("restarting"), "{status}");
+    wait_for(Duration::from_secs(5), "loop running again", || {
+        t.store.workspace(&id).is_some_and(|l| {
+            l.state != WorkspaceState::Stopped && l.state != WorkspaceState::Paused
+        })
+    })
+    .await;
+    let s = t.engine.restart("nope").await;
+    assert!(s.contains("Refused"), "{s}");
+    t.engine.stop(&id).await;
+    t.close().await;
+}

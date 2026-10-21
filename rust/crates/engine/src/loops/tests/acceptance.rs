@@ -2,7 +2,8 @@
 //! typed task plans, converges code↔review [2,0], verifies in a browser with
 //! evidence, opens a Local PR, and the record survives a store reopen. The
 //! inline comment, send-back and merge steps go through E5's PR API; the
-//! feed reconstruction check is E4's (`deferred::reconstruct_feed`).
+//! feed reconstruction check is E4's (`deferred::reconstruct_feed`). Also
+//! the env-gated real-agent run (Go `real_e2e_test.go`), same split.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,7 +15,7 @@ use recur_store::Store;
 use crate::bus::EngineEvent;
 use crate::loops::test_support::*;
 use crate::roles::role_spec;
-use crate::testing::{TestEngine, init_repo, wait_for};
+use crate::testing::{TestEngine, git, git_out, init_repo, wait_for};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn headline_e2e() {
@@ -166,5 +167,91 @@ async fn headline_e2e() {
     assert!(!pr2.files.unwrap_or_default().is_empty());
     assert_eq!(st2.findings(&id).len(), 2);
     st2.close().unwrap();
+    t.close().await;
+}
+
+/// Go `TestRealHeadlineE2E`, the loop half: real `claude -p` agents, the
+/// real MCP and Playwright driving a real dev server, real git. Gated on
+/// `RECUR_E2E=1` because it spends credit.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "real agents: RECUR_E2E=1 cargo test -- --ignored real_headline_e2e"]
+async fn real_headline_e2e() {
+    if std::env::var("RECUR_E2E").as_deref() != Ok("1") {
+        eprintln!("set RECUR_E2E=1 to run the real-agent headline E2E (spends credit)");
+        return;
+    }
+    for bin in ["claude", "python3", "npx", "git"] {
+        let found = std::process::Command::new("which")
+            .arg(bin)
+            .output()
+            .is_ok_and(|o| o.status.success());
+        if !found {
+            eprintln!("{bin} not on PATH");
+            return;
+        }
+    }
+    let repo = init_repo();
+    std::fs::write(
+        std::path::Path::new(&repo.path).join("index.html"),
+        "<!doctype html>\n<html>\n<head><title>demo</title></head>\n<body>\n</body>\n</html>\n",
+    )
+    .unwrap();
+    git(&repo.path, &["add", "."]);
+    git(&repo.path, &["commit", "-m", "add index.html"]);
+
+    let t = TestEngine::new(Some(Arc::new(recur_provider_claude::ClaudeProvider::new(
+        recur_provider_claude::ClaudeConfig::default(),
+    ))));
+    let proj = verify_dev_project(&t.store, &repo.path).expect("python3");
+    t.install_fixture_pack();
+    let mut p = t.store.policy();
+    p.autonomy = AutonomyLevel::Cautious;
+    t.store.set_policy(p);
+
+    let id = t
+        .engine
+        .start_workspace_with(
+            &proj,
+            "In index.html, add an <h1> element with the exact text 'Hello Recur' inside <body>. Change nothing else.",
+            "",
+            AutonomyLevel::default(),
+            "test.loops.verify",
+            "recur.policies.cautious",
+        )
+        .await
+        .unwrap();
+    wait_for(Duration::from_secs(12 * 60), "real loop to settle", || {
+        t.store.workspace(&id).is_some_and(|l| {
+            matches!(
+                l.state,
+                WorkspaceState::PrOpen
+                    | WorkspaceState::Failed
+                    | WorkspaceState::Stopped
+                    | WorkspaceState::Escalated
+            )
+        })
+    })
+    .await;
+    let l = t.store.workspace(&id).unwrap();
+    assert_eq!(
+        l.state,
+        WorkspaceState::PrOpen,
+        "phase={} last={}",
+        l.phase,
+        l.last
+    );
+    assert_eq!(l.verify_state, "passed", "{} steps", l.verify.len());
+    assert!(!l.verify.is_empty());
+    let pr = t.store.pr_by_workspace(&id).expect("a PR");
+    assert!(pr.diff.add > 0);
+    assert_eq!(t.store.open_findings_count(&id), 0);
+    let out = git_out(
+        &l.worktree_path,
+        &["grep", "Hello Recur", "--", "index.html"],
+    );
+    assert!(
+        out.as_deref().is_ok_and(|o| o.contains("Hello Recur")),
+        "{out:?}"
+    );
     t.close().await;
 }

@@ -18,6 +18,7 @@ use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon, rgba};
 
 use crate::image_menu::{ImageContextMenu, ImageMenuEvent, copy_png};
+use crate::render::exact::{hgap, vgap};
 use crate::images::{self, Decoded};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -231,9 +232,17 @@ impl Render for AttachmentLightbox {
             .id("lb-img")
             .relative()
             .flex_none()
-            .w(px(w))
-            .h(px(h))
-            .m_auto()
+            // The fitted side is whole; the other reaches layout unrounded through the ratio
+            // (GPUI rounds authored lengths), so its edges snap where WebKit's do.
+            .map(|d| {
+                if h <= 0. {
+                    d.w(px(w)).h(px(h))
+                } else if (w * window.scale_factor()).fract() == 0. {
+                    d.w(px(w)).aspect_ratio(w / h)
+                } else {
+                    d.h(px(h)).aspect_ratio(w / h)
+                }
+            })
             .child(box_shadow(
                 &[css_box_shadow(0., 24., 80., -20., rgba(0, 0, 0, 0.85))],
                 8.,
@@ -280,7 +289,22 @@ impl Render for AttachmentLightbox {
                 MouseButton::Left,
                 cx.listener(|lb, _, window, cx| lb.close(window, cx)),
             )
-            .child(picture);
+            // `margin: auto`, at WebKit's fractional offsets (it snaps the box's edges, not its
+            // margins).
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_none()
+                    .child(vgap(((vh - 64.) - h).max(0.) / 2., window))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_none()
+                            .child(hgap(((vw - 64.) - w).max(0.) / 2., window))
+                            .child(picture),
+                    ),
+            );
         let copy_glyph = if self.copied {
             icon(IconName::Check)
                 .stroke_width(2.4)

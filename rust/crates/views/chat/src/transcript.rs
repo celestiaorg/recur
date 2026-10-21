@@ -930,7 +930,7 @@ impl AgentChat {
             div().flex().child(
                 div()
                     .id(SharedString::from(format!("steps-{}-{start}", self.props.reset_key)))
-                    .debug_selector(|| "steps-head".into())
+                    .debug_selector(|| format!("steps-head:{summary}"))
                     .flex()
                     .items_center()
                     .gap(px(6.))

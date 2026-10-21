@@ -200,8 +200,10 @@ impl Render for SessionCard {
             .text_color(hsla(t.muted))
             .when(live, |d| d.child(div().size(px(14.)).flex().items_center().justify_center().child(running_dot(&t))))
             .child(text(if live { "working" } else { "finished" }).line_height(LineHeight::Normal).nowrap());
+        let code = self.props.code.clone();
         let row = div()
             .id(id.clone())
+            .debug_selector(|| format!("sess-head:{code}:{}", if expanded { "open" } else { "closed" }))
             .group(group.clone())
             .flex()
             .items_center()
@@ -225,6 +227,7 @@ impl Render for SessionCard {
             let chat = self.ensure_chat(window, cx);
             out = out.child(
                 div()
+                    .debug_selector(|| "fanout-transcript".into())
                     .border_t_1()
                     .border_dashed()
                     .border_color(hsla(t.line))

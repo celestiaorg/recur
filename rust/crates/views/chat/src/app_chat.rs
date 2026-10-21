@@ -373,6 +373,11 @@ impl AppChat {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn on_session_for_test(&mut self, ws: &str, code: &str, signal: SessionSignal, cx: &mut Context<Self>) {
+        self.on_session(ws.to_string(), code.to_string(), signal, cx);
+    }
+
     fn on_session(&mut self, ws: String, code: String, signal: SessionSignal, cx: &mut Context<Self>) {
         if let SessionSignal::TurnEnd(turn) = &signal {
             if !ws.is_empty() || !self.tabs.iter().any(|t| t.code == code) {
@@ -440,7 +445,7 @@ impl AppChat {
         cx.notify();
     }
 
-    fn select_tab(&mut self, code: &str, cx: &mut Context<Self>) {
+    pub(crate) fn select_tab(&mut self, code: &str, cx: &mut Context<Self>) {
         if code == self.active {
             return;
         }
@@ -450,7 +455,7 @@ impl AppChat {
         self.set_active(code.to_string(), cx);
     }
 
-    fn new_tab(&mut self, cx: &mut Context<Self>) {
+    pub(crate) fn new_tab(&mut self, cx: &mut Context<Self>) {
         let services = self.services.clone();
         cx.spawn(async move |this, cx| {
             let Ok(tab) = services.briefing.new_app_chat().await else { return };
@@ -466,7 +471,7 @@ impl AppChat {
         .detach();
     }
 
-    fn close_tab(&mut self, code: &str, cx: &mut Context<Self>) {
+    pub(crate) fn close_tab(&mut self, code: &str, cx: &mut Context<Self>) {
         let services = self.services.clone();
         let code = code.to_string();
         cx.spawn(async move |this, cx| {
@@ -685,6 +690,7 @@ impl Render for AskEmpty {
             let app = self.app.clone();
             div()
                 .id(("ask-chip", i))
+                .debug_selector(|| format!("ask-chip:{c}"))
                 .border_1()
                 .border_color(hsla(t.line))
                 .bg(hsla(t.pane_2))

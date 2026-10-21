@@ -262,7 +262,9 @@ impl Render for StopPalette {
         } else {
             let rows = flat.iter().enumerate().map(|(i, r)| {
                 let on = i == self.sel;
-                palette_row(SharedString::from(format!("stop-{}", r.id)), on, true, cx)
+                let sel = format!("stop-{}", r.id);
+                palette_row(SharedString::from(sel.clone()), on, true, cx)
+                    .debug_selector(|| sel)
                     .gap(px(10.))
                     .child(text(format!("Stop {}", r.name)).size(12.5).line_height(LineHeight::Scale(1.3)).color(t.text).nowrap())
                     .when(!r.cmd.is_empty(), |d| {

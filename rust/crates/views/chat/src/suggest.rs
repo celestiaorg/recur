@@ -704,6 +704,7 @@ impl Render for SuggestOverlay {
             let on = i == open.sel;
             let mut row = div()
                 .id(("suggest-row", i))
+                .debug_selector(|| format!("{}-row:{i}", if kind == SuggestKind::Emoji { "emoji-suggest" } else { "user-mention" }))
                 .flex()
                 .items_center()
                 .gap(px(8.))

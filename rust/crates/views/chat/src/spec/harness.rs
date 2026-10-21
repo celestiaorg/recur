@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use gpui::{Entity, Modifiers, MouseButton, TestAppContext, VisualTestContext, point, px};
+use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, point, px};
 use gpui_kit::{AppContext as _, Bounds, Context, IntoElement, ParentElement, Pixels, Render, Styled, Subscription, Window, div};
 use recur_engine::view::chat::{
     AgentMsg, StreamKind, StreamOpts, apply_stream, drop_live_after_footer, end_turn, map_chat_items,
@@ -355,7 +355,6 @@ impl Render for Host {
 }
 
 pub struct H<'a> {
-    pub state: Entity<AppState>,
     pub bridge: Arc<MockBridge>,
     pub host: Entity<Host>,
     pub events: Rc<RefCell<Vec<ChatEvent>>>,
@@ -456,7 +455,6 @@ pub fn boot_with<'a>(
         }
     });
     let mut h = H {
-        state,
         bridge,
         host,
         events,
@@ -502,14 +500,6 @@ impl H<'_> {
         let p = self.bounds(sel).unwrap_or_else(|| panic!("no element {sel}")).center();
         self.cx.simulate_mouse_move(p, None, Modifiers::none());
         self.cx.simulate_click(p, Modifiers::none());
-        self.settle();
-    }
-
-    pub fn click_mods(&mut self, sel: &str, mods: Modifiers) {
-        let p = self.bounds(sel).unwrap_or_else(|| panic!("no element {sel}")).center();
-        self.cx.simulate_mouse_move(p, None, mods);
-        self.cx.simulate_mouse_down(p, MouseButton::Left, mods);
-        self.cx.simulate_mouse_up(p, MouseButton::Left, mods);
         self.settle();
     }
 

@@ -2269,7 +2269,6 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         let wrap = m.note_label == "Commit" || m.note_label == "Handoff";
         let id = SharedString::from(format!("nt-{}-{key}", self.props.reset_key));
-        let _group = SharedString::from(format!("{id}-g"));
         let label_s = if m.note_label.is_empty() { "Notice".to_string() } else { m.note_label.clone() };
         let meta: AnyElement = if m.note_html {
             crate::html_inline::inline_html(
@@ -2295,7 +2294,8 @@ impl AgentChat {
             div().flex_1().min_w_0().child(meta).into_any_element(),
         ];
         let head = self.tc_head(id, false, kids, None, cx);
-        div().rounded(px(7.)).when(wrap, |d| d.my(px(2.))).child(head).into_any_element()
+        let sel = format!("notice:{}:{}", if m.note_html { "html" } else { "plain" }, crate::chat::debug_key(&m.body));
+        div().debug_selector(|| sel).rounded(px(7.)).when(wrap, |d| d.my(px(2.))).child(head).into_any_element()
     }
 
     /// `narrationRow`: an inner aside folded into the step group.

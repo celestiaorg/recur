@@ -315,6 +315,7 @@ impl AgentChat {
         });
         let mut el = div()
             .id(SharedString::from(format!("composer-box-{}", self.props.reset_key)))
+            .debug_selector(|| "chat-composer".into())
             .key_context("ChatComposer")
             .track_focus(&self.focus)
             .relative()

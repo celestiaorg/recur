@@ -119,6 +119,7 @@ impl Render for PermissionPrompts {
         let w = 360f32.min(f32::from(window.viewport_size().width) - 28.);
         div()
             .id("perm-wrap")
+            .debug_selector(|| "perm-wrap".into())
             .absolute()
             .right(px(14.))
             .bottom(px(14.))

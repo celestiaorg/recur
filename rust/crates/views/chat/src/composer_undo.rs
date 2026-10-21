@@ -20,6 +20,12 @@ pub trait HasId {
     fn id(&self) -> &str;
 }
 
+impl HasId for recur_engine::view::chat::ChatAttachmentDraft {
+    fn id(&self) -> &str {
+        &self.id
+    }
+}
+
 pub struct ComposerUndo<A> {
     stack: Vec<UndoSnap<A>>,
     i: usize,

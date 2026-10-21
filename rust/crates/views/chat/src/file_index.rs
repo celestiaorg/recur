@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use gpui_kit::{App, AppContext as _, Task};
+use gpui_kit::{App, Task};
 use recur_domain::FileSearchHit as RawHit;
 use recur_services::Services;
 use recur_ui::widgets::toasts::ToastKind;

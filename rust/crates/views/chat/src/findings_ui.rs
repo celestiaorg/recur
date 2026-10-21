@@ -12,6 +12,19 @@ pub fn finding_matches_ref(f: &Finding, r: &str) -> bool {
     !r.is_empty() && (f.id == r || (!f.short_id.is_empty() && f.short_id == r))
 }
 
+/// A finding's notes as the digest shows them.
+pub fn finding_notes(f: &Finding) -> Vec<TurnDigestNote> {
+    f.notes
+        .iter()
+        .map(|n| TurnDigestNote {
+            id: n.id.clone(),
+            author: n.author.clone(),
+            body: n.body.clone(),
+            created_at: n.created_at.clone(),
+        })
+        .collect()
+}
+
 /// The store row as the engine digest reads it.
 pub fn digest_ref(f: &Finding) -> DigestFindingRef {
     DigestFindingRef {
@@ -24,16 +37,7 @@ pub fn digest_ref(f: &Finding) -> DigestFindingRef {
         message: f.message.clone(),
         summary: f.summary.clone(),
         status: f.status.clone(),
-        notes: f
-            .notes
-            .iter()
-            .map(|n| TurnDigestNote {
-                id: n.id.clone(),
-                author: n.author.clone(),
-                body: n.body.clone(),
-                created_at: n.created_at.clone(),
-            })
-            .collect(),
+        notes: finding_notes(f),
     }
 }
 

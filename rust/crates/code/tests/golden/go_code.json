@@ -1,0 +1,2511 @@
+{
+  "files": {
+    ".hidden/h.go": "func Hello() {}\n",
+    "c/util.c": "#include \u003cstdio.h\u003e\nstatic int helper(int x) { return x; }\n  int nested(void) {}\nstruct node { int v; };\nunsigned long hash(const char *s) { return 0; }\n",
+    "cpp/a.hpp": "namespace geo {\nclass Shape {};\nenum class Color { Red };\nvirtual void draw() = 0;\n}\n",
+    "cs/Prog.cs": "public sealed partial class Prog {\n  public override string ToString() { return \"\"; }\n}\ninternal readonly struct Vec {}\n",
+    "dart/main.dart": "abstract class Animal {}\nmixin Walker {}\nFuture\u003cvoid\u003e main() async {}\nString greet(String n) =\u003e n;\n",
+    "docs/guide.md": "# Guide\nSee Hello and Serve.\n",
+    "ex/app.ex": "defmodule App.Server do\n  def start_link(opts) do\n  end\n  defp init?(x), do: x\nend\n",
+    "hs/Main.hs": "module Main where\ndata Tree a = Leaf\nnewtype Age = Age Int\nmain :: IO ()\nmain = pure ()\n",
+    "img.png": "Hello",
+    "java/Svc.java": "public final class Svc {\n  public static void main(String[] args) {}\n  private List\u003cString\u003e names() { return null; }\n}\ninterface Repo {}\nenum Kind {}\npublic record Point(int x) {}\n",
+    "kt/Main.kt": "data class User(val id: Int)\nsuspend fun String.shout() {}\nobject Registry\n",
+    "lua/init.lua": "local function setup(opts) end\nfunction M.run() end\n",
+    "m/obj.m": "@interface Foo : NSObject\nclass Bar {}\n",
+    "main.go": "package main\n\nimport \"fmt\"\n\n// Hello says hi.\nfunc Hello() {}\n\nfunc (s *Server) Serve(addr string) error { return nil }\n\ntype Server struct{}\ntype Handler interface{}\nconst Version = \"1\"\nvar debug bool\nvar (\n\tx = 1\n)\n\nfunc main() {\n\tfmt.Println(Hello)\n\tif x := Version; x != \"\" {\n\t}\n}\n",
+    "node_modules/x.js": "function Hello() {}\n",
+    "notes.txt": "Hello there\nhello again\nHELLO\n\tindented Hello\n",
+    "php/index.php": "\u003c?php\nabstract class Model {}\npublic static function \u0026make() {}\ntrait Loggable {}\n",
+    "py/app.py": "import os\n\nclass Repo(Base):\n    def save(self):\n        pass\n\nasync def fetch(url):\n    return url\n# def nope():\n",
+    "rb/app.rb": "module Api\n  class Users\n    def self.find!(id)\n    end\n    def save?\n    end\n  end\nend\n",
+    "rs/lib.rs": "pub(crate) async fn run() {}\npub struct Config;\nenum Mode { A }\npub trait Store {}\npub type Id = u64;\nmod inner;\npub const MAX: usize = 3;\n    fn indented() {}\nunsafe fn danger() {}\n",
+    "scala/A.scala": "case class Point(x: Int)\nobject Main\nprivate def run(): Unit = {}\nlazy val cfg = 1\n",
+    "swift/App.swift": "public struct App {}\nextension App {}\nprivate static func boot() {}\nactor Cache {}\n",
+    "web/Widget.svelte": "\u003cscript\u003e\n  export let title\n  const count = 1\n  function bump() {}\n\u003c/script\u003e\n",
+    "web/app.ts": "export async function loadUser\u003cT\u003e(id: string) {}\nexport class Store {\n  async fetchAll(): Promise\u003cvoid\u003e {\n  }\n  if (x) {\n  }\n}\nexport interface Props {}\ntype Local = string\nexport const handler = async () =\u003e {}\nconst LIMIT: number = 5\nlet counter = 0\n// function commented() {}\n",
+    "web/legacy.js": "function old(a, b) {\n}\nmodule.exports = { old }\n  render() {\n  for (;;) {}\n",
+    "zig/main.zig": "pub fn main() void {}\nconst std = @import(\"std\");\nexport fn add() void {}\n"
+  },
+  "outline": {
+    ".hidden/h.go": [
+      {
+        "name": "Hello",
+        "kind": "func",
+        "line": 1
+      }
+    ],
+    "c/util.c": [
+      {
+        "name": "helper",
+        "kind": "func",
+        "line": 2
+      },
+      {
+        "name": "node",
+        "kind": "type",
+        "line": 4
+      },
+      {
+        "name": "hash",
+        "kind": "func",
+        "line": 5
+      }
+    ],
+    "cpp/a.hpp": [
+      {
+        "name": "geo",
+        "kind": "type",
+        "line": 1
+      },
+      {
+        "name": "Shape",
+        "kind": "type",
+        "line": 2
+      },
+      {
+        "name": "Color",
+        "kind": "type",
+        "line": 3
+      },
+      {
+        "name": "draw",
+        "kind": "func",
+        "line": 4
+      }
+    ],
+    "cs/Prog.cs": [
+      {
+        "name": "Prog",
+        "kind": "class",
+        "line": 1
+      },
+      {
+        "name": "ToString",
+        "kind": "method",
+        "line": 2
+      },
+      {
+        "name": "Vec",
+        "kind": "struct",
+        "line": 4
+      }
+    ],
+    "dart/main.dart": [
+      {
+        "name": "Animal",
+        "kind": "class",
+        "line": 1
+      },
+      {
+        "name": "Walker",
+        "kind": "mixin",
+        "line": 2
+      },
+      {
+        "name": "main",
+        "kind": "func",
+        "line": 3
+      },
+      {
+        "name": "greet",
+        "kind": "func",
+        "line": 4
+      }
+    ],
+    "docs/guide.md": null,
+    "ex/app.ex": [
+      {
+        "name": "App.Server",
+        "kind": "module",
+        "line": 1
+      },
+      {
+        "name": "start_link",
+        "kind": "func",
+        "line": 2
+      },
+      {
+        "name": "init?",
+        "kind": "func",
+        "line": 4
+      }
+    ],
+    "hs/Main.hs": [
+      {
+        "name": "Tree",
+        "kind": "type",
+        "line": 2
+      },
+      {
+        "name": "Age",
+        "kind": "type",
+        "line": 3
+      },
+      {
+        "name": "main",
+        "kind": "func",
+        "line": 4
+      }
+    ],
+    "img.png": null,
+    "java/Svc.java": [
+      {
+        "name": "Svc",
+        "kind": "class",
+        "line": 1
+      },
+      {
+        "name": "main",
+        "kind": "method",
+        "line": 2
+      },
+      {
+        "name": "names",
+        "kind": "method",
+        "line": 3
+      },
+      {
+        "name": "Repo",
+        "kind": "interface",
+        "line": 5
+      },
+      {
+        "name": "Kind",
+        "kind": "enum",
+        "line": 6
+      },
+      {
+        "name": "Point",
+        "kind": "record",
+        "line": 7
+      }
+    ],
+    "kt/Main.kt": [
+      {
+        "name": "User",
+        "kind": "type",
+        "line": 1
+      },
+      {
+        "name": "shout",
+        "kind": "func",
+        "line": 2
+      },
+      {
+        "name": "Registry",
+        "kind": "type",
+        "line": 3
+      }
+    ],
+    "lua/init.lua": [
+      {
+        "name": "setup",
+        "kind": "func",
+        "line": 1
+      },
+      {
+        "name": "M.run",
+        "kind": "func",
+        "line": 2
+      }
+    ],
+    "m/obj.m": [
+      {
+        "name": "Bar",
+        "kind": "type",
+        "line": 2
+      }
+    ],
+    "main.go": [
+      {
+        "name": "Hello",
+        "kind": "func",
+        "line": 6
+      },
+      {
+        "name": "Serve",
+        "kind": "func",
+        "line": 8
+      },
+      {
+        "name": "Server",
+        "kind": "type",
+        "line": 10
+      },
+      {
+        "name": "Handler",
+        "kind": "type",
+        "line": 11
+      },
+      {
+        "name": "Version",
+        "kind": "const",
+        "line": 12
+      },
+      {
+        "name": "debug",
+        "kind": "var",
+        "line": 13
+      },
+      {
+        "name": "main",
+        "kind": "func",
+        "line": 18
+      }
+    ],
+    "node_modules/x.js": [
+      {
+        "name": "Hello",
+        "kind": "func",
+        "line": 1
+      }
+    ],
+    "notes.txt": null,
+    "php/index.php": [
+      {
+        "name": "Model",
+        "kind": "type",
+        "line": 2
+      },
+      {
+        "name": "make",
+        "kind": "func",
+        "line": 3
+      },
+      {
+        "name": "Loggable",
+        "kind": "type",
+        "line": 4
+      }
+    ],
+    "py/app.py": [
+      {
+        "name": "Repo",
+        "kind": "class",
+        "line": 3
+      },
+      {
+        "name": "save",
+        "kind": "func",
+        "line": 4
+      },
+      {
+        "name": "fetch",
+        "kind": "func",
+        "line": 7
+      }
+    ],
+    "rb/app.rb": [
+      {
+        "name": "Api",
+        "kind": "module",
+        "line": 1
+      },
+      {
+        "name": "Users",
+        "kind": "class",
+        "line": 2
+      },
+      {
+        "name": "find!",
+        "kind": "func",
+        "line": 3
+      },
+      {
+        "name": "save?",
+        "kind": "func",
+        "line": 5
+      }
+    ],
+    "rs/lib.rs": [
+      {
+        "name": "run",
+        "kind": "func",
+        "line": 1
+      },
+      {
+        "name": "Config",
+        "kind": "struct",
+        "line": 2
+      },
+      {
+        "name": "Mode",
+        "kind": "enum",
+        "line": 3
+      },
+      {
+        "name": "Store",
+        "kind": "trait",
+        "line": 4
+      },
+      {
+        "name": "Id",
+        "kind": "type",
+        "line": 5
+      },
+      {
+        "name": "inner",
+        "kind": "mod",
+        "line": 6
+      },
+      {
+        "name": "MAX",
+        "kind": "const",
+        "line": 7
+      },
+      {
+        "name": "indented",
+        "kind": "func",
+        "line": 8
+      },
+      {
+        "name": "danger",
+        "kind": "func",
+        "line": 9
+      }
+    ],
+    "scala/A.scala": [
+      {
+        "name": "Point",
+        "kind": "type",
+        "line": 1
+      },
+      {
+        "name": "Main",
+        "kind": "type",
+        "line": 2
+      },
+      {
+        "name": "run",
+        "kind": "def",
+        "line": 3
+      },
+      {
+        "name": "cfg",
+        "kind": "def",
+        "line": 4
+      }
+    ],
+    "swift/App.swift": [
+      {
+        "name": "App",
+        "kind": "type",
+        "line": 1
+      },
+      {
+        "name": "App",
+        "kind": "type",
+        "line": 2
+      },
+      {
+        "name": "boot",
+        "kind": "func",
+        "line": 3
+      },
+      {
+        "name": "Cache",
+        "kind": "type",
+        "line": 4
+      }
+    ],
+    "web/Widget.svelte": [
+      {
+        "name": "title",
+        "kind": "export",
+        "line": 2
+      },
+      {
+        "name": "count",
+        "kind": "export",
+        "line": 3
+      },
+      {
+        "name": "bump",
+        "kind": "func",
+        "line": 4
+      }
+    ],
+    "web/app.ts": [
+      {
+        "name": "loadUser",
+        "kind": "func",
+        "line": 1
+      },
+      {
+        "name": "Store",
+        "kind": "class",
+        "line": 2
+      },
+      {
+        "name": "fetchAll",
+        "kind": "method",
+        "line": 3
+      },
+      {
+        "name": "Props",
+        "kind": "type",
+        "line": 8
+      },
+      {
+        "name": "Local",
+        "kind": "type",
+        "line": 9
+      },
+      {
+        "name": "handler",
+        "kind": "func",
+        "line": 10
+      },
+      {
+        "name": "LIMIT",
+        "kind": "const",
+        "line": 11
+      },
+      {
+        "name": "counter",
+        "kind": "const",
+        "line": 12
+      }
+    ],
+    "web/legacy.js": [
+      {
+        "name": "old",
+        "kind": "func",
+        "line": 1
+      },
+      {
+        "name": "render",
+        "kind": "method",
+        "line": 4
+      }
+    ],
+    "zig/main.zig": [
+      {
+        "name": "main",
+        "kind": "func",
+        "line": 1
+      },
+      {
+        "name": "std",
+        "kind": "const",
+        "line": 2
+      },
+      {
+        "name": "add",
+        "kind": "func",
+        "line": 3
+      }
+    ]
+  },
+  "search": [
+    {
+      "query": "hello",
+      "opts": {
+        "regex": false,
+        "caseSensitive": false,
+        "glob": "",
+        "limit": 0,
+        "offset": 0
+      },
+      "result": {
+        "hits": [
+          {
+            "path": "docs/guide.md",
+            "line": 2,
+            "col": 5,
+            "text": "hello",
+            "preview": "See Hello and Serve."
+          },
+          {
+            "path": "main.go",
+            "line": 5,
+            "col": 4,
+            "text": "hello",
+            "preview": "// Hello says hi."
+          },
+          {
+            "path": "main.go",
+            "line": 6,
+            "col": 6,
+            "text": "hello",
+            "preview": "func Hello() {}"
+          },
+          {
+            "path": "main.go",
+            "line": 19,
+            "col": 14,
+            "text": "hello",
+            "preview": "fmt.Println(Hello)"
+          },
+          {
+            "path": "notes.txt",
+            "line": 1,
+            "col": 1,
+            "text": "hello",
+            "preview": "Hello there"
+          },
+          {
+            "path": "notes.txt",
+            "line": 2,
+            "col": 1,
+            "text": "hello",
+            "preview": "hello again"
+          },
+          {
+            "path": "notes.txt",
+            "line": 3,
+            "col": 1,
+            "text": "hello",
+            "preview": "HELLO"
+          },
+          {
+            "path": "notes.txt",
+            "line": 4,
+            "col": 11,
+            "text": "hello",
+            "preview": "indented Hello"
+          }
+        ],
+        "skippedLarge": 0,
+        "truncated": false
+      },
+      "error": ""
+    },
+    {
+      "query": "Hello",
+      "opts": {
+        "regex": false,
+        "caseSensitive": true,
+        "glob": "",
+        "limit": 0,
+        "offset": 0
+      },
+      "result": {
+        "hits": [
+          {
+            "path": "docs/guide.md",
+            "line": 2,
+            "col": 5,
+            "text": "Hello",
+            "preview": "See Hello and Serve."
+          },
+          {
+            "path": "main.go",
+            "line": 5,
+            "col": 4,
+            "text": "Hello",
+            "preview": "// Hello says hi."
+          },
+          {
+            "path": "main.go",
+            "line": 6,
+            "col": 6,
+            "text": "Hello",
+            "preview": "func Hello() {}"
+          },
+          {
+            "path": "main.go",
+            "line": 19,
+            "col": 14,
+            "text": "Hello",
+            "preview": "fmt.Println(Hello)"
+          },
+          {
+            "path": "notes.txt",
+            "line": 1,
+            "col": 1,
+            "text": "Hello",
+            "preview": "Hello there"
+          },
+          {
+            "path": "notes.txt",
+            "line": 4,
+            "col": 11,
+            "text": "Hello",
+            "preview": "indented Hello"
+          }
+        ],
+        "skippedLarge": 0,
+        "truncated": false
+      },
+      "error": ""
+    },
+    {
+      "query": "func\\s+\\w+",
+      "opts": {
+        "regex": true,
+        "caseSensitive": false,
+        "glob": "",
+        "limit": 0,
+        "offset": 0
+      },
+      "result": {
+        "hits": [
+          {
+            "path": "main.go",
+            "line": 6,
+            "col": 1,
+            "text": "func\\s+\\w+",
+            "preview": "func Hello() {}"
+          },
+          {
+            "path": "main.go",
+            "line": 18,
+            "col": 1,
+            "text": "func\\s+\\w+",
+            "preview": "func main() {"
+          },
+          {
+            "path": "swift/App.swift",
+            "line": 3,
+            "col": 16,
+            "text": "func\\s+\\w+",
+            "preview": "private static func boot() {}"
+          }
+        ],
+        "skippedLarge": 0,
+        "truncated": false
+      },
+      "error": ""
+    },
+    {
+      "query": "^\\s+def",
+      "opts": {
+        "regex": true,
+        "caseSensitive": false,
+        "glob": "*.rb",
+        "limit": 0,
+        "offset": 0
+      },
+      "result": {
+        "hits": [
+          {
+            "path": "rb/app.rb",
+            "line": 3,
+            "col": 1,
+            "text": "^\\s+def",
+            "preview": "def self.find!(id)"
+          },
+          {
+            "path": "rb/app.rb",
+            "line": 5,
+            "col": 1,
+            "text": "^\\s+def",
+            "preview": "def save?"
+          }
+        ],
+        "skippedLarge": 0,
+        "truncated": false
+      },
+      "error": ""
+    },
+    {
+      "query": "hello",
+      "opts": {
+        "regex": false,
+        "caseSensitive": false,
+        "glob": "docs/*",
+        "limit": 0,
+        "offset": 0
+      },
+      "result": {
+        "hits": [
+          {
+            "path": "docs/guide.md",
+            "line": 2,
+            "col": 5,
+            "text": "hello",
+            "preview": "See Hello and Serve."
+          }
+        ],
+        "skippedLarge": 0,
+        "truncated": false
+      },
+      "error": ""
+    },
+    {
+      "query": "e",
+      "opts": {
+        "regex": false,
+        "caseSensitive": false,
+        "glob": "",
+        "limit": 3,
+        "offset": 2
+      },
+      "result": {
+        "hits": [
+          {
+            "path": "c/util.c",
+            "line": 3,
+            "col": 8,
+            "text": "e",
+            "preview": "int nested(void) {}"
+          },
+          {
+            "path": "c/util.c",
+            "line": 4,
+            "col": 11,
+            "text": "e",
+            "preview": "struct node { int v; };"
+          },
+          {
+            "path": "c/util.c",
+            "line": 5,
+            "col": 7,
+            "text": "e",
+            "preview": "unsigned long hash(const char *s) { return 0; }"
+          }
+        ],
+        "skippedLarge": 0,
+        "truncated": true
+      },
+      "error": ""
+    },
+    {
+      "query": "(",
+      "opts": {
+        "regex": true,
+        "caseSensitive": false,
+        "glob": "",
+        "limit": 0,
+        "offset": 0
+      },
+      "result": {
+        "hits": null,
+        "skippedLarge": 0,
+        "truncated": false
+      },
+      "error": "invalid regex: error parsing regexp: missing closing ): `(?i)(`"
+    },
+    {
+      "query": "\\bServe\\b",
+      "opts": {
+        "regex": true,
+        "caseSensitive": true,
+        "glob": "",
+        "limit": 0,
+        "offset": 0
+      },
+      "result": {
+        "hits": [
+          {
+            "path": "docs/guide.md",
+            "line": 2,
+            "col": 15,
+            "text": "\\bServe\\b",
+            "preview": "See Hello and Serve."
+          },
+          {
+            "path": "main.go",
+            "line": 8,
+            "col": 18,
+            "text": "\\bServe\\b",
+            "preview": "func (s *Server) Serve(addr string) error { return nil }"
+          }
+        ],
+        "skippedLarge": 0,
+        "truncated": false
+      },
+      "error": ""
+    },
+    {
+      "query": "  version  ",
+      "opts": {
+        "regex": false,
+        "caseSensitive": false,
+        "glob": "",
+        "limit": 0,
+        "offset": 0
+      },
+      "result": {
+        "hits": [
+          {
+            "path": "main.go",
+            "line": 12,
+            "col": 7,
+            "text": "version",
+            "preview": "const Version = \"1\""
+          },
+          {
+            "path": "main.go",
+            "line": 20,
+            "col": 10,
+            "text": "version",
+            "preview": "if x := Version; x != \"\" {"
+          }
+        ],
+        "skippedLarge": 0,
+        "truncated": false
+      },
+      "error": ""
+    }
+  ],
+  "defs": {
+    "Hello": [
+      {
+        "name": "Hello",
+        "kind": "func",
+        "path": "main.go",
+        "line": 6
+      }
+    ],
+    "Repo": [
+      {
+        "name": "Repo",
+        "kind": "interface",
+        "path": "java/Svc.java",
+        "line": 5
+      },
+      {
+        "name": "Repo",
+        "kind": "class",
+        "path": "py/app.py",
+        "line": 3
+      }
+    ],
+    "Server": [
+      {
+        "name": "Server",
+        "kind": "type",
+        "path": "main.go",
+        "line": 10
+      }
+    ],
+    "Store": [
+      {
+        "name": "Store",
+        "kind": "trait",
+        "path": "rs/lib.rs",
+        "line": 4
+      },
+      {
+        "name": "Store",
+        "kind": "class",
+        "path": "web/app.ts",
+        "line": 2
+      }
+    ],
+    "main": [
+      {
+        "name": "main",
+        "kind": "func",
+        "path": "dart/main.dart",
+        "line": 3
+      },
+      {
+        "name": "main",
+        "kind": "func",
+        "path": "hs/Main.hs",
+        "line": 4
+      },
+      {
+        "name": "main",
+        "kind": "method",
+        "path": "java/Svc.java",
+        "line": 2
+      },
+      {
+        "name": "main",
+        "kind": "func",
+        "path": "main.go",
+        "line": 18
+      },
+      {
+        "name": "main",
+        "kind": "func",
+        "path": "zig/main.zig",
+        "line": 1
+      }
+    ],
+    "nope": null,
+    "run": [
+      {
+        "name": "run",
+        "kind": "func",
+        "path": "rs/lib.rs",
+        "line": 1
+      },
+      {
+        "name": "run",
+        "kind": "def",
+        "path": "scala/A.scala",
+        "line": 3
+      }
+    ]
+  },
+  "refs": {
+    "Hello": [
+      {
+        "path": "main.go",
+        "line": 5,
+        "text": "// Hello says hi.",
+        "def": false
+      },
+      {
+        "path": "main.go",
+        "line": 6,
+        "text": "func Hello() {}",
+        "def": true
+      },
+      {
+        "path": "main.go",
+        "line": 19,
+        "text": "fmt.Println(Hello)",
+        "def": false
+      }
+    ],
+    "Repo": [
+      {
+        "path": "java/Svc.java",
+        "line": 5,
+        "text": "interface Repo {}",
+        "def": true
+      },
+      {
+        "path": "py/app.py",
+        "line": 3,
+        "text": "class Repo(Base):",
+        "def": true
+      }
+    ],
+    "Server": [
+      {
+        "path": "ex/app.ex",
+        "line": 1,
+        "text": "defmodule App.Server do",
+        "def": false
+      },
+      {
+        "path": "main.go",
+        "line": 8,
+        "text": "func (s *Server) Serve(addr string) error { return nil }",
+        "def": false
+      },
+      {
+        "path": "main.go",
+        "line": 10,
+        "text": "type Server struct{}",
+        "def": true
+      }
+    ],
+    "Store": [
+      {
+        "path": "rs/lib.rs",
+        "line": 4,
+        "text": "pub trait Store {}",
+        "def": true
+      },
+      {
+        "path": "web/app.ts",
+        "line": 2,
+        "text": "export class Store {",
+        "def": true
+      }
+    ],
+    "main": [
+      {
+        "path": "dart/main.dart",
+        "line": 3,
+        "text": "Future\u003cvoid\u003e main() async {}",
+        "def": true
+      },
+      {
+        "path": "hs/Main.hs",
+        "line": 4,
+        "text": "main :: IO ()",
+        "def": true
+      },
+      {
+        "path": "hs/Main.hs",
+        "line": 5,
+        "text": "main = pure ()",
+        "def": false
+      },
+      {
+        "path": "java/Svc.java",
+        "line": 2,
+        "text": "public static void main(String[] args) {}",
+        "def": true
+      },
+      {
+        "path": "main.go",
+        "line": 1,
+        "text": "package main",
+        "def": false
+      },
+      {
+        "path": "main.go",
+        "line": 18,
+        "text": "func main() {",
+        "def": true
+      },
+      {
+        "path": "zig/main.zig",
+        "line": 1,
+        "text": "pub fn main() void {}",
+        "def": true
+      }
+    ],
+    "nope": [
+      {
+        "path": "py/app.py",
+        "line": 9,
+        "text": "# def nope():",
+        "def": false
+      }
+    ],
+    "run": [
+      {
+        "path": "lua/init.lua",
+        "line": 2,
+        "text": "function M.run() end",
+        "def": false
+      },
+      {
+        "path": "rs/lib.rs",
+        "line": 1,
+        "text": "pub(crate) async fn run() {}",
+        "def": true
+      },
+      {
+        "path": "scala/A.scala",
+        "line": 3,
+        "text": "private def run(): Unit = {}",
+        "def": true
+      }
+    ]
+  },
+  "paths": [
+    "validators/decode-hyperlane-message.sh",
+    "validators/hyperlane_validator2.sh",
+    "hypothesis.txt",
+    "README.md",
+    "src/lib/main.go",
+    "src/app.ts",
+    "src/App.tsx",
+    "pkg/UserController.go",
+    "pkg/user_controller_test.go",
+    "internal/code/fileindex.go",
+    "internal/code/filesearch.go",
+    "frontend/src/lib/fuzzy.ts",
+    "frontend/src/lib/file-index.ts",
+    "cmd/recur/main.go",
+    "Makefile",
+    "docs/README.md",
+    "a/b/c/d/e.txt",
+    "x-y_z.go",
+    "über/straße.go",
+    "src/Main.java"
+  ],
+  "rank": {
+    "": [
+      {
+        "path": "validators/decode-hyperlane-message.sh",
+        "score": 0,
+        "dir": false
+      },
+      {
+        "path": "validators/hyperlane_validator2.sh",
+        "score": 0,
+        "dir": false
+      },
+      {
+        "path": "hypothesis.txt",
+        "score": 0,
+        "dir": false
+      },
+      {
+        "path": "README.md",
+        "score": 0,
+        "dir": false
+      },
+      {
+        "path": "src/lib/main.go",
+        "score": 0,
+        "dir": false
+      },
+      {
+        "path": "src/app.ts",
+        "score": 0,
+        "dir": false
+      },
+      {
+        "path": "src/App.tsx",
+        "score": 0,
+        "dir": false
+      },
+      {
+        "path": "pkg/UserController.go",
+        "score": 0,
+        "dir": false
+      }
+    ],
+    "MAIN": [
+      {
+        "path": "src/Main.java",
+        "score": 3854,
+        "dir": false
+      },
+      {
+        "path": "src/lib/main.go",
+        "score": 3850,
+        "dir": false
+      },
+      {
+        "path": "cmd/recur/main.go",
+        "score": 3846,
+        "dir": false
+      }
+    ],
+    "code/file": [
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 1333,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 1331,
+        "dir": false
+      }
+    ],
+    "fi": [
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 3828,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 3826,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 3820,
+        "dir": false
+      },
+      {
+        "path": "Makefile",
+        "score": 2560,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/fuzzy.ts",
+        "score": 84,
+        "dir": false
+      }
+    ],
+    "file": [
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 3828,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 3826,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 3820,
+        "dir": false
+      },
+      {
+        "path": "Makefile",
+        "score": 2560,
+        "dir": false
+      }
+    ],
+    "go": [
+      {
+        "path": "x-y_z.go",
+        "score": 2558,
+        "dir": false
+      },
+      {
+        "path": "src/lib/main.go",
+        "score": 2545,
+        "dir": false
+      },
+      {
+        "path": "cmd/recur/main.go",
+        "score": 2541,
+        "dir": false
+      },
+      {
+        "path": "über/straße.go",
+        "score": 2540,
+        "dir": false
+      },
+      {
+        "path": "pkg/UserController.go",
+        "score": 2523,
+        "dir": false
+      },
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 2518,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 2515,
+        "dir": false
+      },
+      {
+        "path": "pkg/user_controller_test.go",
+        "score": 2505,
+        "dir": false
+      }
+    ],
+    "hyp": [
+      {
+        "path": "validators/hyperlane_validator2.sh",
+        "score": 3812,
+        "dir": false
+      },
+      {
+        "path": "hypothesis.txt",
+        "score": 3652,
+        "dir": false
+      },
+      {
+        "path": "validators/decode-hyperlane-message.sh",
+        "score": 2497,
+        "dir": false
+      }
+    ],
+    "lib/f": [
+      {
+        "path": "frontend/src/lib/fuzzy.ts",
+        "score": 1334,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 1324,
+        "dir": false
+      }
+    ],
+    "main": [
+      {
+        "path": "src/Main.java",
+        "score": 3854,
+        "dir": false
+      },
+      {
+        "path": "src/lib/main.go",
+        "score": 3850,
+        "dir": false
+      },
+      {
+        "path": "cmd/recur/main.go",
+        "score": 3846,
+        "dir": false
+      }
+    ],
+    "readme": [
+      {
+        "path": "docs/README.md",
+        "score": 3852,
+        "dir": false
+      },
+      {
+        "path": "README.md",
+        "score": 3662,
+        "dir": false
+      }
+    ],
+    "s": [
+      {
+        "path": "über/straße.go",
+        "score": 3848,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/fuzzy.ts",
+        "score": 2738,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 2728,
+        "dir": false
+      },
+      {
+        "path": "src/app.ts",
+        "score": 2564,
+        "dir": false
+      },
+      {
+        "path": "src/App.tsx",
+        "score": 2562,
+        "dir": false
+      },
+      {
+        "path": "hypothesis.txt",
+        "score": 2545,
+        "dir": false
+      },
+      {
+        "path": "pkg/UserController.go",
+        "score": 2537,
+        "dir": false
+      },
+      {
+        "path": "pkg/user_controller_test.go",
+        "score": 2525,
+        "dir": false
+      }
+    ],
+    "src": [
+      {
+        "path": "frontend/src/lib/fuzzy.ts",
+        "score": 1338,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 1328,
+        "dir": false
+      },
+      {
+        "path": "src/app.ts",
+        "score": 1164,
+        "dir": false
+      },
+      {
+        "path": "src/App.tsx",
+        "score": 1162,
+        "dir": false
+      },
+      {
+        "path": "src/Main.java",
+        "score": 1158,
+        "dir": false
+      },
+      {
+        "path": "src/lib/main.go",
+        "score": 1158,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 75,
+        "dir": false
+      },
+      {
+        "path": "pkg/UserController.go",
+        "score": 72,
+        "dir": false
+      }
+    ],
+    "straße": [
+      {
+        "path": "über/straße.go",
+        "score": 3848,
+        "dir": false
+      }
+    ],
+    "uc": [
+      {
+        "path": "pkg/user_controller_test.go",
+        "score": 981,
+        "dir": false
+      },
+      {
+        "path": "pkg/UserController.go",
+        "score": 976,
+        "dir": false
+      }
+    ],
+    "x": [
+      {
+        "path": "x-y_z.go",
+        "score": 3664,
+        "dir": false
+      },
+      {
+        "path": "src/App.tsx",
+        "score": 2552,
+        "dir": false
+      },
+      {
+        "path": "a/b/c/d/e.txt",
+        "score": 2551,
+        "dir": false
+      },
+      {
+        "path": "hypothesis.txt",
+        "score": 2540,
+        "dir": false
+      },
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 2520,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 2511,
+        "dir": false
+      }
+    ],
+    "zzz": [],
+    "ü": [
+      {
+        "path": "über/straße.go",
+        "score": 1154,
+        "dir": false
+      }
+    ]
+  },
+  "rankDirs": {
+    "": [
+      {
+        "path": "validators/",
+        "score": 0,
+        "dir": true
+      },
+      {
+        "path": "src/lib/",
+        "score": 0,
+        "dir": true
+      },
+      {
+        "path": "src/",
+        "score": 0,
+        "dir": true
+      },
+      {
+        "path": "pkg/",
+        "score": 0,
+        "dir": true
+      },
+      {
+        "path": "internal/code/",
+        "score": 0,
+        "dir": true
+      },
+      {
+        "path": "internal/",
+        "score": 0,
+        "dir": true
+      },
+      {
+        "path": "frontend/src/lib/",
+        "score": 0,
+        "dir": true
+      },
+      {
+        "path": "frontend/src/",
+        "score": 0,
+        "dir": true
+      }
+    ],
+    "MAIN": [
+      {
+        "path": "src/Main.java",
+        "score": 3854,
+        "dir": false
+      },
+      {
+        "path": "src/lib/main.go",
+        "score": 3850,
+        "dir": false
+      },
+      {
+        "path": "cmd/recur/main.go",
+        "score": 3846,
+        "dir": false
+      }
+    ],
+    "code/file": [
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 1333,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 1331,
+        "dir": false
+      }
+    ],
+    "fi": [
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 3828,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 3826,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 3820,
+        "dir": false
+      },
+      {
+        "path": "Makefile",
+        "score": 2560,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/",
+        "score": 91,
+        "dir": true
+      },
+      {
+        "path": "frontend/src/lib/fuzzy.ts",
+        "score": 84,
+        "dir": false
+      }
+    ],
+    "file": [
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 3828,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 3826,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 3820,
+        "dir": false
+      },
+      {
+        "path": "Makefile",
+        "score": 2560,
+        "dir": false
+      }
+    ],
+    "go": [
+      {
+        "path": "x-y_z.go",
+        "score": 2558,
+        "dir": false
+      },
+      {
+        "path": "src/lib/main.go",
+        "score": 2545,
+        "dir": false
+      },
+      {
+        "path": "cmd/recur/main.go",
+        "score": 2541,
+        "dir": false
+      },
+      {
+        "path": "über/straße.go",
+        "score": 2540,
+        "dir": false
+      },
+      {
+        "path": "pkg/UserController.go",
+        "score": 2523,
+        "dir": false
+      },
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 2518,
+        "dir": false
+      },
+      {
+        "path": "internal/code/filesearch.go",
+        "score": 2515,
+        "dir": false
+      },
+      {
+        "path": "pkg/user_controller_test.go",
+        "score": 2505,
+        "dir": false
+      }
+    ],
+    "hyp": [
+      {
+        "path": "validators/hyperlane_validator2.sh",
+        "score": 3812,
+        "dir": false
+      },
+      {
+        "path": "hypothesis.txt",
+        "score": 3652,
+        "dir": false
+      },
+      {
+        "path": "validators/decode-hyperlane-message.sh",
+        "score": 2497,
+        "dir": false
+      }
+    ],
+    "lib/f": [
+      {
+        "path": "frontend/src/lib/fuzzy.ts",
+        "score": 1334,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 1324,
+        "dir": false
+      }
+    ],
+    "main": [
+      {
+        "path": "src/Main.java",
+        "score": 3854,
+        "dir": false
+      },
+      {
+        "path": "src/lib/main.go",
+        "score": 3850,
+        "dir": false
+      },
+      {
+        "path": "cmd/recur/main.go",
+        "score": 3846,
+        "dir": false
+      }
+    ],
+    "readme": [
+      {
+        "path": "docs/README.md",
+        "score": 3852,
+        "dir": false
+      },
+      {
+        "path": "README.md",
+        "score": 3662,
+        "dir": false
+      }
+    ],
+    "s": [
+      {
+        "path": "frontend/src/",
+        "score": 3856,
+        "dir": true
+      },
+      {
+        "path": "über/straße.go",
+        "score": 3848,
+        "dir": false
+      },
+      {
+        "path": "src/",
+        "score": 3674,
+        "dir": true
+      },
+      {
+        "path": "frontend/src/lib/fuzzy.ts",
+        "score": 2738,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 2728,
+        "dir": false
+      },
+      {
+        "path": "docs/",
+        "score": 2569,
+        "dir": true
+      },
+      {
+        "path": "src/app.ts",
+        "score": 2564,
+        "dir": false
+      },
+      {
+        "path": "src/App.tsx",
+        "score": 2562,
+        "dir": false
+      }
+    ],
+    "src": [
+      {
+        "path": "src/",
+        "score": 15077,
+        "dir": true
+      },
+      {
+        "path": "frontend/src/",
+        "score": 6856,
+        "dir": true
+      },
+      {
+        "path": "frontend/src/lib/",
+        "score": 1352,
+        "dir": true
+      },
+      {
+        "path": "frontend/src/lib/fuzzy.ts",
+        "score": 1338,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 1328,
+        "dir": false
+      },
+      {
+        "path": "src/lib/",
+        "score": 1170,
+        "dir": true
+      },
+      {
+        "path": "src/app.ts",
+        "score": 1164,
+        "dir": false
+      },
+      {
+        "path": "src/App.tsx",
+        "score": 1162,
+        "dir": false
+      }
+    ],
+    "straße": [
+      {
+        "path": "über/straße.go",
+        "score": 3848,
+        "dir": false
+      }
+    ],
+    "uc": [
+      {
+        "path": "pkg/user_controller_test.go",
+        "score": 981,
+        "dir": false
+      },
+      {
+        "path": "pkg/UserController.go",
+        "score": 976,
+        "dir": false
+      }
+    ],
+    "x": [
+      {
+        "path": "x-y_z.go",
+        "score": 3664,
+        "dir": false
+      },
+      {
+        "path": "src/App.tsx",
+        "score": 2552,
+        "dir": false
+      },
+      {
+        "path": "a/b/c/d/e.txt",
+        "score": 2551,
+        "dir": false
+      },
+      {
+        "path": "hypothesis.txt",
+        "score": 2540,
+        "dir": false
+      },
+      {
+        "path": "internal/code/fileindex.go",
+        "score": 2520,
+        "dir": false
+      },
+      {
+        "path": "frontend/src/lib/file-index.ts",
+        "score": 2511,
+        "dir": false
+      }
+    ],
+    "zzz": [],
+    "ü": [
+      {
+        "path": "über/",
+        "score": 3670,
+        "dir": true
+      },
+      {
+        "path": "über/straße.go",
+        "score": 1154,
+        "dir": false
+      }
+    ]
+  },
+  "excluded": {
+    "**/*.map": {
+      ".git": false,
+      "a/.git/config": false,
+      "a/build/b": false,
+      "abc/d": false,
+      "app.js.map": true,
+      "build": false,
+      "dist/x.js": false,
+      "distx": false,
+      "docs/readme": false,
+      "mydocs": false,
+      "node_modules/a": false,
+      "p/node_modules/q/r": false,
+      "q/x/1/y": false,
+      "src/a.tmp": false,
+      "src/b/a.tmp": false,
+      "x/1/y": false
+    },
+    "**/.git": {
+      ".git": true,
+      "a/.git/config": true,
+      "a/build/b": false,
+      "abc/d": false,
+      "app.js.map": false,
+      "build": false,
+      "dist/x.js": false,
+      "distx": false,
+      "docs/readme": false,
+      "mydocs": false,
+      "node_modules/a": false,
+      "p/node_modules/q/r": false,
+      "q/x/1/y": false,
+      "src/a.tmp": false,
+      "src/b/a.tmp": false,
+      "x/1/y": false
+    },
+    "**/node_modules/**": {
+      ".git": false,
+      "a/.git/config": false,
+      "a/build/b": false,
+      "abc/d": false,
+      "app.js.map": false,
+      "build": false,
+      "dist/x.js": false,
+      "distx": false,
+      "docs/readme": false,
+      "mydocs": false,
+      "node_modules/a": true,
+      "p/node_modules/q/r": true,
+      "q/x/1/y": false,
+      "src/a.tmp": false,
+      "src/b/a.tmp": false,
+      "x/1/y": false
+    },
+    "**/x/*/y": {
+      ".git": false,
+      "a/.git/config": false,
+      "a/build/b": false,
+      "abc/d": false,
+      "app.js.map": false,
+      "build": false,
+      "dist/x.js": false,
+      "distx": false,
+      "docs/readme": false,
+      "mydocs": false,
+      "node_modules/a": false,
+      "p/node_modules/q/r": false,
+      "q/x/1/y": true,
+      "src/a.tmp": false,
+      "src/b/a.tmp": false,
+      "x/1/y": true
+    },
+    "a?c/**": {
+      ".git": false,
+      "a/.git/config": false,
+      "a/build/b": false,
+      "abc/d": true,
+      "app.js.map": false,
+      "build": false,
+      "dist/x.js": false,
+      "distx": false,
+      "docs/readme": false,
+      "mydocs": false,
+      "node_modules/a": false,
+      "p/node_modules/q/r": false,
+      "q/x/1/y": false,
+      "src/a.tmp": false,
+      "src/b/a.tmp": false,
+      "x/1/y": false
+    },
+    "build": {
+      ".git": false,
+      "a/.git/config": false,
+      "a/build/b": true,
+      "abc/d": false,
+      "app.js.map": false,
+      "build": true,
+      "dist/x.js": false,
+      "distx": false,
+      "docs/readme": false,
+      "mydocs": false,
+      "node_modules/a": false,
+      "p/node_modules/q/r": false,
+      "q/x/1/y": false,
+      "src/a.tmp": false,
+      "src/b/a.tmp": false,
+      "x/1/y": false
+    },
+    "dist/**": {
+      ".git": false,
+      "a/.git/config": false,
+      "a/build/b": false,
+      "abc/d": false,
+      "app.js.map": false,
+      "build": false,
+      "dist/x.js": true,
+      "distx": false,
+      "docs/readme": false,
+      "mydocs": false,
+      "node_modules/a": false,
+      "p/node_modules/q/r": false,
+      "q/x/1/y": false,
+      "src/a.tmp": false,
+      "src/b/a.tmp": false,
+      "x/1/y": false
+    },
+    "docs": {
+      ".git": false,
+      "a/.git/config": false,
+      "a/build/b": false,
+      "abc/d": false,
+      "app.js.map": false,
+      "build": false,
+      "dist/x.js": false,
+      "distx": false,
+      "docs/readme": true,
+      "mydocs": false,
+      "node_modules/a": false,
+      "p/node_modules/q/r": false,
+      "q/x/1/y": false,
+      "src/a.tmp": false,
+      "src/b/a.tmp": false,
+      "x/1/y": false
+    },
+    "src/*.tmp": {
+      ".git": false,
+      "a/.git/config": false,
+      "a/build/b": false,
+      "abc/d": false,
+      "app.js.map": false,
+      "build": false,
+      "dist/x.js": false,
+      "distx": false,
+      "docs/readme": false,
+      "mydocs": false,
+      "node_modules/a": false,
+      "p/node_modules/q/r": false,
+      "q/x/1/y": false,
+      "src/a.tmp": true,
+      "src/b/a.tmp": false,
+      "x/1/y": false
+    }
+  },
+  "rgGlobs": [
+    "!dist/**",
+    "!**/*.map",
+    "!build",
+    "!build/**",
+    "!src/*.tmp",
+    "!a?c/**",
+    "!**/x/*/y",
+    "!**/x/*/y/**",
+    "!docs",
+    "!docs/**",
+    "!lead",
+    "!lead/**",
+    "!neg",
+    "!neg/**"
+  ],
+  "glob": {
+    "**.go": {
+      "a.go": true,
+      "a/c": false,
+      "abc": false,
+      "b.txt": false,
+      "dir/a.go": true,
+      "dir/c.txt": false,
+      "docs/a/b.md": false,
+      "docs/x.md": false,
+      "src*": false,
+      "x.go": true,
+      "y/x.go": true
+    },
+    "*.go": {
+      "a.go": true,
+      "a/c": false,
+      "abc": false,
+      "b.txt": false,
+      "dir/a.go": true,
+      "dir/c.txt": false,
+      "docs/a/b.md": false,
+      "docs/x.md": false,
+      "src*": false,
+      "x.go": true,
+      "y/x.go": true
+    },
+    "*/x.go": {
+      "a.go": false,
+      "a/c": false,
+      "abc": false,
+      "b.txt": false,
+      "dir/a.go": false,
+      "dir/c.txt": false,
+      "docs/a/b.md": false,
+      "docs/x.md": false,
+      "src*": false,
+      "x.go": false,
+      "y/x.go": true
+    },
+    "[": {
+      "a.go": false,
+      "a/c": false,
+      "abc": false,
+      "b.txt": false,
+      "dir/a.go": false,
+      "dir/c.txt": false,
+      "docs/a/b.md": false,
+      "docs/x.md": false,
+      "src*": false,
+      "x.go": false,
+      "y/x.go": false
+    },
+    "[a-c]*.txt": {
+      "a.go": false,
+      "a/c": false,
+      "abc": false,
+      "b.txt": true,
+      "dir/a.go": false,
+      "dir/c.txt": true,
+      "docs/a/b.md": false,
+      "docs/x.md": false,
+      "src*": false,
+      "x.go": false,
+      "y/x.go": false
+    },
+    "a?c": {
+      "a.go": false,
+      "a/c": false,
+      "abc": true,
+      "b.txt": false,
+      "dir/a.go": false,
+      "dir/c.txt": false,
+      "docs/a/b.md": false,
+      "docs/x.md": false,
+      "src*": false,
+      "x.go": false,
+      "y/x.go": false
+    },
+    "docs/*": {
+      "a.go": false,
+      "a/c": false,
+      "abc": false,
+      "b.txt": false,
+      "dir/a.go": false,
+      "dir/c.txt": false,
+      "docs/a/b.md": false,
+      "docs/x.md": true,
+      "src*": false,
+      "x.go": false,
+      "y/x.go": false
+    },
+    "src\\*": {
+      "a.go": false,
+      "a/c": false,
+      "abc": false,
+      "b.txt": false,
+      "dir/a.go": false,
+      "dir/c.txt": false,
+      "docs/a/b.md": false,
+      "docs/x.md": false,
+      "src*": true,
+      "x.go": false,
+      "y/x.go": false
+    }
+  },
+  "frontmatter": {
+    "crlf": {
+      "description": "crlf desc",
+      "userInvocable": false,
+      "disableModelInvocation": false,
+      "body": "body",
+      "ok": true
+    },
+    "empty": {
+      "description": "",
+      "userInvocable": true,
+      "disableModelInvocation": false,
+      "body": "",
+      "ok": false
+    },
+    "folded": {
+      "description": "line one",
+      "userInvocable": false,
+      "disableModelInvocation": false,
+      "body": "body",
+      "ok": true
+    },
+    "literal": {
+      "description": "Tabbed line spaced",
+      "userInvocable": true,
+      "disableModelInvocation": false,
+      "body": "",
+      "ok": true
+    },
+    "nofm": {
+      "description": "",
+      "userInvocable": true,
+      "disableModelInvocation": false,
+      "body": "# Just a body",
+      "ok": true
+    },
+    "plain": {
+      "description": "hello world",
+      "userInvocable": true,
+      "disableModelInvocation": false,
+      "body": "# Body",
+      "ok": true
+    },
+    "quoted": {
+      "description": "It''s",
+      "userInvocable": true,
+      "disableModelInvocation": true,
+      "body": "B",
+      "ok": true
+    },
+    "unclosed": {
+      "description": "",
+      "userInvocable": true,
+      "disableModelInvocation": false,
+      "body": "---\ndescription: d",
+      "ok": true
+    }
+  },
+  "idents": {
+    "func (s *Server) Serve(addr string) error {": [
+      "func",
+      "Server",
+      "Serve",
+      "addr",
+      "string",
+      "error"
+    ],
+    "x := fooBar + Baz_9 - qq + abc + abcd": [
+      "fooBar",
+      "Baz_9",
+      "abcd"
+    ],
+    "ÜberThing camelCase snake_case CONST": [
+      "berThing",
+      "camelCase",
+      "snake_case",
+      "CONST"
+    ]
+  },
+  "simplify": "SIMPLIFY MODE\n\nYou are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.\n\nACTIVE EVERY RESPONSE. No drift back to over-building. Still active if unsure. The human toggles this from the composer (Simplify).\n\n## The ladder\n\nBefore any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it — read the code it touches and trace the real flow first):\n1. Does this need to be built at all? (YAGNI)\n2. Does it already exist in this codebase? Reuse what is already here, do not re-write it.\n3. Does the standard library do this? Use it.\n4. Does a native platform feature cover it? Use it.\n5. Does an already-installed dependency solve it? Use it.\n6. Can it be one line? Make it one line.\n7. Only then: write the minimum code that works.\n\nBug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n## Rules\n\nNo abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. Deletion over addition. Boring over clever. Fewest files possible. Ship the lazy version and question the complex request in the same response — never stall. Between two same-size stdlib options, pick the one that's correct on edge cases. Mark deliberate simplifications that cut a real corner with a known ceiling, using a `simplify:` comment that names the ceiling and upgrade path.\n\n## Output\n\nCode first. Then at most three short lines: what was skipped, when to add it. If the explanation is longer than the code, delete the explanation. Explanation the user explicitly asked for is not debt, give it in full.\n\n## When NOT to be lazy\n\nNever simplify away: understanding the problem (read it fully and trace the real flow before picking a rung — a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.",
+  "tree": [
+    {
+      "name": ".hidden",
+      "path": ".hidden",
+      "dir": true,
+      "children": [
+        {
+          "name": "h.go",
+          "path": ".hidden/h.go",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "c",
+      "path": "c",
+      "dir": true,
+      "children": [
+        {
+          "name": "util.c",
+          "path": "c/util.c",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "cpp",
+      "path": "cpp",
+      "dir": true,
+      "children": [
+        {
+          "name": "a.hpp",
+          "path": "cpp/a.hpp",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "cs",
+      "path": "cs",
+      "dir": true,
+      "children": [
+        {
+          "name": "Prog.cs",
+          "path": "cs/Prog.cs",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "dart",
+      "path": "dart",
+      "dir": true,
+      "children": [
+        {
+          "name": "main.dart",
+          "path": "dart/main.dart",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "docs",
+      "path": "docs",
+      "dir": true,
+      "children": [
+        {
+          "name": "guide.md",
+          "path": "docs/guide.md",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "ex",
+      "path": "ex",
+      "dir": true,
+      "children": [
+        {
+          "name": "app.ex",
+          "path": "ex/app.ex",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "hs",
+      "path": "hs",
+      "dir": true,
+      "children": [
+        {
+          "name": "Main.hs",
+          "path": "hs/Main.hs",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "java",
+      "path": "java",
+      "dir": true,
+      "children": [
+        {
+          "name": "Svc.java",
+          "path": "java/Svc.java",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "kt",
+      "path": "kt",
+      "dir": true,
+      "children": [
+        {
+          "name": "Main.kt",
+          "path": "kt/Main.kt",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "lua",
+      "path": "lua",
+      "dir": true,
+      "children": [
+        {
+          "name": "init.lua",
+          "path": "lua/init.lua",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "m",
+      "path": "m",
+      "dir": true,
+      "children": [
+        {
+          "name": "obj.m",
+          "path": "m/obj.m",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "node_modules",
+      "path": "node_modules",
+      "dir": true,
+      "children": [
+        {
+          "name": "x.js",
+          "path": "node_modules/x.js",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "php",
+      "path": "php",
+      "dir": true,
+      "children": [
+        {
+          "name": "index.php",
+          "path": "php/index.php",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "py",
+      "path": "py",
+      "dir": true,
+      "children": [
+        {
+          "name": "app.py",
+          "path": "py/app.py",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "rb",
+      "path": "rb",
+      "dir": true,
+      "children": [
+        {
+          "name": "app.rb",
+          "path": "rb/app.rb",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "rs",
+      "path": "rs",
+      "dir": true,
+      "children": [
+        {
+          "name": "lib.rs",
+          "path": "rs/lib.rs",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "scala",
+      "path": "scala",
+      "dir": true,
+      "children": [
+        {
+          "name": "A.scala",
+          "path": "scala/A.scala",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "swift",
+      "path": "swift",
+      "dir": true,
+      "children": [
+        {
+          "name": "App.swift",
+          "path": "swift/App.swift",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "web",
+      "path": "web",
+      "dir": true,
+      "children": [
+        {
+          "name": "app.ts",
+          "path": "web/app.ts",
+          "dir": false
+        },
+        {
+          "name": "legacy.js",
+          "path": "web/legacy.js",
+          "dir": false
+        },
+        {
+          "name": "Widget.svelte",
+          "path": "web/Widget.svelte",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "zig",
+      "path": "zig",
+      "dir": true,
+      "children": [
+        {
+          "name": "main.zig",
+          "path": "zig/main.zig",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "img.png",
+      "path": "img.png",
+      "dir": false
+    },
+    {
+      "name": "main.go",
+      "path": "main.go",
+      "dir": false
+    },
+    {
+      "name": "notes.txt",
+      "path": "notes.txt",
+      "dir": false
+    }
+  ],
+  "listFiles": [
+    "c/util.c",
+    "cpp/a.hpp",
+    "cs/Prog.cs",
+    "dart/main.dart",
+    "docs/guide.md",
+    "ex/app.ex",
+    "hs/Main.hs",
+    "java/Svc.java",
+    "kt/Main.kt",
+    "lua/init.lua",
+    "m/obj.m",
+    "main.go",
+    "notes.txt",
+    "php/index.php",
+    "py/app.py",
+    "rb/app.rb",
+    "rs/lib.rs",
+    "scala/A.scala",
+    "swift/App.swift",
+    "web/Widget.svelte",
+    "web/app.ts",
+    "web/legacy.js",
+    "zig/main.zig"
+  ]
+}

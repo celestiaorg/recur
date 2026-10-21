@@ -136,17 +136,30 @@ struct SkillFileMeta {
 /// neither a description nor a body.
 fn read_skill_file(path: &str) -> Option<(SkillFileMeta, String)> {
     let raw = String::from_utf8_lossy(&fs::read(path).ok()?).into_owned();
-    let (fm, body) = frontmatter_block(&raw);
+    let (meta, body, ok) = parse_skill_file(&raw);
+    ok.then_some((meta, body))
+}
+
+fn parse_skill_file(raw: &str) -> (SkillFileMeta, String, bool) {
+    let (fm, body) = frontmatter_block(raw);
     let meta = SkillFileMeta {
         description: parse_frontmatter_description(fm),
         user_invocable: !frontmatter_bool_false(fm, "user-invocable"),
         disable_model_invocation: frontmatter_bool_true(fm, "disable-model-invocation"),
     };
     let body = if fm.is_empty() { raw.trim() } else { body.trim() };
-    if meta.description.is_empty() && body.is_empty() {
-        return None;
-    }
-    Some((meta, body.to_string()))
+    let ok = !(meta.description.is_empty() && body.is_empty());
+    (meta, body.to_string(), ok)
+}
+
+/// Every field Go's `readSkillFile` returns, for the golden replay.
+#[cfg(test)]
+pub(crate) fn read_skill_meta(path: &str) -> (String, bool, bool, String, bool) {
+    let Ok(raw) = fs::read(path) else {
+        return (String::new(), false, false, String::new(), false);
+    };
+    let (m, body, ok) = parse_skill_file(&String::from_utf8_lossy(&raw));
+    (m.description, m.user_invocable, m.disable_model_invocation, body, ok)
 }
 
 /// The SKILL.md body without frontmatter (activation content); empty when

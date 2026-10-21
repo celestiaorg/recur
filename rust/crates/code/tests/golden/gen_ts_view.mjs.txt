@@ -1,0 +1,43 @@
+// Generator for rust/crates/code/tests/golden/ts_view.json (node >= 22):
+//   cp frontend/src/lib/{fuzzy,changed-tree,skills,finding-paths}.ts /tmp/ \
+//     && for f in /tmp/{fuzzy,changed-tree,skills,finding-paths}.ts; do mv "$f" "${f%.ts}.mts"; done \
+//     && cp rust/crates/code/tests/golden/gen_ts_view.mjs.txt /tmp/gen_ts_view.mjs && node --experimental-strip-types --no-warnings /tmp/gen_ts_view.mjs
+import { writeFileSync } from 'node:fs'
+const fuzzy = await import('/tmp/fuzzy.mts')
+const tree = await import('/tmp/changed-tree.mts')
+const skills = await import('/tmp/skills.mts')
+const fp = await import('/tmp/finding-paths.mts')
+
+const labels = [
+  'src/main.go', 'src/Main.java', 'src_main.go', 'src-main.go', 'SRC/main.go', 'srcmain.go',
+  'internal/store/seed.go', 'internal/store/seed_prs.go', 'a/b', 'a_b', 'a-b', 'a.b', 'a b', 'A/B',
+  'über/straße.go', 'uber/strasse.go', 'Übung', 'zeta', 'Zeta', 'zeta2', 'zeta10', 'emoji/😀.txt',
+  '_private', '.hidden', '~tilde', '#hash', 'x.test.ts', 'x_test.go', 'xTest.java', 'café', 'cafe',
+]
+const queries = ['', 's', 'src', 'main', 'sm', 'seed', 'a', 'ab', 'zeta', 'ü', 'straße', 'test', 'x', 'caf', '😀', ' Main ', 'zz']
+const ranked = {}
+for (const q of queries) ranked[q] = fuzzy.fuzzyFilter(labels, q, (s) => s, 10).map((h) => [h.label, h.score])
+
+const paths = [
+  'b.txt', 'a/z.go', 'a/b.go', 'internal/store/seed.go', 'internal/store/seed_prs.go', 'A/upper.go',
+  'a_b/x', 'a-b/x', 'a.b/x', 'Zeta/1', 'zeta/2', 'über/1', 'uber/2', 'a', 'a/b.go/c', '10.txt', '9.txt',
+]
+const built = tree.buildTreeFromPaths(paths)
+const order = tree.orderChangedPaths(paths)
+
+const skillPaths = [
+  ['/Users/j/.claude/skills/foo/SKILL.md', 'user', ''],
+  ['/home/j/.cursor/skills/foo/skill.md', 'user', ''],
+  ['C:\\Users\\j\\.codex\\skills\\foo\\SKILL.md', 'user', ''],
+  ['/opt/h/.recur/recur-skills/foo/SKILL.md', 'user', ''],
+  ['/work/repo/.agents/skills/foo/SKILL.md', 'workspace', ''],
+  ['/work/repo/skills/foo/SKILL.md', 'workspace', ''],
+  ['/srv/u/.gemini/skills/foo/SKILL.md', 'user', '/srv/u/'],
+  ['/x/y/SKILL.md', 'user', ''],
+]
+const locations = skillPaths.map(([p, s, h]) => [p, s, h, skills.skillLocation(p, s, h), skills.inferHomeFromSkillPath(p)])
+
+const candidates = ['src/a.ts', 'lib/b.ts', 'test/a.ts', 'deep/src/c.ts']
+const matches = ['a.ts', 'src/a.ts', 'c.ts', '/abs/deep/src/c.ts', 'b.ts', '', 'x.ts'].map((p) => [p, fp.matchFindingPath(p, candidates)])
+
+writeFileSync('rust/crates/code/tests/golden/ts_view.json', JSON.stringify({ labels, ranked, paths, built, order, locations, candidates, matches }, null, 2))

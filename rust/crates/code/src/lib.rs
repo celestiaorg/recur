@@ -42,6 +42,8 @@ mod walk;
 #[cfg(test)]
 mod code_tests;
 #[cfg(test)]
+mod golden_tests;
+#[cfg(test)]
 mod ops_tests;
 #[cfg(test)]
 mod testutil;

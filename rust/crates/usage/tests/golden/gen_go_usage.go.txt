@@ -1,0 +1,274 @@
+package usage
+
+// Generates rust/crates/usage/tests/golden/go_usage.json (slice P3).
+//
+//	P3_USAGE_OUT=$PWD/rust/crates/usage/tests/golden/go_usage.json \
+//	  go test ./internal/usage -run TestP3UsageGolden -count=1
+
+import (
+	"encoding/base64"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func p3jwt(claims string) string {
+	return "eyJhbGciOiJub25lIn0." + base64.RawURLEncoding.EncodeToString([]byte(claims)) + "."
+}
+
+func TestP3UsageGolden(t *testing.T) {
+	out := os.Getenv("P3_USAGE_OUT")
+	if out == "" {
+		t.Skip("P3_USAGE_OUT not set")
+	}
+	g := map[string]any{}
+	type res struct {
+		Raw   string         `json:"raw"`
+		Quota *ProviderQuota `json:"quota"`
+		Err   bool           `json:"err"`
+	}
+	claude := []string{
+		`{"five_hour":{"utilization":10},"seven_day":{"utilization":2}}`,
+		`{"five_hour":{"utilization":78.5,"resets_at":"2026-08-21T01:00:00Z"},"seven_day":{"used_percentage":13,"resets_at":1775808000},"seven_day_opus":{"used_percent":4.2},"extra_usage":{"is_enabled":true,"used_credits":10000,"monthly_limit":10000},"limits":[{"kind":"weekly_scoped","percent":54,"resets_at":"2026-08-28T00:00:00Z","scope":{"model":{"display_name":"Fable"}}}]}`,
+		`{"five_hour":{"utilization":10},"seven_day":{"utilization":20},"limits":[{"kind":"weekly_scoped","percent":41,"is_active":false,"scope":{"model":{"display_name":"Fable"}}}]}`,
+		`{"five_hour":{"utilization":8},"seven_day":{"utilization":2},"rate_limits":{"model_scoped":[{"display_name":"Fable","utilization":37,"resets_at":"2026-08-31T23:59:59Z"}]}}`,
+		`{"limits":[{"kind":"session","percent":0,"is_active":false},{"kind":"session","percent":18,"is_active":true},{"kind":"weekly_all","percent":0,"is_active":false},{"kind":"weekly_all","percent":22,"is_active":true}]}`,
+		`{"limits":[{"kind":"session","percent":30,"is_active":false},{"kind":"weekly_all","percent":40,"is_active":false},{"kind":"weekly_scoped","percent":90,"is_active":true,"scope":{"model":{"display_name":"Fable"}}}]}`,
+		`{"five_hour":{"utilization":1},"seven_day":{"utilization":2},"limits":[{"kind":"weekly_scoped","percent":80,"is_active":false,"scope":{"model":{"display_name":"Opus 4.5"}}},{"kind":"weekly_scoped","percent":10,"is_active":true,"scope":{"model":{"display_name":"Opus 5"}}}]}`,
+		`{"five_hour":{"utilization":1},"seven_day":{"utilization":2},"limits":[{"kind":"weekly_scoped","percent":11,"scope":{"model":{"display_name":"Opus 4.5"}}},{"kind":"weekly_scoped","percent":22,"scope":{"model":{"display_name":"Claude Opus 4.5"}}}]}`,
+		`{"five_hour":{"utilization":8},"seven_day":{"utilization":2},"model_scoped":[{"kind":"session","display_name":"Fable","utilization":91},{"kind":"weekly_scoped","display_name":"Fable","utilization":37}]}`,
+		`{"five_hour":{"utilization":8},"seven_day":{"utilization":2},"seven_day_fable":{"utilization":12},"model_scoped":[{"name":"claude-fable-5","utilization":40,"scope":{"model":{"display_name":"Fable"}}}]}`,
+		`{"five_hour":{"utilization":8},"model_scoped":[{"name":"claude-fable-5-1","utilization":40},{"name":"Haiku 4","period":"7d","utilization":"55.5"},{"name":"x","window":"monthly","utilization":5},{"name":"weird name","kind":"weekly","utilization":150}]}`,
+		`{"email":"a@b.c"}`,
+		`not json`,
+		`{"fiveHour":{"percent":-5,"resetsAt":"1775808000123"},"sevenDay":{"usedPercent":"12"},"email":"  me@x.io ","subscription_type":"max","extra":{"isEnabled":false,"utilization":3}}`,
+		`{"session":{"utilization":5,"reset_at":1775808000000},"weekly":{"utilization":6},"organization":{"email":"org@x.io"},"extraUsage":{"utilization":0,"resetsAt":"2026-09-01T00:00:00+02:00"}}`,
+		`{"five_hour":{"utilization":null,"used_percent":3},"seven_day":{"utilization":true},"extra_usage":{"usedCredits":550,"monthlyLimit":0}}`,
+		`{"five_hour":{"utilization":1},"extra_usage":{"used_credits":1234,"monthly_limit":5000,"resets_at":0}}`,
+	}
+	var cl []res
+	for _, raw := range claude {
+		q, err := parseClaudeUsage([]byte(raw))
+		r := res{Raw: raw, Err: err != nil}
+		if err == nil {
+			r.Quota = &q
+		}
+		cl = append(cl, r)
+	}
+	g["claudeUsage"] = cl
+
+	codexBodies := []string{
+		`{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":5}}}`,
+		`{"plan_type":"pro","rate_limit":{"primary_window":{"used_percent":33,"reset_at":1778670307},"secondary_window":{"used_percent":12,"reset_at":1779275107}},"credits":{"has_credits":true,"unlimited":false,"balance":"45.25"}}`,
+		`{"plan_type":"business","rate_limit":{"primary_window":{"used_percent":1,"limit_window_seconds":604800,"reset_at":1779275107}}}`,
+		`{"rate_limit":{"primary_window":{"used_percent":33,"limit_window_seconds":18000,"reset_at":1778670307},"secondary_window":{"used_percent":12,"limit_window_seconds":604800,"reset_at":1779275107}}}`,
+		`{"plan_type":"team","rate_limit":{"primary_window":{"used_percent":100,"reset_at":1778670307},"secondary_window":{"used_percent":16,"reset_at":1779275107}},"credits":{"has_credits":true,"unlimited":false,"balance":null},"spend_control":{"reached":false,"individual_limit":{"source":"workspace_spend_controls","limit":"500","used":"500","remaining":"0","used_percent":100,"reset_at":1788220800}}}`,
+		`{"plan_type":"education","rate_limit":{"primary_window":{"used_percent":14},"secondary_window":{"used_percent":33}},"spend_control":{"reached":false,"individual_limit":null}}`,
+		`{"planType":"edu_plus","email":"e@x.io","primary_window":{"utilization":9},"individualLimit":{"limit":2000,"used":150.6,"resetsAt":"2026-09-01T00:00:00Z"},"credits":{"has_credits":"true","unlimited":0,"balance":" 3 "}}`,
+		`{"plan_type":"weird_plan","rate_limit":{"individual_limit":{"enforcement_mode":"OFF","limit":5,"used":1}}}`,
+		`{"rate_limit":{"individual_limit":{"limit":0,"used":3}}}`,
+		`{"rate_limit":{"individual_limit":{"used_percent":12.5}}}`,
+		`{}`,
+		`[]`,
+	}
+	var cx []res
+	for _, raw := range codexBodies {
+		q, err := parseCodexUsage([]byte(raw))
+		r := res{Raw: raw, Err: err != nil}
+		if err == nil {
+			r.Quota = &q
+		}
+		cx = append(cx, r)
+	}
+	g["codexUsage"] = cx
+
+	var monthly []map[string]any
+	for _, raw := range []string{
+		`{"current_month_usage":297.4,"effective_monthly_limit":{"limit":1000,"enforcement_mode":"HARD_CAP","limit_mode":"amount_credits"}}`,
+		`{"effective_monthly_limit":{"limit":0}}`,
+		`{"current_month_usage":10,"effective_monthly_limit":{"limit":1000,"enforcement_mode":"none"}}`,
+		`{"currentMonthUsage":"1500","effectiveMonthlyLimit":{"limit":"1000","enforcementMode":"soft"}}`,
+		`{}`,
+	} {
+		monthly = append(monthly, map[string]any{"raw": raw, "window": parseCodexMonthlyUsage([]byte(raw))})
+	}
+	g["codexMonthly"] = monthly
+
+	var auths []map[string]any
+	for _, raw := range []string{
+		`{"tokens":{"access_token":"tok","account_id":"acc-1"}}`,
+		`{"tokens":{"access_token":"tok","id_token":"` + p3jwt(`{"email":"codex@example.com"}`) + `"}}`,
+		`{"tokens":{"access_token":"tok","id_token":"` + p3jwt(`{"https://api.openai.com/auth":{"chatgpt_account_id":"acc-jwt"}}`) + `"}}`,
+		`{"OPENAI_API_KEY":"sk-x"}`,
+		`{"OPENAI_API_KEY":"  "}`,
+		`{"tokens":{"access_token":"` + p3jwt(`{"email":"acc@x.io","account_id":"a2"}`) + `"}, "email":" top@x.io "}`,
+		`{"id_token":"` + p3jwt(`{"preferred_username":"pu@x.io"}`) + `","OPENAI_API_KEY":"k"}`,
+		`{"tokens":{"access_token":5}}`,
+		`nope`,
+	} {
+		a, err := parseCodexAuth([]byte(raw))
+		m := map[string]any{"raw": raw, "err": err != nil}
+		if err == nil {
+			m["auth"] = map[string]any{"accessToken": a.AccessToken, "idToken": a.IDToken, "accountId": a.AccountID, "email": a.Email, "hasApiKey": a.HasAPIKey, "hasChatGpt": a.HasChatGPT}
+		}
+		auths = append(auths, m)
+	}
+	g["codexAuth"] = auths
+
+	var periods []map[string]any
+	for _, raw := range []string{
+		`{"billingCycleStart":"2026-08-01T00:00:00Z","billingCycleEnd":"2026-09-01T00:00:00Z","planUsage":{"autoPercentUsed":40,"apiPercentUsed":0,"totalPercentUsed":21.9,"limit":2000,"totalSpend":800}}`,
+		`{"billingCycleStart":"2026-08-18T00:00:00.000Z","billingCycleEnd":"2026-09-18T00:00:00.000Z","planUsage":{"totalSpend":2550,"limit":2000,"autoPercentUsed":27.1,"apiPercentUsed":0,"totalPercentUsed":21.9}}`,
+		`{"planUsage":{"totalSpend":1}}`,
+		`{"plan_usage":{"total_percent_used":12},"billing_cycle_end":"1788220800","user":{"profile":{"email":"deep@x.io"}}}`,
+		`{"planUsage":{"apiPercentUsed":55,"autoPercentUsed":10},"email":"not-an-email"}`,
+		`{"planUsage":{"limit":400,"includedSpend":100},"cachedEmail":"c@d.e"}`,
+		`{}`,
+	} {
+		p, err := parseCursorPeriod([]byte(raw))
+		m := map[string]any{"raw": raw, "err": err != nil}
+		if err == nil {
+			m["period"] = map[string]any{"quota": p.Quota, "start": p.Start, "end": p.End, "autoPct": p.AutoPct, "apiPct": p.APIPct, "totalPct": p.TotalPct}
+		}
+		periods = append(periods, m)
+	}
+	g["cursorPeriod"] = periods
+
+	var models []map[string]any
+	for _, c := range []struct {
+		raw              string
+		auto, api, total float64
+	}{
+		{`{"aggregations":[{"modelIntent":"cursor-grok-4.6-high-fast","inputTokens":"80","outputTokens":"20","totalCents":800,"tier":2},{"modelIntent":"composer-2.5","inputTokens":10,"outputTokens":0,"totalCents":200,"tier":2},{"modelIntent":"claude-4.6-opus","inputTokens":5,"outputTokens":5,"totalCents":100,"tier":1}]}`, 27.1, 5, 21.9},
+		{`{"aggregations":[{"modelIntent":"composer-2.5","inputTokens":10,"outputTokens":0,"totalCents":100,"tier":2},{"modelIntent":"composer-2.5","inputTokens":5,"outputTokens":5,"totalCents":50,"tier":2}]}`, 20, 0, 20},
+		{`{"aggregation":[{"model":"auto","totalTokens":9},{"name":"gpt-5","cacheReadTokens":4,"cacheWriteTokens":1,"total_cents":"30"},{"name":"b","totalCents":30},{"name":"a","totalCents":30},{"modelIntent":""}]}`, 0, 50, 10},
+		{`{"aggregations":[{"modelIntent":"grok-4","totalCents":10},{"modelIntent":"Other","totalCents":0,"tier":"1"}]}`, 0, 0, 0},
+		{`bad`, 1, 1, 1},
+	} {
+		models = append(models, map[string]any{"raw": c.raw, "auto": c.auto, "api": c.api, "total": c.total, "rows": parseCursorModels([]byte(c.raw), c.auto, c.api, c.total)})
+	}
+	g["cursorModels"] = models
+
+	var resets []map[string]any
+	for _, raw := range []string{`"2026-08-21T01:00:00Z"`, `"2026-08-21T01:00:00.5+02:00"`, `1775808000`, `1775808000123`, `"1775808000"`, `""`, `null`, `-4`, `"garbage"`, `0.5`, `true`} {
+		var v any
+		_ = json.Unmarshal([]byte(raw), &v)
+		resets = append(resets, map[string]any{"raw": raw, "out": parseResetsAt(v)})
+	}
+	g["resetsAt"] = resets
+
+	var scoped []map[string]string
+	for _, name := range []string{"Fable", "Opus", "Sonnet", "Opus 4.5", "Claude Opus 4.5", "claude-fable-5-1", "Haiku 4", "weird name", "Sonnet 4 extended", "  ", "Fable_", "Mini-Model"} {
+		scoped = append(scoped, map[string]string{"name": name, "id": scopedWindowID(name), "label": scopedWindowLabel(name)})
+	}
+	g["scoped"] = scoped
+
+	var qty []map[string]any
+	for _, n := range []float64{0, 393, 1000, 297.4, 150000, 1234567.5, -1500, 999.5, -0.4} {
+		qty = append(qty, map[string]any{"n": n, "out": formatCodexCreditQty(n)})
+	}
+	g["creditQty"] = qty
+
+	var urls []map[string]string
+	for _, c := range [][2]string{
+		{defaultCodexUsageURL, "acc"},
+		{defaultCodexUsageURL, ""},
+		{"http://127.0.0.1:9/wham/usage/", "a-b"},
+		{"https://x.example/api?q=1#f", "z"},
+		{"", "acc"},
+	} {
+		urls = append(urls, map[string]string{"usage": c[0], "account": c[1], "out": codexMonthlyUsageURL(c[0], c[1])})
+	}
+	g["monthlyURL"] = urls
+
+	var emails []map[string]string
+	for _, tok := range []string{
+		p3jwt(`{"email":"jwt@cursor.dev"}`),
+		p3jwt(`{"sub":"user_1","upn":"u@p.n"}`),
+		p3jwt(`{"sub":"auth0|x"}`),
+		"a.b",
+		"opaque",
+		"x." + base64.URLEncoding.EncodeToString([]byte(`{"email_address":"pad@x.io"}`)) + ".y",
+	} {
+		emails = append(emails, map[string]string{"tok": tok, "email": emailFromJWT(tok), "sub": jwtClaim(tok, "sub")})
+	}
+	g["jwtEmails"] = emails
+
+	var cursorJSON []map[string]string
+	for _, raw := range []string{`{"user":{"email":"a@b.c"}}`, `{"cachedEmail":"c@d.e"}`, `{"email":"bad email@x"}`, `{"email_address":"x@y.z","user":{"email":"n@n.n"}}`, `{"a":1}`} {
+		var m map[string]any
+		_ = json.Unmarshal([]byte(raw), &m)
+		cursorJSON = append(cursorJSON, map[string]string{"raw": raw, "email": emailFromCursorJSON(m)})
+	}
+	g["cursorEmails"] = cursorJSON
+
+	var oauth []map[string]any
+	for _, raw := range []string{
+		"sk-ant-oat01-abc",
+		`{"claudeAiOauth":{"accessToken":"sk-ant-oat01-xyz","refreshToken":"sk-ant-ort01-r","expiresAt":1787565508430}}`,
+		`{"access_token":"sk-ant-oat01-sn"}`,
+		`not-json`, `{}`,
+		`{"oauthAccount":{"accessToken":"o","expires_at":"2026-08-21T01:00:00Z"}}`,
+		`{"claude":{"refresh_token":"r"}}`,
+		`{"token":"t","claudeAiOAuth":{"accessToken":"ignored"}}`,
+		`{"claudeAiOAuth":{"accessToken":"nested"}}`,
+		`  sk-ant-padded  `,
+	} {
+		c := parseClaudeOAuth([]byte(raw))
+		oauth = append(oauth, map[string]any{"raw": raw, "access": c.Access, "refresh": c.Refresh, "expiresAt": c.ExpiresAt})
+	}
+	g["claudeOAuth"] = oauth
+
+	var accounts []map[string]string
+	for _, raw := range []string{`{"oauthAccount":{"emailAddress":"dev@example.com","organizationName":"Acme"}}`, `{"oauth_account":{"email":"s@x.io"}}`, `{"userEmail":"top@x.io"}`, `x`} {
+		accounts = append(accounts, map[string]string{"raw": raw, "email": parseClaudeAccountFile([]byte(raw))})
+	}
+	g["claudeAccounts"] = accounts
+
+	dir := t.TempDir()
+	tok := cursorTok{Access: "sess<1>", Refresh: "r", Email: "e@x.io", APIKey: "crsr_k", APIKeyExpiresAtMs: 1788220800000, APIKeyID: 22}
+	_ = writeCursorAuthFile(filepath.Join(dir, "a.json"), tok)
+	full, _ := os.ReadFile(filepath.Join(dir, "a.json"))
+	_ = writeCursorAuthFile(filepath.Join(dir, "b.json"), cursorTok{Access: "s"})
+	min, _ := os.ReadFile(filepath.Join(dir, "b.json"))
+	g["cursorAuthFiles"] = []string{string(full), string(min)}
+
+	var polls []map[string]any
+	for _, raw := range []string{`{"accessToken":"a","refreshToken":"r","email":" e@x.io "}`, `{"access_token":"a2","refresh_token":"r2"}`, `{"accessToken":"` + p3jwt(`{"email":"j@x.io"}`) + `"}`, `{}`, `{"accessToken":1}`} {
+		p, err := parseCursorPoll([]byte(raw))
+		polls = append(polls, map[string]any{"raw": raw, "err": err != nil, "access": p.Access, "refresh": p.Refresh, "email": p.Email})
+	}
+	g["cursorPolls"] = polls
+
+	merges := []struct{ prev, next Snapshot }{
+		{Snapshot{FetchedAt: 100, Providers: []ProviderQuota{{ID: ProviderClaude, Windows: []Window{{ID: WindowFiveHour, UsedPct: 22}}}}},
+			Snapshot{FetchedAt: 200, Providers: []ProviderQuota{{ID: ProviderClaude, Error: "rate_limited"}}}},
+		{Snapshot{}, Snapshot{FetchedAt: 200, Providers: []ProviderQuota{{ID: ProviderClaude, Error: "rate_limited"}}}},
+		{Snapshot{FetchedAt: 100, Providers: []ProviderQuota{{ID: ProviderCodex, Windows: []Window{{ID: WindowFiveHour, UsedPct: 9}}}}},
+			Snapshot{FetchedAt: 200, Providers: []ProviderQuota{{ID: ProviderCodex, Error: "Could not reach ChatGPT", Hint: "context deadline exceeded"}}}},
+		{Snapshot{Providers: []ProviderQuota{{ID: ProviderClaude, Windows: []Window{{ID: WindowFiveHour, UsedPct: 4}}}}},
+			Snapshot{Providers: []ProviderQuota{{ID: ProviderClaude, Error: "Claude Code login expired"}}}},
+		{Snapshot{Providers: []ProviderQuota{{ID: ProviderClaude, Windows: []Window{{ID: WindowFiveHour, UsedPct: 12}}}, {ID: ProviderCursor, Error: "No Cursor usage session"}}},
+			Snapshot{FetchedAt: 9, Providers: []ProviderQuota{{ID: ProviderCodex, Windows: []Window{{ID: WindowFiveHour, UsedPct: 1}}}}}},
+		{Snapshot{Stale: true, Providers: []ProviderQuota{{ID: ProviderCursor, Error: "x", Windows: []Window{{ID: WindowBilling, UsedPct: 3}}}}},
+			Snapshot{FetchedAt: 5, Providers: []ProviderQuota{}}},
+	}
+	var ms []map[string]any
+	for _, m := range merges {
+		prev, _ := json.Marshal(m.prev)
+		next, _ := json.Marshal(m.next)
+		ms = append(ms, map[string]any{"prev": json.RawMessage(prev), "next": json.RawMessage(next), "out": mergeStale(m.prev, m.next)})
+	}
+	g["mergeStale"] = ms
+
+	g["stubs"] = map[string]any{"noSession": CursorNoSessionQuota(), "tokens": CursorConnectTokensQuota(), "connecting": CursorConnectingQuota(), "empty": EmptySnapshot()}
+
+	raw, err := json.MarshalIndent(g, "", " ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(out, append(raw, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

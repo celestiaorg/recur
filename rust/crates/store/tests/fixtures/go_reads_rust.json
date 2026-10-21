@@ -1,0 +1,4650 @@
+{
+  "activeContexts": {
+    "01a15c79-f753-783d-bdfc-d88aae8193da": {
+      "id": "01a15c79-f753-792f-8994-9da0f667a893",
+      "sessionId": "01a15c79-f753-783d-bdfc-d88aae8193da",
+      "summary": "summary of turns",
+      "lastCompactedMessageId": "m-go-1",
+      "createdAt": 1792552859475
+    },
+    "01a15c7b-c9d8-73d8-85ad-d0427e4e363d": {
+      "id": "01a15c7b-c9d8-73d8-85ad-d04349269dd4",
+      "sessionId": "01a15c7b-c9d8-73d8-85ad-d0427e4e363d",
+      "summary": "rust summary",
+      "lastCompactedMessageId": "01a15c7b-c9d7-77e7-b5cf-68b7aae1e744",
+      "createdAt": 1792552978904
+    },
+    "rust-app": null,
+    "rust-sess": {
+      "id": "01a15c7b-c9d8-73d8-85ad-d04177746b4f",
+      "sessionId": "rust-sess",
+      "summary": "rust summary",
+      "lastCompactedMessageId": "01a15c7b-c9d7-77e7-b5cf-68b7aae1e744",
+      "createdAt": 1792552978904
+    },
+    "sess-go-1": {
+      "id": "01a15c79-f753-7451-a9b5-61b87cd352b2",
+      "sessionId": "sess-go-1",
+      "summary": "summary of turns",
+      "lastCompactedMessageId": "m-go-1",
+      "createdAt": 1792552859475
+    },
+    "sess-go-app": null
+  },
+  "activeRuns": [
+    {
+      "id": "run-rust",
+      "scheduleId": "rust-sched",
+      "dueAt": 1767312000000,
+      "workspaceId": "W-rust",
+      "status": "waiting",
+      "detail": ""
+    }
+  ],
+  "appSessions": [
+    {
+      "id": "sess-go-app",
+      "kind": "app",
+      "contextMode": "provider",
+      "provider": "claude-code",
+      "configJson": "{\"code\":\"APP\"}",
+      "status": "idle",
+      "createdAt": 1792552859475,
+      "updatedAt": 1792552978904
+    },
+    {
+      "id": "rust-app",
+      "kind": "app",
+      "contextMode": "provider",
+      "provider": "claude-code",
+      "configJson": "{\"code\":\"APP2\",\"unseen\":true}",
+      "status": "idle",
+      "createdAt": 1792552978905,
+      "updatedAt": 1792552978905
+    }
+  ],
+  "attention": {
+    "unseen": 2,
+    "inboxUnread": 5,
+    "dock": 7,
+    "byWorkspace": {
+      "W-go": 1,
+      "W-rust": 1
+    },
+    "byProject": {
+      "extra": 1,
+      "rust-proj": 1
+    },
+    "appUnseen": 1
+  },
+  "byWorkspace": {
+    "LOOP-2218": {
+      "agents": [],
+      "escalation": {
+        "id": "esc-2218",
+        "workspaceId": "LOOP-2218",
+        "question": "When a client goes over the rate limit, what should happen?",
+        "context": "The ticket says \u003ci\u003e\"limit bursts to protect the API\"\u003c/i\u003e but doesn't define the over-limit behavior. I've built the limiter middleware and tested the under-limit path — this one decision is all that's blocking the rest. I won't guess on something that changes the API's public contract.",
+        "options": [
+          {
+            "text": "Reject with \u003ccode style=\"font-family:var(--mono)\"\u003e429\u003c/code\u003e",
+            "tag": "simplest",
+            "desc": "Clear to clients and easy to reason about. Can feel harsh during legitimate spikes."
+          },
+          {
+            "text": "Queue \u0026 delay",
+            "tag": "smoothest",
+            "desc": "Absorbs short bursts without errors. Adds latency and some memory pressure under load."
+          },
+          {
+            "text": "Token bucket with refill",
+            "tag": "recommended",
+            "desc": "Fair, industry-standard, predictable. Slightly more to implement — I can do it in this loop."
+          }
+        ],
+        "answer": "Token bucket with refill",
+        "choice": "Token bucket with refill",
+        "status": "answered",
+        "applied": true,
+        "askedAgo": "12m"
+      },
+      "events": null,
+      "feed": null,
+      "findings": [],
+      "hasOpenEscalation": false,
+      "lastAssistantText": "",
+      "openFindings": null,
+      "openPRByWorkspace": null,
+      "prByWorkspace": null,
+      "sessions": null
+    },
+    "LOOP-2224": {
+      "agents": [],
+      "escalation": null,
+      "events": null,
+      "feed": null,
+      "findings": [],
+      "hasOpenEscalation": false,
+      "lastAssistantText": "",
+      "openFindings": null,
+      "openPRByWorkspace": {
+        "id": "479",
+        "workspaceId": "LOOP-2224",
+        "projectId": "storefront",
+        "group": "you",
+        "number": 479,
+        "source": "local",
+        "branch": "recur/fix-e2e",
+        "base": "main",
+        "title": "Stabilize flaky checkout E2E tests",
+        "summary": null,
+        "focus": {
+          "title": "",
+          "body": ""
+        },
+        "state": "In review",
+        "diff": {
+          "add": 34,
+          "del": 60
+        },
+        "fileCount": 5,
+        "checksOk": true,
+        "when": "18m",
+        "createdAt": "2026-08-28T09:34:00Z",
+        "updatedAt": "2026-08-28T09:34:00Z",
+        "commits": null,
+        "files": null,
+        "comments": null,
+        "verify": null,
+        "checks": null,
+        "participants": [
+          {
+            "name": "Coder",
+            "avatarCss": "background:var(--cyan);color:#0A0C10",
+            "code": "CO"
+          }
+        ]
+      },
+      "prByWorkspace": {
+        "id": "479",
+        "workspaceId": "LOOP-2224",
+        "projectId": "storefront",
+        "group": "you",
+        "number": 479,
+        "source": "local",
+        "branch": "recur/fix-e2e",
+        "base": "main",
+        "title": "Stabilize flaky checkout E2E tests",
+        "summary": null,
+        "focus": {
+          "title": "",
+          "body": ""
+        },
+        "state": "In review",
+        "diff": {
+          "add": 34,
+          "del": 60
+        },
+        "fileCount": 5,
+        "checksOk": true,
+        "when": "18m",
+        "createdAt": "2026-08-28T09:34:00Z",
+        "updatedAt": "2026-08-28T09:34:00Z",
+        "commits": null,
+        "files": null,
+        "comments": null,
+        "verify": null,
+        "checks": null,
+        "participants": [
+          {
+            "name": "Coder",
+            "avatarCss": "background:var(--cyan);color:#0A0C10",
+            "code": "CO"
+          }
+        ]
+      },
+      "sessions": null
+    },
+    "LOOP-2229": {
+      "agents": [],
+      "escalation": null,
+      "events": null,
+      "feed": null,
+      "findings": [],
+      "hasOpenEscalation": false,
+      "lastAssistantText": "",
+      "openFindings": null,
+      "openPRByWorkspace": null,
+      "prByWorkspace": null,
+      "sessions": null
+    },
+    "LOOP-2231": {
+      "agents": [
+        {
+          "id": "LOOP-2231-MA",
+          "workspaceId": "LOOP-2231",
+          "code": "MA",
+          "name": "Maestro",
+          "role": "orchestrator · plans \u0026 delegates",
+          "model": "opus",
+          "status": "directing",
+          "sessionId": "",
+          "color": "var(--amber)",
+          "task": "Coordinating iteration 3 → verification → PR.",
+          "cur": -1,
+          "steps": [
+            {
+              "kind": "plan",
+              "text": "Decomposed task into config PR + UI PR"
+            },
+            {
+              "kind": "spawn",
+              "text": "Created Reviewer, Coder, Tester, QA on demand"
+            },
+            {
+              "kind": "watch",
+              "text": "Monitoring QA verification, then will open PRs"
+            }
+          ]
+        },
+        {
+          "id": "LOOP-2231-CO",
+          "workspaceId": "LOOP-2231",
+          "code": "CO",
+          "name": "Coder",
+          "role": "writes \u0026 edits code",
+          "model": "sonnet",
+          "status": "idle",
+          "sessionId": "",
+          "color": "var(--cyan)",
+          "task": "Last: resolve reviewer finding on token refresh.",
+          "cur": -1,
+          "steps": [
+            {
+              "kind": "read",
+              "text": "src/auth/oauth.ts"
+            },
+            {
+              "kind": "read",
+              "text": "src/hooks/useOAuthSession.ts"
+            },
+            {
+              "kind": "edit",
+              "text": "src/hooks/useOAuthSession.ts",
+              "diff": {
+                "add": 34,
+                "del": 12
+              }
+            },
+            {
+              "kind": "run",
+              "text": "pnpm test auth → 6 passed",
+              "state": "ok"
+            },
+            {
+              "kind": "done",
+              "text": "handed back to Maestro"
+            }
+          ]
+        },
+        {
+          "id": "LOOP-2231-QA",
+          "workspaceId": "LOOP-2231",
+          "code": "QA",
+          "name": "QA / Browser",
+          "role": "drives the live app like a user",
+          "model": "sonnet",
+          "status": "working",
+          "sessionId": "",
+          "color": "var(--coral)",
+          "task": "Verify Apple \u0026 Google sign-in end to end in the browser.",
+          "cur": 4,
+          "steps": [
+            {
+              "kind": "run",
+              "text": "pnpm dev --port 5173 → ready",
+              "state": "run"
+            },
+            {
+              "kind": "open",
+              "text": "navigated to http://localhost:5173/checkout",
+              "state": "read"
+            },
+            {
+              "kind": "click",
+              "text": "“Sign in with Apple” → Apple consent screen",
+              "state": "ok"
+            },
+            {
+              "kind": "check",
+              "text": "redirect returned a valid session ✓",
+              "state": "ok"
+            },
+            {
+              "kind": "click",
+              "text": "“Sign in with Google” …",
+              "state": "cur"
+            }
+          ]
+        },
+        {
+          "id": "LOOP-2231-RV",
+          "workspaceId": "LOOP-2231",
+          "code": "RV",
+          "name": "Reviewer",
+          "role": "critiques diffs, files findings",
+          "model": "opus",
+          "status": "idle",
+          "sessionId": "",
+          "color": "var(--indigo)",
+          "task": "Last: re-review after iteration 3.",
+          "cur": -1,
+          "steps": [
+            {
+              "kind": "read",
+              "text": "diff for #482 (+218 −12)"
+            },
+            {
+              "kind": "note",
+              "text": "iter 1: 12 findings (secrets, error handling)"
+            },
+            {
+              "kind": "note",
+              "text": "iter 3: 0 findings"
+            },
+            {
+              "kind": "done",
+              "text": "approved · re-requested human review"
+            }
+          ]
+        }
+      ],
+      "escalation": null,
+      "events": null,
+      "feed": [
+        {
+          "id": "f1",
+          "agentCode": "MA",
+          "name": "Maestro",
+          "text": "Review converged at 0 findings — advancing to live verification before opening PR #2.",
+          "time": "45s",
+          "kind": "outcome",
+          "isDeviation": false
+        },
+        {
+          "id": "f2",
+          "agentCode": "QA",
+          "name": "QA / Browser",
+          "text": "Booted dev server on \u003ccode\u003e:5173\u003c/code\u003e, navigating to \u003ccode\u003e/checkout\u003c/code\u003e to test the Apple flow.",
+          "time": "38s",
+          "kind": "outcome",
+          "clickAgent": "QA",
+          "isDeviation": false
+        },
+        {
+          "id": "f3",
+          "agentCode": "QA",
+          "name": "QA / Browser",
+          "text": "Clicked “Sign in with Apple” → redirect OK → returned with valid session. \u003cspan style=\"color:var(--emerald)\"\u003e✓ pass\u003c/span\u003e",
+          "time": "12s",
+          "kind": "outcome",
+          "clickAgent": "QA",
+          "isDeviation": false
+        },
+        {
+          "id": "f4",
+          "agentCode": "",
+          "name": "Maestro",
+          "text": "Spawned a second, security-focused reviewer for this iteration.",
+          "time": "1m",
+          "kind": "deviation",
+          "isDeviation": true,
+          "rule": "default = one reviewer",
+          "why": "diff touches \u003ccode\u003eauth/oauth.ts\u003c/code\u003e — created on demand, then retired."
+        },
+        {
+          "id": "f5",
+          "agentCode": "CO",
+          "name": "Coder",
+          "text": "Resolved reviewer finding: extracted token refresh into \u003ccode\u003euseOAuthSession\u003c/code\u003e.",
+          "time": "1m",
+          "kind": "outcome",
+          "clickAgent": "CO",
+          "isDeviation": false
+        },
+        {
+          "id": "f6",
+          "agentCode": "RV",
+          "name": "Reviewer",
+          "text": "Re-reviewed diff after iteration 3 — no remaining findings. Approving.",
+          "time": "1m",
+          "kind": "outcome",
+          "clickAgent": "RV",
+          "isDeviation": false
+        },
+        {
+          "id": "f7",
+          "agentCode": "",
+          "name": "Maestro",
+          "text": "Split the task into 2 PRs instead of 1.",
+          "time": "2m",
+          "kind": "deviation",
+          "isDeviation": true,
+          "rule": "default = one PR",
+          "why": "mixed secrets-config with UI wiring — separate PRs are easier to review."
+        },
+        {
+          "id": "f8",
+          "agentCode": "TE",
+          "name": "Tester",
+          "text": "Added 6 tests for Apple + Google providers — all green.",
+          "time": "3m",
+          "kind": "note",
+          "clickAgent": "TE",
+          "isDeviation": false
+        }
+      ],
+      "findings": [],
+      "hasOpenEscalation": false,
+      "lastAssistantText": "",
+      "openFindings": null,
+      "openPRByWorkspace": {
+        "id": "482",
+        "workspaceId": "LOOP-2231",
+        "projectId": "storefront",
+        "group": "you",
+        "number": 482,
+        "source": "gh",
+        "url": "https://github.com/acme/app/pull/482",
+        "branch": "recur/oauth-checkout",
+        "base": "main",
+        "title": "Add OAuth provider config + secrets handling",
+        "summary": [
+          {
+            "kind": "p",
+            "html": "Adds \u003cb\u003eApple and Google sign-in\u003c/b\u003e to checkout. Provider config and secret handling ship in this PR; the sign-in buttons in the checkout UI follow in \u003ccode\u003e#483\u003c/code\u003e."
+          },
+          {
+            "kind": "p",
+            "html": "\u003cb\u003eWhat changed\u003c/b\u003e"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "New OAuth provider registry in \u003ccode\u003eauth/oauth.ts\u003c/code\u003e for Apple + Google.",
+              "Client secrets now resolved from the secrets manager at startup — never read from \u003ccode\u003eprocess.env\u003c/code\u003e or logged.",
+              "Session/token refresh extracted into a reusable \u003ccode\u003euseOAuthSession\u003c/code\u003e hook."
+            ]
+          },
+          {
+            "kind": "p",
+            "html": "\u003cb\u003eKey decision:\u003c/b\u003e tokens are stored in an httpOnly cookie rather than localStorage, so they're not reachable from JS. Flagging because it changes how the client reads auth state."
+          }
+        ],
+        "focus": {
+          "title": "Where to focus your review",
+          "body": "The token-refresh race in \u003ccode\u003euseOAuthSession.ts\u003c/code\u003e (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
+        },
+        "state": "In review",
+        "diff": {
+          "add": 218,
+          "del": 12
+        },
+        "fileCount": 3,
+        "checksOk": true,
+        "when": "2m",
+        "createdAt": "2026-08-28T09:50:00Z",
+        "updatedAt": "2026-08-28T09:50:00Z",
+        "commits": [
+          {
+            "hash": "e8d34b1",
+            "message": "Add tests for Apple + Google providers",
+            "authorRole": "Tester",
+            "agentCode": "TE",
+            "color": "var(--emerald)",
+            "iterLabel": "verify pass",
+            "diff": {
+              "add": 6,
+              "del": 0
+            },
+            "when": "4m",
+            "files": [
+              {
+                "path": "src/auth/__tests__/oauth.test.ts",
+                "status": "a",
+                "diff": {
+                  "add": 6,
+                  "del": 0
+                },
+                "lines": [
+                  {
+                    "old": "",
+                    "new": "",
+                    "type": "hunk",
+                    "codeHtml": "@@ -0,0 +1,6 @@ new file"
+                  },
+                  {
+                    "old": "",
+                    "new": "1",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"fn\"\u003etest\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple sign-in returns a session'\u003c/span\u003e, \u003cspan class=\"kw\"\u003easync\u003c/span\u003e () =\u0026gt; {"
+                  },
+                  {
+                    "old": "",
+                    "new": "2",
+                    "type": "add",
+                    "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e s = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e)"
+                  },
+                  {
+                    "old": "",
+                    "new": "3",
+                    "type": "add",
+                    "codeHtml": "  \u003cspan class=\"fn\"\u003eexpect\u003c/span\u003e(s.user).\u003cspan class=\"fn\"\u003etoBeDefined\u003c/span\u003e()"
+                  },
+                  {
+                    "old": "",
+                    "new": "4",
+                    "type": "add",
+                    "codeHtml": "})"
+                  },
+                  {
+                    "old": "",
+                    "new": "5",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"fn\"\u003etest\u003c/span\u003e(\u003cspan class=\"str\"\u003e'google sign-in returns a session'\u003c/span\u003e, \u003cspan class=\"kw\"\u003easync\u003c/span\u003e () =\u0026gt; { \u003cspan class=\"cm\"\u003e/* … */\u003c/span\u003e })"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "hash": "a3f91c2",
+            "message": "Resolve client secret via secrets manager",
+            "authorRole": "Coder",
+            "agentCode": "CO",
+            "color": "var(--cyan)",
+            "iterLabel": "iteration 3 · review fix",
+            "diff": {
+              "add": 10,
+              "del": 6
+            },
+            "when": "6m",
+            "files": [
+              {
+                "path": "src/auth/oauth.ts",
+                "status": "m",
+                "diff": {
+                  "add": 10,
+                  "del": 6
+                },
+                "lines": [
+                  {
+                    "old": "",
+                    "new": "",
+                    "type": "hunk",
+                    "codeHtml": "@@ -10,6 +10,9 @@ provider registry"
+                  },
+                  {
+                    "old": "10",
+                    "new": "10",
+                    "type": "ctx",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003eimport\u003c/span\u003e { secrets } \u003cspan class=\"kw\"\u003efrom\u003c/span\u003e \u003cspan class=\"str\"\u003e'../lib/secrets'\u003c/span\u003e"
+                  },
+                  {
+                    "old": "11",
+                    "new": "",
+                    "type": "del",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = process.env.\u003cspan class=\"nm\"\u003eOAUTH_CLIENT_SECRET\u003c/span\u003e"
+                  },
+                  {
+                    "old": "",
+                    "new": "11",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e secrets.\u003cspan class=\"fn\"\u003eget\u003c/span\u003e(\u003cspan class=\"str\"\u003e'oauth/client_secret'\u003c/span\u003e)"
+                  },
+                  {
+                    "old": "12",
+                    "new": "12",
+                    "type": "ctx",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eproviders\u003c/span\u003e = {"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "hash": "4b7f0d2",
+            "message": "Harden error handling on token exchange",
+            "authorRole": "Coder",
+            "agentCode": "CO",
+            "color": "var(--cyan)",
+            "iterLabel": "iteration 2 · review fix",
+            "diff": {
+              "add": 28,
+              "del": 6
+            },
+            "when": "14m",
+            "files": [
+              {
+                "path": "src/auth/oauth.ts",
+                "status": "m",
+                "diff": {
+                  "add": 28,
+                  "del": 6
+                },
+                "lines": [
+                  {
+                    "old": "",
+                    "new": "",
+                    "type": "hunk",
+                    "codeHtml": "@@ -22,4 +22,12 @@ token exchange"
+                  },
+                  {
+                    "old": "22",
+                    "new": "22",
+                    "type": "ctx",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003easync function\u003c/span\u003e \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e(provider, code) {"
+                  },
+                  {
+                    "old": "23",
+                    "new": "",
+                    "type": "del",
+                    "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e res = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003efetch\u003c/span\u003e(tokenUrl, { method: \u003cspan class=\"str\"\u003e'POST'\u003c/span\u003e })"
+                  },
+                  {
+                    "old": "24",
+                    "new": "",
+                    "type": "del",
+                    "codeHtml": "  \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e res.\u003cspan class=\"fn\"\u003ejson\u003c/span\u003e()"
+                  },
+                  {
+                    "old": "",
+                    "new": "23",
+                    "type": "add",
+                    "codeHtml": "  \u003cspan class=\"kw\"\u003etry\u003c/span\u003e {"
+                  },
+                  {
+                    "old": "",
+                    "new": "24",
+                    "type": "add",
+                    "codeHtml": "    \u003cspan class=\"kw\"\u003econst\u003c/span\u003e res = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003efetch\u003c/span\u003e(tokenUrl, { method: \u003cspan class=\"str\"\u003e'POST'\u003c/span\u003e })"
+                  },
+                  {
+                    "old": "",
+                    "new": "25",
+                    "type": "add",
+                    "codeHtml": "    \u003cspan class=\"kw\"\u003eif\u003c/span\u003e (!res.ok) \u003cspan class=\"kw\"\u003ethrow new\u003c/span\u003e \u003cspan class=\"ty\"\u003eOAuthError\u003c/span\u003e(res.status)"
+                  },
+                  {
+                    "old": "",
+                    "new": "26",
+                    "type": "add",
+                    "codeHtml": "    \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e res.\u003cspan class=\"fn\"\u003ejson\u003c/span\u003e()"
+                  },
+                  {
+                    "old": "",
+                    "new": "27",
+                    "type": "add",
+                    "codeHtml": "  } \u003cspan class=\"kw\"\u003ecatch\u003c/span\u003e (e) {"
+                  },
+                  {
+                    "old": "",
+                    "new": "28",
+                    "type": "add",
+                    "codeHtml": "    logger.\u003cspan class=\"fn\"\u003ewarn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'token exchange failed'\u003c/span\u003e, { provider })"
+                  },
+                  {
+                    "old": "",
+                    "new": "29",
+                    "type": "add",
+                    "codeHtml": "    \u003cspan class=\"kw\"\u003ethrow\u003c/span\u003e e"
+                  },
+                  {
+                    "old": "",
+                    "new": "30",
+                    "type": "add",
+                    "codeHtml": "  }"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "hash": "9c2e1a4",
+            "message": "Add Apple \u0026 Google OAuth providers",
+            "authorRole": "Coder",
+            "agentCode": "CO",
+            "color": "var(--cyan)",
+            "iterLabel": "iteration 1",
+            "diff": {
+              "add": 180,
+              "del": 0
+            },
+            "when": "22m",
+            "files": [
+              {
+                "path": "src/auth/oauth.ts",
+                "status": "a",
+                "diff": {
+                  "add": 180,
+                  "del": 0
+                },
+                "lines": [
+                  {
+                    "old": "",
+                    "new": "",
+                    "type": "hunk",
+                    "codeHtml": "@@ -0,0 +1,180 @@ new file"
+                  },
+                  {
+                    "old": "",
+                    "new": "1",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eappleProvider\u003c/span\u003e = (secret) =\u0026gt; ({"
+                  },
+                  {
+                    "old": "",
+                    "new": "2",
+                    "type": "add",
+                    "codeHtml": "  id: \u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e, \u003cspan class=\"fn\"\u003eauthorize\u003c/span\u003e, \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e,"
+                  },
+                  {
+                    "old": "",
+                    "new": "3",
+                    "type": "add",
+                    "codeHtml": "})"
+                  },
+                  {
+                    "old": "",
+                    "new": "4",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003egoogleProvider\u003c/span\u003e = (secret) =\u0026gt; ({"
+                  },
+                  {
+                    "old": "",
+                    "new": "5",
+                    "type": "add",
+                    "codeHtml": "  id: \u003cspan class=\"str\"\u003e'google'\u003c/span\u003e, \u003cspan class=\"fn\"\u003eauthorize\u003c/span\u003e, \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e,"
+                  },
+                  {
+                    "old": "",
+                    "new": "6",
+                    "type": "add",
+                    "codeHtml": "})"
+                  },
+                  {
+                    "old": "",
+                    "new": "7",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"cm\"\u003e// … 174 more lines (authorize / exchange / token parsing)\u003c/span\u003e"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "files": [
+          {
+            "path": "src/auth/oauth.ts",
+            "status": "m",
+            "diff": {
+              "add": 96,
+              "del": 8
+            },
+            "lines": [
+              {
+                "old": "",
+                "new": "",
+                "type": "hunk",
+                "codeHtml": "@@ -1,6 +1,9 @@ provider registry"
+              },
+              {
+                "old": "11",
+                "new": "11",
+                "type": "ctx",
+                "codeHtml": "\u003cspan class=\"kw\"\u003eimport\u003c/span\u003e { secrets } \u003cspan class=\"kw\"\u003efrom\u003c/span\u003e \u003cspan class=\"str\"\u003e'../lib/secrets'\u003c/span\u003e"
+              },
+              {
+                "old": "12",
+                "new": "",
+                "type": "del",
+                "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = process.env.\u003cspan class=\"nm\"\u003eOAUTH_CLIENT_SECRET\u003c/span\u003e"
+              },
+              {
+                "old": "",
+                "new": "12",
+                "type": "add",
+                "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e secrets.\u003cspan class=\"fn\"\u003eget\u003c/span\u003e(\u003cspan class=\"str\"\u003e'oauth/client_secret'\u003c/span\u003e)",
+                "extraHtml": "\u003cdiv class=\"icmt\"\u003e\u003cdiv class=\"icmt-pad\"\u003e\u003cdiv class=\"cmt\" style=\"padding:0;border:none\"\u003e\u003cdiv class=\"ca\" style=\"background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)\"\u003eAR\u003c/div\u003e\u003cdiv class=\"cc\"\u003e\u003cdiv class=\"ch\"\u003e\u003cspan class=\"cn\"\u003eAvery Rourke\u003c/span\u003e\u003cspan class=\"ct\"\u003e2m\u003c/span\u003e\u003c/div\u003e\u003cdiv class=\"cm\"\u003eGood — this was reading from \u003ccode\u003eprocess.env\u003c/code\u003e before. Confirm the secrets client is initialised before any provider loads?\u003c/div\u003e\u003cspan class=\"react\" style=\"margin-top:8px\"\u003e\u003cspan style=\"width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block\"\u003e\u003c/span\u003eCoder: yes — \u003ccode\u003esecrets.init()\u003c/code\u003e runs in \u003ccode\u003ebootstrap.ts\u003c/code\u003e before providers register. ✓ resolved\u003c/span\u003e\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e"
+              },
+              {
+                "old": "13",
+                "new": "13",
+                "type": "ctx",
+                "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eproviders\u003c/span\u003e = {"
+              },
+              {
+                "old": "",
+                "new": "14",
+                "type": "add",
+                "codeHtml": "  apple: \u003cspan class=\"fn\"\u003eappleProvider\u003c/span\u003e(secret),"
+              },
+              {
+                "old": "",
+                "new": "15",
+                "type": "add",
+                "codeHtml": "  google: \u003cspan class=\"fn\"\u003egoogleProvider\u003c/span\u003e(secret),"
+              },
+              {
+                "old": "14",
+                "new": "16",
+                "type": "ctx",
+                "codeHtml": "}"
+              }
+            ]
+          },
+          {
+            "path": "src/hooks/useOAuthSession.ts",
+            "status": "a",
+            "diff": {
+              "add": 88,
+              "del": 0
+            },
+            "lines": [
+              {
+                "old": "",
+                "new": "",
+                "type": "hunk",
+                "codeHtml": "@@ -0,0 +1,12 @@ new file"
+              },
+              {
+                "old": "",
+                "new": "1",
+                "type": "add",
+                "codeHtml": "\u003cspan class=\"kw\"\u003eexport function\u003c/span\u003e \u003cspan class=\"fn\"\u003euseOAuthSession\u003c/span\u003e() {"
+              },
+              {
+                "old": "",
+                "new": "2",
+                "type": "add",
+                "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e [session, setSession] = \u003cspan class=\"fn\"\u003euseState\u003c/span\u003e\u0026lt;\u003cspan class=\"ty\"\u003eSession\u003c/span\u003e | \u003cspan class=\"kw\"\u003enull\u003c/span\u003e\u0026gt;(\u003cspan class=\"kw\"\u003enull\u003c/span\u003e)",
+                "extraHtml": "\u003cdiv class=\"flag\"\u003e\u003csvg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"\u003e\u003ccircle cx=\"11\" cy=\"11\" r=\"7\"/\u003e\u003cpath d=\"M21 21l-4-4\" stroke-linecap=\"round\"/\u003e\u003c/svg\u003e\u003cdiv\u003e\u003cdiv class=\"ft\"\u003eReviewer flagged this region for human eyes\u003c/div\u003e\u003cdiv class=\"fm\"\u003etoken refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e"
+              },
+              {
+                "old": "",
+                "new": "3",
+                "type": "add",
+                "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e refreshing = \u003cspan class=\"fn\"\u003euseRef\u003c/span\u003e(\u003cspan class=\"kw\"\u003efalse\u003c/span\u003e) \u003cspan class=\"cm\"\u003e// mutex guard\u003c/span\u003e"
+              },
+              {
+                "old": "",
+                "new": "4",
+                "type": "add",
+                "codeHtml": ""
+              },
+              {
+                "old": "",
+                "new": "5",
+                "type": "add",
+                "codeHtml": "  \u003cspan class=\"kw\"\u003easync function\u003c/span\u003e \u003cspan class=\"fn\"\u003erefresh\u003c/span\u003e() {"
+              },
+              {
+                "old": "",
+                "new": "6",
+                "type": "add",
+                "codeHtml": "    \u003cspan class=\"kw\"\u003eif\u003c/span\u003e (refreshing.current) \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e"
+              },
+              {
+                "old": "",
+                "new": "7",
+                "type": "add",
+                "codeHtml": "    refreshing.current = \u003cspan class=\"kw\"\u003etrue\u003c/span\u003e"
+              },
+              {
+                "old": "",
+                "new": "8",
+                "type": "add",
+                "codeHtml": "    \u003cspan class=\"kw\"\u003etry\u003c/span\u003e { setSession(\u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003erotateTokens\u003c/span\u003e()) }"
+              },
+              {
+                "old": "",
+                "new": "9",
+                "type": "add",
+                "codeHtml": "    \u003cspan class=\"kw\"\u003efinally\u003c/span\u003e { refreshing.current = \u003cspan class=\"kw\"\u003efalse\u003c/span\u003e }"
+              },
+              {
+                "old": "",
+                "new": "10",
+                "type": "add",
+                "codeHtml": "  }"
+              }
+            ]
+          },
+          {
+            "path": "src/checkout/SignInButtons.tsx",
+            "status": "m",
+            "diff": {
+              "add": 34,
+              "del": 4
+            },
+            "lines": [
+              {
+                "old": "",
+                "new": "",
+                "type": "hunk",
+                "codeHtml": "@@ -8,4 +8,12 @@ checkout buttons"
+              },
+              {
+                "old": "8",
+                "new": "8",
+                "type": "ctx",
+                "codeHtml": "\u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e ("
+              },
+              {
+                "old": "",
+                "new": "9",
+                "type": "add",
+                "codeHtml": "  \u0026lt;\u003cspan class=\"ty\"\u003eAppleButton\u003c/span\u003e onClick={() =\u0026gt; \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e)} /\u0026gt;"
+              },
+              {
+                "old": "",
+                "new": "10",
+                "type": "add",
+                "codeHtml": "  \u0026lt;\u003cspan class=\"ty\"\u003eGoogleButton\u003c/span\u003e onClick={() =\u0026gt; \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'google'\u003c/span\u003e)} /\u0026gt;"
+              },
+              {
+                "old": "9",
+                "new": "11",
+                "type": "ctx",
+                "codeHtml": ")"
+              }
+            ]
+          }
+        ],
+        "comments": [
+          {
+            "id": "gh-description",
+            "code": "LO",
+            "author": "loopbot",
+            "authorLogin": "loopbot",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "time": "2m",
+            "bodyHtml": "",
+            "kind": "description",
+            "bodyMd": "Adds Apple and Google sign-in to checkout. Provider config and secret handling ship in this PR.",
+            "url": "https://github.com/acme/app/pull/482#issue-482001",
+            "reactions": [
+              {
+                "content": "hooray",
+                "count": 3
+              }
+            ]
+          },
+          {
+            "id": "c1",
+            "code": "AR",
+            "author": "Avery Rourke",
+            "authorLogin": "avery",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "time": "2m",
+            "bodyHtml": "Left a comment on \u003ccode\u003eoauth.ts\u003c/code\u003e about the client secret — see Files changed.",
+            "verb": "commented",
+            "bodyMd": "Left a comment on oauth.ts about the client secret — see Files changed.",
+            "url": "https://github.com/acme/app/pull/482#issuecomment-1001",
+            "reactions": [
+              {
+                "content": "+1",
+                "count": 2
+              },
+              {
+                "content": "heart",
+                "count": 1,
+                "mine": true
+              }
+            ]
+          },
+          {
+            "id": "c2",
+            "code": "MA",
+            "author": "Maestro",
+            "avatarCss": "background:var(--amber);color:#0A0C10",
+            "time": "2m",
+            "bodyHtml": "Got the review notes — I'll address the client-secret comment.",
+            "verb": "commented",
+            "url": "https://github.com/acme/app/pull/482#issuecomment-1002"
+          },
+          {
+            "id": "c3",
+            "code": "CO",
+            "author": "Coder",
+            "avatarCss": "background:var(--cyan);color:#0A0C10",
+            "time": "now",
+            "bodyHtml": "Pushed \u003ccode\u003ea3f91c2\u003c/code\u003e — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
+            "verb": "commented",
+            "url": "https://github.com/acme/app/pull/482#issuecomment-1003"
+          },
+          {
+            "id": "gh-review-99",
+            "code": "AR",
+            "author": "Avery Rourke",
+            "authorLogin": "avery",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "time": "1m",
+            "bodyHtml": "",
+            "verb": "commented",
+            "bodyMd": "testing again",
+            "url": "https://github.com/acme/app/pull/482#pullrequestreview-99"
+          },
+          {
+            "id": "gh-inline-1",
+            "code": "AR",
+            "author": "Avery Rourke",
+            "authorLogin": "avery",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "time": "1m",
+            "bodyHtml": "\u003ccode\u003esrc/auth/oauth.ts:11-12\u003c/code\u003e",
+            "verb": "commented",
+            "bodyMd": "hmm",
+            "url": "https://github.com/acme/app/pull/482#discussion_r1",
+            "parentId": "gh-review-99",
+            "reviewId": "99",
+            "path": "src/auth/oauth.ts",
+            "line": 12,
+            "side": "RIGHT",
+            "diffHunk": "@@ -4,9 +4,9 @@ provider registry\n import { secrets } from './vault'\n const providers = []\n function register() {\n   return providers\n }\n const unused = 1\n const unused2 = 2\n const unused3 = 3\n-const secret = process.env.OAUTH_CLIENT_SECRET\n+const secret = await secrets.get('oauth/client_secret')",
+            "startLine": 11,
+            "threadId": "PRRT_seed99",
+            "reactions": [
+              {
+                "content": "eyes",
+                "count": 1
+              }
+            ]
+          }
+        ],
+        "verify": [
+          {
+            "html": "Booted the app, opened \u003cb\u003e/checkout\u003c/b\u003e on a clean session",
+            "passed": true
+          },
+          {
+            "html": "\u003cb\u003eSign in with Apple\u003c/b\u003e → consent → returned with a valid session",
+            "passed": true
+          },
+          {
+            "html": "\u003cb\u003eSign in with Google\u003c/b\u003e → consent → returned with a valid session",
+            "passed": true
+          },
+          {
+            "html": "Reloaded — session persisted; no token in \u003cb\u003elocalStorage\u003c/b\u003e or logs",
+            "passed": true
+          }
+        ],
+        "checks": [
+          {
+            "name": "test",
+            "detail": "1m 12s",
+            "passed": true,
+            "status": "pass"
+          },
+          {
+            "name": "lint",
+            "detail": "8s",
+            "passed": true,
+            "status": "pass"
+          },
+          {
+            "name": "typecheck",
+            "detail": "22s",
+            "passed": true,
+            "status": "pass"
+          }
+        ],
+        "authorLogin": "loopbot",
+        "participants": [
+          {
+            "login": "loopbot",
+            "name": "loopbot",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "code": "LO"
+          },
+          {
+            "login": "avery",
+            "name": "Avery Rourke",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "code": "AR"
+          },
+          {
+            "login": "sam",
+            "name": "sam"
+          },
+          {
+            "name": "PR Responder",
+            "avatarCss": "background:#b08bd8;color:#0A0C10",
+            "code": "PR"
+          },
+          {
+            "name": "Coder",
+            "avatarCss": "background:var(--cyan);color:#0A0C10",
+            "code": "CO"
+          }
+        ],
+        "reviewers": [
+          {
+            "login": "avery",
+            "name": "Avery Rourke",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "code": "AR",
+            "state": "pending"
+          },
+          {
+            "login": "sam",
+            "name": "sam",
+            "state": "approved"
+          }
+        ],
+        "viewerLogin": "avery",
+        "viewerCanWrite": true,
+        "reviewRequested": true,
+        "attentionReasons": [
+          "review_requested"
+        ]
+      },
+      "prByWorkspace": {
+        "id": "482",
+        "workspaceId": "LOOP-2231",
+        "projectId": "storefront",
+        "group": "you",
+        "number": 482,
+        "source": "gh",
+        "url": "https://github.com/acme/app/pull/482",
+        "branch": "recur/oauth-checkout",
+        "base": "main",
+        "title": "Add OAuth provider config + secrets handling",
+        "summary": [
+          {
+            "kind": "p",
+            "html": "Adds \u003cb\u003eApple and Google sign-in\u003c/b\u003e to checkout. Provider config and secret handling ship in this PR; the sign-in buttons in the checkout UI follow in \u003ccode\u003e#483\u003c/code\u003e."
+          },
+          {
+            "kind": "p",
+            "html": "\u003cb\u003eWhat changed\u003c/b\u003e"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "New OAuth provider registry in \u003ccode\u003eauth/oauth.ts\u003c/code\u003e for Apple + Google.",
+              "Client secrets now resolved from the secrets manager at startup — never read from \u003ccode\u003eprocess.env\u003c/code\u003e or logged.",
+              "Session/token refresh extracted into a reusable \u003ccode\u003euseOAuthSession\u003c/code\u003e hook."
+            ]
+          },
+          {
+            "kind": "p",
+            "html": "\u003cb\u003eKey decision:\u003c/b\u003e tokens are stored in an httpOnly cookie rather than localStorage, so they're not reachable from JS. Flagging because it changes how the client reads auth state."
+          }
+        ],
+        "focus": {
+          "title": "Where to focus your review",
+          "body": "The token-refresh race in \u003ccode\u003euseOAuthSession.ts\u003c/code\u003e (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
+        },
+        "state": "In review",
+        "diff": {
+          "add": 218,
+          "del": 12
+        },
+        "fileCount": 3,
+        "checksOk": true,
+        "when": "2m",
+        "createdAt": "2026-08-28T09:50:00Z",
+        "updatedAt": "2026-08-28T09:50:00Z",
+        "commits": [
+          {
+            "hash": "e8d34b1",
+            "message": "Add tests for Apple + Google providers",
+            "authorRole": "Tester",
+            "agentCode": "TE",
+            "color": "var(--emerald)",
+            "iterLabel": "verify pass",
+            "diff": {
+              "add": 6,
+              "del": 0
+            },
+            "when": "4m",
+            "files": [
+              {
+                "path": "src/auth/__tests__/oauth.test.ts",
+                "status": "a",
+                "diff": {
+                  "add": 6,
+                  "del": 0
+                },
+                "lines": [
+                  {
+                    "old": "",
+                    "new": "",
+                    "type": "hunk",
+                    "codeHtml": "@@ -0,0 +1,6 @@ new file"
+                  },
+                  {
+                    "old": "",
+                    "new": "1",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"fn\"\u003etest\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple sign-in returns a session'\u003c/span\u003e, \u003cspan class=\"kw\"\u003easync\u003c/span\u003e () =\u0026gt; {"
+                  },
+                  {
+                    "old": "",
+                    "new": "2",
+                    "type": "add",
+                    "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e s = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e)"
+                  },
+                  {
+                    "old": "",
+                    "new": "3",
+                    "type": "add",
+                    "codeHtml": "  \u003cspan class=\"fn\"\u003eexpect\u003c/span\u003e(s.user).\u003cspan class=\"fn\"\u003etoBeDefined\u003c/span\u003e()"
+                  },
+                  {
+                    "old": "",
+                    "new": "4",
+                    "type": "add",
+                    "codeHtml": "})"
+                  },
+                  {
+                    "old": "",
+                    "new": "5",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"fn\"\u003etest\u003c/span\u003e(\u003cspan class=\"str\"\u003e'google sign-in returns a session'\u003c/span\u003e, \u003cspan class=\"kw\"\u003easync\u003c/span\u003e () =\u0026gt; { \u003cspan class=\"cm\"\u003e/* … */\u003c/span\u003e })"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "hash": "a3f91c2",
+            "message": "Resolve client secret via secrets manager",
+            "authorRole": "Coder",
+            "agentCode": "CO",
+            "color": "var(--cyan)",
+            "iterLabel": "iteration 3 · review fix",
+            "diff": {
+              "add": 10,
+              "del": 6
+            },
+            "when": "6m",
+            "files": [
+              {
+                "path": "src/auth/oauth.ts",
+                "status": "m",
+                "diff": {
+                  "add": 10,
+                  "del": 6
+                },
+                "lines": [
+                  {
+                    "old": "",
+                    "new": "",
+                    "type": "hunk",
+                    "codeHtml": "@@ -10,6 +10,9 @@ provider registry"
+                  },
+                  {
+                    "old": "10",
+                    "new": "10",
+                    "type": "ctx",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003eimport\u003c/span\u003e { secrets } \u003cspan class=\"kw\"\u003efrom\u003c/span\u003e \u003cspan class=\"str\"\u003e'../lib/secrets'\u003c/span\u003e"
+                  },
+                  {
+                    "old": "11",
+                    "new": "",
+                    "type": "del",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = process.env.\u003cspan class=\"nm\"\u003eOAUTH_CLIENT_SECRET\u003c/span\u003e"
+                  },
+                  {
+                    "old": "",
+                    "new": "11",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e secrets.\u003cspan class=\"fn\"\u003eget\u003c/span\u003e(\u003cspan class=\"str\"\u003e'oauth/client_secret'\u003c/span\u003e)"
+                  },
+                  {
+                    "old": "12",
+                    "new": "12",
+                    "type": "ctx",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eproviders\u003c/span\u003e = {"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "hash": "4b7f0d2",
+            "message": "Harden error handling on token exchange",
+            "authorRole": "Coder",
+            "agentCode": "CO",
+            "color": "var(--cyan)",
+            "iterLabel": "iteration 2 · review fix",
+            "diff": {
+              "add": 28,
+              "del": 6
+            },
+            "when": "14m",
+            "files": [
+              {
+                "path": "src/auth/oauth.ts",
+                "status": "m",
+                "diff": {
+                  "add": 28,
+                  "del": 6
+                },
+                "lines": [
+                  {
+                    "old": "",
+                    "new": "",
+                    "type": "hunk",
+                    "codeHtml": "@@ -22,4 +22,12 @@ token exchange"
+                  },
+                  {
+                    "old": "22",
+                    "new": "22",
+                    "type": "ctx",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003easync function\u003c/span\u003e \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e(provider, code) {"
+                  },
+                  {
+                    "old": "23",
+                    "new": "",
+                    "type": "del",
+                    "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e res = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003efetch\u003c/span\u003e(tokenUrl, { method: \u003cspan class=\"str\"\u003e'POST'\u003c/span\u003e })"
+                  },
+                  {
+                    "old": "24",
+                    "new": "",
+                    "type": "del",
+                    "codeHtml": "  \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e res.\u003cspan class=\"fn\"\u003ejson\u003c/span\u003e()"
+                  },
+                  {
+                    "old": "",
+                    "new": "23",
+                    "type": "add",
+                    "codeHtml": "  \u003cspan class=\"kw\"\u003etry\u003c/span\u003e {"
+                  },
+                  {
+                    "old": "",
+                    "new": "24",
+                    "type": "add",
+                    "codeHtml": "    \u003cspan class=\"kw\"\u003econst\u003c/span\u003e res = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003efetch\u003c/span\u003e(tokenUrl, { method: \u003cspan class=\"str\"\u003e'POST'\u003c/span\u003e })"
+                  },
+                  {
+                    "old": "",
+                    "new": "25",
+                    "type": "add",
+                    "codeHtml": "    \u003cspan class=\"kw\"\u003eif\u003c/span\u003e (!res.ok) \u003cspan class=\"kw\"\u003ethrow new\u003c/span\u003e \u003cspan class=\"ty\"\u003eOAuthError\u003c/span\u003e(res.status)"
+                  },
+                  {
+                    "old": "",
+                    "new": "26",
+                    "type": "add",
+                    "codeHtml": "    \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e res.\u003cspan class=\"fn\"\u003ejson\u003c/span\u003e()"
+                  },
+                  {
+                    "old": "",
+                    "new": "27",
+                    "type": "add",
+                    "codeHtml": "  } \u003cspan class=\"kw\"\u003ecatch\u003c/span\u003e (e) {"
+                  },
+                  {
+                    "old": "",
+                    "new": "28",
+                    "type": "add",
+                    "codeHtml": "    logger.\u003cspan class=\"fn\"\u003ewarn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'token exchange failed'\u003c/span\u003e, { provider })"
+                  },
+                  {
+                    "old": "",
+                    "new": "29",
+                    "type": "add",
+                    "codeHtml": "    \u003cspan class=\"kw\"\u003ethrow\u003c/span\u003e e"
+                  },
+                  {
+                    "old": "",
+                    "new": "30",
+                    "type": "add",
+                    "codeHtml": "  }"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "hash": "9c2e1a4",
+            "message": "Add Apple \u0026 Google OAuth providers",
+            "authorRole": "Coder",
+            "agentCode": "CO",
+            "color": "var(--cyan)",
+            "iterLabel": "iteration 1",
+            "diff": {
+              "add": 180,
+              "del": 0
+            },
+            "when": "22m",
+            "files": [
+              {
+                "path": "src/auth/oauth.ts",
+                "status": "a",
+                "diff": {
+                  "add": 180,
+                  "del": 0
+                },
+                "lines": [
+                  {
+                    "old": "",
+                    "new": "",
+                    "type": "hunk",
+                    "codeHtml": "@@ -0,0 +1,180 @@ new file"
+                  },
+                  {
+                    "old": "",
+                    "new": "1",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eappleProvider\u003c/span\u003e = (secret) =\u0026gt; ({"
+                  },
+                  {
+                    "old": "",
+                    "new": "2",
+                    "type": "add",
+                    "codeHtml": "  id: \u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e, \u003cspan class=\"fn\"\u003eauthorize\u003c/span\u003e, \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e,"
+                  },
+                  {
+                    "old": "",
+                    "new": "3",
+                    "type": "add",
+                    "codeHtml": "})"
+                  },
+                  {
+                    "old": "",
+                    "new": "4",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003egoogleProvider\u003c/span\u003e = (secret) =\u0026gt; ({"
+                  },
+                  {
+                    "old": "",
+                    "new": "5",
+                    "type": "add",
+                    "codeHtml": "  id: \u003cspan class=\"str\"\u003e'google'\u003c/span\u003e, \u003cspan class=\"fn\"\u003eauthorize\u003c/span\u003e, \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e,"
+                  },
+                  {
+                    "old": "",
+                    "new": "6",
+                    "type": "add",
+                    "codeHtml": "})"
+                  },
+                  {
+                    "old": "",
+                    "new": "7",
+                    "type": "add",
+                    "codeHtml": "\u003cspan class=\"cm\"\u003e// … 174 more lines (authorize / exchange / token parsing)\u003c/span\u003e"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "files": [
+          {
+            "path": "src/auth/oauth.ts",
+            "status": "m",
+            "diff": {
+              "add": 96,
+              "del": 8
+            },
+            "lines": [
+              {
+                "old": "",
+                "new": "",
+                "type": "hunk",
+                "codeHtml": "@@ -1,6 +1,9 @@ provider registry"
+              },
+              {
+                "old": "11",
+                "new": "11",
+                "type": "ctx",
+                "codeHtml": "\u003cspan class=\"kw\"\u003eimport\u003c/span\u003e { secrets } \u003cspan class=\"kw\"\u003efrom\u003c/span\u003e \u003cspan class=\"str\"\u003e'../lib/secrets'\u003c/span\u003e"
+              },
+              {
+                "old": "12",
+                "new": "",
+                "type": "del",
+                "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = process.env.\u003cspan class=\"nm\"\u003eOAUTH_CLIENT_SECRET\u003c/span\u003e"
+              },
+              {
+                "old": "",
+                "new": "12",
+                "type": "add",
+                "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e secrets.\u003cspan class=\"fn\"\u003eget\u003c/span\u003e(\u003cspan class=\"str\"\u003e'oauth/client_secret'\u003c/span\u003e)",
+                "extraHtml": "\u003cdiv class=\"icmt\"\u003e\u003cdiv class=\"icmt-pad\"\u003e\u003cdiv class=\"cmt\" style=\"padding:0;border:none\"\u003e\u003cdiv class=\"ca\" style=\"background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)\"\u003eAR\u003c/div\u003e\u003cdiv class=\"cc\"\u003e\u003cdiv class=\"ch\"\u003e\u003cspan class=\"cn\"\u003eAvery Rourke\u003c/span\u003e\u003cspan class=\"ct\"\u003e2m\u003c/span\u003e\u003c/div\u003e\u003cdiv class=\"cm\"\u003eGood — this was reading from \u003ccode\u003eprocess.env\u003c/code\u003e before. Confirm the secrets client is initialised before any provider loads?\u003c/div\u003e\u003cspan class=\"react\" style=\"margin-top:8px\"\u003e\u003cspan style=\"width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block\"\u003e\u003c/span\u003eCoder: yes — \u003ccode\u003esecrets.init()\u003c/code\u003e runs in \u003ccode\u003ebootstrap.ts\u003c/code\u003e before providers register. ✓ resolved\u003c/span\u003e\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e"
+              },
+              {
+                "old": "13",
+                "new": "13",
+                "type": "ctx",
+                "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eproviders\u003c/span\u003e = {"
+              },
+              {
+                "old": "",
+                "new": "14",
+                "type": "add",
+                "codeHtml": "  apple: \u003cspan class=\"fn\"\u003eappleProvider\u003c/span\u003e(secret),"
+              },
+              {
+                "old": "",
+                "new": "15",
+                "type": "add",
+                "codeHtml": "  google: \u003cspan class=\"fn\"\u003egoogleProvider\u003c/span\u003e(secret),"
+              },
+              {
+                "old": "14",
+                "new": "16",
+                "type": "ctx",
+                "codeHtml": "}"
+              }
+            ]
+          },
+          {
+            "path": "src/hooks/useOAuthSession.ts",
+            "status": "a",
+            "diff": {
+              "add": 88,
+              "del": 0
+            },
+            "lines": [
+              {
+                "old": "",
+                "new": "",
+                "type": "hunk",
+                "codeHtml": "@@ -0,0 +1,12 @@ new file"
+              },
+              {
+                "old": "",
+                "new": "1",
+                "type": "add",
+                "codeHtml": "\u003cspan class=\"kw\"\u003eexport function\u003c/span\u003e \u003cspan class=\"fn\"\u003euseOAuthSession\u003c/span\u003e() {"
+              },
+              {
+                "old": "",
+                "new": "2",
+                "type": "add",
+                "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e [session, setSession] = \u003cspan class=\"fn\"\u003euseState\u003c/span\u003e\u0026lt;\u003cspan class=\"ty\"\u003eSession\u003c/span\u003e | \u003cspan class=\"kw\"\u003enull\u003c/span\u003e\u0026gt;(\u003cspan class=\"kw\"\u003enull\u003c/span\u003e)",
+                "extraHtml": "\u003cdiv class=\"flag\"\u003e\u003csvg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"\u003e\u003ccircle cx=\"11\" cy=\"11\" r=\"7\"/\u003e\u003cpath d=\"M21 21l-4-4\" stroke-linecap=\"round\"/\u003e\u003c/svg\u003e\u003cdiv\u003e\u003cdiv class=\"ft\"\u003eReviewer flagged this region for human eyes\u003c/div\u003e\u003cdiv class=\"fm\"\u003etoken refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e"
+              },
+              {
+                "old": "",
+                "new": "3",
+                "type": "add",
+                "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e refreshing = \u003cspan class=\"fn\"\u003euseRef\u003c/span\u003e(\u003cspan class=\"kw\"\u003efalse\u003c/span\u003e) \u003cspan class=\"cm\"\u003e// mutex guard\u003c/span\u003e"
+              },
+              {
+                "old": "",
+                "new": "4",
+                "type": "add",
+                "codeHtml": ""
+              },
+              {
+                "old": "",
+                "new": "5",
+                "type": "add",
+                "codeHtml": "  \u003cspan class=\"kw\"\u003easync function\u003c/span\u003e \u003cspan class=\"fn\"\u003erefresh\u003c/span\u003e() {"
+              },
+              {
+                "old": "",
+                "new": "6",
+                "type": "add",
+                "codeHtml": "    \u003cspan class=\"kw\"\u003eif\u003c/span\u003e (refreshing.current) \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e"
+              },
+              {
+                "old": "",
+                "new": "7",
+                "type": "add",
+                "codeHtml": "    refreshing.current = \u003cspan class=\"kw\"\u003etrue\u003c/span\u003e"
+              },
+              {
+                "old": "",
+                "new": "8",
+                "type": "add",
+                "codeHtml": "    \u003cspan class=\"kw\"\u003etry\u003c/span\u003e { setSession(\u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003erotateTokens\u003c/span\u003e()) }"
+              },
+              {
+                "old": "",
+                "new": "9",
+                "type": "add",
+                "codeHtml": "    \u003cspan class=\"kw\"\u003efinally\u003c/span\u003e { refreshing.current = \u003cspan class=\"kw\"\u003efalse\u003c/span\u003e }"
+              },
+              {
+                "old": "",
+                "new": "10",
+                "type": "add",
+                "codeHtml": "  }"
+              }
+            ]
+          },
+          {
+            "path": "src/checkout/SignInButtons.tsx",
+            "status": "m",
+            "diff": {
+              "add": 34,
+              "del": 4
+            },
+            "lines": [
+              {
+                "old": "",
+                "new": "",
+                "type": "hunk",
+                "codeHtml": "@@ -8,4 +8,12 @@ checkout buttons"
+              },
+              {
+                "old": "8",
+                "new": "8",
+                "type": "ctx",
+                "codeHtml": "\u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e ("
+              },
+              {
+                "old": "",
+                "new": "9",
+                "type": "add",
+                "codeHtml": "  \u0026lt;\u003cspan class=\"ty\"\u003eAppleButton\u003c/span\u003e onClick={() =\u0026gt; \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e)} /\u0026gt;"
+              },
+              {
+                "old": "",
+                "new": "10",
+                "type": "add",
+                "codeHtml": "  \u0026lt;\u003cspan class=\"ty\"\u003eGoogleButton\u003c/span\u003e onClick={() =\u0026gt; \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'google'\u003c/span\u003e)} /\u0026gt;"
+              },
+              {
+                "old": "9",
+                "new": "11",
+                "type": "ctx",
+                "codeHtml": ")"
+              }
+            ]
+          }
+        ],
+        "comments": [
+          {
+            "id": "gh-description",
+            "code": "LO",
+            "author": "loopbot",
+            "authorLogin": "loopbot",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "time": "2m",
+            "bodyHtml": "",
+            "kind": "description",
+            "bodyMd": "Adds Apple and Google sign-in to checkout. Provider config and secret handling ship in this PR.",
+            "url": "https://github.com/acme/app/pull/482#issue-482001",
+            "reactions": [
+              {
+                "content": "hooray",
+                "count": 3
+              }
+            ]
+          },
+          {
+            "id": "c1",
+            "code": "AR",
+            "author": "Avery Rourke",
+            "authorLogin": "avery",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "time": "2m",
+            "bodyHtml": "Left a comment on \u003ccode\u003eoauth.ts\u003c/code\u003e about the client secret — see Files changed.",
+            "verb": "commented",
+            "bodyMd": "Left a comment on oauth.ts about the client secret — see Files changed.",
+            "url": "https://github.com/acme/app/pull/482#issuecomment-1001",
+            "reactions": [
+              {
+                "content": "+1",
+                "count": 2
+              },
+              {
+                "content": "heart",
+                "count": 1,
+                "mine": true
+              }
+            ]
+          },
+          {
+            "id": "c2",
+            "code": "MA",
+            "author": "Maestro",
+            "avatarCss": "background:var(--amber);color:#0A0C10",
+            "time": "2m",
+            "bodyHtml": "Got the review notes — I'll address the client-secret comment.",
+            "verb": "commented",
+            "url": "https://github.com/acme/app/pull/482#issuecomment-1002"
+          },
+          {
+            "id": "c3",
+            "code": "CO",
+            "author": "Coder",
+            "avatarCss": "background:var(--cyan);color:#0A0C10",
+            "time": "now",
+            "bodyHtml": "Pushed \u003ccode\u003ea3f91c2\u003c/code\u003e — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
+            "verb": "commented",
+            "url": "https://github.com/acme/app/pull/482#issuecomment-1003"
+          },
+          {
+            "id": "gh-review-99",
+            "code": "AR",
+            "author": "Avery Rourke",
+            "authorLogin": "avery",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "time": "1m",
+            "bodyHtml": "",
+            "verb": "commented",
+            "bodyMd": "testing again",
+            "url": "https://github.com/acme/app/pull/482#pullrequestreview-99"
+          },
+          {
+            "id": "gh-inline-1",
+            "code": "AR",
+            "author": "Avery Rourke",
+            "authorLogin": "avery",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "time": "1m",
+            "bodyHtml": "\u003ccode\u003esrc/auth/oauth.ts:11-12\u003c/code\u003e",
+            "verb": "commented",
+            "bodyMd": "hmm",
+            "url": "https://github.com/acme/app/pull/482#discussion_r1",
+            "parentId": "gh-review-99",
+            "reviewId": "99",
+            "path": "src/auth/oauth.ts",
+            "line": 12,
+            "side": "RIGHT",
+            "diffHunk": "@@ -4,9 +4,9 @@ provider registry\n import { secrets } from './vault'\n const providers = []\n function register() {\n   return providers\n }\n const unused = 1\n const unused2 = 2\n const unused3 = 3\n-const secret = process.env.OAUTH_CLIENT_SECRET\n+const secret = await secrets.get('oauth/client_secret')",
+            "startLine": 11,
+            "threadId": "PRRT_seed99",
+            "reactions": [
+              {
+                "content": "eyes",
+                "count": 1
+              }
+            ]
+          }
+        ],
+        "verify": [
+          {
+            "html": "Booted the app, opened \u003cb\u003e/checkout\u003c/b\u003e on a clean session",
+            "passed": true
+          },
+          {
+            "html": "\u003cb\u003eSign in with Apple\u003c/b\u003e → consent → returned with a valid session",
+            "passed": true
+          },
+          {
+            "html": "\u003cb\u003eSign in with Google\u003c/b\u003e → consent → returned with a valid session",
+            "passed": true
+          },
+          {
+            "html": "Reloaded — session persisted; no token in \u003cb\u003elocalStorage\u003c/b\u003e or logs",
+            "passed": true
+          }
+        ],
+        "checks": [
+          {
+            "name": "test",
+            "detail": "1m 12s",
+            "passed": true,
+            "status": "pass"
+          },
+          {
+            "name": "lint",
+            "detail": "8s",
+            "passed": true,
+            "status": "pass"
+          },
+          {
+            "name": "typecheck",
+            "detail": "22s",
+            "passed": true,
+            "status": "pass"
+          }
+        ],
+        "authorLogin": "loopbot",
+        "participants": [
+          {
+            "login": "loopbot",
+            "name": "loopbot",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "code": "LO"
+          },
+          {
+            "login": "avery",
+            "name": "Avery Rourke",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "code": "AR"
+          },
+          {
+            "login": "sam",
+            "name": "sam"
+          },
+          {
+            "name": "PR Responder",
+            "avatarCss": "background:#b08bd8;color:#0A0C10",
+            "code": "PR"
+          },
+          {
+            "name": "Coder",
+            "avatarCss": "background:var(--cyan);color:#0A0C10",
+            "code": "CO"
+          }
+        ],
+        "reviewers": [
+          {
+            "login": "avery",
+            "name": "Avery Rourke",
+            "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            "code": "AR",
+            "state": "pending"
+          },
+          {
+            "login": "sam",
+            "name": "sam",
+            "state": "approved"
+          }
+        ],
+        "viewerLogin": "avery",
+        "viewerCanWrite": true,
+        "reviewRequested": true,
+        "attentionReasons": [
+          "review_requested"
+        ]
+      },
+      "sessions": null
+    },
+    "W-go": {
+      "agents": [
+        {
+          "id": "W-go-PA",
+          "workspaceId": "W-go",
+          "code": "PA",
+          "name": "Agent",
+          "role": "",
+          "model": "",
+          "status": "",
+          "sessionId": "sess-x",
+          "color": "",
+          "task": "",
+          "cur": 0,
+          "steps": null,
+          "unseen": true
+        },
+        {
+          "id": "W-go-PA2",
+          "workspaceId": "W-go",
+          "code": "PA2",
+          "name": "Agent 2",
+          "role": "",
+          "model": "",
+          "status": "",
+          "sessionId": "",
+          "color": "",
+          "task": "",
+          "cur": 0,
+          "steps": [
+            {
+              "kind": "read",
+              "text": "x"
+            }
+          ]
+        }
+      ],
+      "escalation": {
+        "id": "esc-go",
+        "workspaceId": "W-go",
+        "agentCode": "PA",
+        "question": "Which?",
+        "context": "",
+        "options": [
+          {
+            "text": "A",
+            "tag": "t",
+            "desc": "d"
+          }
+        ],
+        "answer": "",
+        "status": "open",
+        "kind": "question",
+        "applied": false,
+        "askedAgo": ""
+      },
+      "events": [
+        {
+          "id": 1,
+          "workspaceId": "W-go",
+          "agentId": "W-go-PA",
+          "type": "workspace.event",
+          "payloadJson": "{\"i\":0}",
+          "ts": 1000
+        },
+        {
+          "id": 2,
+          "workspaceId": "W-go",
+          "agentId": "W-go-PA",
+          "type": "workspace.updated",
+          "payloadJson": "{\"i\":1}",
+          "ts": 1001
+        },
+        {
+          "id": 3,
+          "workspaceId": "W-go",
+          "agentId": "W-go-PA",
+          "type": "agent.step",
+          "payloadJson": "{\"i\":2}",
+          "ts": 1002
+        }
+      ],
+      "feed": [
+        {
+          "id": "card",
+          "agentCode": "",
+          "name": "",
+          "text": "card",
+          "time": "",
+          "isDeviation": false,
+          "card": "plan",
+          "data": "{\"k\":1}"
+        },
+        {
+          "id": "g3",
+          "agentCode": "PA",
+          "name": "Agent",
+          "text": "feed g3",
+          "time": "",
+          "isDeviation": false,
+          "toolUseId": "tu-g3",
+          "ts": 102
+        },
+        {
+          "id": "g2",
+          "agentCode": "PA",
+          "name": "Agent",
+          "text": "feed g2",
+          "time": "",
+          "isDeviation": false,
+          "toolUseId": "tu-g2",
+          "toolResult": "patched",
+          "isToolError": true,
+          "ts": 101
+        },
+        {
+          "id": "g1",
+          "agentCode": "PA",
+          "name": "Agent",
+          "text": "feed g1",
+          "time": "",
+          "isDeviation": false,
+          "toolUseId": "tu-g1",
+          "ts": 100
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-go-1",
+          "shortId": "find_gofix01",
+          "workspaceId": "W-go",
+          "iteration": 2,
+          "file": "a.go",
+          "line": 3,
+          "endLine": 9,
+          "severity": "high",
+          "message": "nil deref \u003c\u0026\u003e",
+          "summary": "**sum**",
+          "status": "resolved",
+          "createdAt": "2026-10-21T03:20:59Z",
+          "updatedBy": "engine",
+          "updatedAt": "2026-10-21T03:22:58Z",
+          "notes": [
+            {
+              "id": "01a15c79-f750-775e-8f3e-cbd0adab41d5",
+              "author": "human",
+              "body": "first note",
+              "createdAt": "2026-10-21T03:20:59Z"
+            },
+            {
+              "id": "01a15c79-f750-7927-900d-fbdbecca11b9",
+              "author": "coder",
+              "body": "second note",
+              "createdAt": "2026-10-21T03:20:59Z"
+            }
+          ]
+        },
+        {
+          "id": "F-go-2",
+          "shortId": "find_gofix02",
+          "workspaceId": "W-go",
+          "iteration": 0,
+          "file": "b.go",
+          "line": 0,
+          "severity": "low",
+          "message": "nit",
+          "status": "invalid",
+          "statusReason": "not a bug",
+          "createdAt": "2026-10-21T03:20:59Z",
+          "updatedBy": "coder",
+          "updatedAt": "2026-10-21T03:20:59Z"
+        }
+      ],
+      "hasOpenEscalation": true,
+      "lastAssistantText": "Answer \u0026 \u003cdone\u003e",
+      "openFindings": null,
+      "openPRByWorkspace": {
+        "id": "480",
+        "workspaceId": "W-go",
+        "projectId": "extra",
+        "group": "you",
+        "number": 480,
+        "source": "local",
+        "branch": "",
+        "base": "",
+        "title": "Local fixture PR",
+        "summary": null,
+        "focus": {
+          "title": "",
+          "body": ""
+        },
+        "state": "In review",
+        "diff": {
+          "add": 0,
+          "del": 0
+        },
+        "fileCount": 0,
+        "checksOk": false,
+        "when": "",
+        "createdAt": "2026-10-21T03:20:59Z",
+        "updatedAt": "2026-10-21T03:20:59Z",
+        "commits": null,
+        "files": [
+          {
+            "path": "a.go",
+            "status": "m",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "lines": [
+              {
+                "old": "",
+                "new": "1",
+                "type": "add",
+                "codeHtml": "\u003cb\u003ex\u003c/b\u003e"
+              }
+            ]
+          }
+        ],
+        "comments": null,
+        "verify": null,
+        "checks": null
+      },
+      "prByWorkspace": {
+        "id": "480",
+        "workspaceId": "W-go",
+        "projectId": "extra",
+        "group": "you",
+        "number": 480,
+        "source": "local",
+        "branch": "",
+        "base": "",
+        "title": "Local fixture PR",
+        "summary": null,
+        "focus": {
+          "title": "",
+          "body": ""
+        },
+        "state": "In review",
+        "diff": {
+          "add": 0,
+          "del": 0
+        },
+        "fileCount": 0,
+        "checksOk": false,
+        "when": "",
+        "createdAt": "2026-10-21T03:20:59Z",
+        "updatedAt": "2026-10-21T03:20:59Z",
+        "commits": null,
+        "files": [
+          {
+            "path": "a.go",
+            "status": "m",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "lines": [
+              {
+                "old": "",
+                "new": "1",
+                "type": "add",
+                "codeHtml": "\u003cb\u003ex\u003c/b\u003e"
+              }
+            ]
+          }
+        ],
+        "comments": null,
+        "verify": null,
+        "checks": null
+      },
+      "sessions": [
+        {
+          "id": "sess-go-1",
+          "workspaceId": "W-go",
+          "kind": "pair",
+          "contextMode": "provider",
+          "provider": "claude-code",
+          "providerSessionRef": "claude-ref-1",
+          "configJson": "{\"code\":\"PA\",\"title\":\"t \u003c\u0026\u003e\",\"flags\":{\"effort\":\"high\"},\"simplify\":false}",
+          "activeContextId": "01a15c79-f753-7451-a9b5-61b87cd352b2",
+          "status": "idle",
+          "createdAt": 1792552859474,
+          "updatedAt": 1792552859475
+        },
+        {
+          "id": "01a15c79-f753-783d-bdfc-d88aae8193da",
+          "workspaceId": "W-go",
+          "kind": "coder",
+          "parentSessionId": "sess-go-1",
+          "forkMessageId": "m-go-2",
+          "contextMode": "provider",
+          "provider": "claude-code",
+          "configJson": "{\"code\":\"PA2\",\"ownerCode\":\"PA\"}",
+          "activeContextId": "01a15c79-f753-792f-8994-9da0f667a893",
+          "status": "idle",
+          "createdAt": 1792552859475,
+          "updatedAt": 1792552859475
+        }
+      ]
+    },
+    "W-rust": {
+      "agents": [
+        {
+          "id": "W-rust-PA",
+          "workspaceId": "W-rust",
+          "code": "PA",
+          "name": "",
+          "role": "",
+          "model": "",
+          "status": "",
+          "sessionId": "rust-sess",
+          "color": "",
+          "task": "",
+          "cur": 0,
+          "steps": null,
+          "unseen": true
+        }
+      ],
+      "escalation": {
+        "id": "esc-rust",
+        "workspaceId": "W-rust",
+        "question": "Rust?",
+        "context": "",
+        "options": null,
+        "answer": "rust answer",
+        "freeText": "rust answer",
+        "status": "answered",
+        "applied": false,
+        "askedAgo": ""
+      },
+      "events": [
+        {
+          "id": 4,
+          "workspaceId": "W-rust",
+          "type": "workspace.event",
+          "payloadJson": "{\"n\":0}",
+          "ts": 2000
+        },
+        {
+          "id": 5,
+          "workspaceId": "W-rust",
+          "type": "workspace.updated",
+          "payloadJson": "{\"n\":1}",
+          "ts": 2001
+        }
+      ],
+      "feed": [
+        {
+          "id": "r3",
+          "agentCode": "",
+          "name": "",
+          "text": "rust feed r3",
+          "time": "",
+          "isDeviation": false,
+          "toolUseId": "tu-r3",
+          "ts": 502
+        },
+        {
+          "id": "r2",
+          "agentCode": "",
+          "name": "",
+          "text": "rust feed r2",
+          "time": "",
+          "isDeviation": false,
+          "toolUseId": "tu-r2",
+          "toolResult": "rust patched",
+          "ts": 501
+        },
+        {
+          "id": "r1",
+          "agentCode": "",
+          "name": "",
+          "text": "rust feed r1",
+          "time": "",
+          "isDeviation": false,
+          "toolUseId": "tu-r1",
+          "ts": 500
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-rust-1",
+          "shortId": "find_pfx5tpd7",
+          "workspaceId": "W-rust",
+          "iteration": 0,
+          "file": "lib.rs",
+          "line": 1,
+          "severity": "critical",
+          "message": "unsafe \u003cblock\u003e",
+          "status": "open",
+          "createdAt": "2026-10-21T03:22:58Z",
+          "notes": [
+            {
+              "id": "01a15c7b-c9d5-7519-83c1-aa2901c2275b",
+              "author": "human",
+              "body": "human note",
+              "createdAt": "2026-10-21T03:22:58Z"
+            },
+            {
+              "id": "01a15c7b-c9d5-7519-83c1-aa2a28493db0",
+              "author": "coder",
+              "body": "coder note",
+              "createdAt": "2026-10-21T03:22:58Z"
+            }
+          ]
+        },
+        {
+          "id": "F-rust-2",
+          "shortId": "find_r7ap9sn3",
+          "workspaceId": "W-rust",
+          "iteration": 0,
+          "file": "main.rs",
+          "line": 0,
+          "severity": "info",
+          "message": "style",
+          "status": "ignored",
+          "createdAt": "2026-10-21T03:22:58Z",
+          "updatedBy": "human",
+          "updatedAt": "2026-10-21T03:22:58Z"
+        }
+      ],
+      "hasOpenEscalation": false,
+      "lastAssistantText": "on it",
+      "openFindings": [
+        {
+          "id": "F-rust-1",
+          "shortId": "find_pfx5tpd7",
+          "workspaceId": "W-rust",
+          "iteration": 0,
+          "file": "lib.rs",
+          "line": 1,
+          "severity": "critical",
+          "message": "unsafe \u003cblock\u003e",
+          "status": "open",
+          "createdAt": "2026-10-21T03:22:58Z",
+          "notes": [
+            {
+              "id": "01a15c7b-c9d5-7519-83c1-aa2901c2275b",
+              "author": "human",
+              "body": "human note",
+              "createdAt": "2026-10-21T03:22:58Z"
+            },
+            {
+              "id": "01a15c7b-c9d5-7519-83c1-aa2a28493db0",
+              "author": "coder",
+              "body": "coder note",
+              "createdAt": "2026-10-21T03:22:58Z"
+            }
+          ]
+        }
+      ],
+      "openPRByWorkspace": {
+        "id": "rust-pr",
+        "workspaceId": "W-rust",
+        "projectId": "rust-proj",
+        "group": "",
+        "number": 481,
+        "source": "local",
+        "branch": "",
+        "base": "",
+        "title": "Rust PR",
+        "summary": null,
+        "focus": {
+          "title": "",
+          "body": ""
+        },
+        "state": "In review",
+        "diff": {
+          "add": 0,
+          "del": 0
+        },
+        "fileCount": 0,
+        "checksOk": false,
+        "when": "",
+        "createdAt": "2026-10-21T03:22:58Z",
+        "updatedAt": "2026-10-21T03:22:58Z",
+        "commits": null,
+        "files": null,
+        "comments": null,
+        "verify": null,
+        "checks": null
+      },
+      "prByWorkspace": {
+        "id": "rust-pr",
+        "workspaceId": "W-rust",
+        "projectId": "rust-proj",
+        "group": "",
+        "number": 481,
+        "source": "local",
+        "branch": "",
+        "base": "",
+        "title": "Rust PR",
+        "summary": null,
+        "focus": {
+          "title": "",
+          "body": ""
+        },
+        "state": "In review",
+        "diff": {
+          "add": 0,
+          "del": 0
+        },
+        "fileCount": 0,
+        "checksOk": false,
+        "when": "",
+        "createdAt": "2026-10-21T03:22:58Z",
+        "updatedAt": "2026-10-21T03:22:58Z",
+        "commits": null,
+        "files": null,
+        "comments": null,
+        "verify": null,
+        "checks": null
+      },
+      "sessions": [
+        {
+          "id": "rust-sess",
+          "workspaceId": "W-rust",
+          "kind": "pair",
+          "contextMode": "provider",
+          "provider": "claude-code",
+          "providerSessionRef": "rust-ref",
+          "configJson": "{\"code\":\"PA\",\"title\":\"Rust tab\"}",
+          "activeContextId": "01a15c7b-c9d8-73d8-85ad-d04177746b4f",
+          "status": "idle",
+          "createdAt": 1792552978903,
+          "updatedAt": 1792552978904
+        },
+        {
+          "id": "01a15c7b-c9d8-73d8-85ad-d0427e4e363d",
+          "workspaceId": "W-rust",
+          "kind": "coder",
+          "parentSessionId": "rust-sess",
+          "forkMessageId": "01a15c7b-c9d8-73d8-85ad-d03e48d56ff9",
+          "contextMode": "provider",
+          "provider": "claude-code",
+          "configJson": "{\"code\":\"CO\",\"ownerCode\":\"PA\"}",
+          "activeContextId": "01a15c7b-c9d8-73d8-85ad-d04349269dd4",
+          "status": "idle",
+          "createdAt": 1792552978904,
+          "updatedAt": 1792552978904
+        }
+      ]
+    }
+  },
+  "firstUserPrompts": {
+    "01a15c79-f753-783d-bdfc-d88aae8193da": "shown prompt",
+    "01a15c7b-c9d8-73d8-85ad-d0427e4e363d": "rust prompt",
+    "rust-app": "",
+    "rust-sess": "rust prompt",
+    "sess-go-1": "shown prompt",
+    "sess-go-app": ""
+  },
+  "githubBranchRules": {
+    "extra\u0000acme/extra\u0000dev": {
+      "atMs": 1792552859473,
+      "require": false
+    },
+    "rust-proj\u0000acme/rust\u0000main": {
+      "atMs": 1792552978903,
+      "require": true
+    },
+    "storefront\u0000acme/app\u0000main": {
+      "atMs": 1792552859473,
+      "require": true
+    }
+  },
+  "inbox": [
+    {
+      "id": "ib1",
+      "group": "needs",
+      "kind": "pause",
+      "color": "var(--coral)",
+      "title": "\u003cb\u003eLOOP-2218\u003c/b\u003e paused — needs your decision",
+      "sub": "Rate-limit the public API · over-limit behavior",
+      "time": "12m",
+      "action": "Answer",
+      "actionClass": "urgent",
+      "unread": true,
+      "target": "loop:LOOP-2218",
+      "workspaceId": "LOOP-2218"
+    },
+    {
+      "id": "ib-chat-W-go-PA",
+      "group": "",
+      "kind": "chat",
+      "color": "",
+      "title": "chat",
+      "sub": "",
+      "time": "",
+      "action": "",
+      "actionClass": "",
+      "unread": true,
+      "target": "chat:W-go:PA",
+      "workspaceId": "W-go"
+    },
+    {
+      "id": "ib-rust",
+      "group": "",
+      "kind": "pr",
+      "color": "",
+      "title": "\u003cb\u003erust\u003c/b\u003e",
+      "sub": "",
+      "time": "",
+      "action": "",
+      "actionClass": "",
+      "unread": true,
+      "target": "pr:rust-pr",
+      "workspaceId": "W-rust"
+    },
+    {
+      "id": "ib2",
+      "group": "ready",
+      "kind": "pr",
+      "color": "var(--emerald)",
+      "title": "\u003cb\u003e#482\u003c/b\u003e is ready for review",
+      "sub": "Add OAuth provider config · verified in browser · checks ✓",
+      "time": "2m",
+      "action": "Review",
+      "actionClass": "go",
+      "unread": true,
+      "target": "pr:482",
+      "workspaceId": "LOOP-2231"
+    },
+    {
+      "id": "ib3",
+      "group": "ready",
+      "kind": "loop",
+      "color": "var(--cyan)",
+      "title": "Coder pushed a fix on \u003cb\u003e#482\u003c/b\u003e",
+      "sub": "Resolved your comment on oauth.ts · re-requested review",
+      "time": "1m",
+      "action": "Review",
+      "actionClass": "go",
+      "unread": false,
+      "target": "pr:482",
+      "workspaceId": "LOOP-2231"
+    },
+    {
+      "id": "ib4",
+      "group": "ready",
+      "kind": "pr",
+      "color": "var(--emerald)",
+      "title": "\u003cb\u003e#479\u003c/b\u003e converged — ready for review",
+      "sub": "Stabilize flaky E2E tests · local PR · 0 findings",
+      "time": "18m",
+      "action": "Review",
+      "actionClass": "go",
+      "unread": true,
+      "target": "view:pr",
+      "workspaceId": "LOOP-2224"
+    },
+    {
+      "id": "ib6",
+      "group": "upd",
+      "kind": "merge",
+      "color": "var(--indigo)",
+      "title": "\u003cb\u003e#471\u003c/b\u003e merged to main",
+      "sub": "Add idempotency keys to the orders API",
+      "time": "1d",
+      "action": "View",
+      "actionClass": "",
+      "unread": false,
+      "target": "view:pr",
+      "workspaceId": "LOOP-2202"
+    }
+  ],
+  "latestAnalysis": {
+    "rust-proj": {
+      "id": "an-rust",
+      "projectId": "rust-proj",
+      "root": "/r",
+      "when": "now",
+      "ts": 777,
+      "metrics": {
+        "files": 0,
+        "loc": 0,
+        "avgComplexity": 0,
+        "maxComplexity": 0,
+        "duplication": 0,
+        "todoCount": 0,
+        "testFiles": 0
+      },
+      "summary": "rust"
+    },
+    "storefront": {
+      "id": "an-go",
+      "projectId": "storefront",
+      "root": "/x",
+      "when": "now",
+      "ts": 1234,
+      "metrics": {
+        "files": 3,
+        "loc": 120,
+        "avgComplexity": 2.5,
+        "maxComplexity": 7,
+        "duplication": 0,
+        "todoCount": 0,
+        "testFiles": 0
+      },
+      "summary": "ok"
+    }
+  },
+  "latestEventTS": {
+    "W-go": 1002,
+    "W-rust": 2001
+  },
+  "policy": {
+    "autonomy": "cautious",
+    "rails": null
+  },
+  "prById": {
+    "471": {
+      "id": "471",
+      "workspaceId": "LOOP-2202",
+      "projectId": "storefront",
+      "group": "merged",
+      "number": 471,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/471",
+      "branch": "recur/idempotency",
+      "base": "main",
+      "title": "Add idempotency keys to the orders API",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "Merged",
+      "diff": {
+        "add": 156,
+        "del": 9
+      },
+      "fileCount": 7,
+      "checksOk": true,
+      "when": "1d",
+      "createdAt": "2026-08-27T09:52:00Z",
+      "updatedAt": "2026-08-27T09:52:00Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null
+    },
+    "479": {
+      "id": "479",
+      "workspaceId": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 479,
+      "source": "local",
+      "branch": "recur/fix-e2e",
+      "base": "main",
+      "title": "Stabilize flaky checkout E2E tests",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "fileCount": 5,
+      "checksOk": true,
+      "when": "18m",
+      "createdAt": "2026-08-28T09:34:00Z",
+      "updatedAt": "2026-08-28T09:34:00Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null,
+      "participants": [
+        {
+          "name": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "code": "CO"
+        }
+      ]
+    },
+    "480": {
+      "id": "480",
+      "workspaceId": "W-go",
+      "projectId": "extra",
+      "group": "you",
+      "number": 480,
+      "source": "local",
+      "branch": "",
+      "base": "",
+      "title": "Local fixture PR",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "fileCount": 0,
+      "checksOk": false,
+      "when": "",
+      "createdAt": "2026-10-21T03:20:59Z",
+      "updatedAt": "2026-10-21T03:20:59Z",
+      "commits": null,
+      "files": [
+        {
+          "path": "a.go",
+          "status": "m",
+          "diff": {
+            "add": 0,
+            "del": 0
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "1",
+              "type": "add",
+              "codeHtml": "\u003cb\u003ex\u003c/b\u003e"
+            }
+          ]
+        }
+      ],
+      "comments": null,
+      "verify": null,
+      "checks": null
+    },
+    "482": {
+      "id": "482",
+      "workspaceId": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 482,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/482",
+      "branch": "recur/oauth-checkout",
+      "base": "main",
+      "title": "Add OAuth provider config + secrets handling",
+      "summary": [
+        {
+          "kind": "p",
+          "html": "Adds \u003cb\u003eApple and Google sign-in\u003c/b\u003e to checkout. Provider config and secret handling ship in this PR; the sign-in buttons in the checkout UI follow in \u003ccode\u003e#483\u003c/code\u003e."
+        },
+        {
+          "kind": "p",
+          "html": "\u003cb\u003eWhat changed\u003c/b\u003e"
+        },
+        {
+          "kind": "bullets",
+          "items": [
+            "New OAuth provider registry in \u003ccode\u003eauth/oauth.ts\u003c/code\u003e for Apple + Google.",
+            "Client secrets now resolved from the secrets manager at startup — never read from \u003ccode\u003eprocess.env\u003c/code\u003e or logged.",
+            "Session/token refresh extracted into a reusable \u003ccode\u003euseOAuthSession\u003c/code\u003e hook."
+          ]
+        },
+        {
+          "kind": "p",
+          "html": "\u003cb\u003eKey decision:\u003c/b\u003e tokens are stored in an httpOnly cookie rather than localStorage, so they're not reachable from JS. Flagging because it changes how the client reads auth state."
+        }
+      ],
+      "focus": {
+        "title": "Where to focus your review",
+        "body": "The token-refresh race in \u003ccode\u003euseOAuthSession.ts\u003c/code\u003e (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
+      },
+      "state": "In review",
+      "diff": {
+        "add": 218,
+        "del": 12
+      },
+      "fileCount": 3,
+      "checksOk": true,
+      "when": "2m",
+      "createdAt": "2026-08-28T09:50:00Z",
+      "updatedAt": "2026-08-28T09:50:00Z",
+      "commits": [
+        {
+          "hash": "e8d34b1",
+          "message": "Add tests for Apple + Google providers",
+          "authorRole": "Tester",
+          "agentCode": "TE",
+          "color": "var(--emerald)",
+          "iterLabel": "verify pass",
+          "diff": {
+            "add": 6,
+            "del": 0
+          },
+          "when": "4m",
+          "files": [
+            {
+              "path": "src/auth/__tests__/oauth.test.ts",
+              "status": "a",
+              "diff": {
+                "add": 6,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,6 @@ new file"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "\u003cspan class=\"fn\"\u003etest\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple sign-in returns a session'\u003c/span\u003e, \u003cspan class=\"kw\"\u003easync\u003c/span\u003e () =\u0026gt; {"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e s = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e)"
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "  \u003cspan class=\"fn\"\u003eexpect\u003c/span\u003e(s.user).\u003cspan class=\"fn\"\u003etoBeDefined\u003c/span\u003e()"
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "\u003cspan class=\"fn\"\u003etest\u003c/span\u003e(\u003cspan class=\"str\"\u003e'google sign-in returns a session'\u003c/span\u003e, \u003cspan class=\"kw\"\u003easync\u003c/span\u003e () =\u0026gt; { \u003cspan class=\"cm\"\u003e/* … */\u003c/span\u003e })"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "a3f91c2",
+          "message": "Resolve client secret via secrets manager",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 3 · review fix",
+          "diff": {
+            "add": 10,
+            "del": 6
+          },
+          "when": "6m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "m",
+              "diff": {
+                "add": 10,
+                "del": 6
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -10,6 +10,9 @@ provider registry"
+                },
+                {
+                  "old": "10",
+                  "new": "10",
+                  "type": "ctx",
+                  "codeHtml": "\u003cspan class=\"kw\"\u003eimport\u003c/span\u003e { secrets } \u003cspan class=\"kw\"\u003efrom\u003c/span\u003e \u003cspan class=\"str\"\u003e'../lib/secrets'\u003c/span\u003e"
+                },
+                {
+                  "old": "11",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = process.env.\u003cspan class=\"nm\"\u003eOAUTH_CLIENT_SECRET\u003c/span\u003e"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e secrets.\u003cspan class=\"fn\"\u003eget\u003c/span\u003e(\u003cspan class=\"str\"\u003e'oauth/client_secret'\u003c/span\u003e)"
+                },
+                {
+                  "old": "12",
+                  "new": "12",
+                  "type": "ctx",
+                  "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eproviders\u003c/span\u003e = {"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "4b7f0d2",
+          "message": "Harden error handling on token exchange",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 2 · review fix",
+          "diff": {
+            "add": 28,
+            "del": 6
+          },
+          "when": "14m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "m",
+              "diff": {
+                "add": 28,
+                "del": 6
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -22,4 +22,12 @@ token exchange"
+                },
+                {
+                  "old": "22",
+                  "new": "22",
+                  "type": "ctx",
+                  "codeHtml": "\u003cspan class=\"kw\"\u003easync function\u003c/span\u003e \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e(provider, code) {"
+                },
+                {
+                  "old": "23",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e res = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003efetch\u003c/span\u003e(tokenUrl, { method: \u003cspan class=\"str\"\u003e'POST'\u003c/span\u003e })"
+                },
+                {
+                  "old": "24",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "  \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e res.\u003cspan class=\"fn\"\u003ejson\u003c/span\u003e()"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "  \u003cspan class=\"kw\"\u003etry\u003c/span\u003e {"
+                },
+                {
+                  "old": "",
+                  "new": "24",
+                  "type": "add",
+                  "codeHtml": "    \u003cspan class=\"kw\"\u003econst\u003c/span\u003e res = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003efetch\u003c/span\u003e(tokenUrl, { method: \u003cspan class=\"str\"\u003e'POST'\u003c/span\u003e })"
+                },
+                {
+                  "old": "",
+                  "new": "25",
+                  "type": "add",
+                  "codeHtml": "    \u003cspan class=\"kw\"\u003eif\u003c/span\u003e (!res.ok) \u003cspan class=\"kw\"\u003ethrow new\u003c/span\u003e \u003cspan class=\"ty\"\u003eOAuthError\u003c/span\u003e(res.status)"
+                },
+                {
+                  "old": "",
+                  "new": "26",
+                  "type": "add",
+                  "codeHtml": "    \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e res.\u003cspan class=\"fn\"\u003ejson\u003c/span\u003e()"
+                },
+                {
+                  "old": "",
+                  "new": "27",
+                  "type": "add",
+                  "codeHtml": "  } \u003cspan class=\"kw\"\u003ecatch\u003c/span\u003e (e) {"
+                },
+                {
+                  "old": "",
+                  "new": "28",
+                  "type": "add",
+                  "codeHtml": "    logger.\u003cspan class=\"fn\"\u003ewarn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'token exchange failed'\u003c/span\u003e, { provider })"
+                },
+                {
+                  "old": "",
+                  "new": "29",
+                  "type": "add",
+                  "codeHtml": "    \u003cspan class=\"kw\"\u003ethrow\u003c/span\u003e e"
+                },
+                {
+                  "old": "",
+                  "new": "30",
+                  "type": "add",
+                  "codeHtml": "  }"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "9c2e1a4",
+          "message": "Add Apple \u0026 Google OAuth providers",
+          "authorRole": "Coder",
+          "agentCode": "CO",
+          "color": "var(--cyan)",
+          "iterLabel": "iteration 1",
+          "diff": {
+            "add": 180,
+            "del": 0
+          },
+          "when": "22m",
+          "files": [
+            {
+              "path": "src/auth/oauth.ts",
+              "status": "a",
+              "diff": {
+                "add": 180,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,180 @@ new file"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eappleProvider\u003c/span\u003e = (secret) =\u0026gt; ({"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": "  id: \u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e, \u003cspan class=\"fn\"\u003eauthorize\u003c/span\u003e, \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e,"
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003egoogleProvider\u003c/span\u003e = (secret) =\u0026gt; ({"
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "  id: \u003cspan class=\"str\"\u003e'google'\u003c/span\u003e, \u003cspan class=\"fn\"\u003eauthorize\u003c/span\u003e, \u003cspan class=\"fn\"\u003eexchange\u003c/span\u003e,"
+                },
+                {
+                  "old": "",
+                  "new": "6",
+                  "type": "add",
+                  "codeHtml": "})"
+                },
+                {
+                  "old": "",
+                  "new": "7",
+                  "type": "add",
+                  "codeHtml": "\u003cspan class=\"cm\"\u003e// … 174 more lines (authorize / exchange / token parsing)\u003c/span\u003e"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "path": "src/auth/oauth.ts",
+          "status": "m",
+          "diff": {
+            "add": 96,
+            "del": 8
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -1,6 +1,9 @@ provider registry"
+            },
+            {
+              "old": "11",
+              "new": "11",
+              "type": "ctx",
+              "codeHtml": "\u003cspan class=\"kw\"\u003eimport\u003c/span\u003e { secrets } \u003cspan class=\"kw\"\u003efrom\u003c/span\u003e \u003cspan class=\"str\"\u003e'../lib/secrets'\u003c/span\u003e"
+            },
+            {
+              "old": "12",
+              "new": "",
+              "type": "del",
+              "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = process.env.\u003cspan class=\"nm\"\u003eOAUTH_CLIENT_SECRET\u003c/span\u003e"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": "\u003cspan class=\"kw\"\u003econst\u003c/span\u003e secret = \u003cspan class=\"kw\"\u003eawait\u003c/span\u003e secrets.\u003cspan class=\"fn\"\u003eget\u003c/span\u003e(\u003cspan class=\"str\"\u003e'oauth/client_secret'\u003c/span\u003e)",
+              "extraHtml": "\u003cdiv class=\"icmt\"\u003e\u003cdiv class=\"icmt-pad\"\u003e\u003cdiv class=\"cmt\" style=\"padding:0;border:none\"\u003e\u003cdiv class=\"ca\" style=\"background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)\"\u003eAR\u003c/div\u003e\u003cdiv class=\"cc\"\u003e\u003cdiv class=\"ch\"\u003e\u003cspan class=\"cn\"\u003eAvery Rourke\u003c/span\u003e\u003cspan class=\"ct\"\u003e2m\u003c/span\u003e\u003c/div\u003e\u003cdiv class=\"cm\"\u003eGood — this was reading from \u003ccode\u003eprocess.env\u003c/code\u003e before. Confirm the secrets client is initialised before any provider loads?\u003c/div\u003e\u003cspan class=\"react\" style=\"margin-top:8px\"\u003e\u003cspan style=\"width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block\"\u003e\u003c/span\u003eCoder: yes — \u003ccode\u003esecrets.init()\u003c/code\u003e runs in \u003ccode\u003ebootstrap.ts\u003c/code\u003e before providers register. ✓ resolved\u003c/span\u003e\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e"
+            },
+            {
+              "old": "13",
+              "new": "13",
+              "type": "ctx",
+              "codeHtml": "\u003cspan class=\"kw\"\u003eexport const\u003c/span\u003e \u003cspan class=\"fn\"\u003eproviders\u003c/span\u003e = {"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "  apple: \u003cspan class=\"fn\"\u003eappleProvider\u003c/span\u003e(secret),"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "  google: \u003cspan class=\"fn\"\u003egoogleProvider\u003c/span\u003e(secret),"
+            },
+            {
+              "old": "14",
+              "new": "16",
+              "type": "ctx",
+              "codeHtml": "}"
+            }
+          ]
+        },
+        {
+          "path": "src/hooks/useOAuthSession.ts",
+          "status": "a",
+          "diff": {
+            "add": 88,
+            "del": 0
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -0,0 +1,12 @@ new file"
+            },
+            {
+              "old": "",
+              "new": "1",
+              "type": "add",
+              "codeHtml": "\u003cspan class=\"kw\"\u003eexport function\u003c/span\u003e \u003cspan class=\"fn\"\u003euseOAuthSession\u003c/span\u003e() {"
+            },
+            {
+              "old": "",
+              "new": "2",
+              "type": "add",
+              "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e [session, setSession] = \u003cspan class=\"fn\"\u003euseState\u003c/span\u003e\u0026lt;\u003cspan class=\"ty\"\u003eSession\u003c/span\u003e | \u003cspan class=\"kw\"\u003enull\u003c/span\u003e\u0026gt;(\u003cspan class=\"kw\"\u003enull\u003c/span\u003e)",
+              "extraHtml": "\u003cdiv class=\"flag\"\u003e\u003csvg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"\u003e\u003ccircle cx=\"11\" cy=\"11\" r=\"7\"/\u003e\u003cpath d=\"M21 21l-4-4\" stroke-linecap=\"round\"/\u003e\u003c/svg\u003e\u003cdiv\u003e\u003cdiv class=\"ft\"\u003eReviewer flagged this region for human eyes\u003c/div\u003e\u003cdiv class=\"fm\"\u003etoken refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.\u003c/div\u003e\u003c/div\u003e\u003c/div\u003e"
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "  \u003cspan class=\"kw\"\u003econst\u003c/span\u003e refreshing = \u003cspan class=\"fn\"\u003euseRef\u003c/span\u003e(\u003cspan class=\"kw\"\u003efalse\u003c/span\u003e) \u003cspan class=\"cm\"\u003e// mutex guard\u003c/span\u003e"
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "  \u003cspan class=\"kw\"\u003easync function\u003c/span\u003e \u003cspan class=\"fn\"\u003erefresh\u003c/span\u003e() {"
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": "    \u003cspan class=\"kw\"\u003eif\u003c/span\u003e (refreshing.current) \u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e"
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": "    refreshing.current = \u003cspan class=\"kw\"\u003etrue\u003c/span\u003e"
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": "    \u003cspan class=\"kw\"\u003etry\u003c/span\u003e { setSession(\u003cspan class=\"kw\"\u003eawait\u003c/span\u003e \u003cspan class=\"fn\"\u003erotateTokens\u003c/span\u003e()) }"
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "    \u003cspan class=\"kw\"\u003efinally\u003c/span\u003e { refreshing.current = \u003cspan class=\"kw\"\u003efalse\u003c/span\u003e }"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "  }"
+            }
+          ]
+        },
+        {
+          "path": "src/checkout/SignInButtons.tsx",
+          "status": "m",
+          "diff": {
+            "add": 34,
+            "del": 4
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -8,4 +8,12 @@ checkout buttons"
+            },
+            {
+              "old": "8",
+              "new": "8",
+              "type": "ctx",
+              "codeHtml": "\u003cspan class=\"kw\"\u003ereturn\u003c/span\u003e ("
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "  \u0026lt;\u003cspan class=\"ty\"\u003eAppleButton\u003c/span\u003e onClick={() =\u0026gt; \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'apple'\u003c/span\u003e)} /\u0026gt;"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "  \u0026lt;\u003cspan class=\"ty\"\u003eGoogleButton\u003c/span\u003e onClick={() =\u0026gt; \u003cspan class=\"fn\"\u003esignIn\u003c/span\u003e(\u003cspan class=\"str\"\u003e'google'\u003c/span\u003e)} /\u0026gt;"
+            },
+            {
+              "old": "9",
+              "new": "11",
+              "type": "ctx",
+              "codeHtml": ")"
+            }
+          ]
+        }
+      ],
+      "comments": [
+        {
+          "id": "gh-description",
+          "code": "LO",
+          "author": "loopbot",
+          "authorLogin": "loopbot",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "2m",
+          "bodyHtml": "",
+          "kind": "description",
+          "bodyMd": "Adds Apple and Google sign-in to checkout. Provider config and secret handling ship in this PR.",
+          "url": "https://github.com/acme/app/pull/482#issue-482001",
+          "reactions": [
+            {
+              "content": "hooray",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "id": "c1",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "2m",
+          "bodyHtml": "Left a comment on \u003ccode\u003eoauth.ts\u003c/code\u003e about the client secret — see Files changed.",
+          "verb": "commented",
+          "bodyMd": "Left a comment on oauth.ts about the client secret — see Files changed.",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1001",
+          "reactions": [
+            {
+              "content": "+1",
+              "count": 2
+            },
+            {
+              "content": "heart",
+              "count": 1,
+              "mine": true
+            }
+          ]
+        },
+        {
+          "id": "c2",
+          "code": "MA",
+          "author": "Maestro",
+          "avatarCss": "background:var(--amber);color:#0A0C10",
+          "time": "2m",
+          "bodyHtml": "Got the review notes — I'll address the client-secret comment.",
+          "verb": "commented",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1002"
+        },
+        {
+          "id": "c3",
+          "code": "CO",
+          "author": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "time": "now",
+          "bodyHtml": "Pushed \u003ccode\u003ea3f91c2\u003c/code\u003e — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
+          "verb": "commented",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1003"
+        },
+        {
+          "id": "gh-review-99",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "1m",
+          "bodyHtml": "",
+          "verb": "commented",
+          "bodyMd": "testing again",
+          "url": "https://github.com/acme/app/pull/482#pullrequestreview-99"
+        },
+        {
+          "id": "gh-inline-1",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "1m",
+          "bodyHtml": "\u003ccode\u003esrc/auth/oauth.ts:11-12\u003c/code\u003e",
+          "verb": "commented",
+          "bodyMd": "hmm",
+          "url": "https://github.com/acme/app/pull/482#discussion_r1",
+          "parentId": "gh-review-99",
+          "reviewId": "99",
+          "path": "src/auth/oauth.ts",
+          "line": 12,
+          "side": "RIGHT",
+          "diffHunk": "@@ -4,9 +4,9 @@ provider registry\n import { secrets } from './vault'\n const providers = []\n function register() {\n   return providers\n }\n const unused = 1\n const unused2 = 2\n const unused3 = 3\n-const secret = process.env.OAUTH_CLIENT_SECRET\n+const secret = await secrets.get('oauth/client_secret')",
+          "startLine": 11,
+          "threadId": "PRRT_seed99",
+          "reactions": [
+            {
+              "content": "eyes",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "verify": [
+        {
+          "html": "Booted the app, opened \u003cb\u003e/checkout\u003c/b\u003e on a clean session",
+          "passed": true
+        },
+        {
+          "html": "\u003cb\u003eSign in with Apple\u003c/b\u003e → consent → returned with a valid session",
+          "passed": true
+        },
+        {
+          "html": "\u003cb\u003eSign in with Google\u003c/b\u003e → consent → returned with a valid session",
+          "passed": true
+        },
+        {
+          "html": "Reloaded — session persisted; no token in \u003cb\u003elocalStorage\u003c/b\u003e or logs",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "name": "test",
+          "detail": "1m 12s",
+          "passed": true,
+          "status": "pass"
+        },
+        {
+          "name": "lint",
+          "detail": "8s",
+          "passed": true,
+          "status": "pass"
+        },
+        {
+          "name": "typecheck",
+          "detail": "22s",
+          "passed": true,
+          "status": "pass"
+        }
+      ],
+      "authorLogin": "loopbot",
+      "participants": [
+        {
+          "login": "loopbot",
+          "name": "loopbot",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "LO"
+        },
+        {
+          "login": "avery",
+          "name": "Avery Rourke",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "AR"
+        },
+        {
+          "login": "sam",
+          "name": "sam"
+        },
+        {
+          "name": "PR Responder",
+          "avatarCss": "background:#b08bd8;color:#0A0C10",
+          "code": "PR"
+        },
+        {
+          "name": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "code": "CO"
+        }
+      ],
+      "reviewers": [
+        {
+          "login": "avery",
+          "name": "Avery Rourke",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "AR",
+          "state": "pending"
+        },
+        {
+          "login": "sam",
+          "name": "sam",
+          "state": "approved"
+        }
+      ],
+      "viewerLogin": "avery",
+      "viewerCanWrite": true,
+      "reviewRequested": true,
+      "attentionReasons": [
+        "review_requested"
+      ]
+    },
+    "rust-pr": {
+      "id": "rust-pr",
+      "workspaceId": "W-rust",
+      "projectId": "rust-proj",
+      "group": "",
+      "number": 481,
+      "source": "local",
+      "branch": "",
+      "base": "",
+      "title": "Rust PR",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "fileCount": 0,
+      "checksOk": false,
+      "when": "",
+      "createdAt": "2026-10-21T03:22:58Z",
+      "updatedAt": "2026-10-21T03:22:58Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null
+    }
+  },
+  "prNumberSeq": 481,
+  "projectGroups": [
+    {
+      "id": "grp",
+      "name": "Group \u003c\u0026\u003e \u2028",
+      "open": true,
+      "createdAt": "2026-10-21T03:20:59Z",
+      "updatedAt": "2026-10-21T03:20:59Z"
+    },
+    {
+      "id": "rust-grp",
+      "name": "Rust group",
+      "open": true,
+      "createdAt": "2026-10-21T03:22:58Z",
+      "updatedAt": "2026-10-21T03:22:58Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "storefront",
+      "name": "storefront",
+      "pic": "S",
+      "color": "var(--cyan)",
+      "open": true,
+      "idle": false,
+      "repoPath": "~/code/storefront",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "groupId": "grp",
+      "hidden": true,
+      "prOnGithub": true,
+      "linearProjects": "ACME, Web",
+      "mergeMethod": "squash",
+      "disabledSkills": [
+        "noise"
+      ],
+      "enabledMCP": [
+        "linear"
+      ],
+      "isGit": false
+    },
+    {
+      "id": "payments",
+      "name": "payments-api",
+      "pic": "P",
+      "color": "var(--amber)",
+      "open": true,
+      "idle": false,
+      "repoPath": "~/code/payments-api",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "prOnGithub": false,
+      "isGit": false
+    },
+    {
+      "id": "marketing",
+      "name": "marketing-site",
+      "pic": "M",
+      "color": "var(--indigo)",
+      "open": false,
+      "idle": true,
+      "repoPath": "~/code/marketing-site",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "prOnGithub": false,
+      "isGit": false
+    },
+    {
+      "id": "extra",
+      "name": "extra",
+      "pic": "lucide:box",
+      "color": "#ffcc00",
+      "open": false,
+      "idle": false,
+      "repoPath": "/nonexistent/recur-fixture/extra",
+      "baseBranch": "dev",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "prOnGithub": false,
+      "deleteBranchOnRemove": true,
+      "updateBaseMethod": "rebase",
+      "squashCommitMessage": "title-and-description",
+      "mergeCommitMessage": "title-and-description",
+      "enabledSkills": [
+        "special"
+      ],
+      "disabledMCP": [
+        "acme"
+      ],
+      "isGit": false
+    },
+    {
+      "id": "rust-proj",
+      "name": "rust",
+      "pic": "",
+      "color": "#00aaff",
+      "open": false,
+      "idle": false,
+      "repoPath": "/nonexistent/recur-fixture/rust",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "groupId": "rust-grp",
+      "prOnGithub": true,
+      "mergeMethod": "rebase",
+      "enabledSkills": [
+        "rusty"
+      ],
+      "isGit": false
+    }
+  ],
+  "prs": [
+    {
+      "id": "482",
+      "workspaceId": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 482,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/482",
+      "branch": "recur/oauth-checkout",
+      "base": "main",
+      "title": "Add OAuth provider config + secrets handling",
+      "summary": [
+        {
+          "kind": "p",
+          "html": "Adds \u003cb\u003eApple and Google sign-in\u003c/b\u003e to checkout. Provider config and secret handling ship in this PR; the sign-in buttons in the checkout UI follow in \u003ccode\u003e#483\u003c/code\u003e."
+        },
+        {
+          "kind": "p",
+          "html": "\u003cb\u003eWhat changed\u003c/b\u003e"
+        },
+        {
+          "kind": "bullets",
+          "items": [
+            "New OAuth provider registry in \u003ccode\u003eauth/oauth.ts\u003c/code\u003e for Apple + Google.",
+            "Client secrets now resolved from the secrets manager at startup — never read from \u003ccode\u003eprocess.env\u003c/code\u003e or logged.",
+            "Session/token refresh extracted into a reusable \u003ccode\u003euseOAuthSession\u003c/code\u003e hook."
+          ]
+        },
+        {
+          "kind": "p",
+          "html": "\u003cb\u003eKey decision:\u003c/b\u003e tokens are stored in an httpOnly cookie rather than localStorage, so they're not reachable from JS. Flagging because it changes how the client reads auth state."
+        }
+      ],
+      "focus": {
+        "title": "Where to focus your review",
+        "body": "The token-refresh race in \u003ccode\u003euseOAuthSession.ts\u003c/code\u003e (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
+      },
+      "state": "In review",
+      "diff": {
+        "add": 218,
+        "del": 12
+      },
+      "fileCount": 3,
+      "checksOk": true,
+      "when": "2m",
+      "createdAt": "2026-08-28T09:50:00Z",
+      "updatedAt": "2026-08-28T09:50:00Z",
+      "commits": null,
+      "files": null,
+      "comments": [
+        {
+          "id": "gh-description",
+          "code": "LO",
+          "author": "loopbot",
+          "authorLogin": "loopbot",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "2m",
+          "bodyHtml": "",
+          "kind": "description",
+          "bodyMd": "Adds Apple and Google sign-in to checkout. Provider config and secret handling ship in this PR.",
+          "url": "https://github.com/acme/app/pull/482#issue-482001",
+          "reactions": [
+            {
+              "content": "hooray",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "id": "c1",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "2m",
+          "bodyHtml": "Left a comment on \u003ccode\u003eoauth.ts\u003c/code\u003e about the client secret — see Files changed.",
+          "verb": "commented",
+          "bodyMd": "Left a comment on oauth.ts about the client secret — see Files changed.",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1001",
+          "reactions": [
+            {
+              "content": "+1",
+              "count": 2
+            },
+            {
+              "content": "heart",
+              "count": 1,
+              "mine": true
+            }
+          ]
+        },
+        {
+          "id": "c2",
+          "code": "MA",
+          "author": "Maestro",
+          "avatarCss": "background:var(--amber);color:#0A0C10",
+          "time": "2m",
+          "bodyHtml": "Got the review notes — I'll address the client-secret comment.",
+          "verb": "commented",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1002"
+        },
+        {
+          "id": "c3",
+          "code": "CO",
+          "author": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "time": "now",
+          "bodyHtml": "Pushed \u003ccode\u003ea3f91c2\u003c/code\u003e — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
+          "verb": "commented",
+          "url": "https://github.com/acme/app/pull/482#issuecomment-1003"
+        },
+        {
+          "id": "gh-review-99",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "1m",
+          "bodyHtml": "",
+          "verb": "commented",
+          "bodyMd": "testing again",
+          "url": "https://github.com/acme/app/pull/482#pullrequestreview-99"
+        },
+        {
+          "id": "gh-inline-1",
+          "code": "AR",
+          "author": "Avery Rourke",
+          "authorLogin": "avery",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "time": "1m",
+          "bodyHtml": "\u003ccode\u003esrc/auth/oauth.ts:11-12\u003c/code\u003e",
+          "verb": "commented",
+          "bodyMd": "hmm",
+          "url": "https://github.com/acme/app/pull/482#discussion_r1",
+          "parentId": "gh-review-99",
+          "reviewId": "99",
+          "path": "src/auth/oauth.ts",
+          "line": 12,
+          "side": "RIGHT",
+          "diffHunk": "@@ -4,9 +4,9 @@ provider registry\n import { secrets } from './vault'\n const providers = []\n function register() {\n   return providers\n }\n const unused = 1\n const unused2 = 2\n const unused3 = 3\n-const secret = process.env.OAUTH_CLIENT_SECRET\n+const secret = await secrets.get('oauth/client_secret')",
+          "startLine": 11,
+          "threadId": "PRRT_seed99",
+          "reactions": [
+            {
+              "content": "eyes",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "verify": [
+        {
+          "html": "Booted the app, opened \u003cb\u003e/checkout\u003c/b\u003e on a clean session",
+          "passed": true
+        },
+        {
+          "html": "\u003cb\u003eSign in with Apple\u003c/b\u003e → consent → returned with a valid session",
+          "passed": true
+        },
+        {
+          "html": "\u003cb\u003eSign in with Google\u003c/b\u003e → consent → returned with a valid session",
+          "passed": true
+        },
+        {
+          "html": "Reloaded — session persisted; no token in \u003cb\u003elocalStorage\u003c/b\u003e or logs",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "name": "test",
+          "detail": "1m 12s",
+          "passed": true,
+          "status": "pass"
+        },
+        {
+          "name": "lint",
+          "detail": "8s",
+          "passed": true,
+          "status": "pass"
+        },
+        {
+          "name": "typecheck",
+          "detail": "22s",
+          "passed": true,
+          "status": "pass"
+        }
+      ],
+      "authorLogin": "loopbot",
+      "participants": [
+        {
+          "login": "loopbot",
+          "name": "loopbot",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "LO"
+        },
+        {
+          "login": "avery",
+          "name": "Avery Rourke",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "AR"
+        },
+        {
+          "login": "sam",
+          "name": "sam"
+        },
+        {
+          "name": "PR Responder",
+          "avatarCss": "background:#b08bd8;color:#0A0C10",
+          "code": "PR"
+        },
+        {
+          "name": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "code": "CO"
+        }
+      ],
+      "reviewers": [
+        {
+          "login": "avery",
+          "name": "Avery Rourke",
+          "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+          "code": "AR",
+          "state": "pending"
+        },
+        {
+          "login": "sam",
+          "name": "sam",
+          "state": "approved"
+        }
+      ],
+      "viewerLogin": "avery",
+      "viewerCanWrite": true,
+      "reviewRequested": true,
+      "attentionReasons": [
+        "review_requested"
+      ]
+    },
+    {
+      "id": "479",
+      "workspaceId": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 479,
+      "source": "local",
+      "branch": "recur/fix-e2e",
+      "base": "main",
+      "title": "Stabilize flaky checkout E2E tests",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "fileCount": 5,
+      "checksOk": true,
+      "when": "18m",
+      "createdAt": "2026-08-28T09:34:00Z",
+      "updatedAt": "2026-08-28T09:34:00Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null,
+      "participants": [
+        {
+          "name": "Coder",
+          "avatarCss": "background:var(--cyan);color:#0A0C10",
+          "code": "CO"
+        }
+      ]
+    },
+    {
+      "id": "471",
+      "workspaceId": "LOOP-2202",
+      "projectId": "storefront",
+      "group": "merged",
+      "number": 471,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/471",
+      "branch": "recur/idempotency",
+      "base": "main",
+      "title": "Add idempotency keys to the orders API",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "Merged",
+      "diff": {
+        "add": 156,
+        "del": 9
+      },
+      "fileCount": 7,
+      "checksOk": true,
+      "when": "1d",
+      "createdAt": "2026-08-27T09:52:00Z",
+      "updatedAt": "2026-08-27T09:52:00Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null
+    },
+    {
+      "id": "480",
+      "workspaceId": "W-go",
+      "projectId": "extra",
+      "group": "you",
+      "number": 480,
+      "source": "local",
+      "branch": "",
+      "base": "",
+      "title": "Local fixture PR",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "fileCount": 0,
+      "checksOk": false,
+      "when": "",
+      "createdAt": "2026-10-21T03:20:59Z",
+      "updatedAt": "2026-10-21T03:20:59Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null
+    },
+    {
+      "id": "rust-pr",
+      "workspaceId": "W-rust",
+      "projectId": "rust-proj",
+      "group": "",
+      "number": 481,
+      "source": "local",
+      "branch": "",
+      "base": "",
+      "title": "Rust PR",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "fileCount": 0,
+      "checksOk": false,
+      "when": "",
+      "createdAt": "2026-10-21T03:22:58Z",
+      "updatedAt": "2026-10-21T03:22:58Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null
+    }
+  ],
+  "resource": {
+    "loopsRunning": 0,
+    "needsYou": 0,
+    "itersToday": 99
+  },
+  "scheduleRuns": [
+    {
+      "id": "run-go-1",
+      "scheduleId": "sched-go",
+      "dueAt": 1767225600000,
+      "workspaceId": "W-go",
+      "status": "finished",
+      "detail": "done"
+    },
+    {
+      "id": "run-rust",
+      "scheduleId": "rust-sched",
+      "dueAt": 1767312000000,
+      "workspaceId": "W-rust",
+      "status": "waiting",
+      "detail": ""
+    }
+  ],
+  "schedules": [
+    {
+      "flags": {
+        "effort": "low",
+        "thinking": "on"
+      },
+      "simplify": false,
+      "cron": "0 3 * * *",
+      "loopId": "",
+      "policyId": "",
+      "id": "sched-go",
+      "projectId": "extra",
+      "name": "Nightly",
+      "prompt": "check \u003cit\u003e",
+      "baseBranch": "dev",
+      "mode": "agent",
+      "model": "claude-code/claude-sonnet-5-5",
+      "cadence": "cron",
+      "date": "",
+      "time": "",
+      "timeZone": "America/New_York",
+      "paused": false,
+      "nextRunAt": 1767312000000,
+      "lastRun": {
+        "id": "run-go-1",
+        "scheduleId": "sched-go",
+        "dueAt": 1767225600000,
+        "workspaceId": "W-go",
+        "status": "finished",
+        "detail": "done"
+      }
+    },
+    {
+      "flags": {
+        "effort": "max"
+      },
+      "simplify": true,
+      "cron": "",
+      "loopId": "",
+      "policyId": "",
+      "id": "rust-sched",
+      "projectId": "rust-proj",
+      "name": "Rusty",
+      "prompt": "go",
+      "baseBranch": "main",
+      "mode": "loop",
+      "model": "claude-code/claude-sonnet-5-5",
+      "cadence": "daily",
+      "date": "",
+      "time": "08:30",
+      "timeZone": "Europe/Berlin",
+      "paused": false,
+      "nextRunAt": 1767398400000,
+      "lastRun": {
+        "id": "run-rust",
+        "scheduleId": "rust-sched",
+        "dueAt": 1767312000000,
+        "workspaceId": "W-rust",
+        "status": "waiting",
+        "detail": ""
+      }
+    }
+  ],
+  "sessionHeaders": {
+    "W-go": [
+      {
+        "id": "sess-go-1",
+        "workspaceId": "W-go",
+        "kind": "pair",
+        "contextMode": "provider",
+        "provider": "claude-code",
+        "providerSessionRef": "claude-ref-1",
+        "configJson": "{\"code\":\"PA\",\"title\":\"t \u003c\u0026\u003e\",\"flags\":{\"effort\":\"high\"},\"simplify\":false}",
+        "activeContextId": "01a15c79-f753-7451-a9b5-61b87cd352b2",
+        "status": "idle",
+        "createdAt": 1792552859474,
+        "updatedAt": 1792552859475
+      },
+      {
+        "id": "01a15c79-f753-783d-bdfc-d88aae8193da",
+        "workspaceId": "W-go",
+        "kind": "coder",
+        "parentSessionId": "sess-go-1",
+        "forkMessageId": "m-go-2",
+        "contextMode": "provider",
+        "provider": "claude-code",
+        "configJson": "{\"code\":\"PA2\",\"ownerCode\":\"PA\"}",
+        "activeContextId": "01a15c79-f753-792f-8994-9da0f667a893",
+        "status": "idle",
+        "createdAt": 1792552859475,
+        "updatedAt": 1792552859475
+      }
+    ],
+    "W-rust": [
+      {
+        "id": "rust-sess",
+        "workspaceId": "W-rust",
+        "kind": "pair",
+        "contextMode": "provider",
+        "provider": "claude-code",
+        "providerSessionRef": "rust-ref",
+        "configJson": "{\"code\":\"PA\",\"title\":\"Rust tab\"}",
+        "activeContextId": "01a15c7b-c9d8-73d8-85ad-d04177746b4f",
+        "status": "idle",
+        "createdAt": 1792552978903,
+        "updatedAt": 1792552978904
+      },
+      {
+        "id": "01a15c7b-c9d8-73d8-85ad-d0427e4e363d",
+        "workspaceId": "W-rust",
+        "kind": "coder",
+        "parentSessionId": "rust-sess",
+        "forkMessageId": "01a15c7b-c9d8-73d8-85ad-d03e48d56ff9",
+        "contextMode": "provider",
+        "provider": "claude-code",
+        "configJson": "{\"code\":\"CO\",\"ownerCode\":\"PA\"}",
+        "activeContextId": "01a15c7b-c9d8-73d8-85ad-d04349269dd4",
+        "status": "idle",
+        "createdAt": 1792552978904,
+        "updatedAt": 1792552978904
+      }
+    ]
+  },
+  "settings": {
+    "modelAsk": "claude-code/claude-sonnet-5-5",
+    "modelPlan": "claude-code/claude-sonnet-5-5",
+    "modelAgent": "claude-code/claude-sonnet-5-5",
+    "modelReview": "claude-code/claude-sonnet-5-5",
+    "modelLoop": "claude-code/claude-sonnet-5-5",
+    "modelWorkspaceTitle": "claude-code/claude-haiku-4-5-20251001",
+    "flagsAsk": {
+      "effort": "high"
+    },
+    "flagsPlan": {
+      "effort": "high"
+    },
+    "flagsAgent": {
+      "effort": "high"
+    },
+    "flagsReview": {
+      "effort": "high"
+    },
+    "flagsLoop": {
+      "effort": "high"
+    },
+    "flagsWorkspaceTitle": {
+      "effort": "low"
+    },
+    "bypassPermissions": false,
+    "maxLoops": 6,
+    "maxAgents": 8,
+    "defaultMergeMethod": "merge",
+    "defaultUpdateBaseMethod": "merge",
+    "defaultSquashCommitMessage": "title-and-commits",
+    "defaultMergeCommitMessage": "title"
+  },
+  "transcripts": {
+    "01a15c79-f753-783d-bdfc-d88aae8193da": [
+      {
+        "id": "m-go-1",
+        "originSessionId": "sess-go-1",
+        "role": "user",
+        "streamStatus": "complete",
+        "createdAt": 1792552859474,
+        "content": [
+          {
+            "id": "01a15c79-f752-7311-8a7f-956fbdad9681",
+            "type": "text",
+            "content": {
+              "text": "wire \u003cprompt\u003e",
+              "display_text": "shown prompt"
+            },
+            "createdAt": 1792552859474
+          },
+          {
+            "id": "01a15c79-f752-733c-ae87-449027ff0e8c",
+            "type": "image",
+            "content": {
+              "id": "img1",
+              "name": "a.png",
+              "mime": "image/png",
+              "path": "/tmp/a.png"
+            },
+            "createdAt": 1792552859474
+          }
+        ]
+      },
+      {
+        "id": "m-go-2",
+        "originSessionId": "sess-go-1",
+        "role": "assistant",
+        "modelId": "claude-opus-4-8",
+        "provider": "claude-code",
+        "streamStatus": "complete",
+        "startedAt": 5,
+        "completedAt": 1792552859475,
+        "inputTokens": 10,
+        "outputTokens": 20,
+        "cacheReadTokens": 30,
+        "durationMs": 40,
+        "contextWindow": 200000,
+        "createdAt": 1792552859474,
+        "content": [
+          {
+            "id": "01a15c79-f752-7789-a1fc-6881290b21fd",
+            "type": "thinking",
+            "content": {
+              "thinking": "hmm",
+              "signature": "sig"
+            },
+            "createdAt": 1792552859474
+          },
+          {
+            "id": "01a15c79-f752-78f4-8817-91a5ae2f47be",
+            "type": "text",
+            "content": {
+              "text": "Answer \u0026 \u003cdone\u003e"
+            },
+            "createdAt": 1792552859474
+          },
+          {
+            "id": "01a15c79-f752-7a8f-a3b3-6e9d9806c7d0",
+            "type": "tool_use",
+            "content": {
+              "id": "tu-go-1",
+              "provider_tool_use_id": "toolu_1",
+              "name": "mcp__recur__ask_user",
+              "input": {
+                "question": "Ship?"
+              }
+            },
+            "createdAt": 1792552859474
+          },
+          {
+            "id": "01a15c79-f752-7dcb-afa7-c2eac6aea336",
+            "type": "fallback",
+            "content": {
+              "from": "opus",
+              "to": "sonnet"
+            },
+            "createdAt": 1792552859474
+          }
+        ]
+      }
+    ],
+    "01a15c7b-c9d8-73d8-85ad-d0427e4e363d": [
+      {
+        "id": "01a15c7b-c9d7-77e7-b5cf-68b7aae1e744",
+        "originSessionId": "rust-sess",
+        "role": "user",
+        "streamStatus": "complete",
+        "createdAt": 1792552978903,
+        "content": [
+          {
+            "id": "01a15c7b-c9d7-77e7-b5cf-68b8fb371559",
+            "type": "text",
+            "content": {
+              "text": "rust prompt"
+            },
+            "createdAt": 1792552978903
+          }
+        ]
+      },
+      {
+        "id": "01a15c7b-c9d8-73d8-85ad-d03e48d56ff9",
+        "originSessionId": "rust-sess",
+        "role": "assistant",
+        "modelId": "claude-sonnet-5-5",
+        "streamStatus": "complete",
+        "completedAt": 1792552978904,
+        "inputTokens": 7,
+        "outputTokens": 3,
+        "createdAt": 1792552978904,
+        "content": [
+          {
+            "id": "01a15c7b-c9d8-73d8-85ad-d03f04080308",
+            "type": "text",
+            "content": {
+              "text": "on it"
+            },
+            "createdAt": 1792552978904
+          },
+          {
+            "id": "01a15c7b-c9d8-73d8-85ad-d0405c706247",
+            "type": "tool_use",
+            "content": {
+              "id": "tu-rust",
+              "provider_tool_use_id": "toolu_r",
+              "name": "Bash",
+              "input": {
+                "cmd": "ls"
+              }
+            },
+            "createdAt": 1792552978904
+          }
+        ]
+      }
+    ],
+    "rust-app": null,
+    "rust-sess": [
+      {
+        "id": "01a15c7b-c9d7-77e7-b5cf-68b7aae1e744",
+        "originSessionId": "rust-sess",
+        "role": "user",
+        "streamStatus": "complete",
+        "createdAt": 1792552978903,
+        "content": [
+          {
+            "id": "01a15c7b-c9d7-77e7-b5cf-68b8fb371559",
+            "type": "text",
+            "content": {
+              "text": "rust prompt"
+            },
+            "createdAt": 1792552978903
+          }
+        ]
+      },
+      {
+        "id": "01a15c7b-c9d8-73d8-85ad-d03e48d56ff9",
+        "originSessionId": "rust-sess",
+        "role": "assistant",
+        "modelId": "claude-sonnet-5-5",
+        "streamStatus": "complete",
+        "completedAt": 1792552978904,
+        "inputTokens": 7,
+        "outputTokens": 3,
+        "createdAt": 1792552978904,
+        "content": [
+          {
+            "id": "01a15c7b-c9d8-73d8-85ad-d03f04080308",
+            "type": "text",
+            "content": {
+              "text": "on it"
+            },
+            "createdAt": 1792552978904
+          },
+          {
+            "id": "01a15c7b-c9d8-73d8-85ad-d0405c706247",
+            "type": "tool_use",
+            "content": {
+              "id": "tu-rust",
+              "provider_tool_use_id": "toolu_r",
+              "name": "Bash",
+              "input": {
+                "cmd": "ls"
+              }
+            },
+            "createdAt": 1792552978904
+          }
+        ]
+      }
+    ],
+    "sess-go-1": [
+      {
+        "id": "m-go-1",
+        "originSessionId": "sess-go-1",
+        "role": "user",
+        "streamStatus": "complete",
+        "createdAt": 1792552859474,
+        "content": [
+          {
+            "id": "01a15c79-f752-7311-8a7f-956fbdad9681",
+            "type": "text",
+            "content": {
+              "text": "wire \u003cprompt\u003e",
+              "display_text": "shown prompt"
+            },
+            "createdAt": 1792552859474
+          },
+          {
+            "id": "01a15c79-f752-733c-ae87-449027ff0e8c",
+            "type": "image",
+            "content": {
+              "id": "img1",
+              "name": "a.png",
+              "mime": "image/png",
+              "path": "/tmp/a.png"
+            },
+            "createdAt": 1792552859474
+          }
+        ]
+      },
+      {
+        "id": "m-go-2",
+        "originSessionId": "sess-go-1",
+        "role": "assistant",
+        "modelId": "claude-opus-4-8",
+        "provider": "claude-code",
+        "streamStatus": "complete",
+        "startedAt": 5,
+        "completedAt": 1792552859475,
+        "inputTokens": 10,
+        "outputTokens": 20,
+        "cacheReadTokens": 30,
+        "durationMs": 40,
+        "contextWindow": 200000,
+        "createdAt": 1792552859474,
+        "content": [
+          {
+            "id": "01a15c79-f752-7789-a1fc-6881290b21fd",
+            "type": "thinking",
+            "content": {
+              "thinking": "hmm",
+              "signature": "sig"
+            },
+            "createdAt": 1792552859474
+          },
+          {
+            "id": "01a15c79-f752-78f4-8817-91a5ae2f47be",
+            "type": "text",
+            "content": {
+              "text": "Answer \u0026 \u003cdone\u003e"
+            },
+            "createdAt": 1792552859474
+          },
+          {
+            "id": "01a15c79-f752-7a8f-a3b3-6e9d9806c7d0",
+            "type": "tool_use",
+            "content": {
+              "id": "tu-go-1",
+              "provider_tool_use_id": "toolu_1",
+              "name": "mcp__recur__ask_user",
+              "input": {
+                "question": "Ship?"
+              }
+            },
+            "createdAt": 1792552859474
+          },
+          {
+            "id": "01a15c79-f752-7dcb-afa7-c2eac6aea336",
+            "type": "fallback",
+            "content": {
+              "from": "opus",
+              "to": "sonnet"
+            },
+            "createdAt": 1792552859474
+          }
+        ]
+      },
+      {
+        "id": "m-go-3",
+        "originSessionId": "sess-go-1",
+        "role": "user",
+        "streamStatus": "complete",
+        "createdAt": 1792552859475,
+        "content": [
+          {
+            "id": "01a15c79-f753-7255-b843-a769f6673818",
+            "type": "tool_result",
+            "content": {
+              "tool_use_id": "tu-go-1",
+              "result": "yes"
+            },
+            "createdAt": 1792552859475
+          },
+          {
+            "id": "01a15c79-f753-7278-ab91-5f1bfc4cdfaf",
+            "type": "compact",
+            "content": {
+              "status": "done",
+              "trigger": "auto",
+              "summary": "folded",
+              "preTokens": 900
+            },
+            "createdAt": 1792552859475
+          },
+          {
+            "id": "01a15c79-f753-7294-9278-af79c8952277",
+            "type": "future_block",
+            "content": {
+              "x": [
+                1,
+                2
+              ]
+            },
+            "createdAt": 1792552859475
+          }
+        ]
+      }
+    ],
+    "sess-go-app": null
+  },
+  "unreadCount": 5,
+  "unseenChatCount": 2,
+  "workspaces": [
+    {
+      "id": "LOOP-2218",
+      "projectId": "payments",
+      "group": "needs",
+      "goal": "Rate-limit the public API",
+      "short": "Rate-limit the public API",
+      "definitionOfDone": "",
+      "state": "escalated",
+      "statusLabel": "Needs you",
+      "phase": "asking a question",
+      "iteration": 6,
+      "progress": 0.85,
+      "autonomy": "balanced",
+      "branch": "recur/rate-limit",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "agentCodes": [
+        "MA"
+      ],
+      "last": "escalated: ambiguous burst-limit spec",
+      "elapsedLabel": "paused 12m",
+      "convergence": null,
+      "archived": false
+    },
+    {
+      "id": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Add Apple \u0026 Google sign-in to checkout",
+      "short": "Add Apple \u0026 Google sign-in",
+      "definitionOfDone": "",
+      "state": "verifying",
+      "statusLabel": "Verifying",
+      "phase": "rust phase",
+      "iteration": 3,
+      "progress": 0.72,
+      "autonomy": "balanced",
+      "branch": "recur/oauth-checkout",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 218,
+        "del": 12
+      },
+      "agentCodes": [
+        "MA",
+        "CO",
+        "QA",
+        "RV"
+      ],
+      "last": "QA: clicking “Sign in with Apple”…",
+      "elapsedLabel": "14m 09s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false
+    },
+    {
+      "id": "LOOP-2229",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Migrate analytics to Postgres 16",
+      "short": "Migrate analytics to PG16",
+      "definitionOfDone": "",
+      "state": "coding",
+      "statusLabel": "Coding",
+      "phase": "iteration 3",
+      "iteration": 3,
+      "progress": 0.45,
+      "autonomy": "balanced",
+      "branch": "recur/pg16",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 540,
+        "del": 110
+      },
+      "agentCodes": [
+        "MA",
+        "CO"
+      ],
+      "last": "Coder: rewriting migration 0042…",
+      "elapsedLabel": "31m",
+      "convergence": null,
+      "archived": false
+    },
+    {
+      "id": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "ready",
+      "goal": "Fix flaky checkout E2E tests",
+      "short": "Fix flaky E2E tests",
+      "definitionOfDone": "",
+      "state": "pr_open",
+      "statusLabel": "Ready",
+      "phase": "PR #479 open",
+      "iteration": 5,
+      "progress": 1,
+      "autonomy": "balanced",
+      "branch": "recur/fix-e2e",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "agentCodes": [
+        "MA",
+        "TE"
+      ],
+      "last": "converged · awaiting your review",
+      "elapsedLabel": "1h 02m",
+      "convergence": null,
+      "archived": false
+    },
+    {
+      "id": "W-go",
+      "projectId": "extra",
+      "group": "active",
+      "goal": "Go fixture \u003cb\u003egoal\u003c/b\u003e",
+      "short": "",
+      "definitionOfDone": "",
+      "state": "coding",
+      "statusLabel": "",
+      "phase": "",
+      "iteration": 0,
+      "progress": 0.25,
+      "autonomy": "",
+      "branch": "recur/go",
+      "behindBase": 0,
+      "worktreePath": "",
+      "port": 4321,
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "agentCodes": [
+        "PA"
+      ],
+      "last": "",
+      "elapsedLabel": "",
+      "convergence": null,
+      "fanOut": {
+        "wave": 2,
+        "after": [
+          "s1"
+        ],
+        "outcome": "merged"
+      },
+      "archived": false,
+      "plan": {
+        "summary": "plan",
+        "body": "# body",
+        "steps": [
+          {
+            "id": "s1",
+            "title": "First",
+            "status": "done",
+            "files": [
+              "a.go"
+            ]
+          }
+        ]
+      },
+      "chatTabOrder": [
+        "PA",
+        "PA2"
+      ]
+    },
+    {
+      "id": "W-rust",
+      "projectId": "rust-proj",
+      "group": "active",
+      "goal": "Rust \u003cfixture\u003e \u0026 co",
+      "short": "",
+      "definitionOfDone": "",
+      "state": "",
+      "statusLabel": "",
+      "phase": "",
+      "iteration": 0,
+      "progress": 0.5,
+      "autonomy": "",
+      "branch": "",
+      "behindBase": 0,
+      "worktreePath": "",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "agentCodes": [
+        "PA"
+      ],
+      "last": "",
+      "elapsedLabel": "",
+      "convergence": null,
+      "archived": false,
+      "plan": {
+        "summary": "rust plan",
+        "steps": [
+          {
+            "id": "r1",
+            "title": "Rust step",
+            "status": "doing"
+          }
+        ]
+      },
+      "chatTabOrder": [
+        "PA"
+      ]
+    }
+  ]
+}

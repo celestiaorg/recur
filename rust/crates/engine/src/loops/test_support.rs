@@ -778,15 +778,6 @@ impl CaptureScript {
             .cloned()
             .collect()
     }
-
-    pub fn with_agent_id(&self, agent_id: &str) -> Vec<TurnRequest> {
-        self.specs
-            .lock()
-            .iter()
-            .filter(|s| s.agent_id == agent_id && !s.role.is_empty())
-            .cloned()
-            .collect()
-    }
 }
 
 /// Maestro turns replay `maestro`; every other role emits a Bash step and

@@ -19,3 +19,4 @@ mod resume;
 mod specialists;
 mod verify;
 mod walker;
+mod wrap_up;

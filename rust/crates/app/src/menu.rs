@@ -203,9 +203,12 @@ fn contextual(name: &str, action: impl Action, on: Option<bool>) -> MenuItem {
 }
 
 fn loading() -> MenuItem {
-    item("Loading…", PickTheme {
-        action: SharedString::default(),
-    })
+    item(
+        "Loading…",
+        PickTheme {
+            action: SharedString::default(),
+        },
+    )
     .disabled(true)
 }
 
@@ -252,7 +255,14 @@ fn appearance(themes: Option<&MenuThemes>) -> Menu {
         Some(t) => t
             .terminal
             .iter()
-            .map(|e| radio(&e.name, "terminal-theme", &e.key, e.key == t.terminal_selected))
+            .map(|e| {
+                radio(
+                    &e.name,
+                    "terminal-theme",
+                    &e.key,
+                    e.key == t.terminal_selected,
+                )
+            })
             .collect(),
     };
     Menu::new("Appearance").items([
@@ -280,7 +290,12 @@ fn edit_item(name: &str, action: &str, os: Option<OsAction>, cx: &App) -> Option
 }
 
 /// The menubar, built from the current contextual state and theme catalogs (`installAppMenu`).
-pub fn app_menus(state: &MenuState, themes: Option<&MenuThemes>, updates: bool, cx: &App) -> Vec<Menu> {
+pub fn app_menus(
+    state: &MenuState,
+    themes: Option<&MenuThemes>,
+    updates: bool,
+    cx: &App,
+) -> Vec<Menu> {
     let mac = cfg!(target_os = "macos");
     let mut menus = Vec::new();
 
@@ -336,7 +351,12 @@ pub fn app_menus(state: &MenuState, themes: Option<&MenuThemes>, updates: bool, 
             edit_item("Paste", "input::Paste", Some(OsAction::Paste), cx),
             edit_item("Paste and Match Style", "input::Paste", None, cx),
             edit_item("Delete", "input::Delete", None, cx),
-            edit_item("Select All", "input::SelectAll", Some(OsAction::SelectAll), cx),
+            edit_item(
+                "Select All",
+                "input::SelectAll",
+                Some(OsAction::SelectAll),
+                cx,
+            ),
         ];
         menus.push(Menu::new("Edit").items(edit.into_iter().flatten()));
     }
@@ -345,11 +365,23 @@ pub fn app_menus(state: &MenuState, themes: Option<&MenuThemes>, updates: bool, 
         MenuItem::submenu(appearance(themes)),
         MenuItem::separator(),
         item("Toggle Sidebar", ToggleSidebar),
-        contextual("Toggle Left Panel", ToggleLeftPanel, state.toggle_left_panel),
-        contextual("Toggle Right Panel", ToggleRightPanel, state.toggle_right_panel),
+        contextual(
+            "Toggle Left Panel",
+            ToggleLeftPanel,
+            state.toggle_left_panel,
+        ),
+        contextual(
+            "Toggle Right Panel",
+            ToggleRightPanel,
+            state.toggle_right_panel,
+        ),
         contextual("Toggle Editor", ToggleEditor, state.toggle_editor),
         contextual("Toggle Terminal", ToggleTerminal, state.toggle_terminal),
-        contextual("Maximize Terminal", MaximizeTerminal, state.maximize_terminal),
+        contextual(
+            "Maximize Terminal",
+            MaximizeTerminal,
+            state.maximize_terminal,
+        ),
         contextual("Run…", RunDev, state.run_dev),
         contextual("Stop Run", StopRun, state.stop_run),
     ];

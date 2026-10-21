@@ -180,7 +180,12 @@ impl AppState {
 
     /// `linkWorkspaceIssue`: one workspace per issue, so the link moves; the Issues list
     /// refreshes once the backend assigned it.
-    pub fn link_workspace_issue(&mut self, workspace_id: &str, issue: recur_domain::IssueRef, cx: &mut Context<Self>) {
+    pub fn link_workspace_issue(
+        &mut self,
+        workspace_id: &str,
+        issue: recur_domain::IssueRef,
+        cx: &mut Context<Self>,
+    ) {
         if workspace_id.is_empty() || issue.source.is_empty() || issue.id.is_empty() {
             return;
         }
@@ -199,7 +204,12 @@ impl AppState {
         let services = self.services.clone();
         let id = workspace_id.to_string();
         cx.spawn(async move |this, cx| {
-            if services.workspaces.set_workspace_issue(&id, &issue).await.is_ok() {
+            if services
+                .workspaces
+                .set_workspace_issue(&id, &issue)
+                .await
+                .is_ok()
+            {
                 let _ = this.update(cx, |s, cx| {
                     s.issues_stale += 1;
                     cx.notify();
@@ -214,9 +224,13 @@ impl AppState {
         let services = self.services.clone();
         let id = workspace_id.to_string();
         cx.spawn(async move |this, cx| {
-            if call(cx, services.workspaces.clear_workspace_issue(&id), "Could not unlink issue")
-                .await
-                .is_some()
+            if call(
+                cx,
+                services.workspaces.clear_workspace_issue(&id),
+                "Could not unlink issue",
+            )
+            .await
+            .is_some()
             {
                 let _ = this.update(cx, |s, cx| {
                     if let Some(w) = s.workspaces.iter_mut().find(|w| w.id == id) {

@@ -99,7 +99,13 @@ impl Shell {
 
 impl CrumbName {
     /// The name to paint for `text` of the entity `key` (DecodeText semantics).
-    fn sync(&mut self, next: SharedString, key: SharedString, reduced: bool, cx: &mut Context<Shell>) -> SharedString {
+    fn sync(
+        &mut self,
+        next: SharedString,
+        key: SharedString,
+        reduced: bool,
+        cx: &mut Context<Shell>,
+    ) -> SharedString {
         let snap = |s: &mut CrumbName| {
             s.timer = None;
             s.decoding = false;
@@ -230,7 +236,11 @@ fn crumb(spans: Vec<Span>, cx: &App) -> impl IntoElement {
 }
 
 /// `.tb-back`: the mono back link.
-fn back_button(id: &'static str, label: &'static str, cx: &App) -> gpui_kit::Stateful<gpui_kit::Div> {
+fn back_button(
+    id: &'static str,
+    label: &'static str,
+    cx: &App,
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     let t = Theme::of(cx).tokens;
     no_drag(
         div()
@@ -252,7 +262,11 @@ fn tb_sub(label: impl Into<SharedString>, cx: &App) -> impl IntoElement {
 }
 
 impl Shell {
-    pub(crate) fn render_titlebar(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn render_titlebar(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let state = self.state.clone();
         let (view, rail_collapsed, label) = {
@@ -278,7 +292,10 @@ impl Shell {
                 cx.stop_propagation();
             })
             .child(left)
-            .when_some((!label.is_empty()).then(|| instance_chip(&label, cx)), |d, chip| d.child(chip))
+            .when_some(
+                (!label.is_empty()).then(|| instance_chip(&label, cx)),
+                |d, chip| d.child(chip),
+            )
             .child(right)
             .into_any_element()
     }
@@ -347,11 +364,16 @@ impl Shell {
                         .unwrap_or_default()
                         .into();
                     let reduced = recur_ui::motion::reduced(cx) || recur_ui::motion::is_frozen(cx);
-                    let shown = self.titlebar.name.sync(name, ws.id.clone().into(), reduced, cx);
+                    let shown = self
+                        .titlebar
+                        .name
+                        .sync(name, ws.id.clone().into(), reduced, cx);
                     let decoding = self.titlebar.name.decoding;
                     let mut spans = vec![
                         span("/ "),
-                        span(ws.project_id.clone()).color(t.muted).weight(weight::MEDIUM),
+                        span(ws.project_id.clone())
+                            .color(t.muted)
+                            .weight(weight::MEDIUM),
                         span(" / "),
                     ];
                     // `.decoding { opacity: .85 }` on the name.
@@ -370,9 +392,12 @@ impl Shell {
                     left = left.child(crumb(spans, cx));
                     if !ws.is_main {
                         left = left.child(no_drag(
-                            div().id("crumb-arrow").flex_none().mx(px(2.)).ml(px(4.)).child(
-                                text("→").size(11.).color(t.faint).nowrap(),
-                            ),
+                            div()
+                                .id("crumb-arrow")
+                                .flex_none()
+                                .mx(px(2.))
+                                .ml(px(4.))
+                                .child(text("→").size(11.).color(t.faint).nowrap()),
                         ));
                         left = left.child(self.base_select());
                     }
@@ -426,7 +451,12 @@ impl Shell {
         left.into_any_element()
     }
 
-    fn titlebar_right(&mut self, view: ViewName, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn titlebar_right(
+        &mut self,
+        view: ViewName,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let state = self.state.clone();
         let mut right = div()
             .id("tb-right")
@@ -502,24 +532,34 @@ impl Shell {
             };
             let id = ws.id.clone();
             let backdrop = Theme::of(cx).tokens.titlebar;
-            let mut btn = armed_button(SharedString::from(format!("tb-remove-{id}")), "Remove", confirm, {
-                let state = state.clone();
-                move |_, cx| {
-                    let id = id.clone();
-                    state.update(cx, |s, cx| {
-                        if workspace_can_remove(s.workspace(&id), s.workspaces_running.contains(&id)) {
-                            s.remove_workspace(&id, cx).detach();
-                        }
-                    });
-                }
-            })
+            let mut btn = armed_button(
+                SharedString::from(format!("tb-remove-{id}")),
+                "Remove",
+                confirm,
+                {
+                    let state = state.clone();
+                    move |_, cx| {
+                        let id = id.clone();
+                        state.update(cx, |s, cx| {
+                            if workspace_can_remove(
+                                s.workspace(&id),
+                                s.workspaces_running.contains(&id),
+                            ) {
+                                s.remove_workspace(&id, cx).detach();
+                            }
+                        });
+                    }
+                },
+            )
             .size(TbtnSize::TITLEBAR)
             .on_arm({
                 let shell = cx.entity();
                 move |_, cx| shell.update(cx, |this, cx| this.refresh_discard_risk(cx))
             });
             if !can {
-                btn = btn.disabled(Some(backdrop)).title("Stop the workspace first");
+                btn = btn
+                    .disabled(Some(backdrop))
+                    .title("Stop the workspace first");
             }
             right = right.child(no_drag(div().id("tb-remove-wrap").child(btn)));
         }
@@ -528,7 +568,11 @@ impl Shell {
 
     /// `.run-split` / `.stop-split`: Run the pinned command (click) with the picker on the
     /// chevron, and Stop while anything runs.
-    fn run_splits(&mut self, ws: &recur_domain::Workspace, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    fn run_splits(
+        &mut self,
+        ws: &recur_domain::Workspace,
+        cx: &mut Context<Self>,
+    ) -> Vec<AnyElement> {
         let state = self.state.clone();
         let s = state.read(cx);
         let t = Theme::of(cx).tokens;
@@ -572,26 +616,28 @@ impl Shell {
                                 })
                             }
                         })
-                        .child(style::button_label(run_label_text.clone(), 11.5, weight::MEDIUM)),
+                        .child(style::button_label(
+                            run_label_text.clone(),
+                            11.5,
+                            weight::MEDIUM,
+                        )),
                 ),
             ))
-            .child(
-                no_drag(
-                    tbtn("tb-run-chev", chev_on, TbtnSize::TITLEBAR, None, cx)
-                        .rounded_l(px(0.))
-                        .border_l(px(0.))
-                        .px(px(5.))
-                        .on_click({
-                            let (state, id) = (state.clone(), id.clone());
-                            move |_, _, cx| {
-                                state.update(cx, |s, cx| {
-                                    s.open_run_menu(&id, cx);
-                                });
-                            }
-                        })
-                        .child(icon(IconName::ChevronDown).size(px(13.))),
-                ),
-            );
+            .child(no_drag(
+                tbtn("tb-run-chev", chev_on, TbtnSize::TITLEBAR, None, cx)
+                    .rounded_l(px(0.))
+                    .border_l(px(0.))
+                    .px(px(5.))
+                    .on_click({
+                        let (state, id) = (state.clone(), id.clone());
+                        move |_, _, cx| {
+                            state.update(cx, |s, cx| {
+                                s.open_run_menu(&id, cx);
+                            });
+                        }
+                    })
+                    .child(icon(IconName::ChevronDown).size(px(13.))),
+            ));
         out.push(run.into_any_element());
         let _ = t;
         if !running.is_empty() {
@@ -602,27 +648,36 @@ impl Shell {
                 "Stop (⌘⇧R)".to_string()
             };
             let first = running[0].0.clone();
-            let mut stop = div().id("stop-split").relative().flex().items_center().child(titled(
-                "tb-stop-tip",
-                stop_title,
-                no_drag(
-                    tbtn("tb-stop", Tbtn::On, TbtnSize::TITLEBAR, None, cx)
-                        .when(!single, |b| b.rounded_r(px(0.)))
-                        .on_click({
-                            let (state, id) = (state.clone(), id.clone());
-                            move |_, _, cx| {
-                                state.update(cx, |s, cx| {
-                                    if single {
-                                        s.request_stop_run(&id, &first, cx);
-                                    } else {
-                                        s.open_stop_menu(&id, cx);
-                                    }
-                                })
-                            }
-                        })
-                        .child(style::button_label(stop_label.clone(), 11.5, weight::MEDIUM)),
-                ),
-            ));
+            let mut stop = div()
+                .id("stop-split")
+                .relative()
+                .flex()
+                .items_center()
+                .child(titled(
+                    "tb-stop-tip",
+                    stop_title,
+                    no_drag(
+                        tbtn("tb-stop", Tbtn::On, TbtnSize::TITLEBAR, None, cx)
+                            .when(!single, |b| b.rounded_r(px(0.)))
+                            .on_click({
+                                let (state, id) = (state.clone(), id.clone());
+                                move |_, _, cx| {
+                                    state.update(cx, |s, cx| {
+                                        if single {
+                                            s.request_stop_run(&id, &first, cx);
+                                        } else {
+                                            s.open_stop_menu(&id, cx);
+                                        }
+                                    })
+                                }
+                            })
+                            .child(style::button_label(
+                                stop_label.clone(),
+                                11.5,
+                                weight::MEDIUM,
+                            )),
+                    ),
+                ));
             if !single {
                 stop = stop.child(no_drag(
                     tbtn("tb-stop-chev", Tbtn::On, TbtnSize::TITLEBAR, None, cx)
@@ -631,9 +686,11 @@ impl Shell {
                         .px(px(5.))
                         .on_click({
                             let (state, id) = (state.clone(), id.clone());
-                            move |_, _, cx| state.update(cx, |s, cx| {
-                                s.open_stop_menu(&id, cx);
-                            })
+                            move |_, _, cx| {
+                                state.update(cx, |s, cx| {
+                                    s.open_stop_menu(&id, cx);
+                                })
+                            }
                         })
                         .child(icon(IconName::ChevronDown).size(px(13.))),
                 ));
@@ -670,10 +727,15 @@ fn instance_chip(label: &str, cx: &App) -> impl IntoElement {
                 .overflow_hidden()
                 .child(
                     Text::from_spans(vec![
-                        span("dev").size(9.).tracking(0.08).uppercase().color(k).boxed(InlineBox {
-                            margin_right: 6.,
-                            ..Default::default()
-                        }),
+                        span("dev")
+                            .size(9.)
+                            .tracking(0.08)
+                            .uppercase()
+                            .color(k)
+                            .boxed(InlineBox {
+                                margin_right: 6.,
+                                ..Default::default()
+                            }),
                         span(label.to_string()),
                     ])
                     .mono()
@@ -747,4 +809,3 @@ fn mark_all_inbox_read(state: &Entity<AppState>, cx: &mut App) {
         cx.notify();
     });
 }
-

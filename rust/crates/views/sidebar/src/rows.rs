@@ -1522,7 +1522,7 @@ impl Sidebar {
                 .h(px(FADE))
                 .child(style::css_gradient(
                     180.,
-                    (t.rail.fade(0.), 0.),
+                    (t.rail.with_alpha(0.), 0.),
                     (t.rail, 1.),
                     0.,
                     0.,
@@ -1628,7 +1628,7 @@ impl Sidebar {
         let (group, id, (w, _)) = (d.group, d.id.clone(), d.size);
         let (x, y, settle) = d.float_pos(cx);
         let shadow_a = 0.4 * (1. - settle);
-        let border = t.line.fade(t.line.a * (1. - settle));
+        let border = t.line.fade(1. - settle);
         let body: Div = if group {
             let g = tree.groups.iter().find(|g| g.group.id == id)?.clone();
             let header = self.group_header(&g, false, window, cx);

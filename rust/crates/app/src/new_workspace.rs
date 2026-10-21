@@ -67,7 +67,10 @@ pub fn create_blank_workspace(state: &Entity<AppState>, cx: &mut App) {
 
 /// `resolveBaseBranch`: the project's base when it still resolves, else the first real tip;
 /// empty or unborn repos keep the configured / `main` fallback.
-async fn resolve_base_branch(services: &recur_services::Services, project: &recur_domain::Project) -> String {
+async fn resolve_base_branch(
+    services: &recur_services::Services,
+    project: &recur_domain::Project,
+) -> String {
     let fallback = match project.base_branch.trim() {
         "" => "main".to_string(),
         b => b.to_string(),
@@ -110,7 +113,14 @@ async fn reveal_created_workspace(state: &Entity<AppState>, id: &str, cx: &mut g
         services.workspaces.list_workspace_chats(id).await?;
         services
             .workspaces
-            .remember_workspace_chat_selection(id, FIRST_CHAT, "", &Default::default(), "agent", None)
+            .remember_workspace_chat_selection(
+                id,
+                FIRST_CHAT,
+                "",
+                &Default::default(),
+                "agent",
+                None,
+            )
             .await
     }
     .await;

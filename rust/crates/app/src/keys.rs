@@ -4,15 +4,21 @@
 //! accelerator such as ⇧⌘N).
 
 use gpui_kit::{Context, KeyDownEvent, Keystroke, Window};
-use recur_view_core::{AppState, ViewName};
 use recur_view_core::modes::ws_main_blocked;
 use recur_view_core::run::workspace_dev_cmd;
+use recur_view_core::{AppState, ViewName};
 
 use crate::shell::Shell;
 
 /// Key contexts of text entry (the web UI's `INPUT` / `TEXTAREA` / `contenteditable`, the
 /// terminal's helper textarea). A view's own text widget adds `TextEntry` to its context.
-pub const TEXT_ENTRY_CONTEXTS: [&str; 5] = ["Input", "RecurEditor", "Terminal", "TerminalFind", "TextEntry"];
+pub const TEXT_ENTRY_CONTEXTS: [&str; 5] = [
+    "Input",
+    "RecurEditor",
+    "Terminal",
+    "TerminalFind",
+    "TextEntry",
+];
 
 /// `isCmdOrCtrl`: ⌘ on macOS, Ctrl elsewhere.
 fn cmd_or_ctrl(k: &Keystroke) -> bool {
@@ -29,7 +35,12 @@ fn is_backquote(k: &Keystroke) -> bool {
 }
 
 impl Shell {
-    pub(crate) fn on_key_down(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn on_key_down(
+        &mut self,
+        ev: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let k = &ev.keystroke;
         let m = k.modifiers;
         let state = self.state.clone();

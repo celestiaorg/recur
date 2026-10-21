@@ -21,8 +21,8 @@ use std::path::PathBuf;
 
 use gpui_kit::{
     App, AppContext, Bounds, Context, Entity, IntoElement, ParentElement, Render, Styled,
-    TitlebarOptions, Window, WindowBounds, WindowHandle, WindowKind, WindowOptions, div, point,
-    px, size,
+    TitlebarOptions, Window, WindowBounds, WindowHandle, WindowKind, WindowOptions, div, point, px,
+    size,
 };
 use recur_platform::window_state;
 use recur_services::Services;
@@ -109,7 +109,10 @@ pub struct MainWindow {
 
 /// Opens the main window over `services`: the app state, the shell, the native menu, and
 /// geometry persistence (`persistWindowGeometry`, on the shell).
-pub fn open_main_window(main: MainWindow, cx: &mut App) -> anyhow::Result<(WindowHandle<gpui_kit::base::Root>, Entity<AppState>)> {
+pub fn open_main_window(
+    main: MainWindow,
+    cx: &mut App,
+) -> anyhow::Result<(WindowHandle<gpui_kit::base::Root>, Entity<AppState>)> {
     let loaded = main
         .data_dir
         .as_deref()
@@ -135,4 +138,3 @@ pub fn open_main_window(main: MainWindow, cx: &mut App) -> anyhow::Result<(Windo
     })?;
     Ok((handle, state))
 }
-

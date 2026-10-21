@@ -679,7 +679,7 @@ impl Render for UsageMeter {
         }
         if chips.is_empty() {
             btn = btn.child(
-                div().min_w(px(16.)).child(
+                div().min_w(px(16.)).flex().justify_center().child(
                     text("—")
                         .mono()
                         .size(10.)

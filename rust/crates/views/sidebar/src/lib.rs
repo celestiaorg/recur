@@ -592,6 +592,16 @@ impl Sidebar {
         self.set_scroll_top((scroll + delta).clamp(0., max));
     }
 
+    /// Whether the project tree has data and a viewport (parity scenes scroll it then).
+    pub fn tree_ready(&self, cx: &App) -> bool {
+        self.state.read(cx).booted && self.scroll.bounds().size.height > px(0.)
+    }
+
+    /// Scroll the project tree to `y`.
+    pub fn set_tree_scroll(&self, y: f32) {
+        self.set_scroll_top(y);
+    }
+
     pub(crate) fn scroll_top(&self) -> f32 {
         -f32::from(self.scroll.offset().y)
     }
@@ -2033,7 +2043,7 @@ pub(crate) fn fade_gradient(color: Color) -> impl IntoElement {
     style::css_gradient(
         180.,
         (color, 0.),
-        (color.fade(0.), 1.),
+        (color.with_alpha(0.), 1.),
         0.,
         0.,
         rgba(0, 0, 0, 0.),

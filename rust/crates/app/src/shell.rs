@@ -6,8 +6,8 @@ use std::rc::Rc;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyView, App, AppContext, Context, Entity, ExternalPaths, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, Styled, Subscription,
-    Window, WindowAppearance, div,
+    InteractiveElement, IntoElement, ParentElement, Render, Styled, Subscription, Window,
+    WindowAppearance, div,
 };
 use recur_services::AppEvent;
 use recur_services::events::MenuThemes;
@@ -28,7 +28,10 @@ pub struct ShellOptions {
     /// The OS window became key / lost key (`eng.SetAppFocused`).
     pub on_window_active: Option<Rc<dyn Fn(bool)>>,
     /// Persist geometry to `window.json` in this data dir, starting from the loaded state.
-    pub geometry: Option<(std::path::PathBuf, recur_platform::window_state::WindowState)>,
+    pub geometry: Option<(
+        std::path::PathBuf,
+        recur_platform::window_state::WindowState,
+    )>,
 }
 
 /// A registered main-area view, built.
@@ -75,7 +78,9 @@ impl Shell {
     ) -> Self {
         let state = ctx.state.clone();
         let subscriptions = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| this.state_changed(window, cx)),
+            cx.observe_in(&state, window, |this, _, window, cx| {
+                this.state_changed(window, cx)
+            }),
             // The shell's own `menu.action` handling runs first: it subscribed before any view.
             cx.subscribe_in(&state, window, |this, _, ev: &ShellEvent, window, cx| {
                 if let ShellEvent::MenuAction(action) = ev {
@@ -177,26 +182,34 @@ impl Shell {
                 height: f32::from(r.size.height).round() as i32,
                 x: f32::from(r.origin.x).round() as i32,
                 y: f32::from(r.origin.y).round() as i32,
-                maximised: matches!(b, gpui_kit::WindowBounds::Maximized(_)) || window.is_maximized(),
+                maximised: matches!(b, gpui_kit::WindowBounds::Maximized(_))
+                    || window.is_maximized(),
                 minimised: false,
-                fullscreen: matches!(b, gpui_kit::WindowBounds::Fullscreen(_)) || window.is_fullscreen(),
+                fullscreen: matches!(b, gpui_kit::WindowBounds::Fullscreen(_))
+                    || window.is_fullscreen(),
             }
         };
-        if tracker.borrow_mut().should_zoom_on_show(window.is_maximized()) {
+        if tracker
+            .borrow_mut()
+            .should_zoom_on_show(window.is_maximized())
+        {
             window.zoom_window();
         }
         let pending: Rc<RefCell<Option<gpui_kit::Task<()>>>> = Rc::default();
         {
             let (tracker, pending, dir) = (tracker.clone(), pending.clone(), dir.clone());
-            self._subscriptions.push(cx.observe_window_bounds(window, move |_, window, cx| {
-                let f = frame(window);
-                let (tracker, dir) = (tracker.clone(), dir.clone());
-                *pending.borrow_mut() = Some(cx.spawn(async move |_, cx| {
-                    cx.background_executor().timer(window_state::SAVE_DEBOUNCE).await;
-                    let st = tracker.borrow_mut().snapshot(&f);
-                    window_state::save(&dir, st);
+            self._subscriptions
+                .push(cx.observe_window_bounds(window, move |_, window, cx| {
+                    let f = frame(window);
+                    let (tracker, dir) = (tracker.clone(), dir.clone());
+                    *pending.borrow_mut() = Some(cx.spawn(async move |_, cx| {
+                        cx.background_executor()
+                            .timer(window_state::SAVE_DEBOUNCE)
+                            .await;
+                        let st = tracker.borrow_mut().snapshot(&f);
+                        window_state::save(&dir, st);
+                    }));
                 }));
-            }));
         }
         window.on_window_should_close(cx, move |window, _| {
             pending.borrow_mut().take();
@@ -373,7 +386,6 @@ impl Shell {
             .map(|v| (v.titlebar_left.clone(), v.titlebar_right.clone()))
             .unwrap_or_default()
     }
-
 }
 
 impl Focusable for Shell {
@@ -407,24 +419,19 @@ impl Render for Shell {
                 state.update(cx, |s, cx| s.files_dropped(files, cx));
             })
             .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .size_full()
-                    .child(titlebar)
-                    .child(
-                        div()
-                            .id("body")
-                            .flex_1()
-                            .flex()
-                            .min_h_0()
-                            .relative()
-                            .overflow_hidden()
-                            // A collapsed rail is an overlay, so it paints after the content.
-                            .when(!rail_collapsed, |d| d.child(self.sidebar.clone()))
-                            .child(main)
-                            .when(rail_collapsed, |d| d.child(self.sidebar.clone())),
-                    ),
+                div().flex().flex_col().size_full().child(titlebar).child(
+                    div()
+                        .id("body")
+                        .flex_1()
+                        .flex()
+                        .min_h_0()
+                        .relative()
+                        .overflow_hidden()
+                        // A collapsed rail is an overlay, so it paints after the content.
+                        .when(!rail_collapsed, |d| d.child(self.sidebar.clone()))
+                        .child(main)
+                        .when(rail_collapsed, |d| d.child(self.sidebar.clone())),
+                ),
             )
             .children(self.overlays.iter().cloned())
             .child(self.toasts.clone())

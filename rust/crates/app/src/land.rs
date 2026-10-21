@@ -281,7 +281,8 @@ impl LandChrome {
             && !workspace_github_pr
             && !(github_prs && !land.remote.is_empty() && land.require_pr != Some(false));
         let agent_busy = s.workspaces_running.contains(id);
-        let land_locked = agent_busy || self.updating_base || self.pulling_pr || self.pushing_remote;
+        let land_locked =
+            agent_busy || self.updating_base || self.pulling_pr || self.pushing_remote;
         let land_pending = land_on && !self.known;
         let land_busy = land_locked || land_pending;
         let land_locked_title = if agent_busy {
@@ -299,13 +300,10 @@ impl LandChrome {
         } else {
             pr_for_workspace(&s.prs, id).cloned()
         };
-        let store_github_pr = store_pr
-            .as_ref()
-            .filter(|p| p.source == PrSource::GitHub);
+        let store_github_pr = store_pr.as_ref().filter(|p| p.source == PrSource::GitHub);
         let gh_life = pr_lifecycle(store_github_pr);
-        let settled = |l: Option<PrLifecycle>| {
-            matches!(l, Some(PrLifecycle::Merged | PrLifecycle::Closed))
-        };
+        let settled =
+            |l: Option<PrLifecycle>| matches!(l, Some(PrLifecycle::Merged | PrLifecycle::Closed));
         let store_open_pr = store_github_pr.filter(|_| !settled(gh_life));
         let view_pr_id = store_pr
             .as_ref()
@@ -318,9 +316,8 @@ impl LandChrome {
             .filter(|n| *n != 0)
             .unwrap_or(land.pr_number);
         let view_pr_draft = land.pr_draft || store_open_pr.is_some_and(|p| p.draft);
-        let show_view_pr = s.view == ViewName::Detail
-            && ws.is_some_and(|w| !w.is_main)
-            && !view_pr_id.is_empty();
+        let show_view_pr =
+            s.view == ViewName::Detail && ws.is_some_and(|w| !w.is_main) && !view_pr_id.is_empty();
         let open_pr_source = if land.pr_source.is_empty() {
             store_open_pr
                 .map(|p| p.source.as_str().to_string())
@@ -374,10 +371,7 @@ impl LandChrome {
                     .filter(|m| m == "rebase" || m == "merge")
             })
             .unwrap_or_else(|| "merge".into());
-        let merge_method = self
-            .merge_method_override
-            .clone()
-            .unwrap_or(resolved_merge);
+        let merge_method = self.merge_method_override.clone().unwrap_or(resolved_merge);
         let update_method = self
             .update_method_override
             .clone()
@@ -574,7 +568,8 @@ impl Shell {
         }
         // Fetch remotes two frames after the workbench paints, so a click is not coupled to
         // git fetch.
-        let fetch_key = if !scan_pending && (key.main_mode || key.workspace_mode) && !id.is_empty() {
+        let fetch_key = if !scan_pending && (key.main_mode || key.workspace_mode) && !id.is_empty()
+        {
             id.clone()
         } else {
             String::new()
@@ -591,7 +586,9 @@ impl Shell {
                 window.on_next_frame(move |window, cx| {
                     window.on_next_frame(move |_, cx| {
                         let task = cx.spawn(async move |cx| {
-                            if let Ok(st) = services.workspaces.fetch_working_copy_upstream(&id).await {
+                            if let Ok(st) =
+                                services.workspaces.fetch_working_copy_upstream(&id).await
+                            {
                                 let _ = entity.update(cx, |shell, cx| {
                                     if shell.land.fetch_key == id {
                                         shell.land.seq += 1;
@@ -627,7 +624,12 @@ impl Shell {
     }
 
     /// `applyLand`: a fresh snapshot, keeping a branch-rules answer that arrived meanwhile.
-    fn apply_land(&mut self, st: Option<&WorkspaceLandState>, started: u64, cx: &mut Context<Self>) {
+    fn apply_land(
+        &mut self,
+        st: Option<&WorkspaceLandState>,
+        started: u64,
+        cx: &mut Context<Self>,
+    ) {
         let mut land = st.map(Land::from).unwrap_or_default();
         if let Some(evt) = self.land.rules_evt.clone()
             && started > 0
@@ -721,12 +723,16 @@ impl Shell {
         }
         self.land.rules_evt = Some(RulesEvt {
             project_id: project_id.into(),
-            remote: remote.map(str::to_string).unwrap_or_else(|| self.land.land.remote.clone()),
+            remote: remote
+                .map(str::to_string)
+                .unwrap_or_else(|| self.land.land.remote.clone()),
             branch: branch.into(),
             require_pr,
             at: self.land.clock,
         });
-        if !self.land.land_hits_rules(branch, remote) || self.land.land.require_pr == Some(require_pr) {
+        if !self.land.land_hits_rules(branch, remote)
+            || self.land.land.require_pr == Some(require_pr)
+        {
             return;
         }
         self.land.land.require_pr = Some(require_pr);
@@ -790,8 +796,12 @@ impl Shell {
         let (remote, base) = (self.land.land.remote.clone(), self.land.land.base.clone());
         let state = self.state.clone();
         cx.spawn(async move |_, cx| {
-            let Some(merged) =
-                call(cx, services.workspaces.merge_workspace(&id, &method), "Could not merge").await
+            let Some(merged) = call(
+                cx,
+                services.workspaces.merge_workspace(&id, &method),
+                "Could not merge",
+            )
+            .await
             else {
                 return;
             };
@@ -879,11 +889,21 @@ impl Shell {
         let state = self.state.clone();
         let remote = self.land.land.remote.clone();
         cx.spawn(async move |this, cx| {
-            if let Some(pushed) = call(cx, services.workspaces.push_working_copy(&id), "Could not push").await {
+            if let Some(pushed) = call(
+                cx,
+                services.workspaces.push_working_copy(&id),
+                "Could not push",
+            )
+            .await
+            {
                 if !pushed.id.is_empty() {
                     state.update(cx, |s, cx| s.replace_workspace(pushed, cx));
                 }
-                let to = if remote.is_empty() { "remote".to_string() } else { remote };
+                let to = if remote.is_empty() {
+                    "remote".to_string()
+                } else {
+                    remote
+                };
                 cx.update(|cx| toast(ToastKind::Success, format!("Pushed to {to}"), cx));
             }
             let _ = this.update(cx, |shell, _| shell.land.pushing_remote = false);
@@ -904,14 +924,22 @@ impl Shell {
         let state = self.state.clone();
         let n = v.view_pr_number;
         cx.spawn(async move |this, cx| {
-            if let Some(res) =
-                call(cx, services.workspaces.pull_workspace_pr(&id), "Could not pull from the PR").await
+            if let Some(res) = call(
+                cx,
+                services.workspaces.pull_workspace_pr(&id),
+                "Could not pull from the PR",
+            )
+            .await
             {
                 if !res.workspace.id.is_empty() {
-                    state.update(cx, |s, cx| s.patch_workspace_after_update(res.workspace.clone(), cx));
+                    state.update(cx, |s, cx| {
+                        s.patch_workspace_after_update(res.workspace.clone(), cx)
+                    });
                 }
                 match res.status.as_str() {
-                    "conflict" => state.update(cx, |s, cx| s.request_prompt_action(&id, "update", "", cx)),
+                    "conflict" => {
+                        state.update(cx, |s, cx| s.request_prompt_action(&id, "update", "", cx))
+                    }
                     "updated" => cx.update(|cx| {
                         let msg = if n != 0 {
                             format!("Pulled updates from PR #{n}")
@@ -940,7 +968,11 @@ impl Shell {
     fn push_workspace_pr(&mut self, force: bool, cx: &mut Context<Self>) {
         let v = self.land.view(self.state.read(cx));
         let id = self.state.read(cx).selected_workspace_id.clone();
-        let allowed = if force { v.can_force_push_pr } else { v.can_push_pr };
+        let allowed = if force {
+            v.can_force_push_pr
+        } else {
+            v.can_push_pr
+        };
         if v.land_busy || !allowed || id.is_empty() {
             return;
         }
@@ -954,7 +986,8 @@ impl Shell {
             } else {
                 "Could not push to the PR"
             };
-            if let Some(pr_id) = call(cx, services.workspaces.open_workspace_pr(&id, force), fail).await
+            if let Some(pr_id) =
+                call(cx, services.workspaces.open_workspace_pr(&id, force), fail).await
                 && !pr_id.is_empty()
             {
                 let msg = match (force, n != 0) {
@@ -992,7 +1025,13 @@ impl Shell {
     /// `createPRWorkspace`: a Recur workspace on the PR on screen.
     fn create_pr_workspace(&mut self, cx: &mut Context<Self>) {
         let id = self.state.read(cx).selected_pr_id.clone();
-        if id.is_empty() || self.land.pending_pr_create.as_ref().is_some_and(|p| p.0 == id) {
+        if id.is_empty()
+            || self
+                .land
+                .pending_pr_create
+                .as_ref()
+                .is_some_and(|p| p.0 == id)
+        {
             return;
         }
         self.land.pending_pr_create = Some((id.clone(), String::new()));
@@ -1008,7 +1047,12 @@ impl Shell {
             .await
             else {
                 let _ = this.update(cx, |shell, cx| {
-                    if shell.land.pending_pr_create.as_ref().is_some_and(|p| p.0 == id) {
+                    if shell
+                        .land
+                        .pending_pr_create
+                        .as_ref()
+                        .is_some_and(|p| p.0 == id)
+                    {
                         shell.land.pending_pr_create = None;
                         cx.notify();
                     }
@@ -1022,18 +1066,27 @@ impl Shell {
                 if ready {
                     let wid = ws.id.clone();
                     let pid = ws.project_id.clone();
-                    s.update_pr(&id, |p| {
-                        p.workspace_id = wid;
-                        if p.project_id.is_empty() {
-                            p.project_id = pid;
-                        }
-                    }, cx);
+                    s.update_pr(
+                        &id,
+                        |p| {
+                            p.workspace_id = wid;
+                            if p.project_id.is_empty() {
+                                p.project_id = pid;
+                            }
+                        },
+                        cx,
+                    );
                 }
             });
             let _ = this.update(cx, |shell, cx| {
                 if ready {
                     toast(ToastKind::Success, "Workspace created", cx);
-                    if shell.land.pending_pr_create.as_ref().is_some_and(|p| p.0 == id) {
+                    if shell
+                        .land
+                        .pending_pr_create
+                        .as_ref()
+                        .is_some_and(|p| p.0 == id)
+                    {
                         shell.land.pending_pr_create = None;
                     }
                 } else {
@@ -1053,7 +1106,9 @@ impl Shell {
             return;
         };
         let s = self.state.read(cx);
-        if s.pr(&pr_id).is_some_and(|p| !p.workspace_id.trim().is_empty()) {
+        if s.pr(&pr_id)
+            .is_some_and(|p| !p.workspace_id.trim().is_empty())
+        {
             self.land.pending_pr_create = None;
             return;
         }
@@ -1070,7 +1125,12 @@ impl Shell {
 
     /// The land buttons, Open PR, the issue control and View PR (detail), or View / Create
     /// workspace (PR detail), in App.svelte's order.
-    pub(crate) fn land_chrome(&mut self, view: ViewName, _window: &mut Window, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    pub(crate) fn land_chrome(
+        &mut self,
+        view: ViewName,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<AnyElement> {
         let mut out = Vec::new();
         let t = Theme::of(cx).tokens;
         let backdrop = t.titlebar;
@@ -1087,19 +1147,40 @@ impl Shell {
                         "tb-view-workspace-tip",
                         "View this pull request's workspace",
                         no_drag(
-                            tbtn("tb-view-workspace", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
-                                .on_click(move |_, _, cx| {
-                                    state.update(cx, |s, cx| s.open_workspace(&wid, false, cx))
-                                })
-                                .child(icon(IconName::Box).size(px(13.)))
-                                .child(style::button_label("View workspace", 11.5, weight::MEDIUM)),
+                            tbtn(
+                                "tb-view-workspace",
+                                Tbtn::Default,
+                                TbtnSize::TITLEBAR,
+                                None,
+                                cx,
+                            )
+                            .on_click(move |_, _, cx| {
+                                state.update(cx, |s, cx| s.open_workspace(&wid, false, cx))
+                            })
+                            .child(icon(IconName::Box).size(px(13.)))
+                            .child(style::button_label(
+                                "View workspace",
+                                11.5,
+                                weight::MEDIUM,
+                            )),
                         ),
                     )
                     .into_any_element(),
                 );
-            } else if !matches!(pr_lifecycle(Some(&pr)), Some(PrLifecycle::Merged | PrLifecycle::Closed)) {
-                let creating = self.land.pending_pr_create.as_ref().is_some_and(|p| p.0 == pr.id);
-                let label = if creating { "Creating…" } else { "Create workspace" };
+            } else if !matches!(
+                pr_lifecycle(Some(&pr)),
+                Some(PrLifecycle::Merged | PrLifecycle::Closed)
+            ) {
+                let creating = self
+                    .land
+                    .pending_pr_create
+                    .as_ref()
+                    .is_some_and(|p| p.0 == pr.id);
+                let label = if creating {
+                    "Creating…"
+                } else {
+                    "Create workspace"
+                };
                 let mut b = tbtn(
                     "tb-create-workspace",
                     Tbtn::Default,
@@ -1193,7 +1274,11 @@ impl Shell {
                 out.push(self.merge_split(&v, cx));
             }
             if v.workspace_mode && v.github_prs && v.github_pr_open {
-                let pr_btn = |id: &'static str, label: String, tip: &str, f: fn(&mut Shell, &mut Context<Shell>), cx: &mut Context<Shell>| {
+                let pr_btn = |id: &'static str,
+                              label: String,
+                              tip: &str,
+                              f: fn(&mut Shell, &mut Context<Shell>),
+                              cx: &mut Context<Shell>| {
                     let mut b = tbtn(id, Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx);
                     if !v.land_busy {
                         b = b.on_click(cx.listener(move |this, _, _, cx| f(this, cx)));
@@ -1203,16 +1288,28 @@ impl Shell {
                         title(tip),
                         no_drag(
                             b.child(
-                                icon(if id == "tb-pull-pr" { IconName::ArrowUp } else { IconName::Upload })
-                                    .size(px(13.)),
+                                icon(if id == "tb-pull-pr" {
+                                    IconName::ArrowUp
+                                } else {
+                                    IconName::Upload
+                                })
+                                .size(px(13.)),
                             )
-                            .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                            .child(style::button_label(
+                                label,
+                                11.5,
+                                weight::MEDIUM,
+                            )),
                         ),
                     )
                     .into_any_element()
                 };
                 if v.can_pull_pr {
-                    let label = if self.land.pulling_pr { "Pulling…" } else { "Pull updates" };
+                    let label = if self.land.pulling_pr {
+                        "Pulling…"
+                    } else {
+                        "Pull updates"
+                    };
                     out.push(pr_btn(
                         "tb-pull-pr",
                         label.into(),
@@ -1222,7 +1319,11 @@ impl Shell {
                     ));
                 }
                 if v.can_push_pr {
-                    let label = if self.land.pushing_remote { "Pushing…" } else { "Push updates" };
+                    let label = if self.land.pushing_remote {
+                        "Pushing…"
+                    } else {
+                        "Push updates"
+                    };
                     out.push(pr_btn(
                         "tb-push-pr",
                         label.into(),
@@ -1232,7 +1333,11 @@ impl Shell {
                     ));
                 }
                 if v.can_force_push_pr {
-                    let label = if self.land.pushing_remote { "Force-pushing…" } else { "Force push" };
+                    let label = if self.land.pushing_remote {
+                        "Force-pushing…"
+                    } else {
+                        "Force push"
+                    };
                     out.push(pr_btn(
                         "tb-force-push-pr",
                         label.into(),
@@ -1270,7 +1375,9 @@ impl Shell {
                     "View this workspace's pull request",
                     no_drag(
                         tbtn("tb-view-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
-                            .on_click(move |_, _, cx| state.update(cx, |s, cx| s.open_pr(&pr_id, cx)))
+                            .on_click(move |_, _, cx| {
+                                state.update(cx, |s, cx| s.open_pr(&pr_id, cx))
+                            })
                             .child(icon(ico).size(px(13.)))
                             .child(style::button_label(label, 11.5, weight::MEDIUM)),
                     ),
@@ -1311,9 +1418,15 @@ impl Shell {
             .rounded_r(px(0.))
             .border_r(px(1.))
             .border_color(Hsla::from(rgba(0, 0, 0, 0.15)));
-        let mut chev = tbtn("tb-update-chev", Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx)
-            .rounded_l(px(0.))
-            .px(px(5.));
+        let mut chev = tbtn(
+            "tb-update-chev",
+            Tbtn::Solid,
+            TbtnSize::TITLEBAR,
+            busy_over,
+            cx,
+        )
+        .rounded_l(px(0.))
+        .px(px(5.));
         if !v.land_busy {
             main = main.on_click(cx.listener(|this, _, _, cx| this.update_workspace(cx)));
             chev = chev.on_click(cx.listener(|this, _, _, cx| {
@@ -1334,24 +1447,36 @@ impl Shell {
                 "tb-update-tip",
                 tip,
                 no_drag(
-                    main.child(icon(IconName::ArrowUp).size(px(13.)).when(spin, |i| i.rotate(0.)))
-                        .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                    main.child(
+                        icon(IconName::ArrowUp)
+                            .size(px(13.))
+                            .when(spin, |i| i.rotate(0.)),
+                    )
+                    .child(style::button_label(label, 11.5, weight::MEDIUM)),
                 ),
             ))
-            .child(no_drag(chev.child(icon(IconName::ChevronDown).size(px(13.)))));
+            .child(no_drag(
+                chev.child(icon(IconName::ChevronDown).size(px(13.))),
+            ));
         if self.land.update_menu_open {
             let items = UPDATE_METHOD_KEYS
                 .iter()
                 .map(|m| {
                     let on = v.update_method == *m;
                     let m = m.to_string();
-                    menu_item(SharedString::from(format!("update-{m}")), on, Some(on), update_method_menu_label(&m), cx)
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.land.update_method_override = Some(m.clone());
-                            this.land.update_menu_open = false;
-                            cx.notify();
-                        }))
-                        .into_any_element()
+                    menu_item(
+                        SharedString::from(format!("update-{m}")),
+                        on,
+                        Some(on),
+                        update_method_menu_label(&m),
+                        cx,
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.land.update_method_override = Some(m.clone());
+                        this.land.update_menu_open = false;
+                        cx.notify();
+                    }))
+                    .into_any_element()
                 })
                 .collect();
             split = split.child(split_menu(items, cx));
@@ -1408,7 +1533,9 @@ impl Shell {
                         .child(style::button_label(label, 11.5, weight::MEDIUM_PLUS)),
                 ),
             ))
-            .child(no_drag(chev.child(icon(IconName::ChevronDown).size(px(13.)))));
+            .child(no_drag(
+                chev.child(icon(IconName::ChevronDown).size(px(13.))),
+            ));
         if self.land.merge_menu_open {
             let items = MERGE_METHOD_KEYS
                 .iter()
@@ -1416,14 +1543,20 @@ impl Shell {
                     let on = v.merge_method == *m;
                     let m = m.to_string();
                     let label = merge_method_label(&m).unwrap_or("Merge");
-                    menu_item(SharedString::from(format!("merge-{m}")), on, Some(on), label, cx)
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.land.merge_method_override = Some(m.clone());
-                            this.land.merge_menu_open = false;
-                            this.land.confirming_merge = false;
-                            cx.notify();
-                        }))
-                        .into_any_element()
+                    menu_item(
+                        SharedString::from(format!("merge-{m}")),
+                        on,
+                        Some(on),
+                        label,
+                        cx,
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.land.merge_method_override = Some(m.clone());
+                        this.land.merge_menu_open = false;
+                        this.land.confirming_merge = false;
+                        cx.notify();
+                    }))
+                    .into_any_element()
                 })
                 .collect();
             split = split.child(split_menu(items, cx));
@@ -1442,10 +1575,17 @@ impl Shell {
         } else {
             "Open a GitHub pull request".into()
         };
-        let mut main = tbtn("tb-open-pr", Tbtn::Default, TbtnSize::TITLEBAR, over, cx).rounded_r(px(0.));
-        let mut chev = tbtn("tb-open-pr-chev", Tbtn::Default, TbtnSize::TITLEBAR, over, cx)
-            .rounded_l(px(0.))
-            .px(px(5.));
+        let mut main =
+            tbtn("tb-open-pr", Tbtn::Default, TbtnSize::TITLEBAR, over, cx).rounded_r(px(0.));
+        let mut chev = tbtn(
+            "tb-open-pr-chev",
+            Tbtn::Default,
+            TbtnSize::TITLEBAR,
+            over,
+            cx,
+        )
+        .rounded_l(px(0.))
+        .px(px(5.));
         if !off {
             main = main.on_click(cx.listener(|this, _, _, cx| this.request_open_pr(false, cx)));
             chev = chev.on_click(cx.listener(|this, _, _, cx| {
@@ -1466,7 +1606,9 @@ impl Shell {
                 tip,
                 no_drag(main.child(style::button_label("Open PR", 11.5, weight::MEDIUM))),
             ))
-            .child(no_drag(chev.child(icon(IconName::ChevronDown).size(px(13.)))));
+            .child(no_drag(
+                chev.child(icon(IconName::ChevronDown).size(px(13.))),
+            ));
         if self.land.open_pr_menu_open {
             let items = vec![
                 menu_item("open-pr-item", true, None, "Open PR", cx)
@@ -1487,8 +1629,9 @@ impl Shell {
     /// diffs and open PRs; it does not rebase the worktree.
     pub(crate) fn base_select(&mut self) -> AnyElement {
         match &self.land.base_select {
-            Some((sel, _)) => no_drag(div().id("crumb-base").flex_none().child(sel.clone()))
-                .into_any_element(),
+            Some((sel, _)) => {
+                no_drag(div().id("crumb-base").flex_none().child(sel.clone())).into_any_element()
+            }
             None => div().into_any_element(),
         }
     }
@@ -1554,7 +1697,11 @@ impl Shell {
             let services = self.state.read(cx).services().clone();
             let project = ws.project_id.clone();
             cx.spawn(async move |this, cx| {
-                let list = services.projects.list_branches(&project).await.unwrap_or_default();
+                let list = services
+                    .projects
+                    .list_branches(&project)
+                    .await
+                    .unwrap_or_default();
                 let _ = this.update(cx, |shell, cx| {
                     if shell.land.base_loading_key == load_key {
                         shell.land.base_branches = list;
@@ -1577,7 +1724,10 @@ impl Shell {
         let Some(ws) = s.selected_workspace().cloned() else {
             return;
         };
-        let project_base = s.project(&ws.project_id).map(|p| p.base_branch.clone()).unwrap_or_default();
+        let project_base = s
+            .project(&ws.project_id)
+            .map(|p| p.base_branch.clone())
+            .unwrap_or_default();
         let current = [ws.base_branch.trim(), project_base.trim(), "main"]
             .into_iter()
             .find(|b| !b.is_empty())
@@ -1597,7 +1747,10 @@ impl Shell {
             opts.push(o);
         }
         if !current.is_empty() && current != own && !seen.contains(&current) {
-            opts.insert(0, SelectOption::new(current.clone(), current.clone()).group("Local"));
+            opts.insert(
+                0,
+                SelectOption::new(current.clone(), current.clone()).group("Local"),
+            );
         }
         let disabled = self.land.base_saving
             || self.land.base_loaded_for.as_deref() != Some(ws.project_id.as_str())
@@ -1641,7 +1794,11 @@ impl Shell {
                         updated.base_branch.clone()
                     };
                     state.update(cx, |s, cx| s.replace_workspace(updated, cx));
-                    toast(ToastKind::Success, format!("Target branch is now {base}"), cx);
+                    toast(
+                        ToastKind::Success,
+                        format!("Target branch is now {base}"),
+                        cx,
+                    );
                 }
                 shell.sync_base_options(cx);
             });
@@ -1723,7 +1880,11 @@ impl Shell {
 
     fn issue_options(&self, ws: &Workspace) -> Vec<SelectOption> {
         let key = |source: &str, id: &str| format!("{source}:{id}");
-        let current = ws.issue.as_ref().map(|i| key(&i.source, &i.id)).unwrap_or_default();
+        let current = ws
+            .issue
+            .as_ref()
+            .map(|i| key(&i.source, &i.id))
+            .unwrap_or_default();
         let mut out: Vec<SelectOption> = self
             .land
             .tracker_issues
@@ -1734,7 +1895,11 @@ impl Shell {
         if let Some(issue) = &ws.issue
             && !out.iter().any(|o| o.value.as_ref() == current)
         {
-            let label = if issue.key.is_empty() { issue.id.clone() } else { issue.key.clone() };
+            let label = if issue.key.is_empty() {
+                issue.id.clone()
+            } else {
+                issue.key.clone()
+            };
             out.insert(0, SelectOption::new(current.clone(), label));
         }
         if ws.issue.is_some() {
@@ -1767,12 +1932,17 @@ impl Shell {
         let Some(ws) = s.selected_workspace().cloned() else {
             return;
         };
-        let current = ws.issue.as_ref().map(|i| format!("{}:{}", i.source, i.id)).unwrap_or_default();
+        let current = ws
+            .issue
+            .as_ref()
+            .map(|i| format!("{}:{}", i.source, i.id))
+            .unwrap_or_default();
         if next == current {
             return;
         }
         if next.is_empty() {
-            self.state.update(cx, |s, cx| s.unlink_workspace_issue(&ws.id, cx));
+            self.state
+                .update(cx, |s, cx| s.unlink_workspace_issue(&ws.id, cx));
             return;
         }
         let hit = self
@@ -1787,7 +1957,8 @@ impl Shell {
                 id: i.id.clone(),
                 key: i.r#ref.clone(),
             };
-            self.state.update(cx, |s, cx| s.link_workspace_issue(&ws.id, issue, cx));
+            self.state
+                .update(cx, |s, cx| s.link_workspace_issue(&ws.id, issue, cx));
         }
     }
 
@@ -1813,7 +1984,11 @@ impl Shell {
             };
             let tip = format!(
                 "Open {} in {}",
-                if issue.key.is_empty() { "this issue" } else { &issue.key },
+                if issue.key.is_empty() {
+                    "this issue"
+                } else {
+                    &issue.key
+                },
                 if github { "GitHub" } else { "Linear" }
             );
             let services = self.state.read(cx).services().clone();
@@ -1821,8 +1996,19 @@ impl Shell {
             let view = tbtn("tb-issue-view", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
                 .rounded_r(px(0.))
                 .on_click(move |_, _, cx| open_issue_url(&services, &source, &url, cx))
-                .child(icon(if github { IconName::Github } else { IconName::Linear }).size(px(13.)))
-                .child(style::button_label(format!("View {label}"), 11.5, weight::MEDIUM));
+                .child(
+                    icon(if github {
+                        IconName::Github
+                    } else {
+                        IconName::Linear
+                    })
+                    .size(px(13.)),
+                )
+                .child(style::button_label(
+                    format!("View {label}"),
+                    11.5,
+                    weight::MEDIUM,
+                ));
             return Some(
                 div()
                     .id("issue-split")
@@ -1842,7 +2028,10 @@ impl Shell {
 }
 
 /// `issueUrl`: the tracker URL from the Issues list, or a GitHub `owner/repo#N` key.
-pub fn issue_url(r: &recur_domain::IssueRef, issues: &[recur_services::api::AssignedIssue]) -> String {
+pub fn issue_url(
+    r: &recur_domain::IssueRef,
+    issues: &[recur_services::api::AssignedIssue],
+) -> String {
     if let Some(hit) = issues
         .iter()
         .find(|i| i.source == r.source && i.id == r.id)
@@ -1858,7 +2047,11 @@ pub fn issue_url(r: &recur_domain::IssueRef, issues: &[recur_services::api::Assi
         return String::new();
     };
     let valid_repo = repo.split_once('/').is_some_and(|(o, n)| {
-        !o.is_empty() && !n.is_empty() && !o.contains(char::is_whitespace) && !n.contains(['#']) && !n.contains(char::is_whitespace)
+        !o.is_empty()
+            && !n.is_empty()
+            && !o.contains(char::is_whitespace)
+            && !n.contains(['#'])
+            && !n.contains(char::is_whitespace)
     });
     if !valid_repo || num.is_empty() || !num.chars().all(|c| c.is_ascii_digit()) {
         return String::new();
@@ -1867,10 +2060,21 @@ pub fn issue_url(r: &recur_domain::IssueRef, issues: &[recur_services::api::Assi
 }
 
 /// `openIssueUrl`: Linear issues open in the Linear app when installed.
-fn open_issue_url(services: &recur_services::Services, source: &str, url: &str, cx: &mut gpui_kit::App) {
+fn open_issue_url(
+    services: &recur_services::Services,
+    source: &str,
+    url: &str,
+    cx: &mut gpui_kit::App,
+) {
     let (services, source, url) = (services.clone(), source.to_string(), url.to_string());
     cx.spawn(async move |cx| {
-        if source == "linear" && services.settings.open_linear_in_app(&url).await.unwrap_or(false) {
+        if source == "linear"
+            && services
+                .settings
+                .open_linear_in_app(&url)
+                .await
+                .unwrap_or(false)
+        {
             return;
         }
         cx.update(|cx| cx.open_url(&url));

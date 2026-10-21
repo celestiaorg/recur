@@ -777,7 +777,13 @@ impl AppState {
     // ---- prompt actions (`lib/promptActions.ts`) ----
 
     /// `requestPromptAction`: ask the open workspace view to run a slash prompt.
-    pub fn request_prompt_action(&mut self, workspace_id: &str, slash: &str, args: &str, cx: &mut Context<Self>) {
+    pub fn request_prompt_action(
+        &mut self,
+        workspace_id: &str,
+        slash: &str,
+        args: &str,
+        cx: &mut Context<Self>,
+    ) {
         let s = slash.trim_start_matches('/').trim();
         if workspace_id.is_empty() || s.is_empty() {
             return;

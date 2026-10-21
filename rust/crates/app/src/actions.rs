@@ -2,7 +2,7 @@
 //! `menu.action` switch App.svelte ran (`onMenuAction`), and the updater toasts
 //! (`lib/updater.ts`).
 
-use gpui_kit::{Context, InteractiveElement, Stateful, Window, Div};
+use gpui_kit::{Context, Div, InteractiveElement, Stateful, Window};
 use recur_platform::updater::UpdaterEvent;
 use recur_services::AppEvent;
 use recur_ui::widgets::{ToastKind, ToastOptions, push_toast, toast_action};
@@ -18,7 +18,11 @@ const UPDATER_TOAST: &str = "updater";
 impl Shell {
     /// Every menu item's listener. Contextual items get theirs only while enabled, which is
     /// what makes AppKit draw them enabled.
-    pub(crate) fn with_menu_actions(&self, root: Stateful<Div>, cx: &mut Context<Self>) -> Stateful<Div> {
+    pub(crate) fn with_menu_actions(
+        &self,
+        root: Stateful<Div>,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
         let menu = self.state.read(cx).menu_state.clone();
         let detail_on = {
             let s = self.state.read(cx);
@@ -123,11 +127,17 @@ impl Shell {
     /// it first, then views).
     fn emit_menu_action(&mut self, name: &str, _: &mut Window, cx: &mut Context<Self>) {
         let name = name.to_string();
-        self.state.update(cx, |s, cx| s.dispatch_menu_action(name, cx));
+        self.state
+            .update(cx, |s, cx| s.dispatch_menu_action(name, cx));
     }
 
     /// App.svelte's `onMenuAction` handler.
-    pub(crate) fn menu_action(&mut self, action: &str, _window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn menu_action(
+        &mut self,
+        action: &str,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let state = self.state.clone();
         if let Some(key) = action.strip_prefix("app-theme:") {
             state.update(cx, |s, cx| s.set_theme(key, cx));
@@ -228,7 +238,10 @@ impl Shell {
         let services = self.state.read(cx).services().clone();
         push_toast(
             ToastKind::Info,
-            format!("{} {version} is ready to install", recur_platform::identity::APP_NAME),
+            format!(
+                "{} {version} is ready to install",
+                recur_platform::identity::APP_NAME
+            ),
             ToastOptions {
                 action: Some(toast_action("Restart", move |_, _| {
                     services.emit(AppEvent::UpdaterUserRestart)
@@ -258,7 +271,12 @@ impl Shell {
             ),
             UpdaterEvent::NoUpdate => {
                 if self.update_manual {
-                    push_toast(ToastKind::Success, format!("{app} is up to date"), opts(None), cx);
+                    push_toast(
+                        ToastKind::Success,
+                        format!("{app} is up to date"),
+                        opts(None),
+                        cx,
+                    );
                 }
                 self.update_manual = false;
             }
@@ -269,7 +287,12 @@ impl Shell {
                     } else {
                         e.message
                     };
-                    push_toast(ToastKind::Error, format!("Update failed: {msg}"), opts(None), cx);
+                    push_toast(
+                        ToastKind::Error,
+                        format!("Update failed: {msg}"),
+                        opts(None),
+                        cx,
+                    );
                 }
                 self.update_manual = false;
             }

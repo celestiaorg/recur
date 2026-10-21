@@ -16,9 +16,11 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   scenes: Scene[]
   terminal?: Scene[]
   terminalInputs?: Record<string, string>
+  shell?: Scene[]
 }
-// Terminal scenes replay `terminalInputs[input]` as the session's attach bytes.
-const scenes = [...spec.scenes, ...(spec.terminal ?? [])]
+// Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
+// mount App.svelte over an edited seed (see `patchSeed`).
+const scenes = [...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? [])]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
 
@@ -38,6 +40,46 @@ type Scene = {
   steps?: Step[]
   animationTime?: number
   input?: string
+  seed?: SeedPatch
+  storage?: Record<string, string>
+  treeScroll?: number
+}
+type Row = Record<string, unknown> & { id: string }
+type SeedPatch = {
+  projects?: Row[]
+  loops?: Row[]
+  prs?: Row[]
+  projectGroups?: unknown[]
+  inbox?: unknown[]
+  settings?: Record<string, unknown>
+}
+
+/** A shell scene's seed edits, as `recur_app::gallery::patch_seed` applies them: `projects`,
+ *  `loops` and `prs` upsert rows by id (mirrored into `loopById` / `prById`), `projectGroups`
+ *  and `inbox` replace, `settings` merges. */
+function patchSeed(seed: Record<string, any>, patch: SeedPatch | undefined) {
+  if (!patch) return
+  const upsert = (list: string, byId: string | null, rows: Row[] | undefined) => {
+    for (const row of rows ?? []) {
+      const arr: Row[] = (seed[list] ??= [])
+      const hit = arr.find((x) => x.id === row.id)
+      if (hit) Object.assign(hit, structuredClone(row))
+      else arr.push(structuredClone(row))
+      if (!byId) continue
+      const map: Record<string, Row> = (seed[byId] ??= {})
+      if (map[row.id]) Object.assign(map[row.id], structuredClone(row))
+      else map[row.id] = structuredClone(row)
+    }
+  }
+  upsert('projects', null, patch.projects)
+  upsert('loops', 'loopById', patch.loops)
+  upsert('prs', 'prById', patch.prs)
+  if (patch.projectGroups) seed.projectGroups = structuredClone(patch.projectGroups)
+  if (patch.inbox) seed.inbox = structuredClone(patch.inbox)
+  if (patch.settings && seed.settings) Object.assign(seed.settings, structuredClone(patch.settings))
+  for (const l of [...(seed.loops ?? []), ...Object.values(seed.loopById ?? {})] as Row[]) {
+    if (!l.worktreePath) l.worktreePath = `/mock/worktrees/${l.id}`
+  }
 }
 
 const FAMILY: Record<string, string> = {
@@ -87,10 +129,20 @@ for (const scene of scenes) {
       r.fulfill({ contentType: 'font/ttf', body: readFileSync(join(fontsDir, new URL(r.request().url()).pathname.split('/').pop()!)) }),
     )
     const replay = scene.input === undefined ? undefined : spec.terminalInputs?.[scene.input]
-    await installBridge(page, structuredClone(seed), replay === undefined ? {} : {
+    const sceneSeed = structuredClone(seed)
+    if (scene.name.startsWith('shell/')) {
+      patchSeed(sceneSeed as Record<string, any>, scene.seed)
+      // App prefs the shell reads at startup (`initRailCollapsed`, …), and the scene theme.
+      const storage = { 'recur.theme': scene.theme, ...(scene.storage ?? {}) }
+      await page.addInitScript((items) => {
+        for (const [k, v] of Object.entries(items)) localStorage.setItem(k, v)
+      }, storage)
+    }
+    await installBridge(page, sceneSeed, replay === undefined ? {} : {
       resolvers: { AttachTerminal: () => Buffer.from(replay, 'utf8').toString('base64') },
     })
-    await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}`)
+    const extra = scene.treeScroll ? `&treeScroll=${scene.treeScroll}` : ''
+    await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}${extra}`)
     await page.waitForSelector('[data-scene-ready]')
     // Faces load on first use; wait until every declared face is in (icon fonts included).
     await page.evaluate(async () => {

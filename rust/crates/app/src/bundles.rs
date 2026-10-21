@@ -13,7 +13,11 @@ pub fn reload_bundles(state: &Entity<AppState>, cx: &mut App) {
         let res = async {
             services.bundle.invalidate_catalog().await?;
             state.update(cx, |s, _| s.invalidate_command_cache());
-            let skipped = services.bundle.list_skipped_bundles().await.unwrap_or_default();
+            let skipped = services
+                .bundle
+                .list_skipped_bundles()
+                .await
+                .unwrap_or_default();
             let catalogs = state.update(cx, |s, cx| s.load_theme_catalogs(cx));
             catalogs.await;
             state.update(cx, |s, cx| {

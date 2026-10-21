@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "providers/*"]
+members = ["crates/*", "providers/*", "tools/*"]
 default-members = ["crates/desktop", "crates/cli"]
 
 [workspace.package]
@@ -62,6 +62,7 @@ ttf-parser = "0.25"
 unicode-linebreak = "0.1"
 resvg = { version = "0.46", default-features = false }
 smallvec = "1"
+base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
 notify = "8"
 cron = "0.15"

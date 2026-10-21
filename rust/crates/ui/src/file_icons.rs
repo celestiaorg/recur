@@ -555,8 +555,8 @@ pub fn resolve(class: &FileIconClass) -> Option<(Glyph, Option<Color>)> {
 }
 
 /// SVG markup of a glyph as `.fico` lays it out: a `box`×`box` CSS px square, `box` px font,
-/// line-height `box`, advance centered, baseline placed by Blink's rounding at `scale`.
-pub fn glyph_svg(glyph: &Glyph, color: Color, boxpx: f32, scale: f32) -> Option<String> {
+/// line-height `box`, advance centered, baseline placed by Blink's rounding.
+pub fn glyph_svg(glyph: &Glyph, color: Color, boxpx: f32) -> Option<String> {
     let bytes = font_bytes(&glyph.family)?;
     let face = ttf_parser::Face::parse(bytes, 0).ok()?;
     let gid = face.glyph_index(glyph.ch)?;
@@ -570,7 +570,6 @@ pub fn glyph_svg(glyph: &Glyph, color: Color, boxpx: f32, scale: f32) -> Option<
         0.,
         boxpx,
         crate::text::LineHeight::Px(boxpx),
-        scale,
     );
     let advance = face.glyph_hor_advance(gid).unwrap_or(0) as f32 * k;
     let x0 = (boxpx - advance) / 2.;
@@ -628,9 +627,9 @@ impl ttf_parser::OutlineBuilder for SvgPath {
 
 /// The `.fico` file icon for a file name: 14px, light/dark color slot, falling back to the
 /// inherited text color when the class pair has no color (as the CSS does).
-pub fn file_icon(name: &str, light: bool, fallback: Color, scale: f32) -> Icon {
+pub fn file_icon(name: &str, light: bool, fallback: Color) -> Icon {
     let class = file_icon_class(name, light);
-    let svg = resolve(&class).and_then(|(g, c)| glyph_svg(&g, c.unwrap_or(fallback), 14., scale));
+    let svg = resolve(&class).and_then(|(g, c)| glyph_svg(&g, c.unwrap_or(fallback), 14.));
     svg_markup(svg.unwrap_or_else(|| {
         "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 14 14\"/>".into()
     }))
@@ -694,10 +693,6 @@ mod tests {
         assert_eq!(g.family, "Octicons Regular");
         assert_eq!(g.ch, '\u{f049}');
         assert!(c.is_some());
-        assert!(
-            glyph_svg(&g, c.unwrap(), 14., 2.)
-                .unwrap()
-                .contains("<path")
-        );
+        assert!(glyph_svg(&g, c.unwrap(), 14.).unwrap().contains("<path"));
     }
 }

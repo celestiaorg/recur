@@ -6050,6 +6050,7 @@ version = "0.0.0"
 name = "recur-ui"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "fancy-regex",
  "gpui-kit",
  "image",
@@ -6062,6 +6063,18 @@ dependencies = [
  "ttf-parser",
  "unicode-linebreak",
  "wuff",
+]
+
+[[package]]
+name = "recur-ui-parity"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "gpui-kit",
+ "image",
+ "recur-ui",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

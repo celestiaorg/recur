@@ -15,11 +15,17 @@ pub mod color;
 pub mod file_icons;
 pub mod font_metrics;
 pub mod fonts;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 pub mod icon;
 pub mod icon_name;
+pub mod kbd;
 mod kit;
+pub mod motion;
+pub mod style;
 pub mod text;
 pub mod theme;
+pub mod widgets;
 
 pub use assets::Assets;
 pub use color::{Color, hex, rgba};

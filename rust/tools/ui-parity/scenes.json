@@ -1,0 +1,144 @@
+{
+  "scenes": [
+    {
+      "name": "buttons/default",
+      "width": 620,
+      "height": 220,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "buttons/paper",
+      "width": 620,
+      "height": 220,
+      "theme": "paper",
+      "tolerance": 0
+    },
+    {
+      "name": "icons/app",
+      "width": 520,
+      "height": 220,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "icons/file",
+      "width": 400,
+      "height": 64,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "icons/file-light",
+      "width": 400,
+      "height": 64,
+      "theme": "paper",
+      "tolerance": 0
+    },
+    {
+      "name": "icons/lucide",
+      "width": 400,
+      "height": 110,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "icons/provider",
+      "width": 160,
+      "height": 40,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "kbd/default",
+      "width": 360,
+      "height": 130,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "project-pic/default",
+      "width": 200,
+      "height": 42,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "ring/default",
+      "width": 300,
+      "height": 124,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "text/calibration",
+      "width": 420,
+      "height": 330,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "toggles/catppuccin-latte",
+      "width": 320,
+      "height": 56,
+      "theme": "catppuccin-latte",
+      "tolerance": 0
+    },
+    {
+      "name": "toggles/default",
+      "width": 320,
+      "height": 56,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "tokens/catppuccin-latte",
+      "width": 300,
+      "height": 180,
+      "theme": "catppuccin-latte",
+      "tolerance": 0
+    },
+    {
+      "name": "tokens/catppuccin-mocha",
+      "width": 300,
+      "height": 180,
+      "theme": "catppuccin-mocha",
+      "tolerance": 0
+    },
+    {
+      "name": "tokens/coolglow",
+      "width": 300,
+      "height": 180,
+      "theme": "coolglow",
+      "tolerance": 0
+    },
+    {
+      "name": "tokens/default",
+      "width": 300,
+      "height": 180,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "tokens/nord",
+      "width": 300,
+      "height": 180,
+      "theme": "nord",
+      "tolerance": 0
+    },
+    {
+      "name": "tokens/paper",
+      "width": 300,
+      "height": 180,
+      "theme": "paper",
+      "tolerance": 0
+    },
+    {
+      "name": "tokens/slate",
+      "width": 300,
+      "height": 180,
+      "theme": "slate",
+      "tolerance": 0
+    }
+  ]
+}

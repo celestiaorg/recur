@@ -1,8 +1,9 @@
 //! A text element with the CSS text behavior the web UI depends on and GPUI's built-in text
 //! lacks: `letter-spacing`, `text-transform: uppercase`, `line-height: normal`, `tabular-nums`,
 //! `white-space` (normal / nowrap / pre-wrap), UAX #14 line breaking with
-//! `overflow-wrap: anywhere`, `text-overflow: ellipsis`, `-webkit-line-clamp`, and line boxes
-//! and baselines rounded the way Blink rounds them.
+//! `overflow-wrap: anywhere`, `text-overflow: ellipsis`, `-webkit-line-clamp`, inline boxes
+//! (padded, bordered `<span>`s), and line boxes and baselines rounded the way Blink rounds
+//! them.
 //!
 //! Font family, size, weight, style, color and numeric line height inherit from the
 //! surrounding GPUI text style, like CSS inheritance. Letter spacing and transforms do not
@@ -10,9 +11,9 @@
 
 use crate::fonts::{Family, tabular_nums};
 use gpui_kit::{
-    App, AvailableSpace, Bounds, DefiniteLength, Element, ElementId, FontFeatures, FontId,
-    GlobalElementId, Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString,
-    StrikethroughStyle, Style, TextRun, UnderlineStyle, Window, point, px, size,
+    App, AvailableSpace, BorderStyle, Bounds, DefiniteLength, Element, ElementId, FontFeatures,
+    FontId, GlobalElementId, Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString,
+    StrikethroughStyle, Style, TextRun, UnderlineStyle, Window, point, px, quad, size,
 };
 use std::cell::RefCell;
 use std::ops::Range;
@@ -169,17 +170,53 @@ pub trait TextStyled: Sized {
     }
 }
 
-/// A styled run inside a [`Text`] (`<span>`, `<b>`, `.kbd-mod`).
+/// The box of an inline `<span>` with padding, border, margin or background. Horizontal
+/// extents take space in the line; vertical ones paint around the font's content area
+/// without changing the line box, as in CSS.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct InlineBox {
+    pub margin_left: f32,
+    pub margin_right: f32,
+    pub border: f32,
+    pub border_color: Hsla,
+    pub pad_top: f32,
+    pub pad_right: f32,
+    pub pad_bottom: f32,
+    pub pad_left: f32,
+    pub background: Option<Hsla>,
+    pub radius: f32,
+}
+
+impl InlineBox {
+    fn left(&self) -> f32 {
+        self.margin_left + self.border + self.pad_left
+    }
+    fn right(&self) -> f32 {
+        self.margin_right + self.border + self.pad_right
+    }
+}
+
+/// A styled run inside a [`Text`] (`<span>`, `<b>`, `.kbd-mod`, `<code>`).
 #[derive(Clone, Debug)]
 pub struct Span {
     pub text: SharedString,
     pub style: TextStyle,
+    pub inline_box: Option<InlineBox>,
 }
 
 pub fn span(text: impl Into<SharedString>) -> Span {
     Span {
         text: text.into(),
         style: TextStyle::default(),
+        inline_box: None,
+    }
+}
+
+impl Span {
+    /// Give the span an inline box (padding, border, background).
+    pub fn boxed(mut self, b: InlineBox) -> Self {
+        self.inline_box = Some(b);
+        self
     }
 }
 
@@ -289,6 +326,7 @@ impl TextStyled for Text {
 struct Resolved {
     content: SharedString,
     runs: Vec<RunStyle>,
+    boxes: Vec<Option<InlineBox>>,
     font_size: f32,
     line_height: LineHeight,
     base: RunStyle,
@@ -297,7 +335,9 @@ struct Resolved {
 #[derive(Clone, PartialEq)]
 struct RunStyle {
     len: usize,
+    span: usize,
     family: Family,
+    size: f32,
     weight: f32,
     italic: bool,
     features: FontFeatures,
@@ -322,13 +362,15 @@ impl RunStyle {
     }
 }
 
-/// One shaped paragraph: glyph boxes keyed by byte offset into the paragraph string.
+/// One shaped paragraph: char edges and glyphs in paragraph coordinates.
 struct Para {
     range: Range<usize>,
-    /// Byte offset (paragraph-relative) → left edge in px, including tracking, for every char
-    /// boundary plus the end.
+    /// Byte offset (paragraph-relative) → left edge in px, including tracking and inline box
+    /// extents, for every char boundary plus the end.
     edges: Vec<(usize, f32)>,
     glyphs: Vec<PaintGlyph>,
+    /// Inline box spans: (span index, border-box left, border-box right, byte range).
+    boxes: Vec<(usize, f32, f32, Range<usize>)>,
 }
 
 #[derive(Clone)]
@@ -355,7 +397,6 @@ struct Laid {
     paras: Vec<Para>,
     metrics: LineMetrics,
     ellipsis: Option<(Vec<PaintGlyph>, f32)>,
-    wrap_width: Option<f32>,
     lines: Vec<Line>,
 }
 
@@ -370,29 +411,31 @@ pub struct LineMetrics {
     pub descent: f32,
 }
 
-/// Blink's line box for one font: ascent and descent rounded to whole device pixels, the
-/// half-leading floored to a whole device pixel above the text.
+/// WebKit's line box for one font, as measured in the reference engine (see
+/// `rust/docs/ui-parity.md`): ascent rounds and descent ceils to LayoutUnits (1/64 px); `normal` line
+/// height is the rounded ascent + descent + line gap; a numeric line height truncates to a
+/// LayoutUnit; the half-leading above the text floors to a LayoutUnit.
 pub fn line_metrics(
     ascent: f32,
     descent: f32,
     line_gap: f32,
     font_size: f32,
     line_height: LineHeight,
-    scale: f32,
 ) -> LineMetrics {
-    let a = (ascent * scale).round();
-    let d = (descent * scale).round();
+    let layout_unit = |v: f32| (v * 64.).floor() / 64.;
+    let a = (ascent * 64.).round() / 64.;
+    let d = (descent * 64.).ceil() / 64.;
     let h = match line_height {
-        LineHeight::Normal => a + d + (line_gap * scale).round(),
-        LineHeight::Scale(m) => m * font_size * scale,
-        LineHeight::Px(p) => p * scale,
+        LineHeight::Normal => ascent.round() + descent.round() + line_gap.round(),
+        LineHeight::Scale(m) => layout_unit(m * font_size),
+        LineHeight::Px(p) => layout_unit(p),
     };
-    let half_leading = ((h - (a + d)) / 2.).floor();
+    let half_leading = layout_unit((h - (a + d)) / 2.);
     LineMetrics {
-        height: h / scale,
-        baseline: (half_leading + a) / scale,
-        ascent: a / scale,
-        descent: d / scale,
+        height: h,
+        baseline: half_leading + a,
+        ascent: a,
+        descent: d,
     }
 }
 
@@ -420,25 +463,29 @@ impl Text {
             line_through: Some(false),
         };
         let base_style = self.style.over(&parent);
-        let fs = f32::from(font_size);
-        let run_of = |s: &TextStyle, len: usize| RunStyle {
-            len,
-            family: canonical_family(s.family.clone().unwrap_or(Family::Ui)),
-            weight: s.weight.unwrap_or(400.),
-            italic: s.italic.unwrap_or(false),
-            features: if s.tabular.unwrap_or(false) {
-                tabular_nums()
-            } else {
-                FontFeatures::default()
-            },
-            color: s.color.unwrap_or_default(),
-            tracking: s.tracking.unwrap_or(Tracking::Px(0.)).px(fs),
-            underline: s.underline.unwrap_or(false),
-            line_through: s.line_through.unwrap_or(false),
+        let run_of = |s: &TextStyle, len: usize, span: usize| {
+            let size = f32::from(s.size.unwrap_or(font_size));
+            RunStyle {
+                len,
+                span,
+                family: canonical_family(s.family.clone().unwrap_or(Family::Ui)),
+                size,
+                weight: s.weight.unwrap_or(400.),
+                italic: s.italic.unwrap_or(false),
+                features: if s.tabular.unwrap_or(false) {
+                    tabular_nums()
+                } else {
+                    FontFeatures::default()
+                },
+                color: s.color.unwrap_or_default(),
+                tracking: s.tracking.unwrap_or(Tracking::Px(0.)).px(size),
+                underline: s.underline.unwrap_or(false),
+                line_through: s.line_through.unwrap_or(false),
+            }
         };
         let mut content = String::new();
         let mut runs = Vec::new();
-        for s in &self.spans {
+        for (i, s) in self.spans.iter().enumerate() {
             let style = s.style.over(&base_style);
             let mut t = s.text.to_string();
             if style.uppercase.unwrap_or(false) {
@@ -448,7 +495,7 @@ impl Text {
                 continue;
             }
             content.push_str(&t);
-            runs.push(run_of(&style, t.len()));
+            runs.push(run_of(&style, t.len(), i));
         }
         let (content, runs) = match self.white_space {
             WhiteSpace::PreWrap => (content, runs),
@@ -461,14 +508,15 @@ impl Text {
         Resolved {
             content: content.into(),
             runs,
-            font_size: fs,
+            boxes: self.spans.iter().map(|s| s.inline_box).collect(),
+            font_size: f32::from(font_size),
             line_height,
-            base: run_of(&base_style, 0),
+            base: run_of(&base_style, 0, usize::MAX),
         }
     }
 }
 
-/// GPUI names the inherited family only; restore the CSS stack for the three app stacks.
+/// GPUI names the inherited family only; restore the CSS stack for the app stacks.
 fn canonical_family(f: Family) -> Family {
     match f {
         Family::Stack(name, rest) if rest.is_empty() => match name.as_ref() {
@@ -528,6 +576,7 @@ fn collapse_spaces(s: &str, runs: Vec<RunStyle>) -> (String, Vec<RunStyle>) {
     (out, out_runs)
 }
 
+/// Runs overlapping `range`, as (run index, absolute byte range).
 fn run_slices(runs: &[RunStyle], range: Range<usize>) -> Vec<(usize, Range<usize>)> {
     let mut out = Vec::new();
     let mut start = 0;
@@ -543,75 +592,97 @@ fn run_slices(runs: &[RunStyle], range: Range<usize>) -> Vec<(usize, Range<usize
     out
 }
 
+/// Absolute byte range of each span's text in the content.
+fn span_ranges(runs: &[RunStyle]) -> Vec<(usize, Range<usize>)> {
+    let mut out: Vec<(usize, Range<usize>)> = Vec::new();
+    let mut start = 0;
+    for r in runs {
+        let end = start + r.len;
+        match out.last_mut() {
+            Some((span, range)) if *span == r.span => range.end = end,
+            _ => out.push((r.span, start..end)),
+        }
+        start = end;
+    }
+    out
+}
+
 fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
-    let text = &key.content[range.clone()];
-    let slices = run_slices(&key.runs, range.clone());
-    let runs: Vec<TextRun> = slices
-        .iter()
-        .map(|(i, r)| key.runs[*i].text_run(r.len()))
-        .collect();
-    let shaped = if text.is_empty() {
-        None
-    } else {
-        Some(window.text_system().shape_line(
-            text.to_string().into(),
-            px(key.font_size),
-            &runs,
-            None,
-        ))
-    };
-    let run_at = |ix: usize| -> usize {
-        slices
-            .iter()
-            .find(|(_, r)| r.contains(&(ix + range.start)))
-            .map_or(0, |(i, _)| *i)
-    };
-    let mut glyph_x: Vec<(usize, f32)> = Vec::new();
+    let spans = span_ranges(&key.runs);
+    let mut pen = 0.;
+    let mut edges = Vec::new();
     let mut glyphs = Vec::new();
-    if let Some(line) = &shaped {
-        for run in &line.runs {
-            for g in &run.glyphs {
+    let mut boxes = Vec::new();
+    let mut open_box: Option<(usize, f32)> = None;
+    for (ri, abs) in run_slices(&key.runs, range.clone()) {
+        let run = &key.runs[ri];
+        let span_range = spans
+            .iter()
+            .find(|(s, _)| *s == run.span)
+            .map(|(_, r)| r.clone());
+        let ib = key.boxes.get(run.span).copied().flatten();
+        if let (Some(b), Some(sr)) = (ib, &span_range)
+            && abs.start == sr.start.max(range.start)
+        {
+            open_box = Some((run.span, pen + b.margin_left));
+            pen += b.left();
+        }
+        let text = &key.content[abs.clone()];
+        let shaped = window.text_system().shape_line(
+            text.to_string().into(),
+            px(run.size),
+            &[run.text_run(text.len())],
+            None,
+        );
+        let mut glyph_x: Vec<(usize, f32)> = Vec::new();
+        for r in &shaped.runs {
+            for g in &r.glyphs {
                 glyph_x.push((g.index, f32::from(g.position.x)));
+            }
+        }
+        glyph_x.sort_by_key(|(i, _)| *i);
+        let chars: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
+        let mut gi = 0;
+        let total = f32::from(shaped.width);
+        for (ci, &bi) in chars.iter().enumerate() {
+            while gi < glyph_x.len() && glyph_x[gi].0 < bi {
+                gi += 1;
+            }
+            let x = glyph_x.get(gi).map_or(total, |g| g.1);
+            edges.push((
+                abs.start - range.start + bi,
+                pen + x + run.tracking * ci as f32,
+            ));
+        }
+        for r in &shaped.runs {
+            for g in &r.glyphs {
+                let ci = chars.partition_point(|&c| c < g.index);
                 glyphs.push(PaintGlyph {
-                    index: g.index,
-                    x: g.position.x.into(),
-                    font_id: run.font_id,
+                    index: abs.start - range.start + g.index,
+                    x: pen + f32::from(g.position.x) + run.tracking * ci as f32,
+                    font_id: r.font_id,
                     glyph: g.id,
                     is_emoji: g.is_emoji,
-                    run: run_at(g.index),
+                    run: ri,
                 });
             }
         }
-    }
-    let total = shaped.as_ref().map_or(0., |l| f32::from(l.width));
-    glyph_x.sort_by_key(|(i, _)| *i);
-    // Left edge of each char: the x of its first glyph, or the next glyph's x for chars that
-    // produced none (ligature tails). Tracking accumulates after every char.
-    let mut edges = Vec::with_capacity(text.len() + 1);
-    let mut acc_tracking = 0.;
-    let chars: Vec<(usize, char)> = text.char_indices().collect();
-    let mut gi = 0;
-    for &(bi, _) in &chars {
-        while gi < glyph_x.len() && glyph_x[gi].0 < bi {
-            gi += 1;
+        pen += total + run.tracking * chars.len() as f32;
+        if let (Some(b), Some(sr)) = (ib, &span_range)
+            && abs.end == sr.end.min(range.end)
+            && let Some((span, x0)) = open_box.take()
+        {
+            pen += b.right();
+            let local = sr.start.max(range.start) - range.start..abs.end - range.start;
+            boxes.push((span, x0, pen - b.margin_right, local));
         }
-        let x = glyph_x.get(gi).map_or(total, |g| g.1);
-        edges.push((bi, x + acc_tracking));
-        acc_tracking += key.runs.get(run_at(bi)).map_or(0., |r| r.tracking);
     }
-    edges.push((text.len(), total + acc_tracking));
-    for g in &mut glyphs {
-        let ci = chars.partition_point(|c| c.0 < g.index);
-        let before: f32 = chars[..ci]
-            .iter()
-            .map(|(b, _)| key.runs.get(run_at(*b)).map_or(0., |r| r.tracking))
-            .sum();
-        g.x += before;
-    }
+    edges.push((range.len(), pen));
     Para {
         range,
         edges,
         glyphs,
+        boxes,
     }
 }
 
@@ -624,7 +695,13 @@ impl Para {
     }
     fn width(&self, text: &str, r: Range<usize>) -> f32 {
         let trimmed_end = r.start + text[r.clone()].trim_end_matches([' ', '\t']).len();
-        self.x_at(trimmed_end) - self.x_at(r.start)
+        let end = if trimmed_end == text.len() {
+            // The paragraph end also carries a closing inline box's right extent.
+            self.edges.last().map_or(0., |e| e.1)
+        } else {
+            self.x_at(trimmed_end)
+        };
+        end - self.x_at(r.start)
     }
 }
 
@@ -636,17 +713,17 @@ fn break_lines(
     anywhere: bool,
     eps: f32,
 ) -> Vec<Line> {
-    let mut lines = Vec::new();
+    let line = |range: Range<usize>, width: f32| Line {
+        para: pi,
+        range,
+        width,
+        ellipsis: false,
+    };
     let Some(max) = max else {
-        lines.push(Line {
-            para: pi,
-            range: 0..text.len(),
-            width: para.width(text, 0..text.len()),
-            ellipsis: false,
-        });
-        return lines;
+        return vec![line(0..text.len(), para.width(text, 0..text.len()))];
     };
     let opportunities: Vec<(usize, BreakOpportunity)> = linebreaks(text).collect();
+    let mut lines = Vec::new();
     let mut start = 0;
     let mut last_fit: Option<usize> = None;
     let mut i = 0;
@@ -655,12 +732,7 @@ fn break_lines(
         let w = para.width(text, start..pos);
         if w <= max + eps {
             if kind == BreakOpportunity::Mandatory {
-                lines.push(Line {
-                    para: pi,
-                    range: start..pos,
-                    width: w,
-                    ellipsis: false,
-                });
+                lines.push(line(start..pos, w));
                 start = pos;
                 last_fit = None;
             } else {
@@ -670,17 +742,12 @@ fn break_lines(
             continue;
         }
         if let Some(b) = last_fit.take() {
-            lines.push(Line {
-                para: pi,
-                range: start..b,
-                width: para.width(text, start..b),
-                ellipsis: false,
-            });
+            lines.push(line(start..b, para.width(text, start..b)));
             start = b;
             continue;
         }
         if anywhere {
-            // Split the overlong word at the last char that still fits.
+            // Split the overlong word after the last char that still fits.
             let mut cut = start;
             for (bi, ch) in text[start..pos].char_indices() {
                 let end = start + bi + ch.len_utf8();
@@ -692,23 +759,13 @@ fn break_lines(
             if cut == start {
                 cut = start + text[start..].chars().next().map_or(1, char::len_utf8);
             }
-            lines.push(Line {
-                para: pi,
-                range: start..cut,
-                width: para.width(text, start..cut),
-                ellipsis: false,
-            });
+            lines.push(line(start..cut, para.width(text, start..cut)));
             start = cut;
             continue;
         }
         // An unbreakable word wider than the box overflows on its own line.
         if kind == BreakOpportunity::Mandatory {
-            lines.push(Line {
-                para: pi,
-                range: start..pos,
-                width: w,
-                ellipsis: false,
-            });
+            lines.push(line(start..pos, w));
             start = pos;
         } else {
             last_fit = Some(pos);
@@ -716,46 +773,45 @@ fn break_lines(
         i += 1;
     }
     if start < text.len() || lines.is_empty() {
-        lines.push(Line {
-            para: pi,
-            range: start..text.len(),
-            width: para.width(text, start..text.len()),
-            ellipsis: false,
-        });
+        lines.push(line(start..text.len(), para.width(text, start..text.len())));
     }
     lines
 }
 
-fn font_ascent_descent(key: &Resolved, window: &Window) -> (f32, f32, f32) {
+fn rounded_extent(run: &RunStyle, window: &Window) -> (f32, f32) {
     let ts = window.text_system();
-    let font = key
-        .base
-        .family
-        .font(key.base.weight, key.base.italic, FontFeatures::default());
-    let id = ts.resolve_font(&font);
-    let size = px(key.font_size);
-    let ascent = f32::from(ts.ascent(id, size));
-    let descent = -f32::from(ts.descent(id, size));
-    let gap = crate::font_metrics::line_gap(&key.base.family, key.font_size);
-    (ascent, descent, gap)
+    let id = ts.resolve_font(
+        &run.family
+            .font(run.weight, run.italic, FontFeatures::default()),
+    );
+    let size = px(run.size);
+    (
+        f32::from(ts.ascent(id, size)).round(),
+        (-f32::from(ts.descent(id, size))).round(),
+    )
 }
 
 impl Laid {
     fn build(key: Resolved, window: &Window) -> Laid {
-        let (a, d, g) = font_ascent_descent(&key, window);
+        let ts = window.text_system();
+        let base = &key.base;
+        let id = ts.resolve_font(&base.family.font(
+            base.weight,
+            base.italic,
+            FontFeatures::default(),
+        ));
+        let size = px(key.font_size);
         let metrics = line_metrics(
-            a,
-            d,
-            g,
+            ts.ascent(id, size).into(),
+            -f32::from(ts.descent(id, size)),
+            crate::font_metrics::line_gap(&base.family, key.font_size),
             key.font_size,
             key.line_height,
-            window.scale_factor(),
         );
         let mut paras = Vec::new();
         let mut start = 0;
         for piece in key.content.split('\n') {
-            let r = start..start + piece.len();
-            paras.push(shape_para(&key, r, window));
+            paras.push(shape_para(&key, start..start + piece.len(), window));
             start += piece.len() + 1;
         }
         Laid {
@@ -763,7 +819,6 @@ impl Laid {
             paras,
             metrics,
             ellipsis: None,
-            wrap_width: None,
             lines: Vec::new(),
         }
     }
@@ -822,16 +877,17 @@ impl Laid {
             }
             self.ellipsis = Some(ell);
         }
-        self.wrap_width = width;
         self.lines = lines;
     }
 
     fn ellipsis_glyphs(&self, window: &Window) -> (Vec<PaintGlyph>, f32) {
-        let run = self.key.base.text_run("…".len());
-        let shaped =
-            window
-                .text_system()
-                .shape_line("…".into(), px(self.key.font_size), &[run], None);
+        let base = &self.key.base;
+        let shaped = window.text_system().shape_line(
+            "…".into(),
+            px(self.key.font_size),
+            &[base.text_run("…".len())],
+            None,
+        );
         let mut glyphs = Vec::new();
         for r in &shaped.runs {
             for g in &r.glyphs {
@@ -845,7 +901,7 @@ impl Laid {
                 });
             }
         }
-        (glyphs, f32::from(shaped.width) + self.key.base.tracking)
+        (glyphs, f32::from(shaped.width) + base.tracking)
     }
 
     fn size(&self, scale: f32) -> gpui_kit::Size<Pixels> {
@@ -855,6 +911,12 @@ impl Laid {
         let w = self.lines.iter().map(|l| l.width).fold(0., f32::max);
         let h = self.metrics.height * self.lines.len() as f32;
         size(px(snap(w, scale)), px(snap(h, scale)))
+    }
+
+    /// Width of the widest line and the total height, unrounded, after a layout at `width`.
+    fn measured(&self) -> (f32, f32) {
+        let w = self.lines.iter().map(|l| l.width).fold(0., f32::max);
+        (w, self.metrics.height * self.lines.len() as f32)
     }
 }
 
@@ -866,6 +928,24 @@ impl IntoElement for Text {
     type Element = Self;
     fn into_element(self) -> Self {
         self
+    }
+}
+
+impl Text {
+    /// Lay the text out against `width` (or unconstrained) and return its unrounded
+    /// `(width, height)` in CSS px and the line metrics, as the element would.
+    pub fn measure(&self, width: Option<f32>, window: &Window) -> (f32, f32, LineMetrics) {
+        let mut laid = Laid::build(self.resolve(window), window);
+        laid.relayout(
+            width,
+            self.white_space,
+            self.anywhere,
+            self.clamp,
+            self.ellipsis,
+            window,
+        );
+        let (w, h) = laid.measured();
+        (w, h, laid.metrics)
     }
 }
 
@@ -899,11 +979,7 @@ impl Element for Text {
         let (ws, anywhere, clamp, truncate) =
             (self.white_space, self.anywhere, self.clamp, self.ellipsis);
         let measure_slot = layout.clone();
-        let style = Style {
-            min_size: size(px(0.).into(), px(0.).into()),
-            ..Style::default()
-        };
-        let mut style = style;
+        let mut style = Style::default();
         if truncate {
             // `overflow: hidden` makes the automatic minimum size zero in a flex row.
             style.min_size.width = px(0.).into();
@@ -956,94 +1032,118 @@ impl Element for Text {
         state: &mut TextState,
         _: &mut (),
         window: &mut Window,
-        cx: &mut App,
+        _: &mut App,
     ) {
         let slot = state.layout.borrow();
         let Some(laid) = slot.as_ref() else { return };
-        let scale = window.scale_factor();
-        let box_w = f32::from(bounds.size.width);
         let clip = self.ellipsis || self.clamp.is_some();
-        let paint = |window: &mut Window, cx: &mut App| {
-            for (li, line) in laid.lines.iter().enumerate() {
-                let p = &laid.paras[line.para];
-                let top = f32::from(bounds.origin.y) + laid.metrics.height * li as f32;
-                let baseline = snap(top + laid.metrics.baseline, scale);
-                let start_x = p.x_at(line.range.start);
-                let offset = match self.align {
-                    Align::Left => 0.,
-                    Align::Center => (box_w - line.width) / 2.,
-                    Align::Right => box_w - line.width,
-                };
-                let left = f32::from(bounds.origin.x) + offset;
-                for g in p.glyphs.iter().filter(|g| line.range.contains(&g.index)) {
-                    let run = &laid.key.runs[g.run];
-                    let origin = point(px(left + g.x - start_x), px(baseline));
-                    paint_one(window, cx, origin, g, laid.key.font_size, run.color);
-                }
-                let end_x = left + p.x_at(line.range.end) - start_x;
-                for (ri, r) in run_slices(
-                    &laid.key.runs,
-                    p.range.start + line.range.start..p.range.start + line.range.end,
-                ) {
-                    let run = &laid.key.runs[ri];
-                    if !(run.underline || run.line_through) {
-                        continue;
-                    }
-                    let x0 = left + p.x_at(r.start - p.range.start) - start_x;
-                    let x1 = left + p.x_at(r.end - p.range.start) - start_x;
-                    let deco = crate::font_metrics::decorations(&run.family, laid.key.font_size);
-                    if run.underline {
-                        window.paint_underline(
-                            point(px(x0), px(baseline + deco.underline_offset)),
-                            px(x1 - x0),
-                            &UnderlineStyle {
-                                thickness: px(deco.underline_thickness),
-                                color: Some(run.color),
-                                wavy: false,
-                            },
-                        );
-                    }
-                    if run.line_through {
-                        window.paint_strikethrough(
-                            point(px(x0), px(baseline - deco.strike_offset)),
-                            px(x1 - x0),
-                            &StrikethroughStyle {
-                                thickness: px(deco.strike_thickness),
-                                color: Some(run.color),
-                            },
-                        );
-                    }
-                }
-                if line.ellipsis
-                    && let Some((glyphs, _)) = &laid.ellipsis
-                {
-                    for g in glyphs {
-                        let origin = point(px(end_x + g.x), px(baseline));
-                        paint_one(
-                            window,
-                            cx,
-                            origin,
-                            g,
-                            laid.key.font_size,
-                            laid.key.base.color,
-                        );
-                    }
-                }
-            }
-        };
+        let align = self.align;
         if clip {
             window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
-                paint(window, cx)
+                paint_lines(laid, bounds, align, window)
             });
         } else {
-            paint(window, cx);
+            paint_lines(laid, bounds, align, window);
+        }
+    }
+}
+
+fn paint_lines(laid: &Laid, bounds: Bounds<Pixels>, align: Align, window: &mut Window) {
+    let scale = window.scale_factor();
+    let box_w = f32::from(bounds.size.width);
+    for (li, line) in laid.lines.iter().enumerate() {
+        let p = &laid.paras[line.para];
+        let top = f32::from(bounds.origin.y) + laid.metrics.height * li as f32;
+        let baseline = snap(top + laid.metrics.baseline, scale);
+        let start_x = p.x_at(line.range.start);
+        let offset = match align {
+            Align::Left => 0.,
+            Align::Center => (box_w - line.width) / 2.,
+            Align::Right => box_w - line.width,
+        };
+        let left = f32::from(bounds.origin.x) + offset - start_x;
+        // Inline box backgrounds and borders paint under the text.
+        for (span, x0, x1, r) in &p.boxes {
+            if r.end <= line.range.start || r.start >= line.range.end.max(line.range.start + 1) {
+                continue;
+            }
+            let Some(b) = laid.key.boxes.get(*span).copied().flatten() else {
+                continue;
+            };
+            let Some(run) = laid.key.runs.iter().find(|r| r.span == *span) else {
+                continue;
+            };
+            let (a, d) = rounded_extent(run, window);
+            let y0 = baseline - a - b.pad_top - b.border;
+            let y1 = baseline + d + b.pad_bottom + b.border;
+            let rect =
+                Bounds::from_corners(point(px(left + x0), px(y0)), point(px(left + x1), px(y1)));
+            window.paint_quad(quad(
+                rect,
+                px(b.radius),
+                b.background.unwrap_or_default(),
+                px(b.border),
+                b.border_color,
+                BorderStyle::Solid,
+            ));
+        }
+        for g in p.glyphs.iter().filter(|g| line.range.contains(&g.index)) {
+            let run = &laid.key.runs[g.run];
+            paint_one(
+                window,
+                point(px(left + g.x), px(baseline)),
+                g,
+                run.size,
+                run.color,
+            );
+        }
+        for (ri, r) in run_slices(
+            &laid.key.runs,
+            p.range.start + line.range.start..p.range.start + line.range.end,
+        ) {
+            let run = &laid.key.runs[ri];
+            if !(run.underline || run.line_through) {
+                continue;
+            }
+            let x0 = left + p.x_at(r.start - p.range.start);
+            let x1 = left + p.x_at(r.end - p.range.start);
+            let deco = crate::font_metrics::decorations(&run.family, run.size);
+            if run.underline {
+                window.paint_underline(
+                    point(px(x0), px(baseline + deco.underline_offset)),
+                    px(x1 - x0),
+                    &UnderlineStyle {
+                        thickness: px(deco.underline_thickness),
+                        color: Some(run.color),
+                        wavy: false,
+                    },
+                );
+            }
+            if run.line_through {
+                window.paint_strikethrough(
+                    point(px(x0), px(baseline - deco.strike_offset)),
+                    px(x1 - x0),
+                    &StrikethroughStyle {
+                        thickness: px(deco.strike_thickness),
+                        color: Some(run.color),
+                    },
+                );
+            }
+        }
+        if line.ellipsis
+            && let Some((glyphs, _)) = &laid.ellipsis
+        {
+            let end_x = left + p.x_at(line.range.end);
+            for g in glyphs {
+                let origin = point(px(end_x + g.x), px(baseline));
+                paint_one(window, origin, g, laid.key.font_size, laid.key.base.color);
+            }
         }
     }
 }
 
 fn paint_one(
     window: &mut Window,
-    _: &mut App,
     origin: gpui_kit::Point<Pixels>,
     g: &PaintGlyph,
     font_size: f32,
@@ -1062,22 +1162,54 @@ mod tests {
     use super::*;
 
     #[test]
-    fn blink_line_box_rounding() {
-        // Inter 13px at 2x: ascent 12.59375 → 25dp, descent 3.1357 → 6dp.
-        let m = line_metrics(12.59375, 3.1357422, 0., 13., LineHeight::Normal, 2.);
-        assert_eq!(m.height, 15.5);
-        assert_eq!(m.baseline, 12.5);
-        let m = line_metrics(12.59375, 3.1357422, 0., 13., LineHeight::Scale(1.45), 2.);
-        assert!((m.height - 18.85).abs() < 1e-5);
-        // half-leading (37.7 − 31) / 2 = 3.35dp floors to 3dp.
-        assert_eq!(m.baseline, 14.);
+    fn webkit_line_box_metrics() {
+        // Values WebKit reports for these samples (tools/ui-parity text/calibration).
+        let inter = |size: f32| (size * 1984. / 2048., size * 494. / 2048.);
+        let check = |(a, d): (f32, f32), size: f32, lh: LineHeight, height: f32, baseline: f32| {
+            let m = line_metrics(a, d, 0., size, lh);
+            assert_eq!((m.height, m.baseline), (height, baseline), "{size} {lh:?}");
+        };
+        check(inter(13.), 13., LineHeight::Normal, 16., 12.71875);
+        check(
+            inter(13.),
+            13.,
+            LineHeight::Scale(1.45),
+            18.84375,
+            14.140625,
+        );
+        check(inter(12.), 12., LineHeight::Normal, 15., 11.859375);
+        check(inter(12.), 12., LineHeight::Scale(1.4), 16.796875, 12.75);
+        check(inter(11.), 11., LineHeight::Scale(1.), 11., 9.5);
+        // JetBrains Mono: ascent 1020, descent 300 per 1000.
+        check(
+            (12. * 1.02, 12. * 0.3),
+            12.,
+            LineHeight::Normal,
+            16.,
+            12.3125,
+        );
+        check(
+            (9. * 1.02, 9. * 0.3),
+            9.,
+            LineHeight::Scale(1.),
+            9.,
+            7.734375,
+        );
+        check(
+            (10.5 * 1.02, 10.5 * 0.3),
+            10.5,
+            LineHeight::Scale(1.45),
+            15.21875,
+            11.375,
+        );
     }
 
-    #[test]
-    fn collapses_white_space_across_runs() {
-        let run = |len| RunStyle {
+    fn run(len: usize, span: usize) -> RunStyle {
+        RunStyle {
             len,
+            span,
             family: Family::Ui,
+            size: 13.,
             weight: 400.,
             italic: false,
             features: FontFeatures::default(),
@@ -1085,9 +1217,20 @@ mod tests {
             tracking: 0.,
             underline: false,
             line_through: false,
-        };
-        let (s, runs) = collapse_spaces("  a  b ", vec![run(4), run(3)]);
+        }
+    }
+
+    #[test]
+    fn collapses_white_space_across_runs() {
+        let (s, runs) = collapse_spaces("  a  b ", vec![run(4, 0), run(3, 1)]);
         assert_eq!(s, "a b");
         assert_eq!(runs.iter().map(|r| r.len).collect::<Vec<_>>(), vec![2, 1]);
+        assert_eq!(runs.iter().map(|r| r.span).collect::<Vec<_>>(), vec![0, 1]);
+    }
+
+    #[test]
+    fn span_ranges_merge_runs_of_one_span() {
+        let ranges = span_ranges(&[run(2, 0), run(3, 0), run(1, 2)]);
+        assert_eq!(ranges, vec![(0, 0..5), (2, 5..6)]);
     }
 }

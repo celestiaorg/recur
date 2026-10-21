@@ -307,7 +307,7 @@ Every test file moves with its code. `*_smoke_test.go` and `*_live_test.go` are 
 
 ## 2. Trait designs
 
-All three traits are object safe (`Arc<dyn Provider>` etc.), use `#[async_trait]`, and live below the engine. Registries are keyed by the ids Go already persists: providers `claude-code`, `codex`, `cursor` and each compatible provider's own id (`domain.ParseModelRef` splits `provider/id` on the first slash; an unqualified ref is `claude-code`); forges by registry id `github` with PR rows keeping `source = "gh"` (local PRs are `"local"` and are not a forge); trackers by `IssueRef.source` (`github`, `linear`). `ARCHITECTURE.md` says `claude` and `compatible:<id>`; that is wrong against the data and must be corrected when this plan is adopted (see risk R1).
+All three traits are object safe (`Arc<dyn Provider>` etc.), use `#[async_trait]`, and live below the engine. Registries are keyed by the ids Go already persists: providers `claude-code`, `codex`, `cursor` and each compatible provider's own id (`domain.ParseModelRef` splits `provider/id` on the first slash; an unqualified ref is `claude-code`); forges by registry id `github` with PR rows keeping `source = "gh"` (local PRs are `"local"` and are not a forge); trackers by `IssueRef.source` (`github`, `linear`). `ARCHITECTURE.md` is corrected to match (risk R1).
 
 Every behavior the Go engine branches on by provider name is a capability or trait method below. After the port, `recur-engine` contains no `"cursor"`, `"codex"`, `"claude-code"` or `"gh"` string compare outside the registry lookup.
 
@@ -1032,11 +1032,11 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 
 #### C: code + support libs
 
-- **Go files:** `internal/code` (all), `internal/rg`, `internal/copyfiles`, `internal/observe`, `internal/runconfig`, `internal/wsenv`, `internal/simplify`. (`internal/projfile` goes to the store port: it is a `recur-store` module; C reviews it.)
+- **Go files:** `internal/code` (all), `internal/rg`, `internal/copyfiles`, `internal/observe`, `internal/simplify`. (`internal/projfile`, `internal/wsenv` and `internal/runconfig` are ported with the store into `recur-project`; use them from there.)
 - **Tests:** all tests of those packages.
 - **Frontend modules:** `lib/file-index.ts` (index protocol), `lib/fuzzy.ts` (only if it duplicates `filesearch` ranking), `lib/glob.ts`, `lib/changed-tree.ts`, `lib/finding-paths.ts`, `lib/skills.ts`, `lib/simplify.ts`.
 - **Prerequisites:** `recur-domain`, `recur-git` (status/diff helpers).
-- **Public API:** `recur_code::{Root, safe_join, read_file, write_file, list_tree, git_status, search, search_opts, replace_in_files, FileIndex, rank_files, outline, find_defs, find_refs, list_skills, list_skill_resources, open_in_editor, reveal, open_in_targets, rg::{ensure, run}, copyfiles::{parse_patterns, copy}, observe::{analyze_root, run_light_checks, project_findings_onto_diff, compute_impact}}`; `recur_engine::runconfig::{boot, run_cmd_output}`, `wsenv::{from_workspace, parse_dotenv}`, `simplify::text::{applies_to_chat, prompt}`.
+- **Public API:** `recur_code::{Root, safe_join, read_file, write_file, list_tree, git_status, search, search_opts, replace_in_files, FileIndex, rank_files, outline, find_defs, find_refs, list_skills, list_skill_resources, open_in_editor, reveal, open_in_targets, rg::{ensure, run}, copyfiles::{parse_patterns, copy}, observe::{analyze_root, run_light_checks, project_findings_onto_diff, compute_impact}}`; `recur_project::{runconfig::{boot, run_cmd_output}, wsenv::{from_workspace, parse_dotenv}}` (store port), `recur_engine::simplify::text::{applies_to_chat, prompt}`.
 
 #### F: forge + issue trackers (`recur-forge`, `recur-issues`)
 

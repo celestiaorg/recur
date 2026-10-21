@@ -71,7 +71,9 @@ Adding a provider, forge or issue tracker means adding a crate (providers) or a 
 - **Issue trackers** implement `recur_issues::IssueTracker` (search, fetch, expand to task prompt, workspace linking).
 - **Bundles** keep their existing on-disk format and semantics; `recur-bundles` is a faithful port.
 
-Registries are keyed by the same string ids the Go app persists (`claude`, `codex`, `cursor`, `compatible:<id>`, `github`, `linear`, ...), so stored data stays valid.
+Registries are keyed by the same string ids the Go app persists, so stored data stays valid: providers `claude-code`, `codex`, `cursor` and each compatible provider's own id; forge `github` (PR rows keep `source = "gh"`); trackers `github` and `linear`. See `docs/engine-port-plan.md` section 2. The engine contains no provider, forge or tracker id string compares outside registry lookup.
+
+The engine port is planned slice by slice in `docs/engine-port-plan.md`.
 
 ## Runtime model
 

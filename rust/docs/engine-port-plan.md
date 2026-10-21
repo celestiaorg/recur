@@ -922,6 +922,15 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Tests:** `claude_flags_test.go`, `claude_inject_test.go`, `codex_test.go`, `codex_smoke_test.go` (env-gated), Claude cases of `permission_test.go` / `permission_wiring_test.go`, `internal/codex/*_test.go`, `app/claude_status_test.go`, Claude/Codex cases of `app/model_catalog_test.go` and `models_test.go`.
 - **Prerequisites:** A-M1, A-M2, P3's `recur-usage` probes for `usage_probe` (deferred edge).
 - **Public API:** `ClaudeProvider::new(cfg)`, `CodexProvider::new(cfg)` implementing 2.1.
+- **As built (deviations and notes for E2/SV):** no trait change.
+  - `CodexProvider` keeps a settings snapshot (`CodexConfig::settings`, replaced by `settings_changed`) because `run_turn` takes no `Settings`; SV must call `settings_changed` on every save. `ClaudeProvider` reads no settings.
+  - Tracker secrets: Go hard-coded `LINEAR_API_KEY` in both runners. Turns now scrub `TurnRequest::env_scrub` (the engine fills it from `IssueTracker::secret_env`, R8) and Codex probes scrub `CodexConfig::env_scrub`.
+  - Codex leaves `PermissionRequest::surface` empty; the engine's `PermissionAsker` fills it (Go `permissionSurfaceFor` in the `codexRunner` closure).
+  - Codex sends conductor steers without the Maestro prefix (Go behavior) and acks every steer after `turn/steer` succeeds; Claude prefixes conductor steers and acks them on receipt.
+  - `CodexProvider::models` is `Ok(vec![])` when Codex is off or unconfigured and `Err` when the probe fails; either way the group is omitted. `cached_models` is the last good list from `models` or `status`. `context_window` is 0 for Codex (the window arrives on usage frames).
+  - E2's `contextWindowForMessage` port keeps Go's guard (resolve only when a model or a `context` flag is known; else the stored window); `recur_provider_claude::flags::has_context_flag` is that check. The mirror's result stamp becomes `provider.context_window(model, flags)` when > 0.
+  - `canonicalTool` (Cursor/Codex names) lives in `recur_provider_codex::display`; P2 needs the same table.
+  - Robustness: Codex RPC calls fail fast after the reader hit EOF (Go waited on the context), and the Claude runner drains stdout after an over-long line instead of leaving the CLI blocked until cancel.
 
 #### P2: Cursor provider
 

@@ -742,6 +742,9 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `instance.go` + test: `recur_platform::identity::{instance_label, window_title}` (title falls back to `Recur Next` side by side)
   - `open_path.go` stays with `recur-services`: it is WorkspacesService logic (store, engine, git), not OS path handling. Platform takes its result through `open_boot::attach_open_ipc` / `apply_cold_opens`.
   - [x] `model_catalog.go` catalog types → `recur_agent::catalog` (FlagOption, FlagDimension, ModelChoice, ModelGroup serde-identical; `defaultFlagsFromDims`). Per-provider lists, merge and fallbacks belong to P1/P2/P3 and SV
+  - [x] `model_catalog.go` Claude branch → `recur_provider_claude::flags::catalog` (pinned ids, effort + 200K/1M context dims, context windows); Codex branch → `recur_provider_codex::catalog` (hidden/id-less dropped, friendly model and effort labels, effort/272K-1M/Fast dims with the real boost tier id). Both behind `Provider::{models, cached_models}`; Codex remembers the last good `model/list` (from `models` and `status`). Go-matched in `go_claude_app.json` / `go_codex_app.json`. Merge, fallbacks and remap stay SV
+  - [x] `claude_status.go` + test → `recur_provider_claude::status` (`--version` and `auth status` each 5 s, logged-out JSON vs missing binary vs timeout, provider/login labels, `detect_agent` for `DetectAgent`) behind `Provider::status`. The `GetClaudeStatus` / `DetectAgent` service methods are SV
+  - [x] `codex_service.go` → `recur_provider_codex::status` (throwaway app-server probe with 60 s budget, account/read + model/list, login method, plan names, ChatGPT-auth precedence, `test_key` draft fallback to saved key) behind `Provider::{status, test_credentials, models}`. The `GetCodexStatus` / `TestCodexKey` service methods are SV
 - [ ] `internal/bundles`: 19 files, 6525 lines, 20 test files
 - [ ] `internal/cli`: 7 files, 830 lines, 2 test files
 - [x] `internal/cliinstall`: 3 files, 568 lines, 3 test files (`recur_platform::cliinstall`, 25 tests)
@@ -752,7 +755,13 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `install_from_app` / `install_bundled_cli`: no-op for dev builds, unbundled exes and `/opt/recur-next` package installs; Linux desktop entry (`build.recur.next.desktop`, Exec quoting, unchanged-file skip)
   - [x] `ensure_path`: login-shell PATH (marker-wrapped probe, fish syntax, 5s timeout with process-group kill, `$SHELL` → `id -P` → `/etc/passwd` → default shell), common user/system bin dirs, path_helper fallback, merge order and dedup
 - [ ] `internal/code`: 18 files, 4497 lines, 7 test files
-- [ ] `internal/codex`: 6 files, 1173 lines, 5 test files
+- [x] `internal/codex`: 6 files, 1173 lines, 5 test files → `recur-provider-codex` (all 5 test files ported)
+  - [x] `types.go` → `types` (wire structs with Go field order and `omitempty`, `format_plan`)
+  - [x] `rpc.go` → `rpc` (newline JSON-RPC without `jsonrpc`, ordered reader task, sync notification handler, server requests on tasks with `-32000` errors, pending calls fail `-32001` on EOF, `null` results decode as defaults, `Ctx` = Go context cancel + deadline). After EOF new calls fail fast instead of waiting on their context
+  - [x] `client.go` → `client` (account/read, model/list, thread start/resume, turn start/steer/interrupt). `DecodeNotification` (unused in Go) not ported
+  - [x] `server.go` → `server` (Recur `CODEX_HOME`, seeded `auth.json` only when newer, trusted-project entry, `app-server -c …` in its own process group, env scrub + `CODEX_HOME`/`CODEX_API_KEY`, 45 s handshake, 80-line stderr ring, auto-approve failsafe, SIGTERM → 2 s → SIGKILL close)
+  - [x] `locate.go` → `locate` (`$RECUR_CODEX`, Settings path, PATH, Homebrew cask dirs; Mach-O/ELF magic rejects the npm shim; `home_dir`)
+  - [x] `mcp.go` → `mcp` (`-c mcp_servers…` overrides, TOML escaping, automation defaults incl. skills/multi-agent off)
 - [ ] `internal/copyfiles`: 1 files, 414 lines, 1 test files
 - [ ] `internal/cursor`: 12 files, 3691 lines, 17 test files
 - [x] `internal/domain`: 15 files, 4945 lines, 16 test files → `recur-domain` (all 16 Go test files ported as unit tests)
@@ -783,6 +792,14 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
     - [x] `mirror.go` `contextUsageTracker` / `preferContextUsage` / `contextUsedTokens` → `ContextUsageTracker`, `TokenUsage::{prefer_context, context_used}`
     - [x] `loop.go` steer text used by providers → `recur_agent::Steer` + `turn::{format_steer_user_message, follow_up_text}`
     - [x] Tests: `streamjson_test.go`, `standing_test.go`, `context_usage_test.go` (parser + tracker cases), `permission_test.go` (label/summary cases), `attachments_test.go` (marker/content-block cases)
+  - [x] Slice P1 (Claude + Codex providers) → `recur-provider-claude`, `recur-provider-codex`; Go-generated golden fixtures in `providers/{claude,codex}/tests/golden/` (generators committed as `.go.txt`)
+    - [x] `claude.go` → `ClaudeProvider` (`runner`, `args`, `input`): argv incl. stream-json input for steers/images/large prompts, `--append-system-prompt-file` spill over 64 KiB, inline `--mcp-config` + `--strict-mcp-config`, env scrub, process group with single reaper and SIGTERM → 2 s → SIGKILL, 8 KiB stderr tail, Go error wording for no-result exits, steers flushed at the next `tool_result` (plain steers ack after the write, conductor steers on receipt, pending plain steers flushed at the result or nacked on unwind), stdin closed on the result, background-task result hold with the 10-minute ceiling
+    - [x] `claude_flags.go` → `flags` (`[1m]` rules, context windows, `has_context_flag`, labels, `--effort`)
+    - [x] `permission.go` Claude flags → `args` (`permission_args` with the `dontAsk` fallback, `disallowed_edit_tools`, `disallowed_tools`); allowlist translation documented on the module
+    - [x] `attachments.go` Claude half → `input` (content blocks at markers, attachment-id instruction)
+    - [x] `codex.go` → `CodexProvider` (`runner`, `items`, `approvals`, `display`): per-turn app-server, thread start/resume fallback, developer instructions vs in-band append notes, notifications to events behind a closing emit gate, `turn/steer` (30 s), interrupt on cancel, usage meter (last request vs thread-total delta), wall-clock duration floored at 1 ms, error results without turn-end duration, sandbox/approval policy, approvals routed to `PermissionAsker` (elicitations auto-accept, `dontAsk` declines), file-change enrichment, Codex display boundary
+    - [x] Tests: `claude_flags_test.go`, `claude_inject_test.go` (fake `claude` scripts, plus steer delivery, group kill, no-result errors), `codex_test.go`, `codex_smoke_test.go` (`RECUR_CODEX_E2E`-gated), Claude cases of `permission_test.go` and `models_test.go`, `mcpConfigJSON` cases of `user_mcp_test.go`, the Claude content case of `attachments_test.go`, the spill case of `planbrief_test.go`; Codex turns, probes, approvals and crashes against fake app-server scripts. `permission_wiring_test.go` asserts an engine invariant over real loop turns (E2/E3); `TestRealClaudeSmoke` and `permission_e2e_test.go` drive the engine and MCP server (E1/E2)
+    - [ ] `Provider::usage_probe` for Claude and Codex: deferred edge until `recur-usage` (P3) lands
 - [ ] `internal/git`: 12 files, 4392 lines, 14 test files
 - [ ] `internal/lsp`: 5 files, 916 lines, 4 test files
 - [ ] `internal/mcp`: 6 files, 839 lines, 3 test files

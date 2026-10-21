@@ -508,7 +508,7 @@ sleep 30
         let srv = Server::start(&cfg, &Ctx::default()).await.unwrap();
         assert!(srv.alive());
         for _ in 0..200 {
-            if std::fs::read_to_string(&log).is_ok_and(|l| l.lines().count() >= 6) {
+            if std::fs::read_to_string(&log).is_ok_and(|l| l.lines().count() >= 7) {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(10)).await;

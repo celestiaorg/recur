@@ -152,7 +152,7 @@ impl Command {
     /// Runs git and returns stdout. A failure carries stderr
     /// ([`Error::stderr`]), like Go's `ExitError.Stderr`.
     pub async fn output(self) -> Result<Vec<u8>> {
-        let ran = self.execute(Pipes::Separate).await;
+        let ran = Box::pin(self.execute(Pipes::Separate)).await;
         match ran.result {
             Ok(()) => Ok(ran.stdout),
             Err(e) => Err(attach_stderr(e, ran.stderr)),
@@ -161,18 +161,18 @@ impl Command {
 
     /// Runs git and returns stdout and stderr interleaved, even on failure.
     pub async fn combined_output(self) -> (Vec<u8>, Result<()>) {
-        let ran = self.execute(Pipes::Combined).await;
+        let ran = Box::pin(self.execute(Pipes::Combined)).await;
         (ran.stdout, ran.result)
     }
 
     /// Runs git with stdout and stderr discarded.
     pub async fn run(self) -> Result<()> {
-        self.execute(Pipes::Null).await.result
+        Box::pin(self.execute(Pipes::Null)).await.result
     }
 
     /// Runs git capturing stdout and stderr separately.
     pub(crate) async fn capture(self) -> Captured {
-        self.execute(Pipes::Separate).await
+        Box::pin(self.execute(Pipes::Separate)).await
     }
 
     /// Starts git with stdout piped and stderr discarded, for streaming reads.
@@ -330,7 +330,7 @@ fn shared_pipe() -> std::io::Result<(tokio::net::unix::pipe::Receiver, Stdio, St
 
 async fn drain<R: AsyncRead + Unpin>(r: Option<R>, buf: &mut Vec<u8>) {
     let Some(mut r) = r else { return };
-    let mut chunk = [0u8; 16 * 1024];
+    let mut chunk = vec![0u8; 16 * 1024];
     loop {
         match r.read(&mut chunk).await {
             Ok(0) | Err(_) => return,
@@ -587,13 +587,15 @@ mod tests {
     use std::time::Instant as StdInstant;
 
     use super::*;
-    use crate::testutil::{init_dirty_repo, temp_dir};
+    use crate::testutil::init_dirty_repo;
 
     #[tokio::test]
     async fn status_map_succeeds_with_existing_index_lock() {
         let repo = init_dirty_repo(0);
         std::fs::write(format!("{}/.git/index.lock", repo.path), b"").expect("lock");
-        let st = crate::status::status_map(&repo.path).await.unwrap_or_default();
+        let st = crate::status::status_map(&repo.path)
+            .await
+            .unwrap_or_default();
         assert_eq!(
             st.get("a.go").map(String::as_str),
             Some("m"),
@@ -620,11 +622,17 @@ mod tests {
                 }
             })
         };
-        let st = crate::status::status_map(&repo.path).await.unwrap_or_default();
+        let st = crate::status::status_map(&repo.path)
+            .await
+            .unwrap_or_default();
         tokio::time::sleep(Duration::from_millis(20)).await;
         stop.store(true, Ordering::Relaxed);
         let _ = watcher.join();
-        assert_eq!(st.get("a.go").map(String::as_str), Some("m"), "status = {st:?}");
+        assert_eq!(
+            st.get("a.go").map(String::as_str),
+            Some("m"),
+            "status = {st:?}"
+        );
         assert_eq!(
             hits.load(Ordering::Relaxed),
             0,
@@ -635,14 +643,29 @@ mod tests {
 
     #[test]
     fn command_disables_optional_locks() {
-        let base = vec![("PATH".into(), "/bin".into()), (OsString::from(OPTIONAL_LOCKS), OsString::from("1"))];
-        let extra = vec![(OsString::from(OPTIONAL_LOCKS), OsString::from("1")), ("X".into(), "y".into())];
+        let base = vec![
+            ("PATH".into(), "/bin".into()),
+            (OsString::from(OPTIONAL_LOCKS), OsString::from("1")),
+        ];
+        let extra = vec![
+            (OsString::from(OPTIONAL_LOCKS), OsString::from("1")),
+            ("X".into(), "y".into()),
+        ];
         let env = git_environ(base, &extra);
         let locks: Vec<_> = env.iter().filter(|(k, _)| k == OPTIONAL_LOCKS).collect();
-        assert_eq!(locks.len(), 1, "GIT_OPTIONAL_LOCKS set more than once: {env:?}");
+        assert_eq!(
+            locks.len(),
+            1,
+            "GIT_OPTIONAL_LOCKS set more than once: {env:?}"
+        );
         assert_eq!(locks[0].1, "0");
         assert!(env.iter().any(|(k, v)| k == "X" && v == "y"));
-        assert!(command(["status"]).environ().iter().any(|(k, v)| k == OPTIONAL_LOCKS && v == "0"));
+        assert!(
+            command(["status"])
+                .environ()
+                .iter()
+                .any(|(k, v)| k == OPTIONAL_LOCKS && v == "0")
+        );
     }
 
     /// Cancelling (dropping) a run SIGTERMs git's whole process group, so a
@@ -651,7 +674,8 @@ mod tests {
     async fn cancel_sigterms_the_process_group() {
         let repo = init_dirty_repo(0);
         let marker = format!("{}/terminated", repo.path);
-        let script = format!(r#"!sh -c 'trap "echo term > {marker}; exit 0" TERM; sleep 30 & wait'"#);
+        let script =
+            format!(r#"!sh -c 'trap "echo term > {marker}; exit 0" TERM; sleep 30 & wait'"#);
         let alias = format!("alias.hang={script}");
         let run = command(["-C", repo.path.as_str(), "-c", alias.as_str(), "hang"]).output();
         let _ = tokio::time::timeout(Duration::from_millis(500), run).await;
@@ -659,26 +683,41 @@ mod tests {
         while std::fs::metadata(&marker).is_err() && StdInstant::now() < deadline {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
-        assert!(std::fs::metadata(&marker).is_ok(), "the hook grandchild never saw SIGTERM");
+        assert!(
+            std::fs::metadata(&marker).is_ok(),
+            "the hook grandchild never saw SIGTERM"
+        );
     }
 
     #[tokio::test]
     async fn deadline_terminates_like_a_context_timeout() {
         let started = StdInstant::now();
-        let res = Command::new_program("sh", ["-c", "sleep 30"]).timeout(Duration::from_millis(100)).output().await;
+        let res = Command::new_program("sh", ["-c", "sleep 30"])
+            .timeout(Duration::from_millis(100))
+            .output()
+            .await;
         let err = res.expect_err("timed-out command succeeded");
         assert_eq!(err.message(), "signal: terminated");
-        assert!(started.elapsed() < Duration::from_secs(5), "deadline did not stop the process");
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "deadline did not stop the process"
+        );
     }
 
     #[tokio::test]
     async fn starts_in_own_process_group() {
         let repo = init_dirty_repo(0);
-        let running = command(["-C", repo.path.as_str(), "status", "--porcelain"]).spawn_stdout().expect("spawn");
+        let running = command(["-C", repo.path.as_str(), "status", "--porcelain"])
+            .spawn_stdout()
+            .expect("spawn");
         let pid = running.pid().expect("pid") as i32;
         let pgid = nix::unistd::getpgid(Some(Pid::from_raw(pid))).expect("getpgid");
         let _ = running.wait().await;
-        assert_eq!(pgid.as_raw(), pid, "git must lead its own process group so cancel can signal hooks");
+        assert_eq!(
+            pgid.as_raw(),
+            pid,
+            "git must lead its own process group so cancel can signal hooks"
+        );
     }
 
     #[tokio::test]
@@ -690,7 +729,10 @@ mod tests {
             .await
             .expect("pipe hold after exit 0 must succeed");
         assert_eq!(String::from_utf8_lossy(&out).trim(), "done");
-        assert!(started.elapsed() < Duration::from_millis(900), "waited for the pipe holder");
+        assert!(
+            started.elapsed() < Duration::from_millis(900),
+            "waited for the pipe holder"
+        );
     }
 
     #[tokio::test]
@@ -714,7 +756,8 @@ mod tests {
     }
 
     fn pipe_hold_git(root: &str) -> Command {
-        command(["-C", root, "-c", "alias.hold=!sleep 1 & echo done", "hold"]).wait_delay(Duration::from_millis(50))
+        command(["-C", root, "-c", "alias.hold=!sleep 1 & echo done", "hold"])
+            .wait_delay(Duration::from_millis(50))
     }
 
     #[tokio::test]
@@ -733,15 +776,26 @@ mod tests {
 
     #[tokio::test]
     async fn check_ref_format_via_command() {
-        crate::worktree::check_ref_format("recur/ok").await.expect("recur/ok is valid");
-        assert!(crate::worktree::check_ref_format("has space").await.is_err());
+        crate::worktree::check_ref_format("recur/ok")
+            .await
+            .expect("recur/ok is valid");
+        assert!(
+            crate::worktree::check_ref_format("has space")
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
     async fn missing_binary_reads_like_go() {
-        let err = Command::new_program("recur-no-such-binary", ["x"]).output().await.expect_err("spawned");
+        let err = Command::new_program("recur-no-such-binary", ["x"])
+            .output()
+            .await
+            .expect_err("spawned");
         assert!(matches!(err.kind(), ErrorKind::NotFound));
-        assert_eq!(err.message(), "exec: \"recur-no-such-binary\": executable file not found in $PATH");
-        let _ = temp_dir();
+        assert_eq!(
+            err.message(),
+            "exec: \"recur-no-such-binary\": executable file not found in $PATH"
+        );
     }
 }

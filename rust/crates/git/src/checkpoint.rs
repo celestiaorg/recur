@@ -226,3 +226,125 @@ async fn run_raw(dir: &str, env: &[(&str, &str)], args: &[&str]) -> Result<Vec<u
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testutil::{git_out, init_repo, temp_dir, write};
+
+    /// A checkpoint captures tracked edits and untracked files without
+    /// touching the branch, the real index, the stash stack, or the tree.
+    #[tokio::test]
+    async fn checkpoint_is_invisible_and_complete() {
+        let repo = init_repo();
+        let dir = repo.path.as_str();
+        let idx_root = temp_dir();
+        let idx = format!("{}/ckpt", idx_root.path);
+        write(dir, "README.md", "edited\n");
+        write(dir, "new.txt", "untracked\n");
+        git_out(
+            dir,
+            &["stash", "push", "-m", "user-stash", "--", "README.md"],
+        );
+        write(dir, "README.md", "edited again\n");
+        let head_before = git_out(dir, &["rev-parse", "HEAD"]);
+        let status_before = git_out(dir, &["status", "--porcelain"]);
+        let stash_before = git_out(dir, &["stash", "list"]);
+
+        let r = format!("{CHECKPOINT_REF_PREFIX}ws1/msg1/start");
+        let oid = checkpoint(dir, &idx, &r).await.expect("checkpoint");
+
+        assert_eq!(
+            git_out(dir, &["rev-parse", "HEAD"]),
+            head_before,
+            "HEAD moved"
+        );
+        assert_eq!(
+            git_out(dir, &["status", "--porcelain"]),
+            status_before,
+            "status changed"
+        );
+        assert!(
+            status_before.contains("?? new.txt"),
+            "fixture: new.txt should be untracked: {status_before}"
+        );
+        assert_eq!(
+            git_out(dir, &["stash", "list"]),
+            stash_before,
+            "stash list changed"
+        );
+        let log = git_out(dir, &["log", "--oneline", "--branches", "--tags"]);
+        assert!(
+            !log.contains("recur checkpoint"),
+            "checkpoint visible in branch/tag log:\n{log}"
+        );
+        let tree = git_out(dir, &["ls-tree", "-r", "--name-only", &oid]);
+        assert!(
+            tree.contains("new.txt"),
+            "untracked file missing from checkpoint tree:\n{tree}"
+        );
+        assert_eq!(
+            git_out(dir, &["show", &format!("{oid}:README.md")]),
+            "edited again\n"
+        );
+        let prefix = format!("{CHECKPOINT_REF_PREFIX}ws1/");
+        let refs = list_checkpoints(dir, &prefix).await.unwrap_or_default();
+        assert_eq!(refs.get(&r), Some(&oid), "list_checkpoints = {refs:?}");
+        assert!(
+            std::fs::metadata(format!("{idx}/index")).is_ok(),
+            "private index not in the data dir"
+        );
+
+        let same = format!("{CHECKPOINT_REF_PREFIX}ws1/msg1/same");
+        checkpoint(dir, &idx, &same).await.expect("checkpoint same");
+        let trees = list_checkpoint_trees(dir, &prefix)
+            .await
+            .unwrap_or_default();
+        let want = git_out(dir, &["rev-parse", &format!("{oid}^{{tree}}")])
+            .trim()
+            .to_string();
+        assert_eq!(trees.get(&r), Some(&want));
+        assert!(
+            !trees[&r].is_empty() && trees[&r] == trees[&same],
+            "identical snapshots should not differ"
+        );
+
+        // Later edits diff against the checkpoint, and restore rewinds them:
+        // new.txt comes back untracked, the agent's extra file is deleted.
+        write(dir, "README.md", "agent\n");
+        write(dir, "agent.txt", "x\n");
+        let end = format!("{CHECKPOINT_REF_PREFIX}ws1/msg1/end");
+        checkpoint(dir, &idx, &end).await.expect("checkpoint end");
+        let trees = list_checkpoint_trees(dir, &prefix)
+            .await
+            .unwrap_or_default();
+        assert!(
+            !trees[&end].is_empty() && trees[&r] != trees[&end],
+            "edited snapshot should differ"
+        );
+        let files = diff_checkpoints(dir, &r, &end)
+            .await
+            .expect("diff_checkpoints");
+        let names: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
+        assert!(
+            files.len() == 2 && names.contains(&"agent.txt"),
+            "turn diff files = {names:?}"
+        );
+        restore_checkpoint(dir, &r).await.expect("restore");
+        assert_eq!(
+            git_out(dir, &["status", "--porcelain"]),
+            status_before,
+            "status after restore"
+        );
+        assert!(
+            std::fs::metadata(format!("{dir}/agent.txt")).is_err(),
+            "agent.txt should be removed"
+        );
+
+        delete_checkpoints(dir, &prefix).await.expect("delete");
+        let left = list_checkpoints(dir, CHECKPOINT_REF_PREFIX)
+            .await
+            .unwrap_or_default();
+        assert!(left.is_empty(), "refs left after delete: {left:?}");
+    }
+}

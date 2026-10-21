@@ -406,3 +406,415 @@ pub async fn suggest_base_branch_for_repo(repo_path: &str) -> String {
     }
     Manager::new(repo_path, "").suggest_base_branch().await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testutil::{
+        config_identity, git, init_repo, init_repo_with_remote, rev_parse, temp_dir, write,
+    };
+
+    fn show_file(repo: &str, spec: &str) -> String {
+        crate::testutil::git_out(repo, &["show", spec])
+            .trim()
+            .to_string()
+    }
+
+    #[tokio::test]
+    async fn list_remote_branches_and_parse() {
+        let r = init_repo_with_remote();
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        assert_eq!(m.remotes().await.expect("remotes"), vec!["origin"]);
+        let remote_branches = m.list_remote_branches().await.expect("remote branches");
+        assert!(
+            remote_branches.iter().all(|b| !b.ends_with("/HEAD")),
+            "{remote_branches:?}"
+        );
+        assert!(
+            remote_branches.contains(&"origin/main".to_string()),
+            "{remote_branches:?}"
+        );
+        assert_eq!(
+            m.parse_remote_tracking("origin/main").await,
+            Some(("origin".into(), "main".into()))
+        );
+        assert_eq!(m.short_branch_name("origin/main").await, "main");
+        assert_eq!(m.short_branch_name("main").await, "main");
+        assert_eq!(m.parse_remote_tracking("main").await, None);
+    }
+
+    #[tokio::test]
+    async fn base_branch_exists_cases() {
+        let r = init_repo_with_remote();
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        git(&r.clone, &["tag", "v1.0"]);
+        let sha = rev_parse(&r.clone, "HEAD");
+        for (name, want) in [
+            ("main", true),
+            ("origin/main", true),
+            ("HEAD", false),
+            ("origin/HEAD", false),
+            ("v1.0", false),
+            (sha.as_str(), false),
+            ("does-not-exist", false),
+            ("", false),
+        ] {
+            assert_eq!(
+                m.base_branch_exists(name).await,
+                want,
+                "base_branch_exists({name:?})"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn add_fetches_remote_base() {
+        let r = init_repo_with_remote();
+        let pusher_dir = temp_dir();
+        let pusher = format!("{}/pusher", pusher_dir.path);
+        git(&pusher_dir.path, &["clone", &r.bare, &pusher]);
+        write(&pusher, "newer.txt", "from upstream\n");
+        git(&pusher, &["add", "."]);
+        git(&pusher, &["commit", "-m", "upstream advance"]);
+        git(&pusher, &["push", "origin", "main"]);
+
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        assert!(
+            m.run(["cat-file", "-e", "origin/main:newer.txt"])
+                .await
+                .is_err(),
+            "stale origin/main has newer.txt"
+        );
+        let (wt, created) = m
+            .add("ws-fetch", "ws-fetch", "origin/main")
+            .await
+            .expect("add off origin/main");
+        assert!(created);
+        let body = std::fs::read_to_string(format!("{}/newer.txt", wt.path))
+            .expect("newer.txt fetched on add");
+        assert_eq!(body, "from upstream\n");
+    }
+
+    #[test]
+    fn parse_remote_tracking_ref_without_git() {
+        let remotes = vec!["origin".to_string(), "upstream".to_string()];
+        assert_eq!(
+            parse_remote_tracking_ref(&remotes, "upstream/main"),
+            Some(("upstream".into(), "main".into()))
+        );
+        let remotes = vec!["origin".to_string(), "origin-fork".to_string()];
+        assert_eq!(
+            parse_remote_tracking_ref(&remotes, "origin-fork/feature"),
+            Some(("origin-fork".into(), "feature".into())),
+            "the longest remote name wins"
+        );
+        assert_eq!(parse_remote_tracking_ref(&remotes, "main"), None);
+    }
+
+    #[tokio::test]
+    async fn suggest_base_branch_prefers_origin_main() {
+        let r = init_repo_with_remote();
+        let root = temp_dir();
+        assert_eq!(
+            Manager::new(&r.clone, &root.path)
+                .suggest_base_branch()
+                .await,
+            "origin/main"
+        );
+    }
+
+    #[tokio::test]
+    async fn suggest_base_branch_falls_back_to_local_main() {
+        let repo = init_repo();
+        let root = temp_dir();
+        assert_eq!(
+            Manager::new(&repo.path, &root.path)
+                .suggest_base_branch()
+                .await,
+            "main"
+        );
+    }
+
+    #[tokio::test]
+    async fn add_empty_repo_remote_base_fails() {
+        let dir = temp_dir();
+        git(&dir.path, &["init", "-b", "main"]);
+        // A remote name so remote-tracking parsing succeeds without a real URL.
+        git(
+            &dir.path,
+            &[
+                "remote",
+                "add",
+                "origin",
+                "https://example.invalid/repo.git",
+            ],
+        );
+        let root = temp_dir();
+        let res = Manager::new(&dir.path, &root.path)
+            .add("ws-empty", "ws-empty", "origin/main")
+            .await;
+        assert!(res.is_err(), "a remote base on an empty repo must fail");
+    }
+
+    // --- remote_test.go ---
+
+    #[tokio::test]
+    async fn upstream_push_and_fetch() {
+        let r = init_repo_with_remote();
+        config_identity(&r.clone);
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        let up = m.upstream(&r.clone).await.expect("upstream");
+        assert_eq!(
+            up,
+            Upstream {
+                remote: "origin".into(),
+                branch: "main".into(),
+                ref_name: "origin/main".into()
+            }
+        );
+
+        write(&r.clone, "local.txt", "mine\n");
+        git(&r.clone, &["add", "local.txt"]);
+        git(&r.clone, &["commit", "-m", "local commit"]);
+        assert_eq!(
+            m.commits_ahead(&r.clone, &up.ref_name)
+                .await
+                .expect("ahead"),
+            1
+        );
+        m.push_upstream(&r.clone).await.expect("push_upstream");
+        assert_eq!(
+            m.commits_ahead(&r.clone, &up.ref_name)
+                .await
+                .expect("ahead"),
+            0
+        );
+        assert_eq!(show_file(&r.bare, "HEAD:local.txt"), "mine");
+
+        write(&r.clone, "pushed.txt", "branch\n");
+        git(&r.clone, &["add", "pushed.txt"]);
+        git(&r.clone, &["commit", "-m", "via PushBranch"]);
+        m.push_branch("origin", "main").await.expect("push_branch");
+        assert_eq!(show_file(&r.bare, "HEAD:pushed.txt"), "branch");
+
+        // Advance the remote from another clone; tracking stays stale until fetch.
+        let pusher_dir = temp_dir();
+        let pusher = format!("{}/pusher", pusher_dir.path);
+        git(&pusher_dir.path, &["clone", &r.bare, &pusher]);
+        config_identity(&pusher);
+        write(&pusher, "remote.txt", "theirs\n");
+        git(&pusher, &["add", "remote.txt"]);
+        git(&pusher, &["commit", "-m", "remote advance"]);
+        git(&pusher, &["push", "origin", "main"]);
+        assert_eq!(
+            m.commits_behind(&r.clone, "origin/main")
+                .await
+                .expect("behind"),
+            0
+        );
+        let (_, fetched) = m.fetch_upstream(&r.clone).await;
+        fetched.expect("fetch_upstream");
+        assert_eq!(
+            m.commits_behind(&r.clone, "origin/main")
+                .await
+                .expect("behind"),
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn fetch_compare_ref_sees_remote_advance_on_local_base_name() {
+        let r = init_repo_with_remote();
+        config_identity(&r.clone);
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        assert_eq!(m.compare_ref("main").await, "origin/main");
+
+        let pusher_dir = temp_dir();
+        let pusher = format!("{}/pusher", pusher_dir.path);
+        git(&pusher_dir.path, &["clone", &r.bare, &pusher]);
+        config_identity(&pusher);
+        write(&pusher, "base-moved.txt", "ahead\n");
+        git(&pusher, &["add", "base-moved.txt"]);
+        git(&pusher, &["commit", "-m", "advance merge base"]);
+        git(&pusher, &["push", "origin", "main"]);
+
+        assert_eq!(
+            m.commits_behind(&r.clone, "main").await.expect("behind"),
+            0,
+            "local main is stale"
+        );
+        assert_eq!(
+            m.commits_behind(&r.clone, "origin/main")
+                .await
+                .expect("behind"),
+            0
+        );
+        let r2 = m.fetch_compare_ref("main").await;
+        assert_eq!(r2, "origin/main");
+        assert_eq!(m.commits_behind(&r.clone, &r2).await.expect("behind"), 1);
+        let (rf, n) = m
+            .behind_base(&r.clone, "main", true)
+            .await
+            .expect("behind_base");
+        assert_eq!((rf.as_str(), n), ("origin/main", 1));
+    }
+
+    #[tokio::test]
+    async fn fetch_compare_ref_local_only_repo_stays_on_local_name() {
+        let dir = temp_dir();
+        git(&dir.path, &["init", "-b", "main"]);
+        config_identity(&dir.path);
+        write(&dir.path, "README.md", "x\n");
+        git(&dir.path, &["add", "."]);
+        git(&dir.path, &["commit", "-m", "initial"]);
+        let root = temp_dir();
+        assert_eq!(
+            Manager::new(&dir.path, &root.path)
+                .fetch_compare_ref("main")
+                .await,
+            "main"
+        );
+    }
+
+    #[tokio::test]
+    async fn fetch_compare_ref_uses_named_remote_base() {
+        let r = init_repo_with_remote();
+        config_identity(&r.clone);
+        git(&r.clone, &["checkout", "-b", "develop"]);
+        git(&r.clone, &["push", "-u", "origin", "develop"]);
+        git(&r.clone, &["checkout", "main"]);
+
+        let pusher_dir = temp_dir();
+        let pusher = format!("{}/pusher", pusher_dir.path);
+        git(&pusher_dir.path, &["clone", &r.bare, &pusher]);
+        config_identity(&pusher);
+        git(&pusher, &["checkout", "develop"]);
+        write(&pusher, "develop-ahead.txt", "yes\n");
+        git(&pusher, &["add", "develop-ahead.txt"]);
+        git(&pusher, &["commit", "-m", "advance develop"]);
+        git(&pusher, &["push", "origin", "develop"]);
+
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        assert_eq!(
+            m.fetch_compare_ref("origin/develop").await,
+            "origin/develop"
+        );
+        assert_eq!(
+            m.commits_behind(&r.clone, "origin/develop")
+                .await
+                .expect("behind"),
+            1
+        );
+        let (rf, n) = m
+            .behind_base(&r.clone, "develop", true)
+            .await
+            .expect("behind_base");
+        assert_eq!((rf.as_str(), n), ("origin/develop", 1));
+    }
+
+    #[tokio::test]
+    async fn push_upstream_pushes_head_when_local_name_differs() {
+        let r = init_repo_with_remote();
+        config_identity(&r.clone);
+        git(&r.clone, &["checkout", "-b", "work"]);
+        git(&r.clone, &["branch", "--set-upstream-to=origin/main"]);
+        write(&r.clone, "from-work.txt", "yes\n");
+        git(&r.clone, &["add", "from-work.txt"]);
+        git(&r.clone, &["commit", "-m", "on work"]);
+        let root = temp_dir();
+        Manager::new(&r.clone, &root.path)
+            .push_upstream(&r.clone)
+            .await
+            .expect("push_upstream");
+        assert_eq!(
+            show_file(&r.bare, "HEAD:from-work.txt"),
+            "yes",
+            "HEAD should have been pushed"
+        );
+        let main_blob = std::process::Command::new("git")
+            .args(["-C", r.clone.as_str(), "show", "main:from-work.txt"])
+            .output()
+            .expect("git");
+        assert!(
+            !main_blob.status.success(),
+            "local main should not contain from-work.txt"
+        );
+    }
+
+    #[tokio::test]
+    async fn upstream_missing() {
+        let dir = temp_dir();
+        git(&dir.path, &["init", "-b", "main"]);
+        config_identity(&dir.path);
+        write(&dir.path, "README.md", "x\n");
+        git(&dir.path, &["add", "."]);
+        git(&dir.path, &["commit", "-m", "initial"]);
+        let root = temp_dir();
+        let m = Manager::new(&dir.path, &root.path);
+        assert_eq!(m.upstream(&dir.path).await, None);
+        assert!(
+            m.push_upstream(&dir.path).await.is_err(),
+            "push without tracking must fail"
+        );
+    }
+
+    // --- pr_head_test.go ---
+
+    #[tokio::test]
+    async fn fetch_pr_head_rejects_invalid_number() {
+        let (a, b) = (temp_dir(), temp_dir());
+        assert!(
+            Manager::new(&a.path, &b.path)
+                .fetch_pr_head(0)
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn fetch_pr_head_force_updates_after_rewind() {
+        let r = init_repo_with_remote();
+        config_identity(&r.clone);
+        git(&r.clone, &["checkout", "-b", "feat/pr"]);
+        write(&r.clone, "one.txt", "one\n");
+        git(&r.clone, &["add", "."]);
+        git(&r.clone, &["commit", "-m", "one"]);
+        let sha1 = rev_parse(&r.clone, "HEAD");
+        git(
+            &r.clone,
+            &["push", "origin", &format!("{sha1}:refs/pull/7/head")],
+        );
+
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        assert_eq!(
+            m.fetch_pr_head(7).await.expect("first fetch"),
+            "refs/recur/pr/7"
+        );
+
+        git(&r.clone, &["checkout", "--orphan", "tmp-pr"]);
+        git(&r.clone, &["reset"]);
+        write(&r.clone, "two.txt", "two\n");
+        git(&r.clone, &["add", "."]);
+        git(&r.clone, &["commit", "-m", "two"]);
+        let sha2 = rev_parse(&r.clone, "HEAD");
+        git(
+            &r.clone,
+            &[
+                "push",
+                "--force",
+                "origin",
+                &format!("{sha2}:refs/pull/7/head"),
+            ],
+        );
+
+        let r2 = m.fetch_pr_head(7).await.expect("fetch after force-push");
+        assert_eq!(rev_parse(&r.clone, &r2), sha2);
+    }
+}

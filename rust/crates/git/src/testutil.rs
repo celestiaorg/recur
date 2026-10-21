@@ -30,22 +30,50 @@ pub(crate) fn git(dir: &str, args: &[&str]) -> String {
 }
 
 pub(crate) fn git_as(dir: &str, args: &[&str], env: &[(&str, &str)]) -> String {
-    let out = Command::new("git").args(args).current_dir(dir).envs(env.iter().copied()).output().expect("spawn git");
-    let combined = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
-    assert!(out.status.success(), "git {args:?} (in {dir}): {}\n{combined}", out.status);
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .envs(env.iter().copied())
+        .output()
+        .expect("spawn git");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        out.status.success(),
+        "git {args:?} (in {dir}): {}\n{combined}",
+        out.status
+    );
     String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 /// git without a forced identity (Go `gitOut`): combined output.
 pub(crate) fn git_out(dir: &str, args: &[&str]) -> String {
-    let out = Command::new("git").args(args).current_dir(dir).output().expect("spawn git");
-    let combined = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
-    assert!(out.status.success(), "git {args:?}: {}\n{combined}", out.status);
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .expect("spawn git");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}\n{combined}",
+        out.status
+    );
     combined
 }
 
 pub(crate) fn rev_parse(dir: &str, r: &str) -> String {
-    let out = Command::new("git").args(["-C", dir, "rev-parse", r]).output().expect("spawn git");
+    let out = Command::new("git")
+        .args(["-C", dir, "rev-parse", r])
+        .output()
+        .expect("spawn git");
     assert!(out.status.success(), "git rev-parse {r}");
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
@@ -115,7 +143,11 @@ pub(crate) fn init_repo_with_remote() -> WithRemote {
     let clone = format!("{}/work", clone_dir.path);
     let cwd = temp_dir();
     git(&cwd.path, &["clone", &bare, &clone]);
-    WithRemote { _dirs: vec![bare_dir, seed, clone_dir, cwd], clone, bare }
+    WithRemote {
+        _dirs: vec![bare_dir, seed, clone_dir, cwd],
+        clone,
+        bare,
+    }
 }
 
 /// Go `gitConfigIdentity`.

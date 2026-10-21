@@ -354,16 +354,10 @@ pub async fn file_size_at_rev(dir: &str, rev: &str, rel: &str) -> Result<Option<
         return Ok(None);
     };
     let s = go_string(&out);
-    let n: i64 = s.trim().parse().map_err(|e: std::num::ParseIntError| {
-        let reason = match e.kind() {
-            std::num::IntErrorKind::PosOverflow | std::num::IntErrorKind::NegOverflow => {
-                "value out of range"
-            }
-            _ => "invalid syntax",
-        };
+    let n: i64 = s.trim().parse().map_err(|e| {
         Error::msg(format!(
-            "file size: strconv.ParseInt: parsing {}: {reason}",
-            crate::text::quote(s.trim())
+            "file size: {}",
+            crate::text::num_error("ParseInt", s.trim(), &e)
         ))
     })?;
     if n < 0 {
@@ -451,6 +445,118 @@ pub async fn file_at_base(dir: &str, base_branch: &str, rel: &str) -> Result<Vec
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testutil::{git, temp_dir, write};
+
+    fn repo_with(files: &[(&str, &str)]) -> crate::testutil::Dir {
+        let root = temp_dir();
+        git(&root.path, &["init", "-b", "main"]);
+        for (f, c) in files {
+            write(&root.path, f, c);
+        }
+        git(&root.path, &["add", "."]);
+        git(&root.path, &["commit", "-m", "init"]);
+        root
+    }
+
+    #[tokio::test]
+    async fn working_diff_modified() {
+        let root = repo_with(&[("a.go", "package a\n")]);
+        write(&root.path, "a.go", "package a\nfunc X() {}\n");
+        let fd = working_diff(&root.path, "main", "a.go")
+            .await
+            .expect("working_diff");
+        assert_eq!(fd.status, "m");
+        assert!(fd.diff.add >= 1, "{:?}", fd.diff);
+    }
+
+    #[tokio::test]
+    async fn working_diff_clean_path_no_cached_outside_repo() {
+        // Outside a repo `git diff --cached` fails with "unknown option
+        // cached"; working_diff must not take that path.
+        let root = temp_dir();
+        write(&root.path, "a.txt", "x\n");
+        let err = working_diff(&root.path, "", "a.txt")
+            .await
+            .expect_err("non-git dir");
+        assert!(
+            !err.message().contains("cached") && !err.message().contains("no-index"),
+            "{err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn working_diff_untracked() {
+        let root = repo_with(&[("seed.go", "package s\n")]);
+        write(&root.path, "new.go", "package n\nfunc Y() {}\n");
+        let fd = working_diff(&root.path, "main", "new.go")
+            .await
+            .expect("working_diff");
+        assert_eq!(fd.status, "a");
+        assert!(
+            fd.diff.add >= 1 && fd.lines.as_ref().is_some_and(|l| l.len() >= 2),
+            "{fd:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn file_at_base_and_rev_helpers() {
+        let root = repo_with(&[("a.go", "package a\n")]);
+        let r = root.path.as_str();
+        git(r, &["checkout", "-b", "recur/feat"]);
+        write(r, "a.go", "package a\nfunc X() {}\n");
+        git(r, &["add", "."]);
+        git(r, &["commit", "-m", "feat"]);
+
+        assert_eq!(
+            file_at_base(r, "main", "a.go").await.expect("base"),
+            b"package a\n"
+        );
+        assert_eq!(
+            file_at_base(r, "main", "nope.go").await.expect("missing"),
+            b""
+        );
+
+        let against = merge_base(r, "main").await;
+        assert_eq!(
+            file_size_at_rev(r, &against, "a.go").await.expect("size"),
+            Some("package a\n".len() as i64)
+        );
+        let mut buf = Vec::new();
+        assert!(
+            copy_file_at_rev(r, &against, "a.go", &mut buf, 1 << 20)
+                .await
+                .expect("copy")
+        );
+        assert_eq!(buf, b"package a\n");
+        assert_eq!(
+            file_size_at_rev(r, &against, "nope.go")
+                .await
+                .expect("missing size"),
+            None
+        );
+        let mut small = Vec::new();
+        let err = copy_file_at_rev(r, &against, "a.go", &mut small, 3)
+            .await
+            .expect_err("over the limit");
+        assert_eq!(err.message(), "file too large (4 bytes)");
+    }
+
+    #[tokio::test]
+    async fn change_status_versus_base_includes_committed() {
+        let root = repo_with(&[("base.go", "package b\n")]);
+        let r = root.path.as_str();
+        git(r, &["checkout", "-b", "recur/feat"]);
+        write(r, "feat.go", "package f\n");
+        git(r, &["add", "."]);
+        git(r, &["commit", "-m", "feat"]);
+        let st = change_status(r, "main").await.unwrap_or_default();
+        assert_eq!(st.get("feat.go").map(String::as_str), Some("a"), "{st:?}");
+        assert_eq!(status_map(r).await, None, "porcelain should be clean");
+        let fd = working_diff(r, "main", "feat.go")
+            .await
+            .expect("working_diff");
+        assert!(fd.status == "a" && fd.diff.add >= 1, "{fd:?}");
+    }
 
     #[test]
     fn synthetic_add_diff_skips_binary() {

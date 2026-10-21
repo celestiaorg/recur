@@ -45,6 +45,67 @@ pub fn parse_check_ignore(out: &[u8]) -> Option<HashSet<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testutil::{git, temp_dir, write};
+
+    #[tokio::test]
+    async fn ignored_set_reads_gitignore() {
+        let root = temp_dir();
+        let r = root.path.as_str();
+        git(r, &["init", "-b", "main"]);
+        write(r, ".gitignore", "scratch.bin\nbuild/\n*.log\n");
+        write(r, "tracked.go", "package t\n");
+        write(r, "build/out.txt", "x\n");
+        write(r, "scratch.bin", "x");
+        write(r, "café.log", "x");
+        write(r, "  spaced.log", "x");
+        let nl_name = "we\nird.log";
+        write(r, nl_name, "x");
+        git(r, &["add", ".gitignore", "tracked.go"]);
+        git(r, &["commit", "-m", "init"]);
+
+        let paths: Vec<String> = [
+            ".gitignore",
+            "tracked.go",
+            "scratch.bin",
+            "build",
+            "build/out.txt",
+            "café.log",
+            "  spaced.log",
+            nl_name,
+            "",
+            ".",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        let got = ignored_set(r, &paths).await.unwrap_or_default();
+        for p in [
+            "scratch.bin",
+            "build",
+            "build/out.txt",
+            "café.log",
+            "  spaced.log",
+            nl_name,
+        ] {
+            assert!(
+                got.contains(p),
+                "ignored_set(...)[{p:?}] = false, want true (got {got:?})"
+            );
+        }
+        assert!(
+            !got.contains(".gitignore"),
+            "tracked .gitignore reported ignored"
+        );
+        assert!(!got.contains("tracked.go"));
+        assert!(
+            !got.contains("ird.log"),
+            "a newline in a name must not split it"
+        );
+
+        assert_eq!(ignored_set(r, &[]).await, None);
+        let plain = temp_dir();
+        assert_eq!(ignored_set(&plain.path, &["foo".to_string()]).await, None);
+    }
 
     #[test]
     fn parse_check_ignore_splits_nul() {

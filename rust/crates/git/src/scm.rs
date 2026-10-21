@@ -231,6 +231,133 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testutil::{init_repo, temp_dir, write};
+
+    fn strings(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[tokio::test]
+    async fn staged_paths_non_git() {
+        let dir = temp_dir();
+        write(&dir.path, "a.txt", "x\n");
+        assert_eq!(
+            staged_paths(&dir.path).await.expect("staged_paths"),
+            Vec::<String>::new()
+        );
+        assert_eq!(staged_diff(&dir.path).await.expect("staged_diff"), "");
+        let err = stage(&dir.path, &strings(&["a.txt"]))
+            .await
+            .expect_err("stage outside a repo");
+        assert!(err.message().contains("not a git repository"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn discard_and_human_commit() {
+        let repo = init_repo();
+        let root = temp_dir();
+        let m = Manager::new(&repo.path, &root.path);
+        let (wt, _) = m.add("LOOP-SCM", "scm-test", "main").await.expect("add");
+        let w = wt.path.as_str();
+
+        write(w, "edit.txt", "hello\n");
+        let st = working_status(w).await.unwrap_or_default();
+        assert_eq!(st.get("edit.txt").map(String::as_str), Some("u"), "{st:?}");
+        discard_file(w, "edit.txt")
+            .await
+            .expect("discard untracked");
+        assert!(
+            std::fs::metadata(format!("{w}/edit.txt")).is_err(),
+            "untracked file should be removed"
+        );
+
+        write(w, "README.md", "base\n");
+        m.commit(w, "seed", "Coder", "coder@recur.local")
+            .await
+            .expect("seed");
+        write(w, "README.md", "changed\n");
+        discard_file(w, "README.md").await.expect("discard tracked");
+        assert_eq!(
+            std::fs::read_to_string(format!("{w}/README.md")).unwrap_or_default(),
+            "base\n"
+        );
+
+        write(w, "yours.txt", "x\n");
+        let (name, email) = identity(w).await.expect("identity");
+        assert!(!name.is_empty() && !email.is_empty());
+        assert!(
+            m.commit(w, "my quick fix", &name, &email)
+                .await
+                .expect("commit")
+                .committed
+        );
+
+        write(w, "a.txt", "a\n");
+        write(w, "b.txt", "b\n");
+        stage(w, &strings(&["a.txt"])).await.expect("stage");
+        assert_eq!(staged_paths(w).await.expect("staged"), vec!["a.txt"]);
+        assert!(
+            m.commit_staged(w, "only a", &name, &email)
+                .await
+                .expect("commit_staged")
+                .committed
+        );
+        let st = working_status(w).await.unwrap_or_default();
+        assert_eq!(
+            st.get("b.txt").map(String::as_str),
+            Some("u"),
+            "b.txt should stay untracked: {st:?}"
+        );
+        discard_all(w).await.expect("discard_all");
+        assert_eq!(working_status(w).await, None, "discard_all left changes");
+    }
+
+    #[tokio::test]
+    async fn staged_diff_and_recent_subjects() {
+        let repo = init_repo();
+        let root = temp_dir();
+        let m = Manager::new(&repo.path, &root.path);
+        let (wt, _) = m
+            .add("LOOP-DIFF", "staged-diff", "main")
+            .await
+            .expect("add");
+        let w = wt.path.as_str();
+        assert_eq!(staged_diff(w).await.expect("staged_diff").trim(), "");
+        write(w, "new.txt", "hello\n");
+        stage(w, &strings(&["new.txt"])).await.expect("stage");
+        let diff = staged_diff(w).await.expect("staged_diff");
+        assert!(
+            diff.contains("new.txt") && diff.contains("+hello"),
+            "{diff}"
+        );
+        let (name, email) = identity(w).await.expect("identity");
+        m.commit_staged(w, "add new.txt helper", &name, &email)
+            .await
+            .expect("commit_staged");
+        let subjects = recent_commit_subjects(w, 5).await;
+        assert_eq!(
+            subjects.first().map(String::as_str),
+            Some("add new.txt helper"),
+            "{subjects:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn unstage_keeps_the_file() {
+        let repo = init_repo();
+        let root = temp_dir();
+        let m = Manager::new(&repo.path, &root.path);
+        let (wt, _) = m.add("LOOP-US", "unstage", "main").await.expect("add");
+        let w = wt.path.as_str();
+        write(w, "s.txt", "s\n");
+        stage(w, &strings(&["s.txt"])).await.expect("stage");
+        unstage(w, &strings(&["s.txt"])).await.expect("unstage");
+        assert!(staged_paths(w).await.expect("staged").is_empty());
+        assert!(
+            std::fs::metadata(format!("{w}/s.txt")).is_ok(),
+            "file should stay on disk, untracked"
+        );
+    }
 
     #[test]
     fn parse_git_ident_splits_name_and_email() {

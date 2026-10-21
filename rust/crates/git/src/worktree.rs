@@ -1911,3 +1911,1359 @@ pub(crate) fn remove_all(path: &str) -> std::io::Result<()> {
         other => other,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testutil::{clean, exists, git, rev_parse, temp_dir, write};
+
+    fn mgr(repo: &str, root: &str) -> Manager {
+        Manager::new(repo, root)
+    }
+
+    #[tokio::test]
+    async fn is_repo_only_for_toplevels() {
+        assert!(!is_repo("").await);
+        let plain = temp_dir();
+        assert!(
+            !is_repo(&plain.path).await,
+            "plain folder must not report as a git repo"
+        );
+        let repo = crate::testutil::init_repo();
+        assert!(
+            is_repo(&repo.path).await,
+            "{} should be a git repo",
+            repo.path
+        );
+        // A nested folder sits inside a work tree but is not a workspace host.
+        let sub = format!("{}/nested", repo.path);
+        std::fs::create_dir(&sub).expect("mkdir");
+        assert!(
+            !is_repo(&sub).await,
+            "subdir {sub} must not count as a project root"
+        );
+    }
+
+    #[tokio::test]
+    async fn repo_root_resolves_nested_paths() {
+        let plain = temp_dir();
+        assert_eq!(repo_root(&plain.path).await, None);
+        let repo = crate::testutil::init_repo();
+        let top = repo_root(&repo.path).await.expect("repo_root(repo)");
+        let want = gopath::eval_symlinks(&repo.path).unwrap_or_default();
+        assert!(
+            top == want || top == gopath::clean(&repo.path),
+            "repo_root = {top}, want {want}"
+        );
+        write(&repo.path, "nested/a.txt", "x\n");
+        let from_file = repo_root(&format!("{}/nested/a.txt", repo.path)).await;
+        assert_eq!(from_file.as_deref(), Some(top.as_str()));
+    }
+
+    fn flip_case(p: &str) -> String {
+        let mut b = p.as_bytes().to_vec();
+        for i in (0..b.len()).rev() {
+            if b[i].is_ascii_lowercase() {
+                b[i] = b[i].to_ascii_uppercase();
+                break;
+            }
+            if b[i].is_ascii_uppercase() {
+                b[i] = b[i].to_ascii_lowercase();
+                break;
+            }
+        }
+        String::from_utf8(b).unwrap_or_else(|_| p.to_string())
+    }
+
+    #[test]
+    fn path_has_prefix_cases() {
+        assert!(path_has_prefix("/foo/bar", "/foo"));
+        assert!(!path_has_prefix("/foobar", "/foo"));
+        assert!(path_has_prefix("/foo", "/foo"));
+        let tmp = temp_dir();
+        let dir = tmp.path.clone();
+        let alt = flip_case(&dir);
+        if alt == dir || std::fs::metadata(&alt).is_err() {
+            return; // case-sensitive volume: folding must not invent a match
+        }
+        std::fs::create_dir(format!("{dir}/bar")).expect("mkdir");
+        let child = format!("{alt}/bar");
+        assert!(
+            path_has_prefix(&child, &dir),
+            "path_has_prefix({child}, {dir}) on a case-insensitive volume"
+        );
+        assert!(same_path(&alt, &dir));
+        assert_eq!(align_under_root(&child, &dir), format!("{dir}/bar"));
+    }
+
+    #[tokio::test]
+    async fn add_list_remove() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m.add("LOOP-1", "rate-limit", "main").await.expect("add");
+        assert_eq!(wt.branch, "recur/rate-limit");
+        assert!(exists(&wt.path), "worktree dir not created");
+        let list = m.list().await.expect("list");
+        let found = list.iter().find(|w| clean(&w.path) == clean(&wt.path));
+        assert_eq!(
+            found.map(|w| w.branch.as_str()),
+            Some("recur/rate-limit"),
+            "added worktree not listed: {list:?}"
+        );
+        m.remove(&wt.path).await.expect("remove");
+        assert!(!exists(&wt.path), "worktree dir still present after remove");
+    }
+
+    #[test]
+    fn worktree_rel_path_cases() {
+        for (id, want) in [
+            ("recur.flaky-ramen", "recur/flaky-ramen"),
+            ("flaky-ramen", "flaky-ramen"),
+            ("LOOP-1", "LOOP-1"),
+            ("my-app.bubbly-pretzel-2", "my-app/bubbly-pretzel-2"),
+            ("", ""),
+        ] {
+            assert_eq!(worktree_rel_path(id), want, "worktree_rel_path({id:?})");
+        }
+        assert_eq!(workspace_slug("recur.flaky-ramen"), "flaky-ramen");
+        assert_eq!(workspace_slug("flaky-ramen"), "flaky-ramen");
+    }
+
+    #[tokio::test]
+    async fn add_nested_project_layout() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m
+            .add("kitchen.bubbly-pretzel", "bubbly-pretzel", "main")
+            .await
+            .expect("add");
+        let want = format!("{}/kitchen/bubbly-pretzel", root.path);
+        assert_eq!(wt.path, want);
+        assert_eq!(wt.branch, "recur/bubbly-pretzel");
+        assert!(exists(&want), "nested dir missing");
+        m.remove(&wt.path).await.expect("remove");
+        assert!(!exists(&want), "nested worktree still present");
+        assert!(
+            !exists(&format!("{}/kitchen", root.path)),
+            "empty project dir not pruned"
+        );
+    }
+
+    #[test]
+    fn validate_managed_workspace_id_cases() {
+        for id in [
+            "flaky-ramen",
+            "kitchen.bubbly-pretzel",
+            "LOOP-1",
+            "my-app.x-2",
+        ] {
+            assert!(
+                validate_managed_workspace_id(id).is_ok(),
+                "{id} should be valid"
+            );
+        }
+        for id in ["", ".", "..", "../escape", "foo/bar", "foo\\bar"] {
+            assert!(
+                validate_managed_workspace_id(id).is_err(),
+                "{id:?} should be invalid"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn current_branch_follows_renames() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m.add("LOOP-CB", "cb", "main").await.expect("add");
+        assert_eq!(current_branch(&wt.path).await.expect("current"), "recur/cb");
+        git(&wt.path, &["branch", "-m", "renamed/feature"]);
+        assert_eq!(
+            current_branch(&wt.path).await.expect("current"),
+            "renamed/feature"
+        );
+        assert!(current_branch("").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn sanitize_branch_name_cases() {
+        for (input, want) in [
+            ("add-dark-mode", "recur/add-dark-mode"),
+            ("Add Dark Mode", "recur/add-dark-mode"),
+            ("recur/already-prefixed", "recur/already-prefixed"),
+            ("feature/foo", "feature/foo"),
+            ("Fix bug.", "recur/fix-bug"),
+            (".net support", "recur/net-support"),
+            ("fix db.lock", "recur/fix-db"),
+        ] {
+            assert_eq!(
+                sanitize_branch_name(input).await.expect(input),
+                want,
+                "sanitize_branch_name({input:?})"
+            );
+        }
+        assert!(sanitize_branch_name("   ").await.is_err());
+    }
+
+    #[test]
+    fn prefixed_branch_cases() {
+        for (prefix, slug, want) in [
+            ("recur", "rate-limit", "recur/rate-limit"),
+            ("", "rate-limit", "rate-limit"),
+            ("josh", "rate-limit", "josh/rate-limit"),
+            ("/josh/", "/rate-limit/", "josh/rate-limit"),
+        ] {
+            assert_eq!(prefixed_branch(prefix, slug), want);
+        }
+    }
+
+    #[test]
+    fn normalize_branch_prefix_cases() {
+        for (input, want) in [
+            ("", ""),
+            ("  ", ""),
+            ("Recur", "recur"),
+            ("My User", "my-user"),
+            ("foo/bar", "foo/bar"),
+        ] {
+            assert_eq!(
+                normalize_branch_prefix(input),
+                want,
+                "normalize_branch_prefix({input:?})"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn sanitize_branch_name_with_prefix_cases() {
+        for (prefix, input, want) in [
+            ("josh", "add-dark-mode", "josh/add-dark-mode"),
+            ("", "add-dark-mode", "add-dark-mode"),
+            ("josh", "feature/foo", "feature/foo"),
+            ("MyUser", "Add Dark Mode", "myuser/add-dark-mode"),
+        ] {
+            let got = sanitize_branch_name_with_prefix(prefix, input)
+                .await
+                .expect(input);
+            assert_eq!(
+                got, want,
+                "sanitize_branch_name_with_prefix({prefix:?}, {input:?})"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn add_uses_branch_prefix() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let (custom, _) = mgr(&repo.path, &root.path)
+            .with_branch_prefix("josh")
+            .add("p.custom-ws", "custom-ws", "main")
+            .await
+            .expect("add");
+        assert_eq!(custom.branch, "josh/custom-ws");
+        let (none, _) = mgr(&repo.path, &root.path)
+            .with_branch_prefix("")
+            .add("p.none-ws", "none-ws", "main")
+            .await
+            .expect("add");
+        assert_eq!(none.branch, "none-ws");
+    }
+
+    #[tokio::test]
+    async fn add_rejects_prefix_that_exists_as_branch() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        mgr(&repo.path, &root.path)
+            .run(["branch", "josh"])
+            .await
+            .expect("git branch josh");
+        let err = mgr(&repo.path, &root.path)
+            .with_branch_prefix("josh")
+            .add("p.collide-ws", "collide-ws", "main")
+            .await
+            .expect_err("prefix blocked by a branch must fail");
+        assert!(
+            err.message().contains("josh") && err.message().contains("blocks"),
+            "{err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn rename_branch_cases() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m.add("LOOP-RB", "rb", "main").await.expect("add");
+        assert_eq!(
+            rename_branch(&wt.path, "add-dark-mode")
+                .await
+                .expect("rename"),
+            "recur/add-dark-mode"
+        );
+        assert_eq!(
+            current_branch(&wt.path).await.expect("current"),
+            "recur/add-dark-mode"
+        );
+        assert_eq!(
+            rename_branch(&wt.path, "add-dark-mode")
+                .await
+                .expect("idempotent"),
+            "recur/add-dark-mode"
+        );
+        git(&wt.path, &["branch", "recur/taken"]);
+        assert!(
+            rename_branch(&wt.path, "taken").await.is_err(),
+            "rename onto an existing branch must fail"
+        );
+    }
+
+    #[tokio::test]
+    async fn list_local_branches_includes_new() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        m.run(["branch", "feature/x"]).await.expect("branch");
+        let branches = m.list_local_branches().await.expect("list");
+        assert!(
+            branches.contains(&"main".into()) && branches.contains(&"feature/x".into()),
+            "{branches:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn add_empty_repo_creates_initial_commit() {
+        let dir = temp_dir();
+        let d = dir.path.as_str();
+        git(d, &["init", "-b", "main"]);
+        git(d, &["config", "user.name", "test"]);
+        git(d, &["config", "user.email", "test@example.com"]);
+        // An untracked file the initial commit must not pick up.
+        write(d, "scratch.txt", "leave me\n");
+        let root = temp_dir();
+        let m = mgr(d, &root.path);
+        let (wt, _) = m
+            .add("LOOP-EMPTY", "first-task", "main")
+            .await
+            .expect("add on empty repo");
+        assert_eq!(wt.branch, "recur/first-task");
+        assert!(
+            m.commit_exists("main").await,
+            "expected an initial commit on main"
+        );
+        let author = m
+            .run(["log", "-1", "--format=%an <%ae>"])
+            .await
+            .expect("log");
+        assert_eq!(author.trim(), "test <test@example.com>");
+        let st = m.run(["status", "--porcelain"]).await.expect("status");
+        assert!(
+            st.contains("scratch.txt"),
+            "scratch.txt should stay untracked: {st}"
+        );
+        let tracked = m
+            .run(["-C", wt.path.as_str(), "ls-files"])
+            .await
+            .unwrap_or_default();
+        assert!(
+            !tracked.contains("scratch.txt"),
+            "initial commit must not include untracked files"
+        );
+    }
+
+    #[tokio::test]
+    async fn add_is_idempotent() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt1, created1) = m
+            .add("LOOP-2", "feature-x", "main")
+            .await
+            .expect("first add");
+        assert!(created1, "first add should report created");
+        let (wt2, created2) = m
+            .add("LOOP-2", "feature-x", "main")
+            .await
+            .expect("second add");
+        assert!(!created2, "second add should report not created");
+        assert_eq!(clean(&wt1.path), clean(&wt2.path));
+    }
+
+    #[tokio::test]
+    async fn add_does_not_reuse_leftover_branch() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt1, _) = m.add("first-ws", "feature-x", "main").await.expect("add");
+        write(&wt1.path, "stale.txt", "old work\n");
+        m.commit(&wt1.path, "stale work", "test", "test@example.com")
+            .await
+            .expect("commit");
+        let stale_head = rev_parse(&repo.path, "recur/feature-x");
+        let main_head = rev_parse(&repo.path, "main");
+        assert_ne!(stale_head, main_head);
+        m.remove(&wt1.path).await.expect("remove");
+        let (wt2, created) = m
+            .add("second-ws", "feature-x", "main")
+            .await
+            .expect("add over leftover");
+        assert!(created);
+        assert_eq!(wt2.branch, "recur/feature-x-2");
+        assert_eq!(
+            rev_parse(&repo.path, &wt2.branch),
+            main_head,
+            "new branch must start at main, not the leftover"
+        );
+        assert!(
+            !exists(&format!("{}/stale.txt", wt2.path)),
+            "new worktree must not carry stale.txt"
+        );
+    }
+
+    #[tokio::test]
+    async fn add_skips_taken_numeric_suffixes() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        for b in ["recur/feature-x", "recur/feature-x-2"] {
+            m.run(["branch", b]).await.expect("branch");
+        }
+        let (wt, _) = m.add("third-ws", "feature-x", "main").await.expect("add");
+        assert_eq!(wt.branch, "recur/feature-x-3");
+    }
+
+    #[tokio::test]
+    async fn restore_reuses_existing_branch() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt1, _) = m
+            .add("archived-ws", "archived-ws", "main")
+            .await
+            .expect("add");
+        write(&wt1.path, "kept.txt", "keep me\n");
+        m.commit(&wt1.path, "keep", "test", "test@example.com")
+            .await
+            .expect("commit");
+        let want_head = rev_parse(&repo.path, "recur/archived-ws");
+        m.remove(&wt1.path).await.expect("remove");
+        let (wt2, created) = m
+            .restore("archived-ws", "recur/archived-ws", "main")
+            .await
+            .expect("restore");
+        assert!(created, "restore after remove should allocate a worktree");
+        assert_eq!(wt2.branch, "recur/archived-ws");
+        assert_eq!(rev_parse(&repo.path, &wt2.branch), want_head);
+        assert!(
+            exists(&format!("{}/kept.txt", wt2.path)),
+            "restore should keep the branch's file"
+        );
+    }
+
+    #[tokio::test]
+    async fn restore_empty_branch_uses_default_prefix() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let (wt1, _) = mgr(&repo.path, &root.path)
+            .add("legacy-ws", "legacy-ws", "main")
+            .await
+            .expect("add");
+        write(&wt1.path, "kept.txt", "keep me\n");
+        mgr(&repo.path, &root.path)
+            .commit(&wt1.path, "keep", "test", "test@example.com")
+            .await
+            .expect("commit");
+        let want_head = rev_parse(&repo.path, "recur/legacy-ws");
+        mgr(&repo.path, &root.path)
+            .remove(&wt1.path)
+            .await
+            .expect("remove");
+        let (wt2, _) = mgr(&repo.path, &root.path)
+            .with_branch_prefix("josh")
+            .restore("legacy-ws", "", "main")
+            .await
+            .expect("restore");
+        assert_eq!(
+            wt2.branch, "recur/legacy-ws",
+            "empty branch must restore recur/<slug>, not the live prefix"
+        );
+        assert_eq!(rev_parse(&repo.path, &wt2.branch), want_head);
+    }
+
+    #[tokio::test]
+    async fn restore_uses_recorded_suffixed_branch() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        m.run(["branch", "recur/archived-ws"])
+            .await
+            .expect("leftover");
+        let (wt1, _) = m
+            .add("archived-ws", "archived-ws", "main")
+            .await
+            .expect("add");
+        assert_eq!(wt1.branch, "recur/archived-ws-2");
+        write(&wt1.path, "kept.txt", "keep me\n");
+        m.commit(&wt1.path, "keep", "test", "test@example.com")
+            .await
+            .expect("commit");
+        let want_head = rev_parse(&repo.path, "recur/archived-ws-2");
+        m.remove(&wt1.path).await.expect("remove");
+        let (wt2, _) = m
+            .restore("archived-ws", "recur/archived-ws-2", "main")
+            .await
+            .expect("restore");
+        assert_eq!(wt2.branch, "recur/archived-ws-2");
+        assert_eq!(rev_parse(&repo.path, &wt2.branch), want_head);
+        assert!(exists(&format!("{}/kept.txt", wt2.path)));
+    }
+
+    #[tokio::test]
+    async fn add_at_ref_fast_forwards_ancestor_branch() {
+        let repo = crate::testutil::init_repo();
+        let r = repo.path.as_str();
+        git(r, &["branch", "feat/oauth"]);
+        write(r, "fresh.txt", "new\n");
+        git(r, &["add", "."]);
+        git(r, &["commit", "-m", "fresh"]);
+        let fresh = rev_parse(r, "HEAD");
+        assert_ne!(rev_parse(r, "feat/oauth"), fresh);
+        let root = temp_dir();
+        let (wt, _) = mgr(r, &root.path)
+            .add_at_ref("from-pr", "from-pr", "feat/oauth", &fresh)
+            .await
+            .expect("add_at_ref");
+        assert_eq!(wt.branch, "feat/oauth");
+        assert_eq!(rev_parse(&wt.path, "HEAD"), fresh);
+    }
+
+    #[tokio::test]
+    async fn add_at_ref_falls_back_when_local_diverged() {
+        let repo = crate::testutil::init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "feat/oauth"]);
+        write(r, "stale.txt", "old\n");
+        git(r, &["add", "."]);
+        git(r, &["commit", "-m", "stale"]);
+        let stale = rev_parse(r, "HEAD");
+        git(r, &["checkout", "main"]);
+        write(r, "fresh.txt", "new\n");
+        git(r, &["add", "."]);
+        git(r, &["commit", "-m", "fresh"]);
+        let fresh = rev_parse(r, "HEAD");
+        let root = temp_dir();
+        let (wt, _) = mgr(r, &root.path)
+            .add_at_ref("from-pr", "from-pr", "feat/oauth", &fresh)
+            .await
+            .expect("add_at_ref");
+        assert_ne!(
+            wt.branch, "feat/oauth",
+            "a diverged local branch must not be reused"
+        );
+        assert_eq!(rev_parse(&wt.path, "HEAD"), fresh);
+        assert_eq!(
+            rev_parse(r, "feat/oauth"),
+            stale,
+            "diverged commits must stay reachable"
+        );
+    }
+
+    #[tokio::test]
+    async fn add_at_ref_falls_back_when_branch_checked_out() {
+        let repo = crate::testutil::init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "feat/oauth"]);
+        write(r, "head.txt", "pr\n");
+        git(r, &["add", "."]);
+        git(r, &["commit", "-m", "pr head"]);
+        git(r, &["checkout", "main"]);
+        let root = temp_dir();
+        let m = mgr(r, &root.path);
+        m.add_at_ref("one", "one", "feat/oauth", "feat/oauth")
+            .await
+            .expect("first");
+        let (wt2, _) = m
+            .add_at_ref("two", "two", "feat/oauth", "feat/oauth")
+            .await
+            .expect("second");
+        assert_ne!(wt2.branch, "feat/oauth");
+    }
+
+    #[tokio::test]
+    async fn add_repairs_moved_worktree() {
+        let repo = crate::testutil::init_repo();
+        let old_root = temp_dir();
+        let new_root = temp_dir();
+        let (wt, _) = mgr(&repo.path, &old_root.path)
+            .add("LOOP-moved", "moved-feat", "main")
+            .await
+            .expect("add");
+        let new_path = format!("{}/LOOP-moved", new_root.path);
+        std::fs::rename(&wt.path, &new_path).expect("move worktree");
+        let (reused, _) = mgr(&repo.path, &new_root.path)
+            .add("LOOP-moved", "moved-feat", "main")
+            .await
+            .expect("re-add");
+        assert_eq!(clean(&reused.path), clean(&new_path));
+        assert_eq!(reused.branch, "recur/moved-feat");
+    }
+
+    #[tokio::test]
+    async fn remove_missing_is_no_op() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        mgr(&repo.path, &root.path)
+            .remove(&format!("{}/nope", root.path))
+            .await
+            .expect("no-op remove");
+    }
+
+    #[tokio::test]
+    async fn delete_branch_if_at_base_cases() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m.add("empty-ws", "empty-ws", "main").await.expect("add");
+        m.remove(&wt.path).await.expect("remove");
+        m.delete_branch_if_at_base(&wt.branch, "main")
+            .await
+            .expect("delete");
+        assert!(
+            !m.commit_exists("recur/empty-ws").await,
+            "branch at base should be deleted"
+        );
+
+        let (wt2, _) = m.add("kept-ws", "kept-ws", "main").await.expect("add kept");
+        write(&wt2.path, "work.txt", "x\n");
+        m.commit(&wt2.path, "work", "test", "test@example.com")
+            .await
+            .expect("commit");
+        m.remove(&wt2.path).await.expect("remove kept");
+        m.delete_branch_if_at_base("recur/kept-ws", "main")
+            .await
+            .expect("keep");
+        assert!(
+            m.commit_exists("recur/kept-ws").await,
+            "a branch with unique commits must stay"
+        );
+    }
+
+    #[tokio::test]
+    async fn delete_local_branch_cases() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m.add("del-ws", "del-ws", "main").await.expect("add");
+        write(&wt.path, "work.txt", "x\n");
+        m.commit(&wt.path, "work", "test", "test@example.com")
+            .await
+            .expect("commit");
+        m.remove(&wt.path).await.expect("remove");
+        m.delete_local_branch(&wt.branch).await.expect("delete");
+        assert!(!m.commit_exists(&wt.branch).await);
+        m.delete_local_branch("no-such-branch")
+            .await
+            .expect("missing branch is a no-op");
+    }
+
+    #[tokio::test]
+    async fn remove_wipes_orphan_directory() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let orphan = format!("{}/herbed-ciabatta", root.path);
+        write(&orphan, "stale.txt", "old\n");
+        mgr(&repo.path, &root.path)
+            .remove(&orphan)
+            .await
+            .expect("remove orphan");
+        assert!(!exists(&orphan), "orphan dir still present");
+    }
+
+    #[tokio::test]
+    async fn remove_refuses_path_outside_managed_root() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let outside = temp_dir();
+        write(&outside.path, "keep.txt", "safe\n");
+        assert!(
+            m.remove(&outside.path).await.is_err(),
+            "remove outside the root must fail"
+        );
+        assert!(
+            exists(&format!("{}/keep.txt", outside.path)),
+            "remove must not touch outside paths"
+        );
+        assert!(
+            m.remove(&root.path).await.is_err(),
+            "removing the managed root itself must fail"
+        );
+    }
+
+    #[tokio::test]
+    async fn remove_locked_worktree() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m.add("locked-ws", "locked-ws", "main").await.expect("add");
+        git(&repo.path, &["worktree", "lock", wt.path.as_str()]);
+        m.remove(&wt.path).await.expect("remove locked");
+        assert!(!exists(&wt.path));
+        assert!(
+            matches!(m.worktree_at(&wt.path).await, Ok(None)),
+            "locked worktree still registered"
+        );
+        let (wt2, created) = m
+            .add("locked-ws", "locked-ws", "main")
+            .await
+            .expect("re-add");
+        assert!(created, "expected a fresh worktree");
+        assert!(exists(&format!("{}/README.md", wt2.path)));
+    }
+
+    #[tokio::test]
+    async fn add_wipes_orphan_then_creates_fresh() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let orphan = format!("{}/herbed-ciabatta", root.path);
+        write(&orphan, "stale.txt", "old\n");
+        let (wt, created) = mgr(&repo.path, &root.path)
+            .add("herbed-ciabatta", "herbed-ciabatta", "main")
+            .await
+            .expect("add");
+        assert!(created);
+        assert!(
+            !exists(&format!("{}/stale.txt", wt.path)),
+            "leftover must not survive"
+        );
+        assert!(exists(&format!("{}/README.md", wt.path)));
+    }
+
+    #[test]
+    fn discard_risk_summary() {
+        for (r, want) in [
+            (DiscardRisk::default(), ""),
+            (
+                DiscardRisk {
+                    dirty_count: 1,
+                    unmerged: false,
+                },
+                "1 uncommitted change",
+            ),
+            (
+                DiscardRisk {
+                    dirty_count: 3,
+                    unmerged: false,
+                },
+                "3 uncommitted changes",
+            ),
+            (
+                DiscardRisk {
+                    dirty_count: 0,
+                    unmerged: true,
+                },
+                "unmerged changes",
+            ),
+            (
+                DiscardRisk {
+                    dirty_count: 2,
+                    unmerged: true,
+                },
+                "unmerged + dirty",
+            ),
+        ] {
+            assert_eq!(r.summary(), want, "{r:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn inspect_discard_risk_cases() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let (wt, _) = mgr(&repo.path, &root.path)
+            .add("risk-ws", "risk-ws", "main")
+            .await
+            .expect("add");
+        assert_eq!(inspect_discard_risk(&wt.path).await.summary(), "");
+        write(&wt.path, "dirty.txt", "x\n");
+        let risk = inspect_discard_risk(&wt.path).await;
+        assert!(
+            risk.dirty_count >= 1 && !risk.summary().is_empty(),
+            "{risk:?}"
+        );
+        assert_eq!(
+            inspect_discard_risk(&format!("{}/missing", root.path))
+                .await
+                .summary(),
+            ""
+        );
+    }
+
+    #[tokio::test]
+    async fn commit_stages_and_counts_diff() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m.add("LOOP-C", "commit-test", "main").await.expect("add");
+        let res = m
+            .commit(&wt.path, "noop", "Coder", "coder@recur.local")
+            .await
+            .expect("noop commit");
+        assert!(!res.committed, "a clean worktree must not commit: {res:?}");
+        write(&wt.path, "new.txt", "a\nb\nc\n");
+        let res = m
+            .commit(
+                &wt.path,
+                "recur(Coder): iteration 1 — add file",
+                "Coder",
+                "coder@recur.local",
+            )
+            .await
+            .expect("commit");
+        assert!(res.committed && !res.hash.is_empty(), "{res:?}");
+        assert_eq!(res.additions, 3);
+        let out = m
+            .run_in(&wt.path, ["log", "-1", "--pretty=%an|%s"])
+            .await
+            .expect("log");
+        assert_eq!(out.trim(), "Coder|recur(Coder): iteration 1 — add file");
+    }
+
+    #[tokio::test]
+    async fn commits_behind_and_ahead() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m
+            .add("LOOP-BEHIND", "feature-behind", "main")
+            .await
+            .expect("add");
+        assert_eq!(m.commits_behind(&wt.path, "main").await.expect("behind"), 0);
+        assert_eq!(m.commits_ahead(&wt.path, "main").await.expect("ahead"), 0);
+        write(&repo.path, "extra.txt", "base moved\n");
+        git(&repo.path, &["add", "extra.txt"]);
+        git(&repo.path, &["commit", "-m", "advance main"]);
+        assert_eq!(m.commits_behind(&wt.path, "main").await.expect("behind"), 1);
+        assert_eq!(m.commits_ahead(&wt.path, "main").await.expect("ahead"), 0);
+        write(&wt.path, "feature.txt", "own commit\n");
+        assert!(
+            m.commit(&wt.path, "add feature", "Coder", "coder@recur.local")
+                .await
+                .expect("commit")
+                .committed
+        );
+        assert_eq!(m.commits_ahead(&wt.path, "main").await.expect("ahead"), 1);
+    }
+
+    // --- merge_test.go ---
+
+    async fn add_branch_commit(
+        m: &Manager,
+        id: &str,
+        branch: &str,
+        file: &str,
+        content: &str,
+    ) -> (Worktree, String) {
+        let (wt, _) = m.add(id, branch, "main").await.expect("add");
+        write(&wt.path, file, content);
+        let res = m
+            .commit(
+                &wt.path,
+                &format!("recur(Coder): {file}"),
+                "Coder",
+                "coder@recur.local",
+            )
+            .await
+            .expect("commit");
+        assert!(res.committed);
+        let head = m.ref_hash(&wt.branch).await;
+        (wt, head)
+    }
+
+    async fn commit_count(m: &Manager, r: &str) -> i64 {
+        m.run(["rev-list", "--count", r])
+            .await
+            .expect("rev-list")
+            .trim()
+            .parse()
+            .expect("count")
+    }
+
+    async fn commit_in_repo(m: &Manager, file: &str) {
+        let id = ["-c", "user.name=test", "-c", "user.email=test@example.com"];
+        m.run(id.iter().copied().chain(["add", file]))
+            .await
+            .expect("add");
+        m.run(id.iter().copied().chain(["commit", "-m", "base moved"]))
+            .await
+            .expect("commit");
+    }
+
+    #[tokio::test]
+    async fn merge_commit_preserves_topology() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let base_before = m.ref_hash("main").await;
+        let (wt, branch_head) =
+            add_branch_commit(&m, "LOOP-mc", "merge-feature", "mc.txt", "merge commit\n").await;
+        let mr = m
+            .merge(&wt.branch, "main", &format!("Merge {}", wt.branch), "merge")
+            .await
+            .expect("merge");
+        let base_after = m.ref_hash("main").await;
+        assert_ne!(base_after, base_before, "base ref did not advance");
+        assert_eq!(mr.new_head, base_after);
+        assert!(!mr.fast_forward);
+        assert_ne!(
+            base_after, branch_head,
+            "--no-ff merge commit should differ from the branch head"
+        );
+        let author = m
+            .run(["log", "-1", "--format=%an <%ae>"])
+            .await
+            .expect("log");
+        assert_eq!(
+            author.trim(),
+            "test <test@example.com>",
+            "merge author is the user's git config"
+        );
+    }
+
+    #[tokio::test]
+    async fn squash_merge_lands_one_commit() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let before = commit_count(&m, "main").await;
+        let (wt, _) =
+            add_branch_commit(&m, "LOOP-sq", "squash-feature", "sq.txt", "squash\n").await;
+        write(&wt.path, "sq2.txt", "second\n");
+        m.commit(
+            &wt.path,
+            "recur(Coder): sq2.txt",
+            "Coder",
+            "coder@recur.local",
+        )
+        .await
+        .expect("second commit");
+        let mr = m
+            .merge(
+                &wt.branch,
+                "main",
+                &format!("Squash {}", wt.branch),
+                "squash",
+            )
+            .await
+            .expect("squash");
+        assert!(!mr.new_head.is_empty());
+        assert_eq!(commit_count(&m, "main").await, before + 1);
+    }
+
+    #[tokio::test]
+    async fn squash_merge_dirty_base_checkout() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = add_branch_commit(&m, "LOOP-sqd", "squash-dirty", "feat.txt", "feat\n").await;
+        write(&wt.path, "README.md", "from branch\n");
+        m.commit(
+            &wt.path,
+            "recur(Coder): README.md",
+            "Coder",
+            "coder@recur.local",
+        )
+        .await
+        .expect("commit");
+        write(&repo.path, "README.md", "local dirty\n");
+        let err = m
+            .merge(
+                &wt.branch,
+                "main",
+                &format!("Squash {}", wt.branch),
+                "squash",
+            )
+            .await
+            .expect_err("dirty base");
+        let dirty = err.dirty_base().expect("want DirtyBaseError");
+        assert_eq!(dirty.base, "main");
+        assert!(
+            dirty.files.contains(&"README.md".to_string()),
+            "{:?}",
+            dirty.files
+        );
+        let msg = err.to_string();
+        assert!(
+            !msg.contains("git merge --squash") && !msg.contains("exit status"),
+            "{msg}"
+        );
+        assert!(
+            msg.contains("project folder") && msg.contains("README.md"),
+            "{msg}"
+        );
+        let got = std::fs::read_to_string(format!("{}/README.md", repo.path)).expect("read");
+        assert_eq!(got.trim(), "local dirty");
+    }
+
+    #[tokio::test]
+    async fn rebase_merge_dirty_base_checkout() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = add_branch_commit(&m, "LOOP-rbd", "rebase-dirty", "feat.txt", "feat\n").await;
+        write(&wt.path, "README.md", "from branch\n");
+        m.commit(
+            &wt.path,
+            "recur(Coder): README.md",
+            "Coder",
+            "coder@recur.local",
+        )
+        .await
+        .expect("commit");
+        write(&repo.path, "README.md", "local dirty\n");
+        let base_before = m.ref_hash("main").await;
+        let err = m
+            .merge(&wt.branch, "main", "", "rebase")
+            .await
+            .expect_err("dirty base");
+        let dirty = err.dirty_base().expect("want DirtyBaseError");
+        assert!(
+            dirty.files.contains(&"README.md".to_string()),
+            "{:?}",
+            dirty.files
+        );
+        let got = std::fs::read_to_string(format!("{}/README.md", repo.path)).expect("read");
+        assert_eq!(
+            got.trim(),
+            "local dirty",
+            "uncommitted work must be preserved"
+        );
+        assert_eq!(
+            m.ref_hash("main").await,
+            base_before,
+            "a dirty refusal must not move main"
+        );
+    }
+
+    #[tokio::test]
+    async fn rebase_merge_conflict_preserves_unrelated_dirty() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        write(&repo.path, "notes.txt", "committed notes\n");
+        m.run(["add", "notes.txt"]).await.expect("add");
+        m.run(["commit", "-m", "notes"]).await.expect("commit");
+        let (wt, _) =
+            add_branch_commit(&m, "LOOP-rbc", "rebase-conflict", "feat.txt", "feat\n").await;
+        write(&wt.path, "README.md", "from branch\n");
+        m.commit(
+            &wt.path,
+            "recur(Coder): README.md",
+            "Coder",
+            "coder@recur.local",
+        )
+        .await
+        .expect("commit");
+        write(&repo.path, "README.md", "from main\n");
+        m.run(["add", "README.md"]).await.expect("add");
+        m.run(["commit", "-m", "main README"])
+            .await
+            .expect("commit");
+        let base_before = m.ref_hash("main").await;
+        write(&repo.path, "notes.txt", "UNRELATED DIRTY WORK\n");
+        let err = m
+            .merge(&wt.branch, "main", "", "rebase")
+            .await
+            .expect_err("conflict");
+        assert!(
+            err.dirty_base().is_none(),
+            "want a conflict, not DirtyBaseError: {err}"
+        );
+        assert_eq!(m.ref_hash("main").await, base_before, "conflict moved main");
+        let got = std::fs::read_to_string(format!("{}/notes.txt", repo.path)).expect("read");
+        assert_eq!(
+            got.trim(),
+            "UNRELATED DIRTY WORK",
+            "unrelated dirty work must be preserved"
+        );
+    }
+
+    #[test]
+    fn dirty_base_error_text() {
+        let err = DirtyBaseError {
+            base: "main".into(),
+            files: vec!["frontend/bindings/foo.ts".into()],
+        };
+        let got = err.to_string();
+        assert!(
+            got.contains("project folder") && got.contains("main") && got.contains("foo.ts"),
+            "{got}"
+        );
+        assert!(!got.contains("git merge"), "{got}");
+    }
+
+    #[test]
+    fn overwritten_paths_cases() {
+        let tracked = "error: Your local changes to the following files would be overwritten by merge:\n\tfrontend/bindings/recur/internal/app/workspacesservice.ts\nPlease commit your changes or stash them before you merge.\nAborting\nMerge with strategy ort failed.";
+        assert_eq!(
+            overwritten_paths(tracked),
+            vec!["frontend/bindings/recur/internal/app/workspacesservice.ts"]
+        );
+        let untracked = "error: The following untracked working tree files would be overwritten by merge:\n\tuntracked.txt\nPlease move or remove them before you merge.\nAborting";
+        assert_eq!(overwritten_paths(untracked), vec!["untracked.txt"]);
+    }
+
+    #[tokio::test]
+    async fn update_worktree_with_base_merge() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) =
+            add_branch_commit(&m, "LOOP-ubm", "update-merge", "feat.txt", "feature\n").await;
+        write(&repo.path, "base.txt", "from base\n");
+        commit_in_repo(&m, "base.txt").await;
+        let base_head = m.ref_hash("main").await;
+        m.update_worktree_with_base(&wt.path, "main", "merge")
+            .await
+            .expect("update");
+        m.run_in(
+            &wt.path,
+            ["merge-base", "--is-ancestor", base_head.as_str(), "HEAD"],
+        )
+        .await
+        .expect("base tip should be an ancestor after merge");
+        assert_eq!(m.commits_behind(&wt.path, "main").await.expect("behind"), 0);
+        let author = m
+            .run_in(&wt.path, ["log", "-1", "--format=%an <%ae>"])
+            .await
+            .expect("log");
+        assert_eq!(author.trim(), "test <test@example.com>");
+    }
+
+    #[tokio::test]
+    async fn update_worktree_with_base_rebase() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) =
+            add_branch_commit(&m, "LOOP-ubr", "update-rebase", "feat.txt", "feature\n").await;
+        write(&repo.path, "base.txt", "from base\n");
+        commit_in_repo(&m, "base.txt").await;
+        let base_head = m.ref_hash("main").await;
+        m.update_worktree_with_base(&wt.path, "main", "rebase")
+            .await
+            .expect("update");
+        m.run_in(
+            &wt.path,
+            ["merge-base", "--is-ancestor", base_head.as_str(), "HEAD"],
+        )
+        .await
+        .expect("base tip should be an ancestor after rebase");
+        let parents = m
+            .run_in(&wt.path, ["rev-list", "--parents", "-n", "1", "HEAD"])
+            .await
+            .expect("rev-list");
+        assert!(
+            parents.split_whitespace().count() <= 2,
+            "expected linear history, got {parents}"
+        );
+    }
+
+    #[tokio::test]
+    async fn update_worktree_with_base_conflict_aborts_clean() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = add_branch_commit(
+            &m,
+            "LOOP-ubc",
+            "update-conflict",
+            "same.txt",
+            "branch side\n",
+        )
+        .await;
+        write(&repo.path, "same.txt", "base side\n");
+        commit_in_repo(&m, "same.txt").await;
+        assert!(
+            m.update_worktree_with_base(&wt.path, "main", "merge")
+                .await
+                .is_err(),
+            "expected a conflict"
+        );
+        assert!(
+            m.is_clean(&wt.path).await.expect("is_clean"),
+            "worktree should be clean after the abort"
+        );
+    }
+
+    #[tokio::test]
+    async fn rebase_merge_is_linear() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let before = commit_count(&m, "main").await;
+        let (wt, _) =
+            add_branch_commit(&m, "LOOP-rb", "rebase-feature", "rb.txt", "rebase\n").await;
+        let mr = m
+            .merge(&wt.branch, "main", "", "rebase")
+            .await
+            .expect("rebase merge");
+        assert!(mr.fast_forward);
+        assert_eq!(commit_count(&m, "main").await, before + 1);
+    }
+
+    #[tokio::test]
+    async fn merge_into_worktree() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (parent, _) = m
+            .add("LOOP-parent", "parent", "main")
+            .await
+            .expect("add parent");
+        let (child_a, _) = m
+            .add("LOOP-childa", "child-a", &parent.branch)
+            .await
+            .expect("add child A");
+        write(&child_a.path, "a.txt", "from a\n");
+        m.commit(&child_a.path, "step A", "test", "test@example.com")
+            .await
+            .expect("commit A");
+        let conflicts = m
+            .merge_into(
+                &parent.path,
+                &child_a.branch,
+                "Merge step A",
+                "test",
+                "test@example.com",
+            )
+            .await
+            .expect("merge A");
+        assert!(conflicts.is_empty(), "{conflicts:?}");
+        assert!(exists(&format!("{}/a.txt", parent.path)));
+        let subject = m
+            .run_in(&parent.path, ["log", "-1", "--format=%s"])
+            .await
+            .unwrap_or_default();
+        assert_eq!(subject.trim(), "Merge step A");
+
+        let (child_b, _) = m
+            .add("LOOP-childb", "child-b", &parent.branch)
+            .await
+            .expect("add child B");
+        write(&child_b.path, "README.md", "child B says hi\n");
+        m.commit(&child_b.path, "step B", "test", "test@example.com")
+            .await
+            .expect("commit B");
+        write(&parent.path, "README.md", "parent says hi\n");
+        m.commit(&parent.path, "parent edit", "test", "test@example.com")
+            .await
+            .expect("commit parent");
+        let conflicts = m
+            .merge_into(
+                &parent.path,
+                &child_b.branch,
+                "Merge step B",
+                "test",
+                "test@example.com",
+            )
+            .await
+            .expect("merge B");
+        assert_eq!(conflicts, vec!["README.md"]);
+        assert!(
+            m.merge_head(&parent.path).await,
+            "merge should be left in progress"
+        );
+        write(&parent.path, "README.md", "both say hi\n");
+        let res = m
+            .commit(&parent.path, "resolve", "test", "test@example.com")
+            .await
+            .expect("resolve");
+        assert!(res.committed);
+        assert!(
+            !m.merge_head(&parent.path).await,
+            "MERGE_HEAD should be gone after resolving"
+        );
+        let parents = m
+            .run_in(&parent.path, ["log", "-1", "--format=%P"])
+            .await
+            .unwrap_or_default();
+        assert_eq!(
+            parents.split_whitespace().count(),
+            2,
+            "resolving commit should be a merge: {parents}"
+        );
+    }
+
+    #[tokio::test]
+    async fn commit_concludes_ours_only_merge() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (parent, _) = m
+            .add("LOOP-ours", "parent-ours", "main")
+            .await
+            .expect("add parent");
+        let (child, _) = m
+            .add("LOOP-ourschild", "child-ours", &parent.branch)
+            .await
+            .expect("add child");
+        write(&child.path, "README.md", "child says hi\n");
+        m.commit(&child.path, "child edit", "test", "test@example.com")
+            .await
+            .expect("commit child");
+        write(&parent.path, "README.md", "parent says hi\n");
+        m.commit(&parent.path, "parent edit", "test", "test@example.com")
+            .await
+            .expect("commit parent");
+        let conflicts = m
+            .merge_into(
+                &parent.path,
+                &child.branch,
+                "Merge child",
+                "test",
+                "test@example.com",
+            )
+            .await
+            .expect("merge");
+        assert_eq!(conflicts, vec!["README.md"]);
+        write(&parent.path, "README.md", "parent says hi\n");
+        let res = m
+            .commit(&parent.path, "keep ours", "test", "test@example.com")
+            .await
+            .expect("commit");
+        assert!(
+            res.committed,
+            "an ours-only resolution must still commit the merge"
+        );
+        assert!(!m.merge_head(&parent.path).await);
+        let parents = m
+            .run_in(&parent.path, ["log", "-1", "--format=%P"])
+            .await
+            .unwrap_or_default();
+        assert_eq!(parents.split_whitespace().count(), 2, "{parents}");
+    }
+
+    #[test]
+    fn parse_porcelain_worktrees() {
+        let out = "worktree /repo\nHEAD abc\nbranch refs/heads/main\n\nworktree /wt/a\nHEAD def\ndetached\n\n";
+        let list = parse_porcelain(out);
+        assert_eq!(
+            list,
+            vec![
+                Worktree {
+                    path: "/repo".into(),
+                    branch: "main".into(),
+                    head: "abc".into()
+                },
+                Worktree {
+                    path: "/wt/a".into(),
+                    branch: String::new(),
+                    head: "def".into()
+                },
+            ]
+        );
+    }
+}

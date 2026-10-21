@@ -280,6 +280,17 @@ fn fold_eq(c: char, d: char) -> bool {
     lower(c) == lower(d) || upper(c) == upper(d)
 }
 
+/// Go `*strconv.NumError` text for a failed integer parse.
+pub(crate) fn num_error(func: &str, s: &str, e: &std::num::ParseIntError) -> String {
+    let reason = match e.kind() {
+        std::num::IntErrorKind::PosOverflow | std::num::IntErrorKind::NegOverflow => {
+            "value out of range"
+        }
+        _ => "invalid syntax",
+    };
+    format!("strconv.{func}: parsing {}: {reason}", quote(s))
+}
+
 /// Go `strconv.Atoi`.
 pub(crate) fn atoi(s: &str) -> Option<i64> {
     s.parse().ok()

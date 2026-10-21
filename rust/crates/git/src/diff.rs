@@ -191,11 +191,12 @@ impl Manager {
             .run_in(worktree, ["rev-list", "--count", spec])
             .await
             .map_err(|e| e.wrap(format!("git rev-list {spec}")))?;
-        let n = out.trim().parse::<i64>().map_err(|e| {
+        let s = out.trim();
+        let n = s.parse::<i64>().map_err(|e| {
             Error::msg(format!(
-                "parse rev-list count {}: strconv.Atoi: parsing {}: {e}",
-                crate::text::quote(out.trim()),
-                crate::text::quote(out.trim())
+                "parse rev-list count {}: {}",
+                crate::text::quote(s),
+                crate::text::num_error("Atoi", s, &e)
             ))
         })?;
         Ok(n.max(0))
@@ -761,5 +762,627 @@ fn range_pair(r: &str) -> (i64, i64) {
     match r.split_once(',') {
         Some((s, c)) => (atoi(s).unwrap_or(0), atoi(c).unwrap_or(1)),
         None => (atoi(r).unwrap_or(0), 1),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+    use crate::testutil::{commit_as_coder, git, git_as, init_repo, temp_dir, write, write_bytes};
+
+    fn mgr(repo: &str) -> (Manager, crate::testutil::Dir) {
+        let root = temp_dir();
+        (Manager::new(repo, &root.path), root)
+    }
+
+    fn lines(f: &FileDiff) -> &[DiffLine] {
+        f.lines.as_deref().unwrap_or_default()
+    }
+
+    #[tokio::test]
+    async fn diff_pr_shapes() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "recur/feature"]);
+        write(r, "README.md", "hello world\nsecond line\n");
+        write(r, "feature.txt", "alpha\nbeta\n");
+        commit_as_coder(r, "recur(Coder): iteration 1 — add a feature");
+        let (m, _root) = mgr(r);
+
+        let pr = m.diff_pr(r, "main").await.expect("diff_pr");
+        assert_eq!(pr.files.len(), 2, "{:?}", pr.files);
+        let by: HashMap<&str, &FileDiff> = pr.files.iter().map(|f| (f.path.as_str(), f)).collect();
+        let readme = by["README.md"];
+        assert_eq!(readme.status, "m");
+        let (mut hunk, mut add, mut del) = (false, false, false);
+        for l in lines(readme) {
+            match l.r#type.as_str() {
+                "hunk" => {
+                    hunk = true;
+                    assert!(
+                        l.code_html.starts_with("Line"),
+                        "hunk label should be GitHub-style: {}",
+                        l.code_html
+                    );
+                    assert!(
+                        !l.code_html.contains("@@"),
+                        "hunk label must not show raw @@: {}",
+                        l.code_html
+                    );
+                }
+                "add" => {
+                    add = true;
+                    assert!(!l.new.is_empty() && l.old.is_empty(), "{l:?}");
+                }
+                "del" => {
+                    del = true;
+                    assert!(!l.old.is_empty() && l.new.is_empty(), "{l:?}");
+                }
+                _ => {}
+            }
+        }
+        assert!(
+            hunk && add && del,
+            "README diff missing line kinds: {:?}",
+            readme.lines
+        );
+        let feat = by["feature.txt"];
+        assert_eq!(feat.status, "a");
+        assert_eq!((feat.diff.add, feat.diff.del), (2, 0));
+        let new_lines: Vec<&str> = lines(feat)
+            .iter()
+            .filter(|l| l.r#type == "add")
+            .map(|l| l.new.as_str())
+            .collect();
+        assert_eq!(new_lines, vec!["1", "2"]);
+        assert!(pr.add > 0);
+
+        let commits = m.log_commits(r, "main").await.expect("log_commits");
+        assert_eq!(commits.len(), 1, "{commits:?}");
+        let c = &commits[0];
+        assert_eq!(
+            (c.author_role.as_str(), c.agent_code.as_str()),
+            ("Coder", "CO")
+        );
+        assert_eq!(c.iter_label, "iteration 1");
+        assert!(c.diff.add > 0);
+        assert_eq!(
+            m.commit_diff(r, &c.hash).await.expect("commit_diff").len(),
+            2
+        );
+    }
+
+    #[tokio::test]
+    async fn diff_working_vs_base_includes_uncommitted() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "recur/feature"]);
+        write(r, "feature.txt", "alpha\n");
+        commit_as_coder(r, "add feature");
+        write(r, "feature.txt", "alpha\nbeta\n");
+        write(r, "scratch.txt", "untracked\n");
+        let (m, _root) = mgr(r);
+
+        let pr = m.diff_pr(r, "main").await.expect("diff_pr");
+        assert!(
+            pr.files.len() == 1 && pr.files[0].path == "feature.txt",
+            "{:?}",
+            pr.files
+        );
+        let got = m
+            .diff_working_vs_base(r, "main")
+            .await
+            .expect("working vs base");
+        let by: HashMap<&str, &FileDiff> = got.files.iter().map(|f| (f.path.as_str(), f)).collect();
+        assert!(by.contains_key("feature.txt"));
+        let scratch = by["scratch.txt"];
+        assert_eq!(scratch.status, "a");
+        assert!(scratch.diff.add >= 1);
+        let head_only = m.diff_working_vs_base(r, "").await.expect("vs HEAD");
+        let paths: Vec<&str> = head_only.files.iter().map(|f| f.path.as_str()).collect();
+        assert!(
+            paths.contains(&"feature.txt") && paths.contains(&"scratch.txt"),
+            "{paths:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn diff_working_vs_base_unborn_head() {
+        let dir = temp_dir();
+        let d = dir.path.as_str();
+        git(d, &["init", "-b", "main"]);
+        write(d, "staged.txt", "in index\n");
+        git(d, &["add", "staged.txt"]);
+        write(d, "loose.txt", "untracked\n");
+        let (m, _root) = mgr(d);
+        let got = m.diff_working_vs_base(d, "").await.expect("unborn");
+        let paths: Vec<&str> = got.files.iter().map(|f| f.path.as_str()).collect();
+        assert!(
+            paths.contains(&"staged.txt") && paths.contains(&"loose.txt"),
+            "{paths:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn commit_diff_merge_commit() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "feature"]);
+        write(r, "side.txt", "from feature\n");
+        commit_as_coder(r, "add side");
+        git(r, &["checkout", "main"]);
+        git(r, &["merge", "--no-ff", "-m", "merge feature", "feature"]);
+        let (m, _root) = mgr(r);
+        let hash = crate::testutil::rev_parse(r, "HEAD");
+        assert!(
+            m.commit_diff(r, &hash)
+                .await
+                .expect("commit_diff")
+                .is_empty(),
+            "no first-parent diff by default"
+        );
+        let files = m
+            .commit_diff_first_parent(r, &hash)
+            .await
+            .expect("first parent");
+        assert!(files.iter().any(|f| f.path == "side.txt"), "{files:?}");
+    }
+
+    #[tokio::test]
+    async fn commit_diff_sync_with_base_merge() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "feature"]);
+        write(r, "feat.txt", "on feature\n");
+        commit_as_coder(r, "add feat");
+        git(r, &["checkout", "main"]);
+        write(r, "m.txt", "from main\n");
+        commit_as_coder(r, "advance main");
+        git(r, &["checkout", "feature"]);
+        git(r, &["merge", "--no-ff", "-m", "sync with base", "main"]);
+        let (m, _root) = mgr(r);
+        let hash = crate::testutil::rev_parse(r, "HEAD");
+        assert!(
+            m.commit_diff(r, &hash)
+                .await
+                .expect("commit_diff")
+                .is_empty(),
+            "eager fill must not embed the base delta"
+        );
+        let files = m
+            .commit_diff_first_parent(r, &hash)
+            .await
+            .expect("first parent");
+        assert!(files.iter().any(|f| f.path == "m.txt"), "{files:?}");
+        let commits = m.log_commits(r, "main").await.expect("log");
+        assert_eq!(commits.len(), 2, "merge + feat");
+        assert_eq!(commits[0].message, "sync with base");
+        assert!(
+            commits[0].diff.add >= 1,
+            "first-parent numstat for the merge: {:?}",
+            commits[0].diff
+        );
+        assert_eq!(commits[1].message, "add feat");
+    }
+
+    #[tokio::test]
+    async fn diff_stat_vs_base_includes_working_tree() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "recur/feature"]);
+        write(r, "feat.txt", "one\ntwo\n");
+        commit_as_coder(r, "recur(Coder): iteration 1 — feat");
+        let (add, del) = diff_stat_vs_base(r, "main").await.expect("committed");
+        assert!(add >= 2 && del == 0, "+{add} -{del}");
+        write(r, "feat.txt", "one\ntwo\nthree\n");
+        let (add2, del2) = diff_stat_vs_base(r, "main").await.expect("dirty");
+        assert!(add2 > add && del2 == 0, "+{add2} -{del2}");
+        let (add_head, del_head) = diff_stat_vs_base(r, "").await.expect("vs HEAD");
+        assert!(add_head >= 1 && del_head == 0);
+        write(r, "brand-new.txt", "alpha\nbeta\ngamma\n");
+        let (add3, _) = diff_stat_vs_base(r, "main").await.expect("untracked");
+        assert!(
+            add3 >= add2 + 3,
+            "untracked file should add ≥3 lines: {add2} → {add3}"
+        );
+    }
+
+    /// Dropping the scan stops it promptly (Go: an already-cancelled context).
+    #[tokio::test]
+    async fn untracked_add_lines_honors_cancel() {
+        let repo = init_repo();
+        for i in 0..40 {
+            write(&repo.path, &format!("bulk/f{i}.txt"), "x\n");
+        }
+        let started = std::time::Instant::now();
+        let res =
+            tokio::time::timeout(std::time::Duration::ZERO, untracked_add_lines(&repo.path)).await;
+        assert!(res.is_err(), "a zero timeout should cancel the scan");
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(2),
+            "cancel was not prompt"
+        );
+        assert_eq!(untracked_add_lines(&repo.path).await, 40);
+    }
+
+    #[test]
+    fn parse_unified_diff_hunk_content_dashes() {
+        let diff = "diff --git a/q.sql b/q.sql\n--- a/q.sql\n+++ b/q.sql\n@@ -1,2 +1,2 @@\n SELECT 1;\n--- old comment\n+++ new thing\n";
+        let files = parse_unified_diff_plain(diff);
+        assert_eq!(files.len(), 1);
+        let l = lines(&files[0]);
+        assert!(
+            l.iter()
+                .any(|l| l.r#type == "del" && l.code_html.contains("-- old comment")),
+            "{l:?}"
+        );
+        assert!(
+            l.iter()
+                .any(|l| l.r#type == "add" && l.code_html.contains("++ new thing")),
+            "{l:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn diff_working_vs_base_skips_chroma() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "recur/feature"]);
+        write(r, "main.go", "package main\n");
+        commit_as_coder(r, "add go");
+        write(r, "main.go", "package main\nfunc F() {}\n");
+        let (m, _root) = mgr(r);
+        let has_spans = |files: &[FileDiff]| {
+            files
+                .iter()
+                .flat_map(|f| f.lines.iter().flatten())
+                .any(|l| l.code_html.contains("<span class=\""))
+        };
+        assert!(
+            has_spans(&m.diff_pr(r, "main").await.expect("diff_pr").files),
+            "diff_pr should highlight .go"
+        );
+        assert!(
+            !has_spans(
+                &m.diff_working_vs_base(r, "main")
+                    .await
+                    .expect("working")
+                    .files
+            ),
+            "the working diff stays plain escaped"
+        );
+    }
+
+    #[test]
+    fn format_hunk_label_cases() {
+        for (line, want) in [
+            (
+                "@@ -173,12 +173,16 @@ class Game:",
+                "Lines 173–188 · class Game:",
+            ),
+            ("@@ -1,2 +1,2 @@", "Lines 1–2"),
+            ("@@ -0,0 +1,1 @@", "Line 1"),
+            ("@@ -5 +5 @@ def foo():", "Line 5 · def foo():"),
+            ("@@ -10,3 +0,0 @@", "Lines 10–12"),
+        ] {
+            let h =
+                parse_hunk_header(line).unwrap_or_else(|| panic!("parse_hunk_header({line:?})"));
+            assert_eq!(format_hunk_label(&h), want, "{line}");
+        }
+    }
+
+    #[test]
+    fn parse_unified_diff_edge_cases() {
+        assert!(parse_unified_diff_plain("").is_empty());
+        let diff = "diff --git a/x.html b/x.html\nnew file mode 100644\n--- /dev/null\n+++ b/x.html\n@@ -0,0 +1,1 @@\n+<script>alert('xss')</script>\n";
+        let files = parse_unified_diff_plain(diff);
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].status, "a");
+        let code = lines(&files[0])
+            .iter()
+            .rev()
+            .find(|l| l.r#type == "add")
+            .map(|l| l.code_html.clone())
+            .unwrap_or_default();
+        assert!(
+            !code.contains("<script>") && code.contains("&lt;") && code.contains("&gt;"),
+            "{code}"
+        );
+
+        let bin = parse_unified_diff_plain(
+            "diff --git a/img.png b/img.png\nnew file mode 100644\nBinary files /dev/null and b/img.png differ\n",
+        );
+        assert_eq!(bin.len(), 1);
+        assert!(bin[0].lines.is_none());
+        assert_eq!(
+            (bin[0].path.as_str(), bin[0].status.as_str()),
+            ("img.png", "a")
+        );
+
+        let modified = parse_unified_diff_plain(
+            "diff --git a/img.png b/img.png\nindex 1111111..2222222 100644\nBinary files a/img.png and b/img.png differ\n",
+        );
+        assert_eq!(modified.len(), 1);
+        assert_eq!(
+            (modified[0].path.as_str(), modified[0].status.as_str()),
+            ("img.png", "m")
+        );
+        assert!(modified[0].lines.is_none());
+
+        let ren = parse_unified_diff_plain(
+            "diff --git a/old.sql b/new.sql\nsimilarity index 100%\nrename from old.sql\nrename to new.sql\n",
+        );
+        assert_eq!(ren.len(), 1);
+        assert_eq!(
+            (
+                ren[0].path.as_str(),
+                ren[0].old_path.as_str(),
+                ren[0].status.as_str()
+            ),
+            ("new.sql", "old.sql", "r")
+        );
+        assert_eq!((ren[0].diff.add, ren[0].diff.del), (0, 0));
+        assert!(ren[0].lines.is_none());
+    }
+
+    #[tokio::test]
+    async fn log_commits_without_base_lists_head() {
+        let repo = init_repo();
+        let (m, _root) = mgr(&repo.path);
+        let commits = m.log_commits(&repo.path, "").await.expect("log");
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].message, "initial");
+    }
+
+    #[tokio::test]
+    async fn log_commits_numstat_per_commit() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "recur/feature"]);
+        write(r, "one.txt", "a\n");
+        commit_as_coder(r, "recur(Coder): iteration 1 — first");
+        write(r, "two.txt", "a\nb\nc\n");
+        write(r, "three.txt", "x\ny\n");
+        commit_as_coder(r, "recur(Reviewer): iteration 2 — second");
+        let (m, _root) = mgr(r);
+        let commits = m.log_commits(r, "main").await.expect("log");
+        assert_eq!(commits.len(), 2);
+        assert_eq!((commits[0].diff.add, commits[0].diff.del), (5, 0));
+        assert_eq!((commits[1].diff.add, commits[1].diff.del), (1, 0));
+        assert_eq!(
+            (
+                commits[0].agent_code.as_str(),
+                commits[1].agent_code.as_str()
+            ),
+            ("RV", "CO")
+        );
+    }
+
+    #[tokio::test]
+    async fn log_commits_author_when_and_sha() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "recur/feature"]);
+        write(r, "tab.txt", "on\n");
+        git(r, &["add", "-A"]);
+        let me = [
+            ("GIT_AUTHOR_NAME", "mycodecrafting"),
+            ("GIT_AUTHOR_EMAIL", "me@example.com"),
+            ("GIT_COMMITTER_NAME", "mycodecrafting"),
+            ("GIT_COMMITTER_EMAIL", "me@example.com"),
+        ];
+        git_as(
+            r,
+            &[
+                "commit",
+                "-m",
+                "Enable the forwarding deposit tab",
+                "-m",
+                "Turn the tab on by default\nin the bridge app.",
+            ],
+            &me,
+        );
+        let (m, _root) = mgr(r);
+        let commits = m.log_commits(r, "main").await.expect("log");
+        assert_eq!(commits.len(), 1);
+        let c = &commits[0];
+        assert_eq!(
+            (c.author.as_str(), c.author_role.as_str()),
+            ("mycodecrafting", "Author")
+        );
+        assert_eq!(c.agent_code, "MY");
+        assert!(!c.when.is_empty());
+        assert_eq!(c.sha.len(), 40);
+        assert!(!c.hash.is_empty() && c.hash != c.sha);
+        assert_eq!(c.message, "Enable the forwarding deposit tab");
+        assert!(
+            c.body.contains("Turn the tab on by default") && c.body.contains("bridge app"),
+            "{}",
+            c.body
+        );
+    }
+
+    #[test]
+    fn classify_commit_message_cases() {
+        for (msg, author, role, code) in [
+            ("fix typo", "Ada", "Author", "AD"),
+            ("wip", "Josh Smith", "Author", "JS"),
+            ("hello", "mycodecrafting", "Author", "MY"),
+            ("", "   ", "Author", "?"),
+            (
+                "recur(Coder): iteration 1 — add a feature",
+                "Recur",
+                "Coder",
+                "CO",
+            ),
+            (
+                "recur(Reviewer): iteration 2 — nits",
+                "Recur",
+                "Reviewer",
+                "RV",
+            ),
+        ] {
+            let (r, c, _, _) = classify_commit_message(msg, author);
+            assert_eq!(
+                (r.as_str(), c.as_str()),
+                (role, code),
+                "classify_commit_message({msg:?}, {author:?})"
+            );
+        }
+    }
+
+    #[test]
+    fn format_commit_when_buckets() {
+        let now = DateTime::parse_from_rfc3339("2026-10-20T12:00:00Z")
+            .expect("now")
+            .with_timezone(&Utc);
+        assert_eq!(format_commit_when("2026-10-20T11:59:30Z", now), "now");
+        assert_eq!(format_commit_when("2026-10-20T11:15:00+00:00", now), "45m");
+        assert_eq!(format_commit_when("2026-10-20T09:00:00Z", now), "3h");
+        assert_eq!(format_commit_when("2026-10-17T12:00:00Z", now), "3d");
+        assert_eq!(format_commit_when("not a time", now), "now");
+        assert_eq!(format_commit_when("2027-01-01T00:00:00Z", now), "now");
+    }
+
+    #[tokio::test]
+    async fn change_status_matches_diff_working_vs_base_paths() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        write(r, "extra.txt", "delete me\n");
+        write(r, "old.txt", "rename me\n");
+        write_bytes(r, "img.bin", &[0x00, 0x01, 0xff, 0x89]);
+        commit_as_coder(r, "base files");
+        git(r, &["checkout", "-b", "recur/feat"]);
+        write(r, "README.md", "hello\nchanged\n");
+        write(r, "added.go", "package a\n");
+        git(r, &["add", "added.go"]);
+        std::fs::remove_file(format!("{r}/extra.txt")).expect("rm");
+        git(r, &["mv", "old.txt", "new.txt"]);
+        write(r, "untracked.go", "package u\n");
+        write_bytes(r, "img.bin", &[0x00, 0x02, 0xff, 0x89, 0x0a]);
+        write_bytes(r, "new.bin", &[0, 1, 2, 3, 0]);
+
+        let st = crate::working_diff::change_status(r, "main")
+            .await
+            .unwrap_or_default();
+        let (m, _root) = mgr(r);
+        let pr = m.diff_working_vs_base(r, "main").await.expect("working");
+        let got: std::collections::HashSet<&str> =
+            pr.files.iter().map(|f| f.path.as_str()).collect();
+        for p in st.keys() {
+            assert!(
+                got.contains(p.as_str()),
+                "change_status has {p}, the working diff misses it: {got:?}"
+            );
+        }
+        for p in &got {
+            assert!(
+                st.contains_key(*p),
+                "the working diff has {p}, change_status misses it: {st:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn diff_working_vs_base_untracked_overflow_keeps_paths() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        let n = UNTRACKED_MAX_FILES + 10;
+        for i in 0..n {
+            write(r, &format!("u/{i:03}.txt"), "x\n");
+        }
+        let st = crate::working_diff::change_status(r, "main")
+            .await
+            .unwrap_or_default();
+        let (m, _root) = mgr(r);
+        let pr = m.diff_working_vs_base(r, "main").await.expect("working");
+        let got: std::collections::HashSet<&str> =
+            pr.files.iter().map(|f| f.path.as_str()).collect();
+        for p in st.keys() {
+            assert!(
+                got.contains(p.as_str()),
+                "{p} dropped after the untracked overflow"
+            );
+        }
+        let omitted = pr
+            .files
+            .iter()
+            .filter(|f| {
+                f.status == "u"
+                    && lines(f).len() == 1
+                    && lines(f)[0].code_html.contains("too many untracked")
+            })
+            .count();
+        assert!(
+            omitted > 0,
+            "want omitted-note rows for {n} untracked files"
+        );
+    }
+
+    #[tokio::test]
+    async fn diff_working_vs_base_untracked_path_cap_signals_truncation() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        for i in 0..UNTRACKED_MAX_PATHS + 2 {
+            write(r, &format!("u/{i:04}.txt"), "x\n");
+        }
+        let (m, _root) = mgr(r);
+        let pr = m.diff_working_vs_base(r, "").await.expect("working");
+        assert!(pr.truncated, "truncated should be set past the path cap");
+        assert_eq!(
+            pr.files.iter().filter(|f| f.path.starts_with("u/")).count(),
+            UNTRACKED_MAX_PATHS
+        );
+    }
+
+    #[tokio::test]
+    async fn diff_working_vs_base_untracked_byte_budget() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        let chunk = "x".repeat(crate::working_diff::MAX_SYNTHETIC_ADD_BYTES);
+        for i in 0..6 {
+            write(r, &format!("big/{i}.txt"), &chunk);
+        }
+        let (m, _root) = mgr(r);
+        let pr = m.diff_working_vs_base(r, "main").await.expect("working");
+        let big = |f: &&FileDiff| f.path.starts_with("big/");
+        let omitted = pr
+            .files
+            .iter()
+            .filter(big)
+            .filter(|f| {
+                f.status == "u"
+                    && lines(f).len() == 1
+                    && lines(f)[0].code_html.contains("too many untracked")
+            })
+            .count();
+        let with_body = pr
+            .files
+            .iter()
+            .filter(big)
+            .filter(|f| lines(f).len() > 1)
+            .count();
+        assert!(omitted > 0, "the byte budget should omit some bodies");
+        assert!(with_body > 0, "files under the budget should get bodies");
+    }
+
+    #[tokio::test]
+    async fn diff_working_vs_base_untracked_binary_has_no_lines() {
+        let repo = init_repo();
+        write_bytes(&repo.path, "pic.png", b"\x00PNG\x89binary");
+        let (m, _root) = mgr(&repo.path);
+        let pr = m
+            .diff_working_vs_base(&repo.path, "main")
+            .await
+            .expect("working");
+        let pic = pr
+            .files
+            .iter()
+            .find(|f| f.path == "pic.png")
+            .expect("pic.png listed");
+        assert_eq!(pic.status, "a");
+        assert!(pic.lines.is_none(), "an untracked binary has no lines");
     }
 }

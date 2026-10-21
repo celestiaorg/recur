@@ -248,7 +248,165 @@ pub(crate) mod hooks {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
     use super::*;
+    use crate::testutil::{git, temp_dir, write};
+
+    /// Counts hook firings of `kind` for `dir`, sleeping in each so
+    /// concurrent callers overlap.
+    fn count_kind(dir: &str, kind: &'static str) -> Arc<AtomicUsize> {
+        let n = Arc::new(AtomicUsize::new(0));
+        let counter = n.clone();
+        hooks::set(
+            dir,
+            Arc::new(move |k| {
+                let counter = counter.clone();
+                Box::pin(async move {
+                    if k == kind {
+                        counter.fetch_add(1, Ordering::SeqCst);
+                        tokio::time::sleep(Duration::from_millis(80)).await;
+                    }
+                })
+            }),
+        );
+        n
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn change_status_coalesces_concurrent_calls() {
+        let root = temp_dir();
+        git(&root.path, &["init", "-b", "main"]);
+        write(&root.path, "base.go", "package b\n");
+        git(&root.path, &["add", "."]);
+        git(&root.path, &["commit", "-m", "base"]);
+        git(&root.path, &["checkout", "-b", "recur/feat"]);
+        write(&root.path, "feat.go", "package f\n");
+        git(&root.path, &["add", "."]);
+        git(&root.path, &["commit", "-m", "feat"]);
+
+        let vs_base = count_kind(&root.path, "vs-base");
+        let tasks: Vec<_> = (0..8)
+            .map(|_| {
+                let dir = root.path.clone();
+                tokio::spawn(async move { crate::working_diff::change_status(&dir, "main").await })
+            })
+            .collect();
+        let mut results = Vec::new();
+        for t in tasks {
+            results.push(t.await.expect("join"));
+        }
+        assert_eq!(
+            vs_base.load(Ordering::SeqCst),
+            1,
+            "concurrent change_status ran git more than once"
+        );
+        for (i, st) in results.iter().enumerate() {
+            let st = st.clone().unwrap_or_default();
+            assert_eq!(
+                st.get("feat.go").map(String::as_str),
+                Some("a"),
+                "task {i}: {st:?}"
+            );
+        }
+        // After the flight lands, a later call recomputes (no stale cache).
+        let _ = crate::working_diff::change_status(&root.path, "main").await;
+        assert_eq!(
+            vs_base.load(Ordering::SeqCst),
+            2,
+            "change_status after the flight did not recompute"
+        );
+        hooks::clear(&root.path);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn status_map_coalesces_concurrent_calls() {
+        let root = temp_dir();
+        git(&root.path, &["init", "-b", "main"]);
+        write(&root.path, "a.go", "package a\n");
+        git(&root.path, &["add", "."]);
+        git(&root.path, &["commit", "-m", "init"]);
+        write(&root.path, "a.go", "package a\nfunc F() {}\n");
+
+        let porcelain = count_kind(&root.path, "porcelain");
+        let tasks: Vec<_> = (0..8)
+            .map(|_| {
+                let dir = root.path.clone();
+                tokio::spawn(async move { status_map(&dir).await })
+            })
+            .collect();
+        for (i, t) in tasks.into_iter().enumerate() {
+            let st = t.await.expect("join").unwrap_or_default();
+            assert_eq!(
+                st.get("a.go").map(String::as_str),
+                Some("m"),
+                "task {i}: {st:?}"
+            );
+        }
+        assert_eq!(
+            porcelain.load(Ordering::SeqCst),
+            1,
+            "concurrent status_map ran git more than once"
+        );
+        hooks::clear(&root.path);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn discard_file_does_not_join_in_flight_status_map() {
+        let root = temp_dir();
+        git(&root.path, &["init", "-b", "main"]);
+        write(&root.path, "a.go", "package a\n");
+        git(&root.path, &["add", "."]);
+        git(&root.path, &["commit", "-m", "init"]);
+
+        let (entered_tx, entered_rx) = tokio::sync::oneshot::channel::<()>();
+        let entered = Arc::new(Mutex::new(Some(entered_tx)));
+        let release = Arc::new(tokio::sync::Notify::new());
+        {
+            let (entered, release) = (entered.clone(), release.clone());
+            hooks::set(
+                &root.path,
+                Arc::new(move |k| {
+                    let (entered, release) = (entered.clone(), release.clone());
+                    Box::pin(async move {
+                        if k == "flight-hold" {
+                            if let Some(tx) = entered
+                                .lock()
+                                .unwrap_or_else(PoisonError::into_inner)
+                                .take()
+                            {
+                                let _ = tx.send(());
+                            }
+                            release.notified().await;
+                        }
+                    })
+                }),
+            );
+        }
+        let dir = root.path.clone();
+        let flight = tokio::spawn(async move { status_map(&dir).await });
+        tokio::time::timeout(Duration::from_secs(5), entered_rx)
+            .await
+            .expect("status_map never reached flight-hold")
+            .expect("hook dropped");
+
+        write(&root.path, "fresh.go", "package f\n");
+        let discard = tokio::time::timeout(
+            Duration::from_secs(2),
+            crate::scm::discard_file(&root.path, "fresh.go"),
+        )
+        .await
+        .expect("discard_file blocked on the coalesced status_map");
+        discard.expect("discard_file");
+        assert!(
+            std::fs::metadata(format!("{}/fresh.go", root.path)).is_err(),
+            "discard_file should remove fresh.go"
+        );
+        release.notify_one();
+        hooks::clear(&root.path);
+        let _ = flight.await;
+    }
 
     #[test]
     fn parse_status_porcelain_letters() {

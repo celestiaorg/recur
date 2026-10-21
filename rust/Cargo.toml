@@ -56,6 +56,13 @@ parking_lot = "0.12"
 regex = "1"
 clap = { version = "4", features = ["derive"] }
 include_dir = "0.7"
+fancy-regex = "0.16"
+wuff = "0.2"
+ttf-parser = "0.25"
+unicode-linebreak = "0.1"
+resvg = { version = "0.46", default-features = false }
+smallvec = "1"
+image = { version = "0.25", default-features = false, features = ["png"] }
 notify = "8"
 cron = "0.15"
 tempfile = "3"

@@ -7,8 +7,30 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# Widget gallery scenes shared by `examples/gallery.rs` and `rust/tools/ui-parity`.
+gallery = []
+
 [dependencies]
 gpui-kit.workspace = true
+fancy-regex.workspace = true
+include_dir.workspace = true
+wuff.workspace = true
+ttf-parser.workspace = true
+unicode-linebreak.workspace = true
+resvg.workspace = true
+smallvec.workspace = true
+image.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+recur-ui = { path = ".", features = ["gallery"] }
 
 [lints]
 workspace = true
+
+[[test]]
+name = "fonts"
+harness = false

@@ -355,3 +355,52 @@ async fn caret_movement_closes_the_picker_and_enter_does_not_rewrite_the_draft(c
     assert_eq!(*draft.lock(), "");
     assert!(input.read_with(cx, |i, _| i.value().starts_with("Please review @av")));
 }
+
+struct PromptsHost {
+    prompts: Entity<crate::palettes::CommandPrompts>,
+    events: std::rc::Rc<std::cell::RefCell<Vec<crate::palettes::CommandPromptsEvent>>>,
+    _sub: gpui_kit::Subscription,
+}
+
+impl gpui_kit::Render for PromptsHost {
+    fn render(&mut self, _: &mut gpui_kit::Window, cx: &mut gpui_kit::Context<Self>) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{ParentElement, Styled};
+        recur_ui::style::body(cx).size_full().relative().child(self.prompts.clone())
+    }
+}
+
+#[gpui::test]
+async fn command_prompts_resolve_with_their_values_and_escape_cancels(cx: &mut TestAppContext) {
+    use recur_view_core::commands::CommandPrompt;
+    init(cx);
+    let (host, cx) = cx.add_window_view(|_, cx| {
+        let prompts = cx.new(crate::palettes::CommandPrompts::new);
+        let events: std::rc::Rc<std::cell::RefCell<Vec<_>>> = Default::default();
+        let ev = events.clone();
+        let _sub = cx.subscribe(&prompts, move |_, _, e: &crate::palettes::CommandPromptsEvent, _| ev.borrow_mut().push(e.clone()));
+        PromptsHost { prompts, events, _sub }
+    });
+    let prompts = host.read_with(cx, |h, _| h.prompts.clone());
+    let field = |name: &str, default: &str| CommandPrompt {
+        name: name.into(),
+        label: String::new(),
+        r#type: "text".into(),
+        default: default.into(),
+        choices: Vec::new(),
+    };
+    cx.update(|window, cx| {
+        prompts.update(cx, |p, cx| p.open("Rename", vec![field("name", "old"), field("note", "")], window, cx))
+    });
+    cx.run_until_parked();
+    // The first field is focused at its default; typing appends.
+    cx.simulate_input("er");
+    cx.simulate_keystrokes("enter");
+    cx.run_until_parked();
+    let got = host.read_with(cx, |h, _| h.events.borrow().clone());
+    let want = std::collections::BTreeMap::from([("name".to_string(), "older".to_string()), ("note".to_string(), String::new())]);
+    assert_eq!(got, [crate::palettes::CommandPromptsEvent::Resolve(want)]);
+    cx.simulate_keystrokes("escape");
+    cx.run_until_parked();
+    let got = host.read_with(cx, |h, _| h.events.borrow().clone());
+    assert_eq!(got.last(), Some(&crate::palettes::CommandPromptsEvent::Cancel));
+}

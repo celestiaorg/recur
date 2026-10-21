@@ -19,6 +19,7 @@ recur-textmate.workspace = true
 recur-services.workspace = true
 recur-domain.workspace = true
 recur-engine.workspace = true
+recur-forge.workspace = true
 recur-agent.workspace = true
 recur-agent-tools.workspace = true
 recur-issues.workspace = true

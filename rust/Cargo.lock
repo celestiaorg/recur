@@ -7251,6 +7251,7 @@ dependencies = [
  "recur-content",
  "recur-domain",
  "recur-engine",
+ "recur-forge",
  "recur-issues",
  "recur-services",
  "recur-textmate",

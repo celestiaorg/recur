@@ -78,7 +78,7 @@
       <FilePreview kind="markdown" content={readme} path="README.md" {scroll} />
     {/if}
   {:else if kind === 'pdf'}
-    <div class="obs-pdf"><PdfPreview src={pdfUrl} path="page.pdf" /></div>
+    <div class="obs"><div class="obs-pdf"><PdfPreview src={pdfUrl} path="page.pdf" /></div></div>
   {:else if kind === 'lightbox'}
     <div class="pad"><MarkdownHtml text={'Screenshot attached.'} /></div>
     <AttachmentLightbox src={shotUrl} name="screenshot.png" onclose={() => {}} />

@@ -74,6 +74,34 @@ impl Render for Full {
     }
 }
 
+/// `.obs-pdf` (`--bg`, filling the window) around the PDF preview.
+struct Pdf(Entity<crate::pdf::PdfPreview>);
+
+impl Render for Pdf {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let bg = recur_ui::Theme::of(cx).tokens.bg;
+        body(cx)
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(div().flex_1().min_h_0().flex().flex_col().bg(bg).child(self.0.clone()))
+    }
+}
+
+/// A padded message with the lightbox open over it.
+struct Lightbox(Entity<MarkdownView>, Entity<crate::lightbox::AttachmentLightbox>);
+
+impl Render for Lightbox {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        body(cx)
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(div().p(px(16.)).child(self.0.clone()))
+            .child(self.1.clone())
+    }
+}
+
 fn preview(kind: crate::preview::PreviewKind, content: &str, path: &str, window: &mut Window, cx: &mut App) -> AnyView {
     let scroll = std::rc::Rc::new(std::cell::RefCell::new(crate::preview::scroll::PreviewScrollStore::new()));
     let p = cx.new(|cx| crate::preview::view::FilePreview::new(kind, content.to_string(), path.to_string(), scroll, window, cx));
@@ -94,6 +122,26 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         "mermaid/flowchart" => preview(PreviewKind::Mermaid, FLOW_MMD, "flow.mmd", window, cx),
         "file-preview/markdown" => preview(PreviewKind::Markdown, README_MD, "README.md", window, cx),
         "file-preview/svg" => preview(PreviewKind::Svg, LOGO_SVG, "logo.svg", window, cx),
+        "pdf/page" => {
+            let data = Some(std::sync::Arc::<[u8]>::from(PAGE_PDF));
+            let p = cx.new(|cx| crate::pdf::PdfPreview::new(data, window, cx));
+            AnyView::from(cx.new(|_| Pdf(p)))
+        }
+        "lightbox/image" => {
+            let v = cx.new(|cx| MarkdownView::new("Screenshot attached.", MarkdownClass::ChatCanvas, false, cx));
+            let image = crate::images::decode(SCREENSHOT_PNG).ok();
+            let lb = cx.new(|cx| {
+                crate::lightbox::AttachmentLightbox::new(
+                    "screenshot.png".into(),
+                    "screenshot.png".into(),
+                    image,
+                    std::rc::Rc::new(|_: &mut Window, _: &mut App| {}),
+                    window,
+                    cx,
+                )
+            });
+            AnyView::from(cx.new(|_| Lightbox(v, lb)))
+        }
         "markdown/streaming" => {
             // The worker's output, produced on the spot so the headless frame has it.
             let render = std::rc::Rc::new(|src: &str, _: &str| {

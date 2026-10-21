@@ -26,6 +26,7 @@ pub mod icon;
 pub mod icon_name;
 pub mod kbd;
 mod kit;
+pub mod logic;
 pub mod motion;
 pub mod style;
 pub mod text;

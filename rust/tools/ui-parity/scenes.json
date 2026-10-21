@@ -184,6 +184,60 @@
       "height": 180,
       "theme": "slate",
       "tolerance": 0
+    },
+    {
+      "name": "tooltip/above",
+      "width": 360,
+      "height": 160,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "move": [
+            150,
+            130
+          ]
+        },
+        {
+          "wait": 400
+        }
+      ]
+    },
+    {
+      "name": "tooltip/below",
+      "width": 360,
+      "height": 160,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "move": [
+            50,
+            30
+          ]
+        },
+        {
+          "wait": 400
+        }
+      ]
+    },
+    {
+      "name": "tooltip/paper",
+      "width": 360,
+      "height": 160,
+      "theme": "paper",
+      "tolerance": 0,
+      "steps": [
+        {
+          "move": [
+            50,
+            30
+          ]
+        },
+        {
+          "wait": 400
+        }
+      ]
     }
   ]
 }

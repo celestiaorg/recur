@@ -11,6 +11,7 @@
   import Settings from './scenes/Settings.svelte'
   import Armed from './scenes/Armed.svelte'
   import ToastsScene from './scenes/Toasts.svelte'
+  import Tooltip from './scenes/Tooltip.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
@@ -44,6 +45,8 @@
     <Armed />
   {:else if kind === 'toasts'}
     <ToastsScene />
+  {:else if kind === 'tooltip'}
+    <Tooltip />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

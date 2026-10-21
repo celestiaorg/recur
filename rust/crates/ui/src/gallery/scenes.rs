@@ -12,7 +12,7 @@ use crate::style::{
 };
 use crate::text::{LineHeight, Text, TextStyled, span, text};
 use crate::theme::Theme;
-use crate::tooltip::TitleTooltip;
+use crate::tooltip::{TitleTooltip, titled};
 use crate::widgets::{
     PicBox, ToastAsk, ToastKind, ToastOptions, ToastStore, Toasts, armed_button, blurb_code,
     decode_text, project_pic, push_toast, ring, settings_group, settings_groups, toast_action,
@@ -40,6 +40,7 @@ pub(super) const NAMES: &[&str] = &[
     "settings-group/*",
     "armed-button/*",
     "toasts/*",
+    "tooltip/*",
 ];
 
 pub(super) fn matches(pattern: &str, name: &str) -> bool {
@@ -98,6 +99,7 @@ fn static_content(kind: &str, variant: &str) -> Option<fn(&mut Window, &mut App)
         ("project-pic", _) => project_pics,
         ("settings-group", _) => settings,
         ("armed-button", _) => armed,
+        ("tooltip", _) => tooltips,
         _ => return None,
     })
 }
@@ -621,4 +623,31 @@ fn seed_toasts(window: &mut Window, cx: &mut App) {
     store.update(cx, |s, cx| {
         s.push_ask(ask, toast_action("Answer", |_, _| {}), None, cx)
     });
+}
+
+fn tooltips(_: &mut Window, cx: &mut App) -> AnyElement {
+    let b = TbtnSize::BASE;
+    let button = |id: &'static str, label: &'static str, cx: &App| {
+        tbtn(id, Tbtn::Default, b, None, cx).child(button_label(label, b.font_size, weight::MEDIUM))
+    };
+    body(cx)
+        .size_full()
+        .relative()
+        .child(div().absolute().left(px(16.)).top(px(16.)).child(titled(
+            "settings-tip",
+            "Open settings (⌘,)",
+            button("settings", "Settings", cx),
+        )))
+        .child(
+            div()
+                .absolute()
+                .left(px(120.))
+                .bottom(px(16.))
+                .child(titled(
+                    "check-tip",
+                    "Run the parity check against the WebKit reference",
+                    button("check", "Check", cx),
+                )),
+        )
+        .into_any_element()
 }

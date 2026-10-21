@@ -5,6 +5,7 @@
 
 use crate::color::{Color, rgba};
 use crate::fonts::{MONO, UI, weight};
+use crate::shadow::{CssShadow, css_box_shadow};
 use crate::text::{InlineBox, LineHeight, Span, Text, TextStyled, span, text};
 use crate::theme::{Theme, Tokens};
 use gpui_kit::{
@@ -173,12 +174,39 @@ pub fn body(cx: &App) -> Div {
         .line_height(relative(1.45))
 }
 
+/// How far [`window_root`] shifts the tree so half-pixel ties round down and right, as WebKit's
+/// do.
+const TIE_NUDGE: f32 = 1. / 4096.;
+
+/// `anchored()` at a fractional window position, as WebKit places a box. GPUI rounds an anchored
+/// offset to whole CSS pixels; this anchors at the whole pixel and moves the child the exact rest
+/// of the way with `aspect_ratio` spacers (authored lengths would round), so the child and its
+/// descendants keep their fractional positions and snap as WebKit snaps them. Set `.anchor(..)`
+/// on the result as usual.
+pub fn anchored_at(x: f32, y: f32, child: impl IntoElement) -> gpui_kit::Anchored {
+    let (x, y) = (x + TIE_NUDGE, y + TIE_NUDGE);
+    let (ix, iy) = (x.floor(), y.floor());
+    let (fx, fy) = (x - ix, y - iy);
+    gpui_kit::anchored().position(point(px(ix), px(iy))).child(
+        div()
+            .flex()
+            .flex_col()
+            .child(div().flex_none().w(px(1.)).aspect_ratio(1. / fy))
+            .child(
+                div()
+                    .flex()
+                    .child(div().flex_none().h(px(1.)).aspect_ratio(fx))
+                    .child(child),
+            ),
+    )
+}
+
 /// The root every window renders its content in. WebKit snaps a box edge that lands exactly on
 /// a half device pixel down and to the right; GPUI rounds halves toward zero. Shifting the whole
 /// tree by 1/4096 px (through `aspect_ratio` spacers, since authored lengths round to whole
 /// device pixels) makes those ties round as WebKit does and moves nothing else.
 pub fn window_root(content: impl IntoElement) -> Div {
-    const NUDGE: f32 = 4096.;
+    const NUDGE: f32 = 1. / TIE_NUDGE;
     div()
         .size_full()
         .flex()
@@ -561,40 +589,57 @@ pub fn modal_scrim() -> Div {
         .items_start()
 }
 
-/// `.nt-modal`: 640px card, `--line-bright` border, radius 16, deep shadow.
-pub fn modal_panel(cx: &App) -> Div {
-    let t = tokens(cx);
+/// A rounded card with a 1px border over its background, as WebKit paints one (see
+/// [`inset_background`]). Children go after the background.
+pub fn card(bg: Color, border: Color, radius: f32) -> Div {
     div()
-        .w(px(640.))
-        .max_w_full()
-        .bg(t.pane)
+        .relative()
         .border(px(1.))
-        .border_color(Hsla::from(t.line_bright))
-        .rounded(px(16.))
-        .shadow(vec![css_shadow(0., 32., 90., -20., rgba(0, 0, 0, 0.8))])
-        .flex()
-        .flex_col()
+        .border_color(Hsla::from(border))
+        .rounded(px(radius))
+        .child(inset_background(bg, radius, 1., border))
 }
 
-/// `.palette`: 580px command palette card, radius 13.
+/// `.nt-modal`'s shadow, for [`crate::shadow::with_shadow`] around [`modal_panel`].
+pub const MODAL_SHADOW: [CssShadow; 1] = [css_box_shadow(0., 32., 90., -20., rgba(0, 0, 0, 0.8))];
+/// `.palette`'s shadow.
+pub const PALETTE_SHADOW: [CssShadow; 1] =
+    [css_box_shadow(0., 28., 80., -18., rgba(0, 0, 0, 0.75))];
+/// `.nt-tip-pop`'s shadow.
+pub const POPOVER_SHADOW: [CssShadow; 1] = [css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))];
+/// `.emoji-suggest`'s shadow.
+pub const SUGGEST_SHADOW: [CssShadow; 1] = [css_box_shadow(0., 14., 36., -12., rgba(0, 0, 0, 0.7))];
+/// `.sel-menu`'s shadow.
+pub const MENU_SHADOW: [CssShadow; 1] = [css_box_shadow(0., 10., 28., 0., rgba(0, 0, 0, 0.45))];
+
+/// `.nt-modal`: 640px card, `--line-bright` border, radius 16. Wrap it in
+/// [`crate::shadow::with_shadow`] with [`MODAL_SHADOW`] (and size the wrapper).
+pub fn modal_panel(cx: &App) -> Div {
+    let t = tokens(cx);
+    card(t.pane, t.line_bright, 16.).flex().flex_col()
+}
+
+/// `.palette`: 580px command palette card, radius 13 ([`PALETTE_SHADOW`]).
 pub fn palette_panel(cx: &App) -> Div {
     let t = tokens(cx);
-    div()
-        .w(px(580.))
-        .max_w(relative(0.92))
-        .bg(t.pane)
-        .border(px(1.))
-        .border_color(Hsla::from(t.line_bright))
-        .rounded(px(13.))
-        .shadow(vec![css_shadow(0., 28., 80., -18., rgba(0, 0, 0, 0.75))])
+    card(t.pane, t.line_bright, 13.)
         .overflow_hidden()
         .flex()
         .flex_col()
 }
 
-/// `.cmd-palette`: the denser 480px Run Command card, radius 10.
+/// Width of `.palette`, for its shadow wrapper: 580px, at most 92% of the window.
+pub fn palette_width(window: &Window) -> f32 {
+    580f32.min(f32::from(window.viewport_size().width) * 0.92)
+}
+
+/// `.cmd-palette`: the denser Run Command card, radius 10 (480px wide).
 pub fn command_palette_panel(cx: &App) -> Div {
-    palette_panel(cx).w(px(480.)).rounded(px(10.))
+    let t = tokens(cx);
+    card(t.pane, t.line_bright, 10.)
+        .overflow_hidden()
+        .flex()
+        .flex_col()
 }
 
 /// `.pal-in`: the palette's input row (14px 16px, gap 11, bottom border).
@@ -749,18 +794,14 @@ pub fn esc_key(hovered: bool, cx: &App) -> Div {
         )
 }
 
-/// `.nt-tip-pop`: the hover help popover, `--pane-2` with `--line-bright`, radius 9.
+/// `.nt-tip-pop`: the hover help popover, `--pane-2` with `--line-bright`, radius 9, 280px wide
+/// ([`POPOVER_SHADOW`]).
 pub fn popover(cx: &App) -> Div {
     let t = tokens(cx);
-    div()
+    card(t.pane_2, t.line_bright, 9.)
         .w(px(280.))
         .py(px(11.))
         .px(px(12.))
-        .bg(t.pane_2)
-        .border(px(1.))
-        .border_color(Hsla::from(t.line_bright))
-        .rounded(px(9.))
-        .shadow(vec![css_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))])
         .text_color(t.muted)
         .text_size(px(12.))
         .line_height(relative(1.45))
@@ -769,28 +810,17 @@ pub fn popover(cx: &App) -> Div {
 /// `.emoji-suggest` / `.user-mention`: the floating suggestion list.
 pub fn suggest_panel(cx: &App) -> Div {
     let t = tokens(cx);
-    div()
-        .p(px(4.))
-        .bg(t.pane)
-        .border(px(1.))
-        .border_color(Hsla::from(t.line_bright))
-        .rounded(px(10.))
-        .shadow(vec![css_shadow(0., 14., 36., -12., rgba(0, 0, 0, 0.7))])
+    card(t.pane, t.line_bright, 10.).p(px(4.))
 }
 
-/// `.sel-menu`: the dropdown menu shell shared by Select and IconPicker.
+/// `.sel-menu`: the dropdown menu shell shared by Select and IconPicker ([`MENU_SHADOW`]).
 pub fn menu_panel(cx: &App) -> Div {
     let t = tokens(cx);
-    div()
+    card(t.pane_2, t.line_bright, 8.)
         .flex()
         .flex_col()
         .overflow_hidden()
-        .bg(t.pane_2)
-        .border(px(1.))
-        .border_color(Hsla::from(t.line_bright))
-        .rounded(px(8.))
         .p(px(4.))
-        .shadow(vec![css_shadow(0., 10., 28., 0., rgba(0, 0, 0, 0.45))])
 }
 
 /// `.prog` / `.prog-fill`: a 4px progress bar.

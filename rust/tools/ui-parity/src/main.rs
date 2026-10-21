@@ -89,6 +89,9 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
             })
         })?;
         let any = handle.into();
+        // The capture page has focus; so does the scene window, before any input.
+        cx.update_window(any, |_, window, _| window.activate_window())?;
+        cx.run_until_parked();
         cx.update_window(any, |_, window, cx| window.render_frame(cx))?;
         for step in &spec.steps {
             match step {
@@ -161,12 +164,15 @@ struct DiffResult {
     aa: u64,
     max_delta: u8,
     tolerance: u64,
+    hard_tolerance: u64,
     error: Option<String>,
 }
 
 impl DiffResult {
     fn pass(&self) -> bool {
-        self.error.is_none() && self.hard == 0 && self.text + self.aa <= self.tolerance
+        self.error.is_none()
+            && self.hard <= self.hard_tolerance
+            && self.text + self.aa <= self.tolerance
     }
 }
 
@@ -315,6 +321,7 @@ fn diff_one(spec: &SceneSpec, reference: &Path, candidate: &Path, out: &Path) ->
         aa: 0,
         max_delta: 0,
         tolerance: spec.tolerance,
+        hard_tolerance: spec.hard_tolerance,
         error: None,
     };
     let load = |p: &Path| -> Result<RgbaImage> {
@@ -377,8 +384,8 @@ fn diff(specs: &[SceneSpec]) -> Result<bool> {
     let mut ok = true;
     let mut report = Vec::new();
     println!(
-        "{:<36} {:>6} {:>7} {:>6} {:>5} {:>9}",
-        "scene", "hard", "text", "aa", "max", "tolerance"
+        "{:<36} {:>6} {:>7} {:>6} {:>5} {:>9} {:>6}",
+        "scene", "hard", "text", "aa", "max", "tolerance", "hard ok"
     );
     for spec in specs {
         let f = file_name(&spec.name);
@@ -393,19 +400,21 @@ fn diff(specs: &[SceneSpec]) -> Result<bool> {
         match &r.error {
             Some(e) => println!("{:<36} ERROR {e}", r.name),
             None => println!(
-                "{:<36} {:>6} {:>7} {:>6} {:>5} {:>9} {}",
+                "{:<36} {:>6} {:>7} {:>6} {:>5} {:>9} {:>6} {}",
                 r.name,
                 r.hard,
                 r.text,
                 r.aa,
                 r.max_delta,
                 r.tolerance,
+                r.hard_tolerance,
                 if pass { "ok" } else { "FAIL" }
             ),
         }
         report.push(serde_json::json!({
             "scene": r.name, "hard": r.hard, "text": r.text, "aa": r.aa, "maxDelta": r.max_delta,
-            "tolerance": r.tolerance, "pass": pass, "error": r.error,
+            "tolerance": r.tolerance, "hardTolerance": r.hard_tolerance, "pass": pass,
+            "error": r.error,
         }));
     }
     std::fs::write(

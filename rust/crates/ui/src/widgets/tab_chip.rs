@@ -6,7 +6,7 @@ use crate::fonts::{UI, weight};
 use crate::icon::icon;
 use crate::icon_name::IconName;
 use crate::motion;
-use crate::style::css_shadow;
+use crate::shadow::{css_box_shadow, with_shadow};
 use crate::text::{AlphaMask, LineHeight, TextStyled, text};
 use crate::theme::Theme;
 use crate::widgets::decode_text::decode_text;
@@ -347,16 +347,19 @@ impl RenderOnce for TabChip {
                 CursorStyle::PointingHand
             })
             .child(body);
-        if self.floating {
-            // `0 8px 24px rgba(0,0,0,.35)`, eased to nothing as the chip settles.
+        // `0 8px 24px rgba(0,0,0,.35)` under the floating chip, eased to nothing as it settles.
+        let lift = self.floating.then(|| {
             let l = self.lift;
-            chip = chip.bg(t.pane).shadow(vec![css_shadow(
+            css_box_shadow(
                 0.,
                 8. * l,
                 24. * l,
                 0.,
                 crate::color::rgba(0, 0, 0, 0.35 * l),
-            )]);
+            )
+        });
+        if self.floating {
+            chip = chip.bg(t.pane);
         }
         if self.on_click.is_some() || self.click_guard.is_some() {
             let f = self.on_click.clone();
@@ -435,7 +438,11 @@ impl RenderOnce for TabChip {
             ));
         }
         let title = self.title.unwrap_or(self.label);
-        crate::tooltip::titled((self.id, "tip"), title, chip)
+        let chip = crate::tooltip::titled((self.id, "tip"), title, chip);
+        match lift {
+            Some(shadow) => with_shadow(chip, &[shadow], 0.).h_full().into_any_element(),
+            None => chip.into_any_element(),
+        }
     }
 }
 

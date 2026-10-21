@@ -8,15 +8,15 @@
 //! flipping above when it does not fit.
 
 use crate::motion::{self, Easing};
-use crate::style::css_shadow;
+use crate::shadow::{css_box_shadow, with_shadow};
 use crate::text::{Text, TextStyled};
 use crate::theme::Theme;
 use gpui_kit::{
     AnyElement, App, AppContext, Bounds, Context, DispatchPhase, Element, ElementId, Entity,
-    FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, Hsla, InspectorElementId, IntoElement,
+    FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, IntoElement,
     KeyDownEvent, LayoutId, MouseDownEvent, MouseExitEvent, MouseMoveEvent, ParentElement, Pixels,
-    Render, ScrollWheelEvent, SharedString, Styled, Task, Window, WindowId, anchored, canvas,
-    deferred, div, point, px, relative,
+    Render, ScrollWheelEvent, SharedString, Styled, Task, Window, WindowId, canvas, deferred, div,
+    px, relative,
 };
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -606,27 +606,21 @@ impl TitleTooltip {
             };
         let ring = t.amber.fade(if theme.is_light() { 0.16 } else { 0.12 });
         let shadow = if theme.is_light() {
-            css_shadow(0., 10., 24., 0., crate::color::rgba(0, 0, 0, 0.12))
+            css_box_shadow(0., 10., 24., 0., crate::color::rgba(0, 0, 0, 0.12))
         } else {
-            css_shadow(0., 10., 28., 0., crate::color::rgba(0, 0, 0, 0.42))
+            css_box_shadow(0., 10., 28., 0., crate::color::rgba(0, 0, 0, 0.42))
         };
-        deferred(
-            anchored()
-                .position(point(px(place.x), px(place.y + shift)))
-                .child(
-                    div()
-                        .w(px(tip.0))
-                        .py(px(5.))
-                        .px(px(9.))
-                        .bg(t.pane)
-                        .border(px(1.))
-                        .border_color(Hsla::from(t.line_bright))
-                        .rounded(px(7.))
-                        .shadow(vec![shadow, css_shadow(0., 0., 0., 1., ring)])
-                        .opacity(p)
-                        .child(div().w(relative(1.)).child(body())),
-                ),
-        )
+        let card = crate::style::card(t.pane, t.line_bright, 7.)
+            .w(px(tip.0))
+            .py(px(5.))
+            .px(px(9.))
+            .child(div().w(relative(1.)).child(body()));
+        let shadows = [shadow, css_box_shadow(0., 0., 0., 1., ring)];
+        deferred(crate::style::anchored_at(
+            place.x,
+            place.y + shift,
+            with_shadow(card, &shadows, 7.).opacity(p),
+        ))
         .with_priority(usize::MAX)
         .into_any_element()
     }

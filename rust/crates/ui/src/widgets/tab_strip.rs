@@ -9,7 +9,7 @@ use gpui_kit::{
     AnyElement, App, Bounds, CursorStyle, ElementId, Hsla, InteractiveElement, IntoElement,
     KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels,
     Point, RenderOnce, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Window,
-    anchored, canvas, deferred, div, point, px,
+    canvas, deferred, div, point, px,
 };
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -514,16 +514,16 @@ impl RenderOnce for TabStrip {
             };
             let chip = chip.lift(lift);
             root = root.child(
-                deferred(
-                    anchored().position(at).child(
-                        div()
-                            .w(sz.width)
-                            .h(sz.height)
-                            .flex()
-                            .items_stretch()
-                            .child(chip),
-                    ),
-                )
+                deferred(crate::style::anchored_at(
+                    at.x.into(),
+                    at.y.into(),
+                    div()
+                        .w(sz.width)
+                        .h(sz.height)
+                        .flex()
+                        .items_stretch()
+                        .child(chip),
+                ))
                 .with_priority(400),
             );
         }

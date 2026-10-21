@@ -18,7 +18,7 @@ use gpui_kit::{
     AnyElement, App, AppContext, Bounds, ClickEvent, Context, Entity, EventEmitter, FocusHandle,
     Focusable, Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseMoveEvent, ParentElement,
     Pixels, Render, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Subscription,
-    Window, anchored, canvas, deferred, div, point, prelude::FluentBuilder, px,
+    Window, canvas, deferred, div, prelude::FluentBuilder, px,
 };
 use std::time::{Duration, Instant};
 
@@ -988,10 +988,10 @@ impl Select {
                 .children(list),
         );
         let pos = match (mbox.top, mbox.bottom) {
-            (Some(top), _) => point(px(left), px(top)),
+            (Some(top), _) => top,
             // Opening up: anchor the menu's bottom edge, `bottom` px above the viewport bottom.
-            (None, Some(bottom)) => point(px(left), px(vh - bottom)),
-            _ => point(px(left), px(0.)),
+            (None, Some(bottom)) => vh - bottom,
+            _ => 0.,
         };
         let anchor = if mbox.top.is_some() {
             gpui_kit::Anchor::TopLeft
@@ -999,9 +999,16 @@ impl Select {
             gpui_kit::Anchor::BottomLeft
         };
         Some(
-            deferred(anchored().anchor(anchor).position(pos).child(menu))
-                .with_priority(210)
-                .into_any_element(),
+            deferred(
+                crate::style::anchored_at(
+                    left,
+                    pos,
+                    crate::shadow::with_shadow(menu, &crate::style::MENU_SHADOW, 8.),
+                )
+                .anchor(anchor),
+            )
+            .with_priority(210)
+            .into_any_element(),
         )
     }
 }

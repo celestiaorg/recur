@@ -33,9 +33,13 @@ pub struct SceneSpec {
     pub width: f32,
     pub height: f32,
     pub theme: String,
-    /// Differing pixels allowed, for text anti-aliasing only. Documented in `ui-parity.md`.
+    /// Differing text and anti-aliased pixels allowed. Documented in `ui-parity.md`.
     #[serde(default)]
     pub tolerance: u64,
+    /// Hard differences allowed, each one explained in `ui-parity.md` (curved-edge coverage
+    /// where GPUI's shader and CoreGraphics disagree, gradient dither beside a glyph).
+    #[serde(default)]
+    pub hard_tolerance: u64,
     #[serde(default)]
     pub steps: Vec<Step>,
     /// Where infinite animations are frozen, in ms (finite ones settle at their end).

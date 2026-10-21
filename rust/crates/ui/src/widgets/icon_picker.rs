@@ -17,7 +17,7 @@ use gpui_kit::{
     AnyElement, App, Bounds, ClickEvent, Context, Entity, EventEmitter, FocusHandle, Focusable,
     Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseMoveEvent, ParentElement, Pixels,
     Render, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Subscription, Window,
-    anchored, canvas, deferred, div, point, prelude::FluentBuilder, px,
+    canvas, deferred, div, prelude::FluentBuilder, px,
 };
 
 pub const COLS: usize = 8;
@@ -409,14 +409,21 @@ impl IconPicker {
             .child(search_header(&self.search, cx))
             .child(grid);
         let (pos, anchor) = match (mbox.top, mbox.bottom) {
-            (Some(top), _) => (point(px(left), px(top)), gpui_kit::Anchor::TopLeft),
-            (None, Some(b)) => (point(px(left), px(vh - b)), gpui_kit::Anchor::BottomLeft),
-            _ => (point(px(left), px(0.)), gpui_kit::Anchor::TopLeft),
+            (Some(top), _) => (top, gpui_kit::Anchor::TopLeft),
+            (None, Some(b)) => (vh - b, gpui_kit::Anchor::BottomLeft),
+            _ => (0., gpui_kit::Anchor::TopLeft),
         };
         Some(
-            deferred(anchored().anchor(anchor).position(pos).child(menu))
-                .with_priority(210)
-                .into_any_element(),
+            deferred(
+                crate::style::anchored_at(
+                    left,
+                    pos,
+                    crate::shadow::with_shadow(menu, &crate::style::MENU_SHADOW, 8.),
+                )
+                .anchor(anchor),
+            )
+            .with_priority(210)
+            .into_any_element(),
         )
     }
 }

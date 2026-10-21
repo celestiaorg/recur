@@ -6165,7 +6165,15 @@ dependencies = [
 name = "recur-git"
 version = "0.0.0"
 dependencies = [
+ "chrono",
+ "include_dir",
+ "nix 0.31.3",
+ "pretty_assertions",
  "recur-domain",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]
@@ -6273,10 +6281,15 @@ dependencies = [
 name = "recur-provider-claude"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "parking_lot",
+ "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "rustix",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
@@ -6286,8 +6299,20 @@ dependencies = [
 name = "recur-provider-codex"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "parking_lot",
+ "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "toml 0.9.12+spec-1.1.0",
+ "tracing",
 ]
 
 [[package]]

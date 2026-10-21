@@ -1,0 +1,524 @@
+{
+ "catalog": [
+  {
+   "ref": "codex/gpt-5.6-luna",
+   "label": "GPT-5.6 Luna",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "ultra",
+       "label": "Ultra"
+      },
+      {
+       "value": "turbo",
+       "label": "Turbo"
+      }
+     ]
+    },
+    {
+     "id": "context",
+     "label": "Context",
+     "options": [
+      {
+       "value": "272k",
+       "label": "272K",
+       "default": true
+      },
+      {
+       "value": "1m",
+       "label": "1M"
+      }
+     ]
+    },
+    {
+     "id": "fast",
+     "label": "Fast",
+     "options": [
+      {
+       "value": "priority",
+       "label": "On",
+       "default": true
+      },
+      {
+       "value": "false",
+       "label": "Off"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ref": "codex/gpt-6-astra",
+   "label": "GPT-6 Astra",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      }
+     ]
+    },
+    {
+     "id": "context",
+     "label": "Context",
+     "options": [
+      {
+       "value": "272k",
+       "label": "272K",
+       "default": true
+      },
+      {
+       "value": "1m",
+       "label": "1M"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ref": "codex/o3",
+   "label": "O3",
+   "flags": [
+    {
+     "id": "fast",
+     "label": "Fast",
+     "options": [
+      {
+       "value": "Fast",
+       "label": "On",
+       "default": true
+      },
+      {
+       "value": "false",
+       "label": "Off"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ref": "codex/gpt-5.6-sol",
+   "label": "GPT-5.6 Sol",
+   "flags": [
+    {
+     "id": "context",
+     "label": "Context",
+     "options": [
+      {
+       "value": "272k",
+       "label": "272K",
+       "default": true
+      },
+      {
+       "value": "1m",
+       "label": "1M"
+      }
+     ]
+    },
+    {
+     "id": "fast",
+     "label": "Fast",
+     "options": [
+      {
+       "value": "Turbo",
+       "label": "On"
+      },
+      {
+       "value": "false",
+       "label": "Off",
+       "default": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ref": "codex/GPT-5.6.x",
+   "label": "Codex Mini",
+   "flags": [
+    {
+     "id": "context",
+     "label": "Context",
+     "options": [
+      {
+       "value": "272k",
+       "label": "272K",
+       "default": true
+      },
+      {
+       "value": "1m",
+       "label": "1M"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ref": "codex/codex-1",
+   "label": "Codex-v2.1"
+  }
+ ],
+ "efforts": {
+  "": "",
+  " ultra ": "Ultra",
+  "Medium": "Medium",
+  "high": "High",
+  "low": "Low",
+  "max": "Max",
+  "turbo": "Turbo",
+  "ultra": "Ultra",
+  "xhigh": "Extra High"
+ },
+ "labels": [
+  {
+   "display": "GPT-5.6-Sol",
+   "id": "gpt-5.6-sol",
+   "out": "GPT-5.6 Sol"
+  },
+  {
+   "display": "GPT-5.6-Luna",
+   "id": "",
+   "out": "GPT-5.6 Luna"
+  },
+  {
+   "display": "",
+   "id": "gpt-5.6-terra",
+   "out": "GPT-5.6 Terra"
+  },
+  {
+   "display": "",
+   "id": "gpt-6-astra",
+   "out": "GPT-6 Astra"
+  },
+  {
+   "display": "GPT-6-Astra",
+   "id": "",
+   "out": "GPT-6 Astra"
+  },
+  {
+   "display": "",
+   "id": "o3",
+   "out": "O3"
+  },
+  {
+   "display": "",
+   "id": "GPT-x",
+   "out": "GPT X"
+  },
+  {
+   "display": "",
+   "id": "-lead",
+   "out": "-lead"
+  },
+  {
+   "display": "a-",
+   "id": "",
+   "out": "a-"
+  },
+  {
+   "display": "",
+   "id": "éclair-nova",
+   "out": "Éclair Nova"
+  },
+  {
+   "display": "",
+   "id": "",
+   "out": ""
+  },
+  {
+   "display": "x-Y2",
+   "id": "",
+   "out": "x-Y2"
+  }
+ ],
+ "logins": [
+  {
+   "type": "",
+   "hasKey": false,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "",
+   "hasKey": true,
+   "out": "API key"
+  },
+  {
+   "type": "chatgpt",
+   "hasKey": false,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "chatgpt",
+   "hasKey": true,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "ChatGPT",
+   "hasKey": false,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "ChatGPT",
+   "hasKey": true,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "chat_gpt",
+   "hasKey": false,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "chat_gpt",
+   "hasKey": true,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "openai",
+   "hasKey": false,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "openai",
+   "hasKey": true,
+   "out": "ChatGPT account"
+  },
+  {
+   "type": "apikey",
+   "hasKey": false,
+   "out": "API key"
+  },
+  {
+   "type": "apikey",
+   "hasKey": true,
+   "out": "API key"
+  },
+  {
+   "type": "api_key",
+   "hasKey": false,
+   "out": "API key"
+  },
+  {
+   "type": "api_key",
+   "hasKey": true,
+   "out": "API key"
+  },
+  {
+   "type": "API",
+   "hasKey": false,
+   "out": "API key"
+  },
+  {
+   "type": "API",
+   "hasKey": true,
+   "out": "API key"
+  },
+  {
+   "type": "sso",
+   "hasKey": false,
+   "out": "sso"
+  },
+  {
+   "type": "sso",
+   "hasKey": true,
+   "out": "API key"
+  }
+ ],
+ "models": [
+  {
+   "id": "gpt-5.6-luna",
+   "model": "",
+   "displayName": "GPT-5.6-Luna",
+   "description": "",
+   "hidden": false,
+   "isDefault": false,
+   "defaultReasoningEffort": "medium",
+   "supportedReasoningEfforts": [
+    {
+     "reasoningEffort": "low",
+     "description": ""
+    },
+    {
+     "reasoningEffort": "medium",
+     "description": ""
+    },
+    {
+     "reasoningEffort": "xhigh",
+     "description": ""
+    },
+    {
+     "reasoningEffort": "ultra",
+     "description": ""
+    },
+    {
+     "reasoningEffort": "turbo",
+     "description": ""
+    }
+   ],
+   "inputModalities": null,
+   "additionalSpeedTiers": null,
+   "serviceTiers": [
+    {
+     "id": "priority",
+     "name": "Fast",
+     "description": ""
+    }
+   ],
+   "defaultServiceTier": "priority"
+  },
+  {
+   "id": "gpt-5.4-mini",
+   "model": "",
+   "displayName": "GPT-5.4 Mini",
+   "description": "",
+   "hidden": true,
+   "isDefault": false,
+   "defaultReasoningEffort": "",
+   "supportedReasoningEfforts": null,
+   "inputModalities": null,
+   "additionalSpeedTiers": null,
+   "serviceTiers": null,
+   "defaultServiceTier": ""
+  },
+  {
+   "id": "gpt-6-astra",
+   "model": "",
+   "displayName": "",
+   "description": "",
+   "hidden": false,
+   "isDefault": false,
+   "defaultReasoningEffort": "high",
+   "supportedReasoningEfforts": [
+    {
+     "reasoningEffort": "high",
+     "description": ""
+    }
+   ],
+   "inputModalities": null,
+   "additionalSpeedTiers": null,
+   "serviceTiers": null,
+   "defaultServiceTier": ""
+  },
+  {
+   "id": "  ",
+   "model": "",
+   "displayName": "blank",
+   "description": "",
+   "hidden": false,
+   "isDefault": false,
+   "defaultReasoningEffort": "",
+   "supportedReasoningEfforts": null,
+   "inputModalities": null,
+   "additionalSpeedTiers": null,
+   "serviceTiers": null,
+   "defaultServiceTier": ""
+  },
+  {
+   "id": "o3",
+   "model": "",
+   "displayName": "",
+   "description": "",
+   "hidden": false,
+   "isDefault": false,
+   "defaultReasoningEffort": "",
+   "supportedReasoningEfforts": null,
+   "inputModalities": null,
+   "additionalSpeedTiers": null,
+   "serviceTiers": [
+    {
+     "id": "standard",
+     "name": "",
+     "description": ""
+    },
+    {
+     "id": " ",
+     "name": "",
+     "description": ""
+    },
+    {
+     "id": "flex",
+     "name": "",
+     "description": ""
+    },
+    {
+     "id": "Fast",
+     "name": "",
+     "description": ""
+    }
+   ],
+   "defaultServiceTier": "fast"
+  },
+  {
+   "id": "gpt-5.6-sol",
+   "model": "",
+   "displayName": "GPT-5.6-Sol",
+   "description": "",
+   "hidden": false,
+   "isDefault": false,
+   "defaultReasoningEffort": "",
+   "supportedReasoningEfforts": null,
+   "inputModalities": null,
+   "additionalSpeedTiers": null,
+   "serviceTiers": [
+    {
+     "id": "Default",
+     "name": "",
+     "description": ""
+    },
+    {
+     "id": "Turbo",
+     "name": "",
+     "description": ""
+    }
+   ],
+   "defaultServiceTier": "standard"
+  },
+  {
+   "id": "GPT-5.6.x",
+   "model": "",
+   "displayName": " Codex-mini ",
+   "description": "",
+   "hidden": false,
+   "isDefault": false,
+   "defaultReasoningEffort": "",
+   "supportedReasoningEfforts": null,
+   "inputModalities": null,
+   "additionalSpeedTiers": null,
+   "serviceTiers": null,
+   "defaultServiceTier": ""
+  },
+  {
+   "id": "codex-1",
+   "model": "",
+   "displayName": "Codex-v2.1",
+   "description": "",
+   "hidden": false,
+   "isDefault": false,
+   "defaultReasoningEffort": "",
+   "supportedReasoningEfforts": null,
+   "inputModalities": null,
+   "additionalSpeedTiers": null,
+   "serviceTiers": null,
+   "defaultServiceTier": ""
+  }
+ ]
+}

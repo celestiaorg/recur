@@ -10,6 +10,21 @@ publish = false
 [dependencies]
 recur-domain.workspace = true
 recur-agent.workspace = true
+async-trait.workspace = true
+parking_lot.workspace = true
+rustix.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
+thiserror.workspace = true
+tokio = { workspace = true }
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+recur-agent = { workspace = true, features = ["testing"] }
+pretty_assertions.workspace = true
+tempfile.workspace = true
+toml.workspace = true
 
 [lints]
 workspace = true

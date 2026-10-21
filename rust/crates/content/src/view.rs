@@ -43,6 +43,7 @@ pub struct MarkdownView {
     /// `MarkdownHtml` enhancements (copy controls, Mermaid, the lightbox); off for streaming.
     enhance: bool,
     class: MarkdownClass,
+    sheet: Option<Sheet>,
     demote_images: bool,
     pub(crate) doc: Arc<Doc>,
     fences: Vec<String>,
@@ -131,6 +132,7 @@ impl MarkdownView {
             text: SharedString::default(),
             enhance: true,
             class,
+            sheet: None,
             demote_images,
             doc: Arc::default(),
             fences: Vec::new(),
@@ -167,6 +169,12 @@ impl MarkdownView {
         let mut v = MarkdownView::new("", class, false, cx);
         v.enhance = false;
         v
+    }
+
+    /// Replaces the class's sheet (a host's cascade on top of `.chat-canvas`).
+    pub fn set_sheet(&mut self, sheet: Sheet, cx: &mut Context<Self>) {
+        self.sheet = Some(sheet);
+        cx.notify();
     }
 
     pub fn text(&self) -> &SharedString {
@@ -455,7 +463,14 @@ impl Render for MarkdownView {
                 self.hydrate_mermaid(cx);
             }
         }
-        let sheet = Sheet::for_class(self.class);
+        let sheet = self
+            .sheet
+            .clone()
+            .unwrap_or_else(|| Sheet::for_class(self.class));
+        let mut tokens = theme.tokens.clone();
+        if sheet.muted {
+            tokens.text = tokens.muted;
+        }
         let images = &self.images;
         let image = |src: &str| images.get(src).cloned().unwrap_or(ImageSlot::Failed);
         let handlers = handlers(cx.entity().downgrade());
@@ -467,7 +482,7 @@ impl Render for MarkdownView {
         let width = sheet.max_width.map_or(width, |m| width.min(m));
         let env = Env {
             sheet: &sheet,
-            t: &theme.tokens,
+            t: &tokens,
             width,
             image: &image,
             mermaid: &self.mermaid,
@@ -534,7 +549,7 @@ impl Render for MarkdownView {
             .flex()
             .flex_col()
             .min_w_0()
-            .text_color(theme.tokens.text)
+            .text_color(tokens.text)
             .child(measure)
             .child(gap_top)
             .child(body)

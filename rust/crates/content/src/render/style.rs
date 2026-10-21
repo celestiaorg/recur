@@ -67,6 +67,9 @@ pub struct Sheet {
     pub em_muted: bool,
     /// `.chat-canvas .mdref` card styles (the doc sheet has none).
     pub mdref_card: bool,
+    /// `--text: var(--muted)` (the chat's thought and compaction bodies): text-colored runs
+    /// paint muted and hovered links stay cyan.
+    pub muted: bool,
 }
 
 const fn h(scale: f32, margin_top: f32, margin_bottom: f32, muted: bool) -> Heading {
@@ -121,6 +124,7 @@ impl Sheet {
             strong_weight: 600.,
             em_muted: true,
             mdref_card: true,
+            muted: false,
         }
     }
 
@@ -165,6 +169,7 @@ impl Sheet {
             strong_weight: 700.,
             em_muted: false,
             mdref_card: false,
+            muted: false,
         }
     }
 }

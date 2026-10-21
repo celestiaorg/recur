@@ -231,7 +231,7 @@ impl Build<'_, '_> {
             if let Some(l) = st.link
                 && self.env.hover_link == Some((block, l))
             {
-                color = t.text;
+                color = if self.env.sheet.muted { t.cyan } else { t.text };
             }
             let ib = st.code.then_some(InlineBox {
                 pad_top: 1.,

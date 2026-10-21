@@ -165,7 +165,7 @@ mod tests {
         );
         assert_eq!(
             go_sprintf("# fish completion for %-36s -*-", &[Arg::S("recur")]).len(),
-            61
+            62
         );
     }
 

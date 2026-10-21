@@ -860,6 +860,7 @@ impl Build<'_, '_> {
             };
             div()
                 .id(("md-copy", ix))
+                .debug_selector(|| "md-copy".into())
                 .absolute()
                 .top(px(inset))
                 .right(px(inset))
@@ -886,6 +887,7 @@ impl Build<'_, '_> {
         });
         div()
             .id(("md-fence", ix))
+            .debug_selector(|| "md-fence".into())
             .relative()
             .on_hover(move |h, window, cx| on_hover((ix, *h), window, cx))
             .child(block)

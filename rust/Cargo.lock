@@ -7248,6 +7248,7 @@ dependencies = [
  "pretty_assertions",
  "recur-agent",
  "recur-agent-tools",
+ "recur-app",
  "recur-bundles",
  "recur-content",
  "recur-domain",

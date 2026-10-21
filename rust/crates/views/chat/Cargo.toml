@@ -41,6 +41,7 @@ gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["mock"] }
 recur-view-chat = { path = ".", features = ["gallery"] }
 pretty_assertions.workspace = true
+recur-app = { workspace = true, features = ["gallery"] }
 parking_lot.workspace = true
 
 [lints]

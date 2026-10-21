@@ -70,6 +70,8 @@ pub mod prompt_actions;
 pub mod rows;
 pub mod session_events;
 pub mod session_feed;
+#[cfg(test)]
+mod spec;
 pub mod shhl;
 pub mod strip;
 pub mod suggest;

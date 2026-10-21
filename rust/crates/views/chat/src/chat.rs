@@ -418,6 +418,8 @@ pub struct AgentChat {
     pub(crate) input: String,
     pub(crate) attachments: Vec<ChatAttachmentDraft>,
     pub(crate) undo: ComposerUndo<ChatAttachmentDraft>,
+    /// Undo bursts are timed on the executor clock, so tests can advance it.
+    pub(crate) undo_epoch: std::time::Instant,
     /// The composer's flow layout from the last frame (caret, hit tests).
     pub(crate) composer_layout: Rc<std::cell::RefCell<Option<FlowLayout>>>,
     pub(crate) composer_scroll: ScrollHandle,
@@ -568,6 +570,7 @@ impl AgentChat {
             doc: ComposerDoc::default(),
             input: String::new(),
             attachments: Vec::new(),
+            undo_epoch: cx.background_executor().now(),
             undo: ComposerUndo::new(crate::composer_undo::UNDO_PAUSE),
             composer_layout: Rc::default(),
             composer_scroll: ScrollHandle::new(),
@@ -1988,7 +1991,7 @@ impl AgentChat {
                     atts: self.attachments.clone(),
                     caret: self.doc.wire_caret(),
                 },
-                now_ms() as u64,
+                cx.background_executor().now().duration_since(self.undo_epoch).as_millis() as u64,
             );
         }
         cx.emit(ChatEvent::Draft);

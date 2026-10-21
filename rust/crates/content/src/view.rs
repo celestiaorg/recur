@@ -501,7 +501,11 @@ impl Render for MarkdownView {
                 || old.iter().zip(&b.texts).any(|(a, b)| {
                     a.id != b.id
                         || a.spec.runs.len() != b.spec.runs.len()
-                        || a.spec.runs.iter().zip(&b.spec.runs).any(|(x, y)| x.text != y.text)
+                        || a.spec
+                            .runs
+                            .iter()
+                            .zip(&b.spec.runs)
+                            .any(|(x, y)| x.text != y.text)
                 })
         };
         *self.texts.borrow_mut() = std::mem::take(&mut b.texts);
@@ -624,7 +628,8 @@ mod tests {
                 // Painted bounds are snapped to device pixels; a line is ~20px, so any break
                 // that differs shows.
                 assert!(
-                    (last.top + last.height - f32::from(b.size.height)).abs() <= 1. / window.scale_factor(),
+                    (last.top + last.height - f32::from(b.size.height)).abs()
+                        <= 1. / window.scale_factor(),
                     "{content:?}: mirror {} vs painted {}",
                     last.top + last.height,
                     f32::from(b.size.height)

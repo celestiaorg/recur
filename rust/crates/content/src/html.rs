@@ -30,7 +30,11 @@ use crate::preview::{
 /// Messages from the page.
 #[derive(Clone, Debug, PartialEq)]
 pub enum HtmlPreviewEvent {
-    FindResult { total: usize, index: usize, valid: bool },
+    FindResult {
+        total: usize,
+        index: usize,
+        valid: bool,
+    },
     FindKey(String),
     Loaded,
 }
@@ -52,7 +56,13 @@ pub struct HtmlPreview {
 impl EventEmitter<HtmlPreviewEvent> for HtmlPreview {}
 
 impl HtmlPreview {
-    pub fn new(html: &str, path: &str, scroll: SharedScroll, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        html: &str,
+        path: &str,
+        scroll: SharedScroll,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let (attachment, _) = PageAttachment::attach(&scroll.borrow(), path, "");
         let mut p = HtmlPreview {
             path: path.to_string(),
@@ -118,12 +128,15 @@ impl HtmlPreview {
             cx.emit(HtmlPreviewEvent::Loaded);
             return;
         }
-        let Ok(d) = serde_json::from_str::<Value>(raw) else { return };
+        let Ok(d) = serde_json::from_str::<Value>(raw) else {
+            return;
+        };
         let num = |k: &str| d.get(k).and_then(Value::as_f64).unwrap_or(0.);
         match d.get("type").and_then(Value::as_str) {
             Some(t) if t == PREVIEW_IFRAME_SCROLL => {
                 let (top, left) = (num("top"), num("left"));
-                self.attachment.on_scroll(&mut self.scroll.borrow_mut(), top, left, self.parked);
+                self.attachment
+                    .on_scroll(&mut self.scroll.borrow_mut(), top, left, self.parked);
             }
             Some(t) if t == PREVIEW_IFRAME_FIND_RESULT => cx.emit(HtmlPreviewEvent::FindResult {
                 total: num("total") as usize,
@@ -147,7 +160,9 @@ impl HtmlPreview {
     }
 
     pub fn find_step(&mut self, dir: i32, _: &mut Context<Self>) {
-        self.post(json!({ "type": PREVIEW_IFRAME_FIND, "op": if dir > 0 { "next" } else { "prev" } }));
+        self.post(
+            json!({ "type": PREVIEW_IFRAME_FIND, "op": if dir > 0 { "next" } else { "prev" } }),
+        );
     }
 
     pub fn find_clear(&mut self, _: &mut Context<Self>) {
@@ -206,7 +221,7 @@ mod mac {
     use gpui_kit::{Bounds, Pixels, Window};
     use objc2::rc::Retained;
     use objc2::runtime::{NSObject, NSObjectProtocol, ProtocolObject};
-    use objc2::{AnyThread, DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send};
+    use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send};
     use objc2_app_kit::NSView;
     use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
     use objc2_web_kit::{
@@ -258,7 +273,8 @@ mod mac {
                 // Subframes may load (CSP limits them to https); the preview itself never
                 // navigates away from its document.
                 // SAFETY: plain property reads on the main thread.
-                let main = unsafe { action.targetFrame() }.is_some_and(|f| unsafe { f.isMainFrame() });
+                let main =
+                    unsafe { action.targetFrame() }.is_some_and(|f| unsafe { f.isMainFrame() });
                 let url = unsafe { action.request().URL() }
                     .and_then(|u| u.absoluteString())
                     .map(|s| s.to_string())
@@ -330,7 +346,8 @@ mod mac {
                 );
                 ucc.addUserScript(&script);
                 let frame = NSRect::new(NSPoint::new(0., 0.), NSSize::new(10., 10.));
-                let web = WKWebView::initWithFrame_configuration(WKWebView::alloc(mtm), frame, &config);
+                let web =
+                    WKWebView::initWithFrame_configuration(WKWebView::alloc(mtm), frame, &config);
                 web.setNavigationDelegate(Some(ProtocolObject::from_ref(&*bridge)));
                 web.setHidden(true);
                 web
@@ -349,18 +366,19 @@ mod mac {
             *self.bridge.ivars().tx.borrow_mut() = Some(tx);
             // SAFETY: main thread.
             unsafe {
-                self.web.loadHTMLString_baseURL(&NSString::from_str(srcdoc), None);
+                self.web
+                    .loadHTMLString_baseURL(&NSString::from_str(srcdoc), None);
             }
         }
 
         /// `iframe.contentWindow.postMessage(data, '*')`.
         pub fn dispatch(&self, data: &Value) {
-            let js = format!(
-                "window.dispatchEvent(new MessageEvent('message', {{ data: {data} }}));"
-            );
+            let js =
+                format!("window.dispatchEvent(new MessageEvent('message', {{ data: {data} }}));");
             // SAFETY: main thread; no completion handler.
             unsafe {
-                self.web.evaluateJavaScript_completionHandler(&NSString::from_str(&js), None);
+                self.web
+                    .evaluateJavaScript_completionHandler(&NSString::from_str(&js), None);
             }
         }
 
@@ -374,8 +392,7 @@ mod mac {
 
         pub fn remove(self) {
             *self.bridge.ivars().tx.borrow_mut() = None;
-            // SAFETY: main thread.
-            unsafe { self.web.removeFromSuperview() };
+            self.web.removeFromSuperview();
         }
     }
 
@@ -391,7 +408,9 @@ mod mac {
     /// Lay the page over `b` (window coordinates) and show it; hide it again on the next frame
     /// that does not paint it.
     pub fn place(page: &Handle, b: Bounds<Pixels>, window: &mut Window) {
-        let Some(view) = content_view(window) else { return };
+        let Some(view) = content_view(window) else {
+            return;
+        };
         if !page.attached.get() {
             view.addSubview(&page.web);
             page.attached.set(true);
@@ -404,7 +423,8 @@ mod mac {
             f64::from(f32::from(b.size.height)),
         );
         let y = if view.isFlipped() { y } else { h - y - bh };
-        page.web.setFrame(NSRect::new(NSPoint::new(x, y), NSSize::new(w, bh)));
+        page.web
+            .setFrame(NSRect::new(NSPoint::new(x, y), NSSize::new(w, bh)));
         page.web.setHidden(false);
         let frame = FRAME.with(|f| {
             f.set(f.get() + 1);

@@ -60,7 +60,10 @@ impl Scroller for El {
 }
 
 fn views(entries: &[(&str, FileViewState)]) -> HashMap<String, FileViewState> {
-    entries.iter().map(|(k, v)| (k.to_string(), v.clone())).collect()
+    entries
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.clone()))
+        .collect()
 }
 
 #[test]
@@ -107,7 +110,9 @@ fn hydrates_from_file_views_and_copies_back() {
     let mut base = vs(None, None, None);
     base.line = 2;
     base.scroll_top = 10.;
-    let out = s.apply_to_file_views(&views(&[("doc.md", base)]), ["doc.md"]).unwrap();
+    let out = s
+        .apply_to_file_views(&views(&[("doc.md", base)]), ["doc.md"])
+        .unwrap();
     assert_eq!(out["doc.md"].preview_scroll_top, Some(420.));
     assert_eq!(out["doc.md"].line, 2);
 }
@@ -222,7 +227,14 @@ fn a_same_path_workspace_switch_ignores_the_outgoing_teardown() {
     let a = Attachment::attach(&s, "README.md", "README.md", "wsA", &mut el).unwrap();
     s.hydrate(&views(&[("README.md", vs(Some(50.), None, None))]), "wsB");
     a.detach(&mut s, &el, false);
-    assert_eq!(s.peek("README.md"), Some(PreviewScroll { top: 50., left: 0., zoom: None }));
+    assert_eq!(
+        s.peek("README.md"),
+        Some(PreviewScroll {
+            top: 50.,
+            left: 0.,
+            zoom: None
+        })
+    );
     let mut incoming = El::free(100., 0.);
     Attachment::attach(&s, "README.md", "README.md", "wsB", &mut incoming).unwrap();
     assert_eq!(incoming.top, 50.);
@@ -241,13 +253,23 @@ fn two_owners_keep_separate_maps() {
     let base = views(&[("README.md", vs(Some(100.), None, None))]);
     let out = a.apply_to_file_views(&base, ["README.md"]).unwrap();
     assert_eq!(out["README.md"].preview_scroll_top, Some(300.));
-    assert_eq!(b.peek("README.md"), Some(PreviewScroll { top: 50., left: 0., zoom: None }));
+    assert_eq!(
+        b.peek("README.md"),
+        Some(PreviewScroll {
+            top: 50.,
+            left: 0.,
+            zoom: None
+        })
+    );
 }
 
 #[test]
 fn round_trips_a_mermaid_camera_with_zoom_and_negative_pan() {
     let mut s = PreviewScrollStore::new();
-    s.hydrate(&views(&[("flow.mmd", vs(Some(40.), Some(12.), Some(2.)))]), "");
+    s.hydrate(
+        &views(&[("flow.mmd", vs(Some(40.), Some(12.), Some(2.)))]),
+        "",
+    );
     assert_eq!(
         preview_camera(s.peek("flow.mmd")),
         Some(Camera {
@@ -256,17 +278,36 @@ fn round_trips_a_mermaid_camera_with_zoom_and_negative_pan() {
             zoom: 2.
         })
     );
-    s.remember("flow.mmd", PreviewScroll { top: 8., left: 3., zoom: Some(1.25) });
+    s.remember(
+        "flow.mmd",
+        PreviewScroll {
+            top: 8.,
+            left: 3.,
+            zoom: Some(1.25),
+        },
+    );
     let out = s
-        .apply_to_file_views(&views(&[("flow.mmd", vs(Some(40.), None, Some(2.)))]), ["flow.mmd"])
+        .apply_to_file_views(
+            &views(&[("flow.mmd", vs(Some(40.), None, Some(2.)))]),
+            ["flow.mmd"],
+        )
         .unwrap();
     assert_eq!(out["flow.mmd"].preview_scroll_top, Some(8.));
     assert_eq!(out["flow.mmd"].preview_scroll_left, Some(3.));
     assert_eq!(out["flow.mmd"].preview_zoom, Some(1.25));
 
     let mut s = PreviewScrollStore::new();
-    s.remember("flow.mmd", PreviewScroll { top: -120., left: -80., zoom: Some(2.) });
-    let out = s.apply_to_file_views(&views(&[("flow.mmd", vs(None, None, None))]), ["flow.mmd"]).unwrap();
+    s.remember(
+        "flow.mmd",
+        PreviewScroll {
+            top: -120.,
+            left: -80.,
+            zoom: Some(2.),
+        },
+    );
+    let out = s
+        .apply_to_file_views(&views(&[("flow.mmd", vs(None, None, None))]), ["flow.mmd"])
+        .unwrap();
     assert_eq!(out["flow.mmd"].preview_scroll_top, Some(-120.));
     s.hydrate(&out, "");
     assert_eq!(
@@ -295,7 +336,14 @@ fn ignores_the_pages_paint_at_zero_until_a_live_offset() {
     s.hydrate(&views(&[("a.html", vs(Some(90.), Some(4.), None))]), "");
     let (mut a, _) = PageAttachment::attach(&s, "a.html", "");
     a.on_scroll(&mut s, 0., 0., false);
-    assert_eq!(s.peek("a.html"), Some(PreviewScroll { top: 90., left: 4., zoom: None }));
+    assert_eq!(
+        s.peek("a.html"),
+        Some(PreviewScroll {
+            top: 90.,
+            left: 4.,
+            zoom: None
+        })
+    );
     a.on_scroll(&mut s, 90., 4., false);
     a.on_scroll(&mut s, 0., 0., false);
     assert_eq!(s.peek("a.html"), Some(PreviewScroll::at(0., 0.)));

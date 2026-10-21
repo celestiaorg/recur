@@ -170,7 +170,11 @@ fn image(cx: &CGContext, i: &usvg::Image, ts: Transform, w: u32, h: u32) {
                 Some(p) => p,
                 None => return,
             };
-            resvg::render_node(&usvg::Node::Image(Box::new(i.clone())), ts, &mut pixmap.as_mut());
+            resvg::render_node(
+                &usvg::Node::Image(Box::new(i.clone())),
+                ts,
+                &mut pixmap.as_mut(),
+            );
             let data = pixmap.take();
             let space = CGColorSpace::create_device_rgb();
             let mut layer = CGContext::create_bitmap_context(
@@ -221,10 +225,21 @@ fn gradient_stops(stops: &[usvg::Stop], opacity: f32) -> (Vec<CGFloat>, Vec<CGFl
 }
 
 /// Fill (or stroke, already traced as the current path) with `paint`.
-fn paint(cx: &CGContext, p: &usvg::Paint, opacity: f32, m: Transform, even_odd: bool, stroke: Option<&usvg::Stroke>) {
+fn paint(
+    cx: &CGContext,
+    p: &usvg::Paint,
+    opacity: f32,
+    m: Transform,
+    even_odd: bool,
+    stroke: Option<&usvg::Stroke>,
+) {
     match p {
         usvg::Paint::Color(c) => {
-            let (r, g, b) = (c.red as f64 / 255., c.green as f64 / 255., c.blue as f64 / 255.);
+            let (r, g, b) = (
+                c.red as f64 / 255.,
+                c.green as f64 / 255.,
+                c.blue as f64 / 255.,
+            );
             match stroke {
                 Some(_) => {
                     cx.set_rgb_stroke_color(r, g, b, opacity as f64);
@@ -257,7 +272,8 @@ fn paint(cx: &CGContext, p: &usvg::Paint, opacity: f32, m: Transform, even_odd: 
             match p {
                 usvg::Paint::LinearGradient(l) => {
                     let (comps, locs) = gradient_stops(l.stops(), opacity);
-                    let grad = CGGradient::create_with_color_components(&space, &comps, &locs, locs.len());
+                    let grad =
+                        CGGradient::create_with_color_components(&space, &comps, &locs, locs.len());
                     cx.concat_ctm(affine(l.transform()));
                     cx.draw_linear_gradient(
                         &grad,
@@ -268,7 +284,8 @@ fn paint(cx: &CGContext, p: &usvg::Paint, opacity: f32, m: Transform, even_odd: 
                 }
                 usvg::Paint::RadialGradient(r) => {
                     let (comps, locs) = gradient_stops(r.stops(), opacity);
-                    let grad = CGGradient::create_with_color_components(&space, &comps, &locs, locs.len());
+                    let grad =
+                        CGGradient::create_with_color_components(&space, &comps, &locs, locs.len());
                     cx.concat_ctm(affine(r.transform()));
                     cx.draw_radial_gradient(
                         &grad,
@@ -292,7 +309,14 @@ fn path(cx: &CGContext, p: &usvg::Path, ts: Transform) {
     let fill = |cx: &CGContext| {
         if let Some(f) = p.fill() {
             trace(cx, p.data());
-            paint(cx, f.paint(), f.opacity().get(), m, f.rule() == usvg::FillRule::EvenOdd, None);
+            paint(
+                cx,
+                f.paint(),
+                f.opacity().get(),
+                m,
+                f.rule() == usvg::FillRule::EvenOdd,
+                None,
+            );
         }
     };
     let stroke = |cx: &CGContext| {

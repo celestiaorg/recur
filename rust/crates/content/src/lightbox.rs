@@ -18,8 +18,8 @@ use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon, rgba};
 
 use crate::image_menu::{ImageContextMenu, ImageMenuEvent, copy_png};
-use crate::render::exact::{hgap, vgap};
 use crate::images::{self, Decoded};
+use crate::render::exact::{hgap, vgap};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LightboxEvent {

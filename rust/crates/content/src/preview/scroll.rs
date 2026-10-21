@@ -101,8 +101,14 @@ impl PreviewScrollStore {
         prev: Option<&FileViewState>,
     ) -> (Option<f64>, Option<f64>, Option<f64>) {
         let s = self.saved.get(path);
-        let top = s.map_or_else(|| prev.and_then(|p| p.preview_scroll_top).unwrap_or(0.), |s| s.top);
-        let left = s.map_or_else(|| prev.and_then(|p| p.preview_scroll_left).unwrap_or(0.), |s| s.left);
+        let top = s.map_or_else(
+            || prev.and_then(|p| p.preview_scroll_top).unwrap_or(0.),
+            |s| s.top,
+        );
+        let left = s.map_or_else(
+            || prev.and_then(|p| p.preview_scroll_left).unwrap_or(0.),
+            |s| s.left,
+        );
         let zoom = s.map_or_else(
             || prev.and_then(|p| p.preview_zoom).unwrap_or(0.),
             |s| s.zoom.unwrap_or(0.),
@@ -127,7 +133,8 @@ impl PreviewScrollStore {
             let left = vs.preview_scroll_left.unwrap_or(0.);
             let zoom = vs.preview_zoom;
             if top != 0. || left != 0. || zoom.is_some_and(|z| z > 0.) {
-                self.saved.insert(path.clone(), PreviewScroll { top, left, zoom });
+                self.saved
+                    .insert(path.clone(), PreviewScroll { top, left, zoom });
             }
         }
     }
@@ -171,7 +178,9 @@ impl PreviewScrollStore {
     /// `canSave`: not across a workspace switch, and not while parked (reparenting zeroes
     /// overflow).
     pub fn can_save(&self, workspace: &str, parked: bool) -> bool {
-        if !workspace.is_empty() && !self.bound_workspace.is_empty() && workspace != self.bound_workspace
+        if !workspace.is_empty()
+            && !self.bound_workspace.is_empty()
+            && workspace != self.bound_workspace
         {
             return false;
         }
@@ -237,7 +246,9 @@ impl Attachment {
         if !store.can_save(&self.workspace, parked) {
             return;
         }
-        if self.pending && (el.top() - self.applied.0).abs() < 1. && (el.left() - self.applied.1).abs() < 1.
+        if self.pending
+            && (el.top() - self.applied.0).abs() < 1.
+            && (el.left() - self.applied.1).abs() < 1.
         {
             return;
         }
@@ -264,7 +275,11 @@ pub struct PageAttachment {
 
 impl PageAttachment {
     /// Returns the attachment and the restore offset to send the page.
-    pub fn attach(store: &PreviewScrollStore, path: &str, workspace: &str) -> (PageAttachment, (f64, f64)) {
+    pub fn attach(
+        store: &PreviewScrollStore,
+        path: &str,
+        workspace: &str,
+    ) -> (PageAttachment, (f64, f64)) {
         let want = store.peek(path);
         let mut a = PageAttachment {
             path: path.to_string(),

@@ -51,7 +51,13 @@ pub struct MermaidPreview {
 }
 
 impl MermaidPreview {
-    pub fn new(content: &str, path: &str, scroll: Option<SharedScroll>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        content: &str,
+        path: &str,
+        scroll: Option<SharedScroll>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let mut p = MermaidPreview {
             content: SharedString::default(),
             path: path.to_string().into(),
@@ -76,7 +82,9 @@ impl MermaidPreview {
     /// The source changed: reset the camera and render again (errors clear first, so an edit
     /// can recover).
     pub fn set_content(&mut self, content: &str, window: &mut Window, cx: &mut Context<Self>) {
-        if content == self.content.as_ref() && (self.diagram.is_some() || self.pending || !self.error.is_empty()) {
+        if content == self.content.as_ref()
+            && (self.diagram.is_some() || self.pending || !self.error.is_empty())
+        {
             return;
         }
         self.content = content.to_string().into();
@@ -129,7 +137,13 @@ impl MermaidPreview {
                     self.fit(true);
                 }
             }
-            Err(e) => self.error = if e.is_empty() { "Mermaid render failed".into() } else { e },
+            Err(e) => {
+                self.error = if e.is_empty() {
+                    "Mermaid render failed".into()
+                } else {
+                    e
+                }
+            }
         }
         cx.emit(DiagramChanged);
         cx.notify();
@@ -199,7 +213,8 @@ impl MermaidPreview {
         if let Some(s) = &self.scroll
             && !self.path.is_empty()
         {
-            s.borrow_mut().remember(&self.path, PreviewScroll::at(0., 0.));
+            s.borrow_mut()
+                .remember(&self.path, PreviewScroll::at(0., 0.));
         }
         self.fit(true);
         cx.notify();
@@ -219,14 +234,21 @@ impl MermaidPreview {
 
     /// Find: the diagram's labels as one block.
     pub fn text_blocks(&self) -> Vec<(usize, String)> {
-        self.diagram.as_ref().map(|d| vec![(0, d.text())]).unwrap_or_default()
+        self.diagram
+            .as_ref()
+            .map(|d| vec![(0, d.text())])
+            .unwrap_or_default()
     }
 
     pub fn highlights(&self) -> &HashMap<usize, Vec<(Range<usize>, bool)>> {
         &self.highlights
     }
 
-    pub fn set_highlights(&mut self, h: HashMap<usize, Vec<(Range<usize>, bool)>>, cx: &mut Context<Self>) {
+    pub fn set_highlights(
+        &mut self,
+        h: HashMap<usize, Vec<(Range<usize>, bool)>>,
+        cx: &mut Context<Self>,
+    ) {
         if h != self.highlights {
             self.highlights = h;
             cx.notify();
@@ -234,7 +256,13 @@ impl MermaidPreview {
     }
 
     /// `panMermaidCamera`: centre a match in the viewport.
-    pub fn reveal(&mut self, _block: usize, range: Range<usize>, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn reveal(
+        &mut self,
+        _block: usize,
+        range: Range<usize>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let (Some(d), Some(vp)) = (self.diagram.clone(), self.viewport) else {
             return;
         };
@@ -242,7 +270,10 @@ impl MermaidPreview {
             return;
         };
         let (bx, by) = (self.tx + x + w / 2., self.ty + y + h / 2.);
-        let (vx, vy) = (f32::from(vp.size.width) / 2., f32::from(vp.size.height) / 2.);
+        let (vx, vy) = (
+            f32::from(vp.size.width) / 2.,
+            f32::from(vp.size.height) / 2.,
+        );
         let (dx, dy) = (vx - bx, vy - by);
         if dx.abs() < 1. && dy.abs() < 1. {
             return;
@@ -253,6 +284,7 @@ impl MermaidPreview {
         cx.notify();
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn tb_button(
         &self,
         id: &'static str,
@@ -298,20 +330,56 @@ impl MermaidPreview {
             .border_color(t.line)
             .hover(move |s| s.bg(t.pane_2).border_color(t.line_bright))
             .on_click(cx.listener(|p, _, _, cx| p.reset_view(cx)))
-            .child(recur_ui::text(pct).mono().size(11.).tabular().weight(550.).color(t.muted).nowrap());
+            .child(
+                recur_ui::text(pct)
+                    .mono()
+                    .size(11.)
+                    .tabular()
+                    .weight(550.)
+                    .color(t.muted)
+                    .nowrap(),
+            );
         let bar = recur_ui::style::card(t.pane, t.line, 7.)
             .overflow_hidden()
             .flex()
             .items_center()
-            .child(self.tb_button("mmd-out", "Zoom out", ic(IconName::Minus), self.scale <= MIN_SCALE, false, cx, |p, cx| p.zoom_by(1. / ZOOM_STEP, cx)))
+            .child(self.tb_button(
+                "mmd-out",
+                "Zoom out",
+                ic(IconName::Minus),
+                self.scale <= MIN_SCALE,
+                false,
+                cx,
+                |p, cx| p.zoom_by(1. / ZOOM_STEP, cx),
+            ))
             .child(titled("mmd-pct", "Fit to view", pct_button))
-            .child(self.tb_button("mmd-in", "Zoom in", ic(IconName::Plus), self.scale >= MAX_SCALE, false, cx, |p, cx| p.zoom_by(ZOOM_STEP, cx)))
-            .child(self.tb_button("mmd-fit", "Fit to view", ic(IconName::Maximize), false, true, cx, |p, cx| p.reset_view(cx)));
+            .child(self.tb_button(
+                "mmd-in",
+                "Zoom in",
+                ic(IconName::Plus),
+                self.scale >= MAX_SCALE,
+                false,
+                cx,
+                |p, cx| p.zoom_by(ZOOM_STEP, cx),
+            ))
+            .child(self.tb_button(
+                "mmd-fit",
+                "Fit to view",
+                ic(IconName::Maximize),
+                false,
+                true,
+                cx,
+                |p, cx| p.reset_view(cx),
+            ));
         div()
             .absolute()
             .top(px(10.))
             .right(px(10.))
-            .child(with_shadow(bar, &[css_box_shadow(0., 6., 18., 0., rgba(0, 0, 0, 0.28))], 7.))
+            .child(with_shadow(
+                bar,
+                &[css_box_shadow(0., 6., 18., 0., rgba(0, 0, 0, 0.28))],
+                7.,
+            ))
             .into_any_element()
     }
 }
@@ -322,7 +390,11 @@ impl Render for MermaidPreview {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
         let message = |label: String, error: bool| {
-            let color = if error { t.coral.mix(0.85, t.text) } else { t.faint };
+            let color = if error {
+                t.coral.mix(0.85, t.text)
+            } else {
+                t.faint
+            };
             div()
                 .absolute()
                 .inset_0()
@@ -383,12 +455,22 @@ impl Render for MermaidPreview {
             let colors = (t.amber.fade(0.4).into(), t.amber.into());
             // WebKit paints the translated stage unsnapped.
             let dev = window.scale_factor();
-            let nudge = (self.tx - (self.tx * dev).round() / dev, self.ty - (self.ty * dev).round() / dev);
+            let nudge = (
+                self.tx - (self.tx * dev).round() / dev,
+                self.ty - (self.ty * dev).round() / dev,
+            );
             div()
                 .absolute()
                 .left(px(self.tx))
                 .top(px(self.ty))
-                .child(d.element(nw * self.scale, nh * self.scale, &self.highlights, colors, nudge, window))
+                .child(d.element(
+                    nw * self.scale,
+                    nh * self.scale,
+                    &self.highlights,
+                    colors,
+                    nudge,
+                    window,
+                ))
         });
         let hidden = self.pending || !self.error.is_empty();
         let viewport = div()
@@ -397,7 +479,11 @@ impl Render for MermaidPreview {
             .flex_1()
             .min_h_0()
             .overflow_hidden()
-            .cursor(if self.drag.is_some() { CursorStyle::ClosedHand } else { CursorStyle::OpenHand })
+            .cursor(if self.drag.is_some() {
+                CursorStyle::ClosedHand
+            } else {
+                CursorStyle::OpenHand
+            })
             .child(measure)
             .when(!hidden, |d| d.children(stage))
             .on_scroll_wheel(cx.listener(|p, e: &ScrollWheelEvent, window, cx| {
@@ -407,20 +493,26 @@ impl Render for MermaidPreview {
                 let Some(vp) = p.viewport else { return };
                 let dy = f32::from(e.delta.pixel_delta(window.line_height()).y);
                 let factor = if dy > 0. { ZOOM_STEP } else { 1. / ZOOM_STEP };
-                let (x, y) = (f32::from(e.position.x - vp.origin.x), f32::from(e.position.y - vp.origin.y));
+                let (x, y) = (
+                    f32::from(e.position.x - vp.origin.x),
+                    f32::from(e.position.y - vp.origin.y),
+                );
                 p.zoom_at(factor, x, y, cx);
             }))
-            .on_mouse_down(MouseButton::Left, cx.listener(|p, e: &MouseDownEvent, _, cx| {
-                if !p.interactive() {
-                    return;
-                }
-                if e.click_count == 2 {
-                    p.reset_view(cx);
-                    return;
-                }
-                p.drag = Some((e.position, p.tx, p.ty));
-                cx.notify();
-            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|p, e: &MouseDownEvent, _, cx| {
+                    if !p.interactive() {
+                        return;
+                    }
+                    if e.click_count == 2 {
+                        p.reset_view(cx);
+                        return;
+                    }
+                    p.drag = Some((e.position, p.tx, p.ty));
+                    cx.notify();
+                }),
+            )
             .on_mouse_move(cx.listener(|p, e: &MouseMoveEvent, _, cx| {
                 if let Some((o, tx, ty)) = p.drag {
                     p.tx = tx + f32::from(e.position.x - o.x);
@@ -428,11 +520,14 @@ impl Render for MermaidPreview {
                     p.adjusted(cx);
                 }
             }))
-            .on_mouse_up(MouseButton::Left, cx.listener(|p, _: &MouseUpEvent, _, cx| {
-                if p.drag.take().is_some() {
-                    cx.notify();
-                }
-            }));
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|p, _: &MouseUpEvent, _, cx| {
+                    if p.drag.take().is_some() {
+                        cx.notify();
+                    }
+                }),
+            );
         let mut root = root.child(viewport);
         if self.error.is_empty() {
             root = root.child(self.toolbar(cx));

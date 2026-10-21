@@ -15,7 +15,7 @@ use recur_ui::style::{self, card, focus_ring, is_focus_visible, outline, text_fi
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, TextStyled, Theme, icon, text};
 
-use super::find::{FindOptions, PREVIEW_FIND_CAP, preview_find_count_label};
+use super::find::{FindOptions, preview_find_count_label};
 
 /// What the dock reacts to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,7 +156,14 @@ impl PreviewFindBar {
     }
 
     /// The current match (1-based), the total, whether the total hit the cap, query validity.
-    pub fn set_results(&mut self, index: usize, total: usize, capped: bool, valid: bool, cx: &mut Context<Self>) {
+    pub fn set_results(
+        &mut self,
+        index: usize,
+        total: usize,
+        capped: bool,
+        valid: bool,
+        cx: &mut Context<Self>,
+    ) {
         self.valid = valid;
         self.index = index;
         self.total = total;

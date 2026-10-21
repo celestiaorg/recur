@@ -10,10 +10,9 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AppContext, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, InteractiveElement,
     IntoElement, KeyDownEvent, ParentElement, Pixels, Render, RenderImage, ScrollHandle,
-    SharedString, StatefulInteractiveElement, Styled, Subscription, Window, canvas, div, point,
-    px,
+    SharedString, StatefulInteractiveElement, Styled, Subscription, Window, canvas, div, point, px,
 };
-use recur_ui::{Theme, TextStyled};
+use recur_ui::{TextStyled, Theme};
 
 use super::PreviewKind;
 use super::find::{FindOptions, PreviewFindMatch, collect_preview_find_ranges, reveal_offset};
@@ -41,12 +40,15 @@ enum Surface {
     Empty(&'static str),
 }
 
+/// The rasterized `<img>`: its device size and image.
+type SvgRaster = (u32, u32, Arc<RenderImage>);
+
 #[derive(Clone)]
 struct SvgImage {
     tree: Arc<resvg::usvg::Tree>,
     width: f32,
     height: f32,
-    raster: Rc<RefCell<Option<(u32, u32, Arc<RenderImage>)>>>,
+    raster: Rc<RefCell<Option<SvgRaster>>>,
 }
 
 struct HandleScroller<'a>(&'a ScrollHandle);
@@ -107,12 +109,16 @@ impl FilePreview {
     ) -> Self {
         let path = path.into();
         let bar = cx.new(|cx| PreviewFindBar::new(window, cx));
-        let sub = cx.subscribe_in(&bar, window, |p, _, ev: &FindBarEvent, window, cx| match ev {
-            FindBarEvent::Changed => p.refresh(window, cx),
-            FindBarEvent::Next => p.step(1, window, cx),
-            FindBarEvent::Previous => p.step(-1, window, cx),
-            FindBarEvent::Close => p.close_search(window, cx),
-        });
+        let sub = cx.subscribe_in(
+            &bar,
+            window,
+            |p, _, ev: &FindBarEvent, window, cx| match ev {
+                FindBarEvent::Changed => p.refresh(window, cx),
+                FindBarEvent::Next => p.step(1, window, cx),
+                FindBarEvent::Previous => p.step(-1, window, cx),
+                FindBarEvent::Close => p.close_search(window, cx),
+            },
+        );
         let mut fp = FilePreview {
             kind,
             content: SharedString::default(),
@@ -145,7 +151,12 @@ impl FilePreview {
     }
 
     /// `content` changed (the editor buffer).
-    pub fn set_content(&mut self, content: impl Into<SharedString>, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_content(
+        &mut self,
+        content: impl Into<SharedString>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let content = content.into();
         if content == self.content && !matches!(self.surface, Surface::Empty("")) {
             return;
@@ -161,11 +172,15 @@ impl FilePreview {
             (PreviewKind::Markdown, _) => {
                 let v = cx.new(|cx| MarkdownView::new(content, MarkdownClass::MdDoc, false, cx));
                 // `MutationObserver`: re-collect matches when the rendered tree changes.
-                self._subs.push(cx.subscribe_in(&v, window, |p, _, ev: &MarkdownEvent, window, cx| {
-                    if matches!(ev, MarkdownEvent::TextChanged) && p.find_open && p.active {
-                        p.refresh(window, cx);
-                    }
-                }));
+                self._subs.push(cx.subscribe_in(
+                    &v,
+                    window,
+                    |p, _, ev: &MarkdownEvent, window, cx| {
+                        if matches!(ev, MarkdownEvent::TextChanged) && p.find_open && p.active {
+                            p.refresh(window, cx);
+                        }
+                    },
+                ));
                 Surface::Markdown(v)
             }
             (PreviewKind::Svg, _) if blank => Surface::Empty("Empty SVG"),
@@ -184,10 +199,13 @@ impl FilePreview {
             }
             (PreviewKind::Html, _) => {
                 let path = self.path.clone();
-                let h = cx.new(|cx| HtmlPreview::new(&content, &path, self.scroll.clone(), window, cx));
-                self._subs.push(cx.subscribe_in(&h, window, |p, _, ev: &HtmlPreviewEvent, window, cx| {
-                    p.on_page(ev, window, cx)
-                }));
+                let h =
+                    cx.new(|cx| HtmlPreview::new(&content, &path, self.scroll.clone(), window, cx));
+                self._subs.push(cx.subscribe_in(
+                    &h,
+                    window,
+                    |p, _, ev: &HtmlPreviewEvent, window, cx| p.on_page(ev, window, cx),
+                ));
                 Surface::Html(h)
             }
             (PreviewKind::Mermaid, Surface::Mermaid(m)) => {
@@ -198,11 +216,15 @@ impl FilePreview {
                 let path = self.path.clone();
                 let scroll = self.scroll.clone();
                 let m = cx.new(|cx| MermaidPreview::new(&content, &path, Some(scroll), window, cx));
-                self._subs.push(cx.subscribe_in(&m, window, |p, _, _: &DiagramChanged, window, cx| {
-                    if p.find_open && p.active {
-                        p.refresh(window, cx);
-                    }
-                }));
+                self._subs.push(cx.subscribe_in(
+                    &m,
+                    window,
+                    |p, _, _: &DiagramChanged, window, cx| {
+                        if p.find_open && p.active {
+                            p.refresh(window, cx);
+                        }
+                    },
+                ));
                 Surface::Mermaid(m)
             }
         };
@@ -212,7 +234,10 @@ impl FilePreview {
     /// The path the editor shows and the document that has loaded for it (`loaded`), and
     /// the workspace that owns the scroll map.
     pub fn set_path(&mut self, path: &str, loaded: &str, workspace: &str, cx: &mut Context<Self>) {
-        if self.path.as_ref() == path && self.loaded.as_ref() == loaded && self.workspace.as_ref() == workspace {
+        if self.path.as_ref() == path
+            && self.loaded.as_ref() == loaded
+            && self.workspace.as_ref() == workspace
+        {
             return;
         }
         self.detach();
@@ -363,8 +388,10 @@ impl FilePreview {
         } else {
             1
         };
-        let (index, total, capped, valid) = (self.index, n, self.matches.capped, self.matches.valid);
-        self.bar.update(cx, |b, cx| b.set_results(index, total, capped, valid, cx));
+        let (index, total, capped, valid) =
+            (self.index, n, self.matches.capped, self.matches.valid);
+        self.bar
+            .update(cx, |b, cx| b.set_results(index, total, capped, valid, cx));
         self.paint_highlights(true, cx);
         self.reveal(window, cx);
     }
@@ -390,7 +417,8 @@ impl FilePreview {
         }
         self.index = i as usize;
         let (index, capped, valid) = (self.index, self.matches.capped, self.matches.valid);
-        self.bar.update(cx, |b, cx| b.set_results(index, n, capped, valid, cx));
+        self.bar
+            .update(cx, |b, cx| b.set_results(index, n, capped, valid, cx));
         if !self.active {
             return;
         }
@@ -403,7 +431,9 @@ impl FilePreview {
         let mut map: HashMap<usize, Vec<(std::ops::Range<usize>, bool)>> = HashMap::new();
         if on {
             for (i, (id, r)) in self.matches.ranges.iter().enumerate() {
-                map.entry(*id).or_default().push((r.clone(), i + 1 == self.index));
+                map.entry(*id)
+                    .or_default()
+                    .push((r.clone(), i + 1 == self.index));
             }
         }
         match &self.surface {
@@ -415,7 +445,11 @@ impl FilePreview {
 
     /// `revealPreviewFindRange`: centre the current match in the scroller (Mermaid pans).
     fn reveal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some((id, r)) = self.index.checked_sub(1).and_then(|i| self.matches.ranges.get(i)).cloned()
+        let Some((id, r)) = self
+            .index
+            .checked_sub(1)
+            .and_then(|i| self.matches.ranges.get(i))
+            .cloned()
         else {
             return;
         };
@@ -450,10 +484,15 @@ impl FilePreview {
 
     fn on_page(&mut self, ev: &HtmlPreviewEvent, window: &mut Window, cx: &mut Context<Self>) {
         match ev {
-            HtmlPreviewEvent::FindResult { total, index, valid } => {
+            HtmlPreviewEvent::FindResult {
+                total,
+                index,
+                valid,
+            } => {
                 let capped = *total >= super::find::PREVIEW_FIND_CAP;
                 let (t, i, v) = (*total, *index, *valid);
-                self.bar.update(cx, |b, cx| b.set_results(i, t, capped, v, cx));
+                self.bar
+                    .update(cx, |b, cx| b.set_results(i, t, capped, v, cx));
             }
             HtmlPreviewEvent::FindKey(k) => {
                 if !self.active {
@@ -531,7 +570,9 @@ impl FilePreview {
                 self.last_offset = (el.top(), el.left());
             }
             Some(a) => {
-                if (now.0 - self.last_offset.0).abs() >= 0.5 || (now.1 - self.last_offset.1).abs() >= 0.5 {
+                if (now.0 - self.last_offset.0).abs() >= 0.5
+                    || (now.1 - self.last_offset.1).abs() >= 0.5
+                {
                     a.save(&mut self.scroll.borrow_mut(), &el, self.parked);
                 }
                 let mut el = HandleScroller(&self.handle);
@@ -549,7 +590,7 @@ impl Drop for FilePreview {
 }
 
 impl Render for FilePreview {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
         let this = cx.entity().downgrade();
         let track = canvas(
@@ -619,7 +660,13 @@ impl Render for FilePreview {
                     .children(img)
                     .into_any_element()
             }
-            Surface::Html(h) => div().flex_1().min_h_0().flex().flex_col().child(h.clone()).into_any_element(),
+            Surface::Html(h) => div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(h.clone())
+                .into_any_element(),
             Surface::Mermaid(m) => div()
                 .flex_1()
                 .min_h_0()
@@ -691,8 +738,12 @@ fn svg_img(img: SvgImage, line: recur_ui::Color) -> gpui_kit::AnyElement {
                     );
                     let mut c = raster.borrow_mut();
                     if c.as_ref().is_none_or(|(cw, ch, _)| (*cw, *ch) != (dw, dh))
-                        && let Some(img) =
-                            crate::svg::image_at(&tree, f32::from(b.size.width), f32::from(b.size.height), s)
+                        && let Some(img) = crate::svg::image_at(
+                            &tree,
+                            f32::from(b.size.width),
+                            f32::from(b.size.height),
+                            s,
+                        )
                     {
                         *c = Some((dw, dh, img));
                     }

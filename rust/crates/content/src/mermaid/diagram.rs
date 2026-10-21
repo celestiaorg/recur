@@ -66,6 +66,9 @@ struct Measured {
     svg: String,
 }
 
+/// A raster's device size and the bits of its sub-pixel offset.
+type RasterKey = (u32, u32, u32, u32);
+
 pub struct Diagram {
     tree: Arc<usvg::Tree>,
     /// viewBox (x, y, w, h).
@@ -77,7 +80,7 @@ pub struct Diagram {
     /// `width="100%"`: the SVG fills its box up to `natural_width`.
     pub fluid: bool,
     pub runs: Vec<Run>,
-    raster: RefCell<Option<((u32, u32, u32, u32), Arc<RenderImage>)>>,
+    raster: RefCell<Option<(RasterKey, Arc<RenderImage>)>>,
 }
 
 fn is_svg(h: &Handle, tag: &str) -> bool {
@@ -170,9 +173,7 @@ impl Diagram {
             (k.trim() == "max-width").then(|| px_len(v)).flatten()
         });
         let fluid = width_attr.trim().ends_with('%');
-        let natural_width = max_width
-            .or_else(|| px_len(&width_attr))
-            .unwrap_or(m.width);
+        let natural_width = max_width.or_else(|| px_len(&width_attr)).unwrap_or(m.width);
         let painted = dom::parse_fragment_in_div(&sanitize_svg(&m.svg));
         let painted_svg = find_svg(&painted.root).ok_or("Mermaid returned no SVG")?;
         let mut xml = String::new();
@@ -214,7 +215,14 @@ impl Diagram {
             self.natural_width.min(max_w)
         };
         let none = gpui_kit::Hsla::default();
-        self.element(w, self.height_at(w), &HashMap::new(), (none, none), (0., 0.), window)
+        self.element(
+            w,
+            self.height_at(w),
+            &HashMap::new(),
+            (none, none),
+            (0., 0.),
+            window,
+        )
     }
 
     /// The text blocks find searches: all labels form one block (the SVG is the nearest
@@ -238,7 +246,12 @@ impl Diagram {
 
     /// Where a byte range of [`Diagram::text`] sits, at display scale `s`, relative to the
     /// diagram's top-left.
-    pub fn range_rects(&self, range: Range<usize>, s: f32, window: &Window) -> Vec<(f32, f32, f32, f32)> {
+    pub fn range_rects(
+        &self,
+        range: Range<usize>,
+        s: f32,
+        window: &Window,
+    ) -> Vec<(f32, f32, f32, f32)> {
         let mut out = Vec::new();
         for (r, start) in self.runs.iter().zip(self.run_starts()) {
             let end = start + r.text.len();
@@ -260,7 +273,14 @@ impl Diagram {
 
     /// The geometry at display scale `s`, offset by the device-pixel fraction `frac` WebKit
     /// paints at (it never snaps a transformed SVG to the pixel grid).
-    fn rasterize(&self, w: u32, h: u32, s: f32, scale: f32, frac: (f32, f32)) -> Option<Arc<RenderImage>> {
+    fn rasterize(
+        &self,
+        w: u32,
+        h: u32,
+        s: f32,
+        scale: f32,
+        frac: (f32, f32),
+    ) -> Option<Arc<RenderImage>> {
         let key = (w, h, frac.0.to_bits(), frac.1.to_bits());
         if let Some((k, img)) = self.raster.borrow().as_ref()
             && *k == key
@@ -293,10 +313,17 @@ impl Diagram {
         nudge: (f32, f32),
         window: &Window,
     ) -> AnyElement {
-        let s = if self.view_box.2 > 0. { w / self.view_box.2 } else { 1. };
+        let s = if self.view_box.2 > 0. {
+            w / self.view_box.2
+        } else {
+            1.
+        };
         let me = self.clone();
         let (cx, cy, cw, ch) = self.content;
-        let off = ((cx - self.view_box.0) * s + nudge.0, (cy - self.view_box.1) * s + nudge.1);
+        let off = (
+            (cx - self.view_box.0) * s + nudge.0,
+            (cy - self.view_box.1) * s + nudge.1,
+        );
         let ext = (cw * s, ch * s);
         let geometry = canvas(
             |_, _, _| {},
@@ -320,7 +347,12 @@ impl Diagram {
         .top_0()
         .left_0()
         .size_full();
-        let mut el = div().relative().flex_none().w(px(w)).h(px(h)).child(geometry);
+        let mut el = div()
+            .relative()
+            .flex_none()
+            .w(px(w))
+            .h(px(h))
+            .child(geometry);
         if let Some(marks) = highlights.get(&0) {
             for (range, current) in marks {
                 for (x, y, rw, rh) in self.range_rects(range.clone(), s, window) {
@@ -343,7 +375,10 @@ impl Diagram {
             let top = (r.y - self.view_box.1) * s - m.baseline + nudge.1;
             // `pre`-like: spaces kept, never wrapped.
             let dp = 1. / window.scale_factor();
-            let boxed = div().flex_none().w(px((tw / dp).ceil() * dp + dp)).child(text);
+            let boxed = div()
+                .flex_none()
+                .w(px((tw / dp).ceil() * dp + dp))
+                .child(text);
             el = el.child(placed(left, top, boxed, window));
         }
         el.into_any_element()
@@ -353,7 +388,12 @@ impl Diagram {
 /// A box at an exact fractional offset (negative offsets fall back to rounded insets).
 fn placed(left: f32, top: f32, child: impl IntoElement, window: &Window) -> AnyElement {
     if left < 0. || top < 0. {
-        return div().absolute().left(px(left)).top(px(top)).child(child).into_any_element();
+        return div()
+            .absolute()
+            .left(px(left))
+            .top(px(top))
+            .child(child)
+            .into_any_element();
     }
     div()
         .absolute()
@@ -362,7 +402,13 @@ fn placed(left: f32, top: f32, child: impl IntoElement, window: &Window) -> AnyE
         .flex()
         .flex_col()
         .child(vgap(top, window))
-        .child(div().flex().flex_row().child(hgap(left, window)).child(child))
+        .child(
+            div()
+                .flex()
+                .flex_row()
+                .child(hgap(left, window))
+                .child(child),
+        )
         .into_any_element()
 }
 
@@ -374,9 +420,14 @@ fn family(stack: &str) -> Family {
         .filter(|f| !f.is_empty())
         .collect();
     match names.first().map(String::as_str) {
-        None | Some("ui-sans-serif" | "system-ui" | "-apple-system" | "BlinkMacSystemFont") => Family::System,
+        None | Some("ui-sans-serif" | "system-ui" | "-apple-system" | "BlinkMacSystemFont") => {
+            Family::System
+        }
         Some("Inter") => Family::Ui,
-        Some(first) => Family::Stack(first.to_string().into(), names[1..].iter().map(|n| n.clone().into()).collect()),
+        Some(first) => Family::Stack(
+            first.to_string().into(),
+            names[1..].iter().map(|n| n.clone().into()).collect(),
+        ),
     }
 }
 
@@ -446,7 +497,13 @@ mod tests {
 
     #[test]
     fn maps_font_stacks() {
-        assert_eq!(family("ui-sans-serif, system-ui, sans-serif"), Family::System);
-        assert_eq!(family("\"trebuchet ms\", verdana"), Family::Stack("trebuchet ms".into(), vec!["verdana".into()]));
+        assert_eq!(
+            family("ui-sans-serif, system-ui, sans-serif"),
+            Family::System
+        );
+        assert_eq!(
+            family("\"trebuchet ms\", verdana"),
+            Family::Stack("trebuchet ms".into(), vec!["verdana".into()])
+        );
     }
 }

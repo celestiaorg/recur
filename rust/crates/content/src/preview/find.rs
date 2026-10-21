@@ -171,12 +171,19 @@ mod tests {
     use super::*;
 
     fn blocks(b: &[&str]) -> Vec<(usize, String)> {
-        b.iter().enumerate().map(|(i, s)| (i, s.to_string())).collect()
+        b.iter()
+            .enumerate()
+            .map(|(i, s)| (i, s.to_string()))
+            .collect()
     }
 
     #[test]
     fn finds_case_insensitive_matches_across_inline_runs() {
-        let m = collect_preview_find_ranges(&blocks(&["Hello hello HELLO"]), "hello", FindOptions::default());
+        let m = collect_preview_find_ranges(
+            &blocks(&["Hello hello HELLO"]),
+            "hello",
+            FindOptions::default(),
+        );
         assert!(!m.capped);
         assert_eq!(m.ranges.len(), 3);
         assert_eq!(m.ranges[0], (0, 0..5));
@@ -190,20 +197,37 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(collect_preview_find_ranges(&b, "Hello", cs).ranges.len(), 1);
-        assert_eq!(collect_preview_find_ranges(&b, "Hello", FindOptions::default()).ranges.len(), 2);
+        assert_eq!(
+            collect_preview_find_ranges(&b, "Hello", FindOptions::default())
+                .ranges
+                .len(),
+            2
+        );
     }
 
     #[test]
     fn matches_inline_boundaries_but_not_blocks() {
         // `<p>Hello <strong>world</strong></p>` is one block.
         assert_eq!(
-            collect_preview_find_ranges(&blocks(&["Hello world"]), "Hello world", FindOptions::default()).ranges.len(),
+            collect_preview_find_ranges(
+                &blocks(&["Hello world"]),
+                "Hello world",
+                FindOptions::default()
+            )
+            .ranges
+            .len(),
             1
         );
         // `<p>Hello</p><p>world</p>`.
-        assert!(collect_preview_find_ranges(&blocks(&["Hello", "world"]), "Hello world", FindOptions::default())
+        assert!(
+            collect_preview_find_ranges(
+                &blocks(&["Hello", "world"]),
+                "Hello world",
+                FindOptions::default()
+            )
             .ranges
-            .is_empty());
+            .is_empty()
+        );
     }
 
     #[test]
@@ -220,7 +244,11 @@ mod tests {
     #[test]
     fn empty_query_and_invalid_regexp() {
         let b = blocks(&["hello"]);
-        assert!(collect_preview_find_ranges(&b, "", FindOptions::default()).ranges.is_empty());
+        assert!(
+            collect_preview_find_ranges(&b, "", FindOptions::default())
+                .ranges
+                .is_empty()
+        );
         let re = FindOptions {
             regexp: true,
             ..Default::default()
@@ -234,26 +262,38 @@ mod tests {
             regexp: true,
             ..Default::default()
         };
-        assert_eq!(find_in_text("hello hallo", "h.llo", re), Some(vec![0..5, 6..11]));
+        assert_eq!(
+            find_in_text("hello hallo", "h.llo", re),
+            Some(vec![0..5, 6..11])
+        );
         assert_eq!(find_in_text("hello", "(", re), None);
         let ww = FindOptions {
             whole_word: true,
             ..Default::default()
         };
-        assert_eq!(find_in_text("hello sayhello hello.", "hello", ww), Some(vec![0..5, 15..20]));
+        assert_eq!(
+            find_in_text("hello sayhello hello.", "hello", ww),
+            Some(vec![0..5, 15..20])
+        );
         let both = FindOptions {
             regexp: true,
             whole_word: true,
             ..Default::default()
         };
-        assert_eq!(find_in_text("cat cats cat", "cat", both), Some(vec![0..3, 9..12]));
+        assert_eq!(
+            find_in_text("cat cats cat", "cat", both),
+            Some(vec![0..3, 9..12])
+        );
     }
 
     #[test]
     fn count_label() {
         assert_eq!(preview_find_count_label(0, 0, false), "No results");
         assert_eq!(preview_find_count_label(2, 5, false), "2 / 5");
-        assert_eq!(preview_find_count_label(1, PREVIEW_FIND_CAP, true), "1 / 999+");
+        assert_eq!(
+            preview_find_count_label(1, PREVIEW_FIND_CAP, true),
+            "1 / 999+"
+        );
     }
 
     #[test]

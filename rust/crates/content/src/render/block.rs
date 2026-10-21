@@ -12,7 +12,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, Bounds, Corners, Div, ElementId, Hsla, InteractiveElement, IntoElement,
     ParentElement, Pixels, RenderImage, StatefulInteractiveElement, Styled, Window, canvas, div,
-    point, px, quad, relative, size,
+    point, px, relative,
 };
 use recur_ui::fonts::Family;
 use recur_ui::style::card;
@@ -44,6 +44,12 @@ pub enum ImageSlot {
     Failed,
 }
 
+/// Draws a diagram at a width no wider than the argument.
+pub type DrawDiagram = Rc<dyn Fn(f32, &Window) -> AnyElement>;
+
+/// A paragraph's spans, the mirror's run specs, and link ranges with their href index.
+type SpanRuns = (Vec<Span>, Vec<RunSpec>, Vec<(Range<usize>, usize)>);
+
 /// A ```` ```mermaid ```` placeholder's state (`data-rendered`).
 #[derive(Clone)]
 pub enum MermaidSlot {
@@ -51,7 +57,7 @@ pub enum MermaidSlot {
     Error,
     Empty,
     /// The diagram, drawn at a width no wider than the argument.
-    Ready(Rc<dyn Fn(f32, &Window) -> AnyElement>),
+    Ready(DrawDiagram),
 }
 
 /// What block layout reads from the view.
@@ -176,12 +182,7 @@ impl Build<'_, '_> {
 
     /// The spans for a block's inline content, as recur-ui text, and their resolved runs (for
     /// the mirror). Find highlights split runs so the current match can change color.
-    fn spans(
-        &self,
-        inl: &Inline,
-        flow: Flow,
-        block: usize,
-    ) -> (Vec<Span>, Vec<RunSpec>, Vec<(Range<usize>, usize)>) {
+    fn spans(&self, inl: &Inline, flow: Flow, block: usize) -> SpanRuns {
         let t = self.env.t;
         let sh = self.env.sheet;
         let marks = self.env.highlights.get(&block).cloned().unwrap_or_default();
@@ -471,7 +472,9 @@ impl Build<'_, '_> {
                     .w(px(w))
                     .h(px(h))
                     .when(self.env.enhance, |d| {
-                        d.on_click(move |_, window, cx| open((src2.clone(), name.clone()), window, cx))
+                        d.on_click(move |_, window, cx| {
+                            open((src2.clone(), name.clone()), window, cx)
+                        })
                     })
                     .child(
                         canvas(

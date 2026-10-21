@@ -24,7 +24,9 @@ fn mount<'a>(
     path: &'static str,
 ) -> (Entity<FilePreview>, &'a mut VisualTestContext) {
     let scroll = Rc::new(RefCell::new(PreviewScrollStore::new()));
-    let (view, cx) = cx.add_window_view(move |window, cx| FilePreview::new(kind, content, path, scroll, window, cx));
+    let (view, cx) = cx.add_window_view(move |window, cx| {
+        FilePreview::new(kind, content, path, scroll, window, cx)
+    });
     cx.run_until_parked();
     (view, cx)
 }
@@ -55,7 +57,12 @@ fn open(view: &Entity<FilePreview>, cx: &mut VisualTestContext) -> bool {
 #[gpui::test]
 fn opens_a_find_bar_and_counts_markdown_matches(cx: &mut TestAppContext) {
     init(cx);
-    let (view, cx) = mount(cx, PreviewKind::Markdown, "Hello world. Hello again.", "README.md");
+    let (view, cx) = mount(
+        cx,
+        PreviewKind::Markdown,
+        "Hello world. Hello again.",
+        "README.md",
+    );
     assert!(!open(&view, cx));
     cx.update(|window, cx| view.update(cx, |v, cx| assert!(v.toggle_search(window, cx))));
     cx.run_until_parked();
@@ -71,7 +78,12 @@ fn opens_a_find_bar_and_counts_markdown_matches(cx: &mut TestAppContext) {
 #[gpui::test]
 fn opens_on_cmd_f_and_closes_on_escape(cx: &mut TestAppContext) {
     init(cx);
-    let (view, cx) = mount(cx, PreviewKind::Markdown, "needle in a haystack", "notes.md");
+    let (view, cx) = mount(
+        cx,
+        PreviewKind::Markdown,
+        "needle in a haystack",
+        "notes.md",
+    );
     focus_preview(&view, cx);
     cx.simulate_keystrokes("cmd-f");
     cx.run_until_parked();
@@ -119,7 +131,11 @@ fn recollects_matches_after_the_content_changes(cx: &mut TestAppContext) {
     cx.run_until_parked();
     type_find(cx, "hello");
     assert_eq!(count(&view, cx), "No results");
-    cx.update(|window, cx| view.update(cx, |v, cx| v.set_content("nothing yet\n\nhello", window, cx)));
+    cx.update(|window, cx| {
+        view.update(cx, |v, cx| {
+            v.set_content("nothing yet\n\nhello", window, cx)
+        })
+    });
     cx.run_until_parked();
     assert_eq!(count(&view, cx), "1 / 1");
 }
@@ -128,9 +144,18 @@ fn recollects_matches_after_the_content_changes(cx: &mut TestAppContext) {
 struct Pair(Entity<FilePreview>, Entity<FilePreview>);
 
 impl gpui::Render for Pair {
-    fn render(&mut self, _: &mut gpui::Window, _: &mut gpui::Context<Self>) -> impl gpui::IntoElement {
+    fn render(
+        &mut self,
+        _: &mut gpui::Window,
+        _: &mut gpui::Context<Self>,
+    ) -> impl gpui::IntoElement {
         use gpui::{ParentElement, Styled};
-        gpui::div().size_full().flex().flex_col().child(self.0.clone()).child(self.1.clone())
+        gpui::div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(self.0.clone())
+            .child(self.1.clone())
     }
 }
 
@@ -138,7 +163,10 @@ impl gpui::Render for Pair {
 fn restores_highlights_for_the_active_preview_and_ignores_inactive_paints(cx: &mut TestAppContext) {
     init(cx);
     let (pair, cx) = cx.add_window_view(|window, cx| {
-        let make = |content: &'static str, path: &'static str, window: &mut gpui::Window, cx: &mut gpui::Context<Pair>| {
+        let make = |content: &'static str,
+                    path: &'static str,
+                    window: &mut gpui::Window,
+                    cx: &mut gpui::Context<Pair>| {
             let scroll = Rc::new(RefCell::new(PreviewScrollStore::new()));
             cx.new(|cx| FilePreview::new(PreviewKind::Markdown, content, path, scroll, window, cx))
         };
@@ -149,7 +177,9 @@ fn restores_highlights_for_the_active_preview_and_ignores_inactive_paints(cx: &m
     });
     cx.run_until_parked();
     let (a, b) = cx.update(|_, cx| (pair.read(cx).0.clone(), pair.read(cx).1.clone()));
-    let painted = |v: &Entity<FilePreview>, cx: &mut VisualTestContext| cx.update(|_, cx| v.read(cx).painted_highlights(cx));
+    let painted = |v: &Entity<FilePreview>, cx: &mut VisualTestContext| {
+        cx.update(|_, cx| v.read(cx).painted_highlights(cx))
+    };
     let active = |v: &Entity<FilePreview>, on: bool, cx: &mut VisualTestContext| {
         cx.update(|window, cx| v.update(cx, |v, cx| v.set_active(on, window, cx)));
         cx.run_until_parked();

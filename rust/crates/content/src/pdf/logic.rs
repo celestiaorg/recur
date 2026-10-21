@@ -23,12 +23,18 @@ pub fn clamp_page(n: f64, pages: usize) -> usize {
 
 /// `zoomStep`.
 pub fn zoom_step(scale: f32, dir: i8) -> f32 {
-    clamp_scale(if dir > 0 { scale * ZOOM_STEP } else { scale / ZOOM_STEP })
+    clamp_scale(if dir > 0 {
+        scale * ZOOM_STEP
+    } else {
+        scale / ZOOM_STEP
+    })
 }
 
 /// `fitWidthScale`.
 pub fn fit_width_scale(page_width: f32, viewport_width: f32) -> f32 {
-    if !(page_width > 0.) || !(viewport_width > 0.) {
+    // `!(x > 0)`: NaN is not positive either.
+    let positive = |v: f32| v > 0.;
+    if !positive(page_width) || !positive(viewport_width) {
         return 1.;
     }
     clamp_scale(viewport_width / page_width)
@@ -46,7 +52,11 @@ pub fn page_at_scroll(
     if heights.is_empty() {
         return 1;
     }
-    let y = if scroll_top.is_finite() { scroll_top } else { 0. };
+    let y = if scroll_top.is_finite() {
+        scroll_top
+    } else {
+        0.
+    };
     let mut offset = 0.;
     let mut best = 1;
     let mut best_dist = f32::INFINITY;
@@ -77,7 +87,12 @@ pub fn page_at_scroll(
 }
 
 /// `pageOriginInScroller`: the first slot's top in scroll coordinates.
-pub fn page_origin_in_scroller(scroller_top: f32, scroll_top: f32, first_slot_top: Option<f32>, fallback: f32) -> f32 {
+pub fn page_origin_in_scroller(
+    scroller_top: f32,
+    scroll_top: f32,
+    first_slot_top: Option<f32>,
+    fallback: f32,
+) -> f32 {
     match first_slot_top {
         Some(t) => t - scroller_top + scroll_top,
         None => fallback,
@@ -149,7 +164,10 @@ mod tests {
         let (toolbar, pad, gap) = (40., 12., 12.);
         let h = [800., 800.];
         let next = pad + h[0] + gap;
-        assert_eq!(page_at_scroll(next - (toolbar + pad), &h, gap, None, None), 1);
+        assert_eq!(
+            page_at_scroll(next - (toolbar + pad), &h, gap, None, None),
+            1
+        );
         let origin = page_origin_in_scroller(toolbar, next, Some(toolbar + pad - next), pad);
         assert_eq!(origin, pad);
         assert_eq!(page_at_scroll(next - origin, &h, gap, None, None), 2);

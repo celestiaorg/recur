@@ -9,9 +9,10 @@ use std::sync::Arc;
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, AppContext, Bounds, Context, Corners, Entity, FocusHandle, Focusable, InteractiveElement, IntoElement, KeyDownEvent,
-    ParentElement, Pixels, Render, ScrollHandle, SharedString, StatefulInteractiveElement, Styled,
-    Subscription, Task, Window, canvas, div, point, px,
+    AnyElement, AppContext, Bounds, Context, Corners, Entity, FocusHandle, Focusable,
+    InteractiveElement, IntoElement, KeyDownEvent, ParentElement, Pixels, Render, ScrollHandle,
+    SharedString, StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas, div,
+    point, px,
 };
 use recur_ui::fonts::Family;
 use recur_ui::tooltip::titled;
@@ -59,11 +60,15 @@ impl PdfPreview {
     /// `src`: the document's bytes (`None` shows nothing).
     pub fn new(data: Option<Arc<[u8]>>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = cx.new(|cx| InputState::new(window, cx));
-        let subs = vec![cx.subscribe_in(&input, window, |p, _, ev: &InputEvent, window, cx| match ev {
-            InputEvent::PressEnter { .. } => p.commit_page(window, cx),
-            InputEvent::Blur => p.commit_page(window, cx),
-            InputEvent::Change | InputEvent::Focus => cx.notify(),
-        })];
+        let subs = vec![cx.subscribe_in(
+            &input,
+            window,
+            |p, _, ev: &InputEvent, window, cx| match ev {
+                InputEvent::PressEnter { .. } => p.commit_page(window, cx),
+                InputEvent::Blur => p.commit_page(window, cx),
+                InputEvent::Change | InputEvent::Focus => cx.notify(),
+            },
+        )];
         let mut p = Self {
             data: None,
             doc: None,
@@ -90,7 +95,12 @@ impl PdfPreview {
     }
 
     /// Replace the document (the `src` effect): everything resets and the new one loads.
-    pub fn set_data(&mut self, data: Option<Arc<[u8]>>, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_data(
+        &mut self,
+        data: Option<Arc<[u8]>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if match (&self.data, &data) {
             (Some(a), Some(b)) => Arc::ptr_eq(a, b),
             (None, None) => self.doc.is_none() && !self.pending && self.load.is_none(),
@@ -226,7 +236,8 @@ impl PdfPreview {
         let top = -f32::from(self.handle.offset().y);
         let origin = VIEW_PAD;
         let heights: Vec<f32> = self.sizes.iter().map(|(_, h)| h * self.scale).collect();
-        let content = VIEW_PAD * 2. + heights.iter().sum::<f32>() + PAGE_GAP * (heights.len() - 1) as f32;
+        let content =
+            VIEW_PAD * 2. + heights.iter().sum::<f32>() + PAGE_GAP * (heights.len() - 1) as f32;
         let max = content - f32::from(vp.size.height) - origin;
         let next = page_at_scroll(top - origin, &heights, PAGE_GAP, Some(max), Some(self.page));
         if next != self.page {
@@ -278,14 +289,26 @@ impl PdfPreview {
             }
             keep
         });
-        let mut pages: Vec<usize> = visible.into_iter().filter(|n| !self.slots.contains_key(n)).collect();
+        let mut pages: Vec<usize> = visible
+            .into_iter()
+            .filter(|n| !self.slots.contains_key(n))
+            .collect();
         pages.sort_unstable();
         for n in pages {
             let task = self.next_task;
             self.next_task += 1;
             if crate::webhost::blocking(cx) {
                 let r = engine::render_blocking(&doc, n, scale, dpr, task);
-                self.slots.insert(n, Slot { scale, dpr, task, painted: None, _render: None });
+                self.slots.insert(
+                    n,
+                    Slot {
+                        scale,
+                        dpr,
+                        task,
+                        painted: None,
+                        _render: None,
+                    },
+                );
                 self.rendered(n, task, r);
                 continue;
             }
@@ -297,7 +320,16 @@ impl PdfPreview {
                     cx.notify();
                 });
             });
-            self.slots.insert(n, Slot { scale, dpr, task, painted: None, _render: Some(render) });
+            self.slots.insert(
+                n,
+                Slot {
+                    scale,
+                    dpr,
+                    task,
+                    painted: None,
+                    _render: Some(render),
+                },
+            );
         }
     }
 
@@ -374,12 +406,27 @@ impl PdfPreview {
 
     fn toolbar(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let label = |s: String, color| recur_ui::text(s).family(Family::Mono).size(11.).tabular().color(color).nowrap();
+        let label = |s: String, color| {
+            recur_ui::text(s)
+                .family(Family::Mono)
+                .size(11.)
+                .tabular()
+                .color(color)
+                .nowrap()
+        };
         let focused = self.input.read(cx).focus_handle(cx).is_focused(window);
         let draft = self.input.read(cx).value().to_string();
         // `.obs-pdf-page`: a 3.2em field, value centered; `--pane-2` while focused.
         let (draft_w, _, _) = label(draft.clone(), t.text).measure(None, window);
-        let field_text = recur_ui::style::text_field(&self.input, &SharedString::default(), t.text, Family::Mono, 11., window, cx);
+        let field_text = recur_ui::style::text_field(
+            &self.input,
+            &SharedString::default(),
+            t.text,
+            Family::Mono,
+            11.,
+            window,
+            cx,
+        );
         let field = div()
             .id("obs-pdf-page")
             .flex_none()
@@ -419,27 +466,61 @@ impl PdfPreview {
                     .tabular()
                     .nowrap(),
             );
-        let group = |children: Vec<AnyElement>| div().flex().flex_none().items_center().gap(px(2.)).children(children);
+        let group = |children: Vec<AnyElement>| {
+            div()
+                .flex()
+                .flex_none()
+                .items_center()
+                .gap(px(2.))
+                .children(children)
+        };
         let (page, count) = (self.page, self.page_count);
         let paging = group(vec![
-            self.icon_button("obs-pdf-prev", "Previous page", IconName::ChevronLeft, page <= 1, cx, |p, w, cx| {
-                p.set_page(p.page as f64 - 1., w, cx)
-            }),
+            self.icon_button(
+                "obs-pdf-prev",
+                "Previous page",
+                IconName::ChevronLeft,
+                page <= 1,
+                cx,
+                |p, w, cx| p.set_page(p.page as f64 - 1., w, cx),
+            ),
             field.into_any_element(),
             of.into_any_element(),
-            self.icon_button("obs-pdf-next", "Next page", IconName::ChevronRight, page >= count, cx, |p, w, cx| {
-                p.set_page(p.page as f64 + 1., w, cx)
-            }),
+            self.icon_button(
+                "obs-pdf-next",
+                "Next page",
+                IconName::ChevronRight,
+                page >= count,
+                cx,
+                |p, w, cx| p.set_page(p.page as f64 + 1., w, cx),
+            ),
         ]);
         let zoom = group(vec![
-            self.icon_button("obs-pdf-out", "Zoom out", IconName::Minus, self.scale <= MIN_SCALE, cx, |p, _, cx| {
-                p.zoom(-1, cx)
-            }),
+            self.icon_button(
+                "obs-pdf-out",
+                "Zoom out",
+                IconName::Minus,
+                self.scale <= MIN_SCALE,
+                cx,
+                |p, _, cx| p.zoom(-1, cx),
+            ),
             titled("obs-pdf-tb-pct", "Fit to width", pct_button).into_any_element(),
-            self.icon_button("obs-pdf-in", "Zoom in", IconName::Plus, self.scale >= MAX_SCALE, cx, |p, _, cx| {
-                p.zoom(1, cx)
-            }),
-            self.icon_button("obs-pdf-fit", "Fit to width", IconName::Maximize, false, cx, |p, _, cx| p.fit_width(cx)),
+            self.icon_button(
+                "obs-pdf-in",
+                "Zoom in",
+                IconName::Plus,
+                self.scale >= MAX_SCALE,
+                cx,
+                |p, _, cx| p.zoom(1, cx),
+            ),
+            self.icon_button(
+                "obs-pdf-fit",
+                "Fit to width",
+                IconName::Maximize,
+                false,
+                cx,
+                |p, _, cx| p.fit_width(cx),
+            ),
         ]);
         div()
             .flex()
@@ -460,7 +541,11 @@ impl PdfPreview {
 
     /// `.obs-pdf-page-slot`: white, a 1px `--line` ring outside, the canvas stretched over it.
     fn slot(&self, n: usize, w: f32, h: f32, line: recur_ui::Color) -> AnyElement {
-        let image = self.slots.get(&n).and_then(|s| s.painted.as_ref()).map(|p| p.image.clone());
+        let image = self
+            .slots
+            .get(&n)
+            .and_then(|s| s.painted.as_ref())
+            .map(|p| p.image.clone());
         div()
             .relative()
             .flex_none()
@@ -543,7 +628,10 @@ impl Render for PdfPreview {
             .flex_1()
             .min_h_0()
             .overflow_scroll()
-            .on_mouse_down(gpui_kit::MouseButton::Left, cx.listener(|p, _, window, cx| p.focus.focus(window, cx)))
+            .on_mouse_down(
+                gpui_kit::MouseButton::Left,
+                cx.listener(|p, _, window, cx| p.focus.focus(window, cx)),
+            )
             .child(div().p(px(VIEW_PAD)).flex().min_w_full().child(pages))
             .when(hidden, |d| d.invisible());
         let message = (self.pending || !self.error.is_empty()).then(|| {
@@ -560,15 +648,19 @@ impl Render for PdfPreview {
                 .items_center()
                 .justify_center()
                 .child(
-                    div().px(px(24.)).py(px(48.)).when(!self.pending, |d| d.max_w(px(12. * 40.))).child(
-                        recur_ui::text(label)
-                            .ui()
-                            .size(12.)
-                            .leading(1.45)
-                            .color(color)
-                            .pre_wrap()
-                            .align(recur_ui::text::Align::Center),
-                    ),
+                    div()
+                        .px(px(24.))
+                        .py(px(48.))
+                        .when(!self.pending, |d| d.max_w(px(12. * 40.)))
+                        .child(
+                            recur_ui::text(label)
+                                .ui()
+                                .size(12.)
+                                .leading(1.45)
+                                .color(color)
+                                .pre_wrap()
+                                .align(recur_ui::text::Align::Center),
+                        ),
                 )
         });
         div()
@@ -584,6 +676,15 @@ impl Render for PdfPreview {
             .overflow_hidden()
             .when(self.ready(), |d| d.child(self.toolbar(window, cx)))
             .children(message)
-            .child(div().relative().flex_1().min_h_0().flex().flex_col().child(measure).child(viewport))
+            .child(
+                div()
+                    .relative()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .child(measure)
+                    .child(viewport),
+            )
     }
 }

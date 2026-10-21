@@ -79,7 +79,13 @@ impl StreamingMarkdown {
 
     /// The props: the complete text received so far (append-only), whether the chat is on
     /// screen, and whether this text block has ended.
-    pub fn set(&mut self, text: impl Into<SharedString>, active: bool, complete: bool, cx: &mut Context<Self>) {
+    pub fn set(
+        &mut self,
+        text: impl Into<SharedString>,
+        active: bool,
+        complete: bool,
+        cx: &mut Context<Self>,
+    ) {
         self.text = text.into();
         self.active = active;
         self.complete = complete;
@@ -140,7 +146,10 @@ impl StreamingMarkdown {
                     Err(RenderError::Aborted) => {}
                     Err(RenderError::TimedOut) if !s.html.is_empty() => {}
                     Err(_) => {
-                        let fallback = escape_text(&shown).split('\n').collect::<Vec<_>>().join("<br>");
+                        let fallback = escape_text(&shown)
+                            .split('\n')
+                            .collect::<Vec<_>>()
+                            .join("<br>");
                         s.paint(fallback.into(), shown, cx);
                     }
                 }

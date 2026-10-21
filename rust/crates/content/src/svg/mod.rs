@@ -104,14 +104,16 @@ pub fn to_render_image(mut rgba: Vec<u8>, w: u32, h: u32) -> Option<Arc<RenderIm
 }
 
 /// `tree` drawn into `size` CSS px at `scale` (viewBox fitted, as `<img>` sizes it).
-pub fn image_at(tree: &usvg::Tree, width: f32, height: f32, scale: f32) -> Option<Arc<RenderImage>> {
+pub fn image_at(
+    tree: &usvg::Tree,
+    width: f32,
+    height: f32,
+    scale: f32,
+) -> Option<Arc<RenderImage>> {
     let w = (width * scale).round() as u32;
     let h = (height * scale).round() as u32;
     let size = tree.size();
-    let ts = tiny_skia::Transform::from_scale(
-        w as f32 / size.width(),
-        h as f32 / size.height(),
-    );
+    let ts = tiny_skia::Transform::from_scale(w as f32 / size.width(), h as f32 / size.height());
     to_render_image(rasterize(tree, ts, w, h)?, w, h)
 }
 
@@ -122,7 +124,12 @@ mod tests {
     #[test]
     fn external_images_never_load() {
         let t = parse(r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="10" height="10"><image width="10" height="10" xlink:href="/etc/hosts"/><rect width="4" height="4" fill="red"/></svg>"#).unwrap();
-        let images = t.root().children().iter().filter(|n| matches!(n, usvg::Node::Image(_))).count();
+        let images = t
+            .root()
+            .children()
+            .iter()
+            .filter(|n| matches!(n, usvg::Node::Image(_)))
+            .count();
         assert_eq!(images, 0);
         let px = rasterize(&t, tiny_skia::Transform::identity(), 10, 10).unwrap();
         assert_eq!(&px[0..4], &[255, 0, 0, 255]);

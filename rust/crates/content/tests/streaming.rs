@@ -59,7 +59,10 @@ fn hidden_streams_do_no_work_catch_up_and_wait_for_lines(cx: &mut TestAppContext
     assert_eq!(shown(cx), "<p>latest hidden reply\nplus a line\n</p>");
 
     set(cx, "latest hidden reply\nplus a line\npartial", true, true);
-    assert_eq!(shown(cx), "<p>latest hidden reply\nplus a line\npartial</p>");
+    assert_eq!(
+        shown(cx),
+        "<p>latest hidden reply\nplus a line\npartial</p>"
+    );
 
     // The app hides (document.hidden): no work while hidden, the latest text on return.
     sm.update(cx, |s, cx| s.set_document_visible(false, cx));

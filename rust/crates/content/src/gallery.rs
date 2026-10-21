@@ -80,16 +80,23 @@ struct Pdf(Entity<crate::pdf::PdfPreview>);
 impl Render for Pdf {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg = recur_ui::Theme::of(cx).tokens.bg;
-        body(cx)
-            .size_full()
-            .flex()
-            .flex_col()
-            .child(div().flex_1().min_h_0().flex().flex_col().bg(bg).child(self.0.clone()))
+        body(cx).size_full().flex().flex_col().child(
+            div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .bg(bg)
+                .child(self.0.clone()),
+        )
     }
 }
 
 /// A padded message with the lightbox open over it.
-struct Lightbox(Entity<MarkdownView>, Entity<crate::lightbox::AttachmentLightbox>);
+struct Lightbox(
+    Entity<MarkdownView>,
+    Entity<crate::lightbox::AttachmentLightbox>,
+);
 
 impl Render for Lightbox {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -102,9 +109,26 @@ impl Render for Lightbox {
     }
 }
 
-fn preview(kind: crate::preview::PreviewKind, content: &str, path: &str, window: &mut Window, cx: &mut App) -> AnyView {
-    let scroll = std::rc::Rc::new(std::cell::RefCell::new(crate::preview::scroll::PreviewScrollStore::new()));
-    let p = cx.new(|cx| crate::preview::view::FilePreview::new(kind, content.to_string(), path.to_string(), scroll, window, cx));
+fn preview(
+    kind: crate::preview::PreviewKind,
+    content: &str,
+    path: &str,
+    window: &mut Window,
+    cx: &mut App,
+) -> AnyView {
+    let scroll = std::rc::Rc::new(std::cell::RefCell::new(
+        crate::preview::scroll::PreviewScrollStore::new(),
+    ));
+    let p = cx.new(|cx| {
+        crate::preview::view::FilePreview::new(
+            kind,
+            content.to_string(),
+            path.to_string(),
+            scroll,
+            window,
+            cx,
+        )
+    });
     AnyView::from(cx.new(|_| Full(p.into())))
 }
 
@@ -120,7 +144,9 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         "markdown/chat" | "markdown/paper" => md(CHAT_MD, cx),
         "mermaid/sequence" => md(SEQUENCE_MD, cx),
         "mermaid/flowchart" => preview(PreviewKind::Mermaid, FLOW_MMD, "flow.mmd", window, cx),
-        "file-preview/markdown" => preview(PreviewKind::Markdown, README_MD, "README.md", window, cx),
+        "file-preview/markdown" => {
+            preview(PreviewKind::Markdown, README_MD, "README.md", window, cx)
+        }
         "file-preview/svg" => preview(PreviewKind::Svg, LOGO_SVG, "logo.svg", window, cx),
         "pdf/page" => {
             let data = Some(std::sync::Arc::<[u8]>::from(PAGE_PDF));
@@ -128,7 +154,9 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
             AnyView::from(cx.new(|_| Pdf(p)))
         }
         "lightbox/image" => {
-            let v = cx.new(|cx| MarkdownView::new("Screenshot attached.", MarkdownClass::ChatCanvas, false, cx));
+            let v = cx.new(|cx| {
+                MarkdownView::new("Screenshot attached.", MarkdownClass::ChatCanvas, false, cx)
+            });
             let image = crate::images::decode(SCREENSHOT_PNG).ok();
             let lb = cx.new(|cx| {
                 crate::lightbox::AttachmentLightbox::new(

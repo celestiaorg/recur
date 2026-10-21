@@ -12,7 +12,7 @@ pub mod preview;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use gpui_kit::{App, Context, Task};
+use gpui_kit::{Context, Task};
 use recur_ui::{Theme, ThemeId};
 use serde_json::{Value, json};
 
@@ -82,7 +82,12 @@ fn error_of(v: &Value) -> Option<String> {
 }
 
 /// Render `source` and build the diagram (async: resolves on the app's run loop).
-pub async fn render(origin: Origin, source: String, theme: Theme, scale: f32) -> Result<Rc<Diagram>, String> {
+pub async fn render(
+    origin: Origin,
+    source: String,
+    theme: Theme,
+    scale: f32,
+) -> Result<Rc<Diagram>, String> {
     let out = crate::webhost::call(&engine::HOST, render_op(origin, &source, &theme, scale))
         .await
         .map_err(|_| "Mermaid render failed".to_string())?
@@ -90,30 +95,53 @@ pub async fn render(origin: Origin, source: String, theme: Theme, scale: f32) ->
     if let Some(e) = error_of(&out) {
         return Err(e);
     }
-    let svg = out.get("svg").and_then(Value::as_str).unwrap_or("").to_string();
+    let svg = out
+        .get("svg")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
     let clean = diagram::sanitize_svg(&svg);
-    let measured = crate::webhost::call(&engine::HOST, json!({ "op": "measure", "svg": clean, "deviceScale": scale }))
-        .await
-        .map_err(|_| "Mermaid render failed".to_string())?
-        .map_err(|e| e.0)?;
+    let measured = crate::webhost::call(
+        &engine::HOST,
+        json!({ "op": "measure", "svg": clean, "deviceScale": scale }),
+    )
+    .await
+    .map_err(|_| "Mermaid render failed".to_string())?
+    .map_err(|e| e.0)?;
     Diagram::build(&clean, &measured).map(Rc::new)
 }
 
 /// [`render`], spinning the main run loop until done (headless renders and tests).
-pub fn render_blocking(origin: Origin, source: &str, theme: &Theme, scale: f32) -> Result<Rc<Diagram>, String> {
-    let out = crate::webhost::call_blocking(&engine::HOST, render_op(origin, source, theme, scale)).map_err(|e| e.0)?;
+pub fn render_blocking(
+    origin: Origin,
+    source: &str,
+    theme: &Theme,
+    scale: f32,
+) -> Result<Rc<Diagram>, String> {
+    let out = crate::webhost::call_blocking(&engine::HOST, render_op(origin, source, theme, scale))
+        .map_err(|e| e.0)?;
     if let Some(e) = error_of(&out) {
         return Err(e);
     }
-    let svg = out.get("svg").and_then(Value::as_str).unwrap_or("").to_string();
+    let svg = out
+        .get("svg")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
     let clean = diagram::sanitize_svg(&svg);
-    let measured = crate::webhost::call_blocking(&engine::HOST, json!({ "op": "measure", "svg": clean, "deviceScale": scale })).map_err(|e| e.0)?;
+    let measured = crate::webhost::call_blocking(
+        &engine::HOST,
+        json!({ "op": "measure", "svg": clean, "deviceScale": scale }),
+    )
+    .map_err(|e| e.0)?;
     Diagram::build(&clean, &measured).map(Rc::new)
 }
 
 /// Draws a diagram into a markdown `.md-mermaid` slot.
 fn slot(d: Rc<Diagram>) -> MermaidSlot {
-    MermaidSlot::Ready(Rc::new(move |max_w, window| d.inline_element(max_w, window)))
+    MermaidSlot::Ready(Rc::new(move |max_w, window| {
+        d.inline_element(max_w, window)
+    }))
 }
 
 /// A hydration: done on the spot (headless) or running.
@@ -134,7 +162,8 @@ pub fn hydrate(sources: Vec<String>, scale: f32, cx: &mut Context<MarkdownView>)
                     if src.trim().is_empty() {
                         MermaidSlot::Empty
                     } else {
-                        render_blocking(Origin::Markdown, src, &theme, scale).map_or(MermaidSlot::Error, slot)
+                        render_blocking(Origin::Markdown, src, &theme, scale)
+                            .map_or(MermaidSlot::Error, slot)
                     }
                 })
                 .collect(),

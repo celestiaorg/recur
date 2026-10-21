@@ -136,7 +136,8 @@ window.recur = async function (op) {
 "#;
 
 #[cfg(target_os = "macos")]
-static ASSETS: include_dir::Dir<'static> = include_dir::include_dir!("$CARGO_MANIFEST_DIR/assets/pdfjs");
+static ASSETS: include_dir::Dir<'static> =
+    include_dir::include_dir!("$CARGO_MANIFEST_DIR/assets/pdfjs");
 
 thread_local! {
     static DOCS: std::cell::RefCell<std::collections::HashMap<u64, Arc<[u8]>>> = Default::default();
@@ -157,7 +158,9 @@ fn resource(path: &str) -> Option<(Arc<[u8]>, &'static str)> {
         _ => {
             if let Some(id) = path.strip_prefix("/doc/") {
                 let id = id.parse::<u64>().ok()?;
-                return DOCS.with(|d| d.borrow().get(&id).cloned()).map(|b| (b, "application/pdf"));
+                return DOCS
+                    .with(|d| d.borrow().get(&id).cloned())
+                    .map(|b| (b, "application/pdf"));
             }
             #[cfg(target_os = "macos")]
             if let Some(rest) = path.strip_prefix("/pdfjs/") {
@@ -179,7 +182,10 @@ pub struct Document {
 impl Drop for Document {
     fn drop(&mut self) {
         DOCS.with(|d| d.borrow_mut().remove(&self.id));
-        drop(webhost::call(&HOST, json!({ "op": "close", "doc": self.id })));
+        drop(webhost::call(
+            &HOST,
+            json!({ "op": "close", "doc": self.id }),
+        ));
     }
 }
 
@@ -274,32 +280,54 @@ fn page_image(v: Result<Value, EngineError>) -> Result<Option<PageImage>, String
     for p in px.chunks_exact_mut(4) {
         p.swap(0, 2);
     }
-    let buffer = image::RgbaImage::from_raw(r.pixel_width, r.pixel_height, px).ok_or("PDF render failed")?;
+    let buffer =
+        image::RgbaImage::from_raw(r.pixel_width, r.pixel_height, px).ok_or("PDF render failed")?;
     Ok(Some(PageImage {
         width: r.width,
         height: r.height,
         pixel_width: r.pixel_width,
         pixel_height: r.pixel_height,
-        image: Arc::new(RenderImage::new(SmallVec::from_elem(image::Frame::new(buffer), 1))),
+        image: Arc::new(RenderImage::new(SmallVec::from_elem(
+            image::Frame::new(buffer),
+            1,
+        ))),
     }))
 }
 
 /// Render page `page` (1-based) at `scale` for device scale `dpr`, as render task `task`;
 /// `Ok(None)` when [`cancel`]led.
-pub async fn render(doc: &Document, page: usize, scale: f32, dpr: f32, task: u64) -> Result<Option<PageImage>, String> {
+pub async fn render(
+    doc: &Document,
+    page: usize,
+    scale: f32,
+    dpr: f32,
+    task: u64,
+) -> Result<Option<PageImage>, String> {
     let out = webhost::call(&HOST, render_op(doc, page, scale, dpr, task))
         .await
         .unwrap_or_else(|_| Err(EngineError("PDF render failed".into())));
     page_image(out)
 }
 
-pub fn render_blocking(doc: &Document, page: usize, scale: f32, dpr: f32, task: u64) -> Result<Option<PageImage>, String> {
-    page_image(webhost::call_blocking(&HOST, render_op(doc, page, scale, dpr, task)))
+pub fn render_blocking(
+    doc: &Document,
+    page: usize,
+    scale: f32,
+    dpr: f32,
+    task: u64,
+) -> Result<Option<PageImage>, String> {
+    page_image(webhost::call_blocking(
+        &HOST,
+        render_op(doc, page, scale, dpr, task),
+    ))
 }
 
 /// Cancel render task `task` (`task.cancel()`); its render resolves `Ok(None)`.
 pub fn cancel(task: u64) {
-    drop(webhost::call(&HOST, json!({ "op": "cancel", "task": task })));
+    drop(webhost::call(
+        &HOST,
+        json!({ "op": "cancel", "task": task }),
+    ));
 }
 
 #[cfg(target_os = "macos")]
@@ -308,7 +336,10 @@ mod mac {
     use objc2::rc::Retained;
     use objc2::runtime::{NSObject, NSObjectProtocol, ProtocolObject};
     use objc2::{AllocAnyThread, MainThreadMarker, MainThreadOnly, define_class, msg_send};
-    use objc2_foundation::{NSData, NSDictionary, NSHTTPURLResponse, NSPoint, NSRect, NSSize, NSString, NSURL, NSURLRequest};
+    use objc2_foundation::{
+        NSData, NSDictionary, NSHTTPURLResponse, NSPoint, NSRect, NSSize, NSString, NSURL,
+        NSURLRequest,
+    };
     use objc2_web_kit::{
         WKURLSchemeHandler, WKURLSchemeTask, WKWebView, WKWebViewConfiguration, WKWebsiteDataStore,
     };
@@ -342,13 +373,15 @@ mod mac {
                     ];
                     let values = [&*NSString::from_str(mime), &*NSString::from_str(super::CSP)];
                     let headers = NSDictionary::from_slices(&keys, &values);
-                    let Some(response) = NSHTTPURLResponse::initWithURL_statusCode_HTTPVersion_headerFields(
-                        NSHTTPURLResponse::alloc(),
-                        &url,
-                        status,
-                        Some(&NSString::from_str("HTTP/1.1")),
-                        Some(&headers),
-                    ) else {
+                    let Some(response) =
+                        NSHTTPURLResponse::initWithURL_statusCode_HTTPVersion_headerFields(
+                            NSHTTPURLResponse::alloc(),
+                            &url,
+                            status,
+                            Some(&NSString::from_str("HTTP/1.1")),
+                            Some(&headers),
+                        )
+                    else {
                         return;
                     };
                     task.didReceiveResponse(&response);
@@ -374,7 +407,10 @@ mod mac {
             );
             let frame = NSRect::new(NSPoint::new(0., 0.), NSSize::new(1024., 768.));
             let web = WKWebView::initWithFrame_configuration(WKWebView::alloc(mtm), frame, &config);
-            if let Some(url) = NSURL::URLWithString(&NSString::from_str(&format!("{}://app/index.html", super::SCHEME))) {
+            if let Some(url) = NSURL::URLWithString(&NSString::from_str(&format!(
+                "{}://app/index.html",
+                super::SCHEME
+            ))) {
                 web.loadRequest(&NSURLRequest::requestWithURL(&url));
             }
             web
@@ -394,14 +430,23 @@ mod tests {
         assert_eq!(resource("/host.mjs").unwrap().1, "text/javascript");
         #[cfg(target_os = "macos")]
         {
-            assert_eq!(resource("/pdfjs/pdf.worker.min.mjs").unwrap().1, "text/javascript");
-            assert_eq!(resource("/pdfjs/wasm/openjpeg.wasm").unwrap().1, "application/wasm");
+            assert_eq!(
+                resource("/pdfjs/pdf.worker.min.mjs").unwrap().1,
+                "text/javascript"
+            );
+            assert_eq!(
+                resource("/pdfjs/wasm/openjpeg.wasm").unwrap().1,
+                "application/wasm"
+            );
             assert!(resource("/pdfjs/standard_fonts/FoxitSerif.pfb").is_some());
         }
         assert!(resource("/pdfjs/../Cargo.toml").is_none());
         assert!(resource("/etc/passwd").is_none());
         let (doc, _) = open_op(Arc::from(&b"%PDF-1.7"[..]));
-        assert_eq!(&*resource(&format!("/doc/{}", doc.id)).unwrap().0, b"%PDF-1.7");
+        assert_eq!(
+            &*resource(&format!("/doc/{}", doc.id)).unwrap().0,
+            b"%PDF-1.7"
+        );
         let id = doc.id;
         DOCS.with(|d| d.borrow_mut().remove(&id));
         std::mem::forget(doc);

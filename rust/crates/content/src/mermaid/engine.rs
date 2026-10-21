@@ -136,10 +136,11 @@ pub static HOST: crate::webhost::Host = crate::webhost::Host {
 #[allow(unsafe_code)]
 mod mac {
     use objc2::rc::Retained;
-    use objc2::{AnyThread, MainThreadMarker, MainThreadOnly};
+    use objc2::{MainThreadMarker, MainThreadOnly};
     use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
     use objc2_web_kit::{
-        WKUserScript, WKUserScriptInjectionTime, WKWebView, WKWebViewConfiguration, WKWebsiteDataStore,
+        WKUserScript, WKUserScriptInjectionTime, WKWebView, WKWebViewConfiguration,
+        WKWebsiteDataStore,
     };
 
     const MERMAID_JS: &str = include_str!("../../assets/mermaid/mermaid.min.js");

@@ -46,7 +46,10 @@ fn unsupported(host: &Host) -> EngineError {
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn call(host: &'static Host, op: Value) -> futures::channel::oneshot::Receiver<Result<Value, EngineError>> {
+pub fn call(
+    host: &'static Host,
+    op: Value,
+) -> futures::channel::oneshot::Receiver<Result<Value, EngineError>> {
     let (tx, rx) = futures::channel::oneshot::channel();
     let _ = op;
     let _ = tx.send(Err(unsupported(host)));
@@ -70,9 +73,9 @@ mod mac {
     use block2::RcBlock;
     use core_foundation::runloop::{CFRunLoop, kCFRunLoopDefaultMode};
     use futures::channel::oneshot;
+    use objc2::MainThreadMarker;
     use objc2::rc::Retained;
     use objc2::runtime::AnyObject;
-    use objc2::MainThreadMarker;
     use objc2_foundation::{NSDictionary, NSError, NSString};
     use objc2_web_kit::{WKContentWorld, WKWebView};
     use serde_json::Value;
@@ -93,7 +96,8 @@ mod mac {
     }
 
     fn mtm(host: &Host) -> Result<MainThreadMarker, EngineError> {
-        MainThreadMarker::new().ok_or_else(|| EngineError(format!("{} renders on the main thread", host.name)))
+        MainThreadMarker::new()
+            .ok_or_else(|| EngineError(format!("{} renders on the main thread", host.name)))
     }
 
     fn loading(web: &WKWebView) -> bool {
@@ -125,8 +129,10 @@ mod mac {
         set_device_scale(web, op);
         let payload = NSString::from_str(&op.to_string());
         let key = NSString::from_str("payload");
-        let args: Retained<NSDictionary<NSString, AnyObject>> =
-            NSDictionary::from_retained_objects(&[&*key], &[Retained::into_super(Retained::into_super(payload))]);
+        let args: Retained<NSDictionary<NSString, AnyObject>> = NSDictionary::from_retained_objects(
+            &[&*key],
+            &[Retained::into_super(Retained::into_super(payload))],
+        );
         let body = NSString::from_str(
             "for (let i = 0; i < 400 && typeof window.recur !== 'function'; i++) await new Promise(r => setTimeout(r, 5));\nreturn JSON.stringify(await window.recur(JSON.parse(payload)));",
         );

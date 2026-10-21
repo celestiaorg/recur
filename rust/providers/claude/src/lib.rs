@@ -8,6 +8,8 @@
 
 pub mod args;
 pub mod flags;
+#[cfg(test)]
+mod go_golden;
 pub mod input;
 mod proc;
 mod runner;

@@ -662,10 +662,71 @@ pub fn parse_context_flag(s: &str) -> i64 {
     } else {
         (s.as_str(), 1.0)
     };
-    match num.trim().parse::<f64>() {
-        Ok(f) if f > 0.0 => (f * mult) as i64,
+    match go_parse_float(num.trim()) {
+        Some(f) if f > 0.0 => (f * mult) as i64,
         _ => 0,
     }
+}
+
+/// Go `strconv.ParseFloat(s, 64)`: decimal and hex (`0x1p-2`) literals with
+/// Go's digit-separating underscores, an optional sign, and inf/infinity/nan.
+fn go_parse_float(s: &str) -> Option<f64> {
+    let (neg, body) = match s.as_bytes().first() {
+        Some(b'+') => (false, &s[1..]),
+        Some(b'-') => (true, &s[1..]),
+        _ => (false, s),
+    };
+    let lower = body.to_ascii_lowercase();
+    let v = match lower.as_str() {
+        "inf" | "infinity" => f64::INFINITY,
+        "nan" => f64::NAN,
+        _ if lower.starts_with("0x") => parse_hex_float(&lower[2..])?,
+        _ => {
+            if !underscores_ok(&lower, false) {
+                return None;
+            }
+            lower.replace('_', "").parse::<f64>().ok()?
+        }
+    };
+    Some(if neg { -v } else { v })
+}
+
+/// Go's rule: an underscore must sit between two digits (or right after a
+/// base prefix).
+fn underscores_ok(s: &str, hex: bool) -> bool {
+    let b = s.as_bytes();
+    let digit = |c: u8| {
+        if hex {
+            c.is_ascii_hexdigit()
+        } else {
+            c.is_ascii_digit()
+        }
+    };
+    b.iter().enumerate().all(|(i, &c)| {
+        c != b'_'
+            || (i + 1 < b.len() && digit(b[i + 1]) && (i == 0 && hex || i > 0 && digit(b[i - 1])))
+    })
+}
+
+/// The part after `0x`: hex mantissa with an optional point, and a required
+/// binary exponent `p±d`.
+fn parse_hex_float(s: &str) -> Option<f64> {
+    let (mant, exp) = s.split_once('p')?;
+    if !underscores_ok(mant, true) || !underscores_ok(exp.trim_start_matches(['+', '-']), false) {
+        return None;
+    }
+    let mant = mant.replace('_', "");
+    let exp: i32 = exp.replace('_', "").parse().ok()?;
+    let (int, frac) = mant.split_once('.').unwrap_or((&mant, ""));
+    if int.is_empty() && frac.is_empty() {
+        return None;
+    }
+    let mut v = 0f64;
+    for c in int.chars().chain(frac.chars()) {
+        v = v * 16.0 + f64::from(c.to_digit(16)?);
+    }
+    let shift = exp - 4 * i32::try_from(frac.len()).ok()?;
+    Some(v * 2f64.powi(shift))
 }
 
 /// The `turn/start` service tier: the Fast flag's tier id (legacy

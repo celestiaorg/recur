@@ -22,6 +22,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 recur-agent = { workspace = true, features = ["testing"] }
+pretty_assertions.workspace = true
 tempfile.workspace = true
 toml.workspace = true
 

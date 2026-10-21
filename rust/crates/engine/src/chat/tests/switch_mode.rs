@@ -120,20 +120,6 @@ fn the_resume_prompt_and_display() {
     );
 }
 
-async fn wait_coder_turns(
-    c: &crate::loops::test_support::CaptureScript,
-    n: usize,
-) -> Vec<recur_agent::TurnRequest> {
-    for _ in 0..200 {
-        let specs = c.with_role(AgentRole::Coder);
-        if specs.len() >= n {
-            return specs;
-        }
-        tokio::time::sleep(Duration::from_millis(15)).await;
-    }
-    panic!("timed out waiting for {n} coder turns");
-}
-
 fn spawn_send(fx: &Fx, ws: &str, text: &str, mode: &str) -> tokio::task::JoinHandle<String> {
     let (eng, ws, text, mode) = (
         Arc::clone(fx.eng()),

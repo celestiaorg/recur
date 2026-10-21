@@ -5,6 +5,7 @@ mod cancel;
 mod children;
 mod fork;
 mod modes_send;
+mod moved;
 mod recover;
 mod send;
 mod steer;

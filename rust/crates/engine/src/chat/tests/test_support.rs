@@ -74,9 +74,14 @@ impl Fx {
     /// the shipped providers stay registered for their per-provider rules,
     /// which Go applied statically.
     pub fn new(provider: Option<Arc<dyn Provider>>) -> Self {
+        Self::with(provider, crate::testing::TestOptions::default())
+    }
+
+    /// [`Self::new`] over `opts` (trackers, a dead MCP address).
+    pub fn with(provider: Option<Arc<dyn Provider>>, opts: crate::testing::TestOptions) -> Self {
         let te = TestEngine::with(crate::testing::TestOptions {
             registered: Some(Vec::new()),
-            ..crate::testing::TestOptions::default()
+            ..opts
         });
         te.engine
             .providers()
@@ -548,4 +553,19 @@ pub fn last_tab_unseen(te: &TestEngine, from: usize, ws: &str, code: &str) -> Op
             _ => None,
         })
         .last()
+}
+
+/// The first `n` coder turns, polled for up to 3 s.
+pub async fn wait_coder_turns(
+    c: &crate::loops::test_support::CaptureScript,
+    n: usize,
+) -> Vec<recur_agent::TurnRequest> {
+    for _ in 0..200 {
+        let specs = c.with_role(AgentRole::Coder);
+        if specs.len() >= n {
+            return specs;
+        }
+        tokio::time::sleep(Duration::from_millis(15)).await;
+    }
+    panic!("timed out waiting for {n} coder turns");
 }

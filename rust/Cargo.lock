@@ -6885,6 +6885,11 @@ dependencies = [
 name = "recur-services"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "base64 0.23.1",
+ "futures",
+ "parking_lot",
+ "pretty_assertions",
  "recur-agent",
  "recur-bundles",
  "recur-code",
@@ -6902,6 +6907,12 @@ dependencies = [
  "recur-store",
  "recur-term",
  "recur-usage",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

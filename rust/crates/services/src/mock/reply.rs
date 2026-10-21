@@ -52,30 +52,35 @@ impl<T: DeserializeOwned> FromReply for Option<T> {
     }
 }
 
-macro_rules! scalar_reply {
-    ($($t:ty),*) => {$(
-        impl FromReply for $t {
-            fn from_reply(method: &str, v: Value) -> Result<Self> {
-                if v.is_null() {
-                    return Ok(Default::default());
-                }
-                decode(method, v)
-            }
-        }
-    )*};
+impl FromReply for String {
+    fn from_reply(_: &str, v: Value) -> Result<Self> {
+        Ok(match v {
+            Value::Null => String::new(),
+            Value::String(s) => s,
+            other => super::js::string(&other),
+        })
+    }
 }
 
-scalar_reply!(String, bool, i64);
+impl FromReply for bool {
+    fn from_reply(_: &str, v: Value) -> Result<Self> {
+        Ok(super::js::truthy(Some(&v)))
+    }
+}
+
+impl FromReply for i64 {
+    fn from_reply(_: &str, v: Value) -> Result<Self> {
+        let n = super::js::number(Some(&v));
+        Ok(if n.is_finite() { n.trunc() as i64 } else { 0 })
+    }
+}
 
 macro_rules! struct_reply {
     ($($t:ty),* $(,)?) => {$(
         impl FromReply for $t {
             fn from_reply(method: &str, v: Value) -> Result<Self> {
                 if v.is_null() {
-                    return Err(Error::new(format!(
-                        "{method}: cannot read a {} from null",
-                        stringify!($t)
-                    )));
+                    return Err(Error::new(format!("{method} returned null")));
                 }
                 decode(method, v)
             }

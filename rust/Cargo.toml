@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "providers/*"]
+members = ["crates/*", "providers/*", "tools/*"]
 default-members = ["crates/desktop", "crates/cli"]
 
 [workspace.package]
@@ -75,6 +75,15 @@ parking_lot = "0.12"
 regex = "1"
 clap = { version = "4", features = ["derive"] }
 include_dir = "0.7"
+fancy-regex = "0.16"
+wuff = "0.2"
+ttf-parser = "0.25"
+unicode-linebreak = "0.1"
+resvg = { version = "0.46", default-features = false }
+smallvec = "1"
+core-graphics = "0.24"
+core-text = "21"
+core-foundation = "0.10"
 notify = "8"
 cron = "0.15"
 socket2 = "0.6"

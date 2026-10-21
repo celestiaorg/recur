@@ -1,0 +1,23 @@
+{
+  "text": "Recur ships 0123456789 · agjpqy QWZ",
+  "samples": [
+    { "id": "ui-13-400-1.45", "family": "ui", "size": 13, "weight": 400, "lineHeight": 1.45 },
+    { "id": "ui-13-400-normal", "family": "ui", "size": 13, "weight": 400, "lineHeight": "normal" },
+    { "id": "ui-12-500-normal", "family": "ui", "size": 12, "weight": 500, "lineHeight": "normal" },
+    { "id": "ui-12.5-400-1.45", "family": "ui", "size": 12.5, "weight": 400, "lineHeight": 1.45 },
+    { "id": "ui-12.5-550-1.35", "family": "ui", "size": 12.5, "weight": 550, "lineHeight": 1.35, "tracking": -0.01 },
+    { "id": "ui-12-400-1.4", "family": "ui", "size": 12, "weight": 400, "lineHeight": 1.4, "tracking": 0.01 },
+    { "id": "ui-14.5-600-1.25", "family": "ui", "size": 14.5, "weight": 600, "lineHeight": 1.25, "tracking": -0.01 },
+    { "id": "ui-11-450-1", "family": "ui", "size": 11, "weight": 450, "lineHeight": 1 },
+    { "id": "ui-11-400-upper", "family": "ui", "size": 11, "weight": 400, "lineHeight": 1.45, "tracking": 0.06, "uppercase": true },
+    { "id": "mono-12-400-normal", "family": "mono", "size": 12, "weight": 400, "lineHeight": "normal" },
+    { "id": "mono-11.5-400-1.45", "family": "mono", "size": 11.5, "weight": 400, "lineHeight": 1.45 },
+    { "id": "mono-10.5-400-1.45", "family": "mono", "size": 10.5, "weight": 400, "lineHeight": 1.45 },
+    { "id": "mono-9.5-400-upper", "family": "mono", "size": 9.5, "weight": 400, "lineHeight": 1.45, "tracking": 0.1, "uppercase": true },
+    { "id": "mono-12-650-upper", "family": "mono", "size": 12, "weight": 650, "lineHeight": 1.45, "tracking": 0.05, "uppercase": true },
+    { "id": "mono-9-700-1", "family": "mono", "size": 9, "weight": 700, "lineHeight": 1 },
+    { "id": "disp-14-600-1.45", "family": "disp", "size": 14, "weight": 600, "lineHeight": 1.45 },
+    { "id": "system-11-500-1.45", "family": "system", "size": 11, "weight": 500, "lineHeight": 1.45, "tracking": 0.02 },
+    { "id": "system-12-500-normal", "family": "system", "size": 12, "weight": 500, "lineHeight": "normal", "tracking": 0.02 }
+  ]
+}

@@ -433,7 +433,9 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `AgentChat.harness.svelte` (12 lines)
 - [ ] `AgentChat.svelte` (6396 lines)
 - [ ] `AppChat.svelte` (374 lines)
-- [ ] `ArmedButton.svelte` (51 lines)
+- [x] `ArmedButton.svelte` (51 lines) → `recur_ui::widgets::armed_button` (scene `armed-button/default`)
+  - [x] Arm on click, confirm on the next pointer-up (handled in capture so it precedes GPUI's click), swallow the click echo, timeout reset (3s default), disabled resets
+  - [x] `.tbtn.danger` / `.armed` looks at base and titlebar sizes, icon slot, title tooltip, `on_arm`
 - [ ] `ArtifactsPanel.svelte` (320 lines)
 - [ ] `AttachmentLightbox.svelte` (155 lines)
 - [ ] `CodeEditor.svelte` (1405 lines)
@@ -445,23 +447,29 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `CompatibleProviderCard.svelte` (468 lines)
 - [ ] `CompatibleProviderModal.svelte` (215 lines)
 - [ ] `ContextUsageMeter.svelte` (278 lines)
-- [ ] `DecodeText.svelte` (107 lines)
+- [x] `DecodeText.svelte` (107 lines) → `recur_ui::widgets::decode_text`
+  - [x] Left-to-right scramble at 28ms ticks with 2-tick holds, spaces kept, `.decoding` at .85 opacity, `source_key` snaps on identity change, `animate(false)`, reduced motion snaps
+  - [x] `decode_frame` ported with its cases
 - [ ] `DiffFile.svelte` (898 lines)
 - [ ] `EmojiSuggest.svelte` (90 lines)
 - [ ] `FanOutCard.svelte` (234 lines)
 - [ ] `FilePreview.svelte` (364 lines)
 - [ ] `FilesChangedView.svelte` (712 lines)
 - [ ] `FindingsPanel.svelte` (506 lines)
-- [ ] `Icon.svelte` (51 lines)
-- [ ] `IconPicker.svelte` (237 lines)
+- [x] `Icon.svelte` (51 lines) → `recur_ui::icon` (`Icon`, `icon`, `svg_markup`)
+  - [x] Every `lib/icons.ts` name as an SVG asset (`IconName`), same viewBoxes and stroke widths, `stroke_width` override, rotation, per-pixel CSS mask, polychrome markup with `currentColor`
+  - [x] Rasterized with CoreGraphics on macOS at the exact CSS size from a snapped origin (WebKit's SVG painting); scenes `icons/app`, `project-pic/default`
+- [x] `IconPicker.svelte` (237 lines) → `recur_ui::widgets::IconPicker` (scenes `icon-picker/closed`, `icon-picker/open`)
+  - [x] `.ico-pick.sel.sm` trigger (hover, open, `:focus-visible` ring and outline, disabled fade), searchable 8-column grid with the themed scrollbar, current icon first, 80-hit search, arrow/Home/End/Enter/Escape keys, hover gate, outside-press close, `IconPicked` event
+  - [x] `shown_icons` ported with its cases
 - [ ] `ImageContextMenu.svelte` (84 lines)
 - [ ] `InboxTitlebar.svelte` (24 lines)
 - [ ] `Issues.svelte` (512 lines)
-- [ ] `Kbd.svelte` (13 lines)
+- [x] `Kbd.svelte` (13 lines) → `recur_ui::kbd` (`kbd`, `shortcut_parts`); scene `kbd/default` with `.pk`, `.pal-foot .k` and `.esc` keycaps
 - [ ] `KeybindingMenu.svelte` (180 lines)
 - [ ] `LineNoteThread.svelte` (375 lines)
 - [ ] `LoopPolicyPickers.svelte` (93 lines)
-- [ ] `LucideIcon.svelte` (26 lines)
+- [x] `LucideIcon.svelte` (26 lines) → `recur_ui::lucide_icon` (aliases, unknown names draw nothing); scene `icons/lucide`
 - [ ] `MarkdownHtml.svelte` (87 lines)
 - [ ] `MergeEditor.svelte` (703 lines)
 - [ ] `MermaidPreview.svelte` (329 lines)
@@ -479,32 +487,42 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `PermissionPrompts.svelte` (63 lines)
 - [ ] `PlanCard.svelte` (115 lines)
 - [ ] `PlanPanel.svelte` (609 lines)
-- [ ] `ProjectPic.svelte` (49 lines)
-- [ ] `ProviderIcon.svelte` (52 lines)
+- [x] `ProjectPic.svelte` (49 lines) → `recur_ui::widgets::project_pic` (`.nt-pic` and palette boxes, letter, lucide and image pictures, readable ink on any color); scene `project-pic/default`
+- [x] `ProviderIcon.svelte` (52 lines) → `recur_ui::provider_icon` (provider slug mapping, polychrome marks); scene `icons/provider`
 - [ ] `ProviderUsageMeter.svelte` (453 lines)
 - [ ] `QuestionCard.svelte` (239 lines)
 - [ ] `QuestionPrompts.svelte` (67 lines)
 - [ ] `QuickOpen.svelte` (273 lines)
-- [ ] `ResizeHandle.svelte` (126 lines)
+- [x] `ResizeHandle.svelte` (126 lines) → `recur_ui::widgets::resize_handle` (scenes `resize-handle/hover`, `resize-handle/focus`)
+  - [x] `.vsplit` / `.hsplit` (`_terminal.scss`) at either edge, hover/focus/drag wash, painted over the panel border (z-index 8), title tooltip
+  - [x] Pointer drag with live and commit callbacks, layout ceiling, arrow keys (8px, 24px with Shift); `drag_size` and `key_step` with cases. Persisting widths (`panelWidths`) is the caller's
 - [ ] `ReviewFileList.svelte` (280 lines)
 - [ ] `ReviewSurface.svelte` (229 lines)
-- [ ] `Ring.svelte` (30 lines)
+- [x] `Ring.svelte` (30 lines) → `recur_ui::widgets::ring` (progress arc and iteration count); scene `ring/default`
 - [ ] `RunCommandPalette.svelte` (250 lines)
 - [ ] `RunPalette.svelte` (171 lines)
 - [ ] `ScheduleEditor.svelte` (334 lines)
 - [ ] `ScheduledPrompts.svelte` (792 lines)
 - [ ] `SchedulesTitlebar.svelte` (20 lines)
-- [ ] `Select.svelte` (466 lines)
+- [x] `Select.svelte` (466 lines) → `recur_ui::widgets::Select` (scenes `select/closed`, `select/closed-paper`, `select/open`, `select/searchable`, `select/multiple`, `select/focus`)
+  - [x] md, sm and ghost triggers, provider and app icons with tints, placeholder, multiple values, disabled fade, `TriggerStyle` for contexts like `.nt-pickers`
+  - [x] Cascade details: hover fill on an open trigger keeps its amber border, `:focus-visible` rounds to 4px with the 2px outline, sm uses `chevrons-up-down` without rotation, md and ghost rotate `chevron-down`
+  - [x] Menu: placement from the trigger's border box (`menu-space`), up/down, min/max widths per variant, groups with provider headings, hints, checkmarks, themed scrollbar, search header (placeholder drawn by recur-ui text), fuzzy filter, keyboard navigation, hover gate, outside-press close, `SelectEvent`
 - [ ] `SessionCard.svelte` (88 lines)
-- [ ] `SettingsGroup.svelte` (65 lines)
-- [ ] `SettingsGroups.svelte` (15 lines)
+- [x] `SettingsGroup.svelte` (65 lines) → `recur_ui::widgets::settings_group` (scenes `settings-group/default`, `settings-group/paper`)
+  - [x] Title and blurb (rich spans with `blurb_code`), override toggle collapsing the body, disabled override, `.set-subsec-nested` with the real cascade (its own background and radius lose to `.set-subsec`)
+- [x] `SettingsGroups.svelte` (15 lines) → `recur_ui::widgets::settings_groups`
 - [ ] `ShortcutsHelp.svelte` (128 lines)
 - [ ] `Sidebar.svelte` (1848 lines)
 - [ ] `StopPalette.svelte` (164 lines)
 - [ ] `StreamingMarkdown.svelte` (85 lines)
 - [ ] `SyntaxPalette.svelte` (317 lines)
-- [ ] `TabChip.svelte` (293 lines)
-- [ ] `TabStrip.svelte` (290 lines)
+- [x] `TabChip.svelte` (293 lines) → `recur_ui::widgets::tab_chip` (scenes `tab-strip/default`, `tab-strip/paper`, `tab-strip/hover`)
+  - [x] Active, lit, dirty, unseen, badge, busy wash (per-pixel mask over icon and label), muted, decoded label, app and file icons, close button with tooltip, reorder cursors, floating chip with eased lift shadow
+  - [x] Click, close, key, press and context-menu callbacks; click guard after drags
+- [x] `TabStrip.svelte` (290 lines) → `recur_ui::widgets::tab_strip` (scenes above and `tab-strip/overflow`)
+  - [x] Chrome strip, leading and trailing slots, `.tab-strip-act` actions, active reveal chase, keep-alive scroll restore, reveal nonce, user pinning
+  - [x] `scrollbar-width: thin` as WebKit's macOS overlay scroller (no layout space, shown after wheel scrolling)
 - [ ] `TerminalDock.svelte` (856 lines)
 - [~] `TerminalPane.svelte` (581 lines): `recur_terminal_view::TerminalView` + `TerminalElement`
   - [x] Attach on mount, paint replay, queue live output until the replay lands, ack in 32KiB batches (`tests/view.rs`)
@@ -526,8 +544,12 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Query replies answered in the emulator (DA1/DA2, XTVERSION, DSR/CPR, DECRQM, DECRQSS, OSC 4/10/11/12, CSI t) (`screen/scanner.rs`)
   - [ ] SGR 53 overline: alacritty_terminal cells have no overline flag, so it is parsed and dropped
   - [ ] Pixel parity screenshot against the web pane (needs the app shell and screen recording permission)
-- [ ] `TitleTooltip.svelte` (309 lines)
-- [ ] `Toasts.svelte` (55 lines)
+- [x] `TitleTooltip.svelte` (309 lines) → `recur_ui::tooltip` (`titled`, `TitleTooltip`; scenes `tooltip/below`, `tooltip/above`, `tooltip/paper`)
+  - [x] Hover and keyboard-focus candidates, show delay and re-show window, cursor anchoring on wide targets, below/above placement with viewport clamping, dismissal on press, scroll, Escape, window exit and blur, dismissed-text memory
+  - [x] `.ui-tip` card with themed shadow and ring, 90ms entrance, wrapping body, placed at its exact fractional position
+- [x] `Toasts.svelte` (55 lines) → `recur_ui::widgets::{Toasts, ToastStore, push_toast}` (scenes `toasts/default`, `toasts/paper`)
+  - [x] Store from `lib/stores.ts`: kinds, default TTLs (3.5s, 8s errors, 30s asks, 0 sticky), replace keys, `on_dismiss` unless the action ran, editor-theme toast, ask toasts; cases ported
+  - [x] Plain toasts (dot, wrapping text, action, close) and ask toasts (165deg gradient, accent rail and draining TTL bar clipped to the rounded card, kicker, where line, two-line question, CTA), entrance fade
 - [ ] `UserMentionSuggest.svelte` (105 lines)
 - [ ] `WorkspaceBaseSelect.svelte` (93 lines)
 - [ ] `WorkspaceBriefCard.svelte` (134 lines)
@@ -543,7 +565,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 
 - [ ] `lib/agentchat.ts` (2226 lines)
 - [ ] `lib/api.ts` (1461 lines)
-- [ ] `lib/armed-confirm.ts` (52 lines)
+- [x] `lib/armed-confirm.ts` (52 lines) → `recur_ui::widgets::armed_button` (`ArmedConfirm`, `armed_click`, `armed_pointer_up`, `take_click_echo`; cases ported)
 - [ ] `lib/artifacts.ts` (198 lines)
 - [ ] `lib/autosize-textarea.ts` (29 lines)
 - [ ] `lib/bridge-bench.ts` (98 lines)
@@ -629,10 +651,20 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/format.ts` (51 lines)
 - [x] `lib/fuzzy.ts` (145 lines) → `recur_code::fuzzy` (`fuzzy_score`, `prepare_fuzzy`, `fuzzy_filter_prepared`, `fuzzy_filter`): UTF-16 scoring and the `a`-`z`/digit/other mask like JS, ties in `Intl.Collator` order (ICU root collation). The scorer is shared with Go's Quick Open ranking (`rank_files`, on bytes). Node-recorded golden over 17 queries × 31 labels (punctuation, case, ß, ü, emoji)
 - [x] `lib/glob.ts` (64 lines) → `recur_code::glob` (`compile_excludes`, `is_excluded_by`; JavaScript regex semantics through `regress` on UTF-16, per-pattern cache). The glob → regex translation is shared with the file index and copy-files
+- [x] `lib/file-icons/icon-tables.ts` (52 lines) → `recur_ui::file_icons` (the shipped `icondb.js` tables parsed at startup, regexes via `fancy-regex`)
+- [x] `lib/file-icons/icon.ts` (31 lines) → `recur_ui::file_icons::FileIconClass` (light/dark color slots)
+- [x] `lib/file-icons/index.ts` (41 lines) → `recur_ui::file_icons::{file_icon_class, file_icon}` (dotenv rule, basename matching, fallback; glyphs from the icon fonts through CoreGraphics with smoothing off); scenes `icons/file`, `icons/file-light`
+- [x] `lib/file-icons/types.ts` (26 lines) → `recur_ui::file_icons`
+- [ ] `lib/file-index.ts` (162 lines)
+- [ ] `lib/finding-paths.ts` (112 lines)
+- [ ] `lib/findings-ui.ts` (396 lines)
+- [ ] `lib/format.ts` (51 lines)
+- [x] `lib/fuzzy.ts` (145 lines) → `recur_ui::logic::fuzzy` (`fuzzy_score`, `prepare_fuzzy`, `fuzzy_filter_prepared`, `fuzzy_filter`, CLDR punctuation collation; cases ported)
+- [ ] `lib/glob.ts` (64 lines)
 - [ ] `lib/hoist-chat-keys.ts` (286 lines)
 - [ ] `lib/hot-shells.ts` (51 lines)
-- [ ] `lib/hoverGate.ts` (50 lines)
-- [ ] `lib/icons.ts` (1003 lines)
+- [x] `lib/hoverGate.ts` (50 lines) → `recur_ui::logic::hover_gate::HoverGate` (cases ported)
+- [x] `lib/icons.ts` (1003 lines) → `recur_ui::IconName` and `assets/icons/app/*.svg`, generated by `assets/icons/generate.mjs` from the frontend sources
 - [ ] `lib/inbox-read.ts` (28 lines)
 - [~] `lib/issue-link.ts` (36 lines) → `recur_issues::view::{issue_key, issue_url}` (tracker fallback via `IssueTracker::issue_url`); tested. Left for `recur-app`: the `trackerIssues` cache keyed on `issuesStale` and `openIssueUrl` (services `OpenLinearInApp` uses `IssueTracker::app_url`)
 - [ ] `lib/keybinding-menu.ts` (27 lines)
@@ -643,7 +675,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/lsp-lang.ts` (86 lines)
 - [ ] `lib/lsp-problems.ts` (116 lines)
 - [ ] `lib/lsp.ts` (1520 lines)
-- [ ] `lib/lucide-icons.ts` (82 lines)
+- [x] `lib/lucide-icons.ts` (82 lines) → `recur_ui::assets` (`lucide_icons`, `lucide_suggested`, `lucide_entry`, `has_lucide_icon`, aliases; generated `lucide.json`)
 - [ ] `lib/macro-worker.ts` (479 lines)
 - [ ] `lib/markdown-host.ts` (262 lines)
 - [ ] `lib/markdown-parse.ts` (191 lines)
@@ -651,7 +683,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/markdown.ts` (51 lines)
 - [x] `lib/mcp.ts` (69 lines) → `recur_agent::mcp` over `recur_domain::McpServer` (untrimmed id rule, slug, global off-list, Linear upsert, custom list, enable/remove/update keeping the id; `mcp.test.ts` ported)
 - [ ] `lib/mdcopy.ts` (88 lines)
-- [ ] `lib/menu-space.ts` (248 lines)
+- [x] `lib/menu-space.ts` (248 lines) → `recur_ui::logic::menu_space` (`menu_viewport_space`, `menu_prefer_up`, `menu_fixed_box`, `clamp_menu_left`, `popover_top`, `more_menu_fixed_box`, `rects_overlap`, `MenuVariant` sizes; cases ported). Window resize/scroll watching belongs to the overlay owner
 - [ ] `lib/menu.ts` (152 lines)
 - [ ] `lib/mermaid.ts` (137 lines)
 - [ ] `lib/models.ts` (179 lines)
@@ -662,7 +694,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/open-in-pref.ts` (34 lines)
 - [ ] `lib/open-path.ts` (48 lines)
 - [x] `lib/open-pr-tool.ts` (70 lines) → `recur_agent_tools::display::open_pr_tool` (`open-pr-tool.test.ts` ported)
-- [ ] `lib/overlay-scrollbar.ts` (141 lines)
+- [x] `lib/overlay-scrollbar.ts` (141 lines) → `recur_ui::widgets::scroll_area(..).overlay()` (`overlay_thumb`, `scroll_from_track` with cases; show on scroll, hover and drag, 700ms hide, .12s/.45s fades, track press and drag); scenes `scrollbar/default`, `scrollbar/paper`
 - [ ] `lib/pdf-preview.ts` (85 lines)
 - [x] `lib/permissionTools.ts` (60 lines) → `recur_agent_tools::display::permission_tools::permission_tool_label`
 - [x] `lib/plantools.ts` (120 lines) → `recur_agent_tools::display::plan_tools` (step/attachment/body parsing, labels, ack title recovery)
@@ -683,7 +715,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/preview-find.ts` (260 lines)
 - [ ] `lib/preview-scroll.ts` (237 lines)
 - [ ] `lib/preview.ts` (139 lines)
-- [ ] `lib/project-pic.ts` (120 lines)
+- [x] `lib/project-pic.ts` (120 lines) → `recur_ui::widgets::project_pic` (`parse_project_pic`, `format_lucide_pic`, `is_letter_pic`, `project_pic_from_name`, `letter_from_name`, `PROJECT_COLORS`, `fg_on_background`; cases ported)
 - [ ] `lib/promptActions.ts` (438 lines)
 - [ ] `lib/providerUsage.ts` (141 lines)
 - [ ] `lib/providers.ts` (76 lines)
@@ -703,7 +735,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/session-live.ts` (57 lines)
 - [ ] `lib/shell-state.ts` (177 lines)
 - [ ] `lib/shhl.ts` (99 lines)
-- [ ] `lib/shortcut.ts` (67 lines)
+- [x] `lib/shortcut.ts` (67 lines) → `recur_ui::kbd::shortcut_parts` (modifier runs; cases ported)
 - [ ] `lib/shortcuts.ts` (96 lines)
 - [x] `lib/simplify.ts` (13 lines) → `recur_engine::simplify::text::{simplify_enabled, simplify_from_selection}`; test file ported
 - [x] `lib/skills.ts` (176 lines) → `recur_code::view::skills` (`SkillRow`, `SkillKind`, `skill_kind`, `is_recur_skill_path`, `infer_home_from_skill_path`, `skill_location`, `map_skill_rows`, `effective_skill_enabled` with the UI's untrimmed names, `toggle_disabled_name`, `project_skill_override_lists`, `skill_override_hint`, `skill_kind_override_count`, `skill_kind_has_overrides`); unit tests plus node golden
@@ -714,8 +746,8 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/stream-reveal.ts` (8 lines)
 - [ ] `lib/subagent.ts` (79 lines)
 - [ ] `lib/syntax-mode.ts` (213 lines)
-- [ ] `lib/tab-strip-drag.svelte.ts` (392 lines)
-- [ ] `lib/tab-strip-scroll.ts` (174 lines)
+- [x] `lib/tab-strip-drag.svelte.ts` (392 lines) → `recur_ui::widgets::tab_strip` (4px threshold, floating chip, dashed placeholder, insert index from pointer x, edge autoscroll, FLIP 180ms, 200ms settle, Alt+arrow moves, order restore; `reorder_by_insert`, `insert_index_from_pointer_x`, `restore_strip_order` with cases)
+- [x] `lib/tab-strip-scroll.ts` (174 lines) → `recur_ui::widgets::tab_strip` (`scroll_delta_to_reveal`, `next_strip_scroll_left`, `strip_scroll_is_programmatic`, 280ms ease-out chase on frozen-aware motion; cases ported)
 - [x] `lib/tasktools.ts` (340 lines) → `recur_agent::display::tasks` (args, TaskCreate id, TaskList JSON/line parse with `[blocked by]`/`(owner)` suffixes, TaskGet JSON/multiline parse, labels, meta, chip status, has-body, ack rules; regex semantics hand-ported; `tasktools.test.ts` ported)
 - [ ] `lib/term-fit.ts` (35 lines)
 - [ ] `lib/term-focus.ts` (15 lines)
@@ -729,7 +761,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [x] `terminalTheme`, `resolveTerminalTheme`, `terminalSurfaceBg`, `terminalFrosts`: `theme.rs` (`ThemeContext`, ported tests)
   - [ ] `terminalThemeCatalog` / `ensureTerminalThemes`: the app loads `ListTerminalThemes` and passes the catalog in `ThemeContext`
 - [ ] `lib/textarea-caret.ts` (58 lines)
-- [ ] `lib/title-tooltip.ts` (248 lines)
+- [x] `lib/title-tooltip.ts` (248 lines) → `recur_ui::tooltip` (`place_tooltip`, `show_delay_ms`, `should_reshow_after_dismiss`, `TipCore` with `apply_hide`/`apply_consider`/`apply_timer`; cases ported)
 - [ ] `lib/titlebar.ts` (30 lines)
 - [ ] `lib/tm-bootstrap.ts` (79 lines)
 - [ ] `lib/tm-engine.ts` (624 lines)
@@ -751,15 +783,22 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 
 ### Styles
 
-- [ ] `styles/_base.scss`
+- [~] `styles/_base.scss` (the generic parts; view-specific rules belong to their views)
+  - [x] `body` and `window_root` (fonts, colors, line height, WebKit half-pixel ties), `.tbtn` and `.tb-right` buttons, `.tb-icon-btn`, `.tb-rail` (scenes `buttons/*`)
+  - [x] `::-webkit-scrollbar` 11px themed scrollbar and `.overlay-sb` (`recur_ui::widgets::scroll_area`)
+  - [x] `.kbd` / `.kbd-mod` keycaps (system-ui through CoreText with the weight trait and variation)
 - [ ] `styles/_briefing.scss`
 - [ ] `styles/_chat.scss`
 - [ ] `styles/_codemirror.scss`
-- [ ] `styles/_forms.scss`
+- [~] `styles/_forms.scss` (the generic parts)
+  - [x] `.sel*` select and menus, `.tog` toggles, `.prog`, `.hint`, `.nt-go`, `.nt-link`, `.nt-bg` / `.nt-modal`, `.nt-tip-pop` (scenes `select/*`, `toggles/*`, `buttons/*`, `overlays/*`)
 - [ ] `styles/_loop.scss`
 - [ ] `styles/_main.scss`
 - [ ] `styles/_observatory.scss`
-- [ ] `styles/_overlays.scss`
+- [~] `styles/_overlays.scss` (the generic parts)
+  - [x] Palette: `.palette-bg`, `.palette`, `.cmd-palette`, `.pal-in` (with WebKit's input padding), `.pal-g`, `.pal-row` with `.pic`/`.pl`/`.psub`/`.pk`/`.dot`, `.pal-empty`, `.pal-foot` (scene `overlays/palette`)
+  - [x] `.toasts`, `.toast*` (scenes `toasts/*`), `.emoji-suggest` panel, `.skel` with its shimmer and `.skelrow`, global `:focus-visible` ring (scenes `overlays/misc*`, `select/focus`)
+  - [x] Box shadows as WebKit's ShadowBlur, diagonal gradients, backgrounds under opaque borders (`recur_ui::shadow`, `style::css_gradient`, `style::inset_background`)
 - [ ] `styles/_prs.scss`
 - [ ] `styles/_settings.scss`
 - [ ] `styles/_sidebar.scss`
@@ -770,7 +809,10 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [x] Terminal tokens read from a local `_tokens.scss` table until `recur-ui` exposes them (`tokens.rs`)
   - [ ] Dock chrome (tab strip, maximize, beside layout) belongs to the `TerminalDock.svelte` port
   - [ ] Pixel parity screenshot
-- [ ] `styles/_tokens.scss`
+- [x] `styles/_tokens.scss` → `recur_ui::theme` (scenes `tokens/*` exact in every theme)
+  - [x] Every token of every `data-theme` (Charcoal default, Paper, Slate, Cool Glow, Catppuccin Mocha and Latte, Nord) with exact `color-mix` results, theme aliases, light/dark, `--coral-line`, scrollbar and git tokens, `--on-amber`
+  - [x] Runtime switching (`Theme::set`, windows refresh, gpui-component theme synced) and persisted appearance with system sync (`Appearance`, the `shell.json` shape)
+  - [x] Light-theme overrides used by shared widgets (`.skel::after`, tooltip shadows, file-icon color slots)
 - [ ] `styles/_welcome.scss`
 - [ ] `styles/app.scss`
 
@@ -1154,8 +1196,8 @@ Frontend unit tests (`vitest`, 170 files) are logic specs for the matching `lib/
 - [x] `bundles/` seeded into the data dir exactly as `bundles.SeedDefaults` does (stamp/sync semantics): `recur_bundles::seed_defaults(dir, &SHIPPED_BUNDLES, ".")`; the boot call belongs with the `main.go` port
 - [x] `recur-skills/` seeded into `~/.recur/recur-skills`: `seed_defaults(dir, &SHIPPED_SKILLS, ".")`
 - [ ] `internal/store/migrations/*.sql` applied by `recur-store` (same files, same order, same `schema_migrations` bookkeeping)
-- [ ] `frontend/src/lib/file-icons` icon font and mapping
-- [ ] lucide icon set used by `lib/icons.ts`
+- [x] `frontend/src/lib/file-icons` icon font and mapping (embedded fonts, `icondb.js`, `icons.css`, `dotenv-fix.css`, `atom-octicons.css`, `colors.css`; WOFF/WOFF2 decoded with `wuff`)
+- [x] lucide icon set used by `lib/icons.ts` (`assets/icons/lucide/*.svg`, 1776 icons with `lucide.json`)
 - [ ] `build/` app icons, Info.plist keys, URL schemes, Linux `.desktop` entry
 
 ## CLI

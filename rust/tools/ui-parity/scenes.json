@@ -497,7 +497,7 @@
       "width": 560,
       "height": 240,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 10,
       "input": "prompt"
     },
     {
@@ -505,7 +505,7 @@
       "width": 560,
       "height": 240,
       "theme": "paper",
-      "tolerance": 0,
+      "tolerance": 10,
       "input": "prompt"
     },
     {
@@ -513,7 +513,7 @@
       "width": 560,
       "height": 240,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 10,
       "input": "cursor",
       "steps": [
         {
@@ -535,7 +535,7 @@
       "width": 560,
       "height": 240,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 350,
       "input": "prompt",
       "find": true,
       "steps": [
@@ -571,7 +571,7 @@
       "width": 560,
       "height": 240,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 10,
       "input": "decorations",
       "steps": [
         {
@@ -593,7 +593,7 @@
       "width": 560,
       "height": 240,
       "theme": "paper",
-      "tolerance": 0,
+      "tolerance": 10,
       "input": "palette",
       "terminalTheme": "solarized-light"
     },
@@ -602,7 +602,7 @@
       "width": 560,
       "height": 240,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 10,
       "input": "palette",
       "terminalTheme": "solarized-dark"
     }

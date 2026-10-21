@@ -225,13 +225,28 @@ pub fn is_abs(path: &str) -> bool {
     path.starts_with('/')
 }
 
+/// Go `os.Getwd`: `$PWD` when it is absolute and names the same directory
+/// as `.` (so symlinked paths like macOS `/tmp` are kept), else `getcwd`.
+pub fn getwd() -> io::Result<String> {
+    use std::os::unix::fs::MetadataExt;
+    let dot = std::fs::metadata(".")?;
+    if let Ok(pwd) = std::env::var("PWD")
+        && is_abs(&pwd)
+        && let Ok(m) = std::fs::metadata(&pwd)
+        && m.dev() == dot.dev()
+        && m.ino() == dot.ino()
+    {
+        return Ok(pwd);
+    }
+    Ok(path_str(&std::env::current_dir()?))
+}
+
 /// Go `filepath.Abs`: joins the working directory and cleans.
 pub fn abs(path: &str) -> io::Result<String> {
     if is_abs(path) {
         return Ok(clean(path));
     }
-    let wd = std::env::current_dir()?;
-    Ok(join(&[&path_str(&wd), path]))
+    Ok(join(&[&getwd()?, path]))
 }
 
 /// Lossy `Path` → `String` for Go-style string path handling.

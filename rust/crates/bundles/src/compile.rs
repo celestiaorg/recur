@@ -14,8 +14,9 @@
 //!   (esbuild's bundling); every other import, `require`, or dynamic
 //!   `import()` with a literal path fails with esbuild's plugin message,
 //!   located at the path literal. Named imports the SDK does not export
-//!   fail with esbuild's "No matching export" message.
-//! - Top-level await fails as it does for esbuild's cjs format.
+//!   fail with esbuild's "No matching export" message (re-exports are not
+//!   checked, as in esbuild's TypeScript loader).
+//! - Top-level await fails as it does for esbuild's ES2020 target.
 //!
 //! The output text differs from esbuild's; behavior is identical (proven
 //! over every shipped TypeScript file by `tests/compile_parity.rs`).
@@ -294,7 +295,7 @@ fn transform_inner(
                 .iter()
                 .rposition(|b| *b == b'\n')
                 .map_or(0, |i| i + 1);
-        format!("{sourcefile}:{line}:{col}")
+        format!("{}:{line}:{col}", pretty_path(sourcefile))
     };
 
     let comments = SingleThreadedComments::default();
@@ -342,10 +343,19 @@ fn transform_inner(
     let mut tla = TopLevelAwait::default();
     program.visit_with(&mut tla);
     let mut errors: Vec<(Span, String)> = check.errors;
-    errors.extend(tla.found.into_iter().map(|span| {
+    errors.extend(tla.found.into_iter().map(|(span, is_for)| {
+        // esbuild points `for await` at the `await` keyword.
+        let span = if is_for {
+            let start = (span.lo.0 - fm.start_pos.0) as usize;
+            let skip = src[start..].find("await").unwrap_or(0) as u32;
+            Span::new(span.lo + swc_core::common::BytePos(skip), span.hi)
+        } else {
+            span
+        };
         (
             span,
-            "Top-level await is currently not supported with the \"cjs\" output format".to_string(),
+            "Top-level await is not available in the configured target environment (\"es2020\")"
+                .to_string(),
         )
     }));
     if !errors.is_empty() {
@@ -417,6 +427,19 @@ fn transform_inner(
         )),
         _ => Ok(code),
     }
+}
+
+/// esbuild's error-location path for a stdin entry resolved at `/`: the
+/// path relative to the working directory.
+fn pretty_path(sourcefile: &str) -> String {
+    if sourcefile.contains(':') {
+        return sourcefile.to_string();
+    }
+    let abs = format!("/{sourcefile}");
+    go::getwd()
+        .ok()
+        .and_then(|wd| go::rel(&wd, &abs).ok())
+        .unwrap_or(abs)
 }
 
 /// A binding name for the inlined SDK that cannot collide with the source.
@@ -502,16 +525,12 @@ impl Visit for ImportCheck<'_> {
     }
 
     fn visit_named_export(&mut self, n: &NamedExport) {
-        let Some(src) = &n.src else { return };
-        if n.type_only || !self.resolve(src) {
-            return;
-        }
-        for spec in &n.specifiers {
-            if let ExportSpecifier::Named(s) = spec
-                && !s.is_type_only
-            {
-                self.require_export(s.span, &module_export_name(&s.orig));
-            }
+        // Re-exported names may be types in TypeScript, so esbuild only
+        // resolves the path and never checks the names.
+        if let Some(src) = &n.src
+            && !n.type_only
+        {
+            self.resolve(src);
         }
     }
 
@@ -551,17 +570,18 @@ impl Visit for ImportCheck<'_> {
 /// Finds `await` / `for await` outside any function.
 #[derive(Default)]
 struct TopLevelAwait {
-    found: Vec<Span>,
+    /// Span and whether it is a `for await` loop.
+    found: Vec<(Span, bool)>,
 }
 
 impl Visit for TopLevelAwait {
     fn visit_await_expr(&mut self, n: &AwaitExpr) {
-        self.found.push(n.span);
+        self.found.push((n.span, false));
         n.visit_children_with(self);
     }
     fn visit_for_of_stmt(&mut self, n: &ForOfStmt) {
         if n.is_await {
-            self.found.push(n.span);
+            self.found.push((n.span, true));
         }
         n.visit_children_with(self);
     }

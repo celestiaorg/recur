@@ -4,6 +4,11 @@ use recur_bundles::*;
 
 use crate::common::*;
 
+/// esbuild's location path for `<id>.ts`: relative to the working directory.
+fn loc(id: &str) -> String {
+    go::rel(&go::getwd().unwrap(), &format!("/{id}.ts")).unwrap()
+}
+
 fn ts(id: &str, body: &str) -> Command {
     Command {
         id: id.into(),
@@ -58,7 +63,10 @@ fn compile_macro_rejects_other_imports() {
     .unwrap_err();
     assert_eq!(
         err.0,
-        "compile \"ts-bad\": ts-bad.ts:2:15: import \"fs\" is not allowed (only \"@recur/sdk\")"
+        format!(
+            "compile \"ts-bad\": {}:2:15: import \"fs\" is not allowed (only \"@recur/sdk\")",
+            loc("ts-bad")
+        )
     );
 }
 
@@ -73,9 +81,12 @@ fn compile_macro_rejects_require_dynamic_import_and_missing_export() {
         ),
     )
     .unwrap_err();
+    let l = loc("ts-req");
     assert_eq!(
         err.0,
-        "compile \"ts-req\": ts-req.ts:1:55: import \"os\" is not allowed (only \"@recur/sdk\"); ts-req.ts:1:85: import \"path\" is not allowed (only \"@recur/sdk\")"
+        format!(
+            "compile \"ts-req\": {l}:1:55: import \"os\" is not allowed (only \"@recur/sdk\"); {l}:1:85: import \"path\" is not allowed (only \"@recur/sdk\")"
+        )
     );
     let err = compile_macro(
         &cache,
@@ -87,7 +98,10 @@ fn compile_macro_rejects_require_dynamic_import_and_missing_export() {
     .unwrap_err();
     assert_eq!(
         err.0,
-        "compile \"ts-missing\": ts-missing.ts:1:9: No matching export in \"recur-sdk:@recur/sdk\" for import \"nope\""
+        format!(
+            "compile \"ts-missing\": {}:1:9: No matching export in \"recur-sdk:@recur/sdk\" for import \"nope\"",
+            loc("ts-missing")
+        )
     );
     let err = compile_macro(
         &cache,
@@ -99,7 +113,10 @@ fn compile_macro_rejects_require_dynamic_import_and_missing_export() {
     .unwrap_err();
     assert_eq!(
         err.0,
-        "compile \"ts-tla\": ts-tla.ts:1:0: Top-level await is currently not supported with the \"cjs\" output format"
+        format!(
+            "compile \"ts-tla\": {}:1:0: Top-level await is not available in the configured target environment (\"es2020\")",
+            loc("ts-tla")
+        )
     );
 }
 

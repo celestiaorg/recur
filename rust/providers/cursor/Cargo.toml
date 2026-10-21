@@ -1,0 +1,15 @@
+[package]
+name = "recur-provider-cursor"
+description = "Cursor provider (cursor-sdk bridge)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+recur-agent.workspace = true
+
+[lints]
+workspace = true

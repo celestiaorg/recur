@@ -1,0 +1,14 @@
+[package]
+name = "recur-ui"
+description = "Recur's design system on GPUI: theme tokens, fonts, icons, and shared widgets matching the web UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+
+[lints]
+workspace = true

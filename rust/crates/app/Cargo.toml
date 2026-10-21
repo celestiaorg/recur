@@ -1,0 +1,18 @@
+[package]
+name = "recur-app"
+description = "The GPUI application: windows, titlebar, sidebar, and every view."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-editor.workspace = true
+recur-terminal-view.workspace = true
+recur-services.workspace = true
+
+[lints]
+workspace = true

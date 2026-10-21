@@ -1,0 +1,15 @@
+[package]
+name = "recur-mcp"
+description = "Recur's MCP host server that exposes agent tools to provider CLIs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+recur-agent-tools.workspace = true
+
+[lints]
+workspace = true

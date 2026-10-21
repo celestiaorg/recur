@@ -128,6 +128,31 @@ tasks:
       - node scripts/port-filmgirl-themes.mjs
       - node scripts/fetch-tm-themes.mjs --local-only
 
+  build:rust:
+    summary: Builds the Rust/GPUI port (rust/target; never touches bin/)
+    dir: rust
+    cmds:
+      - cargo build {{.CLI_ARGS}}
+
+  run:rust:
+    summary: Runs the Rust/GPUI desktop app (data dir defaults to RecurNext)
+    dir: rust
+    cmds:
+      - cargo run -p recur-desktop {{.CLI_ARGS}}
+
+  lint:rust:
+    summary: rustfmt check and clippy for the Rust port
+    dir: rust
+    cmds:
+      - cargo fmt --all --check
+      - cargo clippy --workspace --all-targets -- -D warnings
+
+  test:rust:
+    summary: Runs the Rust port's tests
+    dir: rust
+    cmds:
+      - cargo test --workspace
+
   test:frontend:
     summary: Runs frontend Vitest unit tests
     dir: frontend

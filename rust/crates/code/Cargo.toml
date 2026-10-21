@@ -1,0 +1,15 @@
+[package]
+name = "recur-code"
+description = "Worktree file access: tree, index, search/replace (ripgrep), outline, symbols, open-in, copy-files."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+recur-git.workspace = true
+
+[lints]
+workspace = true

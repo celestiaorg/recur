@@ -1,0 +1,24 @@
+[package]
+name = "recur-engine"
+description = "Orchestration: chats, loops, walker, governor, maestro, schedules, workspace lifecycle, event bus, recovery."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+recur-store.workspace = true
+recur-git.workspace = true
+recur-forge.workspace = true
+recur-issues.workspace = true
+recur-agent.workspace = true
+recur-agent-tools.workspace = true
+recur-mcp.workspace = true
+recur-bundles.workspace = true
+recur-code.workspace = true
+recur-term.workspace = true
+
+[lints]
+workspace = true

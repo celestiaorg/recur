@@ -1,0 +1,14 @@
+[package]
+name = "recur-git"
+description = "Local git: worktrees, branches, status, diffs, checkpoints, and highlighting of diff hunks."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+
+[lints]
+workspace = true

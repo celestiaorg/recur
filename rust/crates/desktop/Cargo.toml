@@ -1,0 +1,18 @@
+[package]
+name = "recur-desktop"
+description = "Recur desktop app entry point."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "recur"
+path = "src/main.rs"
+
+[dependencies]
+recur-app.workspace = true
+
+[lints]
+workspace = true

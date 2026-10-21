@@ -1,0 +1,30 @@
+[package]
+name = "recur-services"
+description = "Application services: the UI-facing API over the engine (the former Wails-bound services) plus typed app events."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-provider-claude.workspace = true
+recur-provider-codex.workspace = true
+recur-provider-cursor.workspace = true
+recur-provider-compatible.workspace = true
+recur-forge.workspace = true
+recur-issues.workspace = true
+recur-agent.workspace = true
+recur-domain.workspace = true
+recur-store.workspace = true
+recur-engine.workspace = true
+recur-bundles.workspace = true
+recur-code.workspace = true
+recur-git.workspace = true
+recur-lsp.workspace = true
+recur-term.workspace = true
+recur-usage.workspace = true
+recur-platform.workspace = true
+
+[lints]
+workspace = true

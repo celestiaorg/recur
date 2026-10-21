@@ -1,0 +1,15 @@
+[package]
+name = "recur-forge"
+description = "Remote git hosting platforms behind one Forge trait (pull requests, reviews, checks, reactions)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+recur-git.workspace = true
+
+[lints]
+workspace = true

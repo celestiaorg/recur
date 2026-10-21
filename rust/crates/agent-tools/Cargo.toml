@@ -1,0 +1,16 @@
+[package]
+name = "recur-agent-tools"
+description = "Host tools exposed to agents (read, write, edit, bash, grep, findings, artifacts, plans, child workspaces, ."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+recur-store.workspace = true
+recur-code.workspace = true
+
+[lints]
+workspace = true

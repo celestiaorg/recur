@@ -154,10 +154,25 @@ jobs:
             bin/recur-linux-amd64.rpm
           retention-days: 14
 
+  # Rust/GPUI port (rust/), built side by side with the Wails app.
+  rust-mac:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - run: wails3 task lint:rust
+      - run: wails3 task test:rust
+
   ci-success:
     name: CI success
     if: always()
-    needs: [go-mac, go-race, bundles, frontend, e2e, package-mac, go-linux, package-linux]
+    needs: [go-mac, go-race, bundles, frontend, e2e, package-mac, go-linux, package-linux, rust-mac]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any required job failed or was cancelled

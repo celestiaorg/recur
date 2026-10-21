@@ -22,6 +22,7 @@ Read before inventing architecture:
 | `cmd/recur` | CLI (`recur .` opens a path; `recur bundles …` authors bundles) |
 | `Taskfile.yml` | Root tasks (`wails3 task …`) |
 | `build/` | Wails build tasks / platform packaging |
+| `rust/` | Rust/GPUI port, side by side with the Wails app. Read `rust/docs/ARCHITECTURE.md` and `rust/docs/PARITY.md` first |
 
 ## Dev environment tips
 
@@ -57,6 +58,7 @@ CI: `.github/workflows/ci.yml` runs Go lint + govulncheck + tests on macOS (`go-
 | `wails3 task test:bundles` | Shipped bundle engine tests under `./bundles` |
 | `wails3 task test:e2e` | Frontend Playwright (mocked Wails bridge) |
 | `wails3 task build:cli` | Build `bin/recur-cli` |
+| `wails3 task lint:rust` / `test:rust` | rustfmt + clippy / `cargo test` for `rust/` |
 
 ### Cursor SDK pin
 

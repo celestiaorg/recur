@@ -1,0 +1,13 @@
+[package]
+name = "recur-usage"
+description = "Provider usage and rate-limit polling."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+
+[lints]
+workspace = true

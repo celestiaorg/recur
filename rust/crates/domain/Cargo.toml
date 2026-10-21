@@ -1,0 +1,13 @@
+[package]
+name = "recur-domain"
+description = "Recur's domain model: projects, workspaces, sessions, loops, findings, schedules, settings and their IDs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+
+[lints]
+workspace = true

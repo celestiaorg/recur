@@ -1,0 +1,16 @@
+[package]
+name = "recur-terminal-view"
+description = "GPUI terminal view rendering recur-term sessions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-term.workspace = true
+
+[lints]
+workspace = true

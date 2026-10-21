@@ -1,0 +1,15 @@
+[package]
+name = "recur-provider-claude"
+description = "Claude Code provider (headless claude -p stream-json)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+recur-agent.workspace = true
+
+[lints]
+workspace = true

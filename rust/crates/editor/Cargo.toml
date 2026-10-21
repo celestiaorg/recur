@@ -1,0 +1,18 @@
+[package]
+name = "recur-editor"
+description = "Code editor view: TextMate highlighting, LSP UI, vim/emacs keymaps, snippets, search, merge editor."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-textmate.workspace = true
+recur-lsp.workspace = true
+recur-bundles.workspace = true
+
+[lints]
+workspace = true

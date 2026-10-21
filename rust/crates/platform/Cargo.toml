@@ -1,0 +1,14 @@
+[package]
+name = "recur-platform"
+description = "OS integration: single-instance lock and open IPC, PATH probing and CLI install, keep-awake, system fonts, notifications, dock badge, updater."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-store.workspace = true
+
+[lints]
+workspace = true

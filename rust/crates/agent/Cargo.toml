@@ -1,0 +1,14 @@
+[package]
+name = "recur-agent"
+description = "The agent provider abstraction: the Provider trait, normalized stream events, model catalog, permissions, and the runner contract every provider implements."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+
+[lints]
+workspace = true

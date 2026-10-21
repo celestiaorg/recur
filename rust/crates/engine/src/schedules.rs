@@ -56,6 +56,9 @@ fn scheduled_millis<T: chrono::TimeZone>(t: Option<DateTime<T>>) -> i64 {
     t.map_or(0, |t| t.timestamp_millis())
 }
 
+#[cfg(test)]
+mod tests;
+
 fn new_id() -> String {
     uuid::Uuid::now_v7().to_string()
 }

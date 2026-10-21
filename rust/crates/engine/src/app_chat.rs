@@ -27,6 +27,9 @@ use crate::turn::sessions::app_code;
 use crate::turn::stream::ChatStream;
 use crate::turn::transcript::flatten_transcript;
 
+#[cfg(test)]
+mod tests;
+
 /// The wedged-turn bound of one Ask Recur turn.
 pub const APP_CHAT_TIMEOUT: Duration = Duration::from_secs(120);
 

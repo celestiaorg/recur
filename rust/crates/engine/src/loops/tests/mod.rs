@@ -3,4 +3,5 @@
 mod checklist;
 mod default_walk;
 mod escalation;
+mod fanout;
 mod walker;

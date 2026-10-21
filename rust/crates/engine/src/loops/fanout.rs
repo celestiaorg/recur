@@ -619,7 +619,7 @@ impl Walk {
     /// walk's branch, scoped by its plan. The parent steps become doing with
     /// the child's id. `dispatch_mu` is held across insert → parent metadata
     /// → dispatch so the drain cannot promote a half-built row.
-    async fn start_step_child(
+    pub(crate) async fn start_step_child(
         &self,
         pws: &Workspace,
         steps: &[PlanStep],
@@ -719,7 +719,7 @@ impl Walk {
     /// steps. A failed or stopped child's partial commits still merge, but
     /// its steps stay pending and it is reported failed so the parent
     /// finishes them. Conflicts come back with the merge left in progress.
-    async fn merge_child(
+    pub(crate) async fn merge_child(
         &self,
         child_id: &str,
         steps: &[PlanStep],
@@ -944,7 +944,7 @@ impl Walk {
 
     /// Re-dispatches in-flight children a restart left interrupted; a child
     /// the human paused is left alone.
-    async fn resume_interrupted_children(&self, ids: &[String]) {
+    pub(crate) async fn resume_interrupted_children(&self, ids: &[String]) {
         for id in ids {
             let Some(c) = self.eng.store.workspace(id) else {
                 continue;

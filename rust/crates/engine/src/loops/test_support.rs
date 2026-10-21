@@ -537,3 +537,168 @@ impl EscalatingRunner {
         })
     }
 }
+
+/// Go `stepIDsIn`: the distinct `S<n>` step ids in a prompt, in order.
+pub fn step_ids_in(prompt: &str) -> Vec<String> {
+    let re = regex::Regex::new(r"\bS[0-9]+\b").expect("step id regex");
+    let mut out: Vec<String> = Vec::new();
+    for m in re.find_iter(prompt) {
+        if !out.iter().any(|s| s == m.as_str()) {
+            out.push(m.as_str().to_owned());
+        }
+    }
+    out
+}
+
+/// Go `fanOutRunner` (+ `plannedFanOutRunner` when `plans`): each Coder
+/// edits a file named after its worktree, closes findings, closes the plan
+/// steps its prompt names and calls done with notes; a child whose prompt
+/// names `fail_on` fails; `slow_on` sleeps first; `mark_on` titles record
+/// their turn timings. A planner turn files a two-step structured plan.
+#[derive(Default)]
+pub struct FanOutRunner {
+    pub parent_id: Mutex<String>,
+    pub fail_on: String,
+    pub slow_on: String,
+    pub slow_delay: std::time::Duration,
+    pub mark_on: Vec<&'static str>,
+    pub plans: bool,
+    pub state: Mutex<FanOutState>,
+}
+
+#[derive(Default)]
+pub struct FanOutState {
+    pub coder_work: Vec<String>,
+    pub failed: usize,
+    pub planned: usize,
+    pub started: std::collections::HashMap<String, std::time::Instant>,
+    pub finished: std::collections::HashMap<String, std::time::Instant>,
+}
+
+impl FanOutRunner {
+    pub fn provider(self: &Arc<Self>) -> Arc<dyn Provider> {
+        let me = Arc::clone(self);
+        AsyncProvider::wrap(move |req, _cx| {
+            let me = Arc::clone(&me);
+            async move { me.run(req).await }
+        })
+    }
+
+    fn stamp(&self, text: &str, finished: bool) {
+        let mut s = self.state.lock();
+        for t in &self.mark_on {
+            if text.contains(t) {
+                let m = if finished {
+                    &mut s.finished
+                } else {
+                    &mut s.started
+                };
+                m.entry((*t).to_owned())
+                    .or_insert_with(std::time::Instant::now);
+            }
+        }
+    }
+
+    async fn run(&self, req: TurnRequest) -> Result<TurnResult, ProviderError> {
+        let allowed = req.allowed_tools.clone().unwrap_or_default().join(",");
+        if self.plans
+            && req.role == AgentRole::Maestro
+            && allowed.contains("submit_plan")
+            && !req.system_prompt.contains("Implementer handoff:")
+        {
+            self.state.lock().planned += 1;
+            post_mcp_tool(
+                &req.mcp_url,
+                "submit_plan",
+                json!({
+                    "summary": "Importer", "body": "Parser and writer are independent.",
+                    "steps": [
+                        {"title": "Write the parser", "files": ["parser.go"]},
+                        {"title": "Write the writer", "files": ["writer.go"]},
+                    ],
+                }),
+            )
+            .await
+            .map_err(failed)?;
+            return Ok(success(&req.agent_id, ""));
+        }
+        if req.role != AgentRole::Coder {
+            return Ok(success(&req.agent_id, ""));
+        }
+        let worktree = req.worktree.to_string_lossy().into_owned();
+        let text = format!("{} {}", req.system_prompt, req.prompt);
+        let fail = {
+            let mut s = self.state.lock();
+            s.coder_work.push(worktree.clone());
+            let parent = self.parent_id.lock().clone();
+            let child = !parent.is_empty() && req.workspace_id != parent;
+            let fail = !self.fail_on.is_empty()
+                && child
+                && format!("{}{}", req.system_prompt, req.prompt).contains(&self.fail_on);
+            if fail {
+                s.failed += 1;
+            }
+            fail
+        };
+        if fail {
+            return Ok(TurnResult {
+                subtype: "error".into(),
+                is_error: true,
+                session_id: req.agent_id.clone(),
+                ..TurnResult::default()
+            });
+        }
+        self.stamp(&text, false);
+        if !self.slow_on.is_empty() && text.contains(&self.slow_on) {
+            tokio::time::sleep(self.slow_delay).await;
+        }
+        let name = format!(
+            "{}.txt",
+            Path::new(&worktree)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        );
+        let body = format!("done by {}\n", req.workspace_id);
+        let out = async {
+            apply_edits(&req.worktree, &[(name.as_str(), body.as_str())]).map_err(failed)?;
+            if !req.mcp_url.is_empty() {
+                close_open_findings_mcp(&req.mcp_url).await.map_err(failed)?;
+                let mut ids = step_ids_in(&text);
+                if ids.is_empty() {
+                    ids = vec!["S1".into()];
+                }
+                for id in ids {
+                    let _ = post_mcp_tool(
+                        &req.mcp_url,
+                        "update_plan_step",
+                        json!({"step_id": id, "status": "done"}),
+                    )
+                    .await;
+                }
+                let _ = post_mcp_tool(
+                    &req.mcp_url,
+                    "done",
+                    json!({"summary": "Step done", "notes": format!("no deviations for {}", req.workspace_id)}),
+                )
+                .await;
+            }
+            Ok(success(&req.agent_id, ""))
+        }
+        .await;
+        self.stamp(&text, true);
+        out
+    }
+}
+
+/// Every turn fails with a provider error result (Go `failAgentRunner`).
+pub fn fail_agent_runner() -> Arc<dyn Provider> {
+    AsyncProvider::wrap(|_req, _cx| async move {
+        Ok(TurnResult {
+            subtype: "error_during_execution".into(),
+            is_error: true,
+            text: "provider timeout".into(),
+            ..TurnResult::default()
+        })
+    })
+}

@@ -746,7 +746,22 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 - [ ] `internal/codex`: 6 files, 1173 lines, 5 test files
 - [ ] `internal/copyfiles`: 1 files, 414 lines, 1 test files
 - [ ] `internal/cursor`: 12 files, 3691 lines, 17 test files
-- [ ] `internal/domain`: 15 files, 4945 lines, 16 test files
+- [x] `internal/domain`: 15 files, 4945 lines, 16 test files → `recur-domain` (all 16 Go test files ported as unit tests)
+  - [x] Serde parity: every one of the 107 exported structs decodes Go `json.Marshal` output (zero and fully populated) and re-encodes byte for byte (`tests/go_parity.rs`, `tests/fixtures/go_types.json`); the e2e `seed.json` round-trips (`tests/seed_round_trip.rs`)
+  - [x] `omitempty` → `skip_serializing_if`; non-`omitempty` slices/maps are `Option<…>` so Go's nil still encodes as `null`; `json::to_string` matches `json.Marshal` (HTML-safe escaping, compacted raw JSON, integral floats without `.0`)
+  - [x] String enums with an `Other(String)` escape hatch (empty Go zero value is `Default`): AutonomyLevel, WorkspaceState, Group, AgentRole, Severity, FindingStatus, MergeMethod, UpdateBaseMethod, SquashCommitMessage, MergeCommitMessage, PrSource, ArtifactKind, BranchPrefixMode, IdType
+  - [x] Plain string const groups kept as `&str` consts: chat modes, plan step statuses, feed kinds/cards, finding actors, attention reasons, review states, update-workspace statuses, workspace type markers, providers, stream statuses, block types, context modes, compact statuses, briefing buckets/reasons/actions, MCP ids/transports/URLs, permission modes, child-workspace-model values, Linear setting ids
+  - [x] `workspace`: Workspace (HasRun, GoalLabel, ReplaceGoal, IsPRChatHost), WorkspaceType, RunActive, IssueRef, ChildFanOut, Checkpoint, ConvPoint, DiffStat, WorkspaceLandState, UpdateWorkspaceResult, Resource
+  - [x] `plan`: Plan Text/Board/Progress/Ready, PlanStep, PlanAttachment
+  - [x] `project`: Project, ProjectGroup, BranchChoice, CopyFilesPreview, OpenPathResult, FilesProjectID, RunCommand with EffectiveRuns/DefaultRun/VerifyDevCmd/RunsKey (name uniquifying)
+  - [x] `merge`: Normalize/Effective for merge method, update-base method, squash and merge-commit message formats; MergeMethodPermitted; labels
+  - [x] `agent`, `finding`, `escalation`, `artifact`, `policy`: Agent, AgentStep, FeedItem, StoredEvent, Finding (PublicID, MatchesRef, CoversLine), FindingLoc, ValidFindingStatus, FindingNote, Escalation (legacy `applied` decode), UserQuestion(+Answer), PermissionRequest/Decision, Artifact, Rail, Policy, InboxItem
+  - [x] `pr` + `reaction`: PR permission rules (edit details, approve, edit/delete/react comment, resolve thread, conversation lock), PRComment shapes, Commit, FileDiff(+Result), DiffLine, PendingLineComment, participants, reviewers, VerifyStep, Check; reaction normalize/GraphQL mapping/toggle/sort/mine/equal
+  - [x] `session`: Session, SessionContext, Message, ContentBlock constructors and typed decoders (Go null-tolerant), ParentToolUseID, WithParent (sorted keys like Go), payload types, chat modes, WorkspaceChatTab, AttentionCounts, SessionView, ChatItem, ChatAttachment, ChatImageRef
+  - [x] `transcript`: TranscriptXML for messages and transcripts (tool-result folding, assistant merge, CDATA rules, omit thinking, clip tools, max-bytes oldest-first dropping, image root via `filepath.Join` clean)
+  - [x] `settings` + `providers` + `compatible` + `mcp` + `skills`: every Settings field and method (models/flags per mode, loop role aliases, bundle value migration, turn timeout clamp, governor caps, permission mode, branch prefix incl. legacy modes, provider enable/offer/normalize/remap/catalog fallback), compatible providers (slug rules, `net/url.Parse`-exact base URL validation checked against Go in `tests/go_rules.rs`, header/model/flag normalization, presets, wire allowlist), MCP catalog/validation/normalization/Linear URL, skill roots and override rules
+  - [x] `schedule`: ScheduledPrompt(+Run), OnStartup, NextScheduledTime with a robfig/cron v3 port (seconds-optional fields, names, steps, descriptors, `@every`, `CRON_TZ=`/`TZ=`, five-year limit) and Go `time.Date` DST resolution on embedded tzdata (chrono-tz); 2,844 Go-computed cases in `tests/go_rules.rs`
+  - [x] `briefing`, `observatory`, `model`, `ids`: briefing snapshot types and codes, observatory/search/metrics types, ModelRef (ParseModelRef, String, IsZero, NewModelRef), ProviderLabel, BuiltinProvider, NewID/NewUniqueID/ValidID
 - [ ] `internal/engine`: 88 files, 47557 lines, 106 test files
 - [ ] `internal/git`: 12 files, 4392 lines, 14 test files
 - [ ] `internal/lsp`: 5 files, 916 lines, 4 test files
@@ -759,7 +774,8 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 - [ ] `internal/responses`: 4 files, 795 lines, 2 test files
 - [ ] `internal/rg`: 2 files, 403 lines, 2 test files
 - [ ] `internal/runconfig`: 1 files, 333 lines, 1 test files
-- [ ] `internal/shortid`: 1 files, 111 lines, 1 test files
+- [x] `internal/shortid`: 1 files, 111 lines, 1 test files → `recur_domain::shortid` (test file ported)
+  - [x] New (prefix/length validation, letter-first suffix, unbiased rejection sampling over OS randomness), NewUnique (attempt budget, Collision error), IsValid / VALID_PATTERN, MinLength/MaxLength/DefaultAttempts
 - [ ] `internal/simplify`: 1 files, 56 lines, 1 test files
 - [ ] `internal/store`: 9 files, 6229 lines, 6 test files
 - [ ] `internal/term`: 7 files, 1797 lines, 6 test files

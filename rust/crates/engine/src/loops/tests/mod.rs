@@ -4,6 +4,7 @@ mod acceptance;
 mod checklist;
 mod default_walk;
 mod engage;
+mod engine;
 mod escalation;
 mod fanout;
 mod handoff;

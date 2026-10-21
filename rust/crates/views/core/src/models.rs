@@ -2,21 +2,10 @@
 //! (`SettingsService::list_model_catalog`); [`AppState`](crate::AppState) keeps the shared
 //! cache and its revision, these are the pure rules over it.
 
-use std::collections::BTreeMap;
-
+pub use recur_engine::view::modes::CatalogModel;
 use recur_services::api::{FlagDimension, ModelGroup};
 
-/// One selectable model, flattened for the pickers (`CatalogModel`).
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct CatalogModel {
-    pub model_ref: String,
-    pub label: String,
-    pub group: String,
-    pub provider: String,
-    pub flags: Vec<FlagDimension>,
-}
-
-pub type FlagMap = BTreeMap<String, String>;
+pub type FlagMap = recur_domain::Flags;
 
 /// `flattenModelCatalog`.
 pub fn flatten_model_catalog(groups: &[ModelGroup]) -> Vec<CatalogModel> {
@@ -24,7 +13,7 @@ pub fn flatten_model_catalog(groups: &[ModelGroup]) -> Vec<CatalogModel> {
         .iter()
         .flat_map(|g| {
             g.models.iter().map(|m| CatalogModel {
-                model_ref: m.model_ref.clone(),
+                r#ref: m.model_ref.clone(),
                 label: m.label.clone(),
                 group: g.label.clone(),
                 provider: g.provider.clone(),
@@ -70,7 +59,7 @@ pub fn catalog_select_options(models: &[CatalogModel]) -> Vec<ModelSelectOption>
     models
         .iter()
         .map(|m| ModelSelectOption {
-            value: m.model_ref.clone(),
+            value: m.r#ref.clone(),
             label: m.label.clone(),
             group: m.group.clone(),
             provider: m.provider.clone(),
@@ -142,7 +131,7 @@ pub fn model_options_for(models: &[CatalogModel], current: &str) -> Vec<ModelSel
 pub fn flags_for_model(models: &[CatalogModel], model_ref: &str) -> Vec<FlagDimension> {
     models
         .iter()
-        .find(|m| m.model_ref == model_ref)
+        .find(|m| m.r#ref == model_ref)
         .map(|m| m.flags.clone())
         .unwrap_or_default()
 }
@@ -183,7 +172,7 @@ mod tests {
             }],
         }];
         let flat = flatten_model_catalog(&groups);
-        assert_eq!(flat[0].model_ref, "claude-code/a");
+        assert_eq!(flat[0].r#ref, "claude-code/a");
         assert_eq!(flat[0].group, "Claude Code");
         assert_eq!(flat[0].provider, "claude-code");
     }

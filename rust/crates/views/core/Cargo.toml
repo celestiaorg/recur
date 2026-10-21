@@ -13,6 +13,7 @@ recur-ui.workspace = true
 recur-editor.workspace = true
 recur-services.workspace = true
 recur-domain.workspace = true
+recur-engine.workspace = true
 recur-term.workspace = true
 regex.workspace = true
 serde.workspace = true

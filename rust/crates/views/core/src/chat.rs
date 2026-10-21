@@ -280,13 +280,13 @@ mod tests {
         ));
         let state = cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
         let first = state.update(cx, |s, cx| s.load_model_catalog(cx)).await;
-        assert_eq!(first[0].model_ref, "claude-code/a");
+        assert_eq!(first[0].r#ref, "claude-code/a");
         let rev = state.read_with(cx, |s, _| s.model_catalog_rev());
         groups.lock().push(group("local-ollama", &["local-ollama/q"]));
         state.update(cx, |s, cx| s.invalidate_model_catalog(cx));
         assert_eq!(state.read_with(cx, |s, _| s.model_catalog_rev()), rev + 1);
         let next = state.update(cx, |s, cx| s.load_model_catalog(cx)).await;
-        let refs: Vec<_> = next.iter().map(|m| m.model_ref.as_str()).collect();
+        let refs: Vec<_> = next.iter().map(|m| m.r#ref.as_str()).collect();
         assert_eq!(refs, ["claude-code/a", "local-ollama/q"]);
         assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 2);
         // Cached: no third call.
@@ -316,6 +316,6 @@ mod tests {
         let _ = b.await;
         let _ = a.await;
         let now = state.update(cx, |s, cx| s.load_model_catalog(cx)).await;
-        assert_eq!(now[0].model_ref, "claude-code/b");
+        assert_eq!(now[0].r#ref, "claude-code/b");
     }
 }

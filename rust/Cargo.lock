@@ -7277,6 +7277,7 @@ dependencies = [
  "pretty_assertions",
  "recur-domain",
  "recur-editor",
+ "recur-engine",
  "recur-services",
  "recur-term",
  "recur-ui",

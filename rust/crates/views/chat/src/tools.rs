@@ -45,7 +45,7 @@ use crate::findings_ui::{
     ListedFinding, ListedFindings, finding_loc_suffix, finding_matches_ref, listed_from_store,
     parse_listed_finding, resolve_list_findings,
 };
-use crate::subagent::{
+use recur_engine::view::subagent::{
     SubagentArgs, is_send_message_tool, is_subagent_launch_ack, is_subagent_tool,
     parse_send_message_args, parse_subagent_args, send_message_label, send_message_meta,
 };
@@ -842,7 +842,7 @@ impl<'a> ToolView<'a> {
     }
 
     pub fn subagent(&self) -> SubagentArgs {
-        parse_subagent_args(self.input.as_ref())
+        parse_subagent_args(self.input.as_ref().and_then(Value::as_object))
     }
 
     /// `taskBackground`.
@@ -1460,7 +1460,7 @@ impl<'a> ToolView<'a> {
             } else {
                 format!(
                     "Switching to {}…",
-                    recur_view_core::modes::chat_mode_meta(&to).label()
+                    recur_view_core::modes::ChatMode::from_key(&to).label()
                 )
             };
         }
@@ -1562,7 +1562,7 @@ impl<'a> ToolView<'a> {
             );
         }
         if self.is_send_message() {
-            let a = parse_send_message_args(self.input.as_ref());
+            let a = parse_send_message_args(self.input.as_ref().and_then(Value::as_object));
             let d = if a.description.is_empty() {
                 m.description.clone()
             } else {
@@ -1828,7 +1828,7 @@ impl<'a> ToolView<'a> {
             return String::new();
         }
         if self.is_send_message() {
-            let a = parse_send_message_args(self.input.as_ref());
+            let a = parse_send_message_args(self.input.as_ref().and_then(Value::as_object));
             let d = if a.description.is_empty() {
                 m.description.clone()
             } else {

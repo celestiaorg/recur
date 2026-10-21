@@ -383,9 +383,13 @@ pub struct Updater {
     /// listeners) is open.
     session: Mutex<bool>,
     hooks: RestartHooks,
+    /// The runtime [`Updater::new`] ran on; user actions arrive from the UI
+    /// thread and spawn their work here.
+    rt: Option<tokio::runtime::Handle>,
 }
 
 impl Updater {
+    /// Call from within the tokio runtime that should run update work.
     pub fn new(host: Arc<dyn Host>) -> Arc<Self> {
         Arc::new(Self {
             host,
@@ -393,7 +397,15 @@ impl Updater {
             download_lock: tokio::sync::Mutex::new(()),
             session: Mutex::new(false),
             hooks: RestartHooks::default(),
+            rt: tokio::runtime::Handle::try_current().ok(),
         })
+    }
+
+    fn spawn(&self, fut: impl std::future::Future<Output = ()> + Send + 'static) {
+        match &self.rt {
+            Some(rt) => drop(rt.spawn(fut)),
+            None => drop(tokio::spawn(fut)),
+        }
     }
 
     /// Configures the updater once.
@@ -715,7 +727,7 @@ impl Updater {
         match action {
             UserAction::Install => {
                 let this = Arc::clone(self);
-                tokio::spawn(async move {
+                self.spawn(async move {
                     let _ = this.download_and_install().await;
                 });
             }
@@ -733,7 +745,7 @@ impl Updater {
             }
             UserAction::Restart => {
                 let this = Arc::clone(self);
-                tokio::spawn(async move {
+                self.spawn(async move {
                     if let Err(e) = this.restart().await {
                         tracing::warn!("updater restart: {e}");
                     }

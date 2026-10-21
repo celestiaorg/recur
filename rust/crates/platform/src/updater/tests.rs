@@ -796,6 +796,7 @@ fn restart_updater(
         download_lock: tokio::sync::Mutex::new(()),
         session: Mutex::new(false),
         hooks,
+        rt: None,
     });
     let mut cfg = config(
         vec![provider("p", Some(release("app.bin", body, None)), body)],

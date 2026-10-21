@@ -92,6 +92,7 @@ pub fn on_response(callback: impl Fn(NotificationResult) + Send + Sync + 'static
     *CALLBACK.lock() = Some(Arc::new(callback));
 }
 
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 fn deliver(result: NotificationResult) {
     let cb = CALLBACK.lock().clone();
     if let Some(cb) = cb {

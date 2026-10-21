@@ -136,7 +136,7 @@ impl RecurUpdater {
     /// a flow is already under way or an update is staged.
     pub fn check_now(&self) {
         let updater = Arc::clone(&self.updater);
-        tokio::spawn(async move { check(&updater).await });
+        self.updater.spawn(async move { check(&updater).await });
     }
 
     /// Forwards a `wails:updater:user:*` event from the UI.

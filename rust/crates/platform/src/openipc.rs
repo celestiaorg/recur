@@ -160,10 +160,20 @@ impl Instance {
         self.listener.take()
     }
 
-    /// Releases the listener and the flock.
+    /// Releases the listener and the flock. A listener still held here is
+    /// unlinked first (as Go's `UnixListener.Close` does), before the flock
+    /// frees, so the next owner's fresh socket is never removed.
     pub fn close(&mut self) {
-        self.listener = None;
+        if self.listener.take().is_some() {
+            let _ = std::fs::remove_file(&self.sock);
+        }
         self.lock = None;
+    }
+}
+
+impl Drop for Instance {
+    fn drop(&mut self) {
+        self.close();
     }
 }
 
@@ -230,8 +240,8 @@ pub async fn serve(stop: CancellationToken, sock: &Path, handle: Handler) -> Res
 }
 
 /// Accepts on an already-bound listener (from [`Instance::claim`] or
-/// [`serve`]). On stop it closes the listener, waits for in-flight handlers,
-/// then removes the socket file if nothing else is accepting on it.
+/// [`serve`]). On stop it closes and unlinks the listener, then waits for
+/// in-flight handlers.
 pub async fn serve_listener(
     stop: CancellationToken,
     ln: UnixListener,
@@ -254,16 +264,11 @@ pub async fn serve_listener(
             Some(_) = inflight.join_next(), if !inflight.is_empty() => {}
         }
     };
+    // Closing a Go unix listener unlinks its socket; match that, then wait
+    // for in-flight handlers.
     drop(ln);
+    let _ = std::fs::remove_file(&sock);
     while inflight.join_next().await.is_some() {}
-    if result.is_ok() && !sock.as_os_str().is_empty() {
-        let _ = tokio::task::spawn_blocking(move || {
-            if !socket_live(&sock) {
-                let _ = std::fs::remove_file(&sock);
-            }
-        })
-        .await;
-    }
     result
 }
 
@@ -521,7 +526,9 @@ pub(crate) mod tests {
         let mut a = Instance::claim(dir.path()).expect("first claim");
         let err = Instance::claim(dir.path()).expect_err("second claim");
         assert!(matches!(err, IpcError::Held), "{err}");
+        assert!(a.sock().exists());
         a.close();
+        assert!(!a.sock().exists(), "close unlinks the socket it still owns");
         let mut c = Instance::claim(dir.path()).expect("claim after release");
         c.close();
     }

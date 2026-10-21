@@ -243,6 +243,18 @@ impl AgentChat {
         let active = self.props.shell_active && self.props.presentation_active;
         let entry = self.streams.entry(key).or_insert_with(|| {
             cx.new(|cx| {
+                // The markdown host's parse thread is outside the test scheduler.
+                #[cfg(test)]
+                let mut s = recur_content::StreamingMarkdown::with_renderer(
+                    std::rc::Rc::new(|src: &str, _: &str| {
+                        use recur_content::markdown::{ParseOptions, render_markdown_cached};
+                        let (tx, rx) = futures::channel::oneshot::channel();
+                        let _ = tx.send(Ok(render_markdown_cached(src, ParseOptions::default())));
+                        rx
+                    }),
+                    cx,
+                );
+                #[cfg(not(test))]
                 let mut s = recur_content::StreamingMarkdown::new(cx);
                 if let Some(sh) = sheet.clone() {
                     s.set_sheet(sh, cx);

@@ -915,7 +915,12 @@ async fn ensure_mcp_retries_after_failure_and_register_scopes_tools() {
 /// so Retry can work once the condition clears.
 #[tokio::test]
 async fn ensure_mcp_start_failure_is_retried() {
-    let held = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    // Below the ephemeral range, so a parallel test binding :0 cannot take
+    // the port once it is released.
+    let start = 20_000 + (std::process::id() % 5_000) as u16;
+    let held = (start..30_000)
+        .find_map(|p| std::net::TcpListener::bind(("127.0.0.1", p)).ok())
+        .expect("a free port below the ephemeral range");
     let addr = held.local_addr().unwrap().to_string();
     let te = TestEngine::with(crate::testing::TestOptions {
         provider: Some(claude()),
@@ -935,7 +940,19 @@ async fn ensure_mcp_start_failure_is_retried() {
         .unwrap_err();
     assert!(e.0.contains("mcp listen"), "{}", e.0);
     drop(held);
-    te.engine.ensure_mcp().await.unwrap();
+    // On macOS a git child spawned by a parallel test can inherit the
+    // listener (CLOEXEC is set after socket creation) and hold the port for
+    // its short life; each failed attempt is another retry.
+    let mut tries = 0;
+    while let Err(e) = te.engine.ensure_mcp().await {
+        tries += 1;
+        assert!(
+            e.0.ends_with("address already in use") && tries < 200,
+            "{}",
+            e.0
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    }
     let port = te.engine.mcp().port();
     assert_eq!(addr, format!("127.0.0.1:{port}"));
     te.engine.ensure_mcp().await.unwrap();
@@ -1280,5 +1297,49 @@ async fn real_permission_prompt_e2e() {
         res.text
     );
     assert!(target.exists(), "approved Write did not happen");
+    te.close().await;
+}
+
+/// The history in-process providers replay: the stored transcript plus the
+/// fresh_session cutoff (`nativeHistoryAfter`) from the session config.
+#[tokio::test]
+async fn store_history_serves_transcript_and_fresh_session_cutoff() {
+    let te = TestEngine::new(Some(claude()));
+    super::test_support::add_solo_workspace(&te.engine, "W1");
+    te.engine.ensure_pair_agent("W1", "PA", "");
+    let sess = te
+        .engine
+        .ensure_agent_session("W1", "coder", "PA", "Agent", "local")
+        .unwrap();
+    let first = te
+        .store
+        .append_message(
+            &sess.id,
+            recur_domain::Message {
+                role: "user".into(),
+                content: Some(vec![recur_domain::ContentBlock::text(
+                    "hello from last week",
+                )]),
+                ..recur_domain::Message::default()
+            },
+        )
+        .unwrap();
+    let h = StoreHistory {
+        eng: Arc::clone(&te.engine),
+    };
+    use recur_agent::HistorySource;
+    assert_eq!(h.history_after(&sess.id).await, "");
+    te.store
+        .patch_session_config_merge(
+            &sess.id,
+            &format!(r#"{{"nativeHistoryAfter":" {} "}}"#, first.id),
+        )
+        .unwrap();
+    assert_eq!(h.history_after(&sess.id).await, first.id);
+    let msgs = h.transcript(&sess.id).await;
+    assert_eq!(msgs.len(), 1);
+    assert_eq!(msgs[0].id, first.id);
+    assert!(h.transcript("missing").await.is_empty());
+    assert_eq!(h.history_after("missing").await, "");
     te.close().await;
 }

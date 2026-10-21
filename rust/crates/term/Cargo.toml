@@ -15,6 +15,7 @@ nix.workspace = true
 parking_lot.workspace = true
 portable-pty.workspace = true
 regex.workspace = true
+regress.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 unicode-width.workspace = true

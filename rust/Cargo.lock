@@ -6746,6 +6746,7 @@ dependencies = [
  "recur-services",
  "recur-store",
  "recur-ui",
+ "recur-view-chat",
  "recur-view-core",
  "tokio",
  "tracing",

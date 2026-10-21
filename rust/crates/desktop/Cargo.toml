@@ -26,6 +26,7 @@ recur-services.workspace = true
 recur-store.workspace = true
 recur-ui.workspace = true
 recur-view-core.workspace = true
+recur-view-chat.workspace = true
 gpui-kit.workspace = true
 futures.workspace = true
 tokio.workspace = true

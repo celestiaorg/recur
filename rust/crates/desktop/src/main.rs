@@ -49,7 +49,9 @@ compile_error!("recur-desktop runs on the mock services until the engine-backed 
 
 /// Every view crate registers its routes, overlays and keymaps here.
 fn registry() -> ViewRegistry {
-    ViewRegistry::default()
+    let mut r = ViewRegistry::default();
+    recur_view_chat::register(&mut r);
+    r
 }
 
 /// An OpenPath result as the IPC wire reply.

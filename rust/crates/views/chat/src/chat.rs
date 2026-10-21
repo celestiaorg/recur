@@ -2028,3 +2028,34 @@ pub(crate) fn args_query(
 ) -> Option<PromptArgsQuery> {
     prompt_args_query_at(text, caret, takes_args)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // hoverGate.test.ts
+    #[test]
+    fn hover_gate_ignores_the_idle_cursor_and_jitter() {
+        let mut g = HoverGate::default();
+        assert!(!g.allows(100., 200.));
+        assert!(!g.allows(100., 200.));
+        assert!(!g.armed);
+        let mut g = HoverGate::default();
+        assert!(!g.allows(10., 10.));
+        assert!(!g.allows(12., 11.));
+        assert!(!g.armed);
+    }
+
+    #[test]
+    fn hover_gate_arms_after_real_movement_and_resets() {
+        let mut g = HoverGate::default();
+        assert!(!g.allows(10., 10.));
+        assert!(g.allows(15., 10.));
+        assert!(g.armed && g.allows(15., 10.) && g.allows(50., 50.));
+        g.reset();
+        assert!(!g.armed);
+        assert!(!g.allows(10., 0.));
+        assert!(!g.allows(10., 0.));
+        assert!(g.allows(14., 0.));
+    }
+}

@@ -1010,9 +1010,19 @@ impl AgentChat {
         else {
             return;
         };
-        let Some(window) = cx.windows().first().copied() else {
+        let window = self.window_handle;
+        // Inside a window update (a host handler, a test step) the window is borrowed: build
+        // the slots once it is free.
+        if window.update(cx, |_, _, _| ()).is_err() {
+            let this = cx.entity().downgrade();
+            cx.defer(move |cx| {
+                let _ = this.update(cx, |c, cx| {
+                    c.rebuild_prompt_slots(focus, cx);
+                    cx.notify();
+                });
+            });
             return;
-        };
+        }
         let args: Vec<(String, String)> = if spec.args.is_empty() {
             vec![("args".into(), String::new())]
         } else {

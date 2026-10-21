@@ -4,4 +4,5 @@ mod harness;
 mod shell;
 mod agent_chat;
 mod chat_spec;
+mod composer;
 mod dock;

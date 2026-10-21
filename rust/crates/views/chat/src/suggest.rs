@@ -781,16 +781,77 @@ impl Render for SuggestOverlay {
 mod tests {
     use super::*;
 
+    use recur_content::emoji::{emoji_for_shortcode, expand_emoji_shortcodes};
+
+    // emoji.test.ts
     #[test]
-    fn emoji_queries() {
-        assert_eq!(emoji_query_at("hi :ro", 6), Some((3, "ro".into())));
+    fn resolves_github_aliases() {
+        assert_eq!(emoji_for_shortcode("rocket"), Some("🚀"));
+        assert_eq!(emoji_for_shortcode("+1"), Some("👍"));
+        assert_eq!(emoji_for_shortcode("thumbsup"), Some("👍"));
+        assert_eq!(emoji_for_shortcode("smile"), Some("😄"));
+    }
+
+    #[test]
+    fn expands_completed_tokens_and_leaves_the_rest() {
+        assert_eq!(expand_emoji_shortcodes("LGTM :rocket: :+1:", false), "LGTM 🚀 👍");
+        assert_eq!(expand_emoji_shortcodes("see :notanemoji: and :rock", false), "see :notanemoji: and :rock");
+        let src = "ok :rocket: and `:rocket:`\n```\n:smile:\n```";
+        assert_eq!(expand_emoji_shortcodes(src, true), "ok 🚀 and `:rocket:`\n```\n:smile:\n```");
+    }
+
+    #[test]
+    fn expansion_keeps_the_caret_after_the_same_point() {
+        assert_eq!(expand_emoji_shortcodes_at("hi :rocket:", 11), Some(("hi 🚀".into(), "hi 🚀".len())));
+        let src = ":rocket: later";
+        assert_eq!(expand_emoji_shortcodes_at(src, src.len()), Some(("🚀 later".into(), "🚀 later".len())));
+    }
+
+    #[test]
+    fn detects_an_in_progress_query_at_the_caret() {
+        assert_eq!(emoji_query_at("LGTM :roc", 9), Some((5, "roc".into())));
+        assert_eq!(emoji_query_at("LGTM :roc", 5), None);
+        assert_eq!(emoji_query_at("see:roc", 7), None);
+        assert_eq!(emoji_query_at("http://x", 8), None);
         assert_eq!(emoji_query_at(":", 1), Some((0, String::new())));
-        assert_eq!(emoji_query_at("a:ro", 4), None);
+        assert_eq!(emoji_query_at("LGTM :", 6), Some((5, String::new())));
+        assert_eq!(emoji_query_at("(:", 2), Some((1, String::new())));
+        assert_eq!(emoji_query_at("see:", 4), None);
         assert_eq!(emoji_query_at("::ro", 4), None);
-        assert_eq!(emoji_query_at("no colon", 8), None);
+    }
+
+    #[test]
+    fn ranks_shortcodes_and_offers_defaults() {
+        let hits = suggest_emoji("rock", LIMIT);
+        assert_eq!(hits[0].name, "rock");
+        assert!(hits.iter().any(|h| h.name == "rocket" && h.emoji == "🚀"));
+        assert_eq!(suggest_emoji("rocket", LIMIT)[0], EmojiHit { name: "rocket".into(), emoji: "🚀".into() });
         let d = suggest_emoji("", LIMIT);
         assert_eq!(d.iter().map(|h| h.name.as_str()).collect::<Vec<_>>(), DEFAULT_EMOJI_NAMES);
-        assert_eq!(suggest_emoji("rocket", LIMIT)[0].emoji, "🚀");
+        assert_eq!(suggest_emoji(" ", LIMIT)[0], EmojiHit { name: "+1".into(), emoji: "👍".into() });
+    }
+
+    // user-mention.test.ts
+    #[test]
+    fn suggests_people_with_logins() {
+        let p = |login: &str, name: &str| PrPerson { login: login.into(), name: name.into(), ..Default::default() };
+        let people = vec![
+            p("avery", "Avery Rourke"),
+            p("loopbot", "loopbot"),
+            p("sam", "sam"),
+            PrPerson { name: "Coder".into(), code: "CO".into(), ..Default::default() },
+        ];
+        let logins = |v: Vec<PrPerson>| v.into_iter().map(|p| p.login).collect::<Vec<_>>();
+        assert_eq!(logins(rank_user_mentions(&people, "", LIMIT)), ["avery", "loopbot", "sam"]);
+        let many: Vec<PrPerson> = (0..12).map(|i| p(&format!("u{i}"), "")).collect();
+        assert_eq!(rank_user_mentions(&many, "", LIMIT).len(), 8);
+        assert_eq!(logins(rank_user_mentions(&people, "av", LIMIT)), ["avery"]);
+        assert_eq!(logins(rank_user_mentions(&people, "rourke", LIMIT)), ["avery"]);
+        assert!(rank_user_mentions(&people, "Coder", LIMIT).is_empty());
+        let local = vec![p("avery", "Avery"), p("loopbot", "")];
+        let remote = vec![p("Avery", "Avery Rourke"), p("octocat", "The Octocat"), p("hubot", "")];
+        assert_eq!(logins(merge_mention_hits(&local, &remote, 3)), ["avery", "loopbot", "octocat"]);
+        assert_eq!(logins(merge_mention_hits(&[], &remote, LIMIT)), ["Avery", "octocat", "hubot"]);
     }
 
     #[test]

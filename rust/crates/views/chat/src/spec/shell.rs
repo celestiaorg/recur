@@ -268,3 +268,90 @@ async fn an_emoji_shortcode_in_an_attached_field_expands_and_suggests(cx: &mut T
     let open = cx.update(|_, cx| crate::suggest::SuggestStore::global(cx).read(cx).emoji.is_some());
     assert!(!open);
 }
+
+struct MentionField {
+    input: Entity<gpui_kit::base::input::InputState>,
+    overlay: Entity<crate::suggest::SuggestOverlay>,
+    _attach: Entity<crate::suggest::SuggestAttach<gpui_kit::base::input::InputMode>>,
+}
+
+impl gpui_kit::Render for MentionField {
+    fn render(&mut self, _: &mut gpui_kit::Window, _: &mut gpui_kit::Context<Self>) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{ParentElement, Styled};
+        gpui_kit::div()
+            .size_full()
+            .p(gpui_kit::px(40.))
+            .child(gpui_kit::base::input::Input::new(&self.input))
+            .child(self.overlay.clone())
+    }
+}
+
+/// A field with `@login` typeahead over a selected GitHub PR with Avery on it.
+fn mention_field(cx: &mut TestAppContext) -> (Entity<MentionField>, Arc<parking_lot::Mutex<String>>, &mut VisualTestContext) {
+    init(cx);
+    let bridge = MockBridge::fresh(MockOptions::default());
+    let services = bridge.services();
+    let state = cx.update(|cx| AppState::install(services, LocalStorage::in_memory(), cx));
+    state.update(cx, |s, _| {
+        s.prs = vec![serde_json::from_value(json!({
+            "id": "pr-1", "source": "gh", "participants": [{"login": "avery", "name": "Avery Rourke"}],
+        }))
+        .unwrap()];
+        s.selected_pr_id = "pr-1".into();
+    });
+    let draft: Arc<parking_lot::Mutex<String>> = Default::default();
+    let d2 = draft.clone();
+    let (field, cx) = cx.add_window_view(move |window, cx| {
+        let input = cx.new(|cx| gpui_kit::base::input::InputState::new(window, cx));
+        let set: crate::suggest::SetFn = std::rc::Rc::new(move |v: &str, _: &mut gpui_kit::Window, _: &mut gpui_kit::App| *d2.lock() = v.to_string());
+        let attach = crate::suggest::attach_user_mentions(&input, state.clone(), Some(set), window, cx);
+        let overlay = cx.new(|cx| crate::suggest::SuggestOverlay::new(crate::suggest::SuggestKind::Mention, cx));
+        MentionField { input, overlay, _attach: attach }
+    });
+    let input = field.read_with(cx, |f, _| f.input.clone());
+    cx.update(|window, cx| {
+        let focus = input.focus_handle(cx);
+        window.focus(&focus, cx);
+    });
+    cx.run_until_parked();
+    (field, draft, cx)
+}
+
+fn mention_open(cx: &mut VisualTestContext) -> Option<String> {
+    cx.update(|_, cx| crate::suggest::SuggestStore::global(cx).read(cx).mention.as_ref().map(|o| o.query.clone()))
+}
+
+#[gpui::test]
+async fn picking_a_mention_replaces_the_query_and_parks_the_caret_after_the_space(cx: &mut TestAppContext) {
+    let (field, draft, cx) = mention_field(cx);
+    let input = field.read_with(cx, |f, _| f.input.clone());
+    cx.simulate_input("hi @av");
+    cx.run_until_parked();
+    assert_eq!(mention_open(cx).as_deref(), Some("av"));
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    assert!(cx.debug_bounds("user-mention-row:0").is_some());
+    cx.simulate_keystrokes("enter");
+    cx.run_until_parked();
+    assert_eq!(*draft.lock(), "hi @avery ");
+    assert_eq!(input.read_with(cx, |i, _| (i.value().to_string(), i.cursor())), ("hi @avery ".to_string(), 10));
+    assert!(mention_open(cx).is_none());
+}
+
+#[gpui::test]
+async fn caret_movement_closes_the_picker_and_enter_does_not_rewrite_the_draft(cx: &mut TestAppContext) {
+    let (field, draft, cx) = mention_field(cx);
+    let input = field.read_with(cx, |f, _| f.input.clone());
+    cx.simulate_input("Please review @av");
+    cx.run_until_parked();
+    assert_eq!(mention_open(cx).as_deref(), Some("av"));
+    cx.update(|window, cx| {
+        input.update(cx, |i, cx| i.set_cursor_position(gpui_kit::base::input::Position::new(0, 0), window, cx))
+    });
+    cx.run_until_parked();
+    assert!(mention_open(cx).is_none());
+    cx.simulate_keystrokes("enter");
+    cx.run_until_parked();
+    assert_eq!(*draft.lock(), "");
+    assert!(input.read_with(cx, |i, _| i.value().starts_with("Please review @av")));
+}

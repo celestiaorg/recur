@@ -36,6 +36,7 @@ mod search;
 mod skills;
 mod symbols;
 mod tree;
+pub mod view;
 mod walk;
 
 #[cfg(test)]

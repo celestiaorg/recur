@@ -96,7 +96,7 @@ impl MermaidPreview {
         self.pending = true;
         let theme = Theme::of(cx).clone();
         let src = content.to_string();
-        if super::blocking(cx) {
+        if crate::webhost::blocking(cx) {
             let res = super::render_blocking(Origin::File, &src, &theme, window.scale_factor());
             self.finish(res, cx);
             return;

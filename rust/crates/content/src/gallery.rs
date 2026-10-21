@@ -82,7 +82,7 @@ fn preview(kind: crate::preview::PreviewKind, content: &str, path: &str, window:
 
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     // No application loop answers the webview here: Mermaid renders on the spot.
-    cx.set_global(crate::mermaid::BlockingRenders);
+    cx.set_global(crate::webhost::BlockingRenders);
     use crate::preview::PreviewKind;
     let md = |text: &'static str, cx: &mut App| {
         let v = cx.new(|cx| MarkdownView::new(text, MarkdownClass::ChatCanvas, false, cx));

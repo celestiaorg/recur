@@ -15,6 +15,7 @@ pub mod purify;
 pub mod render;
 pub mod sanitize_lsp;
 pub mod view;
+pub mod webhost;
 
 pub use images::{ImageLoader, set_image_loader};
 pub use render::style::MarkdownClass;

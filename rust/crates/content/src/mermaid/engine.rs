@@ -4,8 +4,6 @@
 //! diagram it returns is drawn natively. The page loads nothing (CSP `default-src 'none'`),
 //! keeps no data (non-persistent store) and is never on screen.
 
-use serde_json::Value;
-
 /// The page mermaid runs in: the app's web fonts (the files `frontend/index.html` loads, as
 /// recur-ui bundles them) and `body` font, which mermaid's text measurement inherits.
 pub fn page() -> String {
@@ -128,195 +126,41 @@ pub const HOST_JS: &str = r#"
 })();
 "#;
 
-/// A failed call (the platform has no webview, or the page did not answer).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EngineError(pub String);
-
-impl std::fmt::Display for EngineError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-#[cfg(target_os = "macos")]
-pub use mac::{call, call_blocking};
-
-#[cfg(not(target_os = "macos"))]
-pub fn call(op: Value) -> futures::channel::oneshot::Receiver<Result<Value, EngineError>> {
-    let (tx, rx) = futures::channel::oneshot::channel();
-    let _ = op;
-    let _ = tx.send(Err(EngineError(
-        "Mermaid needs the system WebKit, which this platform build does not link".into(),
-    )));
-    rx
-}
-
-#[cfg(not(target_os = "macos"))]
-pub fn call_blocking(op: Value) -> Result<Value, EngineError> {
-    let _ = op;
-    Err(EngineError(
-        "Mermaid needs the system WebKit, which this platform build does not link".into(),
-    ))
-}
+pub static HOST: crate::webhost::Host = crate::webhost::Host {
+    name: "Mermaid",
+    #[cfg(target_os = "macos")]
+    make: mac::make,
+};
 
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
 mod mac {
-    use std::cell::RefCell;
-    use std::rc::Rc;
-    use std::time::{Duration, Instant};
-
-    use block2::RcBlock;
-    use core_foundation::runloop::{CFRunLoop, kCFRunLoopDefaultMode};
-    use futures::channel::oneshot;
     use objc2::rc::Retained;
-    use objc2::runtime::AnyObject;
     use objc2::{AnyThread, MainThreadMarker, MainThreadOnly};
-    use objc2_foundation::{NSDictionary, NSError, NSString};
+    use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
     use objc2_web_kit::{
-        WKContentWorld, WKUserScript, WKUserScriptInjectionTime, WKWebView,
-        WKWebViewConfiguration, WKWebsiteDataStore,
+        WKUserScript, WKUserScriptInjectionTime, WKWebView, WKWebViewConfiguration, WKWebsiteDataStore,
     };
-    use serde_json::Value;
-
-    use super::{EngineError, HOST_JS};
 
     const MERMAID_JS: &str = include_str!("../../assets/mermaid/mermaid.min.js");
 
-    thread_local! {
-        static VIEW: RefCell<Option<Retained<WKWebView>>> = const { RefCell::new(None) };
-    }
-
-    fn view(mtm: MainThreadMarker) -> Retained<WKWebView> {
-        VIEW.with(|v| {
-            if let Some(w) = v.borrow().as_ref() {
-                return w.clone();
-            }
-            // SAFETY: WebKit objects are created and used on the main thread (`mtm`).
-            let web = unsafe {
-                let config = WKWebViewConfiguration::new(mtm);
-                config.setWebsiteDataStore(&WKWebsiteDataStore::nonPersistentDataStore(mtm));
-                let ucc = config.userContentController();
-                let source = NSString::from_str(&format!("{MERMAID_JS}\n{HOST_JS}"));
-                let script = WKUserScript::initWithSource_injectionTime_forMainFrameOnly(
-                    WKUserScript::alloc(mtm),
-                    &source,
-                    WKUserScriptInjectionTime::AtDocumentEnd,
-                    true,
-                );
-                ucc.addUserScript(&script);
-                let frame = objc2_foundation::NSRect::new(
-                    objc2_foundation::NSPoint::new(0., 0.),
-                    objc2_foundation::NSSize::new(1024., 768.),
-                );
-                let web = WKWebView::initWithFrame_configuration(WKWebView::alloc(mtm), frame, &config);
-                web.loadHTMLString_baseURL(&NSString::from_str(&super::page()), None);
-                web
-            };
-            *v.borrow_mut() = Some(web.clone());
-            web
-        })
-    }
-
-    fn mtm() -> Result<MainThreadMarker, EngineError> {
-        MainThreadMarker::new().ok_or_else(|| EngineError("Mermaid renders on the main thread".into()))
-    }
-
-    fn loading(web: &WKWebView) -> bool {
-        // SAFETY: a property read on the main thread.
-        unsafe { web.isLoading() }
-    }
-
-    /// Mermaid's text measurement depends on the device scale (glyph advances round to device
-    /// pixels), so the page renders at the scale of the display the diagram goes to.
-    fn set_scale(web: &WKWebView, op: &Value) {
-        let scale = op.get("scale").and_then(Value::as_f64).unwrap_or(1.);
-        let sel = objc2::sel!(_setOverrideDeviceScaleFactor:);
-        // SAFETY: a WebKit SPI with a CGFloat argument, called only when the class has it.
+    pub fn make(mtm: MainThreadMarker) -> Retained<WKWebView> {
+        // SAFETY: WebKit objects are created and used on the main thread (`mtm`).
         unsafe {
-            let responds: bool = objc2::msg_send![web, respondsToSelector: sel];
-            if responds {
-                let _: () = objc2::msg_send![web, _setOverrideDeviceScaleFactor: scale];
-            }
-        }
-    }
-
-    fn invoke(web: &WKWebView, mtm: MainThreadMarker, op: &Value, done: impl Fn(Result<Value, EngineError>) + 'static) {
-        set_scale(web, op);
-        let payload = NSString::from_str(&op.to_string());
-        let key = NSString::from_str("payload");
-        let args: Retained<NSDictionary<NSString, AnyObject>> =
-            NSDictionary::from_retained_objects(&[&*key], &[Retained::into_super(Retained::into_super(payload))]);
-        let body = NSString::from_str(
-            "for (let i = 0; i < 400 && typeof window.recur !== 'function'; i++) await new Promise(r => setTimeout(r, 5));\nreturn JSON.stringify(await window.recur(JSON.parse(payload)));",
-        );
-        let block = RcBlock::new(move |result: *mut AnyObject, error: *mut NSError| {
-            if !error.is_null() {
-                // SAFETY: WebKit passes a valid NSError when it reports one.
-                let msg = unsafe { (*error).localizedDescription() }.to_string();
-                done(Err(EngineError(msg)));
-                return;
-            }
-            // SAFETY: the body returns a string (`JSON.stringify`), bridged as NSString.
-            let text = unsafe { result.cast::<NSString>().as_ref() }.map(|s| s.to_string());
-            match text.and_then(|t| serde_json::from_str::<Value>(&t).ok()) {
-                Some(v) => done(Ok(v)),
-                None => done(Err(EngineError("Mermaid returned nothing".into()))),
-            }
-        });
-        // SAFETY: main thread; the block lives until WebKit drops it.
-        unsafe {
-            web.callAsyncJavaScript_arguments_inFrame_inContentWorld_completionHandler(
-                &body,
-                Some(&args),
-                None,
-                &WKContentWorld::pageWorld(mtm),
-                Some(&block),
+            let config = WKWebViewConfiguration::new(mtm);
+            config.setWebsiteDataStore(&WKWebsiteDataStore::nonPersistentDataStore(mtm));
+            let source = NSString::from_str(&format!("{MERMAID_JS}\n{}", super::HOST_JS));
+            let script = WKUserScript::initWithSource_injectionTime_forMainFrameOnly(
+                WKUserScript::alloc(mtm),
+                &source,
+                WKUserScriptInjectionTime::AtDocumentEnd,
+                true,
             );
+            config.userContentController().addUserScript(&script);
+            let frame = NSRect::new(NSPoint::new(0., 0.), NSSize::new(1024., 768.));
+            let web = WKWebView::initWithFrame_configuration(WKWebView::alloc(mtm), frame, &config);
+            web.loadHTMLString_baseURL(&NSString::from_str(&super::page()), None);
+            web
         }
-    }
-
-    /// Run `op` in the page; resolves on the main run loop.
-    pub fn call(op: Value) -> oneshot::Receiver<Result<Value, EngineError>> {
-        let (tx, rx) = oneshot::channel();
-        let tx = Rc::new(RefCell::new(Some(tx)));
-        let finish = move |r: Result<Value, EngineError>| {
-            if let Some(tx) = tx.borrow_mut().take() {
-                let _ = tx.send(r);
-            }
-        };
-        match mtm() {
-            Ok(mtm) => {
-                let web = view(mtm);
-                invoke(&web, mtm, &op, finish);
-            }
-            Err(e) => finish(Err(e)),
-        }
-        rx
-    }
-
-    /// Run `op` and spin the main run loop until it answers (headless renders and tests,
-    /// where no application loop runs).
-    pub fn call_blocking(op: Value) -> Result<Value, EngineError> {
-        let mtm = mtm()?;
-        let web = view(mtm);
-        let deadline = Instant::now() + Duration::from_secs(30);
-        // SAFETY: a CoreFoundation constant.
-        let mode = unsafe { kCFRunLoopDefaultMode };
-        while loading(&web) && Instant::now() < deadline {
-            CFRunLoop::run_in_mode(mode, Duration::from_millis(5), true);
-        }
-        let out: Rc<RefCell<Option<Result<Value, EngineError>>>> = Rc::default();
-        let slot = out.clone();
-        invoke(&web, mtm, &op, move |r| *slot.borrow_mut() = Some(r));
-        while out.borrow().is_none() {
-            if Instant::now() > deadline {
-                return Err(EngineError("Mermaid timed out".into()));
-            }
-            CFRunLoop::run_in_mode(mode, Duration::from_millis(5), true);
-        }
-        out.borrow_mut()
-            .take()
-            .unwrap_or_else(|| Err(EngineError("Mermaid returned nothing".into())))
     }
 }

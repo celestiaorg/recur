@@ -1,0 +1,15 @@
+//! Ports of the E4 Go test files, one module per file (the large
+//! `workspace_chat_test.go` split by group).
+
+mod cancel;
+mod checkpoint;
+mod children;
+mod fork;
+mod modes_send;
+mod moved;
+mod recover;
+mod send;
+mod steer;
+mod switch_mode;
+mod tabs;
+mod test_support;

@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use recur_agent::{
-    Availability, Flags, ModelChoice, Provider, ProviderCaps, ProviderError, ProviderStatus,
-    ToolDisplay, TurnContext, TurnRequest, TurnResult,
+    AgentEvent, Availability, Flags, ModelChoice, Provider, ProviderCaps, ProviderError,
+    ProviderStatus, TokenUsage, ToolDisplay, TurnContext, TurnRequest, TurnResult,
 };
 use recur_domain::{AutonomyLevel, Group, Settings, Workspace, WorkspaceState};
 use recur_provider_claude::testing::NdjsonScript;
@@ -246,4 +246,56 @@ pub fn add_solo_workspace(eng: &Engine, id: &str) {
             ..Workspace::default()
         })
         .expect("add workspace");
+}
+
+/// Text, then a duration-less result carrying usage, then an error whose
+/// result has the duration (Go `durationErrorRunner`).
+pub fn duration_error() -> Arc<dyn recur_agent::Provider> {
+    FnProvider::wrap(|cx| {
+        cx.sink.emit(AgentEvent::Text {
+            text: "partial…".into(),
+            uuid: String::new(),
+            parent: String::new(),
+        });
+        let res = TurnResult {
+            duration_ms: 1500,
+            is_error: true,
+            session_id: "thread-1".into(),
+            usage: TokenUsage {
+                input_tokens: 200,
+                output_tokens: 50,
+                cache_read_tokens: 15000,
+                context_window: 200_000,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut usage = res.clone();
+        usage.duration_ms = 0;
+        cx.sink.emit(AgentEvent::TurnEnd(usage));
+        Err(
+            ProviderError::failed("codex app-server exited before turn completed")
+                .with_partial(res),
+        )
+    })
+}
+
+/// The result frame already stamped the duration before the error (Go
+/// `kindResultErrorRunner`).
+pub fn result_then_error() -> Arc<dyn recur_agent::Provider> {
+    FnProvider::wrap(|cx| {
+        cx.sink.emit(AgentEvent::Text {
+            text: "partial…".into(),
+            uuid: String::new(),
+            parent: String::new(),
+        });
+        let res = TurnResult {
+            duration_ms: 1500,
+            is_error: true,
+            session_id: "thread-1".into(),
+            ..Default::default()
+        };
+        cx.sink.emit(AgentEvent::TurnEnd(res.clone()));
+        Err(ProviderError::failed("cursor run: boom").with_partial(res))
+    })
 }

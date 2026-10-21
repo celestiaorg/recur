@@ -1,8 +1,7 @@
 //! Port of Go `engine_test.go`, the loop halves: the scripted end-to-end
 //! walk (engine commit, events, durable feed, reopen), the git-identity
 //! refusal, governor queueing and the caps drain, Pause/Resume/Stop,
-//! per-loop autonomy, and the env-gated real Claude smoke. The feed
-//! reconstruction assertions are E4's (`deferred::reconstruct_feed`).
+//! per-loop autonomy, and the env-gated real Claude smoke.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -120,15 +119,24 @@ async fn engine_end_to_end_scripted() {
             .is_empty(),
         "durable events persisted"
     );
+    assert!(
+        !t.engine.reconstruct_feed(&id).is_empty(),
+        "reconstruct_feed returned nothing despite persisted events"
+    );
 
     t.store.close().unwrap();
-    let st2 = Store::open(&t.data_dir.join("recur.db")).unwrap();
+    let st2 = Arc::new(Store::open(&t.data_dir.join("recur.db")).unwrap());
     assert_eq!(st2.workspace(&id).unwrap().state, WorkspaceState::PrOpen);
     assert!(
         !st2.events_for_loop(&id)
             .unwrap()
             .unwrap_or_default()
             .is_empty()
+    );
+    let eng2 = t.reopen_on(Arc::clone(&st2), None);
+    assert!(
+        !eng2.reconstruct_feed(&id).is_empty(),
+        "feed not reconstructable from disk after reopen"
     );
     st2.close().unwrap();
     t.close().await;

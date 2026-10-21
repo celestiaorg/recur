@@ -4,10 +4,15 @@
 //! submodules hold E2's chat-surface rules (`lib/agentchat.ts`,
 //! `lib/session-live.ts`, `lib/artifacts.ts`, `lib/promptActions.ts` and the
 //! text half of `lib/composerDom.ts`) and E3's loop pickers and cockpit
-//! (`lib/loops.ts`, `lib/loop-cockpit.ts`).
+//! (`lib/loops.ts`, `lib/loop-cockpit.ts`) and E4's chat modes, looking-at
+//! surface, active-tab memory, subagent display and launch rules
+//! (`lib/modes.ts`, `lib/chat-surface.ts`, `lib/chat-tab-session.ts`,
+//! `lib/subagent.ts`, `lib/new-workspace.ts`).
 
 pub mod artifacts;
 pub mod chat;
+pub mod chat_surface;
+pub mod chat_tab_session;
 pub mod composer;
 pub mod digest;
 pub mod js;
@@ -15,7 +20,10 @@ pub mod live;
 pub mod loop_cockpit;
 pub mod loops;
 pub mod mentions;
+pub mod modes;
+pub mod new_workspace;
 pub mod prompts;
+pub mod subagent;
 
 use recur_domain::{InboxItem, Workspace};
 

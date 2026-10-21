@@ -6673,7 +6673,20 @@ dependencies = [
 name = "recur-desktop"
 version = "0.0.0"
 dependencies = [
+ "futures",
+ "gpui-kit",
  "recur-app",
+ "recur-bundles",
+ "recur-code",
+ "recur-domain",
+ "recur-platform",
+ "recur-services",
+ "recur-store",
+ "recur-ui",
+ "recur-view-core",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

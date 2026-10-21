@@ -12,7 +12,10 @@ use crate::style::{
 };
 use crate::text::{LineHeight, Text, TextStyled, span, text};
 use crate::theme::Theme;
-use crate::widgets::{PicBox, project_pic, ring};
+use crate::widgets::{
+    PicBox, armed_button, blurb_code, decode_text, project_pic, ring, settings_group,
+    settings_groups,
+};
 use gpui_kit::{
     AnyElement, AnyView, App, AppContext, Context, Div, IntoElement, ParentElement, Render, Styled,
     Window, div, px,
@@ -33,6 +36,8 @@ pub(super) const NAMES: &[&str] = &[
     "icons/file-light",
     "ring/*",
     "project-pic/*",
+    "settings-group/*",
+    "armed-button/*",
 ];
 
 pub(super) fn matches(pattern: &str, name: &str) -> bool {
@@ -66,6 +71,8 @@ pub(super) fn build(name: &str, _: &mut Window, cx: &mut App) -> Option<AnyView>
         ("icons", "file") | ("icons", "file-light") => icons_file,
         ("ring", _) => rings,
         ("project-pic", _) => project_pics,
+        ("settings-group", _) => settings,
+        ("armed-button", _) => armed,
         _ => return None,
     };
     Some(cx.new(|_| Static(f)).into())
@@ -137,8 +144,7 @@ fn calibration(_: &mut Window, cx: &mut App) -> AnyElement {
             .weight(s.weight)
             .tracking(s.tracking)
             .line_height(lh)
-            .nowrap()
-            .exact_height();
+            .nowrap();
         if s.uppercase {
             t = t.uppercase();
         }
@@ -458,6 +464,97 @@ fn project_pics(_: &mut Window, cx: &mut App) -> AnyElement {
                 .p(px(12.))
                 .gap(px(10.))
                 .children(pics.map(|(p, c, n)| project_pic(p, c, n, PicBox::NT))),
+        )
+        .into_any_element()
+}
+
+fn settings(_: &mut Window, cx: &mut App) -> AnyElement {
+    let muted = Theme::of(cx).tokens.muted;
+    let body_text = move |s: &'static str| text(s).size(12.).color(muted);
+    body(cx)
+        .size_full()
+        .child(
+            div().p(px(12.)).w(px(420.)).child(
+                settings_groups()
+                    .child(
+                        settings_group("a", "Appearance")
+                            .blurb("Theme and density for every window.")
+                            .child(body_text("Body content")),
+                    )
+                    .child(
+                        settings_group("b", "Agent defaults")
+                            .blurb_spans(vec![
+                                span("Applied to new chats. Set "),
+                                blurb_code("model"),
+                                span(" per project."),
+                            ])
+                            .override_toggle(true, false, None, |_, _, _| {})
+                            .child(body_text("Overridden here")),
+                    )
+                    .child(
+                        settings_group("c", "Project override")
+                            .blurb("Uses the global settings.")
+                            .override_toggle(false, false, None, |_, _, _| {})
+                            .child(body_text("Hidden")),
+                    )
+                    .child(settings_group("d", "Locked").override_toggle(
+                        false,
+                        true,
+                        None,
+                        |_, _, _| {},
+                    ))
+                    .child(
+                        settings_group("e", "Editor").child(
+                            settings_group("e1", "Indent by language")
+                                .blurb("Auto uses common conventions.")
+                                .nested()
+                                .child(body_text("Go · tabs")),
+                        ),
+                    ),
+            ),
+        )
+        .into_any_element()
+}
+
+fn armed(_: &mut Window, cx: &mut App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    let label = |id: &'static str, s: &'static str, animate: bool| {
+        decode_text(id, s)
+            .animate(animate)
+            .style(move |x| x.size(12.).color(t.muted))
+    };
+    body(cx)
+        .size_full()
+        .child(
+            div()
+                .p(px(12.))
+                .flex()
+                .flex_col()
+                .gap(px(10.))
+                .child(
+                    row()
+                        .gap(px(8.))
+                        .child(armed_button("a", "Remove", "Confirm remove", |_, _| {}))
+                        .child(armed_button("b", "Delete", "Really delete?", |_, _| {}))
+                        .child(
+                            armed_button("c", "Discard", "Discard", |_, _| {}).disabled(Some(t.bg)),
+                        ),
+                )
+                .child(
+                    row().child(
+                        row().flex_none().justify_end().gap(px(6.)).child(
+                            armed_button("d", "Archive", "Confirm", |_, _| {})
+                                .size(TbtnSize::TITLEBAR)
+                                .icon(icon(IconName::Trash).size(px(13.))),
+                        ),
+                    ),
+                )
+                .child(
+                    row()
+                        .gap(px(8.))
+                        .child(label("l1", "feature/parity-scenes", true))
+                        .child(label("l2", "Reviewing changes", false)),
+                ),
         )
         .into_any_element()
 }

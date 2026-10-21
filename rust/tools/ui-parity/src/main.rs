@@ -32,7 +32,7 @@ struct SceneRoot(AnyView);
 
 impl Render for SceneRoot {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        self.0.clone()
+        recur_ui::style::window_root(self.0.clone())
     }
 }
 

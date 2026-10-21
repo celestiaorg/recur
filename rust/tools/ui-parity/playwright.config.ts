@@ -8,7 +8,7 @@ const browserName = (process.env.UI_PARITY_BROWSER as 'webkit' | 'chromium' | un
 // headless WebKit at device scale 2 against the e2e suite's mocked Wails bridge and seed.
 export default defineConfig({
   testDir: '.',
-  testMatch: 'capture.spec.ts',
+  testMatch: process.env.UI_PARITY_SPEC ?? 'capture.spec.ts',
   fullyParallel: true,
   // The first page load can race Vite's dependency optimizer, which reloads the page.
   retries: 1,

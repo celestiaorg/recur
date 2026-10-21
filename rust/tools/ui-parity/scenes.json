@@ -1,6 +1,21 @@
 {
   "scenes": [
     {
+      "name": "armed-button/default",
+      "width": 420,
+      "height": 140,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "click": [
+            120,
+            26
+          ]
+        }
+      ]
+    },
+    {
       "name": "buttons/default",
       "width": 620,
       "height": 220,
@@ -68,6 +83,20 @@
       "width": 300,
       "height": 124,
       "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "settings-group/default",
+      "width": 444,
+      "height": 540,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "settings-group/paper",
+      "width": 444,
+      "height": 540,
+      "theme": "paper",
       "tolerance": 0
     },
     {

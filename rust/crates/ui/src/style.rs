@@ -8,8 +8,8 @@ use crate::fonts::{MONO, UI, weight};
 use crate::text::{InlineBox, LineHeight, Span, Text, TextStyled, span, text};
 use crate::theme::{Theme, Tokens};
 use gpui_kit::{
-    App, BoxShadow, Div, ElementId, Fill, FocusHandle, Hsla, InteractiveElement, ParentElement,
-    Stateful, Styled, Window, div, point, prelude::FluentBuilder, px, relative,
+    App, BoxShadow, Div, ElementId, Fill, FocusHandle, Hsla, InteractiveElement, IntoElement,
+    ParentElement, Stateful, Styled, Window, div, point, prelude::FluentBuilder, px, relative,
 };
 
 impl From<Color> for Fill {
@@ -61,6 +61,27 @@ pub fn body(cx: &App) -> Div {
         .font_family(UI)
         .text_size(px(13.))
         .line_height(relative(1.45))
+}
+
+/// The root every window renders its content in. WebKit snaps a box edge that lands exactly on
+/// a half device pixel down and to the right; GPUI rounds halves toward zero. Shifting the whole
+/// tree by 1/4096 px (through `aspect_ratio` spacers, since authored lengths round to whole
+/// device pixels) makes those ties round as WebKit does and moves nothing else.
+pub fn window_root(content: impl IntoElement) -> Div {
+    const NUDGE: f32 = 4096.;
+    div()
+        .size_full()
+        .flex()
+        .flex_col()
+        .child(div().flex_none().w(px(1.)).aspect_ratio(NUDGE))
+        .child(
+            div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .child(div().flex_none().h(px(1.)).aspect_ratio(1. / NUDGE))
+                .child(div().flex_1().min_w_0().size_full().child(content)),
+        )
 }
 
 /// Button label text: `<button>` resets `font` (13.333px, line-height normal) and the class
@@ -141,7 +162,8 @@ impl TbtnSize {
 }
 
 /// `.tbtn`: inline-flex, gap 6, radius 6, 1px border, weight 500. Children: icons at 13px and
-/// a [`button_label`].
+/// a [`button_label`]. `disabled_over` disables it; titlebar buttons also fade over that
+/// backdrop.
 pub fn tbtn(
     id: impl Into<ElementId>,
     kind: Tbtn,
@@ -158,8 +180,11 @@ pub fn tbtn(
         Tbtn::Danger => (t.pane, rgba(235, 122, 92, 0.32), t.coral),
         Tbtn::Armed => (t.coral, t.coral, crate::color::hex(0x0a0c10)),
     };
-    // `.tb-right .tbtn:disabled { opacity: .45; cursor: not-allowed }`.
-    if let Some(back) = disabled_over {
+    // `.tb-right .tbtn:disabled { opacity: .45; cursor: not-allowed }`; elsewhere a disabled
+    // `.tbtn` looks enabled.
+    if let Some(back) = disabled_over
+        && size == TbtnSize::TITLEBAR
+    {
         (bg, border, fg) = (
             faded(bg, bg, 0.45, back),
             faded(border, bg, 0.45, back),
@@ -386,7 +411,7 @@ pub fn toggle(id: impl Into<ElementId>, on: bool, disabled: bool, cx: &App) -> S
         .rounded(px(12.))
         .bg(track)
         .border(px(1.))
-        .border_color(Hsla::from(border))
+        .border_color(border_over(border, track))
         .child(
             div()
                 .absolute()

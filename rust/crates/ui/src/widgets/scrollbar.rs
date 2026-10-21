@@ -41,7 +41,12 @@ pub fn scroll_from_track(
     min_thumb: f32,
 ) -> f32 {
     let (h, _, _) = overlay_thumb(0., scroll_height, client_height, min_thumb);
-    scroll_for_thumb(thumb_top, h, client_height.max(1.), scroll_height - client_height)
+    scroll_for_thumb(
+        thumb_top,
+        h,
+        client_height.max(1.),
+        scroll_height - client_height,
+    )
 }
 
 fn scroll_for_thumb(thumb_pos: f32, thumb_len: f32, track: f32, max_scroll: f32) -> f32 {
@@ -201,7 +206,11 @@ impl RenderOnce for ScrollArea {
         };
         let (pos, total, client) = metrics(&handle, axis);
         let overflow = total - client > if overlay { 1. } else { 0.5 };
-        let size = if overlay { 6. } else { f32::from(SCROLLBAR_SIZE) };
+        let size = if overlay {
+            6.
+        } else {
+            f32::from(SCROLLBAR_SIZE)
+        };
         let (thumb_len, thumb_at) = if overlay {
             let (h, top, _) = overlay_thumb(pos, total, client, 24.);
             (h, top)

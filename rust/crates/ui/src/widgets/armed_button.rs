@@ -182,8 +182,11 @@ impl RenderOnce for ArmedButton {
         {
             let state = state.clone();
             let confirm = confirm.clone();
-            button = button.on_mouse_up(MouseButton::Left, move |_, window, cx| {
-                let hit = state.update(cx, |s, _| armed_pointer_up(&mut s.gate, 0, disabled, true));
+            // Capture phase: GPUI fires `on_click` in the bubble phase of the same mouse-up,
+            // and the DOM's `pointerup` comes before `click`.
+            button = button.capture_any_mouse_up(move |e, window, cx| {
+                let b = if e.button == MouseButton::Left { 0 } else { 1 };
+                let hit = state.update(cx, |s, _| armed_pointer_up(&mut s.gate, b, disabled, true));
                 if !hit {
                     return;
                 }

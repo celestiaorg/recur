@@ -108,8 +108,9 @@ impl RenderOnce for SettingsGroup {
             .color(t.muted);
         let mut blocks: Vec<(f32, Text)> = vec![(0., title)];
         if !self.blurb.is_empty() {
+            // Only `.set-subhead-copy` (the override layout) spaces title and blurb.
             blocks.push((
-                3.,
+                if self.over.is_some() { 3. } else { 0. },
                 Text::from_spans(self.blurb)
                     .ui()
                     .size(12.)
@@ -118,15 +119,20 @@ impl RenderOnce for SettingsGroup {
                     .color(t.faint),
             ));
         }
-        let copy = text_stack(blocks);
+        let copy = text_stack(blocks).id((self.id.clone(), "copy"));
 
         let (head_pad, head_bg, body_pad) = if self.nested {
             ((10., 12.), t.pane_2.fade(0.7), (2., 12., 6.))
         } else {
             ((12., 14.), t.pane_2.fade(0.55), (2., 14., 8.))
         };
+        // The card's `overflow: hidden` clips the header to its inner (padding-edge) radius.
+        let radius = 10.;
+        let inner = px(radius - 1.);
         let mut head = div()
             .flex()
+            .rounded_t(inner)
+            .when(!show_body, |d| d.rounded_b(inner))
             .py(px(head_pad.0))
             .px(px(head_pad.1))
             .bg(head_bg)
@@ -152,18 +158,18 @@ impl RenderOnce for SettingsGroup {
             head.flex_col().child(copy)
         };
 
-        let bg = if self.nested {
-            t.pane_2.mix(0.4, t.bg)
-        } else {
-            t.pane.mix(0.7, t.bg)
-        };
+        // `.set-subsec-nested`'s own background and radius lose to `.set-subsec`, which comes
+        // later in `_settings.scss` at the same specificity.
+        let bg = t.pane.mix(0.7, t.bg);
         div()
             .id(self.id)
             .flex()
             .flex_col()
             .border(px(1.))
             .border_color(Hsla::from(t.line_soft))
-            .rounded(px(if self.nested { 8. } else { 10. }))
+            .rounded(px(radius))
+            // `.set-subsec-body > .set-subsec-nested { margin: 8px 0 6px }`.
+            .when(self.nested, |d| d.mt(px(8.)).mb(px(6.)))
             .bg(bg)
             .overflow_hidden()
             .child(head)

@@ -11,11 +11,13 @@
 
 use crate::fonts::{Family, tabular_nums};
 use gpui_kit::{
-    App, AvailableSpace, BorderStyle, Bounds, DefiniteLength, Element, ElementId, FontFeatures,
-    FontId, GlobalElementId, Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString,
-    StrikethroughStyle, Style, TextRun, UnderlineStyle, Window, point, px, quad, size,
+    AlignItems, App, AvailableSpace, BorderStyle, Bounds, DefiniteLength, Display, Element,
+    ElementId, FlexDirection, FontFeatures, FontId, GlobalElementId, Hsla, InspectorElementId,
+    IntoElement, LayoutId, Pixels, Position, SharedString, StrikethroughStyle, Style, TextRun,
+    UnderlineStyle, Window, point, px, quad, size,
 };
-use std::cell::RefCell;
+use smallvec::SmallVec;
+use std::cell::{Cell, RefCell};
 use std::ops::Range;
 use std::rc::Rc;
 use unicode_linebreak::{BreakOpportunity, linebreaks};
@@ -237,7 +239,6 @@ pub struct Text {
     ellipsis: bool,
     clamp: Option<usize>,
     align: Align,
-    exact_height: bool,
     opacity: f32,
     mask: Option<AlphaMask>,
     layout: Rc<RefCell<Option<Laid>>>,
@@ -264,7 +265,6 @@ impl Text {
             ellipsis: false,
             clamp: None,
             align: Align::Left,
-            exact_height: false,
             opacity: 1.,
             mask: None,
             layout: Rc::default(),
@@ -323,12 +323,6 @@ impl Text {
     /// CSS `opacity` on the text's own box. Glyphs never overlap, so this is exact.
     pub fn opacity(mut self, opacity: f32) -> Self {
         self.opacity = opacity;
-        self
-    }
-    /// For a nowrap line stacked in a column: keep its fractional line-box height exact (and
-    /// round its width) instead of the default exact width. See `ui-parity.md`.
-    pub fn exact_height(mut self) -> Self {
-        self.exact_height = true;
         self
     }
     pub fn align(mut self, align: Align) -> Self {
@@ -966,13 +960,31 @@ impl Laid {
         (glyphs, width + base.tracking)
     }
 
-    fn size(&self, scale: f32) -> gpui_kit::Size<Pixels> {
+    /// Lines when none wraps: one per paragraph, up to the clamp.
+    fn unwrapped_lines(&self, clamp: Option<usize>) -> usize {
         if self.key.content.is_empty() {
-            return size(px(0.), px(0.));
+            return 0;
+        }
+        clamp.map_or(self.paras.len(), |c| c.min(self.paras.len()))
+    }
+
+    /// Baseline offsets below the box top of the lines when none wraps.
+    fn line_offsets(&self, clamp: Option<usize>) -> impl Iterator<Item = f32> + use<> {
+        let m = self.metrics;
+        (0..self.unwrapped_lines(clamp)).map(move |i| m.height * i as f32 + m.baseline)
+    }
+
+    fn unwrapped_height(&self, clamp: Option<usize>) -> f32 {
+        self.metrics.height * self.unwrapped_lines(clamp) as f32
+    }
+
+    /// Unrounded box size for layout; empty text takes no space.
+    fn size(&self) -> (f32, f32) {
+        if self.key.content.is_empty() {
+            return (0., 0.);
         }
         let w = self.lines.iter().map(|l| l.width).fold(0., f32::max);
-        let h = self.metrics.height * self.lines.len() as f32;
-        size(px(snap(w, scale)), px(snap(h, scale)))
+        (w, self.metrics.height * self.lines.len() as f32)
     }
 
     /// Width of the widest line and the total height, unrounded, after a layout at `width`.
@@ -985,6 +997,113 @@ impl Laid {
 
 pub struct TextState {
     layout: Rc<RefCell<Option<Laid>>>,
+    exact: Option<ExactCell>,
+    probes: Vec<(f32, LayoutId)>,
+    baselines: Baselines,
+}
+
+/// Baselines GPUI snapped for us: (baseline offset below the box top, snapped window y).
+type Baselines = Vec<(f32, f32)>;
+
+/// Invisible absolutely positioned leaves, one per expected line, each exactly as tall as that
+/// line's baseline offset (through `aspect_ratio`). GPUI snaps a box's far edge from its
+/// unrounded position, so a probe's bottom is where WebKit paints the baseline, even though the
+/// text box's own origin was rounded to the device grid first.
+fn baseline_probes(
+    offsets: impl Iterator<Item = f32>,
+    window: &mut Window,
+    cx: &mut App,
+) -> Vec<(f32, LayoutId)> {
+    let dp = 1. / window.scale_factor();
+    offsets
+        .filter(|o| *o > 0.)
+        .map(|o| {
+            let mut s = Style::default();
+            s.position = Position::Absolute;
+            s.inset.top = px(0.).into();
+            s.inset.left = px(0.).into();
+            s.size.width = px(dp).into();
+            // A hair taller, so a baseline on a half pixel rounds down the page as WebKit's
+            // does (GPUI rounds halves toward zero).
+            s.aspect_ratio = Some(dp / (o + 1. / 1024.));
+            (o, window.request_layout(s, [], cx))
+        })
+        .collect()
+}
+
+fn resolve_probes(probes: &[(f32, LayoutId)], window: &mut Window) -> Baselines {
+    probes
+        .iter()
+        .map(|(o, id)| (*o, f32::from(window.layout_bounds(*id).bottom())))
+        .collect()
+}
+
+/// The exact height a wrapping text box with an id took in the last frame. GPUI rounds measured
+/// sizes up to device pixels, so the box is laid out as its measured lines floored to the
+/// device grid plus a spacer for the remainder: a 1dp-wide leaf whose `aspect_ratio` (which
+/// reaches Taffy unrounded) makes it exactly that tall. Without an id the remainder assumes no
+/// line wraps; with one, boxes below keep WebKit's fractional positions from the second frame
+/// on whatever the wrapping.
+type ExactCell = Rc<Cell<Option<f32>>>;
+
+fn exact_cell(id: Option<&GlobalElementId>, window: &mut Window) -> Option<ExactCell> {
+    Some(
+        window.with_element_state(id?, |cell: Option<ExactCell>, _| {
+            let cell = cell.unwrap_or_default();
+            (cell.clone(), cell)
+        }),
+    )
+}
+
+fn floor_dp(v: f32, scale: f32) -> f32 {
+    ((v * scale) + 1e-3).floor() / scale
+}
+
+/// Leaves of a measured text box: the measured lines floored to the device grid, plus the spacer
+/// that makes up the exact height. `measure` returns the unrounded `(width, height)`; `guess`
+/// is the height when no line wraps, the exact height until a box with an id has measured one.
+fn text_leaves(
+    min_width: gpui_kit::Length,
+    exact: Option<&ExactCell>,
+    guess: f32,
+    window: &mut Window,
+    cx: &mut App,
+    measure: impl Fn(
+        gpui_kit::Size<Option<Pixels>>,
+        gpui_kit::Size<AvailableSpace>,
+        &mut Window,
+    ) -> (f32, f32)
+    + 'static,
+) -> SmallVec<[LayoutId; 6]> {
+    let mut leaf_style = Style::default();
+    leaf_style.min_size.width = min_width;
+    let leaf = window.request_measured_layout(leaf_style, move |known, available, window, _| {
+        let (w, h) = measure(known, available, window);
+        let scale = window.scale_factor();
+        size(px(snap(w, scale)), px(floor_dp(h, scale)))
+    });
+    let mut leaves = SmallVec::new();
+    leaves.push(leaf);
+    let scale = window.scale_factor();
+    let h = exact.and_then(|c| c.get()).unwrap_or(guess);
+    let rest = h - floor_dp(h, scale);
+    if rest > 1e-4 {
+        let mut spacer = Style::default();
+        spacer.size.width = px(1. / scale).into();
+        spacer.aspect_ratio = Some(1. / scale / rest);
+        leaves.push(window.request_layout(spacer, [], cx));
+    }
+    leaves
+}
+
+/// After the final layout: remember the exact height, and lay out again when it changed.
+fn check_exact(exact: Option<&ExactCell>, height: f32, window: &mut Window) {
+    if let Some(c) = exact
+        && c.get().is_none_or(|h| (h - height).abs() > 1e-3)
+    {
+        c.set(Some(height));
+        window.refresh();
+    }
 }
 
 impl IntoElement for Text {
@@ -1026,7 +1145,7 @@ impl Element for Text {
 
     fn request_layout(
         &mut self,
-        _: Option<&GlobalElementId>,
+        id: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
         cx: &mut App,
@@ -1050,34 +1169,59 @@ impl Element for Text {
         if ws == WhiteSpace::NoWrap && clamp.is_none() {
             // A single unwrapped line has a fixed intrinsic size. GPUI rounds every authored
             // or measured length to device pixels, which would push later siblings off the
-            // fractional positions WebKit gives them; `aspect_ratio` reaches Taffy unrounded,
-            // so one axis is authored (rounded) and the other derived exactly from it.
+            // fractional positions WebKit gives them. `aspect_ratio` reaches Taffy unrounded,
+            // so the box is a column of two invisible leaves, each one device pixel thin on its
+            // authored axis: one exactly as wide as the line, one making up its exact height.
             let exact = layout.borrow_mut().as_mut().map(|laid| {
                 laid.relayout(None, ws, anywhere, clamp, false, window);
                 laid.measured()
             });
+            let dp = 1. / window.scale_factor();
             if let Some((w, h)) = exact
                 && w > 0.
-                && h > 0.
+                && h > 2. * dp
             {
-                let scale = window.scale_factor();
-                if self.exact_height {
-                    let ws = snap(w, scale).max(1. / scale);
-                    style.size.width = px(ws).into();
-                    style.aspect_ratio = Some(ws / h);
-                } else {
-                    let hs = snap(h, scale).max(1. / scale);
-                    style.size.height = px(hs).into();
-                    style.aspect_ratio = Some(w / hs);
-                }
-                return (window.request_layout(style, [], cx), TextState { layout });
+                let mut wide = Style::default();
+                wide.size.height = px(dp).into();
+                wide.aspect_ratio = Some(w / dp);
+                let mut tall = Style::default();
+                tall.size.width = px(dp).into();
+                tall.aspect_ratio = Some(dp / (h - dp));
+                let mut leaves: SmallVec<[LayoutId; 6]> = SmallVec::new();
+                leaves.push(window.request_layout(wide, [], cx));
+                leaves.push(window.request_layout(tall, [], cx));
+                let offsets = layout.borrow().as_ref().map(|l| l.line_offsets(clamp));
+                let probes = baseline_probes(offsets.into_iter().flatten(), window, cx);
+                leaves.extend(probes.iter().map(|p| p.1));
+                style.display = Display::Flex;
+                style.flex_direction = FlexDirection::Column;
+                style.align_items = Some(AlignItems::FlexStart);
+                return (
+                    window.request_layout(style, leaves, cx),
+                    TextState {
+                        layout,
+                        exact: None,
+                        probes,
+                        baselines: Vec::new(),
+                    },
+                );
             }
         }
-        let layout_id =
-            window.request_measured_layout(style, move |known, available, window, _| {
+        let exact = exact_cell(id, window);
+        let guess = layout
+            .borrow()
+            .as_ref()
+            .map_or(0., |l| l.unwrapped_height(clamp));
+        let mut leaves = text_leaves(
+            style.min_size.width,
+            exact.as_ref(),
+            guess,
+            window,
+            cx,
+            move |known, available, window| {
                 let mut slot = measure_slot.borrow_mut();
                 let Some(laid) = slot.as_mut() else {
-                    return size(px(0.), px(0.));
+                    return (0., 0.);
                 };
                 let width = known.width.map(f32::from).or(match available.width {
                     AvailableSpace::Definite(w) => Some(w.into()),
@@ -1087,9 +1231,21 @@ impl Element for Text {
                 // Truncated text measures at its full width; the box decides where it cuts.
                 let width = if truncate { None } else { width };
                 laid.relayout(width, ws, anywhere, clamp, false, window);
-                laid.size(window.scale_factor())
-            });
-        (layout_id, TextState { layout })
+                laid.size()
+            },
+        );
+        let offsets = layout.borrow().as_ref().map(|l| l.line_offsets(clamp));
+        let probes = baseline_probes(offsets.into_iter().flatten(), window, cx);
+        leaves.extend(probes.iter().map(|p| p.1));
+        (
+            window.request_layout(style, leaves, cx),
+            TextState {
+                layout,
+                exact,
+                probes,
+                baselines: Vec::new(),
+            },
+        )
     }
 
     fn prepaint(
@@ -1110,7 +1266,9 @@ impl Element for Text {
                 self.ellipsis,
                 window,
             );
+            check_exact(state.exact.as_ref(), laid.measured().1, window);
         }
+        state.baselines = resolve_probes(&state.probes, window);
     }
 
     fn paint(
@@ -1127,12 +1285,13 @@ impl Element for Text {
         let Some(laid) = slot.as_ref() else { return };
         let clip = self.ellipsis || self.clamp.is_some();
         let align = self.align;
+        let at = (0., state.baselines.as_slice());
         if clip {
             window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
-                paint_lines(laid, bounds, align, self.mask.as_ref(), window)
+                paint_lines(laid, bounds, at, align, self.mask.as_ref(), window)
             });
         } else {
-            paint_lines(laid, bounds, align, self.mask.as_ref(), window);
+            paint_lines(laid, bounds, at, align, self.mask.as_ref(), window);
         }
     }
 }
@@ -1141,6 +1300,7 @@ impl Element for Text {
 /// blocks lay out together at exact LayoutUnit offsets and the stack's height rounds once, as
 /// WebKit stacks block boxes; separate [`Text`] elements would each round to a device pixel.
 pub struct TextStack {
+    id: Option<ElementId>,
     blocks: Vec<(f32, Text)>,
     layouts: Rc<RefCell<Vec<Laid>>>,
 }
@@ -1148,6 +1308,7 @@ pub struct TextStack {
 /// A stack of text blocks; each entry is (margin above, block).
 pub fn text_stack(blocks: Vec<(f32, Text)>) -> TextStack {
     TextStack {
+        id: None,
         blocks,
         layouts: Rc::default(),
     }
@@ -1161,6 +1322,12 @@ impl IntoElement for TextStack {
 }
 
 impl TextStack {
+    /// With an id the stack keeps its exact fractional height across frames.
+    pub fn id(mut self, id: impl Into<ElementId>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
     fn relayout(
         &self,
         layouts: &mut [Laid],
@@ -1186,12 +1353,18 @@ impl TextStack {
     }
 }
 
+pub struct StackState {
+    exact: Option<ExactCell>,
+    probes: Vec<(f32, LayoutId)>,
+    baselines: Baselines,
+}
+
 impl Element for TextStack {
-    type RequestLayoutState = ();
+    type RequestLayoutState = StackState;
     type PrepaintState = ();
 
     fn id(&self) -> Option<ElementId> {
-        None
+        self.id.clone()
     }
 
     fn source_location(&self) -> Option<&'static std::panic::Location<'static>> {
@@ -1200,11 +1373,11 @@ impl Element for TextStack {
 
     fn request_layout(
         &mut self,
-        _: Option<&GlobalElementId>,
+        id: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
-        _: &mut App,
-    ) -> (LayoutId, ()) {
+        cx: &mut App,
+    ) -> (LayoutId, StackState) {
         let built: Vec<Laid> = self
             .blocks
             .iter()
@@ -1217,8 +1390,20 @@ impl Element for TextStack {
             .iter()
             .map(|(g, t)| (*g, t.white_space, t.anywhere, t.clamp, t.ellipsis))
             .collect();
-        let id =
-            window.request_measured_layout(Style::default(), move |known, available, window, _| {
+        let exact = exact_cell(id, window);
+        let guess = self
+            .blocks
+            .iter()
+            .zip(self.layouts.borrow().iter())
+            .map(|((gap, t), l)| gap + l.unwrapped_height(t.clamp))
+            .sum();
+        let mut leaves = text_leaves(
+            px(0.).into(),
+            exact.as_ref(),
+            guess,
+            window,
+            cx,
+            move |known, available, window| {
                 let mut layouts = layouts.borrow_mut();
                 let width = known.width.map(f32::from).or(match available.width {
                     AvailableSpace::Definite(w) => Some(w.into()),
@@ -1241,10 +1426,26 @@ impl Element for TextStack {
                     h += gap + lh;
                     w = w.max(lw);
                 }
-                let scale = window.scale_factor();
-                size(px(snap(w, scale)), px(snap(h, scale)))
-            });
-        (id, ())
+                (w, h)
+            },
+        );
+        let mut offsets = Vec::new();
+        let mut top = 0.;
+        for ((gap, t), l) in self.blocks.iter().zip(self.layouts.borrow().iter()) {
+            top += gap;
+            offsets.extend(l.line_offsets(t.clamp).map(|o| top + o));
+            top += l.unwrapped_height(t.clamp);
+        }
+        let probes = baseline_probes(offsets.into_iter(), window, cx);
+        leaves.extend(probes.iter().map(|p| p.1));
+        (
+            window.request_layout(Style::default(), leaves, cx),
+            StackState {
+                exact,
+                probes,
+                baselines: Vec::new(),
+            },
+        )
     }
 
     fn prepaint(
@@ -1252,12 +1453,20 @@ impl Element for TextStack {
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         bounds: Bounds<Pixels>,
-        _: &mut (),
+        state: &mut StackState,
         window: &mut Window,
         _: &mut App,
     ) {
         let mut layouts = self.layouts.borrow_mut();
         self.relayout(&mut layouts, Some(bounds.size.width.into()), true, window);
+        let h = self
+            .blocks
+            .iter()
+            .zip(layouts.iter())
+            .map(|((gap, _), laid)| gap + laid.measured().1)
+            .sum();
+        check_exact(state.exact.as_ref(), h, window);
+        state.baselines = resolve_probes(&state.probes, window);
     }
 
     fn paint(
@@ -1265,7 +1474,7 @@ impl Element for TextStack {
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         bounds: Bounds<Pixels>,
-        _: &mut (),
+        state: &mut StackState,
         _: &mut (),
         window: &mut Window,
         _: &mut App,
@@ -1279,21 +1488,25 @@ impl Element for TextStack {
                 origin: point(bounds.origin.x, px(y)),
                 size: size(bounds.size.width, px(h)),
             };
+            let at = (y - f32::from(bounds.origin.y), state.baselines.as_slice());
             if t.ellipsis || t.clamp.is_some() {
                 window.with_content_mask(Some(gpui_kit::ContentMask { bounds: b }), |window| {
-                    paint_lines(laid, b, t.align, t.mask.as_ref(), window)
+                    paint_lines(laid, b, at, t.align, t.mask.as_ref(), window)
                 });
             } else {
-                paint_lines(laid, b, t.align, t.mask.as_ref(), window);
+                paint_lines(laid, b, at, t.align, t.mask.as_ref(), window);
             }
             y += h;
         }
     }
 }
 
+/// Paint laid lines in `bounds`. `at` is the block's offset below the box top and the box's
+/// probed baselines; a line without a probe snaps its own baseline.
 fn paint_lines(
     laid: &Laid,
     bounds: Bounds<Pixels>,
+    at: (f32, &[(f32, f32)]),
     align: Align,
     mask: Option<&AlphaMask>,
     window: &mut Window,
@@ -1303,7 +1516,11 @@ fn paint_lines(
     for (li, line) in laid.lines.iter().enumerate() {
         let p = &laid.paras[line.para];
         let top = f32::from(bounds.origin.y) + laid.metrics.height * li as f32;
-        let baseline = snap(top + laid.metrics.baseline, scale);
+        let offset = at.0 + laid.metrics.height * li as f32 + laid.metrics.baseline;
+        let baseline =
+            at.1.iter()
+                .find(|(o, _)| (o - offset).abs() < 1e-3)
+                .map_or_else(|| snap(top + laid.metrics.baseline, scale), |b| b.1);
         let start_x = p.line_start(line.range.start);
         let offset = match align {
             Align::Left => 0.,

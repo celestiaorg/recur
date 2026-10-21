@@ -23,6 +23,7 @@ pub use view::{MarkdownEvent, MarkdownView};
 pub mod gallery;
 pub mod streaming;
 pub mod svg;
+pub mod html;
 pub mod preview;
 pub mod pdf;
 pub use streaming::StreamingMarkdown;

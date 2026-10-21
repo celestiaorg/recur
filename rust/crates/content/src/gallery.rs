@@ -65,7 +65,29 @@ impl Render for Streaming {
     }
 }
 
-pub fn build(name: &str, _window: &mut Window, cx: &mut App) -> Option<AnyView> {
+/// A preview filling the window (`.content-scene`).
+struct Full(AnyView);
+
+impl Render for Full {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        body(cx).size_full().flex().flex_col().child(self.0.clone())
+    }
+}
+
+fn preview(kind: crate::preview::PreviewKind, content: &str, path: &str, window: &mut Window, cx: &mut App) -> AnyView {
+    let scroll = std::rc::Rc::new(std::cell::RefCell::new(crate::preview::scroll::PreviewScrollStore::new()));
+    let p = cx.new(|cx| crate::preview::view::FilePreview::new(kind, content.to_string(), path.to_string(), scroll, window, cx));
+    AnyView::from(cx.new(|_| Full(p.into())))
+}
+
+pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
+    // No application loop answers the webview here: Mermaid renders on the spot.
+    cx.set_global(crate::mermaid::BlockingRenders);
+    if std::env::var_os("RECUR_PROBE").is_some() {
+        let html = std::fs::read_to_string("/tmp/probe.html").unwrap_or_default();
+        eprintln!("probe {:?}", crate::mermaid::engine::call_blocking(serde_json::json!({"op": "probe", "html": html})));
+    }
+    use crate::preview::PreviewKind;
     let md = |text: &'static str, cx: &mut App| {
         let v = cx.new(|cx| MarkdownView::new(text, MarkdownClass::ChatCanvas, false, cx));
         AnyView::from(cx.new(|_| Padded(v)))
@@ -73,6 +95,9 @@ pub fn build(name: &str, _window: &mut Window, cx: &mut App) -> Option<AnyView> 
     Some(match name {
         "markdown/chat" | "markdown/paper" => md(CHAT_MD, cx),
         "mermaid/sequence" => md(SEQUENCE_MD, cx),
+        "mermaid/flowchart" => preview(PreviewKind::Mermaid, FLOW_MMD, "flow.mmd", window, cx),
+        "file-preview/markdown" => preview(PreviewKind::Markdown, README_MD, "README.md", window, cx),
+        "file-preview/svg" => preview(PreviewKind::Svg, LOGO_SVG, "logo.svg", window, cx),
         "markdown/streaming" => {
             // The worker's output, produced on the spot so the headless frame has it.
             let render = std::rc::Rc::new(|src: &str, _: &str| {

@@ -4,6 +4,16 @@ Every surface of the Go/Svelte app that the Rust port must carry over. Nothing h
 
 Legend: `[ ]` not started, `[~]` in progress, `[x]` ported and verified.
 
+## Open follow-ups
+
+Gaps found while porting that are not yet owned by a slice. Each must be closed before promotion.
+
+- [ ] **Linux: Mermaid and PDF.** `recur-content` runs mermaid.js and pdf.js in a hidden WebKit page on macOS only; Linux builds show an error in their place. Add the WebKitGTK 6.0 path (the Go app already depends on it).
+- [ ] **Linux build and CI.** Nothing in `rust/` is built or tested on Linux yet. Add a `rust-linux` CI job (Ubuntu 24.04) and fix what it finds.
+- [ ] **`recur_ui::text`: inline code chip at a wrap start** keeps its left padding on the previous line (`file-preview/markdown`, 514 hard pixels).
+- [ ] **`overlays/palette`:** keycaps at fractional offsets in a scrolled list and the list thumb's end land one device pixel off (388 hard pixels).
+- [ ] **Editor LSP adapter.** `recur-lsp` is a transport; the app layer needs the adapter that implements `recur_editor::lsp::LspClient` (request ids, `initialize`, document versions, change batching). Owned by the code-editor view port.
+
 ## Application services (former Wails bindings)
 
 Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/app`. Rust home: `recur-services`. The contract is `recur_services::api` (one async trait per service, annotated below with `Trait::method`); `recur_services::mock` answers all of it for views today. Items tick when the real implementation over the engine (slice SV) lands.
@@ -438,7 +448,8 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Arm on click, confirm on the next pointer-up (handled in capture so it precedes GPUI's click), swallow the click echo, timeout reset (3s default), disabled resets
   - [x] `.tbtn.danger` / `.armed` looks at base and titlebar sizes, icon slot, title tooltip, `on_arm`
 - [ ] `ArtifactsPanel.svelte` (320 lines)
-- [ ] `AttachmentLightbox.svelte` (155 lines)
+- [x] `AttachmentLightbox.svelte` (155 lines) → `recur_content::AttachmentLightbox` (scene `lightbox/image`)
+  - [x] Fit inside the padded viewport at WebKit's fractional geometry, actual-size toggle when scaled, Escape / ⌘C, copy and close buttons with titles, backdrop click closes, context menu, deferred overlay at the lightbox's z-order; `fit` test ported
 - [x] `CodeEditor.svelte` (1405 lines) → `recur_editor::view::EditorView` (`EditorKind::Code`); scenes `editor/code`, `editor/paper`, `editor/find`, `editor/vim`
   - [x] Base extensions in order: history, indent on input, Enter between pairs, close brackets, completion (bundle snippets + buffer words), selection-match highlights, pointer selection, find panel, the code keymap, Mod-click / F12 definitions
   - [x] Pref compartments (theme, chrome, wrap, indent, features, keymap, diff gutter, read-only) through `set_prefs` / `set_theme`; app chrome tokens follow `recur_ui::Theme`
@@ -459,7 +470,9 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `DiffFile.svelte` (898 lines)
 - [ ] `EmojiSuggest.svelte` (90 lines)
 - [ ] `FanOutCard.svelte` (234 lines)
-- [ ] `FilePreview.svelte` (364 lines)
+- [x] `FilePreview.svelte` (364 lines) → `recur_content::FilePreview` (scenes `file-preview/markdown`, `file-preview/svg`)
+  - [x] Markdown (`.md-doc`), SVG (`<img>` raster with its ring), HTML (`HtmlPreview`: an embedded WKWebView over the srcdoc shell and CSP, find through its page script, no sibling-file loading) and Mermaid surfaces, empty states, scroll restore and save through the preview scroll store, parked shells
+  - [x] Find bar (count, previous / next, case / regexp / word toggles), ⌘F / Escape / ⌘G / F3 while active, none for SVG, recollect when the rendered text changes, highlights only on the active preview; `FilePreview.test.ts` ported (`tests/file_preview.rs`)
 - [ ] `FilesChangedView.svelte` (712 lines)
 - [ ] `FindingsPanel.svelte` (506 lines)
 - [x] `Icon.svelte` (51 lines) → `recur_ui::icon` (`Icon`, `icon`, `svg_markup`)
@@ -468,7 +481,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [x] `IconPicker.svelte` (237 lines) → `recur_ui::widgets::IconPicker` (scenes `icon-picker/closed`, `icon-picker/open`)
   - [x] `.ico-pick.sel.sm` trigger (hover, open, `:focus-visible` ring and outline, disabled fade), searchable 8-column grid with the themed scrollbar, current icon first, 80-hit search, arrow/Home/End/Enter/Escape keys, hover gate, outside-press close, `IconPicked` event
   - [x] `shown_icons` ported with its cases
-- [ ] `ImageContextMenu.svelte` (84 lines)
+- [x] `ImageContextMenu.svelte` (84 lines) → `recur_content::image_menu` (position clamp, copy image as PNG, open externally)
 - [ ] `InboxTitlebar.svelte` (24 lines)
 - [ ] `Issues.svelte` (512 lines)
 - [x] `Kbd.svelte` (13 lines) → `recur_ui::kbd` (`kbd`, `shortcut_parts`); scene `kbd/default` with `.pk`, `.pal-foot .k` and `.esc` keycaps
@@ -476,9 +489,11 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `LineNoteThread.svelte` (375 lines)
 - [ ] `LoopPolicyPickers.svelte` (93 lines)
 - [x] `LucideIcon.svelte` (26 lines) → `recur_ui::lucide_icon` (aliases, unknown names draw nothing); scene `icons/lucide`
-- [ ] `MarkdownHtml.svelte` (87 lines)
+- [x] `MarkdownHtml.svelte` (87 lines) → `recur_content::MarkdownView` (scenes `markdown/chat`, `markdown/paper`, `mermaid/sequence`)
+  - [x] Sanitized HTML laid out natively in `.chat-canvas` / `.md-doc`: headings, lists with WebKit's markers, task checkboxes, tables, fences with codehl and copy buttons, blockquotes, links (hover, open externally), images (data and `/gh-image` through `ImageLoader`, lightbox), Mermaid hydration, find highlights through the text mirror
 - [x] `MergeEditor.svelte` (703 lines) → `EditorView` with `EditorKind::Merge` (`merge.rs`: unified merge view, collapsed regions, full-line marks, change gutter, revert chip and `revertHunk` with Mod-Alt-z)
-- [ ] `MermaidPreview.svelte` (329 lines)
+- [x] `MermaidPreview.svelte` (329 lines) → `recur_content::MermaidPreview` (scene `mermaid/flowchart`)
+  - [x] Fit, zoom (toolbar, wheel, double-click), pan, camera persisted per path through the preview scroll store, toolbar, pending / error / empty states, find over the labels with highlights and pan-to-match
 - [ ] `MiniScriptEditor.svelte` (295 lines)
 - [ ] `ModelFlagsSelect.svelte` (305 lines)
 - [ ] `ModelPickers.svelte` (79 lines)
@@ -488,7 +503,8 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `PRPeopleStack.svelte` (64 lines)
 - [ ] `PRReviewModal.svelte` (180 lines)
 - [ ] `PRTitlebarActions.svelte` (520 lines)
-- [ ] `PdfPreview.svelte` (289 lines)
+- [x] `PdfPreview.svelte` (289 lines) → `recur_content::PdfPreview` on pdf.js 6.3.289 in a hidden WebKit page (scene `pdf/page`; decision in `ARCHITECTURE.md`)
+  - [x] Fit-to-width on load, zoom (toolbar, ⌘+ / ⌘-) within 0.1-8, page field (Enter / blur commit) and previous / next, page follows the scroll, pages render while they intersect the viewport and are discarded when they leave it, loading and error states
 - [ ] `PermissionCard.svelte` (116 lines)
 - [ ] `PermissionPrompts.svelte` (63 lines)
 - [ ] `PlanCard.svelte` (115 lines)
@@ -526,7 +542,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Keyboard-cycle scan (peek, commit, persist), reveal scheduled rows, scroll the selected row into view below sticky headers
   - [x] Collapsed-rail flyout: edge hover / tap, show and hide delays, hold while a menu, arm or drag is active, slide and shadow, focus parked in the content column when it closes
 - [ ] `StopPalette.svelte` (164 lines)
-- [ ] `StreamingMarkdown.svelte` (85 lines)
+- [x] `StreamingMarkdown.svelte` (85 lines) → `recur_content::StreamingMarkdown` (scene `markdown/streaming`; `StreamingMarkdown.test.ts` ported)
 - [ ] `SyntaxPalette.svelte` (317 lines)
 - [x] `TabChip.svelte` (293 lines) → `recur_ui::widgets::tab_chip` (scenes `tab-strip/default`, `tab-strip/paper`, `tab-strip/hover`)
   - [x] Active, lit, dirty, unseen, badge, busy wash (per-pixel mask over icon and label), muted, decoded label, app and file icons, close button with tooltip, reorder cursors, floating chip with eased lift shadow
@@ -659,7 +675,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/editor-session.ts` (870 lines) → `recur_editor::session` (shape, caps, pruning, wire format, patch gate; debounced writes are the host's)
 - [x] `lib/editor-view-state.ts` (443 lines) → `recur_editor::view_state` + `EditorView::apply_view_state`
 - [x] `lib/editor-view.ts` (136 lines) → `recur_editor::view_state` (view-mode chip, SCM base rules)
-- [ ] `lib/emoji.ts` (197 lines)
+- [x] `lib/emoji.ts` (197 lines) → `recur_content::emoji` (shortcode expansion outside code; the shortcode table is read from `frontend/src/lib/emoji-shortcodes.json`)
 - [ ] `lib/explorer-visible.ts` (33 lines)
 - [ ] `lib/file-drag.ts` (332 lines)
 - [ ] `lib/file-icons/icon-tables.ts` (52 lines)
@@ -699,15 +715,15 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [ ] The `LspClient` adapter over `recur_lsp::Manager` (request ids, `initialize`, `didOpen` / `didChange` versions) lives in `recur-app`
 - [x] `lib/lucide-icons.ts` (82 lines) → `recur_ui::assets` (`lucide_icons`, `lucide_suggested`, `lucide_entry`, `has_lucide_icon`, aliases; generated `lucide.json`)
 - [ ] `lib/macro-worker.ts` (479 lines)
-- [ ] `lib/markdown-host.ts` (262 lines)
-- [ ] `lib/markdown-parse.ts` (191 lines)
-- [ ] `lib/markdown-worker.ts` (20 lines)
-- [ ] `lib/markdown.ts` (51 lines)
+- [x] `lib/markdown-host.ts` (262 lines) → `recur_content::markdown::host` (byte-budget LRU, per-entry cap, keyed streaming renders, worker threads, 2s watchdog with strikes)
+- [x] `lib/markdown-parse.ts` (191 lines) → `recur_content::markdown::parse` over a verbatim `marked` 18 port (`marked/`, 820-case golden)
+- [x] `lib/markdown-worker.ts` (20 lines) → `MarkdownHost` worker threads
+- [x] `lib/markdown.ts` (51 lines) → `recur_content::markdown` with a DOMPurify 3 port (`purify/`, golden); `markdown.test.ts` ported
 - [x] `lib/mcp.ts` (69 lines) → `recur_agent::mcp` over `recur_domain::McpServer` (untrimmed id rule, slug, global off-list, Linear upsert, custom list, enable/remove/update keeping the id; `mcp.test.ts` ported)
 - [ ] `lib/mdcopy.ts` (88 lines)
 - [x] `lib/menu-space.ts` (248 lines) → `recur_ui::logic::menu_space` (`menu_viewport_space`, `menu_prefer_up`, `menu_fixed_box`, `clamp_menu_left`, `popover_top`, `more_menu_fixed_box`, `rects_overlap`, `MenuVariant` sizes; cases ported). Window resize/scroll watching belongs to the overlay owner
 - [x] `lib/menu.ts` (152 lines) → `recur_view_core::menu` (`MenuState` merge, idle state, `terminalIdFromMenu`, theme lists and state) and `recur_app::menu`
-- [ ] `lib/mermaid.ts` (137 lines)
+- [x] `lib/mermaid.ts` (137 lines) → `recur_content::mermaid` (config and theme variables, ids, hydration, `unclipMermaidSvg` in the page script); mermaid 11.16.1 in a hidden WebKit page, drawn natively (decision in `ARCHITECTURE.md`)
 - [ ] `lib/models.ts` (179 lines)
 - [x] `lib/modes.ts` (419 lines): shell and sidebar predicates (`wsRunActive`, `workspaceIsRunning`, `parkedNeedsYouByWorkspace`, `sidebarUnreadTitle`, `workspaceShowsRemove`, `workspaceCanRemove`, `wsCreating`, `wsMainBlocked`) → `recur_view_core::modes`; the chat-mode half (dock mode list, cycling, per-mode Settings default model, picker rule after a switch, create/setup predicates) → `recur_engine::view::modes`; `modes.test.ts` ported
 - [ ] `lib/mono-fonts.ts` (236 lines)
@@ -717,7 +733,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/open-path.ts` (48 lines) → `Shell::pick_and_open_path`, `AppState::apply_open_path_result`
 - [x] `lib/open-pr-tool.ts` (70 lines) → `recur_agent_tools::display::open_pr_tool` (`open-pr-tool.test.ts` ported)
 - [x] `lib/overlay-scrollbar.ts` (141 lines) → `recur_ui::widgets::scroll_area(..).overlay()` (`overlay_thumb`, `scroll_from_track` with cases; show on scroll, hover and drag, 700ms hide, .12s/.45s fades, track press and drag); scenes `scrollbar/default`, `scrollbar/paper`
-- [ ] `lib/pdf-preview.ts` (85 lines)
+- [x] `lib/pdf-preview.ts` (85 lines) → `recur_content::pdf::logic`; `discardPageCanvas` is the slot drop, `pdfjsAssetDirs` the `recur-pdf:` asset routes (`pdf/engine.rs` test)
 - [x] `lib/permissionTools.ts` (60 lines) → `recur_agent_tools::display::permission_tools::permission_tool_label`
 - [x] `lib/plantools.ts` (120 lines) → `recur_agent_tools::display::plan_tools` (step/attachment/body parsing, labels, ack title recovery)
 - [ ] `lib/pr-attention.ts` (98 lines)
@@ -734,9 +750,9 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/pr-participants.ts` (165 lines) → `recur_forge::view` (`PrPerson`, `PR_FACE_CAP`, `pr_participants`, `pr_people_with_reviews`, `reviewer_summary`, `review_state_label`, `participant_label`, `participant_initials`, `participant_avatar_url` via `Forge::avatar_url(.., 40)`, `pr_face_slots`, `person_key`); test file ported
 - [ ] `lib/pr-thread-resolved.ts` (43 lines)
 - [~] `lib/pr-workspace.ts` (107 lines): `prAgentWorkspaceId`, `prChatHostRunningCount`, `prChatHostUnseenCount`, `prIdForChatWorkspace` → `recur_view_core::pr`; the rest moves with PR detail
-- [ ] `lib/preview-find.ts` (260 lines)
-- [ ] `lib/preview-scroll.ts` (237 lines)
-- [ ] `lib/preview.ts` (139 lines)
+- [x] `lib/preview-find.ts` (260 lines) → `recur_content::preview::find` over rendered text blocks (the DOM walk's script / style / hidden skips have no native counterpart: those nodes never render)
+- [x] `lib/preview-scroll.ts` (237 lines) → `recur_content::preview::scroll`; `preview-scroll.test.ts` ported
+- [x] `lib/preview.ts` (139 lines) → `recur_content::preview` (kinds, find gating, CSP, srcdoc shell and scripts byte-identical); the iframe find-reveal case needs a live webview and is not ported as a unit test
 - [x] `lib/project-pic.ts` (120 lines) → `recur_ui::widgets::project_pic` (`parse_project_pic`, `format_lucide_pic`, `is_letter_pic`, `project_pic_from_name`, `letter_from_name`, `PROJECT_COLORS`, `fg_on_background`; cases ported)
 - [~] `lib/promptActions.ts` (438 lines) → `recur_engine::view::prompts` (`pick_prompt_tab`, disabled prompts, slash lookup, arg slots, `params_from_args`, `/` menu gates, committed lines, args query, prompt context, error wording) over `recur_bundles::PromptAction`; `promptActions.test.ts` ported. Left for `recur-app`/SV: the titlebar request store, the list cache and the BundleService/Worker run and complete calls
 - [x] `lib/providerUsage.ts` (141 lines) → `recur_view_sidebar::usage` (cases ported)
@@ -750,7 +766,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/review-window.ts` (263 lines)
 - [x] `lib/run-commands.ts` (69 lines) → `recur_view_core::run` (`project_runs`, `project_default_run`, `run_label`, `filter_runs`, `order_runs`; cases ported)
 - [~] `lib/run-dev.ts` (426 lines): the run store (sessions, tabs, starting / launched / busy bookkeeping), run and stop requests and menus, `workspaceRun` / `workspaceDevCmd` → `recur_view_core::run` and `AppState`; launching into the terminal dock moves with it
-- [ ] `lib/sanitize-lsp.ts` (20 lines)
+- [x] `lib/sanitize-lsp.ts` (20 lines) → `recur_content::sanitize_lsp` (recur-editor lays LSP docs out from markdown events and needs no HTML sanitizing)
 - [ ] `lib/schedule-expanded.ts` (34 lines)
 - [ ] `lib/scroll-fade.ts` (132 lines)
 - [ ] `lib/session-feed.svelte.ts` (314 lines)

@@ -17,10 +17,11 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   terminal?: Scene[]
   terminalInputs?: Record<string, string>
   shell?: Scene[]
+  content?: Scene[]
 }
 // Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
 // mount App.svelte over an edited seed (see `patchSeed`).
-const scenes = [...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? [])]
+const scenes = [...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? []), ...(spec.content ?? [])]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
 

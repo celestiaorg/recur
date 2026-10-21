@@ -6,8 +6,9 @@
 //!
 //! Ownership is per method (plan §2.4). E1 implements the loop-flow
 //! signals, E2 the chat, artifact, rename, permission, plan, skill and
-//! terminal tools; every other method keeps the trait default (Go's
-//! `noopReporter`) until its slice adds it here.
+//! terminal tools, E3 the conductor hands, E4 switch_mode, create_workspace,
+//! the child tools and the Ask Recur briefing tools; every other method keeps
+//! the trait default (Go's `noopReporter`) until its slice adds it here.
 
 pub mod backfill;
 pub mod chat;
@@ -15,10 +16,11 @@ pub mod chat;
 use std::sync::{Arc, Weak};
 
 use recur_agent_tools::{
-    AskUserRequest, CreateArtifactRequest, EscalationRequest, Evidence, Finding, Host, HostError,
-    PermissionAsk, PermissionVerdict, PlanSubmission, TerminalInfo,
+    AskUserRequest, CreateArtifactRequest, CreateWorkspaceRequest, EscalationRequest, Evidence,
+    Finding, Host, HostError, NoopHost, PermissionAsk, PermissionVerdict, PlanSubmission,
+    TerminalInfo,
 };
-use recur_domain::{AgentSkill, Artifact};
+use recur_domain::{AgentSkill, Artifact, BriefingSnapshot, WorkspaceContext};
 use recur_domain::{
     CHAT_MODE_LOOP, CHAT_MODE_REVIEW, FINDING_ACTOR_CODER, FINDING_ACTOR_REVIEWER, FindingStatus,
     TestResult, finding_loc, normalize_chat_mode,
@@ -484,6 +486,88 @@ impl Host for EngineHost {
             .engine()
             .ok_or_else(|| HostError::new("no Observatory terminals in this session"))?;
         e.read_agent_terminal(ws, id, tail_lines)
+    }
+
+    async fn switch_mode(&self, ws: &str, agent: &str, mode: &str) -> String {
+        match self.engine() {
+            Some(e) => e.switch_chat_mode(ws, agent, mode).await,
+            None => NoopHost.switch_mode(ws, agent, mode).await,
+        }
+    }
+
+    async fn create_workspace(&self, ws: &str, agent: &str, req: CreateWorkspaceRequest) -> String {
+        match self.engine() {
+            Some(e) => e.create_workspace_from_chat(ws, agent, req).await,
+            None => NoopHost.create_workspace(ws, agent, req).await,
+        }
+    }
+
+    async fn merge_child(&self, ws: &str, agent: &str, child_id: &str) -> String {
+        match self.engine() {
+            Some(e) => e.merge_child_from_chat(ws, child_id).await,
+            None => NoopHost.merge_child(ws, agent, child_id).await,
+        }
+    }
+
+    async fn read_child(&self, ws: &str, agent: &str, child_id: &str) -> String {
+        match self.engine() {
+            Some(e) => e.read_child_from_chat(ws, child_id).await,
+            None => NoopHost.read_child(ws, agent, child_id).await,
+        }
+    }
+
+    async fn archive_child(&self, ws: &str, agent: &str, child_id: &str) -> String {
+        match self.engine() {
+            Some(e) => e.archive_child_from_chat(ws, child_id).await,
+            None => NoopHost.archive_child(ws, agent, child_id).await,
+        }
+    }
+
+    async fn message_child(&self, ws: &str, agent: &str, child_id: &str, message: &str) -> String {
+        match self.engine() {
+            Some(e) => e.message_child_from_chat(ws, child_id, message).await,
+            None => NoopHost.message_child(ws, agent, child_id, message).await,
+        }
+    }
+
+    async fn read_child_artifact(
+        &self,
+        ws: &str,
+        agent: &str,
+        child_id: &str,
+        artifact_id: &str,
+    ) -> Result<String, HostError> {
+        match self.engine() {
+            Some(e) => e
+                .read_child_artifact_from_chat(ws, child_id, artifact_id)
+                .map_err(|err| HostError(err.0)),
+            None => {
+                NoopHost
+                    .read_child_artifact(ws, agent, child_id, artifact_id)
+                    .await
+            }
+        }
+    }
+
+    async fn list_workspace_briefs(&self) -> BriefingSnapshot {
+        match self.engine() {
+            Some(e) => e.briefing_snapshot(),
+            None => NoopHost.list_workspace_briefs().await,
+        }
+    }
+
+    async fn workspace_context(&self, id: &str) -> Result<WorkspaceContext, HostError> {
+        match self.engine() {
+            Some(e) => e.workspace_context(id).map_err(|err| HostError(err.0)),
+            None => NoopHost.workspace_context(id).await,
+        }
+    }
+
+    async fn present_workspace(&self, target: &str) -> String {
+        match self.engine() {
+            Some(e) => e.present_workspace(target),
+            None => NoopHost.present_workspace(target).await,
+        }
     }
 }
 

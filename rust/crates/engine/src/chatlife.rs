@@ -430,6 +430,16 @@ impl Engine {
         });
     }
 
+    /// A live remount generation belongs to this workspace (a mode switch's
+    /// continuation has not run yet).
+    pub fn workspace_has_live_continue(&self, workspace_id: &str) -> bool {
+        self.continue_gens
+            .lock()
+            .live
+            .values()
+            .any(|id| id.workspace_id == workspace_id)
+    }
+
     /// Drops every live generation (ClearAll).
     pub(crate) fn invalidate_all_continue_gens(&self) {
         self.continue_gens.lock().live.clear();

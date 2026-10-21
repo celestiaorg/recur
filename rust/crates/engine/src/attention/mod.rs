@@ -36,7 +36,7 @@ impl ChatFocus {
         }
     }
 
-    fn attentive(&self) -> bool {
+    pub(crate) fn attentive(&self) -> bool {
         self.app_focused && !self.ui_occludes_chat
     }
 }

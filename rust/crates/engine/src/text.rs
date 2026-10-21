@@ -134,6 +134,21 @@ pub fn first_non_empty_str<'a>(a: &'a str, b: &'a str) -> &'a str {
     if a.trim().is_empty() { b } else { a }
 }
 
+/// Go `strings.EqualFold`: equal under simple Unicode case folding.
+pub fn equal_fold(a: &str, b: &str) -> bool {
+    let fold = |c: char| {
+        let mut lower = c.to_lowercase();
+        match (lower.next(), lower.next()) {
+            (Some(l), None) => l,
+            _ => c,
+        }
+    };
+    a.chars().count() == b.chars().count()
+        && a.chars()
+            .zip(b.chars())
+            .all(|(x, y)| x == y || fold(x) == fold(y))
+}
+
 /// Go `strings.EqualFold(s, lit)` for an ASCII `lit`: only ASCII case and
 /// the two runes that simple-fold into ASCII letters (U+017F ſ → s, U+212A
 /// Kelvin sign → k) match.

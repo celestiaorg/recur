@@ -265,7 +265,7 @@ impl Engine {
         Ok(saved)
     }
 
-    fn start_allocate(&self, rec: Workspace) {
+    pub(crate) fn start_allocate(&self, rec: Workspace) {
         let alloc = Arc::new(CreatingAlloc {
             cancel: CancellationToken::new(),
             done: CancellationToken::new(),
@@ -297,7 +297,7 @@ impl Engine {
         });
     }
 
-    fn forget_creating(&self, id: &str, alloc: &Arc<CreatingAlloc>) {
+    pub(crate) fn forget_creating(&self, id: &str, alloc: &Arc<CreatingAlloc>) {
         let mut creating = self.creating.lock();
         if creating.get(id).is_some_and(|a| Arc::ptr_eq(a, alloc)) {
             creating.remove(id);

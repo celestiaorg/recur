@@ -3,6 +3,7 @@ pub mod blocks;
 pub mod byte_lru;
 pub mod cards;
 pub mod chat;
+pub mod chips;
 pub mod composer;
 pub mod composer_doc;
 pub mod composer_undo;

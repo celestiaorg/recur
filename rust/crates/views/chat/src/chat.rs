@@ -423,6 +423,7 @@ pub struct AgentChat {
     pub(crate) anim_epoch: std::time::Instant,
     pub(crate) think_scrolls: HashMap<String, ScrollHandle>,
     pub(crate) tool_data: Rc<ToolData>,
+    pub(crate) image_loading: HashMap<String, Task<()>>,
     pub(crate) selecting: bool,
 
     // ---- menus ----
@@ -566,6 +567,7 @@ impl AgentChat {
             anim_epoch: std::time::Instant::now(),
             think_scrolls: HashMap::new(),
             tool_data: Rc::default(),
+            image_loading: HashMap::new(),
             selecting: false,
             skill_index: Vec::new(),
             skill_index_key: String::new(),
@@ -1848,6 +1850,47 @@ impl AgentChat {
         cx.notify();
     }
 
+    /// `openImageCtx`: Copy Image at the pointer.
+    pub(crate) fn open_image_menu(
+        &mut self,
+        src: &str,
+        at: gpui_kit::Point<gpui_kit::Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let png = cx
+            .try_global::<recur_content::images::ImageCache>()
+            .and_then(|c| c.0.get(src))
+            .map(|d| d.png.clone());
+        let menu = cx.new(|cx| {
+            recur_content::image_menu::ImageContextMenu::new(
+                (f32::from(at.x), f32::from(at.y)),
+                png,
+                window,
+                cx,
+            )
+        });
+        let sub = cx.subscribe(&menu, |this: &mut Self, _, ev: &recur_content::image_menu::ImageMenuEvent, cx| {
+            use recur_content::image_menu::ImageMenuEvent;
+            match ev {
+                ImageMenuEvent::Close => this.img_ctx = None,
+                ImageMenuEvent::Toast { error, message } => recur_view_core::toast(
+                    if *error {
+                        recur_ui::widgets::toasts::ToastKind::Error
+                    } else {
+                        recur_ui::widgets::toasts::ToastKind::Success
+                    },
+                    message.clone(),
+                    cx,
+                ),
+            }
+            cx.notify();
+        });
+        self._subs.push(sub);
+        self.img_ctx = Some(menu);
+        cx.notify();
+    }
+
     // ---- stores the menus follow ----
 
     pub(crate) fn sync_mentions_from_stores(&mut self, cx: &mut Context<Self>) {
@@ -1976,14 +2019,6 @@ pub(crate) fn js_trim(s: &str) -> &str {
     recur_engine::view::js::trim(s)
 }
 
-pub(crate) fn file_query(m: &Option<MentionQuery>) -> Option<&MentionQuery> {
-    m.as_ref()
-}
-
-pub(crate) fn caret_queries(text: &str, caret: usize) -> (Option<MentionQuery>, Option<MentionQuery>) {
-    (mention_query_at(text, caret), skill_query_at(text, caret))
-}
-
 pub(crate) fn prompt_gate(text: &str, caret: usize) -> bool {
     prompt_action_query_at(text, caret).is_some()
 }
@@ -1994,8 +2029,4 @@ pub(crate) fn args_query(
     takes_args: &dyn Fn(&str) -> bool,
 ) -> Option<PromptArgsQuery> {
     prompt_args_query_at(text, caret, takes_args)
-}
-
-pub(crate) fn catalog(epoch: u64, cx: &App) -> Option<Rc<Vec<PromptActionInfo>>> {
-    PromptCatalog::peek(epoch, cx)
 }

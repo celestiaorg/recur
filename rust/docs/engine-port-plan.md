@@ -314,299 +314,146 @@ Every behavior the Go engine branches on by provider name is a capability or tra
 ### 2.1 `recur_agent::Provider`
 
 ```rust
-// crates/agent/src/provider.rs
-use std::{path::Path, sync::Arc};
-use serde_json::Value;
-use tokio::sync::{mpsc, oneshot};
-use tokio_util::sync::CancellationToken;
-
+// crates/agent/src/provider.rs (as built in slice A; the source is authoritative)
 pub type Flags = std::collections::BTreeMap<String, String>;
 
 #[async_trait::async_trait]
 pub trait Provider: Send + Sync + 'static {
-    /// Persisted slug ("claude-code", "codex", "cursor", compatible id).
-    fn id(&self) -> &str;
-    /// Picker group label ("Claude Code", "Cursor", ...).
-    fn label(&self) -> &str;
+    fn id(&self) -> &str;                    // "claude-code", "codex", "cursor", compatible id
+    fn label(&self) -> &str;                 // picker group label
     fn caps(&self) -> &ProviderCaps;
-
-    /// Enabled + configured under these settings. The router never falls back to
-    /// another provider: `Unavailable` becomes a visible turn error (Go resolveRunner).
+    /// The router never falls back: Unavailable(reason) is the visible turn error
+    /// with Go's exact wording ("Codex is turned off in Settings → Providers").
     fn availability(&self, settings: &Settings) -> Availability;
 
-    // ---- Settings screen (claude_status.go, codex_service.go, cursor_service.go, compatible_service.go)
     async fn status(&self, settings: &Settings) -> ProviderStatus;
-    /// Validate a draft credential without persisting it (throwaway process/bridge/ping).
-    async fn test_credentials(&self, draft: &CredentialDraft) -> Result<(), ProviderError>;
+    /// Default: status(settings) (providers without credentials).
+    async fn test_credentials(&self, settings: &Settings, draft: &CredentialDraft) -> ProviderStatus;
 
-    // ---- Model catalog (app/model_catalog.go branches)
-    /// Live list; providers without a catalog API return a static list.
     async fn models(&self, settings: &Settings) -> Result<Vec<ModelChoice>, ProviderError>;
-    /// Last good list (offline fallback, applyCatalogFallbacks).
     fn cached_models(&self, settings: &Settings) -> Vec<ModelChoice>;
-    /// Wire model id from a bare id + flags (Claude "[1m]" suffix, always-1M ids).
     fn resolve_model(&self, model: &str, flags: &Flags) -> String;
-    /// Context window for footers, context_usage and Cursor meter clamps. None = unknown.
-    fn context_window(&self, model: &str, flags: &Flags) -> Option<u64>;
-    /// Human label for fallback notices and footers (claudeModelLabel).
+    fn context_window(&self, model: &str, flags: &Flags) -> i64;   // 0 = unknown
     fn model_label(&self, model: &str) -> String;
-    /// Flags for one-shot title-model turns (commit message, PR text): effort low where supported.
     fn oneshot_flags(&self, model: &str) -> Flags;
 
-    // ---- Turns
-    /// One agent turn. Mirrors Go `AgentRunner.Run(ctx, spec, emit)`: events go to
-    /// `cx.sink` synchronously and in order; the result is returned, and also emitted
-    /// as `AgentEvent::TurnEnd` when the provider produced a real turn end.
-    /// Cancellation: `cx.cancel`. On cancel the provider stops the remote run, emits
-    /// nothing further, and returns `Err(ProviderError::canceled())`.
+    /// Go AgentRunner.Run. Events go to cx.sink in order, each run through a
+    /// ContextUsageTracker; every provider result frame is also emitted as
+    /// AgentEvent::TurnEnd (duration_ms > 0 marks a real turn end). On cancel:
+    /// stop the remote run, emit nothing further, return
+    /// Err(ProviderError::canceled().with_partial(result_so_far)).
     async fn run_turn(&self, req: TurnRequest, cx: TurnContext) -> Result<TurnResult, ProviderError>;
 
-    // ---- Session handles
-    /// Whether a stored resume handle belongs to this provider (Cursor "agent-..." ids,
-    /// Claude/Codex UUIDs). False makes the engine drop the handle and fork-inject the
-    /// transcript instead (chat_fork.go resumeFitsProvider).
     fn resume_handle_fits(&self, handle: &str) -> bool;
 
-    // ---- Display (toolview.go, cursortools.go, codex input mapping)
-    /// Canonical tool name + input for transcript/feed display. Default: passthrough.
-    fn display_tool(&self, name: &str, input: &Value) -> ToolDisplay {
-        ToolDisplay { name: name.to_owned(), input: input.clone() }
-    }
-    fn display_tool_result(&self, _name: &str, result: &str) -> String {
-        result.to_owned()
-    }
+    /// Raw JSON text in and out ("" = none). Defaults: passthrough. Callers use
+    /// recur_agent::display::{display_tool_result, summarize_display_input},
+    /// which add the provider-neutral rules (Task launch acks render empty).
+    fn display_tool(&self, name: &str, input: &str) -> ToolDisplay;
+    fn display_tool_result(&self, name: &str, result: &str) -> String;
 
-    // ---- Usage and lifecycle
-    /// Subscription quota source for the sidebar footer (recur-usage implements the probes).
     fn usage_probe(&self) -> Option<Arc<dyn UsageProbe>> { None }
-    /// A worktree is being removed: drop pooled processes bound to it, delete
-    /// provider-side project dirs (Cursor bridge pool + ~/.cursor/projects/<slug>).
     async fn release_worktree(&self, _worktree: &Path) {}
-    /// Agent slots went to zero (Cursor close-when-idle).
     async fn on_idle(&self) {}
-    /// Settings changed (Cursor: key or bridge path change tears down the pool).
     async fn settings_changed(&self, _old: &Settings, _new: &Settings) {}
     async fn shutdown(&self) {}
 }
 
-pub struct ProviderCaps {
-    /// How tool permission prompts reach the human.
-    pub permission: PermissionRoute,
-    /// Mid-turn steering. `None` makes the engine queue the steer as a new turn.
-    pub steer: SteerSupport,
-    /// Who owns conversation history across turns.
-    pub history: HistoryMode,
-    /// How Recur host tools reach the agent.
-    pub tool_transport: ToolTransport,
-    /// Native fork of a resumed session (Claude --fork-session).
+pub struct ProviderCaps {                    // Copy
+    pub permission: PermissionRoute,         // McpPromptTool | Callback | None
+    pub steer: SteerSupport,                 // None | Live | LiveOrRestart
+    pub history: HistoryMode,                // Native | App
+    pub tool_transport: ToolTransport,       // Mcp | InProcess
     pub native_fork: bool,
-    /// Accepts `TurnRequest.images`.
     pub images: bool,
-    /// `allowed_tools = Some(vec![])` really disables tools. Cursor: false, so the
-    /// engine gives one-shot turns Read/Glob/Grep instead (commit_message.go).
     pub can_disable_tools: bool,
-    /// Honors `TurnRequest.max_turns`.
     pub max_turns: bool,
-    /// Streams `ThinkingDelta`/`TextDelta` when `include_partials`.
     pub partials: bool,
-    /// Supports user MCP servers of each transport.
-    pub user_mcp: McpTransports,
+    pub user_mcp: McpTransports,             // { http, stdio }
 }
+pub enum Availability { Ready, Unavailable(String) }
+/// Union of Go ClaudeStatus / CodexStatus / CursorStatus / CompatibleTestResult.
+pub struct ProviderStatus { installed, path, version, pinned_version, update_available,
+    authenticated, provider, login_method, organization, email, plan, account,
+    api_key_name, name, model_count: i64, error }
+pub struct CredentialDraft { api_key, chatgpt_auth: bool, compatible: Option<domain::CompatibleProvider> }
 
-pub enum PermissionRoute {
-    /// Engine adds `mcp__recur__permission_request` to the MCP allowlist and the
-    /// provider passes it as the CLI prompt tool (Claude).
-    McpPromptTool,
-    /// Provider calls `cx.permissions.ask(..)` itself (Codex approvals, compatible Bash gate).
-    Callback,
-    /// Provider runs without prompts (Cursor: sandbox disabled, tools pre-scoped).
-    None,
-}
-
-pub enum SteerSupport {
-    None,
-    /// Steer enters the running turn (Claude stdin after the next tool_result,
-    /// Codex turn/steer, compatible between rounds).
-    Live,
-    /// Live when the backend allows it, else cancel-and-follow-up within the same
-    /// `run_turn` call (Cursor SteerRun, else CancelRun + joined follow-up Send).
-    LiveOrRestart,
-}
-
-pub enum HistoryMode {
-    /// Provider keeps the conversation; `resume` handle continues it.
-    Native,
-    /// Provider rebuilds input from the Recur transcript every turn (compatible).
-    /// The engine skips fork preambles and resume-handle checks for these.
-    App,
-}
-
-pub enum ToolTransport {
-    /// Host tools over the engine's MCP server (`TurnRequest.mcp_url`).
-    Mcp,
-    /// Host tools executed in-process via `cx.tools` (compatible harness); the engine
-    /// registers a turn token without a URL (Go compatTurnToken).
-    InProcess,
-}
-
-pub struct McpTransports { pub http: bool, pub stdio: bool }
-pub enum Availability { Ready, Disabled, NotConfigured(String) }
-
-/// Everything the engine decides for a turn. Field-for-field Go `AgentSpec`
-/// minus the engine-only routing (`Mirror`, `Route`, `Inject*`, which move to
-/// TurnContext or stay in the engine).
+// crates/agent/src/turn.rs. Strings follow Go zero values: "" = unset.
 pub struct TurnRequest {
-    pub workspace_id: String,          // "" for app-scoped (Ask Recur) turns
-    pub agent_id: String,              // "<ws>-<code>" or "app-<code>"
-    pub chat_code: Option<String>,
-    pub chat_child: bool,              // workspace is a create_workspace child
-    pub role: Role,                    // empty for one-shots
-    pub model: String,                 // bare id, provider prefix stripped
-    pub flags: Flags,
-    pub system_prompt: String,         // "" = provider default (Claude keeps its own)
-    pub append_system_prompt: String,
-    pub turn_append_prompt: String,    // per-turn subject text (chat surface)
-    pub refresh_standing: bool,        // see recur_agent::standing_in_user_prompt
-    pub allowed_tools: Option<Vec<String>>, // None = provider default, Some(empty) = none
-    pub tools: Option<String>,         // Claude --tools passthrough ("" disables)
-    pub access: Access,                // ReadOnly derives Cursor plan mode / Codex read-only sandbox
-    pub permission_mode: PermissionMode, // Default | Ask | Deny | Bypass
-    pub prompt: String,                // wire text, may contain ⟦attachment:id⟧ markers
-    pub display_text: Option<String>,
-    pub images: Vec<UserImage>,        // in marker order (recur_agent::attach)
-    pub worktree: std::path::PathBuf,
-    pub mcp_url: Option<String>,       // Some iff tool_transport = Mcp and MCP is up
-    pub playwright: bool,
-    pub user_mcp: Vec<McpAttach>,      // { name, url, headers, command, args, env }
-    pub env_scrub: Vec<String>,        // env vars removed from spawned CLIs (LINEAR_API_KEY)
-    pub resume: Option<String>,        // provider session handle
-    pub fork_session: bool,
-    pub prompt_on_stdin: bool,
-    pub include_partials: bool,
-    pub skip_thinking: bool,
-    pub max_turns: Option<u32>,
-    pub recur_session_id: String,      // for HistoryMode::App
-    pub history_after_id: Option<String>, // nativeHistoryAfter watermark
+    workspace_id, agent_id, chat_code, chat_child: bool, role: AgentRole, model, flags: Flags,
+    system_prompt, append_system_prompt, turn_append_prompt, refresh_standing: bool,
+    allowed_tools: Option<Vec<String>>,      // None = no restriction (Go nil), Some([]) = none
+    tools: Option<String>,                   // Claude --tools; Some("") disables
+    permission_mode: String,                 // "" fails closed to dontAsk
+    prompt, display_text, skip_record_user: bool, user_message_id,
+    images: Vec<UserImage>, worktree: PathBuf, mcp_url, playwright: bool,
+    user_mcp: Vec<McpAttach>, env_scrub: Vec<String>, resume_session, fork_session: bool,
+    prompt_on_stdin: bool, route: SessionRoute, include_partials: bool, skip_thinking: bool,
+    max_turns: u32,                          // 0 = provider default
+    recur_session_id, history_after_id,
 }
+pub struct SessionRoute { workspace_id, kind, code, name }
+pub struct McpAttach { name, url, headers: BTreeMap, command, args: Vec<String>, env: BTreeMap }
+pub fn standing_in_user_prompt(req: &TurnRequest, resumed: bool) -> bool;
 
 pub struct TurnContext {
     pub cancel: CancellationToken,
-    pub sink: Arc<dyn EventSink>,
-    /// Present iff caps.steer != None and the engine armed steering for this turn.
+    pub sink: Arc<dyn EventSink>,            // impl'd for Fn(AgentEvent)
     pub steer: Option<SteerInbox>,
-    pub permissions: Arc<dyn PermissionAsker>,
-    /// HistoryMode::App providers read the Recur transcript through this.
-    pub history: Arc<dyn HistorySource>,
-    /// ToolTransport::InProcess providers execute host + coding tools through this.
-    pub tools: Arc<dyn ToolHost>,
+    pub permissions: Option<Arc<dyn PermissionAsker>>,   // None = Go's nil AskPermission
+    pub history: Option<Arc<dyn HistorySource>>,
+    pub tools: Option<Arc<dyn ToolHost>>,
 }
+pub struct SteerInbox(pub mpsc::Receiver<Steer>);        // recv, try_next, drain
+pub struct Steer { pub prompt: String, pub display: Option<String>, pub ack: oneshot::Sender<bool> }
+// Steer::{new, is_plain, plain_parts, stdin_text, user_event(live_steer), ack};
+// format_steer_user_message, follow_up_text (Go injectStdinText, emitInjectUser,
+// followUpInjectText, joinSteerInjects, formatSteerUserMessage).
+#[async_trait] pub trait PermissionAsker { async fn ask(&self, req: domain::PermissionRequest)
+    -> Result<domain::PermissionDecision, PermissionAbandoned>; }
+#[async_trait] pub trait HistorySource { async fn transcript(&self, session_id: &str) -> Vec<Message>;
+    async fn history_after(&self, session_id: &str) -> String; }
+#[async_trait] pub trait ToolHost { fn tools(&self, allowed: Option<&[String]>) -> Vec<ToolSpec>;
+    async fn call(&self, name: &str, args: &str, meta: ToolCallMeta) -> ToolOutcome; }
+pub struct ToolSpec { name, description, schema: Value }
+pub struct ToolCallMeta { call_id, cancel: CancellationToken }
+pub struct ToolOutcome { text, is_error: bool, halt: bool }
 
-/// Synchronous, ordered, never drops. The engine's implementation runs
-/// mirror (store write) -> session broadcast (bus) -> caller callback, in that order.
-pub trait EventSink: Send + Sync {
-    fn emit(&self, ev: AgentEvent);
-}
-
-pub struct SteerInbox(pub mpsc::Receiver<Steer>);
-pub struct Steer {
-    pub prompt: String,
-    /// Some = "plain" steer (Go InjectPlain): show it as a user row and ack only
-    /// once it is really delivered. None = conductor steer, ack on enqueue.
-    pub display: Option<String>,
-    /// true = delivered into the running turn. Dropping it unacked means false and the
-    /// engine falls back to a new turn. Never ack twice.
-    pub ack: oneshot::Sender<bool>,
-}
-
-#[async_trait::async_trait]
-pub trait PermissionAsker: Send + Sync {
-    /// Blocks until the human answers, the turn ends, or the broker's 10-minute
-    /// timeout denies. Must return promptly when `cx.cancel` fires.
-    async fn ask(&self, ask: PermissionAsk) -> PermissionVerdict;
-}
-pub struct PermissionAsk { pub tool: String, pub input: Value, pub tool_use_id: Option<String> }
-pub struct PermissionVerdict { pub allow: bool, pub reason: String }
-
-#[async_trait::async_trait]
-pub trait HistorySource: Send + Sync {
-    async fn transcript(&self, session_id: &str, after_message_id: Option<&str>)
-        -> Result<Vec<recur_domain::Message>, ProviderError>;
-}
-
-#[async_trait::async_trait]
-pub trait ToolHost: Send + Sync {
-    /// Host + coding tool registry filtered by `allowed_tools` (permission_request removed).
-    fn tools(&self, allowed: Option<&[String]>) -> Vec<ToolSpec>;
-    async fn call(&self, name: &str, args: Value, call: ToolCallMeta) -> ToolOutcome;
-}
-
+// crates/agent/src/event.rs (Go ParsedEvent / Result). parent = Task tool-use id
+// of a nested subagent ("" = parent turn); uuid = provider frame id.
 pub enum AgentEvent {
-    Init { session_id: String, model: Option<String>, mcp_servers: Vec<McpServerStatus> },
-    TextDelta { text: String, parent: Option<String> },
-    Text { text: String, uuid: Option<String>, parent: Option<String> },
-    ThinkingDelta { text: String, parent: Option<String> },
-    Thinking { text: String, signature: Option<String>, parent: Option<String> },
-    ThinkingTokens { tokens: u64, parent: Option<String> },
-    /// Tool call. `id` is the provider's id; the mirror mints Recur's own id.
-    /// Providers emit one Step per call (Cursor folds running/terminal frames).
-    Step { id: String, name: String, input: Value, input_raw: Option<String>,
-           parent: Option<String>, uuid: Option<String> },
-    ToolResult { id: String, text: String, is_error: bool, truncated: bool, parent: Option<String> },
-    /// Latest context footprint. Last Usage wins over cumulative TurnEnd tokens.
-    Usage(TokenUsage),
-    Notice { text: String },
-    Compact { status: CompactStatus, trigger: Option<String>, summary: Option<String>, pre_tokens: Option<u64> },
-    /// A user row produced inside the turn (delivered steer, follow-up send).
-    /// `live_steer = false` means a new provider run started: tool ids may repeat.
-    User { text: String, display: Option<String>, live_steer: bool, uuid: Option<String> },
-    Fallback { from_model: String, to_model: String, retracted_uuids: Vec<String> },
-    /// A plan the agent proposed through a provider-native tool (Cursor createPlan).
-    /// The engine adopts it like Go's createPlan harvest. Providers without one never emit it.
-    PlanProposal { body: String },
+    Init { session_id, model, mcp_servers: Vec<McpServerStatus> },
+    Text { text, uuid, parent }, TextDelta { text, parent },
+    Thinking { text, signature, uuid, parent }, ThinkingDelta { text, parent },
+    ThinkingTokens { tokens: i64, uuid, parent },
+    Step(ToolStep { id, name, summary, input /* raw JSON */, parent, uuid }),
+    ToolResult(ToolResultEvent { id, name, input, text, is_error, truncated, parent, uuid }),
+    Usage(TokenUsage), Notice { text },
+    Compact { status, trigger, summary, pre_tokens: i64, uuid, parent },
+    User { text, display, live_steer: bool },
+    Fallback { from_model, to_model, retracted_uuids: Vec<String>, uuid },
+    PlanProposal { body },
     TurnEnd(TurnResult),
-}
+}   // kind() (Go ParsedKind names), parent(), nested(), uuid()
+pub struct TokenUsage { input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens,
+    context_window: i64 }                    // context_used(), prefer_context()
+pub struct TurnResult { session_id, subtype, is_error, num_turns: i64, duration_ms: i64, text,
+    turn_end_emitted: bool /* engine-set, serde skip */, usage: TokenUsage /* flattened */, stderr }
+pub struct ContextUsageTracker;             // observe(&mut AgentEvent)
 
-pub struct TokenUsage { pub input: u64, pub output: u64, pub cache_creation: u64,
-                        pub cache_read: u64, pub context_window: Option<u64> }
+// crates/agent/src/error.rs
+pub struct ProviderError { pub kind: ErrorKind, pub message: String, pub partial: Box<TurnResult> }
+pub enum ErrorKind { Canceled, Transient, Auth, Unavailable, Failed }
+// classify(Option<&dyn Error>, &TurnResult) -> (reason, transient): ProviderError of kind
+// Transient anywhere in the source chain first, then TRANSIENT_MARKERS / known_agent_error.
 
-pub struct TurnResult {
-    pub session_id: String,       // resume handle to store (Cursor agent id, Codex thread, last response id)
-    pub subtype: String,          // "success", "error_max_turns", ...
-    pub is_error: bool,
-    pub num_turns: u32,
-    pub duration_ms: u64,         // 0 = no real turn end (footer owned by the engine)
-    pub text: String,
-    pub usage: TokenUsage,
-    pub stderr: String,
-}
-
-pub struct ProviderError {
-    pub kind: ErrorKind,          // Canceled | Transient | Auth | Unavailable | Failed
-    pub message: String,
-    pub stderr_tail: String,
-    pub partial: Option<TurnResult>,
-}
-impl ProviderError {
-    /// Go classifyAgentError: provider-set kind first, then the shared transient
-    /// marker list (recur_agent::error::TRANSIENT_MARKERS) over message + stderr.
-    pub fn transient(&self) -> bool { /* ... */ }
-}
-
-pub struct ToolDisplay { pub name: String, pub input: Value }
-
-// crates/agent/src/catalog.rs: serde-identical to app/model_catalog.go
-pub struct FlagOption { pub value: String, pub label: String, pub default: bool }
-pub struct FlagDimension { pub id: String, pub label: String, pub options: Vec<FlagOption> }
-pub struct ModelChoice { pub r#ref: String, pub label: String, pub flags: Vec<FlagDimension>,
-                         pub context_window: Option<i64> }
-pub struct ModelGroup { pub provider: String, pub label: String, pub models: Vec<ModelChoice> }
-
-// crates/agent/src/quota.rs: serde-identical to usage.ProviderQuota/Window/ModelRow
-#[async_trait::async_trait]
-pub trait UsageProbe: Send + Sync {
-    fn provider_id(&self) -> &str;
-    async fn fetch(&self) -> ProviderQuota; // errors land in ProviderQuota.error / .hint
-}
+// crates/agent/src/catalog.rs, quota.rs: serde-identical to app/model_catalog.go, usage/types.go
+pub struct FlagOption { value, label, default: bool }
+pub struct FlagDimension { id, label, options: Vec<FlagOption> }      // default_value()
+pub struct ModelChoice { model_ref /* "ref" */, label, flags: Vec<FlagDimension>, context_window: i64 }
+pub struct ModelGroup { provider, label, models: Vec<ModelChoice> }
+pub fn default_flags_from_dims(&[FlagDimension]) -> Flags;
+#[async_trait] pub trait UsageProbe { fn provider_id(&self) -> &str; async fn fetch(&self) -> ProviderQuota; }
 ```
 
 How each provider maps:
@@ -624,6 +471,17 @@ How each provider maps:
 | `TurnEnd` | from `result` line, background-task hold up to 10 min | on `turn/completed`; error status returns `duration_ms = 0` | deferred until finish so live `User` precedes it | after last round |
 
 The engine-side helpers that used to switch on provider move as follows: `standingInUserPrompt` → `recur_agent::standing_in_user_prompt(req, resumed)`; Claude `[1m]` and Cursor limits → `context_window`; mirror's "Cursor KindUser !LiveSteer resets seen steps" → the generic `User { live_steer: false }` rule; `createPlanBody` → `PlanProposal`; Cursor `wirePrompt` image wrapping and Claude attachment-id instruction → inside each provider's prompt builder.
+
+**Deviations from the first draft (slice A, as built).** Each keeps Go behavior the draft lost:
+
+- Strings, counts and limits use Go zero values (`""`, `0`) instead of `Option`: the engine ports test `!= ""` everywhere, and token counts are `i64` like `recur-domain`'s `Message`. `allowed_tools` and `tools` stay `Option` because Go distinguishes nil there (the harness treats a nil allowlist as "all").
+- `TurnRequest` gains `skip_record_user`, `user_message_id` and `route` (the compatible history rebuild and harness agent code read them) and drops `access` (Go derives read-only from the allowlist and role; Codex and Cursor keep doing that).
+- `AgentEvent::Step` carries the provider-computed feed `summary` (Go `ToolInput`) and raw `input` text; `uuid` and `parent` ride on every kind the mirror reads them from (Thinking, ThinkingTokens, ToolResult, Compact, Fallback); `ToolResult` keeps `name` and completion-time `input` (Codex MCP). `TurnEnd` is emitted for every provider result frame, as Go's `KindResult` is.
+- `ProviderError.partial` is always present (`Box<TurnResult>`, default empty) because Go returns a `Result` with every error and classification reads its stderr/subtype/text; `stderr_tail` lives in `partial.stderr`.
+- `TurnContext.permissions`, `history` and `tools` are `Option`: Go's `AskPermission`, `Store` and `Reporter` can be nil, and Codex auto-resolves approvals when nobody can answer. `PermissionAsker::ask` takes and returns the domain `PermissionRequest` / `PermissionDecision` the Codex path builds, with `Err(PermissionAbandoned)` for a turn that went away. `HistorySource` returns the whole transcript plus the session's `nativeHistoryAfter` (the harness filters itself).
+- `Availability` is `Ready | Unavailable(reason)` with Go's exact per-provider wording; `test_credentials` returns a `ProviderStatus` (Go `TestCodexKey` / `TestCursorKey` return status cards, not just ok/err).
+- Steering helpers that providers call (`injectStdinText`, `emitInjectUser`, `followUpInjectText`, `formatSteerUserMessage`) live on `recur_agent::Steer` / `turn` rather than in the engine's `loop.go` port, because providers cannot depend on the engine. A plain steer's display rides on the steer, so Go's `\x1e` encoding is not needed.
+- `testing::ScriptedProvider` (behind the `testing` feature) replays frames (one per provider line; cancellation is checked between frames like Go's per-line check), holds drained steers unacked until the turn returns (Go's ScriptedRunner never acks, so `tryInject` reads false at turn end), and `imitating(provider)` borrows a real provider's id, caps, models, context window and display so engine tests keep Go's "ScriptedRunner under the claude-code rules" behavior.
 
 ### 2.2 `recur_forge::Forge`
 
@@ -1020,7 +878,7 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Tests:** `streamjson_test.go`, `standing_test.go`, `context_usage_test.go` (tracker cases), `permission_test.go` (label cases), `attachments_test.go` (marker/content-block cases).
 - **Frontend modules to absorb** (pure rules the Rust UI would otherwise duplicate; verify each when porting): `lib/contextUsage.ts`, `lib/tasktools.ts`, `lib/todos.ts`, `lib/webtools.ts`, `lib/mcp.ts`.
 - **Prerequisites:** `recur-domain`.
-- **Public API:** section 2.1; `recur_agent::display::{chat_tool_input, chat_tool_result, tool_description, summarize_tool_input, truncate, FEED_INPUT_LIMIT, CHAT_DETAIL_LIMIT}`; `recur_agent::attach::{marker, parse_markers, user_content_blocks, DISPLAY_HIDDEN_SENTINEL}`; `recur_agent::error::{classify, failure_reason, tidy, TRANSIENT_MARKERS, CODEX_LOGIN_EXPIRED}`; `recur_agent::permission::{tool_label, summary}`; `recur_agent::standing_in_user_prompt`.
+- **Public API:** section 2.1; `recur_agent::display::{chat_tool_input, chat_tool_result, compact_tool_result, tool_description, summarize_tool_input, summarize_display_input, display_tool_result, canonical_claude_tool, create_plan_body, truncate, hard_truncate_runes, is_task_tool, is_create_plan_tool, is_subagent_launch_meta, is_list_findings_tool, FEED_INPUT_LIMIT, CHAT_DETAIL_LIMIT, PLAN_MAX_PERSIST_CHARS}` plus `display::{tasks, todos, web}`; `recur_agent::attach::{marker, parse_markers, strip_markers, ensure_markers, user_content_blocks, images_in_marker_order, ordinal_word, sanitize_attachment_id, chat_image_ext, chat_image_mime_for_ext, UserImage, DISPLAY_HIDDEN_SENTINEL, MAX_CHAT_ATTACHMENT_BYTES}`; `recur_agent::error::{classify, failure_reason, known_agent_error, tidy, first_line, has_transient_marker, TRANSIENT_MARKERS, CODEX_LOGIN_EXPIRED}`; `recur_agent::permission::{tool_label, summary, PROMPT_TOOL, RECUR_TOOL_LABELS}`; `recur_agent::turn::{format_steer_user_message, follow_up_text}`; `recur_agent::standing_in_user_prompt`; `recur_agent::{context_usage, mcp}` (frontend rules); `recur_agent::testing::{ScriptedProvider, EventRecorder}` and `recur_provider_claude::{stream, testing::{NdjsonScript, fixture_lines}}` behind `testing` features.
 
 #### T: agent tools + MCP (`recur-agent-tools`, `recur-mcp`)
 

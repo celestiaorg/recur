@@ -7,14 +7,10 @@
 
 mod branches;
 mod checkpoint;
-mod chroma;
 mod command;
 mod diff;
 mod error;
 mod gopath;
-mod highlight;
-mod home;
-mod html_entities;
 mod ignore;
 mod scm;
 mod status;
@@ -30,9 +26,9 @@ pub use checkpoint::*;
 pub use command::{CANCEL_GRACE, Command, command};
 pub use diff::*;
 pub use error::{Error, ErrorKind, Result};
-pub use highlight::{highlight_files, lexer_name};
-pub use home::expand_home;
 pub use ignore::*;
+pub use recur_chroma::{highlight_files, lexer_name};
+pub use recur_project::home::expand_home;
 pub use scm::*;
 pub use status::{StatusLetters, parse_status_porcelain, status_map};
 pub use version::*;

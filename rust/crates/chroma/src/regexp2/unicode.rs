@@ -47,7 +47,7 @@ pub(crate) fn to_lower(c: char) -> char {
 }
 
 /// Go `unicode.ToUpper`.
-pub(crate) fn to_upper(c: char) -> char {
+pub fn to_upper(c: char) -> char {
     mapped(TO_UPPER, c).unwrap_or(c)
 }
 
@@ -64,11 +64,13 @@ pub(crate) fn is_upper(c: char) -> bool {
     in_table(cat("Lu"), c)
 }
 
-pub(crate) fn is_letter(c: char) -> bool {
+/// Go `unicode.IsLetter`.
+pub fn is_letter(c: char) -> bool {
     in_table(cat("L"), c)
 }
 
-pub(crate) fn is_number(c: char) -> bool {
+/// Go `unicode.IsNumber`.
+pub fn is_number(c: char) -> bool {
     in_table(cat("N"), c)
 }
 

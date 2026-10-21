@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Regenerates recur-git's vendored chroma data and Go-derived tables.
+# Regenerates recur-chroma's vendored chroma data and Go-derived tables.
 #
 # Needs Go and python3. Outputs:
-#   chroma/lexers/*.xml        chroma's embedded lexers, verbatim
-#   chroma/generated/*.xml     lexers chroma builds in Go, dumped to the same
+#   data/lexers/*.xml        chroma's embedded lexers, verbatim
+#   data/generated/*.xml     lexers chroma builds in Go, dumped to the same
 #                              XML (closures become named <func>/<raku…> elements)
-#   chroma/remap_*.tsv         TypeRemappingLexer word tables (Common Lisp, EmacsLisp)
-#   chroma/raku_brackets.tsv   the Raku lexer's bracket pairs
+#   data/remap_*.tsv         TypeRemappingLexer word tables (Common Lisp, EmacsLisp)
+#   data/raku_brackets.tsv   the Raku lexer's bracket pairs
 #   tests/fixtures/*.json      Go highlightLine output and lexer names to compare against
-#   src/chroma/regexp2/unicode_tables.rs, src/html_entities.rs
+#   src/regexp2/unicode_tables.rs, src/html_entities.rs
 #
-# Usage: chroma/regenerate.sh [chroma version, default v2.27.0]
+# Usage: data/regenerate.sh [chroma version, default v2.27.0]
 set -euo pipefail
 
 crate="$(cd "$(dirname "$0")/.." && pwd)"
@@ -799,19 +799,19 @@ out="$work/out"
 mkdir -p "$out"
 DUMP_DIR="$out" go test ./lexers -run 'TestDump|TestHighlightFixture' -count=1 >/dev/null
 
-rm -rf "$crate/chroma/lexers" "$crate/chroma/generated"
-mkdir -p "$crate/chroma/lexers" "$crate/chroma/generated" "$crate/tests/fixtures"
-rm -f "$crate"/chroma/*.tsv "$crate/chroma/COPYING"
-cp "$src"/lexers/embedded/*.xml "$crate/chroma/lexers/"
-cp "$out"/generated/*.xml "$crate/chroma/generated/"
-cp "$out"/remap_*.tsv "$out"/raku_brackets.tsv "$src/COPYING" "$crate/chroma/"
+rm -rf "$crate/data/lexers" "$crate/data/generated"
+mkdir -p "$crate/data/lexers" "$crate/data/generated" "$crate/tests/fixtures"
+rm -f "$crate"/data/*.tsv "$crate/data/COPYING"
+cp "$src"/lexers/embedded/*.xml "$crate/data/lexers/"
+cp "$out"/generated/*.xml "$crate/data/generated/"
+cp "$out"/remap_*.tsv "$out"/raku_brackets.tsv "$src/COPYING" "$crate/data/"
 cp "$out"/highlight_fixture.json "$out"/lexer_names.json "$crate/tests/fixtures/"
-chmod -R u+w "$crate/chroma" "$crate/tests/fixtures"
+chmod -R u+w "$crate/data" "$crate/tests/fixtures"
 
 # Unicode tables (Go's unicode package) for the regexp2 port.
 mkdir -p "$work/unicode" && cd "$work/unicode"
 cat > main.go <<'GO'
-// Generates rust/crates/git/src/regex/unicode_tables.rs from Go's unicode package.
+// Generates rust/crates/chroma/src/regexp2/unicode_tables.rs from Go's unicode package.
 package main
 
 import (
@@ -921,7 +921,7 @@ func main() {
 	os.Stdout.WriteString(strings.TrimRight(b.String(), "\n") + "\n")
 }
 GO
-{ echo '#![allow(non_upper_case_globals)]'; echo; go run main.go; } > "$crate/src/chroma/regexp2/unicode_tables.rs"
+{ echo '#![allow(non_upper_case_globals)]'; echo; go run main.go; } > "$crate/src/regexp2/unicode_tables.rs"
 
 # HTML named character references (Go's html package).
 python3 - "$(go env GOROOT)/src/html/entity.go" "$crate/src/html_entities.rs" <<'PY'
@@ -942,5 +942,5 @@ out += ["];"]
 open(sys.argv[2], "w").write("\n".join(out) + "\n")
 PY
 
-(cd "$crate" && cargo fmt -p recur-git)
+(cd "$crate" && cargo fmt -p recur-chroma)
 echo "regenerated from chroma $version"

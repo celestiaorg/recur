@@ -1,0 +1,1182 @@
+{
+ "catalog": [
+  {
+   "ref": "claude-code/claude-fable-5-1",
+   "label": "Fable 5.1",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
+   "ref": "claude-code/claude-fable-5",
+   "label": "Fable 5",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
+   "ref": "claude-code/claude-opus-5-5",
+   "label": "Opus 5.5",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
+   "ref": "claude-code/claude-opus-5",
+   "label": "Opus 5",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
+   "ref": "claude-code/claude-opus-4-8",
+   "label": "Opus 4.8",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
+   "ref": "claude-code/claude-opus-4-7",
+   "label": "Opus 4.7",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
+   "ref": "claude-code/claude-opus-4-6",
+   "label": "Opus 4.6",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    },
+    {
+     "id": "context",
+     "label": "Context",
+     "options": [
+      {
+       "value": "200k",
+       "label": "200K",
+       "default": true
+      },
+      {
+       "value": "1m",
+       "label": "1M"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ref": "claude-code/claude-sonnet-5-5",
+   "label": "Sonnet 5.5",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
+   "ref": "claude-code/claude-sonnet-5",
+   "label": "Sonnet 5",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
+   "ref": "claude-code/claude-sonnet-4-6",
+   "label": "Sonnet 4.6",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    },
+    {
+     "id": "context",
+     "label": "Context",
+     "options": [
+      {
+       "value": "200k",
+       "label": "200K",
+       "default": true
+      },
+      {
+       "value": "1m",
+       "label": "1M"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ref": "claude-code/claude-haiku-4-5-20251001",
+   "label": "Haiku 4.5",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 200000
+  }
+ ],
+ "logins": [
+  {
+   "method": "",
+   "sub": "",
+   "out": ""
+  },
+  {
+   "method": "",
+   "sub": "team",
+   "out": "Claude Team account"
+  },
+  {
+   "method": "",
+   "sub": "Enterprise",
+   "out": "Claude Enterprise account"
+  },
+  {
+   "method": "",
+   "sub": " pro ",
+   "out": "Claude Pro account"
+  },
+  {
+   "method": "",
+   "sub": "max",
+   "out": "Claude Max account"
+  },
+  {
+   "method": "",
+   "sub": "free",
+   "out": "Claude Free account"
+  },
+  {
+   "method": "",
+   "sub": "other",
+   "out": ""
+  },
+  {
+   "method": "claude.ai",
+   "sub": "",
+   "out": "Claude.ai account"
+  },
+  {
+   "method": "claude.ai",
+   "sub": "team",
+   "out": "Claude Team account"
+  },
+  {
+   "method": "claude.ai",
+   "sub": "Enterprise",
+   "out": "Claude Enterprise account"
+  },
+  {
+   "method": "claude.ai",
+   "sub": " pro ",
+   "out": "Claude Pro account"
+  },
+  {
+   "method": "claude.ai",
+   "sub": "max",
+   "out": "Claude Max account"
+  },
+  {
+   "method": "claude.ai",
+   "sub": "free",
+   "out": "Claude Free account"
+  },
+  {
+   "method": "claude.ai",
+   "sub": "other",
+   "out": "Claude.ai account"
+  },
+  {
+   "method": "claude_ai",
+   "sub": "",
+   "out": "Claude.ai account"
+  },
+  {
+   "method": "claude_ai",
+   "sub": "team",
+   "out": "Claude Team account"
+  },
+  {
+   "method": "claude_ai",
+   "sub": "Enterprise",
+   "out": "Claude Enterprise account"
+  },
+  {
+   "method": "claude_ai",
+   "sub": " pro ",
+   "out": "Claude Pro account"
+  },
+  {
+   "method": "claude_ai",
+   "sub": "max",
+   "out": "Claude Max account"
+  },
+  {
+   "method": "claude_ai",
+   "sub": "free",
+   "out": "Claude Free account"
+  },
+  {
+   "method": "claude_ai",
+   "sub": "other",
+   "out": "Claude.ai account"
+  },
+  {
+   "method": "ClaudeAI",
+   "sub": "",
+   "out": "Claude.ai account"
+  },
+  {
+   "method": "ClaudeAI",
+   "sub": "team",
+   "out": "Claude Team account"
+  },
+  {
+   "method": "ClaudeAI",
+   "sub": "Enterprise",
+   "out": "Claude Enterprise account"
+  },
+  {
+   "method": "ClaudeAI",
+   "sub": " pro ",
+   "out": "Claude Pro account"
+  },
+  {
+   "method": "ClaudeAI",
+   "sub": "max",
+   "out": "Claude Max account"
+  },
+  {
+   "method": "ClaudeAI",
+   "sub": "free",
+   "out": "Claude Free account"
+  },
+  {
+   "method": "ClaudeAI",
+   "sub": "other",
+   "out": "Claude.ai account"
+  },
+  {
+   "method": "api_key",
+   "sub": "",
+   "out": "API key"
+  },
+  {
+   "method": "api_key",
+   "sub": "team",
+   "out": "Claude Team account"
+  },
+  {
+   "method": "api_key",
+   "sub": "Enterprise",
+   "out": "Claude Enterprise account"
+  },
+  {
+   "method": "api_key",
+   "sub": " pro ",
+   "out": "Claude Pro account"
+  },
+  {
+   "method": "api_key",
+   "sub": "max",
+   "out": "Claude Max account"
+  },
+  {
+   "method": "api_key",
+   "sub": "free",
+   "out": "Claude Free account"
+  },
+  {
+   "method": "api_key",
+   "sub": "other",
+   "out": "API key"
+  },
+  {
+   "method": "apikey",
+   "sub": "",
+   "out": "API key"
+  },
+  {
+   "method": "apikey",
+   "sub": "team",
+   "out": "Claude Team account"
+  },
+  {
+   "method": "apikey",
+   "sub": "Enterprise",
+   "out": "Claude Enterprise account"
+  },
+  {
+   "method": "apikey",
+   "sub": " pro ",
+   "out": "Claude Pro account"
+  },
+  {
+   "method": "apikey",
+   "sub": "max",
+   "out": "Claude Max account"
+  },
+  {
+   "method": "apikey",
+   "sub": "free",
+   "out": "Claude Free account"
+  },
+  {
+   "method": "apikey",
+   "sub": "other",
+   "out": "API key"
+  },
+  {
+   "method": "API-KEY",
+   "sub": "",
+   "out": "API key"
+  },
+  {
+   "method": "API-KEY",
+   "sub": "team",
+   "out": "Claude Team account"
+  },
+  {
+   "method": "API-KEY",
+   "sub": "Enterprise",
+   "out": "Claude Enterprise account"
+  },
+  {
+   "method": "API-KEY",
+   "sub": " pro ",
+   "out": "Claude Pro account"
+  },
+  {
+   "method": "API-KEY",
+   "sub": "max",
+   "out": "Claude Max account"
+  },
+  {
+   "method": "API-KEY",
+   "sub": "free",
+   "out": "Claude Free account"
+  },
+  {
+   "method": "API-KEY",
+   "sub": "other",
+   "out": "API key"
+  },
+  {
+   "method": "oauth",
+   "sub": "",
+   "out": "oauth"
+  },
+  {
+   "method": "oauth",
+   "sub": "team",
+   "out": "Claude Team account"
+  },
+  {
+   "method": "oauth",
+   "sub": "Enterprise",
+   "out": "Claude Enterprise account"
+  },
+  {
+   "method": "oauth",
+   "sub": " pro ",
+   "out": "Claude Pro account"
+  },
+  {
+   "method": "oauth",
+   "sub": "max",
+   "out": "Claude Max account"
+  },
+  {
+   "method": "oauth",
+   "sub": "free",
+   "out": "Claude Free account"
+  },
+  {
+   "method": "oauth",
+   "sub": "other",
+   "out": "oauth"
+  }
+ ],
+ "providers": {
+  "": "Anthropic API",
+  " Vertex ": "Google Vertex AI",
+  "FIRSTPARTY": "Anthropic API",
+  "bedrock": "Amazon Bedrock",
+  "custom": "custom",
+  "firstParty": "Anthropic API",
+  "foundry": "Microsoft Foundry"
+ },
+ "status": [
+  {
+   "path": "/usr/local/bin/claude",
+   "version": "2.1.224",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\",\"email\":\" dev@example.com \",\"orgName\":\" Acme \",\"subscriptionType\":\"team\"}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "/usr/local/bin/claude",
+    "version": "2.1.224",
+    "provider": "Anthropic API",
+    "loginMethod": "Claude Team account",
+    "organization": "Acme",
+    "email": "dev@example.com",
+    "error": ""
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\",\"email\":\" dev@example.com \",\"orgName\":\" Acme \",\"subscriptionType\":\"team\"}",
+   "missing": true,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "",
+    "version": "",
+    "provider": "Anthropic API",
+    "loginMethod": "Claude Team account",
+    "organization": "Acme",
+    "email": "dev@example.com",
+    "error": ""
+   }
+  },
+  {
+   "path": "/x/claude",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\",\"email\":\" dev@example.com \",\"orgName\":\" Acme \",\"subscriptionType\":\"team\"}",
+   "missing": false,
+   "timedOut": true,
+   "status": {
+    "authenticated": true,
+    "path": "/x/claude",
+    "version": "",
+    "provider": "Anthropic API",
+    "loginMethod": "Claude Team account",
+    "organization": "Acme",
+    "email": "dev@example.com",
+    "error": ""
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\",\"email\":\" dev@example.com \",\"orgName\":\" Acme \",\"subscriptionType\":\"team\"}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "",
+    "version": "",
+    "provider": "Anthropic API",
+    "loginMethod": "Claude Team account",
+    "organization": "Acme",
+    "email": "dev@example.com",
+    "error": ""
+   }
+  },
+  {
+   "path": "/usr/local/bin/claude",
+   "version": "2.1.224",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"api_key\",\"apiProvider\":\"bedrock\"}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "/usr/local/bin/claude",
+    "version": "2.1.224",
+    "provider": "Amazon Bedrock",
+    "loginMethod": "API key",
+    "organization": "",
+    "email": "",
+    "error": ""
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"api_key\",\"apiProvider\":\"bedrock\"}",
+   "missing": true,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "",
+    "version": "",
+    "provider": "Amazon Bedrock",
+    "loginMethod": "API key",
+    "organization": "",
+    "email": "",
+    "error": ""
+   }
+  },
+  {
+   "path": "/x/claude",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"api_key\",\"apiProvider\":\"bedrock\"}",
+   "missing": false,
+   "timedOut": true,
+   "status": {
+    "authenticated": true,
+    "path": "/x/claude",
+    "version": "",
+    "provider": "Amazon Bedrock",
+    "loginMethod": "API key",
+    "organization": "",
+    "email": "",
+    "error": ""
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"api_key\",\"apiProvider\":\"bedrock\"}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "",
+    "version": "",
+    "provider": "Amazon Bedrock",
+    "loginMethod": "API key",
+    "organization": "",
+    "email": "",
+    "error": ""
+   }
+  },
+  {
+   "path": "/usr/local/bin/claude",
+   "version": "2.1.224",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"Custom\",\"apiProvider\":\"Weird\",\"subscriptionType\":\"MAX\"}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "/usr/local/bin/claude",
+    "version": "2.1.224",
+    "provider": "Weird",
+    "loginMethod": "Claude Max account",
+    "organization": "",
+    "email": "",
+    "error": ""
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"Custom\",\"apiProvider\":\"Weird\",\"subscriptionType\":\"MAX\"}",
+   "missing": true,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "",
+    "version": "",
+    "provider": "Weird",
+    "loginMethod": "Claude Max account",
+    "organization": "",
+    "email": "",
+    "error": ""
+   }
+  },
+  {
+   "path": "/x/claude",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"Custom\",\"apiProvider\":\"Weird\",\"subscriptionType\":\"MAX\"}",
+   "missing": false,
+   "timedOut": true,
+   "status": {
+    "authenticated": true,
+    "path": "/x/claude",
+    "version": "",
+    "provider": "Weird",
+    "loginMethod": "Claude Max account",
+    "organization": "",
+    "email": "",
+    "error": ""
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"authMethod\":\"Custom\",\"apiProvider\":\"Weird\",\"subscriptionType\":\"MAX\"}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": true,
+    "path": "",
+    "version": "",
+    "provider": "Weird",
+    "loginMethod": "Claude Max account",
+    "organization": "",
+    "email": "",
+    "error": ""
+   }
+  },
+  {
+   "path": "/usr/local/bin/claude",
+   "version": "2.1.224",
+   "out": "{\"loggedIn\":false,\"authMethod\":\"none\",\"apiProvider\":\"firstParty\"}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "/usr/local/bin/claude",
+    "version": "2.1.224",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Not logged in"
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":false,\"authMethod\":\"none\",\"apiProvider\":\"firstParty\"}",
+   "missing": true,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Claude Code not detected"
+   }
+  },
+  {
+   "path": "/x/claude",
+   "version": "",
+   "out": "{\"loggedIn\":false,\"authMethod\":\"none\",\"apiProvider\":\"firstParty\"}",
+   "missing": false,
+   "timedOut": true,
+   "status": {
+    "authenticated": false,
+    "path": "/x/claude",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Status check timed out"
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":false,\"authMethod\":\"none\",\"apiProvider\":\"firstParty\"}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Not logged in"
+   }
+  },
+  {
+   "path": "/usr/local/bin/claude",
+   "version": "2.1.224",
+   "out": "{\"loggedIn\":true,\"email\":5}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "/usr/local/bin/claude",
+    "version": "2.1.224",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Not logged in"
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"email\":5}",
+   "missing": true,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Claude Code not detected"
+   }
+  },
+  {
+   "path": "/x/claude",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"email\":5}",
+   "missing": false,
+   "timedOut": true,
+   "status": {
+    "authenticated": false,
+    "path": "/x/claude",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Status check timed out"
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "{\"loggedIn\":true,\"email\":5}",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Not logged in"
+   }
+  },
+  {
+   "path": "/usr/local/bin/claude",
+   "version": "2.1.224",
+   "out": "not-json",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "/usr/local/bin/claude",
+    "version": "2.1.224",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Not logged in"
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "not-json",
+   "missing": true,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Claude Code not detected"
+   }
+  },
+  {
+   "path": "/x/claude",
+   "version": "",
+   "out": "not-json",
+   "missing": false,
+   "timedOut": true,
+   "status": {
+    "authenticated": false,
+    "path": "/x/claude",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Status check timed out"
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "not-json",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Not logged in"
+   }
+  },
+  {
+   "path": "/usr/local/bin/claude",
+   "version": "2.1.224",
+   "out": "",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "/usr/local/bin/claude",
+    "version": "2.1.224",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Not logged in"
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "",
+   "missing": true,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Claude Code not detected"
+   }
+  },
+  {
+   "path": "/x/claude",
+   "version": "",
+   "out": "",
+   "missing": false,
+   "timedOut": true,
+   "status": {
+    "authenticated": false,
+    "path": "/x/claude",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Status check timed out"
+   }
+  },
+  {
+   "path": "",
+   "version": "",
+   "out": "",
+   "missing": false,
+   "timedOut": false,
+   "status": {
+    "authenticated": false,
+    "path": "",
+    "version": "",
+    "provider": "",
+    "loginMethod": "",
+    "organization": "",
+    "email": "",
+    "error": "Not logged in"
+   }
+  }
+ ],
+ "versions": {
+  "": "",
+  "  3.0.0\n": "3.0.0",
+  "2.1.224 (Claude Code)\n": "2.1.224",
+  "4.0.0\tbeta": "4.0.0",
+  "5\nmore": "5"
+ }
+}

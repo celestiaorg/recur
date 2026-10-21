@@ -1,0 +1,151 @@
+// Generator for go_codex_app.json (and ../../../claude/tests/golden/go_claude_app.json).
+// To regenerate, copy into internal/app as zz_rustgolden_p1_test.go and run
+// from the repo root:
+//
+//	RECUR_RUST_GOLDEN_CLAUDE_APP=$PWD/rust/providers/claude/tests/golden/go_claude_app.json \
+//	RECUR_RUST_GOLDEN_CODEX_APP=$PWD/rust/providers/codex/tests/golden/go_codex_app.json \
+//	  go test ./internal/app -run TestDumpRustP1AppGolden -count=1
+//
+// then delete the copy. The engine-package half is
+// rust/providers/claude/tests/golden/gen_go_p1.go.txt.
+package app
+
+import (
+	"encoding/json"
+	"errors"
+	"os"
+	"os/exec"
+	"testing"
+
+	"recur/internal/codex"
+)
+
+func TestDumpRustP1AppGolden(t *testing.T) {
+	claudePath, codexPath := os.Getenv("RECUR_RUST_GOLDEN_CLAUDE_APP"), os.Getenv("RECUR_RUST_GOLDEN_CODEX_APP")
+	if claudePath == "" || codexPath == "" {
+		t.Skip()
+	}
+	write := func(path string, v any) {
+		b, err := json.MarshalIndent(v, "", " ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, append(b, '\n'), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	catalog, err := json.Marshal(claudeCodeModels)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type statusRow struct {
+		Path     string       `json:"path"`
+		Version  string       `json:"version"`
+		Out      string       `json:"out"`
+		Missing  bool         `json:"missing"`
+		TimedOut bool         `json:"timedOut"`
+		Status   ClaudeStatus `json:"status"`
+	}
+	outs := []string{
+		`{"loggedIn":true,"authMethod":"claude.ai","apiProvider":"firstParty","email":" dev@example.com ","orgName":" Acme ","subscriptionType":"team"}`,
+		`{"loggedIn":true,"authMethod":"api_key","apiProvider":"bedrock"}`,
+		`{"loggedIn":true,"authMethod":"Custom","apiProvider":"Weird","subscriptionType":"MAX"}`,
+		`{"loggedIn":false,"authMethod":"none","apiProvider":"firstParty"}`,
+		`{"loggedIn":true,"email":5}`,
+		`not-json`,
+		``,
+	}
+	var statusRows []statusRow
+	for _, o := range outs {
+		for _, c := range []struct {
+			path, version string
+			missing, timeout bool
+		}{{"/usr/local/bin/claude", "2.1.224", false, false}, {"", "", true, false}, {"/x/claude", "", false, true}, {"", "", false, false}} {
+			var err, ctxErr error
+			if c.missing {
+				err = &exec.Error{Name: "claude", Err: exec.ErrNotFound}
+			} else {
+				err = errors.New("exit status 1")
+			}
+			if c.timeout {
+				ctxErr = errors.New("context deadline exceeded")
+			}
+			statusRows = append(statusRows, statusRow{Path: c.path, Version: c.version, Out: o, Missing: c.missing, TimedOut: c.timeout,
+				Status: classifyClaudeStatus(c.path, c.version, []byte(o), err, ctxErr)})
+		}
+	}
+	versions := map[string]string{}
+	for _, v := range []string{"2.1.224 (Claude Code)\n", "  3.0.0\n", "", "4.0.0\tbeta", "5\nmore"} {
+		versions[v] = parseClaudeVersion(v)
+	}
+	providers := map[string]string{}
+	for _, p := range []string{"", "firstParty", "FIRSTPARTY", "bedrock", " Vertex ", "foundry", "custom"} {
+		providers[p] = formatClaudeProvider(p)
+	}
+	type loginRow struct {
+		Method string `json:"method"`
+		Sub    string `json:"sub"`
+		Out    string `json:"out"`
+	}
+	var logins []loginRow
+	for _, m := range []string{"", "claude.ai", "claude_ai", "ClaudeAI", "api_key", "apikey", "API-KEY", "oauth"} {
+		for _, s := range []string{"", "team", "Enterprise", " pro ", "max", "free", "other"} {
+			logins = append(logins, loginRow{m, s, formatClaudeLoginMethod(m, s)})
+		}
+	}
+	write(claudePath, map[string]any{
+		"catalog":   json.RawMessage(catalog),
+		"status":    statusRows,
+		"versions":  versions,
+		"providers": providers,
+		"logins":    logins,
+	})
+
+	models := []codex.Model{
+		{ID: "gpt-5.6-luna", DisplayName: "GPT-5.6-Luna", DefaultReasoningEffort: "medium",
+			SupportedReasoningEffort: []codex.ReasoningEffort{{ReasoningEffort: "low"}, {ReasoningEffort: "medium"}, {ReasoningEffort: "xhigh"}, {ReasoningEffort: "ultra"}, {ReasoningEffort: "turbo"}},
+			DefaultServiceTier: "priority", ServiceTiers: []codex.ServiceTier{{ID: "priority", Name: "Fast"}}},
+		{ID: "gpt-5.4-mini", Hidden: true, DisplayName: "GPT-5.4 Mini"},
+		{ID: "gpt-6-astra", DisplayName: "", DefaultReasoningEffort: "high", SupportedReasoningEffort: []codex.ReasoningEffort{{ReasoningEffort: "high"}}},
+		{ID: "  ", DisplayName: "blank"},
+		{ID: "o3", ServiceTiers: []codex.ServiceTier{{ID: "standard"}, {ID: " "}, {ID: "flex"}, {ID: "Fast"}}, DefaultServiceTier: "fast"},
+		{ID: "gpt-5.6-sol", DisplayName: "GPT-5.6-Sol", ServiceTiers: []codex.ServiceTier{{ID: "Default"}, {ID: "Turbo"}}, DefaultServiceTier: "standard"},
+		{ID: "GPT-5.6.x", DisplayName: " Codex-mini "},
+		{ID: "codex-1", DisplayName: "Codex-v2.1"},
+	}
+	type labelRow struct {
+		Display string `json:"display"`
+		ID      string `json:"id"`
+		Out     string `json:"out"`
+	}
+	var labels []labelRow
+	for _, c := range [][2]string{{"GPT-5.6-Sol", "gpt-5.6-sol"}, {"GPT-5.6-Luna", ""}, {"", "gpt-5.6-terra"}, {"", "gpt-6-astra"},
+		{"GPT-6-Astra", ""}, {"", "o3"}, {"", "GPT-x"}, {"", "-lead"}, {"a-", ""}, {"", "éclair-nova"}, {"", ""}, {"x-Y2", ""}} {
+		labels = append(labels, labelRow{c[0], c[1], friendlyCodexModelLabel(c[0], c[1])})
+	}
+	efforts := map[string]string{}
+	for _, e := range []string{"low", "Medium", "high", "xhigh", "max", "ultra", "", "turbo", " ultra "} {
+		efforts[e] = friendlyCodexEffortLabel(e)
+	}
+	type codexLoginRow struct {
+		Type   string `json:"type"`
+		HasKey bool   `json:"hasKey"`
+		Out    string `json:"out"`
+	}
+	var codexLogins []codexLoginRow
+	for _, ty := range []string{"", "chatgpt", "ChatGPT", "chat_gpt", "openai", "apikey", "api_key", "API", "sso"} {
+		for _, k := range []bool{false, true} {
+			codexLogins = append(codexLogins, codexLoginRow{ty, k, codexLoginMethod(ty, k)})
+		}
+	}
+	modelsJSON, _ := json.Marshal(models)
+	rows, _ := json.Marshal(codexCatalogModels(models))
+	write(codexPath, map[string]any{
+		"models":  json.RawMessage(modelsJSON),
+		"catalog": json.RawMessage(rows),
+		"labels":  labels,
+		"efforts": efforts,
+		"logins":  codexLogins,
+	})
+}

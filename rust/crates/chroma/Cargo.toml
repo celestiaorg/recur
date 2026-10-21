@@ -1,0 +1,18 @@
+[package]
+name = "recur-chroma"
+description = "Port of the chroma syntax highlighter and highlighting of diff lines into Recur's token palette."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+include_dir.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

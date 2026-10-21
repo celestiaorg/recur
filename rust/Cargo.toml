@@ -37,6 +37,7 @@ recur-services = { path = "crates/services" }
 recur-ui = { path = "crates/ui" }
 recur-editor = { path = "crates/editor" }
 recur-terminal-view = { path = "crates/terminal-view" }
+recur-content = { path = "crates/content" }
 recur-app = { path = "crates/app" }
 recur-view-core = { path = "crates/views/core" }
 recur-view-sidebar = { path = "crates/views/sidebar" }
@@ -107,6 +108,8 @@ flate2 = "1"
 objc2 = "0.6"
 objc2-foundation = "0.3"
 objc2-app-kit = "0.3"
+objc2-web-kit = "0.3"
+raw-window-handle = "0.6"
 objc2-user-notifications = "0.3"
 block2 = "0.6"
 dispatch2 = "0.3"
@@ -123,6 +126,10 @@ alacritty_terminal = { version = "0.25", default-features = false }
 unicode-width = "0.2"
 image = { version = "0.25", default-features = false }
 regress = { version = "0.12", features = ["utf16"] }
+
+# Rich content: the browser's HTML parser for the DOMPurify port.
+html5ever = "0.27"
+markup5ever_rcdom = "0.3"
 
 # ICU root collation: the UI's `localeCompare` / `Intl.Collator` ordering.
 icu_collator = "2"

@@ -32,7 +32,12 @@ pub struct TerminalPrefs {
 
 impl Default for TerminalPrefs {
     fn default() -> Self {
-        Self { font_face: TERMINAL_MATCH_EDITOR.into(), font_size: 0, line_height: 1.15, theme: TERMINAL_MATCH_EDITOR.into() }
+        Self {
+            font_face: TERMINAL_MATCH_EDITOR.into(),
+            font_size: 0,
+            line_height: 1.15,
+            theme: TERMINAL_MATCH_EDITOR.into(),
+        }
     }
 }
 
@@ -60,15 +65,31 @@ pub struct TerminalFont {
 
 impl Default for TerminalFont {
     fn default() -> Self {
-        resolve_terminal_font(&TerminalPrefs::default(), DEFAULT_EDITOR_FONT_FACE, DEFAULT_EDITOR_FONT_SIZE)
+        resolve_terminal_font(
+            &TerminalPrefs::default(),
+            DEFAULT_EDITOR_FONT_FACE,
+            DEFAULT_EDITOR_FONT_SIZE,
+        )
     }
 }
 
 /// `resolveTerminalFont`: the editor's face and size fill in "match editor".
-pub fn resolve_terminal_font(t: &TerminalPrefs, editor_face: &str, editor_size: u32) -> TerminalFont {
+pub fn resolve_terminal_font(
+    t: &TerminalPrefs,
+    editor_face: &str,
+    editor_size: u32,
+) -> TerminalFont {
     TerminalFont {
-        face: if t.font_face.is_empty() { editor_face.to_string() } else { t.font_face.clone() },
-        size: if t.font_size == 0 { editor_size } else { t.font_size } as f32,
+        face: if t.font_face.is_empty() {
+            editor_face.to_string()
+        } else {
+            t.font_face.clone()
+        },
+        size: if t.font_size == 0 {
+            editor_size
+        } else {
+            t.font_size
+        } as f32,
         line_height: t.line_height,
     }
 }
@@ -83,7 +104,10 @@ pub fn mono_font_stack(face: &str) -> (String, Vec<String>) {
         "system" => "System Mono",
         f => f,
     };
-    let fallbacks: Vec<String> = SYSTEM_MONO_FALLBACKS.iter().map(|s| s.to_string()).collect();
+    let fallbacks: Vec<String> = SYSTEM_MONO_FALLBACKS
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     if resolved == "System Mono" {
         return (fallbacks[0].clone(), fallbacks[1..].to_vec());
     }
@@ -109,12 +133,32 @@ pub struct CellMetrics {
 impl CellMetrics {
     /// From the font's `W` advance and ascent/descent in CSS pixels (`TextMetrics` width and
     /// `fontBoundingBoxAscent + fontBoundingBoxDescent`).
-    pub fn compute(advance_w: f32, ascent: f32, descent: f32, font_size: f32, line_height: f32, dpr: f32) -> Self {
+    pub fn compute(
+        advance_w: f32,
+        ascent: f32,
+        descent: f32,
+        font_size: f32,
+        line_height: f32,
+        dpr: f32,
+    ) -> Self {
         let char_width = (advance_w * dpr).floor();
         let char_height = ((ascent + descent) * dpr).ceil();
         let cell_height = (char_height * line_height).floor();
-        let char_top = if line_height == 1.0 { 0.0 } else { ((cell_height - char_height) / 2.0).round() };
-        Self { dpr, font_size, char_width, char_height, cell_width: char_width, cell_height, char_top, descent: descent * dpr }
+        let char_top = if line_height == 1.0 {
+            0.0
+        } else {
+            ((cell_height - char_height) / 2.0).round()
+        };
+        Self {
+            dpr,
+            font_size,
+            char_width,
+            char_height,
+            cell_width: char_width,
+            cell_height,
+            char_top,
+            descent: descent * dpr,
+        }
     }
 
     pub fn css_cell_width(&self) -> f32 {
@@ -147,12 +191,26 @@ pub const TERM_FIT_MIN_COLS: usize = 2;
 pub const TERM_FIT_MIN_ROWS: usize = 1;
 
 /// `termFitSize`: rows/cols that fit a host's content box.
-pub fn term_fit_size(inner_width: f32, inner_height: f32, cell_width: f32, cell_height: f32, scrollbar_width: f32) -> (usize, usize) {
-    if cell_width <= 0.0 || cell_height <= 0.0 || !cell_width.is_finite() || !cell_height.is_finite() {
+pub fn term_fit_size(
+    inner_width: f32,
+    inner_height: f32,
+    cell_width: f32,
+    cell_height: f32,
+    scrollbar_width: f32,
+) -> (usize, usize) {
+    if cell_width <= 0.0
+        || cell_height <= 0.0
+        || !cell_width.is_finite()
+        || !cell_height.is_finite()
+    {
         return (TERM_FIT_MIN_COLS, TERM_FIT_MIN_ROWS);
     }
-    let cols = ((inner_width - scrollbar_width) / cell_width).floor().max(TERM_FIT_MIN_COLS as f32) as usize;
-    let rows = (inner_height / cell_height).floor().max(TERM_FIT_MIN_ROWS as f32) as usize;
+    let cols = ((inner_width - scrollbar_width) / cell_width)
+        .floor()
+        .max(TERM_FIT_MIN_COLS as f32) as usize;
+    let rows = (inner_height / cell_height)
+        .floor()
+        .max(TERM_FIT_MIN_ROWS as f32) as usize;
     (cols, rows)
 }
 
@@ -163,21 +221,54 @@ mod tests {
     #[test]
     fn match_editor_fallbacks() {
         let f = resolve_terminal_font(&TerminalPrefs::default(), "IBM Plex Mono", 13);
-        assert_eq!(f, TerminalFont { face: "IBM Plex Mono".into(), size: 13.0, line_height: 1.15 });
-        let own = TerminalPrefs { font_face: "Hack".into(), font_size: 14, line_height: 1.35, ..Default::default() };
-        assert_eq!(resolve_terminal_font(&own, "IBM Plex Mono", 13), TerminalFont { face: "Hack".into(), size: 14.0, line_height: 1.35 });
+        assert_eq!(
+            f,
+            TerminalFont {
+                face: "IBM Plex Mono".into(),
+                size: 13.0,
+                line_height: 1.15
+            }
+        );
+        let own = TerminalPrefs {
+            font_face: "Hack".into(),
+            font_size: 14,
+            line_height: 1.35,
+            ..Default::default()
+        };
+        assert_eq!(
+            resolve_terminal_font(&own, "IBM Plex Mono", 13),
+            TerminalFont {
+                face: "Hack".into(),
+                size: 14.0,
+                line_height: 1.35
+            }
+        );
     }
 
     #[test]
     fn normalizes_out_of_range_prefs() {
-        let p = TerminalPrefs { font_size: 15, line_height: 1.55, ..Default::default() }.normalized();
+        let p = TerminalPrefs {
+            font_size: 15,
+            line_height: 1.55,
+            ..Default::default()
+        }
+        .normalized();
         assert_eq!((p.font_size, p.line_height), (0, 1.15));
     }
 
     #[test]
     fn font_stacks() {
         assert_eq!(mono_font_stack("jetbrains").0, "JetBrains Mono");
-        assert_eq!(mono_font_stack("Fira Code"), ("Fira Code".into(), SYSTEM_MONO_FALLBACKS.iter().map(|s| s.to_string()).collect()));
+        assert_eq!(
+            mono_font_stack("Fira Code"),
+            (
+                "Fira Code".into(),
+                SYSTEM_MONO_FALLBACKS
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect()
+            )
+        );
         assert_eq!(mono_font_stack("System Mono").0, "SF Mono");
     }
 
@@ -185,7 +276,10 @@ mod tests {
     fn xterm_cell_math_for_jetbrains_mono_12px_at_2x() {
         // JetBrains Mono: advance 600/1000 em, ascent 1020, descent 300.
         let m = CellMetrics::compute(7.2, 12.24, 3.6, 12.0, 1.15, 2.0);
-        assert_eq!((m.char_width, m.char_height, m.cell_height, m.char_top), (14.0, 32.0, 36.0, 2.0));
+        assert_eq!(
+            (m.char_width, m.char_height, m.cell_height, m.char_top),
+            (14.0, 32.0, 36.0, 2.0)
+        );
         assert_eq!((m.css_cell_width(), m.css_cell_height()), (7.0, 18.0));
         assert_eq!(m.underline_width(), 1.0);
         assert_eq!(m.strike_width(), 2.0);
@@ -198,7 +292,10 @@ mod tests {
         // Border-box 100px with 6px top padding → 94px content. 20px cells.
         assert_eq!(term_fit_size(200.0, 94.0, 10.0, 20.0, 0.0), (20, 4));
         assert_eq!(term_fit_size(80.0, 50.0, 8.0, 17.0, 0.0), (10, 2));
-        assert_eq!(term_fit_size(94.0, 80.0, 8.0, 16.0, TERM_FIT_SCROLLBAR_WIDTH), (((94.0 - TERM_FIT_SCROLLBAR_WIDTH) / 8.0) as usize, 5));
+        assert_eq!(
+            term_fit_size(94.0, 80.0, 8.0, 16.0, TERM_FIT_SCROLLBAR_WIDTH),
+            (((94.0 - TERM_FIT_SCROLLBAR_WIDTH) / 8.0) as usize, 5)
+        );
         assert_eq!(term_fit_size(0.0, 0.0, 8.0, 16.0, 0.0), (2, 1));
         assert_eq!(term_fit_size(80.0, 80.0, 0.0, 0.0, 0.0), (2, 1));
     }

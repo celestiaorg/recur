@@ -28,7 +28,13 @@ pub struct CursorBlink {
 
 impl CursorBlink {
     pub fn new(now: Instant, focused: bool) -> Self {
-        let mut b = Self { visible: true, phase: Phase::Paused, idle_at: None, idle_paused: false, restarted_at: None };
+        let mut b = Self {
+            visible: true,
+            phase: Phase::Paused,
+            idle_at: None,
+            idle_paused: false,
+            restarted_at: None,
+        };
         if focused {
             b.restart_interval(now, BLINK_INTERVAL);
             b.reset_idle(now);

@@ -62,10 +62,6 @@ impl Scrollbar {
         (self.scroll_size - self.visible_size).max(0.0)
     }
 
-    pub fn scroll_top(&self) -> f32 {
-        self.scroll_top
-    }
-
     pub fn is_needed(&self) -> bool {
         self.scroll_size > 0.0 && self.scroll_size > self.visible_size
     }
@@ -75,7 +71,10 @@ impl Scrollbar {
     }
 
     fn slider_size(&self) -> f32 {
-        (self.visible_size * self.visible_size / self.scroll_size).floor().max(MINIMUM_SLIDER_SIZE).round()
+        (self.visible_size * self.visible_size / self.scroll_size)
+            .floor()
+            .max(MINIMUM_SLIDER_SIZE)
+            .round()
     }
 
     pub fn slider(&self) -> Option<Slider> {
@@ -83,14 +82,21 @@ impl Scrollbar {
             return None;
         }
         let size = self.slider_size();
-        Some(Slider { position: (self.scroll_top * self.ratio(size)).round(), size })
+        Some(Slider {
+            position: (self.scroll_top * self.ratio(size)).round(),
+            size,
+        })
     }
 
     /// A wheel event, DOM-normalized (positive `delta` scrolls towards newer output). Returns the
     /// new `scrollTop`, or None when it did not move. `pixels` marks precise (trackpad) deltas.
     pub fn wheel(&mut self, delta: f32, pixels: bool, alt: bool, now: Instant) -> Option<f32> {
         // StandardWheelEvent: WebKit reports wheelDeltaY = 120 ticks per 40px line.
-        let mut units = if pixels { -delta / PIXELS_PER_LINE } else { -delta };
+        let mut units = if pixels {
+            -delta / PIXELS_PER_LINE
+        } else {
+            -delta
+        };
         if alt {
             units *= recur_term::input::FAST_SCROLL_SENSITIVITY as f32;
         }
@@ -98,7 +104,11 @@ impl Scrollbar {
             return None;
         }
         let step = SCROLL_WHEEL_SENSITIVITY * units;
-        let step = if step < 0.0 { step.floor() } else { step.ceil() };
+        let step = if step < 0.0 {
+            step.floor()
+        } else {
+            step.ceil()
+        };
         self.set_scroll_top(self.scroll_top - step, now)
     }
 
@@ -206,7 +216,10 @@ impl Scrollbar {
             let dur = if to > from { FADE_IN } else { FADE_OUT };
             now < *s + dur
         });
-        match (fading.map(|_| now + Duration::from_millis(16)), self.hide_at) {
+        match (
+            fading.map(|_| now + Duration::from_millis(16)),
+            self.hide_at,
+        ) {
             (Some(a), Some(b)) => Some(a.min(b)),
             (a, b) => a.or(b),
         }
@@ -227,7 +240,13 @@ mod tests {
     fn slider_geometry() {
         let s = bar(150);
         // visible 240, content 2400: floor(240*240/2400) = 24, at the bottom.
-        assert_eq!(s.slider(), Some(Slider { position: 216.0, size: 24.0 }));
+        assert_eq!(
+            s.slider(),
+            Some(Slider {
+                position: 216.0,
+                size: 24.0
+            })
+        );
         let mut short = Scrollbar::default();
         short.sync(240.0, 160.0, 0, 16.0);
         assert!(short.slider().is_none(), "not needed without scrollback");
@@ -243,9 +262,17 @@ mod tests {
         assert_eq!(s.wheel(-1.0, false, false, now), Some(2160.0 - 50.0));
         // A 10px trackpad delta: 50 * 10/40 = 12.5 → ceil 13.
         assert_eq!(s.wheel(10.0, true, false, now), Some(2110.0 + 13.0));
-        assert_eq!(s.wheel(1000.0, true, false, now), Some(2160.0), "clamped to the bottom");
+        assert_eq!(
+            s.wheel(1000.0, true, false, now),
+            Some(2160.0),
+            "clamped to the bottom"
+        );
         assert_eq!(s.wheel(1.0, true, false, now), None);
-        assert_eq!(s.wheel(-1.0, false, true, now), Some(2160.0 - 250.0), "alt scrolls fast");
+        assert_eq!(
+            s.wheel(-1.0, false, true, now),
+            Some(2160.0 - 250.0),
+            "alt scrolls fast"
+        );
     }
 
     #[test]

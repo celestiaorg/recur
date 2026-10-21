@@ -5688,6 +5688,8 @@ dependencies = [
  "futures",
  "gpui-kit",
  "gpui-pre",
+ "image",
+ "parking_lot",
  "recur-term",
  "recur-ui",
  "serde",

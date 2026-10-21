@@ -57,12 +57,21 @@ impl ThemeContext {
 
     /// `resolveTerminalTheme(id, { transparentBg })`.
     pub fn resolve(&self, transparent_bg: bool) -> Theme {
-        terminal_theme(&self.tokens(), is_light_theme(&self.app_theme), self.palette_for(&self.terminal_theme).as_ref(), transparent_bg)
+        terminal_theme(
+            &self.tokens(),
+            is_light_theme(&self.app_theme),
+            self.palette_for(&self.terminal_theme).as_ref(),
+            transparent_bg,
+        )
     }
 
     /// `terminalSurfaceBg`: the opaque cell fill for chrome around the grid.
     pub fn surface_bg(&self) -> Rgba {
-        self.resolve(false).background.as_deref().and_then(Rgba::parse).unwrap_or(self.tokens().bg)
+        self.resolve(false)
+            .background
+            .as_deref()
+            .and_then(Rgba::parse)
+            .unwrap_or(self.tokens().bg)
     }
 
     /// `terminalFrosts`: maximize frosts (transparent cells) only on dark palettes.
@@ -70,7 +79,10 @@ impl ThemeContext {
         if self.terminal_theme.is_empty() {
             return !is_light_theme(&self.app_theme);
         }
-        self.catalog.iter().find(|t| t.id == self.terminal_theme).is_none_or(|t| t.ui_theme != "light")
+        self.catalog
+            .iter()
+            .find(|t| t.id == self.terminal_theme)
+            .is_none_or(|t| t.ui_theme != "light")
     }
 }
 
@@ -107,25 +119,45 @@ fn theme_fields(t: &mut Theme) -> [&mut Option<String>; 26] {
 
 /// `terminalTheme`: a bundle palette when given, otherwise the app chrome's CSS variables mapped
 /// onto xterm's palette so the terminal recolours with the app.
-pub fn terminal_theme(t: &Tokens, light: bool, palette: Option<&Theme>, transparent_bg: bool) -> Theme {
+pub fn terminal_theme(
+    t: &Tokens,
+    light: bool,
+    palette: Option<&Theme>,
+    transparent_bg: bool,
+) -> Theme {
     let h = |c: Rgba| Some(c.to_hex());
     if let Some(p) = palette {
         let opaque = p.background.clone().or_else(|| h(t.bg));
         let mut out = p.clone();
-        out.background = if transparent_bg { Some("#00000000".into()) } else { p.background.clone().or_else(|| opaque.clone()) };
+        out.background = if transparent_bg {
+            Some("#00000000".into())
+        } else {
+            p.background.clone().or_else(|| opaque.clone())
+        };
         out.cursor_accent = p.cursor_accent.clone().or(opaque);
         return out;
     }
     // --bg, not --pane: the dock body is the editor-level surface, and the grid paints its own
     // cell background, so a mismatch shows as a seam.
-    let bg = if transparent_bg { Some("#00000000".into()) } else { h(t.bg) };
+    let bg = if transparent_bg {
+        Some("#00000000".into())
+    } else {
+        h(t.bg)
+    };
     Theme {
         background: bg,
         foreground: h(t.text),
         cursor: h(t.amber),
         cursor_accent: h(t.bg),
         // A tinted block rather than a solid fill, so selected text stays readable.
-        selection_background: Some(if light { "rgba(0,0,0,.12)" } else { "rgba(255,255,255,.18)" }.into()),
+        selection_background: Some(
+            if light {
+                "rgba(0,0,0,.12)"
+            } else {
+                "rgba(255,255,255,.18)"
+            }
+            .into(),
+        ),
         black: h(t.line_bright),
         red: h(t.coral),
         green: h(t.emerald),
@@ -151,7 +183,10 @@ pub fn terminal_theme(t: &Tokens, light: bool, palette: Option<&Theme>, transpar
 pub fn search_decorations(t: &Tokens) -> Decorations {
     let mix = |fg: u8, bg: u8| (fg as f64 * 0.4 + bg as f64 * 0.6 + 0.5).floor() as u8;
     let (a, b) = (t.amber, t.bg);
-    Decorations { match_background: Rgba::rgb(mix(a.r(), b.r()), mix(a.g(), b.g()), mix(a.b(), b.b())), active_match_background: a }
+    Decorations {
+        match_background: Rgba::rgb(mix(a.r(), b.r()), mix(a.g(), b.g()), mix(a.b(), b.b())),
+        active_match_background: a,
+    }
 }
 
 #[cfg(test)]
@@ -172,11 +207,19 @@ mod tests {
     }
 
     fn theme(bg: &str, fg: &str) -> Theme {
-        Theme { background: Some(bg.into()), foreground: Some(fg.into()), ..Default::default() }
+        Theme {
+            background: Some(bg.into()),
+            foreground: Some(fg.into()),
+            ..Default::default()
+        }
     }
 
     fn ctx(id: &str, catalog: Vec<TerminalThemeInfo>) -> ThemeContext {
-        ThemeContext { app_theme: "default".into(), terminal_theme: id.into(), catalog }
+        ThemeContext {
+            app_theme: "default".into(),
+            terminal_theme: id.into(),
+            catalog,
+        }
     }
 
     #[test]
@@ -191,18 +234,31 @@ mod tests {
         let mut p = theme("#282a36", "#f8f8f2");
         p.red = Some("#ff5555".into());
         let t = ctx("dracula", vec![bundled("dracula", p, "dark")]).resolve(false);
-        assert_eq!((t.background.as_deref(), t.foreground.as_deref(), t.red.as_deref()), (Some("#282a36"), Some("#f8f8f2"), Some("#ff5555")));
+        assert_eq!(
+            (
+                t.background.as_deref(),
+                t.foreground.as_deref(),
+                t.red.as_deref()
+            ),
+            (Some("#282a36"), Some("#f8f8f2"), Some("#ff5555"))
+        );
         assert_eq!(t.cursor_accent.as_deref(), Some("#282a36"));
     }
 
     #[test]
     fn unknown_id_falls_back_to_app_chrome() {
-        assert_eq!(ctx("missing", vec![]).resolve(false).background.as_deref(), Some("#141414"));
+        assert_eq!(
+            ctx("missing", vec![]).resolve(false).background.as_deref(),
+            Some("#141414")
+        );
     }
 
     #[test]
     fn surface_bg_stays_opaque_for_pane_chrome() {
-        let c = ctx("homebrew", vec![bundled("homebrew", theme("#000000", "#00ff00"), "dark")]);
+        let c = ctx(
+            "homebrew",
+            vec![bundled("homebrew", theme("#000000", "#00ff00"), "dark")],
+        );
         assert_eq!(c.surface_bg(), Rgba::rgb(0, 0, 0));
         assert_eq!(c.resolve(true).background.as_deref(), Some("#00000000"));
     }
@@ -216,19 +272,41 @@ mod tests {
         assert!(!ctx("solarized-light", catalog.clone()).frosts());
         assert!(ctx("homebrew", catalog.clone()).frosts());
         assert!(ctx("", catalog.clone()).frosts());
-        assert!(!ThemeContext { app_theme: "paper".into(), ..ctx("", catalog) }.frosts());
+        assert!(
+            !ThemeContext {
+                app_theme: "paper".into(),
+                ..ctx("", catalog)
+            }
+            .frosts()
+        );
     }
 
     #[test]
     fn light_chrome_uses_a_dark_tint_selection() {
-        let c = ThemeContext { app_theme: "paper".into(), ..ctx("", vec![]) };
-        assert_eq!(c.resolve(false).selection_background.as_deref(), Some("rgba(0,0,0,.12)"));
+        let c = ThemeContext {
+            app_theme: "paper".into(),
+            ..ctx("", vec![])
+        };
+        assert_eq!(
+            c.resolve(false).selection_background.as_deref(),
+            Some("rgba(0,0,0,.12)")
+        );
     }
 
     #[test]
     fn palette_without_foreground_is_ignored() {
-        let p = Theme { background: Some("#000000".into()), foreground: Some(String::new()), ..Default::default() };
-        assert_eq!(ctx("x", vec![bundled("x", p, "dark")]).resolve(false).background.as_deref(), Some("#141414"));
+        let p = Theme {
+            background: Some("#000000".into()),
+            foreground: Some(String::new()),
+            ..Default::default()
+        };
+        assert_eq!(
+            ctx("x", vec![bundled("x", p, "dark")])
+                .resolve(false)
+                .background
+                .as_deref(),
+            Some("#141414")
+        );
     }
 
     #[test]
@@ -242,6 +320,9 @@ mod tests {
     fn catalog_json_matches_go() {
         let json = r##"{"id":"vga","name":"VGA","path":"themes/vga.json","uiTheme":"dark","order":10,"palette":{"background":"#000000","foreground":"#aaaaaa"},"bundleName":"Terminal","sourceRoot":"default"}"##;
         let t: TerminalThemeInfo = serde_json::from_str(json).unwrap();
-        assert_eq!((t.id.as_str(), t.order, t.palette.foreground.as_deref()), ("vga", 10, Some("#aaaaaa")));
+        assert_eq!(
+            (t.id.as_str(), t.order, t.palette.foreground.as_deref()),
+            ("vga", 10, Some("#aaaaaa"))
+        );
     }
 }

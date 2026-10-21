@@ -591,6 +591,11 @@ impl Screen {
         self.term.colors()[named].map_or(fallback, |c| Rgba::rgb(c.r, c.g, c.b))
     }
 
+    /// Theme foreground with any OSC 10 override (link underlines use it).
+    pub fn foreground(&self) -> Rgba {
+        self.special(NamedColor::Foreground, self.palette.foreground)
+    }
+
     /// xterm.js `term.clear()`: the prompt row becomes the first row and everything else,
     /// scrollback included, is dropped.
     pub fn clear(&mut self) {

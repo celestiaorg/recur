@@ -26,7 +26,11 @@ pub struct Park<V> {
 
 impl<V> Default for Park<V> {
     fn default() -> Self {
-        Self { entries: VecDeque::new(), discard: HashSet::new(), max_bytes: TERM_PARK_MAX_BYTES }
+        Self {
+            entries: VecDeque::new(),
+            discard: HashSet::new(),
+            max_bytes: TERM_PARK_MAX_BYTES,
+        }
     }
 }
 
@@ -39,7 +43,11 @@ impl<V> Park<V> {
         }
         self.discard.remove(id);
         self.entries.retain(|e| e.id != id);
-        self.entries.push_back(Entry { id: id.to_string(), view, workspace_id: workspace_id.to_string() });
+        self.entries.push_back(Entry {
+            id: id.to_string(),
+            view,
+            workspace_id: workspace_id.to_string(),
+        });
         let mut evicted = Vec::new();
         while self.entries.len() * TERM_PARK_ENTRY_BYTES > self.max_bytes {
             match self.entries.pop_front() {
@@ -121,7 +129,13 @@ mod tests {
         p.stash("0", 0, "");
         p.stash("1", 1, "");
         let evicted = p.stash("2", 2, "");
-        assert_eq!(evicted.iter().map(|(id, _)| id.as_str()).collect::<Vec<_>>(), ["0"]);
+        assert_eq!(
+            evicted
+                .iter()
+                .map(|(id, _)| id.as_str())
+                .collect::<Vec<_>>(),
+            ["0"]
+        );
         assert_eq!(p.len(), 2);
         assert_eq!(p.take("0"), None);
     }
@@ -144,7 +158,13 @@ mod tests {
         p.stash("gone", 2, "ws-b");
         p.stash("orphan", 3, "");
         let keep: HashSet<String> = ["ws-a".to_string()].into();
-        assert_eq!(p.prune(&keep).iter().map(|(id, _)| id.as_str()).collect::<Vec<_>>(), ["gone"]);
+        assert_eq!(
+            p.prune(&keep)
+                .iter()
+                .map(|(id, _)| id.as_str())
+                .collect::<Vec<_>>(),
+            ["gone"]
+        );
         assert_eq!(p.len(), 2);
         assert!(p.take("keep").is_some() && p.take("orphan").is_some());
     }

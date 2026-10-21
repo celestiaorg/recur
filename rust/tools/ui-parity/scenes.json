@@ -563,5 +563,128 @@
       ],
       "hardTolerance": 132
     }
+  ],
+  "terminalInputs": {
+    "prompt": "\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ ls --color\r\n\u001b[1;34mbundles\u001b[0m  \u001b[1;34mcrates\u001b[0m  \u001b[1;32mbuild.sh\u001b[0m  Cargo.toml  \u001b[36mdocs\u001b[0m  README.md\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ git status --short\r\n \u001b[31mM\u001b[0m crates/term/src/screen/render.rs\r\n\u001b[32mA\u001b[0m  crates/term/src/screen/overline.rs\r\n\u001b[31m??\u001b[0m notes.md\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ cargo test -q\r\n\u001b[1mbold\u001b[0m \u001b[2mdim\u001b[0m \u001b[3mitalic\u001b[0m \u001b[7minverse\u001b[0m \u001b[9mstrike\u001b[0m \u001b[38;5;208morange\u001b[0m \u001b[38;2;120;200;255mtruecolor\u001b[0m \u001b[48;5;24m bg 24 \u001b[0m \u001b[1;31mbold red\u001b[0m\r\n\u001b[32mtest result: ok.\u001b[0m 129 passed; 0 failed; \u001b[33m0 ignored\u001b[0m\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ \u001b]0;ready\u0007",
+    "cursor": "\u001b[2 q\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ ls --color\r\n\u001b[1;34mbundles\u001b[0m  \u001b[1;34mcrates\u001b[0m  \u001b[1;32mbuild.sh\u001b[0m  Cargo.toml  \u001b[36mdocs\u001b[0m  README.md\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ git status --short\r\n \u001b[31mM\u001b[0m crates/term/src/screen/render.rs\r\n\u001b[32mA\u001b[0m  crates/term/src/screen/overline.rs\r\n\u001b[31m??\u001b[0m notes.md\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ cargo test -q\r\n\u001b[1mbold\u001b[0m \u001b[2mdim\u001b[0m \u001b[3mitalic\u001b[0m \u001b[7minverse\u001b[0m \u001b[9mstrike\u001b[0m \u001b[38;5;208morange\u001b[0m \u001b[38;2;120;200;255mtruecolor\u001b[0m \u001b[48;5;24m bg 24 \u001b[0m \u001b[1;31mbold red\u001b[0m\r\n\u001b[32mtest result: ok.\u001b[0m 129 passed; 0 failed; \u001b[33m0 ignored\u001b[0m\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ \u001b]0;ready\u0007",
+    "decorations": "\u001b[53moverline\u001b[0m \u001b[4munderline\u001b[0m \u001b[53;4mboth\u001b[0m \u001b[4:2mdouble\u001b[0m \u001b[4:3mcurly\u001b[0m \u001b[4:4mdotted\u001b[0m \u001b[4:5mdashed\u001b[0m\r\n\u001b[53;31mred over\u001b[0m \u001b[53;7minverse\u001b[0m \u001b[53;2mdim\u001b[0m \u001b[53;1mbold\u001b[0m \u001b[53;9mstruck\u001b[0m \u001b[53;4;58;5;214mcoloured ul\u001b[0m \u001b[53;3mitalic\u001b[0m\r\n\u001b[53m   \u001b[0m blanks \u001b[53;44m on blue \u001b[0m \u001b[53;4:3;58;2;255;80;80mcurly over\u001b[0m \u001b[53;7;32minv green\u001b[0m\r\nselect \u001b[53macross overline\u001b[0m and \u001b[4munderline\u001b[0m text\r\n\u001b[53;55moff\u001b[0m \u001b[38;5;53midx 53\u001b[0m \u001b[0;53mreset then on\u001b[53;0m on then reset\u001b[0m\r\n\u001b[?25l\u001b]0;ready\u0007",
+    "palette": "\u001b[30mblack \u001b[31mred \u001b[32mgreen \u001b[33myellow \u001b[34mblue \u001b[35mmagenta \u001b[36mcyan \u001b[37mwhite \u001b[0m\r\n\u001b[90mblack \u001b[91mred \u001b[92mgreen \u001b[93myellow \u001b[94mblue \u001b[95mmagenta \u001b[96mcyan \u001b[97mwhite \u001b[0m\r\n\u001b[40m    \u001b[41m    \u001b[42m    \u001b[43m    \u001b[44m    \u001b[45m    \u001b[46m    \u001b[47m    \u001b[0m\r\n\u001b[100m    \u001b[101m    \u001b[102m    \u001b[103m    \u001b[104m    \u001b[105m    \u001b[106m    \u001b[107m    \u001b[0m\r\n\u001b[1m\u001b[30mblack \u001b[31mred \u001b[32mgreen \u001b[33myellow \u001b[34mblue \u001b[35mmagenta \u001b[36mcyan \u001b[37mwhite \u001b[0m\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ ls --color\r\n\u001b[1;34mbundles\u001b[0m  \u001b[1;34mcrates\u001b[0m  \u001b[1;32mbuild.sh\u001b[0m  Cargo.toml  \u001b[36mdocs\u001b[0m  README.md\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ git status --short\r\n \u001b[31mM\u001b[0m crates/term/src/screen/render.rs\r\n\u001b[32mA\u001b[0m  crates/term/src/screen/overline.rs\r\n\u001b[2mdim\u001b[0m \u001b[7minverse\u001b[0m \u001b[3mitalic\u001b[0m\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ \u001b]0;ready\u0007",
+    "scroll": "\u001b[2m  1\u001b[0m  \u001b[36mline\u001b[0m 1 of the build log\r\n\u001b[2m  2\u001b[0m  \u001b[36mline\u001b[0m 2 of the build log\r\n\u001b[2m  3\u001b[0m  \u001b[36mline\u001b[0m 3 of the build log\r\n\u001b[2m  4\u001b[0m  \u001b[36mline\u001b[0m 4 of the build log\r\n\u001b[2m  5\u001b[0m  \u001b[36mline\u001b[0m 5 of the build log\r\n\u001b[2m  6\u001b[0m  \u001b[36mline\u001b[0m 6 of the build log\r\n\u001b[2m  7\u001b[0m  \u001b[36mline\u001b[0m 7 of the build log\r\n\u001b[2m  8\u001b[0m  \u001b[36mline\u001b[0m 8 of the build log\r\n\u001b[2m  9\u001b[0m  \u001b[36mline\u001b[0m 9 of the build log\r\n\u001b[2m 10\u001b[0m  \u001b[36mline\u001b[0m 10 of the build log\r\n\u001b[2m 11\u001b[0m  \u001b[36mline\u001b[0m 11 of the build log\r\n\u001b[2m 12\u001b[0m  \u001b[36mline\u001b[0m 12 of the build log\r\n\u001b[2m 13\u001b[0m  \u001b[36mline\u001b[0m 13 of the build log\r\n\u001b[2m 14\u001b[0m  \u001b[36mline\u001b[0m 14 of the build log\r\n\u001b[2m 15\u001b[0m  \u001b[36mline\u001b[0m 15 of the build log\r\n\u001b[2m 16\u001b[0m  \u001b[36mline\u001b[0m 16 of the build log\r\n\u001b[2m 17\u001b[0m  \u001b[36mline\u001b[0m 17 of the build log\r\n\u001b[2m 18\u001b[0m  \u001b[36mline\u001b[0m 18 of the build log\r\n\u001b[2m 19\u001b[0m  \u001b[36mline\u001b[0m 19 of the build log\r\n\u001b[2m 20\u001b[0m  \u001b[36mline\u001b[0m 20 of the build log\r\n\u001b[2m 21\u001b[0m  \u001b[36mline\u001b[0m 21 of the build log\r\n\u001b[2m 22\u001b[0m  \u001b[36mline\u001b[0m 22 of the build log\r\n\u001b[2m 23\u001b[0m  \u001b[36mline\u001b[0m 23 of the build log\r\n\u001b[2m 24\u001b[0m  \u001b[36mline\u001b[0m 24 of the build log\r\n\u001b[2m 25\u001b[0m  \u001b[36mline\u001b[0m 25 of the build log\r\n\u001b[2m 26\u001b[0m  \u001b[36mline\u001b[0m 26 of the build log\r\n\u001b[2m 27\u001b[0m  \u001b[36mline\u001b[0m 27 of the build log\r\n\u001b[2m 28\u001b[0m  \u001b[36mline\u001b[0m 28 of the build log\r\n\u001b[2m 29\u001b[0m  \u001b[36mline\u001b[0m 29 of the build log\r\n\u001b[2m 30\u001b[0m  \u001b[36mline\u001b[0m 30 of the build log\r\n\u001b[2m 31\u001b[0m  \u001b[36mline\u001b[0m 31 of the build log\r\n\u001b[2m 32\u001b[0m  \u001b[36mline\u001b[0m 32 of the build log\r\n\u001b[2m 33\u001b[0m  \u001b[36mline\u001b[0m 33 of the build log\r\n\u001b[2m 34\u001b[0m  \u001b[36mline\u001b[0m 34 of the build log\r\n\u001b[2m 35\u001b[0m  \u001b[36mline\u001b[0m 35 of the build log\r\n\u001b[2m 36\u001b[0m  \u001b[36mline\u001b[0m 36 of the build log\r\n\u001b[2m 37\u001b[0m  \u001b[36mline\u001b[0m 37 of the build log\r\n\u001b[2m 38\u001b[0m  \u001b[36mline\u001b[0m 38 of the build log\r\n\u001b[2m 39\u001b[0m  \u001b[36mline\u001b[0m 39 of the build log\r\n\u001b[2m 40\u001b[0m  \u001b[36mline\u001b[0m 40 of the build log\r\n\u001b[1;32mjosh@studio\u001b[0m:\u001b[1;34m~/recur\u001b[0m \u001b[35m(main)\u001b[0m $ \u001b]0;ready\u0007"
+  },
+  "terminal": [
+    {
+      "name": "terminal/prompt",
+      "width": 560,
+      "height": 240,
+      "theme": "default",
+      "tolerance": 10,
+      "input": "prompt"
+    },
+    {
+      "name": "terminal/paper",
+      "width": 560,
+      "height": 240,
+      "theme": "paper",
+      "tolerance": 10,
+      "input": "prompt"
+    },
+    {
+      "name": "terminal/selection",
+      "width": 560,
+      "height": 240,
+      "theme": "default",
+      "tolerance": 10,
+      "input": "cursor",
+      "steps": [
+        {
+          "down": [
+            60,
+            84
+          ]
+        },
+        {
+          "up": [
+            300,
+            138
+          ]
+        }
+      ]
+    },
+    {
+      "name": "terminal/search",
+      "width": 560,
+      "height": 240,
+      "theme": "default",
+      "tolerance": 350,
+      "input": "prompt",
+      "find": true,
+      "steps": [
+        {
+          "click": [
+            150,
+            18
+          ]
+        },
+        {
+          "type": "crates"
+        }
+      ]
+    },
+    {
+      "name": "terminal/scrollbar",
+      "width": 560,
+      "height": 240,
+      "theme": "default",
+      "tolerance": 0,
+      "input": "scroll",
+      "steps": [
+        {
+          "move": [
+            200,
+            120
+          ]
+        }
+      ]
+    },
+    {
+      "name": "terminal/decorations",
+      "width": 560,
+      "height": 240,
+      "theme": "default",
+      "tolerance": 10,
+      "input": "decorations",
+      "steps": [
+        {
+          "down": [
+            60,
+            84
+          ]
+        },
+        {
+          "up": [
+            200,
+            84
+          ]
+        }
+      ]
+    },
+    {
+      "name": "terminal/solarized-light",
+      "width": 560,
+      "height": 240,
+      "theme": "paper",
+      "tolerance": 10,
+      "input": "palette",
+      "terminalTheme": "solarized-light"
+    },
+    {
+      "name": "terminal/solarized-dark",
+      "width": 560,
+      "height": 240,
+      "theme": "default",
+      "tolerance": 10,
+      "input": "palette",
+      "terminalTheme": "solarized-dark"
+    }
   ]
 }

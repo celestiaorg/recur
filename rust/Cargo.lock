@@ -7049,16 +7049,22 @@ dependencies = [
 name = "recur-terminal-view"
 version = "0.0.0"
 dependencies = [
+ "core-foundation 0.10.1",
+ "core-graphics 0.24.0",
+ "core-text",
  "futures",
  "gpui-kit",
  "gpui-pre",
  "image",
+ "include_dir",
  "parking_lot",
  "recur-term",
  "recur-ui",
  "serde",
  "serde_json",
+ "smallvec",
  "tempfile",
+ "toml 0.9.12+spec-1.1.0",
 ]
 
 [[package]]
@@ -7101,6 +7107,7 @@ dependencies = [
  "gpui-kit",
  "image",
  "recur-editor",
+ "recur-terminal-view",
  "recur-ui",
  "serde",
  "serde_json",

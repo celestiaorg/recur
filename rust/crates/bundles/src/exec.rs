@@ -300,20 +300,26 @@ async fn execute(
     }
     let stdout = Arc::new(Mutex::new(Vec::new()));
     let stderr = Arc::new(Mutex::new(Vec::new()));
-    let out_task = drain(child.stdout.take(), stdout.clone());
-    let err_task = drain(child.stderr.take(), stderr.clone());
+    let mut out_task = drain(child.stdout.take(), stdout.clone());
+    let mut err_task = drain(child.stderr.take(), stderr.clone());
     let pid = child.id();
 
     let finished = async {
         let status = child.wait().await;
-        let _ = out_task.await;
-        let _ = err_task.await;
+        let _ = (&mut out_task).await;
+        let _ = (&mut err_task).await;
         status
     };
     let end = tokio::select! {
         status = finished => End::Exited(status.map_err(|e| err!("{}", go::errno_text(&e)))?),
         why = ctx.done() => {
             kill_group(pid, &mut child).await;
+            // Like Go's Wait, collect what the group wrote before it died.
+            let _ = tokio::time::timeout(KILL_GRACE, async {
+                let _ = (&mut out_task).await;
+                let _ = (&mut err_task).await;
+            })
+            .await;
             End::Cancelled(why)
         }
     };

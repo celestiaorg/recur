@@ -605,7 +605,7 @@ fn parse_language_servers(
         let langs: Vec<String> = s
             .languages
             .iter()
-            .map(|l| l.trim().to_lowercase())
+            .map(|l| go::to_lower(l.trim()))
             .filter(|l| !l.is_empty())
             .collect();
         if langs.is_empty() {
@@ -886,7 +886,7 @@ fn require_shebang_script(
 pub(crate) fn kebab_from_name(name: &str) -> String {
     let mut b = String::new();
     let mut prev_hyphen = false;
-    for r in name.trim().to_lowercase().chars() {
+    for r in go::to_lower(name.trim()).chars() {
         if r.is_ascii_lowercase() || r.is_ascii_digit() {
             b.push(r);
             prev_hyphen = false;
@@ -905,7 +905,7 @@ fn normalize_prompt_args(p: &mut PromptAction) -> Result<(), Error> {
     let mut out: Vec<PromptArgSpec> = Vec::with_capacity(p.args.len());
     let mut seen = std::collections::HashSet::new();
     for (i, a) in p.args.iter().enumerate() {
-        let name = a.name.trim().to_lowercase();
+        let name = go::to_lower(a.name.trim());
         if name.is_empty() {
             return Err(err!("prompt {id}: arg[{i}]: name is required"));
         }
@@ -999,7 +999,7 @@ pub(crate) fn resolve_pack_icon(
         return Ok(String::new());
     }
     let id = quote(id);
-    if go::ext(rel).to_lowercase() != ".svg" {
+    if go::to_lower(go::ext(rel)) != ".svg" {
         return Err(err!("{kind} {id}: icon must be a .svg"));
     }
     let path = go::join(&[bundle_dir, rel]);
@@ -1015,7 +1015,7 @@ pub(crate) fn resolve_pack_icon(
 
 fn sanitize_prompt_icon_svg(raw: &str) -> Result<String, &'static str> {
     let s = raw.trim();
-    let low = s.to_lowercase();
+    let low = go::to_lower(s);
     if !low.contains("<svg") {
         return Err("not an svg");
     }
@@ -1029,7 +1029,7 @@ fn sanitize_prompt_icon_svg(raw: &str) -> Result<String, &'static str> {
 }
 
 fn complete_interpreter_for(rel: &str) -> &'static str {
-    match go::ext(rel).to_lowercase().as_str() {
+    match go::to_lower(go::ext(rel)).as_str() {
         ".ts" | ".mts" | ".js" | ".mjs" => INTERPRETER_TYPESCRIPT,
         _ => INTERPRETER_SHEBANG,
     }

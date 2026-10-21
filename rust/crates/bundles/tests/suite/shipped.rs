@@ -1,10 +1,8 @@
 //! Port of `shipped_tests_test.go` and `seed_shipped_test.go`.
 
-mod common;
-
 use std::collections::HashSet;
 
-use common::*;
+use crate::common::*;
 use recur_bundles::*;
 
 fn shipped_dirs() -> Vec<(String, String)> {

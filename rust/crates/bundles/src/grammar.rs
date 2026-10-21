@@ -220,9 +220,9 @@ pub(crate) fn go_json_field<'a>(
     name: &str,
 ) -> Option<&'a Value> {
     obj.get(name).or_else(|| {
-        let lower = name.to_lowercase();
+        let lower = go::to_lower(name);
         obj.iter()
-            .find(|(k, _)| k.to_lowercase() == lower)
+            .find(|(k, _)| go::to_lower(k) == lower)
             .map(|(_, v)| v)
     })
 }
@@ -484,7 +484,7 @@ fn normalize_theme_color(s: &str) -> Result<String, &'static str> {
     if s.starts_with('#') {
         return normalize_preview_color(s);
     }
-    let lower = s.to_lowercase();
+    let lower = go::to_lower(s);
     if ["rgb(", "rgba(", "hsl(", "hsla("]
         .iter()
         .any(|p| lower.starts_with(p))
@@ -523,7 +523,7 @@ pub fn find_terminal_theme_by_id<'a>(
 
 /// Whether `path` looks like a TextMate grammar file.
 pub fn grammar_convention_ok(path: &str) -> bool {
-    let lower = path.to_lowercase();
+    let lower = go::to_lower(path);
     lower.ends_with(".tmlanguage.json")
         || lower.ends_with(".tmlanguage")
         || lower.ends_with(".json-tmlanguage")
@@ -531,12 +531,12 @@ pub fn grammar_convention_ok(path: &str) -> bool {
 
 /// Whether `path` looks like a TextMate theme JSON file.
 pub fn theme_convention_ok(path: &str) -> bool {
-    let lower = path.to_lowercase();
+    let lower = go::to_lower(path);
     lower.ends_with(".tmtheme.json") || lower.ends_with(".tmtheme")
 }
 
 /// Whether `path` looks like an xterm `ITheme` JSON file.
 pub fn terminal_theme_convention_ok(path: &str) -> bool {
-    let lower = path.to_lowercase();
+    let lower = go::to_lower(path);
     lower.ends_with(".json") && !lower.ends_with(".tmtheme.json")
 }

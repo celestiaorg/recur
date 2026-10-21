@@ -11,7 +11,7 @@ use serde::de::{
 };
 use toml::Value;
 
-use crate::Error;
+use crate::{Error, go};
 
 /// Parses `src` into `T` the way go-toml's `Unmarshal` would.
 pub fn from_str<T: DeserializeOwned>(src: &str) -> Result<T, Error> {
@@ -101,10 +101,10 @@ impl FoldMap {
             .map(|(k, v)| {
                 let key = match fields {
                     Some(fields) if !fields.contains(&k.as_str()) => {
-                        let lower = k.to_lowercase();
+                        let lower = go::to_lower(&k);
                         fields
                             .iter()
-                            .find(|f| f.to_lowercase() == lower)
+                            .find(|f| go::to_lower(f) == lower)
                             .map_or(k, |f| (*f).to_string())
                     }
                     _ => k,

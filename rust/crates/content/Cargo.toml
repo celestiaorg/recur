@@ -26,6 +26,12 @@ base64.workspace = true
 smallvec.workspace = true
 unicode-linebreak.workspace = true
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
+resvg = { workspace = true, features = ["text", "system-fonts", "memmap-fonts"] }
+recur-editor.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics.workspace = true
+core-foundation.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true

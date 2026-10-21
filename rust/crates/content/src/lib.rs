@@ -22,4 +22,7 @@ pub use view::{MarkdownEvent, MarkdownView};
 #[cfg(feature = "gallery")]
 pub mod gallery;
 pub mod streaming;
+pub mod svg;
+pub mod preview;
+pub mod pdf;
 pub use streaming::StreamingMarkdown;

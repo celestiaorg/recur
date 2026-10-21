@@ -3,10 +3,6 @@
 
 use std::sync::Arc;
 
-#[cfg(not(feature = "code"))]
-use recur_agent_tools::coding::{
-    bash::BashTool, edit::EditTool, read::ReadTool, todos::TodoTool, write::WriteTool,
-};
 use recur_agent_tools::{Call, HostError, PermissionVerdict, Permitter, TodoStore, Tool};
 use serde::Deserialize;
 use tokio_util::sync::CancellationToken;
@@ -51,23 +47,9 @@ impl Permitter for DenyAll {
 }
 
 fn tool(name: &str) -> Option<Arc<dyn Tool>> {
-    #[cfg(feature = "code")]
-    {
-        return recur_agent_tools::coding_tools()
-            .into_iter()
-            .find(|t| t.name() == name);
-    }
-    #[cfg(not(feature = "code"))]
-    {
-        let all: Vec<Arc<dyn Tool>> = vec![
-            Arc::new(ReadTool),
-            Arc::new(EditTool),
-            Arc::new(WriteTool),
-            Arc::new(BashTool),
-            Arc::new(TodoTool),
-        ];
-        all.into_iter().find(|t| t.name() == name)
-    }
+    recur_agent_tools::coding_tools()
+        .into_iter()
+        .find(|t| t.name() == name)
 }
 
 #[tokio::test]
@@ -118,10 +100,7 @@ async fn coding_tools_match_go() {
     let mut failures = Vec::new();
     let mut ran = 0;
     for c in &cases {
-        let Some(t) = tool(&c.tool) else {
-            // Glob and Grep need recur-code (slice C): the `code` feature.
-            continue;
-        };
+        let t = tool(&c.tool).unwrap_or_else(|| panic!("no tool {}", c.tool));
         ran += 1;
         let call = Call {
             worktree: wt.clone(),
@@ -153,11 +132,7 @@ async fn coding_tools_match_go() {
             ));
         }
     }
-    assert_eq!(
-        ran,
-        if cfg!(feature = "code") { 82 } else { 75 },
-        "replayed cases"
-    );
+    assert_eq!(ran, 82, "replayed cases");
     assert!(
         failures.is_empty(),
         "{} of {ran} cases differ:\n{}",

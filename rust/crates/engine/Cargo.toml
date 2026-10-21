@@ -20,5 +20,8 @@ recur-bundles.workspace = true
 recur-code.workspace = true
 recur-term.workspace = true
 
+[dev-dependencies]
+serde_json.workspace = true
+
 [lints]
 workspace = true

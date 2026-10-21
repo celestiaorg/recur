@@ -1,6 +1,6 @@
 [package]
 name = "recur-code"
-description = "Worktree file access: tree, index, search/replace (ripgrep), outline, symbols, open-in, copy-files."
+description = "Worktree file access: tree, index, search/replace (ripgrep), outline, symbols, open-in, copy-files, observatory analysis."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,6 +10,32 @@ publish = false
 [dependencies]
 recur-domain.workspace = true
 recur-git.workspace = true
+recur-chroma.workspace = true
+base64.workspace = true
+flate2.workspace = true
+hex.workspace = true
+icu_collator.workspace = true
+parking_lot.workspace = true
+regress.workspace = true
+regex.workspace = true
+reqwest.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tar.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-foundation.workspace = true
+objc2-app-kit.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+serde.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

@@ -61,7 +61,8 @@ pub trait Provider: Send + Sync + 'static {
 
     /// One agent turn (Go `AgentRunner.Run`). Events go to `cx.sink`
     /// synchronously and in order, each run through a
-    /// [`crate::ContextUsageTracker`]; every provider result frame is also
+    /// [`crate::ContextUsageTracker`] unless the provider meters the result
+    /// itself (Cursor); every provider result frame is also
     /// emitted as [`crate::AgentEvent::TurnEnd`]. On cancel the provider
     /// stops the remote run, emits nothing further, and returns
     /// [`ProviderError::canceled`] carrying the partial result.
@@ -94,8 +95,13 @@ pub trait Provider: Send + Sync + 'static {
         None
     }
     /// A worktree is being removed: drop pooled processes bound to it and
-    /// provider-side project dirs.
-    async fn release_worktree(&self, _worktree: &Path) {}
+    /// provider-side project dirs. `Err` carries the complete sentence the
+    /// engine shows in the workspace feed (Go emitted "Could not remove
+    /// Cursor project dirs: …" as a Maestro event, or logged it when the
+    /// workspace was already gone).
+    async fn release_worktree(&self, _worktree: &Path) -> Result<(), ProviderError> {
+        Ok(())
+    }
     /// Agent slots went to zero.
     async fn on_idle(&self) {}
     /// Settings changed (a key or binary path change may tear down pools).

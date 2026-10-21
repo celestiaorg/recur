@@ -14,6 +14,7 @@ recur-domain = { path = "crates/domain" }
 recur-store = { path = "crates/store" }
 recur-project = { path = "crates/project" }
 recur-git = { path = "crates/git" }
+recur-chroma = { path = "crates/chroma" }
 recur-forge = { path = "crates/forge" }
 recur-issues = { path = "crates/issues" }
 recur-agent = { path = "crates/agent" }
@@ -105,6 +106,9 @@ alacritty_terminal = { version = "0.25", default-features = false }
 unicode-width = "0.2"
 image = { version = "0.25", default-features = false }
 regress = { version = "0.12", features = ["utf16"] }
+
+# ICU root collation: the UI's `localeCompare` / `Intl.Collator` ordering.
+icu_collator = "2"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

@@ -353,7 +353,8 @@ pub trait Provider: Send + Sync + 'static {
     fn display_tool_result(&self, name: &str, result: &str) -> String;
 
     fn usage_probe(&self) -> Option<Arc<dyn UsageProbe>> { None }
-    async fn release_worktree(&self, _worktree: &Path) {}
+    /// Err = the sentence the workspace feed shows (see P2 as built).
+    async fn release_worktree(&self, _worktree: &Path) -> Result<(), ProviderError> { Ok(()) }
     async fn on_idle(&self) {}
     async fn settings_changed(&self, _old: &Settings, _new: &Settings) {}
     async fn shutdown(&self) {}
@@ -904,6 +905,17 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Prerequisites:** `recur-domain`, `recur-git` (status/diff helpers).
 - **Public API:** `recur_code::{Root, safe_join, read_file, write_file, list_tree, git_status, search, search_opts, replace_in_files, FileIndex, rank_files, outline, find_defs, find_refs, list_skills, list_skill_resources, open_in_editor, reveal, open_in_targets, rg::{ensure, run}, copyfiles::{parse_patterns, copy}, observe::{analyze_root, run_light_checks, project_findings_onto_diff, compute_impact}}`; `recur_project::{runconfig::{boot, run_cmd_output}, wsenv::{from_workspace, parse_dotenv}}` (store port), `recur_engine::simplify::text::{applies_to_chat, prompt}`.
 
+- **As built (deviations from the API above):**
+  - Walks are synchronous and take `&CancellationToken` (`search`, `search_opts`, `replace_in_files`, `list_files`, `find_defs`, `find_refs`, `index_symbols`, `list_skills`, `compute_impact`); anything that runs git or a subprocess is `async` (`git_status`, `list_tree`, `list_trees`, `file_diff`, `file_at_base`, `image_at_base`, `rg::{files, ensure}`, `observe::{run_checks, run_light_checks, analyze, analyze_root}`). Callers that need Go's partial-on-cancel behavior get `Error::Canceled`.
+  - `rg::{locate, files_args, files, ensure}` replace `rg::{ensure, run}`; agent tools call `recur_store::paths::data_dir` (the store exports it there, not at the crate root).
+  - Go's context deadlines: `copyfiles::{preview, copy}` take `(cancel, deadline: Option<Instant>)` (preview defaults to 15 s); `observe::{run_checks, run_light_checks}` take `Option<CancellationToken>`, and `None` is Go's nil context (90 s / 25 s bound). E5 passes a token that fires after 25 s for PR open, as Go's `WithTimeout`.
+  - `observe` lives in `recur-code` (its consumers are E5 and services; it only needs `code`), as `recur_code::observe`.
+  - The resident index is `IndexHub` (Go `IndexHub`, built on the current tokio runtime) with `FileIndex` / `Snapshot`; `Drop` is `drop_index`. Publishes go through `Publish = Arc<dyn Fn(&str, Snapshot)>`; services maps a snapshot to the `workspace.file_index` event.
+  - `reveal` is `reveal_in_finder` and `open_in_targets` is `list_open_in_targets` (Go names); `open_in` opens a workspace folder in a target.
+  - Go nil slices: `outline`, `find_defs`, `find_refs`, `extract_idents` return `Vec`, empty where Go returned nil, so services encodes an empty result as `null` to keep the wire shape. `SearchResult.hits` and `CopyFilesPreview.files` keep `Option` like the domain types.
+  - The UI's pure file rules are `recur_code::{fuzzy, glob}` (shared with Go's ranking and glob translation) and `recur_code::view::{file_index, changed_tree, finding_paths, skills}`; `localeCompare` / `Intl.Collator` order is ICU root collation (`icu_collator`), and `lib/glob.ts` matches with JavaScript regex semantics (`regress`). `lib/simplify.ts` is `recur_engine::simplify::text::{simplify_enabled, simplify_from_selection}`.
+  - Go behavior kept on purpose: the search, symbol and metrics walks skip a walked root whose own name starts with `.`, as `skipDir` did.
+
 #### F: forge + issue trackers (`recur-forge`, `recur-issues`)
 
 - **Go files:** `github.go` (forge half), `github_prs.go` (list parsing, attention, checks reconcile helpers), `github_thread.go` (parsers + mutations), `github_snapshot.go`, `github_reaction.go` (fetch/set), `pr_participants.go`, `pr_reviewers.go`, `app/gh_image.go`, `app/issues.go` (trackers), Linear preset half of `user_mcp.go`, `linearIssueMeta` from `commit_message.go` (as `recur_issues::goal_meta`).
@@ -957,6 +969,16 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Prerequisites:** A-M1. Node on `PATH` for smoke tests.
 - **Public API:** `CursorProvider::new(cfg)` implementing 2.1 with `release_worktree`, `on_idle`, `settings_changed`, `install(progress)` for `cursor.install`.
 - **Note:** keep the attribution pin coupling (`pinnedSDKVersion` + `sdkAttributionAnchors`) and port `check:cursor-sdk-pin` semantics.
+- **As built (deviations and notes for E1/E2/SV):**
+  - Trait change: `release_worktree` returns `Result<(), ProviderError>`. Go's teardown emitted "Could not remove Cursor project dirs: …" as a Maestro workspace event (or logged it when the workspace was gone); with `()` the engine could not surface it. The error message is the whole sentence; E1 HTML-escapes it into the event as Go did.
+  - `CursorProvider::new(CursorConfig { data_dir, settings, home })`; like Codex it keeps a settings snapshot, so SV must call `settings_changed` on every save. `settings_changed` rewrites `cursor-attribution.json` (Go did this in SetSettings), closes the pool when Cursor is turned off and cancels a deferred close when it is on. The deferral checks the provider's own in-flight runners rather than the governor's agent count; `on_idle` (agent slots at zero) finishes it, as Go's `closeIfIdleRequested` did.
+  - `install(cancel, progress)` returns the launcher; SV publishes `InstallProgress::event_payload()` / `install_error_payload` as `cursor.install`, saves `Settings.cursor_bridge_path` and then calls `status`. `cursor_status` / `test_cursor_key` return the Go `CursorStatus` JSON shape; `status` / `test_credentials` map it onto `ProviderStatus`. SV keeps `dropOrphanCursorKey` (it writes the store) before calling `status`.
+  - The self-heal of Go `runAgent` (bridge unreachable on CreateAgent: invalidate and retry once) and the "Cursor is turned off in Settings → Providers: …" wrap live in `run_turn`; the router must not retry Cursor itself.
+  - Cursor does not run events through `ContextUsageTracker`, as in Go: its result already meters the latest footprint with the current tool-wave and compaction state, and the tracker's last-usage overlay would be stale. `context_window` is the table + flags (the mirror's Cursor branch).
+  - createPlan steps are followed by `AgentEvent::PlanProposal { body }` (the planner and plan-mode harvest, R7). `oneshot_flags` is empty (Go skipped the default effort for Cursor); `can_disable_tools = false` keeps the Read/Glob/Grep one-shot allowlist. `resume_handle_fits` is Go's `agent-` prefix rule.
+  - Allowlists (R9): only "no Edit/Write/NotebookEdit → plan mode" and `mcp__recur__create_workspace` → subagent overlay are read; Cursor has no per-run allowlist.
+  - `canonicalTool` is duplicated from `recur_provider_codex::display` (Go shared one function; providers cannot depend on each other).
+  - Pin check: `RECUR_CURSOR_SDK_PIN_CHECK=1 cargo test -p recur-provider-cursor check_cursor_sdk_pin_drift` (Taskfile/CI entry for `check:cursor-sdk-pin`); `RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 … attribution_patch_against_pinned_wheel` validates the anchors on the pinned wheel; `golden_tests::pin_and_anchors_match_go` fails if the Go pin or anchors move without the Rust ones.
 
 #### P3: compatible provider, usage, LSP
 
@@ -966,7 +988,6 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Public API:** `CompatibleProvider::new(domain::CompatibleProvider)`; `recur_usage::{Poller, ClaudeProbe, CodexProbe, CursorProbe, connect_cursor}`; `recur_lsp::{Manager, Session, servers, managed}`.
 - **As built (deviations and notes for E2/SV/editor):** no trait change.
   - `CompatibleProvider` runs turns through `TurnContext::{tools, history}`. The in-process toolbox is `recur_provider_compatible::HarnessTools` (Go `responsesTools`/`execOne`/`harnessPermitter`: allowlist, `permission_request` hidden, Bash gated through `Host::request_permission`, `harnessAgentCode`), a `ToolHost` built per turn from `(Option<Arc<dyn Host>>, Arc<TodoStore>, &TurnRequest)`. `recur-engine` cannot depend on a provider crate, so when E2 wires turns, move `tools.rs` into `recur-agent-tools` (it depends only on `recur-agent` and `recur-agent-tools`) and build it in the router for `ToolTransport::InProcess` providers. Without `cx.tools` the harness advertises no tools.
-  - Glob and Grep are missing from `harness_tools()` until `recur-agent-tools`' `code` feature can be on (slice C); a crate feature here would break `--all-features` today.
   - The transcript comes from `HistorySource::{transcript, history_after}` (Go read the store). Stored chat images reload under `recur_store::paths::data_dir()` (override with `with_data_dir`).
   - Steers are acked `true` once appended to the next round's input. Go never acked harness injects, so `tryInject` read false at turn end and the caller could resend a message the turn already took.
   - The picker label is fixed at construction; `settings_changed` refreshes the run config by slug (Go rebuilt the runner from settings every turn). SV labels groups with `Settings::display_label` and re-registers providers whose name changes. `availability` keeps Go's three messages.

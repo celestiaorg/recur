@@ -1,0 +1,697 @@
+{
+  "labels": [
+    "src/main.go",
+    "src/Main.java",
+    "src_main.go",
+    "src-main.go",
+    "SRC/main.go",
+    "srcmain.go",
+    "internal/store/seed.go",
+    "internal/store/seed_prs.go",
+    "a/b",
+    "a_b",
+    "a-b",
+    "a.b",
+    "a b",
+    "A/B",
+    "über/straße.go",
+    "uber/strasse.go",
+    "Übung",
+    "zeta",
+    "Zeta",
+    "zeta2",
+    "zeta10",
+    "emoji/😀.txt",
+    "_private",
+    ".hidden",
+    "~tilde",
+    "#hash",
+    "x.test.ts",
+    "x_test.go",
+    "xTest.java",
+    "café",
+    "cafe"
+  ],
+  "ranked": {
+    "": [
+      [
+        "_private",
+        0
+      ],
+      [
+        ".hidden",
+        0
+      ],
+      [
+        "#hash",
+        0
+      ],
+      [
+        "~tilde",
+        0
+      ],
+      [
+        "a b",
+        0
+      ],
+      [
+        "a_b",
+        0
+      ],
+      [
+        "a-b",
+        0
+      ],
+      [
+        "a.b",
+        0
+      ],
+      [
+        "a/b",
+        0
+      ],
+      [
+        "A/B",
+        0
+      ]
+    ],
+    "s": [
+      [
+        "srcmain.go",
+        1590
+      ],
+      [
+        "src_main.go",
+        1589
+      ],
+      [
+        "src-main.go",
+        1589
+      ],
+      [
+        "über/straße.go",
+        1581
+      ],
+      [
+        "uber/strasse.go",
+        1580
+      ],
+      [
+        "internal/store/seed.go",
+        1569
+      ],
+      [
+        "internal/store/seed_prs.go",
+        1565
+      ],
+      [
+        "#hash",
+        1292
+      ],
+      [
+        "x_test.go",
+        1287
+      ],
+      [
+        "x.test.ts",
+        1287
+      ]
+    ],
+    "src": [
+      [
+        "srcmain.go",
+        1590
+      ],
+      [
+        "src_main.go",
+        1589
+      ],
+      [
+        "src-main.go",
+        1589
+      ],
+      [
+        "src/main.go",
+        1089
+      ],
+      [
+        "SRC/main.go",
+        1089
+      ],
+      [
+        "src/Main.java",
+        1087
+      ]
+    ],
+    "main": [
+      [
+        "src/main.go",
+        1585
+      ],
+      [
+        "SRC/main.go",
+        1585
+      ],
+      [
+        "src/Main.java",
+        1583
+      ],
+      [
+        "srcmain.go",
+        1287
+      ],
+      [
+        "src_main.go",
+        1285
+      ],
+      [
+        "src-main.go",
+        1285
+      ]
+    ],
+    "sm": [
+      [
+        "src_main.go",
+        28
+      ],
+      [
+        "src-main.go",
+        28
+      ],
+      [
+        "src/main.go",
+        28
+      ],
+      [
+        "SRC/main.go",
+        28
+      ],
+      [
+        "src/Main.java",
+        27
+      ],
+      [
+        "srcmain.go",
+        16
+      ]
+    ],
+    "seed": [
+      [
+        "internal/store/seed.go",
+        1563
+      ],
+      [
+        "internal/store/seed_prs.go",
+        1559
+      ]
+    ],
+    "a": [
+      [
+        "a b",
+        1597
+      ],
+      [
+        "a_b",
+        1597
+      ],
+      [
+        "a-b",
+        1597
+      ],
+      [
+        "a.b",
+        1597
+      ],
+      [
+        "cafe",
+        1295
+      ],
+      [
+        "café",
+        1295
+      ],
+      [
+        "#hash",
+        1293
+      ],
+      [
+        "zeta",
+        1293
+      ],
+      [
+        "Zeta",
+        1293
+      ],
+      [
+        "zeta2",
+        1292
+      ]
+    ],
+    "ab": [
+      [
+        "a_b",
+        30
+      ],
+      [
+        "a-b",
+        30
+      ],
+      [
+        "a/b",
+        30
+      ],
+      [
+        "A/B",
+        30
+      ],
+      [
+        "a b",
+        18
+      ],
+      [
+        "a.b",
+        18
+      ]
+    ],
+    "zeta": [
+      [
+        "zeta",
+        10000
+      ],
+      [
+        "Zeta",
+        10000
+      ],
+      [
+        "zeta2",
+        1595
+      ],
+      [
+        "zeta10",
+        1594
+      ]
+    ],
+    "ü": [
+      [
+        "Übung",
+        1595
+      ],
+      [
+        "über/straße.go",
+        1086
+      ]
+    ],
+    "straße": [
+      [
+        "über/straße.go",
+        1581
+      ]
+    ],
+    "test": [
+      [
+        "x_test.go",
+        1289
+      ],
+      [
+        "x.test.ts",
+        1289
+      ],
+      [
+        "xTest.java",
+        1289
+      ],
+      [
+        "internal/store/seed.go",
+        29
+      ],
+      [
+        "internal/store/seed_prs.go",
+        28
+      ]
+    ],
+    "x": [
+      [
+        "x_test.go",
+        1591
+      ],
+      [
+        "x.test.ts",
+        1591
+      ],
+      [
+        "xTest.java",
+        1590
+      ],
+      [
+        "emoji/😀.txt",
+        1278
+      ]
+    ],
+    "caf": [
+      [
+        "cafe",
+        1596
+      ],
+      [
+        "café",
+        1596
+      ]
+    ],
+    "😀": [
+      [
+        "emoji/😀.txt",
+        1582
+      ]
+    ],
+    " Main ": [
+      [
+        "src/main.go",
+        1585
+      ],
+      [
+        "SRC/main.go",
+        1585
+      ],
+      [
+        "src/Main.java",
+        1583
+      ],
+      [
+        "srcmain.go",
+        1287
+      ],
+      [
+        "src_main.go",
+        1285
+      ],
+      [
+        "src-main.go",
+        1285
+      ]
+    ],
+    "zz": []
+  },
+  "paths": [
+    "b.txt",
+    "a/z.go",
+    "a/b.go",
+    "internal/store/seed.go",
+    "internal/store/seed_prs.go",
+    "A/upper.go",
+    "a_b/x",
+    "a-b/x",
+    "a.b/x",
+    "Zeta/1",
+    "zeta/2",
+    "über/1",
+    "uber/2",
+    "a",
+    "a/b.go/c",
+    "10.txt",
+    "9.txt"
+  ],
+  "built": [
+    {
+      "name": "a",
+      "path": "a",
+      "dir": true,
+      "children": [
+        {
+          "name": "b.go",
+          "path": "a/b.go",
+          "dir": true,
+          "children": [
+            {
+              "name": "b.go",
+              "path": "a/b.go",
+              "dir": false
+            },
+            {
+              "name": "c",
+              "path": "a/b.go/c",
+              "dir": false
+            }
+          ]
+        },
+        {
+          "name": "a",
+          "path": "a",
+          "dir": false
+        },
+        {
+          "name": "z.go",
+          "path": "a/z.go",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "A",
+      "path": "A",
+      "dir": true,
+      "children": [
+        {
+          "name": "upper.go",
+          "path": "A/upper.go",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "a_b",
+      "path": "a_b",
+      "dir": true,
+      "children": [
+        {
+          "name": "x",
+          "path": "a_b/x",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "a-b",
+      "path": "a-b",
+      "dir": true,
+      "children": [
+        {
+          "name": "x",
+          "path": "a-b/x",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "a.b",
+      "path": "a.b",
+      "dir": true,
+      "children": [
+        {
+          "name": "x",
+          "path": "a.b/x",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "internal",
+      "path": "internal",
+      "dir": true,
+      "children": [
+        {
+          "name": "store",
+          "path": "internal/store",
+          "dir": true,
+          "children": [
+            {
+              "name": "seed_prs.go",
+              "path": "internal/store/seed_prs.go",
+              "dir": false
+            },
+            {
+              "name": "seed.go",
+              "path": "internal/store/seed.go",
+              "dir": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "uber",
+      "path": "uber",
+      "dir": true,
+      "children": [
+        {
+          "name": "2",
+          "path": "uber/2",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "über",
+      "path": "über",
+      "dir": true,
+      "children": [
+        {
+          "name": "1",
+          "path": "über/1",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "zeta",
+      "path": "zeta",
+      "dir": true,
+      "children": [
+        {
+          "name": "2",
+          "path": "zeta/2",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "Zeta",
+      "path": "Zeta",
+      "dir": true,
+      "children": [
+        {
+          "name": "1",
+          "path": "Zeta/1",
+          "dir": false
+        }
+      ]
+    },
+    {
+      "name": "10.txt",
+      "path": "10.txt",
+      "dir": false
+    },
+    {
+      "name": "9.txt",
+      "path": "9.txt",
+      "dir": false
+    },
+    {
+      "name": "b.txt",
+      "path": "b.txt",
+      "dir": false
+    }
+  ],
+  "order": [
+    "a/b.go",
+    "a/b.go/c",
+    "a",
+    "a/z.go",
+    "A/upper.go",
+    "a_b/x",
+    "a-b/x",
+    "a.b/x",
+    "internal/store/seed_prs.go",
+    "internal/store/seed.go",
+    "uber/2",
+    "über/1",
+    "zeta/2",
+    "Zeta/1",
+    "10.txt",
+    "9.txt",
+    "b.txt"
+  ],
+  "locations": [
+    [
+      "/Users/j/.claude/skills/foo/SKILL.md",
+      "user",
+      "",
+      "~/.claude/skills/foo",
+      "/Users/j"
+    ],
+    [
+      "/home/j/.cursor/skills/foo/skill.md",
+      "user",
+      "",
+      "~/.cursor/skills/foo",
+      "/home/j"
+    ],
+    [
+      "C:\\Users\\j\\.codex\\skills\\foo\\SKILL.md",
+      "user",
+      "",
+      "~/.codex/skills/foo",
+      "C:/Users/j"
+    ],
+    [
+      "/opt/h/.recur/recur-skills/foo/SKILL.md",
+      "user",
+      "",
+      "~/.recur/recur-skills/foo",
+      "/opt/h"
+    ],
+    [
+      "/work/repo/.agents/skills/foo/SKILL.md",
+      "workspace",
+      "",
+      ".agents/skills/foo",
+      ""
+    ],
+    [
+      "/work/repo/skills/foo/SKILL.md",
+      "workspace",
+      "",
+      "/work/repo/skills/foo",
+      ""
+    ],
+    [
+      "/srv/u/.gemini/skills/foo/SKILL.md",
+      "user",
+      "/srv/u/",
+      "~/.gemini/skills/foo",
+      ""
+    ],
+    [
+      "/x/y/SKILL.md",
+      "user",
+      "",
+      "/x/y",
+      ""
+    ]
+  ],
+  "candidates": [
+    "src/a.ts",
+    "lib/b.ts",
+    "test/a.ts",
+    "deep/src/c.ts"
+  ],
+  "matches": [
+    [
+      "a.ts",
+      ""
+    ],
+    [
+      "src/a.ts",
+      "src/a.ts"
+    ],
+    [
+      "c.ts",
+      "deep/src/c.ts"
+    ],
+    [
+      "/abs/deep/src/c.ts",
+      "deep/src/c.ts"
+    ],
+    [
+      "b.ts",
+      "lib/b.ts"
+    ],
+    [
+      "",
+      ""
+    ],
+    [
+      "x.ts",
+      ""
+    ]
+  ]
+}

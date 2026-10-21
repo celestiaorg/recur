@@ -13,6 +13,7 @@ rust/
     domain/             recur-domain       pure model + rules        (internal/domain, internal/shortid)
     store/              recur-store        SQLite, migrations, paths (internal/store)
     git/                recur-git          local git                 (internal/git)
+    chroma/             recur-chroma       syntax highlighting       (internal/git highlight.go, chroma)
     project/            recur-project      project.toml, env, runs   (internal/projfile, wsenv, runconfig)
     forge/              recur-forge        remote hosting: GitHub    (engine github*, pr*, app/gh_image)
     issues/             recur-issues       issue trackers: Linear    (app/issues, Linear bundle glue)

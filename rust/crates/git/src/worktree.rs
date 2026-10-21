@@ -15,9 +15,9 @@ use tokio::time::Instant;
 use crate::command::{Command, command};
 use crate::error::{Error, Result};
 use crate::gopath;
-use crate::home::expand_home;
 use crate::scm::identity;
 use crate::text::{atoi, eq_fold, go_lower, go_string, quote};
+use recur_project::home::expand_home;
 
 /// One checked-out worktree of a repository.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

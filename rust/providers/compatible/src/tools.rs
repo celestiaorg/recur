@@ -5,12 +5,9 @@
 use std::sync::Arc;
 
 use recur_agent::{ToolCallMeta, ToolHost, ToolOutcome, ToolSpec, TurnRequest};
-use recur_agent_tools::coding::{
-    bash::BashTool, edit::EditTool, read::ReadTool, todos::TodoTool, write::WriteTool,
-};
 use recur_agent_tools::{
     Call, Host, HostError, PermissionAsk, PermissionVerdict, Permitter, Registry, TodoStore, Tool,
-    advertised_name, bare_name, halt_after, host_tools,
+    advertised_name, bare_name, coding_tools, halt_after, host_tools,
 };
 use recur_domain::PERMISSION_MODE_BYPASS;
 use tokio_util::sync::CancellationToken;
@@ -54,20 +51,11 @@ pub fn harness_agent_code(req: &TurnRequest) -> String {
     code.to_owned()
 }
 
-/// Recur's host tools followed by the coding tools in Go order (Read, Edit,
-/// Write, Glob, Grep, Bash, TodoWrite).
-// simplify: Glob and Grep run ripgrep through recur-code, which is still empty
-// (slice C), so recur-agent-tools only builds them behind its `code` feature.
-// When that feature becomes default, extend with `recur_agent_tools::coding_tools()`.
+/// Recur's host tools followed by the coding tools (Read, Edit, Write, Glob,
+/// Grep, Bash, TodoWrite).
 pub fn harness_tools() -> Vec<Arc<dyn Tool>> {
     let mut tools = host_tools();
-    tools.extend([
-        Arc::new(ReadTool) as Arc<dyn Tool>,
-        Arc::new(EditTool),
-        Arc::new(WriteTool),
-        Arc::new(BashTool),
-        Arc::new(TodoTool),
-    ]);
+    tools.extend(coding_tools());
     tools
 }
 

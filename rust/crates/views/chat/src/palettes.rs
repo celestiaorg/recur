@@ -24,7 +24,7 @@ use recur_view_core::AppState;
 use recur_view_core::commands::CommandPrompt;
 use recur_view_core::run::workspace_runs;
 
-use crate::chat::HoverGate;
+use recur_ui::logic::hover_gate::HoverGate;
 use crate::style::hsla;
 
 /// A Stop row: one running command, or `all` when several are going.

@@ -297,38 +297,7 @@ impl MentionHit {
     }
 }
 
-/// `createHoverGate`: hover may change the selection only after the pointer moved 4px.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct HoverGate {
-    pub armed: bool,
-    origin: Option<(f32, f32)>,
-}
-
-pub const HOVER_GATE_THRESHOLD_PX: f32 = 4.;
-
-impl HoverGate {
-    pub fn reset(&mut self) {
-        self.armed = false;
-        self.origin = None;
-    }
-
-    /// `hoverGateAllows`.
-    pub fn allows(&mut self, x: f32, y: f32) -> bool {
-        if self.armed {
-            return true;
-        }
-        let Some((ox, oy)) = self.origin else {
-            self.origin = Some((x, y));
-            return false;
-        };
-        let (dx, dy) = (x - ox, y - oy);
-        if dx * dx + dy * dy < HOVER_GATE_THRESHOLD_PX * HOVER_GATE_THRESHOLD_PX {
-            return false;
-        }
-        self.armed = true;
-        true
-    }
-}
+use recur_ui::logic::hover_gate::HoverGate;
 
 /// Escape dismissed this `@` / `/` query; keyup must not reopen it until it changes.
 #[derive(Clone, Debug, PartialEq)]
@@ -2030,35 +1999,4 @@ pub(crate) fn args_query(
     takes_args: &dyn Fn(&str) -> bool,
 ) -> Option<PromptArgsQuery> {
     prompt_args_query_at(text, caret, takes_args)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // hoverGate.test.ts
-    #[test]
-    fn hover_gate_ignores_the_idle_cursor_and_jitter() {
-        let mut g = HoverGate::default();
-        assert!(!g.allows(100., 200.));
-        assert!(!g.allows(100., 200.));
-        assert!(!g.armed);
-        let mut g = HoverGate::default();
-        assert!(!g.allows(10., 10.));
-        assert!(!g.allows(12., 11.));
-        assert!(!g.armed);
-    }
-
-    #[test]
-    fn hover_gate_arms_after_real_movement_and_resets() {
-        let mut g = HoverGate::default();
-        assert!(!g.allows(10., 10.));
-        assert!(g.allows(15., 10.));
-        assert!(g.armed && g.allows(15., 10.) && g.allows(50., 50.));
-        g.reset();
-        assert!(!g.armed);
-        assert!(!g.allows(10., 0.));
-        assert!(!g.allows(10., 0.));
-        assert!(g.allows(14., 0.));
-    }
 }

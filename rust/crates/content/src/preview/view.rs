@@ -20,9 +20,9 @@ use super::find::{FindOptions, PreviewFindMatch, collect_preview_find_ranges, re
 use super::find_bar::{FindBarEvent, PreviewFindBar};
 use super::scroll::{Attachment, PreviewScrollStore, Scroller};
 use crate::html::{HtmlPreview, HtmlPreviewEvent};
-use crate::mermaid::MermaidPreview;
+use crate::mermaid::{DiagramChanged, MermaidPreview};
 use crate::render::style::MarkdownClass;
-use crate::view::MarkdownView;
+use crate::view::{MarkdownEvent, MarkdownView};
 
 /// The scroll store a preview owner shares with its surfaces (`scroll` prop).
 pub type SharedScroll = Rc<RefCell<PreviewScrollStore>>;
@@ -161,9 +161,9 @@ impl FilePreview {
             (PreviewKind::Markdown, _) => {
                 let v = cx.new(|cx| MarkdownView::new(content, MarkdownClass::MdDoc, false, cx));
                 // `MutationObserver`: re-collect matches when the rendered tree changes.
-                self._subs.push(cx.observe_in(&v, window, |p, _, window, cx| {
-                    if p.find_open && p.active {
-                        p.refresh_later(window, cx);
+                self._subs.push(cx.subscribe_in(&v, window, |p, _, ev: &MarkdownEvent, window, cx| {
+                    if matches!(ev, MarkdownEvent::TextChanged) && p.find_open && p.active {
+                        p.refresh(window, cx);
                     }
                 }));
                 Surface::Markdown(v)
@@ -198,17 +198,14 @@ impl FilePreview {
                 let path = self.path.clone();
                 let scroll = self.scroll.clone();
                 let m = cx.new(|cx| MermaidPreview::new(&content, &path, Some(scroll), window, cx));
-                self._subs.push(cx.observe_in(&m, window, |p, _, window, cx| {
+                self._subs.push(cx.subscribe_in(&m, window, |p, _, _: &DiagramChanged, window, cx| {
                     if p.find_open && p.active {
-                        p.refresh_later(window, cx);
+                        p.refresh(window, cx);
                     }
                 }));
                 Surface::Mermaid(m)
             }
         };
-        if self.find_open {
-            self.refresh_later(window, cx);
-        }
         cx.notify();
     }
 
@@ -249,6 +246,29 @@ impl FilePreview {
 
     pub fn is_search_open(&self) -> bool {
         self.find_open
+    }
+
+    /// The find bar's count (`.cm-recur-search-count`): empty while there is no query.
+    pub fn find_count_label(&self, cx: &gpui_kit::App) -> String {
+        self.bar.read(cx).count_label(cx)
+    }
+
+    /// The text under each painted find highlight, in document order.
+    pub fn painted_highlights(&self, cx: &gpui_kit::App) -> Vec<String> {
+        let mut ranges = match &self.surface {
+            Surface::Markdown(v) => v.read(cx).highlights().clone(),
+            Surface::Mermaid(m) => m.read(cx).highlights().clone(),
+            _ => return Vec::new(),
+        }
+        .into_iter()
+        .flat_map(|(id, rs)| rs.into_iter().map(move |(r, _)| (id, r)))
+        .collect::<Vec<_>>();
+        ranges.sort_by_key(|(id, r)| (*id, r.start));
+        let blocks: HashMap<usize, String> = self.blocks(cx).into_iter().collect();
+        ranges
+            .into_iter()
+            .filter_map(|(id, r)| blocks.get(&id).and_then(|t| t.get(r)).map(str::to_string))
+            .collect()
     }
 
     /// `toggleSearch`: false when this kind has no find (SVG).
@@ -303,10 +323,6 @@ impl FilePreview {
             }
         }
         cx.notify();
-    }
-
-    fn refresh_later(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        cx.on_next_frame(window, |p, window, cx| p.refresh(window, cx));
     }
 
     /// The rendered text blocks of the surface.
@@ -465,7 +481,6 @@ impl FilePreview {
         if !self.active || !self.findable() {
             return;
         }
-        let in_find = self.bar.read(cx).contains_focus(window, cx);
         let k = &e.keystroke;
         let m = k.modifiers;
         let cmd = if cfg!(target_os = "macos") {
@@ -489,9 +504,7 @@ impl FilePreview {
         if (cmd && !m.alt && k.key.eq_ignore_ascii_case("g")) || k.key == "f3" {
             cx.stop_propagation();
             self.step(if m.shift { -1 } else { 1 }, window, cx);
-            return;
         }
-        let _ = in_find;
     }
 
     fn detach(&mut self) {

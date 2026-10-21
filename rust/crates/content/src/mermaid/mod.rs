@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 use crate::render::block::MermaidSlot;
 use crate::view::MarkdownView;
 pub use diagram::Diagram;
-pub use preview::MermaidPreview;
+pub use preview::{DiagramChanged, MermaidPreview};
 
 static SEQ: AtomicUsize = AtomicUsize::new(0);
 

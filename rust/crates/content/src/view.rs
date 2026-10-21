@@ -34,6 +34,8 @@ pub enum MarkdownEvent {
     LightboxOpen(bool),
     /// A toast the host should show (`pushToast`).
     Toast { error: bool, message: String },
+    /// A render changed the text blocks (what a `MutationObserver` on the rendered tree sees).
+    TextChanged,
 }
 
 pub struct MarkdownView {
@@ -372,6 +374,11 @@ impl MarkdownView {
     }
 
     /// Every rendered text block with its id and content, in document order.
+    /// Find highlights by text block: `(range, current)`.
+    pub fn highlights(&self) -> &HashMap<usize, Vec<(std::ops::Range<usize>, bool)>> {
+        &self.highlights
+    }
+
     pub fn text_blocks(&self) -> Vec<(usize, String)> {
         self.texts
             .borrow()
@@ -488,7 +495,19 @@ impl Render for MarkdownView {
         };
         let blocks = b.blocks(&doc.nodes, flow, "root");
         let (body, first, last) = stack(blocks, b.window);
+        let changed = {
+            let old = self.texts.borrow();
+            old.len() != b.texts.len()
+                || old.iter().zip(&b.texts).any(|(a, b)| {
+                    a.id != b.id
+                        || a.spec.runs.len() != b.spec.runs.len()
+                        || a.spec.runs.iter().zip(&b.spec.runs).any(|(x, y)| x.text != y.text)
+                })
+        };
         *self.texts.borrow_mut() = std::mem::take(&mut b.texts);
+        if changed {
+            cx.emit(MarkdownEvent::TextChanged);
+        }
         let gap_top = crate::render::exact::vgap(first, b.window);
         let gap_bottom = crate::render::exact::vgap(last, b.window);
         let this = cx.entity().downgrade();

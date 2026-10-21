@@ -27,6 +27,10 @@ fn clamp_scale(s: f32) -> f32 {
     s.clamp(MIN_SCALE, MAX_SCALE)
 }
 
+/// The diagram (and with it the text find searches) was replaced.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DiagramChanged;
+
 pub struct MermaidPreview {
     content: SharedString,
     path: SharedString,
@@ -81,7 +85,9 @@ impl MermaidPreview {
         self.scale = 1.;
         self.tx = 0.;
         self.ty = 0.;
-        self.diagram = None;
+        if self.diagram.take().is_some() {
+            cx.emit(DiagramChanged);
+        }
         self.restore = self
             .scroll
             .as_ref()
@@ -125,6 +131,7 @@ impl MermaidPreview {
             }
             Err(e) => self.error = if e.is_empty() { "Mermaid render failed".into() } else { e },
         }
+        cx.emit(DiagramChanged);
         cx.notify();
     }
 
@@ -213,6 +220,10 @@ impl MermaidPreview {
     /// Find: the diagram's labels as one block.
     pub fn text_blocks(&self) -> Vec<(usize, String)> {
         self.diagram.as_ref().map(|d| vec![(0, d.text())]).unwrap_or_default()
+    }
+
+    pub fn highlights(&self) -> &HashMap<usize, Vec<(Range<usize>, bool)>> {
+        &self.highlights
     }
 
     pub fn set_highlights(&mut self, h: HashMap<usize, Vec<(Range<usize>, bool)>>, cx: &mut Context<Self>) {
@@ -304,6 +315,8 @@ impl MermaidPreview {
             .into_any_element()
     }
 }
+
+impl gpui_kit::EventEmitter<DiagramChanged> for MermaidPreview {}
 
 impl Render for MermaidPreview {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

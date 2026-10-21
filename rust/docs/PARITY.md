@@ -546,7 +546,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/chat-tab-reorder.ts` (74 lines)
 - [ ] `lib/chat-tab-session.ts` (84 lines)
 - [ ] `lib/chat-window.ts` (36 lines)
-- [ ] `lib/check-duration.ts` (90 lines)
+- [x] `lib/check-duration.ts` (90 lines) → `recur_forge::view` (`format_check_seconds`, `parse_check_duration`, `live_check_detail`, `PendingClock`, `prune_pending_clocks`, `check_clock_key`); test file ported
 - [ ] `lib/chrome-focus.ts` (89 lines)
 - [ ] `lib/clipboard.ts` (69 lines)
 - [ ] `lib/cm-diff-gutter.ts` (207 lines)
@@ -580,8 +580,8 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/commands.ts` (489 lines)
 - [ ] `lib/comment-header.ts` (22 lines)
 - [ ] `lib/comment-hunk.ts` (107 lines)
-- [ ] `lib/comment-permalink.ts` (91 lines)
-- [ ] `lib/comment-reactions.ts` (137 lines)
+- [x] `lib/comment-permalink.ts` (91 lines) → `recur_forge::github::{comment_permalink, commit_url, blob_url, ui_node_database_id}`, reached through `Forge::{comment_url, commit_url, blob_url}`; test file ported (UI node-id decoding kept separate from the backend's: BigInt-sized ids, printable legacy ids)
+- [~] `lib/comment-reactions.ts` (137 lines) → pure rules in `recur_forge::view` (`REACTIONS` picker table, `reaction_icon`, `reaction_label`, `visible_reactions`, `apply_comment_reactions`, `apply_reaction_holds`; normalize/toggle/mine are `recur_domain::reaction`); test file ported. Left for `recur-app`: the optimistic toggle with its 120 s hold map and store painting
 - [ ] `lib/comment-thread.ts` (372 lines)
 - [ ] `lib/commit-meta.ts` (12 lines)
 - [ ] `lib/compatible-providers.ts` (81 lines)
@@ -611,10 +611,10 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/hoverGate.ts` (50 lines)
 - [ ] `lib/icons.ts` (1003 lines)
 - [ ] `lib/inbox-read.ts` (28 lines)
-- [ ] `lib/issue-link.ts` (36 lines)
+- [~] `lib/issue-link.ts` (36 lines) → `recur_issues::view::{issue_key, issue_url}` (tracker fallback via `IssueTracker::issue_url`); tested. Left for `recur-app`: the `trackerIssues` cache keyed on `issuesStale` and `openIssueUrl` (services `OpenLinearInApp` uses `IssueTracker::app_url`)
 - [ ] `lib/keybinding-menu.ts` (27 lines)
 - [ ] `lib/keyequiv.ts` (285 lines)
-- [ ] `lib/lineartools.ts` (320 lines)
+- [x] `lib/lineartools.ts` (320 lines) → `recur_issues::linear::tools`; test file ported
 - [ ] `lib/loop-cockpit.ts` (432 lines)
 - [ ] `lib/loops.ts` (183 lines)
 - [ ] `lib/lsp-lang.ts` (86 lines)
@@ -643,14 +643,14 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/pdf-preview.ts` (85 lines)
 - [ ] `lib/permissionTools.ts` (60 lines)
 - [ ] `lib/plantools.ts` (120 lines)
-- [ ] `lib/pr-attention.ts` (98 lines)
-- [ ] `lib/pr-checks.ts` (139 lines)
+- [x] `lib/pr-attention.ts` (98 lines) → `recur_forge::view` (`pr_attention_codes`, `pr_attention_labels`, `pr_has_review_request`, `pr_has_check_status`, `pr_checks_rollup`, `pr_checks_passing`); test file ported
+- [x] `lib/pr-checks.ts` (139 lines) → `recur_forge::view` (`is_pending_check`, `is_skipped_check`, `group_checks`, `checks_rollup` → `RollupKind`, `checks_heading` with the forge label, `check_group_collapsed`, `checks_box_byline`) and `Forge::{checks_url, check_run_url}`; test file ported
 - [ ] `lib/pr-commits.ts` (23 lines)
 - [ ] `lib/pr-detail-pending.ts` (48 lines)
 - [ ] `lib/pr-fix-checks.ts` (53 lines)
 - [ ] `lib/pr-list-filter.ts` (190 lines)
 - [ ] `lib/pr-merge-action.ts` (276 lines)
-- [ ] `lib/pr-participants.ts` (165 lines)
+- [x] `lib/pr-participants.ts` (165 lines) → `recur_forge::view` (`PrPerson`, `PR_FACE_CAP`, `pr_participants`, `pr_people_with_reviews`, `reviewer_summary`, `review_state_label`, `participant_label`, `participant_initials`, `participant_avatar_url` via `Forge::avatar_url(.., 40)`, `pr_face_slots`, `person_key`); test file ported
 - [ ] `lib/pr-thread-resolved.ts` (43 lines)
 - [ ] `lib/pr-workspace.ts` (107 lines)
 - [ ] `lib/preview-find.ts` (260 lines)
@@ -706,7 +706,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/todos.ts` (38 lines)
 - [ ] `lib/tree-sticky.ts` (137 lines)
 - [ ] `lib/updater.ts` (42 lines)
-- [ ] `lib/user-mention.ts` (200 lines)
+- [~] `lib/user-mention.ts` (200 lines) → pure rules in `recur_forge::view` (`mention_login`, `mention_people`, `suggest_user_mentions` taking the fuzzy ranker from `lib/fuzzy.ts`'s port, `merge_mention_hits`); test cases ported. Left for `recur-app`: the textarea typeahead (caret tracking, 150 ms remote search via `Forge::mentionable_users`, keys) and `mentionQueryAt` (`lib/agentchat.ts`, E2)
 - [ ] `lib/uuid.ts` (16 lines)
 - [ ] `lib/wait-for-worktree.ts` (38 lines)
 - [ ] `lib/webtools.ts` (87 lines)
@@ -739,6 +739,8 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 
 - [ ] `internal/agenttools`: 52 files, 3802 lines, 3 test files
 - [ ] `internal/app`: 25 files, 8921 lines, 27 test files
+  - [x] `gh_image.go` → `recur_forge::github` behind `Forge::fetch_image` (allow-list, S3-only redirects with credentials dropped off-host, 5-redirect cap, 20 s bound, 8 MiB cap, content-type and sniffing, cached `gh auth token`); `gh_image_test.go` ported with a fake `ImageTransport`. The `/gh-image` HTTP handler (method check, missing `url` → 400, `Cache-Control`) is services (`fileserver`)
+  - [x] `issues.go` trackers → `recur_issues::{github::GitHubIssues, linear::Linear}` (gh search batches of 5 repos, remote → project map, Linear assigned + paged unassigned to 300, claim, `linear://` links, GraphQL error handling) and `recur_issues::{list_assigned, claim}`; `issues_test.go`, the claim half of `workspace_issue_test.go`, and Go-generated golden fixtures (`tests/golden/linear.json`) ported. `ListAssignedIssues` / `OpenLinearInApp` service wrappers are SV
 - [ ] `internal/bundles`: 19 files, 6525 lines, 20 test files
 - [ ] `internal/cli`: 7 files, 830 lines, 2 test files
 - [ ] `internal/cliinstall`: 3 files, 568 lines, 3 test files
@@ -763,6 +765,13 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `schedule`: ScheduledPrompt(+Run), OnStartup, NextScheduledTime with a robfig/cron v3 port (seconds-optional fields, names, steps, descriptors, `@every`, `CRON_TZ=`/`TZ=`, five-year limit) and Go `time.Date` DST resolution on embedded tzdata (chrono-tz); 2,844 Go-computed cases in `tests/go_rules.rs`
   - [x] `briefing`, `observatory`, `model`, `ids`: briefing snapshot types and codes, observatory/search/metrics types, ModelRef (ParseModelRef, String, IsZero, NewModelRef), ProviderLabel, BuiltinProvider, NewID/NewUniqueID/ValidID
 - [ ] `internal/engine`: 88 files, 47557 lines, 106 test files
+  - [x] Slice F (forge): `recur-forge` with the `Forge` trait, `github::GitHub` and `testing::FakeForge` (replaces `listGitHubPRsFn`, `githubLoginFn`, `githubPRViewStateFn`, `ghCLIAvailableFn`, `probeGHCLIFn`, `getGitHubPRSnapshot`, `getGitHubPRChecks`, `postGitHubPRCommentFn`, `submitGitHubPRReviewFn`, `editGitHubPRFn`, `editGitHubPRCommentFn`, `deleteGitHubPRCommentFn`, `replyGitHubPRCommentFn`, `setGitHubReviewThreadFn`, `setGitHubReactionFn`, `githubViewerFn`, `setGitHubPRDraftFn`, `mergeGitHubPR`, `fetchGitHubMergeFieldsFn`, `fetchGitHubBranchRequiresPRFn`)
+    - [x] `github.go` forge half: gh availability (30 s cache), login, create (title sanitize 256 → retry 80 on "title is too long", push error kept, head lookup by `pr list`), push head (fork URL, lease against `refs/recur/pr/N`), merge (REST with mergeability retries, GraphQL, CLI, merge queue / `enqueuePullRequest` fallback), failure notes and diagnostics, checks (GraphQL rollup with rulesets/protection/queued suites, CLI fallback, Checks-tab links, durations), branch rules probe, owner/repo parsing, retarget base, merge fields
+    - [x] `github_prs.go` forge half: `gh pr list` (open, merged by update time), rollup checks, participants, reviewers, state probe; forge-neutral rules in `recur_forge::model` (attention reasons, state/group, merge-field stickiness, behind, check reconciliation, compact ages)
+    - [x] `github_thread.go` forge half: view/inline/timeline parsing, node ids and permalinks, avatars, review nesting and reply-only hiding, review threads, commit rollup, mentionable users, every mutation, comment merging (`merge_comments`); conversation state/attention, `comments_equal`, `commits_equal`, commit enrichment in `model`
+    - [x] `github_snapshot.go`, `github_reaction.go` forge half, `pr_participants.go`, `pr_reviewers.go`
+    - [x] Linear half of `user_mcp.go` → `IssueTracker::{mcp_preset, agent_mcp, agent_hint, secret_env}`; `linearIssueMeta` → `recur_issues::goal_meta`
+    - [x] Tests: forge halves of `github_test.go`, `github_thread_test.go`, `github_reaction_test.go`; `github_snapshot_test.go`, `github_mentions_test.go`, `pr_participants_test.go`, `pr_reviewers_test.go`, Linear cases of `user_mcp_test.go`; `github_snapshot_live_test.go` as `#[ignore]` env-gated tests; fake-`gh` runs of every command path; Go-generated golden fixtures (`crates/forge/tests/golden/github.json`: queries, a full snapshot + timeline, checks, list rows, merge messages)
 - [ ] `internal/git`: 12 files, 4392 lines, 14 test files
 - [ ] `internal/lsp`: 5 files, 916 lines, 4 test files
 - [ ] `internal/mcp`: 6 files, 839 lines, 3 test files

@@ -233,7 +233,11 @@ mod tests {
         assert_eq!(got["labels"], serde_json::Value::Null);
         assert_eq!(got["projectId"], "");
         assert_eq!(got["ref"], "");
-        assert!(recur_domain::json::to_string(&got).unwrap().contains("\"statePosition\":2"));
+        assert!(
+            recur_domain::json::to_string(&got)
+                .unwrap()
+                .contains("\"statePosition\":2")
+        );
     }
 
     #[tokio::test]

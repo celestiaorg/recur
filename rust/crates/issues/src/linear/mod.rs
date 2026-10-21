@@ -401,7 +401,8 @@ pub fn link_projects(issues: &mut [AssignedIssue], projects: &[Project]) {
     }
 }
 
-/// `linear://…` for a `https://linear.app/…` URL (path and query kept).
+/// `linear://…` for a `https://linear.app/…` URL: Go's request URI (path,
+/// and the query when a `?` is present) after `linear:/`.
 pub fn app_url(raw: &str) -> Option<String> {
     let s = raw.trim();
     let (scheme, rest) = s.split_once("://")?;
@@ -424,7 +425,7 @@ pub fn app_url(raw: &str) -> Option<String> {
     if uri.is_empty() {
         uri.push('/');
     }
-    if let Some(q) = query.filter(|q| !q.is_empty()) {
+    if let Some(q) = query {
         uri.push('?');
         uri.push_str(q);
     }

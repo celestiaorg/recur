@@ -1,0 +1,146 @@
+{
+ "appURLs": [
+  [
+   "https://linear.app/botfun/issue/BOTFUN-152/sold-coins?x=1",
+   "linear://botfun/issue/BOTFUN-152/sold-coins?x=1",
+   true
+  ],
+  [
+   " https://linear.app/a/b ",
+   "linear://a/b",
+   true
+  ],
+  [
+   "https://linear.app",
+   "linear://",
+   true
+  ],
+  [
+   "https://linear.app/?",
+   "linear://?",
+   true
+  ],
+  [
+   "https://u@linear.app/x?y=1#frag",
+   "linear://x?y=1",
+   true
+  ],
+  [
+   "HTTPS://linear.app/x",
+   "linear://x",
+   true
+  ],
+  [
+   "https://LINEAR.app/x",
+   "",
+   false
+  ],
+  [
+   "https://linear.app:443/x",
+   "",
+   false
+  ],
+  [
+   "http://linear.app/x",
+   "",
+   false
+  ],
+  [
+   "https://linear.app.evil/x",
+   "",
+   false
+  ],
+  [
+   "linear://x",
+   "",
+   false
+  ],
+  [
+   "",
+   "",
+   false
+  ]
+ ],
+ "assignedQuery": "query { viewer { assignedIssues(first: 100, filter: {state: {type: {nin: [\"completed\", \"canceled\", \"duplicate\"]}}}) { nodes { id identifier title url createdAt updatedAt priority priorityLabel assignee { name displayName avatarUrl } state { name type color position } labels(first: 10) { nodes { name color } } project { name } team { key name } } } } }",
+ "issues": [
+  {
+   "source": "linear",
+   "id": "u1",
+   "ref": "ENG-1",
+   "title": "One",
+   "url": "https://linear.app/x/issue/ENG-1",
+   "createdAt": "c1",
+   "updatedAt": "u1",
+   "group": "progress",
+   "state": "Doing",
+   "stateColor": "#f00",
+   "statePosition": 1.25,
+   "priority": 1,
+   "priorityLabel": "Urgent",
+   "project": "Houston",
+   "labels": [
+    {
+     "name": "bug",
+     "color": "#eb5757"
+    }
+   ],
+   "comments": 0,
+   "assignees": [
+    {
+     "name": "Josh D",
+     "avatarUrl": "https://a/1.png"
+    }
+   ],
+   "projectId": "",
+   "linearProject": "Houston",
+   "linearTeam": "ENG"
+  },
+  {
+   "source": "linear",
+   "id": "u2",
+   "ref": "ENG-2",
+   "title": "Two",
+   "url": "",
+   "createdAt": "",
+   "updatedAt": "",
+   "group": "backlog",
+   "state": "Triage",
+   "stateColor": "",
+   "statePosition": 0,
+   "priority": 0,
+   "priorityLabel": "",
+   "project": "Operations",
+   "labels": [],
+   "comments": 0,
+   "assignees": null,
+   "projectId": "",
+   "linearProject": "",
+   "linearTeam": "OPS"
+  },
+  {
+   "source": "linear",
+   "id": "u3",
+   "ref": "ENG-3",
+   "title": "",
+   "url": "",
+   "createdAt": "",
+   "updatedAt": "",
+   "group": "todo",
+   "state": "",
+   "stateColor": "",
+   "statePosition": 3,
+   "priority": 0,
+   "priorityLabel": "",
+   "project": "",
+   "labels": null,
+   "comments": 0,
+   "assignees": null,
+   "projectId": "",
+   "linearProject": "",
+   "linearTeam": ""
+  }
+ ],
+ "nodes": "[\n{\"id\":\"u1\",\"identifier\":\"ENG-1\",\"title\":\"One\",\"url\":\"https://linear.app/x/issue/ENG-1\",\"createdAt\":\"c1\",\"updatedAt\":\"u1\",\"priority\":1,\"priorityLabel\":\"Urgent\",\n \"assignee\":{\"name\":\"Josh D\",\"displayName\":\"\",\"avatarUrl\":\"https://a/1.png\"},\"state\":{\"name\":\"Doing\",\"type\":\"started\",\"color\":\"#f00\",\"position\":1.25},\n \"labels\":{\"nodes\":[{\"name\":\"bug\",\"color\":\"#eb5757\"}]},\"project\":{\"name\":\"Houston\"},\"team\":{\"key\":\"ENG\",\"name\":\"Engineering\"}},\n{\"id\":\"u2\",\"identifier\":\"ENG-2\",\"title\":\"Two\",\"priority\":0,\"assignee\":null,\"state\":{\"name\":\"Triage\",\"type\":\"triage\",\"color\":\"\",\"position\":0},\n \"labels\":{\"nodes\":[]},\"project\":{\"name\":\"\"},\"team\":{\"key\":\"OPS\",\"name\":\"Operations\"}},\n{\"id\":\"u3\",\"identifier\":\"ENG-3\",\"state\":{\"type\":\"unstarted\",\"position\":3},\"team\":{\"key\":\"\",\"name\":\"\"}}]",
+ "teamsQuery": "query { viewer { teams(first: 50) { nodes { id } } } }",
+ "unassignedQuery": "query($teams: [ID!], $after: String) { issues(first: 100, after: $after, filter: {team: {id: {in: $teams}}, assignee: {null: true}, state: {type: {nin: [\"completed\", \"canceled\", \"duplicate\"]}}}) { nodes { id identifier title url createdAt updatedAt priority priorityLabel assignee { name displayName avatarUrl } state { name type color position } labels(first: 10) { nodes { name color } } project { name } team { key name } } pageInfo { hasNextPage endCursor } } }"
+}

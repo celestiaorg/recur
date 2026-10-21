@@ -6,8 +6,12 @@ mod checks;
 mod create;
 mod images;
 
+#[cfg(test)]
+mod golden;
 mod links;
 mod list;
+#[cfg(test)]
+mod live;
 mod merge;
 mod mutations;
 mod reactions;

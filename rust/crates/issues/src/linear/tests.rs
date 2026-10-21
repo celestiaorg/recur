@@ -381,3 +381,22 @@ async fn graphql_errors_surface() {
             .starts_with("HTTP 502: ")
     );
 }
+
+#[test]
+fn golden_matches_go() {
+    let g: serde_json::Value =
+        serde_json::from_str(include_str!("../../tests/golden/linear.json")).unwrap();
+    assert_eq!(assigned_query(), g["assignedQuery"].as_str().unwrap());
+    assert_eq!(unassigned_query(), g["unassignedQuery"].as_str().unwrap());
+    assert_eq!(TEAMS_QUERY, g["teamsQuery"].as_str().unwrap());
+    let nodes: Vec<IssueNode> = recur_forge::json::decode(g["nodes"].as_str().unwrap()).unwrap();
+    assert_eq!(serde_json::to_value(to_issues(nodes)).unwrap(), g["issues"]);
+    for case in g["appURLs"].as_array().unwrap() {
+        let raw = case[0].as_str().unwrap();
+        let want = case[2]
+            .as_bool()
+            .unwrap()
+            .then(|| case[1].as_str().unwrap().to_owned());
+        assert_eq!(app_url(raw), want, "{raw:?}");
+    }
+}

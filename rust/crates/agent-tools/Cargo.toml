@@ -7,16 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-[features]
-# Glob and Grep run ripgrep through recur-code (slice C) and find the managed
-# binary under recur-store's data dir. Enable once both crates export
-# `recur_code::rg::locate`, `recur_code::search_opts` and `recur_store::data_dir`.
-code = ["dep:recur-code", "dep:recur-store"]
-
 [dependencies]
 recur-domain.workspace = true
-recur-store = { workspace = true, optional = true }
-recur-code = { workspace = true, optional = true }
+recur-store.workspace = true
+recur-code.workspace = true
 async-trait.workspace = true
 nix.workspace = true
 parking_lot.workspace = true

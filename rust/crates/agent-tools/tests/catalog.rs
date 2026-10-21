@@ -3,9 +3,6 @@
 
 use std::sync::Arc;
 
-use recur_agent_tools::coding::{
-    bash::BashTool, edit::EditTool, read::ReadTool, todos::TodoTool, write::WriteTool,
-};
 use recur_agent_tools::{HALT_NAMES, Tool, host_tools};
 use serde::Deserialize;
 
@@ -43,27 +40,9 @@ fn host_catalog_matches_go() {
     assert_same(&golden().host, &host_tools());
 }
 
-#[cfg(feature = "code")]
 #[test]
 fn coding_catalog_matches_go() {
     assert_same(&golden().coding, &recur_agent_tools::coding_tools());
-}
-
-#[test]
-fn coding_tools_without_rg_match_go() {
-    let tools: Vec<Arc<dyn Tool>> = vec![
-        Arc::new(ReadTool),
-        Arc::new(EditTool),
-        Arc::new(WriteTool),
-        Arc::new(BashTool),
-        Arc::new(TodoTool),
-    ];
-    let want: Vec<Entry> = golden()
-        .coding
-        .into_iter()
-        .filter(|e| e.name != "Glob" && e.name != "Grep")
-        .collect();
-    assert_same(&want, &tools);
 }
 
 #[test]

@@ -26,6 +26,9 @@ pub struct TimedFeedItem {
     pub item: FeedItem,
 }
 
+#[cfg(test)]
+mod tests;
+
 /// The session kinds whose turns emitted feed rows live (the Maestro's
 /// turns never did).
 fn feed_role(kind: &str) -> bool {

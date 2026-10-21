@@ -8,6 +8,10 @@
 //! (Annex B), `\d` / `\w` / `\b` are ASCII, and `^` / `$` anchor to the whole
 //! input unless the `m` flag is set.
 //!
+//! With the `u` flag, escapes JS rejects in unicode mode (unknown letters,
+//! non-syntax identity escapes, lone braces) are rejected, and `\u{...}` /
+//! `\p{...}` are accepted.
+//!
 //! simplify: JS-only details that never occur in bundle patterns are not
 //! emulated (`.` excluding `\r`/U+2028, `[^]`, variable-length lookbehind).
 //! Add them here if a bundle starts relying on one.
@@ -47,8 +51,19 @@ fn js_escape_letter(c: char) -> bool {
     )
 }
 
+/// Escapes valid in `u` mode besides the letter escapes: syntax
+/// characters and `/` (plus `-` inside a class).
+fn unicode_identity_escape(c: char, in_class: bool) -> bool {
+    "^$\\.*+?()[]{}|/".contains(c) || (in_class && c == '-')
+}
+
+/// `\p{Script=Greek}` and friends name the value only in Oniguruma.
+fn property_name(body: &str) -> &str {
+    body.split_once('=').map_or(body, |(_, v)| v)
+}
+
 /// Rewrite a JS source for Oniguruma, or `None` where `new RegExp` throws.
-fn translate(src: &str) -> Option<String> {
+fn translate(src: &str, unicode: bool) -> Option<String> {
     let chars: Vec<char> = src.chars().collect();
     let mut out = String::with_capacity(src.len());
     let mut i = 0;
@@ -61,6 +76,36 @@ fn translate(src: &str) -> Option<String> {
             '\\' => {
                 let &n = chars.get(i + 1)?;
                 let hex4: String = chars[i + 2..].iter().take(4).collect();
+                if unicode {
+                    let braced = || {
+                        let close = chars[i + 2..].iter().position(|&c| c == '}')?;
+                        (chars.get(i + 2) == Some(&'{'))
+                            .then(|| chars[i + 3..i + 2 + close].iter().collect::<String>())
+                    };
+                    if n == 'u'
+                        && let Some(hex) = braced()
+                        && !hex.is_empty()
+                        && hex.chars().all(|h| h.is_ascii_hexdigit())
+                    {
+                        out.push_str(&format!("\\x{{{hex}}}"));
+                        i += hex.chars().count() + 4;
+                        prev_quantifier = false;
+                        continue;
+                    }
+                    if n == 'p' || n == 'P' {
+                        let body = braced()?;
+                        out.push_str(&format!("\\{n}{{{}}}", property_name(&body)));
+                        i += body.chars().count() + 4;
+                        prev_quantifier = false;
+                        continue;
+                    }
+                    if n.is_ascii_alphabetic() && !js_escape_letter(n) {
+                        return None;
+                    }
+                    if !n.is_ascii_alphanumeric() && !unicode_identity_escape(n, in_class) {
+                        return None;
+                    }
+                }
                 if n.is_ascii_alphabetic() && !js_escape_letter(n) {
                     out.push(n);
                 } else if n == 'v' {
@@ -127,12 +172,19 @@ fn translate(src: &str) -> Option<String> {
                     prev_quantifier = true;
                     continue;
                 }
+                if unicode {
+                    return None;
+                }
                 out.push_str("\\{");
                 i += 1;
                 prev_quantifier = false;
                 continue;
             }
+            ']' if unicode => return None,
             '}' if !in_class => {
+                if unicode {
+                    return None;
+                }
                 out.push_str("\\}");
                 i += 1;
                 prev_quantifier = false;
@@ -156,17 +208,19 @@ impl JsRegex {
         let mut opts = RegexOptions::from_bits_retain(WORD_IS_ASCII | DIGIT_IS_ASCII)
             | RegexOptions::REGEX_OPTION_CAPTURE_GROUP;
         let mut global = false;
+        let mut unicode = false;
         for f in flags.chars() {
             match f {
                 'g' => global = true,
                 'i' => opts |= RegexOptions::REGEX_OPTION_IGNORECASE,
                 'm' => opts |= RegexOptions::REGEX_OPTION_NEGATE_SINGLELINE,
                 's' => opts |= RegexOptions::REGEX_OPTION_MULTILINE,
-                'u' | 'y' | 'd' => {}
+                'u' => unicode = true,
+                'y' | 'd' => {}
                 _ => return None,
             }
         }
-        let translated = translate(source)?;
+        let translated = translate(source, unicode)?;
         let re = Regex::with_options(&translated, opts, Syntax::perl_ng()).ok()?;
         Some(JsRegex {
             has_named_groups: re.capture_names_len() > 0,
@@ -323,6 +377,22 @@ mod tests {
         assert!(JsRegex::new("a", "q").is_none());
         assert!(JsRegex::new("a+?b*?", "").is_some());
         assert!(JsRegex::new("(?<name>x)(?<=y)(?<!z)(?=a)(?!b)", "").is_some());
+    }
+
+    #[test]
+    fn unicode_mode_is_strict() {
+        assert!(JsRegex::new("\\q", "gu").is_none());
+        assert!(JsRegex::new("a{", "u").is_none());
+        assert!(JsRegex::new("\\-", "u").is_none());
+        assert!(JsRegex::new("[\\-a]", "u").is_some());
+        assert!(JsRegex::new("\\q", "g").is_some());
+        assert!(JsRegex::new("\\u{1F600}", "u").unwrap().test("\u{1F600}"));
+        assert!(
+            JsRegex::new("\\p{Script=Greek}", "u")
+                .unwrap()
+                .test("\u{03B1}")
+        );
+        assert!(JsRegex::new("\\p{L}+", "u").unwrap().test("abc"));
     }
 
     #[test]

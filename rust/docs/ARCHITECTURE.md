@@ -82,6 +82,32 @@ The engine port is planned slice by slice in `docs/engine-port-plan.md`.
 - The UI runs on GPUI's foreground executor. `recur-services` exposes async methods (the former Wails-bound methods, same names in snake_case) and a typed `AppEvent` broadcast that replaces the Wails event names. `recur-app` bridges events into GPUI entities with `cx.spawn` and never blocks the foreground thread.
 - The Go event bus (`engine/bus.go`) becomes a typed broadcast in `recur-engine`; services translate it to `AppEvent`.
 
+## Services contract
+
+Views talk to the backend only through `recur_services::Services`, a cloneable struct with one `Arc<dyn …>` per former Wails service (`services.workspaces`, `services.prs`, …, field names from Go's `app.Services`). The traits live in `recur_services::api`, one per service, with the Go method names in snake_case and the Go doc comments; `PARITY.md` "Application services" maps every method.
+
+- Every method is `async` and returns `recur_services::Result<T>`. `Error::message` is what the Svelte UI showed from a rejected call. Arguments are borrowed, results owned. Lists and maps are never `null` (Wails' `createFrom` already made them `[]` / `{}`); `GetEditorSession` is the one `Option`.
+- DTOs are serde-identical to Go. `recur-domain` and the owning crates' types are used as is (`recur_agent::catalog`, `recur_usage`, `recur_lsp`, the provider status types, `recur_term::Info`) and re-exported from `api`; the `app` package models without another home are defined in `api::models`.
+- `services.subscribe()` returns an unbounded receiver of `AppEvent` from that point on, in publish order, never dropped. A view bridges it with `cx.spawn` and matches the variants it cares about. `services.emit(event)` publishes the events the UI itself sent (`menu.state`, `app.ready`, …) for the desktop shell. `AppEvent::name` / `payload` / `from_wire` give the exact Wails event.
+- The futures are `Send` and must not assume a tokio context on the caller: GPUI's foreground executor polls them. An implementation that needs tokio spawns onto the runtime handle and awaits the result.
+- Feature `mock` adds `recur_services::mock`, a port of `frontend/e2e/helpers/mock-bridge.ts`: `MockBridge::fresh(MockOptions::default()).services()` serves the e2e seed with the same mutations, canned replies, chat-attention bookkeeping and post-call events, so a view under the mock reaches the state the Svelte view reaches under e2e. `MockOptions::resolver` overrides one method (a `Reply` value, `BridgeError`, or `Reply::deferred()` to hold a call in flight); `dispatch` / `dispatch_wire` push events the way specs did; `simulate_chat_turn_idle` and `attention()` port the spec helpers. It is for `recur-app` dev builds, tests and the UI-parity harness (`recur-services = { workspace = true, features = ["mock"] }`); release builds leave it off.
+
+```rust
+let services = MockBridge::fresh(MockOptions::default()).services(); // or the real Services
+let mut events = services.subscribe();
+cx.spawn(async move |this, cx| {
+    let list = services.workspaces.list_workspaces().await?;
+    this.update(cx, |view, cx| view.set_workspaces(list, cx))?;
+    while let Some(ev) = events.recv().await {
+        if let AppEvent::WorkspaceUpdated(u) = ev {
+            this.update(cx, |view, cx| view.patch_workspace(&u, cx))?;
+        }
+    }
+    anyhow::Ok(())
+})
+.detach();
+```
+
 ## Conventions
 
 - Edition 2024, toolchain pinned in `rust-toolchain.toml`, workspace lints in `Cargo.toml`. `cargo clippy --all-targets -- -D warnings` and `cargo fmt --check` stay clean.

@@ -6,410 +6,411 @@ Legend: `[ ]` not started, `[~]` in progress, `[x]` ported and verified.
 
 ## Application services (former Wails bindings)
 
-Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/app`. Rust home: `recur-services`.
+Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/app`. Rust home: `recur-services`. The contract is `recur_services::api` (one async trait per service, annotated below with `Trait::method`); `recur_services::mock` answers all of it for views today. Items tick when the real implementation over the engine (slice SV) lands.
 
 ### agentsservice (2)
 
-- [ ] `GetAgentTrace`
-- [ ] `ListLoopAgents`
+- [ ] `GetAgentTrace`: `AgentsService::get_agent_trace`
+- [ ] `ListLoopAgents`: `AgentsService::list_loop_agents`
 
 ### artifactsservice (5)
 
-- [ ] `DeleteArtifact`
-- [ ] `ListArtifacts`
-- [ ] `PresentArtifact`
-- [ ] `RenameArtifact`
-- [ ] `RevealArtifact`
+- [ ] `DeleteArtifact`: `ArtifactsService::delete_artifact`
+- [ ] `ListArtifacts`: `ArtifactsService::list_artifacts`
+- [ ] `PresentArtifact`: `ArtifactsService::present_artifact`
+- [ ] `RenameArtifact`: `ArtifactsService::rename_artifact`
+- [ ] `RevealArtifact`: `ArtifactsService::reveal_artifact`
 
 ### briefingservice (12)
 
-- [ ] `AppChatItems`
-- [ ] `AppChatSelection`
-- [ ] `CancelAppMessage`
-- [ ] `CloseAppChat`
-- [ ] `GetBriefing`
-- [ ] `ListAppChats`
-- [ ] `MarkAppChatSeen`
-- [ ] `MarkWorkspaceViewed`
-- [ ] `NewAppChat`
-- [ ] `RememberAppChatSelection`
-- [ ] `SendAppMessage`
-- [ ] `SetAppChatFocus`
+- [ ] `AppChatItems`: `BriefingService::app_chat_items`
+- [ ] `AppChatSelection`: `BriefingService::app_chat_selection`
+- [ ] `CancelAppMessage`: `BriefingService::cancel_app_message`
+- [ ] `CloseAppChat`: `BriefingService::close_app_chat`
+- [ ] `GetBriefing`: `BriefingService::get_briefing`
+- [ ] `ListAppChats`: `BriefingService::list_app_chats`
+- [ ] `MarkAppChatSeen`: `BriefingService::mark_app_chat_seen`
+- [ ] `MarkWorkspaceViewed`: `BriefingService::mark_workspace_viewed`
+- [ ] `NewAppChat`: `BriefingService::new_app_chat`
+- [ ] `RememberAppChatSelection`: `BriefingService::remember_app_chat_selection`
+- [ ] `SendAppMessage`: `BriefingService::send_app_message`
+- [ ] `SetAppChatFocus`: `BriefingService::set_app_chat_focus`
 
 ### bundleservice (23)
 
-- [ ] `CompiledCompleteModule`
-- [ ] `CompiledModule`
-- [ ] `CompiledPromptModule`
-- [ ] `ExpandGoal`
-- [ ] `InvalidateCatalog`
-- [ ] `ListBundleSettings`
-- [ ] `ListCommands`
-- [ ] `ListGrammars`
-- [ ] `ListLoops`
-- [ ] `ListPolicies`
-- [ ] `ListPromptActions`
-- [ ] `ListRoles`
-- [ ] `ListSkippedBundles`
-- [ ] `ListSnippets`
-- [ ] `ListSymbols`
-- [ ] `ListTerminalThemes`
-- [ ] `ListThemes`
-- [ ] `ReadGrammar`
-- [ ] `ReadTheme`
-- [ ] `RunCommand`
-- [ ] `RunPromptAction`
-- [ ] `RunPromptComplete`
-- [ ] `SearchPalette`
+- [ ] `CompiledCompleteModule`: `BundleService::compiled_complete_module`
+- [ ] `CompiledModule`: `BundleService::compiled_module`
+- [ ] `CompiledPromptModule`: `BundleService::compiled_prompt_module`
+- [ ] `ExpandGoal`: `BundleService::expand_goal`
+- [ ] `InvalidateCatalog`: `BundleService::invalidate_catalog`
+- [ ] `ListBundleSettings`: `BundleService::list_bundle_settings`
+- [ ] `ListCommands`: `BundleService::list_commands`
+- [ ] `ListGrammars`: `BundleService::list_grammars`
+- [ ] `ListLoops`: `BundleService::list_loops`
+- [ ] `ListPolicies`: `BundleService::list_policies`
+- [ ] `ListPromptActions`: `BundleService::list_prompt_actions`
+- [ ] `ListRoles`: `BundleService::list_roles`
+- [ ] `ListSkippedBundles`: `BundleService::list_skipped_bundles`
+- [ ] `ListSnippets`: `BundleService::list_snippets`
+- [ ] `ListSymbols`: `BundleService::list_symbols`
+- [ ] `ListTerminalThemes`: `BundleService::list_terminal_themes`
+- [ ] `ListThemes`: `BundleService::list_themes`
+- [ ] `ReadGrammar`: `BundleService::read_grammar`
+- [ ] `ReadTheme`: `BundleService::read_theme`
+- [ ] `RunCommand`: `BundleService::run_command`
+- [ ] `RunPromptAction`: `BundleService::run_prompt_action`
+- [ ] `RunPromptComplete`: `BundleService::run_prompt_complete`
+- [ ] `SearchPalette`: `BundleService::search_palette`
 
 ### codeservice (45)
 
-- [ ] `AbsPath`
-- [ ] `BridgeBenchDone`
-- [ ] `BridgeBenchEnabled`
-- [ ] `BridgeEcho`
-- [ ] `BridgePing`
-- [ ] `Commit`
-- [ ] `CommitDiff`
-- [ ] `CommitStaged`
-- [ ] `Copy`
-- [ ] `CreateFile`
-- [ ] `Delete`
-- [ ] `DiffVsBase`
-- [ ] `DiffWorking`
-- [ ] `DiscardAll`
-- [ ] `DiscardFile`
-- [ ] `FileAtBase`
-- [ ] `FileDiff`
-- [ ] `FindDefs`
-- [ ] `FindRefs`
-- [ ] `GenerateCommitMessage`
-- [ ] `GitStatus`
-- [ ] `ListAllSkills`
-- [ ] `ListChangedFiles`
-- [ ] `ListCommits`
-- [ ] `ListFiles`
-- [ ] `ListSkills`
-- [ ] `ListTree`
-- [ ] `ListTrees`
-- [ ] `Mkdir`
-- [ ] `OpenInEditor`
-- [ ] `Outline`
-- [ ] `ReadFile`
-- [ ] `RefreshFileIndex`
-- [ ] `Rename`
-- [ ] `ReplaceInFiles`
-- [ ] `RevealInFinder`
-- [ ] `Search`
-- [ ] `SearchAdvanced`
-- [ ] `SearchFiles`
-- [ ] `SetFileIndexExclude`
-- [ ] `Stage`
-- [ ] `StagedFiles`
-- [ ] `Unstage`
-- [ ] `WorkingStatus`
-- [ ] `WriteFile`
+- [ ] `AbsPath`: `CodeService::abs_path`
+- [ ] `BridgeBenchDone`: `CodeService::bridge_bench_done`
+- [ ] `BridgeBenchEnabled`: `CodeService::bridge_bench_enabled`
+- [ ] `BridgeEcho`: `CodeService::bridge_echo`
+- [ ] `BridgePing`: `CodeService::bridge_ping`
+- [ ] `Commit`: `CodeService::commit`
+- [ ] `CommitDiff`: `CodeService::commit_diff`
+- [ ] `CommitStaged`: `CodeService::commit_staged`
+- [ ] `Copy`: `CodeService::copy`
+- [ ] `CreateFile`: `CodeService::create_file`
+- [ ] `Delete`: `CodeService::delete`
+- [ ] `DiffVsBase`: `CodeService::diff_vs_base`
+- [ ] `DiffWorking`: `CodeService::diff_working`
+- [ ] `DiscardAll`: `CodeService::discard_all`
+- [ ] `DiscardFile`: `CodeService::discard_file`
+- [ ] `FileAtBase`: `CodeService::file_at_base`
+- [ ] `FileDiff`: `CodeService::file_diff`
+- [ ] `FindDefs`: `CodeService::find_defs`
+- [ ] `FindRefs`: `CodeService::find_refs`
+- [ ] `GenerateCommitMessage`: `CodeService::generate_commit_message`
+- [ ] `GitStatus`: `CodeService::git_status`
+- [ ] `ListAllSkills`: `CodeService::list_all_skills`
+- [ ] `ListChangedFiles`: `CodeService::list_changed_files`
+- [ ] `ListCommits`: `CodeService::list_commits`
+- [ ] `ListFiles`: `CodeService::list_files`
+- [ ] `ListSkills`: `CodeService::list_skills`
+- [ ] `ListTree`: `CodeService::list_tree`
+- [ ] `ListTrees`: `CodeService::list_trees`
+- [ ] `Mkdir`: `CodeService::mkdir`
+- [ ] `OpenInEditor`: `CodeService::open_in_editor`
+- [ ] `Outline`: `CodeService::outline`
+- [ ] `ReadFile`: `CodeService::read_file`
+- [ ] `RefreshFileIndex`: `CodeService::refresh_file_index`
+- [ ] `Rename`: `CodeService::rename`
+- [ ] `ReplaceInFiles`: `CodeService::replace_in_files`
+- [ ] `RevealInFinder`: `CodeService::reveal_in_finder`
+- [ ] `Search`: `CodeService::search`
+- [ ] `SearchAdvanced`: `CodeService::search_advanced`
+- [ ] `SearchFiles`: `CodeService::search_files`
+- [ ] `SetFileIndexExclude`: `CodeService::set_file_index_exclude`
+- [ ] `Stage`: `CodeService::stage`
+- [ ] `StagedFiles`: `CodeService::staged_files`
+- [ ] `Unstage`: `CodeService::unstage`
+- [ ] `WorkingStatus`: `CodeService::working_status`
+- [ ] `WriteFile`: `CodeService::write_file`
 
 ### editorsessionservice (3)
 
-- [ ] `ClearEditorSession`
-- [ ] `GetEditorSession`
-- [ ] `UpdateEditorSession`
+- [ ] `ClearEditorSession`: `EditorSessionService::clear_editor_session`
+- [ ] `GetEditorSession`: `EditorSessionService::get_editor_session`
+- [ ] `UpdateEditorSession`: `EditorSessionService::update_editor_session`
 
 ### escalationservice (2)
 
-- [ ] `AnswerEscalation`
-- [ ] `GetEscalation`
+- [ ] `AnswerEscalation`: `EscalationService::answer_escalation`
+- [ ] `GetEscalation`: `EscalationService::get_escalation`
 
 ### inboxservice (3)
 
-- [ ] `GetInbox`
-- [ ] `MarkAllInboxRead`
-- [ ] `MarkInboxRead`
+- [ ] `GetInbox`: `InboxService::get_inbox`
+- [ ] `MarkAllInboxRead`: `InboxService::mark_all_inbox_read`
+- [ ] `MarkInboxRead`: `InboxService::mark_inbox_read`
 
 ### lspservice (5)
 
-- [ ] `CloseLSP`
-- [ ] `CloseWorkspaceLSP`
-- [ ] `EnsureLSP`
-- [ ] `ListLanguageServers`
-- [ ] `WriteLSP`
+- [ ] `CloseLSP`: `LspService::close_lsp`
+- [ ] `CloseWorkspaceLSP`: `LspService::close_workspace_lsp`
+- [ ] `EnsureLSP`: `LspService::ensure_lsp`
+- [ ] `ListLanguageServers`: `LspService::list_language_servers`
+- [ ] `WriteLSP`: `LspService::write_lsp`
 
 ### maestroservice (3)
 
-- [ ] `CancelMaestroMessage`
-- [ ] `GetMaestroChat`
-- [ ] `SendMaestroMessage`
+- [ ] `CancelMaestroMessage`: `MaestroService::cancel_maestro_message`
+- [ ] `GetMaestroChat`: `MaestroService::get_maestro_chat`
+- [ ] `SendMaestroMessage`: `MaestroService::send_maestro_message`
 
 ### observatoryservice (5)
 
-- [ ] `AddFindingNote`
-- [ ] `CreateFinding`
-- [ ] `DeleteFindingNote`
-- [ ] `ListFindings`
-- [ ] `SetFindingStatus`
+- [ ] `AddFindingNote`: `ObservatoryService::add_finding_note`
+- [ ] `CreateFinding`: `ObservatoryService::create_finding`
+- [ ] `DeleteFindingNote`: `ObservatoryService::delete_finding_note`
+- [ ] `ListFindings`: `ObservatoryService::list_findings`
+- [ ] `SetFindingStatus`: `ObservatoryService::set_finding_status`
 
 ### permissionsservice (2)
 
-- [ ] `AnswerPermission`
-- [ ] `ListPendingPermissions`
+- [ ] `AnswerPermission`: `PermissionsService::answer_permission`
+- [ ] `ListPendingPermissions`: `PermissionsService::list_pending_permissions`
 
 ### policyservice (2)
 
-- [ ] `GetPolicy`
-- [ ] `SetPolicy`
+- [ ] `GetPolicy`: `PolicyService::get_policy`
+- [ ] `SetPolicy`: `PolicyService::set_policy`
 
 ### projectsservice (22)
 
-- [ ] `AddProject`
-- [ ] `AddProjectGroup`
-- [ ] `DeleteProject`
-- [ ] `DeleteProjectGroup`
-- [ ] `DeleteScheduledPrompt`
-- [ ] `GetProject`
-- [ ] `ListBranches`
-- [ ] `ListBranchesForPath`
-- [ ] `ListProjectGroups`
-- [ ] `ListProjects`
-- [ ] `ListScheduledPrompts`
-- [ ] `PauseScheduledPrompt`
-- [ ] `PreviewCopyFiles`
-- [ ] `PreviewScheduledPrompt`
-- [ ] `ReorderProjectGroups`
-- [ ] `ReorderProjects`
-- [ ] `RunScheduledPromptNow`
-- [ ] `SaveScheduledPrompt`
-- [ ] `SetProjectGroup`
-- [ ] `SuggestBaseBranch`
-- [ ] `UpdateProjectGroup`
-- [ ] `UpdateProjectRunConfig`
+- [ ] `AddProject`: `ProjectsService::add_project`
+- [ ] `AddProjectGroup`: `ProjectsService::add_project_group`
+- [ ] `DeleteProject`: `ProjectsService::delete_project`
+- [ ] `DeleteProjectGroup`: `ProjectsService::delete_project_group`
+- [ ] `DeleteScheduledPrompt`: `ProjectsService::delete_scheduled_prompt`
+- [ ] `GetProject`: `ProjectsService::get_project`
+- [ ] `ListBranches`: `ProjectsService::list_branches`
+- [ ] `ListBranchesForPath`: `ProjectsService::list_branches_for_path`
+- [ ] `ListProjectGroups`: `ProjectsService::list_project_groups`
+- [ ] `ListProjects`: `ProjectsService::list_projects`
+- [ ] `ListScheduledPrompts`: `ProjectsService::list_scheduled_prompts`
+- [ ] `PauseScheduledPrompt`: `ProjectsService::pause_scheduled_prompt`
+- [ ] `PreviewCopyFiles`: `ProjectsService::preview_copy_files`
+- [ ] `PreviewScheduledPrompt`: `ProjectsService::preview_scheduled_prompt`
+- [ ] `ReorderProjectGroups`: `ProjectsService::reorder_project_groups`
+- [ ] `ReorderProjects`: `ProjectsService::reorder_projects`
+- [ ] `RunScheduledPromptNow`: `ProjectsService::run_scheduled_prompt_now`
+- [ ] `SaveScheduledPrompt`: `ProjectsService::save_scheduled_prompt`
+- [ ] `SetProjectGroup`: `ProjectsService::set_project_group`
+- [ ] `SuggestBaseBranch`: `ProjectsService::suggest_base_branch`
+- [ ] `UpdateProjectGroup`: `ProjectsService::update_project_group`
+- [ ] `UpdateProjectRunConfig`: `ProjectsService::update_project_run_config`
 
 ### prsservice (23)
 
-- [ ] `AddPRComment`
-- [ ] `CreateWorkspaceFromPR`
-- [ ] `DeletePRComment`
-- [ ] `EnsurePRChatHost`
-- [ ] `GetCommitDiff`
-- [ ] `GetPR`
-- [ ] `GetPRCommits`
-- [ ] `GetPRFiles`
-- [ ] `ListPRFindings`
-- [ ] `ListPRs`
-- [ ] `MergePR`
-- [ ] `ReadyPR`
-- [ ] `ReplyPRComment`
-- [ ] `SearchPRMentionableUsers`
-- [ ] `SendBackToLoop`
-- [ ] `SetPRDraft`
-- [ ] `SetPRThreadResolved`
-- [ ] `SubmitReview`
-- [ ] `SyncGitHubPRs`
-- [ ] `TogglePRCommentReaction`
-- [ ] `UpdatePRComment`
-- [ ] `UpdatePRDetails`
-- [ ] `UpdateWithBase`
+- [ ] `AddPRComment`: `PrsService::add_pr_comment`
+- [ ] `CreateWorkspaceFromPR`: `PrsService::create_workspace_from_pr`
+- [ ] `DeletePRComment`: `PrsService::delete_pr_comment`
+- [ ] `EnsurePRChatHost`: `PrsService::ensure_pr_chat_host`
+- [ ] `GetCommitDiff`: `PrsService::get_commit_diff`
+- [ ] `GetPR`: `PrsService::get_pr`
+- [ ] `GetPRCommits`: `PrsService::get_pr_commits`
+- [ ] `GetPRFiles`: `PrsService::get_pr_files`
+- [ ] `ListPRFindings`: `PrsService::list_pr_findings`
+- [ ] `ListPRs`: `PrsService::list_prs`
+- [ ] `MergePR`: `PrsService::merge_pr`
+- [ ] `ReadyPR`: `PrsService::ready_pr`
+- [ ] `ReplyPRComment`: `PrsService::reply_pr_comment`
+- [ ] `SearchPRMentionableUsers`: `PrsService::search_pr_mentionable_users`
+- [ ] `SendBackToLoop`: `PrsService::send_back_to_loop`
+- [ ] `SetPRDraft`: `PrsService::set_pr_draft`
+- [ ] `SetPRThreadResolved`: `PrsService::set_pr_thread_resolved`
+- [ ] `SubmitReview`: `PrsService::submit_review`
+- [ ] `SyncGitHubPRs`: `PrsService::sync_github_prs`
+- [ ] `TogglePRCommentReaction`: `PrsService::toggle_pr_comment_reaction`
+- [ ] `UpdatePRComment`: `PrsService::update_pr_comment`
+- [ ] `UpdatePRDetails`: `PrsService::update_pr_details`
+- [ ] `UpdateWithBase`: `PrsService::update_with_base`
 
 ### questionsservice (2)
 
-- [ ] `AnswerQuestion`
-- [ ] `ListPendingQuestions`
+- [ ] `AnswerQuestion`: `QuestionsService::answer_question`
+- [ ] `ListPendingQuestions`: `QuestionsService::list_pending_questions`
 
 ### settingsservice (26)
 
-- [ ] `CancelCursorUsageConnect`
-- [ ] `ClearAllData`
-- [ ] `CompatibleFlagPreset`
-- [ ] `ConnectCursorUsage`
-- [ ] `DetectAgent`
-- [ ] `DisconnectCursorUsage`
-- [ ] `GetClaudeStatus`
-- [ ] `GetCodexStatus`
-- [ ] `GetCursorStatus`
-- [ ] `GetInstanceLabel`
-- [ ] `GetProviderUsage`
-- [ ] `GetResource`
-- [ ] `GetSettings`
-- [ ] `GitHubLogin`
-- [ ] `InstallCursorBridge`
-- [ ] `ListAssignedIssues`
-- [ ] `ListModelCatalog`
-- [ ] `ListMonospaceFonts`
-- [ ] `LogsPath`
-- [ ] `OpenLinearInApp`
-- [ ] `RefreshProviderUsage`
-- [ ] `RevealLogs`
-- [ ] `SetSettings`
-- [ ] `TestCodexKey`
-- [ ] `TestCompatibleProvider`
-- [ ] `TestCursorKey`
+- [ ] `CancelCursorUsageConnect`: `SettingsService::cancel_cursor_usage_connect`
+- [ ] `ClearAllData`: `SettingsService::clear_all_data`
+- [ ] `CompatibleFlagPreset`: `SettingsService::compatible_flag_preset`
+- [ ] `ConnectCursorUsage`: `SettingsService::connect_cursor_usage`
+- [ ] `DetectAgent`: `SettingsService::detect_agent`
+- [ ] `DisconnectCursorUsage`: `SettingsService::disconnect_cursor_usage`
+- [ ] `GetClaudeStatus`: `SettingsService::get_claude_status`
+- [ ] `GetCodexStatus`: `SettingsService::get_codex_status`
+- [ ] `GetCursorStatus`: `SettingsService::get_cursor_status`
+- [ ] `GetInstanceLabel`: `SettingsService::get_instance_label`
+- [ ] `GetProviderUsage`: `SettingsService::get_provider_usage`
+- [ ] `GetResource`: `SettingsService::get_resource`
+- [ ] `GetSettings`: `SettingsService::get_settings`
+- [ ] `GitHubLogin`: `SettingsService::github_login`
+- [ ] `InstallCursorBridge`: `SettingsService::install_cursor_bridge`
+- [ ] `ListAssignedIssues`: `SettingsService::list_assigned_issues`
+- [ ] `ListModelCatalog`: `SettingsService::list_model_catalog`
+- [ ] `ListMonospaceFonts`: `SettingsService::list_monospace_fonts`
+- [ ] `LogsPath`: `SettingsService::logs_path`
+- [ ] `OpenLinearInApp`: `SettingsService::open_linear_in_app`
+- [ ] `RefreshProviderUsage`: `SettingsService::refresh_provider_usage`
+- [ ] `RevealLogs`: `SettingsService::reveal_logs`
+- [ ] `SetSettings`: `SettingsService::set_settings`
+- [ ] `TestCodexKey`: `SettingsService::test_codex_key`
+- [ ] `TestCompatibleProvider`: `SettingsService::test_compatible_provider`
+- [ ] `TestCursorKey`: `SettingsService::test_cursor_key`
 
 ### shellservice (7)
 
-- [ ] `Flush`
-- [ ] `GetExpandedSchedules`
-- [ ] `GetIssuesView`
-- [ ] `GetShellState`
-- [ ] `SetExpandedSchedules`
-- [ ] `SetIssuesView`
-- [ ] `SetShellState`
+- [ ] `Flush`: `ShellService::flush`
+- [ ] `GetExpandedSchedules`: `ShellService::get_expanded_schedules`
+- [ ] `GetIssuesView`: `ShellService::get_issues_view`
+- [ ] `GetShellState`: `ShellService::get_shell_state`
+- [ ] `SetExpandedSchedules`: `ShellService::set_expanded_schedules`
+- [ ] `SetIssuesView`: `ShellService::set_issues_view`
+- [ ] `SetShellState`: `ShellService::set_shell_state`
 
 ### terminalservice (16)
 
-- [ ] `AckTerminal`
-- [ ] `AttachTerminal`
-- [ ] `ClearTerminal`
-- [ ] `CloseTerminal`
-- [ ] `DetachTerminal`
-- [ ] `InterruptTerminal`
-- [ ] `ListTerminalDockChrome`
-- [ ] `ListTerminals`
-- [ ] `OpenTerminal`
-- [ ] `ReorderTerminals`
-- [ ] `ResizeTerminal`
-- [ ] `RestoreWorkspaceTerminals`
-- [ ] `SetActiveTerminal`
-- [ ] `SetTerminalDockChrome`
-- [ ] `SetTerminalTitle`
-- [ ] `WriteTerminal`
+- [ ] `AckTerminal`: `TerminalService::ack_terminal`
+- [ ] `AttachTerminal`: `TerminalService::attach_terminal`
+- [ ] `ClearTerminal`: `TerminalService::clear_terminal`
+- [ ] `CloseTerminal`: `TerminalService::close_terminal`
+- [ ] `DetachTerminal`: `TerminalService::detach_terminal`
+- [ ] `InterruptTerminal`: `TerminalService::interrupt_terminal`
+- [ ] `ListTerminalDockChrome`: `TerminalService::list_terminal_dock_chrome`
+- [ ] `ListTerminals`: `TerminalService::list_terminals`
+- [ ] `OpenTerminal`: `TerminalService::open_terminal`
+- [ ] `ReorderTerminals`: `TerminalService::reorder_terminals`
+- [ ] `ResizeTerminal`: `TerminalService::resize_terminal`
+- [ ] `RestoreWorkspaceTerminals`: `TerminalService::restore_workspace_terminals`
+- [ ] `SetActiveTerminal`: `TerminalService::set_active_terminal`
+- [ ] `SetTerminalDockChrome`: `TerminalService::set_terminal_dock_chrome`
+- [ ] `SetTerminalTitle`: `TerminalService::set_terminal_title`
+- [ ] `WriteTerminal`: `TerminalService::write_terminal`
 
 ### workspacesservice (66)
 
-- [ ] `ApplyProvisionalChatTitles`
-- [ ] `ApprovePlan`
-- [ ] `AttentionCounts`
-- [ ] `CancelWorkspaceMessage`
-- [ ] `ClearWorkspaceIssue`
-- [ ] `CloseWorkspaceChat`
-- [ ] `CreateWorkspace`
-- [ ] `CreateWorkspaceChat`
-- [ ] `CreateWorkspaceWith`
-- [ ] `DeleteClosedWorkspaceChat`
-- [ ] `DeleteWorkspace`
-- [ ] `EngageLoop`
-- [ ] `EngageLoopWith`
-- [ ] `FetchWorkingCopyUpstream`
-- [ ] `ForkWorkspaceChat`
-- [ ] `ForkWorkspaceChatToWorkspace`
-- [ ] `GetWorkspace`
-- [ ] `GetWorkspaceFeed`
-- [ ] `LastAssistantText`
-- [ ] `ListClosedWorkspaceChats`
-- [ ] `ListOpenInTargets`
-- [ ] `ListWorkspaceChats`
-- [ ] `ListWorkspaces`
-- [ ] `MarkWorkspaceChatSeen`
-- [ ] `MergeWorkspace`
-- [ ] `OpenMainWorkspace`
-- [ ] `OpenPath`
-- [ ] `OpenWorkspaceIn`
-- [ ] `OpenWorkspacePR`
-- [ ] `PauseLoop`
-- [ ] `PullWorkspacePR`
-- [ ] `PushWorkingCopy`
-- [ ] `RememberChatLoopPolicy`
-- [ ] `RememberWorkspaceChatPromptGroup`
-- [ ] `RememberWorkspaceChatSelection`
-- [ ] `RememberWorkspaceChatSimplify`
-- [ ] `RemoveWorkspace`
-- [ ] `ReopenWorkspaceChat`
-- [ ] `ReorderWorkspaceChats`
-- [ ] `ResetWorkspaceChat`
-- [ ] `RestartLoop`
-- [ ] `ResumeLoop`
-- [ ] `RetryLoop`
-- [ ] `RetryWorkspaceSetup`
-- [ ] `SendWorkspaceMessage`
-- [ ] `SetChatUIOccluded`
-- [ ] `SetWorkspaceBaseBranch`
-- [ ] `SetWorkspaceChatFocus`
-- [ ] `SetWorkspaceIssue`
-- [ ] `SetWorkspaceLoopPolicy`
-- [ ] `StartWorkspace`
-- [ ] `StopLoop`
-- [ ] `SubmitPlan`
-- [ ] `UpdatePlan`
-- [ ] `UpdatePlanStep`
-- [ ] `UpdateWorkingCopyFromRemote`
-- [ ] `UpdateWorkspaceWithBase`
-- [ ] `WatchWorkspace`
-- [ ] `WorkspaceChatItems`
-- [ ] `WorkspaceChatModels`
-- [ ] `WorkspaceChatSelection`
-- [ ] `WorkspaceChatTurnDiff`
-- [ ] `WorkspaceDiscardRisk`
-- [ ] `WorkspaceFacts`
-- [ ] `WorkspaceLandState`
-- [ ] `WorkspaceSessions`
+- [ ] `ApplyProvisionalChatTitles`: `WorkspacesService::apply_provisional_chat_titles`
+- [ ] `ApprovePlan`: `WorkspacesService::approve_plan`
+- [ ] `AttentionCounts`: `WorkspacesService::attention_counts`
+- [ ] `CancelWorkspaceMessage`: `WorkspacesService::cancel_workspace_message`
+- [ ] `ClearWorkspaceIssue`: `WorkspacesService::clear_workspace_issue`
+- [ ] `CloseWorkspaceChat`: `WorkspacesService::close_workspace_chat`
+- [ ] `CreateWorkspace`: `WorkspacesService::create_workspace`
+- [ ] `CreateWorkspaceChat`: `WorkspacesService::create_workspace_chat`
+- [ ] `CreateWorkspaceWith`: `WorkspacesService::create_workspace_with`
+- [ ] `DeleteClosedWorkspaceChat`: `WorkspacesService::delete_closed_workspace_chat`
+- [ ] `DeleteWorkspace`: `WorkspacesService::delete_workspace`
+- [ ] `EngageLoop`: `WorkspacesService::engage_loop`
+- [ ] `EngageLoopWith`: `WorkspacesService::engage_loop_with`
+- [ ] `FetchWorkingCopyUpstream`: `WorkspacesService::fetch_working_copy_upstream`
+- [ ] `ForkWorkspaceChat`: `WorkspacesService::fork_workspace_chat`
+- [ ] `ForkWorkspaceChatToWorkspace`: `WorkspacesService::fork_workspace_chat_to_workspace`
+- [ ] `GetWorkspace`: `WorkspacesService::get_workspace`
+- [ ] `GetWorkspaceFeed`: `WorkspacesService::get_workspace_feed`
+- [ ] `LastAssistantText`: `WorkspacesService::last_assistant_text`
+- [ ] `ListClosedWorkspaceChats`: `WorkspacesService::list_closed_workspace_chats`
+- [ ] `ListOpenInTargets`: `WorkspacesService::list_open_in_targets`
+- [ ] `ListWorkspaceChats`: `WorkspacesService::list_workspace_chats`
+- [ ] `ListWorkspaces`: `WorkspacesService::list_workspaces`
+- [ ] `MarkWorkspaceChatSeen`: `WorkspacesService::mark_workspace_chat_seen`
+- [ ] `MergeWorkspace`: `WorkspacesService::merge_workspace`
+- [ ] `OpenMainWorkspace`: `WorkspacesService::open_main_workspace`
+- [ ] `OpenPath`: `WorkspacesService::open_path`
+- [ ] `OpenWorkspaceIn`: `WorkspacesService::open_workspace_in`
+- [ ] `OpenWorkspacePR`: `WorkspacesService::open_workspace_pr`
+- [ ] `PauseLoop`: `WorkspacesService::pause_loop`
+- [ ] `PullWorkspacePR`: `WorkspacesService::pull_workspace_pr`
+- [ ] `PushWorkingCopy`: `WorkspacesService::push_working_copy`
+- [ ] `RememberChatLoopPolicy`: `WorkspacesService::remember_chat_loop_policy`
+- [ ] `RememberWorkspaceChatPromptGroup`: `WorkspacesService::remember_workspace_chat_prompt_group`
+- [ ] `RememberWorkspaceChatSelection`: `WorkspacesService::remember_workspace_chat_selection`
+- [ ] `RememberWorkspaceChatSimplify`: `WorkspacesService::remember_workspace_chat_simplify`
+- [ ] `RemoveWorkspace`: `WorkspacesService::remove_workspace`
+- [ ] `ReopenWorkspaceChat`: `WorkspacesService::reopen_workspace_chat`
+- [ ] `ReorderWorkspaceChats`: `WorkspacesService::reorder_workspace_chats`
+- [ ] `ResetWorkspaceChat`: `WorkspacesService::reset_workspace_chat`
+- [ ] `RestartLoop`: `WorkspacesService::restart_loop`
+- [ ] `ResumeLoop`: `WorkspacesService::resume_loop`
+- [ ] `RetryLoop`: `WorkspacesService::retry_loop`
+- [ ] `RetryWorkspaceSetup`: `WorkspacesService::retry_workspace_setup`
+- [ ] `SendWorkspaceMessage`: `WorkspacesService::send_workspace_message`
+- [ ] `SetChatUIOccluded`: `WorkspacesService::set_chat_ui_occluded`
+- [ ] `SetWorkspaceBaseBranch`: `WorkspacesService::set_workspace_base_branch`
+- [ ] `SetWorkspaceChatFocus`: `WorkspacesService::set_workspace_chat_focus`
+- [ ] `SetWorkspaceIssue`: `WorkspacesService::set_workspace_issue`
+- [ ] `SetWorkspaceLoopPolicy`: `WorkspacesService::set_workspace_loop_policy`
+- [ ] `StartWorkspace`: `WorkspacesService::start_workspace`
+- [ ] `StopLoop`: `WorkspacesService::stop_loop`
+- [ ] `SubmitPlan`: `WorkspacesService::submit_plan`
+- [ ] `UpdatePlan`: `WorkspacesService::update_plan`
+- [ ] `UpdatePlanStep`: `WorkspacesService::update_plan_step`
+- [ ] `UpdateWorkingCopyFromRemote`: `WorkspacesService::update_working_copy_from_remote`
+- [ ] `UpdateWorkspaceWithBase`: `WorkspacesService::update_workspace_with_base`
+- [ ] `WatchWorkspace`: `WorkspacesService::watch_workspace`
+- [ ] `WorkspaceChatItems`: `WorkspacesService::workspace_chat_items`
+- [ ] `WorkspaceChatModels`: `WorkspacesService::workspace_chat_models`
+- [ ] `WorkspaceChatSelection`: `WorkspacesService::workspace_chat_selection`
+- [ ] `WorkspaceChatTurnDiff`: `WorkspacesService::workspace_chat_turn_diff`
+- [ ] `WorkspaceDiscardRisk`: `WorkspacesService::workspace_discard_risk`
+- [ ] `WorkspaceFacts`: `WorkspacesService::workspace_facts`
+- [ ] `WorkspaceLandState`: `WorkspacesService::workspace_land_state`
+- [ ] `WorkspaceSessions`: `WorkspacesService::workspace_sessions`
 
 ## App events (backend to UI)
 
-Source: `Events.On(...)` in `frontend/src`. Rust home: `recur_services::AppEvent`.
+Source: `Events.On(...)` in `frontend/src` (and the few the UI sent with `Events.Emit`, marked "UI to backend"). Rust home: `recur_services::AppEvent`, published on `Services::subscribe()`; `name()`, `payload()` and `from_wire()` give the exact Wails event.
 
-- [ ] `agent.step`
-- [ ] `agent.updated`
-- [ ] `app.focused`
-- [ ] `app.open`
-- [ ] `app.ready`
-- [ ] `artifact.created`
-- [ ] `artifact.presented`
-- [ ] `attention.updated`
-- [ ] `briefing.updated`
-- [ ] `chat.mode_changed`
-- [ ] `cursor.install`
-- [ ] `escalation.raised`
-- [ ] `escalation.resolved`
-- [ ] `files.dropped`
-- [ ] `findings.updated`
-- [ ] `github.branch_rules`
-- [ ] `inbox.updated`
-- [ ] `lsp.exit`
-- [ ] `lsp.message`
-- [ ] `menu.action`
-- [ ] `menu.state`
-- [ ] `menu.themeState`
-- [ ] `menu.themes`
-- [ ] `notification.open`
-- [ ] `permission.requested`
-- [ ] `permission.resolved`
-- [ ] `pr.comment`
-- [ ] `pr.removed`
-- [ ] `pr.updated`
-- [ ] `provider.usage`
-- [ ] `prs.synced`
-- [ ] `question.answered`
-- [ ] `question.asked`
-- [ ] `resource.updated`
-- [ ] `session.compact`
-- [ ] `session.context_usage`
-- [ ] `session.delta`
-- [ ] `session.fallback`
-- [ ] `session.notice`
-- [ ] `session.step`
-- [ ] `session.thinking`
-- [ ] `session.tool_input`
-- [ ] `session.tool_result`
-- [ ] `session.turn_end`
-- [ ] `session.user`
-- [ ] `system.theme`
-- [x] `term.busy`: `Event::Busy { id, workspace_id }` when the shell loses the foreground process group (idle watcher, 25ms to 1s backoff).
-- [x] `term.data`: `Event::Data { id, data }`, raw bytes coalesced 8ms / 64KiB, flow-controlled by `ack` (256KiB high water), routed to the pane by `route_event`.
-- [x] `term.exit`: `Event::Exit { id, workspace_id, exit_code }` once after the reader drains; the pane emits `TerminalEvent::Exit`.
-- [x] `term.idle`: `Event::Idle { id, workspace_id }` when the shell regains the foreground.
-- [ ] `updater.check`
-- [ ] `wails:updater:error`
-- [ ] `wails:updater:no-update`
-- [ ] `wails:updater:update-available`
-- [ ] `wails:updater:update-ready`
-- [ ] `wails:updater:user:restart`
-- [ ] `window.titlebarDblclick`
-- [ ] `workspace.chat_tab`
-- [ ] `workspace.deleted`
-- [ ] `workspace.event`
-- [ ] `workspace.file_index`
-- [ ] `workspace.fs_changed`
-- [ ] `workspace.removed`
-- [ ] `workspace.updated`
+- [ ] `agent.step`: `AppEvent::AgentStep(AgentStepEvent)`
+- [ ] `agent.updated`: `AppEvent::AgentUpdated(AgentUpdated)`
+- [ ] `app.focused`: `AppEvent::AppFocused(AppFocused)`
+- [ ] `app.open`: `AppEvent::AppOpen(OpenPathResult)`
+- [ ] `app.ready`: `AppEvent::AppReady (UI to backend)`
+- [ ] `artifact.created`: `AppEvent::ArtifactCreated(ArtifactEvent)`
+- [ ] `artifact.presented`: `AppEvent::ArtifactPresented(ArtifactEvent)`
+- [ ] `attention.updated`: `AppEvent::AttentionUpdated(AttentionUpdated)`
+- [ ] `briefing.updated`: `AppEvent::BriefingUpdated(BriefingUpdated)`
+- [ ] `chat.mode_changed`: `AppEvent::ChatModeChanged(ChatModeChanged)`
+- [ ] `cursor.install`: `AppEvent::CursorInstall(CursorInstall)`
+- [ ] `escalation.raised`: `AppEvent::EscalationRaised(EscalationRaised)`
+- [ ] `escalation.resolved`: `AppEvent::EscalationResolved(EscalationResolved)`
+- [ ] `files.dropped`: `AppEvent::FilesDropped(FilesDropped)`
+- [ ] `findings.updated`: `AppEvent::FindingsUpdated(WorkspaceRef)`
+- [ ] `github.branch_rules`: `AppEvent::GithubBranchRules(GithubBranchRules)`
+- [ ] `inbox.updated`: `AppEvent::InboxUpdated(InboxUpdated)`
+- [ ] `lsp.exit`: `AppEvent::LspExit(LspExit)`
+- [ ] `lsp.message`: `AppEvent::LspMessage(LspMessage)`
+- [ ] `menu.action`: `AppEvent::MenuAction(String)`
+- [ ] `menu.state`: `AppEvent::MenuState(MenuState) (UI to backend)`
+- [ ] `menu.themeState`: `AppEvent::MenuThemeState(MenuThemeState) (UI to backend)`
+- [ ] `menu.themes`: `AppEvent::MenuThemes(MenuThemes) (UI to backend)`
+- [ ] `notify`: `AppEvent::Notify(Notify)` (desktop shows the OS notification; no UI listener)
+- [ ] `notification.open`: `AppEvent::NotificationOpen(String)`
+- [ ] `permission.requested`: `AppEvent::PermissionRequested(PermissionRequest)`
+- [ ] `permission.resolved`: `AppEvent::PermissionResolved(PermissionResolved)`
+- [ ] `pr.comment`: `AppEvent::PrComment(Box<PrCommentEvent>)`
+- [ ] `pr.removed`: `AppEvent::PrRemoved(PrRef)`
+- [ ] `pr.updated`: `AppEvent::PrUpdated(Box<PrUpdated>)`
+- [ ] `provider.usage`: `AppEvent::ProviderUsage(recur_usage::Snapshot)`
+- [ ] `prs.synced`: `AppEvent::PrsSynced(PrsSynced)`
+- [ ] `question.answered`: `AppEvent::QuestionAnswered(QuestionAnswered)`
+- [ ] `question.asked`: `AppEvent::QuestionAsked(QuestionAsked)`
+- [ ] `resource.updated`: `AppEvent::ResourceUpdated(Resource)`
+- [ ] `session.compact`: `AppEvent::SessionCompact(SessionCompact)`
+- [ ] `session.context_usage`: `AppEvent::SessionContextUsage(SessionContextUsage)`
+- [ ] `session.delta`: `AppEvent::SessionDelta(SessionDelta)`
+- [ ] `session.fallback`: `AppEvent::SessionFallback(SessionFallback)`
+- [ ] `session.notice`: `AppEvent::SessionNotice(SessionText)`
+- [ ] `session.step`: `AppEvent::SessionStep(SessionStep)`
+- [ ] `session.thinking`: `AppEvent::SessionThinking(SessionThinking)`
+- [ ] `session.tool_input`: `AppEvent::SessionToolInput(SessionToolInput)`
+- [ ] `session.tool_result`: `AppEvent::SessionToolResult(SessionToolResult)`
+- [ ] `session.turn_end`: `AppEvent::SessionTurnEnd(SessionTurnEnd)`
+- [ ] `session.user`: `AppEvent::SessionUser(SessionText)`
+- [ ] `system.theme`: `AppEvent::SystemTheme(bool)`
+- [x] `term.busy`: `Event::Busy { id, workspace_id }` when the shell loses the foreground process group (idle watcher, 25ms to 1s backoff). Services: `AppEvent::Term(recur_term::Event)`.
+- [x] `term.data`: `Event::Data { id, data }`, raw bytes coalesced 8ms / 64KiB, flow-controlled by `ack` (256KiB high water), routed to the pane by `route_event`. Services: `AppEvent::Term(recur_term::Event)`.
+- [x] `term.exit`: `Event::Exit { id, workspace_id, exit_code }` once after the reader drains; the pane emits `TerminalEvent::Exit`. Services: `AppEvent::Term(recur_term::Event)`.
+- [x] `term.idle`: `Event::Idle { id, workspace_id }` when the shell regains the foreground. Services: `AppEvent::Term(recur_term::Event)`.
+- [ ] `updater.check`: `AppEvent::UpdaterCheck (UI to backend)`
+- [ ] `wails:updater:error`: `AppEvent::Updater(UpdaterEvent::Error)`
+- [ ] `wails:updater:no-update`: `AppEvent::Updater(UpdaterEvent::NoUpdate)`
+- [ ] `wails:updater:update-available`: `AppEvent::Updater(UpdaterEvent::UpdateAvailable)`
+- [ ] `wails:updater:update-ready`: `AppEvent::Updater(UpdaterEvent::UpdateReady)`
+- [ ] `wails:updater:user:restart`: `AppEvent::UpdaterUserRestart (UI to backend)`
+- [ ] `window.titlebarDblclick`: `AppEvent::WindowTitlebarDblclick (UI to backend)`
+- [ ] `workspace.chat_tab`: `AppEvent::WorkspaceChatTab(WorkspaceChatTabEvent)`
+- [ ] `workspace.deleted`: `AppEvent::WorkspaceDeleted(WorkspaceRef)`
+- [ ] `workspace.event`: `AppEvent::WorkspaceEvent(WorkspaceEvent)`
+- [ ] `workspace.file_index`: `AppEvent::WorkspaceFileIndex(WorkspaceFileIndex)`
+- [ ] `workspace.fs_changed`: `AppEvent::WorkspaceFsChanged(WorkspaceFsChanged)`
+- [ ] `workspace.removed`: `AppEvent::WorkspaceRemoved(WorkspaceRef)`
+- [ ] `workspace.updated`: `AppEvent::WorkspaceUpdated(Box<WorkspaceUpdated>)`
 
 ## Views and components
 

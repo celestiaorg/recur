@@ -7,6 +7,11 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# In-memory port of frontend/e2e/helpers/mock-bridge.ts for dev builds, tests
+# and the UI-parity harness.
+mock = ["dep:futures"]
+
 [dependencies]
 recur-provider-claude.workspace = true
 recur-provider-codex.workspace = true
@@ -25,6 +30,19 @@ recur-lsp.workspace = true
 recur-term.workspace = true
 recur-usage.workspace = true
 recur-platform.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+futures = { workspace = true, optional = true }
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+futures.workspace = true
+pretty_assertions.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

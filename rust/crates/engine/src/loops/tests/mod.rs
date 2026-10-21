@@ -10,4 +10,5 @@ mod hands;
 mod maestro;
 mod planbrief;
 mod prompts;
+mod resume;
 mod walker;

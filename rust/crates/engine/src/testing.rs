@@ -407,8 +407,13 @@ impl TestEngine {
     /// A second engine over the same store and data dir (Go `New(st)` after
     /// a simulated restart), with its own bus.
     pub fn reopen(&self, provider: Option<Arc<dyn Provider>>) -> Arc<Engine> {
+        self.reopen_on(Arc::clone(&self.store), provider)
+    }
+
+    /// [`Self::reopen`] over `store` (a store reopened from disk).
+    pub fn reopen_on(&self, store: Arc<Store>, provider: Option<Arc<dyn Provider>>) -> Arc<Engine> {
         Engine::build(
-            Arc::clone(&self.store),
+            store,
             Arc::new(Bus::new()),
             GitSetup {
                 worktree_root: self.engine.worktree_root().to_owned(),

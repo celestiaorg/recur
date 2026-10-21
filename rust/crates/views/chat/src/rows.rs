@@ -135,6 +135,16 @@ pub(crate) fn muted_sheet() -> Sheet {
     }
 }
 
+/// How far a 14px `.tc-ico` pushes a `.tc-head` line down. The slot has no baseline, so CSS
+/// aligns its bottom edge on the 12px / 1.45 label's baseline; when the icon is taller than
+/// the label's ascent part the line grows by the difference and the text moves down. GPUI's
+/// flex does not synthesize that baseline: the label pads by this much and the slot sits at
+/// the line top (then `top: 1px`).
+pub(crate) fn tc_icon_shift(window: &Window) -> f32 {
+    let (_, _, line) = text("x").size(12.).line_height(LineHeight::Scale(1.45)).measure(None, window);
+    (14. - line.baseline).max(0.)
+}
+
 /// `.tc-pre`: mono 11 / 1.55, pre-wrap, 320px scroll.
 pub(crate) fn tc_pre(id: SharedString, body: Text, max_h: f32) -> Div {
     div().child(
@@ -684,6 +694,7 @@ impl AgentChat {
             .relative()
             .flex_none()
             .size(px(14.))
+            .self_start()
             .top(px(1.))
             .child(
                 div()
@@ -761,11 +772,13 @@ impl AgentChat {
     }
 
     fn tc_label(&self, s: impl Into<SharedString>, color: Color) -> AnyElement {
+        // The label leads the baseline group, so its pad moves every baseline-aligned item.
         div()
             .flex_none()
             .max_w(relative(0.55))
             .overflow_hidden()
-            .child(text(s).weight(600.).color(color).truncate())
+            .pt(px(self.tc_shift))
+            .child(text(s).weight(600.).line_height(LineHeight::Scale(1.45)).color(color).truncate())
             .into_any_element()
     }
 
@@ -774,7 +787,7 @@ impl AgentChat {
             .flex_1()
             .min_w_0()
             .overflow_hidden()
-            .child(text(s).mono().size(11.).color(color).truncate())
+            .child(text(s).mono().size(11.).line_height(LineHeight::Scale(1.45)).color(color).truncate())
             .into_any_element()
     }
 
@@ -2284,6 +2297,7 @@ impl AgentChat {
                 .relative()
                 .flex_none()
                 .size(px(14.))
+                .self_start()
                 .top(px(1.))
                 .flex()
                 .items_center()

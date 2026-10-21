@@ -8,6 +8,7 @@ use gpui_kit::{
     AnyElement, Context, InteractiveElement, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, Window, canvas, div, px, relative,
 };
+use recur_content::Sheet;
 use recur_engine::view::chat::{AgentMsg, ChatLog, agent_error_detail, agent_error_title, last_assistant_text_in_turn};
 use recur_engine::view::digest::TurnDigestFinding;
 use recur_engine::view::loop_cockpit::{PrCompletionCtx, PrRef, loop_completion_wrap, loop_pr_completion, strip_loop_wrap};
@@ -203,10 +204,15 @@ impl AgentChat {
         }
         if !m.body.is_empty() {
             let key = format!("{}:m{i}", self.props.reset_key);
+            // `.chat-row` has no padding: the canvas's edge margins collapse into its 18px.
+            let sheet = Some(Sheet {
+                collapse_edges: true,
+                ..Sheet::chat()
+            });
             let body = if m.streaming {
-                self.stream(format!("{key}-live"), &m.body, None, cx)
+                self.stream(format!("{key}-live"), &m.body, sheet, cx)
             } else {
-                self.md(format!("{key}-md"), &m.body, None, false, cx)
+                self.md(format!("{key}-md"), &m.body, sheet, false, cx)
             };
             let streaming = m.streaming;
             return div()
@@ -945,7 +951,7 @@ impl AgentChat {
                             .size(px(12.))
                             .child(icon(IconName::ChevronRight).size(px(12.)).stroke_width(2.4).color(hsla(t.faint)).rotate(if open { 90. } else { 0. })),
                     )
-                    .child(text(summary).line_height(LineHeight::Normal).nowrap())
+                    .child(text(summary).line_height(LineHeight::Scale(1.45)).nowrap())
                     .on_click(cx.listener(move |this, _, _, cx| this.toggle_group(start, open, cx))),
             ),
         );
@@ -973,6 +979,7 @@ impl AgentChat {
         parts: &[BubblePart],
         id: &str,
         has_att: bool,
+        trailing_space: bool,
         color: recur_ui::Color,
         backdrop: recur_ui::Color,
         window: &mut Window,
@@ -1016,7 +1023,10 @@ impl AgentChat {
                 }
             }
         }
-        flow(SharedString::from(format!("{id}-flow")), content, atoms, style).fit_content().into_any_element()
+        flow(SharedString::from(format!("{id}-flow")), content, atoms, style)
+            .fit_content()
+            .trailing_space(trailing_space)
+            .into_any_element()
     }
 
     fn user_bubble(&mut self, m: &AgentMsg, i: usize, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
@@ -1031,7 +1041,7 @@ impl AgentChat {
         });
         let has_att = !m.attachments.is_empty();
         let bg = t.amber_d;
-        let content = self.bubble_content(&parts, &id, has_att, t.text, bg.over(t.bg), window, cx);
+        let content = self.bubble_content(&parts, &id, has_att, can_copy, t.text, bg.over(t.bg), window, cx);
         let copied = self.copied_bubble.as_deref() == Some(bubble_key.as_str());
         let group = SharedString::from(format!("{id}-g"));
         let sel = format!("me:{}", debug_key(&plain));
@@ -1095,7 +1105,7 @@ impl AgentChat {
         let parts = bubble_parts(m, &|title| {
             recur_engine::view::mentions::unique_artifact_id_for_title(title, arts.iter().map(|a| (a.id.as_str(), a.title.as_str())))
         });
-        let content = self.bubble_content(&parts, &id, false, t.muted, t.pane_2, window, cx);
+        let content = self.bubble_content(&parts, &id, false, false, t.muted, t.pane_2, window, cx);
         let mut head = div()
             .flex()
             .items_center()

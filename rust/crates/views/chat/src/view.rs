@@ -159,6 +159,7 @@ impl AgentChat {
 impl Render for AgentChat {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
+        self.tc_shift = crate::rows::tc_icon_shift(window);
         self.snapshot_tool_data(cx);
         self.markdown_seen.clear();
         self.sync_turn_clock(cx);

@@ -74,6 +74,9 @@ pub struct Sheet {
     pub weight: f32,
     /// `letter-spacing` in em inherited from the host (0 by default).
     pub tracking: f32,
+    /// The first and last blocks' outer margins collapse into a host without padding or
+    /// border whose own margins are at least as large (a chat row), instead of padding the view.
+    pub collapse_edges: bool,
 }
 
 const fn h(scale: f32, margin_top: f32, margin_bottom: f32, muted: bool) -> Heading {
@@ -131,6 +134,7 @@ impl Sheet {
             muted: false,
             weight: 400.,
             tracking: 0.,
+            collapse_edges: false,
         }
     }
 
@@ -178,6 +182,7 @@ impl Sheet {
             muted: false,
             weight: 400.,
             tracking: 0.,
+            collapse_edges: false,
         }
     }
 }

@@ -7206,6 +7206,7 @@ dependencies = [
  "recur-editor",
  "recur-terminal-view",
  "recur-ui",
+ "recur-view-chat",
  "serde",
  "serde_json",
 ]

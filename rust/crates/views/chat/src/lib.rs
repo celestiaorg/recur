@@ -58,6 +58,8 @@ pub mod dock;
 pub mod file_index;
 pub mod findings_ui;
 pub mod flow;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 pub mod glance;
 pub mod html_inline;
 pub mod meter;

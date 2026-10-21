@@ -418,6 +418,8 @@ pub struct Flow {
     style: FlowStyle,
     /// Report the widest line as the width (`max-width` boxes that shrink to their text).
     fit: bool,
+    /// A preserved space after the content widens the shrink-wrapped box (`pre-wrap`).
+    trailing_space: bool,
     min_height: f32,
     out: Option<Rc<RefCell<Option<FlowLayout>>>>,
 }
@@ -434,6 +436,7 @@ pub fn flow(
         atoms,
         style,
         fit: false,
+        trailing_space: false,
         min_height: 0.,
         out: None,
     }
@@ -442,6 +445,13 @@ pub fn flow(
 impl Flow {
     pub fn fit_content(mut self) -> Self {
         self.fit = true;
+        self
+    }
+
+    /// The template whitespace after the last part, which `white-space: pre-wrap` keeps in
+    /// the box's max-content width.
+    pub fn trailing_space(mut self, on: bool) -> Self {
+        self.trailing_space = on;
         self
     }
 
@@ -501,6 +511,7 @@ impl Element for Flow {
         let sizes: Vec<(f32, f32)> = self.atoms.iter().map(|a| (a.width, a.height)).collect();
         let st = self.style.clone();
         let fit = self.fit;
+        let trailing = self.trailing_space;
         let min_h = self.min_height;
         let id =
             window.request_measured_layout(Style::default(), move |known, avail, window, _| {
@@ -509,8 +520,9 @@ impl Element for Flow {
                     _ => f32::MAX / 4.,
                 });
                 let l = FlowLayout::compute(&content, &sizes, &st, w, window);
+                let extra = if trailing { shape_width(" ", &st, window).0 } else { 0. };
                 let out = size(
-                    px(if fit { l.max_line.min(w) } else { w }),
+                    px(if fit { (l.max_line + extra).min(w) } else { w }),
                     px(l.height.max(min_h)),
                 );
                 *slot.borrow_mut() = Some(l);

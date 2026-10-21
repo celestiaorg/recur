@@ -147,13 +147,9 @@ impl Sidebar {
     fn row_ctx(&self, cx: &App) -> RowCtx {
         let s = self.state().read(cx);
         let ev = &s.scan_event;
-        let scan_highlight = if ev.seq > 0 && ev.kind == ScanKind::Land {
-            Some(ev.workspace_id.clone())
-        } else if s.scan_pending && project_id_from_main_scan(&ev.workspace_id).is_some() {
-            Some(ev.workspace_id.clone())
-        } else {
-            None
-        };
+        let scan_highlight = ((ev.seq > 0 && ev.kind == ScanKind::Land)
+            || (s.scan_pending && project_id_from_main_scan(&ev.workspace_id).is_some()))
+        .then(|| ev.workspace_id.clone());
         RowCtx {
             prs: s.prs.clone(),
             running: s.workspaces_running.clone(),
@@ -350,6 +346,7 @@ impl Sidebar {
             let ring = is_focus_visible(&f, window);
             hit_inner(div())
                 .id(SharedString::from(format!("hit:{id}")))
+                .debug_selector(|| format!("hit:{id}"))
                 .track_focus(&f)
                 .role(gpui_kit::Role::Button)
                 .cursor_pointer()
@@ -382,7 +379,8 @@ impl Sidebar {
                         .bottom(px(5.))
                         .w(px(2.))
                         .rounded(px(2.))
-                        .bg(t.amber),
+                        .bg(t.amber)
+                        .debug_selector(|| format!("on:{id}")),
                 )
             })
             .when(row.has_child_below, |d| {
@@ -469,7 +467,8 @@ impl Sidebar {
             return el.into_any_element();
         }
         let hover_id = id.clone();
-        el.id(SharedString::from(key.clone()))
+        el.debug_selector(|| key.clone())
+            .id(SharedString::from(key.clone()))
             .on_hover(cx.listener(move |this, h: &bool, _, cx| {
                 this.set_hover(&format!("row:{hover_id}"), *h, cx);
                 if *h {
@@ -529,7 +528,8 @@ impl Sidebar {
                         .bottom(px(5.))
                         .w(px(2.))
                         .rounded(px(2.))
-                        .bg(t.amber),
+                        .bg(t.amber)
+                        .debug_selector(|| format!("on:{key}")),
                 )
             })
             .child(slot)
@@ -572,6 +572,7 @@ impl Sidebar {
         let title = format!("Working copy — {}'s real checkout", p.project.name);
         let hover_key = key.clone();
         let el = el
+            .debug_selector(|| key.clone())
             .id(SharedString::from(key.clone()))
             .track_focus(&f)
             .role(gpui_kit::Role::Button)
@@ -639,7 +640,8 @@ impl Sidebar {
             let f = self.fh(key.clone(), cx);
             let ring = is_focus_visible(&f, window);
             let hover_key = key.clone();
-            head.id(SharedString::from(key.clone()))
+            head.debug_selector(|| key.clone())
+                .id(SharedString::from(key.clone()))
                 .track_focus(&f)
                 .role(gpui_kit::Role::Button)
                 .aria_expanded(!closed)
@@ -971,6 +973,7 @@ impl Sidebar {
                 el = el.child(
                     div()
                         .id(SharedString::from(format!("gh-input:{id}")))
+                        .debug_selector(|| format!("gh-input:{id}"))
                         .flex_1()
                         .min_w_0()
                         .h(px(20.))
@@ -1094,6 +1097,7 @@ impl Sidebar {
             (key.clone(), id.to_string(), id.to_string(), id.to_string());
         let dragging = self.drag.as_ref().is_some_and(|d| d.active);
         let mut el = div()
+            .debug_selector(|| key.clone())
             .id(SharedString::from(key))
             .track_focus(&f)
             .role(gpui_kit::Role::Button)
@@ -1571,7 +1575,7 @@ impl Sidebar {
             window.request_animation_frame();
         }
         let float = self.render_float(&tree, &rc, window, cx);
-        let listeners = self.drag_listeners(window, cx);
+        let listeners = self.drag_listeners(cx);
         div()
             .relative()
             .size_full()

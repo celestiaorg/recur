@@ -339,6 +339,7 @@ impl Shell {
             "Hide sidebar (⌘B)"
         };
         let rail = no_drag(style::rail_toggle("tb-rail", !rail_collapsed, cx))
+            .debug_selector(|| "tb-rail".into())
             .on_click({
                 let state = state.clone();
                 move |_, _, cx| state.update(cx, |s, cx| s.toggle_rail(cx))

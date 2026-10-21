@@ -589,7 +589,7 @@ impl Shell {
                             if let Ok(st) =
                                 services.workspaces.fetch_working_copy_upstream(&id).await
                             {
-                                let _ = entity.update(cx, |shell, cx| {
+                                entity.update(cx, |shell, cx| {
                                     if shell.land.fetch_key == id {
                                         shell.land.seq += 1;
                                         shell.apply_land(Some(&st), started, cx);
@@ -743,15 +743,13 @@ impl Shell {
 
     pub(crate) fn land_event(&mut self, ev: &AppEvent, cx: &mut Context<Self>) {
         match ev {
-            AppEvent::WorkspaceFsChanged(d) => {
-                if d.workspace_id == self.state.read(cx).selected_workspace_id {
-                    self.schedule_land_refresh_from_disk(cx);
-                }
+            AppEvent::WorkspaceFsChanged(d)
+                if d.workspace_id == self.state.read(cx).selected_workspace_id =>
+            {
+                self.schedule_land_refresh_from_disk(cx);
             }
-            AppEvent::AppFocused(_) => {
-                if !self.state.read(cx).selected_workspace_id.is_empty() {
-                    self.schedule_land_refresh_from_disk(cx);
-                }
+            AppEvent::AppFocused(_) if !self.state.read(cx).selected_workspace_id.is_empty() => {
+                self.schedule_land_refresh_from_disk(cx);
             }
             AppEvent::GithubBranchRules(d) => {
                 let remote = (!d.remote.is_empty()).then_some(d.remote.as_str());

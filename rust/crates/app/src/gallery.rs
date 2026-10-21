@@ -140,8 +140,8 @@ pub fn patch_seed(seed: &mut Value, patch: &Value) {
     }
 }
 
-/// `loadSeed()` with the scene's edits.
-fn seed_for(patch: &Value) -> Seed {
+/// `loadSeed()` with `patch` applied ([`patch_seed`]).
+pub fn scene_seed(patch: &Value) -> Seed {
     let mut raw: Value = serde_json::from_str(SEED_JSON).unwrap_or(Value::Null);
     patch_seed(&mut raw, patch);
     let set_path = |l: &mut Value| {
@@ -191,7 +191,7 @@ impl Render for ShellSceneView {
 
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let scene = scene(name)?;
-    let bridge = MockBridge::new(seed_for(&scene.seed), MockOptions::default());
+    let bridge = MockBridge::new(scene_seed(&scene.seed), MockOptions::default());
     let services = bridge.services();
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.theme", scene.theme.clone());

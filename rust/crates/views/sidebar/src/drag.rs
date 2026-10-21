@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use gpui_kit::{
     AnyElement, App, Context, CursorStyle, DispatchPhase, IntoElement, MouseButton, MouseMoveEvent,
-    MouseUpEvent, Pixels, Point, Styled, Window, canvas,
+    MouseUpEvent, Pixels, Point, Styled, canvas,
 };
 use recur_domain::{Project, ProjectGroup};
 use recur_ui::motion::{self, Easing};
@@ -622,20 +622,16 @@ impl Sidebar {
     }
 
     /// While a header is pressed, the whole window follows the pointer (pointer capture).
-    pub(crate) fn drag_listeners(
-        &self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Option<AnyElement> {
-        let d = self.drag.as_ref()?;
-        if d.active {
-            window.set_window_cursor_style(CursorStyle::ClosedHand);
-        }
+    pub(crate) fn drag_listeners(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let active = self.drag.as_ref()?.active;
         let entity = cx.entity();
         Some(
             canvas(
                 |_, _, _| {},
                 move |_, _, window, _| {
+                    if active {
+                        window.set_window_cursor_style(CursorStyle::ClosedHand);
+                    }
                     let e = entity.clone();
                     window.on_mouse_event(move |ev: &MouseMoveEvent, phase, _, cx| {
                         if phase == DispatchPhase::Capture {

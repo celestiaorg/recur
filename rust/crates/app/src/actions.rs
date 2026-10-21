@@ -97,13 +97,13 @@ impl Shell {
             }
         }))
         .on_action(cx.listener(|_, _: &About, window, cx| {
-            let _ = window.prompt(
+            drop(window.prompt(
                 gpui_kit::PromptLevel::Info,
                 recur_platform::identity::APP_NAME,
                 Some(recur_platform::identity::APP_DESCRIPTION),
                 &["OK"],
                 cx,
-            );
+            ));
         }))
         .on_action(cx.listener(|_, _: &HideApp, _, cx| cx.hide()))
         .on_action(cx.listener(|_, _: &HideOthers, _, cx| cx.hide_other_apps()))
@@ -173,10 +173,8 @@ impl Shell {
                     s.toggle_open_in(cx);
                 }
             }),
-            "copy-path" => {
-                if !ws_main_blocked(state.read(cx).selected_workspace()) {
-                    crate::titlebar::copy_selected_workspace_path(&state, cx);
-                }
+            "copy-path" if !ws_main_blocked(state.read(cx).selected_workspace()) => {
+                crate::titlebar::copy_selected_workspace_path(&state, cx);
             }
             "shortcuts" => state.update(cx, |s, cx| s.toggle_shortcuts(cx)),
             "prev-workspace" => state.update(cx, |s, cx| s.cycle_workspace(-1, cx)),

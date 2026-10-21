@@ -237,7 +237,7 @@ impl Shell {
             let loaded = load.await;
             // `loadShellState` swallows its own errors: a missing snapshot restores nothing.
             let saved = services.shell.get_shell_state().await.ok();
-            let _ = state.update(cx, |s, cx| {
+            state.update(cx, |s, cx| {
                 if loaded.is_ok() {
                     s.apply_boot_route(saved.as_ref(), cx);
                 }

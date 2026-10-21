@@ -251,6 +251,7 @@ impl Sidebar {
         let f = self.fh(key.clone(), cx);
         let ring = is_focus_visible(&f, window);
         div()
+            .debug_selector(|| key.to_string())
             .id(ElementId::Name(key))
             .track_focus(&f)
             .role(gpui_kit::Role::Button)
@@ -1429,7 +1430,7 @@ impl Sidebar {
             titled(
                 SharedString::from(format!("{key}-ct")),
                 title,
-                Self::chip(label, true, cx),
+                Self::chip(label, true, cx).debug_selector(|| format!("ct:{key}")),
             )
             .into_any_element(),
         )
@@ -1804,6 +1805,7 @@ impl Sidebar {
             let aria = format!("{footer_label}. Open Inbox");
             let el = stat(footer_label, t.coral, true, true)
                 .id("foot-needs")
+                .debug_selector(|| "foot-needs".into())
                 .role(gpui_kit::Role::Button)
                 .aria_label(aria)
                 .cursor_pointer()
@@ -1815,6 +1817,7 @@ impl Sidebar {
             let aria = format!("{footer_label}. Open pull requests");
             let el = stat(footer_label, t.amber, true, true)
                 .id("foot-prs")
+                .debug_selector(|| "foot-prs".into())
                 .role(gpui_kit::Role::Button)
                 .aria_label(aria)
                 .cursor_pointer()
@@ -1856,6 +1859,10 @@ impl Sidebar {
         let cur_gid = cur.as_ref().map(|p| p.group_id.clone()).unwrap_or_default();
         let item = |id: SharedString, label: SharedString| {
             div()
+                .debug_selector({
+                    let id = id.clone();
+                    move || id.to_string()
+                })
                 .id(id)
                 .role(gpui_kit::Role::MenuItem)
                 .w_full()
@@ -1870,6 +1877,7 @@ impl Sidebar {
         let pid = menu.project_id.clone();
         let mut panel = style::card(t.pane, t.line, 8.)
             .id("rail-move-menu")
+            .debug_selector(|| "rail-move-menu".into())
             .role(gpui_kit::Role::Menu)
             .min_w(px(160.))
             .p(px(4.))
@@ -2001,6 +2009,7 @@ impl Sidebar {
         .on_step(move |w, _, cx| state.update(cx, |s, cx| s.set_panel(PanelKey::Rail, w, cx)));
         div()
             .id("rail")
+            .debug_selector(|| "rail".into())
             .track_focus(&self.rail_focus)
             .role(gpui_kit::Role::Complementary)
             .aria_label("Sidebar")

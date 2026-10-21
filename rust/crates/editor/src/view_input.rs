@@ -584,6 +584,23 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) -> bool {
         let key = KeyEvent::from_keystroke(&ev.keystroke, self.platform);
+        let handled = self.key_down_handlers(&key, ev, window, cx);
+        // Vim's insert-mode `keydown` listener on the content, after
+        // CodeMirror's own handlers.
+        if self.vim.as_ref().is_some_and(|v| v.cm.listening_changes) {
+            crate::vim::insert::on_insert_key_down(&key.name);
+        }
+        handled
+    }
+
+    fn key_down_handlers(
+        &mut self,
+        key: &KeyEvent,
+        ev: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let key = key.clone();
         let now = now_ms() as i64;
         if key.name == "Tab"
             && self.tab_focus > -1
@@ -600,13 +617,13 @@ impl EditorView {
         if self.kind == EditorKind::Code {
             self.commit_characters(&key, ev, window, cx);
         }
-        if self.modal_key_down(&key, ev, window, cx) {
-            return true;
-        }
         if self.run_keymap(&key, "editor", window, cx) {
             return true;
         }
         if self.emacs.is_some() && crate::emacs::key_down(self, &key, ev, window, cx) {
+            return true;
+        }
+        if self.vim.is_some() && crate::vim::key_down(self, &key, ev, window, cx) {
             return true;
         }
         self.clipboard_key(&key, window, cx)
@@ -695,6 +712,9 @@ impl EditorView {
         }
         LAST_LINEWISE_COPY.with(|c| *c.borrow_mut() = linewise.then(|| text.clone()));
         cx.write_to_clipboard(ClipboardItem::new_string(text));
+        if !cut {
+            crate::vim::after_copy(self, window, cx);
+        }
         if cut && !self.state.read_only() {
             let changes: Vec<Change> = ranges
                 .into_iter()
@@ -717,6 +737,7 @@ impl EditorView {
         }
         let spec = paste_spec(&self.state, text);
         self.dispatch(spec, window, cx);
+        crate::vim::after_paste(self, window, cx);
     }
 
     // ---- text input ----
@@ -735,7 +756,7 @@ impl EditorView {
             return;
         }
         let text = crate::text::normalize_newlines(text).into_owned();
-        if self.modal_input(from, to, &text, window, cx) {
+        if crate::vim::input(self, from, to, &text, window, cx) {
             return;
         }
         let state = self.state.clone();
@@ -2269,6 +2290,9 @@ impl EntityInputHandler for EditorView {
             self.composing = true;
             self.composition_first = true;
             self.completion.composition_start();
+            if let Some(v) = self.vim.as_mut() {
+                v.use_next_text_input = true;
+            }
         }
         let (from, to) = match (range, self.marked) {
             (Some(r), _) => (
@@ -2282,6 +2306,9 @@ impl EntityInputHandler for EditorView {
             }
         };
         self.input_text(from, to, new_text, window, cx);
+        if !self.composing {
+            return;
+        }
         let end = from + new_text.len();
         self.marked = (!new_text.is_empty()).then_some((from, end));
         if let Some(sel) = new_selected {
@@ -2334,7 +2361,7 @@ impl EntityInputHandler for EditorView {
 }
 
 impl EditorView {
-    fn end_composition(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn end_composition(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.composing {
             return;
         }
@@ -2370,29 +2397,6 @@ impl EditorView {
             .detach();
         }
         cx.notify();
-    }
-
-    /// Vim's highest-precedence key handler.
-    fn modal_key_down(
-        &mut self,
-        _key: &KeyEvent,
-        _ev: &KeyDownEvent,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) -> bool {
-        false
-    }
-
-    /// Typed text in a modal keymap (vim normal mode swallows it).
-    fn modal_input(
-        &mut self,
-        _from: usize,
-        _to: usize,
-        _text: &str,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) -> bool {
-        false
     }
 
     /// `MouseSelection.update`: typing ends a drag; other edits map its

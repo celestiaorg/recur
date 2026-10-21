@@ -765,6 +765,21 @@ impl EditorView {
                 doc.line(rendered.1.min(lines_total)).to,
             )],
         );
+        let vim_hl: Vec<(usize, usize)> = self
+            .vim
+            .as_ref()
+            .and_then(|v| v.highlight.clone())
+            .map(|q| {
+                let mut out = Vec::new();
+                q.highlight(
+                    &self.state,
+                    doc.line(rendered.0).from,
+                    doc.line(rendered.1.min(lines_total)).to,
+                    |f, t| out.push((f, t)),
+                );
+                out
+            })
+            .unwrap_or_default();
         let sel_matches = crate::search::selection_match_highlights(
             &self.state,
             &[(doc.line(first).from, doc.line(last.min(lines_total)).to)],
@@ -935,6 +950,9 @@ impl EditorView {
                     0.0,
                     0.0,
                 );
+            }
+            for &(f, t) in &vim_hl {
+                mark(&mut plan.mark_bgs, f, t, theme.search_match, 0.0, 0.0, 0.0);
             }
             for &(f, t) in &sel_matches {
                 mark(
@@ -1280,8 +1298,14 @@ impl EditorView {
 
     /// The modal keymap's block cursor, when it replaces the caret: `Some(true)`
     /// for the half-height pending form.
-    pub(crate) fn fat_cursor_mode(&self) -> Option<bool> {
-        self.emacs.as_ref().map(crate::emacs::Emacs::pending)
+    /// The block cursor's height fraction, when a modal keymap draws one.
+    pub(crate) fn fat_cursor_mode(&self) -> Option<f32> {
+        if let Some(v) = self.vim.as_ref() {
+            return v.fat_cursor();
+        }
+        self.emacs
+            .as_ref()
+            .map(|e| if e.pending() { 0.5 } else { 1.0 })
     }
 
     /// `BlockCursorPlugin`: a `.cm-fat-cursor` per range, the character
@@ -1290,7 +1314,7 @@ impl EditorView {
     fn plan_fat_cursors(
         &self,
         plan: &mut Plan,
-        partial: bool,
+        h_coeff: f32,
         focused: bool,
         text_left: f32,
         doc_top: f32,
@@ -1299,9 +1323,22 @@ impl EditorView {
     ) {
         let fat = h(gpui_kit::rgb(0xff9696));
         let doc = &self.state.doc;
-        let h_coeff = if partial { 0.5 } else { 1.0 };
-        for r in self.state.selection.ranges.clone() {
-            let head = r.head();
+        let partial = h_coeff != 1.0;
+        let vim = self.vim.as_ref().map(|v| v.state.visual_block);
+        let main = self.state.selection.main_index;
+        for (i, r) in self.state.selection.ranges.clone().into_iter().enumerate() {
+            let mut head = r.head();
+            if let Some(visual_block) = vim {
+                if visual_block && i != main {
+                    continue;
+                }
+                if r.anchor() < head {
+                    let next = doc.clamp_to_char(head + 1).max(head + 1).min(doc.len());
+                    if head >= doc.len() || doc.slice(head, next) != "\n" {
+                        head = doc.clamp_to_char(head.saturating_sub(1));
+                    }
+                }
+            }
             let mut letter: Option<String> = (head < doc.len()).then(|| {
                 doc.slice(
                     head,
@@ -1333,9 +1370,17 @@ impl EditorView {
                 .map(|m| {
                     let runs = line_styles(self, line.number, m, line.from);
                     let d = m.display.disp_of(head - line.from, 1);
+                    // `domAtPos` ends in the token before a boundary; vim
+                    // steps to the next node, emacs keeps it.
+                    let prev_at_boundary = vim.is_none();
                     let mut pos = 0;
-                    for run in &runs {
+                    for (k, run) in runs.iter().enumerate() {
                         if d >= pos && d < pos + run.len {
+                            let run = if prev_at_boundary && d == pos && k > 0 {
+                                &runs[k - 1]
+                            } else {
+                                run
+                            };
                             return (run.color, run.bold, run.italic);
                         }
                         pos += run.len;

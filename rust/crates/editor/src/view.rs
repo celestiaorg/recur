@@ -279,6 +279,7 @@ pub struct EditorView {
     pub(crate) drop_cursor: Option<usize>,
     pub(crate) announcement: Option<String>,
     pub(crate) emacs: Option<crate::emacs::Emacs>,
+    pub(crate) vim: Option<crate::vim::Vim>,
     pub(crate) gutter_hover: Option<(crate::element::GutterKind, usize)>,
     pub(crate) collapsed_hover: Option<usize>,
     pub(crate) chip_hover: bool,
@@ -403,6 +404,7 @@ impl EditorView {
             drop_cursor: None,
             announcement: None,
             emacs: None,
+            vim: None,
             gutter_hover: None,
             collapsed_hover: None,
             chip_hover: false,
@@ -725,6 +727,7 @@ impl EditorView {
         }
         self.after_lsp_transaction(&tr, window, cx);
         cx.notify();
+        crate::vim::cm::view_updated(self, &tr, window, cx);
     }
 
     fn relayout_after(
@@ -1094,6 +1097,7 @@ impl EditorView {
             AppTokens::for_theme(app_theme),
         );
         self.restyle_panel_inputs(cx);
+        crate::vim::prompt::restyle(self, cx);
         let win = self.highlight_window(window);
         let state = self.state.clone();
         if let Some(h) = self.highlighter.as_mut() {
@@ -1626,7 +1630,14 @@ impl EditorView {
                     self.emacs = Some(crate::emacs::Emacs::new());
                 }
             }
-            EditorKeymap::Vim | EditorKeymap::Default => self.emacs = None,
+            EditorKeymap::Vim => {
+                self.emacs = None;
+                crate::vim::enter(self);
+            }
+            EditorKeymap::Default => self.emacs = None,
+        }
+        if self.prefs.keymap != EditorKeymap::Vim {
+            self.vim = None;
         }
     }
 
@@ -1740,6 +1751,7 @@ impl gpui_kit::Render for EditorView {
         let panels = self.render_panels(window, cx);
         let tooltips = self.render_tooltips(window, cx);
         let prompt = self.render_rename_prompt(window, cx);
+        let vim_panel = crate::vim::prompt::render_panel(self, cx);
         let content = div()
             .id("cm-scroller")
             .flex_1()
@@ -1768,6 +1780,7 @@ impl gpui_kit::Render for EditorView {
             .overflow_hidden()
             .children(panels)
             .child(content)
+            .children(vim_panel)
             .children(tooltips)
             .children(prompt)
     }

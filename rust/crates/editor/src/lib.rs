@@ -42,3 +42,4 @@ pub mod view;
 pub mod view_input;
 pub mod view_queries;
 pub mod view_state;
+pub mod vim;

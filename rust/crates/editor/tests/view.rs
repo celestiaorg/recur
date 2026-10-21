@@ -230,3 +230,149 @@ fn emacs_chains_and_words(cx: &mut TestAppContext) {
     h.settle();
     assert_eq!(h.doc(), "one two three");
 }
+
+fn mount_vim<'a>(cx: &'a mut TestAppContext, doc: &str) -> Harness<'a> {
+    let mut options = EditorOptions::new("a.txt", doc);
+    options.prefs.keymap = recur_editor::prefs::EditorKeymap::Vim;
+    mount_with(cx, options)
+}
+
+#[gpui::test]
+fn vim_normal_mode_edits_and_repeats(cx: &mut TestAppContext) {
+    let mut h = mount_vim(cx, "one two\nthree\nfour");
+    h.cx.simulate_keystrokes("x");
+    h.settle();
+    assert_eq!(h.doc(), "ne two\nthree\nfour");
+    h.cx.simulate_keystrokes("d w");
+    h.settle();
+    assert_eq!(h.doc(), "two\nthree\nfour");
+    h.cx.simulate_keystrokes("u");
+    h.settle();
+    assert_eq!(h.doc(), "ne two\nthree\nfour");
+    h.cx.simulate_keystrokes("j d d");
+    h.settle();
+    assert_eq!(h.doc(), "ne two\nfour");
+    h.cx.simulate_keystrokes("p");
+    h.settle();
+    assert_eq!(h.doc(), "ne two\nfour\nthree");
+    h.cx.simulate_keystrokes("g g i");
+    h.cx.simulate_input("o");
+    // The first Escape closes the pending completion (the editor keymap
+    // runs before vim), the second leaves insert mode.
+    h.cx.simulate_keystrokes("escape escape");
+    h.settle();
+    assert_eq!(h.doc(), "one two\nfour\nthree");
+    h.cx.simulate_keystrokes("j .");
+    h.settle();
+    assert_eq!(h.doc(), "one two\nofour\nthree");
+    h.cx.simulate_keystrokes("j shift-a");
+    h.cx.simulate_input("!");
+    h.cx.simulate_keystrokes("escape escape");
+    h.settle();
+    assert_eq!(h.doc(), "one two\nofour\nthree!");
+}
+
+#[gpui::test]
+fn vim_visual_line_and_registers(cx: &mut TestAppContext) {
+    let mut h = mount_vim(cx, "a\nb\nc\nd");
+    h.cx.simulate_keystrokes("shift-v j y");
+    h.settle();
+    assert_eq!(h.sel(), (0, 0));
+    h.cx.simulate_keystrokes("shift-g p");
+    h.settle();
+    assert_eq!(h.doc(), "a\nb\nc\nd\na\nb");
+    // `l` may reach the line break in visual mode, but the selection end
+    // clamps to the line end, so only "a" goes.
+    h.cx.simulate_keystrokes("g g v l d");
+    h.settle();
+    assert_eq!(h.doc(), "\nb\nc\nd\na\nb");
+}
+
+#[gpui::test]
+fn vim_search_and_ex_commands(cx: &mut TestAppContext) {
+    let mut h = mount_vim(cx, "foo bar\nbar foo\nbaz");
+    h.cx.simulate_keystrokes("/");
+    h.settle();
+    h.cx.simulate_input("bar");
+    h.cx.simulate_keystrokes("enter");
+    h.settle();
+    assert_eq!(h.sel(), (4, 4));
+    h.cx.simulate_keystrokes("n");
+    h.settle();
+    assert_eq!(h.sel(), (8, 8));
+    h.cx.simulate_keystrokes(":");
+    h.settle();
+    h.cx.simulate_input("%s/bar/qux/g");
+    h.cx.simulate_keystrokes("enter");
+    h.settle();
+    assert_eq!(h.doc(), "foo qux\nqux foo\nbaz");
+    h.cx.simulate_keystrokes(":");
+    h.settle();
+    h.cx.simulate_input("2");
+    h.cx.simulate_keystrokes("enter");
+    h.settle();
+    assert_eq!(h.sel(), (8, 8));
+    h.cx.simulate_keystrokes(":");
+    h.settle();
+    h.cx.simulate_input("g/foo/d");
+    h.cx.simulate_keystrokes("enter");
+    h.settle();
+    assert_eq!(h.doc(), "baz");
+}
+
+#[gpui::test]
+fn vim_substitute_confirm_prompt(cx: &mut TestAppContext) {
+    let mut h = mount_vim(cx, "a a a");
+    h.cx.simulate_keystrokes(":");
+    h.settle();
+    h.cx.simulate_input("s/a/b/gc");
+    h.cx.simulate_keystrokes("enter");
+    h.settle();
+    h.cx.simulate_keystrokes("y n y");
+    h.settle();
+    assert_eq!(h.doc(), "b a b");
+    h.cx.simulate_keystrokes("u");
+    h.settle();
+    assert_eq!(h.doc(), "a a a");
+}
+
+#[gpui::test]
+fn vim_macros_text_objects_and_blocks(cx: &mut TestAppContext) {
+    let mut h = mount_vim(cx, "f(a, b) x\nc\nb\na");
+    h.cx.simulate_keystrokes("f a d i (");
+    h.settle();
+    assert_eq!(h.doc(), "f() x\nc\nb\na");
+    h.cx.simulate_keystrokes("j q a shift-a");
+    h.cx.simulate_input(";");
+    h.cx.simulate_keystrokes("escape escape j q");
+    h.settle();
+    assert_eq!(h.doc(), "f() x\nc;\nb\na");
+    h.cx.simulate_keystrokes("@ a");
+    h.settle();
+    assert_eq!(h.doc(), "f() x\nc;\nb;\na");
+    h.cx.simulate_keystrokes("m k g g ' k");
+    h.settle();
+    assert_eq!(h.sel(), (12, 12));
+    h.cx.simulate_keystrokes(":");
+    h.settle();
+    h.cx.simulate_input("2,4sort");
+    h.cx.simulate_keystrokes("enter");
+    h.settle();
+    assert_eq!(h.doc(), "f() x\na\nb;\nc;");
+    h.cx.simulate_keystrokes(":");
+    h.settle();
+    h.cx.simulate_input("2,3normal Ax");
+    h.cx.simulate_keystrokes("enter");
+    h.settle();
+    assert_eq!(h.doc(), "f() x\nax\nb;x\nc;");
+    // On macOS the editor keymap's Ctrl-v (page down) runs before vim, as
+    // in Recur, so the block uses vim's `<C-q>`.
+    h.cx.simulate_keystrokes("g g ctrl-q j j shift-i");
+    h.cx.simulate_input("-");
+    h.cx.simulate_keystrokes("escape escape");
+    h.settle();
+    assert_eq!(h.doc(), "-f() x\n-ax\n-b;x\nc;");
+    h.cx.simulate_keystrokes("g g w *");
+    h.settle();
+    assert_eq!(h.sel(), (5, 5));
+}

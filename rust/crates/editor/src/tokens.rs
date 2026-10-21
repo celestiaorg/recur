@@ -247,6 +247,18 @@ fn font_of(families: &[&str]) -> gpui_kit::Font {
     f
 }
 
+/// CSS `monospace` as WebKit resolves it (the default fixed font).
+pub const GENERIC_MONO_FAMILIES: [&str; 2] = if cfg!(target_os = "macos") {
+    ["Courier", "monospace"]
+} else {
+    ["DejaVu Sans Mono", "monospace"]
+};
+
+/// The generic `monospace` font.
+pub fn generic_mono_font() -> gpui_kit::Font {
+    font_of(&GENERIC_MONO_FAMILIES)
+}
+
 /// The `--mono` font.
 pub fn mono_font() -> gpui_kit::Font {
     font_of(&MONO_FAMILIES)

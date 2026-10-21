@@ -442,6 +442,8 @@ pub struct SearchQuery {
     pub valid: bool,
     pub unquoted: String,
     pub whole_word: bool,
+    /// Installed by vim for its own match highlighting (`forVim`).
+    pub for_vim: bool,
 }
 
 /// `SearchQuery.eq`: `literal` does not count, like CodeMirror.
@@ -470,6 +472,7 @@ impl SearchQuery {
             regexp: config.regexp,
             replace: config.replace,
             whole_word: config.whole_word,
+            for_vim: false,
         };
         q.unquoted = q.unquote(&q.search);
         q

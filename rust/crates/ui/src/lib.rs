@@ -30,6 +30,7 @@ pub mod motion;
 pub mod style;
 pub mod text;
 pub mod theme;
+pub mod tooltip;
 pub mod widgets;
 
 pub use assets::Assets;

@@ -238,6 +238,7 @@ pub struct Text {
     clamp: Option<usize>,
     align: Align,
     exact_height: bool,
+    opacity: f32,
     layout: Rc<RefCell<Option<Laid>>>,
 }
 
@@ -259,6 +260,7 @@ impl Text {
             clamp: None,
             align: Align::Left,
             exact_height: false,
+            opacity: 1.,
             layout: Rc::default(),
         }
     }
@@ -305,6 +307,11 @@ impl Text {
     /// `-webkit-line-clamp: n` (with an ellipsis on the last kept line).
     pub fn line_clamp(mut self, lines: usize) -> Self {
         self.clamp = Some(lines.max(1));
+        self
+    }
+    /// CSS `opacity` on the text's own box. Glyphs never overlap, so this is exact.
+    pub fn opacity(mut self, opacity: f32) -> Self {
+        self.opacity = opacity;
         self
     }
     /// For a nowrap line stacked in a column: keep its fractional line-box height exact (and
@@ -539,7 +546,7 @@ impl Text {
                 } else {
                     FontFeatures::default()
                 },
-                color: s.color.unwrap_or_default(),
+                color: s.color.unwrap_or_default().opacity(self.opacity),
                 tracking: s.tracking.unwrap_or(Tracking::Px(0.)).px(size),
                 underline: s.underline.unwrap_or(false),
                 line_through: s.line_through.unwrap_or(false),
@@ -1115,6 +1122,160 @@ impl Element for Text {
             });
         } else {
             paint_lines(laid, bounds, align, window);
+        }
+    }
+}
+
+/// Block text stacked vertically (a heading over its description, a label over a hint). The
+/// blocks lay out together at exact LayoutUnit offsets and the stack's height rounds once, as
+/// WebKit stacks block boxes; separate [`Text`] elements would each round to a device pixel.
+pub struct TextStack {
+    blocks: Vec<(f32, Text)>,
+    layouts: Rc<RefCell<Vec<Laid>>>,
+}
+
+/// A stack of text blocks; each entry is (margin above, block).
+pub fn text_stack(blocks: Vec<(f32, Text)>) -> TextStack {
+    TextStack {
+        blocks,
+        layouts: Rc::default(),
+    }
+}
+
+impl IntoElement for TextStack {
+    type Element = Self;
+    fn into_element(self) -> Self {
+        self
+    }
+}
+
+impl TextStack {
+    fn relayout(
+        &self,
+        layouts: &mut [Laid],
+        width: Option<f32>,
+        final_pass: bool,
+        window: &Window,
+    ) {
+        for ((_, t), laid) in self.blocks.iter().zip(layouts.iter_mut()) {
+            let w = if t.ellipsis && !final_pass {
+                None
+            } else {
+                width
+            };
+            laid.relayout(
+                w,
+                t.white_space,
+                t.anywhere,
+                t.clamp,
+                t.ellipsis && final_pass,
+                window,
+            );
+        }
+    }
+}
+
+impl Element for TextStack {
+    type RequestLayoutState = ();
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static std::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        window: &mut Window,
+        _: &mut App,
+    ) -> (LayoutId, ()) {
+        let built: Vec<Laid> = self
+            .blocks
+            .iter()
+            .map(|(_, t)| Laid::build(t.resolve(window), window))
+            .collect();
+        *self.layouts.borrow_mut() = built;
+        let layouts = self.layouts.clone();
+        let blocks: Vec<(f32, WhiteSpace, bool, Option<usize>, bool)> = self
+            .blocks
+            .iter()
+            .map(|(g, t)| (*g, t.white_space, t.anywhere, t.clamp, t.ellipsis))
+            .collect();
+        let id =
+            window.request_measured_layout(Style::default(), move |known, available, window, _| {
+                let mut layouts = layouts.borrow_mut();
+                let width = known.width.map(f32::from).or(match available.width {
+                    AvailableSpace::Definite(w) => Some(w.into()),
+                    AvailableSpace::MinContent => Some(0.),
+                    AvailableSpace::MaxContent => None,
+                });
+                let (mut w, mut h): (f32, f32) = (0., 0.);
+                for ((gap, ws, anywhere, clamp, truncate), laid) in
+                    blocks.iter().zip(layouts.iter_mut())
+                {
+                    laid.relayout(
+                        if *truncate { None } else { width },
+                        *ws,
+                        *anywhere,
+                        *clamp,
+                        false,
+                        window,
+                    );
+                    let (lw, lh) = laid.measured();
+                    h += gap + lh;
+                    w = w.max(lw);
+                }
+                let scale = window.scale_factor();
+                size(px(snap(w, scale)), px(snap(h, scale)))
+            });
+        (id, ())
+    }
+
+    fn prepaint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        _: &mut (),
+        window: &mut Window,
+        _: &mut App,
+    ) {
+        let mut layouts = self.layouts.borrow_mut();
+        self.relayout(&mut layouts, Some(bounds.size.width.into()), true, window);
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        _: &mut (),
+        _: &mut (),
+        window: &mut Window,
+        _: &mut App,
+    ) {
+        let layouts = self.layouts.borrow();
+        let mut y = f32::from(bounds.origin.y);
+        for ((gap, t), laid) in self.blocks.iter().zip(layouts.iter()) {
+            y += gap;
+            let (_, h) = laid.measured();
+            let b = Bounds {
+                origin: point(bounds.origin.x, px(y)),
+                size: size(bounds.size.width, px(h)),
+            };
+            if t.ellipsis || t.clamp.is_some() {
+                window.with_content_mask(Some(gpui_kit::ContentMask { bounds: b }), |window| {
+                    paint_lines(laid, b, t.align, window)
+                });
+            } else {
+                paint_lines(laid, b, t.align, window);
+            }
+            y += h;
         }
     }
 }

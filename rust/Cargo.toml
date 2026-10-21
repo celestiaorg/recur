@@ -94,6 +94,9 @@ block2 = "0.6"
 dispatch2 = "0.3"
 tempfile = "3"
 pretty_assertions = "1"
+hex = "0.4"
+yaml-rust2 = "0.10"
+swc_core = { version = "82", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_transforms_typescript", "ecma_transforms_module", "ecma_transforms_compat", "ecma_codegen", "ecma_visit", "ecma_utils", "ecma_helpers_inline"] }
 
 # Terminal: PTY spawn, process groups, emulator state.
 portable-pty = "0.9"

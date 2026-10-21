@@ -9,6 +9,25 @@ publish = false
 
 [dependencies]
 recur-domain.workspace = true
+futures.workspace = true
+hex.workspace = true
+include_dir.workspace = true
+nix.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+swc_core.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

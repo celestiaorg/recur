@@ -793,6 +793,25 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `issues.go` trackers → `recur_issues::{github::GitHubIssues, linear::Linear}` (gh search batches of 5 repos, remote → project map, Linear assigned + paged unassigned to 300, claim, `linear://` links, GraphQL error handling) and `recur_issues::{list_assigned, claim}`; `issues_test.go`, the claim half of `workspace_issue_test.go`, and Go-generated golden fixtures (`tests/golden/linear.json`) ported. `ListAssignedIssues` / `OpenLinearInApp` service wrappers are SV
 - [ ] `internal/bundles`: 19 files, 6525 lines, 20 test files
 - [ ] `internal/cli`: 7 files, 830 lines, 2 test files
+- [x] `internal/bundles`: 19 files, 6525 lines, 20 test files → `recur-bundles` (all 148 Go test functions ported: 14 unit, 131 in `tests/suite` mirroring the Go files, 5 env-mutating in `tests/env_serial`, plus 2 compile-parity tests)
+  - [x] Manifest schema (`manifest.rs`): `[bundle]`, `[[command]]` (input/fallbackInput/output/interpreter/triggers/keyEquivalent/language/openInPreview/prompts, inline `body` XOR `script`), `[[prompt]]` (slash default from name, mode/loop/fresh_session/tab_group/timeoutMs/takesArgs/argPlaceholder/`[[prompt.arg]]`/complete/icon), `[[search]]`, `[[expand]]` (RE2 `match`), `[[languageServer]]`; every validation message byte-identical (Go `%q`, `*fs.PathError` text)
+  - [x] TOML decoding with go-toml v2 semantics: unknown keys ignored, case-insensitive key match (`tomlx.rs`)
+  - [x] Go semantics the messages depend on (`go.rs`): `strconv.Quote`, `filepath.Clean/Join/Rel/Base/Dir/Ext/Abs/Match` (byte-level, `ErrBadPattern`), `os.Getwd` (`$PWD`), `strconv.Atoi`, `strings.ToLower/ToUpper` simple case mapping, RE2 regexps (ASCII `\d \s \w \b`, `\Q…\E`, literal `[ & ~` in classes)
+  - [x] Registry (`registry.rs`): default root then user root, user wins by id for every kind; grammar and language-data scopeName collapse (user wins); prompt slash collisions (user > default, then bundle id, then prompt id) with skip reasons; role-code collisions; skip reasons for missing/unreadable/invalid manifests; every Go sort order
+  - [x] Seeding (`seed.rs`): `seed_defaults` stamp/sync (`.recur-seed` = SHA-256 of `path\0len\0bytes\0`, whole-dir replace on change, loose root files overwritten on change, dotfiles and `tests/` skipped, `.sh` and `bin/` executable) over embedded (`SHIPPED_BUNDLES`, `SHIPPED_SKILLS` via `include_dir!` from repo `bundles/` and `recur-skills/`), on-disk (`DirSource`) or in-memory (`MapSource`) trees; embedded stamps equal the repo-tree stamps
+  - [x] TypeScript compile (`compile.rs`): swc in-process instead of the esbuild Go library. TS strip with esbuild defaults (unused/type-only imports dropped, define semantics for class fields), ES2021/2022 lowered for the ES2020 target, ESM → CommonJS, `@recur/sdk` (embedded `macro_sdk.ts`) compiled once and inlined where required; only `@recur/sdk` resolves (imports, `require`, `require.resolve`, dynamic `import()`), "No matching export" for missing SDK names, ES2020 top-level-await error, esbuild's `file:line:col` locations (cwd-relative path); same cache file names and pruning; `tests/compile_parity.rs` runs all 72 `.ts` files under `bundles/` through both compilers (reference: `tests/esbuild_ref`, compile.go's exact esbuild build) across 3320 node executions with identical results. Only syntax-error wording differs from esbuild
+  - [x] Shebang execution (`exec.rs`, `env.rs`): process group, stdin input, `RECUR_*` env (stale `RECUR_*`/`PORT` stripped, 64 KiB blob cap with Go byte truncation, settings env + JSON), 30s default deadline, SIGTERM → 500ms → SIGKILL, partial output kept on timeout; prompt/complete/search/expand runners and Go JSON decoding (case-insensitive fields, Go type-error text); `collect_search_groups` concurrent, `expand_matching` skip chain; `RunCtx` is Go's deadline + cancel context
+  - [x] Prompt actions (`prompt_run.rs`): TypeScript prompts under node with the Worker boot, shebang otherwise
+  - [x] Bundle tests (`testcase.rs`, `testrun.rs`): `tests/*.toml` with inline or `*File` payloads, command XOR snippet, TypeScript macros under node (WORKER_BOOT twin), checks and report text/colors identical
+  - [x] Lint (`lint.rs`): schema, grammar/theme/terminal-theme conventions and JSON shape, language data, snippet and command keyEquivalents (parse errors, reserved app chords), shared chords (info), Oniguruma symbol transforms, loop conductor/verifier/role-mode/findings checks, openInPreview, TS compile, shebang `#!`, prompt slash/mode/loop/tab_group/timeout rules, cross-bundle slash duplicates; report text identical
+  - [x] Loops/roles/policies (`loops.rs`), grammars/themes/terminal themes (`grammar.rs`), language data (`langdata.rs`), snippets (`snippet.rs`), symbols (`symbol.rs`), settings and secrets (`setting.rs`), scopes and file globs (`scope.rs`), key equivalents (`keyequiv.rs`), language server declarations
+  - [x] `bundles test` / `bundles lint` over repo `bundles/` are byte-identical to `bin/recur-cli` (258 passed; 0 errors, 7 info)
+- [x] `internal/cli`: 7 files, 830 lines, 2 test files → `recur-cli` (both Go test files ported: `tests/cli.rs`, `tests/env_serial.rs`; `tests/golden.rs` compares against `go build ./cmd/recur`)
+  - [x] Cobra/pflag behavior the Go CLI exposed (`cobra.rs`): `Find`/`stripFlags` with lazily defined help/version flags, legacy and explicit arg validators and their messages, pflag long/short/grouped parsing, `--`, `=` values, bool `ParseBool`, every flag error text, help/usage/version rendering, `help [command]`, silenced errors printed red by `exitCode`
+  - [x] `completion bash|zsh|fish|powershell [--no-descriptions]` (cobra's templates verbatim) and the hidden `__complete` / `__completeNoDesc` protocol (subcommand, flag-name and help-topic completion, directives, `COBRA_*`/`RECUR_*` env, `BASH_COMP_DEBUG_FILE`)
+  - [x] Viper config (`config.rs`): `--bundles-dir` > `$RECUR_BUNDLES_DIR` > first `~/.recur/config.{json,toml,yaml,…}` or `config` parsed as YAML > `~/.recur/bundles`
+  - [x] `resolve.rs`, `create.rs` (embedded `internal/cli/scaffold`, Go replacer and modes), `open.rs` (recur-platform `openipc` client, retry on shutdown, launch via `$RECUR_APP` / `open -b build.recur.next` / `open -a "Recur Next"` / desktop binary, Go `net` error text), `color.rs` (`NO_COLOR`, `FORCE_COLOR`, char-device check)
+  - Data-dir paths (`paths.rs`: `RecurNext`, `$RECUR_DATA_DIR`, socket, bundle roots) and `CanonPath` live in the CLI until recur-store / recur-git land
 - [x] `internal/cliinstall`: 3 files, 568 lines, 3 test files (`recur_platform::cliinstall`, 25 tests)
   - [x] `bundled_cli`: `.app/Contents/MacOS/recur-cli` on macOS, sibling `recur-cli` on Linux
   - [x] `is_dev_bundle`: `*.dev.app`, Go checkout `bin/` (`go.mod`), plus a cargo `target/` dir in a workspace checkout
@@ -910,6 +929,9 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 - [ ] `cmd/recur`: 1 files, 22 lines, 0 test files
 - [ ] `cmd/bundles`: 1 files, 15 lines, 0 test files
 - [x] `cmd/seeddump`: 1 files, 86 lines, 0 test files → `recur_store::seeddump` + bin `seeddump` (`cargo run -p recur-store --bin seeddump`); output equals `frontend/e2e/fixtures/seed.json` byte for byte (`tests/seeddump.rs`)
+- [x] `cmd/recur`: 1 files, 22 lines, 0 test files → `recur-cli` binary (`src/main.rs`)
+- [x] `cmd/bundles`: 1 files, 15 lines, 0 test files → deprecated `bundles` forwarder binary (`src/bin/bundles.rs`, same stderr note)
+- [ ] `cmd/seeddump`: 1 files, 86 lines, 0 test files
 
 ### Root desktop entry (`*.go` at repo root)
 
@@ -1078,8 +1100,8 @@ Frontend unit tests (`vitest`, 170 files) are logic specs for the matching `lib/
 
 ## Shipped content (unchanged, embedded by the Rust app)
 
-- [ ] `bundles/` seeded into the data dir exactly as `bundles.SeedDefaults` does (stamp/sync semantics)
-- [ ] `recur-skills/` seeded into `~/.recur/recur-skills`
+- [x] `bundles/` seeded into the data dir exactly as `bundles.SeedDefaults` does (stamp/sync semantics): `recur_bundles::seed_defaults(dir, &SHIPPED_BUNDLES, ".")`; the boot call belongs with the `main.go` port
+- [x] `recur-skills/` seeded into `~/.recur/recur-skills`: `seed_defaults(dir, &SHIPPED_SKILLS, ".")`
 - [ ] `internal/store/migrations/*.sql` applied by `recur-store` (same files, same order, same `schema_migrations` bookkeeping)
 - [ ] `frontend/src/lib/file-icons` icon font and mapping
 - [ ] lucide icon set used by `lib/icons.ts`
@@ -1087,12 +1109,14 @@ Frontend unit tests (`vitest`, 170 files) are logic specs for the matching `lib/
 
 ## CLI
 
-Source: `cmd/recur`, `internal/cli`. Rust home: `crates/cli`.
+Source: `cmd/recur`, `internal/cli`. Rust home: `crates/cli`. Output and exit codes are byte-identical to the Go CLI (`tests/golden.rs`).
 
-- [ ] `recur bundles`
-- [ ] `recur test [name|path]...`
-- [ ] `recur lint [name|path]...`
-- [ ] `recur create <Name>`
-- [ ] `recur open [path]`
-- [ ] `recur recur [path]`
+- [x] `recur [path]`: no path focuses the app, a path-like arg opens it, anything else is `unknown command` (exit 1); `--bundles-dir`, `-h/--help`, `-v/--version`
+- [x] `recur open [path]`: resolve (exit 2), send over open IPC, launch and retry for 30s (exit 1)
+- [x] `recur bundles`: help (also for unknown subcommands)
+- [x] `recur bundles test [name|path]...`: target resolution (exit 2), run tests, report, exit 1 on failure
+- [x] `recur bundles lint [name|path]...`: target resolution (exit 2), lint report, exit 1 on errors
+- [x] `recur bundles create <Name> [--dir] [--force]`: scaffold, messages, exit codes
+- [x] `recur help [command]`
+- [x] `recur completion bash|zsh|fish|powershell [--no-descriptions]` and hidden `recur __complete` / `__completeNoDesc`
 

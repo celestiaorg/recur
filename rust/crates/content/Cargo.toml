@@ -1,0 +1,29 @@
+[package]
+name = "recur-content"
+description = "Rich content views: markdown, Mermaid, PDF, file previews and the image lightbox."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Parity scenes for `rust/tools/ui-parity` (`gallery::build`).
+gallery = ["recur-ui/gallery"]
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-textmate.workspace = true
+regress.workspace = true
+html5ever.workspace = true
+markup5ever_rcdom.workspace = true
+url.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[lints]
+workspace = true

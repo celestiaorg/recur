@@ -36,6 +36,7 @@ recur-services = { path = "crates/services" }
 recur-ui = { path = "crates/ui" }
 recur-editor = { path = "crates/editor" }
 recur-terminal-view = { path = "crates/terminal-view" }
+recur-content = { path = "crates/content" }
 recur-app = { path = "crates/app" }
 
 # UI. gpui-kit pins an exact gpui-pre snapshot; bump only together with it.
@@ -120,6 +121,10 @@ alacritty_terminal = { version = "0.25", default-features = false }
 unicode-width = "0.2"
 image = { version = "0.25", default-features = false }
 regress = { version = "0.12", features = ["utf16"] }
+
+# Rich content: the browser's HTML parser for the DOMPurify port.
+html5ever = "0.27"
+markup5ever_rcdom = "0.3"
 
 # ICU root collation: the UI's `localeCompare` / `Intl.Collator` ordering.
 icu_collator = "2"

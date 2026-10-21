@@ -6659,6 +6659,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-content"
+version = "0.0.0"
+dependencies = [
+ "gpui-kit",
+ "html5ever",
+ "markup5ever_rcdom",
+ "pretty_assertions",
+ "recur-textmate",
+ "recur-ui",
+ "regress",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "recur-desktop"
 version = "0.0.0"
 dependencies = [

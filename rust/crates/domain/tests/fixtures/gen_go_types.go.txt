@@ -1,0 +1,199 @@
+// Generator for go_types.json. To regenerate, copy into internal/domain as
+// zz_rustfixture_test.go and run from the repo root:
+//
+//	RECUR_RUST_FIXTURE=$PWD/rust/crates/domain/tests/fixtures/go_types.json \
+//	  go test ./internal/domain -run TestDumpRustFixture -count=1
+//
+// then delete the copy. Add new exported structs to the add(...) list and a
+// matching line to tests/go_parity.rs.
+package domain
+
+import (
+	"encoding/json"
+	"os"
+	"reflect"
+	"testing"
+)
+
+func rustFixtureFill(v reflect.Value, depth int, n *int, name string) {
+	switch v.Kind() {
+	case reflect.String:
+		v.SetString(name + "<&>")
+	case reflect.Int, reflect.Int64:
+		*n++
+		v.SetInt(int64(*n))
+	case reflect.Float64:
+		*n++
+		v.SetFloat(float64(*n) + 0.5)
+	case reflect.Bool:
+		v.SetBool(true)
+	case reflect.Slice:
+		if v.Type() == reflect.TypeOf(json.RawMessage{}) {
+			v.SetBytes([]byte(`{ "k": [1, "<x>"] }`))
+			return
+		}
+		if depth > 3 {
+			return
+		}
+		s := reflect.MakeSlice(v.Type(), 1, 1)
+		rustFixtureFill(s.Index(0), depth+1, n, name+"0")
+		v.Set(s)
+	case reflect.Map:
+		m := reflect.MakeMap(v.Type())
+		k := reflect.New(v.Type().Key()).Elem()
+		rustFixtureFill(k, depth+1, n, name+"K")
+		val := reflect.New(v.Type().Elem()).Elem()
+		rustFixtureFill(val, depth+1, n, name+"V")
+		m.SetMapIndex(k, val)
+		v.Set(m)
+	case reflect.Ptr:
+		if depth > 3 {
+			return
+		}
+		p := reflect.New(v.Type().Elem())
+		rustFixtureFill(p.Elem(), depth+1, n, name)
+		v.Set(p)
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if v.Type().Field(i).IsExported() {
+				rustFixtureFill(v.Field(i), depth+1, n, v.Type().Field(i).Name)
+			}
+		}
+	}
+}
+
+func TestDumpRustFixture(t *testing.T) {
+	path := os.Getenv("RECUR_RUST_FIXTURE")
+	if path == "" {
+		t.Skip()
+	}
+	out := map[string]map[string]string{}
+	add := func(name string, zero any) {
+		z, err := json.Marshal(zero)
+		if err != nil {
+			t.Fatal(name, err)
+		}
+		full := reflect.New(reflect.TypeOf(zero))
+		n := 0
+		rustFixtureFill(full.Elem(), 0, &n, name)
+		f, err := json.Marshal(full.Elem().Interface())
+		if err != nil {
+			t.Fatal(name, err)
+		}
+		out[name] = map[string]string{"zero": string(z), "full": string(f)}
+	}
+	add("Agent", Agent{})
+	add("AgentSkill", AgentSkill{})
+	add("AgentStep", AgentStep{})
+	add("AgentSummary", AgentSummary{})
+	add("AnalysisRun", AnalysisRun{})
+	add("Artifact", Artifact{})
+	add("AttentionCounts", AttentionCounts{})
+	add("BranchChoice", BranchChoice{})
+	add("BriefAction", BriefAction{})
+	add("BriefingCounts", BriefingCounts{})
+	add("BriefingSnapshot", BriefingSnapshot{})
+	add("ChatAttachment", ChatAttachment{})
+	add("ChatHeader", ChatHeader{})
+	add("ChatImageRef", ChatImageRef{})
+	add("ChatItem", ChatItem{})
+	add("Check", Check{})
+	add("Checkpoint", Checkpoint{})
+	add("ChildFanOut", ChildFanOut{})
+	add("Commit", Commit{})
+	add("CompactPayload", CompactPayload{})
+	add("CompatibleFlagDim", CompatibleFlagDim{})
+	add("CompatibleFlagOption", CompatibleFlagOption{})
+	add("CompatibleModel", CompatibleModel{})
+	add("CompatibleProvider", CompatibleProvider{})
+	add("ContentBlock", ContentBlock{})
+	add("ConvPoint", ConvPoint{})
+	add("ConversationLine", ConversationLine{})
+	add("CopyFilesPreview", CopyFilesPreview{})
+	add("DiffLine", DiffLine{})
+	add("DiffStat", DiffStat{})
+	add("DupClone", DupClone{})
+	add("DupLoc", DupLoc{})
+	add("Escalation", Escalation{})
+	add("EscalationOption", EscalationOption{})
+	add("FallbackPayload", FallbackPayload{})
+	add("FeedItem", FeedItem{})
+	add("FileContent", FileContent{})
+	add("FileDiff", FileDiff{})
+	add("FileDiffResult", FileDiffResult{})
+	add("FileSearchHit", FileSearchHit{})
+	add("FileSearchResult", FileSearchResult{})
+	add("Finding", Finding{})
+	add("FindingNote", FindingNote{})
+	add("FocusNote", FocusNote{})
+	add("Hotspot", Hotspot{})
+	add("ImagePayload", ImagePayload{})
+	add("ImpactItem", ImpactItem{})
+	add("InboxItem", InboxItem{})
+	add("IssueRef", IssueRef{})
+	add("MCPServer", MCPServer{})
+	add("Message", Message{})
+	add("MetricDelta", MetricDelta{})
+	add("MetricSnapshot", MetricSnapshot{})
+	add("ModelRef", ModelRef{})
+	add("OpenAsk", OpenAsk{})
+	add("OpenInTarget", OpenInTarget{})
+	add("OpenPathResult", OpenPathResult{})
+	add("OutlineSymbol", OutlineSymbol{})
+	add("PR", PR{})
+	add("PRComment", PRComment{})
+	add("PRParticipant", PRParticipant{})
+	add("PRReaction", PRReaction{})
+	add("PRReviewer", PRReviewer{})
+	add("PRSummary", PRSummary{})
+	add("PendingLineComment", PendingLineComment{})
+	add("PermissionDecision", PermissionDecision{})
+	add("PermissionRequest", PermissionRequest{})
+	add("Plan", Plan{})
+	add("PlanAttachment", PlanAttachment{})
+	add("PlanStep", PlanStep{})
+	add("Policy", Policy{})
+	add("PresentWorkspaceResult", PresentWorkspaceResult{})
+	add("Project", Project{})
+	add("ProjectGroup", ProjectGroup{})
+	add("Rail", Rail{})
+	add("ReplaceResult", ReplaceResult{})
+	add("Resource", Resource{})
+	add("RunCommand", RunCommand{})
+	add("ScheduledPrompt", ScheduledPrompt{})
+	add("ScheduledPromptRun", ScheduledPromptRun{})
+	add("SearchHit", SearchHit{})
+	add("SearchOpts", SearchOpts{})
+	add("SearchResult", SearchResult{})
+	add("Session", Session{})
+	add("SessionContext", SessionContext{})
+	add("SessionView", SessionView{})
+	add("Settings", Settings{})
+	add("StoredEvent", StoredEvent{})
+	add("SummaryPara", SummaryPara{})
+	add("SymbolDef", SymbolDef{})
+	add("SymbolRef", SymbolRef{})
+	add("TestResult", TestResult{})
+	add("TextPayload", TextPayload{})
+	add("ThinkingPayload", ThinkingPayload{})
+	add("ToolResultPayload", ToolResultPayload{})
+	add("ToolUsePayload", ToolUsePayload{})
+	add("TreeEntry", TreeEntry{})
+	add("UpdateWorkspaceResult", UpdateWorkspaceResult{})
+	add("UserQuestion", UserQuestion{})
+	add("UserQuestionAnswer", UserQuestionAnswer{})
+	add("VerifyStep", VerifyStep{})
+	add("Workspace", Workspace{})
+	add("WorkspaceBrief", WorkspaceBrief{})
+	add("WorkspaceChatTab", WorkspaceChatTab{})
+	add("WorkspaceContext", WorkspaceContext{})
+	add("WorkspaceLandState", WorkspaceLandState{})
+	add("WorktreeCommitResult", WorktreeCommitResult{})
+	b, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(b, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

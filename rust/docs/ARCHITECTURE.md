@@ -13,6 +13,7 @@ rust/
     domain/             recur-domain       pure model + rules        (internal/domain, internal/shortid)
     store/              recur-store        SQLite, migrations, paths (internal/store)
     git/                recur-git          local git                 (internal/git)
+    project/            recur-project      project.toml, env, runs   (internal/projfile, wsenv, runconfig)
     forge/              recur-forge        remote hosting: GitHub    (engine github*, pr*, app/gh_image)
     issues/             recur-issues       issue trackers: Linear    (app/issues, Linear bundle glue)
     agent/              recur-agent        Provider trait, events    (engine provider/runner/permission/streamjson contracts)
@@ -38,7 +39,7 @@ rust/
   docs/
 ```
 
-Remaining Go packages map as follows: `projfile`, `runconfig`, `wsenv`, `observe`, `simplify` live as modules of `recur-engine` (or `recur-code` for pure file logic) unless their consumers show a better home; record the final home in `PARITY.md`.
+Remaining Go packages map as follows: `observe` and `simplify` live as modules of `recur-engine` (or `recur-code` for pure file logic) unless their consumers show a better home; record the final home in `PARITY.md`.
 
 When `recur-app` grows past comfortable compile times, split views into crates under `crates/views/<area>` (`chat`, `review`, `prs`, `observatory`, `settings`, `schedules`, `briefing`, `palettes`) that depend on `recur-ui` and `recur-services` only. `crates/*` globbing picks them up only if they sit directly under `crates/`, so add `crates/views/*` to `members` when the first one lands.
 
@@ -51,7 +52,7 @@ desktop, cli
 app ──────────────► editor, terminal-view, ui
 services ─────────► engine, providers/*, forge, issues, usage, lsp, platform
 engine ───────────► agent, agent-tools, mcp, bundles, code, git, store, term
-agent, forge, issues, bundles, git, code, store ─► domain
+agent, forge, issues, bundles, git, code, store, project ─► domain
 textmate, term, ui ─ standalone
 ```
 
@@ -70,7 +71,9 @@ Adding a provider, forge or issue tracker means adding a crate (providers) or a 
 - **Issue trackers** implement `recur_issues::IssueTracker` (search, fetch, expand to task prompt, workspace linking).
 - **Bundles** keep their existing on-disk format and semantics; `recur-bundles` is a faithful port.
 
-Registries are keyed by the same string ids the Go app persists (`claude`, `codex`, `cursor`, `compatible:<id>`, `github`, `linear`, ...), so stored data stays valid.
+Registries are keyed by the same string ids the Go app persists, so stored data stays valid: providers `claude-code`, `codex`, `cursor` and each compatible provider's own id; forge `github` (PR rows keep `source = "gh"`); trackers `github` and `linear`. See `docs/engine-port-plan.md` section 2. The engine contains no provider, forge or tracker id string compares outside registry lookup.
+
+The engine port is planned slice by slice in `docs/engine-port-plan.md`.
 
 ## Runtime model
 
@@ -81,6 +84,7 @@ Registries are keyed by the same string ids the Go app persists (`claude`, `code
 ## Conventions
 
 - Edition 2024, toolchain pinned in `rust-toolchain.toml`, workspace lints in `Cargo.toml`. `cargo clippy --all-targets -- -D warnings` and `cargo fmt --check` stay clean.
+- gpui turns on serde_json's `preserve_order` feature for the whole workspace, so `serde_json::Map` keeps insertion order in the app build, while a `-p <crate>` build sorts keys. Go's `json.Marshal` sorts map keys. Never rely on `serde_json::Map` order for output that must match Go: use `BTreeMap` for serialized maps, or sort keys explicitly when re-encoding a `Value`. Run `cargo test --workspace` (feature-unified, as CI does) before finishing, not only `-p`.
 - Libraries return typed errors (`thiserror`); `anyhow` only in binaries and at the services boundary.
 - `serde` names match the Go JSON tags exactly so `recur.db` JSON columns, `*.json` view-state files and `bundle.toml` round-trip unchanged.
 - No `unwrap()` on fallible I/O outside tests. No `todo!()`, `unimplemented!()` or placeholder behavior: a ported item is complete or it is not ticked.

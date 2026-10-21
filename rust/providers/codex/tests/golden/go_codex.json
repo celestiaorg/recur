@@ -1,0 +1,3670 @@
+{
+ "approvalModes": {
+  "": "on-request",
+  "acceptEdits": "on-request",
+  "bypassPermissions": "never",
+  "default": "on-request",
+  "dontAsk": "never"
+ },
+ "approvals": [
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "commandExecution/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"denied\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"approved\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"approved\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"denied\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"approved\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"approved\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"denied\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"approved\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"approved\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"denied\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"approved\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "execCommandApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "Bash",
+   "human": true,
+   "response": "{\"decision\":\"approved\"}",
+   "auto": "{\"decision\":\"approved\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "fileChange/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "Edit",
+   "human": true,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"decision\":\"acceptForSession\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{}}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{},\"scope\":\"turn\"}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{},\"scope\":\"session\"}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{}}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{\"fileSystem\":{\"write\":[\"/tmp\"]},\"network\":{\"enabled\":true}},\"scope\":\"turn\"}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{\"fileSystem\":{\"write\":[\"/tmp\"]},\"network\":{\"enabled\":true}},\"scope\":\"session\"}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{}}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":null,\"scope\":\"turn\"}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":null,\"scope\":\"session\"}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{}}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{},\"scope\":\"turn\"}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "item/permissions/requestApproval",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "Permissions",
+   "human": true,
+   "response": "{\"permissions\":{},\"scope\":\"session\"}",
+   "auto": "{\"decision\":\"accept\"}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "mcpServer/elicitation/request",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{\"action\":\"accept\",\"content\":{}}"
+  },
+  {
+   "method": "other/request",
+   "params": "",
+   "allow": false,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "",
+   "allow": true,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "",
+   "allow": true,
+   "remember": true,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": false,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"permissions\":{\"network\":{\"enabled\":true},\"fileSystem\":{\"write\":[\"/tmp\"]}}}",
+   "allow": true,
+   "remember": true,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"permissions\":null}",
+   "allow": false,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"permissions\":null}",
+   "allow": true,
+   "remember": true,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"other\":1}",
+   "allow": false,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"decline\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": false,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"accept\"}",
+   "auto": "{}"
+  },
+  {
+   "method": "other/request",
+   "params": "{\"other\":1}",
+   "allow": true,
+   "remember": true,
+   "tool": "",
+   "human": false,
+   "response": "{\"decision\":\"acceptForSession\"}",
+   "auto": "{}"
+  }
+ ],
+ "contextFlags": [
+  {
+   "in": "",
+   "out": 0
+  },
+  {
+   "in": "272k",
+   "out": 272000
+  },
+  {
+   "in": "272K",
+   "out": 272000
+  },
+  {
+   "in": "1m",
+   "out": 1000000
+  },
+  {
+   "in": "1M",
+   "out": 1000000
+  },
+  {
+   "in": "1.5m",
+   "out": 1500000
+  },
+  {
+   "in": " 2 m ",
+   "out": 2000000
+  },
+  {
+   "in": "500",
+   "out": 500
+  },
+  {
+   "in": "0",
+   "out": 0
+  },
+  {
+   "in": "-1",
+   "out": 0
+  },
+  {
+   "in": "abc",
+   "out": 0
+  },
+  {
+   "in": "k",
+   "out": 0
+  },
+  {
+   "in": "m",
+   "out": 0
+  },
+  {
+   "in": "1e3",
+   "out": 1000
+  },
+  {
+   "in": "0.5k",
+   "out": 500
+  },
+  {
+   "in": "1_000",
+   "out": 1000
+  }
+ ],
+ "display": [
+  {
+   "name": "shell",
+   "input": "{\"command\":\"ls \u003cdir\u003e\",\"timeout\":5}",
+   "out": "{\"command\":\"ls \\u003cdir\\u003e\"}",
+   "tool": "Bash",
+   "summary": "ls \u003cdir\u003e"
+  },
+  {
+   "name": "shell",
+   "input": "{\"command\":\"\"}",
+   "out": "{\"command\":\"\"}",
+   "tool": "Bash",
+   "summary": "{\"command\":\"\"}"
+  },
+  {
+   "name": "shell",
+   "input": "{}",
+   "out": "{}",
+   "tool": "Bash",
+   "summary": "{}"
+  },
+  {
+   "name": "shell",
+   "input": "null",
+   "out": "null",
+   "tool": "Bash",
+   "summary": "null"
+  },
+  {
+   "name": "shell",
+   "input": "",
+   "out": "",
+   "tool": "Bash",
+   "summary": ""
+  },
+  {
+   "name": "edit",
+   "input": "{\"path\":\"/a\"}",
+   "out": "{\"file_path\":\"/a\"}",
+   "tool": "Edit",
+   "summary": "/a"
+  },
+  {
+   "name": "edit",
+   "input": "{\"file_path\":\"/b\"}",
+   "out": "{\"file_path\":\"/b\"}",
+   "tool": "Edit",
+   "summary": "/b"
+  },
+  {
+   "name": "write",
+   "input": "{\"file_path\":\"/a\",\"content\":\"x\"}",
+   "out": "{\"content\":\"x\",\"file_path\":\"/a\"}",
+   "tool": "Write",
+   "summary": "/a"
+  },
+  {
+   "name": "Write",
+   "input": "{\"path\":\"/a\",\"content\":\"\"}",
+   "out": "{\"file_path\":\"/a\"}",
+   "tool": "Write",
+   "summary": "/a"
+  },
+  {
+   "name": "read",
+   "input": "{\"path\":\"/r\"}",
+   "out": "{\"file_path\":\"/r\"}",
+   "tool": "Read",
+   "summary": "/r"
+  },
+  {
+   "name": "delete",
+   "input": "{\"file_path\":\"/gone.ts\"}",
+   "out": "{\"file_path\":\"/gone.ts\"}",
+   "tool": "Delete",
+   "summary": "/gone.ts"
+  },
+  {
+   "name": "mcp__recur__done",
+   "input": "{\"summary\":\"s\"}",
+   "out": "{\"summary\":\"s\"}",
+   "tool": "mcp__recur__done",
+   "summary": "s"
+  },
+  {
+   "name": "glob",
+   "input": "{\"pattern\":\"*\"}",
+   "out": "{\"pattern\":\"*\"}",
+   "tool": "Glob",
+   "summary": "*"
+  },
+  {
+   "name": "shell",
+   "input": "[1]",
+   "out": "[1]",
+   "tool": "Bash",
+   "summary": "[1]"
+  },
+  {
+   "name": "edit",
+   "input": "\"str\"",
+   "out": "\"str\"",
+   "tool": "Edit",
+   "summary": "\"str\""
+  },
+  {
+   "name": "updateTodos",
+   "input": "{\"x\":1}",
+   "out": "{\"x\":1}",
+   "tool": "TodoWrite",
+   "summary": ""
+  },
+  {
+   "name": "createPlan",
+   "input": "{\"plan\":\"p\"}",
+   "out": "{\"plan\":\"p\"}",
+   "tool": "CreatePlan",
+   "summary": "p"
+  },
+  {
+   "name": "task",
+   "input": "{}",
+   "out": "{}",
+   "tool": "Task",
+   "summary": "{}"
+  }
+ ],
+ "enrich": [
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"threadId\":\"thr\",\"turnId\":\"turn\",\"itemId\":\"f2\",\"reason\":\"sandbox \u003cwrite\u003e\"}",
+   "out": "{\"changes\":[{\"diff\":\"@@ -1 +1 @@\\n-a\\n+b\\n\",\"kind\":{\"movePath\":\"/w/c.ts\",\"type\":\" Update \"},\"path\":\"/w/b.ts\"},{\"diff\":\"@@ x\\n\",\"kind\":{\"type\":\"delete\"},\"path\":\"/w/d.ts\"}],\"diff\":\"@@ -1 +1 @@\\n-a\\n+b\\n@@ x\\n\",\"file_path\":\"/w/b.ts, /w/d.ts\",\"itemId\":\"f2\",\"path\":\"/w/b.ts, /w/d.ts\",\"reason\":\"sandbox \\u003cwrite\\u003e\",\"threadId\":\"thr\",\"turnId\":\"turn\"}"
+  },
+  {
+   "method": "applyPatchApproval",
+   "params": "{\"itemId\":\"f1\"}",
+   "out": "{\"changes\":[{\"diff\":\"export const a = 1;\\n\",\"kind\":{\"type\":\"add\"},\"path\":\"/w/a.ts\"}],\"diff\":\"export const a = 1;\\n\",\"file_path\":\"/w/a.ts\",\"itemId\":\"f1\",\"path\":\"/w/a.ts\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"itemId\":\"f2\",\"path\":\"/given\"}",
+   "out": "{\"itemId\":\"f2\",\"path\":\"/given\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"itemId\":\"missing\"}",
+   "out": "{\"itemId\":\"missing\"}"
+  },
+  {
+   "method": "item/fileChange/requestApproval",
+   "params": "{\"itemId\":\"f4\"}",
+   "out": "{\"itemId\":\"f4\"}"
+  },
+  {
+   "method": "item/commandExecution/requestApproval",
+   "params": "{\"itemId\":\"f2\"}",
+   "out": "{\"itemId\":\"f2\"}"
+  }
+ ],
+ "formatPlan": {
+  "": "",
+  " ": "",
+  " mystery_plan ": "mystery_plan",
+  " plus ": "Plus",
+  "Enterprise": "Enterprise",
+  "GO": "Go",
+  "business": "Business",
+  "edu": "Edu",
+  "edu_plus": "Edu Plus",
+  "edu_pro": "Edu Pro",
+  "education": "Edu",
+  "ent26": "Enterprise",
+  "enterprise_cbp_automation": "Enterprise (Automation)",
+  "enterprise_cbp_usage_based": "Enterprise CBP Usage Based",
+  "free": "Free",
+  "hc": "Enterprise",
+  "pro": "Pro",
+  "prolite": "Pro Lite",
+  "self_serve_business_prolite": "Self Serve Business ProLite",
+  "self_serve_business_usage_based": "Self Serve Business Usage Based",
+  "team": "Team"
+ },
+ "items": [
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"mcpToolCall\",\"id\":\"i1\",\"server\":\"recur\",\"tool\":\"report_finding\",\"arguments\":{\"file\":\"store.go\",\"line\":10, \"message\":\"nil \u003cderef\u003e\"}}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "mcp__recur__report_finding",
+     "toolInput": "recur/report_finding",
+     "toolInputRaw": "{\"file\":\"store.go\",\"line\":10, \"message\":\"nil \u003cderef\u003e\"}",
+     "toolUseId": "i1"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"mcpToolCall\",\"id\":\"i1\",\"status\":\"completed\",\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"ok\"}]}}}",
+   "events": [
+    {
+     "kind": "tool_result",
+     "text": "{\"content\":[{\"type\":\"text\",\"text\":\"ok\"}]}",
+     "tool": "mcp__recur__report_finding",
+     "toolInputRaw": "{\"file\":\"store.go\",\"line\":10, \"message\":\"nil \u003cderef\u003e\"}",
+     "toolUseId": "i1"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"mcpToolCall\",\"id\":\"i2\",\"server\":\"x\",\"tool\":\"y\"}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "mcp__x__y",
+     "toolInput": "x/y",
+     "toolInputRaw": "{}",
+     "toolUseId": "i2"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"mcpToolCall\",\"id\":\"i2\",\"server\":\"x\",\"tool\":\"y\",\"status\":\"Failed\",\"error\":{\"message\":\"boom\"},\"arguments\":{\"a\":1}}}",
+   "events": [
+    {
+     "isError": true,
+     "kind": "tool_result",
+     "text": "boom",
+     "tool": "mcp__x__y",
+     "toolInputRaw": "{\"a\":1}",
+     "toolUseId": "i2"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"mcpToolCall\",\"id\":\"i3\",\"server\":\"s\",\"tool\":\"t\",\"result\":null,\"error\":null,\"status\":\"error\"}}",
+   "events": [
+    {
+     "isError": true,
+     "kind": "tool_result",
+     "text": "null",
+     "tool": "mcp__s__t",
+     "toolUseId": "i3"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"mcpToolCall\",\"id\":\"i4\",\"server\":\"s\",\"tool\":\"t\",\"arguments\":null}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "mcp__s__t",
+     "toolInput": "s/t",
+     "toolInputRaw": "null",
+     "toolUseId": "i4"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"commandExecution\",\"id\":\"c1\",\"command\":\"go test ./... \u0026\u0026 echo \u003cok\u003e\"}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "shell",
+     "toolInput": "go test ./... \u0026\u0026 echo \u003cok\u003e",
+     "toolInputRaw": "{\"command\":\"go test ./... \\u0026\\u0026 echo \\u003cok\\u003e\"}",
+     "toolUseId": "c1"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"commandExecution\",\"id\":\"c1\",\"command\":\"x\",\"aggregatedOutput\":\"PASS\\n\",\"exitCode\":0,\"status\":\"completed\"}}",
+   "events": [
+    {
+     "kind": "tool_result",
+     "text": "PASS\n",
+     "tool": "shell",
+     "toolUseId": "c1"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"commandExecution\",\"id\":\"c2\",\"aggregatedOutput\":\"\",\"exitCode\":2}}",
+   "events": [
+    {
+     "isError": true,
+     "kind": "tool_result",
+     "tool": "shell",
+     "toolUseId": "c2"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"commandExecution\",\"id\":\"c3\",\"exitCode\":null}}",
+   "events": [
+    {
+     "kind": "tool_result",
+     "tool": "shell",
+     "toolUseId": "c3"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"fileChange\",\"id\":\"f1\",\"changes\":[{\"path\":\"/w/a.ts\",\"kind\":{\"type\":\"add\"},\"diff\":\"export const a = 1;\\n\"}]}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "write",
+     "toolInput": "/w/a.ts",
+     "toolInputRaw": "{\"content\":\"export const a = 1;\\n\",\"file_path\":\"/w/a.ts\"}",
+     "toolUseId": "f1"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"fileChange\",\"id\":\"f1\",\"status\":\"completed\",\"changes\":[{\"path\":\"/w/a.ts\",\"kind\":{\"type\":\"add\"},\"diff\":\"export const a = 1;\\n\"}]}}",
+   "events": [
+    {
+     "kind": "tool_result",
+     "tool": "write",
+     "toolInputRaw": "{\"content\":\"export const a = 1;\\n\",\"file_path\":\"/w/a.ts\"}",
+     "toolUseId": "f1"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"fileChange\",\"id\":\"f2\",\"changes\":[{\"path\":\"/w/b.ts\",\"kind\":{\"type\":\" Update \",\"movePath\":\"/w/c.ts\"},\"diff\":\"@@ -1 +1 @@\\n-a\\n+b\\n\"},{\"path\":\"/w/d.ts\",\"kind\":{\"type\":\"delete\"},\"diff\":\"@@ x\\n\"}]}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "edit",
+     "toolInput": "/w/b.ts",
+     "toolInputRaw": "{\"path\":\"/w/b.ts\"}",
+     "toolUseId": "f2"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"fileChange\",\"id\":\"f2\",\"status\":\"failed\",\"changes\":[{\"path\":\"/w/b.ts\",\"kind\":{\"type\":\"update\"},\"diff\":\"@@ -1 +1 @@\\n-a\\n+b\\n\"},{\"path\":\"/w/d.ts\",\"diff\":\"@@ y\\n\"}]}}",
+   "events": [
+    {
+     "isError": true,
+     "kind": "tool_result",
+     "text": "@@ -1 +1 @@\n-a\n+b\n@@ y\n",
+     "tool": "edit",
+     "toolInputRaw": "{\"path\":\"/w/b.ts\"}",
+     "toolUseId": "f2"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"fileChange\",\"id\":\"f3\",\"changes\":[{\"path\":\"/w/gone.ts\",\"kind\":{\"type\":\"delete\"}}]}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "delete",
+     "toolInput": "/w/gone.ts",
+     "toolInputRaw": "{\"file_path\":\"/w/gone.ts\"}",
+     "toolUseId": "f3"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"fileChange\",\"id\":\"f3\",\"changes\":[{\"path\":\"/w/gone.ts\",\"kind\":{\"type\":\"delete\"}}]}}",
+   "events": [
+    {
+     "kind": "tool_result",
+     "tool": "delete",
+     "toolInputRaw": "{\"file_path\":\"/w/gone.ts\"}",
+     "toolUseId": "f3"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"fileChange\",\"id\":\"f4\",\"changes\":[]}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "edit",
+     "toolInputRaw": "{}",
+     "toolUseId": "f4"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"fileChange\",\"id\":\"f5\",\"changes\":[{\"path\":\"/w/k\",\"kind\":\"add\",\"diff\":\"x\"}]}}",
+   "events": [
+    {
+     "kind": "step",
+     "tool": "edit",
+     "toolInput": "/w/k",
+     "toolInputRaw": "{\"path\":\"/w/k\"}",
+     "toolUseId": "f5"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"agentMessage\",\"id\":\"m1\",\"text\":\"Hello \u003cworld\u003e\"}}",
+   "events": [
+    {
+     "kind": "text",
+     "text": "Hello \u003cworld\u003e"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"agentMessage\",\"id\":\"m2\",\"content\":[{\"type\":\"text\",\"text\":\"a\"},{\"type\":\"image\",\"text\":\"x\"},{\"type\":\"text\",\"text\":\"b\"}]}}",
+   "events": [
+    {
+     "kind": "text",
+     "text": "ab"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"agentMessage\",\"id\":\"m3\",\"text\":\"\"}}",
+   "events": []
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"reasoning\",\"id\":\"r1\",\"summary\":[\"**Plan**\",\" \",\"Next step \"]}}",
+   "events": [
+    {
+     "kind": "thinking",
+     "text": "**Plan**\n\nNext step"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"reasoning\",\"id\":\"r2\",\"summary\":[{\"text\":\"one\"},{\"text\":\" two \"}]}}",
+   "events": [
+    {
+     "kind": "thinking",
+     "text": "one\n\ntwo"
+    }
+   ]
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"reasoning\",\"id\":\"r3\",\"summary\":\"flat\"}}",
+   "events": []
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"reasoning\",\"id\":\"r4\",\"summary\":[\"a\",{\"text\":\"b\"}]}}",
+   "events": []
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"commandExecution\",\"id\":5,\"command\":\"x\"}}",
+   "events": []
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"mcpToolCall\",\"id\":\"i9\",\"server\":7,\"tool\":\"t\"}}",
+   "events": []
+  },
+  {
+   "method": "item/completed",
+   "params": "{\"item\":{\"type\":\"mcpToolCall\",\"id\":\"i9\",\"server\":7,\"tool\":\"t\"}}",
+   "events": [
+    {
+     "kind": "tool_result",
+     "tool": "mcp____t",
+     "toolUseId": "i9"
+    }
+   ]
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":null}",
+   "events": []
+  },
+  {
+   "method": "item/started",
+   "params": "{\"nope\":1}",
+   "events": []
+  },
+  {
+   "method": "item/started",
+   "params": "{\"item\":{\"type\":\"unknownItem\",\"id\":\"u\"}}",
+   "events": []
+  }
+ ],
+ "networkOn": [
+  "sandbox_workspace_write.network_access=true"
+ ],
+ "overrides": [
+  {
+   "servers": null,
+   "overrides": [
+    "approval_policy=\"never\"",
+    "sandbox_mode=\"workspace-write\"",
+    "model_reasoning_summary=\"auto\"",
+    "model_supports_reasoning_summaries=true",
+    "skills.bundled.enabled=false",
+    "skills.include_instructions=false",
+    "features.skip_host_skill_discovery=true",
+    "features.remote_plugin=false",
+    "features.multi_agent=false",
+    "features.multi_agent_v2=false"
+   ]
+  },
+  {
+   "servers": [
+    {
+     "Name": "recur",
+     "URL": "http://127.0.0.1:9/tok/mcp",
+     "Required": true,
+     "Command": "",
+     "Args": null,
+     "Env": null,
+     "HTTPHeaders": null
+    }
+   ],
+   "overrides": [
+    "mcp_servers.recur.enabled=true",
+    "mcp_servers.recur.required=true",
+    "mcp_servers.recur.default_tools_approval_mode=\"approve\"",
+    "mcp_servers.recur.url=\"http://127.0.0.1:9/tok/mcp\"",
+    "approval_policy=\"never\"",
+    "sandbox_mode=\"workspace-write\"",
+    "model_reasoning_summary=\"auto\"",
+    "model_supports_reasoning_summaries=true",
+    "skills.bundled.enabled=false",
+    "skills.include_instructions=false",
+    "features.skip_host_skill_discovery=true",
+    "features.remote_plugin=false",
+    "features.multi_agent=false",
+    "features.multi_agent_v2=false"
+   ]
+  },
+  {
+   "servers": [
+    {
+     "Name": "playwright",
+     "URL": "",
+     "Required": false,
+     "Command": "npx",
+     "Args": [
+      "-y",
+      "@playwright/mcp@latest"
+     ],
+     "Env": null,
+     "HTTPHeaders": null
+    }
+   ],
+   "overrides": [
+    "mcp_servers.playwright.enabled=true",
+    "mcp_servers.playwright.default_tools_approval_mode=\"approve\"",
+    "mcp_servers.playwright.command=\"npx\"",
+    "mcp_servers.playwright.args=[\"-y\",\"@playwright/mcp@latest\"]",
+    "approval_policy=\"never\"",
+    "sandbox_mode=\"workspace-write\"",
+    "model_reasoning_summary=\"auto\"",
+    "model_supports_reasoning_summaries=true",
+    "skills.bundled.enabled=false",
+    "skills.include_instructions=false",
+    "features.skip_host_skill_discovery=true",
+    "features.remote_plugin=false",
+    "features.multi_agent=false",
+    "features.multi_agent_v2=false"
+   ]
+  },
+  {
+   "servers": [
+    {
+     "Name": "linear",
+     "URL": "https://mcp.linear.app/mcp?x=\"q\"",
+     "Required": false,
+     "Command": "",
+     "Args": null,
+     "Env": null,
+     "HTTPHeaders": {
+      "Authorization": "Bearer lin_api_x"
+     }
+    }
+   ],
+   "overrides": [
+    "mcp_servers.linear.enabled=true",
+    "mcp_servers.linear.default_tools_approval_mode=\"approve\"",
+    "mcp_servers.linear.url=\"https://mcp.linear.app/mcp?x=\\\"q\\\"\"",
+    "mcp_servers.linear.http_headers.Authorization=\"Bearer lin_api_x\"",
+    "approval_policy=\"never\"",
+    "sandbox_mode=\"workspace-write\"",
+    "model_reasoning_summary=\"auto\"",
+    "model_supports_reasoning_summaries=true",
+    "skills.bundled.enabled=false",
+    "skills.include_instructions=false",
+    "features.skip_host_skill_discovery=true",
+    "features.remote_plugin=false",
+    "features.multi_agent=false",
+    "features.multi_agent_v2=false"
+   ]
+  },
+  {
+   "servers": [
+    {
+     "Name": " fs ",
+     "URL": "",
+     "Required": false,
+     "Command": "C:\\bin\\npx",
+     "Args": [
+      "a\tb",
+      "c\"d",
+      "e\\f",
+      "\u0001",
+      "é✓"
+     ],
+     "Env": {
+      "PRIVATE_KEY": "-----BEGIN-----\nline\r\n\b\f-----END-----"
+     },
+     "HTTPHeaders": null
+    }
+   ],
+   "overrides": [
+    "mcp_servers.fs.enabled=true",
+    "mcp_servers.fs.default_tools_approval_mode=\"approve\"",
+    "mcp_servers.fs.command=\"C:\\\\bin\\\\npx\"",
+    "mcp_servers.fs.args=[\"a\\tb\",\"c\\\"d\",\"e\\\\f\",\"\\u0001\",\"é✓\"]",
+    "mcp_servers.fs.env.PRIVATE_KEY=\"-----BEGIN-----\\nline\\r\\n\\b\\f-----END-----\"",
+    "approval_policy=\"never\"",
+    "sandbox_mode=\"workspace-write\"",
+    "model_reasoning_summary=\"auto\"",
+    "model_supports_reasoning_summaries=true",
+    "skills.bundled.enabled=false",
+    "skills.include_instructions=false",
+    "features.skip_host_skill_discovery=true",
+    "features.remote_plugin=false",
+    "features.multi_agent=false",
+    "features.multi_agent_v2=false"
+   ]
+  },
+  {
+   "servers": [
+    {
+     "Name": "",
+     "URL": "",
+     "Required": false,
+     "Command": "",
+     "Args": null,
+     "Env": null,
+     "HTTPHeaders": null
+    },
+    {
+     "Name": "x",
+     "URL": "",
+     "Required": false,
+     "Command": "",
+     "Args": null,
+     "Env": {
+      "": "skip"
+     },
+     "HTTPHeaders": {
+      " ": "skip"
+     }
+    }
+   ],
+   "overrides": [
+    "mcp_servers.x.enabled=true",
+    "mcp_servers.x.default_tools_approval_mode=\"approve\"",
+    "approval_policy=\"never\"",
+    "sandbox_mode=\"workspace-write\"",
+    "model_reasoning_summary=\"auto\"",
+    "model_supports_reasoning_summaries=true",
+    "skills.bundled.enabled=false",
+    "skills.include_instructions=false",
+    "features.skip_host_skill_discovery=true",
+    "features.remote_plugin=false",
+    "features.multi_agent=false",
+    "features.multi_agent_v2=false"
+   ]
+  }
+ ],
+ "params": [
+  {
+   "name": "turnStart",
+   "json": "{\"threadId\":\"thr\",\"input\":[{\"type\":\"text\",\"text\":\"fix \\u003cit\\u003e \\u0026 go\"}],\"model\":\"gpt-5.6-sol\",\"cwd\":\"/w\",\"approvalPolicy\":\"on-request\",\"sandboxPolicy\":{\"type\":\"readOnly\",\"networkAccess\":true},\"effort\":\"high\",\"serviceTier\":\"priority\"}"
+  },
+  {
+   "name": "turnStartMin",
+   "json": "{\"threadId\":\"thr\",\"input\":[{\"type\":\"text\"}]}"
+  },
+  {
+   "name": "threadStart",
+   "json": "{\"model\":\"m\",\"cwd\":\"/w\",\"approvalPolicy\":\"never\",\"sandbox\":\"danger-full-access\",\"developerInstructions\":\"You are \\u003cthe\\u003e Coder.\",\"serviceName\":\"recur\"}"
+  },
+  {
+   "name": "threadStartEmpty",
+   "json": "{}"
+  },
+  {
+   "name": "turnSteer",
+   "json": "{\"threadId\":\"thr\",\"input\":[{\"type\":\"text\",\"text\":\"steer\"}]}"
+  },
+  {
+   "name": "turnInterrupt",
+   "json": "{\"threadId\":\"thr\",\"turnId\":\"turn\"}"
+  }
+ ],
+ "specs": [
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "hi",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "hi",
+   "promptResumed": "hi",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "hi \u003cb\u003e \u0026 \u2028",
+    "model": "sonnet",
+    "flags": {
+     "effort": "high"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "hi \u003cb\u003e \u0026",
+   "promptResumed": "hi \u003cb\u003e \u0026",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "claude-sonnet-4-6",
+    "flags": {
+     "context": "1m",
+     "effort": "xhigh"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "x",
+   "promptResumed": "x",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": [
+    "model_context_window=1000000",
+    "model_auto_compact_token_limit=900000"
+   ],
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "claude-opus-4-6",
+    "flags": {
+     "context": "200k"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "x",
+   "promptResumed": "x",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "claude-fable-5-1",
+    "flags": {
+     "context": "300k"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "x",
+   "promptResumed": "x",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": [
+    "model_context_window=1000000",
+    "model_auto_compact_token_limit=900000"
+   ],
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "claude-code/claude-opus-5-5",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "x",
+   "promptResumed": "x",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "haiku",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "x",
+   "promptResumed": "x",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "go",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "You are the Maestro.",
+    "appendSystemPrompt": "  Name the chat.  ",
+    "turnAppendPrompt": "The operator is looking at PR #3.",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "go\n\nThe operator is looking at PR #3.\n\nName the chat.",
+   "promptResumed": "go\n\nThe operator is looking at PR #3.",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "go",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "only append",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "go\n\nonly append",
+   "promptResumed": "go",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "go",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "plan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\n",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "go",
+   "promptResumed": "go",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "ro",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": [
+     "Read",
+     "Bash(git diff:*)",
+     "mcp__recur__report_finding",
+     "mcp__recur__*"
+    ],
+    "tools": null,
+    "permissionMode": "bypassPermissions",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "ro",
+   "promptResumed": "ro",
+   "sandbox": "read-only",
+   "policy": "{\"type\":\"readOnly\",\"networkAccess\":true}",
+   "sandboxNet": "read-only",
+   "policyNet": "{\"type\":\"readOnly\",\"networkAccess\":true}",
+   "approval": "never",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "coder",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": [
+     "Read",
+     "Edit",
+     "Write",
+     "Bash",
+     "NotebookEdit"
+    ],
+    "tools": null,
+    "permissionMode": "default",
+    "mcpUrl": "http://127.0.0.1:41234/abc/mcp",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "coder",
+   "promptResumed": "coder",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": [
+    "{\"Name\":\"recur\",\"URL\":\"http://127.0.0.1:41234/abc/mcp\",\"Required\":true,\"Command\":\"\",\"Args\":null,\"Env\":null,\"HTTPHeaders\":null}"
+   ],
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "empty allow",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": [],
+    "tools": null,
+    "permissionMode": "default",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "empty allow",
+   "promptResumed": "empty allow",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "title",
+    "model": "claude-haiku-4-5-20251001",
+    "flags": {
+     "effort": "low"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": "",
+    "permissionMode": "dontAsk",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": true,
+    "maxTurns": 1,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "title",
+   "promptResumed": "title",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "never",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "tools",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": "Read,Glob,Grep",
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "tools",
+   "promptResumed": "tools",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "resume",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "sess-1",
+    "forkSession": true,
+    "promptOnStdin": false,
+    "includePartials": true,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "resume",
+   "promptResumed": "resume",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "resume",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "sess-1",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "resume",
+   "promptResumed": "resume",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "fork without resume",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": true,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "fork without resume",
+   "promptResumed": "fork without resume",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "stdin",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": true,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "stdin",
+   "promptResumed": "stdin",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "steer me",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "default",
+    "mcpUrl": "http://127.0.0.1:1/t/mcp",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": true
+   },
+   "promptFresh": "steer me",
+   "promptResumed": "steer me",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": [
+    "{\"Name\":\"recur\",\"URL\":\"http://127.0.0.1:1/t/mcp\",\"Required\":true,\"Command\":\"\",\"Args\":null,\"Env\":null,\"HTTPHeaders\":null}"
+   ],
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "look ⟦attachment:img1⟧ here",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": [
+     {
+      "id": "img1",
+      "name": "img1.png",
+      "mime": "image/png",
+      "data": "iVBORw0KGgo=",
+      "path": "workspaces/W1/attachments/img1.png"
+     }
+    ],
+    "inject": false
+   },
+   "promptFresh": "look ⟦attachment:img1⟧ here",
+   "promptResumed": "look ⟦attachment:img1⟧ here",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "qa",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "bypassPermissions",
+    "mcpUrl": "http://127.0.0.1:2/q/mcp",
+    "playwright": true,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "qa",
+   "promptResumed": "qa",
+   "sandbox": "danger-full-access",
+   "policy": "{\"type\":\"dangerFullAccess\"}",
+   "sandboxNet": "danger-full-access",
+   "policyNet": "{\"type\":\"dangerFullAccess\"}",
+   "approval": "never",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": [
+    "{\"Name\":\"recur\",\"URL\":\"http://127.0.0.1:2/q/mcp\",\"Required\":true,\"Command\":\"\",\"Args\":null,\"Env\":null,\"HTTPHeaders\":null}",
+    "{\"Name\":\"playwright\",\"URL\":\"\",\"Required\":false,\"Command\":\"npx\",\"Args\":[\"-y\",\"@playwright/mcp@latest\"],\"Env\":null,\"HTTPHeaders\":null}"
+   ],
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "mcp",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "http://127.0.0.1:9/tok/mcp",
+    "playwright": false,
+    "userMcp": [
+     {
+      "name": "linear",
+      "url": "https://mcp.linear.app/mcp",
+      "headers": {
+       "Authorization": "Bearer lin_api_x"
+      },
+      "command": "",
+      "args": null,
+      "env": null
+     },
+     {
+      "name": " fs ",
+      "url": "",
+      "headers": null,
+      "command": "npx",
+      "args": [
+       "-y",
+       "@modelcontextprotocol/server-filesystem"
+      ],
+      "env": {
+       "FOO": "bar"
+      }
+     },
+     {
+      "name": "",
+      "url": "http://skip",
+      "headers": null,
+      "command": "",
+      "args": null,
+      "env": null
+     },
+     {
+      "name": "nothing",
+      "url": "",
+      "headers": null,
+      "command": "",
+      "args": null,
+      "env": null
+     }
+    ],
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "mcp",
+   "promptResumed": "mcp",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": [
+    "{\"Name\":\"recur\",\"URL\":\"http://127.0.0.1:9/tok/mcp\",\"Required\":true,\"Command\":\"\",\"Args\":null,\"Env\":null,\"HTTPHeaders\":null}",
+    "{\"Name\":\"linear\",\"URL\":\"https://mcp.linear.app/mcp\",\"Required\":false,\"Command\":\"\",\"Args\":null,\"Env\":null,\"HTTPHeaders\":{\"Authorization\":\"Bearer lin_api_x\"}}",
+    "{\"Name\":\"fs\",\"URL\":\"\",\"Required\":false,\"Command\":\"npx\",\"Args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\"],\"Env\":{\"FOO\":\"bar\"},\"HTTPHeaders\":null}",
+    "{\"Name\":\"nothing\",\"URL\":\"\",\"Required\":false,\"Command\":\"\",\"Args\":null,\"Env\":null,\"HTTPHeaders\":null}"
+   ],
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "only blank mcp",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": [
+     {
+      "name": "x",
+      "url": "",
+      "headers": null,
+      "command": "",
+      "args": null,
+      "env": null
+     }
+    ],
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "only blank mcp",
+   "promptResumed": "only blank mcp",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": [
+    "{\"Name\":\"x\",\"URL\":\"\",\"Required\":false,\"Command\":\"\",\"Args\":null,\"Env\":null,\"HTTPHeaders\":null}"
+   ],
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "maxturns",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "acceptEdits",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 7,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "maxturns",
+   "promptResumed": "maxturns",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "reviewer",
+    "prompt": "review",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "bypassPermissions",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "review",
+   "promptResumed": "review",
+   "sandbox": "read-only",
+   "policy": "{\"type\":\"readOnly\",\"networkAccess\":true}",
+   "sandboxNet": "read-only",
+   "policyNet": "{\"type\":\"readOnly\",\"networkAccess\":true}",
+   "approval": "never",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "Reviewer",
+    "prompt": "review",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "review",
+   "promptResumed": "review",
+   "sandbox": "read-only",
+   "policy": "{\"type\":\"readOnly\",\"networkAccess\":true}",
+   "sandboxNet": "read-only",
+   "policyNet": "{\"type\":\"readOnly\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "coder",
+    "prompt": "c",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": [
+     "Read",
+     "Grep",
+     "Bash"
+    ],
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "c",
+   "promptResumed": "c",
+   "sandbox": "read-only",
+   "policy": "{\"type\":\"readOnly\",\"networkAccess\":true}",
+   "sandboxNet": "read-only",
+   "policyNet": "{\"type\":\"readOnly\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "coder",
+    "prompt": "c",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": [
+     "Read",
+     "NotebookEdit"
+    ],
+    "tools": null,
+    "permissionMode": "bypassPermissions",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "c",
+   "promptResumed": "c",
+   "sandbox": "danger-full-access",
+   "policy": "{\"type\":\"dangerFullAccess\"}",
+   "sandboxNet": "danger-full-access",
+   "policyNet": "{\"type\":\"dangerFullAccess\"}",
+   "approval": "never",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "p",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "PLAN mode.",
+    "turnAppendPrompt": "",
+    "refreshStanding": true,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "t",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "p\n\nPLAN mode.",
+   "promptResumed": "p\n\nPLAN mode.",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "notes",
+    "turnAppendPrompt": "subject",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "subject\n\nnotes",
+   "promptResumed": "subject",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": {
+     "context": "1.5M",
+     "fast": "true"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "priority",
+   "longContext": [
+    "model_context_window=1000000",
+    "model_auto_compact_token_limit=900000"
+   ],
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": {
+     "context": "272001",
+     "fast": " Priority "
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "Priority",
+   "longContext": [
+    "model_context_window=1000000",
+    "model_auto_compact_token_limit=900000"
+   ],
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": {
+     "context": "abc",
+     "fast": "on",
+     "serviceTier": "Default"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": {
+     "context": "-1m",
+     "serviceTier": "flex"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "flex",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": {
+     "context": " 1 k ",
+     "fast": "0"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": ""
+  },
+  {
+   "spec": {
+    "workspaceId": "W1",
+    "agentId": "W1-PA",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": "PA"
+  },
+  {
+   "spec": {
+    "workspaceId": "W1",
+    "agentId": "W1-",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": "W1-"
+  },
+  {
+   "spec": {
+    "workspaceId": "W1",
+    "agentId": "X-PA",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": "X-PA"
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "-PA",
+    "role": "",
+    "prompt": "",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "promptFresh": "",
+   "promptResumed": "",
+   "sandbox": "workspace-write",
+   "policy": "{\"type\":\"workspaceWrite\"}",
+   "sandboxNet": "workspace-write",
+   "policyNet": "{\"type\":\"workspaceWrite\",\"networkAccess\":true}",
+   "approval": "on-request",
+   "serviceTier": "",
+   "longContext": null,
+   "servers": null,
+   "agentCode": "PA"
+  }
+ ],
+ "usage": [
+  {
+   "params": "{\"tokenUsage\":{\"total\":{\"totalTokens\":4034944,\"inputTokens\":4020424,\"cachedInputTokens\":3859456,\"outputTokens\":14520},\"last\":{\"totalTokens\":156713,\"inputTokens\":155843,\"cachedInputTokens\":154240,\"outputTokens\":870},\"modelContextWindow\":258400}}",
+   "last": {
+    "cacheWriteInputTokens": 0,
+    "cachedInputTokens": 154240,
+    "inputTokens": 155843,
+    "outputTokens": 870,
+    "reasoningOutputTokens": 0,
+    "totalTokens": 156713
+   },
+   "event": {
+    "cc": 0,
+    "cr": 154240,
+    "cw": 258400,
+    "in": 1603,
+    "out": 870
+   },
+   "turn": {
+    "cc": 0,
+    "cr": 154240,
+    "cw": 258400,
+    "in": 1603,
+    "out": 870
+   }
+  },
+  {
+   "params": "{\"tokenUsage\":{\"total\":{\"totalTokens\":4100000,\"inputTokens\":4080000,\"cachedInputTokens\":3900000,\"cacheWriteInputTokens\":10,\"outputTokens\":20000},\"last\":{\"totalTokens\":0}}}",
+   "last": {
+    "cacheWriteInputTokens": 10,
+    "cachedInputTokens": 3900000,
+    "inputTokens": 4080000,
+    "outputTokens": 20000,
+    "reasoningOutputTokens": 0,
+    "totalTokens": 4100000
+   },
+   "event": {
+    "cc": 10,
+    "cr": 3900000,
+    "cw": 258400,
+    "in": 180000,
+    "out": 20000
+   },
+   "turn": {
+    "cc": 10,
+    "cr": 3900000,
+    "cw": 258400,
+    "in": 180000,
+    "out": 20000
+   }
+  },
+  {
+   "params": "{\"tokenUsage\":{\"total\":{\"inputTokens\":5,\"cachedInputTokens\":9}}}",
+   "last": {
+    "cacheWriteInputTokens": 0,
+    "cachedInputTokens": 9,
+    "inputTokens": 5,
+    "outputTokens": 0,
+    "reasoningOutputTokens": 0,
+    "totalTokens": 0
+   },
+   "event": {
+    "cc": 0,
+    "cr": 9,
+    "cw": 258400,
+    "in": 5,
+    "out": 0
+   },
+   "turn": {
+    "cc": 0,
+    "cr": 9,
+    "cw": 258400,
+    "in": 5,
+    "out": 0
+   }
+  },
+  {
+   "params": "{}",
+   "last": {
+    "cacheWriteInputTokens": 0,
+    "cachedInputTokens": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "reasoningOutputTokens": 0,
+    "totalTokens": 0
+   },
+   "event": {
+    "cc": 0,
+    "cr": 9,
+    "cw": 258400,
+    "in": 5,
+    "out": 0
+   },
+   "turn": {
+    "cc": 0,
+    "cr": 9,
+    "cw": 258400,
+    "in": 5,
+    "out": 0
+   }
+  }
+ ]
+}

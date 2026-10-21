@@ -1,0 +1,430 @@
+{
+  "Agent": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"code\":\"Code\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"role\":\"Role\\u003c\\u0026\\u003e\",\"model\":\"Model\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"sessionId\":\"SessionID\\u003c\\u0026\\u003e\",\"color\":\"Color\\u003c\\u0026\\u003e\",\"task\":\"Task\\u003c\\u0026\\u003e\",\"cur\":1,\"steps\":[{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"diff\":{\"add\":2,\"del\":3},\"state\":\"State\\u003c\\u0026\\u003e\"}],\"unseen\":true}",
+    "zero": "{\"id\":\"\",\"workspaceId\":\"\",\"code\":\"\",\"name\":\"\",\"role\":\"\",\"model\":\"\",\"status\":\"\",\"sessionId\":\"\",\"color\":\"\",\"task\":\"\",\"cur\":0,\"steps\":null}"
+  },
+  "AgentSkill": {
+    "full": "{\"name\":\"Name\\u003c\\u0026\\u003e\",\"description\":\"Description\\u003c\\u0026\\u003e\",\"scope\":\"Scope\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"userInvocable\":true}",
+    "zero": "{\"name\":\"\",\"scope\":\"\",\"userInvocable\":false}"
+  },
+  "AgentStep": {
+    "full": "{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"diff\":{\"add\":1,\"del\":2},\"state\":\"State\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"kind\":\"\",\"text\":\"\"}"
+  },
+  "AgentSummary": {
+    "full": "{\"code\":\"Code\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"task\":\"Task\\u003c\\u0026\\u003e\",\"unseen\":true}",
+    "zero": "{\"code\":\"\",\"name\":\"\",\"status\":\"\"}"
+  },
+  "AnalysisRun": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"root\":\"Root\\u003c\\u0026\\u003e\",\"when\":\"When\\u003c\\u0026\\u003e\",\"ts\":1,\"metrics\":{\"files\":2,\"loc\":3,\"avgComplexity\":4.5,\"maxComplexity\":5,\"hotspots\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"loc\":6,\"complexity\":7,\"reason\":\"Reason\\u003c\\u0026\\u003e\"}],\"duplication\":8.5,\"duplicates\":[{\"lines\":9,\"preview\":\"Preview\\u003c\\u0026\\u003e\"}],\"todoCount\":10,\"testFiles\":11,\"coveragePct\":12.5},\"impact\":[{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":13,\"detail\":\"Detail\\u003c\\u0026\\u003e\",\"changed\":true}],\"checks\":[{\"name\":\"Name\\u003c\\u0026\\u003e\",\"detail\":\"Detail\\u003c\\u0026\\u003e\",\"passed\":true,\"status\":\"Status\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\",\"startedAt\":\"StartedAt\\u003c\\u0026\\u003e\"}],\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"delta\":{\"loc\":14,\"maxComplexity\":15,\"duplication\":16.5,\"todoCount\":17,\"hotspots\":18}}",
+    "zero": "{\"id\":\"\",\"projectId\":\"\",\"root\":\"\",\"when\":\"\",\"ts\":0,\"metrics\":{\"files\":0,\"loc\":0,\"avgComplexity\":0,\"maxComplexity\":0,\"duplication\":0,\"todoCount\":0,\"testFiles\":0},\"summary\":\"\"}"
+  },
+  "Artifact": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"createdAt\":\"CreatedAt\\u003c\\u0026\\u003e\",\"createdBy\":\"CreatedBy\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"workspaceId\":\"\",\"title\":\"\",\"kind\":\"\",\"path\":\"\",\"createdAt\":\"\"}"
+  },
+  "AttentionCounts": {
+    "full": "{\"unseen\":1,\"inboxUnread\":2,\"dock\":3,\"byWorkspace\":{\"ByWorkspaceK\\u003c\\u0026\\u003e\":4},\"byProject\":{\"ByProjectK\\u003c\\u0026\\u003e\":5},\"appUnseen\":6}",
+    "zero": "{\"unseen\":0,\"inboxUnread\":0,\"dock\":0,\"byWorkspace\":null,\"byProject\":null}"
+  },
+  "BranchChoice": {
+    "full": "{\"name\":\"Name\\u003c\\u0026\\u003e\",\"group\":\"Group\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"name\":\"\",\"group\":\"\"}"
+  },
+  "BriefAction": {
+    "full": "{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"label\":\"\",\"target\":\"\"}"
+  },
+  "BriefingCounts": {
+    "full": "{\"needs\":1,\"working\":2,\"pickup\":3}",
+    "zero": "{\"needs\":0,\"working\":0,\"pickup\":0}"
+  },
+  "BriefingSnapshot": {
+    "full": "{\"generatedAt\":1,\"counts\":{\"needs\":2,\"working\":3,\"pickup\":4},\"workspaces\":[{\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"projectName\":\"ProjectName\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"branch\":\"Branch\\u003c\\u0026\\u003e\",\"bucket\":\"Bucket\\u003c\\u0026\\u003e\",\"reasons\":[\"Reasons0\\u003c\\u0026\\u003e\"],\"now\":\"Now\\u003c\\u0026\\u003e\",\"next\":\"Next\\u003c\\u0026\\u003e\",\"lastActivityAt\":5,\"lastViewedAt\":6,\"seenActivityAt\":7,\"changedSinceViewed\":true,\"quietAge\":\"QuietAge\\u003c\\u0026\\u003e\",\"lastSummary\":\"LastSummary\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"phase\":\"Phase\\u003c\\u0026\\u003e\",\"planSummary\":\"PlanSummary\\u003c\\u0026\\u003e\",\"planDone\":8,\"planTotal\":9,\"activeAgents\":10,\"activeAgentTask\":\"ActiveAgentTask\\u003c\\u0026\\u003e\",\"latestChatCode\":\"LatestChatCode\\u003c\\u0026\\u003e\",\"latestChatTitle\":\"LatestChatTitle\\u003c\\u0026\\u003e\",\"diffAdd\":11,\"diffDel\":12,\"prId\":\"PRID\\u003c\\u0026\\u003e\",\"prNumber\":13,\"isPrHost\":true,\"primary\":{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"},\"secondary\":[{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"}]}]}",
+    "zero": "{\"generatedAt\":0,\"counts\":{\"needs\":0,\"working\":0,\"pickup\":0},\"workspaces\":null}"
+  },
+  "ChatAttachment": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"mime\":\"Mime\\u003c\\u0026\\u003e\",\"data\":\"Data\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"mime\":\"\",\"data\":\"\"}"
+  },
+  "ChatHeader": {
+    "full": "{\"code\":\"Code\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"mode\":\"Mode\\u003c\\u0026\\u003e\",\"updatedAt\":1,\"unseen\":true}",
+    "zero": "{\"code\":\"\",\"title\":\"\",\"updatedAt\":0}"
+  },
+  "ChatImageRef": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"mime\":\"Mime\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\"}"
+  },
+  "ChatItem": {
+    "full": "{\"role\":\"Role\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"tool\":\"Tool\\u003c\\u0026\\u003e\",\"toolInput\":\"ToolInput\\u003c\\u0026\\u003e\",\"tokens\":1,\"description\":\"Description\\u003c\\u0026\\u003e\",\"input\":\"Input\\u003c\\u0026\\u003e\",\"result\":\"Result\\u003c\\u0026\\u003e\",\"resultError\":true,\"resultTruncated\":true,\"resultPending\":true,\"durationMs\":2,\"messageId\":\"MessageID\\u003c\\u0026\\u003e\",\"checkpoint\":true,\"inputTokens\":3,\"cacheCreationTokens\":4,\"cacheReadTokens\":5,\"contextWindow\":6,\"attachments\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"mime\":\"Mime\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\"}],\"ts\":7,\"toolId\":\"ToolID\\u003c\\u0026\\u003e\",\"children\":[{\"role\":\"Role\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"tool\":\"Tool\\u003c\\u0026\\u003e\",\"toolInput\":\"ToolInput\\u003c\\u0026\\u003e\",\"tokens\":8,\"description\":\"Description\\u003c\\u0026\\u003e\",\"input\":\"Input\\u003c\\u0026\\u003e\",\"result\":\"Result\\u003c\\u0026\\u003e\",\"resultError\":true,\"resultTruncated\":true,\"resultPending\":true,\"durationMs\":9,\"messageId\":\"MessageID\\u003c\\u0026\\u003e\",\"checkpoint\":true,\"inputTokens\":10,\"cacheCreationTokens\":11,\"cacheReadTokens\":12,\"contextWindow\":13,\"attachments\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"mime\":\"Mime\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\"}],\"ts\":14,\"toolId\":\"ToolID\\u003c\\u0026\\u003e\",\"children\":[{\"role\":\"Role\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"tool\":\"Tool\\u003c\\u0026\\u003e\",\"toolInput\":\"ToolInput\\u003c\\u0026\\u003e\",\"tokens\":15,\"description\":\"Description\\u003c\\u0026\\u003e\",\"input\":\"Input\\u003c\\u0026\\u003e\",\"result\":\"Result\\u003c\\u0026\\u003e\",\"resultError\":true,\"resultTruncated\":true,\"resultPending\":true,\"durationMs\":16,\"messageId\":\"MessageID\\u003c\\u0026\\u003e\",\"checkpoint\":true,\"inputTokens\":17,\"cacheCreationTokens\":18,\"cacheReadTokens\":19,\"contextWindow\":20,\"ts\":21,\"toolId\":\"ToolID\\u003c\\u0026\\u003e\"}]}]}",
+    "zero": "{\"role\":\"\",\"kind\":\"\"}"
+  },
+  "Check": {
+    "full": "{\"name\":\"Name\\u003c\\u0026\\u003e\",\"detail\":\"Detail\\u003c\\u0026\\u003e\",\"passed\":true,\"status\":\"Status\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\",\"startedAt\":\"StartedAt\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"name\":\"\",\"detail\":\"\",\"passed\":false}"
+  },
+  "Checkpoint": {
+    "full": "{\"state\":\"State\\u003c\\u0026\\u003e\",\"iteration\":1,\"at\":\"At\\u003c\\u0026\\u003e\",\"phaseId\":\"PhaseID\\u003c\\u0026\\u003e\",\"resumePhaseId\":\"ResumePhaseID\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"state\":\"\",\"iteration\":0,\"at\":\"\"}"
+  },
+  "ChildFanOut": {
+    "full": "{\"wave\":1,\"after\":[\"After0\\u003c\\u0026\\u003e\"],\"outcome\":\"Outcome\\u003c\\u0026\\u003e\",\"note\":\"Note\\u003c\\u0026\\u003e\",\"chat\":\"Chat\\u003c\\u0026\\u003e\",\"mode\":\"Mode\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"wave\":0}"
+  },
+  "Commit": {
+    "full": "{\"hash\":\"Hash\\u003c\\u0026\\u003e\",\"sha\":\"SHA\\u003c\\u0026\\u003e\",\"message\":\"Message\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"author\":\"Author\\u003c\\u0026\\u003e\",\"authorRole\":\"AuthorRole\\u003c\\u0026\\u003e\",\"agentCode\":\"AgentCode\\u003c\\u0026\\u003e\",\"color\":\"Color\\u003c\\u0026\\u003e\",\"iterLabel\":\"IterLabel\\u003c\\u0026\\u003e\",\"diff\":{\"add\":1,\"del\":2},\"when\":\"When\\u003c\\u0026\\u003e\",\"files\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"oldPath\":\"OldPath\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"diff\":{\"add\":3,\"del\":4},\"lines\":[{\"old\":\"Old\\u003c\\u0026\\u003e\",\"new\":\"New\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"codeHtml\":\"CodeHTML\\u003c\\u0026\\u003e\",\"extraHtml\":\"ExtraHTML\\u003c\\u0026\\u003e\"}]}],\"avatarUrl\":\"AvatarURL\\u003c\\u0026\\u003e\",\"verified\":true,\"checkStatus\":\"CheckStatus\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"hash\":\"\",\"message\":\"\",\"authorRole\":\"\",\"agentCode\":\"\",\"color\":\"\",\"iterLabel\":\"\",\"diff\":{\"add\":0,\"del\":0},\"when\":\"\",\"files\":null}"
+  },
+  "CompactPayload": {
+    "full": "{\"status\":\"Status\\u003c\\u0026\\u003e\",\"trigger\":\"Trigger\\u003c\\u0026\\u003e\",\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"preTokens\":1}",
+    "zero": "{\"status\":\"\"}"
+  },
+  "CompatibleFlagDim": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"wire\":\"Wire\\u003c\\u0026\\u003e\",\"options\":[{\"value\":\"Value\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"default\":true}]}",
+    "zero": "{\"id\":\"\",\"label\":\"\"}"
+  },
+  "CompatibleFlagOption": {
+    "full": "{\"value\":\"Value\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"default\":true}",
+    "zero": "{\"value\":\"\",\"label\":\"\"}"
+  },
+  "CompatibleModel": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"contextWindow\":1,\"flags\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"wire\":\"Wire\\u003c\\u0026\\u003e\",\"options\":[{\"value\":\"Value\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"default\":true}]}]}",
+    "zero": "{\"id\":\"\",\"label\":\"\"}"
+  },
+  "CompatibleProvider": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"baseUrl\":\"BaseURL\\u003c\\u0026\\u003e\",\"apiKey\":\"APIKey\\u003c\\u0026\\u003e\",\"extraHeaders\":{\"ExtraHeadersK\\u003c\\u0026\\u003e\":\"ExtraHeadersV\\u003c\\u0026\\u003e\"},\"models\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"contextWindow\":1,\"flags\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"wire\":\"Wire\\u003c\\u0026\\u003e\"}]}]}",
+    "zero": "{\"id\":\"\",\"name\":\"\",\"baseUrl\":\"\"}"
+  },
+  "ContentBlock": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"content\":{\"k\":[1,\"\\u003cx\\u003e\"]},\"createdAt\":1}",
+    "zero": "{\"id\":\"\",\"type\":\"\",\"content\":null}"
+  },
+  "ConvPoint": {
+    "full": "{\"iteration\":1,\"findings\":2,\"color\":\"Color\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"iteration\":0,\"findings\":0,\"color\":\"\"}"
+  },
+  "ConversationLine": {
+    "full": "{\"role\":\"Role\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"at\":1}",
+    "zero": "{\"role\":\"\",\"text\":\"\"}"
+  },
+  "CopyFilesPreview": {
+    "full": "{\"root\":\"Root\\u003c\\u0026\\u003e\",\"files\":[\"Files0\\u003c\\u0026\\u003e\"],\"count\":1,\"truncated\":true,\"error\":\"Error\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"root\":\"\",\"files\":null,\"count\":0}"
+  },
+  "DiffLine": {
+    "full": "{\"old\":\"Old\\u003c\\u0026\\u003e\",\"new\":\"New\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"codeHtml\":\"CodeHTML\\u003c\\u0026\\u003e\",\"extraHtml\":\"ExtraHTML\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"old\":\"\",\"new\":\"\",\"type\":\"\",\"codeHtml\":\"\"}"
+  },
+  "DiffStat": {
+    "full": "{\"add\":1,\"del\":2}",
+    "zero": "{\"add\":0,\"del\":0}"
+  },
+  "DupClone": {
+    "full": "{\"lines\":1,\"preview\":\"Preview\\u003c\\u0026\\u003e\",\"occurrences\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":2,\"end\":3,\"text\":\"Text\\u003c\\u0026\\u003e\"}]}",
+    "zero": "{\"lines\":0,\"preview\":\"\"}"
+  },
+  "DupLoc": {
+    "full": "{\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":1,\"end\":2,\"text\":\"Text\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"path\":\"\",\"line\":0,\"end\":0,\"text\":\"\"}"
+  },
+  "Escalation": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"agentCode\":\"AgentCode\\u003c\\u0026\\u003e\",\"question\":\"Question\\u003c\\u0026\\u003e\",\"context\":\"Context\\u003c\\u0026\\u003e\",\"options\":[{\"text\":\"Text\\u003c\\u0026\\u003e\",\"tag\":\"Tag\\u003c\\u0026\\u003e\",\"desc\":\"Desc\\u003c\\u0026\\u003e\"}],\"answer\":\"Answer\\u003c\\u0026\\u003e\",\"choice\":\"Choice\\u003c\\u0026\\u003e\",\"freeText\":\"FreeText\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"applied\":true,\"askedAgo\":\"AskedAgo\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"workspaceId\":\"\",\"question\":\"\",\"context\":\"\",\"options\":null,\"answer\":\"\",\"status\":\"\",\"applied\":false,\"askedAgo\":\"\"}"
+  },
+  "EscalationOption": {
+    "full": "{\"text\":\"Text\\u003c\\u0026\\u003e\",\"tag\":\"Tag\\u003c\\u0026\\u003e\",\"desc\":\"Desc\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"text\":\"\",\"tag\":\"\",\"desc\":\"\"}"
+  },
+  "FallbackPayload": {
+    "full": "{\"from\":\"From\\u003c\\u0026\\u003e\",\"to\":\"To\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"from\":\"\",\"to\":\"\"}"
+  },
+  "FeedItem": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"agentCode\":\"AgentCode\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"time\":\"Time\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"clickAgent\":\"ClickAgent\\u003c\\u0026\\u003e\",\"isDeviation\":true,\"rule\":\"Rule\\u003c\\u0026\\u003e\",\"why\":\"Why\\u003c\\u0026\\u003e\",\"toolUseId\":\"ToolUseID\\u003c\\u0026\\u003e\",\"toolResult\":\"ToolResult\\u003c\\u0026\\u003e\",\"isToolError\":true,\"ts\":1,\"chatCode\":\"ChatCode\\u003c\\u0026\\u003e\",\"card\":\"Card\\u003c\\u0026\\u003e\",\"data\":\"Data\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"agentCode\":\"\",\"name\":\"\",\"text\":\"\",\"time\":\"\",\"isDeviation\":false}"
+  },
+  "FileContent": {
+    "full": "{\"path\":\"Path\\u003c\\u0026\\u003e\",\"language\":\"Language\\u003c\\u0026\\u003e\",\"content\":\"Content\\u003c\\u0026\\u003e\",\"size\":1,\"writable\":true,\"mime\":\"Mime\\u003c\\u0026\\u003e\",\"mtime\":2}",
+    "zero": "{\"path\":\"\",\"language\":\"\",\"content\":\"\",\"size\":0,\"writable\":false}"
+  },
+  "FileDiff": {
+    "full": "{\"path\":\"Path\\u003c\\u0026\\u003e\",\"oldPath\":\"OldPath\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"diff\":{\"add\":1,\"del\":2},\"lines\":[{\"old\":\"Old\\u003c\\u0026\\u003e\",\"new\":\"New\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"codeHtml\":\"CodeHTML\\u003c\\u0026\\u003e\",\"extraHtml\":\"ExtraHTML\\u003c\\u0026\\u003e\"}]}",
+    "zero": "{\"path\":\"\",\"status\":\"\",\"diff\":{\"add\":0,\"del\":0},\"lines\":null}"
+  },
+  "FileDiffResult": {
+    "full": "{\"files\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"oldPath\":\"OldPath\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"diff\":{\"add\":1,\"del\":2},\"lines\":[{\"old\":\"Old\\u003c\\u0026\\u003e\",\"new\":\"New\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"codeHtml\":\"CodeHTML\\u003c\\u0026\\u003e\",\"extraHtml\":\"ExtraHTML\\u003c\\u0026\\u003e\"}]}],\"truncated\":true}",
+    "zero": "{\"files\":null}"
+  },
+  "FileSearchHit": {
+    "full": "{\"path\":\"Path\\u003c\\u0026\\u003e\",\"score\":1,\"dir\":true}",
+    "zero": "{\"path\":\"\",\"score\":0,\"dir\":false}"
+  },
+  "FileSearchResult": {
+    "full": "{\"hits\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"score\":1,\"dir\":true}],\"building\":true,\"ready\":true}",
+    "zero": "{\"hits\":null,\"building\":false,\"ready\":false}"
+  },
+  "Finding": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"shortId\":\"ShortID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"iteration\":1,\"file\":\"File\\u003c\\u0026\\u003e\",\"line\":2,\"endLine\":3,\"severity\":\"Severity\\u003c\\u0026\\u003e\",\"message\":\"Message\\u003c\\u0026\\u003e\",\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"statusReason\":\"StatusReason\\u003c\\u0026\\u003e\",\"createdAt\":\"CreatedAt\\u003c\\u0026\\u003e\",\"updatedBy\":\"UpdatedBy\\u003c\\u0026\\u003e\",\"updatedAt\":\"UpdatedAt\\u003c\\u0026\\u003e\",\"notes\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"author\":\"Author\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"createdAt\":\"CreatedAt\\u003c\\u0026\\u003e\"}],\"source\":\"Source\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"shortId\":\"\",\"workspaceId\":\"\",\"iteration\":0,\"file\":\"\",\"line\":0,\"severity\":\"\",\"message\":\"\",\"status\":\"\"}"
+  },
+  "FindingNote": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"author\":\"Author\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"createdAt\":\"CreatedAt\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"author\":\"\",\"body\":\"\",\"createdAt\":\"\"}"
+  },
+  "FocusNote": {
+    "full": "{\"title\":\"Title\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"title\":\"\",\"body\":\"\"}"
+  },
+  "Hotspot": {
+    "full": "{\"path\":\"Path\\u003c\\u0026\\u003e\",\"loc\":1,\"complexity\":2,\"reason\":\"Reason\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"path\":\"\",\"loc\":0,\"complexity\":0,\"reason\":\"\"}"
+  },
+  "ImagePayload": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"mime\":\"Mime\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"mime\":\"\",\"path\":\"\"}"
+  },
+  "ImpactItem": {
+    "full": "{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":1,\"detail\":\"Detail\\u003c\\u0026\\u003e\",\"changed\":true}",
+    "zero": "{\"kind\":\"\",\"name\":\"\",\"path\":\"\",\"detail\":\"\",\"changed\":false}"
+  },
+  "InboxItem": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"group\":\"Group\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"color\":\"Color\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"sub\":\"Sub\\u003c\\u0026\\u003e\",\"time\":\"Time\\u003c\\u0026\\u003e\",\"action\":\"Action\\u003c\\u0026\\u003e\",\"actionClass\":\"ActionClass\\u003c\\u0026\\u003e\",\"unread\":true,\"target\":\"Target\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"group\":\"\",\"kind\":\"\",\"color\":\"\",\"title\":\"\",\"sub\":\"\",\"time\":\"\",\"action\":\"\",\"actionClass\":\"\",\"unread\":false,\"target\":\"\"}"
+  },
+  "IssueRef": {
+    "full": "{\"source\":\"Source\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"key\":\"Key\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"source\":\"\",\"id\":\"\"}"
+  },
+  "MCPServer": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"preset\":\"Preset\\u003c\\u0026\\u003e\",\"enabled\":true,\"transport\":\"Transport\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\",\"headers\":{\"HeadersK\\u003c\\u0026\\u003e\":\"HeadersV\\u003c\\u0026\\u003e\"},\"command\":\"Command\\u003c\\u0026\\u003e\",\"args\":[\"Args0\\u003c\\u0026\\u003e\"],\"env\":{\"EnvK\\u003c\\u0026\\u003e\":\"EnvV\\u003c\\u0026\\u003e\"}}",
+    "zero": "{\"id\":\"\",\"name\":\"\",\"enabled\":false}"
+  },
+  "Message": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"originSessionId\":\"OriginSessionID\\u003c\\u0026\\u003e\",\"role\":\"Role\\u003c\\u0026\\u003e\",\"modelId\":\"ModelID\\u003c\\u0026\\u003e\",\"provider\":\"Provider\\u003c\\u0026\\u003e\",\"streamStatus\":\"StreamStatus\\u003c\\u0026\\u003e\",\"startedAt\":1,\"completedAt\":2,\"inputTokens\":3,\"outputTokens\":4,\"cacheCreationTokens\":5,\"cacheReadTokens\":6,\"durationMs\":7,\"contextWindow\":8,\"createdAt\":9,\"content\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"content\":{\"k\":[1,\"\\u003cx\\u003e\"]},\"createdAt\":10}]}",
+    "zero": "{\"id\":\"\",\"originSessionId\":\"\",\"role\":\"\",\"streamStatus\":\"\",\"createdAt\":0,\"content\":null}"
+  },
+  "MetricDelta": {
+    "full": "{\"loc\":1,\"maxComplexity\":2,\"duplication\":3.5,\"todoCount\":4,\"hotspots\":5}",
+    "zero": "{\"loc\":0,\"maxComplexity\":0,\"duplication\":0,\"todoCount\":0,\"hotspots\":0}"
+  },
+  "MetricSnapshot": {
+    "full": "{\"files\":1,\"loc\":2,\"avgComplexity\":3.5,\"maxComplexity\":4,\"hotspots\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"loc\":5,\"complexity\":6,\"reason\":\"Reason\\u003c\\u0026\\u003e\"}],\"duplication\":7.5,\"duplicates\":[{\"lines\":8,\"preview\":\"Preview\\u003c\\u0026\\u003e\",\"occurrences\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":9,\"end\":10,\"text\":\"Text\\u003c\\u0026\\u003e\"}]}],\"todoCount\":11,\"testFiles\":12,\"coveragePct\":13.5}",
+    "zero": "{\"files\":0,\"loc\":0,\"avgComplexity\":0,\"maxComplexity\":0,\"duplication\":0,\"todoCount\":0,\"testFiles\":0}"
+  },
+  "ModelRef": {
+    "full": "{\"Provider\":\"Provider\\u003c\\u0026\\u003e\",\"ID\":\"ID\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"Provider\":\"\",\"ID\":\"\"}"
+  },
+  "OpenAsk": {
+    "full": "{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"agentCode\":\"AgentCode\\u003c\\u0026\\u003e\",\"summary\":\"Summary\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"kind\":\"\",\"id\":\"\",\"summary\":\"\"}"
+  },
+  "OpenInTarget": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"icon\":\"Icon\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"name\":\"\",\"kind\":\"\"}"
+  },
+  "OpenPathResult": {
+    "full": "{\"path\":\"Path\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"file\":\"File\\u003c\\u0026\\u003e\",\"reveal\":\"Reveal\\u003c\\u0026\\u003e\",\"created\":true,\"loose\":true,\"project\":{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"pic\":\"Pic\\u003c\\u0026\\u003e\",\"color\":\"Color\\u003c\\u0026\\u003e\",\"open\":true,\"idle\":true,\"repoPath\":\"RepoPath\\u003c\\u0026\\u003e\",\"baseBranch\":\"BaseBranch\\u003c\\u0026\\u003e\",\"setupCmd\":\"SetupCmd\\u003c\\u0026\\u003e\",\"teardownCmd\":\"TeardownCmd\\u003c\\u0026\\u003e\",\"appURL\":\"AppURL\\u003c\\u0026\\u003e\",\"runCommands\":[{\"name\":\"Name\\u003c\\u0026\\u003e\",\"cmd\":\"Cmd\\u003c\\u0026\\u003e\"}],\"pinnedRun\":\"PinnedRun\\u003c\\u0026\\u003e\",\"groupId\":\"GroupID\\u003c\\u0026\\u003e\",\"hidden\":true,\"env\":\"Env\\u003c\\u0026\\u003e\",\"copyFiles\":\"CopyFiles\\u003c\\u0026\\u003e\",\"hasProjectFile\":true,\"projectFileError\":\"ProjectFileError\\u003c\\u0026\\u003e\",\"writeProjectFile\":true,\"prOnGithub\":true,\"deleteBranchOnRemove\":true,\"linearProjects\":\"LinearProjects\\u003c\\u0026\\u003e\",\"mergeMethod\":\"MergeMethod\\u003c\\u0026\\u003e\",\"updateBaseMethod\":\"UpdateBaseMethod\\u003c\\u0026\\u003e\",\"squashCommitMessage\":\"SquashCommitMessage\\u003c\\u0026\\u003e\",\"mergeCommitMessage\":\"MergeCommitMessage\\u003c\\u0026\\u003e\",\"disabledSkills\":[\"DisabledSkills0\\u003c\\u0026\\u003e\"],\"enabledSkills\":[\"EnabledSkills0\\u003c\\u0026\\u003e\"],\"disabledMCP\":[\"DisabledMCP0\\u003c\\u0026\\u003e\"],\"enabledMCP\":[\"EnabledMCP0\\u003c\\u0026\\u003e\"],\"isGit\":true},\"workspace\":{\"scheduledPromptPending\":true,\"scheduleId\":\"ScheduleID\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"runStarted\":true,\"isMain\":true,\"hostPrId\":\"HostPRID\\u003c\\u0026\\u003e\",\"issue\":{\"source\":\"Source\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"key\":\"Key\\u003c\\u0026\\u003e\"},\"group\":\"Group\\u003c\\u0026\\u003e\",\"goal\":\"Goal\\u003c\\u0026\\u003e\",\"goalDisplay\":\"GoalDisplay\\u003c\\u0026\\u003e\",\"short\":\"Short\\u003c\\u0026\\u003e\",\"definitionOfDone\":\"DefinitionOfDone\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"statusLabel\":\"StatusLabel\\u003c\\u0026\\u003e\",\"phase\":\"Phase\\u003c\\u0026\\u003e\",\"iteration\":1,\"progress\":2.5,\"autonomy\":\"Autonomy\\u003c\\u0026\\u003e\",\"loopId\":\"LoopID\\u003c\\u0026\\u003e\",\"policyId\":\"PolicyID\\u003c\\u0026\\u003e\",\"loopChatCode\":\"LoopChatCode\\u003c\\u0026\\u003e\",\"branch\":\"Branch\\u003c\\u0026\\u003e\",\"baseBranch\":\"BaseBranch\\u003c\\u0026\\u003e\",\"behindBase\":3,\"worktreePath\":\"WorktreePath\\u003c\\u0026\\u003e\",\"port\":4,\"diff\":{\"add\":5,\"del\":6},\"agentCodes\":[\"AgentCodes0\\u003c\\u0026\\u003e\"],\"last\":\"Last\\u003c\\u0026\\u003e\",\"lastActivityAt\":7,\"lastViewedAt\":8,\"seenActivityAt\":9,\"elapsedLabel\":\"ElapsedLabel\\u003c\\u0026\\u003e\",\"convergence\":[{\"iteration\":10,\"findings\":11,\"color\":\"Color\\u003c\\u0026\\u003e\"}],\"parentId\":\"ParentID\\u003c\\u0026\\u003e\",\"parentStepIds\":[\"ParentStepIDs0\\u003c\\u0026\\u003e\"],\"fanOut\":{\"wave\":12,\"outcome\":\"Outcome\\u003c\\u0026\\u003e\",\"note\":\"Note\\u003c\\u0026\\u003e\",\"chat\":\"Chat\\u003c\\u0026\\u003e\",\"mode\":\"Mode\\u003c\\u0026\\u003e\"},\"parentPhaseId\":\"ParentPhaseID\\u003c\\u0026\\u003e\",\"fanOutWaves\":13,\"handoff\":\"Handoff\\u003c\\u0026\\u003e\",\"verify\":[{\"html\":\"HTML\\u003c\\u0026\\u003e\",\"passed\":true,\"screenshot\":\"Screenshot\\u003c\\u0026\\u003e\"}],\"verifyState\":\"VerifyState\\u003c\\u0026\\u003e\",\"archived\":true,\"testResult\":{\"passed\":true,\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"when\":\"When\\u003c\\u0026\\u003e\"},\"checkpoint\":{\"state\":\"State\\u003c\\u0026\\u003e\",\"iteration\":14,\"at\":\"At\\u003c\\u0026\\u003e\",\"phaseId\":\"PhaseID\\u003c\\u0026\\u003e\",\"resumePhaseId\":\"ResumePhaseID\\u003c\\u0026\\u003e\"},\"plan\":{\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"source\":\"Source\\u003c\\u0026\\u003e\",\"chatCode\":\"ChatCode\\u003c\\u0026\\u003e\",\"approved\":true},\"lastError\":\"LastError\\u003c\\u0026\\u003e\",\"retryable\":true,\"chatTabOrder\":[\"ChatTabOrder0\\u003c\\u0026\\u003e\"]}}",
+    "zero": "{\"path\":\"\"}"
+  },
+  "OutlineSymbol": {
+    "full": "{\"name\":\"Name\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"line\":1,\"end\":2}",
+    "zero": "{\"name\":\"\",\"kind\":\"\",\"line\":0}"
+  },
+  "PR": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"group\":\"Group\\u003c\\u0026\\u003e\",\"number\":1,\"source\":\"Source\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\",\"headSha\":\"HeadSHA\\u003c\\u0026\\u003e\",\"draft\":true,\"branch\":\"Branch\\u003c\\u0026\\u003e\",\"base\":\"Base\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"summary\":[{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"html\":\"HTML\\u003c\\u0026\\u003e\",\"items\":[\"Items0\\u003c\\u0026\\u003e\"]}],\"focus\":{\"title\":\"Title\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\"},\"state\":\"State\\u003c\\u0026\\u003e\",\"diff\":{\"add\":2,\"del\":3},\"fileCount\":4,\"checksOk\":true,\"hasChecks\":true,\"when\":\"When\\u003c\\u0026\\u003e\",\"createdAt\":\"CreatedAt\\u003c\\u0026\\u003e\",\"updatedAt\":\"UpdatedAt\\u003c\\u0026\\u003e\",\"commits\":[{\"hash\":\"Hash\\u003c\\u0026\\u003e\",\"sha\":\"SHA\\u003c\\u0026\\u003e\",\"message\":\"Message\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"author\":\"Author\\u003c\\u0026\\u003e\",\"authorRole\":\"AuthorRole\\u003c\\u0026\\u003e\",\"agentCode\":\"AgentCode\\u003c\\u0026\\u003e\",\"color\":\"Color\\u003c\\u0026\\u003e\",\"iterLabel\":\"IterLabel\\u003c\\u0026\\u003e\",\"diff\":{\"add\":5,\"del\":6},\"when\":\"When\\u003c\\u0026\\u003e\",\"files\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"oldPath\":\"OldPath\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"diff\":{\"add\":7,\"del\":8},\"lines\":null}],\"avatarUrl\":\"AvatarURL\\u003c\\u0026\\u003e\",\"verified\":true,\"checkStatus\":\"CheckStatus\\u003c\\u0026\\u003e\"}],\"files\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"oldPath\":\"OldPath\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"diff\":{\"add\":9,\"del\":10},\"lines\":[{\"old\":\"Old\\u003c\\u0026\\u003e\",\"new\":\"New\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"codeHtml\":\"CodeHTML\\u003c\\u0026\\u003e\",\"extraHtml\":\"ExtraHTML\\u003c\\u0026\\u003e\"}]}],\"comments\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"code\":\"Code\\u003c\\u0026\\u003e\",\"author\":\"Author\\u003c\\u0026\\u003e\",\"authorLogin\":\"AuthorLogin\\u003c\\u0026\\u003e\",\"avatarCss\":\"AvatarCSS\\u003c\\u0026\\u003e\",\"avatarUrl\":\"AvatarURL\\u003c\\u0026\\u003e\",\"time\":\"Time\\u003c\\u0026\\u003e\",\"bodyHtml\":\"BodyHTML\\u003c\\u0026\\u003e\",\"reactHtml\":\"ReactHTML\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"verb\":\"Verb\\u003c\\u0026\\u003e\",\"bodyMd\":\"BodyMD\\u003c\\u0026\\u003e\",\"at\":\"At\\u003c\\u0026\\u003e\",\"commitSha\":\"CommitSHA\\u003c\\u0026\\u003e\",\"verified\":true,\"checkStatus\":\"CheckStatus\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\",\"parentId\":\"ParentID\\u003c\\u0026\\u003e\",\"reviewId\":\"ReviewID\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":11,\"side\":\"Side\\u003c\\u0026\\u003e\",\"diffHunk\":\"DiffHunk\\u003c\\u0026\\u003e\",\"startLine\":12,\"startSide\":\"StartSide\\u003c\\u0026\\u003e\",\"outdated\":true,\"inReplyToId\":\"InReplyToID\\u003c\\u0026\\u003e\",\"threadId\":\"ThreadID\\u003c\\u0026\\u003e\",\"resolved\":true,\"nodeId\":\"NodeID\\u003c\\u0026\\u003e\",\"reactions\":[{\"content\":\"Content\\u003c\\u0026\\u003e\",\"count\":13,\"mine\":true}]}],\"pendingComments\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"file\":\"File\\u003c\\u0026\\u003e\",\"line\":14,\"side\":\"Side\\u003c\\u0026\\u003e\",\"startLine\":15,\"startSide\":\"StartSide\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"findingId\":\"FindingID\\u003c\\u0026\\u003e\"}],\"verify\":[{\"html\":\"HTML\\u003c\\u0026\\u003e\",\"passed\":true,\"screenshot\":\"Screenshot\\u003c\\u0026\\u003e\"}],\"checks\":[{\"name\":\"Name\\u003c\\u0026\\u003e\",\"detail\":\"Detail\\u003c\\u0026\\u003e\",\"passed\":true,\"status\":\"Status\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\",\"startedAt\":\"StartedAt\\u003c\\u0026\\u003e\"}],\"behindBase\":16,\"updatingBase\":\"UpdatingBase\\u003c\\u0026\\u003e\",\"impact\":[{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":17,\"detail\":\"Detail\\u003c\\u0026\\u003e\",\"changed\":true}],\"authorLogin\":\"AuthorLogin\\u003c\\u0026\\u003e\",\"participants\":[{\"login\":\"Login\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"avatarUrl\":\"AvatarURL\\u003c\\u0026\\u003e\",\"avatarCss\":\"AvatarCSS\\u003c\\u0026\\u003e\",\"code\":\"Code\\u003c\\u0026\\u003e\"}],\"reviewers\":[{\"login\":\"Login\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"avatarUrl\":\"AvatarURL\\u003c\\u0026\\u003e\",\"avatarCss\":\"AvatarCSS\\u003c\\u0026\\u003e\",\"code\":\"Code\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\"}],\"viewerLogin\":\"ViewerLogin\\u003c\\u0026\\u003e\",\"viewerCanWrite\":true,\"nodeId\":\"NodeID\\u003c\\u0026\\u003e\",\"mergeable\":\"Mergeable\\u003c\\u0026\\u003e\",\"mergeStateStatus\":\"MergeStateStatus\\u003c\\u0026\\u003e\",\"reviewDecision\":\"ReviewDecision\\u003c\\u0026\\u003e\",\"reviewRequested\":true,\"attentionReasons\":[\"AttentionReasons0\\u003c\\u0026\\u003e\"],\"isCrossRepository\":true,\"allowedMergeMethods\":[\"AllowedMergeMethods0\\u003c\\u0026\\u003e\"],\"mergeQueueEnabled\":true,\"mergeQueued\":true}",
+    "zero": "{\"id\":\"\",\"workspaceId\":\"\",\"group\":\"\",\"number\":0,\"source\":\"\",\"branch\":\"\",\"base\":\"\",\"title\":\"\",\"summary\":null,\"focus\":{\"title\":\"\",\"body\":\"\"},\"state\":\"\",\"diff\":{\"add\":0,\"del\":0},\"fileCount\":0,\"checksOk\":false,\"when\":\"\",\"commits\":null,\"files\":null,\"comments\":null,\"verify\":null,\"checks\":null}"
+  },
+  "PRComment": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"code\":\"Code\\u003c\\u0026\\u003e\",\"author\":\"Author\\u003c\\u0026\\u003e\",\"authorLogin\":\"AuthorLogin\\u003c\\u0026\\u003e\",\"avatarCss\":\"AvatarCSS\\u003c\\u0026\\u003e\",\"avatarUrl\":\"AvatarURL\\u003c\\u0026\\u003e\",\"time\":\"Time\\u003c\\u0026\\u003e\",\"bodyHtml\":\"BodyHTML\\u003c\\u0026\\u003e\",\"reactHtml\":\"ReactHTML\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"verb\":\"Verb\\u003c\\u0026\\u003e\",\"bodyMd\":\"BodyMD\\u003c\\u0026\\u003e\",\"at\":\"At\\u003c\\u0026\\u003e\",\"commitSha\":\"CommitSHA\\u003c\\u0026\\u003e\",\"verified\":true,\"checkStatus\":\"CheckStatus\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\",\"parentId\":\"ParentID\\u003c\\u0026\\u003e\",\"reviewId\":\"ReviewID\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":1,\"side\":\"Side\\u003c\\u0026\\u003e\",\"diffHunk\":\"DiffHunk\\u003c\\u0026\\u003e\",\"startLine\":2,\"startSide\":\"StartSide\\u003c\\u0026\\u003e\",\"outdated\":true,\"inReplyToId\":\"InReplyToID\\u003c\\u0026\\u003e\",\"threadId\":\"ThreadID\\u003c\\u0026\\u003e\",\"resolved\":true,\"nodeId\":\"NodeID\\u003c\\u0026\\u003e\",\"reactions\":[{\"content\":\"Content\\u003c\\u0026\\u003e\",\"count\":3,\"mine\":true}]}",
+    "zero": "{\"id\":\"\",\"code\":\"\",\"author\":\"\",\"avatarCss\":\"\",\"time\":\"\",\"bodyHtml\":\"\"}"
+  },
+  "PRParticipant": {
+    "full": "{\"login\":\"Login\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"avatarUrl\":\"AvatarURL\\u003c\\u0026\\u003e\",\"avatarCss\":\"AvatarCSS\\u003c\\u0026\\u003e\",\"code\":\"Code\\u003c\\u0026\\u003e\"}",
+    "zero": "{}"
+  },
+  "PRReaction": {
+    "full": "{\"content\":\"Content\\u003c\\u0026\\u003e\",\"count\":1,\"mine\":true}",
+    "zero": "{\"content\":\"\",\"count\":0}"
+  },
+  "PRReviewer": {
+    "full": "{\"login\":\"Login\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"avatarUrl\":\"AvatarURL\\u003c\\u0026\\u003e\",\"avatarCss\":\"AvatarCSS\\u003c\\u0026\\u003e\",\"code\":\"Code\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"state\":\"\"}"
+  },
+  "PRSummary": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"number\":1,\"title\":\"Title\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"reviewDecision\":\"ReviewDecision\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"number\":0,\"title\":\"\"}"
+  },
+  "PendingLineComment": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"file\":\"File\\u003c\\u0026\\u003e\",\"line\":1,\"side\":\"Side\\u003c\\u0026\\u003e\",\"startLine\":2,\"startSide\":\"StartSide\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"findingId\":\"FindingID\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"file\":\"\",\"line\":0,\"body\":\"\"}"
+  },
+  "PermissionDecision": {
+    "full": "{\"allow\":true,\"reason\":\"Reason\\u003c\\u0026\\u003e\",\"remember\":true}",
+    "zero": "{\"allow\":false}"
+  },
+  "PermissionRequest": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"agentCode\":\"AgentCode\\u003c\\u0026\\u003e\",\"surface\":\"Surface\\u003c\\u0026\\u003e\",\"tool\":\"Tool\\u003c\\u0026\\u003e\",\"input\":\"Input\\u003c\\u0026\\u003e\",\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"askedAgo\":\"AskedAgo\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"workspaceId\":\"\",\"agentCode\":\"\",\"surface\":\"\",\"tool\":\"\",\"input\":\"\",\"summary\":\"\",\"askedAgo\":\"\"}"
+  },
+  "Plan": {
+    "full": "{\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"steps\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"note\":\"Note\\u003c\\u0026\\u003e\",\"files\":[\"Files0\\u003c\\u0026\\u003e\"],\"dependsOn\":[\"DependsOn0\\u003c\\u0026\\u003e\"],\"workspace\":\"Workspace\\u003c\\u0026\\u003e\"}],\"attachments\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\"}],\"source\":\"Source\\u003c\\u0026\\u003e\",\"chatCode\":\"ChatCode\\u003c\\u0026\\u003e\",\"approved\":true}",
+    "zero": "{\"summary\":\"\"}"
+  },
+  "PlanAttachment": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"kind\":\"\",\"path\":\"\"}"
+  },
+  "PlanStep": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"note\":\"Note\\u003c\\u0026\\u003e\",\"files\":[\"Files0\\u003c\\u0026\\u003e\"],\"dependsOn\":[\"DependsOn0\\u003c\\u0026\\u003e\"],\"workspace\":\"Workspace\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"title\":\"\",\"status\":\"\"}"
+  },
+  "Policy": {
+    "full": "{\"autonomy\":\"Autonomy\\u003c\\u0026\\u003e\",\"rails\":[{\"key\":\"Key\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"desc\":\"Desc\\u003c\\u0026\\u003e\",\"on\":true}]}",
+    "zero": "{\"autonomy\":\"\",\"rails\":null}"
+  },
+  "PresentWorkspaceResult": {
+    "full": "{\"ok\":true,\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"brief\":{\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"projectName\":\"ProjectName\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"branch\":\"Branch\\u003c\\u0026\\u003e\",\"bucket\":\"Bucket\\u003c\\u0026\\u003e\",\"reasons\":[\"Reasons0\\u003c\\u0026\\u003e\"],\"now\":\"Now\\u003c\\u0026\\u003e\",\"next\":\"Next\\u003c\\u0026\\u003e\",\"lastActivityAt\":1,\"lastViewedAt\":2,\"seenActivityAt\":3,\"changedSinceViewed\":true,\"quietAge\":\"QuietAge\\u003c\\u0026\\u003e\",\"lastSummary\":\"LastSummary\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"phase\":\"Phase\\u003c\\u0026\\u003e\",\"planSummary\":\"PlanSummary\\u003c\\u0026\\u003e\",\"planDone\":4,\"planTotal\":5,\"activeAgents\":6,\"activeAgentTask\":\"ActiveAgentTask\\u003c\\u0026\\u003e\",\"latestChatCode\":\"LatestChatCode\\u003c\\u0026\\u003e\",\"latestChatTitle\":\"LatestChatTitle\\u003c\\u0026\\u003e\",\"diffAdd\":7,\"diffDel\":8,\"prId\":\"PRID\\u003c\\u0026\\u003e\",\"prNumber\":9,\"isPrHost\":true,\"primary\":{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"},\"secondary\":[{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"}]},\"error\":\"Error\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"ok\":false,\"target\":\"\"}"
+  },
+  "Project": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"pic\":\"Pic\\u003c\\u0026\\u003e\",\"color\":\"Color\\u003c\\u0026\\u003e\",\"open\":true,\"idle\":true,\"repoPath\":\"RepoPath\\u003c\\u0026\\u003e\",\"baseBranch\":\"BaseBranch\\u003c\\u0026\\u003e\",\"setupCmd\":\"SetupCmd\\u003c\\u0026\\u003e\",\"teardownCmd\":\"TeardownCmd\\u003c\\u0026\\u003e\",\"appURL\":\"AppURL\\u003c\\u0026\\u003e\",\"runCommands\":[{\"name\":\"Name\\u003c\\u0026\\u003e\",\"cmd\":\"Cmd\\u003c\\u0026\\u003e\"}],\"pinnedRun\":\"PinnedRun\\u003c\\u0026\\u003e\",\"groupId\":\"GroupID\\u003c\\u0026\\u003e\",\"hidden\":true,\"env\":\"Env\\u003c\\u0026\\u003e\",\"copyFiles\":\"CopyFiles\\u003c\\u0026\\u003e\",\"hasProjectFile\":true,\"projectFileError\":\"ProjectFileError\\u003c\\u0026\\u003e\",\"writeProjectFile\":true,\"prOnGithub\":true,\"deleteBranchOnRemove\":true,\"linearProjects\":\"LinearProjects\\u003c\\u0026\\u003e\",\"mergeMethod\":\"MergeMethod\\u003c\\u0026\\u003e\",\"updateBaseMethod\":\"UpdateBaseMethod\\u003c\\u0026\\u003e\",\"squashCommitMessage\":\"SquashCommitMessage\\u003c\\u0026\\u003e\",\"mergeCommitMessage\":\"MergeCommitMessage\\u003c\\u0026\\u003e\",\"disabledSkills\":[\"DisabledSkills0\\u003c\\u0026\\u003e\"],\"enabledSkills\":[\"EnabledSkills0\\u003c\\u0026\\u003e\"],\"disabledMCP\":[\"DisabledMCP0\\u003c\\u0026\\u003e\"],\"enabledMCP\":[\"EnabledMCP0\\u003c\\u0026\\u003e\"],\"isGit\":true}",
+    "zero": "{\"id\":\"\",\"name\":\"\",\"pic\":\"\",\"color\":\"\",\"open\":false,\"idle\":false,\"repoPath\":\"\",\"baseBranch\":\"\",\"setupCmd\":\"\",\"teardownCmd\":\"\",\"appURL\":\"\",\"prOnGithub\":false,\"isGit\":false}"
+  },
+  "ProjectGroup": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"open\":true,\"createdAt\":\"CreatedAt\\u003c\\u0026\\u003e\",\"updatedAt\":\"UpdatedAt\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"name\":\"\",\"open\":false,\"createdAt\":\"\",\"updatedAt\":\"\"}"
+  },
+  "Rail": {
+    "full": "{\"key\":\"Key\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"desc\":\"Desc\\u003c\\u0026\\u003e\",\"on\":true}",
+    "zero": "{\"key\":\"\",\"title\":\"\",\"desc\":\"\",\"on\":false}"
+  },
+  "ReplaceResult": {
+    "full": "{\"filesChanged\":1,\"replacements\":2}",
+    "zero": "{\"filesChanged\":0,\"replacements\":0}"
+  },
+  "Resource": {
+    "full": "{\"loopsRunning\":1,\"needsYou\":2,\"itersToday\":3,\"gitWarning\":\"GitWarning\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"loopsRunning\":0,\"needsYou\":0,\"itersToday\":0}"
+  },
+  "RunCommand": {
+    "full": "{\"name\":\"Name\\u003c\\u0026\\u003e\",\"cmd\":\"Cmd\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"name\":\"\",\"cmd\":\"\"}"
+  },
+  "ScheduledPrompt": {
+    "full": "{\"flags\":{\"FlagsK\\u003c\\u0026\\u003e\":\"FlagsV\\u003c\\u0026\\u003e\"},\"simplify\":true,\"cron\":\"Cron\\u003c\\u0026\\u003e\",\"loopId\":\"LoopID\\u003c\\u0026\\u003e\",\"policyId\":\"PolicyID\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"prompt\":\"Prompt\\u003c\\u0026\\u003e\",\"baseBranch\":\"BaseBranch\\u003c\\u0026\\u003e\",\"mode\":\"Mode\\u003c\\u0026\\u003e\",\"model\":\"Model\\u003c\\u0026\\u003e\",\"cadence\":\"Cadence\\u003c\\u0026\\u003e\",\"date\":\"Date\\u003c\\u0026\\u003e\",\"time\":\"Time\\u003c\\u0026\\u003e\",\"timeZone\":\"TimeZone\\u003c\\u0026\\u003e\",\"paused\":true,\"nextRunAt\":1,\"lastRun\":{\"id\":\"ID\\u003c\\u0026\\u003e\",\"scheduleId\":\"ScheduleID\\u003c\\u0026\\u003e\",\"dueAt\":2,\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"detail\":\"Detail\\u003c\\u0026\\u003e\"}}",
+    "zero": "{\"cron\":\"\",\"loopId\":\"\",\"policyId\":\"\",\"id\":\"\",\"projectId\":\"\",\"name\":\"\",\"prompt\":\"\",\"baseBranch\":\"\",\"mode\":\"\",\"model\":\"\",\"cadence\":\"\",\"date\":\"\",\"time\":\"\",\"timeZone\":\"\",\"paused\":false,\"nextRunAt\":0}"
+  },
+  "ScheduledPromptRun": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"scheduleId\":\"ScheduleID\\u003c\\u0026\\u003e\",\"dueAt\":1,\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"detail\":\"Detail\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"scheduleId\":\"\",\"dueAt\":0,\"workspaceId\":\"\",\"status\":\"\",\"detail\":\"\"}"
+  },
+  "SearchHit": {
+    "full": "{\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":1,\"col\":2,\"text\":\"Text\\u003c\\u0026\\u003e\",\"preview\":\"Preview\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"path\":\"\",\"line\":0,\"col\":0,\"text\":\"\",\"preview\":\"\"}"
+  },
+  "SearchOpts": {
+    "full": "{\"regex\":true,\"caseSensitive\":true,\"glob\":\"Glob\\u003c\\u0026\\u003e\",\"limit\":1,\"offset\":2}",
+    "zero": "{\"regex\":false,\"caseSensitive\":false,\"glob\":\"\",\"limit\":0,\"offset\":0}"
+  },
+  "SearchResult": {
+    "full": "{\"hits\":[{\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":1,\"col\":2,\"text\":\"Text\\u003c\\u0026\\u003e\",\"preview\":\"Preview\\u003c\\u0026\\u003e\"}],\"skippedLarge\":3,\"truncated\":true}",
+    "zero": "{\"hits\":null,\"skippedLarge\":0,\"truncated\":false}"
+  },
+  "Session": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"parentSessionId\":\"ParentSessionID\\u003c\\u0026\\u003e\",\"forkMessageId\":\"ForkMessageID\\u003c\\u0026\\u003e\",\"contextMode\":\"ContextMode\\u003c\\u0026\\u003e\",\"provider\":\"Provider\\u003c\\u0026\\u003e\",\"providerSessionRef\":\"ProviderSessionRef\\u003c\\u0026\\u003e\",\"configJson\":\"ConfigJSON\\u003c\\u0026\\u003e\",\"activeContextId\":\"ActiveContextID\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"createdAt\":1,\"updatedAt\":2}",
+    "zero": "{\"id\":\"\",\"kind\":\"\",\"contextMode\":\"\",\"provider\":\"\",\"status\":\"\",\"createdAt\":0,\"updatedAt\":0}"
+  },
+  "SessionContext": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"sessionId\":\"SessionID\\u003c\\u0026\\u003e\",\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"lastCompactedMessageId\":\"LastCompactedMessageID\\u003c\\u0026\\u003e\",\"createdAt\":1}",
+    "zero": "{\"id\":\"\",\"sessionId\":\"\",\"summary\":\"\",\"lastCompactedMessageId\":\"\",\"createdAt\":0}"
+  },
+  "SessionView": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"code\":\"Code\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"ownerCode\":\"OwnerCode\\u003c\\u0026\\u003e\",\"createdAt\":1,\"updatedAt\":2,\"items\":[{\"role\":\"Role\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"tool\":\"Tool\\u003c\\u0026\\u003e\",\"toolInput\":\"ToolInput\\u003c\\u0026\\u003e\",\"tokens\":3,\"description\":\"Description\\u003c\\u0026\\u003e\",\"input\":\"Input\\u003c\\u0026\\u003e\",\"result\":\"Result\\u003c\\u0026\\u003e\",\"resultError\":true,\"resultTruncated\":true,\"resultPending\":true,\"durationMs\":4,\"messageId\":\"MessageID\\u003c\\u0026\\u003e\",\"checkpoint\":true,\"inputTokens\":5,\"cacheCreationTokens\":6,\"cacheReadTokens\":7,\"contextWindow\":8,\"attachments\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"mime\":\"Mime\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\"}],\"ts\":9,\"toolId\":\"ToolID\\u003c\\u0026\\u003e\",\"children\":[{\"role\":\"Role\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"tool\":\"Tool\\u003c\\u0026\\u003e\",\"toolInput\":\"ToolInput\\u003c\\u0026\\u003e\",\"tokens\":10,\"description\":\"Description\\u003c\\u0026\\u003e\",\"input\":\"Input\\u003c\\u0026\\u003e\",\"result\":\"Result\\u003c\\u0026\\u003e\",\"resultError\":true,\"resultTruncated\":true,\"resultPending\":true,\"durationMs\":11,\"messageId\":\"MessageID\\u003c\\u0026\\u003e\",\"checkpoint\":true,\"inputTokens\":12,\"cacheCreationTokens\":13,\"cacheReadTokens\":14,\"contextWindow\":15,\"ts\":16,\"toolId\":\"ToolID\\u003c\\u0026\\u003e\"}]}]}",
+    "zero": "{\"id\":\"\",\"code\":\"\",\"name\":\"\",\"kind\":\"\",\"status\":\"\",\"createdAt\":0,\"updatedAt\":0,\"items\":null}"
+  },
+  "Settings": {
+    "full": "{\"modelAsk\":\"ModelAsk\\u003c\\u0026\\u003e\",\"modelPlan\":\"ModelPlan\\u003c\\u0026\\u003e\",\"modelAgent\":\"ModelAgent\\u003c\\u0026\\u003e\",\"modelReview\":\"ModelReview\\u003c\\u0026\\u003e\",\"modelLoop\":\"ModelLoop\\u003c\\u0026\\u003e\",\"modelWorkspaceTitle\":\"ModelWorkspaceTitle\\u003c\\u0026\\u003e\",\"flagsAsk\":{\"FlagsAskK\\u003c\\u0026\\u003e\":\"FlagsAskV\\u003c\\u0026\\u003e\"},\"flagsPlan\":{\"FlagsPlanK\\u003c\\u0026\\u003e\":\"FlagsPlanV\\u003c\\u0026\\u003e\"},\"flagsAgent\":{\"FlagsAgentK\\u003c\\u0026\\u003e\":\"FlagsAgentV\\u003c\\u0026\\u003e\"},\"flagsReview\":{\"FlagsReviewK\\u003c\\u0026\\u003e\":\"FlagsReviewV\\u003c\\u0026\\u003e\"},\"flagsLoop\":{\"FlagsLoopK\\u003c\\u0026\\u003e\":\"FlagsLoopV\\u003c\\u0026\\u003e\"},\"flagsWorkspaceTitle\":{\"FlagsWorkspaceTitleK\\u003c\\u0026\\u003e\":\"FlagsWorkspaceTitleV\\u003c\\u0026\\u003e\"},\"childWorkspaceModel\":\"ChildWorkspaceModel\\u003c\\u0026\\u003e\",\"bypassPermissions\":true,\"maxLoops\":1,\"maxAgents\":2,\"defaultMergeMethod\":\"DefaultMergeMethod\\u003c\\u0026\\u003e\",\"defaultUpdateBaseMethod\":\"DefaultUpdateBaseMethod\\u003c\\u0026\\u003e\",\"defaultSquashCommitMessage\":\"DefaultSquashCommitMessage\\u003c\\u0026\\u003e\",\"defaultMergeCommitMessage\":\"DefaultMergeCommitMessage\\u003c\\u0026\\u003e\",\"branchNamePrefix\":\"BranchNamePrefix\\u003c\\u0026\\u003e\",\"branchPrefixMode\":\"BranchPrefixMode\\u003c\\u0026\\u003e\",\"branchPrefixCustom\":\"BranchPrefixCustom\\u003c\\u0026\\u003e\",\"cursorApiKey\":\"CursorAPIKey\\u003c\\u0026\\u003e\",\"cursorBridgePath\":\"CursorBridgePath\\u003c\\u0026\\u003e\",\"cursorStrictConfig\":true,\"cursorAttributeCommits\":true,\"cursorAttributePRs\":true,\"bundleValues\":{\"BundleValuesK\\u003c\\u0026\\u003e\":\"BundleValuesV\\u003c\\u0026\\u003e\"},\"linearApiKey\":\"LinearAPIKey\\u003c\\u0026\\u003e\",\"linearTeamKey\":\"LinearTeamKey\\u003c\\u0026\\u003e\",\"preventSleepWhileAgentsRun\":true,\"showHiddenProjects\":true,\"queueFollowUps\":true,\"agentTurnTimeoutMinutes\":3,\"scheduledWorkspaceKeep\":4,\"codexApiKey\":\"CodexAPIKey\\u003c\\u0026\\u003e\",\"codexChatGPTAuth\":true,\"codexBinPath\":\"CodexBinPath\\u003c\\u0026\\u003e\",\"codexNetworkAccess\":true,\"disabledBundleCommands\":[\"DisabledBundleCommands0\\u003c\\u0026\\u003e\"],\"disabledBundlePrompts\":[\"DisabledBundlePrompts0\\u003c\\u0026\\u003e\"],\"disabledBundleGrammars\":[\"DisabledBundleGrammars0\\u003c\\u0026\\u003e\"],\"disabledBundleThemes\":[\"DisabledBundleThemes0\\u003c\\u0026\\u003e\"],\"disabledBundleSnippets\":[\"DisabledBundleSnippets0\\u003c\\u0026\\u003e\"],\"disabledLanguageServers\":[\"DisabledLanguageServers0\\u003c\\u0026\\u003e\"],\"defaultLoop\":\"DefaultLoop\\u003c\\u0026\\u003e\",\"defaultPolicy\":\"DefaultPolicy\\u003c\\u0026\\u003e\",\"disabledBundleLoops\":[\"DisabledBundleLoops0\\u003c\\u0026\\u003e\"],\"disabledBundleRoles\":[\"DisabledBundleRoles0\\u003c\\u0026\\u003e\"],\"disabledBundlePolicies\":[\"DisabledBundlePolicies0\\u003c\\u0026\\u003e\"],\"disabledSkills\":[\"DisabledSkills0\\u003c\\u0026\\u003e\"],\"mcpServers\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"preset\":\"Preset\\u003c\\u0026\\u003e\",\"enabled\":true,\"transport\":\"Transport\\u003c\\u0026\\u003e\",\"url\":\"URL\\u003c\\u0026\\u003e\",\"headers\":{\"HeadersK\\u003c\\u0026\\u003e\":\"HeadersV\\u003c\\u0026\\u003e\"},\"command\":\"Command\\u003c\\u0026\\u003e\",\"args\":[\"Args0\\u003c\\u0026\\u003e\"],\"env\":{\"EnvK\\u003c\\u0026\\u003e\":\"EnvV\\u003c\\u0026\\u003e\"}}],\"simplify\":true,\"disabledProviders\":[\"DisabledProviders0\\u003c\\u0026\\u003e\"],\"compatibleProviders\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"baseUrl\":\"BaseURL\\u003c\\u0026\\u003e\",\"apiKey\":\"APIKey\\u003c\\u0026\\u003e\",\"extraHeaders\":{\"ExtraHeadersK\\u003c\\u0026\\u003e\":\"ExtraHeadersV\\u003c\\u0026\\u003e\"},\"models\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"label\":\"Label\\u003c\\u0026\\u003e\",\"contextWindow\":5}]}]}",
+    "zero": "{\"modelAsk\":\"\",\"modelPlan\":\"\",\"modelAgent\":\"\",\"modelReview\":\"\",\"modelLoop\":\"\",\"bypassPermissions\":false,\"maxLoops\":0,\"maxAgents\":0}"
+  },
+  "StoredEvent": {
+    "full": "{\"id\":1,\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"agentId\":\"AgentID\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"payloadJson\":\"PayloadJSON\\u003c\\u0026\\u003e\",\"ts\":2}",
+    "zero": "{\"id\":0,\"workspaceId\":\"\",\"type\":\"\",\"payloadJson\":\"\",\"ts\":0}"
+  },
+  "SummaryPara": {
+    "full": "{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"html\":\"HTML\\u003c\\u0026\\u003e\",\"items\":[\"Items0\\u003c\\u0026\\u003e\"]}",
+    "zero": "{\"kind\":\"\"}"
+  },
+  "SymbolDef": {
+    "full": "{\"name\":\"Name\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":1}",
+    "zero": "{\"name\":\"\",\"kind\":\"\",\"path\":\"\",\"line\":0}"
+  },
+  "SymbolRef": {
+    "full": "{\"path\":\"Path\\u003c\\u0026\\u003e\",\"line\":1,\"text\":\"Text\\u003c\\u0026\\u003e\",\"def\":true}",
+    "zero": "{\"path\":\"\",\"line\":0,\"text\":\"\",\"def\":false}"
+  },
+  "TestResult": {
+    "full": "{\"passed\":true,\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"when\":\"When\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"passed\":false,\"summary\":\"\",\"when\":\"\"}"
+  },
+  "TextPayload": {
+    "full": "{\"text\":\"Text\\u003c\\u0026\\u003e\",\"display_text\":\"DisplayText\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"text\":\"\"}"
+  },
+  "ThinkingPayload": {
+    "full": "{\"thinking\":\"Thinking\\u003c\\u0026\\u003e\",\"signature\":\"Signature\\u003c\\u0026\\u003e\",\"estimated_tokens\":1}",
+    "zero": "{\"thinking\":\"\"}"
+  },
+  "ToolResultPayload": {
+    "full": "{\"tool_use_id\":\"ToolUseID\\u003c\\u0026\\u003e\",\"result\":\"Result\\u003c\\u0026\\u003e\",\"is_error\":true,\"truncated\":true}",
+    "zero": "{\"tool_use_id\":\"\",\"result\":\"\"}"
+  },
+  "ToolUsePayload": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"provider_tool_use_id\":\"ProviderToolUseID\\u003c\\u0026\\u003e\",\"parent_tool_use_id\":\"ParentToolUseID\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"input\":{\"k\":[1,\"\\u003cx\\u003e\"]}}",
+    "zero": "{\"id\":\"\",\"name\":\"\"}"
+  },
+  "TreeEntry": {
+    "full": "{\"name\":\"Name\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"dir\":true,\"status\":\"Status\\u003c\\u0026\\u003e\",\"ignored\":true,\"children\":[{\"name\":\"Name\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"dir\":true,\"status\":\"Status\\u003c\\u0026\\u003e\",\"ignored\":true,\"children\":[{\"name\":\"Name\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\",\"dir\":true,\"status\":\"Status\\u003c\\u0026\\u003e\",\"ignored\":true}]}]}",
+    "zero": "{\"name\":\"\",\"path\":\"\",\"dir\":false}"
+  },
+  "UpdateWorkspaceResult": {
+    "full": "{\"status\":\"Status\\u003c\\u0026\\u003e\",\"workspace\":{\"scheduledPromptPending\":true,\"scheduleId\":\"ScheduleID\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"runStarted\":true,\"isMain\":true,\"hostPrId\":\"HostPRID\\u003c\\u0026\\u003e\",\"issue\":{\"source\":\"Source\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"key\":\"Key\\u003c\\u0026\\u003e\"},\"group\":\"Group\\u003c\\u0026\\u003e\",\"goal\":\"Goal\\u003c\\u0026\\u003e\",\"goalDisplay\":\"GoalDisplay\\u003c\\u0026\\u003e\",\"short\":\"Short\\u003c\\u0026\\u003e\",\"definitionOfDone\":\"DefinitionOfDone\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"statusLabel\":\"StatusLabel\\u003c\\u0026\\u003e\",\"phase\":\"Phase\\u003c\\u0026\\u003e\",\"iteration\":1,\"progress\":2.5,\"autonomy\":\"Autonomy\\u003c\\u0026\\u003e\",\"loopId\":\"LoopID\\u003c\\u0026\\u003e\",\"policyId\":\"PolicyID\\u003c\\u0026\\u003e\",\"loopChatCode\":\"LoopChatCode\\u003c\\u0026\\u003e\",\"branch\":\"Branch\\u003c\\u0026\\u003e\",\"baseBranch\":\"BaseBranch\\u003c\\u0026\\u003e\",\"behindBase\":3,\"worktreePath\":\"WorktreePath\\u003c\\u0026\\u003e\",\"port\":4,\"diff\":{\"add\":5,\"del\":6},\"agentCodes\":[\"AgentCodes0\\u003c\\u0026\\u003e\"],\"last\":\"Last\\u003c\\u0026\\u003e\",\"lastActivityAt\":7,\"lastViewedAt\":8,\"seenActivityAt\":9,\"elapsedLabel\":\"ElapsedLabel\\u003c\\u0026\\u003e\",\"convergence\":[{\"iteration\":10,\"findings\":11,\"color\":\"Color\\u003c\\u0026\\u003e\"}],\"parentId\":\"ParentID\\u003c\\u0026\\u003e\",\"parentStepIds\":[\"ParentStepIDs0\\u003c\\u0026\\u003e\"],\"fanOut\":{\"wave\":12,\"outcome\":\"Outcome\\u003c\\u0026\\u003e\",\"note\":\"Note\\u003c\\u0026\\u003e\",\"chat\":\"Chat\\u003c\\u0026\\u003e\",\"mode\":\"Mode\\u003c\\u0026\\u003e\"},\"parentPhaseId\":\"ParentPhaseID\\u003c\\u0026\\u003e\",\"fanOutWaves\":13,\"handoff\":\"Handoff\\u003c\\u0026\\u003e\",\"verify\":[{\"html\":\"HTML\\u003c\\u0026\\u003e\",\"passed\":true,\"screenshot\":\"Screenshot\\u003c\\u0026\\u003e\"}],\"verifyState\":\"VerifyState\\u003c\\u0026\\u003e\",\"archived\":true,\"testResult\":{\"passed\":true,\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"when\":\"When\\u003c\\u0026\\u003e\"},\"checkpoint\":{\"state\":\"State\\u003c\\u0026\\u003e\",\"iteration\":14,\"at\":\"At\\u003c\\u0026\\u003e\",\"phaseId\":\"PhaseID\\u003c\\u0026\\u003e\",\"resumePhaseId\":\"ResumePhaseID\\u003c\\u0026\\u003e\"},\"plan\":{\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"source\":\"Source\\u003c\\u0026\\u003e\",\"chatCode\":\"ChatCode\\u003c\\u0026\\u003e\",\"approved\":true},\"lastError\":\"LastError\\u003c\\u0026\\u003e\",\"retryable\":true,\"chatTabOrder\":[\"ChatTabOrder0\\u003c\\u0026\\u003e\"]},\"base\":\"Base\\u003c\\u0026\\u003e\",\"pushedPR\":15,\"forcePushed\":true}",
+    "zero": "{\"status\":\"\",\"workspace\":{\"id\":\"\",\"projectId\":\"\",\"group\":\"\",\"goal\":\"\",\"short\":\"\",\"definitionOfDone\":\"\",\"state\":\"\",\"statusLabel\":\"\",\"phase\":\"\",\"iteration\":0,\"progress\":0,\"autonomy\":\"\",\"branch\":\"\",\"behindBase\":0,\"worktreePath\":\"\",\"diff\":{\"add\":0,\"del\":0},\"agentCodes\":null,\"last\":\"\",\"elapsedLabel\":\"\",\"convergence\":null,\"archived\":false},\"base\":\"\"}"
+  },
+  "UserQuestion": {
+    "full": "{\"id\":\"ID\\u003c\\u0026\\u003e\",\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"agentCode\":\"AgentCode\\u003c\\u0026\\u003e\",\"sessionId\":\"SessionID\\u003c\\u0026\\u003e\",\"question\":\"Question\\u003c\\u0026\\u003e\",\"context\":\"Context\\u003c\\u0026\\u003e\",\"options\":[{\"text\":\"Text\\u003c\\u0026\\u003e\",\"tag\":\"Tag\\u003c\\u0026\\u003e\",\"desc\":\"Desc\\u003c\\u0026\\u003e\"}],\"askedAgo\":\"AskedAgo\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"id\":\"\",\"workspaceId\":\"\",\"agentCode\":\"\",\"question\":\"\",\"askedAgo\":\"\"}"
+  },
+  "UserQuestionAnswer": {
+    "full": "{\"choice\":\"Choice\\u003c\\u0026\\u003e\",\"freeText\":\"FreeText\\u003c\\u0026\\u003e\"}",
+    "zero": "{}"
+  },
+  "VerifyStep": {
+    "full": "{\"html\":\"HTML\\u003c\\u0026\\u003e\",\"passed\":true,\"screenshot\":\"Screenshot\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"html\":\"\",\"passed\":false}"
+  },
+  "Workspace": {
+    "full": "{\"scheduledPromptPending\":true,\"scheduleId\":\"ScheduleID\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"type\":\"Type\\u003c\\u0026\\u003e\",\"runStarted\":true,\"isMain\":true,\"hostPrId\":\"HostPRID\\u003c\\u0026\\u003e\",\"issue\":{\"source\":\"Source\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"key\":\"Key\\u003c\\u0026\\u003e\"},\"group\":\"Group\\u003c\\u0026\\u003e\",\"goal\":\"Goal\\u003c\\u0026\\u003e\",\"goalDisplay\":\"GoalDisplay\\u003c\\u0026\\u003e\",\"short\":\"Short\\u003c\\u0026\\u003e\",\"definitionOfDone\":\"DefinitionOfDone\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"statusLabel\":\"StatusLabel\\u003c\\u0026\\u003e\",\"phase\":\"Phase\\u003c\\u0026\\u003e\",\"iteration\":1,\"progress\":2.5,\"autonomy\":\"Autonomy\\u003c\\u0026\\u003e\",\"loopId\":\"LoopID\\u003c\\u0026\\u003e\",\"policyId\":\"PolicyID\\u003c\\u0026\\u003e\",\"loopChatCode\":\"LoopChatCode\\u003c\\u0026\\u003e\",\"branch\":\"Branch\\u003c\\u0026\\u003e\",\"baseBranch\":\"BaseBranch\\u003c\\u0026\\u003e\",\"behindBase\":3,\"worktreePath\":\"WorktreePath\\u003c\\u0026\\u003e\",\"port\":4,\"diff\":{\"add\":5,\"del\":6},\"agentCodes\":[\"AgentCodes0\\u003c\\u0026\\u003e\"],\"last\":\"Last\\u003c\\u0026\\u003e\",\"lastActivityAt\":7,\"lastViewedAt\":8,\"seenActivityAt\":9,\"elapsedLabel\":\"ElapsedLabel\\u003c\\u0026\\u003e\",\"convergence\":[{\"iteration\":10,\"findings\":11,\"color\":\"Color\\u003c\\u0026\\u003e\"}],\"parentId\":\"ParentID\\u003c\\u0026\\u003e\",\"parentStepIds\":[\"ParentStepIDs0\\u003c\\u0026\\u003e\"],\"fanOut\":{\"wave\":12,\"after\":[\"After0\\u003c\\u0026\\u003e\"],\"outcome\":\"Outcome\\u003c\\u0026\\u003e\",\"note\":\"Note\\u003c\\u0026\\u003e\",\"chat\":\"Chat\\u003c\\u0026\\u003e\",\"mode\":\"Mode\\u003c\\u0026\\u003e\"},\"parentPhaseId\":\"ParentPhaseID\\u003c\\u0026\\u003e\",\"fanOutWaves\":13,\"handoff\":\"Handoff\\u003c\\u0026\\u003e\",\"verify\":[{\"html\":\"HTML\\u003c\\u0026\\u003e\",\"passed\":true,\"screenshot\":\"Screenshot\\u003c\\u0026\\u003e\"}],\"verifyState\":\"VerifyState\\u003c\\u0026\\u003e\",\"archived\":true,\"testResult\":{\"passed\":true,\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"when\":\"When\\u003c\\u0026\\u003e\"},\"checkpoint\":{\"state\":\"State\\u003c\\u0026\\u003e\",\"iteration\":14,\"at\":\"At\\u003c\\u0026\\u003e\",\"phaseId\":\"PhaseID\\u003c\\u0026\\u003e\",\"resumePhaseId\":\"ResumePhaseID\\u003c\\u0026\\u003e\"},\"plan\":{\"summary\":\"Summary\\u003c\\u0026\\u003e\",\"body\":\"Body\\u003c\\u0026\\u003e\",\"steps\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"note\":\"Note\\u003c\\u0026\\u003e\",\"workspace\":\"Workspace\\u003c\\u0026\\u003e\"}],\"attachments\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"path\":\"Path\\u003c\\u0026\\u003e\"}],\"source\":\"Source\\u003c\\u0026\\u003e\",\"chatCode\":\"ChatCode\\u003c\\u0026\\u003e\",\"approved\":true},\"lastError\":\"LastError\\u003c\\u0026\\u003e\",\"retryable\":true,\"chatTabOrder\":[\"ChatTabOrder0\\u003c\\u0026\\u003e\"]}",
+    "zero": "{\"id\":\"\",\"projectId\":\"\",\"group\":\"\",\"goal\":\"\",\"short\":\"\",\"definitionOfDone\":\"\",\"state\":\"\",\"statusLabel\":\"\",\"phase\":\"\",\"iteration\":0,\"progress\":0,\"autonomy\":\"\",\"branch\":\"\",\"behindBase\":0,\"worktreePath\":\"\",\"diff\":{\"add\":0,\"del\":0},\"agentCodes\":null,\"last\":\"\",\"elapsedLabel\":\"\",\"convergence\":null,\"archived\":false}"
+  },
+  "WorkspaceBrief": {
+    "full": "{\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"projectName\":\"ProjectName\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"branch\":\"Branch\\u003c\\u0026\\u003e\",\"bucket\":\"Bucket\\u003c\\u0026\\u003e\",\"reasons\":[\"Reasons0\\u003c\\u0026\\u003e\"],\"now\":\"Now\\u003c\\u0026\\u003e\",\"next\":\"Next\\u003c\\u0026\\u003e\",\"lastActivityAt\":1,\"lastViewedAt\":2,\"seenActivityAt\":3,\"changedSinceViewed\":true,\"quietAge\":\"QuietAge\\u003c\\u0026\\u003e\",\"lastSummary\":\"LastSummary\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"phase\":\"Phase\\u003c\\u0026\\u003e\",\"planSummary\":\"PlanSummary\\u003c\\u0026\\u003e\",\"planDone\":4,\"planTotal\":5,\"activeAgents\":6,\"activeAgentTask\":\"ActiveAgentTask\\u003c\\u0026\\u003e\",\"latestChatCode\":\"LatestChatCode\\u003c\\u0026\\u003e\",\"latestChatTitle\":\"LatestChatTitle\\u003c\\u0026\\u003e\",\"diffAdd\":7,\"diffDel\":8,\"prId\":\"PRID\\u003c\\u0026\\u003e\",\"prNumber\":9,\"isPrHost\":true,\"primary\":{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"},\"secondary\":[{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"}]}",
+    "zero": "{\"workspaceId\":\"\",\"title\":\"\",\"bucket\":\"\",\"reasons\":null,\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"\",\"target\":\"\"}}"
+  },
+  "WorkspaceChatTab": {
+    "full": "{\"code\":\"Code\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"updatedAt\":1,\"mode\":\"Mode\\u003c\\u0026\\u003e\",\"unseen\":true,\"loopId\":\"LoopID\\u003c\\u0026\\u003e\",\"policyId\":\"PolicyID\\u003c\\u0026\\u003e\",\"loopStarted\":true,\"promptGroup\":\"PromptGroup\\u003c\\u0026\\u003e\"}",
+    "zero": "{\"code\":\"\",\"title\":\"\",\"updatedAt\":0}"
+  },
+  "WorkspaceContext": {
+    "full": "{\"brief\":{\"workspaceId\":\"WorkspaceID\\u003c\\u0026\\u003e\",\"projectId\":\"ProjectID\\u003c\\u0026\\u003e\",\"projectName\":\"ProjectName\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"branch\":\"Branch\\u003c\\u0026\\u003e\",\"bucket\":\"Bucket\\u003c\\u0026\\u003e\",\"reasons\":[\"Reasons0\\u003c\\u0026\\u003e\"],\"now\":\"Now\\u003c\\u0026\\u003e\",\"next\":\"Next\\u003c\\u0026\\u003e\",\"lastActivityAt\":1,\"lastViewedAt\":2,\"seenActivityAt\":3,\"changedSinceViewed\":true,\"quietAge\":\"QuietAge\\u003c\\u0026\\u003e\",\"lastSummary\":\"LastSummary\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"phase\":\"Phase\\u003c\\u0026\\u003e\",\"planSummary\":\"PlanSummary\\u003c\\u0026\\u003e\",\"planDone\":4,\"planTotal\":5,\"activeAgents\":6,\"activeAgentTask\":\"ActiveAgentTask\\u003c\\u0026\\u003e\",\"latestChatCode\":\"LatestChatCode\\u003c\\u0026\\u003e\",\"latestChatTitle\":\"LatestChatTitle\\u003c\\u0026\\u003e\",\"diffAdd\":7,\"diffDel\":8,\"prId\":\"PRID\\u003c\\u0026\\u003e\",\"prNumber\":9,\"isPrHost\":true,\"primary\":{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"},\"secondary\":[{\"label\":\"Label\\u003c\\u0026\\u003e\",\"target\":\"Target\\u003c\\u0026\\u003e\",\"kind\":\"Kind\\u003c\\u0026\\u003e\"}]},\"planSteps\":[{\"id\":\"ID\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"note\":\"Note\\u003c\\u0026\\u003e\",\"files\":[\"Files0\\u003c\\u0026\\u003e\"],\"dependsOn\":[\"DependsOn0\\u003c\\u0026\\u003e\"],\"workspace\":\"Workspace\\u003c\\u0026\\u003e\"}],\"agents\":[{\"code\":\"Code\\u003c\\u0026\\u003e\",\"name\":\"Name\\u003c\\u0026\\u003e\",\"status\":\"Status\\u003c\\u0026\\u003e\",\"task\":\"Task\\u003c\\u0026\\u003e\",\"unseen\":true}],\"openAsks\":[{\"kind\":\"Kind\\u003c\\u0026\\u003e\",\"id\":\"ID\\u003c\\u0026\\u003e\",\"agentCode\":\"AgentCode\\u003c\\u0026\\u003e\",\"summary\":\"Summary\\u003c\\u0026\\u003e\"}],\"recentChats\":[{\"code\":\"Code\\u003c\\u0026\\u003e\",\"title\":\"Title\\u003c\\u0026\\u003e\",\"mode\":\"Mode\\u003c\\u0026\\u003e\",\"updatedAt\":10,\"unseen\":true}],\"pr\":{\"id\":\"ID\\u003c\\u0026\\u003e\",\"number\":11,\"title\":\"Title\\u003c\\u0026\\u003e\",\"state\":\"State\\u003c\\u0026\\u003e\",\"reviewDecision\":\"ReviewDecision\\u003c\\u0026\\u003e\"},\"conversation\":[{\"role\":\"Role\\u003c\\u0026\\u003e\",\"text\":\"Text\\u003c\\u0026\\u003e\",\"at\":12}]}",
+    "zero": "{\"brief\":{\"workspaceId\":\"\",\"title\":\"\",\"bucket\":\"\",\"reasons\":null,\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"\",\"target\":\"\"}}}"
+  },
+  "WorkspaceLandState": {
+    "full": "{\"behindBase\":1,\"aheadBase\":2,\"dirty\":true,\"unmerged\":true,\"base\":\"Base\\u003c\\u0026\\u003e\",\"remote\":\"Remote\\u003c\\u0026\\u003e\",\"requirePR\":true,\"prId\":\"PRID\\u003c\\u0026\\u003e\",\"prNumber\":3,\"prSource\":\"PRSource\\u003c\\u0026\\u003e\",\"prDraft\":true,\"aheadRemote\":4,\"behindRemote\":5}",
+    "zero": "{\"behindBase\":0,\"aheadBase\":0,\"dirty\":false,\"unmerged\":false,\"base\":\"\",\"requirePR\":false}"
+  },
+  "WorktreeCommitResult": {
+    "full": "{\"hash\":\"Hash\\u003c\\u0026\\u003e\",\"committed\":true,\"additions\":1,\"deletions\":2}",
+    "zero": "{\"hash\":\"\",\"committed\":false,\"additions\":0,\"deletions\":0}"
+  }
+}

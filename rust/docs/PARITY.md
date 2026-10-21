@@ -584,10 +584,10 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 
 Non-visual TypeScript that holds real behavior (stores, keymaps, composer, editor integrations). Port the logic, not the DOM plumbing.
 
-- [ ] `lib/agentchat.ts` (2226 lines)
+- [~] `lib/agentchat.ts` (2226 lines) → `recur_engine::view::{chat, mentions, digest}` (mention regexes with JS lookaround and whitespace semantics, chips/labels/tokens/strips, caret queries, `mapChatItems`, `mergePersistedWithLive`, `retainOptimisticUsers`, every live reducer, turn-clock gates, error-card title/detail, ask_user/Coder display collapse, findings digest, steer merges); `agentchat.test.ts` ported. Left for `recur-app`: clipboard/drop/FileReader image drafts and the `/chat-image` fetch
 - [~] `lib/api.ts` (1461 lines) → `recur_view_core::data` and `state`: `call`, `loadInitial`, `wireEvents` and the event reducers, workspace / project / PR upserts, `removeWorkspace`, provider usage, briefing refresh; view-specific helpers move with their views
 - [x] `lib/armed-confirm.ts` (52 lines) → `recur_ui::widgets::armed_button` (`ArmedConfirm`, `armed_click`, `armed_pointer_up`, `take_click_echo`; cases ported)
-- [ ] `lib/artifacts.ts` (198 lines)
+- [x] `lib/artifacts.ts` (198 lines) → `recur_engine::view::artifacts` (event payloads, unseen ids, icons, list_artifacts parsing, scratch paths, kind tally, relative age); `artifacts.test.ts` ported
 - [ ] `lib/autosize-textarea.ts` (29 lines)
 - [ ] `lib/bridge-bench.ts` (98 lines)
 - [x] `lib/briefingtools.ts` (345 lines) → `recur_agent_tools::display::briefing_tools` (detectors, brief/context/present parsing incl. legacy `Opening`/`Presented` strings, hydration, labels; `briefingtools.test.ts` ported)
@@ -651,7 +651,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/comment-thread.ts` (372 lines)
 - [ ] `lib/commit-meta.ts` (12 lines)
 - [ ] `lib/compatible-providers.ts` (81 lines)
-- [ ] `lib/composerDom.ts` (1582 lines)
+- [~] `lib/composerDom.ts` (1582 lines) → `recur_engine::view::composer` (wire ↔ `Segment` lines: hydrate with chip restore and boundary repair, serialize, chip boundaries, prompt chips with quoted multi-arg wire, `promptChipArgsWithTrailing`); text cases of `composerDom.test.ts` ported. Left for `recur-app`: the contenteditable DOM, caret, focus and chip widgets
 - [ ] `lib/composerUndo.ts` (102 lines)
 - [x] `lib/contextUsage.ts` (90 lines) → `recur_agent::context_usage` (ContextUsage used/ready/after_compact, from_turn, from_chat_items, format_tokens with JS `toFixed`/`Math.round` rounding; `contextUsage.test.ts` ported)
 - [ ] `lib/dialog-focus.ts` (84 lines)
@@ -738,7 +738,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/preview-scroll.ts` (237 lines)
 - [ ] `lib/preview.ts` (139 lines)
 - [x] `lib/project-pic.ts` (120 lines) → `recur_ui::widgets::project_pic` (`parse_project_pic`, `format_lucide_pic`, `is_letter_pic`, `project_pic_from_name`, `letter_from_name`, `PROJECT_COLORS`, `fg_on_background`; cases ported)
-- [ ] `lib/promptActions.ts` (438 lines)
+- [~] `lib/promptActions.ts` (438 lines) → `recur_engine::view::prompts` (`pick_prompt_tab`, disabled prompts, slash lookup, arg slots, `params_from_args`, `/` menu gates, committed lines, args query, prompt context, error wording) over `recur_bundles::PromptAction`; `promptActions.test.ts` ported. Left for `recur-app`/SV: the titlebar request store, the list cache and the BundleService/Worker run and complete calls
 - [x] `lib/providerUsage.ts` (141 lines) → `recur_view_sidebar::usage` (cases ported)
 - [ ] `lib/providers.ts` (76 lines)
 - [x] `lib/rail-peek.ts` (106 lines) → `recur_view_sidebar::peek` and `AppState::{open_rail_peek, close_rail_peek, set_rail_peek_locked}`; focus parking in the sidebar (cases ported)
@@ -754,7 +754,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/schedule-expanded.ts` (34 lines)
 - [ ] `lib/scroll-fade.ts` (132 lines)
 - [ ] `lib/session-feed.svelte.ts` (314 lines)
-- [ ] `lib/session-live.ts` (57 lines)
+- [x] `lib/session-live.ts` (57 lines) → `recur_engine::view::live::SessionLiveFlags`; `session-live.test.ts` ported
 - [x] `lib/shell-state.ts` (177 lines) → `recur_view_core::shell_state` (snapshot, restore resolution, coalesced writer; cases ported)
 - [ ] `lib/shhl.ts` (99 lines)
 - [x] `lib/shortcut.ts` (67 lines) → `recur_ui::kbd::shortcut_parts` (modifier runs; cases ported)
@@ -985,7 +985,19 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
     - [x] `reporter.go` loop registry + E1 Host methods (`report_finding`, `done`, `list_findings`, `update_finding`, `report_result`, `escalate`, `attach_evidence`) → `loop_registry`, `host::EngineHost`
     - [x] `workspace_create.go` E1 half, `workspace_remote.go` E1 half → `workspace::{create, remote}`
     - [x] Tests: `governor_test.go`, `keepawake_test.go`, `chat_inbox_test.go` and `attention_test.go` (minus E2/E4 cases), `chat_cancel_test.go` kernel cases, `diff_sync_test.go`, `fswatch_test.go`, `branch_sync_test.go` (minus Open PR), `workspace_create_test.go` allocate cases, `workspace_id_test.go` (minus dispatch), `setup_teardown_test.go`, `policy_test.go`, `roles_test.go`, `role_tools_test.go`, the hand-workspace halves of `lifecycle_test.go` and `engine_test.go`; `fixture_test.go` scaffolding → `testing`. Loop-driven cases move to E3 (see the plan)
-    - [ ] Deferred hooks filled by E2–E5 (`deferred.rs`)
+    - [~] Deferred hooks filled by E2–E5 (`deferred.rs`): E2's `ask_user_pending_for` and `clear_ask_users_for_workspace` are real (`ask_user.rs`); E3–E5 pending
+  - [x] Slice E2 (turn pipeline and sessions) → `recur_engine::{turn, composer, permissions, ask_user, attachments, artifacts, plan, simplify, renames, mcp_attach, host::{backfill, chat}, view::{chat, mentions, composer, prompts, artifacts, live, digest}}`; Go-generated golden fixture `crates/engine/tests/golden/go_e2.json` (generator `gen_e2_golden.go.txt`): constants and sentinels, one-shot prompts, composer wraps and mention collectors, formatters, the plan card. As-built API, deviations and moved tests are in the plan (E2 "As built")
+    - [x] Router half of `provider.go` → `turn` (`run_agent`, `resolve_provider` with no fallback, the pin, Settings → MCP, partials, tracker secret scrub, `register_mcp` / `unregister_mcp` with the in-process turn token, `ensure_mcp` retried after a failed start); R7 guard `tests/r7_guard.rs`
+    - [x] `mirror.go` → `turn::{mirror, broadcast}` (`SessionMirror` record_user/event/finish, step dedupe, steer resets, fallback/retract/supersede, compaction context, `SessionBroadcast` thinking seq and nested buffers, context usage) and `TurnSink`; `PermissionAsker`/`HistorySource`/`ToolHost` per the provider's caps (`turn::tools::InProcessTools`)
+    - [x] `workspace_chat.go` transcript + session-config half → `turn::{sessions, transcript, stream}` (`ensure_agent_session`, routed and owned sessions, chat selection/mode/loop helpers, pair and Maestro agents, `flatten_transcript`, `workspace_chat_items`, `session_chat_items`, last/first chat prompt, loop goal images, `ChatStream` with the Plan harvest)
+    - [x] `chat_errors.go` → `turn::finalize` (sentinels, `format_chat_agent_error`, `finalize_chat_reply`, `persist_chat_failure`, failure duration)
+    - [x] `checkpoint.go` → `turn::checkpoint` (take/mark checkpoints, `chat_turn`, `workspace_chat_turn_diff`, `reset_workspace_chat`, `review_checkpoint`, `edited_after`)
+    - [x] `commit_message.go` → `turn::oneshot` (commit message and PR description prompts and parsing, diff caps, `loop_commit_message`, one-shot deadline)
+    - [x] `composer.go`, `raw_regions.go`, `file_mentions.go`, `skill_mentions.go`, `terminal_mentions.go`, `artifact_mentions.go` → `composer::{raw, files, skills, terminals, artifacts}` (`expand_composer`, prompt actions, wraps; skill guidance and comment hygiene)
+    - [x] `artifacts.go`, disk half of `attachments.go` → `artifacts`, `attachments` (MarshalIndent metadata, Go base64, hoist with rollback; image storage and lookup)
+    - [x] Brokers of `ask_user.go` and `permission.go` → `ask_user`, `permissions` (park/answer/resume claim, 10-minute permission timeout, inbox rows for loop surfaces); the resume send is the E4 hook `send_ask_user_resume`
+    - [x] `plan.go`, `simplify.go`, `rename_session.go`, generic `user_mcp.go`, `mcp_tool_backfill.go`, `reporter.go` E2 methods → `plan`, `simplify`, `renames`, `mcp_attach`, `host::{backfill, chat}`, `EngineHost`
+    - [x] Tests: `mirror_test.go`, `thinking_broadcast_test.go`, mirror cases of `context_usage_test.go`, `chat_errors_test.go`, `checkpoint_test.go`, `composer_test.go`, `raw_regions_test.go`, `file_mentions_test.go`, `skill_mentions_test.go` (HOME cases in `tests/env_serial.rs`), `skills_settings_test.go`, `terminal_mentions_test.go`, `artifact_mentions_test.go`, `artifacts_test.go`, `attachments_test.go` disk cases, broker cases of `ask_user_test.go` / `permission_test.go`, `permission_e2e_test.go` (`RECUR_E2E=1`), `mcp_required_test.go` (minus loop/send cases), `mcp_tool_backfill_test.go`, `commit_message_test.go`, `plan_test.go`, `simplify_test.go` (flag rules), `user_mcp_test.go` generic cases, `workspace_chat_items_test.go`, `TestExpandComposerFreshSession`, router cases of `provider_test.go`, `feedkind_test.go`, the rename cases of `workspace_chat_test.go`; send- and loop-driven cases move to E3/E4/E5 (plan)
 - [ ] `internal/git`: 12 files, 4392 lines, 14 test files
 - [x] `internal/git`: 12 files, 4392 lines, 14 test files → `recur-git` and `recur-chroma` (all 14 Go test files ported: 159 unit tests across both crates, `ExpandHome`'s in `recur-project`, 3 environment-isolated tests in `crates/git/tests/env_isolated.rs`, 2 Go-parity fixture tests in `crates/chroma/tests/highlight_parity.rs`)
   - [x] Command runner (`command.go`): every git process runs with `GIT_OPTIONAL_LOCKS=0` (inherited and extra values stripped), leads its own process group, gets SIGTERM to the group on cancel (future dropped or `deadline`) and SIGKILL to the leader after the 2s grace, and treats inherited pipes still open after a clean exit (ssh ControlMaster) as success; error text matches Go (`exit status N`, `signal: terminated`, `exec: "git": executable file not found in $PATH`); `output` carries stderr like `ExitError.Stderr`, `combined_output` interleaves through one pipe

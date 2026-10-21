@@ -4,17 +4,26 @@
 //! walks; the host keeps no state of its own and routes to the running
 //! walk's control plane and the store.
 //!
-//! Ownership is per method (plan §2.4). E1 implements the loop-flow signals
-//! below; every other method keeps the trait default (Go's `noopReporter`)
-//! until its slice adds it here.
+//! Ownership is per method (plan §2.4). E1 implements the loop-flow
+//! signals, E2 the chat, artifact, rename, permission, plan, skill and
+//! terminal tools; every other method keeps the trait default (Go's
+//! `noopReporter`) until its slice adds it here.
+
+pub mod backfill;
+pub mod chat;
 
 use std::sync::{Arc, Weak};
 
-use recur_agent_tools::{EscalationRequest, Evidence, Finding, Host, HostError};
+use recur_agent_tools::{
+    AskUserRequest, CreateArtifactRequest, EscalationRequest, Evidence, Finding, Host, HostError,
+    PermissionAsk, PermissionVerdict, PlanSubmission, TerminalInfo,
+};
+use recur_domain::{AgentSkill, Artifact};
 use recur_domain::{
     CHAT_MODE_LOOP, CHAT_MODE_REVIEW, FINDING_ACTOR_CODER, FINDING_ACTOR_REVIEWER, FindingStatus,
     TestResult, finding_loc, normalize_chat_mode,
 };
+use tokio_util::sync::CancellationToken;
 
 use crate::Engine;
 use crate::bus::{EngineEvent, WorkspaceRef};
@@ -256,6 +265,153 @@ impl Host for EngineHost {
         if let Some(e) = self.engine() {
             e.attach_evidence(ws, ev);
         }
+    }
+
+    fn note_tool_args(&self, ws: &str, agent: &str, tool: &str, args: &str) {
+        if let Some(e) = self.engine() {
+            e.note_mcp_tool_args(ws, agent, tool, args);
+        }
+    }
+
+    async fn ask_user(&self, ws: &str, agent: &str, req: AskUserRequest) -> String {
+        match self.engine() {
+            Some(e) => e.ask_user(ws, agent, req),
+            None => "ask_user unavailable".into(),
+        }
+    }
+
+    async fn create_artifact(
+        &self,
+        ws: &str,
+        agent: &str,
+        req: CreateArtifactRequest,
+    ) -> Result<Artifact, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("no artifacts"))?;
+        e.create_artifact(ws, agent, req)
+            .map_err(|err| HostError(err.0))
+    }
+
+    async fn list_artifacts(&self, ws: &str, _agent: &str) -> Result<Vec<Artifact>, HostError> {
+        match self.engine() {
+            Some(e) => e.list_artifacts(ws).map_err(|err| HostError(err.0)),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    async fn read_artifact(
+        &self,
+        ws: &str,
+        _agent: &str,
+        artifact_id: &str,
+    ) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("no artifacts"))?;
+        e.read_artifact(ws, artifact_id)
+            .map_err(|err| HostError(err.0))
+    }
+
+    async fn present_artifact(&self, ws: &str, _agent: &str, artifact_id: &str) -> String {
+        match self.engine() {
+            Some(e) => e.present_artifact(ws, artifact_id),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn rename_session(&self, ws: &str, agent: &str, owner_chat: &str, title: &str) -> String {
+        match self.engine() {
+            Some(e) => e.rename_chat_session_owned(ws, agent, owner_chat, title),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn rename_workspace(&self, ws: &str, _agent: &str, title: &str) -> String {
+        match self.engine() {
+            Some(e) => e.rename_workspace(ws, title),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn rename_branch(&self, ws: &str, _agent: &str, name: &str) -> String {
+        match self.engine() {
+            Some(e) => e.rename_workspace_branch(ws, name).await,
+            None => "ignored".into(),
+        }
+    }
+
+    async fn request_permission(
+        &self,
+        cancel: &CancellationToken,
+        ws: &str,
+        agent: &str,
+        ask: PermissionAsk,
+    ) -> Result<PermissionVerdict, HostError> {
+        match self.engine() {
+            Some(e) => e.request_permission(cancel, ws, agent, ask).await,
+            None => Ok(PermissionVerdict {
+                allow: false,
+                reason: "no permission broker is attached".into(),
+            }),
+        }
+    }
+
+    async fn submit_plan(&self, ws: &str, agent: &str, p: PlanSubmission) -> String {
+        match self.engine() {
+            Some(e) => e.apply_submitted_plan(ws, agent, p),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn update_plan_step(
+        &self,
+        ws: &str,
+        agent: &str,
+        step_id: &str,
+        status: &str,
+        note: &str,
+    ) -> String {
+        match self.engine() {
+            Some(e) => e.apply_plan_step_update(ws, agent, step_id, status, note),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn list_skills(&self, ws: &str, _agent: &str) -> Result<Vec<AgentSkill>, HostError> {
+        match self.engine() {
+            Some(e) => e.list_agent_skills(ws),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    async fn activate_skill(
+        &self,
+        ws: &str,
+        _agent: &str,
+        name: &str,
+    ) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("workspace not found"))?;
+        e.activate_agent_skill(ws, name)
+    }
+
+    async fn list_terminals(&self, ws: &str, _agent: &str) -> Option<Vec<TerminalInfo>> {
+        self.engine().and_then(|e| e.list_agent_terminals(ws))
+    }
+
+    async fn read_terminal(
+        &self,
+        ws: &str,
+        _agent: &str,
+        id: &str,
+        tail_lines: i64,
+    ) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("no Observatory terminals in this session"))?;
+        e.read_agent_terminal(ws, id, tail_lines)
     }
 }
 

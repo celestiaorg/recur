@@ -66,6 +66,15 @@ impl ProviderRegistry {
         self.get(&parse_model_ref(model_ref).provider)
     }
 
+    /// The provider persisted under `id` (transcript display, context
+    /// windows): the registered one, else a pin that carries that id.
+    pub fn for_id(&self, id: &str) -> Option<Arc<dyn Provider>> {
+        self.get(id).or_else(|| match self.pinned.read().as_ref() {
+            Some(Some(p)) if p.id() == id => Some(Arc::clone(p)),
+            _ => None,
+        })
+    }
+
     /// Every registered provider (not the pin).
     pub fn all(&self) -> Vec<Arc<dyn Provider>> {
         self.providers.read().clone()

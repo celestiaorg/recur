@@ -161,54 +161,6 @@ RECUR_CODEX=/path/to/native/codex RECUR_CODEX_LOGIN_E2E=1 \
 go test ./internal/app -run '^TestCodexBrowserLoginLive$' -count=1 -timeout=60s
 ```
 
-### Build and verify alongside an installed Recur
-
-Use a separate test data directory and launch the repository's unbundled
-binary directly. It has its own database, window state, Codex credentials, skills,
-and instance lock, so the downloaded Recur can stay installed and running. Local `bin/`
-builds skip CLI-link installation. Use `./bin/recur`, not the installed `recur`
-command or a packaged `.app`, for this check.
-
-Prerequisites: Go (the toolchain in `go.mod`), Node.js, pnpm, Wails v3 matching
-`go.mod`, and a native Codex installation. On macOS use Xcode 26+ with its command-line
-tools enabled (icon generation uses `actool`); on Linux install `gcc`, `pkg-config`, `libgtk-4-dev`,
-`libwebkitgtk-6.0-dev`, and `rsync` (Debian 13 / Ubuntu 24.04 or newer).
-The bundle test suite also needs `xmllint` (`libxml2-utils` on Linux).
-
-From the repository root:
-
-```sh
-# One-time Wails installation, if needed.
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.24
-export PATH="$(go env GOPATH)/bin:$PATH"
-
-# Build into this checkout's bin/recur.
-wails3 task build
-
-# Launch with isolated state and the normal desktop browser preferences.
-wails3 task run:isolated PROFILE_DIR="$HOME/.recur-codex-browser-test"
-```
-
-Keep `HOME` unchanged so the system URL opener uses your default browser and its
-existing session. Quit a test instance previously launched with a fake `HOME`
-before relaunching. If Codex is installed in a location that is not on the
-inherited `PATH`, set its absolute Binary path in the test app.
-
-Manual verification:
-
-1. Open Settings → Providers → OpenAI → Codex runtime. Set its Binary path if it is not
-   discovered automatically.
-2. Choose **Sign in with ChatGPT**, complete the browser flow, and confirm
-   **Connected**, your email, and your plan. ChatGPT auth should be selected.
-3. Select a Codex model in a chat and send a short prompt.
-4. Quit the test instance, launch it with the same command, and confirm the login
-   still works without running `codex login`.
-5. Start **Switch ChatGPT account**, then cancel. Repeat and navigate away from
-   Providers. Both attempts should stop and leave the saved auth settings alone.
-
-The test state remains in `$HOME/.recur-codex-browser-test` for repeat runs.
-The normal downloaded app continues to use its usual data directory and launcher.
-
 Automated checks:
 
 ```sh

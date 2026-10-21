@@ -78,30 +78,6 @@ coding and workspace tools in-process.
 | `internal/responses/chatgpt.go` | ChatGPT request adapter |
 | `frontend/src/components/ChatGPTProviderCard.svelte` | Account settings and browser sign-in |
 
-## Build and test alongside an installed Recur
-
-With the repository's Go, Node/pnpm, Wails, and native platform build dependencies
-installed, run from the repository root:
-
-```sh
-wails3 task build
-
-wails3 task run:isolated
-```
-
-This launches the checkout's binary with its own database, credentials, seeded
-skills, worktrees, and instance lock under `$HOME/.recur-chatgpt-direct-test`.
-Local `bin/recur` builds skip CLI-link installation. The downloaded Recur can
-stay installed and running. Set `PROFILE_DIR=/absolute/path` on the task command
-to choose another test profile.
-
-Keep your normal `HOME` and XDG environment. Recur delegates links to the OS
-default browser using its normal URL-opening behavior, so Chrome can reuse its
-current session/window. A fake `HOME` hides your browser preferences and can
-select Firefox or create a separate browser profile. Quit an older test instance
-launched with a fake `HOME` before switching to this command; it reuses the same
-Recur data directory, so an existing sign-in is retained.
-
 ### Live verification
 
 1. Open **Settings → Providers → OpenAI → ChatGPT account**, then **Continue

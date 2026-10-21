@@ -464,12 +464,19 @@ struct Line {
     /// Visible width (trailing spaces hang).
     width: f32,
     ellipsis: bool,
+    /// Line box top below the text top, its height and its baseline below its top.
+    top: f32,
+    height: f32,
+    baseline: f32,
 }
 
 struct Laid {
     key: Resolved,
     paras: Vec<Para>,
+    /// The strut: the line box of the text's own font.
     metrics: LineMetrics,
+    /// Each run's byte range and how far its inline box reaches above and below the baseline.
+    extents: Vec<(Range<usize>, f32, f32)>,
     ellipsis: Option<(Vec<PaintGlyph>, f32)>,
     lines: Vec<Line>,
 }
@@ -783,6 +790,9 @@ fn break_lines(
         range,
         width,
         ellipsis: false,
+        top: 0.,
+        height: 0.,
+        baseline: 0.,
     };
     let Some(max) = max else {
         return vec![line(0..text.len(), para.width(text, 0..text.len()))];
@@ -877,13 +887,36 @@ impl Laid {
             paras.push(shape_para(&key, start..start + piece.len(), window));
             start += piece.len() + 1;
         }
+        let mut extents = Vec::new();
+        let mut at = 0;
+        for run in &key.runs {
+            let (a, d, g) = font_extent(run, run.size, window);
+            let m = line_metrics(a, d, g, run.size, key.line_height);
+            extents.push((at..at + run.len, m.baseline, m.height - m.baseline));
+            at += run.len;
+        }
         Laid {
             key,
             paras,
             metrics,
+            extents,
             ellipsis: None,
             lines: Vec::new(),
         }
+    }
+
+    /// The line box over `range` (content bytes): the strut and every inline box on the line,
+    /// aligned on the baseline. Returns (height, baseline below the top).
+    fn line_box(&self, range: Range<usize>) -> (f32, f32) {
+        let m = self.metrics;
+        let (mut above, mut below) = (m.baseline, m.height - m.baseline);
+        for (r, a, b) in &self.extents {
+            if r.start < range.end && range.start < r.end {
+                above = above.max(*a);
+                below = below.max(*b);
+            }
+        }
+        (above + below, above)
     }
 
     fn relayout(
@@ -940,6 +973,13 @@ impl Laid {
             }
             self.ellipsis = Some(ell);
         }
+        let mut top = 0.;
+        for line in &mut lines {
+            let start = self.paras[line.para].range.start;
+            let (h, b) = self.line_box(start + line.range.start..start + line.range.end);
+            (line.top, line.height, line.baseline) = (top, h, b);
+            top += h;
+        }
         self.lines = lines;
     }
 
@@ -968,14 +1008,45 @@ impl Laid {
         clamp.map_or(self.paras.len(), |c| c.min(self.paras.len()))
     }
 
-    /// Baseline offsets below the box top of the lines when none wraps.
-    fn line_offsets(&self, clamp: Option<usize>) -> impl Iterator<Item = f32> + use<> {
-        let m = self.metrics;
-        (0..self.unwrapped_lines(clamp)).map(move |i| m.height * i as f32 + m.baseline)
+    /// What to probe when no line wraps: each line's baseline and its inline boxes' top and
+    /// bottom edges (below the box top), and for left-aligned text their left and right edges.
+    fn probe_offsets(&self, clamp: Option<usize>, align: Align, window: &Window) -> Vec<Probe> {
+        let mut out = Vec::new();
+        let mut top = 0.;
+        for p in &self.paras[..self.unwrapped_lines(clamp)] {
+            let (h, b) = self.line_box(p.range.clone());
+            let baseline = top + b;
+            out.push(Probe::Y(baseline));
+            for (span, x0, x1, _) in &p.boxes {
+                let Some((ib, run)) = self.inline_box(*span) else {
+                    continue;
+                };
+                let (a, d) = rounded_extent(run, window);
+                out.push(Probe::Y(baseline - a - ib.pad_top - ib.border));
+                out.push(Probe::Y(baseline + d + ib.pad_bottom + ib.border));
+                if align == Align::Left {
+                    out.extend([Probe::X(*x0), Probe::X(*x1)]);
+                }
+            }
+            top += h;
+        }
+        out
+    }
+
+    fn inline_box(&self, span: usize) -> Option<(InlineBox, &RunStyle)> {
+        let b = self.key.boxes.get(span).copied().flatten()?;
+        Some((b, self.key.runs.iter().find(|r| r.span == span)?))
     }
 
     fn unwrapped_height(&self, clamp: Option<usize>) -> f32 {
-        self.metrics.height * self.unwrapped_lines(clamp) as f32
+        self.paras[..self.unwrapped_lines(clamp)]
+            .iter()
+            .map(|p| self.line_box(p.range.clone()).0)
+            .sum()
+    }
+
+    fn height(&self) -> f32 {
+        self.lines.last().map_or(0., |l| l.top + l.height)
     }
 
     /// Unrounded box size for layout; empty text takes no space.
@@ -984,57 +1055,103 @@ impl Laid {
             return (0., 0.);
         }
         let w = self.lines.iter().map(|l| l.width).fold(0., f32::max);
-        (w, self.metrics.height * self.lines.len() as f32)
+        (w, self.height())
     }
 
     /// Width of the widest line and the total height, unrounded, after a layout at `width`.
     fn measured(&self) -> (f32, f32) {
         // WebKit stores an inline text width as `LayoutUnit::fromFloatCeil`.
         let w = (self.lines.iter().map(|l| l.width).fold(0., f32::max) * 64.).ceil() / 64.;
-        (w, self.metrics.height * self.lines.len() as f32)
+        (w, self.height())
     }
 }
 
 pub struct TextState {
     layout: Rc<RefCell<Option<Laid>>>,
     exact: Option<ExactCell>,
-    probes: Vec<(f32, LayoutId)>,
-    baselines: Baselines,
+    probes: Vec<(Probe, LayoutId)>,
+    snapped: Snapped,
 }
 
-/// Baselines GPUI snapped for us: (baseline offset below the box top, snapped window y).
-type Baselines = Vec<(f32, f32)>;
+/// An offset from the text box's top (`Y`) or left (`X`) edge to probe.
+#[derive(Clone, Copy, PartialEq)]
+enum Probe {
+    X(f32),
+    Y(f32),
+}
 
-/// Invisible absolutely positioned leaves, one per expected line, each exactly as tall as that
-/// line's baseline offset (through `aspect_ratio`). GPUI snaps a box's far edge from its
-/// unrounded position, so a probe's bottom is where WebKit paints the baseline, even though the
-/// text box's own origin was rounded to the device grid first.
-fn baseline_probes(
-    offsets: impl Iterator<Item = f32>,
+impl Probe {
+    fn shift_y(self, by: f32) -> Probe {
+        match self {
+            Probe::Y(o) => Probe::Y(o + by),
+            x => x,
+        }
+    }
+}
+
+/// Probed offsets and where GPUI snapped them, in window coordinates.
+type Snapped = Vec<(Probe, f32)>;
+
+/// The snapped window coordinate of a probed offset.
+fn snapped(at: &[(Probe, f32)], probe: Probe) -> Option<f32> {
+    at.iter()
+        .find(|(p, _)| match (*p, probe) {
+            (Probe::X(a), Probe::X(b)) | (Probe::Y(a), Probe::Y(b)) => (a - b).abs() < 1e-3,
+            _ => false,
+        })
+        .map(|(_, v)| *v)
+}
+
+/// Invisible absolutely positioned leaves, each exactly as long as a probed offset (through
+/// `aspect_ratio`, one device pixel thin across). GPUI snaps a box's far edge from its unrounded
+/// position, so a probe's far edge is where WebKit snaps a baseline or an inline box edge, even
+/// though the text box's own origin was rounded to the device grid first.
+fn request_probes(
+    probes: impl Iterator<Item = Probe>,
     window: &mut Window,
     cx: &mut App,
-) -> Vec<(f32, LayoutId)> {
+) -> Vec<(Probe, LayoutId)> {
     let dp = 1. / window.scale_factor();
-    offsets
-        .filter(|o| *o > 0.)
-        .map(|o| {
+    // A hair longer, so an offset on a half pixel rounds down and right as WebKit's does
+    // (GPUI rounds halves toward zero).
+    let nudge = 1. / 1024.;
+    probes
+        .map(|p| {
             let mut s = Style::default();
             s.position = Position::Absolute;
             s.inset.top = px(0.).into();
             s.inset.left = px(0.).into();
-            s.size.width = px(dp).into();
-            // A hair taller, so a baseline on a half pixel rounds down the page as WebKit's
-            // does (GPUI rounds halves toward zero).
-            s.aspect_ratio = Some(dp / (o + 1. / 1024.));
-            (o, window.request_layout(s, [], cx))
+            // Offsets at or above the box start from a whole CSS pixel before it, which rounds
+            // exactly.
+            let from = |o: f32| if o > 0. { 0. } else { o.floor() - 1. };
+            match p {
+                Probe::Y(o) => {
+                    s.inset.top = px(from(o)).into();
+                    s.size.width = px(dp).into();
+                    s.aspect_ratio = Some(dp / (o - from(o) + nudge));
+                }
+                Probe::X(o) => {
+                    s.inset.left = px(from(o)).into();
+                    s.size.height = px(dp).into();
+                    s.aspect_ratio = Some((o - from(o) + nudge) / dp);
+                }
+            }
+            (p, window.request_layout(s, [], cx))
         })
         .collect()
 }
 
-fn resolve_probes(probes: &[(f32, LayoutId)], window: &mut Window) -> Baselines {
+fn resolve_probes(probes: &[(Probe, LayoutId)], window: &mut Window) -> Snapped {
     probes
         .iter()
-        .map(|(o, id)| (*o, f32::from(window.layout_bounds(*id).bottom())))
+        .map(|(p, id)| {
+            let b = window.layout_bounds(*id);
+            let v = match p {
+                Probe::X(_) => b.right(),
+                Probe::Y(_) => b.bottom(),
+            };
+            (*p, f32::from(v))
+        })
         .collect()
 }
 
@@ -1190,8 +1307,11 @@ impl Element for Text {
                 let mut leaves: SmallVec<[LayoutId; 6]> = SmallVec::new();
                 leaves.push(window.request_layout(wide, [], cx));
                 leaves.push(window.request_layout(tall, [], cx));
-                let offsets = layout.borrow().as_ref().map(|l| l.line_offsets(clamp));
-                let probes = baseline_probes(offsets.into_iter().flatten(), window, cx);
+                let offsets = layout
+                    .borrow()
+                    .as_ref()
+                    .map(|l| l.probe_offsets(clamp, self.align, window));
+                let probes = request_probes(offsets.into_iter().flatten(), window, cx);
                 leaves.extend(probes.iter().map(|p| p.1));
                 style.display = Display::Flex;
                 style.flex_direction = FlexDirection::Column;
@@ -1202,7 +1322,7 @@ impl Element for Text {
                         layout,
                         exact: None,
                         probes,
-                        baselines: Vec::new(),
+                        snapped: Vec::new(),
                     },
                 );
             }
@@ -1234,8 +1354,11 @@ impl Element for Text {
                 laid.size()
             },
         );
-        let offsets = layout.borrow().as_ref().map(|l| l.line_offsets(clamp));
-        let probes = baseline_probes(offsets.into_iter().flatten(), window, cx);
+        let offsets = layout
+            .borrow()
+            .as_ref()
+            .map(|l| l.probe_offsets(clamp, self.align, window));
+        let probes = request_probes(offsets.into_iter().flatten(), window, cx);
         leaves.extend(probes.iter().map(|p| p.1));
         (
             window.request_layout(style, leaves, cx),
@@ -1243,7 +1366,7 @@ impl Element for Text {
                 layout,
                 exact,
                 probes,
-                baselines: Vec::new(),
+                snapped: Vec::new(),
             },
         )
     }
@@ -1268,7 +1391,7 @@ impl Element for Text {
             );
             check_exact(state.exact.as_ref(), laid.measured().1, window);
         }
-        state.baselines = resolve_probes(&state.probes, window);
+        state.snapped = resolve_probes(&state.probes, window);
     }
 
     fn paint(
@@ -1285,7 +1408,7 @@ impl Element for Text {
         let Some(laid) = slot.as_ref() else { return };
         let clip = self.ellipsis || self.clamp.is_some();
         let align = self.align;
-        let at = (0., state.baselines.as_slice());
+        let at = (0., state.snapped.as_slice());
         if clip {
             window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
                 paint_lines(laid, bounds, at, align, self.mask.as_ref(), window)
@@ -1355,8 +1478,8 @@ impl TextStack {
 
 pub struct StackState {
     exact: Option<ExactCell>,
-    probes: Vec<(f32, LayoutId)>,
-    baselines: Baselines,
+    probes: Vec<(Probe, LayoutId)>,
+    snapped: Snapped,
 }
 
 impl Element for TextStack {
@@ -1433,17 +1556,21 @@ impl Element for TextStack {
         let mut top = 0.;
         for ((gap, t), l) in self.blocks.iter().zip(self.layouts.borrow().iter()) {
             top += gap;
-            offsets.extend(l.line_offsets(t.clamp).map(|o| top + o));
+            offsets.extend(
+                l.probe_offsets(t.clamp, t.align, window)
+                    .into_iter()
+                    .map(|p| p.shift_y(top)),
+            );
             top += l.unwrapped_height(t.clamp);
         }
-        let probes = baseline_probes(offsets.into_iter(), window, cx);
+        let probes = request_probes(offsets.into_iter(), window, cx);
         leaves.extend(probes.iter().map(|p| p.1));
         (
             window.request_layout(Style::default(), leaves, cx),
             StackState {
                 exact,
                 probes,
-                baselines: Vec::new(),
+                snapped: Vec::new(),
             },
         )
     }
@@ -1466,7 +1593,7 @@ impl Element for TextStack {
             .map(|((gap, _), laid)| gap + laid.measured().1)
             .sum();
         check_exact(state.exact.as_ref(), h, window);
-        state.baselines = resolve_probes(&state.probes, window);
+        state.snapped = resolve_probes(&state.probes, window);
     }
 
     fn paint(
@@ -1488,7 +1615,7 @@ impl Element for TextStack {
                 origin: point(bounds.origin.x, px(y)),
                 size: size(bounds.size.width, px(h)),
             };
-            let at = (y - f32::from(bounds.origin.y), state.baselines.as_slice());
+            let at = (y - f32::from(bounds.origin.y), state.snapped.as_slice());
             if t.ellipsis || t.clamp.is_some() {
                 window.with_content_mask(Some(gpui_kit::ContentMask { bounds: b }), |window| {
                     paint_lines(laid, b, at, t.align, t.mask.as_ref(), window)
@@ -1502,25 +1629,23 @@ impl Element for TextStack {
 }
 
 /// Paint laid lines in `bounds`. `at` is the block's offset below the box top and the box's
-/// probed baselines; a line without a probe snaps its own baseline.
+/// snapped probes; what has no probe snaps from the rounded box origin.
 fn paint_lines(
     laid: &Laid,
     bounds: Bounds<Pixels>,
-    at: (f32, &[(f32, f32)]),
+    at: (f32, &[(Probe, f32)]),
     align: Align,
     mask: Option<&AlphaMask>,
     window: &mut Window,
 ) {
     let scale = window.scale_factor();
     let box_w = f32::from(bounds.size.width);
-    for (li, line) in laid.lines.iter().enumerate() {
+    for line in &laid.lines {
         let p = &laid.paras[line.para];
-        let top = f32::from(bounds.origin.y) + laid.metrics.height * li as f32;
-        let offset = at.0 + laid.metrics.height * li as f32 + laid.metrics.baseline;
+        let top = f32::from(bounds.origin.y) + line.top;
+        let base_off = at.0 + line.top + line.baseline;
         let baseline =
-            at.1.iter()
-                .find(|(o, _)| (o - offset).abs() < 1e-3)
-                .map_or_else(|| snap(top + laid.metrics.baseline, scale), |b| b.1);
+            snapped(at.1, Probe::Y(base_off)).unwrap_or_else(|| snap(top + line.baseline, scale));
         let start_x = p.line_start(line.range.start);
         let offset = match align {
             Align::Left => 0.,
@@ -1533,17 +1658,18 @@ fn paint_lines(
             if r.end <= line.range.start || r.start >= line.range.end.max(line.range.start + 1) {
                 continue;
             }
-            let Some(b) = laid.key.boxes.get(*span).copied().flatten() else {
-                continue;
-            };
-            let Some(run) = laid.key.runs.iter().find(|r| r.span == *span) else {
+            let Some((b, run)) = laid.inline_box(*span) else {
                 continue;
             };
             let (a, d) = rounded_extent(run, window);
-            let y0 = baseline - a - b.pad_top - b.border;
-            let y1 = baseline + d + b.pad_bottom + b.border;
-            let rect =
-                Bounds::from_corners(point(px(left + x0), px(y0)), point(px(left + x1), px(y1)));
+            let (above, below) = (a + b.pad_top + b.border, d + b.pad_bottom + b.border);
+            let y0 = snapped(at.1, Probe::Y(base_off - above)).unwrap_or(baseline - above);
+            let y1 = snapped(at.1, Probe::Y(base_off + below)).unwrap_or(baseline + below);
+            let x = |o: f32| {
+                let probe = (align == Align::Left).then(|| snapped(at.1, Probe::X(o - start_x)));
+                probe.flatten().unwrap_or(left + o)
+            };
+            let rect = Bounds::from_corners(point(px(x(*x0)), px(y0)), point(px(x(*x1)), px(y1)));
             window.paint_quad(quad(
                 rect,
                 px(b.radius),

@@ -696,7 +696,13 @@ fn draw_glyph(
     }
     #[cfg(not(target_os = "macos"))]
     {
-        crate::icon::rasterize(&glyph_svg(glyph, color, boxpx, scale)?, w, h, 0.)
+        crate::icon::rasterize(
+            &glyph_svg(glyph, color, boxpx, scale)?,
+            (w, h),
+            (0., 0.),
+            (w as f32, h as f32),
+            0.,
+        )
     }
 }
 

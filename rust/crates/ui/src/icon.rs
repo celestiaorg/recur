@@ -9,9 +9,9 @@ use crate::assets::{APP_ICONS, LUCIDE_ICONS, PROVIDER_ICONS, lucide_entry, svg_b
 use crate::color::Color;
 use crate::icon_name::IconName;
 use gpui_kit::{
-    App, Bounds, Corners, Element, ElementId, Global, GlobalElementId, Hsla, InspectorElementId,
-    IntoElement, LayoutId, Pixels, Refineable, RenderImage, Style, StyleRefinement, Styled, Window,
-    px,
+    AbsoluteLength, App, Bounds, Corners, DefiniteLength, Element, ElementId, Global,
+    GlobalElementId, Hsla, InspectorElementId, IntoElement, LayoutId, Length, Pixels, Refineable,
+    RenderImage, Style, StyleRefinement, Styled, Window, px,
 };
 use resvg::{tiny_skia, usvg};
 use smallvec::SmallVec;
@@ -143,6 +143,7 @@ struct Key {
     stroke_width: u32,
     w: u32,
     h: u32,
+    content: (u32, u32),
     color: [u8; 4],
     rotation: i32,
     polychrome: bool,
@@ -220,6 +221,26 @@ impl Element for Icon {
         if w == 0 || h == 0 {
             return;
         }
+        // GPUI rounds an authored size to device pixels; WebKit snaps the SVG's origin to a
+        // device pixel but scales it to the exact size. Drawn that way, with a device pixel of
+        // margin for the overhang.
+        let exact = |len: Option<Length>, rounded: u32| match len {
+            Some(Length::Definite(DefiniteLength::Absolute(AbsoluteLength::Pixels(p)))) => {
+                f32::from(p) * scale
+            }
+            _ => rounded as f32,
+        };
+        let content = if matches!(self.source, Source::Raster(..)) {
+            (w as f32, h as f32)
+        } else {
+            (
+                exact(self.style.size.width, w),
+                exact(self.style.size.height, h),
+            )
+        };
+        let margin = u32::from(content != (w as f32, h as f32));
+        let (w, h) = (w + 2 * margin, h + 2 * margin);
+        let bounds = bounds.dilate(px(margin as f32 / scale));
         let mut color = self.color.unwrap_or_else(|| window.text_style().color);
         if let Some(mask) = &self.mask {
             color = color.opacity(mask(f32::from(bounds.center().x)));
@@ -229,6 +250,7 @@ impl Element for Icon {
             stroke_width: self.stroke_width.map_or(0, f32::to_bits),
             w,
             h,
+            content: (content.0.to_bits(), content.1.to_bits()),
             color: rgba8(color),
             rotation: self.rotation.round() as i32,
             polychrome: self.polychrome,
@@ -237,7 +259,7 @@ impl Element for Icon {
         let image = match cache.0.get(&key) {
             Some(hit) => hit.clone(),
             None => {
-                let rendered = self.render(w, h, key.color, scale);
+                let rendered = self.render(w, h, content, key.color, scale);
                 cache.0.insert(key, rendered.clone());
                 rendered
             }
@@ -275,10 +297,24 @@ impl Icon {
         Some(svg)
     }
 
-    fn render(&self, w: u32, h: u32, color: [u8; 4], scale: f32) -> Option<Arc<RenderImage>> {
+    fn render(
+        &self,
+        w: u32,
+        h: u32,
+        content: (f32, f32),
+        color: [u8; 4],
+        scale: f32,
+    ) -> Option<Arc<RenderImage>> {
         let pixels = match &self.source {
             Source::Raster(_, draw) => draw(w, h, scale)?,
-            _ => rasterize(&self.svg_text(color)?, w, h, self.rotation)?,
+            _ => {
+                // The margin: zero, or one device pixel around an exact-size icon.
+                let at = (
+                    ((w as f32 - content.0) / 2.).round(),
+                    ((h as f32 - content.1) / 2.).round(),
+                );
+                rasterize(&self.svg_text(color)?, (w, h), at, content, self.rotation)?
+            }
         };
         let mut bgra = pixels;
         if self.polychrome {
@@ -314,20 +350,28 @@ impl Icon {
     }
 }
 
-/// Rasterize SVG markup into premultiplied RGBA at exactly `w`×`h` device pixels, scaling the
-/// viewBox to fit and centering it (`preserveAspectRatio="xMidYMid meet"`).
-pub fn rasterize(svg: &str, w: u32, h: u32, rotation_deg: f32) -> Option<Vec<u8>> {
+/// Rasterize SVG markup into premultiplied RGBA on a `canvas` of device pixels, scaling the
+/// viewBox to fit a `content` box at `at` (device pixels) and centering it there
+/// (`preserveAspectRatio="xMidYMid meet"`).
+pub fn rasterize(
+    svg: &str,
+    canvas: (u32, u32),
+    at: (f32, f32),
+    content: (f32, f32),
+    rotation_deg: f32,
+) -> Option<Vec<u8>> {
+    let (w, h) = canvas;
     let tree = usvg::Tree::from_str(svg, &usvg::Options::default()).ok()?;
     let size = tree.size();
-    let s = (w as f32 / size.width()).min(h as f32 / size.height());
-    let dx = (w as f32 - size.width() * s) / 2.;
-    let dy = (h as f32 - size.height() * s) / 2.;
+    let s = (content.0 / size.width()).min(content.1 / size.height());
+    let dx = at.0 + (content.0 - size.width() * s) / 2.;
+    let dy = at.1 + (content.1 - size.height() * s) / 2.;
     let mut ts = tiny_skia::Transform::from_row(s, 0., 0., s, dx, dy);
     if rotation_deg != 0. {
         ts = ts.post_concat(tiny_skia::Transform::from_rotate_at(
             rotation_deg,
-            w as f32 / 2.,
-            h as f32 / 2.,
+            at.0 + content.0 / 2.,
+            at.1 + content.1 / 2.,
         ));
     }
     #[cfg(target_os = "macos")]
@@ -350,11 +394,11 @@ mod tests {
     fn rasterizes_chevron_with_exact_coverage() {
         let svg = std::str::from_utf8(svg_bytes(&format!("{APP_ICONS}/chevron-down.svg")).unwrap())
             .unwrap();
-        let px = rasterize(svg, 28, 28, 0.).unwrap();
+        let px = rasterize(svg, (28, 28), (0., 0.), (28., 28.), 0.).unwrap();
         let covered = px.chunks_exact(4).filter(|p| p[3] > 0).count();
         assert!(covered > 40 && covered < 300, "{covered}");
         // Rotating 180° flips the chevron to point up: the top row empties, the bottom fills.
-        let up = rasterize(svg, 28, 28, 180.).unwrap();
+        let up = rasterize(svg, (28, 28), (0., 0.), (28., 28.), 180.).unwrap();
         assert_ne!(px, up);
     }
 

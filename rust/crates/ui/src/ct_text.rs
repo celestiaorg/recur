@@ -45,16 +45,25 @@ fn system_font(weight: f32, size: f32) -> usize {
             return i;
         }
         let base = new_ui_font_for_language(kCTFontSystemFontType, size as f64, None);
-        // WebKit sets the CSS weight on SF's `wght` variation axis.
+        // WebKit sets the CSS weight on SF's `wght` variation axis, and as the CoreText weight
+        // trait, which CoreText's fallback cascade follows (a medium ↵ comes from Lucida Grande
+        // Bold).
         let wght = CFNumber::from(0x7767_6874i64);
         let variation = CFDictionary::from_CFType_pairs(&[(
             wght.as_CFType(),
             CFNumber::from(weight as f64).as_CFType(),
         )]);
-        let attrs: CFDictionary<CFString, CFType> = CFDictionary::from_CFType_pairs(&[(
-            CFString::new("NSCTFontVariationAttribute"),
-            variation.as_CFType(),
+        let traits = CFDictionary::from_CFType_pairs(&[(
+            CFString::new("NSCTFontWeightTrait").as_CFType(),
+            CFNumber::from(ct_weight(weight)).as_CFType(),
         )]);
+        let attrs: CFDictionary<CFString, CFType> = CFDictionary::from_CFType_pairs(&[
+            (
+                CFString::new("NSCTFontVariationAttribute"),
+                variation.as_CFType(),
+            ),
+            (CFString::new("NSCTFontTraitsAttribute"), traits.as_CFType()),
+        ]);
         let font = base
             .copy_descriptor()
             .create_copy_with_attributes(attrs.to_untyped())
@@ -65,6 +74,21 @@ fn system_font(weight: f32, size: f32) -> usize {
         f.by_key.insert(key, i);
         i
     })
+}
+
+/// A CSS weight as a CoreText weight trait, the steps WebKit maps between.
+fn ct_weight(weight: f32) -> f64 {
+    match weight {
+        w if w < 150. => -0.8,
+        w if w < 250. => -0.6,
+        w if w < 350. => -0.4,
+        w if w < 450. => 0.,
+        w if w < 550. => 0.23,
+        w if w < 650. => 0.3,
+        w if w < 750. => 0.4,
+        w if w < 850. => 0.56,
+        _ => 0.62,
+    }
 }
 
 fn intern(font: CTFont, size: f32) -> usize {

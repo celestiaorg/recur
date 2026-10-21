@@ -50,6 +50,8 @@ pub mod testing;
 #[cfg(test)]
 mod golden_e2_tests;
 #[cfg(test)]
+mod golden_e3_tests;
+#[cfg(test)]
 mod golden_tests;
 
 pub use crate::core::{Engine, EngineError, GitSetup, Result, ScheduleControl, Tasks};

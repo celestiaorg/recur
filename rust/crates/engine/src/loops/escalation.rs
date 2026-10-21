@@ -443,9 +443,9 @@ impl Engine {
             }
         };
         if let Some(lp) = lp {
-            // The walk sets its real next phase on its next setState; clear
-            // escalated now so the UI is not stuck on Needs you until then.
-            lp.send(cmd);
+            // Clear escalated before the walk wakes so the UI is not stuck on
+            // Needs you, and so the walk's own next state (Stop included)
+            // always lands after this one.
             if !still_open
                 && self
                     .store
@@ -454,6 +454,7 @@ impl Engine {
             {
                 self.set_workspace_state(workspace_id, WorkspaceState::Coding, "resuming");
             }
+            lp.send(cmd);
         } else if !self
             .resume_after_answer(workspace_id, esc.agent_code.trim(), cmd)
             .await

@@ -138,6 +138,7 @@ fn apply_migration(conn: &mut Connection, m: &Migration) -> Result<()> {
 }
 
 /// The highest applied migration version (0 with none recorded).
+#[cfg(test)]
 pub(crate) fn schema_version(conn: &Connection) -> Result<i64> {
     conn.query_row("SELECT MAX(version) FROM __migrations", [], |r| {
         r.get::<_, Option<i64>>(0)

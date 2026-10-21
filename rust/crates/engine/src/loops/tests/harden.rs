@@ -87,14 +87,15 @@ async fn engine_loop_panic_recovers() {
     let repo = init_repo();
     let panicked = Arc::new(AtomicBool::new(false));
     let p = Arc::clone(&panicked);
-    let healthy = scripted_with_edits(Vec::new(), &[("ok.txt", "fine\n")]);
-    let t = TestEngine::new(Some(AsyncProvider::wrap(move |req, cx| {
-        let (p, healthy) = (Arc::clone(&p), Arc::clone(&healthy));
+    let t = TestEngine::new(Some(AsyncProvider::wrap(move |req, _cx| {
+        let p = Arc::clone(&p);
         async move {
             if !p.swap(true, Ordering::SeqCst) {
                 panic!("boom in the runner");
             }
-            healthy.run_turn(req, cx).await
+            apply_edits(&req.worktree, &[("ok.txt", "fine\n")])
+                .map_err(|e| recur_agent::ProviderError::failed(e.to_string()))?;
+            Ok(success(&req.agent_id, "done"))
         }
     })));
     let proj = add_project(&t.store, &repo.path);

@@ -4,10 +4,11 @@
 
 use crate::style::is_focus_visible;
 use crate::theme::Theme;
+use crate::tooltip::titled;
 use gpui_kit::{
     App, CursorStyle, DispatchPhase, ElementId, FocusHandle, InteractiveElement, IntoElement,
     KeyDownEvent, MouseButton, MouseMoveEvent, MouseUpEvent, ParentElement, RenderOnce,
-    StatefulInteractiveElement, Styled, Window, canvas, div, px,
+    StatefulInteractiveElement, Styled, Window, canvas, deferred, div, px,
 };
 use std::rc::Rc;
 
@@ -217,7 +218,10 @@ impl RenderOnce for ResizeHandle {
             )
             .size_full()
         };
-        d.child(tracker)
+        // `title="Drag to resize"`; `z-index: 8` paints the handle over its panel's border,
+        // which GPUI would otherwise draw on top of the panel's children.
+        let id = self.id;
+        deferred(titled((id, "tip"), "Drag to resize", d.child(tracker))).with_priority(8)
     }
 }
 

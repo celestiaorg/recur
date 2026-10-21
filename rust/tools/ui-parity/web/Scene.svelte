@@ -14,6 +14,8 @@
   import Tooltip from './scenes/Tooltip.svelte'
   import Tabs from './scenes/Tabs.svelte'
   import Selects from './scenes/Selects.svelte'
+  import IconPick from './scenes/IconPick.svelte'
+  import Resize from './scenes/Resize.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
@@ -53,6 +55,10 @@
     <Tabs {variant} />
   {:else if kind === 'select'}
     <Selects {variant} />
+  {:else if kind === 'icon-picker'}
+    <IconPick />
+  {:else if kind === 'resize-handle'}
+    <Resize />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

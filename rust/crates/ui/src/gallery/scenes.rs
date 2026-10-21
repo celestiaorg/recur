@@ -14,9 +14,10 @@ use crate::text::{LineHeight, Text, TextStyled, span, text};
 use crate::theme::Theme;
 use crate::tooltip::{TitleTooltip, titled};
 use crate::widgets::{
-    ChipIcon, PicBox, Select, SelectOption, SelectSize, ToastAsk, ToastKind, ToastOptions,
-    ToastStore, Toasts, armed_button, blurb_code, decode_text, project_pic, push_toast, ring,
-    settings_group, settings_groups, tab_chip, tab_strip, tab_strip_action, toast_action,
+    Axis, ChipIcon, Edge, IconPicker, PicBox, Select, SelectOption, SelectSize, ToastAsk,
+    ToastKind, ToastOptions, ToastStore, Toasts, armed_button, blurb_code, decode_text,
+    project_pic, push_toast, resize_handle, ring, settings_group, settings_groups, tab_chip,
+    tab_strip, tab_strip_action, toast_action,
 };
 use gpui_kit::{
     AnyElement, AnyView, App, AppContext, Context, Div, IntoElement, ParentElement, Render, Styled,
@@ -44,6 +45,8 @@ pub(super) const NAMES: &[&str] = &[
     "tooltip/*",
     "tab-strip/*",
     "select/*",
+    "icon-picker/*",
+    "resize-handle/*",
 ];
 
 pub(super) fn matches(pattern: &str, name: &str) -> bool {
@@ -83,6 +86,22 @@ pub(super) fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<Any
             Box::new(|_, cx| body(cx).size_full().into_any_element())
         }
         ("select", v) => selects(v, window, cx),
+        ("icon-picker", _) => {
+            let picker = cx.new(|cx| IconPicker::new("rocket", window, cx));
+            Box::new(move |_, cx| {
+                body(cx)
+                    .size_full()
+                    .child(div().p(px(16.)).w(px(220.)).child(picker.clone()))
+                    .into_any_element()
+            })
+        }
+        ("resize-handle", _) => {
+            let (side, dock) = (
+                cx.focus_handle().tab_stop(true),
+                cx.focus_handle().tab_stop(true),
+            );
+            Box::new(move |_, cx| resize_handles(&side, &dock, cx))
+        }
         _ => Box::new(static_content(kind, variant)?),
     };
     Some(cx.new(|_| Stage { content, overlays }).into())
@@ -861,4 +880,40 @@ fn selects(variant: &str, window: &mut Window, cx: &mut App) -> Content {
             .child(div().p(px(16.)).child(content))
             .into_any_element()
     })
+}
+
+fn resize_handles(
+    side: &gpui_kit::FocusHandle,
+    dock: &gpui_kit::FocusHandle,
+    cx: &App,
+) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    body(cx)
+        .size_full()
+        .relative()
+        .child(
+            div()
+                .absolute()
+                .left_0()
+                .top_0()
+                .bottom_0()
+                .w(px(160.))
+                .bg(t.pane)
+                .border_r(px(1.))
+                .border_color(gpui_kit::Hsla::from(t.line))
+                .child(resize_handle("rail", Axis::X, Edge::End, 160., side)),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(161.))
+                .right_0()
+                .bottom_0()
+                .h(px(60.))
+                .bg(t.rail)
+                .border_t(px(1.))
+                .border_color(gpui_kit::Hsla::from(t.line))
+                .child(resize_handle("dock", Axis::Y, Edge::Start, 60., dock)),
+        )
+        .into_any_element()
 }

@@ -232,6 +232,10 @@ impl Render for IconPicker {
         let entity = cx.entity();
         let hover = t.pane_2;
         let hover_border = t.line_bright;
+        // As `.sel` triggers: `:focus-visible` rounds to 4px and outlines; hover fills, and an
+        // open trigger keeps its amber border.
+        let radius = if fv { 4. } else { 6. };
+        let keep_border = self.open;
         let mut button = div()
             .id("ico-btn")
             .track_focus(&self.focus)
@@ -242,7 +246,7 @@ impl Render for IconPicker {
             .w_full()
             .h(px(30.))
             .px(px(10.))
-            .rounded(px(6.))
+            .rounded(px(radius))
             .bg(bg)
             .border(px(1.))
             .border_color(Hsla::from(border))
@@ -253,13 +257,23 @@ impl Render for IconPicker {
             .when(lit && !disabled, |d| {
                 d.relative().child(crate::shadow::box_shadow(
                     &[crate::shadow::css_box_shadow(0., 0., 0., 3., t.amber_d)],
-                    6.,
+                    radius,
                     1.,
                 ))
             })
+            .when(fv && !disabled, |d| {
+                d.child(crate::style::focus_ring(radius, 1., cx))
+            })
             .when(!disabled, |d| d.cursor_pointer())
-            .when(!disabled && !lit, |d| {
-                d.hover(move |s| s.bg(hover).border_color(Hsla::from(hover_border)))
+            .when(!disabled, |d| {
+                d.hover(move |s| {
+                    let s = s.bg(hover);
+                    if keep_border {
+                        s
+                    } else {
+                        s.border_color(Hsla::from(hover_border))
+                    }
+                })
             })
             .child(
                 div()
@@ -333,9 +347,6 @@ impl IconPicker {
         // `.ico-menu { max-height: min(60vh, 380px, var(--sel-space)) }`.
         let max_h = (vh * 0.6).min(380.).min(mbox.space);
         let shown = shown_icons(&self.value, &self.query);
-        // Cells fill the grid's content width: (width − menu padding 8 − border 2 − grid
-        // padding 8 − 7 gaps of 2) / 8, square.
-        let cell = (width - 8. - 2. - 8. - 14.) / COLS as f32;
         let mut cells: Vec<AnyElement> = Vec::new();
         for (i, e) in shown.iter().enumerate() {
             let on =
@@ -348,7 +359,9 @@ impl IconPicker {
                 .flex()
                 .items_center()
                 .justify_center()
-                .size(px(cell))
+                // `.ico-cell { aspect-ratio: 1 }` in a `repeat(8, 1fr)` track.
+                .w_full()
+                .aspect_ratio(1.)
                 .rounded(px(6.))
                 .text_color(t.text)
                 .cursor_pointer()
@@ -403,8 +416,8 @@ impl IconPicker {
                             div()
                                 .id("ico-cells")
                                 .p(px(4.))
-                                .flex()
-                                .flex_wrap()
+                                .grid()
+                                .grid_cols(COLS as u16)
                                 .gap(px(2.))
                                 .role(gpui_kit::accesskit::Role::ListBox)
                                 .aria_label("Lucide icons")

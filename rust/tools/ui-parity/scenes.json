@@ -30,6 +30,28 @@
       "tolerance": 0
     },
     {
+      "name": "icon-picker/closed",
+      "width": 260,
+      "height": 64,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "icon-picker/open",
+      "width": 360,
+      "height": 420,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "click": [
+            60,
+            31
+          ]
+        }
+      ]
+    },
+    {
       "name": "icons/app",
       "width": 520,
       "height": 220,
@@ -77,6 +99,39 @@
       "height": 42,
       "theme": "default",
       "tolerance": 0
+    },
+    {
+      "name": "resize-handle/focus",
+      "width": 360,
+      "height": 160,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "key": "Alt+Tab"
+        },
+        {
+          "key": "Alt+Tab"
+        }
+      ]
+    },
+    {
+      "name": "resize-handle/hover",
+      "width": 360,
+      "height": 160,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "move": [
+            160,
+            50
+          ]
+        },
+        {
+          "wait": 50
+        }
+      ]
     },
     {
       "name": "ring/default",

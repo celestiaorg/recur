@@ -72,6 +72,12 @@ impl ChatTurn {
         })
     }
 
+    /// A turn no registry holds (tests stand in a send's turn handle).
+    #[cfg(test)]
+    pub(crate) fn detached() -> Arc<Self> {
+        Self::new(CancellationToken::new(), true)
+    }
+
     /// The turn's cancel token.
     pub fn cancel_token(&self) -> &CancellationToken {
         &self.cancel
@@ -428,6 +434,16 @@ impl Engine {
         self.continue_gens.lock().live.retain(|_, id| {
             id.workspace_id != workspace_id || want.as_ref().is_some_and(|w| &id.code != w)
         });
+    }
+
+    /// A live remount generation belongs to this workspace (a mode switch's
+    /// continuation has not run yet).
+    pub fn workspace_has_live_continue(&self, workspace_id: &str) -> bool {
+        self.continue_gens
+            .lock()
+            .live
+            .values()
+            .any(|id| id.workspace_id == workspace_id)
     }
 
     /// Drops every live generation (ClearAll).

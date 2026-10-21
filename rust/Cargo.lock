@@ -6810,6 +6810,7 @@ dependencies = [
  "recur-platform",
  "recur-project",
  "recur-provider-claude",
+ "recur-provider-codex",
  "recur-provider-compatible",
  "recur-provider-cursor",
  "recur-store",

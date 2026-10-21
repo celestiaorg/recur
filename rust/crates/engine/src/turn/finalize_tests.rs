@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use recur_agent::error::CODEX_LOGIN_EXPIRED;
 use recur_agent::testing::ScriptedProvider;
-use recur_agent::{AgentEvent, ProviderError, TokenUsage, TurnRequest, TurnResult};
+use recur_agent::{ProviderError, TurnRequest, TurnResult};
 use recur_domain::{AgentRole, ContentBlock, Message, PROVIDER_CLAUDE_CODE};
 use tokio_util::sync::CancellationToken;
 
@@ -17,7 +17,7 @@ use crate::codes::{CHAT_RETRY_DISPLAY_SENTINEL, PAIR_AGENT_CODE};
 use crate::testing::{TestEngine, add_project, init_repo};
 use crate::turn::AgentSpec;
 use crate::turn::checkpoint::turn_user_message_id;
-use crate::turn::test_support::{FnProvider, claude};
+use crate::turn::test_support::{claude, duration_error, result_then_error};
 use crate::turn::transcript::{content_items, user_message_is_chat_prompt};
 
 fn err(msg: &str) -> ProviderError {
@@ -490,58 +490,6 @@ async fn chat_turn(f: &Fixture, prompt: &str) -> String {
         Err(e) => (*e.partial.clone(), Some(e)),
     };
     f.finalize(prompt, "", "", &res, e.as_ref())
-}
-
-/// Text, then a duration-less result carrying usage, then an error whose
-/// result has the duration (Go `durationErrorRunner`).
-fn duration_error() -> Arc<dyn recur_agent::Provider> {
-    FnProvider::wrap(|cx| {
-        cx.sink.emit(AgentEvent::Text {
-            text: "partial…".into(),
-            uuid: String::new(),
-            parent: String::new(),
-        });
-        let res = TurnResult {
-            duration_ms: 1500,
-            is_error: true,
-            session_id: "thread-1".into(),
-            usage: TokenUsage {
-                input_tokens: 200,
-                output_tokens: 50,
-                cache_read_tokens: 15000,
-                context_window: 200_000,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let mut usage = res.clone();
-        usage.duration_ms = 0;
-        cx.sink.emit(AgentEvent::TurnEnd(usage));
-        Err(
-            ProviderError::failed("codex app-server exited before turn completed")
-                .with_partial(res),
-        )
-    })
-}
-
-/// The result frame already stamped the duration before the error (Go
-/// `kindResultErrorRunner`).
-fn result_then_error() -> Arc<dyn recur_agent::Provider> {
-    FnProvider::wrap(|cx| {
-        cx.sink.emit(AgentEvent::Text {
-            text: "partial…".into(),
-            uuid: String::new(),
-            parent: String::new(),
-        });
-        let res = TurnResult {
-            duration_ms: 1500,
-            is_error: true,
-            session_id: "thread-1".into(),
-            ..Default::default()
-        };
-        cx.sink.emit(AgentEvent::TurnEnd(res.clone()));
-        Err(ProviderError::failed("cursor run: boom").with_partial(res))
-    })
 }
 
 #[tokio::test]

@@ -123,6 +123,9 @@ pub struct ScheduleControl {
 
 type Hook = Arc<dyn Fn() + Send + Sync>;
 type Clock = Arc<dyn Fn() -> DateTime<Local> + Send + Sync>;
+/// A test seam that may wait (Go's blocking hook funcs).
+pub(crate) type AsyncHook =
+    Arc<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
 
 /// Test seams (Go's package-level `promoteHook`, `startWalkHook`,
 /// `childQueueHook`, `nowFn`, kitchen word lists, fswatch timing). All
@@ -135,6 +138,11 @@ pub(crate) struct TestHooks {
     pub kitchen_words: Option<(Vec<String>, Vec<String>)>,
     pub fs_event_latency: Duration,
     pub fs_poll_backstop: Duration,
+    /// After a send takes its FIFO ticket (Go `testBeforeChatClaim`).
+    pub before_chat_claim: Option<AsyncHook>,
+    /// While the tab slot is released for the fork inject (Go
+    /// `testBeforeApplyChatFork`).
+    pub before_apply_chat_fork: Option<AsyncHook>,
 }
 
 impl Default for TestHooks {
@@ -147,6 +155,8 @@ impl Default for TestHooks {
             kitchen_words: None,
             fs_event_latency: Duration::from_millis(400),
             fs_poll_backstop: Duration::from_secs(7),
+            before_chat_claim: None,
+            before_apply_chat_fork: None,
         }
     }
 }
@@ -241,6 +251,23 @@ pub struct Engine {
     pub(crate) esc_precision: crate::loops::escalation::EscPrecision,
     /// How often a fan-out parent re-checks its children.
     pub(crate) fan_out_poll: Mutex<Duration>,
+
+    /// Pending switch_mode remounts and remount depth per tab.
+    pub(crate) mode_continues: Mutex<crate::chat::switch_mode::ModeContinues>,
+    /// A live parent chat turn (by pointer) → the subagent wave it creates.
+    pub(crate) child_waves: Mutex<HashMap<usize, i64>>,
+    /// Child ids with a live report watcher.
+    pub(crate) chat_child_watchers: Mutex<HashSet<String>>,
+    /// Serializes merge_child per parent workspace (held across git).
+    pub(crate) merge_child_locks: Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    /// Chat turn keys AutoResume relaunched whose resumed turn is not done.
+    pub(crate) resuming_chats: Mutex<HashSet<String>>,
+    /// The looking-at surface of each tab's last send, for Retry.
+    pub(crate) last_chat_surfaces: Mutex<HashMap<String, crate::chat::surface::ChatSurface>>,
+    /// PA*/MA tabs Recover found live with no turn, for AutoResume.
+    pub(crate) interrupted_chats: Mutex<Vec<crate::chat::recover::InterruptedChat>>,
+    /// Scheduled workspaces whose first turn settled into "waiting".
+    pub(crate) schedule_wait: Mutex<HashSet<String>>,
 
     pub tasks: Tasks,
     pub(crate) hooks: Mutex<TestHooks>,
@@ -344,6 +371,14 @@ impl Engine {
                 early_titles: Mutex::new(crate::chat_shared::EarlyTitles::default()),
                 esc_precision: crate::loops::escalation::EscPrecision::default(),
                 fan_out_poll: Mutex::new(crate::loops::fanout::DEFAULT_FAN_OUT_POLL),
+                mode_continues: Mutex::new(Default::default()),
+                child_waves: Mutex::new(HashMap::new()),
+                chat_child_watchers: Mutex::new(HashSet::new()),
+                merge_child_locks: Mutex::new(HashMap::new()),
+                resuming_chats: Mutex::new(HashSet::new()),
+                last_chat_surfaces: Mutex::new(HashMap::new()),
+                interrupted_chats: Mutex::new(Vec::new()),
+                schedule_wait: Mutex::new(HashSet::new()),
                 tasks: Tasks::default(),
                 hooks: Mutex::new(TestHooks::default()),
             }
@@ -552,6 +587,25 @@ impl Engine {
         h.fs_event_latency = latency;
         h.fs_poll_backstop = poll;
     }
+
+    /// Runs after a send takes its FIFO ticket (Go `testBeforeChatClaim`).
+    pub fn set_before_chat_claim_hook<F, Fut>(&self, f: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = ()> + Send + 'static,
+    {
+        self.hooks.lock().before_chat_claim = Some(Arc::new(move || Box::pin(f())));
+    }
+
+    /// Runs while the tab slot is released for the fork inject (Go
+    /// `testBeforeApplyChatFork`).
+    pub fn set_before_apply_chat_fork_hook<F, Fut>(&self, f: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = ()> + Send + 'static,
+    {
+        self.hooks.lock().before_apply_chat_fork = Some(Arc::new(move || Box::pin(f())));
+    }
 }
 
 impl Engine {
@@ -578,6 +632,14 @@ impl Engine {
     /// before its parent link is written (no-op in production).
     pub fn run_child_queue_hook(&self) {
         self.run_hook(|h| h.child_queue.clone());
+    }
+
+    /// Awaits an async test seam (no-op in production).
+    pub(crate) async fn run_async_hook(&self, pick: impl Fn(&TestHooks) -> Option<AsyncHook>) {
+        let hook = pick(&self.hooks.lock());
+        if let Some(h) = hook {
+            h().await;
+        }
     }
 
     /// The last live-stream seqs (text, thinking) for one agent, so a new

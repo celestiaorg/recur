@@ -1,8 +1,7 @@
 //! Port of Go `acceptance_test.go` (`TestHeadlineE2E`), the loop half: a
 //! typed task plans, converges code↔review [2,0], verifies in a browser with
 //! evidence, opens a Local PR, and the record survives a store reopen. The
-//! inline comment, send-back and merge steps go through E5's PR API; the
-//! feed reconstruction check is E4's (`deferred::reconstruct_feed`). Also
+//! inline comment, send-back and merge steps go through E5's PR API. Also
 //! the env-gated real-agent run (Go `real_e2e_test.go`), same split.
 
 use std::sync::Arc;
@@ -167,6 +166,12 @@ async fn headline_e2e() {
     assert_eq!(pr2.file_count, pr.file_count);
     assert!(!pr2.files.unwrap_or_default().is_empty());
     assert_eq!(st2.findings(&id).len(), 2);
+    let st2 = Arc::new(st2);
+    let eng2 = t.reopen_on(Arc::clone(&st2), None);
+    assert!(
+        !eng2.reconstruct_feed(&id).is_empty(),
+        "feed not reconstructable from disk after reload (history must survive)"
+    );
     st2.close().unwrap();
     t.close().await;
 }

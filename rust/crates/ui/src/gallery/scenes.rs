@@ -48,6 +48,7 @@ pub(super) const NAMES: &[&str] = &[
     "icon-picker/*",
     "resize-handle/*",
     "overlays/*",
+    "scrollbar/*",
 ];
 
 pub(super) fn matches(pattern: &str, name: &str) -> bool {
@@ -125,6 +126,7 @@ fn static_content(kind: &str, variant: &str) -> Option<fn(&mut Window, &mut App)
         ("settings-group", _) => settings,
         ("armed-button", _) => armed,
         ("tooltip", _) => tooltips,
+        ("scrollbar", _) => scrollbars,
         ("tab-strip", "overflow") => tabs_overflow,
         ("tab-strip", _) => tabs,
         _ => return None,
@@ -1064,4 +1066,34 @@ fn overlay_scenes(variant: &str, window: &mut Window, cx: &mut App) -> Content {
             })
         }
     }
+}
+
+/// The themed 11px scrollbar and the overlay thumb (hovered), on the same overflowing list.
+fn scrollbars(_: &mut Window, cx: &mut App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    let list = |area: crate::widgets::ScrollArea| {
+        div()
+            .w(px(160.))
+            .h(px(160.))
+            .flex()
+            .flex_col()
+            .bg(t.pane)
+            .child(area.children((1..=24).map(|i| {
+                div()
+                    .py(px(4.))
+                    .px(px(10.))
+                    .child(text(format!("Row {i}")).size(12.))
+            })))
+    };
+    body(cx)
+        .size_full()
+        .child(
+            row()
+                .items_start()
+                .p(px(16.))
+                .gap(px(16.))
+                .child(list(crate::widgets::scroll_area("classic")))
+                .child(list(crate::widgets::scroll_area("overlay").overlay())),
+        )
+        .into_any_element()
 }

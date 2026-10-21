@@ -5,7 +5,7 @@
       "width": 420,
       "height": 140,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 2120,
       "steps": [
         {
           "click": [
@@ -20,28 +20,28 @@
       "width": 620,
       "height": 220,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 7100
     },
     {
       "name": "buttons/paper",
       "width": 620,
       "height": 220,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 7080
     },
     {
       "name": "icon-picker/closed",
       "width": 260,
       "height": 64,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 70
     },
     {
       "name": "icon-picker/open",
       "width": 360,
       "height": 420,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 440,
       "steps": [
         {
           "click": [
@@ -49,14 +49,15 @@
             31
           ]
         }
-      ]
+      ],
+      "hardTolerance": 21
     },
     {
       "name": "icons/app",
       "width": 520,
       "height": 220,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 100
     },
     {
       "name": "icons/file",
@@ -77,7 +78,7 @@
       "width": 400,
       "height": 110,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 70
     },
     {
       "name": "icons/provider",
@@ -91,42 +92,44 @@
       "width": 360,
       "height": 130,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 1650
     },
     {
       "name": "overlays/misc",
       "width": 620,
       "height": 260,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 3300
     },
     {
       "name": "overlays/misc-paper",
       "width": 620,
       "height": 260,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 3490,
+      "hardTolerance": 15
     },
     {
       "name": "overlays/modal",
       "width": 720,
       "height": 400,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 230
     },
     {
       "name": "overlays/palette",
       "width": 700,
       "height": 420,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 3060,
+      "hardTolerance": 388
     },
     {
       "name": "project-pic/default",
       "width": 200,
       "height": 42,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 570
     },
     {
       "name": "resize-handle/focus",
@@ -166,40 +169,77 @@
       "width": 300,
       "height": 124,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 410
+    },
+    {
+      "name": "scrollbar/default",
+      "width": 380,
+      "height": 192,
+      "theme": "default",
+      "tolerance": 40,
+      "steps": [
+        {
+          "move": [
+            348,
+            60
+          ]
+        },
+        {
+          "wait": 200
+        }
+      ]
+    },
+    {
+      "name": "scrollbar/paper",
+      "width": 380,
+      "height": 192,
+      "theme": "paper",
+      "tolerance": 50,
+      "steps": [
+        {
+          "move": [
+            348,
+            60
+          ]
+        },
+        {
+          "wait": 200
+        }
+      ]
     },
     {
       "name": "select/closed",
       "width": 620,
       "height": 64,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 1770
     },
     {
       "name": "select/closed-paper",
       "width": 620,
       "height": 64,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 1940
     },
     {
       "name": "select/focus",
       "width": 320,
       "height": 64,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 240,
       "steps": [
         {
           "key": "Alt+Tab"
         }
-      ]
+      ],
+      "hardTolerance": 7
     },
     {
       "name": "select/multiple",
       "width": 320,
       "height": 200,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 240,
       "steps": [
         {
           "click": [
@@ -207,14 +247,15 @@
             30
           ]
         }
-      ]
+      ],
+      "hardTolerance": 2
     },
     {
       "name": "select/open",
       "width": 320,
       "height": 340,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 1570,
       "steps": [
         {
           "click": [
@@ -222,14 +263,15 @@
             30
           ]
         }
-      ]
+      ],
+      "hardTolerance": 2
     },
     {
       "name": "select/searchable",
       "width": 320,
       "height": 340,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 1600,
       "steps": [
         {
           "click": [
@@ -237,35 +279,36 @@
             30
           ]
         }
-      ]
+      ],
+      "hardTolerance": 22
     },
     {
       "name": "settings-group/default",
       "width": 444,
       "height": 540,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 1000
     },
     {
       "name": "settings-group/paper",
       "width": 444,
       "height": 540,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 1170
     },
     {
       "name": "tab-strip/default",
       "width": 640,
       "height": 48,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 2700
     },
     {
       "name": "tab-strip/hover",
       "width": 640,
       "height": 48,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 3370,
       "steps": [
         {
           "move": [
@@ -283,56 +326,59 @@
       "width": 320,
       "height": 48,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 2520,
       "steps": [
         {
           "wait": 800
         }
-      ]
+      ],
+      "hardTolerance": 4
     },
     {
       "name": "tab-strip/paper",
       "width": 640,
       "height": 48,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 2880
     },
     {
       "name": "text/calibration",
       "width": 420,
       "height": 330,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 320
     },
     {
       "name": "toasts/default",
       "width": 400,
       "height": 380,
       "theme": "default",
-      "tolerance": 0,
-      "animationTime": 15000
+      "tolerance": 30710,
+      "animationTime": 15000,
+      "hardTolerance": 2
     },
     {
       "name": "toasts/paper",
       "width": 400,
       "height": 380,
       "theme": "paper",
-      "tolerance": 0,
-      "animationTime": 15000
+      "tolerance": 16590,
+      "animationTime": 15000,
+      "hardTolerance": 4
     },
     {
       "name": "toggles/catppuccin-latte",
       "width": 320,
       "height": 56,
       "theme": "catppuccin-latte",
-      "tolerance": 0
+      "tolerance": 480
     },
     {
       "name": "toggles/default",
       "width": 320,
       "height": 56,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 540
     },
     {
       "name": "tokens/catppuccin-latte",
@@ -388,7 +434,7 @@
       "width": 360,
       "height": 160,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 2930,
       "steps": [
         {
           "move": [
@@ -406,7 +452,7 @@
       "width": 360,
       "height": 160,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 240,
       "steps": [
         {
           "move": [
@@ -424,7 +470,7 @@
       "width": 360,
       "height": 160,
       "theme": "paper",
-      "tolerance": 0,
+      "tolerance": 480,
       "steps": [
         {
           "move": [

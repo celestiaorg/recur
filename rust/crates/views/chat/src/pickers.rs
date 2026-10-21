@@ -297,7 +297,18 @@ impl LoopPolicyPickers {
         let t = Theme::of(cx).tokens;
         let mk = |label: &str, policy: bool, window: &mut Window, cx: &mut Context<Self>| {
             cx.new(|cx| {
-                let mut s = Select::new(Vec::new(), window, cx).label(label.to_string()).trigger_style(autonomy_trigger(&t));
+                // `.sel.ghost .sel-btn` outranks `.nt-autonomy .sel-btn`: a ghost pair keeps
+                // only the amber icon.
+                let style = if ghost {
+                    TriggerStyle {
+                        icon_color: Some(t.amber),
+                        open_icon_color: Some(t.muted),
+                        ..Default::default()
+                    }
+                } else {
+                    autonomy_trigger(&t)
+                };
+                let mut s = Select::new(Vec::new(), window, cx).label(label.to_string()).trigger_style(style);
                 if ghost {
                     s = s.ghost();
                 }

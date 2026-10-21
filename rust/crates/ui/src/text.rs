@@ -239,8 +239,13 @@ pub struct Text {
     align: Align,
     exact_height: bool,
     opacity: f32,
+    mask: Option<AlphaMask>,
     layout: Rc<RefCell<Option<Laid>>>,
 }
+
+/// A horizontal alpha mask over the window (CSS px → alpha multiplier), like a CSS
+/// `mask-image` gradient. Applied per glyph at the glyph's center.
+pub type AlphaMask = Rc<dyn Fn(f32) -> f32>;
 
 /// Text from a single span.
 pub fn text(content: impl Into<SharedString>) -> Text {
@@ -261,6 +266,7 @@ impl Text {
             align: Align::Left,
             exact_height: false,
             opacity: 1.,
+            mask: None,
             layout: Rc::default(),
         }
     }
@@ -307,6 +313,11 @@ impl Text {
     /// `-webkit-line-clamp: n` (with an ellipsis on the last kept line).
     pub fn line_clamp(mut self, lines: usize) -> Self {
         self.clamp = Some(lines.max(1));
+        self
+    }
+    /// Fade glyphs by a horizontal mask (see [`AlphaMask`]).
+    pub fn mask(mut self, mask: AlphaMask) -> Self {
+        self.mask = Some(mask);
         self
     }
     /// CSS `opacity` on the text's own box. Glyphs never overlap, so this is exact.
@@ -1118,10 +1129,10 @@ impl Element for Text {
         let align = self.align;
         if clip {
             window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
-                paint_lines(laid, bounds, align, window)
+                paint_lines(laid, bounds, align, self.mask.as_ref(), window)
             });
         } else {
-            paint_lines(laid, bounds, align, window);
+            paint_lines(laid, bounds, align, self.mask.as_ref(), window);
         }
     }
 }
@@ -1270,17 +1281,23 @@ impl Element for TextStack {
             };
             if t.ellipsis || t.clamp.is_some() {
                 window.with_content_mask(Some(gpui_kit::ContentMask { bounds: b }), |window| {
-                    paint_lines(laid, b, t.align, window)
+                    paint_lines(laid, b, t.align, t.mask.as_ref(), window)
                 });
             } else {
-                paint_lines(laid, b, t.align, window);
+                paint_lines(laid, b, t.align, t.mask.as_ref(), window);
             }
             y += h;
         }
     }
 }
 
-fn paint_lines(laid: &Laid, bounds: Bounds<Pixels>, align: Align, window: &mut Window) {
+fn paint_lines(
+    laid: &Laid,
+    bounds: Bounds<Pixels>,
+    align: Align,
+    mask: Option<&AlphaMask>,
+    window: &mut Window,
+) {
     let scale = window.scale_factor();
     let box_w = f32::from(bounds.size.width);
     for (li, line) in laid.lines.iter().enumerate() {
@@ -1319,14 +1336,21 @@ fn paint_lines(laid: &Laid, bounds: Bounds<Pixels>, align: Align, window: &mut W
                 BorderStyle::Solid,
             ));
         }
+        let text = &laid.key.content[p.range.clone()];
         for g in p.glyphs.iter().filter(|g| line.range.contains(&g.index)) {
             let run = &laid.key.runs[g.run];
+            let mut color = run.color;
+            if let Some(mask) = mask {
+                let next = g.index + text[g.index..].chars().next().map_or(1, char::len_utf8);
+                let center = left + (p.x_at(g.index) + p.x_at(next)) / 2.;
+                color = color.opacity(mask(center));
+            }
             paint_one(
                 window,
                 point(px(left + g.x), px(baseline)),
                 g,
                 run.size,
-                run.color,
+                color,
             );
         }
         for (ri, r) in run_slices(

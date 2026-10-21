@@ -37,6 +37,7 @@ pub struct Icon {
     color: Option<Hsla>,
     rotation: f32,
     polychrome: bool,
+    mask: Option<crate::text::AlphaMask>,
     style: StyleRefinement,
 }
 
@@ -93,6 +94,7 @@ impl Icon {
             color: None,
             rotation: 0.,
             polychrome: false,
+            mask: None,
             style,
         }
         .size(px(16.))
@@ -106,6 +108,12 @@ impl Icon {
 
     pub fn color(mut self, c: impl Into<Hsla>) -> Self {
         self.color = Some(c.into());
+        self
+    }
+
+    /// Fade by a horizontal mask (see [`crate::text::AlphaMask`]), sampled at the center.
+    pub fn mask(mut self, mask: crate::text::AlphaMask) -> Self {
+        self.mask = Some(mask);
         self
     }
 
@@ -212,7 +220,10 @@ impl Element for Icon {
         if w == 0 || h == 0 {
             return;
         }
-        let color = self.color.unwrap_or_else(|| window.text_style().color);
+        let mut color = self.color.unwrap_or_else(|| window.text_style().color);
+        if let Some(mask) = &self.mask {
+            color = color.opacity(mask(f32::from(bounds.center().x)));
+        }
         let key = Key {
             source: source_hash(&self.source),
             stroke_width: self.stroke_width.map_or(0, f32::to_bits),

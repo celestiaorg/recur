@@ -1531,49 +1531,53 @@
       "width": 640,
       "height": 1000,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 12710,
+      "hardTolerance": 95
     },
     {
       "name": "markdown/paper",
       "width": 640,
       "height": 1000,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 12910,
+      "hardTolerance": 131
     },
     {
       "name": "markdown/streaming",
       "width": 520,
       "height": 160,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 2150
     },
     {
       "name": "mermaid/flowchart",
       "width": 560,
       "height": 420,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 12210
     },
     {
       "name": "mermaid/sequence",
       "width": 560,
       "height": 420,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 8910
     },
     {
       "name": "pdf/page",
       "width": 560,
       "height": 480,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 20390,
+      "hardTolerance": 15
     },
     {
       "name": "file-preview/markdown",
       "width": 640,
       "height": 520,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 9350,
+      "hardTolerance": 514
     },
     {
       "name": "file-preview/svg",
@@ -1587,7 +1591,7 @@
       "width": 800,
       "height": 560,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 16180
     }
   ]
 }

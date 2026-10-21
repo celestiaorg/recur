@@ -8,6 +8,22 @@ license.workspace = true
 publish = false
 
 [dependencies]
+alacritty_terminal.workspace = true
+chrono.workspace = true
+filedescriptor.workspace = true
+nix.workspace = true
+parking_lot.workspace = true
+portable-pty.workspace = true
+regex.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+unicode-width.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

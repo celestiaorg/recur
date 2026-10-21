@@ -61,6 +61,14 @@ cron = "0.15"
 tempfile = "3"
 pretty_assertions = "1"
 
+# Terminal: PTY spawn, process groups, emulator state.
+portable-pty = "0.9"
+filedescriptor = "0.8"
+nix = { version = "0.31", features = ["signal", "process", "hostname", "poll"] }
+alacritty_terminal = { version = "0.25", default-features = false }
+url = "2"
+unicode-width = "0.2"
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 unused_must_use = "deny"

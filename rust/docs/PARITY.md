@@ -438,7 +438,12 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] `.tbtn.danger` / `.armed` looks at base and titlebar sizes, icon slot, title tooltip, `on_arm`
 - [ ] `ArtifactsPanel.svelte` (320 lines)
 - [ ] `AttachmentLightbox.svelte` (155 lines)
-- [ ] `CodeEditor.svelte` (1405 lines)
+- [x] `CodeEditor.svelte` (1405 lines) → `recur_editor::view::EditorView` (`EditorKind::Code`); scenes `editor/code`, `editor/paper`, `editor/find`, `editor/vim`
+  - [x] Base extensions in order: history, indent on input, Enter between pairs, close brackets, completion (bundle snippets + buffer words), selection-match highlights, pointer selection, find panel, the code keymap, Mod-click / F12 definitions
+  - [x] Pref compartments (theme, chrome, wrap, indent, features, keymap, diff gutter, read-only) through `set_prefs` / `set_theme`; app chrome tokens follow `recur_ui::Theme`
+  - [x] Gutters (findings, lint severity, line numbers, fold, SCM bars), TextMate language and theme, LSP attach, view state restore, dirty / saved baseline, save, events (`EditorEvent`)
+  - [x] vim (`@replit/codemirror-vim` 6.3.0) and emacs (`@replit/codemirror-emacs` 6.1.0) after the editor keymap, as the keymap compartment orders them
+  - [ ] Tab parking across switches (`caches/cm-session-tabs.ts`) is the host's: keep the `EditorView` entity
 - [ ] `CommandPalette.svelte` (269 lines)
 - [ ] `CommandPrompts.svelte` (142 lines)
 - [ ] `CommentReactions.svelte` (114 lines)
@@ -471,7 +476,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `LoopPolicyPickers.svelte` (93 lines)
 - [x] `LucideIcon.svelte` (26 lines) → `recur_ui::lucide_icon` (aliases, unknown names draw nothing); scene `icons/lucide`
 - [ ] `MarkdownHtml.svelte` (87 lines)
-- [ ] `MergeEditor.svelte` (703 lines)
+- [x] `MergeEditor.svelte` (703 lines) → `EditorView` with `EditorKind::Merge` (`merge.rs`: unified merge view, collapsed regions, full-line marks, change gutter, revert chip and `revertHunk` with Mod-Alt-z)
 - [ ] `MermaidPreview.svelte` (329 lines)
 - [ ] `MiniScriptEditor.svelte` (295 lines)
 - [ ] `ModelFlagsSelect.svelte` (305 lines)
@@ -594,32 +599,32 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/check-duration.ts` (90 lines) → `recur_forge::view` (`format_check_seconds`, `parse_check_duration`, `live_check_detail`, `PendingClock`, `prune_pending_clocks`, `check_clock_key`); test file ported
 - [ ] `lib/chrome-focus.ts` (89 lines)
 - [ ] `lib/clipboard.ts` (69 lines)
-- [ ] `lib/cm-diff-gutter.ts` (207 lines)
-- [ ] `lib/cm-diff-lines.ts` (48 lines)
-- [ ] `lib/cm-editor-history.ts` (214 lines)
-- [ ] `lib/cm-editor-prefs.ts` (232 lines)
-- [ ] `lib/cm-findings-gutter.ts` (253 lines)
-- [ ] `lib/cm-goto-line.ts` (125 lines)
-- [ ] `lib/cm-keymap.ts` (18 lines)
-- [ ] `lib/cm-lang-data.ts` (311 lines)
-- [ ] `lib/cm-lang.ts` (234 lines)
-- [ ] `lib/cm-line-diff.ts` (230 lines)
-- [ ] `lib/cm-lint-gutter.ts` (215 lines)
-- [ ] `lib/cm-mention-sel.ts` (71 lines)
-- [ ] `lib/cm-merge-full-line-marks.ts` (90 lines)
-- [ ] `lib/cm-merge-revert.ts` (299 lines)
-- [ ] `lib/cm-mini-script-highlight.ts` (177 lines)
-- [ ] `lib/cm-pointer-pos.ts` (277 lines)
-- [ ] `lib/cm-search-panel.ts` (380 lines)
-- [ ] `lib/cm-textmate.ts` (371 lines)
-- [ ] `lib/cm-themes.ts` (255 lines)
-- [ ] `lib/cm-tm-deco.ts` (151 lines)
-- [ ] `lib/cm-tm-delta.ts` (84 lines)
-- [ ] `lib/cm-tm-doc.ts` (58 lines)
-- [ ] `lib/cm-tm-fold.ts` (97 lines)
-- [ ] `lib/cm-tm-paint.ts` (15 lines)
-- [ ] `lib/cm-tm-stacks.ts` (153 lines)
-- [ ] `lib/codehl.ts` (279 lines)
+- [x] `lib/cm-diff-gutter.ts` (207 lines) → `recur_editor::gutters` (SCM bars, idle recompute, `diffMarks`)
+- [x] `lib/cm-diff-lines.ts` (48 lines) → `recur_editor::prefs::{diff_line_kind, wants_diff_line_chrome}` and the diff-line washes
+- [x] `lib/cm-editor-history.ts` (214 lines) → `recur_editor::history` + `history_cache` (capture / restore within the 20 MiB byte budget)
+- [x] `lib/cm-editor-prefs.ts` (232 lines) → `recur_editor::prefs` + `EditorView::set_prefs` (features, rulers, drop cursor, blink, keymap modes)
+- [x] `lib/cm-findings-gutter.ts` (253 lines) → `recur_editor::gutters` findings column (severity icons via `recur_ui::icon`, click opens)
+- [x] `lib/cm-goto-line.ts` (125 lines) → `recur_editor::search::{goto_line_initial, goto_line_submit}` + the go-to-line dialog in `panels.rs`
+- [x] `lib/cm-keymap.ts` (18 lines) → `recur_editor::bindings` (`recur_default`)
+- [x] `lib/cm-lang-data.ts` (311 lines) → `recur_editor::indent` / `close_brackets` / `commands` over `recur_textmate::lang_data` (bundle indent rules, brackets, comments, Enter between pairs)
+- [x] `lib/cm-lang.ts` (234 lines) → `recur_editor::view::language_config` + `prefs` language ids
+- [x] `lib/cm-line-diff.ts` (230 lines) → `recur_editor::diff`
+- [x] `lib/cm-lint-gutter.ts` (215 lines) → `recur_editor::lint` severity gutter
+- [x] `lib/cm-mention-sel.ts` (71 lines) → `recur_editor::view_state` mention span
+- [x] `lib/cm-merge-full-line-marks.ts` (90 lines) → `recur_editor::merge`
+- [x] `lib/cm-merge-revert.ts` (299 lines) → `recur_editor::merge` revert chip + `revert_hunk`
+- [x] `lib/cm-mini-script-highlight.ts` (177 lines) → `recur_editor::highlight` chrome-paired engine
+- [x] `lib/cm-pointer-pos.ts` (277 lines) → `recur_editor::view_input` (`pos_at_pointer`, click kinds, drag selection, rectangular select)
+- [x] `lib/cm-search-panel.ts` (380 lines) → `recur_editor::search::SearchPanel` + `panels.rs` (recur-ui chrome; scene `editor/find`)
+- [x] `lib/cm-textmate.ts` (371 lines) → `recur_editor::highlight` over `recur_textmate`
+- [x] `lib/cm-themes.ts` (255 lines) → `recur_editor::theme` (`EditorTheme::resolve`, `app_chrome_editor_theme`, `TextMate::activate_theme`)
+- [x] `lib/cm-tm-deco.ts` (151 lines) → `recur_textmate::paint` + `recur_editor::highlight` spans
+- [x] `lib/cm-tm-delta.ts` (84 lines) → `recur_textmate::delta`
+- [x] `lib/cm-tm-doc.ts` (58 lines) → `recur_editor::highlight` document keys
+- [x] `lib/cm-tm-fold.ts` (97 lines) → `recur_textmate::fold` + `recur_editor::fold` (and `foldGutter`'s marker rebuild triggers)
+- [x] `lib/cm-tm-paint.ts` (15 lines) → `recur_textmate::paint`
+- [x] `lib/cm-tm-stacks.ts` (153 lines) → `recur_textmate::stacks`
+- [x] `lib/codehl.ts` (279 lines) → `recur_textmate::codehl` (LSP documentation code tint)
 - [ ] `lib/colors.ts` (159 lines)
 - [ ] `lib/command-usage.ts` (99 lines)
 - [ ] `lib/commands.ts` (489 lines)
@@ -634,10 +639,10 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/composerUndo.ts` (102 lines)
 - [x] `lib/contextUsage.ts` (90 lines) → `recur_agent::context_usage` (ContextUsage used/ready/after_compact, from_turn, from_chat_items, format_tokens with JS `toFixed`/`Math.round` rounding; `contextUsage.test.ts` ported)
 - [ ] `lib/dialog-focus.ts` (84 lines)
-- [ ] `lib/editor-dirty.ts` (60 lines)
-- [ ] `lib/editor-session.ts` (870 lines)
-- [ ] `lib/editor-view-state.ts` (443 lines)
-- [ ] `lib/editor-view.ts` (136 lines)
+- [x] `lib/editor-dirty.ts` (60 lines) → `recur_editor::view_state`
+- [x] `lib/editor-session.ts` (870 lines) → `recur_editor::session` (shape, caps, pruning, wire format, patch gate; debounced writes are the host's)
+- [x] `lib/editor-view-state.ts` (443 lines) → `recur_editor::view_state` + `EditorView::apply_view_state`
+- [x] `lib/editor-view.ts` (136 lines) → `recur_editor::view_state` (view-mode chip, SCM base rules)
 - [ ] `lib/emoji.ts` (197 lines)
 - [ ] `lib/explorer-visible.ts` (33 lines)
 - [ ] `lib/file-drag.ts` (332 lines)
@@ -668,13 +673,14 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/inbox-read.ts` (28 lines)
 - [~] `lib/issue-link.ts` (36 lines) → `recur_issues::view::{issue_key, issue_url}` (tracker fallback via `IssueTracker::issue_url`); tested. Left for `recur-app`: the `trackerIssues` cache keyed on `issuesStale` and `openIssueUrl` (services `OpenLinearInApp` uses `IssueTracker::app_url`)
 - [ ] `lib/keybinding-menu.ts` (27 lines)
-- [ ] `lib/keyequiv.ts` (285 lines)
+- [x] `lib/keyequiv.ts` (285 lines) → `recur_editor::keyequiv`
 - [x] `lib/lineartools.ts` (320 lines) → `recur_issues::linear::tools`; test file ported
 - [ ] `lib/loop-cockpit.ts` (432 lines)
 - [ ] `lib/loops.ts` (183 lines)
 - [ ] `lib/lsp-lang.ts` (86 lines)
 - [ ] `lib/lsp-problems.ts` (116 lines)
-- [ ] `lib/lsp.ts` (1520 lines)
+- [~] `lib/lsp.ts` (1520 lines) → editor UI half in `recur_editor::lsp` (`LspClient` trait, hover, signature help, formatting, rename, definitions, completion source, diagnostics mapped through unsynced edits, `content_changes_for`); transport rules in `recur_lsp::protocol`
+  - [ ] The `LspClient` adapter over `recur_lsp::Manager` (request ids, `initialize`, `didOpen` / `didChange` versions) lives in `recur-app`
 - [x] `lib/lucide-icons.ts` (82 lines) → `recur_ui::assets` (`lucide_icons`, `lucide_suggested`, `lucide_entry`, `has_lucide_icon`, aliases; generated `lucide.json`)
 - [ ] `lib/macro-worker.ts` (479 lines)
 - [ ] `lib/markdown-host.ts` (262 lines)
@@ -739,7 +745,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/shortcuts.ts` (96 lines)
 - [x] `lib/simplify.ts` (13 lines) → `recur_engine::simplify::text::{simplify_enabled, simplify_from_selection}`; test file ported
 - [x] `lib/skills.ts` (176 lines) → `recur_code::view::skills` (`SkillRow`, `SkillKind`, `skill_kind`, `is_recur_skill_path`, `infer_home_from_skill_path`, `skill_location`, `map_skill_rows`, `effective_skill_enabled` with the UI's untrimmed names, `toggle_disabled_name`, `project_skill_override_lists`, `skill_override_hint`, `skill_kind_override_count`, `skill_kind_has_overrides`); unit tests plus node golden
-- [ ] `lib/snippets.ts` (319 lines)
+- [x] `lib/snippets.ts` (319 lines) → `recur_editor::snippet`
 - [ ] `lib/split-diff.ts` (107 lines)
 - [ ] `lib/spy-pick.ts` (115 lines)
 - [ ] `lib/stores.ts` (1873 lines)
@@ -763,13 +769,13 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/textarea-caret.ts` (58 lines)
 - [x] `lib/title-tooltip.ts` (248 lines) → `recur_ui::tooltip` (`place_tooltip`, `show_delay_ms`, `should_reshow_after_dismiss`, `TipCore` with `apply_hide`/`apply_consider`/`apply_timer`; cases ported)
 - [ ] `lib/titlebar.ts` (30 lines)
-- [ ] `lib/tm-bootstrap.ts` (79 lines)
-- [ ] `lib/tm-engine.ts` (624 lines)
-- [ ] `lib/tm-fill.ts` (103 lines)
-- [ ] `lib/tm-registry.ts` (628 lines)
-- [ ] `lib/tm-scope-selector.ts` (121 lines)
-- [ ] `lib/tm-symbols.ts` (297 lines)
-- [ ] `lib/tm-theme.ts` (590 lines)
+- [~] `lib/tm-bootstrap.ts` (79 lines) → `TextMate::activate_theme` and the grammar registration in `recur_editor::gallery::shipped_textmate`; the app lists grammars and themes through services
+- [x] `lib/tm-engine.ts` (624 lines) → `recur_textmate::engine`
+- [x] `lib/tm-fill.ts` (103 lines) → `recur_textmate::fill`
+- [x] `lib/tm-registry.ts` (628 lines) → `recur_textmate::catalog` / `registry`
+- [x] `lib/tm-scope-selector.ts` (121 lines) → `recur_textmate::scope_selector`
+- [x] `lib/tm-symbols.ts` (297 lines) → `recur_textmate::symbols`
+- [x] `lib/tm-theme.ts` (590 lines) → `recur_textmate::tm_theme`
 - [x] `lib/todos.ts` (38 lines) → `recur_agent::display::todos` (parse, counts, latest over `ChatItem`s; `todos.test.ts` ported)
 - [ ] `lib/tree-sticky.ts` (137 lines)
 - [ ] `lib/updater.ts` (42 lines)
@@ -789,7 +795,9 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [x] `.kbd` / `.kbd-mod` keycaps (system-ui through CoreText with the weight trait and variation)
 - [ ] `styles/_briefing.scss`
 - [ ] `styles/_chat.scss`
-- [ ] `styles/_codemirror.scss`
+- [x] `styles/_codemirror.scss` → `recur_editor` (`panels.rs`, `tooltip_ui.rs`, `markdown.rs`, `vim/prompt.rs`, `element.rs`)
+  - [x] Panels, find / replace / go-to-line, completion list and info, hover, signature help, `.cm-lsp-documentation` (UA block margins collapsed, inline code boxes), title tooltips through `recur_ui::tooltip`
+  - [ ] Link `border-bottom` drawn as an underline and the signature's hanging indent (recur-ui text has no per-side inline border or text-indent)
 - [~] `styles/_forms.scss` (the generic parts)
   - [x] `.sel*` select and menus, `.tog` toggles, `.prog`, `.hint`, `.nt-go`, `.nt-link`, `.nt-bg` / `.nt-modal`, `.nt-tip-pop` (scenes `select/*`, `toggles/*`, `buttons/*`, `overlays/*`)
 - [ ] `styles/_loop.scss`

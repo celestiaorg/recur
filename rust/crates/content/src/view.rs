@@ -3,23 +3,28 @@
 //! copy controls on fences, Mermaid placeholders hydrated into diagrams, and images that open
 //! the lightbox.
 
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     App, AppContext, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, SharedString, Styled, Task, WeakEntity,
-    Window, canvas, div,
+    InteractiveElement, IntoElement, ParentElement, Render, SharedString,
+    StatefulInteractiveElement, Styled, Task, WeakEntity, Window, canvas, div,
 };
 use recur_ui::Theme;
 
 use crate::images::{self, Decoded, ImageCache};
 use crate::lightbox::AttachmentLightbox;
 use crate::markdown::{ParseOptions, render_markdown_cached};
-use crate::render::block::{Build, Counters, Env, Handlers, ImageSlot, MermaidSlot, stack};
+use crate::render::block::{
+    Build, Counters, Env, Handlers, ImageSlot, MermaidSlot, TextBlock, stack,
+};
 use crate::render::doc::{Doc, El, Node};
+use crate::render::mirror::Mirror;
 use crate::render::style::{MarkdownClass, Sheet};
 
 /// What a markdown view reports to its host.
@@ -45,6 +50,9 @@ pub struct MarkdownView {
     pub(crate) mermaid: Vec<MermaidSlot>,
     mermaid_task: Option<Task<()>>,
     width: f32,
+    hover_link: Option<(usize, usize)>,
+    highlights: HashMap<usize, Vec<(std::ops::Range<usize>, bool)>>,
+    pub(crate) texts: Rc<RefCell<Vec<TextBlock>>>,
     lightbox: Option<Entity<AttachmentLightbox>>,
     focus: FocusHandle,
 }
@@ -127,6 +135,9 @@ impl MarkdownView {
             mermaid: Vec::new(),
             mermaid_task: None,
             width: 0.,
+            hover_link: None,
+            highlights: HashMap::new(),
+            texts: Rc::default(),
             lightbox: None,
             focus: cx.focus_handle(),
         };
@@ -300,6 +311,71 @@ impl MarkdownView {
     }
 }
 
+impl MarkdownView {
+    /// The link under a window position: (text block, link index, href).
+    fn link_at(
+        &self,
+        p: gpui_kit::Point<gpui_kit::Pixels>,
+        window: &Window,
+    ) -> Option<(usize, usize, String)> {
+        let texts = self.texts.borrow();
+        for tb in texts.iter() {
+            if tb.links.is_empty() {
+                continue;
+            }
+            let Some(b) = tb.bounds.get() else { continue };
+            if !b.contains(&p) {
+                continue;
+            }
+            let m = Mirror::layout(&tb.spec, f32::from(b.size.width), window);
+            let byte = m.hit(f32::from(p.x - b.origin.x), f32::from(p.y - b.origin.y))?;
+            let (_, l) = tb.links.iter().find(|(r, _)| r.contains(&byte))?;
+            return Some((tb.id, *l, tb.hrefs.get(*l)?.clone()));
+        }
+        None
+    }
+
+    /// Find highlights per text block (`::highlight(preview-find)`), the current one flagged.
+    pub fn set_highlights(
+        &mut self,
+        highlights: HashMap<usize, Vec<(std::ops::Range<usize>, bool)>>,
+        cx: &mut Context<Self>,
+    ) {
+        if highlights != self.highlights {
+            self.highlights = highlights;
+            cx.notify();
+        }
+    }
+
+    /// Every rendered text block with its id and content, in document order.
+    pub fn text_blocks(&self) -> Vec<(usize, String)> {
+        self.texts
+            .borrow()
+            .iter()
+            .map(|t| (t.id, t.spec.runs.iter().map(|r| r.text.as_str()).collect()))
+            .collect()
+    }
+
+    /// Where a range of a text block painted last frame (window coordinates).
+    pub fn range_bounds(
+        &self,
+        id: usize,
+        range: std::ops::Range<usize>,
+        window: &Window,
+    ) -> Option<gpui_kit::Bounds<gpui_kit::Pixels>> {
+        let texts = self.texts.borrow();
+        let tb = texts.iter().find(|t| t.id == id)?;
+        let b = tb.bounds.get()?;
+        let m = Mirror::layout(&tb.spec, f32::from(b.size.width), window);
+        let rects = m.rects(range);
+        let (x, y, w, h) = *rects.first()?;
+        Some(gpui_kit::Bounds {
+            origin: gpui_kit::point(b.origin.x + gpui_kit::px(x), b.origin.y + gpui_kit::px(y)),
+            size: gpui_kit::size(gpui_kit::px(w), gpui_kit::px(h)),
+        })
+    }
+}
+
 fn ready(d: &Decoded) -> ImageSlot {
     ImageSlot::Ready {
         image: d.image.clone(),
@@ -360,7 +436,8 @@ impl Render for MarkdownView {
             mermaid: &self.mermaid,
             hover_fence: self.hover_fence,
             copied: &self.copied,
-            hover_link: None,
+            hover_link: self.hover_link,
+            highlights: &self.highlights,
             focused_image: None,
             handlers: &handlers,
         };
@@ -376,9 +453,11 @@ impl Render for MarkdownView {
             env: &env,
             window,
             n: Counters::default(),
+            texts: Vec::new(),
         };
         let blocks = b.blocks(&doc.nodes, flow, "root");
         let (body, first, last) = stack(blocks, b.window);
+        *self.texts.borrow_mut() = std::mem::take(&mut b.texts);
         let gap_top = crate::render::exact::vgap(first, b.window);
         let gap_bottom = crate::render::exact::vgap(last, b.window);
         let this = cx.entity().downgrade();
@@ -411,7 +490,39 @@ impl Render for MarkdownView {
             .track_focus(&self.focus)
             .flex()
             .flex_col()
-            .min_w_0();
+            .min_w_0()
+            .when(self.hover_link.is_some(), |d| d.cursor_pointer())
+            .on_mouse_move(cx.listener(|v, e: &gpui_kit::MouseMoveEvent, window, cx| {
+                let hit = v.link_at(e.position, window).map(|(id, l, _)| (id, l));
+                if hit != v.hover_link {
+                    v.hover_link = hit;
+                    cx.notify();
+                }
+            }))
+            .on_hover(cx.listener(|v, hovered: &bool, _, cx| {
+                if !hovered && v.hover_link.is_some() {
+                    v.hover_link = None;
+                    cx.notify();
+                }
+            }))
+            .on_mouse_up(
+                gpui_kit::MouseButton::Left,
+                cx.listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
+                    if e.click_count == 1
+                        && let Some((_, _, href)) = v.link_at(e.position, window)
+                    {
+                        crate::links::open_external_url(&href, cx);
+                    }
+                }),
+            )
+            .on_mouse_up(
+                gpui_kit::MouseButton::Middle,
+                cx.listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
+                    if let Some((_, _, href)) = v.link_at(e.position, window) {
+                        crate::links::open_external_url(&href, cx);
+                    }
+                }),
+            );
         let root = match sheet.max_width {
             Some(m) => root
                 .items_center()

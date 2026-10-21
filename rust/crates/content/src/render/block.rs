@@ -2,7 +2,9 @@
 //! markers, code fences and their copy controls, blockquotes, rules, tables, images and
 //! Mermaid slots, all at WebKit's LayoutUnit positions.
 
-use std::collections::HashSet;
+use std::cell::Cell;
+use std::collections::{HashMap, HashSet};
+use std::ops::Range;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -20,6 +22,7 @@ use recur_ui::{Color, IconName, Span, Text, TextStyled, Tokens, span};
 use super::doc::{El, Node};
 use super::exact::{hgap, vgap};
 use super::inline::{self, Context as InlineCx, Ink, Inline, Piece};
+use super::mirror::{Mirror, RunSpec, TextSpec};
 use super::style::{Sheet, copied_green, lu};
 
 /// A laid-out block and its outer vertical margins (they collapse with neighbors).
@@ -62,6 +65,8 @@ pub struct Env<'a> {
     pub hover_fence: Option<usize>,
     pub copied: &'a HashSet<usize>,
     pub hover_link: Option<(usize, usize)>,
+    /// Find highlights per text block: content byte ranges, the current one flagged.
+    pub highlights: &'a HashMap<usize, Vec<(Range<usize>, bool)>>,
     pub focused_image: Option<usize>,
     pub handlers: &'a Handlers,
 }
@@ -92,6 +97,19 @@ pub struct Build<'a, 'w> {
     pub env: &'a Env<'a>,
     pub window: &'w mut Window,
     pub n: Counters,
+    /// Every inline text block, in order.
+    pub texts: Vec<TextBlock>,
+}
+
+/// A rendered text block: its inputs (for the mirror), its links and where it painted.
+#[derive(Clone)]
+pub struct TextBlock {
+    pub id: usize,
+    pub spec: TextSpec,
+    /// Content byte ranges of links, with the link's index in `hrefs`.
+    pub links: Vec<(Range<usize>, usize)>,
+    pub hrefs: Vec<String>,
+    pub bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
 }
 
 fn hsla(c: Color) -> Hsla {
@@ -154,64 +172,138 @@ impl Build<'_, '_> {
         ElementId::from(("md-t", self.n.text))
     }
 
-    /// The spans for a block's inline content, as recur-ui text.
-    fn spans(&self, inl: &Inline, flow: Flow, block: usize) -> Vec<Span> {
+    /// The spans for a block's inline content, as recur-ui text, and their resolved runs (for
+    /// the mirror). Find highlights split runs so the current match can change color.
+    fn spans(
+        &self,
+        inl: &Inline,
+        flow: Flow,
+        block: usize,
+    ) -> (Vec<Span>, Vec<RunSpec>, Vec<(Range<usize>, usize)>) {
         let t = self.env.t;
         let sh = self.env.sheet;
+        let marks = self.env.highlights.get(&block).cloned().unwrap_or_default();
         let mut out = Vec::new();
+        let mut runs = Vec::new();
+        let mut links = Vec::new();
+        let mut at = 0usize;
         for p in &inl.pieces {
-            match p {
-                Piece::Text(s, st) => {
-                    let mut sp = span(s.clone()).weight(st.weight);
-                    let mut color = ink(t, st.ink);
-                    if let Some(l) = st.link
-                        && self.env.hover_link == Some((block, l))
-                    {
-                        color = t.text;
-                    }
-                    if st.code {
-                        sp = sp.mono().size(sh.code_size).boxed(InlineBox {
-                            pad_top: 1.,
-                            pad_bottom: 1.,
-                            pad_left: 5.,
-                            pad_right: 5.,
-                            background: Some(hsla(t.pane_2)),
-                            radius: 3.,
-                            ..InlineBox::default()
-                        });
-                        if sh.code_colored && st.ink == flow.ink && st.link.is_none() {
-                            color = t.text;
-                        }
-                    }
-                    if st.italic {
-                        sp = sp.italic();
-                    }
-                    if st.strike {
-                        sp = sp.line_through(true);
-                    }
-                    if st.underline {
-                        sp = sp.underline(true);
-                    }
-                    out.push(sp.color(hsla(color)));
+            let (text, st) = match p {
+                Piece::Text(s, st) => (s.clone(), Some(*st)),
+                Piece::Break => ("\n".to_string(), None),
+                Piece::Checkbox(_) => ("\u{200b}".to_string(), None),
+                Piece::Image { alt, .. } => (alt.clone(), None),
+            };
+            let start = at;
+            at += text.len();
+            let Some(st) = st else {
+                let mut sp = span(text.clone());
+                let mut ib = None;
+                if matches!(p, Piece::Checkbox(_)) {
+                    // `margin: 3px 6px 3px 2px` around a 12px box: the line keeps its width;
+                    // the control paints over it.
+                    let b = InlineBox {
+                        margin_left: 2. + 12.,
+                        margin_right: 6.,
+                        ..InlineBox::default()
+                    };
+                    sp = sp.boxed(b);
+                    ib = Some(b);
                 }
-                Piece::Break => out.push(span("\n")),
-                // `margin: 3px 6px 3px 2px` around a 12px box: the line keeps its width; the
-                // control paints over it (see `checkbox`).
-                Piece::Checkbox(_) => out.push(span("\u{200b}").boxed(InlineBox {
-                    margin_left: 2. + 12.,
-                    margin_right: 6.,
-                    ..InlineBox::default()
-                })),
-                Piece::Image { alt, .. } => out.push(span(alt.clone())),
+                out.push(sp);
+                runs.push(RunSpec {
+                    text,
+                    family: Family::Ui,
+                    size: flow.size,
+                    weight: flow.weight,
+                    italic: false,
+                    inline_box: ib,
+                });
+                continue;
+            };
+            if let Some(l) = st.link {
+                links.push((start..at, l));
+            }
+            let mut color = ink(t, st.ink);
+            if let Some(l) = st.link
+                && self.env.hover_link == Some((block, l))
+            {
+                color = t.text;
+            }
+            let ib = st.code.then_some(InlineBox {
+                pad_top: 1.,
+                pad_bottom: 1.,
+                pad_left: 5.,
+                pad_right: 5.,
+                background: Some(hsla(t.pane_2)),
+                radius: 3.,
+                ..InlineBox::default()
+            });
+            if st.code && sh.code_colored && st.ink == flow.ink && st.link.is_none() {
+                color = t.text;
+            }
+            // Split at the current find match so it can take `--bg` (code boxes stay whole).
+            let mut pieces: Vec<(String, bool)> = vec![(text.clone(), false)];
+            if ib.is_none()
+                && let Some((r, _)) = marks
+                    .iter()
+                    .find(|(r, cur)| *cur && r.start < at && r.end > start)
+            {
+                let s0 = r.start.max(start) - start;
+                let e0 = r.end.min(at) - start;
+                pieces = [
+                    (text[..s0].to_string(), false),
+                    (text[s0..e0].to_string(), true),
+                    (text[e0..].to_string(), false),
+                ]
+                .into_iter()
+                .filter(|(x, _)| !x.is_empty())
+                .collect();
+            }
+            for (piece, current) in pieces {
+                let mut sp = span(piece.clone()).weight(st.weight);
+                if let Some(b) = ib {
+                    sp = sp.mono().size(sh.code_size).boxed(b);
+                }
+                if st.italic {
+                    sp = sp.italic();
+                }
+                if st.strike {
+                    sp = sp.line_through(true);
+                }
+                if st.underline {
+                    sp = sp.underline(true);
+                }
+                out.push(sp.color(hsla(if current { t.bg } else { color })));
+                runs.push(RunSpec {
+                    text: piece,
+                    family: if ib.is_some() {
+                        Family::Mono
+                    } else {
+                        Family::Ui
+                    },
+                    size: if ib.is_some() {
+                        sh.code_size
+                    } else {
+                        flow.size
+                    },
+                    weight: st.weight,
+                    italic: st.italic,
+                    inline_box: ib,
+                });
             }
         }
-        out
+        (out, runs, links)
     }
 
-    fn text(&mut self, inl: &Inline, flow: Flow, block: usize) -> Text {
+    fn text(&mut self, inl: &Inline, flow: Flow, _block: usize) -> Text {
+        self.n.text += 1;
+        let block = self.n.text;
         let has_break = inl.pieces.iter().any(|p| matches!(p, Piece::Break));
-        let mut t = Text::from_spans(self.spans(inl, flow, block))
-            .id(self.text_id())
+        let anywhere = self.env.sheet.class == super::style::MarkdownClass::ChatCanvas;
+        let (spans, runs, link_ranges) = self.spans(inl, flow, block);
+        let mut t = Text::from_spans(spans)
+            .id(ElementId::from(("md-t", block)))
             .ui()
             .size(flow.size)
             .weight(flow.weight)
@@ -220,10 +312,66 @@ impl Build<'_, '_> {
         if has_break {
             t = t.pre_wrap();
         }
-        if self.env.sheet.class == super::style::MarkdownClass::ChatCanvas {
+        if anywhere {
             t = t.break_anywhere();
         }
+        self.texts.push(TextBlock {
+            id: block,
+            spec: TextSpec {
+                runs,
+                family: Family::Ui,
+                size: flow.size,
+                weight: flow.weight,
+                leading: flow.leading,
+                anywhere,
+            },
+            links: link_ranges,
+            hrefs: inl.links.iter().map(|l| l.href.clone()).collect(),
+            bounds: Rc::new(Cell::new(None)),
+        });
         t
+    }
+
+    /// A text block with its bounds recorded (hit testing, find) and its find highlights
+    /// painted under the glyphs.
+    fn tracked(&mut self, text: Text) -> Div {
+        let id = self.n.text;
+        self.tracked_id(id, text)
+    }
+
+    fn tracked_id(&self, id: usize, text: Text) -> Div {
+        let Some(tb) = self.texts.iter().find(|t| t.id == id) else {
+            return div().child(text);
+        };
+        let cell = tb.bounds.clone();
+        let marks = self.env.highlights.get(&tb.id).cloned().unwrap_or_default();
+        let spec = tb.spec.clone();
+        let t = self.env.t;
+        let (hl, cur) = (t.amber.fade(0.4), t.amber);
+        let back = canvas(
+            move |b, _, _| cell.set(Some(b)),
+            move |b: Bounds<Pixels>, _, window, _| {
+                if marks.is_empty() {
+                    return;
+                }
+                let m = Mirror::layout(&spec, f32::from(b.size.width), window);
+                for (r, current) in &marks {
+                    for (x, y, w, h) in m.rects(r.clone()) {
+                        let rect = Bounds {
+                            origin: point(b.origin.x + px(x), b.origin.y + px(y)),
+                            size: gpui_kit::size(px(w), px(h)),
+                        };
+                        window.paint_quad(gpui_kit::fill(
+                            rect,
+                            hsla(if *current { cur } else { hl }),
+                        ));
+                    }
+                }
+            },
+        )
+        .absolute()
+        .inset_0();
+        div().relative().child(back).child(text)
     }
 
     /// An inline formatting context (a paragraph or an anonymous block).
@@ -264,7 +412,7 @@ impl Build<'_, '_> {
         };
         let text = self.text(&text_only, flow, block);
         let (_, _, m) = text.measure(None, self.window);
-        let mut el = div().relative().flex().flex_col().child(text);
+        let mut el = div().relative().flex().flex_col().child(self.tracked(text));
         if let Some(checked) = checkbox {
             // The control's margin box sits 12px above to 6px below the baseline
             // (`vertical-align: -1px`), so it can deepen the line.
@@ -274,19 +422,11 @@ impl Build<'_, '_> {
                 el = el.child(vgap(6. - below, self.window));
             }
         }
-        if !links.is_empty() {
-            el = el.child(self.link_hits(block, &links));
-        }
+        let _ = links;
         for p in images {
             el = el.child(self.image(&p, flow));
         }
         el.into_any_element()
-    }
-
-    /// Hover and click over a block's links. The hit regions come from the view's text
-    /// mirror; here the block only reports which link the pointer is over.
-    fn link_hits(&self, _block: usize, _links: &[inline::Link]) -> AnyElement {
-        div().into_any_element()
     }
 
     fn image(&mut self, p: &Piece, flow: Flow) -> AnyElement {
@@ -917,7 +1057,7 @@ impl Build<'_, '_> {
         }
         let cols = rows.iter().map(|r| r.1.len()).max().unwrap_or(0);
         // Cell texts and their min/max content widths.
-        let mut texts: Vec<Vec<Option<Text>>> = Vec::new();
+        let mut texts: Vec<Vec<Option<(usize, Text)>>> = Vec::new();
         let mut min_w = vec![0f32; cols];
         let mut max_w = vec![0f32; cols];
         for (_, cells) in &rows {
@@ -939,12 +1079,13 @@ impl Build<'_, '_> {
                 );
                 self.n.block += 1;
                 let text = self.text(&inl, cf, self.n.block);
+                let tid = self.n.text;
                 let (maxc, _, _) = text.measure(None, self.window);
                 let (minc, _, _) = text.measure(Some(0.), self.window);
                 let extra = 2. * ph + 1.;
                 max_w[ci] = max_w[ci].max(maxc + extra);
                 min_w[ci] = min_w[ci].max(minc + extra);
-                row.push(Some(text));
+                row.push(Some((tid, text)));
             }
             texts.push(row);
         }
@@ -1008,7 +1149,8 @@ impl Build<'_, '_> {
                 let inner_w = (w - 2. * ph - 1.).max(0.);
                 let text_h = text
                     .as_ref()
-                    .map_or(0., |t| t.measure(Some(inner_w), self.window).1);
+                    .map_or(0., |(_, t)| t.measure(Some(inner_w), self.window).1);
+                let text = text.map(|(id, t)| self.tracked_id(id, t));
                 row_h[ri] = row_h[ri].max(text_h);
                 let cell = div()
                     .relative()
@@ -1202,7 +1344,7 @@ const CHECKBOX_MARK: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="12
 fn checkbox_box(checked: bool, top: f32, t: &Tokens) -> AnyElement {
     let fill = recur_ui::rgba(255, 255, 255, 0.5).over(t.bg);
     let edge = recur_ui::rgba(255, 255, 255, 0.36).over(t.bg);
-    let check = recur_ui::rgba(186, 186, 186, 0.5).over(t.bg);
+    let check = recur_ui::rgba(153, 153, 153, 0.625).over(t.bg);
     div()
         .absolute()
         .left(px(2.))

@@ -294,9 +294,13 @@ reviewer = "test.roles.editor"
 pub struct TestOptions {
     /// Every turn goes here (`None` fails turns closed, Go `SetRunner(nil)`).
     pub provider: Option<Arc<dyn Provider>>,
+    /// Route by model ref over these instead of pinning `provider`.
+    pub registered: Option<Vec<Arc<dyn Provider>>>,
     /// The boot git alert (title, body).
     pub git_warning: Option<(String, String)>,
     pub forges: Vec<Arc<dyn recur_forge::Forge>>,
+    /// The Observatory terminals (`@terminal`, list/read_terminal).
+    pub terminals: Option<Arc<dyn crate::terminals::TerminalSource>>,
     pub trackers: Vec<Arc<dyn recur_issues::IssueTracker>>,
 }
 
@@ -341,8 +345,11 @@ impl TestEngine {
                 warning,
             },
             bundles,
-            None,
-            ProviderRegistry::pinned(opts.provider),
+            opts.terminals,
+            match opts.registered {
+                Some(list) => ProviderRegistry::new(list),
+                None => ProviderRegistry::pinned(opts.provider),
+            },
             ForgeRegistry::new(opts.forges),
             TrackerRegistry::new(opts.trackers),
             data_dir.clone(),

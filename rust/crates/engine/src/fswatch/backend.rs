@@ -170,6 +170,12 @@ fn fold(
         });
         return;
     }
+    // notify's inotify backend also watches opens and closes; reads are not
+    // changes (Go's fsnotify never reported them), and git's own reads
+    // would otherwise refresh forever.
+    if matches!(ev.kind, EventKind::Access(_)) {
+        return;
+    }
     let per_dir = !cfg!(target_os = "macos");
     use notify::event::{ModifyKind, RenameMode};
     let (removed, created): (Vec<&PathBuf>, Vec<&PathBuf>) = match &ev.kind {

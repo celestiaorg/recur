@@ -1524,5 +1524,70 @@
         }
       ]
     }
+  ],
+  "content": [
+    {
+      "name": "markdown/chat",
+      "width": 640,
+      "height": 1000,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "markdown/paper",
+      "width": 640,
+      "height": 1000,
+      "theme": "paper",
+      "tolerance": 0
+    },
+    {
+      "name": "markdown/streaming",
+      "width": 520,
+      "height": 160,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "mermaid/flowchart",
+      "width": 560,
+      "height": 420,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "mermaid/sequence",
+      "width": 560,
+      "height": 420,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "pdf/page",
+      "width": 560,
+      "height": 480,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "file-preview/markdown",
+      "width": 640,
+      "height": 520,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "file-preview/svg",
+      "width": 480,
+      "height": 300,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "lightbox/image",
+      "width": 800,
+      "height": 560,
+      "theme": "default",
+      "tolerance": 0
+    }
   ]
 }

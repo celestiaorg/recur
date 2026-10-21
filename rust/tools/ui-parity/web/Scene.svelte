@@ -21,18 +21,20 @@
   import Editor from './scenes/Editor.svelte'
   import Terminal from './scenes/Terminal.svelte'
   import Shell from './scenes/Shell.svelte'
+  import Content from './scenes/Content.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
   const variant = $derived(name.split('/').slice(1).join('/'))
   let ready = $state(false)
+  const CONTENT = ['markdown', 'mermaid', 'pdf', 'file-preview', 'lightbox']
   // Editor scenes are ready once TextMate has painted tokens.
   function painted(): boolean {
     return kind !== 'editor' || !!document.querySelector('.cm-line span')
   }
   onMount(() => {
     // Terminal and shell scenes report their own readiness.
-    if (kind === 'terminal' || kind === 'shell') return
+    if (kind === 'terminal' || kind === 'shell' || CONTENT.includes(kind)) return
     const settle = () => requestAnimationFrame(() => requestAnimationFrame(() => (ready = true)))
     const wait = (left: number) => (painted() || left <= 0 ? settle() : setTimeout(() => wait(left - 1), 50))
     wait(100)
@@ -80,6 +82,8 @@
     <Editor {variant} />
   {:else if kind === 'terminal'}
     <Terminal {name} onready={() => (ready = true)} />
+  {:else if CONTENT.includes(kind)}
+    <Content {name} onready={() => (ready = true)} />
   {:else if kind === 'shell'}
     <Shell onready={() => (ready = true)} />
   {:else}

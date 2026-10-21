@@ -134,7 +134,7 @@
       <rule>
         <include state="pod"/>
       </rule>
-      <rule pattern="#`(?&lt;opening_delimiters&gt;(?&lt;delimiter&gt;[≨⊰⌈⟨⩹⪁⪽༺⊨⊩⧀⪑⪛⪪₍≺≾⋞⋷〈⨫“❪⟃⦅⪬︹⊏⋚⟝⦑⧏⪿\[≼⊫⋉⪋⫓「≔⊲⋋⨼⫏︵｛༼≶⋠⌊⦏⧚⨴⪨⁽⊂⋢⋰⦇⦉﹇∈⋬⟦⧘⪯⫃⸄〚«⊊⧸⫍｢≮⊴⋲⟕⪕‛⟢⫅︗⋖⋶❬『【〔‘∼≒⊢⋳⦗⸠〈⁅⊑⋐⧼≦⊈⊶⋤⦋⦓⫹‚≪≲⟤⧄⪻⸂﹝⋦⪓⪦⫕︷﹁≃≰⸜&lt;⊦⋪⩽〝︿⊆⊘⦍⨭⩿⫷⸌｟‹∕⧔⪙‟≸⟅⟪⪡⫑⫬∉≤⋨⪃︽∊❰❲〖＜„⦃⦕⪗︻᚛≴⪳⸉﹃﹙﹛（\(⊀⊄⋜⋴❮❴⧑\{⎴❨⫁《〘⋘⩤﴾［])\k&lt;delimiter&gt;*)">
+      <rule pattern="#`(?&lt;opening_delimiters&gt;(?&lt;delimiter&gt;[\(&lt;\[\{«༺༼᚛‘‚‛“„‟‹⁅⁽₍∈∉∊∕∼≃≒≔≤≦≨≪≮≰≲≴≶≸≺≼≾⊀⊂⊄⊆⊈⊊⊏⊑⊘⊢⊦⊨⊩⊫⊰⊲⊴⊶⋉⋋⋐⋖⋘⋚⋜⋞⋠⋢⋤⋦⋨⋪⋬⋰⋲⋳⋴⋶⋷⌈⌊〈⎴❨❪❬❮❰❲❴⟃⟅⟕⟝⟢⟤⟦⟨⟪⦃⦅⦇⦉⦋⦍⦏⦑⦓⦕⦗⧀⧄⧏⧑⧔⧘⧚⧸⧼⨫⨭⨴⨼⩤⩹⩽⩿⪁⪃⪋⪑⪓⪕⪗⪙⪛⪡⪦⪨⪪⪬⪯⪳⪻⪽⪿⫁⫃⫅⫍⫏⫑⫓⫕⫬⫷⫹⸂⸄⸉⸌⸜⸠〈《「『【〔〖〘〚〝﴾︗︵︷︹︻︽︿﹁﹃﹇﹙﹛﹝（＜［｛｟｢])\k&lt;delimiter&gt;*)">
         <token type="CommentMultiline"/>
         <rakufindbrackets token="5"/>
       </rule>
@@ -459,7 +459,7 @@
         <token type="Keyword"/>
         <push state="pod-single"/>
       </rule>
-      <rule pattern="(?&lt;keyword&gt;#[|=])(?&lt;opening_delimiters&gt;(?&lt;delimiter&gt;[≨⊰⌈⟨⩹⪁⪽༺⊨⊩⧀⪑⪛⪪₍≺≾⋞⋷〈⨫“❪⟃⦅⪬︹⊏⋚⟝⦑⧏⪿\[≼⊫⋉⪋⫓「≔⊲⋋⨼⫏︵｛༼≶⋠⌊⦏⧚⨴⪨⁽⊂⋢⋰⦇⦉﹇∈⋬⟦⧘⪯⫃⸄〚«⊊⧸⫍｢≮⊴⋲⟕⪕‛⟢⫅︗⋖⋶❬『【〔‘∼≒⊢⋳⦗⸠〈⁅⊑⋐⧼≦⊈⊶⋤⦋⦓⫹‚≪≲⟤⧄⪻⸂﹝⋦⪓⪦⫕︷﹁≃≰⸜&lt;⊦⋪⩽〝︿⊆⊘⦍⨭⩿⫷⸌｟‹∕⧔⪙‟≸⟅⟪⪡⫑⫬∉≤⋨⪃︽∊❰❲〖＜„⦃⦕⪗︻᚛≴⪳⸉﹃﹙﹛（\(⊀⊄⋜⋴❮❴⧑\{⎴❨⫁《〘⋘⩤﴾［])\k&lt;delimiter&gt;*)(?&lt;value&gt;)(?&lt;closing_delimiters&gt;)">
+      <rule pattern="(?&lt;keyword&gt;#[|=])(?&lt;opening_delimiters&gt;(?&lt;delimiter&gt;[\(&lt;\[\{«༺༼᚛‘‚‛“„‟‹⁅⁽₍∈∉∊∕∼≃≒≔≤≦≨≪≮≰≲≴≶≸≺≼≾⊀⊂⊄⊆⊈⊊⊏⊑⊘⊢⊦⊨⊩⊫⊰⊲⊴⊶⋉⋋⋐⋖⋘⋚⋜⋞⋠⋢⋤⋦⋨⋪⋬⋰⋲⋳⋴⋶⋷⌈⌊〈⎴❨❪❬❮❰❲❴⟃⟅⟕⟝⟢⟤⟦⟨⟪⦃⦅⦇⦉⦋⦍⦏⦑⦓⦕⦗⧀⧄⧏⧑⧔⧘⧚⧸⧼⨫⨭⨴⨼⩤⩹⩽⩿⪁⪃⪋⪑⪓⪕⪗⪙⪛⪡⪦⪨⪪⪬⪯⪳⪻⪽⪿⫁⫃⫅⫍⫏⫑⫓⫕⫬⫷⫹⸂⸄⸉⸌⸜⸠〈《「『【〔〖〘〚〝﴾︗︵︷︹︻︽︿﹁﹃﹇﹙﹛﹝（＜［｛｟｢])\k&lt;delimiter&gt;*)(?&lt;value&gt;)(?&lt;closing_delimiters&gt;)">
         <bygroupnames>
           <group name="closing_delimiters">
             <token type="Punctuation"/>
@@ -1105,7 +1105,7 @@
       <rule>
         <include state="colon-pair-attribute"/>
       </rule>
-      <rule pattern="(?&lt;opening_delimiters&gt;(?&lt;delimiter&gt;[≨⊰⌈⟨⩹⪁⪽༺⊨⊩⧀⪑⪛⪪₍≺≾⋞⋷〈⨫“❪⟃⦅⪬︹⊏⋚⟝⦑⧏⪿\[≼⊫⋉⪋⫓「≔⊲⋋⨼⫏︵｛༼≶⋠⌊⦏⧚⨴⪨⁽⊂⋢⋰⦇⦉﹇∈⋬⟦⧘⪯⫃⸄〚«⊊⧸⫍｢≮⊴⋲⟕⪕‛⟢⫅︗⋖⋶❬『【〔‘∼≒⊢⋳⦗⸠〈⁅⊑⋐⧼≦⊈⊶⋤⦋⦓⫹‚≪≲⟤⧄⪻⸂﹝⋦⪓⪦⫕︷﹁≃≰⸜&lt;⊦⋪⩽〝︿⊆⊘⦍⨭⩿⫷⸌｟‹∕⧔⪙‟≸⟅⟪⪡⫑⫬∉≤⋨⪃︽∊❰❲〖＜„⦃⦕⪗︻᚛≴⪳⸉﹃﹙﹛（\(⊀⊄⋜⋴❮❴⧑\{⎴❨⫁《〘⋘⩤﴾［])\k&lt;delimiter&gt;*)">
+      <rule pattern="(?&lt;opening_delimiters&gt;(?&lt;delimiter&gt;[\(&lt;\[\{«༺༼᚛‘‚‛“„‟‹⁅⁽₍∈∉∊∕∼≃≒≔≤≦≨≪≮≰≲≴≶≸≺≼≾⊀⊂⊄⊆⊈⊊⊏⊑⊘⊢⊦⊨⊩⊫⊰⊲⊴⊶⋉⋋⋐⋖⋘⋚⋜⋞⋠⋢⋤⋦⋨⋪⋬⋰⋲⋳⋴⋶⋷⌈⌊〈⎴❨❪❬❮❰❲❴⟃⟅⟕⟝⟢⟤⟦⟨⟪⦃⦅⦇⦉⦋⦍⦏⦑⦓⦕⦗⧀⧄⧏⧑⧔⧘⧚⧸⧼⨫⨭⨴⨼⩤⩹⩽⩿⪁⪃⪋⪑⪓⪕⪗⪙⪛⪡⪦⪨⪪⪬⪯⪳⪻⪽⪿⫁⫃⫅⫍⫏⫑⫓⫕⫬⫷⫹⸂⸄⸉⸌⸜⸠〈《「『【〔〖〘〚〝﴾︗︵︷︹︻︽︿﹁﹃﹇﹙﹛﹝（＜［｛｟｢])\k&lt;delimiter&gt;*)">
         <bygroupnames>
           <group name="delimiter">
             <nil/>

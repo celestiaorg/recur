@@ -29,9 +29,9 @@ pub(crate) fn flex_int<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error>
         Value::Null => Ok(0),
         Value::String(s) if s.is_empty() => Ok(0),
         Value::String(s) => s.parse::<i64>().map_err(de::Error::custom),
-        Value::Number(n) => n
-            .as_i64()
-            .ok_or_else(|| de::Error::custom(format!("json: cannot unmarshal number {n} into int64"))),
+        Value::Number(n) => n.as_i64().ok_or_else(|| {
+            de::Error::custom(format!("json: cannot unmarshal number {n} into int64"))
+        }),
         other => Err(de::Error::custom(format!(
             "json: cannot unmarshal {other} into int64"
         ))),
@@ -42,9 +42,9 @@ pub(crate) fn flex_int<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error>
 pub(crate) fn go_int<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
     match Option::<Value>::deserialize(d)? {
         None => Ok(0),
-        Some(Value::Number(n)) => n
-            .as_i64()
-            .ok_or_else(|| de::Error::custom(format!("json: cannot unmarshal number {n} into int"))),
+        Some(Value::Number(n)) => n.as_i64().ok_or_else(|| {
+            de::Error::custom(format!("json: cannot unmarshal number {n} into int"))
+        }),
         Some(other) => Err(de::Error::custom(format!(
             "json: cannot unmarshal {other} into int"
         ))),
@@ -104,6 +104,22 @@ fn go_float(f: f64) -> String {
     }
 }
 
+/// Go's `json.Unmarshal` into a struct: an object decodes, `null` leaves the
+/// zero value, anything else fails. (A serde struct would also take an array
+/// positionally.)
+pub(crate) fn decode_struct<T: serde::de::DeserializeOwned + Default>(raw: &str) -> Result<T, ()> {
+    let t = raw.trim_start();
+    if t.starts_with("null") {
+        return serde_json::from_str::<Option<T>>(raw)
+            .map(Option::unwrap_or_default)
+            .map_err(drop);
+    }
+    if !t.starts_with('{') {
+        return Err(());
+    }
+    serde_json::from_str::<T>(raw).map_err(drop)
+}
+
 /// `strings.TrimSpace`.
 pub(crate) fn trim(s: &str) -> &str {
     s.trim_matches(char::is_whitespace)
@@ -129,11 +145,11 @@ mod tests {
 
     #[test]
     fn marshal_any_sorts_and_floats() {
-        let v: Value = serde_json::from_str(r#"{"b":1,"a":[2.5,"<x>"],"c":{"z":1e21,"y":null}}"#)
-            .unwrap();
+        let v: Value =
+            serde_json::from_str(r#"{"b":1,"a":[2.5,"<x>"],"c":{"z":1e21,"y":null}}"#).unwrap();
         assert_eq!(
             marshal_any(&v),
-            r#"{"a":[2.5,"<x>"],"b":1,"c":{"y":null,"z":1e+21}}"#
+            r#"{"a":[2.5,"\u003cx\u003e"],"b":1,"c":{"y":null,"z":1e+21}}"#
         );
     }
 

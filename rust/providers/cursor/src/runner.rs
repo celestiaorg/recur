@@ -21,14 +21,17 @@ use std::time::Duration;
 use parking_lot::Mutex;
 use recur_agent::attach::{images_in_marker_order, marker, ordinal_word};
 use recur_agent::turn::follow_up_text;
-use recur_agent::{AgentEvent, EventSink, McpAttach, McpServerStatus, SteerInbox, TurnRequest, TurnResult, standing_in_user_prompt};
+use recur_agent::{
+    AgentEvent, EventSink, McpAttach, McpServerStatus, SteerInbox, TurnRequest, TurnResult,
+    standing_in_user_prompt,
+};
 use tokio::sync::OnceCell;
 use tokio_util::sync::CancellationToken;
 
 use crate::bridge::Bridge;
 use crate::client::{
-    AgentOptions, Image, LocalOptions, McpServer, ModelParameterValue, ModelSelection, SETTING_SOURCES_MINIMAL,
-    STEER_COMPLETE_DELIVERED, SandboxOptions, run_created_on_this_bridge,
+    AgentOptions, Image, LocalOptions, McpServer, ModelParameterValue, ModelSelection,
+    SETTING_SOURCES_MINIMAL, STEER_COMPLETE_DELIVERED, SandboxOptions, run_created_on_this_bridge,
 };
 use crate::connect::{Client, Error};
 use crate::steer::{SteerBuf, ack_all, blank, follow_up_users};
@@ -55,7 +58,8 @@ pub(crate) const CURSOR_SUBAGENT_PROMPT: &str = "Cursor's built-in subagents are
 /// Nested workspaces execute here.
 pub(crate) const CURSOR_CHILD_SUBAGENT_PROMPT: &str = "Cursor's built-in subagents are disabled by policy in Recur. Never spawn a Cursor subagent or background agent. Execute the assigned task here.";
 
-pub(crate) type Hook = Arc<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
+pub(crate) type Hook =
+    Arc<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
 
 /// A failed turn: the error and whatever result it produced.
 #[derive(Debug)]
@@ -111,7 +115,11 @@ impl CursorRunner {
     }
 
     #[cfg(test)]
-    pub(crate) fn with_hooks(mut self, before_follow_up_take: Option<Hook>, after_steer_reserve: Option<Hook>) -> Self {
+    pub(crate) fn with_hooks(
+        mut self,
+        before_follow_up_take: Option<Hook>,
+        after_steer_reserve: Option<Hook>,
+    ) -> Self {
         self.before_follow_up_take = before_follow_up_take;
         self.after_steer_reserve = after_steer_reserve;
         self
@@ -127,7 +135,9 @@ impl CursorRunner {
         steer: &mut Option<SteerInbox>,
     ) -> Result<TurnResult, RunFailure> {
         let Some(cl) = self.bridge.client().cloned() else {
-            return Err(RunFailure::new(Error::msg("cursor runner: bridge not started")));
+            return Err(RunFailure::new(Error::msg(
+                "cursor runner: bridge not started",
+            )));
         };
         let opts = self.agent_options(req);
 
@@ -142,7 +152,8 @@ impl CursorRunner {
                 Err(_) => (cl.create_agent(cancel, &opts).await, false),
             }
         };
-        let agent_id = created.map_err(|e| RunFailure::new(self.enrich_err(e).wrap("cursor create agent")))?;
+        let agent_id =
+            created.map_err(|e| RunFailure::new(self.enrich_err(e).wrap("cursor create agent")))?;
 
         // CancelRun must run before CloseAgent so the provider really stops;
         // closing is best-effort and survives the turn future being dropped.
@@ -213,11 +224,21 @@ impl CursorRunner {
         let _steer_guard = steer_ctx.clone().drop_guard();
         let listener = inbox.map(|inbox| {
             let this = self.clone();
-            let (st, steers, send, steer_ctx, cl) = (st.clone(), steers.clone(), send.clone(), steer_ctx.clone(), cl.clone());
+            let (st, steers, send, steer_ctx, cl) = (
+                st.clone(),
+                steers.clone(),
+                send.clone(),
+                steer_ctx.clone(),
+                cl.clone(),
+            );
             tokio::spawn(async move { this.listen(inbox, st, steers, send, steer_ctx, cl).await })
         });
 
-        let result = self.main_loop(req, cancel, cl, agent_id, st, resumed, &stop, &send, &steers).await;
+        let result = self
+            .main_loop(
+                req, cancel, cl, agent_id, st, resumed, &stop, &send, &steers,
+            )
+            .await;
 
         // Go's defers, in order: stop the listener, nack what is left, stop
         // the cancel watcher.
@@ -269,7 +290,10 @@ impl CursorRunner {
                 }
             }
 
-            let send_err = self.send_once(&send_tok, cl, agent_id, &prompt, &images, st).await.err();
+            let send_err = self
+                .send_once(&send_tok, cl, agent_id, &prompt, &images, st)
+                .await
+                .err();
 
             if cancel.is_cancelled() {
                 send_tok.cancel();
@@ -282,7 +306,8 @@ impl CursorRunner {
             }
 
             if st.have_result() {
-                let _ = tokio::time::timeout(Duration::from_secs(2), steers.wait_reserved(cancel)).await;
+                let _ = tokio::time::timeout(Duration::from_secs(2), steers.wait_reserved(cancel))
+                    .await;
                 steers.abandon();
             } else {
                 steers.wait_reserved(cancel).await;
@@ -369,7 +394,9 @@ impl CursorRunner {
                 if let Some(h) = &self.after_steer_reserve {
                     h().await;
                 }
-                if !reserved.joined.is_empty() && self.try_steer(&steer_ctx, &st, &reserved.joined).await {
+                if !reserved.joined.is_empty()
+                    && self.try_steer(&steer_ctx, &st, &reserved.joined).await
+                {
                     // Users before commit, so wait_reserved keeps the main
                     // loop off finish until the live-steer rows land.
                     st.fire_users(reserved.users, true);
@@ -436,10 +463,13 @@ impl CursorRunner {
         images: &[Image],
         st: &Arc<Turn>,
     ) -> Result<(), Error> {
-        let res = cl.send(tok, agent_id, prompt, images, |ev| st.on_event(ev)).await;
+        let res = cl
+            .send(tok, agent_id, prompt, images, |ev| st.on_event(ev))
+            .await;
         match res {
             Err(e) if e.active_run_conflict() && !tok.is_cancelled() => {
-                self.recover_active_run(tok, cl, agent_id, prompt, images, st).await
+                self.recover_active_run(tok, cl, agent_id, prompt, images, st)
+                    .await
             }
             other => other,
         }
@@ -458,15 +488,27 @@ impl CursorRunner {
         st: &Arc<Turn>,
     ) -> Result<(), Error> {
         let detached = CancellationToken::new();
-        let listed = tokio::time::timeout(CANCEL_RUN_TIMEOUT, cl.first_non_terminal_run(&detached, agent_id))
-            .await
-            .unwrap_or_else(|_| Err(Error::msg("context deadline exceeded")));
+        let listed = tokio::time::timeout(
+            CANCEL_RUN_TIMEOUT,
+            cl.first_non_terminal_run(&detached, agent_id),
+        )
+        .await
+        .unwrap_or_else(|_| Err(Error::msg("context deadline exceeded")));
         match listed {
             Err(e) => {
-                tracing::warn!("recur: cursor list runs on {agent_id} after active-run conflict: {e}");
+                tracing::warn!(
+                    "recur: cursor list runs on {agent_id} after active-run conflict: {e}"
+                );
             }
-            Ok(run) if !run.run_id.is_empty() && !self.skip_observe && run_created_on_this_bridge(&run, self.bridge.started_at()) => {
-                tracing::info!("recur: cursor draining active run {} on {agent_id} before Send", run.run_id);
+            Ok(run)
+                if !run.run_id.is_empty()
+                    && !self.skip_observe
+                    && run_created_on_this_bridge(&run, self.bridge.started_at()) =>
+            {
+                tracing::info!(
+                    "recur: cursor draining active run {} on {agent_id} before Send",
+                    run.run_id
+                );
                 st.note_run_id(&run.run_id);
                 st.fire(AgentEvent::Notice {
                     text: format!("Waiting for previous run {} to finish.", run.run_id),
@@ -474,11 +516,15 @@ impl CursorRunner {
                 match self.observe_run_to_idle(ctx, cl, st, &run.run_id).await {
                     Ok(()) => {
                         st.clear_steer_target();
-                        let res = cl.send(ctx, agent_id, prompt, images, |ev| st.on_event(ev)).await;
+                        let res = cl
+                            .send(ctx, agent_id, prompt, images, |ev| st.on_event(ev))
+                            .await;
                         // Observe EOF is not proof the store cleared activeRunId.
                         match res {
                             Err(e) if e.active_run_conflict() && !ctx.is_cancelled() => {
-                                tracing::warn!("recur: cursor send after observe still conflicted on {agent_id}; cancelling");
+                                tracing::warn!(
+                                    "recur: cursor send after observe still conflicted on {agent_id}; cancelling"
+                                );
                             }
                             other => return other,
                         }
@@ -512,22 +558,38 @@ impl CursorRunner {
         }
 
         let detached = CancellationToken::new();
-        match tokio::time::timeout(CANCEL_RUN_TIMEOUT, cl.cancel_non_terminal_runs(&detached, agent_id)).await {
+        match tokio::time::timeout(
+            CANCEL_RUN_TIMEOUT,
+            cl.cancel_non_terminal_runs(&detached, agent_id),
+        )
+        .await
+        {
             Ok(Err(e)) => tracing::warn!("recur: cursor clear stale runs on {agent_id}: {e}"),
-            Err(_) => tracing::warn!("recur: cursor clear stale runs on {agent_id}: context deadline exceeded"),
+            Err(_) => tracing::warn!(
+                "recur: cursor clear stale runs on {agent_id}: context deadline exceeded"
+            ),
             Ok(Ok(n)) if n > 0 => {
-                tracing::info!("recur: cursor cleared {n} stale run(s) on {agent_id} after active-run conflict");
+                tracing::info!(
+                    "recur: cursor cleared {n} stale run(s) on {agent_id} after active-run conflict"
+                );
             }
             Ok(Ok(_)) => {}
         }
         st.clear_steer_target();
-        cl.send(ctx, agent_id, prompt, images, |ev| st.on_event(ev)).await
+        cl.send(ctx, agent_id, prompt, images, |ev| st.on_event(ev))
+            .await
     }
 
     /// Waits for an existing run to finish without emitting into this turn.
     /// The idle deadline resets only on frames with an offset, so keepalives
     /// cannot disarm it.
-    async fn observe_run_to_idle(&self, ctx: &CancellationToken, cl: &Client, st: &Turn, run_id: &str) -> Result<(), Error> {
+    async fn observe_run_to_idle(
+        &self,
+        ctx: &CancellationToken,
+        cl: &Client,
+        st: &Turn,
+        run_id: &str,
+    ) -> Result<(), Error> {
         let obs = ctx.child_token();
         let _obs_guard = obs.clone().drop_guard();
         let last_progress = Arc::new(Mutex::new(tokio::time::Instant::now()));
@@ -588,7 +650,10 @@ impl CursorRunner {
         if self.strict_config.load(Ordering::SeqCst) {
             // Empty would mean "SDK defaults": naming the narrowest layer is
             // the only way to suppress project and user config.
-            local.setting_sources = SETTING_SOURCES_MINIMAL.iter().map(|s| (*s).to_owned()).collect();
+            local.setting_sources = SETTING_SOURCES_MINIMAL
+                .iter()
+                .map(|s| (*s).to_owned())
+                .collect();
         }
         // Native skills are stubbed by the install patch, so setting sources
         // can still load AGENTS.md and .cursor/rules.
@@ -618,7 +683,11 @@ impl CursorRunner {
             local: Some(local),
             mcp_servers: servers,
             // The closest Cursor has to a per-role tool allowlist.
-            mode: if is_read_only_role(req) { "plan".into() } else { String::new() },
+            mode: if is_read_only_role(req) {
+                "plan".into()
+            } else {
+                String::new()
+            },
         }
     }
 
@@ -640,7 +709,10 @@ impl CursorRunner {
             return body;
         }
         let mut role = req.system_prompt.trim().to_owned();
-        for add in [req.append_system_prompt.trim(), cursor_subagent_overlay(req)] {
+        for add in [
+            req.append_system_prompt.trim(),
+            cursor_subagent_overlay(req),
+        ] {
             if add.is_empty() {
                 continue;
             }

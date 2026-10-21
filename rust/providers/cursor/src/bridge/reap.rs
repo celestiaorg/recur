@@ -42,7 +42,9 @@ pub(crate) fn reap_stale_bridges(bin: &Path, log_dir: &Path, except_pid: i32, no
         if pgid <= 1 || pgid == except_pid || !seen.insert(pgid) {
             return;
         }
-        note(&format!("recur: reaping stale cursor-sdk-bridge pgid={pgid} ({why})"));
+        note(&format!(
+            "recur: reaping stale cursor-sdk-bridge pgid={pgid} ({why})"
+        ));
         kill_process_group_graceful(pgid);
     };
 
@@ -59,7 +61,9 @@ pub(crate) fn reap_stale_bridges(bin: &Path, log_dir: &Path, except_pid: i32, no
         }
     }
 
-    let owned = Path::new("/").join(BRIDGE_DIR_NAME).join(launcher_rel_path());
+    let owned = Path::new("/")
+        .join(BRIDGE_DIR_NAME)
+        .join(launcher_rel_path());
     let mut all = variants;
     all.push(owned.to_string_lossy().into_owned());
     for pgid in list_orphan_bridge_leaders(&all) {
@@ -169,7 +173,10 @@ pub(crate) fn bridge_is_orphan(pid: i32, ppid: i32) -> bool {
 /// gone. Signalling the group reaps the Node child too.
 fn list_orphan_bridge_leaders(variants: &[String]) -> Vec<i32> {
     // -ww: unlimited width so deep install paths are not truncated.
-    let Ok(out) = Command::new("ps").args(["-wwaxo", "pid=,ppid=,pgid=,command="]).output() else {
+    let Ok(out) = Command::new("ps")
+        .args(["-wwaxo", "pid=,ppid=,pgid=,command="])
+        .output()
+    else {
         return Vec::new();
     };
     if !out.status.success() {
@@ -251,7 +258,8 @@ mod tests {
 
     #[test]
     fn command_matches() {
-        let bin = "/Users/josh/Library/Application Support/Recur/cursor-bridge/bin/cursor-sdk-bridge";
+        let bin =
+            "/Users/josh/Library/Application Support/Recur/cursor-bridge/bin/cursor-sdk-bridge";
         let v = vec![bin.to_owned()];
         for (cmd, want) in [
             (format!("sh {bin} --port 0"), true),
@@ -269,7 +277,10 @@ mod tests {
         let line = "1759     1  1759 sh /Users/josh/Library/Application Support/Recur/cursor-bridge/bin/cursor-sdk-bridge --port 0";
         let (pid, ppid, pgid, cmd) = parse_ps_line(line).unwrap();
         assert_eq!((pid, ppid, pgid), (1759, 1, 1759));
-        assert!(cmd.contains("Application Support/Recur/cursor-bridge"), "{cmd}");
+        assert!(
+            cmd.contains("Application Support/Recur/cursor-bridge"),
+            "{cmd}"
+        );
         assert!(cmd.starts_with("sh "), "{cmd}");
         assert_eq!(parse_ps_line("1 2 3"), None);
     }

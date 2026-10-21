@@ -56,7 +56,7 @@ pub(crate) fn cursor_mcp_display(name: &str, input: &str) -> Option<(String, Str
         return None;
     }
     match tool_call_args(input) {
-        Ok(a) if !a.tool_name.is_empty() => {
+        Some(a) if !a.tool_name.is_empty() => {
             let common = if a.provider_identifier.is_empty() {
                 format!("mcp__{}", a.tool_name)
             } else {
@@ -139,14 +139,15 @@ pub fn cursor_tool_result_text(name: &str, raw: &str) -> String {
         #[serde(deserialize_with = "crate::gojson::raw")]
         value: String,
     }
-    let Ok(Some(env)) = serde_json::from_str::<Option<Envelope>>(raw) else {
+    let Ok(env) = crate::gojson::decode_struct::<Envelope>(raw) else {
         return String::new();
     };
     if env.value.is_empty() {
         return String::new();
     }
     let value_raw = env.value;
-    let v: Map<String, Value> = match serde_json::from_str::<Option<Map<String, Value>>>(&value_raw) {
+    let v: Map<String, Value> = match serde_json::from_str::<Option<Map<String, Value>>>(&value_raw)
+    {
         Ok(m) => m.unwrap_or_default(),
         Err(_) => return String::new(),
     };
@@ -281,9 +282,8 @@ fn mcp_result_text(value: &str) -> String {
         #[serde(deserialize_with = "crate::gojson::null_default")]
         content: Vec<Option<Item>>,
     }
-    match serde_json::from_str::<Option<V>>(value) {
+    match crate::gojson::decode_struct::<V>(value) {
         Ok(v) => v
-            .unwrap_or_default()
             .content
             .into_iter()
             .flatten()

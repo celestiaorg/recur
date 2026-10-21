@@ -132,7 +132,12 @@ impl SteerBuf {
 
     #[cfg(test)]
     pub(crate) fn snapshot(&self) -> Vec<String> {
-        self.state.lock().msgs.iter().map(|s| s.prompt.clone()).collect()
+        self.state
+            .lock()
+            .msgs
+            .iter()
+            .map(|s| s.prompt.clone())
+            .collect()
     }
 
     #[cfg(test)]
@@ -194,9 +199,15 @@ mod tests {
         let got = s.take();
         assert_eq!(got.len(), 1);
         assert_eq!(got[0].prompt, "first");
-        assert!(s.consumed(batch), "take must ack the folded batch so CancelRun is skipped");
+        assert!(
+            s.consumed(batch),
+            "take must ack the folded batch so CancelRun is skipped"
+        );
         s.add(steer("second"));
-        assert!(!s.consumed(s.batch_seq()), "a new add must not inherit the previous ack");
+        assert!(
+            !s.consumed(s.batch_seq()),
+            "a new add must not inherit the previous ack"
+        );
     }
 
     // Go TestSteerBufTakePrefixLeavesRemainder.
@@ -221,11 +232,20 @@ mod tests {
         let (first, first_ack) = Steer::new("first", None);
         s.add(first);
         let r = s.reserve().unwrap();
-        assert_eq!(r.joined, recur_agent::turn::format_steer_user_message("first"));
+        assert_eq!(
+            r.joined,
+            recur_agent::turn::format_steer_user_message("first")
+        );
         assert!(s.take().is_empty());
-        assert!(!s.consumed(s.batch_seq()), "take must not ack a reserved batch");
+        assert!(
+            !s.consumed(s.batch_seq()),
+            "take must not ack a reserved batch"
+        );
         s.commit();
-        assert!(s.consumed(s.batch_seq()), "commit must ack the reserved batch");
+        assert!(
+            s.consumed(s.batch_seq()),
+            "commit must ack the reserved batch"
+        );
         assert_eq!(first_ack.blocking_recv(), Ok(true));
 
         s.add(steer("second"));
@@ -256,10 +276,16 @@ mod tests {
     fn joined_text_and_users() {
         let mixed = [steer("  first  "), steer(""), steer("second")];
         let joined = follow_up_text(&mixed);
-        assert_eq!(joined, recur_agent::turn::format_steer_user_message("first\n\nsecond"));
+        assert_eq!(
+            joined,
+            recur_agent::turn::format_steer_user_message("first\n\nsecond")
+        );
         assert_eq!(follow_up_text(&[]), "");
 
-        let plain = [Steer::new("  first  ", Some(String::new())).0, Steer::new("second", Some(String::new())).0];
+        let plain = [
+            Steer::new("  first  ", Some(String::new())).0,
+            Steer::new("second", Some(String::new())).0,
+        ];
         assert_eq!(follow_up_text(&plain), "first\n\nsecond");
 
         let wire = Steer::new("WIRE", Some("Fix findings".into())).0;

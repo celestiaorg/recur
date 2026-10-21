@@ -62,7 +62,12 @@ pub(crate) fn parameters_to_flags(
     let defaults: BTreeMap<&str, &str> = variants
         .iter()
         .find(|v| v.is_default)
-        .map(|v| v.params.iter().map(|p| (p.id.as_str(), p.value.as_str())).collect())
+        .map(|v| {
+            v.params
+                .iter()
+                .map(|p| (p.id.as_str(), p.value.as_str()))
+                .collect()
+        })
         .unwrap_or_default();
 
     params
@@ -182,10 +187,16 @@ mod tests {
             model("grok-4.6", "Grok 4.6"),
         ]);
         assert_eq!(out.len(), 3);
-        assert_eq!((out[0].model_ref.as_str(), out[0].label.as_str()), ("cursor/auto-smart", "Auto"));
+        assert_eq!(
+            (out[0].model_ref.as_str(), out[0].label.as_str()),
+            ("cursor/auto-smart", "Auto")
+        );
         assert_eq!(out[1].model_ref, "cursor/composer-2.5");
         assert_eq!(out[1].context_window, 200_000);
-        assert_eq!((out[2].model_ref.as_str(), out[2].label.as_str()), ("cursor/grok-4.6", "Grok 4.6"));
+        assert_eq!(
+            (out[2].model_ref.as_str(), out[2].label.as_str()),
+            ("cursor/grok-4.6", "Grok 4.6")
+        );
         assert_eq!(out[2].context_window, 500_000);
     }
 
@@ -211,8 +222,14 @@ mod tests {
         assert_eq!(flags.len(), 1);
         assert_eq!(flags[0].id, "fast");
         let o = &flags[0].options;
-        assert_eq!((o[0].value.as_str(), o[0].label.as_str(), o[0].default), ("true", "On", true));
-        assert_eq!((o[1].value.as_str(), o[1].label.as_str(), o[1].default), ("false", "Off", false));
+        assert_eq!(
+            (o[0].value.as_str(), o[0].label.as_str(), o[0].default),
+            ("true", "On", true)
+        );
+        assert_eq!(
+            (o[1].value.as_str(), o[1].label.as_str(), o[1].default),
+            ("false", "Off", false)
+        );
     }
 
     // Go TestCursorThinkingBoolLabels.

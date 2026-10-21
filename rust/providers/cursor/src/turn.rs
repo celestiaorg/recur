@@ -20,7 +20,9 @@ use std::time::Duration;
 
 use parking_lot::Mutex;
 use recur_agent::display::{create_plan_body, summarize_tool_input};
-use recur_agent::{AgentEvent, EventSink, Flags, TokenUsage as MeterUsage, ToolResultEvent, ToolStep, TurnResult};
+use recur_agent::{
+    AgentEvent, EventSink, Flags, TokenUsage as MeterUsage, ToolResultEvent, ToolStep, TurnResult,
+};
 use recur_domain::{COMPACT_DONE, COMPACT_STARTED};
 use serde::Deserialize;
 use tokio::sync::Notify;
@@ -113,7 +115,12 @@ pub(crate) struct Turn {
 }
 
 impl Turn {
-    pub(crate) fn new(spec: TurnSpec, sink: Option<Arc<dyn EventSink>>, agent_id: &str, defer_result: bool) -> Self {
+    pub(crate) fn new(
+        spec: TurnSpec,
+        sink: Option<Arc<dyn EventSink>>,
+        agent_id: &str,
+        defer_result: bool,
+    ) -> Self {
         Self {
             spec,
             sink,
@@ -334,13 +341,15 @@ impl Turn {
         };
 
         match m.kind.as_str() {
-            MSG_STATUS => {
-                if m.status == STATUS_ERROR && !m.message.is_empty() {
-                    f.status_error = expand_cursor_run_error(&m.message);
-                }
+            MSG_STATUS if m.status == STATUS_ERROR && !m.message.is_empty() => {
+                f.status_error = expand_cursor_run_error(&m.message);
             }
             MSG_ASSISTANT => {
-                let chunk = m.content.as_ref().map(|c| c.text_content()).unwrap_or_default();
+                let chunk = m
+                    .content
+                    .as_ref()
+                    .map(|c| c.text_content())
+                    .unwrap_or_default();
                 if chunk.is_empty() {
                     return;
                 }
@@ -563,7 +572,7 @@ impl Turn {
                     #[serde(deserialize_with = "crate::gojson::null_default")]
                     summary: String,
                 }
-                if let Ok(Some(p)) = serde_json::from_str::<Option<P>>(&body)
+                if let Ok(p) = crate::gojson::decode_struct::<P>(&body)
                     && !crate::gojson::trim(&p.summary).is_empty()
                 {
                     f.compact_summary = p.summary;
@@ -575,7 +584,7 @@ impl Turn {
                 struct P {
                     usage: Option<TokenUsage>,
                 }
-                let Ok(Some(P { usage: Some(u) })) = serde_json::from_str::<Option<P>>(&body) else {
+                let Ok(P { usage: Some(u) }) = crate::gojson::decode_struct::<P>(&body) else {
                     return;
                 };
                 let window = resolve_context_window(&self.spec.model, &self.spec.flags);
@@ -729,9 +738,11 @@ impl Fold {
 
     /// The last run-cumulative usage, never a turn-ended per-call footprint.
     fn snapshot_compact_baseline(&mut self) {
-        let src = self
-            .usage_cumulative
-            .or(if self.usage_per_call { None } else { self.usage });
+        let src = self.usage_cumulative.or(if self.usage_per_call {
+            None
+        } else {
+            self.usage
+        });
         if let Some(s) = src {
             self.compact_baseline = Some(s);
         }
@@ -799,7 +810,10 @@ const CURSOR_RUN_ERROR_HINTS: &[(&str, &str)] = &[
         "deadline_exceeded",
         "Cursor's model provider timed out. Usually temporary; retry.",
     ),
-    ("internal", "Cursor-side fault, not a defect in the work. Retry."),
+    (
+        "internal",
+        "Cursor-side fault, not a defect in the work. Retry.",
+    ),
 ];
 
 /// Appends the hint to a bare "[code] …" status message.

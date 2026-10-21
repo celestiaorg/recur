@@ -10,7 +10,9 @@ use crate::client::*;
 use crate::connect::parse_connect_error;
 use crate::context::{VENDOR_ORDER, base_context_window, limits_for, vendor};
 use crate::events::{decode_frame, parse_interaction_type};
-use crate::install::{BRIDGE_ARCHIVE_PREFIX, PINNED_SDK_VERSION, PYPI_PROJECT_JSON, pypi_pinned_project};
+use crate::install::{
+    BRIDGE_ARCHIVE_PREFIX, PINNED_SDK_VERSION, PYPI_PROJECT_JSON, pypi_pinned_project,
+};
 use crate::turn::{Turn, TurnSpec, scale_cursor_meter_usage};
 
 fn pkg() -> Value {
@@ -28,13 +30,23 @@ fn s(v: &Value) -> &str {
 #[test]
 fn pin_and_anchors_match_go() {
     let g = pkg();
-    assert_eq!(PINNED_SDK_VERSION, s(&g["pinnedSDKVersion"]), "re-pin both sides together");
+    assert_eq!(
+        PINNED_SDK_VERSION,
+        s(&g["pinnedSDKVersion"]),
+        "re-pin both sides together"
+    );
     assert_eq!(pypi_pinned_project(), s(&g["pypiPinnedProject"]));
     assert_eq!(PYPI_PROJECT_JSON, s(&g["pypiProjectJSON"]));
     assert_eq!(BRIDGE_ARCHIVE_PREFIX, s(&g["bridgeArchivePrefix"]));
-    let pairs = |a: Vec<Anchor>| -> Vec<(String, String)> { a.into_iter().map(|a| (a.old.to_owned(), a.neu)).collect() };
+    let pairs = |a: Vec<Anchor>| -> Vec<(String, String)> {
+        a.into_iter().map(|a| (a.old.to_owned(), a.neu)).collect()
+    };
     let want = |k: &str| -> Vec<(String, String)> {
-        g[k].as_array().unwrap().iter().map(|p| (s(&p[0]).to_owned(), s(&p[1]).to_owned())).collect()
+        g[k].as_array()
+            .unwrap()
+            .iter()
+            .map(|p| (s(&p[0]).to_owned(), s(&p[1]).to_owned()))
+            .collect()
     };
     assert_eq!(pairs(sdk_attribution_anchors()), want("anchors"));
     assert_eq!(pairs(sdk_summary_delta_anchors()), want("summaryAnchors"));
@@ -46,16 +58,25 @@ fn pin_and_anchors_match_go() {
     assert_eq!(STUB_AGENT_SKILLS_ASSIGN, s(&g["stubAgentSkillsAssign"]));
     assert_eq!(SDK_SUMMARY_DELTA_YIELD, s(&g["summaryDeltaYield"]));
     assert_eq!(summary_delta_patch_needle(), s(&g["summaryDeltaNeedle"]));
-    assert_eq!(ATTRIBUTION_PROVIDER_MARKER, s(&g["attributionProviderMarker"]));
+    assert_eq!(
+        ATTRIBUTION_PROVIDER_MARKER,
+        s(&g["attributionProviderMarker"])
+    );
     assert_eq!(ATTRIBUTION_PRELOAD_REL, s(&g["attributionPreloadRel"]));
-    assert_eq!(ATTRIBUTION_ENTRYPOINT_REL, s(&g["attributionEntrypointRel"]));
+    assert_eq!(
+        ATTRIBUTION_ENTRYPOINT_REL,
+        s(&g["attributionEntrypointRel"])
+    );
     assert_eq!(STEER_RUN_SERVER_REL, s(&g["steerRunServerRel"]));
     assert_eq!(crate::bridge::READY_PREFIX, s(&g["readyPrefix"]));
 
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("a.json");
     write_attribution_config(&path, true, false).unwrap();
-    assert_eq!(std::fs::read_to_string(path).unwrap(), s(&g["attributionConfig"]));
+    assert_eq!(
+        std::fs::read_to_string(path).unwrap(),
+        s(&g["attributionConfig"])
+    );
 }
 
 #[test]
@@ -66,7 +87,12 @@ fn context_table_matches_go() {
         let l = limits_for(id);
         assert_eq!(
             (l.base, l.max, base_context_window(id), vendor(id)),
-            (row[1].as_i64().unwrap(), row[2].as_i64().unwrap(), row[3].as_i64().unwrap(), s(&row[4])),
+            (
+                row[1].as_i64().unwrap(),
+                row[2].as_i64().unwrap(),
+                row[3].as_i64().unwrap(),
+                s(&row[4])
+            ),
             "{id:?}"
         );
     }
@@ -78,14 +104,24 @@ fn context_table_matches_go() {
 fn slugs_redaction_interactions_errors_match_go() {
     let g = pkg();
     for row in g["slugs"].as_array().unwrap() {
-        assert_eq!(crate::cursor_project_slug(s(&row[0])), s(&row[1]), "{}", row[0]);
+        assert_eq!(
+            crate::cursor_project_slug(s(&row[0])),
+            s(&row[1]),
+            "{}",
+            row[0]
+        );
     }
     for row in g["redact"].as_array().unwrap() {
         assert_eq!(crate::bridge::redact_bridge_line(s(&row[0])), s(&row[1]));
     }
     for row in g["interactions"].as_array().unwrap() {
         let (t, body) = parse_interaction_type(s(&row[0]));
-        assert_eq!((t.as_str(), body.as_str()), (s(&row[1]), s(&row[2])), "{}", row[0]);
+        assert_eq!(
+            (t.as_str(), body.as_str()),
+            (s(&row[1]), s(&row[2])),
+            "{}",
+            row[0]
+        );
     }
     for row in g["connectErrors"].as_array().unwrap() {
         let got = parse_connect_error(s(&row[0]).as_bytes());
@@ -122,18 +158,28 @@ fn agent_options_encode_like_go() {
         name: "W-CO".into(),
         local: Some(LocalOptions {
             cwd: vec!["/tmp/wt".into()],
-            setting_sources: SETTING_SOURCES_MINIMAL.iter().map(|x| (*x).to_owned()).collect(),
+            setting_sources: SETTING_SOURCES_MINIMAL
+                .iter()
+                .map(|x| (*x).to_owned())
+                .collect(),
             sandbox: Some(SandboxOptions { enabled: false }),
         }),
         mcp_servers: [
-            ("recur".to_owned(), McpServer::http("http://x/tok/mcp?a=<b>&c")),
+            (
+                "recur".to_owned(),
+                McpServer::http("http://x/tok/mcp?a=<b>&c"),
+            ),
             (
                 "fs".to_owned(),
                 McpServer {
                     stdio: Some(StdioMcpServer {
                         command: "npx".into(),
                         args: vec!["-y".into()],
-                        env: [("B".to_owned(), "2".to_owned()), ("A".to_owned(), "1".to_owned())].into(),
+                        env: [
+                            ("B".to_owned(), "2".to_owned()),
+                            ("A".to_owned(), "1".to_owned()),
+                        ]
+                        .into(),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -154,7 +200,10 @@ fn agent_options_encode_like_go() {
         .into(),
         mode: "plan".into(),
     };
-    assert_eq!(recur_domain::json::to_string(&opts).unwrap(), s(&g["agentOptionsJSON"]));
+    assert_eq!(
+        recur_domain::json::to_string(&opts).unwrap(),
+        s(&g["agentOptionsJSON"])
+    );
     let minimal = AgentOptions {
         local: Some(LocalOptions {
             sandbox: Some(SandboxOptions { enabled: false }),
@@ -162,7 +211,10 @@ fn agent_options_encode_like_go() {
         }),
         ..Default::default()
     };
-    assert_eq!(recur_domain::json::to_string(&minimal).unwrap(), s(&g["minimalOptionsJSON"]));
+    assert_eq!(
+        recur_domain::json::to_string(&minimal).unwrap(),
+        s(&g["minimalOptionsJSON"])
+    );
 }
 
 #[test]
@@ -187,8 +239,16 @@ fn tool_mapping_matches_go() {
     let p = crate::CursorProvider::new(Default::default());
     for row in g["results"].as_array().unwrap() {
         let (name, raw) = (s(&row["name"]), s(&row["raw"]));
-        assert_eq!(crate::tools::cursor_tool_result_text(name, raw), s(&row["text"]), "{name} {raw}");
-        assert_eq!(recur_agent::display::display_tool_result(&p, name, raw), s(&row["display"]), "{name} {raw}");
+        assert_eq!(
+            crate::tools::cursor_tool_result_text(name, raw),
+            s(&row["text"]),
+            "{name} {raw}"
+        );
+        assert_eq!(
+            recur_agent::display::display_tool_result(&p, name, raw),
+            s(&row["display"]),
+            "{name} {raw}"
+        );
     }
 }
 
@@ -209,7 +269,8 @@ fn wire_prompts_match_go() {
             ..Default::default()
         },
     ];
-    let r = crate::runner::CursorRunner::new(crate::Bridge::bound("http://127.0.0.1:9", "", None), "");
+    let r =
+        crate::runner::CursorRunner::new(crate::Bridge::bound("http://127.0.0.1:9", "", None), "");
     for row in g["wire"].as_array().unwrap() {
         let req = recur_agent::TurnRequest {
             system_prompt: s(&row["systemPrompt"]).into(),
@@ -217,20 +278,42 @@ fn wire_prompts_match_go() {
             prompt: s(&row["prompt"]).into(),
             turn_append_prompt: s(&row["turnAppendPrompt"]).into(),
             chat_child: row["chatChild"].as_bool().unwrap(),
-            allowed_tools: row["allowedTools"].as_array().map(|a| a.iter().map(|t| s(t).to_owned()).collect()),
-            images: if row["images"].as_i64() == Some(2) { imgs.clone() } else { Vec::new() },
+            allowed_tools: row["allowedTools"]
+                .as_array()
+                .map(|a| a.iter().map(|t| s(t).to_owned()).collect()),
+            images: if row["images"].as_i64() == Some(2) {
+                imgs.clone()
+            } else {
+                Vec::new()
+            },
             ..Default::default()
         };
-        assert_eq!(r.wire_prompt(&req, row["standing"].as_bool().unwrap()), s(&row["wire"]), "{row}");
-        let ids: Vec<String> = crate::runner::cursor_images(&req).into_iter().map(|i| format!("{}|{}", i.data, i.mime_type)).collect();
-        let want: Vec<String> = row["imageIDs"].as_array().map(|a| a.iter().map(|x| s(x).to_owned()).collect()).unwrap_or_default();
+        assert_eq!(
+            r.wire_prompt(&req, row["standing"].as_bool().unwrap()),
+            s(&row["wire"]),
+            "{row}"
+        );
+        let ids: Vec<String> = crate::runner::cursor_images(&req)
+            .into_iter()
+            .map(|i| format!("{}|{}", i.data, i.mime_type))
+            .collect();
+        let want: Vec<String> = row["imageIDs"]
+            .as_array()
+            .map(|a| a.iter().map(|x| s(x).to_owned()).collect())
+            .unwrap_or_default();
         assert_eq!(ids, want);
     }
     let c = &g["constants"];
     assert_eq!(crate::turn::UNREPORTED_RESULT_TEXT, s(&c["unreported"]));
-    assert_eq!(crate::turn::STEER_CANCELLED_CALL_TEXT, s(&c["steerCancelled"]));
+    assert_eq!(
+        crate::turn::STEER_CANCELLED_CALL_TEXT,
+        s(&c["steerCancelled"])
+    );
     assert_eq!(crate::runner::CURSOR_SUBAGENT_PROMPT, s(&c["subagent"]));
-    assert_eq!(crate::runner::CURSOR_CHILD_SUBAGENT_PROMPT, s(&c["childSubagent"]));
+    assert_eq!(
+        crate::runner::CURSOR_CHILD_SUBAGENT_PROMPT,
+        s(&c["childSubagent"])
+    );
 }
 
 #[test]
@@ -240,7 +323,12 @@ fn meter_math_and_messages_match_go() {
         assert_eq!(crate::turn::expand_cursor_run_error(s(&row[0])), s(&row[1]));
     }
     for row in g["scale"].as_array().unwrap() {
-        let n: Vec<i64> = row.as_array().unwrap().iter().map(|v| v.as_i64().unwrap()).collect();
+        let n: Vec<i64> = row
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_i64().unwrap())
+            .collect();
         let mut u = recur_agent::TokenUsage {
             input_tokens: n[0],
             cache_read_tokens: n[1],
@@ -250,13 +338,21 @@ fn meter_math_and_messages_match_go() {
         };
         scale_cursor_meter_usage(&mut u, n[3], n[4]);
         assert_eq!(
-            [u.input_tokens, u.cache_read_tokens, u.cache_creation_tokens, u.output_tokens],
+            [
+                u.input_tokens,
+                u.cache_read_tokens,
+                u.cache_creation_tokens,
+                u.output_tokens
+            ],
             [n[5], n[6], n[7], n[8]],
             "{row}"
         );
     }
     for row in g["noResult"].as_array().unwrap() {
-        assert_eq!(crate::runner::cursor_no_result_message(s(&row[0]), " (bridge log: /tmp/b.log)"), s(&row[1]));
+        assert_eq!(
+            crate::runner::cursor_no_result_message(s(&row[0]), " (bridge log: /tmp/b.log)"),
+            s(&row[1])
+        );
     }
 }
 
@@ -273,7 +369,11 @@ fn dump_event(e: &recur_agent::AgentEvent) -> Option<Value> {
     use recur_agent::AgentEvent as E;
     let mut m = json!({"kind": e.kind()});
     match e {
-        E::Text { text, .. } | E::TextDelta { text, .. } | E::Thinking { text, .. } | E::ThinkingDelta { text, .. } | E::Notice { text } => {
+        E::Text { text, .. }
+        | E::TextDelta { text, .. }
+        | E::Thinking { text, .. }
+        | E::ThinkingDelta { text, .. }
+        | E::Notice { text } => {
             m["text"] = text.as_str().into();
         }
         E::Step(st) => {
@@ -295,14 +395,24 @@ fn dump_event(e: &recur_agent::AgentEvent) -> Option<Value> {
                 ..Default::default()
             });
         }
-        E::Compact { status, trigger, summary, pre_tokens, .. } => {
+        E::Compact {
+            status,
+            trigger,
+            summary,
+            pre_tokens,
+            ..
+        } => {
             m["status"] = status.as_str().into();
             m["trigger"] = trigger.as_str().into();
             m["summary"] = summary.as_str().into();
             m["preTokens"] = (*pre_tokens).into();
         }
         E::TurnEnd(r) => m["result"] = dump_result(r),
-        E::User { text, display, live_steer } => {
+        E::User {
+            text,
+            display,
+            live_steer,
+        } => {
             m["text"] = text.as_str().into();
             m["display"] = display.as_str().into();
             m["live"] = (*live_steer).into();
@@ -320,7 +430,11 @@ fn frame_folds_match_go() {
     for (name, fold) in g["folds"].as_object().unwrap() {
         let flags: recur_agent::Flags = fold["flags"]
             .as_object()
-            .map(|m| m.iter().map(|(k, v)| (k.clone(), s(v).to_owned())).collect())
+            .map(|m| {
+                m.iter()
+                    .map(|(k, v)| (k.clone(), s(v).to_owned()))
+                    .collect()
+            })
             .unwrap_or_default();
         let rec = crate::turn::tests::Rec::default();
         let t = Turn::new(
@@ -334,7 +448,9 @@ fn frame_folds_match_go() {
             false,
         );
         for f in fold["frames"].as_array().unwrap() {
-            t.on_event(decode_frame(s(f).as_bytes()).unwrap_or_else(|| panic!("{name}: decode {f}")));
+            t.on_event(
+                decode_frame(s(f).as_bytes()).unwrap_or_else(|| panic!("{name}: decode {f}")),
+            );
         }
         t.finish();
         let got: Vec<Value> = rec.all().iter().filter_map(dump_event).collect();
@@ -344,7 +460,10 @@ fn frame_folds_match_go() {
             assert_eq!(g, w, "{name} event {i}");
         }
         assert_eq!(dump_result(&t.result()), fold["result"], "{name} result");
-        let ids: Vec<String> = fold["runIDs"].as_array().map(|a| a.iter().map(|v| s(v).to_owned()).collect()).unwrap_or_default();
+        let ids: Vec<String> = fold["runIDs"]
+            .as_array()
+            .map(|a| a.iter().map(|v| s(v).to_owned()).collect())
+            .unwrap_or_default();
         assert_eq!(t.all_run_ids(), ids, "{name} run ids");
     }
 }

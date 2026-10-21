@@ -70,7 +70,9 @@ pub fn write_attribution_config(path: &Path, commits: bool, prs: bool) -> Result
 /// Injects Recur's provider into an installed bridge. Safe to repeat.
 pub fn ensure_attribution_patch(bridge_root: &Path) -> Result<(), PatchError> {
     if bridge_root.as_os_str().is_empty() {
-        return Err(PatchError::Io("cursor attribution patch: empty bridge root".into()));
+        return Err(PatchError::Io(
+            "cursor attribution patch: empty bridge root".into(),
+        ));
     }
     let meta = std::fs::metadata(bridge_root)
         .map_err(|e| PatchError::Io(format!("cursor attribution patch: {e}")))?;
@@ -162,15 +164,15 @@ fn write_attribution_preload(path: &Path) -> Result<(), PatchError> {
         return Ok(());
     }
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| {
-            PatchError::Io(format!("cursor attribution patch: preload mkdir: {e}"))
-        })?;
+        std::fs::create_dir_all(dir)
+            .map_err(|e| PatchError::Io(format!("cursor attribution patch: preload mkdir: {e}")))?;
     }
     write_file_atomic(path, want, 0o644)
         .map_err(|e| PatchError::Io(format!("cursor attribution patch: preload write: {e}")))
 }
 
-pub(crate) const ATTRIBUTION_ENTRYPOINT_IMPORT: &str = "import \"../recur-attribution-provider.mjs\";\n";
+pub(crate) const ATTRIBUTION_ENTRYPOINT_IMPORT: &str =
+    "import \"../recur-attribution-provider.mjs\";\n";
 
 fn ensure_attribution_entrypoint_import(path: &Path) -> Result<(), PatchError> {
     let src = std::fs::read_to_string(path)
@@ -181,7 +183,11 @@ fn ensure_attribution_entrypoint_import(path: &Path) -> Result<(), PatchError> {
     // Keep the shebang first when present.
     let out = if src.starts_with("#!") {
         match src.find('\n') {
-            Some(nl) => format!("{}{ATTRIBUTION_ENTRYPOINT_IMPORT}{}", &src[..=nl], &src[nl + 1..]),
+            Some(nl) => format!(
+                "{}{ATTRIBUTION_ENTRYPOINT_IMPORT}{}",
+                &src[..=nl],
+                &src[nl + 1..]
+            ),
             None => format!("{src}\n{ATTRIBUTION_ENTRYPOINT_IMPORT}"),
         }
     } else {
@@ -212,7 +218,9 @@ fn ensure_steer_run_server_hook(path: &Path) -> Result<(), PatchError> {
         Ok(s) => s,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(e) => {
-            return Err(PatchError::Io(format!("cursor steer patch: read server: {e}")));
+            return Err(PatchError::Io(format!(
+                "cursor steer patch: read server: {e}"
+            )));
         }
     };
     if src.contains("__recurInstallSteerRun") {
@@ -229,7 +237,8 @@ fn ensure_steer_run_server_hook(path: &Path) -> Result<(), PatchError> {
         .map_err(|e| PatchError::Io(format!("cursor steer patch: write server: {e}")))
 }
 
-const ATTRIB_FALLBACK: &str = "||{get:()=>({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})}";
+const ATTRIB_FALLBACK: &str =
+    "||{get:()=>({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})}";
 
 /// One `(needle, replacement)` pair.
 pub(crate) struct Anchor {
@@ -362,7 +371,9 @@ fn js_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
     let mut out = Vec::new();
     for e in std::fs::read_dir(dir)? {
         let e = e?;
-        if e.file_type().is_ok_and(|t| !t.is_dir()) && e.file_name().to_string_lossy().ends_with(".js") {
+        if e.file_type().is_ok_and(|t| !t.is_dir())
+            && e.file_name().to_string_lossy().ends_with(".js")
+        {
             out.push(e.path());
         }
     }
@@ -432,12 +443,16 @@ fn patch_attribution_format(bridge_root: &Path, rel: &Path) -> Result<(usize, bo
 /// The minified field that wires Cursor's filesystem skill loader. Recur owns
 /// skills via MCP, so after the attribution inject it becomes an async stub:
 /// SDK 1.0.28 does `.finally()` on its result, and a sync `()=>[]` throws.
-pub(crate) const NATIVE_AGENT_SKILLS_ASSIGN: &str = "getAgentSkills:r.workspaceServices.getAgentSkills";
+pub(crate) const NATIVE_AGENT_SKILLS_ASSIGN: &str =
+    "getAgentSkills:r.workspaceServices.getAgentSkills";
 pub(crate) const STUB_AGENT_SKILLS_ASSIGN: &str = "getAgentSkills:async()=>[]";
 
 fn patch_attribution_file(path: &Path) -> Result<usize, PatchError> {
     let body = std::fs::read(path).map_err(|e| {
-        PatchError::Io(format!("cursor attribution patch: read {}: {e}", path.display()))
+        PatchError::Io(format!(
+            "cursor attribution patch: read {}: {e}",
+            path.display()
+        ))
     })?;
     let orig = String::from_utf8_lossy(&body).into_owned();
     let mut src = apply_sdk_anchors(&orig);
@@ -447,7 +462,10 @@ fn patch_attribution_file(path: &Path) -> Result<usize, PatchError> {
     }
     if src != orig {
         write_file_atomic(path, src.as_bytes(), 0o644).map_err(|e| {
-            PatchError::Io(format!("cursor attribution patch: write {}: {e}", path.display()))
+            PatchError::Io(format!(
+                "cursor attribution patch: write {}: {e}",
+                path.display()
+            ))
         })?;
     }
     Ok(usize::from(has_attrib || src != orig))
@@ -455,13 +473,17 @@ fn patch_attribution_file(path: &Path) -> Result<usize, PatchError> {
 
 fn apply_sdk_anchors(src: &str) -> String {
     let mut src = src.to_owned();
-    for a in sdk_attribution_anchors().iter().chain(&sdk_summary_delta_anchors()) {
+    for a in sdk_attribution_anchors()
+        .iter()
+        .chain(&sdk_summary_delta_anchors())
+    {
         src = src.replacen(a.old, &a.neu, 1);
     }
     // A prior unmarked rewrite stripped the skip and left a bare yield. Stamp
     // the marker only when the yield is no longer behind `||`: a still
     // conditional skip must fail.
-    if !src.contains(SUMMARY_DELTA_MARKER) && !src.contains(&format!("||{SDK_SUMMARY_DELTA_YIELD}")) {
+    if !src.contains(SUMMARY_DELTA_MARKER) && !src.contains(&format!("||{SDK_SUMMARY_DELTA_YIELD}"))
+    {
         src = src.replacen(
             SDK_SUMMARY_DELTA_YIELD,
             &format!("{}{SDK_SUMMARY_DELTA_YIELD}", summary_delta_patch_needle()),
@@ -477,12 +499,16 @@ pub(crate) fn write_file_atomic(path: &Path, body: &[u8], mode: u32) -> std::io:
     use std::io::Write;
     use std::os::unix::fs::PermissionsExt;
     let dir = path.parent().unwrap_or(Path::new("."));
-    let base = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let base = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
     let mut tmp = tempfile::Builder::new()
         .prefix(&format!(".{base}.tmp-"))
         .tempfile_in(dir)?;
     tmp.write_all(body)?;
-    tmp.as_file().set_permissions(std::fs::Permissions::from_mode(mode))?;
+    tmp.as_file()
+        .set_permissions(std::fs::Permissions::from_mode(mode))?;
     tmp.persist(path).map_err(|e| e.error)?;
     Ok(())
 }

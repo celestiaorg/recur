@@ -97,7 +97,8 @@ pub(crate) struct Probe {
 
 /// Whether Recur's Connect session file exists (stat only).
 pub(crate) fn has_recur_cursor_auth_file(data_dir: &Path) -> bool {
-    !data_dir.as_os_str().is_empty() && std::fs::metadata(data_dir.join(CURSOR_USAGE_AUTH_FILE)).is_ok()
+    !data_dir.as_os_str().is_empty()
+        && std::fs::metadata(data_dir.join(CURSOR_USAGE_AUTH_FILE)).is_ok()
 }
 
 /// The pin, and whether Recur's own install is behind it. Bridges outside
@@ -108,7 +109,8 @@ pub(crate) fn apply_cursor_pin(out: &mut CursorStatus, data_dir: &Path, bin: &Pa
         out.update_available = false;
         return;
     }
-    out.update_available = !out.bridge_version.is_empty() && out.bridge_version != out.pinned_version;
+    out.update_available =
+        !out.bridge_version.is_empty() && out.bridge_version != out.pinned_version;
 }
 
 pub(crate) fn apply_cursor_probe(out: &mut CursorStatus, p: &Probe) {
@@ -134,7 +136,11 @@ pub(crate) async fn probe_cursor(bin: &Path, api_key: &str) -> Result<Probe, Str
     }
 }
 
-async fn probe_inner(bin: &Path, api_key: &str, cancel: &CancellationToken) -> Result<Probe, String> {
+async fn probe_inner(
+    bin: &Path,
+    api_key: &str,
+    cancel: &CancellationToken,
+) -> Result<Probe, String> {
     let b = Bridge::start(
         BridgeConfig {
             bin: bin.to_path_buf(),
@@ -150,7 +156,12 @@ async fn probe_inner(bin: &Path, api_key: &str, cancel: &CancellationToken) -> R
     res
 }
 
-async fn probe_bridge(b: &Bridge, bin: &Path, api_key: &str, cancel: &CancellationToken) -> Result<Probe, String> {
+async fn probe_bridge(
+    b: &Bridge,
+    bin: &Path,
+    api_key: &str,
+    cancel: &CancellationToken,
+) -> Result<Probe, String> {
     let Some(cl) = b.connect_client() else {
         return Err("bridge handshake failed: bridge not started".into());
     };
@@ -197,7 +208,10 @@ pub(crate) async fn list_models(bin: &Path, api_key: &str) -> Result<Vec<Model>,
         .await
         .map_err(|e| e.to_string())?;
         let res = match b.connect_client() {
-            Some(cl) => cl.list_models(&cancel, api_key).await.map_err(|e| e.to_string()),
+            Some(cl) => cl
+                .list_models(&cancel, api_key)
+                .await
+                .map_err(|e| e.to_string()),
             None => Err("bridge not started".into()),
         };
         b.close().await;

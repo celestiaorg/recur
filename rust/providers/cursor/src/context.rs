@@ -109,7 +109,15 @@ pub fn vendor(model_id: &str) -> &'static str {
     }
 }
 
-pub const VENDOR_ORDER: &[&str] = &["Cursor", "Anthropic", "OpenAI", "Google", "Moonshot", "Zhipu", "Other"];
+pub const VENDOR_ORDER: &[&str] = &[
+    "Cursor",
+    "Anthropic",
+    "OpenAI",
+    "Google",
+    "Moonshot",
+    "Zhipu",
+    "Other",
+];
 
 /// The context limit of a Cursor turn: an explicit `context` flag ("1m",
 /// "200k", authoritative because the options come from ListModels), else Max
@@ -131,7 +139,10 @@ pub fn resolve_context_window(model: &str, flags: &Flags) -> i64 {
 
 fn max_mode_enabled(flags: &Flags) -> bool {
     let get = |k: &str| flags.get(k).map_or("", |v| crate::gojson::trim(v));
-    if matches!(get("maxMode").to_lowercase().as_str(), "true" | "on" | "1" | "max") {
+    if matches!(
+        get("maxMode").to_lowercase().as_str(),
+        "true" | "on" | "1" | "max"
+    ) {
         return true;
     }
     get("max").eq_ignore_ascii_case("true")

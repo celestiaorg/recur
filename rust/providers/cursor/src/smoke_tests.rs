@@ -25,7 +25,9 @@ use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
 use crate::bridge::{Bridge, BridgeConfig};
-use crate::client::{AgentOptions, LocalOptions, McpServer, ModelSelection, SETTING_SOURCES_MINIMAL};
+use crate::client::{
+    AgentOptions, LocalOptions, McpServer, ModelSelection, SETTING_SOURCES_MINIMAL,
+};
 use crate::events::{MSG_STATUS, MSG_TOOL_CALL, STATUS_RUNNING, TOOL_RUNNING};
 use crate::locate::{ENV_BRIDGE_PATH, resolve_launcher};
 use crate::testserver::{TestServer, serve};
@@ -36,7 +38,10 @@ fn require_bridge() -> Option<PathBuf> {
         eprintln!("skipped: {ENV_BRIDGE_PATH} not set");
         return None;
     };
-    Some(resolve_launcher(&PathBuf::from(&p)).unwrap_or_else(|| panic!("not a cursor-sdk-bridge: {p:?}")))
+    Some(
+        resolve_launcher(&PathBuf::from(&p))
+            .unwrap_or_else(|| panic!("not a cursor-sdk-bridge: {p:?}")),
+    )
 }
 
 fn require_key() -> Option<String> {
@@ -81,14 +86,24 @@ async fn bridge_smoke() {
     let b = start(bin, "", ws.path().to_path_buf()).await;
     let d = b.discovery();
     assert!(d.port != 0 && !d.url.is_empty(), "{d:?}");
-    assert_eq!((d.transport.as_str(), d.protocol.as_str()), ("tcp", "connect"));
+    assert_eq!(
+        (d.transport.as_str(), d.protocol.as_str()),
+        ("tcp", "connect")
+    );
     let cl = b.connect_client().unwrap();
     let tok = CancellationToken::new();
     let v = cl.get_version(&tok).await.expect("GetVersion");
-    assert_eq!(v.protocol_version, "sdk.v1", "the bridge changed its wire contract");
+    assert_eq!(
+        v.protocol_version, "sdk.v1",
+        "the bridge changed its wire contract"
+    );
     // The capabilities the runner depends on, by name.
     for want in ["agent.create", "agent.send", "run.cancel", "run.observe"] {
-        assert!(v.has(want), "bridge missing capability {want:?} (has {:?})", v.capabilities);
+        assert!(
+            v.has(want),
+            "bridge missing capability {want:?} (has {:?})",
+            v.capabilities
+        );
     }
     cl.ping(&tok).await.expect("Ping");
     b.close().await;
@@ -96,7 +111,9 @@ async fn bridge_smoke() {
 
 #[tokio::test]
 async fn bridge_catalog_smoke() {
-    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else { return };
+    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else {
+        return;
+    };
     let ws = tempfile::tempdir().unwrap();
     let b = start(bin, &key, ws.path().to_path_buf()).await;
     let models = b
@@ -145,7 +162,9 @@ async fn start_stub_mcp() -> StubMcp {
                     "description": "Returns the project's magic number.",
                     "inputSchema": {"type": "object", "properties": {}},
                 }]}),
-                "tools/call" => json!({"content": [{"type": "text", "text": "The magic number is 4271."}]}),
+                "tools/call" => {
+                    json!({"content": [{"type": "text", "text": "The magic number is 4271."}]})
+                }
                 _ => json!({}),
             };
             if body["id"].is_null() {
@@ -171,7 +190,9 @@ fn has_all(hay: &[String], want: &[&str]) -> bool {
 /// server passed INLINE (no .cursor/mcp.json anywhere) and calls it.
 #[tokio::test]
 async fn run_with_inline_mcp_smoke() {
-    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else { return };
+    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else {
+        return;
+    };
     let mcp = start_stub_mcp().await;
     let work = tempfile::tempdir().unwrap();
     let b = start(bin, &key, work.path().to_path_buf()).await;
@@ -190,7 +211,10 @@ async fn run_with_inline_mcp_smoke() {
                 local: Some(LocalOptions {
                     cwd: vec![work.path().to_string_lossy().into_owned()],
                     // The narrowest ambient config: no stray developer config.
-                    setting_sources: SETTING_SOURCES_MINIMAL.iter().map(|s| (*s).to_owned()).collect(),
+                    setting_sources: SETTING_SOURCES_MINIMAL
+                        .iter()
+                        .map(|s| (*s).to_owned())
+                        .collect(),
                     ..Default::default()
                 }),
                 mcp_servers: [("recur".to_owned(), McpServer::http(&mcp.url))].into(),
@@ -233,13 +257,27 @@ async fn run_with_inline_mcp_smoke() {
     assert!(!fin.is_error(), "run failed: {:?}", fin.error);
     assert!(fin.result.contains("4271"), "{}", fin.result);
     let methods = mcp.methods.lock().clone();
-    assert!(has_all(&methods, &["initialize", "tools/list"]), "inline mcpServers did not take effect: {methods:?}");
-    assert!(methods.iter().any(|m| m == "tools/call"), "MCP tool never invoked: {methods:?}");
-    assert!(tool_calls.iter().any(|t| t == "mcp__recur__magic_number"), "{tool_calls:?}");
+    assert!(
+        has_all(&methods, &["initialize", "tools/list"]),
+        "inline mcpServers did not take effect: {methods:?}"
+    );
+    assert!(
+        methods.iter().any(|m| m == "tools/call"),
+        "MCP tool never invoked: {methods:?}"
+    );
+    assert!(
+        tool_calls.iter().any(|t| t == "mcp__recur__magic_number"),
+        "{tool_calls:?}"
+    );
     b.close().await;
 }
 
-async fn live_run(bin: PathBuf, key: &str, worktree: PathBuf, req: TurnRequest) -> (recur_agent::TurnResult, Vec<AgentEvent>) {
+async fn live_run(
+    bin: PathBuf,
+    key: &str,
+    worktree: PathBuf,
+    req: TurnRequest,
+) -> (recur_agent::TurnResult, Vec<AgentEvent>) {
     let b = start(bin, key, worktree).await;
     let runner = Arc::new(crate::runner::CursorRunner::new(b.clone(), key));
     let rec = Rec::default();
@@ -272,7 +310,9 @@ fn req(ws: &str, worktree: &std::path::Path, prompt: &str) -> TurnRequest {
 /// non-empty results; one step per call.
 #[tokio::test]
 async fn tool_rendering_smoke() {
-    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else { return };
+    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else {
+        return;
+    };
     let wt = tempfile::tempdir().unwrap();
     std::fs::write(wt.path().join("hello.txt"), "alpha\nbravo\ncharlie\n").unwrap();
     let (_, evs) = live_run(
@@ -293,7 +333,10 @@ async fn tool_rendering_smoke() {
         match e {
             AgentEvent::Step(s) => {
                 *counts.entry(s.id.clone()).or_default() += 1;
-                steps.insert(s.id.clone(), (s.name.clone(), s.input.clone(), s.summary.clone()));
+                steps.insert(
+                    s.id.clone(),
+                    (s.name.clone(), s.input.clone(), s.summary.clone()),
+                );
             }
             AgentEvent::ToolResult(r) => {
                 results.insert(r.id.clone(), r.text.clone());
@@ -304,31 +347,53 @@ async fn tool_rendering_smoke() {
     let mut by_tool = HashMap::new();
     for (id, (raw, input, summary)) in &steps {
         let d = crate::tools::display_tool(raw, input);
-        let result = crate::tools::cursor_tool_result_text(raw, results.get(id).map_or("", String::as_str));
-        eprintln!("raw={raw:<8} → {:<6} | rawArgs={input} | input={} | result={result:.40?}", d.name, d.input);
-        assert!(!raw.is_empty() && *raw != d.name, "the event lost the provider's raw name");
+        let result =
+            crate::tools::cursor_tool_result_text(raw, results.get(id).map_or("", String::as_str));
+        eprintln!(
+            "raw={raw:<8} → {:<6} | rawArgs={input} | input={} | result={result:.40?}",
+            d.name, d.input
+        );
+        assert!(
+            !raw.is_empty() && *raw != d.name,
+            "the event lost the provider's raw name"
+        );
         let raw_result = results.get(id).cloned().unwrap_or_default();
         assert!(!raw_result.is_empty(), "call {id} ({raw}) got no result");
-        assert!(raw_result.contains(r#""status""#), "lost Cursor's envelope: {raw_result:.80}");
+        assert!(
+            raw_result.contains(r#""status""#),
+            "lost Cursor's envelope: {raw_result:.80}"
+        );
         by_tool.insert(d.name.clone(), (d.input, summary.clone(), result));
     }
     for want in ["Read", "Edit", "Bash"] {
-        assert!(by_tool.contains_key(want), "no {want} step (tools: {:?})", by_tool.keys());
+        assert!(
+            by_tool.contains_key(want),
+            "no {want} step (tools: {:?})",
+            by_tool.keys()
+        );
     }
-    assert!(counts.values().all(|n| *n == 1), "every call must produce exactly one step: {counts:?}");
+    assert!(
+        counts.values().all(|n| *n == 1),
+        "every call must produce exactly one step: {counts:?}"
+    );
     let (input, _, result) = &by_tool["Read"];
     assert!(input.contains("file_path") && !result.is_empty());
     let (input, summary, result) = &by_tool["Bash"];
     assert!(input.contains("command") && !summary.is_empty() && result.contains("hi"));
     let (input, _, result) = &by_tool["Edit"];
-    assert!(input.contains("file_path") && result.contains("@@"), "Edit result = {result:?}");
+    assert!(
+        input.contains("file_path") && result.contains("@@"),
+        "Edit result = {result:?}"
+    );
 }
 
 /// A reply long enough for several assistant frames is reassembled into
 /// coherent blocks while still streaming deltas.
 #[tokio::test]
 async fn streaming_transcript_smoke() {
-    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else { return };
+    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else {
+        return;
+    };
     let wt = tempfile::tempdir().unwrap();
     let (res, evs) = live_run(
         bin,
@@ -354,15 +419,23 @@ async fn streaming_transcript_smoke() {
     assert!(!blocks.is_empty(), "no text block stored");
     assert!(deltas > 0, "nothing streamed live");
     for (i, b) in blocks.iter().enumerate() {
-        assert!(b.matches("```").count() % 2 == 0, "block {i} has an unbalanced fence:\n{b}");
+        assert!(
+            b.matches("```").count() % 2 == 0,
+            "block {i} has an unbalanced fence:\n{b}"
+        );
     }
-    assert!(!res.text.is_empty() && res.text.len() >= joined.len() / 2, "Result.Text looks like a fragment");
+    assert!(
+        !res.text.is_empty() && res.text.len() >= joined.len() / 2,
+        "Result.Text looks like a fragment"
+    );
 }
 
 /// A todo list reaches the UI as a checklist, not a raw JSON dump.
 #[tokio::test]
 async fn todo_rendering_smoke() {
-    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else { return };
+    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else {
+        return;
+    };
     let wt = tempfile::tempdir().unwrap();
     let (_, evs) = live_run(
         bin,
@@ -378,7 +451,11 @@ async fn todo_rendering_smoke() {
     let todos: Vec<&recur_agent::ToolStep> = evs
         .iter()
         .filter_map(|e| match e {
-            AgentEvent::Step(s) if crate::tools::display_tool(&s.name, &s.input).name == "TodoWrite" => Some(s),
+            AgentEvent::Step(s)
+                if crate::tools::display_tool(&s.name, &s.input).name == "TodoWrite" =>
+            {
+                Some(s)
+            }
             _ => None,
         })
         .collect();
@@ -391,16 +468,32 @@ async fn todo_rendering_smoke() {
     let items = v["todos"].as_array().expect("todos");
     assert!(!items.is_empty());
     for (i, t) in items.iter().enumerate() {
-        assert!(t["content"].as_str().is_some_and(|c| !c.is_empty()), "todo {i} has no content");
-        assert!(matches!(t["status"].as_str(), Some("pending" | "in_progress" | "completed")), "todo {i} status {}", t["status"]);
+        assert!(
+            t["content"].as_str().is_some_and(|c| !c.is_empty()),
+            "todo {i} has no content"
+        );
+        assert!(
+            matches!(
+                t["status"].as_str(),
+                Some("pending" | "in_progress" | "completed")
+            ),
+            "todo {i} status {}",
+            t["status"]
+        );
     }
-    assert!(!last.summary.is_empty() && !last.summary.contains('{') && !last.summary.contains('"'), "{}", last.summary);
+    assert!(
+        !last.summary.is_empty() && !last.summary.contains('{') && !last.summary.contains('"'),
+        "{}",
+        last.summary
+    );
 }
 
 /// Failing reads still end with a result, closed at the next model boundary.
 #[tokio::test]
 async fn failed_tool_call_smoke() {
-    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else { return };
+    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else {
+        return;
+    };
     let wt = tempfile::tempdir().unwrap();
     let (_, evs) = live_run(
         bin,
@@ -427,7 +520,9 @@ async fn failed_tool_call_smoke() {
                 results.insert(r.id.clone(), (r.text.clone(), r.is_error));
                 open.remove(&r.id);
             }
-            AgentEvent::Thinking { .. } | AgentEvent::Text { .. } if !open.is_empty() && first_unresolved.is_none() => {
+            AgentEvent::Thinking { .. } | AgentEvent::Text { .. }
+                if !open.is_empty() && first_unresolved.is_none() =>
+            {
                 first_unresolved = Some(n);
             }
             _ => {}
@@ -437,9 +532,14 @@ async fn failed_tool_call_smoke() {
         eprintln!("skipped: the model did not attempt any reads this run");
         return;
     }
-    assert_eq!(first_unresolved, None, "a call was still open when the model produced output");
+    assert_eq!(
+        first_unresolved, None,
+        "a call was still open when the model produced output"
+    );
     for (id, tool) in &steps {
-        let (text, is_err) = results.get(id).unwrap_or_else(|| panic!("{tool} call {id} never got a result"));
+        let (text, is_err) = results
+            .get(id)
+            .unwrap_or_else(|| panic!("{tool} call {id} never got a result"));
         assert!(!text.is_empty(), "{tool} call {id} got an empty result");
         eprintln!("{tool:<6} isErr={is_err:<5} result={text:.70?}");
     }
@@ -448,20 +548,37 @@ async fn failed_tool_call_smoke() {
 /// The runner end to end with a Recur-shaped MCP server attached.
 #[tokio::test]
 async fn runner_end_to_end_smoke() {
-    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else { return };
+    let (Some(bin), Some(key)) = (require_bridge(), require_key()) else {
+        return;
+    };
     let wt = tempfile::tempdir().unwrap();
     let mcp = start_stub_mcp().await;
-    let mut r = req("LOOP-SMOKE", wt.path(), "Report the magic number. Reply with only the number. Do not use the shell.");
+    let mut r = req(
+        "LOOP-SMOKE",
+        wt.path(),
+        "Report the magic number. Reply with only the number. Do not use the shell.",
+    );
     r.model = "composer-2.5".into();
-    r.system_prompt = "You are Recur's Coder. Always call the magic_number tool before answering.".into();
+    r.system_prompt =
+        "You are Recur's Coder. Always call the magic_number tool before answering.".into();
     r.mcp_url = mcp.url.clone();
     let (res, evs) = live_run(bin, &key, wt.path().to_path_buf(), r).await;
-    assert!(!res.is_error, "run failed: subtype={} stderr={}", res.subtype, res.stderr);
+    assert!(
+        !res.is_error,
+        "run failed: subtype={} stderr={}",
+        res.subtype, res.stderr
+    );
     assert!(res.text.contains("4271"), "{}", res.text);
-    assert!(!res.session_id.is_empty(), "multi-turn continuity needs the agent id");
+    assert!(
+        !res.session_id.is_empty(),
+        "multi-turn continuity needs the agent id"
+    );
     let kinds: Vec<&str> = evs.iter().map(AgentEvent::kind).collect();
     assert!(kinds.contains(&"init"));
-    assert!(kinds.contains(&"step") && kinds.contains(&"tool_result"), "{kinds:?}");
+    assert!(
+        kinds.contains(&"step") && kinds.contains(&"tool_result"),
+        "{kinds:?}"
+    );
     let tools: Vec<String> = evs
         .iter()
         .filter_map(|e| match e {
@@ -472,7 +589,13 @@ async fn runner_end_to_end_smoke() {
             _ => None,
         })
         .collect();
-    assert!(tools.iter().any(|t| t == "mcp__recur__magic_number"), "{tools:?}");
+    assert!(
+        tools.iter().any(|t| t == "mcp__recur__magic_number"),
+        "{tools:?}"
+    );
     let methods = mcp.methods.lock().clone();
-    assert!(has_all(&methods, &["initialize", "tools/list", "tools/call"]), "MCP handshake incomplete: {methods:?}");
+    assert!(
+        has_all(&methods, &["initialize", "tools/list", "tools/call"]),
+        "MCP handshake incomplete: {methods:?}"
+    );
 }

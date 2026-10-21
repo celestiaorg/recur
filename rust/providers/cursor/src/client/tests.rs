@@ -86,7 +86,12 @@ async fn cancel_non_terminal_runs() {
     })
     .await;
     let cl = Client::new(&srv.url, "tok");
-    assert_eq!(cl.cancel_non_terminal_runs(&tok(), "agent-1").await.unwrap(), 2);
+    assert_eq!(
+        cl.cancel_non_terminal_runs(&tok(), "agent-1")
+            .await
+            .unwrap(),
+        2
+    );
     assert_eq!(cancels.load(Ordering::SeqCst), 2);
 }
 
@@ -103,11 +108,22 @@ fn sandbox_disabled_marshals_false() {
 
 #[test]
 fn proto_time_unmarshal() {
-    let snap: RunSnapshot = serde_json::from_str(r#"{"createdAt":"2026-08-26T20:11:42.000Z"}"#).unwrap();
-    assert_eq!(rfc3339_nano(snap.created_at.0.unwrap()), "2026-08-26T20:11:42Z");
-    let snap: RunSnapshot = serde_json::from_str(r#"{"createdAt":{"seconds":"1756239102","nanos":0}}"#).unwrap();
+    let snap: RunSnapshot =
+        serde_json::from_str(r#"{"createdAt":"2026-08-26T20:11:42.000Z"}"#).unwrap();
+    assert_eq!(
+        rfc3339_nano(snap.created_at.0.unwrap()),
+        "2026-08-26T20:11:42Z"
+    );
+    let snap: RunSnapshot =
+        serde_json::from_str(r#"{"createdAt":{"seconds":"1756239102","nanos":0}}"#).unwrap();
     assert!(snap.created_at.0.is_some());
-    for bad in [r#"{"createdAt":"garbage"}"#, r#"{"createdAt":null}"#, r#"{"createdAt":""}"#, r#"{"createdAt":5}"#, r#"{"createdAt":{"seconds":"x"}}"#] {
+    for bad in [
+        r#"{"createdAt":"garbage"}"#,
+        r#"{"createdAt":null}"#,
+        r#"{"createdAt":""}"#,
+        r#"{"createdAt":5}"#,
+        r#"{"createdAt":{"seconds":"x"}}"#,
+    ] {
         let snap: RunSnapshot = serde_json::from_str(bad).unwrap();
         assert_eq!(snap.created_at.0, None, "{bad}");
     }
@@ -117,7 +133,10 @@ fn proto_time_unmarshal() {
 fn proto_time_marshal() {
     assert_eq!(serde_json::to_string(&ProtoTime(None)).unwrap(), "null");
     let ts = Utc.with_ymd_and_hms(2026, 8, 26, 20, 11, 42).unwrap();
-    assert_eq!(serde_json::to_string(&ProtoTime(Some(ts))).unwrap(), r#""2026-08-26T20:11:42Z""#);
+    assert_eq!(
+        serde_json::to_string(&ProtoTime(Some(ts))).unwrap(),
+        r#""2026-08-26T20:11:42Z""#
+    );
     let frac = ts + TimeDelta::milliseconds(500);
     assert_eq!(rfc3339_nano(frac), "2026-08-26T20:11:42.5Z");
 }
@@ -130,24 +149,53 @@ fn run_created_on_this_bridge_cases() {
         created_at: ProtoTime(at),
         ..Default::default()
     };
-    assert!(run_created_on_this_bridge(&run("run-1", Some(started + TimeDelta::minutes(1))), Some(started)));
-    assert!(run_created_on_this_bridge(&run("run-1", Some(started - TimeDelta::milliseconds(900))), Some(started)), "1s slack");
-    assert!(!run_created_on_this_bridge(&run("run-1", Some(started - TimeDelta::hours(1))), Some(started)));
-    assert!(!run_created_on_this_bridge(&run("run-1", None), Some(started)));
-    assert!(!run_created_on_this_bridge(&run("run-1", Some(started)), None));
-    assert!(!run_created_on_this_bridge(&run("", Some(started)), Some(started)));
+    assert!(run_created_on_this_bridge(
+        &run("run-1", Some(started + TimeDelta::minutes(1))),
+        Some(started)
+    ));
+    assert!(
+        run_created_on_this_bridge(
+            &run("run-1", Some(started - TimeDelta::milliseconds(900))),
+            Some(started)
+        ),
+        "1s slack"
+    );
+    assert!(!run_created_on_this_bridge(
+        &run("run-1", Some(started - TimeDelta::hours(1))),
+        Some(started)
+    ));
+    assert!(!run_created_on_this_bridge(
+        &run("run-1", None),
+        Some(started)
+    ));
+    assert!(!run_created_on_this_bridge(
+        &run("run-1", Some(started)),
+        None
+    ));
+    assert!(!run_created_on_this_bridge(
+        &run("", Some(started)),
+        Some(started)
+    ));
 }
 
-fn capture_send() -> (Arc<Mutex<serde_json::Value>>, impl Fn(crate::testserver::Req, crate::testserver::Resp) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync + 'static) {
+type BoxFut = std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
+
+fn capture_send() -> (
+    Arc<Mutex<serde_json::Value>>,
+    impl Fn(crate::testserver::Req, crate::testserver::Resp) -> BoxFut + Send + Sync + 'static,
+) {
     let payload = Arc::new(Mutex::new(serde_json::Value::Null));
     let p = payload.clone();
-    (payload, move |req: crate::testserver::Req, mut resp: crate::testserver::Resp| {
-        *p.lock() = req.json();
-        Box::pin(async move {
-            // An empty Connect body: the client sees EOF, a clean end.
-            resp.write(b"").await;
-        }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
-    })
+    (
+        payload,
+        move |req: crate::testserver::Req, mut resp: crate::testserver::Resp| {
+            *p.lock() = req.json();
+            Box::pin(async move {
+                // An empty Connect body: the client sees EOF, a clean end.
+                resp.write(b"").await;
+            }) as BoxFut
+        },
+    )
 }
 
 #[tokio::test]
@@ -196,11 +244,15 @@ async fn send_skips_unparseable_frames_and_logs_status_errors() {
     .await;
     let logged = Arc::new(Mutex::new(Vec::<String>::new()));
     let l = logged.clone();
-    let cl = Client::new(&srv.url, "").with_log(Arc::new(move |s: &str| l.lock().push(s.to_owned())));
+    let cl =
+        Client::new(&srv.url, "").with_log(Arc::new(move |s: &str| l.lock().push(s.to_owned())));
     let mut n = 0;
     cl.send(&tok(), "a", "x", &[], |_| n += 1).await.unwrap();
     assert_eq!(n, 1);
-    assert_eq!(*logged.lock(), ["recur: run r1 status ERROR: [internal] boom"]);
+    assert_eq!(
+        *logged.lock(),
+        ["recur: run r1 status ERROR: [internal] boom"]
+    );
 }
 
 #[test]

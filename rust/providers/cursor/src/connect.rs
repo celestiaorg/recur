@@ -76,7 +76,9 @@ impl ConnectError {
     /// Send refused because the agent store still has a non-terminal
     /// activeRunId (a dropped Send stream, or a SQLite leftover).
     pub fn active_run_conflict(&self) -> bool {
-        self.message.to_lowercase().contains("already has active run")
+        self.message
+            .to_lowercase()
+            .contains("already has active run")
     }
 }
 
@@ -108,7 +110,7 @@ pub(crate) fn parse_connect_error(raw: &[u8]) -> Option<ConnectError> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Error {
     message: String,
-    connect: Option<ConnectError>,
+    connect: Option<Box<ConnectError>>,
     kind: Kind,
 }
 
@@ -132,7 +134,7 @@ impl From<ConnectError> for Error {
     fn from(c: ConnectError) -> Self {
         Self {
             message: c.to_string(),
-            connect: Some(c),
+            connect: Some(Box::new(c)),
             kind: Kind::Other,
         }
     }
@@ -170,7 +172,7 @@ impl Error {
 
     /// The Connect error this wraps, if any (Go `errors.As(err, &*Error)`).
     pub fn connect(&self) -> Option<&ConnectError> {
-        self.connect.as_ref()
+        self.connect.as_deref()
     }
 
     pub fn is_canceled(&self) -> bool {
@@ -196,7 +198,7 @@ impl Error {
 
     /// Go `ActiveRunConflict(err)`.
     pub fn active_run_conflict(&self) -> bool {
-        match &self.connect {
+        match self.connect.as_deref() {
             Some(c) => c.active_run_conflict(),
             None => self
                 .message
@@ -279,7 +281,13 @@ impl Client {
         format!("{}/{service}/{method}", self.base_url)
     }
 
-    fn request(&self, service: &str, method: &str, body: Vec<u8>, streaming: bool) -> reqwest::RequestBuilder {
+    fn request(
+        &self,
+        service: &str,
+        method: &str,
+        body: Vec<u8>,
+        streaming: bool,
+    ) -> reqwest::RequestBuilder {
         let ct = if streaming {
             "application/connect+json"
         } else {
@@ -329,9 +337,8 @@ impl Client {
         method: &str,
         input: &I,
     ) -> Result<Vec<u8>, Error> {
-        let body = recur_domain::json::to_string(input).map_err(|e| {
-            Error::msg(format!("cursor bridge: marshal {service}/{method}: {e}"))
-        })?;
+        let body = recur_domain::json::to_string(input)
+            .map_err(|e| Error::msg(format!("cursor bridge: marshal {service}/{method}: {e}")))?;
         let call = async {
             let resp = self
                 .request(service, method, body.into_bytes(), false)
@@ -379,9 +386,8 @@ impl Client {
         input: &I,
         mut on_msg: impl FnMut(&[u8]) -> Result<(), Error>,
     ) -> Result<(), Error> {
-        let payload = recur_domain::json::to_string(input).map_err(|e| {
-            Error::msg(format!("cursor bridge: marshal {service}/{method}: {e}"))
-        })?;
+        let payload = recur_domain::json::to_string(input)
+            .map_err(|e| Error::msg(format!("cursor bridge: marshal {service}/{method}: {e}")))?;
         let body = encode_frame(0, payload.as_bytes());
         let send = self.request(service, method, body, true).send();
         let mut resp = tokio::select! {
@@ -443,7 +449,10 @@ impl Client {
                 if let Err(e) = &res
                     && let Some(c) = e.connect()
                 {
-                    self.note(&format!("recur: connect {service}/{method} end-stream {}", c.raw));
+                    self.note(&format!(
+                        "recur: connect {service}/{method} end-stream {}",
+                        c.raw
+                    ));
                 }
                 return res;
             }
@@ -484,7 +493,10 @@ async fn read_more(
     }
 }
 
-async fn read_limited(mut resp: reqwest::Response, limit: usize) -> Result<Vec<u8>, reqwest::Error> {
+async fn read_limited(
+    mut resp: reqwest::Response,
+    limit: usize,
+) -> Result<Vec<u8>, reqwest::Error> {
     let mut out = Vec::new();
     while let Some(chunk) = resp.chunk().await? {
         let room = limit.saturating_sub(out.len());

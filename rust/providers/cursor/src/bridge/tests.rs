@@ -23,18 +23,32 @@ fn alive() {
     assert!(b.alive(), "an open reaper means the process still runs");
     reaped.cancel();
     assert!(!b.alive(), "a fired reaper means it exited");
-    assert!(!Bridge::with_reaped_for_test(CancellationToken::new(), true).alive(), "closed is not alive");
-    assert!(!Bridge::bound("http://x", "t", None).alive(), "a bound test bridge has no process");
+    assert!(
+        !Bridge::with_reaped_for_test(CancellationToken::new(), true).alive(),
+        "closed is not alive"
+    );
+    assert!(
+        !Bridge::bound("http://x", "t", None).alive(),
+        "a bound test bridge has no process"
+    );
 }
 
 #[tokio::test]
 async fn stderr_log_and_tail() {
     let dir = tempfile::tempdir().unwrap();
     let bin = write_fake_bridge(dir.path());
-    let b = Bridge::start(cfg(&bin, dir.path()), &CancellationToken::new()).await.unwrap();
-    wait_for(Duration::from_secs(2), "ready line in tail", || b.stderr_tail().contains(READY_PREFIX)).await;
+    let b = Bridge::start(cfg(&bin, dir.path()), &CancellationToken::new())
+        .await
+        .unwrap();
+    wait_for(Duration::from_secs(2), "ready line in tail", || {
+        b.stderr_tail().contains(READY_PREFIX)
+    })
+    .await;
     let tail = b.stderr_tail();
-    assert!(!tail.contains("test-token"), "auth token leaked into tail: {tail}");
+    assert!(
+        !tail.contains("test-token"),
+        "auth token leaked into tail: {tail}"
+    );
     assert!(tail.contains(r#""authToken":"[redacted]""#), "{tail}");
     assert!(tail.contains(log::BRIDGE_LOG_FILE), "{tail}");
     let body = std::fs::read_to_string(dir.path().join(log::BRIDGE_LOG_FILE)).unwrap();
@@ -50,8 +64,14 @@ async fn stderr_log_and_tail() {
 #[tokio::test]
 async fn start_rejects_bad_inputs() {
     let tok = CancellationToken::new();
-    let err = Bridge::start(BridgeConfig::default(), &tok).await.err().unwrap();
-    assert_eq!(err.to_string(), "cursor bridge: no bridge binary configured");
+    let err = Bridge::start(BridgeConfig::default(), &tok)
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(
+        err.to_string(),
+        "cursor bridge: no bridge binary configured"
+    );
     let dir = tempfile::tempdir().unwrap();
     let bin = write_fake_bridge(dir.path());
     let bad_ws = BridgeConfig {
@@ -74,7 +94,10 @@ async fn exits_before_ready() {
         .await
         .err()
         .unwrap();
-    assert_eq!(err.to_string(), "cursor bridge: exited before reporting ready");
+    assert_eq!(
+        err.to_string(),
+        "cursor bridge: exited before reporting ready"
+    );
 }
 
 #[tokio::test]
@@ -92,7 +115,10 @@ async fn bad_discovery_fails_closed() {
         .await
         .err()
         .unwrap();
-    assert_eq!(err.to_string(), "cursor bridge: unsupported discovery schemaVersion 2 (want 1)");
+    assert_eq!(
+        err.to_string(),
+        "cursor bridge: unsupported discovery schemaVersion 2 (want 1)"
+    );
 }
 
 #[test]
@@ -117,7 +143,10 @@ fn validate_discovery_cases() {
         url: String::new(),
         ..ok
     };
-    assert_eq!(validate_discovery(&no_url).unwrap_err().to_string(), "cursor bridge: discovery carried no url");
+    assert_eq!(
+        validate_discovery(&no_url).unwrap_err().to_string(),
+        "cursor bridge: discovery carried no url"
+    );
 }
 
 /// Launches `bin` from a helper that exits at once, leaving it reparented to
@@ -151,8 +180,15 @@ os._exit(0)
         .status()
         .unwrap();
     assert!(st.success());
-    let pid: i32 = std::fs::read_to_string(&pid_file).unwrap().trim().parse().unwrap();
-    wait_for(Duration::from_secs(3), "orphan reparented", || reap::process_ppid(pid) == 1).await;
+    let pid: i32 = std::fs::read_to_string(&pid_file)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    wait_for(Duration::from_secs(3), "orphan reparented", || {
+        reap::process_ppid(pid) == 1
+    })
+    .await;
     pid
 }
 
@@ -175,11 +211,19 @@ async fn start_reaps_orphan_bridge_same_bin() {
     let _cleanup = KillGroup(orphan);
 
     let log_dir = dir.path().join("logs");
-    let b = Bridge::start(cfg(&bin, &log_dir), &CancellationToken::new()).await.unwrap();
-    wait_for(Duration::from_secs(5), "orphan reaped", || !reap::process_alive(orphan)).await;
+    let b = Bridge::start(cfg(&bin, &log_dir), &CancellationToken::new())
+        .await
+        .unwrap();
+    wait_for(Duration::from_secs(5), "orphan reaped", || {
+        !reap::process_alive(orphan)
+    })
+    .await;
     let log = std::fs::read_to_string(log_dir.join(log::BRIDGE_LOG_FILE)).unwrap();
     assert!(log.contains("reaping stale cursor-sdk-bridge"), "{log}");
-    assert!(log_dir.join(reap::BRIDGE_PID_FILE).exists(), "pidfile missing after start");
+    assert!(
+        log_dir.join(reap::BRIDGE_PID_FILE).exists(),
+        "pidfile missing after start"
+    );
     b.close().await;
 }
 
@@ -189,13 +233,19 @@ async fn probe_start_does_not_kill_live_sibling() {
     // that may be mid-run.
     let dir = tempfile::tempdir().unwrap();
     let bin = write_fake_bridge(dir.path());
-    let provider = Bridge::start(cfg(&bin, &dir.path().join("logs")), &CancellationToken::new())
-        .await
-        .unwrap();
+    let provider = Bridge::start(
+        cfg(&bin, &dir.path().join("logs")),
+        &CancellationToken::new(),
+    )
+    .await
+    .unwrap();
     let probe = Bridge::start(cfg(&bin, Path::new("")), &CancellationToken::new())
         .await
         .unwrap();
-    assert!(reap::process_alive(provider.pid()), "probe start reaped the live provider bridge");
+    assert!(
+        reap::process_alive(provider.pid()),
+        "probe start reaped the live provider bridge"
+    );
     assert!(provider.alive());
     probe.close().await;
     provider.close().await;
@@ -214,10 +264,16 @@ async fn start_does_not_reap_live_non_orphan_same_bin() {
     let _cleanup = KillGroup(live_pid);
     tokio::time::sleep(Duration::from_millis(100)).await;
 
-    let b = Bridge::start(cfg(&bin, &dir.path().join("logs")), &CancellationToken::new())
-        .await
-        .unwrap();
-    assert!(reap::process_alive(live_pid), "non-orphan same-bin bridge was reaped");
+    let b = Bridge::start(
+        cfg(&bin, &dir.path().join("logs")),
+        &CancellationToken::new(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        reap::process_alive(live_pid),
+        "non-orphan same-bin bridge was reaped"
+    );
     b.close().await;
     let _ = live.kill().await;
 }
@@ -229,10 +285,16 @@ async fn start_does_not_reap_other_bin() {
     let bin_b = write_fake_bridge(&dir.path().join("b"));
     let other = start_orphan_bridge(&bin_b).await;
     let _cleanup = KillGroup(other);
-    let b = Bridge::start(cfg(&bin_a, &dir.path().join("logs")), &CancellationToken::new())
-        .await
-        .unwrap();
-    assert!(reap::process_alive(other), "a bridge for another launcher was reaped");
+    let b = Bridge::start(
+        cfg(&bin_a, &dir.path().join("logs")),
+        &CancellationToken::new(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        reap::process_alive(other),
+        "a bridge for another launcher was reaped"
+    );
     b.close().await;
 }
 
@@ -243,10 +305,18 @@ async fn start_reaps_orphan_bridge_from_other_data_dir() {
     let other_bin = write_fake_bridge(&dir.path().join("Recur-gone/cursor-bridge/bin"));
     let orphan = start_orphan_bridge(&other_bin).await;
     let _cleanup = KillGroup(orphan);
-    let b = Bridge::start(cfg(&bin, &dir.path().join("logs")), &CancellationToken::new())
-        .await
-        .unwrap();
-    wait_for(Duration::from_secs(5), "orphan from another data dir reaped", || !reap::process_alive(orphan)).await;
+    let b = Bridge::start(
+        cfg(&bin, &dir.path().join("logs")),
+        &CancellationToken::new(),
+    )
+    .await
+    .unwrap();
+    wait_for(
+        Duration::from_secs(5),
+        "orphan from another data dir reaped",
+        || !reap::process_alive(orphan),
+    )
+    .await;
     b.close().await;
 }
 
@@ -255,7 +325,9 @@ async fn close_clears_pidfile() {
     let dir = tempfile::tempdir().unwrap();
     let bin = write_fake_bridge(dir.path());
     let log_dir = dir.path().join("logs");
-    let b = Bridge::start(cfg(&bin, &log_dir), &CancellationToken::new()).await.unwrap();
+    let b = Bridge::start(cfg(&bin, &log_dir), &CancellationToken::new())
+        .await
+        .unwrap();
     assert!(log_dir.join(reap::BRIDGE_PID_FILE).exists());
     b.close().await;
     assert!(!log_dir.join(reap::BRIDGE_PID_FILE).exists());
@@ -281,12 +353,21 @@ async fn workspace_bridge_creates_project_dirs() {
     .unwrap();
     assert_eq!(b.discovery().workspace_ref, ws.path().to_string_lossy());
     let slug = crate::projectdirs::cursor_project_slug(&ws.path().to_string_lossy());
-    assert!(home.path().join(".cursor/projects").join(slug).join("terminals").is_dir());
+    assert!(
+        home.path()
+            .join(".cursor/projects")
+            .join(slug)
+            .join("terminals")
+            .is_dir()
+    );
     b.close().await;
 }
 
 fn envs(pairs: &[(&str, &str)]) -> Vec<(OsString, OsString)> {
-    pairs.iter().map(|(k, v)| ((*k).into(), (*v).into())).collect()
+    pairs
+        .iter()
+        .map(|(k, v)| ((*k).into(), (*v).into()))
+        .collect()
 }
 
 fn get(env: &[(OsString, OsString)], key: &str) -> Option<String> {
@@ -328,14 +409,26 @@ fn bridge_env_drops_linear_key_and_adds_ours() {
     };
     let env = bridge_env(
         &cfg,
-        envs(&[("PATH", "/bin"), ("LINEAR_API_KEY", "secret"), ("FOO", "bar"), ("SHELL", "/bin/sh")]).into_iter(),
+        envs(&[
+            ("PATH", "/bin"),
+            ("LINEAR_API_KEY", "secret"),
+            ("FOO", "bar"),
+            ("SHELL", "/bin/sh"),
+        ])
+        .into_iter(),
     );
     assert_eq!(get(&env, "LINEAR_API_KEY"), None);
     assert_eq!(get(&env, "PATH").as_deref(), Some("/bin"));
     assert_eq!(get(&env, "FOO").as_deref(), Some("bar"));
-    assert_eq!(get(&env, "CURSOR_SDK_CLIENT_LANGUAGE").as_deref(), Some("go"));
+    assert_eq!(
+        get(&env, "CURSOR_SDK_CLIENT_LANGUAGE").as_deref(),
+        Some("go")
+    );
     assert_eq!(get(&env, "CURSOR_API_KEY").as_deref(), Some("sk"));
-    assert_eq!(get(&env, ENV_ATTRIBUTION_PATH).as_deref(), Some("/d/cursor-attribution.json"));
+    assert_eq!(
+        get(&env, ENV_ATTRIBUTION_PATH).as_deref(),
+        Some("/d/cursor-attribution.json")
+    );
 }
 
 #[tokio::test]
@@ -348,7 +441,7 @@ async fn read_line_capped_matches_scanner() {
         lines.push(String::from_utf8(std::mem::take(&mut buf)).unwrap());
     }
     assert_eq!(lines, ["a", "b", "last"]);
-    let long = vec![b'x'; 40];
+    let long = [b'x'; 40];
     let mut r = BufReader::new(&long[..]);
     assert!(read_line_capped(&mut r, &mut Vec::new(), 16).await.is_err());
 }

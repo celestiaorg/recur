@@ -54,7 +54,8 @@ const F_ASSISTANT: &str = r#"{"sdkMessage":{"type":"assistant","message":{"type"
 const F_TOOL_RUN: &str = r#"{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c1","name":"mcp","status":"running","args":{"providerIdentifier":"recur","toolName":"done","args":{"summary":"finished the work"}}}}}"#;
 const F_TOOL_OK: &str = r#"{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c1","name":"mcp","status":"completed","args":{"providerIdentifier":"recur","toolName":"done"},"result":{"status":"success","value":{"isError":false}}}}}"#;
 const F_TOOL_BAD: &str = r#"{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c2","name":"shell","status":"completed","args":{"command":"go test ./..."},"result":{"status":"success","value":{"isError":true}}}}}"#;
-const F_THINKING: &str = r#"{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":"hmm"}}}"#;
+const F_THINKING: &str =
+    r#"{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":"hmm"}}}"#;
 pub(crate) const F_USAGE: &str = r#"{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":1000,"outputTokens":500,"cacheReadTokens":2000,"cacheWriteTokens":0,"totalTokens":3500}}}}"#;
 pub(crate) const F_RESULT_OK: &str = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"all good","durationMs":"1500","usage":{"inputTokens":"1000","outputTokens":"500","cacheReadTokens":"2000","totalTokens":"3500"}}}}"#;
 const F_RESULT_ERR: &str = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_ERROR","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_ERROR","error":{"message":"model overloaded"}}}}"#;
@@ -138,14 +139,19 @@ fn turn_ends(evs: &[AgentEvent]) -> Vec<&recur_agent::TurnResult> {
 #[test]
 fn task_message_is_not_compact() {
     // SDKTaskMessage is task status; summaries arrive on onDelta.
-    let (_, rec) = feed(spec("composer-2.5", false), &[F_USAGE, F_TASK_SUMMARY, F_RESULT_OK]);
+    let (_, rec) = feed(
+        spec("composer-2.5", false),
+        &[F_USAGE, F_TASK_SUMMARY, F_RESULT_OK],
+    );
     assert!(!kinds(&rec.all()).contains(&"compact"));
 }
 
 fn compacts(evs: &[AgentEvent]) -> Vec<(String, String)> {
     evs.iter()
         .filter_map(|e| match e {
-            AgentEvent::Compact { status, summary, .. } => Some((status.clone(), summary.clone())),
+            AgentEvent::Compact {
+                status, summary, ..
+            } => Some((status.clone(), summary.clone())),
             _ => None,
         })
         .collect()
@@ -167,7 +173,10 @@ fn interaction_summary_is_compact() {
         compacts(&rec.all()),
         [
             ("started".to_owned(), String::new()),
-            ("done".to_owned(), "older turns folded into a short brief".to_owned())
+            (
+                "done".to_owned(),
+                "older turns folded into a short brief".to_owned()
+            )
         ]
     );
 }
@@ -186,7 +195,11 @@ fn second_compact_clears_prior_summary() {
             F_RESULT_OK,
         ],
     );
-    let done: Vec<String> = compacts(&rec.all()).into_iter().filter(|(s, _)| s == "done").map(|(_, t)| t).collect();
+    let done: Vec<String> = compacts(&rec.all())
+        .into_iter()
+        .filter(|(s, _)| s == "done")
+        .map(|(_, t)| t)
+        .collect();
     assert_eq!(done, ["first fold", ""]);
 }
 
@@ -216,14 +229,21 @@ async fn wait_run_id() {
         tokio::time::sleep(Duration::from_millis(20)).await;
         t2.note_run_id("run-late");
     });
-    assert_eq!(t.wait_run_id(&CancellationToken::new(), Duration::from_secs(1)).await, "run-late");
+    assert_eq!(
+        t.wait_run_id(&CancellationToken::new(), Duration::from_secs(1))
+            .await,
+        "run-late"
+    );
 }
 
 #[tokio::test]
 async fn wait_run_id_and_prepare_follow_up_no_race() {
     let t = bare_turn();
     let t2 = t.clone();
-    let w = tokio::spawn(async move { t2.wait_run_id(&CancellationToken::new(), Duration::from_millis(100)).await });
+    let w = tokio::spawn(async move {
+        t2.wait_run_id(&CancellationToken::new(), Duration::from_millis(100))
+            .await
+    });
     tokio::time::sleep(Duration::from_millis(10)).await;
     t.prepare_steer_follow_up();
     t.note_run_id("run-follow");
@@ -240,13 +260,21 @@ async fn wait_run_id_after_prepare_follow_up() {
         tokio::time::sleep(Duration::from_millis(20)).await;
         t2.note_run_id("run-follow");
     });
-    assert_eq!(t.wait_run_id(&CancellationToken::new(), Duration::from_secs(1)).await, "run-follow");
+    assert_eq!(
+        t.wait_run_id(&CancellationToken::new(), Duration::from_secs(1))
+            .await,
+        "run-follow"
+    );
 }
 
 #[tokio::test]
 async fn wait_run_id_times_out_and_cancels() {
     let t = bare_turn();
-    assert_eq!(t.wait_run_id(&CancellationToken::new(), Duration::from_millis(10)).await, "");
+    assert_eq!(
+        t.wait_run_id(&CancellationToken::new(), Duration::from_millis(10))
+            .await,
+        ""
+    );
     let c = CancellationToken::new();
     c.cancel();
     assert_eq!(t.wait_run_id(&c, Duration::from_secs(5)).await, "");
@@ -260,7 +288,10 @@ fn emits_step_and_tool_result() {
     let s = steps(&evs)[0];
     // Raw on the event; common at the display boundary.
     assert_eq!(s.name, "mcp");
-    assert_eq!(crate::tools::display_tool(&s.name, &s.input).name, "mcp__recur__done");
+    assert_eq!(
+        crate::tools::display_tool(&s.name, &s.input).name,
+        "mcp__recur__done"
+    );
     assert_eq!(s.summary, "finished the work");
     assert_eq!(s.id, "c1");
     assert!(!results(&evs)[0].is_error);
@@ -275,7 +306,10 @@ fn flags_failed_tool() {
     let r = results(&evs)[0];
     assert!(r.is_error, "isError under a protocol success");
     assert_eq!(r.name, "shell");
-    assert_eq!(crate::tools::display_tool(&steps(&evs)[0].name, "").name, "Bash");
+    assert_eq!(
+        crate::tools::display_tool(&steps(&evs)[0].name, "").name,
+        "Bash"
+    );
 }
 
 #[test]
@@ -288,7 +322,10 @@ fn emits_assistant_text() {
 #[test]
 fn thinking_only_with_partials() {
     assert!(feed(spec("", false), &[F_THINKING]).1.all().is_empty());
-    assert_eq!(kinds(&feed(spec("", true), &[F_THINKING]).1.all()), ["thinking_delta"]);
+    assert_eq!(
+        kinds(&feed(spec("", true), &[F_THINKING]).1.all()),
+        ["thinking_delta"]
+    );
 }
 
 #[test]
@@ -303,13 +340,23 @@ fn emits_mid_turn_usage() {
 
 #[test]
 fn result_success() {
-    let (t, _) = feed(spec("composer-2.5", false), &[F_ASSISTANT, F_USAGE, F_RESULT_OK]);
+    let (t, _) = feed(
+        spec("composer-2.5", false),
+        &[F_ASSISTANT, F_USAGE, F_RESULT_OK],
+    );
     let r = t.result();
     assert!(!r.is_error && r.subtype == "success", "{r:?}");
     assert_eq!(r.text, "all good");
     assert_eq!(r.duration_ms, 1500, "string-encoded int64");
     assert_eq!(r.session_id, "agent-1", "the resume handle");
-    assert_eq!((r.usage.input_tokens, r.usage.output_tokens, r.usage.cache_read_tokens), (1000, 500, 2000));
+    assert_eq!(
+        (
+            r.usage.input_tokens,
+            r.usage.output_tokens,
+            r.usage.cache_read_tokens
+        ),
+        (1000, 500, 2000)
+    );
 }
 
 #[test]
@@ -318,14 +365,22 @@ fn suppresses_cancelled_result_when_steering() {
     let t = Turn::new(spec("", false), Some(rec.sink()), "agent-1", false);
     t.set_suppress_result(true);
     t.on_event(decode_frame(F_RESULT_CANCELLED.as_bytes()).unwrap());
-    assert!(turn_ends(&rec.all()).is_empty(), "CANCELLED emitted during a steer");
+    assert!(
+        turn_ends(&rec.all()).is_empty(),
+        "CANCELLED emitted during a steer"
+    );
     assert!(!t.have_result(), "the runner must be able to follow up");
 }
 
 #[test]
 fn emits_finished_result_even_when_steer_pending() {
     let rec = Rec::default();
-    let t = Turn::new(spec("composer-2.5", false), Some(rec.sink()), "agent-1", false);
+    let t = Turn::new(
+        spec("composer-2.5", false),
+        Some(rec.sink()),
+        "agent-1",
+        false,
+    );
     t.set_suppress_result(true);
     t.on_event(decode_frame(F_RESULT_OK.as_bytes()).unwrap());
     assert_eq!(turn_ends(&rec.all()).len(), 1);
@@ -354,7 +409,11 @@ fn status_error_fills_bare_result() {
     );
     let r = t.result();
     assert!(r.is_error && r.subtype == "error_during_execution");
-    assert!(r.stderr.starts_with("[resource_exhausted] Error. ") && r.stderr.contains("rate-limited"), "{}", r.stderr);
+    assert!(
+        r.stderr.starts_with("[resource_exhausted] Error. ") && r.stderr.contains("rate-limited"),
+        "{}",
+        r.stderr
+    );
     let (reason, transient) = recur_agent::error::classify(None, &r);
     assert!(transient);
     assert_eq!(reason, r.stderr);
@@ -408,12 +467,18 @@ fn prepare_follow_up_resets_per_run_state() {
     {
         let f = t.fold.lock();
         assert!(f.tool_waves == 0 && !f.wave_open);
-        assert!(f.compact_baseline.is_none() && f.compact_pre_fill == 0 && f.compact_summary.is_empty());
+        assert!(
+            f.compact_baseline.is_none() && f.compact_pre_fill == 0 && f.compact_summary.is_empty()
+        );
         assert!(f.stepped_calls.is_none() && f.create_plan_args.is_none());
         assert!(f.open_calls.is_empty() && f.open_tool.is_none());
         assert!(f.usage.is_none() && f.usage_cumulative.is_none() && !f.have_result);
     }
-    assert_eq!(t.model_rounds(), 1, "the follow-up must not inherit run 1 waves");
+    assert_eq!(
+        t.model_rounds(),
+        1,
+        "the follow-up must not inherit run 1 waves"
+    );
     assert!(t.all_run_ids().is_empty());
 
     // The same call id on the follow-up run mints a new Step.
@@ -427,7 +492,10 @@ fn prepare_follow_up_keeps_suppress_result() {
     let t = bare_turn();
     t.set_suppress_result(true);
     t.prepare_steer_follow_up();
-    assert!(t.suppressing_result(), "a steer in the take/follow-up window would emit error_cancelled");
+    assert!(
+        t.suppressing_result(),
+        "a steer in the take/follow-up window would emit error_cancelled"
+    );
 }
 
 #[test]
@@ -521,7 +589,10 @@ fn fire_users_uses_display_text() {
     let rec = Rec::default();
     let t = Turn::new(spec("", false), Some(rec.sink()), "", false);
     let steer = recur_agent::Steer::new("WIRE", Some("Fix findings".into())).0;
-    t.fire_users(follow_up_users(std::slice::from_ref(&steer), "WIRE", true), true);
+    t.fire_users(
+        follow_up_users(std::slice::from_ref(&steer), "WIRE", true),
+        true,
+    );
     assert_eq!(
         rec.all(),
         [AgentEvent::User {
@@ -542,13 +613,18 @@ fn live_fire_flushes_text() {
         f.text.push_str("chunk A");
     }
     let steer = recur_agent::Steer::new("steer now", None).0;
-    t.fire_users(follow_up_users(std::slice::from_ref(&steer), "steer now", true), true);
+    t.fire_users(
+        follow_up_users(std::slice::from_ref(&steer), "steer now", true),
+        true,
+    );
     assert!(t.fold.lock().thinking.is_empty() && t.fold.lock().text.is_empty());
     let evs = rec.all();
     assert_eq!(kinds(&evs), ["thinking", "text", "user"]);
     assert_eq!(texts(&evs, "thinking"), ["thought"]);
     assert_eq!(texts(&evs, "text"), ["chunk A"]);
-    assert!(matches!(&evs[2], AgentEvent::User { live_steer: true, text, .. } if text == "steer now"));
+    assert!(
+        matches!(&evs[2], AgentEvent::User { live_steer: true, text, .. } if text == "steer now")
+    );
 }
 
 // ---- cursortools_test.go: frames
@@ -557,14 +633,24 @@ fn live_fire_flushes_text() {
 fn emits_raw_provider_tool_data() {
     let (_, rec) = feed(
         spec("", false),
-        &[&tool_frame("shell", "running", ARGS_SHELL, ""), &tool_frame("shell", "completed", ARGS_SHELL, RES_SHELL)],
+        &[
+            &tool_frame("shell", "running", ARGS_SHELL, ""),
+            &tool_frame("shell", "completed", ARGS_SHELL, RES_SHELL),
+        ],
     );
     let evs = rec.all();
     assert_eq!(evs.len(), 2);
     let s = steps(&evs)[0];
     assert_eq!(s.name, "shell");
-    assert!(s.input.contains(r#""timeout""#), "verbatim args: {}", s.input);
-    assert!(results(&evs)[0].text.contains(r#""status""#), "verbatim envelope");
+    assert!(
+        s.input.contains(r#""timeout""#),
+        "verbatim args: {}",
+        s.input
+    );
+    assert!(
+        results(&evs)[0].text.contains(r#""status""#),
+        "verbatim envelope"
+    );
     // The feed's one-line summary is a display concern: already common.
     assert_eq!(s.summary, "echo hi");
 }
@@ -572,7 +658,13 @@ fn emits_raw_provider_tool_data() {
 #[test]
 fn mcp_tool_frames() {
     let args = r#"{"providerIdentifier":"recur","toolName":"done","args":{"summary":"all done"}}"#;
-    let (_, rec) = feed(spec("", false), &[&tool_frame("mcp", "running", args, ""), &tool_frame("mcp", "completed", args, RES_MCP)]);
+    let (_, rec) = feed(
+        spec("", false),
+        &[
+            &tool_frame("mcp", "running", args, ""),
+            &tool_frame("mcp", "completed", args, RES_MCP),
+        ],
+    );
     let evs = rec.all();
     let s = steps(&evs)[0];
     assert_eq!(s.name, "mcp");
@@ -586,14 +678,24 @@ fn mcp_tool_frames() {
 fn thinking_becomes_one_block() {
     let (_, rec) = feed(
         spec("", false),
-        &[&thinking_frame("I should ", 0), &thinking_frame("read the file.", 0), &thinking_frame("", 42)],
+        &[
+            &thinking_frame("I should ", 0),
+            &thinking_frame("read the file.", 0),
+            &thinking_frame("", 42),
+        ],
     );
     assert_eq!(texts(&rec.all(), "thinking"), ["I should read the file."]);
 }
 
 #[test]
 fn thinking_flushes_before_tool_call() {
-    let (_, rec) = feed(spec("", false), &[&thinking_frame("let me look", 0), &tool_frame("read", "running", ARGS_READ, "")]);
+    let (_, rec) = feed(
+        spec("", false),
+        &[
+            &thinking_frame("let me look", 0),
+            &tool_frame("read", "running", ARGS_READ, ""),
+        ],
+    );
     let evs = rec.all();
     assert_eq!(kinds(&evs)[..2], ["thinking", "step"]);
     assert_eq!(steps(&evs)[0].name, "read");
@@ -602,7 +704,10 @@ fn thinking_flushes_before_tool_call() {
 
 #[test]
 fn thinking_flushed_on_result() {
-    let (_, rec) = feed(spec("", false), &[&thinking_frame("half a thought", 0), F_RESULT_OK]);
+    let (_, rec) = feed(
+        spec("", false),
+        &[&thinking_frame("half a thought", 0), F_RESULT_OK],
+    );
     assert_eq!(texts(&rec.all(), "thinking"), ["half a thought"]);
 }
 
@@ -611,11 +716,26 @@ fn thinking_deltas_only_with_partials() {
     let frames = [thinking_frame("hmm", 0), thinking_frame("", 1)];
     let frames: Vec<&str> = frames.iter().map(String::as_str).collect();
     let quiet = feed(spec("", false), &frames).1.all();
-    assert!(!kinds(&quiet).iter().any(|k| *k == "text_delta" || *k == "thinking_delta"));
+    assert!(
+        !kinds(&quiet)
+            .iter()
+            .any(|k| *k == "text_delta" || *k == "thinking_delta")
+    );
     let chat = feed(spec("", true), &frames).1.all();
     assert!(kinds(&chat).contains(&"thinking_delta"));
-    assert!(!kinds(&chat).contains(&"text_delta"), "reasoning must not stream as reply text");
-    assert_eq!(texts(&feed(spec("", true), &[&thinking_frame("weighing options", 0)]).1.all(), "thinking_delta"), ["weighing options"]);
+    assert!(
+        !kinds(&chat).contains(&"text_delta"),
+        "reasoning must not stream as reply text"
+    );
+    assert_eq!(
+        texts(
+            &feed(spec("", true), &[&thinking_frame("weighing options", 0)])
+                .1
+                .all(),
+            "thinking_delta"
+        ),
+        ["weighing options"]
+    );
 }
 
 #[test]
@@ -657,9 +777,22 @@ fn grok46_newline_id_repeated_running_yields_one_step() {
 
 #[test]
 fn grok46_parallel_globs_each_get_a_step() {
-    let args = [r#"{"globPattern":"TODO.md"}"#, r#"{"globPattern":"README*"}"#, r#"{"globPattern":"Makefile"}"#];
-    let mut frames: Vec<String> = GROK_IDS.iter().zip(args).map(|(id, a)| tool_frame_id(id, "glob", "running", a, "")).collect();
-    frames.extend(GROK_IDS.iter().zip(args).map(|(id, a)| tool_frame_id(id, "glob", "completed", a, RES_GLOB)));
+    let args = [
+        r#"{"globPattern":"TODO.md"}"#,
+        r#"{"globPattern":"README*"}"#,
+        r#"{"globPattern":"Makefile"}"#,
+    ];
+    let mut frames: Vec<String> = GROK_IDS
+        .iter()
+        .zip(args)
+        .map(|(id, a)| tool_frame_id(id, "glob", "running", a, ""))
+        .collect();
+    frames.extend(
+        GROK_IDS
+            .iter()
+            .zip(args)
+            .map(|(id, a)| tool_frame_id(id, "glob", "completed", a, RES_GLOB)),
+    );
     let frames: Vec<&str> = frames.iter().map(String::as_str).collect();
     let evs = feed(spec("", false), &frames).1.all();
     let ids: std::collections::HashSet<&str> = steps(&evs).iter().map(|s| s.id.as_str()).collect();
@@ -668,8 +801,15 @@ fn grok46_parallel_globs_each_get_a_step() {
 
 #[test]
 fn parallel_calls_each_get_a_step() {
-    let mut frames: Vec<String> = ["a", "b", "c"].iter().map(|id| tool_frame_id(id, "read", "running", ARGS_READ, "")).collect();
-    frames.extend(["a", "b", "c"].iter().map(|id| tool_frame_id(id, "read", "completed", ARGS_READ, RES_READ)));
+    let mut frames: Vec<String> = ["a", "b", "c"]
+        .iter()
+        .map(|id| tool_frame_id(id, "read", "running", ARGS_READ, ""))
+        .collect();
+    frames.extend(
+        ["a", "b", "c"]
+            .iter()
+            .map(|id| tool_frame_id(id, "read", "completed", ARGS_READ, RES_READ)),
+    );
     let frames: Vec<&str> = frames.iter().map(String::as_str).collect();
     let evs = feed(spec("", false), &frames).1.all();
     assert_eq!((steps(&evs).len(), results(&evs).len()), (3, 3));
@@ -680,7 +820,10 @@ fn unknown_terminal_status_still_produces_result() {
     for status in ["failed", "aborted", "rejected", "error", "cancelled"] {
         let evs = feed(
             spec("", false),
-            &[&tool_frame("read", "running", ARGS_READ, ""), &tool_frame("read", status, ARGS_READ, RES_READ)],
+            &[
+                &tool_frame("read", "running", ARGS_READ, ""),
+                &tool_frame("read", status, ARGS_READ, RES_READ),
+            ],
         )
         .1
         .all();
@@ -692,7 +835,12 @@ fn unknown_terminal_status_still_produces_result() {
 
 #[test]
 fn terminal_without_running_still_emits_step() {
-    let evs = feed(spec("", false), &[&tool_frame("read", "completed", ARGS_READ, RES_READ)]).1.all();
+    let evs = feed(
+        spec("", false),
+        &[&tool_frame("read", "completed", ARGS_READ, RES_READ)],
+    )
+    .1
+    .all();
     assert_eq!(kinds(&evs), ["step", "tool_result"]);
     assert_eq!(steps(&evs)[0].id, results(&evs)[0].id);
 }
@@ -701,7 +849,10 @@ fn terminal_without_running_still_emits_step() {
 fn completed_is_not_an_error() {
     let evs = feed(
         spec("", false),
-        &[&tool_frame("read", "running", ARGS_READ, ""), &tool_frame("read", "completed", ARGS_READ, RES_READ)],
+        &[
+            &tool_frame("read", "running", ARGS_READ, ""),
+            &tool_frame("read", "completed", ARGS_READ, RES_READ),
+        ],
     )
     .1
     .all();
@@ -723,7 +874,9 @@ fn assistant_chunks_become_one_block() {
     let blocks = texts(&evs, "text");
     assert_eq!(
         blocks,
-        ["CLI Tetris is ready. Run it with:\n\n```bash\ngo run .\n```\n\n**Controls:** arrows move · Q quit\n\nTests pass."]
+        [
+            "CLI Tetris is ready. Run it with:\n\n```bash\ngo run .\n```\n\n**Controls:** arrows move · Q quit\n\nTests pass."
+        ]
     );
     assert_eq!(blocks[0].matches("```").count(), 2);
     assert_eq!(texts(&evs, "text_delta").len(), 3, "one delta per chunk");
@@ -731,10 +884,16 @@ fn assistant_chunks_become_one_block() {
 
 #[test]
 fn result_text_is_the_whole_reply() {
-    let frames = [assistant_frame("The"), assistant_frame(" O piece has empty left columns.")];
+    let frames = [
+        assistant_frame("The"),
+        assistant_frame(" O piece has empty left columns."),
+    ];
     let (t, _) = feed(spec("", false), &[&frames[0], &frames[1]]);
     t.finish();
-    assert_eq!(t.fold.lock().last_text, "The O piece has empty left columns.");
+    assert_eq!(
+        t.fold.lock().last_text,
+        "The O piece has empty left columns."
+    );
 }
 
 #[test]
@@ -753,7 +912,10 @@ fn text_flushes_around_tool_calls() {
     .1
     .all();
     assert_eq!(texts(&evs, "text"), ["Reading the file first.", "Done."]);
-    let order: Vec<&str> = kinds(&evs).into_iter().filter(|k| *k != "text_delta").collect();
+    let order: Vec<&str> = kinds(&evs)
+        .into_iter()
+        .filter(|k| *k != "text_delta")
+        .collect();
     assert_eq!(order, ["text", "step", "tool_result", "text", "result"]);
 }
 
@@ -779,7 +941,14 @@ fn text_and_thinking_interleave_in_order() {
             _ => None,
         })
         .collect();
-    assert_eq!(seq, ["text:Let me check.", "think:the O piece has empty columns", "text:Fixing it."]);
+    assert_eq!(
+        seq,
+        [
+            "text:Let me check.",
+            "think:the O piece has empty columns",
+            "text:Fixing it."
+        ]
+    );
 }
 
 #[test]
@@ -788,7 +957,12 @@ fn create_plan_waits_for_terminal_args() {
         spec("", false),
         &[
             &tool_frame("createPlan", "running", ARGS_PLAN_EMPTY, ""),
-            &tool_frame("createPlan", "running", r#"{"plan":"Summary: only the opening line"}"#, ""),
+            &tool_frame(
+                "createPlan",
+                "running",
+                r#"{"plan":"Summary: only the opening line"}"#,
+                "",
+            ),
             &tool_frame("createPlan", "completed", ARGS_PLAN, RES_PLAN),
         ],
     )
@@ -798,9 +972,15 @@ fn create_plan_waits_for_terminal_args() {
     assert_eq!(s.len(), 1);
     let body = recur_agent::display::create_plan_body(&s[0].input);
     assert!(body.contains("touch work.txt"), "{}", s[0].input);
-    assert_eq!(crate::tools::display_tool(&s[0].name, &s[0].input).name, "CreatePlan");
+    assert_eq!(
+        crate::tools::display_tool(&s[0].name, &s[0].input).name,
+        "CreatePlan"
+    );
     // The plan-mode harvest reads the proposal, not the tool name.
-    assert!(evs.iter().any(|e| matches!(e, AgentEvent::PlanProposal { body: b } if b == &body)));
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, AgentEvent::PlanProposal { body: b } if b == &body))
+    );
     assert_eq!(kinds(&evs), ["step", "plan_proposal", "tool_result"]);
 }
 
@@ -810,23 +990,43 @@ fn create_plan_keeps_richest_args() {
         spec("", false),
         &[
             &tool_frame("createPlan", "running", ARGS_PLAN, ""),
-            &tool_frame("createPlan", "completed", r#"{"plan":"Summary: stub"}"#, RES_PLAN),
+            &tool_frame(
+                "createPlan",
+                "completed",
+                r#"{"plan":"Summary: stub"}"#,
+                RES_PLAN,
+            ),
         ],
     )
     .1
     .all();
-    assert!(recur_agent::display::create_plan_body(&steps(&evs)[0].input).contains("touch work.txt"));
+    assert!(
+        recur_agent::display::create_plan_body(&steps(&evs)[0].input).contains("touch work.txt")
+    );
 }
 
 #[test]
 fn empty_create_plan_proposes_nothing() {
-    let evs = feed(spec("", false), &[&tool_frame("createPlan", "completed", ARGS_PLAN_EMPTY, RES_PLAN)]).1.all();
+    let evs = feed(
+        spec("", false),
+        &[&tool_frame(
+            "createPlan",
+            "completed",
+            ARGS_PLAN_EMPTY,
+            RES_PLAN,
+        )],
+    )
+    .1
+    .all();
     assert!(!kinds(&evs).contains(&"plan_proposal"));
 }
 
 #[test]
 fn unreported_call_is_closed_as_error() {
-    let (t, rec) = feed(spec("", false), &[&tool_frame("read", "running", ARGS_READ, ""), F_RESULT_OK]);
+    let (t, rec) = feed(
+        spec("", false),
+        &[&tool_frame("read", "running", ARGS_READ, ""), F_RESULT_OK],
+    );
     t.finish();
     let evs = rec.all();
     let r = results(&evs);
@@ -841,10 +1041,17 @@ fn unreported_call_is_closed_as_error() {
 fn unreported_call_closes_before_final_text() {
     let (t, rec) = feed(
         spec("", false),
-        &[&tool_frame("read", "running", ARGS_READ, ""), &assistant_frame("Those files do not exist."), F_RESULT_OK],
+        &[
+            &tool_frame("read", "running", ARGS_READ, ""),
+            &assistant_frame("Those files do not exist."),
+            F_RESULT_OK,
+        ],
     );
     t.finish();
-    let order: Vec<&str> = kinds(&rec.all()).into_iter().filter(|k| *k == "tool_result" || *k == "text").collect();
+    let order: Vec<&str> = kinds(&rec.all())
+        .into_iter()
+        .filter(|k| *k == "tool_result" || *k == "text")
+        .collect();
     assert_eq!(order, ["tool_result", "text"]);
 }
 
@@ -852,7 +1059,11 @@ fn unreported_call_closes_before_final_text() {
 fn resolved_call_is_not_double_closed() {
     let (t, rec) = feed(
         spec("", false),
-        &[&tool_frame("read", "running", ARGS_READ, ""), &tool_frame("read", "completed", ARGS_READ, RES_READ), F_RESULT_OK],
+        &[
+            &tool_frame("read", "running", ARGS_READ, ""),
+            &tool_frame("read", "completed", ARGS_READ, RES_READ),
+            F_RESULT_OK,
+        ],
     );
     t.finish();
     assert_eq!(results(&rec.all()).len(), 1);
@@ -860,7 +1071,10 @@ fn resolved_call_is_not_double_closed() {
 
 #[test]
 fn all_unreported_calls_are_closed_in_order() {
-    let frames: Vec<String> = ["a", "b", "c"].iter().map(|id| tool_frame_id(id, "read", "running", ARGS_READ, "")).collect();
+    let frames: Vec<String> = ["a", "b", "c"]
+        .iter()
+        .map(|id| tool_frame_id(id, "read", "running", ARGS_READ, ""))
+        .collect();
     let mut f: Vec<&str> = frames.iter().map(String::as_str).collect();
     f.push(F_RESULT_OK);
     let (t, rec) = feed(spec("", false), &f);
@@ -872,7 +1086,10 @@ fn all_unreported_calls_are_closed_in_order() {
 
 #[test]
 fn unreported_call_closed_on_finish() {
-    let (t, rec) = feed(spec("", false), &[&tool_frame("read", "running", ARGS_READ, "")]);
+    let (t, rec) = feed(
+        spec("", false),
+        &[&tool_frame("read", "running", ARGS_READ, "")],
+    );
     t.finish();
     assert_eq!(results(&rec.all()).iter().filter(|r| r.is_error).count(), 1);
 }
@@ -883,14 +1100,22 @@ fn error_status_is_terminal_failure() {
         spec("", false),
         &[
             &tool_frame("read", "running", ARGS_READ, ""),
-            &tool_frame("read", "error", ARGS_READ, r#"{"status":"error","value":{"message":"ENOENT"}}"#),
+            &tool_frame(
+                "read",
+                "error",
+                ARGS_READ,
+                r#"{"status":"error","value":{"message":"ENOENT"}}"#,
+            ),
         ],
     )
     .1
     .all();
     let r = results(&evs);
     assert!(r[0].is_error);
-    assert!(r[0].text.contains("ENOENT"), "the provider's payload is kept verbatim");
+    assert!(
+        r[0].text.contains("ENOENT"),
+        "the provider's payload is kept verbatim"
+    );
 }
 
 #[test]
@@ -899,7 +1124,12 @@ fn error_status_resolves_the_call() {
         spec("", false),
         &[
             &tool_frame("read", "running", ARGS_READ, ""),
-            &tool_frame("read", "error", ARGS_READ, r#"{"status":"error","value":{}}"#),
+            &tool_frame(
+                "read",
+                "error",
+                ARGS_READ,
+                r#"{"status":"error","value":{}}"#,
+            ),
             F_RESULT_OK,
         ],
     );
@@ -920,28 +1150,48 @@ fn truncated_result_is_flagged() {
         }
         json!({"sdkMessage": {"type": "tool_call", "message": p}}).to_string()
     };
-    let clipped = feed(spec("", false), &[&frame(Some(r#"{"result":true}"#))]).1.all();
+    let clipped = feed(spec("", false), &[&frame(Some(r#"{"result":true}"#))])
+        .1
+        .all();
     let r = results(&clipped)[0];
-    assert!(r.truncated && !r.is_error, "truncation is flagged and is not a failure");
+    assert!(
+        r.truncated && !r.is_error,
+        "truncation is flagged and is not a failure"
+    );
     let whole = feed(spec("", false), &[&frame(None)]).1.all();
     assert!(!results(&whole)[0].truncated);
 }
 
 #[test]
 fn unreported_call_closes_at_next_thinking() {
-    let evs = feed(spec("", false), &[&tool_frame("read", "running", ARGS_READ, ""), &thinking_frame("go.mod does not exist.", 0)])
-        .1
-        .all();
-    let idx = evs.iter().position(|e| e.kind() == "tool_result").expect("closed at the next thinking frame");
+    let evs = feed(
+        spec("", false),
+        &[
+            &tool_frame("read", "running", ARGS_READ, ""),
+            &thinking_frame("go.mod does not exist.", 0),
+        ],
+    )
+    .1
+    .all();
+    let idx = evs
+        .iter()
+        .position(|e| e.kind() == "tool_result")
+        .expect("closed at the next thinking frame");
     assert!(results(&evs)[0].is_error);
     assert!(!evs[..idx].iter().any(|e| e.kind() == "thinking"));
 }
 
 #[test]
 fn unreported_call_closes_at_next_reply() {
-    let evs = feed(spec("", false), &[&tool_frame("read", "running", ARGS_READ, ""), &assistant_frame("That file does not exist.")])
-        .1
-        .all();
+    let evs = feed(
+        spec("", false),
+        &[
+            &tool_frame("read", "running", ARGS_READ, ""),
+            &assistant_frame("That file does not exist."),
+        ],
+    )
+    .1
+    .all();
     assert_eq!(results(&evs).iter().filter(|r| r.is_error).count(), 1);
 }
 
@@ -990,7 +1240,10 @@ fn result_carries_duration_and_emits_turn_end() {
     let evs = rec.all();
     let ends = turn_ends(&evs);
     assert_eq!(ends.len(), 1);
-    assert_eq!((ends[0].duration_ms, ends[0].text.as_str()), (1500, "all good"));
+    assert_eq!(
+        (ends[0].duration_ms, ends[0].text.as_str()),
+        (1500, "all good")
+    );
 }
 
 #[test]
@@ -1000,13 +1253,22 @@ fn expand_and_subtype() {
         "[resource_exhausted] Error. Cursor's model provider is rate-limited or at capacity. Wait a moment and retry."
     );
     assert_eq!(expand_cursor_run_error("plain"), "plain");
-    assert_eq!(cursor_subtype(&RunResult::default(), false), "error_during_execution");
+    assert_eq!(
+        cursor_subtype(&RunResult::default(), false),
+        "error_during_execution"
+    );
     let r = |s: &str| RunResult {
         status: s.into(),
         ..Default::default()
     };
     assert_eq!(cursor_subtype(&r(RUN_FINISHED), true), "success");
     assert_eq!(cursor_subtype(&r(RUN_CANCELLED), true), "error_cancelled");
-    assert_eq!(cursor_subtype(&r(RUN_ERROR), true), "error_during_execution");
-    assert_eq!(cursor_subtype(&r("RUN_LIFECYCLE_STATUS_EXPIRED"), true), "success");
+    assert_eq!(
+        cursor_subtype(&r(RUN_ERROR), true),
+        "error_during_execution"
+    );
+    assert_eq!(
+        cursor_subtype(&r("RUN_LIFECYCLE_STATUS_EXPIRED"), true),
+        "success"
+    );
 }

@@ -31,7 +31,6 @@ use crate::projectdirs::ensure_cursor_project_dirs_in;
 #[cfg(test)]
 pub(crate) use log::redact_bridge_line;
 
-
 /// What the bridge prints on STDERR once listening; the rest of the line is
 /// the discovery JSON.
 pub(crate) const READY_PREFIX: &str = "cursor-sdk-bridge ready ";
@@ -122,12 +121,18 @@ pub struct Bridge {
 impl Bridge {
     /// Spawns the bridge and waits for its ready line. The caller owns the
     /// live process and must [`Bridge::close`] it.
-    pub async fn start(cfg: BridgeConfig, cancel: &CancellationToken) -> Result<Arc<Bridge>, Error> {
+    pub async fn start(
+        cfg: BridgeConfig,
+        cancel: &CancellationToken,
+    ) -> Result<Arc<Bridge>, Error> {
         if cfg.bin.as_os_str().is_empty() {
             return Err(Error::msg("cursor bridge: no bridge binary configured"));
         }
         if let Err(e) = std::fs::metadata(&cfg.bin) {
-            return Err(Error::msg(format!("cursor bridge: {}: {e}", cfg.bin.display())));
+            return Err(Error::msg(format!(
+                "cursor bridge: {}: {e}",
+                cfg.bin.display()
+            )));
         }
         let mut args: Vec<String> = vec!["--port".into(), "0".into()];
         let has_ws = !cfg.workspace.as_os_str().is_empty();
@@ -215,7 +220,11 @@ impl Bridge {
             }
         };
         if let Some(p) = log.path() {
-            tracing::info!("recur: cursor bridge ready on {} (stderr → {})", disc.url, p.display());
+            tracing::info!(
+                "recur: cursor bridge ready on {} (stderr → {})",
+                disc.url,
+                p.display()
+            );
         }
 
         let mut token = disc.auth_token.clone();
@@ -238,7 +247,8 @@ impl Bridge {
         reap::write_bridge_pidfile(&cfg.log_dir, pid);
 
         let note_log = log.clone();
-        let client = Client::new(&disc.url, &token).with_log(Arc::new(move |l: &str| note_log.note(l)));
+        let client =
+            Client::new(&disc.url, &token).with_log(Arc::new(move |l: &str| note_log.note(l)));
         Ok(Arc::new(Bridge {
             cfg,
             disc,
@@ -375,7 +385,10 @@ fn bridge_env(
         env.push(("CURSOR_API_KEY".into(), cfg.api_key.clone().into()));
     }
     if !cfg.attribution_config_path.as_os_str().is_empty() {
-        env.push((ENV_ATTRIBUTION_PATH.into(), cfg.attribution_config_path.clone().into()));
+        env.push((
+            ENV_ATTRIBUTION_PATH.into(),
+            cfg.attribution_config_path.clone().into(),
+        ));
     }
     ensure_bridge_shell_env(env)
 }
@@ -446,7 +459,9 @@ async fn await_ready(
             }
         };
         if let Some(tx) = tx.take() {
-            let _ = tx.send(Err(Error::msg("cursor bridge: exited before reporting ready")));
+            let _ = tx.send(Err(Error::msg(
+                "cursor bridge: exited before reporting ready",
+            )));
         }
         match scan_err {
             Some(e) => log.note(&format!("recur: bridge stderr scan ended: {e}")),

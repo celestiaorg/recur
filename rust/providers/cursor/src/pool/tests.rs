@@ -40,7 +40,9 @@ fn keyed() -> Settings {
 }
 
 async fn ensure(f: &Fixture, set: &Settings, wt: &Path) -> Result<Reservation, PoolError> {
-    f.pool.ensure_runner(&CancellationToken::new(), set, wt).await
+    f.pool
+        .ensure_runner(&CancellationToken::new(), set, wt)
+        .await
 }
 
 fn runner(busy: bool) -> Arc<CursorRunner> {
@@ -63,7 +65,10 @@ fn entry(r: Arc<CursorRunner>, age: u64) -> Entry {
 async fn without_key_fails() {
     let f = fixture(true);
     let wt = tempfile::tempdir().unwrap();
-    let err = ensure(&f, &Settings::default(), wt.path()).await.err().unwrap();
+    let err = ensure(&f, &Settings::default(), wt.path())
+        .await
+        .err()
+        .unwrap();
     assert!(err.0.contains("Connect"), "{err:?}");
 }
 
@@ -101,9 +106,15 @@ async fn requires_worktree() {
     let f = fixture(true);
     for wt in ["", "/", "  "] {
         let err = ensure(&f, &keyed(), Path::new(wt)).await.err().unwrap();
-        assert_eq!(err.0, "cursor bridge: worktree path is required (refusing to start at /)", "{wt:?}");
+        assert_eq!(
+            err.0, "cursor bridge: worktree path is required (refusing to start at /)",
+            "{wt:?}"
+        );
     }
-    let err = ensure(&f, &keyed(), &f.data.path().join("missing")).await.err().unwrap();
+    let err = ensure(&f, &keyed(), &f.data.path().join("missing"))
+        .await
+        .err()
+        .unwrap();
     assert!(err.0.ends_with("is unavailable"), "{err:?}");
 }
 
@@ -119,12 +130,19 @@ async fn restarts_dead_bridge() {
     assert!(b1.alive());
     let old_pid = b1.discovery().pid;
     assert_ne!(old_pid, 0, "the fake bridge advertises its pid");
-    let _ = rustix::process::kill_process(rustix::process::Pid::from_raw(old_pid as i32).unwrap(), rustix::process::Signal::KILL);
+    let _ = rustix::process::kill_process(
+        rustix::process::Pid::from_raw(old_pid as i32).unwrap(),
+        rustix::process::Signal::KILL,
+    );
     wait_for(Duration::from_secs(5), "bridge reaped", || !b1.alive()).await;
 
     let r2 = ensure(&f, &keyed(), wt.path()).await.unwrap();
     assert!(r2.runner.bridge.alive());
-    assert_ne!(r2.runner.bridge.discovery().pid, old_pid, "reused the dead process");
+    assert_ne!(
+        r2.runner.bridge.discovery().pid,
+        old_pid,
+        "reused the dead process"
+    );
     assert!(!Arc::ptr_eq(&r2.runner.bridge, &b1));
     drop(r2);
     f.pool.close().await;
@@ -141,7 +159,10 @@ async fn pools_bridges_by_worktree() {
     assert!(!Arc::ptr_eq(&r1.runner.bridge, &r2.runner.bridge));
     assert_eq!(r1.runner.bridge.workspace(), wt1.path());
     assert_eq!(r2.runner.bridge.workspace(), wt2.path());
-    assert_eq!(r1.runner.bridge.discovery().workspace_ref, wt1.path().to_string_lossy());
+    assert_eq!(
+        r1.runner.bridge.discovery().workspace_ref,
+        wt1.path().to_string_lossy()
+    );
     let r1b = ensure(&f, &keyed(), wt1.path()).await.unwrap();
     assert!(Arc::ptr_eq(&r1b.runner.bridge, &r1.runner.bridge));
     assert_eq!(r1.runner.in_use.load(Ordering::SeqCst), 2);
@@ -194,16 +215,25 @@ async fn reserved_handout_survives_cold_start_eviction() {
         let mut p = PoolState::default();
         p.entries.insert("/handed".into(), entry(handed, 0));
         for i in 1..MAX_CURSOR_BRIDGES {
-            p.entries.insert(PathBuf::from(format!("/{i}")), entry(runner(true), i as u64));
+            p.entries.insert(
+                PathBuf::from(format!("/{i}")),
+                entry(runner(true), i as u64),
+            );
         }
         p
     };
     let mut p = fill(runner(true));
     evict_locked(&mut p, MAX_CURSOR_BRIDGES - 1).await;
-    assert!(p.entries.contains_key(Path::new("/handed")), "evicted the reserved handout");
+    assert!(
+        p.entries.contains_key(Path::new("/handed")),
+        "evicted the reserved handout"
+    );
     let mut p2 = fill(runner(false));
     evict_locked(&mut p2, MAX_CURSOR_BRIDGES - 1).await;
-    assert!(!p2.entries.contains_key(Path::new("/handed")), "an unreserved handout is the idle victim");
+    assert!(
+        !p2.entries.contains_key(Path::new("/handed")),
+        "an unreserved handout is the idle victim"
+    );
 }
 
 #[tokio::test]
@@ -211,16 +241,26 @@ async fn ensure_reserves_against_eviction() {
     let f = fixture(true);
     let wt = tempfile::tempdir().unwrap();
     let r = ensure(&f, &keyed(), wt.path()).await.unwrap();
-    assert_eq!(r.runner.in_use.load(Ordering::SeqCst), 1, "reserved before the lock drops");
+    assert_eq!(
+        r.runner.in_use.load(Ordering::SeqCst),
+        1,
+        "reserved before the lock drops"
+    );
     {
         let mut p = f.pool.state.lock().await;
         for i in 0..MAX_CURSOR_BRIDGES - 1 {
-            p.entries.insert(PathBuf::from(format!("/busy-{i}")), entry(runner(true), i as u64 + 1));
+            p.entries.insert(
+                PathBuf::from(format!("/busy-{i}")),
+                entry(runner(true), i as u64 + 1),
+            );
         }
     }
     let wt2 = tempfile::tempdir().unwrap();
     let r2 = ensure(&f, &keyed(), wt2.path()).await.unwrap();
-    assert!(r.runner.bridge.alive(), "the reserved runner was evicted by a later cold start");
+    assert!(
+        r.runner.bridge.alive(),
+        "the reserved runner was evicted by a later cold start"
+    );
     assert!(f.pool.state.lock().await.entries.contains_key(wt.path()));
     drop((r, r2));
     f.pool.close().await;
@@ -235,19 +275,26 @@ async fn release_trims_overflow_when_idle() {
         let mut p = pool.state.lock().await;
         for i in 0..n {
             let r = runner(false);
-            p.entries.insert(PathBuf::from(format!("/{i}")), entry(r.clone(), i as u64 + 1));
+            p.entries.insert(
+                PathBuf::from(format!("/{i}")),
+                entry(r.clone(), i as u64 + 1),
+            );
             handouts.push(Reservation::new(pool.clone(), r));
         }
     }
     let first = handouts.remove(0);
     drop(first);
     wait_for(Duration::from_secs(2), "idle overflow trimmed", || {
-        pool.state.try_lock().is_ok_and(|p| p.entries.len() == n - 1)
+        pool.state
+            .try_lock()
+            .is_ok_and(|p| p.entries.len() == n - 1)
     })
     .await;
     drop(handouts);
     wait_for(Duration::from_secs(2), "trim to the cap", || {
-        pool.state.try_lock().is_ok_and(|p| p.entries.len() <= MAX_CURSOR_BRIDGES)
+        pool.state
+            .try_lock()
+            .is_ok_and(|p| p.entries.len() <= MAX_CURSOR_BRIDGES)
     })
     .await;
 }
@@ -265,11 +312,18 @@ fn release_counts_down_once() {
 #[tokio::test]
 async fn close_bridges_defers_while_busy() {
     let pool = Pool::new(PathBuf::new(), PathBuf::new(), None);
-    pool.state.lock().await.entries.insert("/tmp/wt".into(), entry(runner(true), 0));
+    pool.state
+        .lock()
+        .await
+        .entries
+        .insert("/tmp/wt".into(), entry(runner(true), 0));
     pool.close_bridges().await;
     {
         let p = pool.state.lock().await;
-        assert!(p.entries.contains_key(Path::new("/tmp/wt")), "dropped the pool mid-turn");
+        assert!(
+            p.entries.contains_key(Path::new("/tmp/wt")),
+            "dropped the pool mid-turn"
+        );
         assert!(p.close_when_idle);
     }
     pool.close_if_idle_requested(true).await;
@@ -280,7 +334,11 @@ async fn close_bridges_defers_while_busy() {
 #[tokio::test]
 async fn close_bridges_immediate_when_idle() {
     let pool = Pool::new(PathBuf::new(), PathBuf::new(), None);
-    pool.state.lock().await.entries.insert("/tmp/wt".into(), entry(runner(false), 0));
+    pool.state
+        .lock()
+        .await
+        .entries
+        .insert("/tmp/wt".into(), entry(runner(false), 0));
     pool.close_bridges().await;
     assert!(pool.state.lock().await.entries.is_empty());
 }
@@ -288,11 +346,21 @@ async fn close_bridges_immediate_when_idle() {
 #[tokio::test]
 async fn cancel_deferred_close() {
     let pool = Pool::new(PathBuf::new(), PathBuf::new(), None);
-    pool.state.lock().await.entries.insert("/tmp/wt".into(), entry(runner(true), 0));
+    pool.state
+        .lock()
+        .await
+        .entries
+        .insert("/tmp/wt".into(), entry(runner(true), 0));
     pool.close_bridges().await;
     pool.cancel_close_when_idle().await;
     pool.close_if_idle_requested(true).await;
-    assert!(pool.state.lock().await.entries.contains_key(Path::new("/tmp/wt")));
+    assert!(
+        pool.state
+            .lock()
+            .await
+            .entries
+            .contains_key(Path::new("/tmp/wt"))
+    );
     pool.close_if_idle_requested(false).await;
 }
 
@@ -302,8 +370,10 @@ async fn invalidate_drops_one_or_all() {
     let wt = tempfile::tempdir().unwrap();
     {
         let mut p = pool.state.lock().await;
-        p.entries.insert(wt.path().to_path_buf(), entry(runner(false), 0));
-        p.entries.insert("/gone/already".into(), entry(runner(false), 0));
+        p.entries
+            .insert(wt.path().to_path_buf(), entry(runner(false), 0));
+        p.entries
+            .insert("/gone/already".into(), entry(runner(false), 0));
         p.entries.insert("/other".into(), entry(runner(false), 0));
     }
     pool.invalidate(wt.path()).await;
@@ -316,6 +386,12 @@ async fn invalidate_drops_one_or_all() {
 #[test]
 fn worktree_log_key_is_stable() {
     assert_eq!(worktree_log_key(Path::new("/tmp/wt")), "ced5e8d7d14397e6");
-    assert_eq!(worktree_log_key(Path::new("/tmp/wt")), worktree_log_key(Path::new("/tmp/wt")));
-    assert_ne!(worktree_log_key(Path::new("/tmp/wt")), worktree_log_key(Path::new("/tmp/wt2")));
+    assert_eq!(
+        worktree_log_key(Path::new("/tmp/wt")),
+        worktree_log_key(Path::new("/tmp/wt"))
+    );
+    assert_ne!(
+        worktree_log_key(Path::new("/tmp/wt")),
+        worktree_log_key(Path::new("/tmp/wt2"))
+    );
 }

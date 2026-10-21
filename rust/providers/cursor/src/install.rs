@@ -242,7 +242,12 @@ async fn install_inner(
 
     // Wire attribution before the tree goes live: the wheel is the pin, so
     // the anchors must match.
-    report(InstallPhase::Extracting, "Patching attribution controls…".into(), 0, 0);
+    report(
+        InstallPhase::Extracting,
+        "Patching attribution controls…".into(),
+        0,
+        0,
+    );
     ensure_attribution_patch(&unpacked).map_err(|e| {
         format!("cursor bridge install: attribution patch (sdk {PINNED_SDK_VERSION}): {e}")
     })?;
@@ -269,7 +274,10 @@ pub async fn latest_sdk_version() -> Result<String, String> {
         .await
         .map_err(|e| format!("cursor sdk pin check: reach PyPI: {e}"))?;
     if resp.status() != reqwest::StatusCode::OK {
-        return Err(format!("cursor sdk pin check: PyPI returned {}", status_text(resp.status())));
+        return Err(format!(
+            "cursor sdk pin check: PyPI returned {}",
+            status_text(resp.status())
+        ));
     }
     let body = read_capped(resp, 8 << 20)
         .await
@@ -382,12 +390,18 @@ pub(crate) fn platform_tags_for(
     match arch {
         "arm64" => Ok((os_tag, &["arm64", "aarch64"])),
         "amd64" => Ok((os_tag, &["x86_64", "amd64"])),
-        other => Err(format!("cursor bridge install: unsupported architecture {other:?}")),
+        other => Err(format!(
+            "cursor bridge install: unsupported architecture {other:?}"
+        )),
     }
 }
 
 fn status_text(s: reqwest::StatusCode) -> String {
-    format!("{} {}", s.as_u16(), s.canonical_reason().unwrap_or_default())
+    format!(
+        "{} {}",
+        s.as_u16(),
+        s.canonical_reason().unwrap_or_default()
+    )
 }
 
 async fn read_capped(mut resp: reqwest::Response, limit: usize) -> Result<Vec<u8>, reqwest::Error> {

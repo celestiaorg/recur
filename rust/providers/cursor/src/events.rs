@@ -6,7 +6,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::client::ModelSelection;
-use crate::gojson::{flex_int, go_int, null_default, raw};
+use crate::gojson::{decode_struct, flex_int, go_int, null_default, raw};
 
 /// One frame. The bridge encodes a oneof, so exactly one field is set.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
@@ -154,12 +154,14 @@ struct Payload {
 
 impl<'de> Deserialize<'de> for SdkMessage {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let outer = Payload::deserialize(d)?;
+        let raw = Box::<serde_json::value::RawValue>::deserialize(d)?;
+        let outer: Payload = decode_struct(raw.get())
+            .map_err(|_| serde::de::Error::custom("json: cannot unmarshal into SDKMessage"))?;
         // When `message` is itself a typed payload, it is the real event body
         // and the outer object is an envelope; otherwise the outer object
         // already is the payload.
         let inner = (!outer.message.is_empty())
-            .then(|| serde_json::from_str::<Payload>(&outer.message).ok())
+            .then(|| decode_struct::<Payload>(&outer.message).ok())
             .flatten()
             .filter(|p| !p.kind.is_empty());
         let outer_kind = outer.kind.clone();
@@ -254,11 +256,11 @@ pub struct ToolCallArgs {
 
 /// Decodes a tool_call args envelope (Go `ToolArgs`). Empty input is an empty
 /// envelope.
-pub fn tool_call_args(args: &str) -> Result<ToolCallArgs, serde_json::Error> {
+pub fn tool_call_args(args: &str) -> Option<ToolCallArgs> {
     if args.is_empty() {
-        return Ok(ToolCallArgs::default());
+        return Some(ToolCallArgs::default());
     }
-    serde_json::from_str::<Option<ToolCallArgs>>(args).map(Option::unwrap_or_default)
+    decode_struct::<ToolCallArgs>(args).ok()
 }
 
 impl SdkMessage {
@@ -270,7 +272,7 @@ impl SdkMessage {
             return self.name.clone();
         }
         match tool_call_args(&self.args) {
-            Ok(a) if !a.tool_name.is_empty() => {
+            Some(a) if !a.tool_name.is_empty() => {
                 if a.provider_identifier.is_empty() {
                     format!("mcp__{}", a.tool_name)
                 } else {
@@ -302,11 +304,8 @@ impl SdkMessage {
             #[serde(deserialize_with = "null_default")]
             value: V,
         }
-        match serde_json::from_str::<Option<R>>(&self.result) {
-            Ok(r) => {
-                let r = r.unwrap_or_default();
-                r.value.is_error || (!r.status.is_empty() && r.status != "success")
-            }
+        match decode_struct::<R>(&self.result) {
+            Ok(r) => r.value.is_error || (!r.status.is_empty() && r.status != "success"),
             Err(_) => false,
         }
     }
@@ -408,8 +407,7 @@ pub fn parse_interaction_type(input: &str) -> (String, String) {
         #[serde(deserialize_with = "raw")]
         update: String,
     }
-    if let Ok(t) = serde_json::from_str::<Option<Tagged>>(input) {
-        let t = t.unwrap_or_default();
+    if let Ok(t) = decode_struct::<Tagged>(input) {
         if !t.kind.is_empty() {
             // Summary text lives on the inner object, not the wrapper.
             let body = if t.update.is_empty() {
@@ -435,10 +433,9 @@ pub fn parse_interaction_type(input: &str) -> (String, String) {
         #[serde(deserialize_with = "raw")]
         turn_ended: String,
     }
-    let Ok(o) = serde_json::from_str::<Option<OneOf>>(input) else {
+    let Ok(o) = decode_struct::<OneOf>(input) else {
         return (String::new(), String::new());
     };
-    let o = o.unwrap_or_default();
     let pick = [
         (DELTA_SUMMARY_STARTED, o.summary_started),
         (DELTA_SUMMARY_COMPLETED, o.summary_completed),
@@ -493,7 +490,10 @@ pub const RUN_EXPIRED: &str = "RUN_LIFECYCLE_STATUS_EXPIRED";
 /// Whether a lifecycle status is terminal. Non-terminal ones
 /// (creating/running/unspecified) block Send with "already has active run".
 pub fn run_status_terminal(status: &str) -> bool {
-    matches!(status, RUN_FINISHED | RUN_ERROR | RUN_CANCELLED | RUN_EXPIRED)
+    matches!(
+        status,
+        RUN_FINISHED | RUN_ERROR | RUN_CANCELLED | RUN_EXPIRED
+    )
 }
 
 /// Whether the run ended badly. A missing result counts as an error: a

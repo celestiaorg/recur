@@ -21,7 +21,10 @@ fn read(p: &Path) -> String {
 }
 
 fn write_minimal_bridge_for_patch(root: &Path) {
-    write(&root.join(ATTRIBUTION_ENTRYPOINT_REL), "#!/usr/bin/env node\nconsole.log('bridge')\n");
+    write(
+        &root.join(ATTRIBUTION_ENTRYPOINT_REL),
+        "#!/usr/bin/env node\nconsole.log('bridge')\n",
+    );
     write(
         &root.join(CJS),
         "prefix;getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new OS(l):new dx(l,a);suffix",
@@ -30,19 +33,36 @@ fn write_minimal_bridge_for_patch(root: &Path) {
         &root.join(ESM),
         "prefix;getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new MS(l):new lx(l,a);suffix",
     );
-    for dir in ["node_modules/@cursor/sdk/dist/cjs", "node_modules/@cursor/sdk/dist/esm"] {
-        write(&root.join(dir).join("index.js"), &format!("prefix;{};suffix", summary_skip()));
+    for dir in [
+        "node_modules/@cursor/sdk/dist/cjs",
+        "node_modules/@cursor/sdk/dist/esm",
+    ] {
+        write(
+            &root.join(dir).join("index.js"),
+            &format!("prefix;{};suffix", summary_skip()),
+        );
     }
-    write(&root.join(STEER_RUN_SERVER_REL), &format!("{STEER_RUN_MOUNT_OLD}\n"));
+    write(
+        &root.join(STEER_RUN_SERVER_REL),
+        &format!("{STEER_RUN_MOUNT_OLD}\n"),
+    );
 }
 
 fn assert_agent_skills_stubbed(name: &str, src: &str) {
-    assert!(!src.contains(NATIVE_AGENT_SKILLS_ASSIGN), "{name} still assigns workspaceServices.getAgentSkills");
-    assert!(src.contains(STUB_AGENT_SKILLS_ASSIGN), "{name} missing getAgentSkills stub");
+    assert!(
+        !src.contains(NATIVE_AGENT_SKILLS_ASSIGN),
+        "{name} still assigns workspaceServices.getAgentSkills"
+    );
+    assert!(
+        src.contains(STUB_AGENT_SKILLS_ASSIGN),
+        "{name} missing getAgentSkills stub"
+    );
 }
 
 fn attributed(src: &str) -> bool {
-    src.contains(&format!("attributionConfigProvider=globalThis.{ATTRIBUTION_PROVIDER_MARKER}"))
+    src.contains(&format!(
+        "attributionConfigProvider=globalThis.{ATTRIBUTION_PROVIDER_MARKER}"
+    ))
 }
 
 #[test]
@@ -66,7 +86,11 @@ fn preload_skips_identical() {
     let body1 = read(&path);
     write_attribution_preload(&path).unwrap();
     assert_eq!(body1, read(&path));
-    assert_eq!(before, std::fs::metadata(&path).unwrap().modified().unwrap(), "identical preload rewritten");
+    assert_eq!(
+        before,
+        std::fs::metadata(&path).unwrap().modified().unwrap(),
+        "identical preload rewritten"
+    );
 }
 
 #[test]
@@ -82,17 +106,29 @@ fn injects_provider() {
     assert!(preload.contains("__recurInstallSteerRun"));
     let entry = read(&root.join(ATTRIBUTION_ENTRYPOINT_REL));
     assert!(entry.contains("recur-attribution-provider.mjs"), "{entry}");
-    assert!(entry.starts_with("#!/usr/bin/env node\n"), "shebang not preserved:\n{entry}");
+    assert!(
+        entry.starts_with("#!/usr/bin/env node\n"),
+        "shebang not preserved:\n{entry}"
+    );
     assert!(read(&root.join(STEER_RUN_SERVER_REL)).contains("__recurInstallSteerRun"));
     for rel in [CJS, ESM] {
         let s = read(&root.join(rel));
         assert!(attributed(&s), "{rel} not patched");
         assert_agent_skills_stubbed(rel, &s);
     }
-    for rel in ["node_modules/@cursor/sdk/dist/cjs/index.js", "node_modules/@cursor/sdk/dist/esm/index.js"] {
+    for rel in [
+        "node_modules/@cursor/sdk/dist/cjs/index.js",
+        "node_modules/@cursor/sdk/dist/esm/index.js",
+    ] {
         let s = read(&root.join(rel));
-        assert!(!s.contains(summary_skip()), "{rel} still skips summary onDelta");
-        assert!(s.contains(&summary_delta_patch_needle()), "{rel} missing summary marker");
+        assert!(
+            !s.contains(summary_skip()),
+            "{rel} still skips summary onDelta"
+        );
+        assert!(
+            s.contains(&summary_delta_patch_needle()),
+            "{rel} missing summary marker"
+        );
     }
 }
 
@@ -100,7 +136,10 @@ fn injects_provider() {
 fn steer_hook_rejects_unmatched() {
     let root = tempfile::tempdir().unwrap();
     write_minimal_bridge_for_patch(root.path());
-    write(&root.path().join(STEER_RUN_SERVER_REL), "function mountSdkBridgeRoutes() { return 0 }\n");
+    write(
+        &root.path().join(STEER_RUN_SERVER_REL),
+        "function mountSdkBridgeRoutes() { return 0 }\n",
+    );
     let err = ensure_attribution_patch(root.path()).unwrap_err();
     assert!(err.unsupported(), "{err}");
 }
@@ -119,12 +158,18 @@ fn ignores_unmatched_cjs() {
     let root = tempfile::tempdir().unwrap();
     write_minimal_bridge_for_patch(root.path());
     let cjs = root.path().join(CJS);
-    write(&cjs, "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new ZZ(n):new YY(n,m);suffix");
+    write(
+        &cjs,
+        "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new ZZ(n):new YY(n,m);suffix",
+    );
     ensure_attribution_patch(root.path()).unwrap();
     let esm = read(&root.path().join(ESM));
     assert!(attributed(&esm));
     assert_agent_skills_stubbed("esm", &esm);
-    assert!(!read(&cjs).contains(STUB_AGENT_SKILLS_ASSIGN), "unmatched cjs must stay unmodified");
+    assert!(
+        !read(&cjs).contains(STUB_AGENT_SKILLS_ASSIGN),
+        "unmatched cjs must stay unmodified"
+    );
 }
 
 #[test]
@@ -135,7 +180,11 @@ fn rejects_unmatched_esm() {
         &root.path().join(ESM),
         "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===b?new ZZ(o):new YY(o,b);suffix",
     );
-    assert!(ensure_attribution_patch(root.path()).unwrap_err().unsupported());
+    assert!(
+        ensure_attribution_patch(root.path())
+            .unwrap_err()
+            .unsupported()
+    );
 }
 
 fn already_attributed_esm() -> String {
@@ -149,15 +198,24 @@ fn rejects_unmatched_summary_delta() {
     let root = tempfile::tempdir().unwrap();
     write_minimal_bridge_for_patch(root.path());
     write(&root.path().join(ESM), &already_attributed_esm());
-    let idx = root.path().join("node_modules/@cursor/sdk/dist/esm/index.js");
+    let idx = root
+        .path()
+        .join("node_modules/@cursor/sdk/dist/esm/index.js");
     write(
         &idx,
         &format!(
             r#"prefix;function(x){{return x.type==="summary"||x.type==="summary-started"||x.type==="summary-completed"}}(e)||{SDK_SUMMARY_DELTA_YIELD};suffix"#
         ),
     );
-    assert!(ensure_attribution_patch(root.path()).unwrap_err().unsupported());
-    assert!(!read(&idx).contains(&summary_delta_patch_needle()), "marker stamped onto a conditional yield");
+    assert!(
+        ensure_attribution_patch(root.path())
+            .unwrap_err()
+            .unsupported()
+    );
+    assert!(
+        !read(&idx).contains(&summary_delta_patch_needle()),
+        "marker stamped onto a conditional yield"
+    );
 }
 
 #[test]
@@ -165,7 +223,9 @@ fn upgrades_unmarked_summary_delta() {
     let root = tempfile::tempdir().unwrap();
     write_minimal_bridge_for_patch(root.path());
     write(&root.path().join(ESM), &already_attributed_esm());
-    let idx = root.path().join("node_modules/@cursor/sdk/dist/esm/index.js");
+    let idx = root
+        .path()
+        .join("node_modules/@cursor/sdk/dist/esm/index.js");
     write(&idx, &format!("prefix;{SDK_SUMMARY_DELTA_YIELD};suffix"));
     ensure_attribution_patch(root.path()).unwrap();
     assert!(read(&idx).contains(&summary_delta_patch_needle()));
@@ -211,29 +271,46 @@ fn old_cjs_case(body: &str) {
 
 #[test]
 fn still_matches_sdk_1028_cjs() {
-    old_cjs_case("prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Bw(n):new ex(n,m);suffix");
+    old_cjs_case(
+        "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Bw(n):new ex(n,m);suffix",
+    );
 }
 
 #[test]
 fn still_matches_sdk_1027_cjs() {
-    old_cjs_case("prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new $y(n):new $E(n,m);suffix");
+    old_cjs_case(
+        "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new $y(n):new $E(n,m);suffix",
+    );
 }
 
 #[test]
 fn still_matches_sdk_1026_cjs() {
-    old_cjs_case("prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Wv(n):new zk(n,m);suffix");
+    old_cjs_case(
+        "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Wv(n):new zk(n,m);suffix",
+    );
 }
 
 #[test]
 fn unsupported_without_anchors() {
     let root = tempfile::tempdir().unwrap();
-    write(&root.path().join(ATTRIBUTION_ENTRYPOINT_REL), "console.log(1)\n");
-    assert!(ensure_attribution_patch(root.path()).unwrap_err().unsupported());
+    write(
+        &root.path().join(ATTRIBUTION_ENTRYPOINT_REL),
+        "console.log(1)\n",
+    );
+    assert!(
+        ensure_attribution_patch(root.path())
+            .unwrap_err()
+            .unsupported()
+    );
 }
 
 #[test]
 fn rejects_bad_roots() {
-    assert!(!ensure_attribution_patch(Path::new("")).unwrap_err().unsupported());
+    assert!(
+        !ensure_attribution_patch(Path::new(""))
+            .unwrap_err()
+            .unsupported()
+    );
     let f = tempfile::NamedTempFile::new().unwrap();
     let err = ensure_attribution_patch(f.path()).unwrap_err();
     assert!(err.to_string().ends_with("is not a directory"), "{err}");
@@ -246,10 +323,16 @@ fn agent_skills_stub_is_thenable() {
     let (_, expr) = STUB_AGENT_SKILLS_ASSIGN.split_once(':').unwrap();
     let out = std::process::Command::new("node")
         .arg("-e")
-        .arg(format!("const getAgentSkills={expr}; getAgentSkills().finally(()=>{{}})"))
+        .arg(format!(
+            "const getAgentSkills={expr}; getAgentSkills().finally(()=>{{}})"
+        ))
         .output()
         .expect("node on PATH");
-    assert!(out.status.success(), "stub {expr} is not thenable: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "stub {expr} is not thenable: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }
 
 #[test]

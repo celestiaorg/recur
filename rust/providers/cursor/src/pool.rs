@@ -16,7 +16,9 @@ use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use crate::attribution::{attribution_config_path, ensure_attribution_patch, write_attribution_config};
+use crate::attribution::{
+    attribution_config_path, ensure_attribution_patch, write_attribution_config,
+};
 use crate::bridge::{Bridge, BridgeConfig};
 use crate::locate::{abs, clean, locate, owned_bridge_root};
 use crate::runner::CursorRunner;
@@ -88,7 +90,9 @@ impl Pool {
         let mut p = self.state.lock().await;
 
         if !set.provider_enabled(PROVIDER_CURSOR) {
-            return Err(PoolError("Cursor is turned off in Settings → Providers".into()));
+            return Err(PoolError(
+                "Cursor is turned off in Settings → Providers".into(),
+            ));
         }
         if !set.cursor_configured() {
             return Err(PoolError(
@@ -101,7 +105,9 @@ impl Pool {
 
         // A key or binary change: the old processes run with the previous
         // credential or binary.
-        if (!p.key.is_empty() || !p.path.as_os_str().is_empty()) && (p.key != set.cursor_api_key || p.path != bin) {
+        if (!p.key.is_empty() || !p.path.as_os_str().is_empty())
+            && (p.key != set.cursor_api_key || p.path != bin)
+        {
             close_all_locked(&mut p).await;
         }
 
@@ -109,7 +115,8 @@ impl Pool {
             && e.bridge.as_ref().is_some_and(|b| b.alive())
             && let Some(r) = e.runner.clone()
         {
-            r.strict_config.store(set.cursor_strict_config, Ordering::SeqCst);
+            r.strict_config
+                .store(set.cursor_strict_config, Ordering::SeqCst);
             e.last_used = Instant::now();
             p.key = set.cursor_api_key.clone();
             p.path = bin;
@@ -123,11 +130,15 @@ impl Pool {
         // An unrecognized SDK cannot stub getAgentSkills: fail closed.
         let Some(root) = owned_bridge_root(&self.data_dir, &bin) else {
             return Err(PoolError(
-                "cursor bridge is not installed in the Recur data dir — install it from Settings".into(),
+                "cursor bridge is not installed in the Recur data dir — install it from Settings"
+                    .into(),
             ));
         };
-        ensure_attribution_patch(&root)
-            .map_err(|e| PoolError(format!("cursor bridge patch failed; reinstall from Settings: {e}")))?;
+        ensure_attribution_patch(&root).map_err(|e| {
+            PoolError(format!(
+                "cursor bridge patch failed; reinstall from Settings: {e}"
+            ))
+        })?;
         if let Some(path) = &attr_path {
             write_attribution_config(path, set.cursor_attribute_commits, set.cursor_attribute_prs)
                 .map_err(|e| PoolError(format!("cursor attribution config: {e}")))?;
@@ -153,20 +164,25 @@ impl Pool {
             home: self.home.clone(),
         };
         let start_tok = cancel.child_token();
-        let started = tokio::time::timeout(BRIDGE_START_TIMEOUT, Bridge::start(cfg, &start_tok)).await;
+        let started =
+            tokio::time::timeout(BRIDGE_START_TIMEOUT, Bridge::start(cfg, &start_tok)).await;
         let b = match started {
             Ok(Ok(b)) => b,
             Ok(Err(e)) => return Err(PoolError(format!("start cursor bridge: {e}"))),
             Err(_) => {
                 start_tok.cancel();
-                return Err(PoolError("start cursor bridge: context deadline exceeded".into()));
+                return Err(PoolError(
+                    "start cursor bridge: context deadline exceeded".into(),
+                ));
             }
         };
 
         // Fail fast and by name when the bridge is too old.
         let Some(cl) = b.connect_client() else {
             b.close().await;
-            return Err(PoolError("cursor bridge handshake: bridge not started".into()));
+            return Err(PoolError(
+                "cursor bridge handshake: bridge not started".into(),
+            ));
         };
         let v = match tokio::time::timeout(BRIDGE_START_TIMEOUT, cl.get_version(cancel)).await {
             Ok(Ok(v)) => v,
@@ -176,7 +192,9 @@ impl Pool {
             }
             Err(_) => {
                 b.close().await;
-                return Err(PoolError("cursor bridge handshake: context deadline exceeded".into()));
+                return Err(PoolError(
+                    "cursor bridge handshake: context deadline exceeded".into(),
+                ));
             }
         };
         for want in ["agent.create", "agent.send"] {
@@ -190,7 +208,8 @@ impl Pool {
         }
 
         let mut r = CursorRunner::new(b.clone(), &set.cursor_api_key);
-        r.strict_config.store(set.cursor_strict_config, Ordering::SeqCst);
+        r.strict_config
+            .store(set.cursor_strict_config, Ordering::SeqCst);
         r.skip_observe = !v.has("run.observe");
         let r = Arc::new(r);
         p.entries.insert(
@@ -291,7 +310,9 @@ impl Drop for Reservation {
 /// Drops one handout; true when it was the last.
 pub(crate) fn release(r: &CursorRunner) -> bool {
     r.in_use
-        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| (n > 0).then(|| n - 1))
+        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
+            (n > 0).then(|| n - 1)
+        })
         .is_ok_and(|prev| prev == 1)
 }
 
@@ -300,7 +321,8 @@ pub(crate) fn release(r: &CursorRunner) -> bool {
 pub(crate) fn normalize_cursor_worktree(worktree: &Path) -> Result<PathBuf, PoolError> {
     let s = worktree.to_string_lossy();
     let trimmed = crate::gojson::trim(&s);
-    let required = || PoolError("cursor bridge: worktree path is required (refusing to start at /)".into());
+    let required =
+        || PoolError("cursor bridge: worktree path is required (refusing to start at /)".into());
     if trimmed.is_empty() {
         return Err(required());
     }

@@ -54,14 +54,22 @@ pub use client::{
     VersionInfo, run_created_on_this_bridge,
 };
 pub use connect::{Client, ConnectError, Error, encode_connect_frame};
-pub use context::{ContextLimits, VENDOR_ORDER, base_context_window, limits_for, parse_context_flag, resolve_context_window, vendor};
+pub use context::{
+    ContextLimits, VENDOR_ORDER, base_context_window, limits_for, parse_context_flag,
+    resolve_context_window, vendor,
+};
 pub use events::*;
 pub use install::{
     InstallPhase, InstallProgress, PINNED_SDK_VERSION, check_pin_drift, install_error_payload,
     latest_sdk_version,
 };
-pub use locate::{BRIDGE_DIR_NAME, ENV_BRIDGE_PATH, bridge_root, launcher_rel_path, locate, owned_bridge_root, resolve_launcher, sdk_version};
-pub use projectdirs::{cursor_project_slug, ensure_cursor_project_dirs, remove_cursor_project_dirs};
+pub use locate::{
+    BRIDGE_DIR_NAME, ENV_BRIDGE_PATH, bridge_root, launcher_rel_path, locate, owned_bridge_root,
+    resolve_launcher, sdk_version,
+};
+pub use projectdirs::{
+    cursor_project_slug, ensure_cursor_project_dirs, remove_cursor_project_dirs,
+};
 pub use provider::{CursorConfig, CursorProvider};
 pub use runner::wrap_attached_images_for_cursor;
 pub use status::{CURSOR_USAGE_AUTH_FILE, CursorStatus};

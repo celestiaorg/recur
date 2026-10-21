@@ -9,9 +9,7 @@ use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use crate::connect::{Client, Error};
-use crate::events::{
-    MSG_STATUS, RunStreamEvent, STATUS_ERROR, decode_frame, run_status_terminal,
-};
+use crate::events::{MSG_STATUS, RunStreamEvent, STATUS_ERROR, decode_frame, run_status_terminal};
 use crate::gojson::null_default;
 
 const SVC_AGENT: &str = "sdk.v1.SdkAgentService";
@@ -50,9 +48,15 @@ pub struct Model {
     pub description: String,
     #[serde(deserialize_with = "null_default")]
     pub aliases: Vec<String>,
-    #[serde(deserialize_with = "null_default", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        deserialize_with = "null_default",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub parameters: Vec<ModelParameterDefinition>,
-    #[serde(deserialize_with = "null_default", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        deserialize_with = "null_default",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub variants: Vec<ModelVariant>,
 }
 
@@ -62,7 +66,10 @@ pub struct Model {
 pub struct ModelParameterDefinition {
     #[serde(deserialize_with = "null_default")]
     pub id: String,
-    #[serde(deserialize_with = "null_default", skip_serializing_if = "String::is_empty")]
+    #[serde(
+        deserialize_with = "null_default",
+        skip_serializing_if = "String::is_empty"
+    )]
     pub display_name: String,
     #[serde(deserialize_with = "null_default")]
     pub values: Vec<ModelParameterChoice>,
@@ -73,7 +80,10 @@ pub struct ModelParameterDefinition {
 pub struct ModelParameterChoice {
     #[serde(deserialize_with = "null_default")]
     pub value: String,
-    #[serde(deserialize_with = "null_default", skip_serializing_if = "String::is_empty")]
+    #[serde(
+        deserialize_with = "null_default",
+        skip_serializing_if = "String::is_empty"
+    )]
     pub display_name: String,
 }
 
@@ -85,7 +95,10 @@ pub struct ModelVariant {
     pub params: Vec<ModelParameterValue>,
     #[serde(deserialize_with = "null_default")]
     pub display_name: String,
-    #[serde(deserialize_with = "null_default", skip_serializing_if = "String::is_empty")]
+    #[serde(
+        deserialize_with = "null_default",
+        skip_serializing_if = "String::is_empty"
+    )]
     pub description: String,
     #[serde(deserialize_with = "null_default", skip_serializing_if = "is_false")]
     pub is_default: bool,
@@ -206,7 +219,10 @@ impl McpServer {
 pub struct ModelSelection {
     #[serde(deserialize_with = "null_default")]
     pub id: String,
-    #[serde(deserialize_with = "null_default", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        deserialize_with = "null_default",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub params: Vec<ModelParameterValue>,
 }
 
@@ -340,7 +356,10 @@ pub(crate) fn rfc3339_nano(t: DateTime<Utc>) -> String {
 /// Whether a run's timestamp places it after this bridge process started.
 /// Missing timestamps fail closed: ObserveRun on a leftover SQLite row would
 /// replay then hang, so unknown runs take the cancel+Send path.
-pub fn run_created_on_this_bridge(run: &RunSnapshot, bridge_started: Option<DateTime<Utc>>) -> bool {
+pub fn run_created_on_this_bridge(
+    run: &RunSnapshot,
+    bridge_started: Option<DateTime<Utc>>,
+) -> bool {
     if run.run_id.is_empty() {
         return false;
     }
@@ -361,7 +380,11 @@ fn is_false(b: &bool) -> bool {
     !*b
 }
 
-fn decode<T: DeserializeOwned + Default>(raw: &[u8], service: &str, method: &str) -> Result<T, Error> {
+fn decode<T: DeserializeOwned + Default>(
+    raw: &[u8],
+    service: &str,
+    method: &str,
+) -> Result<T, Error> {
     if raw.is_empty() {
         return Ok(T::default());
     }
@@ -386,12 +409,16 @@ struct KeyOnly<'a> {
 
 impl Client {
     pub async fn get_version(&self, cancel: &CancellationToken) -> Result<VersionInfo, Error> {
-        let raw = self.unary(cancel, SVC_CONTROL, "GetVersion", &Empty {}).await?;
+        let raw = self
+            .unary(cancel, SVC_CONTROL, "GetVersion", &Empty {})
+            .await?;
         decode(&raw, SVC_CONTROL, "GetVersion")
     }
 
     pub async fn ping(&self, cancel: &CancellationToken) -> Result<(), Error> {
-        self.unary(cancel, SVC_CONTROL, "Ping", &Empty {}).await.map(drop)
+        self.unary(cancel, SVC_CONTROL, "Ping", &Empty {})
+            .await
+            .map(drop)
     }
 
     pub async fn shutdown(&self, cancel: &CancellationToken) -> Result<(), Error> {
@@ -406,7 +433,11 @@ impl Client {
     }
 
     /// The models the key may use; also the cheapest credential check.
-    pub async fn list_models(&self, cancel: &CancellationToken, api_key: &str) -> Result<Vec<Model>, Error> {
+    pub async fn list_models(
+        &self,
+        cancel: &CancellationToken,
+        api_key: &str,
+    ) -> Result<Vec<Model>, Error> {
         #[derive(Deserialize, Default)]
         #[serde(default)]
         struct Out {
@@ -435,7 +466,11 @@ impl Client {
     }
 
     /// Creates a local agent and returns its id.
-    pub async fn create_agent(&self, cancel: &CancellationToken, opts: &AgentOptions) -> Result<String, Error> {
+    pub async fn create_agent(
+        &self,
+        cancel: &CancellationToken,
+        opts: &AgentOptions,
+    ) -> Result<String, Error> {
         #[derive(Serialize)]
         struct Req<'a> {
             options: &'a AgentOptions,
@@ -461,7 +496,15 @@ impl Client {
             options: &'a AgentOptions,
         }
         let raw = self
-            .unary(cancel, SVC_AGENT, "ResumeAgent", &Req { agent_id, options: opts })
+            .unary(
+                cancel,
+                SVC_AGENT,
+                "ResumeAgent",
+                &Req {
+                    agent_id,
+                    options: opts,
+                },
+            )
             .await?;
         let out = decode::<AgentIdOut>(&raw, SVC_AGENT, "ResumeAgent")?;
         Ok(if out.agent_id.is_empty() {
@@ -473,7 +516,11 @@ impl Client {
 
     /// Releases bridge-side agent state. Best-effort: a failure leaks a
     /// little bridge memory but must never fail a run.
-    pub async fn close_agent(&self, cancel: &CancellationToken, agent_id: &str) -> Result<(), Error> {
+    pub async fn close_agent(
+        &self,
+        cancel: &CancellationToken,
+        agent_id: &str,
+    ) -> Result<(), Error> {
         self.unary(cancel, SVC_AGENT, "CloseAgent", &AgentIdReq { agent_id })
             .await
             .map(drop)
@@ -490,7 +537,12 @@ impl Client {
     /// means the turn has the message; anything else, including a missing
     /// RPC, means the caller should Send after the run instead. Follows the
     /// token through terminal acknowledgement, not the unary timeout.
-    pub async fn steer_run(&self, cancel: &CancellationToken, run_id: &str, text: &str) -> Result<String, Error> {
+    pub async fn steer_run(
+        &self,
+        cancel: &CancellationToken,
+        run_id: &str,
+        text: &str,
+    ) -> Result<String, Error> {
         #[derive(Serialize)]
         struct Req<'a> {
             #[serde(rename = "runId")]
@@ -510,7 +562,11 @@ impl Client {
     }
 
     /// Runs for an agent, newest first.
-    pub async fn list_runs(&self, cancel: &CancellationToken, agent_id: &str) -> Result<Vec<RunSnapshot>, Error> {
+    pub async fn list_runs(
+        &self,
+        cancel: &CancellationToken,
+        agent_id: &str,
+    ) -> Result<Vec<RunSnapshot>, Error> {
         #[derive(Deserialize, Default)]
         #[serde(default)]
         struct Out {
@@ -524,7 +580,11 @@ impl Client {
     }
 
     /// The newest creating/running run; a default snapshot means none.
-    pub async fn first_non_terminal_run(&self, cancel: &CancellationToken, agent_id: &str) -> Result<RunSnapshot, Error> {
+    pub async fn first_non_terminal_run(
+        &self,
+        cancel: &CancellationToken,
+        agent_id: &str,
+    ) -> Result<RunSnapshot, Error> {
         let runs = self.list_runs(cancel, agent_id).await?;
         Ok(runs
             .into_iter()
@@ -642,10 +702,19 @@ impl Client {
             #[serde(rename = "runId")]
             run_id: &'a str,
         }
-        self.stream(cancel, SVC_AGENT, "ObserveRun", &Req { after_offset, run_id }, |raw| {
-            self.decode_run_stream(raw, &mut on_event);
-            Ok(())
-        })
+        self.stream(
+            cancel,
+            SVC_AGENT,
+            "ObserveRun",
+            &Req {
+                after_offset,
+                run_id,
+            },
+            |raw| {
+                self.decode_run_stream(raw, &mut on_event);
+                Ok(())
+            },
+        )
         .await
     }
 
@@ -661,7 +730,10 @@ impl Client {
             && m.status == STATUS_ERROR
             && !m.message.is_empty()
         {
-            self.note(&format!("recur: run {} status ERROR: {}", m.run_id, m.message));
+            self.note(&format!(
+                "recur: run {} status ERROR: {}",
+                m.run_id, m.message
+            ));
         }
         on_event(ev);
     }

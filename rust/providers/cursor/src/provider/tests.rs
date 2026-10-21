@@ -52,7 +52,11 @@ fn marker(f: &Fixture, name: &str, body: &str) {
     std::fs::write(f.data.path().join("cursor-bridge/bin").join(name), body).unwrap();
 }
 
-async fn turn(p: &CursorProvider, wt: &Path, cancel: CancellationToken) -> (Result<TurnResult, ProviderError>, Vec<AgentEvent>) {
+async fn turn(
+    p: &CursorProvider,
+    wt: &Path,
+    cancel: CancellationToken,
+) -> (Result<TurnResult, ProviderError>, Vec<AgentEvent>) {
     let rec = Rec::default();
     let req = TurnRequest {
         worktree: wt.to_path_buf(),
@@ -71,7 +75,9 @@ fn identity_and_caps() {
     let c = f.p.caps();
     assert_eq!(c.permission, recur_agent::PermissionRoute::None);
     assert_eq!(c.steer, recur_agent::SteerSupport::LiveOrRestart);
-    assert!(!c.can_disable_tools && !c.native_fork && c.images && c.user_mcp.http && c.user_mcp.stdio);
+    assert!(
+        !c.can_disable_tools && !c.native_fork && c.images && c.user_mcp.http && c.user_mcp.stdio
+    );
 }
 
 #[test]
@@ -97,7 +103,10 @@ fn model_helpers() {
     assert_eq!(f.p.resolve_model("composer-2.5", &flags), "composer-2.5");
     assert_eq!(f.p.context_window("composer-2.5", &Flags::new()), 200_000);
     assert_eq!(f.p.context_window("gpt-5.6-sol", &flags), 1_000_000);
-    assert!(f.p.oneshot_flags("composer-2.5").is_empty(), "no default effort for Cursor");
+    assert!(
+        f.p.oneshot_flags("composer-2.5").is_empty(),
+        "no default effort for Cursor"
+    );
     assert_eq!(f.p.model_label("composer-2.5"), "composer-2.5");
 }
 
@@ -112,9 +121,16 @@ fn resume_handles() {
 #[test]
 fn display_delegates_to_cursor_vocabulary() {
     let f = fixture(false, Settings::default());
-    assert_eq!(f.p.display_tool("shell", r#"{"command":"ls"}"#).name, "Bash");
     assert_eq!(
-        recur_agent::display::display_tool_result(&f.p, "read", r#"{"status":"success","value":{"content":"x"}}"#),
+        f.p.display_tool("shell", r#"{"command":"ls"}"#).name,
+        "Bash"
+    );
+    assert_eq!(
+        recur_agent::display::display_tool_result(
+            &f.p,
+            "read",
+            r#"{"status":"success","value":{"content":"x"}}"#
+        ),
         "x"
     );
     assert_eq!(
@@ -125,9 +141,15 @@ fn display_delegates_to_cursor_vocabulary() {
 
 #[test]
 fn died_before_turn() {
-    assert!(cursor_died_before_turn(&Error::msg("cursor create agent: dial tcp: connection refused")));
-    assert!(!cursor_died_before_turn(&Error::msg("cursor run: dial tcp: connection refused")));
-    assert!(!cursor_died_before_turn(&Error::msg("cursor auth failed: connection refused")));
+    assert!(cursor_died_before_turn(&Error::msg(
+        "cursor create agent: dial tcp: connection refused"
+    )));
+    assert!(!cursor_died_before_turn(&Error::msg(
+        "cursor run: dial tcp: connection refused"
+    )));
+    assert!(!cursor_died_before_turn(&Error::msg(
+        "cursor auth failed: connection refused"
+    )));
     assert!(!cursor_died_before_turn(&Error::msg("some other error")));
 }
 
@@ -154,7 +176,14 @@ async fn run_turn_through_the_pool() {
     // The reservation is released after the turn.
     let p = f.p.pool.state.lock().await;
     let e = p.entries.values().next().unwrap();
-    assert_eq!(e.runner.as_ref().unwrap().in_use.load(std::sync::atomic::Ordering::SeqCst), 0);
+    assert_eq!(
+        e.runner
+            .as_ref()
+            .unwrap()
+            .in_use
+            .load(std::sync::atomic::Ordering::SeqCst),
+        0
+    );
     drop(p);
     // The bridge was started with the attribution config in place.
     assert!(f.data.path().join("cursor-attribution.json").is_file());
@@ -172,7 +201,11 @@ async fn run_turn_self_heals_a_dead_port() {
     let r = res.unwrap_or_else(|e| panic!("self-heal failed: {}", e.message));
     assert!(r.text.starts_with("fake ok "));
     assert!(!f.data.path().join("cursor-bridge/bin/refuse-once").exists());
-    assert_eq!(kinds(&evs), ["init", "result"], "nothing streamed from the dead bridge");
+    assert_eq!(
+        kinds(&evs),
+        ["init", "result"],
+        "nothing streamed from the dead bridge"
+    );
     f.p.shutdown().await;
 }
 
@@ -191,7 +224,9 @@ async fn run_turn_wraps_cursor_off_error() {
     let e = res.unwrap_err();
     assert_eq!(e.kind, ErrorKind::Unavailable);
     assert!(
-        e.message.starts_with("Cursor is turned off in Settings → Providers: cursor run ended without a result"),
+        e.message.starts_with(
+            "Cursor is turned off in Settings → Providers: cursor run ended without a result"
+        ),
         "{}",
         e.message
     );
@@ -220,14 +255,24 @@ async fn run_turn_preserves_cancel_when_cursor_off() {
 async fn status_probes() {
     let f = fixture(false, keyed());
     let s = f.p.cursor_status(&keyed()).await;
-    assert!(!s.bridge_installed && s.error.starts_with("cursor bridge not found"), "{s:?}");
+    assert!(
+        !s.bridge_installed && s.error.starts_with("cursor bridge not found"),
+        "{s:?}"
+    );
 
     let f = fixture(true, keyed());
-    std::fs::write(f.data.path().join("cursor-bridge/manifest.json"), r#"{"sdkVersion":"1.0.27"}"#).unwrap();
+    std::fs::write(
+        f.data.path().join("cursor-bridge/manifest.json"),
+        r#"{"sdkVersion":"1.0.27"}"#,
+    )
+    .unwrap();
     // No Connect session file: no probe, just the install and the pin.
     let s = f.p.cursor_status(&keyed()).await;
     assert!(s.bridge_installed && !s.authenticated);
-    assert_eq!((s.bridge_version.as_str(), s.pinned_version.as_str()), ("1.0.27", crate::PINNED_SDK_VERSION));
+    assert_eq!(
+        (s.bridge_version.as_str(), s.pinned_version.as_str()),
+        ("1.0.27", crate::PINNED_SDK_VERSION)
+    );
     assert!(s.update_available);
     assert!(f.p.cached_models(&keyed()).is_empty());
 
@@ -235,9 +280,21 @@ async fn status_probes() {
     let s = f.p.cursor_status(&keyed()).await;
     assert!(s.authenticated, "{s:?}");
     assert_eq!(s.model_count, 3);
-    assert_eq!((s.email.as_str(), s.account.as_str(), s.api_key_name.as_str(), s.name.as_str()), ("dev@example.com", "dev@example.com", "Recur laptop", "Ada"));
+    assert_eq!(
+        (
+            s.email.as_str(),
+            s.account.as_str(),
+            s.api_key_name.as_str(),
+            s.name.as_str()
+        ),
+        ("dev@example.com", "dev@example.com", "Recur laptop", "Ada")
+    );
     // The probe warms the offline catalog.
-    let cached: Vec<String> = f.p.cached_models(&keyed()).into_iter().map(|m| m.model_ref).collect();
+    let cached: Vec<String> =
+        f.p.cached_models(&keyed())
+            .into_iter()
+            .map(|m| m.model_ref)
+            .collect();
     assert_eq!(cached, ["cursor/composer-2.5", "cursor/gpt-5.6-sol"]);
     assert!(f.p.cached_models(&disabled()).is_empty());
 
@@ -254,11 +311,12 @@ async fn status_probes() {
 #[tokio::test]
 async fn test_credentials() {
     let f = fixture(true, Settings::default());
-    let s = f.p.test_credentials(&Settings::default(), &CredentialDraft::default()).await;
+    let s =
+        f.p.test_credentials(&Settings::default(), &CredentialDraft::default())
+            .await;
     assert_eq!(s.error, "Enter an API key first.");
-    let s = f
-        .p
-        .test_credentials(
+    let s =
+        f.p.test_credentials(
             &Settings::default(),
             &CredentialDraft {
                 api_key: "sk-draft".into(),
@@ -266,22 +324,39 @@ async fn test_credentials() {
             },
         )
         .await;
-    assert!(s.authenticated && s.installed && s.model_count == 3, "{s:?}");
+    assert!(
+        s.authenticated && s.installed && s.model_count == 3,
+        "{s:?}"
+    );
     // An empty draft falls back to the saved key.
-    let s = f.p.test_credentials(&keyed(), &CredentialDraft::default()).await;
+    let s =
+        f.p.test_credentials(&keyed(), &CredentialDraft::default())
+            .await;
     assert!(s.authenticated);
 }
 
 #[tokio::test]
 async fn live_models() {
     let f = fixture(true, keyed());
-    assert!(f.p.models(&Settings::default()).await.unwrap().is_empty(), "unconnected: no group");
+    assert!(
+        f.p.models(&Settings::default()).await.unwrap().is_empty(),
+        "unconnected: no group"
+    );
     assert!(f.p.models(&disabled()).await.unwrap().is_empty());
-    let refs: Vec<String> = f.p.models(&keyed()).await.unwrap().into_iter().map(|m| m.model_ref).collect();
+    let refs: Vec<String> =
+        f.p.models(&keyed())
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|m| m.model_ref)
+            .collect();
     assert_eq!(refs, ["cursor/composer-2.5", "cursor/gpt-5.6-sol"]);
     assert_eq!(f.p.cached_models(&keyed()).len(), 2);
     let none = fixture(false, keyed());
-    assert!(none.p.models(&keyed()).await.unwrap().is_empty(), "not installed: no group");
+    assert!(
+        none.p.models(&keyed()).await.unwrap().is_empty(),
+        "not installed: no group"
+    );
 }
 
 #[tokio::test]
@@ -305,24 +380,42 @@ async fn release_worktree_drops_bridge_and_project_dirs() {
     std::fs::set_permissions(&projects, std::fs::Permissions::from_mode(0o500)).unwrap();
     let err = f.p.release_worktree(wt.path()).await.unwrap_err();
     std::fs::set_permissions(&projects, std::fs::Permissions::from_mode(0o755)).unwrap();
-    assert!(err.message.starts_with("Could not remove Cursor project dirs: "), "{}", err.message);
+    assert!(
+        err.message
+            .starts_with("Could not remove Cursor project dirs: "),
+        "{}",
+        err.message
+    );
 }
 
 #[tokio::test]
 async fn settings_changed_writes_attribution_and_closes_when_off() {
     let f = fixture(true, keyed());
     let wt = tempfile::tempdir().unwrap();
-    turn(&f.p, wt.path(), CancellationToken::new()).await.0.unwrap();
+    turn(&f.p, wt.path(), CancellationToken::new())
+        .await
+        .0
+        .unwrap();
     let on = Settings {
         cursor_attribute_commits: true,
         ..keyed()
     };
     f.p.settings_changed(&keyed(), &on).await;
     let body = std::fs::read_to_string(f.data.path().join("cursor-attribution.json")).unwrap();
-    assert_eq!(body, "{\n  \"attributeCommitsToAgent\": true,\n  \"attributePRsToAgent\": false\n}\n");
-    assert_eq!(f.p.pool.state.lock().await.entries.len(), 1, "a toggle keeps warm bridges");
+    assert_eq!(
+        body,
+        "{\n  \"attributeCommitsToAgent\": true,\n  \"attributePRsToAgent\": false\n}\n"
+    );
+    assert_eq!(
+        f.p.pool.state.lock().await.entries.len(),
+        1,
+        "a toggle keeps warm bridges"
+    );
     f.p.settings_changed(&on, &disabled()).await;
-    assert!(f.p.pool.state.lock().await.entries.is_empty(), "off with nothing running closes now");
+    assert!(
+        f.p.pool.state.lock().await.entries.is_empty(),
+        "off with nothing running closes now"
+    );
     assert_eq!(
         f.p.availability(&f.p.settings()),
         Availability::Unavailable("Cursor is turned off in Settings → Providers".into())
@@ -333,15 +426,27 @@ async fn settings_changed_writes_attribution_and_closes_when_off() {
 async fn on_idle_finishes_a_deferred_close() {
     let f = fixture(true, keyed());
     let wt = tempfile::tempdir().unwrap();
-    let held = f.p.pool.ensure_runner(&CancellationToken::new(), &keyed(), wt.path()).await.unwrap();
+    let held =
+        f.p.pool
+            .ensure_runner(&CancellationToken::new(), &keyed(), wt.path())
+            .await
+            .unwrap();
     f.p.settings_changed(&keyed(), &disabled()).await;
-    assert_eq!(f.p.pool.state.lock().await.entries.len(), 1, "a turn in flight keeps its bridge");
+    assert_eq!(
+        f.p.pool.state.lock().await.entries.len(),
+        1,
+        "a turn in flight keeps its bridge"
+    );
     drop(held);
     // Turning Cursor back on cancels the deferred close.
     f.p.settings_changed(&disabled(), &keyed()).await;
     f.p.on_idle().await;
     assert_eq!(f.p.pool.state.lock().await.entries.len(), 1);
-    let held = f.p.pool.ensure_runner(&CancellationToken::new(), &keyed(), wt.path()).await.unwrap();
+    let held =
+        f.p.pool
+            .ensure_runner(&CancellationToken::new(), &keyed(), wt.path())
+            .await
+            .unwrap();
     f.p.settings_changed(&keyed(), &disabled()).await;
     drop(held);
     f.p.on_idle().await;

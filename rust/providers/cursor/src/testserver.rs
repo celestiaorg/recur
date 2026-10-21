@@ -20,7 +20,8 @@ impl Req {
     /// The JSON body; a Connect stream's single frame is unwrapped.
     pub fn json(&self) -> Value {
         let raw = if self.body.len() >= 5 && self.body[0] <= 2 && self.body.first() != Some(&b'{') {
-            let n = u32::from_be_bytes([self.body[1], self.body[2], self.body[3], self.body[4]]) as usize;
+            let n = u32::from_be_bytes([self.body[1], self.body[2], self.body[3], self.body[4]])
+                as usize;
             &self.body[5..(5 + n).min(self.body.len())]
         } else {
             &self.body[..]
@@ -29,7 +30,11 @@ impl Req {
     }
 
     pub fn str(&self, key: &str) -> String {
-        self.json().get(key).and_then(Value::as_str).unwrap_or("").to_owned()
+        self.json()
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_owned()
     }
 
     pub fn ends(&self, suffix: &str) -> bool {
@@ -80,14 +85,20 @@ impl Resp {
 
     /// A data frame.
     pub async fn frame(&mut self, payload: &str) {
-        self.write(&crate::connect::encode_connect_frame(false, payload.as_bytes()))
-            .await;
+        self.write(&crate::connect::encode_connect_frame(
+            false,
+            payload.as_bytes(),
+        ))
+        .await;
     }
 
     /// The end-stream frame.
     pub async fn end(&mut self, payload: &str) {
-        self.write(&crate::connect::encode_connect_frame(true, payload.as_bytes()))
-            .await;
+        self.write(&crate::connect::encode_connect_frame(
+            true,
+            payload.as_bytes(),
+        ))
+        .await;
     }
 }
 
@@ -303,7 +314,11 @@ pub(crate) fn write_fake_cursor_install(data_dir: &std::path::Path) -> std::path
     std::fs::write(&esm, "prefix;getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===b?new n.DvK(o):new l(o,b);suffix").unwrap();
     let skip = r#"function(e){return"summary"===e.type||"summary-started"===e.type||"summary-completed"===e.type}(e)||(yield null===(n=(t=this.options).onDelta)||void 0===n?void 0:n.call(t,{update:e}))"#;
     for p in [&cjs, &esm] {
-        std::fs::write(p.parent().unwrap().join("index.js"), format!("prefix;{skip};suffix")).unwrap();
+        std::fs::write(
+            p.parent().unwrap().join("index.js"),
+            format!("prefix;{skip};suffix"),
+        )
+        .unwrap();
     }
     bin
 }

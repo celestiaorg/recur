@@ -23,7 +23,9 @@ use crate::locate::{locate, sdk_version};
 use crate::pool::{Pool, PoolError};
 use crate::projectdirs::remove_cursor_project_dirs_in;
 use crate::runner::RunFailure;
-use crate::status::{CursorStatus, apply_cursor_pin, apply_cursor_probe, has_recur_cursor_auth_file, probe_cursor};
+use crate::status::{
+    CursorStatus, apply_cursor_pin, apply_cursor_probe, has_recur_cursor_auth_file, probe_cursor,
+};
 use crate::tools::{cursor_tool_result_text, display_tool};
 
 const CAPS: ProviderCaps = ProviderCaps {
@@ -169,7 +171,11 @@ impl CursorProvider {
         let bin = install(&self.data_dir, cancel, progress).await?;
         let set = self.settings();
         if let Some(path) = attribution_config_path(&self.data_dir)
-            && let Err(e) = write_attribution_config(&path, set.cursor_attribute_commits, set.cursor_attribute_prs)
+            && let Err(e) = write_attribution_config(
+                &path,
+                set.cursor_attribute_commits,
+                set.cursor_attribute_prs,
+            )
         {
             tracing::warn!("recur: warning: write cursor attribution config: {e}");
         }
@@ -182,9 +188,14 @@ impl CursorProvider {
         cx: &mut TurnContext,
         set: &Settings,
     ) -> Result<Result<TurnResult, RunFailure>, PoolError> {
-        let res = self.pool.ensure_runner(&cx.cancel, set, &req.worktree).await?;
+        let res = self
+            .pool
+            .ensure_runner(&cx.cancel, set, &req.worktree)
+            .await?;
         let runner = res.runner.clone();
-        let out = runner.run(req, &cx.cancel, cx.sink.clone(), &mut cx.steer).await;
+        let out = runner
+            .run(req, &cx.cancel, cx.sink.clone(), &mut cx.steer)
+            .await;
         drop(res);
         Ok(out)
     }
@@ -228,7 +239,9 @@ impl Provider for CursorProvider {
 
     fn availability(&self, settings: &Settings) -> Availability {
         if !settings.provider_enabled(PROVIDER_CURSOR) {
-            return Availability::Unavailable("Cursor is turned off in Settings → Providers".into());
+            return Availability::Unavailable(
+                "Cursor is turned off in Settings → Providers".into(),
+            );
         }
         if !settings.cursor_configured() {
             return Availability::Unavailable(
@@ -242,7 +255,11 @@ impl Provider for CursorProvider {
         self.cursor_status(settings).await.into()
     }
 
-    async fn test_credentials(&self, settings: &Settings, draft: &CredentialDraft) -> ProviderStatus {
+    async fn test_credentials(
+        &self,
+        settings: &Settings,
+        draft: &CredentialDraft,
+    ) -> ProviderStatus {
         self.test_cursor_key(settings, &draft.api_key).await.into()
     }
 
@@ -297,14 +314,24 @@ impl Provider for CursorProvider {
     /// before anything streamed (CreateAgent refused) is replaced and the
     /// turn retried once. A mid-stream drop also replaces the bridge but is
     /// not retried: events may already be mirrored.
-    async fn run_turn(&self, req: TurnRequest, mut cx: TurnContext) -> Result<TurnResult, ProviderError> {
+    async fn run_turn(
+        &self,
+        req: TurnRequest,
+        mut cx: TurnContext,
+    ) -> Result<TurnResult, ProviderError> {
         let set = self.settings();
-        let first = self.run_once(&req, &mut cx, &set).await.map_err(unavailable)?;
+        let first = self
+            .run_once(&req, &mut cx, &set)
+            .await
+            .map_err(unavailable)?;
         let fail = match first {
             Ok(r) => return Ok(r),
             Err(f) => f,
         };
-        if !self.settings().provider_enabled(PROVIDER_CURSOR) && !fail.err.is_canceled() && !cx.cancel.is_cancelled() {
+        if !self.settings().provider_enabled(PROVIDER_CURSOR)
+            && !fail.err.is_canceled()
+            && !cx.cancel.is_cancelled()
+        {
             self.pool.invalidate(&req.worktree).await;
             return Err(ProviderError::new(
                 ErrorKind::Unavailable,
@@ -325,7 +352,9 @@ impl Provider for CursorProvider {
             Err(e) => Err(failure(
                 &cx.cancel,
                 RunFailure {
-                    err: fail.err.suffix(format!(" (bridge restart failed: {})", e.0)),
+                    err: fail
+                        .err
+                        .suffix(format!(" (bridge restart failed: {})", e.0)),
                     partial: fail.partial,
                 },
             )),
@@ -354,8 +383,9 @@ impl Provider for CursorProvider {
     /// workspace feed shows.
     async fn release_worktree(&self, worktree: &Path) -> Result<(), ProviderError> {
         self.pool.invalidate(worktree).await;
-        remove_cursor_project_dirs_in(self.home.as_deref(), worktree)
-            .map_err(|e| ProviderError::failed(format!("Could not remove Cursor project dirs: {e}")))
+        remove_cursor_project_dirs_in(self.home.as_deref(), worktree).map_err(|e| {
+            ProviderError::failed(format!("Could not remove Cursor project dirs: {e}"))
+        })
     }
 
     /// Agent slots went to zero: finish a deferred close.
@@ -369,7 +399,11 @@ impl Provider for CursorProvider {
     async fn settings_changed(&self, old: &Settings, new: &Settings) {
         *self.settings.write() = new.clone();
         if let Some(path) = attribution_config_path(&self.data_dir)
-            && let Err(e) = write_attribution_config(&path, new.cursor_attribute_commits, new.cursor_attribute_prs)
+            && let Err(e) = write_attribution_config(
+                &path,
+                new.cursor_attribute_commits,
+                new.cursor_attribute_prs,
+            )
         {
             // Warm bridges keep stale toggles until the next cold start.
             tracing::warn!("recur: warning: write cursor attribution config: {e}");

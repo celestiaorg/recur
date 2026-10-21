@@ -149,7 +149,9 @@ pub(crate) fn redact_bridge_line(line: &str) -> String {
         return line.to_owned();
     };
     let head = &line[..idx + READY_PREFIX.len()];
-    let mut d = match serde_json::from_str::<Option<BTreeMap<String, Value>>>(&line[idx + READY_PREFIX.len()..]) {
+    let mut d = match serde_json::from_str::<Option<BTreeMap<String, Value>>>(
+        &line[idx + READY_PREFIX.len()..],
+    ) {
         Ok(Some(d)) => d,
         Ok(None) => return format!("{head}null"),
         Err(_) => return format!("{head}[redacted-discovery]"),
@@ -176,7 +178,9 @@ mod tests {
         assert!(got.contains("http://127.0.0.1:1"), "{got}");
         assert_eq!(
             got,
-            format!(r#"{READY_PREFIX}{{"authToken":"[redacted]","schemaVersion":1,"url":"http://127.0.0.1:1"}}"#)
+            format!(
+                r#"{READY_PREFIX}{{"authToken":"[redacted]","schemaVersion":1,"url":"http://127.0.0.1:1"}}"#
+            )
         );
         assert_eq!(
             redact_bridge_line(&format!("{READY_PREFIX}not json")),

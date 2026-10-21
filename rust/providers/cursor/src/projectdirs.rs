@@ -61,7 +61,10 @@ pub fn ensure_cursor_project_dirs(workspace: &Path) -> std::io::Result<()> {
 }
 
 /// [`ensure_cursor_project_dirs`] under an explicit home (`None` = `$HOME`).
-pub(crate) fn ensure_cursor_project_dirs_in(home: Option<&Path>, workspace: &Path) -> std::io::Result<()> {
+pub(crate) fn ensure_cursor_project_dirs_in(
+    home: Option<&Path>,
+    workspace: &Path,
+) -> std::io::Result<()> {
     use std::os::unix::fs::DirBuilderExt;
     let Some(root) = cursor_project_root(home, &workspace.to_string_lossy())? else {
         return Ok(());
@@ -81,7 +84,10 @@ pub fn remove_cursor_project_dirs(workspace: &Path) -> std::io::Result<()> {
     remove_cursor_project_dirs_in(None, workspace)
 }
 
-pub(crate) fn remove_cursor_project_dirs_in(home: Option<&Path>, workspace: &Path) -> std::io::Result<()> {
+pub(crate) fn remove_cursor_project_dirs_in(
+    home: Option<&Path>,
+    workspace: &Path,
+) -> std::io::Result<()> {
     let Some(root) = cursor_project_root(home, &workspace.to_string_lossy())? else {
         return Ok(());
     };

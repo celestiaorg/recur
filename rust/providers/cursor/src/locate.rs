@@ -92,7 +92,10 @@ pub fn sdk_version(bin_or_root: &Path) -> String {
     #[derive(serde::Deserialize, Default)]
     #[serde(default)]
     struct Manifest {
-        #[serde(rename = "sdkVersion", deserialize_with = "crate::gojson::null_default")]
+        #[serde(
+            rename = "sdkVersion",
+            deserialize_with = "crate::gojson::null_default"
+        )]
         sdk_version: String,
     }
     let Some(root) = bridge_root(bin_or_root) else {
@@ -161,7 +164,11 @@ mod tests {
         // Locate never consults RECUR_CURSOR_BRIDGE; nothing to set.
         assert!(locate(data.path()).is_err());
 
-        let owned = data.path().join(BRIDGE_DIR_NAME).join("bin").join("cursor-sdk-bridge");
+        let owned = data
+            .path()
+            .join(BRIDGE_DIR_NAME)
+            .join("bin")
+            .join("cursor-sdk-bridge");
         write_exec(&owned);
         assert_eq!(locate(data.path()).unwrap(), owned);
         assert_eq!(resolve_launcher(&external), Some(external));
@@ -209,7 +216,11 @@ mod tests {
         assert_eq!(owned_bridge_root(data.path(), &launcher), Some(owned));
 
         let other = tempfile::tempdir().unwrap();
-        let ext = other.path().join("cursor-bridge").join("bin").join("cursor-sdk-bridge");
+        let ext = other
+            .path()
+            .join("cursor-bridge")
+            .join("bin")
+            .join("cursor-sdk-bridge");
         write_exec(&ext);
         assert_eq!(owned_bridge_root(data.path(), &ext), None);
     }

@@ -13,7 +13,10 @@ use crate::testserver::serve;
 fn parse_connect_error_keeps_details() {
     let raw = br#"{"code":"internal","message":"internal error","details":[{"type":"debug","debug":{"reason":"boom"}}]}"#;
     let e = parse_connect_error(raw).unwrap();
-    assert_eq!((e.code.as_str(), e.message.as_str()), ("internal", "internal error"));
+    assert_eq!(
+        (e.code.as_str(), e.message.as_str()),
+        ("internal", "internal error")
+    );
     assert!(e.details.contains(r#""reason":"boom""#), "{}", e.details);
     assert!(e.raw.contains(r#""details""#), "{}", e.raw);
     // The UI string stays short: details are for the log.
@@ -28,17 +31,28 @@ fn parse_connect_error_rejects_empty() {
 
 #[test]
 fn decode_end_stream_preserves_raw() {
-    let err = decode_end_stream(br#"{"error":{"code":"internal","message":"internal error","details":[{"x":1}]}}"#).unwrap_err();
+    let err = decode_end_stream(
+        br#"{"error":{"code":"internal","message":"internal error","details":[{"x":1}]}}"#,
+    )
+    .unwrap_err();
     assert!(err.connect().unwrap().raw.contains(r#""details""#));
     assert!(decode_end_stream(b"  ").is_ok());
     assert!(decode_end_stream(b"{}").is_ok());
-    assert!(decode_end_stream(b"garbage").is_ok(), "a malformed trailer is not a failure");
+    assert!(
+        decode_end_stream(b"garbage").is_ok(),
+        "a malformed trailer is not a failure"
+    );
 }
 
-fn capture() -> (Arc<Mutex<Vec<String>>>, Arc<dyn Fn(&str) + Send + Sync>) {
+type Log = Arc<dyn Fn(&str) + Send + Sync>;
+
+fn capture() -> (Arc<Mutex<Vec<String>>>, Log) {
     let logged = Arc::new(Mutex::new(Vec::new()));
     let l = logged.clone();
-    (logged, Arc::new(move |line: &str| l.lock().push(line.to_owned())))
+    (
+        logged,
+        Arc::new(move |line: &str| l.lock().push(line.to_owned())),
+    )
 }
 
 #[tokio::test]
@@ -51,13 +65,23 @@ async fn stream_end_stream_logs_connect_body() {
     let (logged, log) = capture();
     let cl = Client::new(&srv.url, "tok").with_log(log);
     let err = cl
-        .stream(&CancellationToken::new(), "sdk.v1.SdkAgentService", "Send", &serde_json::json!({}), |_| Ok(()))
+        .stream(
+            &CancellationToken::new(),
+            "sdk.v1.SdkAgentService",
+            "Send",
+            &serde_json::json!({}),
+            |_| Ok(()),
+        )
         .await
         .unwrap_err();
     assert_eq!(err.connect().unwrap().code, "internal");
     let logged = logged.lock();
     assert_eq!(logged.len(), 1, "{logged:?}");
-    assert!(logged[0].contains("sdk.v1.SdkAgentService/Send"), "{}", logged[0]);
+    assert!(
+        logged[0].contains("sdk.v1.SdkAgentService/Send"),
+        "{}",
+        logged[0]
+    );
     assert!(logged[0].contains("from-cursor"), "{}", logged[0]);
 }
 
@@ -74,19 +98,30 @@ fn error_unimplemented() {
 #[tokio::test]
 async fn unary_connect_error_logs_body() {
     let srv = serve(|_req, resp| async move {
-        resp.status(500, r#"{"code":"internal","message":"internal error","details":[{"hint":"unary"}]}"#)
-            .await;
+        resp.status(
+            500,
+            r#"{"code":"internal","message":"internal error","details":[{"hint":"unary"}]}"#,
+        )
+        .await;
     })
     .await;
     let (logged, log) = capture();
     let cl = Client::new(&srv.url, "tok").with_log(log);
     let err = cl
-        .unary(&CancellationToken::new(), "sdk.v1.SdkAgentService", "CreateAgent", &serde_json::json!({}))
+        .unary(
+            &CancellationToken::new(),
+            "sdk.v1.SdkAgentService",
+            "CreateAgent",
+            &serde_json::json!({}),
+        )
         .await
         .unwrap_err();
     assert!(err.connect().is_some());
     let logged = logged.lock();
-    assert!(logged.len() == 1 && logged[0].contains("unary"), "{logged:?}");
+    assert!(
+        logged.len() == 1 && logged[0].contains("unary"),
+        "{logged:?}"
+    );
 }
 
 #[tokio::test]
@@ -94,11 +129,19 @@ async fn non_connect_http_error_is_plain() {
     let srv = serve(|_req, resp| async move { resp.not_found().await }).await;
     let cl = Client::new(&srv.url, "tok");
     let err = cl
-        .unary(&CancellationToken::new(), "svc", "M", &serde_json::json!({}))
+        .unary(
+            &CancellationToken::new(),
+            "svc",
+            "M",
+            &serde_json::json!({}),
+        )
         .await
         .unwrap_err();
     assert!(err.connect().is_none());
-    assert_eq!(err.to_string(), "cursor bridge: svc/M: http 404: 404 page not found\n");
+    assert_eq!(
+        err.to_string(),
+        "cursor bridge: svc/M: http 404: 404 page not found\n"
+    );
 }
 
 #[tokio::test]
@@ -149,7 +192,10 @@ fn active_run_conflict() {
     }
     .into();
     assert!(conflict.connect().unwrap().active_run_conflict());
-    assert!(conflict.clone().wrap("cursor run").active_run_conflict(), "wrapped *Error");
+    assert!(
+        conflict.clone().wrap("cursor run").active_run_conflict(),
+        "wrapped *Error"
+    );
     let generic: Error = ConnectError {
         code: "internal".into(),
         message: "internal error".into(),
@@ -169,7 +215,10 @@ fn bridge_unreachable() {
         ..Default::default()
     }
     .into();
-    assert!(!auth.bridge_unreachable(), "auth failures are not bridge-dead");
+    assert!(
+        !auth.bridge_unreachable(),
+        "auth failures are not bridge-dead"
+    );
     let prose = Error::msg(
         r#"cursor create agent: Post "http://127.0.0.1:61765/...": dial tcp 127.0.0.1:61765: connect: connection refused"#,
     );
@@ -184,12 +233,21 @@ async fn refused_port_is_unreachable() {
     };
     let cl = Client::new(&format!("http://127.0.0.1:{port}"), "tok");
     let err = cl
-        .unary(&CancellationToken::new(), "sdk.v1.SdkAgentService", "CreateAgent", &serde_json::json!({}))
+        .unary(
+            &CancellationToken::new(),
+            "sdk.v1.SdkAgentService",
+            "CreateAgent",
+            &serde_json::json!({}),
+        )
         .await
         .unwrap_err()
         .wrap("cursor create agent");
     assert!(err.bridge_unreachable(), "{err}");
-    assert!(err.to_string().starts_with("cursor create agent: cursor bridge: sdk.v1.SdkAgentService/CreateAgent: "));
+    assert!(
+        err.to_string().starts_with(
+            "cursor create agent: cursor bridge: sdk.v1.SdkAgentService/CreateAgent: "
+        )
+    );
 }
 
 #[test]
@@ -206,16 +264,23 @@ async fn stream_frames_split_across_chunks() {
         for b in &frame {
             resp.write(std::slice::from_ref(b)).await;
         }
-        resp.write(&encode_connect_frame(false, br#"{"b":2}"#)).await;
+        resp.write(&encode_connect_frame(false, br#"{"b":2}"#))
+            .await;
         // Closed without an end frame: a clean end.
     })
     .await;
     let cl = Client::new(&srv.url, "");
     let mut got = Vec::new();
-    cl.stream(&CancellationToken::new(), "s", "M", &serde_json::json!({}), |f| {
-        got.push(String::from_utf8_lossy(f).into_owned());
-        Ok(())
-    })
+    cl.stream(
+        &CancellationToken::new(),
+        "s",
+        "M",
+        &serde_json::json!({}),
+        |f| {
+            got.push(String::from_utf8_lossy(f).into_owned());
+            Ok(())
+        },
+    )
     .await
     .unwrap();
     assert_eq!(got, [r#"{"a":1}"#, r#"{"b":2}"#]);
@@ -230,8 +295,17 @@ async fn stream_truncated_body_is_an_error() {
     .await;
     let cl = Client::new(&srv.url, "");
     let err = cl
-        .stream(&CancellationToken::new(), "s", "M", &serde_json::json!({}), |_| Ok(()))
+        .stream(
+            &CancellationToken::new(),
+            "s",
+            "M",
+            &serde_json::json!({}),
+            |_| Ok(()),
+        )
         .await
         .unwrap_err();
-    assert_eq!(err.to_string(), "cursor bridge: s/M: read frame body: unexpected EOF");
+    assert_eq!(
+        err.to_string(),
+        "cursor bridge: s/M: read frame body: unexpected EOF"
+    );
 }

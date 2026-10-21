@@ -39,11 +39,31 @@ async fn check_cursor_sdk_pin_drift() {
 }
 
 const SAMPLES: &[(&str, &str, &str)] = &[
-    ("darwin", "arm64", "cursor_sdk-1.0.27-py3-none-macosx_11_0_arm64.whl"),
-    ("darwin", "amd64", "cursor_sdk-1.0.27-py3-none-macosx_11_0_x86_64.whl"),
-    ("linux", "arm64", "cursor_sdk-1.0.27-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl"),
-    ("linux", "amd64", "cursor_sdk-1.0.27-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"),
-    ("windows", "amd64", "cursor_sdk-1.0.27-py3-none-win_amd64.whl"),
+    (
+        "darwin",
+        "arm64",
+        "cursor_sdk-1.0.27-py3-none-macosx_11_0_arm64.whl",
+    ),
+    (
+        "darwin",
+        "amd64",
+        "cursor_sdk-1.0.27-py3-none-macosx_11_0_x86_64.whl",
+    ),
+    (
+        "linux",
+        "arm64",
+        "cursor_sdk-1.0.27-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+    ),
+    (
+        "linux",
+        "amd64",
+        "cursor_sdk-1.0.27-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+    ),
+    (
+        "windows",
+        "amd64",
+        "cursor_sdk-1.0.27-py3-none-win_amd64.whl",
+    ),
 ];
 
 fn matches(name: &str, os_tag: &str, arch: &[&str]) -> bool {
@@ -59,7 +79,10 @@ fn platform_tags_match_real_filenames_exactly_once() {
     for (os, arch, want) in SAMPLES {
         let (os_tag, arch_tags) = platform_tags_for(os, arch).unwrap();
         assert!(matches(want, os_tag, arch_tags), "{os}/{arch} vs {want}");
-        let n = SAMPLES.iter().filter(|(_, _, n)| matches(n, os_tag, arch_tags)).count();
+        let n = SAMPLES
+            .iter()
+            .filter(|(_, _, n)| matches(n, os_tag, arch_tags))
+            .count();
         assert_eq!(n, 1, "{os}/{arch} matched {n} wheels");
     }
     assert!(platform_tags_for("plan9", "amd64").is_err());
@@ -77,8 +100,12 @@ fn pick_wheel_requires_pin_and_platform() {
     let urls = [
         w(&format!("cursor_sdk-{PINNED_SDK_VERSION}.tar.gz")),
         w("cursor_sdk-1.0.27-py3-none-macosx_11_0_arm64.whl"),
-        w(&format!("cursor_sdk-{PINNED_SDK_VERSION}-py3-none-macosx_11_0_x86_64.whl")),
-        w(&format!("Cursor_SDK-{PINNED_SDK_VERSION}-py3-none-macosx_11_0_arm64.WHL")),
+        w(&format!(
+            "cursor_sdk-{PINNED_SDK_VERSION}-py3-none-macosx_11_0_x86_64.whl"
+        )),
+        w(&format!(
+            "Cursor_SDK-{PINNED_SDK_VERSION}-py3-none-macosx_11_0_arm64.WHL"
+        )),
     ];
     let got = pick_wheel(&urls, "macosx", &["arm64", "aarch64"]).unwrap();
     assert_eq!(got.filename, urls[3].filename);
@@ -109,9 +136,17 @@ fn extract_preserves_executable_bit() {
     write_test_wheel(
         &archive,
         &[
-            ("cursor_sdk/_vendor/bridge/bin/cursor-sdk-bridge", "#!/bin/sh\necho hi\n", 0o755),
+            (
+                "cursor_sdk/_vendor/bridge/bin/cursor-sdk-bridge",
+                "#!/bin/sh\necho hi\n",
+                0o755,
+            ),
             ("cursor_sdk/_vendor/bridge/bin/node", "binary", 0o755),
-            ("cursor_sdk/_vendor/bridge/manifest.json", r#"{"sdkVersion":"1.0.27"}"#, 0o644),
+            (
+                "cursor_sdk/_vendor/bridge/manifest.json",
+                r#"{"sdkVersion":"1.0.27"}"#,
+                0o644,
+            ),
             ("cursor_sdk/_vendor/bridge/dist/index.js", "//js", 0o644),
             ("cursor_sdk/_client.py", "# python", 0o644),
         ],
@@ -123,7 +158,10 @@ fn extract_preserves_executable_bit() {
     assert!(is_executable_file(&dst.join("bin/node")));
     assert!(dst.join("manifest.json").is_file());
     assert!(dst.join("dist/index.js").is_file());
-    assert!(!dst.join("_client.py").exists(), "extracted a file from outside the bridge prefix");
+    assert!(
+        !dst.join("_client.py").exists(),
+        "extracted a file from outside the bridge prefix"
+    );
     assert!(locate(data.path()).is_ok());
 }
 
@@ -140,7 +178,10 @@ fn extract_reports_progress() {
         ],
     );
     let ticks = std::sync::Mutex::new(Vec::new());
-    extract_bridge(&archive, &tmp.path().join("out"), &|c, t| ticks.lock().unwrap().push((c, t))).unwrap();
+    extract_bridge(&archive, &tmp.path().join("out"), &|c, t| {
+        ticks.lock().unwrap().push((c, t))
+    })
+    .unwrap();
     assert_eq!(*ticks.lock().unwrap(), [(4, 6), (6, 6)]);
 }
 
@@ -150,7 +191,10 @@ fn extract_rejects_wheel_without_bridge() {
     let archive = tmp.path().join("wheel.zip");
     write_test_wheel(&archive, &[("cursor_sdk/_client.py", "# python", 0o644)]);
     let err = extract_bridge(&archive, &tmp.path().join("out"), &noop).unwrap_err();
-    assert_eq!(err, "cursor bridge install: wheel contains no cursor_sdk/_vendor/bridge/");
+    assert_eq!(
+        err,
+        "cursor bridge install: wheel contains no cursor_sdk/_vendor/bridge/"
+    );
 }
 
 /// Zip-slip: a crafted member must not escape the destination.
@@ -193,7 +237,9 @@ fn progress_percent() {
 
 #[tokio::test]
 async fn install_rejects_empty_data_dir() {
-    let err = install(Path::new(""), &CancellationToken::new(), &|_| {}).await.unwrap_err();
+    let err = install(Path::new(""), &CancellationToken::new(), &|_| {})
+        .await
+        .unwrap_err();
     assert_eq!(err, "cursor bridge install: no data directory");
 }
 
@@ -215,7 +261,16 @@ async fn install_real_smoke() {
     })
     .await
     .expect("install");
-    assert_eq!(*phases.lock().unwrap(), ["resolving", "downloading", "verifying", "extracting", "done"]);
+    assert_eq!(
+        *phases.lock().unwrap(),
+        [
+            "resolving",
+            "downloading",
+            "verifying",
+            "extracting",
+            "done"
+        ]
+    );
     // What was installed must run.
     let b = crate::bridge::Bridge::start(
         crate::bridge::BridgeConfig {
@@ -226,7 +281,12 @@ async fn install_real_smoke() {
     )
     .await
     .expect("start freshly installed bridge");
-    let v = b.connect_client().unwrap().get_version(&CancellationToken::new()).await.expect("GetVersion");
+    let v = b
+        .connect_client()
+        .unwrap()
+        .get_version(&CancellationToken::new())
+        .await
+        .expect("GetVersion");
     assert_eq!(v.protocol_version, "sdk.v1");
     b.close().await;
 }
@@ -238,7 +298,9 @@ async fn install_real_smoke() {
 async fn attribution_patch_against_pinned_wheel() {
     use crate::attribution::*;
     if std::env::var_os("RECUR_CURSOR_ATTRIBUTION_PATCH_TEST").is_none() {
-        eprintln!("skipped: set RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 to download the pinned wheel");
+        eprintln!(
+            "skipped: set RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 to download the pinned wheel"
+        );
         return;
     }
     let http = reqwest::Client::new();
@@ -246,20 +308,32 @@ async fn attribution_patch_against_pinned_wheel() {
     assert_eq!(version, PINNED_SDK_VERSION);
     let staging = tempfile::tempdir().unwrap();
     let archive = staging.path().join("wheel.zip");
-    download(&http, &w.url, &archive, &|_| {}).await.expect("download");
+    download(&http, &w.url, &archive, &|_| {})
+        .await
+        .expect("download");
     let root = staging.path().join("bridge");
     extract_bridge(&archive, &root, &noop).expect("extract");
     ensure_attribution_patch(&root).expect("patch the pinned wheel");
     ensure_attribution_patch(&root).expect("idempotent patch");
 
-    let mut patched: Vec<PathBuf> = [ATTRIBUTION_PRELOAD_REL, ATTRIBUTION_ENTRYPOINT_REL, STEER_RUN_SERVER_REL]
-        .iter()
-        .map(PathBuf::from)
-        .collect();
+    let mut patched: Vec<PathBuf> = [
+        ATTRIBUTION_PRELOAD_REL,
+        ATTRIBUTION_ENTRYPOINT_REL,
+        STEER_RUN_SERVER_REL,
+    ]
+    .iter()
+    .map(PathBuf::from)
+    .collect();
     let needle = format!("attributionConfigProvider=globalThis.{ATTRIBUTION_PROVIDER_MARKER}");
-    for rel in ["node_modules/@cursor/sdk/dist/cjs", "node_modules/@cursor/sdk/dist/esm"] {
+    for rel in [
+        "node_modules/@cursor/sdk/dist/cjs",
+        "node_modules/@cursor/sdk/dist/esm",
+    ] {
         let mut found = false;
-        let mut entries: Vec<_> = std::fs::read_dir(root.join(rel)).unwrap().flatten().collect();
+        let mut entries: Vec<_> = std::fs::read_dir(root.join(rel))
+            .unwrap()
+            .flatten()
+            .collect();
         entries.sort_by_key(|e| e.file_name());
         for e in entries {
             let name = e.file_name().to_string_lossy().into_owned();
@@ -269,7 +343,10 @@ async fn attribution_patch_against_pinned_wheel() {
             let s = std::fs::read_to_string(e.path()).unwrap_or_default();
             if s.contains(&needle) {
                 found = true;
-                assert!(!s.contains(NATIVE_AGENT_SKILLS_ASSIGN) && s.contains(STUB_AGENT_SKILLS_ASSIGN), "{rel}/{name}");
+                assert!(
+                    !s.contains(NATIVE_AGENT_SKILLS_ASSIGN) && s.contains(STUB_AGENT_SKILLS_ASSIGN),
+                    "{rel}/{name}"
+                );
                 patched.push(Path::new(rel).join(&name));
                 break;
             }
@@ -277,19 +354,38 @@ async fn attribution_patch_against_pinned_wheel() {
         assert!(found, "no patched SDK bundle under {rel}");
     }
     let skip = sdk_summary_delta_anchors()[0].old;
-    for rel in ["node_modules/@cursor/sdk/dist/cjs/index.js", "node_modules/@cursor/sdk/dist/esm/index.js"] {
+    for rel in [
+        "node_modules/@cursor/sdk/dist/cjs/index.js",
+        "node_modules/@cursor/sdk/dist/esm/index.js",
+    ] {
         let s = std::fs::read_to_string(root.join(rel)).unwrap();
         assert!(!s.contains(skip), "{rel} still skips summary onDelta");
-        assert!(s.contains(&summary_delta_patch_needle()), "{rel} missing summary marker");
+        assert!(
+            s.contains(&summary_delta_patch_needle()),
+            "{rel} missing summary marker"
+        );
         patched.push(PathBuf::from(rel));
     }
-    assert!(std::fs::read_to_string(root.join(STEER_RUN_SERVER_REL)).unwrap().contains("__recurInstallSteerRun"));
+    assert!(
+        std::fs::read_to_string(root.join(STEER_RUN_SERVER_REL))
+            .unwrap()
+            .contains("__recurInstallSteerRun")
+    );
 
     // String checks cannot see a rewrite that no longer parses.
     let node = root.join("bin/node");
     for rel in &patched {
-        let out = std::process::Command::new(&node).arg("--check").arg(root.join(rel)).output().unwrap();
-        assert!(out.status.success(), "node --check {}: {}", rel.display(), String::from_utf8_lossy(&out.stderr));
+        let out = std::process::Command::new(&node)
+            .arg("--check")
+            .arg(root.join(rel))
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "node --check {}: {}",
+            rel.display(),
+            String::from_utf8_lossy(&out.stderr)
+        );
     }
     let script = format!(
         r#"
@@ -308,5 +404,9 @@ if (res.outcome !== "revert_to_followup") throw new Error("steerRun outcome " + 
         .current_dir(root.join("dist"))
         .output()
         .unwrap();
-    assert!(out.status.success(), "preload smoke: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "preload smoke: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }

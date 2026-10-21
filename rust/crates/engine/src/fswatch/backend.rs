@@ -181,10 +181,8 @@ fn fold(
         EventKind::Modify(ModifyKind::Name(RenameMode::To)) => {
             (Vec::new(), ev.paths.iter().collect())
         }
-        EventKind::Modify(ModifyKind::Name(RenameMode::Both)) => (
-            ev.paths.first().into_iter().collect(),
-            ev.paths.get(1).into_iter().collect(),
-        ),
+        // notify also sends the From and To halves on their own; the
+        // paired event adds nothing to the watch tree.
         _ => (Vec::new(), Vec::new()),
     };
     if per_dir {

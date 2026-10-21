@@ -13,13 +13,15 @@ use recur_agent::display::todos::{Todo, parse_todos, todo_counts};
 use recur_agent::display::web::{web_fetch_prompt, web_fetch_url, web_search_query};
 use recur_agent_tools::display::briefing_tools::{
     HydrateProject, HydrateWorkspace, ListedWorkspaceBriefs, PresentWorkspaceView,
-    WorkspaceContextView, briefing_counts_meta, get_workspace_context_label,
-    hydrate_present_brief, is_briefing_tool, is_get_workspace_context_tool,
-    is_list_workspace_briefs_tool, is_present_workspace_tool, list_workspace_briefs_label,
-    parse_list_workspace_briefs, parse_present_workspace, parse_present_workspace_target,
-    parse_workspace_context, present_workspace_label,
+    WorkspaceContextView, briefing_counts_meta, get_workspace_context_label, hydrate_present_brief,
+    is_briefing_tool, is_get_workspace_context_tool, is_list_workspace_briefs_tool,
+    is_present_workspace_tool, list_workspace_briefs_label, parse_list_workspace_briefs,
+    parse_present_workspace, parse_present_workspace_target, parse_workspace_context,
+    present_workspace_label,
 };
-use recur_agent_tools::display::open_pr_tool::{OpenPrCard, is_open_pr_tool, open_pr_label, parse_open_pr_card};
+use recur_agent_tools::display::open_pr_tool::{
+    OpenPrCard, is_open_pr_tool, open_pr_label, parse_open_pr_card,
+};
 use recur_agent_tools::display::plan_tools::{
     PlanStepView, edit_plan_label, is_edit_plan_tool, is_submit_plan_tool,
     is_update_plan_step_tool, parse_edit_plan, parse_submit_plan_attachments,
@@ -33,8 +35,8 @@ use recur_domain::{Finding, Pr, WorkspaceBrief};
 use recur_engine::view::artifacts::{ListedArtifacts, resolve_list_artifacts};
 use recur_engine::view::chat::{AgentMsg, is_subagent_launch_meta, is_task_tool};
 use recur_issues::linear::tools::{
-    LinearArgs, LinearView, is_linear_tool, linear_input_body, linear_tool_label,
-    linear_tool_meta, parse_linear_args, parse_linear_result,
+    LinearArgs, LinearView, is_linear_tool, linear_input_body, linear_tool_label, linear_tool_meta,
+    parse_linear_args, parse_linear_result,
 };
 use recur_textmate::{DiffRow, diff_lines, looks_like_unified_diff, parse_unified_diff};
 use recur_ui::IconName;
@@ -209,8 +211,10 @@ pub fn js_pretty(v: &Value) -> String {
     out
 }
 
-static SELECT_Q: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^select:(.+)$").expect("select"));
-static SELECT_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^select:").expect("select"));
+static SELECT_Q: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^select:(.+)$").expect("select"));
+static SELECT_PREFIX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^select:").expect("select"));
 static CHILD_REFUSED: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(merge|read|archive|message)_child:").expect("child"));
 static CHILD_PREFIX: LazyLock<Regex> =
@@ -508,7 +512,10 @@ impl<'a> ToolView<'a> {
         ends(self.tool(), "message_child")
     }
     pub fn is_child_tool(&self) -> bool {
-        self.is_merge_child() || self.is_read_child() || self.is_archive_child() || self.is_message_child()
+        self.is_merge_child()
+            || self.is_read_child()
+            || self.is_archive_child()
+            || self.is_message_child()
     }
     pub fn is_list_artifacts(&self) -> bool {
         ends(self.tool(), "list_artifacts")
@@ -584,9 +591,15 @@ impl<'a> ToolView<'a> {
     /// resolves the path from the store.
     pub fn file_of(&self) -> String {
         if self.is_update_finding() {
-            return self.resolve_update_finding().map(|f| f.file).unwrap_or_default();
+            return self
+                .resolve_update_finding()
+                .map(|f| f.file)
+                .unwrap_or_default();
         }
-        let fp = self.arg("file_path").filter(|v| !v.is_null()).or_else(|| self.arg("file"));
+        let fp = self
+            .arg("file_path")
+            .filter(|v| !v.is_null())
+            .or_else(|| self.arg("file"));
         match fp {
             Some(Value::String(s)) => s.clone(),
             _ => String::new(),
@@ -648,15 +661,16 @@ impl<'a> ToolView<'a> {
         if from_store.is_none() && from_result.is_none() && from_input.is_none() {
             return None;
         }
-        let pick = |f: fn(&ListedFinding) -> &String, order: [&Option<ListedFinding>; 3]| -> String {
-            order
-                .iter()
-                .filter_map(|o| o.as_ref())
-                .map(f)
-                .find(|s| !s.is_empty())
-                .cloned()
-                .unwrap_or_default()
-        };
+        let pick =
+            |f: fn(&ListedFinding) -> &String, order: [&Option<ListedFinding>; 3]| -> String {
+                order
+                    .iter()
+                    .filter_map(|o| o.as_ref())
+                    .map(f)
+                    .find(|s| !s.is_empty())
+                    .cloned()
+                    .unwrap_or_default()
+            };
         let line_of = |f: fn(&ListedFinding) -> i64| -> i64 {
             [&from_store, &from_result]
                 .iter()
@@ -673,21 +687,30 @@ impl<'a> ToolView<'a> {
             end_line: line_of(|f| f.end_line),
             severity: pick(|f| &f.severity, [&from_store, &from_result, &None]),
             message: pick(|f| &f.message, [&from_store, &from_result, &None]),
-            status_reason: pick(|f| &f.status_reason, [&from_input, &from_result, &from_store]),
+            status_reason: pick(
+                |f| &f.status_reason,
+                [&from_input, &from_result, &from_store],
+            ),
             ..Default::default()
         })
     }
 
     pub fn finding_severity(&self) -> String {
         if self.is_update_finding() {
-            return self.resolve_update_finding().map(|f| f.severity).unwrap_or_default();
+            return self
+                .resolve_update_finding()
+                .map(|f| f.severity)
+                .unwrap_or_default();
         }
         self.arg_str("severity").unwrap_or("").to_string()
     }
 
     pub fn finding_file(&self) -> String {
         if self.is_update_finding() {
-            return self.resolve_update_finding().map(|f| f.file).unwrap_or_default();
+            return self
+                .resolve_update_finding()
+                .map(|f| f.file)
+                .unwrap_or_default();
         }
         self.arg_str("file").unwrap_or("").to_string()
     }
@@ -701,14 +724,20 @@ impl<'a> ToolView<'a> {
 
     pub fn finding_line(&self) -> i64 {
         if self.is_update_finding() {
-            return self.resolve_update_finding().map(|f| f.line.max(0)).unwrap_or(0);
+            return self
+                .resolve_update_finding()
+                .map(|f| f.line.max(0))
+                .unwrap_or(0);
         }
         self.positive("line")
     }
 
     pub fn finding_end_line(&self) -> i64 {
         if self.is_update_finding() {
-            return self.resolve_update_finding().map(|f| f.end_line.max(0)).unwrap_or(0);
+            return self
+                .resolve_update_finding()
+                .map(|f| f.end_line.max(0))
+                .unwrap_or(0);
         }
         self.positive("end_line")
     }
@@ -723,7 +752,10 @@ impl<'a> ToolView<'a> {
 
     pub fn finding_message(&self) -> String {
         if self.is_update_finding() {
-            return self.resolve_update_finding().map(|f| f.message).unwrap_or_default();
+            return self
+                .resolve_update_finding()
+                .map(|f| f.message)
+                .unwrap_or_default();
         }
         self.arg_str("message").unwrap_or("").to_string()
     }
@@ -732,14 +764,18 @@ impl<'a> ToolView<'a> {
         if !self.is_update_finding() {
             return String::new();
         }
-        self.resolve_update_finding().map(|f| f.status).unwrap_or_default()
+        self.resolve_update_finding()
+            .map(|f| f.status)
+            .unwrap_or_default()
     }
 
     pub fn finding_status_reason(&self) -> String {
         if !self.is_update_finding() {
             return String::new();
         }
-        self.resolve_update_finding().map(|f| f.status_reason).unwrap_or_default()
+        self.resolve_update_finding()
+            .map(|f| f.status_reason)
+            .unwrap_or_default()
     }
 
     pub fn list_findings_result(&self) -> Option<ListedFindings> {
@@ -836,7 +872,12 @@ impl<'a> ToolView<'a> {
         }
         match self.tool() {
             "TaskCreate" => format_task_id(&parse_task_create_id(&self.m.result)),
-            "TaskGet" => format_task_id(&self.claude_task_get_view().map(|v| v.id).unwrap_or_default()),
+            "TaskGet" => format_task_id(
+                &self
+                    .claude_task_get_view()
+                    .map(|v| v.id)
+                    .unwrap_or_default(),
+            ),
             _ => String::new(),
         }
     }
@@ -1008,7 +1049,10 @@ impl<'a> ToolView<'a> {
     }
 
     pub fn rename_tool_value(&self) -> String {
-        let raw = self.arg("title").filter(|v| !v.is_null()).or_else(|| self.arg("name"));
+        let raw = self
+            .arg("title")
+            .filter(|v| !v.is_null())
+            .or_else(|| self.arg("name"));
         if let Some(Value::String(s)) = raw
             && !s.trim().is_empty()
         {
@@ -1109,7 +1153,9 @@ impl<'a> ToolView<'a> {
         if !t.is_empty() {
             return t;
         }
-        self.create_artifact_result().map(|r| r.0).unwrap_or_default()
+        self.create_artifact_result()
+            .map(|r| r.0)
+            .unwrap_or_default()
     }
 
     pub fn create_artifact_kind(&self) -> String {
@@ -1117,7 +1163,9 @@ impl<'a> ToolView<'a> {
         if !k.is_empty() {
             return k.to_lowercase();
         }
-        self.create_artifact_result().map(|r| r.1).unwrap_or_default()
+        self.create_artifact_result()
+            .map(|r| r.1)
+            .unwrap_or_default()
     }
 
     pub fn create_artifact_failed(&self) -> bool {
@@ -1158,7 +1206,12 @@ impl<'a> ToolView<'a> {
     }
 
     pub fn open_pr_card(&self) -> OpenPrCard {
-        parse_open_pr_card(&self.null_input(), &self.m.result, self.m.result_pending, self.m.result_error)
+        parse_open_pr_card(
+            &self.null_input(),
+            &self.m.result,
+            self.m.result_pending,
+            self.m.result_error,
+        )
     }
 
     /// `openPRId`: the store PR this card opened, scoped to the workspace.
@@ -1312,9 +1365,10 @@ impl<'a> ToolView<'a> {
         for k in ["-i", "-n", "-A", "-B", "-C", "multiline", "head_limit"] {
             match self.arg(k) {
                 Some(Value::Bool(true)) => out.push(k.to_string()),
-                Some(v @ Value::Number(_)) => {
-                    out.push(format!("{k} {}", recur_engine::view::js::string_of(Some(v))))
-                }
+                Some(v @ Value::Number(_)) => out.push(format!(
+                    "{k} {}",
+                    recur_engine::view::js::string_of(Some(v))
+                )),
                 _ => {}
             }
         }
@@ -1640,18 +1694,36 @@ impl<'a> ToolView<'a> {
             }
             "CreatePlan" | "createPlan" => return "Wrote plan".into(),
             "readLints" | "ReadLints" => {
-                return if m.result_pending { "Reading lints" } else { "Read lints" }.into();
+                return if m.result_pending {
+                    "Reading lints"
+                } else {
+                    "Read lints"
+                }
+                .into();
             }
             _ => {}
         }
         if self.is_report_finding() {
-            return if m.result_pending { "Reporting finding" } else { "Reported finding" }.into();
+            return if m.result_pending {
+                "Reporting finding"
+            } else {
+                "Reported finding"
+            }
+            .into();
         }
         if self.is_list_findings() {
-            return if m.result_pending { "Listing findings" } else { "Listed findings" }.into();
+            return if m.result_pending {
+                "Listing findings"
+            } else {
+                "Listed findings"
+            }
+            .into();
         }
         if self.is_update_finding() {
-            let st = self.resolve_update_finding().map(|f| f.status).unwrap_or_default();
+            let st = self
+                .resolve_update_finding()
+                .map(|f| f.status)
+                .unwrap_or_default();
             if m.result_pending {
                 return "Updating finding".into();
             }
@@ -1663,7 +1735,12 @@ impl<'a> ToolView<'a> {
             .into();
         }
         if self.is_done() {
-            return if m.result_pending { "Wrapping up" } else { "Turn complete" }.into();
+            return if m.result_pending {
+                "Wrapping up"
+            } else {
+                "Turn complete"
+            }
+            .into();
         }
         if self.is_ask_user() {
             if m.result_error {
@@ -1675,7 +1752,12 @@ impl<'a> ToolView<'a> {
             if m.result_error {
                 return "Mode switch failed".into();
             }
-            return if m.result_pending { "Switching mode" } else { "Switched mode" }.into();
+            return if m.result_pending {
+                "Switching mode"
+            } else {
+                "Switched mode"
+            }
+            .into();
         }
         if self.is_rename_tool() {
             if m.result_error || self.rename_tool_failed() {
@@ -1683,7 +1765,11 @@ impl<'a> ToolView<'a> {
             }
             let t = self.rename_tool_value();
             let noun = self.rename_tool_noun();
-            let verb = if m.result_pending { "Renaming" } else { "Renamed" };
+            let verb = if m.result_pending {
+                "Renaming"
+            } else {
+                "Renamed"
+            };
             return if t.is_empty() {
                 format!("{verb} {noun}")
             } else {
@@ -1704,14 +1790,23 @@ impl<'a> ToolView<'a> {
             );
         }
         if self.is_list_artifacts() {
-            return if m.result_pending { "Listing artifacts" } else { "Listed artifacts" }.into();
+            return if m.result_pending {
+                "Listing artifacts"
+            } else {
+                "Listed artifacts"
+            }
+            .into();
         }
         if self.is_create_artifact() {
             if m.result_error || self.create_artifact_failed() {
                 return "Create artifact failed".into();
             }
             let t = self.create_artifact_title();
-            let verb = if m.result_pending { "Creating" } else { "Created" };
+            let verb = if m.result_pending {
+                "Creating"
+            } else {
+                "Created"
+            };
             return if t.is_empty() {
                 format!("{verb} artifact")
             } else {
@@ -1723,7 +1818,11 @@ impl<'a> ToolView<'a> {
                 return "Present artifact failed".into();
             }
             let t = self.present_artifact_title();
-            let verb = if m.result_pending { "Presenting" } else { "Presented" };
+            let verb = if m.result_pending {
+                "Presenting"
+            } else {
+                "Presented"
+            };
             return if t.is_empty() {
                 format!("{verb} artifact")
             } else {
@@ -1731,7 +1830,10 @@ impl<'a> ToolView<'a> {
             };
         }
         if self.is_list_workspace_briefs() {
-            return list_workspace_briefs_label(m.result_pending, self.list_workspace_briefs_result().as_ref());
+            return list_workspace_briefs_label(
+                m.result_pending,
+                self.list_workspace_briefs_result().as_ref(),
+            );
         }
         if self.is_get_workspace_context() {
             let title = self
@@ -1742,7 +1844,10 @@ impl<'a> ToolView<'a> {
             return get_workspace_context_label(m.result_pending, &title, m.result_error);
         }
         if self.is_present_workspace() {
-            return present_workspace_label(m.result_pending, self.present_workspace_result().as_ref());
+            return present_workspace_label(
+                m.result_pending,
+                self.present_workspace_result().as_ref(),
+            );
         }
         if self.is_submit_plan() {
             return submit_plan_label(m.result_pending, self.submit_plan_steps().len());
@@ -1853,7 +1958,11 @@ impl<'a> ToolView<'a> {
         }
         if self.is_list_findings() {
             if let Some(listed) = self.list_findings_result() {
-                let st = if listed.status.is_empty() { "open" } else { &listed.status };
+                let st = if listed.status.is_empty() {
+                    "open"
+                } else {
+                    &listed.status
+                };
                 return if listed.count == 0 {
                     format!("no {st}")
                 } else {
@@ -1861,7 +1970,11 @@ impl<'a> ToolView<'a> {
                 };
             }
             let st = self.arg_str("status").unwrap_or("");
-            return if st.is_empty() { "open".into() } else { st.to_string() };
+            return if st.is_empty() {
+                "open".into()
+            } else {
+                st.to_string()
+            };
         }
         if self.is_list_artifacts() {
             return match self.list_artifacts_result() {
@@ -1894,7 +2007,10 @@ impl<'a> ToolView<'a> {
                     .unwrap_or_default();
             }
             if self.is_get_workspace_context() {
-                return self.workspace_context_result().map(|c| c.brief.now).unwrap_or_default();
+                return self
+                    .workspace_context_result()
+                    .map(|c| c.brief.now)
+                    .unwrap_or_default();
             }
             return self
                 .present_workspace_result()
@@ -1926,7 +2042,11 @@ impl<'a> ToolView<'a> {
         }
         if self.tool() == "ToolSearch" {
             if let Some(sel) = self.tool_search_selects().filter(|s| !s.is_empty()) {
-                return sel.iter().map(|n| pretty_tool_name(n)).collect::<Vec<_>>().join(", ");
+                return sel
+                    .iter()
+                    .map(|n| pretty_tool_name(n))
+                    .collect::<Vec<_>>()
+                    .join(", ");
             }
             return self.tool_search_query();
         }
@@ -1935,23 +2055,41 @@ impl<'a> ToolView<'a> {
                 return String::new();
             }
             let ti = m.tool_input.trim();
-            return if ti.starts_with('{') { String::new() } else { ti.to_string() };
+            return if ti.starts_with('{') {
+                String::new()
+            } else {
+                ti.to_string()
+            };
         }
         if self.tool() == "WebFetch" {
             if !self.fetch_url().is_empty() {
                 return String::new();
             }
             let ti = m.tool_input.trim();
-            return if ti.starts_with('{') { String::new() } else { ti.to_string() };
+            return if ti.starts_with('{') {
+                String::new()
+            } else {
+                ti.to_string()
+            };
         }
         if self.tool() == "WebSearch" {
             let q = self.search_query();
-            return if q.is_empty() { String::new() } else { format!("\"{q}\"") };
+            return if q.is_empty() {
+                String::new()
+            } else {
+                format!("\"{q}\"")
+            };
         }
         if self.is_linear() {
             let args = self.linear_args();
             let view = self.linear_view();
-            let label = linear_tool_label(self.tool(), m.result_pending, m.result_error, &args, view.as_ref());
+            let label = linear_tool_label(
+                self.tool(),
+                m.result_pending,
+                m.result_error,
+                &args,
+                view.as_ref(),
+            );
             return linear_tool_meta(&args, view.as_ref(), &label);
         }
         if (self.tool() == "Grep" || self.tool() == "Glob")
@@ -1978,13 +2116,15 @@ impl<'a> ToolView<'a> {
             .then(|| self.tool_search_selects())
             .flatten();
         let empty_result = m.result.trim().is_empty();
-        let delete_quiet = self.tool() == "Delete" && !m.result_pending && !m.result_error && empty_result;
+        let delete_quiet =
+            self.tool() == "Delete" && !m.result_pending && !m.result_error && empty_result;
         let lin_quiet = self.is_linear()
             && !m.result_pending
             && !m.result_error
             && empty_result
             && self.linear_input_body().is_empty();
-        let web_quiet = (self.tool() == "WebFetch" || self.tool() == "WebSearch") && !self.web_has_card();
+        let web_quiet =
+            (self.tool() == "WebFetch" || self.tool() == "WebSearch") && !self.web_has_card();
         let claude_task = self.is_claude_task();
         let claude_body = claude_task
             && recur_agent::display::tasks::claude_task_has_body(
@@ -2066,22 +2206,28 @@ mod tests {
     }
 
     fn view(m: &AgentMsg) -> ToolView<'_> {
-        ToolView::new(m, ToolCx {
-            root_path: "/wt",
-            has_open_file: true,
-            ..Default::default()
-        })
+        ToolView::new(
+            m,
+            ToolCx {
+                root_path: "/wt",
+                has_open_file: true,
+                ..Default::default()
+            },
+        )
     }
 
     #[test]
     fn file_tools_read_their_paths() {
-        let m = tool("Read", |m| m.input = json!({"file_path": "/wt/src/a.go"}).to_string());
+        let m = tool("Read", |m| {
+            m.input = json!({"file_path": "/wt/src/a.go"}).to_string()
+        });
         let v = view(&m);
         assert_eq!(v.file_of(), "/wt/src/a.go");
         assert_eq!(v.label(), "Read a.go");
         assert_eq!(v.icon(), StepIcon::File);
         let m = tool("Edit", |m| {
-            m.input = json!({"file_path": "/wt/b.rs", "old_string": "a\nb", "new_string": "a\nc"}).to_string();
+            m.input = json!({"file_path": "/wt/b.rs", "old_string": "a\nb", "new_string": "a\nc"})
+                .to_string();
         });
         let v = view(&m);
         assert!(v.has_edit_diff());
@@ -2149,12 +2295,16 @@ mod tests {
             ..Default::default()
         }];
         let m = tool("mcp__recur__update_finding", |m| {
-            m.input = json!({"finding_id": "find_1", "status": "resolved", "reason": "fixed"}).to_string();
+            m.input = json!({"finding_id": "find_1", "status": "resolved", "reason": "fixed"})
+                .to_string();
         });
-        let v = ToolView::new(&m, ToolCx {
-            findings: &store,
-            ..Default::default()
-        });
+        let v = ToolView::new(
+            &m,
+            ToolCx {
+                findings: &store,
+                ..Default::default()
+            },
+        );
         assert_eq!(v.label(), "Marked resolved");
         assert_eq!(v.file_of(), "a/b.go");
         assert_eq!(v.finding_status(), "resolved");
@@ -2183,7 +2333,10 @@ mod tests {
             m.result = "Switched chat mode from agent to plan.".into();
         });
         let v = view(&m);
-        assert_eq!(v.switch_mode_transition(), Some(("agent".into(), "plan".into())));
+        assert_eq!(
+            v.switch_mode_transition(),
+            Some(("agent".into(), "plan".into()))
+        );
         assert!(!v.switch_mode_failed());
         let m = tool("mcp__recur__switch_mode", |m| {
             m.input = json!({"mode": "loop"}).to_string();
@@ -2205,7 +2358,8 @@ mod tests {
         assert_eq!(v.label(), "Merge refused: subagent child-1");
         assert_eq!(v.child_tool_note(), "conflicts in a.go");
         let m = tool("mcp__recur__create_artifact", |m| {
-            m.result = "Created artifact {\"id\":\"a1\",\"title\":\"Notes\",\"kind\":\"MD\"}".into();
+            m.result =
+                "Created artifact {\"id\":\"a1\",\"title\":\"Notes\",\"kind\":\"MD\"}".into();
         });
         let v = view(&m);
         assert_eq!(v.create_artifact_title(), "Notes");
@@ -2242,14 +2396,19 @@ mod tests {
         assert_eq!(format_duration(12_400), "12s");
         assert_eq!(format_duration(103_000), "1m 43s");
         assert_eq!(format_duration(3_723_000), "1h 2m 03s");
-        assert_eq!(pretty_result("{\"b\":1,\"a\":[1,2]}"), "{\n  \"b\": 1,\n  \"a\": [\n    1,\n    2\n  ]\n}");
+        assert_eq!(
+            pretty_result("{\"b\":1,\"a\":[1,2]}"),
+            "{\n  \"b\": 1,\n  \"a\": [\n    1,\n    2\n  ]\n}"
+        );
         assert_eq!(pretty_result("plain"), "plain");
         assert_eq!(pretty_tool_name("mcp__linear__list_issues"), "list issues");
     }
 
     #[test]
     fn subagent_create_is_dropped() {
-        let m = tool("mcp__recur__create_workspace", |m| m.result = "Created subagent ws-2".into());
+        let m = tool("mcp__recur__create_workspace", |m| {
+            m.result = "Created subagent ws-2".into()
+        });
         assert!(view(&m).is_subagent_create());
         let m = tool("mcp__recur__create_workspace", |m| {
             m.input = json!({"standalone": true}).to_string();

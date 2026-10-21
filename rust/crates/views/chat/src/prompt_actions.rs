@@ -23,13 +23,23 @@ const COMPLETE_TIMEOUT: Duration = Duration::from_millis(4_000);
 /// Runs a compiled TypeScript prompt module (`runPromptModule` in the macro worker):
 /// `(code, ctx, chat code, prompt name, timeout)`.
 pub type PromptModuleRunner = Rc<
-    dyn Fn(String, PromptRunContext, String, String, Duration) -> LocalBoxFuture<'static, Result<PromptResultDto, String>>,
+    dyn Fn(
+        String,
+        PromptRunContext,
+        String,
+        String,
+        Duration,
+    ) -> LocalBoxFuture<'static, Result<PromptResultDto, String>>,
 >;
 
 /// Runs a compiled TypeScript complete module (`runCompleteModule`); the runner adds the
 /// workspace's LSP diagnostics.
 pub type CompleteModuleRunner = Rc<
-    dyn Fn(String, PromptCompleteRequestDto, Duration) -> LocalBoxFuture<'static, Result<PromptCompleteResultDto, String>>,
+    dyn Fn(
+        String,
+        PromptCompleteRequestDto,
+        Duration,
+    ) -> LocalBoxFuture<'static, Result<PromptCompleteResultDto, String>>,
 >;
 
 type CatalogLoad = Shared<Task<Rc<Vec<PromptActionInfo>>>>;
@@ -70,7 +80,10 @@ impl PromptCatalog {
     /// The cached catalog for `epoch` without loading.
     pub fn peek(epoch: u64, cx: &App) -> Option<Rc<Vec<PromptActionInfo>>> {
         let g = cx.try_global::<Self>()?;
-        g.cached.as_ref().filter(|(e, _)| *e == epoch).map(|(_, l)| l.clone())
+        g.cached
+            .as_ref()
+            .filter(|(e, _)| *e == epoch)
+            .map(|(_, l)| l.clone())
     }
 
     /// `listPromptActionsUnfiltered`: every discovered prompt including disabled ones. A
@@ -114,7 +127,10 @@ impl PromptCatalog {
 }
 
 /// `filterEnabledPrompts` over the services DTO.
-pub fn enabled_prompts(settings: Option<&Settings>, list: &[PromptActionInfo]) -> Vec<PromptActionInfo> {
+pub fn enabled_prompts(
+    settings: Option<&Settings>,
+    list: &[PromptActionInfo],
+) -> Vec<PromptActionInfo> {
     list.iter()
         .filter(|p| settings.is_none_or(|s| prompt_enabled(s, &p.id)))
         .cloned()
@@ -170,7 +186,11 @@ fn normalize_hits(res: PromptCompleteResultDto) -> PromptCompleteResultDto {
                 .unwrap_or_default()
                 .into_iter()
                 .map(|h| PromptCompleteHitDto {
-                    label: if h.label.is_empty() { h.insert.clone() } else { h.label },
+                    label: if h.label.is_empty() {
+                        h.insert.clone()
+                    } else {
+                        h.label
+                    },
                     ..h
                 })
                 .collect(),
@@ -193,7 +213,9 @@ pub fn complete_prompt_args(
     let id = info.id.clone();
     let timer = cx.background_executor().timer(COMPLETE_TIMEOUT);
     if info.complete_interpreter == "typescript" {
-        let runner = cx.try_global::<PromptCatalog>().and_then(|g| g.complete_runner.clone());
+        let runner = cx
+            .try_global::<PromptCatalog>()
+            .and_then(|g| g.complete_runner.clone());
         return cx.spawn(async move |_| {
             let code = services
                 .bundle
@@ -201,7 +223,9 @@ pub fn complete_prompt_args(
                 .await
                 .map_err(|e| e.to_string())?;
             let runner = runner.ok_or("TypeScript complete scripts need the macro runner")?;
-            runner(code, req, COMPLETE_TIMEOUT).await.map(normalize_hits)
+            runner(code, req, COMPLETE_TIMEOUT)
+                .await
+                .map(normalize_hits)
         });
     }
     cx.spawn(async move |_| {
@@ -217,7 +241,11 @@ pub fn complete_prompt_args(
 }
 
 /// `toDTO`: the run context the backend's `RunPromptAction` takes.
-pub fn prompt_context_dto(ctx: &PromptRunContext, chat_code: &str, timeout: Duration) -> PromptContextDto {
+pub fn prompt_context_dto(
+    ctx: &PromptRunContext,
+    chat_code: &str,
+    timeout: Duration,
+) -> PromptContextDto {
     PromptContextDto {
         workspace_id: ctx.workspace_id.clone(),
         project_id: ctx.project_id.clone(),
@@ -260,7 +288,9 @@ pub fn run_prompt_action(
     let services = services.clone();
     let (id, name, chat_code) = (info.id.clone(), info.name.clone(), chat_code.to_string());
     if info.interpreter == "typescript" {
-        let runner = cx.try_global::<PromptCatalog>().and_then(|g| g.prompt_runner.clone());
+        let runner = cx
+            .try_global::<PromptCatalog>()
+            .and_then(|g| g.prompt_runner.clone());
         return cx.spawn(async move |_| {
             let code = services
                 .bundle
@@ -309,7 +339,10 @@ mod tests {
         let services = bridge.services();
         let failed = cx.update(|cx| PromptCatalog::load(&services, 0, cx)).await;
         assert!(failed.is_empty());
-        assert_eq!(cx.update(|cx| PromptCatalog::error(cx)).as_deref(), Some("boom"));
+        assert_eq!(
+            cx.update(|cx| PromptCatalog::error(cx)).as_deref(),
+            Some("boom")
+        );
         let list = cx.update(|cx| PromptCatalog::load(&services, 0, cx)).await;
         assert_eq!(list[0].slash, "commit");
         let _ = cx.update(|cx| PromptCatalog::load(&services, 0, cx)).await;
@@ -320,10 +353,11 @@ mod tests {
 
     #[gpui::test]
     async fn completes_with_label_fallback(cx: &mut TestAppContext) {
-        let bridge = MockBridge::fresh(MockOptions::default().resolver(
-            "RunPromptComplete",
-            |_, _, _| Reply::value(json!({"hits": [{"insert": "ENG-1"}], "message": "m"})),
-        ));
+        let bridge = MockBridge::fresh(
+            MockOptions::default().resolver("RunPromptComplete", |_, _, _| {
+                Reply::value(json!({"hits": [{"insert": "ENG-1"}], "message": "m"}))
+            }),
+        );
         let services = bridge.services();
         let info = PromptActionInfo {
             id: "lin".into(),
@@ -331,15 +365,22 @@ mod tests {
             ..Default::default()
         };
         let res = cx
-            .update(|cx| complete_prompt_args(&info, PromptCompleteRequestDto::default(), &services, cx))
+            .update(|cx| {
+                complete_prompt_args(&info, PromptCompleteRequestDto::default(), &services, cx)
+            })
             .await
             .unwrap();
         let hits = res.hits.unwrap();
-        assert_eq!((hits[0].insert.as_str(), hits[0].label.as_str()), ("ENG-1", "ENG-1"));
+        assert_eq!(
+            (hits[0].insert.as_str(), hits[0].label.as_str()),
+            ("ENG-1", "ENG-1")
+        );
         assert_eq!(res.message, "m");
         let none = PromptActionInfo::default();
         let empty = cx
-            .update(|cx| complete_prompt_args(&none, PromptCompleteRequestDto::default(), &services, cx))
+            .update(|cx| {
+                complete_prompt_args(&none, PromptCompleteRequestDto::default(), &services, cx)
+            })
             .await
             .unwrap();
         assert!(empty.hits.is_none());
@@ -363,9 +404,14 @@ mod tests {
             ..Default::default()
         };
         let res = cx
-            .update(|cx| run_prompt_action(&info, PromptRunContext::default(), "PA2", &services, cx))
+            .update(|cx| {
+                run_prompt_action(&info, PromptRunContext::default(), "PA2", &services, cx)
+            })
             .await
             .unwrap();
-        assert_eq!((res.prompt.as_str(), res.display.as_str()), ("go", "two lines"));
+        assert_eq!(
+            (res.prompt.as_str(), res.display.as_str()),
+            ("go", "two lines")
+        );
     }
 }

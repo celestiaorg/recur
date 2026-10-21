@@ -126,7 +126,8 @@ impl HoistState {
         if from_key.is_empty() || to_key.is_empty() || from_key == to_key {
             return;
         }
-        self.aliases.insert(from_key.to_string(), to_key.to_string());
+        self.aliases
+            .insert(from_key.to_string(), to_key.to_string());
     }
 
     /// `liveChatKey`.
@@ -375,7 +376,11 @@ pub fn absorb_hoist_sending(mut books: SendBooks, inflight: &BTreeMap<String, u6
 }
 
 /// `hoistSendCompleteApplies`: a source completion matches the transferred reservation.
-pub fn hoist_send_complete_applies(complete_gen: u64, _dest_gen: u64, reserved: Option<u64>) -> bool {
+pub fn hoist_send_complete_applies(
+    complete_gen: u64,
+    _dest_gen: u64,
+    reserved: Option<u64>,
+) -> bool {
     if complete_gen == 0 {
         return true;
     }
@@ -396,7 +401,10 @@ mod tests {
     }
 
     fn remap(pairs: &[(&str, &str)]) -> CodeRemap {
-        pairs.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect()
+        pairs
+            .iter()
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .collect()
     }
 
     fn d(id: &str) -> ChatAttachmentDraft {
@@ -425,7 +433,11 @@ mod tests {
     fn cache_bust_codes() {
         assert!(hoist_cache_bust_codes(&v(&["PA", "PA2"]), None, &[]).is_empty());
         assert_eq!(
-            hoist_cache_bust_codes(&v(&["PA", "PA2", "PA3"]), Some(&remap(&[("PA", "PA2")])), &[]),
+            hoist_cache_bust_codes(
+                &v(&["PA", "PA2", "PA3"]),
+                Some(&remap(&[("PA", "PA2")])),
+                &[]
+            ),
             v(&["PA2"])
         );
         assert_eq!(
@@ -472,12 +484,15 @@ mod tests {
                 ]
                 .into_iter()
                 .collect(),
-                attachments: [("dest\tPA2".to_string(), vec![d("d1")])].into_iter().collect(),
+                attachments: [("dest\tPA2".to_string(), vec![d("d1")])]
+                    .into_iter()
+                    .collect(),
                 ..Default::default()
             },
         );
         h.stash_draft("dest\tPA2", "from host", &[d("h1")]);
-        let codes = hoist_cache_bust_codes(&[], Some(&remap(&[("PA", "PA3")])), &v(&["PA3", "PA2"]));
+        let codes =
+            hoist_cache_bust_codes(&[], Some(&remap(&[("PA", "PA3")])), &v(&["PA3", "PA2"]));
         h.note_dest_bust("dest", &codes);
         let bust = h.take_dest_bust("dest");
         h.bust_dest_heap(&mut heap, "dest", &bust);
@@ -513,9 +528,13 @@ mod tests {
         .into_iter()
         .map(|(a, b)| (a.to_string(), b.to_string()))
         .collect();
-        let got = h.remap_prefixed(&rec, "host", "dest", Some(&remap(&[("PA", "PA2")])), |a, b| {
-            concat_hoist_text(a.map_or("", String::as_str), b)
-        });
+        let got = h.remap_prefixed(
+            &rec,
+            "host",
+            "dest",
+            Some(&remap(&[("PA", "PA2")])),
+            |a, b| concat_hoist_text(a.map_or("", String::as_str), b),
+        );
         let want: BTreeMap<String, String> = [
             ("dest\tPA", "on-dest"),
             ("dest\tPA2", "from-host"),
@@ -528,14 +547,25 @@ mod tests {
         assert_eq!(h.live_chat_key("host\tPA"), "dest\tPA2");
         assert_eq!(
             h.live_chat_target("host", "PA"),
-            ("dest".to_string(), "PA2".to_string(), "dest\tPA2".to_string())
+            (
+                "dest".to_string(),
+                "PA2".to_string(),
+                "dest\tPA2".to_string()
+            )
         );
         let pending: BTreeMap<String, Vec<PendingChatSend>> =
-            [("host\tPA".to_string(), vec![p("q")])].into_iter().collect();
+            [("host\tPA".to_string(), vec![p("q")])]
+                .into_iter()
+                .collect();
         let got = h.remap_prefixed(&pending, "host", "dest", Some(&remap(&[])), |a, b| {
             concat_hoist_list(a.map_or(&[][..], Vec::as_slice), b)
         });
-        assert_eq!(got, [("dest\tPA".to_string(), vec![p("q")])].into_iter().collect());
+        assert_eq!(
+            got,
+            [("dest\tPA".to_string(), vec![p("q")])]
+                .into_iter()
+                .collect()
+        );
         assert_eq!(dest_chat_key("PA", "dest", Some(&remap(&[]))), "dest\tPA");
     }
 
@@ -561,8 +591,12 @@ mod tests {
         heap.put(
             "host",
             &ChatHeapSnapshot {
-                chat: [("host\tPA".to_string(), vec![body("hi")])].into_iter().collect(),
-                input: [("host\tPA".to_string(), "follow up".to_string())].into_iter().collect(),
+                chat: [("host\tPA".to_string(), vec![body("hi")])]
+                    .into_iter()
+                    .collect(),
+                input: [("host\tPA".to_string(), "follow up".to_string())]
+                    .into_iter()
+                    .collect(),
                 attachments: [
                     ("host\tPA".to_string(), vec![d("a1")]),
                     ("host\tPB".to_string(), vec![d("a2")]),
@@ -588,8 +622,12 @@ mod tests {
         heap.put(
             "host",
             &ChatHeapSnapshot {
-                chat: [("host\tPA".to_string(), vec![body("hi")])].into_iter().collect(),
-                input: [("host\tPA".to_string(), "stale".to_string())].into_iter().collect(),
+                chat: [("host\tPA".to_string(), vec![body("hi")])]
+                    .into_iter()
+                    .collect(),
+                input: [("host\tPA".to_string(), "stale".to_string())]
+                    .into_iter()
+                    .collect(),
                 ..Default::default()
             },
         );
@@ -617,18 +655,27 @@ mod tests {
         h.stash_sending("dest\tPA", 1);
         h.stash_pending("dest\tPA", &[p("q1")], false);
         assert!(h.take_sending("host").is_empty());
-        assert_eq!(h.take_sending("dest"), [("dest\tPA".to_string(), 2)].into_iter().collect());
+        assert_eq!(
+            h.take_sending("dest"),
+            [("dest\tPA".to_string(), 2)].into_iter().collect()
+        );
         assert!(h.take_sending("dest").is_empty());
         assert_eq!(h.take_pending("dest")["dest\tPA"].items, vec![p("q1")]);
         h.stash_sending("dest\tPA", 3);
         h.clear_sending("dest\tPA", 2);
-        assert_eq!(h.take_sending("dest"), [("dest\tPA".to_string(), 3)].into_iter().collect());
+        assert_eq!(
+            h.take_sending("dest"),
+            [("dest\tPA".to_string(), 3)].into_iter().collect()
+        );
         h.stash_sending("dest\tPA", 3);
         h.clear_sending("dest\tPA", 3);
         assert!(h.take_sending("dest").is_empty());
     }
 
-    fn watch(h: &mut HoistState, books: SendBooks) -> (Rc<RefCell<SendBooks>>, Rc<RefCell<Vec<String>>>, u64) {
+    fn watch(
+        h: &mut HoistState,
+        books: SendBooks,
+    ) -> (Rc<RefCell<SendBooks>>, Rc<RefCell<Vec<String>>>, u64) {
         let books = Rc::new(RefCell::new(books));
         let flushed = Rc::new(RefCell::new(Vec::new()));
         let (b, f) = (books.clone(), flushed.clone());

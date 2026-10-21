@@ -7,9 +7,7 @@ use std::collections::BTreeMap;
 
 use gpui_kit::{App, Global};
 
-use crate::byte_lru::{
-    ByteLru, CHROME_CACHE_MAX_BYTES, SCALAR_BYTES, object_bytes, string_bytes,
-};
+use crate::byte_lru::{ByteLru, CHROME_CACHE_MAX_BYTES, SCALAR_BYTES, object_bytes, string_bytes};
 
 /// Distance from the tail (px) that counts as stuck to the bottom for auto-follow.
 pub const NEAR_BOTTOM_PX: f32 = 24.;
@@ -437,20 +435,21 @@ pub fn snapshot_transcript_ui(
     live: &LiveChrome<'_>,
     previous: Option<&TranscriptUiState>,
 ) -> TranscriptUiState {
-    let (row_count, fingerprint) = if !live.scroller_hidden
-        || (live.row_count > 0 && !live.fingerprint.is_empty())
-    {
-        (live.row_count, live.fingerprint.to_string())
-    } else {
-        (
-            previous.map_or(0, |p| p.row_count),
-            previous.map(|p| p.fingerprint.clone()).unwrap_or_default(),
-        )
-    };
+    let (row_count, fingerprint) =
+        if !live.scroller_hidden || (live.row_count > 0 && !live.fingerprint.is_empty()) {
+            (live.row_count, live.fingerprint.to_string())
+        } else {
+            (
+                previous.map_or(0, |p| p.row_count),
+                previous.map(|p| p.fingerprint.clone()).unwrap_or_default(),
+            )
+        };
     let block_heights = if !live.block_heights.is_empty() {
         live.block_heights.clone()
     } else if live.scroller_hidden {
-        previous.map(|p| p.block_heights.clone()).unwrap_or_default()
+        previous
+            .map(|p| p.block_heights.clone())
+            .unwrap_or_default()
     } else {
         BTreeMap::new()
     };
@@ -493,7 +492,10 @@ mod tests {
             transcript_block_key("ws-a\tPA", "m:live-text"),
             transcript_block_key("ws-b\tPA", "m:live-text")
         );
-        assert_eq!(transcript_block_key("ws-b\tPA", "s:live"), "ws-b\tPA:s:live");
+        assert_eq!(
+            transcript_block_key("ws-b\tPA", "s:live"),
+            "ws-b\tPA:s:live"
+        );
         assert_eq!(transcript_block_key("", "m:live-text"), "_:m:live-text");
     }
 
@@ -566,8 +568,14 @@ mod tests {
             transcript_message_block_local(4, false, Some(200), "", "ok"),
             "m:200:ok"
         );
-        assert_eq!(transcript_message_block_local(0, true, None, "", ""), "me:0");
-        assert_eq!(transcript_message_block_local(2, false, None, "", ""), "m:0:2");
+        assert_eq!(
+            transcript_message_block_local(0, true, None, "", ""),
+            "me:0"
+        );
+        assert_eq!(
+            transcript_message_block_local(2, false, None, "", ""),
+            "m:0:2"
+        );
     }
 
     #[test]
@@ -697,10 +705,15 @@ mod tests {
         assert_eq!(hidden.fingerprint, "u|a|t:Bash");
         let empty_g = BTreeMap::new();
         let leaving = snapshot_transcript_ui(
-            &live(&empty_g, &none, &accord, &heights, true, 8, "u|a", false, 90.),
+            &live(
+                &empty_g, &none, &accord, &heights, true, 8, "u|a", false, 90.,
+            ),
             Some(&prev),
         );
-        assert_eq!((leaving.row_count, leaving.fingerprint.as_str()), (8, "u|a"));
+        assert_eq!(
+            (leaving.row_count, leaving.fingerprint.as_str()),
+            (8, "u|a")
+        );
         let mismatched = snapshot_transcript_ui(
             &live(&empty_g, &none, &accord, &heights, true, 50, "", false, 90.),
             Some(&prev),
@@ -709,7 +722,9 @@ mod tests {
         assert_eq!(mismatched.fingerprint, "u|a|t:Bash");
         let rows: BTreeMap<String, bool> = [("8".to_string(), true)].into_iter().collect();
         let visible = snapshot_transcript_ui(
-            &live(&empty_g, &rows, &accord, &heights, false, 3, "u|a", false, 12.),
+            &live(
+                &empty_g, &rows, &accord, &heights, false, 3, "u|a", false, 12.,
+            ),
             None,
         );
         assert_eq!(
@@ -789,8 +804,14 @@ mod tests {
         assert_eq!(scroll_restore_ready(0., true, 20, 400., 400., 0), Apply);
         assert_eq!(scroll_restore_ready(0., false, 20, 400., 400., 0), Apply);
         assert_eq!(scroll_restore_ready(480., false, 20, 400., 400., 0), Wait);
-        assert_eq!(scroll_restore_ready(480., false, 20, 400., 400., 20), Abandon);
-        assert_eq!(scroll_restore_ready(480., false, 20, 400., 1200., 20), Apply);
+        assert_eq!(
+            scroll_restore_ready(480., false, 20, 400., 400., 20),
+            Abandon
+        );
+        assert_eq!(
+            scroll_restore_ready(480., false, 20, 400., 1200., 20),
+            Apply
+        );
         assert_eq!(scroll_restore_ready(480., false, 20, 400., 500., 20), Apply);
         assert_eq!(scroll_restore_ready(900., false, 0, 400., 400., 8), Abandon);
         assert_eq!(scroll_restore_ready(900., false, 0, 400., 600., 8), Apply);

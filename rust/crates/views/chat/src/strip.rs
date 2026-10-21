@@ -4,7 +4,9 @@
 use gpui_kit::{App, Global};
 use recur_domain::WorkspaceChatTab;
 
-use crate::byte_lru::{ByteLru, CHROME_CACHE_MAX_BYTES, OBJ_HDR, SCALAR_BYTES, array_bytes, string_bytes};
+use crate::byte_lru::{
+    ByteLru, CHROME_CACHE_MAX_BYTES, OBJ_HDR, SCALAR_BYTES, array_bytes, string_bytes,
+};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ChatStripSnapshot {
@@ -64,7 +66,11 @@ impl ChatStripCache {
         self.cache.set(
             workspace_id,
             ChatStripSnapshot {
-                closed: if snap.closed.is_empty() { prev.closed } else { snap.closed },
+                closed: if snap.closed.is_empty() {
+                    prev.closed
+                } else {
+                    snap.closed
+                },
                 active_code: if snap.active_code.is_empty() {
                     prev.active_code
                 } else {
@@ -117,13 +123,22 @@ mod tests {
     #[test]
     fn round_trips_tabs_active_and_scroll() {
         let mut c = ChatStripCache::default();
-        c.put("ws", snap(vec![tab("PA", "New chat"), tab("MA", "Loop")], "MA", None));
+        c.put(
+            "ws",
+            snap(vec![tab("PA", "New chat"), tab("MA", "Loop")], "MA", None),
+        );
         let hit = c.get("ws").expect("hit");
         assert_eq!(hit.active_code, "MA");
-        assert_eq!(hit.tabs.iter().map(|t| t.code.as_str()).collect::<Vec<_>>(), ["PA", "MA"]);
+        assert_eq!(
+            hit.tabs.iter().map(|t| t.code.as_str()).collect::<Vec<_>>(),
+            ["PA", "MA"]
+        );
         c.put("ws", snap(vec![tab("PA", "PA")], "PA", Some(64.)));
         assert_eq!(c.get("ws").expect("hit").tab_scroll_left, Some(64.));
-        c.put("ws", snap(vec![tab("PA", "PA"), tab("MA", "MA")], "MA", None));
+        c.put(
+            "ws",
+            snap(vec![tab("PA", "PA"), tab("MA", "MA")], "MA", None),
+        );
         assert_eq!(c.get("ws").expect("hit").tab_scroll_left, Some(64.));
         c.put("ws", snap(vec![tab("PA", "PA")], "PA", Some(0.)));
         assert_eq!(c.get("ws").expect("hit").tab_scroll_left, Some(0.));

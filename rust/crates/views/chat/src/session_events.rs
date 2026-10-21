@@ -266,18 +266,47 @@ mod tests {
         .expect("delta");
         assert_eq!((e.workspace_id.as_str(), e.code.as_str()), ("w", "MA"));
         assert!(matches!(e.signal, SessionSignal::Delta(ref d) if d.seq == 2 && d.replace));
-        assert!(session_event(&wire("session.delta", json!({"workspaceId": "w", "code": "MA", "text": ""}))).is_none());
-        assert!(session_event(&wire("session.delta", json!({"code": "MA", "text": "x"}))).is_none());
-        let app = session_event(&wire("session.delta", json!({"surface": "app", "code": "APP", "text": "x"})))
-            .expect("app");
+        assert!(
+            session_event(&wire(
+                "session.delta",
+                json!({"workspaceId": "w", "code": "MA", "text": ""})
+            ))
+            .is_none()
+        );
+        assert!(
+            session_event(&wire("session.delta", json!({"code": "MA", "text": "x"}))).is_none()
+        );
+        let app = session_event(&wire(
+            "session.delta",
+            json!({"surface": "app", "code": "APP", "text": "x"}),
+        ))
+        .expect("app");
         assert_eq!(app.workspace_id, "");
-        assert!(session_event(&wire("session.thinking", json!({"workspaceId": "w", "code": "PA"}))).is_none());
-        assert!(session_event(&wire("session.notice", json!({"workspaceId": "w", "code": "PA", "text": "  "}))).is_none());
+        assert!(
+            session_event(&wire(
+                "session.thinking",
+                json!({"workspaceId": "w", "code": "PA"})
+            ))
+            .is_none()
+        );
+        assert!(
+            session_event(&wire(
+                "session.notice",
+                json!({"workspaceId": "w", "code": "PA", "text": "  "})
+            ))
+            .is_none()
+        );
         let t = session_event(&wire(
             "session.turn_end",
             json!({"workspaceId": "w", "code": "PA", "durationMs": 1200, "inputTokens": 5, "contextWindow": 100}),
         ))
         .expect("turn");
-        assert!(matches!(t.signal, SessionSignal::TurnEnd(TurnEndEvt { duration_ms: 1200, usage: Some(_) })));
+        assert!(matches!(
+            t.signal,
+            SessionSignal::TurnEnd(TurnEndEvt {
+                duration_ms: 1200,
+                usage: Some(_)
+            })
+        ));
     }
 }

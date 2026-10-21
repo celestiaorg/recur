@@ -14,8 +14,8 @@ use std::rc::Rc;
 
 use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, Element, ElementId, FontFeatures, GlobalElementId,
-    Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString, Style, TextRun,
-    Window, point, px, size,
+    Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString, Style, TextRun, Window,
+    point, px, size,
 };
 use recur_ui::font_metrics::line_gap;
 use recur_ui::fonts::Family;
@@ -230,11 +230,7 @@ impl FlowLayout {
                 n += 1;
             }
         }
-        let atom_w = |byte: usize| {
-            at.iter()
-                .find(|a| a.0 == byte)
-                .map_or(0., |a| a.1)
-        };
+        let atom_w = |byte: usize| at.iter().find(|a| a.0 == byte).map_or(0., |a| a.1);
         let (a, d, g, xh) = font_extent(window, s);
         let strut = line_metrics(a, d, g, s.size, LineHeight::Scale(s.leading));
         let xh = (xh * 64.).round() / 64.;
@@ -317,7 +313,11 @@ impl FlowLayout {
             return (0., 0., self.strut.height);
         };
         let x = self.x_on(l, byte.min(l.range.end));
-        (x, l.top + l.baseline - self.strut.baseline, self.strut.height)
+        (
+            x,
+            l.top + l.baseline - self.strut.baseline,
+            self.strut.height,
+        )
     }
 
     /// The caret byte nearest `(x, y)` (relative to the block). Atoms are whole.
@@ -502,19 +502,20 @@ impl Element for Flow {
         let st = self.style.clone();
         let fit = self.fit;
         let min_h = self.min_height;
-        let id = window.request_measured_layout(Style::default(), move |known, avail, window, _| {
-            let w = known.width.map(f32::from).unwrap_or(match avail.width {
-                AvailableSpace::Definite(w) => w.into(),
-                _ => f32::MAX / 4.,
+        let id =
+            window.request_measured_layout(Style::default(), move |known, avail, window, _| {
+                let w = known.width.map(f32::from).unwrap_or(match avail.width {
+                    AvailableSpace::Definite(w) => w.into(),
+                    _ => f32::MAX / 4.,
+                });
+                let l = FlowLayout::compute(&content, &sizes, &st, w, window);
+                let out = size(
+                    px(if fit { l.max_line.min(w) } else { w }),
+                    px(l.height.max(min_h)),
+                );
+                *slot.borrow_mut() = Some(l);
+                out
             });
-            let l = FlowLayout::compute(&content, &sizes, &st, w, window);
-            let out = size(
-                px(if fit { l.max_line.min(w) } else { w }),
-                px(l.height.max(min_h)),
-            );
-            *slot.borrow_mut() = Some(l);
-            out
-        });
         (id, FlowState { layout })
     }
 
@@ -545,8 +546,13 @@ impl Element for Flow {
             .as_ref()
             .is_none_or(|l| l.width != width || l.content != content);
         if stale {
-            *state.layout.borrow_mut() =
-                Some(FlowLayout::compute(&content, &sizes, &self.style, width, window));
+            *state.layout.borrow_mut() = Some(FlowLayout::compute(
+                &content,
+                &sizes,
+                &self.style,
+                width,
+                window,
+            ));
         }
         let layout = state.layout.borrow().clone().expect("flow layout");
         let mut children = Vec::new();
@@ -630,7 +636,12 @@ mod tests {
             assert!(y >= 0. && y + h <= l.height + 0.01);
             let narrow = FlowLayout::compute(&content, &[(60., 26.)], &style(), 70., window);
             assert!(narrow.lines.len() >= 2);
-            assert!(narrow.runs().iter().all(|(r, _, _)| !content[r.clone()].contains(ATOM)));
+            assert!(
+                narrow
+                    .runs()
+                    .iter()
+                    .all(|(r, _, _)| !content[r.clone()].contains(ATOM))
+            );
             let two = FlowLayout::compute("a\nb", &[], &style(), 400., window);
             assert_eq!(two.lines.len(), 2);
             assert_eq!(two.hit(0., two.lines[1].top + 1.), 2);

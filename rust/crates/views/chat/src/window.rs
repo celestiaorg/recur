@@ -240,7 +240,9 @@ mod tests {
         let got = pick_hydrated(&keys, "d", &["a".to_string()], 2, 1);
         assert_eq!(got.into_iter().collect::<Vec<_>>(), ["c", "d"]);
         assert_eq!(
-            pick_hydrated(&keys, "zz", &[], 3, 0).into_iter().collect::<Vec<_>>(),
+            pick_hydrated(&keys, "zz", &[], 3, 0)
+                .into_iter()
+                .collect::<Vec<_>>(),
             ["a"]
         );
     }
@@ -250,7 +252,10 @@ mod tests {
         let ranges = vec![r("a", 0., 100.), r("b", 100., 300.), r("c", 300., 400.)];
         assert_eq!(block_at_scroll_top(&ranges, 150.), "b");
         assert_eq!(block_at_scroll_top(&ranges, 0.), "a");
-        assert_eq!(block_at_scroll_top(&[r("a", 0., 0.), r("b", 0., 0.)], 0.), "");
+        assert_eq!(
+            block_at_scroll_top(&[r("a", 0., 0.), r("b", 0., 0.)], 0.),
+            ""
+        );
         let pin = capture_viewport_pin(&ranges, 150., 100., 400.);
         assert_eq!(pin.anchor, Some(("b".to_string(), -50.)));
         assert!(!pin.at_end);

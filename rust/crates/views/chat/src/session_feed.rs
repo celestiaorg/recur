@@ -5,6 +5,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use gpui_kit::{Context, Task};
 use recur_domain::{FeedItem, SessionView};
+use recur_engine::view::chat::AgentMsg;
 use recur_engine::view::chat::{
     StreamKind, add_tool, add_user, append_stream, apply_compact, apply_fallback, apply_notice,
     apply_stream, attach_tool_result, end_turn, map_chat_items, merge_persisted_with_live,
@@ -14,7 +15,6 @@ use recur_engine::view::live::SessionLiveFlags;
 use recur_engine::view::loop_cockpit::{
     FeedSess, is_pair_chat_code, is_specialist_session, needs_live_turn_break, specialist_name,
 };
-use recur_engine::view::chat::AgentMsg;
 use recur_services::{AppEvent, Services};
 use recur_view_core::is_agent_running_status;
 
@@ -136,7 +136,11 @@ impl SessionFeed {
     /// Lights `live_codes` so the cockpit can inject a tail card. Does not stamp a session
     /// yet: the agent upsert races persist and a fresh stamp would sort the card before the
     /// prompt, then jump.
-    pub fn mark_running<'a>(&mut self, codes: impl IntoIterator<Item = &'a str>, cx: &mut Context<Self>) {
+    pub fn mark_running<'a>(
+        &mut self,
+        codes: impl IntoIterator<Item = &'a str>,
+        cx: &mut Context<Self>,
+    ) {
         for code in codes {
             if track(code) {
                 self.set_running(code, cx);
@@ -148,7 +152,11 @@ impl SessionFeed {
         let Some(services) = self.services.clone() else {
             return;
         };
-        let (load_gen, id, owner) = (self.generation, self.workspace_id.clone(), self.chat_code.clone());
+        let (load_gen, id, owner) = (
+            self.generation,
+            self.workspace_id.clone(),
+            self.chat_code.clone(),
+        );
         cx.spawn(async move |this, cx| {
             let (sv, fx) = futures::join!(
                 services.workspaces.workspace_sessions(&id, &owner, ""),
@@ -269,15 +277,22 @@ impl SessionFeed {
         if self.workspace_id.is_empty() {
             return;
         }
-        let (generation, id, owner) =
-            (self.generation, self.workspace_id.clone(), self.chat_code.clone());
+        let (generation, id, owner) = (
+            self.generation,
+            self.workspace_id.clone(),
+            self.chat_code.clone(),
+        );
         let load_gen = self.reload_gen_by_code.get(code).copied().unwrap_or(0) + 1;
         self.reload_gen_by_code.insert(code.to_string(), load_gen);
         let code = code.to_string();
         cx.spawn(async move |this, cx| {
-            let sv = services.workspaces.workspace_sessions(&id, &owner, &code).await;
+            let sv = services
+                .workspaces
+                .workspace_sessions(&id, &owner, &code)
+                .await;
             let _ = this.update(cx, |s, cx| {
-                if generation != s.generation || s.reload_gen_by_code.get(&code) != Some(&load_gen) {
+                if generation != s.generation || s.reload_gen_by_code.get(&code) != Some(&load_gen)
+                {
                     return;
                 }
                 let Some(fresh) = sv
@@ -303,7 +318,12 @@ impl SessionFeed {
         .detach();
     }
 
-    fn patch(&mut self, code: &str, cx: &mut Context<Self>, f: impl FnOnce(&[AgentMsg]) -> Vec<AgentMsg>) {
+    fn patch(
+        &mut self,
+        code: &str,
+        cx: &mut Context<Self>,
+        f: impl FnOnce(&[AgentMsg]) -> Vec<AgentMsg>,
+    ) {
         if !track(code) {
             return;
         }
@@ -339,7 +359,11 @@ impl SessionFeed {
     }
 
     fn apply_live(&mut self, code: &str, kind: StreamKind, e: &StreamEvt, cx: &mut Context<Self>) {
-        let tag = if kind == StreamKind::Text { "text" } else { "thinking" };
+        let tag = if kind == StreamKind::Text {
+            "text"
+        } else {
+            "thinking"
+        };
         let mut key = format!("{}:{code}:{tag}", self.workspace_id);
         if !e.parent_id.is_empty() {
             key = format!("{key}:{}", e.parent_id);
@@ -401,7 +425,11 @@ impl SessionFeed {
                 if f.ts == 0 {
                     f.ts = now_ms();
                 }
-                match self.facts.iter_mut().find(|x| !x.id.is_empty() && x.id == f.id) {
+                match self
+                    .facts
+                    .iter_mut()
+                    .find(|x| !x.id.is_empty() && x.id == f.id)
+                {
                     // A re-emitted card (progress) replaces the payload in its slot.
                     Some(x) => {
                         let ts = if x.ts != 0 { x.ts } else { f.ts };
@@ -434,13 +462,22 @@ impl SessionFeed {
                 if !d.text.is_empty() || d.replace || d.done {
                     self.apply_live(code, StreamKind::Thinking, d, cx);
                 } else {
-                    self.patch(code, cx, |m| note_thinking_tokens(m, d.tokens, &d.uuid, &d.parent_id));
+                    self.patch(code, cx, |m| {
+                        note_thinking_tokens(m, d.tokens, &d.uuid, &d.parent_id)
+                    });
                 }
             }
             SessionSignal::Step(step) => self.patch(code, cx, |m| add_tool(m, step)),
-            SessionSignal::ToolResult { id, result, is_error, extras } => {
+            SessionSignal::ToolResult {
+                id,
+                result,
+                is_error,
+                extras,
+            } => {
                 let extras = extras.clone().unwrap_or_default();
-                self.patch(code, cx, |m| attach_tool_result(m, id, result, *is_error, &extras));
+                self.patch(code, cx, |m| {
+                    attach_tool_result(m, id, result, *is_error, &extras)
+                });
             }
             SessionSignal::ToolInput { id, extras } => {
                 self.patch(code, cx, |m| patch_tool_input(m, id, extras));
@@ -490,7 +527,10 @@ mod tests {
         let calls: Arc<Mutex<Vec<Vec<Value>>>> = Default::default();
         let replies = Arc::new(Mutex::new(vec![
             json!([session("CO", "finished", "PA2")]),
-            json!([session("CO", "coding", "PA2"), session("RV", "reviewing", "PA2")]),
+            json!([
+                session("CO", "coding", "PA2"),
+                session("RV", "reviewing", "PA2")
+            ]),
         ]));
         let (c, r) = (calls.clone(), replies.clone());
         let bridge = MockBridge::fresh(
@@ -505,7 +545,10 @@ mod tests {
         feed.update(cx, |f, cx| f.attach("ws", "PA2", cx));
         cx.run_until_parked();
         assert_eq!(feed.read_with(cx, |f, _| f.sessions.len()), 2);
-        assert_eq!(*calls.lock(), vec![vec![json!("ws"), json!("PA2"), json!("")]]);
+        assert_eq!(
+            *calls.lock(),
+            vec![vec![json!("ws"), json!("PA2"), json!("")]]
+        );
 
         bridge
             .dispatch_wire(
@@ -518,7 +561,10 @@ mod tests {
             assert_eq!(body(f, 0), "finished");
             assert_eq!(body(f, 1), "reviewing");
         });
-        assert_eq!(calls.lock().last().unwrap(), &vec![json!("ws"), json!("PA2"), json!("CO")]);
+        assert_eq!(
+            calls.lock().last().unwrap(),
+            &vec![json!("ws"), json!("PA2"), json!("CO")]
+        );
     }
 
     #[gpui::test]
@@ -545,11 +591,17 @@ mod tests {
         cx.run_until_parked();
         let mut rel: Vec<Release> = std::mem::take(&mut *pending.lock());
         assert_eq!(rel.len(), 3);
-        rel.pop().unwrap().send(Reply::value(json!([session("CO", "latest", "PA2")])));
+        rel.pop()
+            .unwrap()
+            .send(Reply::value(json!([session("CO", "latest", "PA2")])));
         cx.run_until_parked();
         assert_eq!(feed.read_with(cx, |f, _| body(f, 0)), "latest");
-        rel.pop().unwrap().send(Reply::value(json!([session("CO", "other chat", "PA3")])));
-        rel.pop().unwrap().send(Reply::value(json!([session("CO", "stale", "PA2")])));
+        rel.pop()
+            .unwrap()
+            .send(Reply::value(json!([session("CO", "other chat", "PA3")])));
+        rel.pop()
+            .unwrap()
+            .send(Reply::value(json!([session("CO", "stale", "PA2")])));
         cx.run_until_parked();
         assert_eq!(feed.read_with(cx, |f, _| body(f, 0)), "latest");
     }
@@ -564,14 +616,19 @@ mod tests {
         let feed = cx.new(|_| SessionFeed::new(bridge.services()));
         feed.update(cx, |f, cx| f.attach("ws", "", cx));
         cx.run_until_parked();
-        let d = |text: &str, seq: i64| {
-            json!({"workspaceId": "ws", "code": "CO", "text": text, "seq": seq, "replace": true})
-        };
+        let d = |text: &str, seq: i64| json!({"workspaceId": "ws", "code": "CO", "text": text, "seq": seq, "replace": true});
         bridge.dispatch_wire("session.delta", d("hel", 1)).unwrap();
-        bridge.dispatch_wire("session.delta", d("hello", 2)).unwrap();
-        bridge.dispatch_wire("session.delta", d("stale", 1)).unwrap();
         bridge
-            .dispatch_wire("session.delta", json!({"workspaceId": "ws", "code": "PA", "text": "x"}))
+            .dispatch_wire("session.delta", d("hello", 2))
+            .unwrap();
+        bridge
+            .dispatch_wire("session.delta", d("stale", 1))
+            .unwrap();
+        bridge
+            .dispatch_wire(
+                "session.delta",
+                json!({"workspaceId": "ws", "code": "PA", "text": "x"}),
+            )
             .unwrap();
         cx.run_until_parked();
         feed.read_with(cx, |f, _| {
@@ -581,7 +638,10 @@ mod tests {
             assert!(f.live_codes.contains("CO"));
         });
         bridge
-            .dispatch_wire("session.turn_end", json!({"workspaceId": "ws", "code": "CO", "durationMs": 5}))
+            .dispatch_wire(
+                "session.turn_end",
+                json!({"workspaceId": "ws", "code": "CO", "durationMs": 5}),
+            )
             .unwrap();
         bridge
             .dispatch_wire(

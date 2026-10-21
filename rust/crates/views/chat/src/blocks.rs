@@ -48,9 +48,7 @@ pub fn group_blocks(msgs: &[AgentMsg]) -> Vec<Block> {
         if m.log.is_some() {
             steps = None;
             out.push(Block::Msg(i));
-        } else if !m.tool.is_empty()
-            && ToolView::new(m, ToolCx::default()).is_subagent_create()
-        {
+        } else if !m.tool.is_empty() && ToolView::new(m, ToolCx::default()).is_subagent_create() {
             continue;
         } else if ((!m.tool.is_empty() || m.thinking || m.compact || m.fallback) && !m.turn_end)
             || fold_subagent_notice(m, has_later_step(msgs, i))
@@ -108,9 +106,12 @@ pub fn block_keys(reset_key: &str, blocks: &[Block], msgs: &[AgentMsg]) -> Vec<S
                         format!("fact:{tail}")
                     }
                     None if !m.pending_id.is_empty() => format!("q:{}", m.pending_id),
-                    None if m.streaming => {
-                        if m.thinking { "m:live-think" } else { "m:live-text" }.to_string()
+                    None if m.streaming => if m.thinking {
+                        "m:live-think"
+                    } else {
+                        "m:live-text"
                     }
+                    .to_string(),
                     None => transcript_message_block_local(*i, m.me, m.ts, &m.tool_id, &m.body),
                 };
                 transcript_block_key(reset_key, &local)
@@ -224,8 +225,15 @@ pub fn cockpit_start_ts(msgs: &[AgentMsg]) -> i64 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BubblePart {
     Text(String),
-    Image { id: String, src: String, name: String },
-    File { path: String, dir: bool },
+    Image {
+        id: String,
+        src: String,
+        name: String,
+    },
+    File {
+        path: String,
+        dir: bool,
+    },
     Skill(String),
     Terminal(String),
     Artifact(String),
@@ -233,13 +241,24 @@ pub enum BubblePart {
 
 /// `splitInlineTokens`: `@artifact`, `@terminal`, `@file`, `/skill`, then loose `@Title`
 /// artifacts (last, so overlaps match the composer's hydrate).
-pub fn split_inline_tokens(text: &str, artifact_id_for_title: &dyn Fn(&str) -> String) -> Vec<BubblePart> {
+pub fn split_inline_tokens(
+    text: &str,
+    artifact_id_for_title: &dyn Fn(&str) -> String,
+) -> Vec<BubblePart> {
     let mut toks: Vec<(usize, usize, BubblePart)> = Vec::new();
     for h in artifact_at_hits(text) {
-        toks.push((h.start, h.end - h.start, BubblePart::Artifact(h.body.unwrap_or("").into())));
+        toks.push((
+            h.start,
+            h.end - h.start,
+            BubblePart::Artifact(h.body.unwrap_or("").into()),
+        ));
     }
     for h in terminal_at_hits(text) {
-        toks.push((h.start, h.end - h.start, BubblePart::Terminal(h.body.unwrap_or("").into())));
+        toks.push((
+            h.start,
+            h.end - h.start,
+            BubblePart::Terminal(h.body.unwrap_or("").into()),
+        ));
     }
     for h in file_at_hits(text) {
         if let Some(p) = h.body {
@@ -292,18 +311,28 @@ pub fn split_inline_tokens(text: &str, artifact_id_for_title: &dyn Fn(&str) -> S
 }
 
 fn att_src(a: &ChatAttachmentView) -> &str {
-    if a.data_url.is_empty() { &a.url } else { &a.data_url }
+    if a.data_url.is_empty() {
+        &a.url
+    } else {
+        &a.data_url
+    }
 }
 
 /// `bubbleParts`: attachment markers become images where the row carries them; images the
 /// text never placed follow at the end.
-pub fn bubble_parts(m: &AgentMsg, artifact_id_for_title: &dyn Fn(&str) -> String) -> Vec<BubblePart> {
+pub fn bubble_parts(
+    m: &AgentMsg,
+    artifact_id_for_title: &dyn Fn(&str) -> String,
+) -> Vec<BubblePart> {
     let body = m.body.as_str();
     let mut parts = Vec::new();
     let mut last = 0;
     for h in attachment_hits(body) {
         if h.start > last {
-            parts.extend(split_inline_tokens(&body[last..h.start], artifact_id_for_title));
+            parts.extend(split_inline_tokens(
+                &body[last..h.start],
+                artifact_id_for_title,
+            ));
         }
         let id = h.body.unwrap_or("");
         let att = m.attachments.iter().find(|a| a.id == id);
@@ -311,7 +340,10 @@ pub fn bubble_parts(m: &AgentMsg, artifact_id_for_title: &dyn Fn(&str) -> String
         if src.is_empty() {
             parts.push(BubblePart::Text(body[h.start..h.end].to_string()));
         } else {
-            let name = att.map(|a| a.name.as_str()).filter(|n| !n.is_empty()).unwrap_or(id);
+            let name = att
+                .map(|a| a.name.as_str())
+                .filter(|n| !n.is_empty())
+                .unwrap_or(id);
             parts.push(BubblePart::Image {
                 id: id.into(),
                 src: src.into(),
@@ -335,7 +367,11 @@ pub fn bubble_parts(m: &AgentMsg, artifact_id_for_title: &dyn Fn(&str) -> String
             parts.push(BubblePart::Image {
                 id: a.id.clone(),
                 src: src.into(),
-                name: if a.name.is_empty() { a.id.clone() } else { a.name.clone() },
+                name: if a.name.is_empty() {
+                    a.id.clone()
+                } else {
+                    a.name.clone()
+                },
             });
         }
     }
@@ -400,8 +436,17 @@ mod tests {
             }),
         ];
         let b = group_blocks(&msgs);
-        assert_eq!(b, vec![Block::Steps { start: 0, rows: vec![0, 1, 2] }]);
-        assert_eq!(group_summary(&msgs, &[0, 1, 2], &[0, 1, 2], ToolCx::default()), "2 tool calls");
+        assert_eq!(
+            b,
+            vec![Block::Steps {
+                start: 0,
+                rows: vec![0, 1, 2]
+            }]
+        );
+        assert_eq!(
+            group_summary(&msgs, &[0, 1, 2], &[0, 1, 2], ToolCx::default()),
+            "2 tool calls"
+        );
 
         // A final reply stays visible when compaction follows the turn.
         let msgs = vec![
@@ -430,12 +475,17 @@ mod tests {
             b,
             vec![
                 Block::Msg(0),
-                Block::Steps { start: 1, rows: vec![1, 2, 4] },
+                Block::Steps {
+                    start: 1,
+                    rows: vec![1, 2, 4]
+                },
                 Block::Msg(3),
                 Block::Msg(5),
             ]
         );
-        assert!(group_summary(&msgs, &[1, 2, 4], &[1, 2, 4], ToolCx::default()).contains("compaction"));
+        assert!(
+            group_summary(&msgs, &[1, 2, 4], &[1, 2, 4], ToolCx::default()).contains("compaction")
+        );
     }
 
     #[test]
@@ -450,10 +500,22 @@ mod tests {
         });
         let foot = m(|x| x.turn_end = true);
         let reply = m(|x| x.body = "later".into());
-        assert_eq!(last_retry_error_index(&[me.clone(), err.clone(), foot.clone()], false, false, true), Some(1));
-        assert_eq!(last_retry_error_index(&[err.clone(), reply], false, false, true), None);
-        assert_eq!(last_retry_error_index(&[err.clone(), me], false, false, true), None);
-        assert_eq!(last_retry_error_index(&[err.clone()], false, true, true), None);
+        assert_eq!(
+            last_retry_error_index(&[me.clone(), err.clone(), foot.clone()], false, false, true),
+            Some(1)
+        );
+        assert_eq!(
+            last_retry_error_index(&[err.clone(), reply], false, false, true),
+            None
+        );
+        assert_eq!(
+            last_retry_error_index(&[err.clone(), me], false, false, true),
+            None
+        );
+        assert_eq!(
+            last_retry_error_index(&[err.clone()], false, true, true),
+            None
+        );
         assert_eq!(last_retry_error_index(&[err], true, false, true), None);
     }
 
@@ -462,7 +524,9 @@ mod tests {
         let none = |_: &str| String::new();
         let msg = m(|x| {
             x.me = true;
-            x.body = "how does @PROGRESS.md compare to @src/ and /land-it ⟦attachment:i1⟧ @terminal:t1".into();
+            x.body =
+                "how does @PROGRESS.md compare to @src/ and /land-it ⟦attachment:i1⟧ @terminal:t1"
+                    .into();
             x.attachments = vec![
                 ChatAttachmentView {
                     id: "i1".into(),
@@ -479,13 +543,31 @@ mod tests {
         });
         let parts = bubble_parts(&msg, &none);
         assert_eq!(parts[0], BubblePart::Text("how does ".into()));
-        assert_eq!(parts[1], BubblePart::File { path: "PROGRESS.md".into(), dir: false });
-        assert_eq!(parts[3], BubblePart::File { path: "src/".into(), dir: true });
+        assert_eq!(
+            parts[1],
+            BubblePart::File {
+                path: "PROGRESS.md".into(),
+                dir: false
+            }
+        );
+        assert_eq!(
+            parts[3],
+            BubblePart::File {
+                path: "src/".into(),
+                dir: true
+            }
+        );
         assert_eq!(parts[5], BubblePart::Skill("land-it".into()));
         assert!(matches!(&parts[7], BubblePart::Image { name, .. } if name == "shot.png"));
         assert_eq!(parts[9], BubblePart::Terminal("t1".into()));
         assert!(matches!(parts.last(), Some(BubblePart::Image { id, .. }) if id == "i2"));
-        let titled = |t: &str| if t == "Notes" { "art-1".to_string() } else { String::new() };
+        let titled = |t: &str| {
+            if t == "Notes" {
+                "art-1".to_string()
+            } else {
+                String::new()
+            }
+        };
         let parts = split_inline_tokens("review @Notes now", &titled);
         assert_eq!(parts[1], BubblePart::Artifact("art-1".into()));
     }

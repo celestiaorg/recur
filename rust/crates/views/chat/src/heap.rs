@@ -106,9 +106,7 @@ pub fn msg_bytes(m: &AgentMsg) -> usize {
     if let Some(log) = &m.log {
         n += match log.as_ref() {
             ChatLog::Fact { text, data, .. } => OBJ_HDR + s(text) + s(data),
-            ChatLog::Session(sess) => {
-                OBJ_HDR + array_bytes(sess.messages.iter().map(msg_bytes))
-            }
+            ChatLog::Session(sess) => OBJ_HDR + array_bytes(sess.messages.iter().map(msg_bytes)),
             ChatLog::Sessions { sessions, .. } => array_bytes(
                 sessions
                     .iter()
@@ -129,8 +127,16 @@ fn snapshot_bytes(h: &ChatHeapSnapshot) -> usize {
     for (k, v) in &h.chat {
         n += key(k) + array_bytes(v.iter().map(msg_bytes));
     }
-    n += h.usage.keys().map(|k| key(k) + OBJ_HDR + SCALAR_BYTES * 6).sum::<usize>();
-    n += h.input.iter().map(|(k, v)| key(k) + string_bytes(v)).sum::<usize>();
+    n += h
+        .usage
+        .keys()
+        .map(|k| key(k) + OBJ_HDR + SCALAR_BYTES * 6)
+        .sum::<usize>();
+    n += h
+        .input
+        .iter()
+        .map(|(k, v)| key(k) + string_bytes(v))
+        .sum::<usize>();
     for (k, v) in &h.attachments {
         n += key(k) + array_bytes(v.iter().map(draft_bytes));
     }
@@ -330,7 +336,10 @@ mod tests {
     }
 
     fn map<T: Clone>(pairs: &[(&str, T)]) -> BTreeMap<String, T> {
-        pairs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect()
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect()
     }
 
     fn usage(input: i64, window: i64, compacted: bool) -> ContextUsage {
@@ -416,7 +425,10 @@ mod tests {
                 ..Default::default()
             },
         );
-        assert_eq!(c.get("ws").expect("hit").chat.keys().collect::<Vec<_>>(), ["ws\tPA"]);
+        assert_eq!(
+            c.get("ws").expect("hit").chat.keys().collect::<Vec<_>>(),
+            ["ws\tPA"]
+        );
         c.put("ws", &ChatHeapSnapshot::default());
         assert_eq!(c.get("ws").expect("hit").chat["ws\tPA"], vec![body("a")]);
         c.put(
@@ -487,7 +499,10 @@ mod tests {
                 ..Default::default()
             },
         );
-        assert_eq!(c.get("ws").expect("hit").pickers.keys().collect::<Vec<_>>(), ["ws\tPA"]);
+        assert_eq!(
+            c.get("ws").expect("hit").pickers.keys().collect::<Vec<_>>(),
+            ["ws\tPA"]
+        );
         c.put(
             "ws",
             &ChatHeapSnapshot {
@@ -508,7 +523,10 @@ mod tests {
                 ..Default::default()
             },
         );
-        assert_eq!(c.get("ws").expect("hit").pickers["ws\tPA"].model, "claude-code/opus");
+        assert_eq!(
+            c.get("ws").expect("hit").pickers["ws\tPA"].model,
+            "claude-code/opus"
+        );
         assert!(c.get("ws").expect("hit").chat.is_empty());
         let mut c = ChatHeapCache::default();
         c.put(
@@ -530,10 +548,16 @@ mod tests {
         c.put(
             "ws",
             &ChatHeapSnapshot {
-                chat: map(&[("ws\tPA", vec![body("keep")]), ("ws\tPA2", vec![body("gone")])]),
+                chat: map(&[
+                    ("ws\tPA", vec![body("keep")]),
+                    ("ws\tPA2", vec![body("gone")]),
+                ]),
                 input: map(&[("ws\tPA", "a".to_string()), ("ws\tPA2", "b".to_string())]),
                 attachments: map(&[("ws\tPA2", vec![draft("x")])]),
-                pending: map(&[("ws\tPA", vec![pending("keep")]), ("ws\tPA2", vec![pending("gone")])]),
+                pending: map(&[
+                    ("ws\tPA", vec![pending("keep")]),
+                    ("ws\tPA2", vec![pending("gone")]),
+                ]),
                 hold_pending: map(&[("ws\tPA2", true)]),
                 simplify: map(&[("ws\tPA", false), ("ws\tPA2", true)]),
                 ..Default::default()

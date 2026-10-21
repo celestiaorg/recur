@@ -40,7 +40,11 @@ pub fn highlight_bash(src: &str) -> Vec<ShRun> {
     while i < n {
         let rest = &src[i..];
         let c = rest.chars().next().unwrap_or(' ');
-        let prev_space = i == 0 || src[..i].chars().next_back().is_some_and(char::is_whitespace);
+        let prev_space = i == 0
+            || src[..i]
+                .chars()
+                .next_back()
+                .is_some_and(char::is_whitespace);
         if c == '#' && prev_space {
             let j = rest.find('\n').map_or(n, |k| i + k);
             push(&mut out, &src[i..j], "sh-com");
@@ -93,7 +97,9 @@ pub fn highlight_bash(src: &str) -> Vec<ShRun> {
             i += c.len_utf8();
             continue;
         }
-        let word = WORD.find(rest).map_or(&rest[..c.len_utf8()], |m| m.as_str());
+        let word = WORD
+            .find(rest)
+            .map_or(&rest[..c.len_utf8()], |m| m.as_str());
         if FLAG.is_match(word) {
             push(&mut out, word, "sh-flag");
         } else if at_cmd_start {
@@ -116,7 +122,10 @@ mod tests {
     use super::*;
 
     fn classes(src: &str) -> Vec<(&'static str, String)> {
-        highlight_bash(src).into_iter().map(|(t, c)| (c, t)).collect()
+        highlight_bash(src)
+            .into_iter()
+            .map(|(t, c)| (c, t))
+            .collect()
     }
 
     #[test]
@@ -131,7 +140,10 @@ mod tests {
         assert!(got.contains(&("sh-kw", "echo".to_string())));
         assert!(got.contains(&("sh-str", "\"$HOME\"".to_string())));
         assert_eq!(got.last(), Some(&("sh-com", "# done".to_string())));
-        let text: String = highlight_bash("a | b\nc $X").into_iter().map(|r| r.0).collect();
+        let text: String = highlight_bash("a | b\nc $X")
+            .into_iter()
+            .map(|r| r.0)
+            .collect();
         assert_eq!(text, "a | b\nc $X");
         assert!(classes("cat ${DIR}/x").contains(&("sh-var", "${DIR}".to_string())));
         assert!(classes("ls 2>&1").contains(&("sh-op", "2>&1".to_string())));

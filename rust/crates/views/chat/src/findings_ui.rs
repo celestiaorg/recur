@@ -127,7 +127,9 @@ pub struct SeverityTally {
 const SEV_ORDER: [&str; 5] = ["critical", "high", "medium", "low", "info"];
 
 /// `findingSeverityTally`: known severities in order, then any others.
-pub fn finding_severity_tally<'a>(severities: impl IntoIterator<Item = &'a str>) -> Vec<SeverityTally> {
+pub fn finding_severity_tally<'a>(
+    severities: impl IntoIterator<Item = &'a str>,
+) -> Vec<SeverityTally> {
     let mut counts: Vec<(String, usize)> = Vec::new();
     for s in severities {
         let s = if s.is_empty() { "info" } else { s }.to_lowercase();
@@ -139,10 +141,13 @@ pub fn finding_severity_tally<'a>(severities: impl IntoIterator<Item = &'a str>)
     let mut out: Vec<SeverityTally> = SEV_ORDER
         .iter()
         .filter_map(|s| {
-            counts.iter().find(|(k, _)| k == s).map(|(_, n)| SeverityTally {
-                severity: s.to_string(),
-                count: *n,
-            })
+            counts
+                .iter()
+                .find(|(k, _)| k == s)
+                .map(|(_, n)| SeverityTally {
+                    severity: s.to_string(),
+                    count: *n,
+                })
         })
         .collect();
     for (k, n) in &counts {
@@ -289,7 +294,11 @@ pub fn parse_list_findings_result(text: &str) -> Option<ListedFindings> {
     };
     let status = str_of(&raw, "status");
     Some(ListedFindings {
-        status: if status.is_empty() { "open".into() } else { status },
+        status: if status.is_empty() {
+            "open".into()
+        } else {
+            status
+        },
         count: match raw.get("count") {
             Some(Value::Number(n)) => n.as_f64().map_or(0, |f| f as i64),
             _ => rows.len() as i64,
@@ -310,11 +319,7 @@ fn prefer_payload_text(payload: &str, store: &str) -> String {
 }
 
 fn prefer_payload_line(payload: i64, store: i64) -> i64 {
-    if payload > 0 {
-        payload
-    } else {
-        store.max(0)
-    }
+    if payload > 0 { payload } else { store.max(0) }
 }
 
 /// `hydrateListedFindings`: fill truncated rows from the store (same ids).
@@ -362,7 +367,11 @@ pub fn hydrate_listed_findings(listed: ListedFindings, store: &[Finding]) -> Lis
 }
 
 /// `resolveListFindings`: the tool payload, hydrated; `None` when unparseable or failed.
-pub fn resolve_list_findings(result: &str, result_error: bool, store: &[Finding]) -> Option<ListedFindings> {
+pub fn resolve_list_findings(
+    result: &str,
+    result_error: bool,
+    store: &[Finding],
+) -> Option<ListedFindings> {
     if result_error {
         return None;
     }
@@ -400,8 +409,14 @@ mod tests {
     #[test]
     fn loc_labels() {
         assert_eq!(finding_loc_suffix(294, 300), ":294–300");
-        assert_eq!(finding_loc_label("docs/bundles.md", 294, 300), "bundles.md:294–300");
-        assert_eq!(finding_loc_label("internal/engine/loop.go", 765, 0), "loop.go:765");
+        assert_eq!(
+            finding_loc_label("docs/bundles.md", 294, 300),
+            "bundles.md:294–300"
+        );
+        assert_eq!(
+            finding_loc_label("internal/engine/loop.go", 765, 0),
+            "loop.go:765"
+        );
         assert_eq!(finding_loc_label("", 0, 0), "");
     }
 
@@ -487,9 +502,18 @@ mod tests {
         assert_eq!(
             finding_severity_tally(["low", "high", "high", "mystery"]),
             vec![
-                SeverityTally { severity: "high".into(), count: 2 },
-                SeverityTally { severity: "low".into(), count: 1 },
-                SeverityTally { severity: "mystery".into(), count: 1 },
+                SeverityTally {
+                    severity: "high".into(),
+                    count: 2
+                },
+                SeverityTally {
+                    severity: "low".into(),
+                    count: 1
+                },
+                SeverityTally {
+                    severity: "mystery".into(),
+                    count: 1
+                },
             ]
         );
     }
@@ -503,17 +527,25 @@ mod tests {
             .to_string(),
         )
         .expect("parsed");
-        assert_eq!(hydrate_listed_findings(listed, &[]).findings[0].message, "x");
+        assert_eq!(
+            hydrate_listed_findings(listed, &[]).findings[0].message,
+            "x"
+        );
     }
 
     #[test]
     fn titles() {
         assert_eq!(finding_title(""), "Finding");
-        assert_eq!(finding_title("Handle the error. Then retry."), "Handle the error.");
+        assert_eq!(
+            finding_title("Handle the error. Then retry."),
+            "Handle the error."
+        );
         assert_eq!(finding_title("no stop here"), "no stop here");
         let long = "x".repeat(130);
         assert_eq!(finding_title(&long), format!("{}…", "x".repeat(117)));
-        assert!(finding_body_needed("Handle the error. Then retry with backoff."));
+        assert!(finding_body_needed(
+            "Handle the error. Then retry with backoff."
+        ));
         assert!(!finding_body_needed("Handle the error."));
         assert!(finding_body_needed("Handle\nthe error."));
         assert_eq!(finding_sev_icon("HIGH"), IconName::SevHigh);

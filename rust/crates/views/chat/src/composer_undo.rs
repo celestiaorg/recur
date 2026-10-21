@@ -91,7 +91,8 @@ impl<A: HasId + Clone> ComposerUndo<A> {
         } else {
             0
         };
-        let caret_jump = (utf16_at(&s.text, s.caret) as i64 - utf16_at(&top.text, top.caret) as i64).abs();
+        let caret_jump =
+            (utf16_at(&s.text, s.caret) as i64 - utf16_at(&top.text, top.caret) as i64).abs();
         let merge = kind != 0
             && kind == self.kind
             && now_ms.saturating_sub(self.last_at) < self.pause_ms

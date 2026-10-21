@@ -482,6 +482,55 @@
           "wait": 400
         }
       ]
+    },
+    {
+      "name": "editor/code",
+      "width": 560,
+      "height": 320,
+      "theme": "default",
+      "tolerance": 14800,
+      "steps": [
+        {
+          "wait": 300
+        }
+      ]
+    },
+    {
+      "name": "editor/paper",
+      "width": 560,
+      "height": 320,
+      "theme": "paper",
+      "tolerance": 14340,
+      "steps": [
+        {
+          "wait": 300
+        }
+      ]
+    },
+    {
+      "name": "editor/find",
+      "width": 560,
+      "height": 320,
+      "theme": "default",
+      "tolerance": 13860,
+      "steps": [
+        {
+          "click": [
+            300,
+            150
+          ]
+        },
+        {
+          "key": "Meta+f"
+        },
+        {
+          "type": "fmt"
+        },
+        {
+          "wait": 300
+        }
+      ],
+      "hardTolerance": 59
     }
   ]
 }

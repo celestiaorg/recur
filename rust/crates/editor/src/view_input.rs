@@ -1048,8 +1048,13 @@ impl EditorView {
             && y >= by
             && y < by + view_h
         {
-            let thumb = (view_h * view_h / content_h.max(1.0)).max(20.0).min(view_h);
-            let ty = by + (view_h - thumb) * (self.scroll_top / f.max_scroll_top.max(1.0));
+            let (thumb, at) = recur_ui::widgets::scrollbar::classic_thumb(
+                self.scroll_top,
+                content_h.round(),
+                view_h,
+                view_h,
+            );
+            let ty = by + at;
             return Some((true, y >= ty && y < ty + thumb, ty, thumb, by, view_h));
         }
         if f.max_scroll_left > 0.0
@@ -1059,10 +1064,10 @@ impl EditorView {
             && x < bx + f.scroller_width
         {
             let track = f.scroller_width;
-            let thumb = (track * track / (f.gutter_width + f.content_width).max(1.0))
-                .max(20.0)
-                .min(track);
-            let tx = bx + (track - thumb) * (self.scroll_left / f.max_scroll_left.max(1.0));
+            let total = (f.gutter_width + f.content_width).round();
+            let (thumb, at) =
+                recur_ui::widgets::scrollbar::classic_thumb(self.scroll_left, total, track, track);
+            let tx = bx + at;
             return Some((false, x >= tx && x < tx + thumb, tx, thumb, bx, track));
         }
         None
@@ -1278,9 +1283,12 @@ impl EditorView {
                     } else {
                         f.gutter_width + f.content_width
                     };
-                    let thumb = (track_len * track_len / content.max(1.0))
-                        .max(20.0)
-                        .min(track_len);
+                    let (thumb, _) = recur_ui::widgets::scrollbar::classic_thumb(
+                        0.0,
+                        content.round(),
+                        track_len,
+                        track_len,
+                    );
                     let along = if vertical {
                         f32::from(e.position.y)
                     } else {

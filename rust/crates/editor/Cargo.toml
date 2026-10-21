@@ -7,6 +7,11 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# Parity scenes for `rust/tools/ui-parity` and the shipped-bundle TextMate loader
+# the example shares.
+gallery = ["dep:recur-bundles"]
+
 [dependencies]
 chrono.workspace = true
 futures.workspace = true
@@ -20,10 +25,11 @@ sha2.workspace = true
 unicode-normalization.workspace = true
 pulldown-cmark.workspace = true
 unicode-segmentation.workspace = true
+recur-bundles = { workspace = true, optional = true }
 
 [lints]
 workspace = true
 
 [dev-dependencies]
-recur-bundles.workspace = true
+recur-editor = { path = ".", features = ["gallery"] }
 gpui = { workspace = true, features = ["test-support"] }

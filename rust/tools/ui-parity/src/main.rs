@@ -58,7 +58,10 @@ fn keystroke(key: &str) -> String {
         "End" => "end".into(),
         "Space" | " " => "space".into(),
         "Backspace" => "backspace".into(),
-        other => other.replace('+', "-").to_lowercase(),
+        other => other
+            .replace("Meta+", "cmd-")
+            .replace('+', "-")
+            .to_lowercase(),
     }
 }
 
@@ -90,7 +93,8 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
         };
         let handle = cx.update(|cx| {
             cx.open_window(options, |window, cx| {
-                let view = gallery::build(&name, window, cx)
+                let view = recur_editor::gallery::build(&name, window, cx)
+                    .or_else(|| gallery::build(&name, window, cx))
                     .unwrap_or_else(|| cx.new(|_| recur_ui::gallery::Missing).into());
                 let document = cx.focus_handle();
                 window.focus(&document, cx);
@@ -141,7 +145,11 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
                                 } else {
                                     ch.to_string()
                                 };
-                                window.key_down(&ks, false, cx);
+                                // Unhandled keys insert text through the input handler, as
+                                // the platform does for a typed character.
+                                if let Ok(k) = Keystroke::parse(&ks) {
+                                    window.dispatch_keystroke(k, cx);
+                                }
                                 window.key_up(&ks, cx);
                             }
                         }
@@ -515,7 +523,7 @@ fn main() -> Result<()> {
     let unknown: Vec<&str> = specs
         .iter()
         .map(|s| s.name.as_str())
-        .filter(|n| !gallery::exists(n))
+        .filter(|n| !gallery::exists(n) && !recur_editor::gallery::exists(n))
         .collect();
     if !unknown.is_empty() {
         bail!("scenes without a Rust builder: {unknown:?}");

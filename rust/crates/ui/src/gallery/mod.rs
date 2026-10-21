@@ -78,6 +78,10 @@ impl gpui_kit::Render for Missing {
     }
 }
 
+/// Scene prefixes built by other crates' galleries (`recur_editor::gallery`), which the parity
+/// tool asks first.
+pub const EXTERNAL: &[&str] = &["editor/"];
+
 /// Whether a builder exists for this scene name.
 pub fn exists(name: &str) -> bool {
     scenes::NAMES.iter().any(|p| scenes::matches(p, name))
@@ -99,7 +103,7 @@ mod tests {
         let missing: Vec<&str> = specs
             .iter()
             .map(|s| s.name.as_str())
-            .filter(|n| !exists(n))
+            .filter(|n| !exists(n) && !EXTERNAL.iter().any(|p| n.starts_with(p)))
             .collect();
         assert!(missing.is_empty(), "no builder for {missing:?}");
     }

@@ -19,6 +19,7 @@ use crate::view::{EditorKind, EditorView, Frame, GpuiMeasure};
 use crate::view_queries::ViewQueries;
 use gpui_kit::Styled as _;
 use recur_ui::IconName;
+use recur_ui::widgets::scrollbar::classic_thumb;
 
 /// A gutter column.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -44,6 +45,18 @@ pub struct GutterColumn {
 pub const COLLAPSED_HEIGHT: f32 = 5.0 + 10.5 * 1.4 + 5.0 + 2.0;
 /// `.cm-deletedChunk` left padding.
 pub const DELETED_CHUNK_PADDING: f32 = 6.0;
+
+/// A box as WebKit paints it: each edge snapped to the device grid, ties
+/// down and right (GPUI rounds origin and size apart).
+fn snap_to_device(b: Bounds<Pixels>, scale: f32) -> Bounds<Pixels> {
+    let snap = |v: f32| (v * scale + 0.5).floor() / scale;
+    let (x0, y0) = (snap(f32::from(b.origin.x)), snap(f32::from(b.origin.y)));
+    let (x1, y1) = (
+        snap(f32::from(b.origin.x + b.size.width)),
+        snap(f32::from(b.origin.y + b.size.height)),
+    );
+    Bounds::new(point(px(x0), px(y0)), size(px(x1 - x0), px(y1 - y0)))
+}
 
 /// Lint severity -> icon (`lintSevIcon`).
 fn lint_icon(severity: crate::lint::Severity) -> IconName {
@@ -466,7 +479,10 @@ impl Element for EditorElement {
         let paint_ops = |ops: &mut Vec<Op>, window: &mut Window, cx: &mut App| {
             for op in ops.drain(..) {
                 match op {
-                    Op::Quad(q) => window.paint_quad(q),
+                    Op::Quad(mut q) => {
+                        q.bounds = snap_to_device(q.bounds, window.scale_factor());
+                        window.paint_quad(q)
+                    }
                     Op::Text {
                         line,
                         origin,
@@ -725,6 +741,10 @@ impl EditorView {
             f.visible_lines = (first, last);
             f.rendered_lines = rendered;
             f.content_left = bx + gutter_width;
+        }
+        // Lines are 1-based: (0, 0) is a frame not laid out yet.
+        if prev_rendered.is_some_and(|p| p.0 > 0 && p != rendered) {
+            self.fold_markers_live = true;
         }
         if prev_rendered != Some(rendered) {
             let win = self.highlight_window(window);
@@ -1219,7 +1239,7 @@ impl EditorView {
 
         // Cursors (drawSelection cursor layer, or the modal block cursor)
         // and the drop cursor.
-        let blink_visible = self.blink_on || self.metrics.cursor_blink_ms == 0;
+        let blink_visible = self.caret_visible(cx);
         if let Some(fat) = self.fat_cursor_mode() {
             if !focused || blink_visible {
                 self.plan_fat_cursors(&mut plan, fat, focused, text_left, doc_top, &tb, window);
@@ -1294,31 +1314,34 @@ impl EditorView {
         }
         // Scrollbars.
         let tokens = theme.tokens;
+        // WebKit's custom scrollbar thumbs: whole-pixel length and offset over
+        // the pixel-snapped content size, `border-radius: 8px` scaled down to
+        // fit as CSS clamps radii.
+        let thumb_radius = |len: f32| px(8.0f32.min(scrollbar_size() / 2.0).min(len / 2.0));
         if vbar || content_h > view_h {
-            let track = view_h;
-            let thumb = (track * view_h / content_h.max(1.0)).max(20.0).min(track);
-            let y = by + (track - thumb) * (self.scroll_top / (content_h - view_h).max(1.0));
-            plan.scrollbars.push(Op::Quad(
-                fill(
-                    rect(bx + bw - scrollbar_size(), y, scrollbar_size(), thumb),
-                    h(tokens.scrollbar_thumb),
-                )
-                .corner_radii(px(8.0)),
-            ));
+            let (len, at) = classic_thumb(self.scroll_top, content_h.round(), view_h, view_h);
+            if len > 0.0 {
+                plan.scrollbars.push(Op::Quad(
+                    fill(
+                        rect(bx + bw - scrollbar_size(), by + at, scrollbar_size(), len),
+                        h(tokens.scrollbar_thumb),
+                    )
+                    .corner_radii(thumb_radius(len)),
+                ));
+            }
         }
         if hbar {
-            let track = scroller_width;
-            let thumb = (track * scroller_width / (gutter_width + content_w).max(1.0))
-                .max(20.0)
-                .min(track);
-            let x = bx + (track - thumb) * (self.scroll_left / (content_w - text_area_w).max(1.0));
-            plan.scrollbars.push(Op::Quad(
-                fill(
-                    rect(x, by + bh - scrollbar_size(), thumb, scrollbar_size()),
-                    h(tokens.scrollbar_thumb),
-                )
-                .corner_radii(px(8.0)),
-            ));
+            let total = (gutter_width + content_w).round();
+            let (len, at) = classic_thumb(self.scroll_left, total, scroller_width, scroller_width);
+            if len > 0.0 {
+                plan.scrollbars.push(Op::Quad(
+                    fill(
+                        rect(bx + at, by + bh - scrollbar_size(), len, scrollbar_size()),
+                        h(tokens.scrollbar_thumb),
+                    )
+                    .corner_radii(thumb_radius(len)),
+                ));
+            }
         }
         plan.crosshair = self.prefs.rectangular_select && window.modifiers().alt;
         plan
@@ -1932,7 +1955,11 @@ impl EditorView {
                             top: 0.0,
                             height,
                         };
-                        if let Some(marker) = crate::fold::fold_marker(&self.state, block) {
+                        if let Some(marker) = self
+                            .fold_markers_live
+                            .then(|| crate::fold::fold_marker(&self.state, block))
+                            .flatten()
+                        {
                             let t = marker.text();
                             let shaped = window.text_system().shape_line(
                                 SharedString::from(t),

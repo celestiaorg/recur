@@ -239,7 +239,8 @@ pub struct EditorView {
     pub(crate) scroll_left: f32,
     pub(crate) pending_scroll: Option<ScrollTarget>,
     pub(crate) frame: Option<Frame>,
-    pub(crate) blink_on: bool,
+    /// When the caret's `cm-blink` animation (re)started.
+    pub(crate) blink_start: std::time::Instant,
     pub(crate) blink_epoch: u64,
     pub(crate) blink_task: Option<Task<()>>,
     pub(crate) completion: CompletionDriver,
@@ -250,6 +251,12 @@ pub struct EditorView {
     pub(crate) dialogs: Vec<crate::panels::Dialog>,
     pub(crate) dialog_seq: u64,
     pub(crate) rename_prompt: Option<crate::panels::RenamePrompt>,
+    /// `foldGutter` has built its markers since the fold service arrived.
+    /// A grammar loading at mount reaches CodeMirror by compartment
+    /// reconfigure, which rebuilds no markers, so they appear on the first
+    /// edit, fold or viewport change; an already loaded grammar shows them
+    /// at mount.
+    pub(crate) fold_markers_live: bool,
     /// The panel control under the pointer (hover styles on card buttons).
     pub(crate) hovered_control: Option<&'static str>,
     /// The gutter / chip `title` under the pointer and its box.
@@ -327,6 +334,13 @@ impl EditorView {
                     .resolve_scope_for_path(&options.path, first_line(&options.doc))
             })
             .unwrap_or_default();
+        if let (Some(tm), Some(parsed)) = (options.textmate.as_ref(), options.theme.as_ref()) {
+            tm.borrow_mut().activate_theme(parsed.clone());
+        }
+        let grammar_resident = options
+            .textmate
+            .as_ref()
+            .is_some_and(|tm| tm.borrow().catalog.has_grammar(&scope));
         let metrics = EditorMetrics::from_prefs(&options.prefs);
         let theme = EditorTheme::resolve(
             options.theme.as_deref(),
@@ -370,7 +384,7 @@ impl EditorView {
             scroll_left: 0.0,
             pending_scroll: None,
             frame: None,
-            blink_on: true,
+            blink_start: std::time::Instant::now(),
             blink_epoch: 0,
             blink_task: None,
             completion: CompletionDriver::default(),
@@ -381,6 +395,7 @@ impl EditorView {
             dialogs: Vec::new(),
             dialog_seq: 0,
             rename_prompt: None,
+            fold_markers_live: grammar_resident,
             hovered_control: None,
             title_seen: None,
             revert: RevertHover::default(),
@@ -650,6 +665,9 @@ impl EditorView {
             (None, None) => false,
             _ => true,
         };
+        if tr.doc_changed() || folds_changed {
+            self.fold_markers_live = true;
+        }
         if tr.doc_changed() || folds_changed || merge_changed || tr.reconfigured() {
             self.relayout_after(
                 &tr,
@@ -888,25 +906,27 @@ impl EditorView {
     /// Caret blink (`drawSelection({ cursorBlinkRate })`): solid for a
     /// period after activity, then on/off halves.
     pub(crate) fn restart_blink(&mut self, cx: &mut Context<Self>) {
-        self.blink_on = true;
+        self.blink_start = std::time::Instant::now();
         self.blink_epoch += 1;
         let rate = self.metrics.cursor_blink_ms;
-        if rate == 0 {
+        if rate == 0 || recur_ui::motion::is_frozen(cx) {
             self.blink_task = None;
             return;
         }
         let epoch = self.blink_epoch;
+        let start = self.blink_start;
         self.blink_task = Some(cx.spawn(async move |this, cx| {
             loop {
+                let half = rate / 2;
+                let into = start.elapsed().as_millis() as u64 % half.max(1);
                 cx.background_executor()
-                    .timer(Duration::from_millis(rate / 2))
+                    .timer(Duration::from_millis(half - into + 1))
                     .await;
                 let alive = this
                     .update(cx, |v, cx| {
                         if v.blink_epoch != epoch {
                             return false;
                         }
-                        v.blink_on = !v.blink_on;
                         cx.notify();
                         true
                     })
@@ -916,6 +936,17 @@ impl EditorView {
                 }
             }
         }));
+    }
+
+    /// `cm-blink` (`steps(1)`, opaque for the first half of each period),
+    /// on recur-ui's motion clock so parity captures freeze it.
+    pub(crate) fn caret_visible(&self, cx: &gpui_kit::App) -> bool {
+        let rate = self.metrics.cursor_blink_ms;
+        if rate == 0 {
+            return true;
+        }
+        let t = recur_ui::motion::elapsed(self.blink_start, cx).as_millis() as u64;
+        t % rate < rate / 2
     }
 
     fn set_dirty(&mut self, next: bool, cx: &mut Context<Self>) {
@@ -1068,6 +1099,8 @@ impl EditorView {
     /// New prefs: layout, keymap mode, indentation and features.
     pub fn set_prefs(&mut self, prefs: EditorPrefs, window: &mut Window, cx: &mut Context<Self>) {
         self.prefs = prefs;
+        // The features compartment builds a fresh `foldGutter()`.
+        self.fold_markers_live = true;
         self.metrics = EditorMetrics::from_prefs(&self.prefs);
         self.font = editor_font(&self.metrics);
         let config = self.state_config();
@@ -1096,6 +1129,9 @@ impl EditorView {
     ) {
         self.parsed_theme = parsed;
         self.dark_fallback = dark_fallback;
+        if let (Some(tm), Some(parsed)) = (self.tm.as_ref(), self.parsed_theme.as_ref()) {
+            tm.borrow_mut().activate_theme(parsed.clone());
+        }
         self.theme = EditorTheme::resolve(
             self.parsed_theme.as_deref(),
             dark_fallback,

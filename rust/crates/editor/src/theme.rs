@@ -15,8 +15,8 @@ pub fn chrome_font(family: recur_ui::fonts::Family) -> gpui_kit::Font {
     family.font(400., false, Default::default())
 }
 
-/// `editor.background` when a chrome-paired theme has none (`tm-theme.ts`).
-pub const CHROME_PAIRED_FALLBACK_BG: &str = "#1e1e1e";
+/// `editor.background` when a theme has none (`cm-themes.ts`, `tm-theme.ts`).
+pub const EDITOR_BACKGROUND_FALLBACK: &str = "#1e1e1e";
 
 /// `.cm-fat-cursor` (vim and emacs block cursor).
 pub fn fat_cursor() -> Rgba {
@@ -140,8 +140,9 @@ impl EditorMetrics {
     }
 
     /// The line box height in pixels (`font-size × line-height`).
+    /// A numeric `line-height` as WebKit lays it out: floored to 1/64 px.
     pub fn line_height(&self) -> f32 {
-        self.font_size * self.line_height_factor
+        (self.font_size * self.line_height_factor * 64.0).floor() / 64.0
     }
 }
 

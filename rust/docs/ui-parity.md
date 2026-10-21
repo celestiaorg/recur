@@ -17,7 +17,7 @@ A scene is a named, deterministic state at a fixed window size and theme. `rust/
 - **Candidate.** `cargo run -p recur-ui-parity -- render` builds each scene with `recur_ui::gallery::build` in a headless GPUI window (Metal renderer, scale 2) under a gpui-base `Root`, with document focus and the window active as in the page, motion frozen at the same time, and the same steps replayed.
 - **Diff.** `cargo run -p recur-ui-parity -- diff` writes heatmaps to `out/diff/` (gray equal, blue text, yellow anti-aliasing, red hard) and `out/report.json`. Channel deltas of one level are equal (8-bit compositing quantization). Other differing pixels are *text* (inside a reference text box or a file-icon glyph, which is font text), *anti-aliasing* (pixelmatch's detection, a soft edge whose value moved by at most a quarter of the local contrast, or up to three levels in a smooth region where WebKit dithers gradients), or *hard*. A scene passes when hard pixels are within its `hardTolerance` (0 unless explained below) and text plus anti-aliasing within its `tolerance`.
 
-Run everything with `wails3 task test:rust:ui-parity` (macOS: the reference is WebKit's macOS rendering). Pieces: in `rust/tools/ui-parity`, `pnpm exec playwright test` captures (`UI_PARITY_SCENES=a,b` to filter), then `cargo run -p recur-ui-parity -- check [scene…]` renders and diffs. `cargo run -p recur-ui --example gallery` shows every scene live and interactive in any theme. Every view port adds its scenes.
+Run everything with `wails3 task test:rust:ui-parity` (macOS: the reference is WebKit's macOS rendering). Pieces: in `rust/tools/ui-parity`, `pnpm exec playwright test` captures (`UI_PARITY_SCENES=a,b` to filter), then `cargo run -p recur-ui-parity -- check [scene…]` renders and diffs. `cargo run -p recur-ui --example gallery` shows every scene live and interactive in any theme. Every view port adds its scenes. A crate with its own gallery registers its scene prefix in `recur_ui::gallery::EXTERNAL` and is asked first by the parity tool (`recur_editor::gallery` builds `editor/*`).
 
 ### Why WebKit
 
@@ -61,6 +61,8 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 - **Backdrop blur.** The `.palette-bg` / `.nt-bg` scrims' `backdrop-filter: blur(2px)` is not drawn: GPUI has no backdrop filters. The scrim color matches.
 - **Element transforms.** GPUI cannot scale or translate an element tree, so the toast entrance's `scale(.98)` is dropped (the fade and 8px rise remain) and `translateY(-.5px)` on the ask toast's chevron becomes a device-pixel offset (exact at scale 2).
 - **Typed input text and caret.** Drawn by gpui-base's editor, not recur-ui text. Captures hide carets on both sides.
+- **Synthetic oblique.** The bundled code fonts have no italic faces, so WebKit slants the regular face for `font-style: italic` (TextMate comments, parameters). GPUI cannot transform glyphs, so the editor draws them upright. Counted as text in the diff.
+- **Editor code text.** The editor's content is a custom element that shapes and paints lines through GPUI's text system (as CodeMirror owns its DOM); its chrome (panels, tooltips, the vim panel) goes through recur-ui text. Glyph rasterization differences in code count as text.
 - **Overlay scroller.** The tab strip's `scrollbar-width: thin` scroller follows macOS overlay scrollers: it shows only after wheel scrolling, so programmatic reveals do not flash it.
 
 ## Hard-pixel allowances
@@ -72,6 +74,7 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 | `icon-picker/open` | 21 | Curved-edge coverage of the trigger ring and the selected cell's corners |
 | `tab-strip/overflow` | 4 | Curved-edge coverage at the scrolled chip's close button |
 | `overlays/misc-paper` | 15 | Curved-edge coverage of the popover and field corners over the light shadow |
+| `editor/find` | 59 | Curved-edge coverage of the focused find field's corners and ring, and the typed query, which gpui-base's editor draws |
 | `overlays/palette` | 388 | Keycaps centered at fractional positions inside a scrolled list land one device pixel apart (their row offset is not probed), and the list thumb's end rounds differently |
 
 ## Results
@@ -83,6 +86,9 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `armed-button/default` | 0 | 1486 | 436 | 2120 | 0 |
 | `buttons/default` | 0 | 4822 | 1624 | 7100 | 0 |
 | `buttons/paper` | 0 | 4849 | 1584 | 7080 | 0 |
+| `editor/code` | 0 | 13445 | 0 | 14800 | 0 |
+| `editor/find` | 59 | 12152 | 440 | 13860 | 59 |
+| `editor/paper` | 0 | 13033 | 0 | 14340 | 0 |
 | `icon-picker/closed` | 0 | 0 | 60 | 70 | 0 |
 | `icon-picker/open` | 21 | 0 | 392 | 440 | 21 |
 | `icons/app` | 0 | 0 | 86 | 100 | 0 |

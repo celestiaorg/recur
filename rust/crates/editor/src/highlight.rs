@@ -27,6 +27,26 @@ pub struct TextMate {
 
 pub type SharedTextMate = Rc<RefCell<TextMate>>;
 
+impl TextMate {
+    /// Make `parsed` the active editor theme as `editorThemeExtension` and
+    /// `ensureTextMateBootstrap` do: the tokenizer theme, the
+    /// `editor.background` and the root `source` / `text` fills token
+    /// backgrounds are compared against.
+    pub fn activate_theme(&mut self, parsed: Rc<recur_textmate::ParsedTmTheme>) {
+        let bg = parsed
+            .colors
+            .get("editor.background")
+            .cloned()
+            .unwrap_or_else(|| crate::theme::EDITOR_BACKGROUND_FALLBACK.to_string());
+        self.catalog.set_active_editor_background(&bg);
+        self.catalog.set_active_root_backgrounds(
+            parsed.root_backgrounds.source.as_deref(),
+            parsed.root_backgrounds.text.as_deref(),
+        );
+        self.catalog.set_active_theme(parsed);
+    }
+}
+
 /// Debounced cold-scroll tokenize pass.
 pub const SCROLL_PASS_MS: u64 = 50;
 /// Small documents always tokenize inline.
@@ -385,7 +405,7 @@ impl Highlighter {
                 let parsed = cat.parsed_theme(theme_id);
                 let (bg, source, text) = parsed.as_ref().map_or(
                     (
-                        crate::theme::CHROME_PAIRED_FALLBACK_BG.to_string(),
+                        crate::theme::EDITOR_BACKGROUND_FALLBACK.to_string(),
                         None,
                         None,
                     ),
@@ -394,7 +414,7 @@ impl Highlighter {
                             p.colors
                                 .get("editor.background")
                                 .cloned()
-                                .unwrap_or_else(|| crate::theme::CHROME_PAIRED_FALLBACK_BG.into()),
+                                .unwrap_or_else(|| crate::theme::EDITOR_BACKGROUND_FALLBACK.into()),
                             p.root_backgrounds.source.clone().filter(|s| !s.is_empty()),
                             p.root_backgrounds.text.clone().filter(|s| !s.is_empty()),
                         )

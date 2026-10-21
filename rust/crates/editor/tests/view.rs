@@ -379,3 +379,16 @@ fn vim_macros_text_objects_and_blocks(cx: &mut TestAppContext) {
     h.settle();
     assert_eq!(h.sel(), (5, 5));
 }
+
+#[gpui::test]
+fn find_field_takes_typed_keys(cx: &mut TestAppContext) {
+    let mut h = mount(cx, "a.txt", "fmt x fmt", EditorKind::Code);
+    h.cx.simulate_keystrokes("cmd-f");
+    h.settle();
+    h.cx.simulate_keystrokes("f m t");
+    h.settle();
+    let q = h
+        .view
+        .read_with(h.cx, |v, _| v.state().search.query.search.clone());
+    assert_eq!(q, "fmt");
+}

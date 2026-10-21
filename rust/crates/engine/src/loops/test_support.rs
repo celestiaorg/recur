@@ -414,7 +414,6 @@ pub fn set_default_policy(store: &Store, id: &str) {
     store.set_settings(set);
 }
 
-#[allow(dead_code)]
 /// A project whose dev command serves HTTP on $RECUR_PORT so verify can
 /// boot (Go `verifyDevProject`). `None` when python3 is missing.
 pub fn verify_dev_project(store: &Store, repo: &str) -> Option<String> {
@@ -916,4 +915,26 @@ pub fn release_slots(t: &crate::testing::TestEngine, n: usize) {
     for _ in 0..n {
         t.engine.governor().release_loop();
     }
+}
+
+/// Linear on in Settings with an API key (Go `enableLinearMCP`); the
+/// engine needs [`linear_trackers`] to build it.
+pub fn enable_linear_mcp(store: &Store) {
+    let mut set = store.settings();
+    set.mcp_servers = vec![recur_domain::McpServer {
+        id: recur_domain::MCP_ID_LINEAR.into(),
+        enabled: true,
+        ..recur_domain::McpServer::default()
+    }];
+    set.bundle_values.insert(
+        recur_domain::SETTING_LINEAR_API_KEY.into(),
+        "lin_api_x".into(),
+    );
+    store.set_settings(set);
+}
+
+pub fn linear_trackers() -> Vec<Arc<dyn recur_issues::IssueTracker>> {
+    vec![Arc::new(
+        recur_issues::linear::Linear::new().with_env(|_| None),
+    )]
 }

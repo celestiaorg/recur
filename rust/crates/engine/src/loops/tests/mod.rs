@@ -11,4 +11,5 @@ mod maestro;
 mod planbrief;
 mod prompts;
 mod resume;
+mod verify;
 mod walker;

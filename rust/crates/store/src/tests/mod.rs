@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::Store;
 use crate::db::Db;
 
+mod compat_tests;
 mod path_tests;
 mod schedule_tests;
 mod session_tests;

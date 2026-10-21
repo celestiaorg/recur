@@ -391,17 +391,24 @@ mod tests {
         assert!(w.is_none());
     }
 
+    /// The panic hook is process-global, so this runs in its own process.
     #[test]
     fn panics_land_in_the_log() {
-        let root = tempfile::tempdir().unwrap();
-        let (_w, mut guard) = tee_app_log_to(root.path(), Box::new(io::sink()));
-        let _ = std::thread::Builder::new()
-            .name("crasher".into())
-            .spawn(|| panic!("boom for the crash log"))
-            .unwrap()
-            .join();
-        guard.cleanup();
-        let body = std::fs::read_to_string(app_log_path(root.path())).unwrap();
-        assert!(body.contains("thread 'crasher'") && body.contains("boom for the crash log"), "{body}");
+        let no_env: [(&str, &str); 0] = [];
+        crate::testenv::run(module_path!(), "panics_land_in_the_log", &no_env, || {
+            let root = tempfile::tempdir().unwrap();
+            let (_w, mut guard) = tee_app_log_to(root.path(), Box::new(io::sink()));
+            let _ = std::thread::Builder::new()
+                .name("crasher".into())
+                .spawn(|| panic!("boom for the crash log"))
+                .unwrap()
+                .join();
+            guard.cleanup();
+            let body = std::fs::read_to_string(app_log_path(root.path())).unwrap();
+            assert!(
+                body.contains("thread 'crasher'") && body.contains("boom for the crash log"),
+                "{body}"
+            );
+        });
     }
 }

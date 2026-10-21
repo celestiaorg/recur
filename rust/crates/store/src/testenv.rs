@@ -31,7 +31,24 @@ pub(crate) fn run<K: AsRef<OsStr>, V: AsRef<OsStr>>(
     for (k, v) in envs {
         cmd.env(k, v);
     }
-    let out = cmd.output().expect("spawn isolated test");
+    // A hung child fails the test instead of hanging the suite.
+    let child = cmd
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("spawn isolated test");
+    let pid = child.id();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = tx.send(child.wait_with_output());
+    });
+    let out = match rx.recv_timeout(std::time::Duration::from_secs(120)) {
+        Ok(out) => out.expect("wait isolated test"),
+        Err(_) => {
+            let _ = Command::new("kill").args(["-9", &pid.to_string()]).status();
+            panic!("isolated {test} timed out");
+        }
+    };
     let stdout = String::from_utf8_lossy(&out.stdout);
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(

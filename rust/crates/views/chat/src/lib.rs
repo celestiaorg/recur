@@ -14,6 +14,7 @@ pub mod flow;
 pub mod glance;
 pub mod html_inline;
 pub mod meter;
+pub mod pickers;
 pub mod heap;
 pub mod hoist;
 pub mod prompt_actions;

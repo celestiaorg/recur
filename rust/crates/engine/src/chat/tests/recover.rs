@@ -24,7 +24,7 @@ use crate::testing::wait_for;
 use crate::turn::finalize::{CHAT_INTERRUPTED_REPLY, CHAT_RESUME_DISPLAY, CHAT_STOPPED_REPLY};
 use crate::turn::transcript::flatten_transcript;
 
-fn persist_working_chat(fx: &Fx, ws: &str, code: &str) -> Session {
+pub(super) fn persist_working_chat(fx: &Fx, ws: &str, code: &str) -> Session {
     let eng = fx.eng();
     eng.ensure_pair_agent(ws, code, "sonnet");
     fx.te

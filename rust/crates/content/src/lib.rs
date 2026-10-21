@@ -21,3 +21,5 @@ pub use render::style::MarkdownClass;
 pub use view::{MarkdownEvent, MarkdownView};
 #[cfg(feature = "gallery")]
 pub mod gallery;
+pub mod streaming;
+pub use streaming::StreamingMarkdown;

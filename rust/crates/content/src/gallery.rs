@@ -52,6 +52,19 @@ impl Render for Padded {
     }
 }
 
+/// A padded live stream.
+struct Streaming(Entity<crate::StreamingMarkdown>);
+
+impl Render for Streaming {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        body(cx)
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(div().p(px(16.)).child(self.0.clone()))
+    }
+}
+
 pub fn build(name: &str, _window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let md = |text: &'static str, cx: &mut App| {
         let v = cx.new(|cx| MarkdownView::new(text, MarkdownClass::ChatCanvas, false, cx));
@@ -60,6 +73,23 @@ pub fn build(name: &str, _window: &mut Window, cx: &mut App) -> Option<AnyView> 
     Some(match name {
         "markdown/chat" | "markdown/paper" => md(CHAT_MD, cx),
         "mermaid/sequence" => md(SEQUENCE_MD, cx),
+        "markdown/streaming" => {
+            // The worker's output, produced on the spot so the headless frame has it.
+            let render = std::rc::Rc::new(|src: &str, _: &str| {
+                let (tx, rx) = futures::channel::oneshot::channel();
+                let html = crate::markdown::render_markdown(src, Default::default())
+                    .map(std::sync::Arc::from)
+                    .map_err(|e| crate::markdown::RenderError::Failed(e.to_string()));
+                let _ = tx.send(html);
+                rx
+            });
+            let s = cx.new(|cx| {
+                let mut s = crate::StreamingMarkdown::with_renderer(render, cx);
+                s.set(STREAMING_MD, true, false, cx);
+                s
+            });
+            AnyView::from(cx.new(|_| Streaming(s)))
+        }
         _ => return None,
     })
 }

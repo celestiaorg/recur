@@ -38,6 +38,8 @@ pub enum MarkdownEvent {
 
 pub struct MarkdownView {
     text: SharedString,
+    /// `MarkdownHtml` enhancements (copy controls, Mermaid, the lightbox); off for streaming.
+    enhance: bool,
     class: MarkdownClass,
     demote_images: bool,
     pub(crate) doc: Arc<Doc>,
@@ -123,6 +125,7 @@ impl MarkdownView {
     ) -> Self {
         let mut v = MarkdownView {
             text: SharedString::default(),
+            enhance: true,
             class,
             demote_images,
             doc: Arc::default(),
@@ -144,10 +147,20 @@ impl MarkdownView {
         v.set_text(text, cx);
         cx.observe_global::<Theme>(|v, cx| {
             // Mermaid theme variables track the app theme on the next hydrate.
-            v.hydrate_mermaid(cx);
+            if v.enhance {
+                v.hydrate_mermaid(cx);
+            }
             cx.notify();
         })
         .detach();
+        v
+    }
+
+    /// A bare `.chat-canvas` for HTML rendered elsewhere (`StreamingMarkdown`): no copy
+    /// controls, Mermaid stays source, images do not open the lightbox.
+    pub fn plain(class: MarkdownClass, cx: &mut Context<Self>) -> Self {
+        let mut v = MarkdownView::new("", class, false, cx);
+        v.enhance = false;
         v
     }
 
@@ -182,7 +195,11 @@ impl MarkdownView {
         self.copied.clear();
         self.copy_timers.clear();
         self.load_images(cx);
-        self.hydrate_mermaid(cx);
+        if self.enhance {
+            self.hydrate_mermaid(cx);
+        } else {
+            self.mermaid.clear();
+        }
         cx.notify();
     }
 
@@ -434,6 +451,7 @@ impl Render for MarkdownView {
             width,
             image: &image,
             mermaid: &self.mermaid,
+            enhance: self.enhance,
             hover_fence: self.hover_fence,
             copied: &self.copied,
             hover_link: self.hover_link,

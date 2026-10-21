@@ -29,6 +29,8 @@ image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
 
 [dev-dependencies]
 pretty_assertions.workspace = true
+gpui = { workspace = true, features = ["test-support"] }
+recur-content = { path = ".", features = ["gallery"] }
 
 [lints]
 workspace = true

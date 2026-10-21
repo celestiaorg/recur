@@ -62,6 +62,8 @@ pub struct Env<'a> {
     pub width: f32,
     pub image: &'a dyn Fn(&str) -> ImageSlot,
     pub mermaid: &'a [MermaidSlot],
+    /// `MarkdownHtml`'s post-render enhancements (copy controls, image zoom).
+    pub enhance: bool,
     pub hover_fence: Option<usize>,
     pub copied: &'a HashSet<usize>,
     pub hover_link: Option<(usize, usize)>,
@@ -468,7 +470,9 @@ impl Build<'_, '_> {
                     .relative()
                     .w(px(w))
                     .h(px(h))
-                    .on_click(move |_, window, cx| open((src2.clone(), name.clone()), window, cx))
+                    .when(self.env.enhance, |d| {
+                        d.on_click(move |_, window, cx| open((src2.clone(), name.clone()), window, cx))
+                    })
                     .child(
                         canvas(
                             |_, _, _| {},
@@ -834,6 +838,9 @@ impl Build<'_, '_> {
     /// `.md-fence`: the block with its hover copy control at `top/right: inset`.
     fn fence(&mut self, block: AnyElement, ix: usize, inset: f32) -> AnyElement {
         let env = self.env;
+        if !env.enhance {
+            return block;
+        }
         let t = env.t;
         let hovered = env.hover_fence == Some(ix);
         let copied = env.copied.contains(&ix);

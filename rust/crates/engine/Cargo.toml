@@ -7,9 +7,15 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# `recur_engine::testing` (temp store + repo + scripted provider + bus
+# recorder) for services tests. Engine unit tests get it via cfg(test).
+testing = ["dep:tempfile", "recur-agent/testing", "recur-forge/testing", "recur-issues/testing"]
+
 [dependencies]
 recur-domain.workspace = true
 recur-store.workspace = true
+recur-project.workspace = true
 recur-git.workspace = true
 recur-forge.workspace = true
 recur-issues.workspace = true
@@ -19,9 +25,38 @@ recur-mcp.workspace = true
 recur-bundles.workspace = true
 recur-code.workspace = true
 recur-term.workspace = true
+recur-platform.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+getrandom.workspace = true
+notify.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tempfile = { workspace = true, optional = true }
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util = { workspace = true, features = ["rt"] }
+tracing.workspace = true
 
 [dev-dependencies]
-serde_json.workspace = true
+recur-agent = { workspace = true, features = ["testing"] }
+recur-forge = { workspace = true, features = ["testing"] }
+recur-issues = { workspace = true, features = ["testing"] }
+recur-provider-claude = { workspace = true, features = ["testing"] }
+pretty_assertions.workspace = true
+regex.workspace = true
+tempfile.workspace = true
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+# R5: a parking_lot / std guard must never be held across an await.
+await_holding_lock = "deny"

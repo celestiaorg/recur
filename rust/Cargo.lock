@@ -6211,6 +6211,12 @@ dependencies = [
 name = "recur-engine"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "chrono",
+ "getrandom 0.4.3",
+ "notify",
+ "parking_lot",
+ "pretty_assertions",
  "recur-agent",
  "recur-agent-tools",
  "recur-bundles",
@@ -6220,9 +6226,20 @@ dependencies = [
  "recur-git",
  "recur-issues",
  "recur-mcp",
+ "recur-platform",
+ "recur-project",
+ "recur-provider-claude",
  "recur-store",
  "recur-term",
+ "regex",
+ "serde",
  "serde_json",
+ "sha2 0.11.1",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "tracing",
 ]
 
 [[package]]
@@ -8744,6 +8761,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "libc",
  "pin-project-lite",
  "tokio",

@@ -1,0 +1,1521 @@
+{
+  "events": [
+    {
+      "case": "loop-updated",
+      "name": "workspace.updated",
+      "payload": "{\"archived\":false,\"baseBranch\":\"main\",\"behindBase\":3,\"branch\":\"recur/golden-bagel\",\"convergence\":[{\"iteration\":1,\"findings\":2,\"color\":\"var(--red)\"},{\"iteration\":2,\"findings\":0,\"color\":\"var(--green)\"}],\"definitionOfDone\":\"Done when tests pass\",\"diff\":{\"add\":12,\"del\":4},\"goal\":\"Ship \\u003cb\\u003eit\\u003c/b\\u003e \\u0026 \\\"more\\\"\",\"group\":\"active\",\"hostPrId\":\"\",\"iteration\":2,\"lastError\":\"boom \\u003cx\\u003e\",\"loopChatCode\":\"PA2\",\"phase\":\"reviewing iteration 2\",\"plan\":{\"summary\":\"Two steps\",\"body\":\"body\",\"steps\":[{\"id\":\"S1\",\"title\":\"First\",\"status\":\"done\"},{\"id\":\"S2\",\"title\":\"Second\",\"status\":\"doing\",\"files\":[\"a.go\"],\"dependsOn\":[\"S1\"]}],\"source\":\"loop-planner\",\"approved\":true},\"port\":4321,\"progress\":0.5,\"scheduleId\":\"sch-1\",\"short\":\"Ship it\",\"state\":\"reviewing\",\"statusLabel\":\"Coding\",\"workspaceId\":\"proj.golden-bagel\",\"worktreePath\":\"/tmp/wt/proj/golden-bagel\"}"
+    },
+    {
+      "case": "loop-updated-missing",
+      "name": "workspace.updated",
+      "payload": "{\"archived\":false,\"baseBranch\":\"\",\"behindBase\":0,\"branch\":\"\",\"convergence\":null,\"definitionOfDone\":\"\",\"diff\":{\"add\":0,\"del\":0},\"goal\":\"\",\"group\":\"\",\"hostPrId\":\"\",\"iteration\":0,\"lastError\":\"\",\"loopChatCode\":\"\",\"phase\":\"paused\",\"plan\":null,\"port\":0,\"progress\":0,\"scheduleId\":\"\",\"short\":\"\",\"state\":\"paused\",\"statusLabel\":\"\",\"workspaceId\":\"missing.ws\",\"worktreePath\":\"\"}"
+    },
+    {
+      "case": "hoisted",
+      "name": "workspace.updated",
+      "payload": "{\"chatsChanged\":true,\"codeRemap\":{\"PA\":\"PA3\",\"PA2\":\"PA4\"},\"focusChatCode\":\"PA3\",\"fromWorkspaceId\":\"proj.host\",\"movedCodes\":[\"PA3\",\"PA4\"],\"workspaceId\":\"proj.dest\"}"
+    },
+    {
+      "case": "hoisted-bare",
+      "name": "workspace.updated",
+      "payload": "{\"chatsChanged\":true,\"codeRemap\":{},\"fromWorkspaceId\":\"proj.host\",\"movedCodes\":null,\"workspaceId\":\"proj.dest\"}"
+    },
+    {
+      "case": "workspace-event",
+      "name": "workspace.event",
+      "payload": "{\"event\":{\"id\":\"ev-1\",\"agentCode\":\"CO\",\"name\":\"Coder\",\"text\":\"Edited \\u003ccode\\u003ea.go\\u003c/code\\u003e \\u0026 b\",\"time\":\"now\",\"kind\":\"tool\",\"clickAgent\":\"CO\",\"isDeviation\":false,\"toolUseId\":\"tu-1\",\"chatCode\":\"PA2\"},\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "workspace-event-ma",
+      "name": "workspace.event",
+      "payload": "{\"event\":{\"id\":\"ev-2\",\"agentCode\":\"MA\",\"name\":\"Maestro\",\"text\":\"Converged.\",\"time\":\"now\",\"kind\":\"outcome\",\"isDeviation\":false,\"chatCode\":\"PA2\"},\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "deviation",
+      "name": "workspace.event",
+      "payload": "{\"event\":{\"id\":\"ev-dev\",\"agentCode\":\"\",\"name\":\"Maestro\",\"text\":\"Skipped \\u003ci\\u003ex\\u003c/i\\u003e\",\"time\":\"now\",\"kind\":\"deviation\",\"isDeviation\":true,\"rule\":\"rule\",\"why\":\"why\"},\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "deleted",
+      "name": "workspace.deleted",
+      "payload": "{\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "removed",
+      "name": "workspace.removed",
+      "payload": "{\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "watched",
+      "name": "workspace.watched",
+      "payload": "{\"workspaceId\":\"\"}"
+    },
+    {
+      "case": "findings",
+      "name": "findings.updated",
+      "payload": "{\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "fs-paths",
+      "name": "workspace.fs_changed",
+      "payload": "{\"paths\":[\"a.go\",\"dir/b.ts\"],\"rescan\":false,\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "fs-rescan",
+      "name": "workspace.fs_changed",
+      "payload": "{\"rescan\":true,\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "fs-base",
+      "name": "workspace.fs_changed",
+      "payload": "{\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "chat-tab",
+      "name": "workspace.chat_tab",
+      "payload": "{\"code\":\"PA2\",\"title\":\"Fix \\u003cit\\u003e\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "agent-updated",
+      "name": "agent.updated",
+      "payload": "{\"agentId\":\"proj.golden-bagel-CO\",\"status\":\"working\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "agent-updated-app",
+      "name": "agent.updated",
+      "payload": "{\"agentId\":\"app-APP\",\"code\":\"APP\",\"status\":\"working\",\"surface\":\"app\",\"workspaceId\":\"\"}"
+    },
+    {
+      "case": "agent-step",
+      "name": "agent.step",
+      "payload": "{\"agentId\":\"proj.golden-bagel-CO\",\"step\":{\"kind\":\"edit\",\"text\":\"a.go\",\"diff\":{\"add\":1,\"del\":0},\"state\":\"edit\"},\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "resource",
+      "name": "resource.updated",
+      "payload": "{\"loopsRunning\":2,\"needsYou\":1,\"itersToday\":7,\"gitWarning\":\"Recur needs Git 2.31\"}"
+    },
+    {
+      "case": "inbox",
+      "name": "inbox.updated",
+      "payload": "{\"unread\":3}"
+    },
+    {
+      "case": "attention",
+      "name": "attention.updated",
+      "payload": "{\"appUnseen\":1,\"byProject\":{\"p\":2},\"byWorkspace\":{\"w1\":1,\"w2\":1},\"code\":\"PA2\",\"dock\":4,\"inboxUnread\":3,\"tabUnseen\":true,\"unseen\":2,\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "attention-clear",
+      "name": "attention.updated",
+      "payload": "{\"appUnseen\":0,\"byProject\":null,\"byWorkspace\":null,\"clearAllUnseen\":true,\"code\":\"\",\"dock\":0,\"inboxUnread\":0,\"tabUnseen\":false,\"unseen\":0,\"workspaceId\":\"\"}"
+    },
+    {
+      "case": "briefing",
+      "name": "briefing.updated",
+      "payload": "{\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "briefing-all",
+      "name": "briefing.updated",
+      "payload": "{}"
+    },
+    {
+      "case": "notify",
+      "name": "notify",
+      "payload": "{\"body\":\"Which \\u003cdb\\u003e?\",\"target\":\"workspace:proj.golden-bagel\",\"title\":\"A loop needs you\"}"
+    },
+    {
+      "case": "notify-bare",
+      "name": "notify",
+      "payload": "{\"body\":\"Recur needs Git\",\"title\":\"Git is too old\"}"
+    },
+    {
+      "case": "permission-requested",
+      "name": "permission.requested",
+      "payload": "{\"id\":\"perm-1\",\"workspaceId\":\"proj.golden-bagel\",\"agentCode\":\"CO\",\"surface\":\"loop\",\"tool\":\"Bash\",\"input\":\"{\\\"command\\\":\\\"rm -rf \\u003cx\\u003e\\\"}\",\"summary\":\"rm -rf \\u003cx\\u003e\",\"askedAgo\":\"\"}"
+    },
+    {
+      "case": "permission-resolved",
+      "name": "permission.resolved",
+      "payload": "{\"allow\":false,\"id\":\"perm-1\",\"reason\":\"denied\"}"
+    },
+    {
+      "case": "question-asked",
+      "name": "question.asked",
+      "payload": "{\"question\":{\"id\":\"q-1\",\"workspaceId\":\"proj.golden-bagel\",\"agentCode\":\"PA\",\"question\":\"Which one?\",\"options\":[{\"text\":\"A\",\"tag\":\"simplest\",\"desc\":\"d\"}],\"askedAgo\":\"now\"},\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "question-answered",
+      "name": "question.answered",
+      "payload": "{\"answer\":{\"choice\":\"A\"},\"id\":\"q-1\"}"
+    },
+    {
+      "case": "question-cleared",
+      "name": "question.answered",
+      "payload": "{\"answer\":{},\"id\":\"q-1\"}"
+    },
+    {
+      "case": "escalation-raised",
+      "name": "escalation.raised",
+      "payload": "{\"escalation\":{\"id\":\"esc-1\",\"workspaceId\":\"proj.golden-bagel\",\"agentCode\":\"MA\",\"question\":\"Proceed?\",\"context\":\"ctx\",\"options\":[{\"text\":\"Yes\",\"tag\":\"recommended\",\"desc\":\"go\"}],\"answer\":\"\",\"status\":\"open\",\"kind\":\"agent\",\"applied\":false,\"askedAgo\":\"now\"},\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "escalation-resolved-live",
+      "name": "escalation.resolved",
+      "payload": "{\"answer\":\"Yes\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "escalation-resolved",
+      "name": "escalation.resolved",
+      "payload": "{\"agentCode\":\"MA\",\"answer\":\"Yes\",\"open\":false,\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "artifact-created",
+      "name": "artifact.created",
+      "payload": "{\"artifact\":{\"id\":\"a-1\",\"workspaceId\":\"proj.golden-bagel\",\"title\":\"Diagram\",\"kind\":\"svg\",\"path\":\"workspaces/x/artifacts/a-1.svg\",\"createdAt\":\"2026-10-21T10:00:00Z\",\"createdBy\":\"PA\"},\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "artifact-presented",
+      "name": "artifact.presented",
+      "payload": "{\"artifact\":{\"id\":\"a-1\",\"workspaceId\":\"proj.golden-bagel\",\"title\":\"Diagram\",\"kind\":\"svg\",\"path\":\"workspaces/x/artifacts/a-1.svg\",\"createdAt\":\"2026-10-21T10:00:00Z\",\"createdBy\":\"PA\"},\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "mode-changed",
+      "name": "chat.mode_changed",
+      "payload": "{\"agentCode\":\"PA\",\"from\":\"agent\",\"mode\":\"plan\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "chat-renamed",
+      "name": "chat.renamed",
+      "payload": "{\"agentCode\":\"PA\",\"title\":\"New title\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "app-chat-tab",
+      "name": "app.chat_tab",
+      "payload": "{\"code\":\"AP2\",\"title\":\"Ask\"}"
+    },
+    {
+      "case": "app-focused",
+      "name": "app.focused",
+      "payload": "{}"
+    },
+    {
+      "case": "s-user",
+      "name": "session.user",
+      "payload": "{\"code\":\"CO\",\"ownerCode\":\"PA2\",\"text\":\"do \\u003cit\\u003e\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-user-app",
+      "name": "session.user",
+      "payload": "{\"code\":\"APP\",\"surface\":\"app\",\"text\":\"hi\"}"
+    },
+    {
+      "case": "s-delta-cum",
+      "name": "session.delta",
+      "payload": "{\"code\":\"CO\",\"replace\":true,\"seq\":7,\"text\":\"par\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-delta-final",
+      "name": "session.delta",
+      "payload": "{\"code\":\"CO\",\"done\":true,\"replace\":true,\"seq\":8,\"text\":\"partial\",\"uuid\":\"u-1\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-delta-done",
+      "name": "session.delta",
+      "payload": "{\"code\":\"CO\",\"done\":true,\"text\":\"whole\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-delta-nested",
+      "name": "session.delta",
+      "payload": "{\"code\":\"CO\",\"parentId\":\"toolu_1\",\"replace\":true,\"seq\":1,\"text\":\"sub\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-delta-nested-done",
+      "name": "session.delta",
+      "payload": "{\"code\":\"CO\",\"done\":true,\"parentId\":\"toolu_1\",\"text\":\"sub\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-think-cum",
+      "name": "session.thinking",
+      "payload": "{\"code\":\"MA\",\"replace\":true,\"seq\":2,\"text\":\"hmm\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-think-tokens",
+      "name": "session.thinking",
+      "payload": "{\"code\":\"MA\",\"tokens\":120,\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-think-tokens-nested",
+      "name": "session.thinking",
+      "payload": "{\"code\":\"MA\",\"parentId\":\"toolu_2\",\"tokens\":12,\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-think-final",
+      "name": "session.thinking",
+      "payload": "{\"code\":\"MA\",\"done\":true,\"replace\":true,\"seq\":3,\"text\":\"ok\",\"uuid\":\"u-2\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-step",
+      "name": "session.step",
+      "payload": "{\"code\":\"CO\",\"description\":\"Edit a.go\",\"id\":\"tu-1\",\"input\":\"{\\\"file_path\\\":\\\"a.go\\\"}\",\"ownerCode\":\"PA2\",\"parentId\":\"\",\"tool\":\"Edit\",\"toolInput\":\"a.go\",\"uuid\":\"u-3\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-step-nested",
+      "name": "session.step",
+      "payload": "{\"code\":\"CO\",\"description\":\"Read b.go\",\"id\":\"tu-2\",\"input\":\"{\\\"file_path\\\":\\\"b.go\\\"}\",\"parentId\":\"toolu_1\",\"tool\":\"Read\",\"toolInput\":\"b.go\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-result",
+      "name": "session.tool_result",
+      "payload": "{\"code\":\"CO\",\"id\":\"tu-1\",\"isError\":false,\"result\":\"ok \\u003cdone\\u003e\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-result-input",
+      "name": "session.tool_result",
+      "payload": "{\"code\":\"CO\",\"id\":\"tu-1\",\"input\":\"{\\\"name\\\":\\\"x\\\"}\",\"isError\":true,\"result\":\"bad\",\"toolInput\":\"x\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-tool-input",
+      "name": "session.tool_input",
+      "payload": "{\"code\":\"CO\",\"id\":\"tu-1\",\"input\":\"{\\\"a\\\":1}\",\"toolInput\":\"a=1\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-compact",
+      "name": "session.compact",
+      "payload": "{\"code\":\"PA\",\"preTokens\":9000,\"status\":\"done\",\"summary\":\"sum\",\"trigger\":\"auto\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-compact-bare",
+      "name": "session.compact",
+      "payload": "{\"code\":\"PA\",\"status\":\"start\",\"trigger\":\"manual\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-fallback",
+      "name": "session.fallback",
+      "payload": "{\"code\":\"PA\",\"from\":\"opus\",\"fromLabel\":\"Opus\",\"retracted\":[\"u-1\",\"u-2\"],\"to\":\"sonnet\",\"toLabel\":\"Sonnet\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-fallback-bare",
+      "name": "session.fallback",
+      "payload": "{\"code\":\"PA\",\"from\":\"\",\"fromLabel\":\"\",\"to\":\"sonnet\",\"toLabel\":\"Sonnet\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-context",
+      "name": "session.context_usage",
+      "payload": "{\"cacheCreationTokens\":20,\"cacheReadTokens\":300,\"code\":\"PA\",\"contextWindow\":200000,\"inputTokens\":100,\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-turn-end",
+      "name": "session.turn_end",
+      "payload": "{\"cacheCreationTokens\":20,\"cacheReadTokens\":300,\"code\":\"PA\",\"contextWindow\":200000,\"durationMs\":1500,\"inputTokens\":100,\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "s-turn-end-bare",
+      "name": "session.turn_end",
+      "payload": "{\"code\":\"APP\",\"durationMs\":800,\"surface\":\"app\"}"
+    },
+    {
+      "case": "s-notice",
+      "name": "session.notice",
+      "payload": "{\"code\":\"MA\",\"ownerCode\":\"PA\",\"text\":\"Retrying…\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "pr-updated",
+      "name": "pr.updated",
+      "payload": "{\"allowedMergeMethods\":[\"squash\",\"merge\"],\"attentionReasons\":[\"review-requested\"],\"base\":\"main\",\"behindBase\":1,\"branch\":\"recur/golden-bagel\",\"checksOk\":true,\"diff\":{\"add\":3,\"del\":1},\"draft\":true,\"fileCount\":2,\"group\":\"you\",\"hasChecks\":true,\"mergeStateStatus\":\"CLEAN\",\"mergeable\":\"MERGEABLE\",\"number\":7,\"participants\":[{\"login\":\"octo\",\"name\":\"Octo\",\"avatarUrl\":\"https://x/a.png\"}],\"pendingComments\":[{\"id\":\"pc-1\",\"file\":\"a.go\",\"line\":3,\"side\":\"RIGHT\",\"body\":\"nit\"}],\"prId\":\"gh-proj-7\",\"projectId\":\"proj\",\"reviewDecision\":\"APPROVED\",\"reviewRequested\":true,\"reviewers\":[{\"login\":\"rev\",\"state\":\"approved\"}],\"source\":\"gh\",\"state\":\"In review\",\"title\":\"Golden \\u003cPR\\u003e\",\"updatingBase\":\"git\",\"when\":\"2m\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "pr-updated-pending",
+      "name": "pr.updated",
+      "payload": "{\"allowedMergeMethods\":[\"squash\",\"merge\"],\"attentionReasons\":[\"review-requested\"],\"base\":\"main\",\"behindBase\":1,\"branch\":\"recur/golden-bagel\",\"checksOk\":true,\"diff\":{\"add\":3,\"del\":1},\"draft\":true,\"fileCount\":2,\"group\":\"you\",\"hasChecks\":true,\"mergeStateStatus\":\"CLEAN\",\"mergeable\":\"MERGEABLE\",\"number\":7,\"participants\":[{\"login\":\"octo\",\"name\":\"Octo\",\"avatarUrl\":\"https://x/a.png\"}],\"pendingComments\":[{\"id\":\"pc-1\",\"file\":\"a.go\",\"line\":3,\"side\":\"RIGHT\",\"body\":\"nit\"}],\"pendingOnly\":true,\"prId\":\"gh-proj-7\",\"projectId\":\"proj\",\"reviewDecision\":\"APPROVED\",\"reviewRequested\":true,\"reviewers\":[{\"login\":\"rev\",\"state\":\"approved\"}],\"source\":\"gh\",\"state\":\"In review\",\"title\":\"Golden \\u003cPR\\u003e\",\"updatingBase\":\"git\",\"when\":\"2m\",\"workspaceId\":\"proj.golden-bagel\"}"
+    },
+    {
+      "case": "pr-updated-bare",
+      "name": "pr.updated",
+      "payload": "{\"allowedMergeMethods\":null,\"attentionReasons\":null,\"base\":\"\",\"behindBase\":0,\"branch\":\"\",\"checksOk\":false,\"diff\":{\"add\":0,\"del\":0},\"draft\":false,\"fileCount\":0,\"group\":\"loop\",\"hasChecks\":false,\"mergeStateStatus\":\"\",\"mergeable\":\"\",\"number\":1,\"participants\":null,\"pendingComments\":null,\"prId\":\"local-1\",\"projectId\":\"\",\"reviewDecision\":\"\",\"reviewRequested\":false,\"reviewers\":null,\"source\":\"local\",\"state\":\"In review\",\"title\":\"Local\",\"updatingBase\":\"\",\"when\":\"\",\"workspaceId\":\"\"}"
+    },
+    {
+      "case": "pr-comment",
+      "name": "pr.comment",
+      "payload": "{\"comment\":{\"id\":\"c-1\",\"code\":\"AR\",\"author\":\"You\",\"avatarCss\":\"var(--x)\",\"time\":\"now\",\"bodyHtml\":\"\\u003cp\\u003ehi\\u003c/p\\u003e\"},\"prId\":\"gh-proj-7\"}"
+    },
+    {
+      "case": "pr-removed",
+      "name": "pr.removed",
+      "payload": "{\"prId\":\"gh-proj-7\"}"
+    },
+    {
+      "case": "prs-synced",
+      "name": "prs.synced",
+      "payload": "{\"projectId\":\"proj\",\"prs\":[{\"id\":\"local-1\",\"workspaceId\":\"\",\"group\":\"loop\",\"number\":1,\"source\":\"local\",\"branch\":\"\",\"base\":\"\",\"title\":\"Local\",\"summary\":null,\"focus\":{\"title\":\"\",\"body\":\"\"},\"state\":\"In review\",\"diff\":{\"add\":0,\"del\":0},\"fileCount\":0,\"checksOk\":false,\"when\":\"\",\"createdAt\":\"2026-10-21T13:51:49Z\",\"updatedAt\":\"2026-10-21T13:51:49Z\",\"commits\":null,\"files\":null,\"comments\":null,\"verify\":null,\"checks\":null}]}"
+    },
+    {
+      "case": "prs-synced-nil",
+      "name": "prs.synced",
+      "payload": "{\"projectId\":\"proj\",\"prs\":null}"
+    },
+    {
+      "case": "branch-rules",
+      "name": "github.branch_rules",
+      "payload": "{\"branch\":\"main\",\"projectId\":\"proj\",\"remote\":\"origin\",\"repo\":\"o/r\",\"requirePR\":true}"
+    }
+  ],
+  "guards": {
+    "aggressive": {
+      "id": "recur.policies.aggressive",
+      "name": "Aggressive",
+      "maxRounds": 6,
+      "onMaxRounds": "proceed",
+      "findingsThreshold": {
+        "levels": {
+          "critical": 0,
+          "high": 0
+        }
+      },
+      "planApproval": "never",
+      "retries": 0,
+      "onFail": "fail",
+      "extendRounds": 3,
+      "bundleName": "",
+      "bundleID": "",
+      "sourceRoot": "",
+      "bundleDir": ""
+    },
+    "balanced": {
+      "id": "recur.policies.balanced",
+      "name": "Balanced",
+      "maxRounds": 4,
+      "onMaxRounds": "escalate",
+      "findingsThreshold": {
+        "levels": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0
+        }
+      },
+      "planApproval": "if_structured",
+      "retries": 0,
+      "onFail": "fail",
+      "extendRounds": 2,
+      "bundleName": "",
+      "bundleID": "",
+      "sourceRoot": "",
+      "bundleDir": ""
+    },
+    "cautious": {
+      "id": "recur.policies.cautious",
+      "name": "Cautious",
+      "maxRounds": 2,
+      "onMaxRounds": "escalate",
+      "findingsThreshold": {
+        "allZero": true
+      },
+      "planApproval": "always",
+      "retries": 0,
+      "onFail": "fail",
+      "extendRounds": 1,
+      "bundleName": "",
+      "bundleID": "",
+      "sourceRoot": "",
+      "bundleDir": ""
+    },
+    "childLoop": {
+      "id": "recur.loops.step",
+      "name": "Custom step",
+      "entry": "converge",
+      "reenter": [
+        "converge"
+      ],
+      "roles": {
+        "conductor": "recur.roles.maestro",
+        "implementer": "x"
+      },
+      "prompts": {
+        "mission": "You conduct one child workspace that owns a slice of a parent plan. It implements and is reviewed under the parent's policy; the parent merges this branch back and reviews the aggregate diff. Answer where the slice stands; do not widen scope beyond its steps."
+      },
+      "phases": [
+        {
+          "id": "converge",
+          "uses": "converge",
+          "next": "done",
+          "maxRounds": 3,
+          "roles": {
+            "implementer": "test.roles.writer"
+          }
+        },
+        {
+          "id": "done",
+          "uses": "artifact"
+        }
+      ],
+      "bundleName": "B",
+      "bundleID": "b.id",
+      "sourceRoot": "/src",
+      "bundleDir": "/src/B"
+    },
+    "prLoop": {
+      "id": "recur.loops.pr",
+      "name": "To a PR",
+      "entry": "planning",
+      "reenter": [
+        "planning",
+        "converge"
+      ],
+      "roles": {
+        "conductor": "recur.roles.maestro"
+      },
+      "phases": [
+        {
+          "id": "planning",
+          "uses": "plan",
+          "gate": "plan_approval",
+          "next": "converge",
+          "roles": {
+            "planner": "recur.roles.planner"
+          }
+        },
+        {
+          "id": "converge",
+          "uses": "converge",
+          "next": "pr",
+          "roles": {
+            "implementer": "recur.roles.coder",
+            "reviewer": "recur.roles.reviewer"
+          }
+        },
+        {
+          "id": "pr",
+          "uses": "ensure_pr"
+        }
+      ],
+      "bundleName": "",
+      "bundleID": "",
+      "sourceRoot": "",
+      "bundleDir": ""
+    },
+    "stepLoop": {
+      "id": "recur.loops.step",
+      "name": "Plan step",
+      "entry": "converge",
+      "reenter": [
+        "converge"
+      ],
+      "roles": {
+        "conductor": "recur.roles.maestro"
+      },
+      "prompts": {
+        "mission": "You conduct one child workspace that owns a slice of a parent plan. It implements and is reviewed under the parent's policy; the parent merges this branch back and reviews the aggregate diff. Answer where the slice stands; do not widen scope beyond its steps."
+      },
+      "phases": [
+        {
+          "id": "converge",
+          "uses": "converge",
+          "next": "done",
+          "roles": {
+            "implementer": "recur.roles.coder",
+            "reviewer": "recur.roles.reviewer"
+          }
+        },
+        {
+          "id": "done",
+          "uses": "artifact"
+        }
+      ],
+      "bundleName": "",
+      "bundleID": "",
+      "sourceRoot": "",
+      "bundleDir": ""
+    }
+  },
+  "inputs": {
+    "artifact": {
+      "id": "a-1",
+      "workspaceId": "proj.golden-bagel",
+      "title": "Diagram",
+      "kind": "svg",
+      "path": "workspaces/x/artifacts/a-1.svg",
+      "createdAt": "2026-10-21T10:00:00Z",
+      "createdBy": "PA"
+    },
+    "attention": {
+      "unseen": 2,
+      "inboxUnread": 3,
+      "dock": 4,
+      "byWorkspace": {
+        "w1": 1,
+        "w2": 1
+      },
+      "byProject": {
+        "p": 2
+      },
+      "appUnseen": 1
+    },
+    "comment": {
+      "id": "c-1",
+      "code": "AR",
+      "author": "You",
+      "avatarCss": "var(--x)",
+      "time": "now",
+      "bodyHtml": "\u003cp\u003ehi\u003c/p\u003e"
+    },
+    "escalation": {
+      "id": "esc-1",
+      "workspaceId": "proj.golden-bagel",
+      "agentCode": "MA",
+      "question": "Proceed?",
+      "context": "ctx",
+      "options": [
+        {
+          "text": "Yes",
+          "tag": "recommended",
+          "desc": "go"
+        }
+      ],
+      "answer": "",
+      "status": "open",
+      "kind": "agent",
+      "applied": false,
+      "askedAgo": "now"
+    },
+    "feedItem": {
+      "id": "ev-1",
+      "agentCode": "CO",
+      "name": "Coder",
+      "text": "Edited \u003ccode\u003ea.go\u003c/code\u003e \u0026 b",
+      "time": "now",
+      "isDeviation": false,
+      "toolUseId": "tu-1"
+    },
+    "findings": [
+      {
+        "id": "f1",
+        "shortId": "find_ab",
+        "workspaceId": "",
+        "iteration": 0,
+        "file": "a.go",
+        "line": 3,
+        "endLine": 9,
+        "severity": "high",
+        "message": "nil deref",
+        "status": ""
+      },
+      {
+        "id": "f2",
+        "shortId": "",
+        "workspaceId": "",
+        "iteration": 0,
+        "file": "b.go",
+        "line": 0,
+        "severity": "low",
+        "message": "style",
+        "status": ""
+      }
+    ],
+    "maestroContext": {
+      "goal": "Fix the bug",
+      "handoff": "Could not finish S3",
+      "impact": "3 callers",
+      "iteration": 3,
+      "live": true,
+      "mission": "Ship to a PR",
+      "prThread": "Alice: please fix",
+      "recent": [
+        "Coder edited a.go",
+        "Reviewer filed 1"
+      ],
+      "state": "coding"
+    },
+    "permission": {
+      "id": "perm-1",
+      "workspaceId": "proj.golden-bagel",
+      "agentCode": "CO",
+      "surface": "loop",
+      "tool": "Bash",
+      "input": "{\"command\":\"rm -rf \u003cx\u003e\"}",
+      "summary": "rm -rf \u003cx\u003e",
+      "askedAgo": ""
+    },
+    "pr": {
+      "id": "gh-proj-7",
+      "workspaceId": "proj.golden-bagel",
+      "projectId": "proj",
+      "group": "you",
+      "number": 7,
+      "source": "gh",
+      "draft": true,
+      "branch": "recur/golden-bagel",
+      "base": "main",
+      "title": "Golden \u003cPR\u003e",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 3,
+        "del": 1
+      },
+      "fileCount": 2,
+      "checksOk": true,
+      "hasChecks": true,
+      "when": "2m",
+      "createdAt": "2026-10-21T13:51:49Z",
+      "updatedAt": "2026-10-21T13:51:49Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "pendingComments": [
+        {
+          "id": "pc-1",
+          "file": "a.go",
+          "line": 3,
+          "side": "RIGHT",
+          "body": "nit"
+        }
+      ],
+      "verify": null,
+      "checks": null,
+      "behindBase": 1,
+      "updatingBase": "git",
+      "participants": [
+        {
+          "login": "octo",
+          "name": "Octo",
+          "avatarUrl": "https://x/a.png"
+        }
+      ],
+      "reviewers": [
+        {
+          "login": "rev",
+          "state": "approved"
+        }
+      ],
+      "mergeable": "MERGEABLE",
+      "mergeStateStatus": "CLEAN",
+      "reviewDecision": "APPROVED",
+      "reviewRequested": true,
+      "attentionReasons": [
+        "review-requested"
+      ],
+      "allowedMergeMethods": [
+        "squash",
+        "merge"
+      ]
+    },
+    "prBare": {
+      "id": "local-1",
+      "workspaceId": "",
+      "group": "loop",
+      "number": 1,
+      "source": "local",
+      "branch": "",
+      "base": "",
+      "title": "Local",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "fileCount": 0,
+      "checksOk": false,
+      "when": "",
+      "createdAt": "2026-10-21T13:51:49Z",
+      "updatedAt": "2026-10-21T13:51:49Z",
+      "commits": null,
+      "files": null,
+      "comments": null,
+      "verify": null,
+      "checks": null
+    },
+    "question": {
+      "id": "q-1",
+      "workspaceId": "proj.golden-bagel",
+      "agentCode": "PA",
+      "question": "Which one?",
+      "options": [
+        {
+          "text": "A",
+          "tag": "simplest",
+          "desc": "d"
+        }
+      ],
+      "askedAgo": "now"
+    },
+    "resource": {
+      "loopsRunning": 2,
+      "needsYou": 1,
+      "itersToday": 7,
+      "gitWarning": "Recur needs Git 2.31"
+    },
+    "sampleRoles": [
+      {
+        "id": "",
+        "name": "",
+        "code": "",
+        "mode": "ask",
+        "tools": [
+          "attach_evidence",
+          "playwright",
+          "report_result"
+        ],
+        "bundleName": "",
+        "bundleID": "",
+        "sourceRoot": "",
+        "bundleDir": ""
+      },
+      {
+        "id": "",
+        "name": "",
+        "code": "",
+        "mode": "agent",
+        "disabledTools": [
+          "WebSearch",
+          "mcp__recur__done"
+        ],
+        "bundleName": "",
+        "bundleID": "",
+        "sourceRoot": "",
+        "bundleDir": ""
+      },
+      {
+        "id": "",
+        "name": "",
+        "code": "",
+        "mode": "review",
+        "tools": [
+          "Bash(npm test:*)",
+          "mcp__linear__*",
+          "create_artifact"
+        ],
+        "disabledTools": [
+          "report_finding"
+        ],
+        "bundleName": "",
+        "bundleID": "",
+        "sourceRoot": "",
+        "bundleDir": ""
+      },
+      {
+        "id": "",
+        "name": "",
+        "code": "",
+        "mode": "loop",
+        "tools": [
+          "plan"
+        ],
+        "bundleName": "",
+        "bundleID": "",
+        "sourceRoot": "",
+        "bundleDir": ""
+      },
+      {
+        "id": "",
+        "name": "",
+        "code": "",
+        "mode": "plan",
+        "bundleName": "",
+        "bundleID": "",
+        "sourceRoot": "",
+        "bundleDir": ""
+      },
+      {
+        "id": "",
+        "name": "",
+        "code": "",
+        "mode": "PLAN",
+        "bundleName": "",
+        "bundleID": "",
+        "sourceRoot": "",
+        "bundleDir": ""
+      }
+    ],
+    "workspace": {
+      "scheduleId": "sch-1",
+      "id": "proj.golden-bagel",
+      "projectId": "proj",
+      "runStarted": true,
+      "group": "active",
+      "goal": "Ship \u003cb\u003eit\u003c/b\u003e \u0026 \"more\"",
+      "goalDisplay": "Ship it",
+      "short": "Ship it",
+      "definitionOfDone": "Done when tests pass",
+      "state": "coding",
+      "statusLabel": "Coding",
+      "phase": "iteration 2",
+      "iteration": 2,
+      "progress": 0.5,
+      "autonomy": "balanced",
+      "loopId": "recur.loops.pr",
+      "policyId": "recur.policies.balanced",
+      "loopChatCode": "PA2",
+      "branch": "recur/golden-bagel",
+      "baseBranch": "main",
+      "behindBase": 3,
+      "worktreePath": "/tmp/wt/proj/golden-bagel",
+      "port": 4321,
+      "diff": {
+        "add": 12,
+        "del": 4
+      },
+      "agentCodes": [
+        "MA",
+        "CO"
+      ],
+      "last": "coding",
+      "elapsedLabel": "running",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 2,
+          "color": "var(--red)"
+        },
+        {
+          "iteration": 2,
+          "findings": 0,
+          "color": "var(--green)"
+        }
+      ],
+      "archived": false,
+      "plan": {
+        "summary": "Two steps",
+        "body": "body",
+        "steps": [
+          {
+            "id": "S1",
+            "title": "First",
+            "status": "done"
+          },
+          {
+            "id": "S2",
+            "title": "Second",
+            "status": "doing",
+            "files": [
+              "a.go"
+            ],
+            "dependsOn": [
+              "S1"
+            ]
+          }
+        ],
+        "source": "loop-planner",
+        "approved": true
+      },
+      "lastError": "boom \u003cx\u003e"
+    }
+  },
+  "kitchen": {
+    "adjectives": [
+      "toasty",
+      "crispy",
+      "buttery",
+      "flaky",
+      "golden",
+      "zesty",
+      "simmered",
+      "steamy",
+      "honeyed",
+      "smoky",
+      "herbed",
+      "lemony",
+      "velvety",
+      "caramel",
+      "pepper",
+      "roasted",
+      "cozy",
+      "crusty",
+      "bubbly",
+      "savory"
+    ],
+    "dishes": [
+      "ramen",
+      "risotto",
+      "chowder",
+      "stew",
+      "curry",
+      "lasagna",
+      "potpie",
+      "dumpling",
+      "gratin",
+      "porridge",
+      "pho",
+      "udon",
+      "biryani",
+      "goulash",
+      "bagel",
+      "scone",
+      "brioche",
+      "galette",
+      "focaccia",
+      "pretzel",
+      "tart",
+      "muffin",
+      "biscuit",
+      "croissant",
+      "babka",
+      "ciabatta",
+      "omelet",
+      "frittata",
+      "hash",
+      "quiche",
+      "toastie",
+      "tacos",
+      "burrito",
+      "pierogi",
+      "cobbler",
+      "brownie",
+      "parfait",
+      "pudding",
+      "shortcake",
+      "trifle",
+      "cannoli",
+      "churro",
+      "macaron",
+      "eclair"
+    ]
+  },
+  "prompts": {
+    "coder": "You are the Coder agent in an autonomous coding loop. You are working in an isolated git worktree. Make the minimal, correct code changes needed to accomplish the task below (Read/Glob/Grep/LSP/Edit/Write/Bash; WebFetch/WebSearch for docs when needed). Do not commit — the orchestrator commits your changes. When fixing reviewer findings, mark each with mcp__recur__update_finding (resolved, or invalid with a reason) before done — mcp__recur__list_findings lists what is still open. No TODOs, no stubs, no partial implementations, no disabled tests: finish the work or hand off honestly. When the change is complete and no findings remain open, call mcp__recur__done with a one-line summary — and notes ONLY when something deviated: what you did differently from the plan, what you could not finish and why, a step that should be split, or a concern the Reviewer cannot see from the diff. Then stop.\n\nTask: Add a flag\n\nThe Maestro investigated the repo and prepared this plan. Follow it on the first coding pass; on a fix or rework turn the reviewer findings or rework instruction in your task message take precedence — the plan is background context:\n\n1. do it",
+    "coderConflict": "You are the Coder agent. A sibling workspace's branch was merged into this worktree and git left merge conflicts. Resolve EVERY conflict marker in the files below so both sides' intent is kept and the code builds; run the relevant tests. Do not run git merge, rebase, reset, or commit — the orchestrator commits and that concludes the merge. Then call mcp__recur__done.\n\nOriginal task: Add a flag\n\nConflicted files:\n- a.go\n- b/c.go\n",
+    "coderFix": "You are the Coder agent. A reviewer found issues with the current diff. Fix every finding below with minimal, correct edits. For each finding, call mcp__recur__update_finding with its id: status resolved if you fixed it, or invalid with a clear reason if it is wrong/out of scope. Then call mcp__recur__done.\n\nOriginal task: Add a flag\n\nReviewer findings to fix:\n1. id=find_ab [high] a.go:3-9 — nil deref\n2. id=f2 [low] b.go — style\n",
+    "coderNoPlan": "You are the Coder agent in an autonomous coding loop. You are working in an isolated git worktree. Make the minimal, correct code changes needed to accomplish the task below (Read/Glob/Grep/LSP/Edit/Write/Bash; WebFetch/WebSearch for docs when needed). Do not commit — the orchestrator commits your changes. When fixing reviewer findings, mark each with mcp__recur__update_finding (resolved, or invalid with a reason) before done — mcp__recur__list_findings lists what is still open. No TODOs, no stubs, no partial implementations, no disabled tests: finish the work or hand off honestly. When the change is complete and no findings remain open, call mcp__recur__done with a one-line summary — and notes ONLY when something deviated: what you did differently from the plan, what you could not finish and why, a step that should be split, or a concern the Reviewer cannot see from the diff. Then stop.\n\nTask: Add a flag",
+    "coderNudge": "You stopped while reviewer findings are still open. You are NOT done. Address each open finding below, mark it resolved or invalid (invalid requires a reason) via mcp__recur__update_finding, then call mcp__recur__done.\n\nOriginal task: Add a flag\n\nOpen findings:\n1. id=find_ab [high] a.go:3-9 — nil deref\n2. id=f2 [low] b.go — style\n",
+    "coderResumeFresh": "You are the Coder agent resuming an interrupted task (iteration 2). Work from a previous run may already be committed in this worktree. FIRST inspect what is already there (git log/git diff against the base branch, plus the relevant files) so you do not redo or undo it, THEN make only the changes still missing and call mcp__recur__done.\n\nTask: Add a flag",
+    "coderResumeRestored": "You were interrupted mid-task (the app restarted) and have just been resumed. Your earlier work in this worktree is still there. Re-check the current state of the files you were editing, finish the remaining work, then call mcp__recur__done.\n\nTask: Add a flag",
+    "coderStructured": "You are the Coder agent in an autonomous coding loop. You are working in an isolated git worktree. Make the minimal, correct code changes needed to accomplish the task below (Read/Glob/Grep/LSP/Edit/Write/Bash; WebFetch/WebSearch for docs when needed). Do not commit — the orchestrator commits your changes. When fixing reviewer findings, mark each with mcp__recur__update_finding (resolved, or invalid with a reason) before done — mcp__recur__list_findings lists what is still open. No TODOs, no stubs, no partial implementations, no disabled tests: finish the work or hand off honestly. When the change is complete and no findings remain open, call mcp__recur__done with a one-line summary — and notes ONLY when something deviated: what you did differently from the plan, what you could not finish and why, a step that should be split, or a concern the Reviewer cannot see from the diff. Then stop. The plan's steps are numbered; as you complete (or deliberately skip) each one, call mcp__recur__update_plan_step with its id (S1, S2, …) so progress stays honest.\n\nTask: Add a flag\n\nThe Maestro investigated the repo and prepared this plan. Follow it on the first coding pass; on a fix or rework turn the reviewer findings or rework instruction in your task message take precedence — the plan is background context:\n\n1. do it",
+    "maestro": "You are the Maestro — the conductor of ONE Loop. The human steers this loop by talking to you (they never talk to the specialist agents directly). You orchestrate only: do not do the loop's phase work yourself. The engine already runs the specialists on this loop's graph. Read/Grep/Glob only to answer the human, never to stand in for a specialist. dispatch_specialist is a one-off on a settled loop, not the walk. Answer where the run stands honestly and concisely. Your actions are engine-mediated tools — the engine validates and executes them:\n- mcp__recur__plan: steer a RUNNING walk with a short re-plan summary. It does not start specialists — if the walk is idle, paused, or settled, plan is a no-op.\n- mcp__recur__message_child: steer one running child workspace; plan steers this loop.\n- mcp__recur__edit_plan: rewrite the loop's definition of done (logged as a deviation, steered into turns).\n- mcp__recur__dispatch_specialist: run a one-off reviewer|security pass over a settled loop.\nWhen the human wants work to continue, pick by whether the walk is live — not by the words “keep going” / “keep iterating”:\n- no live walk (stopped/failed/settled, or paused without “(live walk)”): mcp__recur__reenter_phase (usually converge). Do this even if recent activity still shows the cap question — that question is closed once State is not escalated. Do not claim you steered.\n- live walk escalated at the round cap: mcp__recur__extend_rounds. Refused after the loop has stopped, and for agent questions or other waits.\n- live walk paused at a checkpoint: do not reenter_phase; Resume continues this walk. mcp__recur__plan only steers.\n- any other live walk: do not restart; mcp__recur__plan only steers.\n- mcp__recur__run_phase: on-demand phases only (e.g. security).\n- mcp__recur__submit_plan / mcp__recur__update_plan_step: rewrite the STRUCTURED plan (headline + detailed body + ordered steps + optional attachments), or advance one step's status (steps are numbered S1, S2, …).\n- mcp__recur__ask_user: ask the human a clarifying question (ends this turn; answer arrives later as a user message; does not pause the workspace). Never use Claude's AskUserQuestion — it cannot collect answers in Recur.\n- mcp__recur__create_artifact / list_artifacts / read_artifact / present_artifact: standalone analytical deliverables (HTML may be self-contained interactive demos under the preview sandbox).\nWhen the human asks for something one of these tools does, CALL IT — don't tell them to do it themselves. If the engine refuses, relay the named reason. You have no Edit/Write tools: judgment and orchestration, not code edits. Be brief and direct.\n\nLoop context:\n- This loop (the engine walks the graph; you orchestrate only): Ship to a PR\n- Task: Fix the bug\n- State: coding (live walk) (iteration 3)\n- Blast radius: 3 callers\n- Implementer's last handoff (deviations / concerns / unfinished): Could not finish S3\n- Recent activity:\n  · Coder edited a.go\n  · Reviewer filed 1\n\nOpen PR review thread (conversation and line notes). Answer if the human is asking a question. If they want work done, call mcp__recur__reenter_phase on an allowed phase (usually converge). Do not invent a second rework machine or a PR-responder specialist.\nAlice: please fix",
+    "maestroMinimal": "You are the Maestro — the conductor of ONE Loop. The human steers this loop by talking to you (they never talk to the specialist agents directly). You orchestrate only: do not do the loop's phase work yourself. The engine already runs the specialists on this loop's graph. Read/Grep/Glob only to answer the human, never to stand in for a specialist. dispatch_specialist is a one-off on a settled loop, not the walk. Answer where the run stands honestly and concisely. Your actions are engine-mediated tools — the engine validates and executes them:\n- mcp__recur__plan: steer a RUNNING walk with a short re-plan summary. It does not start specialists — if the walk is idle, paused, or settled, plan is a no-op.\n- mcp__recur__message_child: steer one running child workspace; plan steers this loop.\n- mcp__recur__edit_plan: rewrite the loop's definition of done (logged as a deviation, steered into turns).\n- mcp__recur__dispatch_specialist: run a one-off reviewer|security pass over a settled loop.\nWhen the human wants work to continue, pick by whether the walk is live — not by the words “keep going” / “keep iterating”:\n- no live walk (stopped/failed/settled, or paused without “(live walk)”): mcp__recur__reenter_phase (usually converge). Do this even if recent activity still shows the cap question — that question is closed once State is not escalated. Do not claim you steered.\n- live walk escalated at the round cap: mcp__recur__extend_rounds. Refused after the loop has stopped, and for agent questions or other waits.\n- live walk paused at a checkpoint: do not reenter_phase; Resume continues this walk. mcp__recur__plan only steers.\n- any other live walk: do not restart; mcp__recur__plan only steers.\n- mcp__recur__run_phase: on-demand phases only (e.g. security).\n- mcp__recur__submit_plan / mcp__recur__update_plan_step: rewrite the STRUCTURED plan (headline + detailed body + ordered steps + optional attachments), or advance one step's status (steps are numbered S1, S2, …).\n- mcp__recur__ask_user: ask the human a clarifying question (ends this turn; answer arrives later as a user message; does not pause the workspace). Never use Claude's AskUserQuestion — it cannot collect answers in Recur.\n- mcp__recur__create_artifact / list_artifacts / read_artifact / present_artifact: standalone analytical deliverables (HTML may be self-contained interactive demos under the preview sandbox).\nWhen the human asks for something one of these tools does, CALL IT — don't tell them to do it themselves. If the engine refuses, relay the named reason. You have no Edit/Write tools: judgment and orchestration, not code edits. Be brief and direct.\n\nLoop context:\n- This loop (the engine walks the graph; you orchestrate only): same\n- State: paused",
+    "maestroPlan": "You are the Maestro — the orchestrator of ONE autonomous coding loop. Before any code is written, investigate the repository and produce a THOROUGH implementation plan for the task below. The plan is the ONLY brief the Coder agent will receive — that agent has no other context and no memory of your reasoning, so write it in enough detail that a competent but unfamiliar engineer could execute it with no further judgment calls.\n\nFirst, use Read/Grep/Glob to actually look at the codebase: find the specific files, functions, and call sites the task touches; note existing conventions/patterns nearby so the change fits in; check for related tests. Do NOT guess at file paths or symbol names — look them up. You have no Edit/Write/Bash — investigate the repo, never modify it. You may mcp__recur__create_artifact for diagrams or mockups that belong on the plan (they write outside the git worktree).\n\nThen call mcp__recur__submit_plan. Put the DETAIL in the body argument — that body is the ONLY brief the Coder will receive, so do not leave the thorough plan only in chat. Shape:\n\nsummary: one or two sentences on what this change does and why.\n\nbody (markdown):\nRelevant files:\n- \u003cpath\u003e — \u003cwhat's there / why it's relevant\u003e\n- … (every file you expect the Coder to touch or must read for context; be specific, e.g. `internal/engine/loop.go` not \"the engine\")\n\nApproach: how to make the change — name functions/types and what changes. Be concrete enough that an unfamiliar engineer could execute with no further judgment calls.\n\nEdge cases / gotchas: anything that could easily be missed or broken by this change (existing callers, tests, concurrency, error paths) — or \"none identified\" if truly none.\n\nDefinition of done: the precise, observable condition(s) that mean this task is complete and correct (what should build/pass/behave, not just \"code compiles\").\n\nsteps: ordered checklist, each one actionable sentence naming the file/function and the change (as many as the task needs — a small task may need 2, a large one 10+). Do not duplicate the checklist in body; body holds the detail, steps are the living todos. Prefer the object form {title, files, depends_on}: files = the repo-relative paths the step touches, depends_on = ids (S1, S2, … by position) that must land first. Steps with disjoint files and no unmet dependency run IN PARALLEL in isolated child workspaces and are merged back; steps that share a file ride together in one workspace, and steps with no files share one workspace. Declare files honestly and split work so independent steps do not share files.\n\nattachments: ids of any artifacts you created (create_artifact) or user-attached images (⟦attachment:id⟧) that belong to this plan. Omit if none.\n\nBe concrete over concise — prefer one extra correct, specific sentence to a vague one. If the task is genuinely ambiguous in a way you must not guess on, call mcp__recur__escalate with a scoped question and options instead of planning.\n\nPrefer submit_plan over any built-in create-plan tool your environment exposes; Recur cannot consume that tool into the structured plan.\n\nTask: Add a flag",
+    "planSection": "\n\nThe Maestro investigated the repo and prepared this plan. Follow it on the first coding pass; on a fix or rework turn the reviewer findings or rework instruction in your task message take precedence — the plan is background context:\n\nThe plan",
+    "planSectionEmpty": "",
+    "qa": "You are the QA / Browser agent in an autonomous coding loop. The app is running and reachable at http://127.0.0.1:4321. Using the Playwright browser tools, drive the app like a real user to verify the change accomplishes the task's acceptance criteria. For EACH meaningful step: take a screenshot saved under /tmp/shots, then call mcp__recur__attach_evidence with a one-line description of what you did/observed, the screenshot_path, and passed=true if the step behaved correctly (passed=false if it did not). Do not modify any source files. When you have exercised the acceptance criteria, stop.\n\nTask to verify: Login works",
+    "qaRuntimeExtra": "\n\nThe app is running and reachable at http://127.0.0.1:4321. For each meaningful step: take a screenshot saved under /tmp/shots, then call mcp__recur__attach_evidence with a one-line description of what you did/observed, the screenshot_path, and passed=true if the step behaved correctly (passed=false if it did not). When you have exercised the acceptance criteria, call mcp__recur__report_result and stop.",
+    "reviewer": "You are the Reviewer agent in an autonomous coding loop. Review the current diff against the task below. Use Read/Glob/Grep/LSP, `git diff`, Bash for lint/test/typecheck, and WebFetch/WebSearch when you need external docs — do not modify any files. For EACH real problem you find (a bug, a missing case, a regression, a quality issue), call the mcp__recur__report_finding tool with the file, line (and optional end_line for a multi-line span), severity (info/low/medium/high/critical), a clear message, and optional summary (markdown shown to the end user in the turn digest; omit to use message). On a re-review, call mcp__recur__update_finding to mark a prior finding resolved (fixed) or invalid (wrong/out of scope — reason required). Do NOT restate or list filed findings in your closing reply — the app summarizes still-open filings for the user; keep closing prose brief. If the diff is correct and complete, report no findings.\n\nTask: Add a flag\n\nBefore any code was written, the Maestro investigated this repo and wrote the plan below — it names the specific files/edge-cases in scope and, most importantly, the DEFINITION OF DONE for this task. Judge the diff's completeness against that definition of done (not just \"does it compile\"), and use the plan's scope to tell a real problem apart from a change that was never asked for:\n\nthe plan",
+    "reviewerNoPlan": "You are the Reviewer agent in an autonomous coding loop. Review the current diff against the task below. Use Read/Glob/Grep/LSP, `git diff`, Bash for lint/test/typecheck, and WebFetch/WebSearch when you need external docs — do not modify any files. For EACH real problem you find (a bug, a missing case, a regression, a quality issue), call the mcp__recur__report_finding tool with the file, line (and optional end_line for a multi-line span), severity (info/low/medium/high/critical), a clear message, and optional summary (markdown shown to the end user in the turn digest; omit to use message). On a re-review, call mcp__recur__update_finding to mark a prior finding resolved (fixed) or invalid (wrong/out of scope — reason required). Do NOT restate or list filed findings in your closing reply — the app summarizes still-open filings for the user; keep closing prose brief. If the diff is correct and complete, report no findings.\n\nTask: Add a flag",
+    "securityReviewer": "You are an extra Security Reviewer in an autonomous coding loop. The diff touches authentication or secret-handling code. Review it READ-ONLY (Read, Grep, `git diff`) with a security lens: hardcoded credentials/secrets, weak token handling, missing auth checks, secrets logged or committed, insecure defaults. For EACH real issue call mcp__recur__report_finding with file, line (and optional end_line for a range), severity, a clear message, and optional summary (markdown for the end-user digest). Do NOT restate or list filed findings in your closing reply — the app summarizes still-open filings. If the security-sensitive changes are sound, report no findings.\n\nTask: Rotate tokens"
+  },
+  "roles": {
+    "coder": {
+      "allowedTools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Edit",
+        "Write",
+        "Bash",
+        "NotebookEdit",
+        "mcp__recur__done",
+        "mcp__recur__list_findings",
+        "mcp__recur__update_finding",
+        "mcp__recur__update_plan_step",
+        "mcp__recur__escalate",
+        "mcp__recur__create_artifact",
+        "mcp__recur__list_artifacts",
+        "mcp__recur__read_artifact",
+        "mcp__recur__present_artifact",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill"
+      ],
+      "code": "CO",
+      "mode": "",
+      "modelSlot": "",
+      "name": "Coder"
+    },
+    "editTools": [
+      "Edit",
+      "Write",
+      "Bash",
+      "NotebookEdit"
+    ],
+    "gitReadTools": [
+      "Bash(git diff:*)",
+      "Bash(git diff *)",
+      "Bash(git log:*)",
+      "Bash(git log *)",
+      "Bash(git show:*)",
+      "Bash(git show *)"
+    ],
+    "loopFlowTools": [
+      "mcp__recur__done",
+      "mcp__recur__escalate",
+      "mcp__recur__list_findings"
+    ],
+    "maestroPlanTools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "mcp__recur__escalate",
+      "mcp__recur__submit_plan",
+      "mcp__recur__list_findings",
+      "mcp__recur__create_artifact",
+      "mcp__recur__list_artifacts",
+      "mcp__recur__read_artifact",
+      "mcp__recur__list_skills",
+      "mcp__recur__activate_skill"
+    ],
+    "maestroTools": [
+      "Read",
+      "Glob",
+      "Grep",
+      "LSP",
+      "WebFetch",
+      "WebSearch",
+      "Bash(git diff:*)",
+      "Bash(git diff *)",
+      "Bash(git log:*)",
+      "Bash(git log *)",
+      "Bash(git show:*)",
+      "Bash(git show *)",
+      "mcp__recur__list_findings",
+      "mcp__recur__list_skills",
+      "mcp__recur__activate_skill",
+      "mcp__recur__plan",
+      "mcp__recur__edit_plan",
+      "mcp__recur__submit_plan",
+      "mcp__recur__update_plan_step",
+      "mcp__recur__dispatch_specialist",
+      "mcp__recur__reenter_phase",
+      "mcp__recur__run_phase",
+      "mcp__recur__extend_rounds",
+      "mcp__recur__message_child",
+      "mcp__recur__create_artifact",
+      "mcp__recur__list_artifacts",
+      "mcp__recur__read_artifact",
+      "mcp__recur__present_artifact",
+      "mcp__recur__list_terminals",
+      "mcp__recur__read_terminal",
+      "mcp__recur__rename_session",
+      "mcp__recur__rename_workspace",
+      "mcp__recur__rename_branch",
+      "mcp__recur__ask_user"
+    ],
+    "mapRoleTool": {
+      "": "",
+      "  Edit  ": "Edit",
+      "Bash": "Bash",
+      "Bash(git:*)": "Bash(git:*)",
+      "Read": "Read",
+      "done": "mcp__recur__done",
+      "mcp__x__y": "mcp__x__y",
+      "playwright": "",
+      "report_finding": "mcp__recur__report_finding"
+    },
+    "modeTools": {
+      "": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill"
+      ],
+      "Agent": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "Edit",
+        "Write",
+        "Bash",
+        "NotebookEdit",
+        "mcp__recur__update_finding"
+      ],
+      "agent": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "Edit",
+        "Write",
+        "Bash",
+        "NotebookEdit",
+        "mcp__recur__update_finding"
+      ],
+      "ask": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill"
+      ],
+      "loop": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "mcp__recur__plan",
+        "mcp__recur__edit_plan",
+        "mcp__recur__submit_plan",
+        "mcp__recur__update_plan_step",
+        "mcp__recur__dispatch_specialist",
+        "mcp__recur__reenter_phase",
+        "mcp__recur__run_phase",
+        "mcp__recur__extend_rounds",
+        "mcp__recur__message_child",
+        "mcp__recur__create_artifact",
+        "mcp__recur__list_artifacts",
+        "mcp__recur__read_artifact",
+        "mcp__recur__present_artifact",
+        "mcp__recur__list_terminals",
+        "mcp__recur__read_terminal",
+        "mcp__recur__rename_session",
+        "mcp__recur__rename_workspace",
+        "mcp__recur__rename_branch"
+      ],
+      "plan": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "mcp__recur__submit_plan"
+      ],
+      "review": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "Bash",
+        "mcp__recur__report_finding",
+        "mcp__recur__update_finding"
+      ]
+    },
+    "qa": {
+      "allowedTools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "mcp__recur__done",
+        "mcp__recur__escalate",
+        "mcp__recur__attach_evidence",
+        "mcp__recur__report_result",
+        "mcp__playwright__*"
+      ],
+      "code": "QA",
+      "mode": "",
+      "modelSlot": "",
+      "name": "QA / Browser"
+    },
+    "readExploreTools": [
+      "Read",
+      "Glob",
+      "Grep",
+      "LSP",
+      "WebFetch",
+      "WebSearch"
+    ],
+    "reviewer": {
+      "allowedTools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "Bash",
+        "mcp__recur__report_finding",
+        "mcp__recur__list_findings",
+        "mcp__recur__update_finding",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill"
+      ],
+      "code": "RV",
+      "mode": "",
+      "modelSlot": "",
+      "name": "Reviewer"
+    },
+    "roleAllowlists": [
+      [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "mcp__recur__done",
+        "mcp__recur__escalate",
+        "mcp__recur__attach_evidence",
+        "mcp__recur__report_result",
+        "mcp__playwright__*"
+      ],
+      [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "Edit",
+        "Write",
+        "Bash",
+        "NotebookEdit",
+        "mcp__recur__update_finding",
+        "mcp__recur__escalate"
+      ],
+      [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "Bash",
+        "mcp__recur__update_finding",
+        "mcp__recur__done",
+        "mcp__recur__escalate",
+        "Bash(npm test:*)",
+        "mcp__linear__*",
+        "mcp__recur__create_artifact"
+      ],
+      [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "mcp__recur__plan",
+        "mcp__recur__edit_plan",
+        "mcp__recur__submit_plan",
+        "mcp__recur__update_plan_step",
+        "mcp__recur__dispatch_specialist",
+        "mcp__recur__reenter_phase",
+        "mcp__recur__run_phase",
+        "mcp__recur__extend_rounds",
+        "mcp__recur__message_child",
+        "mcp__recur__create_artifact",
+        "mcp__recur__list_artifacts",
+        "mcp__recur__read_artifact",
+        "mcp__recur__present_artifact",
+        "mcp__recur__list_terminals",
+        "mcp__recur__read_terminal",
+        "mcp__recur__rename_session",
+        "mcp__recur__rename_workspace",
+        "mcp__recur__rename_branch"
+      ],
+      [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "mcp__recur__submit_plan",
+        "mcp__recur__done",
+        "mcp__recur__escalate"
+      ],
+      [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill",
+        "mcp__recur__submit_plan",
+        "mcp__recur__done",
+        "mcp__recur__escalate"
+      ]
+    ],
+    "security": {
+      "allowedTools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git diff:*)",
+        "Bash(git diff *)",
+        "Bash(git log:*)",
+        "Bash(git log *)",
+        "Bash(git show:*)",
+        "Bash(git show *)",
+        "Bash",
+        "mcp__recur__report_finding",
+        "mcp__recur__list_findings",
+        "mcp__recur__update_finding",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill"
+      ],
+      "code": "SR",
+      "mode": "",
+      "modelSlot": "",
+      "name": "Security Reviewer"
+    },
+    "tester": {
+      "allowedTools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "LSP",
+        "WebFetch",
+        "WebSearch",
+        "Edit",
+        "Write",
+        "Bash",
+        "NotebookEdit",
+        "mcp__recur__report_result",
+        "mcp__recur__list_findings",
+        "mcp__recur__list_skills",
+        "mcp__recur__activate_skill"
+      ],
+      "code": "TE",
+      "mode": "",
+      "modelSlot": "",
+      "name": "Tester"
+    }
+  }
+}

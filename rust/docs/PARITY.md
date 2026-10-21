@@ -633,7 +633,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/hot-shells.ts` (51 lines)
 - [ ] `lib/hoverGate.ts` (50 lines)
 - [ ] `lib/icons.ts` (1003 lines)
-- [ ] `lib/inbox-read.ts` (28 lines)
+- [~] `lib/inbox-read.ts` (28 lines) → `recur_engine::view::{workspace_unread_ids, mark_workspace_read, mark_item_read, mark_all_read}` (the optimistic inbox rules; tested). Left for `recur-app`: calling `InboxService.MarkInboxRead` / `MarkAllInboxRead` and updating the inbox store
 - [~] `lib/issue-link.ts` (36 lines) → `recur_issues::view::{issue_key, issue_url}` (tracker fallback via `IssueTracker::issue_url`); tested. Left for `recur-app`: the `trackerIssues` cache keyed on `issuesStale` and `openIssueUrl` (services `OpenLinearInApp` uses `IssueTracker::app_url`)
 - [ ] `lib/keybinding-menu.ts` (27 lines)
 - [ ] `lib/keyequiv.ts` (285 lines)
@@ -689,7 +689,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/providers.ts` (76 lines)
 - [ ] `lib/rail-peek.ts` (106 lines)
 - [x] `lib/reenter-phase-tool.ts` (32 lines) → `recur_agent_tools::display::reenter_phase_tool` (`reenter-phase-tool.test.ts` ported)
-- [ ] `lib/remove-workspace.ts` (72 lines)
+- [~] `lib/remove-workspace.ts` (72 lines) → `recur_engine::view::{mark_removed, removed_toast, unique_remove_ids}` plus the engine's `workspace_discard_risk` copy; `remove-workspace.test.ts` pure cases ported. Left for `recur-app`: the optimistic hide, editor-session flush, leaving the detail view and the ListWorkspaces restore on failure
 - [ ] `lib/review-diff.ts` (131 lines)
 - [ ] `lib/review-scope.ts` (47 lines)
 - [ ] `lib/review-scroll.ts` (18 lines)
@@ -743,7 +743,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/updater.ts` (42 lines)
 - [~] `lib/user-mention.ts` (200 lines) → pure rules in `recur_forge::view` (`mention_login`, `mention_people`, `suggest_user_mentions` taking the fuzzy ranker from `lib/fuzzy.ts`'s port, `merge_mention_hits`); test cases ported. Left for `recur-app`: the textarea typeahead (caret tracking, 150 ms remote search via `Forge::mentionable_users`, keys) and `mentionQueryAt` (`lib/agentchat.ts`, E2)
 - [ ] `lib/uuid.ts` (16 lines)
-- [ ] `lib/wait-for-worktree.ts` (38 lines)
+- [~] `lib/wait-for-worktree.ts` (38 lines) → `recur_engine::view::{worktree_wait, ws_creating}` (`WorktreeWait::{Ready, Gone, Pending}`); `wait-for-worktree.test.ts` ported. Left for `recur-app`: the store subscription and abort signal
 - [x] `lib/webtools.ts` (87 lines) → `recur_agent::display::web` (WebFetch URL/prompt, WebSearch query, `compact_url` on the WHATWG `url` crate, JSON sniff; `webtools.test.ts` ported)
 - [ ] `lib/workspace-file.ts` (96 lines)
 - [ ] `lib/workspace-nav.ts` (350 lines)
@@ -897,6 +897,20 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
     - [x] `provider.go` Cursor half → `pool` (per-worktree bridges, LRU cap 8 sparing reserved runners, key/binary change teardown, cold-start patch + attribution config, capability check, deferred close) and `CursorProvider::run_turn` (pre-stream self-heal retry once, "Cursor is turned off" wrap)
     - [x] Tests: `cursor_test.go`, `cursor_flags_test.go`, `cursor_steer_test.go`, `cursor_active_run_test.go`, `cursortools_test.go` (mapping, display and frame cases), pool and Cursor router cases of `provider_test.go`, `cursor_smoke_test.go` (`RECUR_CURSOR_BRIDGE` + `CURSOR_API_KEY`). The transcript cases of `cursortools_test.go` (`flattenTranscript`, `sessionBroadcast`) belong to E2
     - [ ] `Provider::usage_probe` for Cursor: deferred edge until `recur-usage` (P3) lands
+  - [x] Slice E1 (engine core) → `recur_engine::{core, bus, governor, chatlife, loop_handle, loop_registry, publish, attention, workspace, fswatch, roles, guard, host, registry, terminals, view, testing}`; Go-generated golden fixture `crates/engine/tests/golden/go_e1.json` (generator `gen_e1_golden.go.txt`): every event payload, prompts, tool tables, kitchen words, synthetic guards. Calls into E2–E5 go through the named hooks in `deferred.rs` (listed in the plan, E1 "As built")
+    - [x] `bus.go` → `bus` (`EngineEvent` for every event of plan §3 with Go-identical JSON, `Bus::{subscribe, subscribe_fn, publish}`: never drops, per-publisher order)
+    - [x] `governor.go`, `keepawake.go` → `governor` (loop/agent caps, wake one on release / all on cap change, cancellable agent wait, iters) and `AgentPermit` (keep-awake sync, provider `on_idle` at zero)
+    - [x] `chat_cancel.go` → `chatlife` (turn registry with swap/if-idle/unregister, FIFO tab slots + stop generation, ref-counted async life locks, continue generations, park/stop/timeout flags, armed deadline, steer channel with acked delivery, delete/hoist tombstones, `cancel_chat`)
+    - [x] `chat_inbox.go` → `attention::chat_inbox` (rows, `parse_chat_inbox_id`, Mark all read, boot heal, Loop finished); engine focus/unseen/attention publishers and `flagChatUnseen` → `attention`
+    - [x] `diff_sync.go`, `branch_sync.go`, `workspace_id.go`, `ws_hooks.go` → `workspace::{diff_sync, branch_sync, ids, hooks}`
+    - [x] `fswatch.go`, `fswatch_darwin.go`, `fswatch_fsnotify.go` → `fswatch` (+ `backend` on `notify`: recursive FSEvents on macOS, per-directory inotify with tree add/remove elsewhere, one latency batcher)
+    - [x] `roles.go`, `role_tools.go`, `policy.go` → `roles`, `roles::tools`, `guard` (prompts byte-identical, golden-checked)
+    - [x] `engine.go` E1 half → `core` (state, construction, MCP start, git alert, caps), `publish`, `lifecycle` (Pause, Stop, Shutdown, Recover incl. its loop half), `workspace::{teardown, main_copy}`
+    - [x] `loop.go` control plane → `loop_handle::LoopHandle` (commands, pause/stop/escalation waits, steers, grants, done summaries, findings, evidence; branch under the lock for R18)
+    - [x] `reporter.go` loop registry + E1 Host methods (`report_finding`, `done`, `list_findings`, `update_finding`, `report_result`, `escalate`, `attach_evidence`) → `loop_registry`, `host::EngineHost`
+    - [x] `workspace_create.go` E1 half, `workspace_remote.go` E1 half → `workspace::{create, remote}`
+    - [x] Tests: `governor_test.go`, `keepawake_test.go`, `chat_inbox_test.go` and `attention_test.go` (minus E2/E4 cases), `chat_cancel_test.go` kernel cases, `diff_sync_test.go`, `fswatch_test.go`, `branch_sync_test.go` (minus Open PR), `workspace_create_test.go` allocate cases, `workspace_id_test.go` (minus dispatch), `setup_teardown_test.go`, `policy_test.go`, `roles_test.go`, `role_tools_test.go`, the hand-workspace halves of `lifecycle_test.go` and `engine_test.go`; `fixture_test.go` scaffolding → `testing`. Loop-driven cases move to E3 (see the plan)
+    - [ ] Deferred hooks filled by E2–E5 (`deferred.rs`)
 - [ ] `internal/git`: 12 files, 4392 lines, 14 test files
 - [x] `internal/git`: 12 files, 4392 lines, 14 test files → `recur-git` and `recur-chroma` (all 14 Go test files ported: 159 unit tests across both crates, `ExpandHome`'s in `recur-project`, 3 environment-isolated tests in `crates/git/tests/env_isolated.rs`, 2 Go-parity fixture tests in `crates/chroma/tests/highlight_parity.rs`)
   - [x] Command runner (`command.go`): every git process runs with `GIT_OPTIONAL_LOCKS=0` (inherited and extra values stripped), leads its own process group, gets SIGTERM to the group on cancel (future dropped or `deadline`) and SIGKILL to the leader after the 2s grace, and treats inherited pipes still open after a clean exit (ssh ControlMaster) as success; error text matches Go (`exit status N`, `signal: terminated`, `exec: "git": executable file not found in $PATH`); `output` carries stderr like `ExitError.Stderr`, `combined_output` interleaves through one pipe

@@ -38,6 +38,9 @@ recur-app = { path = "crates/app" }
 
 # UI. gpui-kit pins an exact gpui-pre snapshot; bump only together with it.
 gpui-kit = "0.8.0"
+# The GPUI build gpui-kit re-exports, for `test-support` in dev-dependencies (gpui-kit's own
+# `test-support` feature pulls in gpui-fast through a target-specific weak dependency).
+gpui = { package = "gpui-pre", version = "=0.3.9" }
 
 anyhow = "1"
 thiserror = "2"
@@ -52,6 +55,9 @@ getrandom = "0.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
+async-trait = "0.1"
+tokio-util = "0.7"
+url = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 parking_lot = "0.12"
@@ -60,14 +66,38 @@ clap = { version = "4", features = ["derive"] }
 include_dir = "0.7"
 notify = "8"
 cron = "0.15"
+socket2 = "0.6"
+rustix = { version = "1", features = ["process"] }
+reqwest = "0.13"
+base64 = "0.23"
+sha2 = "0.11"
+digest = "0.11"
+ed25519-dalek = { version = "3", features = ["digest"] }
+p256 = { version = "0.14", features = ["ecdsa"] }
+spki = "0.8"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+tar = "0.4"
+flate2 = "1"
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-app-kit = "0.3"
+objc2-user-notifications = "0.3"
+block2 = "0.6"
+dispatch2 = "0.3"
 tempfile = "3"
 pretty_assertions = "1"
-sha2 = "0.10"
 hex = "0.4"
-tokio-util = "0.7"
-nix = { version = "0.30", features = ["signal", "process"] }
 yaml-rust2 = "0.10"
 swc_core = { version = "82", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_transforms_typescript", "ecma_transforms_module", "ecma_transforms_compat", "ecma_codegen", "ecma_visit", "ecma_utils", "ecma_helpers_inline"] }
+
+# Terminal: PTY spawn, process groups, emulator state.
+portable-pty = "0.9"
+filedescriptor = "0.8"
+nix = { version = "0.31", features = ["signal", "process", "hostname", "poll"] }
+alacritty_terminal = { version = "0.25", default-features = false }
+unicode-width = "0.2"
+image = { version = "0.25", default-features = false }
+regress = { version = "0.12", features = ["utf16"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

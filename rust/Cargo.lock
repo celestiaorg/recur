@@ -7234,11 +7234,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-view-chat"
+version = "0.0.0"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "futures",
+ "gpui-kit",
+ "gpui-pre",
+ "parking_lot",
+ "pretty_assertions",
+ "recur-agent",
+ "recur-agent-tools",
+ "recur-bundles",
+ "recur-content",
+ "recur-domain",
+ "recur-engine",
+ "recur-issues",
+ "recur-services",
+ "recur-textmate",
+ "recur-ui",
+ "recur-view-chat",
+ "recur-view-core",
+ "regex",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "tracing",
+ "unicode-linebreak",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "recur-view-core"
 version = "0.0.0"
 dependencies = [
+ "futures",
  "gpui-kit",
  "gpui-pre",
+ "parking_lot",
  "pretty_assertions",
  "recur-domain",
  "recur-editor",

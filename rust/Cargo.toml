@@ -76,6 +76,7 @@ onig = { version = "6.5", default-features = false }
 ropey = { version = "=2.0.0-beta.1", default-features = false, features = ["metric_lines_lf", "metric_utf16", "metric_chars", "simd"] }
 unicode-segmentation = "1.12"
 unicode-normalization = "0.1"
+pulldown-cmark = { version = "0.13", default-features = false }
 clap = { version = "4", features = ["derive"] }
 include_dir = "0.7"
 notify = "8"

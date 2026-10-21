@@ -640,7 +640,7 @@ fn decode_html_text(s: &str) -> String {
         .replace("&amp;", "&")
 }
 
-fn lang_from_code_class(cls: &str) -> &'static str {
+pub fn lang_from_code_class(cls: &str) -> &'static str {
     for c in cls.split_whitespace() {
         let tag = c
             .strip_prefix("language-")

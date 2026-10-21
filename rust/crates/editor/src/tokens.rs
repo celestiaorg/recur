@@ -238,3 +238,29 @@ impl AppTokens {
 pub const MONO_FAMILIES: [&str; 4] = ["JetBrains Mono", "SF Mono", "Menlo", "monospace"];
 /// `--ui`: 'Inter', system-ui, sans-serif.
 pub const UI_FAMILIES: [&str; 2] = ["Inter", ".SystemUIFont"];
+
+fn font_of(families: &[&str]) -> gpui_kit::Font {
+    let mut f = gpui_kit::font(families[0].to_string());
+    f.fallbacks = Some(gpui_kit::FontFallbacks::from_fonts(
+        families[1..].iter().map(|s| s.to_string()).collect(),
+    ));
+    f
+}
+
+/// The `--mono` font.
+pub fn mono_font() -> gpui_kit::Font {
+    font_of(&MONO_FAMILIES)
+}
+
+/// The `--ui` font.
+pub fn ui_font() -> gpui_kit::Font {
+    font_of(&UI_FAMILIES)
+}
+
+/// Set an element's text font family and fallbacks.
+pub fn with_font<E: gpui_kit::Styled>(mut e: E, font: &gpui_kit::Font) -> E {
+    let text = &mut e.style().text;
+    text.font_family = Some(font.family.clone());
+    text.font_fallbacks = font.fallbacks.clone();
+    e
+}

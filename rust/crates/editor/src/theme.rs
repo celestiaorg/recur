@@ -21,6 +21,9 @@ pub struct EditorTheme {
     pub caret: Rgba,
     pub selection: Rgba,
     pub active_line: Rgba,
+    /// `.cm-activeLineGutter`: the TextMate line highlight, else the base
+    /// theme's #222227 / #e2f2ff.
+    pub active_line_gutter: Rgba,
     pub gutter_background: Rgba,
     pub gutter_foreground: Rgba,
     pub gutter_border: Rgba,
@@ -170,6 +173,13 @@ impl EditorTheme {
             caret,
             selection,
             active_line,
+            active_line_gutter: if parsed.is_some() {
+                active_line
+            } else if dark {
+                css("#222227", TRANSPARENT)
+            } else {
+                css("#e2f2ff", TRANSPARENT)
+            },
             gutter_background: gutter_bg,
             gutter_foreground: gutter_fg,
             gutter_border,

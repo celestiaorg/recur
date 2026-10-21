@@ -379,6 +379,26 @@ pub fn select_page_down(v: &dyn ViewQueries) -> Option<TransactionSpec> {
     extend_sel(v.state(), true, |r| v.move_vertically(r, true, Some(h)))
 }
 
+/// `cursorLineBoundaryLeft` (left-to-right text: backward).
+pub fn cursor_line_boundary_left(v: &dyn ViewQueries) -> Option<TransactionSpec> {
+    cursor_line_boundary_backward(v)
+}
+
+/// `cursorLineBoundaryRight`.
+pub fn cursor_line_boundary_right(v: &dyn ViewQueries) -> Option<TransactionSpec> {
+    cursor_line_boundary_forward(v)
+}
+
+/// `selectLineBoundaryLeft`.
+pub fn select_line_boundary_left(v: &dyn ViewQueries) -> Option<TransactionSpec> {
+    select_line_boundary_backward(v)
+}
+
+/// `selectLineBoundaryRight`.
+pub fn select_line_boundary_right(v: &dyn ViewQueries) -> Option<TransactionSpec> {
+    select_line_boundary_forward(v)
+}
+
 pub fn select_line_boundary_forward(v: &dyn ViewQueries) -> Option<TransactionSpec> {
     extend_sel(v.state(), true, |r| move_by_line_boundary(v, r, true))
 }

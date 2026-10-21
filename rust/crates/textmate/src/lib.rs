@@ -40,8 +40,8 @@ pub use catalog::{
 };
 pub use codehl::{
     DiffKind, DiffRow, ShKind, diff_lines, highlight_code, highlight_html_code_blocks,
-    highlight_line, highlight_line_spans, lang_from_info, lang_from_path, looks_like_unified_diff,
-    parse_unified_diff,
+    highlight_line, highlight_line_spans, lang_from_code_class, lang_from_info, lang_from_path,
+    looks_like_unified_diff, parse_unified_diff,
 };
 pub use delta::{
     ChangedRange, LineDoc, LineReplace, TmDocFingerprint, line_replace_from_changes,

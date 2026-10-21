@@ -7,9 +7,29 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# Glob and Grep in the harness toolbox; they wait on recur-code (slice C)
+# through recur-agent-tools' own `code` feature.
+code = ["recur-agent-tools/code"]
+
 [dependencies]
 recur-domain.workspace = true
 recur-agent.workspace = true
+recur-agent-tools.workspace = true
+recur-store.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+chrono.workspace = true
+parking_lot.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

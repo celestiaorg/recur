@@ -11,8 +11,26 @@ publish = false
 name = "recur"
 path = "src/main.rs"
 
+[features]
+default = ["mock"]
+# The in-memory mock services, until the engine-backed implementation lands.
+mock = ["recur-services/mock"]
+
 [dependencies]
 recur-app.workspace = true
+recur-bundles.workspace = true
+recur-code.workspace = true
+recur-domain.workspace = true
+recur-platform.workspace = true
+recur-services.workspace = true
+recur-store.workspace = true
+recur-ui.workspace = true
+recur-view-core.workspace = true
+gpui-kit.workspace = true
+futures.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
 
 [lints]
 workspace = true

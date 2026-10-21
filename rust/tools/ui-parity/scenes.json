@@ -686,5 +686,843 @@
       "input": "palette",
       "terminalTheme": "solarized-dark"
     }
+  ],
+  "shell": [
+    {
+      "name": "shell/default",
+      "width": 1280,
+      "height": 800,
+      "theme": "default",
+      "tolerance": 3020
+    },
+    {
+      "name": "shell/paper",
+      "width": 1280,
+      "height": 800,
+      "theme": "paper",
+      "tolerance": 3030,
+      "hardTolerance": 6
+    },
+    {
+      "name": "shell/nord",
+      "width": 1280,
+      "height": 800,
+      "theme": "nord",
+      "tolerance": 2990
+    },
+    {
+      "name": "shell/collapsed",
+      "width": 1280,
+      "height": 800,
+      "theme": "default",
+      "tolerance": 720,
+      "storage": {
+        "recur.railCollapsed": "1"
+      }
+    },
+    {
+      "name": "shell/peek",
+      "width": 1280,
+      "height": 800,
+      "theme": "default",
+      "tolerance": 3020,
+      "storage": {
+        "recur.railCollapsed": "1"
+      },
+      "steps": [
+        {
+          "move": [
+            3,
+            400
+          ]
+        },
+        {
+          "wait": 400
+        }
+      ]
+    },
+    {
+      "name": "shell/groups",
+      "width": 1280,
+      "height": 800,
+      "theme": "default",
+      "tolerance": 3020,
+      "seed": {
+        "projectGroups": [
+          {
+            "id": "g-client",
+            "name": "Client work",
+            "open": true
+          },
+          {
+            "id": "g-later",
+            "name": "Later",
+            "open": false
+          }
+        ],
+        "projects": [
+          {
+            "id": "storefront",
+            "groupId": "g-client"
+          },
+          {
+            "id": "payments",
+            "groupId": "g-client",
+            "open": false
+          },
+          {
+            "id": "marketing",
+            "groupId": "g-later"
+          },
+          {
+            "id": "docs",
+            "name": "docs",
+            "pic": "lucide:book-open",
+            "color": "var(--emerald)",
+            "open": true,
+            "isGit": false,
+            "repoPath": "~/code/docs",
+            "baseBranch": "main"
+          },
+          {
+            "id": "legacy",
+            "name": "legacy-admin",
+            "pic": "L",
+            "color": "var(--coral)",
+            "open": true,
+            "isGit": true,
+            "hidden": true,
+            "repoPath": "~/code/legacy",
+            "baseBranch": "main"
+          }
+        ],
+        "loops": [
+          {
+            "id": "LOOP-3020",
+            "projectId": "marketing",
+            "short": "Refresh pricing page",
+            "goal": "Refresh pricing page",
+            "state": "escalated",
+            "branch": "recur/loop-3020",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "needs",
+            "phase": "",
+            "archived": false
+          }
+        ],
+        "settings": {
+          "showHiddenProjects": true
+        }
+      }
+    },
+    {
+      "name": "shell/tree",
+      "width": 1280,
+      "height": 1000,
+      "theme": "default",
+      "tolerance": 4210,
+      "hardTolerance": 1,
+      "seed": {
+        "loops": [
+          {
+            "id": "LOOP-M1",
+            "projectId": "storefront",
+            "short": "",
+            "goal": "",
+            "state": "",
+            "branch": "main",
+            "diff": {
+              "add": 3,
+              "del": 1
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "isMain": true
+          },
+          {
+            "id": "LOOP-3001",
+            "projectId": "storefront",
+            "short": "Polish onboarding copy",
+            "goal": "Polish onboarding copy",
+            "state": "",
+            "branch": "recur/loop-3001",
+            "diff": {
+              "add": 12,
+              "del": 3
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3002",
+            "projectId": "storefront",
+            "short": "Rewrite empty states",
+            "goal": "Rewrite empty states",
+            "state": "paused",
+            "branch": "recur/loop-3002",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "idle",
+            "archived": false,
+            "parentId": "LOOP-3001",
+            "parentStepIds": [
+              "2",
+              "3"
+            ]
+          },
+          {
+            "id": "LOOP-3003",
+            "projectId": "storefront",
+            "short": "Tighten error copy",
+            "goal": "Tighten error copy",
+            "state": "failed",
+            "branch": "recur/loop-3003",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "parentId": "LOOP-3001",
+            "parentStepIds": [
+              "4"
+            ]
+          },
+          {
+            "id": "LOOP-3004",
+            "projectId": "storefront",
+            "short": "Drop legacy checkout",
+            "goal": "Drop legacy checkout",
+            "state": "merged",
+            "branch": "recur/loop-3004",
+            "diff": {
+              "add": 4,
+              "del": 1290
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3005",
+            "projectId": "storefront",
+            "short": "Cache product images",
+            "goal": "Cache product images",
+            "state": "stopped",
+            "branch": "recur/loop-3005",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3006",
+            "projectId": "payments",
+            "short": "Retry failed webhooks",
+            "goal": "Retry failed webhooks",
+            "state": "pr_open",
+            "branch": "recur/loop-3006",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3007",
+            "projectId": "payments",
+            "short": "Queue refunds",
+            "goal": "Queue refunds",
+            "state": "pr_open",
+            "branch": "recur/loop-3007",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3010",
+            "projectId": "storefront",
+            "short": "Nightly dependency bump",
+            "goal": "Nightly dependency bump",
+            "state": "",
+            "branch": "recur/loop-3010",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "scheduleId": "S1"
+          },
+          {
+            "id": "LOOP-3011",
+            "projectId": "storefront",
+            "short": "Weekly flaky test sweep",
+            "goal": "Weekly flaky test sweep",
+            "state": "coding",
+            "branch": "recur/loop-3011",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "scheduleId": "S2"
+          }
+        ],
+        "prs": [
+          {
+            "id": "490",
+            "workspaceId": "LOOP-3005",
+            "projectId": "storefront",
+            "group": "you",
+            "number": 490,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 490",
+            "state": "In review",
+            "diff": {
+              "add": 1,
+              "del": 1
+            },
+            "draft": true
+          },
+          {
+            "id": "491",
+            "workspaceId": "LOOP-3006",
+            "projectId": "payments",
+            "group": "you",
+            "number": 491,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 491",
+            "state": "Closed",
+            "diff": {
+              "add": 1,
+              "del": 1
+            }
+          },
+          {
+            "id": "492",
+            "workspaceId": "LOOP-3007",
+            "projectId": "payments",
+            "group": "you",
+            "number": 492,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 492",
+            "state": "In review",
+            "diff": {
+              "add": 1,
+              "del": 1
+            },
+            "mergeQueued": true
+          }
+        ]
+      },
+      "steps": [
+        {
+          "click": [
+            100,
+            308
+          ]
+        },
+        {
+          "move": [
+            900,
+            600
+          ]
+        }
+      ]
+    },
+    {
+      "name": "shell/hover",
+      "width": 1280,
+      "height": 800,
+      "theme": "default",
+      "tolerance": 4030,
+      "hardTolerance": 1,
+      "seed": {
+        "loops": [
+          {
+            "id": "LOOP-M1",
+            "projectId": "storefront",
+            "short": "",
+            "goal": "",
+            "state": "",
+            "branch": "main",
+            "diff": {
+              "add": 3,
+              "del": 1
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "isMain": true
+          },
+          {
+            "id": "LOOP-3001",
+            "projectId": "storefront",
+            "short": "Polish onboarding copy",
+            "goal": "Polish onboarding copy",
+            "state": "",
+            "branch": "recur/loop-3001",
+            "diff": {
+              "add": 12,
+              "del": 3
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3002",
+            "projectId": "storefront",
+            "short": "Rewrite empty states",
+            "goal": "Rewrite empty states",
+            "state": "paused",
+            "branch": "recur/loop-3002",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "idle",
+            "archived": false,
+            "parentId": "LOOP-3001",
+            "parentStepIds": [
+              "2",
+              "3"
+            ]
+          },
+          {
+            "id": "LOOP-3003",
+            "projectId": "storefront",
+            "short": "Tighten error copy",
+            "goal": "Tighten error copy",
+            "state": "failed",
+            "branch": "recur/loop-3003",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "parentId": "LOOP-3001",
+            "parentStepIds": [
+              "4"
+            ]
+          },
+          {
+            "id": "LOOP-3004",
+            "projectId": "storefront",
+            "short": "Drop legacy checkout",
+            "goal": "Drop legacy checkout",
+            "state": "merged",
+            "branch": "recur/loop-3004",
+            "diff": {
+              "add": 4,
+              "del": 1290
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3005",
+            "projectId": "storefront",
+            "short": "Cache product images",
+            "goal": "Cache product images",
+            "state": "stopped",
+            "branch": "recur/loop-3005",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3006",
+            "projectId": "payments",
+            "short": "Retry failed webhooks",
+            "goal": "Retry failed webhooks",
+            "state": "pr_open",
+            "branch": "recur/loop-3006",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3007",
+            "projectId": "payments",
+            "short": "Queue refunds",
+            "goal": "Queue refunds",
+            "state": "pr_open",
+            "branch": "recur/loop-3007",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3010",
+            "projectId": "storefront",
+            "short": "Nightly dependency bump",
+            "goal": "Nightly dependency bump",
+            "state": "",
+            "branch": "recur/loop-3010",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "scheduleId": "S1"
+          },
+          {
+            "id": "LOOP-3011",
+            "projectId": "storefront",
+            "short": "Weekly flaky test sweep",
+            "goal": "Weekly flaky test sweep",
+            "state": "coding",
+            "branch": "recur/loop-3011",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "scheduleId": "S2"
+          }
+        ],
+        "prs": [
+          {
+            "id": "490",
+            "workspaceId": "LOOP-3005",
+            "projectId": "storefront",
+            "group": "you",
+            "number": 490,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 490",
+            "state": "In review",
+            "diff": {
+              "add": 1,
+              "del": 1
+            },
+            "draft": true
+          },
+          {
+            "id": "491",
+            "workspaceId": "LOOP-3006",
+            "projectId": "payments",
+            "group": "you",
+            "number": 491,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 491",
+            "state": "Closed",
+            "diff": {
+              "add": 1,
+              "del": 1
+            }
+          },
+          {
+            "id": "492",
+            "workspaceId": "LOOP-3007",
+            "projectId": "payments",
+            "group": "you",
+            "number": 492,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 492",
+            "state": "In review",
+            "diff": {
+              "add": 1,
+              "del": 1
+            },
+            "mergeQueued": true
+          }
+        ]
+      },
+      "steps": [
+        {
+          "move": [
+            150,
+            473
+          ]
+        }
+      ]
+    },
+    {
+      "name": "shell/scrolled",
+      "width": 1280,
+      "height": 560,
+      "theme": "default",
+      "tolerance": 3960,
+      "hardTolerance": 1,
+      "seed": {
+        "loops": [
+          {
+            "id": "LOOP-M1",
+            "projectId": "storefront",
+            "short": "",
+            "goal": "",
+            "state": "",
+            "branch": "main",
+            "diff": {
+              "add": 3,
+              "del": 1
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "isMain": true
+          },
+          {
+            "id": "LOOP-3001",
+            "projectId": "storefront",
+            "short": "Polish onboarding copy",
+            "goal": "Polish onboarding copy",
+            "state": "",
+            "branch": "recur/loop-3001",
+            "diff": {
+              "add": 12,
+              "del": 3
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3002",
+            "projectId": "storefront",
+            "short": "Rewrite empty states",
+            "goal": "Rewrite empty states",
+            "state": "paused",
+            "branch": "recur/loop-3002",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "idle",
+            "archived": false,
+            "parentId": "LOOP-3001",
+            "parentStepIds": [
+              "2",
+              "3"
+            ]
+          },
+          {
+            "id": "LOOP-3003",
+            "projectId": "storefront",
+            "short": "Tighten error copy",
+            "goal": "Tighten error copy",
+            "state": "failed",
+            "branch": "recur/loop-3003",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "parentId": "LOOP-3001",
+            "parentStepIds": [
+              "4"
+            ]
+          },
+          {
+            "id": "LOOP-3004",
+            "projectId": "storefront",
+            "short": "Drop legacy checkout",
+            "goal": "Drop legacy checkout",
+            "state": "merged",
+            "branch": "recur/loop-3004",
+            "diff": {
+              "add": 4,
+              "del": 1290
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3005",
+            "projectId": "storefront",
+            "short": "Cache product images",
+            "goal": "Cache product images",
+            "state": "stopped",
+            "branch": "recur/loop-3005",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3006",
+            "projectId": "payments",
+            "short": "Retry failed webhooks",
+            "goal": "Retry failed webhooks",
+            "state": "pr_open",
+            "branch": "recur/loop-3006",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3007",
+            "projectId": "payments",
+            "short": "Queue refunds",
+            "goal": "Queue refunds",
+            "state": "pr_open",
+            "branch": "recur/loop-3007",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false
+          },
+          {
+            "id": "LOOP-3010",
+            "projectId": "storefront",
+            "short": "Nightly dependency bump",
+            "goal": "Nightly dependency bump",
+            "state": "",
+            "branch": "recur/loop-3010",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "scheduleId": "S1"
+          },
+          {
+            "id": "LOOP-3011",
+            "projectId": "storefront",
+            "short": "Weekly flaky test sweep",
+            "goal": "Weekly flaky test sweep",
+            "state": "coding",
+            "branch": "recur/loop-3011",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "group": "active",
+            "phase": "",
+            "archived": false,
+            "scheduleId": "S2"
+          }
+        ],
+        "prs": [
+          {
+            "id": "490",
+            "workspaceId": "LOOP-3005",
+            "projectId": "storefront",
+            "group": "you",
+            "number": 490,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 490",
+            "state": "In review",
+            "diff": {
+              "add": 1,
+              "del": 1
+            },
+            "draft": true
+          },
+          {
+            "id": "491",
+            "workspaceId": "LOOP-3006",
+            "projectId": "payments",
+            "group": "you",
+            "number": 491,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 491",
+            "state": "Closed",
+            "diff": {
+              "add": 1,
+              "del": 1
+            }
+          },
+          {
+            "id": "492",
+            "workspaceId": "LOOP-3007",
+            "projectId": "payments",
+            "group": "you",
+            "number": 492,
+            "source": "local",
+            "branch": "recur/x",
+            "base": "main",
+            "title": "PR 492",
+            "state": "In review",
+            "diff": {
+              "add": 1,
+              "del": 1
+            },
+            "mergeQueued": true
+          }
+        ]
+      },
+      "treeScroll": 150,
+      "steps": [
+        {
+          "wait": 1000
+        }
+      ]
+    }
   ]
 }

@@ -6576,11 +6576,23 @@ dependencies = [
 name = "recur-app"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "chrono",
  "gpui-kit",
- "recur-editor",
+ "gpui-pre",
+ "objc2-foundation 0.3.2",
+ "parking_lot",
+ "recur-app",
+ "recur-domain",
+ "recur-platform",
  "recur-services",
- "recur-terminal-view",
  "recur-ui",
+ "recur-view-core",
+ "recur-view-sidebar",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
 ]
 
 [[package]]
@@ -6679,7 +6691,20 @@ dependencies = [
 name = "recur-desktop"
 version = "0.0.0"
 dependencies = [
+ "futures",
+ "gpui-kit",
  "recur-app",
+ "recur-bundles",
+ "recur-code",
+ "recur-domain",
+ "recur-platform",
+ "recur-services",
+ "recur-store",
+ "recur-ui",
+ "recur-view-core",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -6721,8 +6746,10 @@ name = "recur-engine"
 version = "0.0.0"
 dependencies = [
  "async-trait",
+ "base64 0.23.1",
  "chrono",
  "getrandom 0.4.3",
+ "hex",
  "notify",
  "parking_lot",
  "pretty_assertions",
@@ -6738,6 +6765,8 @@ dependencies = [
  "recur-platform",
  "recur-project",
  "recur-provider-claude",
+ "recur-provider-compatible",
+ "recur-provider-cursor",
  "recur-store",
  "recur-term",
  "regex",
@@ -6749,6 +6778,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -7123,6 +7153,7 @@ dependencies = [
  "anyhow",
  "gpui-kit",
  "image",
+ "recur-app",
  "recur-editor",
  "recur-terminal-view",
  "recur-ui",
@@ -7153,6 +7184,36 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "recur-view-core"
+version = "0.0.0"
+dependencies = [
+ "gpui-kit",
+ "gpui-pre",
+ "pretty_assertions",
+ "recur-domain",
+ "recur-editor",
+ "recur-services",
+ "recur-term",
+ "recur-ui",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
+name = "recur-view-sidebar"
+version = "0.0.0"
+dependencies = [
+ "gpui-kit",
+ "recur-domain",
+ "recur-services",
+ "recur-ui",
+ "recur-view-core",
 ]
 
 [[package]]

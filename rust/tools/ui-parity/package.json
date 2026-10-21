@@ -17,6 +17,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher"
-    ]
+    ],
+    "overrides": {
+      "esrap": "2.2.11"
+    }
   }
 }

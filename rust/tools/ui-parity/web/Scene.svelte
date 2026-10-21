@@ -20,6 +20,7 @@
   import Scrollbars from './scenes/Scrollbars.svelte'
   import Editor from './scenes/Editor.svelte'
   import Terminal from './scenes/Terminal.svelte'
+  import Shell from './scenes/Shell.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
@@ -30,8 +31,8 @@
     return kind !== 'editor' || !!document.querySelector('.cm-line span')
   }
   onMount(() => {
-    // Terminal scenes report readiness once xterm has drawn their input.
-    if (kind === 'terminal') return
+    // Terminal and shell scenes report their own readiness.
+    if (kind === 'terminal' || kind === 'shell') return
     const settle = () => requestAnimationFrame(() => requestAnimationFrame(() => (ready = true)))
     const wait = (left: number) => (painted() || left <= 0 ? settle() : setTimeout(() => wait(left - 1), 50))
     wait(100)
@@ -79,6 +80,8 @@
     <Editor {variant} />
   {:else if kind === 'terminal'}
     <Terminal {name} onready={() => (ready = true)} />
+  {:else if kind === 'shell'}
+    <Shell onready={() => (ready = true)} />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

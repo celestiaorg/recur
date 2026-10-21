@@ -52,6 +52,7 @@ recur-provider-claude = { workspace = true, features = ["testing"] }
 recur-provider-compatible.workspace = true
 recur-provider-cursor.workspace = true
 pretty_assertions.workspace = true
+reqwest = { workspace = true, features = ["json"] }
 tempfile.workspace = true
 
 [lints.rust]

@@ -357,6 +357,78 @@ impl Host for EngineHost {
         }
     }
 
+    fn plan(&self, ws: &str, agent: &str, summary: &str) {
+        if let Some(e) = self.engine() {
+            e.apply_maestro_steer(ws, agent, summary);
+        }
+    }
+
+    async fn edit_plan(&self, ws: &str, _agent: &str, plan: &str) -> String {
+        match self.engine() {
+            Some(e) => e.edit_plan(ws, plan),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn rerun_review(&self, ws: &str, _agent: &str) -> String {
+        match self.engine() {
+            Some(e) => e.dispatch_specialist_turn(
+                ws,
+                "reviewer",
+                crate::loops::hands::RERUN_REVIEW_INSTRUCTION,
+            ),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn dispatch_specialist(
+        &self,
+        ws: &str,
+        _agent: &str,
+        role: &str,
+        instruction: &str,
+    ) -> String {
+        match self.engine() {
+            Some(e) => e.dispatch_specialist_turn(ws, role, instruction),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn extend_iterations(&self, ws: &str, agent: &str, n: i64) -> String {
+        match self.engine() {
+            Some(e) => e.extend_loop_iterations(ws, agent, n),
+            None => "ignored".into(),
+        }
+    }
+
+    async fn extend_rounds(&self, ws: &str, agent: &str, n: i64) -> String {
+        match self.engine() {
+            Some(e) => e.extend_loop_rounds(ws, agent, n).await,
+            None => "ignored".into(),
+        }
+    }
+
+    async fn reenter_phase(&self, ws: &str, agent: &str, phase_id: &str) -> String {
+        match self.engine() {
+            Some(e) => e.reenter_phase(ws, agent, phase_id).await,
+            None => "ignored".into(),
+        }
+    }
+
+    async fn run_phase(&self, ws: &str, agent: &str, phase_id: &str) -> String {
+        match self.engine() {
+            Some(e) => e.run_on_demand_phase(ws, agent, phase_id).await,
+            None => "ignored".into(),
+        }
+    }
+
+    async fn resume_loop(&self, ws: &str, agent: &str) -> String {
+        match self.engine() {
+            Some(e) => e.resume_loop_hand(ws, agent).await,
+            None => "ignored".into(),
+        }
+    }
+
     async fn submit_plan(&self, ws: &str, agent: &str, p: PlanSubmission) -> String {
         match self.engine() {
             Some(e) => e.apply_submitted_plan(ws, agent, p),

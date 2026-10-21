@@ -10,6 +10,7 @@ use tokio_util::sync::CancellationToken;
 use crate::Engine;
 use crate::codes::loop_owner_code;
 use crate::loop_handle::{Command, LoopHandle};
+use crate::loops::WrapUpInputs;
 
 /// Separates the workspace id from the chat code in a second walk's key.
 pub const LOOP_MAP_SEP: &str = "\x1e";
@@ -215,13 +216,16 @@ impl Engine {
     }
 
     /// A walk task returned: drop it from the registry, release its slot,
-    /// run the settled wrap-up, badge the conductor when it finished
-    /// off-screen, and promote the oldest queued loop (D23).
-    pub async fn loop_exited(&self, handle: &Arc<LoopHandle>) {
+    /// run the settled wrap-up (`wrap` is `None` after a panic), badge the
+    /// conductor when it finished off-screen, and promote the oldest queued
+    /// loop (D23).
+    pub async fn loop_exited(&self, handle: &Arc<LoopHandle>, wrap: Option<WrapUpInputs>) {
         self.remove_loop(handle);
         self.gov.release_loop();
         self.publish_resource();
-        self.emit_settled_wrap_up(handle);
+        if let Some(w) = &wrap {
+            self.emit_settled_wrap_up(handle, w).await;
+        }
         self.maybe_flag_loop_finished(handle).await;
         self.drain_queued().await;
     }

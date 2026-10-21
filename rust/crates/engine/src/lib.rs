@@ -14,6 +14,7 @@ pub mod ask_user;
 pub mod attachments;
 pub mod attention;
 pub mod bus;
+pub mod chat_shared;
 pub mod chatlife;
 pub mod codes;
 pub mod composer;
@@ -27,6 +28,7 @@ pub mod host;
 pub mod lifecycle;
 pub mod loop_handle;
 pub mod loop_registry;
+pub mod loops;
 pub mod mcp_attach;
 pub mod permissions;
 pub mod plan;
@@ -47,6 +49,8 @@ pub mod testing;
 
 #[cfg(test)]
 mod golden_e2_tests;
+#[cfg(test)]
+mod golden_e3_tests;
 #[cfg(test)]
 mod golden_tests;
 

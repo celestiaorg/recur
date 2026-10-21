@@ -902,3 +902,18 @@ impl CountingRunner {
             .unwrap_or_default()
     }
 }
+
+/// Fills every loop slot so an engaged run parks queued.
+pub fn take_slots(t: &crate::testing::TestEngine) -> usize {
+    let mut n = 0;
+    while t.engine.governor().try_acquire_loop() {
+        n += 1;
+    }
+    n
+}
+
+pub fn release_slots(t: &crate::testing::TestEngine, n: usize) {
+    for _ in 0..n {
+        t.engine.governor().release_loop();
+    }
+}

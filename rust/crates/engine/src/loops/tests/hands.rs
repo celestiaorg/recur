@@ -74,20 +74,6 @@ fn hand_loop(
     h
 }
 
-fn take_slots(t: &TestEngine) -> usize {
-    let mut n = 0;
-    while t.engine.governor().try_acquire_loop() {
-        n += 1;
-    }
-    n
-}
-
-fn release_slots(t: &TestEngine, n: usize) {
-    for _ in 0..n {
-        t.engine.governor().release_loop();
-    }
-}
-
 fn capture(
     lines: fn(&str) -> Vec<String>,
     session: &'static str,

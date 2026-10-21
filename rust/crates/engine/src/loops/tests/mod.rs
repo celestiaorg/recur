@@ -2,6 +2,7 @@
 
 mod checklist;
 mod default_walk;
+mod engage;
 mod escalation;
 mod fanout;
 mod handoff;

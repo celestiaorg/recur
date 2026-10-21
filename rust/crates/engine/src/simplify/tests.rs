@@ -3,7 +3,6 @@
 
 use recur_agent_tools::{Host, PlanSubmission};
 
-use super::*;
 use crate::host::EngineHost;
 use crate::testing::TestEngine;
 use crate::turn::test_support::add_solo_workspace;

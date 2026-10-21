@@ -1,0 +1,63 @@
+//! Static guards over the engine's non-test sources (Go
+//! `TestNoDirectRunnerDispatch`, plus the R7 rule that no behavior keys off a
+//! provider id).
+
+use std::path::Path;
+
+fn sources(dir: &Path, out: &mut Vec<(String, String)>) {
+    for e in std::fs::read_dir(dir).unwrap() {
+        let p = e.unwrap().path();
+        if p.is_dir() {
+            sources(&p, out);
+            continue;
+        }
+        let name = p.file_name().unwrap().to_string_lossy().into_owned();
+        let is_test = name == "tests.rs"
+            || name.ends_with("_tests.rs")
+            || name == "test_support.rs"
+            || name == "testing.rs";
+        if name.ends_with(".rs") && !is_test {
+            out.push((
+                p.display().to_string(),
+                std::fs::read_to_string(&p).unwrap(),
+            ));
+        }
+    }
+}
+
+fn engine_sources() -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    sources(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut out);
+    assert!(out.len() > 10, "walked the wrong directory");
+    out
+}
+
+#[test]
+fn every_turn_goes_through_run_mirrored() {
+    for (path, src) in engine_sources() {
+        let n = src.matches(".run_turn(").count();
+        let allowed = usize::from(path.ends_with("src/turn/mod.rs"));
+        assert!(
+            n <= allowed,
+            "{path} dispatches a turn via .run_turn( — use Engine::run_agent so routing and the mirror apply"
+        );
+    }
+}
+
+#[test]
+fn no_provider_id_compares() {
+    let compare = regex::Regex::new(
+        r#"(==|!=)\s*(recur_domain::)?PROVIDER_[A-Z_]+|PROVIDER_[A-Z_]+\s*(==|!=|=>|\|)|"(cursor|codex|claude-code)"\s*(=>|\|)|(==|!=)\s*"(cursor|codex|claude-code)""#,
+    )
+    .unwrap();
+    for (path, src) in engine_sources() {
+        for (i, line) in src.lines().enumerate() {
+            let code = line.split("//").next().unwrap_or_default();
+            assert!(
+                !compare.is_match(code),
+                "{path}:{}: behavior keyed off a provider id (R7): {line}",
+                i + 1
+            );
+        }
+    }
+}

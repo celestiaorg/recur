@@ -253,6 +253,26 @@ impl Engine {
         trackers: TrackerRegistry,
         data_dir: PathBuf,
     ) -> Arc<Engine> {
+        Self::build(
+            store, bus, git, bundles, term, registry, forges, trackers, data_dir, None,
+        )
+    }
+
+    /// [`Engine::new`] with the MCP listen address overridden (tests bind
+    /// an occupied port to fail the first start).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn build(
+        store: Arc<Store>,
+        bus: Arc<Bus>,
+        git: GitSetup,
+        bundles: DiscoverRoots,
+        term: Option<Arc<dyn TerminalSource>>,
+        registry: ProviderRegistry,
+        forges: ForgeRegistry,
+        trackers: TrackerRegistry,
+        data_dir: PathBuf,
+        mcp_addr: Option<String>,
+    ) -> Arc<Engine> {
         let set = store.settings();
         let iters_base = store.resource().iters_today;
         Arc::new_cyclic(|weak: &Weak<Engine>| {
@@ -274,7 +294,10 @@ impl Engine {
                 worktree_root: git.worktree_root,
                 git_warning: git.warning,
                 git_warning_title: git.warning_title,
-                mcp: McpServer::new(Some(host)),
+                mcp: match mcp_addr {
+                    Some(addr) => McpServer::new(Some(host)).with_addr(addr),
+                    None => McpServer::new(Some(host)),
+                },
                 mcp_started: tokio::sync::Mutex::new(false),
                 loops: Mutex::new(HashMap::new()),
                 chats: Mutex::new(HashMap::new()),

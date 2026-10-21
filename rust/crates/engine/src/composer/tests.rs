@@ -277,3 +277,32 @@ uses = "artifact"
     );
     te.close().await;
 }
+
+#[tokio::test]
+async fn expand_reports_fresh_session() {
+    let te = TestEngine::new(None);
+    write_prompt_bundle(
+        &te,
+        "fix-findings",
+        "#!/bin/sh\nprintf '%s\\n' '{\"prompt\":\"WIRE\",\"display\":\"Act\"}'\n",
+        "recur.chattest.fix-findings",
+    );
+    let toml = Path::new(&te.engine.bundle_roots().default_dir).join("ChatTest/bundle.toml");
+    let mut body = std::fs::read_to_string(&toml).unwrap();
+    body.push_str("\n[[prompt]]\nid = \"recur.chattest.re-review\"\nname = \"Re-review\"\nslash = \"re-review\"\nfresh_session = true\ninterpreter = \"shebang\"\nscript = \"src/act.sh\"\n");
+    write(&toml, &body);
+    let tok = CancellationToken::new();
+    let got = te
+        .engine
+        .expand_composer(&tok, "/re-review", opts("", true))
+        .await
+        .unwrap();
+    assert!(got.fresh_session);
+    let fix = te
+        .engine
+        .expand_composer(&tok, "/fix-findings", opts("", true))
+        .await
+        .unwrap();
+    assert!(!fix.fresh_session);
+    te.close().await;
+}

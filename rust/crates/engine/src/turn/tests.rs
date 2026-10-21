@@ -911,6 +911,42 @@ async fn ensure_mcp_retries_after_failure_and_register_scopes_tools() {
     te.close().await;
 }
 
+/// Go `TestEnsureMCPRetriesAfterFailure`: a bind failure is not remembered,
+/// so Retry can work once the condition clears.
+#[tokio::test]
+async fn ensure_mcp_start_failure_is_retried() {
+    let held = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = held.local_addr().unwrap().to_string();
+    let te = TestEngine::with(crate::testing::TestOptions {
+        provider: Some(claude()),
+        mcp_addr: Some(addr.clone()),
+        ..Default::default()
+    });
+    let e = te.engine.ensure_mcp().await.unwrap_err();
+    assert!(
+        e.0.starts_with(&format!("mcp listen: listen tcp {addr}: bind: ")),
+        "{}",
+        e.0
+    );
+    let e = te
+        .engine
+        .register_mcp("W1", "CO", "", &[], "sonnet")
+        .await
+        .unwrap_err();
+    assert!(e.0.contains("mcp listen"), "{}", e.0);
+    drop(held);
+    te.engine.ensure_mcp().await.unwrap();
+    let port = te.engine.mcp().port();
+    assert_eq!(addr, format!("127.0.0.1:{port}"));
+    te.engine.ensure_mcp().await.unwrap();
+    assert_eq!(
+        te.engine.mcp().port(),
+        port,
+        "an already-started server is not rebound"
+    );
+    te.close().await;
+}
+
 #[tokio::test]
 async fn in_process_providers_get_a_turn_token() {
     let compat =
@@ -1162,5 +1198,87 @@ async fn last_assistant_usage_wins_over_cumulative_result() {
             r#"{{"cacheCreationTokens":0,"cacheReadTokens":90000,"code":"CO","contextWindow":1000000,"durationMs":800,"inputTokens":200,"workspaceId":"{ws}"}}"#
         )
     );
+    te.close().await;
+}
+
+/// Go `TestRealPermissionPromptE2E`: a real `claude -p` asks through Recur's
+/// MCP prompt tool and the approval lets the tool run. Spends credit, so it
+/// is skipped unless `RECUR_E2E=1`.
+#[tokio::test]
+async fn real_permission_prompt_e2e() {
+    if std::env::var("RECUR_E2E").as_deref() != Ok("1") {
+        eprintln!("set RECUR_E2E=1 to run the real permission-prompt E2E (spends credit)");
+        return;
+    }
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    if !std::env::split_paths(&path).any(|d| d.join("claude").is_file()) {
+        eprintln!("claude not on PATH");
+        return;
+    }
+    let te = routed(vec![claude()]);
+    let (token, url) = te
+        .engine
+        .register_mcp("W-E2E", "CO", "", &["Read".into()], "haiku")
+        .await
+        .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("approved.txt");
+    let asked = Arc::new(AtomicUsize::new(0));
+    let stop = CancellationToken::new();
+    let human = {
+        let eng = Arc::clone(&te.engine);
+        let asked = Arc::clone(&asked);
+        let stop = stop.clone();
+        tokio::spawn(async move {
+            while !stop.is_cancelled() {
+                for p in eng.pending_permissions() {
+                    asked.fetch_add(1, Ordering::SeqCst);
+                    eng.answer_permission(
+                        &p.id,
+                        recur_domain::PermissionDecision {
+                            allow: true,
+                            ..Default::default()
+                        },
+                    );
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+        })
+    };
+    let tok = CancellationToken::new();
+    let run = te.engine.run_agent(
+        &tok,
+        AgentSpec::new(TurnRequest {
+            workspace_id: "W-E2E".into(),
+            agent_id: "W-E2E-CO".into(),
+            model: "claude-code/haiku".into(),
+            prompt: format!(
+                "Use the Write tool to create the file {} containing exactly: ok",
+                target.display()
+            ),
+            worktree: dir.path().to_path_buf(),
+            allowed_tools: Some(vec!["Read".into()]),
+            permission_mode: recur_domain::Settings::default().permission_mode().into(),
+            mcp_url: url,
+            max_turns: 4,
+            ..TurnRequest::default()
+        }),
+    );
+    let res = tokio::time::timeout(std::time::Duration::from_secs(180), run)
+        .await
+        .expect("claude run timed out")
+        .expect("claude run");
+    stop.cancel();
+    human.await.unwrap();
+    te.engine.unregister_mcp(&token);
+    assert!(
+        asked.load(Ordering::SeqCst) > 0,
+        "claude never called the permission prompt tool: the flag or its tool name has drifted \
+         (result: is_error={} subtype={} text={:?})",
+        res.is_error,
+        res.subtype,
+        res.text
+    );
+    assert!(target.exists(), "approved Write did not happen");
     te.close().await;
 }

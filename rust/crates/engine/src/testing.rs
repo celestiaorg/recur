@@ -302,6 +302,8 @@ pub struct TestOptions {
     /// The Observatory terminals (`@terminal`, list/read_terminal).
     pub terminals: Option<Arc<dyn crate::terminals::TerminalSource>>,
     pub trackers: Vec<Arc<dyn recur_issues::IssueTracker>>,
+    /// The MCP listen address (default a free port).
+    pub mcp_addr: Option<String>,
 }
 
 /// One engine over a temp data dir (Go `newTestEngine`).
@@ -336,7 +338,7 @@ impl TestEngine {
         let (warning_title, warning) = opts.git_warning.unwrap_or_default();
         let bus = Arc::new(Bus::new());
         let events = BusRecorder::attach(&bus);
-        let engine = Engine::new(
+        let engine = Engine::build(
             Arc::clone(&store),
             bus,
             GitSetup {
@@ -353,6 +355,7 @@ impl TestEngine {
             ForgeRegistry::new(opts.forges),
             TrackerRegistry::new(opts.trackers),
             data_dir.clone(),
+            opts.mcp_addr,
         );
         Self {
             engine,

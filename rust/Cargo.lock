@@ -6689,6 +6689,7 @@ dependencies = [
  "pulldown-cmark",
  "recur-bundles",
  "recur-textmate",
+ "recur-ui",
  "ropey",
  "serde",
  "serde_json",

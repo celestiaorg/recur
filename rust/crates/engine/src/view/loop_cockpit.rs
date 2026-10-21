@@ -103,8 +103,8 @@ pub fn specialist_live_codes<'a>(
     out
 }
 
-/// The finished-loop label from milliseconds (zero-padded seconds after
-/// minutes, unlike the engine's feed label).
+/// The finished-loop label from milliseconds; empty for a non-positive
+/// span, where the engine's feed label says `0s`.
 pub fn format_loop_elapsed_ms(ms: i64) -> String {
     if ms <= 0 {
         return String::new();

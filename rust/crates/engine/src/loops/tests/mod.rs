@@ -10,6 +10,7 @@ mod escalation;
 mod fanout;
 mod handoff;
 mod hands;
+mod harden;
 mod lifecycle;
 mod maestro;
 mod planbrief;

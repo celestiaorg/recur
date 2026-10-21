@@ -8,7 +8,7 @@ use gpui_kit::{
     AnyElement, Context, InteractiveElement, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, Window, canvas, div, px, relative,
 };
-use recur_engine::view::chat::{AgentMsg, ChatLog, agent_error_detail, agent_error_title, last_assistant_text_in_turn, step_row_key};
+use recur_engine::view::chat::{AgentMsg, ChatLog, agent_error_detail, agent_error_title, last_assistant_text_in_turn};
 use recur_engine::view::digest::TurnDigestFinding;
 use recur_engine::view::loop_cockpit::{PrCompletionCtx, PrRef, loop_completion_wrap, loop_pr_completion, strip_loop_wrap};
 use recur_engine::view::mentions::strip_attachment_markers;
@@ -18,7 +18,7 @@ use recur_ui::{IconName, Theme, icon, motion};
 use recur_view_core::format::format_elapsed;
 
 use crate::blocks::{Block, BubblePart, bubble_parts, cockpit_start_ts, group_summary, last_presented_in_turn};
-use crate::chat::{AgentChat, ChatEvent};
+use crate::chat::{AgentChat, ChatEvent, debug_key};
 use crate::flow::{ATOM, FlowStyle, flow};
 use crate::html_inline::{InlineStyle, inline_html};
 use crate::rows::{accord_detail, finding_row_wrap, findings_list, labeled_note};
@@ -114,11 +114,9 @@ impl AgentChat {
             // heights for stubs to reserve.
             let rec = ranges.clone();
             let key = k.clone();
-            let this = cx.entity().downgrade();
             let probe = canvas(
                 move |bounds, _, _| {
                     rec.borrow_mut().insert(key.clone(), (f32::from(bounds.origin.y), f32::from(bounds.size.height)));
-                    let _ = (&this, live);
                 },
                 |_, _, _, _| {},
             )
@@ -127,6 +125,7 @@ impl AgentChat {
             out.push(
                 div()
                     .id(SharedString::from(format!("cblk-{k}")))
+                    .debug_selector(|| format!("{}:{k}", if live { "cblk" } else { "stub" }))
                     .relative()
                     .flex()
                     .flex_col()
@@ -160,9 +159,9 @@ impl AgentChat {
     fn turn_row(&self, s: String, elapsed: bool, window: &mut Window, cx: &Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let label_el = label(s, Family::Mono, 11., 400.).tabular().color(t.faint);
-        let _ = elapsed;
         div()
             .flex()
+            .when(elapsed, |d| d.debug_selector(|| "chat-turn-elapsed".into()))
             .child(
                 div()
                     .flex()
@@ -209,7 +208,13 @@ impl AgentChat {
             } else {
                 self.md(format!("{key}-md"), &m.body, None, false, cx)
             };
-            return div().mb(px(18.)).max_w_full().child(body).into_any_element();
+            let streaming = m.streaming;
+            return div()
+                .debug_selector(|| format!("{}:{}", if streaming { "streaming" } else { "assistant" }, debug_key(&m.body)))
+                .mb(px(18.))
+                .max_w_full()
+                .child(body)
+                .into_any_element();
         }
         div().into_any_element()
     }
@@ -218,6 +223,7 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         div()
             .flex()
+            .debug_selector(|| "chat-stopped".into())
             .child(
                 div()
                     .flex()
@@ -242,7 +248,9 @@ impl AgentChat {
         let detail = agent_error_detail(&m.body);
         let can_retry = self.last_retry_error(msgs) == Some(i);
         let bg = t.coral_d.over(t.pane);
+        let sel = format!("chat-error:{title}");
         let mut card = recur_ui::style::card(bg, t.coral_line, 8.)
+            .debug_selector(|| sel)
             .flex()
             .flex_col()
             .gap(px(8.))
@@ -279,6 +287,7 @@ impl AgentChat {
                     "Retry last message",
                     div()
                         .id("chat-retry")
+                        .debug_selector(|| "chat-error-retry".into())
                         .flex()
                         .items_center()
                         .gap(px(6.))
@@ -419,7 +428,6 @@ impl AgentChat {
         let Some(render) = self.session_card.clone() else {
             return div().into_any_element();
         };
-        let _ = &window;
         recur_ui::style::card(t.pane, t.line, 8.)
             .overflow_hidden()
             .my(px(6.))
@@ -441,8 +449,10 @@ impl AgentChat {
         let id = SharedString::from(format!("te-{}-{i}", self.props.reset_key));
         let link = |id: SharedString, s: String, cx: &mut Context<Self>, f: Box<dyn Fn(&mut Self, &mut Context<Self>)>| -> AnyElement {
             let t = Theme::of(cx).tokens;
+            let sel = format!("turn-end-link:{s}");
             div()
                 .id(id)
+                .debug_selector(|| sel)
                 .cursor_pointer()
                 .text_color(hsla(t.cyan))
                 .hover(|s| s.text_color(hsla(t.text)))
@@ -452,6 +462,7 @@ impl AgentChat {
         };
         let sep = || div().opacity(0.55).child(text("·").nowrap()).into_any_element();
         let mut row = div()
+            .debug_selector(|| "turn-end".into())
             .flex()
             .flex_wrap()
             .items_center()
@@ -519,6 +530,7 @@ impl AgentChat {
                     div()
                         .relative()
                         .flex()
+                        .debug_selector(|| "turn-end-fork".into())
                         .child(self.turn_act(
                             SharedString::from(format!("{id}-fork")),
                             "Fork",
@@ -585,8 +597,16 @@ impl AgentChat {
             wrap = wrap.child(div().mt(px(8.)).child(card));
         }
         if !digest.is_empty() {
-            let list = self.turn_digest(&digest, &id, window, cx);
-            wrap = wrap.child(recur_ui::style::card(t.pane, t.line, 6.).mt(px(8.)).flex().flex_col().overflow_hidden().child(list));
+            let list = self.turn_digest(&digest, &id, cx);
+            wrap = wrap.child(
+                recur_ui::style::card(t.pane, t.line, 6.)
+                    .debug_selector(|| "findings-filed".into())
+                    .mt(px(8.))
+                    .flex()
+                    .flex_col()
+                    .overflow_hidden()
+                    .child(list),
+            );
         }
         wrap.into_any_element()
     }
@@ -633,7 +653,7 @@ impl AgentChat {
     }
 
     /// The turn digest accordion (same rows as `list_findings`).
-    fn turn_digest(&mut self, digest: &[TurnDigestFinding], id: &str, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn turn_digest(&mut self, digest: &[TurnDigestFinding], id: &str, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let n = digest.len();
         let rows: Vec<AnyElement> = digest
@@ -731,7 +751,7 @@ impl AgentChat {
                         detail = detail.child(self.digest_actions(&f.id, status_busy, &format!("{id}-da-{fi}"), cx));
                     }
                     if noting {
-                        detail = detail.child(self.digest_compose(&f.id, window, cx));
+                        detail = detail.child(self.digest_compose(&f.id, cx));
                     }
                     row = row.child(detail);
                 }
@@ -782,14 +802,13 @@ impl AgentChat {
     }
 
     /// `.turn-finding-compose`.
-    fn digest_compose(&self, fid: &str, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn digest_compose(&self, fid: &str, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let busy = self.digest_comment_busy == fid;
         let Some(input) = self.digest_comment_input.clone() else {
             return div().into_any_element();
         };
         let empty = recur_engine::view::js::trim(&input.read(cx).value()).is_empty();
-        let _ = window;
         let (f1, f2) = (fid.to_string(), fid.to_string());
         let btn = |id: &'static str, s: &'static str, primary: bool, disabled: bool| {
             let base = div()
@@ -911,6 +930,7 @@ impl AgentChat {
             div().flex().child(
                 div()
                     .id(SharedString::from(format!("steps-{}-{start}", self.props.reset_key)))
+                    .debug_selector(|| "steps-head".into())
                     .flex()
                     .items_center()
                     .gap(px(6.))
@@ -937,10 +957,7 @@ impl AgentChat {
         if !shown.is_empty() {
             let kids: Vec<AnyElement> = shown
                 .iter()
-                .map(|&r| {
-                    let _ = step_row_key(&msgs[r].tool_id, r);
-                    self.step_row(&msgs[r].clone(), &r.to_string(), first_checkpoint, window, cx)
-                })
+                .map(|&r| self.step_row(&msgs[r].clone(), &r.to_string(), first_checkpoint, window, cx))
                 .collect();
             el = el.child(div().mt(px(4.)).flex().flex_col().gap(px(2.)).children(kids));
         }
@@ -1017,8 +1034,10 @@ impl AgentChat {
         let content = self.bubble_content(&parts, &id, has_att, t.text, bg.over(t.bg), window, cx);
         let copied = self.copied_bubble.as_deref() == Some(bubble_key.as_str());
         let group = SharedString::from(format!("{id}-g"));
+        let sel = format!("me:{}", debug_key(&plain));
         let mut bubble = recur_ui::style::card(bg, t.amber.mix(0.16, recur_ui::color::TRANSPARENT), 8.)
             .id(SharedString::from(id.clone()))
+            .debug_selector(|| sel)
             .group(group.clone())
             .relative()
             .max_w(px(520.))
@@ -1042,6 +1061,7 @@ impl AgentChat {
                         "Copy message",
                         recur_ui::style::card(copy_bg, copy_border, 4.)
                             .id(SharedString::from(format!("{id}-copy")))
+                            .debug_selector(|| "chat-bubble-copy".into())
                             .size(px(22.))
                             .flex()
                             .items_center()
@@ -1090,6 +1110,7 @@ impl AgentChat {
                     "Remove from queue",
                     div()
                         .id(SharedString::from(format!("{id}-x")))
+                        .debug_selector(|| format!("queued-x:{}", debug_key(&m.body)))
                         .size(px(16.))
                         .rounded(px(4.))
                         .flex()
@@ -1103,9 +1124,9 @@ impl AgentChat {
                 )),
             );
         }
-        let has_att = !m.attachments.is_empty();
-        let _ = has_att;
+        let sel = format!("queued:{}", debug_key(&m.body));
         div()
+            .debug_selector(|| sel)
             .flex()
             .justify_end()
             .max_w_full()

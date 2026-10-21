@@ -549,7 +549,7 @@ impl AppChat {
         .detach();
     }
 
-    fn sync_children(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn sync_children(&mut self, cx: &mut Context<Self>) {
         let sending = self.sending(cx);
         if self.props_dirty {
             self.props_dirty = false;
@@ -558,7 +558,7 @@ impl AppChat {
             props.sending = sending;
             props.turn_started_at = self.turn_started_at;
             props.context_usage = self.context_usage.clone();
-            self.chat.update(cx, |c, cx| c.set_props(props, window, cx));
+            self.chat.update(cx, |c, cx| c.set_props(props, cx));
         }
         let show = !self.catalog.is_empty() && !self.model.is_empty();
         let key = (self.catalog.len(), self.model.clone(), self.flags.clone(), sending);
@@ -577,7 +577,7 @@ impl AppChat {
 
 impl Render for AppChat {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.sync_children(window, cx);
+        self.sync_children(cx);
         let t = Theme::of(cx).tokens;
         let lit = self.visible && self.focus.contains_focused(window, cx);
         let ask = ChatMode::Ask;

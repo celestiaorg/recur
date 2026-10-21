@@ -219,7 +219,7 @@ impl AgentChat {
             BubblePart::Text(_) => return None,
             BubblePart::File { path, dir: true } => {
                 let (chip, w) = self.bubble_chip(id, ico14(IconName::Folder, t.muted), file_mention_label(path), amber.0, amber.1, None, None, None, path.clone(), window, cx);
-                (chip.into_any_element(), w, 26.)
+                (chip.debug_selector(|| format!("file-inline:{}", file_mention_label(path))).into_any_element(), w, 26.)
             }
             BubblePart::File { path, .. } => {
                 let enabled = self.hooks.open_file;
@@ -239,6 +239,7 @@ impl AgentChat {
                     cx,
                 );
                 let p = path.clone();
+                let chip = chip.debug_selector(|| format!("file-inline:{}", file_mention_label(path)));
                 let el = if enabled {
                     chip.cursor_pointer()
                         .on_click(cx.listener(move |this, _, _, cx| this.open_file_chip(&p, cx)))
@@ -324,6 +325,7 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         let base = div()
             .id(id)
+            .debug_selector(|| format!("chip-x:{i}"))
             .flex_none()
             .flex()
             .items_center()
@@ -367,6 +369,7 @@ impl AgentChat {
             let w = natural.min(220.);
             let el = div()
                 .id(id.clone())
+                .debug_selector(|| format!("chip:{name}"))
                 .relative()
                 .flex()
                 .items_center()
@@ -387,7 +390,11 @@ impl AgentChat {
         let (el, w, h): (AnyElement, f32, f32) = match &chip {
             Segment::File { path, dir } => {
                 let parsed = parse_file_mention_chip(path);
-                let lead = if *dir { ico14(IconName::Folder, t.muted) } else { fico(if parsed.path.is_empty() { path } else { &parsed.path }) };
+                let lead = if *dir {
+                    div().flex_none().flex().debug_selector(|| "chip-folder".into()).child(ico14(IconName::Folder, t.muted)).into_any_element()
+                } else {
+                    fico(if parsed.path.is_empty() { path } else { &parsed.path })
+                };
                 let tip = if *dir { parsed.path.clone() } else { format!("Open {path}") };
                 let (el, w, tip) = shell(lead, file_mention_label(path), t.line, t.pane_2, true, tip, window);
                 let el = el.child(x).cursor(if *dir { gpui_kit::CursorStyle::Arrow } else { gpui_kit::CursorStyle::PointingHand });
@@ -420,6 +427,7 @@ impl AgentChat {
                 // `.chat-composer-att`: 32px tall, 2px padding, a 28px cover thumbnail.
                 let el = div()
                     .id(id.clone())
+                    .debug_selector(|| format!("chip-att:{i}"))
                     .relative()
                     .flex()
                     .items_center()
@@ -473,9 +481,7 @@ impl AgentChat {
         let names: Vec<String> = if args.is_empty() { vec!["args".into()] } else { args.iter().map(|a| a.name.clone()).collect() };
         let cmd = format!("/{slash}");
         let cmd_w = text(cmd.clone()).size(11.5).weight(650.).tracking(0.01).line_height(LineHeight::Scale(1.)).nowrap().measure(None, window).0;
-        let ch = text("0").mono().size(11.5).measure(None, window).0;
         let ch_ui = text("0").size(11.5).measure(None, window).0;
-        let _ = ch;
         let mut width = 1. + 8. + cmd_w + 1.;
         let mut slots = Vec::new();
         for (si, name) in names.iter().enumerate() {

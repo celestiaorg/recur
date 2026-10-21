@@ -220,11 +220,10 @@ impl ModelPickers {
 }
 
 impl Render for ModelPickers {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let has_dims = !flags_for_model(&self.models, &self.model).is_empty();
         let vw = f32::from(window.viewport_size().width);
         let max = 320f32.min(0.52 * vw);
-        let _ = cx;
         div()
             .flex()
             .items_center()

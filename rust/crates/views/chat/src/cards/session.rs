@@ -102,11 +102,11 @@ impl SessionCard {
         }
     }
 
-    pub fn set_props(&mut self, props: SessionCardProps, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_props(&mut self, props: SessionCardProps, cx: &mut Context<Self>) {
         self.props = props;
         if let Some(chat) = self.chat.clone() {
             let p = self.chat_props();
-            chat.update(cx, |c, cx| c.set_props(p, window, cx));
+            chat.update(cx, |c, cx| c.set_props(p, cx));
         }
         cx.notify();
     }

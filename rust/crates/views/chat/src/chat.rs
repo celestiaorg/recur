@@ -39,7 +39,6 @@ use crate::findings_ui::digest_ref;
 use crate::flow::FlowLayout;
 use crate::glance::is_first_checkpoint;
 use crate::prompt_actions::{enabled_prompts, prompt_action};
-use crate::session_events::session_event;
 use crate::tools::ToolCx;
 use crate::transcript_ui::{
     LiveChrome, ScrollRestoreGate, TranscriptUiCache, TranscriptUiState, expansion_still_valid,
@@ -395,6 +394,11 @@ const RESTORE_LAYOUT_FRAMES: u32 = 16;
 /// Clock refresh while a turn runs (`setInterval(tick, 250)`).
 const CLOCK_TICK: Duration = Duration::from_millis(250);
 
+/// The text a debug selector carries for a row: its first non-blank line, at most 60 chars.
+pub fn debug_key(body: &str) -> String {
+    body.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("").chars().take(60).collect()
+}
+
 pub(crate) fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
@@ -545,11 +549,10 @@ impl AgentChat {
             this.sync_mentions_from_stores(cx);
             cx.notify();
         })];
-        subs.push(cx.subscribe(&state, |this: &mut Self, _, ev: &ShellEvent, cx| {
+        subs.push(cx.subscribe(&state, |_: &mut Self, _, ev: &ShellEvent, cx| {
             if let ShellEvent::WorkspaceGone(_) = ev {
                 cx.notify();
             }
-            let _ = this;
         }));
         subs.push(cx.observe_window_activation(window, |_, _, cx| cx.notify()));
         subs.push(Self::intercept_keys(cx));
@@ -675,7 +678,7 @@ impl AgentChat {
         }
         this.listen(cx);
         this.props.reset_key = props.reset_key.clone();
-        this.set_props(props, window, cx);
+        this.set_props(props, cx);
         this
     }
 
@@ -709,7 +712,7 @@ impl AgentChat {
 
     /// Replaces the props. A new `reset_key` saves the leaving chat's chrome and restores the
     /// entering one's, as one AgentChat serves every tab.
-    pub fn set_props(&mut self, props: ChatProps, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_props(&mut self, props: ChatProps, cx: &mut Context<Self>) {
         let key_changed = props.reset_key != self.props.reset_key;
         let scope_changed = props.project_id != self.props.project_id
             || props.workspace_id != self.props.workspace_id;
@@ -764,7 +767,6 @@ impl AgentChat {
         }
         self.check_expansion_guard();
         self.sync_turn_clock(cx);
-        let _ = window;
         cx.notify();
     }
 
@@ -1508,9 +1510,7 @@ impl AgentChat {
                 }
             }
             AppEvent::FilesDropped(d) => self.on_files_dropped(d, cx),
-            _ => {
-                let _ = session_event(ev);
-            }
+            _ => {}
         }
     }
 

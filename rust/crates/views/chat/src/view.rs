@@ -101,10 +101,10 @@ impl AgentChat {
         };
         let mut out = Vec::new();
         if show_top {
-            out.push(div().absolute().top_0().left_0().right_0().h(px(fade)).bg(grad(1., 0.)).into_any_element());
+            out.push(div().debug_selector(|| "fade-top".into()).absolute().top_0().left_0().right_0().h(px(fade)).bg(grad(1., 0.)).into_any_element());
         }
         if show_bot {
-            out.push(div().absolute().bottom_0().left_0().right_0().h(px(fade)).bg(grad(0., 1.)).into_any_element());
+            out.push(div().debug_selector(|| "fade-bot".into()).absolute().bottom_0().left_0().right_0().h(px(fade)).bg(grad(0., 1.)).into_any_element());
         }
         out
     }
@@ -120,6 +120,7 @@ impl AgentChat {
             let mid = menu.message_id.clone();
             div()
                 .id(id)
+                .debug_selector(move || format!("fork-item:{s}"))
                 .flex()
                 .items_center()
                 .gap(px(8.))
@@ -166,6 +167,7 @@ impl Render for AgentChat {
         let compact = self.props.compact;
         let mut root = div()
             .id(SharedString::from(format!("chat-{}", self.props.reset_key)))
+            .debug_selector(|| "chat".into())
             .relative()
             .flex()
             .flex_col()
@@ -195,6 +197,7 @@ impl Render for AgentChat {
                 .children(kids);
             let scroller = div()
                 .id(SharedString::from(format!("chat-scroll-{}", self.props.reset_key)))
+                .debug_selector(|| "chat-scroll".into())
                 .track_scroll(&self.scroll)
                 .overflow_y_scroll()
                 .when(!session && !compact, |d| d.flex_1().min_h_0().pt(px(26.)).px(px(28.)).pb(px(8.)))

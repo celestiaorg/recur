@@ -328,7 +328,7 @@ impl FanOutCard {
             let mut c = AgentChat::new(&vcx, props, window, cx);
             let vcx2 = vcx.clone();
             let cards: std::rc::Rc<std::cell::RefCell<HashMap<String, Entity<SessionCard>>>> = Default::default();
-            let renderer: SessionCardRenderer = std::rc::Rc::new(move |log, window, cx| {
+            let renderer: SessionCardRenderer = std::rc::Rc::new(move |log, _, cx| {
                 let key = if log.id.is_empty() { log.code.clone() } else { log.id.clone() };
                 let props = SessionCardProps {
                     code: log.code.clone(),
@@ -347,7 +347,7 @@ impl FanOutCard {
                     .entry(key)
                     .or_insert_with(|| cx.new(|_| SessionCard::new(vcx2.clone(), props.clone())))
                     .clone();
-                card.update(cx, |c, cx| c.set_props(props, window, cx));
+                card.update(cx, |c, cx| c.set_props(props, cx));
                 card.into_any_element()
             });
             c.set_session_card(Some(renderer), cx);

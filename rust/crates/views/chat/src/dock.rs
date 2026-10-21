@@ -95,7 +95,7 @@ impl AgentChat {
             .when(!composer_only, |d| d.max_w(px(780.)).mx_auto().pt(px(8.)).pr(px(10.)).pb(px(8.)).pl(px(14.)))
             .child(composer);
         if !composer_only {
-            chat_in = chat_in.child(self.in_row(window, cx));
+            chat_in = chat_in.child(self.in_row(cx));
         }
         if let Some(menu) = menu {
             chat_in = chat_in.child(menu);
@@ -125,9 +125,8 @@ impl AgentChat {
     }
 
     /// `.chat-in-row`: the toolbar, the context meter, Stop and Send.
-    fn in_row(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn in_row(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let _ = window;
         let meter = self.meter.clone();
         let usage = self.props.context_usage.clone();
         meter.update(cx, |m, cx| m.set_usage(usage, cx));
@@ -139,6 +138,7 @@ impl AgentChat {
                 "Stop (⌘⇧⌫)",
                 div()
                     .id("chat-stop")
+                    .debug_selector(|| "chat-stop".into())
                     .size(px(32.))
                     .rounded(px(8.))
                     .flex()
@@ -167,6 +167,7 @@ impl AgentChat {
         let on_amber = t.on_amber;
         let send = div()
             .id("chat-send")
+            .debug_selector(|| if can_send { "chat-send".into() } else { "chat-send-disabled".into() })
             .relative()
             .size(px(32.))
             .rounded(px(8.))
@@ -400,6 +401,7 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         div()
             .id(SharedString::from(format!("menu-row-{i}")))
+            .debug_selector(|| format!("menu-row{}:{i}", if on { "-on" } else { "" }))
             .flex()
             .items_center()
             .gap(px(8.))
@@ -429,11 +431,12 @@ impl AgentChat {
     }
 
     fn name_el(s: String, titled: bool) -> AnyElement {
+        let sel = format!("mention:{s}");
         let tx = text(s).weight(500.).line_height(LineHeight::Normal);
         if titled {
-            div().flex_initial().min_w_0().overflow_hidden().child(tx.truncate()).into_any_element()
+            div().debug_selector(|| sel).flex_initial().min_w_0().overflow_hidden().child(tx.truncate()).into_any_element()
         } else {
-            div().flex_none().child(tx.nowrap()).into_any_element()
+            div().debug_selector(|| sel).flex_none().child(tx.nowrap()).into_any_element()
         }
     }
 
@@ -447,7 +450,10 @@ impl AgentChat {
     }
 
     fn badge(s: impl Into<SharedString>, t: &Tokens) -> AnyElement {
+        let s = s.into();
+        let sel = format!("badge:{s}");
         div()
+            .debug_selector(|| sel)
             .flex_none()
             .ml(px(6.))
             .px(px(5.))
@@ -489,8 +495,8 @@ impl AgentChat {
                     .map(|(i, h)| {
                         let base = |p: &str| p.rsplit('/').next().unwrap_or(p).to_string();
                         let dir = |p: &str| p.rfind('/').map(|i| p[..i].to_string()).unwrap_or_default();
-                        let (kids, titled) = match h {
-                            MentionHit::Terminal { title, active, exited, .. } => (
+                        let kids = match h {
+                            MentionHit::Terminal { title, active, exited, .. } => 
                                 vec![
                                     mention_icon(IconName::Terminal, t.muted),
                                     Self::name_el(title.clone(), true),
@@ -500,30 +506,25 @@ impl AgentChat {
                                         &t,
                                     ),
                                 ],
-                                true,
-                            ),
-                            MentionHit::Artifact { title, kind, .. } => (
+                            MentionHit::Artifact { title, kind, .. } => 
                                 vec![
                                     mention_icon(IconName::from_key(artifact_icon(kind)).unwrap_or(IconName::Grid), t.muted),
                                     Self::name_el(title.clone(), true),
                                     Self::path_el(if kind.is_empty() { "Artifact".into() } else { kind.clone() }, true, &t),
                                 ],
-                                true,
-                            ),
-                            MentionHit::File { item, dir: true, .. } => (
-                                vec![mention_icon(IconName::Folder, t.muted), Self::name_el(base(item), false), Self::path_el(dir(item), false, &t)],
-                                false,
-                            ),
-                            MentionHit::File { item, .. } => (
+                            MentionHit::File { item, dir: true, .. } => 
+                                vec![
+                                    div().flex_none().flex().debug_selector(|| "mention-folder".into()).child(mention_icon(IconName::Folder, t.muted)).into_any_element(),
+                                    Self::name_el(base(item), false),
+                                    Self::path_el(dir(item), false, &t),
+                                ],
+                            MentionHit::File { item, .. } => 
                                 vec![
                                     div().flex_none().size(px(14.)).flex().items_center().justify_center().child(recur_ui::file_icons::file_icon(base(item))).into_any_element(),
                                     Self::name_el(base(item), false),
                                     Self::path_el(dir(item), false, &t),
                                 ],
-                                false,
-                            ),
                         };
-                        let _ = titled;
                         self.menu_row(i, i == self.mention_sel, false, kids, cx)
                             .on_click(cx.listener(move |this, _, window, cx| this.pick_mention_hit(i, window, cx)))
                             .into_any_element()
@@ -653,6 +654,7 @@ impl AgentChat {
         }
         let panel = recur_ui::style::card(t.pane, t.line_bright, 10.)
             .id("chat-mention")
+            .debug_selector(|| "chat-mention".into())
             .max_h(px(220.))
             .overflow_y_scroll()
             .track_scroll(&self.menu_scroll)

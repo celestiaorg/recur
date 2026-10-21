@@ -24,7 +24,7 @@ use recur_content::Sheet;
 use recur_content::links::external_http_url;
 use recur_content::render::style::sh_color;
 use recur_engine::view::artifacts::{artifact_can_open, artifact_icon, artifact_kind_tally, artifact_when};
-use recur_engine::view::chat::{AgentMsg, is_task_tool, step_row_key};
+use recur_engine::view::chat::{AgentMsg, is_task_tool};
 use recur_engine::view::subagent::is_subagent_launch_ack;
 use recur_issues::linear::tools::{LinearViewKind, linear_count_label, linear_item_url};
 use recur_textmate::{DiffKind, highlight_line_spans, lang_from_path};
@@ -1396,10 +1396,7 @@ impl AgentChat {
                 .clone()
                 .iter()
                 .enumerate()
-                .map(|(ci, c)| {
-                    let _ = step_row_key(&c.tool_id, ci);
-                    self.nested_child(c, &format!("{key}:{ci}"), window, cx)
-                })
+                .map(|(ci, c)| self.nested_child(c, &format!("{key}:{ci}"), window, cx))
                 .collect();
             p.push(
                 Part::Other,
@@ -1495,7 +1492,7 @@ impl AgentChat {
             .flex()
             .flex_col()
             .gap(px(2.))
-            .children(items.iter().map(|td| todo_row(&td.content, &td.status, None, &[], "", false, &t)))
+            .children(items.iter().map(|td| todo_row(&td.content, &td.status, None, &[], &t)))
             .into_any_element()
     }
 
@@ -2552,13 +2549,10 @@ fn todo_row(
     status: &str,
     id: Option<&str>,
     extras: &[String],
-    _key: &str,
-    blocked: bool,
     t: &Tokens,
 ) -> AnyElement {
     let done = status == "completed";
     let active = status == "in_progress";
-    let _ = blocked;
     let mut bx = div()
         .flex_none()
         .size(px(14.))
@@ -2625,7 +2619,7 @@ fn claude_task_item(td: &ClaudeTaskView, t: &Tokens) -> AnyElement {
             td.blocked_by.iter().map(|i| format_task_id(i)).collect::<Vec<_>>().join(", ")
         ));
     }
-    todo_row(&td.subject, &td.status, Some(&td.id), &extras, "", !td.blocked_by.is_empty(), t)
+    todo_row(&td.subject, &td.status, Some(&td.id), &extras, t)
 }
 
 /// `.tc-plan-update` with Owner / Blocked by / Blocks notes.

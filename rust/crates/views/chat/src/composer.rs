@@ -1128,7 +1128,6 @@ impl AgentChat {
     /// `onMentionKeydown`: true when a menu handled the key.
     pub(crate) fn on_mention_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) -> bool {
         let key = ev.keystroke.key.as_str();
-        let m = &ev.keystroke.modifiers;
         if self.prompt_args.is_some() && self.mention.is_none() && self.skill_mention.is_none() {
             let hits = self.prompt_arg_hits(cx);
             match key {
@@ -1279,10 +1278,7 @@ impl AgentChat {
                 self.menus_changed(cx);
                 true
             }
-            _ => {
-                let _ = m;
-                false
-            }
+            _ => false,
         }
     }
 

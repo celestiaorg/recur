@@ -582,3 +582,56 @@ impl Render for MarkdownView {
         root.children(self.lightbox.clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use gpui_kit::{AppContext, Entity, IntoElement, ParentElement, Render, Styled, div, px};
+
+    use super::*;
+    use crate::render::mirror::Mirror;
+
+    struct Column(Entity<MarkdownView>);
+
+    impl Render for Column {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().w(px(320.)).child(self.0.clone())
+        }
+    }
+
+    /// Hit-testing and find rects come from the mirror, so its lines must be the ones the
+    /// text element painted: same breaks, same line boxes.
+    #[gpui::test]
+    fn mirror_lines_match_the_painted_text(cx: &mut gpui::TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+        });
+        let md = include_str!("../../../tools/ui-parity/content/chat.md");
+        let (column, cx) = cx.add_window_view(|_, cx| {
+            Column(cx.new(|cx| MarkdownView::new(md, MarkdownClass::ChatCanvas, false, cx)))
+        });
+        cx.run_until_parked();
+        cx.update(|window, cx| {
+            let view = column.read(cx).0.read(cx);
+            let texts = view.texts.borrow();
+            assert!(texts.len() > 10);
+            let mut wrapped = 0;
+            for t in texts.iter() {
+                let b = t.bounds.get().expect("painted");
+                let m = Mirror::layout(&t.spec, f32::from(b.size.width), window);
+                let last = m.lines.last().expect("a line");
+                let content: String = t.spec.runs.iter().map(|r| r.text.as_str()).collect();
+                // Painted bounds are snapped to device pixels; a line is ~20px, so any break
+                // that differs shows.
+                assert!(
+                    (last.top + last.height - f32::from(b.size.height)).abs() <= 1. / window.scale_factor(),
+                    "{content:?}: mirror {} vs painted {}",
+                    last.top + last.height,
+                    f32::from(b.size.height)
+                );
+                wrapped += usize::from(m.lines.len() > 1);
+            }
+            assert!(wrapped > 0, "the column is narrow enough to wrap");
+        });
+    }
+}

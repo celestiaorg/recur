@@ -60,7 +60,7 @@ rusqlite = { version = "0.37", features = ["bundled"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "system-proxy"] }
-nix = { version = "0.31", features = ["signal"] }
+nix = { version = "0.31", features = ["signal", "process", "hostname", "poll"] }
 futures = "0.3"
 url = "2"
 unicode-properties = "0.1"

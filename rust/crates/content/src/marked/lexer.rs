@@ -1340,7 +1340,7 @@ impl Lexer {
                 return None;
             }
             let rtrim_slash = rtrim(&trimmed_url[..trimmed_url.len() - 1], '\\', false);
-            if (utf16_len(&trimmed_url) - utf16_len(&rtrim_slash)) % 2 == 0 {
+            if (utf16_len(&trimmed_url) - utf16_len(&rtrim_slash)).is_multiple_of(2) {
                 return None;
             }
         } else {

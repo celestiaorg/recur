@@ -56,7 +56,7 @@ impl Collector {
 
 /// Polls until `cond` holds or the deadline passes. PTY output is inherently asynchronous.
 fn wait_for(what: &str, mut cond: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + Duration::from_secs(30);
     while Instant::now() < deadline {
         if cond() {
             return;

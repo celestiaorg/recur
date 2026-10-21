@@ -208,7 +208,6 @@ async fn dispatch_keeps_issue_linked_during_worktree_add() {
         source: "linear".into(),
         id: "lin-1".into(),
         key: "ENG-1".into(),
-        ..IssueRef::default()
     };
     let linked = issue.clone();
     t.store

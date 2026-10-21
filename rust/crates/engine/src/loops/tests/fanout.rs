@@ -118,7 +118,7 @@ fn child_incomplete_states() {
 }
 
 fn two_step_plan(body: &str, s1: &str, s2: &str) -> Plan {
-    let plan = Plan {
+    Plan {
         summary: "Importer".into(),
         body: body.into(),
         approved: true,
@@ -128,8 +128,7 @@ fn two_step_plan(body: &str, s1: &str, s2: &str) -> Plan {
             step("S2", s2, STEP_PENDING, &["writer.go"], &[]),
         ],
         ..Plan::default()
-    };
-    plan
+    }
 }
 
 /// Queues a parent row with `plan` and dispatches it (Go's pre-seeded plan
@@ -279,13 +278,14 @@ async fn fan_out_runs_independent_steps_in_child_workspaces() {
         })
         .count();
     assert_eq!(txt, 2, "both children's files merged into the parent");
-    let s = runner.state.lock();
-    assert!(
-        !s.coder_work.contains(&parent.worktree_path),
-        "the parent never codes"
-    );
-    assert_eq!(s.coder_work.len(), 2);
-    drop(s);
+    {
+        let s = runner.state.lock();
+        assert!(
+            !s.coder_work.contains(&parent.worktree_path),
+            "the parent never codes"
+        );
+        assert_eq!(s.coder_work.len(), 2);
+    }
     t.close().await;
 }
 
@@ -334,15 +334,16 @@ async fn failed_child_is_not_respawned() {
         .iter()
         .filter(|w| w.parent_step_ids == ["S2"])
         .count();
-    let s = runner.state.lock();
-    let parent_turns = s
-        .coder_work
-        .iter()
-        .filter(|w| **w == parent.worktree_path)
-        .count();
-    assert_eq!((writer_children, s.failed), (1, 1));
-    assert_eq!(parent_turns, 1, "one fallback turn for the failed step");
-    drop(s);
+    {
+        let s = runner.state.lock();
+        let parent_turns = s
+            .coder_work
+            .iter()
+            .filter(|w| **w == parent.worktree_path)
+            .count();
+        assert_eq!((writer_children, s.failed), (1, 1));
+        assert_eq!(parent_turns, 1, "one fallback turn for the failed step");
+    }
     for st in parent.plan.unwrap().steps {
         assert_eq!(st.status, STEP_DONE, "{}", st.id);
     }
@@ -474,10 +475,11 @@ async fn planner_filed_plan_fans_out() {
     }
     assert_eq!(plan_cards, 1);
     assert_eq!(children(&t, &id).len(), 2);
-    let s = runner.state.lock();
-    assert_eq!(s.planned, 1);
-    assert!(!s.coder_work.contains(&parent.worktree_path));
-    drop(s);
+    {
+        let s = runner.state.lock();
+        assert_eq!(s.planned, 1);
+        assert!(!s.coder_work.contains(&parent.worktree_path));
+    }
     t.close().await;
 }
 

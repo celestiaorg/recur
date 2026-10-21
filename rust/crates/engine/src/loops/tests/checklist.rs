@@ -67,8 +67,8 @@ async fn coder_done_refuses_open_findings() {
         .store
         .add_finding(open_finding("L-fc", "F1", "a.go", 1, Severity::High, "bug"));
     let err = rep.done("L-fc", "CO", "all good", "").unwrap_err();
-    assert!(err.0.contains(&stored.public_id()), "{}", err.0);
-    rep.update_finding("L-fc", "CO", &stored.public_id(), "resolved", "")
+    assert!(err.0.contains(stored.public_id()), "{}", err.0);
+    rep.update_finding("L-fc", "CO", stored.public_id(), "resolved", "")
         .expect("update_finding resolved");
     let got = &t.store.findings("L-fc")[0];
     assert_eq!(got.status, FindingStatus::Resolved.as_str());

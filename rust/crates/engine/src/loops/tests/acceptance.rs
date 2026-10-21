@@ -92,22 +92,23 @@ async fn headline_e2e() {
         .collect();
     assert_eq!(series, [2, 0]);
 
-    let s = runner.state.lock();
-    assert!(
-        s.coder_runs >= 2 && s.review_runs >= 2,
-        "{} {}",
-        s.coder_runs,
-        s.review_runs
-    );
-    for c in &s.saw_coder {
-        assert!(!s.saw_reviewer.contains(c), "rail #2: shared agent id {c}");
+    {
+        let s = runner.state.lock();
+        assert!(
+            s.coder_runs >= 2 && s.review_runs >= 2,
+            "{} {}",
+            s.coder_runs,
+            s.review_runs
+        );
+        for c in &s.saw_coder {
+            assert!(!s.saw_reviewer.contains(c), "rail #2: shared agent id {c}");
+        }
+        assert!(s.qa_runs >= 1);
+        assert!(s.qa_playwright);
+        for banned in ["Edit", "Write", "NotebookEdit"] {
+            assert!(!s.qa_tools.iter().any(|x| x == banned), "QA has {banned}");
+        }
     }
-    assert!(s.qa_runs >= 1);
-    assert!(s.qa_playwright);
-    for banned in ["Edit", "Write", "NotebookEdit"] {
-        assert!(!s.qa_tools.iter().any(|x| x == banned), "QA has {banned}");
-    }
-    drop(s);
     assert_ne!(
         role_spec(&AgentRole::Reviewer).code,
         role_spec(&AgentRole::Coder).code

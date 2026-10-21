@@ -218,6 +218,15 @@ impl Overlays {
     }
 }
 
+/// A slash prompt the workspace view should run (`promptActionRequest`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PromptActionRequest {
+    pub workspace_id: String,
+    pub slash: String,
+    pub args: String,
+    pub nonce: u64,
+}
+
 /// What [`AppState`] announces beyond `cx.notify()`.
 #[derive(Clone, Debug)]
 pub enum ShellEvent {
@@ -326,6 +335,8 @@ pub struct AppState {
     pub new_task_draft: Option<NewTaskDraft>,
     pub(crate) new_project_resume_new_task: bool,
     pub schedule_editor: Option<ScheduleEditorRequest>,
+    /// The titlebar asked the open workspace view to run a slash prompt (commit, update, …).
+    pub prompt_action: Option<PromptActionRequest>,
     pub workspace_seeds: BTreeMap<String, WorkspaceSeed>,
     /// The collapsed rail is overlaid from the left edge (ephemeral).
     pub rail_peek: bool,
@@ -460,6 +471,7 @@ impl AppState {
             new_task_draft: None,
             new_project_resume_new_task: false,
             schedule_editor: None,
+            prompt_action: None,
             workspace_seeds: BTreeMap::new(),
             rail_peek: false,
             rail_peek_locked: false,
@@ -760,6 +772,35 @@ impl AppState {
     pub fn set_schedules(&mut self, list: Vec<ScheduledPrompt>, cx: &mut Context<Self>) {
         self.schedules = list;
         cx.notify();
+    }
+
+    // ---- prompt actions (`lib/promptActions.ts`) ----
+
+    /// `requestPromptAction`: ask the open workspace view to run a slash prompt.
+    pub fn request_prompt_action(&mut self, workspace_id: &str, slash: &str, args: &str, cx: &mut Context<Self>) {
+        let s = slash.trim_start_matches('/').trim();
+        if workspace_id.is_empty() || s.is_empty() {
+            return;
+        }
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or_default();
+        self.prompt_action = Some(PromptActionRequest {
+            workspace_id: workspace_id.to_string(),
+            slash: s.to_string(),
+            args: args.to_string(),
+            nonce,
+        });
+        cx.notify();
+    }
+
+    /// `takePromptActionRequest`: claim a pending request for this workspace, once.
+    pub fn take_prompt_action(&mut self, workspace_id: &str) -> Option<(String, String)> {
+        if self.prompt_action.as_ref()?.workspace_id != workspace_id {
+            return None;
+        }
+        self.prompt_action.take().map(|r| (r.slash, r.args))
     }
 
     // ---- seeds ----

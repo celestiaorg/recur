@@ -6576,11 +6576,21 @@ dependencies = [
 name = "recur-app"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "chrono",
  "gpui-kit",
- "recur-editor",
+ "gpui-pre",
+ "objc2-foundation 0.3.2",
+ "recur-app",
+ "recur-domain",
+ "recur-platform",
  "recur-services",
- "recur-terminal-view",
  "recur-ui",
+ "recur-view-core",
+ "recur-view-sidebar",
+ "serde_json",
+ "tempfile",
+ "tracing",
 ]
 
 [[package]]

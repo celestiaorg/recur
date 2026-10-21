@@ -173,6 +173,62 @@ impl AppState {
         }
     }
 
+    /// Fold an update result's workspace into its row (`{ ...l, ...res.workspace }`).
+    pub fn patch_workspace_after_update(&mut self, ws: Workspace, cx: &mut Context<Self>) {
+        self.replace_workspace(ws, cx);
+    }
+
+    /// `linkWorkspaceIssue`: one workspace per issue, so the link moves; the Issues list
+    /// refreshes once the backend assigned it.
+    pub fn link_workspace_issue(&mut self, workspace_id: &str, issue: recur_domain::IssueRef, cx: &mut Context<Self>) {
+        if workspace_id.is_empty() || issue.source.is_empty() || issue.id.is_empty() {
+            return;
+        }
+        for w in self.workspaces.iter_mut() {
+            if w.id == workspace_id {
+                w.issue = Some(issue.clone());
+            } else if w
+                .issue
+                .as_ref()
+                .is_some_and(|i| i.source == issue.source && i.id == issue.id)
+            {
+                w.issue = None;
+            }
+        }
+        cx.notify();
+        let services = self.services.clone();
+        let id = workspace_id.to_string();
+        cx.spawn(async move |this, cx| {
+            if services.workspaces.set_workspace_issue(&id, &issue).await.is_ok() {
+                let _ = this.update(cx, |s, cx| {
+                    s.issues_stale += 1;
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
+    }
+
+    /// `unlinkWorkspaceIssue`.
+    pub fn unlink_workspace_issue(&mut self, workspace_id: &str, cx: &mut Context<Self>) {
+        let services = self.services.clone();
+        let id = workspace_id.to_string();
+        cx.spawn(async move |this, cx| {
+            if call(cx, services.workspaces.clear_workspace_issue(&id), "Could not unlink issue")
+                .await
+                .is_some()
+            {
+                let _ = this.update(cx, |s, cx| {
+                    if let Some(w) = s.workspaces.iter_mut().find(|w| w.id == id) {
+                        w.issue = None;
+                    }
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
+    }
+
     /// Insert or replace a row (`OpenMainWorkspace`).
     pub fn put_workspace(&mut self, ws: Workspace, cx: &mut Context<Self>) {
         match self.workspaces.iter_mut().find(|w| w.id == ws.id) {
@@ -1011,6 +1067,7 @@ impl AppState {
             }
             AppEvent::SystemTheme(dark) => self.set_native_dark(dark, cx),
             AppEvent::AppOpen(res) => self.apply_open_path_result(res, cx),
+            AppEvent::MenuAction(action) => self.dispatch_menu_action(action, cx),
             AppEvent::Term(e) => self.on_term_event(&e, cx),
             _ => {}
         }

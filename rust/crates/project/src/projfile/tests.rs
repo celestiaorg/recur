@@ -66,7 +66,12 @@ fn write_repo_path_is_file_fails() {
         setup_cmd: "make setup".into(),
         ..Default::default()
     };
-    assert!(write(&p).unwrap_err().to_string().contains("is not a directory"));
+    assert!(
+        write(&p)
+            .unwrap_err()
+            .to_string()
+            .contains("is not a directory")
+    );
 }
 
 #[test]
@@ -92,10 +97,19 @@ fn write_round_trip() {
     };
     write(&p).unwrap();
     let text = read_project_toml(dir.path());
-    assert!(text.contains("setup_cmd") && text.contains("pnpm install"), "{text}");
+    assert!(
+        text.contains("setup_cmd") && text.contains("pnpm install"),
+        "{text}"
+    );
     assert!(!text.contains("dev_cmd"), "{text}");
-    assert!(!text.contains("\\n") && text.contains("env = \"\"\""), "{text}");
-    assert!(text.contains("copy_files") && text.contains(".env*"), "{text}");
+    assert!(
+        !text.contains("\\n") && text.contains("env = \"\"\""),
+        "{text}"
+    );
+    assert!(
+        text.contains("copy_files") && text.contains(".env*"),
+        "{text}"
+    );
     assert!(text.starts_with("# Recur project settings"), "{text}");
     assert!(exists(&repo(dir.path())));
 
@@ -165,8 +179,16 @@ fn overlay_recur_project_toml() {
         ..Default::default()
     });
     assert!(got.has_project_file);
-    assert!(got.setup_cmd.contains("go mod download"), "{}", got.setup_cmd);
-    assert!(got.env != "OLD=1" && got.env.contains("RECUR_DATA_DIR"), "{}", got.env);
+    assert!(
+        got.setup_cmd.contains("go mod download"),
+        "{}",
+        got.setup_cmd
+    );
+    assert!(
+        got.env != "OLD=1" && got.env.contains("RECUR_DATA_DIR"),
+        "{}",
+        got.env
+    );
     assert!(got.run_commands.len() >= 2);
     assert_eq!(got.run_commands[0].cmd, "wails3 task dev");
 }
@@ -183,7 +205,8 @@ fn overlay_malformed_yields_empty_run_config() {
     assert_eq!(got.setup_cmd, "");
     assert!(got.has_project_file);
     assert!(
-        got.project_file_error.starts_with("parse .recur/project.toml: toml: "),
+        got.project_file_error
+            .starts_with("parse .recur/project.toml: toml: "),
         "{}",
         got.project_file_error
     );
@@ -241,22 +264,27 @@ fn overlay_sees_rewrites_through_cache() {
 #[test]
 fn load_tilde_path() {
     let home = tempfile::tempdir().unwrap();
-    crate::testenv::run(module_path!(), "load_tilde_path", &[("HOME", home.path())], || {
-        let home = std::env::var("HOME").unwrap();
-        let repo = Path::new(&home).join("code").join("app");
-        fs::create_dir_all(&repo).unwrap();
-        write(&Project {
-            repo_path: repo.to_string_lossy().into_owned(),
-            run_commands: vec![run("dev", "go run .")],
-            ..Default::default()
-        })
-        .unwrap();
-        let got = overlay(Project {
-            repo_path: "~/code/app".into(),
-            ..Default::default()
-        });
-        assert_eq!(verify_dev_cmd(&got), "go run .");
-    });
+    crate::testenv::run(
+        module_path!(),
+        "load_tilde_path",
+        &[("HOME", home.path())],
+        || {
+            let home = std::env::var("HOME").unwrap();
+            let repo = Path::new(&home).join("code").join("app");
+            fs::create_dir_all(&repo).unwrap();
+            write(&Project {
+                repo_path: repo.to_string_lossy().into_owned(),
+                run_commands: vec![run("dev", "go run .")],
+                ..Default::default()
+            })
+            .unwrap();
+            let got = overlay(Project {
+                repo_path: "~/code/app".into(),
+                ..Default::default()
+            });
+            assert_eq!(verify_dev_cmd(&got), "go run .");
+        },
+    );
 }
 
 #[test]
@@ -287,7 +315,10 @@ fn write_named_runs() {
     })
     .unwrap();
     let text = read_project_toml(dir.path());
-    assert!(text.contains("[[run]]") && text.contains("go test"), "{text}");
+    assert!(
+        text.contains("[[run]]") && text.contains("go test"),
+        "{text}"
+    );
     let got = overlay(proj(dir.path()));
     assert_eq!(got.run_commands.len(), 2);
     assert_eq!(got.run_commands[1].cmd, "go test ./...");
@@ -330,7 +361,10 @@ fn write_multiline_run_cmd() {
 #[test]
 fn write_merges_multiline_run_cmd() {
     let dir = tempfile::tempdir().unwrap();
-    write_raw(dir.path(), "# keep\n[[run]]\nname = \"dev\"\ncmd = \"make dev\"\n");
+    write_raw(
+        dir.path(),
+        "# keep\n[[run]]\nname = \"dev\"\ncmd = \"make dev\"\n",
+    );
     write(&Project {
         repo_path: repo(dir.path()),
         run_commands: vec![run("dev", "make setup\nmake dev\n")],
@@ -339,7 +373,10 @@ fn write_merges_multiline_run_cmd() {
     .unwrap();
     let text = read_project_toml(dir.path());
     assert!(text.contains("# keep"), "{text}");
-    assert!(text.contains("cmd = \"\"\"") && !text.contains("\\n"), "{text}");
+    assert!(
+        text.contains("cmd = \"\"\"") && !text.contains("\\n"),
+        "{text}"
+    );
     let got = overlay(proj(dir.path()));
     assert_eq!(got.run_commands, vec![run("dev", "make setup\nmake dev")]);
 }
@@ -384,13 +421,22 @@ fn write_adds_runs_when_file_has_none() {
     };
     write(&p).unwrap();
     let text = read_project_toml(dir.path());
-    assert!(!text.contains("[[run]]") && !text.contains("[run."), "{text}");
+    assert!(
+        !text.contains("[[run]]") && !text.contains("[run."),
+        "{text}"
+    );
     p.run_commands = vec![run("dev", "make dev")];
     write(&p).unwrap();
     let text = read_project_toml(dir.path());
     assert!(!text.contains("[run.0]"), "{text}");
-    assert!(text.contains("[[run]]") && text.contains("make dev"), "{text}");
-    assert_eq!(overlay(proj(dir.path())).run_commands, vec![run("dev", "make dev")]);
+    assert!(
+        text.contains("[[run]]") && text.contains("make dev"),
+        "{text}"
+    );
+    assert_eq!(
+        overlay(proj(dir.path())).run_commands,
+        vec![run("dev", "make dev")]
+    );
 }
 
 #[test]
@@ -408,7 +454,10 @@ fn write_heals_indexed_run_tables() {
     })
     .unwrap();
     assert!(!read_project_toml(dir.path()).contains("[run.0]"));
-    assert_eq!(overlay(proj(dir.path())).run_commands, vec![run("dev", "make dev")]);
+    assert_eq!(
+        overlay(proj(dir.path())).run_commands,
+        vec![run("dev", "make dev")]
+    );
 }
 
 #[test]

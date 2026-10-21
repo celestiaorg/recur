@@ -103,7 +103,12 @@ impl Document {
     /// The splice removing the target of key inside the value of lf. A dotted
     /// key group inside an inline table is removed one key-value at a time:
     /// the bool reports that the caller must resolve again for the rest.
-    pub(super) fn delete_inline(&self, lf: &Leaf, key: &[&str], from: usize) -> Option<(Splice, bool)> {
+    pub(super) fn delete_inline(
+        &self,
+        lf: &Leaf,
+        key: &[&str],
+        from: usize,
+    ) -> Option<(Splice, bool)> {
         self.inline_delete_splice(&lf.node, key, from)
     }
 

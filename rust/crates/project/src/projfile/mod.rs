@@ -20,7 +20,8 @@ use crate::home::expand_home;
 /// The repo-relative location of the committed project file.
 pub const REL_PATH: &str = ".recur/project.toml";
 
-const FILE_HEADER: &str = "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.
+const FILE_HEADER: &str =
+    "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.
 # Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;
 # Recur copies them via copy_files and does not export them.
 ";

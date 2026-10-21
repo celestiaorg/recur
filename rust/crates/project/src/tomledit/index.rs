@@ -253,9 +253,9 @@ pub(crate) fn reindex(data: &str) -> Result<Index, String> {
                 };
                 continue;
             }
-            Expr::KeyValue { span, .. } | Expr::Table { span, .. } | Expr::ArrayTable { span, .. } => {
-                span.clone()
-            }
+            Expr::KeyValue { span, .. }
+            | Expr::Table { span, .. }
+            | Expr::ArrayTable { span, .. } => span.clone(),
         };
         let ls = line_start(data, span.start);
         let le = line_end(data, span.end);

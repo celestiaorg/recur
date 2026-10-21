@@ -44,9 +44,7 @@ pub fn write(p: &Project) -> Result<(), WriteError> {
             )));
         }
         Err(e) => {
-            return Err(WriteError(format!(
-                "write {REL_PATH}: stat repo path: {e}"
-            )));
+            return Err(WriteError(format!("write {REL_PATH}: stat repo path: {e}")));
         }
         Ok(st) if !st.is_dir() => {
             return Err(WriteError(format!(
@@ -138,7 +136,8 @@ fn merge_runs(d: &mut Document, runs: &[FileRun]) -> Result<(), String> {
         // read as [[run]]. Append real array-of-tables blocks instead.
         let bodies: Vec<String> = runs.iter().map(run_body).collect();
         let blocks = array_tables("run", &bodies, false);
-        *d = Document::parse(&append_section(&d.to_string(), &blocks)).map_err(|e| e.to_string())?;
+        *d =
+            Document::parse(&append_section(&d.to_string(), &blocks)).map_err(|e| e.to_string())?;
         return Ok(());
     }
     for (i, r) in runs.iter().enumerate() {

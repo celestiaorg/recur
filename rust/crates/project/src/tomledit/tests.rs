@@ -34,8 +34,8 @@ fn edits_match_go_toml() {
         serde_json::from_str(include_str!("../../tests/fixtures/projfile_golden.json")).unwrap();
     assert!(golden.edit.len() >= 20);
     for case in golden.edit {
-        let mut d = Document::parse(&case.input)
-            .unwrap_or_else(|e| panic!("{}: parse: {e}", case.name));
+        let mut d =
+            Document::parse(&case.input).unwrap_or_else(|e| panic!("{}: parse: {e}", case.name));
         assert_eq!(d.to_string(), case.input, "{}: unmodified bytes", case.name);
         for (i, op) in case.ops.iter().enumerate() {
             let key: Vec<&str> = op.key.iter().map(String::as_str).collect();
@@ -46,14 +46,30 @@ fn edits_match_go_toml() {
                         None => Value::Str(op.str.clone().unwrap_or_default()),
                     };
                     let res = d.set(&key, &v);
-                    assert_eq!(res.is_err(), op.err, "{} op {i} set {key:?}: {res:?}", case.name);
+                    assert_eq!(
+                        res.is_err(),
+                        op.err,
+                        "{} op {i} set {key:?}: {res:?}",
+                        case.name
+                    );
                 }
                 "delete" => {
-                    assert_eq!(d.delete(&key), op.found, "{} op {i} delete {key:?}", case.name);
+                    assert_eq!(
+                        d.delete(&key),
+                        op.found,
+                        "{} op {i} delete {key:?}",
+                        case.name
+                    );
                 }
                 other => panic!("unknown op {other}"),
             }
-            assert_eq!(d.to_string(), op.out, "{} op {i} {} {key:?}", case.name, op.op);
+            assert_eq!(
+                d.to_string(),
+                op.out,
+                "{} op {i} {} {key:?}",
+                case.name,
+                op.op
+            );
         }
     }
 }

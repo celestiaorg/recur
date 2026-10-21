@@ -530,7 +530,11 @@ fn render_value(value: &Value) -> Result<String, Error> {
 
 /// A `dotted.key = value` fragment without a line ending.
 fn render_inline_kv(parts: &[&str], value: &Value) -> Result<String, Error> {
-    Ok(format!("{} = {}", render_key_path(parts), render_value(value)?))
+    Ok(format!(
+        "{} = {}",
+        render_key_path(parts),
+        render_value(value)?
+    ))
 }
 
 /// A dotted key path, quoting the parts that need it like the encoder does.

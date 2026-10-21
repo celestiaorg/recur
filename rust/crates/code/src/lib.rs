@@ -1,2 +1,45 @@
-//! Worktree file access: tree, index, search/replace (ripgrep), outline, symbols, open-in,
-//! copy-files.
+//! Worktree file access: tree, index, search/replace (ripgrep), outline,
+//! symbols, open-in, copy-files and observatory analysis. Port of Go
+//! `internal/code`, `internal/rg`, `internal/copyfiles` and `internal/observe`,
+//! plus the UI's pure file rules (`lib/fuzzy.ts`, `lib/glob.ts`,
+//! `lib/file-index.ts`, `lib/changed-tree.ts`, `lib/finding-paths.ts`,
+//! `lib/skills.ts`).
+//!
+//! Paths are always validated under a root (project repo or loop worktree) so
+//! the UI cannot escape the sandbox. Filesystem walks are synchronous and stop
+//! at the next file when their `CancellationToken` fires; anything that runs
+//! git or a subprocess is `async`.
+
+mod changed;
+mod drop_allow;
+mod error;
+mod file;
+mod files;
+mod gopath;
+mod gore;
+mod gostr;
+mod langs;
+mod ops;
+mod outline;
+mod root;
+mod scan;
+mod search;
+mod symbols;
+mod tree;
+mod walk;
+
+pub use drop_allow::{allow_external_path, load_external_allow_file, reset_external_paths};
+pub use error::{Error, Result};
+pub use file::{
+    image_at_base, image_mime, prepare_chat_image, prepare_external, prepare_serve, preview_mime,
+    read_file, rewind_binary_check, write_file,
+};
+pub use langs::{is_source_ext, is_source_file};
+pub use root::{rel_slash, resolve_root, resolve_root_info, safe_join};
+pub use changed::{ChangedDef, changed_defs, find_refs_in_package, rank_refs_in_package};
+pub use files::{list_files, match_files};
+pub use ops::{abs_path, copy, create_file, mkdir, remove, rename};
+pub use outline::outline;
+pub use search::{replace_in_files, search, search_opts};
+pub use symbols::{SymbolIndex, changed_symbols, extract_idents, find_defs, find_refs, index_symbols};
+pub use tree::{file_at_base, file_diff, git_status, list_tree, list_trees};

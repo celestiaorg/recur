@@ -607,3 +607,281 @@ fn frame_cursor_shapes() {
     s.feed(b"\x1b[?25l");
     assert!(s.frame(true, true).cursor.is_none());
 }
+
+/// Viewport rows with `o` for an overlined cell and `-` otherwise.
+fn overlines(s: &Screen) -> Vec<String> {
+    let f = s.frame(false, false);
+    (0..s.rows())
+        .map(|y| {
+            (0..s.cols())
+                .map(|x| {
+                    let on = f
+                        .glyphs
+                        .iter()
+                        .any(|g| g.row == y && g.col == x && g.overline);
+                    if on { 'o' } else { '-' }
+                })
+                .collect::<String>()
+                .trim_end_matches('-')
+                .to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn overline_follows_sgr_53_and_55() {
+    let mut s = screen(12, 2);
+    s.feed(b"a\x1b[53mbc\x1b[55md\x1b[1;53me\x1b[0mf");
+    assert_eq!(overlines(&s), vec!["-oo-o", ""]);
+    s.feed(b"\r\n\x1b[53;0mx\x1b[0;53my\x1b[38;5;53mz\x1b[m\x1b[38;5;53mw\x1b[48;2;1;53;55mv");
+    assert_eq!(overlines(&s)[1], "-oo");
+    assert_eq!(s.viewport_text()[1], "xyzwv");
+}
+
+#[test]
+fn overlined_blanks_render_and_keep_default_colours() {
+    let mut s = screen(10, 1);
+    let theme = Theme {
+        background: Some("#141414".into()),
+        foreground: Some("#e6e4e1".into()),
+        ..Default::default()
+    };
+    s.set_palette(Palette::from_theme(&theme));
+    s.feed(b"\x1b[53m \x1b[31mr\x1b[39md\x1b[2mm\x1b[22;7mi\x1b[0m");
+    let f = s.frame(false, false);
+    let blank = find_glyph(&f, 0, 0);
+    assert!(blank.overline && blank.text == " ");
+    assert_eq!(blank.fg, Rgba::rgb(0xe6, 0xe4, 0xe1));
+    assert_eq!(find_glyph(&f, 1, 0).fg, s.palette().ansi[1]);
+    assert_eq!(
+        find_glyph(&f, 2, 0).fg,
+        Rgba::rgb(0xe6, 0xe4, 0xe1),
+        "SGR 39 under overline is still the default foreground"
+    );
+    assert_eq!(find_glyph(&f, 3, 0).fg, Rgba::new(0xe6, 0xe4, 0xe1, 128));
+    assert_eq!(
+        find_glyph(&f, 4, 0).fg,
+        Rgba::rgb(0x14, 0x14, 0x14),
+        "inverse overlines in the swapped colour"
+    );
+    let rect = f.rects.iter().find(|r| r.col == 0).map(|r| r.color);
+    assert_eq!(
+        rect,
+        Some(Rgba::rgb(0x14, 0x14, 0x14)),
+        "overline is a background flag, so the cell gets an opaque rect"
+    );
+    s.show_cursor();
+    s.feed(b"\x1b[53m\x1b[2D");
+    let f = s.frame(true, true);
+    assert!(
+        !find_glyph(&f, 3, 0).overline,
+        "the block cursor cell drops every attribute"
+    );
+}
+
+#[test]
+fn overline_survives_scrollback() {
+    let mut s = screen(8, 3);
+    s.feed(b"\x1b[53mtop\x1b[55m line\r\n");
+    for i in 0..20 {
+        s.feed(format!("row {i}\r\n").as_bytes());
+    }
+    assert!(s.scrollback_len() > 0);
+    s.scroll_to_row(0);
+    assert_eq!(s.viewport_text()[0], "top line");
+    assert_eq!(overlines(&s)[0], "ooo");
+    s.scroll_to_bottom();
+    assert!(overlines(&s).iter().all(|r| r.is_empty()));
+}
+
+#[test]
+fn overline_survives_reflow() {
+    let mut s = screen(10, 4);
+    s.feed(b"ab\x1b[53mcdef\x1b[55mgh");
+    s.resize(4, 4);
+    s.scroll_to_row(0);
+    assert_eq!(s.viewport_text()[..2], ["abcd", "efgh"]);
+    assert_eq!(overlines(&s)[..2], ["--oo", "oo"]);
+    s.resize(10, 4);
+    assert_eq!(s.viewport_text()[0], "abcdefgh");
+    assert_eq!(overlines(&s)[0], "--oooo");
+}
+
+#[test]
+fn overlined_trailing_blanks_survive_reflow() {
+    let mut s = screen(10, 3);
+    s.feed(b"abcdef\x1b[53m   \x1b[55m\r\n");
+    s.resize(5, 3);
+    s.scroll_to_row(0);
+    assert_eq!(s.viewport_text()[..2], ["abcde", "f"]);
+    assert_eq!(overlines(&s)[..2], ["", "-ooo"]);
+    s.resize(10, 3);
+    assert_eq!(overlines(&s)[0], "------ooo");
+}
+
+#[test]
+fn overline_on_the_alternate_screen() {
+    let mut s = screen(10, 3);
+    s.feed(b"\x1b[53mmain\x1b[55m\x1b[?1049h");
+    assert!(overlines(&s).iter().all(|r| r.is_empty()));
+    s.feed(b"\x1b[H\x1b[53malt");
+    assert_eq!(overlines(&s)[0], "ooo");
+    s.feed(b"\x1b[?1049l");
+    assert_eq!(s.viewport_text()[0], "main");
+    assert_eq!(overlines(&s)[0], "oooo");
+    s.feed(b"\r\n\x1b[53m\x1b[?1049hx\x1b[?1049l");
+    s.feed(b"\x1b[?1049h");
+    assert_eq!(
+        overlines(&s)[0],
+        "",
+        "the alternate screen starts clear each time"
+    );
+}
+
+#[test]
+fn erased_and_inserted_cells_drop_overline() {
+    let mut s = screen(10, 3);
+    s.feed(b"\x1b[53mabcdef\x1b[3D\x1b[K");
+    assert_eq!(overlines(&s)[0], "ooo", "EL with overline on");
+    s.feed(b"\r\x1b[2C\x1b[2X");
+    assert_eq!(overlines(&s)[0], "oo", "ECH");
+    s.feed(b"\r\x1b[2@");
+    assert_eq!(overlines(&s)[0], "--oo", "ICH inserts plain blanks");
+    s.feed(b"\r\x1b[P");
+    assert_eq!(overlines(&s)[0], "-oo", "DCH shifts overlined cells");
+    s.feed(b"\r\n\x1b[53mxyz\r\x1b[2K");
+    assert_eq!(overlines(&s)[1], "", "EL 2");
+    s.feed(b"\x1b[53mxyz\x1b[2J");
+    assert!(overlines(&s).iter().all(|r| r.is_empty()), "ED 2");
+}
+
+#[test]
+fn overline_is_saved_restored_and_reset() {
+    let mut s = screen(10, 3);
+    s.feed(b"\x1b[53m\x1b7\x1b[55ma\x1b8b");
+    assert_eq!(overlines(&s)[0], "o");
+    s.feed(b"\x1b[53m\x1b[!p\x1b[2;1Hc");
+    assert_eq!(overlines(&s)[1], "", "DECSTR resets attributes");
+    s.feed(b"\x1b[53m\x1bcd");
+    assert_eq!(s.viewport_text()[0], "d");
+    assert_eq!(overlines(&s)[0], "", "RIS");
+}
+
+#[test]
+fn overline_keeps_its_place_in_synchronized_output() {
+    let mut s = screen(10, 3);
+    s.feed(b"\x1b[?2026h\x1b[53ma\x1b[55mb\x1b[53mc");
+    s.feed(b"\x1b[0md\x1b[?2026l");
+    assert_eq!(s.viewport_text()[0], "abcd");
+    assert_eq!(overlines(&s)[0], "o-o");
+}
+
+#[test]
+fn title_stack_requests_do_not_toggle_overline() {
+    let mut s = screen(10, 3);
+    s.feed(b"\x1b[22t\x1b[22;0ta\x1b[53m\x1b[23tb");
+    assert_eq!(overlines(&s)[0], "-o");
+}
+
+#[test]
+fn overline_handler_delegates_everything_else() {
+    // Each case exercises handler calls the overline wrapper forwards; the screen must end up
+    // exactly where the bare emulator does. (Calls alacritty ignores and requests the scanner
+    // answers itself have nothing to observe.)
+    let cases: &[&[u8]] = &[
+        b"\x1b]2;title\x07\x07",
+        b"\x1b[2 qx",
+        b"\x1b]50;CursorShape=2\x07",
+        b"\x1b[3;4Ha\x1b[5db\x1b[9Gc",
+        b"abcdef\r\x1b[2@",
+        b"\x1b[5;5Ha\x1b[2Ab\x1b[3Bc\x1b[4Cd\x1b[2De\x1b[Ef\x1b[2Fg",
+        b"a\tb\x08c\rd\ne\x1bEf\x1a",
+        b"\x1b[20ha\nb\x0bc\x0cd",
+        b"\x1b[3g\x1b[4G\x1bH\r\tx\x1b[2Iy\x1b[Zz",
+        b"1\r\n2\r\n3\r\n4\x1b[2S\x1b[1T\x1b[2;1H\x1b[L\x1b[3;1H\x1b[M",
+        b"abcdef\r\x1b[2C\x1b[2X",
+        b"abcdef\r\x1b[2C\x1b[P\x1b[3C\x1b[1K",
+        b"top\r\n\x1b7\x1b[5;5Hx\x1b8y\x1b[1J\x1b[3;3H\x1b[0J",
+        b"\x1b[2;4r\x1b[2;1Ha\x1bM\x1bMb\x1b[r",
+        b"xyz\r\x1b[4hab",
+        b"\x1b[4hab\r\x1b[4lX\x1b[?7l\x1b[1;29Habc\x1b[?7h\x1b[?6h\x1b[?25l",
+        b"\x1b=",
+        b"\x1b=\x1b>",
+        b"\x1b)0\x0elqk\x0flqk",
+        b"\x1b]4;1;rgb:10/20/30\x1b\\\x1b]4;2;rgb:40/50/60\x1b\\\x1b]104;2\x1b\\",
+        b"\x1b]4;1;?\x1b\\",
+        b"\x1b#8",
+        b"\x1b]8;id=a;http://x\x1b\\link\x1b]8;;\x1b\\",
+        b"\x1b[>4;1m\x1b[?4m",
+        b"ab\x1bcz",
+    ];
+    for case in cases {
+        let mut s = screen(30, 8);
+        let out = s.feed(case);
+        let events = Events::default();
+        let mut bare = Term::new(
+            Config {
+                scrolling_history: SCROLLBACK,
+                default_cursor_style: ansi::CursorStyle {
+                    shape: ansi::CursorShape::Block,
+                    blinking: true,
+                },
+                kitty_keyboard: false,
+                osc52: alacritty_terminal::term::Osc52::Disabled,
+                ..Config::default()
+            },
+            &Size { cols: 30, rows: 8 },
+            events.clone(),
+        );
+        let mut p: Processor<StdSyncHandler> = Processor::new();
+        p.advance(&mut bare, case);
+        let cells = |t: &Term<Events>| {
+            let g = t.grid();
+            (0..8)
+                .flat_map(|y| {
+                    (0..30).map(move |x| {
+                        let c = &g[Line(y)][Column(x)];
+                        (c.c, c.fg, c.bg, c.flags, c.hyperlink(), c.underline_color())
+                    })
+                })
+                .collect::<Vec<_>>()
+        };
+        let name = String::from_utf8_lossy(case);
+        assert_eq!(cells(&s.term), cells(&bare), "{name:?}");
+        assert_eq!(
+            s.term.grid().cursor.point,
+            bare.grid().cursor.point,
+            "{name:?}"
+        );
+        assert_eq!(*s.term.mode(), *bare.mode(), "{name:?}");
+        assert_eq!(s.term.cursor_style(), bare.cursor_style(), "{name:?}");
+        for i in 0..alacritty_terminal::term::color::COUNT {
+            assert_eq!(s.term.colors()[i], bare.colors()[i], "{name:?} colour {i}");
+        }
+        // Titles, bells and replies; colour queries as the palette index they asked for.
+        let bare_out: Vec<String> = events
+            .0
+            .lock()
+            .iter()
+            .filter_map(|e| match e {
+                TermEvent::Title(t) => Some(format!("title {t}")),
+                TermEvent::Bell => Some("bell".into()),
+                TermEvent::PtyWrite(r) => Some(format!("reply {r:?}")),
+                TermEvent::ColorRequest(i, _) => Some(format!("colour {i}")),
+                _ => None,
+            })
+            .collect();
+        let screen_out: Vec<String> = out
+            .into_iter()
+            .map(|o| match o {
+                Output::Title(t) => format!("title {t}"),
+                Output::Bell => "bell".into(),
+                Output::Reply(r) => match r.strip_prefix("\x1b]4;") {
+                    Some(rest) => format!("colour {}", rest.split(';').next().unwrap_or("")),
+                    None => format!("reply {r:?}"),
+                },
+            })
+            .collect();
+        assert_eq!(screen_out, bare_out, "{name:?}");
+    }
+}

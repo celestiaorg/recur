@@ -7,6 +7,7 @@ use alacritty_terminal::term::cell::{Cell, Flags};
 use alacritty_terminal::vte::ansi::{Color, NamedColor};
 
 use super::buffer::Buffer;
+use super::overline;
 use super::theme::Rgba;
 use super::{CursorStyle, Screen};
 
@@ -37,6 +38,8 @@ pub struct Glyph {
     pub italic: bool,
     pub underline: Option<Underline>,
     pub strikethrough: bool,
+    /// SGR 53, drawn along the top of the character box in the glyph colour.
+    pub overline: bool,
     /// Box drawing, block and powerline glyphs (drawn procedurally to fill the cell).
     pub codepoint: u32,
 }
@@ -95,6 +98,8 @@ struct Attrs {
     dim: bool,
     invisible: bool,
     strike: bool,
+    /// xterm's `BgFlags.OVERLINE`.
+    overline: bool,
     underline: Option<UnderlineStyle>,
     underline_color: Option<Mode>,
     /// xterm's `BgFlags.HAS_EXTENDED` (underline style/colour or an OSC 8 link).
@@ -138,6 +143,7 @@ fn attrs(cell: &Cell) -> Attrs {
         dim: f.contains(Flags::DIM),
         invisible: f.contains(Flags::HIDDEN),
         strike: f.contains(Flags::STRIKEOUT),
+        overline: overline::is_overlined(cell),
         underline,
         underline_color,
         extended: underline.is_some() || underline_color.is_some() || cell.hyperlink().is_some(),
@@ -334,6 +340,7 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
                     dim: false,
                     invisible: false,
                     strike: false,
+                    overline: false,
                     underline: None,
                     underline_color: None,
                     extended: false,
@@ -341,7 +348,7 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
             }
 
             // RectangleRenderer: a rect wherever xterm's packed bg is non-zero, or inverse.
-            let bg_nonzero = a.bg != Mode::Default || a.italic || a.dim || a.extended;
+            let bg_nonzero = a.bg != Mode::Default || a.italic || a.dim || a.overline || a.extended;
             if bg_nonzero || a.inverse {
                 let color = if a.inverse {
                     colors.of(a.fg, colors.fg)
@@ -405,7 +412,12 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
             if let Some(zw) = cell.zerowidth() {
                 text.extend(zw);
             }
-            if cell.c == ' ' && underline.is_none() && !a.strike && cell.zerowidth().is_none() {
+            if cell.c == ' '
+                && underline.is_none()
+                && !a.strike
+                && !a.overline
+                && cell.zerowidth().is_none()
+            {
                 continue;
             }
             frame.glyphs.push(Glyph {
@@ -418,6 +430,7 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
                 italic: a.italic,
                 underline,
                 strikethrough: a.strike,
+                overline: a.overline,
                 codepoint: cp,
             });
         }

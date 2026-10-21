@@ -1,4 +1,5 @@
 //! The agent chat (`AgentChat.svelte`) that the workspace view and Ask Recur embed.
+pub mod app_chat;
 pub mod blocks;
 pub mod byte_lru;
 pub mod cards;

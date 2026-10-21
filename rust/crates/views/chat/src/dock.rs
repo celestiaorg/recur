@@ -60,7 +60,10 @@ impl AgentChat {
         let composer_only = self.props.composer_only;
         let mut dock = div()
             .flex_none()
-            .when(!composer_only, |d| d.px(px(16.)).pb(px(12.)).bg(hsla(t.bg)));
+            .when(!composer_only, |d| {
+                let (x, b) = if self.props.compact { (10., 10.) } else { (16., 12.) };
+                d.px(px(x)).pb(px(b)).bg(hsla(t.bg))
+            });
         let queued: Vec<_> = self.queued_messages().into_iter().cloned().collect();
         if !composer_only && !queued.is_empty() {
             let rows: Vec<AnyElement> = queued
@@ -107,10 +110,11 @@ impl AgentChat {
                 shadow.push(recur_ui::shadow::css_box_shadow(0., 0., 0., 1., t.amber));
             }
             shadow.push(recur_ui::shadow::css_box_shadow(0., 10., 28., -12., rgba(0, 0, 0, 0.55)));
+            let radius = if self.props.compact { 10. } else { 12. };
             with_shadow(
-                recur_ui::style::card(t.pane, if drop { t.amber } else { t.line_bright }, 12.).child(chat_in),
+                recur_ui::style::card(t.pane, if drop { t.amber } else { t.line_bright }, radius).child(chat_in),
                 &shadow,
-                12.,
+                radius,
             )
             .max_w(px(780.))
             .mx_auto()

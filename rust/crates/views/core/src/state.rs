@@ -529,6 +529,10 @@ impl AppState {
         &self.storage
     }
 
+    pub fn storage_mut(&mut self) -> &mut LocalStorage {
+        &mut self.storage
+    }
+
     /// The desktop's hook for Finder drops (allowlisting them for file serving).
     pub fn set_drop_hook(&mut self, hook: DropHook) {
         self.drop_hook = Some(hook);

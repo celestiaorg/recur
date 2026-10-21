@@ -81,7 +81,13 @@ impl AgentChat {
     fn fades(&self, cx: &Context<Self>) -> Vec<AnyElement> {
         let t = Theme::of(cx).tokens;
         let bg = self.backdrop(&t);
-        let fade = if self.props.session_body { 20. } else { 40. };
+        let fade = if self.props.session_body {
+            20.
+        } else if self.props.compact {
+            32.
+        } else {
+            40.
+        };
         let top = -f32::from(self.scroll.offset().y);
         let max = f32::from(self.scroll.max_offset().y).max(0.);
         let show_top = !self.fade_ready || top > 1.;
@@ -157,6 +163,7 @@ impl Render for AgentChat {
         self.sync_turn_clock(cx);
         let composer_only = self.props.composer_only;
         let session = self.props.session_body;
+        let compact = self.props.compact;
         let mut root = div()
             .id(SharedString::from(format!("chat-{}", self.props.reset_key)))
             .relative()
@@ -190,7 +197,8 @@ impl Render for AgentChat {
                 .id(SharedString::from(format!("chat-scroll-{}", self.props.reset_key)))
                 .track_scroll(&self.scroll)
                 .overflow_y_scroll()
-                .when(!session, |d| d.flex_1().min_h_0().pt(px(26.)).px(px(28.)).pb(px(8.)))
+                .when(!session && !compact, |d| d.flex_1().min_h_0().pt(px(26.)).px(px(28.)).pb(px(8.)))
+                .when(!session && compact, |d| d.flex_1().min_h_0().pt(px(18.)).px(px(18.)).pb(px(8.)))
                 .when(session, |d| d.flex_initial().min_h_0().max_h(px(420.)).py(px(8.)).px(px(12.)))
                 .child(col);
             let main = div()

@@ -672,10 +672,9 @@ mod tests {
         assert!(h.take_sending("dest").is_empty());
     }
 
-    fn watch(
-        h: &mut HoistState,
-        books: SendBooks,
-    ) -> (Rc<RefCell<SendBooks>>, Rc<RefCell<Vec<String>>>, u64) {
+    type Watched = (Rc<RefCell<SendBooks>>, Rc<RefCell<Vec<String>>>, u64);
+
+    fn watch(h: &mut HoistState, books: SendBooks) -> Watched {
         let books = Rc::new(RefCell::new(books));
         let flushed = Rc::new(RefCell::new(Vec::new()));
         let (b, f) = (books.clone(), flushed.clone());

@@ -513,7 +513,7 @@ mod tests {
             None
         );
         assert_eq!(
-            last_retry_error_index(&[err.clone()], false, true, true),
+            last_retry_error_index(std::slice::from_ref(&err), false, true, true),
             None
         );
         assert_eq!(last_retry_error_index(&[err], true, false, true), None);

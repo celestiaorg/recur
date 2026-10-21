@@ -209,6 +209,7 @@ impl<V> ByteLru<V> {
 mod tests {
     use super::*;
 
+    #[allow(clippy::ptr_arg)]
     fn len(s: &String) -> usize {
         s.len()
     }

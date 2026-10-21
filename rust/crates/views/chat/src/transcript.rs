@@ -25,7 +25,7 @@ use recur_view_core::format::format_elapsed;
 use crate::blocks::{
     Block, BubblePart, bubble_parts, cockpit_start_ts, group_summary, last_presented_in_turn,
 };
-use crate::chat::{AgentChat, ChatEvent, debug_key};
+use crate::chat::{AgentChat, ChatEvent, ChatFn, ChatWinFn, debug_key};
 use crate::flow::{ATOM, FlowStyle, flow};
 use crate::html_inline::{InlineStyle, inline_html};
 use crate::rows::{accord_detail, finding_row_wrap, findings_list, labeled_note};
@@ -646,11 +646,7 @@ impl AgentChat {
         );
         let can_ckpt = !self.props.readonly && !m.message_id.is_empty() && m.checkpoint;
         let id = SharedString::from(format!("te-{}-{i}", self.props.reset_key));
-        let link = |id: SharedString,
-                    s: String,
-                    cx: &mut Context<Self>,
-                    f: Box<dyn Fn(&mut Self, &mut Context<Self>)>|
-         -> AnyElement {
+        let link = |id: SharedString, s: String, cx: &mut Context<Self>, f: ChatFn| -> AnyElement {
             let t = Theme::of(cx).tokens;
             let sel = format!("turn-end-link:{s}");
             div()
@@ -865,7 +861,7 @@ impl AgentChat {
         copied: bool,
         on: bool,
         cx: &mut Context<Self>,
-        f: Box<dyn Fn(&mut Self, &mut Window, &mut Context<Self>)>,
+        f: ChatWinFn,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let mut ic = icon(name).size(px(14.));
@@ -1090,7 +1086,7 @@ impl AgentChat {
                    s: &str,
                    color: gpui_kit::Hsla,
                    hover: gpui_kit::Hsla,
-                   f: Box<dyn Fn(&mut Self, &mut Window, &mut Context<Self>)>,
+                   f: ChatWinFn,
                    cx: &mut Context<Self>| {
             div()
                 .id(SharedString::from(id))
@@ -1360,6 +1356,7 @@ impl AgentChat {
 
     /// The bubble's inline content: text and chips in one flow, or a column of parts when
     /// the message carries images (`.has-att`).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn bubble_content(
         &mut self,
         parts: &[BubblePart],

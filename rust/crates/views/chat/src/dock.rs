@@ -288,7 +288,7 @@ impl AgentChat {
         let marked = self.composer_marked.clone();
         let blink_on = focused && !motion::is_frozen(cx) && {
             let e = self.caret_blink_epoch.elapsed().as_millis();
-            (e / 500) % 2 == 0
+            (e / 500).is_multiple_of(2)
         };
         if focused && !motion::is_frozen(cx) {
             window.request_animation_frame();

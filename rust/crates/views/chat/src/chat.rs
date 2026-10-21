@@ -210,6 +210,11 @@ pub enum ChatEvent {
     Draft,
 }
 
+pub(crate) type TitleMap = HashMap<String, String>;
+pub(crate) type ChatAct = Rc<dyn Fn(&mut AgentChat, &mut Context<AgentChat>)>;
+pub(crate) type ChatFn = Box<dyn Fn(&mut AgentChat, &mut Context<AgentChat>)>;
+pub(crate) type ChatWinFn = Box<dyn Fn(&mut AgentChat, &mut Window, &mut Context<AgentChat>)>;
+
 /// Renders a specialist SessionCard for a cockpit session log (`sessionCard` snippet).
 pub type SessionCardRenderer = Rc<dyn Fn(&ChatLogSession, &mut Window, &mut App) -> AnyElement>;
 
@@ -2029,14 +2034,11 @@ impl AgentChat {
         t.bg
     }
 
+    /// Terminal titles, artifact titles, and artifact `(id, title)` pairs.
     pub(crate) fn hydrate_opts_titles(
         &self,
         cx: &App,
-    ) -> (
-        HashMap<String, String>,
-        HashMap<String, String>,
-        Vec<(String, String)>,
-    ) {
+    ) -> (TitleMap, TitleMap, Vec<(String, String)>) {
         let terms = self
             .live_terminals(cx)
             .into_iter()

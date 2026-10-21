@@ -673,9 +673,9 @@ fn face_style(css: &str, t: &Tokens) -> (Option<(f32, Color, Color)>, Option<Col
         if let Some(h) = v.strip_prefix('#') {
             let n = u32::from_str_radix(h, 16).ok()?;
             return Some(match h.len() {
-                3 => hex(((n >> 8 & 0xf) * 0x11) << 16
-                    | ((n >> 4 & 0xf) * 0x11) << 8
-                    | (n & 0xf) * 0x11),
+                3 => hex(((((n >> 8) & 0xf) * 0x11) << 16)
+                    | ((((n >> 4) & 0xf) * 0x11) << 8)
+                    | ((n & 0xf) * 0x11)),
                 6 => hex(n),
                 _ => return None,
             });

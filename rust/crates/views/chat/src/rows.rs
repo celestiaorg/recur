@@ -34,7 +34,7 @@ use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, Span, Text, TextStyled, span, text};
 use recur_ui::{Color, IconName, Theme, Tokens, icon, motion};
 
-use crate::chat::{AgentChat, ChatEvent, OpenArtifact};
+use crate::chat::{AgentChat, ChatAct, ChatEvent, OpenArtifact};
 use crate::findings_ui::{
     finding_body_needed, finding_loc_label, finding_severity_tally, finding_title,
 };
@@ -881,7 +881,7 @@ impl AgentChat {
         id: SharedString,
         expandable: bool,
         children: Vec<AnyElement>,
-        on_toggle: Option<std::rc::Rc<dyn Fn(&mut Self, &mut Context<Self>)>>,
+        on_toggle: Option<ChatAct>,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
@@ -1222,10 +1222,9 @@ impl AgentChat {
             );
         }
         let k = key.to_string();
-        let toggle: std::rc::Rc<dyn Fn(&mut Self, &mut Context<Self>)> =
-            std::rc::Rc::new(move |this: &mut Self, cx: &mut Context<Self>| {
-                this.toggle_row(&k, open, cx)
-            });
+        let toggle: ChatAct = std::rc::Rc::new(move |this: &mut Self, cx: &mut Context<Self>| {
+            this.toggle_row(&k, open, cx)
+        });
         let head = self.tc_head(id.clone(), expandable, kids, Some(toggle), cx);
         let mut card = div()
             .group(SharedString::from(format!("{id}-card")))
@@ -1990,23 +1989,21 @@ impl AgentChat {
             );
         };
         match m.tool.as_str() {
-            "TaskList" => {
-                if !m.result_pending && !m.result_error {
-                    match v.claude_task_list_items() {
-                        Some(items) if !items.is_empty() => {
-                            p.push(
-                                Part::Other,
-                                div()
-                                    .py(px(2.))
-                                    .flex()
-                                    .flex_col()
-                                    .gap(px(2.))
-                                    .children(items.iter().map(|td| claude_task_item(td, &t))),
-                            );
-                        }
-                        None => pre(p, "out", m.result.clone(), t.muted),
-                        _ => p.push(Part::FindingEmpty, finding_empty("No tasks.", &t)),
+            "TaskList" if !m.result_pending && !m.result_error => {
+                match v.claude_task_list_items() {
+                    Some(items) if !items.is_empty() => {
+                        p.push(
+                            Part::Other,
+                            div()
+                                .py(px(2.))
+                                .flex()
+                                .flex_col()
+                                .gap(px(2.))
+                                .children(items.iter().map(|td| claude_task_item(td, &t))),
+                        );
                     }
+                    None => pre(p, "out", m.result.clone(), t.muted),
+                    _ => p.push(Part::FindingEmpty, finding_empty("No tasks.", &t)),
                 }
             }
             "TaskGet" => {
@@ -2662,13 +2659,11 @@ impl AgentChat {
                 }
                 let rel = format!(
                     "{}{loc}",
-                    self.props
-                        .root_path
-                        .is_empty()
-                        .then(|| f.file.clone())
-                        .unwrap_or_else(
-                            || crate::tools::rel_path(&self.props.root_path, &f.file).to_string()
-                        )
+                    if self.props.root_path.is_empty() {
+                        f.file.clone()
+                    } else {
+                        crate::tools::rel_path(&self.props.root_path, &f.file).to_string()
+                    }
                 );
                 let head = self.accord_head(
                     &accord,
@@ -3116,7 +3111,7 @@ impl AgentChat {
         let handle = self
             .think_scrolls
             .entry(rk.to_string())
-            .or_insert_with(gpui_kit::ScrollHandle::new)
+            .or_default()
             .clone();
         let max = handle.max_offset().y;
         if handle.offset().y != -max {

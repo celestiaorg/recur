@@ -467,7 +467,7 @@ impl Render for MarkdownView {
             .sheet
             .clone()
             .unwrap_or_else(|| Sheet::for_class(self.class));
-        let mut tokens = theme.tokens.clone();
+        let mut tokens = theme.tokens;
         if sheet.muted {
             tokens.text = tokens.muted;
         }

@@ -663,6 +663,7 @@ mod tests {
         assert_eq!(c.load("k2"), None);
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn live<'a>(
         empty_b: &'a BTreeMap<usize, bool>,
         rows: &'a BTreeMap<String, bool>,

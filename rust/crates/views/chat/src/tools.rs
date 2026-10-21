@@ -2136,11 +2136,12 @@ impl<'a> ToolView<'a> {
                     pending: m.result_pending,
                 },
             );
-        (!(tool_search_sel.is_some_and(|s| !s.is_empty()) && !m.result_error)
+        let searched = tool_search_sel.is_some_and(|s| !s.is_empty());
+        ((!searched || m.result_error)
             && !delete_quiet
             && !lin_quiet
             && !web_quiet
-            && !(claude_task && !claude_body && !m.result_error))
+            && (!claude_task || claude_body || m.result_error))
             || !m.children.is_empty()
     }
 

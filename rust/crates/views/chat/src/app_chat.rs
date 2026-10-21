@@ -57,10 +57,10 @@ pub fn tab_label(tab: &WorkspaceChatTab) -> &str {
 /// The backend's first-message title stamp, mirrored so the chip labels at once.
 pub fn stamp_title(tabs: &mut [WorkspaceChatTab], code: &str, sent: &str) {
     for t in tabs.iter_mut().filter(|t| t.code == code) {
-        if t.title.is_empty() || t.title == "New chat" {
-            if let Some(line) = sent.lines().map(str::trim).find(|l| !l.is_empty()) {
-                t.title = line.to_string();
-            }
+        if (t.title.is_empty() || t.title == "New chat")
+            && let Some(line) = sent.lines().map(str::trim).find(|l| !l.is_empty())
+        {
+            t.title = line.to_string();
         }
     }
 }

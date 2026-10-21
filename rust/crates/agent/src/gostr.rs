@@ -159,7 +159,7 @@ where
 }
 
 /// Serializes a decoded JSON value the way Go re-encodes `map[string]any`:
-/// keys sorted (serde_json's map already is), every number as a float64.
+/// keys sorted, every number as a float64.
 pub(crate) struct GoAny<'a>(pub &'a Value);
 
 impl Serialize for GoAny<'_> {
@@ -180,8 +180,10 @@ impl Serialize for GoAny<'_> {
                 seq.end()
             }
             Value::Object(m) => {
-                let mut map = s.serialize_map(Some(m.len()))?;
-                for (k, v) in m {
+                let mut entries: Vec<_> = m.iter().collect();
+                entries.sort_unstable_by_key(|(k, _)| k.as_str());
+                let mut map = s.serialize_map(Some(entries.len()))?;
+                for (k, v) in entries {
                     map.serialize_entry(k, &GoAny(v))?;
                 }
                 map.end()

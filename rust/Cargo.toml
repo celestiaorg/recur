@@ -63,11 +63,9 @@ clap = { version = "4", features = ["derive"] }
 include_dir = "0.7"
 notify = "8"
 cron = "0.15"
-tokio-util = "0.7"
 socket2 = "0.6"
 rustix = { version = "1", features = ["process"] }
 reqwest = "0.13"
-url = "2"
 base64 = "0.23"
 sha2 = "0.11"
 digest = "0.11"

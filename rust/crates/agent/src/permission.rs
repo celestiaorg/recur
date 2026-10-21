@@ -113,7 +113,8 @@ pub fn summary(tool: &str, input: &str) -> String {
             return format!("{label}: {}", truncate_line(s, 160));
         }
     }
-    let keys: Vec<&str> = fields.keys().map(String::as_str).collect();
+    let mut keys: Vec<&str> = fields.keys().map(String::as_str).collect();
+    keys.sort_unstable();
     format!("{label} ({})", keys.join(", "))
 }
 

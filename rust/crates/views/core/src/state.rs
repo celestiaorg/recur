@@ -365,6 +365,7 @@ pub struct AppState {
     pub(crate) busy_watch: HashMap<String, Task<()>>,
     pub(crate) drop_hook: Option<DropHook>,
     pub(crate) commands: crate::commands::CommandRegistry,
+    pub(crate) chat: crate::chat::ChatStores,
 }
 
 impl EventEmitter<ShellEvent> for AppState {}
@@ -492,6 +493,7 @@ impl AppState {
             busy_watch: HashMap::new(),
             drop_hook: None,
             commands: Default::default(),
+            chat: Default::default(),
             storage,
         };
         state.init_themes();

@@ -6,17 +6,21 @@
 //! - [`view`]: how a view crate plugs into the shell (routes, titlebar parts, overlays,
 //!   key bindings).
 //! - Pure ports the shell, sidebar and views share: [`workspace_nav`], [`shell_state`],
-//!   [`modes`], [`pr`], [`run`], [`commands`], [`chat_route`], [`format`].
+//!   [`modes`], [`models`], [`file_drag`], [`pr`], [`run`], [`commands`], [`chat_route`],
+//!   [`format`].
 //!
 //! A store read or written by two or more view crates lives here; a store one view owns lives
 //! in that view's crate.
 
+pub mod chat;
 pub mod chat_route;
 pub mod commands;
 mod data;
+pub mod file_drag;
 pub mod format;
 pub mod local_storage;
 pub mod menu;
+pub mod models;
 pub mod modes;
 pub mod nav;
 mod navigate;

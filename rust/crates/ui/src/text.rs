@@ -1117,8 +1117,10 @@ fn request_probes(
     let nudge = 1. / 1024.;
     probes
         .map(|p| {
-            let mut s = Style::default();
-            s.position = Position::Absolute;
+            let mut s = Style {
+                position: Position::Absolute,
+                ..Default::default()
+            };
             s.inset.top = px(0.).into();
             s.inset.left = px(0.).into();
             // Offsets at or above the box start from a whole CSS pixel before it, which rounds

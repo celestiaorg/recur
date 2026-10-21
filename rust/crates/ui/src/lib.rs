@@ -28,6 +28,7 @@ pub mod kbd;
 mod kit;
 pub mod logic;
 pub mod motion;
+pub mod shadow;
 pub mod style;
 pub mod text;
 pub mod theme;

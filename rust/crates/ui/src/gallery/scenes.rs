@@ -14,9 +14,8 @@ use crate::text::{LineHeight, Text, TextStyled, span, text};
 use crate::theme::Theme;
 use crate::tooltip::TitleTooltip;
 use crate::widgets::{
-    ToastAsk, ToastKind, ToastOptions, ToastStore, Toasts, push_toast, toast_action,
-    PicBox, armed_button, blurb_code, decode_text, project_pic, ring, settings_group,
-    settings_groups,
+    PicBox, ToastAsk, ToastKind, ToastOptions, ToastStore, Toasts, armed_button, blurb_code,
+    decode_text, project_pic, push_toast, ring, settings_group, settings_groups, toast_action,
 };
 use gpui_kit::{
     AnyElement, AnyView, App, AppContext, Context, Div, IntoElement, ParentElement, Render, Styled,
@@ -61,7 +60,7 @@ struct Stage {
 
 impl Render for Stage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
+        body(cx)
             .relative()
             .size_full()
             .child((self.content)(window, cx))
@@ -596,7 +595,12 @@ fn seed_toasts(window: &mut Window, cx: &mut App) {
         ttl: Some(std::time::Duration::ZERO),
         ..Default::default()
     };
-    push_toast(ToastKind::Success, "Saved workspace settings", sticky(None), cx);
+    push_toast(
+        ToastKind::Success,
+        "Saved workspace settings",
+        sticky(None),
+        cx,
+    );
     push_toast(
         ToastKind::Error,
         "Push failed: the remote rejected the update",

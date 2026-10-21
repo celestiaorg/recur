@@ -153,7 +153,7 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
 
 /// Per-scene diff counts. Pixels whose channels differ by at most one level are equal (8-bit
 /// compositing quantization); the rest are text (inside a reference text box), anti-aliased
-/// fringe (pixelmatch's detection), or hard.
+/// fringe (pixelmatch's detection, a soft edge, or gradient dither), or hard.
 struct DiffResult {
     name: String,
     hard: u64,
@@ -246,6 +246,12 @@ fn antialiased(img: &RgbaImage, x: u32, y: u32, other: &RgbaImage) -> bool {
 /// anti-aliasing along the same edge, not an edge that moved (that changes it by the full
 /// contrast).
 fn soft_fringe(a: &RgbaImage, x: u32, y: u32, delta: u8) -> bool {
+    let range = local_range(a, x, y);
+    range > 0 && (delta as u32) * 4 <= range as u32
+}
+
+/// Channel range over the 3×3 neighborhood.
+fn local_range(a: &RgbaImage, x: u32, y: u32) -> u8 {
     let (w, h) = a.dimensions();
     let (mut lo, mut hi) = (u8::MAX, 0u8);
     for nx in x.saturating_sub(1)..=(x + 1).min(w - 1) {
@@ -257,7 +263,26 @@ fn soft_fringe(a: &RgbaImage, x: u32, y: u32, delta: u8) -> bool {
             }
         }
     }
-    hi > lo && (delta as u32) * 4 <= (hi - lo) as u32
+    hi - lo
+}
+
+/// The widest single-channel range over the 3×3 neighborhood (a tinted flat area is 0).
+fn channel_range(a: &RgbaImage, x: u32, y: u32) -> u8 {
+    let (w, h) = a.dimensions();
+    (0..3)
+        .map(|c| {
+            let (mut lo, mut hi) = (u8::MAX, 0u8);
+            for nx in x.saturating_sub(1)..=(x + 1).min(w - 1) {
+                for ny in y.saturating_sub(1)..=(y + 1).min(h - 1) {
+                    let v = a.get_pixel(nx, ny).0[c];
+                    lo = lo.min(v);
+                    hi = hi.max(v);
+                }
+            }
+            hi - lo
+        })
+        .max()
+        .unwrap_or(0)
 }
 
 /// Reference text boxes (CSS px) scaled to device pixels and grown by 2dp, so glyph
@@ -325,6 +350,9 @@ fn diff_one(spec: &SceneSpec, reference: &Path, candidate: &Path, out: &Path) ->
         } else if antialiased(&a, x, y, &b)
             || antialiased(&b, x, y, &a)
             || soft_fringe(&a, x, y, delta)
+            // WebKit dithers gradients: up to two levels of noise, plus one of quantization,
+            // in a smooth region.
+            || (delta <= 3 && channel_range(&a, x, y) <= 6 && channel_range(&b, x, y) <= 6)
         {
             r.aa += 1;
             Rgba([200, 160, 0, 255])

@@ -9,7 +9,8 @@ use crate::text::{InlineBox, LineHeight, Span, Text, TextStyled, span, text};
 use crate::theme::{Theme, Tokens};
 use gpui_kit::{
     App, BoxShadow, Div, ElementId, Fill, FocusHandle, Hsla, InteractiveElement, IntoElement,
-    ParentElement, Stateful, Styled, Window, div, point, prelude::FluentBuilder, px, relative,
+    ParentElement, Pixels, Stateful, Styled, Window, div, point, prelude::FluentBuilder, px,
+    relative,
 };
 
 impl From<Color> for Fill {
@@ -39,6 +40,115 @@ fn border_over(border: Color, bg: Color) -> Hsla {
     } else {
         border.into()
     }
+}
+
+/// CSS `linear-gradient(<angle>, from, to)` for a box of `size`, as a GPUI background. GPUI
+/// stretches a diagonal direction by the box's aspect ratio and measures along its longer side;
+/// this picks the GPUI angle whose stretched direction is the CSS one and rescales the stops from
+/// CSS's gradient line (`|w sin a| + |h cos a|`) to GPUI's. Exact for any angle.
+pub fn css_linear_gradient(
+    angle: f32,
+    from: (Color, f32),
+    to: (Color, f32),
+    size: gpui_kit::Size<Pixels>,
+) -> gpui_kit::Background {
+    let (w, h) = (
+        f32::from(size.width).max(1e-3),
+        f32::from(size.height).max(1e-3),
+    );
+    let a = angle.to_radians();
+    let (sx, sy) = (a.sin(), -a.cos());
+    let (gx, gy) = if w > h {
+        (sx, sy * w / h)
+    } else {
+        (sx * h / w, sy)
+    };
+    let gpui_angle = (gy.atan2(gx).to_degrees() + 90.).rem_euclid(360.);
+    let along = if sx.abs() > sy.abs() { w } else { h };
+    let line = (w * sx).abs() + (h * sy).abs();
+    let stop = |s: f32| 0.5 + (s - 0.5) * line / along;
+    gpui_kit::linear_gradient(
+        gpui_angle,
+        gpui_kit::linear_color_stop(from.0, stop(from.1)),
+        gpui_kit::linear_color_stop(to.0, stop(to.1)),
+    )
+}
+
+/// A [`css_linear_gradient`] background for its relatively positioned parent with a `border` of
+/// `border_color` and `radius`. See [`inset_background`] for its extent.
+pub fn css_gradient(
+    angle: f32,
+    from: (Color, f32),
+    to: (Color, f32),
+    radius: f32,
+    border: f32,
+    border_color: Color,
+) -> impl IntoElement {
+    let opaque = border_color.a >= 1.;
+    gpui_kit::canvas(
+        |_, _, _| {},
+        move |bounds, _, window, _| {
+            let gradient_box = bounds.dilate(px(border));
+            let (bounds, radius) = background_box(bounds, radius, border, opaque, window);
+            window.paint_quad(gpui_kit::quad(
+                bounds,
+                px(radius),
+                css_linear_gradient(angle, from, to, gradient_box.size),
+                px(0.),
+                Hsla::transparent_black(),
+                gpui_kit::BorderStyle::Solid,
+            ));
+        },
+    )
+    .absolute()
+    .top_0()
+    .left_0()
+    .size_full()
+}
+
+/// The background of a relatively positioned parent with a `border` of `border_color` and
+/// `radius`, in place of `.bg()`. GPUI paints a div's background and border as two anti-aliased
+/// quads, so the background bleeds into the border's outer edge; under an opaque border WebKit
+/// shrinks the background one device pixel inside the border box instead
+/// (`BackgroundBleedShrinkBackground`). Put it first.
+pub fn inset_background(
+    color: Color,
+    radius: f32,
+    border: f32,
+    border_color: Color,
+) -> impl IntoElement {
+    let opaque = border_color.a >= 1.;
+    gpui_kit::canvas(
+        |_, _, _| {},
+        move |bounds, _, window, _| {
+            let (bounds, radius) = background_box(bounds, radius, border, opaque, window);
+            window.paint_quad(gpui_kit::fill(bounds, Hsla::from(color)).corner_radii(px(radius)));
+        },
+    )
+    .absolute()
+    .top_0()
+    .left_0()
+    .size_full()
+}
+
+/// The border box from a canvas filling the padding box, shrunk by a device pixel under an
+/// opaque border.
+fn background_box(
+    padding_box: gpui_kit::Bounds<Pixels>,
+    radius: f32,
+    border: f32,
+    opaque: bool,
+    window: &Window,
+) -> (gpui_kit::Bounds<Pixels>, f32) {
+    let shrink = if border > 0. && opaque {
+        1. / window.scale_factor()
+    } else {
+        0.
+    };
+    (
+        padding_box.dilate(px(border - shrink)),
+        (radius - shrink).max(0.),
+    )
 }
 
 /// A CSS `box-shadow` layer. CSS blur is twice the Gaussian sigma GPUI takes.

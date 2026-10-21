@@ -6,8 +6,8 @@ use crate::fonts::weight;
 use crate::icon::icon;
 use crate::icon_name::IconName;
 use crate::motion::{self, Easing};
-use crate::style::css_shadow;
-use crate::text::{LineHeight, Text, TextStyled, span, text};
+use crate::shadow::{css_box_shadow, with_shadow};
+use crate::text::{LineHeight, Text, TextStyled, text};
 use crate::theme::Theme;
 use gpui_kit::{
     AnyElement, App, AppContext, ClickEvent, Context, CursorStyle, Entity, Global, Hsla,
@@ -421,27 +421,24 @@ fn plain_toast(
     let hover_border = k.cyan.mix(0.45, k.line_bright);
     let mut toast = div()
         .id(("toast", t.id))
-        .relative()
-        .top(px(dy))
         .flex()
         .items_start()
         .gap(px(9.))
         .min_w_0()
         .max_w_full()
-        .bg(k.pane.fade(p))
+        .relative()
+        .child(crate::style::inset_background(
+            k.pane.fade(p),
+            9.,
+            1.,
+            border,
+        ))
         .border(px(1.))
-        .border_color(Hsla::from(border.fade(p * border.a)))
+        .border_color(Hsla::from(border.fade(p)))
         .rounded(px(9.))
         .py(px(10.))
         .px(px(12.))
         .text_size(px(12.5))
-        .shadow(vec![css_shadow(
-            0.,
-            10.,
-            30.,
-            -8.,
-            crate::color::rgba(0, 0, 0, 0.6 * p),
-        )])
         .when(actionable, |d| {
             d.hover(move |s| s.border_color(Hsla::from(hover_border)))
         });
@@ -476,9 +473,14 @@ fn plain_toast(
     } else {
         toast.child(dot_el).child(body)
     };
-    toast
-        .child(close_button(store, t.id, false, cx))
-        .into_any_element()
+    let shadow = css_box_shadow(0., 10., 30., -8., crate::color::rgba(0, 0, 0, 0.6 * p));
+    with_shadow(
+        toast.child(close_button(store, t.id, false, cx)),
+        &[shadow],
+        9.,
+    )
+    .top(px(dy))
+    .into_any_element()
 }
 
 fn ask_toast(
@@ -515,24 +517,25 @@ fn ask_toast(
                 .nowrap(),
         )
         .when_some(t.action.as_ref(), |d, action| {
+            // `.toast-ask-cta`: an inline-flex of the label and its chevron.
+            let cta = |t: Text| t.mono().weight(weight::SEMIBOLD).nowrap();
             d.child(
-                div().ml_auto().flex_none().child(
-                    Text::from_spans(vec![
-                        span(action.label.clone()),
-                        // `.toast-ask-cta-chev`: 13px, line-height 1, .75 opacity, 2px gap.
-                        span("›").size(13.).color(k.amber.fade(0.75)).boxed(
-                            crate::text::InlineBox {
-                                margin_left: 2.,
-                                ..Default::default()
-                            },
+                div()
+                    .ml_auto()
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .gap(px(2.))
+                    .child(cta(text(action.label.clone())).size(10.5).color(k.amber))
+                    // `.toast-ask-cta-chev`: 13px, line-height 1, .75 opacity, up half a pixel.
+                    .child(
+                        div().relative().top(px(-0.5)).child(
+                            cta(text("›"))
+                                .size(13.)
+                                .line_height(LineHeight::Scale(1.))
+                                .color(k.amber.fade(0.75)),
                         ),
-                    ])
-                    .mono()
-                    .size(10.5)
-                    .weight(weight::SEMIBOLD)
-                    .color(k.amber)
-                    .nowrap(),
-                ),
+                    ),
             )
         });
     let where_ = div()
@@ -595,10 +598,9 @@ fn ask_toast(
     let border = k.amber.mix(0.32, k.line_bright);
     let hover_border = k.amber.mix(0.48, k.line_bright);
     let tint = k.amber.mix(0.09, k.pane);
-    div()
+    let card = div()
         .id(("toast", t.id))
         .relative()
-        .top(px(dy))
         .flex()
         .items_start()
         .min_w_0()
@@ -608,45 +610,73 @@ fn ask_toast(
         .border(px(1.))
         .border_color(Hsla::from(border))
         .hover(move |s| s.border_color(Hsla::from(hover_border)))
-        .bg(linear_gradient(
-            165.,
-            linear_color_stop(tint, 0.),
-            linear_color_stop(k.pane, 0.42),
-        ))
         .text_size(px(12.5))
-        .shadow(vec![
-            css_shadow(0., 14., 36., -14., crate::color::rgba(0, 0, 0, 0.7 * p)),
-            css_shadow(0., 0., 0., 1., k.amber.fade(0.12)),
-        ])
-        // `::before`: the 3px amber accent rail.
-        .child(
-            div()
-                .absolute()
-                .left_0()
-                .top_0()
-                .bottom_0()
-                .w(px(3.))
-                .bg(linear_gradient(
-                    180.,
-                    linear_color_stop(k.amber, 0.),
-                    linear_color_stop(k.amber.fade(0.3), 1.),
-                )),
-        )
+        .child(crate::style::css_gradient(
+            165.,
+            (tint, 0.),
+            (k.pane, 0.42),
+            11.,
+            1.,
+            border,
+        ))
+        // `::before`, the 3px amber accent rail, and `.toast-ask-ttl`, the bar that drains from
+        // the right over the TTL (`scaleX` of a `left: 3px; right: 0` box): both clipped to the
+        // card's rounded padding box, as its `overflow: hidden` clips them.
+        .child({
+            let (top, bottom, ttl) = (k.amber, k.amber.fade(0.3), k.amber.fade(0.55));
+            gpui_kit::canvas(
+                |_, _, _| {},
+                move |bounds, _, window, _| {
+                    let clipped = |rect: gpui_kit::Bounds<gpui_kit::Pixels>,
+                                   bg: gpui_kit::Background,
+                                   w: &mut Window| {
+                        w.with_content_mask(Some(gpui_kit::ContentMask { bounds: rect }), |w| {
+                            w.paint_quad(gpui_kit::quad(
+                                bounds,
+                                px(10.),
+                                bg,
+                                px(0.),
+                                Hsla::transparent_black(),
+                                gpui_kit::BorderStyle::Solid,
+                            ))
+                        })
+                    };
+                    let rail = gpui_kit::Bounds {
+                        origin: bounds.origin,
+                        size: gpui_kit::size(px(3.), bounds.size.height),
+                    };
+                    let rail_bg = linear_gradient(
+                        180.,
+                        linear_color_stop(top, 0.),
+                        linear_color_stop(bottom, 1.),
+                    );
+                    clipped(rail, rail_bg, window);
+                    if drain > 0. {
+                        let bar = gpui_kit::Bounds {
+                            origin: gpui_kit::point(
+                                bounds.origin.x + px(3.),
+                                bounds.bottom() - px(2.),
+                            ),
+                            size: gpui_kit::size((bounds.size.width - px(3.)) * drain, px(2.)),
+                        };
+                        clipped(bar, Hsla::from(ttl).into(), window);
+                    }
+                },
+            )
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+        })
         .child(go)
         .child(close_button(store, t.id, true, cx))
-        // `.toast-ask-ttl`: drains from the right over the TTL.
-        .when(drain > 0., |d| {
-            d.child(
-                div()
-                    .absolute()
-                    .left(px(3.))
-                    .bottom_0()
-                    .h(px(2.))
-                    .w(relative(drain))
-                    .bg(k.amber.fade(0.55)),
-            )
-        })
-        .cursor(CursorStyle::PointingHand)
+        .cursor(CursorStyle::PointingHand);
+    let shadows = [
+        css_box_shadow(0., 14., 36., -14., crate::color::rgba(0, 0, 0, 0.7 * p)),
+        css_box_shadow(0., 0., 0., 1., k.amber.fade(0.12)),
+    ];
+    with_shadow(card, &shadows, 11.)
+        .top(px(dy))
         .into_any_element()
 }
 

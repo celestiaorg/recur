@@ -129,6 +129,141 @@ pub fn go_base64_decode(s: &str) -> Result<Vec<u8>, String> {
     }
 }
 
+/// `a` when it has non-space text, else `b` (Go `firstNonEmptyStr`).
+pub fn first_non_empty_str<'a>(a: &'a str, b: &'a str) -> &'a str {
+    if a.trim().is_empty() { b } else { a }
+}
+
+/// Go `strings.EqualFold(s, lit)` for an ASCII `lit`: only ASCII case and
+/// the two runes that simple-fold into ASCII letters (U+017F ſ → s, U+212A
+/// Kelvin sign → k) match.
+pub fn equal_fold_ascii(s: &str, lit: &str) -> bool {
+    let mut a = s.chars();
+    for l in lit.chars() {
+        let Some(c) = a.next() else {
+            return false;
+        };
+        let ok = c.eq_ignore_ascii_case(&l)
+            || (c == '\u{17f}' && l.eq_ignore_ascii_case(&'s'))
+            || (c == '\u{212a}' && l.eq_ignore_ascii_case(&'k'));
+        if !ok {
+            return false;
+        }
+    }
+    a.next().is_none()
+}
+
+/// Go `time.ParseDuration`, in nanoseconds:
+/// `[-+]?([0-9]*(\.[0-9]*)?[a-z]+)+`.
+pub fn go_parse_duration(orig: &str) -> Result<i64, String> {
+    const LIMIT: u64 = 1 << 63;
+    let invalid = || format!("time: invalid duration {orig:?}");
+    let mut s = orig.as_bytes();
+    let mut neg = false;
+    if let Some(&c @ (b'-' | b'+')) = s.first() {
+        neg = c == b'-';
+        s = &s[1..];
+    }
+    if s == b"0" {
+        return Ok(0);
+    }
+    if s.is_empty() {
+        return Err(invalid());
+    }
+    let mut d: u64 = 0;
+    while !s.is_empty() {
+        if !(s[0] == b'.' || s[0].is_ascii_digit()) {
+            return Err(invalid());
+        }
+        // [0-9]*
+        let mut v: u64 = 0;
+        let mut i = 0;
+        while i < s.len() && s[i].is_ascii_digit() {
+            if v > LIMIT / 10 {
+                return Err(invalid());
+            }
+            v = v * 10 + u64::from(s[i] - b'0');
+            if v > LIMIT {
+                return Err(invalid());
+            }
+            i += 1;
+        }
+        let pre = i > 0;
+        s = &s[i..];
+        // (\.[0-9]*)?
+        let (mut f, mut scale, mut post) = (0u64, 1f64, false);
+        if s.first() == Some(&b'.') {
+            s = &s[1..];
+            let mut i = 0;
+            let mut overflow = false;
+            while i < s.len() && s[i].is_ascii_digit() {
+                if !overflow {
+                    if f > (LIMIT - 1) / 10 {
+                        overflow = true;
+                    } else {
+                        let y = f * 10 + u64::from(s[i] - b'0');
+                        if y > LIMIT {
+                            overflow = true;
+                        } else {
+                            f = y;
+                            scale *= 10.0;
+                        }
+                    }
+                }
+                i += 1;
+            }
+            post = i > 0;
+            s = &s[i..];
+        }
+        if !pre && !post {
+            return Err(invalid());
+        }
+        let i = s
+            .iter()
+            .position(|&c| c == b'.' || c.is_ascii_digit())
+            .unwrap_or(s.len());
+        if i == 0 {
+            return Err(format!("time: missing unit in duration {orig:?}"));
+        }
+        let unit_name = std::str::from_utf8(&s[..i]).unwrap_or_default();
+        s = &s[i..];
+        let unit: u64 = match unit_name {
+            "ns" => 1,
+            "us" | "\u{b5}s" | "\u{3bc}s" => 1_000,
+            "ms" => 1_000_000,
+            "s" => 1_000_000_000,
+            "m" => 60_000_000_000,
+            "h" => 3_600_000_000_000,
+            _ => {
+                return Err(format!(
+                    "time: unknown unit {unit_name:?} in duration {orig:?}"
+                ));
+            }
+        };
+        if v > LIMIT / unit {
+            return Err(invalid());
+        }
+        v *= unit;
+        if f > 0 {
+            v += (f as f64 * (unit as f64 / scale)) as u64;
+            if v > LIMIT {
+                return Err(invalid());
+            }
+        }
+        d += v;
+        if d > LIMIT {
+            return Err(invalid());
+        }
+    }
+    if neg {
+        return Ok((d as i64).wrapping_neg());
+    }
+    if d > LIMIT - 1 {
+        return Err(invalid());
+    }
+    Ok(d as i64)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,5 +302,14 @@ mod tests {
     fn plural_forms() {
         assert_eq!(plural(1, "finding", "findings"), "1 finding");
         assert_eq!(plural(0, "finding", "findings"), "0 findings");
+    }
+
+    #[test]
+    fn go_durations() {
+        assert_eq!(go_parse_duration("50ms"), Ok(50_000_000));
+        assert_eq!(go_parse_duration("4h"), Ok(4 * 3_600_000_000_000));
+        assert_eq!(go_parse_duration("1.5s"), Ok(1_500_000_000));
+        assert!(go_parse_duration("").is_err());
+        assert!(go_parse_duration("10").is_err());
     }
 }

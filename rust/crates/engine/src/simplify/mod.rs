@@ -114,7 +114,7 @@ impl Engine {
         self.remember_chat_simplify(workspace_id, &code, on);
     }
 
-    fn remember_chat_simplify(&self, workspace_id: &str, code: &str, on: bool) {
+    pub(crate) fn remember_chat_simplify(&self, workspace_id: &str, code: &str, on: bool) {
         let code = normalize_pair_chat_code(code);
         if code != MAESTRO_AGENT_CODE && !is_pair_chat_code(&code) {
             return;

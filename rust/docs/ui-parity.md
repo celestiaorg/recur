@@ -62,6 +62,16 @@ The `shell` list in `scenes.json` holds full-window scenes (`shell/…`): the ti
 
 Scenes: three themes (`default`, `paper`, `nord`), the collapsed rail and its flyout (`peek`, after hovering the left edge), groups (an open group, a collapsed group with a needs-you chip, a non-git project, a hidden project with Show hidden on), the tree (every status icon, open / draft / queued / merged / closed PR icons, a working copy with branch and diff, child rows with step badges and connectors, the Scheduled subgroup expanded), a hovered row with its actions, and a scrolled tree (a stuck project header with its under-fade, the bottom mask, the scrollbar after it fades).
 
+## Content scenes
+
+The `content` list in `scenes.json` holds the rich-content components (`markdown/…`, `mermaid/…`, `pdf/…`, `file-preview/…`, `lightbox/…`) over the fixtures in `rust/tools/ui-parity/content/` (`make_pdf.py` writes `page.pdf` with embedded Inter faces).
+
+- **Reference.** `web/scenes/Content.svelte` mounts `MarkdownHtml`, `StreamingMarkdown` (mid-stream), `FilePreview`, `PdfPreview` (inside `.obs`, which sets `--obs-chrome-h` as Observatory does) and `AttachmentLightbox` once every font face has loaded, and is ready when images, diagrams and pages have painted.
+- **Candidate.** `recur_content::gallery` (feature `gallery`) builds the same components. It installs `webhost::BlockingRenders`, so Mermaid and pdf.js calls into their hidden WebKit pages answer within the frame (the headless window runs no application loop).
+- **Mermaid and PDF.** Both sides run the same mermaid.js and pdf.js in WebKit, at the window's device scale (mermaid's layout depends on it). Mermaid labels are recur-ui text at WebKit's positions, spaced to WebKit's advances (WebKit shapes SVG text at the device-scaled size, whose tracking differs); geometry rasterizes through CoreGraphics with the paint WebKit resolved. PDF pages are pdf.js's canvas pixels.
+
+Scenes: chat markdown in `default` and `paper` (headings, lists with nesting and tasks, a table, fences in four languages, inline code, a blockquote, links, an image, long wrapping), a stream mid-reply, a Mermaid flowchart (whole-file preview) and sequence diagram (inline), one PDF page, a markdown and an SVG file preview, and the lightbox over a message.
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -94,6 +104,11 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 - **Pointer events during transitions.** A collapsing rail slides out over 160ms; WebKit stops hit-testing it at once (`pointer-events: none`), GPUI keeps it hit-testable until it is gone. No scene or test depends on that window.
 - **Overlay scroller.** The tab strip's `scrollbar-width: thin` scroller follows macOS overlay scrollers: it shows only after wheel scrolling, so programmatic reveals do not flash it.
 
+- **Native checkbox.** A task list's checked, disabled `<input type=checkbox>` is WebKit's native control; recur-content draws its look (fill, border and check calibrated per theme), and the edge pixels of the rounded box and check differ.
+- **Inline boxes across a wrap.** When an inline code span starts a new line, WebKit carries its left padding to that line; recur-ui's text keeps the padding on the line before, so the chip sits a padding's width left (`file-preview/markdown`). The fix belongs in `recur_ui::text` line breaking.
+- **Image resampling.** Scaled images (the lightbox, PDF pages stretched to their slot, the inline chart) are sampled by GPUI's bilinear texture filter where WebKit uses CoreGraphics interpolation; internal edges differ by a few levels, counted as anti-aliasing.
+- **Lightbox backdrop blur.** `backdrop-filter: blur(8px)` is not drawn (no backdrop filters in GPUI); the scrim color matches.
+
 ## Hard-pixel allowances
 
 | Scene | Hard | Cause |
@@ -109,6 +124,9 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 | `shell/tree`, `shell/hover` | 1 | Curved-edge coverage at the working copy branch chip's rounded left border |
 | `shell/scrolled` | 1 | Gradient dither inside a stuck header's under-fade |
 | `overlays/palette` | 388 | Keycaps centered at fractional positions inside a scrolled list land one device pixel apart (their row offset is not probed), and the list thumb's end rounds differently |
+| `markdown/chat`, `markdown/paper` | 95, 131 | The native task checkbox's edges (above) and a few edge pixels of WebKit's synthesized list bullets |
+| `file-preview/markdown` | 514 | An inline code chip that starts a wrapped line keeps its padding on the line before (above) |
+| `pdf/page` | 15 | The page field's number, which gpui-base's editor draws (typed input text, above) |
 
 ## Results
 
@@ -185,7 +203,18 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `shell/tree` | 1 | 2842 | 980 | 4210 | 1 |
 | `shell/hover` | 1 | 2708 | 949 | 4030 | 1 |
 | `shell/scrolled` | 1 | 2294 | 1305 | 3960 | 1 |
+| `markdown/chat` | 95 | 6027 | 5525 | 12710 | 95 |
+| `markdown/paper` | 131 | 6086 | 5644 | 12910 | 131 |
+| `markdown/streaming` | 0 | 1875 | 77 | 2150 | 0 |
+| `mermaid/flowchart` | 0 | 9173 | 1922 | 12210 | 0 |
+| `mermaid/sequence` | 0 | 8076 | 16 | 8910 | 0 |
+| `pdf/page` | 15 | 175 | 18357 | 20390 | 15 |
+| `file-preview/markdown` | 514 | 8290 | 206 | 9350 | 514 |
+| `file-preview/svg` | 0 | 0 | 0 | 0 | 0 |
+| `lightbox/image` | 0 | 22 | 14684 | 16180 | 0 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
 Terminal tolerances: every grid difference left is synthetic-italic edge coverage (above). `terminal/search` adds the find field: curved-edge coverage at the corners of its 2px `--amber-d` ring and the query, which gpui-base's editor draws (typed input text, above).
+
+Content tolerances: text is glyph subpixel phase in prose, code and diagram labels; anti-aliasing is image resampling (the PDF page, the lightbox, the inline chart), shape edges inside PDF pages and Mermaid strokes, and rounded fence and table corners.

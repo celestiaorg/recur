@@ -32,6 +32,7 @@ rust/
     ui/                 recur-ui           design system on gpui-kit (frontend styles, shared components)
     editor/             recur-editor       code + merge editor       (CodeEditor, MergeEditor, cm-*)
     terminal-view/      recur-terminal-view terminal rendering        (TerminalPane, xterm)
+    content/            recur-content      rich content              (MarkdownHtml, StreamingMarkdown, markdown*, sanitize-lsp, Mermaid, PDF, FilePreview, lightbox)
     views/
       core/             recur-view-core    shared app state, routing (lib/stores.ts, api.ts, commands.ts, workspace-nav.ts, …)
       sidebar/          recur-view-sidebar the app sidebar           (Sidebar.svelte, ProviderUsageMeter.svelte)
@@ -55,7 +56,8 @@ Dependencies point down only:
 ```
 desktop, cli
 app ──────────────► views/*, editor, terminal-view, ui
-views/* ──────────► views/core, editor, terminal-view, ui, services, domain
+views/* ──────────► views/core, editor, terminal-view, content, ui, services, domain
+content ──────────► editor, textmate, ui
 views/core ───────► ui, editor, services, domain
 services ─────────► engine, providers/*, forge, issues, usage, lsp, platform
 engine ───────────► agent, agent-tools, mcp, bundles, code, git, store, term
@@ -66,7 +68,7 @@ textmate, term, ui ─ standalone
 Rules:
 
 - `recur-domain` has no I/O and no async.
-- Nothing below `recur-services` knows about GPUI. Only `recur-app`, the view crates and the widget crates (`recur-ui`, `recur-editor`, `recur-terminal-view`) render.
+- Nothing below `recur-services` knows about GPUI. Only `recur-app`, the view crates and the widget crates (`recur-ui`, `recur-editor`, `recur-terminal-view`, `recur-content`) render.
 - View crates never depend on each other or on `recur-app`. What two views share (state, navigation, pure rules) lives in `recur-view-core`; what they show in common lives in `recur-ui`.
 - `recur-engine` depends on the `recur-agent::Provider`, `recur-forge::Forge` and `recur-issues::IssueTracker` traits, never on a concrete implementation. `recur-services` is the composition root that registers the shipped providers, forges and trackers.
 
@@ -99,6 +101,24 @@ The engine port is planned slice by slice in `docs/engine-port-plan.md`.
 - Theme inputs: chrome tokens come from the `recur_ui::Theme` global (followed as it changes); code colors from the parsed TextMate theme, which the view makes the catalog's active theme (`TextMate::activate_theme`).
 
 **What hosts provide.** `recur_ui::init` and `recur_ui::Assets`, the view inside `style::window_root` with a `TitleTooltip` as the last child (panel and gutter titles use `recur_ui::tooltip::titled`); a `SharedTextMate` with every grammar registered (`gallery::shipped_textmate` shows the conversion from `recur-bundles`) and the editor theme parsed; a `SnippetProvider` over bundle snippets; handling of `EditorEvent`s (save, toasts, finding and definition navigation); and an `LspClient` adapter over `recur_lsp::Manager` that owns request ids, `initialize`, document versions and `didChange` batching, applying `recur_lsp::protocol` around `Manager::write`.
+
+## Rich content
+
+`recur-content` is a widget crate, not a view crate: the chat, PR, artifact and file views embed its entities and own their state.
+
+**Markdown.** `marked` 18 (GFM, breaks) and DOMPurify 3 are ported verbatim (`marked/`, `purify/`, JS regex semantics through `regress`, html5ever with scripting off as `DOMParser`), with goldens generated from the JS libraries (`tests/golden/`). `markdown::render_markdown` is `renderMarkdown` (Recur's renderer, emoji, codehl fences, Mermaid placeholders, GitHub image proxying, the `afterSanitizeAttributes` hook); `MarkdownHost` is `markdown-host.ts` (byte-budget cache, worker threads, 2s watchdog). The sanitized HTML is laid out natively (`render/`): the `.chat-canvas` / `.md-doc` stylesheets as data, CSS margin collapsing, WebKit's list markers and table layout, text through `recur_ui::text`, and a mirror of its line layout for link hits and find rects. No HTML from an agent or a PR ever reaches a webview; images load only from `data:` and through the host's `ImageLoader` (the `/gh-image` proxy).
+
+**Embedding.**
+
+- `MarkdownView::new(text, MarkdownClass, demote_images, cx)` (`MarkdownHtml`), `set_text`; events `MarkdownEvent::{LightboxOpen, Toast, TextChanged}`. `StreamingMarkdown::new(cx)`, `set(text, active, complete, cx)`, `set_document_visible`.
+- `FilePreview::new(kind, content, path, SharedScroll, window, cx)`: `set_content`, `set_path`, `set_active`, `set_parked`, `toggle_search` / `open_search` / `close_search`; `FilePreviewEvent::SearchOpenChanged`. The view keeps one `SharedScroll` (`PreviewScrollStore`) per workspace, as `createPreviewScrollStore` was.
+- `MermaidPreview`, `PdfPreview::new(Option<Arc<[u8]>>, window, cx)` / `set_data`, `HtmlPreview`, `AttachmentLightbox::new(src, name, image, on_close, window, cx)`.
+- Hosts call `set_image_loader` once (GitHub images through the forge), turn `Toast`s into toasts and `LightboxOpen` into `AppState::set_chat_occluder`.
+- `sanitize_lsp` is `lib/sanitize-lsp.ts` for HTML-string consumers. recur-editor does not need it: it lays LSP documentation out from pulldown-cmark events and drops raw HTML other than `<br>`.
+
+**Mermaid: mermaid.js in a hidden WebKit page, drawn natively.** Mermaid lays diagrams out from live DOM text measurement, so only WebKit measuring with the app's fonts reproduces its geometry; a native layout would be a second implementation of every diagram type. `mermaid/engine.rs` runs the vendored mermaid 11.16.1 (`assets/mermaid`, copied from `frontend/node_modules` by `fetch.sh`) in a never-shown WKWebView (`webhost.rs`: non-persistent store, CSP `default-src 'none'`, `callAsyncJavaScript`) at the window's device scale, since mermaid's measurements change with it. The returned SVG is sanitized with the Svelte config, WebKit inlines its resolved paint, and labels are measured there (start positions, advances, fonts). The geometry rasterizes through CoreGraphics (resvg for filters, masks and patterns); labels are `recur_ui::text` at WebKit's positions, so find highlights and selection work like any other text. The alternative, rendering the SVG to a bitmap in the webview, would lose native text. Non-macOS builds report that Mermaid needs WebKit until WebKitGTK is linked.
+
+**PDF: pdf.js 6 in a hidden WebKit page.** The preview's output is pdf.js's canvas, so running pdf.js 6.3.289 (vendored under `assets/pdfjs` with its `cmaps`, `standard_fonts` and `wasm`) in WebKit is the only way to match it pixel for pixel. Native rasterizers were considered and rejected: pdfium-render (Chromium's PDFium, a dylib to ship per platform) and hayro (pure Rust) are independent implementations with their own font rasterization and anti-aliasing, so neither can reproduce pdf.js's canvas, and the web preview's behavior (worker, standard-font substitution, cancellation) would have to be re-derived around them. `pdf/engine.rs` serves the library, its assets and the open documents from a `recur-pdf:` scheme handler (CSP: same-origin script, workers and fetches only; eval and scripting off), renders a page to a canvas at the zoom and device scale and returns its RGBA, which `PdfPreview` paints. Paging, zoom, fit-to-width, render-while-visible and the page field are ported from `PdfPreview.svelte`; `pdf/logic.rs` is `lib/pdf-preview.ts`.
 
 ## View crates
 

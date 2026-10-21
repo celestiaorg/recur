@@ -198,11 +198,7 @@ async fn a_parked_chat_has_no_turn_footer() {
 async fn stop_unblocks_a_follow_up_waiting_on_an_ownerless_turn() {
     let fx = Fx::new(Some(capture("leak", "OK.").provider()));
     let ws = fx.workspace("leaked wait").await;
-    let turn = fx
-        .eng()
-        .register_chat_turn(&ws.id, "PA", CancellationToken::new())
-        .unwrap();
-    turn.drop_owner();
+    bare_turn(&fx.te, &ws.id, "PA");
     let done = spawn_send(&fx, &ws.id, "go on");
     tokio::time::sleep(Duration::from_millis(80)).await;
     assert!(

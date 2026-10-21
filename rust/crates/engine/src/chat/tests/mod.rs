@@ -4,6 +4,7 @@
 mod cancel;
 mod fork;
 mod modes_send;
+mod recover;
 mod send;
 mod steer;
 mod switch_mode;

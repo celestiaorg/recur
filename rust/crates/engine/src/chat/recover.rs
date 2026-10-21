@@ -291,7 +291,7 @@ impl Engine {
         self.launch_interrupted_chats(rest);
     }
 
-    async fn resume_interrupted_chat(&self, workspace_id: &str, code: &str) {
+    pub(crate) async fn resume_interrupted_chat(&self, workspace_id: &str, code: &str) {
         self.resume_interrupted_chat_inner(workspace_id, code).await;
         self.resuming_chats
             .lock()

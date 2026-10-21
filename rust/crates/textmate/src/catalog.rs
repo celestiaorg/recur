@@ -121,7 +121,7 @@ impl GrammarStore {
             .or_insert_with(|| extract_fold_marker_sources(&content));
         let path_hint = self
             .meta(scope)
-            .map(|m| m.path.clone())
+            .map(path_hint)
             .unwrap_or_else(|| format!("{scope}.tmLanguage.json"));
         Some(GrammarSourceText { content, path_hint })
     }
@@ -708,6 +708,21 @@ impl TmCatalog {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn json_source_without_a_path_loads() {
+        let mut c = TmCatalog::new();
+        c.add_grammar(
+            GrammarInfo {
+                scope_name: "source.x".into(),
+                ..Default::default()
+            },
+            Rc::new(|| {
+                Some(r#"{"scopeName":"source.x","patterns":[{"match":"x","name":"k"}]}"#.into())
+            }),
+        );
+        assert!(c.load_grammar("source.x"));
+    }
 
     fn grammar(id: &str, scope: &str, language: Option<&str>, file_types: &[&str]) -> GrammarInfo {
         GrammarInfo {

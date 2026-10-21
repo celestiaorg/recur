@@ -3,14 +3,18 @@
 //! a GPUI editor element with TextMate highlighting.
 
 pub mod autocomplete;
+pub mod bindings;
 pub mod brackets;
 pub mod change;
 pub mod clock;
 pub mod close_brackets;
+pub mod color;
 pub mod commands;
 pub mod diff;
+pub mod display;
 pub mod fold;
 pub mod gutters;
+pub mod highlight;
 pub mod history;
 pub mod history_cache;
 pub mod indent;
@@ -25,5 +29,7 @@ pub mod session;
 pub mod snippet;
 pub mod state;
 pub mod text;
+pub mod theme;
+pub mod tokens;
 pub mod view_queries;
 pub mod view_state;

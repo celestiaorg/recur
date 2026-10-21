@@ -62,7 +62,12 @@ fn paused_loop(store: &Store, proj: &str, id: &str, goal: &str) {
 
 /// A promote hook that holds the `dispatch_mu` section open for `d` and
 /// records the most callers seen inside it at once (Go `windowWidener`).
-fn window_widener(d: Duration) -> (impl Fn() + Send + Sync + 'static, Arc<Mutex<(usize, usize)>>) {
+fn window_widener(
+    d: Duration,
+) -> (
+    impl Fn() + Send + Sync + 'static,
+    Arc<Mutex<(usize, usize)>>,
+) {
     let state = Arc::new(Mutex::new((0usize, 0usize)));
     let s = Arc::clone(&state);
     let hook = move || {
@@ -184,14 +189,21 @@ async fn engine_resume_not_running_redispatches() {
     let proj = add_project(&t.store, &repo.path);
     paused_loop(&t.store, &proj, "LOOP-PAUSED", "resume me");
     t.engine.resume("LOOP-PAUSED").await;
-    wait_for(Duration::from_secs(5), "resumed loop to reach pr_open", || {
-        t.store
-            .workspace("LOOP-PAUSED")
-            .is_some_and(|l| l.state == WorkspaceState::PrOpen)
-    })
+    wait_for(
+        Duration::from_secs(5),
+        "resumed loop to reach pr_open",
+        || {
+            t.store
+                .workspace("LOOP-PAUSED")
+                .is_some_and(|l| l.state == WorkspaceState::PrOpen)
+        },
+    )
     .await;
     let l = t.store.workspace("LOOP-PAUSED").unwrap();
-    assert!(!l.worktree_path.is_empty(), "worktree created on re-dispatch");
+    assert!(
+        !l.worktree_path.is_empty(),
+        "worktree created on re-dispatch"
+    );
     assert!(l.diff.add > 0, "{:?}", l.diff);
     t.close().await;
 }
@@ -270,7 +282,10 @@ async fn engine_concurrent_drain_no_double_dispatch() {
     })
     .await;
     for id in &ids {
-        assert!(t.engine.running_loop_by_id(id).is_none(), "{id} left running");
+        assert!(
+            t.engine.running_loop_by_id(id).is_none(),
+            "{id} left running"
+        );
     }
     t.close().await;
 }
@@ -283,7 +298,12 @@ async fn engine_concurrent_resume_single_dispatch() {
     let (hook, window) = window_widener(Duration::from_millis(40));
     t.engine.set_promote_hook(hook);
     let proj = add_project(&t.store, &repo.path);
-    paused_loop(&t.store, &proj, "LOOP-RESUME-RACE", "resume me concurrently");
+    paused_loop(
+        &t.store,
+        &proj,
+        "LOOP-RESUME-RACE",
+        "resume me concurrently",
+    );
 
     const CALLERS: usize = 32;
     let barrier = Arc::new(tokio::sync::Barrier::new(CALLERS));
@@ -344,17 +364,23 @@ async fn engine_resume_does_not_resurrect_stopped() {
         let resume = tokio::spawn(async move { e2.resume("LOOP-STOP-RESUME").await });
         stop.await.unwrap();
         resume.await.unwrap();
-        wait_for(Duration::from_secs(8), "loop settles after the race", || {
-            t.store
-                .workspace("LOOP-STOP-RESUME")
-                .is_some_and(|l| terminal(&l.state))
-        })
+        wait_for(
+            Duration::from_secs(8),
+            "loop settles after the race",
+            || {
+                t.store
+                    .workspace("LOOP-STOP-RESUME")
+                    .is_some_and(|l| terminal(&l.state))
+            },
+        )
         .await;
         let (_, n) = runner.max_count();
         assert!(n <= 1, "iter {iter}: double dispatch ({n})");
-        wait_for(Duration::from_secs(5), "slot released after the race", || {
-            t.engine.governor().loops_running() == 0
-        })
+        wait_for(
+            Duration::from_secs(5),
+            "slot released after the race",
+            || t.engine.governor().loops_running() == 0,
+        )
         .await;
         if t.store.workspace("LOOP-STOP-RESUME").unwrap().state == WorkspaceState::Stopped {
             assert!(

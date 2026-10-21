@@ -392,10 +392,10 @@ Source: `Events.On(...)` in `frontend/src`. Rust home: `recur_services::AppEvent
 - [ ] `session.turn_end`
 - [ ] `session.user`
 - [ ] `system.theme`
-- [ ] `term.busy`
-- [ ] `term.data`
-- [ ] `term.exit`
-- [ ] `term.idle`
+- [x] `term.busy`: `Event::Busy { id, workspace_id }` when the shell loses the foreground process group (idle watcher, 25ms to 1s backoff).
+- [x] `term.data`: `Event::Data { id, data }`, raw bytes coalesced 8ms / 64KiB, flow-controlled by `ack` (256KiB high water), routed to the pane by `route_event`.
+- [x] `term.exit`: `Event::Exit { id, workspace_id, exit_code }` once after the reader drains; the pane emits `TerminalEvent::Exit`.
+- [x] `term.idle`: `Event::Idle { id, workspace_id }` when the shell regains the foreground.
 - [ ] `updater.check`
 - [ ] `wails:updater:error`
 - [ ] `wails:updater:no-update`
@@ -506,7 +506,26 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `TabChip.svelte` (293 lines)
 - [ ] `TabStrip.svelte` (290 lines)
 - [ ] `TerminalDock.svelte` (856 lines)
-- [ ] `TerminalPane.svelte` (581 lines)
+- [~] `TerminalPane.svelte` (581 lines): `recur_terminal_view::TerminalView` + `TerminalElement`
+  - [x] Attach on mount, paint replay, queue live output until the replay lands, ack in 32KiB batches (`tests/view.rs`)
+  - [x] Fit: `termFitSize` over the padded content box (6/0/6/8), grid pinned to the bottom, 100ms debounced `resize` (`font.rs`, `tests/view.rs`)
+  - [x] xterm options: font stack with ligatures off, size, line height, cell metrics from WebGL `_updateDimensions`, 10000 scrollback, `macOptionIsMeta`, `macOptionClickForcesSelection`, `rightClickSelectsWord` on mac, bar cursor with blink, `minimumContrastRatio` 1 (`font.rs`, `screen/render.rs`)
+  - [x] WebGL colour pipeline: bold-as-bright, dim, inverse, hidden, selection at 30% with inactive variant, block cursor override, underline styles (single/double/curly/dotted/dashed) and colours, strikethrough, custom box/block/powerline glyphs (`screen/render.rs`, `custom_glyphs.rs`)
+  - [x] Cursor styles (DECSCUSR), blink manager (600ms, idle stop at 5 min, pause on blur) (`blink.rs`)
+  - [x] Keyboard: xterm `Keyboard.ts` evaluation, custom key handler (⌘ chords to the app, Ctrl+` to the dock, third-level chars as text), app cursor keys, PageUp/PageDown scroll (`input.rs`, `tests/view.rs`)
+  - [x] IME: marked text drawn at the cursor, commit writes once, candidate window at the cursor cell (`tests/view.rs`)
+  - [x] Copy (⌘C with selection), paste (⌘V, bracketed paste, `\n` to `\r`), Linux primary selection and middle-click paste
+  - [x] Mouse: selection (click, double word, triple line, shift extend, alt column, drag autoscroll), alt-click moves the prompt cursor, mouse reporting X10/1000/1002/1003 in default/SGR/SGR-pixels, wheel reporting and alt-screen arrow keys (`tests/view.rs`, `screen/tests.rs`)
+  - [x] Scrollbar: VS Code 14px slider, 50px wheel units, trackpad accumulation, track click and drag, 500ms hide with fades (`scrollbar.rs`, `tests/view.rs`)
+  - [x] Search addon: regex/case/whole word, xterm's highlight limit, active match, result counts, incremental refresh (`screen/search.rs`, `tests/view.rs`)
+  - [x] Find bar UI (`TerminalFindBar`): toggles, count label, Enter/Shift+Enter, Escape, ⌥⌘C/R/W
+  - [x] Web links addon: URL regex, hover underline and pointer, ⌘/click opens http(s) in the browser; OSC 8 hyperlinks underline but do not open (the webview never showed xterm's confirm) (`screen/links.rs`)
+  - [x] Focus: dock focus routing (`termDockOwnsFocus`), DECSET 1004 reports, window activation; hidden panes take no pointer events (`tests/view.rs`)
+  - [x] Theme and font changes repaint without remount; frosted (transparent) cells when maximized on dark palettes (`theme.rs`, `tests/view.rs`)
+  - [x] Explorer drops type quoted paths; title and exit events reach the dock; clear wipes screen and replay; dispose detaches (`tests/view.rs`)
+  - [x] Query replies answered in the emulator (DA1/DA2, XTVERSION, DSR/CPR, DECRQM, DECRQSS, OSC 4/10/11/12, CSI t) (`screen/scanner.rs`)
+  - [ ] SGR 53 overline: alacritty_terminal cells have no overline flag, so it is parsed and dropped
+  - [ ] Pixel parity screenshot against the web pane (needs the app shell and screen recording permission)
 - [ ] `TitleTooltip.svelte` (309 lines)
 - [ ] `Toasts.svelte` (55 lines)
 - [ ] `UserMentionSuggest.svelte` (105 lines)
@@ -536,7 +555,11 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/caches/chat-transcript-ui.ts` (324 lines)
 - [ ] `lib/caches/cm-session-tabs.ts` (112 lines)
 - [ ] `lib/caches/observatory-cache.ts` (150 lines)
-- [ ] `lib/caches/term-park.ts` (123 lines)
+- [x] `lib/caches/term-park.ts` (123 lines): `recur_terminal_view::Park` + `TerminalPark` global
+  - [x] Stash/take, 1MiB per entry, 48MiB budget with LRU eviction returning evicted views to detach (`park.rs`)
+  - [x] Discard flag for closed tabs, `should_dispose` consumed on unmount, prune by live workspace ids (`park.rs`)
+  - [x] Parked panes stay attached and keep updating (`tests/view.rs`)
+  - Pane hooks (`bindTermPaneHooks`) are the view entity itself: the dock calls its methods directly.
 - [ ] `lib/caches/workspace-land-cache.ts` (90 lines)
 - [ ] `lib/changed-tree.ts` (118 lines)
 - [ ] `lib/chat-glance.ts` (48 lines)
@@ -690,9 +713,13 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/tab-strip-drag.svelte.ts` (392 lines)
 - [ ] `lib/tab-strip-scroll.ts` (174 lines)
 - [ ] `lib/tasktools.ts` (340 lines)
-- [ ] `lib/term-fit.ts` (35 lines)
-- [ ] `lib/term-focus.ts` (15 lines)
-- [ ] `lib/terminal.ts` (206 lines)
+- [x] `lib/term-fit.ts` (35 lines): `term_fit_size`, `TERM_FIT_*` constants; the content box comes from the element's padded bounds (`font.rs`)
+- [x] `lib/term-focus.ts` (15 lines): `TerminalOptions::dock_focus` + `TerminalView::try_focus_if_dock_owns_keys` / `set_dock_focus`: the dock passes its focus handle and panes only take focus while it is focused
+- [~] `lib/terminal.ts` (206 lines)
+  - [x] `wireTerminalEvents` / `onTerminalData` / `onTerminalExit`: `Router` global + `route_event`; bytes stay raw, so `decodeTermBytes` has no counterpart
+  - [x] `ackWriter`: acks after the emulator parses, batched at `ACK_THRESHOLD` (`tests/view.rs`)
+  - [x] `terminalTheme`, `resolveTerminalTheme`, `terminalSurfaceBg`, `terminalFrosts`: `theme.rs` (`ThemeContext`, ported tests)
+  - [ ] `terminalThemeCatalog` / `ensureTerminalThemes`: the app loads `ListTerminalThemes` and passes the catalog in `ThemeContext`
 - [ ] `lib/textarea-caret.ts` (58 lines)
 - [ ] `lib/title-tooltip.ts` (248 lines)
 - [ ] `lib/titlebar.ts` (30 lines)
@@ -728,7 +755,13 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `styles/_prs.scss`
 - [ ] `styles/_settings.scss`
 - [ ] `styles/_sidebar.scss`
-- [ ] `styles/_terminal.scss`
+- [~] `styles/_terminal.scss`
+  - [x] Pane padding, bottom-pinned grid, inactive panes hidden and absolutely positioned (`view.rs`)
+  - [x] Scrollbar slider colours from the palette, hover/active states (`element.rs`)
+  - [x] Find bar (`cm-recur-search` look): field, toggles, count, buttons (`find_bar.rs`)
+  - [x] Terminal tokens read from a local `_tokens.scss` table until `recur-ui` exposes them (`tokens.rs`)
+  - [ ] Dock chrome (tab strip, maximize, beside layout) belongs to the `TerminalDock.svelte` port
+  - [ ] Pixel parity screenshot
 - [ ] `styles/_tokens.scss`
 - [ ] `styles/_welcome.scss`
 - [ ] `styles/app.scss`
@@ -762,7 +795,17 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 - [ ] `internal/shortid`: 1 files, 111 lines, 1 test files
 - [ ] `internal/simplify`: 1 files, 56 lines, 1 test files
 - [ ] `internal/store`: 9 files, 6229 lines, 6 test files
-- [ ] `internal/term`: 7 files, 1797 lines, 6 test files
+- [x] `internal/term`: 7 files, 1797 lines, 6 test files → `recur-term`
+  - [x] `term.go`: login shell spawn with env/cwd/size, `TERM`/`COLORTERM`/`TERM_PROGRAM`, write, resize clamp, list/reorder/active, titles, detach vs close, close_all, tombstones (max 4), restore trailer, replay seeding (`manager.rs`, `manager_tests.rs`)
+  - [x] Coalescing (8ms / 64KiB), flow control with ack and 256KiB high water counted at ingest
+  - [x] Busy/idle watcher with backoff; foreground group detection (`process.rs`)
+  - [x] `interrupt.go`: SIGINT, then SIGTERM, then SIGKILL escalation over the process tree (`process.rs`)
+  - [x] `ring.go`: 1MiB replay ring (`ring.rs`)
+  - [x] `cwd.go`: lsof / `/proc` cwd with timeout (`cwd.rs`)
+  - [x] `osc7.go`: OSC 7 cwd tracking with local host check (`osc7.rs`)
+  - [x] `plain.go`: VT stripping and plain tail for `read_terminal` (`plain.rs`)
+  - [x] `queries.go`: OSC 10/11/12 and CPR answered in-process for detached sessions (`queries.rs`)
+  - [x] Emulator state (`screen/`): alacritty_terminal behind xterm.js semantics, UI-free and tested
 - [ ] `internal/usage`: 12 files, 2911 lines, 3 test files
 - [ ] `internal/wsenv`: 2 files, 325 lines, 2 test files
 - [ ] `cmd/recur`: 1 files, 22 lines, 0 test files

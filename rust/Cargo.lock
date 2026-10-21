@@ -5992,7 +5992,7 @@ name = "recur-forge"
 version = "0.0.0"
 dependencies = [
  "async-trait",
- "base64 0.22.1",
+ "base64 0.23.1",
  "chrono",
  "futures",
  "parking_lot",
@@ -6065,7 +6065,7 @@ dependencies = [
 name = "recur-platform"
 version = "0.0.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "block2 0.6.2",
  "chrono",
  "digest 0.11.3",

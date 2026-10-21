@@ -6281,10 +6281,15 @@ dependencies = [
 name = "recur-provider-claude"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "parking_lot",
+ "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "rustix",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
@@ -6294,8 +6299,20 @@ dependencies = [
 name = "recur-provider-codex"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "parking_lot",
+ "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "toml 0.9.12+spec-1.1.0",
+ "tracing",
 ]
 
 [[package]]

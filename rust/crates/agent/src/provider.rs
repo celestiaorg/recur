@@ -61,7 +61,8 @@ pub trait Provider: Send + Sync + 'static {
 
     /// One agent turn (Go `AgentRunner.Run`). Events go to `cx.sink`
     /// synchronously and in order, each run through a
-    /// [`crate::ContextUsageTracker`]; every provider result frame is also
+    /// [`crate::ContextUsageTracker`] unless the provider meters the result
+    /// itself (Cursor); every provider result frame is also
     /// emitted as [`crate::AgentEvent::TurnEnd`]. On cancel the provider
     /// stops the remote run, emits nothing further, and returns
     /// [`ProviderError::canceled`] carrying the partial result.

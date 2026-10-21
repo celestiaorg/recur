@@ -353,7 +353,8 @@ pub trait Provider: Send + Sync + 'static {
     fn display_tool_result(&self, name: &str, result: &str) -> String;
 
     fn usage_probe(&self) -> Option<Arc<dyn UsageProbe>> { None }
-    async fn release_worktree(&self, _worktree: &Path) {}
+    /// Err = the sentence the workspace feed shows (see P2 as built).
+    async fn release_worktree(&self, _worktree: &Path) -> Result<(), ProviderError> { Ok(()) }
     async fn on_idle(&self) {}
     async fn settings_changed(&self, _old: &Settings, _new: &Settings) {}
     async fn shutdown(&self) {}
@@ -957,6 +958,16 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Prerequisites:** A-M1. Node on `PATH` for smoke tests.
 - **Public API:** `CursorProvider::new(cfg)` implementing 2.1 with `release_worktree`, `on_idle`, `settings_changed`, `install(progress)` for `cursor.install`.
 - **Note:** keep the attribution pin coupling (`pinnedSDKVersion` + `sdkAttributionAnchors`) and port `check:cursor-sdk-pin` semantics.
+- **As built (deviations and notes for E1/E2/SV):**
+  - Trait change: `release_worktree` returns `Result<(), ProviderError>`. Go's teardown emitted "Could not remove Cursor project dirs: …" as a Maestro workspace event (or logged it when the workspace was gone); with `()` the engine could not surface it. The error message is the whole sentence; E1 HTML-escapes it into the event as Go did.
+  - `CursorProvider::new(CursorConfig { data_dir, settings, home })`; like Codex it keeps a settings snapshot, so SV must call `settings_changed` on every save. `settings_changed` rewrites `cursor-attribution.json` (Go did this in SetSettings), closes the pool when Cursor is turned off and cancels a deferred close when it is on. The deferral checks the provider's own in-flight runners rather than the governor's agent count; `on_idle` (agent slots at zero) finishes it, as Go's `closeIfIdleRequested` did.
+  - `install(cancel, progress)` returns the launcher; SV publishes `InstallProgress::event_payload()` / `install_error_payload` as `cursor.install`, saves `Settings.cursor_bridge_path` and then calls `status`. `cursor_status` / `test_cursor_key` return the Go `CursorStatus` JSON shape; `status` / `test_credentials` map it onto `ProviderStatus`. SV keeps `dropOrphanCursorKey` (it writes the store) before calling `status`.
+  - The self-heal of Go `runAgent` (bridge unreachable on CreateAgent: invalidate and retry once) and the "Cursor is turned off in Settings → Providers: …" wrap live in `run_turn`; the router must not retry Cursor itself.
+  - Cursor does not run events through `ContextUsageTracker`, as in Go: its result already meters the latest footprint with the current tool-wave and compaction state, and the tracker's last-usage overlay would be stale. `context_window` is the table + flags (the mirror's Cursor branch).
+  - createPlan steps are followed by `AgentEvent::PlanProposal { body }` (the planner and plan-mode harvest, R7). `oneshot_flags` is empty (Go skipped the default effort for Cursor); `can_disable_tools = false` keeps the Read/Glob/Grep one-shot allowlist. `resume_handle_fits` is Go's `agent-` prefix rule.
+  - Allowlists (R9): only "no Edit/Write/NotebookEdit → plan mode" and `mcp__recur__create_workspace` → subagent overlay are read; Cursor has no per-run allowlist.
+  - `canonicalTool` is duplicated from `recur_provider_codex::display` (Go shared one function; providers cannot depend on each other).
+  - Pin check: `RECUR_CURSOR_SDK_PIN_CHECK=1 cargo test -p recur-provider-cursor check_cursor_sdk_pin_drift` (Taskfile/CI entry for `check:cursor-sdk-pin`); `RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 … attribution_patch_against_pinned_wheel` validates the anchors on the pinned wheel; `golden_tests::pin_and_anchors_match_go` fails if the Go pin or anchors move without the Rust ones.
 
 #### P3: compatible provider, usage, LSP
 

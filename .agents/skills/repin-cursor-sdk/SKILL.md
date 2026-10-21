@@ -49,12 +49,14 @@ Re-pin progress:
    - `pinnedSDKVersion` in `internal/cursor/install.go`.
    - The deliberate hardcode in `TestPinnedSDKVersionInPyPIURL` (`internal/cursor/install_test.go`).
    - Comments that name the old version (anchors, docs).
+   - The Rust port mirrors all of the above in `rust/providers/cursor`: `sdk_attribution_anchors` / `sdk_summary_delta_anchors` in `src/attribution.rs`, `PINNED_SDK_VERSION` in `src/install.rs`, and the hardcode in `src/install/tests.rs`. `pin_matches_go_app` fails until both pins agree.
 
 5. **Validate**
    ```bash
    RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 go test ./internal/cursor -run AgainstPinnedWheel -v
    wails3 task check:cursor-sdk-pin
    go test ./internal/cursor ./internal/engine -count=1
+   RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 cargo test --manifest-path rust/Cargo.toml -p recur-provider-cursor
    ```
 
 6. **Ship** a focused PR: pin bump + anchor refresh + test hardcode. Mention the new version in the summary.

@@ -1,0 +1,1358 @@
+{
+  "constants": {
+    "childSubagent": "Cursor's built-in subagents are disabled by policy in Recur. Never spawn a Cursor subagent or background agent. Execute the assigned task here.",
+    "steerCancelled": "Interrupted by a Maestro steer — this call was cancelled, not failed.",
+    "subagent": "Cursor's built-in subagents are disabled by policy in Recur. Never spawn a Cursor subagent or background agent. For anything beyond a very simple task, call mcp__recur__create_workspace: that is the Recur subagent; you are re-engaged with its report when it finishes. Redirect a running child, or resume a finished one, with mcp__recur__message_child.",
+    "unreported": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it."
+  },
+  "expand": [
+    [
+      "[resource_exhausted] Error",
+      "[resource_exhausted] Error. Cursor's model provider is rate-limited or at capacity. Wait a moment and retry."
+    ],
+    [
+      "[Unavailable] x",
+      "[Unavailable] x. Cursor could not reach the model provider. Usually temporary; retry."
+    ],
+    [
+      "[deadline_exceeded]",
+      "[deadline_exceeded]. Cursor's model provider timed out. Usually temporary; retry."
+    ],
+    [
+      "[internal] internal error",
+      "[internal] internal error. Cursor-side fault, not a defect in the work. Retry."
+    ],
+    [
+      "[other] x",
+      "[other] x"
+    ],
+    [
+      "no bracket",
+      "no bracket"
+    ],
+    [
+      "[unterminated",
+      "[unterminated"
+    ],
+    [
+      "",
+      ""
+    ]
+  ],
+  "folds": {
+    "cancelled": {
+      "events": [
+        {
+          "kind": "result",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 0,
+            "durationMs": 10,
+            "inputTokens": 0,
+            "isError": true,
+            "outputTokens": 0,
+            "sessionId": "agent-1",
+            "stderr": "",
+            "subtype": "error_cancelled",
+            "text": ""
+          }
+        }
+      ],
+      "flags": null,
+      "frames": [
+        "{\"result\":{\"status\":\"RUN_LIFECYCLE_STATUS_CANCELLED\",\"result\":{\"runId\":\"run-1\",\"status\":\"RUN_LIFECYCLE_STATUS_CANCELLED\",\"durationMs\":\"10\"}}}"
+      ],
+      "model": "",
+      "partials": false,
+      "result": {
+        "cacheCreationTokens": 0,
+        "cacheReadTokens": 0,
+        "durationMs": 10,
+        "inputTokens": 0,
+        "isError": true,
+        "outputTokens": 0,
+        "sessionId": "agent-1",
+        "stderr": "",
+        "subtype": "error_cancelled",
+        "text": ""
+      },
+      "runIDs": [
+        "run-1"
+      ]
+    },
+    "compact": {
+      "events": [
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 1000,
+            "cacheReadTokens": 400000,
+            "durationMs": 0,
+            "inputTokens": 100000,
+            "isError": false,
+            "outputTokens": 500,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        },
+        {
+          "id": "s1",
+          "input": "{\"command\":\"go test\"}",
+          "kind": "step",
+          "name": "shell",
+          "summary": "go test"
+        },
+        {
+          "id": "s1",
+          "isError": false,
+          "kind": "tool_result",
+          "name": "shell",
+          "text": "{\"status\":\"success\",\"value\":{\"stdout\":\"ok\"}}",
+          "truncated": false
+        },
+        {
+          "kind": "text_delta",
+          "text": "before"
+        },
+        {
+          "kind": "text",
+          "text": "before"
+        },
+        {
+          "kind": "compact",
+          "preTokens": 334000,
+          "status": "started",
+          "summary": "",
+          "trigger": "auto"
+        },
+        {
+          "kind": "compact",
+          "preTokens": 334000,
+          "status": "done",
+          "summary": "older turns folded",
+          "trigger": "auto"
+        },
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 20000,
+            "durationMs": 0,
+            "inputTokens": 50000,
+            "isError": false,
+            "outputTokens": 0,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        },
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 50000,
+            "durationMs": 0,
+            "inputTokens": 50000,
+            "isError": false,
+            "outputTokens": 400,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        },
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 384615,
+            "durationMs": 0,
+            "inputTokens": 615385,
+            "isError": false,
+            "outputTokens": 0,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        },
+        {
+          "kind": "result",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 384615,
+            "durationMs": 99,
+            "inputTokens": 615385,
+            "isError": false,
+            "outputTokens": 0,
+            "sessionId": "agent-1",
+            "stderr": "",
+            "subtype": "success",
+            "text": "before"
+          }
+        }
+      ],
+      "flags": {
+        "maxMode": "true"
+      },
+      "frames": [
+        "{\"sdkMessage\":{\"type\":\"usage\",\"message\":{\"type\":\"usage\",\"usage\":{\"inputTokens\":100000,\"outputTokens\":500,\"cacheReadTokens\":400000,\"cacheWriteTokens\":1000,\"totalTokens\":501500}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"s1\",\"name\":\"shell\",\"status\":\"completed\",\"args\":{\"command\":\"go test\"},\"result\":{\"status\":\"success\",\"value\":{\"stdout\":\"ok\"}}}}}",
+        "{\"sdkMessage\":{\"type\":\"assistant\",\"message\":{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"before\"}]}}}}",
+        "{\"interactionUpdate\":{\"type\":\"summary-started\"}}",
+        "{\"interactionUpdate\":{\"type\":\"summary\",\"update\":{\"type\":\"summary\",\"summary\":\"older turns folded\"}}}",
+        "{\"interactionUpdate\":{\"summaryCompleted\":{}}}",
+        "{\"interactionUpdate\":{\"type\":\"turn-ended\",\"update\":{\"usage\":{\"inputTokens\":50000,\"cacheReadTokens\":20000}}}}",
+        "{\"sdkMessage\":{\"type\":\"usage\",\"message\":{\"type\":\"usage\",\"usage\":{\"inputTokens\":150000,\"outputTokens\":900,\"cacheReadTokens\":450000,\"cacheWriteTokens\":1000,\"totalTokens\":601900}}}}",
+        "{\"interactionUpdate\":{\"turnEnded\":{\"usage\":{\"inputTokens\":\"900000\",\"cacheReadTokens\":\"900000\"}}}}",
+        "{\"result\":{\"status\":\"RUN_LIFECYCLE_STATUS_FINISHED\",\"result\":{\"runId\":\"run-c\",\"status\":\"RUN_LIFECYCLE_STATUS_FINISHED\",\"result\":\"\",\"durationMs\":\"99\"}}}"
+      ],
+      "model": "claude-opus-5",
+      "partials": false,
+      "result": {
+        "cacheCreationTokens": 0,
+        "cacheReadTokens": 384615,
+        "durationMs": 99,
+        "inputTokens": 615385,
+        "isError": false,
+        "outputTokens": 0,
+        "sessionId": "agent-1",
+        "stderr": "",
+        "subtype": "success",
+        "text": "before"
+      },
+      "runIDs": [
+        "run-c"
+      ]
+    },
+    "compactNoStart": {
+      "events": [
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 0,
+            "durationMs": 0,
+            "inputTokens": 4242,
+            "isError": false,
+            "outputTokens": 0,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        },
+        {
+          "kind": "compact",
+          "preTokens": 4242,
+          "status": "done",
+          "summary": "",
+          "trigger": "auto"
+        },
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 0,
+            "durationMs": 0,
+            "inputTokens": 10,
+            "isError": false,
+            "outputTokens": 0,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        }
+      ],
+      "flags": null,
+      "frames": [
+        "{\"sdkMessage\":{\"type\":\"usage\",\"message\":{\"type\":\"usage\",\"usage\":{\"totalTokens\":4242}}}}",
+        "{\"interactionUpdate\":{\"type\":\"summary-completed\"}}",
+        "{\"interactionUpdate\":{\"type\":\"summary-completed\"}}",
+        "{\"interactionUpdate\":{\"type\":\"turn-ended\",\"update\":{\"usage\":{\"inputTokens\":10}}}}"
+      ],
+      "model": "composer-2.5",
+      "partials": false,
+      "result": {
+        "cacheCreationTokens": 0,
+        "cacheReadTokens": 0,
+        "durationMs": 0,
+        "inputTokens": 10,
+        "isError": true,
+        "outputTokens": 0,
+        "sessionId": "agent-1",
+        "stderr": "",
+        "subtype": "error_during_execution",
+        "text": ""
+      },
+      "runIDs": null
+    },
+    "createPlan": {
+      "events": [
+        {
+          "id": "p1",
+          "input": "{\"plan\":\"Summary: the whole thing\\n\\nSteps: lots\"}",
+          "kind": "step",
+          "name": "createPlan",
+          "summary": "Summary: the whole thing"
+        },
+        {
+          "id": "p1",
+          "isError": false,
+          "kind": "tool_result",
+          "name": "createPlan",
+          "text": "{\"status\":\"success\",\"value\":{}}",
+          "truncated": false
+        }
+      ],
+      "flags": null,
+      "frames": [
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"p1\",\"name\":\"createPlan\",\"status\":\"running\",\"args\":{\"plan\":\"\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"p1\",\"name\":\"createPlan\",\"status\":\"running\",\"args\":{\"plan\":\"Summary: the whole thing\\n\\nSteps: lots\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"p1\",\"name\":\"createPlan\",\"status\":\"completed\",\"args\":{\"plan\":\"Summary: stub\"},\"result\":{\"status\":\"success\",\"value\":{}}}}}"
+      ],
+      "model": "",
+      "partials": false,
+      "result": {
+        "cacheCreationTokens": 0,
+        "cacheReadTokens": 0,
+        "durationMs": 0,
+        "inputTokens": 0,
+        "isError": true,
+        "outputTokens": 0,
+        "sessionId": "agent-1",
+        "stderr": "",
+        "subtype": "error_during_execution",
+        "text": ""
+      },
+      "runIDs": null
+    },
+    "noResult": {
+      "events": [
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 2000,
+            "durationMs": 0,
+            "inputTokens": 1000,
+            "isError": false,
+            "outputTokens": 500,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        },
+        {
+          "kind": "thinking",
+          "text": "hmm"
+        },
+        {
+          "kind": "text_delta",
+          "text": "done"
+        },
+        {
+          "kind": "text",
+          "text": "done"
+        },
+        {
+          "id": "x",
+          "input": "{\"path\":\"q\"}",
+          "kind": "step",
+          "name": "read",
+          "summary": "q"
+        },
+        {
+          "id": "x",
+          "isError": true,
+          "kind": "tool_result",
+          "name": "read",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "truncated": false
+        }
+      ],
+      "flags": null,
+      "frames": [
+        "{\"sdkMessage\":{\"type\":\"thinking\",\"message\":{\"type\":\"thinking\",\"text\":\"hmm\"}}}",
+        "{\"sdkMessage\":{\"type\":\"usage\",\"message\":{\"type\":\"usage\",\"usage\":{\"inputTokens\":1000,\"outputTokens\":500,\"cacheReadTokens\":2000}}}}",
+        "{\"sdkMessage\":{\"type\":\"assistant\",\"message\":{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"done\"}]}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"x\",\"name\":\"read\",\"status\":\"running\",\"args\":{\"path\":\"q\"}}}}"
+      ],
+      "model": "composer-2.5",
+      "partials": false,
+      "result": {
+        "cacheCreationTokens": 0,
+        "cacheReadTokens": 1333,
+        "durationMs": 0,
+        "inputTokens": 667,
+        "isError": true,
+        "outputTokens": 500,
+        "sessionId": "agent-1",
+        "stderr": "",
+        "subtype": "error_during_execution",
+        "text": "done"
+      },
+      "runIDs": null
+    },
+    "resultError": {
+      "events": [
+        {
+          "kind": "result",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 0,
+            "durationMs": 0,
+            "inputTokens": 0,
+            "isError": true,
+            "outputTokens": 0,
+            "sessionId": "agent-1",
+            "stderr": "model overloaded",
+            "subtype": "error_during_execution",
+            "text": ""
+          }
+        }
+      ],
+      "flags": null,
+      "frames": [
+        "{\"result\":{\"status\":\"RUN_LIFECYCLE_STATUS_ERROR\",\"result\":{\"runId\":\"run-1\",\"status\":\"RUN_LIFECYCLE_STATUS_ERROR\",\"error\":{\"message\":\"model overloaded\"}}}}"
+      ],
+      "model": "",
+      "partials": false,
+      "result": {
+        "cacheCreationTokens": 0,
+        "cacheReadTokens": 0,
+        "durationMs": 0,
+        "inputTokens": 0,
+        "isError": true,
+        "outputTokens": 0,
+        "sessionId": "agent-1",
+        "stderr": "model overloaded",
+        "subtype": "error_during_execution",
+        "text": ""
+      },
+      "runIDs": [
+        "run-1"
+      ]
+    },
+    "statusError": {
+      "events": [
+        {
+          "kind": "text_delta",
+          "text": "partial"
+        },
+        {
+          "kind": "text",
+          "text": "partial"
+        },
+        {
+          "kind": "result",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 0,
+            "durationMs": 0,
+            "inputTokens": 0,
+            "isError": true,
+            "outputTokens": 0,
+            "sessionId": "agent-1",
+            "stderr": "[resource_exhausted] Error. Cursor's model provider is rate-limited or at capacity. Wait a moment and retry.",
+            "subtype": "error_during_execution",
+            "text": "partial"
+          }
+        }
+      ],
+      "flags": null,
+      "frames": [
+        "{\"sdkMessage\":{\"type\":\"status\",\"message\":{\"type\":\"status\",\"agent_id\":\"agent-1\",\"run_id\":\"run-1\",\"status\":\"ERROR\",\"message\":\"[resource_exhausted] Error\"}}}",
+        "{\"sdkMessage\":{\"type\":\"assistant\",\"message\":{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"partial\"}]}}}}",
+        "{\"result\":{\"status\":\"RUN_LIFECYCLE_STATUS_ERROR\",\"result\":{\"runId\":\"run-1\",\"status\":\"RUN_LIFECYCLE_STATUS_ERROR\"}}}"
+      ],
+      "model": "",
+      "partials": false,
+      "result": {
+        "cacheCreationTokens": 0,
+        "cacheReadTokens": 0,
+        "durationMs": 0,
+        "inputTokens": 0,
+        "isError": true,
+        "outputTokens": 0,
+        "sessionId": "agent-1",
+        "stderr": "[resource_exhausted] Error. Cursor's model provider is rate-limited or at capacity. Wait a moment and retry.",
+        "subtype": "error_during_execution",
+        "text": "partial"
+      },
+      "runIDs": [
+        "run-1"
+      ]
+    },
+    "tools": {
+      "events": [
+        {
+          "kind": "thinking_delta",
+          "text": "let me "
+        },
+        {
+          "kind": "thinking_delta",
+          "text": "look"
+        },
+        {
+          "kind": "thinking",
+          "text": "let me look"
+        },
+        {
+          "id": "c1",
+          "input": "{\"path\":\"/wt/a\"}",
+          "kind": "step",
+          "name": "read",
+          "summary": "/wt/a"
+        },
+        {
+          "id": "c1",
+          "isError": false,
+          "kind": "tool_result",
+          "name": "read",
+          "text": "{\"status\":\"success\",\"value\":{\"content\":\"x\"}}",
+          "truncated": true
+        },
+        {
+          "id": "c2",
+          "input": "{\"providerIdentifier\":\"recur\",\"toolName\":\"done\",\"args\":{\"summary\":\"finished\"}}",
+          "kind": "step",
+          "name": "mcp",
+          "summary": "finished"
+        },
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 1333,
+            "durationMs": 0,
+            "inputTokens": 667,
+            "isError": false,
+            "outputTokens": 500,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        },
+        {
+          "id": "c2",
+          "isError": true,
+          "kind": "tool_result",
+          "name": "mcp",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "truncated": false
+        },
+        {
+          "kind": "text_delta",
+          "text": "Do"
+        },
+        {
+          "kind": "text_delta",
+          "text": "ne."
+        },
+        {
+          "kind": "text",
+          "text": "Done."
+        },
+        {
+          "kind": "result",
+          "result": {
+            "cacheCreationTokens": 0,
+            "cacheReadTokens": 1333,
+            "durationMs": 1500,
+            "inputTokens": 667,
+            "isError": false,
+            "outputTokens": 500,
+            "sessionId": "agent-1",
+            "stderr": "",
+            "subtype": "success",
+            "text": "all good"
+          }
+        }
+      ],
+      "flags": null,
+      "frames": [
+        "{\"sdkMessage\":{\"type\":\"status\",\"message\":{\"type\":\"status\",\"agent_id\":\"agent-1\",\"run_id\":\"run-1\",\"status\":\"RUNNING\"}}}",
+        "{\"sdkMessage\":{\"type\":\"thinking\",\"message\":{\"type\":\"thinking\",\"text\":\"let me \"}}}",
+        "{\"sdkMessage\":{\"type\":\"thinking\",\"message\":{\"type\":\"thinking\",\"text\":\"look\"}}}",
+        "{\"sdkMessage\":{\"type\":\"thinking\",\"message\":{\"type\":\"thinking\",\"text\":\"\",\"thinking_duration_ms\":42}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"c1\",\"name\":\"read\",\"status\":\"running\",\"args\":{\"path\":\"/wt/a\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"c1\",\"name\":\"read\",\"status\":\"running\",\"args\":{\"path\":\"/wt/a\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"c1\",\"name\":\"read\",\"status\":\"completed\",\"args\":{\"path\":\"/wt/a\"},\"result\":{\"status\":\"success\",\"value\":{\"content\":\"x\"}},\"truncated\":{\"result\":true}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"c2\",\"name\":\"mcp\",\"status\":\"running\",\"args\":{\"providerIdentifier\":\"recur\",\"toolName\":\"done\",\"args\":{\"summary\":\"finished\"}}}}}",
+        "{\"sdkMessage\":{\"type\":\"usage\",\"message\":{\"type\":\"usage\",\"usage\":{\"inputTokens\":1000,\"outputTokens\":500,\"cacheReadTokens\":2000,\"cacheWriteTokens\":0,\"totalTokens\":3500}}}}",
+        "{\"sdkMessage\":{\"type\":\"assistant\",\"message\":{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Do\"},{\"type\":\"image\",\"text\":\"skip\"}]}}}}",
+        "{\"sdkMessage\":{\"type\":\"assistant\",\"message\":{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"ne.\"}]}}}}",
+        "{\"result\":{\"status\":\"RUN_LIFECYCLE_STATUS_FINISHED\",\"result\":{\"runId\":\"run-1\",\"status\":\"RUN_LIFECYCLE_STATUS_FINISHED\",\"result\":\"all good\",\"durationMs\":\"1500\",\"usage\":{\"inputTokens\":\"1000\",\"outputTokens\":\"500\",\"cacheReadTokens\":\"2000\",\"totalTokens\":\"3500\"}}}}"
+      ],
+      "model": "composer-2.5",
+      "partials": true,
+      "result": {
+        "cacheCreationTokens": 0,
+        "cacheReadTokens": 1333,
+        "durationMs": 1500,
+        "inputTokens": 667,
+        "isError": false,
+        "outputTokens": 500,
+        "sessionId": "agent-1",
+        "stderr": "",
+        "subtype": "success",
+        "text": "all good"
+      },
+      "runIDs": [
+        "run-1"
+      ]
+    },
+    "unreported": {
+      "events": [
+        {
+          "id": "a",
+          "input": "{\"path\":\"x\"}",
+          "kind": "step",
+          "name": "read",
+          "summary": "x"
+        },
+        {
+          "id": "b",
+          "input": "{\"globPattern\":\"*\"}",
+          "kind": "step",
+          "name": "glob",
+          "summary": "*"
+        },
+        {
+          "id": "a",
+          "isError": true,
+          "kind": "tool_result",
+          "name": "read",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "truncated": false
+        },
+        {
+          "id": "b",
+          "isError": true,
+          "kind": "tool_result",
+          "name": "glob",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "truncated": false
+        },
+        {
+          "kind": "thinking",
+          "text": "x"
+        },
+        {
+          "id": "",
+          "input": "{\"command\":\"ls\"}",
+          "kind": "step",
+          "name": "shell",
+          "summary": "ls"
+        },
+        {
+          "id": "",
+          "input": "{\"command\":\"ls\"}",
+          "kind": "step",
+          "name": "shell",
+          "summary": "ls"
+        },
+        {
+          "id": "",
+          "isError": true,
+          "kind": "tool_result",
+          "name": "shell",
+          "text": "{\"status\":\"success\",\"value\":{\"isError\":true}}",
+          "truncated": false
+        },
+        {
+          "id": "c",
+          "input": "{\"path\":\"y\"}",
+          "kind": "step",
+          "name": "read",
+          "summary": "y"
+        },
+        {
+          "id": "c",
+          "isError": true,
+          "kind": "tool_result",
+          "name": "read",
+          "text": "{\"status\":\"error\",\"value\":{\"message\":\"ENOENT\"}}",
+          "truncated": false
+        },
+        {
+          "id": "d",
+          "input": "{\"path\":\"z\"}",
+          "kind": "step",
+          "name": "edit",
+          "summary": "z"
+        },
+        {
+          "kind": "usage",
+          "result": {
+            "cacheCreationTokens": 2,
+            "cacheReadTokens": 169998,
+            "durationMs": 0,
+            "inputTokens": 102000,
+            "isError": false,
+            "outputTokens": 10,
+            "sessionId": "",
+            "stderr": "",
+            "subtype": "",
+            "text": ""
+          }
+        },
+        {
+          "id": "d",
+          "isError": true,
+          "kind": "tool_result",
+          "name": "edit",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "truncated": false
+        },
+        {
+          "kind": "result",
+          "result": {
+            "cacheCreationTokens": 2,
+            "cacheReadTokens": 169998,
+            "durationMs": 0,
+            "inputTokens": 102000,
+            "isError": false,
+            "outputTokens": 10,
+            "sessionId": "agent-1",
+            "stderr": "",
+            "subtype": "success",
+            "text": ""
+          }
+        }
+      ],
+      "flags": null,
+      "frames": [
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"a\",\"name\":\"read\",\"status\":\"running\",\"args\":{\"path\":\"x\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"b\",\"name\":\"glob\",\"status\":\"running\",\"args\":{\"globPattern\":\"*\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"thinking\",\"message\":{\"type\":\"thinking\",\"text\":\"x\"}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"\",\"name\":\"shell\",\"status\":\"running\",\"args\":{\"command\":\"ls\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"\",\"name\":\"shell\",\"status\":\"aborted\",\"args\":{\"command\":\"ls\"},\"result\":{\"status\":\"success\",\"value\":{\"isError\":true}}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"c\",\"name\":\"read\",\"status\":\"running\",\"args\":{\"path\":\"y\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"c\",\"name\":\"read\",\"status\":\"error\",\"args\":{\"path\":\"y\"},\"result\":{\"status\":\"error\",\"value\":{\"message\":\"ENOENT\"}}}}}",
+        "{\"sdkMessage\":{\"type\":\"tool_call\",\"message\":{\"type\":\"tool_call\",\"call_id\":\"d\",\"name\":\"edit\",\"status\":\"running\",\"args\":{\"path\":\"z\"}}}}",
+        "{\"sdkMessage\":{\"type\":\"usage\",\"message\":{\"type\":\"usage\",\"usage\":{\"inputTokens\":300000,\"outputTokens\":10,\"cacheReadTokens\":500000,\"cacheWriteTokens\":7,\"totalTokens\":800017}}}}",
+        "{\"result\":{\"status\":\"RUN_LIFECYCLE_STATUS_FINISHED\",\"result\":{\"runId\":\"run-9\",\"status\":\"RUN_LIFECYCLE_STATUS_FINISHED\"}}}"
+      ],
+      "model": "gpt-5.6-sol",
+      "partials": false,
+      "result": {
+        "cacheCreationTokens": 2,
+        "cacheReadTokens": 169998,
+        "durationMs": 0,
+        "inputTokens": 102000,
+        "isError": false,
+        "outputTokens": 10,
+        "sessionId": "agent-1",
+        "stderr": "",
+        "subtype": "success",
+        "text": ""
+      },
+      "runIDs": [
+        "run-9"
+      ]
+    }
+  },
+  "noResult": [
+    [
+      "",
+      "cursor run ended without a result (bridge log: /tmp/b.log)"
+    ],
+    [
+      "Error: spawn /bin/zsh ENOENT\n at x",
+      "cursor run ended without a result: bridge crashed on Shell spawn ENOENT (often a missing working_directory such as ~/.cursor/projects/…/terminals); retry the turn (bridge log: /tmp/b.log)"
+    ],
+    [
+      "cursor-sdk-bridge SIGTERM received",
+      "cursor run ended without a result: the Cursor bridge stopped mid-turn; retry (bridge log: /tmp/b.log)"
+    ],
+    [
+      "spawn npx ENOENT\ncode: 'ENOENT'",
+      "cursor run ended without a result (bridge log: /tmp/b.log)"
+    ]
+  ],
+  "results": [
+    {
+      "display": "hi\n",
+      "name": "shell",
+      "raw": "{\"status\":\"success\",\"value\":{\"executionTime\":467,\"exitCode\":0,\"signal\":\"\",\"stderr\":\"\",\"stdout\":\"hi\\n\"}}",
+      "text": "hi\n"
+    },
+    {
+      "display": "partial\n\nboom\nexit 2",
+      "name": "shell",
+      "raw": "{\"status\":\"success\",\"value\":{\"exitCode\":2,\"stderr\":\"boom\",\"stdout\":\"partial\\n\"}}",
+      "text": "partial\n\nboom\nexit 2"
+    },
+    {
+      "display": "e\nexit -1",
+      "name": "shell",
+      "raw": "{\"status\":\"success\",\"value\":{\"exitCode\":-1.7,\"stderr\":\"e\"}}",
+      "text": "e\nexit -1"
+    },
+    {
+      "display": "",
+      "name": "shell",
+      "raw": "{\"status\":\"success\",\"value\":{\"exitCode\":\"3\"}}",
+      "text": ""
+    },
+    {
+      "display": "alpha\nbravo\n",
+      "name": "read",
+      "raw": "{\"status\":\"success\",\"value\":{\"content\":\"alpha\\nbravo\\n\",\"fileSize\":20}}",
+      "text": "alpha\nbravo\n"
+    },
+    {
+      "display": "--- a\n+++ b\n@@ -1 +1 @@\n-x\n+y",
+      "name": "edit",
+      "raw": "{\"status\":\"success\",\"value\":{\"diffString\":\"--- a\\n+++ b\\n@@ -1 +1 @@\\n-x\\n+y\",\"linesAdded\":1}}",
+      "text": "--- a\n+++ b\n@@ -1 +1 @@\n-x\n+y"
+    },
+    {
+      "display": "./a.md\n./b.txt",
+      "name": "glob",
+      "raw": "{\"status\":\"success\",\"value\":{\"files\":[\"./a.md\",3,\"./b.txt\"],\"totalFiles\":2}}",
+      "text": "./a.md\n./b.txt"
+    },
+    {
+      "display": "./hello.txt",
+      "name": "grep",
+      "raw": "{\"status\":\"success\",\"value\":{\"workspaceResults\":{\"/wt\":{\"output\":{\"matches\":[{\"file\":\"./hello.txt\"},{\"x\":1}],\"totalMatches\":0},\"type\":\"content\"}}}}",
+      "text": "./hello.txt"
+    },
+    {
+      "display": "",
+      "name": "delete",
+      "raw": "{\"status\":\"success\",\"value\":{}}",
+      "text": ""
+    },
+    {
+      "display": "",
+      "name": "updateTodos",
+      "raw": "{\"status\":\"success\",\"value\":{}}",
+      "text": ""
+    },
+    {
+      "display": "Errors land here.",
+      "name": "task",
+      "raw": "{\"status\":\"success\",\"value\":{\"text\":\"Errors land here.\"}}",
+      "text": "Errors land here."
+    },
+    {
+      "display": "out",
+      "name": "task",
+      "raw": "{\"status\":\"success\",\"value\":{\"result\":\"\",\"output\":\"out\"}}",
+      "text": "out"
+    },
+    {
+      "display": "{\"n\":1}",
+      "name": "task",
+      "raw": "{\"status\":\"success\",\"value\":{\"n\":1}}",
+      "text": "{\"n\":1}"
+    },
+    {
+      "display": "",
+      "name": "task",
+      "raw": "{\"status\":\"success\",\"value\":\"plain\"}",
+      "text": ""
+    },
+    {
+      "display": "",
+      "name": "createPlan",
+      "raw": "{\"status\":\"success\",\"value\":{}}",
+      "text": ""
+    },
+    {
+      "display": "The magic number is 4271.\nsecond",
+      "name": "mcp",
+      "raw": "{\"status\":\"success\",\"value\":{\"content\":[{\"text\":{\"text\":\"The magic number is 4271.\"}},{\"text\":{\"text\":\"\"}},{\"text\":{\"text\":\"second\"}}],\"isError\":false}}",
+      "text": "The magic number is 4271.\nsecond"
+    },
+    {
+      "display": "",
+      "name": "mcp",
+      "raw": "{\"status\":\"success\",\"value\":{\"content\":[{\"text\":\"flat\"}]}}",
+      "text": ""
+    },
+    {
+      "display": "",
+      "name": "mcp",
+      "raw": "{\"status\":\"success\",\"value\":{\"content\":[null]}}",
+      "text": ""
+    },
+    {
+      "display": "{ \"a\" : 1 }",
+      "name": "brandNew",
+      "raw": "{\"status\":\"success\",\"value\":  { \"a\" : 1 }  }",
+      "text": "{ \"a\" : 1 }"
+    },
+    {
+      "display": "null",
+      "name": "brandNew",
+      "raw": "{\"status\":\"success\",\"value\":null}",
+      "text": "null"
+    },
+    {
+      "display": "",
+      "name": "shell",
+      "raw": "{\"status\":5,\"value\":{\"stdout\":\"x\"}}",
+      "text": ""
+    },
+    {
+      "display": "",
+      "name": "shell",
+      "raw": "{\"status\":\"error\"}",
+      "text": ""
+    },
+    {
+      "display": "",
+      "name": "shell",
+      "raw": "[]",
+      "text": ""
+    },
+    {
+      "display": "",
+      "name": "shell",
+      "raw": "not json",
+      "text": ""
+    },
+    {
+      "display": "",
+      "name": "shell",
+      "raw": "",
+      "text": ""
+    },
+    {
+      "display": "",
+      "name": "read",
+      "raw": "{\"value\":\"str\"}",
+      "text": ""
+    }
+  ],
+  "scale": [
+    [
+      1000,
+      2000,
+      0,
+      200000,
+      1,
+      1000,
+      2000,
+      0,
+      11
+    ],
+    [
+      1000,
+      2000,
+      0,
+      200000,
+      3,
+      500,
+      1000,
+      0,
+      11
+    ],
+    [
+      100000,
+      200000,
+      50000,
+      200000,
+      2,
+      57144,
+      114285,
+      28571,
+      11
+    ],
+    [
+      900000,
+      0,
+      0,
+      200000,
+      1,
+      200000,
+      0,
+      0,
+      11
+    ],
+    [
+      900000,
+      0,
+      0,
+      0,
+      1,
+      200000,
+      0,
+      0,
+      11
+    ],
+    [
+      7,
+      3,
+      1,
+      200000,
+      5,
+      3,
+      0,
+      0,
+      11
+    ],
+    [
+      0,
+      0,
+      0,
+      200000,
+      4,
+      0,
+      0,
+      0,
+      11
+    ],
+    [
+      123457,
+      98765,
+      4321,
+      272000,
+      7,
+      30865,
+      24690,
+      1080,
+      11
+    ],
+    [
+      1,
+      0,
+      0,
+      200000,
+      9,
+      1,
+      0,
+      0,
+      11
+    ]
+  ],
+  "tools": [
+    {
+      "canonical": "Bash",
+      "displayInput": "{\"command\":\"echo hi\"}",
+      "displayName": "Bash",
+      "input": "{\"command\":\"echo hi\",\"timeout\":30000}",
+      "name": "shell",
+      "summary": "echo hi",
+      "toolInput": "{\"command\":\"echo hi\"}"
+    },
+    {
+      "canonical": "Bash",
+      "displayInput": "",
+      "displayName": "Bash",
+      "input": "{\"timeout\":1}",
+      "name": "shell",
+      "summary": "",
+      "toolInput": ""
+    },
+    {
+      "canonical": "Read",
+      "displayInput": "{\"file_path\":\"/wt/hello.txt\"}",
+      "displayName": "Read",
+      "input": "{\"path\":\"/wt/hello.txt\"}",
+      "name": "read",
+      "summary": "/wt/hello.txt",
+      "toolInput": "{\"file_path\":\"/wt/hello.txt\"}"
+    },
+    {
+      "canonical": "Edit",
+      "displayInput": "{\"file_path\":\"/wt/a\\u003cb\\u003e.txt\"}",
+      "displayName": "Edit",
+      "input": "{\"path\":\"/wt/a\u003cb\u003e.txt\"}",
+      "name": "edit",
+      "summary": "/wt/a\u003cb\u003e.txt",
+      "toolInput": "{\"file_path\":\"/wt/a\\u003cb\\u003e.txt\"}"
+    },
+    {
+      "canonical": "Delete",
+      "displayInput": "{\"file_path\":\"/wt/out.txt\"}",
+      "displayName": "Delete",
+      "input": "{\"path\":\"/wt/out.txt\"}",
+      "name": "delete",
+      "summary": "/wt/out.txt",
+      "toolInput": "{\"file_path\":\"/wt/out.txt\"}"
+    },
+    {
+      "canonical": "Write",
+      "displayInput": "{\"path\":\"/wt/new.txt\",\"content\":\"x\"}",
+      "displayName": "Write",
+      "input": "{\"path\":\"/wt/new.txt\",\"content\":\"x\"}",
+      "name": "write",
+      "summary": "{\"path\":\"/wt/new.txt\",\"content\":\"x\"}",
+      "toolInput": "{\"path\":\"/wt/new.txt\",\"content\":\"x\"}"
+    },
+    {
+      "canonical": "Glob",
+      "displayInput": "{\"path\":\"/wt\",\"pattern\":\"*.md\"}",
+      "displayName": "Glob",
+      "input": "{\"globPattern\":\"*.md\",\"targetDirectory\":\"/wt\"}",
+      "name": "glob",
+      "summary": "*.md",
+      "toolInput": "{\"path\":\"/wt\",\"pattern\":\"*.md\"}"
+    },
+    {
+      "canonical": "Grep",
+      "displayInput": "{\"path\":\"/wt\",\"pattern\":\"bravo\"}",
+      "displayName": "Grep",
+      "input": "{\"offset\":0,\"path\":\"/wt\",\"pattern\":\"bravo\"}",
+      "name": "grep",
+      "summary": "\"bravo\" in /wt",
+      "toolInput": "{\"path\":\"/wt\",\"pattern\":\"bravo\"}"
+    },
+    {
+      "canonical": "TodoWrite",
+      "displayInput": "{\"todos\":[{\"big\":1e+21,\"content\":\"a\",\"id\":3,\"status\":\"in_progress\",\"w\":1.5},{\"content\":\"b\",\"status\":\"pending\"},\"odd\",7]}",
+      "displayName": "TodoWrite",
+      "input": "{\"todos\":[{\"content\":\"a\",\"status\":\"inProgress\",\"id\":3,\"w\":1.5,\"big\":1e21},{\"content\":\"b\",\"status\":\"pending\"},\"odd\",7]}",
+      "name": "updateTodos",
+      "summary": "0/4 · a",
+      "toolInput": "{\"todos\":[{\"big\":1e+21,\"content\":\"a\",\"id\":3,\"status\":\"in_progress\",\"w\":1.5},{\"content\":\"b\",\"status\":\"pending\"},\"odd\",7]}"
+    },
+    {
+      "canonical": "TodoWrite",
+      "displayInput": "{\"todos\":\"nope\"}",
+      "displayName": "TodoWrite",
+      "input": "{\"todos\":\"nope\"}",
+      "name": "updateTodos",
+      "summary": "",
+      "toolInput": "{\"todos\":\"nope\"}"
+    },
+    {
+      "canonical": "Task",
+      "displayInput": "{\"description\":\"Explore\",\"model\":\"fast\",\"prompt\":\"Find it\",\"subagent_type\":\"explore\"}",
+      "displayName": "Task",
+      "input": "{\"description\":\"Explore\",\"prompt\":\"Find it\",\"subagent_type\":\"explore\",\"model\":\"fast\",\"extra\":1}",
+      "name": "task",
+      "summary": "explore",
+      "toolInput": "{\"description\":\"Explore\",\"model\":\"fast\",\"prompt\":\"Find it\",\"subagent_type\":\"explore\"}"
+    },
+    {
+      "canonical": "CreatePlan",
+      "displayInput": "{\"plan\":\"Summary: x\\n\\nSteps:\\n1. y\"}",
+      "displayName": "CreatePlan",
+      "input": "{\"plan\":\"Summary: x\\n\\nSteps:\\n1. y\"}",
+      "name": "createPlan",
+      "summary": "Summary: x",
+      "toolInput": "{\"plan\":\"Summary: x\\n\\nSteps:\\n1. y\"}"
+    },
+    {
+      "canonical": "CreatePlan",
+      "displayInput": "",
+      "displayName": "CreatePlan",
+      "input": "{\"plan\":\"\"}",
+      "name": "createPlan",
+      "summary": "",
+      "toolInput": ""
+    },
+    {
+      "canonical": "mcp",
+      "displayInput": "{\"summary\":\"finished\"}",
+      "displayName": "mcp__recur__done",
+      "input": "{\"providerIdentifier\":\"recur\",\"toolName\":\"done\",\"args\":{\"summary\":\"finished\"}}",
+      "name": "mcp",
+      "summary": "finished",
+      "toolInput": "{\"providerIdentifier\":\"recur\",\"toolName\":\"done\",\"args\":{\"summary\":\"finished\"}}"
+    },
+    {
+      "canonical": "mcp",
+      "displayInput": "{\"z\":1,\"a\":2}",
+      "displayName": "mcp__done",
+      "input": "{\"toolName\":\"done\",\"args\":{\"z\":1,\"a\":2}}",
+      "name": "mcp",
+      "summary": "{\"z\":1,\"a\":2}",
+      "toolInput": "{\"toolName\":\"done\",\"args\":{\"z\":1,\"a\":2}}"
+    },
+    {
+      "canonical": "mcp",
+      "displayInput": "{\"providerIdentifier\":\"recur\"}",
+      "displayName": "mcp",
+      "input": "{\"providerIdentifier\":\"recur\"}",
+      "name": "mcp",
+      "summary": "{\"providerIdentifier\":\"recur\"}",
+      "toolInput": "{\"providerIdentifier\":\"recur\"}"
+    },
+    {
+      "canonical": "mcp",
+      "displayInput": "not json",
+      "displayName": "mcp",
+      "input": "not json",
+      "name": "mcp",
+      "summary": "not json",
+      "toolInput": ""
+    },
+    {
+      "canonical": "brandNew",
+      "displayInput": "{\"foo\":\"bar\"}",
+      "displayName": "brandNew",
+      "input": "{\"foo\":\"bar\"}",
+      "name": "brandNew",
+      "summary": "{\"foo\":\"bar\"}",
+      "toolInput": "{\"foo\":\"bar\"}"
+    },
+    {
+      "canonical": "Read",
+      "displayInput": "",
+      "displayName": "Read",
+      "input": "not json",
+      "name": "read",
+      "summary": "",
+      "toolInput": ""
+    },
+    {
+      "canonical": "Read",
+      "displayInput": "",
+      "displayName": "Read",
+      "input": "null",
+      "name": "read",
+      "summary": "",
+      "toolInput": ""
+    },
+    {
+      "canonical": "Read",
+      "displayInput": "",
+      "displayName": "Read",
+      "input": "",
+      "name": "read",
+      "summary": "",
+      "toolInput": ""
+    },
+    {
+      "canonical": "brandNew",
+      "displayInput": "null",
+      "displayName": "brandNew",
+      "input": "null",
+      "name": "brandNew",
+      "summary": "null",
+      "toolInput": "null"
+    },
+    {
+      "canonical": "Bash",
+      "displayInput": "",
+      "displayName": "Bash",
+      "input": "{\"command\":5}",
+      "name": "shell",
+      "summary": "",
+      "toolInput": ""
+    }
+  ],
+  "wire": [
+    {
+      "allowedTools": null,
+      "appendSystemPrompt": "",
+      "chatChild": false,
+      "imageIDs": null,
+      "images": 0,
+      "prompt": "Review the diff.",
+      "standing": true,
+      "systemPrompt": "You are the Reviewer.",
+      "turnAppendPrompt": "",
+      "wire": "\u003crole-instructions\u003e\nYou are the Reviewer.\n\u003c/role-instructions\u003e\n\nReview the diff."
+    },
+    {
+      "allowedTools": null,
+      "appendSystemPrompt": " mode ",
+      "chatChild": false,
+      "imageIDs": null,
+      "images": 0,
+      "prompt": "  p  ",
+      "standing": true,
+      "systemPrompt": "  role  ",
+      "turnAppendPrompt": " subject ",
+      "wire": "\u003crole-instructions\u003e\nrole\n\nmode\n\u003c/role-instructions\u003e\n\np\n\nsubject"
+    },
+    {
+      "allowedTools": null,
+      "appendSystemPrompt": "mode",
+      "chatChild": false,
+      "imageIDs": null,
+      "images": 0,
+      "prompt": "p",
+      "standing": false,
+      "systemPrompt": "role",
+      "turnAppendPrompt": "subject",
+      "wire": "p\n\nsubject"
+    },
+    {
+      "allowedTools": [
+        "Read",
+        "mcp__recur__create_workspace"
+      ],
+      "appendSystemPrompt": "",
+      "chatChild": false,
+      "imageIDs": null,
+      "images": 0,
+      "prompt": "hi",
+      "standing": true,
+      "systemPrompt": "",
+      "turnAppendPrompt": "",
+      "wire": "\u003crole-instructions\u003e\nCursor's built-in subagents are disabled by policy in Recur. Never spawn a Cursor subagent or background agent. For anything beyond a very simple task, call mcp__recur__create_workspace: that is the Recur subagent; you are re-engaged with its report when it finishes. Redirect a running child, or resume a finished one, with mcp__recur__message_child.\n\u003c/role-instructions\u003e\n\nhi"
+    },
+    {
+      "allowedTools": [
+        "mcp__recur__create_workspace"
+      ],
+      "appendSystemPrompt": "",
+      "chatChild": true,
+      "imageIDs": null,
+      "images": 0,
+      "prompt": "hi",
+      "standing": true,
+      "systemPrompt": "",
+      "turnAppendPrompt": "",
+      "wire": "\u003crole-instructions\u003e\nCursor's built-in subagents are disabled by policy in Recur. Never spawn a Cursor subagent or background agent. Execute the assigned task here.\n\u003c/role-instructions\u003e\n\nhi"
+    },
+    {
+      "allowedTools": null,
+      "appendSystemPrompt": "",
+      "chatChild": false,
+      "imageIDs": [
+        "BBBB|image/png",
+        "AAAA|image/jpeg"
+      ],
+      "images": 2,
+      "prompt": "see ⟦attachment:img_2⟧ and ⟦attachment:img_1⟧",
+      "standing": true,
+      "systemPrompt": "",
+      "turnAppendPrompt": "",
+      "wire": "\u003csystem_instruction\u003e\nThe user attached image(s) as a multimodal message (SDKUserMessage.images).\nMarkers like ⟦attachment:id⟧ in the text mark where each image sits; they are NOT files to open or search for.\nThe images payload is ordered to match those markers:\n- ⟦attachment:img_2⟧ is image 1 (first attached image)\n- ⟦attachment:img_1⟧ is image 2 (second attached image)\n\u003c/system_instruction\u003e\n\nsee ⟦attachment:img_2⟧ and ⟦attachment:img_1⟧"
+    },
+    {
+      "allowedTools": null,
+      "appendSystemPrompt": "",
+      "chatChild": false,
+      "imageIDs": [
+        "BBBB|image/png",
+        "AAAA|image/jpeg"
+      ],
+      "images": 2,
+      "prompt": "no markers",
+      "standing": false,
+      "systemPrompt": "",
+      "turnAppendPrompt": "",
+      "wire": "\u003csystem_instruction\u003e\nThe user attached image(s) as a multimodal message (SDKUserMessage.images).\nMarkers like ⟦attachment:id⟧ in the text mark where each image sits; they are NOT files to open or search for.\nThe images payload is ordered to match those markers:\n- ⟦attachment:img_2⟧ is image 1 (first attached image)\n- ⟦attachment:img_1⟧ is image 2 (second attached image)\n\u003c/system_instruction\u003e\n\nno markers"
+    },
+    {
+      "allowedTools": null,
+      "appendSystemPrompt": "",
+      "chatChild": false,
+      "imageIDs": null,
+      "images": 0,
+      "prompt": "",
+      "standing": true,
+      "systemPrompt": "",
+      "turnAppendPrompt": "",
+      "wire": ""
+    }
+  ]
+}

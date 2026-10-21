@@ -12,7 +12,9 @@ use crate::style::{
 };
 use crate::text::{LineHeight, Text, TextStyled, span, text};
 use crate::theme::Theme;
+use crate::tooltip::TitleTooltip;
 use crate::widgets::{
+    ToastAsk, ToastKind, ToastOptions, ToastStore, Toasts, push_toast, toast_action,
     PicBox, armed_button, blurb_code, decode_text, project_pic, ring, settings_group,
     settings_groups,
 };
@@ -38,6 +40,7 @@ pub(super) const NAMES: &[&str] = &[
     "project-pic/*",
     "settings-group/*",
     "armed-button/*",
+    "toasts/*",
 ];
 
 pub(super) fn matches(pattern: &str, name: &str) -> bool {
@@ -47,19 +50,42 @@ pub(super) fn matches(pattern: &str, name: &str) -> bool {
     }
 }
 
-/// A scene that renders a function of the app context.
-struct Static(fn(&mut Window, &mut App) -> AnyElement);
+type Content = Box<dyn Fn(&mut Window, &mut App) -> AnyElement>;
 
-impl Render for Static {
+/// A scene's root: its content, then the overlays every Recur window renders last (title
+/// tooltips, and the toast stack where the scene shows it).
+struct Stage {
+    content: Content,
+    overlays: Vec<AnyView>,
+}
+
+impl Render for Stage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        (self.0)(window, cx)
+        div()
+            .relative()
+            .size_full()
+            .child((self.content)(window, cx))
+            .children(self.overlays.iter().cloned())
     }
 }
 
-pub(super) fn build(name: &str, _: &mut Window, cx: &mut App) -> Option<AnyView> {
+pub(super) fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let kind = name.split('/').next().unwrap_or_default();
     let variant = name.split_once('/').map_or("", |(_, v)| v);
-    let f: fn(&mut Window, &mut App) -> AnyElement = match (kind, variant) {
+    let mut overlays: Vec<AnyView> = vec![TitleTooltip::new(cx).into()];
+    let content: Content = match (kind, variant) {
+        ("toasts", _) => {
+            seed_toasts(window, cx);
+            overlays.push(cx.new(Toasts::new).into());
+            Box::new(|_, cx| body(cx).size_full().into_any_element())
+        }
+        _ => Box::new(static_content(kind, variant)?),
+    };
+    Some(cx.new(|_| Stage { content, overlays }).into())
+}
+
+fn static_content(kind: &str, variant: &str) -> Option<fn(&mut Window, &mut App) -> AnyElement> {
+    Some(match (kind, variant) {
         ("tokens", _) => tokens,
         ("text", "calibration") => calibration,
         ("kbd", _) => kbd_scene,
@@ -74,8 +100,7 @@ pub(super) fn build(name: &str, _: &mut Window, cx: &mut App) -> Option<AnyView>
         ("settings-group", _) => settings,
         ("armed-button", _) => armed,
         _ => return None,
-    };
-    Some(cx.new(|_| Static(f)).into())
+    })
 }
 
 fn row() -> Div {
@@ -557,4 +582,39 @@ fn armed(_: &mut Window, cx: &mut App) -> AnyElement {
                 ),
         )
         .into_any_element()
+}
+
+/// Sticky toasts of every kind, and an ask toast whose 30s TTL bar the scene freezes halfway.
+fn seed_toasts(window: &mut Window, cx: &mut App) {
+    let store = ToastStore::global(cx);
+    let old: Vec<u64> = store.read(cx).toasts().iter().map(|t| t.id).collect();
+    for id in old {
+        ToastStore::dismiss(&store, id, false, window, cx);
+    }
+    let sticky = |action| ToastOptions {
+        action,
+        ttl: Some(std::time::Duration::ZERO),
+        ..Default::default()
+    };
+    push_toast(ToastKind::Success, "Saved workspace settings", sticky(None), cx);
+    push_toast(
+        ToastKind::Error,
+        "Push failed: the remote rejected the update",
+        sticky(None),
+        cx,
+    );
+    push_toast(
+        ToastKind::Info,
+        "Recur 0.9 is ready",
+        sticky(Some(toast_action("Restart", |_, _| {}))),
+        cx,
+    );
+    let ask = ToastAsk {
+        project: "recur".into(),
+        workspace: "honeyed-cannoli".into(),
+        question: "Should the parity task also run on Linux?".into(),
+    };
+    store.update(cx, |s, cx| {
+        s.push_ask(ask, toast_action("Answer", |_, _| {}), None, cx)
+    });
 }

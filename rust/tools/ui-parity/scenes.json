@@ -107,6 +107,22 @@
       "tolerance": 0
     },
     {
+      "name": "toasts/default",
+      "width": 400,
+      "height": 380,
+      "theme": "default",
+      "tolerance": 0,
+      "animationTime": 15000
+    },
+    {
+      "name": "toasts/paper",
+      "width": 400,
+      "height": 380,
+      "theme": "paper",
+      "tolerance": 0,
+      "animationTime": 15000
+    },
+    {
       "name": "toggles/catppuccin-latte",
       "width": 320,
       "height": 56,

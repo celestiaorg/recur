@@ -334,29 +334,34 @@ fn close_button(
 ) -> gpui_kit::Stateful<gpui_kit::Div> {
     let t = Theme::of(cx).tokens;
     let store = store.clone();
-    let hover_bg = t.text.fade(0.08);
-    let mut b = div()
+    // `.tclose:hover` brightens the glyph; the ask toast's also gets a wash.
+    let hover_bg = ask.then(|| t.text.fade(0.08));
+    let b = div()
         .id(("tclose", id))
         .flex_none()
         .text_color(t.faint)
         .cursor_pointer()
-        .hover(move |s| s.text_color(Hsla::from(t.text)))
+        .hover(move |s| {
+            let s = s.text_color(Hsla::from(t.text));
+            match hover_bg {
+                Some(bg) => s.bg(bg),
+                None => s,
+            }
+        })
         .on_click(move |_: &ClickEvent, window, cx| {
             ToastStore::dismiss(&store, id, true, window, cx)
         })
         .child(text("✕").size(11.).line_height(LineHeight::Normal).nowrap());
-    b = if ask {
+    if ask {
         b.absolute()
             .top(px(8.))
             .right(px(8.))
             .py(px(3.))
             .px(px(5.))
             .rounded(px(5.))
-            .hover(move |s| s.bg(hover_bg))
     } else {
         b.p(px(2.)).mt(px(1.))
-    };
-    b
+    }
 }
 
 /// Tokens with every color's alpha scaled by `p` (an entrance fade).

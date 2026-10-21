@@ -10,6 +10,7 @@
   import ProjectPic from './scenes/ProjectPic.svelte'
   import Settings from './scenes/Settings.svelte'
   import Armed from './scenes/Armed.svelte'
+  import ToastsScene from './scenes/Toasts.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
@@ -41,6 +42,8 @@
     <Settings />
   {:else if kind === 'armed-button'}
     <Armed />
+  {:else if kind === 'toasts'}
+    <ToastsScene />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

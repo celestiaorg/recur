@@ -170,7 +170,7 @@ async fn ignores_resume_task_replay() {
 #[tokio::test]
 async fn ignores_ambient_background_tasks() {
     let body = format!(
-        "{BG_AMBIENT}\n{}\nsleep 0.3\n[ -e \"$EOF\" ] || {}\n",
+        "{BG_AMBIENT}\n{}\ni=0\nwhile [ ! -e \"$EOF\" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done\n[ -e \"$EOF\" ] || {}\n",
         bg_result("done"),
         bg_result("held")
     );

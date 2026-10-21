@@ -39,6 +39,14 @@ pub struct TerminalFocus {
     pub id: String,
 }
 
+/// The wire answer to an `ask_user` question (`AskUserAnswerWire`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AskUserAnswer {
+    pub choice: String,
+    pub free_text: String,
+    pub attachments: Vec<recur_domain::ChatAttachment>,
+}
+
 pub(crate) type CatalogLoad = Shared<Task<Vec<CatalogModel>>>;
 
 /// The model catalog cache: the last good load, the request in flight and the revision
@@ -52,6 +60,80 @@ pub struct ModelCatalogCache {
 }
 
 impl AppState {
+    /// `answerPermission`: drop the card at once, then answer. A failure means it was already
+    /// resolved elsewhere, timed out, or the turn ended.
+    pub fn answer_permission(
+        &mut self,
+        id: &str,
+        allow: bool,
+        reason: &str,
+        remember: bool,
+        cx: &mut Context<Self>,
+    ) {
+        self.permission_requests.retain(|r| r.id != id);
+        cx.notify();
+        let services = self.services.clone();
+        let (id, reason) = (id.to_string(), reason.to_string());
+        cx.background_spawn(async move {
+            let _ = services
+                .permissions
+                .answer_permission(&id, allow, &reason, remember)
+                .await;
+        })
+        .detach();
+    }
+
+    /// `answerQuestion`: drop the card so a double click cannot resubmit, tell listeners
+    /// before the RPC (the resume turn can stream while it is pending), and toast a rejection
+    /// without resurrecting the card. Resolves whether the backend took the answer.
+    pub fn answer_question(
+        &mut self,
+        id: &str,
+        answer: AskUserAnswer,
+        cx: &mut Context<Self>,
+    ) -> Task<bool> {
+        let question = self.user_questions.iter().find(|q| q.id == id).cloned();
+        self.user_questions.retain(|q| q.id != id);
+        cx.notify();
+        if let Some(q) = &question {
+            cx.emit(crate::ShellEvent::QuestionAnswered(Box::new((
+                q.clone(),
+                answer.clone(),
+            ))));
+        }
+        let services = self.services.clone();
+        let id = id.to_string();
+        cx.spawn(async move |this, cx| {
+            let res = services
+                .questions
+                .answer_question(&id, &answer.choice, &answer.free_text, &answer.attachments)
+                .await;
+            match res {
+                Ok(()) => true,
+                Err(err) => {
+                    let _ = this.update(cx, |_, cx| {
+                        if let Some(q) = question {
+                            cx.emit(crate::ShellEvent::QuestionAnswerFailed(Box::new((
+                                q, answer,
+                            ))));
+                        }
+                        let msg = crate::bridge_error_message(&err);
+                        crate::toast(
+                            recur_ui::widgets::toasts::ToastKind::Error,
+                            if msg.is_empty() {
+                                "That question is no longer waiting".to_string()
+                            } else {
+                                msg
+                            },
+                            cx,
+                        );
+                    });
+                    false
+                }
+            }
+        })
+    }
+
     /// `workspaceTerminals[id]`.
     pub fn workspace_terminals(&self, workspace_id: &str) -> &[WorkspaceTerminalTab] {
         self.chat

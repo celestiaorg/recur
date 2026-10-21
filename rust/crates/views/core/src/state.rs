@@ -242,6 +242,11 @@ pub enum ShellEvent {
     AppFocused(String),
     /// A backend `app.open` landed and was applied.
     PathOpened(Box<OpenPathResult>),
+    /// `onQuestionAnswered`: the UI accepted an `ask_user` answer, before the RPC returns
+    /// (paint the user bubble before the resume streams).
+    QuestionAnswered(Box<(recur_domain::UserQuestion, crate::chat::AskUserAnswer)>),
+    /// `onQuestionAnswerFailed`: the backend rejected that answer.
+    QuestionAnswerFailed(Box<(recur_domain::UserQuestion, crate::chat::AskUserAnswer)>),
 }
 
 /// Holds the app-wide [`AppState`] entity.

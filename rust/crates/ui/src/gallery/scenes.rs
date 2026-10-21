@@ -14,8 +14,9 @@ use crate::text::{LineHeight, Text, TextStyled, span, text};
 use crate::theme::Theme;
 use crate::tooltip::{TitleTooltip, titled};
 use crate::widgets::{
-    PicBox, ToastAsk, ToastKind, ToastOptions, ToastStore, Toasts, armed_button, blurb_code,
-    decode_text, project_pic, push_toast, ring, settings_group, settings_groups, toast_action,
+    ChipIcon, PicBox, ToastAsk, ToastKind, ToastOptions, ToastStore, Toasts, armed_button,
+    blurb_code, decode_text, project_pic, push_toast, ring, settings_group, settings_groups,
+    tab_chip, tab_strip, tab_strip_action, toast_action,
 };
 use gpui_kit::{
     AnyElement, AnyView, App, AppContext, Context, Div, IntoElement, ParentElement, Render, Styled,
@@ -41,6 +42,7 @@ pub(super) const NAMES: &[&str] = &[
     "armed-button/*",
     "toasts/*",
     "tooltip/*",
+    "tab-strip/*",
 ];
 
 pub(super) fn matches(pattern: &str, name: &str) -> bool {
@@ -100,6 +102,8 @@ fn static_content(kind: &str, variant: &str) -> Option<fn(&mut Window, &mut App)
         ("settings-group", _) => settings,
         ("armed-button", _) => armed,
         ("tooltip", _) => tooltips,
+        ("tab-strip", "overflow") => tabs_overflow,
+        ("tab-strip", _) => tabs,
         _ => return None,
     })
 }
@@ -649,5 +653,92 @@ fn tooltips(_: &mut Window, cx: &mut App) -> AnyElement {
                     button("check", "Check", cx),
                 )),
         )
+        .into_any_element()
+}
+
+fn tabs(_: &mut Window, cx: &mut App) -> AnyElement {
+    let action = |id: &'static str, on: bool, name: IconName, cx: &App| {
+        tab_strip_action(id, on, false, cx).child(icon(name).size(px(15.)))
+    };
+    let strip = tab_strip("files", "Open files")
+        .chrome(true)
+        .active_key("changes")
+        .tab(
+            "main",
+            tab_chip("main", "main.rs").icon(ChipIcon::File("main.rs".into())),
+        )
+        .tab(
+            "changes",
+            tab_chip("changes", "Changes")
+                .icon(ChipIcon::App(IconName::GitBranch, None))
+                .active(true)
+                .lit(true)
+                .badge(4),
+        )
+        .tab(
+            "notes",
+            tab_chip("notes", "notes.md")
+                .icon(ChipIcon::File("notes.md".into()))
+                .dirty(true)
+                .on_close(|_, _, _| {}),
+        )
+        .tab(
+            "chat",
+            tab_chip("chat", "Chat")
+                .icon(ChipIcon::App(IconName::MessageQuestion, None))
+                .unseen(true),
+        )
+        .tab(
+            "build",
+            tab_chip("build", "Build")
+                .icon(ChipIcon::App(IconName::Terminal, None))
+                .busy(true),
+        )
+        .tab(
+            "old",
+            tab_chip("old", "old shell")
+                .icon(ChipIcon::App(IconName::Terminal, None))
+                .muted(true),
+        )
+        .trailing(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(2.))
+                .child(action("add", false, IconName::Plus, cx))
+                .child(action("max", true, IconName::Maximize, cx)),
+        );
+    body(cx).size_full().child(strip).into_any_element()
+}
+
+const MANY: [&str; 8] = [
+    "alpha.ts",
+    "beta.rs",
+    "gamma.go",
+    "delta.py",
+    "epsilon.md",
+    "zeta.json",
+    "eta.toml",
+    "theta.css",
+];
+
+fn tabs_overflow(_: &mut Window, cx: &mut App) -> AnyElement {
+    let strip = MANY.iter().fold(
+        tab_strip("many", "Open files")
+            .chrome(true)
+            .active_key("theta.css"),
+        |s, f| {
+            s.tab(
+                *f,
+                tab_chip(*f, *f)
+                    .icon(ChipIcon::File((*f).into()))
+                    .active(*f == "theta.css")
+                    .on_close(|_, _, _| {}),
+            )
+        },
+    );
+    body(cx)
+        .size_full()
+        .child(div().w(px(300.)).child(strip))
         .into_any_element()
 }

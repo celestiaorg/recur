@@ -246,10 +246,7 @@ impl Element for Icon {
         let margin = u32::from(content != (w as f32, h as f32));
         let (w, h) = (w + 2 * margin, h + 2 * margin);
         let bounds = bounds.dilate(px(margin as f32 / scale));
-        let mut color = self.color.unwrap_or_else(|| window.text_style().color);
-        if let Some(mask) = &self.mask {
-            color = color.opacity(mask(f32::from(bounds.center().x)));
-        }
+        let color = self.color.unwrap_or_else(|| window.text_style().color);
         let key = Key {
             source: source_hash(&self.source),
             stroke_width: self.stroke_width.map_or(0, f32::to_bits),
@@ -269,7 +266,24 @@ impl Element for Icon {
                 rendered
             }
         };
-        let Some(image) = image else { return };
+        let Some(mut image) = image else { return };
+        // A CSS `mask-image` gradient varies across the icon: scale each column's alpha.
+        if let Some(mask) = &self.mask
+            && let Some(bytes) = image.as_bytes(0)
+        {
+            let mut bgra = bytes.to_vec();
+            let left = f32::from(bounds.left());
+            for (i, p) in bgra.chunks_exact_mut(4).enumerate() {
+                let x = left + ((i as u32 % w) as f32 + 0.5) / scale;
+                p[3] = (p[3] as f32 * mask(x)).round() as u8;
+            }
+            if let Some(buffer) = image::RgbaImage::from_raw(w, h, bgra) {
+                image = Arc::new(RenderImage::new(SmallVec::from_elem(
+                    image::Frame::new(buffer),
+                    1,
+                )));
+            }
+        }
         let _ = window.paint_image(bounds, bounds, Corners::default(), image, 0, false);
     }
 }

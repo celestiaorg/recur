@@ -103,6 +103,11 @@ for (const scene of scenes) {
         range.selectNodeContents(n)
         for (const r of range.getClientRects()) if (r.width > 0 && r.height > 0) rects.push([r.x, r.y, r.width, r.height])
       }
+      // File-type icons are font glyphs drawn as `::before` content: text, too.
+      for (const el of document.querySelectorAll('.fico, [class^="icon "]')) {
+        const r = el.getBoundingClientRect()
+        if (r.width > 0 && r.height > 0) rects.push([r.x, r.y, r.width, r.height])
+      }
       return rects
     })
     writeFileSync(join(out, `${file}.text.json`), JSON.stringify(textRects))

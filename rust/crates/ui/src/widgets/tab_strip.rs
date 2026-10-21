@@ -164,6 +164,8 @@ struct State {
     user_pinned: bool,
     anim: Option<(f32, f32, Instant)>,
     last_write: Option<f32>,
+    /// Last wheel scroll, which shows the overlay thumb.
+    wheeled: Option<Instant>,
     drag: Drag,
 }
 
@@ -179,6 +181,7 @@ impl Default for State {
             restore_left: 0.,
             user_pinned: false,
             anim: None,
+            wheeled: None,
             last_write: None,
             drag: Drag::default(),
         }
@@ -454,11 +457,23 @@ impl RenderOnce for TabStrip {
             .role(gpui_kit::accesskit::Role::TabList)
             .aria_label(self.label.clone())
             .children(chips);
-        if overflow {
-            // The 4px thin scrollbar takes layout space at the bottom, as WebKit draws it.
-            strip = strip.pb(px(4.));
+        {
+            let state = state.clone();
+            strip = strip.on_scroll_wheel(move |_, window, cx| {
+                state.update(cx, |s, _| s.wheeled = Some(Instant::now()));
+                window.refresh();
+            });
         }
-        let thumb = overflow.then(|| scrollbar(&scroll, t.line));
+        // `scrollbar-width: thin` is a macOS overlay scroller in WebKit: no layout space, and
+        // only shown while the user scrolls.
+        let shown = state
+            .read(cx)
+            .wheeled
+            .is_some_and(|at| at.elapsed() < OVERLAY_SCROLLER);
+        if shown {
+            window.request_animation_frame();
+        }
+        let thumb = (overflow && shown).then(|| scrollbar(&scroll, t.line));
 
         let mut root = div()
             .id(self.id)
@@ -531,7 +546,10 @@ impl RenderOnce for TabStrip {
     }
 }
 
-/// The thin horizontal scrollbar (`scrollbar-width: thin`, 4px `--line` thumb, radius 2).
+/// How long the overlay scroller stays after the last wheel scroll.
+const OVERLAY_SCROLLER: Duration = Duration::from_millis(1000);
+
+/// The thin horizontal scrollbar thumb (`scrollbar-color: var(--line)`, 4px, radius 2).
 fn scrollbar(scroll: &ScrollHandle, color: crate::color::Color) -> AnyElement {
     let viewport = f32::from(scroll.bounds().size.width);
     let max = f32::from(scroll.max_offset().x);
@@ -638,7 +656,7 @@ fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window
     });
     let anim = state.read(cx).anim;
     if let Some((from, to, start)) = anim {
-        let p = (start.elapsed().as_secs_f32() / SMOOTH.as_secs_f32()).min(1.);
+        let p = motion::progress(start, SMOOTH, cx);
         let eased = 1. - (1. - p).powi(3);
         let left = from + (to - from) * eased;
         state.update(cx, |s, _| {

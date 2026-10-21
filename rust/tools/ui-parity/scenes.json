@@ -100,6 +100,50 @@
       "tolerance": 0
     },
     {
+      "name": "tab-strip/default",
+      "width": 640,
+      "height": 48,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "tab-strip/hover",
+      "width": 640,
+      "height": 48,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "move": [
+            250,
+            20
+          ]
+        },
+        {
+          "wait": 100
+        }
+      ]
+    },
+    {
+      "name": "tab-strip/overflow",
+      "width": 320,
+      "height": 48,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "wait": 800
+        }
+      ]
+    },
+    {
+      "name": "tab-strip/paper",
+      "width": 640,
+      "height": 48,
+      "theme": "paper",
+      "tolerance": 0
+    },
+    {
       "name": "text/calibration",
       "width": 420,
       "height": 330,

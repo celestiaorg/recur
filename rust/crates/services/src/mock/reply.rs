@@ -88,11 +88,10 @@ macro_rules! struct_reply {
     )*};
 }
 
-use crate::api::usage::{CursorUsageConnect, Snapshot};
 use crate::api::{
-    AppChatSelection, ClaudeStatus, CodexStatus, CompatibleTestResult, CursorStatus, EnsureResult,
-    IssuesView, PaletteSearchDto, PromptCompleteResultDto, PromptResultDto, RunResultDto,
-    ShellState, WorkspaceChatSelection,
+    AppChatSelection, ClaudeStatus, CodexStatus, CompatibleTestResult, CursorStatus,
+    CursorUsageConnect, EnsureResult, IssuesView, PaletteSearchDto, PromptCompleteResultDto,
+    PromptResultDto, RunResultDto, ShellState, Snapshot, WorkspaceChatSelection,
 };
 use recur_domain::{
     Agent, Artifact, AttentionCounts, BriefingSnapshot, Commit, CopyFilesPreview, Escalation,

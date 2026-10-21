@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use super::models::{EnsureResult, LanguageServerInfo};
+use super::{EnsureResult, LanguageServerInfo};
 use crate::Result;
 
 /// LSPService supervises language server processes for the Observatory editor.

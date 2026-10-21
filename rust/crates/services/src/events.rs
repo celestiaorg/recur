@@ -28,7 +28,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use crate::api::usage::Snapshot;
+use crate::api::Snapshot;
 
 /// Fan-out of [`AppEvent`]s to any number of subscribers. Cloning shares the
 /// hub. Publishing never blocks and never drops; a subscriber whose receiver

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use async_trait::async_trait;
 use recur_domain::{BriefingSnapshot, ChatItem, WorkspaceChatTab};
 
-use super::models::AppChatSelection;
+use super::AppChatSelection;
 use crate::Result;
 
 /// BriefingService is the Wails-bound surface for the Inbox and Ask Recur.

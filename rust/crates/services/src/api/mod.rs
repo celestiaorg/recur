@@ -29,9 +29,7 @@ mod shell;
 mod terminal;
 mod workspaces;
 
-pub mod lsp;
 pub mod models;
-pub mod usage;
 
 use std::sync::Arc;
 
@@ -54,6 +52,11 @@ pub use policy::PolicyService;
 pub use projects::ProjectsService;
 pub use prs::PrsService;
 pub use questions::QuestionsService;
+pub use recur_agent::catalog::{FlagDimension, FlagOption, ModelChoice, ModelGroup};
+pub use recur_lsp::{EnsureResult, LanguageServerInfo, SessionInfo};
+pub use recur_provider_compatible::CompatibleTestResult;
+pub use recur_provider_cursor::CursorStatus;
+pub use recur_usage::{CursorUsageConnect, ModelRow, ProviderQuota, Snapshot, Window};
 pub use settings::SettingsService;
 pub use shell::ShellService;
 pub use terminal::TerminalService;

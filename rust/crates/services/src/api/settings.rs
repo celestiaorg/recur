@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use recur_domain::{CompatibleFlagDim, CompatibleProvider, Resource, Settings};
 
-use super::models::{
+use super::{
     AssignedIssue, ClaudeStatus, CodexStatus, CompatibleTestResult, CursorStatus, ModelGroup,
 };
-use super::usage::{CursorUsageConnect, Snapshot};
+use super::{CursorUsageConnect, Snapshot};
 use crate::Result;
 
 /// Rust port of Go `app.SettingsService` (`frontend/bindings/recur/internal/app/settingsservice.ts`).

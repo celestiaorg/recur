@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use super::models::{
+use super::{
     BundleSettingInfo, BundleSkipInfo, CommandInfo, GrammarInfo, LoopInfo, PaletteSearchDto,
     PolicyInfo, PromptActionInfo, PromptCompleteRequestDto, PromptCompleteResultDto,
     PromptContextDto, PromptResultDto, RoleInfo, RunContextDto, RunResultDto, SnippetInfo,

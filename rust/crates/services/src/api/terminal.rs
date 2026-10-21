@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use recur_term::Info as TermInfo;
 
-use super::models::TerminalDockChrome;
+use super::TerminalDockChrome;
 use crate::Result;
 
 /// TerminalService backs the Observatory's terminal dock: real shells running in

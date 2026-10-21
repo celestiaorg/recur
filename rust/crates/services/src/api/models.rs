@@ -1,5 +1,5 @@
 //! Go `internal/app` models: the DTOs the bound services take and return
-//! that are not `recur-domain` types. Serde-identical to the Go JSON tags,
+//! that no lower crate owns (those are re-exported from [`crate::api`]). Serde-identical to the Go JSON tags,
 //! following the `recur-domain` conventions: `omitempty` fields skip their
 //! zero value, and a non-`omitempty` slice or map is `Option<…>` because Go
 //! writes a nil one as `null`.
@@ -9,7 +9,6 @@ use std::collections::BTreeMap;
 use recur_domain::{IssueRef, PrParticipant};
 use serde::{Deserialize, Serialize};
 
-use super::lsp::SessionInfo;
 use super::serde_util::{is_false, is_zero, is_zero_f64};
 
 /// AppChatSelection is the last Ask Recur model picker. Mode is always ask.
@@ -170,47 +169,6 @@ pub struct CommandPromptDto {
     pub choices: Vec<String>,
 }
 
-/// CompatibleTestResult is the Settings Test button outcome for one endpoint.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct CompatibleTestResult {
-    pub ok: bool,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub error: String,
-}
-
-/// CursorStatus is what the Settings screen renders for the Cursor provider.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct CursorStatus {
-    /// BridgeInstalled reports whether a usable cursor-sdk-bridge was found.
-    pub bridge_installed: bool,
-    /// BridgePath is the resolved launcher path ("" when not found).
-    pub bridge_path: String,
-    /// BridgeVersion is the installed cursor-sdk pin from manifest.json
-    /// (preferred over GetVersion's bridge shell version, which stays at 1.0.0).
-    pub bridge_version: String,
-    /// PinnedVersion is the cursor-sdk release Recur would Install.
-    pub pinned_version: String,
-    /// UpdateAvailable is true when Recur's dataDir bridge is behind
-    /// PinnedVersion, so Settings can surface Reinstall as an update.
-    pub update_available: bool,
-    /// Authenticated reports whether the configured API key works.
-    pub authenticated: bool,
-    /// Account is a short identity for toasts (email or API key name).
-    pub account: String,
-    /// APIKeyName is the dashboard name of the key (from Cursor.me).
-    pub api_key_name: String,
-    /// Email is the account email when Cursor.me returns one.
-    pub email: String,
-    /// Name is the account display name when Cursor.me returns one.
-    pub name: String,
-    /// ModelCount is how many models the key may use.
-    pub model_count: i64,
-    /// Error is a user-facing explanation when something is not ready.
-    pub error: String,
-}
-
 /// EditorBuffer is one unsaved disk buffer: the user's draft plus a hash of the
 /// on-disk text it diverged from. The frontend computes and compares the hash;
 /// this service just stores it. Keeping a hash instead of the full saved copy
@@ -355,39 +313,6 @@ pub struct EditorSessionPatch {
     pub drop_scratch_docs: Vec<String>,
 }
 
-/// EnsureResult is returned when opening a file that may need a language server.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct EnsureResult {
-    #[serde(flatten)]
-    pub session_info: SessionInfo,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub file_uri: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub language_id: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub extra: Vec<SessionInfo>,
-}
-
-/// FlagDimension is one configurable axis on a model (Effort, Context, Fast, …).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct FlagDimension {
-    pub id: String,
-    pub label: String,
-    pub options: Option<Vec<FlagOption>>,
-}
-
-/// FlagOption is one selectable value inside a FlagDimension.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct FlagOption {
-    pub value: String,
-    pub label: String,
-    #[serde(skip_serializing_if = "is_false")]
-    pub default: bool,
-}
-
 /// GrammarInfo is a TextMate grammar contributed by a bundle (metadata only).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -447,22 +372,6 @@ pub struct IssuesView {
     pub projects: Vec<String>,
 }
 
-/// LanguageServerInfo is one discovered / builtin language server for Settings.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct LanguageServerInfo {
-    pub id: String,
-    pub languages: Option<Vec<String>>,
-    pub command: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub managed: String,
-    /// "bundle" | "builtin"
-    pub source: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub bundle_name: String,
-    pub available: bool,
-}
-
 /// LoopInfo is a bundle [[loop]] for the dock / New Task picker.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -474,35 +383,6 @@ pub struct LoopInfo {
     pub entry: String,
     pub bundle_name: String,
     pub source_root: String,
-}
-
-/// ModelChoice is one selectable model.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct ModelChoice {
-    /// Ref is the fully-qualified value to store, e.g. "cursor/composer-2.5".
-    pub r#ref: String,
-    /// Label is the display name, e.g. "Composer 2.5".
-    pub label: String,
-    /// Flags are the per-model dimensions the second picker shows. Empty → hide it.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub flags: Vec<FlagDimension>,
-    /// ContextWindow is the model's default context limit in tokens (Cursor:
-    /// hardcoded catalogue; Claude: omitted — use the context flag instead).
-    #[serde(skip_serializing_if = "is_zero")]
-    pub context_window: i64,
-}
-
-/// ModelGroup is one provider's section of the picker.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct ModelGroup {
-    /// Provider is the slug, e.g. "cursor".
-    pub provider: String,
-    /// Label is the provider's display name, e.g. "Cursor".
-    pub label: String,
-    /// Models are the provider's selectable models, in display order.
-    pub models: Option<Vec<ModelChoice>>,
 }
 
 /// PaletteSearchDto is the outcome of SearchPalette.

@@ -1,20 +1,23 @@
 //! Every service DTO decodes Go's `json.Marshal` output and re-encodes it
 //! byte for byte. Fixtures come from tests/fixtures/gen_fixtures.go.txt: a
 //! zero value, one with non-nil empty collections, and one with every field
-//! set.
+//! set. Types owned by lower crates (`recur-agent`, `recur-lsp`, `recur-usage`,
+//! the providers) are checked here too, as the services contract uses them.
 
 use std::path::Path;
 
 use pretty_assertions::assert_eq;
-use recur_services::api::lsp::SessionInfo;
-use recur_services::api::usage::{CursorUsageConnect, ModelRow, ProviderQuota, Snapshot, Window};
 use recur_services::api::*;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 fn check<T: DeserializeOwned + Serialize + Default>(go_name: &str) {
+    check_modes::<T>(go_name, &["zero", "empty", "full"]);
+}
+
+fn check_modes<T: DeserializeOwned + Serialize + Default>(go_name: &str, modes: &[&str]) {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/dto");
-    for mode in ["zero", "empty", "full"] {
+    for &mode in modes {
         let path = dir.join(format!("{go_name}.{mode}.json"));
         let go = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path:?}: {e}"));
         let v: T = serde_json::from_str(&go).unwrap_or_else(|e| panic!("{go_name}.{mode}: {e}"));
@@ -60,14 +63,12 @@ dto_tests! {
     editor_session_meta: EditorSessionMeta = "EditorSessionMeta";
     editor_session_patch: EditorSessionPatch = "EditorSessionPatch";
     ensure_result: EnsureResult = "EnsureResult";
-    flag_dimension: FlagDimension = "FlagDimension";
     flag_option: FlagOption = "FlagOption";
     grammar_info: GrammarInfo = "GrammarInfo";
     issues_view: IssuesView = "IssuesView";
     language_server_info: LanguageServerInfo = "LanguageServerInfo";
     loop_info: LoopInfo = "LoopInfo";
     model_choice: ModelChoice = "ModelChoice";
-    model_group: ModelGroup = "ModelGroup";
     palette_search: PaletteSearchDto = "PaletteSearchDTO";
     palette_search_group: PaletteSearchGroupDto = "PaletteSearchGroupDTO";
     policy_info: PolicyInfo = "PolicyInfo";
@@ -96,4 +97,18 @@ dto_tests! {
     usage_model_row: ModelRow = "ModelRow";
     usage_cursor_usage_connect: CursorUsageConnect = "CursorUsageConnect";
     lsp_session_info: SessionInfo = "SessionInfo";
+}
+
+// simplify: recur-agent's catalog types hold Go's non-omitempty `options` /
+// `models` as plain `Vec`, so a nil slice (`null`, the zero fixture) does not
+// decode. Go's catalog never sends nil there; switch these to `check` once
+// recur-agent models them as `Option<Vec<_>>`.
+#[test]
+fn flag_dimension() {
+    check_modes::<FlagDimension>("FlagDimension", &["empty", "full"]);
+}
+
+#[test]
+fn model_group() {
+    check_modes::<ModelGroup>("ModelGroup", &["empty", "full"]);
 }

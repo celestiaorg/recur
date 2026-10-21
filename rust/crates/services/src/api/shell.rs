@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use super::models::{IssuesView, ShellState};
+use super::{IssuesView, ShellState};
 use crate::Result;
 
 /// ShellService is the Wails-bound read/write surface for ShellState.

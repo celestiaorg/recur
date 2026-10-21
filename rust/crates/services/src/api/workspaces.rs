@@ -7,7 +7,7 @@ use recur_domain::{
     WorkspaceLandState,
 };
 
-use super::models::WorkspaceChatSelection;
+use super::WorkspaceChatSelection;
 use crate::Result;
 
 /// Rust port of Go `app.WorkspacesService` (`frontend/bindings/recur/internal/app/workspacesservice.ts`).

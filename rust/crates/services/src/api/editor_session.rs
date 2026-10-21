@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use super::models::{EditorSession, EditorSessionPatch};
+use super::{EditorSession, EditorSessionPatch};
 use crate::Result;
 
 /// EditorSessionService persists per-workspace editor UI state — open tabs,

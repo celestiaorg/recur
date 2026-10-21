@@ -20,7 +20,6 @@ use serde_json::Value;
 
 use super::MockBridge;
 use crate::Result;
-use crate::api::usage::{CursorUsageConnect, Snapshot};
 use crate::api::*;
 
 fn json(v: impl Serialize) -> Value {

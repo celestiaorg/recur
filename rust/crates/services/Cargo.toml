@@ -10,7 +10,7 @@ publish = false
 [features]
 # In-memory port of frontend/e2e/helpers/mock-bridge.ts for dev builds, tests
 # and the UI-parity harness.
-mock = ["dep:futures"]
+mock = ["dep:futures", "dep:regex", "dep:uuid"]
 
 [dependencies]
 recur-provider-claude.workspace = true
@@ -34,10 +34,12 @@ async-trait.workspace = true
 base64.workspace = true
 futures = { workspace = true, optional = true }
 parking_lot.workspace = true
+regex = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+uuid = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures.workspace = true

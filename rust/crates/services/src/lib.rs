@@ -9,6 +9,8 @@
 
 pub mod api;
 pub mod events;
+#[cfg(feature = "mock")]
+pub mod mock;
 
 mod error;
 

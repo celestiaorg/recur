@@ -89,14 +89,14 @@ async fn delete_closed_chat_refuses_open_running_and_live_tabs() {
     let tab_b = closed_second_tab(&fx, &ws.id).await;
     assert_eq!(
         tab_codes(&eng.list_closed_workspace_chats(&ws.id)),
-        [tab_b.code.clone()]
+        std::slice::from_ref(&tab_b.code)
     );
     fx.te.store.update_workspace(&ws.id, |w| {
         w.chat_tab_order = vec!["PA".into(), tab_b.code.clone()];
     });
     let (left, err) = eng.delete_closed_workspace_chat(&ws.id, "PA").await;
     assert!(err.is_err(), "an open tab cannot be deleted");
-    assert_eq!(tab_codes(&left), [tab_b.code.clone()]);
+    assert_eq!(tab_codes(&left), std::slice::from_ref(&tab_b.code));
 
     let key = format!("{}{LOOP_MAP_SEP}{}", ws.id, tab_b.code);
     let h = walk(&fx.te, &ws.id, &tab_b.code, &key);
@@ -153,15 +153,15 @@ async fn delete_closed_chat_serializes_with_reopen() {
         .session_for_loop_agent(&ws.id, &tab_b.code)
         .is_some();
     assert!(
-        !(agent_open && !sess_ok),
+        !agent_open || sess_ok,
         "reopen left an open tab with no transcript"
     );
     assert!(
-        !(del_err.is_ok() && agent_open),
+        del_err.is_err() || !agent_open,
         "delete succeeded while open"
     );
     assert!(
-        !(del_err.is_err() && !sess_ok),
+        del_err.is_ok() || sess_ok,
         "delete failed and the session is gone"
     );
     fx.te.close().await;
@@ -454,7 +454,8 @@ fn apply_chat_tab_order_cases() {
     };
     let def = || vec![t("MA"), t("PA"), t("PA2"), t("PA3")];
     let o = |xs: &[&str]| xs.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
-    let cases: Vec<(&str, Vec<WorkspaceChatTab>, Vec<String>, Vec<&str>)> = vec![
+    type Case<'a> = (&'a str, Vec<WorkspaceChatTab>, Vec<String>, Vec<&'a str>);
+    let cases: Vec<Case> = vec![
         ("empty order", def(), vec![], vec!["MA", "PA", "PA2", "PA3"]),
         ("single tab", vec![t("PA")], o(&["PA2", "PA"]), vec!["PA"]),
         (

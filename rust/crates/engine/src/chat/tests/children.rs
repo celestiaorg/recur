@@ -22,7 +22,7 @@ use crate::chat::children::{
 };
 use crate::chat::create_tool::want_child;
 use crate::codes::{PAIR_AGENT_CODE, chat_turn_key, is_chat_child};
-use crate::loops::test_support::{AsyncProvider, CaptureScript};
+use crate::loops::test_support::CaptureScript;
 use crate::testing::wait_for;
 use crate::turn::finalize::CHAT_INJECTED_SENTINEL;
 
@@ -883,13 +883,12 @@ async fn message_child_on_a_finished_child_starts_a_new_turn() {
         Arc::clone(&engine),
         Arc::clone(&replies),
     );
-    let provider = AsyncProvider::wrap(move |req, cx| {
-        let (pid, runs, weng, rep, inner) = (
+    let provider = before_turn(inner, move |req| {
+        let (pid, runs, weng, rep) = (
             Arc::clone(&pid),
             Arc::clone(&runs),
             Arc::clone(&weng),
             Arc::clone(&rep),
-            Arc::clone(&inner),
         );
         async move {
             let parent = pid.lock().clone();
@@ -907,7 +906,6 @@ async fn message_child_on_a_finished_child_starts_a_new_turn() {
                     }
                 }
             }
-            inner.run_turn(req, cx).await
         }
     });
     let fx = Fx::new(Some(provider));

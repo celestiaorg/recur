@@ -544,7 +544,8 @@ pub fn last_tab_unseen(te: &TestEngine, from: usize, ws: &str, code: &str) -> Op
         .by_name("attention.updated")
         .into_iter()
         .skip(from)
-        .filter_map(|ev| match ev {
+        .rev()
+        .find_map(|ev| match ev {
             crate::bus::EngineEvent::AttentionUpdated(a)
                 if a.code == code && a.workspace_id == ws =>
             {
@@ -552,7 +553,6 @@ pub fn last_tab_unseen(te: &TestEngine, from: usize, ws: &str, code: &str) -> Op
             }
             _ => None,
         })
-        .last()
 }
 
 /// The first `n` coder turns, polled for up to 3 s.
@@ -568,4 +568,21 @@ pub async fn wait_coder_turns(
         tokio::time::sleep(Duration::from_millis(15)).await;
     }
     panic!("timed out waiting for {n} coder turns");
+}
+
+/// Runs `pre` with each request before `inner` takes the turn (Go's
+/// wrapping runners: `editingRunner`, `messageFromReportRunner`).
+pub fn before_turn<F, Fut>(inner: Arc<dyn Provider>, pre: F) -> Arc<dyn Provider>
+where
+    F: Fn(TurnRequest) -> Fut + Send + Sync + 'static,
+    Fut: std::future::Future<Output = ()> + Send + 'static,
+{
+    let pre = Arc::new(pre);
+    AsyncProvider::wrap(move |req, cx| {
+        let (inner, pre) = (Arc::clone(&inner), Arc::clone(&pre));
+        async move {
+            pre(req.clone()).await;
+            inner.run_turn(req, cx).await
+        }
+    })
 }

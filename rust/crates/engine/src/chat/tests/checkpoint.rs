@@ -14,7 +14,7 @@ use recur_git::CHECKPOINT_REF_PREFIX;
 use super::recover::persist_working_chat;
 use super::test_support::*;
 use crate::codes::PAIR_AGENT_CODE;
-use crate::loops::test_support::{AsyncProvider, CaptureScript};
+use crate::loops::test_support::CaptureScript;
 use crate::session_config::AgentConfig;
 use crate::testing::{git_out, wait_for};
 use crate::turn::checkpoint::{checkpoint_ref, last_chat_prompt_id};
@@ -23,14 +23,11 @@ use crate::turn::finalize::CHAT_RESUME_DISPLAY;
 /// Go `editingRunner`: writes `name(call)` into the worktree, then replays
 /// the capture script.
 fn editing(c: &Arc<CaptureScript>, name: fn(usize) -> &'static str) -> Arc<dyn Provider> {
-    let (c, inner) = (Arc::clone(c), c.provider());
-    AsyncProvider::wrap(move |req, cx| {
-        let (c, inner) = (Arc::clone(&c), Arc::clone(&inner));
-        async move {
-            let call = c.specs.lock().len();
-            let _ = std::fs::write(req.worktree.join(name(call)), "agent\n");
-            inner.run_turn(req, cx).await
-        }
+    let counter = Arc::clone(c);
+    before_turn(c.provider(), move |req| {
+        let call = counter.specs.lock().len();
+        let _ = std::fs::write(req.worktree.join(name(call)), "agent\n");
+        async {}
     })
 }
 

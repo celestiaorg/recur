@@ -100,8 +100,8 @@ fn mode_rows(exclude_loop: bool, exclude_agent: bool) -> Vec<ChatModeOption> {
     CHAT_MODES
         .iter()
         .filter(|o| {
-            !(exclude_loop && o.value == CHAT_MODE_LOOP)
-                && !(exclude_agent && o.value == CHAT_MODE_AGENT)
+            (!exclude_loop || o.value != CHAT_MODE_LOOP)
+                && (!exclude_agent || o.value != CHAT_MODE_AGENT)
         })
         .copied()
         .collect()

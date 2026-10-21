@@ -6071,6 +6071,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-chroma"
+version = "0.0.0"
+dependencies = [
+ "include_dir",
+ "recur-domain",
+ "serde_json",
+]
+
+[[package]]
 name = "recur-cli"
 version = "0.0.0"
 dependencies = [
@@ -6166,10 +6175,11 @@ name = "recur-git"
 version = "0.0.0"
 dependencies = [
  "chrono",
- "include_dir",
  "nix 0.31.3",
  "pretty_assertions",
+ "recur-chroma",
  "recur-domain",
+ "recur-project",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",

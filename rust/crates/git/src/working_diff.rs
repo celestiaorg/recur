@@ -10,11 +10,11 @@ use tokio::time::Instant;
 use crate::command::command;
 use crate::diff::parse_unified_diff_plain;
 use crate::error::{Error, Result};
-use crate::highlight::highlight_files;
 use crate::status::{
     CHANGE_STATUS_FLIGHTS, StatusLetters, hooks, parse_status_porcelain, status_map,
 };
-use crate::text::{go_string, html_escape};
+use crate::text::go_string;
+use recur_chroma::{highlight_files, html_escape};
 
 /// Caps for the synthetic diff of an untracked or new file: bytes read and
 /// lines rendered are both bounded.
@@ -144,7 +144,7 @@ fn parse_name_status(out: &str) -> StatusLetters {
 
 /// One path's diff versus `base_branch`'s merge-base with HEAD (HEAD when
 /// empty), working tree included. Untracked files render as a full-file
-/// addition. Only the first [`crate::highlight::MAX_HIGHLIGHT_LINES`] lines
+/// addition. Only the first [`recur_chroma::MAX_HIGHLIGHT_LINES`] lines
 /// are highlighted.
 pub async fn working_diff(dir: &str, base_branch: &str, rel: &str) -> Result<FileDiff> {
     let rel = rel.strip_prefix('/').unwrap_or(rel);

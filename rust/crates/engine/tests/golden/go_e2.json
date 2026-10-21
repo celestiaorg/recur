@@ -1,0 +1,1757 @@
+{
+  "artifacts": [
+    {
+      "id": "art-1",
+      "workspaceId": "W1",
+      "title": "Notes",
+      "kind": "md",
+      "path": "workspaces/W1/artifacts/art-1.md",
+      "createdAt": "2026-01-02T03:04:05Z",
+      "createdBy": "PA"
+    },
+    {
+      "id": "art-2",
+      "workspaceId": "W1",
+      "title": "Plan",
+      "kind": "png",
+      "path": "workspaces/W1/artifacts/art-2.png",
+      "createdAt": "2026-01-02T03:04:06Z",
+      "createdBy": "PA"
+    },
+    {
+      "id": "art-3",
+      "workspaceId": "W1",
+      "title": "Two words",
+      "kind": "html",
+      "path": "workspaces/W1/artifacts/art-3.html",
+      "createdAt": "2026-01-02T03:04:07Z",
+      "createdBy": "MA"
+    }
+  ],
+  "askUser": [
+    {
+      "in": {
+        "answer": {
+          "choice": "Postgres"
+        },
+        "question": {
+          "id": "q1",
+          "workspaceId": "W1",
+          "agentCode": "PA",
+          "question": "Which DB?",
+          "context": "We need storage",
+          "options": [
+            {
+              "text": "Postgres",
+              "tag": "recommended",
+              "desc": "relational"
+            },
+            {
+              "text": "SQLite",
+              "tag": "",
+              "desc": ""
+            }
+          ],
+          "askedAgo": ""
+        }
+      },
+      "out": {
+        "display": "Postgres",
+        "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Which DB?\nContext: We need storage\nAnswer: Postgres\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
+      }
+    },
+    {
+      "in": {
+        "answer": {
+          "freeText": "use sqlite\nwith wal"
+        },
+        "question": {
+          "id": "q1",
+          "workspaceId": "W1",
+          "agentCode": "PA",
+          "question": "Which DB?",
+          "context": "We need storage",
+          "options": [
+            {
+              "text": "Postgres",
+              "tag": "recommended",
+              "desc": "relational"
+            },
+            {
+              "text": "SQLite",
+              "tag": "",
+              "desc": ""
+            }
+          ],
+          "askedAgo": ""
+        }
+      },
+      "out": {
+        "display": "use sqlite\nwith wal",
+        "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Which DB?\nContext: We need storage\nAnswer: use sqlite\nwith wal\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
+      }
+    },
+    {
+      "in": {
+        "answer": {
+          "choice": "SQLite",
+          "freeText": "because small"
+        },
+        "question": {
+          "id": "q1",
+          "workspaceId": "W1",
+          "agentCode": "PA",
+          "question": "Which DB?",
+          "context": "We need storage",
+          "options": [
+            {
+              "text": "Postgres",
+              "tag": "recommended",
+              "desc": "relational"
+            },
+            {
+              "text": "SQLite",
+              "tag": "",
+              "desc": ""
+            }
+          ],
+          "askedAgo": ""
+        }
+      },
+      "out": {
+        "display": "SQLite — because small",
+        "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Which DB?\nContext: We need storage\nAnswer: SQLite\nDetails: because small\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
+      }
+    },
+    {
+      "in": {
+        "answer": {},
+        "question": {
+          "id": "q1",
+          "workspaceId": "W1",
+          "agentCode": "PA",
+          "question": "Which DB?",
+          "context": "We need storage",
+          "options": [
+            {
+              "text": "Postgres",
+              "tag": "recommended",
+              "desc": "relational"
+            },
+            {
+              "text": "SQLite",
+              "tag": "",
+              "desc": ""
+            }
+          ],
+          "askedAgo": ""
+        }
+      },
+      "out": {
+        "display": "(empty)",
+        "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Which DB?\nContext: We need storage\nAnswer: (empty)\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
+      }
+    },
+    {
+      "in": {
+        "answer": {
+          "choice": "Postgres"
+        },
+        "question": {
+          "id": "q2",
+          "workspaceId": "W1",
+          "agentCode": "MA",
+          "question": "  Ship it?  ",
+          "askedAgo": ""
+        }
+      },
+      "out": {
+        "display": "Postgres",
+        "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Ship it?\nAnswer: Postgres\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
+      }
+    },
+    {
+      "in": {
+        "answer": {
+          "freeText": "use sqlite\nwith wal"
+        },
+        "question": {
+          "id": "q2",
+          "workspaceId": "W1",
+          "agentCode": "MA",
+          "question": "  Ship it?  ",
+          "askedAgo": ""
+        }
+      },
+      "out": {
+        "display": "use sqlite\nwith wal",
+        "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Ship it?\nAnswer: use sqlite\nwith wal\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
+      }
+    },
+    {
+      "in": {
+        "answer": {
+          "choice": "SQLite",
+          "freeText": "because small"
+        },
+        "question": {
+          "id": "q2",
+          "workspaceId": "W1",
+          "agentCode": "MA",
+          "question": "  Ship it?  ",
+          "askedAgo": ""
+        }
+      },
+      "out": {
+        "display": "SQLite — because small",
+        "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Ship it?\nAnswer: SQLite\nDetails: because small\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
+      }
+    },
+    {
+      "in": {
+        "answer": {},
+        "question": {
+          "id": "q2",
+          "workspaceId": "W1",
+          "agentCode": "MA",
+          "question": "  Ship it?  ",
+          "askedAgo": ""
+        }
+      },
+      "out": {
+        "display": "(empty)",
+        "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Ship it?\nAnswer: (empty)\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
+      }
+    }
+  ],
+  "attachSize": [
+    {
+      "in": 0,
+      "out": "0 B"
+    },
+    {
+      "in": 1,
+      "out": "1 B"
+    },
+    {
+      "in": 1023,
+      "out": "1023 B"
+    },
+    {
+      "in": 1024,
+      "out": "1.0 KB"
+    },
+    {
+      "in": 1536,
+      "out": "1.5 KB"
+    },
+    {
+      "in": 1048575,
+      "out": "1024 KB"
+    },
+    {
+      "in": 1048576,
+      "out": "1.0 MB"
+    },
+    {
+      "in": 5242880,
+      "out": "5.0 MB"
+    },
+    {
+      "in": 3221225472,
+      "out": "3072 MB"
+    }
+  ],
+  "capGitHubPRBody": [
+    {
+      "in": "short",
+      "out": "short"
+    },
+    {
+      "in": "long",
+      "out": {
+        "len": 80000,
+        "sha256": "5af34165078f245d4399a6091f29ce953f347b1fd3f2e1d6de20fb29c8e84f54"
+      }
+    }
+  ],
+  "composer": [
+    {
+      "in": "read @README.md and @src/main.go:3 please",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n- $WT/src/main.go as @src/main.go:3 (29 B) — focus on line 3\n\u003c/system_instruction\u003e\n\nread @README.md and @src/main.go:3 please",
+        "fileMentions": [
+          {
+            "chip": "README.md",
+            "abs": "$WT/README.md",
+            "dir": false,
+            "startLine": 0,
+            "endLine": 0,
+            "startCol": 0,
+            "endCol": 0
+          },
+          {
+            "chip": "src/main.go:3",
+            "abs": "$WT/src/main.go",
+            "dir": false,
+            "startLine": 3,
+            "endLine": 0,
+            "startCol": 0,
+            "endCol": 0
+          }
+        ],
+        "looseArtifacts": null,
+        "masked": "read @README.md and @src/main.go:3 please",
+        "regions": null,
+        "scrub": "read @README.md and @src/main.go:3 please",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "read @README.md and @src/main.go:3 please",
+        "stripSkills": "read @README.md and @src/main.go:3 please",
+        "terminalMentions": null,
+        "wrapArtifacts": "read @README.md and @src/main.go:3 please",
+        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n- $WT/src/main.go as @src/main.go:3 (29 B) — focus on line 3\n\u003c/system_instruction\u003e\n\nread @README.md and @src/main.go:3 please",
+        "wrapSkills": "read @README.md and @src/main.go:3 please"
+      }
+    },
+    {
+      "in": "look at @src/ and @docs and @missing.txt",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "\u003csystem_instruction\u003e\nThe user pointed at these directories. Explore them as needed; do not dump the whole tree.\n- $WT/src as @src\n- $WT/docs as @docs\n\u003c/system_instruction\u003e\n\nlook at @src/ and @docs and @missing.txt",
+        "fileMentions": [
+          {
+            "chip": "src",
+            "abs": "$WT/src",
+            "dir": true,
+            "startLine": 0,
+            "endLine": 0,
+            "startCol": 0,
+            "endCol": 0
+          },
+          {
+            "chip": "docs",
+            "abs": "$WT/docs",
+            "dir": true,
+            "startLine": 0,
+            "endLine": 0,
+            "startCol": 0,
+            "endCol": 0
+          }
+        ],
+        "looseArtifacts": null,
+        "masked": "look at @src/ and @docs and @missing.txt",
+        "regions": null,
+        "scrub": "look at @src/ and @docs and @missing.txt",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "look at @src/ and @docs and @missing.txt",
+        "stripSkills": "look at @src/ and @docs and @missing.txt",
+        "terminalMentions": null,
+        "wrapArtifacts": "look at @src/ and @docs and @missing.txt",
+        "wrapFiles": "\u003csystem_instruction\u003e\nThe user pointed at these directories. Explore them as needed; do not dump the whole tree.\n- $WT/src as @src\n- $WT/docs as @docs\n\u003c/system_instruction\u003e\n\nlook at @src/ and @docs and @missing.txt",
+        "wrapSkills": "look at @src/ and @docs and @missing.txt"
+      }
+    },
+    {
+      "in": "range @src/main.go:1:2-3:4 then @README.md:2-3",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/src/main.go as @src/main.go:1:2-3:4 (29 B) — focus on line 1 column 2 through line 3 column 4\n- $WT/README.md as @README.md:2-3 (15 B) — focus on lines 2–3\n\u003c/system_instruction\u003e\n\nrange @src/main.go:1:2-3:4 then @README.md:2-3",
+        "fileMentions": [
+          {
+            "chip": "src/main.go:1:2-3:4",
+            "abs": "$WT/src/main.go",
+            "dir": false,
+            "startLine": 1,
+            "endLine": 3,
+            "startCol": 2,
+            "endCol": 4
+          },
+          {
+            "chip": "README.md:2-3",
+            "abs": "$WT/README.md",
+            "dir": false,
+            "startLine": 2,
+            "endLine": 3,
+            "startCol": 0,
+            "endCol": 0
+          }
+        ],
+        "looseArtifacts": null,
+        "masked": "range @src/main.go:1:2-3:4 then @README.md:2-3",
+        "regions": null,
+        "scrub": "range @src/main.go:1:2-3:4 then @README.md:2-3",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "range @src/main.go:1:2-3:4 then @README.md:2-3",
+        "stripSkills": "range @src/main.go:1:2-3:4 then @README.md:2-3",
+        "terminalMentions": null,
+        "wrapArtifacts": "range @src/main.go:1:2-3:4 then @README.md:2-3",
+        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/src/main.go as @src/main.go:1:2-3:4 (29 B) — focus on line 1 column 2 through line 3 column 4\n- $WT/README.md as @README.md:2-3 (15 B) — focus on lines 2–3\n\u003c/system_instruction\u003e\n\nrange @src/main.go:1:2-3:4 then @README.md:2-3",
+        "wrapSkills": "range @src/main.go:1:2-3:4 then @README.md:2-3"
+      }
+    },
+    {
+      "in": "email me@example.com not a mention; (@README.md) ok",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "email me@example.com not a mention; (@README.md) ok",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "email me@example.com not a mention; (@README.md) ok",
+        "regions": null,
+        "scrub": "email me@example.com not a mention; (@README.md) ok",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "email me@example.com not a mention; (@README.md) ok",
+        "stripSkills": "email me@example.com not a mention; (@README.md) ok",
+        "terminalMentions": null,
+        "wrapArtifacts": "email me@example.com not a mention; (@README.md) ok",
+        "wrapFiles": "email me@example.com not a mention; (@README.md) ok",
+        "wrapSkills": "email me@example.com not a mention; (@README.md) ok"
+      }
+    },
+    {
+      "in": "@$WT/notes.txt absolute",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/notes.txt as @notes.txt (34 B)\n\u003c/system_instruction\u003e\n\n@$WT/notes.txt absolute",
+        "fileMentions": [
+          {
+            "chip": "notes.txt",
+            "abs": "$WT/notes.txt",
+            "dir": false,
+            "startLine": 0,
+            "endLine": 0,
+            "startCol": 0,
+            "endCol": 0
+          }
+        ],
+        "looseArtifacts": null,
+        "masked": "@$WT/notes.txt absolute",
+        "regions": null,
+        "scrub": "@$WT/notes.txt absolute",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "@$WT/notes.txt absolute",
+        "stripSkills": "@$WT/notes.txt absolute",
+        "terminalMentions": null,
+        "wrapArtifacts": "@$WT/notes.txt absolute",
+        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/notes.txt as @notes.txt (34 B)\n\u003c/system_instruction\u003e\n\n@$WT/notes.txt absolute",
+        "wrapSkills": "@$WT/notes.txt absolute"
+      }
+    },
+    {
+      "in": "`@README.md` inside code still counts? @terminal and @artifact:abc",
+      "out": {
+        "artifactMentions": [
+          {
+            "chip": "artifact:abc",
+            "qual": "abc",
+            "start": 53,
+            "loose": false
+          }
+        ],
+        "dialect": "`@README.md` inside code still counts? @terminal and @artifact:abc",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "`@README.md` inside code still counts? @terminal and @artifact:abc",
+        "regions": null,
+        "scrub": "`@README.md` inside code still counts? @terminal and @artifact:abc",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "`@README.md` inside code still counts? @terminal and @artifact:abc",
+        "stripSkills": "`@README.md` inside code still counts? @terminal and @artifact:abc",
+        "terminalMentions": [
+          {
+            "chip": "terminal",
+            "qual": "",
+            "start": 39,
+            "loose": false
+          }
+        ],
+        "wrapArtifacts": "\u003csystem_instruction\u003e\nThe user attached Observatory artifacts. These live under the managed data dir (workspaces/\u003cid\u003e/artifacts/) — not the git worktree. Do not search the repo for these paths. For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n\n### @artifact:abc\n(no matching artifact)\n\u003c/system_instruction\u003e\n\n`@README.md` inside code still counts? @terminal and @artifact:abc",
+        "wrapFiles": "`@README.md` inside code still counts? @terminal and @artifact:abc",
+        "wrapSkills": "`@README.md` inside code still counts? @terminal and @artifact:abc"
+      }
+    },
+    {
+      "in": "⟦raw⟧@README.md⟧ is raw ⟦/raw⟧ but @notes.txt is not",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/notes.txt as @notes.txt (34 B)\n\u003c/system_instruction\u003e\n\n@README.md⟧ is raw  but @notes.txt is not",
+        "fileMentions": [
+          {
+            "chip": "notes.txt",
+            "abs": "$WT/notes.txt",
+            "dir": false,
+            "startLine": 0,
+            "endLine": 0,
+            "startCol": 0,
+            "endCol": 0
+          }
+        ],
+        "looseArtifacts": null,
+        "masked": "⟦rawph:0⟧ but @notes.txt is not",
+        "regions": [
+          "@README.md⟧ is raw "
+        ],
+        "scrub": "⟦raw⟧@README.md⟧ is raw ⟦/raw⟧ but @notes.txt is not",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "@README.md⟧ is raw  but @notes.txt is not",
+        "stripSkills": "⟦raw⟧@README.md⟧ is raw ⟦/raw⟧ but @notes.txt is not",
+        "terminalMentions": null,
+        "wrapArtifacts": "⟦raw⟧@README.md⟧ is raw ⟦/raw⟧ but @notes.txt is not",
+        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/notes.txt as @notes.txt (34 B)\n\u003c/system_instruction\u003e\n\n⟦raw⟧@README.md⟧ is raw ⟦/raw⟧ but @notes.txt is not",
+        "wrapSkills": "⟦raw⟧@README.md⟧ is raw ⟦/raw⟧ but @notes.txt is not"
+      }
+    },
+    {
+      "in": "⟦raw:k1⟧ /golden-skill ⟦/raw⟧ ⟦/raw:k1⟧ /golden-skill tail",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\n /golden-skill ⟦/raw⟧  tail",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "⟦rawph:0⟧ /golden-skill tail",
+        "regions": [
+          " /golden-skill ⟦/raw⟧ "
+        ],
+        "scrub": "⟦raw:k1⟧ /golden-skill ⟦/raw⟧ ⟦/raw:k1⟧ /golden-skill tail",
+        "skillMentions": [
+          "golden-skill"
+        ],
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": " /golden-skill   /golden-skill tail",
+        "stripSkills": "⟦raw:k1⟧ ⟦/raw⟧ ⟦/raw:k1⟧ tail",
+        "terminalMentions": null,
+        "wrapArtifacts": "⟦raw:k1⟧ /golden-skill ⟦/raw⟧ ⟦/raw:k1⟧ /golden-skill tail",
+        "wrapFiles": "⟦raw:k1⟧ /golden-skill ⟦/raw⟧ ⟦/raw:k1⟧ /golden-skill tail",
+        "wrapSkills": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\n⟦raw:k1⟧ ⟦/raw⟧ ⟦/raw:k1⟧ tail"
+      }
+    },
+    {
+      "in": "use /golden-skill and /missing-skill and path/golden-skill",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\nuse and /missing-skill and path/golden-skill",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "use /golden-skill and /missing-skill and path/golden-skill",
+        "regions": null,
+        "scrub": "use /golden-skill and /missing-skill and path/golden-skill",
+        "skillMentions": [
+          "golden-skill",
+          "missing-skill"
+        ],
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "use /golden-skill and /missing-skill and path/golden-skill",
+        "stripSkills": "use and /missing-skill and path/golden-skill",
+        "terminalMentions": null,
+        "wrapArtifacts": "use /golden-skill and /missing-skill and path/golden-skill",
+        "wrapFiles": "use /golden-skill and /missing-skill and path/golden-skill",
+        "wrapSkills": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\nuse and /missing-skill and path/golden-skill"
+      }
+    },
+    {
+      "in": "@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+        "regions": null,
+        "scrub": "@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+        "stripSkills": "@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+        "terminalMentions": [
+          {
+            "chip": "terminal:zsh",
+            "qual": "zsh",
+            "start": 0,
+            "loose": false
+          },
+          {
+            "chip": "terminal",
+            "qual": "",
+            "start": 14,
+            "loose": false
+          },
+          {
+            "chip": "terminal:abc",
+            "qual": "abc",
+            "start": 24,
+            "loose": false
+          }
+        ],
+        "wrapArtifacts": "@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+        "wrapFiles": "@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+        "wrapSkills": "@terminal:zsh @terminal @terminal:abc @terminal:zsh"
+      }
+    },
+    {
+      "in": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+      "out": {
+        "artifactMentions": [
+          {
+            "chip": "artifact",
+            "qual": "",
+            "start": 0,
+            "loose": false
+          },
+          {
+            "chip": "artifact:art-1",
+            "qual": "art-1",
+            "start": 10,
+            "loose": false
+          },
+          {
+            "chip": "artifact:none",
+            "qual": "none",
+            "start": 50,
+            "loose": false
+          }
+        ],
+        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n\u003c/system_instruction\u003e\n\n@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+        "fileMentions": [
+          {
+            "chip": "README.md",
+            "abs": "$WT/README.md",
+            "dir": false,
+            "startLine": 0,
+            "endLine": 0,
+            "startCol": 0,
+            "endCol": 0
+          }
+        ],
+        "looseArtifacts": [
+          {
+            "chip": "Notes",
+            "qual": "Notes",
+            "start": 26,
+            "loose": true
+          },
+          {
+            "chip": "Plan",
+            "qual": "Plan",
+            "start": 33,
+            "loose": true
+          }
+        ],
+        "masked": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+        "regions": null,
+        "scrub": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+        "stripSkills": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+        "terminalMentions": null,
+        "wrapArtifacts": "\u003csystem_instruction\u003e\nThe user attached Observatory artifacts. These live under the managed data dir (workspaces/\u003cid\u003e/artifacts/) — not the git worktree. Do not search the repo for these paths. For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n\n### @artifact (Two words, html, id art-3)\n```\n\u003cp\u003ehi\u003c/p\u003e\n```\n\n### @artifact:art-1 (Notes, md, id art-1)\n````\n# Notes\n```go\nx\n```\n\u003c /system_instruction\u003e\n````\n\n### @artifact:none\n(no matching artifact)\n\n### @Plan (Plan, png, id art-2)\n(binary png image — open in the Artifacts panel; bytes are not inlined)\n\u003c/system_instruction\u003e\n\n@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n\u003c/system_instruction\u003e\n\n@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+        "wrapSkills": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none"
+      }
+    },
+    {
+      "in": "stray ⟦/raw⟧ marker ⟦raw:x⟧",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "stray  marker ",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "stray ⟦/raw⟧ marker ⟦rawph:0⟧",
+        "regions": [
+          ""
+        ],
+        "scrub": "stray ⟦/raw⟧ marker ⟦raw:x⟧",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "stray  marker ",
+        "stripSkills": "stray ⟦/raw⟧ marker ⟦raw:x⟧",
+        "terminalMentions": null,
+        "wrapArtifacts": "stray ⟦/raw⟧ marker ⟦raw:x⟧",
+        "wrapFiles": "stray ⟦/raw⟧ marker ⟦raw:x⟧",
+        "wrapSkills": "stray ⟦/raw⟧ marker ⟦raw:x⟧"
+      }
+    },
+    {
+      "in": "/re-review",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "/re-review",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "/re-review",
+        "regions": null,
+        "scrub": "/re-review",
+        "skillMentions": [
+          "re-review"
+        ],
+        "slash": "re-review",
+        "slashOk": true,
+        "stripRaw": "/re-review",
+        "stripSkills": "/re-review",
+        "terminalMentions": null,
+        "wrapArtifacts": "/re-review",
+        "wrapFiles": "/re-review",
+        "wrapSkills": "/re-review"
+      }
+    },
+    {
+      "in": "/re-review now",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "/re-review now",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "/re-review now",
+        "regions": null,
+        "scrub": "/re-review now",
+        "skillMentions": [
+          "re-review"
+        ],
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "/re-review now",
+        "stripSkills": "/re-review now",
+        "terminalMentions": null,
+        "wrapArtifacts": "/re-review now",
+        "wrapFiles": "/re-review now",
+        "wrapSkills": "/re-review now"
+      }
+    },
+    {
+      "in": "  /fix_it  ",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "  /fix_it  ",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "  /fix_it  ",
+        "regions": null,
+        "scrub": "  /fix_it  ",
+        "skillMentions": null,
+        "slash": "fix_it",
+        "slashOk": true,
+        "stripRaw": "  /fix_it  ",
+        "stripSkills": "/fix_it",
+        "terminalMentions": null,
+        "wrapArtifacts": "  /fix_it  ",
+        "wrapFiles": "  /fix_it  ",
+        "wrapSkills": "  /fix_it  "
+      }
+    },
+    {
+      "in": "",
+      "out": {
+        "artifactMentions": null,
+        "dialect": "",
+        "fileMentions": null,
+        "looseArtifacts": null,
+        "masked": "",
+        "regions": null,
+        "scrub": "",
+        "skillMentions": null,
+        "slash": "",
+        "slashOk": false,
+        "stripRaw": "",
+        "stripSkills": "",
+        "terminalMentions": null,
+        "wrapArtifacts": "",
+        "wrapFiles": "",
+        "wrapSkills": ""
+      }
+    }
+  ],
+  "constants": {
+    "askUserParkDelay": "150ms",
+    "askUserParkResult": "Question delivered to the user. Stop now and wait — their answer will arrive as a later message. Do not invent an answer or continue working.",
+    "chatAgentErrorPrefix": "Agent error: ",
+    "chatInjectedSentinel": "⁠inject",
+    "chatInterruptedReply": "Interrupted: Recur closed before this turn finished.",
+    "chatResumeDisplay": "Recur restarted: continuing",
+    "chatResumePrompt": "You were interrupted because Recur restarted. Continue from where you left off.",
+    "chatRetryDisplaySentinel": "⁠",
+    "chatStoppedReply": "Stopped by user",
+    "chatTurnTimedOutReply": "Agent error: this turn hit Recur's time limit — send again to continue (use Stop if it looked stuck).",
+    "commentHygieneAppendPrompt": "Code that explains itself needs no comments. Comment only when the code is genuinely complex or the intent would not be obvious to a future reader. Do not put notes, changelogs, reasoning, or internal dialogue in code comments: not line comments, block comments, or new docstrings. Restating the next line is not explaining intent. No \"changed\", \"updated to\", \"previously\", \"NOTE:\", \"I considered\", \"per the ticket\". If you added one of those in this edit, delete it before you finish. Keep comments that were already in the file unless the user asked to remove them.",
+    "commentHygieneNeedle": "changelogs, reasoning, or internal dialogue",
+    "commitMessageSystemPrompt": "You write git commit messages from a staged diff. Reply with ONLY the commit message: a short subject line (at most ~72 characters), optionally followed by a blank line and a brief body. Match the style of the recent commit subjects when provided. No quotes, no markdown fences, no explanation, no preamble. Do not call tools, read files, or explore the codebase — use the diff text alone.",
+    "commitMessageTimeout": "45s",
+    "errEmptyPromptAction": "prompt action returned no prompt",
+    "errMCPUnavailable": "the Recur MCP server could not start, so agents have no way to report findings, completion, or escalations",
+    "fileAtRe": "@((?:/(?:[^\\s@:]+(?:/[^\\s@:]+)*)|(?:[\\w.-]+/)+[\\w./+-]+|[\\w.-]+/|[\\w.-]+\\.[A-Za-z][\\w.-]*|\\.[A-Za-z0-9_][\\w.-]*)(?::\\d+(?::\\d+)?(?:-\\d+(?::\\d+)?)?)?)",
+    "forkPreambleLead": "This chat was forked from an earlier conversation.",
+    "permissionPromptToolPresent": "mcp__recur__permission_request",
+    "permissionSurfaceChat": "chat",
+    "permissionSurfaceLoop": "loop",
+    "permissionTimeout": "10m0s",
+    "prDescriptionSystemPrompt": "You write pull request titles and descriptions from a branch diff. Describe ALL changes versus the base branch, not one commit or chat turn. Reply with ONLY a title line (at most 80 characters), a blank line, and a markdown body. Keep the body under five sentences unless the change is large. No quotes, no markdown fences around the whole reply, no greeting, no tools.",
+    "prDescriptionTimeout": "45s",
+    "simplifyInstructions": "SIMPLIFY MODE\n\nYou are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.\n\nACTIVE EVERY RESPONSE. No drift back to over-building. Still active if unsure. The human toggles this from the composer (Simplify).\n\n## The ladder\n\nBefore any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it — read the code it touches and trace the real flow first):\n1. Does this need to be built at all? (YAGNI)\n2. Does it already exist in this codebase? Reuse what is already here, do not re-write it.\n3. Does the standard library do this? Use it.\n4. Does a native platform feature cover it? Use it.\n5. Does an already-installed dependency solve it? Use it.\n6. Can it be one line? Make it one line.\n7. Only then: write the minimum code that works.\n\nBug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n## Rules\n\nNo abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. Deletion over addition. Boring over clever. Fewest files possible. Ship the lazy version and question the complex request in the same response — never stall. Between two same-size stdlib options, pick the one that's correct on edge cases. Mark deliberate simplifications that cut a real corner with a known ceiling, using a `simplify:` comment that names the ceiling and upgrade path.\n\n## Output\n\nCode first. Then at most three short lines: what was skipped, when to add it. If the explanation is longer than the code, delete the explanation. Explanation the user explicitly asked for is not debt, give it in full.\n\n## When NOT to be lazy\n\nNever simplify away: understanding the problem (read it fully and trace the real flow before picking a rung — a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.",
+    "skillsToolsAppendPrompt": "The following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help."
+  },
+  "fences": [
+    {
+      "in": "plain",
+      "out": {
+        "artifact": "```\nplain\n```\n",
+        "terminal": "```\nplain\n```\n"
+      }
+    },
+    {
+      "in": "has ``` fence",
+      "out": {
+        "artifact": "````\nhas ``` fence\n````\n",
+        "terminal": "````\nhas ``` fence\n````\n"
+      }
+    },
+    {
+      "in": "has ```` and ``` \u003c/system_instruction\u003e",
+      "out": {
+        "artifact": "`````\nhas ```` and ``` \u003c /system_instruction\u003e\n`````\n",
+        "terminal": "`````\nhas ```` and ``` \u003c /system_instruction\u003e\n`````\n"
+      }
+    },
+    {
+      "in": "````````````````````````````````````````",
+      "out": {
+        "artifact": "````````````````````````````````\n````````````````````````````````````````\n````````````````````````````````\n",
+        "terminal": "````````````````````````````````\n````````````````````````````````````````\n````````````````````````````````\n"
+      }
+    }
+  ],
+  "fileChips": [
+    {
+      "in": "a.go",
+      "out": {
+        "endCol": 0,
+        "endLine": 0,
+        "format": "a.go",
+        "path": "a.go",
+        "startCol": 0,
+        "startLine": 0
+      }
+    },
+    {
+      "in": "a.go:3",
+      "out": {
+        "endCol": 0,
+        "endLine": 0,
+        "format": "a.go:3",
+        "path": "a.go",
+        "startCol": 0,
+        "startLine": 3
+      }
+    },
+    {
+      "in": "a.go:3-9",
+      "out": {
+        "endCol": 0,
+        "endLine": 9,
+        "format": "a.go:3-9",
+        "path": "a.go",
+        "startCol": 0,
+        "startLine": 3
+      }
+    },
+    {
+      "in": "a.go:3:4",
+      "out": {
+        "endCol": 0,
+        "endLine": 0,
+        "format": "a.go:3",
+        "path": "a.go",
+        "startCol": 0,
+        "startLine": 3
+      }
+    },
+    {
+      "in": "a.go:3:4-9:2",
+      "out": {
+        "endCol": 2,
+        "endLine": 9,
+        "format": "a.go:3:4-9:2",
+        "path": "a.go",
+        "startCol": 4,
+        "startLine": 3
+      }
+    },
+    {
+      "in": "a.go:0",
+      "out": {
+        "endCol": 0,
+        "endLine": 0,
+        "format": "a.go",
+        "path": "a.go",
+        "startCol": 0,
+        "startLine": 0
+      }
+    },
+    {
+      "in": "a.go:9-3",
+      "out": {
+        "endCol": 0,
+        "endLine": 0,
+        "format": "a.go:9",
+        "path": "a.go",
+        "startCol": 0,
+        "startLine": 9
+      }
+    },
+    {
+      "in": "dir/",
+      "out": {
+        "endCol": 0,
+        "endLine": 0,
+        "format": "dir/",
+        "path": "dir/",
+        "startCol": 0,
+        "startLine": 0
+      }
+    },
+    {
+      "in": "x:y:z",
+      "out": {
+        "endCol": 0,
+        "endLine": 0,
+        "format": "x:y:z",
+        "path": "x:y:z",
+        "startCol": 0,
+        "startLine": 0
+      }
+    },
+    {
+      "in": "/abs/p.ts:12",
+      "out": {
+        "endCol": 0,
+        "endLine": 0,
+        "format": "/abs/p.ts:12",
+        "path": "/abs/p.ts",
+        "startCol": 0,
+        "startLine": 12
+      }
+    }
+  ],
+  "fileHint": [
+    {
+      "in": null,
+      "out": ""
+    },
+    {
+      "in": [
+        "a.go"
+      ],
+      "out": "a.go"
+    },
+    {
+      "in": [
+        "a/x.go",
+        "b/x.go"
+      ],
+      "out": "x.go"
+    },
+    {
+      "in": [
+        "a.go",
+        "b.go",
+        "c.go",
+        "d.go",
+        "e.go"
+      ],
+      "out": "a.go, b.go, c.go +2"
+    }
+  ],
+  "firstParagraph": [
+    {
+      "in": "# Plan\n\nFirst para\nline two\n\nSecond",
+      "out": "Plan"
+    },
+    {
+      "in": "  - bullet one\n- two",
+      "out": "bullet one"
+    },
+    {
+      "in": "",
+      "out": ""
+    },
+    {
+      "in": "**Bold** start",
+      "out": "**Bold** start"
+    }
+  ],
+  "formatChatAgentError": [
+    {
+      "in": {
+        "err": "",
+        "deadline": true,
+        "text": "",
+        "subtype": "",
+        "isError": false,
+        "stderr": ""
+      },
+      "out": "Agent error: this turn hit Recur's time limit — send again to continue (use Stop if it looked stuck)."
+    },
+    {
+      "in": {
+        "err": "",
+        "deadline": false,
+        "text": "",
+        "subtype": "",
+        "isError": false,
+        "stderr": ""
+      },
+      "out": "I hit an error trying to respond just now. Try again."
+    },
+    {
+      "in": {
+        "err": "",
+        "deadline": false,
+        "text": "",
+        "subtype": "success",
+        "isError": false,
+        "stderr": ""
+      },
+      "out": "Agent error: success"
+    },
+    {
+      "in": {
+        "err": "exit status 1",
+        "deadline": false,
+        "text": "",
+        "subtype": "",
+        "isError": false,
+        "stderr": "Error: boom happened\nmore"
+      },
+      "out": "Agent error: Error: boom happened"
+    },
+    {
+      "in": {
+        "err": "cursor run: ended without a result",
+        "deadline": false,
+        "text": "I'll check the files",
+        "subtype": "",
+        "isError": false,
+        "stderr": ""
+      },
+      "out": "Agent error: cursor run: ended without a result"
+    },
+    {
+      "in": {
+        "err": "",
+        "deadline": false,
+        "text": "Prompt is too long\nsecond",
+        "subtype": "",
+        "isError": true,
+        "stderr": ""
+      },
+      "out": "Agent error: Prompt is too long"
+    },
+    {
+      "in": {
+        "err": "",
+        "deadline": false,
+        "text": "",
+        "subtype": "error_max_turns",
+        "isError": true,
+        "stderr": ""
+      },
+      "out": "Agent error: error_max_turns"
+    },
+    {
+      "in": {
+        "err": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+        "deadline": false,
+        "text": "",
+        "subtype": "",
+        "isError": false,
+        "stderr": ""
+      },
+      "out": "Agent error: ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé…"
+    },
+    {
+      "in": {
+        "err": "\u001b[31mred failure\u001b[0m",
+        "deadline": false,
+        "text": "",
+        "subtype": "",
+        "isError": false,
+        "stderr": ""
+      },
+      "out": "Agent error: red failure"
+    }
+  ],
+  "joinAppendPrompt": [
+    {
+      "in": [
+        "",
+        ""
+      ],
+      "out": ""
+    },
+    {
+      "in": [
+        "a",
+        ""
+      ],
+      "out": "a"
+    },
+    {
+      "in": [
+        "",
+        "b"
+      ],
+      "out": "b"
+    },
+    {
+      "in": [
+        "a",
+        "b"
+      ],
+      "out": "a\n\nb"
+    },
+    {
+      "in": [
+        "a\n",
+        "b"
+      ],
+      "out": "a\n\nb"
+    },
+    {
+      "in": [
+        "a",
+        "a"
+      ],
+      "out": "a\n\na"
+    }
+  ],
+  "loopCommitMessage": [
+    {
+      "in": {
+        "done": "Added dark mode",
+        "goal": "dark mode",
+        "files": [
+          "a/b.go",
+          "c.ts"
+        ]
+      },
+      "out": "Added dark mode"
+    },
+    {
+      "in": {
+        "done": "",
+        "goal": "ENG-123: Fix login redirect\nmore detail",
+        "files": [
+          "a.go",
+          "b.go",
+          "c.go",
+          "d.go",
+          "a/a.go"
+        ]
+      },
+      "out": "ENG-123: Fix login redirect (a.go, b.go, c.go +1)"
+    },
+    {
+      "in": {
+        "done": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+        "goal": "",
+        "files": null
+      },
+      "out": "word word word word word word word word word word word word word word wo"
+    },
+    {
+      "in": {
+        "done": "",
+        "goal": "  ",
+        "files": [
+          "x.go"
+        ]
+      },
+      "out": "changes (x.go)"
+    },
+    {
+      "in": {
+        "done": "- Bullet summary.",
+        "goal": "g",
+        "files": null
+      },
+      "out": "- Bullet summary."
+    }
+  ],
+  "mergePlanSteps": [
+    {
+      "in": {
+        "titles": [
+          "First",
+          "Second",
+          "Third"
+        ],
+        "ids": null,
+        "meta": null
+      },
+      "out": [
+        {
+          "id": "S1",
+          "title": "First",
+          "status": "done",
+          "note": "ok",
+          "files": [
+            "a.go"
+          ]
+        },
+        {
+          "id": "S2",
+          "title": "Second",
+          "status": "doing",
+          "dependsOn": [
+            "S1"
+          ]
+        },
+        {
+          "id": "S3",
+          "title": "Third",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "in": {
+        "titles": [
+          "Second",
+          "New one"
+        ],
+        "ids": [
+          "",
+          ""
+        ],
+        "meta": null
+      },
+      "out": [
+        {
+          "id": "S1",
+          "title": "Second",
+          "status": "doing"
+        },
+        {
+          "id": "S2",
+          "title": "New one",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "in": {
+        "titles": [
+          "Renamed",
+          "Third"
+        ],
+        "ids": [
+          "S1",
+          "S3"
+        ],
+        "meta": [
+          {
+            "Files": [
+              "b.go"
+            ],
+            "DependsOn": null,
+            "Explicit": true
+          },
+          {
+            "Files": null,
+            "DependsOn": null,
+            "Explicit": false
+          }
+        ]
+      },
+      "out": [
+        {
+          "id": "S1",
+          "title": "Renamed",
+          "status": "done",
+          "note": "ok",
+          "files": [
+            "b.go"
+          ]
+        },
+        {
+          "id": "S2",
+          "title": "Third",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "in": {
+        "titles": [
+          "First",
+          "First"
+        ],
+        "ids": null,
+        "meta": null
+      },
+      "out": [
+        {
+          "id": "S1",
+          "title": "First",
+          "status": "done",
+          "note": "ok",
+          "files": [
+            "a.go"
+          ]
+        },
+        {
+          "id": "S2",
+          "title": "First",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "in": {
+        "titles": null,
+        "ids": null,
+        "meta": null
+      },
+      "out": null
+    }
+  ],
+  "parsePRDescription": [
+    {
+      "in": "Title here\n\nBody line 1\nBody line 2",
+      "out": [
+        "Title here",
+        "Body line 1\nBody line 2"
+      ]
+    },
+    {
+      "in": "```\nTitle: Fixed it\n\n## Summary\n- a\n```",
+      "out": [
+        "Title: Fixed it",
+        "## Summary\n- a"
+      ]
+    },
+    {
+      "in": "\"Quoted title\"\n\nbody",
+      "out": [
+        "Quoted title",
+        "body"
+      ]
+    },
+    {
+      "in": "Title: x\nBody: y",
+      "out": [
+        "Title: x",
+        "Body: y"
+      ]
+    },
+    {
+      "in": "  only title  ",
+      "out": [
+        "only title",
+        ""
+      ]
+    },
+    {
+      "in": "",
+      "out": [
+        "",
+        ""
+      ]
+    },
+    {
+      "in": "# Heading title\n\n\u003e quoted\n\u003e body",
+      "out": [
+        "# Heading title",
+        "\u003e quoted\n\u003e body"
+      ]
+    }
+  ],
+  "planCard": {
+    "item": {
+      "id": "",
+      "agentCode": "PA",
+      "name": "Agent",
+      "text": "Filed a structured plan: 2 step(s) —   Ship \u0026lt;dark\u0026gt; \u0026amp; mode  ",
+      "time": "now",
+      "kind": "outcome",
+      "isDeviation": false,
+      "card": "plan",
+      "data": "{\"summary\":\"Ship \\u003cdark\\u003e \\u0026 mode\",\"steps\":[{\"id\":\"S1\",\"title\":\"One\",\"files\":[\"a.go\"]},{\"id\":\"S2\",\"title\":\"Two\",\"dependsOn\":[\"S1\"]}],\"source\":\"chat\"}"
+    },
+    "plan": {
+      "summary": "  Ship \u003cdark\u003e \u0026 mode  ",
+      "steps": [
+        {
+          "id": "S1",
+          "title": "One",
+          "status": "",
+          "files": [
+            "a.go"
+          ]
+        },
+        {
+          "id": "S2",
+          "title": "Two",
+          "status": "",
+          "dependsOn": [
+            "S1"
+          ]
+        }
+      ],
+      "source": "chat"
+    }
+  },
+  "planPrev": [
+    {
+      "id": "S1",
+      "title": "First",
+      "status": "done",
+      "note": "ok",
+      "files": [
+        "a.go"
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "Second",
+      "status": "doing",
+      "dependsOn": [
+        "S1"
+      ]
+    },
+    {
+      "id": "S3",
+      "title": "Third",
+      "status": "todo"
+    }
+  ],
+  "planSource": [
+    {
+      "in": "PA",
+      "out": [
+        "plan-chat",
+        "PA",
+        "PA"
+      ]
+    },
+    {
+      "in": "PA2",
+      "out": [
+        "plan-chat",
+        "PA2",
+        "PA2"
+      ]
+    },
+    {
+      "in": "AR",
+      "out": [
+        "human",
+        "",
+        "PA3"
+      ]
+    },
+    {
+      "in": "MA",
+      "out": [
+        "loop-planner",
+        "",
+        "PA3"
+      ]
+    },
+    {
+      "in": "PL",
+      "out": [
+        "loop-planner",
+        "",
+        "PA3"
+      ]
+    },
+    {
+      "in": "CO",
+      "out": [
+        "loop-planner",
+        "",
+        "PA3"
+      ]
+    },
+    {
+      "in": "",
+      "out": [
+        "loop-planner",
+        "",
+        "PA3"
+      ]
+    }
+  ],
+  "prompts": {
+    "capDiff4000": "diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n+new\ndiff --git a/big.txt b/big.txt\n--- a/big.txt\n+++ b/big.txt\n@@ -0,0 +1 @@\n+yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n[truncated]\ndiff --git a/z.md b/z.md\n--- a/z.md\n+++ b/z.md\n@@ -1 +1 @@\n-é\n+ü",
+    "capDiffSmall": "diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n[truncated]\ndiff --git a/big.txt b/big.txt\n--- a/big.txt\n+++ b/big.txt\n@@ -0\n[truncated]\ndiff --git a/z.md b/z.md\n--- a/z.md\n+++ b/z.md\n@@ -1 +1 @@\n-é\n+\n[truncated]",
+    "capDiffWhole": "diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n+new\ndiff --git a/big.txt b/big.txt\n--- a/big.txt\n+++ b/big.txt\n@@ -0,0 +1 @@\n+yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\ndiff --git a/z.md b/z.md\n--- a/z.md\n+++ b/z.md\n@@ -1 +1 @@\n-é\n+ü\n",
+    "commit": "Recent commit subjects (newest first):\n- Fix the thing\n- Add tests\n\nStaged diff:\n\ndiff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n+new\ndiff --git a/big.txt b/big.txt\n--- a/big.txt\n+++ b/big.txt\n@@ -0,0 +1 @@\n+yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\ndiff --git a/z.md b/z.md\n--- a/z.md\n+++ b/z.md\n@@ -1 +1 @@\n-é\n+ü\n",
+    "commitHuge": "Recent commit subjects (newest first):\n- Fix the thing\n- Add tests\n\nStaged diff:\n\ndiff --git a/f b/f\n+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq\ndiff --git a/f b/f\n+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq\ndiff --git a/f b/f\n+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq\ndiff --git a/f b/f\n+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq\n\n[diff truncated]",
+    "commitNoSubject": "Staged diff:\n\ndiff --git a/x b/x\n+1\n",
+    "pr": "Write a pull request title and description covering every change versus the base.\n\nCommit subjects (newest first):\n- abc123 Fix\n- def456 Add\n\nDiff:\n\ndiff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n+new\ndiff --git a/big.txt b/big.txt\n--- a/big.txt\n+++ b/big.txt\n@@ -0,0 +1 @@\n+yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\ndiff --git a/z.md b/z.md\n--- a/z.md\n+++ b/z.md\n@@ -1 +1 @@\n-é\n+ü\n",
+    "prNoCommits": "Write a pull request title and description covering every change versus the base.\n\nDiff:\n\ndiff --git a/x b/x\n+1\n"
+  },
+  "resolveTerminal": [
+    {
+      "in": {
+        "Qual": "",
+        "Active": ""
+      },
+      "out": [
+        "t-bbb2"
+      ]
+    },
+    {
+      "in": {
+        "Qual": "",
+        "Active": "t-aaa1"
+      },
+      "out": [
+        "t-aaa1"
+      ]
+    },
+    {
+      "in": {
+        "Qual": "t-bbb2",
+        "Active": ""
+      },
+      "out": [
+        "t-bbb2"
+      ]
+    },
+    {
+      "in": {
+        "Qual": "t-ab",
+        "Active": ""
+      },
+      "out": [
+        "t-abc3"
+      ]
+    },
+    {
+      "in": {
+        "Qual": "t-a",
+        "Active": ""
+      },
+      "out": null
+    },
+    {
+      "in": {
+        "Qual": "server",
+        "Active": ""
+      },
+      "out": [
+        "t-bbb2"
+      ]
+    },
+    {
+      "in": {
+        "Qual": "zsh",
+        "Active": ""
+      },
+      "out": null
+    },
+    {
+      "in": {
+        "Qual": "nope",
+        "Active": ""
+      },
+      "out": null
+    }
+  ],
+  "sanitizeCommitMessage": [
+    {
+      "in": "Fix the bug",
+      "out": "Fix the bug"
+    },
+    {
+      "in": "```\nFix the bug\n\nBody text\n```",
+      "out": "Fix the bug\n\nBody text"
+    },
+    {
+      "in": "\"Quoted subject.\"",
+      "out": "Quoted subject."
+    },
+    {
+      "in": "Subject\n\n\n\nBody\n\n\nMore",
+      "out": "Subject\n\n\n\nBody\n\n\nMore"
+    },
+    {
+      "in": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+      "out": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long…"
+    },
+    {
+      "in": "",
+      "out": ""
+    },
+    {
+      "in": "commit message: Add flag",
+      "out": "commit message: Add flag"
+    }
+  ],
+  "sanitizeTitle": [
+    {
+      "in": "\"Fix the bug.\"",
+      "out": [
+        "Fix the bug",
+        "Fix the bug"
+      ]
+    },
+    {
+      "in": "First line\nsecond",
+      "out": [
+        "First line",
+        "First line"
+      ]
+    },
+    {
+      "in": "New Workspace",
+      "out": [
+        "",
+        ""
+      ]
+    },
+    {
+      "in": "  ",
+      "out": [
+        "",
+        ""
+      ]
+    },
+    {
+      "in": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "out": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"
+      ]
+    },
+    {
+      "in": "Title: Dark mode",
+      "out": [
+        "Title: Dark mode",
+        "Title: Dark mode"
+      ]
+    },
+    {
+      "in": "`code`",
+      "out": [
+        "code",
+        "code"
+      ]
+    },
+    {
+      "in": "**Bold** title!",
+      "out": [
+        "**Bold** title",
+        "**Bold** title"
+      ]
+    },
+    {
+      "in": "Ship it!",
+      "out": [
+        "Ship it",
+        "Ship it"
+      ]
+    },
+    {
+      "in": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+      "out": [
+        "ééééééééééééééééééééééééééééé…",
+        "ééééééééééééééééééééééééééééé…"
+      ]
+    }
+  ],
+  "skillContent": [
+    {
+      "in": "short",
+      "out": "\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e"
+    },
+    {
+      "in": "long",
+      "out": {
+        "len": 100262,
+        "sha256": "67b6fa7dbd18a66d4deedfef8792bb0e5c9ab21176cacffdeb162b381bde68c7"
+      }
+    }
+  ],
+  "terminalExitedNote": [
+    {
+      "in": "t-aaa1",
+      "out": ", exited (2)"
+    },
+    {
+      "in": "t-bbb2",
+      "out": ""
+    },
+    {
+      "in": "t-abc3",
+      "out": ", exited (0)"
+    },
+    {
+      "in": "t-ccc4",
+      "out": ""
+    },
+    {
+      "in": "exited-nil",
+      "out": ", exited (0)"
+    }
+  ],
+  "terminalSessions": [
+    {
+      "id": "t-aaa1",
+      "workspaceId": "W1",
+      "cwd": "",
+      "shell": "",
+      "title": "zsh",
+      "createdAt": "2026-01-02T03:04:05.1Z",
+      "exited": true,
+      "exitCode": 2
+    },
+    {
+      "id": "t-bbb2",
+      "workspaceId": "W1",
+      "cwd": "",
+      "shell": "",
+      "title": "server",
+      "createdAt": "2026-01-02T03:04:05.3Z"
+    },
+    {
+      "id": "t-abc3",
+      "workspaceId": "W1",
+      "cwd": "",
+      "shell": "",
+      "title": "zsh",
+      "createdAt": "2026-01-02T03:04:05.2Z",
+      "exited": true,
+      "exitCode": 0
+    },
+    {
+      "id": "t-ccc4",
+      "workspaceId": "W1",
+      "cwd": "",
+      "shell": "",
+      "title": "logs",
+      "createdAt": "2026-01-02T03:04:05.2Z"
+    }
+  ]
+}

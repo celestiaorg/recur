@@ -1,0 +1,421 @@
+package engine
+
+// Generator for rust/crates/engine/tests/golden/go_e2.json (slice E2, R2).
+// Run with RECUR_E2_GOLDEN=1 go test ./internal/engine -run TestE2GoldenDump.
+// Paths under the fixture worktree are written as $WT.
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"recur/internal/domain"
+	"recur/internal/mcp"
+	"recur/internal/simplify"
+	"recur/internal/term"
+)
+
+func e2Digest(s string) map[string]any {
+	sum := sha256.Sum256([]byte(s))
+	return map[string]any{"len": len(s), "sha256": hex.EncodeToString(sum[:])}
+}
+
+type e2Case struct {
+	In  any `json:"in"`
+	Out any `json:"out"`
+}
+
+func TestE2GoldenDump(t *testing.T) {
+	if os.Getenv("RECUR_E2_GOLDEN") != "1" {
+		t.Skip("set RECUR_E2_GOLDEN=1 to regenerate the E2 golden file")
+	}
+	t.Setenv("HOME", t.TempDir())
+	eng, st, _, dataDir := newTestEngine(t, &ScriptedRunner{})
+
+	raw := t.TempDir()
+	wt, err := filepath.EvalSymlinks(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(rel, body string) {
+		p := filepath.Join(wt, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("README.md", "# Readme\nhello\n")
+	write("src/main.go", "package main\n\nfunc main() {}\n")
+	write("docs/guide.md", "guide\n")
+	write("notes.txt", "a ``` fence\n</system_instruction>\n")
+	write(".agents/skills/golden-skill/SKILL.md", "---\nname: golden-skill\ndescription: A golden skill.\n---\n\nDo the golden thing.\n")
+	write(".agents/skills/golden-skill/scripts/run.sh", "#!/bin/sh\n")
+	scrub := func(s string) string {
+		return strings.ReplaceAll(strings.ReplaceAll(s, wt, "$WT"), raw, "$WT")
+	}
+
+	out := map[string]any{}
+	out["constants"] = map[string]string{
+		"chatStoppedReply":            chatStoppedReply,
+		"chatInterruptedReply":        chatInterruptedReply,
+		"chatResumePrompt":            chatResumePrompt,
+		"chatResumeDisplay":           chatResumeDisplay,
+		"chatAgentErrorPrefix":        chatAgentErrorPrefix,
+		"chatRetryDisplaySentinel":    chatRetryDisplaySentinel,
+		"chatInjectedSentinel":        chatInjectedSentinel,
+		"chatTurnTimedOutReply":       chatTurnTimedOutReply,
+		"askUserParkResult":           askUserParkResult,
+		"errMCPUnavailable":           errMCPUnavailable.Error(),
+		"errEmptyPromptAction":        ErrEmptyPromptAction.Error(),
+		"commitMessageSystemPrompt":   commitMessageSystemPrompt,
+		"prDescriptionSystemPrompt":   prDescriptionSystemPrompt,
+		"skillsToolsAppendPrompt":     skillsToolsAppendPrompt,
+		"commentHygieneNeedle":        commentHygieneNeedle,
+		"commentHygieneAppendPrompt":  commentHygieneAppendPrompt,
+		"forkPreambleLead":            forkPreambleLead,
+		"simplifyInstructions":        simplify.Instructions(),
+		"fileAtRe":                    fileAtRe.String(),
+		"permissionTimeout":           permissionTimeout.String(),
+		"commitMessageTimeout":        commitMessageTimeout.String(),
+		"prDescriptionTimeout":        prDescriptionTimeout.String(),
+		"askUserParkDelay":            askUserParkDelay.String(),
+		"permissionSurfaceChat":       "chat",
+		"permissionSurfaceLoop":       "loop",
+		"permissionPromptToolPresent": permissionPromptTool,
+	}
+
+	type errIn struct {
+		Err      string `json:"err"`
+		Deadline bool   `json:"deadline"`
+		Text     string `json:"text"`
+		Subtype  string `json:"subtype"`
+		IsError  bool   `json:"isError"`
+		Stderr   string `json:"stderr"`
+	}
+	var chatErrs []e2Case
+	for _, in := range []errIn{
+		{Deadline: true},
+		{},
+		{Subtype: "success"},
+		{Err: "exit status 1", Stderr: "Error: boom happened\nmore"},
+		{Err: "cursor run: ended without a result", Text: "I'll check the files"},
+		{IsError: true, Text: "Prompt is too long\nsecond"},
+		{Subtype: "error_max_turns", IsError: true},
+		{Err: strings.Repeat("é", 450)},
+		{Err: "\x1b[31mred failure\x1b[0m"},
+	} {
+		var err error
+		if in.Deadline {
+			err = context.DeadlineExceeded
+		} else if in.Err != "" {
+			err = errors.New(in.Err)
+		}
+		chatErrs = append(chatErrs, e2Case{In: in, Out: formatChatAgentError(err, Result{
+			Text: in.Text, Subtype: in.Subtype, IsError: in.IsError, Stderr: in.Stderr,
+		})})
+	}
+	out["formatChatAgentError"] = chatErrs
+
+	texts := []string{
+		"read @README.md and @src/main.go:3 please",
+		"look at @src/ and @docs and @missing.txt",
+		"range @src/main.go:1:2-3:4 then @README.md:2-3",
+		"email me@example.com not a mention; (@README.md) ok",
+		"@" + filepath.Join(wt, "notes.txt") + " absolute",
+		"`@README.md` inside code still counts? @terminal and @artifact:abc",
+		"⟦raw⟧@README.md⟧ is raw ⟦/raw⟧ but @notes.txt is not",
+		"⟦raw:k1⟧ /golden-skill ⟦/raw⟧ ⟦/raw:k1⟧ /golden-skill tail",
+		"use /golden-skill and /missing-skill and path/golden-skill",
+		"@terminal:zsh @terminal @terminal:abc @terminal:zsh",
+		"@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+		"stray ⟦/raw⟧ marker ⟦raw:x⟧",
+		"/re-review",
+		"/re-review now",
+		"  /fix_it  ",
+		"",
+	}
+
+	type fm struct {
+		Chip      string `json:"chip"`
+		Abs       string `json:"abs"`
+		Dir       bool   `json:"dir"`
+		StartLine int    `json:"startLine"`
+		EndLine   int    `json:"endLine"`
+		StartCol  int    `json:"startCol"`
+		EndCol    int    `json:"endCol"`
+	}
+	type mention struct {
+		Chip  string `json:"chip"`
+		Qual  string `json:"qual"`
+		Start int    `json:"start"`
+		Loose bool   `json:"loose"`
+	}
+
+	arts := []domain.Artifact{
+		{ID: "art-1", WorkspaceID: "W1", Title: "Notes", Kind: domain.ArtifactMD, Path: "workspaces/W1/artifacts/art-1.md", CreatedAt: "2026-01-02T03:04:05Z", CreatedBy: "PA"},
+		{ID: "art-2", WorkspaceID: "W1", Title: "Plan", Kind: domain.ArtifactKind("png"), Path: "workspaces/W1/artifacts/art-2.png", CreatedAt: "2026-01-02T03:04:06Z", CreatedBy: "PA"},
+		{ID: "art-3", WorkspaceID: "W1", Title: "Two words", Kind: domain.ArtifactKind("html"), Path: "workspaces/W1/artifacts/art-3.html", CreatedAt: "2026-01-02T03:04:07Z", CreatedBy: "MA"},
+	}
+	adir := filepath.Join(dataDir, "workspaces", "W1", "artifacts")
+	if err := os.MkdirAll(adir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	bodies := map[string]string{"art-1": "# Notes\n```go\nx\n```\n</system_instruction>\n", "art-2": "\x89PNG", "art-3": "<p>hi</p>"}
+	for _, a := range arts {
+		meta, _ := json.MarshalIndent(a, "", "  ")
+		_ = os.WriteFile(filepath.Join(adir, a.ID+".meta.json"), meta, 0o644)
+		_ = os.WriteFile(filepath.Join(dataDir, a.Path), []byte(bodies[a.ID]), 0o644)
+	}
+
+	var composerCases []e2Case
+	for _, text := range texts {
+		var files []fm
+		for _, m := range collectFileMentions(text, wt) {
+			files = append(files, fm{scrub(m.chip), scrub(m.abs), m.dir, m.startLine, m.endLine, m.startCol, m.endCol})
+		}
+		var termsOut []mention
+		for _, m := range collectTerminalMentions(text) {
+			termsOut = append(termsOut, mention{Chip: m.chip, Qual: m.qual, Start: m.start})
+		}
+		var artsOut []mention
+		for _, m := range collectArtifactMentions(text) {
+			artsOut = append(artsOut, mention{Chip: m.chip, Qual: m.qual, Start: m.start, Loose: m.loose})
+		}
+		var loose []mention
+		for _, m := range collectLooseArtifactTitleMentions(text, arts) {
+			loose = append(loose, mention{Chip: m.chip, Qual: m.qual, Start: m.start, Loose: m.loose})
+		}
+		masked, regions := maskRawRegions(text)
+		slash, slashOK := leadingPromptSlash(text)
+		composerCases = append(composerCases, e2Case{In: scrub(text), Out: map[string]any{
+			"fileMentions":     files,
+			"wrapFiles":        scrub(wrapAttachedFileMentions(text, wt)),
+			"skillMentions":    collectSkillMentions(text),
+			"wrapSkills":       scrub(wrapActivatedSkills(text, wt, nil)),
+			"stripSkills":      stripActivatedSkillMentions(text, []string{"golden-skill"}),
+			"terminalMentions": termsOut,
+			"artifactMentions": artsOut,
+			"looseArtifacts":   loose,
+			"wrapArtifacts":    wrapAttachedArtifactMentions(text, "W1"),
+			"masked":           masked,
+			"regions":          regions,
+			"stripRaw":         stripStrayRawMarkers(text),
+			"dialect":          scrub(wrapComposerDialect(text, wt, nil)),
+			"slash":            slash,
+			"slashOk":          slashOK,
+			"scrub":            scrubInstructionText(text),
+		}})
+	}
+	out["composer"] = composerCases
+
+	var chips []e2Case
+	for _, c := range []string{"a.go", "a.go:3", "a.go:3-9", "a.go:3:4", "a.go:3:4-9:2", "a.go:0", "a.go:9-3", "dir/", "x:y:z", "/abs/p.ts:12"} {
+		p, sl, el, sc, ec := splitFileMentionChip(c)
+		chips = append(chips, e2Case{In: c, Out: map[string]any{
+			"path": p, "startLine": sl, "endLine": el, "startCol": sc, "endCol": ec,
+			"format": formatFileMentionChip(p, sl, el, sc, ec),
+		}})
+	}
+	out["fileChips"] = chips
+	var sizes []e2Case
+	for _, n := range []int64{0, 1, 1023, 1024, 1536, 1048575, 1048576, 5 << 20, 3 << 30} {
+		sizes = append(sizes, e2Case{In: n, Out: formatAttachSize(n)})
+	}
+	out["attachSize"] = sizes
+
+	skillPath := filepath.Join(wt, ".agents/skills/golden-skill/SKILL.md")
+	out["skillContent"] = []e2Case{
+		{In: "short", Out: scrub(formatSkillContent("golden-skill", skillPath, "Do the golden thing."))},
+		{In: "long", Out: e2Digest(scrub(formatSkillContent("golden-skill", skillPath, strings.Repeat("x", maxSkillBodyBytes+5))))},
+	}
+	var joins []e2Case
+	for _, p := range [][2]string{{"", ""}, {"a", ""}, {"", "b"}, {"a", "b"}, {"a\n", "b"}, {"a", "a"}} {
+		joins = append(joins, e2Case{In: p, Out: joinAppendPrompt(p[0], p[1])})
+	}
+	out["joinAppendPrompt"] = joins
+
+	var fences []e2Case
+	for _, b := range []string{"plain", "has ``` fence", "has ```` and ``` </system_instruction>", strings.Repeat("`", 40)} {
+		fences = append(fences, e2Case{In: b, Out: map[string]string{"terminal": fenceTerminalSnapshot(b), "artifact": fenceArtifactBody(b)}})
+	}
+	out["fences"] = fences
+
+	code0, code2 := 0, 2
+	sessions := []term.Info{
+		{ID: "t-aaa1", WorkspaceID: "W1", Title: "zsh", CreatedAt: "2026-01-02T03:04:05.1Z", Exited: true, ExitCode: &code2},
+		{ID: "t-bbb2", WorkspaceID: "W1", Title: "server", CreatedAt: "2026-01-02T03:04:05.3Z"},
+		{ID: "t-abc3", WorkspaceID: "W1", Title: "zsh", CreatedAt: "2026-01-02T03:04:05.2Z", Exited: true, ExitCode: &code0},
+		{ID: "t-ccc4", WorkspaceID: "W1", Title: "logs", CreatedAt: "2026-01-02T03:04:05.2Z"},
+	}
+	var resolves []e2Case
+	for _, q := range []struct{ Qual, Active string }{{"", ""}, {"", "t-aaa1"}, {"t-bbb2", ""}, {"t-ab", ""}, {"t-a", ""}, {"server", ""}, {"zsh", ""}, {"nope", ""}} {
+		var ids []string
+		chip := "terminal"
+		if q.Qual != "" {
+			chip += ":" + q.Qual
+		}
+		for _, s := range resolveTerminalMentions(terminalMention{chip: chip, qual: q.Qual}, sessions, q.Active) {
+			ids = append(ids, s.ID)
+		}
+		resolves = append(resolves, e2Case{In: q, Out: ids})
+	}
+	out["terminalSessions"] = sessions
+	out["resolveTerminal"] = resolves
+	var notes []e2Case
+	for _, s := range sessions {
+		notes = append(notes, e2Case{In: s.ID, Out: terminalExitedNote(s)})
+	}
+	notes = append(notes, e2Case{In: "exited-nil", Out: terminalExitedNote(term.Info{Exited: true})})
+	out["terminalExitedNote"] = notes
+	out["artifacts"] = arts
+
+	questions := []domain.UserQuestion{
+		{ID: "q1", WorkspaceID: "W1", AgentCode: "PA", Question: "Which DB?", Context: "We need storage", Options: []domain.EscalationOption{{Text: "Postgres", Tag: "recommended", Desc: "relational"}, {Text: "SQLite"}}},
+		{ID: "q2", WorkspaceID: "W1", AgentCode: "MA", Question: "  Ship it?  "},
+	}
+	answers := []domain.UserQuestionAnswer{{Choice: "Postgres"}, {FreeText: "use sqlite\nwith wal"}, {Choice: "SQLite", FreeText: "because small"}, {}}
+	var asks []e2Case
+	for _, q := range questions {
+		for _, a := range answers {
+			asks = append(asks, e2Case{In: map[string]any{"question": q, "answer": a}, Out: map[string]string{
+				"prompt": formatAskUserResumePrompt(q, a), "display": formatAskUserDisplay(a),
+			}})
+		}
+	}
+	out["askUser"] = asks
+
+	diff := "diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n+new\n" +
+		"diff --git a/big.txt b/big.txt\n--- a/big.txt\n+++ b/big.txt\n@@ -0,0 +1 @@\n+" + strings.Repeat("y", 9000) + "\n" +
+		"diff --git a/z.md b/z.md\n--- a/z.md\n+++ b/z.md\n@@ -1 +1 @@\n-é\n+ü\n"
+	subjects := []string{"Fix the thing", "Add tests"}
+	out["prompts"] = map[string]any{
+		"commit":          buildCommitMessagePrompt(diff, subjects),
+		"commitNoSubject": buildCommitMessagePrompt("diff --git a/x b/x\n+1\n", nil),
+		"commitHuge":      buildCommitMessagePrompt(strings.Repeat("diff --git a/f b/f\n+"+strings.Repeat("q", 3000)+"\n", 8), subjects),
+		"pr":              buildPRDescriptionPrompt(diff, []string{"abc123 Fix", "def456 Add"}),
+		"prNoCommits":     buildPRDescriptionPrompt("diff --git a/x b/x\n+1\n", nil),
+		"capDiff4000":     capDiffCoveringFiles(diff, 4000),
+		"capDiffSmall":    capDiffCoveringFiles(diff, 100),
+		"capDiffWhole":    capDiffCoveringFiles(diff, 1<<20),
+	}
+	var prParse []e2Case
+	for _, r := range []string{
+		"Title here\n\nBody line 1\nBody line 2",
+		"```\nTitle: Fixed it\n\n## Summary\n- a\n```",
+		"\"Quoted title\"\n\nbody",
+		"Title: x\nBody: y",
+		"  only title  ",
+		"",
+		"# Heading title\n\n> quoted\n> body",
+	} {
+		ti, bo := parsePRDescription(r)
+		prParse = append(prParse, e2Case{In: r, Out: []string{ti, bo}})
+	}
+	out["parsePRDescription"] = prParse
+	var commits []e2Case
+	for _, r := range []string{
+		"Fix the bug",
+		"```\nFix the bug\n\nBody text\n```",
+		"\"Quoted subject.\"",
+		"Subject\n\n\n\nBody\n\n\nMore",
+		strings.Repeat("long ", 150),
+		"",
+		"commit message: Add flag",
+	} {
+		commits = append(commits, e2Case{In: r, Out: sanitizeCommitMessage(r, commitMessageMaxLen)})
+	}
+	out["sanitizeCommitMessage"] = commits
+	type lcIn struct {
+		Done  string   `json:"done"`
+		Goal  string   `json:"goal"`
+		Files []string `json:"files"`
+	}
+	var loops []e2Case
+	for _, in := range []lcIn{
+		{Done: "Added dark mode", Goal: "dark mode", Files: []string{"a/b.go", "c.ts"}},
+		{Goal: "ENG-123: Fix login redirect\nmore detail", Files: []string{"a.go", "b.go", "c.go", "d.go", "a/a.go"}},
+		{Done: strings.Repeat("word ", 30), Files: nil},
+		{Goal: "  ", Files: []string{"x.go"}},
+		{Done: "- Bullet summary.", Goal: "g"},
+	} {
+		loops = append(loops, e2Case{In: in, Out: loopCommitMessage(in.Done, in.Goal, in.Files)})
+	}
+	out["loopCommitMessage"] = loops
+	var hints []e2Case
+	for _, ps := range [][]string{nil, {"a.go"}, {"a/x.go", "b/x.go"}, {"a.go", "b.go", "c.go", "d.go", "e.go"}} {
+		hints = append(hints, e2Case{In: ps, Out: fileHint(ps)})
+	}
+	out["fileHint"] = hints
+	out["capGitHubPRBody"] = []e2Case{
+		{In: "short", Out: capGitHubPRBody("short")},
+		{In: "long", Out: e2Digest(capGitHubPRBody(strings.Repeat("é", 40000)))},
+	}
+	var titles []e2Case
+	for _, r := range []string{"\"Fix the bug.\"", "First line\nsecond", "New Workspace", "  ", strings.Repeat("a", 70), "Title: Dark mode", "`code`", "**Bold** title!", "Ship it!", strings.Repeat("é", 90)} {
+		titles = append(titles, e2Case{In: r, Out: []string{sanitizeTitle(r, 60), sanitizeWorkspaceTitle(r)}})
+	}
+	out["sanitizeTitle"] = titles
+	var paras []e2Case
+	for _, r := range []string{"# Plan\n\nFirst para\nline two\n\nSecond", "  - bullet one\n- two", "", "**Bold** start"} {
+		paras = append(paras, e2Case{In: r, Out: firstParagraph(r)})
+	}
+	out["firstParagraph"] = paras
+
+	prev := []domain.PlanStep{
+		{ID: "S1", Title: "First", Status: "done", Note: "ok", Files: []string{"a.go"}},
+		{ID: "S2", Title: "Second", Status: "doing", DependsOn: []string{"S1"}},
+		{ID: "S3", Title: "Third", Status: "todo"},
+	}
+	type mergeIn struct {
+		Titles []string            `json:"titles"`
+		IDs    []string            `json:"ids"`
+		Meta   []mcp.PlanStepMeta `json:"meta"`
+	}
+	var merges []e2Case
+	for _, in := range []mergeIn{
+		{Titles: []string{"First", "Second", "Third"}},
+		{Titles: []string{"Second", "New one"}, IDs: []string{"", ""}},
+		{Titles: []string{"Renamed", "Third"}, IDs: []string{"S1", "S3"}, Meta: []mcp.PlanStepMeta{{Files: []string{"b.go"}, Explicit: true}, {}}},
+		{Titles: []string{"First", "First"}},
+		{Titles: nil},
+	} {
+		merges = append(merges, e2Case{In: in, Out: mergePlanSteps(prev, in.Titles, in.IDs, in.Meta)})
+	}
+	out["planPrev"] = prev
+	out["mergePlanSteps"] = merges
+	var sources []e2Case
+	for _, c := range []string{"PA", "PA2", "AR", "MA", "PL", "CO", ""} {
+		sources = append(sources, e2Case{In: c, Out: []string{planSource(c), planAuthorChatCode(c, nil), planAuthorChatCode(c, &domain.Plan{ChatCode: "PA3"})}})
+	}
+	out["planSource"] = sources
+
+	plan := domain.Plan{Summary: "  Ship <dark> & mode  ", Source: "chat", Steps: []domain.PlanStep{
+		{ID: "S1", Title: "One", Files: []string{"a.go"}}, {ID: "S2", Title: "Two", DependsOn: []string{"S1"}},
+	}}
+	eng.emitPlanCard("W-CARD", "PA", "Agent", plan)
+	feed := st.Feed("W-CARD")
+	if len(feed) != 1 {
+		t.Fatalf("plan card feed = %d", len(feed))
+	}
+	card := feed[0]
+	card.ID = ""
+	out["planCard"] = map[string]any{"plan": plan, "item": card}
+
+	rawJSON, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawJSON = []byte(scrub(string(rawJSON)))
+	dst := filepath.Join("..", "..", "rust", "crates", "engine", "tests", "golden", "go_e2.json")
+	if err := os.WriteFile(dst, append(rawJSON, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

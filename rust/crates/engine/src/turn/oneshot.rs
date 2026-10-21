@@ -15,14 +15,14 @@ use super::finalize::DEADLINE_EXCEEDED;
 use crate::text::{hard_truncate_runes, truncate};
 use crate::{Engine, EngineError};
 
-const COMMIT_MESSAGE_TIMEOUT: Duration = Duration::from_secs(45);
+pub(crate) const COMMIT_MESSAGE_TIMEOUT: Duration = Duration::from_secs(45);
 /// Staged-diff bytes sent to the title model.
 pub const COMMIT_MESSAGE_DIFF_CAP: usize = 12000;
-const COMMIT_MESSAGE_MAX_LEN: usize = 500;
+pub(crate) const COMMIT_MESSAGE_MAX_LEN: usize = 500;
 
 pub const COMMIT_MESSAGE_SYSTEM_PROMPT: &str = "You write git commit messages from a staged diff. Reply with ONLY the commit message: a short subject line (at most ~72 characters), optionally followed by a blank line and a brief body. Match the style of the recent commit subjects when provided. No quotes, no markdown fences, no explanation, no preamble. Do not call tools, read files, or explore the codebase — use the diff text alone.";
 
-const PR_DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(45);
+pub(crate) const PR_DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(45);
 
 pub const PR_DESCRIPTION_SYSTEM_PROMPT: &str = "You write pull request titles and descriptions from a branch diff. Describe ALL changes versus the base branch, not one commit or chat turn. Reply with ONLY a title line (at most 80 characters), a blank line, and a markdown body. Keep the body under five sentences unless the change is large. No quotes, no markdown fences around the whole reply, no greeting, no tools.";
 

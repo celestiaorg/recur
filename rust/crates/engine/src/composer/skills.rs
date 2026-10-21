@@ -20,7 +20,7 @@ static SKILL_SLASH_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"/([a-z][a-z0-9-]*)").expect("skill slash pattern"));
 
 const MAX_ACTIVATED_SKILLS: usize = 8;
-const MAX_SKILL_BODY_BYTES: usize = 100_000;
+pub(crate) const MAX_SKILL_BODY_BYTES: usize = 100_000;
 /// Bounds the skill catalog walk.
 pub const SKILLS_CATALOG_TIMEOUT: Duration = Duration::from_secs(2);
 /// Bounds one skill activation.

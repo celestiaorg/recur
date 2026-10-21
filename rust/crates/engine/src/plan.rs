@@ -331,7 +331,13 @@ impl Engine {
     }
 
     /// One compact card per filing (a replan shows as its own row).
-    fn emit_plan_card(&self, workspace_id: &str, agent_code: &str, author: &str, plan: &Plan) {
+    pub(crate) fn emit_plan_card(
+        &self,
+        workspace_id: &str,
+        agent_code: &str,
+        author: &str,
+        plan: &Plan,
+    ) {
         let d = PlanCardData {
             summary: plan.summary.trim().to_owned(),
             steps: (!plan.steps.is_empty()).then(|| {

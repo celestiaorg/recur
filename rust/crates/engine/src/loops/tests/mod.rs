@@ -8,6 +8,7 @@ mod escalation;
 mod fanout;
 mod handoff;
 mod hands;
+mod lifecycle;
 mod maestro;
 mod planbrief;
 mod prompts;

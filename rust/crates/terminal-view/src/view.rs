@@ -598,7 +598,14 @@ impl TerminalView {
             rows,
         };
         self.layout = Some(layout);
-        self.sync_scrollbar();
+        if self.latest_ydisp == Some(self.screen.viewport_top()) {
+            self.scrollbar.set_dimensions(
+                layout.grid_height(),
+                layout.cell_h() * self.screen.total_rows() as f32,
+            );
+        } else {
+            self.sync_scrollbar();
+        }
         layout
     }
 

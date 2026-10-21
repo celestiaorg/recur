@@ -39,8 +39,8 @@ pub(crate) struct Prepaint {
     layout: GridLayout,
     frame: Frame,
     fonts: Fonts,
-    hitbox: Hitbox,
-    scrollbar_hitbox: Hitbox,
+    /// None while the pane is hidden: hidden tabs take no pointer events.
+    hitboxes: Option<(Hitbox, Hitbox)>,
 }
 
 #[derive(Clone)]
@@ -129,20 +129,22 @@ impl Element for TerminalElement {
             window.scale_factor(),
         );
 
-        let (layout, frame) = self.view.update(cx, |v, cx| {
+        let (layout, frame, active) = self.view.update(cx, |v, cx| {
             let layout = v.fit(bounds, metrics, cx);
             let blink_on = v.blink.as_ref().is_none_or(|b| b.is_visible());
-            (layout, v.screen.frame(v.focused, blink_on))
+            (layout, v.screen.frame(v.focused, blink_on), v.active)
         });
-        let hitbox = window.insert_hitbox(bounds, HitboxBehavior::Normal);
-        let scrollbar_hitbox =
-            window.insert_hitbox(layout.scrollbar_bounds(), HitboxBehavior::Normal);
+        let hitboxes = active.then(|| {
+            (
+                window.insert_hitbox(bounds, HitboxBehavior::Normal),
+                window.insert_hitbox(layout.scrollbar_bounds(), HitboxBehavior::Normal),
+            )
+        });
         Prepaint {
             layout,
             frame,
             fonts: Fonts { regular, size },
-            hitbox,
-            scrollbar_hitbox,
+            hitboxes,
         }
     }
 
@@ -157,9 +159,9 @@ impl Element for TerminalElement {
         cx: &mut App,
     ) {
         let view = self.view.read(cx);
-        if !view.active {
+        let Some((grid_hitbox, scrollbar_hitbox)) = p.hitboxes.clone() else {
             return;
-        }
+        };
         let l = p.layout;
         let m = l.metrics;
         let dpr = m.dpr;
@@ -277,15 +279,15 @@ impl Element for TerminalElement {
         } else {
             CursorStyle::IBeam
         };
-        window.set_cursor_style(style, &p.hitbox);
-        window.set_cursor_style(CursorStyle::Arrow, &p.scrollbar_hitbox);
+        window.set_cursor_style(style, &grid_hitbox);
+        window.set_cursor_style(CursorStyle::Arrow, &scrollbar_hitbox);
         window.handle_input(
             &focus,
             ElementInputHandler::new(bounds, self.view.clone()),
             cx,
         );
 
-        let (v, hitbox) = (self.view.clone(), p.hitbox.clone());
+        let (v, hitbox) = (self.view.clone(), grid_hitbox.clone());
         window.on_mouse_event(move |e: &MouseDownEvent, phase, window, cx| {
             if phase != DispatchPhase::Bubble {
                 return;
@@ -297,7 +299,7 @@ impl Element for TerminalElement {
                 });
             }
         });
-        let (v, hitbox) = (self.view.clone(), p.hitbox.clone());
+        let (v, hitbox) = (self.view.clone(), grid_hitbox.clone());
         window.on_mouse_event(move |e: &MouseMoveEvent, phase, window, cx| {
             if phase != DispatchPhase::Bubble {
                 return;
@@ -322,7 +324,7 @@ impl Element for TerminalElement {
                 v.update(cx, |v, cx| v.mouse_exited(cx));
             }
         });
-        let (v, hitbox) = (self.view.clone(), p.hitbox.clone());
+        let (v, hitbox) = (self.view.clone(), grid_hitbox.clone());
         window.on_mouse_event(move |e: &ScrollWheelEvent, phase, window, cx| {
             if phase != DispatchPhase::Bubble || !hitbox.should_handle_scroll(window) {
                 return;

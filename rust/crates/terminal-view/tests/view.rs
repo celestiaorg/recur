@@ -539,3 +539,120 @@ fn drag_selects_and_copies(cx: &mut TestAppContext) {
     h.settle();
     assert_eq!(h.view.read_with(h.cx, |v, _| v.selection_text()), "hello");
 }
+
+#[gpui::test]
+fn small_trackpad_deltas_accumulate(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let rows = h.view.read_with(h.cx, |v, _| v.size().1);
+    for i in 0..rows * 3 {
+        h.output(&format!("line {i}\r\n"));
+    }
+    let pos = h.cell(2, 2);
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    for _ in 0..8 {
+        h.cx.simulate_event(ScrollWheelEvent {
+            position: pos,
+            delta: ScrollDelta::Pixels(point(px(0.), px(2.))),
+            modifiers: Modifiers::none(),
+            touch_phase: TouchPhase::Moved,
+        });
+        h.settle();
+    }
+    assert!(
+        !h.view.read_with(h.cx, |v, _| v.screen().at_bottom()),
+        "sub-row deltas add up to a row"
+    );
+}
+
+#[gpui::test]
+fn hidden_panes_ignore_the_mouse(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("\x1b[?1000h\x1b[?1006h");
+    let pos = h.cell(4, 2);
+    h.view
+        .update_in(h.cx, |v, window, cx| v.set_active(false, window, cx));
+    h.settle();
+    h.rec.clear();
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.simulate_mouse_down(pos, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_up(pos, MouseButton::Left, Modifiers::none());
+    h.settle();
+    assert_eq!(h.rec.writes(), "");
+}
+
+#[gpui::test]
+fn ime_composition_commits_once(cx: &mut TestAppContext) {
+    use gpui::EntityInputHandler;
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.rec.clear();
+    h.view.update_in(h.cx, |v, window, cx| {
+        v.replace_and_mark_text_in_range(None, "に", None, window, cx);
+        assert_eq!(v.marked_text_range(window, cx), Some(0..1));
+        v.replace_and_mark_text_in_range(None, "日本", None, window, cx);
+    });
+    h.settle();
+    assert_eq!(h.rec.writes(), "", "marked text stays local");
+    h.view.update_in(h.cx, |v, window, cx| {
+        v.replace_text_in_range(None, "日本", window, cx)
+    });
+    h.settle();
+    assert_eq!(h.rec.writes(), "日本");
+}
+
+#[gpui::test]
+fn right_click_selects_the_word_on_mac(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.view.update(h.cx, |v, _| v.set_mac(true));
+    h.settle();
+    h.output("hello world");
+    let pos = h.cell(8, 0);
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.simulate_mouse_down(pos, MouseButton::Right, Modifiers::none());
+    h.cx.simulate_mouse_up(pos, MouseButton::Right, Modifiers::none());
+    h.settle();
+    assert_eq!(h.view.read_with(h.cx, |v, _| v.selection_text()), "world");
+}
+
+#[gpui::test]
+fn alt_click_moves_the_prompt_cursor(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("$ hello");
+    h.rec.clear();
+    let pos = h.cell(2, 0);
+    let alt = Modifiers {
+        alt: true,
+        ..Modifiers::none()
+    };
+    h.cx.simulate_mouse_move(pos, None, alt);
+    h.cx.simulate_mouse_down(pos, MouseButton::Left, alt);
+    h.cx.simulate_mouse_up(pos, MouseButton::Left, alt);
+    h.settle();
+    assert_eq!(h.rec.writes(), "\x1b[D".repeat(5));
+}
+
+#[gpui::test]
+fn theme_changes_repaint_the_palette(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let before = h
+        .view
+        .read_with(h.cx, |v, _| v.screen().palette().background);
+    h.view.update(h.cx, |v, cx| {
+        v.set_theme(
+            ThemeContext {
+                app_theme: "paper".into(),
+                ..Default::default()
+            },
+            cx,
+        )
+    });
+    h.settle();
+    let after = h
+        .view
+        .read_with(h.cx, |v, _| v.screen().palette().background);
+    assert_ne!(before, after);
+}

@@ -8,9 +8,18 @@ license.workspace = true
 publish = false
 
 [dependencies]
+futures.workspace = true
 gpui-kit.workspace = true
+image.workspace = true
 recur-ui.workspace = true
 recur-term.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+parking_lot.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

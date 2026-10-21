@@ -12,6 +12,7 @@ license = "UNLICENSED"
 [workspace.dependencies]
 recur-domain = { path = "crates/domain" }
 recur-store = { path = "crates/store" }
+recur-project = { path = "crates/project" }
 recur-git = { path = "crates/git" }
 recur-forge = { path = "crates/forge" }
 recur-issues = { path = "crates/issues" }
@@ -38,23 +39,35 @@ recur-app = { path = "crates/app" }
 
 # UI. gpui-kit pins an exact gpui-pre snapshot; bump only together with it.
 gpui-kit = "0.8.0"
+# The GPUI build gpui-kit re-exports, for `test-support` in dev-dependencies (gpui-kit's own
+# `test-support` feature pulls in gpui-fast through a target-specific weak dependency).
+gpui = { package = "gpui-pre", version = "=0.3.9" }
 
 anyhow = "1"
+async-trait = "0.1"
+base64 = "0.23"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.9"
 toml_edit = "0.23"
+toml_parser = "1"
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 getrandom = "0.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 tokio = { version = "1", features = ["full"] }
-futures = "0.3"
-async-trait = "0.1"
 tokio-util = "0.7"
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "system-proxy"] }
+nix = { version = "0.31", features = ["signal", "process", "hostname", "poll"] }
+futures = "0.3"
 url = "2"
+unicode-properties = "0.1"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio", "server-graceful", "http1"] }
+http-body-util = "0.1"
+bytes = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 parking_lot = "0.12"
@@ -65,8 +78,6 @@ notify = "8"
 cron = "0.15"
 socket2 = "0.6"
 rustix = { version = "1", features = ["process"] }
-reqwest = "0.13"
-base64 = "0.23"
 sha2 = "0.11"
 digest = "0.11"
 ed25519-dalek = { version = "3", features = ["digest"] }
@@ -83,6 +94,17 @@ block2 = "0.6"
 dispatch2 = "0.3"
 tempfile = "3"
 pretty_assertions = "1"
+hex = "0.4"
+yaml-rust2 = "0.10"
+swc_core = { version = "82", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_transforms_typescript", "ecma_transforms_module", "ecma_transforms_compat", "ecma_codegen", "ecma_visit", "ecma_utils", "ecma_helpers_inline"] }
+
+# Terminal: PTY spawn, process groups, emulator state.
+portable-pty = "0.9"
+filedescriptor = "0.8"
+alacritty_terminal = { version = "0.25", default-features = false }
+unicode-width = "0.2"
+image = { version = "0.25", default-features = false }
+regress = { version = "0.12", features = ["utf16"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

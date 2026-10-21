@@ -1,0 +1,326 @@
+{
+  "migrations": [
+    {
+      "name": "v1_baseline",
+      "version": 1
+    },
+    {
+      "name": "sessions",
+      "version": 2
+    },
+    {
+      "name": "rename_loop_to_workspace",
+      "version": 4
+    },
+    {
+      "name": "drop_provider_event",
+      "version": 5
+    },
+    {
+      "name": "drop_maestro_chat",
+      "version": 6
+    },
+    {
+      "name": "message_duration",
+      "version": 7
+    },
+    {
+      "name": "teardown_cmd",
+      "version": 8
+    },
+    {
+      "name": "message_context_window",
+      "version": 9
+    },
+    {
+      "name": "project_groups",
+      "version": 10
+    },
+    {
+      "name": "drop_project_run_config",
+      "version": 11
+    },
+    {
+      "name": "pr_seq",
+      "version": 12
+    },
+    {
+      "name": "drop_message_cost_usd",
+      "version": 13
+    },
+    {
+      "name": "session_message_msg",
+      "version": 14
+    },
+    {
+      "name": "scheduled_prompts",
+      "version": 15
+    },
+    {
+      "name": "github_branch_rules",
+      "version": 16
+    },
+    {
+      "name": "pin_claude_default_models",
+      "version": 17
+    },
+    {
+      "name": "findings_columns",
+      "version": 18
+    }
+  ],
+  "objects": [
+    {
+      "name": "idx_analysis_project",
+      "sql": "CREATE INDEX idx_analysis_project ON analysis (project_id, ts)",
+      "tbl_name": "analysis",
+      "type": "index"
+    },
+    {
+      "name": "idx_content_msg",
+      "sql": "CREATE INDEX idx_content_msg ON message_content (message_id, idx)",
+      "tbl_name": "message_content",
+      "type": "index"
+    },
+    {
+      "name": "idx_events_loop",
+      "sql": "CREATE INDEX idx_events_loop ON events (workspace_id, id)",
+      "tbl_name": "events",
+      "type": "index"
+    },
+    {
+      "name": "idx_feed_loop",
+      "sql": "CREATE INDEX idx_feed_loop ON feed (workspace_id, sort)",
+      "tbl_name": "feed",
+      "type": "index"
+    },
+    {
+      "name": "idx_finding_notes_finding",
+      "sql": "CREATE INDEX idx_finding_notes_finding ON finding_notes (finding_id, sort)",
+      "tbl_name": "finding_notes",
+      "type": "index"
+    },
+    {
+      "name": "idx_findings_workspace",
+      "sql": "CREATE INDEX idx_findings_workspace ON findings (workspace_id, sort)",
+      "tbl_name": "findings",
+      "type": "index"
+    },
+    {
+      "name": "idx_findings_workspace_short",
+      "sql": "CREATE UNIQUE INDEX idx_findings_workspace_short\n\tON findings (workspace_id, short_id)\n\tWHERE short_id != ''",
+      "tbl_name": "findings",
+      "type": "index"
+    },
+    {
+      "name": "idx_one_result_per_call",
+      "sql": "CREATE UNIQUE INDEX idx_one_result_per_call\n\tON message_content (message_id, json_extract(content_json, '$.tool_use_id'))\n\tWHERE type = 'tool_result'",
+      "tbl_name": "message_content",
+      "type": "index"
+    },
+    {
+      "name": "idx_session_loop",
+      "sql": "CREATE INDEX idx_session_loop ON session (loop_id) WHERE loop_id IS NOT NULL",
+      "tbl_name": "session",
+      "type": "index"
+    },
+    {
+      "name": "idx_session_message",
+      "sql": "CREATE INDEX idx_session_message ON session_message (session_id, idx)",
+      "tbl_name": "session_message",
+      "type": "index"
+    },
+    {
+      "name": "idx_session_message_msg",
+      "sql": "CREATE INDEX idx_session_message_msg ON session_message (message_id)",
+      "tbl_name": "session_message",
+      "type": "index"
+    },
+    {
+      "name": "idx_session_workspace",
+      "sql": "CREATE INDEX idx_session_workspace ON session (workspace_id, updated_at)",
+      "tbl_name": "session",
+      "type": "index"
+    },
+    {
+      "name": "scheduled_prompt_due",
+      "sql": "CREATE INDEX scheduled_prompt_due ON scheduled_prompt(next_run_at) WHERE paused = 0 AND next_run_at \u003c\u003e ''",
+      "tbl_name": "scheduled_prompt",
+      "type": "index"
+    },
+    {
+      "name": "scheduled_prompt_project",
+      "sql": "CREATE INDEX scheduled_prompt_project ON scheduled_prompt(project_id)",
+      "tbl_name": "scheduled_prompt",
+      "type": "index"
+    },
+    {
+      "name": "scheduled_prompt_run_active",
+      "sql": "CREATE INDEX scheduled_prompt_run_active ON scheduled_prompt_run(created_at)\n\tWHERE status IN ('running', 'waiting', 'interrupted')",
+      "tbl_name": "scheduled_prompt_run",
+      "type": "index"
+    },
+    {
+      "name": "scheduled_prompt_run_schedule",
+      "sql": "CREATE INDEX scheduled_prompt_run_schedule ON scheduled_prompt_run(schedule_id, created_at)",
+      "tbl_name": "scheduled_prompt_run",
+      "type": "index"
+    },
+    {
+      "name": "__migrations",
+      "sql": "CREATE TABLE __migrations (\n\t\tversion    INTEGER PRIMARY KEY,\n\t\tname       TEXT NOT NULL,\n\t\tapplied_at INTEGER NOT NULL\n\t)",
+      "tbl_name": "__migrations",
+      "type": "table"
+    },
+    {
+      "name": "agents",
+      "sql": "CREATE TABLE agents (\n\tworkspace_id   TEXT NOT NULL,\n\tdoc_json  TEXT NOT NULL,\n\tsort      INTEGER NOT NULL DEFAULT 0\n)",
+      "tbl_name": "agents",
+      "type": "table"
+    },
+    {
+      "name": "analysis",
+      "sql": "CREATE TABLE analysis (\n\tid          TEXT PRIMARY KEY,\n\tproject_id  TEXT NOT NULL,\n\tworkspace_id     TEXT,\n\tdoc_json    TEXT NOT NULL,\n\tts          INTEGER NOT NULL DEFAULT 0\n)",
+      "tbl_name": "analysis",
+      "type": "table"
+    },
+    {
+      "name": "escalations",
+      "sql": "CREATE TABLE escalations (\n\tworkspace_id   TEXT PRIMARY KEY,\n\tdoc_json  TEXT NOT NULL\n)",
+      "tbl_name": "escalations",
+      "type": "table"
+    },
+    {
+      "name": "events",
+      "sql": "CREATE TABLE events (\n\tid           INTEGER PRIMARY KEY AUTOINCREMENT,\n\tworkspace_id      TEXT NOT NULL,\n\tagent_id     TEXT,\n\ttype         TEXT NOT NULL,\n\tpayload_json TEXT NOT NULL,\n\tts           INTEGER NOT NULL\n)",
+      "tbl_name": "events",
+      "type": "table"
+    },
+    {
+      "name": "feed",
+      "sql": "CREATE TABLE feed (\n\tworkspace_id   TEXT NOT NULL,\n\tdoc_json  TEXT NOT NULL,\n\tsort      INTEGER NOT NULL DEFAULT 0\n)",
+      "tbl_name": "feed",
+      "type": "table"
+    },
+    {
+      "name": "finding_notes",
+      "sql": "CREATE TABLE finding_notes (\n\tid         TEXT PRIMARY KEY,\n\tfinding_id TEXT NOT NULL REFERENCES \"findings\"(id) ON DELETE CASCADE ON UPDATE CASCADE,\n\tauthor     TEXT NOT NULL,\n\tbody       TEXT NOT NULL,\n\tcreated_at TEXT NOT NULL,\n\tsort       INTEGER NOT NULL DEFAULT 0\n)",
+      "tbl_name": "finding_notes",
+      "type": "table"
+    },
+    {
+      "name": "findings",
+      "sql": "CREATE TABLE \"findings\" (\n\tid            TEXT PRIMARY KEY,\n\tshort_id      TEXT NOT NULL DEFAULT '',\n\tworkspace_id  TEXT NOT NULL,\n\titeration     INTEGER NOT NULL DEFAULT 0,\n\tfile          TEXT NOT NULL DEFAULT '',\n\tline          INTEGER NOT NULL DEFAULT 0,\n\tend_line      INTEGER NOT NULL DEFAULT 0,\n\tseverity      TEXT NOT NULL DEFAULT '',\n\tmessage       TEXT NOT NULL DEFAULT '',\n\tsummary       TEXT NOT NULL DEFAULT '',\n\tstatus        TEXT NOT NULL DEFAULT 'open',\n\tstatus_reason TEXT NOT NULL DEFAULT '',\n\tcreated_at    TEXT NOT NULL DEFAULT '',\n\tupdated_by    TEXT NOT NULL DEFAULT '',\n\tupdated_at    TEXT NOT NULL DEFAULT '',\n\tsort          INTEGER NOT NULL DEFAULT 0\n)",
+      "tbl_name": "findings",
+      "type": "table"
+    },
+    {
+      "name": "github_branch_rules",
+      "sql": "CREATE TABLE github_branch_rules (\n\tproject_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,\n\trepo       TEXT NOT NULL,\n\tbranch     TEXT NOT NULL,\n\trequire_pr INTEGER NOT NULL CHECK (require_pr IN (0, 1)),\n\tchecked_at INTEGER NOT NULL,\n\tPRIMARY KEY (project_id, repo, branch)\n)",
+      "tbl_name": "github_branch_rules",
+      "type": "table"
+    },
+    {
+      "name": "inbox",
+      "sql": "CREATE TABLE inbox (\n\tid        TEXT PRIMARY KEY,\n\tdoc_json  TEXT NOT NULL,\n\tsort      INTEGER NOT NULL DEFAULT 0\n)",
+      "tbl_name": "inbox",
+      "type": "table"
+    },
+    {
+      "name": "message",
+      "sql": "CREATE TABLE message (\n\tid                    TEXT PRIMARY KEY,\n\torigin_session_id     TEXT NOT NULL,\n\trole                  TEXT NOT NULL,\n\tmodel_id              TEXT,\n\tprovider              TEXT,\n\tstream_status         TEXT NOT NULL DEFAULT 'pending',\n\tstarted_at            INTEGER,\n\tcompleted_at          INTEGER,\n\tinput_tokens          INTEGER,\n\toutput_tokens         INTEGER,\n\tcache_creation_tokens INTEGER,\n\tcache_read_tokens     INTEGER,\n\tcreated_at            INTEGER NOT NULL\n, duration_ms INTEGER, context_window INTEGER)",
+      "tbl_name": "message",
+      "type": "table"
+    },
+    {
+      "name": "message_content",
+      "sql": "CREATE TABLE message_content (\n\tid           TEXT PRIMARY KEY,\n\tmessage_id   TEXT NOT NULL REFERENCES message(id) ON DELETE CASCADE,\n\tidx          INTEGER NOT NULL,\n\ttype         TEXT NOT NULL,\n\tcontent_json TEXT NOT NULL,\n\tcreated_at   INTEGER NOT NULL\n)",
+      "tbl_name": "message_content",
+      "type": "table"
+    },
+    {
+      "name": "policy",
+      "sql": "CREATE TABLE policy (\n\tid        INTEGER PRIMARY KEY CHECK (id = 1),\n\tdoc_json  TEXT NOT NULL\n)",
+      "tbl_name": "policy",
+      "type": "table"
+    },
+    {
+      "name": "pr_seq",
+      "sql": "CREATE TABLE pr_seq (\n\tid          INTEGER PRIMARY KEY CHECK (id = 1),\n\tlast_number INTEGER NOT NULL\n)",
+      "tbl_name": "pr_seq",
+      "type": "table"
+    },
+    {
+      "name": "project_groups",
+      "sql": "CREATE TABLE project_groups (\n\tid         TEXT PRIMARY KEY,\n\tname       TEXT NOT NULL,\n\topen       INTEGER NOT NULL DEFAULT 1,\n\tsort       INTEGER NOT NULL DEFAULT 0,\n\tcreated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),\n\tupdated_at TEXT NOT NULL DEFAULT ''\n)",
+      "tbl_name": "project_groups",
+      "type": "table"
+    },
+    {
+      "name": "projects",
+      "sql": "CREATE TABLE projects (\n\tid          TEXT PRIMARY KEY,\n\tname        TEXT NOT NULL,\n\trepo_path   TEXT,\n\tbase_branch TEXT,\n\textra_json  TEXT NOT NULL DEFAULT '{}',\n\tsort        INTEGER NOT NULL DEFAULT 0\n, group_id TEXT NOT NULL DEFAULT '')",
+      "tbl_name": "projects",
+      "type": "table"
+    },
+    {
+      "name": "prs",
+      "sql": "CREATE TABLE prs (\n\tid        TEXT PRIMARY KEY,\n\tdoc_json  TEXT NOT NULL,\n\tsort      INTEGER NOT NULL DEFAULT 0\n)",
+      "tbl_name": "prs",
+      "type": "table"
+    },
+    {
+      "name": "resource",
+      "sql": "CREATE TABLE resource (\n\tid        INTEGER PRIMARY KEY CHECK (id = 1),\n\tdoc_json  TEXT NOT NULL\n)",
+      "tbl_name": "resource",
+      "type": "table"
+    },
+    {
+      "name": "scheduled_prompt",
+      "sql": "CREATE TABLE scheduled_prompt (\n\tid          TEXT PRIMARY KEY,\n\tproject_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,\n\tname        TEXT NOT NULL,\n\tprompt      TEXT NOT NULL,\n\tbase_branch TEXT NOT NULL,\n\tmode        TEXT NOT NULL CHECK (mode IN ('ask', 'plan', 'agent', 'review', 'loop')),\n\tmodel       TEXT NOT NULL,\n\tsimplify    INTEGER NOT NULL DEFAULT 1 CHECK (simplify IN (0, 1)),\n\tloop_id     TEXT NOT NULL DEFAULT '',\n\tpolicy_id   TEXT NOT NULL DEFAULT '',\n\t-- once: run_date + run_time. cron: cron expression. daily/weekdays: legacy\n\t-- wall-clock cadences kept readable until edited into cron.\n\tcadence     TEXT NOT NULL CHECK (cadence IN ('once', 'cron', 'daily', 'weekdays')),\n\tcron        TEXT NOT NULL DEFAULT '',\n\trun_date    TEXT NOT NULL DEFAULT '',\n\trun_time    TEXT NOT NULL DEFAULT '',\n\ttime_zone   TEXT NOT NULL,\n\tpaused      INTEGER NOT NULL DEFAULT 0 CHECK (paused IN (0, 1)),\n\t-- All times are ISO 8601 UTC text with milliseconds (2026-09-09T13:05:00.000Z):\n\t-- readable in a sqlite shell and sorts lexicographically. '' = no next run.\n\tnext_run_at TEXT NOT NULL DEFAULT '',\n\tcreated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),\n\tupdated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))\n)",
+      "tbl_name": "scheduled_prompt",
+      "type": "table"
+    },
+    {
+      "name": "scheduled_prompt_flag",
+      "sql": "CREATE TABLE scheduled_prompt_flag (\n\tschedule_id TEXT NOT NULL REFERENCES scheduled_prompt(id) ON DELETE CASCADE,\n\tkey         TEXT NOT NULL,\n\tvalue       TEXT NOT NULL,\n\tPRIMARY KEY (schedule_id, key)\n)",
+      "tbl_name": "scheduled_prompt_flag",
+      "type": "table"
+    },
+    {
+      "name": "scheduled_prompt_run",
+      "sql": "CREATE TABLE scheduled_prompt_run (\n\tid           TEXT PRIMARY KEY,\n\tschedule_id  TEXT NOT NULL REFERENCES scheduled_prompt(id) ON DELETE CASCADE,\n\tdue_at       TEXT NOT NULL,\n\tworkspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,\n\tstatus       TEXT NOT NULL CHECK (status IN ('running', 'waiting', 'finished', 'failed', 'stopped', 'missed', 'skipped', 'interrupted')),\n\tdetail       TEXT NOT NULL DEFAULT '',\n\tcreated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),\n\tUNIQUE (schedule_id, due_at)\n)",
+      "tbl_name": "scheduled_prompt_run",
+      "type": "table"
+    },
+    {
+      "name": "session",
+      "sql": "CREATE TABLE session (\n\tid                   TEXT PRIMARY KEY,\n\tworkspace_id         TEXT,\n\tloop_id              TEXT,\n\tkind                 TEXT NOT NULL,\n\tparent_session_id    TEXT,\n\tfork_message_id      TEXT,\n\tcontext_mode         TEXT NOT NULL,\n\tprovider             TEXT NOT NULL,\n\tprovider_session_ref TEXT,\n\tconfig_json          TEXT NOT NULL DEFAULT '{}',\n\tactive_context_id    TEXT,\n\tstatus               TEXT NOT NULL DEFAULT 'idle',\n\tcreated_at           INTEGER NOT NULL,\n\tupdated_at           INTEGER NOT NULL\n)",
+      "tbl_name": "session",
+      "type": "table"
+    },
+    {
+      "name": "session_context",
+      "sql": "CREATE TABLE session_context (\n\tid                        TEXT PRIMARY KEY,\n\tsession_id                TEXT NOT NULL REFERENCES session(id) ON DELETE CASCADE,\n\tsummary                   TEXT NOT NULL,\n\tlast_compacted_message_id TEXT NOT NULL,\n\tcreated_at                INTEGER NOT NULL\n)",
+      "tbl_name": "session_context",
+      "type": "table"
+    },
+    {
+      "name": "session_message",
+      "sql": "CREATE TABLE session_message (\n\tsession_id  TEXT NOT NULL REFERENCES session(id) ON DELETE CASCADE,\n\tmessage_id  TEXT NOT NULL REFERENCES message(id) ON DELETE CASCADE,\n\tidx         INTEGER NOT NULL,\n\tPRIMARY KEY (session_id, message_id)\n)",
+      "tbl_name": "session_message",
+      "type": "table"
+    },
+    {
+      "name": "settings",
+      "sql": "CREATE TABLE settings (\n\tid        INTEGER PRIMARY KEY CHECK (id = 1),\n\tdoc_json  TEXT NOT NULL\n)",
+      "tbl_name": "settings",
+      "type": "table"
+    },
+    {
+      "name": "workspaces",
+      "sql": "CREATE TABLE \"workspaces\" (\n\tid        TEXT PRIMARY KEY,\n\tdoc_json  TEXT NOT NULL,\n\tsort      INTEGER NOT NULL DEFAULT 0\n)",
+      "tbl_name": "workspaces",
+      "type": "table"
+    }
+  ]
+}

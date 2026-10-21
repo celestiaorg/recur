@@ -168,7 +168,7 @@ Each Go test file moves with the code it exercises. Files that test several slic
 | `tool.go` | `tool` | `Tool` / `HaltTool` / `Permitter` traits, `Call` context, order-preserving `Registry`, `AdvertisedName`/`BareName`, `HaltAfter` (ask_user; switch_mode only when the result says "remounting"). |
 | `catalog.go` | `catalog` | `host_tools()` (order is the `tools/list` order) and `coding_tools()` (harness only). |
 | `json.go` | `json` | Strict decode (unknown fields rejected), `parse_severity`, catalog XML escape. |
-| `path.go` | `path` | Worktree sandbox: SafeJoin + nearest-existing-ancestor symlink resolution, "path escapes worktree". |
+| `path.go` | `path` | Worktree sandbox: SafeJoin + nearest-existing-ancestor symlink resolution, "path escapes worktree". `code.SafeJoin` (20 lines, pure) is ported into this module so Read/Edit/Write do not wait on slice C; C keeps its own `recur_code::safe_join` for the Observatory. |
 | `coding.go` | `coding` | Limits (read 2000 lines x 2000 chars, bash 500 lines, grep 200 hits, bash 2 min default / 10 min max), binary sniff. |
 | `bash.go` | `coding::bash` | `bash -lc` in the worktree, new process group, kill group on cancel, 2 s wait delay, capped buffers, output framing. Permitter gate unless bypass. |
 | `read.go`, `edit.go`, `write.go`, `glob.go`, `grep.go` | `coding::{read,edit,write,glob,grep}` | Harness coding tools. Grep uses `recur-code::rg`. |
@@ -632,7 +632,7 @@ pub trait Host: Send + Sync {
     fn plan(&self, ws: &str, agent: &str, summary: &str);                                                // [E3]
     fn escalate(&self, ws: &str, agent: &str, e: EscalationRequest);                                     // [E1]
     fn attach_evidence(&self, ws: &str, agent: &str, e: Evidence);                                       // [E1]
-    fn note_tool_args(&self, ws: &str, agent: &str, tool: &str, args: &serde_json::value::RawValue);     // [E2]
+    fn note_tool_args(&self, ws: &str, agent: &str, tool: &str, args: &str);                            // [E2]
 
     // Chat
     async fn ask_user(&self, ws: &str, agent: &str, req: AskUserRequest) -> String;                      // [E2]
@@ -664,8 +664,8 @@ pub trait Host: Send + Sync {
     async fn edit_plan(&self, ws: &str, agent: &str, plan: &str) -> String;                              // [E3]
     async fn rerun_review(&self, ws: &str, agent: &str) -> String;                                       // [E3]
     async fn dispatch_specialist(&self, ws: &str, agent: &str, role: &str, instruction: &str) -> String; // [E3]
-    async fn extend_iterations(&self, ws: &str, agent: &str, n: i32) -> String;                          // [E3]
-    async fn extend_rounds(&self, ws: &str, agent: &str, n: i32) -> String;                              // [E3]
+    async fn extend_iterations(&self, ws: &str, agent: &str, n: i64) -> String;                          // [E3]
+    async fn extend_rounds(&self, ws: &str, agent: &str, n: i64) -> String;                              // [E3]
     async fn reenter_phase(&self, ws: &str, agent: &str, phase_id: &str) -> String;                      // [E3]
     async fn run_phase(&self, ws: &str, agent: &str, phase_id: &str) -> String;                          // [E3]
     async fn resume_loop(&self, ws: &str, agent: &str) -> String;                                        // [E3]
@@ -677,8 +677,8 @@ pub trait Host: Send + Sync {
     // Skills, terminals
     async fn list_skills(&self, ws: &str, agent: &str) -> Result<Vec<recur_domain::AgentSkill>, HostError>; // [E2]
     async fn activate_skill(&self, ws: &str, agent: &str, name: &str) -> Result<String, HostError>;      // [E2]
-    async fn list_terminals(&self, ws: &str, agent: &str) -> Vec<TerminalInfo>;                          // [E2]
-    async fn read_terminal(&self, ws: &str, agent: &str, id: &str, tail_lines: usize) -> Result<String, HostError>; // [E2]
+    async fn list_terminals(&self, ws: &str, agent: &str) -> Option<Vec<TerminalInfo>>;                  // [E2]
+    async fn read_terminal(&self, ws: &str, agent: &str, id: &str, tail_lines: i64) -> Result<String, HostError>; // [E2]
 
     // Ask Recur
     async fn list_workspace_briefs(&self) -> recur_domain::BriefingSnapshot;                             // [E4]
@@ -688,6 +688,13 @@ pub trait Host: Send + Sync {
 ```
 
 Every method above has a default body in the real file (omitted here for length). Sync methods stay sync because Go callers rely on them completing before the tool response is written (`report_finding` returns the stored row, `note_tool_args` runs before the handler). The `report_finding` / `done` / `escalate` / `attach_evidence` / `report_result` bodies only touch the store and the running loop's `LoopHandle`, which is why E1 owns them.
+
+Slice T deviations from the sketch above, all to keep Go's observable behavior:
+
+- `note_tool_args` takes the raw arguments as `&str`, empty when the tools/call carried none (Go passes a nil `json.RawMessage`; `RawValue` cannot be empty). `"null"` stays `"null"`.
+- `extend_iterations`, `extend_rounds` and `read_terminal`'s `tail_lines` are `i64`: they are Go `int` values decoded from agent JSON and passed through unclamped (a negative `tail_lines` reaches the host, as in Go).
+- `list_terminals` returns `Option<Vec<_>>`: `None` is Go's nil slice, which list_terminals encodes as `"terminals":null` (the engine returns `nil` when no terminal manager is attached, an empty list otherwise).
+- `NoopHost` is the public unit type carrying the default bodies (Go `noopReporter`); `McpServer::new(None)` uses it.
 
 ## 3. Event bus
 
@@ -887,6 +894,7 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Frontend modules:** `lib/permissionTools.ts`, `lib/plantools.ts`, `lib/briefingtools.ts`, `lib/open-pr-tool.ts`, `lib/reenter-phase-tool.ts` (tool input parsing for display).
 - **Prerequisites:** `recur-domain`, `recur-code::rg` (C, for `grep`; `glob`/`grep` tests wait on it).
 - **Public API:** `Host` (2.4), `Tool`, `Registry`, `host_tools()`, `coding_tools()`, `halt_after`, `TodoStore`; `McpServer` (T-M1) with exact URL shape `http://127.0.0.1:<port>/<token>/mcp`.
+- **Landed as:** Glob and Grep (and `coding_tools()`, which lists them) compile behind the `recur-agent-tools` feature `code` until C and the store port land, because they call into crates that are still empty; every other tool, including Read/Edit/Write/Bash/TodoWrite, is always built. They are coded against `recur_code::rg::locate(data_dir: &Path) -> Result<PathBuf, E>` (Go `rg.Locate`), `recur_code::search_opts(cancel: &CancellationToken, root: &Path, query: &str, opts: &recur_domain::SearchOpts) -> Result<recur_domain::SearchResult, E: Display>` (sync, Go `code.SearchOpts`) and `recur_store::data_dir() -> Result<PathBuf, E>` (Go `store.DataDir`); a throwaway shim with exactly these signatures passed the gated tests (`cargo test -p recur-agent-tools --features code`) with a real ripgrep. When those exist, make `code` a default feature (or drop the gate) and run the `code`-gated tests. `McpServer` methods: `new(Option<Arc<dyn Host>>)`, `with_addr`, `start`, `close`, `port`, `url_for`, `register`, `register_owned`, `unregister -> Option<(ws, agent)>`, `drop_token` (Go `Drop`), `drop_agent`, `drop_workspace`; free functions `names_from_allowed_tools`, `append_permission_request`. Tool-name constants live in `recur_agent_tools::names` (bare) and `recur_agent_tools::names::mcp` (`mcp__recur__*`).
 
 #### C: code + support libs
 
@@ -903,6 +911,16 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Frontend modules:** `lib/pr-attention.ts`, `lib/pr-checks.ts`, `lib/check-duration.ts`, `lib/pr-participants.ts`, `lib/comment-reactions.ts`, `lib/user-mention.ts`, `lib/comment-permalink.ts`, `lib/issue-link.ts`, `lib/lineartools.ts`.
 - **Prerequisites:** `recur-domain` (PR, PRComment, PRParticipant, Check, IssueRef, Project, Settings), `recur-git` (push with lease, remote URLs).
 - **Public API:** 2.2, 2.3, `recur_forge::github::GitHub`, `recur_issues::{github::GitHubIssues, linear::Linear}`, `recur_forge::model::*` helpers, `FakeForge`, `FakeTracker`.
+- **As built (deviations from 2.2/2.3):**
+  - Forge methods take `repo: &Path` (the project checkout, the CLI's cwd) instead of `RepoCtx`; owner/repo resolution stays inside the forge exactly as Go does it (`gh repo view`, the PR URL, `git remote get-url`). `detect` returns `owner/repo` (Go `OwnerRepoFromRemoteURL`, any host).
+  - `branch_rules` is `branch_requires_pr(repo, owner_repo, branch) -> Option<bool>`, the uncached probe (Go `fetchGitHubBranchRequiresPR`), plus `remote_repo(repo, remote)`. The 10-minute TTL, in-flight dedupe, background refresh and `github.branch_rules` publish stay in E5 (`githubRemoteRequiresPR`) because the cache is the store's `GitHubBranchRequirePR` table.
+  - `create_pr` and `retarget_base` take the base as the forge names it. E5 maps a compare ref (`origin/main`) through recur-git's `ShortBranchName` first (Go `githubPRBase`), so `recur-forge` depends on `recur-domain` only. The forge's own git plumbing (`push`, `remote get-url`, `rev-parse --verify`, `update-ref`) runs through `recur_forge::git` with `gitpkg.Command` semantics (`GIT_OPTIONAL_LOCKS=0`, process group SIGTERM then SIGKILL on cancel, 2 s grace for inherited pipes). `head_ref(n)` gives recur-git the `pull/N/head` refspec and `refs/recur/pr/N`.
+  - `merge_comments` (Go `mergeGitHubComments` + `keepFreshGitHubInline`) moved from E5 into the forge: it keys on GitHub's comment-id scheme (R8). E5 keeps the holds (dropped comments, resolved threads, reactions) around it.
+  - `PrSnapshot` and `PrListRow` are forge-neutral and pre-resolved: review requests, assignees and list participants/reviewers carry final avatars, commit authors are `CommitAuthor { name, avatar_url }`. Helpers that build participants from comments/commits take an avatar resolver (`|l, p| forge.avatar_url(l, p, 56)`). `snapshot` has no options: it always tries the check rollup and retries without it, as Go does.
+  - Trait surface beyond 2.2: `avatar_url(login, provided, size)`, `login`, `reaction_subject`, `mentionable_users(repo, pr_url, query)`, `pr_label` + `pr_subject_prompt` (instead of one `agent_subject_hint`), `merge_failure_note` + `failure_diag` (instead of `failure_note`), and web links for the PR views (`comment_url`, `commit_url`, `blob_url`, `check_run_url`, `checks_url`). `ForgeError { kind: Unavailable | Invalid | Http(u16) | Failed, message }` keeps Go's error text as the message.
+  - `fetch_image(url)` returns `Ok(None)` for URLs that are not this forge's and `ForgeErrorKind::Http(status)` with Go's status mapping; the `/gh-image` handler details (method, missing `url`, `Cache-Control`) are services.
+  - `IssueTracker::list_open(IssueQuery { settings, projects, deadline })` returns issues already linked to projects (no `link_projects` method and no `github_remotes` in a shared context); `recur_issues::{list_assigned, claim}` are Go `ListAssignedIssues` / `claimIssue`. `agent_mcp(settings, mode)` returns `McpEndpoint { url, headers }`; E2 names the attach after the catalog server id. Added `issue_url` (the UI's issue-link fallback); `app_url` builds the `linear://` link while the macOS `open` stays in services.
+  - The UI's pure PR rules live in `recur_forge::view` and `recur_issues::{view, linear::tools}`.
 
 #### E1: engine core
 
@@ -922,6 +940,15 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Tests:** `claude_flags_test.go`, `claude_inject_test.go`, `codex_test.go`, `codex_smoke_test.go` (env-gated), Claude cases of `permission_test.go` / `permission_wiring_test.go`, `internal/codex/*_test.go`, `app/claude_status_test.go`, Claude/Codex cases of `app/model_catalog_test.go` and `models_test.go`.
 - **Prerequisites:** A-M1, A-M2, P3's `recur-usage` probes for `usage_probe` (deferred edge).
 - **Public API:** `ClaudeProvider::new(cfg)`, `CodexProvider::new(cfg)` implementing 2.1.
+- **As built (deviations and notes for E2/SV):** no trait change.
+  - `CodexProvider` keeps a settings snapshot (`CodexConfig::settings`, replaced by `settings_changed`) because `run_turn` takes no `Settings`; SV must call `settings_changed` on every save. `ClaudeProvider` reads no settings.
+  - Tracker secrets: Go hard-coded `LINEAR_API_KEY` in both runners. Turns now scrub `TurnRequest::env_scrub` (the engine fills it from `IssueTracker::secret_env`, R8) and Codex probes scrub `CodexConfig::env_scrub`.
+  - Codex leaves `PermissionRequest::surface` empty; the engine's `PermissionAsker` fills it (Go `permissionSurfaceFor` in the `codexRunner` closure).
+  - Codex sends conductor steers without the Maestro prefix (Go behavior) and acks every steer after `turn/steer` succeeds; Claude prefixes conductor steers and acks them on receipt.
+  - `CodexProvider::models` is `Ok(vec![])` when Codex is off or unconfigured and `Err` when the probe fails; either way the group is omitted. `cached_models` is the last good list from `models` or `status`. `context_window` is 0 for Codex (the window arrives on usage frames).
+  - E2's `contextWindowForMessage` port keeps Go's guard (resolve only when a model or a `context` flag is known; else the stored window); `recur_provider_claude::flags::has_context_flag` is that check. The mirror's result stamp becomes `provider.context_window(model, flags)` when > 0.
+  - `canonicalTool` (Cursor/Codex names) lives in `recur_provider_codex::display`; P2 needs the same table.
+  - Robustness: Codex RPC calls fail fast after the reader hit EOF (Go waited on the context), and the Claude runner drains stdout after an over-long line instead of leaving the CLI blocked until cancel.
 
 #### P2: Cursor provider
 

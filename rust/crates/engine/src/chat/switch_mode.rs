@@ -201,6 +201,20 @@ impl Engine {
         }
     }
 
+    /// The pending remount's generation (tests).
+    #[cfg(test)]
+    pub(crate) fn pending_mode_continue_epoch(
+        &self,
+        workspace_id: &str,
+        code: &str,
+    ) -> Option<u64> {
+        self.mode_continues
+            .lock()
+            .pending
+            .get(&mode_continue_key(workspace_id, code))
+            .map(|p| p.epoch)
+    }
+
     /// The remount depth of one tab (tests).
     pub fn mode_remount_depth(&self, workspace_id: &str, code: &str) -> i64 {
         self.mode_continues

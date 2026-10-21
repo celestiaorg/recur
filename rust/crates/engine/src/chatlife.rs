@@ -72,6 +72,12 @@ impl ChatTurn {
         })
     }
 
+    /// A turn no registry holds (tests stand in a send's turn handle).
+    #[cfg(test)]
+    pub(crate) fn detached() -> Arc<Self> {
+        Self::new(CancellationToken::new(), true)
+    }
+
     /// The turn's cancel token.
     pub fn cancel_token(&self) -> &CancellationToken {
         &self.cancel

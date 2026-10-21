@@ -938,3 +938,14 @@ pub fn linear_trackers() -> Vec<Arc<dyn recur_issues::IssueTracker>> {
         recur_issues::linear::Linear::new().with_env(|_| None),
     )]
 }
+
+/// E4's `CloseWorkspaceChat` as far as the walk sees it: the tab's agent
+/// row goes and it stops owning the workspace's loop.
+pub fn close_tab(store: &Store, ws: &str, code: &str) {
+    store.update_workspace(ws, |w| {
+        if w.loop_chat_code == code {
+            w.loop_chat_code.clear();
+        }
+    });
+    store.delete_agent(ws, code);
+}

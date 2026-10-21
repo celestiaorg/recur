@@ -3,6 +3,7 @@
 mod acceptance;
 mod checklist;
 mod default_walk;
+mod dispatch;
 mod engage;
 mod engine;
 mod escalation;

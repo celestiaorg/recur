@@ -63,17 +63,6 @@ fn has_tool(spec: &recur_agent::TurnRequest, tool: &str) -> bool {
         .is_some_and(|a| a.iter().any(|t| t == tool))
 }
 
-/// E4's `CloseWorkspaceChat` as far as the walk sees it: the tab's agent
-/// row goes and it stops owning the workspace's loop.
-fn close_tab(store: &recur_store::Store, ws: &str, code: &str) {
-    store.update_workspace(ws, |w| {
-        if w.loop_chat_code == code {
-            w.loop_chat_code.clear();
-        }
-    });
-    store.delete_agent(ws, code);
-}
-
 /// A settled loop workspace whose PA tab owns it (Go
 /// `startChatLoopWalkCloseFixture`).
 async fn settled_owner(t: &TestEngine) -> (String, TempRepo) {

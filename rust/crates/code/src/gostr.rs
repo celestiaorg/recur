@@ -98,3 +98,66 @@ pub(crate) fn is_digit(c: char) -> bool {
 pub(crate) fn lower_rune(c: char) -> char {
     c.to_lowercase().next().unwrap_or(c)
 }
+
+/// Go `for _, r := range string(b)`: invalid bytes decode as U+FFFD, one per
+/// byte.
+pub(crate) fn go_chars(b: &[u8]) -> impl Iterator<Item = char> + '_ {
+    let mut chunks = b.utf8_chunks();
+    let mut valid = "".chars();
+    let mut invalid: &[u8] = &[];
+    std::iter::from_fn(move || {
+        loop {
+            if let Some(c) = valid.next() {
+                return Some(c);
+            }
+            if let Some((_, rest)) = invalid.split_first() {
+                invalid = rest;
+                return Some('\u{FFFD}');
+            }
+            let chunk = chunks.next()?;
+            valid = chunk.valid().chars();
+            invalid = chunk.invalid();
+        }
+    })
+}
+
+/// Go `s[:n]` as the UI receives it: a rune cut in half becomes one U+FFFD
+/// per leftover byte (how `encoding/json` writes invalid UTF-8).
+pub(crate) fn cut_bytes(s: &str, n: usize) -> String {
+    if n >= s.len() {
+        return s.to_string();
+    }
+    let mut end = n;
+    while !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    let mut out = s[..end].to_string();
+    out.extend(std::iter::repeat_n('\u{FFFD}', n - end));
+    out
+}
+
+/// `strings.Join(strings.Fields(s), " ")` cut to `n` bytes with `…` (Go's
+/// `s[:n-1] + "…"` when longer).
+pub(crate) fn truncate_fields(s: &str, n: usize) -> String {
+    let s = collapse_space(s);
+    if s.len() <= n {
+        return s;
+    }
+    cut_bytes(&s, n.saturating_sub(1)) + "…"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn byte_semantics() {
+        let got: String = go_chars(b"a\xe4\xb8b").collect();
+        assert_eq!(got, "a\u{FFFD}\u{FFFD}b");
+        assert_eq!(cut_bytes("a世", 2), "a\u{FFFD}");
+        assert_eq!(cut_bytes("ab", 5), "ab");
+        assert_eq!(truncate_fields(" a  b ", 10), "a b");
+        assert_eq!(truncate_fields("abcdef", 4), "abc…");
+        assert_eq!(quote("a\"\n\u{1}é"), r#""a\"\n\x01é""#);
+    }
+}

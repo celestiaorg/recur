@@ -25,6 +25,7 @@ mod gopath;
 mod gore;
 mod gostr;
 mod langs;
+pub mod observe;
 mod open;
 mod ops;
 mod outline;

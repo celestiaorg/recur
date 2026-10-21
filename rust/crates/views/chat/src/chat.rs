@@ -343,6 +343,33 @@ pub struct ForkMenu {
     pub top: f32,
 }
 
+/// What the per-tool presentation reads, snapshotted per frame so rows can borrow it while
+/// they build listeners.
+#[derive(Default)]
+pub(crate) struct ToolData {
+    pub root_path: String,
+    pub has_open_file: bool,
+    pub findings: Vec<Finding>,
+    pub prs: Vec<recur_domain::Pr>,
+    pub workspace_id: String,
+    pub briefs: Vec<recur_domain::WorkspaceBrief>,
+}
+
+impl ToolData {
+    pub fn cx(&self) -> ToolCx<'_> {
+        ToolCx {
+            root_path: &self.root_path,
+            has_open_file: self.has_open_file,
+            findings: &self.findings,
+            prs: &self.prs,
+            workspace_id: &self.workspace_id,
+            briefs: &self.briefs,
+            workspaces: &[],
+            projects: &[],
+        }
+    }
+}
+
 /// The `{src, name}` the lightbox shows.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Lightbox {
@@ -392,6 +419,10 @@ pub struct AgentChat {
     pub(crate) prompt_slot_subs: Vec<Subscription>,
     pub(crate) prompt_slot_focus: Option<usize>,
     pub(crate) caret_blink_epoch: std::time::Instant,
+    /// When this view mounted: the clock CSS animations run on.
+    pub(crate) anim_epoch: std::time::Instant,
+    pub(crate) think_scrolls: HashMap<String, ScrollHandle>,
+    pub(crate) tool_data: Rc<ToolData>,
     pub(crate) selecting: bool,
 
     // ---- menus ----
@@ -532,6 +563,9 @@ impl AgentChat {
             prompt_slot_subs: Vec::new(),
             prompt_slot_focus: None,
             caret_blink_epoch: std::time::Instant::now(),
+            anim_epoch: std::time::Instant::now(),
+            think_scrolls: HashMap::new(),
+            tool_data: Rc::default(),
             selecting: false,
             skill_index: Vec::new(),
             skill_index_key: String::new(),
@@ -853,6 +887,19 @@ impl AgentChat {
         p.escalation
             .clone()
             .filter(|e| e.status.as_str() == "open" && !e.question.is_empty())
+    }
+
+    /// Refreshes [`ToolData`] from the props and stores.
+    pub(crate) fn snapshot_tool_data(&mut self, cx: &App) {
+        let s = self.state.read(cx);
+        self.tool_data = Rc::new(ToolData {
+            root_path: self.props.root_path.clone(),
+            has_open_file: self.hooks.open_file,
+            findings: self.props.findings.clone(),
+            prs: s.prs.clone(),
+            workspace_id: self.props.workspace_id.clone(),
+            briefs: s.briefing.workspaces.clone().unwrap_or_default(),
+        });
     }
 
     pub(crate) fn tool_cx<'a>(&'a self, s: &'a AppState) -> ToolCx<'a> {
@@ -1807,6 +1854,11 @@ impl AgentChat {
         if self.mention.is_some() {
             self.splice_live_mention_rows(cx);
         }
+    }
+
+    /// What sits behind the transcript: `--bg`, or `--pane` inside a session card.
+    pub(crate) fn backdrop(&self, t: &recur_ui::Tokens) -> recur_ui::Color {
+        if self.props.readonly { t.pane } else { t.bg }
     }
 
     pub(crate) fn tool_prs<'a>(&self, s: &'a AppState) -> &'a [recur_domain::Pr] {

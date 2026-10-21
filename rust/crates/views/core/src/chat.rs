@@ -134,6 +134,33 @@ impl AppState {
         })
     }
 
+    /// `markWorkspaceInboxRead`: every unread notification of a workspace, read.
+    pub fn mark_workspace_inbox_read(&mut self, workspace_id: &str, cx: &mut Context<Self>) {
+        if workspace_id.is_empty() {
+            return;
+        }
+        let ids: Vec<String> = self
+            .inbox
+            .iter()
+            .filter(|i| i.workspace_id == workspace_id && i.unread)
+            .map(|i| i.id.clone())
+            .collect();
+        if ids.is_empty() {
+            return;
+        }
+        let services = self.services.clone();
+        cx.background_spawn(async move {
+            for id in ids {
+                let _ = services.inbox.mark_inbox_read(&id).await;
+            }
+        })
+        .detach();
+        for i in self.inbox.iter_mut().filter(|i| i.workspace_id == workspace_id) {
+            i.unread = false;
+        }
+        cx.notify();
+    }
+
     /// `workspaceTerminals[id]`.
     pub fn workspace_terminals(&self, workspace_id: &str) -> &[WorkspaceTerminalTab] {
         self.chat

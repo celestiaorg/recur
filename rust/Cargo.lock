@@ -5991,8 +5991,21 @@ dependencies = [
 name = "recur-forge"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "futures",
+ "parking_lot",
+ "pretty_assertions",
  "recur-domain",
- "recur-git",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "url",
 ]
 
 [[package]]
@@ -6006,7 +6019,19 @@ dependencies = [
 name = "recur-issues"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "futures",
+ "parking_lot",
+ "pretty_assertions",
  "recur-domain",
+ "recur-forge",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -6040,7 +6065,7 @@ dependencies = [
 name = "recur-platform"
 version = "0.0.0"
 dependencies = [
- "base64 0.23.1",
+ "base64 0.22.1",
  "block2 0.6.2",
  "chrono",
  "digest 0.11.3",

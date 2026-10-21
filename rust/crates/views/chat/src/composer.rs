@@ -34,7 +34,6 @@ use crate::chat::{
     args_query, js_trim, now_ms,
 };
 use crate::composer_doc::{ChipKind, ComposerDoc};
-use crate::composer_undo::UndoSnap;
 use crate::file_index::search_files;
 use crate::flow::ATOM;
 use crate::prompt_actions::{PromptCatalog, complete_prompt_args, prompt_action};
@@ -50,10 +49,6 @@ pub fn composer_min_height() -> f32 {
 }
 pub fn composer_max_height() -> f32 {
     (COMPOSER_PAD_PX + COMPOSER_LINE_PX * 6.).round()
-}
-
-fn base_name(p: &str) -> &str {
-    p.rsplit('/').next().unwrap_or(p)
 }
 
 fn artifact_title_rank(title: &str, q: &str) -> u8 {
@@ -1786,16 +1781,6 @@ impl AgentChat {
 
     // ---- pointer ----
 
-    pub(crate) fn composer_point_to_byte(&self, p: Point<Pixels>, origin: Point<Pixels>) -> usize {
-        let Some(l) = self.composer_layout.borrow().clone() else {
-            return self.doc.text.len();
-        };
-        let scroll = -f32::from(self.composer_scroll.offset().y);
-        let x = f32::from(p.x - origin.x);
-        let y = f32::from(p.y - origin.y) + scroll;
-        l.hit(x, y)
-    }
-
     pub(crate) fn composer_mouse_down(&mut self, byte: usize, shift: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.doc.move_to(byte, shift);
         self.selecting = true;
@@ -1912,9 +1897,8 @@ impl EntityInputHandler for AgentChat {
         let l = self.composer_layout.borrow().clone()?;
         let b = self.doc.byte_of_utf16(range.start);
         let (x, y, h) = l.caret(b);
-        let scroll = -f32::from(self.composer_scroll.offset().y);
         Some(Bounds::new(
-            bounds.origin + point(px(x), px(y - scroll)),
+            bounds.origin + point(px(x), px(y)),
             gpui_kit::size(px(2.), px(h)),
         ))
     }
@@ -1925,19 +1909,6 @@ impl EntityInputHandler for AgentChat {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<usize> {
-        let l = self.composer_layout.borrow().clone()?;
-        let b = l.hit(f32::from(p.x), f32::from(p.y));
-        Some(self.doc.utf16_of_byte(b))
-    }
-}
-
-impl AgentChat {
-    /// The undo stack's view of the current draft.
-    pub(crate) fn undo_snap(&self) -> UndoSnap<ChatAttachmentDraft> {
-        UndoSnap {
-            text: self.input.clone(),
-            atts: self.attachments.clone(),
-            caret: self.doc.wire_caret(),
-        }
+        Some(self.doc.utf16_of_byte(self.composer_byte_at(p)))
     }
 }

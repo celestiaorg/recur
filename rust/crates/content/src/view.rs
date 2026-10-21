@@ -498,7 +498,7 @@ impl Render for MarkdownView {
             size: sheet.size,
             leading: sheet.leading,
             ink: crate::render::inline::Ink::Text,
-            weight: 400.,
+            weight: sheet.weight,
             lists: 0,
         };
         let doc = self.doc.clone();

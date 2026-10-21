@@ -315,6 +315,9 @@ impl Build<'_, '_> {
         if has_break {
             t = t.pre_wrap();
         }
+        if self.env.sheet.tracking != 0. {
+            t = t.tracking(self.env.sheet.tracking);
+        }
         if anywhere {
             t = t.break_anywhere();
         }

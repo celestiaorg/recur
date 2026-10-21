@@ -70,6 +70,10 @@ pub struct Sheet {
     /// `--text: var(--muted)` (the chat's thought and compaction bodies): text-colored runs
     /// paint muted and hovered links stay cyan.
     pub muted: bool,
+    /// The body weight a host's `font: inherit` hands down (400 by default).
+    pub weight: f32,
+    /// `letter-spacing` in em inherited from the host (0 by default).
+    pub tracking: f32,
 }
 
 const fn h(scale: f32, margin_top: f32, margin_bottom: f32, muted: bool) -> Heading {
@@ -125,6 +129,8 @@ impl Sheet {
             em_muted: true,
             mdref_card: true,
             muted: false,
+            weight: 400.,
+            tracking: 0.,
         }
     }
 
@@ -170,6 +176,8 @@ impl Sheet {
             em_muted: false,
             mdref_card: false,
             muted: false,
+            weight: 400.,
+            tracking: 0.,
         }
     }
 }

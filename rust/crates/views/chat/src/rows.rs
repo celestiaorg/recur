@@ -6,12 +6,12 @@ use std::time::Duration;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, AppContext as _, Context, Div, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    AnyElement, AppContext as _, Context, Div, InteractiveElement, IntoElement, ParentElement,
     SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
 };
 use recur_agent::context_usage::format_tokens;
 use recur_agent::display::tasks::{
-    BodyOpts, ClaudeTaskView, claude_task_chip_status, claude_task_has_body,
+    ClaudeTaskView, claude_task_chip_status,
     claude_task_result_is_ack, format_task_id, pretty_task_status, task_status_chip_class,
 };
 use recur_agent::display::web::{compact_url, web_result_is_json};
@@ -40,8 +40,8 @@ use crate::style::{
     ERR, GREEN, Pill, amber_a, coral_a, finding_sev, hsla, ico, label, sev_pill, status_pill,
 };
 use crate::tools::{
-    StepIcon, ToolCx, ToolView, base_name, diff_counts, lint_loc_suffix, lint_sev_class,
-    plan_step_mark, pretty_result, pretty_tool_name, thinking_preview,
+    StepIcon, ToolView, base_name, diff_counts, lint_loc_suffix, lint_sev_class,
+    plan_step_mark, pretty_result, thinking_preview,
 };
 
 /// `.tc-wait-dot`'s pulse.
@@ -2259,7 +2259,7 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         let wrap = m.note_label == "Commit" || m.note_label == "Handoff";
         let id = SharedString::from(format!("nt-{}-{key}", self.props.reset_key));
-        let group = SharedString::from(format!("{id}-g"));
+        let _group = SharedString::from(format!("{id}-g"));
         let label_s = if m.note_label.is_empty() { "Notice".to_string() } else { m.note_label.clone() };
         let meta: AnyElement = if m.note_html {
             crate::html_inline::inline_html(

@@ -17,10 +17,10 @@ use recur_domain::{Escalation, Finding, PermissionRequest, UserQuestion};
 use recur_engine::view::chat::{
     AgentMsg, ChatAttachmentDraft, ChatLogSession, current_turn_has_ended,
 };
-use recur_engine::view::composer::{ComposerAtt, HydrateOpts, PromptChipSpec, Segment};
+use recur_engine::view::composer::{ComposerAtt, HydrateOpts, PromptChipSpec};
 use recur_engine::view::digest::{TurnDigestFinding, TurnDigestNote, still_open_findings_for_turn};
 use recur_engine::view::mentions::{
-    MentionQuery, extract_attachment_ids, mention_query_at, skill_query_at,
+    MentionQuery, extract_attachment_ids,
     strip_attachment_markers, unique_artifact_id_for_title,
 };
 use recur_engine::view::prompts::{
@@ -38,7 +38,7 @@ use crate::composer_undo::{ComposerUndo, UndoSnap};
 use crate::findings_ui::digest_ref;
 use crate::flow::FlowLayout;
 use crate::glance::is_first_checkpoint;
-use crate::prompt_actions::{PromptCatalog, enabled_prompts, prompt_action};
+use crate::prompt_actions::{enabled_prompts, prompt_action};
 use crate::session_events::session_event;
 use crate::tools::ToolCx;
 use crate::transcript_ui::{
@@ -106,6 +106,9 @@ pub struct ChatProps {
     pub surface: ChatSurfaceKind,
     /// Composer only (the New-workspace modal): no transcript, queue, or send row.
     pub composer_only: bool,
+    /// Inside a specialist card's `.sess-body`: hugs its content up to 420px, 8px 12px
+    /// padding, full-width column, tighter user bubbles and edge fades.
+    pub session_body: bool,
 }
 
 impl Default for ChatProps {
@@ -136,6 +139,7 @@ impl Default for ChatProps {
             prompt_busy: false,
             surface: ChatSurfaceKind::Workspace,
             composer_only: false,
+            session_body: false,
         }
     }
 }
@@ -424,6 +428,10 @@ pub struct AgentChat {
     pub(crate) think_scrolls: HashMap<String, ScrollHandle>,
     pub(crate) tool_data: Rc<ToolData>,
     pub(crate) image_loading: HashMap<String, Task<()>>,
+    /// Fork buttons' bounds from the last frame (the menu anchors to them).
+    pub(crate) fork_anchor: Rc<std::cell::RefCell<HashMap<String, gpui_kit::Bounds<gpui_kit::Pixels>>>>,
+    pub(crate) composer_geom: Rc<crate::dock::ComposerGeom>,
+    pub(crate) meter: Entity<crate::meter::ContextMeter>,
     pub(crate) selecting: bool,
 
     // ---- menus ----
@@ -544,6 +552,7 @@ impl AgentChat {
             let _ = this;
         }));
         subs.push(cx.observe_window_activation(window, |_, _, cx| cx.notify()));
+        subs.push(Self::intercept_keys(cx));
         let mut this = AgentChat {
             state,
             services: vcx.services.clone(),
@@ -568,6 +577,9 @@ impl AgentChat {
             think_scrolls: HashMap::new(),
             tool_data: Rc::default(),
             image_loading: HashMap::new(),
+            fork_anchor: Rc::default(),
+            composer_geom: Rc::default(),
+            meter: cx.new(|_| crate::meter::ContextMeter::new()),
             selecting: false,
             skill_index: Vec::new(),
             skill_index_key: String::new(),
@@ -841,11 +853,6 @@ impl AgentChat {
             .unwrap_or_default()
     }
 
-    pub(crate) fn artifact_id_for_title(&self, title: &str, cx: &App) -> String {
-        let arts = self.live_artifacts(cx);
-        unique_artifact_id_for_title(title, arts.iter().map(|a| (a.id.as_str(), a.title.as_str())))
-    }
-
     /// `chatPermissions`: this tab's chat-surface prompts, only while the workspace detail
     /// is on screen.
     pub(crate) fn chat_permissions(&self, cx: &App) -> Vec<PermissionRequest> {
@@ -902,19 +909,6 @@ impl AgentChat {
             workspace_id: self.props.workspace_id.clone(),
             briefs: s.briefing.workspaces.clone().unwrap_or_default(),
         });
-    }
-
-    pub(crate) fn tool_cx<'a>(&'a self, s: &'a AppState) -> ToolCx<'a> {
-        ToolCx {
-            root_path: &self.props.root_path,
-            has_open_file: self.hooks.open_file,
-            findings: &self.props.findings,
-            prs: &s.prs,
-            workspace_id: &self.props.workspace_id,
-            briefs: s.briefing.workspaces.as_deref().unwrap_or_default(),
-            workspaces: &[],
-            projects: &[],
-        }
     }
 
     /// Queued follow-ups wait in a strip above the composer, not in the transcript.
@@ -1899,13 +1893,9 @@ impl AgentChat {
         }
     }
 
-    /// What sits behind the transcript: `--bg`, or `--pane` inside a session card.
+    /// What sits behind the transcript: `--bg` (a `.sess-body` is `--bg` too).
     pub(crate) fn backdrop(&self, t: &recur_ui::Tokens) -> recur_ui::Color {
-        if self.props.readonly { t.pane } else { t.bg }
-    }
-
-    pub(crate) fn tool_prs<'a>(&self, s: &'a AppState) -> &'a [recur_domain::Pr] {
-        &s.prs
+        t.bg
     }
 
     pub(crate) fn hydrate_opts_titles(&self, cx: &App) -> (HashMap<String, String>, HashMap<String, String>, Vec<(String, String)>) {
@@ -2007,10 +1997,6 @@ impl AgentChat {
 
     pub(crate) fn caret_wire(&self) -> usize {
         self.doc.wire_caret()
-    }
-
-    pub(crate) fn segment_of_chip(&self, i: usize) -> Option<&Segment> {
-        self.doc.chips.get(i)
     }
 }
 

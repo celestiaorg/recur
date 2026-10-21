@@ -71,6 +71,7 @@ fn all_specs() -> Vec<SceneSpec> {
     let mut specs = gallery::specs();
     specs.extend(recur_terminal_view::gallery::specs());
     specs.extend(recur_app::gallery::specs());
+    specs.extend(recur_content::gallery::specs());
     specs
 }
 
@@ -79,11 +80,15 @@ fn exists(name: &str) -> bool {
         || recur_editor::gallery::exists(name)
         || recur_terminal_view::gallery::exists(name)
         || recur_app::gallery::exists(name)
+        || recur_content::gallery::exists(name)
 }
 
 fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyView> {
     if recur_terminal_view::gallery::exists(name) {
         return recur_terminal_view::gallery::build(name, window, cx);
+    }
+    if recur_content::gallery::exists(name) {
+        return recur_content::gallery::build(name, window, cx);
     }
     if recur_app::gallery::exists(name) {
         return recur_app::gallery::build(name, window, cx);

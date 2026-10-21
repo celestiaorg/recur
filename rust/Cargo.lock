@@ -6674,9 +6674,11 @@ dependencies = [
 name = "recur-content"
 version = "0.0.0"
 dependencies = [
+ "base64 0.23.1",
  "futures",
  "gpui-kit",
  "html5ever",
+ "image",
  "markup5ever_rcdom",
  "pretty_assertions",
  "recur-textmate",
@@ -6684,6 +6686,7 @@ dependencies = [
  "regress",
  "serde",
  "serde_json",
+ "smallvec",
  "url",
 ]
 
@@ -7154,6 +7157,7 @@ dependencies = [
  "gpui-kit",
  "image",
  "recur-app",
+ "recur-content",
  "recur-editor",
  "recur-terminal-view",
  "recur-ui",

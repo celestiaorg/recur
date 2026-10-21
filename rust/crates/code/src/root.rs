@@ -21,7 +21,8 @@ pub fn resolve_root(repo_path: &str, loop_worktree: &str) -> Result<PathBuf> {
 pub fn resolve_root_info(repo_path: &str, loop_worktree: &str) -> Result<(PathBuf, bool)> {
     let wt = loop_worktree.trim();
     if !wt.is_empty() {
-        let abs = gopath::abs(&recur_git::expand_home(wt)).map_err(|e| Error::msg(e.to_string()))?;
+        let abs =
+            gopath::abs(&recur_git::expand_home(wt)).map_err(|e| Error::msg(e.to_string()))?;
         if fs::metadata(&abs).is_ok_and(|m| m.is_dir()) {
             return Ok((PathBuf::from(abs), true));
         }

@@ -115,7 +115,11 @@ pub fn map_skill_rows(list: &[AgentSkill]) -> Vec<SkillRow> {
         .map(|s| SkillRow {
             name: s.name.clone(),
             description: s.description.clone(),
-            scope: if s.scope.is_empty() { "user".into() } else { s.scope.clone() },
+            scope: if s.scope.is_empty() {
+                "user".into()
+            } else {
+                s.scope.clone()
+            },
             path: s.path.clone(),
         })
         .collect()
@@ -173,10 +177,18 @@ pub fn project_skill_override_lists(
         out
     };
     if want_enabled {
-        let enabled = if global_on { drop(project_enabled) } else { add(project_enabled) };
+        let enabled = if global_on {
+            drop(project_enabled)
+        } else {
+            add(project_enabled)
+        };
         (drop(project_disabled), enabled)
     } else {
-        let disabled = if global_on { add(project_disabled) } else { drop(project_disabled) };
+        let disabled = if global_on {
+            add(project_disabled)
+        } else {
+            drop(project_disabled)
+        };
         (disabled, drop(project_enabled))
     }
 }
@@ -250,21 +262,41 @@ mod tests {
             skill_kind(&row("a", "user", "/Users/j/.recur/recur-skills/a/SKILL.md")),
             SkillKind::Recur
         );
-        assert_eq!(skill_kind(&row("a", "workspace", "/r/.claude/skills/a/SKILL.md")), SkillKind::Project);
-        assert_eq!(skill_kind(&row("a", "user", "/h/.claude/skills/a/SKILL.md")), SkillKind::User);
-        assert!(is_recur_skill_path(r"C:\Users\j\.recur\recur-skills\x\SKILL.md"));
+        assert_eq!(
+            skill_kind(&row("a", "workspace", "/r/.claude/skills/a/SKILL.md")),
+            SkillKind::Project
+        );
+        assert_eq!(
+            skill_kind(&row("a", "user", "/h/.claude/skills/a/SKILL.md")),
+            SkillKind::User
+        );
+        assert!(is_recur_skill_path(
+            r"C:\Users\j\.recur\recur-skills\x\SKILL.md"
+        ));
     }
 
     #[test]
     fn infer_home() {
-        assert_eq!(infer_home_from_skill_path("/opt/x/.recur/recur-skills/a/SKILL.md"), "/opt/x");
-        assert_eq!(infer_home_from_skill_path("/Users/j/.claude/skills/a/SKILL.md"), "/Users/j");
-        assert_eq!(infer_home_from_skill_path("/home/j/.cursor/skills/a/SKILL.md"), "/home/j");
+        assert_eq!(
+            infer_home_from_skill_path("/opt/x/.recur/recur-skills/a/SKILL.md"),
+            "/opt/x"
+        );
+        assert_eq!(
+            infer_home_from_skill_path("/Users/j/.claude/skills/a/SKILL.md"),
+            "/Users/j"
+        );
+        assert_eq!(
+            infer_home_from_skill_path("/home/j/.cursor/skills/a/SKILL.md"),
+            "/home/j"
+        );
         assert_eq!(
             infer_home_from_skill_path(r"C:\Users\j\.codex\skills\a\SKILL.md"),
             "C:/Users/j"
         );
-        assert_eq!(infer_home_from_skill_path("/work/repo/.claude/skills/a/SKILL.md"), "");
+        assert_eq!(
+            infer_home_from_skill_path("/work/repo/.claude/skills/a/SKILL.md"),
+            ""
+        );
         assert_eq!(infer_home_from_skill_path("/.claude/skills/a/SKILL.md"), "");
     }
 
@@ -274,7 +306,10 @@ mod tests {
             skill_location("/work/repo/.claude/skills/foo/SKILL.md", "workspace", ""),
             ".claude/skills/foo"
         );
-        assert_eq!(skill_location("/work/foo/skill.md", "workspace", ""), "/work/foo");
+        assert_eq!(
+            skill_location("/work/foo/skill.md", "workspace", ""),
+            "/work/foo"
+        );
         assert_eq!(
             skill_location("/Users/j/.claude/skills/foo/SKILL.md", "user", ""),
             "~/.claude/skills/foo"
@@ -285,7 +320,10 @@ mod tests {
         );
         assert_eq!(skill_location("/x/foo/SKILL.md", "user", ""), "/x/foo");
         assert_eq!(skill_location("", "user", ""), "");
-        assert_eq!(skill_location("/w/a/skill.md/SKILL.md", "workspace", ""), "/w/a");
+        assert_eq!(
+            skill_location("/w/a/skill.md/SKILL.md", "workspace", ""),
+            "/w/a"
+        );
     }
 
     #[test]
@@ -301,7 +339,12 @@ mod tests {
     fn enablement() {
         let global = s(&["noisy"]);
         assert!(!effective_skill_enabled("noisy", &global, &[], &[]));
-        assert!(effective_skill_enabled("noisy", &global, &[], &s(&["noisy"])));
+        assert!(effective_skill_enabled(
+            "noisy",
+            &global,
+            &[],
+            &s(&["noisy"])
+        ));
         assert!(!effective_skill_enabled("x", &[], &s(&["x"]), &s(&["x"])));
         assert_eq!(toggle_disabled_name(&s(&["a", "b"]), "a", true), ["b"]);
         assert_eq!(toggle_disabled_name(&s(&["a"]), "b", false), ["a", "b"]);
@@ -329,8 +372,14 @@ mod tests {
             project_skill_override_lists("x", false, &s(&["x"]), &s(&["x"]), &s(&["x"])),
             (vec![], vec![])
         );
-        assert_eq!(skill_override_hint("x", &s(&["x"]), &[], &s(&["x"])), "On for this project (off globally)");
-        assert_eq!(skill_override_hint("x", &[], &s(&["x"]), &[]), "Off for this project");
+        assert_eq!(
+            skill_override_hint("x", &s(&["x"]), &[], &s(&["x"])),
+            "On for this project (off globally)"
+        );
+        assert_eq!(
+            skill_override_hint("x", &[], &s(&["x"]), &[]),
+            "Off for this project"
+        );
         assert_eq!(skill_override_hint("x", &[], &[], &[]), "");
     }
 
@@ -340,8 +389,21 @@ mod tests {
             row("a", "workspace", "/r/.claude/skills/a/SKILL.md"),
             row("b", "user", "/Users/j/.claude/skills/b/SKILL.md"),
         ];
-        assert_eq!(skill_kind_override_count(&skills, &s(&["a", "z"]), &s(&["b"])), 2);
-        assert!(skill_kind_has_overrides(&skills, SkillKind::Project, &s(&["a"]), &[]));
-        assert!(!skill_kind_has_overrides(&skills, SkillKind::User, &s(&["a"]), &[]));
+        assert_eq!(
+            skill_kind_override_count(&skills, &s(&["a", "z"]), &s(&["b"])),
+            2
+        );
+        assert!(skill_kind_has_overrides(
+            &skills,
+            SkillKind::Project,
+            &s(&["a"]),
+            &[]
+        ));
+        assert!(!skill_kind_has_overrides(
+            &skills,
+            SkillKind::User,
+            &s(&["a"]),
+            &[]
+        ));
     }
 }

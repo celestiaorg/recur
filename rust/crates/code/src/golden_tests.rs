@@ -74,7 +74,11 @@ fn outline_matches_go() {
         let got = outline(root.path(), rel).unwrap();
         assert_eq!(&got, want.as_ref().unwrap_or(&Vec::new()), "outline({rel})");
     }
-    assert_eq!(g.outline.len(), g.files.len(), "every fixture has an outline");
+    assert_eq!(
+        g.outline.len(),
+        g.files.len(),
+        "every fixture has an outline"
+    );
 }
 
 #[test]
@@ -91,7 +95,10 @@ fn search_matches_go() {
                 assert!(!c.error.is_empty(), "{:?}: unexpected error {e}", c.query);
                 // Go's regexp and the regex crate word parse errors
                 // differently; the prefix is what the UI shows.
-                assert!(e.to_string().starts_with("invalid regex: error parsing regexp: "));
+                assert!(
+                    e.to_string()
+                        .starts_with("invalid regex: error parsing regexp: ")
+                );
                 assert!(c.error.starts_with("invalid regex: error parsing regexp: "));
             }
         }
@@ -118,7 +125,11 @@ fn ranking_matches_go() {
     let g = golden();
     let bases: Vec<String> = g.paths.iter().map(|p| crate::gopath::base(p)).collect();
     for (q, want) in &g.rank {
-        assert_eq!(&rank_files(None, &g.paths, &bases, q, 8), want, "rank({q:?})");
+        assert_eq!(
+            &rank_files(None, &g.paths, &bases, q, 8),
+            want,
+            "rank({q:?})"
+        );
     }
     for (q, want) in &g.rank_dirs {
         assert_eq!(
@@ -169,14 +180,29 @@ fn skill_frontmatter_matches_go() {
     let g = golden();
     let dir = tmp();
     let bodies = [
-        ("plain", "---\nname: x\ndescription: hello   world\n---\n\n# Body\n"),
-        ("folded", "---\ndescription: >-\n  line one\n\n  line two\nuser-invocable: no\n---\nbody"),
-        ("literal", "---\ndescription: |\n\tTabbed line\n  spaced\nnext: 1\n---\n"),
-        ("quoted", "\u{feff}  ---\ndescription: 'It''s'\ndisable-model-invocation: TRUE\n---\nB"),
+        (
+            "plain",
+            "---\nname: x\ndescription: hello   world\n---\n\n# Body\n",
+        ),
+        (
+            "folded",
+            "---\ndescription: >-\n  line one\n\n  line two\nuser-invocable: no\n---\nbody",
+        ),
+        (
+            "literal",
+            "---\ndescription: |\n\tTabbed line\n  spaced\nnext: 1\n---\n",
+        ),
+        (
+            "quoted",
+            "\u{feff}  ---\ndescription: 'It''s'\ndisable-model-invocation: TRUE\n---\nB",
+        ),
         ("nofm", "# Just a body\n"),
         ("empty", "---\nname: x\n---\n"),
         ("unclosed", "---\ndescription: d\n"),
-        ("crlf", "---\r\ndescription: crlf desc\r\nuser-invocable: \"false\"\r\n---\r\nbody\r\n"),
+        (
+            "crlf",
+            "---\r\ndescription: crlf desc\r\nuser-invocable: \"false\"\r\n---\r\nbody\r\n",
+        ),
     ];
     assert_eq!(bodies.len(), g.frontmatter.len());
     for (name, body) in bodies {
@@ -203,7 +229,11 @@ fn skill_frontmatter_matches_go() {
 fn idents_tree_and_listing_match_go() {
     let g = golden();
     for (line, want) in &g.idents {
-        assert_eq!(&extract_idents(line), want.as_ref().unwrap_or(&Vec::new()), "{line}");
+        assert_eq!(
+            &extract_idents(line),
+            want.as_ref().unwrap_or(&Vec::new()),
+            "{line}"
+        );
     }
     let root = materialize(&g);
     let rt = tokio::runtime::Builder::new_current_thread()
@@ -227,8 +257,7 @@ fn copyfiles_match_go() {
         matches: BTreeMap<String, BTreeMap<String, bool>>,
         parse: BTreeMap<String, Option<Vec<String>>>,
     }
-    let g: Copy =
-        serde_json::from_str(include_str!("../tests/golden/go_copyfiles.json")).unwrap();
+    let g: Copy = serde_json::from_str(include_str!("../tests/golden/go_copyfiles.json")).unwrap();
     for (pat, probes) in &g.matches {
         for (p, want) in probes {
             assert_eq!(

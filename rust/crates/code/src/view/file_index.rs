@@ -56,7 +56,7 @@ mod tests {
         }
     }
 
-    fn dir_of<'a>(hits: &'a [FileHit], item: &str) -> Option<bool> {
+    fn dir_of(hits: &[FileHit], item: &str) -> Option<bool> {
         hits.iter().find(|h| h.item == item).map(|h| h.dir)
     }
 

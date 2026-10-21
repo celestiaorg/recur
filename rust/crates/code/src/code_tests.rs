@@ -17,11 +17,11 @@ use crate::testutil::{git, tmp, write};
 use crate::*;
 
 const PNG: [u8; 69] = [
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
-    0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
-    0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8,
-    0xff, 0xff, 0x3f, 0x00, 0x05, 0xfe, 0x02, 0xfe, 0xdc, 0xcc, 0x59, 0xe7, 0x00, 0x00, 0x00,
-    0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+    0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xff, 0xff, 0x3f,
+    0x00, 0x05, 0xfe, 0x02, 0xfe, 0xdc, 0xcc, 0x59, 0xe7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
+    0x44, 0xae, 0x42, 0x60, 0x82,
 ];
 
 fn never() -> CancellationToken {
@@ -44,7 +44,9 @@ fn sparse(path: &Path, len: u64) {
 fn safe_join_rejects_escape() {
     let root = tmp();
     assert_eq!(
-        safe_join(root.path(), "../outside").unwrap_err().to_string(),
+        safe_join(root.path(), "../outside")
+            .unwrap_err()
+            .to_string(),
         "path escapes root"
     );
     assert_eq!(
@@ -80,7 +82,10 @@ async fn tree_outline_search_symbols() {
     assert_eq!((out[0].kind.as_str(), out[0].line), ("func", 3));
 
     let hits = search(&never(), root.path(), "Hello").unwrap().unwrap();
-    assert_eq!((hits[0].path.as_str(), hits[0].line, hits[0].col), ("demo.go", 3, 6));
+    assert_eq!(
+        (hits[0].path.as_str(), hits[0].line, hits[0].col),
+        ("demo.go", 3, 6)
+    );
 
     let defs = find_defs(&never(), root.path(), "Hello").unwrap();
     assert_eq!(defs.len(), 1);
@@ -113,8 +118,16 @@ fn outline_major_languages() {
             "public class Widget {\n  public void render() {}\n}\n",
             &["Widget", "render"],
         ),
-        ("a.kt", "class Widget\nfun render() {}\n", &["Widget", "render"]),
-        ("a.swift", "struct Widget {}\nfunc render() {}\n", &["Widget", "render"]),
+        (
+            "a.kt",
+            "class Widget\nfun render() {}\n",
+            &["Widget", "render"],
+        ),
+        (
+            "a.swift",
+            "struct Widget {}\nfunc render() {}\n",
+            &["Widget", "render"],
+        ),
         (
             "a.rb",
             "class Widget\n  def render\n  end\nend\nmodule Helpers\nend\n",
@@ -135,8 +148,16 @@ fn outline_major_languages() {
             "class Widget {};\nint render() { return 0; }\n",
             &["Widget", "render"],
         ),
-        ("a.dart", "class Widget {}\nvoid render() {}\n", &["Widget", "render"]),
-        ("a.zig", "pub fn render() void {}\npub const MAX = 1;\n", &["render", "MAX"]),
+        (
+            "a.dart",
+            "class Widget {}\nvoid render() {}\n",
+            &["Widget", "render"],
+        ),
+        (
+            "a.zig",
+            "pub fn render() void {}\npub const MAX = 1;\n",
+            &["render", "MAX"],
+        ),
     ];
     for (name, src, want) in cases {
         write(root.path(), name, src);
@@ -146,7 +167,10 @@ fn outline_major_languages() {
             .map(|s| s.name)
             .collect();
         for sym in *want {
-            assert!(got.iter().any(|g| g == sym), "outline({name}) missing {sym}: {got:?}");
+            assert!(
+                got.iter().any(|g| g == sym),
+                "outline({name}) missing {sym}: {got:?}"
+            );
         }
     }
 }
@@ -184,7 +208,9 @@ fn read_file_images() {
     // Non-image binary is still rejected.
     write(root.path(), "blob.bin", [0x00, 0x01, 0x02, 0xff]);
     assert_eq!(
-        read_file(root.path(), "blob.bin", false).unwrap_err().to_string(),
+        read_file(root.path(), "blob.bin", false)
+            .unwrap_err()
+            .to_string(),
         "binary or non-UTF-8 file"
     );
 }
@@ -192,11 +218,18 @@ fn read_file_images() {
 #[test]
 fn read_file_video() {
     let root = tmp();
-    write(root.path(), "clip.MOV", [0, 0, 0, 0x14, b'f', b't', b'y', b'p']);
+    write(
+        root.path(),
+        "clip.MOV",
+        [0, 0, 0, 0x14, b'f', b't', b'y', b'p'],
+    );
     let fc = read_file(root.path(), "clip.MOV", false).unwrap();
     assert_eq!(fc.mime, "video/quicktime");
     assert!(fc.content.is_empty());
-    assert!(preview_limit("video/mp4") > MAX_READ_BYTES, "video is not capped");
+    assert!(
+        preview_limit("video/mp4") > MAX_READ_BYTES,
+        "video is not capped"
+    );
 }
 
 #[test]
@@ -215,7 +248,9 @@ fn read_file_pdf() {
 fn read_file_errors() {
     let root = tmp();
     assert_eq!(
-        read_file(root.path(), "gone.txt", false).unwrap_err().to_string(),
+        read_file(root.path(), "gone.txt", false)
+            .unwrap_err()
+            .to_string(),
         "not found: gone.txt"
     );
     fs::create_dir(root.path().join("d")).unwrap();
@@ -225,7 +260,9 @@ fn read_file_errors() {
     );
     write(root.path(), "latin1.txt", [b'c', b'a', b'f', 0xe9]);
     assert_eq!(
-        read_file(root.path(), "latin1.txt", false).unwrap_err().to_string(),
+        read_file(root.path(), "latin1.txt", false)
+            .unwrap_err()
+            .to_string(),
         "binary or non-UTF-8 file"
     );
 }
@@ -284,8 +321,14 @@ fn prepare_chat_image_rules() {
         prepare_chat_image("shot.png").unwrap_err().to_string(),
         "path must be absolute"
     );
-    assert_eq!(prepare_chat_image(" ").unwrap_err().to_string(), "missing path");
-    assert_eq!(prepare_chat_image("/a\0b").unwrap_err().to_string(), "invalid path");
+    assert_eq!(
+        prepare_chat_image(" ").unwrap_err().to_string(),
+        "missing path"
+    );
+    assert_eq!(
+        prepare_chat_image("/a\0b").unwrap_err().to_string(),
+        "invalid path"
+    );
     let missing = dir.path().join("missing.png");
     assert_eq!(
         prepare_chat_image(s(&missing)).unwrap_err().to_string(),
@@ -360,7 +403,10 @@ fn prepare_external_rules() {
     assert!(prepare_external(s(dir.path())).is_err());
 
     let fifo = dir.path().join("pipe.csv");
-    let st = std::process::Command::new("mkfifo").arg(&fifo).status().unwrap();
+    let st = std::process::Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .unwrap();
     assert!(st.success());
     allow_external_path(s(&fifo));
     assert_eq!(
@@ -418,7 +464,10 @@ fn external_allow_evicts_oldest() {
 
     reset_external_paths();
     load_external_allow_file(s(&allow_file));
-    assert!(prepare_external(&a).is_err(), "persisted list kept evicted a");
+    assert!(
+        prepare_external(&a).is_err(),
+        "persisted list kept evicted a"
+    );
     prepare_external(&b).unwrap();
     prepare_external(&c).unwrap();
     set_max_external_allowed(0);
@@ -431,7 +480,9 @@ fn read_file_size_limit() {
     let root = tmp();
     sparse(&root.path().join("over.txt"), MAX_READ_BYTES as u64 + 1);
     assert_eq!(
-        read_file(root.path(), "over.txt", false).unwrap_err().to_string(),
+        read_file(root.path(), "over.txt", false)
+            .unwrap_err()
+            .to_string(),
         format!("file too large ({} bytes)", MAX_READ_BYTES + 1)
     );
     sparse(&root.path().join("huge.png"), MAX_IMAGE_BYTES as u64 + 1);
@@ -461,7 +512,10 @@ fn read_file_accepts_utf8_split_at_probe_boundary() {
     // 8191 ASCII bytes, then a 3-byte rune that straddles the probe cut.
     let body = format!("{}世 trailing", "a".repeat(TEXT_PROBE_BYTES - 1));
     write(root.path(), "cjk.txt", &body);
-    assert_eq!(read_file(root.path(), "cjk.txt", false).unwrap().content, body);
+    assert_eq!(
+        read_file(root.path(), "cjk.txt", false).unwrap().content,
+        body
+    );
     let mut f = fs::File::open(root.path().join("cjk.txt")).unwrap();
     rewind_binary_check(&mut f).unwrap();
     let mut back = String::new();
@@ -523,7 +577,9 @@ async fn list_tree_annotates_git_status() {
     let status = git_status(root.path(), "").await;
     assert_eq!(status.get("scratch.go").map(String::as_str), Some("u"));
     assert_eq!(
-        file_at_base(root.path(), "main", "tracked.go").await.unwrap(),
+        file_at_base(root.path(), "main", "tracked.go")
+            .await
+            .unwrap(),
         "package t\n"
     );
     let diff = file_diff(root.path(), "main", "tracked.go").await.unwrap();
@@ -652,13 +708,22 @@ fn write_file_is_atomic_and_preserves_mode() {
     fs::write(&script, "#!/bin/sh\necho old\n").unwrap();
     fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
     write_file(root.path(), "run.sh", "#!/bin/sh\necho new\n").unwrap();
-    assert_eq!(fs::read_to_string(&script).unwrap(), "#!/bin/sh\necho new\n");
-    assert_eq!(fs::metadata(&script).unwrap().permissions().mode() & 0o777, 0o755);
+    assert_eq!(
+        fs::read_to_string(&script).unwrap(),
+        "#!/bin/sh\necho new\n"
+    );
+    assert_eq!(
+        fs::metadata(&script).unwrap().permissions().mode() & 0o777,
+        0o755
+    );
 
     write_file(root.path(), "sub/dir/new.txt", "hello").unwrap();
     let new = root.path().join("sub/dir/new.txt");
     assert_eq!(fs::read_to_string(&new).unwrap(), "hello");
-    assert_eq!(fs::metadata(&new).unwrap().permissions().mode() & 0o777, 0o644);
+    assert_eq!(
+        fs::metadata(&new).unwrap().permissions().mode() & 0o777,
+        0o644
+    );
 
     for e in fs::read_dir(root.path()).unwrap() {
         let name = e.unwrap().file_name();
@@ -713,7 +778,11 @@ fn search_opts_pages_and_matches_case() {
         },
     )
     .unwrap_err();
-    assert!(bad.to_string().starts_with("invalid regex: error parsing regexp: "), "{bad}");
+    assert!(
+        bad.to_string()
+            .starts_with("invalid regex: error parsing regexp: "),
+        "{bad}"
+    );
 }
 
 #[test]

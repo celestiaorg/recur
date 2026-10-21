@@ -190,7 +190,8 @@ fn read_dir(root: &str, abs: &str, depth: i64, idx: &StatusIndex) -> io::Result<
     for e in entries {
         // Unfiltered: the UI applies files.exclude globs.
         let full = gopath::join(&[abs, &e.name]);
-        let is_dir = e.is_dir() || (e.is_symlink() && fs::metadata(&e.path).is_ok_and(|m| m.is_dir()));
+        let is_dir =
+            e.is_dir() || (e.is_symlink() && fs::metadata(&e.path).is_ok_and(|m| m.is_dir()));
         let mut ent = TreeEntry {
             name: e.name.clone(),
             path: rel_slash_str(root, &full),

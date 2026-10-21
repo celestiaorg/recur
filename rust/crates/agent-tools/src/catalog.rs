@@ -54,9 +54,7 @@ pub fn host_tools() -> Vec<Arc<dyn Tool>> {
     ]
 }
 
-/// The native-harness file/shell/todo set (not registered on MCP). Glob and
-/// Grep need `recur-code`'s ripgrep, hence the `code` feature.
-#[cfg(feature = "code")]
+/// The native-harness file/shell/todo set (not registered on MCP).
 pub fn coding_tools() -> Vec<Arc<dyn Tool>> {
     use crate::coding::{
         bash::BashTool, edit::EditTool, glob::GlobTool, grep::GrepTool, read::ReadTool,

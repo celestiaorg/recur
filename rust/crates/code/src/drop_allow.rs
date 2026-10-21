@@ -73,7 +73,11 @@ pub fn reset_external_paths() {
 
 #[cfg(test)]
 pub(crate) fn set_max_external_allowed(n: usize) {
-    STATE.lock().max = if n == 0 { MAX_EXTERNAL_ALLOWED_DEFAULT } else { n };
+    STATE.lock().max = if n == 0 {
+        MAX_EXTERNAL_ALLOWED_DEFAULT
+    } else {
+        n
+    };
 }
 
 pub(crate) fn external_path_allowed(abs: &str) -> bool {

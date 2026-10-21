@@ -78,7 +78,10 @@ pub fn collect_metrics(root: &str) -> MetricSnapshot {
             }
             loc += 1;
             complexity += branch_weight(trimmed);
-            if ["TODO", "FIXME", "HACK"].iter().any(|t| trimmed.contains(t)) {
+            if ["TODO", "FIXME", "HACK"]
+                .iter()
+                .any(|t| trimmed.contains(t))
+            {
                 todos += 1;
             }
             let norm = normalize_line(raw);
@@ -319,7 +322,9 @@ fn is_noise_line(norm: &str) -> bool {
         return true;
     }
     // Pure punctuation and braces.
-    !norm.chars().any(|c| crate::gostr::is_letter(c) || crate::gostr::is_digit(c))
+    !norm
+        .chars()
+        .any(|c| crate::gostr::is_letter(c) || crate::gostr::is_digit(c))
 }
 
 fn branch_weight(line: &str) -> i64 {

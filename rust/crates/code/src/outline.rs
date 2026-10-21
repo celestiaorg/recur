@@ -71,9 +71,9 @@ const RS_TYPE: &str = r"^(?:pub(?:\([^)]*\))?\s+)?type\s+([A-Za-z_][\w]*)";
 const RS_MOD: &str = r"^(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_][\w]*)";
 const RS_CONST: &str = r"^(?:pub(?:\([^)]*\))?\s+)?const\s+([A-Za-z_][\w]*)\s*:";
 const JVM_CLASS: &str = r"^(?:public\s+|protected\s+|private\s+|internal\s+)?(?:abstract\s+|final\s+|sealed\s+|static\s+|partial\s+)*class\s+([A-Za-z_][\w]*)";
-const JVM_IFACE: &str =
-    r"^(?:public\s+|protected\s+|private\s+|internal\s+)?(?:abstract\s+)?interface\s+([A-Za-z_][\w]*)";
-const JVM_ENUM: &str = r"^(?:public\s+|protected\s+|private\s+|internal\s+)?enum\s+([A-Za-z_][\w]*)";
+const JVM_IFACE: &str = r"^(?:public\s+|protected\s+|private\s+|internal\s+)?(?:abstract\s+)?interface\s+([A-Za-z_][\w]*)";
+const JVM_ENUM: &str =
+    r"^(?:public\s+|protected\s+|private\s+|internal\s+)?enum\s+([A-Za-z_][\w]*)";
 const JVM_RECORD: &str = r"^(?:public\s+|protected\s+|private\s+)?record\s+([A-Za-z_][\w]*)";
 const CS_STRUCT: &str = r"^(?:public\s+|protected\s+|private\s+|internal\s+)?(?:readonly\s+|ref\s+)?struct\s+([A-Za-z_][\w]*)";
 const JVM_METHOD: &str = r"^(?:public|protected|private|internal|static|final|abstract|override|virtual|async|synchronized|native|sealed|partial|[\s]+)+\s*[\w.<>\[\],?]+\s+([A-Za-z_][\w]*)\s*\(";
@@ -86,14 +86,15 @@ const CPP_FUNC: &str = r"^(?:(?:static|inline|constexpr|virtual|explicit|extern|
 const RB_DEF: &str = r"^\s*def\s+(?:self\.)?([A-Za-z_][\w?!]*)";
 const RB_CLASS: &str = r"^\s*class\s+([A-Za-z_][\w:]*)";
 const RB_MODULE: &str = r"^\s*module\s+([A-Za-z_][\w:]*)";
-const PHP_FUNC: &str = r"^(?:public|private|protected|static|final|abstract|\s)*function\s+&?([A-Za-z_][\w]*)";
-const PHP_CLASS: &str = r"^(?:abstract\s+|final\s+)?(?:class|interface|trait|enum)\s+([A-Za-z_][\w]*)";
+const PHP_FUNC: &str =
+    r"^(?:public|private|protected|static|final|abstract|\s)*function\s+&?([A-Za-z_][\w]*)";
+const PHP_CLASS: &str =
+    r"^(?:abstract\s+|final\s+)?(?:class|interface|trait|enum)\s+([A-Za-z_][\w]*)";
 const DART_CLASS: &str =
     r"^(?:abstract\s+|base\s+|final\s+|sealed\s+|mixin\s+)?class\s+([A-Za-z_][\w]*)";
 const DART_MIXIN: &str = r"^mixin\s+([A-Za-z_][\w]*)";
 const DART_FUNC: &str = r"^(?:(?:static|Future|void|int|double|bool|String|dynamic|var|final|const|[A-Z][\w.<>,\s?]+)\s+)+([a-z_][\w]*)\s*\(";
-const SCALA_DEF: &str =
-    r"^(?:(?:private|protected|override|final|lazy|implicit)\s+)*(?:def|val|var)\s+([A-Za-z_][\w]*)";
+const SCALA_DEF: &str = r"^(?:(?:private|protected|override|final|lazy|implicit)\s+)*(?:def|val|var)\s+([A-Za-z_][\w]*)";
 const SCALA_TYPE: &str = r"^(?:(?:private|protected|sealed|abstract|final|case)\s+)*(?:class|object|trait|enum)\s+([A-Za-z_][\w]*)";
 const ZIG_FN: &str = r"^(?:pub\s+)?(?:export\s+)?(?:inline\s+)?fn\s+([A-Za-z_][\w]*)";
 const ZIG_CONST: &str = r"^(?:pub\s+)?const\s+([A-Za-z_][\w]*)\s*=";
@@ -104,87 +105,104 @@ const HS_FUNC: &str = r"^([a-z_][\w']*)\s*::";
 const LUA_FUNC: &str = r"^(?:local\s+)?function\s+([A-Za-z_][\w.]*)";
 
 /// Per-extension rules for everything but Go, JS/TS/Vue and Svelte.
-static EXT_RULES: LazyLock<Vec<(&'static [&'static str], Vec<(Regex, &'static str)>)>> =
-    LazyLock::new(|| {
-        let r = |p: &str, kind: &'static str| (must(p), kind);
-        vec![
-            (&[".py"][..], vec![r(PY_DEF, "func"), r(PY_CLASS, "class")]),
-            (
-                &[".rs"],
-                vec![
-                    r(RS_FN, "func"),
-                    r(RS_STRUCT, "struct"),
-                    r(RS_ENUM, "enum"),
-                    r(RS_TRAIT, "trait"),
-                    r(RS_TYPE, "type"),
-                    r(RS_MOD, "mod"),
-                    r(RS_CONST, "const"),
-                ],
-            ),
-            (
-                &[".java"],
-                vec![
-                    r(JVM_CLASS, "class"),
-                    r(JVM_IFACE, "interface"),
-                    r(JVM_ENUM, "enum"),
-                    r(JVM_RECORD, "record"),
-                    r(JVM_METHOD, "method"),
-                ],
-            ),
-            (&[".kt", ".kts"], vec![r(KT_FUN, "func"), r(KT_CLASS, "type")]),
-            (
-                &[".cs"],
-                vec![
-                    r(JVM_CLASS, "class"),
-                    r(JVM_IFACE, "interface"),
-                    r(JVM_ENUM, "enum"),
-                    r(JVM_RECORD, "record"),
-                    r(CS_STRUCT, "struct"),
-                    r(JVM_METHOD, "method"),
-                ],
-            ),
-            (&[".swift"], vec![r(SWIFT_FUNC, "func"), r(SWIFT_TYPE, "type")]),
-            (
-                &[".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hxx", ".hh"],
-                vec![r(CPP_TYPE, "type"), r(CPP_FUNC, "func")],
-            ),
-            (&[".m"], vec![r(CPP_TYPE, "type"), r(SWIFT_FUNC, "func")]),
-            (
-                &[".mm"],
-                vec![r(CPP_TYPE, "type"), r(SWIFT_FUNC, "func"), r(CPP_FUNC, "func")],
-            ),
-            (
-                &[".rb"],
-                vec![
-                    r(RB_DEF, "func"),
-                    r(RB_CLASS, "class"),
-                    r(RB_MODULE, "module"),
-                ],
-            ),
-            (&[".php"], vec![r(PHP_FUNC, "func"), r(PHP_CLASS, "type")]),
-            (
-                &[".dart"],
-                vec![
-                    r(DART_CLASS, "class"),
-                    r(DART_MIXIN, "mixin"),
-                    r(DART_FUNC, "func"),
-                ],
-            ),
-            (&[".scala"], vec![r(SCALA_DEF, "def"), r(SCALA_TYPE, "type")]),
-            (&[".zig"], vec![r(ZIG_FN, "func"), r(ZIG_CONST, "const")]),
-            (&[".ex", ".exs"], vec![r(EX_DEF, "func"), r(EX_MOD, "module")]),
-            (&[".hs"], vec![r(HS_TYPE, "type"), r(HS_FUNC, "func")]),
-            (&[".lua"], vec![r(LUA_FUNC, "func")]),
-            (
-                &[".groovy"],
-                vec![
-                    r(JVM_CLASS, "class"),
-                    r(JVM_IFACE, "interface"),
-                    r(JVM_METHOD, "method"),
-                ],
-            ),
-        ]
-    });
+type ExtRules = Vec<(&'static [&'static str], Vec<(Regex, &'static str)>)>;
+
+static EXT_RULES: LazyLock<ExtRules> = LazyLock::new(|| {
+    let r = |p: &str, kind: &'static str| (must(p), kind);
+    vec![
+        (&[".py"][..], vec![r(PY_DEF, "func"), r(PY_CLASS, "class")]),
+        (
+            &[".rs"],
+            vec![
+                r(RS_FN, "func"),
+                r(RS_STRUCT, "struct"),
+                r(RS_ENUM, "enum"),
+                r(RS_TRAIT, "trait"),
+                r(RS_TYPE, "type"),
+                r(RS_MOD, "mod"),
+                r(RS_CONST, "const"),
+            ],
+        ),
+        (
+            &[".java"],
+            vec![
+                r(JVM_CLASS, "class"),
+                r(JVM_IFACE, "interface"),
+                r(JVM_ENUM, "enum"),
+                r(JVM_RECORD, "record"),
+                r(JVM_METHOD, "method"),
+            ],
+        ),
+        (
+            &[".kt", ".kts"],
+            vec![r(KT_FUN, "func"), r(KT_CLASS, "type")],
+        ),
+        (
+            &[".cs"],
+            vec![
+                r(JVM_CLASS, "class"),
+                r(JVM_IFACE, "interface"),
+                r(JVM_ENUM, "enum"),
+                r(JVM_RECORD, "record"),
+                r(CS_STRUCT, "struct"),
+                r(JVM_METHOD, "method"),
+            ],
+        ),
+        (
+            &[".swift"],
+            vec![r(SWIFT_FUNC, "func"), r(SWIFT_TYPE, "type")],
+        ),
+        (
+            &[".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hxx", ".hh"],
+            vec![r(CPP_TYPE, "type"), r(CPP_FUNC, "func")],
+        ),
+        (&[".m"], vec![r(CPP_TYPE, "type"), r(SWIFT_FUNC, "func")]),
+        (
+            &[".mm"],
+            vec![
+                r(CPP_TYPE, "type"),
+                r(SWIFT_FUNC, "func"),
+                r(CPP_FUNC, "func"),
+            ],
+        ),
+        (
+            &[".rb"],
+            vec![
+                r(RB_DEF, "func"),
+                r(RB_CLASS, "class"),
+                r(RB_MODULE, "module"),
+            ],
+        ),
+        (&[".php"], vec![r(PHP_FUNC, "func"), r(PHP_CLASS, "type")]),
+        (
+            &[".dart"],
+            vec![
+                r(DART_CLASS, "class"),
+                r(DART_MIXIN, "mixin"),
+                r(DART_FUNC, "func"),
+            ],
+        ),
+        (
+            &[".scala"],
+            vec![r(SCALA_DEF, "def"), r(SCALA_TYPE, "type")],
+        ),
+        (&[".zig"], vec![r(ZIG_FN, "func"), r(ZIG_CONST, "const")]),
+        (
+            &[".ex", ".exs"],
+            vec![r(EX_DEF, "func"), r(EX_MOD, "module")],
+        ),
+        (&[".hs"], vec![r(HS_TYPE, "type"), r(HS_FUNC, "func")]),
+        (&[".lua"], vec![r(LUA_FUNC, "func")]),
+        (
+            &[".groovy"],
+            vec![
+                r(JVM_CLASS, "class"),
+                r(JVM_IFACE, "interface"),
+                r(JVM_METHOD, "method"),
+            ],
+        ),
+    ]
+});
 
 fn ext_rules(ext: &str) -> Option<&'static [(Regex, &'static str)]> {
     EXT_RULES
@@ -272,9 +290,7 @@ pub(crate) fn outline_line(ext: &str, raw: &str) -> Option<MatchedSym> {
                 name,
                 kind: "export",
             })
-            .or_else(|| {
-                cap(&r.ts_func, trimmed, 1).map(|name| MatchedSym { name, kind: "func" })
-            }),
+            .or_else(|| cap(&r.ts_func, trimmed, 1).map(|name| MatchedSym { name, kind: "func" })),
         _ => {
             let rules = ext_rules(ext)?;
             // Only column-0 C-family functions, to cut noise.

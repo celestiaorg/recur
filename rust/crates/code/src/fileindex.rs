@@ -204,10 +204,8 @@ impl FileIndex {
         let Some(i) = st.by_path.remove(&rel) else {
             return;
         };
-        st.bytes = (st.bytes
-            - (st.paths[i].len() + st.basenames[i].len()) as i64
-            - ENTRY_OVERHEAD)
-            .max(0);
+        st.bytes =
+            (st.bytes - (st.paths[i].len() + st.basenames[i].len()) as i64 - ENTRY_OVERHEAD).max(0);
         st.paths.swap_remove(i);
         st.basenames.swap_remove(i);
         if let Some(moved) = st.paths.get(i).cloned() {
@@ -387,10 +385,14 @@ async fn list_all_files(
 }
 
 /// The walk fallback (tests, rg missing), off the async workers.
-async fn walk_files(cancel: &CancellationToken, root: &str, user_skip: &ExcludeSet) -> (Vec<String>, bool) {
+async fn walk_files(
+    cancel: &CancellationToken,
+    root: &str,
+    user_skip: &ExcludeSet,
+) -> (Vec<String>, bool) {
     let (cancel, root) = (cancel.clone(), root.to_string());
-    let listed = tokio::task::spawn_blocking(move || files::list_files(&cancel, Path::new(&root)))
-        .await;
+    let listed =
+        tokio::task::spawn_blocking(move || files::list_files(&cancel, Path::new(&root))).await;
     match listed {
         Ok(Ok(paths)) => (filter_for_index(paths, user_skip), false),
         _ => (Vec::new(), true),
@@ -549,12 +551,18 @@ impl IndexHub {
                 () = cancel.cancelled() => None,
             }
         };
-        let p = p.map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+        let p = p
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
         let mut st = self.0.st.lock();
         if st.rg_path.is_empty() && !p.is_empty() {
             st.rg_path = p.clone();
         }
-        if st.rg_path.is_empty() { p } else { st.rg_path.clone() }
+        if st.rg_path.is_empty() {
+            p
+        } else {
+            st.rg_path.clone()
+        }
     }
 
     /// Starts (or returns) the index for a workspace at `root`, rebuilding
@@ -623,7 +631,7 @@ impl IndexHub {
             (st.building, st.ready, st.dirty)
         };
         let root_ok = idx.root == root;
-        if !(root_ok && building) && !(ready && !dirty && root_ok) {
+        if !(root_ok && (building || (ready && !dirty))) {
             self.rebuild(workspace_id, &idx, false);
         }
         let st = idx.st.read();

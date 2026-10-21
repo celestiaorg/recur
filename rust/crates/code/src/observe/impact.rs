@@ -18,7 +18,11 @@ const IMPACT_REF_SCAN: usize = 60;
 /// The blast radius of a diff: symbols whose definition line is in the change
 /// set, their package-preferring references (capped), and co-located tests.
 /// References for every changed symbol come from one repo walk.
-pub fn compute_impact(cancel: &CancellationToken, root: &str, files: &[FileDiff]) -> Vec<ImpactItem> {
+pub fn compute_impact(
+    cancel: &CancellationToken,
+    root: &str,
+    files: &[FileDiff],
+) -> Vec<ImpactItem> {
     let root_path = Path::new(root);
     let mut changed_lines: HashMap<String, HashSet<i64>> = HashMap::new();
     let mut changed_paths = Vec::new();
@@ -65,7 +69,11 @@ pub fn compute_impact(cancel: &CancellationToken, root: &str, files: &[FileDiff]
             detail: format!("{} definition in diff", d.kind),
             changed: true,
         });
-        let refs = ref_index.refs.get(&d.name).map(Vec::as_slice).unwrap_or(&[]);
+        let refs = ref_index
+            .refs
+            .get(&d.name)
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
         for r in rank_refs_in_package(refs, &d.path, IMPACT_REFS_PER_SYMBOL) {
             if !seen.insert(format!("ref:{}:{}", r.path, d.name)) {
                 continue;

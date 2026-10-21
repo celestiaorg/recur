@@ -36,6 +36,15 @@ impl Drop for EnvGuard {
     }
 }
 
+/// Runs a future on a fresh runtime while the caller holds [`ENV_LOCK`].
+fn block<F: std::future::Future>(f: F) -> F::Output {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(f)
+}
+
 fn script(path: &Path) {
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(path, "#!/bin/sh\n").unwrap();
@@ -68,8 +77,8 @@ fn locate_lists_what_it_tried() {
     );
 }
 
-#[tokio::test]
-async fn ensure_reuses_current_managed_without_network() {
+#[test]
+fn ensure_reuses_current_managed_without_network() {
     let _l = ENV_LOCK.lock().unwrap();
     let _e = set_env(ENV_PATH, "");
     let data = tempfile::tempdir().unwrap();
@@ -80,11 +89,11 @@ async fn ensure_reuses_current_managed_without_network() {
         format!("{RELEASE_VERSION}\n"),
     )
     .unwrap();
-    assert_eq!(rg::ensure(data.path()).await.unwrap(), managed);
+    assert_eq!(block(rg::ensure(data.path())).unwrap(), managed);
 }
 
-#[tokio::test]
-async fn ensure_prefers_env_over_stale_managed() {
+#[test]
+fn ensure_prefers_env_over_stale_managed() {
     let _l = ENV_LOCK.lock().unwrap();
     let data = tempfile::tempdir().unwrap();
     script(&data.path().join("bin").join(BIN_NAME));
@@ -95,17 +104,17 @@ async fn ensure_prefers_env_over_stale_managed() {
     let over = other.path().join("override-rg");
     script(&over);
     let _e = set_env(ENV_PATH, over.to_str().unwrap());
-    assert_eq!(rg::ensure(data.path()).await.unwrap(), over);
+    assert_eq!(block(rg::ensure(data.path())).unwrap(), over);
     assert_eq!(fs::read_to_string(&sidecar).unwrap(), "0.0.1\n");
 }
 
-#[tokio::test]
-async fn ensure_without_data_dir_needs_path() {
+#[test]
+fn ensure_without_data_dir_needs_path() {
     let _l = ENV_LOCK.lock().unwrap();
     let _e = set_env(ENV_PATH, "");
     let _p = set_env("PATH", "/nonexistent-bin");
     assert_eq!(
-        rg::ensure(Path::new("")).await.unwrap_err().to_string(),
+        block(rg::ensure(Path::new(""))).unwrap_err().to_string(),
         "rg ensure: no data directory and ripgrep not on PATH"
     );
 }

@@ -37,7 +37,10 @@ fn list_open_in_targets_includes_file_manager() {
         assert_eq!(targets[0].name, "Files");
         return;
     }
-    assert_eq!((targets[0].id.as_str(), targets[0].name.as_str()), ("finder", "Finder"));
+    assert_eq!(
+        (targets[0].id.as_str(), targets[0].name.as_str()),
+        ("finder", "Finder")
+    );
     assert!(
         targets.iter().any(|t| t.id == "terminal"),
         "darwin catalog should include Terminal"
@@ -62,9 +65,15 @@ fn list_open_in_targets_filters_installed() {
     assert!(ids.contains(&"finder".into()));
     assert!(ids.contains(&"cursor".into()), "Cursor.app is present");
     for gone in ["vscode", "zed", "ghostty"] {
-        assert!(!ids.contains(&gone.into()), "uninstalled {gone} leaked: {ids:?}");
+        assert!(
+            !ids.contains(&gone.into()),
+            "uninstalled {gone} leaked: {ids:?}"
+        );
     }
-    assert!(ids.contains(&"terminal".into()), "terminal is always-on on darwin");
+    assert!(
+        ids.contains(&"terminal".into()),
+        "terminal is always-on on darwin"
+    );
 }
 
 #[test]
@@ -80,7 +89,10 @@ fn list_open_in_targets_includes_os_app_icons() {
         targets[0].icon
     );
     let again = list_open_in_targets();
-    assert_eq!(again[0].icon, targets[0].icon, "icon cache should be stable");
+    assert_eq!(
+        again[0].icon, targets[0].icon,
+        "icon cache should be stable"
+    );
 }
 
 #[test]
@@ -94,7 +106,10 @@ fn open_in_finder() {
     let d = dir.path().to_str().unwrap();
     let sys = FakeSys::default();
     open_in_with(&sys, d, "finder").unwrap();
-    assert_eq!(*sys.started.borrow(), [(want.to_string(), vec![d.to_string()])]);
+    assert_eq!(
+        *sys.started.borrow(),
+        [(want.to_string(), vec![d.to_string()])]
+    );
 }
 
 #[test]
@@ -129,7 +144,9 @@ fn open_in_unknown_and_missing() {
     );
     let missing = format!("{d}/missing");
     assert_eq!(
-        open_in_with(&sys, &missing, "finder").unwrap_err().to_string(),
+        open_in_with(&sys, &missing, "finder")
+            .unwrap_err()
+            .to_string(),
         format!("cannot open {missing}: stat {missing}: no such file or directory")
     );
     let file = format!("{d}/file.txt");

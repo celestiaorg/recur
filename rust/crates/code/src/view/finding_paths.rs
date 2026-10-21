@@ -40,7 +40,9 @@ pub fn findings_for_path<'a>(by_path: &'a [(String, Vec<Finding>)], path: &str) 
         .iter()
         .find(|(p, fs)| {
             !fs.is_empty()
-                && (p == path || path.ends_with(&format!("/{p}")) || p.ends_with(&format!("/{path}")))
+                && (p == path
+                    || path.ends_with(&format!("/{p}"))
+                    || p.ends_with(&format!("/{path}")))
         })
         .map_or(&[], |(_, fs)| fs.as_slice())
 }
@@ -111,7 +113,14 @@ pub fn findings_ending_line<'a>(findings: &'a [Finding], line: &DiffLine) -> Vec
     }
     findings
         .iter()
-        .filter(|f| f.line > 0 && n == if f.end_line > f.line { f.end_line } else { f.line })
+        .filter(|f| {
+            f.line > 0
+                && n == if f.end_line > f.line {
+                    f.end_line
+                } else {
+                    f.line
+                }
+        })
         .collect()
 }
 
@@ -174,7 +183,10 @@ mod tests {
         assert_eq!(match_finding_path("api.ts", &s(&["src/openapi.ts"])), "");
         assert_eq!(match_finding_path("in.go", &s(&["src/main.go"])), "");
         assert_eq!(match_finding_path("c.ts", &files), "");
-        assert_eq!(match_finding_path("index.ts", &s(&["src/index.ts", "test/index.ts"])), "");
+        assert_eq!(
+            match_finding_path("index.ts", &s(&["src/index.ts", "test/index.ts"])),
+            ""
+        );
         assert_eq!(match_finding_path("", &files), "");
     }
 
@@ -218,9 +230,15 @@ mod tests {
     #[test]
     fn covering_and_ending_lines() {
         let notes = [f("a", 12, 0), f("b", 40, 44)];
-        assert_eq!(ids(findings_covering_line(&notes, &row("12", "add"))), ["a"]);
+        assert_eq!(
+            ids(findings_covering_line(&notes, &row("12", "add"))),
+            ["a"]
+        );
         assert_eq!(ids(findings_covering_line(&notes, &row("40", ""))), ["b"]);
-        assert_eq!(ids(findings_covering_line(&notes, &row("42", "ctx"))), ["b"]);
+        assert_eq!(
+            ids(findings_covering_line(&notes, &row("42", "ctx"))),
+            ["b"]
+        );
         assert_eq!(ids(findings_covering_line(&notes, &row("44", ""))), ["b"]);
         assert!(findings_covering_line(&notes, &row("45", "")).is_empty());
         assert_eq!(ids(findings_ending_line(&notes, &row("12", ""))), ["a"]);
@@ -253,10 +271,16 @@ mod tests {
     fn strips_projected_flags() {
         let flag = r#"<div class="flag"><svg></svg><div><div class="ft">t</div><div class="fm">msg</div></div></div>"#;
         let other = r#"<div class="icmt">note</div>"#;
-        assert_eq!(extra_html_without_finding_flags(&format!("{flag}{other}")), other);
+        assert_eq!(
+            extra_html_without_finding_flags(&format!("{flag}{other}")),
+            other
+        );
         assert_eq!(extra_html_without_finding_flags(other), other);
         assert_eq!(extra_html_without_finding_flags(""), "");
         let projected = crate::observe::finding_flag_html(&[f("z", 1, 0)]);
-        assert_eq!(extra_html_without_finding_flags(&format!(" {projected} ")), "");
+        assert_eq!(
+            extra_html_without_finding_flags(&format!(" {projected} ")),
+            ""
+        );
     }
 }

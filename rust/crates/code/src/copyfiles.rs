@@ -245,7 +245,8 @@ fn join_under_root(root: &str, rel: &str) -> Result<String> {
     if rel.split('/').any(|p| p == "..") {
         return Err(Error::msg("path escapes root"));
     }
-    let full = gopath::abs(&gopath::join(&[&root_abs, rel])).map_err(|e| Error::msg(e.to_string()))?;
+    let full =
+        gopath::abs(&gopath::join(&[&root_abs, rel])).map_err(|e| Error::msg(e.to_string()))?;
     if full != root_abs && !full.starts_with(&format!("{root_abs}/")) {
         return Err(Error::msg("path escapes root"));
     }

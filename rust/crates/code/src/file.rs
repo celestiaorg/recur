@@ -203,7 +203,10 @@ fn stat_external(clean: &str) -> Result<fs::Metadata> {
         }
     })?;
     if st.is_dir() {
-        return Err(Error::msg(format!("{} is a directory", gopath::base(clean))));
+        return Err(Error::msg(format!(
+            "{} is a directory",
+            gopath::base(clean)
+        )));
     }
     if !st.is_file() {
         return Err(Error::msg("not a regular file"));
@@ -407,7 +410,8 @@ pub fn write_file(root: &Path, rel: &str, content: &str) -> Result<()> {
         drop(tmp);
         fs::set_permissions(&tmp_name, fs::Permissions::from_mode(perm))
             .map_err(|e| Error::path("chmod", &tmp_name, e))?;
-        fs::rename(&tmp_name, &full).map_err(|e| Error::path("rename", &format!("{tmp_name} {full}"), e))
+        fs::rename(&tmp_name, &full)
+            .map_err(|e| Error::path("rename", &format!("{tmp_name} {full}"), e))
     })();
     if result.is_err() {
         let _ = fs::remove_file(&tmp_name);
@@ -425,7 +429,9 @@ fn create_temp(dir: &str, prefix: &str) -> Result<(String, File)> {
             .map(|d| d.as_nanos() as u64)
             .unwrap_or_default()
             ^ (u64::from(std::process::id()) << 32)
-            ^ SEQ.fetch_add(1, Ordering::Relaxed).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+            ^ SEQ
+                .fetch_add(1, Ordering::Relaxed)
+                .wrapping_mul(0x9E37_79B9_7F4A_7C15);
         let name = gopath::join(&[dir, &format!("{prefix}{}", seed % 1_000_000_000)]);
         match fs::OpenOptions::new()
             .write(true)

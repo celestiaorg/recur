@@ -192,8 +192,14 @@ mod tests {
         assert_eq!(fuzzy_score("abc", ""), Some(0));
         assert_eq!(fuzzy_score("Main.go", "main.go"), Some(10_000));
         // Substring: 1000 - idx + base bonus + short-path bonus.
-        assert_eq!(fuzzy_score("src/main.go", "main"), Some(1000 - 4 + 500 + 89));
-        assert_eq!(fuzzy_score("src/xmain.go", "main"), Some(1000 - 5 + 200 + 88));
+        assert_eq!(
+            fuzzy_score("src/main.go", "main"),
+            Some(1000 - 4 + 500 + 89)
+        );
+        assert_eq!(
+            fuzzy_score("src/xmain.go", "main"),
+            Some(1000 - 5 + 200 + 88)
+        );
         // Subsequence: run and boundary bonuses minus length / 4.
         assert_eq!(fuzzy_score("a_bc", "abc"), Some(3 + 12 + 3 + 12 + 8 - 1));
         assert_eq!(fuzzy_score("abc", "abd"), None);

@@ -51,14 +51,21 @@ fn project_findings_onto_diff_single_line() {
 fn project_findings_onto_diff_range() {
     let mut files = vec![FileDiff {
         path: "pkg/a.go".into(),
-        lines: Some(vec![line("10", "add"), line("11", "add"), line("12", "add")]),
+        lines: Some(vec![
+            line("10", "add"),
+            line("11", "add"),
+            line("12", "add"),
+        ]),
         ..Default::default()
     }];
     let findings = [finding(10, 11, Severity::from("low"), "span")];
     assert!(project_findings_onto_diff(&mut files, &findings));
     let lines = files[0].lines.as_ref().unwrap();
     assert!(!lines[0].extra_html.is_empty() && !lines[1].extra_html.is_empty());
-    assert!(lines[2].extra_html.is_empty(), "line 12 is outside the range");
+    assert!(
+        lines[2].extra_html.is_empty(),
+        "line 12 is outside the range"
+    );
 }
 
 #[test]
@@ -78,7 +85,11 @@ fn project_findings_basename_fallback_and_filters() {
     assert!(project_findings_onto_diff(&mut files, &[short]));
     let lines = files[0].lines.as_ref().unwrap();
     assert!(lines[0].extra_html.contains(r#"data-sev="medium""#));
-    assert!(lines[0].extra_html.contains("Reviewer flagged this region · medium"));
+    assert!(
+        lines[0]
+            .extra_html
+            .contains("Reviewer flagged this region · medium")
+    );
 }
 
 #[tokio::test]
@@ -95,7 +106,11 @@ async fn collect_metrics_and_impact() {
         "a_test.go",
         "package p\nfunc TestUniqueWidgetName(t *testing.T) {}\n",
     );
-    write(root.path(), "b/use.go", "package b\nvar _ = UniqueWidgetName\n");
+    write(
+        root.path(),
+        "b/use.go",
+        "package b\nvar _ = UniqueWidgetName\n",
+    );
     let r = root.path().to_str().unwrap();
     // Recorded from Go's CollectMetrics / ComputeImpact on the same tree.
     assert_eq!(
@@ -120,9 +135,17 @@ fn json<T: serde::Serialize>(v: &T) -> String {
 #[test]
 fn collect_metrics_includes_major_languages() {
     let root = tmp();
-    write(root.path(), "a.py", "def foo():\n    if True:\n        pass\n");
+    write(
+        root.path(),
+        "a.py",
+        "def foo():\n    if True:\n        pass\n",
+    );
     write(root.path(), "a.rs", "fn foo() { if true {} }\n");
-    write(root.path(), "A.java", "class A { void foo() { if (true) {} } }\n");
+    write(
+        root.path(),
+        "A.java",
+        "class A { void foo() { if (true) {} } }\n",
+    );
     write(root.path(), "bindings/gen.ts", "export const x = 1\n");
     assert_eq!(collect_metrics(root.path().to_str().unwrap()).files, 3);
 }
@@ -144,7 +167,11 @@ fn collect_metrics_finds_duplicate_blocks() {
     ]
     .join("\n");
     write(root.path(), "a.go", format!("package p\n\n{block}\n"));
-    write(root.path(), "b.go", format!("package p\n\n{block}\n\nfunc other() {{}}\n"));
+    write(
+        root.path(),
+        "b.go",
+        format!("package p\n\n{block}\n\nfunc other() {{}}\n"),
+    );
     // Recorded from Go's CollectMetrics on the same tree.
     assert_eq!(
         json(&collect_metrics(root.path().to_str().unwrap())),
@@ -161,7 +188,11 @@ async fn analyze_delta() {
     let prev = analyze_root(&cancel, "p", "", r, vec![], None, false).await;
     assert_eq!(prev.summary, "1 files · 2 LOC · 0 hotspots · 0 impact");
     assert!(prev.id.starts_with("A-") && prev.when == "now");
-    write(root.path(), "b.go", "package p\nfunc B() {\n\tif true {}\n}\n");
+    write(
+        root.path(),
+        "b.go",
+        "package p\nfunc B() {\n\tif true {}\n}\n",
+    );
     let next = analyze(
         &cancel,
         AnalyzeOpts {
@@ -200,11 +231,20 @@ async fn light_checks_report_agent_result_and_tools() {
     write(root.path(), "Gemfile", "");
     write(root.path(), "pyproject.toml", "");
     let ok = Ctx::new(None, std::time::Duration::from_secs(5));
-    let fail = ok.run(r, "Fail", "sh", &["-c", "echo first; echo second; exit 3"]).await;
+    let fail = ok
+        .run(r, "Fail", "sh", &["-c", "echo first; echo second; exit 3"])
+        .await;
     assert_eq!((fail.detail.as_str(), fail.passed), ("first", false));
     let silent = ok.run(r, "Silent", "sh", &["-c", "exit 2"]).await;
     assert_eq!(silent.detail, "exit status 2");
-    let pass = ok.run(r, "Pass", "sh", &["-c", "printf 'ok\\tpkg\\nok\\tother\\n' >&2"]).await;
+    let pass = ok
+        .run(
+            r,
+            "Pass",
+            "sh",
+            &["-c", "printf 'ok\\tpkg\\nok\\tother\\n' >&2"],
+        )
+        .await;
     assert_eq!((pass.detail.as_str(), pass.passed), ("2 passed", true));
     let missing = ok.run(r, "Missing", "no-such-tool-xyz", &[]).await;
     assert_eq!(
@@ -216,7 +256,10 @@ async fn light_checks_report_agent_result_and_tools() {
     let killed = Ctx::new(Some(cancel), std::time::Duration::from_secs(5))
         .run(r, "Slow", "sleep", &["5"])
         .await;
-    assert_eq!((killed.detail.as_str(), killed.passed), ("signal: killed", false));
+    assert_eq!(
+        (killed.detail.as_str(), killed.passed),
+        ("signal: killed", false)
+    );
 }
 
 #[test]

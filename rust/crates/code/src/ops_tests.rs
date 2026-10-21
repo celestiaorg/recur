@@ -33,7 +33,10 @@ fn create_mkdir_rename_copy_remove() {
     rename(r, "src/hi.go", "src/hi.go").unwrap();
 
     copy(r, "src/pkg", "src/pkg2").unwrap();
-    assert_eq!(fs::read_to_string(r.join("src/pkg2/x.go")).unwrap(), "package pkg\n");
+    assert_eq!(
+        fs::read_to_string(r.join("src/pkg2/x.go")).unwrap(),
+        "package pkg\n"
+    );
     copy(r, "src/hi.go", "src/hi_copy.go").unwrap();
     assert!(copy(r, "src/hi.go", "src/hi_copy.go").is_err());
     assert_eq!(
@@ -44,7 +47,12 @@ fn create_mkdir_rename_copy_remove() {
     remove(r, "src/pkg2").unwrap();
     assert!(!r.join("src/pkg2").exists());
     remove(r, "src/hi_copy.go").unwrap();
-    assert!(remove(r, "src/gone").unwrap_err().to_string().starts_with("lstat "));
+    assert!(
+        remove(r, "src/gone")
+            .unwrap_err()
+            .to_string()
+            .starts_with("lstat ")
+    );
 }
 
 #[test]
@@ -89,7 +97,11 @@ fn copy_skips_symlinks_and_keeps_modes() {
     std::os::unix::fs::symlink("/etc/hosts", r.join("d/hosts")).unwrap();
     copy(r, "d", "e").unwrap();
     assert_eq!(
-        fs::metadata(r.join("e/run.sh")).unwrap().permissions().mode() & 0o777,
+        fs::metadata(r.join("e/run.sh"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
         0o755
     );
     assert!(fs::symlink_metadata(r.join("e/hosts")).is_err());
@@ -98,7 +110,10 @@ fn copy_skips_symlinks_and_keeps_modes() {
 #[test]
 fn abs_path_joins_under_root() {
     let root = tmp();
-    assert_eq!(abs_path(root.path(), "src/x.go").unwrap(), root.path().join("src/x.go"));
+    assert_eq!(
+        abs_path(root.path(), "src/x.go").unwrap(),
+        root.path().join("src/x.go")
+    );
 }
 
 #[test]
@@ -114,7 +129,10 @@ fn replace_in_files_case_insensitive() {
     )
     .unwrap();
     assert_eq!((res.files_changed, res.replacements), (1, 3));
-    assert_eq!(fs::read_to_string(root.path().join("a.go")).unwrap(), "bar bar bar\n");
+    assert_eq!(
+        fs::read_to_string(root.path().join("a.go")).unwrap(),
+        "bar bar bar\n"
+    );
 }
 
 #[test]
@@ -191,7 +209,11 @@ fn search_opts_regex_and_glob() {
 #[test]
 fn search_opts_reports_skipped_large_files() {
     let root = tmp();
-    write(root.path(), "big.go", "needle\n".repeat(256 * 1024 / 7 + 16));
+    write(
+        root.path(),
+        "big.go",
+        "needle\n".repeat(256 * 1024 / 7 + 16),
+    );
     let res = search_opts(
         &CancellationToken::new(),
         root.path(),
@@ -221,8 +243,11 @@ fn search_skips_symlinks_out_of_root() {
     let outside = tmp();
     write(outside.path(), "secret.go", "needle\n");
     write(root.path(), "in.go", "needle\n");
-    std::os::unix::fs::symlink(outside.path().join("secret.go"), root.path().join("link.go"))
-        .unwrap();
+    std::os::unix::fs::symlink(
+        outside.path().join("secret.go"),
+        root.path().join("link.go"),
+    )
+    .unwrap();
     let hits = search(&CancellationToken::new(), root.path(), "needle")
         .unwrap()
         .unwrap();

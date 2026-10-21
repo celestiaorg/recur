@@ -147,7 +147,11 @@ fn parse_skill_file(raw: &str) -> (SkillFileMeta, String, bool) {
         user_invocable: !frontmatter_bool_false(fm, "user-invocable"),
         disable_model_invocation: frontmatter_bool_true(fm, "disable-model-invocation"),
     };
-    let body = if fm.is_empty() { raw.trim() } else { body.trim() };
+    let body = if fm.is_empty() {
+        raw.trim()
+    } else {
+        body.trim()
+    };
     let ok = !(meta.description.is_empty() && body.is_empty());
     (meta, body.to_string(), ok)
 }
@@ -159,13 +163,21 @@ pub(crate) fn read_skill_meta(path: &str) -> (String, bool, bool, String, bool) 
         return (String::new(), false, false, String::new(), false);
     };
     let (m, body, ok) = parse_skill_file(&String::from_utf8_lossy(&raw));
-    (m.description, m.user_invocable, m.disable_model_invocation, body, ok)
+    (
+        m.description,
+        m.user_invocable,
+        m.disable_model_invocation,
+        body,
+        ok,
+    )
 }
 
 /// The SKILL.md body without frontmatter (activation content); empty when
 /// unreadable.
 pub fn read_skill_body(path: &str) -> String {
-    read_skill_file(path).map(|(_, body)| body).unwrap_or_default()
+    read_skill_file(path)
+        .map(|(_, body)| body)
+        .unwrap_or_default()
 }
 
 /// Whether the skill opted out of model-driven activation (user `/`

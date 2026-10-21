@@ -23,8 +23,7 @@ pub fn is_source_ext(ext: &str) -> bool {
 /// symbol and metrics walks.
 const SOURCE_EXTS: &[&str] = &[
     // Web / JS
-    ".go", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".svelte", ".vue",
-    // Scripting
+    ".go", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".svelte", ".vue", // Scripting
     ".py", ".rb", ".php", ".lua", ".pl", ".pm", ".r", ".ex", ".exs", ".erl", ".jl",
     // Systems
     ".rs", ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hxx", ".hh", ".m", ".mm", ".zig",

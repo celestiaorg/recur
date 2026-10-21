@@ -4,31 +4,13 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use recur_agent_tools::coding::bash::BashTool;
-#[cfg(not(feature = "code"))]
-use recur_agent_tools::coding::{
-    edit::EditTool, read::ReadTool, todos::TodoTool, write::WriteTool,
-};
 use recur_agent_tools::{
     Call, HostError, PermissionVerdict, Permitter, Registry, TodoStore, Tool, advertised_name,
 };
 use tokio_util::sync::CancellationToken;
 
 fn registry() -> Registry {
-    #[cfg(feature = "code")]
-    {
-        Registry::new(recur_agent_tools::coding_tools())
-    }
-    #[cfg(not(feature = "code"))]
-    {
-        let tools: Vec<Arc<dyn Tool>> = vec![
-            Arc::new(ReadTool),
-            Arc::new(EditTool),
-            Arc::new(WriteTool),
-            Arc::new(BashTool),
-            Arc::new(TodoTool),
-        ];
-        Registry::new(tools)
-    }
+    Registry::new(recur_agent_tools::coding_tools())
 }
 
 fn call(wt: &str, args: &str) -> Call {
@@ -105,7 +87,6 @@ async fn read_edit_write_sandbox() {
         .unwrap();
 }
 
-#[cfg(feature = "code")]
 #[tokio::test]
 async fn grep_and_glob() {
     let wt = tempfile::tempdir().unwrap();
@@ -130,10 +111,9 @@ async fn grep_and_glob() {
     assert!(got.contains("a.go"), "{got}");
 }
 
-#[cfg(feature = "code")]
 #[tokio::test]
 async fn grep_and_glob_ripgrep() {
-    let Ok(_) = recur_code::rg::locate(&recur_store::data_dir().unwrap_or_default()) else {
+    let Ok(_) = recur_code::rg::locate(&recur_store::paths::data_dir().unwrap_or_default()) else {
         eprintln!("rg not found");
         return;
     };

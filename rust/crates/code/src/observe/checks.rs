@@ -23,17 +23,36 @@ pub async fn run_checks(
     let mut checks = agent_test_check(test_result);
     let has = |name: &str| has_file(root, name);
     if has("go.mod") {
-        checks.push(ctx.run(root, "Tests", "go", &["test", "./...", "-count=1", "-timeout=45s"]).await);
-        checks.push(ctx.run(root, "Typecheck (go)", "go", &["vet", "./..."]).await);
+        checks.push(
+            ctx.run(
+                root,
+                "Tests",
+                "go",
+                &["test", "./...", "-count=1", "-timeout=45s"],
+            )
+            .await,
+        );
+        checks.push(
+            ctx.run(root, "Typecheck (go)", "go", &["vet", "./..."])
+                .await,
+        );
     }
     if has("package.json") {
         if has_script(root, "test") {
-            checks.push(ctx.run(root, "Tests (npm)", "npm", &["test", "--", "--runInBand"]).await);
+            checks.push(
+                ctx.run(root, "Tests (npm)", "npm", &["test", "--", "--runInBand"])
+                    .await,
+            );
         }
         if has_node_bin(root, "tsc") || has_dev_dep(root, "typescript") {
             checks.push(
-                ctx.run(root, "Typecheck (tsc)", "npx", &["--no-install", "tsc", "--noEmit"])
-                    .await,
+                ctx.run(
+                    root,
+                    "Typecheck (tsc)",
+                    "npx",
+                    &["--no-install", "tsc", "--noEmit"],
+                )
+                .await,
             );
         }
         if has_script(root, "lint") {
@@ -41,7 +60,10 @@ pub async fn run_checks(
         }
     }
     if has("Cargo.toml") {
-        checks.push(ctx.run(root, "Typecheck (cargo)", "cargo", &["check", "--quiet"]).await);
+        checks.push(
+            ctx.run(root, "Typecheck (cargo)", "cargo", &["check", "--quiet"])
+                .await,
+        );
         checks.push(
             ctx.run(
                 root,
@@ -54,12 +76,24 @@ pub async fn run_checks(
     }
     if has("pyproject.toml") || has("setup.py") || has("requirements.txt") {
         if has_binary("pytest") {
-            checks.push(ctx.run(root, "Tests (pytest)", "pytest", &["-q", "--tb=no"]).await);
-        } else if has_binary("python") || has_binary("python3") {
-            let bin = if has_binary("python3") { "python3" } else { "python" };
             checks.push(
-                ctx.run(root, "Compile (python)", bin, &["-m", "compileall", "-q", "."])
+                ctx.run(root, "Tests (pytest)", "pytest", &["-q", "--tb=no"])
                     .await,
+            );
+        } else if has_binary("python") || has_binary("python3") {
+            let bin = if has_binary("python3") {
+                "python3"
+            } else {
+                "python"
+            };
+            checks.push(
+                ctx.run(
+                    root,
+                    "Compile (python)",
+                    bin,
+                    &["-m", "compileall", "-q", "."],
+                )
+                .await,
             );
         }
     }
@@ -79,8 +113,13 @@ pub async fn run_checks(
         && has("pom.xml")
     {
         checks.push(
-            ctx.run(root, "Compile (maven)", "mvn", &["-q", "-DskipTests", "compile"])
-                .await,
+            ctx.run(
+                root,
+                "Compile (maven)",
+                "mvn",
+                &["-q", "-DskipTests", "compile"],
+            )
+            .await,
         );
     }
     if has("Package.swift") {
@@ -100,15 +139,28 @@ pub async fn run_light_checks(
     let ctx = Ctx::new(cancel, Duration::from_secs(25));
     let mut checks = agent_test_check(test_result);
     if has_file(root, "go.mod") {
-        checks.push(ctx.run(root, "Typecheck (go)", "go", &["vet", "./..."]).await);
+        checks.push(
+            ctx.run(root, "Typecheck (go)", "go", &["vet", "./..."])
+                .await,
+        );
     }
     if has_file(root, "Cargo.toml") {
-        checks.push(ctx.run(root, "Typecheck (cargo)", "cargo", &["check", "--quiet"]).await);
-    }
-    if has_file(root, "package.json") && (has_node_bin(root, "tsc") || has_dev_dep(root, "typescript")) {
         checks.push(
-            ctx.run(root, "Typecheck (tsc)", "npx", &["--no-install", "tsc", "--noEmit"])
+            ctx.run(root, "Typecheck (cargo)", "cargo", &["check", "--quiet"])
                 .await,
+        );
+    }
+    if has_file(root, "package.json")
+        && (has_node_bin(root, "tsc") || has_dev_dep(root, "typescript"))
+    {
+        checks.push(
+            ctx.run(
+                root,
+                "Typecheck (tsc)",
+                "npx",
+                &["--no-install", "tsc", "--noEmit"],
+            )
+            .await,
         );
     }
     checks

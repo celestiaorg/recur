@@ -20,9 +20,8 @@ fn start_detached_cmd(name: &str, args: &[String]) -> std::result::Result<(), St
     let program = if name.contains('/') {
         name.to_string()
     } else {
-        look_path(name).ok_or_else(|| {
-            format!("exec: {}: executable file not found in $PATH", quote(name))
-        })?
+        look_path(name)
+            .ok_or_else(|| format!("exec: {}: executable file not found in $PATH", quote(name)))?
     };
     let mut child = Command::new(&program)
         .args(args)
@@ -80,7 +79,9 @@ pub fn open_in_editor(abs_path: &str, line: i64) -> Result<()> {
             Err(e) => last = Some(e),
         }
     }
-    Err(Error::msg(last.unwrap_or_else(|| "no editor available".into())))
+    Err(Error::msg(
+        last.unwrap_or_else(|| "no editor available".into()),
+    ))
 }
 
 /// Shows a file or folder in the OS file manager; a missing path reveals its
@@ -130,7 +131,15 @@ struct OpenInApp {
 const IS_DARWIN: bool = cfg!(target_os = "macos");
 
 const CATALOG: &[OpenInApp] = &[
-    app("cursor", "Cursor", &["Cursor.app"], &["cursor"], "", false, false),
+    app(
+        "cursor",
+        "Cursor",
+        &["Cursor.app"],
+        &["cursor"],
+        "",
+        false,
+        false,
+    ),
     app(
         "vscode",
         "Visual Studio Code",
@@ -151,11 +160,43 @@ const CATALOG: &[OpenInApp] = &[
         false,
         false,
     ),
-    app("iterm", "iTerm", &["iTerm.app", "iTerm2.app"], &[], "", true, false),
-    app("terminal", "Terminal", &["Terminal.app"], &[], "", true, IS_DARWIN),
+    app(
+        "iterm",
+        "iTerm",
+        &["iTerm.app", "iTerm2.app"],
+        &[],
+        "",
+        true,
+        false,
+    ),
+    app(
+        "terminal",
+        "Terminal",
+        &["Terminal.app"],
+        &[],
+        "",
+        true,
+        IS_DARWIN,
+    ),
     app("warp", "Warp", &["Warp.app"], &["warp"], "", false, false),
-    app("kaleidoscope", "Kaleidoscope", &["Kaleidoscope.app"], &[], "", true, false),
-    app("sublime", "Sublime Text", &["Sublime Text.app"], &["subl"], "", false, false),
+    app(
+        "kaleidoscope",
+        "Kaleidoscope",
+        &["Kaleidoscope.app"],
+        &[],
+        "",
+        true,
+        false,
+    ),
+    app(
+        "sublime",
+        "Sublime Text",
+        &["Sublime Text.app"],
+        &["subl"],
+        "",
+        false,
+        false,
+    ),
 ];
 
 const fn app(
@@ -217,7 +258,8 @@ fn mac_app_path(names: &[&str]) -> String {
     String::new()
 }
 
-static ICONS: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static ICONS: LazyLock<Mutex<HashMap<String, String>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// The app's icon as a PNG data URL (cached per app path; may be empty).
 fn cached_app_icon(app_path: &str) -> String {

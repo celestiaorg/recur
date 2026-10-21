@@ -48,10 +48,22 @@ fn changed_tree_matches_the_ui() {
 fn skills_and_finding_paths_match_the_ui() {
     let g = golden();
     for (path, scope, home, location, inferred) in &g.locations {
-        assert_eq!(&skills::skill_location(path, scope, home), location, "{path}");
-        assert_eq!(&skills::infer_home_from_skill_path(path), inferred, "{path}");
+        assert_eq!(
+            &skills::skill_location(path, scope, home),
+            location,
+            "{path}"
+        );
+        assert_eq!(
+            &skills::infer_home_from_skill_path(path),
+            inferred,
+            "{path}"
+        );
     }
     for (path, want) in &g.matches {
-        assert_eq!(finding_paths::match_finding_path(path, &g.candidates), want, "{path:?}");
+        assert_eq!(
+            finding_paths::match_finding_path(path, &g.candidates),
+            want,
+            "{path:?}"
+        );
     }
 }

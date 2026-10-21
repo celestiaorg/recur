@@ -104,8 +104,16 @@ pub struct TreeRow<'a> {
 
 /// Visible depth-first rows (directories included; collapsed directories
 /// omit their children).
-pub fn flatten_visible_tree<'a>(tree: &'a [TreeEntry], collapsed: &HashSet<String>) -> Vec<TreeRow<'a>> {
-    fn walk<'a>(nodes: &'a [TreeEntry], depth: usize, collapsed: &HashSet<String>, out: &mut Vec<TreeRow<'a>>) {
+pub fn flatten_visible_tree<'a>(
+    tree: &'a [TreeEntry],
+    collapsed: &HashSet<String>,
+) -> Vec<TreeRow<'a>> {
+    fn walk<'a>(
+        nodes: &'a [TreeEntry],
+        depth: usize,
+        collapsed: &HashSet<String>,
+        out: &mut Vec<TreeRow<'a>>,
+    ) {
         for n in nodes {
             out.push(TreeRow { entry: n, depth });
             if n.dir && !collapsed.contains(&n.path) {
@@ -132,7 +140,12 @@ pub fn cap_visible_tree<'a>(
     if limit == 0 {
         return Cow::Owned(Vec::new());
     }
-    fn take(nodes: &[TreeEntry], collapsed: &HashSet<String>, left: &mut usize, truncated: &mut bool) -> Vec<TreeEntry> {
+    fn take(
+        nodes: &[TreeEntry],
+        collapsed: &HashSet<String>,
+        left: &mut usize,
+        truncated: &mut bool,
+    ) -> Vec<TreeEntry> {
         let mut out = Vec::new();
         for n in nodes {
             if *left == 0 {
@@ -166,7 +179,11 @@ pub fn paths_under_dir(dir: &str, paths: &[String]) -> Vec<String> {
         return paths.to_vec();
     }
     let prefix = format!("{dir}/");
-    paths.iter().filter(|p| p.starts_with(&prefix)).cloned().collect()
+    paths
+        .iter()
+        .filter(|p| p.starts_with(&prefix))
+        .cloned()
+        .collect()
 }
 
 /// File paths in the depth-first order the Changed tree and review TOC show.
@@ -239,7 +256,10 @@ mod tests {
     fn build_single_nested_file() {
         let tree = build_tree_from_paths(&s(&["src/main.go"]));
         assert_eq!(tree.len(), 1);
-        assert_eq!((tree[0].name.as_str(), tree[0].path.as_str(), tree[0].dir), ("src", "src", true));
+        assert_eq!(
+            (tree[0].name.as_str(), tree[0].path.as_str(), tree[0].dir),
+            ("src", "src", true)
+        );
         assert_eq!(
             (tree[0].children[0].path.as_str(), tree[0].children[0].dir),
             ("src/main.go", false)
@@ -249,8 +269,14 @@ mod tests {
     #[test]
     fn build_sorts_with_locale_compare() {
         // Underscore sorts before dot under localeCompare.
-        let tree = build_tree_from_paths(&s(&["internal/store/seed.go", "internal/store/seed_prs.go"]));
-        assert_eq!(names(&tree[0].children[0].children), ["seed_prs.go", "seed.go"]);
+        let tree = build_tree_from_paths(&s(&[
+            "internal/store/seed.go",
+            "internal/store/seed_prs.go",
+        ]));
+        assert_eq!(
+            names(&tree[0].children[0].children),
+            ["seed_prs.go", "seed.go"]
+        );
     }
 
     #[test]
@@ -303,8 +329,14 @@ mod tests {
         assert_eq!(paths, ["a", "a/b.go", "a/c.go"]);
 
         let tree = build_tree_from_paths(&s(&["a/b.go", "d.txt"]));
-        assert!(matches!(cap_visible_tree(&tree, &none, Some(10)), Cow::Borrowed(_)));
-        assert!(matches!(cap_visible_tree(&tree, &none, None), Cow::Borrowed(_)));
+        assert!(matches!(
+            cap_visible_tree(&tree, &none, Some(10)),
+            Cow::Borrowed(_)
+        ));
+        assert!(matches!(
+            cap_visible_tree(&tree, &none, None),
+            Cow::Borrowed(_)
+        ));
         assert!(cap_visible_tree(&tree, &none, Some(0)).is_empty());
 
         let tree = build_tree_from_paths(&s(&["a/1.go", "a/2.go", "b/1.go", "b/2.go"]));
@@ -330,7 +362,10 @@ mod tests {
             ["a/b.go", "a/z.go", "b.txt"]
         );
         assert_eq!(
-            order_changed_paths(&s(&["internal/store/seed.go", "internal/store/seed_prs.go"])),
+            order_changed_paths(&s(&[
+                "internal/store/seed.go",
+                "internal/store/seed_prs.go"
+            ])),
             ["internal/store/seed_prs.go", "internal/store/seed.go"]
         );
     }

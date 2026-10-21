@@ -61,10 +61,8 @@ mod tests {
 
     #[test]
     fn rails_match_go_byte_for_byte() {
-        let golden: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../code/tests/golden/go_code.json"
-        ))
-        .unwrap();
+        let golden: serde_json::Value =
+            serde_json::from_str(include_str!("../../../code/tests/golden/go_code.json")).unwrap();
         assert_eq!(golden["simplify"].as_str(), Some(prompt()));
     }
 

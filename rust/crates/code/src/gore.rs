@@ -142,6 +142,10 @@ mod tests {
         let re = must(r"\b\w+\b");
         assert_eq!(re.find("é abc").map(|m| m.as_str()), Some("abc"));
         assert!(!must(r"^\s$").is_match("\u{a0}"));
-        assert!(compile("(").unwrap_err().starts_with("error parsing regexp: "));
+        assert!(
+            compile("(")
+                .unwrap_err()
+                .starts_with("error parsing regexp: ")
+        );
     }
 }

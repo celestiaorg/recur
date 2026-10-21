@@ -52,7 +52,9 @@ fn compiled(pattern: &str) -> Option<CompiledGlob> {
     if let Some(re) = cache.get(pattern) {
         return Some(re.clone());
     }
-    let re = CompiledGlob(Arc::new(regress::Regex::new(&glob_to_regexp(pattern)).ok()?));
+    let re = CompiledGlob(Arc::new(
+        regress::Regex::new(&glob_to_regexp(pattern)).ok()?,
+    ));
     cache.insert(pattern.to_string(), re.clone());
     Some(re)
 }

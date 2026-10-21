@@ -29,8 +29,8 @@ pub mod observe;
 mod open;
 mod ops;
 mod outline;
-mod root;
 pub mod rg;
+mod root;
 mod scan;
 mod search;
 mod skills;
@@ -48,27 +48,29 @@ mod ops_tests;
 #[cfg(test)]
 mod testutil;
 
+pub use changed::{ChangedDef, changed_defs, find_refs_in_package, rank_refs_in_package};
 pub use drop_allow::{allow_external_path, load_external_allow_file, reset_external_paths};
 pub use error::{Error, Result};
 pub use file::{
     image_at_base, image_mime, prepare_chat_image, prepare_external, prepare_serve, preview_mime,
     read_file, rewind_binary_check, write_file,
 };
-pub use langs::{is_source_ext, is_source_file};
-pub use root::{rel_slash, resolve_root, resolve_root_info, safe_join};
-pub use changed::{ChangedDef, changed_defs, find_refs_in_package, rank_refs_in_package};
-pub use files::{list_files, match_files};
-pub use ops::{abs_path, copy, create_file, mkdir, remove, rename};
-pub use outline::outline;
-pub use search::{replace_in_files, search, search_opts};
-pub use symbols::{SymbolIndex, changed_symbols, extract_idents, find_defs, find_refs, index_symbols};
-pub use tree::{file_at_base, file_diff, git_status, list_tree, list_trees};
 pub use fileindex::{
     BoxFuture, DEFAULT_MAX_INDEX_BYTES, FileIndex, IndexHub, OnUpdate, Publish, ResolveRg, Snapshot,
 };
+pub use files::{list_files, match_files};
 pub use filesearch::{ExcludeSet, rank_files, rank_files_and_dirs, rank_hits};
+pub use langs::{is_source_ext, is_source_file};
+pub use open::{list_open_in_targets, open_in, open_in_editor, reveal_in_finder};
+pub use ops::{abs_path, copy, create_file, mkdir, remove, rename};
+pub use outline::outline;
+pub use root::{rel_slash, resolve_root, resolve_root_info, safe_join};
+pub use search::{replace_in_files, search, search_opts};
 pub use skills::{
     list_skill_resources, list_skills, list_skills_for_menu, read_skill_body, skill_by_name,
     skill_disables_model_invocation,
 };
-pub use open::{list_open_in_targets, open_in, open_in_editor, reveal_in_finder};
+pub use symbols::{
+    SymbolIndex, changed_symbols, extract_idents, find_defs, find_refs, index_symbols,
+};
+pub use tree::{file_at_base, file_diff, git_status, list_tree, list_trees};

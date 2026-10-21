@@ -63,9 +63,8 @@ pub fn rank_files(
                 continue;
             }
         }
-        let at = out.partition_point(|prev| {
-            prev.score > score || (prev.score == score && prev.path < *p)
-        });
+        let at = out
+            .partition_point(|prev| prev.score > score || (prev.score == score && prev.path < *p));
         out.insert(
             at,
             FileSearchHit {
@@ -252,15 +251,16 @@ pub(crate) fn word_boundary_match(lower_text: &str, q: &str) -> bool {
     }
     let t = lower_text.as_bytes();
     let n = t.len() as isize - q.len() as isize;
-    (0..n.max(0) as usize).any(|i| {
-        matches!(t[i], b'/' | b'_' | b'-' | b'.') && t[i + 1..].starts_with(q.as_bytes())
-    })
+    (0..n.max(0) as usize)
+        .any(|i| matches!(t[i], b'/' | b'_' | b'-' | b'.') && t[i + 1..].starts_with(q.as_bytes()))
 }
 
 /// One compiled `files.exclude` pattern.
 enum ExcludeMatcher {
     /// `path == t`, `…/t`, `t/…` or `…/t/…`.
-    PathOrUnder { target: String },
+    PathOrUnder {
+        target: String,
+    },
     Suffix(String),
     Re(Regex),
 }
@@ -310,7 +310,10 @@ pub(crate) fn exclude_to_rg_globs(patterns: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     for p in normalize_exclude_patterns(patterns) {
         let bare = p.strip_prefix("**/").unwrap_or(&p);
-        if matches!(bare, ".git" | ".git/**" | "node_modules" | "node_modules/**") {
+        if matches!(
+            bare,
+            ".git" | ".git/**" | "node_modules" | "node_modules/**"
+        ) {
             continue;
         }
         let neg = if p.starts_with('!') {

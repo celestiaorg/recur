@@ -3,9 +3,7 @@
 
 pub mod bash;
 pub mod edit;
-#[cfg(feature = "code")]
 pub mod glob;
-#[cfg(feature = "code")]
 pub mod grep;
 pub mod read;
 pub mod todos;
@@ -16,7 +14,6 @@ use std::time::Duration;
 pub(crate) const MAX_READ_LINES: usize = 2000;
 pub(crate) const MAX_LINE_CHARS: usize = 2000;
 pub(crate) const MAX_BASH_LINES: usize = 500;
-#[cfg(feature = "code")]
 pub(crate) const MAX_GREP_HITS: usize = 200;
 pub(crate) const DEFAULT_BASH_WAIT: Duration = Duration::from_secs(2 * 60);
 pub(crate) const MAX_BASH_WAIT: Duration = Duration::from_secs(10 * 60);
@@ -35,7 +32,6 @@ pub(crate) fn clip_line(line: &str) -> String {
 }
 
 /// The managed data root (where a managed ripgrep lives).
-#[cfg(feature = "code")]
 pub(crate) fn data_dir() -> std::path::PathBuf {
-    recur_store::data_dir().unwrap_or_default()
+    recur_store::paths::data_dir().unwrap_or_default()
 }

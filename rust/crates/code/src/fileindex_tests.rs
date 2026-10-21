@@ -58,8 +58,14 @@ fn file_index_upsert_remove() {
     idx.remove("README.md");
     let snap = idx.snapshot();
     assert_eq!(snap.paths.len(), 2);
-    assert!(snap.paths.contains(&"validators/hyperlane_validator2.sh".into()));
-    assert!(snap.paths.contains(&"validators/decode-hyperlane-message.sh".into()));
+    assert!(
+        snap.paths
+            .contains(&"validators/hyperlane_validator2.sh".into())
+    );
+    assert!(
+        snap.paths
+            .contains(&"validators/decode-hyperlane-message.sh".into())
+    );
     assert_eq!(snap.paths.len(), snap.basenames.len());
 
     let before = idx.snapshot().bytes;
@@ -75,13 +81,14 @@ fn file_index_upsert_remove() {
 #[test]
 fn file_index_apply_fs_change() {
     let root = tmp();
-    write(root.path(), "validators/hyperlane_validator2.sh", "#!/bin/sh\n");
+    write(
+        root.path(),
+        "validators/hyperlane_validator2.sh",
+        "#!/bin/sh\n",
+    );
     let idx = FileIndex::new(&root_str(&root));
     idx.apply_fs_change(&root_str(&root), "validators/hyperlane_validator2.sh");
-    assert_eq!(
-        idx.snapshot().paths,
-        ["validators/hyperlane_validator2.sh"]
-    );
+    assert_eq!(idx.snapshot().paths, ["validators/hyperlane_validator2.sh"]);
     fs_remove(root.path().join("validators/hyperlane_validator2.sh"));
     idx.apply_fs_change(&root_str(&root), "validators/hyperlane_validator2.sh");
     assert!(idx.snapshot().paths.is_empty());
@@ -109,7 +116,10 @@ async fn hub_rebuild_walk_fallback_includes_validators() {
         "validators/decode-hyperlane-message.sh",
         "hypothesis.txt",
     ] {
-        assert!(paths.iter().any(|p| p == want), "paths = {paths:?}, missing {want}");
+        assert!(
+            paths.iter().any(|p| p == want),
+            "paths = {paths:?}, missing {want}"
+        );
     }
 }
 
@@ -155,7 +165,11 @@ async fn hub_refresh_if_dirty_skips_clean_and_cold() {
         }
     })));
     hub.refresh_if_dirty("ws1", &root_str(&root));
-    assert_eq!(builds.load(Ordering::SeqCst), 0, "clean refresh_if_dirty rebuilt");
+    assert_eq!(
+        builds.load(Ordering::SeqCst),
+        0,
+        "clean refresh_if_dirty rebuilt"
+    );
     let cold = hub.refresh_if_dirty("ws-cold", &root_str(&root));
     assert!(!cold.ready && hub.len() == 1, "cold should no-op: {cold:?}");
 
@@ -183,7 +197,10 @@ async fn hub_byte_budget_evicts_lru_not_pinned() {
         for i in 0..40u8 {
             write(
                 root.path(),
-                &format!("file-with-a-fairly-long-name-{}.txt", (b'a' + i % 26) as char),
+                &format!(
+                    "file-with-a-fairly-long-name-{}.txt",
+                    (b'a' + i % 26) as char
+                ),
                 "x",
             );
         }
@@ -198,8 +215,14 @@ async fn hub_byte_budget_evicts_lru_not_pinned() {
     // A tiny budget forces eviction of the colder unpinned index.
     hub.set_max_bytes(1);
     assert_eq!(hub.len(), 1);
-    assert!(hub.index("ws-pin").is_some(), "pinned workspace was evicted");
-    assert!(hub.index("ws-old").is_none(), "LRU unpinned should be evicted");
+    assert!(
+        hub.index("ws-pin").is_some(),
+        "pinned workspace was evicted"
+    );
+    assert!(
+        hub.index("ws-old").is_none(),
+        "LRU unpinned should be evicted"
+    );
 }
 
 fn gated_resolve(calls: Arc<AtomicUsize>, started: Arc<Notify>, release: Arc<Notify>) -> ResolveRg {
@@ -224,14 +247,34 @@ async fn file_index_rebuild_coalesces() {
         Arc::new(Notify::new()),
         Arc::new(Notify::new()),
     );
-    let resolve = gated_resolve(Arc::clone(&calls), Arc::clone(&started), Arc::clone(&release));
+    let resolve = gated_resolve(
+        Arc::clone(&calls),
+        Arc::clone(&started),
+        Arc::clone(&release),
+    );
     let rt = Handle::current();
-    idx.rebuild(&rt, Some(resolve.clone()), None, false, false, vec![], ExcludeSet::default());
+    idx.rebuild(
+        &rt,
+        Some(resolve.clone()),
+        None,
+        false,
+        false,
+        vec![],
+        ExcludeSet::default(),
+    );
     tokio::time::timeout(Duration::from_secs(2), started.notified())
         .await
         .expect("first rebuild did not start");
     // A non-force rebuild while building must not resolve again.
-    idx.rebuild(&rt, Some(resolve), None, false, false, vec![], ExcludeSet::default());
+    idx.rebuild(
+        &rt,
+        Some(resolve),
+        None,
+        false,
+        false,
+        vec![],
+        ExcludeSet::default(),
+    );
     assert_eq!(calls.load(Ordering::SeqCst), 1, "coalesced");
 
     let data = tmp();
@@ -240,7 +283,11 @@ async fn file_index_rebuild_coalesces() {
     hub.insert_index("ws1", Arc::clone(&idx));
     let snap = hub.ensure("ws1", &root_str(&root));
     assert!(snap.building, "ensure should return the in-flight snapshot");
-    assert_eq!(calls.load(Ordering::SeqCst), 1, "ensure restarted the build");
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "ensure restarted the build"
+    );
     release.notify_one();
     assert!(
         eventually(|| idx.snapshot().ready).await,
@@ -259,7 +306,15 @@ async fn file_index_finish_rebuild_keeps_dirty_on_race() {
         Arc::new(Notify::new()),
     );
     let resolve = gated_resolve(calls, Arc::clone(&started), Arc::clone(&release));
-    idx.rebuild(&Handle::current(), Some(resolve), None, false, true, vec![], ExcludeSet::default());
+    idx.rebuild(
+        &Handle::current(),
+        Some(resolve),
+        None,
+        false,
+        true,
+        vec![],
+        ExcludeSet::default(),
+    );
     tokio::time::timeout(Duration::from_secs(2), started.notified())
         .await
         .expect("rebuild did not start");
@@ -276,7 +331,10 @@ async fn file_index_finish_rebuild_keeps_dirty_on_race() {
         .await,
         "rebuild never finished"
     );
-    assert!(idx.snapshot().dirty, "finish_rebuild cleared a mid-walk dirty");
+    assert!(
+        idx.snapshot().dirty,
+        "finish_rebuild cleared a mid-walk dirty"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -294,7 +352,15 @@ async fn file_index_rebuild_outlives_its_caller() {
         let idx = Arc::clone(&idx);
         tokio::spawn(async move {
             let resolve: ResolveRg = Arc::new(|_| Box::pin(async { NO_RG.to_string() }));
-            idx.rebuild(&Handle::current(), Some(resolve), Some(on_update), false, true, vec![], ExcludeSet::default());
+            idx.rebuild(
+                &Handle::current(),
+                Some(resolve),
+                Some(on_update),
+                false,
+                true,
+                vec![],
+                ExcludeSet::default(),
+            );
         })
     };
     // The RPC that asked for the build returns (and is dropped) right away.
@@ -352,15 +418,42 @@ async fn hub_search_ranks_and_reports_readiness() {
     hub.set_rg_path(NO_RG);
     let (publish, mut rx) = ready_signal();
     hub.set_publish(Some(publish));
-    let first = hub.search(&CancellationToken::new(), "ws1", &root_str(&root), "uc", 10, true);
+    let first = hub.search(
+        &CancellationToken::new(),
+        "ws1",
+        &root_str(&root),
+        "uc",
+        10,
+        true,
+    );
     assert!(first.building || first.ready);
     wait_for(&mut rx, "ws1").await;
-    let res = hub.search(&CancellationToken::new(), "ws1", &root_str(&root), "uc", 10, true);
+    let res = hub.search(
+        &CancellationToken::new(),
+        "ws1",
+        &root_str(&root),
+        "uc",
+        10,
+        true,
+    );
     assert!(res.ready && !res.building);
     let hits = res.hits.unwrap();
     assert_eq!(hits[0].path, "pkg/UserController.go");
-    let mixed = hub.search(&CancellationToken::new(), "ws1", &root_str(&root), "pkg", 10, false);
-    assert!(mixed.hits.unwrap().iter().any(|h| h.dir && h.path == "pkg/"));
+    let mixed = hub.search(
+        &CancellationToken::new(),
+        "ws1",
+        &root_str(&root),
+        "pkg",
+        10,
+        false,
+    );
+    assert!(
+        mixed
+            .hits
+            .unwrap()
+            .iter()
+            .any(|h| h.dir && h.path == "pkg/")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

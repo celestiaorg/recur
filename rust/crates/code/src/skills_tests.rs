@@ -68,7 +68,10 @@ fn list_skills_union_roots() {
 
 #[test]
 fn parse_description() {
-    assert_eq!(parse_frontmatter_description("description: hello world\n"), "hello world");
+    assert_eq!(
+        parse_frontmatter_description("description: hello world\n"),
+        "hello world"
+    );
     assert_eq!(
         parse_frontmatter_description("description: >\n  line one\n  line two\nname: x\n"),
         "line one line two"
@@ -119,7 +122,11 @@ fn truncate_skill_desc_utf8() {
 fn skill_resources_and_lookup() {
     let wt = tmp();
     let dir = wt.path().join(".agents/skills/tool");
-    write_skill(&wt.path().join(".agents/skills"), "tool", "---\ndescription: d\n---\nbody\n");
+    write_skill(
+        &wt.path().join(".agents/skills"),
+        "tool",
+        "---\ndescription: d\n---\nbody\n",
+    );
     for rel in ["scripts/run.sh", "refs/a.md", "node_modules/x.js"] {
         let p = dir.join(rel);
         fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -136,5 +143,9 @@ fn skill_resources_and_lookup() {
         list_skills_in(&cancel, s(wt.path()), "").unwrap()[0].name,
         "tool"
     );
-    assert!(skill_by_name(&cancel, s(wt.path()), "Bad Name").unwrap().is_none());
+    assert!(
+        skill_by_name(&cancel, s(wt.path()), "Bad Name")
+            .unwrap()
+            .is_none()
+    );
 }

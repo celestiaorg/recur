@@ -99,7 +99,10 @@ fn copy_and_preview() {
         !dest.path().join("node_modules/.env").exists(),
         "node_modules is skipped unless a glob names it"
     );
-    assert!(!dest.path().join(".git/.env").exists(), ".git is never copied");
+    assert!(
+        !dest.path().join(".git/.env").exists(),
+        ".git is never copied"
+    );
 
     let named = preview(&never(), None, s(src.path()), "node_modules/.env\n");
     assert_eq!(named.files.unwrap(), ["node_modules/.env"]);
@@ -108,7 +111,10 @@ fn copy_and_preview() {
 #[test]
 fn copy_empty_patterns_is_noop() {
     let (a, b) = (tmp(), tmp());
-    assert_eq!(copy(&never(), None, s(a.path()), s(b.path()), "\n# none\n").unwrap(), 0);
+    assert_eq!(
+        copy(&never(), None, s(a.path()), s(b.path()), "\n# none\n").unwrap(),
+        0
+    );
     let prev = preview(&never(), None, s(a.path()), "\n");
     assert!(prev.files.is_none() && prev.error.is_empty());
 }
@@ -137,8 +143,14 @@ fn copy_dot_dot_in_filename() {
     let (src, dest) = (tmp(), tmp());
     write(src.path(), ".env", "A=1\n");
     write(src.path(), ".env..bak", "B=2\n");
-    assert_eq!(copy(&never(), None, s(src.path()), s(dest.path()), ".env*").unwrap(), 2);
-    assert_eq!(fs::read_to_string(dest.path().join(".env..bak")).unwrap(), "B=2\n");
+    assert_eq!(
+        copy(&never(), None, s(src.path()), s(dest.path()), ".env*").unwrap(),
+        2
+    );
+    assert_eq!(
+        fs::read_to_string(dest.path().join(".env..bak")).unwrap(),
+        "B=2\n"
+    );
 }
 
 #[test]
@@ -146,8 +158,14 @@ fn copy_leaves_existing_dest() {
     let (src, dest) = (tmp(), tmp());
     write(src.path(), ".env", "from-src\n");
     write(dest.path(), ".env", "from-dest\n");
-    assert_eq!(copy(&never(), None, s(src.path()), s(dest.path()), ".env").unwrap(), 0);
-    assert_eq!(fs::read_to_string(dest.path().join(".env")).unwrap(), "from-dest\n");
+    assert_eq!(
+        copy(&never(), None, s(src.path()), s(dest.path()), ".env").unwrap(),
+        0
+    );
+    assert_eq!(
+        fs::read_to_string(dest.path().join(".env")).unwrap(),
+        "from-dest\n"
+    );
 }
 
 #[test]
@@ -160,7 +178,13 @@ fn copy_respects_cancel_and_deadline() {
     ));
     let past = Instant::now();
     assert!(matches!(
-        copy(&never(), Some(past), s(tmp().path()), s(tmp().path()), ".env*"),
+        copy(
+            &never(),
+            Some(past),
+            s(tmp().path()),
+            s(tmp().path()),
+            ".env*"
+        ),
         Err(Error::DeadlineExceeded)
     ));
 }
@@ -174,12 +198,15 @@ fn preview_and_copy_share_scan_cap() {
     let prev = preview_capped(&never(), None, s(src.path()), ".env*", 2);
     assert_eq!(prev.error, "more than 2 matching files; narrow the globs");
     let err = copy_capped(&never(), None, s(src.path()), s(tmp().path()), ".env*", 2).unwrap_err();
-    assert_eq!(err.to_string(), "more than 2 matching files; narrow the globs");
+    assert_eq!(
+        err.to_string(),
+        "more than 2 matching files; narrow the globs"
+    );
 }
 
 fn chmod_unreadable(path: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(path, fs::Permissions::from_mode(0)).unwrap();
+    fs::set_permissions(path, fs::Permissions::from_mode(0o000)).unwrap();
     // Root can read mode-0000 files; the case does not apply then.
     fs::File::open(path).is_err()
 }
@@ -191,7 +218,10 @@ fn copy_skips_unreadable_without_failing() {
     if !chmod_unreadable(&src.path().join(".env")) {
         return;
     }
-    assert_eq!(copy(&never(), None, s(src.path()), s(dest.path()), ".env*").unwrap(), 0);
+    assert_eq!(
+        copy(&never(), None, s(src.path()), s(dest.path()), ".env*").unwrap(),
+        0
+    );
     assert!(!dest.path().join(".env").exists());
 }
 
@@ -204,8 +234,14 @@ fn copy_existing_plus_unreadable_is_ok() {
     if !chmod_unreadable(&src.path().join(".env.bad")) {
         return;
     }
-    assert_eq!(copy(&never(), None, s(src.path()), s(dest.path()), ".env*").unwrap(), 0);
-    assert_eq!(fs::read_to_string(dest.path().join(".env")).unwrap(), "from-dest\n");
+    assert_eq!(
+        copy(&never(), None, s(src.path()), s(dest.path()), ".env*").unwrap(),
+        0
+    );
+    assert_eq!(
+        fs::read_to_string(dest.path().join(".env")).unwrap(),
+        "from-dest\n"
+    );
 }
 
 #[test]

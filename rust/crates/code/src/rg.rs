@@ -347,7 +347,10 @@ fn make_staging_dir(bin_dir: &str) -> Result<String> {
             .unwrap_or_default();
         let p = gopath::join(&[
             bin_dir,
-            &format!(".rg-staging-{}", (nanos ^ pid ^ n.wrapping_mul(2_654_435_761)) % 1_000_000_000),
+            &format!(
+                ".rg-staging-{}",
+                (nanos ^ pid ^ n.wrapping_mul(2_654_435_761)) % 1_000_000_000
+            ),
         ]);
         match fs::DirBuilder::new().mode(0o700).create(&p) {
             Ok(()) => return Ok(p),
@@ -387,9 +390,7 @@ pub(crate) fn extract_rg(r: impl Read, dest: &str) -> Result<()> {
         return Err(Error::msg("rg download: gzip: gzip: invalid header"));
     }
     let mut tr = tar::Archive::new(gz);
-    let entries = tr
-        .entries()
-        .map_err(|e| Error::msg(e.to_string()))?;
+    let entries = tr.entries().map_err(|e| Error::msg(e.to_string()))?;
     for entry in entries {
         let mut entry = entry.map_err(|e| Error::msg(e.to_string()))?;
         let name = entry
@@ -436,7 +437,10 @@ mod tests {
     fn files_args_include_uu_and_globs() {
         let args = files_args("/tmp/repo", &[]);
         for w in ["--files", "-uu", "--glob", "!.git", "!node_modules"] {
-            assert!(args.iter().any(|a| a == w), "files_args = {args:?}, missing {w}");
+            assert!(
+                args.iter().any(|a| a == w),
+                "files_args = {args:?}, missing {w}"
+            );
         }
         assert_eq!(args.last().map(String::as_str), Some("/tmp/repo"));
         let extra = files_args("/r", &["!dist".into(), String::new()]);
@@ -473,7 +477,10 @@ mod tests {
             "hypothesis.txt",
             ".env.example",
         ] {
-            assert!(got.iter().any(|p| p == want), "files = {got:?}, missing {want}");
+            assert!(
+                got.iter().any(|p| p == want),
+                "files = {got:?}, missing {want}"
+            );
         }
     }
 

@@ -1,0 +1,1639 @@
+{
+ "claudeAccounts": [
+  {
+   "email": "dev@example.com",
+   "raw": "{\"oauthAccount\":{\"emailAddress\":\"dev@example.com\",\"organizationName\":\"Acme\"}}"
+  },
+  {
+   "email": "s@x.io",
+   "raw": "{\"oauth_account\":{\"email\":\"s@x.io\"}}"
+  },
+  {
+   "email": "top@x.io",
+   "raw": "{\"userEmail\":\"top@x.io\"}"
+  },
+  {
+   "email": "",
+   "raw": "x"
+  }
+ ],
+ "claudeOAuth": [
+  {
+   "access": "sk-ant-oat01-abc",
+   "expiresAt": 0,
+   "raw": "sk-ant-oat01-abc",
+   "refresh": ""
+  },
+  {
+   "access": "sk-ant-oat01-xyz",
+   "expiresAt": 1787565508430,
+   "raw": "{\"claudeAiOauth\":{\"accessToken\":\"sk-ant-oat01-xyz\",\"refreshToken\":\"sk-ant-ort01-r\",\"expiresAt\":1787565508430}}",
+   "refresh": "sk-ant-ort01-r"
+  },
+  {
+   "access": "sk-ant-oat01-sn",
+   "expiresAt": 0,
+   "raw": "{\"access_token\":\"sk-ant-oat01-sn\"}",
+   "refresh": ""
+  },
+  {
+   "access": "",
+   "expiresAt": 0,
+   "raw": "not-json",
+   "refresh": ""
+  },
+  {
+   "access": "",
+   "expiresAt": 0,
+   "raw": "{}",
+   "refresh": ""
+  },
+  {
+   "access": "o",
+   "expiresAt": 1787274000000,
+   "raw": "{\"oauthAccount\":{\"accessToken\":\"o\",\"expires_at\":\"2026-08-21T01:00:00Z\"}}",
+   "refresh": ""
+  },
+  {
+   "access": "",
+   "expiresAt": 0,
+   "raw": "{\"claude\":{\"refresh_token\":\"r\"}}",
+   "refresh": "r"
+  },
+  {
+   "access": "t",
+   "expiresAt": 0,
+   "raw": "{\"token\":\"t\",\"claudeAiOAuth\":{\"accessToken\":\"ignored\"}}",
+   "refresh": ""
+  },
+  {
+   "access": "nested",
+   "expiresAt": 0,
+   "raw": "{\"claudeAiOAuth\":{\"accessToken\":\"nested\"}}",
+   "refresh": ""
+  },
+  {
+   "access": "sk-ant-padded",
+   "expiresAt": 0,
+   "raw": "  sk-ant-padded  ",
+   "refresh": ""
+  }
+ ],
+ "claudeUsage": [
+  {
+   "raw": "{\"five_hour\":{\"utilization\":10},\"seven_day\":{\"utilization\":2}}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 10
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 2
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":78.5,\"resets_at\":\"2026-08-21T01:00:00Z\"},\"seven_day\":{\"used_percentage\":13,\"resets_at\":1775808000},\"seven_day_opus\":{\"used_percent\":4.2},\"extra_usage\":{\"is_enabled\":true,\"used_credits\":10000,\"monthly_limit\":10000},\"limits\":[{\"kind\":\"weekly_scoped\",\"percent\":54,\"resets_at\":\"2026-08-28T00:00:00Z\",\"scope\":{\"model\":{\"display_name\":\"Fable\"}}}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 78.5,
+      "resetsAt": 1787274000000
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 13,
+      "resetsAt": 1775808000000
+     },
+     {
+      "id": "seven_day_opus",
+      "label": "Opus (7-day)",
+      "usedPct": 4.2
+     },
+     {
+      "id": "seven_day_fable",
+      "label": "Fable (7-day)",
+      "usedPct": 54,
+      "resetsAt": 1787875200000
+     },
+     {
+      "id": "extra",
+      "label": "Extra",
+      "usedPct": 100,
+      "detail": "$100.00 of $100.00"
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":10},\"seven_day\":{\"utilization\":20},\"limits\":[{\"kind\":\"weekly_scoped\",\"percent\":41,\"is_active\":false,\"scope\":{\"model\":{\"display_name\":\"Fable\"}}}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 10
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 20
+     },
+     {
+      "id": "seven_day_fable",
+      "label": "Fable (7-day)",
+      "usedPct": 41
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":8},\"seven_day\":{\"utilization\":2},\"rate_limits\":{\"model_scoped\":[{\"display_name\":\"Fable\",\"utilization\":37,\"resets_at\":\"2026-08-31T23:59:59Z\"}]}}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 8
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 2
+     },
+     {
+      "id": "seven_day_fable",
+      "label": "Fable (7-day)",
+      "usedPct": 37,
+      "resetsAt": 1788220799000
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"limits\":[{\"kind\":\"session\",\"percent\":0,\"is_active\":false},{\"kind\":\"session\",\"percent\":18,\"is_active\":true},{\"kind\":\"weekly_all\",\"percent\":0,\"is_active\":false},{\"kind\":\"weekly_all\",\"percent\":22,\"is_active\":true}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 18
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 22
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"limits\":[{\"kind\":\"session\",\"percent\":30,\"is_active\":false},{\"kind\":\"weekly_all\",\"percent\":40,\"is_active\":false},{\"kind\":\"weekly_scoped\",\"percent\":90,\"is_active\":true,\"scope\":{\"model\":{\"display_name\":\"Fable\"}}}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 30
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 40
+     },
+     {
+      "id": "seven_day_fable",
+      "label": "Fable (7-day)",
+      "usedPct": 90
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":1},\"seven_day\":{\"utilization\":2},\"limits\":[{\"kind\":\"weekly_scoped\",\"percent\":80,\"is_active\":false,\"scope\":{\"model\":{\"display_name\":\"Opus 4.5\"}}},{\"kind\":\"weekly_scoped\",\"percent\":10,\"is_active\":true,\"scope\":{\"model\":{\"display_name\":\"Opus 5\"}}}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 1
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 2
+     },
+     {
+      "id": "seven_day_opus_4.5",
+      "label": "Opus 4.5 (7-day)",
+      "usedPct": 80
+     },
+     {
+      "id": "seven_day_opus_5",
+      "label": "Opus 5 (7-day)",
+      "usedPct": 10
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":1},\"seven_day\":{\"utilization\":2},\"limits\":[{\"kind\":\"weekly_scoped\",\"percent\":11,\"scope\":{\"model\":{\"display_name\":\"Opus 4.5\"}}},{\"kind\":\"weekly_scoped\",\"percent\":22,\"scope\":{\"model\":{\"display_name\":\"Claude Opus 4.5\"}}}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 1
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 2
+     },
+     {
+      "id": "seven_day_opus_4.5",
+      "label": "Opus 4.5 (7-day)",
+      "usedPct": 11
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":8},\"seven_day\":{\"utilization\":2},\"model_scoped\":[{\"kind\":\"session\",\"display_name\":\"Fable\",\"utilization\":91},{\"kind\":\"weekly_scoped\",\"display_name\":\"Fable\",\"utilization\":37}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 8
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 2
+     },
+     {
+      "id": "seven_day_fable",
+      "label": "Fable (7-day)",
+      "usedPct": 37
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":8},\"seven_day\":{\"utilization\":2},\"seven_day_fable\":{\"utilization\":12},\"model_scoped\":[{\"name\":\"claude-fable-5\",\"utilization\":40,\"scope\":{\"model\":{\"display_name\":\"Fable\"}}}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 8
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 2
+     },
+     {
+      "id": "seven_day_fable",
+      "label": "Fable (7-day)",
+      "usedPct": 12
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":8},\"model_scoped\":[{\"name\":\"claude-fable-5-1\",\"utilization\":40},{\"name\":\"Haiku 4\",\"period\":\"7d\",\"utilization\":\"55.5\"},{\"name\":\"x\",\"window\":\"monthly\",\"utilization\":5},{\"name\":\"weird name\",\"kind\":\"weekly\",\"utilization\":150}]}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 8
+     },
+     {
+      "id": "seven_day_fable_5_1",
+      "label": "Fable 5.1 (7-day)",
+      "usedPct": 40
+     },
+     {
+      "id": "seven_day_haiku_4",
+      "label": "Haiku 4 (7-day)",
+      "usedPct": 55.5
+     },
+     {
+      "id": "seven_day_weird_name",
+      "label": "Weird Name (7-day)",
+      "usedPct": 100
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"email\":\"a@b.c\"}",
+   "quota": null,
+   "err": true
+  },
+  {
+   "raw": "not json",
+   "quota": null,
+   "err": true
+  },
+  {
+   "raw": "{\"fiveHour\":{\"percent\":-5,\"resetsAt\":\"1775808000123\"},\"sevenDay\":{\"usedPercent\":\"12\"},\"email\":\"  me@x.io \",\"subscription_type\":\"max\",\"extra\":{\"isEnabled\":false,\"utilization\":3}}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "email": "me@x.io",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "plan": "max",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 0,
+      "resetsAt": 1775808000123
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 12
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"session\":{\"utilization\":5,\"reset_at\":1775808000000},\"weekly\":{\"utilization\":6},\"organization\":{\"email\":\"org@x.io\"},\"extraUsage\":{\"utilization\":0,\"resetsAt\":\"2026-09-01T00:00:00+02:00\"}}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "email": "org@x.io",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 5,
+      "resetsAt": 1775808000000
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 6
+     },
+     {
+      "id": "extra",
+      "label": "Extra",
+      "usedPct": 0,
+      "resetsAt": 1788213600000
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":null,\"used_percent\":3},\"seven_day\":{\"utilization\":true},\"extra_usage\":{\"usedCredits\":550,\"monthlyLimit\":0}}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 3
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 0
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"five_hour\":{\"utilization\":1},\"extra_usage\":{\"used_credits\":1234,\"monthly_limit\":5000,\"resets_at\":0}}",
+   "quota": {
+    "id": "claude-code",
+    "name": "Claude",
+    "source": "Claude Code login",
+    "sourceId": "claude_login",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 1
+     },
+     {
+      "id": "extra",
+      "label": "Extra",
+      "usedPct": 24.68,
+      "detail": "$12.34 of $50.00"
+     }
+    ]
+   },
+   "err": false
+  }
+ ],
+ "codexAuth": [
+  {
+   "auth": {
+    "accessToken": "tok",
+    "accountId": "acc-1",
+    "email": "",
+    "hasApiKey": false,
+    "hasChatGpt": true,
+    "idToken": ""
+   },
+   "err": false,
+   "raw": "{\"tokens\":{\"access_token\":\"tok\",\"account_id\":\"acc-1\"}}"
+  },
+  {
+   "auth": {
+    "accessToken": "tok",
+    "accountId": "",
+    "email": "codex@example.com",
+    "hasApiKey": false,
+    "hasChatGpt": true,
+    "idToken": "eyJhbGciOiJub25lIn0.eyJlbWFpbCI6ImNvZGV4QGV4YW1wbGUuY29tIn0."
+   },
+   "err": false,
+   "raw": "{\"tokens\":{\"access_token\":\"tok\",\"id_token\":\"eyJhbGciOiJub25lIn0.eyJlbWFpbCI6ImNvZGV4QGV4YW1wbGUuY29tIn0.\"}}"
+  },
+  {
+   "auth": {
+    "accessToken": "tok",
+    "accountId": "acc-jwt",
+    "email": "",
+    "hasApiKey": false,
+    "hasChatGpt": true,
+    "idToken": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLWp3dCJ9fQ."
+   },
+   "err": false,
+   "raw": "{\"tokens\":{\"access_token\":\"tok\",\"id_token\":\"eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLWp3dCJ9fQ.\"}}"
+  },
+  {
+   "auth": {
+    "accessToken": "",
+    "accountId": "",
+    "email": "",
+    "hasApiKey": true,
+    "hasChatGpt": false,
+    "idToken": ""
+   },
+   "err": false,
+   "raw": "{\"OPENAI_API_KEY\":\"sk-x\"}"
+  },
+  {
+   "err": true,
+   "raw": "{\"OPENAI_API_KEY\":\"  \"}"
+  },
+  {
+   "auth": {
+    "accessToken": "eyJhbGciOiJub25lIn0.eyJlbWFpbCI6ImFjY0B4LmlvIiwiYWNjb3VudF9pZCI6ImEyIn0.",
+    "accountId": "a2",
+    "email": "top@x.io",
+    "hasApiKey": false,
+    "hasChatGpt": true,
+    "idToken": ""
+   },
+   "err": false,
+   "raw": "{\"tokens\":{\"access_token\":\"eyJhbGciOiJub25lIn0.eyJlbWFpbCI6ImFjY0B4LmlvIiwiYWNjb3VudF9pZCI6ImEyIn0.\"}, \"email\":\" top@x.io \"}"
+  },
+  {
+   "auth": {
+    "accessToken": "",
+    "accountId": "",
+    "email": "pu@x.io",
+    "hasApiKey": true,
+    "hasChatGpt": false,
+    "idToken": "eyJhbGciOiJub25lIn0.eyJwcmVmZXJyZWRfdXNlcm5hbWUiOiJwdUB4LmlvIn0."
+   },
+   "err": false,
+   "raw": "{\"id_token\":\"eyJhbGciOiJub25lIn0.eyJwcmVmZXJyZWRfdXNlcm5hbWUiOiJwdUB4LmlvIn0.\",\"OPENAI_API_KEY\":\"k\"}"
+  },
+  {
+   "err": true,
+   "raw": "{\"tokens\":{\"access_token\":5}}"
+  },
+  {
+   "err": true,
+   "raw": "nope"
+  }
+ ],
+ "codexMonthly": [
+  {
+   "raw": "{\"current_month_usage\":297.4,\"effective_monthly_limit\":{\"limit\":1000,\"enforcement_mode\":\"HARD_CAP\",\"limit_mode\":\"amount_credits\"}}",
+   "window": {
+    "id": "billing",
+    "label": "Monthly",
+    "usedPct": 29.74,
+    "detail": "297 of 1,000 credits"
+   }
+  },
+  {
+   "raw": "{\"effective_monthly_limit\":{\"limit\":0}}",
+   "window": null
+  },
+  {
+   "raw": "{\"current_month_usage\":10,\"effective_monthly_limit\":{\"limit\":1000,\"enforcement_mode\":\"none\"}}",
+   "window": null
+  },
+  {
+   "raw": "{\"currentMonthUsage\":\"1500\",\"effectiveMonthlyLimit\":{\"limit\":\"1000\",\"enforcementMode\":\"soft\"}}",
+   "window": {
+    "id": "billing",
+    "label": "Monthly",
+    "usedPct": 100,
+    "detail": "1,500 of 1,000 credits"
+   }
+  },
+  {
+   "raw": "{}",
+   "window": null
+  }
+ ],
+ "codexUsage": [
+  {
+   "raw": "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":5}}}",
+   "quota": {
+    "id": "codex",
+    "name": "Codex",
+    "source": "ChatGPT login",
+    "sourceId": "chatgpt",
+    "plan": "Plus",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 5
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"plan_type\":\"pro\",\"rate_limit\":{\"primary_window\":{\"used_percent\":33,\"reset_at\":1778670307},\"secondary_window\":{\"used_percent\":12,\"reset_at\":1779275107}},\"credits\":{\"has_credits\":true,\"unlimited\":false,\"balance\":\"45.25\"}}",
+   "quota": {
+    "id": "codex",
+    "name": "Codex",
+    "source": "ChatGPT login",
+    "sourceId": "chatgpt",
+    "plan": "Pro",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 33,
+      "resetsAt": 1778670307000
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 12,
+      "resetsAt": 1779275107000
+     },
+     {
+      "id": "extra",
+      "label": "Credits",
+      "usedPct": 0,
+      "detail": "45.25"
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"plan_type\":\"business\",\"rate_limit\":{\"primary_window\":{\"used_percent\":1,\"limit_window_seconds\":604800,\"reset_at\":1779275107}}}",
+   "quota": {
+    "id": "codex",
+    "name": "Codex",
+    "source": "ChatGPT login",
+    "sourceId": "chatgpt",
+    "plan": "Business",
+    "windows": [
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 1,
+      "resetsAt": 1779275107000
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"rate_limit\":{\"primary_window\":{\"used_percent\":33,\"limit_window_seconds\":18000,\"reset_at\":1778670307},\"secondary_window\":{\"used_percent\":12,\"limit_window_seconds\":604800,\"reset_at\":1779275107}}}",
+   "quota": {
+    "id": "codex",
+    "name": "Codex",
+    "source": "ChatGPT login",
+    "sourceId": "chatgpt",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 33,
+      "resetsAt": 1778670307000
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 12,
+      "resetsAt": 1779275107000
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"plan_type\":\"team\",\"rate_limit\":{\"primary_window\":{\"used_percent\":100,\"reset_at\":1778670307},\"secondary_window\":{\"used_percent\":16,\"reset_at\":1779275107}},\"credits\":{\"has_credits\":true,\"unlimited\":false,\"balance\":null},\"spend_control\":{\"reached\":false,\"individual_limit\":{\"source\":\"workspace_spend_controls\",\"limit\":\"500\",\"used\":\"500\",\"remaining\":\"0\",\"used_percent\":100,\"reset_at\":1788220800}}}",
+   "quota": {
+    "id": "codex",
+    "name": "Codex",
+    "source": "ChatGPT login",
+    "sourceId": "chatgpt",
+    "plan": "Team",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 100,
+      "resetsAt": 1778670307000
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 16,
+      "resetsAt": 1779275107000
+     },
+     {
+      "id": "billing",
+      "label": "Monthly",
+      "usedPct": 100,
+      "resetsAt": 1788220800000,
+      "detail": "500 of 500 credits"
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"plan_type\":\"education\",\"rate_limit\":{\"primary_window\":{\"used_percent\":14},\"secondary_window\":{\"used_percent\":33}},\"spend_control\":{\"reached\":false,\"individual_limit\":null}}",
+   "quota": {
+    "id": "codex",
+    "name": "Codex",
+    "source": "ChatGPT login",
+    "sourceId": "chatgpt",
+    "plan": "Edu",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 14
+     },
+     {
+      "id": "seven_day",
+      "label": "7-day",
+      "usedPct": 33
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"planType\":\"edu_plus\",\"email\":\"e@x.io\",\"primary_window\":{\"utilization\":9},\"individualLimit\":{\"limit\":2000,\"used\":150.6,\"resetsAt\":\"2026-09-01T00:00:00Z\"},\"credits\":{\"has_credits\":\"true\",\"unlimited\":0,\"balance\":\" 3 \"}}",
+   "quota": {
+    "id": "codex",
+    "name": "Codex",
+    "email": "e@x.io",
+    "source": "ChatGPT login",
+    "sourceId": "chatgpt",
+    "plan": "Edu Plus",
+    "windows": [
+     {
+      "id": "five_hour",
+      "label": "5-hour",
+      "usedPct": 9
+     },
+     {
+      "id": "billing",
+      "label": "Monthly",
+      "usedPct": 7.529999999999999,
+      "resetsAt": 1788220800000,
+      "detail": "151 of 2,000 credits"
+     },
+     {
+      "id": "extra",
+      "label": "Credits",
+      "usedPct": 0,
+      "detail": "3"
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{\"plan_type\":\"weird_plan\",\"rate_limit\":{\"individual_limit\":{\"enforcement_mode\":\"OFF\",\"limit\":5,\"used\":1}}}",
+   "quota": null,
+   "err": true
+  },
+  {
+   "raw": "{\"rate_limit\":{\"individual_limit\":{\"limit\":0,\"used\":3}}}",
+   "quota": null,
+   "err": true
+  },
+  {
+   "raw": "{\"rate_limit\":{\"individual_limit\":{\"used_percent\":12.5}}}",
+   "quota": {
+    "id": "codex",
+    "name": "Codex",
+    "source": "ChatGPT login",
+    "sourceId": "chatgpt",
+    "windows": [
+     {
+      "id": "billing",
+      "label": "Monthly",
+      "usedPct": 12.5
+     }
+    ]
+   },
+   "err": false
+  },
+  {
+   "raw": "{}",
+   "quota": null,
+   "err": true
+  },
+  {
+   "raw": "[]",
+   "quota": null,
+   "err": true
+  }
+ ],
+ "creditQty": [
+  {
+   "n": 0,
+   "out": "0"
+  },
+  {
+   "n": 393,
+   "out": "393"
+  },
+  {
+   "n": 1000,
+   "out": "1,000"
+  },
+  {
+   "n": 297.4,
+   "out": "297"
+  },
+  {
+   "n": 150000,
+   "out": "150,000"
+  },
+  {
+   "n": 1234567.5,
+   "out": "1,234,568"
+  },
+  {
+   "n": -1500,
+   "out": "-1,500"
+  },
+  {
+   "n": 999.5,
+   "out": "1,000"
+  },
+  {
+   "n": -0.4,
+   "out": "0"
+  }
+ ],
+ "cursorAuthFiles": [
+  "{\n  \"accessToken\": \"sess\\u003c1\\u003e\",\n  \"refreshToken\": \"r\",\n  \"email\": \"e@x.io\",\n  \"apiKey\": \"crsr_k\",\n  \"apiKeyExpiresAtMs\": 1788220800000,\n  \"apiKeyId\": 22\n}",
+  "{\n  \"accessToken\": \"s\",\n  \"refreshToken\": \"\",\n  \"email\": \"\"\n}"
+ ],
+ "cursorEmails": [
+  {
+   "email": "a@b.c",
+   "raw": "{\"user\":{\"email\":\"a@b.c\"}}"
+  },
+  {
+   "email": "c@d.e",
+   "raw": "{\"cachedEmail\":\"c@d.e\"}"
+  },
+  {
+   "email": "",
+   "raw": "{\"email\":\"bad email@x\"}"
+  },
+  {
+   "email": "x@y.z",
+   "raw": "{\"email_address\":\"x@y.z\",\"user\":{\"email\":\"n@n.n\"}}"
+  },
+  {
+   "email": "",
+   "raw": "{\"a\":1}"
+  }
+ ],
+ "cursorModels": [
+  {
+   "api": 5,
+   "auto": 27.1,
+   "raw": "{\"aggregations\":[{\"modelIntent\":\"cursor-grok-4.6-high-fast\",\"inputTokens\":\"80\",\"outputTokens\":\"20\",\"totalCents\":800,\"tier\":2},{\"modelIntent\":\"composer-2.5\",\"inputTokens\":10,\"outputTokens\":0,\"totalCents\":200,\"tier\":2},{\"modelIntent\":\"claude-4.6-opus\",\"inputTokens\":5,\"outputTokens\":5,\"totalCents\":100,\"tier\":1}]}",
+   "rows": [
+    {
+     "name": "cursor-grok-4.6-high-fast",
+     "tokens": 100,
+     "usedPct": 21.680000000000003,
+     "bucket": "cursor"
+    },
+    {
+     "name": "composer-2.5",
+     "tokens": 10,
+     "usedPct": 5.420000000000001,
+     "bucket": "cursor"
+    },
+    {
+     "name": "claude-4.6-opus",
+     "tokens": 10,
+     "usedPct": 5,
+     "bucket": "other"
+    }
+   ],
+   "total": 21.9
+  },
+  {
+   "api": 0,
+   "auto": 20,
+   "raw": "{\"aggregations\":[{\"modelIntent\":\"composer-2.5\",\"inputTokens\":10,\"outputTokens\":0,\"totalCents\":100,\"tier\":2},{\"modelIntent\":\"composer-2.5\",\"inputTokens\":5,\"outputTokens\":5,\"totalCents\":50,\"tier\":2}]}",
+   "rows": [
+    {
+     "name": "composer-2.5",
+     "tokens": 20,
+     "usedPct": 20,
+     "bucket": "cursor"
+    }
+   ],
+   "total": 20
+  },
+  {
+   "api": 50,
+   "auto": 0,
+   "raw": "{\"aggregation\":[{\"model\":\"auto\",\"totalTokens\":9},{\"name\":\"gpt-5\",\"cacheReadTokens\":4,\"cacheWriteTokens\":1,\"total_cents\":\"30\"},{\"name\":\"b\",\"totalCents\":30},{\"name\":\"a\",\"totalCents\":30},{\"modelIntent\":\"\"}]}",
+   "rows": [
+    {
+     "name": "gpt-5",
+     "tokens": 5,
+     "usedPct": 16.666666666666664,
+     "bucket": "other"
+    },
+    {
+     "name": "a",
+     "tokens": 0,
+     "usedPct": 16.666666666666664,
+     "bucket": "other"
+    },
+    {
+     "name": "b",
+     "tokens": 0,
+     "usedPct": 16.666666666666664,
+     "bucket": "other"
+    },
+    {
+     "name": "auto",
+     "tokens": 9,
+     "bucket": "cursor"
+    }
+   ],
+   "total": 10
+  },
+  {
+   "api": 0,
+   "auto": 0,
+   "raw": "{\"aggregations\":[{\"modelIntent\":\"grok-4\",\"totalCents\":10},{\"modelIntent\":\"Other\",\"totalCents\":0,\"tier\":\"1\"}]}",
+   "rows": [
+    {
+     "name": "grok-4",
+     "tokens": 0,
+     "bucket": "cursor"
+    },
+    {
+     "name": "Other",
+     "tokens": 0,
+     "bucket": "other"
+    }
+   ],
+   "total": 0
+  },
+  {
+   "api": 1,
+   "auto": 1,
+   "raw": "bad",
+   "rows": null,
+   "total": 1
+  }
+ ],
+ "cursorPeriod": [
+  {
+   "err": false,
+   "period": {
+    "apiPct": 0,
+    "autoPct": 40,
+    "end": "2026-09-01T00:00:00Z",
+    "quota": {
+     "id": "cursor",
+     "name": "Cursor",
+     "windows": [
+      {
+       "id": "billing",
+       "label": "Included usage",
+       "usedPct": 40,
+       "resetsAt": 1788220800000
+      }
+     ]
+    },
+    "start": "2026-08-01T00:00:00Z",
+    "totalPct": 21.9
+   },
+   "raw": "{\"billingCycleStart\":\"2026-08-01T00:00:00Z\",\"billingCycleEnd\":\"2026-09-01T00:00:00Z\",\"planUsage\":{\"autoPercentUsed\":40,\"apiPercentUsed\":0,\"totalPercentUsed\":21.9,\"limit\":2000,\"totalSpend\":800}}"
+  },
+  {
+   "err": false,
+   "period": {
+    "apiPct": 0,
+    "autoPct": 27.1,
+    "end": "2026-09-18T00:00:00.000Z",
+    "quota": {
+     "id": "cursor",
+     "name": "Cursor",
+     "windows": [
+      {
+       "id": "billing",
+       "label": "Included usage",
+       "usedPct": 27.1,
+       "resetsAt": 1789689600000
+      }
+     ]
+    },
+    "start": "2026-08-18T00:00:00.000Z",
+    "totalPct": 21.9
+   },
+   "raw": "{\"billingCycleStart\":\"2026-08-18T00:00:00.000Z\",\"billingCycleEnd\":\"2026-09-18T00:00:00.000Z\",\"planUsage\":{\"totalSpend\":2550,\"limit\":2000,\"autoPercentUsed\":27.1,\"apiPercentUsed\":0,\"totalPercentUsed\":21.9}}"
+  },
+  {
+   "err": true,
+   "raw": "{\"planUsage\":{\"totalSpend\":1}}"
+  },
+  {
+   "err": false,
+   "period": {
+    "apiPct": 0,
+    "autoPct": 0,
+    "end": "1788220800",
+    "quota": {
+     "id": "cursor",
+     "name": "Cursor",
+     "email": "deep@x.io",
+     "windows": [
+      {
+       "id": "billing",
+       "label": "Included usage",
+       "usedPct": 12,
+       "resetsAt": 1788220800000
+      }
+     ]
+    },
+    "start": "",
+    "totalPct": 12
+   },
+   "raw": "{\"plan_usage\":{\"total_percent_used\":12},\"billing_cycle_end\":\"1788220800\",\"user\":{\"profile\":{\"email\":\"deep@x.io\"}}}"
+  },
+  {
+   "err": false,
+   "period": {
+    "apiPct": 55,
+    "autoPct": 10,
+    "end": "",
+    "quota": {
+     "id": "cursor",
+     "name": "Cursor",
+     "windows": [
+      {
+       "id": "billing",
+       "label": "Included usage",
+       "usedPct": 55
+      }
+     ]
+    },
+    "start": "",
+    "totalPct": 0
+   },
+   "raw": "{\"planUsage\":{\"apiPercentUsed\":55,\"autoPercentUsed\":10},\"email\":\"not-an-email\"}"
+  },
+  {
+   "err": false,
+   "period": {
+    "apiPct": 0,
+    "autoPct": 0,
+    "end": "",
+    "quota": {
+     "id": "cursor",
+     "name": "Cursor",
+     "email": "c@d.e",
+     "windows": [
+      {
+       "id": "billing",
+       "label": "Included usage",
+       "usedPct": 25
+      }
+     ]
+    },
+    "start": "",
+    "totalPct": 0
+   },
+   "raw": "{\"planUsage\":{\"limit\":400,\"includedSpend\":100},\"cachedEmail\":\"c@d.e\"}"
+  },
+  {
+   "err": true,
+   "raw": "{}"
+  }
+ ],
+ "cursorPolls": [
+  {
+   "access": "a",
+   "email": "e@x.io",
+   "err": false,
+   "raw": "{\"accessToken\":\"a\",\"refreshToken\":\"r\",\"email\":\" e@x.io \"}",
+   "refresh": "r"
+  },
+  {
+   "access": "a2",
+   "email": "",
+   "err": false,
+   "raw": "{\"access_token\":\"a2\",\"refresh_token\":\"r2\"}",
+   "refresh": "r2"
+  },
+  {
+   "access": "eyJhbGciOiJub25lIn0.eyJlbWFpbCI6ImpAeC5pbyJ9.",
+   "email": "j@x.io",
+   "err": false,
+   "raw": "{\"accessToken\":\"eyJhbGciOiJub25lIn0.eyJlbWFpbCI6ImpAeC5pbyJ9.\"}",
+   "refresh": ""
+  },
+  {
+   "access": "",
+   "email": "",
+   "err": true,
+   "raw": "{}",
+   "refresh": ""
+  },
+  {
+   "access": "",
+   "email": "",
+   "err": true,
+   "raw": "{\"accessToken\":1}",
+   "refresh": ""
+  }
+ ],
+ "jwtEmails": [
+  {
+   "email": "jwt@cursor.dev",
+   "sub": "",
+   "tok": "eyJhbGciOiJub25lIn0.eyJlbWFpbCI6Imp3dEBjdXJzb3IuZGV2In0."
+  },
+  {
+   "email": "u@p.n",
+   "sub": "user_1",
+   "tok": "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1c2VyXzEiLCJ1cG4iOiJ1QHAubiJ9."
+  },
+  {
+   "email": "",
+   "sub": "auth0|x",
+   "tok": "eyJhbGciOiJub25lIn0.eyJzdWIiOiJhdXRoMHx4In0."
+  },
+  {
+   "email": "",
+   "sub": "",
+   "tok": "a.b"
+  },
+  {
+   "email": "",
+   "sub": "",
+   "tok": "opaque"
+  },
+  {
+   "email": "pad@x.io",
+   "sub": "",
+   "tok": "x.eyJlbWFpbF9hZGRyZXNzIjoicGFkQHguaW8ifQ==.y"
+  }
+ ],
+ "mergeStale": [
+  {
+   "next": {
+    "fetchedAt": 200,
+    "stale": false,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "error": "rate_limited"
+     }
+    ]
+   },
+   "out": {
+    "fetchedAt": 200,
+    "stale": true,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 22
+       }
+      ]
+     }
+    ]
+   },
+   "prev": {
+    "fetchedAt": 100,
+    "stale": false,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 22
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "next": {
+    "fetchedAt": 200,
+    "stale": false,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "error": "rate_limited"
+     }
+    ]
+   },
+   "out": {
+    "fetchedAt": 200,
+    "stale": false,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "error": "Usage endpoint is rate limited",
+      "hint": "Showing nothing until the next successful refresh."
+     }
+    ]
+   },
+   "prev": {
+    "fetchedAt": 0,
+    "stale": false,
+    "providers": null
+   }
+  },
+  {
+   "next": {
+    "fetchedAt": 200,
+    "stale": false,
+    "providers": [
+     {
+      "id": "codex",
+      "name": "",
+      "error": "Could not reach ChatGPT",
+      "hint": "context deadline exceeded"
+     }
+    ]
+   },
+   "out": {
+    "fetchedAt": 200,
+    "stale": true,
+    "providers": [
+     {
+      "id": "codex",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 9
+       }
+      ]
+     }
+    ]
+   },
+   "prev": {
+    "fetchedAt": 100,
+    "stale": false,
+    "providers": [
+     {
+      "id": "codex",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 9
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "next": {
+    "fetchedAt": 0,
+    "stale": false,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "error": "Claude Code login expired"
+     }
+    ]
+   },
+   "out": {
+    "fetchedAt": 0,
+    "stale": false,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "error": "Claude Code login expired"
+     }
+    ]
+   },
+   "prev": {
+    "fetchedAt": 0,
+    "stale": false,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 4
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "next": {
+    "fetchedAt": 9,
+    "stale": false,
+    "providers": [
+     {
+      "id": "codex",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 1
+       }
+      ]
+     }
+    ]
+   },
+   "out": {
+    "fetchedAt": 9,
+    "stale": false,
+    "providers": [
+     {
+      "id": "codex",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 1
+       }
+      ]
+     },
+     {
+      "id": "claude-code",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 12
+       }
+      ]
+     }
+    ]
+   },
+   "prev": {
+    "fetchedAt": 0,
+    "stale": false,
+    "providers": [
+     {
+      "id": "claude-code",
+      "name": "",
+      "windows": [
+       {
+        "id": "five_hour",
+        "label": "",
+        "usedPct": 12
+       }
+      ]
+     },
+     {
+      "id": "cursor",
+      "name": "",
+      "error": "No Cursor usage session"
+     }
+    ]
+   }
+  },
+  {
+   "next": {
+    "fetchedAt": 5,
+    "stale": false,
+    "providers": []
+   },
+   "out": {
+    "fetchedAt": 5,
+    "stale": false,
+    "providers": [
+     {
+      "id": "cursor",
+      "name": "",
+      "error": "x",
+      "windows": [
+       {
+        "id": "billing",
+        "label": "",
+        "usedPct": 3
+       }
+      ]
+     }
+    ]
+   },
+   "prev": {
+    "fetchedAt": 0,
+    "stale": true,
+    "providers": [
+     {
+      "id": "cursor",
+      "name": "",
+      "error": "x",
+      "windows": [
+       {
+        "id": "billing",
+        "label": "",
+        "usedPct": 3
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "monthlyURL": [
+  {
+   "account": "acc",
+   "out": "https://chatgpt.com/backend-api/accounts/acc/spend-controls/current-user/monthly-usage",
+   "usage": "https://chatgpt.com/backend-api/wham/usage"
+  },
+  {
+   "account": "",
+   "out": "",
+   "usage": "https://chatgpt.com/backend-api/wham/usage"
+  },
+  {
+   "account": "a-b",
+   "out": "http://127.0.0.1:9/accounts/a-b/spend-controls/current-user/monthly-usage",
+   "usage": "http://127.0.0.1:9/wham/usage/"
+  },
+  {
+   "account": "z",
+   "out": "https://x.example/api/accounts/z/spend-controls/current-user/monthly-usage",
+   "usage": "https://x.example/api?q=1#f"
+  },
+  {
+   "account": "acc",
+   "out": "",
+   "usage": ""
+  }
+ ],
+ "resetsAt": [
+  {
+   "out": 1787274000000,
+   "raw": "\"2026-08-21T01:00:00Z\""
+  },
+  {
+   "out": 1787266800500,
+   "raw": "\"2026-08-21T01:00:00.5+02:00\""
+  },
+  {
+   "out": 1775808000000,
+   "raw": "1775808000"
+  },
+  {
+   "out": 1775808000123,
+   "raw": "1775808000123"
+  },
+  {
+   "out": 1775808000000,
+   "raw": "\"1775808000\""
+  },
+  {
+   "out": 0,
+   "raw": "\"\""
+  },
+  {
+   "out": 0,
+   "raw": "null"
+  },
+  {
+   "out": 0,
+   "raw": "-4"
+  },
+  {
+   "out": 0,
+   "raw": "\"garbage\""
+  },
+  {
+   "out": 0,
+   "raw": "0.5"
+  },
+  {
+   "out": 0,
+   "raw": "true"
+  }
+ ],
+ "scoped": [
+  {
+   "id": "seven_day_fable",
+   "label": "Fable (7-day)",
+   "name": "Fable"
+  },
+  {
+   "id": "seven_day_opus",
+   "label": "Opus (7-day)",
+   "name": "Opus"
+  },
+  {
+   "id": "seven_day_sonnet",
+   "label": "Sonnet (7-day)",
+   "name": "Sonnet"
+  },
+  {
+   "id": "seven_day_opus_4.5",
+   "label": "Opus 4.5 (7-day)",
+   "name": "Opus 4.5"
+  },
+  {
+   "id": "seven_day_opus_4.5",
+   "label": "Opus 4.5 (7-day)",
+   "name": "Claude Opus 4.5"
+  },
+  {
+   "id": "seven_day_fable_5_1",
+   "label": "Fable 5.1 (7-day)",
+   "name": "claude-fable-5-1"
+  },
+  {
+   "id": "seven_day_haiku_4",
+   "label": "Haiku 4 (7-day)",
+   "name": "Haiku 4"
+  },
+  {
+   "id": "seven_day_weird_name",
+   "label": "Weird Name (7-day)",
+   "name": "weird name"
+  },
+  {
+   "id": "seven_day_sonnet_4_extended",
+   "label": "Sonnet 4 extended (7-day)",
+   "name": "Sonnet 4 extended"
+  },
+  {
+   "id": "",
+   "label": " (7-day)",
+   "name": "  "
+  },
+  {
+   "id": "seven_day_fable_",
+   "label": "Fable  (7-day)",
+   "name": "Fable_"
+  },
+  {
+   "id": "seven_day_mini_model",
+   "label": "Mini Model (7-day)",
+   "name": "Mini-Model"
+  }
+ ],
+ "stubs": {
+  "connecting": {
+   "id": "cursor",
+   "name": "Cursor",
+   "hint": "Waiting for browser sign-in…",
+   "connecting": true
+  },
+  "empty": {
+   "fetchedAt": 0,
+   "stale": false,
+   "providers": []
+  },
+  "noSession": {
+   "id": "cursor",
+   "name": "Cursor",
+   "error": "No Cursor usage session",
+   "hint": "Connect in Settings."
+  },
+  "tokens": {
+   "id": "cursor",
+   "name": "Cursor",
+   "source": "Recur Connect",
+   "sourceId": "cursor_connect",
+   "hint": "Cursor is off in Settings — tokens kept so you can disconnect."
+  }
+ }
+}

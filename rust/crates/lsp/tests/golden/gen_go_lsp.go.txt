@@ -1,0 +1,104 @@
+package lsp
+
+// Generates rust/crates/lsp/tests/golden/go_lsp.json (slice P3).
+//
+//	P3_LSP_OUT=$PWD/rust/crates/lsp/tests/golden/go_lsp.json \
+//	  go test ./internal/lsp -run TestP3LSPGolden -count=1
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"testing"
+
+	"recur/internal/bundles"
+)
+
+func p3Specs(specs []ServerSpec) []map[string]any {
+	out := []map[string]any{}
+	for _, s := range specs {
+		out = append(out, map[string]any{
+			"key": s.Key, "languages": s.Languages, "command": s.Command, "args": s.Args,
+			"managed": s.Managed, "fileGlob": s.FileGlob, "env": s.Env, "source": s.Source, "bundleName": s.BundleName,
+		})
+	}
+	return out
+}
+
+func TestP3LSPGolden(t *testing.T) {
+	out := os.Getenv("P3_LSP_OUT")
+	if out == "" {
+		t.Skip("P3_LSP_OUT not set")
+	}
+	g := map[string]any{}
+	SetBundleServers(nil)
+	SetDisabledServers(nil)
+	g["builtin"] = p3Specs(AllServers())
+
+	bundle := []bundles.LanguageServer{
+		{ID: "gopls", Languages: []string{"go"}, Command: "/tmp/custom-gopls", Managed: "gopls", Env: []string{"GOPACKAGESDRIVER=off"}, BundleName: "Go"},
+		{ID: "vue-language-server", Languages: []string{"vue"}, Command: "vue-language-server", FileGlob: []string{"*.vue"}, Managed: "vue-language-server", BundleName: "Vue"},
+		{ID: "typescript-language-server", Languages: []string{"typescript", "javascript", "vue"}, Command: "typescript-language-server", FileGlob: []string{"*.{js,ts,vue}"}, BundleName: "TS"},
+		{ID: "solidity-language-server", Languages: []string{"solidity"}, Command: "solidity-language-server", FileGlob: []string{"*.sol"}, BundleName: "Solidity"},
+		{ID: "basedpyright", Languages: []string{"python"}, Command: "basedpyright-langserver", FileGlob: []string{"src/*.py"}},
+	}
+	g["bundle"] = bundle
+	var lookups []map[string]any
+	for _, setup := range []struct {
+		name     string
+		bundle   bool
+		disabled []string
+	}{
+		{"builtin", false, nil},
+		{"bundle", true, nil},
+		{"disabled", true, []string{"basedpyright", " gopls ", ""}},
+	} {
+		if setup.bundle {
+			SetBundleServers(bundle)
+		} else {
+			SetBundleServers(nil)
+		}
+		SetDisabledServers(setup.disabled)
+		var cases []map[string]any
+		for _, c := range [][2]string{
+			{"go", ""}, {"go.mod", ""}, {"GO", ""}, {" python ", ""}, {"python", "src/app.py"}, {"python", "tests/test_app.py"},
+			{"vue", "App.vue"}, {"vue", "util.ts"}, {"typescriptreact", ""}, {"", "contracts/Token.sol"}, {"", "README.md"},
+			{"", "main.go"}, {"", ""}, {"markdown", "docs/a.md"}, {"cobol", ""}, {"shellscript", "x.sh"},
+		} {
+			cases = append(cases, map[string]any{"lang": c[0], "rel": c[1], "out": p3Specs(LookupAll(c[0], c[1]))})
+		}
+		lookups = append(lookups, map[string]any{"setup": setup.name, "disabled": setup.disabled, "all": p3Specs(AllServers()), "cases": cases})
+	}
+	g["lookups"] = lookups
+	SetBundleServers(nil)
+	SetDisabledServers(nil)
+
+	var uris []map[string]string
+	for _, p := range []string{"/Users/josh/proj", "/tmp/a b/c#d?e", "/x/%41/ü/日本", "/a/./b/../c/", "/", "/semi;colon/[x]/@y:z", "/plus+amp&eq=$dollar,comma'q(p)!*~"} {
+		uris = append(uris, map[string]string{"path": p, "uri": PathToURI(p)})
+	}
+	g["pathToURI"] = uris
+	var back []map[string]any
+	for _, u := range []string{"file:///tmp/a%20b/c%23d", "file:///Users/josh/proj", "http://x/y", "file://host/share/x", "file:/rel", "%zz", "file:///a/%E6%97%A5"} {
+		p, err := URIToPath(u)
+		back = append(back, map[string]any{"uri": u, "path": p, "err": err != nil})
+	}
+	g["uriToPath"] = back
+
+	var frame bytes.Buffer
+	_ = WriteFrame(&frame, []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`))
+	_ = WriteFrame(&frame, []byte("é"))
+	g["frames"] = frame.String()
+
+	info := SessionInfo{ID: "id", ServerKey: "gopls", RootURI: "file:///r", RootPath: "/r", Available: true}
+	miss := SessionInfo{Available: false, Reason: "no language server registered for x"}
+	g["sessionInfo"] = []SessionInfo{info, miss, {ID: "t", ServerKey: "typescript-language-server", Available: true, VuePluginPath: "/p"}}
+
+	raw, err := json.MarshalIndent(g, "", " ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(out, append(raw, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -85,7 +85,7 @@ pub fn shipped_textmate(bundles: &Path, theme_id: &str) -> (TextMate, Option<Rc<
 }
 
 /// The scenes this gallery builds.
-pub const NAMES: [&str; 3] = ["editor/code", "editor/paper", "editor/find"];
+pub const NAMES: [&str; 4] = ["editor/code", "editor/paper", "editor/find", "editor/vim"];
 
 /// Whether `name` is one of [`NAMES`].
 pub fn exists(name: &str) -> bool {
@@ -105,6 +105,9 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         .as_ref()
         .is_none_or(|t| t.ui_theme == recur_textmate::UiTheme::Dark);
     options.theme = theme;
+    if variant == "vim" {
+        options.prefs.keymap = crate::prefs::EditorKeymap::Vim;
+    }
     options.textmate = Some(Rc::new(RefCell::new(tm)));
     let view = cx.new(|cx| EditorView::new(options, window, cx));
     Some(view.into())

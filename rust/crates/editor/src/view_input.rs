@@ -1065,8 +1065,12 @@ impl EditorView {
         {
             let track = f.scroller_width;
             let total = (f.gutter_width + f.content_width).round();
-            let (thumb, at) =
-                recur_ui::widgets::scrollbar::classic_thumb(self.scroll_left, total, track, track);
+            let (thumb, at) = recur_ui::widgets::scrollbar::classic_thumb(
+                self.scroll_left,
+                total,
+                track.round(),
+                track.round(),
+            );
             let tx = bx + at;
             return Some((false, x >= tx && x < tx + thumb, tx, thumb, bx, track));
         }

@@ -227,22 +227,21 @@ fn rect(x: f32, y: f32, w: f32, hgt: f32) -> Bounds<Pixels> {
     Bounds::new(point(px(x), px(y)), size(px(w.max(0.0)), px(hgt.max(0.0))))
 }
 
-/// Font metrics for the text content box (`coordsAtPos` heights).
+/// The font content area in a row (`coordsAtPos` heights), as WebKit lays
+/// out the line box.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct TextBox {
-    pub ascent: f32,
-    pub descent: f32,
-    pub line_height: f32,
+    pub metrics: recur_ui::text::LineMetrics,
 }
 
 impl TextBox {
-    /// Top of the font content area within a row.
+    /// Top of the font content area within a row (the half-leading).
     pub fn top(&self) -> f32 {
-        (self.line_height - (self.ascent + self.descent)) / 2.0
+        self.metrics.baseline - self.metrics.ascent
     }
 
     pub fn height(&self) -> f32 {
-        self.ascent + self.descent
+        self.metrics.ascent + self.metrics.descent
     }
 }
 
@@ -550,10 +549,15 @@ impl EditorView {
         let ts = window.text_system();
         let id = ts.resolve_font(&self.font);
         let size = px(self.metrics.font_size);
+        // GPUI reports the descent below the baseline as a negative length.
         TextBox {
-            ascent: f32::from(ts.ascent(id, size)),
-            descent: f32::from(ts.descent(id, size)),
-            line_height: self.metrics.line_height(),
+            metrics: recur_ui::text::line_metrics(
+                f32::from(ts.ascent(id, size)),
+                f32::from(ts.descent(id, size)).abs(),
+                0.0,
+                self.metrics.font_size,
+                recur_ui::LineHeight::Scale(self.metrics.line_height_factor),
+            ),
         }
     }
 
@@ -621,7 +625,7 @@ impl EditorView {
         let mut plan = Plan::default();
         let theme = self.theme.clone();
         let tb = self.text_box(window);
-        let lh = tb.line_height;
+        let lh = tb.metrics.height;
         let (bx, by) = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
         let (bw, bh) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
         let gutters = self.gutter_columns(window);
@@ -1319,7 +1323,12 @@ impl EditorView {
         // fit as CSS clamps radii.
         let thumb_radius = |len: f32| px(8.0f32.min(scrollbar_size() / 2.0).min(len / 2.0));
         if vbar || content_h > view_h {
-            let (len, at) = classic_thumb(self.scroll_top, content_h.round(), view_h, view_h);
+            let (len, at) = classic_thumb(
+                self.scroll_top,
+                content_h.round(),
+                view_h.round(),
+                view_h.round(),
+            );
             if len > 0.0 {
                 plan.scrollbars.push(Op::Quad(
                     fill(
@@ -1332,7 +1341,12 @@ impl EditorView {
         }
         if hbar {
             let total = (gutter_width + content_w).round();
-            let (len, at) = classic_thumb(self.scroll_left, total, scroller_width, scroller_width);
+            let (len, at) = classic_thumb(
+                self.scroll_left,
+                total,
+                scroller_width.round(),
+                scroller_width.round(),
+            );
             if len > 0.0 {
                 plan.scrollbars.push(Op::Quad(
                     fill(
@@ -1528,7 +1542,7 @@ impl EditorView {
             let mut top = (content_top(f_top), content_top(f_top) + tb.height());
             let mut bottom = (content_top(t_top), content_top(t_top) + tb.height());
             let mut out = Vec::new();
-            let lh = tb.line_height;
+            let lh = tb.metrics.height;
             let gap_rows = (t_top - f_top) / lh;
             if gap_rows > 1.5 {
                 out.push(rect(left, top.1, right - left, bottom.0 - top.1));
@@ -1555,7 +1569,7 @@ impl EditorView {
         mc: &crate::theme::MergeColors,
         window: &Window,
     ) {
-        let lh = tb.line_height;
+        let lh = tb.metrics.height;
         let Some(merge) = self.state.merge.as_ref() else {
             return;
         };
@@ -1868,7 +1882,7 @@ impl EditorView {
         window: &Window,
     ) {
         let theme = &self.theme;
-        let lh = tb.line_height;
+        let lh = tb.metrics.height;
         let doc = &self.state.doc;
         let l = self.layout.borrow();
         let mut active: Vec<usize> = Vec::new();

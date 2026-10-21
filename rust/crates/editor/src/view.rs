@@ -1792,7 +1792,7 @@ impl gpui_kit::Render for EditorView {
         let panels = self.render_panels(window, cx);
         let tooltips = self.render_tooltips(window, cx);
         let prompt = self.render_rename_prompt(window, cx);
-        let vim_panel = crate::vim::prompt::render_panel(self, cx);
+        let vim_panel = crate::vim::prompt::render_panel(self, window, cx);
         let title = self.render_title_target();
         let content = div()
             .id("cm-scroller")

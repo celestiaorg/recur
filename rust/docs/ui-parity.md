@@ -75,6 +75,7 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 | `tab-strip/overflow` | 4 | Curved-edge coverage at the scrolled chip's close button |
 | `overlays/misc-paper` | 15 | Curved-edge coverage of the popover and field corners over the light shadow |
 | `editor/find` | 59 | Curved-edge coverage of the focused find field's corners and ring, and the typed query, which gpui-base's editor draws |
+| `editor/vim` | 132 | The vim panel's generic `monospace` resolves to Courier in both engines, but GPUI picks a heavier Courier face than WebKit, so the `:` prefix and the typed command differ |
 | `overlays/palette` | 388 | Keycaps centered at fractional positions inside a scrolled list land one device pixel apart (their row offset is not probed), and the list thumb's end rounds differently |
 
 ## Results
@@ -87,7 +88,8 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `buttons/default` | 0 | 4822 | 1624 | 7100 | 0 |
 | `buttons/paper` | 0 | 4849 | 1584 | 7080 | 0 |
 | `editor/code` | 0 | 13445 | 0 | 14800 | 0 |
-| `editor/find` | 59 | 12152 | 440 | 13860 | 59 |
+| `editor/find` | 59 | 11525 | 440 | 13170 | 59 |
+| `editor/vim` | 132 | 13510 | 224 | 15110 | 132 |
 | `editor/paper` | 0 | 13033 | 0 | 14340 | 0 |
 | `icon-picker/closed` | 0 | 0 | 60 | 70 | 0 |
 | `icon-picker/open` | 21 | 0 | 392 | 440 | 21 |

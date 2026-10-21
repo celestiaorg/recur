@@ -512,7 +512,7 @@
       "width": 560,
       "height": 320,
       "theme": "default",
-      "tolerance": 13860,
+      "tolerance": 13170,
       "steps": [
         {
           "click": [
@@ -531,6 +531,37 @@
         }
       ],
       "hardTolerance": 59
+    },
+    {
+      "name": "editor/vim",
+      "width": 560,
+      "height": 320,
+      "theme": "default",
+      "tolerance": 15110,
+      "steps": [
+        {
+          "wait": 300
+        },
+        {
+          "click": [
+            300,
+            150
+          ]
+        },
+        {
+          "key": "w"
+        },
+        {
+          "key": ":"
+        },
+        {
+          "type": "s/x"
+        },
+        {
+          "wait": 300
+        }
+      ],
+      "hardTolerance": 132
     }
   ]
 }

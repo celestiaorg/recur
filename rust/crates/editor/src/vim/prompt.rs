@@ -736,11 +736,15 @@ fn expand_tabs(text: &str) -> String {
 
 /// The bottom panel (`.cm-panels-bottom > .cm-vim-panel`): `monospace`
 /// at the editor's font size, `min-height: 1.3em`, padding 0 10px.
-pub(crate) fn render_panel(view: &EditorView, cx: &mut Context<EditorView>) -> Option<AnyElement> {
+pub(crate) fn render_panel(
+    view: &EditorView,
+    window: &Window,
+    cx: &mut Context<EditorView>,
+) -> Option<AnyElement> {
     let dialog = view.vim.as_ref()?.dialog.as_ref()?;
     let t = Theme::of(cx).tokens;
     let fs = view.metrics.font_size;
-    let (desc_ink, message_ink, _) = crate::theme::vim_panel_colors();
+    let (desc_ink, message_ink, field_ink) = crate::theme::vim_panel_colors();
     let mono = generic_monospace();
     let line = |s: String| text(s).family(mono.clone()).size(fs).leading(PANEL_LEADING);
     let content: AnyElement = match dialog {
@@ -771,6 +775,12 @@ pub(crate) fn render_panel(view: &EditorView, cx: &mut Context<EditorView>) -> O
                 mono.font(400., false, Default::default()).family,
                 INPUT_FONT,
             );
+            // The `<input>` lays its text out at `line-height: normal`.
+            let (_, _, normal) = text("x")
+                .family(mono.clone())
+                .size(field_size)
+                .leading_normal()
+                .measure(None, window);
             let field = div()
                 .flex()
                 .flex_1()
@@ -778,6 +788,8 @@ pub(crate) fn render_panel(view: &EditorView, cx: &mut Context<EditorView>) -> O
                 .min_w(px(0.))
                 .font_family(field_family)
                 .text_size(px(field_size))
+                .line_height(px(normal.height))
+                .text_color(Hsla::from(field_ink))
                 .child(Input::new(input));
             let ent = cx.entity();
             let mut row = div()

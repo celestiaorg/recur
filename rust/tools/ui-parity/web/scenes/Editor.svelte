@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import CodeEditor from '../../../../../frontend/src/components/CodeEditor.svelte'
   import { ensureTextMateBootstrap } from '../../../../../frontend/src/lib/tm-bootstrap'
-  import { applyEditorTheme } from '../../../../../frontend/src/lib/stores'
+  import { applyEditorTheme, setEditorPrefs } from '../../../../../frontend/src/lib/stores'
 
   let { variant }: { variant: string } = $props()
 
@@ -27,6 +27,7 @@ func main() {
   onMount(async () => {
     await ensureTextMateBootstrap()
     applyEditorTheme(variant === 'paper' ? 'paper' : 'recur')
+    if (variant === 'vim') setEditorPrefs({ keymap: 'vim' })
     booted = true
   })
 </script>

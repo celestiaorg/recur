@@ -6,5 +6,6 @@ mod fork;
 mod modes_send;
 mod send;
 mod steer;
+mod switch_mode;
 mod tabs;
 mod test_support;

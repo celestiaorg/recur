@@ -500,3 +500,52 @@ pub fn gate_hook(
         })
     }
 }
+
+/// Go `holdFirstRunner` / `delayAfterCancelRunner`: the first run waits for
+/// cancel (then `delay`), later runs replay a success.
+pub fn hold_first_runner(
+    c: &Arc<CaptureScript>,
+    started: CancellationToken,
+    delay: Duration,
+) -> Arc<dyn Provider> {
+    let (c, ok) = (Arc::clone(c), c.provider());
+    AsyncProvider::wrap(move |req, cx| {
+        let (c, ok, started) = (Arc::clone(&c), Arc::clone(&ok), started.clone());
+        async move {
+            if c.specs.lock().is_empty() {
+                c.specs.lock().push(req);
+                started.cancel();
+                cx.cancel.cancelled().await;
+                tokio::time::sleep(delay).await;
+                return Err(ProviderError::canceled());
+            }
+            ok.run_turn(req, cx).await
+        }
+    })
+}
+
+/// Whether the inbox holds a row with this id (Go `inboxByID`).
+pub fn inbox_has(te: &TestEngine, id: &str) -> bool {
+    te.store
+        .inbox()
+        .unwrap_or_default()
+        .iter()
+        .any(|it| it.id == id)
+}
+
+/// The last `attention.updated` tabUnseen for one tab after event `from`.
+pub fn last_tab_unseen(te: &TestEngine, from: usize, ws: &str, code: &str) -> Option<bool> {
+    te.events
+        .by_name("attention.updated")
+        .into_iter()
+        .skip(from)
+        .filter_map(|ev| match ev {
+            crate::bus::EngineEvent::AttentionUpdated(a)
+                if a.code == code && a.workspace_id == ws =>
+            {
+                Some(a.tab_unseen)
+            }
+            _ => None,
+        })
+        .last()
+}

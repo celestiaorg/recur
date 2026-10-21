@@ -65,13 +65,19 @@ pub struct Host {
 }
 
 impl Host {
+    /// Tabs are keyed `workspace:code`.
+    pub fn key(&self) -> String {
+        format!("{}:{}", self.base.workspace_id, self.active)
+    }
+
     pub fn tab(&mut self) -> &mut Tab {
-        let code = self.active.clone();
-        self.tabs.entry(code).or_default()
+        let key = self.key();
+        let can_steer = self.active != "MA";
+        self.tabs.entry(key).or_insert_with(|| Tab { can_steer, ..Default::default() })
     }
 
     pub fn props(&self) -> ChatProps {
-        let tab = self.tabs.get(&self.active).cloned().unwrap_or_default();
+        let tab = self.tabs.get(&self.key()).cloned().unwrap_or_default();
         ChatProps {
             messages: tab.msgs,
             sending: tab.sending || tab.running,
@@ -101,6 +107,18 @@ impl Host {
         self.chat.update(cx, |c, cx| c.set_draft(draft, Vec::new(), cx));
     }
 
+    /// Open another workspace on its Loop tab.
+    pub fn switch_ws(&mut self, ws: &str, cx: &mut Context<Self>) {
+        let draft = self.chat.read(cx).input().to_string();
+        self.tab().draft = draft;
+        self.base.workspace_id = ws.to_string();
+        self.base.root_path = format!("/mock/worktrees/{ws}");
+        self.active = "MA".into();
+        let draft = self.tab().draft.clone();
+        self.push(cx);
+        self.chat.update(cx, |c, cx| c.set_draft(draft, Vec::new(), cx));
+    }
+
     fn on_event(&mut self, ev: &ChatEvent, cx: &mut Context<Self>) {
         self.events.borrow_mut().push(ev.clone());
         if !self.sim {
@@ -121,7 +139,7 @@ impl Host {
     }
 
     fn send(&mut self, alt: bool, cx: &mut Context<Self>) {
-        let text = self.chat.read(cx).input().to_string();
+        let text = self.chat.read(cx).input().trim().to_string();
         let steer_default = self.steer_by_default;
         let tab = self.tab();
         if text.trim().is_empty() && tab.pending.is_empty() {
@@ -170,6 +188,7 @@ impl Host {
 
     fn dispatch(&mut self, text: String, display: String, steer: bool, cx: &mut Context<Self>) {
         let code = self.active.clone();
+        let key = self.key();
         let invisible = display == "\u{2060}";
         let tab = self.tab();
         if !invisible {
@@ -200,7 +219,7 @@ impl Host {
             }
             let items = services.workspaces.workspace_chat_items(&ws, &code).await.unwrap_or_default();
             let _ = this.update(cx, |h, cx| {
-                let tab = h.tabs.entry(code.clone()).or_default();
+                let tab = h.tabs.entry(key.clone()).or_default();
                 let latest = tab.send_gen == send_gen;
                 if latest {
                     tab.sending = false;
@@ -209,7 +228,7 @@ impl Host {
                 tab.msgs = if latest { map_chat_items(&items) } else { merge_persisted_with_live(&map_chat_items(&items), &tab.msgs) };
                 tab.msgs.retain(|m| !m.queued);
                 tab.msgs.extend(queued);
-                if h.active == code {
+                if h.key() == key {
                     h.push(cx);
                     h.flush(cx);
                 }
@@ -251,6 +270,7 @@ impl Host {
     /// this idle is the reordered previous turn's, then flush the queue.
     pub fn idle(&mut self, cx: &mut Context<Self>) {
         let code = self.active.clone();
+        let key = self.key();
         let tab = self.tab();
         tab.running = false;
         tab.sending = false;
@@ -271,11 +291,11 @@ impl Host {
         cx.spawn(async move |this, cx| {
             let items = services.workspaces.workspace_chat_items(&ws, &code).await.unwrap_or_default();
             let _ = this.update(cx, |h, cx| {
-                let tab = h.tabs.entry(code.clone()).or_default();
+                let tab = h.tabs.entry(key.clone()).or_default();
                 let queued: Vec<AgentMsg> = tab.msgs.iter().filter(|m| m.queued).cloned().collect();
                 tab.msgs = map_chat_items(&items);
                 tab.msgs.extend(queued);
-                if h.active == code {
+                if h.key() == key {
                     h.push(cx);
                 }
             });
@@ -410,7 +430,7 @@ pub fn boot_with<'a>(
         chat.update(cx, |c, cx| c.set_hooks(hooks, cx));
         let _sub = cx.subscribe(&chat, |h: &mut Host, _, e: &ChatEvent, cx| h.on_event(e, cx));
         let mut tabs = BTreeMap::new();
-        tabs.insert(active.clone(), Tab { can_steer: active != "MA", ..Default::default() });
+        tabs.insert(format!("{}:{active}", base.workspace_id), Tab { can_steer: active != "MA", ..Default::default() });
         Host {
             chat,
             events: ev,

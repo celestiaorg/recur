@@ -412,6 +412,7 @@ pub struct AgentChat {
     pub(crate) empty: Option<AnyView>,
     pub(crate) session_card: Option<SessionCardRenderer>,
     pub(crate) focus: FocusHandle,
+    pub(crate) window_handle: gpui_kit::AnyWindowHandle,
 
     // ---- the draft ----
     pub(crate) doc: ComposerDoc,
@@ -567,6 +568,7 @@ impl AgentChat {
             empty: None,
             session_card: None,
             focus: cx.focus_handle().tab_stop(true),
+            window_handle: window.window_handle(),
             doc: ComposerDoc::default(),
             input: String::new(),
             attachments: Vec::new(),

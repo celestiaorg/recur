@@ -1667,10 +1667,13 @@ impl AgentChat {
             return;
         }
         let files = d.files.clone();
-        let Some(window) = cx.windows().first().copied() else { return };
+        let window = self.window_handle;
         let this = cx.entity();
-        let _ = window.update(cx, |_, window, cx| {
-            this.update(cx, |c, cx| c.apply_os_drop(files, window, cx));
+        // Called from inside this entity's event loop update: apply once it returns.
+        cx.defer(move |cx| {
+            let _ = window.update(cx, |_, window, cx| {
+                this.update(cx, |c, cx| c.apply_os_drop(files, window, cx));
+            });
         });
     }
 

@@ -748,3 +748,289 @@ async fn retry_shows_the_elapsed_clock_before_the_first_stream_row(cx: &mut Test
     h.click("chat-error-retry");
     assert!(h.has("chat-turn-elapsed"));
 }
+
+// ---- @ file mentions ----
+
+fn files_opts(files: &'static [&'static str], sent: Calls) -> MockOptions {
+    let store = Store::default();
+    bridge_opts(store, sent, Pending::default(), |_, _| Some("ok".into()))
+        .resolver("ListFiles", move |_, _, _| Reply::value(json!(files)))
+}
+
+fn chips(h: &mut H) -> usize {
+    h.read(|c| c.doc.chips.len())
+}
+
+/// Type and let the 200ms search debounce run.
+fn type_wait(h: &mut H, s: &str) {
+    h.type_text(s);
+    h.wait(250);
+}
+
+#[gpui::test]
+async fn typing_at_inserts_deletable_inline_chips_in_the_composer_sentence(cx: &mut TestAppContext) {
+    let sent = calls();
+    let skills = json!([
+        {"name": "design-audit", "description": "Audit UI polish", "scope": "workspace", "userInvocable": true},
+        {"name": "land-it", "description": "Ship the PR", "scope": "workspace", "userInvocable": true},
+    ]);
+    let (s1, s2) = (skills.clone(), skills);
+    let opts = files_opts(&["PROGRESS.md", "DECISIONS.md", ".gitignore", "frontend/src/lib/agentchat.ts"], sent.clone())
+        .resolver("ListSkills", move |_, _, _| Reply::value(s1.clone()))
+        .resolver("ListAllSkills", move |_, _, _| Reply::value(s2.clone()));
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    type_wait(&mut h, "how does @");
+    assert!(h.has("chat-mention"));
+    assert!(h.has("menu-row-on:0"));
+    h.keys("down");
+    assert!(h.has("menu-row-on:1"));
+    assert!(h.has("menu-row:0"));
+
+    type_wait(&mut h, "PROG");
+    assert_eq!(chips(&mut h), 0);
+    assert!(h.has("mention:PROGRESS.md"));
+    h.keys("enter");
+    assert!(h.has("chip:PROGRESS.md"));
+    assert!(h.lines()[0].starts_with("how does"));
+
+    type_wait(&mut h, "compare to @DEC");
+    assert!(h.has("mention:DECISIONS.md"));
+    h.keys("enter");
+    assert!(h.has("chip:DECISIONS.md"));
+    assert_eq!(chips(&mut h), 2);
+
+    h.click("chip-x:0");
+    assert!(!h.has("chip:PROGRESS.md"));
+    assert!(h.has("chip:DECISIONS.md"));
+
+    h.fill("");
+    type_wait(&mut h, "check @.git");
+    assert!(h.has("mention:.gitignore"));
+    h.keys("enter");
+    assert!(h.has("chip:.gitignore"));
+
+    h.fill("");
+    type_wait(&mut h, "how does @PROG");
+    h.keys("enter");
+    type_wait(&mut h, "compare to @DEC");
+    h.keys("enter");
+    h.click("chat-send");
+    assert_eq!(texts(&sent), ["how does @PROGRESS.md compare to @DECISIONS.md"]);
+    assert!(h.has("file-inline:PROGRESS.md"));
+    assert!(h.has("file-inline:DECISIONS.md"));
+}
+
+#[gpui::test]
+async fn mention_menu_keeps_lower_ranked_matches_past_the_old_top_12_cap(cx: &mut TestAppContext) {
+    let mut files: Vec<String> = (0..15).map(|i| format!("a{i:02}/match.md")).collect();
+    files.push("frontend/src/lib/deeply/nested/path/match-util.ts".into());
+    let opts = MockOptions::default().resolver("ListFiles", move |_, _, _| Reply::value(json!(files)));
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    type_wait(&mut h, "@match");
+    assert!(h.has("chat-mention"));
+    assert_eq!(h.read(|c| c.mention_hits.len()), 16);
+    assert!(h.has("menu-row:15"));
+    assert!(h.has("mention:match-util.ts"));
+}
+
+#[gpui::test]
+async fn directory_hits_appear_in_at_search_with_a_folder_icon(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("ListFiles", |_, _, _| Reply::value(json!(["src/lib/a.ts", "src/app.ts", "README.md"])));
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    type_wait(&mut h, "@src");
+    assert!(h.has("chat-mention"));
+    assert!(h.has("mention-folder"));
+    h.click("mention:src");
+    assert!(h.has("chip-folder"));
+    assert!(h.has("chip:src"));
+    h.click("chip:src");
+    let toasts = h.cx.update(|_, cx| recur_ui::widgets::ToastStore::global(cx).read(cx).toasts().len());
+    assert_eq!(toasts, 0);
+    assert!(h.has("chip:src"));
+}
+
+#[gpui::test]
+async fn at_hyp_lists_both_hyperlane_validator_scripts(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("ListFiles", |_, _, _| {
+        Reply::value(json!(["validators/decode-hyperlane-message.sh", "validators/hyperlane_validator2.sh", "hypothesis.txt"]))
+    });
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    type_wait(&mut h, "@hyp");
+    assert!(h.has("chat-mention"));
+    assert!(h.has("mention:decode-hyperlane-message.sh"));
+    assert!(h.has("mention:hyperlane_validator2.sh"));
+}
+
+#[gpui::test]
+async fn escape_dismisses_the_mention_menu_without_reopening_on_keyup(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("ListFiles", |_, _, _| Reply::value(json!(["PROGRESS.md", "DECISIONS.md"])));
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    type_wait(&mut h, "@PRO");
+    assert!(h.has("chat-mention"));
+    h.keys("escape");
+    assert!(!h.has("chat-mention"));
+    h.wait(50);
+    assert!(!h.has("chat-mention"));
+    type_wait(&mut h, "G");
+    assert!(h.has("chat-mention"));
+}
+
+fn opened(h: &H) -> Vec<String> {
+    h.events()
+        .into_iter()
+        .filter_map(|e| match e {
+            ChatEvent::OpenFile { path, .. } => Some(path),
+            _ => None,
+        })
+        .collect()
+}
+
+async fn transcript_chip_opens(cx: &mut TestAppContext, mention: &str, name: &str, path: &str) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.set_messages(items(json!([{"role": "user", "kind": "text", "text": format!("please look at @{mention}")}])));
+    h.click(&format!("file-inline:{name}"));
+    assert_eq!(opened(&h), [path]);
+}
+
+#[gpui::test]
+async fn transcript_file_chip_opens_the_editor_without_stealing_the_files_panel(cx: &mut TestAppContext) {
+    transcript_chip_opens(cx, "src/main.go", "main.go", "src/main.go").await;
+}
+
+#[gpui::test]
+async fn transcript_file_chip_keeps_source_control_open_instead_of_flipping_to_outline(cx: &mut TestAppContext) {
+    transcript_chip_opens(cx, "src/main.go", "main.go", "src/main.go").await;
+}
+
+#[gpui::test]
+async fn transcript_file_chip_does_not_select_a_file_that_is_filtered_out_of_the_explorer(cx: &mut TestAppContext) {
+    transcript_chip_opens(cx, "PROGRESS.md", "PROGRESS.md", "PROGRESS.md").await;
+}
+
+fn drop_explorer(h: &mut H, paths: &[&str]) {
+    let chat = h.chat.clone();
+    let paths: Vec<String> = paths.iter().map(|s| s.to_string()).collect();
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| {
+        c.file_drop_over = true;
+        c.drop_explorer_paths(&paths, window, cx)
+    }));
+    h.settle();
+}
+
+#[gpui::test]
+async fn dragging_a_file_from_the_explorer_inserts_an_at_file_chip(cx: &mut TestAppContext) {
+    let sent = calls();
+    let mut h = boot(cx, files_opts(&[], sent.clone()), ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    h.type_text("please review ");
+    drop_explorer(&mut h, &["src/main.go"]);
+    assert!(!h.read(|c| c.file_drop_over));
+    assert!(h.has("chip:main.go"));
+    assert!(h.lines()[0].starts_with("please review"));
+    h.click("chat-send");
+    assert_eq!(texts(&sent), ["please review @src/main.go"]);
+    assert!(h.has("file-inline:main.go"));
+}
+
+#[gpui::test]
+async fn dragging_a_folder_from_the_explorer_inserts_a_folder_chip(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    drop_explorer(&mut h, &["src/"]);
+    assert!(h.has("chip-folder"));
+    assert!(h.has("chip:src"));
+}
+
+fn os_drop(h: &mut H, path: &str) {
+    let at = h.bounds("chat").expect("chat").center();
+    let paths = gpui::ExternalPaths(smallvec::smallvec![std::path::PathBuf::from(path)]);
+    h.cx.simulate_event(gpui::FileDropEvent::Entered { position: at, paths });
+    h.cx.simulate_event(gpui::FileDropEvent::Submit { position: at });
+    h.settle();
+}
+
+#[gpui::test]
+async fn dropping_a_file_uri_onto_chat_inserts_an_at_file_chip(cx: &mut TestAppContext) {
+    let sent = calls();
+    let mut h = boot(cx, files_opts(&[], sent.clone()), ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    os_drop(&mut h, &format!("{}/src/main.go", root_path()));
+    assert!(h.has("chip:main.go"));
+    h.click("chat-send");
+    assert_eq!(texts(&sent), ["@src/main.go"]);
+}
+
+#[gpui::test]
+async fn dropping_an_external_image_attaches_it_like_paste(cx: &mut TestAppContext) {
+    use base64::Engine as _;
+    let png = base64::engine::general_purpose::STANDARD
+        .decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+        .unwrap();
+    let dir = std::env::temp_dir().join(format!("recur-chat-drop-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shot = dir.join("shot.png");
+    std::fs::write(&shot, png).unwrap();
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    let id = recur_view_core::file_drag::encode_chat_drop_id(&format!("{WS}:MA"));
+    h.bridge
+        .dispatch_wire("files.dropped", json!({"files": [shot.to_string_lossy()], "attributes": {"data-chat-drop": id}}))
+        .unwrap();
+    h.settle();
+    assert!(h.has("chip-att:0"));
+    assert_eq!(h.read(|c| c.attachments.len()), 1);
+    assert!(!h.read(|c| c.doc.chips.iter().any(|s| matches!(s, recur_engine::view::composer::Segment::File { .. }))));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[gpui::test]
+async fn clicking_an_external_file_chip_opens_it_in_the_editor(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    os_drop(&mut h, "/Users/josh/Downloads/export-111.csv");
+    assert!(h.has("chip:export-111.csv"));
+    h.click("chip:export-111.csv");
+    assert_eq!(opened(&h), ["/Users/josh/Downloads/export-111.csv"]);
+}
+
+// ---- @terminal / @artifact mentions ----
+
+#[gpui::test]
+async fn typing_at_lists_terminals_and_inserts_a_chip(cx: &mut TestAppContext) {
+    let sent = calls();
+    let opts = files_opts(&["README.md"], sent.clone()).resolver("ListTerminals", |_, _, _| {
+        Reply::value(json!([{"id": "term-dev-1", "workspaceId": WS, "title": "dev", "cwd": "/mock", "shell": "/bin/zsh", "createdAt": "2026-08-24T12:00:00Z"}]))
+    });
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    type_wait(&mut h, "errors in @term");
+    assert!(h.has("mention:dev"));
+    h.keys("enter");
+    assert!(h.has("chip:dev"));
+    h.click("chat-send");
+    assert!(texts(&sent)[0].contains("@terminal:term-dev-1"));
+}
+
+#[gpui::test]
+async fn typing_at_lists_artifacts_and_inserts_a_chip(cx: &mut TestAppContext) {
+    let sent = calls();
+    let opts = files_opts(&["README.md"], sent.clone()).resolver("ListArtifacts", |_, _, _| {
+        Reply::value(json!([{
+            "id": "art-notes-1", "title": "Notes", "kind": "md",
+            "path": "workspaces/w/artifacts/art-notes-1.md", "createdAt": "2026-08-24T12:00:00Z",
+        }]))
+    });
+    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    h.focus_composer();
+    type_wait(&mut h, "review @Notes");
+    assert!(h.has("mention:Notes"));
+    h.keys("enter");
+    assert!(h.has("chip:Notes"));
+    h.click("chat-send");
+    assert!(texts(&sent)[0].contains("@artifact:art-notes-1"));
+}

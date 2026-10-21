@@ -731,6 +731,7 @@ impl AgentChat {
         let group = SharedString::from(format!("{id}-g"));
         let mut head = div()
             .id(id.clone())
+            .debug_selector(|| format!("tc-head:{id}"))
             .group(group)
             .flex()
             .items_baseline()

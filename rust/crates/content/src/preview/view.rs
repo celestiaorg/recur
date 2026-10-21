@@ -35,10 +35,18 @@ pub enum FilePreviewEvent {
 
 enum Surface {
     Markdown(Entity<MarkdownView>),
-    Svg(Option<(Arc<resvg::usvg::Tree>, f32, f32)>),
+    Svg(Option<SvgImage>),
     Html(Entity<HtmlPreview>),
     Mermaid(Entity<MermaidPreview>),
     Empty(&'static str),
+}
+
+#[derive(Clone)]
+struct SvgImage {
+    tree: Arc<resvg::usvg::Tree>,
+    width: f32,
+    height: f32,
+    raster: Rc<RefCell<Option<(u32, u32, Arc<RenderImage>)>>>,
 }
 
 struct HandleScroller<'a>(&'a ScrollHandle);
@@ -163,7 +171,12 @@ impl FilePreview {
             (PreviewKind::Svg, _) if blank => Surface::Empty("Empty SVG"),
             (PreviewKind::Svg, _) => Surface::Svg(crate::svg::parse(&content).ok().map(|t| {
                 let s = t.size();
-                (Arc::new(t), s.width(), s.height())
+                SvgImage {
+                    width: s.width(),
+                    height: s.height(),
+                    tree: Arc::new(t),
+                    raster: Rc::default(),
+                }
             })),
             (PreviewKind::Html, Surface::Html(h)) => {
                 h.update(cx, |h, cx| h.set_html(&content, window, cx));
@@ -574,7 +587,7 @@ impl Render for FilePreview {
                 )
                 .into_any_element(),
             Surface::Svg(tree) => {
-                let img = tree.as_ref().map(|(tree, w, h)| svg_img(tree.clone(), *w, *h, t.line));
+                let img = tree.clone().map(|img| svg_img(img, t.line));
                 div()
                     .id("file-preview-svg")
                     .track_scroll(&self.handle)
@@ -628,21 +641,32 @@ impl Render for FilePreview {
 }
 
 /// `<img src={svgDataUrl}>`: natural size (`max-width/height: 100%`), a 1px `--line` ring.
-fn svg_img(tree: Arc<resvg::usvg::Tree>, w: f32, h: f32, line: recur_ui::Color) -> gpui_kit::AnyElement {
-    let cache: Rc<RefCell<Option<(u32, u32, Arc<RenderImage>)>>> = Rc::default();
+fn svg_img(img: SvgImage, line: recur_ui::Color) -> gpui_kit::AnyElement {
+    let SvgImage {
+        tree,
+        width,
+        height,
+        raster,
+    } = img;
     div()
+        .relative()
         .flex_none()
-        .w(px(w))
-        .h(px(h))
+        .w(px(width))
+        .h(px(height))
         .max_w_full()
         .max_h_full()
-        .shadow(vec![gpui_kit::BoxShadow {
-            color: line.into(),
-            offset: point(px(0.), px(0.)),
-            blur_radius: px(0.),
-            spread_radius: px(1.),
-            inset: false,
-        }])
+        // `box-shadow: 0 0 0 1px` paints outside the box only, so transparent pixels show
+        // the pane rather than the ring color.
+        .child(
+            div()
+                .absolute()
+                .top(px(-1.))
+                .left(px(-1.))
+                .right(px(-1.))
+                .bottom(px(-1.))
+                .border_1()
+                .border_color(line),
+        )
         .child(
             canvas(
                 |_, _, _| {},
@@ -652,7 +676,7 @@ fn svg_img(tree: Arc<resvg::usvg::Tree>, w: f32, h: f32, line: recur_ui::Color) 
                         (f32::from(b.size.width) * s).round() as u32,
                         (f32::from(b.size.height) * s).round() as u32,
                     );
-                    let mut c = cache.borrow_mut();
+                    let mut c = raster.borrow_mut();
                     if c.as_ref().is_none_or(|(cw, ch, _)| (*cw, *ch) != (dw, dh))
                         && let Some(img) =
                             crate::svg::image_at(&tree, f32::from(b.size.width), f32::from(b.size.height), s)

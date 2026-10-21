@@ -541,10 +541,10 @@ mod tests {
         assert_eq!(row_state(&child("conflict in a.go", &[]), None, &none).key, RowKey::Conflict);
         assert_eq!(row_state(&child("", &["S1"]), None, &none).label, "starting");
         let mut ws = Workspace { id: "c1".into(), ..Default::default() };
-        ws.state = "escalated".parse().unwrap_or_default();
+        ws.state = recur_domain::WorkspaceState::Escalated;
         assert_eq!(row_state(&child("", &["S1"]), Some(&ws), &none).key, RowKey::Needs);
         let running: std::collections::HashSet<String> = ["c1".to_string()].into();
-        ws.state = "coding".parse().unwrap_or_default();
+        ws.state = recur_domain::WorkspaceState::Coding;
         ws.phase = "editing".into();
         let r = row_state(&child("", &["S1"]), Some(&ws), &running);
         assert!(r.live && r.label == "editing");

@@ -80,8 +80,7 @@ pub fn exists(name: &str) -> bool {
 
 /// The shipped Terminal bundle's palettes, as `ListTerminalThemes` returns them.
 pub fn shipped_terminal_themes() -> Vec<TerminalThemeInfo> {
-    let Some(doc) = palette_json("bundle.toml").and_then(|s| s.parse::<toml::Table>().ok())
-    else {
+    let Some(doc) = palette_json("bundle.toml").and_then(|s| s.parse::<toml::Table>().ok()) else {
         return Vec::new();
     };
     let tables = doc
@@ -202,11 +201,14 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         let mut subs = vec![cx.subscribe(
             &terminal,
             |body: &mut DockBody, _, e: &TerminalEvent, cx| {
-                if let (TerminalEvent::FindResults {
-                    index,
-                    total,
-                    valid,
-                }, Some(bar)) = (e, &body.find)
+                if let (
+                    TerminalEvent::FindResults {
+                        index,
+                        total,
+                        valid,
+                    },
+                    Some(bar),
+                ) = (e, &body.find)
                 {
                     bar.update(cx, |b, cx| b.set_results(*index, *total, *valid, cx));
                 }

@@ -1,6 +1,7 @@
 //! GPUI terminal view rendering `recur-term` sessions: the port of `TerminalPane.svelte` and its
 //! xterm.js 6 configuration (fit, search, web-links and WebGL addons).
 
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod atlas;
 mod backend;
 mod blink;
@@ -15,6 +16,8 @@ pub mod gallery;
 mod park;
 mod scrollbar;
 mod theme;
+#[cfg(target_os = "macos")]
+mod tiles;
 mod view;
 
 pub use backend::TerminalBackend;

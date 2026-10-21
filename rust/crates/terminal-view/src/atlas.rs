@@ -1,21 +1,13 @@
 //! Glyph rasters drawn the way xterm.js's WebGL renderer draws them (`TextureAtlas._drawToCache`):
 //! each glyph with its underline, overline and strikethrough is drawn into a device-pixel canvas
-//! through the canvas 2D API, which WebKit implements with CoreText and CoreGraphics, and the
-//! resulting texture is blended over the cell backgrounds.
-//!
-//! The WebGL canvas is composited with premultiplied alpha while the glyph shader blends straight
-//! colours (`SRC_ALPHA, ONE_MINUS_SRC_ALPHA`), so a glyph edge of coverage `a` leaves the canvas
-//! with alpha `1 - a + a²` and lets `a(1 - a)` of the page behind the canvas (the palette
-//! background on `.xterm`) through. GPUI blends a single layer, so each raster carries that
-//! light in its colour: `colour + (1 - a) · backdrop`, which composes to the same pixel.
+//! through the canvas 2D API, which WebKit implements with CoreText and CoreGraphics, cropped to
+//! its bounding box and read back as the straight-alpha texels the atlas texture holds.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui_kit::{Bounds, Corners, Pixels, Point, RenderImage, Window, point, px, size};
 use recur_term::screen::{Rgba, UnderlineStyle};
-use smallvec::SmallVec;
 
 use crate::font::CellMetrics;
 
@@ -23,7 +15,10 @@ use crate::font::CellMetrics;
 const PAD: usize = 2;
 const PADDING: usize = PAD * 2;
 /// WebKit's synthetic oblique angle, degrees.
+#[cfg(target_os = "macos")]
 const SYNTHETIC_OBLIQUE: f64 = 14.0;
+/// Rasters kept before the cache starts over (`clearTextureAtlas` when the atlas fills).
+const MAX_RASTERS: usize = 16_384;
 
 /// Everything a raster depends on.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -42,8 +37,6 @@ pub(crate) struct GlyphKey {
     pub width: usize,
     /// The text is a custom glyph painted procedurally; only the decorations are drawn here.
     pub custom: bool,
-    /// The page behind the WebGL canvas (the palette background), `0` when transparent.
-    pub backdrop: Rgba,
 }
 
 /// The atlas configuration: font and cell geometry in device pixels.
@@ -73,28 +66,30 @@ impl FontKey {
         }
     }
 
+    #[cfg(target_os = "macos")]
     fn font_size(&self) -> f32 {
         f32::from_bits(self.size)
     }
 
+    #[cfg(target_os = "macos")]
     fn dpr(&self) -> f32 {
         f32::from_bits(self.dpr)
     }
 
     /// Underline and overline width (`max(1, floor(fontSize * dpr / 15))`).
+    #[cfg(target_os = "macos")]
     fn line_width(&self) -> f64 {
         (self.font_size() * self.dpr() / 15.0).floor().max(1.0) as f64
     }
 }
 
-/// A rasterized glyph: the texture region and where its top-left sits relative to the canvas
-/// origin.
+/// A rasterized glyph: straight RGBA texels and where they sit relative to the canvas origin.
 pub(crate) struct Raster {
-    image: Arc<RenderImage>,
-    left: usize,
-    top: usize,
-    w: usize,
-    h: usize,
+    pub texels: Vec<u8>,
+    pub left: usize,
+    pub top: usize,
+    pub w: usize,
+    pub h: usize,
 }
 
 thread_local! {
@@ -103,64 +98,36 @@ thread_local! {
 
 /// Where a key's canvas origin sits relative to its cell's top-left, device pixels. Text is
 /// placed by the character box (`char.top`); custom glyphs are drawn in cell coordinates.
-pub(crate) fn canvas_origin(key: &GlyphKey, m: &CellMetrics) -> (f32, f32) {
-    let top = if key.custom { 0.0 } else { m.char_top };
-    (-(PADDING as f32), top - PADDING as f32)
+pub(crate) fn canvas_origin(key: &GlyphKey, m: &CellMetrics) -> (i64, i64) {
+    let top = if key.custom { 0 } else { m.char_top as i64 };
+    (-(PADDING as i64), top - PADDING as i64)
 }
 
-/// Paints `key` with its canvas origin at `origin` (window coordinates; a device-pixel position).
-/// `clip_left` hides whatever the glyph draws left of that x (the renderer clips a glyph's
-/// overhang when the background changes at its cell).
-pub(crate) fn paint(
-    window: &mut Window,
-    key: &GlyphKey,
-    origin: Point<Pixels>,
-    clip_left: Option<Pixels>,
-) {
-    let Some(raster) = CACHE.with(|c| {
-        c.borrow_mut()
-            .entry(key.clone())
+/// The raster for `key`, drawn on first use. `None` for an empty glyph.
+pub(crate) fn raster(key: &GlyphKey) -> Option<Arc<Raster>> {
+    CACHE.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.len() >= MAX_RASTERS && !c.contains_key(key) {
+            c.clear();
+        }
+        c.entry(key.clone())
             .or_insert_with(|| rasterize(key).map(Arc::new))
             .clone()
-    }) else {
-        return;
-    };
-    let dpr = key.font.dpr();
-    let dev = |v: usize| px(v as f32 / dpr);
-    let bounds = Bounds::new(
-        point(origin.x + dev(raster.left), origin.y + dev(raster.top)),
-        size(dev(raster.w), dev(raster.h)),
-    );
-    let paint = |window: &mut Window| {
-        let _ = window.paint_image(
-            bounds,
-            bounds,
-            Corners::default(),
-            raster.image.clone(),
-            0,
-            false,
-        );
-    };
-    match clip_left {
-        Some(x) if x > bounds.left() => {
-            let mask = Bounds::new(
-                point(x, bounds.top()),
-                size(bounds.right() - x, bounds.size.height),
-            );
-            window.with_content_mask(Some(gpui_kit::ContentMask { bounds: mask }), paint);
-        }
-        _ => paint(window),
+    })
+}
+
+/// WebKit's premultiplied to straight conversion (`getImageData`, texture uploads).
+fn unpremultiply(c: u8, a: u8) -> u8 {
+    match a {
+        0 => 0,
+        255 => c,
+        a => ((c as u32 * 255 + a as u32 / 2) / a as u32).min(255) as u8,
     }
 }
 
-/// Drops every raster (font or palette changes make them unreachable anyway; this bounds memory
-/// the way `clearTextureAtlas` does).
-pub(crate) fn clear() {
-    CACHE.with(|c| c.borrow_mut().clear());
-}
-
-pub(crate) fn len() -> usize {
-    CACHE.with(|c| c.borrow().len())
+/// And back (`putImageData` into the atlas page).
+fn premultiply(c: u8, a: u8) -> u8 {
+    ((c as u32 * a as u32 + 127) / 255) as u8
 }
 
 fn rasterize(key: &GlyphKey) -> Option<Raster> {
@@ -171,39 +138,26 @@ fn rasterize(key: &GlyphKey) -> Option<Raster> {
     // `PADDING` past the allowed width.
     let width = (allowed + PADDING).max(f.cell_w as usize * 4 + PAD * 2);
     let height = f.cell_h as usize + PAD * 4;
-    let mut px = draw(key, width, height)?;
+    let px = draw(key, width, height)?;
     let (left, top, right, bottom) = bounding_box(&px, width, allowed, height)?;
     let (w, h) = (right - left + 1, bottom - top + 1);
-    // The texture region, as straight colour with the backdrop's light folded in.
-    let b = key.backdrop;
-    let lift = |c: u8, a: u8, bg: u8| {
-        let straight = if a == 0 {
-            0
-        } else {
-            (c as u32 * 255 + a as u32 / 2) / a as u32
-        };
-        let light = (255 - a as u32) * bg as u32 * b.a() as u32 / (255 * 255);
-        (straight + light).min(255) as u8
-    };
-    let mut out = Vec::with_capacity(w * h * 4);
+    // getImageData, putImageData into the atlas page, then the straight texImage2D upload.
+    let texel = |c: u8, a: u8| unpremultiply(premultiply(unpremultiply(c, a), a), a);
+    let mut texels = Vec::with_capacity(w * h * 4);
     for y in top..=bottom {
         for x in left..=right {
             let i = (y * width + x) * 4;
             let a = px[i + 3];
-            // Straight BGRA for GPUI's image atlas.
-            out.push(lift(px[i + 2], a, b.b()));
-            out.push(lift(px[i + 1], a, b.g()));
-            out.push(lift(px[i], a, b.r()));
-            out.push(a);
+            texels.extend_from_slice(&[
+                texel(px[i], a),
+                texel(px[i + 1], a),
+                texel(px[i + 2], a),
+                a,
+            ]);
         }
     }
-    px.clear();
-    let buffer = image::RgbaImage::from_raw(w as u32, h as u32, out)?;
     Some(Raster {
-        image: Arc::new(RenderImage::new(SmallVec::from_elem(
-            image::Frame::new(buffer),
-            1,
-        ))),
+        texels,
         left,
         top,
         w,
@@ -463,7 +417,9 @@ mod mac {
             let primary = font(&f.family, key.bold, size)?;
             // `textBaseline = 'ideographic'`: the baseline sits the font's descent above y.
             let baseline = padding + char_h - primary.descent();
-            draw_text(&cx, &primary, &key.text, padding, baseline, key.italic, fill);
+            draw_text(
+                &cx, &primary, &key.text, padding, baseline, key.italic, fill,
+            );
         }
 
         if key.strikethrough {

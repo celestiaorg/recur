@@ -10,8 +10,9 @@
 use anyhow::{Context as _, Result, bail};
 use gpui_kit::test::{TestEventExt, TestWindowExt};
 use gpui_kit::{
-    AnyView, AppContext, Bounds, Context, HeadlessAppContext, IntoElement, Keystroke, MouseButton,
-    Render, Window, WindowBounds, WindowOptions, point, px, size,
+    AnyView, AppContext, Bounds, Context, FocusHandle, HeadlessAppContext, InteractiveElement,
+    IntoElement, Keystroke, MouseButton, ParentElement, Render, Styled, Window, WindowBounds,
+    WindowOptions, div, point, px, size,
 };
 use image::{Rgba, RgbaImage};
 use recur_ui::gallery::{self, SceneSpec, Step};
@@ -28,18 +29,24 @@ fn file_name(scene: &str) -> String {
     format!("{}.png", scene.replace('/', "__"))
 }
 
-struct SceneRoot(AnyView);
+/// The scene's window content. Its focus handle stands in for the page's document focus, so
+/// key steps reach the window before any control is focused.
+struct SceneRoot(AnyView, FocusHandle);
 
 impl Render for SceneRoot {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        recur_ui::style::window_root(self.0.clone())
+        div()
+            .size_full()
+            .track_focus(&self.1)
+            .child(recur_ui::style::window_root(self.0.clone()))
     }
 }
 
 /// Playwright key names → GPUI keystrokes.
 fn keystroke(key: &str) -> String {
     match key {
-        "Tab" => "tab".into(),
+        // Safari Tab-focuses only fields; Option+Tab reaches every control, as GPUI's Tab does.
+        "Tab" | "Alt+Tab" => "tab".into(),
         "Shift+Tab" => "shift-tab".into(),
         "Enter" => "enter".into(),
         "Escape" => "escape".into(),
@@ -85,7 +92,11 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
             cx.open_window(options, |window, cx| {
                 let view = gallery::build(&name, window, cx)
                     .unwrap_or_else(|| cx.new(|_| recur_ui::gallery::Missing).into());
-                cx.new(|_| SceneRoot(view))
+                let document = cx.focus_handle();
+                window.focus(&document, cx);
+                let scene = cx.new(|_| SceneRoot(view, document));
+                // An app window's root: Tab and Shift+Tab move focus.
+                cx.new(|cx| gpui_kit::base::Root::new(scene, window, cx))
             })
         })?;
         let any = handle.into();

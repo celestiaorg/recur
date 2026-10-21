@@ -86,6 +86,77 @@
       "tolerance": 0
     },
     {
+      "name": "select/closed",
+      "width": 620,
+      "height": 64,
+      "theme": "default",
+      "tolerance": 0
+    },
+    {
+      "name": "select/closed-paper",
+      "width": 620,
+      "height": 64,
+      "theme": "paper",
+      "tolerance": 0
+    },
+    {
+      "name": "select/focus",
+      "width": 320,
+      "height": 64,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "key": "Alt+Tab"
+        }
+      ]
+    },
+    {
+      "name": "select/multiple",
+      "width": 320,
+      "height": 200,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "click": [
+            40,
+            30
+          ]
+        }
+      ]
+    },
+    {
+      "name": "select/open",
+      "width": 320,
+      "height": 340,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "click": [
+            40,
+            30
+          ]
+        }
+      ]
+    },
+    {
+      "name": "select/searchable",
+      "width": 320,
+      "height": 340,
+      "theme": "default",
+      "tolerance": 0,
+      "steps": [
+        {
+          "click": [
+            40,
+            30
+          ]
+        }
+      ]
+    },
+    {
       "name": "settings-group/default",
       "width": 444,
       "height": 540,

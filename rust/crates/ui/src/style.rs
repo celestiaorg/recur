@@ -238,17 +238,17 @@ pub fn is_focus_visible(handle: &FocusHandle, window: &Window) -> bool {
     handle.is_focused(window) && window.last_input_was_keyboard()
 }
 
-/// `:focus-visible { outline: 2px solid color-mix(amber 70%, transparent); outline-offset:
-/// 1px; border-radius: 4px }`. Add as the last child of a `relative()` element while
-/// [`is_focus_visible`] holds.
-pub fn focus_ring(cx: &App) -> Div {
-    outline(2., 1., 4., tokens(cx).amber.fade(0.7))
+/// The global `:focus-visible` ring: a 2px `--amber` 70% outline 1px outside a box with corner
+/// `radius` and a `border`-wide border (`:focus-visible` also sets `border-radius: 4px`, so pass
+/// 4 unless a more specific rule keeps the box's own). A child of the relatively positioned box.
+pub fn focus_ring(radius: f32, border: f32, cx: &App) -> Div {
+    outline(2., 1., radius, border, tokens(cx).amber.fade(0.7))
 }
 
-/// A CSS outline of `width` at `offset` around a box with corner `radius`, as an absolutely
-/// positioned overlay.
-pub fn outline(width: f32, offset: f32, radius: f32, color: Color) -> Div {
-    let inset = -(offset + width);
+/// A CSS outline of `width` at `offset` around a box with corner `radius` and a `border`-wide
+/// border, as an absolutely positioned overlay child of that box.
+pub fn outline(width: f32, offset: f32, radius: f32, border: f32, color: Color) -> Div {
+    let inset = -(offset + width + border);
     div()
         .absolute()
         .top(px(inset))

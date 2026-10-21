@@ -14,9 +14,9 @@ use crate::text::{LineHeight, Text, TextStyled, span, text};
 use crate::theme::Theme;
 use crate::tooltip::{TitleTooltip, titled};
 use crate::widgets::{
-    ChipIcon, PicBox, ToastAsk, ToastKind, ToastOptions, ToastStore, Toasts, armed_button,
-    blurb_code, decode_text, project_pic, push_toast, ring, settings_group, settings_groups,
-    tab_chip, tab_strip, tab_strip_action, toast_action,
+    ChipIcon, PicBox, Select, SelectOption, SelectSize, ToastAsk, ToastKind, ToastOptions,
+    ToastStore, Toasts, armed_button, blurb_code, decode_text, project_pic, push_toast, ring,
+    settings_group, settings_groups, tab_chip, tab_strip, tab_strip_action, toast_action,
 };
 use gpui_kit::{
     AnyElement, AnyView, App, AppContext, Context, Div, IntoElement, ParentElement, Render, Styled,
@@ -43,6 +43,7 @@ pub(super) const NAMES: &[&str] = &[
     "toasts/*",
     "tooltip/*",
     "tab-strip/*",
+    "select/*",
 ];
 
 pub(super) fn matches(pattern: &str, name: &str) -> bool {
@@ -81,6 +82,7 @@ pub(super) fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<Any
             overlays.push(cx.new(Toasts::new).into());
             Box::new(|_, cx| body(cx).size_full().into_any_element())
         }
+        ("select", v) => selects(v, window, cx),
         _ => Box::new(static_content(kind, variant)?),
     };
     Some(cx.new(|_| Stage { content, overlays }).into())
@@ -741,4 +743,122 @@ fn tabs_overflow(_: &mut Window, cx: &mut App) -> AnyElement {
         .size_full()
         .child(div().w(px(300.)).child(strip))
         .into_any_element()
+}
+
+fn models() -> Vec<SelectOption> {
+    vec![
+        SelectOption::new("opus", "Opus 5.5")
+            .group("Anthropic")
+            .provider("claude")
+            .hint("Most capable"),
+        SelectOption::new("sonnet", "Sonnet 5.5")
+            .group("Anthropic")
+            .provider("claude")
+            .hint("Fast"),
+        SelectOption::new("gpt", "GPT-6")
+            .group("OpenAI")
+            .provider("codex"),
+        SelectOption::new("llama", "Llama 5")
+            .group("Local")
+            .provider("ollama"),
+    ]
+}
+
+fn density() -> Vec<SelectOption> {
+    vec![
+        SelectOption::new("comfortable", "Comfortable"),
+        SelectOption::new("compact", "Compact"),
+        SelectOption::new("spacious", "Spacious"),
+    ]
+}
+
+fn select(
+    options: Vec<SelectOption>,
+    window: &mut Window,
+    cx: &mut App,
+    f: impl FnOnce(Select, &mut Context<Select>) -> Select,
+) -> gpui_kit::Entity<Select> {
+    cx.new(|cx| {
+        let s = Select::new(options, window, cx);
+        f(s, cx)
+    })
+}
+
+/// Select triggers in every style, or one opened by the scene's click (or focused by Tab).
+fn selects(variant: &str, window: &mut Window, cx: &mut App) -> Content {
+    let t = Theme::of(cx).tokens;
+    let views: Vec<AnyView> = match variant {
+        "closed" | "closed-paper" => {
+            let modes = vec![
+                SelectOption::new("agent", "Agent")
+                    .icon(IconName::Box)
+                    .tint(t.amber),
+                SelectOption::new("shell", "Shell")
+                    .icon(IconName::Terminal)
+                    .tint(t.cyan),
+            ];
+            vec![
+                select(models(), window, cx, |s, _| {
+                    s.label("Model").with_value("opus")
+                })
+                .into(),
+                select(density(), window, cx, |s, _| {
+                    s.label("Density")
+                        .with_value("compact")
+                        .size(SelectSize::Sm)
+                })
+                .into(),
+                select(modes, window, cx, |s, _| {
+                    s.label("Mode").with_value("agent").ghost()
+                })
+                .into(),
+                select(density(), window, cx, |mut s, cx| {
+                    s.set_disabled(Some(t.bg), cx);
+                    s.label("Locked").with_value("comfortable")
+                })
+                .into(),
+            ]
+        }
+        "open" => vec![
+            select(models(), window, cx, |s, _| {
+                s.label("Model").with_value("sonnet")
+            })
+            .into(),
+        ],
+        "searchable" => vec![
+            select(models(), window, cx, |s, _| {
+                s.label("Model").with_value("opus").searchable()
+            })
+            .into(),
+        ],
+        "multiple" => vec![
+            select(density(), window, cx, |s, _| {
+                s.label("Density")
+                    .multiple()
+                    .placeholder("Any")
+                    .with_values(vec!["compact".into(), "spacious".into()])
+            })
+            .into(),
+        ],
+        _ => vec![
+            select(density(), window, cx, |s, _| {
+                s.label("Density").with_value("compact")
+            })
+            .into(),
+        ],
+    };
+    // In `.row` the triggers size to their content; alone, `.sel` is a block filling the width.
+    let in_row = variant.starts_with("closed");
+    Box::new(move |_, cx| {
+        let views = views.iter().cloned();
+        let content = if in_row {
+            row().gap(px(12.)).children(views)
+        } else {
+            div().children(views)
+        };
+        body(cx)
+            .size_full()
+            .child(div().p(px(16.)).child(content))
+            .into_any_element()
+    })
 }

@@ -407,6 +407,8 @@ struct PaintGlyph {
 enum GlyphSrc {
     Gpui {
         font_id: FontId,
+        /// The bundled face of the run's own font, when the glyph is from it (not a fallback).
+        face: Option<usize>,
         glyph: gpui_kit::GlyphId,
         is_emoji: bool,
     },
@@ -435,20 +437,39 @@ fn shape_run(window: &Window, run: &RunStyle, text: &str) -> (Vec<(usize, f32, G
             .collect();
         return (out, width);
     }
-    let shaped = window.text_system().shape_line(
-        text.to_string().into(),
-        px(run.size),
-        &[run.text_run(text.len())],
-        None,
-    );
+    let text_run = run.text_run(text.len());
+    // Which bundled face draws the run's own glyphs: the run's family and weight decide. GPUI
+    // cannot say reliably (several requested fonts can share an id, and CoreText may shape with
+    // another loaded copy of the same face under a new id), so a shaped run is ours when its
+    // glyphs are the ones our face maps their characters to (features may substitute some); a
+    // fallback font's are not.
+    let face = crate::fonts::match_face(&text_run.font.family, text_run.font.weight.0);
+    let parsed = face.and_then(|f| ttf_parser::Face::parse(crate::fonts::FACES[f].2, 0).ok());
+    let own = |r: &gpui_kit::ShapedRun| {
+        parsed.as_ref().is_some_and(|p| {
+            r.glyphs.iter().any(|g| {
+                text[g.index..]
+                    .chars()
+                    .next()
+                    .and_then(|c| p.glyph_index(c))
+                    .is_some_and(|id| u32::from(id.0) == g.id.0)
+            })
+        })
+    };
+    let shaped =
+        window
+            .text_system()
+            .shape_line(text.to_string().into(), px(run.size), &[text_run], None);
     let mut out = Vec::new();
     for r in &shaped.runs {
+        let ours = own(r);
         for g in &r.glyphs {
             out.push((
                 g.index,
                 f32::from(g.position.x),
                 GlyphSrc::Gpui {
                     font_id: r.font_id,
+                    face: face.filter(|_| ours),
                     glyph: g.id,
                     is_emoji: g.is_emoji,
                 },
@@ -1753,9 +1774,12 @@ fn paint_one(
     match g.src {
         GlyphSrc::Gpui {
             font_id,
+            face,
             glyph,
             is_emoji,
-        } => crate::glyph::paint(window, font_id, glyph, font_size, origin, color, is_emoji),
+        } => crate::glyph::paint(
+            window, font_id, face, glyph, font_size, origin, color, is_emoji,
+        ),
         #[cfg(target_os = "macos")]
         GlyphSrc::Ct { font, glyph } => {
             crate::glyph::paint_ct(window, font, glyph, font_size, origin, color)

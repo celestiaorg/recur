@@ -8,7 +8,7 @@ use crate::icon_name::IconName;
 use crate::logic::fuzzy::{fuzzy_filter_prepared, prepare_fuzzy};
 use crate::logic::hover_gate::HoverGate;
 use crate::logic::menu_space::{clamp_menu_left, menu_fixed_box, menu_prefer_up};
-use crate::style::{css_shadow, faded, is_focus_visible};
+use crate::style::{faded, is_focus_visible};
 use crate::text::{LineHeight, TextStyled, text};
 use crate::theme::Theme;
 use crate::widgets::select::{search_header, search_input, style_search_input};
@@ -96,7 +96,8 @@ impl IconPicker {
             },
         );
         IconPicker {
-            focus: cx.focus_handle(),
+            // A `<button>`: in the Tab order.
+            focus: cx.focus_handle().tab_stop(true),
             value: value.into(),
             disabled_over: None,
             open: false,
@@ -250,7 +251,11 @@ impl Render for IconPicker {
             .text_size(px(12.))
             .aria_label("Lucide icon")
             .when(lit && !disabled, |d| {
-                d.shadow(vec![css_shadow(0., 0., 0., 3., t.amber_d)])
+                d.relative().child(crate::shadow::box_shadow(
+                    &[crate::shadow::css_box_shadow(0., 0., 0., 3., t.amber_d)],
+                    6.,
+                    1.,
+                ))
             })
             .when(!disabled, |d| d.cursor_pointer())
             .when(!disabled && !lit, |d| {
@@ -278,10 +283,16 @@ impl Render for IconPicker {
             )
             .child(
                 canvas(
-                    move |b, _, cx| entity.update(cx, |this, _| this.trigger_bounds = Some(b)),
+                    // The menu places itself from the trigger's border box.
+                    move |b, _, cx| {
+                        let b = b.dilate(px(1.));
+                        entity.update(cx, |this, _| this.trigger_bounds = Some(b))
+                    },
                     |_, _, _, _| {},
                 )
                 .absolute()
+                .top_0()
+                .left_0()
                 .size_full(),
             );
         if !disabled {
@@ -381,20 +392,30 @@ impl IconPicker {
                 .into_any_element()
         } else {
             div()
-                .id("ico-grid")
-                .p(px(4.))
+                .flex_auto()
                 .min_h_0()
-                .overflow_y_scroll()
-                .track_scroll(&self.grid_scroll)
                 .flex()
-                .flex_wrap()
-                .gap(px(2.))
-                .role(gpui_kit::accesskit::Role::ListBox)
-                .aria_label("Lucide icons")
-                .children(cells)
+                .flex_col()
+                .child(
+                    crate::widgets::scroll_area("ico-grid")
+                        .track(&self.grid_scroll)
+                        .child(
+                            div()
+                                .id("ico-cells")
+                                .p(px(4.))
+                                .flex()
+                                .flex_wrap()
+                                .gap(px(2.))
+                                .role(gpui_kit::accesskit::Role::ListBox)
+                                .aria_label("Lucide icons")
+                                .children(cells),
+                        ),
+                )
                 .into_any_element()
         };
+        // The search header sits flush; the menu's padding moves onto the grid (`search_header`).
         let menu = crate::style::menu_panel(cx)
+            .p_0()
             .id("ico-menu")
             .w(px(width))
             .max_h(px(max_h))
@@ -406,8 +427,17 @@ impl IconPicker {
                     cx.stop_propagation();
                 }
             }))
-            .child(search_header(&self.search, cx))
-            .child(grid);
+            .child(search_header(&self.search, window, cx))
+            .child(
+                div()
+                    .flex_auto()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .px(px(4.))
+                    .pb(px(4.))
+                    .child(grid),
+            );
         let (pos, anchor) = match (mbox.top, mbox.bottom) {
             (Some(top), _) => (top, gpui_kit::Anchor::TopLeft),
             (None, Some(b)) => (vh - b, gpui_kit::Anchor::BottomLeft),

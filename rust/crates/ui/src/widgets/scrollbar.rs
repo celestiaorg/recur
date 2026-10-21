@@ -399,6 +399,8 @@ impl RenderOnce for ScrollArea {
                 },
             )
             .absolute()
+            .top_0()
+            .left_0()
             .size_full()
         };
 

@@ -35,24 +35,33 @@ pub const fn css_box_shadow(x: f32, y: f32, blur: f32, spread: f32, color: Color
 }
 
 /// `content` with `shadows` behind it (the first listed on top, as in CSS). `radius` is the
-/// content's border radius. Size and position the wrapper as the content would be.
+/// content's border radius. Size and position the wrapper as the content would be. Use this when
+/// the content clips its children (`overflow_hidden`) or has no border to account for.
 pub fn with_shadow(content: impl IntoElement, shadows: &[CssShadow], radius: f32) -> Div {
-    let shadows: SmallVec<[CssShadow; 2]> = shadows.iter().copied().collect();
     div()
         .relative()
-        .child(
-            canvas(
-                |_, _, _| {},
-                move |bounds, _, window, cx| {
-                    for s in shadows.iter().rev() {
-                        paint(bounds, *s, radius, window, cx);
-                    }
-                },
-            )
-            .absolute()
-            .size_full(),
-        )
+        .child(box_shadow(shadows, radius, 0.))
         .child(content)
+}
+
+/// `shadows` for the relatively positioned element this is the first child of, whose border is
+/// `border` wide and radius `radius`. The shadows paint outside its border box only, so they can
+/// follow its background.
+pub fn box_shadow(shadows: &[CssShadow], radius: f32, border: f32) -> impl IntoElement {
+    let shadows: SmallVec<[CssShadow; 2]> = shadows.iter().copied().collect();
+    canvas(
+        |_, _, _| {},
+        move |bounds, _, window, cx| {
+            let bounds = bounds.dilate(px(border));
+            for s in shadows.iter().rev() {
+                paint(bounds, *s, radius, window, cx);
+            }
+        },
+    )
+    .absolute()
+    .top_0()
+    .left_0()
+    .size_full()
 }
 
 /// `ShadowBlur`'s box sizes: three passes approximating a Gaussian of σ = blur / 2.

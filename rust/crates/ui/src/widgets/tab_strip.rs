@@ -440,6 +440,8 @@ impl RenderOnce for TabStrip {
                 move |bounds, _, window, cx| track(&st, bounds, reorder.clone(), window, cx),
             )
             .absolute()
+            .top_0()
+            .left_0()
             .size_full()
         };
 

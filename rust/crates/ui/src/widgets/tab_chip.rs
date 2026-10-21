@@ -263,6 +263,8 @@ impl RenderOnce for TabChip {
                 let cell = body_bounds.clone();
                 canvas(move |bounds, _, _| cell.set(Some(bounds)), |_, _, _, _| {})
                     .absolute()
+                    .top_0()
+                    .left_0()
                     .size_full()
             });
         if let Some(i) = &self.icon {

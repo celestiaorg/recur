@@ -7,9 +7,11 @@ use gpui_kit::{FontId, GlyphId, Hsla, Pixels, Point, Window, px};
 
 /// Paint one glyph with its baseline origin at `origin` (CSS px; `y` already on a device
 /// pixel).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint(
     window: &mut Window,
     font_id: FontId,
+    face: Option<usize>,
     glyph: GlyphId,
     size: f32,
     origin: Point<Pixels>,
@@ -21,7 +23,7 @@ pub(crate) fn paint(
         return;
     }
     #[cfg(target_os = "macos")]
-    if mac::paint(window, font_id, glyph, size, origin, color) {
+    if mac::paint(window, font_id, face, glyph, size, origin, color) {
         return;
     }
     // A glyph the atlas cannot rasterize paints nothing, as in the browser.
@@ -108,12 +110,14 @@ mod mac {
     pub(super) fn paint(
         window: &mut Window,
         font_id: FontId,
+        face: Option<usize>,
         glyph: GlyphId,
         font_size: f32,
         origin: Point<Pixels>,
         color: Hsla,
     ) -> bool {
-        let face = STATE.with(|st| face_for(window, font_id, &mut st.borrow_mut()));
+        let face =
+            face.or_else(|| STATE.with(|st| face_for(window, font_id, &mut st.borrow_mut())));
         match face {
             Some(face) => paint_source(
                 window,

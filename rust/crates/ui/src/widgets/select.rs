@@ -10,7 +10,7 @@ use crate::logic::fuzzy::{fuzzy_filter_prepared, prepare_fuzzy};
 use crate::logic::hover_gate::HoverGate;
 use crate::logic::menu_space::{MenuVariant, clamp_menu_left, menu_fixed_box, menu_prefer_up};
 use crate::motion::{self, Easing};
-use crate::style::{css_shadow, faded, is_focus_visible};
+use crate::style::{faded, is_focus_visible};
 use crate::text::{LineHeight, TextStyled, text};
 use crate::theme::Theme;
 use gpui_kit::base::input::{Input, InputEditorStyle, InputEvent, InputState};
@@ -171,8 +171,9 @@ pub(crate) fn search_input(
 pub(crate) fn style_search_input(input: &Entity<InputState>, cx: &mut App) {
     let t = Theme::of(cx).tokens;
     // The capture hides the caret (`caret: 'hide'`); frozen motion means a capture.
+    // gpui-base reads a fully transparent color as unset, so the hidden caret is nearly so.
     let caret = if motion::is_frozen(cx) {
-        Hsla::transparent_black()
+        t.text.with_alpha(0.001).into()
     } else {
         t.text.into()
     };
@@ -189,15 +190,22 @@ pub(crate) fn style_search_input(input: &Entity<InputState>, cx: &mut App) {
     });
 }
 
-pub(crate) fn search_header(input: &Entity<InputState>, cx: &App) -> AnyElement {
+/// `.sel-search`, flush with the menu's border: its `margin: -4px -4px 0` cancels the menu
+/// padding, which a menu with a search header moves onto its list instead (Taffy sizes a flex
+/// column wrongly around negative margins).
+pub(crate) fn search_header(input: &Entity<InputState>, window: &Window, cx: &App) -> AnyElement {
     let t = Theme::of(cx).tokens;
+    // An `<input>` lays its line out at `line-height: normal`.
+    let (_, _, line) = text("x")
+        .ui()
+        .size(12.5)
+        .line_height(LineHeight::Normal)
+        .measure(None, window);
     div()
         .flex()
         .flex_none()
         .items_center()
         .gap(px(8.))
-        .mt(px(-4.))
-        .mx(px(-4.))
         .py(px(8.))
         .px(px(10.))
         .bg(t.pane_2)
@@ -209,7 +217,9 @@ pub(crate) fn search_header(input: &Entity<InputState>, cx: &App) -> AnyElement 
                 .flex_1()
                 .min_w_0()
                 .font_family(UI)
+                .h(px(line.height))
                 .text_size(px(12.5))
+                .line_height(px(line.height))
                 .text_color(t.text)
                 .child(Input::new(input)),
         )
@@ -247,7 +257,8 @@ impl Select {
             },
         );
         Select {
-            focus: cx.focus_handle(),
+            // A `<button>`: in the Tab order.
+            focus: cx.focus_handle().tab_stop(true),
             options,
             value: SharedString::default(),
             values: Vec::new(),
@@ -601,6 +612,9 @@ impl Render for Select {
         } else {
             (38., 12., 7., 9., 12., false)
         };
+        // The global `:focus-visible { border-radius: 4px }` (later in the cascade, same
+        // specificity) rounds a keyboard-focused trigger less, unless a context sets its own.
+        let radius = if focus_visible { 4. } else { radius };
         let (h, pad, radius, gap, size) = (
             tr.height.unwrap_or(h),
             tr.pad_x.unwrap_or(pad),
@@ -673,6 +687,11 @@ impl Render for Select {
         }
         let ico_size = tr.icon_size.unwrap_or(if self.ghost { 12. } else { 14. });
 
+        let border_w = if !self.ghost || tr.border.is_some() {
+            1.
+        } else {
+            0.
+        };
         let mut button = div()
             .id("sel-btn")
             .track_focus(&self.focus)
@@ -684,7 +703,7 @@ impl Render for Select {
             .px(px(pad))
             .rounded(px(radius))
             .bg(bg)
-            .when(!self.ghost || tr.border.is_some(), |d| d.border(px(1.)))
+            .when(border_w > 0., |d| d.border(px(border_w)))
             .border_color(Hsla::from(border))
             .text_color(fg)
             .font_family(if ui { UI } else { MONO })
@@ -698,17 +717,31 @@ impl Render for Select {
             button.w_full()
         };
         if ring {
-            button = button.shadow(vec![css_shadow(0., 0., 0., 3., t.amber_d)]);
+            button = button.relative().child(crate::shadow::box_shadow(
+                &[crate::shadow::css_box_shadow(0., 0., 0., 3., t.amber_d)],
+                radius,
+                border_w,
+            ));
+        }
+        // `:focus-visible`'s outline outranks `.sel-btn { outline: none }` by coming later.
+        if focus_visible && !disabled {
+            button = button
+                .relative()
+                .child(crate::style::focus_ring(radius, border_w, cx));
         }
         if !disabled {
             button = button.cursor_pointer();
-            if !lit || self.ghost {
-                button = button.hover(move |s| {
-                    s.bg(hover_bg)
-                        .border_color(Hsla::from(hover_border))
-                        .text_color(Hsla::from(hover_fg))
-                });
-            }
+            // `.sel-btn:hover:not(:disabled)` outranks `:focus-visible`; `.sel.open .sel-btn`
+            // ties it and comes later, so an open trigger keeps its amber border under hover.
+            let keep_border = self.open && !self.ghost;
+            button = button.hover(move |s| {
+                let s = s.bg(hover_bg).text_color(Hsla::from(hover_fg));
+                if keep_border {
+                    s
+                } else {
+                    s.border_color(Hsla::from(hover_border))
+                }
+            });
         }
         // Icon: custom, the selected option's app icon (tinted), or its provider mark.
         if let Some(i) = self.custom_icon {
@@ -746,14 +779,21 @@ impl Render for Select {
         } else {
             div().flex_1().min_w_0().child(val)
         });
-        // Chevron: md rotates 180° over .12s when open; sm/ghost use chevrons-up-down.
-        let chev = if sm || self.ghost {
-            let s = tr
-                .chevron_size
-                .unwrap_or(if self.ghost { 11. } else { 12. });
-            icon(IconName::ChevronsUpDown).size(px(s)).color(chev_color)
+        // Chevron: `sm` uses chevrons-up-down and never rotates; otherwise chevron-down rotates
+        // 180° over .12s when open. `.sel.ghost .sel-chev` (11px) comes after `.sel.sm`'s 12px.
+        let chev_size = tr.chevron_size.unwrap_or(if self.ghost {
+            11.
+        } else if sm {
+            12.
         } else {
-            let s = tr.chevron_size.unwrap_or(14.);
+            14.
+        });
+        let chev = if sm {
+            icon(IconName::ChevronsUpDown)
+                .size(px(chev_size))
+                .color(chev_color)
+        } else {
+            let s = chev_size;
             let since = if self.open {
                 self.opened_at
             } else {
@@ -783,12 +823,16 @@ impl Render for Select {
             }))
             .child(
                 canvas(
+                    // The menu places itself from the trigger's border box.
                     move |bounds, _, cx| {
-                        entity.update(cx, |this, _| this.trigger_bounds = Some(bounds))
+                        let b = bounds.dilate(px(border_w));
+                        entity.update(cx, |this, _| this.trigger_bounds = Some(b))
                     },
                     |_, _, _, _| {},
                 )
                 .absolute()
+                .top_0()
+                .left_0()
                 .size_full(),
             );
 
@@ -968,24 +1012,34 @@ impl Select {
             .on_mouse_down_out(cx.listener(|this, _, window, cx| this.close(false, window, cx)));
         if self.searchable {
             menu = menu
-                .child(search_header(&self.search, cx))
+                .p_0()
+                .child(search_header(&self.search, window, cx))
                 .on_key_down(cx.listener(|this, e: &KeyDownEvent, window, cx| {
                     if this.on_key(e, true, window, cx) {
                         cx.stop_propagation();
                     }
                 }));
         }
+        // `.sel-list { overflow: auto }`: the themed scrollbar, padding scrolling with the rows.
         menu = menu.child(
             div()
-                .id("sel-list")
-                .flex_1()
+                .flex_auto()
                 .min_h_0()
-                .overflow_y_scroll()
-                .track_scroll(&self.list_scroll)
-                .when(self.searchable, |d| d.pt(px(4.)))
-                .role(gpui_kit::accesskit::Role::ListBox)
-                .aria_label(self.label.clone())
-                .children(list),
+                .flex()
+                .flex_col()
+                .when(self.searchable, |d| d.px(px(4.)).pb(px(4.)))
+                .child(
+                    crate::widgets::scroll_area("sel-list")
+                        .track(&self.list_scroll)
+                        .child(
+                            div()
+                                .id("sel-rows")
+                                .when(self.searchable, |d| d.pt(px(4.)))
+                                .role(gpui_kit::accesskit::Role::ListBox)
+                                .aria_label(self.label.clone())
+                                .children(list),
+                        ),
+                ),
         );
         let pos = match (mbox.top, mbox.bottom) {
             (Some(top), _) => top,

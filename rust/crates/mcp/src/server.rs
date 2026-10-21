@@ -283,13 +283,25 @@ impl McpServer {
 
 async fn serve(listener: TcpListener, inner: Arc<Inner>, stop: CancellationToken) {
     let graceful = GracefulShutdown::new();
+    let mut backoff = Duration::ZERO;
     loop {
-        let (stream, _) = tokio::select! {
+        let accepted = tokio::select! {
             _ = stop.cancelled() => break,
-            accepted = listener.accept() => match accepted {
-                Ok(a) => a,
-                Err(_) => continue,
-            },
+            accepted = listener.accept() => accepted,
+        };
+        let stream = match accepted {
+            Ok((stream, _)) => {
+                backoff = Duration::ZERO;
+                stream
+            }
+            Err(_) => {
+                // Go's Serve: back off 5 ms doubling to 1 s (e.g. out of fds).
+                backoff = (backoff * 2).clamp(Duration::from_millis(5), Duration::from_secs(1));
+                tokio::select! {
+                    _ = stop.cancelled() => break,
+                    _ = tokio::time::sleep(backoff) => continue,
+                }
+            }
         };
         let inner = inner.clone();
         let svc = hyper::service::service_fn(move |req| {

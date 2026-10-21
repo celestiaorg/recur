@@ -133,6 +133,35 @@ impl Engine {
         String::new()
     }
 
+    /// Stores this tab's `[[loop]]` + `[[policy]]` before engage.
+    pub async fn remember_chat_loop_policy(
+        &self,
+        workspace_id: &str,
+        code: &str,
+        loop_id: &str,
+        policy_id: &str,
+    ) {
+        if self.store.workspace(workspace_id).is_none() {
+            return;
+        }
+        let mut code = crate::codes::normalize_pair_chat_code(code);
+        if code != MAESTRO_AGENT_CODE && !is_pair_chat_code(&code) {
+            code = crate::codes::PAIR_AGENT_CODE.to_owned();
+        }
+        let (_life, held) = self.lock_chat_life(workspace_id, &code).await;
+        if !held {
+            return;
+        }
+        if self.store.agent(workspace_id, &code).is_none() {
+            if code == MAESTRO_AGENT_CODE {
+                self.ensure_maestro_agent(workspace_id, "");
+            } else {
+                self.ensure_pair_agent(workspace_id, &code, "");
+            }
+        }
+        self.stamp_chat_loop(workspace_id, &code, loop_id, policy_id, "", "", false);
+    }
+
     /// Persists the engage message's user bubble without a conductor turn.
     pub fn record_loop_engage_user(
         &self,

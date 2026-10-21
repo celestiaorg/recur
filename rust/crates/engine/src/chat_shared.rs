@@ -332,6 +332,33 @@ impl Engine {
         let _ = self.store.update_session_config_json(&sess.id, &raw);
     }
 
+    /// The dock's picks for a pair chat, persisted so a reload restores
+    /// them (Go `RememberWorkspaceChatSelection`). Coerced to a pair-chat
+    /// tab; a missing agent is not recreated (a Remember racing a close
+    /// cannot resurrect the tab). `simplify` `None` leaves the chip unset.
+    pub async fn remember_workspace_chat_selection(
+        &self,
+        workspace_id: &str,
+        code: &str,
+        model: &str,
+        flags: Option<&BTreeMap<String, String>>,
+        mode: &str,
+        simplify: Option<bool>,
+    ) {
+        if self.store.workspace(workspace_id).is_none() {
+            return;
+        }
+        let mut code = normalize_pair_chat_code(code);
+        if !is_pair_chat_code(&code) {
+            code = crate::codes::PAIR_AGENT_CODE.to_owned();
+        }
+        let (_life, held) = self.lock_chat_life(workspace_id, &code).await;
+        if !held || self.store.agent(workspace_id, &code).is_none() {
+            return;
+        }
+        self.remember_pair_chat_selection(workspace_id, &code, model, flags, mode, simplify);
+    }
+
     /// Persists the dock's model + flags + mode + simplify onto a pair
     /// chat's session (and agent model) so a reload restores the pickers.
     /// Creates the session when needed. MA and specialist tabs are never

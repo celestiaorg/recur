@@ -1,0 +1,6 @@
+//! Ports of the E3 Go test files, one module per file.
+
+mod checklist;
+mod default_walk;
+mod escalation;
+mod walker;

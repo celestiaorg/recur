@@ -11,12 +11,12 @@ use recur_domain::{
 };
 use tokio_util::sync::CancellationToken;
 
-use super::Walk;
-use super::converge::{converge_round_window, seed_fix_findings};
-use super::failure::LoopError;
-use super::test_support::*;
 use crate::bus::EngineEvent;
 use crate::guard::ResolvedGuard;
+use crate::loops::Walk;
+use crate::loops::converge::{converge_round_window, seed_fix_findings};
+use crate::loops::failure::LoopError;
+use crate::loops::test_support::*;
 use crate::roles::{qa_runtime_extra, role_spec};
 use crate::testing::{TestEngine, add_project, init_repo, wait_for};
 
@@ -177,7 +177,7 @@ async fn take_on_fail_preserves_turn_error() {
     let ws = t.store.workspace("WS-onfail").unwrap();
     assert!(ws.retryable, "take_on_fail(turn error) must be retryable");
     assert!(ws.last_error.contains("overloaded"), "{}", ws.last_error);
-    assert_ne!(ws.last_error, super::walker::ERR_PHASE_FAILED);
+    assert_ne!(ws.last_error, crate::loops::walker::ERR_PHASE_FAILED);
 }
 
 #[tokio::test]
@@ -331,13 +331,13 @@ async fn run_phase_attempt_board_cap_is_terminal() {
     let ws = t.store.workspace("WS-board-cap-walk").unwrap();
     assert_eq!(
         (ws.state.clone(), ws.phase.as_str()),
-        (WorkspaceState::Paused, super::board::BOARD_CAP_PHASE)
+        (WorkspaceState::Paused, crate::loops::board::BOARD_CAP_PHASE)
     );
     l.finish_stopped_if_in_flight();
     let ws = t.store.workspace("WS-board-cap-walk").unwrap();
     assert_eq!(
         (ws.state, ws.phase.as_str()),
-        (WorkspaceState::Paused, super::board::BOARD_CAP_PHASE)
+        (WorkspaceState::Paused, crate::loops::board::BOARD_CAP_PHASE)
     );
 }
 

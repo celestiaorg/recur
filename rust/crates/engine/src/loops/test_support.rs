@@ -17,6 +17,7 @@ use recur_agent::{
 use recur_domain::{AgentRole, Project, RunCommand, Settings};
 use recur_store::Store;
 use serde_json::{Value, json};
+use tokio_util::sync::CancellationToken;
 
 use crate::testing::add_run_project;
 use crate::turn::test_support::claude;
@@ -437,4 +438,102 @@ pub fn verify_dev_project(store: &Store, repo: &str) -> Option<String> {
         ..Project::default()
     };
     Some(add_run_project(store, p).id)
+}
+
+/// A Claude NDJSON script that also writes `edits` (Go `ScriptedRunner{Edits,
+/// Lines}`).
+pub fn scripted_with_edits(lines: Vec<String>, edits: &[(&str, &str)]) -> Arc<dyn Provider> {
+    Arc::new(
+        recur_provider_claude::testing::NdjsonScript::new(lines)
+            .with_edits(
+                edits
+                    .iter()
+                    .map(|(p, b)| ((*p).to_owned(), (*b).to_owned())),
+            )
+            .imitating(claude()),
+    )
+}
+
+/// Applies optional edits, emits one Bash step, then blocks until the gate
+/// opens or the turn is cancelled (Go `blockingRunner`).
+pub fn blocking_runner(
+    gate: CancellationToken,
+    edits: &'static [(&'static str, &'static str)],
+) -> Arc<dyn Provider> {
+    AsyncProvider::wrap(move |req, cx| {
+        let gate = gate.clone();
+        async move {
+            apply_edits(&req.worktree, edits).map_err(failed)?;
+            emit_step(&cx, "", "Bash", "working", "");
+            tokio::select! {
+                _ = gate.cancelled() => Ok(success(&req.agent_id, "")),
+                _ = cx.cancel.cancelled() => Err(ProviderError::canceled()),
+            }
+        }
+    })
+}
+
+/// Blocks until the turn is cancelled (Go `ctxRunner`).
+pub fn ctx_runner() -> Arc<dyn Provider> {
+    AsyncProvider::wrap(|_req, cx| async move {
+        emit_step(&cx, "", "Bash", "long op", "");
+        cx.cancel.cancelled().await;
+        Err(ProviderError::canceled())
+    })
+}
+
+/// The escalate request agent-tool tests file.
+pub fn esc_req() -> recur_agent_tools::EscalationRequest {
+    use recur_agent_tools::EscalationOption;
+    recur_agent_tools::EscalationRequest {
+        question: "Should I use approach A or B here?".into(),
+        context: "Both are viable; the choice changes the public contract, so I won't guess."
+            .into(),
+        options: vec![
+            EscalationOption {
+                text: "Approach A".into(),
+                tag: "simplest".into(),
+                desc: "Less code, slightly less flexible.".into(),
+            },
+            EscalationOption {
+                text: "Approach B".into(),
+                tag: "recommended".into(),
+                desc: "More robust, a bit more work.".into(),
+            },
+        ],
+    }
+}
+
+/// A Coder that edits and fires the escalate tool on its running loop
+/// (Go `escalatingRunner`); everything else succeeds.
+pub struct EscalatingRunner {
+    pub eng: Mutex<std::sync::Weak<crate::Engine>>,
+}
+
+impl EscalatingRunner {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            eng: Mutex::new(std::sync::Weak::new()),
+        })
+    }
+
+    pub fn bind(&self, eng: &Arc<crate::Engine>) {
+        *self.eng.lock() = Arc::downgrade(eng);
+    }
+
+    pub fn provider(self: &Arc<Self>) -> Arc<dyn Provider> {
+        let me = Arc::clone(self);
+        AsyncProvider::wrap(move |req, _cx| {
+            let me = Arc::clone(&me);
+            async move {
+                if req.role == AgentRole::Coder {
+                    apply_edits(&req.worktree, &[("work.txt", "edit\n")]).map_err(failed)?;
+                    if let Some(e) = me.eng.lock().upgrade() {
+                        e.escalate(&req.workspace_id, esc_req());
+                    }
+                }
+                Ok(success(&req.agent_id, ""))
+            }
+        })
+    }
 }

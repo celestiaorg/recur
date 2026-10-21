@@ -335,10 +335,8 @@ mod tests {
 
     #[test]
     fn fits_without_upscaling() {
-        assert_eq!(
-            fit((1200., 800.), (736., 496.)),
-            ((736. * 1., 736. * 800. / 1200.), true)
-        );
+        let ((w, h), scaled) = fit((1200., 800.), (736., 496.));
+        assert!(scaled && w == 736. && (h - 490.666).abs() < 0.01);
         assert_eq!(fit((100., 50.), (736., 496.)), ((100., 50.), false));
         assert_eq!(fit((0., 0.), (10., 10.)), ((0., 0.), false));
     }

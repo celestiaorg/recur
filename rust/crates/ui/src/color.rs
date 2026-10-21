@@ -41,6 +41,16 @@ pub const fn rgba(r: u8, g: u8, b: u8, a: f32) -> Color {
 }
 
 impl Color {
+    pub fn from_hsla(c: Hsla) -> Color {
+        let r = Rgba::from(c);
+        Color {
+            r: r.r,
+            g: r.g,
+            b: r.b,
+            a: r.a,
+        }
+    }
+
     pub const fn with_alpha(self, a: f32) -> Color {
         Color { a, ..self }
     }

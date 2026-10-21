@@ -23,7 +23,7 @@
     {#each lucideSuggested as e}<span class="cell"><LucideIcon name={e.name} /></span>{/each}
   {:else if variant === 'provider'}
     {#each providers as p}<span class="cell prov"><ProviderIcon provider={p} /></span>{/each}
-  {:else if variant === 'file'}
+  {:else if variant.startsWith('file')}
     {#each files as f}<span class="cell tab-chip"><span class="fico {fileIconClass(f)}"></span></span>{/each}
   {/if}
 </div>

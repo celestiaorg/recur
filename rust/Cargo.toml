@@ -63,6 +63,9 @@ unicode-linebreak = "0.1"
 resvg = { version = "0.46", default-features = false }
 smallvec = "1"
 base64 = "0.22"
+core-graphics = "0.24"
+core-text = "21"
+core-foundation = "0.10"
 image = { version = "0.25", default-features = false, features = ["png"] }
 notify = "8"
 cron = "0.15"

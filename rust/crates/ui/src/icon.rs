@@ -1,6 +1,6 @@
 //! SVG icons drawn the way the browser draws inline `<svg>`: rasterized once per device-pixel
-//! size and color with tiny-skia (Skia's raster pipeline, which Chromium uses), straight into
-//! the target pixels. GPUI's own `svg()` supersamples and downsamples on the GPU, which
+//! size and color, straight into the target pixels, with CoreGraphics on macOS (WebKit's SVG
+//! painter) and tiny-skia elsewhere. GPUI's own `svg()` supersamples and downsamples on the GPU, which
 //! softens edges that the web UI renders crisp.
 //!
 //! `Icon.svelte`, `LucideIcon.svelte` and `ProviderIcon.svelte` all map here.
@@ -19,11 +19,15 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 enum Source {
     Asset(String),
     Markup(Arc<str>),
+    /// Pixels drawn by a custom rasterizer: (cache key, draw(w, h, scale) → premultiplied RGBA).
+    Raster(u64, RasterFn),
 }
+
+type RasterFn = Arc<dyn Fn(u32, u32, f32) -> Option<Vec<u8>>>;
 
 /// An SVG icon element. Size it with `Styled` (`.size(px(14.))`); color follows the inherited
 /// text color unless set.
@@ -65,6 +69,14 @@ pub fn provider_icon(provider: &str) -> Icon {
 /// text color.
 pub fn svg_markup(markup: impl Into<Arc<str>>) -> Icon {
     let mut i = Icon::new(Source::Markup(markup.into()));
+    i.polychrome = true;
+    i
+}
+
+/// Pixels from a custom rasterizer (`draw(w, h, scale)` → premultiplied RGBA at device size),
+/// kept with their own colors. `key` identifies the drawing for the raster cache.
+pub fn raster_icon(key: u64, draw: impl Fn(u32, u32, f32) -> Option<Vec<u8>> + 'static) -> Icon {
+    let mut i = Icon::new(Source::Raster(key, Arc::new(draw)));
     i.polychrome = true;
     i
 }
@@ -138,6 +150,7 @@ fn source_hash(s: &Source) -> u64 {
     match s {
         Source::Asset(p) => p.hash(&mut h),
         Source::Markup(m) => m.hash(&mut h),
+        Source::Raster(key, _) => key.hash(&mut h),
     }
     h.finish()
 }
@@ -213,7 +226,7 @@ impl Element for Icon {
         let image = match cache.0.get(&key) {
             Some(hit) => hit.clone(),
             None => {
-                let rendered = self.render(w, h, key.color);
+                let rendered = self.render(w, h, key.color, scale);
                 cache.0.insert(key, rendered.clone());
                 rendered
             }
@@ -228,6 +241,7 @@ impl Icon {
         let raw = match &self.source {
             Source::Asset(p) => String::from_utf8(svg_bytes(p)?.to_vec()).ok()?,
             Source::Markup(m) => m.to_string(),
+            Source::Raster(..) => return None,
         };
         let mut svg = raw;
         if let Some(sw) = self.stroke_width
@@ -250,9 +264,11 @@ impl Icon {
         Some(svg)
     }
 
-    fn render(&self, w: u32, h: u32, color: [u8; 4]) -> Option<Arc<RenderImage>> {
-        let svg = self.svg_text(color)?;
-        let pixels = rasterize(&svg, w, h, self.rotation)?;
+    fn render(&self, w: u32, h: u32, color: [u8; 4], scale: f32) -> Option<Arc<RenderImage>> {
+        let pixels = match &self.source {
+            Source::Raster(_, draw) => draw(w, h, scale)?,
+            _ => rasterize(&self.svg_text(color)?, w, h, self.rotation)?,
+        };
         let mut bgra = pixels;
         if self.polychrome {
             for p in bgra.chunks_exact_mut(4) {
@@ -291,7 +307,6 @@ impl Icon {
 /// viewBox to fit and centering it (`preserveAspectRatio="xMidYMid meet"`).
 pub fn rasterize(svg: &str, w: u32, h: u32, rotation_deg: f32) -> Option<Vec<u8>> {
     let tree = usvg::Tree::from_str(svg, &usvg::Options::default()).ok()?;
-    let mut pixmap = tiny_skia::Pixmap::new(w, h)?;
     let size = tree.size();
     let s = (w as f32 / size.width()).min(h as f32 / size.height());
     let dx = (w as f32 - size.width() * s) / 2.;
@@ -304,8 +319,16 @@ pub fn rasterize(svg: &str, w: u32, h: u32, rotation_deg: f32) -> Option<Vec<u8>
             h as f32 / 2.,
         ));
     }
-    resvg::render(&tree, ts, &mut pixmap.as_mut());
-    Some(pixmap.take())
+    #[cfg(target_os = "macos")]
+    {
+        Some(crate::cg_raster::render(&tree, ts, w, h))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let mut pixmap = tiny_skia::Pixmap::new(w, h)?;
+        resvg::render(&tree, ts, &mut pixmap.as_mut());
+        Some(pixmap.take())
+    }
 }
 
 #[cfg(test)]

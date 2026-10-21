@@ -237,6 +237,7 @@ pub struct Text {
     ellipsis: bool,
     clamp: Option<usize>,
     align: Align,
+    exact_height: bool,
     layout: Rc<RefCell<Option<Laid>>>,
 }
 
@@ -257,6 +258,7 @@ impl Text {
             ellipsis: false,
             clamp: None,
             align: Align::Left,
+            exact_height: false,
             layout: Rc::default(),
         }
     }
@@ -303,6 +305,12 @@ impl Text {
     /// `-webkit-line-clamp: n` (with an ellipsis on the last kept line).
     pub fn line_clamp(mut self, lines: usize) -> Self {
         self.clamp = Some(lines.max(1));
+        self
+    }
+    /// For a nowrap line stacked in a column: keep its fractional line-box height exact (and
+    /// round its width) instead of the default exact width. See `ui-parity.md`.
+    pub fn exact_height(mut self) -> Self {
+        self.exact_height = true;
         self
     }
     pub fn align(mut self, align: Align) -> Self {
@@ -378,10 +386,64 @@ struct PaintGlyph {
     /// Byte offset within the paragraph.
     index: usize,
     x: f32,
-    font_id: FontId,
-    glyph: gpui_kit::GlyphId,
-    is_emoji: bool,
+    src: GlyphSrc,
     run: usize,
+}
+
+/// Which painter owns a glyph.
+#[derive(Clone, Copy)]
+enum GlyphSrc {
+    Gpui {
+        font_id: FontId,
+        glyph: gpui_kit::GlyphId,
+        is_emoji: bool,
+    },
+    /// CoreText-shaped `system-ui` text (macOS).
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    Ct { font: usize, glyph: u16 },
+}
+
+/// One shaped run: (byte index, x, glyph) in run coordinates, and its advance width.
+fn shape_run(window: &Window, run: &RunStyle, text: &str) -> (Vec<(usize, f32, GlyphSrc)>, f32) {
+    #[cfg(target_os = "macos")]
+    if run.family == Family::System {
+        let (glyphs, width) = crate::ct_text::shape(text, run.weight, run.size);
+        let out = glyphs
+            .into_iter()
+            .map(|g| {
+                (
+                    g.index,
+                    g.x,
+                    GlyphSrc::Ct {
+                        font: g.font,
+                        glyph: g.glyph,
+                    },
+                )
+            })
+            .collect();
+        return (out, width);
+    }
+    let shaped = window.text_system().shape_line(
+        text.to_string().into(),
+        px(run.size),
+        &[run.text_run(text.len())],
+        None,
+    );
+    let mut out = Vec::new();
+    for r in &shaped.runs {
+        for g in &r.glyphs {
+            out.push((
+                g.index,
+                f32::from(g.position.x),
+                GlyphSrc::Gpui {
+                    font_id: r.font_id,
+                    glyph: g.id,
+                    is_emoji: g.is_emoji,
+                },
+            ));
+        }
+    }
+    (out, f32::from(shaped.width))
 }
 
 struct Line {
@@ -628,22 +690,11 @@ fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
             pen += b.left();
         }
         let text = &key.content[abs.clone()];
-        let shaped = window.text_system().shape_line(
-            text.to_string().into(),
-            px(run.size),
-            &[run.text_run(text.len())],
-            None,
-        );
-        let mut glyph_x: Vec<(usize, f32)> = Vec::new();
-        for r in &shaped.runs {
-            for g in &r.glyphs {
-                glyph_x.push((g.index, f32::from(g.position.x)));
-            }
-        }
+        let (shaped, total) = shape_run(window, run, text);
+        let mut glyph_x: Vec<(usize, f32)> = shaped.iter().map(|g| (g.0, g.1)).collect();
         glyph_x.sort_by_key(|(i, _)| *i);
         let chars: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
         let mut gi = 0;
-        let total = f32::from(shaped.width);
         for (ci, &bi) in chars.iter().enumerate() {
             while gi < glyph_x.len() && glyph_x[gi].0 < bi {
                 gi += 1;
@@ -654,18 +705,14 @@ fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
                 pen + x + run.tracking * ci as f32,
             ));
         }
-        for r in &shaped.runs {
-            for g in &r.glyphs {
-                let ci = chars.partition_point(|&c| c < g.index);
-                glyphs.push(PaintGlyph {
-                    index: abs.start - range.start + g.index,
-                    x: pen + f32::from(g.position.x) + run.tracking * ci as f32,
-                    font_id: r.font_id,
-                    glyph: g.id,
-                    is_emoji: g.is_emoji,
-                    run: ri,
-                });
-            }
+        for (index, x, src) in shaped {
+            let ci = chars.partition_point(|&c| c < index);
+            glyphs.push(PaintGlyph {
+                index: abs.start - range.start + index,
+                x: pen + x + run.tracking * ci as f32,
+                src,
+                run: ri,
+            });
         }
         pen += total + run.tracking * chars.len() as f32;
         if let (Some(b), Some(sr)) = (ib, &span_range)
@@ -701,7 +748,13 @@ impl Para {
         } else {
             self.x_at(trimmed_end)
         };
-        end - self.x_at(r.start)
+        end - self.line_start(r.start)
+    }
+
+    /// Left edge of a line starting at `byte`: the paragraph start keeps a leading inline
+    /// box's left extent.
+    fn line_start(&self, byte: usize) -> f32 {
+        if byte == 0 { 0. } else { self.x_at(byte) }
     }
 }
 
@@ -778,36 +831,34 @@ fn break_lines(
     lines
 }
 
-fn rounded_extent(run: &RunStyle, window: &Window) -> (f32, f32) {
+/// Unrounded ascent, descent and line gap of a run's primary font.
+fn font_extent(run: &RunStyle, size: f32, window: &Window) -> (f32, f32, f32) {
+    #[cfg(target_os = "macos")]
+    if run.family == Family::System {
+        return crate::ct_text::metrics(run.weight, size);
+    }
     let ts = window.text_system();
     let id = ts.resolve_font(
         &run.family
             .font(run.weight, run.italic, FontFeatures::default()),
     );
-    let size = px(run.size);
     (
-        f32::from(ts.ascent(id, size)).round(),
-        (-f32::from(ts.descent(id, size))).round(),
+        ts.ascent(id, px(size)).into(),
+        -f32::from(ts.descent(id, px(size))),
+        crate::font_metrics::line_gap(&run.family, size),
     )
+}
+
+/// The content-area extent of an inline box's font: WebKit's rounded ascent and descent.
+fn rounded_extent(run: &RunStyle, window: &Window) -> (f32, f32) {
+    let (a, d, _) = font_extent(run, run.size, window);
+    ((a * 64.).round() / 64., (d * 64.).ceil() / 64.)
 }
 
 impl Laid {
     fn build(key: Resolved, window: &Window) -> Laid {
-        let ts = window.text_system();
-        let base = &key.base;
-        let id = ts.resolve_font(&base.family.font(
-            base.weight,
-            base.italic,
-            FontFeatures::default(),
-        ));
-        let size = px(key.font_size);
-        let metrics = line_metrics(
-            ts.ascent(id, size).into(),
-            -f32::from(ts.descent(id, size)),
-            crate::font_metrics::line_gap(&base.family, key.font_size),
-            key.font_size,
-            key.line_height,
-        );
+        let (a, d, g) = font_extent(&key.base, key.font_size, window);
+        let metrics = line_metrics(a, d, g, key.font_size, key.line_height);
         let mut paras = Vec::new();
         let mut start = 0;
         for piece in key.content.split('\n') {
@@ -882,26 +933,19 @@ impl Laid {
 
     fn ellipsis_glyphs(&self, window: &Window) -> (Vec<PaintGlyph>, f32) {
         let base = &self.key.base;
-        let shaped = window.text_system().shape_line(
-            "…".into(),
-            px(self.key.font_size),
-            &[base.text_run("…".len())],
-            None,
-        );
-        let mut glyphs = Vec::new();
-        for r in &shaped.runs {
-            for g in &r.glyphs {
-                glyphs.push(PaintGlyph {
-                    index: 0,
-                    x: g.position.x.into(),
-                    font_id: r.font_id,
-                    glyph: g.id,
-                    is_emoji: g.is_emoji,
-                    run: usize::MAX,
-                });
-            }
-        }
-        (glyphs, f32::from(shaped.width) + base.tracking)
+        let mut run = base.clone();
+        run.size = self.key.font_size;
+        let (shaped, width) = shape_run(window, &run, "…");
+        let glyphs = shaped
+            .into_iter()
+            .map(|(_, x, src)| PaintGlyph {
+                index: 0,
+                x,
+                src,
+                run: usize::MAX,
+            })
+            .collect();
+        (glyphs, width + base.tracking)
     }
 
     fn size(&self, scale: f32) -> gpui_kit::Size<Pixels> {
@@ -915,7 +959,8 @@ impl Laid {
 
     /// Width of the widest line and the total height, unrounded, after a layout at `width`.
     fn measured(&self) -> (f32, f32) {
-        let w = self.lines.iter().map(|l| l.width).fold(0., f32::max);
+        // WebKit stores an inline text width as `LayoutUnit::fromFloatCeil`.
+        let w = (self.lines.iter().map(|l| l.width).fold(0., f32::max) * 64.).ceil() / 64.;
         (w, self.metrics.height * self.lines.len() as f32)
     }
 }
@@ -966,7 +1011,7 @@ impl Element for Text {
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
-        _: &mut App,
+        cx: &mut App,
     ) -> (LayoutId, TextState) {
         let key = self.resolve(window);
         let layout = self.layout.clone();
@@ -983,6 +1028,32 @@ impl Element for Text {
         if truncate {
             // `overflow: hidden` makes the automatic minimum size zero in a flex row.
             style.min_size.width = px(0.).into();
+        }
+        if ws == WhiteSpace::NoWrap && clamp.is_none() {
+            // A single unwrapped line has a fixed intrinsic size. GPUI rounds every authored
+            // or measured length to device pixels, which would push later siblings off the
+            // fractional positions WebKit gives them; `aspect_ratio` reaches Taffy unrounded,
+            // so one axis is authored (rounded) and the other derived exactly from it.
+            let exact = layout.borrow_mut().as_mut().map(|laid| {
+                laid.relayout(None, ws, anywhere, clamp, false, window);
+                laid.measured()
+            });
+            if let Some((w, h)) = exact
+                && w > 0.
+                && h > 0.
+            {
+                let scale = window.scale_factor();
+                if self.exact_height {
+                    let ws = snap(w, scale).max(1. / scale);
+                    style.size.width = px(ws).into();
+                    style.aspect_ratio = Some(ws / h);
+                } else {
+                    let hs = snap(h, scale).max(1. / scale);
+                    style.size.height = px(hs).into();
+                    style.aspect_ratio = Some(w / hs);
+                }
+                return (window.request_layout(style, [], cx), TextState { layout });
+            }
         }
         let layout_id =
             window.request_measured_layout(style, move |known, available, window, _| {
@@ -1055,7 +1126,7 @@ fn paint_lines(laid: &Laid, bounds: Bounds<Pixels>, align: Align, window: &mut W
         let p = &laid.paras[line.para];
         let top = f32::from(bounds.origin.y) + laid.metrics.height * li as f32;
         let baseline = snap(top + laid.metrics.baseline, scale);
-        let start_x = p.x_at(line.range.start);
+        let start_x = p.line_start(line.range.start);
         let offset = match align {
             Align::Left => 0.,
             Align::Center => (box_w - line.width) / 2.,
@@ -1149,12 +1220,19 @@ fn paint_one(
     font_size: f32,
     color: Hsla,
 ) {
-    // A glyph the atlas cannot rasterize paints nothing, as in the browser.
-    let _ = if g.is_emoji {
-        window.paint_emoji(origin, g.font_id, g.glyph, px(font_size))
-    } else {
-        window.paint_glyph(origin, g.font_id, g.glyph, px(font_size), color)
-    };
+    match g.src {
+        GlyphSrc::Gpui {
+            font_id,
+            glyph,
+            is_emoji,
+        } => crate::glyph::paint(window, font_id, glyph, font_size, origin, color, is_emoji),
+        #[cfg(target_os = "macos")]
+        GlyphSrc::Ct { font, glyph } => {
+            crate::glyph::paint_ct(window, font, glyph, font_size, origin, color)
+        }
+        #[cfg(not(target_os = "macos"))]
+        GlyphSrc::Ct { .. } => {}
+    }
 }
 
 #[cfg(test)]

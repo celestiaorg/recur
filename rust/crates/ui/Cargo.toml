@@ -25,6 +25,12 @@ image.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 
+# WebKit paints SVG and text through CoreGraphics / CoreText; so does recur-ui on macOS.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics.workspace = true
+core-text.workspace = true
+core-foundation.workspace = true
+
 [dev-dependencies]
 gpui-kit = { workspace = true, features = ["test-support"] }
 recur-ui = { path = ".", features = ["gallery"] }

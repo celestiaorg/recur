@@ -190,3 +190,65 @@ pub mod weight {
 pub fn tabular_nums() -> FontFeatures {
     FontFeatures(std::sync::Arc::new(vec![("tnum".into(), 1)]))
 }
+
+/// CSS Fonts 4 weight matching over the bundled faces of `family`: the index into [`FACES`]
+/// the browser would pick for `weight`, or `None` for a family that is not bundled.
+pub fn match_face(family: &str, weight: f32) -> Option<usize> {
+    let faces: Vec<(usize, f32)> = FACES
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| f.0 == family)
+        .map(|(i, f)| (i, f.1))
+        .collect();
+    if faces.is_empty() {
+        return None;
+    }
+    let exact = faces.iter().find(|f| f.1 == weight);
+    if let Some(f) = exact {
+        return Some(f.0);
+    }
+    let up = |lo: f32, hi: f32| {
+        faces
+            .iter()
+            .filter(|f| f.1 > lo && f.1 <= hi)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|f| f.0)
+    };
+    let down = |hi: f32| {
+        faces
+            .iter()
+            .filter(|f| f.1 < hi)
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|f| f.0)
+    };
+    if (400. ..=500.).contains(&weight) {
+        up(weight, 500.)
+            .or_else(|| down(weight))
+            .or_else(|| up(500., f32::MAX))
+    } else if weight < 400. {
+        down(weight).or_else(|| up(weight, f32::MAX))
+    } else {
+        up(weight, f32::MAX).or_else(|| down(weight))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn w(family: &str, weight: f32) -> f32 {
+        FACES[match_face(family, weight).unwrap()].1
+    }
+
+    #[test]
+    fn matches_css_weight_rules() {
+        assert_eq!(w("Inter", 450.), 450.);
+        assert_eq!(w("Inter", 550.), 600.);
+        assert_eq!(w("Inter", 700.), 600.);
+        assert_eq!(w("Inter", 300.), 400.);
+        assert_eq!(w("Space Grotesk", 400.), 500.);
+        assert_eq!(w("JetBrains Mono", 650.), 700.);
+        assert_eq!(w("IBM Plex Mono", 475.), 500.);
+        assert!(match_face("Menlo", 400.).is_none());
+    }
+}

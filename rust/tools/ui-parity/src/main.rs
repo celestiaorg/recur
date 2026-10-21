@@ -151,18 +151,143 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Per-scene diff counts. Pixels whose channels differ by at most one level are equal (8-bit
+/// compositing quantization); the rest are text (inside a reference text box), anti-aliased
+/// fringe (pixelmatch's detection), or hard.
 struct DiffResult {
     name: String,
-    differing: u64,
+    hard: u64,
+    text: u64,
+    aa: u64,
     max_delta: u8,
     tolerance: u64,
     error: Option<String>,
 }
 
+impl DiffResult {
+    fn pass(&self) -> bool {
+        self.error.is_none() && self.hard == 0 && self.text + self.aa <= self.tolerance
+    }
+}
+
+/// Pixelmatch's YIQ brightness of a pixel blended over white.
+fn luma(p: &Rgba<u8>) -> f64 {
+    let a = p.0[3] as f64 / 255.;
+    let blend = |c: u8| 255. + (c as f64 - 255.) * a;
+    0.298_895_31 * blend(p.0[0]) + 0.586_622_47 * blend(p.0[1]) + 0.114_482_23 * blend(p.0[2])
+}
+
+/// Pixelmatch `hasManySiblings`: more than two identical neighbors.
+fn many_siblings(img: &RgbaImage, x: u32, y: u32) -> bool {
+    let (w, h) = img.dimensions();
+    let (x0, y0, x1, y1) = (
+        x.saturating_sub(1),
+        y.saturating_sub(1),
+        (x + 1).min(w - 1),
+        (y + 1).min(h - 1),
+    );
+    let mut zeroes = u32::from(x == x0 || x == x1 || y == y0 || y == y1);
+    let p = img.get_pixel(x, y);
+    for nx in x0..=x1 {
+        for ny in y0..=y1 {
+            if (nx, ny) != (x, y) && img.get_pixel(nx, ny) == p {
+                zeroes += 1;
+                if zeroes > 2 {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Pixelmatch `antialiased`: the pixel sits between a darker and a brighter neighbor, has few
+/// identical neighbors, and one of those extremes is a flat region in both images.
+fn antialiased(img: &RgbaImage, x: u32, y: u32, other: &RgbaImage) -> bool {
+    let (w, h) = img.dimensions();
+    let (x0, y0, x1, y1) = (
+        x.saturating_sub(1),
+        y.saturating_sub(1),
+        (x + 1).min(w - 1),
+        (y + 1).min(h - 1),
+    );
+    let mut zeroes = u32::from(x == x0 || x == x1 || y == y0 || y == y1);
+    let base = luma(img.get_pixel(x, y));
+    let (mut min, mut max) = (0f64, 0f64);
+    let (mut min_at, mut max_at) = ((0, 0), (0, 0));
+    for nx in x0..=x1 {
+        for ny in y0..=y1 {
+            if (nx, ny) == (x, y) {
+                continue;
+            }
+            let delta = base - luma(img.get_pixel(nx, ny));
+            if delta == 0. {
+                zeroes += 1;
+                if zeroes > 2 {
+                    return false;
+                }
+            } else if delta < min {
+                min = delta;
+                min_at = (nx, ny);
+            } else if delta > max {
+                max = delta;
+                max_at = (nx, ny);
+            }
+        }
+    }
+    if min == 0. || max == 0. {
+        return false;
+    }
+    (many_siblings(img, min_at.0, min_at.1) && many_siblings(other, min_at.0, min_at.1))
+        || (many_siblings(img, max_at.0, max_at.1) && many_siblings(other, max_at.0, max_at.1))
+}
+
+/// A partial-coverage pixel whose value moved by at most a quarter of the local contrast:
+/// anti-aliasing along the same edge, not an edge that moved (that changes it by the full
+/// contrast).
+fn soft_fringe(a: &RgbaImage, x: u32, y: u32, delta: u8) -> bool {
+    let (w, h) = a.dimensions();
+    let (mut lo, mut hi) = (u8::MAX, 0u8);
+    for nx in x.saturating_sub(1)..=(x + 1).min(w - 1) {
+        for ny in y.saturating_sub(1)..=(y + 1).min(h - 1) {
+            let p = a.get_pixel(nx, ny);
+            for c in &p.0[..3] {
+                lo = lo.min(*c);
+                hi = hi.max(*c);
+            }
+        }
+    }
+    hi > lo && (delta as u32) * 4 <= (hi - lo) as u32
+}
+
+/// Reference text boxes (CSS px) scaled to device pixels and grown by 2dp, so glyph
+/// anti-aliasing and sub-pixel placement land inside.
+fn text_mask(path: &Path, w: u32, h: u32) -> Vec<bool> {
+    let mut mask = vec![false; (w * h) as usize];
+    let Ok(raw) = std::fs::read_to_string(path) else {
+        return mask;
+    };
+    let rects: Vec<[f32; 4]> = serde_json::from_str(&raw).unwrap_or_default();
+    for [x, y, rw, rh] in rects {
+        let x0 = ((x * 2.).floor() as i64 - 2).max(0) as u32;
+        let y0 = ((y * 2.).floor() as i64 - 2).max(0) as u32;
+        let x1 = (((x + rw) * 2.).ceil() as u32 + 2).min(w);
+        let y1 = (((y + rh) * 2.).ceil() as u32 + 2).min(h);
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                mask[(yy * w + xx) as usize] = true;
+            }
+        }
+    }
+    mask
+}
+
 fn diff_one(spec: &SceneSpec, reference: &Path, candidate: &Path, out: &Path) -> DiffResult {
     let mut r = DiffResult {
         name: spec.name.clone(),
-        differing: 0,
+        hard: 0,
+        text: 0,
+        aa: 0,
         max_delta: 0,
         tolerance: spec.tolerance,
         error: None,
@@ -183,23 +308,34 @@ fn diff_one(spec: &SceneSpec, reference: &Path, candidate: &Path, out: &Path) ->
         r.error = Some(format!("size {:?} vs {:?}", a.dimensions(), b.dimensions()));
         return r;
     }
-    let mut heat = RgbaImage::new(a.width(), a.height());
+    let (w, h) = a.dimensions();
+    let mask = text_mask(&reference.with_extension("text.json"), w, h);
+    let mut heat = RgbaImage::new(w, h);
     for (x, y, pa) in a.enumerate_pixels() {
         let pb = b.get_pixel(x, y);
         let delta = (0..3).map(|i| pa.0[i].abs_diff(pb.0[i])).max().unwrap_or(0);
         let gray = ((pa.0[0] as u32 * 3 + pa.0[1] as u32 * 6 + pa.0[2] as u32) / 10 / 4) as u8;
-        // A one-level channel delta is 8-bit compositing quantization: Skia blends translucent
-        // fills in integer steps, GPUI's Metal blender in float (ui-parity.md).
-        if delta > 1 {
-            r.differing += 1;
-            r.max_delta = r.max_delta.max(delta);
-            let v = 96u8.saturating_add(delta.saturating_mul(2).min(159));
-            heat.put_pixel(x, y, Rgba([v, 0, (delta < 8) as u8 * 160, 255]));
-        } else if delta == 1 {
-            heat.put_pixel(x, y, Rgba([gray, gray, gray.saturating_add(40), 255]));
+        // A one-level channel delta is 8-bit compositing quantization: Skia/CoreGraphics
+        // blend translucent fills in integer steps, GPUI's Metal blender in float.
+        let color = if delta <= 1 {
+            Rgba([gray, gray, gray, 255])
+        } else if mask[(y * w + x) as usize] {
+            r.text += 1;
+            Rgba([gray / 2, gray / 2, 96 + (delta / 2), 255])
+        } else if antialiased(&a, x, y, &b)
+            || antialiased(&b, x, y, &a)
+            || soft_fringe(&a, x, y, delta)
+        {
+            r.aa += 1;
+            Rgba([200, 160, 0, 255])
         } else {
-            heat.put_pixel(x, y, Rgba([gray, gray, gray, 255]));
+            r.hard += 1;
+            Rgba([255, 0, 0, 255])
+        };
+        if delta > 1 {
+            r.max_delta = r.max_delta.max(delta);
         }
+        heat.put_pixel(x, y, color);
     }
     if let Err(e) = heat.save(out.join(file_name(&spec.name))) {
         r.error = Some(e.to_string());
@@ -213,8 +349,8 @@ fn diff(specs: &[SceneSpec]) -> Result<bool> {
     let mut ok = true;
     let mut report = Vec::new();
     println!(
-        "{:<44} {:>10} {:>6} {:>10}",
-        "scene", "differing", "max", "tolerance"
+        "{:<36} {:>6} {:>7} {:>6} {:>5} {:>9}",
+        "scene", "hard", "text", "aa", "max", "tolerance"
     );
     for spec in specs {
         let f = file_name(&spec.name);
@@ -224,21 +360,23 @@ fn diff(specs: &[SceneSpec]) -> Result<bool> {
             &root().join("out/candidate").join(&f),
             &out,
         );
-        let pass = r.error.is_none() && r.differing <= r.tolerance;
+        let pass = r.pass();
         ok &= pass;
         match &r.error {
-            Some(e) => println!("{:<44} ERROR {e}", r.name),
+            Some(e) => println!("{:<36} ERROR {e}", r.name),
             None => println!(
-                "{:<44} {:>10} {:>6} {:>10} {}",
+                "{:<36} {:>6} {:>7} {:>6} {:>5} {:>9} {}",
                 r.name,
-                r.differing,
+                r.hard,
+                r.text,
+                r.aa,
                 r.max_delta,
                 r.tolerance,
                 if pass { "ok" } else { "FAIL" }
             ),
         }
         report.push(serde_json::json!({
-            "scene": r.name, "differing": r.differing, "maxDelta": r.max_delta,
+            "scene": r.name, "hard": r.hard, "text": r.text, "aa": r.aa, "maxDelta": r.max_delta,
             "tolerance": r.tolerance, "pass": pass, "error": r.error,
         }));
     }
@@ -249,8 +387,72 @@ fn diff(specs: &[SceneSpec]) -> Result<bool> {
     Ok(ok)
 }
 
+struct Measure {
+    family: recur_ui::fonts::Family,
+    size: f32,
+    weight: f32,
+    tracking: f32,
+    spans: Vec<String>,
+}
+
+impl Render for Measure {
+    fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        use recur_ui::text::{Text, TextStyled, span};
+        let t = Text::from_spans(self.spans.iter().map(|s| span(s.clone())).collect())
+            .family(self.family.clone())
+            .size(self.size)
+            .weight(self.weight)
+            .tracking(self.tracking)
+            .nowrap();
+        let (w, h, m) = t.measure(None, window);
+        println!(
+            "width {w} height {h} baseline {} ascent {} descent {}",
+            m.baseline, m.ascent, m.descent
+        );
+        gpui_kit::div()
+    }
+}
+
+/// `ui-parity measure <ui|mono|disp|system> <size> <weight> <tracking-em> <span>…`: print the
+/// layout recur-ui gives a nowrap line, to compare with the reference engine's numbers.
+fn measure(args: &[String]) -> Result<()> {
+    use recur_ui::fonts::Family;
+    let [family, size, weight, tracking, spans @ ..] = args else {
+        bail!("usage: measure <ui|mono|disp|system> <size> <weight> <tracking-em> <span>...");
+    };
+    let family = match family.as_str() {
+        "mono" => Family::Mono,
+        "disp" => Family::Display,
+        "system" => Family::System,
+        _ => Family::Ui,
+    };
+    let view = Measure {
+        family,
+        size: size.parse()?,
+        weight: weight.parse()?,
+        tracking: tracking.parse()?,
+        spans: spans.to_vec(),
+    };
+    let mut cx = HeadlessAppContext::with_platform(
+        gpui_kit::platform::current_platform(true).text_system(),
+        Arc::new(recur_ui::Assets),
+        || Ok(None),
+    );
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        recur_ui::init(cx);
+    });
+    let handle =
+        cx.update(|cx| cx.open_window(WindowOptions::default(), |_, cx| cx.new(|_| view)))?;
+    cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))?;
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("measure") {
+        return measure(&args[1..]);
+    }
     let (cmd, names) = args
         .split_first()
         .map_or(("check", &[][..]), |(c, n)| (c.as_str(), n));

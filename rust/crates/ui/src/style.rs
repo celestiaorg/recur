@@ -22,6 +22,25 @@ fn tokens(cx: &App) -> Tokens {
     Theme::of(cx).tokens
 }
 
+/// CSS `opacity` fades an element and its content as one layer. GPUI applies opacity to each
+/// primitive, which lets a label or border show through its own fill, so faded controls
+/// flatten their colors instead: each color as composited inside the element (over `fill`),
+/// then mixed with the `backdrop` the control sits on. Exact for opaque backdrops, glyph
+/// anti-aliasing included.
+pub fn faded(color: Color, fill: Color, opacity: f32, backdrop: Color) -> Color {
+    color.over(fill.over(backdrop)).mix(opacity, backdrop)
+}
+
+/// A border the same color as its opaque fill paints nothing visible; drop it so GPUI's
+/// per-primitive `opacity` (CSS fades the element as one layer) does not double it up.
+fn border_over(border: Color, bg: Color) -> Hsla {
+    if border == bg {
+        Hsla::transparent_black()
+    } else {
+        border.into()
+    }
+}
+
 /// A CSS `box-shadow` layer. CSS blur is twice the Gaussian sigma GPUI takes.
 pub fn css_shadow(x: f32, y: f32, blur: f32, spread: f32, color: Color) -> BoxShadow {
     BoxShadow {
@@ -127,11 +146,11 @@ pub fn tbtn(
     id: impl Into<ElementId>,
     kind: Tbtn,
     size: TbtnSize,
-    disabled: bool,
+    disabled_over: Option<Color>,
     cx: &App,
 ) -> Stateful<Div> {
     let t = tokens(cx);
-    let (bg, border, fg) = match kind {
+    let (mut bg, mut border, mut fg) = match kind {
         Tbtn::Default => (t.pane, t.line, t.text),
         Tbtn::Amber => (t.amber, t.amber, t.on_amber),
         Tbtn::Solid => (t.text, t.text, t.bg),
@@ -139,6 +158,15 @@ pub fn tbtn(
         Tbtn::Danger => (t.pane, rgba(235, 122, 92, 0.32), t.coral),
         Tbtn::Armed => (t.coral, t.coral, crate::color::hex(0x0a0c10)),
     };
+    // `.tb-right .tbtn:disabled { opacity: .45; cursor: not-allowed }`.
+    if let Some(back) = disabled_over {
+        (bg, border, fg) = (
+            faded(bg, bg, 0.45, back),
+            faded(border, bg, 0.45, back),
+            faded(fg, bg, 0.45, back),
+        );
+    }
+    let disabled = disabled_over.is_some();
     let mut b = div()
         .id(id)
         .flex()
@@ -149,13 +177,13 @@ pub fn tbtn(
         .px(px(size.pad_x))
         .rounded(px(6.))
         .border(px(1.))
-        .border_color(Hsla::from(border))
+        .border_color(border_over(border, bg))
         .bg(bg)
         .text_color(fg)
         .text_size(px(size.font_size))
         .font_weight(gpui_kit::FontWeight(weight::MEDIUM));
     if disabled {
-        b = b.opacity(0.45).cursor_not_allowed();
+        b = b.cursor_not_allowed();
     } else {
         b = b.cursor_pointer();
         match kind {
@@ -187,14 +215,29 @@ pub enum Rbtn {
 }
 
 /// `.rbtn`: height 30, padding 0 13, radius 7, 12.5px weight 550, gap 7.
-pub fn rbtn(id: impl Into<ElementId>, kind: Rbtn, disabled: bool, cx: &App) -> Stateful<Div> {
+pub fn rbtn(
+    id: impl Into<ElementId>,
+    kind: Rbtn,
+    disabled_over: Option<Color>,
+    cx: &App,
+) -> Stateful<Div> {
     let t = tokens(cx);
-    let (bg, border, fg) = match kind {
+    let (mut bg, mut border, mut fg) = match kind {
         Rbtn::Default => (t.pane, t.line, t.text),
         Rbtn::Merge => (t.emerald, t.emerald, crate::color::hex(0x0a0c10)),
         Rbtn::Primary => (t.text, t.text, t.bg),
         Rbtn::Armed => (t.coral, t.coral, crate::color::hex(0x0a0c10)),
     };
+    // `.rbtn.primary:disabled { opacity: .35 }`; other rbtns fade like titlebar buttons.
+    if let Some(back) = disabled_over {
+        let o = if kind == Rbtn::Primary { 0.35 } else { 0.45 };
+        (bg, border, fg) = (
+            faded(bg, bg, o, back),
+            faded(border, bg, o, back),
+            faded(fg, bg, o, back),
+        );
+    }
+    let disabled = disabled_over.is_some();
     let mut b = div()
         .id(id)
         .flex()
@@ -205,14 +248,12 @@ pub fn rbtn(id: impl Into<ElementId>, kind: Rbtn, disabled: bool, cx: &App) -> S
         .px(px(13.))
         .rounded(px(7.))
         .border(px(1.))
-        .border_color(Hsla::from(border))
+        .border_color(border_over(border, bg))
         .bg(bg)
         .text_color(fg)
         .text_size(px(12.5))
         .font_weight(gpui_kit::FontWeight(weight::MEDIUM_PLUS));
-    if disabled {
-        b = b.opacity(if kind == Rbtn::Primary { 0.35 } else { 0.45 });
-    } else {
+    if !disabled {
         b = b.cursor_pointer();
         if kind == Rbtn::Default {
             b = b.hover(|s| s.border_color(Hsla::from(t.line_bright)));
@@ -223,8 +264,20 @@ pub fn rbtn(id: impl Into<ElementId>, kind: Rbtn, disabled: bool, cx: &App) -> S
 
 /// `.nt-go`: the solid primary action (Create, Approve). Text-colored fill, 32px, radius 8,
 /// pushed to the end of its row (`margin-left: auto`).
-pub fn primary_button(id: impl Into<ElementId>, disabled: bool, cx: &App) -> Stateful<Div> {
+pub fn primary_button(
+    id: impl Into<ElementId>,
+    disabled_over: Option<Color>,
+    cx: &App,
+) -> Stateful<Div> {
     let t = tokens(cx);
+    // `.nt-go:disabled { opacity: .35 }`.
+    let (bg, fg) = match disabled_over {
+        Some(back) => (
+            faded(t.text, t.text, 0.35, back),
+            faded(t.bg, t.text, 0.35, back),
+        ),
+        None => (t.text, t.bg),
+    };
     let mut b = div()
         .id(id)
         .ml_auto()
@@ -235,13 +288,11 @@ pub fn primary_button(id: impl Into<ElementId>, disabled: bool, cx: &App) -> Sta
         .h(px(32.))
         .px(px(14.))
         .rounded(px(8.))
-        .bg(t.text)
-        .text_color(t.bg)
+        .bg(bg)
+        .text_color(fg)
         .text_size(px(13.))
         .font_weight(gpui_kit::FontWeight(weight::SEMIBOLD));
-    if disabled {
-        b = b.opacity(0.35);
-    } else {
+    if disabled_over.is_none() {
         // `filter: brightness(1.05)` brightens the fill and the label.
         let (lit, ink) = (t.text.brightness(1.05), t.bg.brightness(1.05));
         b = b.cursor_pointer().hover(move |s| s.bg(lit).text_color(ink));

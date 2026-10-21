@@ -137,7 +137,8 @@ fn calibration(_: &mut Window, cx: &mut App) -> AnyElement {
             .weight(s.weight)
             .tracking(s.tracking)
             .line_height(lh)
-            .nowrap();
+            .nowrap()
+            .exact_height();
         if s.uppercase {
             t = t.uppercase();
         }
@@ -216,17 +217,30 @@ fn kbd_scene(_: &mut Window, cx: &mut App) -> AnyElement {
 fn buttons(_: &mut Window, cx: &mut App) -> AnyElement {
     let b = TbtnSize::BASE;
     let tb = |id: &'static str, kind, label: &'static str, cx: &App| {
-        tbtn(id, kind, b, false, cx).child(button_label(label, b.font_size, weight::MEDIUM))
+        tbtn(id, kind, b, None, cx).child(button_label(label, b.font_size, weight::MEDIUM))
     };
     let tsz = TbtnSize::TITLEBAR;
-    let titlebar = |id: &'static str, kind, label: &'static str, disabled, cx: &App| {
-        tbtn(id, kind, tsz, disabled, cx).child(button_label(label, tsz.font_size, weight::MEDIUM))
+    let back = Theme::of(cx).tokens.bg;
+    let titlebar = |id: &'static str, kind, label: &'static str, disabled: bool, cx: &App| {
+        tbtn(id, kind, tsz, disabled.then_some(back), cx).child(button_label(
+            label,
+            tsz.font_size,
+            weight::MEDIUM,
+        ))
     };
-    let rb = |id: &'static str, kind, label: &'static str, disabled, cx: &App| {
-        rbtn(id, kind, disabled, cx).child(button_label(label, 12.5, weight::MEDIUM_PLUS))
+    let rb = |id: &'static str, kind, label: &'static str, disabled: bool, cx: &App| {
+        rbtn(id, kind, disabled.then_some(back), cx).child(button_label(
+            label,
+            12.5,
+            weight::MEDIUM_PLUS,
+        ))
     };
-    let go = |id: &'static str, disabled, cx: &App| {
-        primary_button(id, disabled, cx).child(button_label("Create", 13., weight::SEMIBOLD))
+    let go = |id: &'static str, disabled: bool, cx: &App| {
+        primary_button(id, disabled.then_some(back), cx).child(button_label(
+            "Create",
+            13.,
+            weight::SEMIBOLD,
+        ))
     };
     let link = |id: &'static str, on, label: &'static str, cx: &App| {
         style::link_button(id, on, cx)
@@ -251,7 +265,7 @@ fn buttons(_: &mut Window, cx: &mut App) -> AnyElement {
                         .child(tb("t5", Tbtn::Danger, "Remove", cx))
                         .child(tb("t6", Tbtn::Armed, "Confirm", cx))
                         .child(
-                            tbtn("t7", Tbtn::Default, b, false, cx)
+                            tbtn("t7", Tbtn::Default, b, None, cx)
                                 .child(icon(IconName::Plus).size(px(13.)))
                                 .child(button_label(
                                     "Create workspace",
@@ -405,11 +419,9 @@ const FILES: [&str; 20] = [
 ];
 
 fn icons_file(_: &mut Window, cx: &mut App) -> AnyElement {
-    let theme = Theme::of(cx);
-    let (light, fg) = (theme.is_light(), theme.tokens.text);
     let cells = FILES
         .iter()
-        .map(|f| file_icon(f, light, fg).into_any_element())
+        .map(|f| file_icon(*f).into_any_element())
         .collect();
     icon_grid(16, cells, cx)
 }

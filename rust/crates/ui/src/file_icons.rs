@@ -6,9 +6,10 @@
 //! and chat chips use: a 14px square, 14px font, centered advance, Blink baseline.
 
 use crate::color::Color;
-use crate::icon::{Icon, svg_markup};
+use crate::icon::raster_icon;
+use crate::theme::Theme;
 use fancy_regex::Regex;
-use gpui_kit::{Styled, px};
+use gpui_kit::{App, IntoElement, RenderOnce, SharedString, Styled, Window, px};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -47,7 +48,7 @@ const FONTS: &[(&str, &[u8])] = &[
 const FALLBACK: (&str, Option<&str>) = ("text-icon", Some("medium-blue"));
 
 /// The class pair `fileIconClass` returns, split: `icon <icon> <color>`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FileIconClass {
     pub icon: String,
     pub color: Option<String>,
@@ -555,13 +556,16 @@ pub fn resolve(class: &FileIconClass) -> Option<(Glyph, Option<Color>)> {
 }
 
 /// SVG markup of a glyph as `.fico` lays it out: a `box`×`box` CSS px square, `box` px font,
-/// line-height `box`, advance centered, baseline placed by Blink's rounding.
-pub fn glyph_svg(glyph: &Glyph, color: Color, boxpx: f32) -> Option<String> {
-    let bytes = font_bytes(&glyph.family)?;
-    let face = ttf_parser::Face::parse(bytes, 0).ok()?;
-    let gid = face.glyph_index(glyph.ch)?;
-    let upem = face.units_per_em() as f32;
-    let k = boxpx / upem;
+/// line-height `box`, advance centered, baseline placed as WebKit places it at `scale`.
+/// Baseline origin of a `.fico` glyph in its `box` square: advance centered, baseline where
+/// WebKit puts it for a `box`px font at line-height `box` (on a whole device pixel).
+fn glyph_origin(
+    face: &ttf_parser::Face<'_>,
+    gid: ttf_parser::GlyphId,
+    boxpx: f32,
+    scale: f32,
+) -> (f32, f32) {
+    let k = boxpx / face.units_per_em() as f32;
     let ascent = face.ascender() as f32 * k;
     let descent = -(face.descender() as f32) * k;
     let m = crate::text::line_metrics(
@@ -572,12 +576,20 @@ pub fn glyph_svg(glyph: &Glyph, color: Color, boxpx: f32) -> Option<String> {
         crate::text::LineHeight::Px(boxpx),
     );
     let advance = face.glyph_hor_advance(gid).unwrap_or(0) as f32 * k;
-    let x0 = (boxpx - advance) / 2.;
+    ((boxpx - advance) / 2., (m.baseline * scale).round() / scale)
+}
+
+/// SVG markup of a `.fico` glyph outline (the non-macOS raster path, and tests).
+pub fn glyph_svg(glyph: &Glyph, color: Color, boxpx: f32, scale: f32) -> Option<String> {
+    let bytes = font_bytes(&glyph.family)?;
+    let face = ttf_parser::Face::parse(bytes, 0).ok()?;
+    let gid = face.glyph_index(glyph.ch)?;
+    let (x0, y0) = glyph_origin(&face, gid, boxpx, scale);
     let mut path = SvgPath {
         d: String::new(),
         x0,
-        y0: m.baseline,
-        k,
+        y0,
+        k: boxpx / face.units_per_em() as f32,
     };
     face.outline_glyph(gid, &mut path)?;
     Some(format!(
@@ -625,15 +637,67 @@ impl ttf_parser::OutlineBuilder for SvgPath {
     }
 }
 
-/// The `.fico` file icon for a file name: 14px, light/dark color slot, falling back to the
-/// inherited text color when the class pair has no color (as the CSS does).
-pub fn file_icon(name: &str, light: bool, fallback: Color) -> Icon {
-    let class = file_icon_class(name, light);
-    let svg = resolve(&class).and_then(|(g, c)| glyph_svg(&g, c.unwrap_or(fallback), 14.));
-    svg_markup(svg.unwrap_or_else(|| {
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 14 14\"/>".into()
-    }))
-    .size(px(14.))
+/// The `.fico` file icon for a file name (`fileIconClass` + the 14px `.fico` box).
+#[derive(IntoElement)]
+pub struct FileIcon {
+    name: SharedString,
+}
+
+/// A file icon in the current theme's color slot. Uncolored classes take the inherited text
+/// color, as the CSS does.
+pub fn file_icon(name: impl Into<SharedString>) -> FileIcon {
+    FileIcon { name: name.into() }
+}
+
+impl RenderOnce for FileIcon {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let light = Theme::of(cx).is_light();
+        let fallback = Color::from_hsla(window.text_style().color);
+        let class = file_icon_class(&self.name, light);
+        let resolved = resolve(&class).map(|(g, c)| (g, c.unwrap_or(fallback)));
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        std::hash::Hash::hash(&(&class, fallback.to_css()), &mut h);
+        let key = std::hash::Hasher::finish(&h);
+        raster_icon(key, move |w, hh, scale| {
+            let (glyph, color) = resolved.as_ref()?;
+            draw_glyph(glyph, *color, 14., w, hh, scale)
+        })
+        .size(px(14.))
+    }
+}
+
+/// Rasterize a `.fico` glyph into a `w`×`h` device-pixel bitmap (premultiplied RGBA).
+fn draw_glyph(
+    glyph: &Glyph,
+    color: Color,
+    boxpx: f32,
+    w: u32,
+    h: u32,
+    scale: f32,
+) -> Option<Vec<u8>> {
+    #[cfg(target_os = "macos")]
+    {
+        let bytes = font_bytes(&glyph.family)?;
+        let face = ttf_parser::Face::parse(bytes, 0).ok()?;
+        let gid = face.glyph_index(glyph.ch)?;
+        let (x0, baseline) = glyph_origin(&face, gid, boxpx, scale);
+        crate::cg_raster::render_glyph(
+            bytes,
+            gid.0,
+            boxpx,
+            (x0, baseline),
+            (color.r, color.g, color.b, color.a),
+            // `.icon:before { -webkit-font-smoothing: antialiased }`.
+            crate::cg_raster::TextSmoothing::Antialiased,
+            w,
+            h,
+            scale,
+        )
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        crate::icon::rasterize(&glyph_svg(glyph, color, boxpx, scale)?, w, h, 0.)
+    }
 }
 
 #[cfg(test)]
@@ -693,6 +757,10 @@ mod tests {
         assert_eq!(g.family, "Octicons Regular");
         assert_eq!(g.ch, '\u{f049}');
         assert!(c.is_some());
-        assert!(glyph_svg(&g, c.unwrap(), 14.).unwrap().contains("<path"));
+        assert!(
+            glyph_svg(&g, c.unwrap(), 14., 2.)
+                .unwrap()
+                .contains("<path")
+        );
     }
 }

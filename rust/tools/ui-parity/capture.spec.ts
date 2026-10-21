@@ -75,7 +75,12 @@ for (const scene of scenes) {
     await installBridge(page, structuredClone(seed))
     await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}`)
     await page.waitForSelector('[data-scene-ready]')
-    await page.evaluate(() => document.fonts.ready)
+    // Faces load on first use; wait until every declared face is in (icon fonts included).
+    await page.evaluate(async () => {
+      await document.fonts.ready
+      await Promise.all([...document.fonts].map((f) => f.load().catch(() => undefined)))
+      await document.fonts.ready
+    })
     for (const step of scene.steps ?? []) await run(page, step)
     // Freeze every animation: finite ones at their end (or at `animationTime`), infinite ones
     // at `animationTime` (default 0). The Rust renderer freezes recur-ui motion the same way.
@@ -86,7 +91,21 @@ for (const scene of scenes) {
         a.currentTime = t ?? (Number.isFinite(end) ? end : 0)
       }
     }, scene.animationTime ?? null)
-    await page.screenshot({ path: join(out, `${scene.name.replaceAll('/', '__')}.png`), caret: 'hide' })
+    const file = scene.name.replaceAll('/', '__')
+    await page.screenshot({ path: join(out, `${file}.png`), caret: 'hide' })
+    // Text boxes (CSS px) for the diff's text mask: every rendered text node's client rects.
+    const textRects = await page.evaluate(() => {
+      const rects: number[][] = []
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.textContent?.trim()) continue
+        const range = document.createRange()
+        range.selectNodeContents(n)
+        for (const r of range.getClientRects()) if (r.width > 0 && r.height > 0) rects.push([r.x, r.y, r.width, r.height])
+      }
+      return rects
+    })
+    writeFileSync(join(out, `${file}.text.json`), JSON.stringify(textRects))
     if (scene.name === 'text/calibration') {
       const metrics = await page.evaluate(() =>
         [...document.querySelectorAll<HTMLElement>('[data-m]')].map((el) => {

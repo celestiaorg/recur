@@ -11,12 +11,17 @@
 //! ```
 
 pub mod assets;
+#[cfg(target_os = "macos")]
+mod cg_raster;
 pub mod color;
+#[cfg(target_os = "macos")]
+mod ct_text;
 pub mod file_icons;
 pub mod font_metrics;
 pub mod fonts;
 #[cfg(feature = "gallery")]
 pub mod gallery;
+mod glyph;
 pub mod icon;
 pub mod icon_name;
 pub mod kbd;

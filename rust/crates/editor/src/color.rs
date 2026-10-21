@@ -157,6 +157,26 @@ fn split_top_level(s: &str) -> Vec<String> {
 
 /// CSS `color-mix` in sRGB: premultiplied interpolation, then scaled by
 /// the weight sum when it is under 100%.
+/// `color-mix(in srgb, a p%, b)` through `recur_ui::Color`.
+pub fn mix(a: Rgba, p: f32, b: Rgba) -> Rgba {
+    ui(a).mix(p, ui(b)).into()
+}
+
+/// `color-mix(in srgb, c p%, transparent)`.
+pub fn wash(c: Rgba, p: f32) -> Rgba {
+    ui(c).fade(p).into()
+}
+
+/// The `recur_ui` color for a GPUI one.
+pub fn ui(c: Rgba) -> recur_ui::Color {
+    recur_ui::Color {
+        r: c.r,
+        g: c.g,
+        b: c.b,
+        a: c.a,
+    }
+}
+
 pub fn mix_srgb(a: Rgba, wa: f32, b: Rgba, wb: f32) -> Rgba {
     let total = wa + wb;
     if total <= 0.0 {

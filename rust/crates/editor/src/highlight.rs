@@ -383,19 +383,23 @@ impl Highlighter {
             }
             PaintSource::ChromePaired { theme_id } => {
                 let parsed = cat.parsed_theme(theme_id);
-                let (bg, source, text) =
-                    parsed
-                        .as_ref()
-                        .map_or(("#1e1e1e".to_string(), None, None), |p| {
-                            (
-                                p.colors
-                                    .get("editor.background")
-                                    .cloned()
-                                    .unwrap_or_else(|| "#1e1e1e".into()),
-                                p.root_backgrounds.source.clone().filter(|s| !s.is_empty()),
-                                p.root_backgrounds.text.clone().filter(|s| !s.is_empty()),
-                            )
-                        });
+                let (bg, source, text) = parsed.as_ref().map_or(
+                    (
+                        crate::theme::CHROME_PAIRED_FALLBACK_BG.to_string(),
+                        None,
+                        None,
+                    ),
+                    |p| {
+                        (
+                            p.colors
+                                .get("editor.background")
+                                .cloned()
+                                .unwrap_or_else(|| crate::theme::CHROME_PAIRED_FALLBACK_BG.into()),
+                            p.root_backgrounds.source.clone().filter(|s| !s.is_empty()),
+                            p.root_backgrounds.text.clone().filter(|s| !s.is_empty()),
+                        )
+                    },
+                );
                 let mut bgs = vec![bg.clone()];
                 bgs.extend(source.clone());
                 bgs.extend(text.clone());

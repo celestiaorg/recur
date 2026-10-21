@@ -5,9 +5,64 @@
 use gpui_kit::Rgba;
 use recur_textmate::{ParsedTmTheme, theme_chrome};
 
-use crate::color::{TRANSPARENT, css, over, parse_css_color, rgba_f};
+use recur_ui::{ThemeId, Tokens};
+
+use crate::color::{TRANSPARENT, css, mix, over, parse_css_color, rgba_f, wash};
 use crate::prefs::EditorPrefs;
-use crate::tokens::AppTokens;
+
+/// A chrome font stack at weight 400 (`recur-ui`'s faces).
+pub fn chrome_font(family: recur_ui::fonts::Family) -> gpui_kit::Font {
+    family.font(400., false, Default::default())
+}
+
+/// `editor.background` when a chrome-paired theme has none (`tm-theme.ts`).
+pub const CHROME_PAIRED_FALLBACK_BG: &str = "#1e1e1e";
+
+/// `.cm-fat-cursor` (vim and emacs block cursor).
+pub fn fat_cursor() -> Rgba {
+    css("#ff9696", TRANSPARENT)
+}
+
+/// `editorChromeExtension`'s diff-line washes in `.diff` / patch views.
+pub fn diff_line_wash(kind: crate::prefs::DiffLineKind) -> Rgba {
+    match kind {
+        crate::prefs::DiffLineKind::Ins => rgba_f(63.0 / 255.0, 185.0 / 255.0, 80.0 / 255.0, 0.14),
+        crate::prefs::DiffLineKind::Del => rgba_f(224.0 / 255.0, 101.0 / 255.0, 95.0 / 255.0, 0.14),
+        crate::prefs::DiffLineKind::Meta => rgba_f(210.0 / 255.0, 168.0 / 255.0, 1.0, 0.10),
+    }
+}
+
+/// `codehl`'s `sh-*` token colors in LSP documentation.
+pub fn doc_code_token(kind: recur_textmate::ShKind) -> Rgba {
+    let c = match kind {
+        recur_textmate::ShKind::Number => "#d19a66",
+        recur_textmate::ShKind::Keyword => "#6cb6ff",
+        recur_textmate::ShKind::String => "#7ee08a",
+        recur_textmate::ShKind::Comment => "#7fa9ad",
+    };
+    css(c, TRANSPARENT)
+}
+
+/// The base theme's `.cm-diagnosticAction` fill and ink.
+pub fn diagnostic_action() -> (Rgba, Rgba) {
+    (css("#444", TRANSPARENT), css("white", TRANSPARENT))
+}
+
+/// The base theme's light `.cm-tooltip-section:not(:first-child)` rule.
+pub fn tooltip_section_border() -> Rgba {
+    css("#bbb", TRANSPARENT)
+}
+
+/// The vim panel's prompt description (`#888`) and message (`red`) ink,
+/// and the input's `FieldText` (form controls stay light-scheme black: the
+/// page sets no `color-scheme`).
+pub fn vim_panel_colors() -> (Rgba, Rgba, Rgba) {
+    (
+        css("#888", TRANSPARENT),
+        css("red", TRANSPARENT),
+        css("black", TRANSPARENT),
+    )
+}
 
 /// Every color the editor paints with.
 #[derive(Clone, Debug, PartialEq)]
@@ -44,7 +99,10 @@ pub struct EditorTheme {
     pub snippet_field: Rgba,
     pub snippet_field_position: Rgba,
     pub ruler: Rgba,
-    pub tokens: AppTokens,
+    /// The app chrome tokens (`recur-ui`).
+    pub tokens: Tokens,
+    /// The app chrome theme is light (`isLightTheme`).
+    pub light: bool,
 }
 
 /// Layout metrics from prefs (`editorChromeExtension`, `.cm-line` padding,
@@ -97,8 +155,10 @@ impl EditorTheme {
     pub fn resolve(
         parsed: Option<&ParsedTmTheme>,
         dark_fallback: bool,
-        tokens: AppTokens,
+        app: ThemeId,
     ) -> EditorTheme {
+        let tokens = app.tokens();
+        let (git_a, git_d): (Rgba, Rgba) = (tokens.git_a.into(), tokens.git_d.into());
         let base_dark = parsed.map_or(dark_fallback, |p| {
             p.ui_theme == recur_textmate::UiTheme::Dark
         });
@@ -130,13 +190,13 @@ impl EditorTheme {
                     css(&ch.gutter_background, bg),
                     css(&ch.line_number, rgba_f(0.5, 0.5, 0.5, 1.0)),
                     css(&ch.gutter_border, TRANSPARENT),
-                    opt(ch.gutter_added.as_ref()).unwrap_or(tokens.git_a),
-                    opt(ch.gutter_deleted.as_ref()).unwrap_or(tokens.git_d),
+                    opt(ch.gutter_added.as_ref()).unwrap_or(git_a),
+                    opt(ch.gutter_deleted.as_ref()).unwrap_or(git_d),
                 )
             }
             None if base_dark => (
                 TRANSPARENT,
-                tokens.text,
+                tokens.text.into(),
                 TRANSPARENT,
                 TRANSPARENT,
                 css("#ddd", TRANSPARENT),
@@ -145,12 +205,12 @@ impl EditorTheme {
                 css("#333338", TRANSPARENT),
                 css("#ccc", TRANSPARENT),
                 TRANSPARENT,
-                tokens.git_a,
-                tokens.git_d,
+                git_a,
+                git_d,
             ),
             None => (
                 TRANSPARENT,
-                tokens.text,
+                tokens.text.into(),
                 TRANSPARENT,
                 TRANSPARENT,
                 css("black", TRANSPARENT),
@@ -159,8 +219,8 @@ impl EditorTheme {
                 css("#f5f5f5", TRANSPARENT),
                 css("#6c6c6c", TRANSPARENT),
                 css("#ddd", TRANSPARENT),
-                tokens.git_a,
-                tokens.git_d,
+                git_a,
+                git_d,
             ),
         };
         let dark = base_dark;
@@ -185,14 +245,14 @@ impl EditorTheme {
             gutter_border,
             gutter_added: added,
             gutter_deleted: deleted,
-            gutter_modified: tokens.git_m,
+            gutter_modified: tokens.git_m.into(),
             selection_match: css("#99ff7780", TRANSPARENT),
             search_match: css(if dark { "#00ffff8a" } else { "#ffff0054" }, TRANSPARENT),
             search_match_selected: css(if dark { "#ff00ff8a" } else { "#ff6a0054" }, TRANSPARENT),
             matching_bracket: css("#328c8252", TRANSPARENT),
             nonmatching_bracket: css("#bb555544", TRANSPARENT),
             special_char: css(if dark { "#f78" } else { "red" }, TRANSPARENT),
-            trailing_space: AppTokens::wash(css("#e07a5f", TRANSPARENT), 0.16),
+            trailing_space: wash(css("#e07a5f", TRANSPARENT), 0.16),
             tab_arrow: css("#88888838", TRANSPARENT),
             fold_placeholder_bg: css("#eee", TRANSPARENT),
             fold_placeholder_border: css("#ddd", TRANSPARENT),
@@ -201,6 +261,7 @@ impl EditorTheme {
             snippet_field_position: css("#888", TRANSPARENT),
             ruler: css("rgba(150, 148, 144, 0.35)", TRANSPARENT),
             tokens,
+            light: app.is_light(),
         }
     }
 
@@ -218,7 +279,7 @@ impl EditorTheme {
     pub fn selection_for(&self, lit: bool) -> Rgba {
         if lit {
             self.selection
-        } else if self.tokens.light {
+        } else if self.light {
             rgba_f(0.0, 0.0, 0.0, 0.1)
         } else {
             rgba_f(1.0, 1.0, 1.0, 0.12)
@@ -229,28 +290,42 @@ impl EditorTheme {
     /// `--line` otherwise.
     pub fn active_gutter_bar(&self, lit: bool) -> Rgba {
         if lit {
-            self.tokens.amber
+            self.tokens.amber.into()
         } else {
-            self.tokens.line
+            self.tokens.line.into()
         }
+    }
+
+    /// `.cm-button`'s gradient stops and border.
+    pub fn stock_button(&self) -> (Rgba, Rgba, Rgba) {
+        let (top, bottom) = if self.dark {
+            ("#393939", "#111")
+        } else {
+            ("#eff1f5", "#d9d9df")
+        };
+        (
+            css(top, TRANSPARENT),
+            css(bottom, TRANSPARENT),
+            css("#888", TRANSPARENT),
+        )
     }
 
     /// Whitespace dot color: `color-mix(currentColor 16%, transparent)`.
     pub fn whitespace_dot(&self, current: Rgba) -> Rgba {
-        AppTokens::wash(current, 0.16)
+        wash(current, 0.16)
     }
 
     /// Merge view washes from the host stylesheet (`MergeEditor.svelte`).
     pub fn merge(&self) -> MergeColors {
-        let t = &self.tokens;
+        let (git_a, git_d): (Rgba, Rgba) = (self.tokens.git_a.into(), self.tokens.git_d.into());
         MergeColors {
-            changed_line: AppTokens::wash(t.git_a, 0.10),
-            changed_line_active: AppTokens::mix(t.git_a, 0.10, self.active_line),
-            deleted_chunk: AppTokens::wash(t.git_d, 0.10),
-            changed_text: AppTokens::wash(t.git_a, 0.12),
-            deleted_text: AppTokens::wash(t.git_d, 0.14),
-            gutter_changed: t.git_a,
-            gutter_deleted: t.git_d,
+            changed_line: wash(git_a, 0.10),
+            changed_line_active: mix(git_a, 0.10, self.active_line),
+            deleted_chunk: wash(git_d, 0.10),
+            changed_text: wash(git_a, 0.12),
+            deleted_text: wash(git_d, 0.14),
+            gutter_changed: git_a,
+            gutter_deleted: git_d,
             collapsed_fg: if self.dark {
                 rgba_f(230.0 / 255.0, 228.0 / 255.0, 225.0 / 255.0, 0.62)
             } else {
@@ -287,14 +362,14 @@ impl EditorTheme {
                 rgba_f(26.0 / 255.0, 28.0 / 255.0, 32.0 / 255.0, 0.94)
             },
             revert_bg: if self.dark {
-                AppTokens::mix(self.source_background, 0.78, rgba_f(1.0, 1.0, 1.0, 1.0))
+                mix(self.source_background, 0.78, rgba_f(1.0, 1.0, 1.0, 1.0))
             } else {
-                AppTokens::mix(self.source_background, 0.86, rgba_f(0.0, 0.0, 0.0, 1.0))
+                mix(self.source_background, 0.86, rgba_f(0.0, 0.0, 0.0, 1.0))
             },
             revert_bg_hover: if self.dark {
-                AppTokens::mix(self.source_background, 0.68, rgba_f(1.0, 1.0, 1.0, 1.0))
+                mix(self.source_background, 0.68, rgba_f(1.0, 1.0, 1.0, 1.0))
             } else {
-                AppTokens::mix(self.source_background, 0.78, rgba_f(0.0, 0.0, 0.0, 1.0))
+                mix(self.source_background, 0.78, rgba_f(0.0, 0.0, 0.0, 1.0))
             },
             revert_border: if self.dark {
                 rgba_f(1.0, 1.0, 1.0, 0.2)
@@ -349,19 +424,19 @@ impl EditorTheme {
     pub fn lint_gutter_color(&self, severity: crate::lint::Severity) -> Rgba {
         use crate::lint::Severity::*;
         match severity {
-            Error => self.tokens.coral,
-            Warning => self.tokens.amber,
-            Info => self.tokens.cyan,
-            Hint => self.tokens.muted,
+            Error => self.tokens.coral.into(),
+            Warning => self.tokens.amber.into(),
+            Info => self.tokens.cyan.into(),
+            Hint => self.tokens.muted.into(),
         }
     }
 
     /// Findings gutter icon colors.
     pub fn finding_color(&self, severity: &str) -> Rgba {
         match crate::gutters::norm_finding_severity(severity) {
-            "critical" | "high" => self.tokens.coral,
-            "medium" => self.tokens.amber,
-            _ => self.tokens.muted,
+            "critical" | "high" => self.tokens.coral.into(),
+            "medium" => self.tokens.amber.into(),
+            _ => self.tokens.muted.into(),
         }
     }
 
@@ -575,7 +650,7 @@ mod tests {
             "tokenColors": []
         });
         let parsed = recur_textmate::parse_theme_value(&json, "t");
-        let t = EditorTheme::resolve(Some(&parsed), true, AppTokens::for_theme("default"));
+        let t = EditorTheme::resolve(Some(&parsed), true, ThemeId::Charcoal);
         assert!(t.dark);
         assert!((t.caret.r - 1.0).abs() < 0.01);
         assert!((t.background.r - 16.0 / 255.0).abs() < 0.01);

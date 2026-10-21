@@ -23,7 +23,6 @@ use crate::keymap::{KeyEvent, Platform};
 use crate::search::{self, SearchFlag};
 use crate::selection::{EditorSelection, SelectionRange};
 use crate::state::{Effect, RangeChange, Transaction, TransactionSpec};
-use crate::tokens::SCROLLBAR_SIZE;
 use crate::view::{EditorEvent, EditorKind, EditorView};
 use crate::view_queries::ViewQueries;
 
@@ -1044,7 +1043,7 @@ impl EditorView {
         let view_h = f.scroller_height;
         let content_h = f.max_scroll_top + view_h;
         if f.max_scroll_top > 0.0
-            && x >= bx + bw - SCROLLBAR_SIZE
+            && x >= bx + bw - crate::element::scrollbar_size()
             && x < bx + bw
             && y >= by
             && y < by + view_h
@@ -1054,7 +1053,7 @@ impl EditorView {
             return Some((true, y >= ty && y < ty + thumb, ty, thumb, by, view_h));
         }
         if f.max_scroll_left > 0.0
-            && y >= by + bh - SCROLLBAR_SIZE
+            && y >= by + bh - crate::element::scrollbar_size()
             && y < by + bh
             && x >= bx
             && x < bx + f.scroller_width
@@ -1626,6 +1625,11 @@ impl EditorView {
             self.gutter_hover = gutter;
             cx.notify();
         }
+        let title = self.title_at(p, window);
+        if title != self.title_seen {
+            self.title_seen = title;
+            cx.notify();
+        }
         if gutter.is_some() || self.scrollbar_hit(p).is_some() {
             return;
         }
@@ -1634,6 +1638,9 @@ impl EditorView {
 
     fn mouse_left(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.hover_task = None;
+        if self.title_seen.take().is_some() {
+            cx.notify();
+        }
         if self.gutter_hover.take().is_some() {
             cx.notify();
         }

@@ -9,18 +9,20 @@ use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, Bounds, BoxShadow, Context, Div, FontWeight, Hsla, InteractiveElement,
-    IntoElement, MouseButton, ParentElement, Pixels, Rgba, ScrollWheelEvent, SharedString, Size,
-    StatefulInteractiveElement, Styled, StyledText, TextRun, Window, anchored, deferred, div,
-    point, px, size,
+    AnyElement, App, Bounds, Context, Div, Hsla, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, Pixels, ScrollWheelEvent, SharedString, Size, StatefulInteractiveElement,
+    Styled, Window, deferred, div, point, px, size,
 };
+use recur_ui::shadow::{css_box_shadow, with_shadow};
+use recur_ui::style::anchored_at;
+use recur_ui::text::Align;
+use recur_ui::{Text, TextStyled, Theme, Tokens, rgba, span, text};
 
 use crate::autocomplete::{CompletionDialog, CompletionOption, range_around_selected};
 use crate::lint::Diagnostic;
 use crate::lsp::{HoverInfo, HoverPart};
 use crate::markdown::{DocStyle, render_code, render_doc};
 use crate::state::{EditorState, Transaction};
-use crate::tokens::{AppTokens, mono_font, ui_font, with_font};
 use crate::view::EditorView;
 
 /// `maxRenderedOptions`.
@@ -30,8 +32,12 @@ const OPTION_HEIGHT: f32 = 26.0;
 /// `Info.Width` / `Info.Margin`.
 const INFO_WIDTH: f32 = 400.0;
 const INFO_MARGIN: f32 = 30.0;
+/// The completion list's font size (`ul { font-size: 12.5px }`).
+const LIST_FONT: f32 = 12.5;
+/// The editor's inherited `line-height` (`body`).
+const BODY_LEADING: f32 = 1.45;
 
-fn h(c: Rgba) -> Hsla {
+fn h(c: impl Into<Hsla>) -> Hsla {
     c.into()
 }
 
@@ -210,20 +216,24 @@ fn place(
     Some((left, y, above, clamp))
 }
 
-fn card(t: &AppTokens) -> Div {
-    div()
-        .bg(h(t.pane))
-        .text_color(h(t.text))
-        .border_1()
-        .border_color(h(t.line_bright))
-        .rounded(px(8.))
-        .shadow(vec![BoxShadow {
-            color: gpui_kit::hsla(0., 0., 0., if t.light { 0.12 } else { 0.45 }),
-            offset: point(px(0.), px(12.)),
-            blur_radius: px(if t.light { 28. } else { 32. }),
-            spread_radius: px(0.),
-            inset: false,
-        }])
+/// `.cm-tooltip`: pane card, `--line-bright` border, radius 8, and its
+/// shadow (lighter on light app themes).
+fn card(theme: &Theme) -> Div {
+    let t = &theme.tokens;
+    recur_ui::style::card(t.pane, t.line_bright, 8.).text_color(h(t.text))
+}
+
+fn tooltip_shadow(theme: &Theme) -> [recur_ui::shadow::CssShadow; 1] {
+    if theme.is_light() {
+        [css_box_shadow(0., 12., 28., 0., rgba(0, 0, 0, 0.12))]
+    } else {
+        [css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))]
+    }
+}
+
+/// A card with its shadow behind it.
+fn shadowed(theme: &Theme, body: impl IntoElement) -> Div {
+    with_shadow(body, &tooltip_shadow(theme), 8.)
 }
 
 /// `.cm-completionIcon-*:after` letters.
@@ -325,11 +335,11 @@ impl EditorView {
         };
         let Some(sz) = known else {
             // First frame: lay out off-screen to measure, like `Outside`.
-            let el = deferred(
-                anchored()
-                    .position(point(px(-10000.), px(-10000.)))
-                    .child(div().on_children_prepainted(measure).child(body)),
-            );
+            let el = deferred(anchored_at(
+                -10000.,
+                -10000.,
+                div().on_children_prepainted(measure).child(body),
+            ));
             return Some((el.into_any_element(), Bounds::default()));
         };
         let prev_above = self.tooltips.above.get(key).copied().unwrap_or(above_pref);
@@ -339,8 +349,7 @@ impl EditorView {
             .on_children_prepainted(measure)
             .when_some(clamp, |d, c| d.max_h(px(c)))
             .child(body);
-        let el =
-            deferred(anchored().position(point(px(left), px(top))).child(wrapper)).with_priority(1);
+        let el = deferred(anchored_at(left, top, wrapper)).with_priority(1);
         Some((
             el.into_any_element(),
             Bounds::new(point(px(left), px(top)), sz),
@@ -355,12 +364,10 @@ impl EditorView {
     ) -> Vec<AnyElement> {
         let mut out = Vec::new();
         let focused = self.focus.is_focused(window);
-        let mut placed: Vec<Bounds<Pixels>> = Vec::new();
         if let Some(open) = self.state.completion.open.clone()
             && focused
-            && let Some((el, b)) = self.render_completion(&open, window, cx)
+            && let Some(el) = self.render_completion(&open, window, cx)
         {
-            placed.push(b);
             out.extend(el);
         }
         if let Some(el) = self.render_hover(window, cx) {
@@ -369,7 +376,6 @@ impl EditorView {
         if let Some(el) = self.render_signature(window, cx) {
             out.push(el);
         }
-        let _ = placed;
         out
     }
 
@@ -378,13 +384,16 @@ impl EditorView {
         open: &Rc<CompletionDialog>,
         window: &Window,
         cx: &mut Context<Self>,
-    ) -> Option<(Vec<AnyElement>, Bounds<Pixels>)> {
-        let t = self.theme.tokens;
+    ) -> Option<Vec<AnyElement>> {
+        let theme = Theme::of(cx).clone();
+        let t = theme.tokens;
         let anchor = self.pos_coords(open.pos, 1, window)?;
         let range = range_around_selected(open.options.len(), open.selected, MAX_RENDERED_OPTIONS);
         let vh = f32::from(window.viewport_size().height);
-        let list_max = (16.0 * 12.5f32).min(0.4 * vh);
-        let marker_h = 4.0 + 4.0 + 12.5 * 1.3;
+        let list_max = (16.0 * LIST_FONT).min(0.4 * vh);
+        // `:before` / `:after` "···": a block line at the inherited 1.45,
+        // padded 4px above and below.
+        let marker_h = 4.0 + 4.0 + LIST_FONT * BODY_LEADING;
         let top_marker = if range.0 > 0 { marker_h } else { 0.0 };
         let bottom_marker = if range.1 < open.options.len() {
             marker_h
@@ -401,19 +410,20 @@ impl EditorView {
             .clamp(0.0, (content_h - list_h).max(0.0));
         let scroll = self.tooltips.list_scroll;
         let ent = cx.entity();
-        let mono = mono_font();
-        let marker = |t: &AppTokens| {
-            div()
-                .w_full()
-                .flex()
-                .justify_center()
-                .py(px(4.))
-                .text_color(h(t.faint))
-                .child("···")
+        let marker = || {
+            div().w_full().py(px(4.)).child(
+                text("···")
+                    .mono()
+                    .size(LIST_FONT)
+                    .leading(BODY_LEADING)
+                    .color(h(t.faint))
+                    .align(Align::Center)
+                    .nowrap(),
+            )
         };
         let mut items = div().flex().flex_col().relative().top(px(-scroll));
         if range.0 > 0 {
-            items = items.child(marker(&t));
+            items = items.child(marker());
         }
         for i in range.0..range.1 {
             let option = &open.options[i];
@@ -428,10 +438,10 @@ impl EditorView {
             );
         }
         if range.1 < open.options.len() {
-            items = items.child(marker(&t));
+            items = items.child(marker());
         }
         let ent2 = cx.entity();
-        let list = with_font(div(), &mono)
+        let list = div()
             .id("cm-completion-list")
             .min_w(px(220.))
             .max_w(px(
@@ -439,8 +449,6 @@ impl EditorView {
             ))
             .h(px(list_h))
             .overflow_hidden()
-            .text_size(px(12.5))
-            .whitespace_nowrap()
             .on_scroll_wheel(move |e: &ScrollWheelEvent, _, cx| {
                 cx.stop_propagation();
                 let d = f32::from(e.delta.pixel_delta(px(OPTION_HEIGHT)).y);
@@ -451,10 +459,13 @@ impl EditorView {
                 });
             })
             .child(items);
-        let body = card(&t)
-            .p(px(4.))
-            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .child(list);
+        let body = shadowed(
+            &theme,
+            card(&theme)
+                .p(px(4.))
+                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .child(list),
+        );
         let (el, bounds) = self.positioned("completion", anchor, false, body, window, cx)?;
         let mut els = vec![el];
         if let Some(sel) = open.selected
@@ -476,68 +487,60 @@ impl EditorView {
                 els.push(info_el);
             }
         }
-        Some((els, bounds))
+        Some(els)
     }
 
     fn option_row(
         &self,
-        _i: usize,
+        i: usize,
         option: &CompletionOption,
         selected: bool,
         disabled: bool,
-        t: &AppTokens,
+        t: &Tokens,
     ) -> gpui_kit::Stateful<Div> {
         let c = &option.completion;
         let label = c.display_label.clone().unwrap_or_else(|| c.label.clone());
-        let mono = mono_font();
-        let mut runs = Vec::new();
+        let mut spans = Vec::new();
         let mut off = 0;
-        let base_color = if selected && disabled {
-            h(t.muted)
-        } else {
-            h(t.text)
-        };
-        let run = |len: usize, matched: bool| {
-            let mut font = mono.clone();
+        let piece = |from: usize, to: usize, matched: bool| {
+            let sp = span(label[from..to].to_string());
             if matched {
-                font.weight = FontWeight::SEMIBOLD;
-            }
-            TextRun {
-                len,
-                font,
-                color: if matched { h(t.amber) } else { base_color },
-                background_color: None,
-                underline: None,
-                strikethrough: None,
+                sp.color(h(t.amber)).weight(600.)
+            } else {
+                sp
             }
         };
         for &(from, to) in &option.matched {
             let (from, to) = (from.min(label.len()), to.min(label.len()));
             if from > off {
-                runs.push(run(from - off, false));
+                spans.push(piece(off, from, false));
             }
-            if to > from {
-                runs.push(run(to - from, true));
+            if to > from.max(off) {
+                spans.push(piece(from.max(off), to, true));
             }
             off = to.max(off);
         }
         if off < label.len() {
-            runs.push(run(label.len() - off, false));
+            spans.push(piece(off, label.len(), false));
         }
-        let pressed = selected;
+        let ink = if selected && disabled {
+            t.muted
+        } else {
+            t.text
+        };
+        let icon_on = selected && !disabled;
         let row = div()
-            .id(SharedString::from(format!("cm-completion-{}", _i)))
+            .id(SharedString::from(format!("cm-completion-{i}")))
             .flex()
             .items_center()
             .min_h(px(OPTION_HEIGHT))
             .px(px(8.))
             .py(px(3.))
             .rounded(px(5.))
-            .line_height(gpui_kit::relative(1.3))
-            .when(pressed, |d| d.bg(h(t.pane_2)))
+            .when(selected, |d| d.bg(h(t.pane_2)))
             .hover(|s| s.bg(h(t.pane_2)))
             .child(
-                with_font(div(), &mono)
+                div()
                     .flex()
                     .flex_none()
                     .items_center()
@@ -545,29 +548,35 @@ impl EditorView {
                     .size(px(20.))
                     .mr(px(8.))
                     .rounded(px(5.))
-                    .bg(h(if pressed && !disabled {
-                        t.amber_d
-                    } else {
-                        t.pane_2
-                    }))
-                    .text_color(h(if pressed && !disabled {
-                        t.amber
-                    } else {
-                        t.muted
-                    }))
-                    .text_size(px(9.))
-                    .font_weight(FontWeight::BOLD)
-                    .child(icon_letters(c.kind.as_deref())),
+                    .bg(h(if icon_on { t.amber_d } else { t.pane_2 }))
+                    .child(
+                        text(icon_letters(c.kind.as_deref()))
+                            .mono()
+                            .size(9.)
+                            .weight(700.)
+                            .leading(1.3)
+                            .color(h(if icon_on { t.amber } else { t.muted }))
+                            .nowrap(),
+                    ),
             )
-            .child(StyledText::new(SharedString::from(label)).with_runs(runs));
+            .child(
+                Text::from_spans(spans)
+                    .mono()
+                    .size(LIST_FONT)
+                    .leading(1.3)
+                    .color(h(ink))
+                    .nowrap(),
+            );
         match c.detail.clone() {
             Some(detail) => row.child(
-                with_font(div(), &ui_font())
-                    .ml_auto()
-                    .pl(px(10.))
-                    .text_size(px(10.5))
-                    .text_color(h(t.faint))
-                    .child(detail),
+                div().ml_auto().pl(px(10.)).child(
+                    text(detail)
+                        .ui()
+                        .size(10.5)
+                        .leading(1.3)
+                        .color(h(t.faint))
+                        .nowrap(),
+                ),
             ),
             None => row,
         }
@@ -585,7 +594,8 @@ impl EditorView {
         });
     }
 
-    /// The info pane beside the list (`defaultPositionInfo`).
+    /// The info pane beside the list (`defaultPositionInfo`): an LSP
+    /// `.cm-lsp-completion-documentation` box in `.cm-completionInfo`.
     fn render_info(
         &mut self,
         info: &crate::autocomplete::Doc,
@@ -594,7 +604,7 @@ impl EditorView {
         window: &Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
-        let t = self.theme.tokens;
+        let theme = Theme::of(cx).clone();
         let space = self.tooltip_space(window);
         let (ll, lt) = (f32::from(list.origin.x), f32::from(list.origin.y));
         let (lr, lb) = (
@@ -627,14 +637,17 @@ impl EditorView {
             };
             (ll + INFO_MARGIN, y, max_w)
         };
-        let style = DocStyle::from_tokens(&t, 12.0);
-        let body = card(&t)
-            .max_w(px(max_w))
-            .py(px(8.))
-            .px(px(10.))
-            .text_color(h(t.muted))
-            .text_size(px(12.))
-            .child(with_font(div(), &ui_font()).child(render_doc(info, &style)));
+        let mut style = DocStyle::from_theme(&theme, 12.5);
+        style.pre_line = true;
+        let body = shadowed(
+            &theme,
+            card(&theme).max_w(px(max_w)).py(px(8.)).px(px(10.)).child(
+                div()
+                    .py(px(10.))
+                    .px(px(12.))
+                    .child(render_doc(info, &style)),
+            ),
+        );
         let sizes = self.tooltips.sizes.clone();
         let ent = cx.entity();
         let measure = move |bounds: Vec<Bounds<Pixels>>, _: &mut Window, cx: &mut App| {
@@ -644,11 +657,11 @@ impl EditorView {
             }
         };
         Some(
-            deferred(
-                anchored()
-                    .position(point(px(x), px(y)))
-                    .child(div().on_children_prepainted(measure).child(body)),
-            )
+            deferred(anchored_at(
+                x,
+                y,
+                div().on_children_prepainted(measure).child(body),
+            ))
             .with_priority(2)
             .into_any_element(),
         )
@@ -666,7 +679,8 @@ impl EditorView {
         let first = sections.first()?.clone();
         let pos = sections.iter().map(|s| s.pos).min().unwrap_or(first.pos);
         let anchor = self.pos_coords(pos, 1, window)?;
-        let t = self.theme.tokens;
+        let theme = Theme::of(cx).clone();
+        let t = theme.tokens;
         let base_size = if self.lsp.is_some() {
             13.0
         } else {
@@ -674,30 +688,24 @@ impl EditorView {
         };
         let vw = f32::from(window.viewport_size().width);
         let vh = f32::from(window.viewport_size().height);
-        let mut host = with_font(card(&t), &ui_font())
+        let mut host = card(&theme)
             .id("cm-tooltip-hover")
             .flex()
             .flex_col()
-            .text_size(px(base_size))
-            .line_height(gpui_kit::relative(1.45))
             .min_w(px(352.0f32.min(vw - 48.0)))
             .max_w(px(640.0f32.min(vw - 48.0)))
             .max_h(px(352.0f32.min(0.45 * vh)))
             .overflow_y_scroll();
+        let (action_bg, action_fg) = crate::theme::diagnostic_action();
         for (i, s) in sections.iter().enumerate() {
             let sep = i > 0 && !self.theme.dark;
             let body: AnyElement = match &s.body {
                 HoverBody::Lsp(parts) => {
-                    let style = DocStyle::from_tokens(&t, 12.5);
-                    let mut d = with_font(div(), &ui_font())
-                        .py(px(10.))
-                        .px(px(12.))
-                        .text_size(px(12.5))
-                        .line_height(gpui_kit::relative(1.45))
-                        .text_color(h(t.text));
+                    let style = DocStyle::from_theme(&theme, 12.5);
+                    let mut d = div().py(px(10.)).px(px(12.)).flex().flex_col();
                     for (k, part) in parts.iter().enumerate() {
                         if k > 0 {
-                            d = d.child(div().h(px(12.5 * 1.45)));
+                            d = d.child(div().flex_none().h(px(12.5 * BODY_LEADING)));
                         }
                         d = d.child(match part {
                             HoverPart::Doc(doc) => render_doc(doc, &style),
@@ -711,6 +719,32 @@ impl EditorView {
                 HoverBody::Lint(diags) => {
                     let mut ul = div().flex().flex_col();
                     for d in diags {
+                        let mut line = div().flex().flex_wrap().items_baseline().child(
+                            text(d.message.clone())
+                                .ui()
+                                .size(base_size)
+                                .leading(BODY_LEADING)
+                                .color(h(t.text))
+                                .pre_wrap(),
+                        );
+                        for a in &d.actions {
+                            line = line.child(
+                                div()
+                                    .ml(px(8.))
+                                    .px(px(4.))
+                                    .py(px(2.))
+                                    .rounded(px(3.))
+                                    .bg(h(action_bg))
+                                    .child(
+                                        text(a.name.clone())
+                                            .ui()
+                                            .size(base_size)
+                                            .leading(BODY_LEADING)
+                                            .color(h(action_fg))
+                                            .nowrap(),
+                                    ),
+                            );
+                        }
                         let mut li = div()
                             .ml(px(-1.))
                             .pt(px(3.))
@@ -719,23 +753,15 @@ impl EditorView {
                             .pl(px(8.))
                             .border_l(px(5.))
                             .border_color(h(self.theme.diagnostic_border(d.severity)))
-                            .whitespace_normal()
-                            .child(d.message.clone());
-                        for a in &d.actions {
-                            li = li.child(
-                                div()
-                                    .ml(px(8.))
-                                    .px(px(4.))
-                                    .py(px(2.))
-                                    .rounded(px(3.))
-                                    .bg(gpui_kit::rgb(0x444444))
-                                    .text_color(gpui_kit::white())
-                                    .child(a.name.clone()),
-                            );
-                        }
+                            .child(line);
                         if let Some(src) = d.source.clone() {
                             li = li.child(
-                                div().text_size(px(base_size * 0.7)).opacity(0.7).child(src),
+                                text(src)
+                                    .ui()
+                                    .size(base_size * 0.7)
+                                    .leading(BODY_LEADING)
+                                    .color(h(t.text))
+                                    .opacity(0.7),
                             );
                         }
                         ul = ul.child(li);
@@ -746,7 +772,8 @@ impl EditorView {
             host = host.child(
                 div()
                     .when(sep, |d| {
-                        d.border_t_1().border_color(gpui_kit::rgb(0xbbbbbb))
+                        d.border_t_1()
+                            .border_color(h(crate::theme::tooltip_section_border()))
                     })
                     .child(body),
             );
@@ -761,78 +788,67 @@ impl EditorView {
                 }
             })
         });
-        let body = div().child(host);
+        let body = shadowed(&theme, host);
         self.positioned("hover", anchor, first.above, body, window, cx)
             .map(|(e, _)| e)
     }
 
     /// The signature help tooltip (`drawSignatureTooltip`).
+    /// simplify: `.cm-lsp-signature`'s `text-indent: 1em hanging` is not
+    /// applied (recur-ui text has no text-indent); wrapped signature lines
+    /// start flush.
     fn render_signature(&mut self, window: &Window, cx: &mut Context<Self>) -> Option<AnyElement> {
         let sig = self.lsp.as_ref()?.signature.clone()?;
         let view = sig.view()?;
         let anchor = self.pos_coords(sig.pos, 1, window)?;
-        let t = self.theme.tokens;
+        let theme = Theme::of(cx).clone();
+        let t = theme.tokens;
         let vw = f32::from(window.viewport_size().width);
         let vh = f32::from(window.viewport_size().height);
-        let mono = mono_font();
-        let mut runs = Vec::new();
-        let plain = |len: usize| TextRun {
-            len,
-            font: mono.clone(),
-            color: h(t.text),
-            background_color: None,
-            underline: None,
-            strikethrough: None,
+        let label = view.label.clone();
+        let spans = match view.active_param {
+            Some((f, to)) => vec![
+                span(label[..f].to_string()),
+                span(label[f..to].to_string())
+                    .color(h(t.amber))
+                    .weight(700.),
+                span(label[to..].to_string()),
+            ],
+            None => vec![span(label)],
         };
-        match view.active_param {
-            Some((f, to)) => {
-                if f > 0 {
-                    runs.push(plain(f));
-                }
-                let mut font = mono.clone();
-                font.weight = FontWeight::BOLD;
-                runs.push(TextRun {
-                    len: to - f,
-                    font,
-                    color: h(t.amber),
-                    ..plain(0)
-                });
-                if to < view.label.len() {
-                    runs.push(plain(view.label.len() - to));
-                }
-            }
-            None => runs.push(plain(view.label.len())),
-        }
-        let style = DocStyle::from_tokens(&t, 10.0);
-        let mut body = with_font(card(&t), &ui_font())
+        let style = DocStyle::from_theme(&theme, 10.0);
+        let mut body = card(&theme)
             .id("cm-lsp-signature")
             .relative()
             .py(px(10.))
             .px(px(12.))
-            .text_size(px(12.5))
-            .line_height(gpui_kit::relative(1.45))
             .max_w(px(576.0f32.min(0.7 * vw)))
             .max_h(px(224.0f32.min(0.4 * vh)))
             .overflow_y_scroll();
         if let Some(counter) = view.counter.clone() {
             body = body.child(
-                with_font(div(), &mono)
-                    .absolute()
-                    .left(px(2.))
-                    .top(px(4.))
-                    .text_size(px(12.5 * 0.7))
-                    .line_height(gpui_kit::relative(1.3))
-                    .child(counter),
+                div().absolute().left(px(2.)).top(px(4.)).child(
+                    text(counter)
+                        .family(crate::vim::prompt::generic_monospace())
+                        .size(12.5 * 0.7)
+                        .leading(1.3)
+                        .color(h(t.text))
+                        .nowrap(),
+                ),
             );
         }
         body = body.child(
-            with_font(div(), &mono)
-                .child(StyledText::new(SharedString::from(view.label.clone())).with_runs(runs)),
+            Text::from_spans(spans)
+                .mono()
+                .size(12.5)
+                .leading(BODY_LEADING)
+                .color(h(t.text)),
         );
         if let Some(doc) = view.doc.as_ref() {
-            body = body.child(div().text_size(px(10.)).child(render_doc(doc, &style)));
+            body = body.child(render_doc(doc, &style));
         }
-        self.positioned("signature", anchor, true, div().child(body), window, cx)
+        let body = shadowed(&theme, body);
+        self.positioned("signature", anchor, true, body, window, cx)
             .map(|(e, _)| e)
     }
 

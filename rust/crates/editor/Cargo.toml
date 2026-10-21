@@ -12,6 +12,7 @@ chrono.workspace = true
 futures.workspace = true
 gpui-kit.workspace = true
 recur-textmate.workspace = true
+recur-ui.workspace = true
 ropey.workspace = true
 serde.workspace = true
 serde_json.workspace = true

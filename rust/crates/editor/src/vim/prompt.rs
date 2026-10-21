@@ -8,16 +8,18 @@ use std::time::Duration;
 
 use gpui_kit::base::input::{Input, InputEditorStyle, InputEvent, InputState, Position};
 use gpui_kit::{
-    AnyElement, AppContext, Context, Entity, Focusable, FontWeight, Hsla, InteractiveElement,
-    IntoElement, Keystroke, MouseButton, ParentElement, Rgba, StatefulInteractiveElement, Styled,
-    Subscription, Window, div, px, relative,
+    AnyElement, AppContext, Context, Entity, Focusable, Hsla, InteractiveElement, IntoElement,
+    Keystroke, MouseButton, ParentElement, StatefulInteractiveElement, Styled, Subscription,
+    Window, div, px,
 };
+use recur_ui::fonts::Family;
+use recur_ui::text::WhiteSpace;
+use recur_ui::{Text, TextStyled, Theme, span, text};
 
 use super::cm::{Cm, ScrollInfo};
 use super::search::VimRegex;
 use super::state::{OptValue, with_global};
 use crate::keymap::KeyEvent;
-use crate::tokens::{generic_mono_font, with_font};
 use crate::view::EditorView;
 
 /// The prompt's prefix.
@@ -275,7 +277,7 @@ pub(crate) fn show_prompt(cm: &mut Cm, mut opts: PromptOptions) {
     }
     let id = next_id();
     let value = opts.value.clone().filter(|v| !v.is_empty());
-    let style = input_style(cm.view.theme.tokens.pane);
+    let style = input_style(cm.cx);
     let input = {
         let window = &mut *cm.window;
         cm.cx.new(|cx| {
@@ -343,33 +345,16 @@ pub(crate) fn show_prompt(cm: &mut Cm, mut opts: PromptOptions) {
 
 /// The input's UA look: `FieldText` ink (Recur sets no `color-scheme`, so
 /// form controls stay light-scheme black) on the panel's background.
-fn input_style(pane: Rgba) -> InputEditorStyle {
-    let black: Hsla = Rgba {
-        r: 0.,
-        g: 0.,
-        b: 0.,
-        a: 1.,
-    }
-    .into();
+fn input_style(cx: &gpui_kit::App) -> InputEditorStyle {
+    let (_, _, field) = crate::theme::vim_panel_colors();
+    let field: Hsla = field.into();
     InputEditorStyle {
-        foreground: black,
-        muted_foreground: black,
-        background: pane.into(),
-        border: Rgba {
-            r: 0.,
-            g: 0.,
-            b: 0.,
-            a: 0.,
-        }
-        .into(),
-        selection: Rgba {
-            r: 0.702,
-            g: 0.843,
-            b: 1.,
-            a: 1.,
-        }
-        .into(),
-        caret: black,
+        foreground: field,
+        muted_foreground: field,
+        background: Theme::of(cx).tokens.pane.into(),
+        border: Hsla::transparent_black(),
+        selection: Theme::of(cx).tokens.amber.fade(0.3).into(),
+        caret: field,
         ..InputEditorStyle::default()
     }
 }
@@ -377,8 +362,17 @@ fn input_style(pane: Rgba) -> InputEditorStyle {
 /// Restyle an open prompt after a theme change.
 pub(crate) fn restyle(view: &EditorView, cx: &mut Context<EditorView>) {
     if let Some(Dialog::Prompt { input, .. }) = view.vim.as_ref().and_then(|v| v.dialog.as_ref()) {
-        let style = input_style(view.theme.tokens.pane);
+        let style = input_style(cx);
         input.update(cx, |s, _| s.set_editor_style(style));
+    }
+}
+
+/// CSS `monospace` as WebKit resolves it (the default fixed font).
+pub(crate) fn generic_monospace() -> Family {
+    if cfg!(target_os = "macos") {
+        Family::Stack("Courier".into(), vec!["monospace".into()])
+    } else {
+        Family::Stack("DejaVu Sans Mono".into(), vec!["monospace".into()])
     }
 }
 
@@ -678,6 +672,11 @@ pub(crate) fn send_key_to_prompt(cm: &mut Cm, key: &str) {
     }
 }
 
+/// The body line height the panel inherits.
+const PANEL_LEADING: f32 = 1.45;
+/// The prompt `<input>`'s UA font size (`-webkit-small-control`).
+const INPUT_FONT: f32 = 11.;
+
 /// The pcre label (`pcreLabel`).
 fn pcre_label() -> &'static str {
     if with_global(|g| g.pcre()) {
@@ -735,19 +734,15 @@ fn expand_tabs(text: &str) -> String {
     out
 }
 
-/// The bottom panel (`.cm-panels-bottom > .cm-vim-panel`).
+/// The bottom panel (`.cm-panels-bottom > .cm-vim-panel`): `monospace`
+/// at the editor's font size, `min-height: 1.3em`, padding 0 10px.
 pub(crate) fn render_panel(view: &EditorView, cx: &mut Context<EditorView>) -> Option<AnyElement> {
     let dialog = view.vim.as_ref()?.dialog.as_ref()?;
-    let t = view.theme.tokens;
-    let h = |c: Rgba| -> Hsla { c.into() };
+    let t = Theme::of(cx).tokens;
     let fs = view.metrics.font_size;
-    let red: Hsla = Rgba {
-        r: 1.,
-        g: 0.,
-        b: 0.,
-        a: 1.,
-    }
-    .into();
+    let (desc_ink, message_ink, _) = crate::theme::vim_panel_colors();
+    let mono = generic_monospace();
+    let line = |s: String| text(s).family(mono.clone()).size(fs).leading(PANEL_LEADING);
     let content: AnyElement = match dialog {
         Dialog::Prompt {
             id,
@@ -758,23 +753,31 @@ pub(crate) fn render_panel(view: &EditorView, cx: &mut Context<EditorView>) -> O
         } => {
             let id = *id;
             let prefix_el: AnyElement = match prefix {
-                Prefix::Text(s) => div().flex_none().child(s.clone()).into_any_element(),
-                Prefix::Replace(with) => div()
-                    .flex()
-                    .flex_none()
-                    .child("replace with ")
-                    .child(div().font_weight(FontWeight::BOLD).child(with.clone()))
-                    .child(" (y/n/a/q/l)")
+                Prefix::Text(s) => line(s.clone())
+                    .white_space(WhiteSpace::PreWrap)
                     .into_any_element(),
+                Prefix::Replace(with) => Text::from_spans(vec![
+                    span("replace with "),
+                    span(with.clone()).weight(700.),
+                    span(" (y/n/a/q/l)"),
+                ])
+                .family(mono.clone())
+                .size(fs)
+                .leading(PANEL_LEADING)
+                .white_space(WhiteSpace::PreWrap)
+                .into_any_element(),
             };
-            let field = with_font(div(), &generic_mono_font())
+            let (field_family, field_size) = (
+                mono.font(400., false, Default::default()).family,
+                INPUT_FONT,
+            );
+            let field = div()
                 .flex()
                 .flex_1()
                 .items_center()
                 .min_w(px(0.))
-                .text_size(px(11.))
-                .line_height(relative(1.15))
-                .text_color(Hsla::black())
+                .font_family(field_family)
+                .text_size(px(field_size))
                 .child(Input::new(input));
             let ent = cx.entity();
             let mut row = div()
@@ -789,8 +792,7 @@ pub(crate) fn render_panel(view: &EditorView, cx: &mut Context<EditorView>) -> O
                     div()
                         .flex()
                         .flex_1()
-                        .whitespace_nowrap()
-                        .child(prefix_el)
+                        .child(div().flex_none().child(prefix_el))
                         .child(field),
                 );
             if let Some(Desc::Pcre) = desc {
@@ -798,33 +800,34 @@ pub(crate) fn render_panel(view: &EditorView, cx: &mut Context<EditorView>) -> O
                     div()
                         .id(("vim-pcre", id as usize))
                         .flex_none()
-                        .text_color(h(Rgba {
-                            r: 0x88 as f32 / 255.,
-                            g: 0x88 as f32 / 255.,
-                            b: 0x88 as f32 / 255.,
-                            a: 1.,
-                        }))
                         .cursor_pointer()
                         .on_mouse_down(MouseButton::Left, move |_, window, cx| {
                             window.prevent_default();
                             ent.update(cx, |v, cx| toggle_pcre(v, id, window, cx));
                         })
-                        .child(pcre_label()),
+                        .child(
+                            line(pcre_label().into())
+                                .color(Hsla::from(desc_ink))
+                                .nowrap(),
+                        ),
                 );
             }
             row.into_any_element()
         }
-        Dialog::Notification { id, text, long } => {
+        Dialog::Notification {
+            id,
+            text: msg,
+            long,
+        } => {
             let id = *id;
             let ent = cx.entity();
-            let msg = div()
-                .text_color(red)
-                .whitespace_nowrap()
-                .child(expand_tabs(text));
+            let msg = line(expand_tabs(msg))
+                .color(Hsla::from(message_ink))
+                .white_space(WhiteSpace::PreWrap);
             let body = if *long {
                 div()
                     .child(msg)
-                    .child(div().child("Press ENTER or type command to continue"))
+                    .child(line("Press ENTER or type command to continue".into()))
             } else {
                 div().child(msg)
             };
@@ -837,23 +840,21 @@ pub(crate) fn render_panel(view: &EditorView, cx: &mut Context<EditorView>) -> O
                 })
                 .into_any_element()
         }
-        Dialog::Message { text, .. } => div().child(text.clone()).into_any_element(),
+        Dialog::Message { text: msg, .. } => line(msg.clone()).into_any_element(),
     };
-    let panel = with_font(div(), &generic_mono_font())
+    let panel = div()
         .flex()
         .min_h(px(fs * 1.3))
         .px(px(10.))
-        .text_size(px(fs))
-        .line_height(relative(1.45))
         .child(div().flex().flex_1().child(content));
     Some(
         div()
             .flex_none()
             .w_full()
             .border_t_1()
-            .border_color(h(t.line))
-            .bg(h(t.pane))
-            .text_color(h(t.text))
+            .border_color(Hsla::from(t.line))
+            .bg(Hsla::from(t.pane))
+            .text_color(Hsla::from(t.text))
             .child(panel)
             .into_any_element(),
     )

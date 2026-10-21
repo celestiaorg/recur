@@ -1,35 +1,30 @@
 //! Top panels: Recur's find/replace panel (`cm-search-panel.ts`), the
 //! go-to-line dialog (`cm-goto-line.ts`) and CodeMirror's stock dialogs the
 //! LSP client opens (rename prompt, error messages), styled per
-//! `_codemirror.scss` and CodeMirror's base theme.
+//! `_codemirror.scss`, `.obs-icon-btn` and CodeMirror's base theme.
 
-use std::rc::Rc;
-use std::time::Duration;
-
-use gpui_kit::base::input::{Input, InputEditorStyle, InputEvent, InputState};
+use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, AnyView, App, AppContext, BoxShadow, Context, Entity, Focusable, FontWeight, Hsla,
-    InteractiveElement, IntoElement, KeyDownEvent, ParentElement, Rgba, SharedString,
-    StatefulInteractiveElement, Styled, Subscription, Window, div, linear_color_stop,
-    linear_gradient, point, px,
+    AnyElement, App, BoxShadow, Context, Entity, Focusable, Hsla, InteractiveElement, IntoElement,
+    KeyDownEvent, ParentElement, SharedString, StatefulInteractiveElement, Styled, Subscription,
+    Window, div, linear_color_stop, linear_gradient, point, px,
 };
+use recur_ui::fonts::Family;
+use recur_ui::shadow::{css_box_shadow, with_shadow};
+use recur_ui::style::{button_label, card, text_field};
+use recur_ui::tooltip::titled;
+use recur_ui::{IconName, TextStyled, Theme, icon, rgba, text};
 
 use crate::bindings::Cmd;
-use crate::icons::{self, IconDef};
 use crate::keymap::KeyEvent;
 use crate::search::SearchPanel;
-use crate::tokens::{AppTokens, mono_font, ui_font, with_font};
 use crate::view::EditorView;
 
-/// Builds the app's themed title tip (`TitleTooltip.svelte`) for a
-/// control's `title`.
-pub type TooltipBuilder = Rc<dyn Fn(SharedString, &mut Window, &mut App) -> AnyView>;
+/// The body line height the panels inherit (`body { line-height: 1.45 }`).
+const BODY_LEADING: f32 = 1.45;
 
-/// `SHOW_DELAY_MS` in `title-tooltip.ts`.
-const TITLE_SHOW_DELAY: Duration = Duration::from_millis(160);
-
-fn h(c: Rgba) -> Hsla {
+fn h(c: impl Into<Hsla>) -> Hsla {
     c.into()
 }
 
@@ -92,18 +87,6 @@ impl Dialog {
     }
 }
 
-fn input_style(t: &AppTokens) -> InputEditorStyle {
-    InputEditorStyle {
-        foreground: h(t.text),
-        muted_foreground: h(t.faint),
-        background: h(if t.light { t.pane } else { t.bg }),
-        border: h(t.line),
-        selection: h(t.amber_d),
-        caret: h(t.text),
-        ..InputEditorStyle::default()
-    }
-}
-
 impl EditorView {
     fn new_input(
         &self,
@@ -112,15 +95,12 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Entity<InputState> {
-        let style = input_style(&self.theme.tokens);
         let value = value.to_string();
-        let placeholder = placeholder.to_string();
-        cx.new(|cx| {
-            let mut s = InputState::new(window, cx).placeholder(placeholder);
-            s.set_editor_style(style);
-            s.set_value(value, window, cx);
-            s
-        })
+        let placeholder = SharedString::from(placeholder.to_string());
+        let input = recur_ui::style::text_input(&placeholder, window, cx);
+        input.update(cx, |s, cx| s.set_value(value, window, cx));
+        recur_ui::style::style_text_input(&input, cx);
+        input
     }
 
     /// Create the find panel's UI once the panel opens; the find field is
@@ -398,27 +378,50 @@ impl EditorView {
 
     // ---- rendering ----
 
-    fn title_tip<E: StatefulInteractiveElement>(&self, e: E, title: &'static str) -> E {
-        match self.tooltip_builder.clone() {
-            Some(tip) => {
-                let mut e = e.tooltip(move |window, cx| tip(title.into(), window, cx));
-                e.interactivity().tooltip_show_delay(TITLE_SHOW_DELAY);
-                e
+    /// Track the hovered control for styles a card background can't take
+    /// through GPUI's hover refinement.
+    fn hover_tracked(
+        &self,
+        id: &'static str,
+        e: gpui_kit::Stateful<gpui_kit::Div>,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
+        e.on_hover(cx.listener(move |v, hovered: &bool, _, cx| {
+            let next = if *hovered {
+                Some(id)
+            } else if v.hovered_control == Some(id) {
+                None
+            } else {
+                v.hovered_control
+            };
+            if next != v.hovered_control {
+                v.hovered_control = next;
+                cx.notify();
             }
-            None => e,
-        }
+        }))
     }
 
-    /// `.obs-icon-btn` (26×26, 15px icon), `.on` for pressed toggles.
+    /// `.obs-icon-btn` (26×26, 15px icon), `.on` for pressed toggles, with
+    /// its `title`.
     fn icon_button(
         &self,
         id: &'static str,
         title: &'static str,
-        icon: IconDef,
+        name: IconName,
         on: Option<bool>,
-    ) -> gpui_kit::Stateful<gpui_kit::Div> {
-        let t = self.theme.tokens;
+        on_click: impl Fn(&mut EditorView, &mut Window, &mut Context<EditorView>) + 'static,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
         let active = on == Some(true);
+        let hovered = self.hovered_control == Some(id);
+        let (fg, bg) = if active {
+            (t.amber, Some(t.amber_d))
+        } else if hovered {
+            (t.text, Some(t.pane_2))
+        } else {
+            (t.faint, None)
+        };
         let b = div()
             .id(id)
             .flex()
@@ -427,65 +430,65 @@ impl EditorView {
             .justify_center()
             .size(px(26.))
             .rounded(px(5.))
-            .text_color(h(if active { t.amber } else { t.faint }))
-            .when(active, |d| d.bg(h(t.amber_d)))
-            .when(!active, |d| {
-                d.hover(move |s| s.text_color(h(t.text)).bg(h(t.pane_2)))
-            })
-            .child(icon.element(15.));
-        self.title_tip(b, title)
+            .text_color(h(fg))
+            .when_some(bg, |d, bg| d.bg(h(bg)))
+            .child(icon(name).size(px(15.)).color(h(fg)))
+            .on_click(cx.listener(move |v, _, window, cx| on_click(v, window, cx)));
+        titled(id, title, self.hover_tracked(id, b, cx)).into_any_element()
     }
 
-    /// `.cm-recur-search-textbtn`.
+    /// `.cm-recur-search-textbtn`, with its `title`.
     fn text_button(
         &self,
         id: &'static str,
         label: &'static str,
         title: &'static str,
-    ) -> gpui_kit::Stateful<gpui_kit::Div> {
-        let t = self.theme.tokens;
-        let b = with_font(div(), &ui_font())
+        on_click: impl Fn(&mut EditorView, &mut Window, &mut Context<EditorView>) + 'static,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let light = Theme::of(cx).is_light();
+        let hovered = self.hovered_control == Some(id);
+        let (fg, border, bg) = if hovered {
+            (t.text, t.line_bright, t.pane_2)
+        } else {
+            (t.muted, t.line, if light { t.pane } else { t.bg })
+        };
+        let b = card(bg, border, 5.)
             .id(id)
             .flex()
             .flex_none()
             .items_center()
             .h(px(26.))
             .px(px(8.))
-            .border_1()
-            .border_color(h(t.line))
-            .rounded(px(5.))
-            .bg(h(if t.light { t.pane } else { t.bg }))
-            .text_color(h(t.muted))
-            .text_size(px(11.))
-            .font_weight(FontWeight::MEDIUM)
-            .whitespace_nowrap()
-            .hover(move |s| {
-                s.text_color(h(t.text))
-                    .border_color(h(t.line_bright))
-                    .bg(h(t.pane_2))
-            })
-            .child(label);
-        self.title_tip(b, title)
+            .child(button_label(label, 11., 500.).ui().color(h(fg)))
+            .on_click(cx.listener(move |v, _, window, cx| on_click(v, window, cx)));
+        titled(id, title, self.hover_tracked(id, b, cx)).into_any_element()
     }
 
     /// `.cm-recur-search-input`.
-    fn input_field(&self, input: &Entity<InputState>, window: &Window, cx: &App) -> gpui_kit::Div {
-        let t = self.theme.tokens;
+    fn input_field(
+        &self,
+        input: &Entity<InputState>,
+        placeholder: &'static str,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Div {
+        recur_ui::style::style_text_input(input, cx);
+        let theme = Theme::of(cx);
+        let t = theme.tokens;
         let focused = input.read(cx).focus_handle(cx).is_focused(window);
         let border = if focused {
-            AppTokens::mix(t.amber, 0.55, t.line)
+            t.amber.mix(0.55, t.line)
         } else {
             t.line
         };
-        with_font(div(), &mono_font())
+        let bg = if theme.is_light() { t.pane } else { t.bg };
+        card(bg, border, 6.)
             .h(px(28.))
             .px(px(9.))
             .flex()
             .items_center()
-            .bg(h(if t.light { t.pane } else { t.bg }))
-            .border_1()
-            .border_color(h(border))
-            .rounded(px(6.))
             .when(focused, |d| {
                 d.shadow(vec![BoxShadow {
                     color: h(t.amber_d),
@@ -495,61 +498,64 @@ impl EditorView {
                     inset: false,
                 }])
             })
-            .text_size(px(12.))
-            .text_color(h(t.text))
-            .child(Input::new(input))
+            .child(text_field(
+                input,
+                &SharedString::from(placeholder),
+                t.faint,
+                Family::Mono,
+                12.,
+                window,
+                cx,
+            ))
     }
 
-    fn glyph(&self, icon: IconDef) -> gpui_kit::Div {
+    /// `.cm-recur-search-glyph`.
+    fn glyph(&self, name: IconName, cx: &App) -> gpui_kit::Div {
+        let faint = Theme::of(cx).tokens.faint;
         div()
             .flex()
             .flex_none()
             .items_center()
             .justify_center()
             .size(px(26.))
-            .text_color(h(self.theme.tokens.faint))
-            .child(icon.element(15.))
+            .child(icon(name).size(px(15.)).color(h(faint)))
     }
 
     fn render_search(&self, window: &Window, cx: &mut Context<Self>) -> Option<AnyElement> {
         let s = self.search.as_ref()?;
-        let t = self.theme.tokens;
+        let t = Theme::of(cx).tokens;
         let label = s.model.count.label();
         let none = s.model.count == crate::search::SearchCount::None;
-        let ent = cx.entity();
+        let (case, regexp, word) = (s.model.case_sensitive, s.model.regexp, s.model.whole_word);
+        let (find, replace) = (s.find.clone(), s.replace.clone());
         let row = |d: gpui_kit::Div| d.flex().items_center().gap(px(6.)).pl(px(10.)).pr(px(8.));
         let mut find_row = row(div())
             .min_h(px(36.))
             .pt(px(5.))
             .pb(px(5.))
-            .child(self.glyph(icons::SEARCH))
+            .child(self.glyph(IconName::Search, cx))
             .child(
-                self.input_field(&s.find, window, cx)
+                self.input_field(&find, "Find", window, cx)
                     .flex_1()
                     .min_w(px(80.)),
             );
         if !label.is_empty() {
+            let count = text(label)
+                .mono()
+                .size(10.5)
+                .leading(BODY_LEADING)
+                .color(h(if none { t.coral } else { t.muted }))
+                .nowrap();
             find_row = find_row.child(
-                with_font(div(), &mono_font())
+                div()
+                    .flex()
                     .flex_none()
-                    .text_size(px(10.5))
-                    .whitespace_nowrap()
+                    .justify_end()
                     .px(px(2.))
-                    .text_color(h(if none { t.coral } else { t.muted }))
-                    .when(!none, |d| d.min_w(px(10.5 * 4.5)).flex().justify_end())
-                    .child(label),
+                    .when(!none, |d| d.min_w(px(10.5 * 4.5)))
+                    .child(count),
             );
         }
-        let e = |ent: &Entity<Self>| ent.clone();
-        let (e1, e2, e3, e4, e5, e6, e7) = (
-            e(&ent),
-            e(&ent),
-            e(&ent),
-            e(&ent),
-            e(&ent),
-            e(&ent),
-            e(&ent),
-        );
         let find_row = find_row
             .child(
                 div()
@@ -557,32 +563,26 @@ impl EditorView {
                     .flex_none()
                     .items_center()
                     .gap(px(2.))
-                    .child(
-                        self.icon_button(
-                            "cm-search-prev",
-                            "Previous match (⇧⌘G)",
-                            icons::CHEVRON_LEFT,
-                            None,
-                        )
-                        .on_click(move |_, window, cx| {
-                            e1.update(cx, |v, cx| {
-                                v.run_cmd(Cmd::FindPrevious, window, cx);
-                            })
-                        }),
-                    )
-                    .child(
-                        self.icon_button(
-                            "cm-search-next",
-                            "Next match (⌘G)",
-                            icons::CHEVRON_RIGHT,
-                            None,
-                        )
-                        .on_click(move |_, window, cx| {
-                            e2.update(cx, |v, cx| {
-                                v.run_cmd(Cmd::FindNext, window, cx);
-                            })
-                        }),
-                    ),
+                    .child(self.icon_button(
+                        "cm-search-prev",
+                        "Previous match (⇧⌘G)",
+                        IconName::ChevronLeft,
+                        None,
+                        |v, window, cx| {
+                            v.run_cmd(Cmd::FindPrevious, window, cx);
+                        },
+                        cx,
+                    ))
+                    .child(self.icon_button(
+                        "cm-search-next",
+                        "Next match (⌘G)",
+                        IconName::ChevronRight,
+                        None,
+                        |v, window, cx| {
+                            v.run_cmd(Cmd::FindNext, window, cx);
+                        },
+                        cx,
+                    )),
             )
             .child(
                 div()
@@ -590,97 +590,90 @@ impl EditorView {
                     .flex_none()
                     .items_center()
                     .gap(px(2.))
-                    .child(
-                        self.icon_button(
-                            "cm-search-case",
-                            "Match case (⌥⌘C)",
-                            icons::CASE_SENSITIVE,
-                            Some(s.model.case_sensitive),
-                        )
-                        .on_click(move |_, window, cx| {
-                            e3.update(cx, |v, cx| v.toggle_search_button(0, window, cx))
-                        }),
-                    )
-                    .child(
-                        self.icon_button(
-                            "cm-search-regex",
-                            "Regular expression (⌥⌘R)",
-                            icons::REGEX,
-                            Some(s.model.regexp),
-                        )
-                        .on_click(move |_, window, cx| {
-                            e4.update(cx, |v, cx| v.toggle_search_button(1, window, cx))
-                        }),
-                    )
-                    .child(
-                        self.icon_button(
-                            "cm-search-word",
-                            "Whole word (⌥⌘W)",
-                            icons::WHOLE_WORD,
-                            Some(s.model.whole_word),
-                        )
-                        .on_click(move |_, window, cx| {
-                            e5.update(cx, |v, cx| v.toggle_search_button(2, window, cx))
-                        }),
-                    ),
+                    .child(self.icon_button(
+                        "cm-search-case",
+                        "Match case (⌥⌘C)",
+                        IconName::CaseSensitive,
+                        Some(case),
+                        |v, window, cx| v.toggle_search_button(0, window, cx),
+                        cx,
+                    ))
+                    .child(self.icon_button(
+                        "cm-search-regex",
+                        "Regular expression (⌥⌘R)",
+                        IconName::Regex,
+                        Some(regexp),
+                        |v, window, cx| v.toggle_search_button(1, window, cx),
+                        cx,
+                    ))
+                    .child(self.icon_button(
+                        "cm-search-word",
+                        "Whole word (⌥⌘W)",
+                        IconName::WholeWord,
+                        Some(word),
+                        |v, window, cx| v.toggle_search_button(2, window, cx),
+                        cx,
+                    )),
             )
-            .child(
-                self.text_button("cm-search-all", "All", "Select all matches")
-                    .on_click(move |_, window, cx| {
-                        e6.update(cx, |v, cx| {
-                            let state = v.state.clone();
-                            let run = crate::search::select_matches(&state);
-                            v.run_search_run(run, window, cx);
-                        })
-                    }),
-            )
-            .child(
-                div().ml(px(2.)).child(
-                    self.icon_button("cm-search-close", "Close", icons::X, None)
-                        .on_click(move |_, window, cx| {
-                            e7.update(cx, |v, cx| {
-                                v.run_cmd(Cmd::CloseSearchPanel, window, cx);
-                            })
-                        }),
-                ),
-            );
-        let mut panel = with_font(div(), &ui_font())
+            .child(self.text_button(
+                "cm-search-all",
+                "All",
+                "Select all matches",
+                |v, window, cx| {
+                    let state = v.state.clone();
+                    let run = crate::search::select_matches(&state);
+                    v.run_search_run(run, window, cx);
+                },
+                cx,
+            ))
+            .child(div().ml(px(2.)).child(self.icon_button(
+                "cm-search-close",
+                "Close",
+                IconName::X,
+                None,
+                |v, window, cx| {
+                    v.run_cmd(Cmd::CloseSearchPanel, window, cx);
+                },
+                cx,
+            )));
+        let mut panel = div()
             .flex()
             .flex_col()
             .text_color(h(t.text))
             .capture_key_down(cx.listener(Self::search_panel_key))
             .child(find_row);
         if SearchPanel::has_replace(&self.state) {
-            let (r1, r2) = (ent.clone(), ent);
             panel = panel.child(
                 row(div())
                     .pb(px(8.))
-                    .child(self.glyph(icons::REPLACE))
+                    .child(self.glyph(IconName::Replace, cx))
                     .child(
-                        self.input_field(&s.replace, window, cx)
+                        self.input_field(&replace, "Replace", window, cx)
                             .flex_1()
                             .min_w(px(80.)),
                     )
-                    .child(
-                        self.text_button("cm-replace-one", "Replace", "Replace")
-                            .on_click(move |_, window, cx| {
-                                r1.update(cx, |v, cx| {
-                                    let state = v.state.clone();
-                                    let run = crate::search::replace_next(&state);
-                                    v.run_search_run(run, window, cx);
-                                })
-                            }),
-                    )
-                    .child(
-                        self.text_button("cm-replace-all", "Replace all", "Replace all")
-                            .on_click(move |_, window, cx| {
-                                r2.update(cx, |v, cx| {
-                                    let state = v.state.clone();
-                                    let run = crate::search::replace_all(&state);
-                                    v.run_search_run(run, window, cx);
-                                })
-                            }),
-                    ),
+                    .child(self.text_button(
+                        "cm-replace-one",
+                        "Replace",
+                        "Replace",
+                        |v, window, cx| {
+                            let state = v.state.clone();
+                            let run = crate::search::replace_next(&state);
+                            v.run_search_run(run, window, cx);
+                        },
+                        cx,
+                    ))
+                    .child(self.text_button(
+                        "cm-replace-all",
+                        "Replace all",
+                        "Replace all",
+                        |v, window, cx| {
+                            let state = v.state.clone();
+                            let run = crate::search::replace_all(&state);
+                            v.run_search_run(run, window, cx);
+                        },
+                        cx,
+                    )),
             );
         }
         Some(panel.into_any_element())
@@ -693,9 +686,8 @@ impl EditorView {
         window: &Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let t = self.theme.tokens;
-        let (go, close) = (cx.entity(), cx.entity());
-        with_font(div(), &ui_font())
+        let t = Theme::of(cx).tokens;
+        div()
             .flex()
             .items_center()
             .gap(px(6.))
@@ -710,68 +702,66 @@ impl EditorView {
                     v.dialog_key(id, ev, window, cx)
                 }),
             )
-            .child(self.glyph(icons::HASH))
+            .child(self.glyph(IconName::Hash, cx))
             .child(
-                with_font(div(), &mono_font())
-                    .flex_none()
-                    .text_size(px(11.))
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(h(t.muted))
-                    .whitespace_nowrap()
-                    .child("Go to line"),
+                div().flex_none().child(
+                    text("Go to line")
+                        .mono()
+                        .size(11.)
+                        .weight(600.)
+                        .tracking(0.02)
+                        .leading(BODY_LEADING)
+                        .color(h(t.muted))
+                        .nowrap(),
+                ),
             )
             .child(
-                self.input_field(input, window, cx)
+                self.input_field(input, "Line", window, cx)
                     .flex_shrink_1()
                     .w(px(140.))
                     .min_w(px(72.))
                     .max_w(px(180.)),
             )
-            .child(
-                div().flex_none().mr_auto().child(
-                    self.text_button("cm-goto-go", "Go", "Go")
-                        .on_click(move |_, window, cx| {
-                            go.update(cx, |v, cx| v.submit_dialog(id, window, cx))
-                        }),
-                ),
-            )
-            .child(
-                self.icon_button("cm-goto-close", "Close (Escape)", icons::X, None)
-                    .on_click(move |_, window, cx| {
-                        close.update(cx, |v, cx| v.close_dialog(id, window, cx))
-                    }),
-            )
+            .child(div().flex_none().mr_auto().child(self.text_button(
+                "cm-goto-go",
+                "Go",
+                "Go",
+                move |v, window, cx| v.submit_dialog(id, window, cx),
+                cx,
+            )))
+            .child(self.icon_button(
+                "cm-goto-close",
+                "Close (Escape)",
+                IconName::X,
+                None,
+                move |v, window, cx| v.close_dialog(id, window, cx),
+                cx,
+            ))
             .into_any_element()
     }
 
-    /// CodeMirror's stock `.cm-button` / `.cm-textfield` chrome.
+    /// CodeMirror's stock `.cm-button`.
     fn stock_button(
         &self,
         id: SharedString,
         label: &'static str,
         font_size: f32,
     ) -> gpui_kit::Stateful<gpui_kit::Div> {
-        let dark = self.theme.dark;
-        let (top, bottom) = if dark {
-            (0x393939, 0x111111)
-        } else {
-            (0xeff1f5, 0xd9d9df)
-        };
+        let (top, bottom, border) = self.theme.stock_button();
         div()
             .id(id)
             .flex_none()
-            .text_size(px(font_size))
             .py(px(0.2 * font_size))
             .px(px(font_size))
             .rounded(px(1.))
             .border_1()
-            .border_color(h(gpui_kit::rgb(0x888888)))
+            .border_color(h(border))
             .bg(linear_gradient(
                 180.,
-                linear_color_stop(gpui_kit::rgb(top), 0.),
-                linear_color_stop(gpui_kit::rgb(bottom), 1.),
+                linear_color_stop(top, 0.),
+                linear_color_stop(bottom, 1.),
             ))
-            .child(label)
+            .child(button_label(label, font_size, 400.).ui())
     }
 
     /// The rename prompt: a window-modal card with the field and
@@ -782,64 +772,58 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
         let p = self.rename_prompt.as_ref()?;
-        let t = self.theme.tokens;
-        let (cancel, ok) = (cx.entity(), cx.entity());
+        let theme = Theme::of(cx);
+        let t = theme.tokens;
+        let shadow = if theme.is_light() {
+            css_box_shadow(0., 12., 28., 0., rgba(0, 0, 0, 0.12))
+        } else {
+            css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))
+        };
+        let input = p.input.clone();
+        let body = card(t.pane, t.line_bright, 8.)
+            .w(px(320.))
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .p(px(12.))
+            .text_color(h(t.text))
+            .capture_key_down(cx.listener(|v, ev: &KeyDownEvent, window, cx| {
+                if ev.keystroke.key == "escape" {
+                    cx.stop_propagation();
+                    v.finish_rename(false, window, cx);
+                }
+            }))
+            .child(text("New name").ui().size(13.).leading(BODY_LEADING))
+            .child(self.input_field(&input, "", window, cx))
+            .child(
+                div()
+                    .flex()
+                    .justify_end()
+                    .gap(px(6.))
+                    .child(self.text_button(
+                        "cm-rename-cancel",
+                        "Cancel",
+                        "Cancel",
+                        |v, window, cx| v.finish_rename(false, window, cx),
+                        cx,
+                    ))
+                    .child(self.text_button(
+                        "cm-rename-ok",
+                        "OK",
+                        "OK",
+                        |v, window, cx| v.finish_rename(true, window, cx),
+                        cx,
+                    )),
+            );
         Some(
-            with_font(div(), &ui_font())
+            div()
                 .absolute()
                 .top(px(16.))
                 .left_0()
                 .right_0()
                 .flex()
                 .justify_center()
-                .child(
-                    div()
-                        .w(px(320.))
-                        .flex()
-                        .flex_col()
-                        .gap(px(10.))
-                        .p(px(12.))
-                        .bg(h(t.pane))
-                        .border_1()
-                        .border_color(h(t.line_bright))
-                        .rounded(px(8.))
-                        .shadow(vec![BoxShadow {
-                            color: gpui_kit::hsla(0., 0., 0., if t.light { 0.12 } else { 0.45 }),
-                            offset: point(px(0.), px(12.)),
-                            blur_radius: px(if t.light { 28. } else { 32. }),
-                            spread_radius: px(0.),
-                            inset: false,
-                        }])
-                        .text_size(px(13.))
-                        .text_color(h(t.text))
-                        .capture_key_down(cx.listener(|v, ev: &KeyDownEvent, window, cx| {
-                            if ev.keystroke.key == "escape" {
-                                cx.stop_propagation();
-                                v.finish_rename(false, window, cx);
-                            }
-                        }))
-                        .child("New name")
-                        .child(self.input_field(&p.input, window, cx))
-                        .child(
-                            div()
-                                .flex()
-                                .justify_end()
-                                .gap(px(6.))
-                                .child(
-                                    self.text_button("cm-rename-cancel", "Cancel", "Cancel")
-                                        .on_click(move |_, window, cx| {
-                                            cancel.update(cx, |v, cx| {
-                                                v.finish_rename(false, window, cx)
-                                            })
-                                        }),
-                                )
-                                .child(self.text_button("cm-rename-ok", "OK", "OK").on_click(
-                                    move |_, window, cx| {
-                                        ok.update(cx, |v, cx| v.finish_rename(true, window, cx))
-                                    },
-                                )),
-                        ),
-                )
+                .child(with_shadow(body, &[shadow], 8.))
                 .into_any_element(),
         )
     }
@@ -856,12 +840,11 @@ impl EditorView {
             .absolute()
             .top(px(top))
             .right(px(4.))
-            .text_size(px(14.))
-            .child("×")
+            .child(button_label("×", 14., 400.).ui())
             .on_click(move |_, window, cx| ent.update(cx, |v, cx| v.close_dialog(id, window, cx)))
     }
 
-    fn render_message(&self, id: u64, text: &str, cx: &mut Context<Self>) -> AnyElement {
+    fn render_message(&self, id: u64, message: &str, cx: &mut Context<Self>) -> AnyElement {
         let fs = self.metrics.font_size;
         let (ok, close) = (cx.entity(), cx.entity());
         div()
@@ -870,8 +853,12 @@ impl EditorView {
             .pr(px(19.))
             .pb(px(4.))
             .pl(px(6.))
-            .text_size(px(fs))
-            .child(format!("{text} "))
+            .child(
+                text(format!("{message} "))
+                    .ui()
+                    .size(fs)
+                    .leading(BODY_LEADING),
+            )
             .child(
                 div().flex().child(
                     self.stock_button(format!("cm-message-ok-{id}").into(), "OK", fs * 0.7)
@@ -894,21 +881,28 @@ impl EditorView {
         if self.dialogs.is_empty() && self.search.is_none() {
             return None;
         }
-        let t = self.theme.tokens;
-        let mut stack = with_font(div(), &ui_font())
+        let t = Theme::of(cx).tokens;
+        let mut stack = div()
             .flex()
             .flex_col()
             .flex_none()
             .bg(h(t.pane))
             .text_color(h(t.text))
-            .text_size(px(self.metrics.font_size))
-            .line_height(gpui_kit::relative(1.45))
             .border_b_1()
             .border_color(h(t.line));
-        for d in &self.dialogs {
-            stack = stack.child(match d {
-                Dialog::Goto { id, input, .. } => self.render_goto(*id, input, window, cx),
-                Dialog::Message { id, text } => self.render_message(*id, text, cx),
+        let dialogs: Vec<(u64, Option<Entity<InputState>>, Option<String>)> = self
+            .dialogs
+            .iter()
+            .map(|d| match d {
+                Dialog::Goto { id, input, .. } => (*id, Some(input.clone()), None),
+                Dialog::Message { id, text } => (*id, None, Some(text.clone())),
+            })
+            .collect();
+        for (id, input, message) in dialogs {
+            stack = stack.child(match (input, message) {
+                (Some(input), _) => self.render_goto(id, &input, window, cx),
+                (None, Some(m)) => self.render_message(id, &m, cx),
+                (None, None) => div().into_any_element(),
             });
         }
         if let Some(search) = self.render_search(window, cx) {
@@ -919,7 +913,6 @@ impl EditorView {
 
     /// Restyle open panel inputs after a theme change.
     pub(crate) fn restyle_panel_inputs(&self, cx: &mut Context<Self>) {
-        let style = input_style(&self.theme.tokens);
         let mut inputs: Vec<Entity<InputState>> = self
             .dialogs
             .iter()
@@ -931,8 +924,7 @@ impl EditorView {
             inputs.push(s.replace.clone());
         }
         for i in inputs {
-            let style = style.clone();
-            i.update(cx, |s, _| s.set_editor_style(style));
+            recur_ui::style::style_text_input(&i, cx);
         }
     }
 
@@ -947,8 +939,23 @@ impl EditorView {
             })
     }
 
-    /// Install the app's title tooltip builder for panel buttons.
-    pub fn set_tooltip_builder(&mut self, tooltip: Option<TooltipBuilder>) {
-        self.tooltip_builder = tooltip;
+    /// The gutter or chip `title` under the pointer, as an invisible
+    /// titled box for the app's `TitleTooltip`.
+    pub(crate) fn render_title_target(&self) -> Option<AnyElement> {
+        let (title, b) = self.title_seen.clone()?;
+        let id = SharedString::from(format!(
+            "cm-title-{}-{}",
+            f32::from(b.origin.x),
+            f32::from(b.origin.y)
+        ));
+        let target = div().w(b.size.width).h(b.size.height);
+        Some(
+            gpui_kit::deferred(recur_ui::style::anchored_at(
+                f32::from(b.origin.x),
+                f32::from(b.origin.y),
+                titled(id, title, target),
+            ))
+            .into_any_element(),
+        )
     }
 }

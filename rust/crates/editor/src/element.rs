@@ -13,12 +13,12 @@ use gpui_kit::{
 
 use crate::display::TextMeasure;
 use crate::display::{BlockWidget, MeasuredLine, SegKind};
-use crate::icons::{IconDef, lint_icon};
 use crate::merge::{COLLAPSE_MIN_SIZE, Chunk, chunk_decorations, deleted_chunk_lines};
 use crate::prefs::EditorWhitespace;
-use crate::tokens::SCROLLBAR_SIZE;
 use crate::view::{EditorKind, EditorView, Frame, GpuiMeasure};
 use crate::view_queries::ViewQueries;
+use gpui_kit::Styled as _;
+use recur_ui::IconName;
 
 /// A gutter column.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -45,7 +45,23 @@ pub const COLLAPSED_HEIGHT: f32 = 5.0 + 10.5 * 1.4 + 5.0 + 2.0;
 /// `.cm-deletedChunk` left padding.
 pub const DELETED_CHUNK_PADDING: f32 = 6.0;
 
-fn h(c: Rgba) -> Hsla {
+/// Lint severity -> icon (`lintSevIcon`).
+fn lint_icon(severity: crate::lint::Severity) -> IconName {
+    use crate::lint::Severity::*;
+    match severity {
+        Error => IconName::SevHigh,
+        Warning => IconName::SevMedium,
+        Info => IconName::SevInfo,
+        Hint => IconName::SevLow,
+    }
+}
+
+/// `--scrollbar-size`.
+pub(crate) fn scrollbar_size() -> f32 {
+    f32::from(recur_ui::theme::SCROLLBAR_SIZE)
+}
+
+fn h(c: impl Into<Hsla>) -> Hsla {
     c.into()
 }
 
@@ -159,7 +175,8 @@ pub enum Op {
         line_height: Pixels,
     },
     Path(Path<Pixels>, Hsla),
-    Icon(IconDef, Bounds<Pixels>, Hsla),
+    /// A `recur-ui` icon, laid out as a child element in prepaint.
+    Icon(IconName, Bounds<Pixels>, Hsla),
 }
 
 /// Everything prepaint computed for paint.
@@ -173,6 +190,8 @@ pub struct Plan {
     pub overlay: Vec<Op>,
     pub chip: Vec<Op>,
     pub gutter: Vec<Op>,
+    /// The gutter's icons, prepainted.
+    pub icons: Vec<gpui_kit::AnyElement>,
     pub scrollbars: Vec<Op>,
     pub content_bounds: Option<Bounds<Pixels>>,
     pub gutter_bounds: Option<Bounds<Pixels>>,
@@ -392,11 +411,27 @@ impl Element for EditorElement {
         window: &mut Window,
         cx: &mut App,
     ) -> Plan {
-        self.view.update(cx, |view, cx| {
-            let mut plan = view.plan(bounds, window, cx);
-            plan.hitbox = Some(window.insert_hitbox(bounds, HitboxBehavior::Normal));
-            plan
-        })
+        let mut plan = self
+            .view
+            .update(cx, |view, cx| view.plan(bounds, window, cx));
+        plan.hitbox = Some(window.insert_hitbox(bounds, HitboxBehavior::Normal));
+        let mut rest = Vec::new();
+        for op in std::mem::take(&mut plan.gutter) {
+            match op {
+                Op::Icon(name, b, c) => {
+                    let mut el = recur_ui::icon(name)
+                        .size(b.size.width)
+                        .color(c)
+                        .into_any_element();
+                    el.layout_as_root(b.size.map(gpui_kit::AvailableSpace::Definite), window, cx);
+                    el.prepaint_at(b.origin, window, cx);
+                    plan.icons.push(el);
+                }
+                other => rest.push(other),
+            }
+        }
+        plan.gutter = rest;
+        plan
     }
 
     fn paint(
@@ -440,7 +475,7 @@ impl Element for EditorElement {
                         let _ = line.paint(origin, line_height, TextAlign::Left, None, window, cx);
                     }
                     Op::Path(p, c) => window.paint_path(p, c),
-                    Op::Icon(icon, b, c) => icon.paint(b, c, window, cx),
+                    Op::Icon(..) => {}
                 }
             }
         };
@@ -456,6 +491,9 @@ impl Element for EditorElement {
                 paint_ops(&mut plan.chip, window, cx);
             });
             paint_ops(&mut plan.gutter, window, cx);
+            for el in plan.icons.iter_mut() {
+                el.paint(window, cx);
+            }
             paint_ops(&mut plan.scrollbars, window, cx);
         });
         let view = self.view.clone();
@@ -581,7 +619,7 @@ impl EditorView {
         // Layout config follows the box; wrap width changes re-estimate.
         let content_height_guess = self.layout.borrow().content_height() as f32;
         let vbar = content_height_guess > bh;
-        let scroller_width = bw - if vbar { SCROLLBAR_SIZE } else { 0.0 };
+        let scroller_width = bw - if vbar { scrollbar_size() } else { 0.0 };
         let new_frame_dims = (scroller_width, bh, gutter_width);
         let old_dims = self
             .frame
@@ -614,7 +652,7 @@ impl EditorView {
                 .max(text_area_w)
         };
         let hbar = !self.prefs.line_wrapping && content_w > text_area_w;
-        let view_h = bh - if hbar { SCROLLBAR_SIZE } else { 0.0 };
+        let view_h = bh - if hbar { scrollbar_size() } else { 0.0 };
         {
             let f = self.frame.get_or_insert_with(Frame::default);
             f.bounds = bounds;
@@ -862,17 +900,7 @@ impl EditorView {
             {
                 let text = doc.slice(line.from, line.to);
                 if let Some(kind) = crate::prefs::diff_line_kind(&text) {
-                    let c = match kind {
-                        crate::prefs::DiffLineKind::Ins => {
-                            crate::color::rgba_f(63.0 / 255.0, 185.0 / 255.0, 80.0 / 255.0, 0.14)
-                        }
-                        crate::prefs::DiffLineKind::Del => {
-                            crate::color::rgba_f(224.0 / 255.0, 101.0 / 255.0, 95.0 / 255.0, 0.14)
-                        }
-                        crate::prefs::DiffLineKind::Meta => {
-                            crate::color::rgba_f(210.0 / 255.0, 168.0 / 255.0, 1.0, 0.10)
-                        }
-                    };
+                    let c = crate::theme::diff_line_wash(kind);
                     plan.line_bgs.push(Op::Quad(fill(line_bg_rect, h(c))));
                 }
             }
@@ -1272,7 +1300,7 @@ impl EditorView {
             let y = by + (track - thumb) * (self.scroll_top / (content_h - view_h).max(1.0));
             plan.scrollbars.push(Op::Quad(
                 fill(
-                    rect(bx + bw - SCROLLBAR_SIZE, y, SCROLLBAR_SIZE, thumb),
+                    rect(bx + bw - scrollbar_size(), y, scrollbar_size(), thumb),
                     h(tokens.scrollbar_thumb),
                 )
                 .corner_radii(px(8.0)),
@@ -1286,7 +1314,7 @@ impl EditorView {
             let x = bx + (track - thumb) * (self.scroll_left / (content_w - text_area_w).max(1.0));
             plan.scrollbars.push(Op::Quad(
                 fill(
-                    rect(x, by + bh - SCROLLBAR_SIZE, thumb, SCROLLBAR_SIZE),
+                    rect(x, by + bh - scrollbar_size(), thumb, scrollbar_size()),
                     h(tokens.scrollbar_thumb),
                 )
                 .corner_radii(px(8.0)),
@@ -1321,7 +1349,7 @@ impl EditorView {
         tb: &TextBox,
         window: &Window,
     ) {
-        let fat = h(gpui_kit::rgb(0xff9696));
+        let fat = h(crate::theme::fat_cursor());
         let doc = &self.state.doc;
         let partial = h_coeff != 1.0;
         let vim = self.vim.as_ref().map(|v| v.state.visual_block);
@@ -1532,7 +1560,7 @@ impl EditorView {
             )));
             // `.cm-collapsedLines`: padding 5px 14px, mono 10.5px/500,
             // letter-spacing .02em, "·" 8px label 8px "·".
-            let mut font = crate::tokens::mono_font();
+            let mut font = crate::theme::chrome_font(recur_ui::fonts::Family::Mono);
             font.weight = FontWeight::MEDIUM;
             let color = h(if hover {
                 mc.collapsed_fg_hover
@@ -1685,7 +1713,7 @@ impl EditorView {
         };
         let label = "Revert";
         let key = crate::merge::revert_hunk_key_display();
-        let mut ui = crate::tokens::ui_font();
+        let mut ui = crate::theme::chrome_font(recur_ui::fonts::Family::Ui);
         ui.weight = FontWeight::MEDIUM;
         let spacing = |size: f32| 0.02 * size;
         let measure = |t: &str, size: f32| {
@@ -1973,10 +2001,9 @@ impl EditorView {
                     }
                     GutterKind::Findings => {
                         if let Some(hit) = self.state.gutters.finding_hits.get(&line.from) {
-                            let icon = crate::icons::by_name(crate::gutters::finding_sev_icon(
-                                &hit.severity,
-                            ))
-                            .unwrap_or(crate::icons::SEV_LOW);
+                            let icon =
+                                IconName::from_key(crate::gutters::finding_sev_icon(&hit.severity))
+                                    .unwrap_or(IconName::SevLow);
                             let cw = g.width - 5.0;
                             let r = rect(
                                 gx + 4.0 + (cw - 12.0) / 2.0,

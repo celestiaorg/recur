@@ -36,7 +36,6 @@ use crate::state::{
 };
 use crate::text::Text;
 use crate::theme::{EditorMetrics, EditorTheme};
-use crate::tokens::AppTokens;
 use crate::view_state::{FileViewState, is_buffer_dirty};
 
 /// Debounce for `DocChanged` (`EMIT_DEBOUNCE_MS`).
@@ -90,8 +89,6 @@ pub struct EditorOptions {
     pub doc: String,
     pub read_only: bool,
     pub prefs: EditorPrefs,
-    /// App chrome theme key (`stores` `theme`).
-    pub app_theme: String,
     /// The editor's TextMate theme; `None` uses CodeMirror's bare theme.
     pub theme: Option<Rc<ParsedTmTheme>>,
     /// Theme kind when no parsed theme is available.
@@ -115,7 +112,6 @@ impl EditorOptions {
             doc: doc.to_string(),
             read_only: false,
             prefs: EditorPrefs::default(),
-            app_theme: "default".into(),
             theme: None,
             dark_fallback: true,
             textmate: None,
@@ -224,7 +220,6 @@ pub struct EditorView {
     pub(crate) pane: String,
     pub(crate) state: EditorState,
     pub(crate) prefs: EditorPrefs,
-    pub(crate) app_theme: String,
     pub(crate) parsed_theme: Option<Rc<ParsedTmTheme>>,
     pub(crate) dark_fallback: bool,
     pub(crate) theme: EditorTheme,
@@ -255,7 +250,10 @@ pub struct EditorView {
     pub(crate) dialogs: Vec<crate::panels::Dialog>,
     pub(crate) dialog_seq: u64,
     pub(crate) rename_prompt: Option<crate::panels::RenamePrompt>,
-    pub(crate) tooltip_builder: Option<crate::panels::TooltipBuilder>,
+    /// The panel control under the pointer (hover styles on card buttons).
+    pub(crate) hovered_control: Option<&'static str>,
+    /// The gutter / chip `title` under the pointer and its box.
+    pub(crate) title_seen: Option<(String, gpui_kit::Bounds<Pixels>)>,
     pub(crate) revert: RevertHover,
     pub(crate) revert_timer: Option<Task<()>>,
     pub(crate) drag: Option<crate::view_input::MouseDrag>,
@@ -330,8 +328,11 @@ impl EditorView {
             })
             .unwrap_or_default();
         let metrics = EditorMetrics::from_prefs(&options.prefs);
-        let tokens = AppTokens::for_theme(&options.app_theme);
-        let theme = EditorTheme::resolve(options.theme.as_deref(), options.dark_fallback, tokens);
+        let theme = EditorTheme::resolve(
+            options.theme.as_deref(),
+            options.dark_fallback,
+            recur_ui::Theme::of(cx).id,
+        );
         let lsp_attached = false;
         let keymap = Keymap::build(
             &match options.kind {
@@ -347,7 +348,6 @@ impl EditorView {
             pane: options.pane.clone(),
             state: EditorState::create("", StateConfig::default()),
             prefs: options.prefs.clone(),
-            app_theme: options.app_theme.clone(),
             parsed_theme: options.theme.clone(),
             dark_fallback: options.dark_fallback,
             theme,
@@ -381,7 +381,8 @@ impl EditorView {
             dialogs: Vec::new(),
             dialog_seq: 0,
             rename_prompt: None,
-            tooltip_builder: None,
+            hovered_control: None,
+            title_seen: None,
             revert: RevertHover::default(),
             revert_timer: None,
             drag: None,
@@ -422,6 +423,11 @@ impl EditorView {
             cx.on_focus(&focus, window, |v, _window, cx| {
                 v.restart_blink(cx);
                 cx.notify();
+            }),
+            cx.observe_global_in::<recur_ui::Theme>(window, |v, window, cx| {
+                let parsed = v.parsed_theme.clone();
+                let dark = v.dark_fallback;
+                v.set_theme(parsed, dark, window, cx);
             }),
         ];
         let state = view.build_state(&options.doc);
@@ -1079,22 +1085,21 @@ impl EditorView {
         cx.notify();
     }
 
-    /// Editor theme (TextMate theme + app chrome tokens).
+    /// Editor theme: the TextMate theme over the app chrome tokens of the
+    /// current `recur_ui::Theme` (followed as it changes).
     pub fn set_theme(
         &mut self,
         parsed: Option<Rc<ParsedTmTheme>>,
         dark_fallback: bool,
-        app_theme: &str,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         self.parsed_theme = parsed;
         self.dark_fallback = dark_fallback;
-        self.app_theme = app_theme.to_string();
         self.theme = EditorTheme::resolve(
             self.parsed_theme.as_deref(),
             dark_fallback,
-            AppTokens::for_theme(app_theme),
+            recur_ui::Theme::of(cx).id,
         );
         self.restyle_panel_inputs(cx);
         crate::vim::prompt::restyle(self, cx);
@@ -1752,6 +1757,7 @@ impl gpui_kit::Render for EditorView {
         let tooltips = self.render_tooltips(window, cx);
         let prompt = self.render_rename_prompt(window, cx);
         let vim_panel = crate::vim::prompt::render_panel(self, cx);
+        let title = self.render_title_target();
         let content = div()
             .id("cm-scroller")
             .flex_1()
@@ -1783,6 +1789,7 @@ impl gpui_kit::Render for EditorView {
             .children(vim_panel)
             .children(tooltips)
             .children(prompt)
+            .children(title)
     }
 }
 

@@ -21,7 +21,10 @@ fn mount<'a>(cx: &'a mut TestAppContext, path: &str, doc: &str, kind: EditorKind
 }
 
 fn mount_with(cx: &mut TestAppContext, options: EditorOptions) -> Harness<'_> {
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        recur_ui::init(cx);
+    });
     let events = Rc::new(RefCell::new(Vec::new()));
     let sink = events.clone();
     let (view, cx) = cx.add_window_view(move |window, cx| {

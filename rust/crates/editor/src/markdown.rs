@@ -1,43 +1,50 @@
 //! LSP documentation as `.cm-lsp-documentation` renders it: markdown
 //! through `marked` (GFM), plaintext escaped, fenced code tinted by
-//! `codehl` (`sanitizeLspHTML`).
+//! `codehl` (`sanitizeLspHTML`), laid out with the UA stylesheet's block
+//! margins (collapsed as CSS collapses them) and `_codemirror.scss`.
 
 use gpui_kit::prelude::FluentBuilder;
-use gpui_kit::{
-    AnyElement, Div, Font, FontStyle, FontWeight, Hsla, IntoElement, ParentElement, Rgba,
-    SharedString, StrikethroughStyle, Styled, StyledText, TextRun, UnderlineStyle, div, px, rems,
-};
+use gpui_kit::{AnyElement, Div, Hsla, IntoElement, ParentElement, Styled, div, px};
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
-use recur_textmate::{ShKind, highlight_line_spans, lang_from_code_class};
+use recur_textmate::{highlight_line_spans, lang_from_code_class};
+use recur_ui::text::{Align, InlineBox};
+use recur_ui::{Color, Span, Text, TextStyled, Theme, span, style::card};
 
 use crate::autocomplete::Doc;
-use crate::tokens::{AppTokens, mono_font, ui_font, with_font};
 
-/// Colors and sizes for a documentation block.
+/// Colors and the base size of a documentation block.
 #[derive(Clone)]
 pub struct DocStyle {
-    pub text: Hsla,
-    pub muted: Hsla,
-    pub line: Hsla,
-    pub pane_2: Hsla,
-    pub cyan: Hsla,
-    /// Base font size (12.5px in hover and signature tooltips).
+    pub text: Color,
+    pub muted: Color,
+    pub line: Color,
+    pub pane_2: Color,
+    pub cyan: Color,
+    /// Base font size (12.5px in hover and completion docs, 10px in
+    /// signature docs).
     pub size: f32,
+    /// Inside `.cm-completionInfo` (`white-space: pre-line`): source line
+    /// breaks in paragraphs stay breaks.
+    pub pre_line: bool,
 }
 
 impl DocStyle {
-    pub fn from_tokens(t: &AppTokens, size: f32) -> DocStyle {
-        let h = |c: Rgba| -> Hsla { c.into() };
+    pub fn from_theme(theme: &Theme, size: f32) -> DocStyle {
+        let t = &theme.tokens;
         DocStyle {
-            text: h(t.text),
-            muted: h(t.muted),
-            line: h(t.line),
-            pane_2: h(t.pane_2),
-            cyan: h(t.cyan),
+            text: t.text,
+            muted: t.muted,
+            line: t.line,
+            pane_2: t.pane_2,
+            cyan: t.cyan,
             size,
+            pre_line: false,
         }
     }
 }
+
+/// The documentation's `line-height`.
+const LEADING: f32 = 1.45;
 
 #[derive(Clone, Copy, Default, PartialEq)]
 struct Inline {
@@ -83,18 +90,10 @@ enum Block {
     Table(Vec<Vec<Para>>),
 }
 
-fn sh_color(k: ShKind) -> Hsla {
-    let c = match k {
-        ShKind::Number => 0xd19a66,
-        ShKind::Keyword => 0x6cb6ff,
-        ShKind::String => 0x7ee08a,
-        ShKind::Comment => 0x7fa9ad,
-    };
-    gpui_kit::rgb(c).into()
-}
-
 struct Builder<'a> {
     events: std::iter::Peekable<Parser<'a>>,
+    /// What a soft line break becomes (`" "`, or `"\n"` under pre-line).
+    soft_break: &'static str,
 }
 
 impl Builder<'_> {
@@ -210,7 +209,7 @@ impl Builder<'_> {
                 {
                     p.push("\n", st)
                 }
-                Event::SoftBreak => p.push(" ", st),
+                Event::SoftBreak => p.push(self.soft_break, st),
                 Event::HardBreak => p.push("\n", st),
                 Event::Start(Tag::Strong) => st.strong = true,
                 Event::End(TagEnd::Strong) => st.strong = false,
@@ -227,152 +226,274 @@ impl Builder<'_> {
     }
 }
 
-fn para_text(p: Para, s: &DocStyle, color: Hsla, bold: bool) -> StyledText {
-    let (ui, mono) = (ui_font(), mono_font());
-    let runs = p
-        .runs
-        .iter()
-        .map(|(len, st)| {
-            let mut font: Font = if st.code { mono.clone() } else { ui.clone() };
-            if st.strong || bold {
-                font.weight = FontWeight::BOLD;
-            }
-            if st.em {
-                font.style = FontStyle::Italic;
-            }
-            let color = if st.link { s.cyan } else { color };
-            TextRun {
-                len: *len,
-                font,
-                color,
-                background_color: st.code.then_some(s.pane_2),
-                underline: st.link.then_some(UnderlineStyle {
-                    thickness: px(1.),
-                    color: Some(Hsla {
-                        a: s.cyan.a * 0.45,
-                        ..s.cyan
-                    }),
-                    wavy: false,
-                }),
-                strikethrough: st.strike.then_some(StrikethroughStyle {
-                    thickness: px(1.),
-                    color: Some(color),
-                }),
-            }
-        })
-        .collect();
-    StyledText::new(SharedString::from(p.text)).with_runs(runs)
+fn hsla(c: Color) -> Hsla {
+    c.into()
 }
 
-fn code_block(lang: &str, text: &str, s: &DocStyle) -> Div {
-    let id = lang_from_code_class(lang);
-    let mono = mono_font();
-    let mut lines = div().flex().flex_col();
-    for line in text.split('\n') {
-        let line = if line.is_empty() { " " } else { line };
-        let runs = highlight_line_spans(line, id)
-            .into_iter()
-            .map(|(r, k)| TextRun {
-                len: r.len(),
-                font: mono.clone(),
-                color: k.map_or(s.text, sh_color),
-                background_color: None,
-                underline: None,
-                strikethrough: None,
-            })
-            .collect();
-        lines = lines.child(StyledText::new(SharedString::from(line.to_string())).with_runs(runs));
-    }
-    with_font(div(), &mono)
-        .mt(px(0.35 * s.size))
-        .mb(px(0.55 * s.size))
-        .py(px(8.))
-        .px(px(10.))
-        .rounded(px(6.))
-        .bg(s.pane_2)
-        .border_1()
-        .border_color(s.line)
-        .text_size(px(12.))
-        .line_height(gpui_kit::relative(1.4))
-        .text_color(s.text)
-        .child(lines)
-}
-
-fn render_blocks(blocks: Vec<Block>, s: &DocStyle, top: bool) -> Div {
-    let n = blocks.len();
-    let mut out = div().flex().flex_col();
-    for (i, b) in blocks.into_iter().enumerate() {
-        let last = i + 1 == n;
-        out = out.child(match b {
-            Block::Para(p) => div()
-                .when(!last || !top, |d| d.mb(px(0.55 * s.size)))
-                .text_color(s.muted)
-                .child(para_text(p, s, s.muted, false)),
-            Block::Heading(level, p) => {
-                let scale = [2.0, 1.5, 1.17, 1.0, 0.83, 0.67][(level as usize).clamp(1, 6) - 1];
-                div()
-                    .text_size(px(s.size * scale))
-                    .my(px(s.size * scale * 0.67))
-                    .child(para_text(p, s, s.text, true))
-            }
-            Block::Code { lang, text } => {
-                code_block(&lang, &text, s).when(last && top, |d| d.mb(px(0.)))
-            }
-            Block::Rule => div().w_full().my(px(0.7 * s.size)).h(px(1.)).bg(s.line),
-            Block::List { start, items } => {
-                let mut list = div().flex().flex_col().pl(rems(2.5)).my(px(s.size));
-                for (k, item) in items.into_iter().enumerate() {
-                    let marker = match start {
-                        Some(n) => format!("{}.", n + k as u64),
-                        None => "•".to_string(),
-                    };
-                    list = list.child(
-                        div()
-                            .flex()
-                            .child(
-                                div()
-                                    .absolute()
-                                    .ml(px(-18.))
-                                    .text_color(s.muted)
-                                    .child(marker),
-                            )
-                            .child(render_blocks(item, s, false)),
-                    );
-                }
-                list
-            }
-            Block::Quote(inner) => div()
-                .mx(rems(2.5))
-                .my(px(s.size))
-                .child(render_blocks(inner, s, false)),
-            Block::Table(rows) => {
-                let mut table = div().flex().flex_col().my(px(0.55 * s.size));
-                for (r, row) in rows.into_iter().enumerate() {
-                    let mut tr = div().flex().gap(px(8.));
-                    for cell in row {
-                        tr = tr.child(div().flex_1().child(para_text(
-                            cell,
-                            s,
-                            if r == 0 { s.text } else { s.muted },
-                            r == 0,
-                        )));
-                    }
-                    table = table.child(tr);
-                }
-                table
-            }
-        });
+/// Inline runs: `code` is mono at .95em in a padded, bordered box; links
+/// are cyan with their `border-bottom` (drawn as an underline).
+/// simplify: recur-ui inline boxes take one border for all sides, so the
+/// link's bottom-only border is an underline; swap for a per-side inline
+/// border when recur-ui grows one.
+fn spans(p: &Para, s: &DocStyle, size: f32, bold: bool) -> Vec<Span> {
+    let mut out = Vec::new();
+    let mut off = 0;
+    for (len, st) in &p.runs {
+        let t = p.text[off..off + len].to_string();
+        off += len;
+        let mut sp = span(t);
+        if st.code {
+            let cs = 0.95 * size;
+            sp = sp.mono().size(cs).boxed(InlineBox {
+                pad_top: 0.1 * cs,
+                pad_bottom: 0.1 * cs,
+                pad_left: 0.35 * cs,
+                pad_right: 0.35 * cs,
+                border: 1.,
+                border_color: hsla(s.line),
+                background: Some(hsla(s.pane_2)),
+                radius: 4.,
+                ..InlineBox::default()
+            });
+        }
+        if st.strong || bold {
+            sp = sp.weight(700.);
+        }
+        if st.em {
+            sp = sp.italic();
+        }
+        if st.strike {
+            sp = sp.line_through(true);
+        }
+        if st.link {
+            sp = sp.color(hsla(s.cyan)).underline(true);
+        }
+        out.push(sp);
     }
     out
+}
+
+fn para_text(p: &Para, s: &DocStyle, size: f32, color: Color, bold: bool) -> Text {
+    let t = Text::from_spans(spans(p, s, size, bold))
+        .ui()
+        .size(size)
+        .leading(LEADING)
+        .color(hsla(color));
+    if s.pre_line || p.text.contains('\n') {
+        t.pre_wrap()
+    } else {
+        t
+    }
+}
+
+/// A block with its outer vertical margins (they collapse with siblings).
+struct Laid {
+    el: AnyElement,
+    mt: f32,
+    mb: f32,
+}
+
+/// `.cm-lsp-documentation pre`: 12px mono, line-height 1.4, pre-wrap; the
+/// `code` inside is .95em.
+fn code_block(lang: &str, text: &str, s: &DocStyle) -> Div {
+    let id = lang_from_code_class(lang);
+    let mut runs = Vec::new();
+    for (i, line) in text.split('\n').enumerate() {
+        if i > 0 {
+            runs.push(span("\n").size(12. * 0.95));
+        }
+        for (r, k) in highlight_line_spans(line, id) {
+            let color = k.map_or(s.text, |k| {
+                crate::color::ui(crate::theme::doc_code_token(k))
+            });
+            runs.push(
+                span(line[r].to_string())
+                    .size(12. * 0.95)
+                    .color(hsla(color)),
+            );
+        }
+    }
+    if runs.is_empty() {
+        runs.push(span(""));
+    }
+    card(s.pane_2, s.line, 6.).py(px(8.)).px(px(10.)).child(
+        Text::from_spans(runs)
+            .mono()
+            .size(12.)
+            .leading(1.4)
+            .color(hsla(s.text))
+            .pre_wrap()
+            .break_anywhere(),
+    )
+}
+
+/// UA `h1`–`h6`: font size and block margins, in em of the heading.
+fn heading_metrics(level: u8) -> (f32, f32) {
+    match level {
+        1 => (2.0, 0.67),
+        2 => (1.5, 0.83),
+        3 => (1.17, 1.0),
+        4 => (1.0, 1.33),
+        5 => (0.83, 1.67),
+        _ => (0.67, 2.33),
+    }
+}
+
+fn lay_block(b: Block, s: &DocStyle, last: bool, nested_list: bool) -> Laid {
+    let size = s.size;
+    match b {
+        Block::Para(p) => Laid {
+            el: para_text(&p, s, size, s.muted, false).into_any_element(),
+            mt: 0.,
+            mb: if last { 0. } else { 0.55 * size },
+        },
+        Block::Heading(level, p) => {
+            let (scale, margin) = heading_metrics(level);
+            let fs = size * scale;
+            Laid {
+                el: para_text(&p, s, fs, s.text, true).into_any_element(),
+                mt: margin * fs,
+                mb: margin * fs,
+            }
+        }
+        Block::Code { lang, text } => Laid {
+            el: code_block(&lang, &text, s).into_any_element(),
+            mt: 0.35 * 12.,
+            mb: if last { 0. } else { 0.55 * 12. },
+        },
+        Block::Rule => Laid {
+            el: div()
+                .w_full()
+                .border_t_1()
+                .border_color(hsla(s.line))
+                .into_any_element(),
+            mt: 0.7 * size,
+            mb: 0.7 * size,
+        },
+        Block::List { start, items } => {
+            let margin = if nested_list { 0. } else { size };
+            let n = items.len();
+            let mut list = div().flex().flex_col().pl(px(40.));
+            let mut prev_mb: Option<f32> = None;
+            let (mut first_mt, mut last_mb) = (0., 0.);
+            for (k, item) in items.into_iter().enumerate() {
+                let marker = match start {
+                    Some(first) => format!("{}. ", first + k as u64),
+                    None => "• ".to_string(),
+                };
+                let (body, mt, mb) = lay_blocks(item, s, true);
+                match prev_mb {
+                    None => first_mt = mt,
+                    Some(p) => list = list.child(div().h(px(p.max(mt)))),
+                }
+                prev_mb = Some(mb);
+                if k + 1 == n {
+                    last_mb = mb;
+                }
+                list = list.child(
+                    div()
+                        .relative()
+                        .child(
+                            div()
+                                .absolute()
+                                .top_0()
+                                .left(px(-40.))
+                                .w(px(40.))
+                                .flex()
+                                .justify_end()
+                                .child(
+                                    recur_ui::text(marker)
+                                        .ui()
+                                        .size(size)
+                                        .leading(LEADING)
+                                        .color(hsla(s.muted))
+                                        .pre_wrap()
+                                        .align(Align::Right),
+                                ),
+                        )
+                        .child(body),
+                );
+            }
+            Laid {
+                el: list.into_any_element(),
+                mt: margin.max(first_mt),
+                mb: margin.max(last_mb),
+            }
+        }
+        Block::Quote(inner) => {
+            let (body, mt, mb) = lay_blocks(inner, s, false);
+            Laid {
+                el: div().mx(px(40.)).child(body).into_any_element(),
+                mt: size.max(mt),
+                mb: size.max(mb),
+            }
+        }
+        Block::Table(rows) => {
+            let mut table = div().flex().flex_col().gap(px(2.)).p(px(2.));
+            for (r, row) in rows.into_iter().enumerate() {
+                let mut tr = div().flex().gap(px(2.));
+                for cell in row {
+                    let head = r == 0;
+                    let t = para_text(&cell, s, size, if head { s.text } else { s.muted }, head)
+                        .when(head, |t| t.align(Align::Center));
+                    tr = tr.child(div().flex_1().p(px(1.)).child(t));
+                }
+                table = table.child(tr);
+            }
+            Laid {
+                el: table.into_any_element(),
+                mt: 0.,
+                mb: 0.,
+            }
+        }
+    }
+}
+
+/// Blocks in one parent with collapsed sibling margins; returns the body
+/// and the outer margins of its first and last child (which collapse
+/// through a parent without padding).
+fn lay_blocks(blocks: Vec<Block>, s: &DocStyle, in_list: bool) -> (Div, f32, f32) {
+    let n = blocks.len();
+    let mut out = div().flex().flex_col();
+    let mut prev_mb: Option<f32> = None;
+    let (mut first_mt, mut last_mb) = (0., 0.);
+    for (i, b) in blocks.into_iter().enumerate() {
+        let last = i + 1 == n;
+        let laid = lay_block(b, s, last, in_list);
+        match prev_mb {
+            None => first_mt = laid.mt,
+            Some(p) => out = out.child(div().flex_none().h(px(p.max(laid.mt)))),
+        }
+        prev_mb = Some(laid.mb);
+        if last {
+            last_mb = laid.mb;
+        }
+        out = out.child(laid.el);
+    }
+    (out, first_mt, last_mb)
+}
+
+/// The documentation root: margins of its first and last block stay
+/// inside the padded tooltip.
+fn root(blocks: Vec<Block>, s: &DocStyle) -> Div {
+    let (body, mt, mb) = lay_blocks(blocks, s, false);
+    div()
+        .flex()
+        .flex_col()
+        .when(mt > 0., |d| d.child(div().flex_none().h(px(mt))))
+        .child(body)
+        .when(mb > 0., |d| d.child(div().flex_none().h(px(mb))))
 }
 
 /// Render a [`Doc`] as `docToHTML` would.
 pub fn render_doc(doc: &Doc, s: &DocStyle) -> AnyElement {
     if !doc.markdown {
-        return div()
-            .whitespace_normal()
-            .child(doc.value.clone())
-            .into_any_element();
+        let t = recur_ui::text(doc.value.clone())
+            .ui()
+            .size(s.size)
+            .leading(LEADING)
+            .color(hsla(s.text));
+        return if s.pre_line { t.pre_wrap() } else { t }.into_any_element();
     }
     render_markdown(&doc.value, s).into_any_element()
 }
@@ -384,15 +505,52 @@ pub fn render_markdown(src: &str, s: &DocStyle) -> Div {
     opts.insert(Options::ENABLE_GFM);
     let mut b = Builder {
         events: Parser::new_ext(src, opts).peekable(),
+        soft_break: if s.pre_line { "\n" } else { " " },
     };
     let blocks = b.blocks(None);
-    render_blocks(blocks, s, true)
+    root(blocks, s)
 }
 
 /// Code in a language (`renderCode` for `MarkedString {language}`): a
-/// fenced block.
+/// fenced block on its own (`pre:last-child`).
 pub fn render_code(language: &str, value: &str, s: &DocStyle) -> AnyElement {
-    code_block(&format!("language-{language}"), value, s)
-        .mb(px(0.))
-        .into_any_element()
+    root(
+        vec![Block::Code {
+            lang: format!("language-{language}"),
+            text: value.to_string(),
+        }],
+        s,
+    )
+    .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn blocks(src: &str) -> Vec<Block> {
+        let mut opts = Options::empty();
+        opts.insert(Options::ENABLE_TABLES);
+        opts.insert(Options::ENABLE_STRIKETHROUGH);
+        Builder {
+            events: Parser::new_ext(src, opts).peekable(),
+            soft_break: " ",
+        }
+        .blocks(None)
+    }
+
+    #[test]
+    fn parses_blocks_and_inline_runs() {
+        let b = blocks("Some `code` and **bold**\n\n```go\nx := 1\n```\n\n- a\n- b");
+        assert_eq!(b.len(), 3);
+        let Block::Para(p) = &b[0] else { panic!() };
+        assert_eq!(p.text, "Some code and bold");
+        assert!(p.runs.iter().any(|(_, s)| s.code));
+        assert!(p.runs.iter().any(|(_, s)| s.strong));
+        assert!(
+            matches!(&b[1], Block::Code { lang, text } if lang == "language-go" && text == "x := 1")
+        );
+        assert!(matches!(&b[2], Block::List { start: None, items } if items.len() == 2));
+        assert_eq!(heading_metrics(2), (1.5, 0.83));
+    }
 }

@@ -10,7 +10,10 @@ use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use gpui_kit::{App, AppContext, Bounds, WindowBounds, WindowOptions, px, size};
+use gpui_kit::{
+    App, AppContext, Bounds, Context, Entity, IntoElement, ParentElement, Render, Styled, Window,
+    WindowBounds, WindowOptions, px, size,
+};
 use recur_editor::highlight::TextMate;
 use recur_editor::prefs::{EditorKeymap, EditorPrefs};
 use recur_editor::view::{EditorEvent, EditorKind, EditorOptions, EditorView};
@@ -52,6 +55,24 @@ fn args() -> Args {
         }
     }
     a
+}
+
+/// The window root as recur-ui wants it: `window_root` > `body` > editor,
+/// with the title tooltip overlay last.
+struct Root {
+    editor: Entity<EditorView>,
+    tips: Entity<recur_ui::tooltip::TitleTooltip>,
+}
+
+impl Render for Root {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::style::window_root(
+            recur_ui::style::body(cx)
+                .size_full()
+                .child(self.editor.clone())
+                .child(self.tips.clone()),
+        )
+    }
 }
 
 fn bundles_dir() -> PathBuf {
@@ -123,49 +144,53 @@ fn main() {
         .merge
         .as_ref()
         .map(|p| std::fs::read_to_string(p).unwrap_or_default());
-    gpui_kit::application().run(move |cx: &mut App| {
-        gpui_kit::init(cx);
-        let (tm, theme) = load_textmate(&a.theme);
-        let tm = Rc::new(RefCell::new(tm));
-        let dark = theme
-            .as_ref()
-            .is_none_or(|t| t.ui_theme == recur_textmate::UiTheme::Dark);
-        let prefs = EditorPrefs {
-            keymap: a.keymap,
-            line_wrapping: a.wrap,
-            ..Default::default()
-        };
-        let mut options = EditorOptions::new(&a.file.display().to_string(), &doc);
-        options.kind = match original {
-            Some(o) => EditorKind::Merge { original: o },
-            None => EditorKind::Code,
-        };
-        options.prefs = prefs;
-        options.app_theme = a.app_theme.clone();
-        options.theme = theme;
-        options.dark_fallback = dark;
-        options.textmate = Some(tm);
-        let bounds = Bounds::centered(None, size(px(1000.), px(700.)), cx);
-        let opened = gpui_kit::open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
+    gpui_kit::application()
+        .with_assets(recur_ui::Assets)
+        .run(move |cx: &mut App| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+            recur_ui::Theme::set(recur_ui::ThemeId::from_key(&a.app_theme), cx);
+            let (tm, theme) = load_textmate(&a.theme);
+            let tm = Rc::new(RefCell::new(tm));
+            let dark = theme
+                .as_ref()
+                .is_none_or(|t| t.ui_theme == recur_textmate::UiTheme::Dark);
+            let prefs = EditorPrefs {
+                keymap: a.keymap,
+                line_wrapping: a.wrap,
                 ..Default::default()
-            },
-            cx,
-            move |window, cx| {
-                let editor = cx.new(|cx| EditorView::new(options, window, cx));
-                cx.subscribe(&editor, |_, e: &EditorEvent, _| match e {
-                    EditorEvent::DocChanged(_) | EditorEvent::Cursor { .. } => {}
-                    other => eprintln!("{other:?}"),
-                })
-                .detach();
-                editor.update(cx, |e, cx| e.focus(window, cx));
-                editor
-            },
-        );
-        if let Err(e) = opened {
-            eprintln!("{e}");
-            cx.quit();
-        }
-    });
+            };
+            let mut options = EditorOptions::new(&a.file.display().to_string(), &doc);
+            options.kind = match original {
+                Some(o) => EditorKind::Merge { original: o },
+                None => EditorKind::Code,
+            };
+            options.prefs = prefs;
+            options.theme = theme;
+            options.dark_fallback = dark;
+            options.textmate = Some(tm);
+            let bounds = Bounds::centered(None, size(px(1000.), px(700.)), cx);
+            let opened = gpui_kit::open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(bounds)),
+                    ..Default::default()
+                },
+                cx,
+                move |window, cx| {
+                    let editor = cx.new(|cx| EditorView::new(options, window, cx));
+                    cx.subscribe(&editor, |_, e: &EditorEvent, _| match e {
+                        EditorEvent::DocChanged(_) | EditorEvent::Cursor { .. } => {}
+                        other => eprintln!("{other:?}"),
+                    })
+                    .detach();
+                    editor.update(cx, |e, cx| e.focus(window, cx));
+                    let tips = recur_ui::tooltip::TitleTooltip::new(cx);
+                    cx.new(|_| Root { editor, tips })
+                },
+            );
+            if let Err(e) = opened {
+                eprintln!("{e}");
+                cx.quit();
+            }
+        });
 }

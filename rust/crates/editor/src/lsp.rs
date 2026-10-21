@@ -91,6 +91,30 @@ fn pos_fields(pos: &Value) -> Option<(i64, i64)> {
     Some((pos.get("line")?.as_i64()?, pos.get("character")?.as_i64()?))
 }
 
+/// `contentChangesFor`: a `didChange` body for `changes` from `start` to
+/// `doc`. Full text when the server syncs fully or the document is under
+/// 1024 UTF-16 units; otherwise one ranged event per change, last first,
+/// all in `start`'s coordinates.
+pub fn content_changes_for(
+    doc: &Text,
+    start: &Text,
+    changes: &ChangeSet,
+    incremental: bool,
+) -> Vec<Value> {
+    if !incremental || doc.byte_to_utf16(doc.len()) < 1024 {
+        return vec![json!({ "text": doc.to_string() })];
+    }
+    let mut events = Vec::new();
+    changes.iter_changes(false, |from_a, to_a, _, _, inserted| {
+        events.push(json!({
+            "range": { "start": to_position(start, from_a), "end": to_position(start, to_a) },
+            "text": inserted.to_string(),
+        }));
+    });
+    events.reverse();
+    events
+}
+
 /// `fromPosition`: `{line, character}` to a byte offset (clamped to the
 /// document like CodeMirror's `doc.line()` would throw past it).
 pub fn from_position(doc: &Text, pos: &Value) -> Option<usize> {
@@ -1060,5 +1084,31 @@ mod tests {
         );
         let touched = ChangeSet::of(&[Change::insert(3, "x")], 4).desc();
         assert_eq!(LspAttachment::format_changes(&doc, &touched, &resp), None);
+    }
+
+    #[test]
+    fn content_changes_full_or_ranged() {
+        let small = Text::of("ab");
+        let cs = ChangeSet::of(&[Change::insert(1, "x")], 2);
+        let next = cs.apply(&small);
+        assert_eq!(
+            content_changes_for(&next, &small, &cs, true),
+            vec![json!({"text": "axb"})]
+        );
+        let big_src = format!("{}\nend", "x".repeat(1100));
+        let big = Text::of(&big_src);
+        let cs = ChangeSet::of(
+            &[Change::insert(0, "a"), Change::new(1101, 1104, "END")],
+            big.len(),
+        );
+        let next = cs.apply(&big);
+        assert_eq!(
+            content_changes_for(&next, &big, &cs, true),
+            vec![
+                json!({"range": {"start": {"line": 1, "character": 0}, "end": {"line": 1, "character": 3}}, "text": "END"}),
+                json!({"range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 0}}, "text": "a"}),
+            ]
+        );
+        assert_eq!(content_changes_for(&next, &big, &cs, false).len(), 1);
     }
 }

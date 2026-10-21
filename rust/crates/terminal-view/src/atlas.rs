@@ -476,15 +476,15 @@ mod mac {
         let line = CTLine::new_with_attributed_string(s.as_concrete_TypeRef() as _);
         cx.save();
         cx.set_rgb_fill_color(color.0, color.1, color.2, color.3);
-        // Glyphs are drawn y-up around the baseline.
+        // WebKit's `computeOverallTextMatrix` on the y-down canvas: the font matrix flipped,
+        // then skewed for a synthetic oblique.
         cx.translate(x, baseline);
-        cx.scale(1., -1.);
-        if italic {
-            let skew = (SYNTHETIC_OBLIQUE.to_radians()).tan();
-            cx.set_text_matrix(&CGAffineTransform::new(1., 0., skew, 1., 0., 0.));
+        let skew = if italic {
+            SYNTHETIC_OBLIQUE.to_radians().tan()
         } else {
-            cx.set_text_matrix(&CGAffineTransform::new(1., 0., 0., 1., 0., 0.));
-        }
+            0.0
+        };
+        cx.set_text_matrix(&CGAffineTransform::new(1., 0., skew, -1., 0., 0.));
         for run in line.glyph_runs().iter() {
             let run_font = run
                 .attributes()

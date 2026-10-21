@@ -129,6 +129,16 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
                     cx.advance_clock(Duration::from_millis(*ms));
                     cx.run_until_parked();
                 }
+                // One key per update, as Playwright types: each keystroke's effects settle
+                // before the next.
+                Step::Type(text) => {
+                    for ch in text.chars() {
+                        cx.update_window(any, |_, window, cx| {
+                            window.input(&ch.to_string(), cx)
+                        })?;
+                        cx.run_until_parked();
+                    }
+                }
                 step => {
                     cx.update_window(any, |_, window, cx| match step {
                         Step::Move([x, y]) => window.pointer_move(point(px(*x), px(*y)), None, cx),
@@ -153,17 +163,7 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
                                 window.key_up(&ks, cx);
                             }
                         }
-                        Step::Type(text) => {
-                            for ch in text.chars() {
-                                let ks = if ch == ' ' {
-                                    "space".to_string()
-                                } else {
-                                    ch.to_string()
-                                };
-                                window.key_down(&ks, false, cx);
-                                window.key_up(&ks, cx);
-                            }
-                        }
+                        Step::Type(_) => {}
                         Step::Wait(_) => {}
                     })?;
                     cx.run_until_parked();

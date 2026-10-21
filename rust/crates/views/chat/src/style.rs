@@ -2,7 +2,7 @@
 //! hard-codes, the bordered pills (`.tc-chip`, `.tc-file`, `.tc-url`, status chips, …), the
 //! agent tints and small text builders.
 
-use gpui_kit::{Div, Hsla, IntoElement, ParentElement, Styled, div, px};
+use gpui_kit::{Div, Hsla, IntoElement, ParentElement, Styled, Window, div, px};
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, Text, TextStyled, text};
 use recur_ui::{Color, IconName, Tokens, hex, icon, rgba};
@@ -50,6 +50,22 @@ pub fn hsla(c: Color) -> Hsla {
 }
 
 /// A nowrap text in `family` at `size` and `weight`.
+/// An `inline-flex` box alone on a block's line: the line is at least the block's strut
+/// (`strut_size` / `strut_leading`, UI font), and the box's baseline (`baseline` from its top,
+/// `height` tall) sits on the strut's baseline.
+pub fn line_box(child: impl IntoElement, strut_size: f32, strut_leading: f32, baseline: f32, height: f32, window: &Window) -> Div {
+    let (_, _, s) = text("x").size(strut_size).line_height(LineHeight::Scale(strut_leading)).measure(None, window);
+    let above = s.baseline.max(baseline);
+    let below = (s.height - s.baseline).max(height - baseline);
+    div().flex().h(px(above + below)).child(div().mt(px(above - baseline)).child(child))
+}
+
+/// The baseline of one line of text from its line box's top.
+pub fn text_baseline(t: Text, window: &Window) -> (f32, f32) {
+    let (_, _, l) = t.measure(None, window);
+    (l.baseline, l.height)
+}
+
 pub fn label(s: impl Into<gpui_kit::SharedString>, family: Family, size: f32, weight: f32) -> Text {
     text(s).family(family).size(size).weight(weight).nowrap()
 }

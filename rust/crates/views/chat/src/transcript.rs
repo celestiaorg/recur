@@ -932,8 +932,11 @@ impl AgentChat {
         };
         let data = self.tool_data.clone();
         let summary = group_summary(msgs, &head_rows, rows, data.cx());
+        // `.steps-head` is inline-flex on a 13 / 1.45 line; its baseline is the centered 12px
+        // chevron's bottom edge.
+        let line = 11.5 * 1.45;
         el = el.child(
-            div().flex().child(
+            crate::style::line_box(
                 div()
                     .id(SharedString::from(format!("steps-{}-{start}", self.props.reset_key)))
                     .debug_selector(|| format!("steps-head:{summary}"))
@@ -953,6 +956,11 @@ impl AgentChat {
                     )
                     .child(text(summary).line_height(LineHeight::Scale(1.45)).nowrap())
                     .on_click(cx.listener(move |this, _, _, cx| this.toggle_group(start, open, cx))),
+                13.,
+                1.45,
+                2. + (line - 12.) / 2. + 12.,
+                line + 4.,
+                window,
             ),
         );
         let shown: Vec<usize> = if open {

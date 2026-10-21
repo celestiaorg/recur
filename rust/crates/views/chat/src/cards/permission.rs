@@ -263,7 +263,13 @@ impl Render for PermissionCard {
                         .border_t_1()
                         .border_color(hsla(t.line_soft))
                 })
-                .child(div().flex().child(toggle));
+                .child({
+                    // `.perm-args`: the inline-flex toggle on a 12.5 / 1.45 line. Its first item,
+                    // the centered 11px chevron, has no baseline: its bottom edge is the box's.
+                    let (_, h) = crate::style::text_baseline(text("x").mono().size(10.5).line_height(LineHeight::Normal), window);
+                    let toggle_h = h.max(11.);
+                    crate::style::line_box(toggle, 12.5, 1.45, (toggle_h + 11.) / 2., toggle_h, window)
+                });
             if open {
                 let vh = f32::from(window.viewport_size().height);
                 box_ = box_.child(

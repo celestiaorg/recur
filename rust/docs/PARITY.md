@@ -587,7 +587,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/compatible-providers.ts` (81 lines)
 - [ ] `lib/composerDom.ts` (1582 lines)
 - [ ] `lib/composerUndo.ts` (102 lines)
-- [ ] `lib/contextUsage.ts` (90 lines)
+- [x] `lib/contextUsage.ts` (90 lines) → `recur_agent::context_usage` (ContextUsage used/ready/after_compact, from_turn, from_chat_items, format_tokens with JS `toFixed`/`Math.round` rounding; `contextUsage.test.ts` ported)
 - [ ] `lib/dialog-focus.ts` (84 lines)
 - [ ] `lib/editor-dirty.ts` (60 lines)
 - [ ] `lib/editor-session.ts` (870 lines)
@@ -626,7 +626,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/markdown-parse.ts` (191 lines)
 - [ ] `lib/markdown-worker.ts` (20 lines)
 - [ ] `lib/markdown.ts` (51 lines)
-- [ ] `lib/mcp.ts` (69 lines)
+- [x] `lib/mcp.ts` (69 lines) → `recur_agent::mcp` over `recur_domain::McpServer` (untrimmed id rule, slug, global off-list, Linear upsert, custom list, enable/remove/update keeping the id; `mcp.test.ts` ported)
 - [ ] `lib/mdcopy.ts` (88 lines)
 - [ ] `lib/menu-space.ts` (248 lines)
 - [ ] `lib/menu.ts` (152 lines)
@@ -689,7 +689,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/syntax-mode.ts` (213 lines)
 - [ ] `lib/tab-strip-drag.svelte.ts` (392 lines)
 - [ ] `lib/tab-strip-scroll.ts` (174 lines)
-- [ ] `lib/tasktools.ts` (340 lines)
+- [x] `lib/tasktools.ts` (340 lines) → `recur_agent::display::tasks` (args, TaskCreate id, TaskList JSON/line parse with `[blocked by]`/`(owner)` suffixes, TaskGet JSON/multiline parse, labels, meta, chip status, has-body, ack rules; regex semantics hand-ported; `tasktools.test.ts` ported)
 - [ ] `lib/term-fit.ts` (35 lines)
 - [ ] `lib/term-focus.ts` (15 lines)
 - [ ] `lib/terminal.ts` (206 lines)
@@ -703,13 +703,13 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/tm-scope-selector.ts` (121 lines)
 - [ ] `lib/tm-symbols.ts` (297 lines)
 - [ ] `lib/tm-theme.ts` (590 lines)
-- [ ] `lib/todos.ts` (38 lines)
+- [x] `lib/todos.ts` (38 lines) → `recur_agent::display::todos` (parse, counts, latest over `ChatItem`s; `todos.test.ts` ported)
 - [ ] `lib/tree-sticky.ts` (137 lines)
 - [ ] `lib/updater.ts` (42 lines)
 - [ ] `lib/user-mention.ts` (200 lines)
 - [ ] `lib/uuid.ts` (16 lines)
 - [ ] `lib/wait-for-worktree.ts` (38 lines)
-- [ ] `lib/webtools.ts` (87 lines)
+- [x] `lib/webtools.ts` (87 lines) → `recur_agent::display::web` (WebFetch URL/prompt, WebSearch query, `compact_url` on the WHATWG `url` crate, JSON sniff; `webtools.test.ts` ported)
 - [ ] `lib/workspace-file.ts` (96 lines)
 - [ ] `lib/workspace-nav.ts` (350 lines)
 - [ ] `lib/workspace-path.ts` (31 lines)
@@ -739,6 +739,7 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 
 - [ ] `internal/agenttools`: 52 files, 3802 lines, 3 test files
 - [ ] `internal/app`: 25 files, 8921 lines, 27 test files
+  - [x] `model_catalog.go` catalog types → `recur_agent::catalog` (FlagOption, FlagDimension, ModelChoice, ModelGroup serde-identical; `defaultFlagsFromDims`). Per-provider lists, merge and fallbacks belong to P1/P2/P3 and SV
 - [ ] `internal/bundles`: 19 files, 6525 lines, 20 test files
 - [ ] `internal/cli`: 7 files, 830 lines, 2 test files
 - [ ] `internal/cliinstall`: 3 files, 568 lines, 3 test files
@@ -763,6 +764,17 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `schedule`: ScheduledPrompt(+Run), OnStartup, NextScheduledTime with a robfig/cron v3 port (seconds-optional fields, names, steps, descriptors, `@every`, `CRON_TZ=`/`TZ=`, five-year limit) and Go `time.Date` DST resolution on embedded tzdata (chrono-tz); 2,844 Go-computed cases in `tests/go_rules.rs`
   - [x] `briefing`, `observatory`, `model`, `ids`: briefing snapshot types and codes, observatory/search/metrics types, ModelRef (ParseModelRef, String, IsZero, NewModelRef), ProviderLabel, BuiltinProvider, NewID/NewUniqueID/ValidID
 - [ ] `internal/engine`: 88 files, 47557 lines, 106 test files
+  - [x] Slice A (agent contracts) → `recur-agent` + `recur_provider_claude::{stream, testing}`; Go-generated golden fixtures in `crates/agent/tests/golden/go_agent.json` and `providers/claude/tests/golden/go_stream.json` (generators committed as `.go.txt`)
+    - [x] `runner.go` → `recur_agent::{turn, event}` (TurnRequest, SessionRoute, McpAttach, `standing_in_user_prompt`, AgentEvent for every ParsedKind, TurnResult with Go JSON tags, McpServerStatus); `TurnMirror` and `Inject*` become `TurnContext` sink/steer
+    - [x] `toolview.go` → `Provider::{display_tool, display_tool_result}` + `recur_agent::display::{display_tool_result, summarize_display_input, canonical_claude_tool}`; the Codex and Cursor mappings are P1/P2 impls
+    - [x] `agenterr.go` classification → `recur_agent::error` (transient markers, `classifyAgentError` incl. the provider-set transient kind, `agentFailureReason`, `knownAgentError`, `tidyAgentError`, CLI log prefix, `firstLine`, `term.StripVT` byte for byte, Codex login sentence). `turnError` / `transientFailure` are E3 (`has_transient_marker` is their scan)
+    - [x] `attachments.go` markers → `recur_agent::attach` (marker, parse/strip/ensure, UserImage, `userContentBlocks` incl. foreign markers and the image-first hidden sentinel, marker order, ordinals, id sanitizing, MIME table). Disk I/O is E2; Claude/Cursor instructions are P1/P2
+    - [x] `permission.go` labels → `recur_agent::permission` (prompt tool name, Recur tool labels, label, summary). Broker is E2; Claude flags are P1
+    - [x] `streamjson.go` → parser in `recur_provider_claude::stream`; display helpers, limits and listing compactors in `recur_agent::display` (with `createPlanBody`/`isCreatePlanTool` from `cursortools.go`, which both need)
+    - [x] `scripted.go` → `recur_agent::testing::ScriptedProvider` + `recur_provider_claude::testing::{NdjsonScript, fixture_lines}` (`testing` features)
+    - [x] `mirror.go` `contextUsageTracker` / `preferContextUsage` / `contextUsedTokens` → `ContextUsageTracker`, `TokenUsage::{prefer_context, context_used}`
+    - [x] `loop.go` steer text used by providers → `recur_agent::Steer` + `turn::{format_steer_user_message, follow_up_text}`
+    - [x] Tests: `streamjson_test.go`, `standing_test.go`, `context_usage_test.go` (parser + tracker cases), `permission_test.go` (label/summary cases), `attachments_test.go` (marker/content-block cases)
 - [ ] `internal/git`: 12 files, 4392 lines, 14 test files
 - [ ] `internal/lsp`: 5 files, 916 lines, 4 test files
 - [ ] `internal/mcp`: 6 files, 839 lines, 3 test files
@@ -780,6 +792,7 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
 - [ ] `internal/store`: 9 files, 6229 lines, 6 test files
 - [ ] `internal/term`: 7 files, 1797 lines, 6 test files
 - [ ] `internal/usage`: 12 files, 2911 lines, 3 test files
+  - [x] `types.go` → `recur_agent::quota` (Snapshot, ProviderQuota, Window, ModelRow, CursorUsageConnect serde-identical, provider/source/window/bucket constants, EmptySnapshot, setSource, clampPct) plus the `UsageProbe` trait
 - [ ] `internal/wsenv`: 2 files, 325 lines, 2 test files
 - [ ] `cmd/recur`: 1 files, 22 lines, 0 test files
 - [ ] `cmd/bundles`: 1 files, 15 lines, 0 test files

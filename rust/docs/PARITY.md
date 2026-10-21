@@ -547,7 +547,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/artifacts.ts` (198 lines)
 - [ ] `lib/autosize-textarea.ts` (29 lines)
 - [ ] `lib/bridge-bench.ts` (98 lines)
-- [ ] `lib/briefingtools.ts` (345 lines)
+- [x] `lib/briefingtools.ts` (345 lines) → `recur_agent_tools::display::briefing_tools` (detectors, brief/context/present parsing incl. legacy `Opening`/`Presented` strings, hydration, labels; `briefingtools.test.ts` ported)
 - [ ] `lib/bundle-reload.ts` (25 lines)
 - [ ] `lib/caches/byte-lru.ts` (189 lines)
 - [ ] `lib/caches/chat-heap-cache.ts` (211 lines)
@@ -661,11 +661,11 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/open-external.ts` (81 lines)
 - [ ] `lib/open-in-pref.ts` (34 lines)
 - [ ] `lib/open-path.ts` (48 lines)
-- [ ] `lib/open-pr-tool.ts` (70 lines)
+- [x] `lib/open-pr-tool.ts` (70 lines) → `recur_agent_tools::display::open_pr_tool` (`open-pr-tool.test.ts` ported)
 - [ ] `lib/overlay-scrollbar.ts` (141 lines)
 - [ ] `lib/pdf-preview.ts` (85 lines)
-- [ ] `lib/permissionTools.ts` (60 lines)
-- [ ] `lib/plantools.ts` (120 lines)
+- [x] `lib/permissionTools.ts` (60 lines) → `recur_agent_tools::display::permission_tools::permission_tool_label`
+- [x] `lib/plantools.ts` (120 lines) → `recur_agent_tools::display::plan_tools` (step/attachment/body parsing, labels, ack title recovery)
 - [ ] `lib/pr-attention.ts` (98 lines)
 - [ ] `lib/pr-checks.ts` (139 lines)
 - [ ] `lib/pr-commits.ts` (23 lines)
@@ -684,7 +684,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/providerUsage.ts` (141 lines)
 - [ ] `lib/providers.ts` (76 lines)
 - [ ] `lib/rail-peek.ts` (106 lines)
-- [ ] `lib/reenter-phase-tool.ts` (32 lines)
+- [x] `lib/reenter-phase-tool.ts` (32 lines) → `recur_agent_tools::display::reenter_phase_tool` (`reenter-phase-tool.test.ts` ported)
 - [ ] `lib/remove-workspace.ts` (72 lines)
 - [ ] `lib/review-diff.ts` (131 lines)
 - [ ] `lib/review-scope.ts` (47 lines)
@@ -774,7 +774,13 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 
 Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: port its cases alongside the code.
 
-- [ ] `internal/agenttools`: 52 files, 3802 lines, 3 test files
+- [ ] `internal/agenttools`: 52 files, 3802 lines, 3 test files → `recur-agent-tools` (all three Go test files ported)
+  - [x] `Host` trait (engine seam) with Go `noopReporter` as default bodies (`NoopHost`), all request types, `HostError`; `Tool`/`Permitter`/`Call`/`Registry`, `advertised_name`, `bare_name`, `HALT_NAMES`, `halt_after`; `mcp__recur__*` and bare tool-name constants (`names`, `names::mcp`)
+  - [x] All 42 host tools (`host_tools()` in `tools/list` order): names, descriptions and schemas byte-identical to Go (`tests/catalog.rs`), and 623 recorded calls replayed for identical result text, error text and host calls (`tests/host_golden.rs`, fixtures from `tests/golden/golden_gen_test.go.txt`)
+  - [x] Go `encoding/json` decode semantics for tool args (`json`): scanner syntax errors, `Decoder` vs `Unmarshal`, case-insensitive and Kelvin/long-s field folding, first error wins, decode into existing values on duplicate keys, `UnmarshalTypeError` text with Go type names, `json.RawMessage`, `DisallowUnknownFields`; `%q` (`strconv.Quote`) and Go's per-byte U+FFFD handling (`gostr`)
+  - [x] Worktree sandbox (`path`): `code.SafeJoin`, `filepath` Clean/Join/Rel/Abs/Dir/Base, `EvalSymlinks`, nearest-existing-ancestor resolution, `MkdirAll`, `*PathError` text
+  - [x] Read, Edit, Write, Bash, TodoWrite + `TodoStore`: 75 recorded Go cases replayed (`tests/coding_golden.rs`); Bash keeps process-group kill on cancel/timeout, `WaitDelay` (2 s), capped capture, `exit: …` text with Go signal names per platform
+  - [ ] Glob and Grep enabled by default: complete and tested (ripgrep and Go-walk fallback, `filepath.Match`), but behind the `code` feature until `recur-code` exports `rg::locate`/`search_opts` and the store port exports `data_dir` (slice C / store; see engine-port-plan 5.3 T)
 - [ ] `internal/app`: 25 files, 8921 lines, 27 test files
   - [x] `instance.go` + test: `recur_platform::identity::{instance_label, window_title}` (title falls back to `Recur Next` side by side)
   - `open_path.go` stays with `recur-services`: it is WorkspacesService logic (store, engine, git), not OS path handling. Platform takes its result through `open_boot::attach_open_ipc` / `apply_cold_opens`.
@@ -822,7 +828,10 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
     - [x] Tests: `streamjson_test.go`, `standing_test.go`, `context_usage_test.go` (parser + tracker cases), `permission_test.go` (label/summary cases), `attachments_test.go` (marker/content-block cases)
 - [ ] `internal/git`: 12 files, 4392 lines, 14 test files
 - [ ] `internal/lsp`: 5 files, 916 lines, 4 test files
-- [ ] `internal/mcp`: 6 files, 839 lines, 3 test files
+- [x] `internal/mcp`: 6 files, 839 lines, 3 test files → `recur-mcp` (`server_test.go`, `tools_briefing_test.go`, `wrap_test.go` ported in full)
+  - [x] `McpServer` on hyper HTTP/1.1: `POST /<token>/mcp`, stable token per agent reused across turns, extra tokens for overlapping registrations, 404 when inactive or unknown, 405 + `Allow: POST`, Go `ServeMux` path cleaning (307), `http.Error` bodies and headers, 202 for notifications, 32 MiB body cap, 10 s header timeout, request cancellation on client disconnect, 3 s graceful close
+  - [x] JSON-RPC framing (`protocol`): id echoed verbatim (compacted), protocol version echo, error codes, `isError` tool results; 79 HTTP exchanges recorded from the Go server replayed byte for byte, including the `tools/list` body snapshot (`tests/http_golden.rs`)
+  - [x] `names_from_allowed_tools` (never null), `append_permission_request`, 128-bit hex tokens
 - [ ] `internal/observe`: 5 files, 1030 lines, 1 test files
 - [x] `internal/openipc`: 1 files, 286 lines, 1 test files (`recur_platform::openipc`, 10 tests)
   - [x] Wire format: one JSON request / response, Go tags (`projectId`, `workspaceId`, omitempty), `null` request tolerated, `invalid request` reply
@@ -954,48 +963,50 @@ Source: `app_menu.go`. Rust home: `recur-app::menu`. Every item, accelerator, en
 
 Source: `internal/agenttools`. Rust home: `recur-agent-tools`, served by `recur-mcp`. Names, schemas and descriptions must be byte-identical so prompts and bundles keep working.
 
-- [ ] `activate_skill`
-- [ ] `ask_user`
-- [ ] `attach_evidence`
-- [ ] `list_workspace_briefs`
-- [ ] `get_workspace_context`
-- [ ] `present_workspace`
-- [ ] `create_artifact`
-- [ ] `create_workspace`
-- [ ] `dispatch_specialist`
-- [ ] `done`
-- [ ] `edit_plan`
-- [ ] `escalate`
-- [ ] `extend_iterations`
-- [ ] `extend_rounds`
-- [ ] `list_artifacts`
-- [ ] `list_findings`
-- [ ] `list_skills`
-- [ ] `list_terminals`
-- [ ] `merge_child`
-- [ ] `open_pr`
-- [ ] `permission_request`
-- [ ] `plan`
-- [ ] `present_artifact`
-- [ ] `read_artifact`
-- [ ] `read_child`
-- [ ] `archive_child`
-- [ ] `message_child`
-- [ ] `read_terminal`
-- [ ] `reenter_phase`
-- [ ] `rename_branch`
-- [ ] `rename_session`
-- [ ] `rename_workspace`
-- [ ] `report_finding`
-- [ ] `report_result`
-- [ ] `rerun_review`
-- [ ] `resume_loop`
-- [ ] `run_phase`
-- [ ] `send_back`
-- [ ] `submit_plan`
-- [ ] `switch_mode`
-- [ ] `update_finding`
-- [ ] `update_plan_step`
+Checked against Go-generated fixtures: catalog text (`crates/agent-tools/tests/catalog.rs`), every tool's validation, result and host-call behavior (`tests/host_golden.rs`), and the served `tools/list` body (`crates/mcp/tests/http_golden.rs`).
+
+- [x] `activate_skill`
+- [x] `ask_user`
+- [x] `attach_evidence`
+- [x] `list_workspace_briefs`
+- [x] `get_workspace_context`
+- [x] `present_workspace`
+- [x] `create_artifact`
+- [x] `create_workspace`
+- [x] `dispatch_specialist`
+- [x] `done`
+- [x] `edit_plan`
+- [x] `escalate`
+- [x] `extend_iterations`
+- [x] `extend_rounds`
+- [x] `list_artifacts`
+- [x] `list_findings`
+- [x] `list_skills`
+- [x] `list_terminals`
+- [x] `merge_child`
+- [x] `open_pr`
+- [x] `permission_request`
+- [x] `plan`
+- [x] `present_artifact`
+- [x] `read_artifact`
+- [x] `read_child`
+- [x] `archive_child`
+- [x] `message_child`
+- [x] `read_terminal`
+- [x] `reenter_phase`
+- [x] `rename_branch`
+- [x] `rename_session`
+- [x] `rename_workspace`
+- [x] `report_finding`
+- [x] `report_result`
+- [x] `rerun_review`
+- [x] `resume_loop`
+- [x] `run_phase`
+- [x] `send_back`
+- [x] `submit_plan`
+- [x] `switch_mode`
+- [x] `update_finding`
+- [x] `update_plan_step`
 
 ## Behavior specs to port
 

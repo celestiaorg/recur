@@ -1,16 +1,35 @@
 [package]
 name = "recur-agent-tools"
-description = "Host tools exposed to agents (read, write, edit, bash, grep, findings, artifacts, plans, child workspaces, ."
+description = "Host tools exposed to agents (read, write, edit, bash, grep, findings, artifacts, plans, child workspaces, ...)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# Glob and Grep run ripgrep through recur-code (slice C) and find the managed
+# binary under recur-store's data dir. Enable once both crates export
+# `recur_code::rg::locate`, `recur_code::search_opts` and `recur_store::data_dir`.
+code = ["dep:recur-code", "dep:recur-store"]
+
 [dependencies]
 recur-domain.workspace = true
-recur-store.workspace = true
-recur-code.workspace = true
+recur-store = { workspace = true, optional = true }
+recur-code = { workspace = true, optional = true }
+async-trait.workspace = true
+nix.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+unicode-properties.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

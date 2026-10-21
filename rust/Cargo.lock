@@ -3344,6 +3344,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
+name = "httpdate"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
+
+[[package]]
 name = "hybrid-array"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3368,6 +3374,7 @@ dependencies = [
  "http",
  "http-body",
  "httparse",
+ "httpdate",
  "itoa",
  "pin-project-lite",
  "smallvec",
@@ -5878,9 +5885,20 @@ dependencies = [
 name = "recur-agent-tools"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "nix 0.31.3",
+ "parking_lot",
+ "pretty_assertions",
  "recur-code",
  "recur-domain",
  "recur-store",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "unicode-properties",
 ]
 
 [[package]]
@@ -6002,8 +6020,20 @@ dependencies = [
 name = "recur-mcp"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "bytes",
+ "getrandom 0.4.3",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "parking_lot",
  "recur-agent-tools",
  "recur-domain",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

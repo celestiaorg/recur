@@ -13,6 +13,7 @@ rust/
     domain/             recur-domain       pure model + rules        (internal/domain, internal/shortid)
     store/              recur-store        SQLite, migrations, paths (internal/store)
     git/                recur-git          local git                 (internal/git)
+    project/            recur-project      project.toml, env, runs   (internal/projfile, wsenv, runconfig)
     forge/              recur-forge        remote hosting: GitHub    (engine github*, pr*, app/gh_image)
     issues/             recur-issues       issue trackers: Linear    (app/issues, Linear bundle glue)
     agent/              recur-agent        Provider trait, events    (engine provider/runner/permission/streamjson contracts)
@@ -38,7 +39,7 @@ rust/
   docs/
 ```
 
-Remaining Go packages map as follows: `projfile`, `runconfig`, `wsenv`, `observe`, `simplify` live as modules of `recur-engine` (or `recur-code` for pure file logic) unless their consumers show a better home; record the final home in `PARITY.md`.
+Remaining Go packages map as follows: `observe` and `simplify` live as modules of `recur-engine` (or `recur-code` for pure file logic) unless their consumers show a better home; record the final home in `PARITY.md`.
 
 When `recur-app` grows past comfortable compile times, split views into crates under `crates/views/<area>` (`chat`, `review`, `prs`, `observatory`, `settings`, `schedules`, `briefing`, `palettes`) that depend on `recur-ui` and `recur-services` only. `crates/*` globbing picks them up only if they sit directly under `crates/`, so add `crates/views/*` to `members` when the first one lands.
 
@@ -51,7 +52,7 @@ desktop, cli
 app ──────────────► editor, terminal-view, ui
 services ─────────► engine, providers/*, forge, issues, usage, lsp, platform
 engine ───────────► agent, agent-tools, mcp, bundles, code, git, store, term
-agent, forge, issues, bundles, git, code, store ─► domain
+agent, forge, issues, bundles, git, code, store, project ─► domain
 textmate, term, ui ─ standalone
 ```
 

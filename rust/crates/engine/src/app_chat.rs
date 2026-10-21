@@ -50,7 +50,7 @@ pub fn app_chat_agent_id(code: &str) -> String {
     format!("{APP_CHAT_AGENT_ID_PREFIX}{}", app_code(code))
 }
 
-fn app_chat_tab_name(code: &str) -> &'static str {
+pub(crate) fn app_chat_tab_name(code: &str) -> &'static str {
     if code == APP_AGENT_CODE {
         "Ask Recur"
     } else {

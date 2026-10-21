@@ -5,6 +5,8 @@ mod default_walk;
 mod escalation;
 mod fanout;
 mod handoff;
+mod hands;
+mod maestro;
 mod planbrief;
 mod prompts;
 mod walker;

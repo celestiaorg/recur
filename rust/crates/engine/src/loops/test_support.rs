@@ -731,3 +731,174 @@ pub async fn first_user_bubble(eng: &crate::Engine, ws: &str, code: &str) -> Str
         .map(|it| it.text)
         .unwrap_or_default()
 }
+
+type LinesFor = Arc<dyn Fn(usize) -> Vec<String> + Send + Sync>;
+
+/// Records every request and replays per-call Claude stream-json through
+/// the real parser (Go `captureRunner`).
+pub struct CaptureScript {
+    pub specs: Mutex<Vec<TurnRequest>>,
+    lines_for: Option<LinesFor>,
+}
+
+impl CaptureScript {
+    pub fn new(lines_for: impl Fn(usize) -> Vec<String> + Send + Sync + 'static) -> Arc<Self> {
+        Arc::new(Self {
+            specs: Mutex::new(Vec::new()),
+            lines_for: Some(Arc::new(lines_for)),
+        })
+    }
+
+    pub fn provider(self: &Arc<Self>) -> Arc<dyn Provider> {
+        let me = Arc::clone(self);
+        AsyncProvider::wrap(move |req, cx| {
+            let me = Arc::clone(&me);
+            async move {
+                let call = {
+                    let mut s = me.specs.lock();
+                    s.push(req.clone());
+                    s.len() - 1
+                };
+                let lines = me.lines_for.as_ref().map(|f| f(call)).unwrap_or_default();
+                let p =
+                    recur_provider_claude::testing::NdjsonScript::new(lines).imitating(claude());
+                p.run_turn(req, cx).await
+            }
+        })
+    }
+
+    pub fn spec_at(&self, i: usize) -> Option<TurnRequest> {
+        self.specs.lock().get(i).cloned()
+    }
+
+    pub fn with_role(&self, role: AgentRole) -> Vec<TurnRequest> {
+        self.specs
+            .lock()
+            .iter()
+            .filter(|s| s.role == role)
+            .cloned()
+            .collect()
+    }
+
+    pub fn with_agent_id(&self, agent_id: &str) -> Vec<TurnRequest> {
+        self.specs
+            .lock()
+            .iter()
+            .filter(|s| s.agent_id == agent_id && !s.role.is_empty())
+            .cloned()
+            .collect()
+    }
+}
+
+/// Maestro turns replay `maestro`; every other role emits a Bash step and
+/// blocks until the gate opens or the turn is cancelled (Go
+/// `roleRouterRunner`).
+pub fn role_router_runner(gate: CancellationToken, maestro: Vec<String>) -> Arc<dyn Provider> {
+    AsyncProvider::wrap(move |req, cx| {
+        let (gate, maestro) = (gate.clone(), maestro.clone());
+        async move {
+            if req.role == AgentRole::Maestro {
+                let p =
+                    recur_provider_claude::testing::NdjsonScript::new(maestro).imitating(claude());
+                return p.run_turn(req, cx).await;
+            }
+            emit_step(&cx, "", "Bash", "working", "");
+            tokio::select! {
+                _ = gate.cancelled() => Ok(success(&req.agent_id, "")),
+                _ = cx.cancel.cancelled() => Err(ProviderError::canceled()),
+            }
+        }
+    })
+}
+
+/// Go `steerCaptureRunner`: records specs; specialists emit a step, signal
+/// `gated`, block on the gate, then emit the tool result and take one
+/// queued steer (Claude's D49 timing).
+#[derive(Default)]
+pub struct SteerCapture {
+    pub specs: Mutex<Vec<TurnRequest>>,
+    pub injected: Mutex<Vec<String>>,
+    pub gate: CancellationToken,
+    pub gated: tokio::sync::Notify,
+}
+
+impl SteerCapture {
+    pub fn provider(self: &Arc<Self>) -> Arc<dyn Provider> {
+        let me = Arc::clone(self);
+        AsyncProvider::wrap(move |req, cx| {
+            let me = Arc::clone(&me);
+            async move {
+                let mut cx = cx;
+                me.specs.lock().push(req.clone());
+                if req.role == AgentRole::Maestro {
+                    return Ok(success(&req.agent_id, ""));
+                }
+                emit_step(&cx, "t1", "Bash", "working", "");
+                me.gated.notify_one();
+                tokio::select! {
+                    _ = me.gate.cancelled() => {}
+                    _ = cx.cancel.cancelled() => return Err(ProviderError::canceled()),
+                }
+                cx.sink
+                    .emit(AgentEvent::ToolResult(recur_agent::ToolResultEvent {
+                        id: "t1".into(),
+                        text: "ok".into(),
+                        ..recur_agent::ToolResultEvent::default()
+                    }));
+                if let Some(inbox) = cx.steer.as_mut()
+                    && let Some(s) = inbox.try_next()
+                {
+                    me.injected.lock().push(s.prompt.clone());
+                }
+                Ok(success(&req.agent_id, ""))
+            }
+        })
+    }
+}
+
+/// Counts Coder turns per workspace (a double dispatch runs the Coder twice)
+/// and optionally holds each Coder turn on a gate (Go `countingRunner`).
+#[derive(Default)]
+pub struct CountingRunner {
+    pub counts: Mutex<std::collections::HashMap<String, usize>>,
+    pub gate: Option<CancellationToken>,
+}
+
+impl CountingRunner {
+    pub fn provider(self: &Arc<Self>) -> Arc<dyn Provider> {
+        let me = Arc::clone(self);
+        AsyncProvider::wrap(move |req, cx| {
+            let me = Arc::clone(&me);
+            async move {
+                if req.role == AgentRole::Coder {
+                    *me.counts
+                        .lock()
+                        .entry(req.workspace_id.clone())
+                        .or_default() += 1;
+                    let body = format!("done by {}\n", req.workspace_id);
+                    apply_edits(&req.worktree, &[("work.txt", body.as_str())]).map_err(failed)?;
+                }
+                emit_step(&cx, "", "Write", "work.txt", "");
+                if let Some(gate) = &me.gate
+                    && req.role == AgentRole::Coder
+                {
+                    tokio::select! {
+                        _ = gate.cancelled() => {}
+                        _ = cx.cancel.cancelled() => return Err(ProviderError::canceled()),
+                    }
+                }
+                Ok(success(&req.agent_id, ""))
+            }
+        })
+    }
+
+    /// The workspace with the most Coder turns and its count.
+    pub fn max_count(&self) -> (String, usize) {
+        self.counts
+            .lock()
+            .iter()
+            .max_by_key(|(_, n)| **n)
+            .map(|(k, n)| (k.clone(), *n))
+            .unwrap_or_default()
+    }
+}

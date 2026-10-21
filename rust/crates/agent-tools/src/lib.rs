@@ -13,9 +13,7 @@ pub mod names;
 pub mod path;
 pub mod tool;
 
-#[cfg(feature = "code")]
-pub use catalog::coding_tools;
-pub use catalog::host_tools;
+pub use catalog::{coding_tools, host_tools};
 pub use coding::todos::{TodoItem, TodoStore};
 pub use host::*;
 pub use names::RECUR_MCP_PREFIX;

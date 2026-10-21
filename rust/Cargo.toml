@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "providers/*"]
+members = ["crates/*", "providers/*", "tools/*"]
 default-members = ["crates/desktop", "crates/cli"]
 
 [workspace.package]
@@ -14,6 +14,7 @@ recur-domain = { path = "crates/domain" }
 recur-store = { path = "crates/store" }
 recur-project = { path = "crates/project" }
 recur-git = { path = "crates/git" }
+recur-chroma = { path = "crates/chroma" }
 recur-forge = { path = "crates/forge" }
 recur-issues = { path = "crates/issues" }
 recur-agent = { path = "crates/agent" }
@@ -79,6 +80,15 @@ unicode-normalization = "0.1"
 pulldown-cmark = { version = "0.13", default-features = false }
 clap = { version = "4", features = ["derive"] }
 include_dir = "0.7"
+fancy-regex = "0.16"
+wuff = "0.2"
+ttf-parser = "0.25"
+unicode-linebreak = "0.1"
+resvg = { version = "0.46", default-features = false }
+smallvec = "1"
+core-graphics = "0.24"
+core-text = "21"
+core-foundation = "0.10"
 notify = "8"
 cron = "0.15"
 socket2 = "0.6"
@@ -110,6 +120,9 @@ alacritty_terminal = { version = "0.25", default-features = false }
 unicode-width = "0.2"
 image = { version = "0.25", default-features = false }
 regress = { version = "0.12", features = ["utf16"] }
+
+# ICU root collation: the UI's `localeCompare` / `Intl.Collator` ordering.
+icu_collator = "2"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

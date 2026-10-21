@@ -1,0 +1,2169 @@
+{
+ "builtin": [
+  {
+   "args": [
+    "serve"
+   ],
+   "bundleName": "",
+   "command": "gopls",
+   "env": null,
+   "fileGlob": null,
+   "key": "gopls",
+   "languages": [
+    "go",
+    "go.mod",
+    "go.work",
+    "go.sum",
+    "gomod",
+    "gowork"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": null,
+   "bundleName": "",
+   "command": "rust-analyzer",
+   "env": null,
+   "fileGlob": null,
+   "key": "rust-analyzer",
+   "languages": [
+    "rust"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "--stdio"
+   ],
+   "bundleName": "",
+   "command": "typescript-language-server",
+   "env": null,
+   "fileGlob": null,
+   "key": "typescript-language-server",
+   "languages": [
+    "typescript",
+    "javascript",
+    "typescriptreact",
+    "javascriptreact",
+    "tsx",
+    "jsx",
+    "vue"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "--stdio"
+   ],
+   "bundleName": "",
+   "command": "basedpyright-langserver",
+   "env": null,
+   "fileGlob": null,
+   "key": "basedpyright",
+   "languages": [
+    "python"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "server"
+   ],
+   "bundleName": "",
+   "command": "ruff",
+   "env": null,
+   "fileGlob": null,
+   "key": "ruff",
+   "languages": [
+    "python"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": null,
+   "bundleName": "",
+   "command": "clangd",
+   "env": null,
+   "fileGlob": null,
+   "key": "clangd",
+   "languages": [
+    "c",
+    "cpp"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": null,
+   "bundleName": "",
+   "command": "jdtls",
+   "env": null,
+   "fileGlob": null,
+   "key": "jdtls",
+   "languages": [
+    "java"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "-lsp"
+   ],
+   "bundleName": "",
+   "command": "omnisharp",
+   "env": null,
+   "fileGlob": null,
+   "key": "omnisharp",
+   "languages": [
+    "csharp"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "--lsp"
+   ],
+   "bundleName": "",
+   "command": "haskell-language-server-wrapper",
+   "env": null,
+   "fileGlob": null,
+   "key": "haskell-language-server",
+   "languages": [
+    "haskell"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "--stdio"
+   ],
+   "bundleName": "",
+   "command": "vscode-json-language-server",
+   "env": null,
+   "fileGlob": null,
+   "key": "vscode-json-language-server",
+   "languages": [
+    "json",
+    "jsonc"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "--stdio"
+   ],
+   "bundleName": "",
+   "command": "vscode-html-language-server",
+   "env": null,
+   "fileGlob": null,
+   "key": "vscode-html-language-server",
+   "languages": [
+    "html"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "--stdio"
+   ],
+   "bundleName": "",
+   "command": "vscode-css-language-server",
+   "env": null,
+   "fileGlob": null,
+   "key": "vscode-css-language-server",
+   "languages": [
+    "css",
+    "scss",
+    "less"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "--stdio"
+   ],
+   "bundleName": "",
+   "command": "yaml-language-server",
+   "env": null,
+   "fileGlob": null,
+   "key": "yaml-language-server",
+   "languages": [
+    "yaml"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "lsp",
+    "stdio"
+   ],
+   "bundleName": "",
+   "command": "taplo",
+   "env": null,
+   "fileGlob": null,
+   "key": "taplo",
+   "languages": [
+    "toml"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "start"
+   ],
+   "bundleName": "",
+   "command": "bash-language-server",
+   "env": null,
+   "fileGlob": null,
+   "key": "bash-language-server",
+   "languages": [
+    "shellscript",
+    "shell",
+    "bash"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "--stdio"
+   ],
+   "bundleName": "",
+   "command": "svelteserver",
+   "env": null,
+   "fileGlob": null,
+   "key": "svelte-language-server",
+   "languages": [
+    "svelte"
+   ],
+   "managed": "",
+   "source": "builtin"
+  },
+  {
+   "args": [
+    "server"
+   ],
+   "bundleName": "",
+   "command": "marksman",
+   "env": null,
+   "fileGlob": null,
+   "key": "marksman",
+   "languages": [
+    "markdown"
+   ],
+   "managed": "",
+   "source": "builtin"
+  }
+ ],
+ "bundle": [
+  {
+   "id": "gopls",
+   "languages": [
+    "go"
+   ],
+   "command": "/tmp/custom-gopls",
+   "managed": "gopls",
+   "env": [
+    "GOPACKAGESDRIVER=off"
+   ],
+   "bundleName": "Go",
+   "bundleID": "",
+   "sourceRoot": "",
+   "bundleDir": ""
+  },
+  {
+   "id": "vue-language-server",
+   "languages": [
+    "vue"
+   ],
+   "fileGlob": [
+    "*.vue"
+   ],
+   "command": "vue-language-server",
+   "managed": "vue-language-server",
+   "bundleName": "Vue",
+   "bundleID": "",
+   "sourceRoot": "",
+   "bundleDir": ""
+  },
+  {
+   "id": "typescript-language-server",
+   "languages": [
+    "typescript",
+    "javascript",
+    "vue"
+   ],
+   "fileGlob": [
+    "*.{js,ts,vue}"
+   ],
+   "command": "typescript-language-server",
+   "bundleName": "TS",
+   "bundleID": "",
+   "sourceRoot": "",
+   "bundleDir": ""
+  },
+  {
+   "id": "solidity-language-server",
+   "languages": [
+    "solidity"
+   ],
+   "fileGlob": [
+    "*.sol"
+   ],
+   "command": "solidity-language-server",
+   "bundleName": "Solidity",
+   "bundleID": "",
+   "sourceRoot": "",
+   "bundleDir": ""
+  },
+  {
+   "id": "basedpyright",
+   "languages": [
+    "python"
+   ],
+   "fileGlob": [
+    "src/*.py"
+   ],
+   "command": "basedpyright-langserver",
+   "bundleName": "",
+   "bundleID": "",
+   "sourceRoot": "",
+   "bundleDir": ""
+  }
+ ],
+ "frames": "Content-Length: 58\r\n\r\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}Content-Length: 2\r\n\r\né",
+ "lookups": [
+  {
+   "all": [
+    {
+     "args": [
+      "serve"
+     ],
+     "bundleName": "",
+     "command": "gopls",
+     "env": null,
+     "fileGlob": null,
+     "key": "gopls",
+     "languages": [
+      "go",
+      "go.mod",
+      "go.work",
+      "go.sum",
+      "gomod",
+      "gowork"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "rust-analyzer",
+     "env": null,
+     "fileGlob": null,
+     "key": "rust-analyzer",
+     "languages": [
+      "rust"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "typescript-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "typescript-language-server",
+     "languages": [
+      "typescript",
+      "javascript",
+      "typescriptreact",
+      "javascriptreact",
+      "tsx",
+      "jsx",
+      "vue"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "basedpyright-langserver",
+     "env": null,
+     "fileGlob": null,
+     "key": "basedpyright",
+     "languages": [
+      "python"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "server"
+     ],
+     "bundleName": "",
+     "command": "ruff",
+     "env": null,
+     "fileGlob": null,
+     "key": "ruff",
+     "languages": [
+      "python"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "clangd",
+     "env": null,
+     "fileGlob": null,
+     "key": "clangd",
+     "languages": [
+      "c",
+      "cpp"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "jdtls",
+     "env": null,
+     "fileGlob": null,
+     "key": "jdtls",
+     "languages": [
+      "java"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "-lsp"
+     ],
+     "bundleName": "",
+     "command": "omnisharp",
+     "env": null,
+     "fileGlob": null,
+     "key": "omnisharp",
+     "languages": [
+      "csharp"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--lsp"
+     ],
+     "bundleName": "",
+     "command": "haskell-language-server-wrapper",
+     "env": null,
+     "fileGlob": null,
+     "key": "haskell-language-server",
+     "languages": [
+      "haskell"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-json-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-json-language-server",
+     "languages": [
+      "json",
+      "jsonc"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-html-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-html-language-server",
+     "languages": [
+      "html"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-css-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-css-language-server",
+     "languages": [
+      "css",
+      "scss",
+      "less"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "yaml-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "yaml-language-server",
+     "languages": [
+      "yaml"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "lsp",
+      "stdio"
+     ],
+     "bundleName": "",
+     "command": "taplo",
+     "env": null,
+     "fileGlob": null,
+     "key": "taplo",
+     "languages": [
+      "toml"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "start"
+     ],
+     "bundleName": "",
+     "command": "bash-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "bash-language-server",
+     "languages": [
+      "shellscript",
+      "shell",
+      "bash"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "svelteserver",
+     "env": null,
+     "fileGlob": null,
+     "key": "svelte-language-server",
+     "languages": [
+      "svelte"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "server"
+     ],
+     "bundleName": "",
+     "command": "marksman",
+     "env": null,
+     "fileGlob": null,
+     "key": "marksman",
+     "languages": [
+      "markdown"
+     ],
+     "managed": "",
+     "source": "builtin"
+    }
+   ],
+   "cases": [
+    {
+     "lang": "go",
+     "out": [
+      {
+       "args": [
+        "serve"
+       ],
+       "bundleName": "",
+       "command": "gopls",
+       "env": null,
+       "fileGlob": null,
+       "key": "gopls",
+       "languages": [
+        "go",
+        "go.mod",
+        "go.work",
+        "go.sum",
+        "gomod",
+        "gowork"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": "go.mod",
+     "out": [
+      {
+       "args": [
+        "serve"
+       ],
+       "bundleName": "",
+       "command": "gopls",
+       "env": null,
+       "fileGlob": null,
+       "key": "gopls",
+       "languages": [
+        "go",
+        "go.mod",
+        "go.work",
+        "go.sum",
+        "gomod",
+        "gowork"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": "GO",
+     "out": [
+      {
+       "args": [
+        "serve"
+       ],
+       "bundleName": "",
+       "command": "gopls",
+       "env": null,
+       "fileGlob": null,
+       "key": "gopls",
+       "languages": [
+        "go",
+        "go.mod",
+        "go.work",
+        "go.sum",
+        "gomod",
+        "gowork"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": " python ",
+     "out": [
+      {
+       "args": [
+        "--stdio"
+       ],
+       "bundleName": "",
+       "command": "basedpyright-langserver",
+       "env": null,
+       "fileGlob": null,
+       "key": "basedpyright",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      },
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": "python",
+     "out": [
+      {
+       "args": [
+        "--stdio"
+       ],
+       "bundleName": "",
+       "command": "basedpyright-langserver",
+       "env": null,
+       "fileGlob": null,
+       "key": "basedpyright",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      },
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "src/app.py"
+    },
+    {
+     "lang": "python",
+     "out": [
+      {
+       "args": [
+        "--stdio"
+       ],
+       "bundleName": "",
+       "command": "basedpyright-langserver",
+       "env": null,
+       "fileGlob": null,
+       "key": "basedpyright",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      },
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "tests/test_app.py"
+    },
+    {
+     "lang": "vue",
+     "out": [
+      {
+       "args": [
+        "--stdio"
+       ],
+       "bundleName": "",
+       "command": "typescript-language-server",
+       "env": null,
+       "fileGlob": null,
+       "key": "typescript-language-server",
+       "languages": [
+        "typescript",
+        "javascript",
+        "typescriptreact",
+        "javascriptreact",
+        "tsx",
+        "jsx",
+        "vue"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "App.vue"
+    },
+    {
+     "lang": "vue",
+     "out": [
+      {
+       "args": [
+        "--stdio"
+       ],
+       "bundleName": "",
+       "command": "typescript-language-server",
+       "env": null,
+       "fileGlob": null,
+       "key": "typescript-language-server",
+       "languages": [
+        "typescript",
+        "javascript",
+        "typescriptreact",
+        "javascriptreact",
+        "tsx",
+        "jsx",
+        "vue"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "util.ts"
+    },
+    {
+     "lang": "typescriptreact",
+     "out": [
+      {
+       "args": [
+        "--stdio"
+       ],
+       "bundleName": "",
+       "command": "typescript-language-server",
+       "env": null,
+       "fileGlob": null,
+       "key": "typescript-language-server",
+       "languages": [
+        "typescript",
+        "javascript",
+        "typescriptreact",
+        "javascriptreact",
+        "tsx",
+        "jsx",
+        "vue"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": "contracts/Token.sol"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": "README.md"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": "main.go"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "markdown",
+     "out": [
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "marksman",
+       "env": null,
+       "fileGlob": null,
+       "key": "marksman",
+       "languages": [
+        "markdown"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "docs/a.md"
+    },
+    {
+     "lang": "cobol",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "shellscript",
+     "out": [
+      {
+       "args": [
+        "start"
+       ],
+       "bundleName": "",
+       "command": "bash-language-server",
+       "env": null,
+       "fileGlob": null,
+       "key": "bash-language-server",
+       "languages": [
+        "shellscript",
+        "shell",
+        "bash"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "x.sh"
+    }
+   ],
+   "disabled": null,
+   "setup": "builtin"
+  },
+  {
+   "all": [
+    {
+     "args": null,
+     "bundleName": "Go",
+     "command": "/tmp/custom-gopls",
+     "env": [
+      "GOPACKAGESDRIVER=off"
+     ],
+     "fileGlob": null,
+     "key": "gopls",
+     "languages": [
+      "go"
+     ],
+     "managed": "gopls",
+     "source": "bundle"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "rust-analyzer",
+     "env": null,
+     "fileGlob": null,
+     "key": "rust-analyzer",
+     "languages": [
+      "rust"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "TS",
+     "command": "typescript-language-server",
+     "env": null,
+     "fileGlob": [
+      "*.{js,ts,vue}"
+     ],
+     "key": "typescript-language-server",
+     "languages": [
+      "typescript",
+      "javascript",
+      "vue"
+     ],
+     "managed": "",
+     "source": "bundle"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "basedpyright-langserver",
+     "env": null,
+     "fileGlob": [
+      "src/*.py"
+     ],
+     "key": "basedpyright",
+     "languages": [
+      "python"
+     ],
+     "managed": "",
+     "source": "bundle"
+    },
+    {
+     "args": [
+      "server"
+     ],
+     "bundleName": "",
+     "command": "ruff",
+     "env": null,
+     "fileGlob": null,
+     "key": "ruff",
+     "languages": [
+      "python"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "clangd",
+     "env": null,
+     "fileGlob": null,
+     "key": "clangd",
+     "languages": [
+      "c",
+      "cpp"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "jdtls",
+     "env": null,
+     "fileGlob": null,
+     "key": "jdtls",
+     "languages": [
+      "java"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "-lsp"
+     ],
+     "bundleName": "",
+     "command": "omnisharp",
+     "env": null,
+     "fileGlob": null,
+     "key": "omnisharp",
+     "languages": [
+      "csharp"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--lsp"
+     ],
+     "bundleName": "",
+     "command": "haskell-language-server-wrapper",
+     "env": null,
+     "fileGlob": null,
+     "key": "haskell-language-server",
+     "languages": [
+      "haskell"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-json-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-json-language-server",
+     "languages": [
+      "json",
+      "jsonc"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-html-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-html-language-server",
+     "languages": [
+      "html"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-css-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-css-language-server",
+     "languages": [
+      "css",
+      "scss",
+      "less"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "yaml-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "yaml-language-server",
+     "languages": [
+      "yaml"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "lsp",
+      "stdio"
+     ],
+     "bundleName": "",
+     "command": "taplo",
+     "env": null,
+     "fileGlob": null,
+     "key": "taplo",
+     "languages": [
+      "toml"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "start"
+     ],
+     "bundleName": "",
+     "command": "bash-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "bash-language-server",
+     "languages": [
+      "shellscript",
+      "shell",
+      "bash"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "svelteserver",
+     "env": null,
+     "fileGlob": null,
+     "key": "svelte-language-server",
+     "languages": [
+      "svelte"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "server"
+     ],
+     "bundleName": "",
+     "command": "marksman",
+     "env": null,
+     "fileGlob": null,
+     "key": "marksman",
+     "languages": [
+      "markdown"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "Vue",
+     "command": "vue-language-server",
+     "env": null,
+     "fileGlob": [
+      "*.vue"
+     ],
+     "key": "vue-language-server",
+     "languages": [
+      "vue"
+     ],
+     "managed": "vue-language-server",
+     "source": "bundle"
+    },
+    {
+     "args": null,
+     "bundleName": "Solidity",
+     "command": "solidity-language-server",
+     "env": null,
+     "fileGlob": [
+      "*.sol"
+     ],
+     "key": "solidity-language-server",
+     "languages": [
+      "solidity"
+     ],
+     "managed": "",
+     "source": "bundle"
+    }
+   ],
+   "cases": [
+    {
+     "lang": "go",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "Go",
+       "command": "/tmp/custom-gopls",
+       "env": [
+        "GOPACKAGESDRIVER=off"
+       ],
+       "fileGlob": null,
+       "key": "gopls",
+       "languages": [
+        "go"
+       ],
+       "managed": "gopls",
+       "source": "bundle"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": "go.mod",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "GO",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "Go",
+       "command": "/tmp/custom-gopls",
+       "env": [
+        "GOPACKAGESDRIVER=off"
+       ],
+       "fileGlob": null,
+       "key": "gopls",
+       "languages": [
+        "go"
+       ],
+       "managed": "gopls",
+       "source": "bundle"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": " python ",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "",
+       "command": "basedpyright-langserver",
+       "env": null,
+       "fileGlob": [
+        "src/*.py"
+       ],
+       "key": "basedpyright",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "bundle"
+      },
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": "python",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "",
+       "command": "basedpyright-langserver",
+       "env": null,
+       "fileGlob": [
+        "src/*.py"
+       ],
+       "key": "basedpyright",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "bundle"
+      },
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "src/app.py"
+    },
+    {
+     "lang": "python",
+     "out": [
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "tests/test_app.py"
+    },
+    {
+     "lang": "vue",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "Vue",
+       "command": "vue-language-server",
+       "env": null,
+       "fileGlob": [
+        "*.vue"
+       ],
+       "key": "vue-language-server",
+       "languages": [
+        "vue"
+       ],
+       "managed": "vue-language-server",
+       "source": "bundle"
+      },
+      {
+       "args": null,
+       "bundleName": "TS",
+       "command": "typescript-language-server",
+       "env": null,
+       "fileGlob": [
+        "*.{js,ts,vue}"
+       ],
+       "key": "typescript-language-server",
+       "languages": [
+        "typescript",
+        "javascript",
+        "vue"
+       ],
+       "managed": "",
+       "source": "bundle"
+      }
+     ],
+     "rel": "App.vue"
+    },
+    {
+     "lang": "vue",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "TS",
+       "command": "typescript-language-server",
+       "env": null,
+       "fileGlob": [
+        "*.{js,ts,vue}"
+       ],
+       "key": "typescript-language-server",
+       "languages": [
+        "typescript",
+        "javascript",
+        "vue"
+       ],
+       "managed": "",
+       "source": "bundle"
+      }
+     ],
+     "rel": "util.ts"
+    },
+    {
+     "lang": "typescriptreact",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "Solidity",
+       "command": "solidity-language-server",
+       "env": null,
+       "fileGlob": [
+        "*.sol"
+       ],
+       "key": "solidity-language-server",
+       "languages": [
+        "solidity"
+       ],
+       "managed": "",
+       "source": "bundle"
+      }
+     ],
+     "rel": "contracts/Token.sol"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": "README.md"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": "main.go"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "markdown",
+     "out": [
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "marksman",
+       "env": null,
+       "fileGlob": null,
+       "key": "marksman",
+       "languages": [
+        "markdown"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "docs/a.md"
+    },
+    {
+     "lang": "cobol",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "shellscript",
+     "out": [
+      {
+       "args": [
+        "start"
+       ],
+       "bundleName": "",
+       "command": "bash-language-server",
+       "env": null,
+       "fileGlob": null,
+       "key": "bash-language-server",
+       "languages": [
+        "shellscript",
+        "shell",
+        "bash"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "x.sh"
+    }
+   ],
+   "disabled": null,
+   "setup": "bundle"
+  },
+  {
+   "all": [
+    {
+     "args": null,
+     "bundleName": "Go",
+     "command": "/tmp/custom-gopls",
+     "env": [
+      "GOPACKAGESDRIVER=off"
+     ],
+     "fileGlob": null,
+     "key": "gopls",
+     "languages": [
+      "go"
+     ],
+     "managed": "gopls",
+     "source": "bundle"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "rust-analyzer",
+     "env": null,
+     "fileGlob": null,
+     "key": "rust-analyzer",
+     "languages": [
+      "rust"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "TS",
+     "command": "typescript-language-server",
+     "env": null,
+     "fileGlob": [
+      "*.{js,ts,vue}"
+     ],
+     "key": "typescript-language-server",
+     "languages": [
+      "typescript",
+      "javascript",
+      "vue"
+     ],
+     "managed": "",
+     "source": "bundle"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "basedpyright-langserver",
+     "env": null,
+     "fileGlob": [
+      "src/*.py"
+     ],
+     "key": "basedpyright",
+     "languages": [
+      "python"
+     ],
+     "managed": "",
+     "source": "bundle"
+    },
+    {
+     "args": [
+      "server"
+     ],
+     "bundleName": "",
+     "command": "ruff",
+     "env": null,
+     "fileGlob": null,
+     "key": "ruff",
+     "languages": [
+      "python"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "clangd",
+     "env": null,
+     "fileGlob": null,
+     "key": "clangd",
+     "languages": [
+      "c",
+      "cpp"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "",
+     "command": "jdtls",
+     "env": null,
+     "fileGlob": null,
+     "key": "jdtls",
+     "languages": [
+      "java"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "-lsp"
+     ],
+     "bundleName": "",
+     "command": "omnisharp",
+     "env": null,
+     "fileGlob": null,
+     "key": "omnisharp",
+     "languages": [
+      "csharp"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--lsp"
+     ],
+     "bundleName": "",
+     "command": "haskell-language-server-wrapper",
+     "env": null,
+     "fileGlob": null,
+     "key": "haskell-language-server",
+     "languages": [
+      "haskell"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-json-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-json-language-server",
+     "languages": [
+      "json",
+      "jsonc"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-html-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-html-language-server",
+     "languages": [
+      "html"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "vscode-css-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "vscode-css-language-server",
+     "languages": [
+      "css",
+      "scss",
+      "less"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "yaml-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "yaml-language-server",
+     "languages": [
+      "yaml"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "lsp",
+      "stdio"
+     ],
+     "bundleName": "",
+     "command": "taplo",
+     "env": null,
+     "fileGlob": null,
+     "key": "taplo",
+     "languages": [
+      "toml"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "start"
+     ],
+     "bundleName": "",
+     "command": "bash-language-server",
+     "env": null,
+     "fileGlob": null,
+     "key": "bash-language-server",
+     "languages": [
+      "shellscript",
+      "shell",
+      "bash"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "--stdio"
+     ],
+     "bundleName": "",
+     "command": "svelteserver",
+     "env": null,
+     "fileGlob": null,
+     "key": "svelte-language-server",
+     "languages": [
+      "svelte"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": [
+      "server"
+     ],
+     "bundleName": "",
+     "command": "marksman",
+     "env": null,
+     "fileGlob": null,
+     "key": "marksman",
+     "languages": [
+      "markdown"
+     ],
+     "managed": "",
+     "source": "builtin"
+    },
+    {
+     "args": null,
+     "bundleName": "Vue",
+     "command": "vue-language-server",
+     "env": null,
+     "fileGlob": [
+      "*.vue"
+     ],
+     "key": "vue-language-server",
+     "languages": [
+      "vue"
+     ],
+     "managed": "vue-language-server",
+     "source": "bundle"
+    },
+    {
+     "args": null,
+     "bundleName": "Solidity",
+     "command": "solidity-language-server",
+     "env": null,
+     "fileGlob": [
+      "*.sol"
+     ],
+     "key": "solidity-language-server",
+     "languages": [
+      "solidity"
+     ],
+     "managed": "",
+     "source": "bundle"
+    }
+   ],
+   "cases": [
+    {
+     "lang": "go",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "go.mod",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "GO",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": " python ",
+     "out": [
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": ""
+    },
+    {
+     "lang": "python",
+     "out": [
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "src/app.py"
+    },
+    {
+     "lang": "python",
+     "out": [
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "ruff",
+       "env": null,
+       "fileGlob": null,
+       "key": "ruff",
+       "languages": [
+        "python"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "tests/test_app.py"
+    },
+    {
+     "lang": "vue",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "Vue",
+       "command": "vue-language-server",
+       "env": null,
+       "fileGlob": [
+        "*.vue"
+       ],
+       "key": "vue-language-server",
+       "languages": [
+        "vue"
+       ],
+       "managed": "vue-language-server",
+       "source": "bundle"
+      },
+      {
+       "args": null,
+       "bundleName": "TS",
+       "command": "typescript-language-server",
+       "env": null,
+       "fileGlob": [
+        "*.{js,ts,vue}"
+       ],
+       "key": "typescript-language-server",
+       "languages": [
+        "typescript",
+        "javascript",
+        "vue"
+       ],
+       "managed": "",
+       "source": "bundle"
+      }
+     ],
+     "rel": "App.vue"
+    },
+    {
+     "lang": "vue",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "TS",
+       "command": "typescript-language-server",
+       "env": null,
+       "fileGlob": [
+        "*.{js,ts,vue}"
+       ],
+       "key": "typescript-language-server",
+       "languages": [
+        "typescript",
+        "javascript",
+        "vue"
+       ],
+       "managed": "",
+       "source": "bundle"
+      }
+     ],
+     "rel": "util.ts"
+    },
+    {
+     "lang": "typescriptreact",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "",
+     "out": [
+      {
+       "args": null,
+       "bundleName": "Solidity",
+       "command": "solidity-language-server",
+       "env": null,
+       "fileGlob": [
+        "*.sol"
+       ],
+       "key": "solidity-language-server",
+       "languages": [
+        "solidity"
+       ],
+       "managed": "",
+       "source": "bundle"
+      }
+     ],
+     "rel": "contracts/Token.sol"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": "README.md"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": "main.go"
+    },
+    {
+     "lang": "",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "markdown",
+     "out": [
+      {
+       "args": [
+        "server"
+       ],
+       "bundleName": "",
+       "command": "marksman",
+       "env": null,
+       "fileGlob": null,
+       "key": "marksman",
+       "languages": [
+        "markdown"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "docs/a.md"
+    },
+    {
+     "lang": "cobol",
+     "out": [],
+     "rel": ""
+    },
+    {
+     "lang": "shellscript",
+     "out": [
+      {
+       "args": [
+        "start"
+       ],
+       "bundleName": "",
+       "command": "bash-language-server",
+       "env": null,
+       "fileGlob": null,
+       "key": "bash-language-server",
+       "languages": [
+        "shellscript",
+        "shell",
+        "bash"
+       ],
+       "managed": "",
+       "source": "builtin"
+      }
+     ],
+     "rel": "x.sh"
+    }
+   ],
+   "disabled": [
+    "basedpyright",
+    " gopls ",
+    ""
+   ],
+   "setup": "disabled"
+  }
+ ],
+ "pathToURI": [
+  {
+   "path": "/Users/josh/proj",
+   "uri": "file:///Users/josh/proj"
+  },
+  {
+   "path": "/tmp/a b/c#d?e",
+   "uri": "file:///tmp/a%20b/c%23d%3Fe"
+  },
+  {
+   "path": "/x/%41/ü/日本",
+   "uri": "file:///x/%2541/%C3%BC/%E6%97%A5%E6%9C%AC"
+  },
+  {
+   "path": "/a/./b/../c/",
+   "uri": "file:///a/c"
+  },
+  {
+   "path": "/",
+   "uri": "file:///"
+  },
+  {
+   "path": "/semi;colon/[x]/@y:z",
+   "uri": "file:///semi;colon/%5Bx%5D/@y:z"
+  },
+  {
+   "path": "/plus+amp\u0026eq=$dollar,comma'q(p)!*~",
+   "uri": "file:///plus+amp\u0026eq=$dollar,comma%27q%28p%29%21%2A~"
+  }
+ ],
+ "sessionInfo": [
+  {
+   "id": "id",
+   "serverKey": "gopls",
+   "rootUri": "file:///r",
+   "rootPath": "/r",
+   "available": true
+  },
+  {
+   "id": "",
+   "serverKey": "",
+   "rootUri": "",
+   "rootPath": "",
+   "available": false,
+   "reason": "no language server registered for x"
+  },
+  {
+   "id": "t",
+   "serverKey": "typescript-language-server",
+   "rootUri": "",
+   "rootPath": "",
+   "available": true,
+   "vuePluginPath": "/p"
+  }
+ ],
+ "uriToPath": [
+  {
+   "err": false,
+   "path": "/tmp/a b/c#d",
+   "uri": "file:///tmp/a%20b/c%23d"
+  },
+  {
+   "err": false,
+   "path": "/Users/josh/proj",
+   "uri": "file:///Users/josh/proj"
+  },
+  {
+   "err": true,
+   "path": "",
+   "uri": "http://x/y"
+  },
+  {
+   "err": false,
+   "path": "/share/x",
+   "uri": "file://host/share/x"
+  },
+  {
+   "err": false,
+   "path": "/rel",
+   "uri": "file:/rel"
+  },
+  {
+   "err": true,
+   "path": "",
+   "uri": "%zz"
+  },
+  {
+   "err": false,
+   "path": "/a/日",
+   "uri": "file:///a/%E6%97%A5"
+  }
+ ]
+}

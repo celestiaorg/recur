@@ -1,0 +1,152 @@
+// Generator for go_cursor_pkg.json. To regenerate, copy into internal/cursor
+// as zz_rustgolden_test.go and run from the repo root:
+//
+//	RECUR_RUST_GOLDEN=$PWD/rust/providers/cursor/tests/golden/go_cursor_pkg.json \
+//	  go test ./internal/cursor -run TestDumpRustCursorGolden -count=1
+//
+// then delete the copy.
+package cursor
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestDumpRustCursorGolden(t *testing.T) {
+	path := os.Getenv("RECUR_RUST_GOLDEN")
+	if path == "" {
+		t.Skip()
+	}
+	var anchors, summary [][]string
+	for _, a := range sdkAttributionAnchors {
+		anchors = append(anchors, []string{a.old, a.neu})
+	}
+	for _, a := range sdkSummaryDeltaAnchors {
+		summary = append(summary, []string{a.old, a.neu})
+	}
+
+	ids := []string{
+		"", "composer-2.5", "Composer-2", "grok-4.7", "grok-4.6", "grok-4.5", "grok-3",
+		"claude-sonnet-5", "claude-opus-5", "claude-opus-5-fast", "claude-fable-5-1",
+		"claude-sonnet-4-6", "claude-opus-4.8", "claude-haiku-4-5", "gpt-5.6-sol",
+		"GPT-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.4", "gpt-5.3-codex", "gpt-5",
+		"gpt-4o", "gemini-3.6-flash", "gemini-3.1-pro", "gemini-3.5", "gemini-2.5-pro",
+		"gemini-1", "kimi-k3", "kimi-k2", "glm-4.6", "auto", "auto-smart", "default",
+		"o3", "o4-mini", "mystery", "  composer-2.5  ",
+	}
+	var limits [][]any
+	for _, id := range ids {
+		l := LimitsFor(id)
+		limits = append(limits, []any{id, l.Base, l.Max, BaseContextWindow(id), Vendor(id)})
+	}
+
+	var slugs [][]string
+	for _, ws := range []string{"", "  ", "/Users/josh/.recur/worktrees/velvety-croissant",
+		"/a__b/é/c", "relative/path", "/x/../y", "---", "/Users/me/Application Support/Recur/w-1"} {
+		slugs = append(slugs, []string{ws, CursorProjectSlug(ws)})
+	}
+
+	var redact [][]string
+	for _, l := range []string{
+		"plain line",
+		readyPrefix + `{"schemaVersion":1,"authToken":"secret","url":"http://127.0.0.1:1","port":5,"z":[1,2.5,"<&>"],"a":{"y":true,"x":null}}`,
+		readyPrefix + `not json`,
+		readyPrefix + `null`,
+		readyPrefix + `[1]`,
+		"prefix " + readyPrefix + `{"authTokenFile":"/tmp/t","pid":20136}`,
+	} {
+		redact = append(redact, []string{l, redactBridgeLine(l)})
+	}
+
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "a.json")
+	if err := WriteAttributionConfig(cfg, true, false); err != nil {
+		t.Fatal(err)
+	}
+	cfgBody, _ := os.ReadFile(cfg)
+
+	var interactions [][]string
+	for _, raw := range []string{
+		``, `{"type":"summary-started"}`, `{"update":{"type":"summary-completed"}}`,
+		`{"summaryStarted":{}}`, `{"summaryCompleted":{}}`, `{"summary":{"summary":"x"}}`,
+		`{"turnEnded":{"usage":{"inputTokens":10}}}`, `{"type":"token-delta","tokens":1}`, `{}`,
+		`null`, `[1]`, `{"type":"summary","update":{"type":"summary","summary":"older"}}`,
+		`{"type":"summary","update":null}`, `{"type":5}`, `{"update":{"update":{"type":"x"}}}`,
+	} {
+		typ, body := ParseInteractionType(json.RawMessage(raw))
+		interactions = append(interactions, []string{raw, typ, string(body)})
+	}
+
+	var errs [][]any
+	for _, raw := range []string{
+		`{"code":"internal","message":"internal error","details":[{"x":1}]}`,
+		`{}`, `not-json`, `{"code":5}`, `{"message":"m"}`, `null`, `[]`,
+		`  {"code":"unavailable","message":"` + string(make([]byte, 0)) + `x"}  `,
+	} {
+		e := parseConnectError([]byte(raw))
+		if e == nil {
+			errs = append(errs, []any{raw, nil})
+			continue
+		}
+		errs = append(errs, []any{raw, map[string]any{
+			"code": e.Code, "message": e.Message, "details": string(e.Details), "raw": e.Raw,
+			"error": e.Error(), "transient": e.Transient(), "unauth": e.Unauthenticated(),
+			"unimpl": e.Unimplemented(), "conflict": e.ActiveRunConflict(),
+		}})
+	}
+
+	opts := AgentOptions{
+		Model:  &ModelSelection{ID: "composer-2.5", Params: []ModelParameterValue{{ID: "fast", Value: "true"}}},
+		APIKey: "sk", Name: "W-CO",
+		Local: &LocalOptions{Cwd: []string{"/tmp/wt"}, SettingSources: SettingSourcesMinimal, Sandbox: SandboxDisabled},
+		MCPServers: map[string]MCPServer{
+			"recur": NewHTTPMCPServer("http://x/tok/mcp?a=<b>&c"),
+			"fs":    {Stdio: &StdioMCPServer{Command: "npx", Args: []string{"-y"}, Env: map[string]string{"B": "2", "A": "1"}}},
+			"lin":   {HTTP: &HTTPMCPServer{Type: "HTTP_MCP_TRANSPORT_TYPE_HTTP", URL: "https://l", Headers: map[string]string{"Authorization": "Bearer x"}}},
+		},
+		Mode: "plan",
+	}
+	optsJSON, _ := json.Marshal(opts)
+	minimalJSON, _ := json.Marshal(AgentOptions{Local: &LocalOptions{Sandbox: SandboxDisabled}})
+
+	out := map[string]any{
+		"agentOptionsJSON":            string(optsJSON),
+		"minimalOptionsJSON":          string(minimalJSON),
+		"pinnedSDKVersion":            pinnedSDKVersion,
+		"pypiPinnedProject":           pypiPinnedProject,
+		"pypiProjectJSON":             pypiProjectJSON,
+		"bridgeArchivePrefix":         bridgeArchivePrefix,
+		"anchors":                     anchors,
+		"summaryAnchors":              summary,
+		"preload":                     attributionPreloadSource,
+		"entrypointImport":            attributionEntrypointImport,
+		"steerRunMountOld":            steerRunMountOld,
+		"steerRunMountNew":            steerRunMountNew,
+		"nativeAgentSkillsAssign":     nativeAgentSkillsAssign,
+		"stubAgentSkillsAssign":       stubAgentSkillsAssign,
+		"summaryDeltaYield":           sdkSummaryDeltaYield,
+		"summaryDeltaNeedle":          summaryDeltaPatchNeedle(),
+		"attributionProviderMarker":   attributionProviderMarker,
+		"attributionPreloadRel":       attributionPreloadRel,
+		"attributionEntrypointRel":    attributionEntrypointRel,
+		"steerRunServerRel":           steerRunServerRel,
+		"attributionConfig":           string(cfgBody),
+		"readyPrefix":                 readyPrefix,
+		"limits":                      limits,
+		"vendorOrder":                 VendorOrder,
+		"slugs":                       slugs,
+		"redact":                      redact,
+		"interactions":                interactions,
+		"connectErrors":               errs,
+		"settingSourcesMinimal":       SettingSourcesMinimal,
+	}
+	b, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(b, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

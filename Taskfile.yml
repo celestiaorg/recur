@@ -153,6 +153,17 @@ tasks:
     cmds:
       - cargo test --workspace
 
+  test:rust:ui-parity:
+    summary: Captures WebKit references of the recur-ui scenes from the Svelte UI and diffs the Rust renders against them (macOS; see rust/docs/ui-parity.md)
+    dir: rust/tools/ui-parity
+    deps:
+      - task: common:install:frontend:deps
+    cmds:
+      - pnpm install --frozen-lockfile
+      - pnpm exec playwright install webkit
+      - pnpm exec playwright test
+      - cargo run -p recur-ui-parity -- check {{.CLI_ARGS}}
+
   test:frontend:
     summary: Runs frontend Vitest unit tests
     dir: frontend

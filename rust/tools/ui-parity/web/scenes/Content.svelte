@@ -24,6 +24,9 @@
   const kind = $derived(name.split('/')[0])
   const scroll = createPreviewScrollStore()
   let root: HTMLElement | undefined = $state()
+  // Mount once every face is in, as in the app (fonts load at boot): mermaid measures text when
+  // it renders.
+  let fonts = $state(false)
 
   function settled(): boolean {
     if (!root) return false
@@ -38,7 +41,14 @@
     return true
   }
 
-  onMount(() => {
+  onMount(async () => {
+    await document.fonts.ready
+    await Promise.all([...document.fonts].map((f) => f.load().catch(() => undefined)))
+    // Diagrams render on a settled page, as in the app (mermaid lays out from live text
+    // measurement, which differs while the page is still starting).
+    if (kind === 'mermaid') await new Promise((r) => setTimeout(r, 500))
+    fonts = true
+    await tick()
     const done = () => requestAnimationFrame(() => requestAnimationFrame(onready))
     const wait = (left: number) => {
       if (settled() || left <= 0) {
@@ -52,7 +62,8 @@
 </script>
 
 <div class="content-scene" bind:this={root}>
-  {#if name === 'markdown/chat' || name === 'markdown/paper'}
+  {#if !fonts}
+  {:else if name === 'markdown/chat' || name === 'markdown/paper'}
     <div class="pad"><MarkdownHtml text={chat} /></div>
   {:else if name === 'markdown/streaming'}
     <div class="pad"><StreamingMarkdown text={streaming} active={true} complete={false} /></div>

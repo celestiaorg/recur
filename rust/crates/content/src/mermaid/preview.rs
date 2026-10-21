@@ -71,7 +71,7 @@ impl MermaidPreview {
 
     /// The source changed: reset the camera and render again (errors clear first, so an edit
     /// can recover).
-    pub fn set_content(&mut self, content: &str, _window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_content(&mut self, content: &str, window: &mut Window, cx: &mut Context<Self>) {
         if content == self.content.as_ref() && (self.diagram.is_some() || self.pending || !self.error.is_empty()) {
             return;
         }
@@ -97,12 +97,13 @@ impl MermaidPreview {
         let theme = Theme::of(cx).clone();
         let src = content.to_string();
         if super::blocking(cx) {
-            let res = super::render_blocking(Origin::File, &src, &theme);
+            let res = super::render_blocking(Origin::File, &src, &theme, Some(window.scale_factor()));
             self.finish(res, cx);
             return;
         }
+        let scale = Some(window.scale_factor());
         self.task = Some(cx.spawn(async move |this, cx| {
-            let res = super::render(Origin::File, src, theme).await;
+            let res = super::render(Origin::File, src, theme, scale).await;
             let _ = this.update(cx, |p, cx| p.finish(res, cx));
         }));
         cx.notify();

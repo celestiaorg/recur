@@ -83,10 +83,6 @@ fn preview(kind: crate::preview::PreviewKind, content: &str, path: &str, window:
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     // No application loop answers the webview here: Mermaid renders on the spot.
     cx.set_global(crate::mermaid::BlockingRenders);
-    if std::env::var_os("RECUR_PROBE").is_some() {
-        let html = std::fs::read_to_string("/tmp/probe.html").unwrap_or_default();
-        eprintln!("probe {:?}", crate::mermaid::engine::call_blocking(serde_json::json!({"op": "probe", "html": html})));
-    }
     use crate::preview::PreviewKind;
     let md = |text: &'static str, cx: &mut App| {
         let v = cx.new(|cx| MarkdownView::new(text, MarkdownClass::ChatCanvas, false, cx));

@@ -172,9 +172,6 @@ impl Diagram {
         let mut ix = 0;
         to_xml(&svg, true, &mut ix, &m.raster, &mut xml);
         let tree = crate::svg::parse(&xml)?;
-        if std::env::var_os("RECUR_DEBUG_MERMAID").is_some() {
-            let _ = std::fs::write("/tmp/mmd.xml", &xml);
-        }
         let vb = (m.x, m.y, m.width, m.height);
         let bb = tree.root().abs_stroke_bounding_box();
         let (cx0, cy0) = ((bb.left() + vb.0).min(vb.0), (bb.top() + vb.1).min(vb.1));

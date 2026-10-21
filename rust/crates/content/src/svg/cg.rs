@@ -95,9 +95,9 @@ fn clip_to(cx: &CGContext, clip: &usvg::ClipPath, ts: Transform) {
     fn add(cx: &CGContext, g: &usvg::Group, ts: Transform, any: &mut bool) {
         for n in g.children() {
             match n {
-                usvg::Node::Group(c) => add(cx, c, ts, any),
+                usvg::Node::Group(c) => add(cx, c, ts.pre_concat(c.transform()), any),
                 usvg::Node::Path(p) => {
-                    add_transformed(cx, p.data(), ts.pre_concat(p.abs_transform()));
+                    add_transformed(cx, p.data(), ts);
                     *any = true;
                 }
                 usvg::Node::Text(t) => add(cx, t.flattened(), ts, any),
@@ -118,6 +118,7 @@ fn clip_to(cx: &CGContext, clip: &usvg::ClipPath, ts: Transform) {
 }
 
 fn group(cx: &CGContext, g: &usvg::Group, ts: Transform, w: u32, h: u32) {
+    let ts = ts.pre_concat(g.transform());
     let opacity = g.opacity().get();
     if opacity < 1. && g.should_isolate() {
         // Group opacity composites the whole subtree once.
@@ -162,7 +163,7 @@ fn children(cx: &CGContext, g: &usvg::Group, ts: Transform, w: u32, h: u32) {
 
 fn image(cx: &CGContext, i: &usvg::Image, ts: Transform, w: u32, h: u32) {
     match i.kind() {
-        usvg::ImageKind::SVG(tree) => group(cx, tree.root(), ts.pre_concat(i.abs_transform()), w, h),
+        usvg::ImageKind::SVG(tree) => group(cx, tree.root(), ts, w, h),
         _ => {
             // Raster images draw through resvg's decoder into a device-size layer.
             let mut pixmap = match resvg::tiny_skia::Pixmap::new(w, h) {
@@ -287,7 +288,7 @@ fn paint(cx: &CGContext, p: &usvg::Paint, opacity: f32, m: Transform, even_odd: 
 }
 
 fn path(cx: &CGContext, p: &usvg::Path, ts: Transform) {
-    let m = ts.pre_concat(p.abs_transform());
+    let m = ts;
     let fill = |cx: &CGContext| {
         if let Some(f) = p.fill() {
             trace(cx, p.data());

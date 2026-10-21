@@ -6,8 +6,21 @@
 
 use serde_json::Value;
 
-/// The page mermaid runs in.
-pub const PAGE: &str = r#"<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-eval'; style-src 'unsafe-inline'; img-src data:; font-src data:"></head><body><div id="m"></div></body></html>"#;
+/// The page mermaid runs in: the app's web fonts (the files `frontend/index.html` loads, as
+/// recur-ui bundles them) and `body` font, which mermaid's text measurement inherits.
+pub fn page() -> String {
+    use base64::Engine as _;
+    let mut faces = String::new();
+    for (family, weight, bytes) in recur_ui::fonts::FACES {
+        faces.push_str(&format!(
+            "@font-face{{font-family:'{family}';font-style:normal;font-weight:{weight};font-display:block;src:url(data:font/ttf;base64,{}) format('truetype');}}",
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        ));
+    }
+    format!(
+        r#"<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-eval'; style-src 'unsafe-inline'; img-src data:; font-src data:"><style>{faces}*{{box-sizing:border-box}}html,body{{margin:0;height:100%;overflow:hidden}}body{{font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.45}}</style></head><body><div id="m"></div></body></html>"#
+    )
+}
 
 /// Injected after mermaid: `recur(op)` renders a source or measures a sanitized SVG.
 pub const HOST_JS: &str = r#"
@@ -84,6 +97,8 @@ pub const HOST_JS: &str = r#"
     return { width: w, height: h, x: ox, y: oy, runs: runs, raster: raster, texts: texts.length };
   }
   window.recur = async function (op) {
+    await document.fonts.ready;
+    await Promise.all(Array.from(document.fonts).map(function (f) { return f.load().catch(function () {}); }));
     if (op.op === 'render') {
       mermaid.initialize(op.config);
       try {
@@ -96,7 +111,6 @@ pub const HOST_JS: &str = r#"
       }
     }
     if (op.op === 'measure') return measure(op.svg);
-    if (op.op === 'probe') { var host = document.getElementById('m'); host.innerHTML = op.html; var out = {}; host.querySelectorAll('[data-k]').forEach(function (e) { out[e.getAttribute('data-k')] = e.getComputedTextLength ? e.getComputedTextLength() : e.getBoundingClientRect().width; }); out.ua = navigator.userAgent; return out; }
     return { error: 'unknown op' };
   };
 })();
@@ -153,7 +167,7 @@ mod mac {
     };
     use serde_json::Value;
 
-    use super::{EngineError, HOST_JS, PAGE};
+    use super::{EngineError, HOST_JS};
 
     const MERMAID_JS: &str = include_str!("../../assets/mermaid/mermaid.min.js");
 
@@ -184,7 +198,7 @@ mod mac {
                     objc2_foundation::NSSize::new(1024., 768.),
                 );
                 let web = WKWebView::initWithFrame_configuration(WKWebView::alloc(mtm), frame, &config);
-                web.loadHTMLString_baseURL(&NSString::from_str(PAGE), None);
+                web.loadHTMLString_baseURL(&NSString::from_str(&super::page()), None);
                 web
             };
             *v.borrow_mut() = Some(web.clone());
@@ -201,7 +215,28 @@ mod mac {
         unsafe { web.isLoading() }
     }
 
+    /// Mermaid's text measurement depends on the device scale (glyph advances round to device
+    /// pixels), so the page renders at the scale of the display the diagram goes to.
+    fn set_scale(web: &WKWebView, op: &Value) {
+        let scale = op.get("scale").and_then(Value::as_f64).unwrap_or_else(main_screen_scale);
+        let sel = objc2::sel!(_setOverrideDeviceScaleFactor:);
+        // SAFETY: a WebKit SPI with a CGFloat argument, called only when the class has it.
+        unsafe {
+            let responds: bool = objc2::msg_send![web, respondsToSelector: sel];
+            if responds {
+                let _: () = objc2::msg_send![web, _setOverrideDeviceScaleFactor: scale];
+            }
+        }
+    }
+
+    fn main_screen_scale() -> f64 {
+        MainThreadMarker::new()
+            .and_then(objc2_app_kit::NSScreen::mainScreen)
+            .map_or(2., |s| s.backingScaleFactor())
+    }
+
     fn invoke(web: &WKWebView, mtm: MainThreadMarker, op: &Value, done: impl Fn(Result<Value, EngineError>) + 'static) {
+        set_scale(web, op);
         let payload = NSString::from_str(&op.to_string());
         let key = NSString::from_str("payload");
         let args: Retained<NSDictionary<NSString, AnyObject>> =

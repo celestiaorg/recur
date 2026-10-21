@@ -63,8 +63,18 @@ mod tests {
     #[test]
     fn left_edge() {
         assert!(pointer_in_left_edge(0., 60., BODY, RAIL_PEEK_EDGE_PX));
-        assert!(pointer_in_left_edge(RAIL_PEEK_EDGE_PX, 400., BODY, RAIL_PEEK_EDGE_PX));
-        assert!(!pointer_in_left_edge(RAIL_PEEK_EDGE_PX + 1., 400., BODY, RAIL_PEEK_EDGE_PX));
+        assert!(pointer_in_left_edge(
+            RAIL_PEEK_EDGE_PX,
+            400.,
+            BODY,
+            RAIL_PEEK_EDGE_PX
+        ));
+        assert!(!pointer_in_left_edge(
+            RAIL_PEEK_EDGE_PX + 1.,
+            400.,
+            BODY,
+            RAIL_PEEK_EDGE_PX
+        ));
         assert!(!pointer_in_left_edge(4., 20., BODY, RAIL_PEEK_EDGE_PX));
         assert!(!pointer_in_left_edge(4., 820., BODY, RAIL_PEEK_EDGE_PX));
         assert!(pointer_in_left_edge(12., 60., BODY, 16.));
@@ -75,11 +85,25 @@ mod tests {
     fn far_from_edge() {
         let idle = PeekFlags::default();
         assert!(pointer_far_from_rail_edge(200., idle, DEFAULT_SLACK, 0.));
-        assert!(!pointer_far_from_rail_edge(RAIL_PEEK_EDGE_PX + 16., idle, DEFAULT_SLACK, 0.));
+        assert!(!pointer_far_from_rail_edge(
+            RAIL_PEEK_EDGE_PX + 16.,
+            idle,
+            DEFAULT_SLACK,
+            0.
+        ));
         for flags in [
-            PeekFlags { peeking: true, ..idle },
-            PeekFlags { show_pending: true, ..idle },
-            PeekFlags { locked: true, ..idle },
+            PeekFlags {
+                peeking: true,
+                ..idle
+            },
+            PeekFlags {
+                show_pending: true,
+                ..idle
+            },
+            PeekFlags {
+                locked: true,
+                ..idle
+            },
         ] {
             assert!(!pointer_far_from_rail_edge(400., flags, DEFAULT_SLACK, 0.));
         }

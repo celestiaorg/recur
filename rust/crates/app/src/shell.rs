@@ -3,9 +3,10 @@
 
 use std::rc::Rc;
 
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyView, App, AppContext, Context, Entity, ExternalPaths, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, SharedString, Styled, Subscription,
+    InteractiveElement, IntoElement, ParentElement, Render, Styled, Subscription,
     Window, WindowAppearance, div,
 };
 use recur_services::AppEvent;
@@ -43,6 +44,8 @@ pub struct Shell {
     pub(crate) state: Entity<AppState>,
     pub(crate) opts: ShellOptions,
     pub(crate) sidebar: Entity<Sidebar>,
+    /// `.main`, where focus parks when the rail flyout closes on it.
+    main_focus: FocusHandle,
     views: Vec<MountedView>,
     overlays: Vec<AnyView>,
     toasts: Entity<Toasts>,
@@ -96,7 +99,11 @@ impl Shell {
                 }
             }),
         ];
-        let sidebar = cx.new(|cx| Sidebar::new(ctx.clone(), window, cx));
+        let main_focus = cx.focus_handle();
+        let sidebar = {
+            let main_focus = main_focus.clone();
+            cx.new(|cx| Sidebar::new(ctx.clone(), main_focus, window, cx))
+        };
         let views = registry
             .views
             .iter()
@@ -128,6 +135,7 @@ impl Shell {
             toasts,
             tooltip,
             focus: cx.focus_handle(),
+            main_focus,
             titlebar: TitlebarState::default(),
             land: LandChrome::default(),
             menu_built: None,
@@ -324,6 +332,7 @@ impl Shell {
         let active = self.views.iter().position(|v| v.routes.contains(&view));
         let mut main = div()
             .id("main")
+            .track_focus(&self.main_focus)
             .flex_1()
             .flex()
             .flex_col()
@@ -375,7 +384,10 @@ impl Focusable for Shell {
 
 impl Render for Shell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let view = self.state.read(cx).view;
+        let (view, rail_collapsed) = {
+            let s = self.state.read(cx);
+            (s.view, s.rail_collapsed)
+        };
         let titlebar = self.render_titlebar(window, cx);
         let main = self.main_area(view, cx);
         let state = self.state.clone();
@@ -408,8 +420,10 @@ impl Render for Shell {
                             .min_h_0()
                             .relative()
                             .overflow_hidden()
-                            .child(self.sidebar.clone())
-                            .child(main),
+                            // A collapsed rail is an overlay, so it paints after the content.
+                            .when(!rail_collapsed, |d| d.child(self.sidebar.clone()))
+                            .child(main)
+                            .when(rail_collapsed, |d| d.child(self.sidebar.clone())),
                     ),
             )
             .children(self.overlays.iter().cloned())

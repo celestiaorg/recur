@@ -83,12 +83,15 @@ pub fn provider_chips(s: Option<&Snapshot>, disabled: &[String]) -> Vec<Provider
             rings.sort_by(|a, b| {
                 ring_rank(&a.id)
                     .cmp(&ring_rank(&b.id))
-                    .then_with(|| recur_ui_locale_cmp(&a.id, &b.id))
+                    .then_with(|| a.id.cmp(&b.id))
             });
             (!rings.is_empty()).then(|| ProviderChip {
                 id: p.id.clone(),
                 name: p.name.clone(),
-                headline: rings.iter().map(|r| r.pct).fold(f64::NEG_INFINITY, f64::max),
+                headline: rings
+                    .iter()
+                    .map(|r| r.pct)
+                    .fold(f64::NEG_INFINITY, f64::max),
                 rings,
             })
         })
@@ -96,10 +99,6 @@ pub fn provider_chips(s: Option<&Snapshot>, disabled: &[String]) -> Vec<Provider
     let rank = |id: &str| CHIP_ORDER.iter().position(|x| *x == id).unwrap_or(99);
     out.sort_by_key(|c| rank(&c.id));
     out
-}
-
-fn recur_ui_locale_cmp(a: &str, b: &str) -> std::cmp::Ordering {
-    a.cmp(b)
 }
 
 pub fn snapshot_has_data(s: Option<&Snapshot>, disabled: &[String]) -> bool {
@@ -173,7 +172,11 @@ pub fn model_buckets(models: &[recur_services::api::ModelRow]) -> [ModelBucket; 
         models: Vec::new(),
     };
     for m in models {
-        let b = if m.bucket == "other" { &mut other } else { &mut cursor };
+        let b = if m.bucket == "other" {
+            &mut other
+        } else {
+            &mut cursor
+        };
         b.tokens += m.tokens;
         b.used_pct += m.used_pct;
         b.models.push(m.clone());
@@ -299,7 +302,11 @@ impl UsageMeter {
         self.hover_timer = None;
         let (has_snap, error) = {
             let s = self.state.read(cx);
-            let disabled = s.settings.as_ref().map(|x| x.disabled_providers.clone()).unwrap_or_default();
+            let disabled = s
+                .settings
+                .as_ref()
+                .map(|x| x.disabled_providers.clone())
+                .unwrap_or_default();
             (
                 s.provider_usage.is_some(),
                 snapshot_has_provider_error(s.provider_usage.as_ref(), &disabled),
@@ -351,13 +358,17 @@ impl UsageMeter {
         shown
     }
 
-    fn popover(&self, rows: &[ProviderQuota], snap: Option<&Snapshot>, disabled: &[String], cx: &mut Context<Self>) -> AnyElement {
+    fn popover(
+        &self,
+        rows: &[ProviderQuota],
+        snap: Option<&Snapshot>,
+        disabled: &[String],
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let stale = snap.is_some_and(|s| s.stale);
         let has = snapshot_has_data(snap, disabled);
-        let small = |s: &str, color: Color| {
-            text(s.to_string()).size(12.).leading(1.4).color(color)
-        };
+        let small = |s: &str, color: Color| text(s.to_string()).size(12.).leading(1.4).color(color);
         let mut body = div().flex().flex_col();
         body = body.child(
             div()
@@ -366,8 +377,15 @@ impl UsageMeter {
                 .justify_between()
                 .gap(px(10.))
                 .mb(px(8.))
-                .child(text("Usage").size(12.).weight(weight::SEMIBOLD).color(t.text))
-                .when(stale, |d| d.child(text("Last known").mono().size(11.).color(t.muted))),
+                .child(
+                    text("Usage")
+                        .size(12.)
+                        .weight(weight::SEMIBOLD)
+                        .color(t.text),
+                )
+                .when(stale, |d| {
+                    d.child(text("Last known").mono().size(11.).color(t.muted))
+                }),
         );
         if snap.is_none() {
             body = body.child(small("Loading usage…", t.muted));
@@ -381,9 +399,16 @@ impl UsageMeter {
             for (i, p) in rows.iter().enumerate() {
                 let mut prov = div().flex().flex_col();
                 if i > 0 {
-                    prov = prov.pt(px(14.)).border_t(px(1.)).border_color(Hsla::from(t.line));
+                    prov = prov
+                        .pt(px(14.))
+                        .border_t(px(1.))
+                        .border_color(Hsla::from(t.line));
                 }
-                let plan = if p.email.is_empty() { &p.plan } else { &p.email };
+                let plan = if p.email.is_empty() {
+                    &p.plan
+                } else {
+                    &p.email
+                };
                 prov = prov.child(
                     div()
                         .flex()
@@ -397,7 +422,12 @@ impl UsageMeter {
                                 .gap(px(7.))
                                 .min_w_0()
                                 .child(provider_icon(&p.id).size(px(13.)).color(t.text))
-                                .child(text(p.name.clone()).size(12.).weight(weight::SEMIBOLD).color(t.text)),
+                                .child(
+                                    text(p.name.clone())
+                                        .size(12.)
+                                        .weight(weight::SEMIBOLD)
+                                        .color(t.text),
+                                ),
                         )
                         .when(!plan.is_empty(), |d| {
                             d.child(
@@ -413,7 +443,11 @@ impl UsageMeter {
                         }),
                 );
                 if p.connecting {
-                    prov = prov.child(div().mt(px(2.)).child(small("Waiting for browser sign-in…", t.faint)));
+                    prov = prov.child(
+                        div()
+                            .mt(px(2.))
+                            .child(small("Waiting for browser sign-in…", t.faint)),
+                    );
                 } else if p.id == "cursor"
                     && !can_disconnect_cursor(snap)
                     && (!p.error.is_empty() || !cursor_usage_visible(p))
@@ -467,7 +501,9 @@ impl UsageMeter {
                                         div()
                                             .h_full()
                                             .rounded(px(2.))
-                                            .w(gpui_kit::relative((w.used_pct.min(100.) / 100.) as f32))
+                                            .w(gpui_kit::relative(
+                                                (w.used_pct.min(100.) / 100.) as f32,
+                                            ))
                                             .bg(fill),
                                     ),
                             );
@@ -480,7 +516,11 @@ impl UsageMeter {
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .map(|d| d.as_millis() as i64)
                                 .unwrap_or_default();
-                            win = win.child(div().mt(px(2.)).child(small(&format_reset_in(w.resets_at, now), t.faint)));
+                            win = win.child(
+                                div()
+                                    .mt(px(2.))
+                                    .child(small(&format_reset_in(w.resets_at, now), t.faint)),
+                            );
                         }
                         prov = prov.child(win);
                     }
@@ -493,7 +533,12 @@ impl UsageMeter {
                                     .justify_between()
                                     .gap(px(10.))
                                     .when(bi > 0, |d| d.mt(px(6.)))
-                                    .child(text(b.label).size(12.).weight(weight::SEMIBOLD).color(t.text))
+                                    .child(
+                                        text(b.label)
+                                            .size(12.)
+                                            .weight(weight::SEMIBOLD)
+                                            .color(t.text),
+                                    )
                                     .child(
                                         text(format!(
                                             "{} · {}",
@@ -511,7 +556,14 @@ impl UsageMeter {
                                         .flex()
                                         .justify_between()
                                         .gap(px(10.))
-                                        .child(div().min_w_0().child(text(m.name.clone()).size(12.).color(t.muted).truncate()))
+                                        .child(
+                                            div().min_w_0().child(
+                                                text(m.name.clone())
+                                                    .size(12.)
+                                                    .color(t.muted)
+                                                    .truncate(),
+                                            ),
+                                        )
                                         .child(
                                             text(format!(
                                                 "{} · {}",
@@ -532,21 +584,29 @@ impl UsageMeter {
             }
             body = body.child(list);
         }
-        let max_h = if self.pop_max > 0. { self.pop_max } else { 10_000. };
+        let max_h = if self.pop_max > 0. {
+            self.pop_max
+        } else {
+            10_000.
+        };
         deferred(
-            div().absolute().bottom(px(26. + 8.)).left_0().child(with_shadow(
-                recur_ui::style::card(t.pane_2, t.line_bright, 9.)
-                    .id("use-pop")
-                    .w(px(300.))
-                    .max_h(px(max_h))
-                    .overflow_y_scroll()
-                    .py(px(11.))
-                    .px(px(12.))
-                    .occlude()
-                    .child(body),
-                &[css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))],
-                9.,
-            )),
+            div()
+                .absolute()
+                .bottom(px(26. + 8.))
+                .left_0()
+                .child(with_shadow(
+                    recur_ui::style::card(t.pane_2, t.line_bright, 9.)
+                        .id("use-pop")
+                        .w(px(300.))
+                        .max_h(px(max_h))
+                        .overflow_y_scroll()
+                        .py(px(11.))
+                        .px(px(12.))
+                        .occlude()
+                        .child(body),
+                    &[css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))],
+                    9.,
+                )),
         )
         .with_priority(2)
         .into_any_element()
@@ -685,7 +745,9 @@ impl Render for UsageMeter {
                 .size_full(),
             )
             .child(btn)
-            .when(open, |d| d.child(self.popover(&rows, snap.as_ref(), &disabled, cx)))
+            .when(open, |d| {
+                d.child(self.popover(&rows, snap.as_ref(), &disabled, cx))
+            })
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
     }
 }
@@ -738,9 +800,16 @@ mod tests {
             }),
         ]);
         let chips = provider_chips(Some(&s), &[]);
-        assert_eq!(chips.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(), ["claude-code", "cursor"]);
         assert_eq!(
-            chips[0].rings.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+            chips.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(),
+            ["claude-code", "cursor"]
+        );
+        assert_eq!(
+            chips[0]
+                .rings
+                .iter()
+                .map(|r| r.id.as_str())
+                .collect::<Vec<_>>(),
             ["five_hour", "seven_day", "seven_day_fable"]
         );
         assert_eq!(chips[0].headline, 34.);
@@ -763,10 +832,17 @@ mod tests {
     #[test]
     fn cursor_visibility_and_data() {
         assert!(!cursor_usage_visible(&p("cursor", |_| {})));
-        assert!(cursor_usage_visible(&p("cursor", |q| q.email = "a@b.c".into())));
-        assert!(cursor_usage_visible(&p("cursor", |q| q.source_id = "cursor_connect".into())));
+        assert!(cursor_usage_visible(
+            &p("cursor", |q| q.email = "a@b.c".into())
+        ));
+        assert!(cursor_usage_visible(
+            &p("cursor", |q| q.source_id = "cursor_connect".into())
+        ));
         assert!(cursor_usage_visible(&p("claude-code", |_| {})));
-        assert!(snapshot_has_data(Some(&snap(vec![p("cursor", |q| q.error = "no".into())])), &[]));
+        assert!(snapshot_has_data(
+            Some(&snap(vec![p("cursor", |q| q.error = "no".into())])),
+            &[]
+        ));
         let hinted = snap(vec![p("cursor", |q| {
             q.source_id = "cursor_connect".into();
             q.hint = "off".into();
@@ -780,14 +856,26 @@ mod tests {
     fn provider_error() {
         assert!(!snapshot_has_provider_error(None, &[]));
         let err = |id: &str, e: &str| snap(vec![p(id, |q| q.error = e.into())]);
-        assert!(snapshot_has_provider_error(Some(&err("claude-code", "Claude Code login expired")), &[]));
-        assert!(!snapshot_has_provider_error(Some(&err("cursor", "No Cursor usage session")), &[]));
-        assert!(!snapshot_has_provider_error(Some(&err("codex", "Not signed in to Codex")), &[]));
+        assert!(snapshot_has_provider_error(
+            Some(&err("claude-code", "Claude Code login expired")),
+            &[]
+        ));
+        assert!(!snapshot_has_provider_error(
+            Some(&err("cursor", "No Cursor usage session")),
+            &[]
+        ));
+        assert!(!snapshot_has_provider_error(
+            Some(&err("codex", "Not signed in to Codex")),
+            &[]
+        ));
         assert!(!snapshot_has_provider_error(
             Some(&err("claude-code", "Claude Code login expired")),
             &["claude-code".into()]
         ));
-        assert!(!snapshot_has_provider_error(Some(&err("claude-code", "Usage endpoint is rate limited")), &[]));
+        assert!(!snapshot_has_provider_error(
+            Some(&err("claude-code", "Usage endpoint is rate limited")),
+            &[]
+        ));
     }
 
     #[test]
@@ -797,8 +885,13 @@ mod tests {
         assert_eq!(format_reset_in(now + 3 * 3_600_000, now), "resets in 3h");
         assert_eq!(format_usage_pct(27.14), "27.1%");
         assert_eq!(format_usage_pct(0.), "0.0%");
-        assert!(can_disconnect_cursor(Some(&snap(vec![p("cursor", |q| q.source_id = "cursor_connect".into())]))));
-        assert!(!can_disconnect_cursor(Some(&snap(vec![p("cursor", |_| {})]))));
+        assert!(can_disconnect_cursor(Some(&snap(vec![p("cursor", |q| {
+            q.source_id = "cursor_connect".into()
+        })]))));
+        assert!(!can_disconnect_cursor(Some(&snap(vec![p(
+            "cursor",
+            |_| {}
+        )]))));
     }
 
     #[test]

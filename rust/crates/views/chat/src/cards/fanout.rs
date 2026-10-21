@@ -415,7 +415,7 @@ impl Render for FanOutCard {
             let group = SharedString::from(format!("{id}-g"));
             let mut chips = div().flex().gap(px(4.));
             let tstep = |s: String, fg: recur_ui::Color, bg: recur_ui::Color| {
-                div().bg(hsla(bg)).rounded(px(4.)).px(px(5.)).py(px(2.)).child(label(s, Family::Mono, 10., 400.).color(fg))
+                div().bg(hsla(bg)).rounded(px(4.)).px(px(5.)).py(px(2.)).child(label(s, Family::Mono, 10., 400.).line_height(LineHeight::Normal).color(fg))
             };
             if !c.mode.is_empty() {
                 let mm = ChatMode::from_key(&c.mode);

@@ -9,25 +9,13 @@
 use std::sync::Arc;
 
 use chrono::{DateTime, Local};
-use recur_domain::Workspace;
+use recur_domain::{ChatAttachment, UserQuestion, Workspace};
 
 use crate::Engine;
 use crate::chatlife::ChatTurn;
 use crate::loop_handle::LoopHandle;
 
 impl Engine {
-    // ---- E2: turn pipeline (ask_user broker)
-
-    /// Go `askUsers.pendingFor`: a parked or resuming ask_user question on
-    /// this tab. E2 (`ask_user` broker).
-    pub(crate) fn ask_user_pending_for(&self, _workspace_id: &str, _code: &str) -> bool {
-        false
-    }
-
-    /// Go `clearAskUsersForWorkspace`: drops parked questions, their inbox
-    /// rows, and publishes `question.answered` / `inbox.updated`. E2.
-    pub(crate) fn clear_ask_users_for_workspace(&self, _workspace_id: &str) {}
-
     // ---- E3: loops
 
     /// Go `drainQueued`: promote the oldest queued loop into a free slot.
@@ -47,6 +35,18 @@ impl Engine {
     pub(crate) async fn maybe_dispatch_after_allocate(&self, _workspace_id: &str) {}
 
     // ---- E4: chat and coordination
+
+    /// Go `resumeAfterAskUser`'s send: the answer as a new turn on the
+    /// asking tab (`SendMaestroMessage` for MA, else `SendWorkspaceMessage`
+    /// with the tab's dock selection). E4 (`chat::ask_resume`).
+    pub(crate) async fn send_ask_user_resume(
+        &self,
+        _q: &UserQuestion,
+        _prompt: &str,
+        _display: &str,
+        _attachments: Vec<ChatAttachment>,
+    ) {
+    }
 
     /// Go `pendingModeContinueFor`: a switch_mode remount is about to
     /// continue this tab. E4 (`chat::switch_mode`).

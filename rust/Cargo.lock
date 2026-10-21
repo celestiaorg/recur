@@ -6704,8 +6704,10 @@ name = "recur-engine"
 version = "0.0.0"
 dependencies = [
  "async-trait",
+ "base64 0.23.1",
  "chrono",
  "getrandom 0.4.3",
+ "hex",
  "notify",
  "parking_lot",
  "pretty_assertions",
@@ -6721,6 +6723,8 @@ dependencies = [
  "recur-platform",
  "recur-project",
  "recur-provider-claude",
+ "recur-provider-compatible",
+ "recur-provider-cursor",
  "recur-store",
  "recur-term",
  "regex",
@@ -6732,6 +6736,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

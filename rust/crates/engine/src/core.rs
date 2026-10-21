@@ -41,6 +41,7 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
+use crate::ask_user::AskUserBroker;
 use crate::attention::ChatFocus;
 use crate::bus::{Bus, EngineEvent, Notify};
 use crate::chatlife::{ChatTabSlot, ChatTurn, ContinueGens, LifeSlot};
@@ -48,6 +49,7 @@ use crate::fswatch::WatchState;
 use crate::governor::Governor;
 use crate::host::EngineHost;
 use crate::loop_registry::RunningLoop;
+use crate::permissions::PermissionBroker;
 use crate::registry::{ForgeRegistry, ProviderRegistry, TrackerRegistry};
 use crate::terminals::TerminalSource;
 use crate::workspace::create::{CreatingAlloc, PrHeadCheckoutSpec};
@@ -217,6 +219,15 @@ pub struct Engine {
     /// The last live-stream seq per workspace + agent + kind.
     pub(crate) stream_seq: Mutex<HashMap<String, i64>>,
 
+    /// Human permission prompts (Go `perms`).
+    pub(crate) perms: PermissionBroker,
+    /// Parked ask_user questions (Go `askUsers`).
+    pub(crate) ask_users: AskUserBroker,
+    /// Serializes `ensure_agent_session`'s lookup-then-create.
+    pub(crate) session_ensure_mu: Mutex<()>,
+    /// Per-session TodoWrite lists for in-process (harness) turns.
+    pub(crate) todos: Arc<recur_agent_tools::TodoStore>,
+
     pub(crate) keep_awake: Keeper,
     pub(crate) keep_awake_mu: Mutex<()>,
     /// The persisted "iters today" baseline captured at construction.
@@ -242,6 +253,26 @@ impl Engine {
         trackers: TrackerRegistry,
         data_dir: PathBuf,
     ) -> Arc<Engine> {
+        Self::build(
+            store, bus, git, bundles, term, registry, forges, trackers, data_dir, None,
+        )
+    }
+
+    /// [`Engine::new`] with the MCP listen address overridden (tests bind
+    /// an occupied port to fail the first start).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn build(
+        store: Arc<Store>,
+        bus: Arc<Bus>,
+        git: GitSetup,
+        bundles: DiscoverRoots,
+        term: Option<Arc<dyn TerminalSource>>,
+        registry: ProviderRegistry,
+        forges: ForgeRegistry,
+        trackers: TrackerRegistry,
+        data_dir: PathBuf,
+        mcp_addr: Option<String>,
+    ) -> Arc<Engine> {
         let set = store.settings();
         let iters_base = store.resource().iters_today;
         Arc::new_cyclic(|weak: &Weak<Engine>| {
@@ -263,7 +294,10 @@ impl Engine {
                 worktree_root: git.worktree_root,
                 git_warning: git.warning,
                 git_warning_title: git.warning_title,
-                mcp: McpServer::new(Some(host)),
+                mcp: match mcp_addr {
+                    Some(addr) => McpServer::new(Some(host)).with_addr(addr),
+                    None => McpServer::new(Some(host)),
+                },
                 mcp_started: tokio::sync::Mutex::new(false),
                 loops: Mutex::new(HashMap::new()),
                 chats: Mutex::new(HashMap::new()),
@@ -290,6 +324,10 @@ impl Engine {
                 open_main_mu: tokio::sync::Mutex::new(()),
                 id_mu: tokio::sync::Mutex::new(()),
                 stream_seq: Mutex::new(HashMap::new()),
+                perms: broker_for(weak),
+                ask_users: ask_broker_for(weak),
+                session_ensure_mu: Mutex::new(()),
+                todos: Arc::new(recur_agent_tools::TodoStore::default()),
                 keep_awake: Keeper::new(),
                 keep_awake_mu: Mutex::new(()),
                 iters_base,
@@ -549,6 +587,42 @@ impl Engine {
             *cur = seq;
         }
     }
+}
+
+/// The permission broker, publishing through the engine (Go `New` wiring
+/// `notify` / `resolved`).
+fn broker_for(weak: &Weak<Engine>) -> PermissionBroker {
+    let b = PermissionBroker::new();
+    let w = weak.clone();
+    b.set_notify(move |req| {
+        if let Some(e) = w.upgrade() {
+            e.publish_permission_requested(req);
+        }
+    });
+    let w = weak.clone();
+    b.set_resolved(move |id, d| {
+        if let Some(e) = w.upgrade() {
+            e.publish_permission_resolved(id, d);
+        }
+    });
+    b
+}
+
+fn ask_broker_for(weak: &Weak<Engine>) -> AskUserBroker {
+    let b = AskUserBroker::new();
+    let w = weak.clone();
+    b.set_notify(move |q| {
+        if let Some(e) = w.upgrade() {
+            e.publish_ask_user_requested(q);
+        }
+    });
+    let w = weak.clone();
+    b.set_resolved(move |id, ans| {
+        if let Some(e) = w.upgrade() {
+            e.publish_ask_user_resolved(id, ans);
+        }
+    });
+    b
 }
 
 fn stream_seq_key(workspace_id: &str, code: &str, kind: &str) -> String {

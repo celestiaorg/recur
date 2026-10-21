@@ -1,6 +1,18 @@
 //! The UI's pure workspace rules E1 owns (frontend `lib/remove-workspace.ts`,
 //! `lib/wait-for-worktree.ts` with `modes.ts`'s `wsCreating`, and
-//! `lib/inbox-read.ts`), so the GPUI views do not re-derive them.
+//! `lib/inbox-read.ts`), so the GPUI views do not re-derive them. The
+//! submodules hold E2's chat-surface rules (`lib/agentchat.ts`,
+//! `lib/session-live.ts`, `lib/artifacts.ts`, `lib/promptActions.ts` and the
+//! text half of `lib/composerDom.ts`).
+
+pub mod artifacts;
+pub mod chat;
+pub mod composer;
+pub mod digest;
+pub mod js;
+pub mod live;
+pub mod mentions;
+pub mod prompts;
 
 use recur_domain::{InboxItem, Workspace};
 

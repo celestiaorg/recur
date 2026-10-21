@@ -208,11 +208,17 @@ impl Scrollbar {
 
     /// Opacity now (100ms fade in, 800ms fade out, linear).
     pub fn opacity(&self, now: Instant) -> f32 {
+        self.opacity_with(|start, dur| {
+            (now.saturating_duration_since(start).as_secs_f32() / dur.as_secs_f32()).min(1.0)
+        })
+    }
+
+    /// Opacity with the fade's progress (`0..=1`) from `progress(start, duration)`.
+    pub fn opacity_with(&self, progress: impl Fn(Instant, Duration) -> f32) -> f32 {
         let (from, to, start) = self.fade;
         let Some(start) = start else { return to };
         let dur = if to > from { FADE_IN } else { FADE_OUT };
-        let t = (now.saturating_duration_since(start).as_secs_f32() / dur.as_secs_f32()).min(1.0);
-        from + (to - from) * t
+        from + (to - from) * progress(start, dur)
     }
 
     /// Next time the scrollbar needs repainting (an active fade or the hide timer).

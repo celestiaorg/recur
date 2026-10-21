@@ -272,6 +272,9 @@ pub struct TerminalView {
     dock_focus: Option<FocusHandle>,
     pub(crate) layout: Option<GridLayout>,
     replayed: bool,
+    /// A replay that arrived before the first layout: xterm.js refits before attaching, so the
+    /// replay lands on the fitted grid.
+    pending_replay: Option<Result<Vec<u8>, String>>,
     queued: Vec<Vec<u8>>,
     unacked: usize,
     disposed: bool,
@@ -318,6 +321,7 @@ impl TerminalView {
             cx.on_focus(&focus, window, |v, window, cx| v.sync_focus(window, cx)),
             cx.on_blur(&focus, window, |v, window, cx| v.sync_focus(window, cx)),
             cx.observe_window_activation(window, |v, window, cx| v.sync_focus(window, cx)),
+            cx.observe_global::<recur_ui::Theme>(|v, cx| v.push_theme(cx)),
         ];
         let (tx, mut rx) = mpsc::unbounded::<Vec<u8>>();
         let (write_backend, write_id) = (backend.clone(), opts.session_id.clone());
@@ -351,6 +355,7 @@ impl TerminalView {
             dock_focus: opts.dock_focus,
             layout: None,
             replayed: false,
+            pending_replay: None,
             queued: Vec::new(),
             unacked: 0,
             disposed: false,
@@ -436,6 +441,11 @@ impl TerminalView {
     /// replay is on screen. The replay itself is not acked: the session never counted it.
     fn replayed(&mut self, replay: Result<Vec<u8>, String>, cx: &mut Context<Self>) {
         if self.disposed {
+            return;
+        }
+        if self.layout.is_none() {
+            self.pending_replay = Some(replay);
+            cx.notify();
             return;
         }
         if let Ok(bytes) = replay
@@ -598,6 +608,9 @@ impl TerminalView {
             rows,
         };
         self.layout = Some(layout);
+        if let Some(replay) = self.pending_replay.take() {
+            self.replayed(replay, cx);
+        }
         if self.latest_ydisp == Some(self.screen.viewport_top()) {
             self.scrollbar.set_dimensions(
                 layout.grid_height(),
@@ -751,7 +764,7 @@ impl TerminalView {
         }
     }
 
-    /// App theme, terminal theme or catalog changed.
+    /// Terminal theme or catalog changed (app theme switches arrive through `recur_ui::Theme`).
     pub fn set_theme(&mut self, theme: ThemeContext, cx: &mut Context<Self>) {
         if self.theme != theme {
             self.theme = theme;
@@ -768,7 +781,8 @@ impl TerminalView {
     }
 
     fn push_theme(&mut self, cx: &mut Context<Self>) {
-        let palette = Palette::from_theme(&self.theme.resolve(self.frosted));
+        let app = recur_ui::Theme::of(cx).id;
+        let palette = Palette::from_theme(&self.theme.resolve(app, self.frosted));
         for out in self.screen.set_palette(palette) {
             self.handle_output(out, cx);
         }
@@ -829,7 +843,7 @@ impl TerminalView {
             regex: opts.regexp,
             whole_word: opts.whole_word,
             incremental: opts.incremental,
-            decorations: Some(search_decorations(&self.theme.tokens())),
+            decorations: Some(search_decorations(&recur_ui::Theme::of(cx).tokens)),
         };
         // The addon never re-highlights the same term when only options change.
         let key = (o.case_sensitive, o.regex, o.whole_word);

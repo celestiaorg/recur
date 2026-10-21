@@ -8,13 +8,19 @@ use gpui_kit::{
     App, Bounds, ContentMask, CursorStyle, DispatchPhase, Element, ElementId, ElementInputHandler,
     Entity, Font, FontFallbacks, FontFeatures, FontStyle, FontWeight, GlobalElementId, Hitbox,
     HitboxBehavior, InspectorElementId, IntoElement, LayoutId, MouseDownEvent, MouseExitEvent,
-    MouseMoveEvent, MouseUpEvent, PathBuilder, Pixels, Point, ScrollWheelEvent, SharedString,
-    Style, TextRun, Window, fill, point, px, relative, rgba, size,
+    MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent, SharedString, Style, TextRun,
+    Window, fill, point, px, relative, rgba, size,
 };
-use recur_term::screen::{CursorShape, Frame, Glyph, Rgba, UnderlineStyle};
+#[cfg(not(target_os = "macos"))]
+use recur_term::screen::{CursorShape, Glyph, UnderlineStyle};
+use recur_term::screen::{Frame, Rgba};
 
+#[cfg(target_os = "macos")]
+use crate::atlas::FontKey;
 use crate::custom_glyphs;
 use crate::font::{CellMetrics, mono_font_stack};
+#[cfg(target_os = "macos")]
+use crate::tiles;
 use crate::view::{GridLayout, TerminalView};
 
 pub(crate) struct TerminalElement {
@@ -39,6 +45,8 @@ pub(crate) struct Prepaint {
     layout: GridLayout,
     frame: Frame,
     fonts: Fonts,
+    #[cfg(target_os = "macos")]
+    atlas_font: FontKey,
     /// None while the pane is hidden: hidden tabs take no pointer events.
     hitboxes: Option<(Hitbox, Hitbox)>,
 }
@@ -50,6 +58,7 @@ pub(crate) struct Fonts {
 }
 
 impl Fonts {
+    #[cfg(not(target_os = "macos"))]
     fn variant(&self, bold: bool, italic: bool) -> Font {
         let mut f = self.regular.clone();
         if bold {
@@ -144,6 +153,8 @@ impl Element for TerminalElement {
             layout,
             frame,
             fonts: Fonts { regular, size },
+            #[cfg(target_os = "macos")]
+            atlas_font: FontKey::new(&font.face, &metrics, font.line_height),
             hitboxes,
         }
     }
@@ -179,7 +190,15 @@ impl Element for TerminalElement {
         let composition = view.composition.clone();
         let cursor_cell = view.screen.cursor_in_viewport();
         let now = Instant::now();
-        let opacity = view.scrollbar.opacity(now);
+        // xterm's slider fades are CSS transitions without a reduced-motion rule: they always
+        // run, and only a parity capture's freeze settles them.
+        let opacity = view.scrollbar.opacity_with(|start, dur| {
+            if recur_ui::motion::is_frozen(cx) {
+                recur_ui::motion::progress(start, dur, cx)
+            } else {
+                (now.saturating_duration_since(start).as_secs_f32() / dur.as_secs_f32()).min(1.0)
+            }
+        });
         let slider = view.scrollbar.slider();
         let palette = view.screen.palette().clone();
         let slider_color = if view.scrollbar.is_dragging() {
@@ -202,18 +221,42 @@ impl Element for TerminalElement {
                 ),
                 gpui_color(p.frame.background),
             ));
-            for r in &p.frame.rects {
-                let o = cell(r.col, r.row);
-                window.paint_quad(fill(
-                    Bounds::new(
-                        o,
-                        size(dev(r.len as f32 * m.cell_width), dev(m.cell_height)),
-                    ),
-                    gpui_color(r.color),
-                ));
+            #[cfg(target_os = "macos")]
+            {
+                tiles::paint(
+                    window,
+                    l.origin,
+                    &p.frame,
+                    &m,
+                    &p.atlas_font,
+                    p.frame.background,
+                );
+                for g in &p.frame.glyphs {
+                    custom_glyphs::paint(
+                        window,
+                        g.codepoint,
+                        cell(g.col, g.row),
+                        g.width,
+                        &m,
+                        gpui_color(g.fg),
+                    );
+                }
             }
-            for g in &p.frame.glyphs {
-                paint_glyph(window, g, cell(g.col, g.row), &m, &p.fonts);
+            #[cfg(not(target_os = "macos"))]
+            {
+                for r in &p.frame.rects {
+                    let o = cell(r.col, r.row);
+                    window.paint_quad(fill(
+                        Bounds::new(
+                            o,
+                            size(dev(r.len as f32 * m.cell_width), dev(m.cell_height)),
+                        ),
+                        gpui_color(r.color),
+                    ));
+                }
+                for g in &p.frame.glyphs {
+                    paint_glyph(window, g, cell(g.col, g.row), &m, &p.fonts);
+                }
             }
             if let Some(link) = &link {
                 let (x1, y1) = (link.start.0 - 1, link.start.1 - 1 - ydisp);
@@ -242,6 +285,7 @@ impl Element for TerminalElement {
                     ));
                 }
             }
+            #[cfg(not(target_os = "macos"))]
             if let Some(c) = p.frame.cursor {
                 paint_cursor(
                     window,
@@ -334,6 +378,7 @@ impl Element for TerminalElement {
     }
 }
 
+#[cfg(not(target_os = "macos"))]
 fn paint_glyph(
     window: &mut Window,
     g: &Glyph,
@@ -384,6 +429,19 @@ fn paint_glyph(
             origin,
         );
     }
+    if g.overline {
+        // TextureAtlas strokes it along the top of the character box, half a pixel down when
+        // the width is odd, in the glyph colour.
+        let lw = m.underline_width();
+        let y_off = if lw as i32 % 2 == 1 { 0.5 } else { 0.0 };
+        window.paint_quad(fill(
+            Bounds::new(
+                point(origin.x, box_top + dev(y_off - lw / 2.0)),
+                size(dev(g.width as f32 * m.char_width), dev(lw)),
+            ),
+            color,
+        ));
+    }
     if g.strikethrough {
         let lw = m.strike_width();
         // The atlas checks the previous (odd) context line width, so the stroke is centred on a
@@ -399,6 +457,7 @@ fn paint_glyph(
     }
 }
 
+#[cfg(not(target_os = "macos"))]
 #[allow(clippy::too_many_arguments)]
 fn paint_underline(
     window: &mut Window,
@@ -476,7 +535,7 @@ fn paint_underline(
                     }),
                     |window| {
                         for poly in POLYS {
-                            let mut b = PathBuilder::fill();
+                            let mut b = gpui_kit::PathBuilder::fill();
                             for i in (0..8).step_by(2) {
                                 let p = point(
                                     x + dev(cx + poly[i] * sx),
@@ -501,6 +560,7 @@ fn paint_underline(
     }
 }
 
+#[cfg(not(target_os = "macos"))]
 fn paint_cursor(
     window: &mut Window,
     origin: Point<Pixels>,

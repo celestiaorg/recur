@@ -10,6 +10,7 @@
 mod buffer;
 mod links;
 mod move_to_cell;
+mod overline;
 mod render;
 mod scanner;
 mod search;
@@ -255,7 +256,8 @@ impl Screen {
             probe.update(Point::new(Line(-1), Column(1)), Side::Right);
             self.term.selection = Some(probe);
         }
-        self.parser.advance(&mut self.term, bytes);
+        self.parser
+            .advance(&mut overline::Overlined(&mut self.term), bytes);
         let mut trimmed = 0usize;
         if probing && !self.term.mode().contains(TermMode::ALT_SCREEN) {
             let hist_after = self.term.history_size();
@@ -396,6 +398,14 @@ impl Screen {
                 self.term.grid_mut().cursor.point = Point::new(Line(0), Column(0));
                 self.term.clear_screen(ansi::ClearMode::Below);
                 self.term.grid_mut().cursor.point = point;
+            }
+            (None, [], b'm') => {
+                self.advance(&csi.raw);
+                match overline::sgr_effect(&csi.raw[2..csi.raw.len() - 1]) {
+                    Some(true) => self.advance(overline::ON),
+                    Some(false) => self.advance(overline::OFF),
+                    None => {}
+                }
             }
             (None, [], b'r') => {
                 let rows = self.rows() as i64;
@@ -962,7 +972,8 @@ impl Screen {
 
     pub fn flush_sync(&mut self) {
         if self.parser.sync_timeout().sync_timeout().is_some() {
-            self.parser.stop_sync(&mut self.term);
+            self.parser
+                .stop_sync(&mut overline::Overlined(&mut self.term));
             self.bump();
         }
     }

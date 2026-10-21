@@ -168,7 +168,7 @@ Each Go test file moves with the code it exercises. Files that test several slic
 | `tool.go` | `tool` | `Tool` / `HaltTool` / `Permitter` traits, `Call` context, order-preserving `Registry`, `AdvertisedName`/`BareName`, `HaltAfter` (ask_user; switch_mode only when the result says "remounting"). |
 | `catalog.go` | `catalog` | `host_tools()` (order is the `tools/list` order) and `coding_tools()` (harness only). |
 | `json.go` | `json` | Strict decode (unknown fields rejected), `parse_severity`, catalog XML escape. |
-| `path.go` | `path` | Worktree sandbox: SafeJoin + nearest-existing-ancestor symlink resolution, "path escapes worktree". |
+| `path.go` | `path` | Worktree sandbox: SafeJoin + nearest-existing-ancestor symlink resolution, "path escapes worktree". `code.SafeJoin` (20 lines, pure) is ported into this module so Read/Edit/Write do not wait on slice C; C keeps its own `recur_code::safe_join` for the Observatory. |
 | `coding.go` | `coding` | Limits (read 2000 lines x 2000 chars, bash 500 lines, grep 200 hits, bash 2 min default / 10 min max), binary sniff. |
 | `bash.go` | `coding::bash` | `bash -lc` in the worktree, new process group, kill group on cancel, 2 s wait delay, capped buffers, output framing. Permitter gate unless bypass. |
 | `read.go`, `edit.go`, `write.go`, `glob.go`, `grep.go` | `coding::{read,edit,write,glob,grep}` | Harness coding tools. Grep uses `recur-code::rg`. |
@@ -774,7 +774,7 @@ pub trait Host: Send + Sync {
     fn plan(&self, ws: &str, agent: &str, summary: &str);                                                // [E3]
     fn escalate(&self, ws: &str, agent: &str, e: EscalationRequest);                                     // [E1]
     fn attach_evidence(&self, ws: &str, agent: &str, e: Evidence);                                       // [E1]
-    fn note_tool_args(&self, ws: &str, agent: &str, tool: &str, args: &serde_json::value::RawValue);     // [E2]
+    fn note_tool_args(&self, ws: &str, agent: &str, tool: &str, args: &str);                            // [E2]
 
     // Chat
     async fn ask_user(&self, ws: &str, agent: &str, req: AskUserRequest) -> String;                      // [E2]
@@ -806,8 +806,8 @@ pub trait Host: Send + Sync {
     async fn edit_plan(&self, ws: &str, agent: &str, plan: &str) -> String;                              // [E3]
     async fn rerun_review(&self, ws: &str, agent: &str) -> String;                                       // [E3]
     async fn dispatch_specialist(&self, ws: &str, agent: &str, role: &str, instruction: &str) -> String; // [E3]
-    async fn extend_iterations(&self, ws: &str, agent: &str, n: i32) -> String;                          // [E3]
-    async fn extend_rounds(&self, ws: &str, agent: &str, n: i32) -> String;                              // [E3]
+    async fn extend_iterations(&self, ws: &str, agent: &str, n: i64) -> String;                          // [E3]
+    async fn extend_rounds(&self, ws: &str, agent: &str, n: i64) -> String;                              // [E3]
     async fn reenter_phase(&self, ws: &str, agent: &str, phase_id: &str) -> String;                      // [E3]
     async fn run_phase(&self, ws: &str, agent: &str, phase_id: &str) -> String;                          // [E3]
     async fn resume_loop(&self, ws: &str, agent: &str) -> String;                                        // [E3]
@@ -819,8 +819,8 @@ pub trait Host: Send + Sync {
     // Skills, terminals
     async fn list_skills(&self, ws: &str, agent: &str) -> Result<Vec<recur_domain::AgentSkill>, HostError>; // [E2]
     async fn activate_skill(&self, ws: &str, agent: &str, name: &str) -> Result<String, HostError>;      // [E2]
-    async fn list_terminals(&self, ws: &str, agent: &str) -> Vec<TerminalInfo>;                          // [E2]
-    async fn read_terminal(&self, ws: &str, agent: &str, id: &str, tail_lines: usize) -> Result<String, HostError>; // [E2]
+    async fn list_terminals(&self, ws: &str, agent: &str) -> Option<Vec<TerminalInfo>>;                  // [E2]
+    async fn read_terminal(&self, ws: &str, agent: &str, id: &str, tail_lines: i64) -> Result<String, HostError>; // [E2]
 
     // Ask Recur
     async fn list_workspace_briefs(&self) -> recur_domain::BriefingSnapshot;                             // [E4]
@@ -830,6 +830,13 @@ pub trait Host: Send + Sync {
 ```
 
 Every method above has a default body in the real file (omitted here for length). Sync methods stay sync because Go callers rely on them completing before the tool response is written (`report_finding` returns the stored row, `note_tool_args` runs before the handler). The `report_finding` / `done` / `escalate` / `attach_evidence` / `report_result` bodies only touch the store and the running loop's `LoopHandle`, which is why E1 owns them.
+
+Slice T deviations from the sketch above, all to keep Go's observable behavior:
+
+- `note_tool_args` takes the raw arguments as `&str`, empty when the tools/call carried none (Go passes a nil `json.RawMessage`; `RawValue` cannot be empty). `"null"` stays `"null"`.
+- `extend_iterations`, `extend_rounds` and `read_terminal`'s `tail_lines` are `i64`: they are Go `int` values decoded from agent JSON and passed through unclamped (a negative `tail_lines` reaches the host, as in Go).
+- `list_terminals` returns `Option<Vec<_>>`: `None` is Go's nil slice, which list_terminals encodes as `"terminals":null` (the engine returns `nil` when no terminal manager is attached, an empty list otherwise).
+- `NoopHost` is the public unit type carrying the default bodies (Go `noopReporter`); `McpServer::new(None)` uses it.
 
 ## 3. Event bus
 
@@ -1029,6 +1036,7 @@ Waves are dependency order, not calendar: a wave-2 slice may start as soon as th
 - **Frontend modules:** `lib/permissionTools.ts`, `lib/plantools.ts`, `lib/briefingtools.ts`, `lib/open-pr-tool.ts`, `lib/reenter-phase-tool.ts` (tool input parsing for display).
 - **Prerequisites:** `recur-domain`, `recur-code::rg` (C, for `grep`; `glob`/`grep` tests wait on it).
 - **Public API:** `Host` (2.4), `Tool`, `Registry`, `host_tools()`, `coding_tools()`, `halt_after`, `TodoStore`; `McpServer` (T-M1) with exact URL shape `http://127.0.0.1:<port>/<token>/mcp`.
+- **Landed as:** Glob and Grep (and `coding_tools()`, which lists them) compile behind the `recur-agent-tools` feature `code` until C and the store port land, because they call into crates that are still empty; every other tool, including Read/Edit/Write/Bash/TodoWrite, is always built. They are coded against `recur_code::rg::locate(data_dir: &Path) -> Result<PathBuf, E>` (Go `rg.Locate`), `recur_code::search_opts(cancel: &CancellationToken, root: &Path, query: &str, opts: &recur_domain::SearchOpts) -> Result<recur_domain::SearchResult, E: Display>` (sync, Go `code.SearchOpts`) and `recur_store::data_dir() -> Result<PathBuf, E>` (Go `store.DataDir`); a throwaway shim with exactly these signatures passed the gated tests (`cargo test -p recur-agent-tools --features code`) with a real ripgrep. When those exist, make `code` a default feature (or drop the gate) and run the `code`-gated tests. `McpServer` methods: `new(Option<Arc<dyn Host>>)`, `with_addr`, `start`, `close`, `port`, `url_for`, `register`, `register_owned`, `unregister -> Option<(ws, agent)>`, `drop_token` (Go `Drop`), `drop_agent`, `drop_workspace`; free functions `names_from_allowed_tools`, `append_permission_request`. Tool-name constants live in `recur_agent_tools::names` (bare) and `recur_agent_tools::names::mcp` (`mcp__recur__*`).
 
 #### C: code + support libs
 

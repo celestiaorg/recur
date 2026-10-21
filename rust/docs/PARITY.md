@@ -529,6 +529,8 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Fit: `termFitSize` over the padded content box (6/0/6/8), grid pinned to the bottom, 100ms debounced `resize` (`font.rs`, `tests/view.rs`)
   - [x] xterm options: font stack with ligatures off, size, line height, cell metrics from WebGL `_updateDimensions`, 10000 scrollback, `macOptionIsMeta`, `macOptionClickForcesSelection`, `rightClickSelectsWord` on mac, bar cursor with blink, `minimumContrastRatio` 1 (`font.rs`, `screen/render.rs`)
   - [x] WebGL colour pipeline: bold-as-bright, dim, inverse, hidden, selection at 30% with inactive variant, block cursor override, underline styles (single/double/curly/dotted/dashed) and colours, strikethrough, custom box/block/powerline glyphs (`screen/render.rs`, `custom_glyphs.rs`)
+  - [x] WebGL glyph rendering on macOS: `TextureAtlas` rasters through CoreText into a device canvas (synthetic oblique, decorations, bounding-box crop, texel round trips), rows composited with the WebGL blend and WebKit's premultiplied page compositing, cached as content-keyed tiles; overhang clipped at background changes (`atlas.rs`, `tiles.rs`, `ui-parity.md`)
+  - [ ] Custom glyphs are painted procedurally over the tiles rather than through the atlas canvas, and no parity scene covers them yet
   - [x] Cursor styles (DECSCUSR), blink manager (600ms, idle stop at 5 min, pause on blur) (`blink.rs`)
   - [x] Keyboard: xterm `Keyboard.ts` evaluation, custom key handler (⌘ chords to the app, Ctrl+` to the dock, third-level chars as text), app cursor keys, PageUp/PageDown scroll (`input.rs`, `tests/view.rs`)
   - [x] IME: marked text drawn at the cursor, commit writes once, candidate window at the cursor cell (`tests/view.rs`)
@@ -536,14 +538,17 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Mouse: selection (click, double word, triple line, shift extend, alt column, drag autoscroll), alt-click moves the prompt cursor, mouse reporting X10/1000/1002/1003 in default/SGR/SGR-pixels, wheel reporting and alt-screen arrow keys (`tests/view.rs`, `screen/tests.rs`)
   - [x] Scrollbar: VS Code 14px slider, 50px wheel units, trackpad accumulation, track click and drag, 500ms hide with fades (`scrollbar.rs`, `tests/view.rs`)
   - [x] Search addon: regex/case/whole word, xterm's highlight limit, active match, result counts, incremental refresh (`screen/search.rs`, `tests/view.rs`)
-  - [x] Find bar UI (`TerminalFindBar`): toggles, count label, Enter/Shift+Enter, Escape, ⌥⌘C/R/W
+  - [x] Find bar UI (`TerminalFindBar`): toggles, count label, Enter/Shift+Enter, Escape, ⌥⌘C/R/W; text, icons, tooltips and focus rings through recur-ui
   - [x] Web links addon: URL regex, hover underline and pointer, ⌘/click opens http(s) in the browser; OSC 8 hyperlinks underline but do not open (the webview never showed xterm's confirm) (`screen/links.rs`)
   - [x] Focus: dock focus routing (`termDockOwnsFocus`), DECSET 1004 reports, window activation; hidden panes take no pointer events (`tests/view.rs`)
   - [x] Theme and font changes repaint without remount; frosted (transparent) cells when maximized on dark palettes (`theme.rs`, `tests/view.rs`)
   - [x] Explorer drops type quoted paths; title and exit events reach the dock; clear wipes screen and replay; dispose detaches (`tests/view.rs`)
   - [x] Query replies answered in the emulator (DA1/DA2, XTVERSION, DSR/CPR, DECRQM, DECRQSS, OSC 4/10/11/12, CSI t) (`screen/scanner.rs`)
-  - [ ] SGR 53 overline: alacritty_terminal cells have no overline flag, so it is parsed and dropped
-  - [ ] Pixel parity screenshot against the web pane (needs the app shell and screen recording permission)
+  - [x] SGR 53 / 55 overline: a spare alacritty cell flag set on the cursor template through an in-band carrier the wrapped handler applies in stream order (synchronized output included); survives scrollback, reflow (overlined blanks keep a marker foreground), the alternate screen, DECSC/DECRC; erase, RIS and SGR 0 drop it. Drawn as the atlas does: the top of the character box in the glyph colour, after the underline, before the strikethrough (`screen/overline.rs`, `screen/tests.rs`, scene `terminal/decorations`)
+  - [x] Pixel parity against the web pane: scenes `terminal/prompt`, `paper`, `selection`, `search`, `scrollbar`, `decorations`, `solarized-light`, `solarized-dark` (`ui-parity.md`)
+  - [x] Replay lands on the fitted grid (TerminalPane refits before attaching) (`tests/view.rs`)
+  - [ ] SGR 5 text blink: xterm.js 6.1's WebGL renderer blinks text (`TextBlinkStateManager`); not ported
+  - [ ] SGR 21: xterm.js reads it as double underline, vte as "not bold" (and 221 / 222, kitty's not bold / not faint, are dropped)
 - [x] `TitleTooltip.svelte` (309 lines) → `recur_ui::tooltip` (`titled`, `TitleTooltip`; scenes `tooltip/below`, `tooltip/above`, `tooltip/paper`)
   - [x] Hover and keyboard-focus candidates, show delay and re-show window, cursor anchoring on wide targets, below/above placement with viewport clamping, dismissal on press, scroll, Escape, window exit and blur, dismissed-text memory
   - [x] `.ui-tip` card with themed shadow and ring, 90ms entrance, wrapping body, placed at its exact fractional position
@@ -805,10 +810,10 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [~] `styles/_terminal.scss`
   - [x] Pane padding, bottom-pinned grid, inactive panes hidden and absolutely positioned (`view.rs`)
   - [x] Scrollbar slider colours from the palette, hover/active states (`element.rs`)
-  - [x] Find bar (`cm-recur-search` look): field, toggles, count, buttons (`find_bar.rs`)
-  - [x] Terminal tokens read from a local `_tokens.scss` table until `recur-ui` exposes them (`tokens.rs`)
+  - [x] Find bar (`cm-recur-search` look): field, toggles, count, buttons, focus rings and title tips on recur-ui (`find_bar.rs`, scene `terminal/search`)
+  - [x] Terminal tokens from `recur_ui::Theme`; panes observe it, so runtime theme switches repaint (`theme.rs`, `tests/view.rs`)
   - [ ] Dock chrome (tab strip, maximize, beside layout) belongs to the `TerminalDock.svelte` port
-  - [ ] Pixel parity screenshot
+  - [x] Pixel parity: the pane and find bar (scenes `terminal/*`); `.term-dock .xterm` overrides mirrored by the scene's dock body
 - [x] `styles/_tokens.scss` → `recur_ui::theme` (scenes `tokens/*` exact in every theme)
   - [x] Every token of every `data-theme` (Charcoal default, Paper, Slate, Cool Glow, Catppuccin Mocha and Latte, Nord) with exact `color-mix` results, theme aliases, light/dark, `--coral-line`, scrollbar and git tokens, `--on-amber`
   - [x] Runtime switching (`Theme::set`, windows refresh, gpui-component theme synced) and persisted appearance with system sync (`Appearance`, the `shell.json` shape)

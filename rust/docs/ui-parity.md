@@ -37,6 +37,21 @@ GPUI rounds every authored length and measured size to device pixels before layo
 - **Backgrounds and borders.** GPUI paints a background and its border as two anti-aliased quads, so the background bleeds into the border's outer edge; `style::card` / `style::inset_background` shrink the background a device pixel under an opaque border, as WebKit does. `style::css_gradient` maps a diagonal CSS `linear-gradient` onto GPUI's gradient exactly (GPUI stretches diagonals by the aspect ratio).
 - **Inputs.** gpui-base's editor draws typed text and the caret; recur-ui draws placeholders with its own text at `line-height: normal`, in WebKit's default `darkGray` unless the class styles `::placeholder`.
 
+## Terminal scenes
+
+`scenes.json` keeps terminal scenes in their own `terminal` list (recur-ui's gallery does not build them) with the bytes they replay in `terminalInputs`. Each is the dock body as `TerminalDock.svelte` renders it (the find bar when `find` is set, then the panes) around one pane on the palette surface, with `terminalTheme` naming a shipped `[[terminalTheme]]` (empty follows the app chrome).
+
+- **Reference.** `web/scenes/Terminal.svelte` mounts the real `TerminalPane` (xterm.js with its WebGL addon; the capture fails if xterm falls back to the DOM renderer). `capture.spec.ts` answers `AttachTerminal` with the scene's bytes, and the scene is ready once xterm has parsed their trailing `OSC 0;ready` and drawn. The harness preprocesses Svelte TypeScript like `frontend/svelte.config.js` (`vitePreprocess({ script: true })`), which `TerminalPane` needs.
+- **Candidate.** `recur_terminal_view::gallery` (feature `gallery`) builds the same body around a `TerminalView` whose backend replays the bytes; the parity renderer looks scenes up in both galleries. A `type` step delivers one key per update, as Playwright types, so each keystroke's effects (an incremental find) run before the next.
+
+### How the grid renders like xterm's WebGL canvas
+
+The grid does not draw through `recur_ui::text`: xterm.js does not lay text out in the DOM, it rasterizes each glyph into a texture atlas through the canvas 2D API and blends those textures in WebGL, and the pixels only match when that pipeline is reproduced. `recur-terminal-view` therefore keeps its own cell renderer (`atlas.rs`, `tiles.rs`); its chrome (find bar, scrollbar fades, focus rings) follows the rules below.
+
+- **Atlas.** `TextureAtlas._drawToCache` per glyph: a device-pixel canvas `cellWidth · max(len, 2) + 4` wide and `cellHeight + 8` tall, text at the 4px padding on the ideographic baseline through CoreText (`CTFontDrawGlyphs`, as WebKit's canvas does) with the bundled faces (`recur_ui::fonts::FACES`) or the installed font of the stack, WebKit's 14° synthetic oblique for italics, then underline styles, overline and strikethrough stroked as the atlas does (including the context line width the overline leaves for the strikethrough's half-pixel offset). The texels are cropped by `_findGlyphBoundingBox` and pass through the unpremultiply / premultiply / unpremultiply of `getImageData`, `putImageData` and the texture upload.
+- **Compositing.** WebGL clears to the palette background, fills the background runs, blends glyph texels in cell order with `SRC_ALPHA, ONE_MINUS_SRC_ALPHA` on colour and alpha (so glyph edges leave the canvas partly transparent), draws the cursor, and WebKit composites the canvas as premultiplied over `.xterm`'s background. A glyph edge of coverage `a` therefore carries an extra `a(1 - a)` of that background, which no straight-alpha GPU blend can add over an arbitrary colour (it saturates on bright channels). `tiles.rs` runs the same 8-bit math on the CPU per row and paints each row as an image; a row's tile depends on it and its two neighbours (rasters spill a few pixels) and is cached by content, so scrolling and unchanged rows reuse tiles. Glyph overhang left of a cell whose resolved background (colour and background flags) differs from the previous cell's is clipped, as `GlyphRenderer` does.
+- **Above the canvas.** Link underlines, the IME composition and the scrollbar slider are GPUI primitives over the tiles, as they are separate layers over the canvas in the web pane. Custom glyphs (box drawing, blocks, powerline), which xterm draws into the atlas, are painted procedurally over the tiles with their decorations in the tiles; no scene covers them yet (`PARITY.md`).
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -61,6 +76,8 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 - **Backdrop blur.** The `.palette-bg` / `.nt-bg` scrims' `backdrop-filter: blur(2px)` is not drawn: GPUI has no backdrop filters. The scrim color matches.
 - **Element transforms.** GPUI cannot scale or translate an element tree, so the toast entrance's `scale(.98)` is dropped (the fade and 8px rise remain) and `translateY(-.5px)` on the ask toast's chevron becomes a device-pixel offset (exact at scale 2).
 - **Typed input text and caret.** Drawn by gpui-base's editor, not recur-ui text. Captures hide carets on both sides.
+- **Synthetic italics.** WebKit's synthetic-oblique glyphs and CoreGraphics' differ on a couple of edge pixels per italic glyph run (the slanted top of an `i` dot, a `t` bar); every skew construction, angle and snapping variant tried leaves those pixels as they are or moves more of them. Counted as anti-aliasing (max 18 levels).
+- **Frosted terminal cells.** With transparent cells (the maximized dock on a dark palette) the canvas is composited over the frosted dock, which the grid cannot read, so glyph edges miss the backdrop light described above. Opaque palettes are exact.
 - **Overlay scroller.** The tab strip's `scrollbar-width: thin` scroller follows macOS overlay scrollers: it shows only after wheel scrolling, so programmatic reveals do not flash it.
 
 ## Hard-pixel allowances
@@ -128,3 +145,13 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `tooltip/above` | 0 | 2456 | 201 | 2930 | 0 |
 | `tooltip/below` | 0 | 3 | 215 | 240 | 0 |
 | `tooltip/paper` | 0 | 0 | 430 | 480 | 0 |
+| `terminal/prompt` | 0 | 0 | 6 | 10 | 0 |
+| `terminal/paper` | 0 | 0 | 4 | 10 | 0 |
+| `terminal/selection` | 0 | 0 | 6 | 10 | 0 |
+| `terminal/search` | 0 | 0 | 312 | 350 | 0 |
+| `terminal/scrollbar` | 0 | 0 | 0 | 0 | 0 |
+| `terminal/decorations` | 0 | 0 | 6 | 10 | 0 |
+| `terminal/solarized-light` | 0 | 0 | 7 | 10 | 0 |
+| `terminal/solarized-dark` | 0 | 0 | 8 | 10 | 0 |
+
+Terminal tolerances: every grid difference left is synthetic-italic edge coverage (above). `terminal/search` adds the find field: curved-edge coverage at the corners of its 2px `--amber-d` ring and the query, which gpui-base's editor draws (typed input text, above).

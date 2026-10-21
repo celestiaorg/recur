@@ -155,7 +155,11 @@ impl AppState {
             }
         })
         .detach();
-        for i in self.inbox.iter_mut().filter(|i| i.workspace_id == workspace_id) {
+        for i in self
+            .inbox
+            .iter_mut()
+            .filter(|i| i.workspace_id == workspace_id)
+        {
             i.unread = false;
         }
         cx.notify();
@@ -270,8 +274,7 @@ impl AppState {
                     return false;
                 };
                 self.pr_agent_dock_open
-                    && !pr_agent_workspace_id(&pr.id, &pr.workspace_id, &self.workspaces)
-                        .is_empty()
+                    && !pr_agent_workspace_id(&pr.id, &pr.workspace_id, &self.workspaces).is_empty()
             }
             _ => false,
         }
@@ -387,11 +390,14 @@ mod tests {
                 Reply::value(json!(g.lock().clone()))
             },
         ));
-        let state = cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
+        let state =
+            cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
         let first = state.update(cx, |s, cx| s.load_model_catalog(cx)).await;
         assert_eq!(first[0].r#ref, "claude-code/a");
         let rev = state.read_with(cx, |s, _| s.model_catalog_rev());
-        groups.lock().push(group("local-ollama", &["local-ollama/q"]));
+        groups
+            .lock()
+            .push(group("local-ollama", &["local-ollama/q"]));
         state.update(cx, |s, cx| s.invalidate_model_catalog(cx));
         assert_eq!(state.read_with(cx, |s, _| s.model_catalog_rev()), rev + 1);
         let next = state.update(cx, |s, cx| s.load_model_catalog(cx)).await;
@@ -418,7 +424,8 @@ mod tests {
                 }
             },
         ));
-        let state = cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
+        let state =
+            cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
         let a = state.update(cx, |s, cx| s.load_model_catalog(cx));
         state.update(cx, |s, cx| s.invalidate_model_catalog(cx));
         let b = state.update(cx, |s, cx| s.load_model_catalog(cx));

@@ -13,7 +13,9 @@ use gpui_kit::{
 };
 use recur_content::images::{self, Decoded, ImageCache};
 use recur_engine::view::composer::Segment;
-use recur_engine::view::mentions::{artifact_mention_label, file_mention_label, parse_file_mention_chip, terminal_mention_label};
+use recur_engine::view::mentions::{
+    artifact_mention_label, file_mention_label, parse_file_mention_chip, terminal_mention_label,
+};
 use recur_ui::file_icons::file_icon;
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, TextStyled, text};
@@ -33,7 +35,13 @@ pub enum Fit {
 }
 
 /// Paints `image` (natural `nw`×`nh`) into the element's box with rounded corners.
-pub fn image_box(image: Arc<RenderImage>, nw: f32, nh: f32, fit: Fit, radius: f32) -> impl IntoElement {
+pub fn image_box(
+    image: Arc<RenderImage>,
+    nw: f32,
+    nh: f32,
+    fit: Fit,
+    radius: f32,
+) -> impl IntoElement {
     canvas(
         |_, _, _| {},
         move |b: Bounds<Pixels>, _, window, _| {
@@ -189,7 +197,9 @@ impl AgentChat {
             .border_1()
             .border_color(hsla(border))
             .bg(hsla(bg))
-            .when_some(hover, |d, (hb, hbg)| d.hover(move |s| s.border_color(hsla(hb)).bg(hsla(hbg))))
+            .when_some(hover, |d, (hb, hbg)| {
+                d.hover(move |s| s.border_color(hsla(hb)).bg(hsla(hbg)))
+            })
             .child(lead)
             .child(chip_name(name, fg));
         let chip = if tip.is_empty() {
@@ -197,7 +207,11 @@ impl AgentChat {
         } else {
             div()
                 .id(SharedString::from(format!("{id}-w")))
-                .child(recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, chip))
+                .child(recur_ui::tooltip::titled(
+                    SharedString::from(format!("{id}-tip")),
+                    tip,
+                    chip,
+                ))
         };
         (chip, w + 2.)
     }
@@ -218,13 +232,34 @@ impl AgentChat {
         let (el, w, h): (AnyElement, f32, f32) = match part {
             BubblePart::Text(_) => return None,
             BubblePart::File { path, dir: true } => {
-                let (chip, w) = self.bubble_chip(id, ico14(IconName::Folder, t.muted), file_mention_label(path), amber.0, amber.1, None, None, None, path.clone(), window, cx);
-                (chip.debug_selector(|| format!("file-inline:{}", file_mention_label(path))).into_any_element(), w, 26.)
+                let (chip, w) = self.bubble_chip(
+                    id,
+                    ico14(IconName::Folder, t.muted),
+                    file_mention_label(path),
+                    amber.0,
+                    amber.1,
+                    None,
+                    None,
+                    None,
+                    path.clone(),
+                    window,
+                    cx,
+                );
+                (
+                    chip.debug_selector(|| format!("file-inline:{}", file_mention_label(path)))
+                        .into_any_element(),
+                    w,
+                    26.,
+                )
             }
             BubblePart::File { path, .. } => {
                 let enabled = self.hooks.open_file;
                 let stem = parse_file_mention_chip(path);
-                let icon_for = if stem.path.is_empty() { path.clone() } else { stem.path };
+                let icon_for = if stem.path.is_empty() {
+                    path.clone()
+                } else {
+                    stem.path
+                };
                 let (chip, w) = self.bubble_chip(
                     id,
                     fico(&icon_for),
@@ -239,7 +274,8 @@ impl AgentChat {
                     cx,
                 );
                 let p = path.clone();
-                let chip = chip.debug_selector(|| format!("file-inline:{}", file_mention_label(path)));
+                let chip =
+                    chip.debug_selector(|| format!("file-inline:{}", file_mention_label(path)));
                 let el = if enabled {
                     chip.cursor_pointer()
                         .on_click(cx.listener(move |this, _, _, cx| this.open_file_chip(&p, cx)))
@@ -250,18 +286,52 @@ impl AgentChat {
                 (el, w, 26.)
             }
             BubblePart::Skill(name) => {
-                let (chip, w) = self.bubble_chip(id, ico14(IconName::Slash, t.amber), name.clone(), t.line, amber_a(0.06), None, None, None, format!("/{name}"), window, cx);
+                let (chip, w) = self.bubble_chip(
+                    id,
+                    ico14(IconName::Slash, t.amber),
+                    name.clone(),
+                    t.line,
+                    amber_a(0.06),
+                    None,
+                    None,
+                    None,
+                    format!("/{name}"),
+                    window,
+                    cx,
+                );
                 (chip.into_any_element(), w, 26.)
             }
             BubblePart::Terminal(tid) => {
                 let title = self.terminal_title_for(tid, cx);
-                let chip_wire = if tid.is_empty() { "terminal".to_string() } else { format!("terminal:{tid}") };
-                let tip = if title.is_empty() { "Terminal".to_string() } else { title.clone() };
-                let (chip, w) = self.bubble_chip(id, ico14(IconName::Terminal, t.muted), terminal_mention_label(&chip_wire, &title), amber.0, amber.1, amber_hover, Some(220.), None, tip, window, cx);
+                let chip_wire = if tid.is_empty() {
+                    "terminal".to_string()
+                } else {
+                    format!("terminal:{tid}")
+                };
+                let tip = if title.is_empty() {
+                    "Terminal".to_string()
+                } else {
+                    title.clone()
+                };
+                let (chip, w) = self.bubble_chip(
+                    id,
+                    ico14(IconName::Terminal, t.muted),
+                    terminal_mention_label(&chip_wire, &title),
+                    amber.0,
+                    amber.1,
+                    amber_hover,
+                    Some(220.),
+                    None,
+                    tip,
+                    window,
+                    cx,
+                );
                 let tid = tid.clone();
                 (
                     chip.cursor_pointer()
-                        .on_click(cx.listener(move |this, _, _, cx| this.open_terminal_chip(&tid, cx)))
+                        .on_click(
+                            cx.listener(move |this, _, _, cx| this.open_terminal_chip(&tid, cx)),
+                        )
                         .into_any_element(),
                     w,
                     26.,
@@ -275,14 +345,38 @@ impl AgentChat {
                     .find(|a| &a.id == aid)
                     .map(|a| a.kind)
                     .unwrap_or_default();
-                let icon_name = IconName::from_key(recur_engine::view::artifacts::artifact_icon(&kind)).unwrap_or(IconName::Grid);
-                let chip_wire = if aid.is_empty() { "artifact".to_string() } else { format!("artifact:{aid}") };
-                let tip = if title.is_empty() { "Artifact".to_string() } else { title.clone() };
-                let (chip, w) = self.bubble_chip(id, ico14(icon_name, t.muted), artifact_mention_label(&chip_wire, &title), amber.0, amber.1, amber_hover, Some(220.), None, tip, window, cx);
+                let icon_name =
+                    IconName::from_key(recur_engine::view::artifacts::artifact_icon(&kind))
+                        .unwrap_or(IconName::Grid);
+                let chip_wire = if aid.is_empty() {
+                    "artifact".to_string()
+                } else {
+                    format!("artifact:{aid}")
+                };
+                let tip = if title.is_empty() {
+                    "Artifact".to_string()
+                } else {
+                    title.clone()
+                };
+                let (chip, w) = self.bubble_chip(
+                    id,
+                    ico14(icon_name, t.muted),
+                    artifact_mention_label(&chip_wire, &title),
+                    amber.0,
+                    amber.1,
+                    amber_hover,
+                    Some(220.),
+                    None,
+                    tip,
+                    window,
+                    cx,
+                );
                 let aid = aid.clone();
                 (
                     chip.cursor_pointer()
-                        .on_click(cx.listener(move |this, _, _, cx| this.open_artifact_chip(&aid, cx)))
+                        .on_click(
+                            cx.listener(move |this, _, _, cx| this.open_artifact_chip(&aid, cx)),
+                        )
                         .into_any_element(),
                     w,
                     26.,
@@ -290,8 +384,14 @@ impl AgentChat {
             }
             BubblePart::Image { src, name, .. } => {
                 let d = self.image_for(src, cx);
-                let (w, h) = d.as_ref().map_or((0., 0.), |d| fit_max(d.width, d.height, 280., 200.));
-                let (bw, bh) = if d.is_some() { (w + 2., h + 2.) } else { (0., 0.) };
+                let (w, h) = d
+                    .as_ref()
+                    .map_or((0., 0.), |d| fit_max(d.width, d.height, 280., 200.));
+                let (bw, bh) = if d.is_some() {
+                    (w + 2., h + 2.)
+                } else {
+                    (0., 0.)
+                };
                 let (s, n) = (src.clone(), name.clone());
                 let s2 = src.clone();
                 let el = div()
@@ -303,8 +403,12 @@ impl AgentChat {
                     .border_color(hsla(t.line))
                     .bg(hsla(t.pane_2))
                     .cursor(gpui_kit::CursorStyle::PointingHand)
-                    .when_some(d, |el, d| el.child(image_box(d.image.clone(), d.width, d.height, Fit::Fill, 5.)))
-                    .on_click(cx.listener(move |this, _, window, cx| this.open_lightbox(&s, &n, window, cx)))
+                    .when_some(d, |el, d| {
+                        el.child(image_box(d.image.clone(), d.width, d.height, Fit::Fill, 5.))
+                    })
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.open_lightbox(&s, &n, window, cx)
+                    }))
                     .on_mouse_down(
                         gpui_kit::MouseButton::Right,
                         cx.listener(move |this, ev: &gpui_kit::MouseDownEvent, window, cx| {
@@ -315,7 +419,11 @@ impl AgentChat {
                 (el, bw, bh)
             }
         };
-        Some(Atom { el, width: w, height: h })
+        Some(Atom {
+            el,
+            width: w,
+            height: h,
+        })
     }
 
     // ---- composer chips (`.chat-composer-chip`) ----
@@ -331,7 +439,9 @@ impl AgentChat {
             .items_center()
             .justify_center()
             .cursor_pointer()
-            .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation()
+            })
             .on_click(cx.listener(move |this, _, window, cx| {
                 cx.stop_propagation();
                 this.remove_chip(i, window, cx);
@@ -344,27 +454,57 @@ impl AgentChat {
                 .rounded(px(6.))
                 .bg(hsla(rgba(0, 0, 0, 0.65)))
                 .hover(|s| s.bg(hsla(rgba(0, 0, 0, 0.85))))
-                .child(text("×").size(12.).line_height(LineHeight::Scale(1.)).color(recur_ui::hex(0xffffff)).nowrap())
+                .child(
+                    text("×")
+                        .size(12.)
+                        .line_height(LineHeight::Scale(1.))
+                        .color(recur_ui::hex(0xffffff))
+                        .nowrap(),
+                )
                 .into_any_element()
         } else {
             base.ml(px(1.))
                 .size(px(14.))
                 .rounded(px(4.))
                 .text_color(hsla(t.muted))
-                .hover(|s| s.bg(hsla(rgba(255, 255, 255, 0.08))).text_color(hsla(t.text)))
-                .child(text("×").size(12.).line_height(LineHeight::Scale(1.)).nowrap())
+                .hover(|s| {
+                    s.bg(hsla(rgba(255, 255, 255, 0.08)))
+                        .text_color(hsla(t.text))
+                })
+                .child(
+                    text("×")
+                        .size(12.)
+                        .line_height(LineHeight::Scale(1.))
+                        .nowrap(),
+                )
                 .into_any_element()
         }
     }
 
     /// Chip `i` of the composer doc as a flow atom.
-    pub(crate) fn composer_atom(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) -> Option<Atom> {
+    pub(crate) fn composer_atom(
+        &mut self,
+        i: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<Atom> {
         let t = Theme::of(cx).tokens;
         let chip = self.doc.chips.get(i)?.clone();
         let id = SharedString::from(format!("cchip-{}-{i}", self.props.reset_key));
-        let x = self.chip_x(SharedString::from(format!("{id}-x")), i, matches!(chip, Segment::Attachment(_)), cx);
+        let x = self.chip_x(
+            SharedString::from(format!("{id}-x")),
+            i,
+            matches!(chip, Segment::Attachment(_)),
+            cx,
+        );
         // `.chat-composer-chip`: 22px, margin 0 2px, padding 0 6px 0 5px, gap 5px, max 220px.
-        let shell = |lead: AnyElement, name: String, border: Color, bg: Color, hover: bool, tip: String, window: &Window| {
+        let shell = |lead: AnyElement,
+                     name: String,
+                     border: Color,
+                     bg: Color,
+                     hover: bool,
+                     tip: String,
+                     window: &Window| {
             let natural = 1. + 5. + 14. + 5. + label_w(&name, window) + 5. + 1. + 14. + 6. + 1.;
             let w = natural.min(220.);
             let el = div()
@@ -382,7 +522,9 @@ impl AgentChat {
                 .border_1()
                 .border_color(hsla(border))
                 .bg(hsla(bg))
-                .when(hover, |d| d.hover(|s| s.border_color(hsla(t.line_bright)).bg(hsla(t.pane))))
+                .when(hover, |d| {
+                    d.hover(|s| s.border_color(hsla(t.line_bright)).bg(hsla(t.pane)))
+                })
                 .child(lead)
                 .child(div().flex_1().min_w_0().child(chip_name(name, t.text)));
             (el, w, tip)
@@ -391,39 +533,145 @@ impl AgentChat {
             Segment::File { path, dir } => {
                 let parsed = parse_file_mention_chip(path);
                 let lead = if *dir {
-                    div().flex_none().flex().debug_selector(|| "chip-folder".into()).child(ico14(IconName::Folder, t.muted)).into_any_element()
+                    div()
+                        .flex_none()
+                        .flex()
+                        .debug_selector(|| "chip-folder".into())
+                        .child(ico14(IconName::Folder, t.muted))
+                        .into_any_element()
                 } else {
-                    fico(if parsed.path.is_empty() { path } else { &parsed.path })
+                    fico(if parsed.path.is_empty() {
+                        path
+                    } else {
+                        &parsed.path
+                    })
                 };
-                let tip = if *dir { parsed.path.clone() } else { format!("Open {path}") };
-                let (el, w, tip) = shell(lead, file_mention_label(path), t.line, t.pane_2, true, tip, window);
-                let el = el.child(x).cursor(if *dir { gpui_kit::CursorStyle::Arrow } else { gpui_kit::CursorStyle::PointingHand });
-                let el = el.on_click(cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)));
-                (recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el).into_any_element(), w + 4., 22.)
+                let tip = if *dir {
+                    parsed.path.clone()
+                } else {
+                    format!("Open {path}")
+                };
+                let (el, w, tip) = shell(
+                    lead,
+                    file_mention_label(path),
+                    t.line,
+                    t.pane_2,
+                    true,
+                    tip,
+                    window,
+                );
+                let el = el.child(x).cursor(if *dir {
+                    gpui_kit::CursorStyle::Arrow
+                } else {
+                    gpui_kit::CursorStyle::PointingHand
+                });
+                let el = el.on_click(
+                    cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
+                );
+                (
+                    recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el)
+                        .into_any_element(),
+                    w + 4.,
+                    22.,
+                )
             }
             Segment::Skill(name) => {
-                let (el, w, tip) = shell(ico14(IconName::Slash, t.amber), name.clone(), t.line, amber_a(0.06), false, format!("/{name}"), window);
-                (recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el.child(x)).into_any_element(), w + 4., 22.)
+                let (el, w, tip) = shell(
+                    ico14(IconName::Slash, t.amber),
+                    name.clone(),
+                    t.line,
+                    amber_a(0.06),
+                    false,
+                    format!("/{name}"),
+                    window,
+                );
+                (
+                    recur_ui::tooltip::titled(
+                        SharedString::from(format!("{id}-tip")),
+                        tip,
+                        el.child(x),
+                    )
+                    .into_any_element(),
+                    w + 4.,
+                    22.,
+                )
             }
             Segment::Terminal { id: tid, title } => {
-                let chip_wire = if tid.is_empty() { "terminal".to_string() } else { format!("terminal:{tid}") };
-                let tip = if title.is_empty() { "Terminal".into() } else { format!("{title} terminal") };
-                let (el, w, tip) = shell(ico14(IconName::Terminal, t.muted), terminal_mention_label(&chip_wire, title), t.line, t.pane_2, true, tip, window);
-                let el = el.child(x).cursor_pointer().on_click(cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)));
-                (recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el).into_any_element(), w + 4., 22.)
+                let chip_wire = if tid.is_empty() {
+                    "terminal".to_string()
+                } else {
+                    format!("terminal:{tid}")
+                };
+                let tip = if title.is_empty() {
+                    "Terminal".into()
+                } else {
+                    format!("{title} terminal")
+                };
+                let (el, w, tip) = shell(
+                    ico14(IconName::Terminal, t.muted),
+                    terminal_mention_label(&chip_wire, title),
+                    t.line,
+                    t.pane_2,
+                    true,
+                    tip,
+                    window,
+                );
+                let el = el.child(x).cursor_pointer().on_click(
+                    cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
+                );
+                (
+                    recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el)
+                        .into_any_element(),
+                    w + 4.,
+                    22.,
+                )
             }
             Segment::Artifact { id: aid, title } => {
-                let kind = self.live_artifacts(cx).into_iter().find(|a| &a.id == aid).map(|a| a.kind).unwrap_or_default();
-                let icon_name = IconName::from_key(recur_engine::view::artifacts::artifact_icon(&kind)).unwrap_or(IconName::Grid);
-                let chip_wire = if aid.is_empty() { "artifact".to_string() } else { format!("artifact:{aid}") };
-                let tip = if title.is_empty() { "Artifact".into() } else { format!("{title} artifact") };
-                let (el, w, tip) = shell(ico14(icon_name, t.muted), artifact_mention_label(&chip_wire, title), t.line, t.pane_2, true, tip, window);
-                let el = el.child(x).cursor_pointer().on_click(cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)));
-                (recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el).into_any_element(), w + 4., 22.)
+                let kind = self
+                    .live_artifacts(cx)
+                    .into_iter()
+                    .find(|a| &a.id == aid)
+                    .map(|a| a.kind)
+                    .unwrap_or_default();
+                let icon_name =
+                    IconName::from_key(recur_engine::view::artifacts::artifact_icon(&kind))
+                        .unwrap_or(IconName::Grid);
+                let chip_wire = if aid.is_empty() {
+                    "artifact".to_string()
+                } else {
+                    format!("artifact:{aid}")
+                };
+                let tip = if title.is_empty() {
+                    "Artifact".into()
+                } else {
+                    format!("{title} artifact")
+                };
+                let (el, w, tip) = shell(
+                    ico14(icon_name, t.muted),
+                    artifact_mention_label(&chip_wire, title),
+                    t.line,
+                    t.pane_2,
+                    true,
+                    tip,
+                    window,
+                );
+                let el = el.child(x).cursor_pointer().on_click(
+                    cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
+                );
+                (
+                    recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el)
+                        .into_any_element(),
+                    w + 4.,
+                    22.,
+                )
             }
             Segment::Attachment(a) => {
                 let d = self.image_for(&a.data_url, cx);
-                let label = if a.name.is_empty() { "image".to_string() } else { a.name.clone() };
+                let label = if a.name.is_empty() {
+                    "image".to_string()
+                } else {
+                    a.name.clone()
+                };
                 // `.chat-composer-att`: 32px tall, 2px padding, a 28px cover thumbnail.
                 let el = div()
                     .id(id.clone())
@@ -440,15 +688,29 @@ impl AgentChat {
                     .bg(hsla(t.pane_2))
                     .hover(|s| s.border_color(hsla(t.line_bright)).bg(hsla(t.pane)))
                     .cursor(gpui_kit::CursorStyle::PointingHand)
-                    .child(
-                        div()
-                            .size(px(28.))
-                            .rounded(px(4.))
-                            .when_some(d, |el, d| el.child(image_box(d.image.clone(), d.width, d.height, Fit::Cover, 4.))),
-                    )
+                    .child(div().size(px(28.)).rounded(px(4.)).when_some(d, |el, d| {
+                        el.child(image_box(
+                            d.image.clone(),
+                            d.width,
+                            d.height,
+                            Fit::Cover,
+                            4.,
+                        ))
+                    }))
                     .child(x)
-                    .on_click(cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)));
-                (recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), format!("View {label}"), el).into_any_element(), 34. + 4., 32.)
+                    .on_click(
+                        cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
+                    );
+                (
+                    recur_ui::tooltip::titled(
+                        SharedString::from(format!("{id}-tip")),
+                        format!("View {label}"),
+                        el,
+                    )
+                    .into_any_element(),
+                    34. + 4.,
+                    32.,
+                )
             }
             Segment::Prompt { spec, .. } => {
                 let (el, w) = self.prompt_chip(i, &spec.slash, &spec.args, x, window, cx);
@@ -477,21 +739,49 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         let tint = |p: f32, other: Color| t.cyan.mix(p, other);
         let focused = self.focused_slot(window, cx);
-        let border = if focused.is_some() { tint(0.5, t.line) } else { tint(0.22, t.line) };
-        let names: Vec<String> = if args.is_empty() { vec!["args".into()] } else { args.iter().map(|a| a.name.clone()).collect() };
+        let border = if focused.is_some() {
+            tint(0.5, t.line)
+        } else {
+            tint(0.22, t.line)
+        };
+        let names: Vec<String> = if args.is_empty() {
+            vec!["args".into()]
+        } else {
+            args.iter().map(|a| a.name.clone()).collect()
+        };
         let cmd = format!("/{slash}");
-        let cmd_w = text(cmd.clone()).size(11.5).weight(650.).tracking(0.01).line_height(LineHeight::Scale(1.)).nowrap().measure(None, window).0;
+        let cmd_w = text(cmd.clone())
+            .size(11.5)
+            .weight(650.)
+            .tracking(0.01)
+            .line_height(LineHeight::Scale(1.))
+            .nowrap()
+            .measure(None, window)
+            .0;
         let ch_ui = text("0").size(11.5).measure(None, window).0;
         let mut width = 1. + 8. + cmd_w + 1.;
         let mut slots = Vec::new();
         for (si, name) in names.iter().enumerate() {
-            let Some(input) = self.prompt_slots.get(si).cloned() else { continue };
+            let Some(input) = self.prompt_slots.get(si).cloned() else {
+                continue;
+            };
             let on = focused == Some(si);
             let value = input.read(cx).value().to_string();
-            let placeholder = args.get(si).map(|a| a.placeholder.clone()).unwrap_or_default();
-            let n = (value.chars().count().max(placeholder.chars().count()) + 1).clamp(8, 42) as f32;
+            let placeholder = args
+                .get(si)
+                .map(|a| a.placeholder.clone())
+                .unwrap_or_default();
+            let n =
+                (value.chars().count().max(placeholder.chars().count()) + 1).clamp(8, 42) as f32;
             let iw = n * ch_ui;
-            let lab_w = text(name.clone()).size(10.).weight(650.).tracking(0.02).line_height(LineHeight::Scale(1.)).nowrap().measure(None, window).0;
+            let lab_w = text(name.clone())
+                .size(10.)
+                .weight(650.)
+                .tracking(0.02)
+                .line_height(LineHeight::Scale(1.))
+                .nowrap()
+                .measure(None, window)
+                .0;
             width += 6. + lab_w + 6. + 1. + 6. + iw;
             let ph = SharedString::from(placeholder);
             slots.push(
@@ -508,10 +798,29 @@ impl AgentChat {
                             .pr(px(6.))
                             .border_r_1()
                             .border_color(hsla(tint(0.22, t.line)))
-                            .child(text(name.clone()).size(10.).weight(650.).tracking(0.02).line_height(LineHeight::Scale(1.)).color(if on { t.cyan } else { t.muted }).nowrap()),
+                            .child(
+                                text(name.clone())
+                                    .size(10.)
+                                    .weight(650.)
+                                    .tracking(0.02)
+                                    .line_height(LineHeight::Scale(1.))
+                                    .color(if on { t.cyan } else { t.muted })
+                                    .nowrap(),
+                            ),
                     )
                     .child(
-                        div().w(px(iw)).h(px(16.)).child(recur_ui::style::text_field(&input, &ph, t.faint, Family::Ui, 11.5, window, cx)),
+                        div()
+                            .w(px(iw))
+                            .h(px(16.))
+                            .child(recur_ui::style::text_field(
+                                &input,
+                                &ph,
+                                t.faint,
+                                Family::Ui,
+                                11.5,
+                                window,
+                                cx,
+                            )),
                     )
                     .on_mouse_down(
                         gpui_kit::MouseButton::Left,
@@ -536,10 +845,22 @@ impl AgentChat {
             .border_1()
             .border_color(hsla(border))
             .bg(hsla(tint(0.08, t.pane_2)))
-            .child(text(cmd).size(11.5).weight(650.).tracking(0.01).line_height(LineHeight::Scale(1.)).color(t.cyan).nowrap())
+            .child(
+                text(cmd)
+                    .size(11.5)
+                    .weight(650.)
+                    .tracking(0.01)
+                    .line_height(LineHeight::Scale(1.))
+                    .color(t.cyan)
+                    .nowrap(),
+            )
             .children(slots)
             .child(x);
-        let el = recur_ui::tooltip::titled(SharedString::from(format!("pchip-{i}-tip")), format!("/{slash}"), el);
+        let el = recur_ui::tooltip::titled(
+            SharedString::from(format!("pchip-{i}-tip")),
+            format!("/{slash}"),
+            el,
+        );
         (el.into_any_element(), width)
     }
 }

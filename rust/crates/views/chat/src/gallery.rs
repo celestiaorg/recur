@@ -83,7 +83,11 @@ impl Render for ChatScene {
         if std::mem::take(&mut self.focus_composer) {
             self.chat.update(cx, |c, cx| c.focus_composer(window, cx));
         }
-        body(cx).size_full().flex().flex_col().child(self.chat.clone())
+        body(cx)
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(self.chat.clone())
     }
 }
 
@@ -104,24 +108,64 @@ struct ModeToolbar {
 }
 
 impl ModeToolbar {
-    fn new(mode: ChatMode, state: &Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    fn new(
+        mode: ChatMode,
+        state: &Entity<AppState>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let t = recur_ui::Theme::of(cx).tokens;
         let options = ChatMode::options(false, false)
             .into_iter()
-            .map(|m| SelectOption::new(m.key(), m.label()).icon(m.icon()).tint(m.tint(&t)).hint(m.hint()))
+            .map(|m| {
+                SelectOption::new(m.key(), m.label())
+                    .icon(m.icon())
+                    .tint(m.tint(&t))
+                    .hint(m.hint())
+            })
             .collect();
         let select = cx.new(|cx| {
-            let mut s = Select::new(options, window, cx).label("Chat mode").ghost().up();
+            let mut s = Select::new(options, window, cx)
+                .label("Chat mode")
+                .ghost()
+                .up();
             s.set_value(mode.key(), cx);
             s
         });
         if mode == ChatMode::Loop {
-            let loops: Vec<LoopInfo> = named("loops").into_iter().map(|n| LoopInfo { id: n.id, name: n.name, hint: n.hint }).collect();
-            let policies: Vec<PolicyInfo> =
-                named("policies").into_iter().map(|n| PolicyInfo { id: n.id, name: n.name, hint: n.hint }).collect();
+            let loops: Vec<LoopInfo> = named("loops")
+                .into_iter()
+                .map(|n| LoopInfo {
+                    id: n.id,
+                    name: n.name,
+                    hint: n.hint,
+                })
+                .collect();
+            let policies: Vec<PolicyInfo> = named("policies")
+                .into_iter()
+                .map(|n| PolicyInfo {
+                    id: n.id,
+                    name: n.name,
+                    hint: n.hint,
+                })
+                .collect();
             let pickers = cx.new(|cx| LoopPolicyPickers::new(true, true, false, window, cx));
-            pickers.update(cx, |p, cx| p.set(&loops[0].id, &policies[0].id, &loops, &policies, false, t.pane, cx));
-            return ModeToolbar { mode: select, models: None, loops: Some(pickers) };
+            pickers.update(cx, |p, cx| {
+                p.set(
+                    &loops[0].id,
+                    &policies[0].id,
+                    &loops,
+                    &policies,
+                    false,
+                    t.pane,
+                    cx,
+                )
+            });
+            return ModeToolbar {
+                mode: select,
+                models: None,
+                loops: Some(pickers),
+            };
         }
         let pickers = cx.new(|cx| ModelPickers::new(true, true, window, cx));
         let load = state.update(cx, |s, cx| s.load_model_catalog(cx));
@@ -136,13 +180,22 @@ impl ModeToolbar {
             });
         })
         .detach();
-        ModeToolbar { mode: select, models: Some(pickers), loops: None }
+        ModeToolbar {
+            mode: select,
+            models: Some(pickers),
+            loops: None,
+        }
     }
 }
 
 impl Render for ModeToolbar {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        let mut row = div().flex().items_center().gap(gpui_kit::px(6.)).min_w_0().child(self.mode.clone());
+        let mut row = div()
+            .flex()
+            .items_center()
+            .gap(gpui_kit::px(6.))
+            .min_w_0()
+            .child(self.mode.clone());
         if let Some(m) = &self.models {
             row = row.child(m.clone());
         }
@@ -162,7 +215,10 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.theme", spec.theme.clone());
     let state: Entity<AppState> = AppState::install(services.clone(), storage, cx);
-    let vcx = ViewContext { state: state.clone(), services };
+    let vcx = ViewContext {
+        state: state.clone(),
+        services,
+    };
     let variant = name.split_once('/').map_or("", |(_, v)| v);
     let variant = variant.strip_suffix("-paper").unwrap_or(variant);
     if variant == "app" {
@@ -173,7 +229,11 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         .strip_prefix("mode-")
         .or((variant == "pickers").then_some("agent"))
         .map(ChatMode::from_key);
-    let code = if mode.is_some_and(|m| m != ChatMode::Loop) { "PA" } else { "MA" };
+    let code = if mode.is_some_and(|m| m != ChatMode::Loop) {
+        "PA"
+    } else {
+        "MA"
+    };
     let fx: Fixture = serde_json::from_value(fixtures()[variant].clone()).unwrap_or_default();
     state.update(cx, |s, cx| {
         s.view = ViewName::Detail;
@@ -215,7 +275,8 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         ..Default::default()
     };
     let chat = cx.new(|cx| AgentChat::new(&vcx, props, window, cx));
-    let toolbar = mode.map(|m| -> AnyView { cx.new(|cx| ModeToolbar::new(m, &state, window, cx)).into() });
+    let toolbar =
+        mode.map(|m| -> AnyView { cx.new(|cx| ModeToolbar::new(m, &state, window, cx)).into() });
     let draft = fx.draft.clone();
     chat.update(cx, |c, cx| {
         c.set_hooks(
@@ -240,7 +301,13 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         }
     });
     let focus_composer = variant == "composer";
-    Some(cx.new(|_| ChatScene { chat, focus_composer }).into())
+    Some(
+        cx.new(|_| ChatScene {
+            chat,
+            focus_composer,
+        })
+        .into(),
+    )
 }
 
 #[cfg(test)]
@@ -253,9 +320,20 @@ mod tests {
         for spec in specs() {
             let v = spec.name.split_once('/').map_or("", |(_, v)| v);
             let v = v.strip_suffix("-paper").unwrap_or(v);
-            let needs = ["transcript", "streaming", "permission", "question", "plan", "fanout", "composer"];
+            let needs = [
+                "transcript",
+                "streaming",
+                "permission",
+                "question",
+                "plan",
+                "fanout",
+                "composer",
+            ];
             if needs.contains(&v) {
-                assert!(serde_json::from_value::<Fixture>(fx[v].clone()).is_ok(), "{v}");
+                assert!(
+                    serde_json::from_value::<Fixture>(fx[v].clone()).is_ok(),
+                    "{v}"
+                );
             }
         }
         assert_eq!(named("loops").len(), 2);

@@ -47,7 +47,11 @@ pub enum AppChatEvent {
 
 /// The tab's label (`tab.title || 'New chat'`).
 pub fn tab_label(tab: &WorkspaceChatTab) -> &str {
-    if tab.title.is_empty() { "New chat" } else { &tab.title }
+    if tab.title.is_empty() {
+        "New chat"
+    } else {
+        &tab.title
+    }
 }
 
 /// The backend's first-message title stamp, mirrored so the chip labels at once.
@@ -92,13 +96,32 @@ pub struct AppChat {
 impl EventEmitter<AppChatEvent> for AppChat {}
 
 impl AppChat {
-    pub fn new(vcx: &ViewContext, visible: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        vcx: &ViewContext,
+        visible: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let state = vcx.state.clone();
-        let active = state.read(cx).storage().get(ACTIVE_KEY).filter(|s| !s.is_empty()).unwrap_or(APP).to_string();
+        let active = state
+            .read(cx)
+            .storage()
+            .get(ACTIVE_KEY)
+            .filter(|s| !s.is_empty())
+            .unwrap_or(APP)
+            .to_string();
         let catalog = state.read(cx).peek_model_catalog().to_vec();
-        let chat = cx.new(|cx| AgentChat::new(vcx, Self::chat_props_for(&active, visible), window, cx));
+        let chat =
+            cx.new(|cx| AgentChat::new(vcx, Self::chat_props_for(&active, visible), window, cx));
         chat.update(cx, |c, cx| {
-            c.set_hooks(ChatHooks { send: true, stop: true, ..Default::default() }, cx)
+            c.set_hooks(
+                ChatHooks {
+                    send: true,
+                    stop: true,
+                    ..Default::default()
+                },
+                cx,
+            )
         });
         let pickers = cx.new(|cx| ModelPickers::new(true, true, window, cx));
         let me = cx.entity().downgrade();
@@ -106,15 +129,19 @@ impl AppChat {
         chat.update(cx, |c, cx| c.set_empty(Some(empty.into()), cx));
         let focus = cx.focus_handle();
         let subs = vec![
-            cx.subscribe_in(&chat, window, |this, chat, ev: &ChatEvent, _, cx| match ev {
-                ChatEvent::Send { .. } => {
-                    let input = chat.read(cx).input().to_string();
-                    chat.update(cx, |c, cx| c.set_draft(String::new(), Vec::new(), cx));
-                    this.send_text(&input, cx);
-                }
-                ChatEvent::Stop => this.stop(cx),
-                _ => {}
-            }),
+            cx.subscribe_in(
+                &chat,
+                window,
+                |this, chat, ev: &ChatEvent, _, cx| match ev {
+                    ChatEvent::Send { .. } => {
+                        let input = chat.read(cx).input().to_string();
+                        chat.update(cx, |c, cx| c.set_draft(String::new(), Vec::new(), cx));
+                        this.send_text(&input, cx);
+                    }
+                    ChatEvent::Stop => this.stop(cx),
+                    _ => {}
+                },
+            ),
             cx.subscribe(&pickers, |this, _, ev: &PickerEvent, cx| match ev {
                 PickerEvent::Model(r, f) => this.remember(r.clone(), f.clone(), cx),
                 PickerEvent::Flags(f) => {
@@ -141,8 +168,15 @@ impl AppChat {
         let mut events = vcx.services.subscribe();
         let _events = cx.spawn(async move |this, cx| {
             while let Some(ev) = events.recv().await {
-                let Some(ev) = session_event(&ev) else { continue };
-                if this.update(cx, |a, cx| a.on_session(ev.workspace_id, ev.code, ev.signal, cx)).is_err() {
+                let Some(ev) = session_event(&ev) else {
+                    continue;
+                };
+                if this
+                    .update(cx, |a, cx| {
+                        a.on_session(ev.workspace_id, ev.code, ev.signal, cx)
+                    })
+                    .is_err()
+                {
                     break;
                 }
             }
@@ -224,7 +258,11 @@ impl AppChat {
 
     fn tab_busy(&self, code: &str, cx: &gpui_kit::App) -> bool {
         self.sending_by.get(code).copied().unwrap_or(false)
-            || self.state.read(cx).agents_running.contains(&app_chat_agent_id(code))
+            || self
+                .state
+                .read(cx)
+                .agents_running
+                .contains(&app_chat_agent_id(code))
     }
 
     fn sending(&self, cx: &gpui_kit::App) -> bool {
@@ -254,7 +292,9 @@ impl AppChat {
     fn refresh_tabs(&mut self, cx: &mut Context<Self>) {
         let services = self.services.clone();
         cx.spawn(async move |this, cx| {
-            let Ok(list) = services.briefing.list_app_chats().await else { return };
+            let Ok(list) = services.briefing.list_app_chats().await else {
+                return;
+            };
             if list.is_empty() {
                 return;
             }
@@ -293,7 +333,9 @@ impl AppChat {
             return;
         }
         self.active = code;
-        self.state.update(cx, |s, _| s.storage_mut().set(ACTIVE_KEY, self.active.clone()));
+        self.state.update(cx, |s, _| {
+            s.storage_mut().set(ACTIVE_KEY, self.active.clone())
+        });
         self.load_active(cx);
         self.report_focus(cx);
         self.props_dirty = true;
@@ -330,9 +372,21 @@ impl AppChat {
                 if a.load_gen != load_gen || code != a.active {
                     return;
                 }
-                let d = resolved_default_for_mode("ask", a.state.read(cx).settings.as_ref(), &a.catalog);
-                a.model = if sel.model.is_empty() { d.model } else { sel.model };
-                let cur = if sel.flags.is_empty() { d.flags } else { sel.flags };
+                let d = resolved_default_for_mode(
+                    "ask",
+                    a.state.read(cx).settings.as_ref(),
+                    &a.catalog,
+                );
+                a.model = if sel.model.is_empty() {
+                    d.model
+                } else {
+                    sel.model
+                };
+                let cur = if sel.flags.is_empty() {
+                    d.flags
+                } else {
+                    sel.flags
+                };
                 a.flags = normalize_flags(&flags_for_model(&a.catalog, &a.model), Some(&cur));
                 cx.notify();
             });
@@ -348,7 +402,11 @@ impl AppChat {
         if self.live_turn_closed(cx) {
             return;
         }
-        let tag = if kind == StreamKind::Text { "text" } else { "thinking" };
+        let tag = if kind == StreamKind::Text {
+            "text"
+        } else {
+            "thinking"
+        };
         let seq_key = if evt.parent_id.is_empty() {
             tag.to_string()
         } else {
@@ -374,11 +432,23 @@ impl AppChat {
     }
 
     #[cfg(test)]
-    pub(crate) fn on_session_for_test(&mut self, ws: &str, code: &str, signal: SessionSignal, cx: &mut Context<Self>) {
+    pub(crate) fn on_session_for_test(
+        &mut self,
+        ws: &str,
+        code: &str,
+        signal: SessionSignal,
+        cx: &mut Context<Self>,
+    ) {
         self.on_session(ws.to_string(), code.to_string(), signal, cx);
     }
 
-    fn on_session(&mut self, ws: String, code: String, signal: SessionSignal, cx: &mut Context<Self>) {
+    fn on_session(
+        &mut self,
+        ws: String,
+        code: String,
+        signal: SessionSignal,
+        cx: &mut Context<Self>,
+    ) {
         if let SessionSignal::TurnEnd(turn) = &signal {
             if !ws.is_empty() || !self.tabs.iter().any(|t| t.code == code) {
                 return;
@@ -395,13 +465,16 @@ impl AppChat {
             let services = self.services.clone();
             let c = code.clone();
             cx.spawn(async move |this, cx| {
-                let Ok(items) = services.briefing.app_chat_items(&c).await else { return };
+                let Ok(items) = services.briefing.app_chat_items(&c).await else {
+                    return;
+                };
                 let _ = this.update(cx, |a, cx| {
                     if c != a.active {
                         return;
                     }
                     a.messages = merge_persisted_with_live(&map_chat_items(&items), &a.messages);
-                    a.context_usage = context_usage::from_chat_items(&items).or(a.context_usage.take());
+                    a.context_usage =
+                        context_usage::from_chat_items(&items).or(a.context_usage.take());
                     a.props_dirty = true;
                     cx.notify();
                 });
@@ -421,7 +494,8 @@ impl AppChat {
                 if !evt.text.is_empty() || evt.replace || evt.done {
                     self.apply_live_stream(StreamKind::Thinking, &evt, cx)
                 } else {
-                    self.messages = note_thinking_tokens(&self.messages, evt.tokens, &evt.uuid, &evt.parent_id);
+                    self.messages =
+                        note_thinking_tokens(&self.messages, evt.tokens, &evt.uuid, &evt.parent_id);
                 }
             }
             SessionSignal::Step(step) => {
@@ -430,8 +504,19 @@ impl AppChat {
                 }
                 self.messages = add_tool(&self.messages, &step);
             }
-            SessionSignal::ToolResult { id, result, is_error, extras } => {
-                self.messages = attach_tool_result(&self.messages, &id, &result, is_error, &extras.unwrap_or_default());
+            SessionSignal::ToolResult {
+                id,
+                result,
+                is_error,
+                extras,
+            } => {
+                self.messages = attach_tool_result(
+                    &self.messages,
+                    &id,
+                    &result,
+                    is_error,
+                    &extras.unwrap_or_default(),
+                );
             }
             SessionSignal::ToolInput { id, extras } => {
                 self.messages = patch_tool_input(&self.messages, &id, &extras);
@@ -458,7 +543,9 @@ impl AppChat {
     pub(crate) fn new_tab(&mut self, cx: &mut Context<Self>) {
         let services = self.services.clone();
         cx.spawn(async move |this, cx| {
-            let Ok(tab) = services.briefing.new_app_chat().await else { return };
+            let Ok(tab) = services.briefing.new_app_chat().await else {
+                return;
+            };
             if tab.code.is_empty() {
                 return;
             }
@@ -475,7 +562,9 @@ impl AppChat {
         let services = self.services.clone();
         let code = code.to_string();
         cx.spawn(async move |this, cx| {
-            let Ok(list) = services.briefing.close_app_chat(&code).await else { return };
+            let Ok(list) = services.briefing.close_app_chat(&code).await else {
+                return;
+            };
             let _ = this.update(cx, |a, cx| {
                 if !list.is_empty() {
                     a.tabs = list;
@@ -506,7 +595,10 @@ impl AppChat {
         let code = self.active.clone();
         cx.background_spawn(async move {
             let flags: BTreeMap<String, String> = flags.into_iter().collect();
-            let _ = services.briefing.remember_app_chat_selection(&code, &model, &flags).await;
+            let _ = services
+                .briefing
+                .remember_app_chat_selection(&code, &model, &flags)
+                .await;
         })
         .detach();
         cx.notify();
@@ -535,7 +627,10 @@ impl AppChat {
         let model = self.model.clone();
         let flags: BTreeMap<String, String> = self.flags.clone().into_iter().collect();
         cx.spawn(async move |this, cx| {
-            let _ = services.briefing.send_app_message(&code, &text, &model, &flags).await;
+            let _ = services
+                .briefing
+                .send_app_message(&code, &text, &model, &flags)
+                .await;
             let _ = this.update(cx, |a, cx| {
                 a.sending_by.insert(code, false);
                 a.props_dirty = true;
@@ -566,12 +661,19 @@ impl AppChat {
             self.chat.update(cx, |c, cx| c.set_props(props, cx));
         }
         let show = !self.catalog.is_empty() && !self.model.is_empty();
-        let key = (self.catalog.len(), self.model.clone(), self.flags.clone(), sending);
+        let key = (
+            self.catalog.len(),
+            self.model.clone(),
+            self.flags.clone(),
+            sending,
+        );
         if show && self.pickers_key.as_ref() != Some(&key) {
             self.pickers_key = Some(key);
             let backdrop = sending.then(|| Theme::of(cx).tokens.pane);
-            let (models, model, flags) = (self.catalog.clone(), self.model.clone(), self.flags.clone());
-            self.pickers.update(cx, |p, cx| p.set(models, &model, &flags, backdrop, cx));
+            let (models, model, flags) =
+                (self.catalog.clone(), self.model.clone(), self.flags.clone());
+            self.pickers
+                .update(cx, |p, cx| p.set(models, &model, &flags, backdrop, cx));
             let view = self.pickers.clone().into();
             self.chat.update(cx, |c, cx| c.set_toolbar(Some(view), cx));
         } else if !show && self.pickers_key.take().is_some() {
@@ -587,7 +689,9 @@ impl Render for AppChat {
         let lit = self.visible && self.focus.contains_focused(window, cx);
         let ask = ChatMode::Ask;
         let tint = hsla(ask.tint(&t));
-        let mut strip = tab_strip("app-chat-tabs", "Ask Recur chats").flush(true).active_key(self.active.clone());
+        let mut strip = tab_strip("app-chat-tabs", "Ask Recur chats")
+            .flush(true)
+            .active_key(self.active.clone());
         for tab in &self.tabs {
             let code = tab.code.clone();
             let label = tab_label(tab).to_string();
@@ -598,26 +702,36 @@ impl Render for AppChat {
                 if busy { " — running" } else { "" },
                 if unseen { " — new response" } else { "" }
             );
-            let close = format!("Close {}", if tab.title.is_empty() { "chat" } else { &tab.title });
+            let close = format!(
+                "Close {}",
+                if tab.title.is_empty() {
+                    "chat"
+                } else {
+                    &tab.title
+                }
+            );
             let (sel, cls) = (code.clone(), code.clone());
             let me = cx.entity().downgrade();
             let me2 = me.clone();
             strip = strip.tab(
                 code.clone(),
-                tab_chip(gpui_kit::SharedString::from(format!("ask-tab-{code}")), label)
-                    .title(title)
-                    .icon(ChipIcon::App(ask.icon(), Some(tint)))
-                    .active(self.active == code)
-                    .lit(lit)
-                    .busy(busy)
-                    .unseen(unseen)
-                    .close_label(close)
-                    .on_click(move |_, _, cx| {
-                        let _ = me.update(cx, |a, cx| a.select_tab(&sel, cx));
-                    })
-                    .on_close(move |_, _, cx| {
-                        let _ = me2.update(cx, |a, cx| a.close_tab(&cls, cx));
-                    }),
+                tab_chip(
+                    gpui_kit::SharedString::from(format!("ask-tab-{code}")),
+                    label,
+                )
+                .title(title)
+                .icon(ChipIcon::App(ask.icon(), Some(tint)))
+                .active(self.active == code)
+                .lit(lit)
+                .busy(busy)
+                .unseen(unseen)
+                .close_label(close)
+                .on_click(move |_, _, cx| {
+                    let _ = me.update(cx, |a, cx| a.select_tab(&sel, cx));
+                })
+                .on_close(move |_, _, cx| {
+                    let _ = me2.update(cx, |a, cx| a.close_tab(&cls, cx));
+                }),
             );
         }
         let new_btn = recur_ui::tooltip::titled(
@@ -673,7 +787,14 @@ impl Render for AppChat {
                 }
             })
             .child(head)
-            .child(div().flex_1().min_h_0().flex().flex_col().child(self.chat.clone()))
+            .child(
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .child(self.chat.clone()),
+            )
     }
 }
 
@@ -712,7 +833,12 @@ impl Render for AskEmpty {
             .gap(px(12.))
             .text_color(hsla(t.muted))
             .text_size(px(13.))
-            .child(text("Ask about Now and Next across your workspaces.").size(13.).line_height(LineHeight::Scale(1.55)).color(t.muted))
+            .child(
+                text("Ask about Now and Next across your workspaces.")
+                    .size(13.)
+                    .line_height(LineHeight::Scale(1.55))
+                    .color(t.muted),
+            )
             .child(div().flex().flex_wrap().gap(px(8.)).children(chips))
     }
 }
@@ -724,8 +850,16 @@ mod tests {
     #[test]
     fn title_stamp_and_label() {
         let mut tabs = vec![
-            WorkspaceChatTab { code: "APP".into(), title: "New chat".into(), ..Default::default() },
-            WorkspaceChatTab { code: "AP2".into(), title: "Kept".into(), ..Default::default() },
+            WorkspaceChatTab {
+                code: "APP".into(),
+                title: "New chat".into(),
+                ..Default::default()
+            },
+            WorkspaceChatTab {
+                code: "AP2".into(),
+                title: "Kept".into(),
+                ..Default::default()
+            },
         ];
         stamp_title(&mut tabs, "APP", "\n  first line \nsecond");
         stamp_title(&mut tabs, "AP2", "ignored");

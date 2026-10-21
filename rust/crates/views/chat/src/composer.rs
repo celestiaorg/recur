@@ -65,14 +65,19 @@ fn artifact_title_rank(title: &str, q: &str) -> u8 {
 }
 
 /// `matchingTerminalHits`.
-pub(crate) fn matching_terminal_hits(tabs: &[WorkspaceTerminalTab], query: &str) -> Vec<MentionHit> {
+pub(crate) fn matching_terminal_hits(
+    tabs: &[WorkspaceTerminalTab],
+    query: &str,
+) -> Vec<MentionHit> {
     let q = js_trim(query).to_lowercase();
     if tabs.is_empty() {
         return Vec::new();
     }
     let show_all = q.is_empty() || q == "term" || q == "terminal" || "terminal".starts_with(&q);
     tabs.iter()
-        .filter(|t| show_all || t.title.to_lowercase().contains(&q) || t.id.to_lowercase().starts_with(&q))
+        .filter(|t| {
+            show_all || t.title.to_lowercase().contains(&q) || t.id.to_lowercase().starts_with(&q)
+        })
         .take(8)
         .map(|t| MentionHit::Terminal {
             id: t.id.clone(),
@@ -121,7 +126,10 @@ impl AgentChat {
         }
         self.skill_index_loading = true;
         let services = self.services.clone();
-        let (p, w) = (self.props.project_id.clone(), self.props.workspace_id.clone());
+        let (p, w) = (
+            self.props.project_id.clone(),
+            self.props.workspace_id.clone(),
+        );
         self.skill_task = Some(cx.spawn(async move |this, cx| {
             let res = services.code.list_all_skills(&p, &w).await;
             let _ = this.update(cx, |c, cx| {
@@ -203,7 +211,11 @@ impl AgentChat {
                 let rows = list
                     .into_iter()
                     .map(|a| WorkspaceArtifact {
-                        title: if a.title.is_empty() { a.id.clone() } else { a.title },
+                        title: if a.title.is_empty() {
+                            a.id.clone()
+                        } else {
+                            a.title
+                        },
                         id: a.id,
                         kind: a.kind.as_str().to_string(),
                         path: a.path,
@@ -264,7 +276,11 @@ impl AgentChat {
     pub(crate) fn enabled_skill_index(&self, cx: &App) -> Vec<SkillHit> {
         let s = self.state.read(cx);
         let proj = s.project(&self.props.project_id);
-        let global_disabled = s.settings.as_ref().map(|s| s.disabled_skills.clone()).unwrap_or_default();
+        let global_disabled = s
+            .settings
+            .as_ref()
+            .map(|s| s.disabled_skills.clone())
+            .unwrap_or_default();
         self.skill_index
             .iter()
             .filter(|sk| {
@@ -286,9 +302,12 @@ impl AgentChat {
         let Some(m) = &self.skill_mention else {
             return Vec::new();
         };
-        let prompts: Vec<PromptActionInfo> = if self.prompt_gate_open && self.attachments.is_empty() {
+        let prompts: Vec<PromptActionInfo> = if self.prompt_gate_open && self.attachments.is_empty()
+        {
             let index = self.enabled_prompt_index(cx);
-            let prepared = prepare_fuzzy(&index, |p| format!("{} {} {}", p.slash, p.name, p.description));
+            let prepared = prepare_fuzzy(&index, |p| {
+                format!("{} {} {}", p.slash, p.name, p.description)
+            });
             fuzzy_filter_prepared(&prepared, &m.query, 12)
                 .into_iter()
                 .map(|h| h.item)
@@ -309,7 +328,10 @@ impl AgentChat {
                     name: p.name.clone(),
                     description: p.description.clone(),
                     takes_args: prompt_takes_args(Some(&a)),
-                    args: prompt_arg_specs(Some(&a)).into_iter().map(|s| s.name).collect(),
+                    args: prompt_arg_specs(Some(&a))
+                        .into_iter()
+                        .map(|s| s.name)
+                        .collect(),
                     mode: p.mode.clone(),
                 }
             })
@@ -325,7 +347,9 @@ impl AgentChat {
 
     pub(crate) fn prompt_arg_info(&self, cx: &App) -> Option<PromptActionInfo> {
         let q = self.prompt_args.as_ref()?;
-        self.enabled_prompt_index(cx).into_iter().find(|p| p.slash == q.slash)
+        self.enabled_prompt_index(cx)
+            .into_iter()
+            .find(|p| p.slash == q.slash)
     }
 
     pub(crate) fn prompt_arg_hits(&self, cx: &App) -> Vec<PromptArgHit> {
@@ -357,7 +381,12 @@ impl AgentChat {
             },
             args,
         }];
-        rows.extend(self.complete_hits.iter().cloned().map(PromptArgHit::Suggest));
+        rows.extend(
+            self.complete_hits
+                .iter()
+                .cloned()
+                .map(PromptArgHit::Suggest),
+        );
         rows
     }
 
@@ -379,7 +408,11 @@ impl AgentChat {
 
     pub(crate) fn prompt_arg_allow_empty(&self, cx: &App) -> bool {
         let info = self.prompt_arg_info(cx).map(|i| prompt_action(&i));
-        let arg = self.prompt_args.as_ref().map(|q| q.arg.clone()).unwrap_or_default();
+        let arg = self
+            .prompt_args
+            .as_ref()
+            .map(|q| q.arg.clone())
+            .unwrap_or_default();
         prompt_arg_slot_optional(info.as_ref(), &arg)
     }
 
@@ -434,17 +467,17 @@ impl AgentChat {
                 self.prompt_args = None;
                 return self.menus_changed(cx);
             }
-            let Some(Segment::Prompt { spec, .. }) =
-                self.doc.prompt_chip().and_then(|i| self.doc.chips.get(i)).cloned()
+            let Some(Segment::Prompt { spec, .. }) = self
+                .doc
+                .prompt_chip()
+                .and_then(|i| self.doc.chips.get(i))
+                .cloned()
             else {
                 return;
             };
             let values = self.slot_values(cx);
             let i = self.prompt_slot_focus.unwrap_or(0);
-            let args = values
-                .get(i)
-                .cloned()
-                .unwrap_or_else(|| values.join(" "));
+            let args = values.get(i).cloned().unwrap_or_else(|| values.join(" "));
             let args = recur_engine::view::js::trim_end(&args).to_string();
             let arg = spec.args.get(i).map(|a| a.name.clone()).unwrap_or_default();
             if self
@@ -715,7 +748,9 @@ impl AgentChat {
 
     /// Live terminal / artifact rows (OSC titles, focus) without restarting the search.
     pub(crate) fn splice_live_mention_rows(&mut self, cx: &mut Context<Self>) {
-        let Some(m) = self.mention.clone() else { return };
+        let Some(m) = self.mention.clone() else {
+            return;
+        };
         let mut next = matching_terminal_hits(&self.live_terminals(cx), &m.query);
         next.extend(matching_artifact_hits(&self.live_artifacts(cx), &m.query));
         next.extend(
@@ -776,11 +811,18 @@ impl AgentChat {
         self.menus_changed(cx);
     }
 
-    pub(crate) fn pick_mention_hit(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn pick_mention_hit(
+        &mut self,
+        i: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let Some(hit) = self.mention_hits.get(i).cloned() else {
             return;
         };
-        let Some(q) = self.mention.clone() else { return };
+        let Some(q) = self.mention.clone() else {
+            return;
+        };
         let chip = match hit {
             MentionHit::Terminal { id, title, .. } => Segment::Terminal { id, title },
             MentionHit::Artifact { id, title, .. } => Segment::Artifact { id, title },
@@ -800,7 +842,9 @@ impl AgentChat {
     }
 
     pub(crate) fn pick_skill(&mut self, name: &str, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(q) = self.skill_mention.clone() else { return };
+        let Some(q) = self.skill_mention.clone() else {
+            return;
+        };
         if name.is_empty() {
             return;
         }
@@ -817,7 +861,10 @@ impl AgentChat {
         {
             return;
         }
-        let info = self.enabled_prompt_index(cx).into_iter().find(|p| p.slash == slash);
+        let info = self
+            .enabled_prompt_index(cx)
+            .into_iter()
+            .find(|p| p.slash == slash);
         if prompt_takes_args(info.as_ref().map(prompt_action).as_ref()) {
             let existing = recur_engine::view::prompts::parse_committed_prompt_line(&self.input)
                 .filter(|(s, _)| s == slash)
@@ -951,16 +998,25 @@ impl AgentChat {
         let action = js_trim(&hit.action).to_string();
         if let Some(section) = action.strip_prefix("settings:") {
             let section = section.to_string();
-            self.state.update(cx, |s, cx| s.open_settings(Some(&section), cx));
+            self.state
+                .update(cx, |s, cx| s.open_settings(Some(&section), cx));
             return;
         }
-        let insert = js_trim(if hit.insert.is_empty() { &hit.label } else { &hit.insert }).to_string();
+        let insert = js_trim(if hit.insert.is_empty() {
+            &hit.label
+        } else {
+            &hit.insert
+        })
+        .to_string();
         if insert.is_empty() {
             return;
         }
         let info = self.prompt_arg_info(cx).map(|i| prompt_action(&i));
         if self.doc.prompt_chip().is_some() && !self.prompt_slots.is_empty() {
-            let i = self.prompt_slot_focus.unwrap_or(0).min(self.prompt_slots.len() - 1);
+            let i = self
+                .prompt_slot_focus
+                .unwrap_or(0)
+                .min(self.prompt_slots.len() - 1);
             let slot = self.prompt_slots[i].clone();
             slot.update(cx, |s, cx| s.set_value(insert.clone(), window, cx));
             self.on_slot_changed(cx);
@@ -972,7 +1028,9 @@ impl AgentChat {
                     for step in 1..n {
                         let idx = (i + step) % n;
                         let optional = specs.get(idx).is_some_and(|s| s.optional);
-                        if !optional && js_trim(values.get(idx).map_or("", String::as_str)).is_empty() {
+                        if !optional
+                            && js_trim(values.get(idx).map_or("", String::as_str)).is_empty()
+                        {
                             self.focus_prompt_slot(idx, window, cx);
                             break;
                         }
@@ -1005,8 +1063,11 @@ impl AgentChat {
         self.prompt_slots.clear();
         self.prompt_slot_subs.clear();
         self.prompt_slot_focus = focus;
-        let Some(Segment::Prompt { spec, values }) =
-            self.doc.prompt_chip().and_then(|i| self.doc.chips.get(i)).cloned()
+        let Some(Segment::Prompt { spec, values }) = self
+            .doc
+            .prompt_chip()
+            .and_then(|i| self.doc.chips.get(i))
+            .cloned()
         else {
             return;
         };
@@ -1044,15 +1105,18 @@ impl AgentChat {
                 })
                 .ok();
             let Some(slot) = slot else { continue };
-            let sub = cx.subscribe(&slot, move |this: &mut Self, _, ev: &InputEvent, cx| match ev {
-                InputEvent::Change => this.on_slot_changed(cx),
-                InputEvent::Focus => {
-                    this.prompt_slot_focus = Some(i);
-                    this.sync_mention_from_caret(cx);
-                }
-                InputEvent::Blur => cx.notify(),
-                InputEvent::PressEnter { .. } => {}
-            });
+            let sub = cx.subscribe(
+                &slot,
+                move |this: &mut Self, _, ev: &InputEvent, cx| match ev {
+                    InputEvent::Change => this.on_slot_changed(cx),
+                    InputEvent::Focus => {
+                        this.prompt_slot_focus = Some(i);
+                        this.sync_mention_from_caret(cx);
+                    }
+                    InputEvent::Blur => cx.notify(),
+                    InputEvent::PressEnter { .. } => {}
+                },
+            );
             self.prompt_slots.push(slot);
             self.prompt_slot_subs.push(sub);
         }
@@ -1077,8 +1141,16 @@ impl AgentChat {
         self.sync_mention_from_caret(cx);
     }
 
-    pub(crate) fn focus_prompt_slot(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(slot) = self.prompt_slots.get(i.min(self.prompt_slots.len().saturating_sub(1))).cloned()
+    pub(crate) fn focus_prompt_slot(
+        &mut self,
+        i: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(slot) = self
+            .prompt_slots
+            .get(i.min(self.prompt_slots.len().saturating_sub(1)))
+            .cloned()
         else {
             return;
         };
@@ -1098,7 +1170,12 @@ impl AgentChat {
 
     /// Keys a focused slot gives the chat (`onChipDeleteKey` for slots and the args menu).
     /// True when handled.
-    pub(crate) fn on_slot_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) -> bool {
+    pub(crate) fn on_slot_key(
+        &mut self,
+        ev: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
         let Some(i) = self.focused_slot(window, cx) else {
             return false;
         };
@@ -1136,7 +1213,12 @@ impl AgentChat {
     // ---- keyboard ----
 
     /// `onMentionKeydown`: true when a menu handled the key.
-    pub(crate) fn on_mention_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) -> bool {
+    pub(crate) fn on_mention_key(
+        &mut self,
+        ev: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
         let key = ev.keystroke.key.as_str();
         if self.prompt_args.is_some() && self.mention.is_none() && self.skill_mention.is_none() {
             let hits = self.prompt_arg_hits(cx);
@@ -1247,8 +1329,15 @@ impl AgentChat {
                         }
                         return true;
                     }
-                    let q = self.skill_mention.as_ref().map(|m| m.query.clone()).unwrap_or_default();
-                    let exact = self.enabled_prompt_index(cx).into_iter().find(|p| p.slash == q);
+                    let q = self
+                        .skill_mention
+                        .as_ref()
+                        .map(|m| m.query.clone())
+                        .unwrap_or_default();
+                    let exact = self
+                        .enabled_prompt_index(cx)
+                        .into_iter()
+                        .find(|p| p.slash == q);
                     if let Some(p) = exact
                         && prompt_takes_args(Some(&prompt_action(&p)))
                     {
@@ -1294,7 +1383,12 @@ impl AgentChat {
 
     /// The composer's key handling: menus, chip deletion, undo, mode cycling, Shift+Enter
     /// line breaks and Enter to send.
-    pub(crate) fn on_composer_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn on_composer_key(
+        &mut self,
+        ev: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.composer_marked.is_some() {
             return;
         }
@@ -1417,7 +1511,11 @@ impl AgentChat {
     }
 
     fn apply_undo(&mut self, redo: bool, cx: &mut Context<Self>) {
-        let snap = if redo { self.undo.redo() } else { self.undo.undo() };
+        let snap = if redo {
+            self.undo.redo()
+        } else {
+            self.undo.undo()
+        };
         let Some(snap) = snap else { return };
         self.attachments = snap.atts.clone();
         let mut doc = self.hydrate_wire(&snap.text, cx);
@@ -1467,7 +1565,8 @@ impl AgentChat {
             cur
         };
         if (next - cur).abs() > 0.01 {
-            self.composer_scroll.set_offset(point(px(0.), px(-next.max(0.))));
+            self.composer_scroll
+                .set_offset(point(px(0.), px(-next.max(0.))));
         }
     }
 
@@ -1533,7 +1632,8 @@ impl AgentChat {
         let after_caret = &wire[self.doc.wire_caret().min(wire.len())..];
         let needs_space = !after_caret.starts_with(' ') && !after_caret.starts_with('\n');
         let dir = recur_engine::view::composer::is_dir_chip_path(&chip);
-        self.doc.insert_chip(Segment::File { path: chip, dir }, needs_space);
+        self.doc
+            .insert_chip(Segment::File { path: chip, dir }, needs_space);
         self.mention = None;
         self.skill_mention = None;
         self.mention_escaped = None;
@@ -1544,7 +1644,12 @@ impl AgentChat {
     }
 
     /// `insertDroppedDrafts`: image chips at the caret.
-    pub(crate) fn insert_drafts(&mut self, added: Vec<ChatAttachmentDraft>, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn insert_drafts(
+        &mut self,
+        added: Vec<ChatAttachmentDraft>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if added.is_empty() {
             return;
         }
@@ -1566,7 +1671,9 @@ impl AgentChat {
 
     /// `onPaste`: images become drafts (not on Ask Recur); text pastes as plain text.
     fn paste(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(item) = cx.read_from_clipboard() else { return };
+        let Some(item) = cx.read_from_clipboard() else {
+            return;
+        };
         let mut drafts = Vec::new();
         for e in item.entries() {
             if let ClipboardEntry::Image(img) = e {
@@ -1588,7 +1695,11 @@ impl AgentChat {
             }
             return;
         }
-        let text = item.text().unwrap_or_default().replace("\r\n", "\n").replace('\r', "\n");
+        let text = item
+            .text()
+            .unwrap_or_default()
+            .replace("\r\n", "\n")
+            .replace('\r', "\n");
         if text.is_empty() {
             return;
         }
@@ -1597,7 +1708,12 @@ impl AgentChat {
     }
 
     /// `applyOsDrop`: workspace files become `@file` chips, images attach.
-    pub(crate) fn apply_os_drop(&mut self, paths: Vec<String>, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn apply_os_drop(
+        &mut self,
+        paths: Vec<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.props.readonly || self.app_surface() {
             return;
         }
@@ -1615,7 +1731,9 @@ impl AgentChat {
         }
         let mut drafts = Vec::new();
         for p in &drop.image_paths {
-            let Ok(bytes) = std::fs::read(p) else { continue };
+            let Ok(bytes) = std::fs::read(p) else {
+                continue;
+            };
             let ext = p.rsplit('.').next().unwrap_or("").to_lowercase();
             let mime = match ext.as_str() {
                 "jpg" | "jpeg" => "image/jpeg",
@@ -1627,7 +1745,12 @@ impl AgentChat {
             use base64::Engine as _;
             let id = new_attachment_id(now_ms());
             drafts.push(ChatAttachmentDraft {
-                name: p.replace('\\', "/").rsplit('/').next().unwrap_or("image.png").to_string(),
+                name: p
+                    .replace('\\', "/")
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or("image.png")
+                    .to_string(),
                 mime: mime.into(),
                 data_url: format!(
                     "data:{mime};base64,{}",
@@ -1643,7 +1766,12 @@ impl AgentChat {
     }
 
     /// An explorer drag (`fileDragPaths`) dropped on the chat.
-    pub(crate) fn drop_explorer_paths(&mut self, paths: &[String], window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn drop_explorer_paths(
+        &mut self,
+        paths: &[String],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.file_drop_over = false;
         if self.props.readonly || self.app_surface() {
             return;
@@ -1663,7 +1791,11 @@ impl AgentChat {
     }
 
     /// `files.dropped` routed to this tab by its `data-chat-drop` id.
-    pub(crate) fn on_files_dropped(&mut self, d: &recur_services::events::FilesDropped, cx: &mut Context<Self>) {
+    pub(crate) fn on_files_dropped(
+        &mut self,
+        d: &recur_services::events::FilesDropped,
+        cx: &mut Context<Self>,
+    ) {
         if self.props.readonly || self.app_surface() || d.files.is_empty() {
             return;
         }
@@ -1770,7 +1902,9 @@ impl AgentChat {
 
     /// A chip body click (`onComposerClick`).
     pub(crate) fn click_chip(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(chip) = self.doc.chips.get(i).cloned() else { return };
+        let Some(chip) = self.doc.chips.get(i).cloned() else {
+            return;
+        };
         match chip {
             Segment::File { path, dir } => {
                 if !dir {
@@ -1790,7 +1924,13 @@ impl AgentChat {
 
     // ---- pointer ----
 
-    pub(crate) fn composer_mouse_down(&mut self, byte: usize, shift: bool, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn composer_mouse_down(
+        &mut self,
+        byte: usize,
+        shift: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.doc.move_to(byte, shift);
         self.selecting = true;
         self.focus_composer(window, cx);

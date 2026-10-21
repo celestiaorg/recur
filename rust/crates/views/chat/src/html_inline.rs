@@ -66,11 +66,21 @@ fn collapse(s: &str, after_space: &mut bool) -> String {
     out
 }
 
-fn walk(nodes: &[Node], run: Run, st: &InlineStyle, out: &mut Vec<(String, Run)>, after_space: &mut bool) {
+fn walk(
+    nodes: &[Node],
+    run: Run,
+    st: &InlineStyle,
+    out: &mut Vec<(String, Run)>,
+    after_space: &mut bool,
+) {
     for n in nodes {
         match n {
             Node::Text(t) => {
-                let s = if st.pre_wrap { t.clone() } else { collapse(t, after_space) };
+                let s = if st.pre_wrap {
+                    t.clone()
+                } else {
+                    collapse(t, after_space)
+                };
                 if !s.is_empty() {
                     out.push((s, run));
                 }
@@ -161,13 +171,33 @@ mod tests {
     fn engine_markup_becomes_styled_spans() {
         let t = recur_ui::ThemeId::default().tokens();
         let st = InlineStyle::meta(11., t.muted, &t);
-        let spans = inline_spans("Committed <code>abc</code> (+3 −1) to <b>main</b>.<br>next", &st);
+        let spans = inline_spans(
+            "Committed <code>abc</code> (+3 −1) to <b>main</b>.<br>next",
+            &st,
+        );
         let texts: Vec<&str> = spans.iter().map(|s| s.text.as_ref()).collect();
-        assert_eq!(texts, ["Committed ", "abc", " (+3 −1) to ", "main", ".", "\n", "next"]);
+        assert_eq!(
+            texts,
+            [
+                "Committed ",
+                "abc",
+                " (+3 −1) to ",
+                "main",
+                ".",
+                "\n",
+                "next"
+            ]
+        );
         assert!(spans[1].inline_box.is_some());
         assert_eq!(spans[3].style.weight, Some(700.));
-        let pre = InlineStyle { pre_wrap: true, ..st.clone() };
+        let pre = InlineStyle {
+            pre_wrap: true,
+            ..st.clone()
+        };
         let spans = inline_spans("a<br>b", &pre);
-        assert_eq!(spans.iter().map(|s| s.text.to_string()).collect::<Vec<_>>(), ["a", "b"]);
+        assert_eq!(
+            spans.iter().map(|s| s.text.to_string()).collect::<Vec<_>>(),
+            ["a", "b"]
+        );
     }
 }

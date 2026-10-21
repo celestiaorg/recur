@@ -56,9 +56,14 @@ impl AgentChat {
                 }
                 let menu = c.menu_open() && c.focus.is_focused(window);
                 let composing = !c.digest_comment_for.is_empty();
-                if !menu && !composing && let Some(req) = c.chat_permissions(cx).first().cloned() {
+                if !menu
+                    && !composing
+                    && let Some(req) = c.chat_permissions(cx).first().cloned()
+                {
                     let state = c.state.clone();
-                    state.update(cx, |s, cx| s.answer_permission(&req.id, false, "denied by the human", false, cx));
+                    state.update(cx, |s, cx| {
+                        s.answer_permission(&req.id, false, "denied by the human", false, cx)
+                    });
                     cx.stop_propagation();
                 }
                 return;
@@ -66,8 +71,11 @@ impl AgentChat {
             // ⌘⇧⌫ / Ctrl+Shift+Backspace: stop, only while focus is inside the chat.
             if k.key == "backspace" && m.shift && !m.alt && (m.platform || m.control) {
                 let c = chat.read(cx);
-                let live = c.props.shell_active && (c.props.sending || c.props.can_stop) && c.hooks.stop;
-                let inside = c.focus.contains_focused(window, cx) || c.focus.is_focused(window) || c.focused_slot(window, cx).is_some();
+                let live =
+                    c.props.shell_active && (c.props.sending || c.props.can_stop) && c.hooks.stop;
+                let inside = c.focus.contains_focused(window, cx)
+                    || c.focus.is_focused(window)
+                    || c.focused_slot(window, cx).is_some();
                 if live && inside {
                     chat.update(cx, |c, cx| c.stop(cx));
                     cx.stop_propagation();
@@ -101,10 +109,30 @@ impl AgentChat {
         };
         let mut out = Vec::new();
         if show_top {
-            out.push(div().debug_selector(|| "fade-top".into()).absolute().top_0().left_0().right_0().h(px(fade)).bg(grad(1., 0.)).into_any_element());
+            out.push(
+                div()
+                    .debug_selector(|| "fade-top".into())
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(fade))
+                    .bg(grad(1., 0.))
+                    .into_any_element(),
+            );
         }
         if show_bot {
-            out.push(div().debug_selector(|| "fade-bot".into()).absolute().bottom_0().left_0().right_0().h(px(fade)).bg(grad(0., 1.)).into_any_element());
+            out.push(
+                div()
+                    .debug_selector(|| "fade-bot".into())
+                    .absolute()
+                    .bottom_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(fade))
+                    .bg(grad(0., 1.))
+                    .into_any_element(),
+            );
         }
         out
     }
@@ -116,7 +144,11 @@ impl AgentChat {
             return None;
         }
         let t = Theme::of(cx).tokens;
-        let item = |id: &'static str, ic: IconName, s: &'static str, to_ws: bool, cx: &mut Context<Self>| {
+        let item = |id: &'static str,
+                    ic: IconName,
+                    s: &'static str,
+                    to_ws: bool,
+                    cx: &mut Context<Self>| {
             let mid = menu.message_id.clone();
             div()
                 .id(id)
@@ -136,7 +168,11 @@ impl AgentChat {
                 .child(text(s).line_height(LineHeight::Normal).nowrap())
                 .on_click(cx.listener(move |c, _, _, cx| {
                     c.fork_menu = None;
-                    cx.emit(if to_ws { ChatEvent::ForkToWorkspace(mid.clone()) } else { ChatEvent::Fork(mid.clone()) });
+                    cx.emit(if to_ws {
+                        ChatEvent::ForkToWorkspace(mid.clone())
+                    } else {
+                        ChatEvent::Fork(mid.clone())
+                    });
                     cx.notify();
                 }))
         };
@@ -144,15 +180,29 @@ impl AgentChat {
             .min_w(px(220.))
             .p(px(4.))
             .child(item("fork-chat", IconName::Split, "Fork chat", false, cx))
-            .child(item("fork-ws", IconName::Plus, "Fork to new workspace", true, cx));
-        let panel = with_shadow(panel, &[css_box_shadow(0., 10., 28., 0., rgba(0, 0, 0, 0.45))], 8.)
-            .id("fork-menu")
-            .occlude()
-            .on_mouse_down_out(cx.listener(|c, _, _, cx| {
-                c.fork_menu = None;
-                cx.notify();
-            }));
-        Some(gpui_kit::deferred(recur_ui::style::anchored_at(menu.left, menu.top, panel)).with_priority(80).into_any_element())
+            .child(item(
+                "fork-ws",
+                IconName::Plus,
+                "Fork to new workspace",
+                true,
+                cx,
+            ));
+        let panel = with_shadow(
+            panel,
+            &[css_box_shadow(0., 10., 28., 0., rgba(0, 0, 0, 0.45))],
+            8.,
+        )
+        .id("fork-menu")
+        .occlude()
+        .on_mouse_down_out(cx.listener(|c, _, _, cx| {
+            c.fork_menu = None;
+            cx.notify();
+        }));
+        Some(
+            gpui_kit::deferred(recur_ui::style::anchored_at(menu.left, menu.top, panel))
+                .with_priority(80)
+                .into_any_element(),
+        )
     }
 }
 
@@ -197,13 +247,26 @@ impl Render for AgentChat {
                 .when(!session, |d| d.max_w(px(720.)).mx_auto())
                 .children(kids);
             let scroller = div()
-                .id(SharedString::from(format!("chat-scroll-{}", self.props.reset_key)))
+                .id(SharedString::from(format!(
+                    "chat-scroll-{}",
+                    self.props.reset_key
+                )))
                 .debug_selector(|| "chat-scroll".into())
                 .track_scroll(&self.scroll)
                 .overflow_y_scroll()
-                .when(!session && !compact, |d| d.flex_1().min_h_0().pt(px(26.)).px(px(28.)).pb(px(8.)))
-                .when(!session && compact, |d| d.flex_1().min_h_0().pt(px(18.)).px(px(18.)).pb(px(8.)))
-                .when(session, |d| d.flex_initial().min_h_0().max_h(px(420.)).py(px(8.)).px(px(12.)))
+                .when(!session && !compact, |d| {
+                    d.flex_1().min_h_0().pt(px(26.)).px(px(28.)).pb(px(8.))
+                })
+                .when(!session && compact, |d| {
+                    d.flex_1().min_h_0().pt(px(18.)).px(px(18.)).pb(px(8.))
+                })
+                .when(session, |d| {
+                    d.flex_initial()
+                        .min_h_0()
+                        .max_h(px(420.))
+                        .py(px(8.))
+                        .px(px(12.))
+                })
                 .child(col);
             let main = div()
                 .relative()
@@ -230,29 +293,41 @@ impl Render for AgentChat {
         let seen = std::mem::take(&mut self.markdown_seen);
         self.markdown.retain(|k, _| seen.contains(k));
         self.streams.retain(|k, _| seen.contains(k));
-        let perms: Vec<String> = self.chat_permissions(cx).into_iter().map(|r| r.id).collect();
+        let perms: Vec<String> = self
+            .chat_permissions(cx)
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
         let qs: Vec<String> = self.chat_questions(cx).into_iter().map(|q| q.id).collect();
         self.cards.retain(&perms, &qs);
         if self.props.readonly || self.app_surface() {
             return root;
         }
-        root.on_drag_move::<ExternalPaths>(cx.listener(|c, ev: &DragMoveEvent<ExternalPaths>, _, cx| {
-            let over = ev.bounds.contains(&ev.event.position);
-            if over != c.file_drop_over {
-                c.file_drop_over = over;
-                cx.notify();
-            }
-        }))
-        .on_drag_move::<WorkspaceFileDrag>(cx.listener(|c, ev: &DragMoveEvent<WorkspaceFileDrag>, _, cx| {
-            let over = ev.bounds.contains(&ev.event.position);
-            if over != c.file_drop_over {
-                c.file_drop_over = over;
-                cx.notify();
-            }
-        }))
+        root.on_drag_move::<ExternalPaths>(cx.listener(
+            |c, ev: &DragMoveEvent<ExternalPaths>, _, cx| {
+                let over = ev.bounds.contains(&ev.event.position);
+                if over != c.file_drop_over {
+                    c.file_drop_over = over;
+                    cx.notify();
+                }
+            },
+        ))
+        .on_drag_move::<WorkspaceFileDrag>(cx.listener(
+            |c, ev: &DragMoveEvent<WorkspaceFileDrag>, _, cx| {
+                let over = ev.bounds.contains(&ev.event.position);
+                if over != c.file_drop_over {
+                    c.file_drop_over = over;
+                    cx.notify();
+                }
+            },
+        ))
         .on_drop(cx.listener(|c, paths: &ExternalPaths, window, cx| {
             c.file_drop_over = false;
-            let list: Vec<String> = paths.0.iter().map(|p| p.to_string_lossy().to_string()).collect();
+            let list: Vec<String> = paths
+                .0
+                .iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect();
             c.apply_os_drop(list, window, cx);
         }))
         .on_drop(cx.listener(|c, drag: &WorkspaceFileDrag, window, cx| {

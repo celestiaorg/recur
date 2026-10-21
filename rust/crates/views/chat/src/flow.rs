@@ -520,7 +520,11 @@ impl Element for Flow {
                     _ => f32::MAX / 4.,
                 });
                 let l = FlowLayout::compute(&content, &sizes, &st, w, window);
-                let extra = if trailing { shape_width(" ", &st, window).0 } else { 0. };
+                let extra = if trailing {
+                    shape_width(" ", &st, window).0
+                } else {
+                    0.
+                };
                 let out = size(
                     px(if fit { (l.max_line + extra).min(w) } else { w }),
                     px(l.height.max(min_h)),

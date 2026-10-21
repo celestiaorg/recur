@@ -105,12 +105,19 @@ impl QuestionCard {
         };
         let input = cx.new(|cx| InputState::new(window, cx).placeholder(placeholder));
         recur_ui::style::style_text_input(&input, cx);
-        let notes = cx.new(|cx| TextareaState::new(window, cx).rows(3).placeholder("Add your notes…"));
-        let mut subs = vec![cx.subscribe(&input, |c: &mut Self, _, ev: &InputEvent, cx| match ev {
-            InputEvent::PressEnter { shift: false, .. } => c.answer_free(cx),
-            InputEvent::Change => cx.notify(),
-            _ => {}
-        })];
+        let notes = cx.new(|cx| {
+            TextareaState::new(window, cx)
+                .rows(3)
+                .placeholder("Add your notes…")
+        });
+        let mut subs =
+            vec![
+                cx.subscribe(&input, |c: &mut Self, _, ev: &InputEvent, cx| match ev {
+                    InputEvent::PressEnter { shift: false, .. } => c.answer_free(cx),
+                    InputEvent::Change => cx.notify(),
+                    _ => {}
+                }),
+            ];
         subs.push(cx.observe(&notes, |_, _, cx| cx.notify()));
         // Enter (no Shift) in the notes field submits, as the textarea's keydown did.
         let me = cx.entity().downgrade();
@@ -120,31 +127,52 @@ impl QuestionCard {
                 return;
             }
             let Some(card) = me.upgrade() else { return };
-            let focused = card.read(cx).notes.read(cx).focus_handle(cx).is_focused(window);
-            let has_text = !recur_engine::view::js::trim(&card.read(cx).notes.read(cx).value()).is_empty();
+            let focused = card
+                .read(cx)
+                .notes
+                .read(cx)
+                .focus_handle(cx)
+                .is_focused(window);
+            let has_text =
+                !recur_engine::view::js::trim(&card.read(cx).notes.read(cx).value()).is_empty();
             if focused && card.read(cx).notes_opt.is_some() && has_text {
                 cx.stop_propagation();
                 card.update(cx, |c, cx| c.answer_free(cx));
             }
         }));
         let question_md = cx.new(|cx| {
-            let mut v = MarkdownView::new(question.question.clone(), MarkdownClass::ChatCanvas, false, cx);
+            let mut v = MarkdownView::new(
+                question.question.clone(),
+                MarkdownClass::ChatCanvas,
+                false,
+                cx,
+            );
             v.set_sheet(question_sheet(), cx);
             v
         });
         let context_md = cx.new(|cx| {
-            let mut v = MarkdownView::new(question.context.trim().to_string(), MarkdownClass::ChatCanvas, false, cx);
+            let mut v = MarkdownView::new(
+                question.context.trim().to_string(),
+                MarkdownClass::ChatCanvas,
+                false,
+                cx,
+            );
             v.set_sheet(context_sheet(), cx);
             v
         });
-        let (_, _, normal) = text("x").size(12.).weight(550.).line_height(LineHeight::Normal).measure(None, window);
+        let (_, _, normal) = text("x")
+            .size(12.)
+            .weight(550.)
+            .line_height(LineHeight::Normal)
+            .measure(None, window);
         let leading = normal.height / 12.;
         let option_md = question
             .options
             .iter()
             .map(|o| {
                 cx.new(|cx| {
-                    let mut v = MarkdownView::new(o.text.clone(), MarkdownClass::ChatCanvas, false, cx);
+                    let mut v =
+                        MarkdownView::new(o.text.clone(), MarkdownClass::ChatCanvas, false, cx);
                     v.set_sheet(option_sheet(leading), cx);
                     v
                 })
@@ -189,7 +217,9 @@ impl QuestionCard {
     }
 
     fn pick(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(opt) = self.question.options.get(i).cloned() else { return };
+        let Some(opt) = self.question.options.get(i).cloned() else {
+            return;
+        };
         if opt.tag == "notes" {
             self.notes_opt = Some(opt.text.clone());
             self.notes.update(cx, |n, cx| n.focus(window, cx));
@@ -223,18 +253,23 @@ impl QuestionCard {
 impl Render for QuestionCard {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
-        let k = motion::eased(self.mounted, Duration::from_millis(160), motion::Easing::EASE_OUT, cx);
+        let k = motion::eased(
+            self.mounted,
+            Duration::from_millis(160),
+            motion::Easing::EASE_OUT,
+            cx,
+        );
         if k < 1. && !motion::is_frozen(cx) {
             window.request_animation_frame();
         }
         let id = SharedString::from(format!("ask-{}", self.question.id));
         let can_answer = !self.free_text(cx).is_empty();
         let notes_pending = self.notes_opt.is_some();
-        let mut main = div()
-            .flex()
-            .flex_col()
-            .gap(px(5.))
-            .child(div().text_color(hsla(t.text)).child(self.question_md.clone()));
+        let mut main = div().flex().flex_col().gap(px(5.)).child(
+            div()
+                .text_color(hsla(t.text))
+                .child(self.question_md.clone()),
+        );
         if !self.question.context.trim().is_empty() {
             let vh = f32::from(window.viewport_size().height);
             main = main.child(
@@ -253,15 +288,34 @@ impl Render for QuestionCard {
                     .flex()
                     .items_center()
                     .gap(px(7.))
-                    .child(icon(IconName::MessageQuestion).size(px(13.)).color(hsla(t.amber)))
-                    .child(div().flex().items_center().gap(px(8.)).min_w_0().flex_1().child(label(self.kicker.clone(), Family::Ui, 12.5, 600.).color(t.text))),
+                    .child(
+                        icon(IconName::MessageQuestion)
+                            .size(px(13.))
+                            .color(hsla(t.amber)),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.))
+                            .min_w_0()
+                            .flex_1()
+                            .child(
+                                label(self.kicker.clone(), Family::Ui, 12.5, 600.).color(t.text),
+                            ),
+                    ),
             )
             .child(main);
         if !self.question.options.is_empty() {
             let mut opts = div().flex().flex_col().gap(px(5.)).mt(px(9.));
             for (i, opt) in self.question.options.clone().iter().enumerate() {
-                let sel = opt.tag == "notes" && self.notes_opt.as_deref() == Some(opt.text.as_str());
-                let tip = if opt.desc.is_empty() { opt.text.clone() } else { opt.desc.clone() };
+                let sel =
+                    opt.tag == "notes" && self.notes_opt.as_deref() == Some(opt.text.as_str());
+                let tip = if opt.desc.is_empty() {
+                    opt.text.clone()
+                } else {
+                    opt.desc.clone()
+                };
                 let (border, bg) = if sel {
                     (t.amber, t.amber.mix(0.1, t.pane))
                 } else {
@@ -283,7 +337,9 @@ impl Render for QuestionCard {
                     .bg(hsla(bg))
                     .cursor_pointer()
                     .text_color(hsla(t.text))
-                    .when(!sel, |d| d.hover(|s| s.border_color(hsla(t.text)).bg(hsla(t.pane_2))))
+                    .when(!sel, |d| {
+                        d.hover(|s| s.border_color(hsla(t.text)).bg(hsla(t.pane_2)))
+                    })
                     .child(div().w_full().child(self.option_md[i].clone()))
                     .on_click(cx.listener(move |c, _, window, cx| c.pick(i, window, cx)));
                 if !opt.desc.is_empty() {
@@ -295,7 +351,11 @@ impl Render for QuestionCard {
                             .color(t.muted),
                     );
                 }
-                opts = opts.child(recur_ui::tooltip::titled(SharedString::from(format!("{id}-ot-{i}")), tip, btn));
+                opts = opts.child(recur_ui::tooltip::titled(
+                    SharedString::from(format!("{id}-ot-{i}")),
+                    tip,
+                    btn,
+                ));
             }
             card = card.child(opts);
         }
@@ -310,7 +370,10 @@ impl Render for QuestionCard {
             t.line_bright
         };
         let field = if notes_pending {
-            let (_, _, lm) = text("x").size(12.).line_height(LineHeight::Scale(1.4)).measure(None, window);
+            let (_, _, lm) = text("x")
+                .size(12.)
+                .line_height(LineHeight::Scale(1.4))
+                .measure(None, window);
             recur_ui::style::card(t.bg, field_border, 6.)
                 .flex_1()
                 .min_w_0()
@@ -323,7 +386,11 @@ impl Render for QuestionCard {
                 .child(Textarea::new(&self.notes))
                 .into_any_element()
         } else {
-            let ph = SharedString::from(if self.question.options.is_empty() { "Your answer…" } else { "Or type your own answer…" });
+            let ph = SharedString::from(if self.question.options.is_empty() {
+                "Your answer…"
+            } else {
+                "Or type your own answer…"
+            });
             recur_ui::style::card(t.bg, field_border, 6.)
                 .flex_1()
                 .min_w_0()
@@ -338,7 +405,15 @@ impl Render for QuestionCard {
                         .h(px(12. * 1.45))
                         .flex()
                         .items_center()
-                        .child(recur_ui::style::text_field(&self.input, &ph, recur_ui::style::UA_PLACEHOLDER, Family::Ui, 12., window, cx)),
+                        .child(recur_ui::style::text_field(
+                            &self.input,
+                            &ph,
+                            recur_ui::style::UA_PLACEHOLDER,
+                            Family::Ui,
+                            12.,
+                            window,
+                            cx,
+                        )),
                 )
                 .into_any_element()
         };
@@ -367,7 +442,10 @@ impl Render for QuestionCard {
             .child(recur_ui::style::button_label("Answer", 11.5, 600.).color(label_fg))
             .when(can_answer, |d| {
                 d.cursor_pointer()
-                    .hover(move |s| s.bg(hsla(amber.brightness(1.07))).border_color(hsla(amber.brightness(1.07))))
+                    .hover(move |s| {
+                        s.bg(hsla(amber.brightness(1.07)))
+                            .border_color(hsla(amber.brightness(1.07)))
+                    })
                     .on_click(cx.listener(|c, _, _, cx| c.answer_free(cx)))
             });
         card = card.child(

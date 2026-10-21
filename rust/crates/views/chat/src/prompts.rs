@@ -53,11 +53,18 @@ impl PermissionPrompts {
                     return;
                 }
                 let Some(me) = me.upgrade() else { return };
-                let Some(id) = me.read(cx).card.as_ref().map(|c| c.read(cx).request.id.clone()) else {
+                let Some(id) = me
+                    .read(cx)
+                    .card
+                    .as_ref()
+                    .map(|c| c.read(cx).request.id.clone())
+                else {
                     return;
                 };
                 let state = me.read(cx).state.clone();
-                state.update(cx, |s, cx| s.answer_permission(&id, false, "denied by the human", false, cx));
+                state.update(cx, |s, cx| {
+                    s.answer_permission(&id, false, "denied by the human", false, cx)
+                });
             }),
         ];
         let mut this = PermissionPrompts {
@@ -72,8 +79,12 @@ impl PermissionPrompts {
 
     fn sync(&mut self, cx: &mut Context<Self>) {
         let s = self.state.read(cx);
-        let found = floating_permission(&s.permission_requests, s.focused_chat.as_ref(), s.agent_chat_on_screen())
-            .map(|(r, q)| (r.clone(), q));
+        let found = floating_permission(
+            &s.permission_requests,
+            s.focused_chat.as_ref(),
+            s.agent_chat_on_screen(),
+        )
+        .map(|(r, q)| (r.clone(), q));
         let Some((req, queued)) = found else {
             if self.card.take().is_some() {
                 self.card_sub = None;
@@ -97,13 +108,16 @@ impl PermissionPrompts {
                 let state = self.state.clone();
                 let card = cx.new(|_| PermissionCard::new(req, false, state));
                 card.update(cx, |c, cx| c.set_where(where_label, queued, cx));
-                self.card_sub = Some(cx.subscribe(&card, |this, card, _: &PermissionCardEvent, cx| {
-                    let ws = card.read(cx).request.workspace_id.clone();
-                    this.state.update(cx, |s, cx| {
-                        s.selected_workspace_id = ws;
-                        s.go(ViewName::Detail, None, cx);
-                    });
-                }));
+                self.card_sub = Some(cx.subscribe(
+                    &card,
+                    |this, card, _: &PermissionCardEvent, cx| {
+                        let ws = card.read(cx).request.workspace_id.clone();
+                        this.state.update(cx, |s, cx| {
+                            s.selected_workspace_id = ws;
+                            s.go(ViewName::Detail, None, cx);
+                        });
+                    },
+                ));
                 self.card = Some(card);
             }
         }
@@ -152,12 +166,24 @@ pub fn truncate(s: &str, n: usize) -> String {
 pub fn ask_payload(q: &UserQuestion, state: &AppState) -> ToastAsk {
     let ws = state.workspaces.iter().find(|w| w.id == q.workspace_id);
     let project = ws
-        .and_then(|w| state.projects.iter().find(|p| p.id == w.project_id).map(|p| p.name.clone()))
+        .and_then(|w| {
+            state
+                .projects
+                .iter()
+                .find(|p| p.id == w.project_id)
+                .map(|p| p.name.clone())
+        })
         .filter(|n| !n.is_empty())
         .or_else(|| ws.map(|w| w.project_id.clone()).filter(|p| !p.is_empty()))
         .unwrap_or_else(|| "Project".into());
     let workspace = ws
-        .map(|w| if w.short.is_empty() { w.branch.clone() } else { w.short.clone() })
+        .map(|w| {
+            if w.short.is_empty() {
+                w.branch.clone()
+            } else {
+                w.short.clone()
+            }
+        })
         .filter(|n| !n.is_empty())
         .unwrap_or_else(|| q.workspace_id.clone());
     ToastAsk {
@@ -197,7 +223,11 @@ impl QuestionPrompts {
             if !self.toasted.insert(q.id.clone()) || here {
                 continue;
             }
-            fire.push((ask_payload(q, s), q.workspace_id.clone(), q.agent_code.clone()));
+            fire.push((
+                ask_payload(q, s),
+                q.workspace_id.clone(),
+                q.agent_code.clone(),
+            ));
         }
         let pending: HashSet<&str> = s.user_questions.iter().map(|q| q.id.as_str()).collect();
         self.toasted.retain(|id| pending.contains(id.as_str()));
@@ -234,8 +264,15 @@ mod tests {
 
     #[test]
     fn floating_skips_the_focused_chat() {
-        let reqs = vec![req("a", "chat", "w1", "C1"), req("b", "loop", "w1", "MA"), req("c", "chat", "w2", "C1")];
-        let focus = ChatRef { workspace_id: "w1".into(), code: "C1".into() };
+        let reqs = vec![
+            req("a", "chat", "w1", "C1"),
+            req("b", "loop", "w1", "MA"),
+            req("c", "chat", "w2", "C1"),
+        ];
+        let focus = ChatRef {
+            workspace_id: "w1".into(),
+            code: "C1".into(),
+        };
         let (cur, queued) = floating_permission(&reqs, Some(&focus), true).unwrap();
         assert_eq!((cur.id.as_str(), queued), ("b", 1));
         let (cur, queued) = floating_permission(&reqs, Some(&focus), false).unwrap();

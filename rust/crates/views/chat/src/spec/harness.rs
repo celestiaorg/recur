@@ -10,10 +10,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, point, px};
-use gpui_kit::{AppContext as _, Bounds, Context, IntoElement, ParentElement, Pixels, Render, Styled, Subscription, Window, div};
+use gpui_kit::{
+    AppContext as _, Bounds, Context, IntoElement, ParentElement, Pixels, Render, Styled,
+    Subscription, Window, div,
+};
 use recur_engine::view::chat::{
-    AgentMsg, StreamKind, StreamOpts, apply_stream, drop_live_after_footer, end_turn, map_chat_items,
-    merge_persisted_with_live, should_ignore_stale_idle, should_refresh_turn_stamp,
+    AgentMsg, StreamKind, StreamOpts, apply_stream, drop_live_after_footer, end_turn,
+    map_chat_items, merge_persisted_with_live, should_ignore_stale_idle, should_refresh_turn_stamp,
     should_skip_idle_transcript_reset,
 };
 use recur_services::Services;
@@ -73,7 +76,10 @@ impl Host {
     pub fn tab(&mut self) -> &mut Tab {
         let key = self.key();
         let can_steer = self.active != "MA";
-        self.tabs.entry(key).or_insert_with(|| Tab { can_steer, ..Default::default() })
+        self.tabs.entry(key).or_insert_with(|| Tab {
+            can_steer,
+            ..Default::default()
+        })
     }
 
     pub fn props(&self) -> ChatProps {
@@ -104,7 +110,8 @@ impl Host {
         self.active = code.to_string();
         let draft = self.tab().draft.clone();
         self.push(cx);
-        self.chat.update(cx, |c, cx| c.set_draft(draft, Vec::new(), cx));
+        self.chat
+            .update(cx, |c, cx| c.set_draft(draft, Vec::new(), cx));
     }
 
     /// Open another workspace on its Loop tab.
@@ -116,7 +123,8 @@ impl Host {
         self.active = "MA".into();
         let draft = self.tab().draft.clone();
         self.push(cx);
-        self.chat.update(cx, |c, cx| c.set_draft(draft, Vec::new(), cx));
+        self.chat
+            .update(cx, |c, cx| c.set_draft(draft, Vec::new(), cx));
     }
 
     fn on_event(&mut self, ev: &ChatEvent, cx: &mut Context<Self>) {
@@ -147,7 +155,8 @@ impl Host {
         }
         let busy = tab.sending;
         let can_steer = tab.can_steer;
-        self.chat.update(cx, |c, cx| c.set_draft(String::new(), Vec::new(), cx));
+        self.chat
+            .update(cx, |c, cx| c.set_draft(String::new(), Vec::new(), cx));
         if busy {
             if can_steer && steer_default != alt {
                 self.dispatch(text.clone(), String::new(), true, cx);
@@ -181,7 +190,12 @@ impl Host {
         if tab.sending || tab.pending.is_empty() {
             return;
         }
-        let text = tab.pending.drain(..).map(|(_, t)| t).collect::<Vec<_>>().join("\n\n");
+        let text = tab
+            .pending
+            .drain(..)
+            .map(|(_, t)| t)
+            .collect::<Vec<_>>()
+            .join("\n\n");
         tab.msgs.retain(|m| !m.queued);
         self.dispatch(text, String::new(), false, cx);
     }
@@ -194,7 +208,11 @@ impl Host {
         if !invisible {
             tab.msgs.push(AgentMsg {
                 me: true,
-                body: if display.is_empty() { text.clone() } else { display.clone() },
+                body: if display.is_empty() {
+                    text.clone()
+                } else {
+                    display.clone()
+                },
                 optimistic: true,
                 ts: Some(now_ms()),
                 ..Default::default()
@@ -212,12 +230,26 @@ impl Host {
         cx.spawn(async move |this, cx| {
             let _ = services
                 .workspaces
-                .send_workspace_message(&ws, &code, &text, "", &BTreeMap::new(), &[], "", &display, false)
+                .send_workspace_message(
+                    &ws,
+                    &code,
+                    &text,
+                    "",
+                    &BTreeMap::new(),
+                    &[],
+                    "",
+                    &display,
+                    false,
+                )
                 .await;
             if steer {
                 return;
             }
-            let items = services.workspaces.workspace_chat_items(&ws, &code).await.unwrap_or_default();
+            let items = services
+                .workspaces
+                .workspace_chat_items(&ws, &code)
+                .await
+                .unwrap_or_default();
             let _ = this.update(cx, |h, cx| {
                 let tab = h.tabs.entry(key.clone()).or_default();
                 let latest = tab.send_gen == send_gen;
@@ -225,7 +257,11 @@ impl Host {
                     tab.sending = false;
                 }
                 let queued: Vec<AgentMsg> = tab.msgs.iter().filter(|m| m.queued).cloned().collect();
-                tab.msgs = if latest { map_chat_items(&items) } else { merge_persisted_with_live(&map_chat_items(&items), &tab.msgs) };
+                tab.msgs = if latest {
+                    map_chat_items(&items)
+                } else {
+                    merge_persisted_with_live(&map_chat_items(&items), &tab.msgs)
+                };
                 tab.msgs.retain(|m| !m.queued);
                 tab.msgs.extend(queued);
                 if h.key() == key {
@@ -260,7 +296,13 @@ impl Host {
         tab.running = true;
         if should_refresh_turn_stamp(&tab.msgs, tab.turn_started_at) {
             tab.stale_idle_armed = tab.turn_started_at > 0;
-            let footer = tab.msgs.iter().rev().find(|m| m.turn_end).and_then(|m| m.ts).unwrap_or(0);
+            let footer = tab
+                .msgs
+                .iter()
+                .rev()
+                .find(|m| m.turn_end)
+                .and_then(|m| m.ts)
+                .unwrap_or(0);
             tab.turn_started_at = now_ms().max(footer);
         }
         self.push(cx);
@@ -274,7 +316,8 @@ impl Host {
         let tab = self.tab();
         tab.running = false;
         tab.sending = false;
-        let skip = should_skip_idle_transcript_reset(&tab.msgs, tab.turn_started_at, tab.stale_idle_armed);
+        let skip =
+            should_skip_idle_transcript_reset(&tab.msgs, tab.turn_started_at, tab.stale_idle_armed);
         tab.stale_idle_armed = false;
         if skip {
             self.push(cx);
@@ -289,7 +332,11 @@ impl Host {
         let services = self.services.clone();
         let ws = self.base.workspace_id.clone();
         cx.spawn(async move |this, cx| {
-            let items = services.workspaces.workspace_chat_items(&ws, &code).await.unwrap_or_default();
+            let items = services
+                .workspaces
+                .workspace_chat_items(&ws, &code)
+                .await
+                .unwrap_or_default();
             let _ = this.update(cx, |h, cx| {
                 let tab = h.tabs.entry(key.clone()).or_default();
                 let queued: Vec<AgentMsg> = tab.msgs.iter().filter(|m| m.queued).cloned().collect();
@@ -310,7 +357,9 @@ impl Host {
             services: self.services.clone(),
         };
         self.chat = cx.new(|cx| AgentChat::new(&vcx, ChatProps::default(), window, cx));
-        self._sub = cx.subscribe(&self.chat, |h: &mut Host, _, e: &ChatEvent, cx| h.on_event(e, cx));
+        self._sub = cx.subscribe(&self.chat, |h: &mut Host, _, e: &ChatEvent, cx| {
+            h.on_event(e, cx)
+        });
         cx.notify();
     }
 
@@ -324,7 +373,9 @@ impl Host {
         let hooks = self.hooks;
         self.chat = cx.new(|cx| AgentChat::new(&vcx, props, window, cx));
         self.chat.update(cx, |c, cx| c.set_hooks(hooks, cx));
-        self._sub = cx.subscribe(&self.chat, |h: &mut Host, _, e: &ChatEvent, cx| h.on_event(e, cx));
+        self._sub = cx.subscribe(&self.chat, |h: &mut Host, _, e: &ChatEvent, cx| {
+            h.on_event(e, cx)
+        });
         cx.notify();
     }
 
@@ -336,13 +387,17 @@ impl Host {
         tab.msgs.retain(|m| !m.queued);
         if !restored.is_empty() {
             let draft = restored.join("\n\n");
-            self.chat.update(cx, |c, cx| c.set_draft(draft, Vec::new(), cx));
+            self.chat
+                .update(cx, |c, cx| c.set_draft(draft, Vec::new(), cx));
         }
         self.push(cx);
         let services = self.services.clone();
         let ws = self.base.workspace_id.clone();
         cx.background_spawn(async move {
-            let _ = services.workspaces.cancel_workspace_message(&ws, &code).await;
+            let _ = services
+                .workspaces
+                .cancel_workspace_message(&ws, &code)
+                .await;
         })
         .detach();
     }
@@ -409,7 +464,14 @@ pub fn boot<'a>(
     hooks: ChatHooks,
     sim: bool,
 ) -> H<'a> {
-    boot_with(cx, MockBridge::fresh(opts), LocalStorage::in_memory(), base, hooks, sim)
+    boot_with(
+        cx,
+        MockBridge::fresh(opts),
+        LocalStorage::in_memory(),
+        base,
+        hooks,
+        sim,
+    )
 }
 
 pub fn boot_with<'a>(
@@ -437,9 +499,17 @@ pub fn boot_with<'a>(
         };
         let chat = cx.new(|cx| AgentChat::new(&vcx, props, window, cx));
         chat.update(cx, |c, cx| c.set_hooks(hooks, cx));
-        let _sub = cx.subscribe(&chat, |h: &mut Host, _, e: &ChatEvent, cx| h.on_event(e, cx));
+        let _sub = cx.subscribe(&chat, |h: &mut Host, _, e: &ChatEvent, cx| {
+            h.on_event(e, cx)
+        });
         let mut tabs = BTreeMap::new();
-        tabs.insert(format!("{}:{active}", base.workspace_id), Tab { can_steer: active != "MA", ..Default::default() });
+        tabs.insert(
+            format!("{}:{active}", base.workspace_id),
+            Tab {
+                can_steer: active != "MA",
+                ..Default::default()
+            },
+        );
         Host {
             chat,
             events: ev,
@@ -497,22 +567,30 @@ impl H<'_> {
     }
 
     pub fn click(&mut self, sel: &str) {
-        let p = self.bounds(sel).unwrap_or_else(|| panic!("no element {sel}")).center();
+        let p = self
+            .bounds(sel)
+            .unwrap_or_else(|| panic!("no element {sel}"))
+            .center();
         self.cx.simulate_mouse_move(p, None, Modifiers::none());
         self.cx.simulate_click(p, Modifiers::none());
         self.settle();
     }
 
     pub fn hover(&mut self, sel: &str) {
-        let p = self.bounds(sel).unwrap_or_else(|| panic!("no element {sel}")).center();
-        self.cx.simulate_mouse_move(point(p.x + px(1.), p.y), None, Modifiers::none());
+        let p = self
+            .bounds(sel)
+            .unwrap_or_else(|| panic!("no element {sel}"))
+            .center();
+        self.cx
+            .simulate_mouse_move(point(p.x + px(1.), p.y), None, Modifiers::none());
         self.cx.simulate_mouse_move(p, None, Modifiers::none());
         self.settle();
     }
 
     pub fn focus_composer(&mut self) {
         let chat = self.chat();
-        self.cx.update(|window, cx| chat.update(cx, |c, cx| c.focus_composer(window, cx)));
+        self.cx
+            .update(|window, cx| chat.update(cx, |c, cx| c.focus_composer(window, cx)));
         self.settle();
     }
 
@@ -529,7 +607,8 @@ impl H<'_> {
     pub fn fill(&mut self, s: &str) {
         let chat = self.chat();
         let s = s.to_string();
-        self.cx.update(|_, cx| chat.update(cx, |c, cx| c.set_draft(s, Vec::new(), cx)));
+        self.cx
+            .update(|_, cx| chat.update(cx, |c, cx| c.set_draft(s, Vec::new(), cx)));
         self.focus_composer();
     }
 
@@ -566,9 +645,11 @@ impl H<'_> {
     /// Hide the panel (the chat unmounts and parks its chrome), then show it again.
     pub fn remount(&mut self) {
         let host = self.host.clone();
-        self.cx.update(|window, cx| host.update(cx, |h, cx| h.unmount(window, cx)));
+        self.cx
+            .update(|window, cx| host.update(cx, |h, cx| h.unmount(window, cx)));
         self.settle();
-        self.cx.update(|window, cx| host.update(cx, |h, cx| h.remount(window, cx)));
+        self.cx
+            .update(|window, cx| host.update(cx, |h, cx| h.remount(window, cx)));
         self.settle();
     }
 

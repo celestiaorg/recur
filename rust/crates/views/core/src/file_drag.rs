@@ -359,7 +359,9 @@ mod tests {
         assert!(is_chat_image_path("photo.JPEG"));
         assert!(!is_chat_image_path("icon.ico"));
         assert!(!is_chat_image_path("logo.svg"));
-        assert!(is_abs_filesystem_path("/Users/josh/Downloads/export-111.csv"));
+        assert!(is_abs_filesystem_path(
+            "/Users/josh/Downloads/export-111.csv"
+        ));
         assert!(!is_abs_filesystem_path("src/main.go"));
         assert!(!is_abs_filesystem_path("scratch://1-notes.txt"));
         assert!(is_abs_filesystem_path("C:/Users/me/a.csv"));

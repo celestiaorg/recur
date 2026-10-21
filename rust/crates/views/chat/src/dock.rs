@@ -6,9 +6,9 @@ use std::cell::Cell;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, Bounds, Context, ElementInputHandler, Hsla, InteractiveElement,
-    IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, ParentElement, Pixels, Point,
-    SharedString, StatefulInteractiveElement, Styled, Window, canvas, div, fill, point, px, size,
+    AnyElement, Bounds, Context, ElementInputHandler, Hsla, InteractiveElement, IntoElement,
+    MouseButton, MouseDownEvent, MouseMoveEvent, ParentElement, Pixels, Point, SharedString,
+    StatefulInteractiveElement, Styled, Window, canvas, div, fill, point, px, size,
 };
 use recur_engine::view::artifacts::artifact_icon;
 use recur_ui::fonts::Family;
@@ -41,7 +41,11 @@ fn mention_icon(name: IconName, color: recur_ui::Color) -> AnyElement {
 impl AgentChat {
     /// The composer text style: 12.5 / 1.4 (14 / 1.55 in the New-workspace modal).
     fn composer_style(&self, t: &Tokens) -> FlowStyle {
-        let (size, leading) = if self.props.composer_only { (14., 1.55) } else { (12.5, 1.4) };
+        let (size, leading) = if self.props.composer_only {
+            (14., 1.55)
+        } else {
+            (12.5, 1.4)
+        };
         FlowStyle {
             family: Family::Ui,
             size,
@@ -52,18 +56,24 @@ impl AgentChat {
     }
 
     /// `.chat-dock`.
-    pub(crate) fn dock(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub(crate) fn dock(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
         if self.props.readonly {
             return None;
         }
         let t = Theme::of(cx).tokens;
         let composer_only = self.props.composer_only;
-        let mut dock = div()
-            .flex_none()
-            .when(!composer_only, |d| {
-                let (x, b) = if self.props.compact { (10., 10.) } else { (16., 12.) };
-                d.px(px(x)).pb(px(b)).bg(hsla(t.bg))
-            });
+        let mut dock = div().flex_none().when(!composer_only, |d| {
+            let (x, b) = if self.props.compact {
+                (10., 10.)
+            } else {
+                (16., 12.)
+            };
+            d.px(px(x)).pb(px(b)).bg(hsla(t.bg))
+        });
         let queued: Vec<_> = self.queued_messages().into_iter().cloned().collect();
         if !composer_only && !queued.is_empty() {
             let rows: Vec<AnyElement> = queued
@@ -92,7 +102,14 @@ impl AgentChat {
             .flex_col()
             .gap(px(6.))
             .w_full()
-            .when(!composer_only, |d| d.max_w(px(780.)).mx_auto().pt(px(8.)).pr(px(10.)).pb(px(8.)).pl(px(14.)))
+            .when(!composer_only, |d| {
+                d.max_w(px(780.))
+                    .mx_auto()
+                    .pt(px(8.))
+                    .pr(px(10.))
+                    .pb(px(8.))
+                    .pl(px(14.))
+            })
             .child(composer);
         if !composer_only {
             chat_in = chat_in.child(self.in_row(cx));
@@ -109,10 +126,17 @@ impl AgentChat {
             if drop {
                 shadow.push(recur_ui::shadow::css_box_shadow(0., 0., 0., 1., t.amber));
             }
-            shadow.push(recur_ui::shadow::css_box_shadow(0., 10., 28., -12., rgba(0, 0, 0, 0.55)));
+            shadow.push(recur_ui::shadow::css_box_shadow(
+                0.,
+                10.,
+                28.,
+                -12.,
+                rgba(0, 0, 0, 0.55),
+            ));
             let radius = if self.props.compact { 10. } else { 12. };
             with_shadow(
-                recur_ui::style::card(t.pane, if drop { t.amber } else { t.line_bright }, radius).child(chat_in),
+                recur_ui::style::card(t.pane, if drop { t.amber } else { t.line_bright }, radius)
+                    .child(chat_in),
                 &shadow,
                 radius,
             )
@@ -130,7 +154,13 @@ impl AgentChat {
         let meter = self.meter.clone();
         let usage = self.props.context_usage.clone();
         meter.update(cx, |m, cx| m.set_usage(usage, cx));
-        let mut actions = div().ml_auto().flex().items_center().gap(px(6.)).flex_none().child(meter);
+        let mut actions = div()
+            .ml_auto()
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .flex_none()
+            .child(meter);
         if self.hooks.stop && (self.props.sending || self.props.can_stop) {
             let coral = t.coral;
             actions = actions.child(recur_ui::tooltip::titled(
@@ -155,7 +185,11 @@ impl AgentChat {
         let can_send = self.can_send();
         let p = &self.props;
         let tip = if p.sending && p.can_steer {
-            if p.steer_follow_up { "Steer (⏎) · Queue (⌘⏎)" } else { "Queue (⏎) · Steer (⌘⏎)" }
+            if p.steer_follow_up {
+                "Steer (⏎) · Queue (⌘⏎)"
+            } else {
+                "Queue (⏎) · Steer (⌘⏎)"
+            }
         } else if p.sending {
             "Queue follow-up (⏎)"
         } else if p.can_flush_queue {
@@ -167,7 +201,13 @@ impl AgentChat {
         let on_amber = t.on_amber;
         let send = div()
             .id("chat-send")
-            .debug_selector(|| if can_send { "chat-send".into() } else { "chat-send-disabled".into() })
+            .debug_selector(|| {
+                if can_send {
+                    "chat-send".into()
+                } else {
+                    "chat-send-disabled".into()
+                }
+            })
             .relative()
             .size(px(32.))
             .rounded(px(8.))
@@ -212,7 +252,11 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         let style = self.composer_style(&t);
         let composer_only = self.props.composer_only;
-        let (pad_x, pad_top, pad_bottom) = if composer_only { (18., 18., 12.) } else { (2., 8., 8.) };
+        let (pad_x, pad_top, pad_bottom) = if composer_only {
+            (18., 18., 12.)
+        } else {
+            (2., 8., 8.)
+        };
         let mut atoms = Vec::new();
         for i in 0..self.doc.chips.len() {
             match self.composer_atom(i, window, cx) {
@@ -228,7 +272,9 @@ impl AgentChat {
             .composer_layout
             .borrow()
             .as_ref()
-            .map_or(style.size * style.leading, |l| l.height.max(style.size * style.leading));
+            .map_or(style.size * style.leading, |l| {
+                l.height.max(style.size * style.leading)
+            });
         let height = if composer_only {
             None
         } else {
@@ -254,7 +300,9 @@ impl AgentChat {
             move |b, _, _| geom.content.set(Some(b)),
             move |b, _, window, cx| {
                 window.handle_input(&focus, ElementInputHandler::new(b, entity.clone()), cx);
-                let Some(l) = layout.borrow().clone() else { return };
+                let Some(l) = layout.borrow().clone() else {
+                    return;
+                };
                 let sel = doc.selection();
                 if !sel.is_empty() {
                     for (x, y, w, h) in l.rects(sel.clone()) {
@@ -267,7 +315,10 @@ impl AgentChat {
                 if let Some(m) = &marked {
                     for (x, y, w, h) in l.rects(m.clone()) {
                         window.paint_quad(fill(
-                            Bounds::new(b.origin + point(px(x), px(y + h - 1.)), size(px(w), px(1.))),
+                            Bounds::new(
+                                b.origin + point(px(x), px(y + h - 1.)),
+                                size(px(w), px(1.)),
+                            ),
                             caret_color,
                         ));
                     }
@@ -314,7 +365,10 @@ impl AgentChat {
                 )
         });
         let mut el = div()
-            .id(SharedString::from(format!("composer-box-{}", self.props.reset_key)))
+            .id(SharedString::from(format!(
+                "composer-box-{}",
+                self.props.reset_key
+            )))
             .debug_selector(|| "chat-composer".into())
             .key_context("ChatComposer")
             .track_focus(&self.focus)
@@ -331,10 +385,16 @@ impl AgentChat {
             .pb(px(pad_bottom))
             .cursor(gpui_kit::CursorStyle::IBeam)
             .text_color(hsla(t.text))
-            .on_key_down(cx.listener(|this, ev: &gpui_kit::KeyDownEvent, window, cx| this.on_composer_key(ev, window, cx)))
+            .on_key_down(
+                cx.listener(|this, ev: &gpui_kit::KeyDownEvent, window, cx| {
+                    this.on_composer_key(ev, window, cx)
+                }),
+            )
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|this, ev: &MouseDownEvent, window, cx| this.composer_press(ev, window, cx)),
+                cx.listener(|this, ev: &MouseDownEvent, window, cx| {
+                    this.composer_press(ev, window, cx)
+                }),
             )
             .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, _, cx| {
                 if ev.pressed_button == Some(MouseButton::Left) {
@@ -435,18 +495,42 @@ impl AgentChat {
         let sel = format!("mention:{s}");
         let tx = text(s).weight(500.).line_height(LineHeight::Normal);
         if titled {
-            div().debug_selector(|| sel).flex_initial().min_w_0().overflow_hidden().child(tx.truncate()).into_any_element()
+            div()
+                .debug_selector(|| sel)
+                .flex_initial()
+                .min_w_0()
+                .overflow_hidden()
+                .child(tx.truncate())
+                .into_any_element()
         } else {
-            div().debug_selector(|| sel).flex_none().child(tx.nowrap()).into_any_element()
+            div()
+                .debug_selector(|| sel)
+                .flex_none()
+                .child(tx.nowrap())
+                .into_any_element()
         }
     }
 
     fn path_el(s: String, titled: bool, t: &Tokens) -> AnyElement {
-        let tx = text(s).size(11.).color(t.muted).line_height(LineHeight::Normal);
+        let tx = text(s)
+            .size(11.)
+            .color(t.muted)
+            .line_height(LineHeight::Normal);
         if titled {
-            div().flex_none().ml_auto().pl(px(8.)).child(tx.nowrap()).into_any_element()
+            div()
+                .flex_none()
+                .ml_auto()
+                .pl(px(8.))
+                .child(tx.nowrap())
+                .into_any_element()
         } else {
-            div().ml_auto().min_w_0().overflow_hidden().pl(px(8.)).child(tx.truncate()).into_any_element()
+            div()
+                .ml_auto()
+                .min_w_0()
+                .overflow_hidden()
+                .pl(px(8.))
+                .child(tx.truncate())
+                .into_any_element()
         }
     }
 
@@ -461,7 +545,11 @@ impl AgentChat {
             .py(px(1.))
             .rounded(px(3.))
             .bg(hsla(t.pane_2))
-            .child(label(s, Family::Ui, 10., 600.).tracking(0.02).color(t.muted))
+            .child(
+                label(s, Family::Ui, 10., 600.)
+                    .tracking(0.02)
+                    .color(t.muted),
+            )
             .into_any_element()
     }
 
@@ -478,15 +566,21 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         let rows: Vec<AnyElement> = if let Some(m) = self.mention.clone() {
             let ws_or_proj = !self.props.project_id.is_empty();
-            let has_live = !self.live_terminals(cx).is_empty() || !self.live_artifacts(cx).is_empty();
-            if !(ws_or_proj || !self.mention_hits.is_empty() || self.file_index_loading || has_live) {
+            let has_live =
+                !self.live_terminals(cx).is_empty() || !self.live_artifacts(cx).is_empty();
+            if !(ws_or_proj || !self.mention_hits.is_empty() || self.file_index_loading || has_live)
+            {
                 return None;
             }
             if self.file_index_loading && self.mention_hits.is_empty() {
                 vec![Self::empty_row("Loading files…", &t)]
             } else if self.mention_hits.is_empty() {
                 vec![Self::empty_row(
-                    if m.query.trim().is_empty() { "Type to filter files" } else { "No matching files, terminals, or artifacts" },
+                    if m.query.trim().is_empty() {
+                        "Type to filter files"
+                    } else {
+                        "No matching files, terminals, or artifacts"
+                    },
                     &t,
                 )]
             } else {
@@ -495,39 +589,76 @@ impl AgentChat {
                     .enumerate()
                     .map(|(i, h)| {
                         let base = |p: &str| p.rsplit('/').next().unwrap_or(p).to_string();
-                        let dir = |p: &str| p.rfind('/').map(|i| p[..i].to_string()).unwrap_or_default();
+                        let dir =
+                            |p: &str| p.rfind('/').map(|i| p[..i].to_string()).unwrap_or_default();
                         let kids = match h {
-                            MentionHit::Terminal { title, active, exited, .. } => 
-                                vec![
-                                    mention_icon(IconName::Terminal, t.muted),
-                                    Self::name_el(title.clone(), true),
-                                    Self::path_el(
-                                        if *exited { "Exited terminal" } else if *active { "Focused terminal" } else { "Terminal" }.into(),
-                                        true,
-                                        &t,
-                                    ),
-                                ],
-                            MentionHit::Artifact { title, kind, .. } => 
-                                vec![
-                                    mention_icon(IconName::from_key(artifact_icon(kind)).unwrap_or(IconName::Grid), t.muted),
-                                    Self::name_el(title.clone(), true),
-                                    Self::path_el(if kind.is_empty() { "Artifact".into() } else { kind.clone() }, true, &t),
-                                ],
-                            MentionHit::File { item, dir: true, .. } => 
-                                vec![
-                                    div().flex_none().flex().debug_selector(|| "mention-folder".into()).child(mention_icon(IconName::Folder, t.muted)).into_any_element(),
-                                    Self::name_el(base(item), false),
-                                    Self::path_el(dir(item), false, &t),
-                                ],
-                            MentionHit::File { item, .. } => 
-                                vec![
-                                    div().flex_none().size(px(14.)).flex().items_center().justify_center().child(recur_ui::file_icons::file_icon(base(item))).into_any_element(),
-                                    Self::name_el(base(item), false),
-                                    Self::path_el(dir(item), false, &t),
-                                ],
+                            MentionHit::Terminal {
+                                title,
+                                active,
+                                exited,
+                                ..
+                            } => vec![
+                                mention_icon(IconName::Terminal, t.muted),
+                                Self::name_el(title.clone(), true),
+                                Self::path_el(
+                                    if *exited {
+                                        "Exited terminal"
+                                    } else if *active {
+                                        "Focused terminal"
+                                    } else {
+                                        "Terminal"
+                                    }
+                                    .into(),
+                                    true,
+                                    &t,
+                                ),
+                            ],
+                            MentionHit::Artifact { title, kind, .. } => vec![
+                                mention_icon(
+                                    IconName::from_key(artifact_icon(kind))
+                                        .unwrap_or(IconName::Grid),
+                                    t.muted,
+                                ),
+                                Self::name_el(title.clone(), true),
+                                Self::path_el(
+                                    if kind.is_empty() {
+                                        "Artifact".into()
+                                    } else {
+                                        kind.clone()
+                                    },
+                                    true,
+                                    &t,
+                                ),
+                            ],
+                            MentionHit::File {
+                                item, dir: true, ..
+                            } => vec![
+                                div()
+                                    .flex_none()
+                                    .flex()
+                                    .debug_selector(|| "mention-folder".into())
+                                    .child(mention_icon(IconName::Folder, t.muted))
+                                    .into_any_element(),
+                                Self::name_el(base(item), false),
+                                Self::path_el(dir(item), false, &t),
+                            ],
+                            MentionHit::File { item, .. } => vec![
+                                div()
+                                    .flex_none()
+                                    .size(px(14.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(recur_ui::file_icons::file_icon(base(item)))
+                                    .into_any_element(),
+                                Self::name_el(base(item), false),
+                                Self::path_el(dir(item), false, &t),
+                            ],
                         };
                         self.menu_row(i, i == self.mention_sel, false, kids, cx)
-                            .on_click(cx.listener(move |this, _, window, cx| this.pick_mention_hit(i, window, cx)))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.pick_mention_hit(i, window, cx)
+                            }))
                             .into_any_element()
                     })
                     .collect()
@@ -535,7 +666,10 @@ impl AgentChat {
         } else if self.prompt_args.is_some() && !self.prompt_arg_hits(cx).is_empty() {
             let hits = self.prompt_arg_hits(cx);
             let can_invoke = self.prompt_arg_can_invoke(cx);
-            let icon_svg = self.prompt_arg_info(cx).map(|i| i.icon_svg.trim().to_string()).unwrap_or_default();
+            let icon_svg = self
+                .prompt_arg_info(cx)
+                .map(|i| i.icon_svg.trim().to_string())
+                .unwrap_or_default();
             let complete_message = self.complete_message.clone();
             hits.iter()
                 .enumerate()
@@ -547,7 +681,12 @@ impl AgentChat {
                             let ico = if icon_svg.is_empty() {
                                 pico(IconName::Hash)
                             } else {
-                                div().flex_none().size(px(14.)).text_color(hsla(cyan)).child(recur_ui::svg_markup(icon_svg.clone()).size(px(14.))).into_any_element()
+                                div()
+                                    .flex_none()
+                                    .size(px(14.))
+                                    .text_color(hsla(cyan))
+                                    .child(recur_ui::svg_markup(icon_svg.clone()).size(px(14.)))
+                                    .into_any_element()
                             };
                             let mut kids = vec![ico, Self::name_el(h.label.clone(), false)];
                             if !h.detail.is_empty() {
@@ -558,17 +697,39 @@ impl AgentChat {
                             }
                             let hit = h.clone();
                             self.menu_row(i, i == self.mention_sel, false, kids, cx)
-                                .on_click(cx.listener(move |this, _, window, cx| this.pick_prompt_complete_hit(&hit, true, window, cx)))
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    this.pick_prompt_complete_hit(&hit, true, window, cx)
+                                }))
                                 .into_any_element()
                         }
-                        PromptArgHit::Run { slash, args, description, .. } => {
-                            let name = if args.is_empty() { format!("/{slash}") } else { format!("/{slash} {args}") };
-                            let path = if complete_message.is_empty() { description.clone() } else { complete_message.clone() };
-                            let kids = vec![pico(IconName::Prompt), Self::name_el(name, false), Self::path_el(path, false, &t), Self::badge("Prompt", &t)];
+                        PromptArgHit::Run {
+                            slash,
+                            args,
+                            description,
+                            ..
+                        } => {
+                            let name = if args.is_empty() {
+                                format!("/{slash}")
+                            } else {
+                                format!("/{slash} {args}")
+                            };
+                            let path = if complete_message.is_empty() {
+                                description.clone()
+                            } else {
+                                complete_message.clone()
+                            };
+                            let kids = vec![
+                                pico(IconName::Prompt),
+                                Self::name_el(name, false),
+                                Self::path_el(path, false, &t),
+                                Self::badge("Prompt", &t),
+                            ];
                             let (s, a) = (slash.clone(), args.clone());
                             self.menu_row(i, i == self.mention_sel, !can_invoke, kids, cx)
                                 .when(can_invoke, |d| {
-                                    d.on_click(cx.listener(move |this, _, window, cx| this.apply_prompt_args(&s, &a, true, window, cx)))
+                                    d.on_click(cx.listener(move |this, _, window, cx| {
+                                        this.apply_prompt_args(&s, &a, true, window, cx)
+                                    }))
                                 })
                                 .into_any_element()
                         }
@@ -577,7 +738,10 @@ impl AgentChat {
                 .collect()
         } else if let Some(sm) = self.skill_mention.clone() {
             let loading = self.skill_index_loading || self.prompt_index_loading;
-            let any = !self.props.project_id.is_empty() || !self.skill_index.is_empty() || loading || !self.prompt_index.is_empty();
+            let any = !self.props.project_id.is_empty()
+                || !self.skill_index.is_empty()
+                || loading
+                || !self.prompt_index.is_empty();
             if !any {
                 return None;
             }
@@ -585,16 +749,34 @@ impl AgentChat {
             if loading && hits.is_empty() {
                 vec![Self::empty_row("Loading…", &t)]
             } else if hits.is_empty() {
-                vec![Self::empty_row(if sm.query.trim().is_empty() { "Type to filter" } else { "No matching prompts or skills" }, &t)]
+                vec![Self::empty_row(
+                    if sm.query.trim().is_empty() {
+                        "Type to filter"
+                    } else {
+                        "No matching prompts or skills"
+                    },
+                    &t,
+                )]
             } else {
                 let busy = self.props.prompt_busy || self.props.sending;
                 hits.iter()
                     .enumerate()
                     .map(|(i, h)| match h {
-                        SlashHit::Prompt { slash, name, description, args, mode, .. } => {
+                        SlashHit::Prompt {
+                            slash,
+                            name,
+                            description,
+                            args,
+                            mode,
+                            ..
+                        } => {
                             let lp = mode == "loop";
                             let ico = mention_icon(
-                                if lp { recur_view_core::modes::ChatMode::Loop.icon() } else { IconName::Prompt },
+                                if lp {
+                                    recur_view_core::modes::ChatMode::Loop.icon()
+                                } else {
+                                    IconName::Prompt
+                                },
                                 if lp { t.amber } else { t.cyan },
                             );
                             let mut kids = vec![ico, Self::name_el(format!("/{slash}"), false)];
@@ -611,16 +793,32 @@ impl AgentChat {
                                             recur_ui::style::card(t.pane_2, t.line, 4.)
                                                 .px(px(6.))
                                                 .py(px(1.))
-                                                .child(label(a.clone(), Family::Ui, 10., 600.).tracking(0.02).color(t.muted))
+                                                .child(
+                                                    label(a.clone(), Family::Ui, 10., 600.)
+                                                        .tracking(0.02)
+                                                        .color(t.muted),
+                                                )
                                         }))
                                         .into_any_element(),
                                 );
                             }
-                            kids.push(Self::path_el(if description.is_empty() { name.clone() } else { description.clone() }, false, &t));
+                            kids.push(Self::path_el(
+                                if description.is_empty() {
+                                    name.clone()
+                                } else {
+                                    description.clone()
+                                },
+                                false,
+                                &t,
+                            ));
                             kids.push(Self::badge(if lp { "Loop" } else { "Prompt" }, &t));
                             let s = slash.clone();
                             self.menu_row(i, i == self.mention_sel, busy, kids, cx)
-                                .when(!busy, |d| d.on_click(cx.listener(move |this, _, window, cx| this.pick_prompt(&s, window, cx))))
+                                .when(!busy, |d| {
+                                    d.on_click(cx.listener(move |this, _, window, cx| {
+                                        this.pick_prompt(&s, window, cx)
+                                    }))
+                                })
                                 .into_any_element()
                         }
                         SlashHit::Skill(s) => {
@@ -641,7 +839,9 @@ impl AgentChat {
                             ];
                             let name = s.name.clone();
                             self.menu_row(i, i == self.mention_sel, false, kids, cx)
-                                .on_click(cx.listener(move |this, _, window, cx| this.pick_skill(&name, window, cx)))
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    this.pick_skill(&name, window, cx)
+                                }))
                                 .into_any_element()
                         }
                     })
@@ -683,7 +883,13 @@ impl AgentChat {
                 .max_h(px(220f32.min(0.78 * vh - 80.)))
                 .child(panel)
         } else {
-            div().absolute().left(px(8.)).right(px(8.)).bottom(gpui_kit::relative(1.)).pb(px(4.)).child(panel)
+            div()
+                .absolute()
+                .left(px(8.))
+                .right(px(8.))
+                .bottom(gpui_kit::relative(1.))
+                .pb(px(4.))
+                .child(panel)
         };
         Some(el.occlude().into_any_element())
     }

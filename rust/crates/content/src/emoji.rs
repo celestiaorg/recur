@@ -22,7 +22,10 @@ impl<'de> serde::Deserialize<'de> for Ordered {
             fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.write_str("a shortcode map")
             }
-            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut m: A) -> Result<Ordered, A::Error> {
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut m: A,
+            ) -> Result<Ordered, A::Error> {
                 let mut out = Vec::new();
                 while let Some(kv) = m.next_entry::<String, String>()? {
                     out.push(kv);
@@ -38,8 +41,16 @@ impl<'de> serde::Deserialize<'de> for Ordered {
 pub fn shortcode_entries() -> &'static [(String, String)] {
     static LIST: OnceLock<Vec<(String, String)>> = OnceLock::new();
     LIST.get_or_init(|| {
-        let mut list = serde_json::from_str::<Ordered>(SHORTCODES_JSON).map(|o| o.0).unwrap_or_default();
-        let index = |k: &str| (!k.is_empty() && k.bytes().all(|b| b.is_ascii_digit()) && (k == "0" || !k.starts_with('0'))).then(|| k.parse::<u64>().ok()).flatten();
+        let mut list = serde_json::from_str::<Ordered>(SHORTCODES_JSON)
+            .map(|o| o.0)
+            .unwrap_or_default();
+        let index = |k: &str| {
+            (!k.is_empty()
+                && k.bytes().all(|b| b.is_ascii_digit())
+                && (k == "0" || !k.starts_with('0')))
+            .then(|| k.parse::<u64>().ok())
+            .flatten()
+        };
         list.sort_by_key(|(k, _)| index(k).map_or((1, 0), |n| (0, n)));
         list
     })

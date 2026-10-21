@@ -24,8 +24,8 @@ use recur_view_core::AppState;
 use recur_view_core::commands::CommandPrompt;
 use recur_view_core::run::workspace_runs;
 
-use recur_ui::logic::hover_gate::HoverGate;
 use crate::style::hsla;
+use recur_ui::logic::hover_gate::HoverGate;
 
 /// A Stop row: one running command, or `all` when several are going.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -101,11 +101,16 @@ impl StopPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| this.sync_open(window, cx)),
-            cx.subscribe(&input, |this, _, _: &gpui_kit::base::input::InputEvent, cx| {
-                this.clamp_sel(cx);
-                cx.notify();
+            cx.observe_in(&state, window, |this, _, window, cx| {
+                this.sync_open(window, cx)
             }),
+            cx.subscribe(
+                &input,
+                |this, _, _: &gpui_kit::base::input::InputEvent, cx| {
+                    this.clamp_sel(cx);
+                    cx.notify();
+                },
+            ),
             cx.intercept_keystrokes(move |ev, window, cx| {
                 let Some(me) = me.upgrade() else { return };
                 if me.update(cx, |p, cx| p.on_key(ev, window, cx)) {
@@ -175,7 +180,9 @@ impl StopPalette {
     }
 
     fn pick(&mut self, i: usize, cx: &mut Context<Self>) {
-        let Some(r) = self.flat(cx).get(i).cloned() else { return };
+        let Some(r) = self.flat(cx).get(i).cloned() else {
+            return;
+        };
         let ws = self.state.read(cx).selected_workspace_id.clone();
         self.state.update(cx, |s, cx| {
             s.overlays.stop_menu = false;
@@ -237,7 +244,11 @@ impl Render for StopPalette {
         let filtered = !self.input.read(cx).value().trim().is_empty();
         let placeholder: SharedString = "Stop…".into();
         let head = palette_input_row(true, cx)
-            .child(icon(IconName::SquareFill).size(px(14.)).color(hsla(t.faint)))
+            .child(
+                icon(IconName::SquareFill)
+                    .size(px(14.))
+                    .color(hsla(t.faint)),
+            )
             .child(div().flex_1().min_w_0().flex().p(px(1.)).child(text_field(
                 &self.input,
                 &placeholder,
@@ -258,45 +269,76 @@ impl Render for StopPalette {
                     .child(kbd("⌘⇧R").size(9.5).color(t.faint)),
             );
         let list: AnyElement = if flat.is_empty() {
-            palette_empty(if filtered { "No matching processes" } else { "Nothing running" }, true, cx).into_any_element()
+            palette_empty(
+                if filtered {
+                    "No matching processes"
+                } else {
+                    "Nothing running"
+                },
+                true,
+                cx,
+            )
+            .into_any_element()
         } else {
-            let rows = flat.iter().enumerate().map(|(i, r)| {
-                let on = i == self.sel;
-                let sel = format!("stop-{}", r.id);
-                palette_row(SharedString::from(sel.clone()), on, true, cx)
-                    .debug_selector(|| sel)
-                    .gap(px(10.))
-                    .child(text(format!("Stop {}", r.name)).size(12.5).line_height(LineHeight::Scale(1.3)).color(t.text).nowrap())
-                    .when(!r.cmd.is_empty(), |d| {
-                        d.child(div().flex_none().ml(px(8.)).min_w_0().child(text(r.cmd.clone()).mono().size(10.).color(t.faint).nowrap()))
-                    })
-                    .when(!filtered && i < 9, |d| {
-                        let (bg, border, fg) = if on { (t.pane, t.line_bright, t.text) } else { (t.pane_2, t.line, t.muted) };
-                        d.child(
-                            div()
-                                .ml_auto()
-                                .flex_none()
-                                .min_w(px(18.))
-                                .flex()
-                                .justify_center()
-                                .bg(hsla(bg))
-                                .border_1()
-                                .border_color(hsla(border))
-                                .rounded(px(4.))
-                                .py(px(1.))
-                                .px(px(5.))
-                                .child(text(format!("{}", i + 1)).mono().size(11.).color(fg).nowrap()),
+            let rows =
+                flat.iter().enumerate().map(|(i, r)| {
+                    let on = i == self.sel;
+                    let sel = format!("stop-{}", r.id);
+                    palette_row(SharedString::from(sel.clone()), on, true, cx)
+                        .debug_selector(|| sel)
+                        .gap(px(10.))
+                        .child(
+                            text(format!("Stop {}", r.name))
+                                .size(12.5)
+                                .line_height(LineHeight::Scale(1.3))
+                                .color(t.text)
+                                .nowrap(),
                         )
-                    })
-                    .on_mouse_move(cx.listener(move |p, ev: &MouseMoveEvent, _, cx| {
-                        if p.hover.allows(f32::from(ev.position.x), f32::from(ev.position.y)) && p.sel != i {
-                            p.sel = i;
-                            cx.notify();
-                        }
-                    }))
-                    .on_click(cx.listener(move |p, _, _, cx| p.pick(i, cx)))
-                    .into_any_element()
-            });
+                        .when(!r.cmd.is_empty(), |d| {
+                            d.child(div().flex_none().ml(px(8.)).min_w_0().child(
+                                text(r.cmd.clone()).mono().size(10.).color(t.faint).nowrap(),
+                            ))
+                        })
+                        .when(!filtered && i < 9, |d| {
+                            let (bg, border, fg) = if on {
+                                (t.pane, t.line_bright, t.text)
+                            } else {
+                                (t.pane_2, t.line, t.muted)
+                            };
+                            d.child(
+                                div()
+                                    .ml_auto()
+                                    .flex_none()
+                                    .min_w(px(18.))
+                                    .flex()
+                                    .justify_center()
+                                    .bg(hsla(bg))
+                                    .border_1()
+                                    .border_color(hsla(border))
+                                    .rounded(px(4.))
+                                    .py(px(1.))
+                                    .px(px(5.))
+                                    .child(
+                                        text(format!("{}", i + 1))
+                                            .mono()
+                                            .size(11.)
+                                            .color(fg)
+                                            .nowrap(),
+                                    ),
+                            )
+                        })
+                        .on_mouse_move(cx.listener(move |p, ev: &MouseMoveEvent, _, cx| {
+                            if p.hover
+                                .allows(f32::from(ev.position.x), f32::from(ev.position.y))
+                                && p.sel != i
+                            {
+                                p.sel = i;
+                                cx.notify();
+                            }
+                        }))
+                        .on_click(cx.listener(move |p, _, _, cx| p.pick(i, cx)))
+                        .into_any_element()
+                });
             div()
                 .id("stop-list")
                 .track_scroll(&self.scroll)
@@ -312,12 +354,20 @@ impl Render for StopPalette {
             .flex_wrap()
             .gap_x(px(14.))
             .gap_y(px(8.))
-            .child(Text::from_spans(vec![footer_key("↑↓", cx), span("navigate")]))
+            .child(Text::from_spans(vec![
+                footer_key("↑↓", cx),
+                span("navigate"),
+            ]))
             .child(Text::from_spans(vec![footer_key("1–9", cx), span("stop")]))
             .child(Text::from_spans(vec![footer_key("↵", cx), span("stop")]))
             .child(Text::from_spans(vec![footer_key("esc", cx), span("close")]));
         let vh = f32::from(window.viewport_size().height);
-        let panel = command_palette_panel(cx).w_full().max_h(px(vh * 0.56)).child(head).child(list).child(foot);
+        let panel = command_palette_panel(cx)
+            .w_full()
+            .max_h(px(vh * 0.56))
+            .child(head)
+            .child(list)
+            .child(foot);
         let width = 420f32.min(f32::from(window.viewport_size().width) * 0.92);
         let panel = with_shadow(panel, &PALETTE_SHADOW, 10.)
             .id("stop-palette")
@@ -380,22 +430,38 @@ impl CommandPrompts {
     }
 
     /// Opens on `prompts`, each field at its default, and focuses the first.
-    pub fn open(&mut self, title: &str, prompts: Vec<CommandPrompt>, window: &mut Window, cx: &mut Context<Self>) {
-        self.title = if title.is_empty() { "Command".into() } else { title.to_string() };
+    pub fn open(
+        &mut self,
+        title: &str,
+        prompts: Vec<CommandPrompt>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.title = if title.is_empty() {
+            "Command".into()
+        } else {
+            title.to_string()
+        };
         let mut subs = self._subs.drain(..1).collect::<Vec<_>>();
         self.fields = prompts
             .iter()
             .enumerate()
             .map(|(i, p)| {
                 if p.r#type == "choice" && !p.choices.is_empty() {
-                    let opts = p.choices.iter().map(|c| SelectOption::new(c.clone(), c.clone())).collect();
+                    let opts = p
+                        .choices
+                        .iter()
+                        .map(|c| SelectOption::new(c.clone(), c.clone()))
+                        .collect();
                     let select = cx.new(|cx| {
                         let mut s = Select::new(opts, window, cx);
                         s.set_value(p.default.clone(), cx);
                         s
                     });
                     subs.push(cx.subscribe(&select, move |this, _, ev: &SelectEvent, cx| {
-                        if let (SelectEvent::Change(v), Some(Field::Choice(_, cur))) = (ev, this.fields.get_mut(i)) {
+                        if let (SelectEvent::Change(v), Some(Field::Choice(_, cur))) =
+                            (ev, this.fields.get_mut(i))
+                        {
                             *cur = v.clone();
                             cx.notify();
                         }
@@ -486,7 +552,11 @@ impl Render for CommandPrompts {
         }
         let empty: SharedString = SharedString::default();
         let fields = self.prompts.iter().zip(&self.fields).map(|(p, f)| {
-            let label = if p.label.is_empty() { p.name.clone() } else { p.label.clone() };
+            let label = if p.label.is_empty() {
+                p.name.clone()
+            } else {
+                p.label.clone()
+            };
             let control: AnyElement = match f {
                 Field::Text(i) => recur_ui::style::card(t.pane_2, border, 6.)
                     .flex()
@@ -500,14 +570,35 @@ impl Render for CommandPrompts {
                 .flex()
                 .flex_col()
                 .gap(px(4.))
-                .child(text(label).size(11.).color(t.muted).uppercase().tracking(0.04).line_height(LineHeight::Normal))
+                .child(
+                    text(label)
+                        .size(11.)
+                        .color(t.muted)
+                        .uppercase()
+                        .tracking(0.04)
+                        .line_height(LineHeight::Normal),
+                )
                 .child(control)
         });
         let head = palette_input_row(false, cx)
             .child(icon(IconName::Settings).size(px(16.)).color(hsla(t.faint)))
-            .child(div().flex_1().min_w_0().child(text(self.title.clone()).size(13.).weight(600.).color(t.text).nowrap()))
+            .child(
+                div().flex_1().min_w_0().child(
+                    text(self.title.clone())
+                        .size(13.)
+                        .weight(600.)
+                        .color(t.text)
+                        .nowrap(),
+                ),
+            )
             .child(esc_key(false, cx));
-        let body = div().py(px(12.)).px(px(14.)).flex().flex_col().gap(px(10.)).children(fields);
+        let body = div()
+            .py(px(12.))
+            .px(px(14.))
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .children(fields);
         let amber = t.amber;
         let actions = div()
             .flex()
@@ -534,11 +625,20 @@ impl Render for CommandPrompts {
                     .rounded(px(6.))
                     .py(px(6.))
                     .px(px(12.))
-                    .child(text("Run").weight(600.).color(t.on_amber).line_height(LineHeight::Normal))
+                    .child(
+                        text("Run")
+                            .weight(600.)
+                            .color(t.on_amber)
+                            .line_height(LineHeight::Normal),
+                    )
                     .on_click(cx.listener(|p, _, _, cx| p.submit(cx))),
             );
         let vh = f32::from(window.viewport_size().height);
-        let panel = recur_ui::style::palette_panel(window, cx).max_h(px(vh * 0.64)).child(head).child(body).child(actions);
+        let panel = recur_ui::style::palette_panel(window, cx)
+            .max_h(px(vh * 0.64))
+            .child(head)
+            .child(body)
+            .child(actions);
         let width = 420f32.min(f32::from(window.viewport_size().width) * 0.92);
         let panel = with_shadow(panel, &PALETTE_SHADOW, 13.)
             .id("cmd-prompts")
@@ -548,7 +648,10 @@ impl Render for CommandPrompts {
         palette_scrim(window)
             .id("cmd-prompts-bg")
             .occlude()
-            .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, cx| cx.emit(CommandPromptsEvent::Cancel)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|_, _, _, cx| cx.emit(CommandPromptsEvent::Cancel)),
+            )
             .child(panel)
             .into_any_element()
     }
@@ -568,7 +671,13 @@ mod tests {
         assert_eq!(two.last().unwrap().cmd, "dev, test");
         assert!(two.last().unwrap().all);
         assert_eq!(filter_stop_rows(&two, "PNPM").len(), 1);
-        assert_eq!(filter_stop_rows(&two, "stop t").iter().map(|r| r.name.as_str()).collect::<Vec<_>>(), ["test"]);
+        assert_eq!(
+            filter_stop_rows(&two, "stop t")
+                .iter()
+                .map(|r| r.name.as_str())
+                .collect::<Vec<_>>(),
+            ["test"]
+        );
         assert_eq!(filter_stop_rows(&two, " ").len(), 3);
     }
 }

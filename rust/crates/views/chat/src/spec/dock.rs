@@ -31,8 +31,16 @@ fn echo_opts(store: Store) -> MockOptions {
 }
 
 #[gpui::test]
-async fn the_dock_opens_with_the_loop_tab_sends_a_message_and_toggles_closed(cx: &mut TestAppContext) {
-    let mut h = boot(cx, echo_opts(Store::default()), ws_props(), ws_hooks(), true);
+async fn the_dock_opens_with_the_loop_tab_sends_a_message_and_toggles_closed(
+    cx: &mut TestAppContext,
+) {
+    let mut h = boot(
+        cx,
+        echo_opts(Store::default()),
+        ws_props(),
+        ws_hooks(),
+        true,
+    );
     assert!(h.has("chat-composer"));
     assert_eq!(h.read(|c| c.props.agent_code.clone()), "MA");
     h.fill("steer from dock");
@@ -65,11 +73,17 @@ fn the_chat_panel_can_open_on_the_right_when_configured() {
     let layout = PanelLayout::load(&storage);
     assert_eq!(layout.sides[&CodePanelKey::Maestro], PanelSide::Right);
     assert_eq!(layout.sides[&CodePanelKey::Files], PanelSide::Left);
-    assert!(layout.panels_on_side(PanelSide::Right).contains(&CodePanelKey::Maestro));
+    assert!(
+        layout
+            .panels_on_side(PanelSide::Right)
+            .contains(&CodePanelKey::Maestro)
+    );
 }
 
 #[gpui::test]
-async fn the_loop_chat_renders_session_cards_once_the_delayed_fetch_resolves(cx: &mut TestAppContext) {
+async fn the_loop_chat_renders_session_cards_once_the_delayed_fetch_resolves(
+    cx: &mut TestAppContext,
+) {
     let pending: Arc<Mutex<Vec<Release>>> = Default::default();
     let p = pending.clone();
     let opts = MockOptions::default()
@@ -130,10 +144,19 @@ fn ask(cx: &mut TestAppContext, opts: MockOptions, storage: LocalStorage) -> A<'
     }));
     let services = bridge.services();
     let state = cx.update(|cx| AppState::install(services.clone(), storage, cx));
-    let vcx = ViewContext { state: state.clone(), services };
+    let vcx = ViewContext {
+        state: state.clone(),
+        services,
+    };
     let (app, cx) = cx.add_window_view(move |window, cx| AppChat::new(&vcx, true, window, cx));
     cx.simulate_resize(gpui::size(gpui::px(420.), gpui::px(720.)));
-    let mut a = A { app, state, sent, _held: held, cx };
+    let mut a = A {
+        app,
+        state,
+        sent,
+        _held: held,
+        cx,
+    };
     a.settle();
     a
 }
@@ -149,13 +172,20 @@ impl A<'_> {
 
     fn has(&mut self, sel: &str) -> bool {
         self.settle();
-        self.cx.debug_bounds(Box::leak(sel.to_string().into_boxed_str())).is_some()
+        self.cx
+            .debug_bounds(Box::leak(sel.to_string().into_boxed_str()))
+            .is_some()
     }
 
     fn click(&mut self, sel: &str) {
         self.settle();
-        let p = self.cx.debug_bounds(Box::leak(sel.to_string().into_boxed_str())).unwrap_or_else(|| panic!("no {sel}")).center();
-        self.cx.simulate_mouse_move(p, None, gpui::Modifiers::none());
+        let p = self
+            .cx
+            .debug_bounds(Box::leak(sel.to_string().into_boxed_str()))
+            .unwrap_or_else(|| panic!("no {sel}"))
+            .center();
+        self.cx
+            .simulate_mouse_move(p, None, gpui::Modifiers::none());
         self.cx.simulate_click(p, gpui::Modifiers::none());
         self.settle();
     }
@@ -166,11 +196,21 @@ async fn ask_chips_send_with_an_optimistic_bubble_and_stamp_the_tab_title(cx: &m
     let mut a = ask(cx, MockOptions::default(), LocalStorage::in_memory());
     assert!(a.has("ask-chip:What needs me?"));
     a.click("ask-chip:What needs me?");
-    let sent: Vec<String> = a.sent.lock().iter().map(|c| c[1].as_str().unwrap_or_default().to_string()).collect();
+    let sent: Vec<String> = a
+        .sent
+        .lock()
+        .iter()
+        .map(|c| c[1].as_str().unwrap_or_default().to_string())
+        .collect();
     assert_eq!(sent, ["What needs me?"]);
     assert!(a.has("me:What needs me?"));
     assert!(a.has("chat-stop"));
-    let title = a.app.read_with(a.cx, |app, _| app.tabs().iter().find(|t| t.code == APP).map(|t| t.title.clone()));
+    let title = a.app.read_with(a.cx, |app, _| {
+        app.tabs()
+            .iter()
+            .find(|t| t.code == APP)
+            .map(|t| t.title.clone())
+    });
     assert!(title.is_some());
 }
 
@@ -179,29 +219,44 @@ async fn ask_live_events_stream_into_the_active_tab_and_turn_end_settles(cx: &mu
     let mut a = ask(cx, MockOptions::default(), LocalStorage::in_memory());
     a.click("ask-chip:Where did I leave off?");
     a.app.update(a.cx, |app, cx| {
-        app.on_session_for_test("", APP, crate::session_events::SessionSignal::Delta(crate::session_events::StreamEvt {
-            text: "You were fixing the dock.".into(),
-            seq: 1,
-            replace: true,
-            ..Default::default()
-        }), cx)
+        app.on_session_for_test(
+            "",
+            APP,
+            crate::session_events::SessionSignal::Delta(crate::session_events::StreamEvt {
+                text: "You were fixing the dock.".into(),
+                seq: 1,
+                replace: true,
+                ..Default::default()
+            }),
+            cx,
+        )
     });
     assert!(a.has("streaming:You were fixing the dock."));
     // Another workspace's events do not land here.
     a.app.update(a.cx, |app, cx| {
-        app.on_session_for_test("LOOP-2231", APP, crate::session_events::SessionSignal::Delta(crate::session_events::StreamEvt {
-            text: "not mine".into(),
-            seq: 2,
-            replace: true,
-            ..Default::default()
-        }), cx)
+        app.on_session_for_test(
+            "LOOP-2231",
+            APP,
+            crate::session_events::SessionSignal::Delta(crate::session_events::StreamEvt {
+                text: "not mine".into(),
+                seq: 2,
+                replace: true,
+                ..Default::default()
+            }),
+            cx,
+        )
     });
     assert!(!a.has("streaming:not mine"));
     a.app.update(a.cx, |app, cx| {
-        app.on_session_for_test("", APP, crate::session_events::SessionSignal::TurnEnd(crate::session_events::TurnEndEvt {
-            duration_ms: 1500,
-            usage: None,
-        }), cx)
+        app.on_session_for_test(
+            "",
+            APP,
+            crate::session_events::SessionSignal::TurnEnd(crate::session_events::TurnEndEvt {
+                duration_ms: 1500,
+                usage: None,
+            }),
+            cx,
+        )
     });
     assert!(a.has("turn-end"));
     assert!(!a.has("chat-turn-elapsed"));
@@ -210,18 +265,28 @@ async fn ask_live_events_stream_into_the_active_tab_and_turn_end_settles(cx: &mu
 #[gpui::test]
 async fn ask_tabs_open_select_and_persist_the_active_one(cx: &mut TestAppContext) {
     let mut a = ask(cx, MockOptions::default(), LocalStorage::in_memory());
-    assert_eq!(a.app.read_with(a.cx, |app, _| app.active().to_string()), APP);
+    assert_eq!(
+        a.app.read_with(a.cx, |app, _| app.active().to_string()),
+        APP
+    );
     a.app.update(a.cx, |app, cx| app.new_tab(cx));
     a.settle();
     let active = a.app.read_with(a.cx, |app, _| app.active().to_string());
     assert_ne!(active, APP);
-    let stored = a.state.read_with(a.cx, |s, _| s.storage().get(ACTIVE_KEY).map(str::to_string));
+    let stored = a
+        .state
+        .read_with(a.cx, |s, _| s.storage().get(ACTIVE_KEY).map(str::to_string));
     assert_eq!(stored.as_deref(), Some(active.as_str()));
-    let key = a.app.read_with(a.cx, |app, cx| app.chat().read(cx).props().reset_key.clone());
+    let key = a.app.read_with(a.cx, |app, cx| {
+        app.chat().read(cx).props().reset_key.clone()
+    });
     assert_eq!(key, format!("app:{active}"));
     a.app.update(a.cx, |app, cx| app.select_tab(APP, cx));
     a.settle();
-    assert_eq!(a.app.read_with(a.cx, |app, _| app.active().to_string()), APP);
+    assert_eq!(
+        a.app.read_with(a.cx, |app, _| app.active().to_string()),
+        APP
+    );
 }
 
 #[gpui::test]
@@ -230,5 +295,8 @@ async fn ask_falls_back_from_a_saved_tab_the_backend_no_longer_lists(cx: &mut Te
     storage.set(ACTIVE_KEY, "AP9");
     let a = ask(cx, MockOptions::default(), storage);
     // A saved tab the backend no longer lists falls back to the primary chat.
-    assert_eq!(a.app.read_with(a.cx, |app, _| app.active().to_string()), APP);
+    assert_eq!(
+        a.app.read_with(a.cx, |app, _| app.active().to_string()),
+        APP
+    );
 }

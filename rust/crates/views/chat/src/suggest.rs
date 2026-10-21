@@ -14,20 +14,20 @@ use std::time::Duration;
 use gpui_kit::base::input::{InputBaseState, InputEvent, InputModeKind, Position};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    App, AppContext as _, Bounds, Focusable, Context, Entity, EntityId, Global, InteractiveElement,
+    App, AppContext as _, Bounds, Context, Entity, EntityId, Focusable, Global, InteractiveElement,
     IntoElement, KeystrokeEvent, MouseMoveEvent, ObjectFit, ParentElement, Pixels, Render,
     ScrollHandle, SharedString, StatefulInteractiveElement, Styled, StyledImage, Subscription,
     Task, Window, div, img, px,
 };
 use recur_content::emoji::{expand_emoji_shortcodes_at, shortcode_entries};
 use recur_domain::{PrParticipant, PrSource};
+use recur_engine::view::mentions::mention_query_at;
 use recur_forge::Forge;
 use recur_forge::github::GitHub;
 use recur_forge::view::{
     PrPerson, mention_login, mention_people, merge_mention_hits, participant_avatar_url,
     participant_initials, participant_label, suggest_user_mentions,
 };
-use recur_engine::view::mentions::mention_query_at;
 use recur_ui::fonts::Family;
 use recur_ui::logic::fuzzy::{FuzzyItem, fuzzy_filter_prepared, prepare_fuzzy};
 use recur_ui::logic::menu_space::{MENU_EDGE_PX, clamp_menu_left};
@@ -36,8 +36,8 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{Color, Theme, Tokens, hex, rgba};
 use recur_view_core::AppState;
 
-use recur_ui::logic::hover_gate::HoverGate;
 use crate::style::hsla;
+use recur_ui::logic::hover_gate::HoverGate;
 
 const MENU_WIDTH: f32 = 240.;
 const MENU_GAP: f32 = 4.;
@@ -80,7 +80,10 @@ fn prepared_shortcodes() -> &'static [FuzzyItem<EmojiHit>] {
     static PREPARED: LazyLock<Vec<FuzzyItem<EmojiHit>>> = LazyLock::new(|| {
         let hits: Vec<EmojiHit> = shortcode_entries()
             .iter()
-            .map(|(name, emoji)| EmojiHit { name: name.clone(), emoji: emoji.clone() })
+            .map(|(name, emoji)| EmojiHit {
+                name: name.clone(),
+                emoji: emoji.clone(),
+            })
             .collect();
         prepare_fuzzy(&hits, |h| h.name.clone())
     });
@@ -94,12 +97,17 @@ pub fn suggest_emoji(query: &str, limit: usize) -> Vec<EmojiHit> {
         return DEFAULT_EMOJI_NAMES
             .iter()
             .filter_map(|n| {
-                recur_content::emoji::emoji_for_shortcode(n)
-                    .map(|e| EmojiHit { name: n.to_string(), emoji: e.to_string() })
+                recur_content::emoji::emoji_for_shortcode(n).map(|e| EmojiHit {
+                    name: n.to_string(),
+                    emoji: e.to_string(),
+                })
             })
             .collect();
     }
-    fuzzy_filter_prepared(prepared_shortcodes(), q, limit).into_iter().map(|h| h.item).collect()
+    fuzzy_filter_prepared(prepared_shortcodes(), q, limit)
+        .into_iter()
+        .map(|h| h.item)
+        .collect()
 }
 
 /// `suggestUserMentions` with the UI's fuzzy ranker.
@@ -210,8 +218,16 @@ impl SuggestStore {
     }
 
     /// Runs the open menu's pick for row `i`.
-    pub fn pick(store: &Entity<SuggestStore>, kind: SuggestKind, i: usize, window: &mut Window, cx: &mut App) {
-        let Some(apply) = store.read(cx).slot(kind).map(|s| s.apply.clone()) else { return };
+    pub fn pick(
+        store: &Entity<SuggestStore>,
+        kind: SuggestKind,
+        i: usize,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        let Some(apply) = store.read(cx).slot(kind).map(|s| s.apply.clone()) else {
+            return;
+        };
         apply(i, window, cx);
     }
 }
@@ -296,41 +312,52 @@ impl<M: InputModeKind> SuggestAttach<M> {
     ) -> Entity<Self> {
         let store = SuggestStore::global(cx);
         cx.new(|cx| {
-            let mut subs = vec![cx.subscribe_in(input, window, |this: &mut Self, _, ev: &InputEvent, window, cx| match ev {
-                InputEvent::Change => this.on_input(window, cx),
-                InputEvent::Blur => {
-                    let input = this.input.clone();
-                    let owner = input.entity_id();
-                    let store = this.store.clone();
-                    let kind = this.kind;
-                    window.defer(cx, move |window, cx| {
-                        if input.read(cx).focus_handle(cx).is_focused(window) {
-                            return;
-                        }
-                        store.update(cx, |s, cx| s.close_for(kind, owner, cx));
-                    });
-                    this.seq += 1;
-                    this.search = None;
-                }
-                _ => {}
-            })];
+            let mut subs = vec![cx.subscribe_in(
+                input,
+                window,
+                |this: &mut Self, _, ev: &InputEvent, window, cx| match ev {
+                    InputEvent::Change => this.on_input(window, cx),
+                    InputEvent::Blur => {
+                        let input = this.input.clone();
+                        let owner = input.entity_id();
+                        let store = this.store.clone();
+                        let kind = this.kind;
+                        window.defer(cx, move |window, cx| {
+                            if input.read(cx).focus_handle(cx).is_focused(window) {
+                                return;
+                            }
+                            store.update(cx, |s, cx| s.close_for(kind, owner, cx));
+                        });
+                        this.seq += 1;
+                        this.search = None;
+                    }
+                    _ => {}
+                },
+            )];
             if kind == SuggestKind::Mention {
                 // `selectionchange` while open: follow the caret.
                 subs.push(cx.observe_in(input, window, |this, input, window, cx| {
                     let owner = input.entity_id();
-                    if this.store.read(cx).slot(this.kind).is_none_or(|s| s.owner != owner) {
+                    if this
+                        .store
+                        .read(cx)
+                        .slot(this.kind)
+                        .is_none_or(|s| s.owner != owner)
+                    {
                         return;
                     }
                     this.sync(window, cx);
                 }));
             }
             let me = cx.entity().downgrade();
-            subs.push(cx.intercept_keystrokes(move |ev: &KeystrokeEvent, window, cx| {
-                let Some(me) = me.upgrade() else { return };
-                if me.update(cx, |a, cx| a.on_key(ev, window, cx)) {
-                    cx.stop_propagation();
-                }
-            }));
+            subs.push(
+                cx.intercept_keystrokes(move |ev: &KeystrokeEvent, window, cx| {
+                    let Some(me) = me.upgrade() else { return };
+                    if me.update(cx, |a, cx| a.on_key(ev, window, cx)) {
+                        cx.stop_propagation();
+                    }
+                }),
+            );
             SuggestAttach {
                 kind,
                 input: input.clone(),
@@ -400,14 +427,24 @@ impl<M: InputModeKind> SuggestAttach<M> {
         self.escaped = None;
         match self.kind {
             SuggestKind::Emoji => {
-                let hits = suggest_emoji(&query, LIMIT).into_iter().map(SuggestItem::Emoji).collect();
+                let hits = suggest_emoji(&query, LIMIT)
+                    .into_iter()
+                    .map(SuggestItem::Emoji)
+                    .collect();
                 self.show(start, &query, hits, cx);
             }
             SuggestKind::Mention => {
-                let Some(state) = self.state.clone() else { return };
+                let Some(state) = self.state.clone() else {
+                    return;
+                };
                 let people = gh_pr_mention_people(state.read(cx));
                 let local = rank_user_mentions(&people, &query, LIMIT);
-                self.show(start, &query, local.into_iter().map(SuggestItem::Person).collect(), cx);
+                self.show(
+                    start,
+                    &query,
+                    local.into_iter().map(SuggestItem::Person).collect(),
+                    cx,
+                );
                 self.seq += 1;
                 let seq = self.seq;
                 let pr_id = state.read(cx).selected_pr_id.clone();
@@ -417,8 +454,16 @@ impl<M: InputModeKind> SuggestAttach<M> {
                 }
                 let services = state.read(cx).services().clone();
                 self.search = Some(cx.spawn(async move |this, cx| {
-                    cx.background_executor().timer(Duration::from_millis(150)).await;
-                    let Ok(remote) = services.prs.search_pr_mentionable_users(&pr_id, &query).await else { return };
+                    cx.background_executor()
+                        .timer(Duration::from_millis(150))
+                        .await;
+                    let Ok(remote) = services
+                        .prs
+                        .search_pr_mentionable_users(&pr_id, &query)
+                        .await
+                    else {
+                        return;
+                    };
                     let _ = this.update(cx, |a, cx| {
                         if a.seq != seq {
                             return;
@@ -431,11 +476,21 @@ impl<M: InputModeKind> SuggestAttach<M> {
                             Some(now) if now.start == start && now.query == query => {}
                             _ => return,
                         }
-                        let remote: Vec<PrPerson> = remote.iter().map(|p: &PrParticipant| p.into()).collect();
+                        let remote: Vec<PrPerson> =
+                            remote.iter().map(|p: &PrParticipant| p.into()).collect();
                         let Some(state) = a.state.clone() else { return };
-                        let local = rank_user_mentions(&gh_pr_mention_people(state.read(cx)), &query, LIMIT);
+                        let local = rank_user_mentions(
+                            &gh_pr_mention_people(state.read(cx)),
+                            &query,
+                            LIMIT,
+                        );
                         let hits = merge_mention_hits(&local, &remote, LIMIT);
-                        a.show(start, &query, hits.into_iter().map(SuggestItem::Person).collect(), cx);
+                        a.show(
+                            start,
+                            &query,
+                            hits.into_iter().map(SuggestItem::Person).collect(),
+                            cx,
+                        );
                     });
                 }));
             }
@@ -450,18 +505,30 @@ impl<M: InputModeKind> SuggestAttach<M> {
         }
         let owner = self.owner();
         let kind = self.kind;
-        let cur = self.store.read(cx).slot(kind).filter(|s| s.owner == owner && s.query == query && s.start == start);
+        let cur = self
+            .store
+            .read(cx)
+            .slot(kind)
+            .filter(|s| s.owner == owner && s.query == query && s.start == start);
         let sel = match (cur, kind) {
             (None, _) => 0,
             (Some(c), SuggestKind::Emoji) => c.sel.min(items.len() - 1),
             (Some(c), SuggestKind::Mention) => {
-                let login = c.items.get(c.sel).map(SuggestItem::login).unwrap_or_default();
-                items.iter().position(|h| !login.is_empty() && h.login() == login).unwrap_or(0)
+                let login = c
+                    .items
+                    .get(c.sel)
+                    .map(SuggestItem::login)
+                    .unwrap_or_default();
+                items
+                    .iter()
+                    .position(|h| !login.is_empty() && h.login() == login)
+                    .unwrap_or(0)
             }
         };
         let weak = self.input.downgrade();
         let caret: BoundsFn = Rc::new(move |cx: &App| {
-            weak.upgrade().and_then(|i| i.read(cx).range_to_bounds(&(start..start)))
+            weak.upgrade()
+                .and_then(|i| i.read(cx).range_to_bounds(&(start..start)))
         });
         let me = cx.entity().downgrade();
         let apply: ApplyFn = Rc::new(move |i, window, cx| {
@@ -484,10 +551,18 @@ impl<M: InputModeKind> SuggestAttach<M> {
 
     /// `applyEmojiSuggestion` / `applyUserMention`.
     fn apply(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(open) = self.store.read(cx).slot(self.kind).filter(|s| s.owner == self.owner()).cloned() else {
+        let Some(open) = self
+            .store
+            .read(cx)
+            .slot(self.kind)
+            .filter(|s| s.owner == self.owner())
+            .cloned()
+        else {
             return;
         };
-        let Some(hit) = open.items.get(i).cloned() else { return };
+        let Some(hit) = open.items.get(i).cloned() else {
+            return;
+        };
         let (value, caret) = {
             let s = self.input.read(cx);
             (s.value().to_string(), s.cursor())
@@ -495,7 +570,15 @@ impl<M: InputModeKind> SuggestAttach<M> {
         match hit {
             SuggestItem::Emoji(h) => {
                 self.close(cx);
-                splice(&self.input, open.start, caret, &h.emoji, &self.on_set, window, cx);
+                splice(
+                    &self.input,
+                    open.start,
+                    caret,
+                    &h.emoji,
+                    &self.on_set,
+                    window,
+                    cx,
+                );
             }
             SuggestItem::Person(p) => {
                 let login = mention_login(&p).to_string();
@@ -503,10 +586,20 @@ impl<M: InputModeKind> SuggestAttach<M> {
                     return;
                 }
                 self.close(cx);
-                let Some(now) = mention_query_at(&value, caret).filter(|n| n.start == open.start && n.query == open.query) else {
+                let Some(now) = mention_query_at(&value, caret)
+                    .filter(|n| n.start == open.start && n.query == open.query)
+                else {
                     return;
                 };
-                splice(&self.input, now.start, now.end, &format!("@{login} "), &self.on_set, window, cx);
+                splice(
+                    &self.input,
+                    now.start,
+                    now.end,
+                    &format!("@{login} "),
+                    &self.on_set,
+                    window,
+                    cx,
+                );
             }
         }
         self.synced = None;
@@ -515,7 +608,13 @@ impl<M: InputModeKind> SuggestAttach<M> {
     /// The capture-phase `keydown` while this field's menu is open.
     fn on_key(&mut self, ev: &KeystrokeEvent, window: &mut Window, cx: &mut Context<Self>) -> bool {
         let owner = self.owner();
-        let Some(open) = self.store.read(cx).slot(self.kind).filter(|s| s.owner == owner).cloned() else {
+        let Some(open) = self
+            .store
+            .read(cx)
+            .slot(self.kind)
+            .filter(|s| s.owner == owner)
+            .cloned()
+        else {
             return false;
         };
         if !self.input.read(cx).focus_handle(cx).is_focused(window) {
@@ -556,7 +655,11 @@ impl<M: InputModeKind> SuggestAttach<M> {
 
 /// `menuViewportSpace` with the typeahead's 4px gap.
 fn space(top: f32, bottom: f32, up: bool, vh: f32) -> f32 {
-    let s = if up { top - MENU_GAP - MENU_EDGE_PX } else { vh - bottom - MENU_GAP - MENU_EDGE_PX };
+    let s = if up {
+        top - MENU_GAP - MENU_EDGE_PX
+    } else {
+        vh - bottom - MENU_GAP - MENU_EDGE_PX
+    };
     s.floor().max(0.)
 }
 
@@ -570,7 +673,9 @@ fn face_style(css: &str, t: &Tokens) -> (Option<(f32, Color, Color)>, Option<Col
         if let Some(h) = v.strip_prefix('#') {
             let n = u32::from_str_radix(h, 16).ok()?;
             return Some(match h.len() {
-                3 => hex(((n >> 8 & 0xf) * 0x11) << 16 | ((n >> 4 & 0xf) * 0x11) << 8 | (n & 0xf) * 0x11),
+                3 => hex(((n >> 8 & 0xf) * 0x11) << 16
+                    | ((n >> 4 & 0xf) * 0x11) << 8
+                    | (n & 0xf) * 0x11),
                 6 => hex(n),
                 _ => return None,
             });
@@ -586,14 +691,22 @@ fn face_style(css: &str, t: &Tokens) -> (Option<(f32, Color, Color)>, Option<Col
     };
     let (mut bg, mut fg) = (None, None);
     for decl in css.split(';') {
-        let Some((k, v)) = decl.split_once(':') else { continue };
+        let Some((k, v)) = decl.split_once(':') else {
+            continue;
+        };
         match k.trim() {
             "background" | "background-image" | "background-color" => {
                 let v = v.trim();
-                if let Some(args) = v.strip_prefix("linear-gradient(").and_then(|a| a.strip_suffix(')')) {
+                if let Some(args) = v
+                    .strip_prefix("linear-gradient(")
+                    .and_then(|a| a.strip_suffix(')'))
+                {
                     let parts: Vec<&str> = args.split(',').collect();
                     if let [a, c1, c2] = parts.as_slice()
-                        && let Some(deg) = a.trim().strip_suffix("deg").and_then(|d| d.parse::<f32>().ok())
+                        && let Some(deg) = a
+                            .trim()
+                            .strip_suffix("deg")
+                            .and_then(|d| d.parse::<f32>().ok())
                         && let (Some(c1), Some(c2)) = (color_of(c1), color_of(c2))
                     {
                         bg = Some((deg, c1, c2));
@@ -685,7 +798,10 @@ impl Render for SuggestOverlay {
             return div().into_any_element();
         };
         let key = (open.owner, open.start, open.sel);
-        if self.shown.is_none_or(|(o, s, _)| (o, s) != (open.owner, open.start)) {
+        if self
+            .shown
+            .is_none_or(|(o, s, _)| (o, s) != (open.owner, open.start))
+        {
             self.hover.reset();
         }
         if self.shown != Some(key) {
@@ -695,7 +811,11 @@ impl Render for SuggestOverlay {
         let t = Theme::of(cx).tokens;
         let vp = window.viewport_size();
         let (vw, vh) = (f32::from(vp.width), f32::from(vp.height));
-        let (top, bottom, left) = (f32::from(caret.top()), f32::from(caret.bottom()), f32::from(caret.left()));
+        let (top, bottom, left) = (
+            f32::from(caret.top()),
+            f32::from(caret.bottom()),
+            f32::from(caret.left()),
+        );
         let up = space(top, bottom, true, vh) > space(top, bottom, false, vh);
         let room = space(top, bottom, up, vh);
         let l = clamp_menu_left(left, MENU_WIDTH, vw);
@@ -704,7 +824,16 @@ impl Render for SuggestOverlay {
             let on = i == open.sel;
             let mut row = div()
                 .id(("suggest-row", i))
-                .debug_selector(|| format!("{}-row:{i}", if kind == SuggestKind::Emoji { "emoji-suggest" } else { "user-mention" }))
+                .debug_selector(|| {
+                    format!(
+                        "{}-row:{i}",
+                        if kind == SuggestKind::Emoji {
+                            "emoji-suggest"
+                        } else {
+                            "user-mention"
+                        }
+                    )
+                })
                 .flex()
                 .items_center()
                 .gap(px(8.))
@@ -720,33 +849,56 @@ impl Render for SuggestOverlay {
                 SuggestItem::Emoji(e) => {
                     row = row
                         .child(
-                            div()
-                                .flex_none()
-                                .w(px(22.))
-                                .flex()
-                                .justify_center()
-                                .child(text(e.emoji.clone()).size(16.).line_height(LineHeight::Px(16.))),
+                            div().flex_none().w(px(22.)).flex().justify_center().child(
+                                text(e.emoji.clone())
+                                    .size(16.)
+                                    .line_height(LineHeight::Px(16.)),
+                            ),
                         )
-                        .child(text(e.name.clone()).weight(500.).line_height(LineHeight::Normal).nowrap());
+                        .child(
+                            text(e.name.clone())
+                                .weight(500.)
+                                .line_height(LineHeight::Normal)
+                                .nowrap(),
+                        );
                 }
                 SuggestItem::Person(p) => {
                     let login = mention_login(p).to_string();
                     let name = p.name.trim().to_string();
                     row = row
                         .child(pr_face(p, &t))
-                        .child(text(participant_label(p)).weight(500.).line_height(LineHeight::Normal).nowrap())
-                        .when(!name.is_empty() && name.to_lowercase() != login.to_lowercase(), |d| {
-                            d.child(
-                                div().ml_auto().min_w_0().overflow_hidden().pl(px(8.)).child(
-                                    text(name).size(11.).color(t.muted).line_height(LineHeight::Normal).truncate(),
-                                ),
-                            )
-                        });
+                        .child(
+                            text(participant_label(p))
+                                .weight(500.)
+                                .line_height(LineHeight::Normal)
+                                .nowrap(),
+                        )
+                        .when(
+                            !name.is_empty() && name.to_lowercase() != login.to_lowercase(),
+                            |d| {
+                                d.child(
+                                    div()
+                                        .ml_auto()
+                                        .min_w_0()
+                                        .overflow_hidden()
+                                        .pl(px(8.))
+                                        .child(
+                                            text(name)
+                                                .size(11.)
+                                                .color(t.muted)
+                                                .line_height(LineHeight::Normal)
+                                                .truncate(),
+                                        ),
+                                )
+                            },
+                        );
                 }
             }
             let store = self.store.clone();
             row.on_mouse_move(cx.listener(move |o, ev: &MouseMoveEvent, _, cx| {
-                if o.hover.allows(f32::from(ev.position.x), f32::from(ev.position.y)) {
+                if o.hover
+                    .allows(f32::from(ev.position.x), f32::from(ev.position.y))
+                {
                     o.store.update(cx, |s, cx| s.set_sel(kind, i, cx));
                 }
             }))
@@ -766,14 +918,21 @@ impl Render for SuggestOverlay {
             .flex_col()
             .children(rows);
         let card = recur_ui::style::card(t.pane, t.line_bright, 10.).child(list);
-        let card = with_shadow(card, &[css_box_shadow(0., 14., 36., -12., rgba(0, 0, 0, 0.7))], 10.).occlude();
+        let card = with_shadow(
+            card,
+            &[css_box_shadow(0., 14., 36., -12., rgba(0, 0, 0, 0.7))],
+            10.,
+        )
+        .occlude();
         let placed = div().absolute().left(px(l)).child(card);
         let placed = if up {
             placed.bottom(px(vh - top + MENU_GAP))
         } else {
             placed.top(px(bottom + MENU_GAP))
         };
-        gpui_kit::deferred(div().absolute().inset_0().child(placed)).with_priority(60).into_any_element()
+        gpui_kit::deferred(div().absolute().inset_0().child(placed))
+            .with_priority(60)
+            .into_any_element()
     }
 }
 
@@ -794,17 +953,32 @@ mod tests {
 
     #[test]
     fn expands_completed_tokens_and_leaves_the_rest() {
-        assert_eq!(expand_emoji_shortcodes("LGTM :rocket: :+1:", false), "LGTM 🚀 👍");
-        assert_eq!(expand_emoji_shortcodes("see :notanemoji: and :rock", false), "see :notanemoji: and :rock");
+        assert_eq!(
+            expand_emoji_shortcodes("LGTM :rocket: :+1:", false),
+            "LGTM 🚀 👍"
+        );
+        assert_eq!(
+            expand_emoji_shortcodes("see :notanemoji: and :rock", false),
+            "see :notanemoji: and :rock"
+        );
         let src = "ok :rocket: and `:rocket:`\n```\n:smile:\n```";
-        assert_eq!(expand_emoji_shortcodes(src, true), "ok 🚀 and `:rocket:`\n```\n:smile:\n```");
+        assert_eq!(
+            expand_emoji_shortcodes(src, true),
+            "ok 🚀 and `:rocket:`\n```\n:smile:\n```"
+        );
     }
 
     #[test]
     fn expansion_keeps_the_caret_after_the_same_point() {
-        assert_eq!(expand_emoji_shortcodes_at("hi :rocket:", 11), Some(("hi 🚀".into(), "hi 🚀".len())));
+        assert_eq!(
+            expand_emoji_shortcodes_at("hi :rocket:", 11),
+            Some(("hi 🚀".into(), "hi 🚀".len()))
+        );
         let src = ":rocket: later";
-        assert_eq!(expand_emoji_shortcodes_at(src, src.len()), Some(("🚀 later".into(), "🚀 later".len())));
+        assert_eq!(
+            expand_emoji_shortcodes_at(src, src.len()),
+            Some(("🚀 later".into(), "🚀 later".len()))
+        );
     }
 
     #[test]
@@ -825,47 +999,100 @@ mod tests {
         let hits = suggest_emoji("rock", LIMIT);
         assert_eq!(hits[0].name, "rock");
         assert!(hits.iter().any(|h| h.name == "rocket" && h.emoji == "🚀"));
-        assert_eq!(suggest_emoji("rocket", LIMIT)[0], EmojiHit { name: "rocket".into(), emoji: "🚀".into() });
+        assert_eq!(
+            suggest_emoji("rocket", LIMIT)[0],
+            EmojiHit {
+                name: "rocket".into(),
+                emoji: "🚀".into()
+            }
+        );
         let d = suggest_emoji("", LIMIT);
-        assert_eq!(d.iter().map(|h| h.name.as_str()).collect::<Vec<_>>(), DEFAULT_EMOJI_NAMES);
-        assert_eq!(suggest_emoji(" ", LIMIT)[0], EmojiHit { name: "+1".into(), emoji: "👍".into() });
+        assert_eq!(
+            d.iter().map(|h| h.name.as_str()).collect::<Vec<_>>(),
+            DEFAULT_EMOJI_NAMES
+        );
+        assert_eq!(
+            suggest_emoji(" ", LIMIT)[0],
+            EmojiHit {
+                name: "+1".into(),
+                emoji: "👍".into()
+            }
+        );
     }
 
     // user-mention.test.ts
     #[test]
     fn suggests_people_with_logins() {
-        let p = |login: &str, name: &str| PrPerson { login: login.into(), name: name.into(), ..Default::default() };
+        let p = |login: &str, name: &str| PrPerson {
+            login: login.into(),
+            name: name.into(),
+            ..Default::default()
+        };
         let people = vec![
             p("avery", "Avery Rourke"),
             p("loopbot", "loopbot"),
             p("sam", "sam"),
-            PrPerson { name: "Coder".into(), code: "CO".into(), ..Default::default() },
+            PrPerson {
+                name: "Coder".into(),
+                code: "CO".into(),
+                ..Default::default()
+            },
         ];
         let logins = |v: Vec<PrPerson>| v.into_iter().map(|p| p.login).collect::<Vec<_>>();
-        assert_eq!(logins(rank_user_mentions(&people, "", LIMIT)), ["avery", "loopbot", "sam"]);
+        assert_eq!(
+            logins(rank_user_mentions(&people, "", LIMIT)),
+            ["avery", "loopbot", "sam"]
+        );
         let many: Vec<PrPerson> = (0..12).map(|i| p(&format!("u{i}"), "")).collect();
         assert_eq!(rank_user_mentions(&many, "", LIMIT).len(), 8);
         assert_eq!(logins(rank_user_mentions(&people, "av", LIMIT)), ["avery"]);
-        assert_eq!(logins(rank_user_mentions(&people, "rourke", LIMIT)), ["avery"]);
+        assert_eq!(
+            logins(rank_user_mentions(&people, "rourke", LIMIT)),
+            ["avery"]
+        );
         assert!(rank_user_mentions(&people, "Coder", LIMIT).is_empty());
         let local = vec![p("avery", "Avery"), p("loopbot", "")];
-        let remote = vec![p("Avery", "Avery Rourke"), p("octocat", "The Octocat"), p("hubot", "")];
-        assert_eq!(logins(merge_mention_hits(&local, &remote, 3)), ["avery", "loopbot", "octocat"]);
-        assert_eq!(logins(merge_mention_hits(&[], &remote, LIMIT)), ["Avery", "octocat", "hubot"]);
+        let remote = vec![
+            p("Avery", "Avery Rourke"),
+            p("octocat", "The Octocat"),
+            p("hubot", ""),
+        ];
+        assert_eq!(
+            logins(merge_mention_hits(&local, &remote, 3)),
+            ["avery", "loopbot", "octocat"]
+        );
+        assert_eq!(
+            logins(merge_mention_hits(&[], &remote, LIMIT)),
+            ["Avery", "octocat", "hubot"]
+        );
     }
 
     #[test]
     fn mention_ranking_and_face_css() {
         let people = vec![
-            PrPerson { login: "avery".into(), name: "Avery Rourke".into(), ..Default::default() },
-            PrPerson { login: "".into(), name: "No Login".into(), ..Default::default() },
-            PrPerson { login: "@bo".into(), ..Default::default() },
+            PrPerson {
+                login: "avery".into(),
+                name: "Avery Rourke".into(),
+                ..Default::default()
+            },
+            PrPerson {
+                login: "".into(),
+                name: "No Login".into(),
+                ..Default::default()
+            },
+            PrPerson {
+                login: "@bo".into(),
+                ..Default::default()
+            },
         ];
         let all = rank_user_mentions(&people, "", LIMIT);
         assert_eq!(all.len(), 2);
         assert_eq!(rank_user_mentions(&people, "rour", LIMIT)[0].login, "avery");
         let t = recur_ui::ThemeId::default().tokens();
-        let (bg, fg) = face_style("background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)", &t);
+        let (bg, fg) = face_style(
+            "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
+            &t,
+        );
         assert_eq!(bg, Some((135., hex(0x39434f), hex(0x1d242c))));
         assert_eq!(fg, Some(t.muted));
     }

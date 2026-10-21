@@ -37,7 +37,12 @@ impl CardViews {
 }
 
 impl AgentChat {
-    pub(crate) fn permission_card(&mut self, req: &PermissionRequest, _window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn permission_card(
+        &mut self,
+        req: &PermissionRequest,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let state = self.state.clone();
         let card = self
             .cards
@@ -52,7 +57,12 @@ impl AgentChat {
         card.into_any_element()
     }
 
-    pub(crate) fn question_card_for_user(&mut self, q: &UserQuestion, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn question_card_for_user(
+        &mut self,
+        q: &UserQuestion,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let state = self.state.clone();
         let like = QuestionLike {
             id: q.id.clone(),
@@ -68,8 +78,18 @@ impl AgentChat {
             .into_any_element()
     }
 
-    pub(crate) fn question_card_for_escalation(&mut self, e: &Escalation, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        if self.cards.escalation.as_ref().is_none_or(|(id, _)| id != &e.id) {
+    pub(crate) fn question_card_for_escalation(
+        &mut self,
+        e: &Escalation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        if self
+            .cards
+            .escalation
+            .as_ref()
+            .is_none_or(|(id, _)| id != &e.id)
+        {
             let state = self.state.clone();
             let like = QuestionLike {
                 id: e.id.clone(),
@@ -77,7 +97,16 @@ impl AgentChat {
                 context: e.context.clone(),
                 options: e.options.clone().unwrap_or_default(),
             };
-            let card = cx.new(|cx| QuestionCard::new(like, Some("Maestro needs a decision".into()), true, state, window, cx));
+            let card = cx.new(|cx| {
+                QuestionCard::new(
+                    like,
+                    Some("Maestro needs a decision".into()),
+                    true,
+                    state,
+                    window,
+                    cx,
+                )
+            });
             let sub = cx.subscribe(&card, |_, _, a: &QuestionAnswered, cx| {
                 cx.emit(ChatEvent::AnswerEscalation {
                     choice: a.choice.clone(),
@@ -94,18 +123,31 @@ impl AgentChat {
             .unwrap_or_else(|| gpui_kit::div().into_any_element())
     }
 
-    pub(crate) fn fanout_card(&mut self, fact_id: &str, data: &str, fallback: &str, _window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn fanout_card(
+        &mut self,
+        fact_id: &str,
+        data: &str,
+        fallback: &str,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let vcx = recur_view_core::ViewContext {
             state: self.state.clone(),
             services: self.services.clone(),
         };
-        let key = if fact_id.is_empty() { data.to_string() } else { fact_id.to_string() };
+        let key = if fact_id.is_empty() {
+            data.to_string()
+        } else {
+            fact_id.to_string()
+        };
         let created = !self.cards.fanouts.contains_key(&key);
         let card = self
             .cards
             .fanouts
             .entry(key)
-            .or_insert_with(|| cx.new(|cx| FanOutCard::new(vcx, data.to_string(), fallback.to_string(), cx)))
+            .or_insert_with(|| {
+                cx.new(|cx| FanOutCard::new(vcx, data.to_string(), fallback.to_string(), cx))
+            })
             .clone();
         if created {
             let sub = cx.subscribe(&card, |_, _, ev: &ChatEvent, cx| cx.emit(ev.clone()));

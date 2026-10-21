@@ -53,11 +53,24 @@ pub fn hsla(c: Color) -> Hsla {
 /// An `inline-flex` box alone on a block's line: the line is at least the block's strut
 /// (`strut_size` / `strut_leading`, UI font), and the box's baseline (`baseline` from its top,
 /// `height` tall) sits on the strut's baseline.
-pub fn line_box(child: impl IntoElement, strut_size: f32, strut_leading: f32, baseline: f32, height: f32, window: &Window) -> Div {
-    let (_, _, s) = text("x").size(strut_size).line_height(LineHeight::Scale(strut_leading)).measure(None, window);
+pub fn line_box(
+    child: impl IntoElement,
+    strut_size: f32,
+    strut_leading: f32,
+    baseline: f32,
+    height: f32,
+    window: &Window,
+) -> Div {
+    let (_, _, s) = text("x")
+        .size(strut_size)
+        .line_height(LineHeight::Scale(strut_leading))
+        .measure(None, window);
     let above = s.baseline.max(baseline);
     let below = (s.height - s.baseline).max(height - baseline);
-    div().flex().h(px(above + below)).child(div().mt(px(above - baseline)).child(child))
+    div()
+        .flex()
+        .h(px(above + below))
+        .child(div().mt(px(above - baseline)).child(child))
 }
 
 /// The baseline of one line of text from its line box's top.
@@ -215,7 +228,10 @@ pub fn status_pill(status: &str, t: &Tokens) -> Pill {
             bg: amber_a(0.08),
             ..base
         },
-        "pending" => Pill { fg: t.muted, ..base },
+        "pending" => Pill {
+            fg: t.muted,
+            ..base
+        },
         _ => base,
     }
 }

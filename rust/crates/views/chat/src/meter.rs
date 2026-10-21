@@ -39,7 +39,11 @@ pub fn meter_values(u: Option<&ContextUsage>) -> MeterValues {
     let ready = u.is_some_and(ContextUsage::ready);
     let used = u.map_or(0, ContextUsage::used_tokens);
     let limit = u.map_or(0, |u| u.context_window);
-    let pct = if ready && limit > 0 { (used as f32 / limit as f32).min(1.) } else { 0. };
+    let pct = if ready && limit > 0 {
+        (used as f32 / limit as f32).min(1.)
+    } else {
+        0.
+    };
     let free = (limit - used).max(0);
     let creation = u.map_or(0, |u| u.cache_creation_tokens);
     let cache_read = u.map_or(0, |u| u.cache_read_tokens);
@@ -49,7 +53,11 @@ pub fn meter_values(u: Option<&ContextUsage>) -> MeterValues {
         limit,
         pct,
         pct_label: (pct * 100.).round() as i64,
-        free_label: if limit > 0 { ((free as f32 / limit as f32) * 100.).round() as i64 } else { 0 },
+        free_label: if limit > 0 {
+            ((free as f32 / limit as f32) * 100.).round() as i64
+        } else {
+            0
+        },
         cache_read,
         fresh: u.map_or(0, |u| u.input_tokens) + creation,
         show_split: ready && (cache_read > 0 || creation > 0),
@@ -150,7 +158,11 @@ impl Render for ContextMeter {
         let svg = ring_svg(&v, color, fill_opacity, &t);
         let open = self.open;
         let ready = v.ready;
-        let tip = if ready { "Context usage" } else { "Context usage updates after a turn finishes" };
+        let tip = if ready {
+            "Context usage"
+        } else {
+            "Context usage updates after a turn finishes"
+        };
         let btn = div()
             .id("ctx-btn")
             .size(px(24.))
@@ -182,8 +194,16 @@ impl Render for ContextMeter {
                     .flex()
                     .justify_between()
                     .gap(px(12.))
-                    .child(label(a.to_string(), Family::Ui, 12., 400.).color(if sub { t.faint } else { t.muted }))
-                    .child(label(b, Family::Mono, 11., 400.).color(if sub { t.muted } else { t.text }))
+                    .child(label(a.to_string(), Family::Ui, 12., 400.).color(if sub {
+                        t.faint
+                    } else {
+                        t.muted
+                    }))
+                    .child(label(b, Family::Mono, 11., 400.).color(if sub {
+                        t.muted
+                    } else {
+                        t.text
+                    }))
             };
             let mut rows = div()
                 .flex()
@@ -212,8 +232,28 @@ impl Render for ContextMeter {
                         .justify_between()
                         .gap(px(10.))
                         .mb(px(8.))
-                        .child(label(if v.compacting { "Compacting" } else { "Context" }, Family::Ui, 12., 600.).color(t.text))
-                        .child(label(format!("{}/{}", format_tokens(v.used), format_tokens(v.limit)), Family::Mono, 11., 400.).color(t.muted)),
+                        .child(
+                            label(
+                                if v.compacting {
+                                    "Compacting"
+                                } else {
+                                    "Context"
+                                },
+                                Family::Ui,
+                                12.,
+                                600.,
+                            )
+                            .color(t.text),
+                        )
+                        .child(
+                            label(
+                                format!("{}/{}", format_tokens(v.used), format_tokens(v.limit)),
+                                Family::Mono,
+                                11.,
+                                400.,
+                            )
+                            .color(t.muted),
+                        ),
                 )
                 .child(
                     div()
@@ -222,7 +262,13 @@ impl Render for ContextMeter {
                         .bg(hsla(t.line))
                         .overflow_hidden()
                         .mb(px(8.))
-                        .child(div().h_full().rounded(px(2.)).w(relative(v.pct_label as f32 / 100.)).bg(hsla(color))),
+                        .child(
+                            div()
+                                .h_full()
+                                .rounded(px(2.))
+                                .w(relative(v.pct_label as f32 / 100.))
+                                .bg(hsla(color)),
+                        ),
                 )
                 .child(rows);
             root = root.child(
@@ -231,7 +277,11 @@ impl Render for ContextMeter {
                     .right_0()
                     .bottom(px(24. + 8.))
                     .occlude()
-                    .child(with_shadow(pop, &[css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))], 9.)),
+                    .child(with_shadow(
+                        pop,
+                        &[css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))],
+                        9.,
+                    )),
             );
         }
         root

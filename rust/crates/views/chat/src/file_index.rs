@@ -79,8 +79,8 @@ pub fn search_files(
         workspace_id.to_string(),
         query.to_string(),
     );
-    cx.spawn(async move |cx| {
-        match services.code.search_files(&p, &w, &q, limit, false).await {
+    cx.spawn(
+        async move |cx| match services.code.search_files(&p, &w, &q, limit, false).await {
             Ok(res) => FileSearchResult {
                 hits: map_file_search_hits(res.hits.as_deref().unwrap_or_default()),
                 building: res.building,
@@ -91,8 +91,8 @@ pub fn search_files(
                 cx.update(|cx| toast(ToastKind::Error, msg, cx));
                 FileSearchResult::default()
             }
-        }
-    })
+        },
+    )
 }
 
 #[cfg(test)]
@@ -120,7 +120,12 @@ mod tests {
         let got: Vec<(&str, bool)> = hits.iter().map(|h| (h.item.as_str(), h.dir)).collect();
         assert_eq!(
             got,
-            [("src", true), ("src/lib/a.ts", false), ("src/lib", true), ("docs", true)]
+            [
+                ("src", true),
+                ("src/lib/a.ts", false),
+                ("src/lib", true),
+                ("docs", true)
+            ]
         );
     }
 }

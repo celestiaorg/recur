@@ -49,14 +49,34 @@ fn blocks(h: &mut H) -> Vec<Block> {
 
 #[gpui::test]
 async fn plain_notices_stay_escaped_engine_wrap_facts_render_html(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default(), false);
-    h.set_messages(vec![note("Subagent", "fix <img src=x onerror=alert(1)> (child-1)", false, 1)]);
+    let mut h = boot(
+        cx,
+        MockOptions::default(),
+        readonly(),
+        ChatHooks::default(),
+        false,
+    );
+    h.set_messages(vec![note(
+        "Subagent",
+        "fix <img src=x onerror=alert(1)> (child-1)",
+        false,
+        1,
+    )]);
     assert!(h.has("notice:plain:fix <img src=x onerror=alert(1)> (child-1)"));
-    h.set_messages(vec![note("Commit", "Committed <code>abc</code> to <code>main</code>.", true, 2)]);
+    h.set_messages(vec![note(
+        "Commit",
+        "Committed <code>abc</code> to <code>main</code>.",
+        true,
+        2,
+    )]);
     assert!(h.has("notice:html:Committed <code>abc</code> to <code>main</code>."));
     let spans = crate::html_inline::inline_spans(
         "Committed <code>abc</code> to <code>main</code>.",
-        &crate::html_inline::InlineStyle::meta(11., recur_ui::hex(0x888888), &recur_ui::ThemeId::default().tokens()),
+        &crate::html_inline::InlineStyle::meta(
+            11.,
+            recur_ui::hex(0x888888),
+            &recur_ui::ThemeId::default().tokens(),
+        ),
     );
     let flat: String = spans.iter().map(|s| s.text.as_str()).collect();
     assert_eq!(flat, "Committed abc to main.");
@@ -64,13 +84,25 @@ async fn plain_notices_stay_escaped_engine_wrap_facts_render_html(cx: &mut TestA
 
 #[gpui::test]
 async fn subagent_notices_fold_into_the_following_steps_group(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default(), false);
+    let mut h = boot(
+        cx,
+        MockOptions::default(),
+        readonly(),
+        ChatHooks::default(),
+        false,
+    );
     h.set_messages(vec![
         note("Subagent", "Goal finished (child-1)", false, 1),
         tool("Read", "a.ts", "ok", 2),
         tool("Grep", "TODO", "none", 3),
     ]);
-    assert_eq!(blocks(&mut h), [Block::Steps { start: 0, rows: vec![0, 1, 2] }]);
+    assert_eq!(
+        blocks(&mut h),
+        [Block::Steps {
+            start: 0,
+            rows: vec![0, 1, 2]
+        }]
+    );
     assert!(!h.has("notice:plain:Goal finished (child-1)"));
     let head = h.read(|c| {
         let msgs = c.transcript();
@@ -81,10 +113,24 @@ async fn subagent_notices_fold_into_the_following_steps_group(cx: &mut TestAppCo
     assert!(h.has("notice:plain:Goal finished (child-1)"));
 
     h.set_messages(vec![
-        note("Commit", "Committed <code>abc</code> to <code>main</code>.", true, 1),
+        note(
+            "Commit",
+            "Committed <code>abc</code> to <code>main</code>.",
+            true,
+            1,
+        ),
         tool("Read", "a.ts", "ok", 2),
     ]);
-    assert_eq!(blocks(&mut h), [Block::Msg(0), Block::Steps { start: 1, rows: vec![1] }]);
+    assert_eq!(
+        blocks(&mut h),
+        [
+            Block::Msg(0),
+            Block::Steps {
+                start: 1,
+                rows: vec![1]
+            }
+        ]
+    );
     assert!(h.has("notice:html:Committed <code>abc</code> to <code>main</code>."));
 
     h.set_messages(vec![note("Subagent", "Goal finished (child-1)", false, 1)]);
@@ -95,7 +141,10 @@ async fn subagent_notices_fold_into_the_following_steps_group(cx: &mut TestAppCo
 #[test]
 fn collapsed_session_card_meta_escapes_ordinary_notes() {
     let msgs = vec![note("Subagent", "fix <b>xss</b> (child-1)", false, 1)];
-    assert_eq!(last_meta(&msgs), Some(("fix <b>xss</b> (child-1)".into(), false)));
+    assert_eq!(
+        last_meta(&msgs),
+        Some(("fix <b>xss</b> (child-1)".into(), false))
+    );
 }
 
 fn coder() -> ChatLogSession {
@@ -121,12 +170,22 @@ fn log(l: ChatLog) -> AgentMsg {
 }
 
 #[gpui::test]
-async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default(), false);
-    let vcx = h.host.read_with(h.cx, |host, cx| recur_view_core::ViewContext {
-        state: host.chat.read(cx).state.clone(),
-        services: host.services.clone(),
-    });
+async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(
+    cx: &mut TestAppContext,
+) {
+    let mut h = boot(
+        cx,
+        MockOptions::default(),
+        readonly(),
+        ChatHooks::default(),
+        false,
+    );
+    let vcx = h
+        .host
+        .read_with(h.cx, |host, cx| recur_view_core::ViewContext {
+            state: host.chat.read(cx).state.clone(),
+            services: host.services.clone(),
+        });
     let cards: Rc<RefCell<HashMap<String, Entity<SessionCard>>>> = Default::default();
     let renderer: SessionCardRenderer = Rc::new(move |log, _, cx| {
         let props = SessionCardProps {
@@ -177,15 +236,45 @@ async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(c
 
 #[gpui::test]
 async fn final_reply_stays_visible_when_compaction_follows_the_turn(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default(), false);
+    let mut h = boot(
+        cx,
+        MockOptions::default(),
+        readonly(),
+        ChatHooks::default(),
+        false,
+    );
     let reply = "Check-in only renders when Apollo Sync returns one.";
     h.set_messages(vec![
-        AgentMsg { me: true, body: "where is check-in?".into(), ts: Some(1), ..Default::default() },
+        AgentMsg {
+            me: true,
+            body: "where is check-in?".into(),
+            ts: Some(1),
+            ..Default::default()
+        },
         tool("Read", "checkin.go", "ok", 2),
-        AgentMsg { thinking: true, body: "looking at mockup vs product".into(), ts: Some(3), ..Default::default() },
-        AgentMsg { body: reply.into(), ts: Some(4), ..Default::default() },
-        AgentMsg { compact: true, body: "folded prior turns".into(), ts: Some(5), ..Default::default() },
-        AgentMsg { turn_end: true, duration_ms: 42000, ts: Some(6), ..Default::default() },
+        AgentMsg {
+            thinking: true,
+            body: "looking at mockup vs product".into(),
+            ts: Some(3),
+            ..Default::default()
+        },
+        AgentMsg {
+            body: reply.into(),
+            ts: Some(4),
+            ..Default::default()
+        },
+        AgentMsg {
+            compact: true,
+            body: "folded prior turns".into(),
+            ts: Some(5),
+            ..Default::default()
+        },
+        AgentMsg {
+            turn_end: true,
+            duration_ms: 42000,
+            ts: Some(6),
+            ..Default::default()
+        },
     ]);
     let steps = blocks(&mut h)
         .into_iter()
@@ -194,7 +283,10 @@ async fn final_reply_stays_visible_when_compaction_follows_the_turn(cx: &mut Tes
             _ => None,
         })
         .expect("a steps group");
-    assert!(!steps.contains(&3), "the reply is not folded into the steps");
+    assert!(
+        !steps.contains(&3),
+        "the reply is not folded into the steps"
+    );
     let head = h.read(|c| {
         let msgs = c.transcript();
         crate::blocks::group_summary(&msgs, &steps, &steps, c.tool_data.cx())

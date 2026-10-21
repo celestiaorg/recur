@@ -20,8 +20,7 @@ use recur_engine::view::chat::{
 use recur_engine::view::composer::{ComposerAtt, HydrateOpts, PromptChipSpec};
 use recur_engine::view::digest::{TurnDigestFinding, TurnDigestNote, still_open_findings_for_turn};
 use recur_engine::view::mentions::{
-    MentionQuery, extract_attachment_ids,
-    strip_attachment_markers, unique_artifact_id_for_title,
+    MentionQuery, extract_attachment_ids, strip_attachment_markers, unique_artifact_id_for_title,
 };
 use recur_engine::view::prompts::{
     PromptArgsQuery, parse_committed_prompt_line, prompt_action_query_at, prompt_args_query_at,
@@ -176,7 +175,9 @@ pub struct OpenArtifact {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ChatEvent {
     /// `onSend(alt)`.
-    Send { alt: bool },
+    Send {
+        alt: bool,
+    },
     Stop,
     Retry,
     RemoveQueued(String),
@@ -189,19 +190,28 @@ pub enum ChatEvent {
         end_col: Option<i64>,
     },
     OpenArtifact(OpenArtifact),
-    AnswerEscalation { choice: String, text: String },
+    AnswerEscalation {
+        choice: String,
+        text: String,
+    },
     Fork(String),
     ForkToWorkspace(String),
     TurnDiff(String),
-    Reset { message_id: String, restores_files: bool },
-    PromptAction { slash: String, args: String, alt: bool },
+    Reset {
+        message_id: String,
+        restores_files: bool,
+    },
+    PromptAction {
+        slash: String,
+        args: String,
+        alt: bool,
+    },
     /// The draft changed (`bind:input` / `bind:attachments`).
     Draft,
 }
 
 /// Renders a specialist SessionCard for a cockpit session log (`sessionCard` snippet).
-pub type SessionCardRenderer =
-    Rc<dyn Fn(&ChatLogSession, &mut Window, &mut App) -> AnyElement>;
+pub type SessionCardRenderer = Rc<dyn Fn(&ChatLogSession, &mut Window, &mut App) -> AnyElement>;
 
 /// A skill in the `/` menu.
 #[derive(Clone, Debug, PartialEq)]
@@ -288,8 +298,12 @@ impl MentionHit {
                 },
             ) => a == b && aa == ba && ae == be,
             (
-                MentionHit::Artifact { title: a, kind: ak, .. },
-                MentionHit::Artifact { title: b, kind: bk, .. },
+                MentionHit::Artifact {
+                    title: a, kind: ak, ..
+                },
+                MentionHit::Artifact {
+                    title: b, kind: bk, ..
+                },
             ) => a == b && ak == bk,
             (MentionHit::File { dir: a, .. }, MentionHit::File { dir: b, .. }) => a == b,
             _ => false,
@@ -365,7 +379,13 @@ const CLOCK_TICK: Duration = Duration::from_millis(250);
 
 /// The text a debug selector carries for a row: its first non-blank line, at most 60 chars.
 pub fn debug_key(body: &str) -> String {
-    body.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("").chars().take(60).collect()
+    body.lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("")
+        .chars()
+        .take(60)
+        .collect()
 }
 
 pub(crate) fn now_ms() -> i64 {
@@ -407,7 +427,8 @@ pub struct AgentChat {
     pub(crate) tool_data: Rc<ToolData>,
     pub(crate) image_loading: HashMap<String, Task<()>>,
     /// Fork buttons' bounds from the last frame (the menu anchors to them).
-    pub(crate) fork_anchor: Rc<std::cell::RefCell<HashMap<String, gpui_kit::Bounds<gpui_kit::Pixels>>>>,
+    pub(crate) fork_anchor:
+        Rc<std::cell::RefCell<HashMap<String, gpui_kit::Bounds<gpui_kit::Pixels>>>>,
     pub(crate) composer_geom: Rc<crate::dock::ComposerGeom>,
     pub(crate) meter: Entity<crate::meter::ContextMeter>,
     pub(crate) selecting: bool,
@@ -512,7 +533,12 @@ impl Focusable for AgentChat {
 }
 
 impl AgentChat {
-    pub fn new(vcx: &ViewContext, props: ChatProps, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        vcx: &ViewContext,
+        props: ChatProps,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let state = vcx.state.clone();
         let initial = if props.reset_key.is_empty() {
             None
@@ -523,11 +549,13 @@ impl AgentChat {
             this.sync_mentions_from_stores(cx);
             cx.notify();
         })];
-        subs.push(cx.subscribe(&state, |_: &mut Self, _, ev: &ShellEvent, cx| {
-            if let ShellEvent::WorkspaceGone(_) = ev {
-                cx.notify();
-            }
-        }));
+        subs.push(
+            cx.subscribe(&state, |_: &mut Self, _, ev: &ShellEvent, cx| {
+                if let ShellEvent::WorkspaceGone(_) = ev {
+                    cx.notify();
+                }
+            }),
+        );
         subs.push(cx.observe_window_activation(window, |_, _, cx| cx.notify()));
         // Unmount parks the chrome under the key, as the resetKey effect's cleanup does.
         subs.push(cx.on_release(|this: &mut Self, cx| {
@@ -597,8 +625,14 @@ impl AgentChat {
             listed_artifacts_for_mention: false,
             menu_scroll: ScrollHandle::new(),
             last_menu_key: String::new(),
-            open_groups: initial.as_ref().map(|u| u.open_groups.clone()).unwrap_or_default(),
-            open_rows: initial.as_ref().map(|u| u.open_rows.clone()).unwrap_or_default(),
+            open_groups: initial
+                .as_ref()
+                .map(|u| u.open_groups.clone())
+                .unwrap_or_default(),
+            open_rows: initial
+                .as_ref()
+                .map(|u| u.open_rows.clone())
+                .unwrap_or_default(),
             finding_accord_open: initial
                 .as_ref()
                 .map(|u| u.finding_accord_open.clone())
@@ -614,11 +648,14 @@ impl AgentChat {
                 .as_ref()
                 .map(|u| u.fingerprint.clone())
                 .unwrap_or_default(),
-            pending_scroll: initial.as_ref().filter(|u| !u.near_bottom).map(|u| PendingScroll {
-                scroll_top: u.scroll_top,
-                near_bottom: u.near_bottom,
-                row_count: u.row_count,
-            }),
+            pending_scroll: initial
+                .as_ref()
+                .filter(|u| !u.near_bottom)
+                .map(|u| PendingScroll {
+                    scroll_top: u.scroll_top,
+                    near_bottom: u.near_bottom,
+                    row_count: u.row_count,
+                }),
             restore_attempts: 0,
             ignore_swap_scroll: 0,
             scroll: ScrollHandle::new(),
@@ -855,7 +892,9 @@ impl AgentChat {
         s.permission_requests
             .iter()
             .filter(|r| {
-                r.surface == "chat" && r.workspace_id == p.workspace_id && r.agent_code == p.agent_code
+                r.surface == "chat"
+                    && r.workspace_id == p.workspace_id
+                    && r.agent_code == p.agent_code
             })
             .cloned()
             .collect()
@@ -864,7 +903,11 @@ impl AgentChat {
     pub(crate) fn chat_questions(&self, cx: &App) -> Vec<UserQuestion> {
         let p = &self.props;
         let s = self.state.read(cx);
-        if p.readonly || p.workspace_id.is_empty() || p.agent_code.is_empty() || s.view != ViewName::Detail {
+        if p.readonly
+            || p.workspace_id.is_empty()
+            || p.agent_code.is_empty()
+            || s.view != ViewName::Detail
+        {
             return Vec::new();
         }
         s.user_questions
@@ -899,7 +942,11 @@ impl AgentChat {
 
     /// Queued follow-ups wait in a strip above the composer, not in the transcript.
     pub(crate) fn queued_messages(&self) -> Vec<&AgentMsg> {
-        self.props.messages.iter().filter(|m| m.queued && m.me).collect()
+        self.props
+            .messages
+            .iter()
+            .filter(|m| m.queued && m.me)
+            .collect()
     }
 
     pub(crate) fn transcript(&self) -> Vec<AgentMsg> {
@@ -922,7 +969,12 @@ impl AgentChat {
     }
 
     pub(crate) fn last_retry_error(&self, msgs: &[AgentMsg]) -> Option<usize> {
-        last_retry_error_index(msgs, self.props.readonly, self.props.sending, self.hooks.retry)
+        last_retry_error_index(
+            msgs,
+            self.props.readonly,
+            self.props.sending,
+            self.hooks.retry,
+        )
     }
 
     // ---- send / stop / retry ----
@@ -1058,7 +1110,11 @@ impl AgentChat {
         if self.props.reset_key.is_empty() {
             return;
         }
-        let (k, top, near) = (self.props.reset_key.clone(), self.last_scroll_top, self.near_bottom);
+        let (k, top, near) = (
+            self.props.reset_key.clone(),
+            self.last_scroll_top,
+            self.near_bottom,
+        );
         TranscriptUiCache::global(cx).save_scroll(&k, top, near);
     }
 
@@ -1167,7 +1223,8 @@ impl AgentChat {
         if self.near_bottom {
             self.pin_bottom();
         } else if self.last_scroll_top > 0. {
-            self.scroll.set_offset(point(px(0.), px(-self.last_scroll_top)));
+            self.scroll
+                .set_offset(point(px(0.), px(-self.last_scroll_top)));
         }
         cx.notify();
     }
@@ -1263,8 +1320,13 @@ impl AgentChat {
             if self.ignore_swap_scroll > 0 {
                 self.ignore_swap_scroll -= 1;
             } else {
-                self.near_bottom =
-                    next_near_bottom(self.near_bottom, self.last_scroll_top, content_h, top, viewport_h);
+                self.near_bottom = next_near_bottom(
+                    self.near_bottom,
+                    self.last_scroll_top,
+                    content_h,
+                    top,
+                    viewport_h,
+                );
                 self.last_scroll_top = top;
                 self.pending_scroll = None;
                 self.persist_scroll(cx);
@@ -1309,7 +1371,10 @@ impl AgentChat {
         }
         let max_scroll = (scroll_h - client_h).max(0.);
         let honored = saved.near_bottom || saved.scroll_top <= 0. || max_scroll >= saved.scroll_top;
-        if !honored && gate != ScrollRestoreGate::Abandon && self.restore_attempts < RESTORE_LAYOUT_FRAMES {
+        if !honored
+            && gate != ScrollRestoreGate::Abandon
+            && self.restore_attempts < RESTORE_LAYOUT_FRAMES
+        {
             self.restore_attempts += 1;
             self.near_bottom = false;
             cx.notify();
@@ -1365,8 +1430,15 @@ impl AgentChat {
                 at
             }
         };
-        let mut next = pick_hydrated(&keys, &selected, &in_view, CHAT_HYDRATE_MAX, CHAT_HYDRATE_OVERSCAN);
-        if !self.reveal_key.is_empty() && self.block_ranges.borrow().contains_key(&self.reveal_key) {
+        let mut next = pick_hydrated(
+            &keys,
+            &selected,
+            &in_view,
+            CHAT_HYDRATE_MAX,
+            CHAT_HYDRATE_OVERSCAN,
+        );
+        if !self.reveal_key.is_empty() && self.block_ranges.borrow().contains_key(&self.reveal_key)
+        {
             next.insert(self.reveal_key.clone());
         }
         let next: HashSet<String> = next.into_iter().collect();
@@ -1500,7 +1572,12 @@ impl AgentChat {
 
     // ---- copy ----
 
-    pub(crate) fn mark_copied(&mut self, row: Option<String>, bubble: Option<String>, cx: &mut Context<Self>) {
+    pub(crate) fn mark_copied(
+        &mut self,
+        row: Option<String>,
+        bubble: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
         self.copied_row = row.clone();
         self.copied_bubble = bubble.clone();
         cx.notify();
@@ -1526,7 +1603,11 @@ impl AgentChat {
 
     // ---- the turn digest ----
 
-    pub(crate) fn turn_digest_visible(&self, msgs: &[AgentMsg], end_idx: usize) -> Vec<TurnDigestFinding> {
+    pub(crate) fn turn_digest_visible(
+        &self,
+        msgs: &[AgentMsg],
+        end_idx: usize,
+    ) -> Vec<TurnDigestFinding> {
         let refs: Vec<_> = self.props.findings.iter().map(digest_ref).collect();
         still_open_findings_for_turn(msgs, end_idx, &refs)
             .into_iter()
@@ -1562,22 +1643,38 @@ impl AgentChat {
         self.digest_notes_at = Some(self.findings_gen);
     }
 
-    pub(crate) fn set_digest_finding_status(&mut self, id: &str, status: &str, cx: &mut Context<Self>) {
-        if self.props.workspace_id.is_empty() || id.is_empty() || !self.digest_status_busy.is_empty() {
+    pub(crate) fn set_digest_finding_status(
+        &mut self,
+        id: &str,
+        status: &str,
+        cx: &mut Context<Self>,
+    ) {
+        if self.props.workspace_id.is_empty()
+            || id.is_empty()
+            || !self.digest_status_busy.is_empty()
+        {
             return;
         }
         self.digest_status_busy = id.to_string();
         let prev = self.digest_status_by_id.get(id).cloned();
-        self.digest_status_by_id.insert(id.to_string(), status.to_string());
+        self.digest_status_by_id
+            .insert(id.to_string(), status.to_string());
         if self.digest_comment_for == id {
             self.digest_comment_for.clear();
             self.digest_comment_input = None;
         }
         cx.notify();
         let services = self.services.clone();
-        let (ws, id, status) = (self.props.workspace_id.clone(), id.to_string(), status.to_string());
+        let (ws, id, status) = (
+            self.props.workspace_id.clone(),
+            id.to_string(),
+            status.to_string(),
+        );
         cx.spawn(async move |this, cx| {
-            let res = services.observatory.set_finding_status(&ws, &id, &status).await;
+            let res = services
+                .observatory
+                .set_finding_status(&ws, &id, &status)
+                .await;
             let _ = this.update(cx, |c, cx| {
                 if let Err(err) = res {
                     match prev {
@@ -1587,7 +1684,11 @@ impl AgentChat {
                     let msg = recur_view_core::bridge_error_message(&err);
                     recur_view_core::toast(
                         recur_ui::widgets::toasts::ToastKind::Error,
-                        if msg.is_empty() { "Could not update finding".into() } else { msg },
+                        if msg.is_empty() {
+                            "Could not update finding".into()
+                        } else {
+                            msg
+                        },
                         cx,
                     );
                 }
@@ -1608,7 +1709,10 @@ impl AgentChat {
             })
             .flatten()
             .cloned();
-        let (ws, project) = (self.props.workspace_id.clone(), self.props.project_id.clone());
+        let (ws, project) = (
+            self.props.workspace_id.clone(),
+            self.props.project_id.clone(),
+        );
         let id = id.to_string();
         self.state.update(cx, |s, cx| {
             s.observatory_jump = Some(recur_view_core::ObsJump {
@@ -1625,7 +1729,12 @@ impl AgentChat {
         });
     }
 
-    pub(crate) fn open_digest_compose(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn open_digest_compose(
+        &mut self,
+        id: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if id.is_empty() {
             return;
         }
@@ -1678,7 +1787,11 @@ impl AgentChat {
                         let msg = recur_view_core::bridge_error_message(&err);
                         recur_view_core::toast(
                             recur_ui::widgets::toasts::ToastKind::Error,
-                            if msg.is_empty() { "Could not add note".into() } else { msg },
+                            if msg.is_empty() {
+                                "Could not add note".into()
+                            } else {
+                                msg
+                            },
                             cx,
                         );
                     }
@@ -1690,7 +1803,12 @@ impl AgentChat {
         .detach();
     }
 
-    pub(crate) fn delete_digest_note(&mut self, finding_id: &str, note_id: &str, cx: &mut Context<Self>) {
+    pub(crate) fn delete_digest_note(
+        &mut self,
+        finding_id: &str,
+        note_id: &str,
+        cx: &mut Context<Self>,
+    ) {
         if self.props.workspace_id.is_empty()
             || finding_id.is_empty()
             || note_id.is_empty()
@@ -1713,7 +1831,11 @@ impl AgentChat {
         self.digest_comment_busy = finding_id.to_string();
         self.apply_digest_notes(
             finding_id,
-            current.iter().filter(|n| n.id != note_id).cloned().collect(),
+            current
+                .iter()
+                .filter(|n| n.id != note_id)
+                .cloned()
+                .collect(),
         );
         cx.notify();
         let services = self.services.clone();
@@ -1723,16 +1845,25 @@ impl AgentChat {
             note_id.to_string(),
         );
         cx.spawn(async move |this, cx| {
-            let res = services.observatory.delete_finding_note(&ws, &fid, &nid).await;
+            let res = services
+                .observatory
+                .delete_finding_note(&ws, &fid, &nid)
+                .await;
             let _ = this.update(cx, |c, cx| {
                 match res {
-                    Ok(updated) => c.apply_digest_notes(&fid, crate::findings_ui::finding_notes(&updated)),
+                    Ok(updated) => {
+                        c.apply_digest_notes(&fid, crate::findings_ui::finding_notes(&updated))
+                    }
                     Err(err) => {
                         c.apply_digest_notes(&fid, current);
                         let msg = recur_view_core::bridge_error_message(&err);
                         recur_view_core::toast(
                             recur_ui::widgets::toasts::ToastKind::Error,
-                            if msg.is_empty() { "Could not delete note".into() } else { msg },
+                            if msg.is_empty() {
+                                "Could not delete note".into()
+                            } else {
+                                msg
+                            },
                             cx,
                         );
                     }
@@ -1758,7 +1889,11 @@ impl AgentChat {
             cx.emit(ChatEvent::Fork(message_id.to_string()));
             return;
         }
-        if self.fork_menu.as_ref().is_some_and(|m| m.message_id == message_id) {
+        if self
+            .fork_menu
+            .as_ref()
+            .is_some_and(|m| m.message_id == message_id)
+        {
             self.fork_menu = None;
             cx.notify();
             return;
@@ -1784,7 +1919,13 @@ impl AgentChat {
 
     // ---- lightbox ----
 
-    pub(crate) fn open_lightbox(&mut self, src: &str, name: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn open_lightbox(
+        &mut self,
+        src: &str,
+        name: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if src.is_empty() {
             return;
         }
@@ -1801,8 +1942,9 @@ impl AgentChat {
                 Rc::new(move |_, cx: &mut App| {
                     let _ = this.update(cx, |c, cx| {
                         c.lightbox = None;
-                        c.state
-                            .update(cx, |s, cx| s.set_chat_occluder("attachment-lightbox", false, cx));
+                        c.state.update(cx, |s, cx| {
+                            s.set_chat_occluder("attachment-lightbox", false, cx)
+                        });
                         cx.notify();
                     });
                 }),
@@ -1823,7 +1965,9 @@ impl AgentChat {
             );
         });
         self._subs.push(sub);
-        self.state.update(cx, |s, cx| s.set_chat_occluder("attachment-lightbox", true, cx));
+        self.state.update(cx, |s, cx| {
+            s.set_chat_occluder("attachment-lightbox", true, cx)
+        });
         self.lightbox = Some(lb);
         cx.notify();
     }
@@ -1848,22 +1992,25 @@ impl AgentChat {
                 cx,
             )
         });
-        let sub = cx.subscribe(&menu, |this: &mut Self, _, ev: &recur_content::image_menu::ImageMenuEvent, cx| {
-            use recur_content::image_menu::ImageMenuEvent;
-            match ev {
-                ImageMenuEvent::Close => this.img_ctx = None,
-                ImageMenuEvent::Toast { error, message } => recur_view_core::toast(
-                    if *error {
-                        recur_ui::widgets::toasts::ToastKind::Error
-                    } else {
-                        recur_ui::widgets::toasts::ToastKind::Success
-                    },
-                    message.clone(),
-                    cx,
-                ),
-            }
-            cx.notify();
-        });
+        let sub = cx.subscribe(
+            &menu,
+            |this: &mut Self, _, ev: &recur_content::image_menu::ImageMenuEvent, cx| {
+                use recur_content::image_menu::ImageMenuEvent;
+                match ev {
+                    ImageMenuEvent::Close => this.img_ctx = None,
+                    ImageMenuEvent::Toast { error, message } => recur_view_core::toast(
+                        if *error {
+                            recur_ui::widgets::toasts::ToastKind::Error
+                        } else {
+                            recur_ui::widgets::toasts::ToastKind::Success
+                        },
+                        message.clone(),
+                        cx,
+                    ),
+                }
+                cx.notify();
+            },
+        );
         self._subs.push(sub);
         self.img_ctx = Some(menu);
         cx.notify();
@@ -1882,14 +2029,24 @@ impl AgentChat {
         t.bg
     }
 
-    pub(crate) fn hydrate_opts_titles(&self, cx: &App) -> (HashMap<String, String>, HashMap<String, String>, Vec<(String, String)>) {
+    pub(crate) fn hydrate_opts_titles(
+        &self,
+        cx: &App,
+    ) -> (
+        HashMap<String, String>,
+        HashMap<String, String>,
+        Vec<(String, String)>,
+    ) {
         let terms = self
             .live_terminals(cx)
             .into_iter()
             .map(|t| (t.id, t.title))
             .collect();
         let arts = self.live_artifacts(cx);
-        let titles = arts.iter().map(|a| (a.id.clone(), a.title.clone())).collect();
+        let titles = arts
+            .iter()
+            .map(|a| (a.id.clone(), a.title.clone()))
+            .collect();
         let pairs = arts.into_iter().map(|a| (a.id, a.title)).collect();
         (terms, titles, pairs)
     }
@@ -1972,7 +2129,10 @@ impl AgentChat {
                     atts: self.attachments.clone(),
                     caret: self.doc.wire_caret(),
                 },
-                cx.background_executor().now().duration_since(self.undo_epoch).as_millis() as u64,
+                cx.background_executor()
+                    .now()
+                    .duration_since(self.undo_epoch)
+                    .as_millis() as u64,
             );
         }
         cx.emit(ChatEvent::Draft);

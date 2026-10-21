@@ -83,7 +83,11 @@ fn rs(key: RowKey, label: impl Into<String>, live: bool) -> RowState {
 }
 
 /// `rowState`.
-pub fn row_state(c: &FanOutChild, ws: Option<&Workspace>, running: &std::collections::HashSet<String>) -> RowState {
+pub fn row_state(
+    c: &FanOutChild,
+    ws: Option<&Workspace>,
+    running: &std::collections::HashSet<String>,
+) -> RowState {
     let fin = c.state.to_lowercase();
     if fin.starts_with("conflict") {
         return rs(RowKey::Conflict, c.state.clone(), false);
@@ -98,12 +102,24 @@ pub fn row_state(c: &FanOutChild, ws: Option<&Workspace>, running: &std::collect
         return rs(RowKey::Merged, "merged", false);
     }
     let Some(ws) = ws else {
-        return rs(RowKey::Queued, if c.state.is_empty() { "starting".into() } else { c.state.clone() }, false);
+        return rs(
+            RowKey::Queued,
+            if c.state.is_empty() {
+                "starting".into()
+            } else {
+                c.state.clone()
+            },
+            false,
+        );
     };
     let is_running = workspace_is_running(ws, running);
     let state = ws.state.as_str();
     if is_running && state != "escalated" {
-        let phase = if !c.steps.is_empty() && !ws.phase.is_empty() && ws.phase != "idle" && ws.phase != "starting" {
+        let phase = if !c.steps.is_empty()
+            && !ws.phase.is_empty()
+            && ws.phase != "idle"
+            && ws.phase != "starting"
+        {
             ws.phase.clone()
         } else {
             "working".into()
@@ -112,7 +128,11 @@ pub fn row_state(c: &FanOutChild, ws: Option<&Workspace>, running: &std::collect
     }
     if c.steps.is_empty() && !["failed", "stopped", "escalated"].contains(&state) {
         let finished = c.state == "settled" || ws.phase == "idle";
-        return rs(RowKey::Done, if finished { "finished" } else { "idle" }, false);
+        return rs(
+            RowKey::Done,
+            if finished { "finished" } else { "idle" },
+            false,
+        );
     }
     let or = |a: &str, b: &str, c: &str| -> String {
         if !a.is_empty() {
@@ -126,12 +146,20 @@ pub fn row_state(c: &FanOutChild, ws: Option<&Workspace>, running: &std::collect
     match state {
         "escalated" => rs(RowKey::Needs, "needs you", false),
         "reviewing" => rs(RowKey::Reviewing, "reviewing", is_running),
-        "coding" | "planning" => rs(RowKey::Running, or(&ws.phase, &ws.status_label, "working"), is_running),
+        "coding" | "planning" => rs(
+            RowKey::Running,
+            or(&ws.phase, &ws.status_label, "working"),
+            is_running,
+        ),
         "queued" => rs(RowKey::Queued, "queued", false),
         "failed" | "stopped" => rs(RowKey::Failed, state, false),
         "paused" => rs(
             RowKey::Done,
-            if ws.phase == "artifact" || ws.phase == "idle" { "finished" } else { "paused" },
+            if ws.phase == "artifact" || ws.phase == "idle" {
+                "finished"
+            } else {
+                "paused"
+            },
             false,
         ),
         _ => rs(RowKey::Running, or(&ws.status_label, state, ""), is_running),
@@ -202,7 +230,12 @@ impl FanOutCard {
     }
 
     fn workspace<'a>(&self, id: &str, cx: &'a gpui_kit::App) -> Option<&'a Workspace> {
-        self.vcx.state.read(cx).workspaces.iter().find(|w| w.id == id)
+        self.vcx
+            .state
+            .read(cx)
+            .workspaces
+            .iter()
+            .find(|w| w.id == id)
     }
 
     fn is_openable(&self, c: &FanOutChild, cx: &gpui_kit::App) -> bool {
@@ -211,13 +244,24 @@ impl FanOutCard {
 
     /// A Plan-panel link asked for one of our children: expand it and flash the row.
     fn take_child_request(&mut self, cx: &mut Context<Self>) {
-        let Some(id) = self.vcx.state.read(cx).child_transcript_request().map(str::to_string) else {
+        let Some(id) = self
+            .vcx
+            .state
+            .read(cx)
+            .child_transcript_request()
+            .map(str::to_string)
+        else {
             return;
         };
-        let Some(child) = self.wave().and_then(|w| w.children.into_iter().find(|c| c.id == id)) else {
+        let Some(child) = self
+            .wave()
+            .and_then(|w| w.children.into_iter().find(|c| c.id == id))
+        else {
             return;
         };
-        self.vcx.state.update(cx, |s, _| s.clear_child_transcript_request());
+        self.vcx
+            .state
+            .update(cx, |s, _| s.clear_child_transcript_request());
         self.flash = Some((id.clone(), Instant::now()));
         self.open_ids.insert(id, true);
         self.load_transcript(&child, cx);
@@ -274,7 +318,8 @@ impl FanOutCard {
                         live_ts: None,
                     })
                     .collect();
-                let messages = merge_loop_cockpit(&conductor, &sessions, &fx.unwrap_or_default(), &[], &goal);
+                let messages =
+                    merge_loop_cockpit(&conductor, &sessions, &fx.unwrap_or_default(), &[], &goal);
                 let _ = this.update(cx, |c, cx| {
                     c.transcripts.insert(
                         key.clone(),
@@ -295,7 +340,9 @@ impl FanOutCard {
     fn on_row(&mut self, c: &FanOutChild, cx: &mut Context<Self>) {
         if self.is_openable(c, cx) {
             let id = c.id.clone();
-            self.vcx.state.update(cx, |s, cx| s.open_workspace(&id, false, cx));
+            self.vcx
+                .state
+                .update(cx, |s, cx| s.open_workspace(&id, false, cx));
             return;
         }
         let next = !self.open_ids.get(&c.id).copied().unwrap_or(false);
@@ -307,8 +354,16 @@ impl FanOutCard {
     }
 
     /// The read-only chat for a child's transcript, with specialist cards.
-    fn child_chat(&mut self, child: &FanOutChild, window: &mut Window, cx: &mut Context<Self>) -> Option<Entity<AgentChat>> {
-        let root_path = self.workspace(&child.id, cx).map(|w| w.worktree_path.clone()).unwrap_or_default();
+    fn child_chat(
+        &mut self,
+        child: &FanOutChild,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<Entity<AgentChat>> {
+        let root_path = self
+            .workspace(&child.id, cx)
+            .map(|w| w.worktree_path.clone())
+            .unwrap_or_default();
         let t = self.transcripts.get_mut(&child.id)?;
         if let Some(c) = &t.chat {
             return Some(c.clone());
@@ -327,9 +382,14 @@ impl FanOutCard {
         let chat = cx.new(|cx| {
             let mut c = AgentChat::new(&vcx, props, window, cx);
             let vcx2 = vcx.clone();
-            let cards: std::rc::Rc<std::cell::RefCell<HashMap<String, Entity<SessionCard>>>> = Default::default();
+            let cards: std::rc::Rc<std::cell::RefCell<HashMap<String, Entity<SessionCard>>>> =
+                Default::default();
             let renderer: SessionCardRenderer = std::rc::Rc::new(move |log, _, cx| {
-                let key = if log.id.is_empty() { log.code.clone() } else { log.id.clone() };
+                let key = if log.id.is_empty() {
+                    log.code.clone()
+                } else {
+                    log.id.clone()
+                };
                 let props = SessionCardProps {
                     code: log.code.clone(),
                     name: log.name.clone(),
@@ -373,7 +433,9 @@ impl Render for FanOutCard {
                 .pl(px(2.))
                 .pr(px(6.))
                 .text_size(px(12.))
-                .child(div().flex_1().min_w_0().overflow_hidden().child(crate::html_inline::inline_html("fanout-fallback".into(), &self.fallback, st)))
+                .child(div().flex_1().min_w_0().overflow_hidden().child(
+                    crate::html_inline::inline_html("fanout-fallback".into(), &self.fallback, st),
+                ))
                 .into_any_element();
         };
         let running = self.vcx.state.read(cx).workspaces_running.clone();
@@ -393,19 +455,56 @@ impl Render for FanOutCard {
             .text_color(hsla(t.muted))
             .border_b_1()
             .border_color(hsla(t.line))
-            .child(div().size(px(14.)).flex().items_center().justify_center().child(icon(IconName::GitFork).size(px(14.)).color(hsla(t.amber))))
-            .child(label(wave.title.clone().unwrap_or_else(|| format!("Wave {}", wave.wave)), Family::Ui, 12., 600.).color(t.text));
+            .child(
+                div()
+                    .size(px(14.))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(icon(IconName::GitFork).size(px(14.)).color(hsla(t.amber))),
+            )
+            .child(
+                label(
+                    wave.title
+                        .clone()
+                        .unwrap_or_else(|| format!("Wave {}", wave.wave)),
+                    Family::Ui,
+                    12.,
+                    600.,
+                )
+                .color(t.text),
+            );
         if !wave.after.is_empty() {
             head = head.child(recur_ui::tooltip::titled(
                 SharedString::from(format!("fanout-{}-after", wave.wave)),
                 "Started when these steps landed",
-                label(format!("after {}", wave.after.join(", ")), Family::Ui, 12., 400.).color(t.muted),
+                label(
+                    format!("after {}", wave.after.join(", ")),
+                    Family::Ui,
+                    12.,
+                    400.,
+                )
+                .color(t.muted),
             ));
         }
         head = head
-            .child(label(format!("{n} child workspace{}", if n == 1 { "" } else { "s" }), Family::Ui, 12., 400.).color(t.muted))
-            .child(div().ml_auto().child(label(wave_summary(&states), Family::Ui, 11., 400.).color(t.muted)));
-        let mut card = recur_ui::style::card(t.pane, t.line, 8.).overflow_hidden().child(head);
+            .child(
+                label(
+                    format!("{n} child workspace{}", if n == 1 { "" } else { "s" }),
+                    Family::Ui,
+                    12.,
+                    400.,
+                )
+                .color(t.muted),
+            )
+            .child(
+                div()
+                    .ml_auto()
+                    .child(label(wave_summary(&states), Family::Ui, 11., 400.).color(t.muted)),
+            );
+        let mut card = recur_ui::style::card(t.pane, t.line, 8.)
+            .overflow_hidden()
+            .child(head);
         let flash = self.flash.clone();
         for (ci, c) in wave.children.iter().enumerate() {
             let st = &states[ci];
@@ -415,22 +514,41 @@ impl Render for FanOutCard {
             let group = SharedString::from(format!("{id}-g"));
             let mut chips = div().flex().gap(px(4.));
             let tstep = |s: String, fg: recur_ui::Color, bg: recur_ui::Color| {
-                div().bg(hsla(bg)).rounded(px(4.)).px(px(5.)).py(px(2.)).child(label(s, Family::Mono, 10., 400.).line_height(LineHeight::Normal).color(fg))
+                div()
+                    .bg(hsla(bg))
+                    .rounded(px(4.))
+                    .px(px(5.))
+                    .py(px(2.))
+                    .child(
+                        label(s, Family::Mono, 10., 400.)
+                            .line_height(LineHeight::Normal)
+                            .color(fg),
+                    )
             };
             if !c.mode.is_empty() {
                 let mm = ChatMode::from_key(&c.mode);
-                chips = chips.child(tstep(mm.label().into(), mm.tint(&t), mm.tint(&t).mix(0.14, recur_ui::color::TRANSPARENT)));
+                chips = chips.child(tstep(
+                    mm.label().into(),
+                    mm.tint(&t),
+                    mm.tint(&t).mix(0.14, recur_ui::color::TRANSPARENT),
+                ));
             }
             for s in &c.steps {
                 chips = chips.child(tstep(s.clone(), t.faint, t.pane_2));
             }
-            let mut name = div()
-                .flex_1()
-                .min_w_0()
-                .overflow_hidden()
-                .child(text(c.title.clone()).color(t.text).line_height(LineHeight::Normal).truncate());
+            let mut name = div().flex_1().min_w_0().overflow_hidden().child(
+                text(c.title.clone())
+                    .color(t.text)
+                    .line_height(LineHeight::Normal)
+                    .truncate(),
+            );
             if c.steps.is_empty() && !c.note.is_empty() {
-                name = name.child(text(c.note.clone()).id(SharedString::from(format!("{id}-note"))).size(11.).color(t.faint));
+                name = name.child(
+                    text(c.note.clone())
+                        .id(SharedString::from(format!("{id}-note")))
+                        .size(11.)
+                        .color(t.faint),
+                );
             }
             let color = match st.key {
                 RowKey::Merged => t.indigo,
@@ -438,18 +556,37 @@ impl Render for FanOutCard {
                 RowKey::Needs => t.amber,
                 _ => t.muted,
             };
-            let mut state = div().flex_none().flex().items_center().gap(px(6.)).text_size(px(11.)).text_color(hsla(color));
+            let mut state = div()
+                .flex_none()
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .text_size(px(11.))
+                .text_color(hsla(color));
             state = if st.live {
-                state.child(div().size(px(14.)).flex().items_center().justify_center().child(running_dot(&t)))
+                state.child(
+                    div()
+                        .size(px(14.))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(running_dot(&t)),
+                )
             } else {
                 match st.key {
                     RowKey::Merged => state.child(icon(IconName::GitMerge).size(px(12.))),
                     RowKey::Needs => state.child(icon(IconName::CircleAlert).size(px(12.))),
-                    RowKey::Failed | RowKey::Conflict => state.child(icon(IconName::OctagonX).size(px(12.))),
+                    RowKey::Failed | RowKey::Conflict => {
+                        state.child(icon(IconName::OctagonX).size(px(12.)))
+                    }
                     _ => state,
                 }
             };
-            state = state.child(text(st.label.clone()).line_height(LineHeight::Normal).nowrap());
+            state = state.child(
+                text(st.label.clone())
+                    .line_height(LineHeight::Normal)
+                    .nowrap(),
+            );
             let tip = if openable {
                 format!("Open {}", c.id)
             } else if !c.note.is_empty() {
@@ -458,14 +595,21 @@ impl Render for FanOutCard {
                 "Show the child transcript".into()
             };
             // `fanout-flash`: amber-d through 30%, fading out by 1.4s.
-            let flash_bg = flash.as_ref().filter(|(fid, _)| fid == &c.id).map(|(_, at)| {
-                let p = motion::progress(*at, Duration::from_millis(1400), cx);
-                if p < 1. && !motion::is_frozen(cx) {
-                    window.request_animation_frame();
-                }
-                let k = if p <= 0.3 { 1. } else { 1. - motion::Easing::EASE_OUT.apply((p - 0.3) / 0.7) };
-                t.amber_d.fade(k)
-            });
+            let flash_bg = flash
+                .as_ref()
+                .filter(|(fid, _)| fid == &c.id)
+                .map(|(_, at)| {
+                    let p = motion::progress(*at, Duration::from_millis(1400), cx);
+                    if p < 1. && !motion::is_frozen(cx) {
+                        window.request_animation_frame();
+                    }
+                    let k = if p <= 0.3 {
+                        1.
+                    } else {
+                        1. - motion::Easing::EASE_OUT.apply((p - 0.3) / 0.7)
+                    };
+                    t.amber_d.fade(k)
+                });
             let child = c.clone();
             let row = div()
                 .id(id.clone())
@@ -481,11 +625,21 @@ impl Render for FanOutCard {
                 .when_some(flash_bg, |d, bg| d.bg(hsla(bg)))
                 .cursor_pointer()
                 .hover(|s| s.bg(hsla(t.pane_2)))
-                .child(steps_slot(&group, chips.into_any_element(), !openable, expanded, &t))
+                .child(steps_slot(
+                    &group,
+                    chips.into_any_element(),
+                    !openable,
+                    expanded,
+                    &t,
+                ))
                 .child(name)
                 .child(state)
                 .on_click(cx.listener(move |c, _, _, cx| c.on_row(&child, cx)));
-            card = card.child(recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, row));
+            card = card.child(recur_ui::tooltip::titled(
+                SharedString::from(format!("{id}-tip")),
+                tip,
+                row,
+            ));
             if expanded && !openable {
                 let body: AnyElement = match self.transcripts.get(&c.id) {
                     Some(tr) if !tr.loading && !tr.messages.is_empty() => {
@@ -498,7 +652,9 @@ impl Render for FanOutCard {
                             .children(chat)
                             .into_any_element()
                     }
-                    Some(tr) if !tr.loading => empty_note("No transcript was recorded for this child.", &t),
+                    Some(tr) if !tr.loading => {
+                        empty_note("No transcript was recorded for this child.", &t)
+                    }
                     _ => empty_note("Loading transcript…", &t),
                 };
                 card = card.child(
@@ -519,7 +675,9 @@ impl Render for FanOutCard {
 
 /// `.fanout-transcript-empty` (unstyled: the card's 13px text).
 fn empty_note(s: &str, t: &recur_ui::Tokens) -> AnyElement {
-    div().child(text(s.to_string()).size(13.).color(t.text)).into_any_element()
+    div()
+        .child(text(s.to_string()).size(13.).color(t.text))
+        .into_any_element()
 }
 
 #[cfg(test)]
@@ -538,11 +696,23 @@ mod tests {
     #[test]
     fn row_states_follow_the_store_and_the_final_outcome() {
         let none = std::collections::HashSet::new();
-        assert_eq!(row_state(&child("conflict in a.go", &[]), None, &none).key, RowKey::Conflict);
-        assert_eq!(row_state(&child("", &["S1"]), None, &none).label, "starting");
-        let mut ws = Workspace { id: "c1".into(), ..Default::default() };
+        assert_eq!(
+            row_state(&child("conflict in a.go", &[]), None, &none).key,
+            RowKey::Conflict
+        );
+        assert_eq!(
+            row_state(&child("", &["S1"]), None, &none).label,
+            "starting"
+        );
+        let mut ws = Workspace {
+            id: "c1".into(),
+            ..Default::default()
+        };
         ws.state = recur_domain::WorkspaceState::Escalated;
-        assert_eq!(row_state(&child("", &["S1"]), Some(&ws), &none).key, RowKey::Needs);
+        assert_eq!(
+            row_state(&child("", &["S1"]), Some(&ws), &none).key,
+            RowKey::Needs
+        );
         let running: std::collections::HashSet<String> = ["c1".to_string()].into();
         ws.state = recur_domain::WorkspaceState::Coding;
         ws.phase = "editing".into();

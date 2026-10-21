@@ -527,7 +527,11 @@ impl Render for MarkdownView {
         if changed {
             cx.emit(MarkdownEvent::TextChanged);
         }
-        let (first, last) = if sheet.collapse_edges { (0., 0.) } else { (first, last) };
+        let (first, last) = if sheet.collapse_edges {
+            (0., 0.)
+        } else {
+            (first, last)
+        };
         let gap_top = crate::render::exact::vgap(first, b.window);
         let gap_bottom = crate::render::exact::vgap(last, b.window);
         let this = cx.entity().downgrade();

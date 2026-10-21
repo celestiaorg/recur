@@ -137,12 +137,12 @@ pub fn ws_main_blocked(w: Option<&Workspace>) -> bool {
     ws_creating(w)
 }
 
+use recur_engine::view::modes as rules;
 pub use recur_engine::view::modes::{
     CatalogModel, ModelPick, NEW_CHAT_TITLE, chat_has_started, default_model_for_mode,
-    is_mode_default_selection, picker_after_mode_change, resolved_default_for_mode,
-    ws_chat_held, ws_create_failed, ws_setup_status,
+    is_mode_default_selection, picker_after_mode_change, resolved_default_for_mode, ws_chat_held,
+    ws_create_failed, ws_setup_status,
 };
-use recur_engine::view::modes as rules;
 
 /// How a chat tab's agent may act. The mode belongs to the chat session; the rules over it
 /// are `recur_engine::view::modes`, this adds the dock's icon and tint.
@@ -213,7 +213,11 @@ impl ChatMode {
 
     /// `cycleChatMode`.
     pub fn cycle(self, exclude_loop: bool, exclude_agent: bool) -> ChatMode {
-        ChatMode::from_key(rules::cycle_chat_mode(self.key(), exclude_loop, exclude_agent))
+        ChatMode::from_key(rules::cycle_chat_mode(
+            self.key(),
+            exclude_loop,
+            exclude_agent,
+        ))
     }
 
     /// `chatModeOptions`.

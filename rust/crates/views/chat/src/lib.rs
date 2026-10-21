@@ -61,25 +61,25 @@ pub mod flow;
 #[cfg(feature = "gallery")]
 pub mod gallery;
 pub mod glance;
+pub mod heap;
+pub mod hoist;
 pub mod html_inline;
 pub mod meter;
 pub mod palettes;
 pub mod pickers;
-pub mod prompts;
-pub mod heap;
-pub mod hoist;
 pub mod prompt_actions;
+pub mod prompts;
 pub mod rows;
 pub mod session_events;
 pub mod session_feed;
+pub mod shhl;
 #[cfg(test)]
 mod spec;
-pub mod shhl;
 pub mod strip;
-pub mod suggest;
 pub mod style;
-pub mod transcript;
+pub mod suggest;
 pub mod tools;
+pub mod transcript;
 pub mod transcript_ui;
 pub mod view;
 pub mod window;
@@ -87,19 +87,26 @@ pub mod window;
 /// Registers the chat's overlays with the shell.
 pub fn register(r: &mut ViewRegistry) {
     r.overlay(OverlaySlot::EmojiSuggest, |_, _, cx| {
-        cx.new(|cx| suggest::SuggestOverlay::new(suggest::SuggestKind::Emoji, cx)).into()
+        cx.new(|cx| suggest::SuggestOverlay::new(suggest::SuggestKind::Emoji, cx))
+            .into()
     });
     r.overlay(OverlaySlot::UserMentionSuggest, |_, _, cx| {
-        cx.new(|cx| suggest::SuggestOverlay::new(suggest::SuggestKind::Mention, cx)).into()
+        cx.new(|cx| suggest::SuggestOverlay::new(suggest::SuggestKind::Mention, cx))
+            .into()
     });
     r.overlay(OverlaySlot::StopPalette, |vcx: &ViewContext, window, cx| {
         let state = vcx.state.clone();
-        cx.new(|cx| palettes::StopPalette::new(state, window, cx)).into()
+        cx.new(|cx| palettes::StopPalette::new(state, window, cx))
+            .into()
     });
-    r.overlay(OverlaySlot::PermissionPrompts, |vcx: &ViewContext, _, cx| {
-        let state = vcx.state.clone();
-        cx.new(|cx| prompts::PermissionPrompts::new(state, cx)).into()
-    });
+    r.overlay(
+        OverlaySlot::PermissionPrompts,
+        |vcx: &ViewContext, _, cx| {
+            let state = vcx.state.clone();
+            cx.new(|cx| prompts::PermissionPrompts::new(state, cx))
+                .into()
+        },
+    );
     r.overlay(OverlaySlot::QuestionPrompts, |vcx: &ViewContext, _, cx| {
         let state = vcx.state.clone();
         cx.new(|cx| prompts::QuestionPrompts::new(state, cx)).into()

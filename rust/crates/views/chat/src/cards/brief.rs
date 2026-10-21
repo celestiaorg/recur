@@ -37,7 +37,13 @@ fn reason_meta(reason: &str, t: &Tokens) -> (IconName, Color) {
 }
 
 /// `.ity`: the 24px reason tile.
-fn tile(brief: &WorkspaceBrief, row: bool, epoch: std::time::Instant, window: &mut Window, cx: &App) -> AnyElement {
+fn tile(
+    brief: &WorkspaceBrief,
+    row: bool,
+    epoch: std::time::Instant,
+    window: &mut Window,
+    cx: &App,
+) -> AnyElement {
     let t = Theme::of(cx).tokens;
     let reason = brief
         .reasons
@@ -104,7 +110,11 @@ fn title_row(brief: &WorkspaceBrief, wrap: bool, extra: Vec<Span>, t: &Tokens) -
     }
     spans.extend(extra);
     let tx = Text::from_spans(spans).size(13.).weight(600.).color(t.text);
-    if wrap { tx.break_anywhere() } else { tx.truncate() }
+    if wrap {
+        tx.break_anywhere()
+    } else {
+        tx.truncate()
+    }
 }
 
 /// The card variant (`present_workspace` in a transcript).
@@ -150,7 +160,11 @@ pub fn brief_card(
             ),
         );
     }
-    let next = if brief.now.is_empty() { &brief.next } else { &brief.now };
+    let next = if brief.now.is_empty() {
+        &brief.next
+    } else {
+        &brief.now
+    };
     if !next.is_empty() {
         main = main.child(
             div().mt(px(4.)).child(
@@ -216,14 +230,19 @@ pub fn brief_row(
                 }),
         );
     }
-    let mut title = div()
-        .flex()
-        .items_baseline()
-        .min_w_0()
-        .child(div().flex_initial().min_w_0().overflow_hidden().child(title_row(brief, false, extra, &t)));
+    let mut title = div().flex().items_baseline().min_w_0().child(
+        div()
+            .flex_initial()
+            .min_w_0()
+            .overflow_hidden()
+            .child(title_row(brief, false, extra, &t)),
+    );
     if unread > 0 {
         let tip = if note_titles.is_empty() {
-            format!("{unread} unread notification{}", if unread == 1 { "" } else { "s" })
+            format!(
+                "{unread} unread notification{}",
+                if unread == 1 { "" } else { "s" }
+            )
         } else {
             note_titles.join(" · ")
         };
@@ -242,11 +261,18 @@ pub fn brief_row(
                 .child(label(unread.to_string(), Family::Ui, 10., 600.).color(INK)),
         ));
     }
-    let now = if brief.now.is_empty() { &brief.next } else { &brief.now };
-    let main = div()
-        .min_w_0()
-        .child(title)
-        .child(div().mt(px(1.)).min_w_0().overflow_hidden().child(text(now.clone()).size(12.).color(t.muted).truncate()));
+    let now = if brief.now.is_empty() {
+        &brief.next
+    } else {
+        &brief.now
+    };
+    let main = div().min_w_0().child(title).child(
+        div()
+            .mt(px(1.))
+            .min_w_0()
+            .overflow_hidden()
+            .child(text(now.clone()).size(12.).color(t.muted).truncate()),
+    );
     let fact = |s: String| {
         div()
             .flex()
@@ -293,7 +319,12 @@ pub fn brief_row(
                 .rounded_full()
                 .when(has_unread, |d| d.bg(hsla(t.amber))),
         )
-        .child(div().flex_none().w(px(28.)).child(tile(brief, true, epoch, window, cx)))
+        .child(
+            div()
+                .flex_none()
+                .w(px(28.))
+                .child(tile(brief, true, epoch, window, cx)),
+        )
         .child(div().flex_1().min_w_0().child(main))
         .child(
             div()
@@ -301,7 +332,12 @@ pub fn brief_row(
                 .min_w(px(4. * rem))
                 .w(px(6.5 * rem))
                 .overflow_hidden()
-                .child(text(brief.project_name.clone()).size(11.5).color(t.muted).truncate()),
+                .child(
+                    text(brief.project_name.clone())
+                        .size(11.5)
+                        .color(t.muted)
+                        .truncate(),
+                ),
         )
         .child(div().flex_none().w(px(3. * rem)).child(if plan.is_empty() {
             div()

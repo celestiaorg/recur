@@ -99,8 +99,9 @@ impl PermissionCard {
     fn answer(&self, allow: bool, reason: &str, remember: bool, cx: &mut Context<Self>) {
         let id = self.request.id.clone();
         let reason = reason.to_string();
-        self.state
-            .update(cx, |s, cx| s.answer_permission(&id, allow, &reason, remember, cx));
+        self.state.update(cx, |s, cx| {
+            s.answer_permission(&id, allow, &reason, remember, cx)
+        });
     }
 }
 
@@ -143,10 +144,17 @@ impl Render for PermissionCard {
         if !compact && self.queued > 0 {
             head_text = head_text.child(
                 div().ml_auto().child(
-                    recur_ui::style::card(t.amber_d, t.amber.mix(0.28, recur_ui::color::TRANSPARENT), 999.)
-                        .px(px(7.))
-                        .py(px(2.))
-                        .child(label(format!("+{} waiting", self.queued), Family::Mono, 10., 400.).color(t.amber)),
+                    recur_ui::style::card(
+                        t.amber_d,
+                        t.amber.mix(0.28, recur_ui::color::TRANSPARENT),
+                        999.,
+                    )
+                    .px(px(7.))
+                    .py(px(2.))
+                    .child(
+                        label(format!("+{} waiting", self.queued), Family::Mono, 10., 400.)
+                            .color(t.amber),
+                    ),
                 ),
             );
         }
@@ -186,7 +194,9 @@ impl Render for PermissionCard {
                 .color(if compact { t.text } else { t.muted })
                 .break_anywhere();
             main = main.child(if compact {
-                div().id(SharedString::from(format!("{id}-sum-s"))).child(sum)
+                div()
+                    .id(SharedString::from(format!("{id}-sum-s")))
+                    .child(sum)
             } else {
                 let vh = f32::from(window.viewport_size().height);
                 div()
@@ -215,10 +225,25 @@ impl Render for PermissionCard {
                         .cursor_pointer()
                         .text_color(hsla(t.muted))
                         .hover(|s| s.text_color(hsla(t.text)).border_color(hsla(t.line_bright)))
-                        .child(icon(IconName::GitPullRequest).size(px(12.)).color(hsla(t.muted.fade(0.85))))
-                        .child(div().min_w_0().overflow_hidden().child(text(self.where_label.clone()).size(11.).truncate()))
-                        .child(icon(IconName::ChevronRight).size(px(11.)).color(hsla(t.muted.fade(0.55))))
-                        .on_click(cx.listener(|_, _, _, cx| cx.emit(PermissionCardEvent::OpenWhere))),
+                        .child(
+                            icon(IconName::GitPullRequest)
+                                .size(px(12.))
+                                .color(hsla(t.muted.fade(0.85))),
+                        )
+                        .child(
+                            div()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(text(self.where_label.clone()).size(11.).truncate()),
+                        )
+                        .child(
+                            icon(IconName::ChevronRight)
+                                .size(px(11.))
+                                .color(hsla(t.muted.fade(0.55))),
+                        )
+                        .on_click(
+                            cx.listener(|_, _, _, cx| cx.emit(PermissionCardEvent::OpenWhere)),
+                        ),
                 )),
             );
         }
@@ -241,11 +266,15 @@ impl Render for PermissionCard {
                         .color(hsla(t.faint.fade(0.7))),
                 )
                 .child(
-                    text(if open { "Hide arguments" } else { "Show arguments" })
-                        .mono()
-                        .size(10.5)
-                        .line_height(LineHeight::Normal)
-                        .nowrap(),
+                    text(if open {
+                        "Hide arguments"
+                    } else {
+                        "Show arguments"
+                    })
+                    .mono()
+                    .size(10.5)
+                    .line_height(LineHeight::Normal)
+                    .nowrap(),
                 )
                 .on_click(cx.listener(|c, _, _, cx| {
                     c.show_detail = !c.show_detail;
@@ -266,9 +295,19 @@ impl Render for PermissionCard {
                 .child({
                     // `.perm-args`: the inline-flex toggle on a 12.5 / 1.45 line. Its first item,
                     // the centered 11px chevron, has no baseline: its bottom edge is the box's.
-                    let (_, h) = crate::style::text_baseline(text("x").mono().size(10.5).line_height(LineHeight::Normal), window);
+                    let (_, h) = crate::style::text_baseline(
+                        text("x").mono().size(10.5).line_height(LineHeight::Normal),
+                        window,
+                    );
                     let toggle_h = h.max(11.);
-                    crate::style::line_box(toggle, 12.5, 1.45, (toggle_h + 11.) / 2., toggle_h, window)
+                    crate::style::line_box(
+                        toggle,
+                        12.5,
+                        1.45,
+                        (toggle_h + 11.) / 2.,
+                        toggle_h,
+                        window,
+                    )
                 });
             if open {
                 let vh = f32::from(window.viewport_size().height);
@@ -297,11 +336,21 @@ impl Render for PermissionCard {
         let btn = |key: &str, s: &'static str, kind: u8, cx: &mut Context<Self>| {
             // kind: 0 deny, 1 once, 2 go.
             let (fg, border, bg) = match kind {
-                0 => (t.coral, t.coral.mix(0.35, t.line), recur_ui::color::TRANSPARENT),
+                0 => (
+                    t.coral,
+                    t.coral.mix(0.35, t.line),
+                    recur_ui::color::TRANSPARENT,
+                ),
                 2 => (t.on_amber, t.amber, t.amber),
                 _ => (t.text, t.line_bright, recur_ui::color::TRANSPARENT),
             };
-            let pad_x = if kind == 0 { 11. } else if compact { 8. } else { 9. };
+            let pad_x = if kind == 0 {
+                11.
+            } else if compact {
+                8.
+            } else {
+                9.
+            };
             let pad_y = if compact { 6. } else { 7. };
             let amber = t.amber;
             let el = div()
@@ -321,8 +370,15 @@ impl Render for PermissionCard {
                         .color(fg),
                 );
             let el = match kind {
-                0 => el.hover(move |s| s.bg(hsla(t.coral)).border_color(hsla(t.coral)).text_color(hsla(INK))),
-                2 => el.hover(move |s| s.bg(hsla(amber.brightness(1.07))).border_color(hsla(amber.brightness(1.07)))),
+                0 => el.hover(move |s| {
+                    s.bg(hsla(t.coral))
+                        .border_color(hsla(t.coral))
+                        .text_color(hsla(INK))
+                }),
+                2 => el.hover(move |s| {
+                    s.bg(hsla(amber.brightness(1.07)))
+                        .border_color(hsla(amber.brightness(1.07)))
+                }),
                 _ => el.hover(move |s| s.border_color(hsla(t.text)).bg(hsla(t.pane_2))),
             };
             el.on_click(cx.listener(move |c, _, _, cx| match kind {
@@ -358,8 +414,18 @@ impl Render for PermissionCard {
                 .border_t_1()
                 .border_color(hsla(t.line_soft))
                 .child(deny.flex_none())
-                .child(div().flex_grow(1.).flex_basis(relative(0.)).child(once.w_full()))
-                .child(div().flex_grow(1.35).flex_basis(relative(0.)).child(go.w_full()))
+                .child(
+                    div()
+                        .flex_grow(1.)
+                        .flex_basis(relative(0.))
+                        .child(once.w_full()),
+                )
+                .child(
+                    div()
+                        .flex_grow(1.35)
+                        .flex_basis(relative(0.))
+                        .child(go.w_full()),
+                )
         };
         card = card.child(acts);
         if compact {
@@ -377,19 +443,24 @@ impl Render for PermissionCard {
         } else {
             let shadows = [
                 css_box_shadow(0., 18., 48., -16., rgba(0, 0, 0, 0.72)),
-                css_box_shadow(0., 0., 0., 1., t.amber.mix(0.18, recur_ui::color::TRANSPARENT)),
+                css_box_shadow(
+                    0.,
+                    0.,
+                    0.,
+                    1.,
+                    t.amber.mix(0.18, recur_ui::color::TRANSPARENT),
+                ),
             ];
-            let bar = div()
-                .absolute()
-                .left_0()
-                .top_0()
-                .bottom_0()
-                .w(px(3.))
-                .bg(gpui_kit::linear_gradient(
+            let bar = div().absolute().left_0().top_0().bottom_0().w(px(3.)).bg(
+                gpui_kit::linear_gradient(
                     180.,
                     gpui_kit::linear_color_stop(hsla(t.amber), 0.),
-                    gpui_kit::linear_color_stop(hsla(t.amber.mix(0.35, recur_ui::color::TRANSPARENT)), 1.),
-                ));
+                    gpui_kit::linear_color_stop(
+                        hsla(t.amber.mix(0.35, recur_ui::color::TRANSPARENT)),
+                        1.,
+                    ),
+                ),
+            );
             with_shadow(
                 recur_ui::style::card(t.pane, t.line_bright, 12.)
                     .overflow_hidden()
@@ -422,7 +493,10 @@ mod tests {
         assert_eq!(detail_line(&req("Bash", "Bash: rm -rf x")), "rm -rf x");
         assert_eq!(detail_line(&req("Bash", "Bash")), "");
         let label = permission_tool_label("mcp__recur__list_findings");
-        assert_eq!(detail_line(&req("mcp__recur__list_findings", &format!("{label}: open"))), "open");
+        assert_eq!(
+            detail_line(&req("mcp__recur__list_findings", &format!("{label}: open"))),
+            "open"
+        );
         assert_eq!(detail_line(&req("Write", "edits a.go")), "edits a.go");
         assert_eq!(args_json("{\"a\":1}"), "{\n  \"a\": 1\n}");
         assert_eq!(args_json("not json"), "not json");

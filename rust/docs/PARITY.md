@@ -561,7 +561,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [x] Parked panes stay attached and keep updating (`tests/view.rs`)
   - Pane hooks (`bindTermPaneHooks`) are the view entity itself: the dock calls its methods directly.
 - [ ] `lib/caches/workspace-land-cache.ts` (90 lines)
-- [ ] `lib/changed-tree.ts` (118 lines)
+- [x] `lib/changed-tree.ts` (118 lines) → `recur_code::view::changed_tree` (`build_tree_from_paths` with `localeCompare` order via ICU root collation, type-change leaf kept beside children, `flatten_visible_tree`, `cap_visible_tree` borrowing the input when nothing is cut, `paths_under_dir`, `order_changed_paths`, `sort_files_by_changed_tree`); test file ported, plus a node-recorded golden (`tests/golden/ts_view.json`)
 - [ ] `lib/chat-glance.ts` (48 lines)
 - [ ] `lib/chat-occlusion.ts` (38 lines)
 - [ ] `lib/chat-route.ts` (28 lines)
@@ -623,12 +623,12 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/file-icons/icon.ts` (31 lines)
 - [ ] `lib/file-icons/index.ts` (41 lines)
 - [ ] `lib/file-icons/types.ts` (26 lines)
-- [ ] `lib/file-index.ts` (162 lines)
-- [ ] `lib/finding-paths.ts` (112 lines)
+- [~] `lib/file-index.ts` (162 lines) → `recur_code::view::file_index::map_file_search_hits` (dir flag, trailing slash, parent-of-another-hit); test file ported. The readiness map, listeners, in-flight search cancel and `SetFileIndexExclude` sync are `recur-app` / services wiring over `recur_code::IndexHub`
+- [x] `lib/finding-paths.ts` (112 lines) → `recur_code::view::finding_paths` (`match_finding_path`, `findings_for_path` over caller-ordered buckets, `right_diff_line_set` / `right_diff_has_range` with JS `parseInt`, `finding_covers_line`, `findings_on_line` / `_covering_line` / `_ending_line`, `extra_html_without_finding_flags`); test file ported
 - [ ] `lib/findings-ui.ts` (396 lines)
 - [ ] `lib/format.ts` (51 lines)
-- [ ] `lib/fuzzy.ts` (145 lines)
-- [ ] `lib/glob.ts` (64 lines)
+- [x] `lib/fuzzy.ts` (145 lines) → `recur_code::fuzzy` (`fuzzy_score`, `prepare_fuzzy`, `fuzzy_filter_prepared`, `fuzzy_filter`): UTF-16 scoring and the `a`-`z`/digit/other mask like JS, ties in `Intl.Collator` order (ICU root collation). The scorer is shared with Go's Quick Open ranking (`rank_files`, on bytes). Node-recorded golden over 17 queries × 31 labels (punctuation, case, ß, ü, emoji)
+- [x] `lib/glob.ts` (64 lines) → `recur_code::glob` (`compile_excludes`, `is_excluded_by`; JavaScript regex semantics through `regress` on UTF-16, per-pattern cache). The glob → regex translation is shared with the file index and copy-files
 - [ ] `lib/hoist-chat-keys.ts` (286 lines)
 - [ ] `lib/hot-shells.ts` (51 lines)
 - [ ] `lib/hoverGate.ts` (50 lines)
@@ -705,8 +705,8 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/shhl.ts` (99 lines)
 - [ ] `lib/shortcut.ts` (67 lines)
 - [ ] `lib/shortcuts.ts` (96 lines)
-- [ ] `lib/simplify.ts` (13 lines)
-- [ ] `lib/skills.ts` (176 lines)
+- [x] `lib/simplify.ts` (13 lines) → `recur_engine::simplify::text::{simplify_enabled, simplify_from_selection}`; test file ported
+- [x] `lib/skills.ts` (176 lines) → `recur_code::view::skills` (`SkillRow`, `SkillKind`, `skill_kind`, `is_recur_skill_path`, `infer_home_from_skill_path`, `skill_location`, `map_skill_rows`, `effective_skill_enabled` with the UI's untrimmed names, `toggle_disabled_name`, `project_skill_override_lists`, `skill_override_hint`, `skill_kind_override_count`, `skill_kind_has_overrides`); unit tests plus node golden
 - [ ] `lib/snippets.ts` (319 lines)
 - [ ] `lib/split-diff.ts` (107 lines)
 - [ ] `lib/spy-pick.ts` (115 lines)
@@ -778,13 +778,13 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 
 Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: port its cases alongside the code.
 
-- [ ] `internal/agenttools`: 52 files, 3802 lines, 3 test files → `recur-agent-tools` (all three Go test files ported)
+- [x] `internal/agenttools`: 52 files, 3802 lines, 3 test files → `recur-agent-tools` (all three Go test files ported)
   - [x] `Host` trait (engine seam) with Go `noopReporter` as default bodies (`NoopHost`), all request types, `HostError`; `Tool`/`Permitter`/`Call`/`Registry`, `advertised_name`, `bare_name`, `HALT_NAMES`, `halt_after`; `mcp__recur__*` and bare tool-name constants (`names`, `names::mcp`)
   - [x] All 42 host tools (`host_tools()` in `tools/list` order): names, descriptions and schemas byte-identical to Go (`tests/catalog.rs`), and 623 recorded calls replayed for identical result text, error text and host calls (`tests/host_golden.rs`, fixtures from `tests/golden/golden_gen_test.go.txt`)
   - [x] Go `encoding/json` decode semantics for tool args (`json`): scanner syntax errors, `Decoder` vs `Unmarshal`, case-insensitive and Kelvin/long-s field folding, first error wins, decode into existing values on duplicate keys, `UnmarshalTypeError` text with Go type names, `json.RawMessage`, `DisallowUnknownFields`; `%q` (`strconv.Quote`) and Go's per-byte U+FFFD handling (`gostr`)
   - [x] Worktree sandbox (`path`): `code.SafeJoin`, `filepath` Clean/Join/Rel/Abs/Dir/Base, `EvalSymlinks`, nearest-existing-ancestor resolution, `MkdirAll`, `*PathError` text
   - [x] Read, Edit, Write, Bash, TodoWrite + `TodoStore`: 75 recorded Go cases replayed (`tests/coding_golden.rs`); Bash keeps process-group kill on cancel/timeout, `WaitDelay` (2 s), capped capture, `exit: …` text with Go signal names per platform
-  - [ ] Glob and Grep enabled by default: complete and tested (ripgrep and Go-walk fallback, `filepath.Match`), but behind the `code` feature until `recur-code` exports `rg::locate`/`search_opts` and the store port exports `data_dir` (slice C / store; see engine-port-plan 5.3 T)
+  - [x] Glob and Grep always built (the `code` feature is gone): ripgrep through `recur_code::rg::locate`, Go-walk fallback through `recur_code::search_opts`, managed binary under `recur_store::paths::data_dir`; all 82 recorded coding cases replay (`tests/coding_golden.rs`)
 - [ ] `internal/app`: 25 files, 8921 lines, 27 test files
   - [x] `instance.go` + test: `recur_platform::identity::{instance_label, window_title}` (title falls back to `Recur Next` side by side)
   - `open_path.go` stays with `recur-services`: it is WorkspacesService logic (store, engine, git), not OS path handling. Platform takes its result through `open_boot::attach_open_ipc` / `apply_cold_opens`.
@@ -822,7 +822,14 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `destinations`: writable `/usr/local/bin` first, then `~/.local/bin`; link name `recur-next` side by side
   - [x] `install_from_app` / `install_bundled_cli`: no-op for dev builds, unbundled exes and `/opt/recur-next` package installs; Linux desktop entry (`build.recur.next.desktop`, Exec quoting, unchanged-file skip)
   - [x] `ensure_path`: login-shell PATH (marker-wrapped probe, fish syntax, 5s timeout with process-group kill, `$SHELL` → `id -P` → `/etc/passwd` → default shell), common user/system bin dirs, path_helper fallback, merge order and dedup
-- [ ] `internal/code`: 18 files, 4497 lines, 7 test files
+- [x] `internal/code`: 18 files, 4497 lines, 7 test files → `recur-code` (all 7 Go test files ported; 165 unit tests, plus `tests/golden/go_code.json` recorded by `gen_go_code.go.txt`: outline over 25 files in 20 languages, search with regex/glob/paging, defs/refs, Quick Open ranking, exclude matchers and rg globs, `filepath.Match` globs, SKILL.md frontmatter, explorer tree, file listing)
+  - [x] Roots and sandbox (`resolve_root`, `resolve_root_info`, `safe_join`, `rel_slash`), `Error::{NotFound, WorktreeMissing}` keeping the `not found: <rel>` / `worktree is not a directory` texts the UI sniffs, Go `*PathError` text
+  - [x] Files (`read_file` inline cap, binary probe with split-rune trim, image/PDF/video MIME and caps, `prepare_serve`, `prepare_external`, `prepare_chat_image` with magic bytes, `rewind_binary_check`, atomic mode-keeping `write_file`, `image_at_base` through recur-git), dropped-path allowlist with persistence and LRU eviction (`drop_allow`), language via `recur_chroma::lexer_name`
+  - [x] Tree (`list_tree`, `list_trees` sharing one status and check-ignore pass, deleted-path injection, symlinked dirs), `git_status`, `file_diff`, `file_at_base`; ops (create, mkdir, rename, remove, copy, `abs_path`)
+  - [x] Search and replace (Go RE2 classes on the regex crate, `(?i)`, byte columns, 256 KiB skip count, symlink escape check, offset paging, `filepath.Match` globs, Go's case-fold replace), outline (all language rules), symbol index (`find_defs`, `index_symbols` one walk, `find_refs`, `changed_symbols`, `changed_defs`, `rank_refs_in_package`, `extract_idents`), `list_files` / `match_files`
+  - [x] File index (`FileIndex`, `IndexHub`): byte budget with LRU eviction and a pinned workspace, coalesced and superseding builds on tokio tasks, partial batches, dirty-sequence race guard, file-system splices, 300 ms debounced publishes, `files.exclude` fast matchers and rg globs, `rank_files` / `rank_files_and_dirs` / `rank_hits`
+  - [x] Skills discovery (`list_skills`, `list_skills_for_menu`, `skill_by_name`, `read_skill_body`, `skill_disables_model_invocation`, `list_skill_resources`)
+  - [x] Open (`open_in_editor`, `reveal_in_finder`, `list_open_in_targets` with 64 px NSWorkspace icons as PNG data URLs via objc2, `open_in`)
 - [x] `internal/codex`: 6 files, 1173 lines, 5 test files → `recur-provider-codex` (all 5 test files ported)
   - [x] `types.go` → `types` (wire structs with Go field order and `omitempty`, `format_plan`)
   - [x] `rpc.go` → `rpc` (newline JSON-RPC without `jsonrpc`, ordered reader task, sync notification handler, server requests on tasks with `-32000` errors, pending calls fail `-32001` on EOF, `null` results decode as defaults, `Ctx` = Go context cancel + deadline). After EOF new calls fail fast instead of waiting on their context
@@ -830,7 +837,7 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `server.go` → `server` (Recur `CODEX_HOME`, seeded `auth.json` only when newer, trusted-project entry, `app-server -c …` in its own process group, env scrub + `CODEX_HOME`/`CODEX_API_KEY`, 45 s handshake, 80-line stderr ring, auto-approve failsafe, SIGTERM → 2 s → SIGKILL close)
   - [x] `locate.go` → `locate` (`$RECUR_CODEX`, Settings path, PATH, Homebrew cask dirs; Mach-O/ELF magic rejects the npm shim; `home_dir`)
   - [x] `mcp.go` → `mcp` (`-c mcp_servers…` overrides, TOML escaping, automation defaults incl. skills/multi-agent off)
-- [ ] `internal/copyfiles`: 1 files, 414 lines, 1 test files
+- [x] `internal/copyfiles`: 1 files, 414 lines, 1 test files → `recur_code::copyfiles` (`parse_patterns`, `matches`, `preview`, `copy`; cancel token plus deadline for Go's context; test file ported, plus `tests/golden/go_copyfiles.json`)
 - [ ] `internal/cursor`: 12 files, 3691 lines, 17 test files
 - [x] `internal/domain`: 15 files, 4945 lines, 16 test files → `recur-domain` (all 16 Go test files ported as unit tests)
   - [x] Serde parity: every one of the 107 exported structs decodes Go `json.Marshal` output (zero and fully populated) and re-encodes byte for byte (`tests/go_parity.rs`, `tests/fixtures/go_types.json`); the e2e `seed.json` round-trips (`tests/seed_round_trip.rs`)
@@ -893,7 +900,7 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `McpServer` on hyper HTTP/1.1: `POST /<token>/mcp`, stable token per agent reused across turns, extra tokens for overlapping registrations, 404 when inactive or unknown, 405 + `Allow: POST`, Go `ServeMux` path cleaning (307), `http.Error` bodies and headers, 202 for notifications, 32 MiB body cap, 10 s header timeout, request cancellation on client disconnect, 3 s graceful close
   - [x] JSON-RPC framing (`protocol`): id echoed verbatim (compacted), protocol version echo, error codes, `isError` tool results; 79 HTTP exchanges recorded from the Go server replayed byte for byte, including the `tools/list` body snapshot (`tests/http_golden.rs`)
   - [x] `names_from_allowed_tools` (never null), `append_permission_request`, 128-bit hex tokens
-- [ ] `internal/observe`: 5 files, 1030 lines, 1 test files
+- [x] `internal/observe`: 5 files, 1030 lines, 1 test files → `recur_code::observe` (`collect_metrics` with FNV clone windows, `compute_impact`, `run_checks` / `run_light_checks` with combined output, 50 s per command and Go's nil-context bounds, `project_findings_onto_diff`, `finding_flag_html`, `analyze`, `analyze_root`); test file ported, metrics and impact JSON byte-identical to Go
 - [x] `internal/openipc`: 1 files, 286 lines, 1 test files (`recur_platform::openipc`, 10 tests)
   - [x] Wire format: one JSON request / response, Go tags (`projectId`, `workspaceId`, omitempty), `null` request tolerated, `invalid request` reply
   - [x] `Instance::claim(data_dir)`: live-socket probe, exclusive flock on `instance.lock`, bind `open.sock` 0600; `Held` when another process owns the dir; close unlinks before releasing the flock
@@ -915,14 +922,14 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] Write: repo-path checks with Go's messages, `.recur/` creation, atomic temp-file + rename, fresh files with the standard header encoded exactly like go-toml (literal-first strings, `multiline` fields, `[[run]]` blocks)
   - [x] Comment-preserving merge into an existing file: `recur_project::tomledit` ports go-toml `unstable/edit` (span index, attached comments, insertion points, deletes with trailing-blank absorption, CRLF, inline arrays/tables, validation after every edit) on `toml_parser`, the parser under toml_edit; `[run.N]` healing, `dev_cmd` removal, malformed-file rewrite. 21 edit scenarios and 14 Write outputs replay byte for byte against Go (`tests/fixtures/gen_projfile.go.txt`)
 - [ ] `internal/responses`: 4 files, 795 lines, 2 test files
-- [ ] `internal/rg`: 2 files, 403 lines, 2 test files
+- [x] `internal/rg`: 2 files, 403 lines, 2 test files → `recur_code::rg` (`locate`, `files_args`, `files`, `ensure` with the pinned 15.2.0 release, SHA-256 check and tar.gz extraction); both test files ported (`tests/env_serial.rs` for the `$RECUR_RG` cases)
 - [x] `internal/runconfig`: 1 files, 333 lines, 1 test files → `recur_project::runconfig` (test file ported)
   - [x] Boot: free or persisted port, `$RECUR_PORT`/`${PORT}` substitution, own process group, single reaper, probe until any HTTP response (2s per request, redirects, no proxy for loopback), exits/timeouts/cancel tear down; the server outlives the boot token and `Booted::stop` is idempotent (SIGTERM, 2s grace, SIGKILL)
   - [x] RunCmd/RunCmdOutput: parent-owned pipe for stdout+stderr, 4 KiB tail, 100ms drain wait without SIGPIPE-ing background children, cancel vs deadline errors (Go's `context canceled` / `context deadline exceeded`), Go `exit status N` / `signal: NAME` text
   - [x] FreePort, Go `Duration.String` for messages
 - [x] `internal/shortid`: 1 files, 111 lines, 1 test files → `recur_domain::shortid` (test file ported)
   - [x] New (prefix/length validation, letter-first suffix, unbiased rejection sampling over OS randomness), NewUnique (attempt budget, Collision error), IsValid / VALID_PATTERN, MinLength/MaxLength/DefaultAttempts
-- [ ] `internal/simplify`: 1 files, 56 lines, 1 test files
+- [x] `internal/simplify`: 1 files, 56 lines, 1 test files → `recur_engine::simplify::text` (`NOTICE` embedded from the repo, `applies_to_chat`, `prompt` byte-identical to Go's `Instructions`); test file ported
 - [ ] `internal/store`: 9 files, 6229 lines, 6 test files
 - [x] `internal/term`: 7 files, 1797 lines, 6 test files → `recur-term`
   - [x] `term.go`: login shell spawn with env/cwd/size, `TERM`/`COLORTERM`/`TERM_PROGRAM`, write, resize clamp, list/reorder/active, titles, detach vs close, close_all, tombstones (max 4), restore trailer, replay seeding (`manager.rs`, `manager_tests.rs`)

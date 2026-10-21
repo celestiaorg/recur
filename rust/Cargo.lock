@@ -5616,7 +5616,16 @@ checksum = "03251193000f4bd3b042892be858ee50e8b3719f2b08e5833ac4353724632430"
 name = "recur-agent"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "pretty_assertions",
  "recur-domain",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "url",
 ]
 
 [[package]]
@@ -5793,6 +5802,11 @@ version = "0.0.0"
 dependencies = [
  "recur-agent",
  "recur-domain",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

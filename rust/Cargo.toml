@@ -52,6 +52,9 @@ getrandom = "0.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
+async-trait = "0.1"
+tokio-util = "0.7"
+url = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 parking_lot = "0.12"

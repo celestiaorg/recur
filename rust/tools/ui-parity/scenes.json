@@ -1727,7 +1727,15 @@
       "width": 560,
       "height": 520,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 0,
+      "steps": [
+        {
+          "click": [
+            160,
+            485
+          ]
+        }
+      ]
     },
     {
       "name": "chat/app",

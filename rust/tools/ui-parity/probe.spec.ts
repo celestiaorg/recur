@@ -18,7 +18,7 @@ test('probe', async ({ browser }) => {
     const boxes = await page.$$eval(sel, (els) => els.map((e) => {
       const r = e.getBoundingClientRect()
       const cs = getComputedStyle(e)
-      return `${r.x.toFixed(2)},${r.y.toFixed(2)} ${r.width.toFixed(2)}x${r.height.toFixed(2)} lh=${cs.lineHeight} fs=${cs.fontSize}`
+      return `${r.x.toFixed(2)},${r.y.toFixed(2)} ${r.width.toFixed(2)}x${r.height.toFixed(2)} lh=${cs.lineHeight} fs=${cs.fontSize} mh=${cs.maxHeight} st=${(e as HTMLElement).getAttribute("style") ?? ""}`
     }))
     console.log(sel, '=>', boxes.slice(0, 6).join(' | '))
   }

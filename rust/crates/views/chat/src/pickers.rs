@@ -163,7 +163,11 @@ impl ModelPickers {
 
     pub fn with_labels(model_label: &str, flags_label: &str, ghost: bool, up: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let model_select = cx.new(|cx| {
-            let mut s = Select::new(Vec::new(), window, cx).label(model_label.to_string()).searchable();
+            // Inside `.model-pickers` the menu is `.sel-menu-model` (`portalMenuMods`).
+            let mut s = Select::new(Vec::new(), window, cx)
+                .label(model_label.to_string())
+                .searchable()
+                .menu_variant(recur_ui::logic::menu_space::MenuVariant::Model);
             if ghost {
                 s = s.ghost();
             }

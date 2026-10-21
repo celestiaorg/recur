@@ -1,13 +1,13 @@
 //! Syntax highlighting of diff lines into the small token palette the review
 //! UI styles (`.kw .str .fn .cm .ty .nm`).
 //!
-//! Highlighting uses a port of chroma (see [`crate::chroma`]), the library the
+//! Highlighting uses this crate's port of chroma, the library the
 //! Go app used, so persisted `codeHtml` and freshly highlighted lines are
 //! byte-identical across the two apps.
 
 use recur_domain::FileDiff;
 
-use crate::chroma::{self, TokenType};
+use crate::TokenType;
 use crate::text::{go_lower, html_escape, html_unescape};
 
 /// Max highlighted lines in one file: the diff view's initial line cap, so
@@ -61,7 +61,7 @@ fn highlight_file_budget(f: &mut FileDiff, budget: usize) -> (bool, usize) {
 /// The lowercase chroma lexer name for a path (`go`, `typescript`, …), or
 /// empty when none matches. Shares the lexer cache with highlighting.
 pub fn lexer_name(path: &str) -> String {
-    chroma::lexer_for(path)
+    crate::lexer_for(path)
         .map(|l| go_lower(&l.config().name))
         .unwrap_or_default()
 }
@@ -72,10 +72,10 @@ pub(crate) fn highlight_line(path: &str, code: &str) -> String {
     if code.is_empty() {
         return String::new();
     }
-    let Some(lexer) = chroma::lexer_for(path) else {
+    let Some(lexer) = crate::lexer_for(path) else {
         return html_escape(code);
     };
-    let Ok(tokens) = chroma::tokenise(&lexer, code) else {
+    let Ok(tokens) = crate::tokenise(&lexer, code) else {
         return html_escape(code);
     };
     let mut b = String::new();

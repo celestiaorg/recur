@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 pub(crate) use runner::Timeout;
 pub(crate) use syntax::ParseError;
-pub(crate) use unicode::{is_letter, is_number, to_upper};
+pub use unicode::{is_letter, is_number, to_upper};
 
 /// A compiled pattern (regexp2 `Regexp` with no options).
 pub(crate) struct Regex {

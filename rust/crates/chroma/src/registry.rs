@@ -12,7 +12,7 @@ use super::lexer::{Lexer, RegexLexer};
 use super::token::TokenType;
 use crate::text::go_lower;
 
-static DATA: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/chroma");
+static DATA: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/data");
 
 /// Backup and template suffixes a filename glob also matches through.
 const IGNORED_SUFFIXES: [&str; 13] = [
@@ -193,7 +193,7 @@ impl Registry {
 
     /// The best lexer for a filename's base name (chroma `Match`).
     pub(crate) fn match_filename(&self, filename: &str) -> Option<Arc<Lexer>> {
-        let base = crate::gopath::base(filename);
+        let base = crate::text::base(filename);
         let primary = self.matching(&base, |l| &l.config().filenames);
         if primary.is_some() {
             return primary;

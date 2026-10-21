@@ -12,13 +12,13 @@ use tokio::io::AsyncReadExt;
 
 use crate::command::command;
 use crate::error::{Error, ErrorKind, Result};
-use crate::highlight::highlight_files;
-use crate::text::{atoi, go_lower, go_string, html_escape};
+use crate::text::{atoi, go_lower, go_string};
 use crate::version::{log_numstat_flags, probe};
 use crate::working_diff::{
     MAX_SYNTHETIC_ADD_BYTES, merge_base, omitted_untracked_diff, read_capped, synthetic_add_diff,
 };
 use crate::worktree::Manager;
+use recur_chroma::{highlight_files, html_escape};
 
 /// Caps so a dirty worktree (unignored build output, data dumps) cannot blow
 /// the diff-sync deadline. Partial counts beat stalls.
@@ -527,8 +527,8 @@ pub(crate) fn author_initials(name: &str) -> String {
     }
     let take = |s: &str, n: usize| -> Vec<char> {
         s.chars()
-            .filter(|&c| crate::chroma::is_letter(c) || crate::chroma::is_number(c))
-            .map(crate::chroma::to_upper)
+            .filter(|&c| recur_chroma::is_letter(c) || recur_chroma::is_number(c))
+            .map(recur_chroma::to_upper)
             .take(n)
             .collect()
     };

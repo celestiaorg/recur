@@ -1,14 +1,20 @@
 //! A port of the parts of chroma (`github.com/alecthomas/chroma/v2`) Recur
 //! uses: its lexer registry and regex lexers, so diff lines tokenize exactly
 //! as they did in Go. The lexer definitions are chroma's own, vendored under
-//! `chroma/` (MIT, see `chroma/COPYING`).
+//! `data/` (MIT, see `data/COPYING`).
+//!
+//! On top of it, [`highlight_files`] renders diff lines into the review UI's
+//! token palette. Port of Go `internal/git/highlight.go`.
 
 mod custom;
 mod glob;
+mod highlight;
+mod html_entities;
 mod lexer;
 mod raku;
 mod regexp2;
 mod registry;
+mod text;
 #[allow(dead_code)]
 mod token;
 mod xml;
@@ -16,8 +22,10 @@ mod xml;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
+pub use highlight::{MAX_HIGHLIGHT_LINES, highlight_files, lexer_name};
 pub(crate) use lexer::{Lexer, Token};
-pub(crate) use regexp2::{is_letter, is_number, to_upper};
+pub use regexp2::{is_letter, is_number, to_upper};
+pub use text::html_escape;
 pub(crate) use token::TokenType;
 
 static LEXER_CACHE: LazyLock<Mutex<HashMap<String, Option<Arc<Lexer>>>>> =
@@ -25,7 +33,7 @@ static LEXER_CACHE: LazyLock<Mutex<HashMap<String, Option<Arc<Lexer>>>>> =
 
 /// The lexer chroma matches for `path`'s base name, cached by base name.
 pub(crate) fn lexer_for(path: &str) -> Option<Arc<Lexer>> {
-    let mut key = crate::gopath::base(path);
+    let mut key = crate::text::base(path);
     if key.is_empty() {
         key = path.to_string();
     }

@@ -31,7 +31,7 @@ fn highlight_matches_go_highlight_line() {
             }]),
             ..Default::default()
         }];
-        recur_git::highlight_files(&mut files);
+        recur_chroma::highlight_files(&mut files);
         let got = files[0]
             .lines
             .as_ref()
@@ -57,7 +57,7 @@ fn lexer_name_matches_go_match() {
     let mut failures = Vec::new();
     for (path, want) in &names {
         let want = want.as_str().unwrap_or_default();
-        let got = recur_git::lexer_name(path);
+        let got = recur_chroma::lexer_name(path);
         if got != want {
             failures.push(format!("{path}: got {got:?}, want {want:?}"));
         }

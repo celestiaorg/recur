@@ -8,6 +8,10 @@ license.workspace = true
 publish = false
 
 [dependencies]
+onig.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

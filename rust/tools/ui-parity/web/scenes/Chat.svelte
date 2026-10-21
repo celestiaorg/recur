@@ -78,7 +78,8 @@
 <div class="chat-scene">
   {#if !mounted}
   {:else if variant === 'app'}
-    <AppChat />
+    <!-- The Briefing body's pane-chrome height, which the tab bar reads. -->
+    <div class="app-host"><AppChat /></div>
   {:else}
     <AgentChat
       bind:this={chat}
@@ -127,4 +128,5 @@
 
 <style>
   .chat-scene { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .app-host { --obs-chrome-h: 40px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 </style>

@@ -587,7 +587,7 @@ impl Render for AppChat {
         let lit = self.visible && self.focus.contains_focused(window, cx);
         let ask = ChatMode::Ask;
         let tint = hsla(ask.tint(&t));
-        let mut strip = tab_strip("app-chat-tabs", "Ask Recur chats").active_key(self.active.clone());
+        let mut strip = tab_strip("app-chat-tabs", "Ask Recur chats").flush(true).active_key(self.active.clone());
         for tab in &self.tabs {
             let code = tab.code.clone();
             let label = tab_label(tab).to_string();
@@ -712,7 +712,7 @@ impl Render for AskEmpty {
             .gap(px(12.))
             .text_color(hsla(t.muted))
             .text_size(px(13.))
-            .child(text("Ask about Now and Next across your workspaces.").size(13.).color(t.muted))
+            .child(text("Ask about Now and Next across your workspaces.").size(13.).line_height(LineHeight::Scale(1.55)).color(t.muted))
             .child(div().flex().flex_wrap().gap(px(8.)).children(chips))
     }
 }

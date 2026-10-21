@@ -5,6 +5,7 @@
 use crate::motion::{self, Easing};
 use crate::theme::Theme;
 use crate::widgets::tab_chip::TabChip;
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     AnyElement, App, Bounds, CursorStyle, ElementId, Hsla, InteractiveElement, IntoElement,
     KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels,
@@ -196,6 +197,7 @@ pub struct TabStrip {
     id: ElementId,
     label: SharedString,
     chrome: bool,
+    flush: bool,
     active_key: Option<SharedString>,
     restore_scroll: Option<(f32, u64)>,
     reveal_nonce: u64,
@@ -211,6 +213,7 @@ pub fn tab_strip(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Ta
         id: id.into(),
         label: label.into(),
         chrome: false,
+        flush: false,
         active_key: None,
         restore_scroll: None,
         reveal_nonce: 0,
@@ -223,6 +226,12 @@ pub fn tab_strip(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Ta
 }
 
 impl TabStrip {
+    /// Inside a `.obs-side-head.tabbed` header: no padding of its own, filling the row.
+    pub fn flush(mut self, on: bool) -> Self {
+        self.flush = on;
+        self
+    }
+
     /// Standalone header chrome (40px, `--pane`, bottom border): the terminal dock.
     pub fn chrome(mut self, on: bool) -> Self {
         self.chrome = on;
@@ -477,14 +486,15 @@ impl RenderOnce for TabStrip {
         }
         let thumb = (overflow && shown).then(|| scrollbar(&scroll, t.line));
 
+        let flush = self.flush;
         let mut root = div()
             .id(self.id)
             .relative()
             .flex()
             .items_stretch()
             .gap(px(6.))
-            .pl(px(8.))
-            .pr(px(4.))
+            .when(!flush, |d| d.pl(px(8.)).pr(px(4.)))
+            .when(flush, |d| d.flex_1())
             .min_w_0()
             .min_h_0()
             .child(tracker);

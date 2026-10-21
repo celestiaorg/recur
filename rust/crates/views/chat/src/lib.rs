@@ -4,6 +4,7 @@ pub mod blocks;
 pub mod byte_lru;
 pub mod composer_undo;
 pub mod findings_ui;
+pub mod flow;
 pub mod glance;
 pub mod heap;
 pub mod hoist;

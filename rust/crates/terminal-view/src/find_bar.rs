@@ -4,24 +4,19 @@
 //! The dock owns when it opens and which pane it searches; the bar owns its fields and keys
 //! (Enter / Shift+Enter step, Escape closes, ⌥⌘C / ⌥⌘R / ⌥⌘W toggle while it has focus).
 
-use std::rc::Rc;
-
-use gpui_kit::base::input::{Input, InputEditorStyle, InputEvent, InputState};
+use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyView, App, AppContext, Bounds, BoxShadow, Context, Element, ElementId, Entity, EventEmitter,
-    FocusHandle, Focusable, GlobalElementId, InspectorElementId, InteractiveElement, IntoElement,
-    KeyDownEvent, LayoutId, ParentElement, Pixels, Render, SharedString,
-    StatefulInteractiveElement, Style, Styled, Subscription, TransformationMatrix, Window, div,
-    point, px,
+    App, Context, Entity, EventEmitter, FocusHandle, Focusable, InteractiveElement, IntoElement,
+    KeyDownEvent, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
+    Subscription, Window, div, px,
 };
+use recur_ui::fonts::Family;
+use recur_ui::style::{self, card, focus_ring, is_focus_visible, outline, text_field};
+use recur_ui::tooltip::titled;
+use recur_ui::{IconName, TextStyled, Theme, icon, text};
 
-use crate::element::gpui_color;
-use crate::tokens::{Tokens, is_light_theme, mix, tokens};
 use crate::view::{FindOptions, find_count_label};
-
-/// Builds the themed hover tip for a control's title (the app's `TitleTooltip`).
-pub type TooltipBuilder = Rc<dyn Fn(SharedString, &mut Window, &mut App) -> AnyView>;
 
 /// What the dock reacts to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,106 +28,65 @@ pub enum FindBarEvent {
     Close,
 }
 
-/// `search`, `chevron-left`, `chevron-right`, `case-sensitive`, `regex`, `whole-word` and `x`
-/// from `lib/icons.ts`, as Recur's `Icon.svelte` renders them.
-pub mod icons {
-    pub const SEARCH: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>"#;
-    pub const CHEVRON_LEFT: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>"#;
-    pub const CHEVRON_RIGHT: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>"#;
-    pub const CASE_SENSITIVE: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"/><path d="M22 9v7"/><path d="M3.304 13h6.392"/><circle cx="18.5" cy="12.5" r="3.5"/></svg>"#;
-    pub const REGEX: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3v10"/><path d="m12.67 5.5 8.66 5"/><path d="m12.67 10.5 8.66-5"/><path d="M9 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2z"/></svg>"#;
-    pub const WHOLE_WORD: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="12" r="3"/><path d="M10 9v6"/><circle cx="17" cy="12" r="3"/><path d="M14 7v8"/><path d="M22 17v1c0 .5-.5 1-1 1H3c-.5 0-1-.5-1-1v-1"/></svg>"#;
-    pub const X: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>"#;
+/// The buttons, in tab order.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Button {
+    Previous,
+    Next,
+    Case,
+    Regexp,
+    Word,
+    Close,
 }
 
-/// A 15×15 SVG icon drawn in the current text colour (`.obs-icon-btn svg`).
-pub struct Icon {
-    name: &'static str,
-    svg: &'static str,
-    size: Pixels,
-}
+impl Button {
+    const ALL: [Button; 6] = [
+        Button::Previous,
+        Button::Next,
+        Button::Case,
+        Button::Regexp,
+        Button::Word,
+        Button::Close,
+    ];
 
-impl Icon {
-    pub fn new(name: &'static str, svg: &'static str) -> Self {
-        Self {
-            name,
-            svg,
-            size: px(15.),
+    fn id(self) -> &'static str {
+        match self {
+            Button::Previous => "term-find-prev",
+            Button::Next => "term-find-next",
+            Button::Case => "term-find-case",
+            Button::Regexp => "term-find-regex",
+            Button::Word => "term-find-word",
+            Button::Close => "term-find-close",
         }
     }
-}
 
-impl IntoElement for Icon {
-    type Element = Self;
-
-    fn into_element(self) -> Self {
-        self
-    }
-}
-
-impl Element for Icon {
-    type RequestLayoutState = ();
-    type PrepaintState = ();
-
-    fn id(&self) -> Option<ElementId> {
-        None
+    fn title(self) -> &'static str {
+        match self {
+            Button::Previous => "Previous match (⇧⌘G)",
+            Button::Next => "Next match (⌘G)",
+            Button::Case => "Match case (⌥⌘C)",
+            Button::Regexp => "Regular expression (⌥⌘R)",
+            Button::Word => "Whole word (⌥⌘W)",
+            Button::Close => "Close",
+        }
     }
 
-    fn source_location(&self) -> Option<&'static std::panic::Location<'static>> {
-        None
-    }
-
-    fn request_layout(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> (LayoutId, ()) {
-        let mut style = Style::default();
-        style.size.width = self.size.into();
-        style.size.height = self.size.into();
-        style.flex_shrink = 0.;
-        (window.request_layout(style, [], cx), ())
-    }
-
-    fn prepaint(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        _: Bounds<Pixels>,
-        _: &mut (),
-        _: &mut Window,
-        _: &mut App,
-    ) {
-    }
-
-    fn paint(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        bounds: Bounds<Pixels>,
-        _: &mut (),
-        _: &mut (),
-        window: &mut Window,
-        cx: &mut App,
-    ) {
-        let color = window.text_style().color;
-        let path = SharedString::from(format!("recur-terminal-icon/{}.svg", self.name));
-        let _ = window.paint_svg(
-            bounds,
-            path,
-            Some(self.svg.as_bytes()),
-            TransformationMatrix::unit(),
-            color,
-            cx,
-        );
+    fn icon(self) -> IconName {
+        match self {
+            Button::Previous => IconName::ChevronLeft,
+            Button::Next => IconName::ChevronRight,
+            Button::Case => IconName::CaseSensitive,
+            Button::Regexp => IconName::Regex,
+            Button::Word => IconName::WholeWord,
+            Button::Close => IconName::X,
+        }
     }
 }
 
 pub struct TerminalFindBar {
     input: Entity<InputState>,
     focus: FocusHandle,
+    buttons: [FocusHandle; 6],
     case_sensitive: bool,
     regexp: bool,
     whole_word: bool,
@@ -140,8 +94,6 @@ pub struct TerminalFindBar {
     total: usize,
     capped: bool,
     valid: bool,
-    app_theme: String,
-    tooltip: Option<TooltipBuilder>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -154,8 +106,8 @@ impl Focusable for TerminalFindBar {
 }
 
 impl TerminalFindBar {
-    pub fn new(app_theme: &str, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input = cx.new(|cx| InputState::new(window, cx).placeholder("Find"));
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let input = style::text_input(&"Find".into(), window, cx);
         let subs =
             vec![
                 cx.subscribe_in(&input, window, |bar, _, ev: &InputEvent, _w, cx| match ev {
@@ -172,9 +124,10 @@ impl TerminalFindBar {
                     InputEvent::Focus | InputEvent::Blur => cx.notify(),
                 }),
             ];
-        let mut bar = Self {
+        Self {
             input,
             focus: cx.focus_handle(),
+            buttons: std::array::from_fn(|_| cx.focus_handle().tab_stop(true)),
             case_sensitive: false,
             regexp: false,
             whole_word: false,
@@ -182,39 +135,8 @@ impl TerminalFindBar {
             total: 0,
             capped: false,
             valid: true,
-            app_theme: app_theme.to_string(),
-            tooltip: None,
             _subscriptions: subs,
-        };
-        bar.apply_editor_style(cx);
-        bar
-    }
-
-    fn apply_editor_style(&mut self, cx: &mut Context<Self>) {
-        let t = tokens(&self.app_theme);
-        self.input.update(cx, |state, _| {
-            state.set_editor_style(InputEditorStyle {
-                foreground: gpui_color(t.text),
-                muted_foreground: gpui_color(t.faint),
-                background: gpui_color(input_bg(&self.app_theme, &t)),
-                border: gpui_color(t.line),
-                selection: gpui_color(t.amber_d),
-                caret: gpui_color(t.text),
-                ..InputEditorStyle::default()
-            })
-        });
-    }
-
-    pub fn set_app_theme(&mut self, theme: &str, cx: &mut Context<Self>) {
-        if self.app_theme != theme {
-            self.app_theme = theme.to_string();
-            self.apply_editor_style(cx);
-            cx.notify();
         }
-    }
-
-    pub fn set_tooltip(&mut self, tooltip: Option<TooltipBuilder>) {
-        self.tooltip = tooltip;
     }
 
     pub fn query(&self, cx: &App) -> String {
@@ -291,6 +213,17 @@ impl TerminalFindBar {
         cx.notify();
     }
 
+    fn press(&mut self, b: Button, cx: &mut Context<Self>) {
+        match b {
+            Button::Previous => cx.emit(FindBarEvent::Previous),
+            Button::Next => cx.emit(FindBarEvent::Next),
+            Button::Case => self.toggle_case(cx),
+            Button::Regexp => self.toggle_regexp(cx),
+            Button::Word => self.toggle_whole_word(cx),
+            Button::Close => cx.emit(FindBarEvent::Close),
+        }
+    }
+
     fn key_down(&mut self, e: &KeyDownEvent, _w: &mut Window, cx: &mut Context<Self>) {
         let k = &e.keystroke;
         if k.key == "escape" {
@@ -315,99 +248,120 @@ impl TerminalFindBar {
         }
     }
 
-    fn icon_button(
-        &self,
-        id: &'static str,
-        title: &'static str,
-        icon: Icon,
-        on: Option<bool>,
-        t: &Tokens,
-    ) -> gpui_kit::Stateful<gpui_kit::Div> {
-        let active = on == Some(true);
-        let (pane_2, text) = (gpui_color(t.pane_2), gpui_color(t.text));
-        let mut b = div()
-            .id(id)
+    /// `.obs-icon-btn` (26×26, radius 5, `--faint`, hover `--text` on `--pane-2`), with the
+    /// toggles' `.on` state (`--amber` on `--amber-d`).
+    fn button(&self, b: Button, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = Theme::of(cx).tokens;
+        let on = match b {
+            Button::Case => self.case_sensitive,
+            Button::Regexp => self.regexp,
+            Button::Word => self.whole_word,
+            _ => false,
+        };
+        let focus = &self.buttons[Button::ALL.iter().position(|x| *x == b).unwrap_or(0)];
+        let button = div()
+            .id(b.id())
+            .track_focus(focus)
+            .relative()
             .flex()
             .flex_none()
             .items_center()
             .justify_center()
             .size(px(26.))
             .rounded(px(5.))
-            .text_color(gpui_color(if active { t.amber } else { t.faint }))
-            .when(active, |d| d.bg(gpui_color(t.amber_d)))
-            .when(!active, move |d| {
-                d.hover(move |s| s.text_color(text).bg(pane_2))
+            .map(|d| {
+                if on {
+                    d.text_color(t.amber).bg(t.amber_d)
+                } else {
+                    d.text_color(t.faint)
+                        .hover(move |s| s.text_color(t.text).bg(t.pane_2))
+                }
             })
-            .child(icon);
-        if let Some(tip) = self.tooltip.clone() {
-            b = b.tooltip(move |window, cx| tip(title.into(), window, cx));
-        }
-        b
-    }
-}
-
-/// `var(--mono)`: JetBrains Mono with the platform monospace fallbacks.
-fn mono_font(
-    mut d: gpui_kit::Div,
-    family: &SharedString,
-    fallbacks: &gpui_kit::FontFallbacks,
-) -> gpui_kit::Div {
-    d = d.font_family(family.clone());
-    d.style().text.font_fallbacks = Some(fallbacks.clone());
-    d
-}
-
-fn input_bg(app_theme: &str, t: &Tokens) -> recur_term::screen::Rgba {
-    if is_light_theme(app_theme) {
-        t.pane
-    } else {
-        t.bg
+            .on_click(cx.listener(move |bar, _, _, cx| bar.press(b, cx)))
+            .on_key_down(cx.listener(move |bar, e: &KeyDownEvent, _, cx| {
+                if matches!(e.keystroke.key.as_str(), "enter" | "space") {
+                    cx.stop_propagation();
+                    bar.press(b, cx);
+                }
+            }))
+            .child(icon(b.icon()).size(px(15.)))
+            .when(is_focus_visible(focus, window), |d| {
+                d.child(focus_ring(5., 0., cx))
+            });
+        titled(b.id(), b.title(), button).focus(focus)
     }
 }
 
 impl Render for TerminalFindBar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let t = tokens(&self.app_theme);
-        let mono: SharedString = "JetBrains Mono".into();
-        let fallbacks = gpui_kit::FontFallbacks::from_fonts(
-            crate::font::SYSTEM_MONO_FALLBACKS
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
-        );
+        style::style_text_input(&self.input, cx);
+        let theme = Theme::of(cx).clone();
+        let t = theme.tokens;
         let focused = self.input.read(cx).focus_handle(cx).is_focused(window);
         let label = self.count_label(cx);
         let none = !self.query(cx).is_empty() && self.valid && self.total == 0;
+        // `.cm-recur-search-input`: `--pane` on light chrome, `--bg` otherwise; focus mixes the
+        // border toward `--amber` and adds a 2px `--amber-d` ring.
+        let field_bg = if theme.is_light() { t.pane } else { t.bg };
         let border = if focused {
-            mix(t.amber, t.line, 0.55)
+            t.amber.mix(0.55, t.line)
         } else {
             t.line
         };
-        let field = div()
+        let placeholder: SharedString = "Find".into();
+        let field = card(field_bg, border, 6.)
             .flex_1()
             .min_w(px(80.))
             .h(px(28.))
             .px(px(9.))
             .flex()
             .items_center()
-            .bg(gpui_color(input_bg(&self.app_theme, &t)))
-            .border_1()
-            .border_color(gpui_color(border))
-            .rounded(px(6.))
-            .when(focused, |d| {
-                d.shadow(vec![BoxShadow {
-                    color: gpui_color(t.amber_d),
-                    offset: point(px(0.), px(0.)),
-                    blur_radius: px(0.),
-                    spread_radius: px(2.),
-                    inset: false,
-                }])
-            })
-            .map(|d| mono_font(d, &mono, &fallbacks))
-            .text_size(px(12.))
-            .text_color(gpui_color(t.text))
-            .child(Input::new(&self.input));
-        let mut row = div()
+            .when(focused, |d| d.child(outline(2., 0., 6., 1., t.amber_d)))
+            .child(text_field(
+                &self.input,
+                &placeholder,
+                t.faint,
+                Family::Mono,
+                12.,
+                window,
+                cx,
+            ));
+        let count = (!label.is_empty()).then(|| {
+            div()
+                .flex_none()
+                .flex()
+                .justify_end()
+                .px(px(2.))
+                .when(!none, |d| d.min_w(px(10.5 * 4.5)))
+                .child(
+                    text(label)
+                        .family(Family::Mono)
+                        .size(10.5)
+                        .color(if none { t.coral } else { t.muted })
+                        .nowrap(),
+                )
+        });
+        let group = |buttons: Vec<gpui_kit::AnyElement>| {
+            div()
+                .flex()
+                .flex_none()
+                .items_center()
+                .gap(px(2.))
+                .children(buttons)
+        };
+        let nav = group(vec![
+            self.button(Button::Previous, window, cx).into_any_element(),
+            self.button(Button::Next, window, cx).into_any_element(),
+        ]);
+        let toggles = group(vec![
+            self.button(Button::Case, window, cx).into_any_element(),
+            self.button(Button::Regexp, window, cx).into_any_element(),
+            self.button(Button::Word, window, cx).into_any_element(),
+        ]);
+        let close = div()
+            .ml(px(2.))
+            .child(self.button(Button::Close, window, cx));
+        let row = div()
             .flex()
             .items_center()
             .gap(px(6.))
@@ -423,123 +377,25 @@ impl Render for TerminalFindBar {
                     .items_center()
                     .justify_center()
                     .size(px(26.))
-                    .text_color(gpui_color(t.faint))
-                    .child(Icon::new("search", icons::SEARCH)),
+                    .text_color(t.faint)
+                    .child(icon(IconName::Search).size(px(15.))),
             )
-            .child(field);
-        if !label.is_empty() {
-            let count = div()
-                .flex_none()
-                .map(|d| mono_font(d, &mono, &fallbacks))
-                .text_size(px(10.5))
-                .whitespace_nowrap()
-                .text_color(gpui_color(if none { t.coral } else { t.muted }))
-                .when(!none, |d| {
-                    d.min_w(px(10.5 * 4.5)).px(px(2.)).flex().justify_end()
-                })
-                .when(none, |d| d.px(px(2.)))
-                .child(label);
-            row = row.child(count);
-        }
-        let ent = cx.entity();
-        let (e1, e2, e3, e4, e5, e6) = (
-            ent.clone(),
-            ent.clone(),
-            ent.clone(),
-            ent.clone(),
-            ent.clone(),
-            ent,
-        );
-        let row = row
-            .child(
-                div()
-                    .flex()
-                    .flex_none()
-                    .items_center()
-                    .gap(px(2.))
-                    .child(
-                        self.icon_button(
-                            "term-find-prev",
-                            "Previous match (⇧⌘G)",
-                            Icon::new("chevron-left", icons::CHEVRON_LEFT),
-                            None,
-                            &t,
-                        )
-                        .on_click(move |_, _, cx| {
-                            e1.update(cx, |_, cx| cx.emit(FindBarEvent::Previous))
-                        }),
-                    )
-                    .child(
-                        self.icon_button(
-                            "term-find-next",
-                            "Next match (⌘G)",
-                            Icon::new("chevron-right", icons::CHEVRON_RIGHT),
-                            None,
-                            &t,
-                        )
-                        .on_click(move |_, _, cx| {
-                            e2.update(cx, |_, cx| cx.emit(FindBarEvent::Next))
-                        }),
-                    ),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_none()
-                    .items_center()
-                    .gap(px(2.))
-                    .child(
-                        self.icon_button(
-                            "term-find-case",
-                            "Match case (⌥⌘C)",
-                            Icon::new("case-sensitive", icons::CASE_SENSITIVE),
-                            Some(self.case_sensitive),
-                            &t,
-                        )
-                        .on_click(move |_, _, cx| e3.update(cx, |b, cx| b.toggle_case(cx))),
-                    )
-                    .child(
-                        self.icon_button(
-                            "term-find-regex",
-                            "Regular expression (⌥⌘R)",
-                            Icon::new("regex", icons::REGEX),
-                            Some(self.regexp),
-                            &t,
-                        )
-                        .on_click(move |_, _, cx| e4.update(cx, |b, cx| b.toggle_regexp(cx))),
-                    )
-                    .child(
-                        self.icon_button(
-                            "term-find-word",
-                            "Whole word (⌥⌘W)",
-                            Icon::new("whole-word", icons::WHOLE_WORD),
-                            Some(self.whole_word),
-                            &t,
-                        )
-                        .on_click(move |_, _, cx| e5.update(cx, |b, cx| b.toggle_whole_word(cx))),
-                    ),
-            )
-            .child(
-                div().ml(px(2.)).child(
-                    self.icon_button(
-                        "term-find-close",
-                        "Close",
-                        Icon::new("x", icons::X),
-                        None,
-                        &t,
-                    )
-                    .on_click(move |_, _, cx| e6.update(cx, |_, cx| cx.emit(FindBarEvent::Close))),
-                ),
-            );
+            .child(field)
+            .children(count)
+            .child(nav)
+            .child(toggles)
+            .child(close);
         div()
             .id("term-dock-find")
             .track_focus(&self.focus)
             .key_context("TerminalFind")
             .capture_key_down(cx.listener(Self::key_down))
             .flex_none()
+            .flex()
+            .flex_col()
             .border_b_1()
-            .border_color(gpui_color(t.line))
-            .bg(gpui_color(t.pane))
-            .child(div().flex().flex_col().child(row))
+            .border_color(t.line)
+            .bg(t.pane)
+            .child(row)
     }
 }

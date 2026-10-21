@@ -318,6 +318,7 @@ impl TerminalView {
             cx.on_focus(&focus, window, |v, window, cx| v.sync_focus(window, cx)),
             cx.on_blur(&focus, window, |v, window, cx| v.sync_focus(window, cx)),
             cx.observe_window_activation(window, |v, window, cx| v.sync_focus(window, cx)),
+            cx.observe_global::<recur_ui::Theme>(|v, cx| v.push_theme(cx)),
         ];
         let (tx, mut rx) = mpsc::unbounded::<Vec<u8>>();
         let (write_backend, write_id) = (backend.clone(), opts.session_id.clone());
@@ -751,7 +752,7 @@ impl TerminalView {
         }
     }
 
-    /// App theme, terminal theme or catalog changed.
+    /// Terminal theme or catalog changed (app theme switches arrive through `recur_ui::Theme`).
     pub fn set_theme(&mut self, theme: ThemeContext, cx: &mut Context<Self>) {
         if self.theme != theme {
             self.theme = theme;
@@ -768,7 +769,8 @@ impl TerminalView {
     }
 
     fn push_theme(&mut self, cx: &mut Context<Self>) {
-        let palette = Palette::from_theme(&self.theme.resolve(self.frosted));
+        let app = recur_ui::Theme::of(cx).id;
+        let palette = Palette::from_theme(&self.theme.resolve(app, self.frosted));
         for out in self.screen.set_palette(palette) {
             self.handle_output(out, cx);
         }
@@ -829,7 +831,7 @@ impl TerminalView {
             regex: opts.regexp,
             whole_word: opts.whole_word,
             incremental: opts.incremental,
-            decorations: Some(search_decorations(&self.theme.tokens())),
+            decorations: Some(search_decorations(&recur_ui::Theme::of(cx).tokens)),
         };
         // The addon never re-highlights the same term when only options change.
         let key = (o.case_sensitive, o.regex, o.whole_word);

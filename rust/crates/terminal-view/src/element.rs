@@ -179,7 +179,15 @@ impl Element for TerminalElement {
         let composition = view.composition.clone();
         let cursor_cell = view.screen.cursor_in_viewport();
         let now = Instant::now();
-        let opacity = view.scrollbar.opacity(now);
+        // xterm's slider fades are CSS transitions without a reduced-motion rule: they always
+        // run, and only a parity capture's freeze settles them.
+        let opacity = view.scrollbar.opacity_with(|start, dur| {
+            if recur_ui::motion::is_frozen(cx) {
+                recur_ui::motion::progress(start, dur, cx)
+            } else {
+                (now.saturating_duration_since(start).as_secs_f32() / dur.as_secs_f32()).min(1.0)
+            }
+        });
         let slider = view.scrollbar.slider();
         let palette = view.screen.palette().clone();
         let slider_color = if view.scrollbar.is_dragging() {
@@ -383,6 +391,19 @@ fn paint_glyph(
             m,
             origin,
         );
+    }
+    if g.overline {
+        // TextureAtlas strokes it along the top of the character box, half a pixel down when
+        // the width is odd, in the glyph colour.
+        let lw = m.underline_width();
+        let y_off = if lw as i32 % 2 == 1 { 0.5 } else { 0.0 };
+        window.paint_quad(fill(
+            Bounds::new(
+                point(origin.x, box_top + dev(y_off - lw / 2.0)),
+                size(dev(g.width as f32 * m.char_width), dev(lw)),
+            ),
+            color,
+        ));
     }
     if g.strikethrough {
         let lw = m.strike_width();

@@ -2,9 +2,8 @@
 //! (`frontend/src/lib/terminal.ts`), and the find highlight colours (`TerminalPane.svelte`).
 
 use recur_term::screen::{Decorations, Rgba, Theme};
+use recur_ui::{ThemeId, Tokens};
 use serde::{Deserialize, Serialize};
-
-use crate::tokens::{Tokens, is_light_theme, tokens};
 
 /// A bundle-contributed terminal palette (`TerminalThemeInfo` from `ListTerminalThemes`).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -26,20 +25,15 @@ fn is_zero(v: &i64) -> bool {
     *v == 0
 }
 
-/// Everything the palette depends on: the app theme, the terminal theme preference (`""`
-/// follows the app chrome) and the bundle catalog.
+/// The terminal theme preference (`""` follows the app chrome) and the bundle catalog. The app
+/// theme comes from `recur_ui::Theme`, so palettes follow runtime theme switches.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ThemeContext {
-    pub app_theme: String,
     pub terminal_theme: String,
     pub catalog: Vec<TerminalThemeInfo>,
 }
 
 impl ThemeContext {
-    pub fn tokens(&self) -> Tokens {
-        tokens(&self.app_theme)
-    }
-
     /// `paletteFor`: the catalog palette for `id` with empty values dropped, if it has a
     /// background and foreground.
     fn palette_for(&self, id: &str) -> Option<Theme> {
@@ -55,29 +49,29 @@ impl ThemeContext {
         (t.background.is_some() && t.foreground.is_some()).then_some(t)
     }
 
-    /// `resolveTerminalTheme(id, { transparentBg })`.
-    pub fn resolve(&self, transparent_bg: bool) -> Theme {
+    /// `resolveTerminalTheme(id, { transparentBg })` under the app theme `app`.
+    pub fn resolve(&self, app: ThemeId, transparent_bg: bool) -> Theme {
         terminal_theme(
-            &self.tokens(),
-            is_light_theme(&self.app_theme),
+            &app.tokens(),
+            app.is_light(),
             self.palette_for(&self.terminal_theme).as_ref(),
             transparent_bg,
         )
     }
 
     /// `terminalSurfaceBg`: the opaque cell fill for chrome around the grid.
-    pub fn surface_bg(&self) -> Rgba {
-        self.resolve(false)
+    pub fn surface_bg(&self, app: ThemeId) -> Rgba {
+        self.resolve(app, false)
             .background
             .as_deref()
             .and_then(Rgba::parse)
-            .unwrap_or(self.tokens().bg)
+            .unwrap_or_else(|| rgba(app.tokens().bg))
     }
 
     /// `terminalFrosts`: maximize frosts (transparent cells) only on dark palettes.
-    pub fn frosts(&self) -> bool {
+    pub fn frosts(&self, app: ThemeId) -> bool {
         if self.terminal_theme.is_empty() {
-            return !is_light_theme(&self.app_theme);
+            return !app.is_light();
         }
         self.catalog
             .iter()
@@ -125,7 +119,7 @@ pub fn terminal_theme(
     palette: Option<&Theme>,
     transparent_bg: bool,
 ) -> Theme {
-    let h = |c: Rgba| Some(c.to_hex());
+    let h = |c: recur_ui::Color| Some(c.to_hex());
     if let Some(p) = palette {
         let opaque = p.background.clone().or_else(|| h(t.bg));
         let mut out = p.clone();
@@ -178,11 +172,17 @@ pub fn terminal_theme(
     }
 }
 
-/// The find highlight colours: matches at `color-mix(--amber 40%, --bg)`, the active one solid
-/// `--amber`.
+/// A token as the terminal's colour type (`#rrggbb`, as `getComputedStyle` reports it).
+fn rgba(c: recur_ui::Color) -> Rgba {
+    let [r, g, b, a] = c.to_rgba8();
+    Rgba::new(r, g, b, a)
+}
+
+/// The find highlight colours (`searchDecorations`): matches at `mixHex(--amber, --bg, .4)`,
+/// the active one solid `--amber`.
 pub fn search_decorations(t: &Tokens) -> Decorations {
-    let mix = |fg: u8, bg: u8| (fg as f64 * 0.4 + bg as f64 * 0.6 + 0.5).floor() as u8;
-    let (a, b) = (t.amber, t.bg);
+    let mix = |fg: u8, bg: u8| (fg as f64 * 0.4 + bg as f64 * 0.6).round() as u8;
+    let (a, b) = (rgba(t.amber), rgba(t.bg));
     Decorations {
         match_background: Rgba::rgb(mix(a.r(), b.r()), mix(a.g(), b.g()), mix(a.b(), b.b())),
         active_match_background: a,
@@ -192,6 +192,8 @@ pub fn search_decorations(t: &Tokens) -> Decorations {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const APP: ThemeId = ThemeId::Charcoal;
 
     fn bundled(id: &str, palette: Theme, ui: &str) -> TerminalThemeInfo {
         TerminalThemeInfo {
@@ -216,7 +218,6 @@ mod tests {
 
     fn ctx(id: &str, catalog: Vec<TerminalThemeInfo>) -> ThemeContext {
         ThemeContext {
-            app_theme: "default".into(),
             terminal_theme: id.into(),
             catalog,
         }
@@ -224,16 +225,26 @@ mod tests {
 
     #[test]
     fn empty_id_uses_app_chrome_fallbacks() {
-        let t = ctx("", vec![]).resolve(false);
+        let t = ctx("", vec![]).resolve(APP, false);
         assert_eq!(t.background.as_deref(), Some("#141414"));
         assert_eq!(t.foreground.as_deref(), Some("#e6e4e1"));
+        assert_eq!(t.cursor.as_deref(), Some("#e07a5f"));
+        assert_eq!(t.black.as_deref(), Some("#3d3d3d"));
+        assert_eq!(t.yellow.as_deref(), Some("#fbbf24"));
+    }
+
+    #[test]
+    fn app_chrome_follows_the_app_theme() {
+        let t = ctx("", vec![]).resolve(ThemeId::Nord, false);
+        assert_eq!(t.background.as_deref(), Some("#181c24"));
+        assert_eq!(t.foreground.as_deref(), Some("#eceff4"));
     }
 
     #[test]
     fn bundle_id_applies_the_palette() {
         let mut p = theme("#282a36", "#f8f8f2");
         p.red = Some("#ff5555".into());
-        let t = ctx("dracula", vec![bundled("dracula", p, "dark")]).resolve(false);
+        let t = ctx("dracula", vec![bundled("dracula", p, "dark")]).resolve(APP, false);
         assert_eq!(
             (
                 t.background.as_deref(),
@@ -248,7 +259,10 @@ mod tests {
     #[test]
     fn unknown_id_falls_back_to_app_chrome() {
         assert_eq!(
-            ctx("missing", vec![]).resolve(false).background.as_deref(),
+            ctx("missing", vec![])
+                .resolve(APP, false)
+                .background
+                .as_deref(),
             Some("#141414")
         );
     }
@@ -259,8 +273,15 @@ mod tests {
             "homebrew",
             vec![bundled("homebrew", theme("#000000", "#00ff00"), "dark")],
         );
-        assert_eq!(c.surface_bg(), Rgba::rgb(0, 0, 0));
-        assert_eq!(c.resolve(true).background.as_deref(), Some("#00000000"));
+        assert_eq!(c.surface_bg(APP), Rgba::rgb(0, 0, 0));
+        assert_eq!(
+            c.resolve(APP, true).background.as_deref(),
+            Some("#00000000")
+        );
+        assert_eq!(
+            ctx("", vec![]).surface_bg(ThemeId::Paper),
+            Rgba::rgb(0xeb, 0xec, 0xef)
+        );
     }
 
     #[test]
@@ -269,26 +290,19 @@ mod tests {
             bundled("solarized-light", theme("#fdf6e3", "#657b83"), "light"),
             bundled("homebrew", theme("#000000", "#00ff00"), "dark"),
         ];
-        assert!(!ctx("solarized-light", catalog.clone()).frosts());
-        assert!(ctx("homebrew", catalog.clone()).frosts());
-        assert!(ctx("", catalog.clone()).frosts());
-        assert!(
-            !ThemeContext {
-                app_theme: "paper".into(),
-                ..ctx("", catalog)
-            }
-            .frosts()
-        );
+        assert!(!ctx("solarized-light", catalog.clone()).frosts(APP));
+        assert!(ctx("homebrew", catalog.clone()).frosts(APP));
+        assert!(ctx("", catalog.clone()).frosts(APP));
+        assert!(!ctx("", catalog).frosts(ThemeId::Paper));
     }
 
     #[test]
     fn light_chrome_uses_a_dark_tint_selection() {
-        let c = ThemeContext {
-            app_theme: "paper".into(),
-            ..ctx("", vec![])
-        };
         assert_eq!(
-            c.resolve(false).selection_background.as_deref(),
+            ctx("", vec![])
+                .resolve(ThemeId::Paper, false)
+                .selection_background
+                .as_deref(),
             Some("rgba(0,0,0,.12)")
         );
     }
@@ -302,7 +316,7 @@ mod tests {
         };
         assert_eq!(
             ctx("x", vec![bundled("x", p, "dark")])
-                .resolve(false)
+                .resolve(APP, false)
                 .background
                 .as_deref(),
             Some("#141414")
@@ -311,7 +325,7 @@ mod tests {
 
     #[test]
     fn search_colours_mix_amber_into_the_background() {
-        let d = search_decorations(&tokens("default"));
+        let d = search_decorations(&APP.tokens());
         assert_eq!(d.active_match_background, Rgba::rgb(0xe0, 0x7a, 0x5f));
         assert_eq!(d.match_background, Rgba::rgb(102, 61, 50));
     }

@@ -9,9 +9,10 @@ use gpui::{
     TouchPhase, VisualTestContext, point, px,
 };
 use parking_lot::Mutex;
+use recur_term::screen::{Rgba, Theme};
 use recur_terminal_view::{
     ACK_THRESHOLD, FindOptions, TerminalBackend, TerminalEvent, TerminalFont, TerminalOptions,
-    TerminalView, ThemeContext,
+    TerminalThemeInfo, TerminalView, ThemeContext,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,6 +93,7 @@ struct Harness<'a> {
 fn mount<'a>(cx: &'a mut TestAppContext, replay: &[u8]) -> Harness<'a> {
     cx.update(|cx| {
         gpui_kit::init(cx);
+        recur_ui::init(cx);
         recur_terminal_view::init(cx);
     });
     let rec = Arc::new(Recorder {
@@ -109,10 +111,7 @@ fn mount<'a>(cx: &'a mut TestAppContext, replay: &[u8]) -> Harness<'a> {
                 active: true,
                 frosted: false,
                 font: TerminalFont::default(),
-                theme: ThemeContext {
-                    app_theme: "default".into(),
-                    ..Default::default()
-                },
+                theme: ThemeContext::default(),
                 workspace_root: "/tmp/wt".into(),
                 dock_focus: None,
             },
@@ -217,6 +216,7 @@ fn streams_output_and_acks_in_32kb_batches(cx: &mut TestAppContext) {
 fn output_before_the_replay_waits_for_it(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);
+        recur_ui::init(cx);
         recur_terminal_view::init(cx);
     });
     let rec = Arc::new(Recorder {
@@ -638,21 +638,34 @@ fn alt_click_moves_the_prompt_cursor(cx: &mut TestAppContext) {
 fn theme_changes_repaint_the_palette(cx: &mut TestAppContext) {
     let mut h = mount(cx, b"");
     h.settle();
-    let before = h
-        .view
-        .read_with(h.cx, |v, _| v.screen().palette().background);
+    let background = |h: &mut Harness| {
+        h.view
+            .read_with(h.cx, |v, _| v.screen().palette().background)
+    };
+    let charcoal = background(&mut h);
+    // A runtime app theme switch reaches the pane without a remount.
+    h.cx.update(|_, cx| recur_ui::Theme::set(recur_ui::ThemeId::Paper, cx));
+    h.settle();
+    let paper = background(&mut h);
+    assert_ne!(charcoal, paper);
+    // So does a terminal theme pick.
     h.view.update(h.cx, |v, cx| {
         v.set_theme(
             ThemeContext {
-                app_theme: "paper".into(),
-                ..Default::default()
+                terminal_theme: "x".into(),
+                catalog: vec![TerminalThemeInfo {
+                    id: "x".into(),
+                    palette: Theme {
+                        background: Some("#102030".into()),
+                        foreground: Some("#ffffff".into()),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }],
             },
             cx,
         )
     });
     h.settle();
-    let after = h
-        .view
-        .read_with(h.cx, |v, _| v.screen().palette().background);
-    assert_ne!(before, after);
+    assert_eq!(background(&mut h), Rgba::rgb(0x10, 0x20, 0x30));
 }

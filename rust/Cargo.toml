@@ -38,6 +38,9 @@ recur-app = { path = "crates/app" }
 
 # UI. gpui-kit pins an exact gpui-pre snapshot; bump only together with it.
 gpui-kit = "0.8.0"
+# The GPUI build gpui-kit re-exports, for `test-support` in dev-dependencies (gpui-kit's own
+# `test-support` feature pulls in gpui-fast through a target-specific weak dependency).
+gpui = { package = "gpui-pre", version = "=0.3.9" }
 
 anyhow = "1"
 thiserror = "2"
@@ -83,6 +86,16 @@ block2 = "0.6"
 dispatch2 = "0.3"
 tempfile = "3"
 pretty_assertions = "1"
+
+# Terminal: PTY spawn, process groups, emulator state.
+portable-pty = "0.9"
+filedescriptor = "0.8"
+nix = { version = "0.31", features = ["signal", "process", "hostname", "poll"] }
+alacritty_terminal = { version = "0.25", default-features = false }
+url = "2"
+unicode-width = "0.2"
+image = { version = "0.25", default-features = false }
+regress = { version = "0.12", features = ["utf16"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

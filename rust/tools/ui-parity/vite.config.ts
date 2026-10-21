@@ -4,7 +4,7 @@
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { defineConfig } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { svelte, vitePreprocess } from '@sveltejs/vite-plugin-svelte'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = join(here, '..', '..', '..')
@@ -15,7 +15,9 @@ export const PORT = Number(process.env.UI_PARITY_PORT) || 9246
 
 export default defineConfig({
   root: join(here, 'web'),
-  plugins: [svelte(), wails(join(frontend, 'bindings'))],
+  // The frontend's own preprocessing (`frontend/svelte.config.js`), so components with full
+  // TypeScript (CodeEditor) compile as they do in the app.
+  plugins: [svelte({ preprocess: vitePreprocess({ script: true }) }), wails(join(frontend, 'bindings'))],
   // One Svelte runtime for the harness and the frontend components it mounts.
   resolve: { dedupe: ['svelte'] },
   server: {

@@ -76,6 +76,23 @@ Registries are keyed by the same string ids the Go app persists, so stored data 
 
 The engine port is planned slice by slice in `docs/engine-port-plan.md`.
 
+## Editor
+
+`recur-editor` ports Recur's CodeMirror 6 editor (`CodeEditor.svelte`, `MergeEditor.svelte`, `lib/cm-*`) and `recur-textmate` its TextMate stack (`vscode-textmate` semantics on Oniguruma, `tm-*`, `codehl`). `recur-textmate` stands alone: grammars and themes reach it as loaders and parsed JSON, never through `recur-bundles`.
+
+**Architecture.** The editor is not built on gpui-base's text input. It ports CodeMirror's model: an immutable `EditorState` over a rope `Text` (UTF-8 offsets; LSP positions convert to UTF-16), `ChangeSet` / `Transaction` / `Effect`, the selection, history, search, autocomplete, close-brackets, snippet, fold, lint and merge state, and the keymap with its precedence. `EditorView` is a GPUI entity that applies transactions and lays rows out (`display.rs`, wrapping and folds measured through the GPUI text system). One custom `EditorElement` paints in CodeMirror's layer order (scroller fill, selection, line and mark backgrounds, text, cursors, gutters, scrollbars), visible rows only, so large files stay cheap. Chrome around it (panels, tooltips, documentation, the vim panel, gutter icons) is ordinary `recur-ui` elements. vim and emacs are full ports of `@replit/codemirror-vim` 6.3.0 and `@replit/codemirror-emacs` 6.1.0 that run after the editor keymap, as Recur's keymap compartment orders them.
+
+**Public API.**
+
+- `EditorView::new(EditorOptions, window, cx)`: `kind` (`Code`, or `Merge { original }` for the Diff view), `path`, `doc`, `saved_doc`, `read_only`, `prefs: EditorPrefs`, `theme: Option<Rc<ParsedTmTheme>>` with `dark_fallback`, `textmate: Option<SharedTextMate>`, `pane`, `snippets: Option<Rc<dyn SnippetProvider>>`, `view_state`, `lit`.
+- Host calls: `get_doc` / `peek_doc`, `is_dirty`, `mark_saved`, `apply_saved_baseline`, `replace_doc`, `external_doc_change`, `set_prefs`, `set_theme`, `set_read_only`, `set_lit`, `set_findings`, `set_diff_base`, `set_diagnostics`, `get_view_state` / `apply_view_state`, `scroll_to_line`, `toggle_search`, `apply_snippet_at`, `apply_output`, `mount_path` / `retain_paths` / `forget_path` (multi-buffer views), `coords_at_pos`, `title_at`.
+- `EditorEvent`: `DocChanged`, `DirtyChanged`, `Save`, `CopyLine`, `Cursor`, `GotoDefinition`, `SearchOpenChanged`, `OpenFinding`, `PickSnippet`, `Announce`, `Toast`.
+- Session and view state: `session` (the `editor-session.ts` shape, caps, wire format and patch gate) and `view_state` (caret, scroll, view mode, dirty rules).
+- LSP: the host attaches an `Rc<dyn LspClient>` with `set_lsp(client, uri, language_id)` and pushes diagnostics with `set_lsp_diagnostics`. `LspClient` is the transport-facing half of `@codemirror/lsp-client`: capabilities, `request` (id + response future) and `cancel_request`, `sync`, `open_file` / `close_file` / `file_changed`, `display_file` for cross-file jumps and `apply_workspace_edit`. `lsp::content_changes_for` builds `didChange` bodies.
+- Theme inputs: chrome tokens come from the `recur_ui::Theme` global (followed as it changes); code colors from the parsed TextMate theme, which the view makes the catalog's active theme (`TextMate::activate_theme`).
+
+**What hosts provide.** `recur_ui::init` and `recur_ui::Assets`, the view inside `style::window_root` with a `TitleTooltip` as the last child (panel and gutter titles use `recur_ui::tooltip::titled`); a `SharedTextMate` with every grammar registered (`gallery::shipped_textmate` shows the conversion from `recur-bundles`) and the editor theme parsed; a `SnippetProvider` over bundle snippets; handling of `EditorEvent`s (save, toasts, finding and definition navigation); and an `LspClient` adapter over `recur_lsp::Manager` that owns request ids, `initialize`, document versions and `didChange` batching, applying `recur_lsp::protocol` around `Manager::write`.
+
 ## Runtime model
 
 - The backend (`engine` and below, `services`) runs on a shared multi-threaded `tokio` runtime: subprocess I/O, sockets, HTTP, timers and file watching. Go goroutines become tasks; `context.Context` cancellation becomes `tokio_util::sync::CancellationToken`; Go channels become `tokio::sync` channels.

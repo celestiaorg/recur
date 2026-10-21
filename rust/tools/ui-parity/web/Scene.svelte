@@ -18,13 +18,20 @@
   import Resize from './scenes/Resize.svelte'
   import Overlays from './scenes/Overlays.svelte'
   import Scrollbars from './scenes/Scrollbars.svelte'
+  import Editor from './scenes/Editor.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
   const variant = $derived(name.split('/').slice(1).join('/'))
   let ready = $state(false)
+  // Editor scenes are ready once TextMate has painted tokens.
+  function painted(): boolean {
+    return kind !== 'editor' || !!document.querySelector('.cm-line span')
+  }
   onMount(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => (ready = true)))
+    const settle = () => requestAnimationFrame(() => requestAnimationFrame(() => (ready = true)))
+    const wait = (left: number) => (painted() || left <= 0 ? settle() : setTimeout(() => wait(left - 1), 50))
+    wait(100)
   })
 </script>
 
@@ -65,6 +72,8 @@
     <Overlays {variant} />
   {:else if kind === 'scrollbar'}
     <Scrollbars />
+  {:else if kind === 'editor'}
+    <Editor {variant} />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

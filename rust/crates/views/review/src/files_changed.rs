@@ -148,7 +148,10 @@ impl FilesChangedView {
             ReviewFileList::new(
                 FileListProps::default(),
                 Some(Rc::new(move |path, _, _, cx| {
-                    let _ = me.update(cx, |v, cx| v.select_path(&path, cx));
+                    let me = me.clone();
+                    cx.defer(move |cx| {
+                        let _ = me.update(cx, |v, cx| v.select_path(&path, cx));
+                    });
                 })),
             )
         });
@@ -977,15 +980,24 @@ impl FilesChangedView {
                         }
                     }))
                     .child(icon(IconName::Search).size(px(12.)))
-                    .child(recur_ui::style::text_field(
-                        &self.filter,
-                        &SharedString::from("Filter files"),
-                        t.faint,
-                        Family::Ui,
-                        12.,
-                        window,
-                        cx,
-                    )),
+                    // WebKit's `type=search` field is 19px tall at 12px, text centered.
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .h(px(19.))
+                            .flex()
+                            .items_center()
+                            .child(recur_ui::style::text_field(
+                                &self.filter,
+                                &SharedString::from("Filter files"),
+                                t.faint,
+                                Family::Ui,
+                                12.,
+                                window,
+                                cx,
+                            )),
+                    ),
             );
         if self.has_open_findings() {
             let on = self.findings_only;
@@ -1103,7 +1115,8 @@ impl FilesChangedView {
             return String::new();
         }
         let n = self.visible_files().len();
-        format!(" · {n} file{}", if n == 1 { "" } else { "s" })
+        // `{#if} · {n} files{/if}`: the block's leading space is trimmed.
+        format!("· {n} file{}", if n == 1 { "" } else { "s" })
     }
 
     fn working_header(&self, cx: &mut Context<Self>) -> AnyElement {

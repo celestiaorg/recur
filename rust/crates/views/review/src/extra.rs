@@ -276,6 +276,8 @@ fn cmt(e: &El, key: &str, window: &mut Window, cx: &App) -> AnyElement {
                         .id(SharedString::from(format!("cm-{k}")))
                         .size(12.5)
                         .line_height(LineHeight::Scale(1.55))
+                        // `.cm` is also the comment token class: `color: var(--faint)`.
+                        .color(t.faint)
                         .break_anywhere(),
                 );
             } else if c.has_class("react") {
@@ -349,26 +351,14 @@ fn react(e: &El, key: &str, _window: &mut Window, t: &Tokens) -> AnyElement {
                         .into_any_element(),
                 );
             }
+            // No rule styles `<code>` here: the UA `monospace`, which WebKit resolves to Menlo.
             Node::El(c) if c.is("code") => items.push(
-                Text::from_spans(vec![
-                    span(collapse(&c.text_content()))
-                        .mono()
-                        .size(11.)
-                        .boxed(InlineBox {
-                            pad_top: 1.,
-                            pad_bottom: 1.,
-                            pad_left: 5.,
-                            pad_right: 5.,
-                            background: Some(t.pane_2.into()),
-                            radius: 3.,
-                            ..Default::default()
-                        }),
-                ])
-                .id(SharedString::from(format!("rc-{key}-{i}")))
-                .mono()
-                .size(10.5)
-                .line_height(LineHeight::Scale(1.45))
-                .into_any_element(),
+                Text::from_spans(vec![span(collapse(&c.text_content()))])
+                    .id(SharedString::from(format!("rc-{key}-{i}")))
+                    .family(Family::Stack("Menlo".into(), Vec::new()))
+                    .size(10.5)
+                    .line_height(LineHeight::Scale(1.45))
+                    .into_any_element(),
             ),
             Node::El(c) => {
                 let st = inline_style(c);

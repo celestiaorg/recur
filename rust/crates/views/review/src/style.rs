@@ -38,6 +38,8 @@ pub const ADD_CD: Color = hex(0xcfeed9);
 pub const DEL_CD: Color = hex(0xf0c3b5);
 /// `.hline.hunk` and `.flag`.
 pub const HUNK_BG: Color = rgba(148, 134, 244, 0.06);
+/// `.hline.hunk:hover`.
+pub const HUNK_HOVER_BG: Color = rgba(148, 134, 244, 0.1);
 /// `.hline.split .side.blank`.
 pub const BLANK_BG: Color = rgba(255, 255, 255, 0.02);
 /// `.pending-pill`.

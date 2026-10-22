@@ -56,8 +56,8 @@ use crate::split_diff::{
 };
 use crate::store::patch_pr_pending_comments;
 use crate::style::{
-    ADD_BG, ADD_CD, BLANK_BG, DEL_BG, DEL_CD, HUNK_BG, PENDING_BG, hsla, icon_btn, label,
-    light_diff_text, note_btn, token_color,
+    ADD_BG, ADD_CD, BLANK_BG, DEL_BG, DEL_CD, HUNK_BG, HUNK_HOVER_BG, PENDING_BG, hsla, icon_btn,
+    label, light_diff_text, note_btn, token_color,
 };
 
 /// Who the line-note composer writes for.
@@ -955,6 +955,11 @@ const CODE_PX: f32 = 12.;
 const CODE_LH: f32 = 1.6;
 
 impl DiffFile {
+    /// The `.cd` cell's text; an empty cell has no line box.
+    fn code_cell(&self, html: &str, kind: &str, id: SharedString, cx: &App) -> Option<Text> {
+        (!html.is_empty()).then(|| self.code_text(html, kind, id, cx))
+    }
+
     fn code_text(&self, html: &str, kind: &str, id: SharedString, cx: &App) -> Text {
         let t = Theme::of(cx).tokens;
         let light = light_diff_text(cx);
@@ -1242,12 +1247,18 @@ impl DiffFile {
                 &format!("n{key}"),
                 cx,
             ))
-            .child(div().flex_1().min_w_0().px(px(14.)).child(self.code_text(
-                &l.code_html,
-                &l.r#type,
-                SharedString::from(format!("cd-{key}")),
-                cx,
-            )));
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .px(px(14.))
+                    .children(self.code_cell(
+                        &l.code_html,
+                        &l.r#type,
+                        SharedString::from(format!("cd-{key}")),
+                        cx,
+                    )),
+            );
         if self.can_note_side(side, pr) {
             row = row.child(self.addc(
                 i,
@@ -1293,6 +1304,8 @@ impl DiffFile {
             .items_center()
             .py(px(2.))
             .bg(hsla(HUNK_BG))
+            // `.hline.hunk:hover` (`_overlays.scss`).
+            .hover(|st| st.bg(hsla(HUNK_HOVER_BG)))
             .cursor_pointer()
             .child(
                 div().flex_none().w(px(22.)).flex().justify_center().child(
@@ -1385,12 +1398,18 @@ impl DiffFile {
             .when_some(Self::row_bg(&l.r#type, flags, cx), |d, c| d.bg(hsla(c)))
             .children(Self::row_marks(flags, 38., cx))
             .child(self.ln_cell(&num, open_line_no(&l), flags.drafting, &key, cx))
-            .child(div().flex_1().min_w_0().px(px(14.)).child(self.code_text(
-                &l.code_html,
-                &l.r#type,
-                SharedString::from(format!("cd-{key}")),
-                cx,
-            )));
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .px(px(14.))
+                    .children(self.code_cell(
+                        &l.code_html,
+                        &l.r#type,
+                        SharedString::from(format!("cd-{key}")),
+                        cx,
+                    )),
+            );
         if self.can_note_side(side, pr) {
             d = d.child(self.addc(
                 i,
@@ -2127,8 +2146,8 @@ impl Render for DiffFile {
                                     .relative()
                                     .flex()
                                     .font_family(Family::Mono.primary())
-                                    .child(l_el)
-                                    .child(r_el)
+                                    .child(recur_ui::style::flex_share(1., l_el).min_w_0())
+                                    .child(recur_ui::style::flex_share(1., r_el).min_w_0())
                                     .child(self.record_line(data_line))
                                     .into_any_element(),
                             );

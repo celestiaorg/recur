@@ -289,7 +289,8 @@ impl FileStack {
         if let Some((path, passes)) = self.pending_select.take() {
             let ranges = self.ranges();
             if let Some(r) = ranges.iter().find(|r| r.path == path) {
-                self.pane.set_scroll_top(r.top);
+                // `scrollTo({ top: el.offsetTop })`: offsetTop is a whole pixel.
+                self.pane.set_scroll_top(r.top.round());
                 if passes > 1 {
                     self.pending_select = Some((path, passes - 1));
                 } else {
@@ -532,13 +533,15 @@ impl FileStack {
                 )
                 .absolute()
                 .inset_0();
-                let stripes = (!live).then(|| stub_stripes(t.line));
+                let stripes = (!live).then_some(());
                 let sel = format!("cfile:{}:{}", if live { "live" } else { "stub" }, f.path);
-                let card = recur_ui::style::card(t.bg, t.line, 9.)
+                let card = div()
+                    .relative()
+                    .p(px(1.))
                     .debug_selector(move || sel.clone())
                     .mb(px(14.))
                     .when_some(reserved, |d, h| d.min_h(px(h)))
-                    .children(stripes)
+                    .child(cfile_frame(t.bg, t.line, stripes.is_some()))
                     .child(body)
                     .child(probe);
                 col = col.child(div().when(first, |d| d.mt(px(14.))).child(card));
@@ -632,33 +635,53 @@ impl FileStack {
     }
 }
 
-/// `.cfile.stub`'s `repeating-linear-gradient(to bottom, transparent 0 19px, var(--line) 19px
-/// 20px)`: a 1px line every 20px, clipped to the card's rounded border box.
-fn stub_stripes(line: recur_ui::Color) -> impl IntoElement {
+/// The `.cfile` box as CSS paints it, before its children: the `--bg` background (shrunk a
+/// device pixel under the opaque border), the stub stripes
+/// (`repeating-linear-gradient(to bottom, transparent 0 19px, var(--line) 19px 20px)`), then
+/// the 1px radius-9 border. GPUI would paint a border after the children; translucent rows
+/// composite over the border's corner arcs in the web view.
+fn cfile_frame(bg: recur_ui::Color, line: recur_ui::Color, stripes: bool) -> impl IntoElement {
     canvas(
         |_, _, _| {},
         move |b, _, window, _| {
-            let outer = b.dilate(px(1.));
-            let h = f32::from(outer.size.height);
             let r = 9.;
-            let mut y = 19.;
-            while y + 1. <= h {
-                let mid = y + 0.5;
-                let inset = if mid < r {
-                    r - (r * r - (r - mid) * (r - mid)).max(0.).sqrt()
-                } else if mid > h - r {
-                    let d = mid - (h - r);
-                    r - (r * r - d * d).max(0.).sqrt()
-                } else {
-                    0.
-                };
-                let rect = gpui_kit::Bounds::new(
-                    gpui_kit::point(outer.origin.x + px(inset), outer.origin.y + px(y)),
-                    gpui_kit::size(outer.size.width - px(2. * inset), px(1.)),
-                );
-                window.paint_quad(gpui_kit::fill(rect, gpui_kit::Hsla::from(line)));
-                y += 20.;
+            let dp = 1. / window.scale_factor();
+            let inner = gpui_kit::Bounds::new(
+                gpui_kit::point(b.origin.x + px(dp), b.origin.y + px(dp)),
+                gpui_kit::size(b.size.width - px(2. * dp), b.size.height - px(2. * dp)),
+            );
+            window.paint_quad(
+                gpui_kit::fill(inner, gpui_kit::Hsla::from(bg)).corner_radii(px(r - dp)),
+            );
+            if stripes {
+                let h = f32::from(b.size.height);
+                let mut y = 19.;
+                while y + 1. <= h {
+                    let mid = y + 0.5;
+                    let inset = if mid < r {
+                        r - (r * r - (r - mid) * (r - mid)).max(0.).sqrt()
+                    } else if mid > h - r {
+                        let d = mid - (h - r);
+                        r - (r * r - d * d).max(0.).sqrt()
+                    } else {
+                        0.
+                    };
+                    let rect = gpui_kit::Bounds::new(
+                        gpui_kit::point(b.origin.x + px(inset), b.origin.y + px(y)),
+                        gpui_kit::size(b.size.width - px(2. * inset), px(1.)),
+                    );
+                    window.paint_quad(gpui_kit::fill(rect, gpui_kit::Hsla::from(line)));
+                    y += 20.;
+                }
             }
+            window.paint_quad(gpui_kit::quad(
+                b,
+                px(r),
+                gpui_kit::Hsla::transparent_black(),
+                px(1.),
+                gpui_kit::Hsla::from(line),
+                gpui_kit::BorderStyle::Solid,
+            ));
         },
     )
     .absolute()

@@ -1776,21 +1776,30 @@
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 0,
+      "steps": [
+        { "click": [600, 106] }
+      ]
     },
     {
       "name": "review/collapsed",
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 0,
+      "steps": [
+        { "click": [284, 228] }
+      ]
     },
     {
       "name": "review/filelist",
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 0,
+      "steps": [
+        { "click": [100, 113] }
+      ]
     },
     {
       "name": "review/thread",

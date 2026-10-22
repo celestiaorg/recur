@@ -143,13 +143,14 @@ pub fn cav_wip(size: f32, radius: f32, cx: &App) -> Div {
         )
 }
 
-/// The `.cm-by` byline: the role with its amber iteration, or the author.
+/// The `.cm-by` byline: the role with its amber iteration, or the author. Svelte drops the
+/// whitespace that opens an `{#if}` block, so the separators read `Coder· iteration 2`.
 fn byline_spans(c: &Commit, suffix: &str, cx: &App) -> Vec<Span> {
     let t = Theme::of(cx).tokens;
     if !c.author_role.is_empty() && c.author_role != "Author" {
         let mut v = vec![span(c.author_role.clone())];
         if !c.iter_label.is_empty() {
-            v.push(span(" · "));
+            v.push(span("· "));
             v.push(span(c.iter_label.clone()).color(t.amber));
         }
         if !suffix.is_empty() {

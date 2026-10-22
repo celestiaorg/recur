@@ -695,11 +695,12 @@ impl FindingsPanel {
                 .relative()
                 .child(row)
                 .child(
+                    // `box-shadow: inset 2px 0 0`: inside the border, above the bottom rule.
                     div()
                         .absolute()
                         .left_0()
                         .top_0()
-                        .bottom_0()
+                        .bottom(px(1.))
                         .w(px(2.))
                         .bg(hsla(t.amber)),
                 )
@@ -786,14 +787,13 @@ impl FindingsPanel {
             .gap(px(8.))
             .flex_1()
             .min_w_0()
-            .child(
-                text(f.severity.to_string())
-                    .mono()
-                    .size(10.)
-                    .uppercase()
-                    .color(sev_color(&f.severity.to_string(), &t))
-                    .nowrap(),
-            )
+            .child({
+                // `.tc-sev.<severity>`.
+                let sev = f.severity.to_string();
+                recur_view_chat::style::sev_pill(&sev, &t)
+                    .render(sev)
+                    .flex_none()
+            })
             .child(titled(
                 SharedString::from(format!("fi-t-{}", f.id)),
                 finding_title(&f.message),

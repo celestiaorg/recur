@@ -19,9 +19,8 @@ type Client struct {
 	APIKey       string
 	ExtraHeaders map[string]string
 	HTTP         *http.Client
-	// Token is evaluated on every request so rotating OAuth tokens are never
-	// frozen into a runner. ChatGPT enables the Codex subscription contract.
-	Token     func(context.Context) (string, error)
+	// ChatGPT enables the Codex subscription contract. Authorize runs on every
+	// request so rotating OAuth tokens are never frozen into a runner.
 	ChatGPT   bool
 	Authorize func(*http.Request) error
 }
@@ -180,15 +179,7 @@ func (c *Client) Ping(ctx context.Context, model string) error {
 }
 
 func (c *Client) applyAuth(req *http.Request) error {
-	k := strings.TrimSpace(c.APIKey)
-	if c.Token != nil {
-		var err error
-		k, err = c.Token(req.Context())
-		if err != nil {
-			return err
-		}
-	}
-	if k != "" {
+	if k := strings.TrimSpace(c.APIKey); k != "" {
 		req.Header.Set("Authorization", "Bearer "+k)
 	}
 	for k, v := range c.ExtraHeaders {

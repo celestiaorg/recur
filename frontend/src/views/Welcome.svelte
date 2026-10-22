@@ -92,7 +92,7 @@
   const cursorReady = $derived(cursorSignedIn && !!cursorStatus?.bridgeInstalled)
   const codexReady = $derived(codexOn && !!codexAuth?.authenticated)
   const openAIReady = $derived(chatGPTReady || codexReady)
-  const hasProvider = $derived(claudeReady || cursorReady || codexReady || chatGPTReady)
+  const hasProvider = $derived(claudeReady || cursorReady || openAIReady)
   const claudeDetail = $derived(detected.replace(/^Claude Code(\s*·\s*)?/, '') || 'Signed in')
   const codexDetail = $derived(codexAuth?.email || codexAuth?.loginMethod || 'Signed in')
 

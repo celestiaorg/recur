@@ -1159,7 +1159,10 @@ impl Render for LineNoteThread {
                 .px(px(12.))
                 .pb(px(10.))
                 .text_color(hsla(t.faint))
-                .debug_selector(|| "cmt-resolved-bar".into())
+                .debug_selector({
+                    let r = root.id.clone();
+                    move || format!("cmt-resolved-bar:{r}")
+                })
                 .child(text("Resolved").size(12.5).nowrap());
             if can_resolve {
                 bar = bar.child(
@@ -1172,7 +1175,10 @@ impl Render for LineNoteThread {
                         lh,
                         cx,
                     )
-                    .debug_selector(|| "cmt-unresolve".into())
+                    .debug_selector({
+                        let r = root.id.clone();
+                        move || format!("cmt-unresolve:{r}")
+                    })
                     .when(!self.resolving, |d| {
                         d.on_click(cx.listener(|this, _, _, cx| this.set_resolved(false, cx)))
                     }),
@@ -1191,7 +1197,10 @@ impl Render for LineNoteThread {
             foot = foot.child(
                 div()
                     .id(SharedString::from(format!("reply-ph-{}", root.id)))
-                    .debug_selector(|| "cmt-reply-ph".into())
+                    .debug_selector({
+                        let r = root.id.clone();
+                        move || format!("cmt-reply-ph:{r}")
+                    })
                     .w_full()
                     .py(px(7.))
                     .px(px(10.))
@@ -1218,7 +1227,10 @@ impl Render for LineNoteThread {
                         lh,
                         cx,
                     )
-                    .debug_selector(|| "cmt-resolve".into())
+                    .debug_selector({
+                        let r = root.id.clone();
+                        move || format!("cmt-resolve:{r}")
+                    })
                     .when(!self.resolving, |d| {
                         d.on_click(cx.listener(|this, _, _, cx| this.set_resolved(true, cx)))
                     }),

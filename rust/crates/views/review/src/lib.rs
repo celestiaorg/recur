@@ -23,6 +23,8 @@ pub mod review_scope;
 pub mod review_scroll;
 pub mod review_window;
 pub mod scroll_fade;
+#[cfg(test)]
+mod spec;
 pub mod split_diff;
 pub mod spy_pick;
 pub mod stack;

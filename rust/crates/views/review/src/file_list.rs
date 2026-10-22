@@ -43,7 +43,7 @@ pub const FILE_ROW_H: f32 = 3. + 12.5 * 1.35 + 3.;
 /// `onSelect(path, { highlight })`.
 pub type SelectFn = Rc<dyn Fn(String, Option<i64>, &mut Window, &mut App)>;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct FileListProps {
     pub files: Vec<Rc<FileDiff>>,
     pub selected_path: String,
@@ -91,6 +91,9 @@ impl ReviewFileList {
     }
 
     pub fn set_props(&mut self, props: FileListProps, cx: &mut Context<Self>) {
+        if props == self.props {
+            return;
+        }
         if props.reveal != self.last_reveal {
             self.last_reveal = props.reveal;
             if props.reveal != 0 && !props.selected_path.is_empty() {
@@ -406,7 +409,10 @@ impl ReviewFileList {
             let p2 = path.clone();
             let c = div()
                 .id(SharedString::from(format!("flc-{}", e.path)))
-                .debug_selector(|| "obs-comment-flag".into())
+                .debug_selector({
+                    let p = e.path.clone();
+                    move || format!("obs-comment-flag:{p}")
+                })
                 .flex_none()
                 .size(px(12.))
                 .ml(px(2.))
@@ -448,7 +454,10 @@ impl ReviewFileList {
                 ),
                 div()
                     .id(SharedString::from(format!("flf-{}", e.path)))
-                    .debug_selector(|| "obs-finding-flag".into())
+                    .debug_selector({
+                        let p = e.path.clone();
+                        move || format!("obs-finding-flag:{p}")
+                    })
                     .flex_none()
                     .size(px(12.))
                     .ml(px(2.))

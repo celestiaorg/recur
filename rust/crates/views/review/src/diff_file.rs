@@ -91,7 +91,7 @@ pub struct DiffFileHooks {
 }
 
 /// `DiffFile`'s props.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct DiffFileProps {
     pub file: Rc<FileDiff>,
     pub highlight_line: i64,
@@ -132,13 +132,14 @@ struct RowHit {
     side: DiffSide,
     line: i64,
     row: Bounds<Pixels>,
-    addc: Option<Bounds<Pixels>>,
 }
 
 /// What the last frame laid out, in window coordinates.
 #[derive(Default)]
 struct Geom {
     root: Option<Bounds<Pixels>>,
+    /// The pane's scroll offset when `root` was painted.
+    painted_top: f32,
     head_h: f32,
     /// Rendered slots: index → (top, height).
     slots: HashMap<usize, (f32, f32)>,
@@ -147,16 +148,19 @@ struct Geom {
     threads: HashMap<i64, f32>,
     /// `[data-line]` row tops.
     lines: HashMap<i64, f32>,
+    /// The `+` hit boxes by (left side, line).
+    addcs: HashMap<(bool, i64), Bounds<Pixels>>,
 }
 
-/// A row (or split side) as the renderer needs it.
-#[derive(Clone, Copy)]
-struct RowFlags {
-    noted: bool,
-    note_end: bool,
-    drafting: bool,
-    draft_end: bool,
-    draft_tip: bool,
+/// A row's (or split side's) classes: `.noted`, `.note-end`, `.drafting`, `.draft-end`,
+/// `.draft-tip`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RowFlags {
+    pub noted: bool,
+    pub note_end: bool,
+    pub drafting: bool,
+    pub draft_end: bool,
+    pub draft_tip: bool,
 }
 
 pub struct DiffFile {
@@ -191,6 +195,12 @@ pub struct DiffFile {
     /// The sticky `.df-head`'s offset below its natural place, and `.stuck`.
     head_shift: f32,
     head_stuck: bool,
+    /// The composer's placeholder (`composePlaceholder`).
+    placeholder: String,
+    /// What `refreshLineWindow` last ran for: it re-runs on pane scroll, a resize of the file,
+    /// and changes to the slots, composer, drag or highlight (as the Svelte effect), never
+    /// for its own window change.
+    line_window_key: String,
     /// `.diff-file.selecting` hovered row for `draft-tip` hover state.
     _subs: Vec<Subscription>,
 }
@@ -248,6 +258,8 @@ impl DiffFile {
             pending_jump: None,
             head_shift: 0.,
             head_stuck: false,
+            placeholder: "Comment…".into(),
+            line_window_key: String::new(),
             _subs: subs,
         };
         me.reset_for_path();
@@ -279,6 +291,9 @@ impl DiffFile {
     }
 
     pub fn set_props(&mut self, props: DiffFileProps, window: &mut Window, cx: &mut Context<Self>) {
+        if props == self.props {
+            return;
+        }
         let jump = props.highlight_line != self.props.highlight_line;
         self.props = props;
         let path_changed = self.props.file.path != self.loaded_path;
@@ -403,6 +418,63 @@ impl DiffFile {
         }
     }
 
+    /// The classes row `i` (or its split `side`) renders with.
+    fn row_flags(
+        &self,
+        i: usize,
+        side: Option<DiffSide>,
+        pending: &[PendingLineComment],
+        notes: &[PrComment],
+    ) -> RowFlags {
+        let l = &self.lines()[i];
+        let path = &self.props.file.path;
+        let sel = draft_sel(
+            self.selecting,
+            self.open_line,
+            self.open_side,
+            self.open_start,
+        );
+        // Split rows show findings on the right side only.
+        let findings = side != Some(DiffSide::Left);
+        RowFlags {
+            noted: !line_notes_covering_row(notes, path, l, side).is_empty()
+                || pending_covering(pending, path, l, side) > 0
+                || (findings && !findings_covering_line(&self.props.findings, l).is_empty()),
+            note_end: !line_notes_on_row(notes, path, l, side).is_empty()
+                || !pending_on(pending, l, side).is_empty()
+                || (findings && !findings_ending_line(&self.props.findings, l).is_empty()),
+            drafting: draft_covers(sel, l, side),
+            draft_end: draft_ends(sel, l, side),
+            draft_tip: draft_tip(self.selecting, l, side),
+        }
+    }
+
+    /// The classes of the row with number `n` on `side` (unified layout), for hosts and tests.
+    pub fn row_classes(&self, n: i64, side: DiffSide, cx: &App) -> Option<RowFlags> {
+        let i = find_line(self.lines(), n, side)?;
+        let pr = self.pr(cx);
+        let pending = self.pending_here(pr.as_ref());
+        let notes: Vec<PrComment> = if self.mode() == NoteMode::Pr {
+            pr.as_ref()
+                .and_then(|p| p.comments.clone())
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        let split = self.props.layout == DiffLayout::Split;
+        Some(self.row_flags(i, split.then_some(side), &pending, &notes))
+    }
+
+    /// The mounted line-note threads.
+    pub fn thread_entities(&self) -> Vec<Entity<LineNoteThread>> {
+        self.threads.values().cloned().collect()
+    }
+
+    /// The drag over the `+` controls, if one is in progress.
+    pub fn selecting(&self) -> Option<Selecting> {
+        self.selecting
+    }
+
     // ---- composer ----
 
     fn open_composer(
@@ -436,6 +508,7 @@ impl DiffFile {
         self.open_side = side;
         self.open_start = start;
         let ph = compose_placeholder(&line, side, start);
+        self.placeholder = ph.clone();
         self.draft.update(cx, |d, cx| {
             d.set_placeholder(ph, window, cx);
             d.focus(window, cx);
@@ -453,6 +526,11 @@ impl DiffFile {
     /// The composer's text (`bind:value={draft}`).
     pub fn draft_text(&self, cx: &App) -> String {
         self.draft.read(cx).value().to_string()
+    }
+
+    /// The composer's placeholder text.
+    pub fn compose_placeholder(&self) -> &str {
+        &self.placeholder
     }
 
     pub fn draft_area(&self) -> &Entity<TextareaState> {
@@ -718,7 +796,9 @@ impl DiffFile {
             if y < top || y >= bottom {
                 continue;
             }
-            let Some(a) = r.addc else { return 0 };
+            let Some(a) = g.addcs.get(&(r.side == DiffSide::Left, r.line)) else {
+                return 0;
+            };
             let pad = 10.;
             if x < f32::from(a.left()) - pad || x > f32::from(a.right()) + pad {
                 return 0;
@@ -802,9 +882,9 @@ impl DiffFile {
             }
             return;
         };
-        let (root, head_h) = {
+        let (root, painted_top, head_h) = {
             let g = self.geom.borrow();
-            (g.root, g.head_h)
+            (g.root, g.painted_top, g.head_h)
         };
         let Some(root) = root else { return };
         let sig = format!(
@@ -820,7 +900,7 @@ impl DiffFile {
         let mut changed = self.measure();
         let scroll_top = pane.scroll_top();
         let head_h = if head_h > 0. { head_h } else { 40. };
-        let body_top = scroll_top + (f32::from(root.origin.y) - pane.top()) + head_h;
+        let body_top = painted_top + (f32::from(root.origin.y) - pane.top()) + head_h;
         let mut win = line_window(
             count,
             body_top,
@@ -944,7 +1024,30 @@ impl DiffFile {
                 self.pending_jump = None;
             }
         }
-        self.refresh_line_window(cx);
+        let key = {
+            let g = self.geom.borrow();
+            let size = g
+                .root
+                .map(|r| (f32::from(r.size.width), f32::from(r.size.height)));
+            let mut hunks: Vec<&usize> = self.collapsed_hunks.iter().collect();
+            hunks.sort();
+            format!(
+                "{:?}|{size:?}|{}|{:?}|{hunks:?}|{:?}|{}|{:?}|{}|{}|{}",
+                self.pane.as_ref().map(Pane::scroll_top),
+                self.slot_count(),
+                self.props.layout,
+                self.open_line,
+                self.open_start,
+                self.selecting,
+                self.props.highlight_line,
+                self.last_jump,
+                self.is_collapsed(),
+            )
+        };
+        if key != self.line_window_key {
+            self.line_window_key = key;
+            self.refresh_line_window(cx);
+        }
     }
 }
 
@@ -1050,15 +1153,9 @@ impl DiffFile {
         let line = row_num(&self.lines()[line_i], side);
         let probe = canvas(
             move |b, _, _| {
-                let mut g = geom.borrow_mut();
-                if let Some(r) = g
-                    .rows
-                    .iter_mut()
-                    .rev()
-                    .find(|r| r.side == side && r.line == line)
-                {
-                    r.addc = Some(b);
-                }
+                geom.borrow_mut()
+                    .addcs
+                    .insert((side == DiffSide::Left, line), b);
             },
             |_, _, _, _| {},
         )
@@ -1076,7 +1173,10 @@ impl DiffFile {
             .child(label("+", Family::Ui, 13., LineHeight::Px(13.)));
         let hit = div()
             .id(SharedString::from(format!("addc-{key}")))
-            .debug_selector(move || format!("addc:{}:{line}", side_key(side)))
+            .debug_selector({
+                let p = self.props.file.path.clone();
+                move || format!("addc:{p}:{}:{line}", side_key(side))
+            })
             .absolute()
             .top_0()
             .left(px(left))
@@ -1097,6 +1197,11 @@ impl DiffFile {
                     cx.stop_propagation();
                     d.begin_range(line_i, side, cx);
                 }),
+            )
+            // A quick click can land before the window-level release listener is painted.
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(move |d, _, window, cx| d.end_range(line_i, window, cx)),
             );
         titled(
             SharedString::from(format!("addc-t-{key}")),
@@ -1159,12 +1264,7 @@ impl DiffFile {
         canvas(
             move |b, _, _| {
                 if line != 0 {
-                    geom.borrow_mut().rows.push(RowHit {
-                        side,
-                        line,
-                        row: b,
-                        addc: None,
-                    });
+                    geom.borrow_mut().rows.push(RowHit { side, line, row: b });
                 }
             },
             |_, _, _, _| {},
@@ -1202,34 +1302,24 @@ impl DiffFile {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let l = self.lines()[i].clone();
-        let path = &self.props.file.path;
-        let sel = draft_sel(
-            self.selecting,
-            self.open_line,
-            self.open_side,
-            self.open_start,
-        );
-        let covering = line_notes_covering_row(notes, path, &l, None);
-        let ends = line_notes_on_row(notes, path, &l, None);
         let side = row_side(&l);
         let n = row_num(&l, side);
-        let flags = RowFlags {
-            noted: !covering.is_empty()
-                || pending_covering(pending, path, &l, None) > 0
-                || !findings_covering_line(&self.props.findings, &l).is_empty(),
-            note_end: !ends.is_empty()
-                || !pending_on(pending, &l, None).is_empty()
-                || !findings_ending_line(&self.props.findings, &l).is_empty(),
-            drafting: draft_covers(sel, &l, None),
-            draft_end: draft_ends(sel, &l, None),
-            draft_tip: draft_tip(self.selecting, &l, None),
-        };
+        let flags = self.row_flags(i, None, pending, notes);
         let group = SharedString::from(format!("hl-{}-{slot}", self.props.file.path));
         let key = format!("{slot}");
         let mut row = div()
             .group(group.clone())
-            .debug_selector(|| format!("hline:{}:{}:{}", l.r#type, side_key(side), n))
+            .debug_selector(|| {
+                format!(
+                    "hline:{}:{}:{}:{}",
+                    self.props.file.path,
+                    l.r#type,
+                    side_key(side),
+                    n
+                )
+            })
             .relative()
+            .w_full()
             .flex()
             .when_some(Self::row_bg(&l.r#type, flags, cx), |d, c| d.bg(hsla(c)))
             .children(Self::row_marks(flags, 80., cx))
@@ -1299,7 +1389,11 @@ impl DiffFile {
         let _ = window;
         div()
             .id(SharedString::from(format!("hunk-{slot}")))
-            .debug_selector(move || format!("hunk:{i}"))
+            .debug_selector({
+                let p = self.props.file.path.clone();
+                move || format!("hunk:{p}:{i}")
+            })
+            .w_full()
             .flex()
             .items_center()
             .py(px(2.))
@@ -1361,33 +1455,22 @@ impl DiffFile {
                 .into_any_element();
         };
         let l = self.lines()[i].clone();
-        let path = &self.props.file.path;
-        let sel = draft_sel(
-            self.selecting,
-            self.open_line,
-            self.open_side,
-            self.open_start,
-        );
         let n = row_num(&l, side);
-        let notes_cov = line_notes_covering_row(notes, path, &l, Some(side));
-        let notes_on = line_notes_on_row(notes, path, &l, Some(side));
         let right = side == DiffSide::Right;
-        let flags = RowFlags {
-            noted: !notes_cov.is_empty()
-                || pending_covering(pending, path, &l, Some(side)) > 0
-                || (right && !findings_covering_line(&self.props.findings, &l).is_empty()),
-            note_end: !notes_on.is_empty()
-                || !pending_on(pending, &l, Some(side)).is_empty()
-                || (right && !findings_ending_line(&self.props.findings, &l).is_empty()),
-            drafting: draft_covers(sel, &l, Some(side)),
-            draft_end: draft_ends(sel, &l, Some(side)),
-            draft_tip: draft_tip(self.selecting, &l, Some(side)),
-        };
+        let flags = self.row_flags(i, Some(side), pending, notes);
         let side_group = SharedString::from(format!("{group}-{}", side_key(side)));
         let num = if right { l.new.clone() } else { l.old.clone() };
         let mut d = div()
             .group(side_group.clone())
-            .debug_selector(|| format!("side:{}:{}:{}", l.r#type, side_key(side), n))
+            .debug_selector(|| {
+                format!(
+                    "side:{}:{}:{}:{}",
+                    self.props.file.path,
+                    l.r#type,
+                    side_key(side),
+                    n
+                )
+            })
             .relative()
             .flex_1()
             .min_w_0()
@@ -1563,7 +1646,10 @@ impl DiffFile {
         let _ = window;
         let del = div()
             .id(SharedString::from(format!("pend-del-{}", pc.id)))
-            .debug_selector(|| "pending-remove".into())
+            .debug_selector({
+                let id = pc.id.clone();
+                move || format!("pending-remove:{id}")
+            })
             .ml_auto()
             .flex()
             .items_center()
@@ -1618,7 +1704,10 @@ impl DiffFile {
                     .pre_wrap(),
             );
         div()
-            .debug_selector(|| "icmt-pending".into())
+            .debug_selector({
+                let id = pc.id.clone();
+                move || format!("icmt-pending:{id}")
+            })
             .bg(hsla(t.pane))
             .border_t_1()
             .border_b_1()
@@ -1743,7 +1832,10 @@ impl DiffFile {
                         lh,
                         cx,
                     )
-                    .debug_selector(|| "open-in-findings".into())
+                    .debug_selector({
+                        let id = f.id.clone();
+                        move || format!("open-in-findings:{id}")
+                    })
                     .on_click(move |_, window, cx| open(f2.clone(), window, cx)),
                 );
             }
@@ -1803,7 +1895,7 @@ impl DiffFile {
         .absolute()
         .inset_0();
         div()
-            .debug_selector(|| format!("icmt-thread:{}", note.line))
+            .debug_selector(|| format!("icmt-thread:{}:{}", self.props.file.path, note.line))
             .relative()
             .bg(hsla(t.pane))
             .border_t_1()
@@ -1891,6 +1983,7 @@ impl DiffFile {
         .inset_0();
         div()
             .relative()
+            .w_full()
             .flex()
             .flex_col()
             .children(children)
@@ -1912,8 +2005,14 @@ impl DiffFile {
             .truncate();
         let mut head = div()
             .id("df-head")
-            .debug_selector(move || {
-                format!("df-head:{}", if collapsed { "collapsed" } else { "open" })
+            .debug_selector({
+                let p = self.props.file.path.clone();
+                move || {
+                    format!(
+                        "df-head:{p}:{}",
+                        if collapsed { "collapsed" } else { "open" }
+                    )
+                }
             })
             .relative()
             .flex()
@@ -1936,13 +2035,19 @@ impl DiffFile {
                 .hover(|s| s.bg(hsla(t.pane_2)))
                 .on_click(cx.listener(|d, _, window, cx| d.toggle_collapsed(window, cx)))
                 .child(
-                    div().debug_selector(|| "df-chev".into()).flex_none().child(
-                        icon(IconName::ChevronDown)
-                            .size(px(12.))
-                            .stroke_width(2.4)
-                            .color(hsla(t.faint))
-                            .rotate(if collapsed { -90. } else { 0. }),
-                    ),
+                    div()
+                        .debug_selector({
+                            let p = self.props.file.path.clone();
+                            move || format!("df-chev:{p}")
+                        })
+                        .flex_none()
+                        .child(
+                            icon(IconName::ChevronDown)
+                                .size(px(12.))
+                                .stroke_width(2.4)
+                                .color(hsla(t.faint))
+                                .rotate(if collapsed { -90. } else { 0. }),
+                        ),
                 );
         }
         let path_el = match open.clone() {
@@ -1981,7 +2086,10 @@ impl DiffFile {
                 "df-open-t",
                 title,
                 icon_btn("df-open", IconName::Code, 24., 14., None, cx)
-                    .debug_selector(|| "df-open".into())
+                    .debug_selector({
+                        let p = self.props.file.path.clone();
+                        move || format!("df-open:{p}")
+                    })
                     .on_click(move |_, window, cx| {
                         cx.stop_propagation();
                         open(path.clone(), None, window, cx)
@@ -2070,6 +2178,7 @@ impl Render for DiffFile {
             g.rows.clear();
             g.threads.clear();
             g.lines.clear();
+            g.addcs.clear();
         }
         self.threads_seen.clear();
         let pr = self.pr(cx);
@@ -2091,6 +2200,7 @@ impl Render for DiffFile {
             )))
             .debug_selector(|| format!("diff-file:{}", self.props.file.path))
             .relative()
+            .w_full()
             .flex()
             .flex_col();
         let floating = self.head_shift > 1e-3;
@@ -2144,6 +2254,7 @@ impl Render for DiffFile {
                                 div()
                                     .group(group)
                                     .relative()
+                                    .w_full()
                                     .flex()
                                     .font_family(Family::Mono.primary())
                                     .child(recur_ui::style::flex_share(1., l_el).min_w_0())
@@ -2323,6 +2434,7 @@ impl Render for DiffFile {
             let pad_bot = slot_pad(Some(&self.slot_h), b, count, DIFF_LINE_PX);
             root = root.child(
                 div()
+                    .w_full()
                     .flex()
                     .flex_col()
                     .child(vgap(pad_top, window))
@@ -2336,9 +2448,13 @@ impl Render for DiffFile {
         let entity = cx.entity().downgrade();
         let geom = self.geom.clone();
         let selecting = self.selecting.is_some();
+        let pane = self.pane.clone();
         let frame = canvas(
             move |b, _, cx| {
-                geom.borrow_mut().root = Some(b);
+                let mut g = geom.borrow_mut();
+                g.root = Some(b);
+                g.painted_top = pane.as_ref().map_or(0., Pane::scroll_top);
+                drop(g);
                 let e = entity.clone();
                 cx.defer(move |cx| {
                     if let Some(e) = e.upgrade() {

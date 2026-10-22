@@ -62,6 +62,8 @@ pub struct CardProps {
 struct Cards {
     /// path → (window top, height) from the last frame.
     bounds: HashMap<String, (f32, f32)>,
+    /// The scroll offset those bounds were painted at.
+    painted_top: f32,
 }
 
 pub struct FileStack {
@@ -88,6 +90,9 @@ pub struct FileStack {
     pub toc_reveal: u64,
     seen_top: f32,
     active: bool,
+    /// `refreshWindow` runs on scroll and after the list, selection or collapse changes (not
+    /// every frame: a hydration swap that resizes cards must not feed back into itself).
+    window_dirty: bool,
 }
 
 impl FileStack {
@@ -113,6 +118,7 @@ impl FileStack {
             toc_reveal: 0,
             seen_top: -1.,
             active: true,
+            window_dirty: true,
         }
     }
 
@@ -137,6 +143,9 @@ impl FileStack {
     }
 
     pub fn set_active(&mut self, active: bool) {
+        if active && !self.active {
+            self.window_dirty = true;
+        }
         self.active = active;
     }
 
@@ -147,6 +156,14 @@ impl FileStack {
     /// New matched files (in display order). Keeps the selection when it is still listed,
     /// else selects the first (the `matchedFiles` effect).
     pub fn set_files(&mut self, files: Vec<Rc<FileDiff>>) {
+        let same = files.len() == self.files.len()
+            && files
+                .iter()
+                .zip(&self.files)
+                .all(|(a, b)| Rc::ptr_eq(a, b) || a.path == b.path);
+        if !same {
+            self.window_dirty = true;
+        }
         self.files = files;
         if self.files.is_empty() {
             self.selected.clear();
@@ -160,6 +177,7 @@ impl FileStack {
     /// Restore a selection without scrolling (`applyRestore`).
     pub fn set_selected(&mut self, path: &str) {
         self.selected = path.to_string();
+        self.window_dirty = true;
     }
 
     pub fn any_expanded(&self) -> bool {
@@ -167,6 +185,7 @@ impl FileStack {
     }
 
     pub fn toggle_collapsed(&mut self, path: &str, next: bool) {
+        self.window_dirty = true;
         if next {
             self.collapsed.insert(path.to_string());
         } else {
@@ -175,6 +194,7 @@ impl FileStack {
     }
 
     pub fn toggle_fold_all(&mut self) {
+        self.window_dirty = true;
         self.collapsed = if self.any_expanded() {
             self.files.iter().map(|f| f.path.clone()).collect()
         } else {
@@ -194,6 +214,7 @@ impl FileStack {
         self.pin_gen += 1;
         self.pending_pin = None;
         self.pending_select = Some((path.to_string(), 2));
+        self.window_dirty = true;
     }
 
     /// `j` / `k` / ⌥↓ / ⌥↑ (`onDiffKeydown`).
@@ -210,7 +231,7 @@ impl FileStack {
 
     fn ranges(&self) -> Vec<CardRange> {
         let cards = self.cards.borrow();
-        let base = self.pane.top() - self.pane.scroll_top();
+        let base = self.pane.top() - cards.painted_top;
         let mut v: Vec<CardRange> = self
             .files
             .iter()
@@ -330,18 +351,20 @@ impl FileStack {
             ));
         }
         let top = self.pane.scroll_top();
-        if (top - self.seen_top).abs() > 0.01 {
-            self.seen_top = top;
-            if !self.spy_suppressed() {
-                let pick = file_at_scroll_top(&self.ranges(), top);
-                if !pick.is_empty() && pick != self.selected {
-                    self.selected = pick;
-                    self.toc_reveal += 1;
-                    changed = true;
-                }
+        let scrolled = (top - self.seen_top).abs() > 0.01;
+        self.seen_top = top;
+        // `spyFromOffsets`: on scroll and on layout changes (the IntersectionObserver).
+        if !self.spy_suppressed() {
+            let pick = file_at_scroll_top(&self.ranges(), top);
+            if !pick.is_empty() && pick != self.selected {
+                self.selected = pick;
+                self.toc_reveal += 1;
+                self.window_dirty = true;
+                changed = true;
             }
         }
-        if self.active && self.refresh_window(cx) {
+        let dirty = std::mem::take(&mut self.window_dirty);
+        if self.active && (scrolled || dirty) && self.refresh_window(cx) {
             changed = true;
         }
         changed
@@ -554,9 +577,11 @@ impl FileStack {
             .retain(|p, _| self.files.iter().any(|f| &f.path == p));
         let pane = self.pane.clone();
         let entity = host.clone();
+        let painted = self.cards.clone();
         let frame = canvas(
             move |b, _, cx| {
                 pane.set_bounds(b);
+                painted.borrow_mut().painted_top = pane.scroll_top();
                 let e = entity.clone();
                 cx.defer(move |cx| {
                     let _ = e.update(cx, |host, cx| {

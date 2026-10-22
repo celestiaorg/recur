@@ -70,6 +70,12 @@ pub struct CursorProvider {
 }
 
 impl CursorProvider {
+    /// Seeds the cache a successful live list fills.
+    #[cfg(feature = "testing")]
+    pub fn remember_models(&self, models: Vec<crate::Model>) {
+        *self.catalog.lock() = Some(models);
+    }
+
     pub fn new(cfg: CursorConfig) -> Self {
         let logs = if cfg.data_dir.as_os_str().is_empty() {
             PathBuf::new()

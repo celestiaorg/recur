@@ -4,8 +4,10 @@
 //! forge with no `gh` (Go CI without gh), and fake issue trackers.
 
 mod assets;
+mod bundle;
 mod code_service;
 mod editor_session;
+mod model_catalog;
 mod observatory;
 mod open_path;
 mod services;

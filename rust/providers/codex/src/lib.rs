@@ -108,6 +108,12 @@ impl CodexProvider {
         }
     }
 
+    /// Seeds the cache a successful live list fills.
+    #[cfg(feature = "testing")]
+    pub fn remember_models(&self, models: Vec<types::Model>) {
+        self.remember(Some(models));
+    }
+
     fn remember(&self, models: Option<Vec<types::Model>>) {
         if models.is_some() {
             *self.last_models.lock() = models;

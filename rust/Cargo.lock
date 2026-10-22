@@ -7304,6 +7304,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-view-review"
+version = "0.0.0"
+dependencies = [
+ "gpui-kit",
+ "gpui-pre",
+ "parking_lot",
+ "pretty_assertions",
+ "recur-code",
+ "recur-content",
+ "recur-domain",
+ "recur-engine",
+ "recur-forge",
+ "recur-services",
+ "recur-ui",
+ "recur-view-chat",
+ "recur-view-core",
+ "recur-view-review",
+ "regex",
+ "serde_json",
+ "smallvec",
+]
+
+[[package]]
 name = "recur-view-sidebar"
 version = "0.0.0"
 dependencies = [

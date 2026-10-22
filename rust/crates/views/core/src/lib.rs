@@ -25,6 +25,7 @@ pub mod modes;
 pub mod nav;
 mod navigate;
 pub mod pr;
+pub mod pr_commits;
 pub mod prefs;
 pub mod run;
 pub mod shell_state;

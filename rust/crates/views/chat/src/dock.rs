@@ -891,6 +891,7 @@ impl AgentChat {
                 .pb(px(4.))
                 .child(panel)
         };
-        Some(el.occlude().into_any_element())
+        // `z-index: 40`: above the composer, whose border GPUI paints after its children.
+        Some(gpui_kit::deferred(el.occlude()).into_any_element())
     }
 }

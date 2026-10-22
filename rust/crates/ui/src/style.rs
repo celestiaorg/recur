@@ -202,6 +202,19 @@ pub fn anchored_at(x: f32, y: f32, child: impl IntoElement) -> gpui_kit::Anchore
     )
 }
 
+/// `flex: <grow> 1 0` on a padded or bordered item. CSS takes a zero flex basis as the item's
+/// border box without flooring it at its padding and border, so items with different padding
+/// still share the free space equally; Taffy floors the base size at padding + border. An
+/// unpadded wrapper carries the share and the item fills it.
+pub fn flex_share(grow: f32, item: impl IntoElement) -> Div {
+    div()
+        .flex_grow(grow)
+        .flex_shrink(1.)
+        .flex_basis(gpui_kit::relative(0.))
+        .flex()
+        .child(item)
+}
+
 /// A menu or popover attached to its trigger, placed the way CSS places one from the trigger's
 /// fractional rect: absolutely positioned in the trigger's relatively positioned box, `gap`
 /// below its bottom edge (or above its top edge when `below` is false) and `dx` right of its

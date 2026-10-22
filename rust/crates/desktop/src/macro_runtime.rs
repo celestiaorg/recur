@@ -387,10 +387,7 @@ impl MacroRuntime {
 
     /// `runCompleteModule` for `PromptCatalog::set_runners`, with the workspace's LSP
     /// problems (`lspProblemArgs` lines) from `diagnostics`.
-    pub fn complete_runner(
-        self: &Rc<Self>,
-        diagnostics: Diagnostics,
-    ) -> CompleteModuleRunner {
+    pub fn complete_runner(self: &Rc<Self>, diagnostics: Diagnostics) -> CompleteModuleRunner {
         let me = self.clone();
         Rc::new(move |code, req, timeout| {
             let timeout = if timeout.is_zero() {

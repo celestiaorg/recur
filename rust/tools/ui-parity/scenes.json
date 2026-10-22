@@ -1521,6 +1521,23 @@
           "wait": 1000
         }
       ]
+    },
+    {
+      "name": "shell/base-select",
+      "width": 1280,
+      "height": 800,
+      "theme": "default",
+      "tolerance": 100000,
+      "steps": [{"click": [131, 365]}, {"wait": 300}, {"click": [638, 25]}, {"wait": 300}]
+    },
+    {
+      "name": "shell/issue",
+      "width": 1280,
+      "height": 800,
+      "theme": "default",
+      "tolerance": 100000,
+      "seed": {"loops": [{"id": "LOOP-2229", "issue": {"source": "github", "key": "acme/storefront#42", "title": "Analytics on PG16"}}]},
+      "steps": [{"click": [131, 365]}, {"wait": 300}]
     }
   ],
   "content": [
@@ -1865,7 +1882,7 @@
   "workspace": [
     {"name": "workspace/chat", "width": 1280, "height": 800, "theme": "default", "tolerance": 100000},
     {"name": "workspace/chat-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 100000},
-    {"name": "workspace/tabs", "width": 1100, "height": 800, "theme": "default", "tolerance": 100000},
+    {"name": "workspace/tabs", "width": 1180, "height": 800, "theme": "default", "tolerance": 100000},
     {"name": "workspace/plan", "width": 1280, "height": 800, "theme": "default", "tolerance": 100000, "steps": [{"click": [88, 19]}, {"wait": 300}], "seed": {"loops": [{"id": "LOOP-2231", "plan": {"summary": "Ship the Loop cockpit", "body": "Merge specialist cards so the cockpit is one surface.\n\n- Keep agent todos distinct from plan steps\n- Retarget the Activity e2e", "source": "human", "approved": false, "steps": [{"id": "s1", "title": "Merge specialist cards into Loop chat", "status": "done"}, {"id": "s2", "title": "Retarget Activity e2e", "status": "doing"}, {"id": "s3", "title": "Drop the old Activity view", "status": "pending"}]}}]}},
     {"name": "workspace/findings", "width": 1280, "height": 800, "theme": "default", "tolerance": 100000, "steps": [{"click": [117, 19]}, {"wait": 300}]},
     {"name": "workspace/loop", "width": 1280, "height": 800, "theme": "default", "tolerance": 100000},

@@ -167,6 +167,9 @@ struct State {
     last_write: Option<f32>,
     /// Last wheel scroll, which shows the overlay thumb.
     wheeled: Option<Instant>,
+    /// What the last reveal saw: the active key, its chip's width and the chip count. The web
+    /// strip reveals on a key change, a chip resize or a chip list mutation, not every frame.
+    revealed: Option<(SharedString, f32, usize)>,
     drag: Drag,
 }
 
@@ -183,6 +186,7 @@ impl Default for State {
             user_pinned: false,
             anim: None,
             wheeled: None,
+            revealed: None,
             last_write: None,
             drag: Drag::default(),
         }
@@ -663,6 +667,15 @@ fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window
         ) else {
             return;
         };
+        let seen = (key.clone(), f32::from(child.size.width), order.len());
+        let same = s
+            .revealed
+            .as_ref()
+            .is_some_and(|(k, w, n)| *k == seen.0 && (w - seen.1).abs() < 0.5 && *n == seen.2);
+        if same && !user_reveal {
+            return;
+        }
+        s.revealed = Some(seen);
         let view = s.scroll.bounds();
         let client = f32::from(view.size.width);
         // Scroll children report their unscrolled (content) bounds.

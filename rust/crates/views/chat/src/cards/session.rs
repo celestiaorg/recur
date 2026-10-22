@@ -247,7 +247,6 @@ impl Render for SessionCard {
                     .flex_1()
                     .min_w_0()
                     .overflow_hidden()
-                    .h(px(16.))
                     .child(el),
             );
         }

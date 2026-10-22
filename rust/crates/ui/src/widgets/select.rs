@@ -96,6 +96,10 @@ pub enum SelectEvent {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TriggerStyle {
     pub height: Option<f32>,
+    /// Square left corners (the right half of a split button).
+    pub square_left: bool,
+    /// `height: auto` with this vertical padding (the trigger hugs its content).
+    pub pad_y: Option<f32>,
     pub pad_x: Option<f32>,
     pub radius: Option<f32>,
     pub gap: Option<f32>,
@@ -120,6 +124,9 @@ pub struct TriggerStyle {
     pub chevron_size: Option<f32>,
     /// Icon and chevron color while open / focused.
     pub open_icon_color: Option<Color>,
+    /// While open, `.sel.open`'s ring and amber icons win over the host's (a later sheet, same
+    /// specificity); `no_ring` and `open_icon_color` then apply to `:focus-visible` only.
+    pub sel_open_wins: bool,
     /// The value keeps its natural width (`flex: none`).
     pub value_auto: bool,
     pub auto_width: bool,
@@ -649,18 +656,21 @@ impl Render for Select {
                 }
             } else {
                 bg = tr.open_bg.unwrap_or(bg);
+                fg = tr.open_color.unwrap_or(fg);
                 border = tr
                     .open_border
                     .unwrap_or(crate::color::rgba(242, 179, 61, 0.55));
-                fg = tr.open_color.unwrap_or(fg);
-                ring = !tr.no_ring;
+                ring = (tr.sel_open_wins && self.open) || !tr.no_ring;
             }
         }
         let mut ico_color = tr.icon_color.unwrap_or(t.muted);
         let mut chev_color = t.faint;
         // `.sel.open` / `:focus-visible` icons go amber; a ghost's open icons stay muted.
         if !disabled && (self.open || focus_visible) {
-            let c = tr.open_icon_color.unwrap_or(if self.ghost && self.open {
+            let own = tr
+                .open_icon_color
+                .filter(|_| !(tr.sel_open_wins && self.open));
+            let c = own.unwrap_or(if self.ghost && self.open {
                 t.muted
             } else {
                 t.amber
@@ -718,9 +728,13 @@ impl Render for Select {
             .flex()
             .items_center()
             .gap(px(gap))
-            .h(px(h))
+            .map(|b| match tr.pad_y {
+                Some(py) => b.py(px(py)),
+                None => b.h(px(h)),
+            })
             .px(px(pad))
             .rounded(px(radius))
+            .when(tr.square_left, |b| b.rounded_l(px(0.)))
             .bg(bg)
             .when(border_w > 0., |d| d.border(px(border_w)))
             .border_color(Hsla::from(border))

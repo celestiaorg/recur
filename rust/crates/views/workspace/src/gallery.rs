@@ -115,6 +115,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     cx.set_global(recur_view_chat::strip::ChatStripCache::default());
     cx.set_global(recur_view_chat::hoist::HoistState::default());
     cx.set_global(recur_content::webhost::BlockingRenders);
+    cx.set_global(recur_editor::history_cache::EditorHistory::default());
     let bridge = MockBridge::new(
         recur_app::gallery::scene_seed(&spec["seed"]),
         resolvers(variant(name)),

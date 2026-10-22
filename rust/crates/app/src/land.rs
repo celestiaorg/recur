@@ -1755,9 +1755,11 @@ impl Shell {
                 Select::new(Vec::new(), window, cx)
                     .label("Target branch")
                     .searchable()
+                    .menu_variant(recur_ui::logic::menu_space::MenuVariant::Wide)
                     .trigger_icon(IconName::GitBranch)
                     .trigger_style(TriggerStyle {
                         height: None,
+                        pad_y: Some(1.),
                         pad_x: Some(6.),
                         radius: Some(5.),
                         gap: Some(5.),
@@ -1776,6 +1778,7 @@ impl Shell {
                         icon_size: Some(12.),
                         chevron_size: Some(11.),
                         open_icon_color: Some(t.muted),
+                        sel_open_wins: true,
                         value_auto: true,
                         auto_width: true,
                         ..Default::default()
@@ -1944,6 +1947,7 @@ impl Shell {
                 height: Some(26.),
                 pad_x: Some(if split { 5. } else { 9. }),
                 radius: Some(6.),
+                square_left: split,
                 gap: Some(if split { 0. } else { 6. }),
                 font_size: Some(if split { 0. } else { 11.5 }),
                 ui_font: true,
@@ -1963,6 +1967,7 @@ impl Shell {
                     .label(label)
                     .searchable()
                     .placeholder("Link issue")
+                    .menu_variant(recur_ui::logic::menu_space::MenuVariant::Issue)
                     .trigger_icon(IconName::CircleDot)
                     .trigger_style(style)
             });

@@ -217,7 +217,7 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `settings-group/paper` | 0 | 103 | 958 | 1170 | 0 |
 | `tab-strip/default` | 0 | 2309 | 145 | 2700 | 0 |
 | `tab-strip/hover` | 0 | 2918 | 145 | 3370 | 0 |
-| `tab-strip/overflow` | 4 | 2288 | 0 | 2520 | 4 |
+| `tab-strip/overflow` | 0 | 1131 | 0 | 2520 | 4 |
 | `tab-strip/paper` | 0 | 2390 | 228 | 2880 | 0 |
 | `text/calibration` | 0 | 289 | 0 | 320 | 0 |
 | `toasts/default` | 0 | 1674 | 672 | 2590 | 0 |
@@ -255,6 +255,8 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `shell/tree` | 1 | 2842 | 978 | 4210 | 1 |
 | `shell/hover` | 1 | 2667 | 860 | 3880 | 1 |
 | `shell/scrolled` | 2 | 2004 | 681 | 2960 | 2 |
+| `shell/base-select` | 0 | 10294 | 1143 | 12590 | 0 |
+| `shell/issue` | 0 | 4897 | 932 | 6420 | 0 |
 | `markdown/chat` | 95 | 5933 | 5505 | 12590 | 95 |
 | `markdown/paper` | 132 | 5995 | 5632 | 12790 | 132 |
 | `markdown/streaming` | 0 | 1875 | 77 | 2150 | 0 |
@@ -268,7 +270,7 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `chat/transcript` | 0 | 13388 | 529 | 15310 | 0 |
 | `chat/transcript-paper` | 0 | 13612 | 1247 | 16350 | 0 |
 | `chat/streaming` | 0 | 1270 | 456 | 1900 | 0 |
-| `chat/permission` | 0 | 3696 | 752 | 4900 | 0 |
+| `chat/permission` | 0 | 2689 | 752 | 4900 | 0 |
 | `chat/question` | 0 | 1092 | 691 | 1970 | 0 |
 | `chat/plan` | 0 | 1299 | 307 | 1770 | 0 |
 | `chat/fanout` | 0 | 4415 | 336 | 5230 | 0 |
@@ -293,21 +295,28 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `review/commits` | 0 | 3014 | 594 | 3970 | 0 |
 | `review/commits-paper` | 0 | 3023 | 689 | 4090 | 0 |
 | `review/large` | 18 | 22530 | 66 | 24860 | 18 |
-| `observatory/explorer` | 0 | 11514 | 113 | 12210 | 0 |
-| `observatory/explorer-paper` | 0 | 11555 | 207 | 12360 | 0 |
-| `observatory/code` | 0 | 34921 | 113 | 36790 | 0 |
-| `observatory/code-paper` | 0 | 35044 | 207 | 37020 | 0 |
-| `observatory/tabs` | 0 | 8532 | 50 | 9020 | 0 |
-| `observatory/merge` | 0 | 41883 | 113 | 44100 | 0 |
-| `observatory/review` | 18 | 3733 | 221 | 4160 | 18 |
-| `observatory/terminal` | 0 | 34913 | 137 | 36810 | 0 |
-| `observatory/terminal-beside` | 0 | 34796 | 113 | 36660 | 0 |
-| `observatory/terminal-max` | 2 | 34092 | 2783 | 38720 | 2 |
-| `observatory/quick-open` | 0 | 36374 | 114 | 38320 | 0 |
-| `observatory/artifacts` | 0 | 33456 | 82 | 35220 | 0 |
-| `observatory/pdf` | 262 | 5392 | 57336 | 65870 | 262 |
-| `observatory/image` | 0 | 5117 | 3871 | 9440 | 0 |
-| `observatory/commit` | 0 | 37784 | 160 | 39850 | 0 |
+| `observatory/explorer` | 0 | 11098 | 113 | 12210 | 0 |
+| `observatory/explorer-paper` | 0 | 11119 | 207 | 12360 | 0 |
+| `observatory/code` | 0 | 34505 | 113 | 36790 | 0 |
+| `observatory/code-paper` | 0 | 34608 | 207 | 37020 | 0 |
+| `observatory/tabs` | 0 | 8116 | 50 | 9020 | 0 |
+| `observatory/merge` | 0 | 41467 | 113 | 44100 | 0 |
+| `observatory/review` | 18 | 3711 | 221 | 4160 | 18 |
+| `observatory/terminal` | 0 | 34497 | 137 | 36810 | 0 |
+| `observatory/terminal-beside` | 0 | 34380 | 113 | 36660 | 0 |
+| `observatory/terminal-max` | 2 | 33721 | 2783 | 38720 | 2 |
+| `observatory/quick-open` | 0 | 35981 | 114 | 38320 | 0 |
+| `observatory/artifacts` | 0 | 33062 | 82 | 35220 | 0 |
+| `observatory/pdf` | 262 | 4976 | 57336 | 65870 | 262 |
+| `observatory/image` | 0 | 4701 | 3871 | 9440 | 0 |
+| `observatory/commit` | 0 | 37390 | 160 | 39850 | 0 |
+| `workspace/chat` | 0 | 43265 | 707 | 48370 | 0 |
+| `workspace/chat-paper` | 0 | 43536 | 1515 | 49560 | 0 |
+| `workspace/tabs` | 0 | 21796 | 714 | 24770 | 0 |
+| `workspace/plan` | 0 | 41394 | 309 | 45880 | 0 |
+| `workspace/findings` | 0 | 44051 | 355 | 48850 | 0 |
+| `workspace/loop` | 1 | 45803 | 964 | 51450 | 1 |
+| `workspace/loop-paper` | 5 | 46057 | 1008 | 51780 | 5 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
@@ -320,3 +329,5 @@ Chat tolerances: text is glyph subpixel phase in transcript prose, code, chips, 
 Review tolerances: text is glyph subpixel phase in code rows, paths, labels and note bodies; anti-aliasing is icon, chip, avatar and card edges.
 
 Observatory tolerances: text is glyph subpixel phase in code, paths, labels, tabs and the terminal grid; anti-aliasing is icon, chip and card edges, the checkerboard and image resampling (the image pane, the PDF page and its shapes).
+
+Workspace tolerances: text is glyph subpixel phase in the transcript, the composer, tab chips, pickers, panels and the Observatory beside them; anti-aliasing is icon, chip, card and dot edges, the composer's shadow and the running dot's glow.

@@ -188,6 +188,9 @@ pub struct DiffFile {
     geom: Rc<RefCell<Geom>>,
     pending_pin: Option<(usize, f32, f32)>,
     pending_jump: Option<i64>,
+    /// The sticky `.df-head`'s offset below its natural place, and `.stuck`.
+    head_shift: f32,
+    head_stuck: bool,
     /// `.diff-file.selecting` hovered row for `draft-tip` hover state.
     _subs: Vec<Subscription>,
 }
@@ -243,6 +246,8 @@ impl DiffFile {
             geom: Rc::default(),
             pending_pin: None,
             pending_jump: None,
+            head_shift: 0.,
+            head_stuck: false,
             _subs: subs,
         };
         me.reset_for_path();
@@ -295,6 +300,20 @@ impl DiffFile {
 
     pub fn set_hooks(&mut self, hooks: DiffFileHooks) {
         self.hooks = hooks;
+    }
+
+    /// Where the stack's sticky header logic puts `.df-head` this frame.
+    pub fn set_head_shift(&mut self, shift: f32, stuck: bool, cx: &mut Context<Self>) {
+        if (shift - self.head_shift).abs() > 1e-3 || stuck != self.head_stuck {
+            self.head_shift = shift;
+            self.head_stuck = stuck;
+            cx.notify();
+        }
+    }
+
+    /// The header height, from the last frame.
+    pub fn head_height(&self) -> f32 {
+        self.geom.borrow().head_h
     }
 
     pub fn set_pane(&mut self, pane: Option<Pane>) {
@@ -1886,8 +1905,9 @@ impl DiffFile {
             .bg(hsla(t.pane))
             .border_b_1()
             .border_color(hsla(t.line))
-            .when(collapsed, |d| d.rounded(px(8.)))
-            .when(!collapsed, |d| d.rounded_t(px(8.)))
+            .when(collapsed && !self.head_stuck, |d| d.rounded(px(8.)))
+            .when(collapsed && self.head_stuck, |d| d.rounded_b(px(8.)))
+            .when(!collapsed && !self.head_stuck, |d| d.rounded_t(px(8.)))
             .font_family(Family::Mono.primary())
             .text_size(px(11.5));
         if self.props.collapsible {
@@ -2021,7 +2041,6 @@ impl Render for DiffFile {
             Vec::new()
         };
         let collapsed = self.is_collapsed();
-        let head = self.head(window, cx);
         let mut root = div()
             .id(SharedString::from(format!(
                 "diff-file-{}",
@@ -2030,8 +2049,14 @@ impl Render for DiffFile {
             .debug_selector(|| format!("diff-file:{}", self.props.file.path))
             .relative()
             .flex()
-            .flex_col()
-            .child(head);
+            .flex_col();
+        let floating = self.head_shift > 1e-3;
+        root = if floating {
+            root.child(div().flex_none().h(px(self.geom.borrow().head_h.max(40.))))
+        } else {
+            root.child(self.head(window, cx))
+        };
+        let float_head = floating.then(|| (self.head_shift, self.head(window, cx)));
         if !collapsed {
             let mut slots_el: Vec<AnyElement> = Vec::new();
             let split = self.props.layout == DiffLayout::Split;
@@ -2317,6 +2342,17 @@ impl Render for DiffFile {
         .absolute()
         .inset_0();
         let _ = t;
-        root.child(frame)
+        let layer = float_head.map(|(shift, head)| {
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .right_0()
+                .flex()
+                .flex_col()
+                .child(vgap(shift, window))
+                .child(head)
+        });
+        root.children(layer).child(frame)
     }
 }

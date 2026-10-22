@@ -61,7 +61,7 @@ impl DockToolbar {
                 .ghost()
                 .up()
         });
-        let loops = cx.new(|cx| LoopPolicyPickers::new(true, true, true, window, cx));
+        let loops = cx.new(|cx| LoopPolicyPickers::new(true, true, false, window, cx));
         let models = cx.new(|cx| ModelPickers::new(true, true, window, cx));
         let subs = vec![
             cx.subscribe(&mode, |t, _, ev: &SelectEvent, cx| {

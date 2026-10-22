@@ -26,6 +26,9 @@ pub struct Geometry {
     pub image_cur: BoundsCell,
     /// The base image's box in a compare.
     pub image_base: BoundsCell,
+    /// The editor status bar, and its `.sp` spacer (zero wide once the items overflow).
+    pub status: BoundsCell,
+    pub status_sp: BoundsCell,
 }
 
 /// An absolutely positioned probe that records its parent's bounds at prepaint.

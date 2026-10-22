@@ -181,6 +181,7 @@ async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(
             findings: Vec::new(),
             open_file: false,
             first,
+            font_size: 13.,
         };
         let card = cards
             .borrow_mut()

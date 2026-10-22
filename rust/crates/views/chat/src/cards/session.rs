@@ -36,6 +36,8 @@ pub struct SessionCardProps {
     pub open_file: bool,
     /// The first row of its card (`.fanout-row:first-of-type` has no top rule).
     pub first: bool,
+    /// The host chat's inherited font size ([`ChatProps::font_size`]).
+    pub font_size: f32,
 }
 
 pub struct SessionCard {
@@ -147,6 +149,7 @@ impl SessionCard {
             findings: self.props.findings.clone(),
             empty_text: "No output yet.".into(),
             session_body: true,
+            font_size: self.props.font_size,
             ..ChatProps::default()
         }
     }
@@ -303,14 +306,15 @@ impl Render for SessionCard {
             out = out.child(
                 div()
                     .debug_selector(|| "fanout-transcript".into())
-                    .border_t_1()
-                    .border_dashed()
-                    .border_color(hsla(t.line))
+                    .relative()
+                    .pt(px(1.))
+                    .child(recur_ui::style::dashed_top_border(1., t.line))
                     .flex()
                     .flex_col()
                     .gap(px(6.))
                     .child(
-                        recur_ui::style::card(t.bg, t.line, 6.)
+                        // `.fanout-transcript .fanout-body` drops `.sess-body`'s card.
+                        div()
                             .max_h(px(420.))
                             .overflow_hidden()
                             .flex()

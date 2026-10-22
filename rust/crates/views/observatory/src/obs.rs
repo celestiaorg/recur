@@ -427,6 +427,9 @@ pub struct Observatory {
     pub(crate) focused_pane: Pane,
     pub(crate) split_pct: i64,
     pub(crate) split_resizing: bool,
+    /// The editor status bar's width when its items stopped fitting on one line each; they
+    /// wrap (`.obs-statusbar` items shrink to min-content) until the bar is wider again.
+    pub(crate) status_wrap: Option<f32>,
 
     // ---- editors and previews ----
     pub(crate) main_editor: Option<Entity<EditorView>>,
@@ -686,6 +689,7 @@ impl Observatory {
             focused_pane: Pane::Main,
             split_pct: storage_split,
             split_resizing: false,
+            status_wrap: None,
             main_editor: None,
             split_editor: None,
             merge_editor: None,

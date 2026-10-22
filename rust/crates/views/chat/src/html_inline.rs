@@ -148,6 +148,11 @@ pub fn inline_spans(html: &str, st: &InlineStyle) -> Vec<Span> {
 
 /// `html` as a wrapping text in the row's style.
 pub fn inline_html(id: SharedString, html: &str, st: InlineStyle) -> AnyElement {
+    inline_html_text(id, html, st).into_any_element()
+}
+
+/// [`inline_html`] as its `Text`, for hosts that measure it.
+pub fn inline_html_text(id: SharedString, html: &str, st: InlineStyle) -> Text {
     let mut t = Text::from_spans(inline_spans(html, &st))
         .id(id)
         .family(st.family.clone())
@@ -160,7 +165,7 @@ pub fn inline_html(id: SharedString, html: &str, st: InlineStyle) -> AnyElement 
     if let Some(l) = st.leading {
         t = t.line_height(LineHeight::Scale(l));
     }
-    t.into_any_element()
+    t
 }
 
 #[cfg(test)]

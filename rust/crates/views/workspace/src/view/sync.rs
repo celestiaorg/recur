@@ -42,6 +42,9 @@ pub(crate) struct Marks {
     reset_hook: Option<bool>,
 }
 
+/// `.obs-left, .obs-side { font-size: 12px }`: the dock's inherited font size.
+const OBS_PANEL_FONT: f32 = 12.;
+
 pub(crate) type Cards = Rc<RefCell<HashMap<String, (Entity<SessionCard>, Subscription)>>>;
 
 impl WorkspaceView {
@@ -80,6 +83,7 @@ impl WorkspaceView {
                     findings: v.chat_findings.clone(),
                     open_file: true,
                     first,
+                    font_size: OBS_PANEL_FONT,
                 };
                 let card = {
                     let mut map = cards.borrow_mut();
@@ -274,6 +278,7 @@ impl WorkspaceView {
                 && !self.create_failed(cx)
                 && self.pending_by_key.get(&key).is_some_and(|q| !q.is_empty()),
             compact: true,
+            font_size: OBS_PANEL_FONT,
             shell_active: self.shell_active,
             presentation_active: self.presentation_active(cx),
             reset_key: key,

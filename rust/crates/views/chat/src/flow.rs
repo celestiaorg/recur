@@ -594,6 +594,9 @@ impl Element for Flow {
                     .map(|k| f32::from(k) + if fit { dp } else { 0. })
                     .unwrap_or(match avail.width {
                         AvailableSpace::Definite(w) => w.into(),
+                        // `overflow-wrap: anywhere`: a shrink-wrapped flow's min-content width is
+                        // its widest unbreakable piece, so a flex parent's cap can narrow it.
+                        AvailableSpace::MinContent if fit => 0.,
                         _ => f32::MAX / 4.,
                     });
                 let l = FlowLayout::compute(&content, &sizes, &st, w, window);

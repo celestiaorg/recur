@@ -104,9 +104,14 @@ pub struct ChatProps {
     pub surface: ChatSurfaceKind,
     /// Composer only (the New-workspace modal): no transcript, queue, or send row.
     pub composer_only: bool,
-    /// Inside a specialist card's `.sess-body`: hugs its content up to 420px, 8px 12px
-    /// padding, full-width column, tighter user bubbles and edge fades.
+    /// Inside a `.fanout-transcript .fanout-body` (a specialist or child row's transcript):
+    /// hugs its content up to `session_max`, 2px 10px 6px padding, full-width column,
+    /// 6px user bubble margins and 20px edge fades.
     pub session_body: bool,
+    /// `--sess-body-max`: 420px in a session card, 360px under a fan-out row.
+    pub session_max: f32,
+    /// The inherited font size: `body`'s 13px, 12px in an Observatory panel (`.obs-left`).
+    pub font_size: f32,
 }
 
 impl Default for ChatProps {
@@ -138,6 +143,8 @@ impl Default for ChatProps {
             surface: ChatSurfaceKind::Workspace,
             composer_only: false,
             session_body: false,
+            session_max: 420.,
+            font_size: 13.,
         }
     }
 }

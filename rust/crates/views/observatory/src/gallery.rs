@@ -76,6 +76,16 @@ fn variant(name: &str) -> &str {
 /// The mock answering the Observatory's calls from the fixture (capture.spec's
 /// `observatoryResolvers`).
 pub fn bridge(variant: &str) -> Arc<MockBridge> {
+    MockBridge::fresh(resolvers(variant))
+}
+
+/// Clears the crate's app globals: scenes share one app.
+pub fn reset(cx: &mut App) {
+    crate::reset_globals(cx);
+}
+
+/// [`bridge`]'s resolvers, for hosts that add their own on top (the workspace view's scenes).
+pub fn resolvers(variant: &str) -> MockOptions {
     let fx = fixtures();
     let scene = fx["scenes"][variant].clone();
     let terminal = scene["terminal"].is_string();
@@ -101,107 +111,105 @@ pub fn bridge(variant: &str) -> Arc<MockBridge> {
     let term = fx["terminal"].clone();
     let term2 = term.clone();
     let session = scene["session"].clone();
-    MockBridge::fresh(
-        MockOptions::default()
-            .resolver("ListTree", move |a, _, _| {
-                Reply::value(tree.get(arg(a, 2)).cloned().unwrap_or(json!([])))
+    MockOptions::default()
+        .resolver("ListTree", move |a, _, _| {
+            Reply::value(tree.get(arg(a, 2)).cloned().unwrap_or(json!([])))
+        })
+        .resolver("ReadFile", move |a, _, _| {
+            let path = arg(a, 2);
+            let Some(f) = files.get(&path) else {
+                return Reply::error(format!("no such file: {path}"));
+            };
+            let content = f["content"].as_str().unwrap_or("");
+            let size = match f["asset"].as_str().and_then(asset) {
+                Some(b) => b.len(),
+                None => content.len(),
+            };
+            Reply::value(json!({
+                "path": path,
+                "language": f["language"].as_str().unwrap_or(""),
+                "content": content,
+                "size": size,
+                "writable": !arg(a, 1).is_empty(),
+                "mime": f["mime"].as_str().unwrap_or(""),
+            }))
+        })
+        .resolver("FileAtBase", move |a, _, _| {
+            let path = arg(a, 2);
+            let text = base
+                .get(&path)
+                .or_else(|| files2.get(&path).map(|f| &f["content"]))
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            Reply::value(text)
+        })
+        .resolver("Outline", move |a, _, _| {
+            Reply::value(outline.get(arg(a, 2)).cloned().unwrap_or(json!([])))
+        })
+        .resolver("GitStatus", move |_, _, _| Reply::value(git.clone()))
+        .resolver("WorkingStatus", move |_, _, _| {
+            Reply::value(working.clone())
+        })
+        .resolver("StagedFiles", move |_, _, _| Reply::value(staged.clone()))
+        .resolver("ListChangedFiles", move |_, _, _| {
+            Reply::value(changed.clone())
+        })
+        .resolver("ListArtifacts", move |_, _, _| {
+            Reply::value(artifacts.clone())
+        })
+        .resolver("GetEditorSession", move |_, _, _| {
+            Reply::value(session.clone())
+        })
+        .resolver("ListTerminals", move |_, _, _| {
+            Reply::value(if terminal {
+                json!([term["session"]])
+            } else {
+                json!([])
             })
-            .resolver("ReadFile", move |a, _, _| {
-                let path = arg(a, 2);
-                let Some(f) = files.get(&path) else {
-                    return Reply::error(format!("no such file: {path}"));
-                };
-                let content = f["content"].as_str().unwrap_or("");
-                let size = match f["asset"].as_str().and_then(asset) {
-                    Some(b) => b.len(),
-                    None => content.len(),
-                };
-                Reply::value(json!({
-                    "path": path,
-                    "language": f["language"].as_str().unwrap_or(""),
-                    "content": content,
-                    "size": size,
-                    "writable": !arg(a, 1).is_empty(),
-                    "mime": f["mime"].as_str().unwrap_or(""),
-                }))
+        })
+        .resolver("RestoreWorkspaceTerminals", move |_, _, _| {
+            Reply::value(if terminal {
+                json!([term2["session"]])
+            } else {
+                json!([])
             })
-            .resolver("FileAtBase", move |a, _, _| {
-                let path = arg(a, 2);
-                let text = base
-                    .get(&path)
-                    .or_else(|| files2.get(&path).map(|f| &f["content"]))
-                    .and_then(Value::as_str)
-                    .unwrap_or("");
-                Reply::value(text)
-            })
-            .resolver("Outline", move |a, _, _| {
-                Reply::value(outline.get(arg(a, 2)).cloned().unwrap_or(json!([])))
-            })
-            .resolver("GitStatus", move |_, _, _| Reply::value(git.clone()))
-            .resolver("WorkingStatus", move |_, _, _| {
-                Reply::value(working.clone())
-            })
-            .resolver("StagedFiles", move |_, _, _| Reply::value(staged.clone()))
-            .resolver("ListChangedFiles", move |_, _, _| {
-                Reply::value(changed.clone())
-            })
-            .resolver("ListArtifacts", move |_, _, _| {
-                Reply::value(artifacts.clone())
-            })
-            .resolver("GetEditorSession", move |_, _, _| {
-                Reply::value(session.clone())
-            })
-            .resolver("ListTerminals", move |_, _, _| {
-                Reply::value(if terminal {
-                    json!([term["session"]])
-                } else {
-                    json!([])
-                })
-            })
-            .resolver("RestoreWorkspaceTerminals", move |_, _, _| {
-                Reply::value(if terminal {
-                    json!([term2["session"]])
-                } else {
-                    json!([])
-                })
-            })
-            .resolver("AttachTerminal", {
-                let input = fx["terminal"]["input"].as_str().unwrap_or("").to_string();
-                move |_, _, _| {
-                    Reply::value(base64::engine::general_purpose::STANDARD.encode(input.as_bytes()))
-                }
-            })
-            .resolver("FetchAsset", move |a, _, _| {
-                let url = arg(a, 0);
-                let Ok(u) = url::Url::parse(&format!("http://wails{url}")) else {
-                    return Reply::null();
-                };
-                let q = |k: &str| {
-                    u.query_pairs()
-                        .find(|(n, _)| n == k)
-                        .map(|(_, v)| v.into_owned())
-                };
-                let path = q("path").unwrap_or_default();
-                let name = if q("at").as_deref() == Some("base") {
-                    base_assets[&path].as_str()
-                } else {
-                    files3[&path]["asset"].as_str()
-                };
-                let Some(bytes) = name.and_then(asset) else {
-                    return Reply::value(json!({ "status": 404, "message": "not found" }));
-                };
-                let mime = if path.ends_with(".pdf") {
-                    "application/pdf"
-                } else {
-                    "image/png"
-                };
-                Reply::value(json!({
-                    "contentType": mime,
-                    "cacheControl": "no-store",
-                    "body": base64::engine::general_purpose::STANDARD.encode(bytes),
-                }))
-            }),
-    )
+        })
+        .resolver("AttachTerminal", {
+            let input = fx["terminal"]["input"].as_str().unwrap_or("").to_string();
+            move |_, _, _| {
+                Reply::value(base64::engine::general_purpose::STANDARD.encode(input.as_bytes()))
+            }
+        })
+        .resolver("FetchAsset", move |a, _, _| {
+            let url = arg(a, 0);
+            let Ok(u) = url::Url::parse(&format!("http://wails{url}")) else {
+                return Reply::null();
+            };
+            let q = |k: &str| {
+                u.query_pairs()
+                    .find(|(n, _)| n == k)
+                    .map(|(_, v)| v.into_owned())
+            };
+            let path = q("path").unwrap_or_default();
+            let name = if q("at").as_deref() == Some("base") {
+                base_assets[&path].as_str()
+            } else {
+                files3[&path]["asset"].as_str()
+            };
+            let Some(bytes) = name.and_then(asset) else {
+                return Reply::value(json!({ "status": 404, "message": "not found" }));
+            };
+            let mime = if path.ends_with(".pdf") {
+                "application/pdf"
+            } else {
+                "image/png"
+            };
+            Reply::value(json!({
+                "contentType": mime,
+                "cacheControl": "no-store",
+                "body": base64::engine::general_purpose::STANDARD.encode(bytes),
+            }))
+        })
 }
 
 /// The workspace view's side: the Observatory filling the window.

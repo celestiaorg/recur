@@ -173,13 +173,19 @@ pub fn statusbar(cx: &App) -> Div {
         .text_color(hsla(t.faint))
 }
 
-/// Status bar text (mono 10.5px, line-height 1).
+/// Status bar text (mono 10.5px, line-height 1). It wraps when the bar is too narrow, as
+/// `.obs-statusbar` items shrink to their min-content width.
 pub fn foot_text(s: impl Into<SharedString>) -> Text {
     text(s.into())
         .family(Family::Mono)
         .size(10.5)
         .line_height(LineHeight::Scale(1.))
         .nowrap()
+}
+
+/// A button label in the status bar: wrapped lines center (`button { text-align: center }`).
+pub fn link_text(s: impl Into<SharedString>) -> Text {
+    foot_text(s).align(recur_ui::text::Align::Center)
 }
 
 /// `.obs-statusbar .sep`: a dot at half opacity.
@@ -195,8 +201,8 @@ pub fn linkish(id: impl Into<ElementId>, color: Option<Color>, cx: &App) -> Stat
     div()
         .id(id)
         .flex()
-        .flex_none()
         .items_center()
+        .justify_center()
         .cursor_pointer()
         .text_color(hsla(fg))
         .hover(move |s| s.text_color(hsla(t.text)))

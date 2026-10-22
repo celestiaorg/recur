@@ -1040,7 +1040,7 @@ impl Observatory {
             bar = bar.child(
                 crate::style::linkish("obs-dirty-link", Some(t.amber), cx)
                     .debug_selector(|| "obs-dirty-link".into())
-                    .child(crate::style::foot_text(format!("{dirty} dirty")).weight(600.))
+                    .child(crate::style::link_text(format!("{dirty} dirty")).weight(600.))
                     .on_click(cx.listener(|o, _, window, cx| {
                         o.select_code_panel(recur_view_core::prefs::CodePanelKey::Scm, window, cx)
                     })),
@@ -1053,7 +1053,7 @@ impl Observatory {
             bar = bar.child(
                 crate::style::linkish("obs-findings-link", Some(t.amber), cx)
                     .child(
-                        crate::style::foot_text(format!(
+                        crate::style::link_text(format!(
                             "{findings} finding{}",
                             if findings == 1 { "" } else { "s" }
                         ))

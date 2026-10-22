@@ -848,6 +848,8 @@ fn break_lines(
     let Some(max) = max else {
         return vec![line(0..text.len(), para.width(text, 0..text.len()))];
     };
+    // A box narrower than its margins lays out at zero width, where an empty line still fits.
+    let max = max.max(0.);
     let opportunities: Vec<(usize, BreakOpportunity)> = linebreaks(text).collect();
     let mut lines = Vec::new();
     let mut start = 0;

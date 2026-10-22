@@ -21,12 +21,13 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   chat?: Scene[]
   review?: Scene[]
   observatory?: Scene[]
+  workspace?: Scene[]
 }
 // Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
 // mount App.svelte over an edited seed (see `patchSeed`).
 const scenes = [
   ...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? []), ...(spec.content ?? []), ...(spec.chat ?? []),
-  ...(spec.review ?? []), ...(spec.observatory ?? []),
+  ...(spec.review ?? []), ...(spec.observatory ?? []), ...(spec.workspace ?? []),
 ]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
@@ -87,6 +88,26 @@ function observatoryResolvers(name: string) {
     ListTerminals: () => (scene.terminal ? [observatory.terminal.session] : []),
     RestoreWorkspaceTerminals: () => (scene.terminal ? [observatory.terminal.session] : []),
     AttachTerminal: () => Buffer.from(observatory.terminal.input, 'utf8').toString('base64'),
+  }
+}
+
+const workspace = JSON.parse(readFileSync(join(here, 'content', 'workspace.json'), 'utf8'))
+const chat = JSON.parse(readFileSync(join(here, 'content', 'chat.json'), 'utf8'))
+
+/** Workspace scenes answer the Observatory's calls for the scene's `session` and the chat's
+ *  from `content/workspace.json`, as `recur_view_workspace::gallery::resolvers` does. */
+function workspaceResolvers(name: string) {
+  const variant = name.split('/').slice(1).join('/').replace(/-paper$/, '')
+  const scene = workspace.scenes[variant] ?? {}
+  const items = chat[scene.items]?.items ?? []
+  return {
+    ...observatoryResolvers(`observatory/${scene.session}`),
+    ListLoopAgents: () => structuredClone(scene.agents ?? []),
+    WorkspaceChatItems: () => structuredClone(items),
+    WorkspaceSessions: () => structuredClone(scene.sessions ?? []),
+    WorkspaceFacts: () => structuredClone(scene.facts ?? []),
+    ListFindings: () => structuredClone(scene.findings ?? []),
+    ...(scene.chats ? { ListWorkspaceChats: () => structuredClone(scene.chats) } : {}),
   }
 }
 
@@ -204,6 +225,7 @@ for (const scene of scenes) {
     )
     const replay = scene.input === undefined ? undefined : spec.terminalInputs?.[scene.input]
     const sceneSeed = structuredClone(seed)
+    if (scene.name.startsWith('workspace/')) patchSeed(sceneSeed as Record<string, any>, scene.seed)
     if (scene.name.startsWith('shell/')) {
       patchSeed(sceneSeed as Record<string, any>, scene.seed)
       // App prefs the shell reads at startup (`initRailCollapsed`, …), and the scene theme.
@@ -215,7 +237,8 @@ for (const scene of scenes) {
     await installBridge(page, sceneSeed, replay !== undefined ? {
       resolvers: { AttachTerminal: () => Buffer.from(replay, 'utf8').toString('base64') },
     } : scene.name.startsWith('review/') ? { resolvers: reviewResolvers(scene.name) }
-      : scene.name.startsWith('observatory/') ? { resolvers: observatoryResolvers(scene.name) } : {})
+      : scene.name.startsWith('observatory/') ? { resolvers: observatoryResolvers(scene.name) }
+      : scene.name.startsWith('workspace/') ? { resolvers: workspaceResolvers(scene.name) } : {})
     await page.route('**/workspace-file?**', (r) => {
       const body = workspaceFile(r.request().url())
       const mime = /\.pdf(&|$)/.test(r.request().url()) ? 'application/pdf' : 'image/png'

@@ -149,6 +149,8 @@ impl AgentChat {
                 cx.new(|cx| FanOutCard::new(vcx, data.to_string(), fallback.to_string(), cx))
             })
             .clone();
+        let fs = self.props.font_size;
+        card.update(cx, |c, _| c.font_size = fs);
         if created {
             let sub = cx.subscribe(&card, |_, _, ev: &ChatEvent, cx| cx.emit(ev.clone()));
             self._subs.push(sub);

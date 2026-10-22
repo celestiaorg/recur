@@ -192,10 +192,30 @@ mod tests {
     /// `stream-reveal.test.ts`.
     #[test]
     fn stream_reveal_cases() {
-        assert_eq!(complete_stream_prefix("Hello world", 0, false), 11, "no newline yet");
-        assert_eq!(complete_stream_prefix("one\ntwo\npartial", 0, false), 8, "holds the partial");
-        assert_eq!(complete_stream_prefix("one\npartial", 0, true), 11, "flushes at block end");
-        assert_eq!(complete_stream_prefix("one\ntwo", 6, false), 6, "never rewinds");
-        assert_eq!(complete_stream_prefix("hi", 10, false), 2, "clamps when it shrinks");
+        assert_eq!(
+            complete_stream_prefix("Hello world", 0, false),
+            11,
+            "no newline yet"
+        );
+        assert_eq!(
+            complete_stream_prefix("one\ntwo\npartial", 0, false),
+            8,
+            "holds the partial"
+        );
+        assert_eq!(
+            complete_stream_prefix("one\npartial", 0, true),
+            11,
+            "flushes at block end"
+        );
+        assert_eq!(
+            complete_stream_prefix("one\ntwo", 6, false),
+            6,
+            "never rewinds"
+        );
+        assert_eq!(
+            complete_stream_prefix("hi", 10, false),
+            2,
+            "clamps when it shrinks"
+        );
     }
 }

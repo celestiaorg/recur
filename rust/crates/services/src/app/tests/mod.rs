@@ -8,6 +8,7 @@ mod code_service;
 mod editor_session;
 mod open_path;
 mod services;
+mod shell;
 mod workspace_base;
 mod workspace_create;
 mod workspace_issue;

@@ -29,7 +29,12 @@ fn say(start: Instant, msg: impl AsRef<str>) {
 
 fn git(dir: &Path, args: &[&str]) {
     let ok = Command::new("git")
-        .args(["-c", "user.name=Smoke", "-c", "user.email=smoke@example.com"])
+        .args([
+            "-c",
+            "user.name=Smoke",
+            "-c",
+            "user.email=smoke@example.com",
+        ])
         .args(args)
         .current_dir(dir)
         .status()
@@ -230,7 +235,13 @@ async fn run(
         Ok(o) => o,
         Err(err) => return say(start, format!("FAIL open path: {err}")),
     };
-    say(start, format!("opened project {} (working copy {})", opened.project_id, opened.workspace_id));
+    say(
+        start,
+        format!(
+            "opened project {} (working copy {})",
+            opened.project_id, opened.workspace_id
+        ),
+    );
     let project_id = opened.project_id.clone();
     state.update(cx, |s, cx| s.apply_open_path_result(opened, cx));
     for _ in 0..6 {
@@ -239,7 +250,9 @@ async fn run(
     }
 
     // 2. ⇧⌘N: a blank workspace on the project.
-    let before: Vec<String> = state.read_with(cx, |s, _| s.workspaces.iter().map(|w| w.id.clone()).collect());
+    let before: Vec<String> = state.read_with(cx, |s, _| {
+        s.workspaces.iter().map(|w| w.id.clone()).collect()
+    });
     let handled = key(cx, window, "cmd-shift-n");
     say(start, format!("cmd-shift-n handled: {handled}"));
     let mut ws_id = String::new();
@@ -256,7 +269,10 @@ async fn run(
             && !wt.is_empty()
             && Path::new(&wt).join("README.md").exists()
         {
-            say(start, format!("workspace {id} created (phase {phase:?}) at {wt}"));
+            say(
+                start,
+                format!("workspace {id} created (phase {phase:?}) at {wt}"),
+            );
             // ⇧⌘N outside Welcome leaves it in the sidebar; its row opens it.
             state.update(cx, |s, cx| s.open_workspace(&id, false, cx));
             ws_id = id;
@@ -271,15 +287,27 @@ async fn run(
                 s.selected_workspace_id,
                 s.workspaces
                     .iter()
-                    .map(|w| (w.id.clone(), w.is_main, w.worktree_path.clone(), w.phase.clone()))
+                    .map(|w| (
+                        w.id.clone(),
+                        w.is_main,
+                        w.worktree_path.clone(),
+                        w.phase.clone()
+                    ))
                     .collect::<Vec<_>>()
             )
         });
         let toasts = cx.update(|cx| {
             let t = recur_ui::widgets::ToastStore::global(cx);
-            t.read(cx).toasts().iter().map(|t| t.text.to_string()).collect::<Vec<_>>()
+            t.read(cx)
+                .toasts()
+                .iter()
+                .map(|t| t.text.to_string())
+                .collect::<Vec<_>>()
         });
-        return say(start, format!("FAIL no workspace was created: {dump}; toasts {toasts:?}"));
+        return say(
+            start,
+            format!("FAIL no workspace was created: {dump}; toasts {toasts:?}"),
+        );
     }
     for _ in 0..6 {
         sleep(cx, 250).await;
@@ -297,12 +325,19 @@ async fn run(
     sleep(cx, 300).await;
     frame(cx, window);
     for ch in PROMPT.chars() {
-        let k = if ch == ' ' { "space".to_string() } else { ch.to_string() };
+        let k = if ch == ' ' {
+            "space".to_string()
+        } else {
+            ch.to_string()
+        };
         let _ = key(cx, window, &k);
     }
     sleep(cx, 300).await;
     let typed = chat.read_with(cx, |c, _| c.input().to_string());
-    say(start, format!("composer holds {} chars", typed.chars().count()));
+    say(
+        start,
+        format!("composer holds {} chars", typed.chars().count()),
+    );
     let _ = key(cx, window, "enter");
     frame(cx, window);
     say(start, "sent with Enter");
@@ -323,7 +358,10 @@ async fn run(
         }
         let (rows, body, streaming, ended) = chat.read_with(cx, |c, _| {
             let msgs = &c.props().messages;
-            let reply = msgs.iter().rev().find(|m| !m.me && m.tool.is_empty() && !m.turn_end);
+            let reply = msgs
+                .iter()
+                .rev()
+                .find(|m| !m.me && m.tool.is_empty() && !m.turn_end);
             (
                 msgs.len(),
                 reply.map_or(0, |m| m.body.len()),
@@ -333,7 +371,10 @@ async fn run(
         });
         saw_stream |= streaming;
         if (rows, body, streaming) != last {
-            say(start, format!("transcript: {rows} rows, reply {body} chars, streaming {streaming}"));
+            say(
+                start,
+                format!("transcript: {rows} rows, reply {body} chars, streaming {streaming}"),
+            );
             last = (rows, body, streaming);
         }
         if ended {
@@ -346,17 +387,26 @@ async fn run(
                     .collect::<Vec<_>>()
                     .join(" / ")
             });
-            say(start, format!("turn ended; streamed rows seen: {saw_stream}; reply: {tail:?}"));
+            say(
+                start,
+                format!("turn ended; streamed rows seen: {saw_stream}; reply: {tail:?}"),
+            );
             break;
         }
         if Instant::now() > deadline {
             return say(start, "FAIL the turn did not end within 5 minutes");
         }
     }
-    let wt = state.read_with(cx, |s, _| s.workspace(&ws_id).map(|w| w.worktree_path.clone()))
+    let wt = state
+        .read_with(cx, |s, _| {
+            s.workspace(&ws_id).map(|w| w.worktree_path.clone())
+        })
         .unwrap_or_default();
     match std::fs::read_to_string(Path::new(&wt).join("hello.txt")) {
-        Ok(s) => say(start, format!("hello.txt in the worktree: {:?}", s.trim_end())),
+        Ok(s) => say(
+            start,
+            format!("hello.txt in the worktree: {:?}", s.trim_end()),
+        ),
         Err(err) => say(start, format!("hello.txt missing: {err}")),
     }
 
@@ -370,16 +420,27 @@ async fn run(
     let showing = obs.read_with(cx, |o, cx| o.showing_review(cx));
     let svc = services.clone();
     let id = ws_id.clone();
-    let diff = on_rt(&rt, async move { svc.code.diff_vs_base(&project_id, &id).await }).await;
+    let diff = on_rt(
+        &rt,
+        async move { svc.code.diff_vs_base(&project_id, &id).await },
+    )
+    .await;
     match diff {
         Ok(d) => say(
             start,
             format!(
                 "review surface showing: {showing}; diff files: {:?}",
-                d.files.iter().flatten().map(|f| f.path.clone()).collect::<Vec<_>>()
+                d.files
+                    .iter()
+                    .flatten()
+                    .map(|f| f.path.clone())
+                    .collect::<Vec<_>>()
             ),
         ),
-        Err(err) => say(start, format!("review surface showing: {showing}; diff error: {err}")),
+        Err(err) => say(
+            start,
+            format!("review surface showing: {showing}; diff error: {err}"),
+        ),
     }
 
     // 6. Quit (⌘Q is the menu's; the app quits through the same call).

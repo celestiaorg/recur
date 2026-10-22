@@ -365,11 +365,6 @@ impl AppServices {
         self.engine.set_app_focused(focused);
     }
 
-    /// The dock badge count (Go `eng.AttentionCounts().Dock`).
-    pub fn dock_count(&self) -> i64 {
-        self.engine.attention_counts().dock
-    }
-
     /// App teardown (Go `eng.Shutdown`, the services' `ServiceShutdown`
     /// hooks and `StopProviderUsage`): loops and chats are cancelled and
     /// joined, terminal tabs are persisted and their process groups killed,

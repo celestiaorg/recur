@@ -14,3 +14,4 @@ mod rework;
 mod send;
 mod sync;
 mod thread;
+mod workspace;

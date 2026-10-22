@@ -4,10 +4,7 @@
 
 use recur_ui::{Color, Tokens};
 
-/// A length as WebKit stores it: truncated to 1/64 px.
-pub fn lu(v: f32) -> f32 {
-    (v * 64.).floor() / 64.
-}
+pub use recur_ui::exact::lu;
 
 /// Which host class the markdown renders under.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

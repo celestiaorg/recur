@@ -10,13 +10,12 @@
 //!
 //! - [`vgap`] / [`hgap`]: a fixed gap of an exact length, in place of a fractional margin,
 //!   padding or `gap`.
-//! - [`v_box`]: a box exactly `height` tall whose children start an exact `top` below its
-//!   top (`height: 17.4px` / `margin-top: 2.5px` on a child).
 //! - [`measured`]: a custom measured element whose height reaches layout unrounded.
+//! - [`lu`]: a length as WebKit stores it.
 
 use gpui_kit::{
-    AnyElement, App, AvailableSpace, Div, GlobalElementId, IntoElement, LayoutId, Length,
-    ParentElement, Pixels, Size, Style, Styled, Window, div, px, size,
+    App, AvailableSpace, Div, GlobalElementId, LayoutId, Length, Pixels, Size, Style, Styled,
+    Window, div, px, size,
 };
 use smallvec::SmallVec;
 use std::cell::Cell;
@@ -50,48 +49,6 @@ pub fn hgap(len: f32, window: &Window) -> Div {
         return d.w(px(0.));
     }
     d.h(px(dp)).aspect_ratio(len / dp)
-}
-
-/// A column exactly `height` tall whose content starts `top` below its top, as a CSS box with
-/// `height` and a child's `margin-top`, both fractional. The content lays out in a layer over
-/// the box, so it never changes the box's height.
-pub fn v_box(height: f32, top: f32, child: impl IntoElement, window: &Window) -> Div {
-    div()
-        .relative()
-        .flex()
-        .flex_col()
-        .child(vgap(height, window))
-        .child(
-            div()
-                .absolute()
-                .top_0()
-                .left_0()
-                .right_0()
-                .flex()
-                .flex_col()
-                .child(vgap(top, window))
-                .child(child),
-        )
-}
-
-/// A child box shifted `top` down and `left` right by exact fractional offsets, as CSS
-/// `position: relative` offsets or margins on an element GPUI would round.
-pub fn offset(top: f32, left: f32, child: impl IntoElement, window: &Window) -> AnyElement {
-    let mut inner = div().flex().flex_row();
-    if left > 1e-4 {
-        inner = inner.child(hgap(left, window));
-    }
-    let inner = inner.child(child);
-    if top > 1e-4 {
-        div()
-            .flex()
-            .flex_col()
-            .child(vgap(top, window))
-            .child(inner)
-            .into_any_element()
-    } else {
-        inner.into_any_element()
-    }
 }
 
 /// The exact height a measured box took in the last frame (see [`measured`]).

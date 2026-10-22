@@ -596,13 +596,16 @@ impl Build<'_, '_> {
             tag @ ("h1" | "h2" | "h3" | "h4" | "h5" | "h6") => {
                 let level = (tag.as_bytes()[1] - b'1') as usize;
                 let h = sh.headings[level];
-                let size = lu(fs * h.scale);
-                let mut mt = lu(h.margin_top * size);
+                // The text lays out at the LayoutUnit font size; `em` margins resolve against
+                // the computed (float) size, as WebKit's do.
+                let em = fs * h.scale;
+                let size = lu(em);
+                let mut mt = lu(h.margin_top * em);
                 if pos.first
                     && level < 3
                     && let Some(f) = sh.heading_first_top
                 {
-                    mt = lu(f * size);
+                    mt = lu(f * em);
                 }
                 let hf = Flow {
                     size,
@@ -614,7 +617,7 @@ impl Build<'_, '_> {
                 Laid {
                     el: self.inline_block(&e.children, hf),
                     mt,
-                    mb: lu(h.margin_bottom * size),
+                    mb: lu(h.margin_bottom * em),
                 }
             }
             "ul" | "ol" => self.list(e, flow, pos),

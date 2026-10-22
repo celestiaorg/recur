@@ -919,3 +919,36 @@ async fn a_palette_run_opens_the_dock_and_types_the_command(cx: &mut TestAppCont
     h.wait(1000);
     assert!(!t.calls("InterruptTerminal").is_empty());
 }
+
+/// `TerminalDock.test.ts`: ⌘F opens the find bar, it counts matches, the case toggle narrows
+/// them, and Escape closes it.
+#[gpui::test]
+async fn find_opens_on_cmd_f_counts_matches_and_closes_on_escape(cx: &mut TestAppContext) {
+    let t = Term::default();
+    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    open_dock(&mut h);
+    term_out(&mut h, "sess-1", "hello world\r\nHello again\r\n");
+    h.wait(100);
+    h.click("term-pane:sess-1");
+    h.keys("cmd-f");
+    let find = |h: &mut H| {
+        h.read(|o, cx| {
+            o.dock
+                .as_ref()
+                .map(|(_, d)| {
+                    let d = d.read(cx);
+                    (d.find_open, d.find.read(cx).count_label(cx))
+                })
+                .unwrap_or_default()
+        })
+    };
+    assert!(find(&mut h).0);
+    h.type_text("hello");
+    h.wait(100);
+    assert_eq!(find(&mut h).1, "1 / 2");
+    h.keys("cmd-alt-c");
+    h.wait(100);
+    assert_eq!(find(&mut h).1, "1 / 1");
+    h.keys("escape");
+    assert!(!find(&mut h).0);
+}

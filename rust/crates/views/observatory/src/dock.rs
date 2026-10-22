@@ -128,7 +128,7 @@ pub struct TerminalDock {
     loading: bool,
     pub(crate) panes: HashMap<String, Entity<TerminalView>>,
     pane_subs: HashMap<String, Subscription>,
-    find: Entity<TerminalFindBar>,
+    pub(crate) find: Entity<TerminalFindBar>,
     pub(crate) find_open: bool,
     searched_id: String,
     pub(crate) focus: FocusHandle,
@@ -1060,96 +1060,51 @@ impl TerminalDock {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let k = &e.keystroke;
-        let m = k.modifiers;
-        let mac = cfg!(target_os = "macos");
-        let modk = m.secondary();
-        let key = k.key.as_str();
         let in_find = self.find.read(cx).contains_focus(window, cx);
-        if key == "escape" && self.find_open {
-            cx.stop_propagation();
-            self.close_find(window, cx);
+        let Some(action) = dock_key(
+            &e.keystroke,
+            cfg!(target_os = "macos"),
+            self.find_open,
+            in_find,
+            !self.active_id.is_empty(),
+        ) else {
             return;
-        }
-        let dock_chord = modk && !m.alt && if mac { !m.shift } else { m.shift };
-        if dock_chord && key == "f" {
-            cx.stop_propagation();
-            self.open_find(window, cx);
-            return;
-        }
-        if self.find_open && modk && !m.alt {
-            let dir = if mac {
-                if key == "g" {
-                    if m.shift { -1 } else { 1 }
-                } else {
-                    0
-                }
-            } else if m.shift && key == "g" {
-                1
-            } else if m.shift && key == "h" {
-                -1
-            } else {
-                0
-            };
-            if dir != 0 {
-                cx.stop_propagation();
-                self.step_find(dir, cx);
-                return;
-            }
-        }
-        if !mac && dock_chord && !in_find && key == "c" {
-            cx.stop_propagation();
-            if let Some(p) = self.panes.get(&self.active_id) {
-                let sel = p.read(cx).selection_text();
-                if !sel.is_empty() {
-                    cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(sel));
+        };
+        cx.stop_propagation();
+        match action {
+            DockKey::CloseFind => self.close_find(window, cx),
+            DockKey::OpenFind => self.open_find(window, cx),
+            DockKey::StepFind(dir) => self.step_find(dir, cx),
+            DockKey::Copy => {
+                if let Some(p) = self.panes.get(&self.active_id) {
+                    let sel = p.read(cx).selection_text();
+                    if !sel.is_empty() {
+                        cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(sel));
+                    }
                 }
             }
-            return;
-        }
-        if !mac && dock_chord && !in_find && key == "v" {
-            cx.stop_propagation();
-            let text = cx
-                .read_from_clipboard()
-                .and_then(|c| c.text())
-                .unwrap_or_default();
-            if !text.is_empty()
-                && let Some(p) = self.panes.get(&self.active_id).cloned()
-            {
-                p.update(cx, |v, cx| v.paste(&text, cx));
+            DockKey::Paste => {
+                let text = cx
+                    .read_from_clipboard()
+                    .and_then(|c| c.text())
+                    .unwrap_or_default();
+                if !text.is_empty()
+                    && let Some(p) = self.panes.get(&self.active_id).cloned()
+                {
+                    p.update(cx, |v, cx| v.paste(&text, cx));
+                }
             }
-            return;
-        }
-        if in_find && modk && m.alt && !m.shift {
-            match key {
-                "c" => self.find.update(cx, |f, cx| f.toggle_case(cx)),
-                "r" => self.find.update(cx, |f, cx| f.toggle_regexp(cx)),
-                "w" => self.find.update(cx, |f, cx| f.toggle_whole_word(cx)),
-                _ => return,
+            DockKey::ToggleCase | DockKey::ToggleRegexp | DockKey::ToggleWord => {
+                self.find.update(cx, |f, cx| match action {
+                    DockKey::ToggleCase => f.toggle_case(cx),
+                    DockKey::ToggleRegexp => f.toggle_regexp(cx),
+                    _ => f.toggle_whole_word(cx),
+                });
+                self.refresh_find(window, cx);
             }
-            cx.stop_propagation();
-            self.refresh_find(window, cx);
-            return;
-        }
-        if !modk {
-            return;
-        }
-        if m.alt && !m.shift && (key == "left" || key == "right") {
-            cx.stop_propagation();
-            self.rotate_tab(if key == "left" { -1 } else { 1 }, window, cx);
-            return;
-        }
-        if !dock_chord {
-            return;
-        }
-        if key == "t" {
-            cx.stop_propagation();
-            self.spawn(None, true, window, cx).detach();
-            return;
-        }
-        if key == "w" && !self.active_id.is_empty() {
-            cx.stop_propagation();
-            self.close_active_tab(window, cx);
+            DockKey::Rotate(dir) => self.rotate_tab(dir, window, cx),
+            DockKey::NewTab => self.spawn(None, true, window, cx).detach(),
+            DockKey::CloseTab => self.close_active_tab(window, cx),
         }
     }
 
@@ -1462,6 +1417,82 @@ impl Render for TerminalDock {
     }
 }
 
+/// What a key does in the focused dock (`onDockKeydown`). macOS uses ⌘ chords; elsewhere
+/// bare Ctrl chords belong to the shell (readline, interrupt) and the dock takes Ctrl+Shift.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum DockKey {
+    CloseFind,
+    OpenFind,
+    StepFind(i32),
+    Copy,
+    Paste,
+    ToggleCase,
+    ToggleRegexp,
+    ToggleWord,
+    Rotate(i32),
+    NewTab,
+    CloseTab,
+}
+
+pub(crate) fn dock_key(
+    k: &gpui_kit::Keystroke,
+    mac: bool,
+    find_open: bool,
+    in_find: bool,
+    has_active: bool,
+) -> Option<DockKey> {
+    let m = k.modifiers;
+    let modk = if mac { m.platform } else { m.control };
+    let key = k.key.as_str();
+    if key == "escape" && find_open {
+        return Some(DockKey::CloseFind);
+    }
+    let dock_chord = modk && !m.alt && if mac { !m.shift } else { m.shift };
+    if dock_chord && key == "f" {
+        return Some(DockKey::OpenFind);
+    }
+    if find_open && modk && !m.alt {
+        let dir = match (mac, m.shift, key) {
+            (true, false, "g") => 1,
+            (true, true, "g") => -1,
+            (false, true, "g") => 1,
+            (false, true, "h") => -1,
+            _ => 0,
+        };
+        if dir != 0 {
+            return Some(DockKey::StepFind(dir));
+        }
+    }
+    if !mac && dock_chord && !in_find && key == "c" {
+        return Some(DockKey::Copy);
+    }
+    if !mac && dock_chord && !in_find && key == "v" {
+        return Some(DockKey::Paste);
+    }
+    if in_find && modk && m.alt && !m.shift {
+        return match key {
+            "c" => Some(DockKey::ToggleCase),
+            "r" => Some(DockKey::ToggleRegexp),
+            "w" => Some(DockKey::ToggleWord),
+            _ => None,
+        };
+    }
+    if !modk {
+        return None;
+    }
+    if m.alt && !m.shift && (key == "left" || key == "right") {
+        return Some(DockKey::Rotate(if key == "left" { -1 } else { 1 }));
+    }
+    if !dock_chord {
+        return None;
+    }
+    match key {
+        "t" => Some(DockKey::NewTab),
+        "w" if has_active => Some(DockKey::CloseTab),
+        _ => None,
+    }
+}
+
 fn term_empty(s: &'static str, t: &recur_ui::Tokens) -> AnyElement {
     div()
         .px(px(12.))
@@ -1535,5 +1566,84 @@ impl crate::obs::Observatory {
         if let Some((_, d)) = self.dock.clone() {
             d.update(cx, |d, cx| d.rotate_tab(dir, window, cx));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DockKey, dock_key};
+
+    fn k(s: &str) -> gpui_kit::Keystroke {
+        gpui_kit::Keystroke::parse(s).expect("keystroke")
+    }
+
+    fn on(s: &str, mac: bool) -> Option<DockKey> {
+        dock_key(&k(s), mac, false, false, true)
+    }
+
+    #[test]
+    fn mac_uses_command_chords() {
+        assert_eq!(on("cmd-t", true), Some(DockKey::NewTab));
+        assert_eq!(on("cmd-w", true), Some(DockKey::CloseTab));
+        assert_eq!(on("cmd-f", true), Some(DockKey::OpenFind));
+        assert_eq!(on("cmd-alt-left", true), Some(DockKey::Rotate(-1)));
+        assert_eq!(on("cmd-alt-right", true), Some(DockKey::Rotate(1)));
+        // Copy / paste ride the app's own Edit menu on macOS.
+        assert_eq!(on("cmd-c", true), None);
+        assert_eq!(on("ctrl-t", true), None);
+        // ⌘W with no tab does nothing.
+        assert_eq!(dock_key(&k("cmd-w"), true, false, false, false), None);
+    }
+
+    #[test]
+    fn off_macos_bare_ctrl_chords_stay_with_the_shell() {
+        // Ctrl+T / Ctrl+W / Ctrl+F are readline keys; Ctrl+C is the interrupt.
+        for s in ["ctrl-t", "ctrl-w", "ctrl-f", "ctrl-c", "ctrl-v"] {
+            assert_eq!(on(s, false), None, "{s}");
+        }
+        assert_eq!(on("ctrl-shift-t", false), Some(DockKey::NewTab));
+        assert_eq!(on("ctrl-shift-w", false), Some(DockKey::CloseTab));
+        assert_eq!(on("ctrl-shift-f", false), Some(DockKey::OpenFind));
+        assert_eq!(on("ctrl-shift-c", false), Some(DockKey::Copy));
+        assert_eq!(on("ctrl-shift-v", false), Some(DockKey::Paste));
+        // In the find field, the chord copies the query, not the screen.
+        assert_eq!(dock_key(&k("ctrl-shift-c"), false, true, true, true), None);
+    }
+
+    #[test]
+    fn find_keys_step_toggle_and_close() {
+        assert_eq!(
+            dock_key(&k("escape"), true, true, true, true),
+            Some(DockKey::CloseFind)
+        );
+        assert_eq!(dock_key(&k("escape"), true, false, false, true), None);
+        assert_eq!(
+            dock_key(&k("cmd-g"), true, true, true, true),
+            Some(DockKey::StepFind(1))
+        );
+        assert_eq!(
+            dock_key(&k("cmd-shift-g"), true, true, true, true),
+            Some(DockKey::StepFind(-1))
+        );
+        assert_eq!(
+            dock_key(&k("ctrl-shift-g"), false, true, true, true),
+            Some(DockKey::StepFind(1))
+        );
+        assert_eq!(
+            dock_key(&k("ctrl-shift-h"), false, true, true, true),
+            Some(DockKey::StepFind(-1))
+        );
+        assert_eq!(
+            dock_key(&k("cmd-alt-c"), true, true, true, true),
+            Some(DockKey::ToggleCase)
+        );
+        assert_eq!(
+            dock_key(&k("cmd-alt-r"), true, true, true, true),
+            Some(DockKey::ToggleRegexp)
+        );
+        assert_eq!(
+            dock_key(&k("cmd-alt-w"), true, true, true, true),
+            Some(DockKey::ToggleWord)
+        );
     }
 }

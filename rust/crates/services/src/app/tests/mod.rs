@@ -3,7 +3,9 @@
 //! pinned for every turn (Go `SetRunner(&ScriptedRunner{})`), the GitHub
 //! forge with no `gh` (Go CI without gh), and fake issue trackers.
 
+mod code_service;
 mod services;
+mod workspace_base;
 mod workspace_create;
 mod workspace_issue;
 mod workspace_main;

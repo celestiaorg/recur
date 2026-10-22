@@ -1248,9 +1248,16 @@ impl Render for FilesChangedView {
         );
         let pane_probe = {
             let me = cx.entity().downgrade();
+            let pane = self.stack.pane.clone();
             canvas(
                 move |b, _, cx| {
-                    let w = f32::from(b.size.width) - 28.;
+                    // `contentRect`: inside the 14px padding and the scrollbar while it overflows.
+                    let bar = if pane.max_scroll() > 0.5 {
+                        f32::from(recur_ui::theme::SCROLLBAR_SIZE)
+                    } else {
+                        0.
+                    };
+                    let w = f32::from(b.size.width) - 28. - bar;
                     let me = me.clone();
                     cx.defer(move |cx| {
                         let _ = me.update(cx, |v, cx| {

@@ -964,11 +964,12 @@ impl DiffFile {
             "add" | "del" => t.text,
             _ => t.muted,
         };
+        let mut col = 0usize;
         let spans: Vec<Span> = code_runs(html)
             .into_iter()
             .map(|r| {
                 let c = r.token.map_or(base, |tok: Token| token_color(tok, &t));
-                span(r.text).color(c)
+                span(expand_tabs(&r.text, &mut col)).color(c)
             })
             .collect();
         Text::from_spans(spans)
@@ -2011,6 +2012,29 @@ impl DiffFile {
     }
 }
 
+/// `tab-size: 8` in a monospaced cell: each tab runs to the next multiple of eight columns.
+pub fn expand_tabs(s: &str, col: &mut usize) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '\t' => {
+                let n = 8 - *col % 8;
+                out.extend(std::iter::repeat_n(' ', n));
+                *col += n;
+            }
+            '\n' => {
+                out.push(ch);
+                *col = 0;
+            }
+            _ => {
+                out.push(ch);
+                *col += 1;
+            }
+        }
+    }
+    out
+}
+
 fn side_key(side: DiffSide) -> &'static str {
     match side {
         DiffSide::Left => "left",
@@ -2282,7 +2306,6 @@ impl Render for DiffFile {
                 div()
                     .flex()
                     .flex_col()
-                    .font_family(Family::Mono.primary())
                     .child(vgap(pad_top, window))
                     .children(slots_el)
                     .child(vgap(pad_bot, window)),

@@ -12,6 +12,8 @@ pub mod extra;
 pub mod file_list;
 pub mod files_changed;
 pub mod findings;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 pub mod html;
 pub mod line_note;
 pub mod pane;

@@ -584,11 +584,9 @@ impl FileStack {
                     .id("diffscroll")
                     .debug_selector(|| "diffscroll".into())
                     .track_focus(&self.focus)
-                    .track_scroll(&self.pane.scroll)
-                    .overflow_y_scroll()
                     .flex_1()
                     .min_h_0()
-                    .px(px(14.))
+                    .flex()
                     .on_key_down(move |ev: &KeyDownEvent, _, cx| {
                         let k = &ev.keystroke;
                         let m = &k.modifiers;
@@ -607,7 +605,11 @@ impl FileStack {
                             }
                         });
                     })
-                    .child(col),
+                    .child(
+                        recur_ui::widgets::scroll_area("diffscroll-sa")
+                            .track(&self.pane.scroll)
+                            .child(div().px(px(14.)).child(col)),
+                    ),
             )
             .child(frame)
             .into_any_element()

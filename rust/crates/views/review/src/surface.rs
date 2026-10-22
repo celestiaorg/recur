@@ -161,6 +161,10 @@ impl ReviewSurface {
         &self.commits_view
     }
 
+    pub fn props(&self) -> &SurfaceProps {
+        &self.props
+    }
+
     pub fn bound(&self) -> &SurfaceBound {
         &self.bound
     }

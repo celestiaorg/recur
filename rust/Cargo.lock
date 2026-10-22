@@ -7218,6 +7218,7 @@ dependencies = [
  "recur-terminal-view",
  "recur-ui",
  "recur-view-chat",
+ "recur-view-review",
  "serde",
  "serde_json",
 ]
@@ -7322,6 +7323,7 @@ dependencies = [
  "recur-view-core",
  "recur-view-review",
  "regex",
+ "serde",
  "serde_json",
  "smallvec",
  "tracing",

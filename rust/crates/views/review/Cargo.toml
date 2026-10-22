@@ -23,6 +23,7 @@ recur-code.workspace = true
 recur-view-core.workspace = true
 recur-view-chat.workspace = true
 serde_json.workspace = true
+serde.workspace = true
 regex.workspace = true
 tracing.workspace = true
 smallvec.workspace = true

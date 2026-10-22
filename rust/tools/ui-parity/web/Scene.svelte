@@ -23,6 +23,7 @@
   import Shell from './scenes/Shell.svelte'
   import Content from './scenes/Content.svelte'
   import Chat from './scenes/Chat.svelte'
+  import Review from './scenes/Review.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
@@ -35,7 +36,7 @@
   }
   onMount(() => {
     // Terminal and shell scenes report their own readiness.
-    if (kind === 'terminal' || kind === 'shell' || kind === 'chat' || CONTENT.includes(kind)) return
+    if (kind === 'terminal' || kind === 'shell' || kind === 'chat' || kind === 'review' || CONTENT.includes(kind)) return
     const settle = () => requestAnimationFrame(() => requestAnimationFrame(() => (ready = true)))
     const wait = (left: number) => (painted() || left <= 0 ? settle() : setTimeout(() => wait(left - 1), 50))
     wait(100)
@@ -89,6 +90,8 @@
     <Shell onready={() => (ready = true)} />
   {:else if kind === 'chat'}
     <Chat {name} onready={() => (ready = true)} />
+  {:else if kind === 'review'}
+    <Review {name} onready={() => (ready = true)} />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

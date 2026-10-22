@@ -18,6 +18,7 @@ recur-terminal-view = { workspace = true, features = ["gallery"] }
 recur-content = { workspace = true, features = ["gallery"] }
 recur-app = { workspace = true, features = ["gallery"] }
 recur-view-chat = { workspace = true, features = ["gallery"] }
+recur-view-review = { workspace = true, features = ["gallery"] }
 gpui-kit = { workspace = true, features = ["test-support"] }
 image = { workspace = true, features = ["png"] }
 serde.workspace = true

@@ -19,14 +19,44 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   shell?: Scene[]
   content?: Scene[]
   chat?: Scene[]
+  review?: Scene[]
 }
 // Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
 // mount App.svelte over an edited seed (see `patchSeed`).
 const scenes = [
   ...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? []), ...(spec.content ?? []), ...(spec.chat ?? []),
+  ...(spec.review ?? []),
 ]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
+const review = JSON.parse(readFileSync(join(here, 'content', 'review.json'), 'utf8'))
+
+/** The large review scene's files, as `recur_view_review::gallery::large_files` builds them. */
+function largeFiles(count: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const n = i % 11 === 0 ? 400 : 2 + (i * 7) % 15
+    const lines: { old: string; new: string; type: string; codeHtml: string }[] = [
+      { old: '', new: '', type: 'hunk', codeHtml: `@@ -1,${n} +1,${n} @@` },
+    ]
+    for (let k = 1; k <= n; k++) {
+      const type = k % 3 === 0 ? 'add' : k % 5 === 0 ? 'del' : 'ctx'
+      const width = (k + i) % 4 === 0 ? 40 : 6
+      lines.push({ old: type === 'add' ? '' : String(k), new: type === 'del' ? '' : String(k), type, codeHtml: `l${k} f${i} ${'word '.repeat(width)}` })
+    }
+    return { path: `src/pkg${i % 9}/file${i}.ts`, status: 'm', diff: { add: Math.floor(n / 3), del: Math.floor(n / 5) }, lines }
+  })
+}
+
+/** Review scenes answer the review calls with `content/review.json`. */
+function reviewResolvers(name: string) {
+  const large = name.startsWith('review/large')
+  return {
+    DiffVsBase: () => ({ files: large ? largeFiles(review.large.files) : review.files }),
+    DiffWorking: () => ({ files: review.files.filter((f: { path: string }) => review.dirty.includes(f.path)) }),
+    ListCommits: () => review.commits,
+    CommitDiff: () => [review.files[2]],
+  }
+}
 
 type Step =
   | { move: [number, number] }
@@ -142,9 +172,9 @@ for (const scene of scenes) {
         for (const [k, v] of Object.entries(items)) localStorage.setItem(k, v)
       }, storage)
     }
-    await installBridge(page, sceneSeed, replay === undefined ? {} : {
+    await installBridge(page, sceneSeed, replay !== undefined ? {
       resolvers: { AttachTerminal: () => Buffer.from(replay, 'utf8').toString('base64') },
-    })
+    } : scene.name.startsWith('review/') ? { resolvers: reviewResolvers(scene.name) } : {})
     const extra = scene.treeScroll ? `&treeScroll=${scene.treeScroll}` : ''
     await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}${extra}`)
     await page.waitForSelector('[data-scene-ready]')

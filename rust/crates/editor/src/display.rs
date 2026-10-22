@@ -228,8 +228,9 @@ impl DisplayLine {
 }
 
 /// Display offsets where wrapped rows start (always includes 0). Breaks
-/// follow CSS `break-spaces` + `overflow-wrap: anywhere`: after a run of
-/// spaces when the next word does not fit, else anywhere.
+/// follow CSS `break-spaces` + `overflow-wrap: anywhere`: at the last line
+/// break opportunity (after a run of spaces, or where UAX #14 allows one, as
+/// between `}` and `[`) when the next piece does not fit, else anywhere.
 pub fn wrap_rows(text: &str, xs: &[f32], width: f32) -> Vec<usize> {
     let mut rows = vec![0usize];
     if width <= 0.0 || xs.last().copied().unwrap_or(0.0) <= width {
@@ -241,6 +242,9 @@ pub fn wrap_rows(text: &str, xs: &[f32], width: f32) -> Vec<usize> {
         .chain(std::iter::once(text.len()))
         .collect();
     let chars: Vec<char> = text.chars().collect();
+    let allowed: std::collections::HashSet<usize> = unicode_linebreak::linebreaks(text)
+        .filter_map(|(byte, _)| bounds.binary_search(&byte).ok())
+        .collect();
     let mut row_start_ci = 0usize;
     let mut last_break: Option<usize> = None;
     let mut ci = 0usize;
@@ -257,7 +261,7 @@ pub fn wrap_rows(text: &str, xs: &[f32], width: f32) -> Vec<usize> {
             ci = brk;
             continue;
         }
-        if chars[ci] == ' ' {
+        if chars[ci] == ' ' || allowed.contains(&(ci + 1)) {
             last_break = Some(ci + 1);
         }
         ci += 1;
@@ -996,6 +1000,9 @@ mod tests {
         let long = "abcdefghij";
         assert_eq!(wrap_rows(long, &m.char_xs(long), 35.0), vec![0, 3, 6, 9]);
         assert_eq!(wrap_rows("ab", &m.char_xs("ab"), 50.0), vec![0]);
+        // UAX #14 lets a line break between close and open punctuation.
+        let code = "n }[]";
+        assert_eq!(wrap_rows(code, &m.char_xs(code), 35.0), vec![0, 3]);
     }
 
     #[test]

@@ -1910,6 +1910,11 @@
     {"name": "prs/actions-pending", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending"},
     {"name": "prs/actions-pending-paper", "theme": "paper", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending"},
     {"name": "prs/review-modal", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending", "review": "request"},
-    {"name": "prs/review-modal-paper", "theme": "paper", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending", "review": "approve"}
+    {"name": "prs/review-modal-paper", "theme": "paper", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending", "review": "approve"},
+    {"name": "prs/actions-merge-menu", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "detail", "steps": [{"click": [1253, 25]}, {"wait": 200}]},
+    {"name": "prs/actions-confirm", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "detail", "steps": [{"click": [1200, 25]}, {"move": [700, 400]}, {"wait": 200}]},
+    {"name": "prs/actions-review-menu", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "detail", "steps": [{"click": [1015, 25]}, {"wait": 200}]},
+    {"name": "prs/actions-update-menu", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "update", "steps": [{"click": [899, 25]}, {"wait": 200}]},
+    {"name": "prs/people-detail", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "detail", "steps": [{"move": [868, 93]}, {"move": [870, 93]}, {"wait": 200}]}
   ]
 }

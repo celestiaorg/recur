@@ -12,8 +12,7 @@ name = "recur"
 path = "src/main.rs"
 
 [features]
-default = ["mock"]
-# The in-memory mock services, until the engine-backed implementation lands.
+# Runs the UI on the e2e mock bridge instead of the engine-backed services.
 mock = ["recur-services/mock"]
 
 [dependencies]
@@ -29,6 +28,8 @@ recur-view-core.workspace = true
 recur-view-chat.workspace = true
 gpui-kit.workspace = true
 futures.workspace = true
+parking_lot.workspace = true
+serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

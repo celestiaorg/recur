@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# `remember_models`: seeds the model cache a live list would fill.
+testing = []
+
 [dependencies]
 recur-domain.workspace = true
 recur-agent.workspace = true

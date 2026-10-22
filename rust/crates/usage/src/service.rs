@@ -2,7 +2,9 @@
 //! lifecycle, the footer snapshot, and Cursor usage Connect. `recur-services`
 //! wraps it with the store and the bus.
 
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
 use parking_lot::Mutex;
@@ -15,8 +17,10 @@ use crate::poller::{Poller, Publisher};
 use crate::types::{CursorUsageConnect, ProviderQuota, Snapshot, empty_snapshot};
 
 pub type SettingsSource = Arc<dyn Fn() -> Settings + Send + Sync>;
-/// Saves settings through the full Settings save path (Go `SetSettings`).
-pub type SettingsSink = Arc<dyn Fn(Settings) -> Result<(), String> + Send + Sync>;
+/// Saves settings through the full Settings save path (Go `SetSettings`),
+/// whose side effects (provider remap, governor caps) are async.
+pub type SettingsSink =
+    Arc<dyn Fn(Settings) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send>> + Send + Sync>;
 pub type DataDirSource = Arc<dyn Fn() -> Option<PathBuf> + Send + Sync>;
 
 pub struct UsageService {
@@ -60,9 +64,11 @@ impl UsageService {
                 w1.upgrade().map_or((false, false, false), |s| s.wants())
             })),
             cursor_stub: Some(Arc::new(move || w2.upgrade().and_then(|s| s.cursor_stub()))),
+            // The hook is sync inside a fetch; the save runs beside it.
             on_minted_api_key: Some(Arc::new(move |_prev: &str, next: &str| {
                 if let Some(s) = w3.upgrade() {
-                    s.apply_minted_cursor_key(next);
+                    let next = next.to_owned();
+                    tokio::spawn(async move { s.apply_minted_cursor_key(&next).await });
                 }
             })),
             ..Fetcher::default()
@@ -147,34 +153,34 @@ impl UsageService {
             Some(p) => p.disconnect_cursor().await.map_err(|e| e.to_string()),
             None => Ok(()),
         };
-        self.clear_cursor_api_key();
+        self.clear_cursor_api_key().await;
         err
     }
 
-    fn clear_cursor_api_key(&self) {
+    async fn clear_cursor_api_key(&self) {
         let mut set = (self.settings)();
         if set.cursor_api_key.trim().is_empty() {
             return;
         }
         set.cursor_api_key.clear();
-        if let Err(e) = (self.save_settings)(set) {
+        if let Err(e) = (self.save_settings)(set).await {
             tracing::warn!("recur: warning: clear cursor api key: {e}");
         }
     }
 
     /// Clears a Settings key when Recur has no Connect file, so a leftover
     /// paste cannot keep showing Connected (Cursor status calls this).
-    pub fn drop_orphan_cursor_key(&self, mut set: Settings, data_dir: &Path) -> Settings {
+    pub async fn drop_orphan_cursor_key(&self, mut set: Settings, data_dir: &Path) -> Settings {
         if has_recur_cursor_auth_file(data_dir) || set.cursor_api_key.trim().is_empty() {
             return set;
         }
-        self.clear_cursor_api_key();
+        self.clear_cursor_api_key().await;
         set.cursor_api_key.clear();
         set
     }
 
     /// Writes a Connect-minted user API key into Settings.
-    fn apply_minted_cursor_key(&self, next: &str) {
+    async fn apply_minted_cursor_key(&self, next: &str) {
         let next = next.trim();
         if next.is_empty() {
             return;
@@ -184,7 +190,7 @@ impl UsageService {
             return;
         }
         set.cursor_api_key = next.to_owned();
-        if let Err(e) = (self.save_settings)(set) {
+        if let Err(e) = (self.save_settings)(set).await {
             tracing::warn!("recur: warning: save cursor api key: {e}");
         }
     }

@@ -1,10 +1,12 @@
 //! The desktop app entry (root `main.go` and `open_boot.go`): own the data dir or hand the
 //! launch to the running instance, tee the log, fix PATH, open the store, seed shipped bundles
-//! and skills, start the runtime, open IPC, build the services, then run the GPUI app and tear
-//! down in the Go app's order.
+//! and skills, start the runtime, open IPC, build the services and recover interrupted work
+//! before any UI, start the boot work once events reach the desktop, then run the GPUI app and
+//! tear down in the Go app's order.
 //!
-//! The services run on the in-memory mock bridge (`mock` feature, on by default) until the
-//! engine-backed implementation lands; [`services`] is the one line that changes then.
+//! The `mock` feature swaps in the e2e mock bridge for UI work without a backend.
+
+mod macro_runtime;
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -24,7 +26,7 @@ use recur_platform::open_boot::{
 use recur_platform::openipc::Response;
 use recur_platform::updater::{Host, RecurUpdater, UpdaterEvent, UserAction};
 use recur_platform::{cliinstall, dock, notify, running_in_app_bundle};
-use recur_services::{AppEvent, Services};
+use recur_services::{AppEvent, AppServices, Services};
 use recur_view_core::{LOCAL_STORAGE_FILE, LocalStorage, ViewRegistry};
 
 /// Stamped at build time for release bundles (Go: `-ldflags -X main.version`).
@@ -38,14 +40,29 @@ const MANIFEST_URL: &str = match option_env!("RECUR_UPDATE_MANIFEST_URL") {
     None => "",
 };
 
-/// The services the app runs on.
-#[cfg(feature = "mock")]
-fn services() -> Services {
-    recur_services::mock::MockBridge::fresh(recur_services::mock::MockOptions::default()).services()
+/// The services the app runs on: the engine-backed ones over `store`, recovered (Go
+/// `eng.Recover()` before `NewServices`), or the mock bridge under the `mock` feature.
+#[cfg(not(feature = "mock"))]
+fn backend(
+    rt: &tokio::runtime::Runtime,
+    store: recur_store::Store,
+) -> (Services, Option<Arc<AppServices>>) {
+    let svc = rt
+        .block_on(AppServices::open(Arc::new(store)))
+        .unwrap_or_else(|err| fatal(format!("resolve data dir: {err}")));
+    svc.recover();
+    (svc.services(), Some(svc))
 }
 
-#[cfg(not(feature = "mock"))]
-compile_error!("recur-desktop runs on the mock services until the engine-backed ones land");
+#[cfg(feature = "mock")]
+fn backend(
+    _rt: &tokio::runtime::Runtime,
+    _store: recur_store::Store,
+) -> (Services, Option<Arc<AppServices>>) {
+    let bridge =
+        recur_services::mock::MockBridge::fresh(recur_services::mock::MockOptions::default());
+    (bridge.services(), None)
+}
 
 /// Every view crate registers its routes, overlays and keymaps here.
 fn registry() -> ViewRegistry {
@@ -165,7 +182,7 @@ fn main() {
         .unwrap_or_else(|err| fatal(format!("start runtime: {err}")));
     let ipc = start_open_ipc(rt.handle(), &mut inst, gate.clone(), hub.clone());
 
-    let services = services();
+    let (services, real) = backend(&rt, store);
     let open_path = {
         let (services, handle) = (services.clone(), rt.handle().clone());
         move |p: &str| {
@@ -235,6 +252,14 @@ fn main() {
         }
     });
 
+    // The git and Cursor bridge checks, scheduled prompts, auto-resume, the PR sweep and the
+    // usage poller, once the subscriber above forwards their notifications.
+    if let Some(svc) = &real {
+        rt.block_on(svc.start());
+    }
+    // Production .app only: symlink the bundled CLI onto PATH (D-cli-install).
+    rt.spawn_blocking(cliinstall::install_bundled_cli);
+
     let app = gpui_kit::application().with_assets(recur_ui::Assets);
     {
         let main_tx = main_tx.clone();
@@ -257,18 +282,31 @@ fn main() {
             registry,
             shell: recur_app::ShellOptions {
                 updates: updater.is_some(),
+                on_window_active: real.clone().map(|svc| {
+                    Rc::new(move |active: bool| svc.set_app_focused(active)) as Rc<dyn Fn(bool)>
+                }),
                 ..Default::default()
             },
         };
         let (window, state) = recur_app::open_main_window(main, cx)
             .unwrap_or_else(|err| fatal(format!("open window: {err}")));
+        let macros = macro_runtime::MacroRuntime::new(rt.clone());
         state.update(cx, |s, _| {
             s.set_drop_hook(Rc::new(|files: &[String]| {
                 for f in files {
                     recur_code::allow_external_path(f);
                 }
-            }))
+            }));
+            s.set_macro_runner(Some(macros.macro_runner()));
         });
+        // simplify: complete scripts get no LSP diagnostics until the editor's LSP client
+        // keeps a problems list (Svelte `lspProblems`); pass it here when it lands.
+        let diagnostics: macro_runtime::Diagnostics = Rc::new(|_| Vec::new());
+        recur_view_chat::prompt_actions::PromptCatalog::set_runners(
+            Some(macros.prompt_runner()),
+            Some(macros.complete_runner(diagnostics)),
+            cx,
+        );
 
         // Jobs from other threads (focus for a handoff, updater quit) run here.
         cx.spawn(async move |cx: &mut AsyncApp| {
@@ -349,20 +387,30 @@ fn main() {
             }
         })
         .detach();
-        // Quit: drop the UI, stop accepting IPC and join in-flight opens before the store
-        // closes. The flock is released when the instance drops, after the run loop.
-        let (hub, gate, ipc) = (hub.clone(), gate.clone(), ipc.clone());
+        // Quit: drop the UI, stop accepting IPC and join in-flight opens, then cancel and join
+        // every loop and chat, persist terminals and stop language servers and the usage
+        // poller before the store closes (Go `stopIPC(); eng.Shutdown()` in OnShutdown). The
+        // flock is released when the instance drops, after the run loop.
+        let (hub, gate, ipc, real, handle) = (
+            hub.clone(),
+            gate.clone(),
+            ipc.clone(),
+            real.clone(),
+            rt.clone(),
+        );
         cx.on_app_quit(move |_| {
             revoke_open_ui(&hub, &gate);
             if let Some(ipc) = ipc.borrow_mut().take() {
                 ipc.stop();
+            }
+            if let Some(svc) = &real {
+                handle.block_on(svc.shutdown());
             }
             async {}
         })
         .detach();
     });
     drop(rt);
-    drop(store);
     drop(inst);
 }
 

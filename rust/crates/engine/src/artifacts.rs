@@ -63,7 +63,7 @@ fn rfc3339_nano_utc(t: chrono::DateTime<chrono::Utc>) -> String {
 }
 
 /// Go `json.MarshalIndent(v, "", "  ")`: the `json.Marshal` bytes re-indented.
-pub(crate) fn marshal_indent<T: serde::Serialize>(v: &T) -> Option<String> {
+pub fn marshal_indent<T: serde::Serialize>(v: &T) -> Option<String> {
     let compact = recur_domain::json::to_string(v).ok()?;
     Some(go_indent(&compact, "  "))
 }

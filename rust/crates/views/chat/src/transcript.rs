@@ -482,11 +482,14 @@ impl AgentChat {
                 id.clone()
             }
         ));
+        let fact_sel = format!("loop-fact:{id}");
+        el = el.debug_selector(|| fact_sel);
         let tint = if you {
             t.text
         } else {
             ag_color(&code, &t).unwrap_or(t.text)
         };
+        let mut meta_pad = None;
         let meta: AnyElement = match &pr_done {
             Some(done) => {
                 let mut row = div()
@@ -510,6 +513,10 @@ impl AgentChat {
                     Some(pid) => row.child(
                         div()
                             .id(SharedString::from(format!("{fid}-pr")))
+                            .debug_selector({
+                                let pid = pid.clone();
+                                move || format!("loop-pr-link:{pid}")
+                            })
                             .cursor_pointer()
                             .text_color(hsla(t.cyan))
                             .hover(|s| s.text_color(hsla(t.text)))
@@ -531,11 +538,22 @@ impl AgentChat {
                     st.code_fg = t.amber;
                     st.code_bg = t.amber_d;
                 }
-                inline_html(
+                // Taffy has no text baselines: a wrapping meta would align on its min-content
+                // height. Its first line's baseline meets the label's through a measured pad.
+                let meta = crate::html_inline::inline_html_text(
                     SharedString::from(format!("{fid}-meta")),
                     &strip_loop_wrap(html),
                     st,
-                )
+                );
+                let label = text("x")
+                    .size(12.)
+                    .line_height(LineHeight::Scale(1.45))
+                    .measure(None, window)
+                    .2
+                    .baseline;
+                let pad = self.tc_shift + label - meta.measure(None, window).2.baseline;
+                meta_pad = Some(pad);
+                meta.into_any_element()
             }
         };
         let head_kids = vec![
@@ -543,6 +561,7 @@ impl AgentChat {
                 .relative()
                 .flex_none()
                 .size(px(14.))
+                .self_start()
                 .top(px(1.))
                 .flex()
                 .items_center()
@@ -557,27 +576,29 @@ impl AgentChat {
                     .color(hsla(t.muted)),
                 )
                 .into_any_element(),
+            self.tc_label(
+                if name.is_empty() {
+                    code.clone()
+                } else {
+                    name.clone()
+                },
+                tint,
+            ),
             div()
-                .flex_none()
-                .max_w(relative(0.55))
-                .overflow_hidden()
-                .child(
-                    text(if name.is_empty() {
-                        code.clone()
-                    } else {
-                        name.clone()
-                    })
-                    .weight(600.)
-                    .color(tint)
-                    .truncate(),
-                )
+                .flex_1()
+                .min_w_0()
+                .when_some(meta_pad, |d, pad| {
+                    d.child(recur_ui::exact::vgap_at(pad.max(0.), self.scale))
+                })
+                .child(meta)
                 .into_any_element(),
-            div().flex_1().min_w_0().child(meta).into_any_element(),
         ];
-        el = el.child(
-            div()
+        el = el.child(match meta_pad {
+            // `.tc-head.static` with its baselines placed by hand (see `meta_pad`).
+            Some(_) => div()
+                .id(fid.clone())
                 .flex()
-                .items_baseline()
+                .items_start()
                 .gap(px(7.))
                 .w_full()
                 .min_w_0()
@@ -588,8 +609,10 @@ impl AgentChat {
                 .rounded(px(6.))
                 .text_size(px(12.))
                 .text_color(hsla(t.text))
-                .children(head_kids),
-        );
+                .children(head_kids)
+                .into_any_element(),
+            None => self.tc_head(fid.clone(), false, head_kids, None, cx),
+        });
         if !wrap.is_empty() {
             let mut st = InlineStyle::meta(12.5, t.text, &t);
             st.leading = Some(1.45);
@@ -614,10 +637,17 @@ impl AgentChat {
         let Some(render) = self.session_card.clone() else {
             return div().into_any_element();
         };
+        let first = sessions.first().map(|s| s.id.clone()).unwrap_or_default();
         recur_ui::style::card(t.pane, t.line, 8.)
+            .debug_selector(move || format!("sesscard:{first}"))
             .overflow_hidden()
             .my(px(6.))
-            .children(sessions.iter().map(|s| render(s, window, cx)))
+            .children(
+                sessions
+                    .iter()
+                    .enumerate()
+                    .map(|(i, s)| render(s, i == 0, window, cx)),
+            )
             .into_any_element()
     }
 
@@ -1287,9 +1317,14 @@ impl AgentChat {
         };
         let data = self.tool_data.clone();
         let summary = group_summary(msgs, &head_rows, rows, data.cx());
-        // `.steps-head` is inline-flex on a 13 / 1.45 line; its baseline is the centered 12px
-        // chevron's bottom edge.
-        let line = 11.5 * 1.45;
+        // `.steps-head` is inline-flex on the inherited font's 1.45 line; its baseline is the
+        // centered 12px chevron's bottom edge.
+        let line = text("x")
+            .size(11.5)
+            .line_height(LineHeight::Scale(1.45))
+            .measure(None, window)
+            .2
+            .height;
         el = el.child(crate::style::line_box(
             div()
                 .id(SharedString::from(format!(
@@ -1316,7 +1351,7 @@ impl AgentChat {
                 )
                 .child(text(summary).line_height(LineHeight::Scale(1.45)).nowrap())
                 .on_click(cx.listener(move |this, _, _, cx| this.toggle_group(start, open, cx))),
-            13.,
+            self.props.font_size,
             1.45,
             2. + (line - 12.) / 2. + 12.,
             line + 4.,
@@ -1547,7 +1582,7 @@ impl AgentChat {
         div()
             .flex()
             .justify_end()
-            .my(px(22.))
+            .my(px(if self.props.session_body { 6. } else { 22. }))
             .child(
                 div()
                     .max_w(relative(0.85))

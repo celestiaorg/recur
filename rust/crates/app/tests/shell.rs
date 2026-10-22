@@ -630,6 +630,19 @@ fn shift_cmd_n_creates_a_blank_workspace_without_the_modal(cx: &mut TestAppConte
 }
 
 #[gpui_kit::test]
+fn window_shortcuts_work_with_nothing_focused(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), MockOptions::default()),
+        LocalStorage::in_memory(),
+    );
+    h.cx.update(|window, cx| window.blur(cx));
+    h.settle();
+    h.keys("cmd-k");
+    assert!(h.read(|s| s.overlays.palette));
+}
+
+#[gpui_kit::test]
 fn a_failed_save_shows_an_error_toast_that_auto_dismisses(cx: &mut TestAppContext) {
     let opts = MockOptions::default().resolver("UpdateProjectRunConfig", |_, _, _| {
         Reply::error("disk is read-only")

@@ -34,7 +34,7 @@ pub mod themes;
 pub mod view;
 pub mod workspace_nav;
 
-pub use data::{GITHUB_PR_SYNC_MIN, app_chat_agent_id, is_agent_running_status};
+pub use data::{AppliedEvent, GITHUB_PR_SYNC_MIN, app_chat_agent_id, is_agent_running_status};
 pub use local_storage::{LOCAL_STORAGE_FILE, LocalStorage};
 pub use nav::{Crumb, CrumbSeg, CrumbStyle, ViewName};
 pub use state::{

@@ -96,6 +96,10 @@ pub enum SelectEvent {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TriggerStyle {
     pub height: Option<f32>,
+    /// Square left corners (the right half of a split button).
+    pub square_left: bool,
+    /// `height: auto` with this vertical padding (the trigger hugs its content).
+    pub pad_y: Option<f32>,
     pub pad_x: Option<f32>,
     pub radius: Option<f32>,
     pub gap: Option<f32>,
@@ -120,9 +124,14 @@ pub struct TriggerStyle {
     pub chevron_size: Option<f32>,
     /// Icon and chevron color while open / focused.
     pub open_icon_color: Option<Color>,
+    /// While open, `.sel.open`'s ring and amber icons win over the host's (a later sheet, same
+    /// specificity); `no_ring` and `open_icon_color` then apply to `:focus-visible` only.
+    pub sel_open_wins: bool,
     /// The value keeps its natural width (`flex: none`).
     pub value_auto: bool,
     pub auto_width: bool,
+    /// No value text (`.sel-val { display: none }`): the icon and chevron only.
+    pub hide_value: bool,
 }
 
 /// The select. Create with [`Select::new`] in an owning view, keep the entity, and render it.
@@ -297,6 +306,14 @@ impl Select {
         &self.values
     }
     /// Disabled, faded over the color it sits on.
+    /// Restyle the trigger as its context changes (a container width crossing a breakpoint).
+    pub fn set_trigger_style(&mut self, t: TriggerStyle, cx: &mut Context<Self>) {
+        if self.trigger != t {
+            self.trigger = t;
+            cx.notify();
+        }
+    }
+
     pub fn set_disabled(&mut self, backdrop: Option<Color>, cx: &mut Context<Self>) {
         self.disabled_over = backdrop;
         if backdrop.is_some() {
@@ -639,18 +656,21 @@ impl Render for Select {
                 }
             } else {
                 bg = tr.open_bg.unwrap_or(bg);
+                fg = tr.open_color.unwrap_or(fg);
                 border = tr
                     .open_border
                     .unwrap_or(crate::color::rgba(242, 179, 61, 0.55));
-                fg = tr.open_color.unwrap_or(fg);
-                ring = !tr.no_ring;
+                ring = (tr.sel_open_wins && self.open) || !tr.no_ring;
             }
         }
         let mut ico_color = tr.icon_color.unwrap_or(t.muted);
         let mut chev_color = t.faint;
         // `.sel.open` / `:focus-visible` icons go amber; a ghost's open icons stay muted.
         if !disabled && (self.open || focus_visible) {
-            let c = tr.open_icon_color.unwrap_or(if self.ghost && self.open {
+            let own = tr
+                .open_icon_color
+                .filter(|_| !(tr.sel_open_wins && self.open));
+            let c = own.unwrap_or(if self.ghost && self.open {
                 t.muted
             } else {
                 t.amber
@@ -708,9 +728,13 @@ impl Render for Select {
             .flex()
             .items_center()
             .gap(px(gap))
-            .h(px(h))
+            .map(|b| match tr.pad_y {
+                Some(py) => b.py(px(py)),
+                None => b.h(px(h)),
+            })
             .px(px(pad))
             .rounded(px(radius))
+            .when(tr.square_left, |b| b.rounded_l(px(0.)))
             .bg(bg)
             .when(border_w > 0., |d| d.border(px(border_w)))
             .border_color(Hsla::from(border))
@@ -720,6 +744,11 @@ impl Render for Select {
             .when_some(tr.weight, |d, w| d.font_weight(gpui_kit::FontWeight(w)))
             .role(gpui_kit::accesskit::Role::ComboBox)
             .aria_label(self.label.clone());
+        // Spec handle: `sel:{aria label}={shown value}`, `:off` while disabled.
+        let (label, shown) = (self.label.clone(), self.display());
+        button = button.debug_selector(move || {
+            format!("sel:{label}={shown}{}", if disabled { ":off" } else { "" })
+        });
         button = if self.ghost || tr.auto_width {
             button.flex_none()
         } else {
@@ -786,11 +815,13 @@ impl Render for Select {
         if let Some(c) = first.as_ref().and_then(|o| o.tint) {
             val = val.color(c);
         }
-        button = button.child(if self.ghost || tr.value_auto {
-            div().flex_none().child(val)
-        } else {
-            div().flex_1().min_w_0().child(val)
-        });
+        if !tr.hide_value {
+            button = button.child(if self.ghost || tr.value_auto {
+                div().flex_none().child(val)
+            } else {
+                div().flex_1().min_w_0().child(val)
+            });
+        }
         // Chevron: `sm` uses chevrons-up-down and never rotates; otherwise chevron-down rotates
         // 180° over .12s when open. `.sel.ghost .sel-chev` (11px) comes after `.sel.sm`'s 12px.
         let chev_size = tr.chevron_size.unwrap_or(if self.ghost {
@@ -922,8 +953,10 @@ impl Select {
             let active = self.active == Some(row.ix);
             let value = o.value.clone();
             let ix = row.ix;
+            let label = o.label.clone();
             let mut opt = div()
                 .id(("sel-opt", ix))
+                .debug_selector(move || format!("sel-opt:{label}"))
                 .flex()
                 .items_center()
                 .gap(px(8.))
@@ -1016,6 +1049,7 @@ impl Select {
         }
         let mut menu = crate::style::menu_panel(cx)
             .id("sel-menu")
+            .debug_selector(|| "sel-menu".into())
             .w(px(width))
             .max_h(px(max_h))
             .when_some(self.variant.max_width(vw), |d, w| d.max_w(px(w)))

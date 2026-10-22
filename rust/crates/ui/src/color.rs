@@ -72,6 +72,53 @@ impl Color {
         }
     }
 
+    /// `color-mix(in oklab, self p%, other)` for opaque colors (the result is clipped back
+    /// into sRGB as browsers do for in-gamut mixes).
+    pub fn mix_oklab(self, p: f32, other: Color) -> Color {
+        fn lin(c: f32) -> f32 {
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        fn enc(c: f32) -> f32 {
+            let c = c.clamp(0., 1.);
+            if c <= 0.003_130_8 {
+                12.92 * c
+            } else {
+                1.055 * c.powf(1. / 2.4) - 0.055
+            }
+        }
+        fn to_lab(c: Color) -> [f32; 3] {
+            let (r, g, b) = (lin(c.r), lin(c.g), lin(c.b));
+            let l = (0.412_221_47 * r + 0.536_332_55 * g + 0.051_445_99 * b).cbrt();
+            let m = (0.211_903_5 * r + 0.680_699_5 * g + 0.107_396_96 * b).cbrt();
+            let s = (0.088_302_46 * r + 0.281_718_85 * g + 0.629_978_7 * b).cbrt();
+            [
+                0.210_454_26 * l + 0.793_617_8 * m - 0.004_072_047 * s,
+                1.977_998_5 * l - 2.428_592_2 * m + 0.450_593_7 * s,
+                0.025_904_037 * l + 0.782_771_77 * m - 0.808_675_77 * s,
+            ]
+        }
+        let (a, b) = (to_lab(self), to_lab(other));
+        let q = 1. - p;
+        let (l, aa, bb) = (
+            a[0] * p + b[0] * q,
+            a[1] * p + b[1] * q,
+            a[2] * p + b[2] * q,
+        );
+        let l_ = (l + 0.396_337_78 * aa + 0.215_803_76 * bb).powi(3);
+        let m_ = (l - 0.105_561_346 * aa - 0.063_854_17 * bb).powi(3);
+        let s_ = (l - 0.089_484_18 * aa - 1.291_485_5 * bb).powi(3);
+        Color {
+            r: enc(4.076_741_7 * l_ - 3.307_711_6 * m_ + 0.230_969_94 * s_),
+            g: enc(-1.268_438 * l_ + 2.609_757_4 * m_ - 0.341_319_38 * s_),
+            b: enc(-0.004_196_086_3 * l_ - 0.703_418_6 * m_ + 1.707_614_7 * s_),
+            a: self.a * p + other.a * q,
+        }
+    }
+
     /// `color-mix(in srgb, self p%, transparent)`.
     pub fn fade(self, p: f32) -> Color {
         self.mix(p, TRANSPARENT)
@@ -218,6 +265,20 @@ impl From<Color> for Hsla {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn oklab_mix_is_identity_at_the_ends_and_lightens_toward_white() {
+        let c = crate::hex(0x34d399);
+        let w = crate::hex(0xffffff);
+        let same = c.mix_oklab(1., w);
+        assert!(
+            (same.r - c.r).abs() < 1e-4
+                && (same.g - c.g).abs() < 1e-4
+                && (same.b - c.b).abs() < 1e-4
+        );
+        let m = c.mix_oklab(0.88, w);
+        assert!(m.r > c.r && m.g > c.g && m.b > c.b);
+    }
 
     fn bytes(c: Color) -> [u8; 4] {
         let q = |x: f32| (x * 255.).round() as u8;

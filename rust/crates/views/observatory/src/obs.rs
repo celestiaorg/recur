@@ -427,6 +427,9 @@ pub struct Observatory {
     pub(crate) focused_pane: Pane,
     pub(crate) split_pct: i64,
     pub(crate) split_resizing: bool,
+    /// The editor status bar's width when its items stopped fitting on one line each; they
+    /// wrap (`.obs-statusbar` items shrink to min-content) until the bar is wider again.
+    pub(crate) status_wrap: Option<f32>,
 
     // ---- editors and previews ----
     pub(crate) main_editor: Option<Entity<EditorView>>,
@@ -686,6 +689,7 @@ impl Observatory {
             focused_pane: Pane::Main,
             split_pct: storage_split,
             split_resizing: false,
+            status_wrap: None,
             main_editor: None,
             split_editor: None,
             merge_editor: None,
@@ -831,6 +835,16 @@ impl Observatory {
     /// Mutating tree ops need a workspace worktree.
     pub(crate) fn tree_writable(&self) -> bool {
         !self.props.workspace_id.is_empty()
+    }
+
+    /// The review surface is the main surface (the toolbar's Review changes toggle is on).
+    pub fn showing_review(&self, cx: &App) -> bool {
+        self.main_surface(cx) == MainSurface::Review
+    }
+
+    /// What the toolbar's Review changes button does.
+    pub fn click_review_toggle(&mut self, cx: &mut Context<Self>) {
+        self.toggle_review(cx);
     }
 
     pub(crate) fn main_surface(&self, cx: &App) -> MainSurface {
@@ -1174,6 +1188,21 @@ impl Observatory {
     }
 
     /// The artifact open in the focused pane, if any.
+    /// The file open in the main editor.
+    pub fn selected_path(&self) -> &str {
+        &self.selected_path
+    }
+
+    /// The explorer row highlighted as current (`treePath`).
+    pub fn tree_path(&self) -> &str {
+        &self.tree_path
+    }
+
+    /// The panel the right dock shows.
+    pub fn right_panel(&self, cx: &App) -> Option<CodePanelKey> {
+        self.right_meta(cx)
+    }
+
     pub fn selected_artifact_id(&self) -> String {
         recur_engine::view::artifacts::artifact_id_from_scratch_path(self.active_path())
     }

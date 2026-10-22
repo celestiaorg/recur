@@ -19,7 +19,8 @@ use recur_view_review::style::hsla;
 use crate::model::{FocusZone, MainSurface, Pane, format_bytes};
 use crate::obs::{Observatory, TermMaxPhase};
 use crate::style::{
-    CHROME_H, foot_sep, foot_text, icon_btn, linkish, obs_empty, seg, seg_text_btn, statusbar,
+    CHROME_H, foot_sep, foot_text, icon_btn, link_text, linkish, obs_empty, seg, seg_text_btn,
+    statusbar,
 };
 
 impl Observatory {
@@ -176,6 +177,9 @@ impl Observatory {
             let crumb = div()
                 .id(SharedString::from(format!("crumb-{i}")))
                 .debug_selector(move || format!("crumb:{i}"))
+                // `overflow: hidden`: no automatic minimum, so a narrow bar shrinks the path.
+                .min_w_0()
+                .overflow_hidden()
                 .max_w(px(140.))
                 .px(px(4.))
                 .py(px(2.))
@@ -938,22 +942,49 @@ impl Observatory {
     /// The editor's status bar (`Ln, Col · language · Bundles · git · problems · symbol`).
     fn render_editor_status(&mut self, corner: (bool, bool), cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
+        // Nowrap text keeps each item's exact width; once the bar overflows (the spacer is
+        // gone) the items wrap like the web bar's, until it is wider than where that began.
+        let (bar_w, sp_w) = (
+            f32::from(self.bounds.status.get().size.width),
+            f32::from(self.bounds.status_sp.get().size.width),
+        );
+        match self.status_wrap {
+            None if bar_w > 0. && sp_w < 0.25 => {
+                self.status_wrap = Some(bar_w);
+                cx.notify();
+            }
+            Some(w0) if bar_w > w0 + 0.5 => {
+                self.status_wrap = None;
+                cx.notify();
+            }
+            _ => {}
+        }
+        let wrap = self.status_wrap.is_some();
+        let w = move |t: recur_ui::text::Text| {
+            if wrap {
+                t.white_space(recur_ui::text::WhiteSpace::Normal)
+            } else {
+                t
+            }
+        };
         let active = self.active_path().to_string();
         let lang = self.status_language(cx);
         let st = self.git_status.get(&active).cloned().unwrap_or_default();
         let mut bar = statusbar(cx)
             .debug_selector(|| "obs-statusbar".into())
+            .relative()
+            .child(crate::geometry::probe(&self.bounds.status))
             .when(corner.0, |d| d.pl(px(crate::style::WIN_CORNER_PAD)))
             .when(corner.1, |d| d.pr(px(crate::style::WIN_CORNER_PAD)))
-            .child(foot_text(format!(
+            .child(w(foot_text(format!(
                 "Ln {}, Col {}",
                 self.cursor_line, self.cursor_col
-            )))
+            ))))
             .child(foot_sep(cx))
             .child(
                 linkish("status-lang", None, cx)
                     .debug_selector(|| "status:lang".into())
-                    .child(foot_text(lang))
+                    .child(w(link_text(lang)))
                     .on_click(cx.listener(|o, _, window, cx| {
                         o.quick_open.update(cx, |q, cx| q.close(cx));
                         o.state.update(cx, |s, cx| s.open_syntax_mode_picker(cx));
@@ -965,7 +996,7 @@ impl Observatory {
                 "status-bundles-t",
                 "Commands and snippets for this file",
                 linkish("status-bundles", None, cx)
-                    .child(foot_text("Bundles"))
+                    .child(w(link_text("Bundles")))
                     .on_click(cx.listener(|o, _, _, cx| {
                         o.state.update(cx, |s, cx| s.open_commands_palette(cx))
                     })),
@@ -981,7 +1012,7 @@ impl Observatory {
             };
             bar = bar
                 .child(foot_sep(cx))
-                .child(foot_text(st.to_uppercase()).weight(600.).color(c))
+                .child(w(foot_text(st.to_uppercase())).weight(600.).color(c))
                 .child(
                     div().ml(px(8.)).child(
                         text(format!(
@@ -992,22 +1023,26 @@ impl Observatory {
                         .size(11.)
                         .line_height(LineHeight::Scale(1.))
                         .color(t.muted)
-                        .nowrap(),
+                        .white_space(if wrap {
+                            recur_ui::text::WhiteSpace::Normal
+                        } else {
+                            recur_ui::text::WhiteSpace::NoWrap
+                        }),
                     ),
                 );
         }
         if self.active_dirty() {
-            bar = bar.child(foot_sep(cx)).child(foot_text("Modified"));
+            bar = bar.child(foot_sep(cx)).child(w(foot_text("Modified")));
         }
         if self.split_open {
-            bar = bar.child(foot_sep(cx)).child(foot_text(format!(
+            bar = bar.child(foot_sep(cx)).child(w(foot_text(format!(
                 "{} focused",
                 if self.focused_pane == Pane::Split {
                     "Split"
                 } else {
                     "Main"
                 }
-            )));
+            ))));
         }
         let problems = crate::lsp::problems::group_by_path(&self.problems(cx));
         if let Some(pf) = problems.get(&active).cloned() {
@@ -1016,11 +1051,11 @@ impl Observatory {
             let mut parts: Vec<AnyElement> = Vec::new();
             if pf.errors > 0 {
                 parts.push(
-                    foot_text(format!(
+                    w(link_text(format!(
                         "{} error{}",
                         pf.errors,
                         if pf.errors == 1 { "" } else { "s" }
-                    ))
+                    )))
                     .into_any_element(),
                 );
             }
@@ -1029,21 +1064,21 @@ impl Observatory {
             }
             if pf.warnings > 0 {
                 parts.push(
-                    foot_text(format!(
+                    w(link_text(format!(
                         "{} warning{}",
                         pf.warnings,
                         if pf.warnings == 1 { "" } else { "s" }
-                    ))
+                    )))
                     .into_any_element(),
                 );
             }
             if pf.errors == 0 && pf.warnings == 0 {
                 parts.push(
-                    foot_text(format!(
+                    w(link_text(format!(
                         "{} issue{}",
                         pf.count,
                         if pf.count == 1 { "" } else { "s" }
-                    ))
+                    )))
                     .into_any_element(),
                 );
             }
@@ -1058,7 +1093,12 @@ impl Observatory {
                     })),
             ));
         }
-        bar = bar.child(div().flex_1());
+        bar = bar.child(
+            div()
+                .relative()
+                .flex_1()
+                .child(crate::geometry::probe(&self.bounds.status_sp)),
+        );
         let line = self.cursor_line as i64;
         let sym = {
             let syms: Vec<recur_textmate::OutlineSymbol> = self
@@ -1083,7 +1123,7 @@ impl Observatory {
                     linkish("status-sym", None, cx)
                         .min_w_0()
                         .max_w(px(28. * 6.3))
-                        .child(foot_text(name).truncate())
+                        .child(w(foot_text(name)).truncate())
                         .on_click(cx.listener(|o, _, window, cx| {
                             o.open_quick_open(crate::quick_open::QuickOpenMode::Symbol, window, cx)
                         })),
@@ -1093,7 +1133,7 @@ impl Observatory {
         bar = bar
             .child(
                 linkish("status-gosym", None, cx)
-                    .child(foot_text("Go to Symbol"))
+                    .child(w(link_text("Go to Symbol")))
                     .on_click(cx.listener(|o, _, window, cx| {
                         o.open_quick_open(crate::quick_open::QuickOpenMode::Symbol, window, cx)
                     })),
@@ -1151,7 +1191,7 @@ impl Observatory {
             bar = bar.child(foot_sep(cx)).child(
                 linkish("review-findings", Some(t.amber), cx)
                     .child(
-                        foot_text(format!("{n} finding{}", if n == 1 { "" } else { "s" }))
+                        link_text(format!("{n} finding{}", if n == 1 { "" } else { "s" }))
                             .weight(600.),
                     )
                     .on_click(cx.listener(|o, _, window, cx| {

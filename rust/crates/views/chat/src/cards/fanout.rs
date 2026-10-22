@@ -192,6 +192,8 @@ pub struct FanOutCard {
     transcripts: HashMap<String, Transcript>,
     loads: HashMap<String, Task<()>>,
     flash: Option<(String, Instant)>,
+    /// The host chat's inherited font size, for the child transcripts.
+    pub(crate) font_size: f32,
     _subs: Vec<Subscription>,
 }
 
@@ -211,6 +213,7 @@ impl FanOutCard {
             transcripts: HashMap::new(),
             loads: HashMap::new(),
             flash: None,
+            font_size: 13.,
             _subs: vec![sub],
         };
         c.take_child_request(cx);
@@ -375,16 +378,19 @@ impl FanOutCard {
             workspace_id: child.id.clone(),
             empty_text: "No transcript was recorded for this child.".into(),
             session_body: true,
+            session_max: 360.,
+            font_size: self.font_size,
             ..ChatProps::default()
         };
         let findings = t.findings.clone();
         let ws_id = child.id.clone();
+        let font_size = self.font_size;
         let chat = cx.new(|cx| {
             let mut c = AgentChat::new(&vcx, props, window, cx);
             let vcx2 = vcx.clone();
             let cards: std::rc::Rc<std::cell::RefCell<HashMap<String, Entity<SessionCard>>>> =
                 Default::default();
-            let renderer: SessionCardRenderer = std::rc::Rc::new(move |log, _, cx| {
+            let renderer: SessionCardRenderer = std::rc::Rc::new(move |log, first, _, cx| {
                 let key = if log.id.is_empty() {
                     log.code.clone()
                 } else {
@@ -400,7 +406,8 @@ impl FanOutCard {
                     workspace_id: ws_id.clone(),
                     findings: findings.clone(),
                     open_file: false,
-                    first: true,
+                    first,
+                    font_size,
                 };
                 let card = cards
                     .borrow_mut()
@@ -644,8 +651,9 @@ impl Render for FanOutCard {
                 let body: AnyElement = match self.transcripts.get(&c.id) {
                     Some(tr) if !tr.loading && !tr.messages.is_empty() => {
                         let chat = self.child_chat(c, window, cx);
-                        recur_ui::style::card(t.bg, t.line, 6.)
-                            .max_h(px(420.))
+                        // `.fanout-transcript .fanout-body`: no card, capped at 360px.
+                        div()
+                            .max_h(px(360.))
                             .overflow_hidden()
                             .flex()
                             .flex_col()
@@ -659,9 +667,9 @@ impl Render for FanOutCard {
                 };
                 card = card.child(
                     div()
-                        .border_t_1()
-                        .border_dashed()
-                        .border_color(hsla(t.line))
+                        .relative()
+                        .pt(px(1.))
+                        .child(recur_ui::style::dashed_top_border(1., t.line))
                         .flex()
                         .flex_col()
                         .gap(px(6.))

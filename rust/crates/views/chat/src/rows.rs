@@ -876,7 +876,7 @@ impl AgentChat {
     }
 
     /// `.tc-head` with its click and Enter handling.
-    fn tc_head(
+    pub(crate) fn tc_head(
         &self,
         id: SharedString,
         expandable: bool,
@@ -917,7 +917,7 @@ impl AgentChat {
         head.into_any_element()
     }
 
-    fn tc_label(&self, s: impl Into<SharedString>, color: Color) -> AnyElement {
+    pub(crate) fn tc_label(&self, s: impl Into<SharedString>, color: Color) -> AnyElement {
         // The label leads the baseline group, so its pad moves every baseline-aligned item.
         div()
             .flex_none()

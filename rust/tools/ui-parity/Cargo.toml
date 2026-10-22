@@ -20,6 +20,7 @@ recur-app = { workspace = true, features = ["gallery"] }
 recur-view-chat = { workspace = true, features = ["gallery"] }
 recur-view-review = { workspace = true, features = ["gallery"] }
 recur-view-observatory = { workspace = true, features = ["gallery"] }
+recur-view-workspace = { workspace = true, features = ["gallery"] }
 gpui-kit = { workspace = true, features = ["test-support"] }
 image = { workspace = true, features = ["png"] }
 serde.workspace = true

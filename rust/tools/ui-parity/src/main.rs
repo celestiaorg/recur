@@ -66,7 +66,7 @@ fn keystroke(key: &str) -> String {
 }
 
 /// Every scene: recur-ui's widgets (including the editor's, built by
-/// `recur_editor::gallery`), then the terminal's, the app shell's, rich content's, the chat's, the review surface's and the Observatory's.
+/// `recur_editor::gallery`), then the terminal's, the app shell's, rich content's, the chat's, the review surface's, the Observatory's and the workspace view's.
 fn all_specs() -> Vec<SceneSpec> {
     let mut specs = gallery::specs();
     specs.extend(recur_terminal_view::gallery::specs());
@@ -75,6 +75,7 @@ fn all_specs() -> Vec<SceneSpec> {
     specs.extend(recur_view_chat::gallery::specs());
     specs.extend(recur_view_review::gallery::specs());
     specs.extend(recur_view_observatory::gallery::specs());
+    specs.extend(recur_view_workspace::gallery::specs());
     specs
 }
 
@@ -87,6 +88,7 @@ fn exists(name: &str) -> bool {
         || recur_view_chat::gallery::exists(name)
         || recur_view_review::gallery::exists(name)
         || recur_view_observatory::gallery::exists(name)
+        || recur_view_workspace::gallery::exists(name)
 }
 
 fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyView> {
@@ -107,6 +109,9 @@ fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyV
     }
     if recur_view_observatory::gallery::exists(name) {
         return recur_view_observatory::gallery::build(name, window, cx);
+    }
+    if recur_view_workspace::gallery::exists(name) {
+        return recur_view_workspace::gallery::build(name, window, cx);
     }
     recur_editor::gallery::build(name, window, cx).or_else(|| gallery::build(name, window, cx))
 }
@@ -227,6 +232,19 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
             .with_context(|| format!("capture {}", spec.name))?;
         shot.save(out.join(file_name(&spec.name)))?;
         cx.update_window(any, |_, window, _| window.remove_window())?;
+        cx.run_until_parked();
+        // The platform keeps a removed window as its active one, with callbacks that hold the
+        // scene's views, until another window activates. Activate an empty one so the scene is
+        // released (and its destroy hooks write to its own app state) before the next builds.
+        let blank = cx.update(|cx| {
+            cx.open_window(WindowOptions::default(), |_, cx| {
+                cx.new(|_| gpui_kit::Empty)
+            })
+        })?;
+        let blank: gpui_kit::AnyWindowHandle = blank.into();
+        cx.update_window(blank, |_, window, _| window.activate_window())?;
+        cx.run_until_parked();
+        cx.update_window(blank, |_, window, _| window.remove_window())?;
         cx.run_until_parked();
         println!("rendered {}", spec.name);
     }

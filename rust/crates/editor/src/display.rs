@@ -228,8 +228,9 @@ impl DisplayLine {
 }
 
 /// Display offsets where wrapped rows start (always includes 0). Breaks
-/// follow CSS `break-spaces` + `overflow-wrap: anywhere`: after a run of
-/// spaces when the next word does not fit, else anywhere.
+/// follow CSS `break-spaces` + `overflow-wrap: anywhere`: at the last line
+/// break opportunity (after a run of spaces, or where UAX #14 allows one, as
+/// between `}` and `[`) when the next piece does not fit, else anywhere.
 pub fn wrap_rows(text: &str, xs: &[f32], width: f32) -> Vec<usize> {
     let mut rows = vec![0usize];
     if width <= 0.0 || xs.last().copied().unwrap_or(0.0) <= width {
@@ -241,6 +242,9 @@ pub fn wrap_rows(text: &str, xs: &[f32], width: f32) -> Vec<usize> {
         .chain(std::iter::once(text.len()))
         .collect();
     let chars: Vec<char> = text.chars().collect();
+    let allowed: std::collections::HashSet<usize> = unicode_linebreak::linebreaks(text)
+        .filter_map(|(byte, _)| bounds.binary_search(&byte).ok())
+        .collect();
     let mut row_start_ci = 0usize;
     let mut last_break: Option<usize> = None;
     let mut ci = 0usize;
@@ -257,7 +261,7 @@ pub fn wrap_rows(text: &str, xs: &[f32], width: f32) -> Vec<usize> {
             ci = brk;
             continue;
         }
-        if chars[ci] == ' ' {
+        if chars[ci] == ' ' || allowed.contains(&(ci + 1)) {
             last_break = Some(ci + 1);
         }
         ci += 1;
@@ -429,6 +433,8 @@ pub struct LayoutConfig {
     pub viewport_height: f32,
     /// `.cm-line` left padding.
     pub line_padding_left: f32,
+    /// `.cm-line` right padding.
+    pub line_padding_right: f32,
 }
 
 impl Default for LayoutConfig {
@@ -444,6 +450,7 @@ impl Default for LayoutConfig {
             padding_bottom: 8.0,
             viewport_height: 600.0,
             line_padding_left: 6.0,
+            line_padding_right: 2.0,
         }
     }
 }
@@ -557,12 +564,10 @@ impl MeasuredLine {
 }
 
 /// Estimated rows of a line before it is measured (CodeMirror's
-/// `HeightOracle.heightForLine`).
-pub fn estimate_rows(chars: usize, chars_per_row: usize) -> usize {
-    let per = chars_per_row.max(1);
-    1 + chars
-        .saturating_sub(per)
-        .div_ceil(per.saturating_sub(5).max(1))
+/// `HeightOracle.heightForLine`, with its fractional `lineLength`).
+pub fn estimate_rows(chars: usize, line_length: f32) -> usize {
+    let extra = ((chars as f32 - line_length) / (line_length - 5.).max(1.)).ceil();
+    1 + extra.max(0.) as usize
 }
 
 /// The layout of one editor: config, height map and measured lines.
@@ -588,10 +593,11 @@ impl Layout {
         l
     }
 
-    fn chars_per_row(&self) -> usize {
-        (self.config.wrap_width / self.config.char_width.max(1.0))
-            .floor()
-            .max(1.0) as usize
+    /// `HeightOracle.lineLength`: the content width (line padding included) in characters.
+    pub(crate) fn line_length(&self) -> f32 {
+        let c = &self.config;
+        ((c.wrap_width + c.line_padding_left + c.line_padding_right) / c.char_width.max(1.0))
+            .max(5.0)
     }
 
     fn estimate(&self, state: &EditorState, n: usize) -> f64 {
@@ -601,7 +607,7 @@ impl Layout {
         }
         let line = state.doc.line(n);
         let chars = state.doc.slice(line.from, line.to).chars().count();
-        estimate_rows(chars, self.chars_per_row()) as f64 * lh
+        estimate_rows(chars, self.line_length()) as f64 * lh
     }
 
     /// Folded line ranges from the fold state.
@@ -996,6 +1002,9 @@ mod tests {
         let long = "abcdefghij";
         assert_eq!(wrap_rows(long, &m.char_xs(long), 35.0), vec![0, 3, 6, 9]);
         assert_eq!(wrap_rows("ab", &m.char_xs("ab"), 50.0), vec![0]);
+        // UAX #14 lets a line break between close and open punctuation.
+        let code = "n }[]";
+        assert_eq!(wrap_rows(code, &m.char_xs(code), 35.0), vec![0, 3]);
     }
 
     #[test]
@@ -1010,8 +1019,11 @@ mod tests {
         h.splice(2, 2, vec![5.0, 5.0, 5.0]);
         assert_eq!(h.len(), 5);
         assert_eq!(h.total(), 35.0);
-        assert_eq!(estimate_rows(10, 20), 1);
-        assert_eq!(estimate_rows(50, 20), 3);
+        assert_eq!(estimate_rows(10, 20.), 1);
+        assert_eq!(estimate_rows(50, 20.), 3);
+        // A fractional line length is kept, as CodeMirror's oracle does.
+        assert_eq!(estimate_rows(60, 52.3), 2);
+        assert_eq!(estimate_rows(100, 52.3), 3);
     }
 
     #[test]

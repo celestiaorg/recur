@@ -1,0 +1,68 @@
+{
+  "workspaceId": "LOOP-2231",
+  "scenes": {
+    "chat": { "session": "code", "items": "transcript" },
+    "tabs": {
+      "session": "explorer",
+      "items": "transcript",
+      "chats": [
+        { "code": "MA", "title": "Loop", "mode": "loop", "updatedAt": 0 },
+        { "code": "PA", "title": "New chat", "updatedAt": 0 },
+        { "code": "PA2", "title": "Tighten the retry loop", "mode": "agent", "updatedAt": 1786586600000 },
+        { "code": "PA3", "title": "Review the OAuth callback", "mode": "review", "updatedAt": 1786586601000 },
+        { "code": "PA4", "title": "Plan the dark mode tokens", "mode": "plan", "updatedAt": 1786586602000 },
+        { "code": "PA5", "title": "Why does the sync test flake?", "mode": "ask", "updatedAt": 1786586603000 },
+        { "code": "PA6", "title": "Bump the date-fns import", "mode": "agent", "updatedAt": 1786586604000 },
+        { "code": "PA7", "title": "Converge on the token refresh", "mode": "loop", "updatedAt": 1786586605000 }
+      ]
+    },
+    "plan": { "session": "code", "items": "transcript" },
+    "findings": {
+      "session": "code",
+      "items": "transcript",
+      "findings": [
+        {
+          "id": "F-1", "shortId": "F1", "workspaceId": "LOOP-2231", "severity": "high", "status": "open",
+          "file": "src/app.ts", "line": 12, "endLine": 14, "agentCode": "RV",
+          "message": "The OAuth callback trusts the state parameter without checking it against the session"
+        },
+        {
+          "id": "F-2", "shortId": "F2", "workspaceId": "LOOP-2231", "severity": "medium", "status": "open",
+          "file": "src/lib/format.ts", "line": 3, "agentCode": "RV",
+          "message": "formatDate drops the timezone offset for dates before 1970"
+        },
+        {
+          "id": "F-3", "shortId": "F3", "workspaceId": "LOOP-2231", "severity": "low", "status": "resolved",
+          "file": "README.md", "line": 1, "agentCode": "RV",
+          "message": "The setup section still mentions npm"
+        }
+      ]
+    },
+    "loop": {
+      "session": "code",
+      "items": "transcript",
+      "agents": [
+        { "id": "LOOP-2231-MA", "workspaceId": "LOOP-2231", "code": "MA", "name": "Maestro", "status": "idle" },
+        { "id": "LOOP-2231-QA", "workspaceId": "LOOP-2231", "code": "QA", "name": "QA / Browser", "status": "working" }
+      ],
+      "sessions": [
+        {
+          "id": "s-rv", "code": "RV", "name": "Reviewer", "kind": "reviewer", "status": "idle",
+          "createdAt": 1786586607000, "updatedAt": 1786586608000,
+          "items": [
+            { "role": "assistant", "kind": "text", "text": "Reviewing the diff against the base branch." },
+            { "role": "assistant", "kind": "text", "text": "One finding on the OAuth callback; the rest is clean." }
+          ]
+        },
+        {
+          "id": "s-co", "code": "CO", "name": "Coder", "kind": "coder", "status": "idle",
+          "createdAt": 1786586609000, "updatedAt": 1786586610000,
+          "items": [{ "role": "assistant", "kind": "text", "text": "Checked the state parameter against the session cookie." }]
+        }
+      ],
+      "facts": [
+        { "id": "f-conv", "agentCode": "MA", "name": "Maestro", "text": "Converged: 0 findings.", "time": "", "ts": 1786586611000, "isDeviation": false }
+      ]
+    }
+  }
+}

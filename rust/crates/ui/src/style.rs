@@ -1325,3 +1325,87 @@ pub fn skeleton_row(cx: &App) -> Div {
         .border_b(px(1.))
         .border_color(Hsla::from(tokens(cx).line_soft))
 }
+
+/// The solid runs `(start, length)` of a horizontal `border-style: dashed` side `len` long
+/// and `thickness` thick, as WebKit's `GraphicsContextCG::drawLine` strokes it: solid corner
+/// squares at both ends, then dashes and gaps one pattern width long, phased so the pattern
+/// balances between the corners.
+pub fn dashed_runs(len: f32, thickness: f32) -> Vec<(f32, f32)> {
+    let corner = (2. * thickness).min(thickness.max(len / 3.));
+    let pattern = (3. * thickness).min(thickness.max(len / 3.));
+    let inner = len - 2. * corner;
+    if inner <= 0. || pattern <= 0. {
+        return vec![(0., len.max(0.))];
+    }
+    // `dashedLinePatternOffsetForPatternAndStrokeWidth`.
+    let segments = (inner / pattern).floor() as i64;
+    let remainder = inner - segments as f32 * pattern;
+    let mut phase = pattern;
+    if segments % 2 == 1 && remainder > 0. {
+        phase -= remainder / 2.;
+    } else if segments % 2 == 0 {
+        phase += if remainder > 0. {
+            phase - (pattern + remainder) / 2.
+        } else {
+            pattern / 2.
+        };
+    }
+    let mut runs = vec![(0., corner)];
+    // Walk the [on, off] pattern from `phase`, clipped to the inner span.
+    let period = 2. * pattern;
+    let mut at = -(phase % period);
+    while at < inner {
+        let (s, e) = (at.max(0.), (at + pattern).min(inner));
+        if e > s {
+            runs.push((corner + s, e - s));
+        }
+        at += period;
+    }
+    runs.push((len - corner, corner));
+    runs
+}
+
+/// A dashed top border painted as WebKit does ([`dashed_runs`]): put it absolutely along the
+/// top of a box that pads its top by `thickness` in place of the border.
+pub fn dashed_top_border(thickness: f32, color: Color) -> impl IntoElement {
+    gpui_kit::canvas(
+        |_, _, _| {},
+        move |bounds, _, window, _| {
+            let len = f32::from(bounds.size.width);
+            for (s, w) in dashed_runs(len, thickness) {
+                let b = gpui_kit::Bounds {
+                    origin: gpui_kit::point(bounds.origin.x + px(s), bounds.origin.y),
+                    size: gpui_kit::size(px(w), px(thickness)),
+                };
+                window.paint_quad(gpui_kit::fill(b, Hsla::from(color)));
+            }
+        },
+    )
+    .absolute()
+    .top_0()
+    .left_0()
+    .right_0()
+    .h(px(thickness))
+}
+
+#[cfg(test)]
+mod dashed_tests {
+    use super::dashed_runs;
+
+    /// A 550px 1px rule: 2px corners, a 1.5px leading gap, then 3px dashes and gaps
+    /// (measured in WebKit).
+    #[test]
+    fn dashed_rule_matches_webkit() {
+        let r = dashed_runs(550., 1.);
+        assert_eq!(r[0], (0., 2.));
+        assert_eq!(r[1], (3.5, 3.));
+        assert_eq!(r[2], (9.5, 3.));
+        assert_eq!(*r.last().unwrap(), (548., 2.));
+        let tail = r[r.len() - 2];
+        assert_eq!(
+            tail.0 + tail.1,
+            546.5,
+            "a 1.5px gap before the right corner"
+        );
+    }
+}

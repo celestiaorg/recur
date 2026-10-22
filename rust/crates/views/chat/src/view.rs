@@ -221,8 +221,8 @@ impl Render for AgentChat {
             .flex_col()
             .min_h_0()
             .when(!session, |d| d.size_full().bg(hsla(t.bg)))
-            .when(session, |d| d.max_h(px(420.)))
-            .text_size(px(13.))
+            .when(session, |d| d.max_h(px(self.props.session_max)))
+            .text_size(px(self.props.font_size))
             .text_color(hsla(t.text));
         if !composer_only {
             let kids = self.transcript_children(window, cx);
@@ -243,28 +243,44 @@ impl Render for AgentChat {
                 .w_full()
                 .when(!session, |d| d.max_w(px(720.)).mx_auto())
                 .children(kids);
-            let scroller = div()
-                .id(SharedString::from(format!(
-                    "chat-scroll-{}",
-                    self.props.reset_key
-                )))
-                .debug_selector(|| "chat-scroll".into())
-                .track_scroll(&self.scroll)
-                .overflow_y_scroll()
-                .when(!session && !compact, |d| {
-                    d.flex_1().min_h_0().pt(px(26.)).px(px(28.)).pb(px(8.))
-                })
-                .when(!session && compact, |d| {
-                    d.flex_1().min_h_0().pt(px(18.)).px(px(18.)).pb(px(8.))
-                })
-                .when(session, |d| {
-                    d.flex_initial()
-                        .min_h_0()
-                        .max_h(px(420.))
-                        .py(px(8.))
-                        .px(px(12.))
-                })
-                .child(col);
+            let id = SharedString::from(format!("chat-scroll-{}", self.props.reset_key));
+            let scroller = if session {
+                div()
+                    .id(id)
+                    .debug_selector(|| "chat-scroll".into())
+                    .track_scroll(&self.scroll)
+                    .overflow_y_scroll()
+                    .flex_initial()
+                    .min_h_0()
+                    .max_h(px(self.props.session_max))
+                    .pt(px(2.))
+                    .px(px(10.))
+                    .pb(px(6.))
+                    .child(col)
+                    .into_any_element()
+            } else {
+                // `.chat-scroll` keeps WebKit's classic scrollbar, which takes layout width
+                // while the transcript overflows.
+                let pad = if compact { 18. } else { 28. };
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .child(
+                        recur_ui::widgets::scrollbar::scroll_area(id)
+                            .track(&self.scroll)
+                            .child(
+                                div()
+                                    .debug_selector(|| "chat-scroll".into())
+                                    .pt(px(if compact { 18. } else { 26. }))
+                                    .px(px(pad))
+                                    .pb(px(8.))
+                                    .child(col),
+                            ),
+                    )
+                    .into_any_element()
+            };
             let main = div()
                 .relative()
                 .when(!session, |d| d.flex_1().min_h_0())

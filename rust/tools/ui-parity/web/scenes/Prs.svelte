@@ -37,6 +37,8 @@
       if (q.get('route') === 'prdetail' && pr) {
         openPR(pr)
         if (q.get('dock') === 'closed') prAgentDockOpen.set(false)
+        // After PRDetail's per-PR reset, which lands on Conversation.
+        await frames(3)
         const tab = q.get('tab')
         if (tab) prDetailTab.set(tab as 'conv' | 'commits' | 'files' | 'checks')
       } else {

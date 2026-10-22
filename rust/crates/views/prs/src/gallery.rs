@@ -91,6 +91,9 @@ struct PrSceneView {
     shell: Entity<Shell>,
     scene: PrScene,
     navigated: bool,
+    /// Frames since navigating; the tab is picked a few frames later, after PR detail's
+    /// per-PR reset (which lands on Conversation), as `Prs.svelte` does.
+    frames: u8,
 }
 
 impl Render for PrSceneView {
@@ -102,6 +105,21 @@ impl Render for PrSceneView {
                 let sc = self.scene.clone();
                 let ui = ui(cx);
                 cx.defer(move |cx| navigate(&state, &ui, &sc, cx));
+            }
+            cx.notify();
+        } else if self.frames < 3 {
+            self.frames += 1;
+            if self.frames == 3 {
+                let tab = match self.scene.tab.as_str() {
+                    "commits" => Some(PrTab::Commits),
+                    "files" => Some(PrTab::Files),
+                    "checks" => Some(PrTab::Checks),
+                    _ => None,
+                };
+                if let Some(tab) = tab {
+                    let ui = ui(cx);
+                    cx.defer(move |cx| ui.update(cx, |u, cx| u.set_tab(tab, cx)));
+                }
             }
             cx.notify();
         }
@@ -118,16 +136,6 @@ fn navigate(state: &Entity<AppState>, ui: &Entity<crate::ui::PrUi>, sc: &PrScene
             }
             cx.notify();
         });
-        let tab = match sc.tab.as_str() {
-            "commits" => Some(PrTab::Commits),
-            "files" => Some(PrTab::Files),
-            "checks" => Some(PrTab::Checks),
-            "conv" => Some(PrTab::Conv),
-            _ => None,
-        };
-        if let Some(tab) = tab {
-            ui.update(cx, |u, cx| u.set_tab(tab, cx));
-        }
     } else {
         let seg = LIST_SEGS
             .iter()
@@ -174,6 +182,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
             shell,
             scene,
             navigated: false,
+            frames: 0,
         })
         .into(),
     )

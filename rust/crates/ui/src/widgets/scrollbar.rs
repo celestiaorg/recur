@@ -220,7 +220,15 @@ impl RenderOnce for ScrollArea {
             let (h, top, _) = overlay_thumb(pos, total, client, 24.);
             (h, top)
         } else {
-            classic_thumb(pos, total, client, client)
+            // WebKit lays native scrollbars out on whole CSS pixels (`snappedIntRect`), so a
+            // scroller at a fractional offset draws its thumb from the rounded edge.
+            let o = handle.bounds().origin;
+            let edge = f32::from(match axis {
+                Axis::X => o.x,
+                Axis::Y => o.y,
+            });
+            let (len, at) = classic_thumb(pos, total, client, client);
+            (len, at + edge.round() - edge)
         };
 
         let now = Instant::now();

@@ -8,6 +8,7 @@
 //! registers the `pr` route (the dashboard, with its counts in the titlebar) and the
 //! `prdetail` route (PR detail, with the review and merge actions leading `.tb-right`).
 
+pub mod actions;
 pub mod chrome;
 pub mod detail;
 pub mod findings;
@@ -25,6 +26,7 @@ pub mod ui;
 use gpui_kit::AppContext as _;
 use recur_view_core::{TitlebarParts, ViewContext, ViewName, ViewRegistry};
 
+use crate::actions::PrTitlebarActions;
 use crate::detail::PrDetail;
 use crate::list::PrList;
 use crate::list_titlebar::PrListTitlebar;
@@ -40,5 +42,9 @@ pub fn register(r: &mut ViewRegistry) {
     });
     r.view(&[ViewName::PrDetail], |vcx: &ViewContext, window, cx| {
         cx.new(|cx| PrDetail::new(vcx, window, cx)).into()
+    })
+    .titlebar(|vcx, window, cx| TitlebarParts {
+        left: None,
+        right: Some(cx.new(|cx| PrTitlebarActions::new(vcx, window, cx)).into()),
     });
 }

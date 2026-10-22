@@ -177,8 +177,8 @@ impl PrDetail {
         recur_ui::style::style_text_input(&title_input, cx);
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter files"));
         recur_ui::style::style_text_input(&filter, cx);
-        let desc = Field::new(&state, "Description", (2, 12), |_: &mut Self, _| {}, window, cx);
-        let comment = Field::new(&state, "Edit comment", (2, 12), |_: &mut Self, _| {}, window, cx);
+        let desc = Field::new(&state, "Description", (2, 2), |_: &mut Self, _| {}, window, cx);
+        let comment = Field::new(&state, "Edit comment", (2, 2), |_: &mut Self, _| {}, window, cx);
         let reply = Field::new(&state, "Reply…", (1, 6), |_: &mut Self, _| {}, window, cx);
         let composer = Field::new(
             &state,

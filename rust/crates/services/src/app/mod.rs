@@ -30,6 +30,9 @@ mod terminal_persist;
 mod terminals;
 mod workspaces;
 
+#[cfg(test)]
+mod tests;
+
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

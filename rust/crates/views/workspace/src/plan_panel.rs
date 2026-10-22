@@ -194,6 +194,27 @@ pub struct PlanPanel {
 
 impl EventEmitter<PlanPanelEvent> for PlanPanel {}
 
+#[cfg(test)]
+impl PlanPanel {
+    /// A checklist row's title field.
+    pub(crate) fn test_step_value(&self, key: &str, cx: &gpui_kit::App) -> Option<String> {
+        self.rows
+            .get(key)
+            .map(|r| r.area.read(cx).value().to_string())
+    }
+
+    /// The rendered plan body's text.
+    pub(crate) fn test_body_text(&self, cx: &gpui_kit::App) -> String {
+        self.markdown
+            .read(cx)
+            .text_blocks()
+            .into_iter()
+            .map(|(_, t)| t)
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
 impl PlanPanel {
     pub(crate) fn new(
         vcx: &ViewContext,
@@ -1589,14 +1610,25 @@ impl PlanPanel {
                                 ),
                         )
                         .child(
-                            div().flex_1().min_w_0().child(
-                                text(if name.is_empty() { code.clone() } else { name })
-                                    .size(12.)
-                                    .weight(600.)
-                                    .line_height(LineHeight::Normal)
-                                    .nowrap()
-                                    .truncate(),
-                            ),
+                            div()
+                                .debug_selector({
+                                    let n = if name.is_empty() {
+                                        code.clone()
+                                    } else {
+                                        name.clone()
+                                    };
+                                    move || format!("plan-todo-name:{n}")
+                                })
+                                .flex_1()
+                                .min_w_0()
+                                .child(
+                                    text(if name.is_empty() { code.clone() } else { name })
+                                        .size(12.)
+                                        .weight(600.)
+                                        .line_height(LineHeight::Normal)
+                                        .nowrap()
+                                        .truncate(),
+                                ),
                         ),
                 );
                 let mut ul = div().flex().flex_col().gap(px(2.)).py(px(2.)).mb(px(6.));

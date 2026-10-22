@@ -482,6 +482,8 @@ impl AgentChat {
                 id.clone()
             }
         ));
+        let fact_sel = format!("loop-fact:{id}");
+        el = el.debug_selector(|| fact_sel);
         let tint = if you {
             t.text
         } else {
@@ -510,6 +512,10 @@ impl AgentChat {
                     Some(pid) => row.child(
                         div()
                             .id(SharedString::from(format!("{fid}-pr")))
+                            .debug_selector({
+                                let pid = pid.clone();
+                                move || format!("loop-pr-link:{pid}")
+                            })
                             .cursor_pointer()
                             .text_color(hsla(t.cyan))
                             .hover(|s| s.text_color(hsla(t.text)))
@@ -614,10 +620,17 @@ impl AgentChat {
         let Some(render) = self.session_card.clone() else {
             return div().into_any_element();
         };
+        let first = sessions.first().map(|s| s.id.clone()).unwrap_or_default();
         recur_ui::style::card(t.pane, t.line, 8.)
+            .debug_selector(move || format!("sesscard:{first}"))
             .overflow_hidden()
             .my(px(6.))
-            .children(sessions.iter().map(|s| render(s, window, cx)))
+            .children(
+                sessions
+                    .iter()
+                    .enumerate()
+                    .map(|(i, s)| render(s, i == 0, window, cx)),
+            )
             .into_any_element()
     }
 

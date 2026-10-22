@@ -40,9 +40,9 @@ pub struct SessionCardProps {
 
 pub struct SessionCard {
     vcx: ViewContext,
-    props: SessionCardProps,
+    pub(crate) props: SessionCardProps,
     expanded_pref: Option<bool>,
-    chat: Option<Entity<AgentChat>>,
+    pub(crate) chat: Option<Entity<AgentChat>>,
     _sub: Option<Subscription>,
 }
 
@@ -127,7 +127,12 @@ impl SessionCard {
         cx.notify();
     }
 
-    fn expanded(&self) -> bool {
+    pub(crate) fn toggle(&mut self, cx: &mut Context<Self>) {
+        self.expanded_pref = Some(!self.expanded());
+        cx.notify();
+    }
+
+    pub(crate) fn expanded(&self) -> bool {
         self.expanded_pref.unwrap_or(self.props.live)
     }
 
@@ -232,8 +237,10 @@ impl Render for SessionCard {
                     .truncate()
                     .into_any_element()
             };
+            let code = self.props.code.clone();
             name_el = name_el.child(
                 div()
+                    .debug_selector(move || format!("sess-meta:{code}"))
                     .flex_1()
                     .min_w_0()
                     .overflow_hidden()
@@ -249,7 +256,8 @@ impl Render for SessionCard {
             .text_size(px(11.))
             .text_color(hsla(t.muted))
             .when(live, |d| {
-                d.child(
+                let code = self.props.code.clone();
+                d.debug_selector(move || format!("sess-live:{code}")).child(
                     div()
                         .size(px(14.))
                         .flex()
@@ -288,10 +296,7 @@ impl Render for SessionCard {
             .child(steps_slot(&group, chips, true, expanded, &t))
             .child(name_el)
             .child(state)
-            .on_click(cx.listener(|c, _, _, cx| {
-                c.expanded_pref = Some(!c.expanded());
-                cx.notify();
-            }));
+            .on_click(cx.listener(|c, _, _, cx| c.toggle(cx)));
         let mut out = div().flex().flex_col().child(row);
         if expanded {
             let chat = self.ensure_chat(window, cx);

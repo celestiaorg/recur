@@ -42,7 +42,7 @@ pub(crate) struct Marks {
     reset_hook: Option<bool>,
 }
 
-type Cards = Rc<RefCell<HashMap<String, (Entity<SessionCard>, Subscription)>>>;
+pub(crate) type Cards = Rc<RefCell<HashMap<String, (Entity<SessionCard>, Subscription)>>>;
 
 impl WorkspaceView {
     /// The once-on-mount effects that do not depend on later changes.
@@ -54,14 +54,14 @@ impl WorkspaceView {
     }
 
     fn install_session_card(&mut self, cx: &mut Context<Self>) {
-        let cards: Cards = Rc::default();
+        let cards = self.session_cards.clone();
         let weak = cx.entity().downgrade();
         let vcx = ViewContext {
             state: self.state.clone(),
             services: self.services.clone(),
         };
         let renderer: SessionCardRenderer = Rc::new(
-            move |log: &ChatLogSession, _: &mut Window, cx: &mut App| -> AnyElement {
+            move |log: &ChatLogSession, first: bool, _: &mut Window, cx: &mut App| -> AnyElement {
                 let Some(view) = weak.upgrade() else {
                     return div().into_any_element();
                 };
@@ -79,7 +79,7 @@ impl WorkspaceView {
                     workspace_id: v.ws_id.clone(),
                     findings: v.chat_findings.clone(),
                     open_file: true,
-                    first: true,
+                    first,
                 };
                 let card = {
                     let mut map = cards.borrow_mut();

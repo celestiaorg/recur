@@ -201,6 +201,8 @@ pub struct WorkspaceView {
     pub(crate) sync_marks: sync::Marks,
     pub(crate) props_dirty: bool,
     pub(crate) hoist_listener: u64,
+    /// The Loop cockpit's session cards by log id.
+    pub(crate) session_cards: sync::Cards,
     _subs: Vec<Subscription>,
 }
 
@@ -409,6 +411,7 @@ impl WorkspaceView {
             sync_marks: sync::Marks::default(),
             props_dirty: true,
             hoist_listener: 0,
+            session_cards: Default::default(),
             _subs: subs,
         };
         v.install_hoist_listener(cx);

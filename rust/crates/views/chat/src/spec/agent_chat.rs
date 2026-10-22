@@ -169,7 +169,7 @@ async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(
             services: host.services.clone(),
         });
     let cards: Rc<RefCell<HashMap<String, Entity<SessionCard>>>> = Default::default();
-    let renderer: SessionCardRenderer = Rc::new(move |log, _, cx| {
+    let renderer: SessionCardRenderer = Rc::new(move |log, first, _, cx| {
         let props = SessionCardProps {
             code: log.code.clone(),
             name: log.name.clone(),
@@ -180,7 +180,7 @@ async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(
             workspace_id: String::new(),
             findings: Vec::new(),
             open_file: false,
-            first: true,
+            first,
         };
         let card = cards
             .borrow_mut()

@@ -215,8 +215,10 @@ pub(crate) type ChatAct = Rc<dyn Fn(&mut AgentChat, &mut Context<AgentChat>)>;
 pub(crate) type ChatFn = Box<dyn Fn(&mut AgentChat, &mut Context<AgentChat>)>;
 pub(crate) type ChatWinFn = Box<dyn Fn(&mut AgentChat, &mut Window, &mut Context<AgentChat>)>;
 
-/// Renders a specialist SessionCard for a cockpit session log (`sessionCard` snippet).
-pub type SessionCardRenderer = Rc<dyn Fn(&ChatLogSession, &mut Window, &mut App) -> AnyElement>;
+/// Renders a specialist SessionCard for a cockpit session log (`sessionCard` snippet); the
+/// flag is true for the first row of its card (`.fanout-row:first-of-type`).
+pub type SessionCardRenderer =
+    Rc<dyn Fn(&ChatLogSession, bool, &mut Window, &mut App) -> AnyElement>;
 
 /// A skill in the `/` menu.
 #[derive(Clone, Debug, PartialEq)]

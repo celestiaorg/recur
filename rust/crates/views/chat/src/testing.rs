@@ -7,7 +7,28 @@ use gpui_kit::{Bounds, Context, Entity, Pixels, ScrollHandle, Window};
 use recur_content::MarkdownView;
 use recur_engine::view::chat::AgentMsg;
 
+use crate::cards::session::{SessionCard, SessionCardProps};
 use crate::chat::AgentChat;
+
+impl SessionCard {
+    pub fn test_props(&self) -> &SessionCardProps {
+        &self.props
+    }
+
+    /// What a click on the row does.
+    pub fn test_toggle(&mut self, cx: &mut Context<Self>) {
+        self.toggle(cx);
+    }
+
+    pub fn test_expanded(&self) -> bool {
+        self.expanded()
+    }
+
+    /// The read-only transcript, once the card has been opened.
+    pub fn test_chat(&self) -> Option<Entity<AgentChat>> {
+        self.chat.clone()
+    }
+}
 
 impl AgentChat {
     /// The composer's lines (chips show as U+FFFC).

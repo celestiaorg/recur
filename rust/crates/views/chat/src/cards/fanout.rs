@@ -384,7 +384,7 @@ impl FanOutCard {
             let vcx2 = vcx.clone();
             let cards: std::rc::Rc<std::cell::RefCell<HashMap<String, Entity<SessionCard>>>> =
                 Default::default();
-            let renderer: SessionCardRenderer = std::rc::Rc::new(move |log, _, cx| {
+            let renderer: SessionCardRenderer = std::rc::Rc::new(move |log, first, _, cx| {
                 let key = if log.id.is_empty() {
                     log.code.clone()
                 } else {
@@ -400,7 +400,7 @@ impl FanOutCard {
                     workspace_id: ws_id.clone(),
                     findings: findings.clone(),
                     open_file: false,
-                    first: true,
+                    first,
                 };
                 let card = cards
                     .borrow_mut()

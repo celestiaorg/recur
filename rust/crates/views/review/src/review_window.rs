@@ -242,7 +242,7 @@ pub fn pick_hydrated(
         .enumerate()
         .map(|(i, p)| (p.as_str(), i))
         .collect();
-    let mut add = |p: Option<&String>, out: &mut HashSet<String>| {
+    let add = |p: Option<&String>, out: &mut HashSet<String>| {
         if let Some(p) = p
             && out.len() < max
             && idx.contains_key(p.as_str())

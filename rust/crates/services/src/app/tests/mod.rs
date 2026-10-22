@@ -8,6 +8,7 @@ mod workspace_create;
 mod workspace_issue;
 mod workspace_main;
 mod workspace_open;
+mod workspace_pr;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -186,6 +187,33 @@ impl Fx {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
         panic!("timed out waiting for workspace worktree");
+    }
+
+    /// A second clone of `bare` with the test identity (Go's `other`).
+    pub fn clone_other(&self, bare: &str) -> String {
+        let other = format!("{}/other", self.temp());
+        git(&self.temp(), &["clone", bare, &other]);
+        git(&other, &["config", "user.name", "test"]);
+        git(&other, &["config", "user.email", "test@example.com"]);
+        other
+    }
+
+    /// WriteFile + Commit through the services; panics unless committed.
+    pub async fn commit_file(&self, pid: &str, ws: &str, file: &str, body: &str, msg: &str) {
+        self.s.code.write_file(pid, ws, file, body).await.unwrap();
+        let res = self.s.code.commit(pid, ws, msg).await.unwrap();
+        assert!(res.committed, "commit {msg:?}: {res:?}");
+    }
+
+    /// CreateWorkspace (agent) and wait for its worktree.
+    pub async fn solo(&self, pid: &str, goal: &str, base: &str) -> Workspace {
+        let ws = self
+            .s
+            .workspaces
+            .create_workspace(pid, goal, base, "agent", "", "", None)
+            .await
+            .unwrap();
+        self.wait_ready(&ws.id).await
     }
 
     pub fn names(&self) -> Vec<&'static str> {

@@ -3,7 +3,9 @@
 
 use gpui_kit::base::input::{InputEvent, TextareaMode, TextareaState};
 use gpui_kit::{App, AppContext as _, Context, Entity, SharedString, Subscription, Window};
-use recur_view_chat::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
+use std::rc::Rc;
+
+use recur_view_chat::suggest::{SetFn, SuggestAttach, attach_emoji, attach_user_mentions};
 use recur_view_core::AppState;
 
 pub struct Field {
@@ -32,8 +34,16 @@ impl Field {
                 .placeholder(placeholder)
         });
         recur_view_review::style::style_textarea(&area, cx);
-        let emoji = attach_emoji(&area, None, window, cx);
-        let mentions = attach_user_mentions(&area, state.clone(), None, window, cx);
+        // A typeahead pick rewrites the value without an input event.
+        let me = cx.entity().downgrade();
+        let on_set: SetFn = Rc::new(move |_, _, cx| {
+            let _ = me.update(cx, |h, cx| {
+                on_change(h, cx);
+                cx.notify();
+            });
+        });
+        let emoji = attach_emoji(&area, Some(on_set.clone()), window, cx);
+        let mentions = attach_user_mentions(&area, state.clone(), Some(on_set), window, cx);
         let sub = cx.subscribe(&area, move |h, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 on_change(h, cx);

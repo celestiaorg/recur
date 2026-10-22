@@ -285,3 +285,111 @@ impl S<'_> {
         assert_eq!(self.view(), ViewName::PrDetail);
     }
 }
+
+impl S<'_> {
+    /// A PR detail tab by its label (`Conversation`, `Commits`, `Files changed`, `Checks`).
+    pub fn tab(&mut self, name: &str) {
+        for state in ["on:lit", "on", "off"] {
+            let sel = format!("prtab:{name}:{state}");
+            if self.has(&sel) {
+                self.click(&sel);
+                return;
+            }
+        }
+        panic!("no tab {name}");
+    }
+
+    /// `prReviewDraft`.
+    pub fn review_draft(&mut self) -> String {
+        self.cx.update(|_, cx| crate::ui::ui(cx).read(cx).review_draft.clone())
+    }
+
+    /// The open typeahead's logins or emoji names.
+    pub fn suggestions(&mut self, kind: recur_view_chat::suggest::SuggestKind) -> Vec<String> {
+        use recur_view_chat::suggest::{SuggestItem, SuggestStore};
+        self.cx.update(|_, cx| {
+            let store = SuggestStore::global(cx);
+            store
+                .read(cx)
+                .slot(kind)
+                .map(|s| {
+                    s.items
+                        .iter()
+                        .map(|i| match i {
+                            SuggestItem::Person(p) => p.login.clone(),
+                            SuggestItem::Emoji(h) => h.name.clone(),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        })
+    }
+}
+
+/// A shared findings list behind `ListPRFindings` / `SetFindingStatus`, counting settles.
+#[derive(Clone, Default)]
+pub struct Findings {
+    pub list: Arc<parking_lot::Mutex<Vec<Value>>>,
+    pub settled: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl Findings {
+    pub fn new(list: Vec<Value>) -> Self {
+        Findings {
+            list: Arc::new(parking_lot::Mutex::new(list)),
+            ..Default::default()
+        }
+    }
+
+    pub fn settled(&self) -> usize {
+        self.settled.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// `ListPRFindings` answers the open ones; `SetFindingStatus` records the status, failing
+    /// the first `fail_first` calls.
+    pub fn options(&self, fail_first: usize) -> MockOptions {
+        let (list, list2, settled) = (self.list.clone(), self.list.clone(), self.settled.clone());
+        MockOptions::default()
+            .resolver("ListPRFindings", move |_, _, _| {
+                let open: Vec<Value> = list.lock().iter().filter(|f| f["status"] == "open").cloned().collect();
+                recur_services::mock::Reply::value(Value::Array(open))
+            })
+            .resolver("SetFindingStatus", move |a, _, _| {
+                let n = settled.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                if n <= fail_first {
+                    return recur_services::mock::Reply::error("nope");
+                }
+                let id = a.get(1).and_then(Value::as_str).unwrap_or("").to_string();
+                let status = a.get(2).and_then(Value::as_str).unwrap_or("").to_string();
+                let mut l = list2.lock();
+                let f = l.iter_mut().find(|f| f["id"] == id.as_str());
+                let out = match f {
+                    Some(f) => {
+                        f["status"] = json!(status);
+                        f.clone()
+                    }
+                    None => json!({ "id": id, "status": status }),
+                };
+                recur_services::mock::Reply::value(out)
+            })
+    }
+}
+
+/// `f-race` on `useOAuthSession.ts:2`.
+pub fn race_finding(workspace: &str) -> Value {
+    json!({
+        "id": "f-race", "workspaceId": workspace, "file": "src/hooks/useOAuthSession.ts", "line": 2,
+        "message": "token refresh can race across two tabs", "status": "open", "severity": "high",
+    })
+}
+
+/// PR #482's seeded comments plus a submitted inline note matching `f-race`.
+pub fn comments_with_race_note(id: &str) -> Value {
+    let mut c = recur_services::mock::fixtures::seed().pr_by_id("482").unwrap()["comments"].clone();
+    c.as_array_mut().unwrap().push(json!({
+        "id": id, "code": "AR", "author": "Avery Rourke", "authorLogin": "avery", "time": "1m",
+        "bodyMd": "token refresh can race across two tabs", "parentId": "gh-review-99",
+        "path": "src/hooks/useOAuthSession.ts", "line": 2, "side": "RIGHT",
+    }));
+    c
+}

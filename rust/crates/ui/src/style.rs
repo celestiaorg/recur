@@ -222,8 +222,7 @@ fn gradient_image(
     let mut bgra = Vec::with_capacity((w * h * 4) as usize);
     for y in 0..h {
         for x in 0..w {
-            let [r, gr, b, a] =
-                local.at(((x as f32 + 0.5) / scale, (y as f32 + 0.5) / scale));
+            let [r, gr, b, a] = local.at(((x as f32 + 0.5) / scale, (y as f32 + 0.5) / scale));
             bgra.extend_from_slice(&[b, gr, r, a]);
         }
     }

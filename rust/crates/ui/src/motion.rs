@@ -138,7 +138,9 @@ struct HoverState {
 impl HoverState {
     fn k(&self, duration: Duration, easing: Easing, cx: &App) -> (f32, bool) {
         let to = if self.on { 1. } else { 0. };
-        let Some(at) = self.at else { return (to, false) };
+        let Some(at) = self.at else {
+            return (to, false);
+        };
         let p = progress(at, duration, cx);
         (self.from + (to - self.from) * easing.apply(p), p < 1.)
     }

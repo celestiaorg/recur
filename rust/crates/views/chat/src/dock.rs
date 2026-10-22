@@ -153,7 +153,13 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         // `.chat-in .send { transition: background .12s ease, color .12s ease }`.
         let ease = |id: &'static str, window: &mut Window, cx: &mut Context<Self>| {
-            motion::hover(id, std::time::Duration::from_millis(120), motion::Easing::EASE, window, cx)
+            motion::hover(
+                id,
+                std::time::Duration::from_millis(120),
+                motion::Easing::EASE,
+                window,
+                cx,
+            )
         };
         let meter = self.meter.clone();
         let usage = self.props.context_usage.clone();

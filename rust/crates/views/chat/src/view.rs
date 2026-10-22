@@ -101,11 +101,7 @@ impl AgentChat {
         let show_top = !self.fade_ready || top > 1.;
         let show_bot = self.fade_ready && max > NEAR_BOTTOM_PX && top < max - NEAR_BOTTOM_PX;
         let grad = |from: f32, to: f32| {
-            recur_ui::style::gradient_fill(
-                180.,
-                (bg.with_alpha(from), 0.),
-                (bg.with_alpha(to), 1.),
-            )
+            recur_ui::style::gradient_fill(180., (bg.with_alpha(from), 0.), (bg.with_alpha(to), 1.))
         };
         let mut out = Vec::new();
         if show_top {

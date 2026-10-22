@@ -673,7 +673,13 @@ impl Render for Select {
         };
         // `.sel.ghost .sel-btn { transition: color .15s ease, background .15s ease }`.
         let ghost_hover = (self.ghost && !disabled).then(|| {
-            motion::hover("sel-btn-hover", Duration::from_millis(150), Easing::EASE, window, cx)
+            motion::hover(
+                "sel-btn-hover",
+                Duration::from_millis(150),
+                Easing::EASE,
+                window,
+                cx,
+            )
         });
         if let Some(h) = &ghost_hover {
             bg = hover_bg.mix(h.k(), bg);

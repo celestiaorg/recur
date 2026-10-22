@@ -12,8 +12,7 @@ use crate::theme::Theme;
 use gpui_kit::{
     AnyElement, App, AppContext, ClickEvent, Context, CursorStyle, Entity, Global, Hsla,
     InteractiveElement, IntoElement, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, Task, Window, div,
-    prelude::FluentBuilder, px, relative,
+    StatefulInteractiveElement, Styled, Task, Window, div, prelude::FluentBuilder, px, relative,
 };
 use std::rc::Rc;
 use std::time::{Duration, Instant};

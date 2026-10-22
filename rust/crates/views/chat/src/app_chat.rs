@@ -809,34 +809,38 @@ impl Render for AskEmpty {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
         let hover_bg = t.text.mix(0.06, t.pane_2);
-        let chips: Vec<_> = ASK_CHIPS.iter().enumerate().map(|(i, c)| {
-            let app = self.app.clone();
-            // `.ask-chips button { transition: border-color .12s, background .12s }`.
-            let h = motion::hover(
-                ("ask-chip-hover", i),
-                std::time::Duration::from_millis(120),
-                motion::Easing::EASE,
-                window,
-                cx,
-            );
-            div()
-                .id(("ask-chip", i))
-                .debug_selector(|| format!("ask-chip:{c}"))
-                .border_1()
-                .border_color(hsla(t.line_bright.mix(h.k(), t.line)))
-                .bg(hsla(hover_bg.mix(h.k(), t.pane_2)))
-                .text_color(hsla(t.text))
-                .rounded(px(999.))
-                .px(px(12.))
-                .py(px(6.))
-                .text_size(px(12.))
-                .cursor_pointer()
-                .on_hover(h.listener())
-                .child(label(*c, Family::Ui, 12., 400.).line_height(LineHeight::Normal))
-                .on_click(move |_, _, cx| {
-                    let _ = app.update(cx, |a, cx| a.send_text(c, cx));
-                })
-        }).collect();
+        let chips: Vec<_> = ASK_CHIPS
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                let app = self.app.clone();
+                // `.ask-chips button { transition: border-color .12s, background .12s }`.
+                let h = motion::hover(
+                    ("ask-chip-hover", i),
+                    std::time::Duration::from_millis(120),
+                    motion::Easing::EASE,
+                    window,
+                    cx,
+                );
+                div()
+                    .id(("ask-chip", i))
+                    .debug_selector(|| format!("ask-chip:{c}"))
+                    .border_1()
+                    .border_color(hsla(t.line_bright.mix(h.k(), t.line)))
+                    .bg(hsla(hover_bg.mix(h.k(), t.pane_2)))
+                    .text_color(hsla(t.text))
+                    .rounded(px(999.))
+                    .px(px(12.))
+                    .py(px(6.))
+                    .text_size(px(12.))
+                    .cursor_pointer()
+                    .on_hover(h.listener())
+                    .child(label(*c, Family::Ui, 12., 400.).line_height(LineHeight::Normal))
+                    .on_click(move |_, _, cx| {
+                        let _ = app.update(cx, |a, cx| a.send_text(c, cx));
+                    })
+            })
+            .collect();
         div()
             .flex()
             .flex_col()

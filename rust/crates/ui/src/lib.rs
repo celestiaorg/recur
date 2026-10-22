@@ -14,9 +14,9 @@ pub mod assets;
 #[cfg(target_os = "macos")]
 mod cg_raster;
 pub mod color;
-pub mod exact;
 #[cfg(target_os = "macos")]
 mod ct_text;
+pub mod exact;
 pub mod file_icons;
 pub mod font_metrics;
 pub mod fonts;

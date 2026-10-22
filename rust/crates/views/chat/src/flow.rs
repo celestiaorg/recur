@@ -14,8 +14,8 @@ use std::rc::Rc;
 
 use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, Element, ElementId, FontFeatures, GlobalElementId,
-    Hsla, InspectorElementId, IntoElement, LayoutId, Length, Pixels, SharedString, Style, TextRun,
-    ParentElement, Styled, Window, div, px,
+    Hsla, InspectorElementId, IntoElement, LayoutId, Length, ParentElement, Pixels, SharedString,
+    Style, Styled, TextRun, Window, div, px,
 };
 use recur_ui::exact;
 use recur_ui::font_metrics::line_gap;
@@ -574,7 +574,10 @@ impl Element for Flow {
         // it) and a spacer adds the exact rest from the last frame; laid out at the floored
         // width, it gets the device pixel back as slack so its lines break as they measured.
         let fit_rest = if fit {
-            placed.1.get().map_or(0., |w| w - exact::floor_dp(w, window.scale_factor()))
+            placed
+                .1
+                .get()
+                .map_or(0., |w| w - exact::floor_dp(w, window.scale_factor()))
         } else {
             0.
         };
@@ -632,10 +635,12 @@ impl Element for Flow {
             None => Vec::new(),
         };
         nodes.extend(children.iter_mut().map(|c| c.request_layout(window, cx)));
-        let mut style = Style::default();
-        style.position = gpui_kit::Position::Relative;
-        style.display = gpui_kit::Display::Flex;
-        style.align_items = Some(gpui_kit::AlignItems::FlexStart);
+        let style = Style {
+            position: gpui_kit::Position::Relative,
+            display: gpui_kit::Display::Flex,
+            align_items: Some(gpui_kit::AlignItems::FlexStart),
+            ..Default::default()
+        };
         (
             window.request_layout(style, nodes, cx),
             FlowState {
@@ -661,7 +666,11 @@ impl Element for Flow {
         let sizes: Vec<(f32, f32)> = self.atoms.iter().map(|a| (a.width, a.height)).collect();
         // A shrink-wrapped box is as wide as its widest line, so laying out at its width
         // (a device pixel of slack for the snapped edge) breaks the lines as measuring did.
-        let slack = if self.fit { 1. / window.scale_factor() } else { 0. };
+        let slack = if self.fit {
+            1. / window.scale_factor()
+        } else {
+            0.
+        };
         let width = f32::from(bounds.size.width) + slack;
         let stale = state
             .layout

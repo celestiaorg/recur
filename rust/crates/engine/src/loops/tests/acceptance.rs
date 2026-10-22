@@ -1,8 +1,8 @@
 //! Port of Go `acceptance_test.go` (`TestHeadlineE2E`), the loop half: a
 //! typed task plans, converges code↔review [2,0], verifies in a browser with
-//! evidence, opens a Local PR, and the record survives a store reopen. The
-//! inline comment, send-back and merge steps go through E5's PR API. Also
-//! the env-gated real-agent run (Go `real_e2e_test.go`), same split.
+//! evidence, opens a Local PR, takes an inline note and a Send Back, merges
+//! on disk, and the record survives a store reopen. Also the env-gated
+//! real-agent run (Go `real_e2e_test.go`).
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -152,17 +152,54 @@ async fn headline_e2e() {
             .any(|c| c.name.to_lowercase().contains("verif") && c.passed),
         "{checks:?}"
     );
+    let pr_num_before = pr.number;
+
+    // 5. An inline note, then Send Back → a conductor turn.
+    let (inline, ok) = t
+        .engine
+        .add_pr_comment(&pr.id, "feature.txt", 1, "This needs the client-secret read removed", 0, "")
+        .await;
+    assert!(ok && !inline.body_html.is_empty());
+    let (updated, ok) = t
+        .engine
+        .send_back_to_loop(&pr.id, &["Resolve the client-secret read in feature.txt".into()])
+        .await;
+    assert!(ok);
+    assert_eq!((updated.state.as_str(), updated.group.as_str()), ("In review", "you"));
+    assert_eq!(t.store.workspace(&id).unwrap().state, WorkspaceState::PrOpen);
+    assert_eq!(t.store.pr(&pr.id).unwrap().number, pr_num_before);
+    let ws = t.store.workspace(&id).unwrap();
+    let ctx = t.engine.maestro_context(&ws);
+    for want in ["client-secret", "feature.txt", "reenter_phase"] {
+        assert!(
+            ctx.pr_thread.contains(want) || crate::roles::maestro_system_prompt(&ctx).contains(want),
+            "conductor context missing {want:?}: {}",
+            ctx.pr_thread
+        );
+    }
+    assert!(t.events.has("pr.updated") && t.events.has("pr.comment"));
+
+    // 6. Merge: PR and loop merged, the base advances on disk.
+    let base_before = git_out(&repo.path, &["rev-parse", "main"]).unwrap();
+    let (merged, ok) = t
+        .engine
+        .merge_pr(&pr.id, &recur_domain::MergeMethod::default())
+        .await;
+    assert!(ok, "merge after send-back");
+    assert_eq!((merged.state.as_str(), merged.group.as_str()), ("Merged", "merged"));
+    assert_eq!(t.store.workspace(&id).unwrap().state, WorkspaceState::Merged);
+    assert_ne!(git_out(&repo.path, &["rev-parse", "main"]).unwrap(), base_before);
 
     // 7. Survives an app reload.
     t.store.close().unwrap();
     let st2 = Store::open(&t.data_dir.join("recur.db")).unwrap();
     let l2 = st2.workspace(&id).expect("loop after reload");
-    assert_eq!(l2.state, WorkspaceState::PrOpen);
+    assert_eq!(l2.state, WorkspaceState::Merged);
     assert_eq!(l2.convergence.unwrap_or_default().len(), 2);
     assert_eq!(l2.verify_state, "passed");
     assert_eq!(l2.verify.len(), 3);
     let pr2 = st2.pr_by_workspace(&id).expect("PR after reload");
-    assert_eq!(pr2.state, "In review");
+    assert_eq!(pr2.state, "Merged");
     assert_eq!(pr2.file_count, pr.file_count);
     assert!(!pr2.files.unwrap_or_default().is_empty());
     assert_eq!(st2.findings(&id).len(), 2);
@@ -258,6 +295,28 @@ async fn real_headline_e2e() {
     assert!(
         out.as_deref().is_ok_and(|o| o.contains("Hello Recur")),
         "{out:?}"
+    );
+
+    // Send back → a conductor turn with the review thread.
+    let (_, ok) = t
+        .engine
+        .send_back_to_loop(&pr.id, &["Also change the <title> to exactly 'Recur Demo'.".into()])
+        .await;
+    assert!(ok, "send back refused");
+    assert_eq!(t.store.pr(&pr.id).unwrap().state, "In review");
+    assert_eq!(t.store.workspace(&id).unwrap().state, WorkspaceState::PrOpen);
+
+    // Merge: the base advances on disk.
+    let before = git_out(&repo.path, &["rev-parse", "main"]).unwrap();
+    let (merged, ok) = t
+        .engine
+        .merge_pr(&pr.id, &recur_domain::MergeMethod::default())
+        .await;
+    assert!(ok && merged.state == "Merged");
+    assert_ne!(git_out(&repo.path, &["rev-parse", "main"]).unwrap(), before);
+    assert!(
+        git_out(&repo.path, &["show", "main:index.html"])
+            .is_ok_and(|o| o.contains("Hello Recur"))
     );
     t.close().await;
 }

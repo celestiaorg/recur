@@ -102,6 +102,9 @@ pub struct EditorOptions {
     pub view_state: Option<FileViewState>,
     /// Observatory pane is lit (focused pane signal).
     pub lit: bool,
+    /// The per-file undo cache scope (`sessionKey` / `historyScope`); empty keeps undo
+    /// live-only.
+    pub history_scope: String,
 }
 
 impl EditorOptions {
@@ -120,6 +123,7 @@ impl EditorOptions {
             saved_doc: None,
             view_state: None,
             lit: true,
+            history_scope: String::new(),
         }
     }
 }
@@ -233,6 +237,9 @@ pub struct EditorView {
     pub(crate) platform: Platform,
     pub(crate) snippets: Option<Rc<dyn SnippetProvider>>,
     pub(crate) lsp: Option<crate::lsp::LspAttachment>,
+    pub(crate) history_scope: String,
+    /// The scroll a state rebuilt from the undo cache was captured at.
+    pub(crate) restored_scroll: Option<(f32, f32)>,
     pub(crate) read_only: bool,
     pub(crate) lit: bool,
     pub(crate) scroll_top: f32,
@@ -378,6 +385,8 @@ impl EditorView {
             platform,
             snippets: options.snippets.clone(),
             lsp: None,
+            history_scope: options.history_scope.clone(),
+            restored_scroll: None,
             read_only: options.read_only,
             lit: options.lit,
             scroll_top: 0.0,
@@ -445,7 +454,7 @@ impl EditorView {
                 v.set_theme(parsed, dark, window, cx);
             }),
         ];
-        let state = view.build_state(&options.doc);
+        let state = view.restore_or_build(&options.doc, cx);
         view.mount_state(state, window, cx);
         match options.saved_doc.as_deref() {
             Some(saved) if !crate::view_state::editor_text_eq(saved, &options.doc) => {
@@ -503,6 +512,87 @@ impl EditorView {
             state.merge = Some(Rc::new(MergeState::new(original, &state.doc)));
         }
         state
+    }
+
+    /// A fresh state for `doc`, keeping the file's serialized undo history when the cache
+    /// holds it for this text (`restoreEditorState`).
+    fn restore_or_build(&mut self, doc: &str, cx: &mut App) -> EditorState {
+        self.restored_scroll = None;
+        if self.history_scope.is_empty() || self.path.is_empty() {
+            return self.build_state(doc);
+        }
+        let key = crate::history_cache::editor_history_key(&self.history_scope, &self.path);
+        let config = self.state_config();
+        let restored = cx
+            .default_global::<crate::history_cache::EditorHistory>()
+            .0
+            .restore(&key, doc, config);
+        match restored {
+            Some(r) => {
+                let mut state = r.state;
+                if let EditorKind::Merge { original } = &self.kind {
+                    state.merge = Some(Rc::new(MergeState::new(original, &state.doc)));
+                }
+                self.restored_scroll = Some((r.scroll_top, r.scroll_left));
+                state
+            }
+            None => self.build_state(doc),
+        }
+    }
+
+    /// The scroll the mounted state was restored from the undo cache with, if any.
+    pub fn restored_scroll(&self) -> Option<(f32, f32)> {
+        self.restored_scroll
+    }
+
+    /// Scroll to a pixel position (a restored history snapshot's).
+    pub fn set_scroll(&mut self, top: f32, left: f32, cx: &mut Context<Self>) {
+        self.scroll_top = top.max(0.0);
+        self.scroll_left = left.max(0.0);
+        cx.notify();
+    }
+
+    /// The undo cache scope for later mounts (`sessionKey`).
+    pub fn set_history_scope(&mut self, scope: &str) {
+        self.history_scope = scope.to_string();
+    }
+
+    /// `captureAllHistory`: serialize the mounted tab's and the parked tabs' undo stacks into
+    /// the per-file cache.
+    pub fn capture_history(&self, cx: &mut App) {
+        if self.history_scope.is_empty() {
+            return;
+        }
+        let cache = &mut cx
+            .default_global::<crate::history_cache::EditorHistory>()
+            .0;
+        if !self.path.is_empty() {
+            let key = crate::history_cache::editor_history_key(&self.history_scope, &self.path);
+            cache.capture(&key, &self.state, self.scroll_top, self.scroll_left);
+        }
+        for (p, snap) in &self.tabs {
+            let key = crate::history_cache::editor_history_key(&self.history_scope, p);
+            cache.capture(&key, &snap.state, 0.0, 0.0);
+        }
+    }
+
+    /// `parkSession`'s half: stash the mounted tab and hand over every tab snapshot. The
+    /// pane mounts nothing until the next `mount_path`.
+    pub fn take_tabs(&mut self) -> Vec<(String, TabSnapshot)> {
+        self.stash_current();
+        self.path.clear();
+        self.tabs.drain().collect()
+    }
+
+    /// `adoptSession`'s half: a parked tab map for this pane.
+    pub fn adopt_tabs(&mut self, tabs: Vec<(String, TabSnapshot)>) {
+        self.tabs.clear();
+        self.tabs.extend(tabs);
+    }
+
+    /// Whether a parked snapshot exists for `path`.
+    pub fn has_tab(&self, path: &str) -> bool {
+        self.tabs.contains_key(path)
     }
 
     /// Point the view at a state (`setState`): layout, highlighter,
@@ -1405,7 +1495,7 @@ impl EditorView {
                 }
             }
             None => {
-                let state = self.build_state(doc);
+                let state = self.restore_or_build(doc, cx);
                 self.mount_state(state, window, cx);
                 match saved {
                     Some(s) if !crate::view_state::editor_text_eq(s, doc) => {

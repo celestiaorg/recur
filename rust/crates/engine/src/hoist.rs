@@ -69,7 +69,7 @@ impl Engine {
         }
     }
 
-    async fn archive_one_pr_chat_host(&self, host_id: &str, keep_id: &str) {
+    pub(crate) async fn archive_one_pr_chat_host(&self, host_id: &str, keep_id: &str) {
         loop {
             let Some(guard) = self.hold_pr_chat_hoist(&[host_id, keep_id]).await else {
                 return;
@@ -443,7 +443,7 @@ impl Engine {
 
     /// A live turn, a life-lock holder, a parked or answer-resuming
     /// ask_user, or a switch_mode remount in flight.
-    fn pr_chat_host_busy(&self, id: &str) -> bool {
+    pub(crate) fn pr_chat_host_busy(&self, id: &str) -> bool {
         if id.is_empty() {
             return false;
         }

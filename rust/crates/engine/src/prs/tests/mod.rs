@@ -6,6 +6,7 @@
 //! [`recur_forge::testing::FakeForge`] handlers.
 
 mod support;
+mod futures;
 mod glue;
 mod hoist;
 mod linking;

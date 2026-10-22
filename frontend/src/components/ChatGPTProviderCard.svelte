@@ -33,15 +33,16 @@
     if (id) void callOk(SettingsService.CancelChatGPTLogin(id), 'Could not cancel ChatGPT sign-in')
   }
 
+  function setStatus(next: ChatGPTStatus) {
+    status = next
+    selectedAccount = next.accountId || next.accounts?.[0]?.id || ''
+    onstatus(next)
+  }
+
   $effect(() => {
     let disposed = false
     SettingsService.GetChatGPTStatus()
-      .then((next) => {
-        if (disposed) return
-        status = next
-        selectedAccount = next.accountId || next.accounts?.[0]?.id || ''
-        onstatus(next)
-      })
+      .then((next) => { if (!disposed) setStatus(next) })
       .catch((err) => { if (!disposed) error = bridgeErrorMessage(err) || 'Could not read ChatGPT account' })
       .finally(() => { if (!disposed) loading = false })
     return () => { disposed = true; cancelLogin() }
@@ -51,10 +52,8 @@
     const saved = await SettingsService.GetSettings()
     if (current !== attempt) return
     settings.set(saved)
-    status = next
-    selectedAccount = next.accountId || next.accounts?.[0]?.id || ''
+    setStatus(next)
     invalidateModelCatalog()
-    onstatus(next)
   }
 
   async function signIn() {
@@ -79,12 +78,7 @@
         error = bridgeErrorMessage(err) || 'Could not connect ChatGPT'
         // OAuth may have completed while model discovery failed. Keep that
         // account visible so Refresh models or reauthorization can recover.
-        await SettingsService.GetChatGPTStatus().then((next) => {
-          if (current !== attempt) return
-          status = next
-          selectedAccount = next.accountId || next.accounts?.[0]?.id || ''
-          onstatus(next)
-        }).catch(() => {})
+        await SettingsService.GetChatGPTStatus().then((next) => { if (current === attempt) setStatus(next) }).catch(() => {})
       }
       if (id) await SettingsService.CancelChatGPTLogin(id).catch(() => {})
     } finally {

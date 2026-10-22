@@ -90,13 +90,6 @@ func (s *SettingsService) RefreshChatGPTModels() (ChatGPTStatus, error) {
 	if err != nil {
 		return ChatGPTStatus{}, err
 	}
-	current, err := c.Status()
-	if err != nil {
-		return ChatGPTStatus{}, err
-	}
-	if current.AccountID != status.AccountID || !current.Authenticated {
-		return ChatGPTStatus{}, fmt.Errorf("ChatGPT account changed while loading models. Refresh models again")
-	}
 	set := s.st().Settings()
 	set.ChatGPTAccountID = status.AccountID
 	set.ChatGPTModels = nil

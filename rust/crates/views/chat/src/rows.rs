@@ -923,7 +923,7 @@ impl AgentChat {
             .flex_none()
             .max_w(relative(0.55))
             .overflow_hidden()
-            .pt(px(self.tc_shift))
+            .child(recur_ui::exact::vgap_at(self.tc_shift, self.scale))
             .child(
                 text(s)
                     .weight(600.)

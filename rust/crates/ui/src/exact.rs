@@ -24,7 +24,12 @@ use std::rc::Rc;
 
 /// A vertical gap of exactly `len` CSS px (one device pixel wide).
 pub fn vgap(len: f32, window: &Window) -> Div {
-    let dp = 1. / window.scale_factor();
+    vgap_at(len, window.scale_factor())
+}
+
+/// [`vgap`] at a known device scale, for builders without the window.
+pub fn vgap_at(len: f32, scale: f32) -> Div {
+    let dp = 1. / scale;
     let d = div().flex_none();
     if len <= 1e-4 {
         return d.h(px(0.));

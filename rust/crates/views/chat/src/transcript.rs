@@ -671,7 +671,6 @@ impl AgentChat {
             .flex_wrap()
             .items_center()
             .gap_x(px(6.))
-            .mt(px(2.))
             .text_size(px(12.))
             .line_height(px(20.))
             .text_color(hsla(t.muted))
@@ -830,6 +829,7 @@ impl AgentChat {
             }
             row = row.child(acts);
         }
+        // `.turn-end`'s 2px top margin collapses into the wrap's.
         let mut wrap = div().mt(px(2.)).mb(px(12.)).child(row);
         if let Some(p) = &presented_ok {
             let card = self.present_workspace_card(p, &format!("{id}-brief"), window, cx);

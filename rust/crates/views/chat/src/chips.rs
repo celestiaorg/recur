@@ -190,7 +190,8 @@ impl AgentChat {
             .items_center()
             .gap(px(5.))
             .h(px(22.))
-            .w(px(w))
+            // The parts add up to the natural width exactly; an authored width would round.
+            .when(w < natural, |d| d.w(px(w)))
             .pl(px(6.))
             .pr(px(8.))
             .rounded(px(6.))
@@ -515,7 +516,7 @@ impl AgentChat {
                 .items_center()
                 .gap(px(5.))
                 .h(px(22.))
-                .w(px(w))
+                .when(w < natural, |d| d.w(px(w)))
                 .pl(px(5.))
                 .pr(px(6.))
                 .rounded(px(6.))

@@ -67,7 +67,7 @@ The `shell` list in `scenes.json` holds full-window scenes (`shell/…`): the ti
 - **Candidate.** `recur_app::gallery` (feature `gallery`) builds the `Shell` over a `MockBridge` holding the same edited seed (`gallery::patch_seed`, `gallery::scene_seed`) and an in-memory `LocalStorage` with the same entries, then scrolls the tree's `ScrollHandle` once the shell has booted.
 - **Harness toolchain.** The harness pins `esrap` to the frontend's version (`pnpm.overrides`): newer `esrap` prints optional snippet parameters with their `?` (`Settings.svelte`'s `themeGrid`), which WebKit cannot parse, while the app's build strips it.
 
-Scenes: three themes (`default`, `paper`, `nord`), the collapsed rail and its flyout (`peek`, after hovering the left edge), groups (an open group, a collapsed group with a needs-you chip, a non-git project, a hidden project with Show hidden on), the tree (every status icon, open / draft / queued / merged / closed PR icons, a working copy with branch and diff, child rows with step badges and connectors, the Scheduled subgroup expanded), a hovered row with its actions, and a scrolled tree (a stuck project header with its under-fade, the bottom mask, the scrollbar after it fades).
+Scenes: three themes (`default`, `paper`, `nord`), the collapsed rail and its flyout (`peek`, after hovering the left edge), groups (an open group, a collapsed group with a needs-you chip, a non-git project, a hidden project with Show hidden on), the tree (every status icon, open / draft / queued / merged / closed PR icons, a working copy with branch and diff, child rows with step badges and connectors, the Scheduled subgroup expanded), a hovered row with its actions, and a scrolled tree (a stuck project header with its under-fade, the bottom mask, the scrollbar after it fades). With the detail route open (clicked): the target-branch menu open (`shell/base-select`, the `.sel.open` cascade over the titlebar trigger) and the linked-issue button with its square-left picker (`shell/issue`). The detail route's main area stays hidden behind `.main > *` there.
 
 ## Content scenes
 
@@ -105,6 +105,16 @@ The `observatory` list in `scenes.json` holds the Observatory (`observatory/…`
 - **Candidate.** `recur_view_observatory::gallery` (feature `gallery`) builds the same `Observatory` over `MockBridge::fresh` with the same resolvers, resets the crate's app globals per scene, and renders PDF pages synchronously (`BlockingRenders`).
 
 Scenes: the explorer and code editor in `default` and `paper`; an overflowing tab strip; the merge view; the review tab; the terminal dock below, beside and maximized (clicked); Quick Open (⌘P); the artifacts panel (clicked); a PDF; an image; and the Source Control panel (clicked).
+
+## Workspace scenes
+
+The `workspace` list in `scenes.json` holds the detail route (`workspace/…`) bound to LOOP-2231 over `rust/tools/ui-parity/content/workspace.json` (each scene's chat rows by `items` from `content/chat.json`, chat tabs, sessions, facts, agents and findings) and the Observatory fixture of the scene's `session`.
+
+- **Reference.** `web/scenes/Workspace.svelte` mounts `WorkspaceDetail` as App.svelte does in `.main` after `loadInitial` and `openWorkspace`, overriding Shell.svelte's global `.main > *` rule so the route shows; `capture.spec.ts` answers the chat, session, fact, finding and agent calls from the fixture (`workspaceResolvers`) on top of `observatoryResolvers`, after the scene's `seed` edits.
+- **Candidate.** `recur_view_workspace::gallery` (feature `gallery`) builds the same `WorkspaceDetail` over a `MockBridge` with the edited seed and the same resolvers, resets the Observatory's and the chat's app globals per scene, then opens the workspace after `load_initial`.
+- **Between scenes.** The parity binary opens, activates and removes a blank window after each scene, so the previous scene's views are released (and their teardown writes land) before the next scene installs its storage; the test platform otherwise keeps a removed window active.
+
+Scenes: the chat with the Observatory in `default` and `paper`; many chat tabs overflowing the strip (`tabs`, 1180 wide so the active chip is revealed the same way on both sides, see `PARITY.md`); the plan panel and the findings panel (their dock toggles clicked); and a running Loop with the maestro dock in `default` and `paper`.
 
 ## Rules for UI crates
 
@@ -160,6 +170,7 @@ Every other scene allows no hard pixels.
 | `editor/vim` | 132 | The vim panel's generic `monospace` resolves to Courier in both engines, but GPUI picks a heavier Courier face than WebKit, so the `:` prefix and the typed command differ |
 | `shell/paper` | 6 | The far tail of the running dot's 5px amber glow over the light rail: two levels per channel past the soft-edge rule |
 | `shell/tree`, `shell/hover` | 1 | Curved-edge coverage at the working copy branch chip's rounded left border |
+| `workspace/loop`, `workspace/loop-paper` | 1, 5 | The far tail of the running dot's amber glow (as `shell/paper`) |
 | `shell/scrolled` | 2 | WebKit dithers a stuck header's under-fade by a level; where the noise lands on a child row's faint connector edge it exceeds the soft-edge rule (recur-ui paints the fade smooth) |
 | `markdown/chat`, `markdown/paper` | 95, 132 | The native task checkbox's shading and edges (above) and the edge pixels of WebKit's synthesized list bullets |
 | `review/unified`, `review/split`, `review/hunk`, `review/collapsed`, `review/filelist`, `review/large` | 54, 54, 54, 84, 34, 18 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc: GPUI antialiases both edges, WebKit clips the header once (8 to 13 pixels per corner; `PARITY.md` follow-up) |

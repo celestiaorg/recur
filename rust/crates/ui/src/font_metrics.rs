@@ -14,6 +14,7 @@ struct Raw {
     underline_thickness: f32,
     strike_position: f32,
     strike_thickness: f32,
+    zero_advance: f32,
 }
 
 /// Decoration placement in CSS px relative to the baseline.
@@ -49,6 +50,10 @@ fn table() -> &'static HashMap<&'static str, Raw> {
                     underline_thickness: underline.map_or(50., |m| m.thickness as f32),
                     strike_position: strike.map_or(500., |m| m.position as f32),
                     strike_thickness: strike.map_or(50., |m| m.thickness as f32),
+                    zero_advance: face
+                        .glyph_index('0')
+                        .and_then(|g| face.glyph_hor_advance(g))
+                        .map_or(0., f32::from),
                 },
             );
         }
@@ -65,6 +70,11 @@ pub fn line_gap(family: &Family, size: f32) -> f32 {
     raw(family).map_or(0., |r| r.line_gap / r.upem * size)
 }
 
+/// The `0` glyph's advance at `size` px: CSS `1ch`. Zero for faces outside the bundle.
+pub fn zero_advance(family: &Family, size: f32) -> f32 {
+    raw(family).map_or(0., |r| r.zero_advance / r.upem * size)
+}
+
 pub fn decorations(family: &Family, size: f32) -> Decorations {
     let r = raw(family).unwrap_or(Raw {
         upem: 1000.,
@@ -73,6 +83,7 @@ pub fn decorations(family: &Family, size: f32) -> Decorations {
         underline_thickness: 50.,
         strike_position: 300.,
         strike_thickness: 50.,
+        zero_advance: 0.,
     });
     let k = size / r.upem;
     Decorations {

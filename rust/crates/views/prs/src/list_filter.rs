@@ -68,8 +68,16 @@ impl ListSort {
 
 /// `PR_LIST_SORTS`: sort, label, icon.
 pub const LIST_SORTS: [(ListSort, &str, IconName); 5] = [
-    (ListSort::Updated, "Recently updated", IconName::ClockArrowDown),
-    (ListSort::UpdatedAsc, "Least recently updated", IconName::ClockArrowUp),
+    (
+        ListSort::Updated,
+        "Recently updated",
+        IconName::ClockArrowDown,
+    ),
+    (
+        ListSort::UpdatedAsc,
+        "Least recently updated",
+        IconName::ClockArrowUp,
+    ),
     (ListSort::Newest, "Newest", IconName::CalendarArrowDown),
     (ListSort::Oldest, "Oldest", IconName::CalendarArrowUp),
     (ListSort::Title, "Title A–Z", IconName::ArrowUpAz),
@@ -181,9 +189,7 @@ fn fold_accent(c: char) -> char {
 
 pub fn compare(a: &Pr, b: &Pr, sort: ListSort) -> Ordering {
     match sort {
-        ListSort::UpdatedAsc => {
-            cmp_ms(updated_ms(a), updated_ms(b)).then_with(|| tie(a, b, false))
-        }
+        ListSort::UpdatedAsc => cmp_ms(updated_ms(a), updated_ms(b)).then_with(|| tie(a, b, false)),
         ListSort::Newest => cmp_ms(created_ms(&b.created_at), created_ms(&a.created_at))
             .then_with(|| a.id.cmp(&b.id)),
         ListSort::Oldest => cmp_ms(created_ms(&a.created_at), created_ms(&b.created_at))
@@ -253,7 +259,9 @@ pub fn scoped_prs<'a>(
         .filter(|p| {
             let mut pid = p.project_id.trim();
             if pid.is_empty() && !p.workspace_id.is_empty() {
-                pid = workspace_project(&p.workspace_id).unwrap_or_default().trim();
+                pid = workspace_project(&p.workspace_id)
+                    .unwrap_or_default()
+                    .trim();
             }
             project_ids.iter().any(|id| id == pid)
         })
@@ -373,13 +381,25 @@ mod tests {
             ListLife::Open,
             &f(&["review_requested", "checks_passing"])
         ));
-        assert!(!matches_list_filter(&o, ListLife::Open, &f(&["checks_failing"])));
+        assert!(!matches_list_filter(
+            &o,
+            ListLife::Open,
+            &f(&["checks_failing"])
+        ));
         let draft = Pr {
             draft: true,
             ..open_review()
         };
-        assert!(!matches_list_filter(&draft, ListLife::Open, &f(&["review_requested"])));
-        assert!(matches_list_filter(&draft, ListLife::Draft, &f(&["in_review"])));
+        assert!(!matches_list_filter(
+            &draft,
+            ListLife::Open,
+            &f(&["review_requested"])
+        ));
+        assert!(matches_list_filter(
+            &draft,
+            ListLife::Draft,
+            &f(&["in_review"])
+        ));
     }
 
     #[test]
@@ -490,11 +510,17 @@ mod tests {
         assert!(updated_ms(&alpha) > updated_ms(&zebra));
         // Least recently updated flips updatedAt and ties by older createdAt.
         assert_eq!(
-            ids(sort_list(&[alpha.clone(), zebra.clone()], ListSort::UpdatedAsc)),
+            ids(sort_list(
+                &[alpha.clone(), zebra.clone()],
+                ListSort::UpdatedAsc
+            )),
             ["a", "b"]
         );
         assert_eq!(
-            ids(sort_list(&[alpha.clone(), mid.clone()], ListSort::UpdatedAsc)),
+            ids(sort_list(
+                &[alpha.clone(), mid.clone()],
+                ListSort::UpdatedAsc
+            )),
             ["b", "c"]
         );
         // Newest / oldest use createdAt, not the PR number.

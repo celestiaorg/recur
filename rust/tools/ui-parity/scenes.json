@@ -1887,5 +1887,10 @@
     {"name": "workspace/findings", "width": 1280, "height": 800, "theme": "default", "tolerance": 48850, "steps": [{"click": [117, 19]}, {"wait": 300}]},
     {"name": "workspace/loop", "width": 1280, "height": 800, "theme": "default", "tolerance": 51450, "hardTolerance": 1},
     {"name": "workspace/loop-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 51780, "hardTolerance": 5}
+  ],
+  "prs": [
+    {"name": "prs/list", "width": 1280, "height": 800, "theme": "default", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all"},
+    {"name": "prs/list-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all"},
+    {"name": "prs/list-wide", "width": 1800, "height": 900, "theme": "default", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all"}
   ]
 }

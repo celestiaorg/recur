@@ -60,7 +60,11 @@ pub fn finding_review_anchor(f: &Finding, files: &[FileDiff]) -> Option<ReviewAn
     if file.is_empty() {
         return None;
     }
-    let end = if f.end_line > start { f.end_line } else { start };
+    let end = if f.end_line > start {
+        f.end_line
+    } else {
+        start
+    };
     let lines = files
         .iter()
         .find(|x| x.path == file)
@@ -108,7 +112,11 @@ pub fn finding_has_pending_comment(
 }
 
 /// True when a submitted line comment already occupies this finding's GitHub anchor.
-pub fn finding_has_submitted_comment(f: &Finding, comments: &[PrComment], files: &[FileDiff]) -> bool {
+pub fn finding_has_submitted_comment(
+    f: &Finding,
+    comments: &[PrComment],
+    files: &[FileDiff],
+) -> bool {
     let Some(a) = finding_review_anchor(f, files) else {
         return false;
     };
@@ -207,7 +215,10 @@ mod tests {
             finding_review_anchor(&finding("src/hooks/useOAuthSession.ts", 99, 0, ""), &pr),
             None
         );
-        assert_eq!(finding_review_anchor(&finding("missing.ts", 2, 0, ""), &pr), None);
+        assert_eq!(
+            finding_review_anchor(&finding("missing.ts", 2, 0, ""), &pr),
+            None
+        );
     }
 
     #[test]
@@ -224,7 +235,10 @@ mod tests {
                 ..Default::default()
             },
         ];
-        assert_eq!(finding_review_anchor(&finding("index.ts", 1, 0, ""), &pr), None);
+        assert_eq!(
+            finding_review_anchor(&finding("index.ts", 1, 0, ""), &pr),
+            None
+        );
         assert_eq!(
             finding_review_anchor(&finding("src/index.ts", 1, 0, ""), &pr),
             anchor("src/index.ts", 1, 0)
@@ -350,7 +364,13 @@ mod tests {
         let done = [submitted("src/a.ts", 2, "RIGHT", "race")];
         let set = |ids: &[&str]| ids.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
         assert!(!finding_ready_to_settle(&f, &[], &done, &pr, &set(&[])));
-        assert!(!finding_ready_to_settle(&f, &[], &done, &pr, &set(&["F-other"])));
+        assert!(!finding_ready_to_settle(
+            &f,
+            &[],
+            &done,
+            &pr,
+            &set(&["F-other"])
+        ));
         assert!(finding_ready_to_settle(&f, &[], &done, &pr, &set(&["F-1"])));
         // Waits until the pending draft is gone.
         assert!(!finding_ready_to_settle(

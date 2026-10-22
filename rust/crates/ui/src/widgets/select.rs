@@ -132,6 +132,11 @@ pub struct TriggerStyle {
     pub auto_width: bool,
     /// No value text (`.sel-val { display: none }`): the icon and chevron only.
     pub hide_value: bool,
+    /// A cap on the select (`max-width` on `.sel`; the trigger fills it at most).
+    pub max_width: Option<f32>,
+    /// The value shrinks under that cap and ellipsizes (`.sel-val { flex: 0 1 auto;
+    /// min-width: 0 }`).
+    pub value_shrink: bool,
 }
 
 /// The select. Create with [`Select::new`] in an owning view, keep the entity, and render it.
@@ -310,6 +315,18 @@ impl Select {
     pub fn set_trigger_style(&mut self, t: TriggerStyle, cx: &mut Context<Self>) {
         if self.trigger != t {
             self.trigger = t;
+            cx.notify();
+        }
+    }
+
+    pub fn trigger(&self) -> &TriggerStyle {
+        &self.trigger
+    }
+
+    /// Swap the trigger's custom icon (a sort control showing the current order's icon).
+    pub fn set_icon(&mut self, i: Option<IconName>, cx: &mut Context<Self>) {
+        if self.custom_icon != i {
+            self.custom_icon = i;
             cx.notify();
         }
     }
@@ -816,7 +833,9 @@ impl Render for Select {
             val = val.color(c);
         }
         if !tr.hide_value {
-            button = button.child(if self.ghost || tr.value_auto {
+            button = button.child(if tr.value_shrink {
+                div().flex_initial().min_w_0().child(val)
+            } else if self.ghost || tr.value_auto {
                 div().flex_none().child(val)
             } else {
                 div().flex_1().min_w_0().child(val)
@@ -882,6 +901,7 @@ impl Render for Select {
         let mut root = div()
             .relative()
             .when(sm && !self.ghost, |d| d.min_w(px(132.)))
+            .when_some(tr.max_width, |d, w| d.flex_none().min_w_0().max_w(px(w)))
             .child(button);
         if self.open
             && let Some(menu) = self.menu(window, cx)

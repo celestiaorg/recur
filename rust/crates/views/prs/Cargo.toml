@@ -15,6 +15,7 @@ gallery = [
     "recur-content/gallery",
     "recur-view-review/gallery",
     "recur-view-workspace/gallery",
+    "recur-view-observatory/gallery",
     "dep:recur-app",
 ]
 
@@ -31,6 +32,7 @@ recur-view-core.workspace = true
 recur-view-chat.workspace = true
 recur-view-review.workspace = true
 recur-view-workspace.workspace = true
+recur-view-observatory.workspace = true
 recur-app = { workspace = true, features = ["gallery"], optional = true }
 chrono.workspace = true
 regex.workspace = true
@@ -43,7 +45,6 @@ tracing.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["mock"] }
 recur-view-prs = { path = ".", features = ["gallery"] }
-recur-view-observatory.workspace = true
 recur-app = { workspace = true, features = ["gallery"] }
 pretty_assertions.workspace = true
 parking_lot.workspace = true

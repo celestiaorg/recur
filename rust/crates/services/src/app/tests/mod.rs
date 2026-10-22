@@ -4,6 +4,7 @@
 //! forge with no `gh` (Go CI without gh), and fake issue trackers.
 
 mod code_service;
+mod editor_session;
 mod services;
 mod workspace_base;
 mod workspace_create;

@@ -155,6 +155,8 @@ for (const scene of scenes) {
       await document.fonts.ready
     })
     for (const step of scene.steps ?? []) await run(page, step)
+    // Images (the lightbox's, a message's) must be decoded before the frame is captured.
+    await page.evaluate(() => Promise.all([...document.images].map((i) => i.decode().catch(() => undefined))))
     if (replay !== undefined) {
       // xterm draws on the next frames; and the reference must be the WebGL renderer the app
       // ships, not the DOM fallback.

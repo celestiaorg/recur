@@ -423,7 +423,12 @@ impl Build<'_, '_> {
             // The control's margin box sits 12px above to 6px below the baseline
             // (`vertical-align: -1px`), so it can deepen the line.
             let below = m.height - m.baseline;
-            el = el.child(checkbox_box(checked, m.baseline - 9., self.env.t));
+            el = el.child(checkbox_box(
+                checked,
+                m.baseline - 9.,
+                self.env.t,
+                self.window,
+            ));
             if below < 6. {
                 el = el.child(vgap(6. - below, self.window));
             }
@@ -1359,14 +1364,11 @@ const CHECKBOX_MARK: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="12
 
 /// A disabled task checkbox as WebKit's native control paints it: a 12px rounded box (and its
 /// check) at half opacity. `top` is the border box's offset in the block.
-fn checkbox_box(checked: bool, top: f32, t: &Tokens) -> AnyElement {
+fn checkbox_box(checked: bool, top: f32, t: &Tokens, window: &Window) -> AnyElement {
     let fill = recur_ui::rgba(255, 255, 255, 0.5).over(t.bg);
     let edge = recur_ui::rgba(255, 255, 255, 0.36).over(t.bg);
     let check = recur_ui::rgba(153, 153, 153, 0.625).over(t.bg);
-    div()
-        .absolute()
-        .left(px(2.))
-        .top(px(top))
+    let control = div()
         .size(px(12.))
         .rounded(px(3.))
         .border(px(0.5))
@@ -1377,6 +1379,15 @@ fn checkbox_box(checked: bool, top: f32, t: &Tokens) -> AnyElement {
                 recur_ui::svg_markup(CHECKBOX_MARK.replace("currentColor", &check.to_css()))
                     .size(px(12.)),
             )
-        })
+        });
+    // Its top is a fractional offset from the baseline: an exact gap, as an inset would round.
+    div()
+        .absolute()
+        .left(px(2.))
+        .top_0()
+        .flex()
+        .flex_col()
+        .child(vgap(top.max(0.), window))
+        .child(control)
         .into_any_element()
 }

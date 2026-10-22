@@ -18,6 +18,11 @@ use recur_view_observatory::hot_shells::{live_workspace_ids, touch_hot_shells};
 
 use crate::view::{WorkspaceProps, WorkspaceView};
 
+/// The detail route the shell built, for PR detail's agent dock.
+struct CurrentDetail(gpui_kit::WeakEntity<WorkspaceDetail>);
+
+impl gpui_kit::Global for CurrentDetail {}
+
 pub struct WorkspaceDetail {
     vcx: ViewContext,
     keep_id: String,
@@ -45,8 +50,14 @@ impl WorkspaceDetail {
             host_attempt: String::new(),
             _subs: subs,
         };
+        cx.set_global(CurrentDetail(cx.entity().downgrade()));
         d.sync(window, cx);
         d
+    }
+
+    /// The most recently built detail route (the shell builds one per window).
+    pub fn current(cx: &gpui_kit::App) -> Option<Entity<WorkspaceDetail>> {
+        cx.try_global::<CurrentDetail>()?.0.upgrade()
     }
 
     fn state(&self) -> &Entity<AppState> {

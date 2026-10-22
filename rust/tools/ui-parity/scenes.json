@@ -1891,6 +1891,8 @@
   "prs": [
     {"name": "prs/list", "width": 1280, "height": 800, "theme": "default", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all"},
     {"name": "prs/list-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all"},
-    {"name": "prs/list-wide", "width": 1800, "height": 900, "theme": "default", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all"}
+    {"name": "prs/list-wide", "width": 1800, "height": 900, "theme": "default", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all"},
+    {"name": "prs/filters", "width": 1280, "height": 800, "theme": "default", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all", "steps": [{"click": [811, 72]}, {"move": [700, 300]}, {"wait": 300}]},
+    {"name": "prs/people", "width": 1280, "height": 800, "theme": "default", "tolerance": 0, "fixture": "list", "route": "pr", "seg": "all", "steps": [{"move": [360, 181]}, {"move": [365, 181]}, {"wait": 200}]}
   ]
 }

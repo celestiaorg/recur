@@ -6749,6 +6749,7 @@ dependencies = [
  "recur-ui",
  "recur-view-chat",
  "recur-view-core",
+ "recur-view-review",
  "serde_json",
  "tokio",
  "tracing",

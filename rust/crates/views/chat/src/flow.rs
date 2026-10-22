@@ -14,9 +14,10 @@ use std::rc::Rc;
 
 use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, Element, ElementId, FontFeatures, GlobalElementId,
-    Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString, Style, TextRun, Window,
-    point, px, size,
+    Hsla, InspectorElementId, IntoElement, LayoutId, Length, Pixels, SharedString, Style, TextRun,
+    Window, point, px, size,
 };
+use recur_ui::exact;
 use recur_ui::font_metrics::line_gap;
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, LineMetrics, TextStyled, WhiteSpace, line_metrics, text};
@@ -477,6 +478,7 @@ impl IntoElement for Flow {
 
 pub struct FlowState {
     layout: Rc<RefCell<Option<FlowLayout>>>,
+    exact: Option<exact::ExactCell>,
 }
 
 pub struct FlowPrepaint {
@@ -497,10 +499,10 @@ impl Element for Flow {
 
     fn request_layout(
         &mut self,
-        _: Option<&GlobalElementId>,
+        id: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
-        _: &mut App,
+        cx: &mut App,
     ) -> (LayoutId, FlowState) {
         let layout = self
             .out
@@ -513,8 +515,14 @@ impl Element for Flow {
         let fit = self.fit;
         let trailing = self.trailing_space;
         let min_h = self.min_height;
-        let id =
-            window.request_measured_layout(Style::default(), move |known, avail, window, _| {
+        let exact = exact::exact_cell(id, window);
+        let leaves = exact::measured(
+            Length::Auto,
+            exact.as_ref(),
+            min_h,
+            window,
+            cx,
+            move |known, avail, window| {
                 let w = known.width.map(f32::from).unwrap_or(match avail.width {
                     AvailableSpace::Definite(w) => w.into(),
                     _ => f32::MAX / 4.,
@@ -525,14 +533,18 @@ impl Element for Flow {
                 } else {
                     0.
                 };
-                let out = size(
-                    px(if fit { (l.max_line + extra).min(w) } else { w }),
-                    px(l.height.max(min_h)),
+                let out = (
+                    if fit { (l.max_line + extra).min(w) } else { w },
+                    l.height.max(min_h),
                 );
                 *slot.borrow_mut() = Some(l);
                 out
-            });
-        (id, FlowState { layout })
+            },
+        );
+        (
+            window.request_layout(Style::default(), leaves, cx),
+            FlowState { layout, exact },
+        )
     }
 
     fn prepaint(
@@ -571,6 +583,11 @@ impl Element for Flow {
             ));
         }
         let layout = state.layout.borrow().clone().expect("flow layout");
+        exact::settle(
+            state.exact.as_ref(),
+            layout.height.max(self.min_height),
+            window,
+        );
         let mut children = Vec::new();
         let st = &self.style;
         for (r, x, y) in layout.runs() {

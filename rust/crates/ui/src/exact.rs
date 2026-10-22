@@ -1,0 +1,153 @@
+//! Exact lengths: boxes at WebKit's fractional LayoutUnit positions.
+//!
+//! Taffy lays out in unrounded floats and GPUI snaps each box's absolute edges at the end, as
+//! WebKit snaps at paint. But GPUI rounds every authored length (sizes, margins, paddings,
+//! gaps, insets) to device pixels before layout and ceils every measured size, so one
+//! fractional length (a 17.4px line, an 18.75px measured block) pushes every later box off
+//! WebKit's position, and the error adds up down a column. `aspect_ratio` is the one input
+//! that reaches Taffy unrounded: a leaf one device pixel thin on one axis is exactly as long
+//! as asked on the other. Everything here is built from such leaves.
+//!
+//! - [`vgap`] / [`hgap`]: a fixed gap of an exact length, in place of a fractional margin,
+//!   padding or `gap`.
+//! - [`v_box`]: a box exactly `height` tall whose children start an exact `top` below its
+//!   top (`height: 17.4px` / `margin-top: 2.5px` on a child).
+//! - [`measured`]: a custom measured element whose height reaches layout unrounded.
+
+use gpui_kit::{
+    AnyElement, App, AvailableSpace, Div, GlobalElementId, IntoElement, LayoutId, Length,
+    ParentElement, Pixels, Size, Style, Styled, Window, div, px, size,
+};
+use smallvec::SmallVec;
+use std::cell::Cell;
+use std::rc::Rc;
+
+/// A vertical gap of exactly `len` CSS px (one device pixel wide).
+pub fn vgap(len: f32, window: &Window) -> Div {
+    let dp = 1. / window.scale_factor();
+    let d = div().flex_none();
+    if len <= 1e-4 {
+        return d.h(px(0.));
+    }
+    d.w(px(dp)).aspect_ratio(dp / len)
+}
+
+/// A horizontal gap of exactly `len` CSS px (one device pixel tall).
+pub fn hgap(len: f32, window: &Window) -> Div {
+    let dp = 1. / window.scale_factor();
+    let d = div().flex_none();
+    if len <= 1e-4 {
+        return d.w(px(0.));
+    }
+    d.h(px(dp)).aspect_ratio(len / dp)
+}
+
+/// A column exactly `height` tall whose content starts `top` below its top, as a CSS box with
+/// `height` and a child's `margin-top`, both fractional. The content lays out in a layer over
+/// the box, so it never changes the box's height.
+pub fn v_box(height: f32, top: f32, child: impl IntoElement, window: &Window) -> Div {
+    div()
+        .relative()
+        .flex()
+        .flex_col()
+        .child(vgap(height, window))
+        .child(
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .right_0()
+                .flex()
+                .flex_col()
+                .child(vgap(top, window))
+                .child(child),
+        )
+}
+
+/// A child box shifted `top` down and `left` right by exact fractional offsets, as CSS
+/// `position: relative` offsets or margins on an element GPUI would round.
+pub fn offset(top: f32, left: f32, child: impl IntoElement, window: &Window) -> AnyElement {
+    let mut inner = div().flex().flex_row();
+    if left > 1e-4 {
+        inner = inner.child(hgap(left, window));
+    }
+    let inner = inner.child(child);
+    if top > 1e-4 {
+        div()
+            .flex()
+            .flex_col()
+            .child(vgap(top, window))
+            .child(inner)
+            .into_any_element()
+    } else {
+        inner.into_any_element()
+    }
+}
+
+/// The exact height a measured box took in the last frame (see [`measured`]).
+pub type ExactCell = Rc<Cell<Option<f32>>>;
+
+/// The element's [`ExactCell`], kept in its element state. `None` without an id.
+pub fn exact_cell(id: Option<&GlobalElementId>, window: &mut Window) -> Option<ExactCell> {
+    Some(
+        window.with_element_state(id?, |cell: Option<ExactCell>, _| {
+            let cell = cell.unwrap_or_default();
+            (cell.clone(), cell)
+        }),
+    )
+}
+
+fn snap(v: f32, scale: f32) -> f32 {
+    (v * scale).round() / scale
+}
+
+pub(crate) fn floor_dp(v: f32, scale: f32) -> f32 {
+    ((v * scale) + 1e-3).floor() / scale
+}
+
+/// The leaves of a custom measured box whose exact height reaches layout. GPUI ceils measured
+/// sizes to device pixels, so the measured leaf reports its height floored to the device grid
+/// and a spacer (a 1dp-wide `aspect_ratio` leaf) adds the remainder. The remainder is known
+/// only before layout: it is the height from `exact` (the last frame, see [`settle`]) or
+/// `guess` until then. Put the leaves in a block (`Style::default()`) container.
+///
+/// `measure` returns the unrounded `(width, height)` for the known size and available space.
+pub fn measured(
+    min_width: Length,
+    exact: Option<&ExactCell>,
+    guess: f32,
+    window: &mut Window,
+    cx: &mut App,
+    measure: impl Fn(Size<Option<Pixels>>, Size<AvailableSpace>, &mut Window) -> (f32, f32) + 'static,
+) -> SmallVec<[LayoutId; 6]> {
+    let mut leaf_style = Style::default();
+    leaf_style.min_size.width = min_width;
+    let leaf = window.request_measured_layout(leaf_style, move |known, available, window, _| {
+        let (w, h) = measure(known, available, window);
+        let scale = window.scale_factor();
+        size(px(snap(w, scale)), px(floor_dp(h, scale)))
+    });
+    let mut leaves = SmallVec::new();
+    leaves.push(leaf);
+    let scale = window.scale_factor();
+    let h = exact.and_then(|c| c.get()).unwrap_or(guess);
+    let rest = h - floor_dp(h, scale);
+    if rest > 1e-4 {
+        let mut spacer = Style::default();
+        spacer.size.width = px(1. / scale).into();
+        spacer.aspect_ratio = Some(1. / scale / rest);
+        leaves.push(window.request_layout(spacer, [], cx));
+    }
+    leaves
+}
+
+/// After the final layout of a [`measured`] box: remember its exact height, and lay the
+/// window out again when it changed.
+pub fn settle(exact: Option<&ExactCell>, height: f32, window: &mut Window) {
+    if let Some(c) = exact
+        && c.get().is_none_or(|h| (h - height).abs() > 1e-3)
+    {
+        c.set(Some(height));
+        window.refresh();
+    }
+}

@@ -200,6 +200,29 @@ for (const scene of scenes) {
       )
       writeFileSync(join(out, 'metrics.json'), JSON.stringify(metrics, null, 1))
     }
+    if (process.env.UI_PARITY_BOXES) {
+      // Every element's fractional border box (CSS px), to compare layout offsets exactly.
+      const boxes = await page.evaluate(() => {
+        const fmt = (r: DOMRect, what: string) =>
+          `${r.x.toFixed(4)} ${r.y.toFixed(4)} ${r.width.toFixed(4)} ${r.height.toFixed(4)} ${what}`
+        const out: string[] = []
+        for (const el of document.body.querySelectorAll<HTMLElement>('*')) {
+          const r = el.getBoundingClientRect()
+          if (r.width === 0 && r.height === 0) continue
+          const cls = typeof el.className === 'string' ? el.className : ''
+          out.push(fmt(r, `${el.tagName.toLowerCase()}.${cls.split(/\s+/).filter((c) => c && !c.startsWith('svelte-')).join('.')}`))
+        }
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.textContent?.trim()) continue
+          const range = document.createRange()
+          range.selectNodeContents(n)
+          out.push(fmt(range.getBoundingClientRect(), `#text ${n.textContent.trim().slice(0, 40)}`))
+        }
+        return out
+      })
+      writeFileSync(join(out, `${file}.boxes.txt`), boxes.join('\n'))
+    }
     if (errors.length) throw new Error(`page errors: ${errors.join('; ')}`)
     await context.close()
   })

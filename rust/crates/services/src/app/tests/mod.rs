@@ -4,6 +4,10 @@
 //! forge with no `gh` (Go CI without gh), and fake issue trackers.
 
 mod services;
+mod workspace_create;
+mod workspace_issue;
+mod workspace_main;
+mod workspace_open;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

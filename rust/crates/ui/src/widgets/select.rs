@@ -137,6 +137,9 @@ pub struct TriggerStyle {
     /// The value shrinks under that cap and ellipsizes (`.sel-val { flex: 0 1 auto;
     /// min-width: 0 }`).
     pub value_shrink: bool,
+    /// No `:focus-visible` outline (`.nt-modal .sel-btn:focus-visible { outline: none }`); the
+    /// host draws its own keyboard ring.
+    pub no_outline: bool,
 }
 
 /// The select. Create with [`Select::new`] in an owning view, keep the entity, and render it.
@@ -317,6 +320,10 @@ impl Select {
             self.trigger = t;
             cx.notify();
         }
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.open
     }
 
     pub fn trigger(&self) -> &TriggerStyle {
@@ -779,7 +786,7 @@ impl Render for Select {
             ));
         }
         // `:focus-visible`'s outline outranks `.sel-btn { outline: none }` by coming later.
-        if focus_visible && !disabled {
+        if focus_visible && !disabled && !tr.no_outline {
             button = button
                 .relative()
                 .child(crate::style::focus_ring(radius, border_w, cx));

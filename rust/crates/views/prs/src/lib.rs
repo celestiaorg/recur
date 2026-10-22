@@ -18,18 +18,20 @@ pub mod list;
 pub mod list_filter;
 pub mod list_titlebar;
 pub mod people;
+pub mod review_modal;
 #[cfg(test)]
 mod spec;
 pub mod style;
 pub mod ui;
 
 use gpui_kit::AppContext as _;
-use recur_view_core::{TitlebarParts, ViewContext, ViewName, ViewRegistry};
+use recur_view_core::{OverlaySlot, TitlebarParts, ViewContext, ViewName, ViewRegistry};
 
 use crate::actions::PrTitlebarActions;
 use crate::detail::PrDetail;
 use crate::list::PrList;
 use crate::list_titlebar::PrListTitlebar;
+use crate::review_modal::PrReviewModal;
 
 /// Registers the PR routes.
 pub fn register(r: &mut ViewRegistry) {
@@ -46,5 +48,8 @@ pub fn register(r: &mut ViewRegistry) {
     .titlebar(|vcx, window, cx| TitlebarParts {
         left: None,
         right: Some(cx.new(|cx| PrTitlebarActions::new(vcx, window, cx)).into()),
+    });
+    r.overlay(OverlaySlot::PrReviewModal, |vcx: &ViewContext, window, cx| {
+        cx.new(|cx| PrReviewModal::new(vcx, window, cx)).into()
     });
 }

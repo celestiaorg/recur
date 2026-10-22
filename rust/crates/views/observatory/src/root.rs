@@ -63,7 +63,7 @@ impl Observatory {
         {
             self.activation_changed(prev.shell_active, &prev.workspace_id, window, cx);
         }
-        
+
         self.after_state_change(window, cx);
         cx.notify();
     }
@@ -121,6 +121,16 @@ impl Observatory {
                 o.on_obs_focus_in(window, cx)
             }),
         );
+        for h in [
+            self.main_focus.clone(),
+            self.tabs_focus.clone(),
+            self.files_focus.clone(),
+            self.scm_focus.clone(),
+            self.left_focus.clone(),
+        ] {
+            let subs = self.watch_zone(&h, window, cx);
+            self._subscriptions.extend(subs);
+        }
         self._subscriptions
             .push(cx.on_release(|o, cx| o.on_destroy(cx)));
         self._subscriptions.push(Self::observe_keys(cx));
@@ -1152,10 +1162,11 @@ impl Observatory {
                 self.schedule_live_refresh(cx);
             }
             AppEvent::FindingsUpdated(r)
-                if !self.props.workspace_id.is_empty() && r.workspace_id == self.props.workspace_id
-                => {
-                    self.load_findings(cx).detach();
-                }
+                if !self.props.workspace_id.is_empty()
+                    && r.workspace_id == self.props.workspace_id =>
+            {
+                self.load_findings(cx).detach();
+            }
             AppEvent::ArtifactCreated(e) => {
                 if e.workspace_id.is_empty() {
                     return;

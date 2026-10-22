@@ -5,7 +5,7 @@
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, Context, InteractiveElement, IntoElement, MouseButton, ParentElement, SharedString,
-    StatefulInteractiveElement, Styled, Window, div, img, px,
+    StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
 use recur_ui::kbd::kbd;
@@ -389,7 +389,9 @@ impl Observatory {
             .flex_none()
             .flex()
             .flex_wrap()
-            .items_center()
+            // `align-items: baseline` on same-size text: the texts sit at the top, the zoom
+            // button centers itself.
+            .items_start()
             .justify_center()
             .gap_x(px(14.))
             .gap_y(px(8.))
@@ -403,10 +405,19 @@ impl Observatory {
                     .nowrap(),
             );
         }
-        d.children(zoom).into_any_element()
+        d.children(zoom.map(|z| div().self_center().child(z)))
+            .into_any_element()
     }
 
-    fn raster(&self, base: bool, cx: &mut Context<Self>) -> AnyElement {
+    /// The raster at its `object-fit: contain` size. `compare` puts it in a figure cell that
+    /// it fills; alone it is capped by the pane's content box (`max-width/height: 100%`).
+    fn raster(
+        &self,
+        base: bool,
+        compare: bool,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let r = if base {
             &self.image.base
@@ -436,9 +447,10 @@ impl Observatory {
             &self.bounds.image_cur
         };
         let avail = cell.get().size;
+        let pad = if compare { 0. } else { 48. };
         let ((w, h), _) = recur_content::lightbox::fit(
             (d.width, d.height),
-            (f32::from(avail.width), f32::from(avail.height)),
+            (f32::from(avail.width) - pad, f32::from(avail.height) - pad),
         );
         let pic = div()
             .id(SharedString::from(format!(
@@ -449,10 +461,28 @@ impl Observatory {
             .cursor_pointer()
             .w(px(w))
             .h(px(h))
-            .child(img(d.image.clone()).size_full())
+            .child({
+                let scale = window.scale_factor();
+                let image = r
+                    .at((w * scale).round() as u32, (h * scale).round() as u32)
+                    .unwrap_or_else(|| d.image.clone());
+                gpui_kit::canvas(
+                    |_, _, _| {},
+                    move |b, _, window, _| {
+                        let _ =
+                            window.paint_image(b, b, Default::default(), image.clone(), 0, false);
+                    },
+                )
+                .size_full()
+            })
             .on_click(cx.listener(move |o, _, window, cx| {
                 o.zoom_image(src.clone(), name.clone(), base, window, cx)
             }));
+        if !compare {
+            return with_shadow(pic, &[css_box_shadow(0., 0., 0., 1., t.line)], 0.)
+                .flex_none()
+                .into_any_element();
+        }
         div()
             .relative()
             .flex_1()
@@ -472,7 +502,7 @@ impl Observatory {
     }
 
     /// `.obs-image`: the checkerboard pane with the raster (or the base / current pair).
-    fn render_image_pane(&mut self, cx: &mut Context<Self>) -> AnyElement {
+    fn render_image_pane(&mut self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let compare = self.image_compare();
         let deleted = self.selected_git_status() == "d";
@@ -520,13 +550,15 @@ impl Observatory {
                 .w_full()
                 .flex()
                 .gap(px(28.));
-            pair = pair.child(figure("Previous", self.raster(true, cx)));
+            pair = pair.child(figure("Previous", self.raster(true, true, window, cx)));
             if self.file.is_some() && !deleted {
-                pair = pair.child(figure("Current", self.raster(false, cx)));
+                pair = pair.child(figure("Current", self.raster(false, true, window, cx)));
             }
             pane = pane.child(pair);
         } else if self.file.is_some() && !deleted {
-            pane = pane.child(self.raster(false, cx));
+            pane = pane
+                .child(crate::geometry::probe(&self.bounds.image_cur))
+                .child(self.raster(false, false, window, cx));
         } else {
             pane = pane.child(obs_empty("This image was deleted.", true, cx));
         }
@@ -576,7 +608,9 @@ impl Observatory {
                 )
             });
         if self.show_image_pane() {
-            return pane.child(self.render_image_pane(cx)).into_any_element();
+            return pane
+                .child(self.render_image_pane(window, cx))
+                .into_any_element();
         }
         if self.show_pdf_pane() && self.file.is_some() {
             let mut pdf = div()
@@ -1169,6 +1203,7 @@ impl Observatory {
         let mut main = div()
             .id("obs-main")
             .debug_selector(|| "obs-main".into())
+            .flex_1()
             .track_focus(&self.main_focus)
             .relative()
             .flex()

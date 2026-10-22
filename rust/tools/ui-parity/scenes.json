@@ -1844,5 +1844,22 @@
       "tolerance": 24860,
       "hardTolerance": 18
     }
+  ],
+  "observatory": [
+    {"name": "observatory/explorer", "width": 1280, "height": 800, "theme": "default", "tolerance": 12210},
+    {"name": "observatory/explorer-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 12360},
+    {"name": "observatory/code", "width": 1280, "height": 800, "theme": "default", "tolerance": 36790},
+    {"name": "observatory/code-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 37020},
+    {"name": "observatory/tabs", "width": 1100, "height": 800, "theme": "default", "tolerance": 9020},
+    {"name": "observatory/merge", "width": 1280, "height": 800, "theme": "default", "tolerance": 44100},
+    {"name": "observatory/review", "width": 1280, "height": 800, "theme": "default", "tolerance": 4160, "hardTolerance": 18},
+    {"name": "observatory/terminal", "width": 1280, "height": 800, "theme": "default", "tolerance": 36810},
+    {"name": "observatory/terminal-beside", "width": 1280, "height": 800, "theme": "default", "tolerance": 36660},
+    {"name": "observatory/terminal-max", "width": 1280, "height": 800, "theme": "default", "tolerance": 38720, "steps": [{"click": [975, 560]}, {"wait": 600}], "hardTolerance": 2},
+    {"name": "observatory/quick-open", "width": 1280, "height": 800, "theme": "default", "tolerance": 38320, "steps": [{"key": "Meta+p"}, {"wait": 300}]},
+    {"name": "observatory/artifacts", "width": 1280, "height": 800, "theme": "default", "tolerance": 35220, "steps": [{"click": [1221, 19]}, {"wait": 300}]},
+    {"name": "observatory/pdf", "width": 1280, "height": 1000, "theme": "default", "tolerance": 65870, "hardTolerance": 262},
+    {"name": "observatory/image", "width": 1280, "height": 800, "theme": "default", "tolerance": 9440},
+    {"name": "observatory/commit", "width": 1280, "height": 800, "theme": "default", "tolerance": 39850, "steps": [{"click": [1076, 19]}, {"wait": 300}]}
   ]
 }

@@ -303,6 +303,8 @@ pub struct Observatory {
     pub(crate) scm_focus: FocusHandle,
     pub(crate) tabs_focus: FocusHandle,
     pub(crate) review_focus: FocusHandle,
+    /// The left and side docks' resize handles.
+    pub(crate) resize_focus: [FocusHandle; 2],
     pub(crate) focus_zone: FocusZone,
 
     // ---- root ----
@@ -503,6 +505,7 @@ pub struct Observatory {
 
     // ---- terminal dock ----
     pub(crate) dock: Option<(String, Entity<crate::dock::TerminalDock>)>,
+    pub(crate) dock_subs: Vec<Subscription>,
     pub(crate) term_tab_count: usize,
     pub(crate) term_max_phase: TermMaxPhase,
     pub(crate) term_max_anim: Option<(OverlayRect, OverlayRect, Instant)>,
@@ -575,6 +578,7 @@ impl Observatory {
             scm_focus: cx.focus_handle(),
             tabs_focus: cx.focus_handle(),
             review_focus: cx.focus_handle(),
+            resize_focus: [cx.focus_handle(), cx.focus_handle()],
             focus_zone: FocusZone::Editor,
             loaded_root: String::new(),
             root_token: 0,
@@ -746,6 +750,7 @@ impl Observatory {
             lsp_sync_task: None,
             prev_disabled_ls: None,
             dock: None,
+            dock_subs: Vec::new(),
             term_tab_count: 0,
             term_max_phase: TermMaxPhase::Idle,
             term_max_anim: None,

@@ -337,33 +337,29 @@ impl Observatory {
         let blocked = self.props.main_blocked;
         match action {
             "focus-agent" => self.focus_agent_panel(window, cx).detach(),
-            "focus-editor"
-                if !blocked => {
-                    self.focus_code_panel(window, cx);
-                }
-            "focus-terminal"
-                if !blocked => {
-                    let token = self.root_token;
-                    self.focus_terminal_panel(token, window, cx);
-                }
+            "focus-editor" if !blocked => {
+                self.focus_code_panel(window, cx);
+            }
+            "focus-terminal" if !blocked => {
+                let token = self.root_token;
+                self.focus_terminal_panel(token, window, cx);
+            }
             "toggle-left-panel" => self.toggle_visible_left_panel(cx),
-            "toggle-right-panel"
-                if self.has_right(cx) && !blocked => {
-                    let open = self.show_side;
-                    self.set_show_side(!open, cx);
-                }
+            "toggle-right-panel" if self.has_right(cx) && !blocked => {
+                let open = self.show_side;
+                self.set_show_side(!open, cx);
+            }
             "toggle-editor"
-                if !self.props.workspace_id.is_empty() && !blocked && !self.term_overlaying() => {
-                    self.toggle_editor_surface(cx);
-                }
-            "quick-open"
-                if !blocked => {
-                    self.open_quick_open(crate::quick_open::QuickOpenMode::File, window, cx);
-                }
-            "go-symbol"
-                if !blocked => {
-                    self.open_quick_open(crate::quick_open::QuickOpenMode::Symbol, window, cx);
-                }
+                if !self.props.workspace_id.is_empty() && !blocked && !self.term_overlaying() =>
+            {
+                self.toggle_editor_surface(cx);
+            }
+            "quick-open" if !blocked => {
+                self.open_quick_open(crate::quick_open::QuickOpenMode::File, window, cx);
+            }
+            "go-symbol" if !blocked => {
+                self.open_quick_open(crate::quick_open::QuickOpenMode::Symbol, window, cx);
+            }
             "save" => self.save_edit(window, cx),
             "new-tab" => {
                 if self.focus_zone == FocusZone::Terminal && !blocked {

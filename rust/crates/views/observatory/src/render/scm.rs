@@ -562,8 +562,14 @@ impl Observatory {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
+        // Tracks the zone for its fields; the panel itself is not focusable in the page.
         let root = div()
+            .id("obs-scm-panel")
             .debug_selector(|| "obs-scm-panel".into())
+            .track_focus(&self.scm_focus)
+            .on_mouse_down(gpui_kit::MouseButton::Left, |_, window, _| {
+                window.prevent_default()
+            })
             .flex()
             .flex_col()
             .flex_1()

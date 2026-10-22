@@ -549,6 +549,7 @@ impl Observatory {
             ));
         }
         if !st.is_empty() && !e.dir {
+            let wip = self.working_status.contains_key(&e.path);
             let title = match st.as_str() {
                 "m" => "Modified",
                 "a" => "Added",
@@ -585,7 +586,18 @@ impl Observatory {
                             .line_height(LineHeight::Scale(1.35))
                             .color(c)
                             .nowrap(),
-                    ),
+                    )
+                    .when(wip, |d| {
+                        d.child(
+                            div()
+                                .absolute()
+                                .left(px(4.5))
+                                .bottom(px(-2.))
+                                .size(px(3.))
+                                .rounded(px(1.5))
+                                .bg(hsla(t.amber)),
+                        )
+                    }),
             ));
         }
         let entry = e.clone();

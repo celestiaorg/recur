@@ -1960,11 +1960,7 @@ impl Observatory {
             for src in srcs {
                 let src = src.trim_end_matches('/').to_string();
                 let dest = join_path(&dir, base_name(&src));
-                if dest.is_empty()
-                    || dest == src
-                    || dir == src
-                    || is_under(&dir, &src)
-                {
+                if dest.is_empty() || dest == src || dir == src || is_under(&dir, &src) {
                     continue;
                 }
                 let moved = this

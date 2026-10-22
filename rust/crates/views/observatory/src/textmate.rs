@@ -45,7 +45,7 @@ pub struct EditorEnv {
     _subs: Vec<Subscription>,
 }
 
-struct EnvHandle(Entity<EditorEnv>);
+pub(crate) struct EnvHandle(Entity<EditorEnv>);
 
 impl Global for EnvHandle {}
 

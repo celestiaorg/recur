@@ -69,6 +69,7 @@ fn registry() -> ViewRegistry {
     let mut r = ViewRegistry::default();
     recur_view_chat::register(&mut r);
     recur_view_review::register(&mut r);
+    recur_view_observatory::register(&mut r);
     r
 }
 

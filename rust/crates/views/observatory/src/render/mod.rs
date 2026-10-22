@@ -46,7 +46,7 @@ pub(crate) fn pulse_opacity(epoch: Instant, window: &mut Window, cx: &App) -> f3
     0.5 + 0.5 * motion::Easing::EASE_IN_OUT.apply(half)
 }
 
-/// The image pane's checkerboard (`--pane-2` 8px squares over `--bg`).
+/// The image pane's checkerboard (`--pane-2` 8px squares over `--bg`, `--bg` at the origin).
 pub(crate) fn checkerboard(cx: &App) -> Div {
     let t = Theme::of(cx).tokens;
     let sq = t.pane_2;
@@ -59,7 +59,7 @@ pub(crate) fn checkerboard(cx: &App) -> Div {
                 let (cols, rows) = ((w / 8.).ceil() as i32, (h / 8.).ceil() as i32);
                 for r in 0..rows {
                     for c in 0..cols {
-                        if (r + c) % 2 == 1 {
+                        if (r + c) % 2 == 0 {
                             continue;
                         }
                         let o = b.origin + gpui_kit::point(s * c as f32, s * r as f32);
@@ -173,8 +173,11 @@ impl Observatory {
         let review = self.main_surface(cx) == MainSurface::Review;
         let lit = self.focus_zone == FocusZone::Editor;
 
+        // The root tracks the Observatory's focus, which a click would take; the chrome
+        // outside the focusable regions is not focusable in the page.
         let mut bar = div()
             .debug_selector(|| "obs-toolbar".into())
+            .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
             .flex()
             .items_stretch()
             .flex_none()
@@ -255,6 +258,7 @@ impl Observatory {
             "obs-file-tabs",
             if review { "Review" } else { "Open files" },
         )
+        .grow(true)
         .active_key(SharedString::from(active_key))
         .reveal_nonce(self.file_tab_reveal_nonce)
         .scroll_handle(self.file_tab_scroll.clone());
@@ -476,7 +480,16 @@ impl Observatory {
                 }),
             ));
         }
-        bar = bar.child(div().flex_1().min_w_0().flex().items_stretch().child(strip));
+        bar = bar.child(
+            div()
+                .id("obs-tb-center")
+                .track_focus(&self.tabs_focus)
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .items_stretch()
+                .child(strip),
+        );
 
         if has_right {
             let show = self.show_side;
@@ -588,7 +601,7 @@ impl Observatory {
             Axis::X,
             Edge::End,
             width,
-            &self.left_focus,
+            &self.resize_focus[0],
         )
         .on_live({
             let state = state.clone();
@@ -625,6 +638,7 @@ impl Observatory {
                     .flex_1()
                     .min_h_0()
                     .overflow_hidden()
+                    .bg(hsla(t.bg))
                     .child(body),
             );
         aside = if narrow {
@@ -672,6 +686,7 @@ impl Observatory {
         let mut aside = div()
             .id("obs-side")
             .debug_selector(|| "obs-side".into())
+            .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
             .relative()
             .flex()
             .flex_col()
@@ -686,6 +701,7 @@ impl Observatory {
                     .flex_1()
                     .min_h_0()
                     .overflow_hidden()
+                    .bg(hsla(t.bg))
                     .child(body),
             );
         if narrow {
@@ -708,7 +724,7 @@ impl Observatory {
                         Axis::X,
                         Edge::Start,
                         width,
-                        &self.main_focus,
+                        &self.resize_focus[1],
                     )
                     .on_live({
                         let state = state.clone();

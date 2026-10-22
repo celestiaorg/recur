@@ -1476,9 +1476,10 @@ impl Observatory {
     /// Diff can stop applying (the file reverted); rasters have no Code surface.
     pub(crate) fn clamp_view_mode(&mut self) {
         if (is_binary_image_path(&self.selected_path) || is_media_path(&self.selected_path))
-            && self.view_mode == EditorViewMode::Code {
-                self.view_mode = EditorViewMode::Preview;
-            }
+            && self.view_mode == EditorViewMode::Code
+        {
+            self.view_mode = EditorViewMode::Preview;
+        }
         if self.view_mode != EditorViewMode::Diff
             || self.selected_path.is_empty()
             || !self.git_status_ready

@@ -50,6 +50,8 @@ mod editor_host;
 mod explorer;
 pub mod explorer_visible;
 pub mod findings_panel;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 mod geometry;
 pub mod hot_shells;
 mod inputs;

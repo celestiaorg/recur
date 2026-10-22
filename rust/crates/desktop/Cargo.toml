@@ -27,6 +27,7 @@ recur-ui.workspace = true
 recur-view-core.workspace = true
 recur-view-chat.workspace = true
 recur-view-review.workspace = true
+recur-view-observatory.workspace = true
 gpui-kit.workspace = true
 futures.workspace = true
 parking_lot.workspace = true

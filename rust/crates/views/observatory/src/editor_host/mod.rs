@@ -347,10 +347,12 @@ impl Observatory {
 
     /// The editor that takes commands, snippets and ⌘L (`focusedEditor`).
     pub(crate) fn focused_editor(&self) -> Option<Entity<EditorView>> {
-        if self.focused_pane == Pane::Split && self.split_open
-            && let Some(e) = &self.split_editor {
-                return Some(e.clone());
-            }
+        if self.focused_pane == Pane::Split
+            && self.split_open
+            && let Some(e) = &self.split_editor
+        {
+            return Some(e.clone());
+        }
         self.main_editor.clone()
     }
 

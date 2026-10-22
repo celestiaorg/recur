@@ -12,7 +12,7 @@ use recur_domain::OutlineSymbol;
 use recur_services::AppEvent;
 use recur_ui::logic::hover_gate::HoverGate;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
-use recur_ui::text::{TextStyled, text};
+use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{Theme, rgba};
 use recur_view_chat::file_index::{FileSearchHit, map_file_search_hits};
 use recur_view_core::AppState;
@@ -171,6 +171,13 @@ impl QuickOpen {
             self.file_hits.clear();
         }
         cx.notify();
+    }
+
+    /// Keys are in the overlay's field.
+    pub fn contains_focus(&self, window: &Window, cx: &App) -> bool {
+        self.open
+            && gpui_kit::Focusable::focus_handle(self.input.read(cx), cx)
+                .contains_focused(window, cx)
     }
 
     pub fn close(&mut self, cx: &mut Context<Self>) {
@@ -429,29 +436,37 @@ impl Render for QuickOpen {
                                 text(s.kind.clone())
                                     .mono()
                                     .size(10.)
+                                    .line_height(LineHeight::Normal)
                                     .uppercase()
                                     .color(t.faint)
                                     .nowrap(),
                             ),
                         )
                         .child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .child(text(s.name.clone()).mono().size(12.).truncate()),
+                            div().flex_1().min_w_0().child(
+                                text(s.name.clone())
+                                    .mono()
+                                    .size(12.)
+                                    .line_height(LineHeight::Normal)
+                                    .truncate(),
+                            ),
                         )
                         .child(
                             text(s.line.to_string())
                                 .mono()
                                 .size(11.)
+                                .line_height(LineHeight::Normal)
                                 .color(t.faint)
                                 .nowrap(),
                         ),
                     Row::File(h) => row.child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(text(h.item.clone()).mono().size(12.).truncate()),
+                        div().flex_1().min_w_0().child(
+                            text(h.item.clone())
+                                .mono()
+                                .size(12.)
+                                .line_height(LineHeight::Normal)
+                                .truncate(),
+                        ),
                     ),
                 };
                 list = list.child(row);
@@ -459,8 +474,7 @@ impl Render for QuickOpen {
         }
         let panel = div()
             .debug_selector(|| "quick-open".into())
-            .w(px(560.))
-            .max_w(gpui_kit::relative(0.92))
+            .w_full()
             .flex()
             .flex_col()
             .child(input_row)

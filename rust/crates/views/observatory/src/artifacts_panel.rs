@@ -15,7 +15,7 @@ use recur_engine::view::artifacts::{ArtifactRef, artifact_icon};
 use recur_services::{AppEvent, Services};
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::style::anchored_at;
-use recur_ui::text::{TextStyled, text};
+use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, hex, icon, rgba};
 use recur_view_core::call;
@@ -214,11 +214,10 @@ impl ArtifactsPanel {
                     let v = inp.read(cx).value().to_string();
                     p.commit_rename(&r, v, cx);
                 }
-                InputEvent::Blur
-                    if p.renaming.as_ref().is_some_and(|(id, _)| *id == r.id) => {
-                        let v = inp.read(cx).value().to_string();
-                        p.commit_rename(&r, v, cx);
-                    }
+                InputEvent::Blur if p.renaming.as_ref().is_some_and(|(id, _)| *id == r.id) => {
+                    let v = inp.read(cx).value().to_string();
+                    p.commit_rename(&r, v, cx);
+                }
                 _ => {}
             },
         )];
@@ -361,7 +360,12 @@ impl ArtifactsPanel {
             .flex_none()
             .opacity(0.55)
             .when(reveal_del && self.items.is_none(), |d| d.invisible())
-            .child(text(a.kind.to_uppercase()).size(11.).nowrap());
+            .child(
+                text(a.kind.to_uppercase())
+                    .size(11.)
+                    .line_height(LineHeight::Normal)
+                    .nowrap(),
+            );
         let icon_el = icon(IconName::from_key(artifact_icon(&a.kind)).unwrap_or(IconName::File))
             .size(px(14.))
             .color(hsla(t.muted));
@@ -439,10 +443,12 @@ impl ArtifactsPanel {
                     )
                     .child(div().w(px(14.)).flex_none().child(icon_el))
                     .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(text(title.clone()).size(13.).truncate()),
+                        div().flex_1().min_w_0().child(
+                            text(title.clone())
+                                .size(13.)
+                                .line_height(LineHeight::Normal)
+                                .truncate(),
+                        ),
                     )
                     .child(kind)
                     .into_any_element()

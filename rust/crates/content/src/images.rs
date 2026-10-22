@@ -92,6 +92,26 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
     })
 }
 
+/// The raster resampled to `w`×`h` device pixels (bilinear, edges clamped, as WebKit draws a
+/// scaled `<img>`), so it paints 1:1 instead of through GPUI's texture filter, which blends
+/// the edge rows with the atlas padding.
+pub fn resized(d: &Decoded, w: u32, h: u32) -> Option<Arc<RenderImage>> {
+    let img = image::load_from_memory_with_format(&d.png, image::ImageFormat::Png).ok()?;
+    let mut out = image::imageops::resize(
+        &img.to_rgba8(),
+        w.max(1),
+        h.max(1),
+        image::imageops::FilterType::Triangle,
+    );
+    for p in out.pixels_mut() {
+        p.0.swap(0, 2);
+    }
+    Some(Arc::new(RenderImage::new(SmallVec::from_elem(
+        image::Frame::new(out),
+        1,
+    ))))
+}
+
 /// Start loading `src`: `data:` URLs decode off the UI thread; others ask the loader.
 pub fn fetch(src: &str, cx: &App) -> Option<BoxFuture<'static, Result<Decoded, String>>> {
     if src.starts_with("data:") {

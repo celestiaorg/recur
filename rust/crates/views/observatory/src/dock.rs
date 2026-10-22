@@ -71,7 +71,7 @@ impl TerminalBackend for ServicesBackend {
 
 /// `term.data` / `term.exit` to the panes (`wireTerminalEvents`), wired once per app.
 #[derive(Default)]
-struct TermEvents(Option<Task<()>>);
+pub(crate) struct TermEvents(Option<Task<()>>);
 
 impl Global for TermEvents {}
 
@@ -131,7 +131,8 @@ pub struct TerminalDock {
     find: Entity<TerminalFindBar>,
     find_open: bool,
     searched_id: String,
-    focus: FocusHandle,
+    pub(crate) focus: FocusHandle,
+    resize_focus: FocusHandle,
     body: crate::geometry::BoundsCell,
     /// `.obs-main`, for the drag ceiling (keep a quarter of it, up to 160px, for the editor).
     main_bounds: crate::geometry::BoundsCell,
@@ -214,6 +215,7 @@ impl TerminalDock {
             find_open: false,
             searched_id: String::new(),
             focus: cx.focus_handle(),
+            resize_focus: cx.focus_handle(),
             body: Default::default(),
             main_bounds: Default::default(),
             run_task: None,
@@ -1421,29 +1423,35 @@ impl Render for TerminalDock {
             let h = self.state.read(cx).panels.size(PanelKey::TerminalDock);
             let main = self.main_bounds.clone();
             root = root.child(
-                resize_handle("term-dock-resize", Axis::Y, Edge::Start, h, &self.focus)
-                    .max(move |_, _| {
-                        let mh = f32::from(main.get().size.height);
-                        if mh <= 0. {
-                            return f32::INFINITY;
-                        }
-                        let floor = (mh * 0.25).round().min(160.);
-                        h.max(mh - floor)
-                    })
-                    .on_live(move |size, _, cx| {
-                        state.update(cx, |s, cx| {
-                            s.set_panel_live(PanelKey::TerminalDock, size, cx)
-                        });
-                    })
-                    .on_commit(move |_, cx| {
-                        state2.update(cx, |s, cx| {
-                            s.persist_panels();
-                            cx.notify();
-                        });
-                    })
-                    .on_step(move |h, _, cx| {
-                        state3.update(cx, |s, cx| s.set_panel(PanelKey::TerminalDock, h, cx));
-                    }),
+                resize_handle(
+                    "term-dock-resize",
+                    Axis::Y,
+                    Edge::Start,
+                    h,
+                    &self.resize_focus,
+                )
+                .max(move |_, _| {
+                    let mh = f32::from(main.get().size.height);
+                    if mh <= 0. {
+                        return f32::INFINITY;
+                    }
+                    let floor = (mh * 0.25).round().min(160.);
+                    h.max(mh - floor)
+                })
+                .on_live(move |size, _, cx| {
+                    state.update(cx, |s, cx| {
+                        s.set_panel_live(PanelKey::TerminalDock, size, cx)
+                    });
+                })
+                .on_commit(move |_, cx| {
+                    state2.update(cx, |s, cx| {
+                        s.persist_panels();
+                        cx.notify();
+                    });
+                })
+                .on_step(move |h, _, cx| {
+                    state3.update(cx, |s, cx| s.set_panel(PanelKey::TerminalDock, h, cx));
+                }),
             );
         }
         root.child(strip_el).child(body)
@@ -1493,7 +1501,9 @@ impl crate::obs::Observatory {
                     o.term_tab_count = *n;
                     o.sync_side_effects(cx);
                 });
-                self.editor_subs.push(sub);
+                let focus = d.read(cx).focus.clone();
+                self.dock_subs = vec![sub];
+                self.dock_subs.extend(self.watch_zone(&focus, window, cx));
                 self.dock = Some((ws, d));
             }
         }

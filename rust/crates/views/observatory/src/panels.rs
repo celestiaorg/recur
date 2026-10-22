@@ -750,7 +750,29 @@ impl Observatory {
     // ---- focus ----
 
     /// `onObsFocusIn`: map the focused region to the tab-underline zone.
+    /// Recompute the zone whenever focus enters or leaves `h` inside the Observatory (the
+    /// Svelte `focusin` fires on every move; GPUI only reports entering a handle's subtree).
+    pub(crate) fn watch_zone(
+        &self,
+        h: &gpui_kit::FocusHandle,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> [gpui_kit::Subscription; 2] {
+        [
+            cx.on_focus_in(h, window, |o, window, cx| o.on_obs_focus_in(window, cx)),
+            cx.on_focus_out(h, window, |o, _, window, cx| {
+                if o.focus.contains_focused(window, cx) {
+                    o.on_obs_focus_in(window, cx);
+                }
+            }),
+        ]
+    }
+
     pub(crate) fn on_obs_focus_in(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // Quick Open and the command prompts mount outside `.obs` in the page.
+        if self.quick_open.read(cx).contains_focus(window, cx) || self.prompts_reply.is_some() {
+            return;
+        }
         let zone = if self
             .dock
             .as_ref()

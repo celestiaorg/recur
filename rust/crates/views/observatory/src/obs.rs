@@ -837,6 +837,16 @@ impl Observatory {
         !self.props.workspace_id.is_empty()
     }
 
+    /// The review surface is the main surface (the toolbar's Review changes toggle is on).
+    pub fn showing_review(&self, cx: &App) -> bool {
+        self.main_surface(cx) == MainSurface::Review
+    }
+
+    /// What the toolbar's Review changes button does.
+    pub fn click_review_toggle(&mut self, cx: &mut Context<Self>) {
+        self.toggle_review(cx);
+    }
+
     pub(crate) fn main_surface(&self, cx: &App) -> MainSurface {
         if self.is_git(cx) && self.main_surface_pref == MainSurface::Review {
             MainSurface::Review

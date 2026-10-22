@@ -68,6 +68,14 @@ pub struct Shell {
 }
 
 impl Shell {
+    /// The mounted main-area view for `route`, if a registered view serves it.
+    pub fn route_view(&self, route: ViewName) -> Option<AnyView> {
+        self.views
+            .iter()
+            .find(|m| m.routes.contains(&route))
+            .map(|m| m.view.clone())
+    }
+
     /// Builds the shell and every registered view, then boots (`onMount`).
     pub fn new(
         ctx: ViewContext,

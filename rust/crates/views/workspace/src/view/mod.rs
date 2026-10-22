@@ -495,9 +495,15 @@ impl WorkspaceView {
     pub(crate) fn touch(&mut self, cx: &mut Context<Self>) {
         self.props_dirty = true;
         cx.notify();
-        self.head.update(cx, |_, cx| cx.notify());
-        self.toolbar.update(cx, |_, cx| cx.notify());
-        self.plan_head.update(cx, |_, cx| cx.notify());
+        // By id: a child's own callbacks (the toolbar's picker events) reach here while it is
+        // being updated.
+        for id in [
+            self.head.entity_id(),
+            self.toolbar.entity_id(),
+            self.plan_head.entity_id(),
+        ] {
+            gpui_kit::App::notify(cx, id);
+        }
     }
 
     // ---- derived ----

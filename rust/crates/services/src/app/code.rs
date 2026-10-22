@@ -4,7 +4,6 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use async_trait::async_trait;
 use parking_lot::Mutex;
@@ -275,7 +274,7 @@ impl AppServices {
             out.extend(recur_code::git_status(&root, &base).await.into_keys());
         }
         if let Some(pr) = self.store().pr_by_workspace(workspace_id) {
-            out.extend(pr.files.into_iter().map(|f| f.path));
+            out.extend(pr.files.into_iter().flatten().map(|f| f.path));
         }
         out.remove("");
         out.into_iter().collect()

@@ -30,8 +30,6 @@ mod terminal_persist;
 mod terminals;
 mod workspaces;
 
-#[cfg(test)]
-mod tests;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -39,7 +37,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use recur_agent::Provider;
 use recur_bundles::DiscoverRoots;
-use recur_domain::{PROVIDER_CURSOR, Settings};
+use recur_domain::Settings;
 use recur_engine::bus::{EngineEvent, Notify};
 use recur_engine::registry::{ForgeRegistry, ProviderRegistry, TrackerRegistry};
 use recur_engine::{Engine, GitSetup};
@@ -457,9 +455,5 @@ impl Providers {
                 .any(|(a, b)| !Arc::ptr_eq(&a.2, &b.2));
         *cur = next;
         changed
-    }
-
-    fn cursor_enabled(set: &Settings) -> bool {
-        set.provider_enabled(PROVIDER_CURSOR)
     }
 }

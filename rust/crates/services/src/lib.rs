@@ -8,6 +8,7 @@
 //! - `mock` (feature `mock`): the e2e mock bridge, serving the e2e seed.
 
 pub mod api;
+pub mod app;
 pub mod events;
 #[cfg(feature = "mock")]
 pub mod mock;
@@ -15,5 +16,6 @@ pub mod mock;
 mod error;
 
 pub use api::{Backend, Services};
+pub use app::{AppConfig, AppOptions, AppServices};
 pub use error::{Error, Result};
 pub use events::{AppEvent, EventHub};

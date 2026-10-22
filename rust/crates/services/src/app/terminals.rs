@@ -147,7 +147,7 @@ impl AppServices {
             .filter(|ws| !ws.archived && !ws.is_pr_chat_host())
             .filter_map(|ws| {
                 let c = self.terminal_chrome(&ws.id).clamped();
-                (!c.idle()).then(|| TerminalDockChrome {
+                (!c.idle()).then_some(TerminalDockChrome {
                     workspace_id: ws.id,
                     open: c.open,
                     maximized: c.maximized,

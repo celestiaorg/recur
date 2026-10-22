@@ -93,6 +93,19 @@ impl AppServices {
     }
 }
 
+impl AppServices {
+    /// [`blocking`] from any thread (the UI executor included).
+    pub(crate) async fn off_thread<T: Send + 'static>(
+        &self,
+        f: impl FnOnce() -> Result<T> + Send + 'static,
+    ) -> Result<T> {
+        self.handle
+            .spawn_blocking(f)
+            .await
+            .unwrap_or_else(|e| Err(join_error(e)))
+    }
+}
+
 /// Runs blocking file-system work (walks, searches, gzip) off the runtime's
 /// worker threads.
 pub(crate) async fn blocking<T: Send + 'static>(

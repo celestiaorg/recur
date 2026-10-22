@@ -8,15 +8,16 @@
 //! Content is one string where every chip is [`ATOM`]; chips are given in order with their
 //! margin-box sizes.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::Range;
 use std::rc::Rc;
 
 use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, Element, ElementId, FontFeatures, GlobalElementId,
-    Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString, Style, TextRun, Window,
-    point, px, size,
+    Hsla, InspectorElementId, IntoElement, LayoutId, Length, ParentElement, Pixels, SharedString,
+    Style, Styled, TextRun, Window, div, px,
 };
+use recur_ui::exact;
 use recur_ui::font_metrics::line_gap;
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, LineMetrics, TextStyled, WhiteSpace, line_metrics, text};
@@ -475,17 +476,65 @@ impl IntoElement for Flow {
     }
 }
 
+/// The width the children were placed at and a shrink-wrapped flow's exact width, both from
+/// the last frame, in the element's state.
+#[derive(Clone, Default)]
+struct Placed(Rc<Cell<Option<f32>>>, Rc<Cell<Option<f32>>>);
+
 pub struct FlowState {
     layout: Rc<RefCell<Option<FlowLayout>>>,
+    exact: Option<exact::ExactCell>,
+    placed: Placed,
+    placed_at: Option<f32>,
+    children: Vec<AnyElement>,
 }
 
-pub struct FlowPrepaint {
-    children: Vec<AnyElement>,
+impl Flow {
+    /// Each text run and chip at its line-box position, as an absolutely positioned child
+    /// of the flow's box: the offsets reach layout exactly (`recur_ui::exact`), so they snap
+    /// from the box's fractional origin as WebKit's inline boxes do.
+    fn place(&mut self, layout: &FlowLayout, window: &Window) -> Vec<AnyElement> {
+        let mut out = Vec::new();
+        let st = &self.style;
+        let at = |x: f32, y: f32, el: AnyElement| {
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .flex()
+                .flex_col()
+                .child(exact::vgap(y.max(0.), window))
+                .child(
+                    div()
+                        .flex()
+                        .child(exact::hgap(x.max(0.), window))
+                        .child(div().flex_none().child(el)),
+                )
+                .into_any_element()
+        };
+        for (r, x, y) in layout.runs() {
+            let t = text(layout.content[r].to_string())
+                .family(st.family.clone())
+                .size(st.size)
+                .weight(st.weight)
+                .color(st.color)
+                .line_height(LineHeight::Scale(st.leading))
+                .white_space(WhiteSpace::PreWrap)
+                .into_any_element();
+            out.push(at(x, y, t));
+        }
+        for (atom, (x, y, w, h)) in self.atoms.iter_mut().zip(layout.atom_boxes()) {
+            let el = std::mem::replace(&mut atom.el, gpui_kit::Empty.into_any_element());
+            let _ = (w, h);
+            out.push(at(x, y, el));
+        }
+        out
+    }
 }
 
 impl Element for Flow {
     type RequestLayoutState = FlowState;
-    type PrepaintState = FlowPrepaint;
+    type PrepaintState = ();
 
     fn id(&self) -> Option<ElementId> {
         Some(self.id.clone())
@@ -497,10 +546,10 @@ impl Element for Flow {
 
     fn request_layout(
         &mut self,
-        _: Option<&GlobalElementId>,
+        id: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
-        _: &mut App,
+        cx: &mut App,
     ) -> (LayoutId, FlowState) {
         let layout = self
             .out
@@ -513,26 +562,95 @@ impl Element for Flow {
         let fit = self.fit;
         let trailing = self.trailing_space;
         let min_h = self.min_height;
-        let id =
-            window.request_measured_layout(Style::default(), move |known, avail, window, _| {
-                let w = known.width.map(f32::from).unwrap_or(match avail.width {
-                    AvailableSpace::Definite(w) => w.into(),
-                    _ => f32::MAX / 4.,
-                });
+        let exact = exact::exact_cell(id, window);
+        let placed: Placed = match id {
+            Some(id) => window.with_element_state(id, |c: Option<Placed>, _| {
+                let c = c.unwrap_or_default();
+                (c.clone(), c)
+            }),
+            None => Placed::default(),
+        };
+        // A shrink-wrapped flow reports its width floored to the device grid (GPUI would round
+        // it) and a spacer adds the exact rest from the last frame; laid out at the floored
+        // width, it gets the device pixel back as slack so its lines break as they measured.
+        let fit_rest = if fit {
+            placed
+                .1
+                .get()
+                .map_or(0., |w| w - exact::floor_dp(w, window.scale_factor()))
+        } else {
+            0.
+        };
+        let leaves = exact::measured(
+            Length::Auto,
+            exact.as_ref(),
+            min_h,
+            window,
+            cx,
+            move |known, avail, window| {
+                let dp = 1. / window.scale_factor();
+                let w = known
+                    .width
+                    .map(|k| f32::from(k) + if fit { dp } else { 0. })
+                    .unwrap_or(match avail.width {
+                        AvailableSpace::Definite(w) => w.into(),
+                        _ => f32::MAX / 4.,
+                    });
                 let l = FlowLayout::compute(&content, &sizes, &st, w, window);
                 let extra = if trailing {
                     shape_width(" ", &st, window).0
                 } else {
                     0.
                 };
-                let out = size(
-                    px(if fit { (l.max_line + extra).min(w) } else { w }),
-                    px(l.height.max(min_h)),
+                let out = (
+                    if fit {
+                        exact::floor_dp((l.max_line + extra).min(w), window.scale_factor())
+                    } else {
+                        w
+                    },
+                    l.height.max(min_h),
                 );
                 *slot.borrow_mut() = Some(l);
                 out
-            });
-        (id, FlowState { layout })
+            },
+        );
+        let mut nodes = vec![window.request_layout(Style::default(), leaves, cx)];
+        if fit_rest > 1e-4 {
+            let mut rest = Style::default();
+            rest.size.height = px(1. / window.scale_factor()).into();
+            rest.aspect_ratio = Some(fit_rest * window.scale_factor());
+            nodes.push(window.request_layout(rest, [], cx));
+        }
+        // Children are placed from the last frame's line layout; a new width lays the
+        // window out again (see `prepaint`).
+        let placed_at = placed.0.get();
+        let mut children = match placed_at {
+            Some(w) => {
+                let content = self.content.to_string();
+                let sizes: Vec<(f32, f32)> =
+                    self.atoms.iter().map(|a| (a.width, a.height)).collect();
+                let l = FlowLayout::compute(&content, &sizes, &self.style, w, window);
+                self.place(&l, window)
+            }
+            None => Vec::new(),
+        };
+        nodes.extend(children.iter_mut().map(|c| c.request_layout(window, cx)));
+        let style = Style {
+            position: gpui_kit::Position::Relative,
+            display: gpui_kit::Display::Flex,
+            align_items: Some(gpui_kit::AlignItems::FlexStart),
+            ..Default::default()
+        };
+        (
+            window.request_layout(style, nodes, cx),
+            FlowState {
+                layout,
+                exact,
+                placed,
+                placed_at,
+                children,
+            },
+        )
     }
 
     fn prepaint(
@@ -543,19 +661,17 @@ impl Element for Flow {
         state: &mut FlowState,
         window: &mut Window,
         cx: &mut App,
-    ) -> FlowPrepaint {
+    ) {
         let content = self.content.to_string();
         let sizes: Vec<(f32, f32)> = self.atoms.iter().map(|a| (a.width, a.height)).collect();
-        let width = if self.fit {
-            // A shrink-wrapped box lays out at the width it reported.
-            state
-                .layout
-                .borrow()
-                .as_ref()
-                .map_or(f32::from(bounds.size.width), |l| l.width)
+        // A shrink-wrapped box is as wide as its widest line, so laying out at its width
+        // (a device pixel of slack for the snapped edge) breaks the lines as measuring did.
+        let slack = if self.fit {
+            1. / window.scale_factor()
         } else {
-            f32::from(bounds.size.width)
+            0.
         };
+        let width = f32::from(bounds.size.width) + slack;
         let stale = state
             .layout
             .borrow()
@@ -570,40 +686,33 @@ impl Element for Flow {
                 window,
             ));
         }
-        let layout = state.layout.borrow().clone().expect("flow layout");
-        let mut children = Vec::new();
-        let st = &self.style;
-        for (r, x, y) in layout.runs() {
-            let mut t = text(content[r].to_string())
-                .family(st.family.clone())
-                .size(st.size)
-                .weight(st.weight)
-                .color(st.color)
-                .line_height(LineHeight::Scale(st.leading))
-                .white_space(WhiteSpace::PreWrap)
-                .into_any_element();
-            t.prepaint_as_root(
-                bounds.origin + point(px(x), px(y)),
-                size(AvailableSpace::MaxContent, AvailableSpace::MaxContent),
-                window,
-                cx,
-            );
-            children.push(t);
+        let height = state
+            .layout
+            .borrow()
+            .as_ref()
+            .map_or(0., |l| l.height.max(self.min_height));
+        exact::settle(state.exact.as_ref(), height, window);
+        if self.fit {
+            let exact_w = state.layout.borrow().as_ref().map(|l| {
+                let extra = if self.trailing_space {
+                    shape_width(" ", &self.style, window).0
+                } else {
+                    0.
+                };
+                (l.max_line + extra).min(l.width)
+            });
+            if state.placed.1.get() != exact_w {
+                state.placed.1.set(exact_w);
+                window.refresh();
+            }
         }
-        for (atom, (x, y, w, h)) in self.atoms.iter_mut().zip(layout.atom_boxes()) {
-            let mut el = std::mem::replace(&mut atom.el, gpui_kit::Empty.into_any_element());
-            el.prepaint_as_root(
-                bounds.origin + point(px(x), px(y)),
-                size(
-                    AvailableSpace::Definite(px(w)),
-                    AvailableSpace::Definite(px(h)),
-                ),
-                window,
-                cx,
-            );
-            children.push(el);
+        if state.placed_at != Some(width) {
+            state.placed.0.set(Some(width));
+            window.refresh();
         }
-        FlowPrepaint { children }
+        for c in &mut state.children {
+            c.prepaint(window, cx);
+        }
     }
 
     fn paint(
@@ -611,12 +720,12 @@ impl Element for Flow {
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         _: Bounds<Pixels>,
-        _: &mut FlowState,
-        p: &mut FlowPrepaint,
+        state: &mut FlowState,
+        _: &mut (),
         window: &mut Window,
         cx: &mut App,
     ) {
-        for c in &mut p.children {
+        for c in &mut state.children {
             c.paint(window, cx);
         }
     }

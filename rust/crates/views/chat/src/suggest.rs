@@ -728,11 +728,6 @@ static GITHUB: LazyLock<GitHub> = LazyLock::new(GitHub::default);
 fn pr_face(p: &PrPerson, t: &Tokens) -> impl IntoElement {
     let url = participant_avatar_url(p, &*GITHUB as &dyn Forge);
     let (bg, fg) = face_style(&p.avatar_css, t);
-    let size = gpui_kit::size(px(20.), px(20.));
-    let fill = match bg {
-        Some((deg, a, b)) => recur_ui::style::css_linear_gradient(deg, (a, 0.), (b, 1.), size),
-        None => gpui_kit::Background::from(hsla(t.pane_2)),
-    };
     div()
         .relative()
         .flex_none()
@@ -741,7 +736,17 @@ fn pr_face(p: &PrPerson, t: &Tokens) -> impl IntoElement {
         .flex()
         .items_center()
         .justify_center()
-        .bg(fill)
+        .map(|d| match bg {
+            Some((deg, a, b)) => d.child(recur_ui::style::css_gradient(
+                deg,
+                (a, 0.),
+                (b, 1.),
+                10.,
+                0.,
+                recur_ui::color::TRANSPARENT,
+            )),
+            None => d.bg(hsla(t.pane_2)),
+        })
         .child(
             text(participant_initials(p))
                 .family(Family::Mono)

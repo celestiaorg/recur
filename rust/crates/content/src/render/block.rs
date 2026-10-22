@@ -423,7 +423,12 @@ impl Build<'_, '_> {
             // The control's margin box sits 12px above to 6px below the baseline
             // (`vertical-align: -1px`), so it can deepen the line.
             let below = m.height - m.baseline;
-            el = el.child(checkbox_box(checked, m.baseline - 9., self.env.t));
+            el = el.child(checkbox_box(
+                checked,
+                m.baseline - 9.,
+                self.env.t,
+                self.window,
+            ));
             if below < 6. {
                 el = el.child(vgap(6. - below, self.window));
             }
@@ -596,13 +601,16 @@ impl Build<'_, '_> {
             tag @ ("h1" | "h2" | "h3" | "h4" | "h5" | "h6") => {
                 let level = (tag.as_bytes()[1] - b'1') as usize;
                 let h = sh.headings[level];
-                let size = lu(fs * h.scale);
-                let mut mt = lu(h.margin_top * size);
+                // The text lays out at the LayoutUnit font size; `em` margins resolve against
+                // the computed (float) size, as WebKit's do.
+                let em = fs * h.scale;
+                let size = lu(em);
+                let mut mt = lu(h.margin_top * em);
                 if pos.first
                     && level < 3
                     && let Some(f) = sh.heading_first_top
                 {
-                    mt = lu(f * size);
+                    mt = lu(f * em);
                 }
                 let hf = Flow {
                     size,
@@ -614,7 +622,7 @@ impl Build<'_, '_> {
                 Laid {
                     el: self.inline_block(&e.children, hf),
                     mt,
-                    mb: lu(h.margin_bottom * size),
+                    mb: lu(h.margin_bottom * em),
                 }
             }
             "ul" | "ol" => self.list(e, flow, pos),
@@ -1356,14 +1364,11 @@ const CHECKBOX_MARK: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="12
 
 /// A disabled task checkbox as WebKit's native control paints it: a 12px rounded box (and its
 /// check) at half opacity. `top` is the border box's offset in the block.
-fn checkbox_box(checked: bool, top: f32, t: &Tokens) -> AnyElement {
+fn checkbox_box(checked: bool, top: f32, t: &Tokens, window: &Window) -> AnyElement {
     let fill = recur_ui::rgba(255, 255, 255, 0.5).over(t.bg);
     let edge = recur_ui::rgba(255, 255, 255, 0.36).over(t.bg);
     let check = recur_ui::rgba(153, 153, 153, 0.625).over(t.bg);
-    div()
-        .absolute()
-        .left(px(2.))
-        .top(px(top))
+    let control = div()
         .size(px(12.))
         .rounded(px(3.))
         .border(px(0.5))
@@ -1374,6 +1379,15 @@ fn checkbox_box(checked: bool, top: f32, t: &Tokens) -> AnyElement {
                 recur_ui::svg_markup(CHECKBOX_MARK.replace("currentColor", &check.to_css()))
                     .size(px(12.)),
             )
-        })
+        });
+    // Its top is a fractional offset from the baseline: an exact gap, as an inset would round.
+    div()
+        .absolute()
+        .left(px(2.))
+        .top_0()
+        .flex()
+        .flex_col()
+        .child(vgap(top.max(0.), window))
+        .child(control)
         .into_any_element()
 }

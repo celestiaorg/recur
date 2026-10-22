@@ -6,12 +6,13 @@ use std::time::{Duration, Instant};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     Context, Entity, EventEmitter, InteractiveElement, IntoElement, ParentElement, Render,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
+    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_agent_tools::display::permission_tools::permission_tool_label;
 use recur_domain::PermissionRequest;
 use recur_ui::fonts::Family;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
+use recur_ui::style::flex_share;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{IconName, Theme, icon, motion, rgba};
 use recur_view_core::AppState;
@@ -397,9 +398,9 @@ impl Render for PermissionCard {
                 .flex()
                 .mt(px(11.))
                 .gap(px(7.))
-                .child(deny.flex_1())
-                .child(once.flex_1())
-                .child(go.flex_1())
+                .child(flex_share(1., deny.flex_1()))
+                .child(flex_share(1., once.flex_1()))
+                .child(flex_share(1., go.flex_1()))
         } else {
             // `grid-template-columns: auto 1fr 1.35fr`.
             div()
@@ -414,18 +415,8 @@ impl Render for PermissionCard {
                 .border_t_1()
                 .border_color(hsla(t.line_soft))
                 .child(deny.flex_none())
-                .child(
-                    div()
-                        .flex_grow(1.)
-                        .flex_basis(relative(0.))
-                        .child(once.w_full()),
-                )
-                .child(
-                    div()
-                        .flex_grow(1.35)
-                        .flex_basis(relative(0.))
-                        .child(go.w_full()),
-                )
+                .child(flex_share(1., once.flex_1()))
+                .child(flex_share(1.35, go.flex_1()))
         };
         card = card.child(acts);
         if compact {
@@ -451,16 +442,17 @@ impl Render for PermissionCard {
                     t.amber.mix(0.18, recur_ui::color::TRANSPARENT),
                 ),
             ];
-            let bar = div().absolute().left_0().top_0().bottom_0().w(px(3.)).bg(
-                gpui_kit::linear_gradient(
+            let bar = div()
+                .absolute()
+                .left_0()
+                .top_0()
+                .bottom_0()
+                .w(px(3.))
+                .child(recur_ui::style::gradient_fill(
                     180.,
-                    gpui_kit::linear_color_stop(hsla(t.amber), 0.),
-                    gpui_kit::linear_color_stop(
-                        hsla(t.amber.mix(0.35, recur_ui::color::TRANSPARENT)),
-                        1.,
-                    ),
-                ),
-            );
+                    (t.amber, 0.),
+                    (t.amber.mix(0.35, recur_ui::color::TRANSPARENT), 1.),
+                ));
             with_shadow(
                 recur_ui::style::card(t.pane, t.line_bright, 12.)
                     .overflow_hidden()

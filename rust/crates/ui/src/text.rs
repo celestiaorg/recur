@@ -17,7 +17,7 @@ use gpui_kit::{
     UnderlineStyle, Window, point, px, quad, size,
 };
 use smallvec::SmallVec;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::ops::Range;
 use std::rc::Rc;
 use unicode_linebreak::{BreakOpportunity, linebreaks};
@@ -241,6 +241,7 @@ pub struct Text {
     align: Align,
     opacity: f32,
     mask: Option<AlphaMask>,
+    field: bool,
     layout: Rc<RefCell<Option<Laid>>>,
 }
 
@@ -267,6 +268,7 @@ impl Text {
             align: Align::Left,
             opacity: 1.,
             mask: None,
+            field: false,
             layout: Rc::default(),
         }
     }
@@ -315,6 +317,13 @@ impl Text {
         self.clamp = Some(lines.max(1));
         self
     }
+    /// Text in a text field's inner editor (a placeholder). When the font's content area is
+    /// taller than its line (a negative half-leading), WebKit sets the editor's text that much
+    /// higher again than block text; measured in WebKit across Inter sizes (within 1/64 px).
+    pub fn field(mut self) -> Self {
+        self.field = true;
+        self
+    }
     /// Fade glyphs by a horizontal mask (see [`AlphaMask`]).
     pub fn mask(mut self, mask: AlphaMask) -> Self {
         self.mask = Some(mask);
@@ -350,6 +359,7 @@ struct Resolved {
     font_size: f32,
     line_height: LineHeight,
     base: RunStyle,
+    field: bool,
 }
 
 #[derive(Clone, PartialEq)]
@@ -391,6 +401,9 @@ struct Para {
     glyphs: Vec<PaintGlyph>,
     /// Inline box spans: (span index, border-box left, border-box right, byte range).
     boxes: Vec<(usize, f32, f32, Range<usize>)>,
+    /// Where each inline box opens (byte, x before its left margin): a line that starts there
+    /// starts with the box's left margin, border and padding.
+    box_starts: Vec<(usize, f32)>,
 }
 
 #[derive(Clone)]
@@ -541,6 +554,13 @@ pub fn line_metrics(
     }
 }
 
+/// A text field editor's line (see [`Text::field`]): a negative half-leading lifts the
+/// baseline once more.
+fn field_metrics(mut m: LineMetrics) -> LineMetrics {
+    m.baseline += (m.baseline - m.ascent).min(0.);
+    m
+}
+
 fn snap(v: f32, scale: f32) -> f32 {
     (v * scale).round() / scale
 }
@@ -614,6 +634,7 @@ impl Text {
             font_size: f32::from(font_size),
             line_height,
             base: run_of(&base_style, 0, usize::MAX),
+            field: self.field,
         }
     }
 }
@@ -715,6 +736,7 @@ fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
     let mut edges = Vec::new();
     let mut glyphs = Vec::new();
     let mut boxes = Vec::new();
+    let mut box_starts = Vec::new();
     let mut open_box: Option<(usize, f32)> = None;
     for (ri, abs) in run_slices(&key.runs, range.clone()) {
         let run = &key.runs[ri];
@@ -727,6 +749,7 @@ fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
             && abs.start == sr.start.max(range.start)
         {
             open_box = Some((run.span, pen + b.margin_left));
+            box_starts.push((abs.start - range.start, pen));
             pen += b.left();
         }
         let text = &key.content[abs.clone()];
@@ -770,6 +793,7 @@ fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
         edges,
         glyphs,
         boxes,
+        box_starts,
     }
 }
 
@@ -791,10 +815,16 @@ impl Para {
         end - self.line_start(r.start)
     }
 
-    /// Left edge of a line starting at `byte`: the paragraph start keeps a leading inline
-    /// box's left extent.
+    /// Left edge of a line starting at `byte`. An inline box opening there brings its left
+    /// margin, border and padding onto the line, as in CSS.
     fn line_start(&self, byte: usize) -> f32 {
-        if byte == 0 { 0. } else { self.x_at(byte) }
+        if byte == 0 {
+            return 0.;
+        }
+        self.box_starts
+            .iter()
+            .find(|(b, _)| *b == byte)
+            .map_or_else(|| self.x_at(byte), |(_, x)| *x)
     }
 }
 
@@ -900,8 +930,13 @@ fn rounded_extent(run: &RunStyle, window: &Window) -> (f32, f32) {
 
 impl Laid {
     fn build(key: Resolved, window: &Window) -> Laid {
+        let field = key.field;
+        let metrics_of = |a, d, g, size| {
+            let m = line_metrics(a, d, g, size, key.line_height);
+            if field { field_metrics(m) } else { m }
+        };
         let (a, d, g) = font_extent(&key.base, key.font_size, window);
-        let metrics = line_metrics(a, d, g, key.font_size, key.line_height);
+        let metrics = metrics_of(a, d, g, key.font_size);
         let mut paras = Vec::new();
         let mut start = 0;
         for piece in key.content.split('\n') {
@@ -912,7 +947,7 @@ impl Laid {
         let mut at = 0;
         for run in &key.runs {
             let (a, d, g) = font_extent(run, run.size, window);
-            let m = line_metrics(a, d, g, run.size, key.line_height);
+            let m = metrics_of(a, d, g, run.size);
             extents.push((at..at + run.len, m.baseline, m.height - m.baseline));
             at += run.len;
         }
@@ -988,7 +1023,9 @@ impl Laid {
                     }
                     end = e;
                 }
-                line.range.end = end;
+                // WebKit drops the spaces before the ellipsis (`out…`, not `out …`).
+                let kept = text[line.range.start..end].trim_end_matches([' ', '\t']);
+                line.range.end = line.range.start + kept.len();
                 line.width = p.width(text, line.range.clone()) + ell_w;
                 line.ellipsis = true;
             }
@@ -1089,7 +1126,7 @@ impl Laid {
 
 pub struct TextState {
     layout: Rc<RefCell<Option<Laid>>>,
-    exact: Option<ExactCell>,
+    exact: Option<crate::exact::ExactCell>,
     probes: Vec<(Probe, LayoutId)>,
     snapped: Snapped,
 }
@@ -1176,74 +1213,6 @@ fn resolve_probes(probes: &[(Probe, LayoutId)], window: &mut Window) -> Snapped 
             (*p, f32::from(v))
         })
         .collect()
-}
-
-/// The exact height a wrapping text box with an id took in the last frame. GPUI rounds measured
-/// sizes up to device pixels, so the box is laid out as its measured lines floored to the
-/// device grid plus a spacer for the remainder: a 1dp-wide leaf whose `aspect_ratio` (which
-/// reaches Taffy unrounded) makes it exactly that tall. Without an id the remainder assumes no
-/// line wraps; with one, boxes below keep WebKit's fractional positions from the second frame
-/// on whatever the wrapping.
-type ExactCell = Rc<Cell<Option<f32>>>;
-
-fn exact_cell(id: Option<&GlobalElementId>, window: &mut Window) -> Option<ExactCell> {
-    Some(
-        window.with_element_state(id?, |cell: Option<ExactCell>, _| {
-            let cell = cell.unwrap_or_default();
-            (cell.clone(), cell)
-        }),
-    )
-}
-
-fn floor_dp(v: f32, scale: f32) -> f32 {
-    ((v * scale) + 1e-3).floor() / scale
-}
-
-/// Leaves of a measured text box: the measured lines floored to the device grid, plus the spacer
-/// that makes up the exact height. `measure` returns the unrounded `(width, height)`; `guess`
-/// is the height when no line wraps, the exact height until a box with an id has measured one.
-fn text_leaves(
-    min_width: gpui_kit::Length,
-    exact: Option<&ExactCell>,
-    guess: f32,
-    window: &mut Window,
-    cx: &mut App,
-    measure: impl Fn(
-        gpui_kit::Size<Option<Pixels>>,
-        gpui_kit::Size<AvailableSpace>,
-        &mut Window,
-    ) -> (f32, f32)
-    + 'static,
-) -> SmallVec<[LayoutId; 6]> {
-    let mut leaf_style = Style::default();
-    leaf_style.min_size.width = min_width;
-    let leaf = window.request_measured_layout(leaf_style, move |known, available, window, _| {
-        let (w, h) = measure(known, available, window);
-        let scale = window.scale_factor();
-        size(px(snap(w, scale)), px(floor_dp(h, scale)))
-    });
-    let mut leaves = SmallVec::new();
-    leaves.push(leaf);
-    let scale = window.scale_factor();
-    let h = exact.and_then(|c| c.get()).unwrap_or(guess);
-    let rest = h - floor_dp(h, scale);
-    if rest > 1e-4 {
-        let mut spacer = Style::default();
-        spacer.size.width = px(1. / scale).into();
-        spacer.aspect_ratio = Some(1. / scale / rest);
-        leaves.push(window.request_layout(spacer, [], cx));
-    }
-    leaves
-}
-
-/// After the final layout: remember the exact height, and lay out again when it changed.
-fn check_exact(exact: Option<&ExactCell>, height: f32, window: &mut Window) {
-    if let Some(c) = exact
-        && c.get().is_none_or(|h| (h - height).abs() > 1e-3)
-    {
-        c.set(Some(height));
-        window.refresh();
-    }
 }
 
 impl IntoElement for Text {
@@ -1350,12 +1319,12 @@ impl Element for Text {
                 );
             }
         }
-        let exact = exact_cell(id, window);
+        let exact = crate::exact::exact_cell(id, window);
         let guess = layout
             .borrow()
             .as_ref()
             .map_or(0., |l| l.unwrapped_height(clamp));
-        let mut leaves = text_leaves(
+        let mut leaves = crate::exact::measured(
             style.min_size.width,
             exact.as_ref(),
             guess,
@@ -1412,7 +1381,7 @@ impl Element for Text {
                 self.ellipsis,
                 window,
             );
-            check_exact(state.exact.as_ref(), laid.measured().1, window);
+            crate::exact::settle(state.exact.as_ref(), laid.measured().1, window);
         }
         state.snapped = resolve_probes(&state.probes, window);
     }
@@ -1500,7 +1469,7 @@ impl TextStack {
 }
 
 pub struct StackState {
-    exact: Option<ExactCell>,
+    exact: Option<crate::exact::ExactCell>,
     probes: Vec<(Probe, LayoutId)>,
     snapped: Snapped,
 }
@@ -1536,14 +1505,14 @@ impl Element for TextStack {
             .iter()
             .map(|(g, t)| (*g, t.white_space, t.anywhere, t.clamp, t.ellipsis))
             .collect();
-        let exact = exact_cell(id, window);
+        let exact = crate::exact::exact_cell(id, window);
         let guess = self
             .blocks
             .iter()
             .zip(self.layouts.borrow().iter())
             .map(|((gap, t), l)| gap + l.unwrapped_height(t.clamp))
             .sum();
-        let mut leaves = text_leaves(
+        let mut leaves = crate::exact::measured(
             px(0.).into(),
             exact.as_ref(),
             guess,
@@ -1615,7 +1584,7 @@ impl Element for TextStack {
             .zip(layouts.iter())
             .map(|((gap, _), laid)| gap + laid.measured().1)
             .sum();
-        check_exact(state.exact.as_ref(), h, window);
+        crate::exact::settle(state.exact.as_ref(), h, window);
         state.snapped = resolve_probes(&state.probes, window);
     }
 
@@ -1858,6 +1827,36 @@ mod tests {
         assert_eq!(s, "a b");
         assert_eq!(runs.iter().map(|r| r.len).collect::<Vec<_>>(), vec![2, 1]);
         assert_eq!(runs.iter().map(|r| r.span).collect::<Vec<_>>(), vec![0, 1]);
+    }
+
+    #[test]
+    fn field_text_counts_a_negative_half_leading_twice() {
+        let inter = |size: f32| (size * 1984. / 2048., size * 494. / 2048.);
+        let at = |size: f32| {
+            let (a, d) = inter(size);
+            field_metrics(line_metrics(a, d, 0., size, LineHeight::Normal)).baseline
+        };
+        // WebKit's placeholder baselines (tools/ui-parity probes): 14.5px sits at 13.5 where
+        // block text sits at 13.765625; 11px and 14px (positive half-leading) do not move.
+        assert_eq!(at(14.5), 13.484375);
+        assert_eq!(at(18.), 16.65625);
+        assert_eq!(at(11.), 11.);
+        assert_eq!(at(14.), 13.578125);
+    }
+
+    #[test]
+    fn a_line_starting_at_an_inline_box_takes_its_left_extent() {
+        // "ab cd": the box over "cd" opens at x 13 (after "ab "), its glyphs start 6px later.
+        let p = Para {
+            range: 0..5,
+            edges: vec![(0, 0.), (1, 5.), (2, 10.), (3, 19.), (4, 24.), (5, 35.)],
+            glyphs: Vec::new(),
+            boxes: Vec::new(),
+            box_starts: vec![(3, 13.)],
+        };
+        assert_eq!(p.line_start(3), 13.);
+        assert_eq!(p.width("ab cd", 3..5), 22.);
+        assert_eq!(p.line_start(4), 24.);
     }
 
     #[test]

@@ -130,6 +130,12 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
         };
         let handle = cx.update(|cx| {
             cx.open_window(options, |window, cx| {
+                // Scenes share one app: start each without the last scene's toasts.
+                let toasts = recur_ui::widgets::ToastStore::global(cx);
+                let ids: Vec<u64> = toasts.read(cx).toasts().iter().map(|t| t.id).collect();
+                for id in ids {
+                    recur_ui::widgets::ToastStore::dismiss(&toasts, id, false, window, cx);
+                }
                 let view = build(&name, window, cx)
                     .unwrap_or_else(|| cx.new(|_| recur_ui::gallery::Missing).into());
                 let document = cx.focus_handle();

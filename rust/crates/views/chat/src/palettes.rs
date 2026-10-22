@@ -350,7 +350,9 @@ impl Render for StopPalette {
                 .children(rows)
                 .into_any_element()
         };
+        // GPUI clips rectangles: the footer rounds itself inside the 10px panel.
         let foot = palette_footer(true, cx)
+            .rounded_b(px(9.))
             .flex_wrap()
             .gap_x(px(14.))
             .gap_y(px(8.))
@@ -374,11 +376,10 @@ impl Render for StopPalette {
             .w(px(width))
             .occlude()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
-        palette_scrim(window)
+        palette_scrim(window, panel)
             .id("stop-palette-bg")
             .occlude()
             .on_mouse_down(MouseButton::Left, cx.listener(|p, _, _, cx| p.close(cx)))
-            .child(panel)
             .into_any_element()
     }
 }
@@ -645,14 +646,13 @@ impl Render for CommandPrompts {
             .w(px(width))
             .occlude()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
-        palette_scrim(window)
+        palette_scrim(window, panel)
             .id("cmd-prompts-bg")
             .occlude()
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|_, _, _, cx| cx.emit(CommandPromptsEvent::Cancel)),
             )
-            .child(panel)
             .into_any_element()
     }
 }

@@ -125,9 +125,17 @@ pub fn brief_card(
     state: &Entity<AppState>,
     epoch: std::time::Instant,
     window: &mut Window,
-    cx: &App,
+    cx: &mut App,
 ) -> AnyElement {
     let t = Theme::of(cx).tokens;
+    // `.wbrief { transition: border-color .12s, background .12s }`.
+    let h = motion::hover(
+        SharedString::from(format!("{id}-hover")),
+        std::time::Duration::from_millis(120),
+        motion::Easing::EASE,
+        window,
+        cx,
+    );
     let mut main = div()
         .flex_1()
         .min_w_0()
@@ -187,10 +195,10 @@ pub fn brief_card(
         .py(px(10.))
         .rounded(px(10.))
         .border_1()
-        .border_color(hsla(t.line))
-        .bg(hsla(t.pane))
+        .border_color(hsla(t.line_bright.mix(h.k(), t.line)))
+        .bg(hsla(t.pane_2.mix(h.k(), t.pane)))
         .cursor_pointer()
-        .hover(|s| s.border_color(hsla(t.line_bright)).bg(hsla(t.pane_2)))
+        .on_hover(h.listener())
         .child(tile(brief, false, epoch, window, cx))
         .child(main)
         .on_click(move |_, _, cx| open(&state, &b, &target, cx))
@@ -207,9 +215,17 @@ pub fn brief_row(
     state: &Entity<AppState>,
     epoch: std::time::Instant,
     window: &mut Window,
-    cx: &App,
+    cx: &mut App,
 ) -> AnyElement {
     let t = Theme::of(cx).tokens;
+    // `.wbrief-row { transition: background .1s }`.
+    let h = motion::hover(
+        SharedString::from(format!("{id}-hover")),
+        std::time::Duration::from_millis(100),
+        motion::Easing::EASE,
+        window,
+        cx,
+    );
     let unread = notes.len();
     let note_titles: Vec<String> = notes
         .iter()
@@ -311,7 +327,8 @@ pub fn brief_row(
         .border_b_1()
         .border_color(hsla(t.line_soft))
         .cursor_pointer()
-        .hover(|s| s.bg(hsla(t.pane_2)))
+        .bg(hsla(t.pane_2.mix(h.k(), recur_ui::color::TRANSPARENT)))
+        .on_hover(h.listener())
         .child(
             div()
                 .flex_none()

@@ -112,7 +112,7 @@ impl AgentChat {
             })
             .child(composer);
         if !composer_only {
-            chat_in = chat_in.child(self.in_row(cx));
+            chat_in = chat_in.child(self.in_row(window, cx));
         }
         if let Some(menu) = menu {
             chat_in = chat_in.child(menu);
@@ -149,8 +149,18 @@ impl AgentChat {
     }
 
     /// `.chat-in-row`: the toolbar, the context meter, Stop and Send.
-    fn in_row(&mut self, cx: &mut Context<Self>) -> AnyElement {
+    fn in_row(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
+        // `.chat-in .send { transition: background .12s ease, color .12s ease }`.
+        let ease = |id: &'static str, window: &mut Window, cx: &mut Context<Self>| {
+            motion::hover(
+                id,
+                std::time::Duration::from_millis(120),
+                motion::Easing::EASE,
+                window,
+                cx,
+            )
+        };
         let meter = self.meter.clone();
         let usage = self.props.context_usage.clone();
         meter.update(cx, |m, cx| m.set_usage(usage, cx));
@@ -162,7 +172,7 @@ impl AgentChat {
             .flex_none()
             .child(meter);
         if self.hooks.stop && (self.props.sending || self.props.can_stop) {
-            let coral = t.coral;
+            let h = ease("chat-stop-hover", window, cx);
             actions = actions.child(recur_ui::tooltip::titled(
                 "chat-stop-tip",
                 "Stop (⌘⇧⌫)",
@@ -174,10 +184,10 @@ impl AgentChat {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .bg(hsla(t.text))
-                    .text_color(hsla(t.bg))
+                    .bg(hsla(t.coral.mix(h.k(), t.text)))
+                    .text_color(hsla(INK.mix(h.k(), t.bg)))
                     .cursor_pointer()
-                    .hover(move |s| s.bg(hsla(coral)).text_color(hsla(INK)))
+                    .on_hover(h.listener())
                     .child(icon(IconName::OctagonX).size(px(15.)))
                     .on_click(cx.listener(|this, _, _, cx| this.stop(cx))),
             ));
@@ -197,8 +207,7 @@ impl AgentChat {
         } else {
             "Send"
         };
-        let amber = t.amber;
-        let on_amber = t.on_amber;
+        let h = ease("chat-send-hover", window, cx);
         let send = div()
             .id("chat-send")
             .debug_selector(|| {
@@ -215,10 +224,10 @@ impl AgentChat {
             .items_center()
             .justify_center()
             .when(can_send, |d| {
-                d.bg(hsla(t.text))
-                    .text_color(hsla(t.bg))
+                d.bg(hsla(t.amber.mix(h.k(), t.text)))
+                    .text_color(hsla(t.on_amber.mix(h.k(), t.bg)))
                     .cursor_pointer()
-                    .hover(move |s| s.bg(hsla(amber)).text_color(hsla(on_amber)))
+                    .on_hover(h.listener())
                     .on_click(cx.listener(|this, ev: &gpui_kit::ClickEvent, window, cx| {
                         let m = ev.modifiers();
                         this.send(m.platform || m.control, window, cx);
@@ -891,6 +900,7 @@ impl AgentChat {
                 .pb(px(4.))
                 .child(panel)
         };
-        Some(el.occlude().into_any_element())
+        // `z-index: 40`: above the composer, whose border GPUI paints after its children.
+        Some(gpui_kit::deferred(el.occlude()).into_any_element())
     }
 }

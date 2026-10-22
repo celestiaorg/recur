@@ -409,6 +409,8 @@ pub struct AgentChat {
     pub(crate) window_handle: gpui_kit::AnyWindowHandle,
     /// `crate::rows::tc_icon_shift` for this frame's fonts.
     pub(crate) tc_shift: f32,
+    /// The window's device scale this frame (exact gaps).
+    pub(crate) scale: f32,
 
     // ---- the draft ----
     pub(crate) doc: ComposerDoc,
@@ -582,6 +584,7 @@ impl AgentChat {
             focus: cx.focus_handle().tab_stop(true),
             window_handle: window.window_handle(),
             tc_shift: 0.,
+            scale: window.scale_factor(),
             doc: ComposerDoc::default(),
             input: String::new(),
             attachments: Vec::new(),

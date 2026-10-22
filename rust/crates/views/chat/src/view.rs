@@ -6,7 +6,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, Context, DragMoveEvent, ExternalPaths, InteractiveElement, IntoElement,
     KeystrokeEvent, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
-    Subscription, Window, canvas, div, linear_color_stop, linear_gradient, px,
+    Subscription, Window, canvas, div, px,
 };
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, text};
@@ -101,11 +101,7 @@ impl AgentChat {
         let show_top = !self.fade_ready || top > 1.;
         let show_bot = self.fade_ready && max > NEAR_BOTTOM_PX && top < max - NEAR_BOTTOM_PX;
         let grad = |from: f32, to: f32| {
-            linear_gradient(
-                180.,
-                linear_color_stop(hsla(bg.with_alpha(from)), 0.),
-                linear_color_stop(hsla(bg.with_alpha(to)), 1.),
-            )
+            recur_ui::style::gradient_fill(180., (bg.with_alpha(from), 0.), (bg.with_alpha(to), 1.))
         };
         let mut out = Vec::new();
         if show_top {
@@ -117,7 +113,7 @@ impl AgentChat {
                     .left_0()
                     .right_0()
                     .h(px(fade))
-                    .bg(grad(1., 0.))
+                    .child(grad(1., 0.))
                     .into_any_element(),
             );
         }
@@ -130,7 +126,7 @@ impl AgentChat {
                     .left_0()
                     .right_0()
                     .h(px(fade))
-                    .bg(grad(0., 1.))
+                    .child(grad(0., 1.))
                     .into_any_element(),
             );
         }
@@ -210,6 +206,7 @@ impl Render for AgentChat {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
         self.tc_shift = crate::rows::tc_icon_shift(window);
+        self.scale = window.scale_factor();
         self.snapshot_tool_data(cx);
         self.markdown_seen.clear();
         self.sync_turn_clock(cx);

@@ -155,6 +155,8 @@ for (const scene of scenes) {
       await document.fonts.ready
     })
     for (const step of scene.steps ?? []) await run(page, step)
+    // Images (the lightbox's, a message's) must be decoded before the frame is captured.
+    await page.evaluate(() => Promise.all([...document.images].map((i) => i.decode().catch(() => undefined))))
     if (replay !== undefined) {
       // xterm draws on the next frames; and the reference must be the WebGL renderer the app
       // ships, not the DOM fallback.
@@ -187,6 +189,32 @@ for (const scene of scenes) {
         const r = el.getBoundingClientRect()
         if (r.width > 0 && r.height > 0) rects.push([r.x, r.y, r.width, r.height])
       }
+      // Placeholders are text with no text node: an empty field's `placeholder` and string
+      // `::before` / `::after` content (`.chat-composer.empty:before`). Each covers its first
+      // line, measured in its own font.
+      const measure = document.createElement('canvas').getContext('2d')!
+      const line = (el: Element, s: string, cs: CSSStyleDeclaration, centered: boolean) => {
+        const r = el.getBoundingClientRect()
+        const box = getComputedStyle(el)
+        const left = r.x + parseFloat(box.borderLeftWidth) + parseFloat(box.paddingLeft)
+        const top = r.y + parseFloat(box.borderTopWidth) + parseFloat(box.paddingTop)
+        const inner = r.height - parseFloat(box.borderTopWidth) - parseFloat(box.borderBottomWidth)
+          - parseFloat(box.paddingTop) - parseFloat(box.paddingBottom)
+        measure.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+        const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.25
+        const w = measure.measureText(s).width + s.length * (parseFloat(cs.letterSpacing) || 0)
+        if (w > 0) rects.push([left, centered ? top + (inner - lh) / 2 : top, w, lh])
+      }
+      for (const el of document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')) {
+        if (!el.value && el.placeholder) line(el, el.placeholder, getComputedStyle(el, '::placeholder'), el.tagName === 'INPUT')
+      }
+      for (const el of document.body.querySelectorAll('*')) {
+        for (const pseudo of ['::before', '::after']) {
+          const cs = getComputedStyle(el, pseudo)
+          const m = /^"(.{3,})"$/.exec(cs.content)
+          if (m && cs.display !== 'none') line(el, m[1], cs, false)
+        }
+      }
       return rects
     })
     writeFileSync(join(out, `${file}.text.json`), JSON.stringify(textRects))
@@ -199,6 +227,29 @@ for (const scene of scenes) {
         }),
       )
       writeFileSync(join(out, 'metrics.json'), JSON.stringify(metrics, null, 1))
+    }
+    if (process.env.UI_PARITY_BOXES) {
+      // Every element's fractional border box (CSS px), to compare layout offsets exactly.
+      const boxes = await page.evaluate(() => {
+        const fmt = (r: DOMRect, what: string) =>
+          `${r.x.toFixed(4)} ${r.y.toFixed(4)} ${r.width.toFixed(4)} ${r.height.toFixed(4)} ${what}`
+        const out: string[] = []
+        for (const el of document.body.querySelectorAll<HTMLElement>('*')) {
+          const r = el.getBoundingClientRect()
+          if (r.width === 0 && r.height === 0) continue
+          const cls = typeof el.className === 'string' ? el.className : ''
+          out.push(fmt(r, `${el.tagName.toLowerCase()}.${cls.split(/\s+/).filter((c) => c && !c.startsWith('svelte-')).join('.')}`))
+        }
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.textContent?.trim()) continue
+          const range = document.createRange()
+          range.selectNodeContents(n)
+          out.push(fmt(range.getBoundingClientRect(), `#text ${n.textContent.trim().slice(0, 40)}`))
+        }
+        return out
+      })
+      writeFileSync(join(out, `${file}.boxes.txt`), boxes.join('\n'))
     }
     if (errors.length) throw new Error(`page errors: ${errors.join('; ')}`)
     await context.close()

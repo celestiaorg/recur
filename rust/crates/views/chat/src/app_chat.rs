@@ -21,7 +21,7 @@ use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::widgets::tab_chip::{ChipIcon, tab_chip};
 use recur_ui::widgets::tab_strip::{tab_strip, tab_strip_action};
-use recur_ui::{IconName, Theme, icon};
+use recur_ui::{IconName, Theme, icon, motion};
 use recur_view_core::models::{CatalogModel, FlagMap, flags_for_model, normalize_flags};
 use recur_view_core::modes::{ChatMode, resolved_default_for_mode};
 use recur_view_core::{AppState, ViewContext, app_chat_agent_id};
@@ -737,8 +737,10 @@ impl Render for AppChat {
         let new_btn = recur_ui::tooltip::titled(
             "ask-new-tip",
             "New chat",
+            // `.wsv-chat-new { color: var(--muted) }`; `.tab-strip-act svg` is 15px.
             tab_strip_action("ask-new", false, false, cx)
-                .child(icon(IconName::Plus).size(px(14.)))
+                .text_color(hsla(Theme::of(cx).tokens.muted))
+                .child(icon(IconName::Plus).size(px(15.)))
                 .on_click(cx.listener(|a, _, _, cx| a.new_tab(cx))),
         );
         let strip = strip.trailing(new_btn);
@@ -804,29 +806,41 @@ struct AskEmpty {
 }
 
 impl Render for AskEmpty {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
         let hover_bg = t.text.mix(0.06, t.pane_2);
-        let chips = ASK_CHIPS.iter().enumerate().map(|(i, c)| {
-            let app = self.app.clone();
-            div()
-                .id(("ask-chip", i))
-                .debug_selector(|| format!("ask-chip:{c}"))
-                .border_1()
-                .border_color(hsla(t.line))
-                .bg(hsla(t.pane_2))
-                .text_color(hsla(t.text))
-                .rounded(px(999.))
-                .px(px(12.))
-                .py(px(6.))
-                .text_size(px(12.))
-                .cursor_pointer()
-                .hover(move |s| s.border_color(hsla(t.line_bright)).bg(hsla(hover_bg)))
-                .child(label(*c, Family::Ui, 12., 400.).line_height(LineHeight::Normal))
-                .on_click(move |_, _, cx| {
-                    let _ = app.update(cx, |a, cx| a.send_text(c, cx));
-                })
-        });
+        let chips: Vec<_> = ASK_CHIPS
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                let app = self.app.clone();
+                // `.ask-chips button { transition: border-color .12s, background .12s }`.
+                let h = motion::hover(
+                    ("ask-chip-hover", i),
+                    std::time::Duration::from_millis(120),
+                    motion::Easing::EASE,
+                    window,
+                    cx,
+                );
+                div()
+                    .id(("ask-chip", i))
+                    .debug_selector(|| format!("ask-chip:{c}"))
+                    .border_1()
+                    .border_color(hsla(t.line_bright.mix(h.k(), t.line)))
+                    .bg(hsla(hover_bg.mix(h.k(), t.pane_2)))
+                    .text_color(hsla(t.text))
+                    .rounded(px(999.))
+                    .px(px(12.))
+                    .py(px(6.))
+                    .text_size(px(12.))
+                    .cursor_pointer()
+                    .on_hover(h.listener())
+                    .child(label(*c, Family::Ui, 12., 400.).line_height(LineHeight::Normal))
+                    .on_click(move |_, _, cx| {
+                        let _ = app.update(cx, |a, cx| a.send_text(c, cx));
+                    })
+            })
+            .collect();
         div()
             .flex()
             .flex_col()

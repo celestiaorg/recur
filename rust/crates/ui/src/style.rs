@@ -44,40 +44,9 @@ fn border_over(border: Color, bg: Color) -> Hsla {
     }
 }
 
-/// CSS `linear-gradient(<angle>, from, to)` for a box of `size`, as a GPUI background. GPUI
-/// stretches a diagonal direction by the box's aspect ratio and measures along its longer side;
-/// this picks the GPUI angle whose stretched direction is the CSS one and rescales the stops from
-/// CSS's gradient line (`|w sin a| + |h cos a|`) to GPUI's. Exact for any angle.
-pub fn css_linear_gradient(
-    angle: f32,
-    from: (Color, f32),
-    to: (Color, f32),
-    size: gpui_kit::Size<Pixels>,
-) -> gpui_kit::Background {
-    let (w, h) = (
-        f32::from(size.width).max(1e-3),
-        f32::from(size.height).max(1e-3),
-    );
-    let a = angle.to_radians();
-    let (sx, sy) = (a.sin(), -a.cos());
-    let (gx, gy) = if w > h {
-        (sx, sy * w / h)
-    } else {
-        (sx * h / w, sy)
-    };
-    let gpui_angle = (gy.atan2(gx).to_degrees() + 90.).rem_euclid(360.);
-    let along = if sx.abs() > sy.abs() { w } else { h };
-    let line = (w * sx).abs() + (h * sy).abs();
-    let stop = |s: f32| 0.5 + (s - 0.5) * line / along;
-    gpui_kit::linear_gradient(
-        gpui_angle,
-        gpui_kit::linear_color_stop(from.0, stop(from.1)),
-        gpui_kit::linear_color_stop(to.0, stop(to.1)),
-    )
-}
-
-/// A [`css_linear_gradient`] background for its relatively positioned parent with a `border` of
-/// `border_color` and `radius`. See [`inset_background`] for its extent.
+/// A CSS `linear-gradient(<angle>, from, to)` background for its relatively positioned parent with a `border` of
+/// `border_color` and `radius`. See [`inset_background`] for its extent. Painted as a raster of
+/// its device pixels: WebKit's gradients are smooth, GPUI's shader dithers them by ±2 levels.
 pub fn css_gradient(
     angle: f32,
     from: (Color, f32),
@@ -92,20 +61,184 @@ pub fn css_gradient(
         move |bounds, _, window, _| {
             let gradient_box = bounds.dilate(px(border));
             let (bounds, radius) = background_box(bounds, radius, border, opaque, window);
-            window.paint_quad(gpui_kit::quad(
-                bounds,
-                px(radius),
-                css_linear_gradient(angle, from, to, gradient_box.size),
-                px(0.),
-                Hsla::transparent_black(),
-                gpui_kit::BorderStyle::Solid,
-            ));
+            let g = Gradient {
+                angle,
+                from,
+                to,
+                line: gradient_box,
+            };
+            if let Some(image) = gradient_image(&g, bounds, window.scale_factor()) {
+                let _ = window.paint_image(
+                    bounds,
+                    bounds,
+                    gpui_kit::Corners::all(px(radius)),
+                    image,
+                    0,
+                    false,
+                );
+            }
         },
     )
     .absolute()
     .top_0()
     .left_0()
     .size_full()
+}
+
+/// A CSS `linear-gradient(<angle>, from, to)` filling its parent with square corners, in place
+/// of `.bg(linear_gradient(..))` (see [`css_gradient`]). Put it first.
+pub fn gradient_fill(angle: f32, from: (Color, f32), to: (Color, f32)) -> impl IntoElement {
+    css_gradient(angle, from, to, 0., 0., crate::color::TRANSPARENT)
+}
+
+/// Paint a CSS `linear-gradient(<angle>, from, to)` over `bounds` (its gradient box) with
+/// `radius` corners, undithered (see [`css_gradient`]).
+pub fn paint_css_gradient(
+    window: &mut Window,
+    bounds: gpui_kit::Bounds<Pixels>,
+    radius: f32,
+    angle: f32,
+    from: (Color, f32),
+    to: (Color, f32),
+) {
+    let g = Gradient {
+        angle,
+        from,
+        to,
+        line: bounds,
+    };
+    if let Some(image) = gradient_image(&g, bounds, window.scale_factor()) {
+        let _ = window.paint_image(
+            bounds,
+            bounds,
+            gpui_kit::Corners::all(px(radius)),
+            image,
+            0,
+            false,
+        );
+    }
+}
+
+/// A two-stop CSS `linear-gradient` over the box `line` (its gradient box).
+#[derive(Clone, Copy, PartialEq)]
+struct Gradient {
+    angle: f32,
+    from: (Color, f32),
+    to: (Color, f32),
+    line: gpui_kit::Bounds<Pixels>,
+}
+
+impl Gradient {
+    /// The 8-bit color at `p` (CSS px), interpolated in premultiplied sRGB as CSS does.
+    fn at(&self, p: (f32, f32)) -> [u8; 4] {
+        let a = self.angle.to_radians();
+        let (dx, dy) = (a.sin(), -a.cos());
+        let (w, h) = (
+            f32::from(self.line.size.width),
+            f32::from(self.line.size.height),
+        );
+        let c = self.line.center();
+        let len = (w * dx).abs() + (h * dy).abs();
+        let t = ((p.0 - f32::from(c.x)) * dx + (p.1 - f32::from(c.y)) * dy) / len.max(1e-6) + 0.5;
+        let (c0, s0) = self.from;
+        let (c1, s1) = self.to;
+        let u = if s1 > s0 {
+            ((t - s0) / (s1 - s0)).clamp(0., 1.)
+        } else if t < s0 {
+            0.
+        } else {
+            1.
+        };
+        let alpha = c0.a + (c1.a - c0.a) * u;
+        let ch = |x0: f32, x1: f32| {
+            let pm = x0 * c0.a + (x1 * c1.a - x0 * c0.a) * u;
+            if alpha > 0. { pm / alpha } else { 0. }
+        };
+        Color {
+            r: ch(c0.r, c1.r),
+            g: ch(c0.g, c1.g),
+            b: ch(c0.b, c1.b),
+            a: alpha,
+        }
+        .to_rgba8()
+    }
+}
+
+type GradientKey = (u32, u32, [u32; 12]);
+
+thread_local! {
+    static GRADIENTS: std::cell::RefCell<
+        std::collections::HashMap<GradientKey, std::sync::Arc<gpui_kit::RenderImage>>,
+    > = Default::default();
+}
+
+/// The gradient's pixels over `bounds` (device-aligned), cached by size and gradient.
+fn gradient_image(
+    g: &Gradient,
+    bounds: gpui_kit::Bounds<Pixels>,
+    scale: f32,
+) -> Option<std::sync::Arc<gpui_kit::RenderImage>> {
+    let (w, h) = (
+        (f32::from(bounds.size.width) * scale).round() as u32,
+        (f32::from(bounds.size.height) * scale).round() as u32,
+    );
+    if w == 0 || h == 0 {
+        return None;
+    }
+    // Relative to the painted box, so a moved box reuses its raster.
+    let (ox, oy) = (
+        f32::from(g.line.origin.x - bounds.origin.x),
+        f32::from(g.line.origin.y - bounds.origin.y),
+    );
+    let bits = |c: Color| u32::from_le_bytes(c.to_rgba8());
+    let key = (
+        w,
+        h,
+        [
+            g.angle.to_bits(),
+            bits(g.from.0),
+            g.from.1.to_bits(),
+            bits(g.to.0),
+            g.to.1.to_bits(),
+            ox.to_bits(),
+            oy.to_bits(),
+            f32::from(g.line.size.width).to_bits(),
+            f32::from(g.line.size.height).to_bits(),
+            scale.to_bits(),
+            0,
+            0,
+        ],
+    );
+    if let Some(hit) = GRADIENTS.with(|m| m.borrow().get(&key).cloned()) {
+        return Some(hit);
+    }
+    let local = Gradient {
+        line: gpui_kit::Bounds {
+            origin: point(px(ox), px(oy)),
+            size: g.line.size,
+        },
+        ..*g
+    };
+    let mut bgra = Vec::with_capacity((w * h * 4) as usize);
+    for y in 0..h {
+        for x in 0..w {
+            let [r, gr, b, a] = local.at(((x as f32 + 0.5) / scale, (y as f32 + 0.5) / scale));
+            bgra.extend_from_slice(&[b, gr, r, a]);
+        }
+    }
+    let frame = image::Frame::new(image::RgbaImage::from_raw(w, h, bgra)?);
+    let image = std::sync::Arc::new(gpui_kit::RenderImage::new(smallvec::SmallVec::from_elem(
+        frame, 1,
+    )));
+    GRADIENTS.with(|m| {
+        let mut m = m.borrow_mut();
+        // Sizes change while windows resize; keep the cache from growing without bound.
+        if m.len() > 256 {
+            m.clear();
+        }
+        m.insert(key, image.clone());
+    });
+    Some(image)
 }
 
 /// The background of a relatively positioned parent with a `border` of `border_color` and
@@ -200,6 +333,36 @@ pub fn anchored_at(x: f32, y: f32, child: impl IntoElement) -> gpui_kit::Anchore
                     .child(child),
             ),
     )
+}
+
+/// `flex: <grow> 1 0` on a padded or bordered item. CSS takes a zero flex basis as the item's
+/// border box without flooring it at its padding and border, so items with different padding
+/// still share the free space equally; Taffy floors the base size at padding + border. An
+/// unpadded wrapper carries the share and the item fills it.
+pub fn flex_share(grow: f32, item: impl IntoElement) -> Div {
+    div()
+        .flex_grow(grow)
+        .flex_shrink(1.)
+        .flex_basis(gpui_kit::relative(0.))
+        .flex()
+        .child(item)
+}
+
+/// A menu or popover attached to its trigger, placed the way CSS places one from the trigger's
+/// fractional rect: absolutely positioned in the trigger's relatively positioned box, `gap`
+/// below its bottom edge (or above its top edge when `below` is false) and `dx` right of its
+/// left edge. Staying in the layout tree keeps the trigger's fractional position, where
+/// [`anchored_at`] can only start from its snapped bounds (and, anchored at a bottom edge,
+/// subtracts the overlay's snapped height). Wrap it in `deferred` to paint it above later
+/// siblings.
+pub fn attached(below: bool, gap: f32, dx: f32, child: impl IntoElement) -> Div {
+    let d = div().absolute().left(px(dx));
+    let d = if below {
+        d.top(gpui_kit::relative(1.)).mt(px(gap))
+    } else {
+        d.bottom(gpui_kit::relative(1.)).mb(px(gap))
+    };
+    d.child(child)
 }
 
 /// The root every window renders its content in. WebKit snaps a box edge that lands exactly on
@@ -591,15 +754,32 @@ fn scrim() -> Div {
 }
 
 /// `.nt-bg`: the modal scrim, `padding: 22vh 16px 24px`.
-pub fn modal_scrim(window: &Window) -> Div {
-    let vh = f32::from(window.viewport_size().height) / 100.;
-    scrim().pt(px(22. * vh)).px(px(16.)).pb(px(24.))
+pub fn modal_scrim(window: &Window, panel: impl IntoElement) -> Div {
+    vh_scrim(22., None, window, panel).px(px(16.)).pb(px(24.))
 }
 
-/// `.palette-bg`: the command palette scrim, `padding-top: 11vh`.
-pub fn palette_scrim(window: &Window) -> Div {
-    let vh = f32::from(window.viewport_size().height) / 100.;
-    scrim().pt(px(11. * vh))
+/// `.palette-bg` around a [`palette_panel`] (`max-height: 64vh`).
+pub fn palette_scrim(window: &Window, panel: impl IntoElement) -> Div {
+    vh_scrim(11., Some(64.), window, panel)
+}
+
+/// A viewport scrim whose panel hangs `top` vh below its top (`padding-top: 11vh` on a
+/// centering flex row) and is at most `max` vh tall, both at the exact LayoutUnits WebKit
+/// resolves them to: authored lengths would round, a percentage of the scrim reaches layout
+/// as is. The panel never shrinks below its content otherwise, as in a flex row.
+fn vh_scrim(top: f32, max: Option<f32>, window: &Window, panel: impl IntoElement) -> Div {
+    let vh = f32::from(window.viewport_size().height);
+    let top = crate::exact::lu(top * vh / 100.);
+    let mut slot = div().flex_none().flex().flex_col();
+    if let Some(m) = max {
+        slot = slot.max_h(gpui_kit::relative(crate::exact::lu(m * vh / 100.) / vh));
+    }
+    scrim()
+        .flex_col()
+        .justify_start()
+        .items_center()
+        .child(crate::exact::vgap(top, window))
+        .child(slot.child(panel))
 }
 
 /// A rounded card with a 1px border over its background, as WebKit paints one (see
@@ -678,7 +858,8 @@ pub fn text_field(
                         .size(size)
                         .line_height(LineHeight::Normal)
                         .color(placeholder_color)
-                        .nowrap(),
+                        .nowrap()
+                        .field(),
                 ),
             )
         })
@@ -1112,16 +1293,13 @@ pub fn skeleton(window: &mut Window, cx: &App) -> Div {
     } else {
         rgba(255, 255, 255, 0.045)
     };
-    // GPUI gradients take two stops, so each half of the three-stop sweep is its own box.
+    // Gradients here take two stops, so each half of the three-stop sweep is its own box.
     let half = |from: Color, to: Color| {
         div()
+            .relative()
             .h_full()
             .w(relative(0.5))
-            .bg(gpui_kit::linear_gradient(
-                90.,
-                gpui_kit::linear_color_stop(from, 0.),
-                gpui_kit::linear_color_stop(to, 1.),
-            ))
+            .child(gradient_fill(90., (from, 0.), (to, 1.)))
     };
     skel.child(
         div()

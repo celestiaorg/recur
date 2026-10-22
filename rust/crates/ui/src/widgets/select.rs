@@ -8,7 +8,9 @@ use crate::icon::{icon, provider_icon};
 use crate::icon_name::IconName;
 use crate::logic::fuzzy::{fuzzy_filter_prepared, prepare_fuzzy};
 use crate::logic::hover_gate::HoverGate;
-use crate::logic::menu_space::{MenuVariant, clamp_menu_left, menu_fixed_box, menu_prefer_up};
+use crate::logic::menu_space::{
+    MENU_GAP_PX, MenuVariant, clamp_menu_left, menu_fixed_box, menu_prefer_up,
+};
 use crate::motion::{self, Easing};
 use crate::style::{faded, is_focus_visible};
 use crate::text::{LineHeight, TextStyled, text};
@@ -191,6 +193,8 @@ pub(crate) fn search_header(
         .gap(px(8.))
         .py(px(8.))
         .px(px(10.))
+        // GPUI clips rectangles: round the corners under the menu's 8px radius and 1px border.
+        .rounded_t(px(7.))
         .bg(t.pane_2)
         .border_b(px(1.))
         .border_color(Hsla::from(t.line))
@@ -667,6 +671,20 @@ impl Render for Select {
                 tr.hover_color.unwrap_or(fg),
             )
         };
+        // `.sel.ghost .sel-btn { transition: color .15s ease, background .15s ease }`.
+        let ghost_hover = (self.ghost && !disabled).then(|| {
+            motion::hover(
+                "sel-btn-hover",
+                Duration::from_millis(150),
+                Easing::EASE,
+                window,
+                cx,
+            )
+        });
+        if let Some(h) = &ghost_hover {
+            bg = hover_bg.mix(h.k(), bg);
+            fg = hover_fg.mix(h.k(), fg);
+        }
         // `.sel-btn:disabled { opacity: .55 }`.
         if let Some(back) = self.disabled_over {
             let fill = bg;
@@ -725,14 +743,17 @@ impl Render for Select {
             // `.sel-btn:hover:not(:disabled)` outranks `:focus-visible`; `.sel.open .sel-btn`
             // ties it and comes later, so an open trigger keeps its amber border under hover.
             let keep_border = self.open && !self.ghost;
-            button = button.hover(move |s| {
-                let s = s.bg(hover_bg).text_color(Hsla::from(hover_fg));
-                if keep_border {
-                    s
-                } else {
-                    s.border_color(Hsla::from(hover_border))
-                }
-            });
+            button = match &ghost_hover {
+                Some(h) => button.on_hover(h.listener()),
+                None => button.hover(move |s| {
+                    let s = s.bg(hover_bg).text_color(Hsla::from(hover_fg));
+                    if keep_border {
+                        s
+                    } else {
+                        s.border_color(Hsla::from(hover_border))
+                    }
+                }),
+            };
         }
         // Icon: custom, the selected option's app icon (tinted), or its provider mark.
         if let Some(i) = self.custom_icon {
@@ -1037,26 +1058,15 @@ impl Select {
                         ),
                 ),
         );
-        let pos = match (mbox.top, mbox.bottom) {
-            (Some(top), _) => top,
-            // Opening up: anchor the menu's bottom edge, `bottom` px above the viewport bottom.
-            (None, Some(bottom)) => vh - bottom,
-            _ => 0.,
-        };
-        let anchor = if mbox.top.is_some() {
-            gpui_kit::Anchor::TopLeft
-        } else {
-            gpui_kit::Anchor::BottomLeft
-        };
+        // The menu hangs off the trigger in the layout tree (see `style::attached`).
+        let below = mbox.top.is_some();
         Some(
-            deferred(
-                crate::style::anchored_at(
-                    left,
-                    pos,
-                    crate::shadow::with_shadow(menu, &crate::style::MENU_SHADOW, 8.),
-                )
-                .anchor(anchor),
-            )
+            deferred(crate::style::attached(
+                below,
+                MENU_GAP_PX,
+                left - rect.2,
+                crate::shadow::with_shadow(menu, &crate::style::MENU_SHADOW, 8.),
+            ))
             .with_priority(210)
             .into_any_element(),
         )

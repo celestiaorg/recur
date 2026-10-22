@@ -8,7 +8,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, BoxShadow, Context, Entity, Focusable, Hsla, InteractiveElement, IntoElement,
     KeyDownEvent, ParentElement, SharedString, StatefulInteractiveElement, Styled, Subscription,
-    Window, div, linear_color_stop, linear_gradient, point, px,
+    Window, div, point, px,
 };
 use recur_ui::fonts::Family;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
@@ -753,13 +753,17 @@ impl EditorView {
             .flex_none()
             .py(px(0.2 * font_size))
             .px(px(font_size))
+            .relative()
             .rounded(px(1.))
             .border_1()
             .border_color(h(border))
-            .bg(linear_gradient(
+            .child(recur_ui::style::css_gradient(
                 180.,
-                linear_color_stop(top, 0.),
-                linear_color_stop(bottom, 1.),
+                (top.into(), 0.),
+                (bottom.into(), 1.),
+                1.,
+                1.,
+                border.into(),
             ))
             .child(button_label(label, font_size, 400.).ui())
     }

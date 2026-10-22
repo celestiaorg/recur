@@ -187,6 +187,17 @@ impl Color {
     }
 }
 
+impl From<Rgba> for Color {
+    fn from(c: Rgba) -> Color {
+        Color {
+            r: c.r,
+            g: c.g,
+            b: c.b,
+            a: c.a,
+        }
+    }
+}
+
 impl From<Color> for Rgba {
     fn from(c: Color) -> Rgba {
         Rgba {

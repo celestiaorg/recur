@@ -46,6 +46,8 @@ pub struct Line {
 struct Para {
     range: Range<usize>,
     edges: Vec<(usize, f32)>,
+    /// Where each inline box opens (byte, x before its left margin), as `recur_ui::text`.
+    box_starts: Vec<(usize, f32)>,
 }
 
 impl Para {
@@ -57,7 +59,13 @@ impl Para {
     }
 
     fn line_start(&self, byte: usize) -> f32 {
-        if byte == 0 { 0. } else { self.x_at(byte) }
+        if byte == 0 {
+            return 0.;
+        }
+        self.box_starts
+            .iter()
+            .find(|(b, _)| *b == byte)
+            .map_or_else(|| self.x_at(byte), |(_, x)| *x)
     }
 
     fn width(&self, text: &str, r: Range<usize>) -> f32 {
@@ -224,6 +232,7 @@ fn shape_para(
 ) -> Para {
     let mut pen = 0.;
     let mut edges = Vec::new();
+    let mut box_starts = Vec::new();
     for (ri, run_range) in runs.iter().enumerate() {
         let s = run_range.start.max(range.start);
         let e = run_range.end.min(range.end);
@@ -235,6 +244,7 @@ fn shape_para(
         if let Some(b) = ib
             && s == run_range.start.max(range.start)
         {
+            box_starts.push((s - range.start, pen));
             pen += b.margin_left + b.border + b.pad_left;
         }
         let text = &content[s..e];
@@ -279,7 +289,11 @@ fn shape_para(
         }
     }
     edges.push((range.len(), pen));
-    Para { range, edges }
+    Para {
+        range,
+        edges,
+        box_starts,
+    }
 }
 
 fn break_lines(para: &Para, text: &str, max: f32, anywhere: bool, eps: f32) -> Vec<Range<usize>> {

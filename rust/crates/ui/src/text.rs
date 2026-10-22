@@ -391,6 +391,9 @@ struct Para {
     glyphs: Vec<PaintGlyph>,
     /// Inline box spans: (span index, border-box left, border-box right, byte range).
     boxes: Vec<(usize, f32, f32, Range<usize>)>,
+    /// Where each inline box opens (byte, x before its left margin): a line that starts there
+    /// starts with the box's left margin, border and padding.
+    box_starts: Vec<(usize, f32)>,
 }
 
 #[derive(Clone)]
@@ -715,6 +718,7 @@ fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
     let mut edges = Vec::new();
     let mut glyphs = Vec::new();
     let mut boxes = Vec::new();
+    let mut box_starts = Vec::new();
     let mut open_box: Option<(usize, f32)> = None;
     for (ri, abs) in run_slices(&key.runs, range.clone()) {
         let run = &key.runs[ri];
@@ -727,6 +731,7 @@ fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
             && abs.start == sr.start.max(range.start)
         {
             open_box = Some((run.span, pen + b.margin_left));
+            box_starts.push((abs.start - range.start, pen));
             pen += b.left();
         }
         let text = &key.content[abs.clone()];
@@ -770,6 +775,7 @@ fn shape_para(key: &Resolved, range: Range<usize>, window: &Window) -> Para {
         edges,
         glyphs,
         boxes,
+        box_starts,
     }
 }
 
@@ -791,10 +797,16 @@ impl Para {
         end - self.line_start(r.start)
     }
 
-    /// Left edge of a line starting at `byte`: the paragraph start keeps a leading inline
-    /// box's left extent.
+    /// Left edge of a line starting at `byte`. An inline box opening there brings its left
+    /// margin, border and padding onto the line, as in CSS.
     fn line_start(&self, byte: usize) -> f32 {
-        if byte == 0 { 0. } else { self.x_at(byte) }
+        if byte == 0 {
+            return 0.;
+        }
+        self.box_starts
+            .iter()
+            .find(|(b, _)| *b == byte)
+            .map_or_else(|| self.x_at(byte), |(_, x)| *x)
     }
 }
 
@@ -1790,6 +1802,21 @@ mod tests {
         assert_eq!(s, "a b");
         assert_eq!(runs.iter().map(|r| r.len).collect::<Vec<_>>(), vec![2, 1]);
         assert_eq!(runs.iter().map(|r| r.span).collect::<Vec<_>>(), vec![0, 1]);
+    }
+
+    #[test]
+    fn a_line_starting_at_an_inline_box_takes_its_left_extent() {
+        // "ab cd": the box over "cd" opens at x 13 (after "ab "), its glyphs start 6px later.
+        let p = Para {
+            range: 0..5,
+            edges: vec![(0, 0.), (1, 5.), (2, 10.), (3, 19.), (4, 24.), (5, 35.)],
+            glyphs: Vec::new(),
+            boxes: Vec::new(),
+            box_starts: vec![(3, 13.)],
+        };
+        assert_eq!(p.line_start(3), 13.);
+        assert_eq!(p.width("ab cd", 3..5), 22.);
+        assert_eq!(p.line_start(4), 24.);
     }
 
     #[test]

@@ -421,3 +421,126 @@ async fn open_pr_host_tool_reports_the_pr() {
     let refused = recur_agent_tools::Host::open_pr(&host, "missing", "PA", "", "", false).await;
     assert_eq!(refused, "open_pr: workspace \"missing\" not found");
 }
+
+async fn base_fx(name: &str) -> (Px, crate::testing::TempRepo, Workspace) {
+    let px = Px::new();
+    let repo = init_repo();
+    git(&repo.path, &["branch", "develop"]);
+    px.add_project("acme", &repo.path);
+    let ws = px.eng().create_workspace("acme", name, "main").await.unwrap();
+    assert_eq!(ws.base_branch, "main");
+    (px, repo, ws)
+}
+
+#[tokio::test]
+async fn set_workspace_base_branch() {
+    let (px, _repo, ws) = base_fx("retarget me").await;
+    let got = px.eng().set_workspace_base_branch(&ws.id, "develop").await.unwrap();
+    assert_eq!(got.base_branch, "develop");
+    assert_eq!(px.ws(&ws.id).base_branch, "develop");
+    assert!(px.te.events.all().iter().any(|e| matches!(
+        e,
+        EngineEvent::WorkspaceFsChanged(f) if f.workspace_id == ws.id && f.rescan.is_none()
+    )));
+    let notes: Vec<String> = px
+        .te
+        .store
+        .feed(&ws.id)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|f| f.text)
+        .collect();
+    assert!(notes.contains(
+        &"Target branch is now <code>develop</code> — diffs and PRs compare against it.".to_owned()
+    ));
+    let again = px.eng().set_workspace_base_branch(&ws.id, "develop").await.unwrap();
+    assert_eq!(again.base_branch, "develop", "same branch is a no-op");
+}
+
+#[tokio::test]
+async fn set_workspace_base_branch_refusals() {
+    let (px, repo, ws) = base_fx("refusals").await;
+    let eng = px.eng();
+    for (id, base) in [
+        (ws.id.as_str(), ""),
+        (ws.id.as_str(), "  "),
+        ("no-such", "develop"),
+        (ws.id.as_str(), "does-not-exist"),
+        (ws.id.as_str(), ws.branch.as_str()),
+        (ws.id.as_str(), "HEAD"),
+    ] {
+        assert!(eng.set_workspace_base_branch(id, base).await.is_err(), "{id} {base:?}");
+    }
+    let main = eng.open_main_workspace("acme").await.unwrap();
+    assert!(eng.set_workspace_base_branch(&main.id, "develop").await.is_err());
+    git(&repo.path, &["tag", "v1.0"]);
+    assert!(eng.set_workspace_base_branch(&ws.id, "v1.0").await.is_err(), "a tag");
+    let sha = crate::testing::git_out(&repo.path, &["rev-parse", "HEAD"]).unwrap();
+    assert!(eng.set_workspace_base_branch(&ws.id, sha.trim()).await.is_err(), "a sha");
+}
+
+fn commit_feature(ws: &Workspace) {
+    std::fs::write(std::path::Path::new(&ws.worktree_path).join("feature.txt"), "the feature\n").unwrap();
+    git(&ws.worktree_path, &["add", "-A"]);
+    git(&ws.worktree_path, &["commit", "-m", "solo: add feature"]);
+}
+
+#[tokio::test]
+async fn set_workspace_base_branch_retargets_open_pr() {
+    let (px, _repo, ws) = base_fx("open a pr").await;
+    commit_feature(&ws);
+    let id = px.eng().open_workspace_pr(&ws.id, false).await.unwrap();
+    assert_eq!(px.pr(&id).base, "main");
+    px.eng().set_workspace_base_branch(&ws.id, "develop").await.unwrap();
+    assert_eq!(px.pr(&id).base, "develop");
+}
+
+#[tokio::test]
+async fn set_workspace_base_branch_retargets_forge_pr_first() {
+    let (px, _repo, ws) = base_fx("forge pr").await;
+    px.add_pr(Pr {
+        id: "gh-acme-5".into(),
+        workspace_id: ws.id.clone(),
+        number: 5,
+        source: PrSource::GitHub,
+        base: "main".into(),
+        state: "In review".into(),
+        ..Pr::default()
+    });
+    px.eng().set_workspace_base_branch(&ws.id, "develop").await.unwrap();
+    assert_eq!(px.forge.calls_to("retarget_base")[0][1..], ["5", "develop"]);
+    assert_eq!(px.pr("gh-acme-5").base, "develop");
+    px.forge
+        .on_retarget_base(|_| async { Err(recur_forge::ForgeError::failed("denied")) });
+    let err = px.eng().set_workspace_base_branch(&ws.id, "main").await.unwrap_err();
+    assert_eq!(err.0, "retarget GitHub PR: denied");
+    assert_eq!(px.ws(&ws.id).base_branch, "develop", "nothing changed");
+}
+
+#[tokio::test]
+async fn set_workspace_base_branch_leaves_merged_pr() {
+    let (px, _repo, ws) = base_fx("merged pr").await;
+    commit_feature(&ws);
+    let id = px.eng().open_workspace_pr(&ws.id, false).await.unwrap();
+    assert!(px.eng().merge_pr(&id, &recur_domain::MergeMethod::default()).await.1);
+    px.eng().set_workspace_base_branch(&ws.id, "develop").await.unwrap();
+    assert_eq!(px.pr(&id).base, "main", "historical");
+    assert_eq!(px.ws(&ws.id).base_branch, "develop");
+}
+
+#[tokio::test]
+async fn set_workspace_base_branch_trims() {
+    let (px, _repo, ws) = base_fx("trim").await;
+    let got = px.eng().set_workspace_base_branch(&ws.id, "  develop  ").await.unwrap();
+    assert_eq!(got.base_branch, "develop");
+}
+
+#[tokio::test]
+async fn set_workspace_base_branch_accepts_remote_tracking() {
+    let px = Px::new();
+    let (_keep, clone) = clone_tracking("main", "main");
+    px.add_project("acme", &clone);
+    let ws = px.eng().create_workspace("acme", "remote base", "main").await.unwrap();
+    let got = px.eng().set_workspace_base_branch(&ws.id, "origin/main").await.unwrap();
+    assert_eq!(got.base_branch, "origin/main");
+}

@@ -8,7 +8,9 @@ use crate::icon::{icon, provider_icon};
 use crate::icon_name::IconName;
 use crate::logic::fuzzy::{fuzzy_filter_prepared, prepare_fuzzy};
 use crate::logic::hover_gate::HoverGate;
-use crate::logic::menu_space::{MenuVariant, clamp_menu_left, menu_fixed_box, menu_prefer_up};
+use crate::logic::menu_space::{
+    MENU_GAP_PX, MenuVariant, clamp_menu_left, menu_fixed_box, menu_prefer_up,
+};
 use crate::motion::{self, Easing};
 use crate::style::{faded, is_focus_visible};
 use crate::text::{LineHeight, TextStyled, text};
@@ -1037,26 +1039,15 @@ impl Select {
                         ),
                 ),
         );
-        let pos = match (mbox.top, mbox.bottom) {
-            (Some(top), _) => top,
-            // Opening up: anchor the menu's bottom edge, `bottom` px above the viewport bottom.
-            (None, Some(bottom)) => vh - bottom,
-            _ => 0.,
-        };
-        let anchor = if mbox.top.is_some() {
-            gpui_kit::Anchor::TopLeft
-        } else {
-            gpui_kit::Anchor::BottomLeft
-        };
+        // The menu hangs off the trigger in the layout tree (see `style::attached`).
+        let below = mbox.top.is_some();
         Some(
-            deferred(
-                crate::style::anchored_at(
-                    left,
-                    pos,
-                    crate::shadow::with_shadow(menu, &crate::style::MENU_SHADOW, 8.),
-                )
-                .anchor(anchor),
-            )
+            deferred(crate::style::attached(
+                below,
+                MENU_GAP_PX,
+                left - rect.2,
+                crate::shadow::with_shadow(menu, &crate::style::MENU_SHADOW, 8.),
+            ))
             .with_priority(210)
             .into_any_element(),
         )

@@ -202,6 +202,23 @@ pub fn anchored_at(x: f32, y: f32, child: impl IntoElement) -> gpui_kit::Anchore
     )
 }
 
+/// A menu or popover attached to its trigger, placed the way CSS places one from the trigger's
+/// fractional rect: absolutely positioned in the trigger's relatively positioned box, `gap`
+/// below its bottom edge (or above its top edge when `below` is false) and `dx` right of its
+/// left edge. Staying in the layout tree keeps the trigger's fractional position, where
+/// [`anchored_at`] can only start from its snapped bounds (and, anchored at a bottom edge,
+/// subtracts the overlay's snapped height). Wrap it in `deferred` to paint it above later
+/// siblings.
+pub fn attached(below: bool, gap: f32, dx: f32, child: impl IntoElement) -> Div {
+    let d = div().absolute().left(px(dx));
+    let d = if below {
+        d.top(gpui_kit::relative(1.)).mt(px(gap))
+    } else {
+        d.bottom(gpui_kit::relative(1.)).mb(px(gap))
+    };
+    d.child(child)
+}
+
 /// The root every window renders its content in. WebKit snaps a box edge that lands exactly on
 /// a half device pixel down and to the right; GPUI rounds halves toward zero. Shifting the whole
 /// tree by 1/4096 px (through `aspect_ratio` spacers, since authored lengths round to whole

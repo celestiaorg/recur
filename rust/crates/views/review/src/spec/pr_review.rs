@@ -149,6 +149,26 @@ async fn quote_reply_prefills_the_reply_box(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+async fn keyboard_activating_a_plus_opens_the_composer(cx: &mut TestAppContext) {
+    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    to_top(&mut h, &host);
+    let focus = host
+        .read_with(h.cx, |hst, cx| {
+            hst.diff_file(OAUTH)
+                .and_then(|df| df.read(cx).addc_focus(DiffSide::Right, 11))
+        })
+        .expect("+ on line 11");
+    h.cx.update(|window, cx| window.focus(&focus, cx));
+    assert!(!h.has("finding-note-input"));
+    // GPUI turns enter into a click on its key-up; the simulator only sends key-downs.
+    h.keys("enter");
+    h.cx.simulate_event(gpui::KeyUpEvent {
+        keystroke: gpui::Keystroke::parse("enter").expect("enter"),
+    });
+    assert!(h.has("finding-note-input"));
+}
+
+#[gpui::test]
 async fn leaves_an_inline_comment_anchored_to_a_diff_line(cx: &mut TestAppContext) {
     let (mut h, host) = pr_files(cx, MockOptions::default(), None);
     to_top(&mut h, &host);

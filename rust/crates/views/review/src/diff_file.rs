@@ -11,10 +11,10 @@ use std::time::Duration;
 use gpui_kit::base::input::{InputEvent, Textarea, TextareaMode, TextareaState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Bounds, ClipboardItem, Context, DispatchPhase, Entity,
-    InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseMoveEvent, MouseUpEvent,
-    ParentElement, Pixels, Render, SharedString, StatefulInteractiveElement, Styled, Subscription,
-    Task, Window, canvas, div, px,
+    AnyElement, App, AppContext as _, Bounds, ClickEvent, ClipboardItem, Context, DispatchPhase,
+    Entity, FocusHandle, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
+    MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Render, SharedString,
+    StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas, div, px,
 };
 use recur_code::view::finding_paths::{
     extra_html_without_finding_flags, findings_covering_line, findings_ending_line,
@@ -189,6 +189,8 @@ pub struct DiffFile {
     copy_timer: Option<Task<()>>,
     threads: HashMap<String, Entity<LineNoteThread>>,
     threads_seen: HashSet<String>,
+    /// The `+` buttons' tab stops by (left side, line).
+    addc_focus: RefCell<HashMap<(bool, i64), FocusHandle>>,
     geom: Rc<RefCell<Geom>>,
     pending_pin: Option<(usize, f32, f32)>,
     pending_jump: Option<i64>,
@@ -253,6 +255,7 @@ impl DiffFile {
             copy_timer: None,
             threads: HashMap::new(),
             threads_seen: HashSet::new(),
+            addc_focus: RefCell::default(),
             geom: Rc::default(),
             pending_pin: None,
             pending_jump: None,
@@ -280,6 +283,7 @@ impl DiffFile {
         self.internal_collapsed = false;
         self.open_line = None;
         self.collapsed_hunks.clear();
+        self.addc_focus.borrow_mut().clear();
         self.win = LineWin::new(0, DIFF_LINE_WINDOW_MIN);
         self.slot_h.clear();
         self.slot_sig.clear();
@@ -468,6 +472,14 @@ impl DiffFile {
     /// The mounted line-note threads.
     pub fn thread_entities(&self) -> Vec<Entity<LineNoteThread>> {
         self.threads.values().cloned().collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn addc_focus(&self, side: DiffSide, line: i64) -> Option<FocusHandle> {
+        self.addc_focus
+            .borrow()
+            .get(&(side == DiffSide::Left, line))
+            .cloned()
     }
 
     /// The drag over the `+` controls, if one is in progress.
@@ -1161,6 +1173,12 @@ impl DiffFile {
         )
         .absolute()
         .inset_0();
+        let focus = self
+            .addc_focus
+            .borrow_mut()
+            .entry((side == DiffSide::Left, line))
+            .or_insert_with(|| cx.focus_handle().tab_stop(true))
+            .clone();
         let square = div()
             .flex()
             .items_center()
@@ -1177,6 +1195,7 @@ impl DiffFile {
                 let p = self.props.file.path.clone();
                 move || format!("addc:{p}:{}:{line}", side_key(side))
             })
+            .track_focus(&focus)
             .absolute()
             .top_0()
             .left(px(left))
@@ -1202,7 +1221,12 @@ impl DiffFile {
             .on_mouse_up(
                 MouseButton::Left,
                 cx.listener(move |d, _, window, cx| d.end_range(line_i, window, cx)),
-            );
+            )
+            .on_click(cx.listener(move |d, e: &ClickEvent, window, cx| {
+                if matches!(e, ClickEvent::Keyboard(_)) {
+                    d.open_composer(line_i, side, 0, window, cx);
+                }
+            }));
         titled(
             SharedString::from(format!("addc-t-{key}")),
             "Comment on this line — drag to select a range",

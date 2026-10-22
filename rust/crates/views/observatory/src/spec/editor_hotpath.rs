@@ -807,3 +807,39 @@ async fn opening_a_restored_stash_in_the_split_pane_warns_when_disk_moved(
         "{doc:?}"
     );
 }
+
+/// `FilePreview.test.ts` ("does not intercept ⌘F when ... a CodeMirror editor owns the event"):
+/// with the preview in the main pane and the same file's code in the split, ⌘F from the split
+/// editor opens the editor's search and leaves the preview's find bar closed.
+#[gpui::test]
+async fn cmd_f_in_the_split_editor_stays_out_of_the_preview_find(cx: &mut TestAppContext) {
+    let f = files(&[("README.md", "# Hello\n\nneedle\n")]);
+    let mut h = mount(cx, go_files(&f, MockOptions::default()), |_| {}, |_| {});
+    h.click("obs-node:file:README.md");
+    h.wait(50);
+    if h.read(|o, _| o.view_mode) != EditorViewMode::Code {
+        h.click("view-mode:Code");
+    }
+    h.click("crumb:split");
+    assert!(h.read(|o, _| o.split_open));
+    h.click("view-mode:Preview");
+    assert!(h.read(|o, _| o.file_preview.is_some()));
+    let split = h.read(|o, _| o.split_editor.clone()).expect("split editor");
+    h.update(|_, window, cx| {
+        let f = gpui_kit::Focusable::focus_handle(split.read(cx), cx);
+        window.focus(&f, cx);
+    });
+    h.keys("cmd-f");
+    let (editor_find, preview_find) = h.read(|o, cx| {
+        (
+            o.split_editor
+                .as_ref()
+                .is_some_and(|e| e.read(cx).is_search_open()),
+            o.file_preview
+                .as_ref()
+                .is_some_and(|(_, p)| p.read(cx).is_search_open()),
+        )
+    });
+    assert!(editor_find);
+    assert!(!preview_find);
+}

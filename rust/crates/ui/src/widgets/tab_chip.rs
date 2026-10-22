@@ -324,8 +324,14 @@ impl RenderOnce for TabChip {
             crate::color::TRANSPARENT
         };
         let hover_text = t.text;
+        let sel = format!(
+            "tab-chip:{}{}",
+            self.id,
+            if self.active { ":on" } else { "" }
+        );
         let mut chip = div()
             .id(self.id.clone())
+            .debug_selector(move || sel)
             .group(group.clone())
             .flex()
             .flex_none()
@@ -407,8 +413,10 @@ impl RenderOnce for TabChip {
             let visible = self.active;
             let faint = t.faint;
             let hover_bg = t.pane_2;
+            let close_sel = format!("tab-close:{}", self.id);
             let x = div()
                 .id((self.id.clone(), "close"))
+                .debug_selector(move || close_sel)
                 .flex()
                 .flex_none()
                 .items_center()

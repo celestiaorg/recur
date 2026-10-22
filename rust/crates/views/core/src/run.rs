@@ -258,6 +258,11 @@ impl RunStore {
         self.request.take()
     }
 
+    /// `waitForSessionStop`: an `InterruptTerminal` for this session is still in flight.
+    pub fn stop_in_flight(&self, session_id: &str) -> bool {
+        self.inflight_stop.contains(session_id)
+    }
+
     pub fn mark_run_starting(&mut self, session_id: &str) {
         if session_id.is_empty() {
             return;

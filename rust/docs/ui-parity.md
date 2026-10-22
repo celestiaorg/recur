@@ -97,6 +97,15 @@ The `review` list in `scenes.json` holds the review surface (`review/…`) over 
 
 Scenes: the unified stack with the tree file list, findings and dirty marks in `default` and `paper`; split layout; a collapsed hunk (clicked); a collapsed card (clicked); the flat file list after selecting a file (a stuck card header, the list's reveal); a line-note thread with replies and reactions in `default` and `paper`; the commits tab with its uncommitted row in `default` and `paper`; and a 40-file mixed-size diff windowed into stubs and hydrated cards.
 
+## Observatory scenes
+
+The `observatory` list in `scenes.json` holds the Observatory (`observatory/…`) over `rust/tools/ui-parity/content/observatory.json`: a worktree tree with git status, file bodies and their base versions, an outline, artifacts, a PNG, a PDF, a terminal session with its output, and each scene's editor session.
+
+- **Reference.** `web/scenes/Observatory.svelte` mounts `Observatory` in a `.win` (which sets `--chrome-foot-h`) after `loadInitial`, opening the terminal dock (below or beside) where the scene asks; `capture.spec.ts` answers the tree, file, git, outline, artifact, session and terminal calls from the fixture (`observatoryResolvers`) and serves `/workspace-file` from its assets.
+- **Candidate.** `recur_view_observatory::gallery` (feature `gallery`) builds the same `Observatory` over `MockBridge::fresh` with the same resolvers, resets the crate's app globals per scene, and renders PDF pages synchronously (`BlockingRenders`).
+
+Scenes: the explorer and code editor in `default` and `paper`; an overflowing tab strip; the merge view; the review tab; the terminal dock below, beside and maximized (clicked); Quick Open (⌘P); the artifacts panel (clicked); a PDF; an image; and the Source Control panel (clicked).
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -156,6 +165,9 @@ Every other scene allows no hard pixels.
 | `review/unified`, `review/split`, `review/hunk`, `review/collapsed`, `review/filelist`, `review/large` | 54, 54, 54, 84, 34, 18 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc: GPUI antialiases both edges, WebKit clips the header once (8 to 13 pixels per corner; `PARITY.md` follow-up) |
 | `review/thread`, `review/thread-paper` | 95, 69 | The `.react` pill after `✓` ends one device pixel early: the fallback glyph's advance is 6.33px in recur-ui and 6.49px in WebKit (`PARITY.md` follow-up); `review/thread` adds the card's top corners (above) |
 | `pdf/page` | 15 | The page field's number, which gpui-base's editor draws (typed input text, above) |
+| `observatory/review` | 18 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc (as `review/*`) |
+| `observatory/terminal-max` | 2 | Frosted terminal cells (above): glyph edges over the maximized dock's frost |
+| `observatory/pdf` | 262 | The page field's number (typed input text, above) and glyph edges inside the page raster, which GPUI's bilinear filter resamples (image resampling, above) past the soft-edge rule |
 
 ## Results
 
@@ -270,6 +282,21 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `review/commits` | 0 | 3014 | 594 | 3970 | 0 |
 | `review/commits-paper` | 0 | 3023 | 689 | 4090 | 0 |
 | `review/large` | 18 | 22530 | 66 | 24860 | 18 |
+| `observatory/explorer` | 0 | 11514 | 113 | 12210 | 0 |
+| `observatory/explorer-paper` | 0 | 11555 | 207 | 12360 | 0 |
+| `observatory/code` | 0 | 34921 | 113 | 36790 | 0 |
+| `observatory/code-paper` | 0 | 35044 | 207 | 37020 | 0 |
+| `observatory/tabs` | 0 | 8532 | 50 | 9020 | 0 |
+| `observatory/merge` | 0 | 41883 | 113 | 44100 | 0 |
+| `observatory/review` | 18 | 3733 | 221 | 4160 | 18 |
+| `observatory/terminal` | 0 | 34913 | 137 | 36810 | 0 |
+| `observatory/terminal-beside` | 0 | 34796 | 113 | 36660 | 0 |
+| `observatory/terminal-max` | 2 | 34092 | 2783 | 38720 | 2 |
+| `observatory/quick-open` | 0 | 36374 | 114 | 38320 | 0 |
+| `observatory/artifacts` | 0 | 33456 | 82 | 35220 | 0 |
+| `observatory/pdf` | 262 | 5392 | 57336 | 65870 | 262 |
+| `observatory/image` | 0 | 5117 | 3871 | 9440 | 0 |
+| `observatory/commit` | 0 | 37784 | 160 | 39850 | 0 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
@@ -280,3 +307,5 @@ Content tolerances: text is glyph subpixel phase in prose, code and diagram labe
 Chat tolerances: text is glyph subpixel phase in transcript prose, code, chips, labels and placeholders; anti-aliasing is icon, chip and card edges and the composer's shadow. No chat scene allows hard pixels.
 
 Review tolerances: text is glyph subpixel phase in code rows, paths, labels and note bodies; anti-aliasing is icon, chip, avatar and card edges.
+
+Observatory tolerances: text is glyph subpixel phase in code, paths, labels, tabs and the terminal grid; anti-aliasing is icon, chip and card edges, the checkerboard and image resampling (the image pane, the PDF page and its shapes).

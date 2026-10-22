@@ -20,12 +20,13 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   content?: Scene[]
   chat?: Scene[]
   review?: Scene[]
+  observatory?: Scene[]
 }
 // Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
 // mount App.svelte over an edited seed (see `patchSeed`).
 const scenes = [
   ...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? []), ...(spec.content ?? []), ...(spec.chat ?? []),
-  ...(spec.review ?? []),
+  ...(spec.review ?? []), ...(spec.observatory ?? []),
 ]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
@@ -56,6 +57,45 @@ function reviewResolvers(name: string) {
     ListCommits: () => review.commits,
     CommitDiff: () => [review.files[2]],
   }
+}
+
+const observatory = JSON.parse(readFileSync(join(here, 'content', 'observatory.json'), 'utf8'))
+
+/** Observatory scenes answer the tree, file, git, artifact, terminal and editor-session calls
+ *  with `content/observatory.json`, as `recur_view_observatory::gallery::bridge` does. */
+function observatoryResolvers(name: string) {
+  const variant = name.split('/').slice(1).join('/').replace(/-paper$/, '')
+  const scene = observatory.scenes[variant] ?? {}
+  const text = (path: string) => observatory.files[path]?.content as string | undefined
+  return {
+    ListTree: (a: any[]) => observatory.tree[(a[2] as string) || ''] ?? [],
+    ReadFile: (a: any[]) => {
+      const path = String(a[2] ?? '')
+      const f = observatory.files[path]
+      if (!f) throw new Error(`no such file: ${path}`)
+      const size = f.asset ? readFileSync(join(here, 'content', f.asset)).length : Buffer.byteLength(f.content)
+      return { path, language: f.language ?? '', content: f.content ?? '', size, writable: !!a[1], mime: f.mime ?? '' }
+    },
+    FileAtBase: (a: any[]) => observatory.base[String(a[2] ?? '')] ?? text(String(a[2] ?? '')) ?? '',
+    Outline: (a: any[]) => observatory.outline[String(a[2] ?? '')] ?? [],
+    GitStatus: () => observatory.gitStatus,
+    WorkingStatus: () => observatory.working,
+    StagedFiles: () => observatory.staged,
+    ListChangedFiles: () => Object.keys(observatory.gitStatus),
+    ListArtifacts: () => observatory.artifacts,
+    GetEditorSession: () => structuredClone(scene.session ?? null),
+    ListTerminals: () => (scene.terminal ? [observatory.terminal.session] : []),
+    RestoreWorkspaceTerminals: () => (scene.terminal ? [observatory.terminal.session] : []),
+    AttachTerminal: () => Buffer.from(observatory.terminal.input, 'utf8').toString('base64'),
+  }
+}
+
+/** `/workspace-file?…&path=…[&at=base]`: the fixture's raster and PDF bytes. */
+function workspaceFile(url: string) {
+  const q = new URL(url).searchParams
+  const path = q.get('path') ?? ''
+  const asset = q.get('at') === 'base' ? observatory.baseAssets[path] : observatory.files[path]?.asset
+  return asset ? readFileSync(join(here, 'content', asset)) : undefined
 }
 
 type Step =
@@ -174,7 +214,13 @@ for (const scene of scenes) {
     }
     await installBridge(page, sceneSeed, replay !== undefined ? {
       resolvers: { AttachTerminal: () => Buffer.from(replay, 'utf8').toString('base64') },
-    } : scene.name.startsWith('review/') ? { resolvers: reviewResolvers(scene.name) } : {})
+    } : scene.name.startsWith('review/') ? { resolvers: reviewResolvers(scene.name) }
+      : scene.name.startsWith('observatory/') ? { resolvers: observatoryResolvers(scene.name) } : {})
+    await page.route('**/workspace-file?**', (r) => {
+      const body = workspaceFile(r.request().url())
+      const mime = /\.pdf(&|$)/.test(r.request().url()) ? 'application/pdf' : 'image/png'
+      return body ? r.fulfill({ contentType: mime, body }) : r.fulfill({ status: 404 })
+    })
     const extra = scene.treeScroll ? `&treeScroll=${scene.treeScroll}` : ''
     await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}${extra}`)
     await page.waitForSelector('[data-scene-ready]')

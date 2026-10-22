@@ -11,7 +11,7 @@
 //! git or a subprocess is `async`.
 
 mod changed;
-mod collate;
+pub mod collate;
 pub mod copyfiles;
 mod drop_allow;
 mod error;

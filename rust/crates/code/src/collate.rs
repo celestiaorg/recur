@@ -13,7 +13,7 @@ static COLLATOR: LazyLock<CollatorBorrowed<'static>> = LazyLock::new(|| {
 });
 
 /// JavaScript `a.localeCompare(b)` in the default (root) locale.
-pub(crate) fn locale_compare(a: &str, b: &str) -> Ordering {
+pub fn locale_compare(a: &str, b: &str) -> Ordering {
     COLLATOR.compare(a, b)
 }
 

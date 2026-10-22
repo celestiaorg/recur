@@ -1,6 +1,7 @@
 //! The review-surface scenarios of `observatory.spec.ts`. The Observatory host's own halves
 //! (the Review changes toggle and ⌥⌘R, the Changes / Commits chips, file tabs, remembered
-//! panes) move with the Observatory port; the surface's events stand in for them here.
+//! panes) are covered in `recur-view-observatory`'s `spec::observatory`; the surface's events
+//! stand in for them here.
 
 use gpui::TestAppContext;
 use recur_services::mock::{MockOptions, Reply};

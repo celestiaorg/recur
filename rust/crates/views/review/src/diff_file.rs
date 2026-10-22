@@ -535,6 +535,11 @@ impl DiffFile {
         cx.notify();
     }
 
+    /// A line-note composer is open (`.icmt-compose`).
+    pub fn composer_open(&self) -> bool {
+        self.open_line.is_some()
+    }
+
     /// The composer's text (`bind:value={draft}`).
     pub fn draft_text(&self, cx: &App) -> String {
         self.draft.read(cx).value().to_string()

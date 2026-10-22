@@ -173,6 +173,17 @@ impl ReviewSurface {
         self.commit_scope.as_ref()
     }
 
+    /// A line-note composer is open in the Changes stack (live refresh waits for it).
+    pub fn composer_open(&self, cx: &gpui_kit::App) -> bool {
+        let files = self.files.read(cx);
+        let stack = files.stack();
+        stack
+            .files()
+            .iter()
+            .filter_map(|f| stack.diff_file(&f.path))
+            .any(|d| d.read(cx).composer_open())
+    }
+
     pub fn working_open(&self) -> bool {
         self.working_open
     }

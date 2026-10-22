@@ -198,9 +198,11 @@ pub struct TabStrip {
     label: SharedString,
     chrome: bool,
     flush: bool,
+    grow: bool,
     active_key: Option<SharedString>,
     restore_scroll: Option<(f32, u64)>,
     reveal_nonce: u64,
+    scroll: Option<ScrollHandle>,
     items: Vec<TabItem>,
     leading: Vec<AnyElement>,
     trailing: Vec<AnyElement>,
@@ -214,9 +216,11 @@ pub fn tab_strip(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Ta
         label: label.into(),
         chrome: false,
         flush: false,
+        grow: false,
         active_key: None,
         restore_scroll: None,
         reveal_nonce: 0,
+        scroll: None,
         items: Vec::new(),
         leading: Vec::new(),
         trailing: Vec::new(),
@@ -229,6 +233,13 @@ impl TabStrip {
     /// Inside a `.obs-side-head.tabbed` header: no padding of its own, filling the row.
     pub fn flush(mut self, on: bool) -> Self {
         self.flush = on;
+        self
+    }
+
+    /// Fill the row it sits in, keeping its own padding (a grid `1fr` cell: the Observatory's
+    /// file tabs).
+    pub fn grow(mut self, on: bool) -> Self {
+        self.grow = on;
         self
     }
 
@@ -250,6 +261,11 @@ impl TabStrip {
     /// Bump to reveal the active chip even when the key is unchanged.
     pub fn reveal_nonce(mut self, n: u64) -> Self {
         self.reveal_nonce = n;
+        self
+    }
+    /// Share the strip's scroller so the host can read its offset (keep-alive snapshots).
+    pub fn scroll_handle(mut self, h: ScrollHandle) -> Self {
+        self.scroll = Some(h);
         self
     }
     pub fn tab(mut self, key: impl Into<SharedString>, chip: TabChip) -> Self {
@@ -320,7 +336,11 @@ fn chip_index(order: &[SharedString], key: &str) -> Option<usize> {
 impl RenderOnce for TabStrip {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
-        let state = window.use_keyed_state(self.id.clone(), cx, |_, _| State::default());
+        let shared = self.scroll.clone();
+        let state = window.use_keyed_state(self.id.clone(), cx, move |_, _| State {
+            scroll: shared.unwrap_or_default(),
+            ..State::default()
+        });
         let keys: Vec<SharedString> = self.items.iter().map(|i| i.key.clone()).collect();
         let reorderable = self.on_reorder.is_some();
 
@@ -494,7 +514,7 @@ impl RenderOnce for TabStrip {
             .items_stretch()
             .gap(px(6.))
             .when(!flush, |d| d.pl(px(8.)).pr(px(4.)))
-            .when(flush, |d| d.flex_1())
+            .when(flush || self.grow, |d| d.flex_1())
             .min_w_0()
             .min_h_0()
             .child(tracker);
@@ -645,14 +665,17 @@ fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window
         };
         let view = s.scroll.bounds();
         let client = f32::from(view.size.width);
-        let child_left = f32::from(child.left() - view.left()) + scroll_left;
+        // Scroll children report their unscrolled (content) bounds.
+        let child_left = f32::from(child.left() - view.left());
         let next = next_strip_scroll_left(
             scroll_left,
             client,
             client + max,
             child_left,
             child.size.width.into(),
-        );
+        )
+        // WebKit keeps scroll offsets in whole CSS pixels (`scrollLeft = x` truncates).
+        .trunc();
         if (next - scroll_left).abs() < 1. {
             if s.anim.is_some_and(|(_, to, _)| (to - next).abs() >= 1.) {
                 s.anim = None;
@@ -703,7 +726,7 @@ fn press(
         let Some(ix) = chip_index(&s.drag.order, key) else {
             return;
         };
-        let Some(b) = s.scroll.bounds_for_item(ix) else {
+        let Some(b) = item_bounds(s, ix) else {
             return;
         };
         s.drag.press = Some(Press {
@@ -716,11 +739,18 @@ fn press(
     window.refresh();
 }
 
+/// A chip's bounds where it shows (scroll children report unscrolled bounds).
+fn item_bounds(s: &State, ix: usize) -> Option<gpui_kit::Bounds<gpui_kit::Pixels>> {
+    let mut b = s.scroll.bounds_for_item(ix)?;
+    b.origin += s.scroll.offset();
+    Some(b)
+}
+
 /// Lefts of the rendered chips (and placeholder), in window coordinates.
 fn chip_lefts(s: &State) -> HashMap<SharedString, f32> {
     let mut out = HashMap::new();
     for (i, key) in s.drag.order.iter().enumerate() {
-        if let Some(b) = s.scroll.bounds_for_item(i) {
+        if let Some(b) = item_bounds(s, i) {
             let k = if s.drag.from.as_ref() == Some(key) {
                 SharedString::from(PLACEHOLDER)
             } else {
@@ -742,7 +772,7 @@ fn reorder_by_pointer_x(s: &mut State, x: f32) {
     let mut mids = Vec::new();
     let mut widths: HashMap<SharedString, f32> = HashMap::new();
     for (i, key) in s.drag.order.iter().enumerate() {
-        let Some(b) = s.scroll.bounds_for_item(i) else {
+        let Some(b) = item_bounds(s, i) else {
             return;
         };
         widths.insert(key.clone(), b.size.width.into());
@@ -757,10 +787,7 @@ fn reorder_by_pointer_x(s: &mut State, x: f32) {
     }
     // FLIP: slide every moved chip from where it was.
     let before = chip_lefts(s);
-    let start_x = s
-        .scroll
-        .bounds_for_item(0)
-        .map_or(0., |b| f32::from(b.left()));
+    let start_x = item_bounds(s, 0).map_or(0., |b| f32::from(b.left()));
     let now = Instant::now();
     let mut x0 = start_x;
     for key in &next {
@@ -923,7 +950,7 @@ fn track(
                 .from
                 .as_ref()
                 .and_then(|k| chip_index(&s.drag.order, k))
-                .and_then(|i| s.scroll.bounds_for_item(i))
+                .and_then(|i| item_bounds(s, i))
                 .map_or(s.drag.pos, |b| b.origin);
             s.drag.settle = Some((s.drag.pos, target, Instant::now()));
         });

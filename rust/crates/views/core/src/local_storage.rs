@@ -37,6 +37,11 @@ impl LocalStorage {
         self.path.as_deref()
     }
 
+    /// Every key (`localStorage.key(i)`), in sorted order.
+    pub fn keys(&self) -> impl Iterator<Item = &str> {
+        self.items.keys().map(String::as_str)
+    }
+
     pub fn get(&self, key: &str) -> Option<&str> {
         self.items.get(key).map(String::as_str)
     }

@@ -34,6 +34,12 @@ pub struct RestoredEditor {
     pub scroll_left: f32,
 }
 
+/// The app's history cache (the module-level map of `cm-editor-history.ts`).
+#[derive(Default)]
+pub struct EditorHistory(pub EditorHistoryCache);
+
+impl gpui_kit::Global for EditorHistory {}
+
 /// The history cache. One per app, like the module-level map.
 pub struct EditorHistoryCache {
     entries: VecDeque<(String, Snap)>,

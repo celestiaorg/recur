@@ -3,7 +3,7 @@
   "scenes": {
     "chat": { "session": "code", "items": "transcript" },
     "tabs": {
-      "session": "code",
+      "session": "explorer",
       "items": "transcript",
       "chats": [
         { "code": "MA", "title": "Loop", "mode": "loop", "updatedAt": 0 },

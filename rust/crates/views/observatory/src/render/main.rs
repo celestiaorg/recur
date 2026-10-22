@@ -177,6 +177,9 @@ impl Observatory {
             let crumb = div()
                 .id(SharedString::from(format!("crumb-{i}")))
                 .debug_selector(move || format!("crumb:{i}"))
+                // `overflow: hidden`: no automatic minimum, so a narrow bar shrinks the path.
+                .min_w_0()
+                .overflow_hidden()
                 .max_w(px(140.))
                 .px(px(4.))
                 .py(px(2.))

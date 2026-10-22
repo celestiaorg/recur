@@ -640,6 +640,7 @@ impl EditorView {
             padding_bottom: self.metrics.content_padding_y,
             viewport_height,
             line_padding_left: self.metrics.line_padding_left,
+            line_padding_right: self.metrics.line_padding_right,
         }
     }
 
@@ -871,6 +872,7 @@ impl EditorView {
         let config = self.layout_config(window);
         let lh = config.line_height as f64;
         let mut l = self.layout.borrow_mut();
+        let line_length = l.line_length();
         let estimates: Vec<f64> = (new_from..=new_to)
             .map(|n| {
                 if !config.wrap {
@@ -878,10 +880,7 @@ impl EditorView {
                 }
                 let line = self.state.doc.line(n);
                 let chars = self.state.doc.slice(line.from, line.to).chars().count();
-                let per = (config.wrap_width / config.char_width.max(1.0))
-                    .floor()
-                    .max(1.0) as usize;
-                crate::display::estimate_rows(chars, per) as f64 * lh
+                crate::display::estimate_rows(chars, line_length) as f64 * lh
             })
             .collect();
         l.heights.splice(old_from, old_to - old_from + 1, estimates);

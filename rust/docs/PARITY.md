@@ -27,6 +27,9 @@ Gaps found while porting that are not yet owned by a slice. Each must be closed 
 - [ ] **Review: Observatory and PR detail hosts.** The embedding API is in `recur_view_review`'s crate docs. The Observatory owns the Review changes toggle, ⌥⌘R, the Changes / Commits chips and the resizable review body (the obs-body handle's runtime max); PR detail owns the Files tab chrome, the review modal and the approve flow.
 - [ ] **Editor LSP adapter.** `recur-lsp` is a transport; the app layer needs the adapter that implements `recur_editor::lsp::LspClient` (request ids, `initialize`, document versions, change batching). Owned by the code-editor view port.
 
+- [ ] **Rounded header inside a bordered card.** Where a header's rounded corner meets its card's border, GPUI anti-aliases both edges where WebKit clips once (8 to 13 hard pixels per corner; every `review/*` scene with a card, up to 95).
+- [ ] **`✓` fallback advance.** `recur_ui` gives the `✓` fallback glyph a 6.33px advance where WebKit uses 6.49px, so the reaction pill ends a device pixel early. Match WebKit's fallback face and advance.
+
 ## Application services (former Wails bindings)
 
 Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/app`. Rust home: `recur-services`. The contract is `recur_services::api` (one async trait per service, annotated below with `Trait::method`). `recur_services::AppServices` implements all of it over the engine (`services/src/app`, every `internal/app/*_test.go` ported under `app/tests`, plus `tests/real_services.rs` and `tests/contract.rs`); `recur_services::mock` answers the same contract from the e2e seed for view tests.

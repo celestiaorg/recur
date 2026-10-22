@@ -6,8 +6,8 @@
 use std::collections::{HashMap, HashSet};
 
 use gpui_kit::{
-    AppContext as _, BorrowAppContext as _, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render,
-    Styled, Subscription, Window, div,
+    AppContext as _, BorrowAppContext as _, Context, Entity, InteractiveElement, IntoElement,
+    ParentElement, Render, Styled, Subscription, Window, div,
 };
 use recur_services::AppEvent;
 use recur_view_chat::heap::ChatHeapCache;
@@ -32,7 +32,9 @@ impl WorkspaceDetail {
         // Subscribed before any WorkspaceView, so the hoist bookkeeping api.ts did ahead of its
         // `onChatsChanged` listeners runs first.
         let subs = vec![
-            cx.subscribe(&vcx.state, |_, _, ev: &AppliedEvent, cx| on_hoist(&ev.0, cx)),
+            cx.subscribe(&vcx.state, |_, _, ev: &AppliedEvent, cx| {
+                on_hoist(&ev.0, cx)
+            }),
             cx.observe_in(&vcx.state, window, |d, _, window, cx| d.sync(window, cx)),
         ];
         let mut d = WorkspaceDetail {
@@ -81,7 +83,11 @@ impl WorkspaceDetail {
         } else {
             self.keep_id.clone()
         };
-        if live.contains(&id) { id } else { String::new() }
+        if live.contains(&id) {
+            id
+        } else {
+            String::new()
+        }
     }
 
     fn sync(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -165,7 +171,12 @@ impl WorkspaceDetail {
         self.host_attempt = pr.id.clone();
         let (svc, state) = (self.vcx.services.clone(), self.vcx.state.clone());
         cx.spawn(async move |_, cx| {
-            let ws = call(cx, svc.prs.ensure_pr_chat_host(&pr.id), "Could not start pull request chat").await;
+            let ws = call(
+                cx,
+                svc.prs.ensure_pr_chat_host(&pr.id),
+                "Could not start pull request chat",
+            )
+            .await;
             if let Some(ws) = ws.filter(|w| !w.id.is_empty()) {
                 let _ = state.update(cx, |s, cx| s.upsert_workspace(ws, cx));
             }
@@ -177,7 +188,9 @@ impl WorkspaceDetail {
 /// `noteHoistDestBust` + `migrateEvictedHoistDrafts` for a hoist (`workspace.updated` with
 /// `chatsChanged` from another workspace).
 fn on_hoist(ev: &AppEvent, cx: &mut gpui_kit::App) {
-    let AppEvent::WorkspaceUpdated(u) = ev else { return };
+    let AppEvent::WorkspaceUpdated(u) = ev else {
+        return;
+    };
     if !u.chats_changed || u.workspace_id.is_empty() {
         return;
     }
@@ -208,7 +221,9 @@ impl Render for WorkspaceDetail {
             .min_h_0();
         // Parked shells stay laid out at the live slot's size, hidden (`#wsv-park`).
         for id in &self.hot {
-            let Some(v) = self.views.get(id).cloned() else { continue };
+            let Some(v) = self.views.get(id).cloned() else {
+                continue;
+            };
             if *id == bound {
                 root = root.child(div().flex_1().min_h_0().flex().flex_col().child(v));
             } else {

@@ -39,8 +39,7 @@ const FOOT_H: f32 = 26.;
 /// `--chat-fade` on `.plan-page`.
 const FADE: f32 = 40.;
 
-const EXECUTE_IN_CHAT: &str =
-    "Implement the approved plan from the Plan panel — follow its steps and satisfy its definition of done.";
+const EXECUTE_IN_CHAT: &str = "Implement the approved plan from the Plan panel — follow its steps and satisfy its definition of done.";
 
 /// Details / Attachments / Todos.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -126,7 +125,12 @@ fn step_status_label(status: &str) -> &'static str {
 fn steps_sig(steps: &[PlanStep]) -> String {
     steps
         .iter()
-        .map(|s| format!("{}\0{}\0{}\0{}\0{}", s.id, s.title, s.status, s.note, s.workspace))
+        .map(|s| {
+            format!(
+                "{}\0{}\0{}\0{}\0{}",
+                s.id, s.title, s.status, s.note, s.workspace
+            )
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -352,7 +356,12 @@ impl PlanPanel {
     }
 
     /// The textarea of one row, created on first sight and kept in sync with its draft.
-    fn row(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) -> Entity<TextareaState> {
+    fn row(
+        &mut self,
+        key: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Entity<TextareaState> {
         let title = self
             .drafts
             .iter()
@@ -374,36 +383,46 @@ impl PlanPanel {
         });
         style_area(&area, cx);
         let k = key.to_string();
-        let sub = cx.subscribe_in(&area, window, move |p, area, ev: &InputEvent, window, cx| {
-            match ev {
-                InputEvent::Change => {
-                    let v = area.read(cx).value().to_string();
-                    if let Some(d) = p.drafts.iter_mut().find(|d| d.key == k) {
-                        d.title = v;
-                    }
-                }
-                InputEvent::Focus => p.step_focus = k.clone(),
-                InputEvent::Blur => {
-                    if p.step_focus == k {
-                        p.step_focus.clear();
-                    }
-                    p.persist_step_titles(cx);
-                }
-                InputEvent::PressEnter { secondary, shift } => {
-                    if !secondary && !shift {
-                        // The textarea inserted a newline: Enter adds the next step instead.
-                        let v = area.read(cx).value().replace('\n', "");
-                        area.update(cx, |a, cx| a.set_value(v.clone(), window, cx));
+        let sub = cx.subscribe_in(
+            &area,
+            window,
+            move |p, area, ev: &InputEvent, window, cx| {
+                match ev {
+                    InputEvent::Change => {
+                        let v = area.read(cx).value().to_string();
                         if let Some(d) = p.drafts.iter_mut().find(|d| d.key == k) {
                             d.title = v;
                         }
-                        p.add_step(Some(&k.clone()), window, cx);
+                    }
+                    InputEvent::Focus => p.step_focus = k.clone(),
+                    InputEvent::Blur => {
+                        if p.step_focus == k {
+                            p.step_focus.clear();
+                        }
                         p.persist_step_titles(cx);
                     }
+                    InputEvent::PressEnter { secondary, shift } => {
+                        if !secondary && !shift {
+                            // The textarea inserted a newline: Enter adds the next step instead.
+                            let v = area.read(cx).value().replace('\n', "");
+                            area.update(cx, |a, cx| a.set_value(v.clone(), window, cx));
+                            if let Some(d) = p.drafts.iter_mut().find(|d| d.key == k) {
+                                d.title = v;
+                            }
+                            p.add_step(Some(&k.clone()), window, cx);
+                            p.persist_step_titles(cx);
+                        }
+                    }
                 }
-            }
-        });
-        self.rows.insert(key.to_string(), StepRow { area: area.clone(), _sub: sub });
+            },
+        );
+        self.rows.insert(
+            key.to_string(),
+            StepRow {
+                area: area.clone(),
+                _sub: sub,
+            },
+        );
         area
     }
 
@@ -423,7 +442,12 @@ impl PlanPanel {
         }
     }
 
-    pub(crate) fn add_step(&mut self, after: Option<&str>, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn add_step(
+        &mut self,
+        after: Option<&str>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.plan(cx).is_none() {
             toast(ToastKind::Error, "File a plan first, then add steps.", cx);
             return;
@@ -444,7 +468,11 @@ impl PlanPanel {
         };
         self.drafts.remove(i);
         self.rows.remove(key);
-        if let Some(next) = self.drafts.get(i.min(self.drafts.len().saturating_sub(1))).map(|d| d.key.clone()) {
+        if let Some(next) = self
+            .drafts
+            .get(i.min(self.drafts.len().saturating_sub(1)))
+            .map(|d| d.key.clone())
+        {
             self.focus_step(&next, window, cx);
         } else {
             self.step_focus.clear();
@@ -456,16 +484,30 @@ impl PlanPanel {
     }
 
     fn steps_for_submit(&self) -> (Vec<String>, Vec<String>) {
-        let rows: Vec<&StepDraft> = self.drafts.iter().filter(|d| !d.title.trim().is_empty()).collect();
+        let rows: Vec<&StepDraft> = self
+            .drafts
+            .iter()
+            .filter(|d| !d.title.trim().is_empty())
+            .collect();
         (
             rows.iter().map(|d| d.title.trim().to_string()).collect(),
             rows.iter()
-                .map(|d| if d.key.starts_with("new-") { String::new() } else { d.key.clone() })
+                .map(|d| {
+                    if d.key.starts_with("new-") {
+                        String::new()
+                    } else {
+                        d.key.clone()
+                    }
+                })
                 .collect(),
         )
     }
 
-    async fn refresh_workspace(svc: Services, state: Entity<AppState>, cx: &mut gpui_kit::AsyncApp) {
+    async fn refresh_workspace(
+        svc: Services,
+        state: Entity<AppState>,
+        cx: &mut gpui_kit::AsyncApp,
+    ) {
         if let Ok(fresh) = svc.workspaces.list_workspaces().await {
             let _ = state.update(cx, |s, cx| s.set_workspaces_from_list(fresh, cx));
         }
@@ -477,7 +519,9 @@ impl PlanPanel {
             self.steps_again = true;
             return;
         }
-        let Some(plan) = self.plan(cx).cloned() else { return };
+        let Some(plan) = self.plan(cx).cloned() else {
+            return;
+        };
         let (titles, ids) = self.steps_for_submit();
         let unchanged = titles.len() == plan.steps.len()
             && titles.iter().zip(&plan.steps).all(|(t, s)| *t == s.title);
@@ -485,11 +529,16 @@ impl PlanPanel {
             return;
         }
         self.steps_saving = true;
-        let (svc, state, id) = (self.services.clone(), self.state.clone(), self.ws_id.clone());
+        let (svc, state, id) = (
+            self.services.clone(),
+            self.state.clone(),
+            self.ws_id.clone(),
+        );
         cx.spawn(async move |this, cx| {
             let status = call(
                 cx,
-                svc.workspaces.submit_plan(&id, &plan.summary, &plan.body, &titles, &ids),
+                svc.workspaces
+                    .submit_plan(&id, &plan.summary, &plan.body, &titles, &ids),
                 "Could not update the checklist",
             )
             .await;
@@ -531,10 +580,13 @@ impl PlanPanel {
             Some(p) => (p.summary.clone(), p.body.clone()),
             None => (
                 String::new(),
-                self.ws(cx).map(|w| w.definition_of_done.clone()).unwrap_or_default(),
+                self.ws(cx)
+                    .map(|w| w.definition_of_done.clone())
+                    .unwrap_or_default(),
             ),
         };
-        self.summary.update(cx, |a, cx| a.set_value(summary, window, cx));
+        self.summary
+            .update(cx, |a, cx| a.set_value(summary, window, cx));
         style_area(&self.summary, cx);
         self.body_draft = body.clone();
         let editor = cx.new(|cx| {
@@ -576,7 +628,12 @@ impl PlanPanel {
         let summary_draft = self.summary.read(cx).value().to_string();
         let body = self.body_draft.trim().to_string();
         let summary = match summary_draft.trim() {
-            "" => body.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or_default().to_string(),
+            "" => body
+                .lines()
+                .map(str::trim)
+                .find(|l| !l.is_empty())
+                .unwrap_or_default()
+                .to_string(),
             s => s.to_string(),
         };
         let (titles, ids) = self.steps_for_submit();
@@ -585,12 +642,17 @@ impl PlanPanel {
             return;
         }
         let has_plan = self.plan(cx).is_some();
-        let (svc, state, id) = (self.services.clone(), self.state.clone(), self.ws_id.clone());
+        let (svc, state, id) = (
+            self.services.clone(),
+            self.state.clone(),
+            self.ws_id.clone(),
+        );
         cx.spawn(async move |this, cx| {
             if has_plan {
                 let Some(status) = call(
                     cx,
-                    svc.workspaces.submit_plan(&id, &summary, &body, &titles, &ids),
+                    svc.workspaces
+                        .submit_plan(&id, &summary, &body, &titles, &ids),
                     "Could not update the plan",
                 )
                 .await
@@ -613,7 +675,12 @@ impl PlanPanel {
                 .filter(|s| !s.is_empty())
                 .collect::<Vec<_>>()
                 .join("\n\n");
-            let Some(status) = call(cx, svc.workspaces.update_plan(&id, &prose), "Could not update the plan").await
+            let Some(status) = call(
+                cx,
+                svc.workspaces.update_plan(&id, &prose),
+                "Could not update the plan",
+            )
+            .await
             else {
                 return;
             };
@@ -629,7 +696,11 @@ impl PlanPanel {
                     cx.notify();
                 });
                 p.cancel_edit(cx);
-                toast(ToastKind::Success, "Plan updated — logged as a deviation", cx);
+                toast(
+                    ToastKind::Success,
+                    "Plan updated — logged as a deviation",
+                    cx,
+                );
             });
         })
         .detach();
@@ -664,9 +735,19 @@ impl PlanPanel {
 
     /// The head's Approve.
     pub fn approve_plan(&mut self, cx: &mut Context<Self>) {
-        let (svc, state, id) = (self.services.clone(), self.state.clone(), self.ws_id.clone());
+        let (svc, state, id) = (
+            self.services.clone(),
+            self.state.clone(),
+            self.ws_id.clone(),
+        );
         cx.spawn(async move |this, cx| {
-            let Some(status) = call(cx, svc.workspaces.approve_plan(&id), "Could not approve the plan").await else {
+            let Some(status) = call(
+                cx,
+                svc.workspaces.approve_plan(&id),
+                "Could not approve the plan",
+            )
+            .await
+            else {
                 return;
             };
             if status.starts_with("Refused") {
@@ -694,9 +775,17 @@ impl PlanPanel {
                 recur_engine::view::loops::workspace_policy_id(self.ws(cx), s.settings.as_ref()),
             )
         };
-        let (svc, state, id) = (self.services.clone(), self.state.clone(), self.ws_id.clone());
+        let (svc, state, id) = (
+            self.services.clone(),
+            self.state.clone(),
+            self.ws_id.clone(),
+        );
         cx.spawn(async move |this, cx| {
-            let res = match svc.workspaces.engage_loop_with(&id, &goal, &loop_id, &policy_id).await {
+            let res = match svc
+                .workspaces
+                .engage_loop_with(&id, &goal, &loop_id, &policy_id)
+                .await
+            {
                 Ok(s) => Ok(s),
                 Err(_) => svc.workspaces.engage_loop(&id, &goal).await,
             };
@@ -706,7 +795,10 @@ impl PlanPanel {
                     let _ = this.update(cx, |_, cx| {
                         toast(
                             ToastKind::Error,
-                            format!("Could not engage the loop: {}", recur_view_core::bridge_error_message(&err)),
+                            format!(
+                                "Could not engage the loop: {}",
+                                recur_view_core::bridge_error_message(&err)
+                            ),
                             cx,
                         )
                     });
@@ -901,13 +993,22 @@ impl PlanPanel {
             .cursor_pointer()
             .hover(|s| s.text_color(hsla(t.text)))
             .when_some(ic, |d, ic| d.child(icon(ic).size(px(12.))))
-            .child(text(label).size(11.).weight(500.).line_height(LineHeight::Normal).nowrap())
+            .child(
+                text(label)
+                    .size(11.)
+                    .weight(500.)
+                    .line_height(LineHeight::Normal)
+                    .nowrap(),
+            )
     }
 
     fn details(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let plan = self.plan(cx).cloned();
-        let dod = self.ws(cx).map(|w| w.definition_of_done.clone()).unwrap_or_default();
+        let dod = self
+            .ws(cx)
+            .map(|w| w.definition_of_done.clone())
+            .unwrap_or_default();
         let mut pane = div()
             .id("plan-details")
             .flex()
@@ -953,7 +1054,11 @@ impl PlanPanel {
                     .child(body),
             );
         } else {
-            if let Some(summary) = plan.as_ref().map(|p| p.summary.clone()).filter(|s| !s.is_empty()) {
+            if let Some(summary) = plan
+                .as_ref()
+                .map(|p| p.summary.clone())
+                .filter(|s| !s.is_empty())
+            {
                 pane = pane.child(
                     div()
                         .flex_none()
@@ -1032,7 +1137,13 @@ impl PlanPanel {
                         .items_center()
                         .gap(px(5.))
                         .child(recur_ui::kbd::kbd("⌘↵").size(11.).color(t.faint))
-                        .child(text("to save").size(11.).color(t.faint).line_height(LineHeight::Normal).nowrap()),
+                        .child(
+                            text("to save")
+                                .size(11.)
+                                .color(t.faint)
+                                .line_height(LineHeight::Normal)
+                                .nowrap(),
+                        ),
                 )
                 .child(
                     div()
@@ -1157,7 +1268,14 @@ impl PlanPanel {
                 }),
         );
         match status {
-            "done" => b = b.child(icon(IconName::Check).stroke_width(3.).size(px(10.)).color(hsla(fg))),
+            "done" => {
+                b = b.child(
+                    icon(IconName::Check)
+                        .stroke_width(3.)
+                        .size(px(10.))
+                        .color(hsla(fg)),
+                )
+            }
             "skipped" => b = b.child(icon(IconName::Minus).size(px(10.)).color(hsla(fg))),
             _ => {}
         }
@@ -1169,16 +1287,15 @@ impl PlanPanel {
         titled(
             SharedString::from(format!("plan-step-check-t-{}", d.key)),
             format!("{label} — click to change"),
-            b.cursor_pointer()
-                .on_click(cx.listener(move |p, _, _, cx| {
-                    let cur = p
-                        .drafts
-                        .iter()
-                        .find(|d| d.key == id)
-                        .map(|d| d.status.clone())
-                        .unwrap_or_default();
-                    p.cycle_step(&id, &cur, cx)
-                })),
+            b.cursor_pointer().on_click(cx.listener(move |p, _, _, cx| {
+                let cur = p
+                    .drafts
+                    .iter()
+                    .find(|d| d.key == id)
+                    .map(|d| d.status.clone())
+                    .unwrap_or_default();
+                p.cycle_step(&id, &cur, cx)
+            })),
         )
         .into_any_element()
     }
@@ -1209,7 +1326,8 @@ impl PlanPanel {
                 .overflow_hidden();
             for (n, c) in [(done, t.emerald), (skipped, t.faint), (doing, t.amber)] {
                 if n > 0 {
-                    track = track.child(div().flex_none().h_full().w(relative(share(n))).bg(hsla(c)));
+                    track =
+                        track.child(div().flex_none().h_full().w(relative(share(n))).bg(hsla(c)));
                 }
             }
             pane = pane.child(
@@ -1231,7 +1349,11 @@ impl PlanPanel {
                             .line_height(LineHeight::Normal)
                             .nowrap(),
                     )
-                    .child(titled("plan-prog-t", bar, div().id("plan-prog").flex_1().flex().child(track))),
+                    .child(titled(
+                        "plan-prog-t",
+                        bar,
+                        div().id("plan-prog").flex_1().flex().child(track),
+                    )),
             );
         }
         let mut scroll = div()
@@ -1251,33 +1373,46 @@ impl PlanPanel {
                     "skipped" => t.faint,
                     _ => t.text,
                 };
-                let mut copy = div().flex().flex_col().gap(px(2.)).flex_1().min_w_0().child(
-                    div()
-                        .debug_selector({
-                            let k = d.key.clone();
-                            move || format!("plan-step-title:{k}")
-                        })
-                        .py(px(6.))
-                        .text_size(px(13.))
-                        .line_height(relative(1.4))
-                        .text_color(hsla(color))
-                        .when(d.status == "done", |s| s.line_through())
-                        .on_key_down({
-                            let k = d.key.clone();
-                            cx.listener(move |p, ev: &KeyDownEvent, window, cx| {
-                                let ks = &ev.keystroke;
-                                if ks.key != "backspace" || ks.modifiers.platform || ks.modifiers.control || ks.modifiers.alt {
-                                    return;
-                                }
-                                let empty = p.rows.get(&k).is_some_and(|r| r.area.read(cx).value().is_empty());
-                                if empty {
-                                    cx.stop_propagation();
-                                    p.remove_step(&k, window, cx);
-                                }
+                let mut copy = div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(2.))
+                    .flex_1()
+                    .min_w_0()
+                    .child(
+                        div()
+                            .debug_selector({
+                                let k = d.key.clone();
+                                move || format!("plan-step-title:{k}")
                             })
-                        })
-                        .child(Textarea::new(&area)),
-                );
+                            .py(px(6.))
+                            .text_size(px(13.))
+                            .line_height(relative(1.4))
+                            .text_color(hsla(color))
+                            .when(d.status == "done", |s| s.line_through())
+                            .on_key_down({
+                                let k = d.key.clone();
+                                cx.listener(move |p, ev: &KeyDownEvent, window, cx| {
+                                    let ks = &ev.keystroke;
+                                    if ks.key != "backspace"
+                                        || ks.modifiers.platform
+                                        || ks.modifiers.control
+                                        || ks.modifiers.alt
+                                    {
+                                        return;
+                                    }
+                                    let empty = p
+                                        .rows
+                                        .get(&k)
+                                        .is_some_and(|r| r.area.read(cx).value().is_empty());
+                                    if empty {
+                                        cx.stop_propagation();
+                                        p.remove_step(&k, window, cx);
+                                    }
+                                })
+                            })
+                            .child(Textarea::new(&area)),
+                    );
                 if !d.note.is_empty() {
                     copy = copy.child(
                         text(d.note.clone())
@@ -1315,9 +1450,23 @@ impl PlanPanel {
                             .text_color(hsla(t.muted))
                             .cursor_pointer()
                             .hover(|s| s.text_color(hsla(t.text)))
-                            .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
-                            .child(icon(if gone { IconName::GitMerge } else { IconName::GitBranch }).size(px(11.)))
-                            .child(text(label).size(11.).line_height(LineHeight::Normal).nowrap())
+                            .on_mouse_down(MouseButton::Left, |_, window, _| {
+                                window.prevent_default()
+                            })
+                            .child(
+                                icon(if gone {
+                                    IconName::GitMerge
+                                } else {
+                                    IconName::GitBranch
+                                })
+                                .size(px(11.)),
+                            )
+                            .child(
+                                text(label)
+                                    .size(11.)
+                                    .line_height(LineHeight::Normal)
+                                    .nowrap(),
+                            )
                             .on_click(cx.listener(move |p, _, _, cx| {
                                 let t = target.clone();
                                 p.state.update(cx, |s, cx| {
@@ -1352,7 +1501,9 @@ impl PlanPanel {
                         .hover(|s| s.bg(hsla(t.pane_2)).text_color(hsla(t.text)))
                         .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
                         .child(icon(IconName::Trash).size(px(14.)))
-                        .on_click(cx.listener(move |p, _, window, cx| p.remove_step(&k, window, cx))),
+                        .on_click(
+                            cx.listener(move |p, _, window, cx| p.remove_step(&k, window, cx)),
+                        ),
                 );
                 list = list.child(
                     div()
@@ -1385,7 +1536,13 @@ impl PlanPanel {
         let groups: Vec<(String, String, Vec<Todo>)> = self
             .sessions(cx)
             .into_iter()
-            .map(|s| (s.code.clone(), s.name.clone(), latest_todos_from_messages(&s.messages)))
+            .map(|s| {
+                (
+                    s.code.clone(),
+                    s.name.clone(),
+                    latest_todos_from_messages(&s.messages),
+                )
+            })
             .filter(|(_, _, todos)| !todos.is_empty())
             .collect();
         if !groups.is_empty() {
@@ -1424,7 +1581,12 @@ impl PlanPanel {
                                 .flex()
                                 .items_center()
                                 .justify_center()
-                                .child(text(code.clone()).size(9.).weight(700.).color(recur_ui::hex(0x0A0C10))),
+                                .child(
+                                    text(code.clone())
+                                        .size(9.)
+                                        .weight(700.)
+                                        .color(recur_ui::hex(0x0A0C10)),
+                                ),
                         )
                         .child(
                             div().flex_1().min_w_0().child(
@@ -1543,7 +1705,11 @@ fn edge_fades(scroll: &ScrollHandle, backdrop: recur_ui::Color) -> Vec<AnyElemen
     let max = f32::from(scroll.max_offset().y).max(0.);
     let slack = 1.;
     let grad = |from: f32, to: f32| {
-        recur_ui::style::gradient_fill(180., (backdrop.with_alpha(from), 0.), (backdrop.with_alpha(to), 1.))
+        recur_ui::style::gradient_fill(
+            180.,
+            (backdrop.with_alpha(from), 0.),
+            (backdrop.with_alpha(to), 1.),
+        )
     };
     let mut out = Vec::new();
     if top > slack {
@@ -1589,7 +1755,10 @@ mod tests {
     #[test]
     fn progress_label_names_only_the_present_buckets() {
         assert_eq!(steps_bar_label(2, 0, 0, 4), "2 done of 4");
-        assert_eq!(steps_bar_label(1, 1, 1, 5), "1 done, 1 skipped, 1 in progress of 5");
+        assert_eq!(
+            steps_bar_label(1, 1, 1, 5),
+            "1 done, 1 skipped, 1 in progress of 5"
+        );
     }
 
     #[test]

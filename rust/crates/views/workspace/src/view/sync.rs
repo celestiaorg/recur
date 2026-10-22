@@ -6,12 +6,13 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, IntoElement,
-    Subscription, Window, div,
+    AnyElement, App, AppContext as _, Context, Entity, IntoElement, Subscription, Window, div,
 };
 use recur_domain::WorkspaceChatTab;
 use recur_engine::view::chat::{AgentMsg, ChatAttachmentDraft, ChatLogSession};
-use recur_engine::view::loop_cockpit::{is_loop_cockpit_tab, merge_loop_cockpit, specialist_live_codes};
+use recur_engine::view::loop_cockpit::{
+    is_loop_cockpit_tab, merge_loop_cockpit, specialist_live_codes,
+};
 use recur_engine::view::modes::ws_setup_status;
 use recur_view_chat::cards::session::{SessionCard, SessionCardProps};
 use recur_view_chat::chat::{ChatEvent, ChatHooks, ChatProps, SessionCardRenderer};
@@ -59,8 +60,8 @@ impl WorkspaceView {
             state: self.state.clone(),
             services: self.services.clone(),
         };
-        let renderer: SessionCardRenderer =
-            Rc::new(move |log: &ChatLogSession, _: &mut Window, cx: &mut App| -> AnyElement {
+        let renderer: SessionCardRenderer = Rc::new(
+            move |log: &ChatLogSession, _: &mut Window, cx: &mut App| -> AnyElement {
                 let Some(view) = weak.upgrade() else {
                     return div().into_any_element();
                 };
@@ -71,7 +72,10 @@ impl WorkspaceView {
                     messages: log.messages.clone(),
                     live: log.live,
                     presentation_active: v.presentation_active(cx),
-                    root_path: v.ws(cx).map(|w| w.worktree_path.clone()).unwrap_or_default(),
+                    root_path: v
+                        .ws(cx)
+                        .map(|w| w.worktree_path.clone())
+                        .unwrap_or_default(),
                     workspace_id: v.ws_id.clone(),
                     findings: v.chat_findings.clone(),
                     open_file: true,
@@ -94,7 +98,9 @@ impl WorkspaceView {
                                 } = ev
                                 {
                                     let _ = w.update(cx, |v, cx| {
-                                        v.open_agent_file(path, *line, *end_line, *start_col, *end_col, cx)
+                                        v.open_agent_file(
+                                            path, *line, *end_line, *start_col, *end_col, cx,
+                                        )
                                     });
                                 }
                             });
@@ -105,7 +111,8 @@ impl WorkspaceView {
                 };
                 card.update(cx, |c, cx| c.set_props(props, cx));
                 card.into_any_element()
-            });
+            },
+        );
         self.chat
             .update(cx, |c, cx| c.set_session_card(Some(renderer), cx));
     }
@@ -149,9 +156,20 @@ impl WorkspaceView {
                     }
                 })
                 .unwrap_or_default();
-            return merge_loop_cockpit(&ma, &feed.sessions, &feed.facts, &self.specialist_live(cx), &goal);
+            return merge_loop_cockpit(
+                &ma,
+                &feed.sessions,
+                &feed.facts,
+                &self.specialist_live(cx),
+                &goal,
+            );
         }
-        let cards: Vec<_> = feed.facts.iter().filter(|f| f.card == "fanout").cloned().collect();
+        let cards: Vec<_> = feed
+            .facts
+            .iter()
+            .filter(|f| f.card == "fanout")
+            .cloned()
+            .collect();
         if cards.is_empty() {
             ma
         } else {
@@ -174,7 +192,11 @@ impl WorkspaceView {
                 w.parent_id == self.ws_id
                     && !w.archived
                     && w.fan_out.as_ref().map_or("PA", |f| {
-                        if f.chat.is_empty() { "PA" } else { f.chat.as_str() }
+                        if f.chat.is_empty() {
+                            "PA"
+                        } else {
+                            f.chat.as_str()
+                        }
                     }) == code
                     && w.fan_out
                         .as_ref()
@@ -333,10 +355,11 @@ impl WorkspaceView {
                 self.sync_marks.focus_sent = Some(mark);
                 save_active_code(&self.state, &id, &code, cx);
                 let (svc, i, c) = (self.services.clone(), id.clone(), code.clone());
-                cx.background_executor().spawn(async move {
-                    let _ = svc.workspaces.set_workspace_chat_focus(&i, &c).await;
-                })
-                .detach();
+                cx.background_executor()
+                    .spawn(async move {
+                        let _ = svc.workspaces.set_workspace_chat_focus(&i, &c).await;
+                    })
+                    .detach();
                 if let Some(tabs) = self.tabs.as_mut()
                     && tabs.iter().any(|t| t.code == code && t.unseen)
                 {
@@ -351,7 +374,8 @@ impl WorkspaceView {
         // PR detail's dock is this chat: a loop workspace talks on its conductor.
         {
             let s = self.state.read(cx);
-            let pr_dock = s.view == recur_view_core::ViewName::PrDetail && !s.selected_pr_id.is_empty();
+            let pr_dock =
+                s.view == recur_view_core::ViewName::PrDetail && !s.selected_pr_id.is_empty();
             if pr_dock && self.has_run(cx) {
                 let owner = self.conductor_chat_code(cx);
                 if !owner.is_empty() && owner != code {
@@ -387,8 +411,9 @@ impl WorkspaceView {
         live.sort();
         if live != self.sync_marks.feed_live {
             self.sync_marks.feed_live = live.clone();
-            self.feed
-                .update(cx, |f, cx| f.mark_running(live.iter().map(String::as_str), cx));
+            self.feed.update(cx, |f, cx| {
+                f.mark_running(live.iter().map(String::as_str), cx)
+            });
         }
 
         // First sight of a busy tab without a local start stamps it once.
@@ -594,10 +619,11 @@ impl WorkspaceView {
         self.viewed_for = self.ws_id.clone();
         if activity > 0 {
             let (svc, id) = (self.services.clone(), self.ws_id.clone());
-            cx.background_executor().spawn(async move {
-                let _ = svc.briefing.mark_workspace_viewed(&id, activity).await;
-            })
-            .detach();
+            cx.background_executor()
+                .spawn(async move {
+                    let _ = svc.briefing.mark_workspace_viewed(&id, activity).await;
+                })
+                .detach();
         }
     }
 
@@ -611,7 +637,11 @@ impl WorkspaceView {
         }
         self.input_bound_key = key.to_string();
         let input = self.input_by_key.get(key).cloned().unwrap_or_default();
-        let atts: Vec<ChatAttachmentDraft> = self.attachments_by_key.get(key).cloned().unwrap_or_default();
+        let atts: Vec<ChatAttachmentDraft> = self
+            .attachments_by_key
+            .get(key)
+            .cloned()
+            .unwrap_or_default();
         self.props_dirty = true;
         // The chat restores the new tab's chrome on its reset key; the draft follows.
         let props = self.chat_props(cx);
@@ -653,7 +683,12 @@ impl WorkspaceView {
     /// A merged child's transcript (a plan step link): switch to the conductor, then scroll
     /// its wave card into view.
     fn child_transcript(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(child) = self.state.read(cx).child_transcript_request().map(str::to_string) else {
+        let Some(child) = self
+            .state
+            .read(cx)
+            .child_transcript_request()
+            .map(str::to_string)
+        else {
             return;
         };
         let conductor = self
@@ -702,12 +737,21 @@ impl WorkspaceView {
     /// queued until setup finishes) as the first message. The seed is consumed only once the
     /// dock is ready, so it is never dropped.
     fn apply_seed(&mut self, cx: &mut Context<Self>) {
-        let Some(seed) = self.state.read(cx).workspace_seeds.get(&self.ws_id).cloned() else {
+        let Some(seed) = self
+            .state
+            .read(cx)
+            .workspace_seeds
+            .get(&self.ws_id)
+            .cloned()
+        else {
             return;
         };
-        let Some(ws) = self.ws(cx).cloned() else { return };
+        let Some(ws) = self.ws(cx).cloned() else {
+            return;
+        };
         if !ws.is_main && self.create_failed(cx) {
-            self.state.update(cx, |s, cx| s.take_workspace_seed(&ws.id, cx));
+            self.state
+                .update(cx, |s, cx| s.take_workspace_seed(&ws.id, cx));
             return;
         }
         let code = self.active_code();
@@ -745,15 +789,27 @@ impl WorkspaceView {
                 return;
             }
             let key = self.key(&code);
-            if !self.pickers_by_key.get(&key).is_some_and(|p| !p.model.is_empty()) {
+            if !self
+                .pickers_by_key
+                .get(&key)
+                .is_some_and(|p| !p.model.is_empty())
+            {
                 let mode = ChatMode::from_key(&seed.mode);
                 let d = recur_view_core::modes::resolved_default_for_mode(
                     mode.key(),
                     settings.as_ref(),
                     &self.catalog_models,
                 );
-                let model = if seed.model.is_empty() { d.model } else { seed.model.clone() };
-                let cur = if seed.flags.is_empty() { d.flags } else { seed.flags.clone() };
+                let model = if seed.model.is_empty() {
+                    d.model
+                } else {
+                    seed.model.clone()
+                };
+                let cur = if seed.flags.is_empty() {
+                    d.flags
+                } else {
+                    seed.flags.clone()
+                };
                 let flags = recur_view_core::models::normalize_flags(
                     &recur_view_core::models::flags_for_model(&self.catalog_models, &model),
                     Some(&cur),
@@ -770,7 +826,10 @@ impl WorkspaceView {
             if code != "MA" && !self.pickers_ready() {
                 return;
             }
-            let Some(seed) = self.state.update(cx, |s, cx| s.take_workspace_seed(&ws.id, cx)) else {
+            let Some(seed) = self
+                .state
+                .update(cx, |s, cx| s.take_workspace_seed(&ws.id, cx))
+            else {
                 return;
             };
             let display = seed.display.trim().to_string();
@@ -778,14 +837,24 @@ impl WorkspaceView {
             self.send(&display, false, cx);
             return;
         }
-        self.state.update(cx, |s, cx| s.take_workspace_seed(&ws.id, cx));
+        self.state
+            .update(cx, |s, cx| s.take_workspace_seed(&ws.id, cx));
     }
 
     /// `paintOpeningUser`: the opening bubble at once, before the worktree or the send.
-    fn paint_opening_user(&mut self, key: &str, text: &str, display: &str, drafts: &[ChatAttachmentDraft]) {
-        let marked = recur_engine::view::mentions::compose_marked_text(text, drafts.iter().map(|d| d.id.as_str()))
-            .trim()
-            .to_string();
+    fn paint_opening_user(
+        &mut self,
+        key: &str,
+        text: &str,
+        display: &str,
+        drafts: &[ChatAttachmentDraft],
+    ) {
+        let marked = recur_engine::view::mentions::compose_marked_text(
+            text,
+            drafts.iter().map(|d| d.id.as_str()),
+        )
+        .trim()
+        .to_string();
         let body = if display.trim().is_empty() {
             recur_engine::view::chat::display_user_chat_text(&marked)
         } else {

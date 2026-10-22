@@ -34,7 +34,10 @@ impl WorkspaceView {
 
     fn live_turn_closed(&self, key: &str, cx: &App) -> bool {
         drop_live_after_footer(
-            self.chat_by_key.get(key).map(Vec::as_slice).unwrap_or_default(),
+            self.chat_by_key
+                .get(key)
+                .map(Vec::as_slice)
+                .unwrap_or_default(),
             self.turn_started_at_by_key.get(key).copied().unwrap_or(0),
             self.chat_key_busy(key, cx),
         )
@@ -166,9 +169,13 @@ impl WorkspaceView {
                     self.touch(cx);
                 }
             }
-            AppEvent::AttentionUpdated(a) => {
-                self.on_attention_tab(&a.workspace_id, &a.code, a.tab_unseen, a.clear_all_unseen, cx)
-            }
+            AppEvent::AttentionUpdated(a) => self.on_attention_tab(
+                &a.workspace_id,
+                &a.code,
+                a.tab_unseen,
+                a.clear_all_unseen,
+                cx,
+            ),
             AppEvent::ChatModeChanged(m) => {
                 if m.workspace_id.is_empty()
                     || m.agent_code.is_empty()
@@ -216,7 +223,9 @@ impl WorkspaceView {
             }
             AppEvent::WorkspaceUpdated(u) if u.chats_changed && !u.workspace_id.is_empty() => {
                 let from = u.from_workspace_id.clone().filter(|f| !f.is_empty());
-                let remap: Option<CodeRemap> = from.as_ref().map(|_| u.code_remap.clone().unwrap_or_default());
+                let remap: Option<CodeRemap> = from
+                    .as_ref()
+                    .map(|_| u.code_remap.clone().unwrap_or_default());
                 let moved = u.moved_codes.clone().unwrap_or_default();
                 self.on_chats_changed(&u.workspace_id, from.as_deref(), remap, moved, cx);
             }
@@ -224,7 +233,13 @@ impl WorkspaceView {
         }
     }
 
-    fn on_session(&mut self, id: String, code: String, signal: SessionSignal, cx: &mut Context<Self>) {
+    fn on_session(
+        &mut self,
+        id: String,
+        code: String,
+        signal: SessionSignal,
+        cx: &mut Context<Self>,
+    ) {
         if !self.accepts(&id, &code, cx) {
             return;
         }
@@ -261,7 +276,13 @@ impl WorkspaceView {
                 let rows = self.rows(&key);
                 self.chat_by_key.insert(
                     key,
-                    attach_tool_result(&rows, &tool_id, &result, is_error, &extras.unwrap_or_default()),
+                    attach_tool_result(
+                        &rows,
+                        &tool_id,
+                        &result,
+                        is_error,
+                        &extras.unwrap_or_default(),
+                    ),
                 );
             }
             SessionSignal::ToolInput {
@@ -288,7 +309,8 @@ impl WorkspaceView {
                     return;
                 }
                 let rows = self.rows(&key);
-                self.chat_by_key.insert(key.clone(), apply_compact(&rows, &evt));
+                self.chat_by_key
+                    .insert(key.clone(), apply_compact(&rows, &evt));
                 if let Some(prev) = self.usage_by_key.get(&key).cloned() {
                     let next = if evt.status == "started" {
                         recur_agent::context_usage::ContextUsage {
@@ -317,7 +339,8 @@ impl WorkspaceView {
             }
             SessionSignal::User(text) => {
                 let rows = self.rows(&key);
-                self.chat_by_key.insert(key, add_user(&rows, &text, now_ms()));
+                self.chat_by_key
+                    .insert(key, add_user(&rows, &text, now_ms()));
             }
             SessionSignal::TurnEnd(turn) => {
                 let rows = drop_open_compact(&self.rows(&key));
@@ -520,7 +543,12 @@ impl WorkspaceView {
     }
 
     /// `applySourceHoist`: this view's host chats moved to `to_id`.
-    fn apply_source_hoist(&mut self, to_id: &str, remap: Option<&CodeRemap>, cx: &mut Context<Self>) {
+    fn apply_source_hoist(
+        &mut self,
+        to_id: &str,
+        remap: Option<&CodeRemap>,
+        cx: &mut Context<Self>,
+    ) {
         let from_id = self.ws_id.clone();
         if from_id.is_empty() || to_id.is_empty() || from_id == to_id {
             return;
@@ -538,7 +566,11 @@ impl WorkspaceView {
             }
             if let Some(code) = code_of(&k) {
                 let atts = self.attachments_by_key.get(&k).cloned().unwrap_or_default();
-                HoistState::global(cx).stash_draft(&dest_chat_key(&code, to_id, remap), &input, &atts);
+                HoistState::global(cx).stash_draft(
+                    &dest_chat_key(&code, to_id, remap),
+                    &input,
+                    &atts,
+                );
             }
         }
         for (k, atts) in self.attachments_by_key.clone() {
@@ -592,12 +624,14 @@ impl WorkspaceView {
             h.remap_prefixed(&self.attachments_by_key, &from_id, to_id, remap, |d, s| {
                 concat_hoist_list(d.map(Vec::as_slice).unwrap_or_default(), s)
             });
-        self.sending_by_key = h.remap_prefixed(&self.sending_by_key, &from_id, to_id, remap, |d, s| {
-            d.copied().unwrap_or(false) || *s
-        });
-        self.send_gen_by_key = h.remap_prefixed(&self.send_gen_by_key, &from_id, to_id, remap, |d, s| {
-            d.copied().unwrap_or(0).max(*s)
-        });
+        self.sending_by_key =
+            h.remap_prefixed(&self.sending_by_key, &from_id, to_id, remap, |d, s| {
+                d.copied().unwrap_or(false) || *s
+            });
+        self.send_gen_by_key =
+            h.remap_prefixed(&self.send_gen_by_key, &from_id, to_id, remap, |d, s| {
+                d.copied().unwrap_or(0).max(*s)
+            });
         if let Some(code) = code_of(&self.prompt_target_key.clone()) {
             self.prompt_target_key = dest_chat_key(&code, to_id, remap);
         }
@@ -617,7 +651,8 @@ impl WorkspaceView {
         for (k, d) in &got {
             if !d.input.is_empty() {
                 let cur = self.input_by_key.get(k).cloned().unwrap_or_default();
-                self.input_by_key.insert(k.clone(), concat_hoist_text(&cur, &d.input));
+                self.input_by_key
+                    .insert(k.clone(), concat_hoist_text(&cur, &d.input));
             }
             if !d.attachments.is_empty() {
                 let cur = self.attachments_by_key.get(k).cloned().unwrap_or_default();
@@ -627,7 +662,11 @@ impl WorkspaceView {
         }
         if !bound.is_empty() && got.contains_key(&bound) {
             let input = self.input_by_key.get(&bound).cloned().unwrap_or_default();
-            let atts = self.attachments_by_key.get(&bound).cloned().unwrap_or_default();
+            let atts = self
+                .attachments_by_key
+                .get(&bound)
+                .cloned()
+                .unwrap_or_default();
             self.set_chat_draft(input, atts, cx);
         }
         let inflight = HoistState::global(cx).take_sending(&self.ws_id);
@@ -808,7 +847,9 @@ impl WorkspaceView {
             ChatEvent::OpenArtifact(a) => {
                 let a = a.clone();
                 self.observatory
-                    .update(cx, |o, cx| o.open_artifact(&a.id, &a.title, &a.kind, &a.path, window, cx))
+                    .update(cx, |o, cx| {
+                        o.open_artifact(&a.id, &a.title, &a.kind, &a.path, window, cx)
+                    })
                     .detach();
             }
             ChatEvent::AnswerEscalation { choice, text } => {
@@ -848,7 +889,9 @@ impl WorkspaceView {
         };
         let mut rel = path.to_string();
         if !ws.worktree_path.is_empty() && rel.starts_with(&ws.worktree_path) {
-            rel = rel[ws.worktree_path.len()..].trim_start_matches('/').to_string();
+            rel = rel[ws.worktree_path.len()..]
+                .trim_start_matches('/')
+                .to_string();
         }
         if rel.is_empty() {
             return;
@@ -902,7 +945,13 @@ impl WorkspaceView {
                 end_col,
             } => {
                 let o = |v: usize| (v > 0).then_some(v as i64);
-                let (p, sl, el, sc, ec) = (path.clone(), o(*start_line), o(*end_line), o(*start_col), o(*end_col));
+                let (p, sl, el, sc, ec) = (
+                    path.clone(),
+                    o(*start_line),
+                    o(*end_line),
+                    o(*start_col),
+                    o(*end_col),
+                );
                 self.chat.update(cx, |c, cx| {
                     c.insert_file_mention(&p, sl, el, sc, ec, window, cx)
                 });
@@ -939,7 +988,9 @@ impl WorkspaceView {
             PlanPanelEvent::OpenArtifact(a) => {
                 let a = a.clone();
                 self.observatory
-                    .update(cx, |o, cx| o.open_artifact(&a.id, &a.title, &a.kind, &a.path, window, cx))
+                    .update(cx, |o, cx| {
+                        o.open_artifact(&a.id, &a.title, &a.kind, &a.path, window, cx)
+                    })
                     .detach();
             }
             PlanPanelEvent::Changed => self.touch(cx),
@@ -948,6 +999,8 @@ impl WorkspaceView {
 }
 
 /// `takeOpenEscalation`.
-pub(crate) fn take_open_escalation(e: Option<recur_domain::Escalation>) -> Option<recur_domain::Escalation> {
+pub(crate) fn take_open_escalation(
+    e: Option<recur_domain::Escalation>,
+) -> Option<recur_domain::Escalation> {
     e.filter(|e| e.status == "open" && !e.question.is_empty())
 }

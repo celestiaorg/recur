@@ -103,7 +103,11 @@ impl Color {
         }
         let (a, b) = (to_lab(self), to_lab(other));
         let q = 1. - p;
-        let (l, aa, bb) = (a[0] * p + b[0] * q, a[1] * p + b[1] * q, a[2] * p + b[2] * q);
+        let (l, aa, bb) = (
+            a[0] * p + b[0] * q,
+            a[1] * p + b[1] * q,
+            a[2] * p + b[2] * q,
+        );
         let l_ = (l + 0.396_337_78 * aa + 0.215_803_76 * bb).powi(3);
         let m_ = (l - 0.105_561_346 * aa - 0.063_854_17 * bb).powi(3);
         let s_ = (l - 0.089_484_18 * aa - 1.291_485_5 * bb).powi(3);
@@ -267,7 +271,11 @@ mod tests {
         let c = crate::hex(0x34d399);
         let w = crate::hex(0xffffff);
         let same = c.mix_oklab(1., w);
-        assert!((same.r - c.r).abs() < 1e-4 && (same.g - c.g).abs() < 1e-4 && (same.b - c.b).abs() < 1e-4);
+        assert!(
+            (same.r - c.r).abs() < 1e-4
+                && (same.g - c.g).abs() < 1e-4
+                && (same.b - c.b).abs() < 1e-4
+        );
         let m = c.mix_oklab(0.88, w);
         assert!(m.r > c.r && m.g > c.g && m.b > c.b);
     }

@@ -9,30 +9,12 @@ use gpui_kit::AppContext as _;
 use parking_lot::Mutex;
 use recur_engine::view::loop_cockpit::merge_loop_cockpit;
 use recur_services::mock::{MockBridge, MockOptions, Release, Reply};
-use recur_view_core::prefs::{CodePanelKey, PanelLayout, PanelSide};
 use recur_view_core::{AppState, LocalStorage, ViewContext};
 use serde_json::json;
 
 use super::harness::*;
 use crate::app_chat::{ACTIVE_KEY, APP, AppChat};
 use crate::session_feed::SessionFeed;
-
-#[test]
-fn the_chat_panel_can_open_on_the_right_when_configured() {
-    let mut storage = LocalStorage::in_memory();
-    storage.set(
-        "recur.codePanelSides",
-        r#"{"maestro":"right","files":"left","outline":"right","search":"right","refs":"right"}"#,
-    );
-    let layout = PanelLayout::load(&storage);
-    assert_eq!(layout.sides[&CodePanelKey::Maestro], PanelSide::Right);
-    assert_eq!(layout.sides[&CodePanelKey::Files], PanelSide::Left);
-    assert!(
-        layout
-            .panels_on_side(PanelSide::Right)
-            .contains(&CodePanelKey::Maestro)
-    );
-}
 
 #[gpui::test]
 async fn the_loop_chat_renders_session_cards_once_the_delayed_fetch_resolves(

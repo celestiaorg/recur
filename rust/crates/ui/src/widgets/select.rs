@@ -730,6 +730,11 @@ impl Render for Select {
             .when_some(tr.weight, |d, w| d.font_weight(gpui_kit::FontWeight(w)))
             .role(gpui_kit::accesskit::Role::ComboBox)
             .aria_label(self.label.clone());
+        // Spec handle: `sel:{aria label}={shown value}`, `:off` while disabled.
+        let (label, shown) = (self.label.clone(), self.display());
+        button = button.debug_selector(move || {
+            format!("sel:{label}={shown}{}", if disabled { ":off" } else { "" })
+        });
         button = if self.ghost || tr.auto_width {
             button.flex_none()
         } else {
@@ -934,8 +939,10 @@ impl Select {
             let active = self.active == Some(row.ix);
             let value = o.value.clone();
             let ix = row.ix;
+            let label = o.label.clone();
             let mut opt = div()
                 .id(("sel-opt", ix))
+                .debug_selector(move || format!("sel-opt:{label}"))
                 .flex()
                 .items_center()
                 .gap(px(8.))
@@ -1028,6 +1035,7 @@ impl Select {
         }
         let mut menu = crate::style::menu_panel(cx)
             .id("sel-menu")
+            .debug_selector(|| "sel-menu".into())
             .w(px(width))
             .max_h(px(max_h))
             .when_some(self.variant.max_width(vw), |d, w| d.max_w(px(w)))

@@ -24,8 +24,14 @@ fn items_opts(store: Store) -> MockOptions {
             if a.first().and_then(Value::as_str) != Some(WS) {
                 return Reply::value(json!([]));
             }
-            let code = a.get(1).and_then(Value::as_str).filter(|s| !s.is_empty()).unwrap_or("PA");
-            Reply::value(Value::Array(store.lock().get(code).cloned().unwrap_or_default()))
+            let code = a
+                .get(1)
+                .and_then(Value::as_str)
+                .filter(|s| !s.is_empty())
+                .unwrap_or("PA");
+            Reply::value(Value::Array(
+                store.lock().get(code).cloned().unwrap_or_default(),
+            ))
         })
 }
 
@@ -93,9 +99,10 @@ fn release(hold: &Pending, store: &Store, code: &str, reply: &str) {
 
 /// Put a transcript in the store and pull it into the open tab (`WorkspaceChatItems`).
 fn load(h: &mut H, store: &Store, code: &str, items: Value) {
-    store
-        .lock()
-        .insert(code.to_string(), items.as_array().cloned().unwrap_or_default());
+    store.lock().insert(
+        code.to_string(),
+        items.as_array().cloned().unwrap_or_default(),
+    );
     let code = code.to_string();
     h.with(|v, cx| {
         let id = v.workspace_id().to_string();
@@ -364,7 +371,9 @@ fn open_finding() -> Value {
 }
 
 fn on_it_opts(store: Store, sent: Calls) -> MockOptions {
-    bridge_opts(store, sent, Pending::default(), |n, _| Some(format!("On it. ({n})")))
+    bridge_opts(store, sent, Pending::default(), |n, _| {
+        Some(format!("On it. ({n})"))
+    })
 }
 
 #[gpui::test]
@@ -384,13 +393,18 @@ async fn slash_fix_findings_shows_a_short_label_while_sending_the_full_checklist
     assert!(h.has("mention:/fix-findings"));
     h.keys("enter");
     assert!(h.me("Fix open reviewer findings"));
-    assert!(!h.bodies().iter().any(|b| b.contains("mcp__recur__list_findings")));
+    assert!(
+        !h.bodies()
+            .iter()
+            .any(|b| b.contains("mcp__recur__list_findings"))
+    );
     let t = texts(&sent);
     assert_eq!(t.len(), 1);
     assert!(t[0].contains("mcp__recur__list_findings"));
     assert!(t[0].contains("mcp__recur__update_finding"));
     let chat = h.chat();
-    let focused = h.cx.update(|window, cx| chat.read(cx).test_composer_focused(window));
+    let focused =
+        h.cx.update(|window, cx| chat.read(cx).test_composer_focused(window));
     assert!(focused);
 }
 
@@ -512,7 +526,8 @@ async fn failed_deferred_commit_retry_sends_a_fresh_grouped_action_without_eatin
         }
         let ws = a[0].as_str().unwrap_or_default().to_string();
         let list = s.chats_by_loop.entry(ws).or_default();
-        let tab = json!({"code": format!("PA{}", list.len() + 2), "title": "New chat", "updatedAt": 0});
+        let tab =
+            json!({"code": format!("PA{}", list.len() + 2), "title": "New chat", "updatedAt": 0});
         list.push(tab.clone());
         Reply::value(tab)
     });
@@ -521,7 +536,11 @@ async fn failed_deferred_commit_retry_sends_a_fresh_grouped_action_without_eatin
     h.fill("unsent draft stays here");
     h.select_tab("MA");
     pick(&mut h, "commit");
-    assert!(h.toasts().iter().any(|t| t.contains("is ready — open a chat tab and retry")));
+    assert!(
+        h.toasts()
+            .iter()
+            .any(|t| t.contains("is ready — open a chat tab and retry"))
+    );
     h.select_tab("PA");
     assert_eq!(h.input(), "unsent draft stays here");
     assert!(texts(&sent).is_empty());
@@ -827,7 +846,11 @@ async fn a_new_engine_turn_after_lost_idle_still_streams_past_the_previous_foote
     assert!(h.has("turn-end"));
     working(&mut h, "MA");
     delta(&mut h, "MA", "second turn after lost idle", 3);
-    assert!(h.bodies().iter().any(|b| b == "second turn after lost idle"));
+    assert!(
+        h.bodies()
+            .iter()
+            .any(|b| b == "second turn after lost idle")
+    );
     assert!(!h.bodies().iter().any(|b| b.contains("late leftover chunk")));
 }
 
@@ -842,7 +865,11 @@ async fn idle_reordered_past_the_next_turn_still_lets_that_turn_stream(cx: &mut 
     working(&mut h, "MA");
     idle(&mut h, "MA");
     delta(&mut h, "MA", "second turn after reordered idle", 2);
-    assert!(h.bodies().iter().any(|b| b == "second turn after reordered idle"));
+    assert!(
+        h.bodies()
+            .iter()
+            .any(|b| b == "second turn after reordered idle")
+    );
     assert!(h.has("turn-end"));
 }
 
@@ -851,9 +878,12 @@ async fn a_reordered_idle_still_drops_sticky_send_so_a_queued_follow_up_can_flus
     cx: &mut TestAppContext,
 ) {
     let sent = calls();
-    let opts = bridge_opts(Store::default(), sent.clone(), Pending::default(), |n, _| {
-        (n > 1).then(|| "ok".to_string())
-    });
+    let opts = bridge_opts(
+        Store::default(),
+        sent.clone(),
+        Pending::default(),
+        |n, _| (n > 1).then(|| "ok".to_string()),
+    );
     let mut h = boot(cx, opts);
     h.fill("keep going");
     send_click(&mut h);
@@ -914,7 +944,12 @@ async fn a_reply_landing_after_idle_flushed_the_queue_does_not_repaint_under_the
         .push(json!({"role": "assistant", "kind": "text", "text": "first reply text"}));
     working(&mut h, "MA");
     delta(&mut h, "MA", "first reply text", 1);
-    let count = |h: &mut H| h.bodies().iter().filter(|b| b.as_str() == "first reply text").count();
+    let count = |h: &mut H| {
+        h.bodies()
+            .iter()
+            .filter(|b| b.as_str() == "first reply text")
+            .count()
+    };
     assert_eq!(count(&mut h), 1);
     idle(&mut h, "MA");
     assert_eq!(texts(&sent).len(), 2);
@@ -1036,13 +1071,18 @@ async fn spend_limit_error_renders_a_card_with_retry_that_re_sends_the_last_prom
     cx: &mut TestAppContext,
 ) {
     let sent = calls();
-    let opts = bridge_opts(Store::default(), sent.clone(), Pending::default(), |n, _| {
-        Some(if n == 1 {
-            SPEND.into()
-        } else {
-            "ok, continuing".into()
-        })
-    });
+    let opts = bridge_opts(
+        Store::default(),
+        sent.clone(),
+        Pending::default(),
+        |n, _| {
+            Some(if n == 1 {
+                SPEND.into()
+            } else {
+                "ok, continuing".into()
+            })
+        },
+    );
     let mut h = boot(cx, opts);
     h.fill("ship the dark mode polish");
     send_click(&mut h);
@@ -1084,8 +1124,10 @@ async fn retry_shows_the_elapsed_clock_before_the_first_stream_row(cx: &mut Test
 // ---- @ file mentions ----
 
 fn files_opts(files: &'static [&'static str], sent: Calls) -> MockOptions {
-    bridge_opts(Store::default(), sent, Pending::default(), |_, _| Some("ok".into()))
-        .resolver("ListFiles", move |_, _, _| Reply::value(json!(files)))
+    bridge_opts(Store::default(), sent, Pending::default(), |_, _| {
+        Some("ok".into())
+    })
+    .resolver("ListFiles", move |_, _, _| Reply::value(json!(files)))
 }
 
 fn chips(h: &mut H) -> usize {
@@ -1114,7 +1156,12 @@ async fn typing_at_inserts_deletable_inline_chips_in_the_composer_sentence(
     ]);
     let (s1, s2) = (skills.clone(), skills);
     let opts = files_opts(
-        &["PROGRESS.md", "DECISIONS.md", ".gitignore", "frontend/src/lib/agentchat.ts"],
+        &[
+            "PROGRESS.md",
+            "DECISIONS.md",
+            ".gitignore",
+            "frontend/src/lib/agentchat.ts",
+        ],
         sent.clone(),
     )
     .resolver("ListSkills", move |_, _, _| Reply::value(s1.clone()))
@@ -1158,7 +1205,10 @@ async fn typing_at_inserts_deletable_inline_chips_in_the_composer_sentence(
     h.keys("enter");
     send_click(&mut h);
     let t = texts(&sent);
-    assert!(t[0].ends_with("how does @PROGRESS.md compare to @DECISIONS.md"), "{t:?}");
+    assert!(
+        t[0].ends_with("how does @PROGRESS.md compare to @DECISIONS.md"),
+        "{t:?}"
+    );
     assert!(h.has("file-inline:PROGRESS.md"));
     assert!(h.has("file-inline:DECISIONS.md"));
 }
@@ -1167,7 +1217,8 @@ async fn typing_at_inserts_deletable_inline_chips_in_the_composer_sentence(
 async fn mention_menu_keeps_lower_ranked_matches_past_the_old_top_12_cap(cx: &mut TestAppContext) {
     let mut files: Vec<String> = (0..15).map(|i| format!("a{i:02}/match.md")).collect();
     files.push("frontend/src/lib/deeply/nested/path/match-util.ts".into());
-    let opts = items_opts(Store::default()).resolver("ListFiles", move |_, _, _| Reply::value(json!(files)));
+    let opts = items_opts(Store::default())
+        .resolver("ListFiles", move |_, _, _| Reply::value(json!(files)));
     let mut h = boot(cx, opts);
     h.focus_composer();
     type_wait(&mut h, "@match");
@@ -1215,8 +1266,9 @@ async fn at_hyp_lists_both_hyperlane_validator_scripts(cx: &mut TestAppContext) 
 
 #[gpui::test]
 async fn escape_dismisses_the_mention_menu_without_reopening_on_keyup(cx: &mut TestAppContext) {
-    let opts = items_opts(Store::default())
-        .resolver("ListFiles", |_, _, _| Reply::value(json!(["PROGRESS.md", "DECISIONS.md"])));
+    let opts = items_opts(Store::default()).resolver("ListFiles", |_, _, _| {
+        Reply::value(json!(["PROGRESS.md", "DECISIONS.md"]))
+    });
     let mut h = boot(cx, opts);
     h.focus_composer();
     type_wait(&mut h, "@PRO");
@@ -1247,7 +1299,10 @@ fn right_panel(h: &mut H) -> Option<CodePanelKey> {
     })
 }
 
-fn obs_read<R>(h: &mut H, f: impl FnOnce(&recur_view_observatory::Observatory, &gpui_kit::App) -> R) -> R {
+fn obs_read<R>(
+    h: &mut H,
+    f: impl FnOnce(&recur_view_observatory::Observatory, &gpui_kit::App) -> R,
+) -> R {
     let v = h.view();
     h.cx.update(|_, cx| {
         let o = v.read(cx).observatory().clone();
@@ -1263,9 +1318,15 @@ async fn transcript_file_chip_opens_the_editor_without_stealing_the_files_panel(
     assert!(h.has("obs-node:file:src/main.go"));
     assert_eq!(right_panel(&mut h), Some(CodePanelKey::Files));
     h.click("file-inline:main.go");
-    assert_eq!(obs_read(&mut h, |o, _| o.selected_path().to_string()), "src/main.go");
+    assert_eq!(
+        obs_read(&mut h, |o, _| o.selected_path().to_string()),
+        "src/main.go"
+    );
     assert_eq!(right_panel(&mut h), Some(CodePanelKey::Files));
-    assert_eq!(obs_read(&mut h, |o, _| o.tree_path().to_string()), "src/main.go");
+    assert_eq!(
+        obs_read(&mut h, |o, _| o.tree_path().to_string()),
+        "src/main.go"
+    );
 }
 
 #[gpui::test]
@@ -1276,7 +1337,10 @@ async fn transcript_file_chip_keeps_source_control_open_instead_of_flipping_to_o
     h.click("panel-toggle:scm");
     assert_eq!(right_panel(&mut h), Some(CodePanelKey::Scm));
     h.click("file-inline:main.go");
-    assert_eq!(obs_read(&mut h, |o, _| o.selected_path().to_string()), "src/main.go");
+    assert_eq!(
+        obs_read(&mut h, |o, _| o.selected_path().to_string()),
+        "src/main.go"
+    );
     assert_eq!(right_panel(&mut h), Some(CodePanelKey::Scm));
 }
 
@@ -1287,11 +1351,20 @@ async fn transcript_file_chip_does_not_select_a_file_that_is_filtered_out_of_the
     let mut h = boot(cx, chip_opts("PROGRESS.md"));
     assert!(h.has("obs-node:file:src/main.go"));
     h.click("obs-node:file:src/main.go");
-    assert_eq!(obs_read(&mut h, |o, _| o.tree_path().to_string()), "src/main.go");
+    assert_eq!(
+        obs_read(&mut h, |o, _| o.tree_path().to_string()),
+        "src/main.go"
+    );
     h.click("file-inline:PROGRESS.md");
-    assert_eq!(obs_read(&mut h, |o, _| o.selected_path().to_string()), "PROGRESS.md");
+    assert_eq!(
+        obs_read(&mut h, |o, _| o.selected_path().to_string()),
+        "PROGRESS.md"
+    );
     assert_eq!(right_panel(&mut h), Some(CodePanelKey::Files));
-    assert_eq!(obs_read(&mut h, |o, _| o.tree_path().to_string()), "src/main.go");
+    assert_eq!(
+        obs_read(&mut h, |o, _| o.tree_path().to_string()),
+        "src/main.go"
+    );
     assert!(!h.has("obs-node:file:PROGRESS.md"));
 }
 
@@ -1332,7 +1405,10 @@ async fn dragging_a_folder_from_the_explorer_inserts_a_folder_chip(cx: &mut Test
 fn os_drop(h: &mut H, path: &str) {
     let at = h.bounds("chat").expect("chat").center();
     let paths = gpui::ExternalPaths(smallvec::smallvec![std::path::PathBuf::from(path)]);
-    h.cx.simulate_event(gpui::FileDropEvent::Entered { position: at, paths });
+    h.cx.simulate_event(gpui::FileDropEvent::Entered {
+        position: at,
+        paths,
+    });
     h.cx.simulate_event(gpui::FileDropEvent::Submit { position: at });
     h.settle();
 }
@@ -1485,7 +1561,11 @@ async fn dragging_a_chat_tab_reorders_the_strip_and_survives_reload(cx: &mut Tes
     h.cx.simulate_mouse_down(from, gpui::MouseButton::Left, Modifiers::none());
     for i in 1..=12 {
         let x = from.x + (to.origin.x + px(8.) - from.x) * (i as f32 / 12.);
-        h.cx.simulate_mouse_move(point(x, from.y), Some(gpui::MouseButton::Left), Modifiers::none());
+        h.cx.simulate_mouse_move(
+            point(x, from.y),
+            Some(gpui::MouseButton::Left),
+            Modifiers::none(),
+        );
         h.cx.run_until_parked();
     }
     let end = point(to.origin.x + px(8.), from.y);
@@ -1568,7 +1648,9 @@ fn tool_head() -> String {
 
 fn tool_open(h: &mut H) -> bool {
     let chat = h.chat();
-    chat.read_with(h.cx, |c, _| c.test_open_rows().get("1").copied().unwrap_or(false))
+    chat.read_with(h.cx, |c, _| {
+        c.test_open_rows().get("1").copied().unwrap_or(false)
+    })
 }
 
 fn window_chat(h: &mut H) -> bool {
@@ -1782,7 +1864,9 @@ async fn a_mid_scrolled_shorter_tab_is_not_pinned_when_entered_from_a_longer_tab
     let short = Value::Array(long.as_array().unwrap()[..24].to_vec());
     load(&mut h, &store, "MA", long);
     assert!(dist_from_bottom(&mut h) < recur_view_chat::transcript_ui::NEAR_BOTTOM_PX);
-    store.lock().insert("PA".into(), short.as_array().cloned().unwrap());
+    store
+        .lock()
+        .insert("PA".into(), short.as_array().cloned().unwrap());
     h.select_tab("PA");
     assert!(h.me("question 0"));
     let saved = leave_mid_scroll(&mut h, 320.);
@@ -1870,7 +1954,11 @@ async fn fork_control_on_a_finished_turn_opens_a_new_chat_tab(cx: &mut TestAppCo
     let opts = MockOptions::default()
         .resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])))
         .resolver("WorkspaceChatItems", |a, _, _| {
-            Reply::value(if a[1] == json!("PA2") { json!([]) } else { fork_transcript() })
+            Reply::value(if a[1] == json!("PA2") {
+                json!([])
+            } else {
+                fork_transcript()
+            })
         })
         .resolver("ForkWorkspaceChat", move |a, s, _| {
             f2.lock().push(a.to_vec());
@@ -1896,7 +1984,11 @@ async fn fork_to_new_workspace_opens_the_created_workspace(cx: &mut TestAppConte
     let opts = MockOptions::default()
         .resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])))
         .resolver("WorkspaceChatItems", |a, _, _| {
-            Reply::value(if a[0] == json!("WS-FORK") { json!([]) } else { fork_transcript() })
+            Reply::value(if a[0] == json!("WS-FORK") {
+                json!([])
+            } else {
+                fork_transcript()
+            })
         });
     let mut h = boot(cx, opts);
     assert!(h.has("turn-end"));
@@ -1924,14 +2016,91 @@ async fn http_links_in_agent_output_open_in_the_os_browser(cx: &mut TestAppConte
     send_click(&mut h);
     assert!(h.assistant("See [the docs](https://example.com/guide) for details."));
     let chat = h.chat();
-    let at = h
-        .cx
-        .update(|window, cx| chat.read(cx).test_text_bounds("the docs", window, cx))
-        .expect("link bounds")
-        .center();
+    let at =
+        h.cx.update(|window, cx| chat.read(cx).test_text_bounds("the docs", window, cx))
+            .expect("link bounds")
+            .center();
     h.cx.simulate_click(at, Modifiers::none());
     h.settle();
-    assert_eq!(h.cx.opened_url().as_deref(), Some("https://example.com/guide"));
+    assert_eq!(
+        h.cx.opened_url().as_deref(),
+        Some("https://example.com/guide")
+    );
 }
 
+// ---- maestro-dock.spec.ts ----
 
+#[gpui::test]
+async fn the_dock_opens_with_the_loop_tab_sends_a_message_and_toggles_closed(
+    cx: &mut TestAppContext,
+) {
+    let store: Store = Default::default();
+    let opts = bridge_opts(store, calls(), Default::default(), |_, _| {
+        Some("On it — steering the loop (mock reply).".into())
+    });
+    let mut h = boot(cx, opts);
+    assert!(h.has("obs-left"));
+    assert!(
+        h.chip("MA").is_some(),
+        "the run's chat leads with the pinned Loop tab"
+    );
+    assert!(h.has("chat-composer"));
+
+    h.click("obs-node:file:src/main.go");
+    let editor = h.bounds("obs-editor-pane:main").expect("the editor");
+    let dock = h.bounds("obs-left").expect("the dock");
+    assert!(
+        dock.origin.x < editor.origin.x,
+        "the dock sits left of the editor"
+    );
+
+    h.fill("steer from dock");
+    send_click(&mut h);
+    assert!(h.me("steer from dock"));
+
+    h.click("obs-left-toggle");
+    assert!(!h.has("obs-left"));
+    h.click("obs-left-toggle");
+    assert!(h.has("obs-left"));
+    assert!(
+        h.me("steer from dock"),
+        "the transcript survives the toggle"
+    );
+}
+
+#[gpui::test]
+async fn the_chat_panel_can_open_on_the_right_when_configured(cx: &mut TestAppContext) {
+    let mut h = boot_with(
+        cx,
+        |_| {},
+        MockOptions::default(),
+        |st| {
+            st.set(
+                "recur.codePanelSides",
+                r#"{"maestro":"right","files":"left","outline":"right","search":"right","refs":"right"}"#,
+            )
+        },
+        WS,
+    );
+    let center = h.bounds("obs-tb-center").expect("the toolbar center");
+    let toggle = h.bounds("panel-toggle:maestro").expect("the Agent toggle");
+    assert!(
+        toggle.origin.x > center.origin.x,
+        "the chat toggle lives in the right toolbar"
+    );
+
+    h.click("panel-toggle:maestro");
+    let side = h.bounds("obs-side").expect("the right panel");
+    let composer = h.bounds("chat-composer").expect("the composer");
+    assert!(side.contains(&composer.center()));
+
+    h.click("panel-toggle:files");
+    assert!(h.has("obs-left"));
+    h.click("obs-node:file:src/main.go");
+    let editor = h.bounds("obs-editor-pane:main").expect("the editor");
+    let side = h.bounds("obs-side").expect("the right panel");
+    assert!(
+        side.origin.x > editor.origin.x,
+        "the chat pane sits right of the editor"
+    );
+}

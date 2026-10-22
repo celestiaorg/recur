@@ -181,7 +181,8 @@ impl WorkspaceView {
         cx: &mut Context<Self>,
     ) {
         self.input_by_key.insert(key.to_string(), input.clone());
-        self.attachments_by_key.insert(key.to_string(), atts.clone());
+        self.attachments_by_key
+            .insert(key.to_string(), atts.clone());
         if self.input_bound_key == key {
             self.set_chat_draft(input, atts, cx);
         }
@@ -193,7 +194,10 @@ impl WorkspaceView {
         } else {
             (
                 self.input_by_key.get(key).cloned().unwrap_or_default(),
-                self.attachments_by_key.get(key).cloned().unwrap_or_default(),
+                self.attachments_by_key
+                    .get(key)
+                    .cloned()
+                    .unwrap_or_default(),
             )
         }
     }
@@ -388,14 +392,15 @@ impl WorkspaceView {
                     self.persist_chat_dock(&id, &code, None, Some(&pending), cx)
                 };
                 let (svc, id2, code2) = (self.services.clone(), id.clone(), code.clone());
-                cx.background_executor().spawn(async move {
-                    persist.await;
-                    let _ = svc
-                        .workspaces
-                        .apply_provisional_chat_titles(&id2, &code2, &name_from)
-                        .await;
-                })
-                .detach();
+                cx.background_executor()
+                    .spawn(async move {
+                        persist.await;
+                        let _ = svc
+                            .workspaces
+                            .apply_provisional_chat_titles(&id2, &code2, &name_from)
+                            .await;
+                    })
+                    .detach();
             }
             let row = AgentMsg {
                 me: true,
@@ -659,7 +664,11 @@ impl WorkspaceView {
                     }
                     Err(_) => {
                         v.drop_rejected_steer(&key, job, &display, cx);
-                        toast(ToastKind::Error, "Could not steer the agent — try again", cx);
+                        toast(
+                            ToastKind::Error,
+                            "Could not steer the agent — try again",
+                            cx,
+                        );
                     }
                 }
                 v.touch(cx);
@@ -680,7 +689,10 @@ impl WorkspaceView {
             key.to_string(),
             drop_optimistic_user(&list, display, &pending.id),
         );
-        let fails = self.rejected_steers_by_key.entry(key.to_string()).or_default();
+        let fails = self
+            .rejected_steers_by_key
+            .entry(key.to_string())
+            .or_default();
         fails.retain(|p| p.id != pending.id);
         fails.push(pending);
         fails.sort_by_key(|p| p.seq);
@@ -697,7 +709,8 @@ impl WorkspaceView {
         let (cur_input, cur_atts) = self.draft_of(key, cx);
         let cur_plain = strip_attachment_markers(&cur_input).trim().to_string();
         let marked: Vec<String> = fails.iter().map(|p| p.marked.clone()).collect();
-        let drafts: Vec<Vec<ChatAttachmentDraft>> = fails.iter().map(|p| p.drafts.clone()).collect();
+        let drafts: Vec<Vec<ChatAttachmentDraft>> =
+            fails.iter().map(|p| p.drafts.clone()).collect();
         let restored = merge_rejected_steer_draft(&marked, &cur_plain);
         let atts = merge_rejected_steer_attachments(&drafts, &cur_atts, |a| a.id.as_str());
         self.write_draft(key, restored, atts, cx);
@@ -760,7 +773,8 @@ impl WorkspaceView {
             .entry(key.to_string())
             .or_insert_with(|| pending.model.clone());
         self.hoist_send_gen_by_key.remove(key);
-        self.turn_started_at_by_key.insert(key.to_string(), now_ms());
+        self.turn_started_at_by_key
+            .insert(key.to_string(), now_ms());
         self.turn_got_text_by_key.insert(key.to_string(), false);
         // Optimistic provisional tab title (the backend also paints and upgrades it).
         if let Some(tab) = self
@@ -918,7 +932,11 @@ impl WorkspaceView {
             .get(&live_key)
             .copied()
             .unwrap_or(false)
-            || self.stale_idle_armed_by_key.get(key).copied().unwrap_or(false);
+            || self
+                .stale_idle_armed_by_key
+                .get(key)
+                .copied()
+                .unwrap_or(false);
         let skip = should_skip_idle_transcript_reset(&list, started, armed);
         let live_agent = format!("{live_id}-{live_code}");
         if !running(self, agent_id, cx) && !running(self, &live_agent, cx) && !skip {
@@ -1012,10 +1030,11 @@ impl WorkspaceView {
             self.write_draft(&key, text, atts, cx);
         }
         let (svc, id) = (self.services.clone(), self.ws_id.clone());
-        cx.background_executor().spawn(async move {
-            let _ = svc.workspaces.cancel_workspace_message(&id, &code).await;
-        })
-        .detach();
+        cx.background_executor()
+            .spawn(async move {
+                let _ = svc.workspaces.cancel_workspace_message(&id, &code).await;
+            })
+            .detach();
         self.touch(cx);
     }
 

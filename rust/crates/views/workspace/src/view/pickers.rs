@@ -117,12 +117,18 @@ impl WorkspaceView {
         code: &str,
         cx: &mut Context<Self>,
     ) -> Task<bool> {
-        if id.is_empty() || code.is_empty() || code == "MA" || self.state.read(cx).settings.is_none()
+        if id.is_empty()
+            || code.is_empty()
+            || code == "MA"
+            || self.state.read(cx).settings.is_none()
         {
             return Task::ready(false);
         }
         let key = self.key(code);
-        let have = self.pickers_by_key.get(&key).is_some_and(|p| !p.model.is_empty());
+        let have = self
+            .pickers_by_key
+            .get(&key)
+            .is_some_and(|p| !p.model.is_empty());
         if have && self.pickers_fetched.contains(&key) {
             return Task::ready(true);
         }
@@ -134,14 +140,23 @@ impl WorkspaceView {
             return cx.foreground_executor().spawn(f);
         }
         let gen_ = self.picker_gen.get(&key).copied().unwrap_or(0);
-        let (svc, id, code, k) = (self.services.clone(), id.to_string(), code.to_string(), key.clone());
+        let (svc, id, code, k) = (
+            self.services.clone(),
+            id.to_string(),
+            code.to_string(),
+            key.clone(),
+        );
         let run = cx
             .spawn(async move |this, cx| {
                 // Wait for the catalog so flag dims are not dropped as `{}`.
-                let need_catalog = this.update(cx, |v, _| v.catalog_models.is_empty()).unwrap_or(true);
+                let need_catalog = this
+                    .update(cx, |v, _| v.catalog_models.is_empty())
+                    .unwrap_or(true);
                 if need_catalog {
                     let load = this
-                        .update(cx, |v, cx| v.state.update(cx, |s, cx| s.load_model_catalog(cx)))
+                        .update(cx, |v, cx| {
+                            v.state.update(cx, |s, cx| s.load_model_catalog(cx))
+                        })
                         .ok();
                     if let Some(load) = load {
                         let models = load.await;
@@ -153,7 +168,9 @@ impl WorkspaceView {
                     }
                 }
                 let ready = this
-                    .update(cx, |v, cx| !v.catalog_models.is_empty() && v.state.read(cx).settings.is_some())
+                    .update(cx, |v, cx| {
+                        !v.catalog_models.is_empty() && v.state.read(cx).settings.is_some()
+                    })
                     .unwrap_or(false);
                 if !ready {
                     return this
@@ -182,30 +199,62 @@ impl WorkspaceView {
                                 v.apply_simplify_sel(&k, sel.simplify, sg);
                             }
                             // A live mode from chat.mode_changed wins over a lagging selection.
-                            let mode = v.pickers_by_key.get(&k).map(|p| p.mode).unwrap_or_else(|| {
-                                if sel.mode.is_empty() {
-                                    tab_mode
-                                } else {
-                                    ChatMode::from_key(&sel.mode)
-                                }
-                            });
-                            let d = resolved_default_for_mode(mode.key(), settings.as_ref(), &v.catalog_models);
+                            let mode =
+                                v.pickers_by_key.get(&k).map(|p| p.mode).unwrap_or_else(|| {
+                                    if sel.mode.is_empty() {
+                                        tab_mode
+                                    } else {
+                                        ChatMode::from_key(&sel.mode)
+                                    }
+                                });
+                            let d = resolved_default_for_mode(
+                                mode.key(),
+                                settings.as_ref(),
+                                &v.catalog_models,
+                            );
                             let disabled = settings
                                 .as_ref()
                                 .map(|s| s.disabled_providers.clone())
                                 .unwrap_or_default();
                             let stored_ok = !sel.model.is_empty()
                                 && provider_enabled(&disabled, model_provider(&sel.model));
-                            let model = if stored_ok { sel.model.clone() } else { d.model };
-                            let cur: FlagMap = if stored_ok { sel.flags.clone() } else { d.flags };
-                            let flags = normalize_flags(&flags_for_model(&v.catalog_models, &model), Some(&cur));
+                            let model = if stored_ok {
+                                sel.model.clone()
+                            } else {
+                                d.model
+                            };
+                            let cur: FlagMap = if stored_ok {
+                                sel.flags.clone()
+                            } else {
+                                d.flags
+                            };
+                            let flags = normalize_flags(
+                                &flags_for_model(&v.catalog_models, &model),
+                                Some(&cur),
+                            );
                             write(v, ChatPickerSnap { model, flags, mode });
                         }
                         Err(_) => {
-                            if !v.pickers_by_key.get(&k).is_some_and(|p| !p.model.is_empty()) {
-                                let mode = v.pickers_by_key.get(&k).map(|p| p.mode).unwrap_or(tab_mode);
-                                let d = resolved_default_for_mode(mode.key(), settings.as_ref(), &v.catalog_models);
-                                write(v, ChatPickerSnap { model: d.model, flags: d.flags, mode });
+                            if !v
+                                .pickers_by_key
+                                .get(&k)
+                                .is_some_and(|p| !p.model.is_empty())
+                            {
+                                let mode =
+                                    v.pickers_by_key.get(&k).map(|p| p.mode).unwrap_or(tab_mode);
+                                let d = resolved_default_for_mode(
+                                    mode.key(),
+                                    settings.as_ref(),
+                                    &v.catalog_models,
+                                );
+                                write(
+                                    v,
+                                    ChatPickerSnap {
+                                        model: d.model,
+                                        flags: d.flags,
+                                        mode,
+                                    },
+                                );
                             }
                         }
                     }
@@ -224,7 +273,10 @@ impl WorkspaceView {
     }
 
     fn finish_picker_load(&mut self, key: &str, gen_: u64) -> bool {
-        let have = self.pickers_by_key.get(key).is_some_and(|p| !p.model.is_empty());
+        let have = self
+            .pickers_by_key
+            .get(key)
+            .is_some_and(|p| !p.model.is_empty());
         if self.picker_gen.get(key).copied().unwrap_or(0) == gen_ && have {
             self.pickers_fetched.insert(key.to_string());
         }
@@ -232,11 +284,17 @@ impl WorkspaceView {
         have
     }
 
-    pub(crate) fn on_chat_model_change(&mut self, model: String, flags: FlagMap, cx: &mut Context<Self>) {
+    pub(crate) fn on_chat_model_change(
+        &mut self,
+        model: String,
+        flags: FlagMap,
+        cx: &mut Context<Self>,
+    ) {
         let key = self.active_key();
         self.bump_picker_gen(&key);
         let mode = self.chat_mode(cx);
-        self.pickers_by_key.insert(key, ChatPickerSnap { model, flags, mode });
+        self.pickers_by_key
+            .insert(key, ChatPickerSnap { model, flags, mode });
         self.touch(cx);
     }
 
@@ -245,13 +303,18 @@ impl WorkspaceView {
         self.bump_picker_gen(&key);
         let (model, _) = self.dock_model(cx);
         let mode = self.chat_mode(cx);
-        self.pickers_by_key.insert(key, ChatPickerSnap { model, flags, mode });
+        self.pickers_by_key
+            .insert(key, ChatPickerSnap { model, flags, mode });
         self.touch(cx);
     }
 
     /// `onChatModeChange`: guards (main, PR host, a running conductor), the picker rule after a
     /// switch, the strip icon, and the persisted selection.
-    pub(crate) fn on_chat_mode_change(&mut self, next: ChatMode, cx: &mut Context<Self>) -> Task<()> {
+    pub(crate) fn on_chat_mode_change(
+        &mut self,
+        next: ChatMode,
+        cx: &mut Context<Self>,
+    ) -> Task<()> {
         if self.is_main(cx) && next == ChatMode::Loop {
             return Task::ready(());
         }
@@ -260,7 +323,8 @@ impl WorkspaceView {
         }
         let code = self.active_code();
         let owner = self.conductor_chat_code(cx);
-        if next != ChatMode::Loop && code == owner && self.has_run(cx) && ws_run_active(self.ws(cx)) {
+        if next != ChatMode::Loop && code == owner && self.has_run(cx) && ws_run_active(self.ws(cx))
+        {
             toast(
                 ToastKind::Error,
                 "This tab is running the loop — pause or stop it before leaving Loop mode.",
@@ -269,7 +333,10 @@ impl WorkspaceView {
             return Task::ready(());
         }
         let key = self.active_key();
-        let hydrated = self.pickers_by_key.get(&key).is_some_and(|p| !p.model.is_empty());
+        let hydrated = self
+            .pickers_by_key
+            .get(&key)
+            .is_some_and(|p| !p.model.is_empty());
         let title = self.active_tab().map(|t| t.title.clone());
         let queued: Option<Vec<bool>> = self
             .chat_by_key
@@ -309,7 +376,14 @@ impl WorkspaceView {
         cx.background_executor().spawn(async move {
             let _ = svc
                 .workspaces
-                .remember_workspace_chat_selection(&id, &code, &pick.model, &pick.flags, next.key(), None)
+                .remember_workspace_chat_selection(
+                    &id,
+                    &code,
+                    &pick.model,
+                    &pick.flags,
+                    next.key(),
+                    None,
+                )
                 .await;
         })
     }
@@ -348,9 +422,14 @@ impl WorkspaceView {
         let (l, p) = (next_loop.to_string(), next_policy.to_string());
         cx.spawn(async move |this, cx| {
             let res = async {
-                svc.workspaces.remember_chat_loop_policy(&id, &code, &l, &p).await?;
+                svc.workspaces
+                    .remember_chat_loop_policy(&id, &code, &l, &p)
+                    .await?;
                 if !has_run {
-                    let ws = svc.workspaces.set_workspace_loop_policy(&id, &l, &p).await?;
+                    let ws = svc
+                        .workspaces
+                        .set_workspace_loop_policy(&id, &l, &p)
+                        .await?;
                     return Ok(Some(ws));
                 }
                 Ok::<_, recur_services::Error>(None)
@@ -427,7 +506,11 @@ impl WorkspaceView {
     /// Whether `promptModelsReady`'s preconditions hold, loading the catalog when it is empty.
     pub(crate) fn prompt_models_ready(&mut self, cx: &mut Context<Self>) -> Task<bool> {
         if self.state.read(cx).settings.is_none() {
-            toast(ToastKind::Error, "Models are still loading — try again in a moment", cx);
+            toast(
+                ToastKind::Error,
+                "Models are still loading — try again in a moment",
+                cx,
+            );
             return Task::ready(false);
         }
         if !self.catalog_models.is_empty() {
@@ -441,7 +524,11 @@ impl WorkspaceView {
                     v.catalog_models = models;
                 }
                 if v.catalog_models.is_empty() {
-                    toast(ToastKind::Error, "Models are still loading — try again in a moment", cx);
+                    toast(
+                        ToastKind::Error,
+                        "Models are still loading — try again in a moment",
+                        cx,
+                    );
                     return false;
                 }
                 true

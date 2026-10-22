@@ -111,8 +111,8 @@ pub fn boot(cx: &mut TestAppContext, opts: MockOptions) -> H<'_> {
 /// workers do (`exports.default(ctx)` → `{prompt, display, …}`).
 pub fn install_prompt_runner(cx: &mut gpui_kit::App) {
     use futures::FutureExt as _;
-    let runner: recur_view_chat::prompt_actions::PromptModuleRunner =
-        std::rc::Rc::new(|code, ctx, chat_code, _name, _timeout| {
+    let runner: recur_view_chat::prompt_actions::PromptModuleRunner = std::rc::Rc::new(
+        |code, ctx, chat_code, _name, _timeout| {
             async move {
                 let ctx = serde_json::json!({
                     "workspaceId": ctx.workspace_id,
@@ -136,7 +136,8 @@ pub fn install_prompt_runner(cx: &mut gpui_kit::App) {
                 serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())
             }
             .boxed_local()
-        });
+        },
+    );
     recur_view_chat::prompt_actions::PromptCatalog::set_runners(Some(runner), None, cx);
 }
 
@@ -193,7 +194,8 @@ impl H<'_> {
 
     pub fn open(&mut self, ws: &str) {
         let id = ws.to_string();
-        self.state.update(self.cx, |s, cx| s.open_workspace(&id, false, cx));
+        self.state
+            .update(self.cx, |s, cx| s.open_workspace(&id, false, cx));
         self.settle();
     }
 
@@ -210,7 +212,10 @@ impl H<'_> {
         v.read_with(self.cx, |v, _| v.chat().clone())
     }
 
-    pub fn with<R>(&mut self, f: impl FnOnce(&mut WorkspaceView, &mut Context<WorkspaceView>) -> R) -> R {
+    pub fn with<R>(
+        &mut self,
+        f: impl FnOnce(&mut WorkspaceView, &mut Context<WorkspaceView>) -> R,
+    ) -> R {
         let v = self.view();
         let r = self.cx.update(|_, cx| v.update(cx, f));
         self.settle();
@@ -335,7 +340,9 @@ impl H<'_> {
 
     /// Select a chat tab through the strip.
     pub fn select_tab(&mut self, code: &str) {
-        let sel = self.chip(code).unwrap_or_else(|| panic!("no chat tab {code}"));
+        let sel = self
+            .chip(code)
+            .unwrap_or_else(|| panic!("no chat tab {code}"));
         self.click(&sel);
     }
 
@@ -366,7 +373,12 @@ impl H<'_> {
                 .toasts()
                 .iter()
                 .rev()
-                .find_map(|t| t.action.as_ref().filter(|a| a.label.as_ref() == label).map(|a| a.run.clone()))
+                .find_map(|t| {
+                    t.action
+                        .as_ref()
+                        .filter(|a| a.label.as_ref() == label)
+                        .map(|a| a.run.clone())
+                })
         });
         let run = run.unwrap_or_else(|| panic!("no toast action {label}"));
         self.cx.update(|window, cx| run(window, cx));

@@ -52,7 +52,12 @@ impl Render for PlanHead {
             .active_key(SharedString::from(tab.key()));
         for (pt, label, ic, badge) in [
             (PlanTab::Details, "Details", IconName::Notebook, 0),
-            (PlanTab::Attachments, "Attachments", IconName::Grid, att_count),
+            (
+                PlanTab::Attachments,
+                "Attachments",
+                IconName::Grid,
+                att_count,
+            ),
             (PlanTab::Todos, "Todos", IconName::ListTodo, todos),
         ] {
             let panel = self.panel.clone();
@@ -68,9 +73,14 @@ impl Render for PlanHead {
         }
         if !editing && let Some(plan) = plan {
             if !plan.approved {
-                strip = strip.trailing(self.approve("wsv-plan-approve", "Approve", "Approve this plan", window, cx, |p, cx| {
-                    p.approve_plan(cx)
-                }));
+                strip = strip.trailing(self.approve(
+                    "wsv-plan-approve",
+                    "Approve",
+                    "Approve this plan",
+                    window,
+                    cx,
+                    |p, cx| p.approve_plan(cx),
+                ));
             } else {
                 // `.wsv-plan-act`: ghost text button.
                 let panel = self.panel.clone();
@@ -89,7 +99,13 @@ impl Render for PlanHead {
                         .text_color(hsla(t.muted))
                         .cursor_pointer()
                         .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
-                        .child(text("Execute in chat").size(11.).weight(500.).line_height(LineHeight::Normal).nowrap())
+                        .child(
+                            text("Execute in chat")
+                                .size(11.)
+                                .weight(500.)
+                                .line_height(LineHeight::Normal)
+                                .nowrap(),
+                        )
                         .on_click(move |_, _, cx| panel.update(cx, |p, cx| p.execute_in_chat(cx))),
                 ));
                 if !has_run {
@@ -104,7 +120,13 @@ impl Render for PlanHead {
                 }
             }
         }
-        div().flex_1().min_w_0().flex().items_stretch().child(strip).into_any_element()
+        div()
+            .flex_1()
+            .min_w_0()
+            .flex()
+            .items_stretch()
+            .child(strip)
+            .into_any_element()
     }
 }
 
@@ -120,7 +142,13 @@ impl PlanHead {
         act: fn(&mut PlanPanel, &mut Context<PlanPanel>),
     ) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
-        let h = motion::hover(SharedString::from(format!("{id}-hover")), Duration::ZERO, motion::Easing::EASE, window, cx);
+        let h = motion::hover(
+            SharedString::from(format!("{id}-hover")),
+            Duration::ZERO,
+            motion::Easing::EASE,
+            window,
+            cx,
+        );
         let hi = t.emerald.mix_oklab(0.88, recur_ui::hex(0xffffff));
         let fill = t.emerald.mix(1. - h.k(), hi);
         let panel = self.panel.clone();

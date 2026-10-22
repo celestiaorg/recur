@@ -2,4 +2,5 @@
 
 mod chat;
 mod harness;
+mod shell;
 mod smoke;

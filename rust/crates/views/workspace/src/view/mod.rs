@@ -18,8 +18,8 @@ use std::rc::Rc;
 
 use futures::future::Shared;
 use gpui_kit::{
-    App, AppContext as _, BorrowAppContext as _, Context, Entity, InteractiveElement, IntoElement, ParentElement,
-    Render, ScrollHandle, Styled, Subscription, Task, Window, div,
+    App, AppContext as _, BorrowAppContext as _, Context, Entity, InteractiveElement, IntoElement,
+    ParentElement, Render, ScrollHandle, Styled, Subscription, Task, Window, div,
 };
 use recur_agent::context_usage::ContextUsage;
 use recur_domain::{Escalation, Finding, Workspace, WorkspaceChatTab};
@@ -31,10 +31,10 @@ use recur_view_chat::heap::{ChatHeapCache, ChatPickerSnap, PendingChatSend};
 use recur_view_chat::hoist::{HoistState, chat_tab_key};
 use recur_view_chat::session_feed::SessionFeed;
 use recur_view_chat::strip::ChatStripCache;
+use recur_view_core::models::CatalogModel;
 use recur_view_core::modes::{
     ChatMode, ws_chat_held, ws_create_failed, ws_creating, ws_has_run, ws_run_active,
 };
-use recur_view_core::models::CatalogModel;
 use recur_view_core::{AppState, ViewContext};
 use recur_view_observatory::{Observatory, ObservatoryProps, ObservatorySlots};
 
@@ -43,7 +43,6 @@ use crate::overlay::MainOverlay;
 use crate::plan_head::PlanHead;
 use crate::plan_panel::PlanPanel;
 use crate::toolbar::DockToolbar;
-
 
 /// The tab the Svelte falls back to before ListWorkspaceChats lands.
 pub(crate) const DEFAULT_CODE: &str = "PA";
@@ -224,7 +223,10 @@ impl WorkspaceView {
         });
         let heap = ChatHeapCache::global(cx).get(&ws_id).unwrap_or_default();
 
-        let tabs = strip.as_ref().filter(|s| !s.tabs.is_empty()).map(|s| s.tabs.clone());
+        let tabs = strip
+            .as_ref()
+            .filter(|s| !s.tabs.is_empty())
+            .map(|s| s.tabs.clone());
         let closed_tabs = strip
             .as_ref()
             .filter(|s| !s.closed.is_empty())
@@ -631,10 +633,11 @@ impl WorkspaceView {
     }
 
     pub(crate) fn agent_busy(&self, cx: &App) -> bool {
-        self.state
-            .read(cx)
-            .agents_running
-            .contains(&format!("{}-{}", self.ws_id, self.active_code()))
+        self.state.read(cx).agents_running.contains(&format!(
+            "{}-{}",
+            self.ws_id,
+            self.active_code()
+        ))
     }
 
     /// `sending`: the active tab's RPC is in flight or its engine turn runs.

@@ -224,7 +224,7 @@ fn crumb_span(seg: &recur_view_core::CrumbSeg, cx: &App) -> Span {
 }
 
 /// `.crumb`: mono 11.5px `--faint`, truncating inside `.tb-left`.
-fn crumb(spans: Vec<Span>, cx: &App) -> impl IntoElement {
+fn crumb(spans: Vec<Span>, cx: &App) -> gpui_kit::Div {
     let t = Theme::of(cx).tokens;
     div().flex_initial().min_w_0().overflow_hidden().child(
         Text::from_spans(spans)
@@ -245,6 +245,7 @@ fn back_button(
     no_drag(
         div()
             .id(id)
+            .debug_selector(move || id.into())
             .flex_none()
             .cursor_pointer()
             .text_color(t.muted)
@@ -370,6 +371,15 @@ impl Shell {
                         .name
                         .sync(name, ws.id.clone().into(), reduced, cx);
                     let decoding = self.titlebar.name.decoding;
+                    let plain = format!(
+                        "/ {} / {shown}{}",
+                        ws.project_id,
+                        if ws.branch.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" {}", ws.branch)
+                        }
+                    );
                     let mut spans = vec![
                         span("/ "),
                         span(ws.project_id.clone())
@@ -390,7 +400,8 @@ impl Shell {
                             cx,
                         ));
                     }
-                    left = left.child(crumb(spans, cx));
+                    left = left
+                        .child(crumb(spans, cx).debug_selector(move || format!("crumb={plain}")));
                     if !ws.is_main {
                         left = left.child(no_drag(
                             div()

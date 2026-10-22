@@ -79,7 +79,12 @@ pub fn ws_hooks() -> ChatHooks {
     }
 }
 
-pub fn boot<'a>(cx: &'a mut TestAppContext, opts: MockOptions, props: ChatProps, hooks: ChatHooks) -> H<'a> {
+pub fn boot<'a>(
+    cx: &'a mut TestAppContext,
+    opts: MockOptions,
+    props: ChatProps,
+    hooks: ChatHooks,
+) -> H<'a> {
     init(cx);
     let bridge = MockBridge::fresh(opts);
     let services = bridge.services();

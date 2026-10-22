@@ -50,15 +50,26 @@ fn hsla(c: recur_ui::Color) -> Hsla {
 }
 
 impl DockToolbar {
-    pub(crate) fn new(view: WeakEntity<WorkspaceView>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let mode = cx.new(|cx| Select::new(Vec::new(), window, cx).label("Chat mode").ghost().up());
+    pub(crate) fn new(
+        view: WeakEntity<WorkspaceView>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mode = cx.new(|cx| {
+            Select::new(Vec::new(), window, cx)
+                .label("Chat mode")
+                .ghost()
+                .up()
+        });
         let loops = cx.new(|cx| LoopPolicyPickers::new(true, true, true, window, cx));
         let models = cx.new(|cx| ModelPickers::new(true, true, window, cx));
         let subs = vec![
             cx.subscribe(&mode, |t, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     let m = ChatMode::from_key(v);
-                    let _ = t.view.update(cx, |v, cx| v.on_chat_mode_change(m, cx).detach());
+                    let _ = t
+                        .view
+                        .update(cx, |v, cx| v.on_chat_mode_change(m, cx).detach());
                 }
             }),
             cx.subscribe(&loops, |t, _, ev: &LoopPolicyEvent, cx| {
@@ -165,20 +176,28 @@ impl DockToolbar {
                 let policies = enabled_policies(&v.catalog_policies, settings.as_ref());
                 let (l, p) = (v.dock_loop_id(cx), v.dock_policy_id(cx));
                 let pinned = v.loop_pickers_pinned(cx);
-                self.loops.update(cx, |lp, cx| lp.set(&l, &p, &loops, &policies, pinned, t.pane, cx));
+                self.loops.update(cx, |lp, cx| {
+                    lp.set(&l, &p, &loops, &policies, pinned, t.pane, cx)
+                });
             }
             Pickers::Models => {
                 let (model, flags) = v.dock_model(cx);
                 let models = v.catalog_models.clone();
-                self.models
-                    .update(cx, |mp, cx| mp.set(models, &model, &flags, busy.then_some(t.pane), cx));
+                self.models.update(cx, |mp, cx| {
+                    mp.set(models, &model, &flags, busy.then_some(t.pane), cx)
+                });
             }
             Pickers::Pending | Pickers::None => {}
         }
         let simplify_on = v.simplify_on(cx);
         let simplify_disabled = busy || v.state.read(cx).settings.is_none();
         if (pickers, simplify_on, simplify_disabled, narrow)
-            != (self.pickers, self.simplify_on, self.simplify_disabled, self.narrow)
+            != (
+                self.pickers,
+                self.simplify_on,
+                self.simplify_disabled,
+                self.narrow,
+            )
         {
             self.pickers = pickers;
             self.simplify_on = simplify_on;
@@ -210,7 +229,13 @@ impl Render for DockToolbar {
                     .h(px(24.))
                     .px(px(6.))
                     .min_w(px(118.))
-                    .child(div().h(px(10.)).w(px(72.)).rounded(px(4.)).bg(hsla(t.pane_2)))
+                    .child(
+                        div()
+                            .h(px(10.))
+                            .w(px(72.))
+                            .rounded(px(4.))
+                            .bg(hsla(t.pane_2)),
+                    )
                     .child(
                         div()
                             .h(px(10.))
@@ -256,7 +281,12 @@ impl Render for DockToolbar {
             .text_color(hsla(fg))
             .child(icon(IconName::Feather).size(px(12.)))
             .when(!self.narrow.0, |d| {
-                d.child(text("Simplify").size(12.).color(fg).line_height(LineHeight::Normal))
+                d.child(
+                    text("Simplify")
+                        .size(12.)
+                        .color(fg)
+                        .line_height(LineHeight::Normal),
+                )
             });
         if recur_ui::style::is_focus_visible(&self.focus, window) {
             btn = btn.child(recur_ui::style::outline(2., 2., 6., 0., t.amber));

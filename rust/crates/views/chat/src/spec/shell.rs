@@ -64,16 +64,12 @@ impl S<'_> {
         self.cx.debug_bounds(leak(sel)).is_some()
     }
 
-
     fn open(&mut self, id: &str) {
         let id = id.to_string();
         self.state
             .update(self.cx, |s, cx| s.open_workspace(&id, false, cx));
         self.settle();
     }
-
-
-
 
     fn toasts(&mut self) -> Vec<String> {
         self.cx.update(|_, cx| {

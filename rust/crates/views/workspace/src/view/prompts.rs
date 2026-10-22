@@ -79,7 +79,9 @@ impl WorkspaceView {
         if live {
             !self.chat_attachments(cx).is_empty()
         } else {
-            self.attachments_by_key.get(&key).is_some_and(|a| !a.is_empty())
+            self.attachments_by_key
+                .get(&key)
+                .is_some_and(|a| !a.is_empty())
         }
     }
 
@@ -126,7 +128,11 @@ impl WorkspaceView {
             return Task::ready(false);
         }
         if mode == ChatMode::Loop && self.is_main(cx) {
-            toast(ToastKind::Error, "The main working copy cannot run a loop", cx);
+            toast(
+                ToastKind::Error,
+                "The main working copy cannot run a loop",
+                cx,
+            );
             return Task::ready(false);
         }
         if mode == ChatMode::Loop && self.is_pr_host(cx) {
@@ -196,7 +202,11 @@ impl WorkspaceView {
                 };
                 if v.active_code() != code {
                     abort_created(v, cx);
-                    toast(ToastKind::Error, "Chat tab changed — try the command again", cx);
+                    toast(
+                        ToastKind::Error,
+                        "Chat tab changed — try the command again",
+                        cx,
+                    );
                     return false;
                 }
                 if !hydrated {
@@ -214,7 +224,13 @@ impl WorkspaceView {
         })
     }
 
-    fn stamp_prompt_group(&mut self, code: &str, group: &str, after: Task<()>, cx: &mut Context<Self>) {
+    fn stamp_prompt_group(
+        &mut self,
+        code: &str,
+        group: &str,
+        after: Task<()>,
+        cx: &mut Context<Self>,
+    ) {
         if let Some(tabs) = self.tabs.as_mut() {
             for t in tabs.iter_mut().filter(|t| t.code == code) {
                 t.prompt_group = group.to_string();
@@ -228,14 +244,15 @@ impl WorkspaceView {
             code.to_string(),
             group.to_string(),
         );
-        cx.background_executor().spawn(async move {
-            after.await;
-            let _ = svc
-                .workspaces
-                .remember_workspace_chat_prompt_group(&id, &code, &group)
-                .await;
-        })
-        .detach();
+        cx.background_executor()
+            .spawn(async move {
+                after.await;
+                let _ = svc
+                    .workspaces
+                    .remember_workspace_chat_prompt_group(&id, &code, &group)
+                    .await;
+            })
+            .detach();
     }
 
     fn ensure_current_coding_tab(&mut self, cx: &mut Context<Self>) -> bool {
@@ -321,7 +338,11 @@ impl WorkspaceView {
         }
         let setup_hold = self.setup_hold(cx);
         if self.chat_key_busy(&key, cx) || setup_hold {
-            let tab_mode = self.pickers_by_key.get(&key).map(|p| p.mode).unwrap_or(mode);
+            let tab_mode = self
+                .pickers_by_key
+                .get(&key)
+                .map(|p| p.mode)
+                .unwrap_or(mode);
             if !setup_hold
                 && !fresh_session
                 && self.steer_by_default(cx) != alt
@@ -423,7 +444,8 @@ impl WorkspaceView {
     ) -> bool {
         match mode {
             Some(m) => {
-                let Ok(t) = this.update(cx, |v, cx| v.ensure_idle_tab_for_mode(m, group, cx)) else {
+                let Ok(t) = this.update(cx, |v, cx| v.ensure_idle_tab_for_mode(m, group, cx))
+                else {
                     return false;
                 };
                 if !t.await {
@@ -464,8 +486,18 @@ impl WorkspaceView {
     }
 
     /// `flushHeldPromptSend`: the held toast's Retry.
-    pub(crate) fn flush_held_prompt_send(&mut self, hold_id: &str, _: &mut Window, cx: &mut Context<Self>) {
-        let Some(held) = self.held_prompts.iter().find(|h| h.hold_id == hold_id).cloned() else {
+    pub(crate) fn flush_held_prompt_send(
+        &mut self,
+        hold_id: &str,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(held) = self
+            .held_prompts
+            .iter()
+            .find(|h| h.hold_id == hold_id)
+            .cloned()
+        else {
             return;
         };
         if self.ws(cx).is_none() || held.workspace_id != self.ws_id || self.prompt_running {
@@ -492,7 +524,15 @@ impl WorkspaceView {
         }
         let abort = self.begin_prompt(cx);
         cx.spawn(async move |this, cx| {
-            let routed = Self::route(&this, held.mode, held.tab_group.clone(), held.loop_id.clone(), &abort, cx).await;
+            let routed = Self::route(
+                &this,
+                held.mode,
+                held.tab_group.clone(),
+                held.loop_id.clone(),
+                &abort,
+                cx,
+            )
+            .await;
             upd(&this, cx, |v, cx| {
                 let routed = routed
                     .then(|| v.snapshot_routed(held.mode, cx))
@@ -501,7 +541,14 @@ impl WorkspaceView {
                 match routed {
                     Some(r) => {
                         v.discard_held_prompt(&held.hold_id);
-                        v.dispatch_prepared_prompt(r, &held.prompt, &held.display, held.fresh_session, false, cx);
+                        v.dispatch_prepared_prompt(
+                            r,
+                            &held.prompt,
+                            &held.display,
+                            held.fresh_session,
+                            false,
+                            cx,
+                        );
                     }
                     None => v.hold_prepared_prompt(held, cx),
                 }
@@ -530,7 +577,8 @@ impl WorkspaceView {
         cx.spawn(async move |this, cx| {
             let list = load.await;
             if !abort.aborted() {
-                if let Err(msg) = Self::run_invoke(&this, &list, &slash, &args, alt, &abort, cx).await
+                if let Err(msg) =
+                    Self::run_invoke(&this, &list, &slash, &args, alt, &abort, cx).await
                     && msg != "prompt cancelled"
                 {
                     upd(&this, cx, |_, cx| toast(ToastKind::Error, msg, cx));
@@ -570,8 +618,7 @@ impl WorkspaceView {
                 toast(ToastKind::Error, LOOP_OPEN_PR, cx);
                 return true;
             }
-            if v
-                .state
+            if v.state
                 .read(cx)
                 .settings
                 .as_ref()
@@ -607,7 +654,11 @@ impl WorkspaceView {
         } else {
             let pre = upd(this, cx, |v, cx| {
                 if mode == Some(ChatMode::Loop) && v.is_main(cx) {
-                    toast(ToastKind::Error, "The main working copy cannot run a loop", cx);
+                    toast(
+                        ToastKind::Error,
+                        "The main working copy cannot run a loop",
+                        cx,
+                    );
                     return None;
                 }
                 if mode == Some(ChatMode::Loop) && v.is_pr_host(cx) {
@@ -641,7 +692,9 @@ impl WorkspaceView {
                     if let Some(h) = hydrate
                         && !h.await
                     {
-                        upd(this, cx, |_, cx| toast(ToastKind::Error, MODELS_LOADING, cx));
+                        upd(this, cx, |_, cx| {
+                            toast(ToastKind::Error, MODELS_LOADING, cx)
+                        });
                         return Ok(());
                     }
                 }
@@ -669,15 +722,26 @@ impl WorkspaceView {
                 args,
                 params_from_args(Some(&found), args),
             );
-            let chat_code = routed.as_ref().map(|r| r.code.clone()).unwrap_or_else(|| v.active_code());
+            let chat_code = routed
+                .as_ref()
+                .map(|r| r.code.clone())
+                .unwrap_or_else(|| v.active_code());
             Some((ctx, chat_code))
         });
-        let Some((ctx, chat_code)) = ctx else { return Ok(()) };
+        let Some((ctx, chat_code)) = ctx else {
+            return Ok(());
+        };
         if abort.aborted() {
             return Ok(());
         }
         let run = upd(this, cx, |v, cx| {
-            Some(run_prompt_action(&info, ctx, &chat_code, &v.services.clone(), cx))
+            Some(run_prompt_action(
+                &info,
+                ctx,
+                &chat_code,
+                &v.services.clone(),
+                cx,
+            ))
         });
         let Some(run) = run else { return Ok(()) };
         let mut signal = abort.signal();

@@ -488,8 +488,11 @@ fn menu_item(
 ) -> gpui_kit::Stateful<gpui_kit::Div> {
     let t = Theme::of(cx).tokens;
     let color = if on { t.emerald } else { t.text };
+    let id = id.into();
+    let sel = id.to_string();
     let mut row = div()
         .id(id)
+        .debug_selector(move || sel)
         .role(gpui_kit::Role::MenuItem)
         .flex()
         .items_center()
@@ -512,6 +515,25 @@ fn menu_item(
         );
     }
     row.child(style::button_label(label, 12.5, weight::MEDIUM))
+}
+
+/// Spec handles on a titlebar button: `{id}={label}`, or `{id}={label}:off:{tip}` while
+/// disabled.
+fn spec_tag(
+    b: gpui_kit::Stateful<gpui_kit::Div>,
+    id: &str,
+    label: &str,
+    off: Option<&str>,
+) -> gpui_kit::Stateful<gpui_kit::Div> {
+    b.debug_selector(|| match off {
+        None => format!("{id}={label}"),
+        Some(tip) => format!("{id}={label}:off:{tip}"),
+    })
+}
+
+/// A spec handle `{id}` around a titlebar control, whatever its label or state.
+fn spec_wrap(id: &'static str, el: impl IntoElement) -> gpui_kit::Div {
+    div().flex().debug_selector(move || id.into()).child(el)
 }
 
 impl Shell {
@@ -1141,26 +1163,34 @@ impl Shell {
                 let state = self.state.clone();
                 let wid = pr.workspace_id.clone();
                 out.push(
-                    titled(
-                        "tb-view-workspace-tip",
-                        "View this pull request's workspace",
-                        no_drag(
-                            tbtn(
-                                "tb-view-workspace",
-                                Tbtn::Default,
-                                TbtnSize::TITLEBAR,
-                                None,
-                                cx,
-                            )
-                            .on_click(move |_, _, cx| {
-                                state.update(cx, |s, cx| s.open_workspace(&wid, false, cx))
-                            })
-                            .child(icon(IconName::Box).size(px(13.)))
-                            .child(style::button_label(
-                                "View workspace",
-                                11.5,
-                                weight::MEDIUM,
-                            )),
+                    spec_wrap(
+                        "tb-view-workspace",
+                        titled(
+                            "tb-view-workspace-tip",
+                            "View this pull request's workspace",
+                            no_drag(
+                                spec_tag(
+                                    tbtn(
+                                        "tb-view-workspace",
+                                        Tbtn::Default,
+                                        TbtnSize::TITLEBAR,
+                                        None,
+                                        cx,
+                                    ),
+                                    "tb-view-workspace",
+                                    "View workspace",
+                                    None,
+                                )
+                                .on_click(move |_, _, cx| {
+                                    state.update(cx, |s, cx| s.open_workspace(&wid, false, cx))
+                                })
+                                .child(icon(IconName::Box).size(px(13.)))
+                                .child(style::button_label(
+                                    "View workspace",
+                                    11.5,
+                                    weight::MEDIUM,
+                                )),
+                            ),
                         ),
                     )
                     .into_any_element(),
@@ -1179,23 +1209,31 @@ impl Shell {
                 } else {
                     "Create workspace"
                 };
-                let mut b = tbtn(
+                let mut b = spec_tag(
+                    tbtn(
+                        "tb-create-workspace",
+                        Tbtn::Default,
+                        TbtnSize::TITLEBAR,
+                        creating.then_some(backdrop),
+                        cx,
+                    ),
                     "tb-create-workspace",
-                    Tbtn::Default,
-                    TbtnSize::TITLEBAR,
-                    creating.then_some(backdrop),
-                    cx,
+                    label,
+                    creating.then_some("Create a Recur workspace on this pull request"),
                 );
                 if !creating {
                     b = b.on_click(cx.listener(|this, _, _, cx| this.create_pr_workspace(cx)));
                 }
                 out.push(
-                    titled(
-                        "tb-create-workspace-tip",
-                        "Create a Recur workspace on this pull request",
-                        no_drag(
-                            b.child(icon(IconName::Plus).size(px(13.)))
-                                .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                    spec_wrap(
+                        "tb-create-workspace",
+                        titled(
+                            "tb-create-workspace-tip",
+                            "Create a Recur workspace on this pull request",
+                            no_drag(
+                                b.child(icon(IconName::Plus).size(px(13.)))
+                                    .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                            ),
                         ),
                     )
                     .into_any_element(),
@@ -1217,7 +1255,13 @@ impl Shell {
         };
         if (v.workspace_mode || v.main_mode) && v.land_on {
             if v.show_commit {
-                let mut b = tbtn("tb-commit", Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx);
+                let tip = title("Commit uncommitted changes");
+                let mut b = spec_tag(
+                    tbtn("tb-commit", Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx),
+                    "tb-commit",
+                    "Commit",
+                    v.land_busy.then_some(tip.as_str()),
+                );
                 if !v.land_busy {
                     b = b.on_click(cx.listener(|this, _, _, cx| {
                         let v = this.land.view(this.state.read(cx));
@@ -1227,12 +1271,15 @@ impl Shell {
                     }));
                 }
                 out.push(
-                    titled(
-                        "tb-commit-tip",
-                        title("Commit uncommitted changes"),
-                        no_drag(
-                            b.child(icon(IconName::GitCommit).size(px(13.)))
-                                .child(style::button_label("Commit", 11.5, weight::MEDIUM)),
+                    spec_wrap(
+                        "tb-commit",
+                        titled(
+                            "tb-commit-tip",
+                            tip,
+                            no_drag(
+                                b.child(icon(IconName::GitCommit).size(px(13.)))
+                                    .child(style::button_label("Commit", 11.5, weight::MEDIUM)),
+                            ),
                         ),
                     )
                     .into_any_element(),
@@ -1248,21 +1295,30 @@ impl Shell {
                 } else {
                     format!("Push to {remote}")
                 };
-                let mut b = rbtn("tb-push", Rbtn::Merge, busy_over, cx)
-                    .h(px(26.))
-                    .px(px(9.))
-                    .rounded(px(6.))
-                    .text_size(px(11.5));
+                let tip = title(&format!("Push to {remote}"));
+                let mut b = spec_tag(
+                    rbtn("tb-push", Rbtn::Merge, busy_over, cx),
+                    "tb-push",
+                    &label,
+                    v.land_busy.then_some(tip.as_str()),
+                )
+                .h(px(26.))
+                .px(px(9.))
+                .rounded(px(6.))
+                .text_size(px(11.5));
                 if !v.land_busy {
                     b = b.on_click(cx.listener(|this, _, _, cx| this.push_working_copy(cx)));
                 }
                 out.push(
-                    titled(
-                        "tb-push-tip",
-                        title(&format!("Push to {remote}")),
-                        no_drag(
-                            b.child(icon(IconName::Upload).size(px(13.)))
-                                .child(style::button_label(label, 11.5, weight::MEDIUM_PLUS)),
+                    spec_wrap(
+                        "tb-push",
+                        titled(
+                            "tb-push-tip",
+                            tip,
+                            no_drag(
+                                b.child(icon(IconName::Upload).size(px(13.)))
+                                    .child(style::button_label(label, 11.5, weight::MEDIUM_PLUS)),
+                            ),
                         ),
                     )
                     .into_any_element(),
@@ -1272,36 +1328,42 @@ impl Shell {
                 out.push(self.merge_split(&v, cx));
             }
             if v.workspace_mode && v.github_prs && v.github_pr_open {
-                let pr_btn = |id: &'static str,
-                              label: String,
-                              tip: &str,
-                              f: fn(&mut Shell, &mut Context<Shell>),
-                              cx: &mut Context<Shell>| {
-                    let mut b = tbtn(id, Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx);
-                    if !v.land_busy {
-                        b = b.on_click(cx.listener(move |this, _, _, cx| f(this, cx)));
-                    }
-                    titled(
-                        SharedString::from(format!("{id}-tip")),
-                        title(tip),
-                        no_drag(
-                            b.child(
-                                icon(if id == "tb-pull-pr" {
-                                    IconName::ArrowUp
-                                } else {
-                                    IconName::Upload
-                                })
-                                .size(px(13.)),
-                            )
-                            .child(style::button_label(
-                                label,
-                                11.5,
-                                weight::MEDIUM,
-                            )),
-                        ),
-                    )
-                    .into_any_element()
-                };
+                let pr_btn =
+                    |id: &'static str,
+                     label: String,
+                     tip: &str,
+                     f: fn(&mut Shell, &mut Context<Shell>),
+                     cx: &mut Context<Shell>| {
+                        let tip = title(tip);
+                        let mut b = spec_tag(
+                            tbtn(id, Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx),
+                            id,
+                            &label,
+                            v.land_busy.then_some(tip.as_str()),
+                        );
+                        if !v.land_busy {
+                            b = b.on_click(cx.listener(move |this, _, _, cx| f(this, cx)));
+                        }
+                        spec_wrap(
+                            id,
+                            titled(
+                                SharedString::from(format!("{id}-tip")),
+                                tip,
+                                no_drag(
+                                    b.child(
+                                        icon(if id == "tb-pull-pr" {
+                                            IconName::ArrowUp
+                                        } else {
+                                            IconName::Upload
+                                        })
+                                        .size(px(13.)),
+                                    )
+                                    .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                                ),
+                            ),
+                        )
+                        .into_any_element()
+                    };
                 if v.can_pull_pr {
                     let label = if self.land.pulling_pr {
                         "Pulling…"
@@ -1368,16 +1430,28 @@ impl Shell {
             let state = self.state.clone();
             let pr_id = v.view_pr_id.clone();
             out.push(
-                titled(
-                    "tb-view-pr-tip",
-                    "View this workspace's pull request",
-                    no_drag(
-                        tbtn("tb-view-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
+                spec_wrap(
+                    "tb-view-pr",
+                    titled(
+                        "tb-view-pr-tip",
+                        "View this workspace's pull request",
+                        no_drag(
+                            spec_tag(
+                                tbtn("tb-view-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx),
+                                "tb-view-pr",
+                                &label,
+                                None,
+                            )
                             .on_click(move |_, _, cx| {
                                 state.update(cx, |s, cx| s.open_pr(&pr_id, cx))
                             })
                             .child(icon(ico).size(px(13.)))
-                            .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                            .child(style::button_label(
+                                label,
+                                11.5,
+                                weight::MEDIUM,
+                            )),
+                        ),
                     ),
                 )
                 .into_any_element(),
@@ -1412,10 +1486,15 @@ impl Shell {
         } else {
             v.update_label.clone()
         };
-        let mut main = tbtn("tb-update", Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx)
-            .rounded_r(px(0.))
-            .border_r(px(1.))
-            .border_color(Hsla::from(rgba(0, 0, 0, 0.15)));
+        let mut main = spec_tag(
+            tbtn("tb-update", Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx),
+            "tb-update",
+            &label,
+            v.land_busy.then_some(tip.as_str()),
+        )
+        .rounded_r(px(0.))
+        .border_r(px(1.))
+        .border_color(Hsla::from(rgba(0, 0, 0, 0.15)));
         let mut chev = tbtn(
             "tb-update-chev",
             Tbtn::Solid,
@@ -1423,6 +1502,7 @@ impl Shell {
             busy_over,
             cx,
         )
+        .debug_selector(|| "tb-update-chev".into())
         .rounded_l(px(0.))
         .px(px(5.));
         if !v.land_busy {
@@ -1438,6 +1518,7 @@ impl Shell {
         let spin = self.land.updating_base;
         let mut split = div()
             .id("update-split")
+            .debug_selector(|| "tb-update".into())
             .relative()
             .flex()
             .items_center()
@@ -1495,15 +1576,21 @@ impl Shell {
         } else {
             v.merge_label.clone()
         };
-        let mut main = rbtn("tb-merge", Rbtn::Merge, busy_over, cx)
-            .h(px(26.))
-            .px(px(9.))
-            .rounded(px(6.))
-            .rounded_r(px(0.))
-            .border_r(px(1.))
-            .border_color(Hsla::from(rgba(0, 0, 0, 0.15)))
-            .text_size(px(11.5));
+        let mut main = spec_tag(
+            rbtn("tb-merge", Rbtn::Merge, busy_over, cx),
+            "tb-merge",
+            &label,
+            v.land_busy.then_some(tip.as_str()),
+        )
+        .h(px(26.))
+        .px(px(9.))
+        .rounded(px(6.))
+        .rounded_r(px(0.))
+        .border_r(px(1.))
+        .border_color(Hsla::from(rgba(0, 0, 0, 0.15)))
+        .text_size(px(11.5));
         let mut chev = rbtn("tb-merge-chev", Rbtn::Merge, busy_over, cx)
+            .debug_selector(|| "tb-merge-chev".into())
             .h(px(26.))
             .rounded(px(6.))
             .rounded_l(px(0.))
@@ -1520,6 +1607,7 @@ impl Shell {
         }
         let mut split = div()
             .id("merge-split")
+            .debug_selector(|| "tb-merge".into())
             .relative()
             .flex()
             .items_center()
@@ -1573,8 +1661,13 @@ impl Shell {
         } else {
             "Open a GitHub pull request".into()
         };
-        let mut main =
-            tbtn("tb-open-pr", Tbtn::Default, TbtnSize::TITLEBAR, over, cx).rounded_r(px(0.));
+        let mut main = spec_tag(
+            tbtn("tb-open-pr", Tbtn::Default, TbtnSize::TITLEBAR, over, cx),
+            "tb-open-pr",
+            "Open PR",
+            off.then_some(tip.as_str()),
+        )
+        .rounded_r(px(0.));
         let mut chev = tbtn(
             "tb-open-pr-chev",
             Tbtn::Default,
@@ -1582,6 +1675,7 @@ impl Shell {
             over,
             cx,
         )
+        .debug_selector(|| "tb-open-pr-chev".into())
         .rounded_l(px(0.))
         .px(px(5.));
         if !off {
@@ -1596,6 +1690,7 @@ impl Shell {
         }
         let mut split = div()
             .id("open-pr-split")
+            .debug_selector(|| "tb-open-pr".into())
             .relative()
             .flex()
             .items_center()
@@ -1627,9 +1722,14 @@ impl Shell {
     /// diffs and open PRs; it does not rebase the worktree.
     pub(crate) fn base_select(&mut self) -> AnyElement {
         match &self.land.base_select {
-            Some((sel, _)) => {
-                no_drag(div().id("crumb-base").flex_none().child(sel.clone())).into_any_element()
-            }
+            Some((sel, _)) => no_drag(
+                div()
+                    .id("crumb-base")
+                    .debug_selector(|| "crumb-base".into())
+                    .flex_none()
+                    .child(sel.clone()),
+            )
+            .into_any_element(),
             None => div().into_any_element(),
         }
     }
@@ -2010,18 +2110,42 @@ impl Shell {
             return Some(
                 div()
                     .id("issue-split")
+                    .debug_selector(|| "issue-split".into())
                     .relative()
                     .flex()
                     .items_center()
-                    .child(titled("tb-issue-view-tip", tip, no_drag(view)))
-                    .child(no_drag(div().id("issue-pick").child(sel)))
+                    .child(titled(
+                        "tb-issue-view-tip",
+                        tip,
+                        no_drag(spec_tag(
+                            view,
+                            "tb-issue-view",
+                            &format!("View {label}"),
+                            None,
+                        )),
+                    ))
+                    .child(no_drag(
+                        div()
+                            .id("issue-pick")
+                            .debug_selector(|| "issue-pick".into())
+                            .child(sel),
+                    ))
                     .into_any_element(),
             );
         }
         if opts.is_empty() {
             return None;
         }
-        Some(no_drag(div().id("issue-pick").flex_none().child(sel)).into_any_element())
+        Some(
+            no_drag(
+                div()
+                    .id("issue-pick")
+                    .debug_selector(|| "issue-pick".into())
+                    .flex_none()
+                    .child(sel),
+            )
+            .into_any_element(),
+        )
     }
 }
 

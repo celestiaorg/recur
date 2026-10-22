@@ -28,12 +28,7 @@ pub(crate) fn restored_code(
 }
 
 /// `saveActiveChatCode`.
-pub(crate) fn save_active_code(
-    state: &Entity<AppState>,
-    ws_id: &str,
-    code: &str,
-    cx: &mut App,
-) {
+pub(crate) fn save_active_code(state: &Entity<AppState>, ws_id: &str, code: &str, cx: &mut App) {
     state.update(cx, |s, _| {
         let mut all = ActiveChatTabs::parse(s.storage().get(ACTIVE_CHAT_TAB_KEY));
         if !all.save(ws_id, code) {
@@ -172,7 +167,10 @@ impl WorkspaceView {
     }
 
     /// Opens a coding chat tab; its code, or `None` when creation failed.
-    pub(crate) fn new_chat_tab(&mut self, cx: &mut Context<Self>) -> gpui_kit::Task<Option<String>> {
+    pub(crate) fn new_chat_tab(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Task<Option<String>> {
         let (svc, id) = (self.services.clone(), self.ws_id.clone());
         cx.spawn(async move |this, cx| {
             let tab = svc.workspaces.create_workspace_chat(&id).await.ok()?;
@@ -502,7 +500,10 @@ impl WorkspaceView {
         self.touch(cx);
         let (svc, id, code) = (self.services.clone(), self.ws_id.clone(), code.to_string());
         cx.spawn(async move |this, cx| {
-            let res = svc.workspaces.delete_closed_workspace_chat(&id, &code).await;
+            let res = svc
+                .workspaces
+                .delete_closed_workspace_chat(&id, &code)
+                .await;
             let _ = this.update(cx, |v, cx| {
                 let Ok(list) = res else {
                     v.closed_tabs = prev;
@@ -545,10 +546,11 @@ impl WorkspaceView {
     pub(crate) fn select_chat_tab(&mut self, code: &str, cx: &mut Context<Self>) {
         let (svc, id) = (self.services.clone(), self.ws_id.clone());
         let c = code.to_string();
-        cx.background_executor().spawn(async move {
-            let _ = svc.workspaces.set_workspace_chat_focus(&id, &c).await;
-        })
-        .detach();
+        cx.background_executor()
+            .spawn(async move {
+                let _ = svc.workspaces.set_workspace_chat_focus(&id, &c).await;
+            })
+            .detach();
         if self.active.as_deref() == Some(code) {
             self.focus_chat_input(cx);
             return;

@@ -34,12 +34,17 @@ fn spinner(started: Instant, window: &mut Window, cx: &mut gpui_kit::App) -> imp
         }
         (e / 1.5).fract() * 360.
     };
-    icon(IconName::Loader).size(px(22.)).color(hsla(t.amber)).rotate(deg)
+    icon(IconName::Loader)
+        .size(px(22.))
+        .color(hsla(t.amber))
+        .rotate(deg)
 }
 
 fn remove_workspace(state: &Entity<AppState>, id: &str, cx: &mut gpui_kit::App) {
     let id = id.to_string();
-    state.update(cx, |s, cx| s.remove_workspace(&id, cx)).detach();
+    state
+        .update(cx, |s, cx| s.remove_workspace(&id, cx))
+        .detach();
 }
 
 pub struct MainOverlay {
@@ -115,7 +120,9 @@ impl Render for MainOverlay {
                 acts = acts.child(
                     tbtn("wsv-edit-setup", Tbtn::Default, TbtnSize::BASE, None, cx)
                         .child(button_label("Edit setup command", 12., 500.))
-                        .on_click(move |_, _, cx| state.update(cx, |s, cx| s.open_project(&project, cx))),
+                        .on_click(move |_, _, cx| {
+                            state.update(cx, |s, cx| s.open_project(&project, cx))
+                        }),
                 );
             }
             acts = acts.child(
@@ -124,7 +131,11 @@ impl Render for MainOverlay {
                     .on_click(move |_, _, cx| remove_workspace(&state2, &id, cx)),
             );
             root = root
-                .child(icon(IconName::CircleAlert).size(px(22.)).color(hsla(t.amber)))
+                .child(
+                    icon(IconName::CircleAlert)
+                        .size(px(22.))
+                        .color(hsla(t.amber)),
+                )
                 .child(
                     div()
                         .flex()
@@ -151,16 +162,15 @@ impl Render for MainOverlay {
                         .child(acts),
                 );
         } else if ws.phase == "waiting for a slot" {
-            root = root
-                .child(spinner(self.started, window, cx))
-                .child(copy(
-                    "Waiting for a loop slot…",
-                    "Every loop slot is busy; this starts when one frees.".into(),
-                ));
+            root = root.child(spinner(self.started, window, cx)).child(copy(
+                "Waiting for a loop slot…",
+                "Every loop slot is busy; this starts when one frees.".into(),
+            ));
         } else {
-            root = root
-                .child(spinner(self.started, window, cx))
-                .child(copy("Creating workspace…", "Setting up the worktree.".into()));
+            root = root.child(spinner(self.started, window, cx)).child(copy(
+                "Creating workspace…",
+                "Setting up the worktree.".into(),
+            ));
         }
         root.into_any_element()
     }
@@ -191,7 +201,10 @@ fn err_block(err: &str, clip: bool, cx: &gpui_kit::App) -> AnyElement {
 }
 
 /// `.wsv-strip` while a workspace with a tree failed to create (and has not engaged a run).
-pub(crate) fn failed_strip(v: &mut WorkspaceView, cx: &mut Context<WorkspaceView>) -> Option<AnyElement> {
+pub(crate) fn failed_strip(
+    v: &mut WorkspaceView,
+    cx: &mut Context<WorkspaceView>,
+) -> Option<AnyElement> {
     let ws = v.ws(cx)?.clone();
     if !v.create_failed(cx) || v.has_run(cx) || ws.worktree_path.is_empty() {
         return None;
@@ -216,12 +229,16 @@ pub(crate) fn failed_strip(v: &mut WorkspaceView, cx: &mut Context<WorkspaceView
         .border_color(hsla(t.line))
         .text_size(px(11.5))
         .child(
-            text(if setup_failed { "Setup Failed" } else { "Couldn't Create" })
-                .size(11.5)
-                .weight(700.)
-                .color(t.amber)
-                .line_height(LineHeight::Normal)
-                .nowrap(),
+            text(if setup_failed {
+                "Setup Failed"
+            } else {
+                "Couldn't Create"
+            })
+            .size(11.5)
+            .weight(700.)
+            .color(t.amber)
+            .line_height(LineHeight::Normal)
+            .nowrap(),
         );
     if !err.is_empty() && (!multi || !open) {
         let line = nl.map_or(err.as_str(), |i| &err[..i]);
@@ -230,7 +247,11 @@ pub(crate) fn failed_strip(v: &mut WorkspaceView, cx: &mut Context<WorkspaceView
     if multi {
         strip = strip.child(
             tbtn("wsv-err-toggle", Tbtn::Default, TbtnSize::BASE, None, cx)
-                .child(button_label(if open { "Hide output" } else { "Show output" }, 12., 500.))
+                .child(button_label(
+                    if open { "Hide output" } else { "Show output" },
+                    12.,
+                    500.,
+                ))
                 .on_click(cx.listener(|v, _, _, cx| {
                     v.setup_err_open = !v.setup_err_open;
                     v.touch(cx);
@@ -254,7 +275,12 @@ pub(crate) fn failed_strip(v: &mut WorkspaceView, cx: &mut Context<WorkspaceView
                 b.on_click(cx.listener(move |v, _, _, cx| {
                     let (svc, id) = (v.services.clone(), id.clone());
                     cx.spawn(async move |_, cx| {
-                        call(cx, svc.workspaces.retry_workspace_setup(&id), "Could not retry setup").await;
+                        call(
+                            cx,
+                            svc.workspaces.retry_workspace_setup(&id),
+                            "Could not retry setup",
+                        )
+                        .await;
                     })
                     .detach();
                 }))
@@ -262,11 +288,17 @@ pub(crate) fn failed_strip(v: &mut WorkspaceView, cx: &mut Context<WorkspaceView
         );
         let project = ws.project_id.clone();
         acts = acts.child(
-            tbtn("wsv-edit-setup-strip", Tbtn::Default, TbtnSize::BASE, None, cx)
-                .child(button_label("Edit setup command", 12., 500.))
-                .on_click(cx.listener(move |v, _, _, cx| {
-                    v.state.update(cx, |s, cx| s.open_project(&project, cx))
-                })),
+            tbtn(
+                "wsv-edit-setup-strip",
+                Tbtn::Default,
+                TbtnSize::BASE,
+                None,
+                cx,
+            )
+            .child(button_label("Edit setup command", 12., 500.))
+            .on_click(cx.listener(move |v, _, _, cx| {
+                v.state.update(cx, |s, cx| s.open_project(&project, cx))
+            })),
         );
     }
     let id = ws.id.clone();

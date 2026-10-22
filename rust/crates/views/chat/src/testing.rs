@@ -43,7 +43,12 @@ impl AgentChat {
     }
 
     /// An explorer drag dropped `paths` on the chat.
-    pub fn test_drop_explorer(&mut self, paths: &[String], window: &mut Window, cx: &mut Context<Self>) {
+    pub fn test_drop_explorer(
+        &mut self,
+        paths: &[String],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.file_drop_over = true;
         self.drop_explorer_paths(paths, window, cx);
     }
@@ -81,7 +86,12 @@ impl AgentChat {
     }
 
     /// Bounds of `needle` in any rendered markdown block.
-    pub fn test_text_bounds(&self, needle: &str, window: &Window, cx: &gpui_kit::App) -> Option<Bounds<Pixels>> {
+    pub fn test_text_bounds(
+        &self,
+        needle: &str,
+        window: &Window,
+        cx: &gpui_kit::App,
+    ) -> Option<Bounds<Pixels>> {
         self.markdown.values().find_map(|v: &Entity<MarkdownView>| {
             let v = v.read(cx);
             v.text_blocks().into_iter().find_map(|(id, text)| {

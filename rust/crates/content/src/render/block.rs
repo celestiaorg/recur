@@ -448,13 +448,18 @@ impl Build<'_, '_> {
         self.n.image += 1;
         let ix = self.n.image;
         let slot = (self.env.image)(src);
+        // Spec handle: `md-img:{src}` while the image loads and once it paints.
+        let sel = format!("md-img:{src}");
         let ImageSlot::Ready {
             image,
             width,
             height,
         } = slot
         else {
-            return div().h(px(a + d)).into_any_element();
+            return div()
+                .debug_selector(move || sel)
+                .h(px(a + d))
+                .into_any_element();
         };
         let max = self.env.width.max(1.);
         let w = width.min(max);
@@ -476,6 +481,7 @@ impl Build<'_, '_> {
             .child(
                 div()
                     .id(("md-img", ix))
+                    .debug_selector(move || sel)
                     .relative()
                     .w(px(w))
                     .h(px(h))

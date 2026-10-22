@@ -73,6 +73,10 @@ pub fn plain(cx: &mut TestAppContext) -> S<'_> {
     boot(cx, |_| {}, MockOptions::default())
 }
 
+pub fn plain_with(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed)) -> S<'_> {
+    boot(cx, seed, MockOptions::default())
+}
+
 fn leak(s: &str) -> &'static str {
     Box::leak(s.to_string().into_boxed_str())
 }

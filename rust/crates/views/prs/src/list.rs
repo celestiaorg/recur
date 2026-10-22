@@ -793,9 +793,13 @@ impl PrList {
                 .gap(px(10.))
                 .min_w_0()
                 .children(people_slot.take());
-            if !why.is_empty() {
-                under = under.child(why_el(None));
-            }
+            // An empty `.pr-why` is an empty block; an empty text run would take a line.
+            under = if why.is_empty() {
+                let sel = format!("pr-why:{id}=");
+                under.child(div().debug_selector(move || sel))
+            } else {
+                under.child(why_el(None))
+            };
             body = body.child(
                 div()
                     .mt(px(4.))

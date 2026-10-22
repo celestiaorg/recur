@@ -9,7 +9,14 @@
 //! plans and API calls stay inside the forge.
 
 pub mod forge_glue;
+pub mod from_pr;
+pub mod holds;
 pub mod linking;
+pub mod merge;
+pub mod ops;
+pub mod refresh;
+pub mod sync;
+pub mod workspace;
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;

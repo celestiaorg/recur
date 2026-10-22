@@ -141,7 +141,7 @@ pub fn visible_diff_text(code_html: &str) -> String {
             _ => {}
         }
     }
-    recur_forge::json::html_unescape(&b)
+    crate::text::html_unescape(&b)
 }
 
 /// The review's label and the PR state words it implies ("" = unchanged).

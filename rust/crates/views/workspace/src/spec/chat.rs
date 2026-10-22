@@ -1504,7 +1504,10 @@ async fn switching_workspaces_restores_agent_tab_strip_scroll(cx: &mut TestAppCo
         h.click("wsv-chat-new");
     }
     assert_eq!(h.codes().len(), 10);
-    h.select_tab("MA");
+    // The Loop chip has scrolled out of view; Playwright scrolls it back before clicking.
+    h.with(|v, cx| v.select_chat_tab("MA", cx));
+    h.wait(400);
+    assert_eq!(h.active(), "MA");
     let handle = h.read(|v, _| v.strip_scroll.clone());
     let max = f32::from(handle.max_offset().x);
     assert!(max > 60., "max {max}");
@@ -1930,3 +1933,5 @@ async fn http_links_in_agent_output_open_in_the_os_browser(cx: &mut TestAppConte
     h.settle();
     assert_eq!(h.cx.opened_url().as_deref(), Some("https://example.com/guide"));
 }
+
+

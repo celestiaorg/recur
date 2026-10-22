@@ -244,6 +244,9 @@ impl H<'_> {
     /// Quit: write the pending editor session (the quit journal's flush). Remount in a
     /// second app context for the restart.
     pub fn quit(self) {
+        let obs = self.obs.clone();
+        self.cx
+            .update(|window, cx| obs.update(cx, |o, cx| o.page_hide(window, cx)));
         self.cx
             .update(|_, cx| crate::session_host::flush_editor_session_now(cx));
         self.cx.run_until_parked();
@@ -450,6 +453,37 @@ impl H<'_> {
         let l = chip.left().max(strip.left());
         let r = chip.right().min(strip.right());
         f32::from(r - l)
+    }
+
+    /// The toasts on screen: kind and text.
+    pub fn toasts(&mut self) -> Vec<(recur_ui::widgets::ToastKind, String)> {
+        self.cx.update(|_, cx| {
+            let store = recur_ui::widgets::ToastStore::global(cx);
+            store
+                .read(cx)
+                .toasts()
+                .iter()
+                .map(|t| (t.kind, t.text.to_string()))
+                .collect()
+        })
+    }
+
+    pub fn has_toast(&mut self, kind: recur_ui::widgets::ToastKind, needle: &str) -> bool {
+        self.toasts()
+            .iter()
+            .any(|(k, t)| *k == kind && t.contains(needle))
+    }
+
+    /// The split editor's text.
+    pub fn split_doc(&mut self) -> String {
+        let obs = self.obs.clone();
+        self.cx.update(|_, cx| {
+            obs.read(cx)
+                .split_editor
+                .as_ref()
+                .map(|e| e.read(cx).peek_doc())
+                .unwrap_or_default()
+        })
     }
 
     /// The main editor's text.

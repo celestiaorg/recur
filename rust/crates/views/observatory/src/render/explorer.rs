@@ -423,8 +423,10 @@ impl Observatory {
             .flex_1()
             .child(label);
         if !e.dir && unsaved.contains(&e.path) {
+            let p = e.path.clone();
             label_row = label_row.child(
                 div()
+                    .debug_selector(move || format!("obs-unsaved:{p}"))
                     .size(px(5.))
                     .rounded(px(2.5))
                     .flex_none()

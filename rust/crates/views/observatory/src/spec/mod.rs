@@ -2,6 +2,7 @@
 //! `editor-hotpath.spec.ts`, `editor-syntax.spec.ts`, `explorer-scope.spec.ts`) on the mock
 //! bridge.
 
+mod editor_hotpath;
 mod harness;
 mod observatory;
 mod terminal_dock;

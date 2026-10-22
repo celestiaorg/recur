@@ -598,14 +598,13 @@ impl Observatory {
             .min_h_0()
             .overflow_hidden()
             .when(self.split_open, |d| {
-                d.on_mouse_down(
-                    MouseButton::Left,
-                    cx.listener(|o, _, window, cx| {
-                        if o.focused_pane != Pane::Main {
+                d.capture_any_mouse_down(cx.listener(
+                    |o, e: &gpui_kit::MouseDownEvent, window, cx| {
+                        if e.button == MouseButton::Left && o.focused_pane != Pane::Main {
                             o.focus_pane(Pane::Main, window, cx)
                         }
-                    }),
-                )
+                    },
+                ))
             });
         if self.show_image_pane() {
             return pane
@@ -800,14 +799,11 @@ impl Observatory {
             .overflow_hidden()
             .border_l_1()
             .border_color(hsla(t.line))
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|o, _, window, cx| {
-                    if o.focused_pane != Pane::Split {
-                        o.focus_pane(Pane::Split, window, cx)
-                    }
-                }),
-            );
+            .capture_any_mouse_down(cx.listener(|o, e: &gpui_kit::MouseDownEvent, window, cx| {
+                if e.button == MouseButton::Left && o.focused_pane != Pane::Split {
+                    o.focus_pane(Pane::Split, window, cx)
+                }
+            }));
         if !self.split_path.is_empty()
             && let Some(ed) = self.split_editor.clone()
         {

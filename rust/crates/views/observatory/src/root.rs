@@ -141,6 +141,19 @@ impl Observatory {
             .push(cx.on_release(|o, cx| o.on_destroy(cx)));
         self._subscriptions.push(Self::observe_keys(cx));
         self._subscriptions
+            .push(cx.observe_window_activation(window, |o, window, cx| {
+                if !window.is_window_active() {
+                    o.page_hide(window, cx);
+                }
+            }));
+        self._subscriptions.push(cx.on_app_quit(|o, cx| {
+            if let Some(w) = o.window {
+                let _ = w.update(cx, |_, window, cx| o.page_hide(window, cx));
+            }
+            crate::session_host::flush_editor_session_now(cx);
+            async {}
+        }));
+        self._subscriptions
             .push(cx.observe_window_bounds(window, |o, window, cx| {
                 o.window_fullscreen_changed(window, cx)
             }));
@@ -1160,6 +1173,13 @@ impl Observatory {
         }
         let (pid, wid) = split_root(root);
         self.persist_or_clear_for(&pid, &wid, window, cx);
+    }
+
+    /// `pagehide` / `visibilitychange` hidden: write the session with the live editors' caret
+    /// and scroll.
+    pub fn page_hide(&mut self, window: &Window, cx: &mut gpui_kit::App) {
+        let root = self.loaded_root.clone();
+        self.persist_session_for_root(&root, Some(window), cx);
     }
 
     // ---- backend events ----

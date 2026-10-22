@@ -61,7 +61,7 @@ pub enum SurfaceEvent {
     /// `onOpenFile(path, line?)`.
     OpenFile(String, Option<i64>),
     /// `onOpenFinding`.
-    OpenFinding(Finding),
+    OpenFinding(Box<Finding>),
     /// `onShowFindings`.
     ShowFindings,
     /// A bound value changed.
@@ -116,7 +116,7 @@ impl ReviewSurface {
                 &commits_view,
                 window,
                 |s: &mut Self, _, ev: &CommitsEvent, window, cx| match ev {
-                    CommitsEvent::Open(c) => s.open_commit(c.clone(), window, cx),
+                    CommitsEvent::Open(c) => s.open_commit((**c).clone(), window, cx),
                     CommitsEvent::OpenWorking => s.open_working(window, cx),
                 },
             ),
@@ -241,7 +241,7 @@ impl ReviewSurface {
         let scope = if self.working_open {
             FilesScope::Working
         } else if let Some(c) = &self.commit_scope {
-            FilesScope::Commit(c.clone())
+            FilesScope::Commit(Box::new(c.clone()))
         } else {
             FilesScope::Base
         };
@@ -300,7 +300,7 @@ impl ReviewSurface {
                 self.cache_commit_files(c, files.clone(), window, cx)
             }
             FilesEvent::OpenFile(p, l) => cx.emit(SurfaceEvent::OpenFile(p.clone(), *l)),
-            FilesEvent::OpenFinding(f) => cx.emit(SurfaceEvent::OpenFinding(f.clone())),
+            FilesEvent::OpenFinding(f) => cx.emit(SurfaceEvent::OpenFinding(Box::new(f.clone()))),
             FilesEvent::ShowFindings => cx.emit(SurfaceEvent::ShowFindings),
             FilesEvent::StepScope(dir) => self.step_scope(*dir, window, cx),
             FilesEvent::Totals { add, del, files } => {
@@ -385,7 +385,7 @@ impl ReviewSurface {
         let idx = self.scope_idx(&tape);
         match step_tape(&tape, idx, dir).cloned() {
             Some(TapeItem::Working) => self.open_working(window, cx),
-            Some(TapeItem::Commit(c)) => self.open_commit(c, window, cx),
+            Some(TapeItem::Commit(c)) => self.open_commit(*c, window, cx),
             None => {}
         }
     }

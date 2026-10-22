@@ -41,6 +41,9 @@ pub const TREE_FADE: f32 = 20.;
 pub const FILE_ROW_H: f32 = 3. + 12.5 * 1.35 + 3.;
 
 /// `onSelect(path, { highlight })`.
+/// Unresolved line notes grouped by file.
+pub type CommentsByPath = Vec<(String, Vec<PrComment>)>;
+
 pub type SelectFn = Rc<dyn Fn(String, Option<i64>, &mut Window, &mut App)>;
 
 #[derive(Clone, Default, PartialEq)]
@@ -50,7 +53,7 @@ pub struct FileListProps {
     pub mode: FileListMode,
     pub findings_by_path: Option<Rc<FindingsByPath>>,
     /// Unresolved line notes by path (PR detail).
-    pub comments_by_path: Option<Rc<Vec<(String, Vec<PrComment>)>>>,
+    pub comments_by_path: Option<Rc<CommentsByPath>>,
     pub dirty_paths: Option<Rc<HashSet<String>>>,
     /// Bumped by the scroll spy: reveal `selected_path`.
     pub reveal: u64,

@@ -282,12 +282,14 @@ pub struct RowOpts {
     pub trailing: Vec<AnyElement>,
 }
 
+pub type RowAction = Rc<dyn Fn(&mut Window, &mut App)>;
+
 /// `CommitRow.svelte`. `on_open` makes the row a button; `on_copy` copies the full SHA.
 pub fn commit_row(
     c: &Commit,
     opts: RowOpts,
-    on_open: Option<Rc<dyn Fn(&mut Window, &mut App)>>,
-    on_copy: Rc<dyn Fn(&mut Window, &mut App)>,
+    on_open: Option<RowAction>,
+    on_copy: RowAction,
     cx: &App,
 ) -> AnyElement {
     let t = Theme::of(cx).tokens;
@@ -481,7 +483,7 @@ fn row_frame(
 #[derive(Clone, Debug, PartialEq)]
 pub enum CommitsEvent {
     /// `onOpenCommit`.
-    Open(Commit),
+    Open(Box<Commit>),
     /// `onOpenWorking`.
     OpenWorking,
 }
@@ -638,7 +640,7 @@ impl Render for CommitsView {
                     },
                     Some(Rc::new(move |_, cx| {
                         let c = c2.clone();
-                        let _ = me.update(cx, |_, cx| cx.emit(CommitsEvent::Open(c)));
+                        let _ = me.update(cx, |_, cx| cx.emit(CommitsEvent::Open(Box::new(c))));
                     })),
                     Rc::new(move |_, cx| {
                         let sha = sha2.clone();

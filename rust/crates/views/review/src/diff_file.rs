@@ -720,7 +720,7 @@ impl DiffFile {
             )
             .await;
             if ok.is_none() {
-                let _ = cx.update(|cx| {
+                cx.update(|cx| {
                     patch_pr_pending_comments(
                         &state,
                         &pr_id,
@@ -1148,6 +1148,7 @@ impl DiffFile {
     }
 
     /// `.addc`: the `+` in the gutter, opacity 0 until its row (`group`) is hovered.
+    #[allow(clippy::too_many_arguments)]
     fn addc(
         &self,
         line_i: usize,

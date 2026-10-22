@@ -110,7 +110,7 @@ mod tests {
         assert_eq!(edge_fades(100., 200., 100., S, S), (true, false));
         assert_eq!(edge_fades(40., 200., 100., S, S), (true, true));
         assert_eq!(edge_fades(80., 200., 100., 1., 24.), (true, false));
-        assert_eq!(edge_fades(12., 0., 0., S, S).0, true);
+        assert!(edge_fades(12., 0., 0., S, S).0);
     }
 
     #[test]

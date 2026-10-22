@@ -25,7 +25,7 @@ pub fn estimate_diff_height(lines: Option<usize>, add: i64, del: i64, collapsed:
     if collapsed {
         return HEAD_PX;
     }
-    let n = lines.unwrap_or_else(|| (add + del + 4).min(STAT_LINE_CAP).max(0) as usize);
+    let n = lines.unwrap_or_else(|| (add + del + 4).clamp(0, STAT_LINE_CAP) as usize);
     HEAD_PX + n.max(1) as f32 * DIFF_LINE_PX + FILE_GAP_PX
 }
 

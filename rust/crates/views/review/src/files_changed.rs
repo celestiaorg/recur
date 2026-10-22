@@ -54,7 +54,7 @@ pub enum FilesScope {
     /// The working tree vs HEAD (`DiffWorking`).
     Working,
     /// One commit (`CommitDiff`, or the files it carries).
-    Commit(Commit),
+    Commit(Box<Commit>),
 }
 
 /// `FilesChangedView`'s props.
@@ -601,7 +601,7 @@ impl FilesChangedView {
                         .code
                         .commit_diff(&pid, &wid, &sha)
                         .await
-                        .map(|files| (files, false, Some(c.clone())))
+                        .map(|files| (files, false, Some((**c).clone())))
                         .map_err(|_| ())
                 }
                 FilesScope::Base => services

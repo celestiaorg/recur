@@ -41,6 +41,9 @@ use crate::style::hsla;
 /// How long a TOC click keeps the spy from re-picking while the pane settles.
 const SPY_SUPPRESS: Duration = Duration::from_millis(700);
 
+/// The host's `onToggleCollapse` for a card: (path, collapsed).
+pub type ToggleCard<H> = Rc<dyn Fn(&mut H, String, bool, &mut Context<H>)>;
+
 /// What every card's [`DiffFile`] gets besides its file.
 #[derive(Clone, Default)]
 pub struct CardProps {
@@ -431,7 +434,7 @@ impl FileStack {
         header: Vec<AnyElement>,
         empty: Option<AnyElement>,
         stack_of: fn(&mut H) -> &mut FileStack,
-        on_toggle: Rc<dyn Fn(&mut H, String, bool, &mut Context<H>)>,
+        on_toggle: ToggleCard<H>,
         window: &mut Window,
         cx: &mut Context<H>,
     ) -> AnyElement {
@@ -647,7 +650,7 @@ impl FileStack {
         &self,
         f: &Rc<FileDiff>,
         host: WeakEntity<H>,
-        on_toggle: Rc<dyn Fn(&mut H, String, bool, &mut Context<H>)>,
+        on_toggle: ToggleCard<H>,
     ) -> DiffFileHooks {
         let mut hooks = self.props.hooks.clone();
         let path = f.path.clone();

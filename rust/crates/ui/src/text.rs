@@ -1272,7 +1272,7 @@ impl Element for Text {
         let measure_slot = layout.clone();
         // Taffy keeps one measure result per constraint kind, so nested flex passes that probe
         // several widths would re-break the same text many times in a frame.
-        let memo: RefCell<Vec<(Option<f32>, (f32, f32))>> = RefCell::default();
+        let memo = RefCell::new(Vec::<(Option<f32>, (f32, f32))>::new());
         let mut style = Style::default();
         if truncate {
             // `overflow: hidden` makes the automatic minimum size zero in a flex row.

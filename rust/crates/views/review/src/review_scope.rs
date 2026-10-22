@@ -8,7 +8,7 @@ use crate::commit_meta::commit_sha;
 #[derive(Clone, Debug, PartialEq)]
 pub enum TapeItem {
     Working,
-    Commit(Commit),
+    Commit(Box<Commit>),
 }
 
 pub fn review_tape(dirty: bool, commits: &[Commit]) -> Vec<TapeItem> {
@@ -16,7 +16,12 @@ pub fn review_tape(dirty: bool, commits: &[Commit]) -> Vec<TapeItem> {
     if dirty {
         items.push(TapeItem::Working);
     }
-    items.extend(commits.iter().cloned().map(TapeItem::Commit));
+    items.extend(
+        commits
+            .iter()
+            .cloned()
+            .map(|c| TapeItem::Commit(Box::new(c))),
+    );
     items
 }
 
@@ -74,7 +79,7 @@ mod tests {
         let (a, b) = (commit("aaa"), commit("bbb"));
         assert_eq!(
             review_tape(false, &[a.clone(), b.clone()]),
-            vec![TapeItem::Commit(a), TapeItem::Commit(b)]
+            vec![TapeItem::Commit(Box::new(a)), TapeItem::Commit(Box::new(b))]
         );
     }
 
@@ -83,7 +88,7 @@ mod tests {
         let a = commit("aaa");
         assert_eq!(
             review_tape(true, std::slice::from_ref(&a)),
-            vec![TapeItem::Working, TapeItem::Commit(a)]
+            vec![TapeItem::Working, TapeItem::Commit(Box::new(a))]
         );
     }
 
@@ -95,7 +100,7 @@ mod tests {
         let idx = review_tape_index(&dirty, true, "");
         assert_eq!(
             step_tape(&dirty, idx, -1),
-            Some(&TapeItem::Commit(a.clone()))
+            Some(&TapeItem::Commit(Box::new(a.clone())))
         );
         assert_eq!(can_step_on_tape(idx, dirty.len()), (true, false));
         let idx = review_tape_index(&dirty, false, "aaa");
@@ -109,7 +114,10 @@ mod tests {
         let (a, b) = (commit("aaa"), commit("bbb"));
         let tape = review_tape(false, &[a, b.clone()]);
         assert_eq!(review_tape_index(&tape, false, "aaa"), 0);
-        assert_eq!(step_tape(&tape, 0, -1), Some(&TapeItem::Commit(b)));
+        assert_eq!(
+            step_tape(&tape, 0, -1),
+            Some(&TapeItem::Commit(Box::new(b)))
+        );
         assert_eq!(step_tape(&tape, 0, 1), None);
     }
 
@@ -125,11 +133,11 @@ mod tests {
             "Uncommitted changes"
         );
         assert_eq!(
-            tape_step_label(Some(&TapeItem::Commit(a.clone())), -1),
+            tape_step_label(Some(&TapeItem::Commit(Box::new(a.clone()))), -1),
             "Previous commit"
         );
         assert_eq!(
-            tape_step_label(Some(&TapeItem::Commit(a)), 1),
+            tape_step_label(Some(&TapeItem::Commit(Box::new(a))), 1),
             "Next commit"
         );
     }

@@ -3,7 +3,6 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{Entity, Modifiers, MouseButton, TestAppContext, VisualTestContext, point, px};
@@ -19,6 +18,7 @@ use recur_view_core::{AppState, LocalStorage};
 
 use crate::diff_file::{DiffFile, DiffFileHooks};
 use crate::file_list::{FileListProps, ReviewFileList};
+use crate::findings::FindingsByPath;
 use crate::review_diff::{DiffLayout, FileListMode, ReviewTab};
 use crate::stack::{CardProps, FileStack};
 use crate::store::ReviewStore;
@@ -99,7 +99,6 @@ pub fn by_path(list: &[Finding]) -> Vec<(String, Vec<Finding>)> {
 }
 
 pub struct H<'a> {
-    pub bridge: Arc<MockBridge>,
     pub state: Entity<AppState>,
     pub cx: &'a mut VisualTestContext,
 }
@@ -260,7 +259,7 @@ pub fn surface<'a>(
                     .list_findings(WS)
                     .await
                     .unwrap_or_default();
-                let _ = cx.update(|cx| {
+                cx.update(|cx| {
                     let Some(h) = h.upgrade() else { return };
                     let surface = h.read(cx).surface.clone();
                     let _ = cx.update_window(cx.windows()[0], |_, window, cx| {
@@ -279,14 +278,13 @@ pub fn surface<'a>(
     });
     vcx.simulate_resize(gpui::size(px(1280.), px(800.)));
     vcx.update(|window, _| window.activate_window());
-    let mut h = H {
-        bridge,
-        state,
-        cx: vcx,
-    };
+    let mut h = H { state, cx: vcx };
     h.settle();
     (h, host)
 }
+
+/// An `onOpenFile(path, line?)` call.
+pub type OpenedFile = (String, Option<i64>);
 
 /// PR detail's Files tab for one PR: the file list with unresolved-comment flags beside the
 /// stacked diffs, in PR note mode.
@@ -294,8 +292,8 @@ pub struct PrHost {
     pub stack: FileStack,
     pub list: Entity<ReviewFileList>,
     pub highlight: i64,
-    pub findings: Option<Rc<Vec<(String, Vec<Finding>)>>>,
-    pub opened: Rc<RefCell<Vec<(String, Option<i64>)>>>,
+    pub findings: Option<Rc<FindingsByPath>>,
+    pub opened: Rc<RefCell<Vec<OpenedFile>>>,
     pub opened_findings: Rc<RefCell<Vec<Finding>>>,
     state: Entity<AppState>,
     pr_id: String,
@@ -446,11 +444,7 @@ pub fn pr_files<'a>(
     });
     vcx.simulate_resize(gpui::size(px(1280.), px(900.)));
     vcx.update(|window, _| window.activate_window());
-    let mut h = H {
-        bridge,
-        state,
-        cx: vcx,
-    };
+    let mut h = H { state, cx: vcx };
     h.settle();
     (h, host)
 }

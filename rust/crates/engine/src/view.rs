@@ -7,12 +7,16 @@
 //! (`lib/loops.ts`, `lib/loop-cockpit.ts`) and E4's chat modes, looking-at
 //! surface, active-tab memory, subagent display and launch rules
 //! (`lib/modes.ts`, `lib/chat-surface.ts`, `lib/chat-tab-session.ts`,
-//! `lib/subagent.ts`, `lib/new-workspace.ts`).
+//! `lib/subagent.ts`, `lib/new-workspace.ts`) and E5's PR rules
+//! (`lib/pr-merge-action.ts`, `lib/pr-workspace.ts`, `lib/comment-thread.ts`,
+//! `lib/pr-thread-resolved.ts`, `lib/pr-detail-pending.ts`,
+//! `lib/pr-fix-checks.ts`).
 
 pub mod artifacts;
 pub mod chat;
 pub mod chat_surface;
 pub mod chat_tab_session;
+pub mod comment_thread;
 pub mod composer;
 pub mod digest;
 pub mod js;
@@ -22,6 +26,11 @@ pub mod loops;
 pub mod mentions;
 pub mod modes;
 pub mod new_workspace;
+pub mod pr_detail_pending;
+pub mod pr_fix_checks;
+pub mod pr_merge_action;
+pub mod pr_thread_resolved;
+pub mod pr_workspace;
 pub mod prompts;
 pub mod subagent;
 

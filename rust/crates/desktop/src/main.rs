@@ -28,6 +28,7 @@ use recur_platform::updater::{Host, RecurUpdater, UpdaterEvent, UserAction};
 use recur_platform::{cliinstall, dock, notify, running_in_app_bundle};
 use recur_services::{AppEvent, AppServices, Services};
 use recur_view_core::{LOCAL_STORAGE_FILE, LocalStorage, ViewRegistry};
+use recur_view_observatory::lsp::problems;
 
 /// Stamped at build time for release bundles (Go: `-ldflags -X main.version`).
 const VERSION: &str = match option_env!("RECUR_VERSION") {
@@ -301,9 +302,19 @@ fn main() {
             }));
             s.set_macro_runner(Some(macros.macro_runner()));
         });
-        // simplify: complete scripts get no LSP diagnostics until the editor's LSP client
-        // keeps a problems list (Svelte `lspProblems`); pass it here when it lands.
-        let diagnostics: macro_runtime::Diagnostics = Rc::new(|_| Vec::new());
+        // The runner has no `App`, so it reads a mirror of the editor's problem store.
+        let problems: Rc<RefCell<Vec<problems::LspProblem>>> = Rc::default();
+        cx.observe_global::<problems::LspProblems>({
+            let problems = problems.clone();
+            move |cx| *problems.borrow_mut() = problems::peek_problems(cx)
+        })
+        .detach();
+        let diagnostics: macro_runtime::Diagnostics = Rc::new(move |ws| {
+            problems::problems_for_workspace(&problems.borrow(), ws)
+                .iter()
+                .map(problems::problem_args)
+                .collect()
+        });
         recur_view_chat::prompt_actions::PromptCatalog::set_runners(
             Some(macros.prompt_runner()),
             Some(macros.complete_runner(diagnostics)),

@@ -2,8 +2,6 @@
 //! renderer does (cell backgrounds, glyphs on a device-pixel grid, underline styles,
 //! strikethrough, cursor shapes, link underlines, IME composition and the overlay scrollbar).
 
-use std::time::Instant;
-
 use gpui_kit::{
     App, Bounds, ContentMask, CursorStyle, DispatchPhase, Element, ElementId, ElementInputHandler,
     Entity, Font, FontFallbacks, FontFeatures, FontStyle, FontWeight, GlobalElementId, Hitbox,
@@ -189,7 +187,7 @@ impl Element for TerminalElement {
         let ydisp = view.screen.viewport_top() as i64;
         let composition = view.composition.clone();
         let cursor_cell = view.screen.cursor_in_viewport();
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         // xterm's slider fades are CSS transitions without a reduced-motion rule: they always
         // run, and only a parity capture's freeze settles them.
         let opacity = view.scrollbar.opacity_with(|start, dur| {
@@ -336,7 +334,9 @@ impl Element for TerminalElement {
             if phase != DispatchPhase::Bubble {
                 return;
             }
-            v.update(cx, |v, _| v.window_mouse_down());
+            v.update(cx, |v, cx| {
+                v.window_mouse_down(cx.background_executor().now())
+            });
             if hitbox.is_hovered(window) {
                 v.update(cx, |v, cx| {
                     v.mouse_down(e.position, e.button, e.click_count, e.modifiers, window, cx)

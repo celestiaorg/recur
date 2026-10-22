@@ -369,7 +369,7 @@ impl TerminalView {
             latest_ydisp: None,
             hovered_link: None,
             mouse_down_link: None,
-            mouse_down_at: Instant::now(),
+            mouse_down_at: cx.background_executor().now(),
             reported_button: None,
             reporter: MouseReporter::default(),
             slider_hovered: false,
@@ -508,7 +508,7 @@ impl TerminalView {
 
     /// Cursor blink and timers after the screen changed.
     fn after_change(&mut self, cursor_before: Option<(usize, usize)>, cx: &mut Context<Self>) {
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         let (_, blinks) = self.screen.cursor_style();
         match (&mut self.blink, blinks) {
             (None, true) => self.blink = Some(CursorBlink::new(now, self.focused)),
@@ -653,7 +653,7 @@ impl TerminalView {
     }
 
     fn schedule_tick(&mut self, cx: &mut Context<Self>) {
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         let Some(deadline) = self.next_deadline(now) else {
             self.tick_task = None;
             return;
@@ -673,7 +673,7 @@ impl TerminalView {
 
     fn tick(&mut self, cx: &mut Context<Self>) {
         self.tick_task = None;
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         if let Some(b) = &mut self.blink {
             b.tick(now);
         }
@@ -698,7 +698,7 @@ impl TerminalView {
             return;
         }
         self.focused = focused;
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         if focused {
             self.screen.show_cursor();
             if let Some(b) = &mut self.blink {
@@ -1086,7 +1086,7 @@ impl TerminalView {
         cx: &mut Context<Self>,
     ) {
         let Some(l) = self.layout else { return };
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         if l.scrollbar_bounds().contains(&pos)
             && self.scrollbar.is_needed()
             && button == MouseButton::Left
@@ -1152,7 +1152,7 @@ impl TerminalView {
         cx: &mut Context<Self>,
     ) {
         let Some(l) = self.layout else { return };
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         self.mouse_position = Some(pos);
         if self.scrollbar.is_dragging() {
             if let Some(top) = self
@@ -1218,7 +1218,7 @@ impl TerminalView {
         cx: &mut Context<Self>,
     ) {
         let Some(l) = self.layout else { return };
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         if self.scrollbar.is_dragging() {
             self.scrollbar.pointer_up(now);
             self.schedule_tick(cx);
@@ -1271,7 +1271,7 @@ impl TerminalView {
 
     pub(crate) fn scroll_wheel(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
         let Some(l) = self.layout else { return };
-        let now = Instant::now();
+        let now = cx.background_executor().now();
         let (dy, pixels) = match event.delta {
             ScrollDelta::Pixels(p) => (-f32::from(p.y), true),
             ScrollDelta::Lines(p) => (-p.y, false),
@@ -1344,7 +1344,8 @@ impl TerminalView {
 
     pub(crate) fn mouse_exited(&mut self, cx: &mut Context<Self>) {
         self.mouse_position = None;
-        self.scrollbar.set_mouse_over(false, Instant::now());
+        self.scrollbar
+            .set_mouse_over(false, cx.background_executor().now());
         if self.hovered_link.take().is_some() || self.slider_hovered {
             self.slider_hovered = false;
         }
@@ -1353,9 +1354,9 @@ impl TerminalView {
     }
 
     /// Restart the cursor blink on any mouse press in the window (xterm listens on the document).
-    pub(crate) fn window_mouse_down(&mut self) {
+    pub(crate) fn window_mouse_down(&mut self, now: Instant) {
         if let Some(b) = &mut self.blink {
-            b.restart(Instant::now());
+            b.restart(now);
         }
     }
 

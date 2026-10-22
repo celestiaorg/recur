@@ -13,19 +13,25 @@ Gaps found while porting that are not yet owned by a slice. Each must be closed 
 - [x] **`recur_ui::text`: inline code chip at a wrap start** keeps its left padding on the previous line (`file-preview/markdown`, 514 hard pixels). A line that starts at an inline box now starts at its left margin edge (and the content mirror follows); `file-preview/markdown` is at 0.
 - [x] **`overlays/palette`:** keycaps at fractional offsets in a scrolled list and the list thumb's end land one device pixel off (388 hard pixels). The scrim's `11vh` top and the panel's `64vh` cap rounded (the list lost its scrollbar and every row moved); both are exact now, the footer rounds its corners and placeholders follow WebKit's text-field line. At 0.
 - [x] **Chat: TypeScript prompt modules.** `recur-desktop`'s `macro_runtime` runs them (and macros) in persistent node workers with the `macro-worker.ts` contracts, installed through `PromptCatalog::set_runners` and `AppState::set_macro_runner`.
-- [ ] **Complete scripts: LSP diagnostics.** TypeScript complete modules get `ctx.diagnostics` from the Svelte `lspProblems` store, which the CodeMirror LSP client fills. The Rust runner takes them from a closure the desktop passes empty; hand it the problems list when the editor LSP adapter keeps one.
+- [x] **Complete scripts: LSP diagnostics.** TypeScript complete modules get `ctx.diagnostics` (`lspProblemArgs` lines for the workspace): `recur-desktop` mirrors `recur_view_observatory::lsp::problems::LspProblems`, which the Observatory's LSP client fills, into the runner's closure.
 - [ ] **Chat: workspace view halves.** `chat.spec.ts` runs against a host double (`spec::harness::Host`). When `WorkspaceView` lands, move its send / queue / steer / Stop / tab routing onto those tests and add the routing halves: prompt actions opening grouped or fresh tabs, the findings panel's Fix button, the explorer and Source Control panel when a transcript chip opens a file, tab persistence, reorder and strip scroll.
 - [ ] **Chat: `inboxChatOpen`.** Ask Recur's hide button emits `AppChatEvent::Hide`; `AppState` has no `inboxChatOpen` yet, so the Briefing host must keep it (and pass `visible`).
 - [x] **Fractional line boxes (systemic, schedule before more view ports).** Seen first in chat cards: Chat cards carry one-device-pixel border offsets after 1.45 / 1.35 lines (`chat/question` 11824, `chat/fanout` 8882, `chat/pickers` 3053, `chat/plan` 2508 hard pixels): GPUI rounds each box to device pixels where WebKit snaps at paint. The causes were GPUI's pre-layout rounding (measured sizes ceiled, fractional authored lengths, roots laid out at snapped origins, overlays anchored from snapped bounds); `recur_ui::exact`, `style::attached` and the rules in `ui-parity.md` keep them exact. Every chat scene is at 0.
 - [x] **`recur_ui::text` ellipsis** keeps the space before a truncation cut (`out …` for WebKit's `out…`).
 - [x] **Chat: hover color transitions** snap instead of easing over .12–.15s. `motion::hover` eases them (send / stop, Ask Recur chips, brief card and row, ghost select trigger).
-- [ ] **Typeahead hosts.** The PR review modal and the Observatory's commit message must call `suggest::attach_emoji` / `attach_user_mentions` on their fields when they are ported; the Observatory owns `CommandPrompts`.
+- [x] **Typeahead hosts.** The PR review modal and the Observatory's commit message must call `suggest::attach_emoji` / `attach_user_mentions` on their fields when they are ported; the Observatory owns `CommandPrompts`.
 - [ ] **Review: `✓` fallback advance.** `recur_ui::text` gives the `✓` fallback glyph (Menlo has none) a 6.33px advance where WebKit's fallback is 6.49px, so the `.react` pill after it ends one device pixel early (`review/thread` 77, `review/thread-paper` 69 hard pixels). Match WebKit's fallback font choice for symbols.
 - [ ] **Review: card corner coverage.** Where a `.df-head` corner meets the `.cfile` border arc, GPUI's two antialiased edges leave a little more card background than WebKit's single clip (8 to 13 device pixels per corner; every `review/*` scene with a card in view). Needs a rounded clip on children in `recur_ui` or a shared-edge paint.
 - [ ] **Review: layering.** `recur-view-review` depends on `recur-view-chat` (the suggest typeahead and `finding_sev_icon`) and `recur-code` (finding paths). PR detail and the Observatory will depend on `recur-view-review`. Move the shared pieces down (suggest into a widgets crate) if a view crate must not depend on another.
 - [ ] **Review: text selection in diffs.** Rows are not selectable text yet (WebKit selects code across rows; `.diff-file.selecting` turns it off while dragging `+`). Needs `recur_ui` selection across text elements.
-- [ ] **Review: Observatory and PR detail hosts.** The embedding API is in `recur_view_review`'s crate docs. The Observatory owns the Review changes toggle, ⌥⌘R, the Changes / Commits chips and the resizable review body (the obs-body handle's runtime max); PR detail owns the Files tab chrome, the review modal and the approve flow.
-- [ ] **Editor LSP adapter.** `recur-lsp` is a transport; the app layer needs the adapter that implements `recur_editor::lsp::LspClient` (request ids, `initialize`, document versions, change batching). Owned by the code-editor view port.
+- [~] **Review: Observatory and PR detail hosts.** The embedding API is in `recur_view_review`'s crate docs. Done for the Observatory (`recur_view_observatory`), which owns the Review changes toggle, ⌥⌘R, the Changes / Commits chips and the resizable review body (the obs-body handle's runtime max); PR detail owns the Files tab chrome, the review modal and the approve flow.
+- [x] **Editor LSP adapter.** `recur_view_observatory::lsp::client::Client` implements `recur_editor::lsp::LspClient` over `LspService` (request ids, 12s timeouts, `initialize`, document versions, change batching, server requests, diagnostics into `lsp::problems`).
+- [ ] **Observatory: video playback.** GPUI has no media element: the video pane shows a poster and its zoom opens the file in the system player.
+- [ ] **Observatory: `SyntaxPalette`.** The status bar's language button opens `AppState::open_syntax_mode_picker`; the picker list is unported (the palettes' port). Its pick goes through `EditorEnv::apply_language_mode`, as `spec::editor_syntax` drives it.
+- [ ] **Observatory: Run Command order.** The ⌘R / ⌘⇧R palettes (the palettes' port) should order bundle commands by `recur_view_observatory::command_usage::ranked_command_ids`; the Observatory records runs.
+- [ ] **Observatory: async grammar loader.** `recur_textmate`'s catalog loader is synchronous, so the Observatory's grammar read blocks once per scope (`textmate.rs`, `simplify:`).
+- [ ] **Observatory: LSP Ensure per server.** Pending Ensures are keyed by workspace because the server is unknown until Ensure returns, so a same-workspace Ensure for another server delays `CloseLSP` (`lsp/client.rs`, `simplify:`).
+- [x] **Observatory seams in shared crates.** `recur_ui::widgets::tab_strip` takes an external `scroll_handle` and `grow`, and reveals from content bounds with whole-pixel offsets; `tab_chip` carries `tab-chip:{id}` / `tab-close:{id}` debug selectors; `recur_content::images::resized`; `recur_view_core::run` tracks stops in flight; `recur_terminal_view` reads time from the executor clock (`background_executor().now()`), so the cursor blink and slider fades follow a parity scene's `wait` as xterm's timers do; `recur_view_review` exposes the composer-open state its host needs.
 
 - [ ] **Rounded header inside a bordered card.** Where a header's rounded corner meets its card's border, GPUI anti-aliases both edges where WebKit clips once (8 to 13 hard pixels per corner; every `review/*` scene with a card, up to 95).
 - [ ] **`✓` fallback advance.** `recur_ui` gives the `✓` fallback glyph a 6.33px advance where WebKit uses 6.49px, so the reaction pill ends a device pixel early. Match WebKit's fallback face and advance.
@@ -467,7 +473,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [x] `ArmedButton.svelte` (51 lines) → `recur_ui::widgets::armed_button` (scene `armed-button/default`)
   - [x] Arm on click, confirm on the next pointer-up (handled in capture so it precedes GPUI's click), swallow the click echo, timeout reset (3s default), disabled resets
   - [x] `.tbtn.danger` / `.armed` looks at base and titlebar sizes, icon slot, title tooltip, `on_arm`
-- [ ] `ArtifactsPanel.svelte` (320 lines)
+- [x] `ArtifactsPanel.svelte` (320 lines) → `recur_view_observatory::artifacts_panel` (list, kinds and icons, rename field, context menu, delete; scene `observatory/artifacts`)
 - [x] `AttachmentLightbox.svelte` (155 lines) → `recur_content::AttachmentLightbox` (scene `lightbox/image`)
   - [x] Fit inside the padded viewport at WebKit's fractional geometry, actual-size toggle when scaled, Escape / ⌘C, copy and close buttons with titles, backdrop click closes, context menu, deferred overlay at the lightbox's z-order; `fit` test ported
 - [x] `CodeEditor.svelte` (1405 lines) → `recur_editor::view::EditorView` (`EditorKind::Code`); scenes `editor/code`, `editor/paper`, `editor/find`, `editor/vim`
@@ -475,7 +481,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Pref compartments (theme, chrome, wrap, indent, features, keymap, diff gutter, read-only) through `set_prefs` / `set_theme`; app chrome tokens follow `recur_ui::Theme`
   - [x] Gutters (findings, lint severity, line numbers, fold, SCM bars), TextMate language and theme, LSP attach, view state restore, dirty / saved baseline, save, events (`EditorEvent`)
   - [x] vim (`@replit/codemirror-vim` 6.3.0) and emacs (`@replit/codemirror-emacs` 6.1.0) after the editor keymap, as the keymap compartment orders them
-  - [ ] Tab parking across switches (`caches/cm-session-tabs.ts`) is the host's: keep the `EditorView` entity
+  - [x] Tab parking across switches: the Observatory keeps parked `EditorView` entities (`session_tabs`)
 - [ ] `CommandPalette.svelte` (269 lines)
 - [x] `CommandPrompts.svelte` (142 lines) → `recur_view_chat::palettes::CommandPrompts` (text, password and choice fields; Enter resolves, Escape and the scrim cancel; `spec::shell` test). The Observatory's bundle commands own it
 - [x] `CommentReactions.svelte` (114 lines) → `recur_view_review::reactions::CommentReactions` (pills with counts and the viewer's tint, the add button and picker anchored above or below, optimistic toggles through `store::toggle_pr_comment_reaction` with the 2-minute hold; scene `review/thread`, spec `toggles_reactions_on_the_diff_thread`)
@@ -500,7 +506,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [x] `FilesChangedView.svelte` (712 lines) → `recur_view_review::files_changed::FilesChangedView` (scenes `review/unified*`, `review/filelist`, `review/large`)
   - [x] Base / working / commit scopes with their load state machine and scope headers, toolbar (file list toggle, flat / tree, unified / split with the narrow-pane fallback, fold all), file filter and findings-only toggle, stacked layout below 520px, persisted prefs (`recur.prDiffLayout`, `recur.prFilesView`, `recur.reviewSidebar`, `recur.reviewFileListMode`)
   - [x] `FileStack`: hydration window (`pickHydrated`, reserved stub heights, viewport pin across swaps), scroll spy into the list with reveal, j / k and ⌥↑ / ⌥↓ stepping, select-to-scroll, sticky headers
-- [ ] `FindingsPanel.svelte` (506 lines)
+- [x] `FindingsPanel.svelte` (506 lines) → `recur_view_observatory::findings_panel` (master–detail, resizable split, deep-link selection, note composer)
 - [x] `Icon.svelte` (51 lines) → `recur_ui::icon` (`Icon`, `icon`, `svg_markup`)
   - [x] Every `lib/icons.ts` name as an SVG asset (`IconName`), same viewBoxes and stroke widths, `stroke_width` override, rotation, per-pixel CSS mask, polychrome markup with `currentColor`
   - [x] Rasterized with CoreGraphics on macOS at the exact CSS size from a snapped origin (WebKit's SVG painting); scenes `icons/app`, `project-pic/default`
@@ -511,7 +517,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `InboxTitlebar.svelte` (24 lines)
 - [ ] `Issues.svelte` (512 lines)
 - [x] `Kbd.svelte` (13 lines) → `recur_ui::kbd` (`kbd`, `shortcut_parts`); scene `kbd/default` with `.pk`, `.pal-foot .k` and `.esc` keycaps
-- [ ] `KeybindingMenu.svelte` (180 lines)
+- [x] `KeybindingMenu.svelte` (180 lines) → `recur_view_observatory::keybinding_menu`
 - [x] `LineNoteThread.svelte` (375 lines) → `recur_view_review::line_note::LineNoteThread` (root and replies with markdown bodies, quote-reply, edit, delete and copy in the ⋯ menu, reply composer with typeahead, resolve / unresolve with optimistic holds, locked conversations; scenes `review/thread*`, specs `shows_a_posted_line_note_*`, `quote_reply_*`, `deletes_a_line_note_*`, `closes_the_reply_composer_*`)
 - [x] `LoopPolicyPickers.svelte` (93 lines) → `recur_view_chat::pickers::LoopPolicyPickers` (scene `chat/mode-loop`)
 - [x] `LucideIcon.svelte` (26 lines) → `recur_ui::lucide_icon` (aliases, unknown names draw nothing); scene `icons/lucide`
@@ -523,7 +529,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `MiniScriptEditor.svelte` (295 lines)
 - [x] `ModelFlagsSelect.svelte` (305 lines) → `recur_view_chat::pickers::ModelFlagsSelect` (scenes `chat/mode-*`)
 - [x] `ModelPickers.svelte` (79 lines) → `recur_view_chat::pickers::ModelPickers` (scenes `chat/mode-*`, `chat/pickers`)
-- [ ] `Observatory.svelte` (8371 lines)
+- [x] `Observatory.svelte` (8371 lines) → `recur-view-observatory` (`Observatory` entity; embedding API in the crate docs): explorer and its file operations, Changed / All scope, editor tabs and parking, code, merge and split editors, previews (FilePreview, PdfPreview, images, lightbox), review tab, findings and artifacts panels, Quick Open, bundle commands and `CommandPrompts`, run controls, Source Control and Search, panel resizing and persistence, every keyboard path, the LSP client (`lsp::client`). Scenes `observatory/*`
 - [ ] `OpenInPalette.svelte` (235 lines)
 - [ ] `PRListTitlebar.svelte` (15 lines)
 - [ ] `PRPeopleStack.svelte` (64 lines)
@@ -540,7 +546,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [x] `ProviderUsageMeter.svelte` (453 lines) → `recur_view_sidebar::usage` (`UsageMeter`: ring chips with tweens, hover open / close delays, click toggle with prefetch or refresh, popover with every window, resets, Cursor model buckets and the Connect Cursor link; `lib/providerUsage.ts` rules tested)
 - [x] `QuestionCard.svelte` (239 lines) → `recur_view_chat::cards::question` (scene `chat/question`)
 - [x] `QuestionPrompts.svelte` (67 lines) → `recur_view_chat::prompts::QuestionPrompts` (one ask toast per off-tab question; `spec::shell` test)
-- [ ] `QuickOpen.svelte` (273 lines)
+- [x] `QuickOpen.svelte` (273 lines) → `recur_view_observatory::quick_open` (files through the index, `@` symbols, `:` lines; scene `observatory/quick-open`)
 - [x] `ResizeHandle.svelte` (126 lines) → `recur_ui::widgets::resize_handle` (scenes `resize-handle/hover`, `resize-handle/focus`)
   - [x] `.vsplit` / `.hsplit` (`_terminal.scss`) at either edge, hover/focus/drag wash, painted over the panel border (z-index 8), title tooltip
   - [x] Pointer drag with live and commit callbacks, layout ceiling, arrow keys (8px, 24px with Shift); `drag_size` and `key_step` with cases. Persisting widths (`panelWidths`) is the caller's
@@ -576,7 +582,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [x] `TabStrip.svelte` (290 lines) → `recur_ui::widgets::tab_strip` (scenes above and `tab-strip/overflow`)
   - [x] Chrome strip, leading and trailing slots, `.tab-strip-act` actions, active reveal chase, keep-alive scroll restore, reveal nonce, user pinning
   - [x] `scrollbar-width: thin` as WebKit's macOS overlay scroller (no layout space, shown after wheel scrolling)
-- [ ] `TerminalDock.svelte` (856 lines)
+- [x] `TerminalDock.svelte` (856 lines) → `recur_view_observatory::dock` (adopt / restore / spawn, tabs with drag reorder, find, the platform chord sets, maximize / beside / slot, resize, run controls, file drops; scenes `observatory/terminal*`, `TerminalDock.test.ts` cases in `dock::tests` and `spec::terminal_dock`)
 - [~] `TerminalPane.svelte` (581 lines): `recur_terminal_view::TerminalView` + `TerminalElement`
   - [x] Attach on mount, paint replay, queue live output until the replay lands, ack in 32KiB batches (`tests/view.rs`)
   - [x] Fit: `termFitSize` over the padded content box (6/0/6/8), grid pinned to the bottom, 100ms debounced `resize` (`font.rs`, `tests/view.rs`)
@@ -634,12 +640,12 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/bridge-bench.ts` (98 lines)
 - [x] `lib/briefingtools.ts` (345 lines) → `recur_agent_tools::display::briefing_tools` (detectors, brief/context/present parsing incl. legacy `Opening`/`Presented` strings, hydration, labels; `briefingtools.test.ts` ported)
 - [ ] `lib/bundle-reload.ts` (25 lines)
-- [ ] `lib/caches/byte-lru.ts` (189 lines)
+- [x] `lib/caches/byte-lru.ts` (189 lines) → `recur_view_chat::byte_lru`
 - [x] `lib/caches/chat-heap-cache.ts` (211 lines) → `recur_view_chat::heap` (cases ported)
 - [x] `lib/caches/chat-strip-cache.ts` (61 lines) → `recur_view_chat::strip` (cases ported)
 - [x] `lib/caches/chat-transcript-ui.ts` (324 lines) → `recur_view_chat::transcript_ui` (cases ported)
-- [ ] `lib/caches/cm-session-tabs.ts` (112 lines)
-- [ ] `lib/caches/observatory-cache.ts` (150 lines)
+- [x] `lib/caches/cm-session-tabs.ts` (112 lines) → `recur_view_observatory::session_tabs`
+- [x] `lib/caches/observatory-cache.ts` (150 lines) → `recur_view_observatory::obs_cache`
 - [x] `lib/caches/term-park.ts` (123 lines): `recur_terminal_view::Park` + `TerminalPark` global
   - [x] Stash/take, 1MiB per entry, 48MiB budget with LRU eviction returning evicted views to detach (`park.rs`)
   - [x] Discard flag for closed tabs, `should_dispose` consumed on unmount, prune by live workspace ids (`park.rs`)
@@ -655,8 +661,8 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/chat-tab-session.ts` (84 lines) → `recur_engine::view::chat_tab_session` (`ActiveChatTabs` over the exact stored JSON, `resolve_active_chat_code`); `chat-tab-session.test.ts` ported
 - [x] `lib/chat-window.ts` (36 lines) → `recur_view_chat::window` (cases ported)
 - [x] `lib/check-duration.ts` (90 lines) → `recur_forge::view` (`format_check_seconds`, `parse_check_duration`, `live_check_detail`, `PendingClock`, `prune_pending_clocks`, `check_clock_key`); test file ported
-- [ ] `lib/chrome-focus.ts` (89 lines)
-- [ ] `lib/clipboard.ts` (69 lines)
+- [x] `lib/chrome-focus.ts` (89 lines): no counterpart. It swallows WKWebView's activation focus on the first tabbable chrome control; GPUI focuses nothing on window activation
+- [x] `lib/clipboard.ts` (69 lines): GPUI's `write_to_clipboard` / `read_from_clipboard` (text) and `ClipboardItem::new_image` (`recur_content::image_menu`); the WKWebView gesture workarounds have no counterpart
 - [x] `lib/cm-diff-gutter.ts` (207 lines) → `recur_editor::gutters` (SCM bars, idle recompute, `diffMarks`)
 - [x] `lib/cm-diff-lines.ts` (48 lines) → `recur_editor::prefs::{diff_line_kind, wants_diff_line_chrome}` and the diff-line washes
 - [x] `lib/cm-editor-history.ts` (214 lines) → `recur_editor::history` + `history_cache` (capture / restore within the 20 MiB byte budget)
@@ -684,7 +690,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/cm-tm-stacks.ts` (153 lines) → `recur_textmate::stacks`
 - [x] `lib/codehl.ts` (279 lines) → `recur_textmate::codehl` (LSP documentation code tint)
 - [~] `lib/colors.ts` (159 lines): PR rules (`prLifecycle`, `keepMergedPr`, `prIconName`, `prForWorkspace`) → `recur_view_core::pr`; the rest moves with the views that use it
-- [ ] `lib/command-usage.ts` (99 lines)
+- [x] `lib/command-usage.ts` (99 lines) → `recur_view_observatory::command_usage` (record and `ranked_command_ids`; cases ported)
 - [x] `lib/commands.ts` (489 lines) → `recur_view_core::commands` (registry with its cache, scope and glob matching, triggers and key equivalents, input resolution, macro runner / editor command / editor focus hooks on `AppState`; cases ported)
 - [x] `lib/comment-header.ts` (22 lines) → `recur_view_review::comment_header` (cases ported)
 - [x] `lib/comment-hunk.ts` (107 lines) → `recur_view_review::comment_hunk` (cases ported)
@@ -702,8 +708,8 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/editor-view-state.ts` (443 lines) → `recur_editor::view_state` + `EditorView::apply_view_state`
 - [x] `lib/editor-view.ts` (136 lines) → `recur_editor::view_state` (view-mode chip, SCM base rules)
 - [x] `lib/emoji.ts` (197 lines) → `recur_content::emoji` (shortcode expansion outside code and at the caret; the shortcode table is read from `frontend/src/lib/emoji-shortcodes.json` in file order); the typeahead is `recur_view_chat::suggest` (cases ported)
-- [ ] `lib/explorer-visible.ts` (33 lines)
-- [ ] `lib/file-drag.ts` (332 lines)
+- [x] `lib/explorer-visible.ts` (33 lines) → `recur_view_observatory::explorer_visible` (cases ported)
+- [x] `lib/file-drag.ts` (332 lines) → `recur_view_core::file_drag`
 - [ ] `lib/file-icons/icon-tables.ts` (52 lines)
 - [ ] `lib/file-icons/icon.ts` (31 lines)
 - [ ] `lib/file-icons/index.ts` (41 lines)
@@ -711,33 +717,31 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [~] `lib/file-index.ts` (162 lines) → `recur_code::view::file_index::map_file_search_hits` (dir flag, trailing slash, parent-of-another-hit); test file ported. The readiness map, listeners, in-flight search cancel and `SetFileIndexExclude` sync are `recur-app` / services wiring over `recur_code::IndexHub`
 - [x] `lib/finding-paths.ts` (112 lines) → `recur_code::view::finding_paths` (`match_finding_path`, `findings_for_path` over caller-ordered buckets, `right_diff_line_set` / `right_diff_has_range` with JS `parseInt`, `finding_covers_line`, `findings_on_line` / `_covering_line` / `_ending_line`, `extra_html_without_finding_flags`); test file ported
 - [~] `lib/findings-ui.ts` (396 lines) → the chat half in `recur_view_chat::findings_ui` (titles, locations, severity tallies, `list_findings` parsing and store hydration, digest refs; cases ported). Left for the PR detail and Observatory ports: review anchors, pending / submitted comment matching and explorer flags
-- [~] `lib/format.ts` (51 lines): `formatCompactCount` → `recur_view_core::format`
+- [x] `lib/format.ts` (51 lines): `formatCompactCount` and `formatElapsed` → `recur_view_core::format`; `formatRelativeAge` → `recur_engine::view::artifacts::format_relative_age`
 - [x] `lib/fuzzy.ts` (145 lines) → `recur_code::fuzzy` (`fuzzy_score`, `prepare_fuzzy`, `fuzzy_filter_prepared`, `fuzzy_filter`): UTF-16 scoring and the `a`-`z`/digit/other mask like JS, ties in `Intl.Collator` order (ICU root collation). The scorer is shared with Go's Quick Open ranking (`rank_files`, on bytes). Node-recorded golden over 17 queries × 31 labels (punctuation, case, ß, ü, emoji)
 - [x] `lib/glob.ts` (64 lines) → `recur_code::glob` (`compile_excludes`, `is_excluded_by`; JavaScript regex semantics through `regress` on UTF-16, per-pattern cache). The glob → regex translation is shared with the file index and copy-files
 - [x] `lib/file-icons/icon-tables.ts` (52 lines) → `recur_ui::file_icons` (the shipped `icondb.js` tables parsed at startup, regexes via `fancy-regex`)
 - [x] `lib/file-icons/icon.ts` (31 lines) → `recur_ui::file_icons::FileIconClass` (light/dark color slots)
 - [x] `lib/file-icons/index.ts` (41 lines) → `recur_ui::file_icons::{file_icon_class, file_icon}` (dotenv rule, basename matching, fallback; glyphs from the icon fonts through CoreGraphics with smoothing off); scenes `icons/file`, `icons/file-light`
 - [x] `lib/file-icons/types.ts` (26 lines) → `recur_ui::file_icons`
-- [ ] `lib/file-index.ts` (162 lines)
 - [x] `lib/finding-paths.ts` (112 lines) → see above
 - [~] `lib/findings-ui.ts` (396 lines) → the review half in `recur_view_review::findings` (`severityRank`, `findingFlagForPath`, `findingIdsOnPending`, `dropFindingIdsRemovedFromPending`; cases ported) and `finding_sev_icon` from the chat half. Left for PR detail: `findingPublicId`, `findingReviewAnchor`, `findingCommentBody`, `findingHasPendingComment`, `findingHasSubmittedComment`, `findingReadyToSettle`
-- [ ] `lib/format.ts` (51 lines)
 - [x] `lib/fuzzy.ts` (145 lines) → `recur_ui::logic::fuzzy` (`fuzzy_score`, `prepare_fuzzy`, `fuzzy_filter_prepared`, `fuzzy_filter`, CLDR punctuation collation; cases ported)
 - [ ] `lib/glob.ts` (64 lines)
 - [x] `lib/hoist-chat-keys.ts` (286 lines) → `recur_view_chat::hoist` (cases ported)
-- [ ] `lib/hot-shells.ts` (51 lines)
+- [x] `lib/hot-shells.ts` (51 lines) → `recur_view_observatory::hot_shells` (cases ported)
 - [x] `lib/hoverGate.ts` (50 lines) → `recur_ui::logic::hover_gate::HoverGate` (cases ported)
 - [x] `lib/icons.ts` (1003 lines) → `recur_ui::IconName` and `assets/icons/app/*.svg`, generated by `assets/icons/generate.mjs` from the frontend sources
 - [~] `lib/inbox-read.ts` (28 lines) → `recur_engine::view::{workspace_unread_ids, mark_workspace_read, mark_item_read, mark_all_read}` (the optimistic inbox rules; tested). Left for `recur-app`: calling `InboxService.MarkInboxRead` / `MarkAllInboxRead` and updating the inbox store
 - [~] `lib/issue-link.ts` (36 lines) → `recur_issues::view::{issue_key, issue_url}` (tracker fallback via `IssueTracker::issue_url`); tested. Left for `recur-app`: the `trackerIssues` cache keyed on `issuesStale` and `openIssueUrl` (services `OpenLinearInApp` uses `IssueTracker::app_url`)
-- [ ] `lib/keybinding-menu.ts` (27 lines)
+- [x] `lib/keybinding-menu.ts` (27 lines) → `recur_view_observatory::keybinding_menu`
 - [x] `lib/keyequiv.ts` (285 lines) → `recur_editor::keyequiv`
 - [x] `lib/lineartools.ts` (320 lines) → `recur_issues::linear::tools`; test file ported
 - [x] `lib/loop-cockpit.ts` (432 lines) → `recur_engine::view::loop_cockpit` (`merge_loop_cockpit`, `split_session_turns`, live codes, kickoff/wrap facts, PR-fact parsing and completion, loop-wrap strip; `loop-cockpit.test.ts` ported). Rendering is `recur-app`'s
 - [~] `lib/loops.ts` (183 lines) → `recur_engine::view::loops` (shipped ids, enable/default rules, workspace pick, select options, `autonomy_from_policy_id`, fallback catalog checked against `bundles/Loop`). Left for `recur-app`: the `ListLoops` / `CreateWorkspaceWith` / `RememberChatLoopPolicy` / `EngageLoopWith` calls
-- [ ] `lib/lsp-lang.ts` (86 lines)
-- [ ] `lib/lsp-problems.ts` (116 lines)
-- [~] `lib/lsp.ts` (1520 lines) → editor UI half in `recur_editor::lsp` (`LspClient` trait, hover, signature help, formatting, rename, definitions, completion source, diagnostics mapped through unsynced edits, `content_changes_for`); transport rules in `recur_lsp::protocol`
+- [x] `lib/lsp-lang.ts` (86 lines) → `recur_view_observatory::lsp::lang` (cases ported)
+- [x] `lib/lsp-problems.ts` (116 lines) → `recur_view_observatory::lsp::problems` (cases ported)
+- [x] `lib/lsp.ts` (1520 lines) → editor UI half in `recur_editor::lsp` (`LspClient` trait, hover, signature help, formatting, rename, definitions, completion source, diagnostics mapped through unsynced edits, `content_changes_for`); transport rules in `recur_lsp::protocol`; the client over `LspService` (ids, timeouts, `initialize`, document sync, server requests, diagnostics into the Problems store) in `recur_view_observatory::lsp::client`
   - [ ] The `LspClient` adapter over `recur_lsp::Manager` (request ids, `initialize`, `didOpen` / `didChange` versions) lives in `recur-app`
 - [x] `lib/lucide-icons.ts` (82 lines) → `recur_ui::assets` (`lucide_icons`, `lucide_suggested`, `lucide_entry`, `has_lucide_icon`, aliases; generated `lucide.json`)
 - [x] `lib/macro-worker.ts` (479 lines) → `recur-desktop::macro_runtime` (one node worker per contract in a `vm` context with Worker-like globals, NDJSON over stdio, overlapping calls, timeout and cancel kill the shared worker, same result shaping and error wording; tested against real node)
@@ -754,8 +758,8 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/modes.ts` (419 lines): shell and sidebar predicates (`wsRunActive`, `workspaceIsRunning`, `parkedNeedsYouByWorkspace`, `sidebarUnreadTitle`, `workspaceShowsRemove`, `workspaceCanRemove`, `wsCreating`, `wsMainBlocked`) → `recur_view_core::modes`; the chat-mode half (dock mode list, cycling, per-mode Settings default model, picker rule after a switch, create/setup predicates) → `recur_engine::view::modes`; `modes.test.ts` ported; the chat's mode labels, icons and tints → `recur_view_core::modes::ChatMode`
 - [ ] `lib/mono-fonts.ts` (236 lines)
 - [~] `lib/new-workspace.ts` (278 lines): `createBlankWorkspace` (⇧⌘N, File > New Blank Workspace) → `recur_app::new_workspace`; the pure launch rules (eager-create input, the eager handle and its abandon, opening chat seed, parked-opening failures) → `recur_engine::view::new_workspace` with `new-workspace.test.ts`; the modal's flows move with NewTask
-- [ ] `lib/open-external.ts` (81 lines)
-- [ ] `lib/open-in-pref.ts` (34 lines)
+- [x] `lib/open-external.ts` (81 lines) → `recur_view_observatory::open_external` (cases ported)
+- [x] `lib/open-in-pref.ts` (34 lines) → `recur_view_observatory::open_in_pref` (cases ported)
 - [x] `lib/open-path.ts` (48 lines) → `Shell::pick_and_open_path`, `AppState::apply_open_path_result`
 - [x] `lib/open-pr-tool.ts` (70 lines) → `recur_agent_tools::display::open_pr_tool` (`open-pr-tool.test.ts` ported)
 - [x] `lib/overlay-scrollbar.ts` (141 lines) → `recur_ui::widgets::scroll_area(..).overlay()` (`overlay_thumb`, `scroll_from_track` with cases; show on scroll, hover and drag, 700ms hide, .12s/.45s fades, track press and drag); scenes `scrollbar/default`, `scrollbar/paper`
@@ -809,21 +813,18 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [~] `lib/stores.ts` (1873 lines) → `recur_view_core::AppState`: data stores, navigation (`go`, `openWorkspace`, `openPR`, `openProject`, crumbs), overlays, rail and peek, panel sizes, themes and system sync, terminal prefs, dock chrome, keyboard cycling; view-local stores move with their views
 - [ ] `lib/stream-reveal.ts` (8 lines)
 - [x] `lib/subagent.ts` (79 lines) → `recur_engine::view::subagent` (Agent/Task and SendMessage display); `subagent.test.ts` ported
-- [ ] `lib/syntax-mode.ts` (213 lines)
+- [x] `lib/syntax-mode.ts` (213 lines) → `recur_textmate::syntax_mode`; the Observatory applies picks through `EditorEnv::apply_language_mode`
 - [x] `lib/tab-strip-drag.svelte.ts` (392 lines) → `recur_ui::widgets::tab_strip` (4px threshold, floating chip, dashed placeholder, insert index from pointer x, edge autoscroll, FLIP 180ms, 200ms settle, Alt+arrow moves, order restore; `reorder_by_insert`, `insert_index_from_pointer_x`, `restore_strip_order` with cases)
 - [x] `lib/tab-strip-scroll.ts` (174 lines) → `recur_ui::widgets::tab_strip` (`scroll_delta_to_reveal`, `next_strip_scroll_left`, `strip_scroll_is_programmatic`, 280ms ease-out chase on frozen-aware motion; cases ported)
 - [x] `lib/tasktools.ts` (340 lines) → `recur_agent::display::tasks` (args, TaskCreate id, TaskList JSON/line parse with `[blocked by]`/`(owner)` suffixes, TaskGet JSON/multiline parse, labels, meta, chip status, has-body, ack rules; regex semantics hand-ported; `tasktools.test.ts` ported)
-- [ ] `lib/term-fit.ts` (35 lines)
-- [ ] `lib/term-focus.ts` (15 lines)
-- [ ] `lib/terminal.ts` (206 lines)
 - [ ] `lib/tasktools.ts` (340 lines)
 - [x] `lib/term-fit.ts` (35 lines): `term_fit_size`, `TERM_FIT_*` constants; the content box comes from the element's padded bounds (`font.rs`)
 - [x] `lib/term-focus.ts` (15 lines): `TerminalOptions::dock_focus` + `TerminalView::try_focus_if_dock_owns_keys` / `set_dock_focus`: the dock passes its focus handle and panes only take focus while it is focused
-- [~] `lib/terminal.ts` (206 lines)
+- [x] `lib/terminal.ts` (206 lines)
   - [x] `wireTerminalEvents` / `onTerminalData` / `onTerminalExit`: `Router` global + `route_event`; bytes stay raw, so `decodeTermBytes` has no counterpart
   - [x] `ackWriter`: acks after the emulator parses, batched at `ACK_THRESHOLD` (`tests/view.rs`)
   - [x] `terminalTheme`, `resolveTerminalTheme`, `terminalSurfaceBg`, `terminalFrosts`: `theme.rs` (`ThemeContext`, ported tests)
-  - [ ] `terminalThemeCatalog` / `ensureTerminalThemes`: the app loads `ListTerminalThemes` and passes the catalog in `ThemeContext`
+  - [x] `terminalThemeCatalog` / `ensureTerminalThemes`: `recur_view_core::themes` loads `ListTerminalThemes`; the dock passes the catalog in `ThemeContext`
 - [ ] `lib/textarea-caret.ts` (58 lines)
 - [x] `lib/title-tooltip.ts` (248 lines) → `recur_ui::tooltip` (`place_tooltip`, `show_delay_ms`, `should_reshow_after_dismiss`, `TipCore` with `apply_hide`/`apply_consider`/`apply_timer`; cases ported)
 - [x] `lib/titlebar.ts` (30 lines) → `recur_app::chrome` (zoom targets: the titlebar minus its controls)
@@ -841,7 +842,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [ ] `lib/uuid.ts` (16 lines)
 - [~] `lib/wait-for-worktree.ts` (38 lines) → `recur_engine::view::{worktree_wait, ws_creating}` (`WorktreeWait::{Ready, Gone, Pending}`); `wait-for-worktree.test.ts` ported. Left for `recur-app`: the store subscription and abort signal
 - [x] `lib/webtools.ts` (87 lines) → `recur_agent::display::web` (WebFetch URL/prompt, WebSearch query, `compact_url` on the WHATWG `url` crate, JSON sniff; `webtools.test.ts` ported)
-- [ ] `lib/workspace-file.ts` (96 lines)
+- [x] `lib/workspace-file.ts` (96 lines) → `recur_view_observatory::workspace_file` (cases ported)
 - [x] `lib/workspace-nav.ts` (350 lines) → `recur_view_core::workspace_nav` (nesting, scheduled split, sidebar order, cycling, scan peek / commit / forget, reveal delta; test file ported)
 - [x] `lib/workspace-path.ts` (31 lines) → `recur_app::titlebar::copy_selected_workspace_path`
 
@@ -860,7 +861,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [x] `.sel*` select and menus, `.tog` toggles, `.prog`, `.hint`, `.nt-go`, `.nt-link`, `.nt-bg` / `.nt-modal`, `.nt-tip-pop` (scenes `select/*`, `toggles/*`, `buttons/*`, `overlays/*`)
 - [ ] `styles/_loop.scss`
 - [ ] `styles/_main.scss`
-- [~] `styles/_observatory.scss`: the review surface's rules (`.obs-review-*`, scope headers, `.cback`, the commit list) in `recur-view-review`; the Observatory host's rules move with it
+- [x] `styles/_observatory.scss`: the review surface's rules (`.obs-review-*`, scope headers, `.cback`, the commit list) in `recur-view-review`; the host's rules in `recur_view_observatory::{style, render}` (scenes `observatory/*`)
 - [~] `styles/_overlays.scss` (the generic parts)
   - [x] Palette: `.palette-bg`, `.palette`, `.cmd-palette`, `.pal-in` (with WebKit's input padding), `.pal-g`, `.pal-row` with `.pic`/`.pl`/`.psub`/`.pk`/`.dot`, `.pal-empty`, `.pal-foot` (scene `overlays/palette`)
   - [x] `.toasts`, `.toast*` (scenes `toasts/*`), `.emoji-suggest` panel, `.skel` with its shimmer and `.skelrow`, global `:focus-visible` ring (scenes `overlays/misc*`, `select/focus`)
@@ -873,7 +874,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [x] Scrollbar slider colours from the palette, hover/active states (`element.rs`)
   - [x] Find bar (`cm-recur-search` look): field, toggles, count, buttons, focus rings and title tips on recur-ui (`find_bar.rs`, scene `terminal/search`)
   - [x] Terminal tokens from `recur_ui::Theme`; panes observe it, so runtime theme switches repaint (`theme.rs`, `tests/view.rs`)
-  - [ ] Dock chrome (tab strip, maximize, beside layout) belongs to the `TerminalDock.svelte` port
+  - [x] Dock chrome (tab strip, maximize, beside layout) in `recur_view_observatory::dock` (scenes `observatory/terminal*`)
   - [x] Pixel parity: the pane and find bar (scenes `terminal/*`); `.term-dock .xterm` overrides mirrored by the scene's dock body
 - [x] `styles/_tokens.scss` → `recur_ui::theme` (scenes `tokens/*` exact in every theme)
   - [x] Every token of every `data-theme` (Charcoal default, Paper, Slate, Cool Glow, Catppuccin Mocha and Latte, Nord) with exact `color-mix` results, theme aliases, light/dark, `--coral-line`, scrollbar and git tokens, `--on-amber`
@@ -1320,18 +1321,18 @@ Playwright e2e specs (`frontend/e2e/*.spec.ts`) and the seeded fixture (`fronten
 - [ ] `bundles.spec.ts` (7 tests)
 - [x] `chat.spec.ts` (68 tests) → `recur-view-chat`'s `spec::chat_spec` (69 tests: the queue / steer scenario runs once per setting). The workspace view is not ported, so the tests drive the chat through `spec::harness::Host`, a double of its send, follow-up queue, steer, Stop, Retry, live-turn and tab contract; the halves that live in the workspace view (prompt routing to tabs, the findings panel, the explorer's selection, the tab strip) assert the chat's events and are listed in the follow-ups
 - [ ] `compatible-provider.spec.ts` (1 tests)
-- [ ] `editor-hotpath.spec.ts` (27 tests)
-- [ ] `editor-syntax.spec.ts` (2 tests)
-- [ ] `explorer-scope.spec.ts` (8 tests)
+- [x] `editor-hotpath.spec.ts` (27 tests) → `recur-view-observatory`'s `spec::editor_hotpath` (27, plus the FilePreview.test.ts split-editor ⌘F case)
+- [x] `editor-syntax.spec.ts` (2 tests) → `recur-view-observatory`'s `spec::editor_syntax` (the pick goes through `apply_language_mode`; the picker list is `SyntaxPalette`'s)
+- [x] `explorer-scope.spec.ts` (8 tests) → `recur-view-observatory`'s `spec::explorer_scope`
 - [x] `loading-states.spec.ts` (1 tests) → `spec::dock` (the session feed's delayed fetch into a session card)
 - [x] `loop-lifecycle.spec.ts` (4 tests) → `spec::shell` (the workspace titlebar's Remove in the shell with the chat's overlays registered)
 - [x] `maestro-dock.spec.ts` (3 tests) → `spec::dock` (send, unmount and remount keep the transcript; the right-hand placement is `PanelLayout`'s rule). The dock's panel itself moves with the workspace view
-- [~] `observatory.spec.ts` (47 tests) → `recur-view-review`'s `spec::observatory` (9 review-surface scenarios on MockBridge: branch review, commits tab and its uncommitted row, working copy, commit scope surviving edits, collapse, line note to finding, drag ranges, the large mixed-size diff). The rest drive the Observatory host (Review changes toggle, ⌥⌘R, chips, file tabs, remembered panes) and move with its port
+- [x] `observatory.spec.ts` (47 tests) → `recur-view-observatory`'s `spec::observatory` (34 host scenarios) and `recur-view-review`'s `spec::observatory` (9 review-surface scenarios). The project-setup and inbox / Briefing scenarios belong to the views that host them
 - [~] `pr-review.spec.ts` (77 tests) → `recur-view-review`'s `spec::pr_review` (14 Files-pane scenarios on PR #482 through a PR detail double: TOC plus stack, collapse, open in workspace, findings cards, comment flags and jumps, posted notes and replies, quote-reply, inline and multi-line comments, keyboard `+`, removing pending comments, reactions, delete, slow writes). The rest need the PR detail host (PR list, tabs, review modal and approve flow, conversation, checks, merge) and move with its port
 - [ ] `scheduled-prompts.spec.ts` (4 tests)
 - [ ] `settings-newloop.spec.ts` (34 tests)
 - [~] `shell.spec.ts` (38 tests) → `crates/app/tests/shell.rs` (20 scenarios): boot, needs-you flags, hidden PR host in a collapsed group, restart restore (workspace and briefing), selection cleared on Inbox / PRs, hover actions, two-click Remove and its disabled state, expand / collapse persistence, hide and reveal, hidden projects at boot, flyout and its Escape, ⌥⌘ cycling and peek-until-dwell, drag into a group, group rename. Icons, chips, tree lines and scrollbar stacking are covered by the `shell/*` parity scenes. Palettes, the workspace view, escalation chat, project settings and Open In move with their views
-- [ ] `terminal-dock.spec.ts` (34 tests)
+- [x] `terminal-dock.spec.ts` (34 tests) → `recur-view-observatory`'s `spec::terminal_dock` (30). ⌃` / ⌃⇧` and the ⌘R / ⌘⇧R palettes are the shell's and the palettes'; their effects on the dock are driven through the app state they set. The xterm DOM class collision test has no GPUI counterpart
 - [~] `toasts.spec.ts` (3 tests): toast lifetimes are tested in `recur_ui::widgets::toasts` and through the shell (`a_failed_save_shows_an_error_toast_that_auto_dismisses`); the PR approve / merge flows move with PR detail
 - [ ] `welcome.spec.ts` (14 tests)
 - [ ] `workspace-base.spec.ts` (37 tests)

@@ -952,3 +952,31 @@ async fn find_opens_on_cmd_f_counts_matches_and_closes_on_escape(cx: &mut TestAp
     h.keys("escape");
     assert!(!find(&mut h).0);
 }
+
+/// `animateTermFill` hands keys to the shell (`focusTerminalPanel`): maximizing from the
+/// header button lights the dock and focuses the active pane.
+#[gpui::test]
+async fn the_maximize_button_puts_keys_in_the_active_shell(cx: &mut TestAppContext) {
+    let t = Term::default();
+    t.chrome.lock().insert(
+        WS.into(),
+        json!({"workspaceId": WS, "open": true, "maximized": false, "editorHidden": false,
+               "beside": false, "besidePct": 0}),
+    );
+    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    h.wait(100);
+    assert!(dock_open(&mut h));
+    h.click("term-act:maximize");
+    h.wait(600);
+    assert!(h.read(|o, _| o.term_overlaying()));
+    assert!(term_lit(&mut h));
+    let pane_focused = h.update(|o, window, cx| {
+        o.dock.as_ref().is_some_and(|(_, d)| {
+            let d = d.read(cx);
+            d.panes.get(&d.active_id).is_some_and(|p| {
+                gpui_kit::Focusable::focus_handle(p.read(cx), cx).is_focused(window)
+            })
+        })
+    });
+    assert!(pane_focused);
+}

@@ -39,6 +39,15 @@ pub enum MainSurface {
     Review,
 }
 
+impl MainSurface {
+    pub fn key(self) -> &'static str {
+        match self {
+            MainSurface::Editor => "editor",
+            MainSurface::Review => "review",
+        }
+    }
+}
+
 /// A tab's buffer kept so switching back does not refetch or remount empty.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TabBuffer {

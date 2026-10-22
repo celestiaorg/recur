@@ -201,6 +201,7 @@ pub struct TabStrip {
     active_key: Option<SharedString>,
     restore_scroll: Option<(f32, u64)>,
     reveal_nonce: u64,
+    scroll: Option<ScrollHandle>,
     items: Vec<TabItem>,
     leading: Vec<AnyElement>,
     trailing: Vec<AnyElement>,
@@ -217,6 +218,7 @@ pub fn tab_strip(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Ta
         active_key: None,
         restore_scroll: None,
         reveal_nonce: 0,
+        scroll: None,
         items: Vec::new(),
         leading: Vec::new(),
         trailing: Vec::new(),
@@ -250,6 +252,11 @@ impl TabStrip {
     /// Bump to reveal the active chip even when the key is unchanged.
     pub fn reveal_nonce(mut self, n: u64) -> Self {
         self.reveal_nonce = n;
+        self
+    }
+    /// Share the strip's scroller so the host can read its offset (keep-alive snapshots).
+    pub fn scroll_handle(mut self, h: ScrollHandle) -> Self {
+        self.scroll = Some(h);
         self
     }
     pub fn tab(mut self, key: impl Into<SharedString>, chip: TabChip) -> Self {
@@ -320,7 +327,11 @@ fn chip_index(order: &[SharedString], key: &str) -> Option<usize> {
 impl RenderOnce for TabStrip {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
-        let state = window.use_keyed_state(self.id.clone(), cx, |_, _| State::default());
+        let shared = self.scroll.clone();
+        let state = window.use_keyed_state(self.id.clone(), cx, move |_, _| State {
+            scroll: shared.unwrap_or_default(),
+            ..State::default()
+        });
         let keys: Vec<SharedString> = self.items.iter().map(|i| i.key.clone()).collect();
         let reorderable = self.on_reorder.is_some();
 

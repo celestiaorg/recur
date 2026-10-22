@@ -1,0 +1,301 @@
+//! The main pane's media surfaces (`.obs-image`, `.obs-pdf`, the video pane): the current and
+//! base rasters (`imageSrc`, `imageBaseSrc`, the side-by-side compare in Diff), the PDF bytes,
+//! the zoom lightbox, and the host's image loader over the asset routes.
+
+use std::sync::Arc;
+
+use futures::future::BoxFuture;
+use gpui_kit::{App, AppContext as _, Context, Window};
+use recur_content::images::{Decoded, ImageCache, ImageLoader};
+use recur_content::{AttachmentLightbox, PdfPreview};
+use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
+use recur_services::Services;
+use recur_view_core::file_drag::is_abs_filesystem_path;
+
+use crate::model::is_scratch_path;
+use crate::obs::Observatory;
+use crate::workspace_file::{external_file_url, workspace_file_url};
+
+/// Image bytes through `AssetsService` (`/workspace-file`, `/external-file`, `/gh-image`, …).
+pub struct ServicesImageLoader(pub Services);
+
+impl ImageLoader for ServicesImageLoader {
+    fn load(&self, src: &str) -> BoxFuture<'static, Result<Vec<u8>, String>> {
+        let svc = self.0.clone();
+        let src = src.to_string();
+        Box::pin(async move {
+            svc.assets
+                .fetch_asset(&src)
+                .await
+                .map(|a| a.body)
+                .map_err(|e| e.message)
+        })
+    }
+}
+
+/// Install the asset-route image loader unless the host already has one.
+pub fn install_image_loader(services: &Services, cx: &mut App) {
+    if cx.has_global::<recur_content::images::Loader>() {
+        return;
+    }
+    recur_content::set_image_loader(cx, Arc::new(ServicesImageLoader(services.clone())));
+}
+
+/// A raster loading or loaded for a `src`.
+#[derive(Clone, Default)]
+pub struct Raster {
+    pub src: String,
+    pub image: Option<Decoded>,
+    pub failed: bool,
+}
+
+/// The media pane's state (`imageBaseFailedSrc`, the decoded images, the PDF document).
+#[derive(Default)]
+pub struct MediaPane {
+    pub current: Raster,
+    pub base: Raster,
+    /// `imageBaseFailedSrc`: the base revision does not exist (the image was added).
+    pub base_failed_src: String,
+    pub pdf_src: String,
+}
+
+impl Observatory {
+    /// `imageSrc`, or the media pane's `mediaSrc` (the same URL rules).
+    pub(crate) fn file_src(&self) -> String {
+        let Some(f) = &self.file else {
+            return String::new();
+        };
+        if is_scratch_path(&f.path) && !f.content.is_empty() {
+            return format!("data:{};base64,{}", f.mime, f.content);
+        }
+        if is_abs_filesystem_path(&f.path) {
+            return external_file_url(&f.path, f.mtime);
+        }
+        workspace_file_url(
+            &self.props.project_id,
+            &self.props.workspace_id,
+            &f.path,
+            f.mtime,
+            false,
+        )
+    }
+
+    pub(crate) fn image_src(&self) -> String {
+        if !self.is_image() {
+            return String::new();
+        }
+        self.file_src()
+    }
+
+    pub(crate) fn media_src(&self) -> String {
+        if !self.is_pdf() && !self.is_video() {
+            return String::new();
+        }
+        self.file_src()
+    }
+
+    /// `imageBaseSrc`: the previous revision of a modified or deleted raster.
+    pub(crate) fn image_base_src(&self) -> String {
+        let p = &self.selected_path;
+        if p.is_empty() || is_scratch_path(p) || is_abs_filesystem_path(p) {
+            return String::new();
+        }
+        let st = self.selected_git_status();
+        if st != "m" && st != "d" {
+            return String::new();
+        }
+        if !self.is_image() && !is_binary_image_path(p) {
+            return String::new();
+        }
+        workspace_file_url(
+            &self.props.project_id,
+            &self.props.workspace_id,
+            p,
+            self.base_doc_epoch as i64 + 1,
+            true,
+        )
+    }
+
+    /// `imageCompare`: Diff shows previous and current side by side.
+    pub(crate) fn image_compare(&self) -> bool {
+        let base = self.image_base_src();
+        self.view_mode == EditorViewMode::Diff
+            && !base.is_empty()
+            && self.image.base_failed_src != base
+            && (self.selected_git_status() == "d"
+                || self
+                    .file
+                    .as_ref()
+                    .is_some_and(|f| f.path == self.selected_path))
+    }
+
+    fn load_raster(&mut self, base: bool, src: String, cx: &mut Context<Self>) {
+        let slot = if base {
+            &mut self.image.base
+        } else {
+            &mut self.image.current
+        };
+        if slot.src == src {
+            return;
+        }
+        *slot = Raster {
+            src: src.clone(),
+            image: None,
+            failed: false,
+        };
+        if src.is_empty() {
+            return;
+        }
+        if let Some(d) = cx
+            .try_global::<ImageCache>()
+            .and_then(|c| c.0.get(&src))
+            .cloned()
+        {
+            let slot = if base {
+                &mut self.image.base
+            } else {
+                &mut self.image.current
+            };
+            slot.image = Some(d);
+            return;
+        }
+        let Some(fut) = recur_content::images::fetch(&src, cx) else {
+            return;
+        };
+        cx.spawn(async move |this, cx| {
+            let res = cx.background_spawn(fut).await;
+            let _ = this.update(cx, |o, cx| {
+                let slot = if base {
+                    &mut o.image.base
+                } else {
+                    &mut o.image.current
+                };
+                if slot.src != src {
+                    return;
+                }
+                match res {
+                    Ok(d) => {
+                        cx.default_global::<ImageCache>()
+                            .0
+                            .insert(src.clone(), d.clone());
+                        let slot = if base {
+                            &mut o.image.base
+                        } else {
+                            &mut o.image.current
+                        };
+                        slot.image = Some(d);
+                    }
+                    Err(_) => {
+                        slot.failed = true;
+                        if base {
+                            o.image.base_failed_src = src.clone();
+                        }
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// Keep the decoded rasters and the PDF document in step with the open file.
+    pub(crate) fn sync_media(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.show_image_pane() {
+            let cur = if self.file.is_some() && self.selected_git_status() != "d" {
+                self.image_src()
+            } else {
+                String::new()
+            };
+            self.load_raster(false, cur, cx);
+            let base = if self.image_compare() {
+                self.image_base_src()
+            } else {
+                String::new()
+            };
+            self.load_raster(true, base, cx);
+        }
+        let pdf_src = if self.show_pdf_pane() && self.file.is_some() {
+            self.media_src()
+        } else {
+            String::new()
+        };
+        if pdf_src.is_empty() {
+            self.pdf_preview = None;
+            self.image.pdf_src.clear();
+            return;
+        }
+        if self.image.pdf_src == pdf_src && self.pdf_preview.is_some() {
+            return;
+        }
+        self.image.pdf_src = pdf_src.clone();
+        let pdf = match &self.pdf_preview {
+            Some(p) => p.clone(),
+            None => {
+                let p = cx.new(|cx| PdfPreview::new(None, window, cx));
+                self.pdf_preview = Some(p.clone());
+                p
+            }
+        };
+        if let Some(bytes) = recur_content::images::data_url_bytes(&pdf_src) {
+            let data: Arc<[u8]> = bytes.into();
+            pdf.update(cx, |p, cx| p.set_data(Some(data), window, cx));
+            return;
+        }
+        let svc = self.services.clone();
+        cx.spawn_in(window, async move |this, cx| {
+            let res = crate::workspace_file::fetch_bytes(&svc, &pdf_src).await;
+            let _ = this.update_in(cx, |o, window, cx| {
+                if o.image.pdf_src != pdf_src {
+                    return;
+                }
+                let data: Option<Arc<[u8]>> = res.ok().map(|(_, b)| b.into());
+                pdf.update(cx, |p, cx| p.set_data(data, window, cx));
+            });
+        })
+        .detach();
+    }
+
+    /// Open the zoom lightbox on an image (`mediaZoom`).
+    pub(crate) fn zoom_image(
+        &mut self,
+        src: String,
+        name: String,
+        base: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let image = if base {
+            self.image.base.image.clone()
+        } else {
+            self.image.current.image.clone()
+        };
+        let weak = self.weak.clone();
+        let on_close = std::rc::Rc::new(move |_: &mut Window, cx: &mut App| {
+            if let Some(o) = weak.upgrade() {
+                o.update(cx, |o, cx| {
+                    o.media_zoom = None;
+                    cx.notify();
+                });
+            }
+        });
+        let lb = cx.new(|cx| {
+            AttachmentLightbox::new(
+                src.clone(),
+                name.clone(),
+                image.clone(),
+                on_close,
+                window,
+                cx,
+            )
+        });
+        self.media_zoom = Some(lb);
+        cx.notify();
+    }
+
+    /// The video pane's zoom: GPUI has no media element, so the file opens in the system
+    /// player.
+    pub(crate) fn zoom_video(&mut self, cx: &mut Context<Self>) {
+        let Some(f) = self.file.clone() else { return };
+        self.open_external(&f.path, cx);
+    }
+}

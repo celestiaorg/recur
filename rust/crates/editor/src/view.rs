@@ -563,9 +563,7 @@ impl EditorView {
         if self.history_scope.is_empty() {
             return;
         }
-        let cache = &mut cx
-            .default_global::<crate::history_cache::EditorHistory>()
-            .0;
+        let cache = &mut cx.default_global::<crate::history_cache::EditorHistory>().0;
         if !self.path.is_empty() {
             let key = crate::history_cache::editor_history_key(&self.history_scope, &self.path);
             cache.capture(&key, &self.state, self.scroll_top, self.scroll_left);

@@ -43,17 +43,36 @@
 //! `LspService` and the `lsp.message` / `lsp.exit` events; diagnostics land in
 //! [`lsp::problems::LspProblems`].
 
+pub mod artifacts_panel;
+pub mod command_usage;
+pub mod dock;
+mod editor_host;
+mod explorer;
 pub mod explorer_visible;
+pub mod findings_panel;
+mod geometry;
 pub mod hot_shells;
+mod inputs;
 pub mod keybinding_menu;
+mod keys;
 pub mod lsp;
+mod media;
 pub mod model;
+mod obs;
 pub mod obs_cache;
 pub mod open_external;
 pub mod open_in_pref;
+mod panels;
+pub mod quick_open;
+mod render;
+mod root;
+mod scm;
 pub mod session_host;
 pub mod session_tabs;
 pub mod snippets;
+pub mod style;
+mod tabs;
+pub mod textmate;
 pub mod workspace_file;
 
 use std::collections::BTreeMap;
@@ -62,6 +81,9 @@ use gpui_kit::{App, AppContext as _, Global};
 use recur_view_core::{OverlaySlot, ViewContext, ViewRegistry};
 
 pub use model::FocusZone;
+pub use obs::{
+    ExplorerReveal, Observatory, ObservatoryEvent, ObservatoryProps, ObservatorySlots, OpenRequest,
+};
 
 /// Unseen artifact ids per workspace, shared across Observatories so a background workspace's
 /// badge survives until its shell exists (module `$state` in the Svelte).
@@ -96,6 +118,7 @@ pub fn init_globals(cx: &mut App) {
     cx.default_global::<session_tabs::SessionTabParks>();
     cx.default_global::<obs_cache::ObservatoryCache>();
     cx.default_global::<session_host::SessionHost>();
+    dock::init(cx);
 }
 
 /// Registers the Observatory's actions and key bindings and the keybinding menu overlay.

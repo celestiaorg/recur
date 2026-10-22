@@ -4,8 +4,8 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, Context, InteractiveElement, IntoElement, MouseButton, ParentElement, SharedString,
-    StatefulInteractiveElement, Styled, Window, div, px,
+    AnyElement, App, Context, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
 use recur_ui::kbd::kbd;
@@ -23,6 +23,18 @@ use crate::style::{
 };
 
 impl Observatory {
+    /// The status bar's language for the focused pane's file.
+    pub(crate) fn status_language(&self, cx: &App) -> String {
+        let label = crate::textmate::editor_env_peek(cx)
+            .map(|e| e.read(cx).language_label(self.active_path()))
+            .unwrap_or_default();
+        if label.is_empty() {
+            "Plain Text".into()
+        } else {
+            label
+        }
+    }
+
     /// `.obs-crumbbar`: the path crumbs (or the two pane names in a split) and the actions.
     fn render_crumbbar(
         &mut self,
@@ -927,9 +939,7 @@ impl Observatory {
     fn render_editor_status(&mut self, corner: (bool, bool), cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let active = self.active_path().to_string();
-        let lang = crate::textmate::editor_env_peek(cx)
-            .map(|e| e.read(cx).language_label(&active))
-            .unwrap_or_default();
+        let lang = self.status_language(cx);
         let st = self.git_status.get(&active).cloned().unwrap_or_default();
         let mut bar = statusbar(cx)
             .debug_selector(|| "obs-statusbar".into())
@@ -943,11 +953,7 @@ impl Observatory {
             .child(
                 linkish("status-lang", None, cx)
                     .debug_selector(|| "status:lang".into())
-                    .child(foot_text(if lang.is_empty() {
-                        "Plain Text".to_string()
-                    } else {
-                        lang
-                    }))
+                    .child(foot_text(lang))
                     .on_click(cx.listener(|o, _, window, cx| {
                         o.quick_open.update(cx, |q, cx| q.close(cx));
                         o.state.update(cx, |s, cx| s.open_syntax_mode_picker(cx));

@@ -126,6 +126,12 @@ fn dir_problem_flag(path: &str, by: &BTreeMap<String, PathProblemFlag>) -> Optio
 
 impl Observatory {
     /// `visibleTree` and each folder's visible children, laid out with fixed heights.
+    /// Rows the explorer lays out (on screen or culled).
+    #[cfg(test)]
+    pub(crate) fn explorer_row_count(&self, cx: &gpui_kit::App) -> usize {
+        self.explorer_rows(cx).0.len()
+    }
+
     fn explorer_rows(&self, cx: &gpui_kit::App) -> (Vec<Row>, f32) {
         let matchers = self.exclude_matchers(cx);
         let changed = self.filter_changed();
@@ -447,6 +453,15 @@ impl Observatory {
             .w_full()
             .pl(px(10. + row.depth as f32 * 12.))
             .pr(px(10.))
+            .when(e.ignored, |d| {
+                let p = e.path.clone();
+                d.child(
+                    div()
+                        .absolute()
+                        .size_0()
+                        .debug_selector(move || format!("obs-ignored:{p}")),
+                )
+            })
             .text_color(hsla(fg))
             .when_some(bg, |d, c| d.bg(hsla(c)))
             .when(e.dir, |d| d.h(px(TREE_ROW_H)))
@@ -823,8 +838,10 @@ impl Observatory {
             let hovered = self.hovered_row.as_deref() == Some(r.entry.path.as_str())
                 || self.tree_path == r.entry.path;
             let fade_from = if hovered { t.pane_2 } else { t.bg };
+            let fade_path = r.entry.path.clone();
             let fade = fade_under.then(|| {
                 div()
+                    .debug_selector(move || format!("obs-node-fade:{fade_path}"))
                     .absolute()
                     .left_0()
                     .right_0()
@@ -845,7 +862,16 @@ impl Observatory {
                     .flex()
                     .flex_col()
                     .child(vgap(top, window))
-                    .child(div().relative().child(row_el).children(fade))
+                    .child({
+                        let p = r.entry.path.clone();
+                        div()
+                            .relative()
+                            .when(is_stuck, |d| {
+                                d.debug_selector(move || format!("obs-stuck:{p}"))
+                            })
+                            .child(row_el)
+                            .children(fade)
+                    })
                     .into_any_element(),
             );
         }
@@ -856,6 +882,7 @@ impl Observatory {
                 let pad = if i == 0 || i == 3 { 10. } else { 22. };
                 sk = sk.child(
                     div()
+                        .debug_selector(move || format!("obs-skel-row:{i}"))
                         .flex()
                         .items_center()
                         .h(px(22.))

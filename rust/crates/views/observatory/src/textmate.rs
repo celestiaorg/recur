@@ -38,7 +38,7 @@ pub struct EditorEnv {
     /// Bundle `[[symbol]]` rules for the TextMate outline (`loadRules`).
     pub symbol_rules: Rc<Vec<recur_textmate::SymbolRule>>,
     seen_bundles_epoch: u64,
-    seen_syntax_epoch: u64,
+    pub(crate) seen_syntax_epoch: u64,
     disabled_snippets: Vec<String>,
     boot: Option<Task<()>>,
     theme_task: Option<Task<()>>,
@@ -285,6 +285,16 @@ impl EditorEnv {
     pub fn syntax_changed(&mut self, cx: &mut Context<Self>) {
         self.seen_syntax_epoch = self.tm.borrow().catalog.syntax_mode.epoch();
         self.bump(cx);
+    }
+
+    /// `applyLanguageMode`: the language picker's per-file pick (`None` auto-detects).
+    pub fn apply_language_mode(&mut self, path: &str, scope: Option<&str>, cx: &mut Context<Self>) {
+        self.tm
+            .borrow_mut()
+            .catalog
+            .syntax_mode
+            .set_for_path(path, scope);
+        self.syntax_changed(cx);
     }
 
     /// The language label for the status bar (`languageLabelForPath`).

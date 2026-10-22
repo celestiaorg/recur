@@ -307,6 +307,7 @@ pub struct Observatory {
     pub(crate) resize_focus: [FocusHandle; 2],
     pub(crate) focus_zone: FocusZone,
     pub(crate) last_focus: Option<FocusHandle>,
+    pub(crate) seen_syntax_epoch: Option<u64>,
 
     // ---- root ----
     pub(crate) loaded_root: String,
@@ -582,6 +583,7 @@ impl Observatory {
             resize_focus: [cx.focus_handle(), cx.focus_handle()],
             focus_zone: FocusZone::Editor,
             last_focus: None,
+            seen_syntax_epoch: None,
             loaded_root: String::new(),
             root_token: 0,
             editor_session_key: String::new(),

@@ -3,6 +3,8 @@
 //! bridge.
 
 mod editor_hotpath;
+mod editor_syntax;
+mod explorer_scope;
 mod harness;
 mod observatory;
 mod terminal_dock;

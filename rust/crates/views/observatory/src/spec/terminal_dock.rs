@@ -16,10 +16,12 @@ use serde_json::{Value, json};
 use super::harness::*;
 use crate::model::FocusZone;
 
+type CallLog = Arc<Mutex<Vec<(String, Vec<Value>)>>>;
+
 /// Every terminal call, answered the way Go would (`terminalResolvers`).
 #[derive(Clone, Default)]
 struct Term {
-    calls: Arc<Mutex<Vec<(String, Vec<Value>)>>>,
+    calls: CallLog,
     roster: Arc<Mutex<Vec<Value>>>,
     restored: Arc<Mutex<Vec<Value>>>,
     chrome: Arc<Mutex<serde_json::Map<String, Value>>>,

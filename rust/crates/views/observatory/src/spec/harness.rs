@@ -44,7 +44,6 @@ impl Render for AgentStub {
 /// every event.
 pub struct Host {
     pub obs: Entity<Observatory>,
-    pub events: Rc<RefCell<Vec<ObservatoryEvent>>>,
     _sub: Subscription,
 }
 
@@ -63,7 +62,6 @@ impl Render for Host {
 pub struct H<'a> {
     pub state: Entity<AppState>,
     pub obs: Entity<Observatory>,
-    pub host: Entity<Host>,
     pub bridge: Arc<MockBridge>,
     pub events: Rc<RefCell<Vec<ObservatoryEvent>>>,
     pub chat_open: Rc<RefCell<std::collections::HashMap<String, bool>>>,
@@ -123,7 +121,6 @@ pub fn mount_seeded<'a>(
     let s2 = state.clone();
     let events: Rc<RefCell<Vec<ObservatoryEvent>>> = Rc::default();
     let ev2 = events.clone();
-    let ev3 = events.clone();
     let (host, vcx) = cx.add_window_view(|window, cx| {
         s2.update(cx, |s, cx| {
             s.view = recur_view_core::ViewName::Detail;
@@ -150,18 +147,13 @@ pub fn mount_seeded<'a>(
                 }
             },
         );
-        Host {
-            obs,
-            events: ev3,
-            _sub: sub,
-        }
+        Host { obs, _sub: sub }
     });
     let obs = host.read_with(vcx, |h, _| h.obs.clone());
     vcx.simulate_resize(gpui::size(px(1280.), px(800.)));
     let mut h = H {
         state,
         obs,
-        host,
         bridge,
         events,
         chat_open: Rc::default(),
@@ -278,11 +270,6 @@ impl H<'_> {
     pub fn click(&mut self, sel: &str) {
         let p = self.center(sel);
         self.click_at(p, Modifiers::none());
-    }
-
-    pub fn click_mods(&mut self, sel: &str, mods: Modifiers) {
-        let p = self.center(sel);
-        self.click_at(p, mods);
     }
 
     pub fn click_at(&mut self, p: gpui::Point<Pixels>, mods: Modifiers) {

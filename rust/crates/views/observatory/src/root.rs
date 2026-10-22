@@ -92,8 +92,17 @@ impl Observatory {
         ));
         let env = crate::textmate::editor_env(&state, cx);
         self._subscriptions
-            .push(cx.observe_in(&env, window, |o, _, window, cx| {
+            .push(cx.observe_in(&env, window, |o, env, window, cx| {
                 o.sync_editors(window, cx);
+                // The session remembers language picks (`syntaxByPath` / `syntaxByFileType`).
+                let syntax = env.read(cx).seen_syntax_epoch;
+                if o.seen_syntax_epoch != Some(syntax) {
+                    let first = o.seen_syntax_epoch.is_none();
+                    o.seen_syntax_epoch = Some(syntax);
+                    if !first && o.syntax_maps_ready {
+                        o.persist_editor_session(cx);
+                    }
+                }
                 cx.notify();
             }));
         self._subscriptions

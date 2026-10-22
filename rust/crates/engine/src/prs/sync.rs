@@ -75,20 +75,31 @@ impl Engine {
     /// the stored list; concurrent callers wait for the in-flight sweep.
     /// A missing forge tool or a per-repo list error skips that project.
     pub async fn sync_prs(&self) -> Vec<Pr> {
-        let done = {
+        enum Flight {
+            Fresh,
+            Wait(CancellationToken),
+            Run(CancellationToken),
+        }
+        let min = self.prs.timing.lock().sync_min_interval;
+        let flight = {
             let mut s = self.prs.sync.lock();
-            let min = self.prs.timing.lock().sync_min_interval;
             if !min.is_zero() && s.at.is_some_and(|at| at.elapsed() < min) {
-                return self.store.prs();
+                Flight::Fresh
+            } else if let Some(wait) = s.wait.clone() {
+                Flight::Wait(wait)
+            } else {
+                let done = CancellationToken::new();
+                s.wait = Some(done.clone());
+                Flight::Run(done)
             }
-            if let Some(wait) = s.wait.clone() {
-                drop(s);
+        };
+        let done = match flight {
+            Flight::Fresh => return self.store.prs(),
+            Flight::Wait(wait) => {
                 wait.cancelled().await;
                 return self.store.prs();
             }
-            let done = CancellationToken::new();
-            s.wait = Some(done.clone());
-            done
+            Flight::Run(done) => done,
         };
         let _done = SweepDone { eng: self, done };
 

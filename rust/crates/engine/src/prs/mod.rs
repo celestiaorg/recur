@@ -287,3 +287,6 @@ impl Engine {
         self.prs.diff_last.lock().values_mut().for_each(back);
     }
 }
+
+#[cfg(test)]
+mod tests;

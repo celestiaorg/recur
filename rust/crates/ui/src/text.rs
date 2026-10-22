@@ -1023,7 +1023,9 @@ impl Laid {
                     }
                     end = e;
                 }
-                line.range.end = end;
+                // WebKit drops the spaces before the ellipsis (`out…`, not `out …`).
+                let kept = text[line.range.start..end].trim_end_matches([' ', '\t']);
+                line.range.end = line.range.start + kept.len();
                 line.width = p.width(text, line.range.clone()) + ell_w;
                 line.ellipsis = true;
             }

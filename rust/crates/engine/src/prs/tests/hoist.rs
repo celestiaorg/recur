@@ -9,8 +9,8 @@
 use std::time::Duration;
 
 use recur_domain::{
-    Agent, CHAT_MODE_REVIEW, ContentBlock, Finding, FindingStatus, Message, Plan, PlanStep, Pr,
-    PROVIDER_CLAUDE_CODE, Session, UserQuestion, UserQuestionAnswer, WORKSPACE_SOLO, Workspace,
+    Agent, CHAT_MODE_REVIEW, ContentBlock, Finding, FindingStatus, Message, PROVIDER_CLAUDE_CODE,
+    Plan, PlanStep, Pr, Session, UserQuestion, UserQuestionAnswer, WORKSPACE_SOLO, Workspace,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -24,7 +24,11 @@ use crate::workspace::create::{CreatingAlloc, PHASE_CREATING};
 async fn linked(px: &Px) -> (TempRepo, Workspace) {
     let repo = init_repo();
     px.add_project("acme", &repo.path);
-    let w = px.eng().create_workspace("acme", "linked", "main").await.unwrap();
+    let w = px
+        .eng()
+        .create_workspace("acme", "linked", "main")
+        .await
+        .unwrap();
     (repo, w)
 }
 
@@ -135,20 +139,29 @@ async fn ensure_host_creates_hidden_workspace() {
     assert!(host.is_pr_chat_host());
     assert_eq!(host.host_pr_id, "gh-acme-9");
     assert_eq!(host.worktree_path, repo.path);
-    assert_eq!(px.pr("gh-acme-9").workspace_id, "", "linked only by Create Workspace");
+    assert_eq!(
+        px.pr("gh-acme-9").workspace_id,
+        "",
+        "linked only by Create Workspace"
+    );
     let again = px.eng().ensure_pr_chat_host("gh-acme-9").await.unwrap();
     assert_eq!(again.id, host.id);
     assert_eq!(px.te.store.workspaces().len(), 1);
     let tab = px.eng().create_workspace_chat(&host.id).await;
     assert_eq!(tab.mode, CHAT_MODE_REVIEW);
-    assert_eq!(px.eng().workspace_chat_selection(&host.id, &tab.code).2, CHAT_MODE_REVIEW);
+    assert_eq!(
+        px.eng().workspace_chat_selection(&host.id, &tab.code).2,
+        CHAT_MODE_REVIEW
+    );
     let mut remaining = Vec::new();
     for c in px.eng().list_workspace_chats(&host.id) {
         remaining = px.eng().close_workspace_chat(&host.id, &c.code).await;
     }
     assert_eq!(remaining.len(), 1, "one replacement tab");
     assert_eq!(
-        px.eng().workspace_chat_selection(&host.id, &remaining[0].code).2,
+        px.eng()
+            .workspace_chat_selection(&host.id, &remaining[0].code)
+            .2,
         CHAT_MODE_REVIEW
     );
 }
@@ -282,7 +295,10 @@ async fn hoist_remaps_colliding_transcripts() {
     px.eng().ensure_pr_chat_host("gh-acme-8d").await.unwrap();
     assert_eq!(session_on(&px, &w.id, "PA"), Some(live.id));
     assert_eq!(session_on(&px, &w.id, "PA2"), Some(host_sess.id));
-    assert_eq!(px.te.store.agent(&w.id, "PA").unwrap().session_id, "prov-live");
+    assert_eq!(
+        px.te.store.agent(&w.id, "PA").unwrap().session_id,
+        "prov-live"
+    );
     let moved = px.te.store.agent(&w.id, "PA2").unwrap();
     assert_eq!(moved.session_id, "prov-host");
     assert_eq!(moved.id, format!("{}-PA2", w.id));
@@ -302,7 +318,10 @@ async fn drop_continue_gen_retries_host_hoist() {
     let sess = host_with_pa(&px, host_ws("W-host-continue", "gh-acme-8m", &repo.path));
     let generation = px.eng().alloc_continue_gen("W-host-continue", "PA");
     let got = px.eng().ensure_pr_chat_host("gh-acme-8m").await.unwrap();
-    assert_eq!(got.id, "W-host-continue", "a live remount gen defers the hoist");
+    assert_eq!(
+        got.id, "W-host-continue",
+        "a live remount gen defers the hoist"
+    );
     px.eng().drop_continue_gen(generation);
     wait_archived(&px, "W-host-continue").await;
     assert_eq!(session_on(&px, &w.id, "PA"), Some(sess.id));
@@ -314,7 +333,10 @@ async fn drop_continue_gen_defers_while_chat_life_held() {
     let (repo, w) = linked(&px).await;
     let _ = px.eng().list_workspace_chats(&w.id);
     px.add_pr(linked_pr("gh-acme-8m2", &w.id));
-    let sess = host_with_pa(&px, host_ws("W-host-continue-life", "gh-acme-8m2", &repo.path));
+    let sess = host_with_pa(
+        &px,
+        host_ws("W-host-continue-life", "gh-acme-8m2", &repo.path),
+    );
     let (life, held) = px.eng().lock_chat_life("W-host-continue-life", "PA").await;
     assert!(held);
     let generation = px.eng().alloc_continue_gen("W-host-continue-life", "PA");
@@ -341,12 +363,20 @@ async fn mode_switch_setup_failure_retries_pending_hoist() {
     let (repo, w) = linked(&px).await;
     let _ = px.eng().list_workspace_chats(&w.id);
     px.add_pr(linked_pr("gh-acme-8m3", &w.id));
-    let sess = host_with_pa(&px, host_ws("W-host-continue-setup", "gh-acme-8m3", &repo.path));
+    let sess = host_with_pa(
+        &px,
+        host_ws("W-host-continue-setup", "gh-acme-8m3", &repo.path),
+    );
     let generation = px.eng().alloc_continue_gen("W-host-continue-setup", "PA");
     tokio::time::timeout(
         Duration::from_secs(2),
-        px.eng()
-            .resume_after_mode_switch("W-host-continue-setup", "PA", "agent", "ask", generation),
+        px.eng().resume_after_mode_switch(
+            "W-host-continue-setup",
+            "PA",
+            "agent",
+            "ask",
+            generation,
+        ),
     )
     .await
     .expect("the continuation deadlocked on the hoist");
@@ -390,7 +420,10 @@ async fn hoist_moves_plan_and_findings() {
     px.eng().ensure_pr_chat_host("gh-acme-8n").await.unwrap();
     let got = px.ws(&w.id);
     let plan = got.plan.expect("dest plan");
-    assert_eq!((plan.summary.as_str(), plan.chat_code.as_str()), ("Dark mode", "PA"));
+    assert_eq!(
+        (plan.summary.as_str(), plan.chat_code.as_str()),
+        ("Dark mode", "PA")
+    );
     assert_eq!(got.definition_of_done, "Ship the toggle");
     let findings = px.te.store.findings(&w.id);
     assert_eq!(findings.len(), 1);
@@ -499,8 +532,14 @@ async fn hoist_reserves_source_codes() {
     assert_eq!(session_on(&px, &w.id, "PA"), Some(live.id));
     assert_eq!(session_on(&px, &w.id, "PA2"), Some(host_pa2.id));
     assert_eq!(session_on(&px, &w.id, "PA3"), Some(host_pa.id));
-    assert_eq!(px.te.store.agent(&w.id, "PA2").unwrap().session_id, "prov-host-pa2");
-    assert_eq!(px.te.store.agent(&w.id, "PA3").unwrap().session_id, "prov-host-pa");
+    assert_eq!(
+        px.te.store.agent(&w.id, "PA2").unwrap().session_id,
+        "prov-host-pa2"
+    );
+    assert_eq!(
+        px.te.store.agent(&w.id, "PA3").unwrap().session_id,
+        "prov-host-pa"
+    );
     let hoisted = px
         .te
         .events
@@ -515,9 +554,15 @@ async fn hoist_reserves_source_codes() {
             _ => None,
         })
         .expect("hoist event");
-    assert_eq!(hoisted.code_remap.get("PA").map(String::as_str), Some("PA3"));
+    assert_eq!(
+        hoisted.code_remap.get("PA").map(String::as_str),
+        Some("PA3")
+    );
     let moved = hoisted.moved_codes.unwrap_or_default();
-    assert!(moved.contains(&"PA2".to_owned()) && moved.contains(&"PA3".to_owned()), "{moved:?}");
+    assert!(
+        moved.contains(&"PA2".to_owned()) && moved.contains(&"PA3".to_owned()),
+        "{moved:?}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -532,12 +577,21 @@ async fn hoist_waits_for_chat_life() {
     let e = std::sync::Arc::clone(px.eng());
     let ensure = tokio::spawn(async move { e.ensure_pr_chat_host("gh-acme-8f").await });
     tokio::time::sleep(Duration::from_millis(50)).await;
-    assert!(!ensure.is_finished(), "returned while the life lock was held");
+    assert!(
+        !ensure.is_finished(),
+        "returned while the life lock was held"
+    );
     assert!(!px.ws("W-host-wait").archived);
     let eng = px.eng();
-    assert_eq!(eng.create_workspace_chat(&w.id).await.code, "", "no new tab during a hoist");
     assert_eq!(
-        eng.fork_workspace_chat(&w.id, "PA", "fork-during-hoist").await.code,
+        eng.create_workspace_chat(&w.id).await.code,
+        "",
+        "no new tab during a hoist"
+    );
+    assert_eq!(
+        eng.fork_workspace_chat(&w.id, "PA", "fork-during-hoist")
+            .await
+            .code,
         "",
         "no fork during a hoist"
     );
@@ -546,12 +600,22 @@ async fn hoist_waits_for_chat_life() {
     assert_eq!(tabs[0].code, "PA");
     eng.remember_workspace_chat_selection(&w.id, "PA", "sonnet", None, "agent", None)
         .await;
-    assert!(session_on(&px, &w.id, "PA").is_none(), "selection created a dest session");
-    eng.remember_workspace_chat_prompt_group(&w.id, "PA", "ops").await;
-    assert!(session_on(&px, &w.id, "PA").is_none(), "prompt group created a dest session");
+    assert!(
+        session_on(&px, &w.id, "PA").is_none(),
+        "selection created a dest session"
+    );
+    eng.remember_workspace_chat_prompt_group(&w.id, "PA", "ops")
+        .await;
+    assert!(
+        session_on(&px, &w.id, "PA").is_none(),
+        "prompt group created a dest session"
+    );
     eng.remember_chat_loop_policy(&w.id, "PA", "test.loops.converge", "")
         .await;
-    assert!(session_on(&px, &w.id, "PA").is_none(), "loop policy created a dest session");
+    assert!(
+        session_on(&px, &w.id, "PA").is_none(),
+        "loop policy created a dest session"
+    );
     drop(life);
     tokio::time::timeout(Duration::from_secs(2), ensure)
         .await
@@ -632,7 +696,10 @@ async fn unregister_archives_settled_host() {
         p.group = "merged".into();
     });
     px.eng().archive_pr_chat_hosts("gh-acme-8h", "").await;
-    assert!(!px.ws("W-host-settled").archived, "archived while chat is live");
+    assert!(
+        !px.ws("W-host-settled").archived,
+        "archived while chat is live"
+    );
     px.eng().unregister_chat_turn("W-host-settled", "PA", &turn);
     wait_archived(&px, "W-host-settled").await;
     assert_eq!(
@@ -677,7 +744,10 @@ async fn hold_is_exclusive() {
         g.is_some()
     });
     tokio::time::sleep(Duration::from_millis(40)).await;
-    assert!(!second.is_finished(), "second hold acquired keep during the first");
+    assert!(
+        !second.is_finished(),
+        "second hold acquired keep during the first"
+    );
     assert!(px.eng().hoisting.lock().contains("keep"));
     assert!(px.eng().hoisting.lock().contains("host-a"));
     drop(first);
@@ -686,14 +756,22 @@ async fn hold_is_exclusive() {
         .expect("second hold waits for release")
         .unwrap();
     assert!(held);
-    assert!(!px.eng().hoisting.lock().contains("keep"), "tombstone leaked");
+    assert!(
+        !px.eng().hoisting.lock().contains("keep"),
+        "tombstone leaked"
+    );
 }
 
 #[tokio::test]
 async fn hold_refuses_deleting() {
     let px = Px::new();
     px.eng().deleting.lock().insert("keep".into());
-    assert!(px.eng().hold_pr_chat_hoist(&["host-a", "keep"]).await.is_none());
+    assert!(
+        px.eng()
+            .hold_pr_chat_hoist(&["host-a", "keep"])
+            .await
+            .is_none()
+    );
     assert!(!px.eng().hoisting.lock().contains("host-a"));
 }
 
@@ -745,7 +823,11 @@ async fn delete_refuses_existing_deleting() {
 async fn delete_refuses_hoisting_destination() {
     let px = Px::new();
     solo(&px, "keep");
-    let _guard = px.eng().hold_pr_chat_hoist(&["host-a", "keep"]).await.unwrap();
+    let _guard = px
+        .eng()
+        .hold_pr_chat_hoist(&["host-a", "keep"])
+        .await
+        .unwrap();
     let err = px.eng().delete_workspace("keep").await.unwrap_err();
     assert!(err.0.contains("being removed"), "{err}");
     assert!(px.te.store.workspace("keep").is_some());
@@ -755,7 +837,11 @@ async fn delete_refuses_hoisting_destination() {
 async fn remove_refuses_hoisting_destination() {
     let px = Px::new();
     solo(&px, "keep");
-    let _guard = px.eng().hold_pr_chat_hoist(&["host-a", "keep"]).await.unwrap();
+    let _guard = px
+        .eng()
+        .hold_pr_chat_hoist(&["host-a", "keep"])
+        .await
+        .unwrap();
     let err = px.eng().remove_workspace("keep").await.unwrap_err();
     assert!(err.0.contains("being removed"), "{err}");
     assert!(!px.ws("keep").archived);
@@ -783,7 +869,10 @@ async fn remove_reserves_before_waiting_create() {
     .await;
     assert!(!remove.is_finished(), "returned before the create wait");
     px.eng().archive_one_pr_chat_host("host", "keep").await;
-    assert!(!px.ws("host").archived, "archived onto a workspace being removed");
+    assert!(
+        !px.ws("host").archived,
+        "archived onto a workspace being removed"
+    );
     assert_eq!(session_on(&px, "host", "PA"), Some(sess.id));
     alloc.done.cancel();
     tokio::time::timeout(Duration::from_secs(2), remove)
@@ -801,10 +890,18 @@ async fn create_from_pr_promotes_chat_host() {
     px.add_project("acme", &clone);
     px.add_pr(gh_pr(42, "feat/oauth"));
     let host = px.eng().ensure_pr_chat_host("gh-acme-42").await.unwrap();
-    let got = px.eng().create_workspace_from_pr("gh-acme-42").await.unwrap();
+    let got = px
+        .eng()
+        .create_workspace_from_pr("gh-acme-42")
+        .await
+        .unwrap();
     assert_eq!(got.id, host.id, "promoted in place");
     assert_eq!(host.base_branch, "origin/main");
-    assert_eq!(px.pr("gh-acme-42").workspace_id, "", "linked only after allocate");
+    assert_eq!(
+        px.pr("gh-acme-42").workspace_id,
+        "",
+        "linked only after allocate"
+    );
     wait_for(Duration::from_secs(8), "promoted worktree", || {
         let w = px.ws(&host.id);
         !w.is_pr_chat_host()
@@ -831,7 +928,16 @@ async fn send_rejects_agent_on_pr_chat_host() {
     for mode in ["agent", "loop"] {
         let reply = px
             .eng()
-            .send_workspace_message(&host.id, "PA", "edit the files", "sonnet", None, &[], mode, "")
+            .send_workspace_message(
+                &host.id,
+                "PA",
+                "edit the files",
+                "sonnet",
+                None,
+                &[],
+                mode,
+                "",
+            )
             .await;
         assert!(reply.contains("Create a workspace"), "{mode}: {reply}");
     }
@@ -862,7 +968,11 @@ async fn create_from_pr_promotes_when_workspace_id_points_at_host() {
     px.te
         .store
         .update_pr("gh-acme-42", |p| p.workspace_id = host.id.clone());
-    let got = px.eng().create_workspace_from_pr("gh-acme-42").await.unwrap();
+    let got = px
+        .eng()
+        .create_workspace_from_pr("gh-acme-42")
+        .await
+        .unwrap();
     assert_eq!(got.id, host.id);
     assert_eq!(got.phase, PHASE_CREATING);
     wait_for(Duration::from_secs(8), "allocate", || {
@@ -899,7 +1009,10 @@ async fn ask_user_resume_holds_host_busy() {
         )
         .expect("answered");
     assert!(px.eng().pending_ask_users().is_empty());
-    assert!(px.eng().pr_chat_host_busy("W-host-ask"), "the resume gap keeps it busy");
+    assert!(
+        px.eng().pr_chat_host_busy("W-host-ask"),
+        "the resume gap keeps it busy"
+    );
     px.eng().maybe_archive_linked_pr_chat_host("W-host-ask");
     tokio::time::sleep(Duration::from_millis(30)).await;
     assert!(!px.ws("W-host-ask").archived);
@@ -916,18 +1029,36 @@ async fn archive_one_revalidates_link() {
     let px = Px::new();
     let repo = init_repo();
     px.add_project("acme", &repo.path);
-    let w1 = px.eng().create_workspace("acme", "keep-stale", "main").await.unwrap();
-    let w2 = px.eng().create_workspace("acme", "keep-live", "main").await.unwrap();
+    let w1 = px
+        .eng()
+        .create_workspace("acme", "keep-stale", "main")
+        .await
+        .unwrap();
+    let w2 = px
+        .eng()
+        .create_workspace("acme", "keep-live", "main")
+        .await
+        .unwrap();
     px.add_pr(Pr {
         title: "Relinked".into(),
         ..linked_pr("gh-acme-8relink", &w2.id)
     });
     let sess = host_with_pa(&px, host_ws("W-host-relink", "gh-acme-8relink", &repo.path));
-    px.eng().archive_one_pr_chat_host("W-host-relink", &w1.id).await;
-    assert!(!px.ws("W-host-relink").archived, "archived onto a stale keep");
+    px.eng()
+        .archive_one_pr_chat_host("W-host-relink", &w1.id)
+        .await;
+    assert!(
+        !px.ws("W-host-relink").archived,
+        "archived onto a stale keep"
+    );
     assert!(session_on(&px, &w1.id, "PA").is_none());
-    assert_eq!(session_on(&px, "W-host-relink", "PA"), Some(sess.id.clone()));
-    px.eng().archive_one_pr_chat_host("W-host-relink", &w2.id).await;
+    assert_eq!(
+        session_on(&px, "W-host-relink", "PA"),
+        Some(sess.id.clone())
+    );
+    px.eng()
+        .archive_one_pr_chat_host("W-host-relink", &w2.id)
+        .await;
     assert!(px.ws("W-host-relink").archived);
     assert_eq!(session_on(&px, &w2.id, "PA"), Some(sess.id));
 }
@@ -956,7 +1087,10 @@ async fn hoist_rewrites_plan_artifact_paths() {
     let remap = std::collections::BTreeMap::from([("PA".to_owned(), "PA2".to_owned())]);
     crate::hoist::hoist_pr_chat_host_plan(&mut dest, &from, &remap);
     let plan = dest.plan.unwrap();
-    assert_eq!(plan.attachments[0].path, "workspaces/W-live/artifacts/a1.md");
+    assert_eq!(
+        plan.attachments[0].path,
+        "workspaces/W-live/artifacts/a1.md"
+    );
     assert_eq!(plan.chat_code, "PA2");
     assert_eq!(dest.definition_of_done, "done");
     assert_eq!(

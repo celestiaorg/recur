@@ -8,8 +8,8 @@
 
 use pretty_assertions::assert_eq;
 use recur_domain::{
-    Commit, FileDiff, MergeCommitMessage, MergeMethod, PendingLineComment, Pr, PrComment,
-    PrSource, SquashCommitMessage, Workspace,
+    Commit, FileDiff, MergeCommitMessage, MergeMethod, PendingLineComment, Pr, PrComment, PrSource,
+    SquashCommitMessage, Workspace,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -175,7 +175,12 @@ fn send_back_and_summary() {
         } else {
             de(&c["in"])
         };
-        assert_eq!(distill_instruction(&notes), s(&c["out"]), "distill {}", c["in"]);
+        assert_eq!(
+            distill_instruction(&notes),
+            s(&c["out"]),
+            "distill {}",
+            c["in"]
+        );
     }
     for c in cases(&g, "summary") {
         let n = &c["in"];
@@ -215,10 +220,19 @@ fn line_note_hunks_and_locations() {
     for c in cases(small, "reviews") {
         let k = s(&c["in"]);
         let (label, state) = review_label_state(k);
-        assert_eq!(json!([label, state, review_card_verb(k)]), c["out"], "review {k}");
+        assert_eq!(
+            json!([label, state, review_card_verb(k)]),
+            c["out"],
+            "review {k}"
+        );
     }
     for c in cases(small, "diff_text") {
-        assert_eq!(visible_diff_text(s(&c["in"])), s(&c["out"]), "diff text {}", c["in"]);
+        assert_eq!(
+            visible_diff_text(s(&c["in"])),
+            s(&c["out"]),
+            "diff text {}",
+            c["in"]
+        );
     }
 }
 
@@ -251,7 +265,12 @@ fn pr_urls_heads_and_hoist_rewrites() {
         } else {
             de(&c["out"])
         };
-        assert_eq!(hoist_remap_codes(&order, &remap), want, "hoist codes {}", c["in"]);
+        assert_eq!(
+            hoist_remap_codes(&order, &remap),
+            want,
+            "hoist codes {}",
+            c["in"]
+        );
     }
 }
 
@@ -260,7 +279,12 @@ fn thread_keys_and_commit_log() {
     let g = golden();
     let thread: Vec<PrComment> = de(&g["thread"]);
     for c in cases(&g, "thread_keys") {
-        assert_eq!(resolve_thread_key(&thread, s(&c["in"])), s(&c["out"]), "thread key {}", c["in"]);
+        assert_eq!(
+            resolve_thread_key(&thread, s(&c["in"])),
+            s(&c["out"]),
+            "thread key {}",
+            c["in"]
+        );
     }
     let log = cases(&g, "commit_log");
     let existing: Vec<Commit> = de(&log[0]["in"]["existing"]);
@@ -269,6 +293,10 @@ fn thread_keys_and_commit_log() {
     assert_eq!(merge_commit_log(&existing, fresh), want);
     for c in log[1]["out"].as_array().unwrap() {
         let r = s(&c["in"]);
-        assert_eq!(commit_ref_matches(&existing[0], r), c["out"].as_bool().unwrap(), "ref {r}");
+        assert_eq!(
+            commit_ref_matches(&existing[0], r),
+            c["out"].as_bool().unwrap(),
+            "ref {r}"
+        );
     }
 }

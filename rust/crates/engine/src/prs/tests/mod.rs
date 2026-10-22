@@ -5,7 +5,6 @@
 //! Go's function seams (`listGitHubPRsFn`, `getGitHubPRSnapshot`, …) are
 //! [`recur_forge::testing::FakeForge`] handlers.
 
-mod support;
 mod futures;
 mod glue;
 mod hoist;
@@ -13,6 +12,7 @@ mod linking;
 mod merge;
 mod rework;
 mod send;
+mod support;
 mod sync;
 mod thread;
 mod workspace;

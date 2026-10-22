@@ -18,7 +18,12 @@ use crate::workspace::create::{
 /// The local branch a PR-head worktree may create. Fork heads and names
 /// that collide with the project or PR base (a fork whose head is `main`)
 /// are empty, so allocate uses a unique branch instead of moving `main`.
-pub fn checkout_pr_head_name(head: &str, pr_base: &str, project_base: &str, cross_repo: bool) -> String {
+pub fn checkout_pr_head_name(
+    head: &str,
+    pr_base: &str,
+    project_base: &str,
+    cross_repo: bool,
+) -> String {
     let head = normalize_pr_branch(head);
     if head.is_empty() || cross_repo {
         return String::new();
@@ -105,7 +110,10 @@ impl Engine {
         if project_id.is_empty() {
             return Err(EngineError(format!("PR {pr_id:?} has no Recur project")));
         }
-        if let Some(w) = self.workspace_matching_pr_branch(&project_id, &pr.branch).await {
+        if let Some(w) = self
+            .workspace_matching_pr_branch(&project_id, &pr.branch)
+            .await
+        {
             self.store.update_pr(pr_id, |p| {
                 p.workspace_id = w.id.clone();
                 p.project_id = project_id.clone();
@@ -168,7 +176,10 @@ impl Engine {
         if let Some(w) = self.workspace_creating_from_pr(pr_id) {
             return Ok(w);
         }
-        if let Some(w) = self.workspace_matching_pr_branch(&project_id, &pr.branch).await {
+        if let Some(w) = self
+            .workspace_matching_pr_branch(&project_id, &pr.branch)
+            .await
+        {
             self.store.update_pr(pr_id, |p| {
                 p.workspace_id = w.id.clone();
                 p.project_id = project_id.clone();
@@ -235,7 +246,12 @@ impl Engine {
             None,
         )
         .await;
-        self.publish_loop_updated(&saved.id, saved.state.clone(), &saved.phase, saved.iteration);
+        self.publish_loop_updated(
+            &saved.id,
+            saved.state.clone(),
+            &saved.phase,
+            saved.iteration,
+        );
         Ok(saved)
     }
 

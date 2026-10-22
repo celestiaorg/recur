@@ -27,19 +27,40 @@ async fn pr_chat_host_injects_forge_surface() {
     });
     let host = px.eng().ensure_pr_chat_host("gh-acme-3").await.unwrap();
     px.eng()
-        .send_workspace_message(&host.id, "PA", "what changed?", "sonnet", None, &[], "review", "")
+        .send_workspace_message(
+            &host.id,
+            "PA",
+            "what changed?",
+            "sonnet",
+            None,
+            &[],
+            "review",
+            "",
+        )
         .await;
     let specs = script.with_role(AgentRole::Coder);
     let spec = specs.first().expect("a review turn");
-    assert!(spec.turn_append_prompt.contains("GitHub pull request #3"), "{}", spec.turn_append_prompt);
-    assert!(spec.turn_append_prompt.contains("working copy"), "{}", spec.turn_append_prompt);
+    assert!(
+        spec.turn_append_prompt.contains("GitHub pull request #3"),
+        "{}",
+        spec.turn_append_prompt
+    );
+    assert!(
+        spec.turn_append_prompt.contains("working copy"),
+        "{}",
+        spec.turn_append_prompt
+    );
     assert!(!spec.prompt.contains("recur-surface"));
 }
 
 async fn linked_pr8(px: &Px) -> (crate::testing::TempRepo, Workspace) {
     let repo = init_repo();
     px.add_project("acme", &repo.path);
-    let w = px.eng().create_workspace("acme", "linked", "main").await.unwrap();
+    let w = px
+        .eng()
+        .create_workspace("acme", "linked", "main")
+        .await
+        .unwrap();
     px.add_pr(Pr {
         workspace_id: w.id.clone(),
         title: "Already linked".into(),
@@ -58,9 +79,17 @@ async fn peels_forge_pr_surface_marker() {
     px.eng()
         .send_workspace_message(&w.id, "PA", WIRE, "sonnet", None, &[], "review", "")
         .await;
-    let spec = script.with_role(AgentRole::Coder).into_iter().next().expect("a review turn");
+    let spec = script
+        .with_role(AgentRole::Coder)
+        .into_iter()
+        .next()
+        .expect("a review turn");
     assert_eq!(spec.prompt, "please review");
-    assert!(spec.turn_append_prompt.contains("GitHub pull request #8"), "{}", spec.turn_append_prompt);
+    assert!(
+        spec.turn_append_prompt.contains("GitHub pull request #8"),
+        "{}",
+        spec.turn_append_prompt
+    );
     assert!(!spec.turn_append_prompt.contains("different surface"));
 }
 
@@ -72,8 +101,17 @@ async fn retry_keeps_forge_pr_surface() {
     let eng = px.eng();
     eng.send_workspace_message(&w.id, "PA", WIRE, "sonnet", None, &[], "review", "")
         .await;
-    eng.send_workspace_message(&w.id, "PA", "ignored", "sonnet", None, &[], "review", CHAT_RETRY_DISPLAY_SENTINEL)
-        .await;
+    eng.send_workspace_message(
+        &w.id,
+        "PA",
+        "ignored",
+        "sonnet",
+        None,
+        &[],
+        "review",
+        CHAT_RETRY_DISPLAY_SENTINEL,
+    )
+    .await;
     let specs = script.with_role(AgentRole::Coder);
     assert!(specs.len() >= 2, "retry specs = {}", specs.len());
     let got = &specs[1].turn_append_prompt;
@@ -87,7 +125,11 @@ async fn hoist_rekeys_last_chat_surface_for_retry() {
     let px = Px::with(Some(script.provider()));
     let repo = init_repo();
     px.add_project("acme", &repo.path);
-    let w = px.eng().create_workspace("acme", "linked", "main").await.unwrap();
+    let w = px
+        .eng()
+        .create_workspace("acme", "linked", "main")
+        .await
+        .unwrap();
     let st = &px.te.store;
     let live = st
         .create_session(recur_domain::Session {
@@ -152,19 +194,40 @@ async fn hoist_rekeys_last_chat_surface_for_retry() {
         },
     );
     px.eng()
-        .send_workspace_message("W-host-surf", "PA", "what changed?", "sonnet", None, &[], "review", "")
+        .send_workspace_message(
+            "W-host-surf",
+            "PA",
+            "what changed?",
+            "sonnet",
+            None,
+            &[],
+            "review",
+            "",
+        )
         .await;
     // Link after the host turn: an idle host whose PR is already linked is
     // archived on unlock, so the send above would never run.
     st.update_pr("gh-acme-8h", |p| p.workspace_id = w.id.clone());
-    px.eng().hoist_pr_chat_host("W-host-surf", &w.id).await.unwrap();
+    px.eng()
+        .hoist_pr_chat_host("W-host-surf", &w.id)
+        .await
+        .unwrap();
     {
         let surfaces = px.eng().last_chat_surfaces.lock();
         assert!(surfaces.contains_key(&format!("{}\x00PA2", w.id)));
         assert!(!surfaces.contains_key("W-host-surf\x00PA"));
     }
     px.eng()
-        .send_workspace_message(&w.id, "PA2", "ignored", "sonnet", None, &[], "review", CHAT_RETRY_DISPLAY_SENTINEL)
+        .send_workspace_message(
+            &w.id,
+            "PA2",
+            "ignored",
+            "sonnet",
+            None,
+            &[],
+            "review",
+            CHAT_RETRY_DISPLAY_SENTINEL,
+        )
         .await;
     let specs = script.with_role(AgentRole::Coder);
     assert!(specs.len() >= 2);

@@ -136,15 +136,32 @@ pub fn clone_tracking(remote: &str, local: &str) -> (Keep, String) {
     let bare = bare_dir.path().join("upstream.git");
     let cwd = tempfile::tempdir().unwrap();
     let cwd_s = cwd.path().to_string_lossy().into_owned();
-    git(&cwd_s, &["clone", "--bare", &seed.path, bare.to_str().unwrap()]);
+    git(
+        &cwd_s,
+        &["clone", "--bare", &seed.path, bare.to_str().unwrap()],
+    );
     let clone_dir = tempfile::tempdir().unwrap();
     let clone = clone_dir.path().join("work").to_string_lossy().into_owned();
     git(&cwd_s, &["clone", bare.to_str().unwrap(), &clone]);
     if local != remote {
-        git(&clone, &["checkout", "-b", local, "--track", &format!("origin/{remote}")]);
+        git(
+            &clone,
+            &[
+                "checkout",
+                "-b",
+                local,
+                "--track",
+                &format!("origin/{remote}"),
+            ],
+        );
     }
     (
-        Keep(vec![Box::new(seed), Box::new(bare_dir), Box::new(cwd), Box::new(clone_dir)]),
+        Keep(vec![
+            Box::new(seed),
+            Box::new(bare_dir),
+            Box::new(cwd),
+            Box::new(clone_dir),
+        ]),
         clone,
     )
 }
@@ -153,8 +170,16 @@ pub fn clone_tracking(remote: &str, local: &str) -> (Keep, String) {
 pub fn clone_with_upstream_fork() -> (Keep, String) {
     let seed = init_repo();
     let dirs: Vec<tempfile::TempDir> = (0..3).map(|_| tempfile::tempdir().unwrap()).collect();
-    let origin = dirs[0].path().join("origin.git").to_string_lossy().into_owned();
-    let upstream = dirs[0].path().join("upstream.git").to_string_lossy().into_owned();
+    let origin = dirs[0]
+        .path()
+        .join("origin.git")
+        .to_string_lossy()
+        .into_owned();
+    let upstream = dirs[0]
+        .path()
+        .join("upstream.git")
+        .to_string_lossy()
+        .into_owned();
     let cwd = dirs[1].path().to_string_lossy().into_owned();
     git(&cwd, &["clone", "--bare", &seed.path, &origin]);
     git(&cwd, &["clone", "--bare", &seed.path, &upstream]);
@@ -163,7 +188,10 @@ pub fn clone_with_upstream_fork() -> (Keep, String) {
     git(&clone, &["remote", "add", "upstream", &upstream]);
     git(&clone, &["fetch", "upstream"]);
     let mut keep: Vec<Box<dyn std::any::Any + Send>> = vec![Box::new(seed)];
-    keep.extend(dirs.into_iter().map(|d| Box::new(d) as Box<dyn std::any::Any + Send>));
+    keep.extend(
+        dirs.into_iter()
+            .map(|d| Box::new(d) as Box<dyn std::any::Any + Send>),
+    );
     (Keep(keep), clone)
 }
 
@@ -188,13 +216,27 @@ pub fn clone_with_pull_head(number: i64, branch: &str) -> (Keep, String) {
     let sha = crate::testing::git_out(&seed.path, &["rev-parse", "HEAD"]).unwrap();
     git(&seed.path, &["checkout", "main"]);
     let dirs: Vec<tempfile::TempDir> = (0..3).map(|_| tempfile::tempdir().unwrap()).collect();
-    let bare = dirs[0].path().join("upstream.git").to_string_lossy().into_owned();
+    let bare = dirs[0]
+        .path()
+        .join("upstream.git")
+        .to_string_lossy()
+        .into_owned();
     let cwd = dirs[1].path().to_string_lossy().into_owned();
     git(&cwd, &["clone", "--bare", &seed.path, &bare]);
     let clone = dirs[2].path().join("work").to_string_lossy().into_owned();
     git(&cwd, &["clone", &bare, &clone]);
-    git(&clone, &["push", "origin", &format!("{}:refs/pull/{number}/head", sha.trim())]);
+    git(
+        &clone,
+        &[
+            "push",
+            "origin",
+            &format!("{}:refs/pull/{number}/head", sha.trim()),
+        ],
+    );
     let mut keep: Vec<Box<dyn std::any::Any + Send>> = vec![Box::new(seed)];
-    keep.extend(dirs.into_iter().map(|d| Box::new(d) as Box<dyn std::any::Any + Send>));
+    keep.extend(
+        dirs.into_iter()
+            .map(|d| Box::new(d) as Box<dyn std::any::Any + Send>),
+    );
     (Keep(keep), clone)
 }

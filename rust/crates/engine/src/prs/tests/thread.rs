@@ -39,7 +39,9 @@ fn open_pr(id: &str, number: i64) -> Pr {
     }
 }
 
-fn snap_ok(snap: PrSnapshot) -> impl Fn((std::path::PathBuf, i64)) -> std::future::Ready<Result<PrSnapshot, ForgeError>> {
+fn snap_ok(
+    snap: PrSnapshot,
+) -> impl Fn((std::path::PathBuf, i64)) -> std::future::Ready<Result<PrSnapshot, ForgeError>> {
     move |_| std::future::ready(Ok(snap.clone()))
 }
 
@@ -86,7 +88,10 @@ async fn refresh_does_not_unmerge_in_flight() {
     release.cancel();
     assert!(refresh.await.unwrap(), "changed");
     let got = px.pr("gh-inflight");
-    assert_eq!((got.state.as_str(), got.group.as_str()), ("Merged", "merged"));
+    assert_eq!(
+        (got.state.as_str(), got.group.as_str()),
+        ("Merged", "merged")
+    );
 }
 
 #[tokio::test]
@@ -259,7 +264,10 @@ async fn schedule_refresh_does_not_block_and_single_flights() {
     let started = std::time::Instant::now();
     px.eng().schedule_refresh_pr_conversation("gh-sched");
     px.eng().schedule_refresh_pr_conversation("gh-sched");
-    assert!(started.elapsed() < Duration::from_millis(200), "blocked on the snapshot");
+    assert!(
+        started.elapsed() < Duration::from_millis(200),
+        "blocked on the snapshot"
+    );
     tokio::time::timeout(Duration::from_secs(2), entered.cancelled())
         .await
         .expect("snapshot called");
@@ -318,7 +326,10 @@ async fn refresh_preserves_merged_updated_at() {
     }));
     assert!(px.eng().refresh_pr_conversation("gh-merged-at").await);
     let got = px.pr("gh-merged-at");
-    assert_eq!((got.state.as_str(), got.group.as_str()), ("Merged", "merged"));
+    assert_eq!(
+        (got.state.as_str(), got.group.as_str()),
+        ("Merged", "merged")
+    );
     assert_eq!(got.updated_at, merged_at);
 }
 
@@ -332,7 +343,10 @@ async fn refresh_stores_allowed_merge_methods() {
         ..PrSnapshot::default()
     }));
     px.eng().refresh_pr_conversation("gh-methods").await;
-    assert_eq!(px.pr("gh-methods").allowed_merge_methods, ["squash", "rebase"]);
+    assert_eq!(
+        px.pr("gh-methods").allowed_merge_methods,
+        ["squash", "rebase"]
+    );
 }
 
 #[tokio::test]
@@ -375,7 +389,11 @@ async fn set_draft_refuses_settled_and_reports_failures() {
         .on_set_draft(|_| async { Err(ForgeError::failed("gh: boom")) });
     let (_, ok) = px.eng().set_pr_draft("gh-d", true).await;
     assert!(!ok);
-    assert!(feed_text(&px).iter().any(|t| t == "Convert to draft failed: gh: boom"));
+    assert!(
+        feed_text(&px)
+            .iter()
+            .any(|t| t == "Convert to draft failed: gh: boom")
+    );
     px.te.store.update_pr("gh-d", |p| p.state = "Merged".into());
     let (_, ok) = px.eng().set_pr_draft("gh-d", true).await;
     assert!(!ok);
@@ -395,13 +413,16 @@ fn feed_text(px: &Px) -> Vec<String> {
 }
 
 /// Captures the line notes each submitted review carried.
-fn capture_reviews(px: &Px) -> Arc<Mutex<Vec<(String, String, Vec<PendingLineComment>)>>> {
+type Reviews = Arc<Mutex<Vec<(String, String, Vec<PendingLineComment>)>>>;
+
+fn capture_reviews(px: &Px) -> Reviews {
     let got = Arc::new(Mutex::new(Vec::new()));
     let g = Arc::clone(&got);
-    px.forge.on_submit_review(move |(_, _, kind, body, comments)| {
-        g.lock().push((kind, body, comments));
-        async { Ok(()) }
-    });
+    px.forge
+        .on_submit_review(move |(_, _, kind, body, comments)| {
+            g.lock().push((kind, body, comments));
+            async { Ok(()) }
+        });
     got
 }
 
@@ -414,14 +435,29 @@ async fn add_comment_line_note_pends_until_review() {
         comments: vec![comment("gh-inline-1", "you", "nits")],
         ..PrSnapshot::default()
     }));
-    let (_, ok) = px.eng().add_pr_comment("gh-21", "auth.go", 12, "nits", 0, "").await;
+    let (_, ok) = px
+        .eng()
+        .add_pr_comment("gh-21", "auth.go", 12, "nits", 0, "")
+        .await;
     assert!(ok);
-    assert!(px.forge.calls_to("post_comment").is_empty(), "pending until submit");
+    assert!(
+        px.forge.calls_to("post_comment").is_empty(),
+        "pending until submit"
+    );
     let got = px.pr("gh-21");
     assert_eq!(got.pending_comments.len(), 1);
-    assert_eq!((got.pending_comments[0].file.as_str(), got.pending_comments[0].line), ("auth.go", 12));
+    assert_eq!(
+        (
+            got.pending_comments[0].file.as_str(),
+            got.pending_comments[0].line
+        ),
+        ("auth.go", 12)
+    );
     assert!(got.comments.unwrap_or_default().is_empty());
-    let (_, ok) = px.eng().submit_review("gh-21", "comment", "nits wrap").await;
+    let (_, ok) = px
+        .eng()
+        .submit_review("gh-21", "comment", "nits wrap")
+        .await;
     assert!(ok);
     let r = reviews.lock();
     assert_eq!(r.len(), 1);
@@ -433,11 +469,20 @@ async fn add_comment_line_note_pends_until_review() {
 async fn add_comment_multiline_pending() {
     let (px, _repo) = conv(open_pr("gh-22", 22));
     let reviews = capture_reviews(&px);
-    let (_, ok) = px.eng().add_pr_comment("gh-22", "auth.go", 12, "span", 10, "").await;
+    let (_, ok) = px
+        .eng()
+        .add_pr_comment("gh-22", "auth.go", 12, "span", 10, "")
+        .await;
     assert!(ok);
     let pc = px.pr("gh-22").pending_comments[0].clone();
     assert_eq!(
-        (pc.file.as_str(), pc.line, pc.start_line, pc.side.as_str(), pc.start_side.as_str()),
+        (
+            pc.file.as_str(),
+            pc.line,
+            pc.start_line,
+            pc.side.as_str(),
+            pc.start_side.as_str()
+        ),
         ("auth.go", 12, 10, "RIGHT", "RIGHT")
     );
     px.eng().submit_review("gh-22", "comment", "wrap").await;
@@ -448,15 +493,27 @@ async fn add_comment_multiline_pending() {
 #[tokio::test]
 async fn add_comment_left_side_and_bad_range() {
     let (px, _repo) = conv(open_pr("gh-l", 30));
-    px.eng().add_pr_comment("gh-l", "auth.go", -7, "old side", 12, "").await;
+    px.eng()
+        .add_pr_comment("gh-l", "auth.go", -7, "old side", 12, "")
+        .await;
     let pc = px.pr("gh-l").pending_comments[0].clone();
-    assert_eq!((pc.line, pc.side.as_str(), pc.start_line, pc.start_side.as_str()), (7, "LEFT", 0, ""));
+    assert_eq!(
+        (
+            pc.line,
+            pc.side.as_str(),
+            pc.start_line,
+            pc.start_side.as_str()
+        ),
+        (7, "LEFT", 0, "")
+    );
 }
 
 #[tokio::test]
 async fn add_comment_persists_finding_id() {
     let (px, _repo) = conv(open_pr("gh-find", 23));
-    px.eng().add_pr_comment("gh-find", "auth.go", 12, "nits", 0, "F-1").await;
+    px.eng()
+        .add_pr_comment("gh-find", "auth.go", 12, "nits", 0, "F-1")
+        .await;
     assert_eq!(px.pr("gh-find").pending_comments[0].finding_id, "F-1");
 }
 
@@ -464,15 +521,29 @@ async fn add_comment_persists_finding_id() {
 async fn add_comment_delete_removes_only_matching_draft() {
     let (px, _repo) = conv(open_pr("gh-two", 24));
     let eng = px.eng();
-    assert!(eng.add_pr_comment("gh-two", "auth.go", 12, "first", 0, "F-1").await.1);
-    assert!(eng.add_pr_comment("gh-two", "auth.go", 12, "second", 0, "F-2").await.1);
-    let (removed, ok) = eng.add_pr_comment("gh-two", "auth.go", 12, "", 0, "F-1").await;
+    assert!(
+        eng.add_pr_comment("gh-two", "auth.go", 12, "first", 0, "F-1")
+            .await
+            .1
+    );
+    assert!(
+        eng.add_pr_comment("gh-two", "auth.go", 12, "second", 0, "F-2")
+            .await
+            .1
+    );
+    let (removed, ok) = eng
+        .add_pr_comment("gh-two", "auth.go", 12, "", 0, "F-1")
+        .await;
     assert!(ok);
     assert_eq!(removed.id, "removed");
     let pending = px.pr("gh-two").pending_comments;
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].finding_id, "F-2");
-    assert!(!eng.add_pr_comment("gh-two", "auth.go", 12, "", 0, "F-9").await.1);
+    assert!(
+        !eng.add_pr_comment("gh-two", "auth.go", 12, "", 0, "F-9")
+            .await
+            .1
+    );
 }
 
 /// A workspace on the project plus one open finding per id.
@@ -506,9 +577,11 @@ fn finding_status(px: &Px, ws: &str, id: &str) -> Finding {
 }
 
 fn saw_findings_updated(px: &Px, ws: &str) -> bool {
-    px.te.events.all().iter().any(|e| {
-        matches!(e, EngineEvent::FindingsUpdated(r) if r.workspace_id == ws)
-    })
+    px.te
+        .events
+        .all()
+        .iter()
+        .any(|e| matches!(e, EngineEvent::FindingsUpdated(r) if r.workspace_id == ws))
 }
 
 #[tokio::test]
@@ -524,8 +597,15 @@ async fn submit_review_resolves_pending_findings() {
         title: "pr".into(),
         ..PrSnapshot::default()
     }));
-    px.eng().add_pr_comment("gh-resolve", "auth.go", 12, "nits", 0, "F-1").await;
-    assert!(px.eng().submit_review("gh-resolve", "comment", "wrap").await.1);
+    px.eng()
+        .add_pr_comment("gh-resolve", "auth.go", 12, "nits", 0, "F-1")
+        .await;
+    assert!(
+        px.eng()
+            .submit_review("gh-resolve", "comment", "wrap")
+            .await
+            .1
+    );
     assert_eq!(finding_status(&px, "ws-r", "F-1").status, "resolved");
     assert!(saw_findings_updated(&px, "ws-r"));
 }
@@ -538,8 +618,15 @@ async fn send_back_resolves_pending_findings() {
     });
     findings_ws(&px, "ws-sb", &["F-sb"]);
     capture_reviews(&px);
-    px.eng().add_pr_comment("gh-sendback-resolve", "auth.go", 12, "nits", 0, "F-sb").await;
-    assert!(px.eng().send_back_to_loop("gh-sendback-resolve", &["fix it".into()]).await.1);
+    px.eng()
+        .add_pr_comment("gh-sendback-resolve", "auth.go", 12, "nits", 0, "F-sb")
+        .await;
+    assert!(
+        px.eng()
+            .send_back_to_loop("gh-sendback-resolve", &["fix it".into()])
+            .await
+            .1
+    );
     assert!(px.pr("gh-sendback-resolve").pending_comments.is_empty());
     let f = finding_status(&px, "ws-sb", "F-sb");
     assert_eq!(f.status, "resolved");
@@ -556,8 +643,15 @@ async fn send_back_preserves_pending_on_forge_failure() {
     findings_ws(&px, "ws-sbf", &["F-sb-fail"]);
     px.forge
         .on_submit_review(|_| async { Err(ForgeError::failed("network down")) });
-    px.eng().add_pr_comment("gh-sendback-fail", "auth.go", 12, "nits", 0, "F-sb-fail").await;
-    assert!(!px.eng().send_back_to_loop("gh-sendback-fail", &["fix it".into()]).await.1);
+    px.eng()
+        .add_pr_comment("gh-sendback-fail", "auth.go", 12, "nits", 0, "F-sb-fail")
+        .await;
+    assert!(
+        !px.eng()
+            .send_back_to_loop("gh-sendback-fail", &["fix it".into()])
+            .await
+            .1
+    );
     let pending = px.pr("gh-sendback-fail").pending_comments;
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].finding_id, "F-sb-fail");
@@ -602,8 +696,16 @@ async fn send_back_resolves_local_pending_findings() {
         }],
         ..Pr::default()
     });
-    assert!(px.eng().send_back_to_loop("pr-sb-find", &["fix the unwrap".into()]).await.1);
-    assert_eq!(finding_status(&px, "L-sb-find", "F-local").status, "resolved");
+    assert!(
+        px.eng()
+            .send_back_to_loop("pr-sb-find", &["fix the unwrap".into()])
+            .await
+            .1
+    );
+    assert_eq!(
+        finding_status(&px, "L-sb-find", "F-local").status,
+        "resolved"
+    );
 }
 
 #[tokio::test]
@@ -624,15 +726,26 @@ async fn submit_review_leaves_dismissed_pending_findings() {
         ..open_pr("gh-dismiss", 27)
     });
     findings_ws(&px, "ws-d", &["F-ig", "F-inv", "F-open"]);
-    px.te.store.set_finding_status("ws-d", "F-ig", "ignored").unwrap();
-    px.te.store.set_finding_status("ws-d", "F-inv", "invalid").unwrap();
+    px.te
+        .store
+        .set_finding_status("ws-d", "F-ig", "ignored")
+        .unwrap();
+    px.te
+        .store
+        .set_finding_status("ws-d", "F-inv", "invalid")
+        .unwrap();
     capture_reviews(&px);
     px.forge.on_snapshot(snap_ok(PrSnapshot {
         state: "OPEN".into(),
         title: "pr".into(),
         ..PrSnapshot::default()
     }));
-    assert!(px.eng().submit_review("gh-dismiss", "comment", "wrap").await.1);
+    assert!(
+        px.eng()
+            .submit_review("gh-dismiss", "comment", "wrap")
+            .await
+            .1
+    );
     assert_eq!(finding_status(&px, "ws-d", "F-ig").status, "ignored");
     assert_eq!(finding_status(&px, "ws-d", "F-inv").status, "invalid");
     assert_eq!(finding_status(&px, "ws-d", "F-open").status, "resolved");
@@ -641,17 +754,19 @@ async fn submit_review_leaves_dismissed_pending_findings() {
 #[tokio::test]
 async fn add_comment_pending_only_event() {
     let (px, _repo) = conv(open_pr("pend-1", 1));
-    px.eng().add_pr_comment("pend-1", "auth.go", 12, "nits", 0, "").await;
+    px.eng()
+        .add_pr_comment("pend-1", "auth.go", 12, "nits", 0, "")
+        .await;
     let ev = px
         .te
         .events
         .all()
         .into_iter()
-        .filter_map(|e| match e {
+        .rev()
+        .find_map(|e| match e {
             EngineEvent::PrUpdated(u) if u.pr_id == "pend-1" => Some(u),
             _ => None,
         })
-        .last()
         .expect("pr.updated");
     assert!(ev.pending_only);
     let pending = ev.pending_comments.unwrap();
@@ -731,9 +846,17 @@ async fn locked_pr_refuses_conversation_writes() {
         ..open_pr("merged-1", 1)
     });
     let eng = px.eng();
-    assert!(!eng.add_pr_comment("merged-1", "", 0, "too late", 0, "").await.1);
+    assert!(
+        !eng.add_pr_comment("merged-1", "", 0, "too late", 0, "")
+            .await
+            .1
+    );
     assert!(!eng.submit_review("merged-1", "approve", "lgtm").await.1);
-    assert!(!eng.reply_pr_comment("merged-1", "gh-inline-1", "too late").await.1);
+    assert!(
+        !eng.reply_pr_comment("merged-1", "gh-inline-1", "too late")
+            .await
+            .1
+    );
     assert!(!eng.update_pr_details("merged-1", "nope", "nope").await.1);
 }
 
@@ -760,11 +883,17 @@ async fn update_details_local() {
             ..PrComment::default()
         }],
     ));
-    let (got, ok) = px.eng().update_pr_details("10", "new title", "new body").await;
+    let (got, ok) = px
+        .eng()
+        .update_pr_details("10", "new title", "new body")
+        .await;
     assert!(ok);
     assert_eq!(got.title, "new title");
     assert_eq!(got.comments.unwrap()[0].body_md, "new body");
-    assert!(!px.eng().update_pr_details("10", "  ", "x").await.1, "a title is required");
+    assert!(
+        !px.eng().update_pr_details("10", "  ", "x").await.1,
+        "a title is required"
+    );
 }
 
 #[tokio::test]
@@ -780,7 +909,10 @@ async fn update_comment_local() {
             ..PrComment::default()
         }],
     ));
-    let (got, ok) = px.eng().update_pr_comment("11", "c-you", "edited <b>").await;
+    let (got, ok) = px
+        .eng()
+        .update_pr_comment("11", "c-you", "edited <b>")
+        .await;
     assert!(ok);
     assert_eq!(got.body_md, "edited <b>");
     assert_eq!(got.body_html, "edited &lt;b&gt;");
@@ -796,14 +928,20 @@ async fn update_details_forge() {
         viewer_can_write: true,
         ..open_pr("gh-24", 24)
     });
-    let (got, ok) = px.eng().update_pr_details("gh-24", "ship it", "please review").await;
+    let (got, ok) = px
+        .eng()
+        .update_pr_details("gh-24", "ship it", "please review")
+        .await;
     assert!(ok);
     let edits = px.forge.calls_to("edit_pr");
     assert_eq!(edits.len(), 1);
     assert_eq!(edits[0][1..], ["24", "ship it", "please review"]);
     assert_eq!(got.title, "ship it");
 
-    let (got, ok) = px.eng().update_pr_details("gh-24", "ship it 2", "please review").await;
+    let (got, ok) = px
+        .eng()
+        .update_pr_details("gh-24", "ship it 2", "please review")
+        .await;
     assert!(ok);
     assert_eq!(
         px.forge.calls_to("edit_pr")[1].len(),
@@ -818,7 +956,10 @@ async fn update_details_forge() {
         viewer_login: "avery".into(),
         ..open_pr("gh-25", 25)
     });
-    assert!(!px.eng().update_pr_details("gh-25", "nope", "nope").await.1, "a reader cannot edit");
+    assert!(
+        !px.eng().update_pr_details("gh-25", "nope", "nope").await.1,
+        "a reader cannot edit"
+    );
 }
 
 #[tokio::test]
@@ -834,10 +975,19 @@ async fn update_comment_forge_skips_refresh() {
         }]),
         ..open_pr("gh-26", 26)
     });
-    let (got, ok) = px.eng().update_pr_comment("gh-26", "gh-comment-IC_1", "fixed").await;
+    let (got, ok) = px
+        .eng()
+        .update_pr_comment("gh-26", "gh-comment-IC_1", "fixed")
+        .await;
     assert!(ok);
-    assert!(px.forge.calls_to("snapshot").is_empty(), "persisted locally");
-    assert_eq!(px.forge.calls_to("edit_comment")[0][2..], ["gh-comment-IC_1", "fixed"]);
+    assert!(
+        px.forge.calls_to("snapshot").is_empty(),
+        "persisted locally"
+    );
+    assert_eq!(
+        px.forge.calls_to("edit_comment")[0][2..],
+        ["gh-comment-IC_1", "fixed"]
+    );
     assert_eq!(got.body_md, "fixed");
 }
 
@@ -868,14 +1018,23 @@ async fn reply_forge_skips_refresh() {
             ..PrComment::default()
         }))
     });
-    let (got, ok) = px.eng().reply_pr_comment("gh-27", "gh-inline-1", "thread reply").await;
+    let (got, ok) = px
+        .eng()
+        .reply_pr_comment("gh-27", "gh-inline-1", "thread reply")
+        .await;
     assert!(ok);
     assert!(px.forge.calls_to("snapshot").is_empty());
     assert_eq!(got.id, "gh-inline-999");
     assert_eq!(got.in_reply_to_id, "gh-inline-1");
     assert_eq!(got.parent_id, "gh-review-9");
     assert_eq!(got.thread_id, "PRRT_1");
-    assert!(px.pr("gh-27").comments.unwrap().iter().any(|c| c.id == "gh-inline-999"));
+    assert!(
+        px.pr("gh-27")
+            .comments
+            .unwrap()
+            .iter()
+            .any(|c| c.id == "gh-inline-999")
+    );
     assert!(px.te.events.has("pr.comment"));
 }
 
@@ -895,7 +1054,10 @@ async fn reply_local_threads_under_root() {
     ));
     let (got, ok) = px.eng().reply_pr_comment("12", "c-root", "agreed").await;
     assert!(ok);
-    assert_eq!((got.in_reply_to_id.as_str(), got.thread_id.as_str()), ("c-root", "c-root"));
+    assert_eq!(
+        (got.in_reply_to_id.as_str(), got.thread_id.as_str()),
+        ("c-root", "c-root")
+    );
     assert_eq!((got.path.as_str(), got.line), ("a.go", 3));
     let (_, ok) = px.eng().reply_pr_comment("12", "nope", "x").await;
     assert!(!ok);
@@ -908,7 +1070,10 @@ async fn drop_remembered_comments() {
         .remember_dropped_comments("p1", &["gh-inline-1".into(), "gh-inline-2".into()]);
     let got = px.eng().drop_remembered_comments(
         "p1",
-        vec![comment("gh-inline-1", "", ""), comment("gh-inline-3", "", "")],
+        vec![
+            comment("gh-inline-1", "", ""),
+            comment("gh-inline-3", "", ""),
+        ],
     );
     assert_eq!(got.len(), 1);
     assert_eq!(got[0].id, "gh-inline-3");
@@ -948,11 +1113,17 @@ async fn delete_forge_comment_skips_refresh_and_holds() {
     assert!(ok);
     assert!(px.forge.calls_to("snapshot").is_empty());
     assert_eq!(px.forge.calls_to("delete_comment")[0][2], "gh-inline-1");
-    assert!(got.comments.unwrap_or_default().is_empty(), "root and replies gone");
+    assert!(
+        got.comments.unwrap_or_default().is_empty(),
+        "root and replies gone"
+    );
     let held = px
         .eng()
         .drop_remembered_comments("gh-28", vec![comment("gh-inline-1", "", "")]);
-    assert!(held.is_empty(), "a stale snapshot cannot revive the deleted row");
+    assert!(
+        held.is_empty(),
+        "a stale snapshot cannot revive the deleted row"
+    );
 }
 
 #[tokio::test]
@@ -978,8 +1149,19 @@ async fn delete_forge_conversation_comment() {
     });
     let (got, ok) = px.eng().delete_pr_comment("gh-30", "gh-comment-IC_1").await;
     assert!(ok);
-    assert!(got.comments.unwrap().iter().all(|c| c.id != "gh-comment-IC_1"));
-    assert!(!px.eng().delete_pr_comment("gh-30", "gh-review-PRR_1").await.1, "reviews stay");
+    assert!(
+        got.comments
+            .unwrap()
+            .iter()
+            .all(|c| c.id != "gh-comment-IC_1")
+    );
+    assert!(
+        !px.eng()
+            .delete_pr_comment("gh-30", "gh-review-PRR_1")
+            .await
+            .1,
+        "reviews stay"
+    );
 }
 
 #[tokio::test]
@@ -1003,7 +1185,13 @@ async fn delete_forge_comment_restores_on_failure() {
         .on_delete_comment(|_| async { Err(ForgeError::failed("denied")) });
     assert!(!px.eng().delete_pr_comment("gh-29", "gh-inline-1").await.1);
     let stored = px.pr("gh-29");
-    assert!(stored.comments.unwrap().iter().any(|c| c.id == "gh-inline-1"));
+    assert!(
+        stored
+            .comments
+            .unwrap()
+            .iter()
+            .any(|c| c.id == "gh-inline-1")
+    );
     assert_eq!(stored.updated_at, "2026-08-01T12:00:00Z");
     assert!(
         px.eng()
@@ -1079,21 +1267,27 @@ fn resolvable() -> Pr {
 #[tokio::test]
 async fn set_forge_thread_resolved_skips_refresh() {
     let (px, _repo) = conv(resolvable());
-    let (got, ok) = px.eng().set_pr_thread_resolved("gh-29", "PRRT_1", true).await;
+    let (got, ok) = px
+        .eng()
+        .set_pr_thread_resolved("gh-29", "PRRT_1", true)
+        .await;
     assert!(ok);
     assert!(px.forge.calls_to("snapshot").is_empty());
-    assert_eq!(px.forge.calls_to("set_thread_resolved")[0][1..], ["PRRT_1", "true"]);
+    assert_eq!(
+        px.forge.calls_to("set_thread_resolved")[0][1..],
+        ["PRRT_1", "true"]
+    );
     assert!(got.comments.unwrap()[0].resolved);
     let ev = px
         .te
         .events
         .all()
         .into_iter()
-        .filter_map(|e| match e {
+        .rev()
+        .find_map(|e| match e {
             EngineEvent::PrUpdated(u) if u.pr_id == "gh-29" => Some(u),
             _ => None,
         })
-        .last()
         .unwrap();
     assert!(ev.pending_only);
 }
@@ -1109,8 +1303,14 @@ async fn set_forge_thread_resolved_refuses_row_ids() {
         }]),
         ..resolvable()
     });
-    let (_, ok) = px.eng().set_pr_thread_resolved("gh-29", "gh-inline-5", true).await;
-    assert!(!ok, "a note with no thread node cannot resolve on the forge");
+    let (_, ok) = px
+        .eng()
+        .set_pr_thread_resolved("gh-29", "gh-inline-5", true)
+        .await;
+    assert!(
+        !ok,
+        "a note with no thread node cannot resolve on the forge"
+    );
     assert!(px.forge.calls_to("set_thread_resolved").is_empty());
 }
 
@@ -1164,7 +1364,10 @@ async fn set_local_thread_resolved() {
     let (got, ok) = px.eng().set_pr_thread_resolved("14", "c-reply", true).await;
     assert!(ok);
     let cs = got.comments.unwrap();
-    assert!(cs.iter().all(|c| c.resolved && c.thread_id == "c-root"), "{cs:?}");
+    assert!(
+        cs.iter().all(|c| c.resolved && c.thread_id == "c-root"),
+        "{cs:?}"
+    );
 }
 
 #[tokio::test]
@@ -1212,7 +1415,10 @@ async fn toggle_reaction_local() {
         }]),
         ..Pr::default()
     });
-    let (got, ok) = px.eng().toggle_pr_comment_reaction("local-rxn", "c1", "+1").await;
+    let (got, ok) = px
+        .eng()
+        .toggle_pr_comment_reaction("local-rxn", "c1", "+1")
+        .await;
     assert!(ok);
     assert_eq!(
         got.comments.unwrap()[0].reactions,
@@ -1222,10 +1428,18 @@ async fn toggle_reaction_local() {
             mine: true
         }]
     );
-    let (got, ok) = px.eng().toggle_pr_comment_reaction("local-rxn", "c1", "+1").await;
+    let (got, ok) = px
+        .eng()
+        .toggle_pr_comment_reaction("local-rxn", "c1", "+1")
+        .await;
     assert!(ok);
     assert!(got.comments.unwrap()[0].reactions.is_empty());
-    assert!(!px.eng().toggle_pr_comment_reaction("local-rxn", "c1", "nope").await.1);
+    assert!(
+        !px.eng()
+            .toggle_pr_comment_reaction("local-rxn", "c1", "nope")
+            .await
+            .1
+    );
 }
 
 #[tokio::test]
@@ -1247,15 +1461,24 @@ async fn toggle_reaction_forge() {
         .toggle_pr_comment_reaction("gh-rxn", "gh-comment-IC_1", "heart")
         .await;
     assert!(ok);
-    assert_eq!(px.forge.calls_to("set_reaction")[0][1..], ["IC_1", "heart", "true"]);
-    assert!(recur_domain::reaction_mine(&updated.comments.unwrap()[0].reactions, "heart"));
+    assert_eq!(
+        px.forge.calls_to("set_reaction")[0][1..],
+        ["IC_1", "heart", "true"]
+    );
+    assert!(recur_domain::reaction_mine(
+        &updated.comments.unwrap()[0].reactions,
+        "heart"
+    ));
     let (updated, ok) = px
         .eng()
         .toggle_pr_comment_reaction("gh-rxn", "gh-comment-IC_1", "heart")
         .await;
     assert!(ok);
     assert_eq!(px.forge.calls_to("set_reaction")[1][3], "false");
-    assert!(!recur_domain::reaction_mine(&updated.comments.unwrap()[0].reactions, "heart"));
+    assert!(!recur_domain::reaction_mine(
+        &updated.comments.unwrap()[0].reactions,
+        "heart"
+    ));
 }
 
 #[tokio::test]
@@ -1306,5 +1529,10 @@ async fn mentionable_users_through_the_forge() {
     let got = px.eng().search_pr_mentionable_users("gh-40", "  av ").await;
     assert_eq!(got[0].login, "av-match");
     px.add_pr(local_pr("15", Vec::new()));
-    assert!(px.eng().search_pr_mentionable_users("15", "av").await.is_empty());
+    assert!(
+        px.eng()
+            .search_pr_mentionable_users("15", "av")
+            .await
+            .is_empty()
+    );
 }

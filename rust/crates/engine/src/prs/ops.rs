@@ -39,7 +39,11 @@ pub(crate) async fn bounded<T>(
 
 /// A negative line is the LEFT (old) side of a split diff.
 pub fn split_pending_line(line: i64) -> (&'static str, i64) {
-    if line < 0 { ("LEFT", -line) } else { ("RIGHT", line) }
+    if line < 0 {
+        ("LEFT", -line)
+    } else {
+        ("RIGHT", line)
+    }
 }
 
 /// LEFT, or RIGHT for anything else.
@@ -317,7 +321,9 @@ impl Engine {
             );
         }
         if let Some(forge) = self.pr_forge(&pr) {
-            return self.add_forge_pr_comment(forge.as_ref(), &pr, file, line, body).await;
+            return self
+                .add_forge_pr_comment(forge.as_ref(), &pr, file, line, body)
+                .await;
         }
         let c = now_comment("AR", "You", &html_escape(body));
         let saved = self.store.update_pr(pr_id, |p| {
@@ -431,7 +437,9 @@ impl Engine {
             if (kind == "approve" || kind == "request") && !pr.can_approve_review() {
                 return (pr, false);
             }
-            return self.submit_forge_review(forge.as_ref(), pr, kind, body).await;
+            return self
+                .submit_forge_review(forge.as_ref(), pr, kind, body)
+                .await;
         }
         let (_, state_words) = review_label_state(kind);
         let mut c = now_comment("AR", "You", &html_escape(body.trim()));
@@ -488,8 +496,7 @@ impl Engine {
             return (pr, false);
         }
         self.resolve_pending_findings(&pr, &pending);
-        self.store
-            .update_pr(&pr.id, |p| p.pending_comments.clear());
+        self.store.update_pr(&pr.id, |p| p.pending_comments.clear());
         self.refresh_pr_conversation(&pr.id).await;
         self.publish_pr_updated(&pr.id);
         match self.store.pr(&pr.id) {
@@ -528,8 +535,9 @@ impl Engine {
         if n == 0 {
             return;
         }
-        self.bus
-            .publish(EngineEvent::FindingsUpdated(WorkspaceRef { workspace_id: ws_id }));
+        self.bus.publish(EngineEvent::FindingsUpdated(WorkspaceRef {
+            workspace_id: ws_id,
+        }));
     }
 
     /// The workspace this PR's findings live on: a live linked workspace,
@@ -1087,7 +1095,11 @@ impl Engine {
     }
 
     /// People who can be @mentioned on a forge PR (empty for Local PRs).
-    pub async fn search_pr_mentionable_users(&self, pr_id: &str, query: &str) -> Vec<PrParticipant> {
+    pub async fn search_pr_mentionable_users(
+        &self,
+        pr_id: &str,
+        query: &str,
+    ) -> Vec<PrParticipant> {
         let Some(pr) = self.store.pr(pr_id) else {
             return Vec::new();
         };

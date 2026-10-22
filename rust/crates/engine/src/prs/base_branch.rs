@@ -20,7 +20,11 @@ impl Engine {
     /// Sets the branch this workspace compares against. The worktree is not
     /// rebased (that stays Update with base). The main working copy has no
     /// merge base.
-    pub async fn set_workspace_base_branch(&self, workspace_id: &str, base_branch: &str) -> Result<Workspace> {
+    pub async fn set_workspace_base_branch(
+        &self,
+        workspace_id: &str,
+        base_branch: &str,
+    ) -> Result<Workspace> {
         let base_branch = base_branch.trim();
         if base_branch.is_empty() {
             return Err("base branch is required".into());
@@ -30,7 +34,9 @@ impl Engine {
             .workspace(workspace_id)
             .ok_or_else(|| EngineError(format!("workspace {workspace_id:?} not found")))?;
         if ws.is_main {
-            return Err("the main working copy has no merge base — it tracks the checkout as-is".into());
+            return Err(
+                "the main working copy has no merge base — it tracks the checkout as-is".into(),
+            );
         }
         if ws.base_branch == base_branch {
             return Ok(ws);
@@ -45,11 +51,12 @@ impl Engine {
             .store
             .project(&ws.project_id)
             .filter(|p| !p.repo_path.is_empty())
-            .ok_or_else(|| EngineError(format!("project for workspace {workspace_id:?} not found")))?;
+            .ok_or_else(|| {
+                EngineError(format!("project for workspace {workspace_id:?} not found"))
+            })?;
         let mgr = recur_git::Manager::new(&proj.repo_path, &self.worktree_root);
         let pr = self.store.pr_by_workspace(workspace_id);
-        let open_pr = pr
-            .filter(|p| p.state != "Merged" && p.group != "merged");
+        let open_pr = pr.filter(|p| p.state != "Merged" && p.group != "merged");
         let validate = async {
             if !mgr.base_branch_exists(base_branch).await {
                 return Err(EngineError(format!(
@@ -76,9 +83,15 @@ impl Engine {
             .update_workspace(workspace_id, |w| w.base_branch = base_branch.to_owned())
             .ok_or_else(|| EngineError(format!("workspace {workspace_id:?} not found")))?;
         if let Some(pr) = &open_pr {
-            self.retarget_open_pr(&mgr, &updated, &pr.id, base_branch).await;
+            self.retarget_open_pr(&mgr, &updated, &pr.id, base_branch)
+                .await;
         }
-        self.publish_loop_updated(&updated.id, updated.state.clone(), &updated.phase, updated.iteration);
+        self.publish_loop_updated(
+            &updated.id,
+            updated.state.clone(),
+            &updated.phase,
+            updated.iteration,
+        );
         self.bus.publish(EngineEvent::WorkspaceFsChanged(FsChanged {
             workspace_id: workspace_id.to_owned(),
             ..FsChanged::default()

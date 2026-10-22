@@ -154,8 +154,14 @@ mod tests {
         assert_eq!(id(&pr("ws-linked"), &[host(), linked()]), "ws-host");
         assert_eq!(id(&pr(""), &[host()]), "ws-host");
         assert_eq!(id(&pr(""), &[archived(host())]), "");
-        assert_eq!(id(&pr("ws-linked"), &[host(), archived(linked())]), "ws-host");
-        assert_eq!(id(&pr("ws-linked"), &[archived(host()), linked()]), "ws-linked");
+        assert_eq!(
+            id(&pr("ws-linked"), &[host(), archived(linked())]),
+            "ws-host"
+        );
+        assert_eq!(
+            id(&pr("ws-linked"), &[archived(host()), linked()]),
+            "ws-linked"
+        );
     }
 
     #[test]
@@ -177,16 +183,26 @@ mod tests {
         assert!(!run(&pr(""), &[host()], &["ws-other"]));
         assert!(!run(&pr(""), &[host()], &[]));
         assert!(!run(&pr(""), &[archived(host())], &["ws-host"]));
-        assert!(run(&pr("ws-linked"), &[archived(host()), linked()], &["ws-linked"]));
+        assert!(run(
+            &pr("ws-linked"),
+            &[archived(host()), linked()],
+            &["ws-linked"]
+        ));
     }
 
     #[test]
     fn host_running_count() {
         let n = |w: &[Workspace], r: &[&str]| pr_chat_host_running_count(w, &set(r));
-        assert_eq!(n(&[host(), linked(), other_host()], &["ws-host", "ws-linked"]), 1);
+        assert_eq!(
+            n(&[host(), linked(), other_host()], &["ws-host", "ws-linked"]),
+            1
+        );
         assert_eq!(n(&[host(), linked()], &["ws-linked"]), 0);
         assert_eq!(n(&[host(), other_host()], &["ws-host", "ws-host-2"]), 2);
-        assert_eq!(n(&[archived(host()), other_host()], &["ws-host", "ws-host-2"]), 1);
+        assert_eq!(
+            n(&[archived(host()), other_host()], &["ws-host", "ws-host-2"]),
+            1
+        );
         assert_eq!(n(&[host(), host()], &["ws-host"]), 1);
     }
 
@@ -194,31 +210,61 @@ mod tests {
     fn host_unseen_count() {
         let n = |w: &[Workspace], c: &[(&str, i64)]| pr_chat_host_unseen_count(w, &counts(c));
         let all = [host(), linked(), other_host()];
-        assert_eq!(n(&all, &[("ws-host", 2), ("ws-host-2", 1), ("ws-linked", 9)]), 3);
+        assert_eq!(
+            n(&all, &[("ws-host", 2), ("ws-host-2", 1), ("ws-linked", 9)]),
+            3
+        );
         assert_eq!(n(&[host(), linked()], &[("ws-linked", 4)]), 0);
-        assert_eq!(n(&[archived(host()), other_host()], &[("ws-host", 2), ("ws-host-2", 1)]), 1);
+        assert_eq!(
+            n(
+                &[archived(host()), other_host()],
+                &[("ws-host", 2), ("ws-host-2", 1)]
+            ),
+            1
+        );
         assert_eq!(n(&[host(), host()], &[("ws-host", 3)]), 3);
         assert_eq!(n(&[host(), other_host()], &[]), 0);
-        assert_eq!(n(&[host(), other_host()], &[("ws-host", 2), ("ws-host-2", 1)]), 3);
+        assert_eq!(
+            n(&[host(), other_host()], &[("ws-host", 2), ("ws-host-2", 1)]),
+            3
+        );
         assert_eq!(n(&[host(), other_host()], &[("ws-host-2", 1)]), 1);
     }
 
     #[test]
     fn pr_for_chat_workspace() {
-        assert_eq!(pr_id_for_chat_workspace("ws-host", &[host(), linked()]), "pr-1");
-        assert_eq!(pr_id_for_chat_workspace("ws-linked", &[host(), linked()]), "");
+        assert_eq!(
+            pr_id_for_chat_workspace("ws-host", &[host(), linked()]),
+            "pr-1"
+        );
+        assert_eq!(
+            pr_id_for_chat_workspace("ws-linked", &[host(), linked()]),
+            ""
+        );
     }
 
     #[test]
     fn unseen_count() {
-        let n = |p: &Pr, w: &[Workspace], c: &[(&str, i64)]| pr_unseen_count(Some(p), w, &counts(c));
+        let n =
+            |p: &Pr, w: &[Workspace], c: &[(&str, i64)]| pr_unseen_count(Some(p), w, &counts(c));
         assert_eq!(n(&pr(""), &[host()], &[("ws-host", 2)]), 2);
-        assert_eq!(n(&pr("ws-linked"), &[host(), linked()], &[("ws-linked", 1), ("ws-host", 9)]), 9);
+        assert_eq!(
+            n(
+                &pr("ws-linked"),
+                &[host(), linked()],
+                &[("ws-linked", 1), ("ws-host", 9)]
+            ),
+            9
+        );
         assert_eq!(n(&pr(""), &[host()], &[("ws-other", 3)]), 0);
         assert_eq!(n(&pr(""), &[host()], &[]), 0);
         assert_eq!(n(&pr(""), &[archived(host())], &[("ws-host", 2)]), 0);
         assert_eq!(
-            n(&pr("ws-linked"), &[archived(host()), linked()], &[("ws-linked", 1), ("ws-host", 9)]),
+            n(
+                &pr("ws-linked"),
+                &[archived(host()), linked()],
+                &[("ws-linked", 1), ("ws-host", 9)]
+            ),
             1
         );
     }

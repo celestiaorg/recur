@@ -51,7 +51,11 @@ impl Engine {
     }
 
     /// Drops rows the viewer just deleted that a stale snapshot still lists.
-    pub(crate) fn drop_remembered_comments(&self, pr_id: &str, cs: Vec<PrComment>) -> Vec<PrComment> {
+    pub(crate) fn drop_remembered_comments(
+        &self,
+        pr_id: &str,
+        cs: Vec<PrComment>,
+    ) -> Vec<PrComment> {
         if cs.is_empty() {
             return cs;
         }
@@ -108,7 +112,12 @@ impl Engine {
         cs
     }
 
-    pub(crate) fn remember_comment_reactions(&self, pr_id: &str, comment_id: &str, rs: &[PrReaction]) {
+    pub(crate) fn remember_comment_reactions(
+        &self,
+        pr_id: &str,
+        comment_id: &str,
+        rs: &[PrReaction],
+    ) {
         if pr_id.is_empty() || comment_id.is_empty() {
             return;
         }

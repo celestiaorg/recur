@@ -48,7 +48,10 @@ fn message_pr() -> Pr {
 #[test]
 fn local_merge_commit_messages() {
     let pr = message_pr();
-    let (sq, mg) = (SquashCommitMessage::TitleAndCommits, MergeCommitMessage::Title);
+    let (sq, mg) = (
+        SquashCommitMessage::TitleAndCommits,
+        MergeCommitMessage::Title,
+    );
     let squash = local_merge_commit_message(&pr, &MergeMethod::Squash, &sq, &mg);
     assert_eq!(
         squash,
@@ -73,7 +76,12 @@ fn local_merge_commit_messages() {
         "Merge Local PR #42: Fix squash commit messages"
     );
     assert_eq!(
-        local_merge_commit_message(&pr, &MergeMethod::Merge, &sq, &MergeCommitMessage::TitleAndDescription),
+        local_merge_commit_message(
+            &pr,
+            &MergeMethod::Merge,
+            &sq,
+            &MergeCommitMessage::TitleAndDescription
+        ),
         "Merge Local PR #42: Fix squash commit messages\n\nPrefer GitHub-style squash messages."
     );
     let empty = Pr {
@@ -82,7 +90,10 @@ fn local_merge_commit_messages() {
         ..Pr::default()
     };
     let got = local_merge_commit_message(&empty, &MergeMethod::Squash, &sq, &mg);
-    assert!(got.starts_with("Loop changes") && !got.contains("mystery"), "{got}");
+    assert!(
+        got.starts_with("Loop changes") && !got.contains("mystery"),
+        "{got}"
+    );
     let multi = Pr {
         number: 1,
         title: "Ship it\n\nmore detail".into(),
@@ -107,7 +118,10 @@ fn local_merge_commit_messages() {
 #[test]
 fn forge_merge_messages() {
     let forge = recur_forge::testing::FakeForge::new();
-    let (sq, mg) = (SquashCommitMessage::TitleAndCommits, MergeCommitMessage::Title);
+    let (sq, mg) = (
+        SquashCommitMessage::TitleAndCommits,
+        MergeCommitMessage::Title,
+    );
     let gh = Pr {
         source: PrSource::GitHub,
         ..message_pr()
@@ -115,7 +129,10 @@ fn forge_merge_messages() {
     let got = forge.merge_message(&gh, &MergeMethod::Squash, &sq, &mg);
     assert_eq!(got.subject, "Fix squash commit messages (#42)");
     assert!(!got.combined().contains("Recur Local PR"));
-    assert_eq!(got.body, "* recur(Coder): use PR title for squash\n* recur(Reviewer): nits");
+    assert_eq!(
+        got.body,
+        "* recur(Coder): use PR title for squash\n* recur(Reviewer): nits"
+    );
     assert!(!got.omit_body);
     let bare = Pr {
         number: 9,
@@ -131,7 +148,12 @@ fn forge_merge_messages() {
         source: PrSource::GitHub,
         ..Pr::default()
     };
-    assert_eq!(forge.merge_message(&untitled, &MergeMethod::Squash, &sq, &mg).subject, "");
+    assert_eq!(
+        forge
+            .merge_message(&untitled, &MergeMethod::Squash, &sq, &mg)
+            .subject,
+        ""
+    );
     let got = forge.merge_message(&gh, &MergeMethod::Merge, &sq, &mg);
     assert_eq!(got.subject, "Fix squash commit messages (#42)");
     assert_eq!(got.body, "");
@@ -164,7 +186,13 @@ fn workspace_merge_commit_messages() {
         "Ship dark mode\n\n* add theme tokens\n* wire settings toggle"
     );
     assert_eq!(
-        workspace_merge_commit_message(&ws, "main", &MergeMethod::Squash, &commits, &SquashCommitMessage::Title),
+        workspace_merge_commit_message(
+            &ws,
+            "main",
+            &MergeMethod::Squash,
+            &commits,
+            &SquashCommitMessage::Title
+        ),
         "Ship dark mode"
     );
     assert_eq!(
@@ -182,7 +210,13 @@ fn workspace_merge_commit_messages() {
         ..Workspace::default()
     };
     assert_eq!(
-        workspace_merge_commit_message(&unnamed, "main", &MergeMethod::Merge, &[], &SquashCommitMessage::Title),
+        workspace_merge_commit_message(
+            &unnamed,
+            "main",
+            &MergeMethod::Merge,
+            &[],
+            &SquashCommitMessage::Title
+        ),
         "Merge Workspace changes into main"
     );
 }
@@ -232,10 +266,19 @@ async fn local_merge_advances_base() {
     let before = git_out(&repo.path, &["rev-parse", "main"]).unwrap();
     let (merged, ok) = t.engine.merge_pr(&pr.id, &MergeMethod::default()).await;
     assert!(ok);
-    assert_eq!((merged.state.as_str(), merged.group.as_str()), ("Merged", "merged"));
+    assert_eq!(
+        (merged.state.as_str(), merged.group.as_str()),
+        ("Merged", "merged")
+    );
     assert_ne!(git_out(&repo.path, &["rev-parse", "main"]).unwrap(), before);
-    assert_eq!(t.store.workspace(&id).unwrap().state, WorkspaceState::Merged);
-    assert!(t.engine.merge_pr(&pr.id, &MergeMethod::default()).await.1, "idempotent");
+    assert_eq!(
+        t.store.workspace(&id).unwrap().state,
+        WorkspaceState::Merged
+    );
+    assert!(
+        t.engine.merge_pr(&pr.id, &MergeMethod::default()).await.1,
+        "idempotent"
+    );
     let notes: Vec<String> = t
         .store
         .feed(&id)
@@ -244,8 +287,10 @@ async fn local_merge_advances_base() {
         .map(|f| f.text)
         .collect();
     assert!(
-        notes.iter().any(|n| n.starts_with("Merge: Local PR <code>#")
-            && n.ends_with("into <code>main</code> on disk — you were the only gate.")),
+        notes
+            .iter()
+            .any(|n| n.starts_with("Merge: Local PR <code>#")
+                && n.ends_with("into <code>main</code> on disk — you were the only gate.")),
         "{notes:?}"
     );
     t.close().await;
@@ -261,7 +306,10 @@ async fn pr_created_at_pr_open() {
     assert_eq!(pr.base, "main");
     let files = pr.files.clone().unwrap_or_default();
     assert!(pr.file_count > 0 && !files.is_empty());
-    let work = files.iter().find(|f| f.path == "work.txt").expect("work.txt in the diff");
+    let work = files
+        .iter()
+        .find(|f| f.path == "work.txt")
+        .expect("work.txt in the diff");
     assert!(work.diff.add > 0);
     assert!(pr.diff.add > 0);
     let commits = pr.commits.clone().unwrap_or_default();
@@ -280,7 +328,10 @@ async fn pr_created_at_pr_open() {
     assert!(body.contains("Converged to 0 independent-review findings."));
     assert!(!body.contains("Opened by Recur"));
     let desc = pr_description(&pr);
-    assert!(desc.contains("Add a real PR feature") && desc.contains("## Changes"), "{desc}");
+    assert!(
+        desc.contains("Add a real PR feature") && desc.contains("## Changes"),
+        "{desc}"
+    );
     assert!(pr.summary.as_ref().is_some_and(|s| !s.is_empty()));
     assert!(!pr.focus.title.is_empty());
     assert!(
@@ -290,10 +341,12 @@ async fn pr_created_at_pr_open() {
             .any(|c| c.name == "Independent review" && c.passed)
     );
     assert!(
-        t.store.feed(&id).unwrap_or_default().iter().any(|f| f
-            .text
-            .contains(&format!(r#"data-pr="{}""#, pr.id))
-            && f.text.contains("Completed in"))
+        t.store
+            .feed(&id)
+            .unwrap_or_default()
+            .iter()
+            .any(|f| f.text.contains(&format!(r#"data-pr="{}""#, pr.id))
+                && f.text.contains("Completed in"))
     );
     assert!(t.events.has("pr.updated"));
 
@@ -302,8 +355,14 @@ async fn pr_created_at_pr_open() {
     let reopened = recur_store::Store::open(&path).unwrap();
     let pr2 = reopened.pr_by_workspace(&id).expect("persisted");
     assert_eq!(pr2.file_count, pr.file_count);
-    assert_eq!(pr2.files.map(|f| f.len()), pr.files.as_ref().map(|f| f.len()));
-    assert_eq!(pr2.commits.map(|c| c.len()), pr.commits.as_ref().map(|c| c.len()));
+    assert_eq!(
+        pr2.files.map(|f| f.len()),
+        pr.files.as_ref().map(|f| f.len())
+    );
+    assert_eq!(
+        pr2.commits.map(|c| c.len()),
+        pr.commits.as_ref().map(|c| c.len())
+    );
     t.close().await;
 }
 
@@ -328,13 +387,24 @@ fn describe_pr_converge() -> Arc<dyn Provider> {
 const WIRE: &str = "The human already wrote this change. Review the current worktree, then fix and re-review until the policy bar passes, then open a PR.";
 const LABEL: &str = "Review & fix to a PR";
 
-async fn prompt_action_pr(provider: Arc<dyn Provider>) -> (TestEngine, crate::testing::TempRepo, Pr) {
+async fn prompt_action_pr(
+    provider: Arc<dyn Provider>,
+) -> (TestEngine, crate::testing::TempRepo, Pr) {
     let repo = init_repo();
     let t = TestEngine::new(Some(provider));
     let proj = add_project(&t.store, &repo.path);
     let (rec, acquired) = t
         .engine
-        .queue_start_workspace(&proj, WIRE, LABEL, "", &AutonomyLevel::default(), "", "", None)
+        .queue_start_workspace(
+            &proj,
+            WIRE,
+            LABEL,
+            "",
+            &AutonomyLevel::default(),
+            "",
+            "",
+            None,
+        )
         .await
         .unwrap();
     assert!(acquired);
@@ -358,7 +428,10 @@ async fn local_pr_description_skips_prompt_action_wire() {
     let (t, _repo, pr) = prompt_action_pr(ConvergeRunner::new(&[0]).provider()).await;
     assert_eq!(pr.title, LABEL);
     let got = pr_description(&pr);
-    assert!(!got.contains("The human already wrote") && !got.contains("Do not reopen scope"), "{got}");
+    assert!(
+        !got.contains("The human already wrote") && !got.contains("Do not reopen scope"),
+        "{got}"
+    );
     assert!(got.contains("## Changes"), "{got}");
     t.close().await;
 }
@@ -403,7 +476,11 @@ async fn maestro_context_includes_pr_thread() {
         })
         .unwrap();
     let ctx = t.engine.maestro_context(&ws);
-    assert!(ctx.pr_thread.contains("ada on a.go:3: off-by-one"), "{}", ctx.pr_thread);
+    assert!(
+        ctx.pr_thread.contains("ada on a.go:3: off-by-one"),
+        "{}",
+        ctx.pr_thread
+    );
     let prompt = crate::roles::maestro_system_prompt(&ctx);
     assert!(prompt.contains("off-by-one") && prompt.contains("reenter_phase"));
 }
@@ -429,11 +506,27 @@ async fn local_pr_activity_touches_updated_at() {
             ..FileDiff::default()
         }])
     });
-    assert_eq!(px.pr("local-touch").updated_at, frozen, "a cache fill does not bump");
+    assert_eq!(
+        px.pr("local-touch").updated_at,
+        frozen,
+        "a cache fill does not bump"
+    );
     let eng = px.eng();
-    assert!(eng.add_pr_comment("local-touch", "a.go", 1, "draft note", 0, "").await.1);
-    assert_eq!(px.pr("local-touch").updated_at, frozen, "an unsubmitted draft does not bump");
-    assert!(eng.add_pr_comment("local-touch", "", 0, "please take a look", 0, "").await.1);
+    assert!(
+        eng.add_pr_comment("local-touch", "a.go", 1, "draft note", 0, "")
+            .await
+            .1
+    );
+    assert_eq!(
+        px.pr("local-touch").updated_at,
+        frozen,
+        "an unsubmitted draft does not bump"
+    );
+    assert!(
+        eng.add_pr_comment("local-touch", "", 0, "please take a look", 0, "")
+            .await
+            .1
+    );
     let got = px.pr("local-touch");
     assert_ne!(got.updated_at, frozen);
     assert_eq!(got.created_at, frozen);
@@ -441,7 +534,9 @@ async fn local_pr_activity_touches_updated_at() {
     assert!(eng.submit_review("local-touch", "comment", "lgtm").await.1);
     assert_ne!(px.pr("local-touch").updated_at, frozen);
     st.update_pr("local-touch", |p| p.updated_at = frozen.into());
-    let (updated, ok) = eng.update_pr_details("local-touch", "new title", "new body").await;
+    let (updated, ok) = eng
+        .update_pr_details("local-touch", "new title", "new body")
+        .await;
     assert!(ok);
     assert_ne!(updated.updated_at, frozen);
 }
@@ -532,7 +627,11 @@ fn merge_commit_log_keeps_diffs_and_fills_body() {
     let got = merge_commit_log(&existing, fresh);
     assert_eq!(got.len(), 1);
     assert_eq!(
-        (got[0].body.as_str(), got[0].author.as_str(), got[0].when.as_str()),
+        (
+            got[0].body.as_str(),
+            got[0].author.as_str(),
+            got[0].when.as_str()
+        ),
         ("Turn it on by default.", "mycodecrafting", "2h")
     );
     assert_eq!(got[0].files.as_ref().unwrap()[0].path, "a.ts");

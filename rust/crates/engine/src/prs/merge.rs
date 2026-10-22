@@ -61,9 +61,7 @@ pub fn format_squash_commit_message(
     MergeCommitText {
         subject,
         body: parts.join("\n\n"),
-        omit_body: forge
-            && style == SquashCommitMessage::TitleAndCommits
-            && commit_list.is_empty(),
+        omit_body: forge && style == SquashCommitMessage::TitleAndCommits && commit_list.is_empty(),
     }
 }
 

@@ -105,7 +105,12 @@ fn deadline_err() -> EngineError {
 }
 
 /// Each commit's own diff for the Commits tab (best effort).
-async fn fill_commit_files(mgr: &recur_git::Manager, worktree: &str, commits: &mut [Commit], when_now: bool) {
+async fn fill_commit_files(
+    mgr: &recur_git::Manager,
+    worktree: &str,
+    commits: &mut [Commit],
+    when_now: bool,
+) {
     for c in commits.iter_mut() {
         if let Ok(cf) = mgr.commit_diff(worktree, &c.hash).await {
             c.files = Some(cf);
@@ -136,13 +141,19 @@ impl Engine {
     /// PR for. A remote-tracking base (including `main` upgraded to
     /// `origin/main`) is pushed; a local base stays on disk. Idempotent once
     /// merged.
-    pub async fn merge_workspace(&self, workspace_id: &str, method: &MergeMethod) -> Result<Workspace> {
+    pub async fn merge_workspace(
+        &self,
+        workspace_id: &str,
+        method: &MergeMethod,
+    ) -> Result<Workspace> {
         let ws = self
             .store
             .workspace(workspace_id)
             .ok_or_else(|| EngineError(format!("workspace {workspace_id:?} not found")))?;
         if ws.is_main || ws.is_pr_chat_host() {
-            return Err("the main working copy can't merge — its checkout is already the project".into());
+            return Err(
+                "the main working copy can't merge — its checkout is already the project".into(),
+            );
         }
         if land_locked_by_run(&ws) {
             return Err("a loop is running — pause it before merging from the workspace".into());
@@ -154,7 +165,9 @@ impl Engine {
             .store
             .project(&ws.project_id)
             .filter(|p| !p.repo_path.is_empty())
-            .ok_or_else(|| EngineError(format!("project for workspace {workspace_id:?} not found")))?;
+            .ok_or_else(|| {
+                EngineError(format!("project for workspace {workspace_id:?} not found"))
+            })?;
         let method = if method.is_empty() {
             effective_merge_method(&proj, &self.settings())
         } else {
@@ -233,7 +246,10 @@ impl Engine {
             .diff_pr(&ws.worktree_path, base)
             .await
             .map_err(|e| EngineError(format!("compute diff: {e}")))?;
-        let commits = mgr.log_commits(&ws.worktree_path, base).await.unwrap_or_default();
+        let commits = mgr
+            .log_commits(&ws.worktree_path, base)
+            .await
+            .unwrap_or_default();
         if diff.files.is_empty() && commits.is_empty() {
             return Err("nothing to merge — commit changes in this workspace first".into());
         }
@@ -286,7 +302,10 @@ impl Engine {
                 html_escape(remote),
                 html_escape(short)
             ),
-            None => format!("{label} into <code>{}</code> on disk — no PR.", html_escape(&landed)),
+            None => format!(
+                "{label} into <code>{}</code> on disk — no PR.",
+                html_escape(&landed)
+            ),
         };
         self.emit_workspace_event(workspace_id, "AR", "You", &note);
         self.store
@@ -326,7 +345,10 @@ impl Engine {
             st.dirty = risk.dirty_count > 0 && !risk.unmerged;
             let mut mgr = None;
             let mut require = None;
-            if let Some(proj) = proj.as_ref().filter(|p| !p.repo_path.is_empty() && !base.is_empty()) {
+            if let Some(proj) = proj
+                .as_ref()
+                .filter(|p| !p.repo_path.is_empty() && !base.is_empty())
+            {
                 let m = recur_git::Manager::new(&proj.repo_path, &self.worktree_root);
                 let compare = m.compare_ref(&base).await;
                 if let Some((remote, short)) = m.parse_remote_tracking(&compare).await {
@@ -461,7 +483,9 @@ impl Engine {
             .store
             .project(&ws.project_id)
             .filter(|p| !p.repo_path.is_empty())
-            .ok_or_else(|| EngineError(format!("project for workspace {workspace_id:?} not found")))?;
+            .ok_or_else(|| {
+                EngineError(format!("project for workspace {workspace_id:?} not found"))
+            })?;
         let base = workspace_base(&ws, &proj);
         let resolved = if method.trim().is_empty() {
             effective_update_base_method(&proj, &self.settings())
@@ -607,9 +631,9 @@ impl Engine {
                 "this is a Local PR — there is no {label} head to pull"
             )));
         };
-        let proj = proj
-            .filter(|p| !p.repo_path.is_empty())
-            .ok_or_else(|| EngineError(format!("project for workspace {workspace_id:?} not found")))?;
+        let proj = proj.filter(|p| !p.repo_path.is_empty()).ok_or_else(|| {
+            EngineError(format!("project for workspace {workspace_id:?} not found"))
+        })?;
         let (r, _, _) = pr_tracking_ref(&pr, forge.as_ref());
         if r.is_empty() {
             return Err("the open PR has no remote branch".into());
@@ -639,7 +663,9 @@ impl Engine {
                 Ok(()) => {
                     self.sync_workspace_diff(workspace_id, true).await;
                     let base = workspace_base(&ws, &proj);
-                    let _ = self.refresh_workspace_pr_snapshot(&ws, &pr, &mgr, &base).await;
+                    let _ = self
+                        .refresh_workspace_pr_snapshot(&ws, &pr, &mgr, &base)
+                        .await;
                     self.publish_pr_updated(&pr.id);
                     self.emit_workspace_event(
                         workspace_id,
@@ -660,11 +686,16 @@ impl Engine {
                             workspace_id,
                             "AR",
                             "You",
-                            &format!("Pull from {label} hit conflicts — resolve them in chat (/update)."),
+                            &format!(
+                                "Pull from {label} hit conflicts — resolve them in chat (/update)."
+                            ),
                         );
                         return Ok(result(UPDATE_WORKSPACE_CONFLICT, ws.clone()));
                     }
-                    Err(EngineError(format!("pull from {label} PR #{}: {e}", pr.number)))
+                    Err(EngineError(format!(
+                        "pull from {label} PR #{}: {e}",
+                        pr.number
+                    )))
                 }
             }
         };
@@ -723,7 +754,9 @@ impl Engine {
             .store
             .project(&ws.project_id)
             .filter(|p| !p.repo_path.is_empty())
-            .ok_or_else(|| EngineError(format!("project for workspace {workspace_id:?} not found")))?;
+            .ok_or_else(|| {
+                EngineError(format!("project for workspace {workspace_id:?} not found"))
+            })?;
         let base = workspace_base(&ws, &proj);
         tokio::time::timeout(
             LAND_TIMEOUT,
@@ -755,14 +788,19 @@ impl Engine {
             // exists, else push and refresh. A forge PR's title and body
             // stay put; a forge row wins over a leftover Local one.
             return self
-                .sync_existing_workspace_pr(&ws, &proj, &existing, &mgr, &base, title, body, force, draft)
+                .sync_existing_workspace_pr(
+                    &ws, &proj, &existing, &mgr, &base, title, body, force, draft,
+                )
                 .await;
         }
         let diff = mgr
             .diff_pr(&ws.worktree_path, &base)
             .await
             .map_err(|e| EngineError(format!("compute diff: {e}")))?;
-        let mut commits = mgr.log_commits(&ws.worktree_path, &base).await.unwrap_or_default();
+        let mut commits = mgr
+            .log_commits(&ws.worktree_path, &base)
+            .await
+            .unwrap_or_default();
         fill_commit_files(&mgr, &ws.worktree_path, &mut commits, false).await;
         if diff.files.is_empty() && commits.is_empty() {
             return Err("nothing to open a PR for — commit changes in this workspace first".into());
@@ -774,7 +812,11 @@ impl Engine {
         let name = ws.goal_label().trim().to_owned();
         let agent_title = single_line(title).trim().to_owned();
         let mut title = if agent_title.is_empty() {
-            pr_title(if name.is_empty() { "Workspace changes" } else { &name })
+            pr_title(if name.is_empty() {
+                "Workspace changes"
+            } else {
+                &name
+            })
         } else {
             hard_truncate_runes(&agent_title, 80).to_owned()
         };
@@ -816,7 +858,15 @@ impl Engine {
         let mut forge_fail = String::new();
         if proj.pr_on_github {
             match self
-                .create_forge_pr(&proj, &ws.worktree_path, &branch, &base, &title, &pr_body, draft)
+                .create_forge_pr(
+                    &proj,
+                    &ws.worktree_path,
+                    &branch,
+                    &base,
+                    &title,
+                    &pr_body,
+                    draft,
+                )
                 .await
             {
                 Some(Ok(created)) => {
@@ -869,7 +919,13 @@ impl Engine {
             base,
             title,
             draft,
-            summary: Some(workspace_pr_summary(&name, file_count, diff.add, diff.del, commit_count)),
+            summary: Some(workspace_pr_summary(
+                &name,
+                file_count,
+                diff.add,
+                diff.del,
+                commit_count,
+            )),
             focus: engine_focus(&diff.files, &[], None),
             state: "In review".into(),
             diff: DiffStat {
@@ -940,7 +996,9 @@ impl Engine {
         let forge = self.pr_forge(existing).is_some();
         if local && proj.pr_on_github {
             match self
-                .promote_local_pr_to_forge(ws, proj, existing, mgr, base, &branch, title, body, draft)
+                .promote_local_pr_to_forge(
+                    ws, proj, existing, mgr, base, &branch, title, body, draft,
+                )
                 .await
             {
                 Ok(id) => return Ok((id, String::new())),
@@ -970,9 +1028,8 @@ impl Engine {
             }
             branch = head;
         }
-        if let Err(e) = self.refresh_workspace_pr_snapshot(ws, existing, mgr, base).await {
-            return Err(e);
-        }
+        self.refresh_workspace_pr_snapshot(ws, existing, mgr, base)
+            .await?;
         if !forge {
             self.store
                 .update_pr(&existing.id, |p| p.branch = branch.clone());
@@ -1026,7 +1083,11 @@ impl Engine {
         }
         title = if title.is_empty() {
             let name = ws.goal_label().trim().to_owned();
-            pr_title(if name.is_empty() { "Workspace changes" } else { &name })
+            pr_title(if name.is_empty() {
+                "Workspace changes"
+            } else {
+                &name
+            })
         } else {
             hard_truncate_runes(&title, 80).to_owned()
         };
@@ -1036,8 +1097,12 @@ impl Engine {
         }
         if pr_body.is_empty() {
             let diff = mgr.diff_pr(&ws.worktree_path, base).await.ok();
-            let commits = mgr.log_commits(&ws.worktree_path, base).await.unwrap_or_default();
-            let (add, del, files) = diff.map_or((0, 0, 0), |d| (d.add, d.del, d.files.len() as i64));
+            let commits = mgr
+                .log_commits(&ws.worktree_path, base)
+                .await
+                .unwrap_or_default();
+            let (add, del, files) =
+                diff.map_or((0, 0, 0), |d| (d.add, d.del, d.files.len() as i64));
             pr_body = pr_fallback_markdown(
                 &pr_fallback_intro(&ws.goal, &ws.goal_display),
                 &commits,
@@ -1048,7 +1113,15 @@ impl Engine {
             );
         }
         let created = match self
-            .create_forge_pr(proj, &ws.worktree_path, branch, base, &title, &pr_body, draft)
+            .create_forge_pr(
+                proj,
+                &ws.worktree_path,
+                branch,
+                base,
+                &title,
+                &pr_body,
+                draft,
+            )
             .await
         {
             None => return Err(String::new()),
@@ -1083,9 +1156,15 @@ impl Engine {
         } else {
             format!("{label} PR")
         };
-        let note = match self.refresh_workspace_pr_snapshot(ws, &updated, mgr, base).await {
+        let note = match self
+            .refresh_workspace_pr_snapshot(ws, &updated, mgr, base)
+            .await
+        {
             Ok(()) => format!("Opened {opened} #{}.", created.number),
-            Err(_) => format!("Opened {opened} #{} (snapshot refresh failed).", created.number),
+            Err(_) => format!(
+                "Opened {opened} #{} (snapshot refresh failed).",
+                created.number
+            ),
         };
         self.emit_workspace_event(&ws.id, "AR", "You", &note);
         self.publish_pr_updated(&updated.id);
@@ -1127,7 +1206,10 @@ impl Engine {
             .diff_pr(&ws.worktree_path, base)
             .await
             .map_err(|e| EngineError(format!("compute diff: {e}")))?;
-        let mut commits = mgr.log_commits(&ws.worktree_path, base).await.unwrap_or_default();
+        let mut commits = mgr
+            .log_commits(&ws.worktree_path, base)
+            .await
+            .unwrap_or_default();
         fill_commit_files(mgr, &ws.worktree_path, &mut commits, true).await;
         let name = ws.goal_label().trim().to_owned();
         let file_count = diff.files.len() as i64;
@@ -1217,7 +1299,9 @@ pub fn format_open_pr_tool_result(
     let n = pr.number;
     match (had_open, want_forge, fail.is_empty()) {
         (true, true, false) => {
-            format!("PR #{n} is already open (Local). {forge_label} create failed ({fail}) — retry Open PR.")
+            format!(
+                "PR #{n} is already open (Local). {forge_label} create failed ({fail}) — retry Open PR."
+            )
         }
         (true, true, true) => {
             format!("PR #{n} is already open (Local). {forge_label} create failed — retry Open PR.")
@@ -1236,12 +1320,21 @@ pub fn format_open_pr_tool_result(
 impl Engine {
     /// The agent's `open_pr` tool: opens or syncs the workspace PR and
     /// reports it in the tool result.
-    pub async fn open_pr_from_agent(&self, workspace_id: &str, title: &str, body: &str, draft: bool) -> String {
+    pub async fn open_pr_from_agent(
+        &self,
+        workspace_id: &str,
+        title: &str,
+        body: &str,
+        draft: bool,
+    ) -> String {
         let existing = self.store.pr_by_workspace(workspace_id);
         let had_open = existing
             .as_ref()
             .is_some_and(|p| p.state != "Merged" && p.group != "merged");
-        let was_local = had_open && existing.as_ref().is_some_and(|p| p.source == PrSource::Local);
+        let was_local = had_open
+            && existing
+                .as_ref()
+                .is_some_and(|p| p.source == PrSource::Local);
         let (id, fail) = match self
             .open_workspace_pr_inner(workspace_id, title, body, draft, false)
             .await

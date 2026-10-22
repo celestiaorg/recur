@@ -29,7 +29,9 @@ async fn pr_base_slashy_tracking_ref() {
     let px = Px::new();
     let (_keep, clone) = clone_tracking("origin/release", "origin/release");
     assert_eq!(
-        px.eng().forge_pr_base(&clone, "origin/origin/release").await,
+        px.eng()
+            .forge_pr_base(&clone, "origin/origin/release")
+            .await,
         "origin/release"
     );
 }
@@ -78,18 +80,26 @@ async fn forge_merge_marks_merged() {
             })
         }
     });
-    let (merged, ok) = px.eng().merge_pr("gh-merge-fast", &MergeMethod::Squash).await;
+    let (merged, ok) = px
+        .eng()
+        .merge_pr("gh-merge-fast", &MergeMethod::Squash)
+        .await;
     assert!(ok);
     let calls = px.forge.calls_to("merge");
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0][1..], ["gh-merge-fast", "squash"]);
-    assert_eq!((merged.state.as_str(), merged.group.as_str()), ("Merged", "merged"));
+    assert_eq!(
+        (merged.state.as_str(), merged.group.as_str()),
+        ("Merged", "merged")
+    );
     assert_eq!(px.ws(&w.id).state, recur_domain::WorkspaceState::Merged);
     tokio::time::timeout(Duration::from_secs(2), snapped.cancelled())
         .await
         .expect("the conversation refresh started after the merge");
     assert!(
-        feed(&px).iter().any(|t| t == "Squash and merge: GitHub PR <code>#88</code> via gh."),
+        feed(&px)
+            .iter()
+            .any(|t| t == "Squash and merge: GitHub PR <code>#88</code> via gh."),
         "{:?}",
         feed(&px)
     );
@@ -111,13 +121,20 @@ async fn forge_merge_queued_leaves_pr_open() {
         }
     });
     px.forge.on_merge(|_| async { Ok(MergeOutcome::Queued) });
-    let (got, ok) = px.eng().merge_pr("gh-merge-queue", &MergeMethod::Squash).await;
+    let (got, ok) = px
+        .eng()
+        .merge_pr("gh-merge-queue", &MergeMethod::Squash)
+        .await;
     assert!(ok && got.merge_queue_enabled && got.merge_queued);
     assert!(got.state != "Merged" && got.group != "merged");
     tokio::time::timeout(Duration::from_secs(2), snapped.cancelled())
         .await
         .expect("the conversation refresh started after the enqueue");
-    assert!(feed(&px).iter().any(|t| t == "Added GitHub PR <code>#20</code> to the merge queue."));
+    assert!(
+        feed(&px)
+            .iter()
+            .any(|t| t == "Added GitHub PR <code>#20</code> to the merge queue.")
+    );
 }
 
 #[tokio::test]
@@ -129,13 +146,21 @@ async fn forge_merge_refuses_disallowed_method_and_reports_failure() {
     let (_, ok) = px.eng().merge_pr("gh-m", &MergeMethod::Squash).await;
     assert!(!ok);
     assert!(px.forge.calls_to("merge").is_empty());
-    assert!(feed(&px).iter().any(|t| t == "GitHub doesn't allow Squash and merge on this repository."));
+    assert!(
+        feed(&px)
+            .iter()
+            .any(|t| t == "GitHub doesn't allow Squash and merge on this repository.")
+    );
 
     px.forge
         .on_merge(|_| async { Err(ForgeError::failed("HTTP 401: Bad credentials")) });
     let (_, ok) = px.eng().merge_pr("gh-m", &MergeMethod::Merge).await;
     assert!(!ok);
-    assert!(feed(&px).iter().any(|t| t.starts_with("Can't merge on GitHub: the gh CLI is not authenticated")));
+    assert!(
+        feed(&px)
+            .iter()
+            .any(|t| t.starts_with("Can't merge on GitHub: the gh CLI is not authenticated"))
+    );
 }
 
 #[tokio::test]
@@ -143,7 +168,11 @@ async fn merge_refuses_closed_and_is_idempotent_when_merged() {
     let (px, _repo, _w) = merge_fx("gh-c", 22).await;
     px.te.store.update_pr("gh-c", |p| p.state = "Closed".into());
     assert!(!px.eng().merge_pr("gh-c", &MergeMethod::Merge).await.1);
-    assert!(feed(&px).iter().any(|t| t == "Merge refused: this GitHub PR is closed."));
+    assert!(
+        feed(&px)
+            .iter()
+            .any(|t| t == "Merge refused: this GitHub PR is closed.")
+    );
     px.te.store.update_pr("gh-c", |p| p.state = "Merged".into());
     assert!(px.eng().merge_pr("gh-c", &MergeMethod::Merge).await.1);
     assert!(px.forge.calls_to("merge").is_empty());
@@ -251,9 +280,14 @@ async fn branch_rules_use_the_store() {
     let px = Px::new();
     let repo = init_repo();
     let p = rules_project(&px, &repo.path);
-    px.te.store.set_github_branch_require_pr("acme", "acme/app", "main", true);
+    px.te
+        .store
+        .set_github_branch_require_pr("acme", "acme/app", "main", true);
     assert!(px.eng().branch_requires_pr(&p, "origin", "main").await);
-    assert!(px.forge.calls_to("branch_requires_pr").is_empty(), "a fresh store hit does not probe");
+    assert!(
+        px.forge.calls_to("branch_requires_pr").is_empty(),
+        "a fresh store hit does not probe"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -261,7 +295,9 @@ async fn branch_rules_stale_refresh_is_async() {
     let px = Px::new();
     let repo = init_repo();
     let p = rules_project(&px, &repo.path);
-    px.te.store.set_github_branch_require_pr("acme", "acme/app", "main", false);
+    px.te
+        .store
+        .set_github_branch_require_pr("acme", "acme/app", "main", false);
     px.eng().set_branch_rules_ttl(Duration::ZERO);
     let started = CancellationToken::new();
     let block = CancellationToken::new();
@@ -275,7 +311,10 @@ async fn branch_rules_stale_refresh_is_async() {
         }
     });
     let start = std::time::Instant::now();
-    assert!(!px.eng().branch_requires_pr(&p, "origin", "main").await, "the stale value answers");
+    assert!(
+        !px.eng().branch_requires_pr(&p, "origin", "main").await,
+        "the stale value answers"
+    );
     assert!(start.elapsed() < Duration::from_millis(100));
     tokio::time::timeout(Duration::from_secs(2), started.cancelled())
         .await
@@ -297,7 +336,12 @@ async fn branch_rules_unknown_fails_closed() {
     let repo = init_repo();
     let p = rules_project(&px, &repo.path);
     assert!(px.eng().branch_requires_pr(&p, "origin", "main").await);
-    assert!(px.te.store.github_branch_require_pr("acme", "acme/app", "main").is_none());
+    assert!(
+        px.te
+            .store
+            .github_branch_require_pr("acme", "acme/app", "main")
+            .is_none()
+    );
 }
 
 #[tokio::test]
@@ -329,14 +373,29 @@ async fn branch_rules_scope_cache_by_repo() {
     let repo = init_repo();
     let p = rules_project(&px, &repo.path);
     px.forge
-        .on_branch_requires_pr(|(_, owner_repo, _)| async move { Some(owner_repo == "acme/parent") });
+        .on_branch_requires_pr(
+            |(_, owner_repo, _)| async move { Some(owner_repo == "acme/parent") },
+        );
     assert!(!px.eng().branch_requires_pr(&p, "fork", "main").await);
     assert!(px.eng().branch_requires_pr(&p, "upstream", "main").await);
     let store = &px.te.store;
-    assert_eq!(store.github_branch_require_pr("acme", "acme/fork", "main").map(|x| x.0), Some(false));
-    assert_eq!(store.github_branch_require_pr("acme", "acme/parent", "main").map(|x| x.0), Some(true));
+    assert_eq!(
+        store
+            .github_branch_require_pr("acme", "acme/fork", "main")
+            .map(|x| x.0),
+        Some(false)
+    );
+    assert_eq!(
+        store
+            .github_branch_require_pr("acme", "acme/parent", "main")
+            .map(|x| x.0),
+        Some(true)
+    );
     assert_eq!(px.forge.calls_to("branch_requires_pr").len(), 2);
-    assert!(px.eng().branch_requires_pr(&p, "", "main").await, "missing inputs fail closed");
+    assert!(
+        px.eng().branch_requires_pr(&p, "", "main").await,
+        "missing inputs fail closed"
+    );
 }
 
 #[tokio::test]
@@ -348,7 +407,13 @@ async fn create_forge_pr_maps_base_and_reports_fallback() {
         repo_path: clone.clone(),
         ..Project::default()
     };
-    px.forge.on_create_pr(|(c,)| async move { if c.base == "main" { Ok(31) } else { Err(format!("bad base {}", c.base)) } });
+    px.forge.on_create_pr(|(c,)| async move {
+        if c.base == "main" {
+            Ok(31)
+        } else {
+            Err(format!("bad base {}", c.base))
+        }
+    });
     let got = px
         .eng()
         .create_forge_pr(&proj, &clone, "feat", "origin/main", "Title", "Body", true)
@@ -366,7 +431,10 @@ async fn create_forge_pr_maps_base_and_reports_fallback() {
         .await
         .unwrap()
         .unwrap_err();
-    assert_eq!(err, ("GitHub".to_owned(), "gh pr create failed: boom".to_owned()));
+    assert_eq!(
+        err,
+        ("GitHub".to_owned(), "gh pr create failed: boom".to_owned())
+    );
 
     let none = crate::testing::TestEngine::new(None);
     assert!(
@@ -382,12 +450,22 @@ async fn create_forge_pr_maps_base_and_reports_fallback() {
 async fn push_forge_pr_head_reports_the_forge_error() {
     let px = Px::new();
     let pr = gh_pr(5, "feat");
-    assert!(px.eng().push_forge_pr_head("/w", "/r", &pr, "feat", true).await.is_ok());
-    assert_eq!(px.forge.calls_to("push_head")[0][2..], ["gh-acme-5", "feat", "true"]);
+    assert!(
+        px.eng()
+            .push_forge_pr_head("/w", "/r", &pr, "feat", true)
+            .await
+            .is_ok()
+    );
+    assert_eq!(
+        px.forge.calls_to("push_head")[0][2..],
+        ["gh-acme-5", "feat", "true"]
+    );
     px.forge
         .on_push_head(|_| async { Err(ForgeError::failed("rejected")) });
     assert_eq!(
-        px.eng().push_forge_pr_head("/w", "/r", &pr, "feat", false).await,
+        px.eng()
+            .push_forge_pr_head("/w", "/r", &pr, "feat", false)
+            .await,
         Err(("GitHub".to_owned(), "rejected".to_owned()))
     );
 }
@@ -416,8 +494,20 @@ async fn github_merge_round_trip() {
             .output()
             .expect("spawn gh")
     };
-    let out = run(&["repo", "create", &name, "--private", "--source=.", "--remote=origin", "--push"]);
-    assert!(out.status.success(), "gh repo create: {}", String::from_utf8_lossy(&out.stderr));
+    let out = run(&[
+        "repo",
+        "create",
+        &name,
+        "--private",
+        "--source=.",
+        "--remote=origin",
+        "--push",
+    ]);
+    assert!(
+        out.status.success(),
+        "gh repo create: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     let owner = String::from_utf8_lossy(&run(&["api", "user", "-q", ".login"]).stdout)
         .trim()
         .to_owned();
@@ -431,7 +521,10 @@ async fn github_merge_round_trip() {
                 .status()
                 .is_ok_and(|s| s.success());
             if !ok {
-                eprintln!("NOTE: delete the throwaway repo by hand: gh repo delete {} --yes", self.0);
+                eprintln!(
+                    "NOTE: delete the throwaway repo by hand: gh repo delete {} --yes",
+                    self.0
+                );
             }
         }
     }
@@ -455,7 +548,12 @@ async fn github_merge_round_trip() {
         .unwrap();
     let id = te
         .engine
-        .start_workspace("ghproj", "Add a real GitHub PR feature", "", Default::default())
+        .start_workspace(
+            "ghproj",
+            "Add a real GitHub PR feature",
+            "",
+            Default::default(),
+        )
         .await
         .unwrap();
     wait_for(Duration::from_secs(90), "pr_open", || {
@@ -468,12 +566,28 @@ async fn github_merge_round_trip() {
     })
     .await;
     let pr = te.store.pr_by_workspace(&id).expect("a PR");
-    assert_eq!(pr.source, PrSource::GitHub, "feed: {:?}", te.store.feed(&id));
+    assert_eq!(
+        pr.source,
+        PrSource::GitHub,
+        "feed: {:?}",
+        te.store.feed(&id)
+    );
     assert!(pr.number > 0);
     let state = |n: i64| {
-        String::from_utf8_lossy(&run(&["pr", "view", &n.to_string(), "--json", "state", "-q", ".state"]).stdout)
-            .trim()
-            .to_owned()
+        String::from_utf8_lossy(
+            &run(&[
+                "pr",
+                "view",
+                &n.to_string(),
+                "--json",
+                "state",
+                "-q",
+                ".state",
+            ])
+            .stdout,
+        )
+        .trim()
+        .to_owned()
     };
     assert_eq!(state(pr.number), "OPEN");
     let (merged, ok) = te.engine.merge_pr(&pr.id, &MergeMethod::default()).await;

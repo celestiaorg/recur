@@ -79,7 +79,8 @@ pub fn merge_resolved_update(
     holds: &ThreadResolvedHolds,
     reaction_holds: &HashMap<String, Vec<PrReaction>>,
 ) -> Pr {
-    let mut comments = keep_pending_replies(prev_comments, updated.comments.take().unwrap_or_default());
+    let mut comments =
+        keep_pending_replies(prev_comments, updated.comments.take().unwrap_or_default());
     apply_thread_resolved_holds(&mut comments, &holds.active());
     apply_reaction_holds(&mut comments, reaction_holds);
     updated.comments = Some(comments);
@@ -114,9 +115,16 @@ mod tests {
         let mut holds = ThreadResolvedHolds::default();
         let mut list = vec![note("gh-inline-1", "PRRT_1", false)];
         let first = list[0].clone();
-        assert_eq!(holds.begin(&mut list, &first, true).as_deref(), Some("PRRT_1"));
+        assert_eq!(
+            holds.begin(&mut list, &first, true).as_deref(),
+            Some("PRRT_1")
+        );
         assert!(list[0].resolved);
-        assert_eq!(holds.begin(&mut list, &first, true), None, "same toggle in flight");
+        assert_eq!(
+            holds.begin(&mut list, &first, true),
+            None,
+            "same toggle in flight"
+        );
         assert_eq!(holds.begin(&mut list, &PrComment::default(), true), None);
         assert_eq!(holds.holds("PRRT_1"), Some(true));
     }
@@ -128,7 +136,10 @@ mod tests {
         let c = list[0].clone();
         holds.begin(&mut list, &c, true);
         holds.begin(&mut list, &c, false);
-        assert!(!holds.fail(&mut list, "PRRT_1", true), "a newer toggle owns the key");
+        assert!(
+            !holds.fail(&mut list, "PRRT_1", true),
+            "a newer toggle owns the key"
+        );
         assert!(holds.fail(&mut list, "PRRT_1", false));
         assert!(list[0].resolved);
         assert_eq!(holds.holds("PRRT_1"), None);

@@ -23,7 +23,10 @@ use tokio_util::sync::CancellationToken;
 use crate::Engine;
 use crate::bus::{EngineEvent, PrsSynced};
 use crate::prs::merge::stamp_reconcile_updated_at;
-use crate::prs::{GROUP_LOOP, GROUP_MERGED, PR_SYNC_PROJECT_CONCURRENCY, none_if_empty, normalize_pr_url, pr_settled};
+use crate::prs::{
+    GROUP_LOOP, GROUP_MERGED, PR_SYNC_PROJECT_CONCURRENCY, none_if_empty, normalize_pr_url,
+    pr_settled,
+};
 use crate::workspace::create::normalize_pr_branch;
 
 /// Bounds the forge reads of one sweep.
@@ -174,8 +177,16 @@ impl Engine {
         let merged_ok = merged.is_ok();
         let merged_rows = merged.unwrap_or_default();
         for row in open_rows.iter().chain(&merged_rows) {
-            self.apply_listed_pr_indexed(forge, &proj.id, row, viewer, now, Some(&idx), Some(&stored))
-                .await;
+            self.apply_listed_pr_indexed(
+                forge,
+                &proj.id,
+                row,
+                viewer,
+                now,
+                Some(&idx),
+                Some(&stored),
+            )
+            .await;
             if row.number > 0 {
                 seen.insert(row.number);
             }
@@ -277,7 +288,10 @@ impl Engine {
             if p.source != source {
                 return false;
             }
-            if !url.is_empty() && normalize_pr_url(&p.url) == url && self.pr_project_id(p) == project_id {
+            if !url.is_empty()
+                && normalize_pr_url(&p.url) == url
+                && self.pr_project_id(p) == project_id
+            {
                 return true;
             }
             number > 0 && p.number == number && self.pr_project_id(p) == project_id
@@ -406,7 +420,11 @@ impl Engine {
         let people = merge_participants(&existing.participants, &row.participants);
         let keep_group = existing.group == GROUP_LOOP;
         let pick = |want: &str, have: &str| {
-            if want.is_empty() { have.to_owned() } else { want.to_owned() }
+            if want.is_empty() {
+                have.to_owned()
+            } else {
+                want.to_owned()
+            }
         };
         let want_ws = pick(&ws_id, &existing.workspace_id);
         let want_title = pick(&row.title, &existing.title);
@@ -428,14 +446,15 @@ impl Engine {
             want_state = state.to_owned();
             want_group = GROUP_MERGED.to_owned();
         }
-        let want_behind = if existing.updating_base.is_empty() && !self.pr_has_local_behind(&want_ws)
-        {
-            listed_behind(row)
-        } else {
-            existing.behind_base
-        };
+        let want_behind =
+            if existing.updating_base.is_empty() && !self.pr_has_local_behind(&want_ws) {
+                listed_behind(row)
+            } else {
+                existing.behind_base
+            };
         let want_mergeable = listed_merge_field(&existing.mergeable, &row.mergeable);
-        let want_merge_state = listed_merge_field(&existing.merge_state_status, &row.merge_state_status);
+        let want_merge_state =
+            listed_merge_field(&existing.merge_state_status, &row.merge_state_status);
         let want_viewer = pick(viewer.trim(), &existing.viewer_login);
         let stored_checks = existing.checks.clone().unwrap_or_default();
         let (want_checks, refresh_checks) = if row.has_checks {
@@ -447,7 +466,8 @@ impl Engine {
         let want_checks_slice = want_checks.clone().unwrap_or_default();
         let want_has_checks = row.has_checks || !want_checks_slice.is_empty();
         // The list has no merge-queue fields; the per-PR snapshot does.
-        if existing.merge_queued || (existing.merge_queue_enabled && want_updated != existing.updated_at)
+        if existing.merge_queued
+            || (existing.merge_queue_enabled && want_updated != existing.updated_at)
         {
             self.schedule_refresh_pr_conversation(&existing.id);
         }
@@ -549,8 +569,9 @@ impl Engine {
             if p.number <= 0 || seen.contains(&p.number) || pr_settled(&p) {
                 continue;
             }
-            let probe = tokio::time::timeout_at(deadline, forge.pr_state(Path::new(repo_path), p.number))
-                .await;
+            let probe =
+                tokio::time::timeout_at(deadline, forge.pr_state(Path::new(repo_path), p.number))
+                    .await;
             let Ok(Ok(view)) = probe else {
                 continue;
             };

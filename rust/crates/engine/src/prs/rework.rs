@@ -5,9 +5,8 @@ use std::path::Path;
 use std::time::Duration;
 
 use recur_domain::{
-    DiffStat, Pr, PrComment, UPDATE_WORKSPACE_CONFLICT, UPDATE_WORKSPACE_UPDATED,
-    UpdateBaseMethod, UpdateWorkspaceResult, Workspace, effective_update_base_method,
-    normalize_update_base_method,
+    DiffStat, Pr, PrComment, UPDATE_WORKSPACE_CONFLICT, UPDATE_WORKSPACE_UPDATED, UpdateBaseMethod,
+    UpdateWorkspaceResult, Workspace, effective_update_base_method, normalize_update_base_method,
 };
 
 use crate::Engine;
@@ -174,7 +173,11 @@ impl Engine {
     /// Integrates the latest base tip into the PR's worktree: a clean
     /// merge/rebase, or markers left for /update (status conflict). The PR
     /// stays In review; `updating_base` ("git") shows progress meanwhile.
-    pub async fn update_pr_with_base(&self, pr_id: &str, method: &str) -> Result<UpdateWorkspaceResult> {
+    pub async fn update_pr_with_base(
+        &self,
+        pr_id: &str,
+        method: &str,
+    ) -> Result<UpdateWorkspaceResult> {
         let unavailable = || EngineError::new(ERR_PR_UNAVAILABLE);
         let pr = self.store.pr(pr_id).ok_or_else(unavailable)?;
         if pr.state == "Merged" || pr.group == "merged" {
@@ -259,7 +262,10 @@ impl Engine {
         }
         let err = match res {
             Ok(()) => {
-                if !self.finish_update_with_base(pr_id, &lp, mgr, &base, &resolved).await {
+                if !self
+                    .finish_update_with_base(pr_id, &lp, mgr, &base, &resolved)
+                    .await
+                {
                     return Err(EngineError::new(ERR_PR_UNAVAILABLE));
                 }
                 return Ok(result(UPDATE_WORKSPACE_UPDATED, lp));

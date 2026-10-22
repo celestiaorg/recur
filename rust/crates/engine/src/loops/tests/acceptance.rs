@@ -157,22 +157,39 @@ async fn headline_e2e() {
     // 5. An inline note, then Send Back → a conductor turn.
     let (inline, ok) = t
         .engine
-        .add_pr_comment(&pr.id, "feature.txt", 1, "This needs the client-secret read removed", 0, "")
+        .add_pr_comment(
+            &pr.id,
+            "feature.txt",
+            1,
+            "This needs the client-secret read removed",
+            0,
+            "",
+        )
         .await;
     assert!(ok && !inline.body_html.is_empty());
     let (updated, ok) = t
         .engine
-        .send_back_to_loop(&pr.id, &["Resolve the client-secret read in feature.txt".into()])
+        .send_back_to_loop(
+            &pr.id,
+            &["Resolve the client-secret read in feature.txt".into()],
+        )
         .await;
     assert!(ok);
-    assert_eq!((updated.state.as_str(), updated.group.as_str()), ("In review", "you"));
-    assert_eq!(t.store.workspace(&id).unwrap().state, WorkspaceState::PrOpen);
+    assert_eq!(
+        (updated.state.as_str(), updated.group.as_str()),
+        ("In review", "you")
+    );
+    assert_eq!(
+        t.store.workspace(&id).unwrap().state,
+        WorkspaceState::PrOpen
+    );
     assert_eq!(t.store.pr(&pr.id).unwrap().number, pr_num_before);
     let ws = t.store.workspace(&id).unwrap();
     let ctx = t.engine.maestro_context(&ws);
     for want in ["client-secret", "feature.txt", "reenter_phase"] {
         assert!(
-            ctx.pr_thread.contains(want) || crate::roles::maestro_system_prompt(&ctx).contains(want),
+            ctx.pr_thread.contains(want)
+                || crate::roles::maestro_system_prompt(&ctx).contains(want),
             "conductor context missing {want:?}: {}",
             ctx.pr_thread
         );
@@ -186,9 +203,18 @@ async fn headline_e2e() {
         .merge_pr(&pr.id, &recur_domain::MergeMethod::default())
         .await;
     assert!(ok, "merge after send-back");
-    assert_eq!((merged.state.as_str(), merged.group.as_str()), ("Merged", "merged"));
-    assert_eq!(t.store.workspace(&id).unwrap().state, WorkspaceState::Merged);
-    assert_ne!(git_out(&repo.path, &["rev-parse", "main"]).unwrap(), base_before);
+    assert_eq!(
+        (merged.state.as_str(), merged.group.as_str()),
+        ("Merged", "merged")
+    );
+    assert_eq!(
+        t.store.workspace(&id).unwrap().state,
+        WorkspaceState::Merged
+    );
+    assert_ne!(
+        git_out(&repo.path, &["rev-parse", "main"]).unwrap(),
+        base_before
+    );
 
     // 7. Survives an app reload.
     t.store.close().unwrap();
@@ -300,11 +326,17 @@ async fn real_headline_e2e() {
     // Send back → a conductor turn with the review thread.
     let (_, ok) = t
         .engine
-        .send_back_to_loop(&pr.id, &["Also change the <title> to exactly 'Recur Demo'.".into()])
+        .send_back_to_loop(
+            &pr.id,
+            &["Also change the <title> to exactly 'Recur Demo'.".into()],
+        )
         .await;
     assert!(ok, "send back refused");
     assert_eq!(t.store.pr(&pr.id).unwrap().state, "In review");
-    assert_eq!(t.store.workspace(&id).unwrap().state, WorkspaceState::PrOpen);
+    assert_eq!(
+        t.store.workspace(&id).unwrap().state,
+        WorkspaceState::PrOpen
+    );
 
     // Merge: the base advances on disk.
     let before = git_out(&repo.path, &["rev-parse", "main"]).unwrap();
@@ -315,8 +347,7 @@ async fn real_headline_e2e() {
     assert!(ok && merged.state == "Merged");
     assert_ne!(git_out(&repo.path, &["rev-parse", "main"]).unwrap(), before);
     assert!(
-        git_out(&repo.path, &["show", "main:index.html"])
-            .is_ok_and(|o| o.contains("Hello Recur"))
+        git_out(&repo.path, &["show", "main:index.html"]).is_ok_and(|o| o.contains("Hello Recur"))
     );
     t.close().await;
 }

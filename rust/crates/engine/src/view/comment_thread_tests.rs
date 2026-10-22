@@ -43,9 +43,15 @@ fn gh(f: impl FnOnce(&mut Pr)) -> Pr {
 
 #[test]
 fn timeline_root_drops_description_and_nested_notes() {
-    assert!(!is_timeline_root(Some(&c(|c| c.kind = "description".into()))));
-    assert!(!is_timeline_root(Some(&c(|c| c.parent_id = "gh-review-1".into()))));
-    assert!(!is_timeline_root(Some(&c(|c| c.in_reply_to_id = "gh-inline-1".into()))));
+    assert!(!is_timeline_root(Some(&c(
+        |c| c.kind = "description".into()
+    ))));
+    assert!(!is_timeline_root(Some(&c(
+        |c| c.parent_id = "gh-review-1".into()
+    ))));
+    assert!(!is_timeline_root(Some(&c(
+        |c| c.in_reply_to_id = "gh-inline-1".into()
+    ))));
     assert!(!is_timeline_root(Some(&c(|c| c.kind = "hidden".into()))));
     assert!(is_timeline_root(Some(&c(|c| c.kind = "comment".into()))));
     assert!(is_timeline_root(Some(&c(|c| c.kind = "action".into()))));
@@ -78,9 +84,15 @@ fn review_children_oldest_first() {
 #[test]
 fn thread_replies_for_that_note() {
     let items = [
-        at("r", "2026-08-21T11:32:00Z", |c| c.in_reply_to_id = "gh-inline-1".into()),
-        at("q", "2026-08-21T11:31:00Z", |c| c.in_reply_to_id = "1".into()),
-        at("x", "2026-08-21T11:31:00Z", |c| c.in_reply_to_id = "gh-inline-2".into()),
+        at("r", "2026-08-21T11:32:00Z", |c| {
+            c.in_reply_to_id = "gh-inline-1".into()
+        }),
+        at("q", "2026-08-21T11:31:00Z", |c| {
+            c.in_reply_to_id = "1".into()
+        }),
+        at("x", "2026-08-21T11:31:00Z", |c| {
+            c.in_reply_to_id = "gh-inline-2".into()
+        }),
     ];
     assert_eq!(ids(&thread_replies(&items, "gh-inline-1")), ["q", "r"]);
 }
@@ -89,7 +101,9 @@ fn thread_replies_for_that_note() {
 fn line_note_detection() {
     assert!(is_line_note(Some(&c(|c| c.id = "gh-inline-1".into()))));
     assert!(is_line_note(Some(&c(|c| c.path = "a.go".into()))));
-    assert!(is_line_note(Some(&c(|c| c.in_reply_to_id = "gh-inline-1".into()))));
+    assert!(is_line_note(Some(&c(
+        |c| c.in_reply_to_id = "gh-inline-1".into()
+    ))));
     assert!(!is_line_note(Some(&c(|c| c.id = "c1".into()))));
     assert!(!is_line_note(None));
 }
@@ -108,11 +122,22 @@ fn notes_on_row_match_side_and_line() {
     assert!(is_line_note_root(&hmm));
     assert!(!is_line_note_root(&reply));
     let all = [hmm.clone(), left.clone(), reply, other];
-    assert_eq!(ids(&line_notes_on_row(&all, OAUTH, &row("", "12", "add"), None)), ["gh-inline-1"]);
-    let two = [hmm.clone(), left];
-    assert_eq!(ids(&line_notes_on_row(&two, OAUTH, &row("12", "", "del"), None)), ["gh-inline-2"]);
     assert_eq!(
-        ids(&line_notes_on_row(&[hmm], OAUTH, &row("12", "12", "ctx"), Some(DiffSide::Right))),
+        ids(&line_notes_on_row(&all, OAUTH, &row("", "12", "add"), None)),
+        ["gh-inline-1"]
+    );
+    let two = [hmm.clone(), left];
+    assert_eq!(
+        ids(&line_notes_on_row(&two, OAUTH, &row("12", "", "del"), None)),
+        ["gh-inline-2"]
+    );
+    assert_eq!(
+        ids(&line_notes_on_row(
+            &[hmm],
+            OAUTH,
+            &row("12", "12", "ctx"),
+            Some(DiffSide::Right)
+        )),
         ["gh-inline-1"]
     );
 }
@@ -123,11 +148,30 @@ fn multiline_range_marks_every_row() {
     span.start_line = 11;
     let s = std::slice::from_ref(&span);
     assert_eq!(line_note_range(&span), (11, 12));
-    assert_eq!(ids(&line_notes_covering_row(s, OAUTH, &row("11", "11", "ctx"), None)), ["gh-inline-5"]);
-    assert_eq!(ids(&line_notes_covering_row(s, OAUTH, &row("", "12", "add"), None)), ["gh-inline-5"]);
+    assert_eq!(
+        ids(&line_notes_covering_row(
+            s,
+            OAUTH,
+            &row("11", "11", "ctx"),
+            None
+        )),
+        ["gh-inline-5"]
+    );
+    assert_eq!(
+        ids(&line_notes_covering_row(
+            s,
+            OAUTH,
+            &row("", "12", "add"),
+            None
+        )),
+        ["gh-inline-5"]
+    );
     assert!(line_notes_covering_row(s, OAUTH, &row("10", "10", "ctx"), None).is_empty());
     assert!(line_notes_on_row(s, OAUTH, &row("11", "11", "ctx"), None).is_empty());
-    assert_eq!(ids(&line_notes_on_row(s, OAUTH, &row("", "12", "add"), None)), ["gh-inline-5"]);
+    assert_eq!(
+        ids(&line_notes_on_row(s, OAUTH, &row("", "12", "add"), None)),
+        ["gh-inline-5"]
+    );
 }
 
 #[test]
@@ -160,7 +204,10 @@ fn unresolved_groups_open_roots() {
     assert_eq!(ids(&by_path[0].1), ["gh-inline-2", "gh-inline-1"]);
     assert_eq!(comments_for_path(&by_path, OAUTH).len(), 2);
     assert_eq!(comment_count_for_path(&by_path, "src/auth", true), 2);
-    assert_eq!(comment_count_for_path(&by_path, "src/hooks/useOAuthSession.ts", false), 0);
+    assert_eq!(
+        comment_count_for_path(&by_path, "src/hooks/useOAuthSession.ts", false),
+        0
+    );
 }
 
 fn reply(id: &str, to: &str, body: &str) -> PrComment {
@@ -179,8 +226,14 @@ fn pending_replies() {
     assert!(!is_pending_comment(Some(&echoed)));
 
     assert!(same_thread_reply(&pending, &echoed));
-    assert!(!same_thread_reply(&pending, &reply("gh-inline-9", "1", "later")));
-    assert!(!same_thread_reply(&pending, &reply("gh-inline-9", "gh-inline-2", "thanks")));
+    assert!(!same_thread_reply(
+        &pending,
+        &reply("gh-inline-9", "1", "later")
+    ));
+    assert!(!same_thread_reply(
+        &pending,
+        &reply("gh-inline-9", "gh-inline-2", "thanks")
+    ));
 
     let root = c(|c| {
         c.id = "gh-inline-1".into();
@@ -191,7 +244,10 @@ fn pending_replies() {
         [root.clone(), pending.clone()]
     );
     assert_eq!(
-        keep_pending_replies(&[root.clone(), pending.clone()], vec![root.clone(), echoed.clone()]),
+        keep_pending_replies(
+            &[root.clone(), pending.clone()],
+            vec![root.clone(), echoed.clone()]
+        ),
         [root.clone(), echoed.clone()]
     );
 
@@ -242,7 +298,10 @@ fn edit_and_delete_permissions() {
     assert!(can_delete_pr_comment(Some(&writer), Some(&n)));
     assert!(can_delete_pr_comment(Some(&write_only), Some(&n)));
     assert!(!can_delete_pr_comment(Some(&other), Some(&n)));
-    assert!(is_dropped_comment(&reply("gh-inline-2", "gh-inline-1", ""), "gh-inline-1"));
+    assert!(is_dropped_comment(
+        &reply("gh-inline-2", "gh-inline-1", ""),
+        "gh-inline-1"
+    ));
 
     let pending = c(|c| {
         c.id = "c-pending-1".into();
@@ -259,15 +318,30 @@ fn edit_and_delete_permissions() {
             c.body_md = "x".into();
         })
     };
-    assert!(can_delete_pr_comment(Some(&writer), Some(&by("gh-comment-IC_1", "avery"))));
-    assert!(can_delete_pr_comment(Some(&write_only), Some(&by("gh-comment-IC_2", "sam"))));
-    assert!(!can_delete_pr_comment(Some(&other), Some(&by("gh-comment-IC_2", "sam"))));
-    assert!(!can_delete_pr_comment(Some(&writer), Some(&by("gh-review-PRR_1", "avery"))));
+    assert!(can_delete_pr_comment(
+        Some(&writer),
+        Some(&by("gh-comment-IC_1", "avery"))
+    ));
+    assert!(can_delete_pr_comment(
+        Some(&write_only),
+        Some(&by("gh-comment-IC_2", "sam"))
+    ));
+    assert!(!can_delete_pr_comment(
+        Some(&other),
+        Some(&by("gh-comment-IC_2", "sam"))
+    ));
+    assert!(!can_delete_pr_comment(
+        Some(&writer),
+        Some(&by("gh-review-PRR_1", "avery"))
+    ));
     let mut desc = by("gh-description", "avery");
     desc.kind = "description".into();
     assert!(!can_delete_pr_comment(Some(&writer), Some(&desc)));
     assert!(!can_edit_pr_comment(None, Some(&by("c1", "avery"))));
-    assert!(can_edit_pr_comment(None, Some(&c(|c| c.author = "You".into()))));
+    assert!(can_edit_pr_comment(
+        None,
+        Some(&c(|c| c.author = "You".into()))
+    ));
 }
 
 #[test]
@@ -287,16 +361,35 @@ fn react_permissions() {
     let conv = item("gh-comment-IC_1", "", |c| c.author_login = "avery".into());
     assert!(can_react_pr_comment(Some(&writer), Some(&conv)));
     assert!(can_react_pr_comment(Some(&other), Some(&conv)));
-    assert!(!can_react_pr_comment(Some(&writer), Some(&item("gh-review-action-1", "action", |c| c.verb = "approved".into()))));
-    assert!(!can_react_pr_comment(Some(&writer), Some(&item("gh-review-1", "comment", |c| c.verb = "approved".into()))));
+    assert!(!can_react_pr_comment(
+        Some(&writer),
+        Some(&item("gh-review-action-1", "action", |c| c.verb =
+            "approved".into()))
+    ));
+    assert!(!can_react_pr_comment(
+        Some(&writer),
+        Some(&item("gh-review-1", "comment", |c| c.verb = "approved".into()))
+    ));
     assert!(can_react_pr_comment(
         Some(&writer),
         Some(&item("gh-review-1", "comment", |c| c.body_md = "ship it".into()))
     ));
-    assert!(can_react_pr_comment(Some(&writer), Some(&item("gh-description", "description", |_| {}))));
-    assert!(!can_react_pr_comment(Some(&writer), Some(&item("gh-event-1", "action", |_| {}))));
-    assert!(!can_react_pr_comment(Some(&writer), Some(&item("gh-event-c", "action", |c| c.commit_sha = "abc".into()))));
-    assert!(!can_react_pr_comment(Some(&writer), Some(&item("c-pending-1", "", |_| {}))));
+    assert!(can_react_pr_comment(
+        Some(&writer),
+        Some(&item("gh-description", "description", |_| {}))
+    ));
+    assert!(!can_react_pr_comment(
+        Some(&writer),
+        Some(&item("gh-event-1", "action", |_| {}))
+    ));
+    assert!(!can_react_pr_comment(
+        Some(&writer),
+        Some(&item("gh-event-c", "action", |c| c.commit_sha = "abc".into()))
+    ));
+    assert!(!can_react_pr_comment(
+        Some(&writer),
+        Some(&item("c-pending-1", "", |_| {}))
+    ));
     assert!(!can_react_pr_comment(Some(&gh(|_| {})), Some(&conv)));
     let local = Pr {
         source: PrSource::Local,
@@ -326,7 +419,10 @@ fn resolve_permissions() {
 
     let mut no_thread = n.clone();
     no_thread.thread_id.clear();
-    assert!(!can_resolve_line_note(Some(&pr("avery", true)), Some(&no_thread)));
+    assert!(!can_resolve_line_note(
+        Some(&pr("avery", true)),
+        Some(&no_thread)
+    ));
     let local = Pr {
         source: PrSource::Local,
         ..Pr::default()
@@ -336,7 +432,10 @@ fn resolve_permissions() {
         c.path = "a.ts".into();
     });
     assert!(can_resolve_line_note(Some(&local), Some(&local_note)));
-    assert!(!can_resolve_line_note(Some(&pr("avery", true)), Some(&c(|c| c.id = "c1".into()))));
+    assert!(!can_resolve_line_note(
+        Some(&pr("avery", true)),
+        Some(&c(|c| c.id = "c1".into()))
+    ));
 }
 
 fn thread(id: &str, thread: &str, to: &str) -> PrComment {

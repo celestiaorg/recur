@@ -101,7 +101,9 @@ pub fn merge_commit_log(existing: &[Commit], fresh: Vec<Commit>) -> Vec<Commit> 
                 old = by_short
                     .iter()
                     .find(|(h, c)| {
-                        c.sha.starts_with(&n.hash) || n.sha.starts_with(h.as_str()) || h.starts_with(&n.hash)
+                        c.sha.starts_with(&n.hash)
+                            || n.sha.starts_with(h.as_str())
+                            || h.starts_with(&n.hash)
                     })
                     .map(|(_, c)| *c);
             }
@@ -159,8 +161,7 @@ impl Engine {
         if commits_equal(&stored, &merged) {
             return;
         }
-        self.store
-            .update_pr(pr_id, |p| p.commits = Some(merged));
+        self.store.update_pr(pr_id, |p| p.commits = Some(merged));
     }
 
     /// Fills one commit's file diff (`git show --first-parent`) when the
@@ -443,15 +444,21 @@ impl Engine {
         if repo.is_empty() {
             return false;
         }
-        let Ok(Ok(snap)) =
-            tokio::time::timeout(SNAPSHOT_TIMEOUT, forge.snapshot(Path::new(&repo), pr.number)).await
+        let Ok(Ok(snap)) = tokio::time::timeout(
+            SNAPSHOT_TIMEOUT,
+            forge.snapshot(Path::new(&repo), pr.number),
+        )
+        .await
         else {
             return false;
         };
         let merged = forge.merge_comments(comments(&pr), &snap, chrono::Utc::now());
         let cs = self.apply_remembered_comment_reactions(
             pr_id,
-            self.apply_remembered_thread_resolved(pr_id, self.drop_remembered_comments(pr_id, merged)),
+            self.apply_remembered_thread_resolved(
+                pr_id,
+                self.drop_remembered_comments(pr_id, merged),
+            ),
         );
         let stored_commits = pr.commits.clone().unwrap_or_default();
         let mut commits = enrich_commits(&stored_commits, &snap);
@@ -462,7 +469,10 @@ impl Engine {
         let (state, group) = conversation_state(&pr, &snap);
         let (reasons, review_req, group) = conversation_attention(&pr, &snap, &state, &group);
         let avatar = |l: &str, p: &str| forge.avatar_url(l, p, 56);
-        let people = merge_participants(&pr.participants, &snapshot_participants(&snap, &cs, &avatar));
+        let people = merge_participants(
+            &pr.participants,
+            &snapshot_participants(&snap, &cs, &avatar),
+        );
         let reviewers = snapshot_reviewers(&snap, &cs, &avatar);
         let title = if snap.title.is_empty() {
             pr.title.clone()

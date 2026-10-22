@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use recur_domain::{
     UPDATE_WORKSPACE_AUTOSTASH, UPDATE_WORKSPACE_NOOP, UPDATE_WORKSPACE_UPDATED, UpdateBaseMethod,
-    UpdateWorkspaceResult, Workspace, WorkspaceLandState, effective_update_base_method, normalize_update_base_method,
+    UpdateWorkspaceResult, Workspace, WorkspaceLandState, effective_update_base_method,
+    normalize_update_base_method,
 };
 
 use crate::Engine;

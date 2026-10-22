@@ -101,7 +101,10 @@ async fn sync_lists_projects_concurrently() {
     });
     let start = std::time::Instant::now();
     px.eng().sync_prs().await;
-    assert!(start.elapsed() < Duration::from_secs(5), "listed one at a time");
+    assert!(
+        start.elapsed() < Duration::from_secs(5),
+        "listed one at a time"
+    );
 }
 
 #[tokio::test]
@@ -174,7 +177,10 @@ async fn sync_waits_for_in_flight_sweep() {
     let e = Arc::clone(px.eng());
     let second = tokio::spawn(async move { e.sync_prs().await });
     tokio::time::sleep(Duration::from_millis(50)).await;
-    assert!(!second.is_finished(), "a concurrent caller waits for the sweep");
+    assert!(
+        !second.is_finished(),
+        "a concurrent caller waits for the sweep"
+    );
     release.cancel();
     first.await.unwrap();
     second.await.unwrap();
@@ -196,7 +202,10 @@ async fn apply_reconciles_stale_checks() {
         has_checks: true,
         ..gh_pr(12, "feat/oauth")
     });
-    let fail = with_checks(row(12, "OAuth", "feat/oauth"), vec![listed("build", "fail")]);
+    let fail = with_checks(
+        row(12, "OAuth", "feat/oauth"),
+        vec![listed("build", "fail")],
+    );
     let (_, created) = px
         .eng()
         .apply_listed_pr(px.forge.as_ref(), "acme", &fail, "avery", Utc::now())
@@ -209,7 +218,10 @@ async fn apply_reconciles_stale_checks() {
     assert_eq!(checks[0].status, "fail");
     assert!(!checks[0].passed);
 
-    let pass = with_checks(row(12, "OAuth", "feat/oauth"), vec![listed("build", "pass")]);
+    let pass = with_checks(
+        row(12, "OAuth", "feat/oauth"),
+        vec![listed("build", "pass")],
+    );
     px.eng()
         .apply_listed_pr(px.forge.as_ref(), "acme", &pass, "avery", Utc::now())
         .await;
@@ -303,7 +315,10 @@ async fn apply_retires_queued_workflow_placeholder() {
         has_checks: true,
         ..gh_pr(12, "feat/oauth")
     });
-    let r = with_checks(row(12, "OAuth", "feat/oauth"), vec![listed("publish", "pass")]);
+    let r = with_checks(
+        row(12, "OAuth", "feat/oauth"),
+        vec![listed("publish", "pass")],
+    );
     let (_, created) = px
         .eng()
         .apply_listed_pr(px.forge.as_ref(), "acme", &r, "avery", Utc::now())
@@ -318,7 +333,11 @@ async fn apply_retires_queued_workflow_placeholder() {
     px.eng()
         .apply_listed_pr(px.forge.as_ref(), "acme", &r, "avery", Utc::now())
         .await;
-    assert_eq!(fetched.load(Ordering::SeqCst), 1, "repeat sync does not refetch");
+    assert_eq!(
+        fetched.load(Ordering::SeqCst),
+        1,
+        "repeat sync does not refetch"
+    );
     let checks = px.pr("gh-acme-12").checks.unwrap();
     assert_eq!(checks.len(), 1);
     assert_eq!(checks[0].name, "publish");
@@ -335,7 +354,13 @@ async fn apply_reopens_closed_pr() {
     });
     let (id, created) = px
         .eng()
-        .apply_listed_pr(px.forge.as_ref(), "acme", &row(12, "OAuth", "feat/oauth"), "avery", Utc::now())
+        .apply_listed_pr(
+            px.forge.as_ref(),
+            "acme",
+            &row(12, "OAuth", "feat/oauth"),
+            "avery",
+            Utc::now(),
+        )
         .await;
     assert!(!created);
     assert_eq!(id, "gh-acme-12");
@@ -362,7 +387,13 @@ async fn apply_refreshes_queued_pr() {
         })
     });
     px.eng()
-        .apply_listed_pr(px.forge.as_ref(), "acme", &row(12, "OAuth", "feat/oauth"), "avery", Utc::now())
+        .apply_listed_pr(
+            px.forge.as_ref(),
+            "acme",
+            &row(12, "OAuth", "feat/oauth"),
+            "avery",
+            Utc::now(),
+        )
         .await;
     crate::testing::wait_for(Duration::from_secs(2), "queued snapshot refresh", || {
         !px.forge.calls_to("snapshot").is_empty() && px.eng().prs.conv_busy.lock().is_empty()
@@ -430,7 +461,12 @@ async fn apply_stores_participants() {
         .apply_listed_pr(px.forge.as_ref(), "acme", &r, "avery", Utc::now())
         .await;
     assert!(created);
-    let logins: Vec<String> = px.pr(&id).participants.into_iter().map(|p| p.login).collect();
+    let logins: Vec<String> = px
+        .pr(&id)
+        .participants
+        .into_iter()
+        .map(|p| p.login)
+        .collect();
     assert_eq!(logins, ["sam", "pat", "avery"]);
 }
 
@@ -475,7 +511,11 @@ async fn apply_keeps_local_behind_base() {
         .apply_listed_pr(px.forge.as_ref(), "acme", &r, "avery", Utc::now())
         .await;
     assert!(!created);
-    assert_eq!(px.pr("gh-acme-12").behind_base, 3, "CLEAN must not clobber git's count");
+    assert_eq!(
+        px.pr("gh-acme-12").behind_base,
+        3,
+        "CLEAN must not clobber git's count"
+    );
 
     px.add_pr(Pr {
         title: "Docs".into(),
@@ -516,7 +556,10 @@ async fn apply_tracks_conflicts() {
         }
     };
     let got = apply("CONFLICTING", "DIRTY").await;
-    assert_eq!((got.mergeable.as_str(), got.merge_state_status.as_str()), ("CONFLICTING", "DIRTY"));
+    assert_eq!(
+        (got.mergeable.as_str(), got.merge_state_status.as_str()),
+        ("CONFLICTING", "DIRTY")
+    );
     let got = apply("UNKNOWN", "UNKNOWN").await;
     assert_eq!(
         (got.mergeable.as_str(), got.merge_state_status.as_str()),

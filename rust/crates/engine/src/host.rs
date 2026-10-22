@@ -359,7 +359,14 @@ impl Host for EngineHost {
         }
     }
 
-    async fn open_pr(&self, ws: &str, _agent: &str, title: &str, body: &str, draft: bool) -> String {
+    async fn open_pr(
+        &self,
+        ws: &str,
+        _agent: &str,
+        title: &str,
+        body: &str,
+        draft: bool,
+    ) -> String {
         match self.engine() {
             Some(e) => e.open_pr_from_agent(ws, title, body, draft).await,
             None => "ignored".into(),

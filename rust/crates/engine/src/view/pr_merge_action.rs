@@ -109,7 +109,12 @@ pub fn pr_merge_action(pr: Option<&Pr>, awaiting_update: bool) -> MergeAction {
         );
     }
     if pr.merge_queued {
-        return MergeAction::new(K::Queued, "Queued", "Waiting in the GitHub merge queue", true);
+        return MergeAction::new(
+            K::Queued,
+            "Queued",
+            "Waiting in the GitHub merge queue",
+            true,
+        );
     }
     let status = upper(&pr.merge_state_status);
     let mergeable = upper(&pr.mergeable);
@@ -211,8 +216,7 @@ pub fn show_pr_update(pr: Option<&Pr>, action: &MergeAction) -> bool {
     if pr.behind_base <= 0 || settled(pr) {
         return false;
     }
-    let known = !pr.viewer_login.trim().is_empty();
-    !(known && !pr.viewer_can_write)
+    pr.viewer_login.trim().is_empty() || pr.viewer_can_write
 }
 
 /// The author or a writer can flip a forge PR's draft state; an unknown
@@ -359,10 +363,13 @@ mod tests {
 
     #[test]
     fn hides_merged_and_closed() {
-        assert_eq!(kind(&gh(|p| {
-            p.state = "Merged".into();
-            p.group = "merged".into();
-        })), "hidden");
+        assert_eq!(
+            kind(&gh(|p| {
+                p.state = "Merged".into();
+                p.group = "merged".into();
+            })),
+            "hidden"
+        );
         assert_eq!(kind(&gh(|p| p.state = "Closed".into())), "hidden");
         assert_eq!(pr_merge_action(None, false).kind, MergeActionKind::Hidden);
     }
@@ -384,13 +391,19 @@ mod tests {
             })),
             false,
         );
-        assert_eq!((queued.kind, queued.disabled), (MergeActionKind::Queued, true));
+        assert_eq!(
+            (queued.kind, queued.disabled),
+            (MergeActionKind::Queued, true)
+        );
     }
 
     #[test]
     fn updating() {
         assert_eq!(kind(&gh(|p| p.updating_base = "git".into())), "updating");
-        assert_eq!(pr_merge_action(Some(&gh(|_| {})), true).kind.as_str(), "updating");
+        assert_eq!(
+            pr_merge_action(Some(&gh(|_| {})), true).kind.as_str(),
+            "updating"
+        );
     }
 
     #[test]
@@ -409,30 +422,45 @@ mod tests {
     #[test]
     fn drafts() {
         assert_eq!(kind(&gh(|p| p.draft = true)), "ready");
-        assert_eq!(kind(&gh(|p| p.merge_state_status = "DRAFT".into())), "ready");
-        assert_eq!(kind(&gh(|p| {
-            p.draft = true;
-            p.behind_base = 2;
-        })), "ready");
-        assert_eq!(kind(&gh(|p| {
-            p.draft = true;
-            p.viewer_can_write = false;
-            p.author_login = "josh".into();
-        })), "ready");
+        assert_eq!(
+            kind(&gh(|p| p.merge_state_status = "DRAFT".into())),
+            "ready"
+        );
+        assert_eq!(
+            kind(&gh(|p| {
+                p.draft = true;
+                p.behind_base = 2;
+            })),
+            "ready"
+        );
+        assert_eq!(
+            kind(&gh(|p| {
+                p.draft = true;
+                p.viewer_can_write = false;
+                p.author_login = "josh".into();
+            })),
+            "ready"
+        );
     }
 
     #[test]
     fn no_write_hides_merge() {
-        assert_eq!(kind(&gh(|p| {
-            p.viewer_login = "guest".into();
-            p.viewer_can_write = false;
-            p.merge_state_status = "CLEAN".into();
-        })), "hidden");
+        assert_eq!(
+            kind(&gh(|p| {
+                p.viewer_login = "guest".into();
+                p.viewer_can_write = false;
+                p.merge_state_status = "CLEAN".into();
+            })),
+            "hidden"
+        );
     }
 
     #[test]
     fn behind_and_conflicts() {
-        assert_eq!(kind(&gh(|p| p.merge_state_status = "BEHIND".into())), "update-base");
+        assert_eq!(
+            kind(&gh(|p| p.merge_state_status = "BEHIND".into())),
+            "update-base"
+        );
         let act = pr_merge_action(
             Some(&gh(|p| {
                 p.merge_state_status = "BEHIND".into();
@@ -442,10 +470,13 @@ mod tests {
             false,
         );
         assert!(act.title.contains("3 commits on main"), "{}", act.title);
-        assert_eq!(kind(&gh(|p| {
-            p.merge_state_status = "CLEAN".into();
-            p.behind_base = 2;
-        })), "merge");
+        assert_eq!(
+            kind(&gh(|p| {
+                p.merge_state_status = "CLEAN".into();
+                p.behind_base = 2;
+            })),
+            "merge"
+        );
         assert_eq!(kind(&gh(|p| p.behind_base = 2)), "merge");
         let pr = gh(|p| {
             p.merge_state_status = "DIRTY".into();
@@ -457,10 +488,13 @@ mod tests {
             (MergeActionKind::Resolve, "Resolve conflicts", false)
         );
         assert!(show_pr_update(Some(&pr), &act));
-        assert_ne!(kind(&gh(|p| {
-            p.workspace_id.clear();
-            p.merge_state_status = "BEHIND".into();
-        })), "update-base");
+        assert_ne!(
+            kind(&gh(|p| {
+                p.workspace_id.clear();
+                p.merge_state_status = "BEHIND".into();
+            })),
+            "update-base"
+        );
         let act = pr_merge_action(
             Some(&gh(|p| {
                 p.workspace_id.clear();
@@ -481,12 +515,15 @@ mod tests {
 
     #[test]
     fn blocked() {
-        assert_eq!(kind(&gh(|p| {
-            p.merge_state_status = "BLOCKED".into();
-            p.checks_ok = false;
-            p.review_decision = "APPROVED".into();
-            p.checks = Some(vec![check("fail"), check("pending")]);
-        })), "checks");
+        assert_eq!(
+            kind(&gh(|p| {
+                p.merge_state_status = "BLOCKED".into();
+                p.checks_ok = false;
+                p.review_decision = "APPROVED".into();
+                p.checks = Some(vec![check("fail"), check("pending")]);
+            })),
+            "checks"
+        );
         let act = pr_merge_action(
             Some(&gh(|p| {
                 p.merge_state_status = "BLOCKED".into();
@@ -496,12 +533,15 @@ mod tests {
             false,
         );
         assert_eq!(act.label, "Fix checks");
-        assert_eq!(kind(&gh(|p| {
-            p.merge_state_status = "BLOCKED".into();
-            p.checks_ok = false;
-            p.review_decision = "APPROVED".into();
-            p.checks = Some(vec![check("pending")]);
-        })), "blocked");
+        assert_eq!(
+            kind(&gh(|p| {
+                p.merge_state_status = "BLOCKED".into();
+                p.checks_ok = false;
+                p.review_decision = "APPROVED".into();
+                p.checks = Some(vec![check("pending")]);
+            })),
+            "blocked"
+        );
         for d in ["REVIEW_REQUIRED", "CHANGES_REQUESTED"] {
             let pr = gh(|p| {
                 p.merge_state_status = "BLOCKED".into();
@@ -522,12 +562,18 @@ mod tests {
             p.viewer_can_write = false;
             p.behind_base = 2;
         });
-        assert!(!show_pr_update(Some(&guest), &pr_merge_action(Some(&guest), false)));
+        assert!(!show_pr_update(
+            Some(&guest),
+            &pr_merge_action(Some(&guest), false)
+        ));
         let closed = gh(|p| {
             p.state = "Closed".into();
             p.behind_base = 2;
         });
-        assert!(!show_pr_update(Some(&closed), &pr_merge_action(Some(&closed), false)));
+        assert!(!show_pr_update(
+            Some(&closed),
+            &pr_merge_action(Some(&closed), false)
+        ));
         let act = pr_merge_action(
             Some(&gh(|p| {
                 p.merge_state_status = "BLOCKED".into();
@@ -559,8 +605,12 @@ mod tests {
             ..Pr::default()
         };
         assert!(!can_set_pr_draft(Some(&local)));
-        assert!(!can_approve_pr_review(Some(&gh(|p| p.author_login = "josh".into()))));
-        assert!(can_approve_pr_review(Some(&gh(|p| p.author_login = "loopbot".into()))));
+        assert!(!can_approve_pr_review(Some(&gh(
+            |p| p.author_login = "josh".into()
+        ))));
+        assert!(can_approve_pr_review(Some(&gh(
+            |p| p.author_login = "loopbot".into()
+        ))));
         assert!(!can_approve_pr_review(Some(&gh(|p| {
             p.viewer_login = "guest".into();
             p.viewer_can_write = false;
@@ -584,23 +634,38 @@ mod tests {
         assert_eq!(allowed_merge_methods(Some(&local)), MERGE_METHODS);
         assert_eq!(allowed_merge_methods(Some(&gh(|_| {}))), MERGE_METHODS);
         assert_eq!(
-            allowed_merge_methods(Some(&gh(|p| p.allowed_merge_methods = vec!["squash".into()]))),
+            allowed_merge_methods(Some(&gh(
+                |p| p.allowed_merge_methods = vec!["squash".into()]
+            ))),
             ["squash"]
         );
-        assert_eq!(pick_allowed_merge_method("merge", &["squash", "rebase"]), "squash");
-        assert_eq!(pick_allowed_merge_method("rebase", &["squash", "rebase"]), "rebase");
+        assert_eq!(
+            pick_allowed_merge_method("merge", &["squash", "rebase"]),
+            "squash"
+        );
+        assert_eq!(
+            pick_allowed_merge_method("rebase", &["squash", "rebase"]),
+            "rebase"
+        );
         assert_eq!(pick_allowed_merge_method("x", &[]), "merge");
     }
 
     #[test]
     fn still_merges_on_other_states() {
         assert!(
-            pr_merge_action(Some(&gh(|p| p.merge_state_status = "UNSTABLE".into())), false)
-                .title
-                .contains("not green")
+            pr_merge_action(
+                Some(&gh(|p| p.merge_state_status = "UNSTABLE".into())),
+                false
+            )
+            .title
+            .contains("not green")
         );
         for s in ["CLEAN", "HAS_HOOKS", "UNKNOWN", ""] {
-            assert_eq!(kind(&gh(|p| p.merge_state_status = s.into())), "merge", "{s}");
+            assert_eq!(
+                kind(&gh(|p| p.merge_state_status = s.into())),
+                "merge",
+                "{s}"
+            );
         }
     }
 
@@ -611,14 +676,26 @@ mod tests {
         assert_eq!(short_base_name("main"), "main");
         assert_eq!(short_base_name(""), "base");
         assert_eq!(resolve_update_base_method(None, None, None), "merge");
-        assert_eq!(resolve_update_base_method(Some("rebase"), Some("merge"), None), "rebase");
-        assert_eq!(resolve_update_base_method(Some("nope"), Some("rebase"), None), "rebase");
+        assert_eq!(
+            resolve_update_base_method(Some("rebase"), Some("merge"), None),
+            "rebase"
+        );
+        assert_eq!(
+            resolve_update_base_method(Some("nope"), Some("rebase"), None),
+            "rebase"
+        );
         assert_eq!(
             resolve_update_base_method(Some("rebase"), Some("merge"), Some("merge")),
             "merge"
         );
-        assert_eq!(update_with_base_label("merge", "origin/main"), "Update with main");
-        assert_eq!(update_with_base_label("rebase", "develop"), "Rebase onto develop");
+        assert_eq!(
+            update_with_base_label("merge", "origin/main"),
+            "Update with main"
+        );
+        assert_eq!(
+            update_with_base_label("rebase", "develop"),
+            "Rebase onto develop"
+        );
         assert_eq!(
             pr_merge_action(
                 Some(&gh(|p| {

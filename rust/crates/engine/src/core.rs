@@ -264,6 +264,9 @@ pub struct Engine {
     pub(crate) resuming_chats: Mutex<HashSet<String>>,
     /// The looking-at surface of each tab's last send, for Retry.
     pub(crate) last_chat_surfaces: Mutex<HashMap<String, crate::chat::surface::ChatSurface>>,
+    /// Pull requests: holds, throttles, the sync single-flight and hoist
+    /// aliases (E5).
+    pub(crate) prs: crate::prs::PrState,
     /// PA*/MA tabs Recover found live with no turn, for AutoResume.
     pub(crate) interrupted_chats: Mutex<Vec<crate::chat::recover::InterruptedChat>>,
     /// Scheduled workspaces whose first turn settled into "waiting".
@@ -377,6 +380,7 @@ impl Engine {
                 merge_child_locks: Mutex::new(HashMap::new()),
                 resuming_chats: Mutex::new(HashSet::new()),
                 last_chat_surfaces: Mutex::new(HashMap::new()),
+                prs: crate::prs::PrState::default(),
                 interrupted_chats: Mutex::new(Vec::new()),
                 schedule_wait: Mutex::new(HashSet::new()),
                 tasks: Tasks::default(),

@@ -39,6 +39,8 @@ pub struct PrHeadCheckoutSpec {
     pub branch: String,
     pub pr_id: String,
     pub cross_repo: bool,
+    /// Where the PR's forge keeps the head (`None` = no forge claims it).
+    pub head: Option<recur_forge::HeadRef>,
 }
 
 /// `refs/heads/` stripped, trimmed (Go `normalizePRBranch`).
@@ -536,10 +538,23 @@ impl Engine {
             .cloned()
             .unwrap_or_default();
         if head_spec.number > 0 {
-            let r = self
-                .git_cancellable(cancel, None, mgr.fetch_pr_head(head_spec.number))
-                .await
-                .map_err(|e| EngineError(format!("fetch pull request head: {e}")))?;
+            let head = head_spec.head.clone().ok_or_else(|| {
+                EngineError(format!(
+                    "fetch pull request head: no forge handles PR {:?}",
+                    head_spec.pr_id
+                ))
+            })?;
+            let fetch = crate::prs::forge_glue::fetch_forge_pr_head(
+                &mgr,
+                &proj.repo_path,
+                &head,
+                head_spec.number,
+            );
+            let r = tokio::select! {
+                r = fetch => r,
+                _ = cancel.cancelled() => Err("context canceled".to_owned()),
+            }
+            .map_err(|e| EngineError(format!("fetch pull request head: {e}")))?;
             if !r.is_empty() {
                 add_base = r;
             }

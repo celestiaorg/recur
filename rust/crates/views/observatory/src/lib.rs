@@ -113,6 +113,28 @@ pub struct Owners {
 
 impl Global for Owners {}
 
+#[cfg(any(test, feature = "gallery"))]
+/// Parity scenes and spec remounts share one app: drop the previous scene's keep-alive caches, parked tabs, editor
+/// environment and event wiring (bound to its services and state).
+pub(crate) fn reset_globals(cx: &mut App) {
+    fn clear<G: gpui_kit::Global>(cx: &mut App) {
+        if cx.has_global::<G>() {
+            cx.remove_global::<G>();
+        }
+    }
+    clear::<textmate::EnvHandle>(cx);
+    clear::<dock::TermEvents>(cx);
+    clear::<lsp::client::LspHub>(cx);
+    clear::<lsp::problems::LspProblems>(cx);
+    clear::<obs_cache::ObservatoryCache>(cx);
+    clear::<session_tabs::SessionTabParks>(cx);
+    clear::<session_host::SessionHost>(cx);
+    clear::<keybinding_menu::KeybindingMenuStore>(cx);
+    clear::<UnseenArtifacts>(cx);
+    clear::<Owners>(cx);
+    clear::<recur_editor::history_cache::EditorHistory>(cx);
+}
+
 /// The app-wide state the Observatory shares across instances.
 pub fn init_globals(cx: &mut App) {
     lsp::client::init(cx);

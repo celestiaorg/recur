@@ -46,13 +46,19 @@ impl Observatory {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let prev = std::mem::replace(&mut self.props, props);
         if self.window.is_none() {
             self.window = Some(window.window_handle());
         }
-        let root = observatory_cache_key(&self.props.project_id, &self.props.workspace_id);
+        let root = observatory_cache_key(&props.project_id, &props.workspace_id);
+        if root != self.loaded_root {
+            self.leave_root(window, cx);
+        }
+        let prev = std::mem::replace(&mut self.props, props);
         if root != self.loaded_root {
             self.on_root_change(root, window, cx);
+        } else if prev.left_open != self.props.left_open {
+            // The chat dock flag is pane chrome the session remembers.
+            self.persist_editor_session(cx);
         }
         if !self.props.initial_path.is_empty() && self.props.initial_path != prev.initial_path {
             let p = self.props.initial_path.clone();
@@ -275,7 +281,9 @@ impl Observatory {
 
     // ---- the root switch ----
 
-    fn on_root_change(&mut self, root: String, window: &mut Window, cx: &mut Context<Self>) {
+    /// Snapshot and persist the outgoing root while its props (the host's chat dock flag)
+    /// still describe it.
+    fn leave_root(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let outgoing = std::mem::take(&mut self.loaded_root);
         if !outgoing.is_empty() && outgoing != "\0" {
             let snap = self.capture_snapshot(Some(window), cx);
@@ -293,6 +301,10 @@ impl Observatory {
                 .detach();
             }
         }
+    }
+
+    fn on_root_change(&mut self, root: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.leave_root(window, cx);
         self.loaded_root = root.clone();
         self.root_token += 1;
         self.git_status_gen += 1;
@@ -703,9 +715,6 @@ impl Observatory {
         self.scope_chosen = snap.scope_chosen;
         self.left_kind = snap.left_kind;
         self.right_kind = snap.right_kind;
-        if let Some(open) = snap.left_open {
-            self.set_left_gutter_open(open, cx);
-        }
         if let Some(side) = snap.show_side {
             self.show_side = side;
         }
@@ -784,6 +793,10 @@ impl Observatory {
         self.main_surface_pref = snap.main_surface;
         self.session_load_settled = snap.session_load_settled || !snap.open_files.is_empty();
         self.syntax_maps_ready = snap.syntax_maps_ready.unwrap_or(snap.session_load_settled);
+        // Last: the host's dock flag persists the session, which must see the whole snapshot.
+        if let Some(open) = snap.left_open {
+            self.set_left_gutter_open(open, cx);
+        }
         self.hits.clear();
         self.refs.clear();
         self.search_skipped_large = 0;

@@ -213,30 +213,9 @@ impl Render for ObservatoryScene {
     }
 }
 
-/// Scenes share one app: drop the previous scene's keep-alive caches, parked tabs, editor
-/// environment and event wiring (bound to its services and state).
-fn reset_globals(cx: &mut App) {
-    fn clear<G: gpui_kit::Global>(cx: &mut App) {
-        if cx.has_global::<G>() {
-            cx.remove_global::<G>();
-        }
-    }
-    clear::<crate::textmate::EnvHandle>(cx);
-    clear::<crate::dock::TermEvents>(cx);
-    clear::<crate::lsp::client::LspHub>(cx);
-    clear::<crate::lsp::problems::LspProblems>(cx);
-    clear::<crate::obs_cache::ObservatoryCache>(cx);
-    clear::<crate::session_tabs::SessionTabParks>(cx);
-    clear::<crate::session_host::SessionHost>(cx);
-    clear::<crate::keybinding_menu::KeybindingMenuStore>(cx);
-    clear::<crate::UnseenArtifacts>(cx);
-    clear::<crate::Owners>(cx);
-    clear::<recur_editor::history_cache::EditorHistory>(cx);
-}
-
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let spec = specs().into_iter().find(|s| s.name == name)?;
-    reset_globals(cx);
+    crate::reset_globals(cx);
     // No application loop answers the webview here: pdf.js renders on the spot.
     cx.set_global(recur_content::webhost::BlockingRenders);
     let variant = variant(name);

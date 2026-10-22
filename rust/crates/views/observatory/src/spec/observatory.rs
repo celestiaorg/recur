@@ -1118,3 +1118,107 @@ async fn file_tab_close_all_asks_once_for_dirty_tabs_and_cancel_keeps_them(
     assert_eq!(h.open_files().len(), 2);
     assert!(h.read(|o, _| o.tab_is_dirty("src/main.go") && o.tab_is_dirty("src/other.go")));
 }
+
+#[gpui::test]
+async fn opt_cmd_r_toggles_review_from_the_editor_not_while_files_is_focused(
+    cx: &mut TestAppContext,
+) {
+    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    open_main_go(&mut h);
+    assert!(h.active_tab("src/main.go"));
+    // Diff's editable side has focus (it used to count as typing and swallow ⌥⌘R).
+    h.update(|o, window, cx| {
+        if let Some((_, e)) = o.merge_editor.clone() {
+            let f = gpui_kit::Focusable::focus_handle(e.read(cx), cx);
+            window.focus(&f, cx);
+        }
+    });
+    h.keys("cmd-alt-r");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    assert!(h.has("obs-review-host"));
+    h.keys("cmd-alt-r");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    h.update(|o, window, cx| window.focus(&o.files_focus, cx));
+    h.keys("cmd-alt-r");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+}
+
+#[gpui::test]
+async fn review_changes_is_remembered_on_hold_warm_remount_and_cold_reload(
+    cx: &mut TestAppContext,
+    restarted: &mut TestAppContext,
+) {
+    let (a, b, c) = (WS, "LOOP-2229", "LOOP-2235");
+    let store = SessionStore::default();
+    let mut h = mount(cx, store.install(MockOptions::default()), |_| {}, |_| {});
+    h.click("obs-review-toggle");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    h.switch_to(PROJECT, b);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    h.switch_to(PROJECT, a);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    h.switch_to(PROJECT, b);
+    h.switch_to(PROJECT, c);
+    h.switch_to(PROJECT, a);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    assert!(h.has("obs-review-host"));
+    h.wait(1000);
+    h.quit();
+    let mut h = mount(
+        restarted,
+        store.install(MockOptions::default()),
+        |_| {},
+        |_| {},
+    );
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    assert!(h.has("obs-review-host"));
+}
+
+#[gpui::test]
+async fn pane_kinds_and_visibility_are_remembered_on_hold_warm_remount_and_cold_reload(
+    cx: &mut TestAppContext,
+    restarted: &mut TestAppContext,
+) {
+    let (a, b, c) = (WS, "LOOP-2229", "LOOP-2235");
+    let store = SessionStore::default();
+    let mut h = mount(cx, store.install(MockOptions::default()), |_| {}, |_| {});
+    h.click("panel-toggle:findings");
+    h.click("panel-toggle:scm");
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
+    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Scm);
+    h.click("obs-left-toggle");
+    h.click("obs-side-toggle");
+    assert!(!h.has("obs-left") && !h.has("obs-side"));
+
+    h.switch_to(PROJECT, b);
+    assert!(h.has("obs-left") && h.has("obs-side"));
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Maestro);
+    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Files);
+
+    h.switch_to(PROJECT, a);
+    assert!(!h.has("obs-left") && !h.has("obs-side"));
+    h.switch_to(PROJECT, b);
+    h.switch_to(PROJECT, c);
+    h.switch_to(PROJECT, a);
+    assert!(!h.has("obs-left") && !h.has("obs-side"));
+    h.click("obs-left-toggle");
+    h.click("obs-side-toggle");
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
+    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Scm);
+    h.click("obs-left-toggle");
+    h.click("obs-side-toggle");
+    h.wait(1000);
+    h.quit();
+
+    let mut h = mount(
+        restarted,
+        store.install(MockOptions::default()),
+        |_| {},
+        |_| {},
+    );
+    assert!(!h.has("obs-left") && !h.has("obs-side"));
+    h.click("obs-left-toggle");
+    h.click("obs-side-toggle");
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
+    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Scm);
+}

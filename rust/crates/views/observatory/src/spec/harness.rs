@@ -66,6 +66,7 @@ pub struct H<'a> {
     pub host: Entity<Host>,
     pub bridge: Arc<MockBridge>,
     pub events: Rc<RefCell<Vec<ObservatoryEvent>>>,
+    pub chat_open: Rc<RefCell<std::collections::HashMap<String, bool>>>,
     pub cx: &'a mut VisualTestContext,
 }
 
@@ -150,13 +151,91 @@ pub fn mount<'a>(
         host,
         bridge,
         events,
+        chat_open: Rc::default(),
         cx: vcx,
     };
     h.settle();
     h
 }
 
+/// The backend's editor-session store (`GetEditorSession` / `UpdateEditorSession`): meta
+/// replaces wholesale; buffers and scratch docs upsert by path.
+#[derive(Clone, Default)]
+pub struct SessionStore(pub Arc<parking_lot::Mutex<serde_json::Map<String, serde_json::Value>>>);
+
+impl SessionStore {
+    pub fn install(&self, opts: MockOptions) -> MockOptions {
+        let (get, put) = (self.0.clone(), self.0.clone());
+        opts.resolver("GetEditorSession", move |a, _, _| {
+            let ws = a.first().and_then(serde_json::Value::as_str).unwrap_or("");
+            recur_services::mock::Reply::value(get.lock().get(ws).cloned().unwrap_or_default())
+        })
+        .resolver("UpdateEditorSession", move |a, _, _| {
+            let ws = a
+                .first()
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let patch = a.get(1).cloned().unwrap_or_default();
+            let mut all = put.lock();
+            let entry = all.entry(ws).or_insert_with(|| serde_json::json!({}));
+            if let Some(meta) = patch.get("meta").and_then(serde_json::Value::as_object) {
+                let keep_buffers = entry.get("buffers").cloned();
+                let keep_scratch = entry.get("scratchDocs").cloned();
+                *entry = serde_json::Value::Object(meta.clone());
+                if let Some(b) = keep_buffers {
+                    entry["buffers"] = b;
+                }
+                if let Some(d) = keep_scratch {
+                    entry["scratchDocs"] = d;
+                }
+            }
+            for key in ["buffers", "scratchDocs"] {
+                if let Some(m) = patch.get(key).and_then(serde_json::Value::as_object) {
+                    if !entry.get(key).is_some_and(serde_json::Value::is_object) {
+                        entry[key] = serde_json::json!({});
+                    }
+                    for (k, v) in m {
+                        entry[key][k] = v.clone();
+                    }
+                }
+            }
+            for (key, drop) in [
+                ("buffers", "dropBuffers"),
+                ("scratchDocs", "dropScratchDocs"),
+            ] {
+                if let Some(list) = patch.get(drop).and_then(serde_json::Value::as_array)
+                    && let Some(m) = entry
+                        .get_mut(key)
+                        .and_then(serde_json::Value::as_object_mut)
+                {
+                    for p in list.iter().filter_map(serde_json::Value::as_str) {
+                        m.remove(p);
+                    }
+                }
+            }
+            recur_services::mock::Reply::null()
+        })
+        .resolver("ClearEditorSession", {
+            let all = self.0.clone();
+            move |a, _, _| {
+                let ws = a.first().and_then(serde_json::Value::as_str).unwrap_or("");
+                all.lock().remove(ws);
+                recur_services::mock::Reply::null()
+            }
+        })
+    }
+}
+
 impl H<'_> {
+    /// Quit: write the pending editor session (the quit journal's flush). Remount in a
+    /// second app context for the restart.
+    pub fn quit(self) {
+        self.cx
+            .update(|_, cx| crate::session_host::flush_editor_session_now(cx));
+        self.cx.run_until_parked();
+    }
+
     pub fn settle(&mut self) {
         for _ in 0..4 {
             self.cx.run_until_parked();
@@ -331,11 +410,16 @@ impl H<'_> {
         self.settle();
     }
 
-    /// Switch the host to another workspace (or back).
+    /// Switch the host to another workspace (or back). Each workspace view keeps its own chat
+    /// dock open flag (`chatOpen`).
     pub fn switch_to(&mut self, project: &str, workspace: &str) {
         let (p, w) = (project.to_string(), workspace.to_string());
+        let dock = self.chat_open.clone();
         self.update(move |o, window, cx| {
             let mut props = o.props().clone();
+            dock.borrow_mut()
+                .insert(props.workspace_id.clone(), props.left_open.unwrap_or(true));
+            props.left_open = Some(dock.borrow().get(&w).copied().unwrap_or(true));
             props.project_id = p;
             props.workspace_id = w;
             o.set_props(props, window, cx);

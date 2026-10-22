@@ -3,6 +3,7 @@
 //! pinned for every turn (Go `SetRunner(&ScriptedRunner{})`), the GitHub
 //! forge with no `gh` (Go CI without gh), and fake issue trackers.
 
+mod assets;
 mod code_service;
 mod editor_session;
 mod services;

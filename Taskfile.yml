@@ -135,7 +135,7 @@ tasks:
       - cargo build {{.CLI_ARGS}}
 
   run:rust:
-    summary: Runs the Rust/GPUI desktop app (data dir defaults to RecurNext)
+    summary: Runs the Rust/GPUI desktop app on the engine-backed services (data dir defaults to RecurNext; `-- --features mock` for the mock bridge)
     dir: rust
     cmds:
       - cargo run -p recur-desktop {{.CLI_ARGS}}

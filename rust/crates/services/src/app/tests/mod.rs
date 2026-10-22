@@ -11,6 +11,7 @@ mod open_path;
 mod services;
 mod settings;
 mod shell;
+mod terminals;
 mod workspace_base;
 mod workspace_create;
 mod workspace_issue;
@@ -87,28 +88,10 @@ impl Fx {
             Arc::new(FakeTracker::new("github")),
             Arc::new(FakeTracker::new("linear")),
         ];
-        let forges = opts.forges.unwrap_or_else(|| {
-            vec![Arc::new(recur_forge::github::GitHub::with_gh(recur_forge::Gh::new(
-                "/nonexistent/recur-test-gh",
-            ))) as Arc<dyn Forge>]
-        });
         let svc = AppServices::new(
             store,
             config.clone(),
-            AppOptions {
-                pin: Some(opts.provider),
-                forges: Some(forges),
-                trackers: Some(
-                    trackers
-                        .iter()
-                        .map(|t| t.clone() as Arc<dyn IssueTracker>)
-                        .collect(),
-                ),
-                git: Some(GitSetup {
-                    worktree_root: config.worktrees_dir.to_string_lossy().into_owned(),
-                    ..GitSetup::default()
-                }),
-            },
+            test_options(&config, opts.provider, opts.forges, &trackers),
         )
         .await;
         let events = BusRecorder::attach(&svc.engine.bus);
@@ -122,6 +105,14 @@ impl Fx {
             temps: Mutex::new(Vec::new()),
             _dir: dir,
         }
+    }
+
+    /// Go's second `NewServices(eng)` over the same store and data dir (a
+    /// restart): fresh terminal, shell and editor caches.
+    pub async fn reopen(&self) -> Arc<AppServices> {
+        let config = self.svc.config().clone();
+        let opts = test_options(&config, Some(Arc::new(ScriptedProvider::new(vec![]))), None, &self.trackers);
+        AppServices::new(self.svc.engine.store.clone(), config, opts).await
     }
 
     pub fn store(&self) -> &Store {
@@ -230,6 +221,33 @@ impl Fx {
 
     pub async fn close(self) {
         self.svc.shutdown().await;
+    }
+}
+
+fn test_options(
+    config: &AppConfig,
+    provider: Option<Arc<dyn Provider>>,
+    forges: Option<Vec<Arc<dyn Forge>>>,
+    trackers: &[Arc<FakeTracker>],
+) -> AppOptions {
+    let forges = forges.unwrap_or_else(|| {
+        vec![Arc::new(recur_forge::github::GitHub::with_gh(recur_forge::Gh::new(
+            "/nonexistent/recur-test-gh",
+        ))) as Arc<dyn Forge>]
+    });
+    AppOptions {
+        pin: Some(provider),
+        forges: Some(forges),
+        trackers: Some(
+            trackers
+                .iter()
+                .map(|t| t.clone() as Arc<dyn IssueTracker>)
+                .collect(),
+        ),
+        git: Some(GitSetup {
+            worktree_root: config.worktrees_dir.to_string_lossy().into_owned(),
+            ..GitSetup::default()
+        }),
     }
 }
 

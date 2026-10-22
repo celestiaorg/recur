@@ -18,6 +18,11 @@ fn st(view: &str, ws: &str) -> ShellState {
     }
 }
 
+/// Go `&ShellService{}`: nothing cached, reads from disk.
+async fn fresh_shell(fx: &Fx) -> std::sync::Arc<dyn crate::api::ShellService> {
+    fx.reopen().await.services().shell
+}
+
 fn file_state(fx: &Fx) -> ShellState {
     serde_json::from_slice(&std::fs::read(fx.root.join(SHELL_STATE_FILE)).unwrap()).unwrap()
 }
@@ -47,13 +52,11 @@ async fn shell_state_round_trip() {
     assert_eq!(sh.get_shell_state().await.unwrap(), want, "memory before flush");
     sh.flush().await.unwrap();
     assert_eq!(file_state(&fx), want);
-    fx.svc.shell_forget();
-    assert_eq!(sh.get_shell_state().await.unwrap(), want, "load");
+    assert_eq!(fresh_shell(&fx).await.get_shell_state().await.unwrap(), want, "load");
     sh.set_shell_state(&want).await.unwrap();
     sh.set_shell_state(&st("inbox", "WS-9")).await.unwrap();
     sh.flush().await.unwrap();
-    fx.svc.shell_forget();
-    assert_eq!(sh.get_shell_state().await.unwrap(), st("inbox", ""));
+    assert_eq!(fresh_shell(&fx).await.get_shell_state().await.unwrap(), st("inbox", ""));
     fx.close().await;
 }
 
@@ -119,8 +122,8 @@ async fn expanded_schedules_round_trip() {
     let file: serde_json::Value =
         serde_json::from_slice(&std::fs::read(fx.root.join(SCHEDULE_VIEW_FILE)).unwrap()).unwrap();
     assert_eq!(file["expanded"], serde_json::json!(["a", "b"]));
-    fx.svc.shell_forget();
-    assert_eq!(sh.get_expanded_schedules().await.unwrap(), ["a", "b"], "reload");
+    let reload = fresh_shell(&fx).await.get_expanded_schedules().await.unwrap();
+    assert_eq!(reload, ["a", "b"]);
     fx.close().await;
 }
 
@@ -146,8 +149,7 @@ async fn issues_view_round_trip() {
         projects: vec!["p1".into()],
     };
     sh.set_issues_view(&want).await.unwrap();
-    fx.svc.shell_forget();
-    assert_eq!(sh.get_issues_view().await.unwrap(), want);
+    assert_eq!(fresh_shell(&fx).await.get_issues_view().await.unwrap(), want);
     write(fx.root.join(ISSUES_VIEW_FILE), "{not json");
     assert_eq!(sh.get_issues_view().await.unwrap().layout, "");
     fx.close().await;

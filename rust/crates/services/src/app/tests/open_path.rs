@@ -110,15 +110,15 @@ async fn open_path_loose_file_survives_restart() {
         )
         .await
         .unwrap();
-    fx.svc.loose.clear();
-    fx.svc.editor.forget(&res.workspace_id);
-    let fc = fx
-        .s
+    let fresh = fx.reopen().await;
+    let fc = fresh
+        .services()
         .code
         .read_file(&res.project_id, &res.workspace_id, &res.file)
         .await
         .unwrap();
     assert_eq!(fc.content, "hi\n");
+    fresh.shutdown().await;
     fx.close().await;
 }
 

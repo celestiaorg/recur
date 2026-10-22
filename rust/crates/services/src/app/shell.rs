@@ -266,12 +266,6 @@ impl AppServices {
     pub(crate) fn shell_fail_delay(&self) -> Duration {
         self.shell.0.lock().fail_delay
     }
-
-    /// A fresh service: the next read comes from disk.
-    #[cfg(test)]
-    pub(crate) fn shell_forget(&self) {
-        *self.shell.0.lock() = Inner::default();
-    }
 }
 
 #[async_trait]

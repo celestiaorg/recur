@@ -442,16 +442,17 @@ impl Render for PermissionCard {
                     t.amber.mix(0.18, recur_ui::color::TRANSPARENT),
                 ),
             ];
-            let bar = div().absolute().left_0().top_0().bottom_0().w(px(3.)).bg(
-                gpui_kit::linear_gradient(
+            let bar = div()
+                .absolute()
+                .left_0()
+                .top_0()
+                .bottom_0()
+                .w(px(3.))
+                .child(recur_ui::style::gradient_fill(
                     180.,
-                    gpui_kit::linear_color_stop(hsla(t.amber), 0.),
-                    gpui_kit::linear_color_stop(
-                        hsla(t.amber.mix(0.35, recur_ui::color::TRANSPARENT)),
-                        1.,
-                    ),
-                ),
-            );
+                    (t.amber, 0.),
+                    (t.amber.mix(0.35, recur_ui::color::TRANSPARENT), 1.),
+                ));
             with_shadow(
                 recur_ui::style::card(t.pane, t.line_bright, 12.)
                     .overflow_hidden()

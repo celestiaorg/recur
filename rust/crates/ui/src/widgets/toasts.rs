@@ -12,7 +12,7 @@ use crate::theme::Theme;
 use gpui_kit::{
     AnyElement, App, AppContext, ClickEvent, Context, CursorStyle, Entity, Global, Hsla,
     InteractiveElement, IntoElement, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, Task, Window, div, linear_color_stop, linear_gradient,
+    StatefulInteractiveElement, Styled, Task, Window, div,
     prelude::FluentBuilder, px, relative,
 };
 use std::rc::Rc;
@@ -627,30 +627,23 @@ fn ask_toast(
             gpui_kit::canvas(
                 |_, _, _| {},
                 move |bounds, _, window, _| {
-                    let clipped = |rect: gpui_kit::Bounds<gpui_kit::Pixels>,
-                                   bg: gpui_kit::Background,
-                                   w: &mut Window| {
-                        w.with_content_mask(Some(gpui_kit::ContentMask { bounds: rect }), |w| {
-                            w.paint_quad(gpui_kit::quad(
-                                bounds,
-                                px(10.),
-                                bg,
-                                px(0.),
-                                Hsla::transparent_black(),
-                                gpui_kit::BorderStyle::Solid,
-                            ))
-                        })
+                    let clip = |rect: gpui_kit::Bounds<gpui_kit::Pixels>| {
+                        Some(gpui_kit::ContentMask { bounds: rect })
                     };
                     let rail = gpui_kit::Bounds {
                         origin: bounds.origin,
                         size: gpui_kit::size(px(3.), bounds.size.height),
                     };
-                    let rail_bg = linear_gradient(
-                        180.,
-                        linear_color_stop(top, 0.),
-                        linear_color_stop(bottom, 1.),
-                    );
-                    clipped(rail, rail_bg, window);
+                    window.with_content_mask(clip(rail), |w| {
+                        crate::style::paint_css_gradient(
+                            w,
+                            bounds,
+                            10.,
+                            180.,
+                            (top, 0.),
+                            (bottom, 1.),
+                        )
+                    });
                     if drain > 0. {
                         let bar = gpui_kit::Bounds {
                             origin: gpui_kit::point(
@@ -659,7 +652,16 @@ fn ask_toast(
                             ),
                             size: gpui_kit::size((bounds.size.width - px(3.)) * drain, px(2.)),
                         };
-                        clipped(bar, Hsla::from(ttl).into(), window);
+                        window.with_content_mask(clip(bar), |w| {
+                            w.paint_quad(gpui_kit::quad(
+                                bounds,
+                                px(10.),
+                                Hsla::from(ttl),
+                                px(0.),
+                                Hsla::transparent_black(),
+                                gpui_kit::BorderStyle::Solid,
+                            ))
+                        });
                     }
                 },
             )

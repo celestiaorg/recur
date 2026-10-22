@@ -3134,13 +3134,19 @@ impl AgentChat {
                     .px(px(2.))
                     .child(body),
             )
-            .child(div().absolute().top_0().left_0().right_0().h(px(fade)).bg(
-                gpui_kit::linear_gradient(
-                    180.,
-                    gpui_kit::linear_color_stop(hsla(backdrop), 0.),
-                    gpui_kit::linear_color_stop(hsla(backdrop.with_alpha(0.)), 1.),
-                ),
-            ))
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(fade))
+                    .child(recur_ui::style::gradient_fill(
+                        180.,
+                        (backdrop, 0.),
+                        (backdrop.with_alpha(0.), 1.),
+                    )),
+            )
             .into_any_element()
     }
 

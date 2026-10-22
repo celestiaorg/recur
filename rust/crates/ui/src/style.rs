@@ -44,39 +44,7 @@ fn border_over(border: Color, bg: Color) -> Hsla {
     }
 }
 
-/// CSS `linear-gradient(<angle>, from, to)` for a box of `size`, as a GPUI background. GPUI
-/// stretches a diagonal direction by the box's aspect ratio and measures along its longer side;
-/// this picks the GPUI angle whose stretched direction is the CSS one and rescales the stops from
-/// CSS's gradient line (`|w sin a| + |h cos a|`) to GPUI's. Exact for any angle.
-pub fn css_linear_gradient(
-    angle: f32,
-    from: (Color, f32),
-    to: (Color, f32),
-    size: gpui_kit::Size<Pixels>,
-) -> gpui_kit::Background {
-    let (w, h) = (
-        f32::from(size.width).max(1e-3),
-        f32::from(size.height).max(1e-3),
-    );
-    let a = angle.to_radians();
-    let (sx, sy) = (a.sin(), -a.cos());
-    let (gx, gy) = if w > h {
-        (sx, sy * w / h)
-    } else {
-        (sx * h / w, sy)
-    };
-    let gpui_angle = (gy.atan2(gx).to_degrees() + 90.).rem_euclid(360.);
-    let along = if sx.abs() > sy.abs() { w } else { h };
-    let line = (w * sx).abs() + (h * sy).abs();
-    let stop = |s: f32| 0.5 + (s - 0.5) * line / along;
-    gpui_kit::linear_gradient(
-        gpui_angle,
-        gpui_kit::linear_color_stop(from.0, stop(from.1)),
-        gpui_kit::linear_color_stop(to.0, stop(to.1)),
-    )
-}
-
-/// A [`css_linear_gradient`] background for its relatively positioned parent with a `border` of
+/// A CSS `linear-gradient(<angle>, from, to)` background for its relatively positioned parent with a `border` of
 /// `border_color` and `radius`. See [`inset_background`] for its extent. Painted as a raster of
 /// its device pixels: WebKit's gradients are smooth, GPUI's shader dithers them by ±2 levels.
 pub fn css_gradient(
@@ -115,6 +83,40 @@ pub fn css_gradient(
     .top_0()
     .left_0()
     .size_full()
+}
+
+/// A CSS `linear-gradient(<angle>, from, to)` filling its parent with square corners, in place
+/// of `.bg(linear_gradient(..))` (see [`css_gradient`]). Put it first.
+pub fn gradient_fill(angle: f32, from: (Color, f32), to: (Color, f32)) -> impl IntoElement {
+    css_gradient(angle, from, to, 0., 0., crate::color::TRANSPARENT)
+}
+
+/// Paint a CSS `linear-gradient(<angle>, from, to)` over `bounds` (its gradient box) with
+/// `radius` corners, undithered (see [`css_gradient`]).
+pub fn paint_css_gradient(
+    window: &mut Window,
+    bounds: gpui_kit::Bounds<Pixels>,
+    radius: f32,
+    angle: f32,
+    from: (Color, f32),
+    to: (Color, f32),
+) {
+    let g = Gradient {
+        angle,
+        from,
+        to,
+        line: bounds,
+    };
+    if let Some(image) = gradient_image(&g, bounds, window.scale_factor()) {
+        let _ = window.paint_image(
+            bounds,
+            bounds,
+            gpui_kit::Corners::all(px(radius)),
+            image,
+            0,
+            false,
+        );
+    }
 }
 
 /// A two-stop CSS `linear-gradient` over the box `line` (its gradient box).
@@ -1292,16 +1294,13 @@ pub fn skeleton(window: &mut Window, cx: &App) -> Div {
     } else {
         rgba(255, 255, 255, 0.045)
     };
-    // GPUI gradients take two stops, so each half of the three-stop sweep is its own box.
+    // Gradients here take two stops, so each half of the three-stop sweep is its own box.
     let half = |from: Color, to: Color| {
         div()
+            .relative()
             .h_full()
             .w(relative(0.5))
-            .bg(gpui_kit::linear_gradient(
-                90.,
-                gpui_kit::linear_color_stop(from, 0.),
-                gpui_kit::linear_color_stop(to, 1.),
-            ))
+            .child(gradient_fill(90., (from, 0.), (to, 1.)))
     };
     skel.child(
         div()

@@ -89,6 +89,7 @@ impl Global for Owners {}
 
 /// The app-wide state the Observatory shares across instances.
 pub fn init_globals(cx: &mut App) {
+    lsp::client::init(cx);
     cx.default_global::<UnseenArtifacts>();
     cx.default_global::<Owners>();
     cx.default_global::<lsp::problems::LspProblems>();

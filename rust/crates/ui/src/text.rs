@@ -241,6 +241,7 @@ pub struct Text {
     align: Align,
     opacity: f32,
     mask: Option<AlphaMask>,
+    field: bool,
     layout: Rc<RefCell<Option<Laid>>>,
 }
 
@@ -267,6 +268,7 @@ impl Text {
             align: Align::Left,
             opacity: 1.,
             mask: None,
+            field: false,
             layout: Rc::default(),
         }
     }
@@ -315,6 +317,13 @@ impl Text {
         self.clamp = Some(lines.max(1));
         self
     }
+    /// Text in a text field's inner editor (a placeholder). When the font's content area is
+    /// taller than its line (a negative half-leading), WebKit sets the editor's text that much
+    /// higher again than block text; measured in WebKit across Inter sizes (within 1/64 px).
+    pub fn field(mut self) -> Self {
+        self.field = true;
+        self
+    }
     /// Fade glyphs by a horizontal mask (see [`AlphaMask`]).
     pub fn mask(mut self, mask: AlphaMask) -> Self {
         self.mask = Some(mask);
@@ -350,6 +359,7 @@ struct Resolved {
     font_size: f32,
     line_height: LineHeight,
     base: RunStyle,
+    field: bool,
 }
 
 #[derive(Clone, PartialEq)]
@@ -544,6 +554,13 @@ pub fn line_metrics(
     }
 }
 
+/// A text field editor's line (see [`Text::field`]): a negative half-leading lifts the
+/// baseline once more.
+fn field_metrics(mut m: LineMetrics) -> LineMetrics {
+    m.baseline += (m.baseline - m.ascent).min(0.);
+    m
+}
+
 fn snap(v: f32, scale: f32) -> f32 {
     (v * scale).round() / scale
 }
@@ -617,6 +634,7 @@ impl Text {
             font_size: f32::from(font_size),
             line_height,
             base: run_of(&base_style, 0, usize::MAX),
+            field: self.field,
         }
     }
 }
@@ -912,8 +930,13 @@ fn rounded_extent(run: &RunStyle, window: &Window) -> (f32, f32) {
 
 impl Laid {
     fn build(key: Resolved, window: &Window) -> Laid {
+        let field = key.field;
+        let metrics_of = |a, d, g, size| {
+            let m = line_metrics(a, d, g, size, key.line_height);
+            if field { field_metrics(m) } else { m }
+        };
         let (a, d, g) = font_extent(&key.base, key.font_size, window);
-        let metrics = line_metrics(a, d, g, key.font_size, key.line_height);
+        let metrics = metrics_of(a, d, g, key.font_size);
         let mut paras = Vec::new();
         let mut start = 0;
         for piece in key.content.split('\n') {
@@ -924,7 +947,7 @@ impl Laid {
         let mut at = 0;
         for run in &key.runs {
             let (a, d, g) = font_extent(run, run.size, window);
-            let m = line_metrics(a, d, g, run.size, key.line_height);
+            let m = metrics_of(a, d, g, run.size);
             extents.push((at..at + run.len, m.baseline, m.height - m.baseline));
             at += run.len;
         }
@@ -1802,6 +1825,21 @@ mod tests {
         assert_eq!(s, "a b");
         assert_eq!(runs.iter().map(|r| r.len).collect::<Vec<_>>(), vec![2, 1]);
         assert_eq!(runs.iter().map(|r| r.span).collect::<Vec<_>>(), vec![0, 1]);
+    }
+
+    #[test]
+    fn field_text_counts_a_negative_half_leading_twice() {
+        let inter = |size: f32| (size * 1984. / 2048., size * 494. / 2048.);
+        let at = |size: f32| {
+            let (a, d) = inter(size);
+            field_metrics(line_metrics(a, d, 0., size, LineHeight::Normal)).baseline
+        };
+        // WebKit's placeholder baselines (tools/ui-parity probes): 14.5px sits at 13.5 where
+        // block text sits at 13.765625; 11px and 14px (positive half-leading) do not move.
+        assert_eq!(at(14.5), 13.484375);
+        assert_eq!(at(18.), 16.65625);
+        assert_eq!(at(11.), 11.);
+        assert_eq!(at(14.), 13.578125);
     }
 
     #[test]

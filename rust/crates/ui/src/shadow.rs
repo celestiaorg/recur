@@ -38,8 +38,12 @@ pub const fn css_box_shadow(x: f32, y: f32, blur: f32, spread: f32, color: Color
 /// content's border radius. Size and position the wrapper as the content would be. Use this when
 /// the content clips its children (`overflow_hidden`) or has no border to account for.
 pub fn with_shadow(content: impl IntoElement, shadows: &[CssShadow], radius: f32) -> Div {
+    // A shrinkable column, so a max height set around it still reaches `content`.
     div()
         .relative()
+        .flex()
+        .flex_col()
+        .min_h_0()
         .child(box_shadow(shadows, radius, 0.))
         .child(content)
 }

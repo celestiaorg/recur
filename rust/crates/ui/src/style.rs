@@ -621,15 +621,32 @@ fn scrim() -> Div {
 }
 
 /// `.nt-bg`: the modal scrim, `padding: 22vh 16px 24px`.
-pub fn modal_scrim(window: &Window) -> Div {
-    let vh = f32::from(window.viewport_size().height) / 100.;
-    scrim().pt(px(22. * vh)).px(px(16.)).pb(px(24.))
+pub fn modal_scrim(window: &Window, panel: impl IntoElement) -> Div {
+    vh_scrim(22., None, window, panel).px(px(16.)).pb(px(24.))
 }
 
-/// `.palette-bg`: the command palette scrim, `padding-top: 11vh`.
-pub fn palette_scrim(window: &Window) -> Div {
-    let vh = f32::from(window.viewport_size().height) / 100.;
-    scrim().pt(px(11. * vh))
+/// `.palette-bg` around a [`palette_panel`] (`max-height: 64vh`).
+pub fn palette_scrim(window: &Window, panel: impl IntoElement) -> Div {
+    vh_scrim(11., Some(64.), window, panel)
+}
+
+/// A viewport scrim whose panel hangs `top` vh below its top (`padding-top: 11vh` on a
+/// centering flex row) and is at most `max` vh tall, both at the exact LayoutUnits WebKit
+/// resolves them to: authored lengths would round, a percentage of the scrim reaches layout
+/// as is. The panel never shrinks below its content otherwise, as in a flex row.
+fn vh_scrim(top: f32, max: Option<f32>, window: &Window, panel: impl IntoElement) -> Div {
+    let vh = f32::from(window.viewport_size().height);
+    let top = crate::exact::lu(top * vh / 100.);
+    let mut slot = div().flex_none().flex().flex_col();
+    if let Some(m) = max {
+        slot = slot.max_h(gpui_kit::relative(crate::exact::lu(m * vh / 100.) / vh));
+    }
+    scrim()
+        .flex_col()
+        .justify_start()
+        .items_center()
+        .child(crate::exact::vgap(top, window))
+        .child(slot.child(panel))
 }
 
 /// A rounded card with a 1px border over its background, as WebKit paints one (see
@@ -708,7 +725,8 @@ pub fn text_field(
                         .size(size)
                         .line_height(LineHeight::Normal)
                         .color(placeholder_color)
-                        .nowrap(),
+                        .nowrap()
+                        .field(),
                 ),
             )
         })

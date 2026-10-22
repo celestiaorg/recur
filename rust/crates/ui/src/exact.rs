@@ -22,6 +22,11 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::rc::Rc;
 
+/// A length as WebKit stores it: floored to a LayoutUnit (1/64 px).
+pub fn lu(v: f32) -> f32 {
+    (v * 64.).floor() / 64.
+}
+
 /// A vertical gap of exactly `len` CSS px (one device pixel wide).
 pub fn vgap(len: f32, window: &Window) -> Div {
     vgap_at(len, window.scale_factor())

@@ -986,7 +986,9 @@ fn overlay_scenes(variant: &str, window: &mut Window, cx: &mut App) -> Content {
                             .child(crate::widgets::scroll_area("pal-list").child(list)),
                     )
                     .child(
+                        // GPUI clips rectangles: the footer rounds itself inside the panel.
                         palette_footer(false, cx)
+                            .rounded_b(px(12.))
                             .child(Text::from_spans(vec![
                                 footer_key("↑↓", cx),
                                 span("navigate"),
@@ -997,7 +999,8 @@ fn overlay_scenes(variant: &str, window: &mut Window, cx: &mut App) -> Content {
                 body(cx)
                     .size_full()
                     .relative()
-                    .child(palette_scrim(window).child(
+                    .child(palette_scrim(
+                        window,
                         with_shadow(panel, &PALETTE_SHADOW, 13.).w(px(palette_width(window))),
                     ))
                     .into_any_element()
@@ -1009,13 +1012,12 @@ fn overlay_scenes(variant: &str, window: &mut Window, cx: &mut App) -> Content {
             body(cx)
                 .size_full()
                 .relative()
-                .child(
-                    modal_scrim(window).child(
-                        with_shadow(panel, &MODAL_SHADOW, 16.)
-                            .w(px(640.))
-                            .max_w_full(),
-                    ),
-                )
+                .child(modal_scrim(
+                    window,
+                    with_shadow(panel, &MODAL_SHADOW, 16.)
+                        .w(px(640.))
+                        .max_w_full(),
+                ))
                 .into_any_element()
         }),
         _ => {

@@ -404,6 +404,10 @@ impl Focusable for Shell {
 
 impl Render for Shell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // App.svelte's window keydown sees keys with nothing focused (focus on `body`).
+        if window.focused(cx).is_none() {
+            window.focus(&self.focus, cx);
+        }
         let (view, rail_collapsed) = {
             let s = self.state.read(cx);
             (s.view, s.rail_collapsed)

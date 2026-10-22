@@ -112,7 +112,18 @@ fn main() {
     let app = gpui_kit::application().with_assets(recur_ui::Assets);
     let (svc_ui, repo_ui) = (services.clone(), repo.clone());
     let handle = rt.handle().clone();
+    let svc = Arc::new(svc);
+    let quit_svc = svc.clone();
     app.run(move |cx: &mut App| {
+        // macOS ends the process from `terminate:` instead of returning from `run`.
+        let quit_rt = handle.clone();
+        cx.on_app_quit(move |_| {
+            say(start, "app quit; shutting the services down");
+            quit_rt.block_on(quit_svc.shutdown());
+            say(start, "done");
+            async {}
+        })
+        .detach();
         let mut registry = ViewRegistry::default();
         recur_view_chat::register(&mut registry);
         recur_view_review::register(&mut registry);
@@ -155,9 +166,7 @@ fn main() {
         })
         .detach();
     });
-    say(start, "app quit; shutting the services down");
-    rt.block_on(svc.shutdown());
-    say(start, "done");
+    drop(svc);
 }
 
 /// Runs `fut` on the tokio runtime and awaits it from the UI thread.
@@ -183,11 +192,10 @@ fn frame(cx: &mut AsyncApp, window: AnyWindowHandle) {
     });
 }
 
-fn key(cx: &mut AsyncApp, window: AnyWindowHandle, k: &str) {
+fn key(cx: &mut AsyncApp, window: AnyWindowHandle, k: &str) -> bool {
     let ks = Keystroke::parse(k).expect("keystroke");
-    let _ = cx.update_window(window, |_, window, cx| {
-        window.dispatch_keystroke(ks, cx);
-    });
+    cx.update_window(window, |_, window, cx| window.dispatch_keystroke(ks, cx))
+        .unwrap_or(false)
 }
 
 fn bound_view(cx: &mut AsyncApp, shell: &Entity<Shell>) -> Option<Entity<WorkspaceView>> {
@@ -225,11 +233,15 @@ async fn run(
     say(start, format!("opened project {} (working copy {})", opened.project_id, opened.workspace_id));
     let project_id = opened.project_id.clone();
     state.update(cx, |s, cx| s.apply_open_path_result(opened, cx));
-    sleep(cx, 1500).await;
+    for _ in 0..6 {
+        sleep(cx, 250).await;
+        frame(cx, window);
+    }
 
     // 2. ⇧⌘N: a blank workspace on the project.
     let before: Vec<String> = state.read_with(cx, |s, _| s.workspaces.iter().map(|w| w.id.clone()).collect());
-    key(cx, window, "cmd-shift-n");
+    let handled = key(cx, window, "cmd-shift-n");
+    say(start, format!("cmd-shift-n handled: {handled}"));
     let mut ws_id = String::new();
     for _ in 0..240 {
         sleep(cx, 250).await;
@@ -263,7 +275,11 @@ async fn run(
                     .collect::<Vec<_>>()
             )
         });
-        return say(start, format!("FAIL no workspace was created: {dump}"));
+        let toasts = cx.update(|cx| {
+            let t = recur_ui::widgets::ToastStore::global(cx);
+            t.read(cx).toasts().iter().map(|t| t.text.to_string()).collect::<Vec<_>>()
+        });
+        return say(start, format!("FAIL no workspace was created: {dump}; toasts {toasts:?}"));
     }
     for _ in 0..6 {
         sleep(cx, 250).await;
@@ -282,12 +298,12 @@ async fn run(
     frame(cx, window);
     for ch in PROMPT.chars() {
         let k = if ch == ' ' { "space".to_string() } else { ch.to_string() };
-        key(cx, window, &k);
+        let _ = key(cx, window, &k);
     }
     sleep(cx, 300).await;
     let typed = chat.read_with(cx, |c, _| c.input().to_string());
     say(start, format!("composer holds {} chars", typed.chars().count()));
-    key(cx, window, "enter");
+    let _ = key(cx, window, "enter");
     frame(cx, window);
     say(start, "sent with Enter");
 

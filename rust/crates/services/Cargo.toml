@@ -10,7 +10,7 @@ publish = false
 [features]
 # In-memory port of frontend/e2e/helpers/mock-bridge.ts for dev builds, tests
 # and the UI-parity harness.
-mock = ["dep:futures", "dep:regex", "dep:uuid"]
+mock = []
 
 [dependencies]
 recur-provider-claude.workspace = true
@@ -30,21 +30,32 @@ recur-lsp.workspace = true
 recur-term.workspace = true
 recur-usage.workspace = true
 recur-platform.workspace = true
+recur-chroma.workspace = true
+recur-project.workspace = true
 async-trait.workspace = true
 base64.workspace = true
-futures = { workspace = true, optional = true }
+chrono.workspace = true
+flate2.workspace = true
+futures.workspace = true
+image = { workspace = true, features = ["png", "tiff"] }
 parking_lot.workspace = true
-regex = { workspace = true, optional = true }
+regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-uuid = { workspace = true, optional = true }
+tokio-util.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
-futures.workspace = true
+recur-agent = { workspace = true, features = ["testing"] }
+recur-engine = { workspace = true, features = ["testing"] }
+recur-forge = { workspace = true, features = ["testing"] }
+recur-provider-claude = { workspace = true, features = ["testing"] }
 pretty_assertions.workspace = true
-tokio.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

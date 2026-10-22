@@ -68,6 +68,35 @@ impl ArtifactsService for MockBridge {
     }
 }
 
+/// `FetchAsset(url)` answers `{contentType, cacheControl, body}` (body
+/// base64) or `{status, message}`; without a resolver every asset is 404,
+/// as the e2e bridge served no files.
+#[async_trait]
+impl AssetsService for MockBridge {
+    async fn fetch_asset(&self, url: &str) -> std::result::Result<Asset, AssetError> {
+        use base64::Engine as _;
+        let v: Value = self
+            .call("FetchAsset", vec![json(url)])
+            .await
+            .map_err(|e| AssetError::new(500, e.message))?;
+        if v.is_null() {
+            return Err(AssetError::not_found());
+        }
+        let text = |k: &str| v.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
+        if let Some(status) = v.get("status").and_then(Value::as_u64) {
+            return Err(AssetError::new(status as u16, text("message")));
+        }
+        let body = base64::engine::general_purpose::STANDARD
+            .decode(text("body"))
+            .map_err(|e| AssetError::new(500, e.to_string()))?;
+        Ok(Asset {
+            content_type: text("contentType"),
+            cache_control: text("cacheControl"),
+            body,
+        })
+    }
+}
+
 #[async_trait]
 impl BriefingService for MockBridge {
     async fn app_chat_items(&self, code: &str) -> Result<Vec<ChatItem>> {

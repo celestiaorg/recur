@@ -1419,7 +1419,7 @@ fn service(
         Arc::new(move || read.lock().clone()),
         Arc::new(move |s| {
             *write.lock() = s;
-            Ok(())
+            Box::pin(async { Ok(()) })
         }),
         Arc::new(move || dir.clone()),
         None,
@@ -1450,8 +1450,8 @@ async fn disconnect_cursor_usage_clears_settings_key() {
     s.stop();
 }
 
-#[test]
-fn drop_orphan_cursor_key() {
+#[tokio::test]
+async fn drop_orphan_cursor_key() {
     let settings = Arc::new(Mutex::new(recur_domain::Settings {
         cursor_api_key: "crsr_leftover".into(),
         ..Default::default()
@@ -1459,7 +1459,7 @@ fn drop_orphan_cursor_key() {
     let s = service(settings.clone(), None);
     let empty = tempfile::tempdir().unwrap();
     let current = settings.lock().clone();
-    let got = s.drop_orphan_cursor_key(current, empty.path());
+    let got = s.drop_orphan_cursor_key(current, empty.path()).await;
     assert_eq!(got.cursor_api_key, "");
     assert_eq!(settings.lock().cursor_api_key, "");
 
@@ -1471,7 +1471,7 @@ fn drop_orphan_cursor_key() {
     .unwrap();
     settings.lock().cursor_api_key = "crsr_kept".into();
     let current = settings.lock().clone();
-    let got = s.drop_orphan_cursor_key(current, dir.path());
+    let got = s.drop_orphan_cursor_key(current, dir.path()).await;
     assert_eq!(got.cursor_api_key, "crsr_kept");
 }
 

@@ -52,6 +52,12 @@ impl<T: DeserializeOwned> FromReply for Option<T> {
     }
 }
 
+impl FromReply for Value {
+    fn from_reply(_: &str, v: Value) -> Result<Self> {
+        Ok(v)
+    }
+}
+
 impl FromReply for String {
     fn from_reply(_: &str, v: Value) -> Result<Self> {
         Ok(match v {

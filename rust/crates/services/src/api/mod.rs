@@ -9,6 +9,7 @@
 
 mod agents;
 mod artifacts;
+mod assets;
 mod briefing;
 mod bundle;
 mod code;
@@ -37,6 +38,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 pub use agents::AgentsService;
 pub use artifacts::ArtifactsService;
+pub use assets::{Asset, AssetError, AssetsService};
 pub use briefing::BriefingService;
 pub use bundle::BundleService;
 pub use code::CodeService;
@@ -69,6 +71,7 @@ use crate::events::{AppEvent, EventHub};
 pub trait Backend:
     AgentsService
     + ArtifactsService
+    + AssetsService
     + BriefingService
     + BundleService
     + CodeService
@@ -94,6 +97,7 @@ pub trait Backend:
 impl<T> Backend for T where
     T: AgentsService
         + ArtifactsService
+        + AssetsService
         + BriefingService
         + BundleService
         + CodeService
@@ -122,6 +126,7 @@ impl<T> Backend for T where
 pub struct Services {
     pub agents: Arc<dyn AgentsService>,
     pub artifacts: Arc<dyn ArtifactsService>,
+    pub assets: Arc<dyn AssetsService>,
     pub briefing: Arc<dyn BriefingService>,
     pub bundle: Arc<dyn BundleService>,
     pub code: Arc<dyn CodeService>,
@@ -149,6 +154,7 @@ impl Services {
         Self {
             agents: backend.clone(),
             artifacts: backend.clone(),
+            assets: backend.clone(),
             briefing: backend.clone(),
             bundle: backend.clone(),
             code: backend.clone(),

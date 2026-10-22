@@ -49,6 +49,10 @@ pub fn scroll_from_track(
     )
 }
 
+/// The shortest classic thumb WebKit paints for the app's `::-webkit-scrollbar` (measured: a
+/// 680px track over 43,200px of content draws a 17px thumb, not 11px).
+pub const MIN_THUMB: f32 = 17.;
+
 fn scroll_for_thumb(thumb_pos: f32, thumb_len: f32, track: f32, max_scroll: f32) -> f32 {
     let travel = track - thumb_len;
     if travel <= 0. || max_scroll <= 0. {
@@ -59,13 +63,14 @@ fn scroll_for_thumb(thumb_pos: f32, thumb_len: f32, track: f32, max_scroll: f32)
 
 /// WebKit's custom scrollbar thumb (`ScrollbarThemeComposite::thumbLength`/`thumbPosition`):
 /// whole-pixel length and offset along a track of `track` px. A thumb longer than the track
-/// disappears.
+/// disappears. The contents size is the snapped (rounded) scroll height, as `scrollHeight`;
+/// a long document's thumb stops at [`MIN_THUMB`].
 pub fn classic_thumb(pos: f32, total: f32, visible: f32, track: f32) -> (f32, f32) {
-    let (total, visible, track) = (total.floor(), visible.floor(), track.floor());
+    let (total, visible, track) = (total.round(), visible.floor(), track.floor());
     if total <= 0. {
         return (0., 0.);
     }
-    let mut len = (visible / total * track).round();
+    let mut len = (visible / total * track).round().max(MIN_THUMB.min(track));
     if len > track {
         len = 0.;
     }
@@ -447,6 +452,8 @@ mod tests {
         assert_eq!(classic_thumb(1., 1000., 200., 200.), (40., 1.));
         assert_eq!(classic_thumb(13., 1000., 200., 200.), (40., 2.));
         assert_eq!(classic_thumb(0., 200., 200., 200.), (200., 0.));
+        assert_eq!(classic_thumb(0., 1089.5, 680., 680.), (424., 0.));
+        assert_eq!(classic_thumb(0., 43200., 680., 680.), (17., 0.));
         assert_eq!(page_step(200.), 175.);
         assert_eq!(page_step(400.), 360.);
     }

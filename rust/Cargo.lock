@@ -6749,6 +6749,7 @@ dependencies = [
  "recur-ui",
  "recur-view-chat",
  "recur-view-core",
+ "recur-view-review",
  "serde_json",
  "tokio",
  "tracing",
@@ -7218,6 +7219,7 @@ dependencies = [
  "recur-terminal-view",
  "recur-ui",
  "recur-view-chat",
+ "recur-view-review",
  "serde",
  "serde_json",
 ]
@@ -7300,6 +7302,31 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "tracing",
+]
+
+[[package]]
+name = "recur-view-review"
+version = "0.0.0"
+dependencies = [
+ "gpui-kit",
+ "gpui-pre",
+ "parking_lot",
+ "pretty_assertions",
+ "recur-code",
+ "recur-content",
+ "recur-domain",
+ "recur-engine",
+ "recur-forge",
+ "recur-services",
+ "recur-ui",
+ "recur-view-chat",
+ "recur-view-core",
+ "recur-view-review",
+ "regex",
+ "serde",
+ "serde_json",
+ "smallvec",
  "tracing",
 ]
 

@@ -14,6 +14,7 @@ use recur_services::events::{AttentionUpdated, PrUpdated, WorkspaceUpdated};
 use recur_ui::widgets::ToastKind;
 
 use crate::pr::keep_merged_pr;
+use crate::pr_commits::keep_commit_files;
 use crate::state::{AppState, ShellEvent, call, toast};
 use crate::workspace_nav::unique_by_id;
 
@@ -46,39 +47,6 @@ fn strip_tags(html: &str) -> String {
         }
     }
     out
-}
-
-/// `keepCommitFiles`: a commit list without per-commit files keeps the files already loaded.
-fn keep_commit_files(
-    prev: Option<&Vec<recur_domain::Commit>>,
-    next: Option<Vec<recur_domain::Commit>>,
-) -> Option<Vec<recur_domain::Commit>> {
-    let Some(prev) = prev.filter(|p| !p.is_empty()) else {
-        return next;
-    };
-    next.map(|list| {
-        list.into_iter()
-            .map(|mut c| {
-                if c.files.as_ref().is_some_and(|f| !f.is_empty()) {
-                    return c;
-                }
-                if let Some(old) = prev.iter().find(|p| commit_keys_match(p, &c))
-                    && old.files.as_ref().is_some_and(|f| !f.is_empty())
-                {
-                    c.files = old.files.clone();
-                }
-                c
-            })
-            .collect()
-    })
-}
-
-fn commit_keys_match(a: &recur_domain::Commit, b: &recur_domain::Commit) -> bool {
-    let close = |x: &str, y: &str| {
-        let (x, y) = (x.to_lowercase(), y.to_lowercase());
-        !x.is_empty() && !y.is_empty() && (x == y || x.starts_with(&y) || y.starts_with(&x))
-    };
-    close(&a.hash, &b.hash) || close(&a.sha, &b.sha)
 }
 
 fn merge_synced_pr(prev: &Pr, mut p: Pr) -> Pr {

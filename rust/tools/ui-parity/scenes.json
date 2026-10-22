@@ -1748,5 +1748,101 @@
       "theme": "paper",
       "tolerance": 2660
     }
+  ],
+  "review": [
+    {
+      "name": "review/unified",
+      "width": 1100,
+      "height": 720,
+      "theme": "default",
+      "tolerance": 8450,
+      "hardTolerance": 54
+    },
+    {
+      "name": "review/unified-paper",
+      "width": 1100,
+      "height": 720,
+      "theme": "paper",
+      "tolerance": 5120
+    },
+    {
+      "name": "review/split",
+      "width": 1400,
+      "height": 720,
+      "theme": "default",
+      "tolerance": 9990,
+      "hardTolerance": 54
+    },
+    {
+      "name": "review/hunk",
+      "width": 1100,
+      "height": 720,
+      "theme": "default",
+      "tolerance": 9670,
+      "hardTolerance": 54,
+      "steps": [
+        { "click": [600, 106] }
+      ]
+    },
+    {
+      "name": "review/collapsed",
+      "width": 1100,
+      "height": 720,
+      "theme": "default",
+      "tolerance": 9300,
+      "hardTolerance": 84,
+      "steps": [
+        { "click": [284, 228] }
+      ]
+    },
+    {
+      "name": "review/filelist",
+      "width": 1100,
+      "height": 720,
+      "theme": "default",
+      "tolerance": 10780,
+      "hardTolerance": 34,
+      "steps": [
+        { "click": [100, 113] }
+      ]
+    },
+    {
+      "name": "review/thread",
+      "width": 900,
+      "height": 760,
+      "theme": "default",
+      "tolerance": 7490,
+      "hardTolerance": 95
+    },
+    {
+      "name": "review/thread-paper",
+      "width": 900,
+      "height": 760,
+      "theme": "paper",
+      "tolerance": 7320,
+      "hardTolerance": 69
+    },
+    {
+      "name": "review/commits",
+      "width": 1000,
+      "height": 560,
+      "theme": "default",
+      "tolerance": 3970
+    },
+    {
+      "name": "review/commits-paper",
+      "width": 1000,
+      "height": 560,
+      "theme": "paper",
+      "tolerance": 4090
+    },
+    {
+      "name": "review/large",
+      "width": 1100,
+      "height": 720,
+      "theme": "default",
+      "tolerance": 24860,
+      "hardTolerance": 18
+    }
   ]
 }

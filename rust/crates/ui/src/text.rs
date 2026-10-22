@@ -1270,6 +1270,9 @@ impl Element for Text {
         let (ws, anywhere, clamp, truncate) =
             (self.white_space, self.anywhere, self.clamp, self.ellipsis);
         let measure_slot = layout.clone();
+        // Taffy keeps one measure result per constraint kind, so nested flex passes that probe
+        // several widths would re-break the same text many times in a frame.
+        let memo = RefCell::new(Vec::<(Option<f32>, (f32, f32))>::new());
         let mut style = Style::default();
         if truncate {
             // `overflow: hidden` makes the automatic minimum size zero in a flex row.
@@ -1342,8 +1345,13 @@ impl Element for Text {
                 });
                 // Truncated text measures at its full width; the box decides where it cuts.
                 let width = if truncate { None } else { width };
+                if let Some(&(_, size)) = memo.borrow().iter().find(|(w, _)| *w == width) {
+                    return size;
+                }
                 laid.relayout(width, ws, anywhere, clamp, false, window);
-                laid.size()
+                let size = laid.size();
+                memo.borrow_mut().push((width, size));
+                size
             },
         );
         let offsets = layout

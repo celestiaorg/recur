@@ -737,8 +737,10 @@ impl Render for AppChat {
         let new_btn = recur_ui::tooltip::titled(
             "ask-new-tip",
             "New chat",
+            // `.wsv-chat-new { color: var(--muted) }`; `.tab-strip-act svg` is 15px.
             tab_strip_action("ask-new", false, false, cx)
-                .child(icon(IconName::Plus).size(px(14.)))
+                .text_color(hsla(Theme::of(cx).tokens.muted))
+                .child(icon(IconName::Plus).size(px(15.)))
                 .on_click(cx.listener(|a, _, _, cx| a.new_tab(cx))),
         );
         let strip = strip.trailing(new_btn);

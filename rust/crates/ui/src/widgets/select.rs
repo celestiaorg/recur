@@ -193,6 +193,8 @@ pub(crate) fn search_header(
         .gap(px(8.))
         .py(px(8.))
         .px(px(10.))
+        // GPUI clips rectangles: round the corners under the menu's 8px radius and 1px border.
+        .rounded_t(px(7.))
         .bg(t.pane_2)
         .border_b(px(1.))
         .border_color(Hsla::from(t.line))

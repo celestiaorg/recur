@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use gpui::{Entity, Modifiers, MouseButton, TestAppContext, VisualTestContext, point, px};
+use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, point, px};
 use gpui_kit::{
     AppContext as _, Bounds, Context, IntoElement, ParentElement, Pixels, Render, Styled, Window,
 };
@@ -266,17 +266,6 @@ impl H<'_> {
         self.cx
             .simulate_mouse_move(point(p.x + px(1.), p.y), None, Modifiers::none());
         self.cx.simulate_mouse_move(p, None, Modifiers::none());
-        self.settle();
-    }
-
-    pub fn press(&mut self, sel: &str) {
-        let p = self
-            .bounds(sel)
-            .unwrap_or_else(|| panic!("no element {sel}"))
-            .center();
-        self.cx.simulate_mouse_move(p, None, Modifiers::none());
-        self.cx
-            .simulate_mouse_down(p, MouseButton::Left, Modifiers::none());
         self.settle();
     }
 

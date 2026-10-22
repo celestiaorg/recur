@@ -576,13 +576,12 @@ impl WorkspaceView {
         let (slash, args) = (slash.to_string(), args.to_string());
         cx.spawn(async move |this, cx| {
             let list = load.await;
-            if !abort.aborted() {
-                if let Err(msg) =
+            if !abort.aborted()
+                && let Err(msg) =
                     Self::run_invoke(&this, &list, &slash, &args, alt, &abort, cx).await
-                    && msg != "prompt cancelled"
-                {
-                    upd(&this, cx, |_, cx| toast(ToastKind::Error, msg, cx));
-                }
+                && msg != "prompt cancelled"
+            {
+                upd(&this, cx, |_, cx| toast(ToastKind::Error, msg, cx));
             }
             upd(&this, cx, |v, cx| v.end_prompt(cx));
         })

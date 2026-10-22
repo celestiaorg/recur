@@ -133,7 +133,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let s2 = state.clone();
     cx.spawn(async move |cx| {
         let _ = load.await;
-        let _ = s2.update(cx, |s, cx| s.open_workspace(&ws, false, cx));
+        s2.update(cx, |s, cx| s.open_workspace(&ws, false, cx));
     })
     .detach();
     let vcx = ViewContext { state, services };

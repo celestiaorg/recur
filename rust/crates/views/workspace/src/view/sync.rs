@@ -794,10 +794,10 @@ impl WorkspaceView {
                 return;
             }
             let key = self.key(&code);
-            if !self
+            if self
                 .pickers_by_key
                 .get(&key)
-                .is_some_and(|p| !p.model.is_empty())
+                .is_none_or(|p| p.model.is_empty())
             {
                 let mode = ChatMode::from_key(&seed.mode);
                 let d = recur_view_core::modes::resolved_default_for_mode(

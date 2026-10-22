@@ -268,10 +268,9 @@ impl PlanPanel {
                 if let InputEvent::PressEnter { secondary, shift } = ev
                     && !secondary
                     && !shift
+                    && let Some(b) = p.body.clone()
                 {
-                    if let Some(b) = p.body.clone() {
-                        b.update(cx, |e, cx| e.focus(window, cx));
-                    }
+                    b.update(cx, |e, cx| e.focus(window, cx));
                 }
             }),
         ];
@@ -530,7 +529,7 @@ impl PlanPanel {
         cx: &mut gpui_kit::AsyncApp,
     ) {
         if let Ok(fresh) = svc.workspaces.list_workspaces().await {
-            let _ = state.update(cx, |s, cx| s.set_workspaces_from_list(fresh, cx));
+            state.update(cx, |s, cx| s.set_workspaces_from_list(fresh, cx));
         }
     }
 

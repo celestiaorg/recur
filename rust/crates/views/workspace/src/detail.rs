@@ -162,7 +162,7 @@ impl WorkspaceDetail {
         let linked_live = s.workspaces.iter().any(|w| {
             !w.archived && w.id == pr.workspace_id.trim() && w.host_pr_id.trim().is_empty()
         });
-        if !self.pr_workspace_id(cx).is_empty() && !(leftover_host && linked_live) {
+        if !(self.pr_workspace_id(cx).is_empty() || leftover_host && linked_live) {
             return;
         }
         if self.host_attempt == pr.id {
@@ -178,7 +178,7 @@ impl WorkspaceDetail {
             )
             .await;
             if let Some(ws) = ws.filter(|w| !w.id.is_empty()) {
-                let _ = state.update(cx, |s, cx| s.upsert_workspace(ws, cx));
+                state.update(cx, |s, cx| s.upsert_workspace(ws, cx));
             }
         })
         .detach();

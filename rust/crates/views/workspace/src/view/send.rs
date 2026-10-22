@@ -783,13 +783,12 @@ impl WorkspaceView {
             .and_then(|tabs| tabs.iter_mut().find(|t| t.code == code))
             && (tab.title.is_empty() || tab.title == "New chat")
         {
-            let label = if pending.display_text == CHAT_RETRY_DISPLAY {
-                pending.plain.clone()
-            } else if pending.display_text.is_empty() {
-                pending.plain.clone()
-            } else {
-                pending.display_text.clone()
-            };
+            let label =
+                if pending.display_text == CHAT_RETRY_DISPLAY || pending.display_text.is_empty() {
+                    pending.plain.clone()
+                } else {
+                    pending.display_text.clone()
+                };
             let from = display_user_chat_text(&label);
             let first = from
                 .split('\n')

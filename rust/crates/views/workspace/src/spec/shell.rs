@@ -174,7 +174,10 @@ impl S<'_> {
 
 /// Replies held while `hold` is on (a resolver's `await gate`), answered on `release`.
 #[derive(Clone, Default)]
-struct Gate(Arc<Mutex<(bool, Vec<(Release, Value)>)>>);
+struct Gate(Arc<Mutex<Held>>);
+
+/// Whether replies are held, and the held ones with their answers.
+type Held = (bool, Vec<(Release, Value)>);
 
 impl Gate {
     fn hold(&self) {

@@ -216,10 +216,8 @@ impl WorkspaceView {
                 }
                 self.load_escalation(cx);
             }
-            AppEvent::FindingsUpdated(w) => {
-                if w.workspace_id == self.ws_id {
-                    self.load_findings(cx);
-                }
+            AppEvent::FindingsUpdated(w) if w.workspace_id == self.ws_id => {
+                self.load_findings(cx);
             }
             AppEvent::WorkspaceUpdated(u) if u.chats_changed && !u.workspace_id.is_empty() => {
                 let from = u.from_workspace_id.clone().filter(|f| !f.is_empty());
@@ -452,7 +450,7 @@ impl WorkspaceView {
             return;
         }
         // The focused tab is already seen server-side; keep its chip clear.
-        let unseen = tab_unseen && !(active == code);
+        let unseen = tab_unseen && (active != code);
         for t in tabs.iter_mut().filter(|t| t.code == code) {
             t.unseen = unseen;
         }

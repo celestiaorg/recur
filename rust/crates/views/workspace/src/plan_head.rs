@@ -177,7 +177,7 @@ impl PlanHead {
                         .line_height(LineHeight::Normal)
                         .nowrap(),
                 )
-                .on_click(move |_, _, cx| panel.update(cx, |p, cx| act(p, cx))),
+                .on_click(move |_, _, cx| panel.update(cx, act)),
         )
     }
 }

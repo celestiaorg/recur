@@ -235,11 +235,7 @@ impl WorkspaceView {
                             write(v, ChatPickerSnap { model, flags, mode });
                         }
                         Err(_) => {
-                            if !v
-                                .pickers_by_key
-                                .get(&k)
-                                .is_some_and(|p| !p.model.is_empty())
-                            {
+                            if v.pickers_by_key.get(&k).is_none_or(|p| p.model.is_empty()) {
                                 let mode =
                                     v.pickers_by_key.get(&k).map(|p| p.mode).unwrap_or(tab_mode);
                                 let d = resolved_default_for_mode(

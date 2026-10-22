@@ -66,7 +66,13 @@ pub(crate) fn conv_skel(window: &mut Window, cx: &App) -> AnyElement {
 }
 
 pub(crate) fn commits_skel(window: &mut Window, cx: &App) -> AnyElement {
-    let mut col = div().debug_selector(|| "pr-skel".into()).flex().flex_col().gap(px(2.)).py(px(8.)).px(px(4.));
+    let mut col = div()
+        .debug_selector(|| "pr-skel".into())
+        .flex()
+        .flex_col()
+        .gap(px(2.))
+        .py(px(8.))
+        .px(px(4.));
     for w in [72., 58., 81., 49.] {
         col = col.child(
             div()
@@ -77,14 +83,26 @@ pub(crate) fn commits_skel(window: &mut Window, cx: &App) -> AnyElement {
                 .px(px(2.))
                 .child(skel(window, cx).flex_none().size(px(14.)).rounded(px(4.)))
                 .child(skel(window, cx).w(pct(w)).h(px(12.)))
-                .child(skel(window, cx).flex_none().ml_auto().w(px(51.2)).h(px(10.))),
+                .child(
+                    skel(window, cx)
+                        .flex_none()
+                        .ml_auto()
+                        .w(px(51.2))
+                        .h(px(10.)),
+                ),
         );
     }
     col.into_any_element()
 }
 
 pub(crate) fn files_skel(window: &mut Window, cx: &App) -> AnyElement {
-    let mut col = div().debug_selector(|| "pr-skel".into()).flex().flex_col().gap(px(14.)).py(px(16.)).px(px(18.));
+    let mut col = div()
+        .debug_selector(|| "pr-skel".into())
+        .flex()
+        .flex_col()
+        .gap(px(14.))
+        .py(px(16.))
+        .px(px(18.));
     for w in [86., 64., 78., 51., 71.] {
         col = col.child(
             div()
@@ -95,7 +113,13 @@ pub(crate) fn files_skel(window: &mut Window, cx: &App) -> AnyElement {
                 .px(px(2.))
                 .child(skel(window, cx).flex_none().size(px(14.)).rounded(px(3.)))
                 .child(skel(window, cx).w(pct(w)).h(px(12.)))
-                .child(skel(window, cx).flex_none().ml_auto().w(px(41.6)).h(px(10.))),
+                .child(
+                    skel(window, cx)
+                        .flex_none()
+                        .ml_auto()
+                        .w(px(41.6))
+                        .h(px(10.)),
+                ),
         );
     }
     col.into_any_element()

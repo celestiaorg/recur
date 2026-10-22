@@ -37,7 +37,6 @@ fn walk<'a>(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use recur_ui::text::TextStyled;
@@ -47,7 +46,11 @@ mod tests {
     #[test]
     fn spans_carry_their_tags() {
         let spans = html_spans("Run <b>tests</b> in <code>e2e.ts</code>.", &|tags, s| {
-            if tags.contains(&"b") { s.weight(600.) } else { s }
+            if tags.contains(&"b") {
+                s.weight(600.)
+            } else {
+                s
+            }
         });
         let texts: Vec<&str> = spans.iter().map(|s| s.text.as_ref()).collect();
         assert_eq!(texts, ["Run ", "tests", " in ", "e2e.ts", "."]);

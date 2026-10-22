@@ -3,9 +3,10 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    App, AppContext as _, Context, DispatchPhase, Entity, FocusHandle, Focusable, InteractiveElement,
-    IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, Subscription, Window, canvas, div, px,
+    App, AppContext as _, Context, DispatchPhase, Entity, FocusHandle, Focusable,
+    InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, ParentElement,
+    Render, SharedString, StatefulInteractiveElement, Styled, Subscription, Window, canvas, div,
+    px,
 };
 use recur_domain::PendingLineComment;
 use recur_ui::fonts::weight;
@@ -125,7 +126,9 @@ impl PrReviewModal {
                     }
                 }
             }),
-            cx.observe_in(&state, window, |m, _, window, cx| m.state_changed(window, cx)),
+            cx.observe_in(&state, window, |m, _, window, cx| {
+                m.state_changed(window, cx)
+            }),
             cx.observe_in(&ui, window, |m, _, window, cx| m.ui_changed(window, cx)),
         ];
         PrReviewModal {
@@ -183,7 +186,9 @@ impl PrReviewModal {
             } else {
                 "What should change?"
             };
-            self.body.area.update(cx, |a, cx| a.set_placeholder(placeholder, window, cx));
+            self.body
+                .area
+                .update(cx, |a, cx| a.set_placeholder(placeholder, window, cx));
         }
         if kind.is_none() {
             self.submitting = false;
@@ -191,7 +196,9 @@ impl PrReviewModal {
         } else if self.shown.is_none() {
             // `setTimeout(() => bodyEl?.focus(), 0)` on open.
             let area = self.body.area.clone();
-            window.defer(cx, move |window, cx| area.update(cx, |a, cx| a.focus(window, cx)));
+            window.defer(cx, move |window, cx| {
+                area.update(cx, |a, cx| a.focus(window, cx))
+            });
         }
         self.shown = kind;
         let n = self.pending(cx).len();
@@ -246,17 +253,32 @@ impl PrReviewModal {
         let services = self.state.read(cx).services().clone();
         let (state, ui) = (self.state.clone(), self.ui.clone());
         cx.spawn(async move |me, cx| {
-            let fail = if approved { "Approve failed" } else { "Request changes failed" };
-            let updated = call(cx, services.prs.submit_review(&pr_id, kind_value(kind), &body), fail).await;
+            let fail = if approved {
+                "Approve failed"
+            } else {
+                "Request changes failed"
+            };
+            let updated = call(
+                cx,
+                services.prs.submit_review(&pr_id, kind_value(kind), &body),
+                fail,
+            )
+            .await;
             let _ = me.update(cx, |m, cx| {
                 m.submitting = false;
                 cx.notify();
             });
             let Some(updated) = updated else { return };
-            state.update(cx, |s, cx| s.update_pr(&updated.id.clone(), |p| *p = updated, cx));
+            state.update(cx, |s, cx| {
+                s.update_pr(&updated.id.clone(), |p| *p = updated, cx)
+            });
             ui.update(cx, |u, cx| u.set_review_draft(String::new(), cx));
             state.update(cx, |s, cx| s.close_pr_review(cx));
-            let msg = if approved { "Review approved" } else { "Changes requested" };
+            let msg = if approved {
+                "Review approved"
+            } else {
+                "Changes requested"
+            };
             cx.update(|cx| toast(ToastKind::Success, msg, cx));
         })
         .detach();
@@ -289,7 +311,9 @@ impl PrReviewModal {
     /// `cycleDialogTab`.
     fn cycle(&mut self, back: bool, window: &mut Window, cx: &mut Context<Self>) {
         let stops = self.stops(cx);
-        let at = stops.iter().position(|s| self.handle(*s, cx).contains_focused(window, cx));
+        let at = stops
+            .iter()
+            .position(|s| self.handle(*s, cx).contains_focused(window, cx));
         let next = match at {
             None if back => stops.len() - 1,
             None => 0,
@@ -338,10 +362,16 @@ impl Render for PrReviewModal {
         let t = Theme::of(cx).tokens;
         recur_view_review::style::style_textarea(&self.body.area, cx);
         let approve = kind == PrReviewKind::Approve;
-        let title = if approve { "Approve pull request" } else { "Request changes" };
+        let title = if approve {
+            "Approve pull request"
+        } else {
+            "Request changes"
+        };
         let pending = self.pending(cx);
         let can_submit = self.can_submit(cx);
-        let kb_on = |s: Stop, window: &Window, cx: &App| self.kb == Some(s) && self.handle(s, cx).is_focused(window);
+        let kb_on = |s: Stop, window: &Window, cx: &App| {
+            self.kb == Some(s) && self.handle(s, cx).is_focused(window)
+        };
 
         // `.nt-head`.
         let kind_ring = kb_on(Stop::Kind, window, cx);
@@ -349,7 +379,9 @@ impl Render for PrReviewModal {
             .relative()
             .flex_none()
             .child(self.kind_select.clone())
-            .when(kind_ring, |d| d.child(style::outline(2., 2., 7., 1., t.amber)));
+            .when(kind_ring, |d| {
+                d.child(style::outline(2., 2., 7., 1., t.amber))
+            });
         let x = div()
             .id("pr-rev-x")
             .ml_auto()
@@ -369,7 +401,15 @@ impl Render for PrReviewModal {
             .pt(px(12.))
             .px(px(14.))
             .min_h(px(44.))
-            .child(div().flex().items_center().gap(px(4.)).min_w_0().flex_1().child(picker))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(4.))
+                    .min_w_0()
+                    .flex_1()
+                    .child(picker),
+            )
             .child(x);
 
         // `.nt-body`.
@@ -412,21 +452,21 @@ impl Render for PrReviewModal {
                             .child(text(label).mono().size(11.).color(t.amber)),
                     )
                     .when(loc_ring, |d| d.child(style::focus_ring(4., 0., cx)));
-                let loc = titled(SharedString::from(format!("pr-rev-loc-t-{}", pc.id)), "View in Files changed", loc);
-                let main = div()
-                    .flex_1()
-                    .min_w_0()
-                    .child(loc)
-                    .child(
-                        div().mt(px(3.)).child(
-                            text(pc.body.clone())
-                                .size(12.5)
-                                .line_height(LineHeight::Scale(1.45))
-                                .color(t.text)
-                                .pre_wrap()
-                                .line_clamp(3),
-                        ),
-                    );
+                let loc = titled(
+                    SharedString::from(format!("pr-rev-loc-t-{}", pc.id)),
+                    "View in Files changed",
+                    loc,
+                );
+                let main = div().flex_1().min_w_0().child(loc).child(
+                    div().mt(px(3.)).child(
+                        text(pc.body.clone())
+                            .size(12.5)
+                            .line_height(LineHeight::Scale(1.45))
+                            .color(t.text)
+                            .pre_wrap()
+                            .line_clamp(3),
+                    ),
+                );
                 let pd = pc.clone();
                 let state = self.state.clone();
                 let del = div()
@@ -452,7 +492,11 @@ impl Render for PrReviewModal {
                     .on_click(move |_, _, cx| remove_pending_comment(&state, pd.clone(), cx))
                     .child(icon(IconName::Trash).size(px(13.)))
                     .when(del_ring, |d| d.child(style::focus_ring(4., 0., cx)));
-                let del = titled(SharedString::from(format!("pr-rev-del-t-{}", pc.id)), "Remove pending comment", del);
+                let del = titled(
+                    SharedString::from(format!("pr-rev-del-t-{}", pc.id)),
+                    "Remove pending comment",
+                    del,
+                );
                 let id = pc.id.clone();
                 list = list.child(
                     div()
@@ -497,9 +541,15 @@ impl Render for PrReviewModal {
 
         // `.nt-foot`.
         let disabled = self.submitting || !can_submit;
-        let label = if approve { "Approve" } else { "Request changes" };
+        let label = if approve {
+            "Approve"
+        } else {
+            "Request changes"
+        };
         let mut go = primary_button("pr-rev-go", disabled.then_some(t.pane), cx)
-            .debug_selector(move || format!("pr-rev-go={label}{}", if disabled { ":off" } else { "" }))
+            .debug_selector(move || {
+                format!("pr-rev-go={label}{}", if disabled { ":off" } else { "" })
+            })
             .relative()
             .track_focus(&self.submit_focus);
         go = if self.submitting {
@@ -526,10 +576,13 @@ impl Render for PrReviewModal {
             .min_w_0()
             .when(n > 0, |d| {
                 d.child(
-                    text(format!("{n} line comment{} will post with this review", if n == 1 { "" } else { "s" }))
-                        .size(12.)
-                        .color(t.muted)
-                        .nowrap(),
+                    text(format!(
+                        "{n} line comment{} will post with this review",
+                        if n == 1 { "" } else { "s" }
+                    ))
+                    .size(12.)
+                    .color(t.muted)
+                    .nowrap(),
                 )
             })
             .child(go);

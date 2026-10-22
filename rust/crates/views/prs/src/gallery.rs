@@ -1,7 +1,8 @@
 //! Parity scenes: the `prs` list in `rust/tools/ui-parity/scenes.json`, built the way
 //! `web/scenes/Prs.svelte` mounts `App.svelte`: the whole shell with every view crate
 //! registered, over the e2e seed edited by the scene's fixture in `content/prs.json`, then the
-//! dashboard (`route: "pr"`, `seg`) or PR detail (`route: "prdetail"`, `pr`, `tab`, `dock`).
+//! dashboard (`route: "pr"`, `seg`) or PR detail (`route: "prdetail"`, `pr`, `tab`, `dock`,
+//! `review`).
 
 use gpui_kit::{
     AnyView, App, AppContext as _, Context, Entity, Global, IntoElement, ParentElement, Render,
@@ -10,7 +11,7 @@ use gpui_kit::{
 use recur_app::{Shell, ShellOptions};
 use recur_services::mock::{MockBridge, MockOptions, Reply};
 use recur_ui::gallery::SceneSpec;
-use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
+use recur_view_core::{AppState, LocalStorage, PrReviewKind, ViewContext, ViewName, ViewRegistry};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -31,6 +32,7 @@ struct PrScene {
     tab: String,
     dock: String,
     seg: String,
+    review: String,
 }
 
 #[derive(Deserialize)]
@@ -119,6 +121,15 @@ impl Render for PrSceneView {
                 if let Some(tab) = tab {
                     let ui = ui(cx);
                     cx.defer(move |cx| ui.update(cx, |u, cx| u.set_tab(tab, cx)));
+                }
+                let review = match self.scene.review.as_str() {
+                    "approve" => Some(PrReviewKind::Approve),
+                    "request" => Some(PrReviewKind::Request),
+                    _ => None,
+                };
+                if let Some(k) = review {
+                    let state = self.shell.read(cx).state().clone();
+                    cx.defer(move |cx| state.update(cx, |s, cx| s.open_pr_review(k, cx)));
                 }
             }
             cx.notify();

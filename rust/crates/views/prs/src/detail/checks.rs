@@ -46,8 +46,11 @@ impl PrDetail {
         let life = pr_lifecycle(Some(pr));
         pr.source == PrSource::GitHub
             && !matches!(life, Some(PrLifecycle::Merged | PrLifecycle::Closed))
-            && checks_rollup(pr.checks.as_deref().unwrap_or_default(), Some(pr.checks_ok), Some(pr.has_checks))
-                == RollupKind::Fail
+            && checks_rollup(
+                pr.checks.as_deref().unwrap_or_default(),
+                Some(pr.checks_ok),
+                Some(pr.has_checks),
+            ) == RollupKind::Fail
     }
 
     fn toggle_check_group(&mut self, key: &str, compact: bool, cx: &mut Context<Self>) {
@@ -57,7 +60,13 @@ impl PrDetail {
     }
 
     /// The checks card. `scroll` is the conversation's compact variant.
-    pub(crate) fn checks_card(&mut self, pr: &Pr, scroll: bool, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn checks_card(
+        &mut self,
+        pr: &Pr,
+        scroll: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let checks = pr.checks.clone().unwrap_or_default();
         let g = group_checks(&checks);
@@ -65,11 +74,22 @@ impl PrDetail {
         let (color, name) = rollup_look(roll, &t);
         let gh = pr.source == PrSource::GitHub;
         let can_fix = Self::can_fix_checks(pr);
-        let lh = recur_ui::style::button_label("x", 11., 400.).measure(None, window).2.height;
-        let deg = if roll == RollupKind::Pending { spin_deg(window, cx) } else { 0. };
+        let lh = recur_ui::style::button_label("x", 11., 400.)
+            .measure(None, window)
+            .2
+            .height;
+        let deg = if roll == RollupKind::Pending {
+            spin_deg(window, cx)
+        } else {
+            0.
+        };
         let kind = rollup_kind(roll);
         let heading = checks_heading(&checks, gh.then(|| GITHUB.label()));
-        let href = if gh { GITHUB.checks_url(&pr.url) } else { String::new() };
+        let href = if gh {
+            GITHUB.checks_url(&pr.url)
+        } else {
+            String::new()
+        };
         let mut head = div()
             .debug_selector(|| "checks-h".into())
             .flex()
@@ -88,7 +108,14 @@ impl PrDetail {
             );
         let head_text = text(heading.clone()).size(12.5).weight(600.).nowrap();
         if href.is_empty() {
-            head = head.child(div().debug_selector({ let h = heading.clone(); move || format!("checks-h-text={h}") }).child(head_text));
+            head = head.child(
+                div()
+                    .debug_selector({
+                        let h = heading.clone();
+                        move || format!("checks-h-text={h}")
+                    })
+                    .child(head_text),
+            );
         } else {
             let h2 = heading.clone();
             let link = href.clone();
@@ -106,9 +133,22 @@ impl PrDetail {
         }
         let mut byline = checks_box_byline(&g);
         if byline.is_empty() {
-            byline = if gh { "GitHub checks on this PR".into() } else { "required before merge".into() };
+            byline = if gh {
+                "GitHub checks on this PR".into()
+            } else {
+                "required before merge".into()
+            };
         }
-        head = head.child(div().ml_auto().child(text(byline).mono().size(10.).weight(400.).color(t.faint).nowrap()));
+        head = head.child(
+            div().ml_auto().child(
+                text(byline)
+                    .mono()
+                    .size(10.)
+                    .weight(400.)
+                    .color(t.faint)
+                    .nowrap(),
+            ),
+        );
         if can_fix {
             let pid = pr.id.clone();
             let state = self.state().clone();
@@ -139,7 +179,12 @@ impl PrDetail {
                 false,
                 div()
                     .id(SharedString::from(format!("checks-group-{key}-{scroll}")))
-                    .debug_selector(move || format!("checks-group-h:{label}{}", if collapsed { ":collapsed" } else { "" }))
+                    .debug_selector(move || {
+                        format!(
+                            "checks-group-h:{label}{}",
+                            if collapsed { ":collapsed" } else { "" }
+                        )
+                    })
                     .flex()
                     .items_center()
                     .gap(px(6.))
@@ -149,7 +194,11 @@ impl PrDetail {
                     .cursor_pointer()
                     .text_color(hsla(t.faint))
                     .hover(move |s| s.text_color(hsla(t.muted)))
-                    .child(icon(IconName::ChevronDown).size(px(12.)).rotate(if collapsed { -90. } else { 0. }))
+                    .child(
+                        icon(IconName::ChevronDown)
+                            .size(px(12.))
+                            .rotate(if collapsed { -90. } else { 0. }),
+                    )
                     .child(
                         text(format!("{} {label}", items.len()))
                             .mono()
@@ -180,11 +229,16 @@ impl PrDetail {
                         "Open on GitHub",
                         div()
                             .id(SharedString::from(format!("check-cn-a-{key}-{i}-{scroll}")))
-                            .debug_selector({ let n = c.name.clone(); move || format!("check-cn-a:{n}={r2}") })
+                            .debug_selector({
+                                let n = c.name.clone();
+                                move || format!("check-cn-a:{n}={r2}")
+                            })
                             .cursor_pointer()
                             .hover(|s| s.underline())
                             .child(name_text)
-                            .on_click(move |_, _, cx| recur_content::links::open_external_url(&run, cx)),
+                            .on_click(move |_, _, cx| {
+                                recur_content::links::open_external_url(&run, cx)
+                            }),
                     )
                     .into_any_element()
                 };
@@ -200,9 +254,18 @@ impl PrDetail {
                     .py(px(10.))
                     .px(px(15.))
                     .text_size(px(12.))
-                    .child(div().flex_none().text_color(hsla(ic_color)).child(icon(ic).size(px(14.)).stroke_width(2.4).rotate(deg)))
+                    .child(
+                        div()
+                            .flex_none()
+                            .text_color(hsla(ic_color))
+                            .child(icon(ic).size(px(14.)).stroke_width(2.4).rotate(deg)),
+                    )
                     .child(name_el)
-                    .child(div().ml_auto().child(text(detail).mono().size(10.).color(t.faint).nowrap()));
+                    .child(
+                        div()
+                            .ml_auto()
+                            .child(text(detail).mono().size(10.).color(t.faint).nowrap()),
+                    );
                 if can_fix && key == "fail" {
                     let pid = pr.id.clone();
                     let name = c.name.clone();
@@ -210,19 +273,41 @@ impl PrDetail {
                     row = row.child(titled(
                         SharedString::from(format!("check-fix-t-{i}-{scroll}")),
                         format!("Ask an agent to fix {}", c.name),
-                        note_btn(SharedString::from(format!("check-fix-{i}-{scroll}")), "Fix", false, false, t.pane, lh, cx)
-                            .debug_selector({ let n = c.name.clone(); move || format!("checks-fix:Fix:{n}") })
-                            .on_click(move |_, _, cx| PrDetail::request_fix_checks(&state, &pid, &name, cx)),
+                        note_btn(
+                            SharedString::from(format!("check-fix-{i}-{scroll}")),
+                            "Fix",
+                            false,
+                            false,
+                            t.pane,
+                            lh,
+                            cx,
+                        )
+                        .debug_selector({
+                            let n = c.name.clone();
+                            move || format!("checks-fix:Fix:{n}")
+                        })
+                        .on_click(move |_, _, cx| {
+                            PrDetail::request_fix_checks(&state, &pid, &name, cx)
+                        }),
                     ));
                 }
                 parts.push((true, row.into_any_element()));
             }
         }
         let n = parts.len();
-        let mut body = div().debug_selector(|| "checks-box-body".into()).pt(px(6.)).pb(px(8.)).flex().flex_col();
+        let mut body = div()
+            .debug_selector(|| "checks-box-body".into())
+            .pt(px(6.))
+            .pb(px(8.))
+            .flex()
+            .flex_col();
         for (i, (is_row, el)) in parts.into_iter().enumerate() {
             let rule = is_row && i + 1 < n;
-            body = body.child(div().when(rule, |d| d.border_b_1().border_color(hsla(t.line_soft))).child(el));
+            body = body.child(
+                div()
+                    .when(rule, |d| d.border_b_1().border_color(hsla(t.line_soft)))
+                    .child(el),
+            );
         }
         let body: AnyElement = if scroll {
             div()
@@ -249,9 +334,21 @@ impl PrDetail {
     }
 
     /// The Checks pane.
-    pub(crate) fn checks_pane(&mut self, pr: Option<&Pr>, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn checks_pane(
+        &mut self,
+        pr: Option<&Pr>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let mut wrap = div().w_full().max_w(px(680.)).mx_auto().p(px(18.)).min_w_0().flex().flex_col();
+        let mut wrap = div()
+            .w_full()
+            .max_w(px(680.))
+            .mx_auto()
+            .p(px(18.))
+            .min_w_0()
+            .flex()
+            .flex_col();
         if let Some(pr) = pr {
             if self.checks_pending(cx) {
                 wrap = wrap.child(super::skeleton::checks_skel(window, cx));
@@ -263,9 +360,13 @@ impl PrDetail {
                     "Verify-in-browser is unique to Recur — the QA agent actually drove the running app. Evidence is in the Conversation tab."
                 };
                 wrap = wrap.child(
-                    div()
-                        .px(px(2.))
-                        .child(text(hint).mono().size(10.5).color(t.faint).id("checks-hint")),
+                    div().px(px(2.)).child(
+                        text(hint)
+                            .mono()
+                            .size(10.5)
+                            .color(t.faint)
+                            .id("checks-hint"),
+                    ),
                 );
             }
         }

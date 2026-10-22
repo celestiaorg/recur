@@ -1898,6 +1898,18 @@
     {"name": "prs/detail-conv-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 0, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed"},
     {"name": "prs/detail-files", "width": 1280, "height": 800, "theme": "default", "tolerance": 0, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed", "tab": "files"},
     {"name": "prs/detail-commits", "width": 1280, "height": 800, "theme": "default", "tolerance": 0, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed", "tab": "commits"},
-    {"name": "prs/detail-checks", "width": 1280, "height": 800, "theme": "default", "tolerance": 0, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed", "tab": "checks"}
+    {"name": "prs/detail-checks", "width": 1280, "height": 800, "theme": "default", "tolerance": 0, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed", "tab": "checks"},
+    {"name": "prs/actions-update", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "update"},
+    {"name": "prs/actions-ready", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "draft"},
+    {"name": "prs/actions-checks", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "checks"},
+    {"name": "prs/actions-blocked", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "blocked"},
+    {"name": "prs/actions-conflicts", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "conflicts"},
+    {"name": "prs/actions-queued", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "queued"},
+    {"name": "prs/actions-queue", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "queue"},
+    {"name": "prs/actions-merged", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "merged"},
+    {"name": "prs/actions-pending", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending"},
+    {"name": "prs/actions-pending-paper", "theme": "paper", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending"},
+    {"name": "prs/review-modal", "theme": "default", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending", "review": "request"},
+    {"name": "prs/review-modal-paper", "theme": "paper", "width": 1280, "height": 800, "tolerance": 0, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "pending", "review": "approve"}
   ]
 }

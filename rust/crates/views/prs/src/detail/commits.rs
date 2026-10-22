@@ -23,7 +23,13 @@ use crate::style::hsla;
 
 impl PrDetail {
     /// `.tl-verified` and `commitCheck` after a commit's message.
-    fn commit_marks(&self, c: &Commit, key: &str, window: &mut Window, cx: &App) -> Vec<AnyElement> {
+    fn commit_marks(
+        &self,
+        c: &Commit,
+        key: &str,
+        window: &mut Window,
+        cx: &App,
+    ) -> Vec<AnyElement> {
         let t = Theme::of(cx).tokens;
         let mut out = Vec::new();
         if c.verified {
@@ -35,7 +41,13 @@ impl PrDetail {
                     .rounded(px(99.))
                     .border_1()
                     .border_color(hsla(recur_ui::rgba(63, 185, 80, 0.45)))
-                    .child(text("Verified").mono().size(9.).color(recur_ui::hex(0x3fb950)).nowrap())
+                    .child(
+                        text("Verified")
+                            .mono()
+                            .size(9.)
+                            .color(recur_ui::hex(0x3fb950))
+                            .nowrap(),
+                    )
                     .into_any_element(),
             );
         }
@@ -46,7 +58,12 @@ impl PrDetail {
 
     /// The `.commit-hd` of PR detail's commit view: message, byline with the file count,
     /// verified and check marks, the short hash and its copy button, then the body.
-    fn commit_head(&mut self, c: &Commit, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn commit_head(
+        &mut self,
+        c: &Commit,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let files = self.detail_files(cx).len();
         let suffix = if !self.commit_loading || files > 0 {
@@ -99,7 +116,13 @@ impl PrDetail {
                 div()
                     .flex_1()
                     .min_w_0()
-                    .child(text(c.message.clone()).id("commit-hd-t").size(14.).weight(600.).break_anywhere())
+                    .child(
+                        text(c.message.clone())
+                            .id("commit-hd-t")
+                            .size(14.)
+                            .weight(600.)
+                            .break_anywhere(),
+                    )
                     .child(
                         div().mt(px(4.)).child(
                             Text::from_spans(byline(c, &suffix, &t))
@@ -118,7 +141,13 @@ impl PrDetail {
                     .ml_auto()
                     .py(px(3.))
                     .px(px(9.))
-                    .child(text(c.hash.clone()).mono().size(11.).color(t.muted).nowrap()),
+                    .child(
+                        text(c.hash.clone())
+                            .mono()
+                            .size(11.)
+                            .color(t.muted)
+                            .nowrap(),
+                    ),
             )
             .child(copy);
         let mut col = recur_ui::style::card(t.pane, t.line, 9.)
@@ -147,7 +176,12 @@ impl PrDetail {
     }
 
     /// The Commits pane.
-    pub(crate) fn commits_pane(&mut self, pr: Option<&Pr>, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn commits_pane(
+        &mut self,
+        pr: Option<&Pr>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let commits = self.commits(cx);
         let detail = self.commit_idx.is_some();
@@ -168,7 +202,10 @@ impl PrDetail {
             }
             None => {
                 let n = commits.len();
-                let mut list = div().debug_selector(|| "commits-list".into()).flex().flex_col();
+                let mut list = div()
+                    .debug_selector(|| "commits-list".into())
+                    .flex()
+                    .flex_col();
                 for (i, c) in commits.iter().enumerate() {
                     let sha = commit_sha(c);
                     let opts = RowOpts {
@@ -203,9 +240,15 @@ impl PrDetail {
                     "Every commit is the loop's work — agent-authored, one per iteration. Click any to see its diff. The messages trace how it converged: build → fix on review → fix on review → tests."
                 };
                 wrap = wrap.child(
-                    div()
-                        .child(list)
-                        .child(div().pt(px(14.)).px(px(2.)).child(text(hint).mono().size(10.5).color(t.faint).id("commits-hint"))),
+                    div().child(list).child(
+                        div().pt(px(14.)).px(px(2.)).child(
+                            text(hint)
+                                .mono()
+                                .size(10.5)
+                                .color(t.faint)
+                                .id("commits-hint"),
+                        ),
+                    ),
                 );
             }
             Some(i) => {
@@ -226,7 +269,10 @@ impl PrDetail {
                                 .cursor_pointer()
                                 .text_color(hsla(t.muted))
                                 .hover(move |s| s.text_color(hsla(t.text)))
-                                .child(recur_ui::style::button_label("← all commits", 11., 400.).family(Family::Mono))
+                                .child(
+                                    recur_ui::style::button_label("← all commits", 11., 400.)
+                                        .family(Family::Mono),
+                                )
                                 .on_click(cx.listener(|d, _, _, cx| {
                                     d.commit_idx = None;
                                     d.discard_commit_diff();
@@ -236,9 +282,15 @@ impl PrDetail {
                         .child(self.diff_layout_seg(false, cx));
                     let head = self.commit_head(&c, window, cx);
                     if self.commit_loading {
-                        wrap = wrap.child(nav).child(head).child(empty_state("Loading diff…", cx));
+                        wrap = wrap
+                            .child(nav)
+                            .child(head)
+                            .child(empty_state("Loading diff…", cx));
                     } else if self.commit_error {
-                        wrap = wrap.child(nav).child(head).child(empty_state("Could not load this commit's diff", cx));
+                        wrap = wrap
+                            .child(nav)
+                            .child(head)
+                            .child(empty_state("Could not load this commit's diff", cx));
                     } else {
                         let files: Vec<Rc<recur_domain::FileDiff>> =
                             self.detail_files(cx).into_iter().map(Rc::new).collect();
@@ -260,7 +312,9 @@ impl PrDetail {
                             hooks,
                             ..Default::default()
                         });
-                        let empty = files.is_empty().then(|| empty_state("No files in this commit", cx));
+                        let empty = files
+                            .is_empty()
+                            .then(|| empty_state("No files in this commit", cx));
                         let stack = self.commit_stack.render(
                             vec![nav.into_any_element(), head],
                             empty,

@@ -7,12 +7,11 @@
 use std::time::Duration;
 
 use gpui_kit::{
-    AnyElement, AppContext, Context, Entity, Hsla, InteractiveElement, IntoElement, ParentElement,
+    AnyElement, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement,
     SharedString, StatefulInteractiveElement, Styled, Subscription, Task, Window, deferred, div,
     prelude::FluentBuilder, px,
 };
 use recur_domain::{Pr, PrSource, Workspace, WorkspaceLandState};
-pub use recur_view_core::land::{Land, LandCache};
 use recur_services::AppEvent;
 use recur_ui::fonts::weight;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
@@ -21,6 +20,7 @@ use recur_ui::text::{TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerStyle};
 use recur_ui::{IconName, Theme, color::rgba, icon};
+pub use recur_view_core::land::{Land, LandCache};
 use recur_view_core::modes::{ws_main_blocked, ws_run_active};
 use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_icon_name, pr_lifecycle};
 use recur_view_core::{AppState, ViewName, call, toast};
@@ -464,7 +464,10 @@ impl Shell {
         if id != self.land.workspace_id {
             self.land.workspace_id = id.clone();
             self.land.seq += 1;
-            self.land.land = cx.default_global::<LandCache>().get(&id).unwrap_or_default();
+            self.land.land = cx
+                .default_global::<LandCache>()
+                .get(&id)
+                .unwrap_or_default();
             self.land.known = false;
             self.land.rules_evt = None;
         }
@@ -683,8 +686,12 @@ impl Shell {
                 let remote = (!d.remote.is_empty()).then_some(d.remote.as_str());
                 self.apply_require_pr(&d.project_id, &d.branch, d.require_pr, remote, cx);
             }
-            AppEvent::WorkspaceDeleted(d) => cx.default_global::<LandCache>().delete(&d.workspace_id),
-            AppEvent::WorkspaceRemoved(d) => cx.default_global::<LandCache>().delete(&d.workspace_id),
+            AppEvent::WorkspaceDeleted(d) => {
+                cx.default_global::<LandCache>().delete(&d.workspace_id)
+            }
+            AppEvent::WorkspaceRemoved(d) => {
+                cx.default_global::<LandCache>().delete(&d.workspace_id)
+            }
             _ => {}
         }
     }
@@ -1399,8 +1406,8 @@ impl Shell {
             v.land_busy.then_some(tip.as_str()),
         )
         .rounded_r(px(0.))
-        .border_r(px(1.))
-        .border_color(Hsla::from(rgba(0, 0, 0, 0.15)));
+        .relative()
+        .child(style::split_divider());
         let mut chev = tbtn(
             "tb-update-chev",
             Tbtn::Solid,
@@ -1492,8 +1499,8 @@ impl Shell {
         .px(px(9.))
         .rounded(px(6.))
         .rounded_r(px(0.))
-        .border_r(px(1.))
-        .border_color(Hsla::from(rgba(0, 0, 0, 0.15)))
+        .relative()
+        .child(style::split_divider())
         .text_size(px(11.5));
         let mut chev = rbtn("tb-merge-chev", Rbtn::Merge, busy_over, cx)
             .debug_selector(|| "tb-merge-chev".into())

@@ -28,7 +28,10 @@ fn probe_detail_layout(cx: &mut TestAppContext) {
         cx.notify();
     });
     s.settle();
-    for sel in ["cmt-reply-ph:gh-inline-1", "cmt-resolve:Resolve conversation"] {
+    for sel in [
+        "cmt-reply-ph:gh-inline-1",
+        "cmt-resolve:Resolve conversation",
+    ] {
         eprintln!("{sel}: {:?}", s.bounds(sel));
     }
     s.click("prtab:Files changed:off");

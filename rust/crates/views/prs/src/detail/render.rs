@@ -37,7 +37,12 @@ pub(crate) fn prh_bg(cx: &App) -> Color {
 }
 
 /// `.cmt-act`: a 22px faint icon button.
-pub(crate) fn cmt_act(id: impl Into<SharedString>, name: IconName, open: bool, cx: &App) -> gpui_kit::Stateful<Div> {
+pub(crate) fn cmt_act(
+    id: impl Into<SharedString>,
+    name: IconName,
+    open: bool,
+    cx: &App,
+) -> gpui_kit::Stateful<Div> {
     let t = Theme::of(cx).tokens;
     div()
         .id(gpui_kit::ElementId::Name(id.into()))
@@ -57,7 +62,12 @@ pub(crate) fn cmt_act(id: impl Into<SharedString>, name: IconName, open: bool, c
 
 impl PrDetail {
     /// `.prh`.
-    fn header(&mut self, pr: Option<&Pr>, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn header(
+        &mut self,
+        pr: Option<&Pr>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let prh = div()
             .debug_selector(|| "prh".into())
@@ -76,7 +86,11 @@ impl PrDetail {
         let Some(pr) = pr else {
             // Skeleton until the PR is in the store.
             let skel = |w: f32, h: f32, r: f32, window: &mut Window| {
-                recur_ui::style::skeleton(window, cx).w(px(w)).h(px(h)).rounded(px(r)).flex_none()
+                recur_ui::style::skeleton(window, cx)
+                    .w(px(w))
+                    .h(px(h))
+                    .rounded(px(r))
+                    .flex_none()
             };
             return prh
                 .child(
@@ -117,7 +131,12 @@ impl PrDetail {
             statepill(t.amber_d, t.amber, dot(7., t.amber).opacity(o), "Updating…")
         } else {
             let chrome = chrome_color(Some(pr), &t);
-            statepill(chrome.fade(0.14), chrome, dot(7., chrome), &status_label(pr))
+            statepill(
+                chrome.fade(0.14),
+                chrome,
+                dot(7., chrome),
+                &status_label(pr),
+            )
         };
         let label = status_label(pr);
         let pill = pill.debug_selector(move || format!("statepill={label}"));
@@ -139,7 +158,14 @@ impl PrDetail {
                     .top(px(-1.))
                     .flex()
                     .items_center()
-                    .child(icon(if gh { IconName::Github } else { IconName::HardDrive }).size(px(18.))),
+                    .child(
+                        icon(if gh {
+                            IconName::Github
+                        } else {
+                            IconName::HardDrive
+                        })
+                        .size(px(18.)),
+                    ),
             ))
             .child(
                 text(format!("#{}", pr.number))
@@ -167,10 +193,21 @@ impl PrDetail {
         if self.editing_title {
             let saving = self.saving == "title";
             let backdrop = prh_bg(cx);
-            let lh = recur_ui::style::button_label("x", 11., 400.).measure(None, window).2.height;
+            let lh = recur_ui::style::button_label("x", 11., 400.)
+                .measure(None, window)
+                .2
+                .height;
             let empty = self.title_input.read(cx).value().trim().is_empty();
-            let focused = self.title_input.read(cx).focus_handle(cx).is_focused(window);
-            let border = if focused { t.amber.mix(0.55, t.line) } else { t.line };
+            let focused = self
+                .title_input
+                .read(cx)
+                .focus_handle(cx)
+                .is_focused(window);
+            let border = if focused {
+                t.amber.mix(0.55, t.line)
+            } else {
+                t.line
+            };
             prh_t = prh_t
                 .child(
                     div()
@@ -201,12 +238,22 @@ impl PrDetail {
                         ),
                 )
                 .child(
-                    recur_view_review::style::note_btn("prh-title-cancel", "Cancel", false, saving, backdrop, lh, cx)
-                        .debug_selector(|| "prh-title-cancel".into())
-                        .when(!saving, |b| b.on_click(cx.listener(|d, _, _, cx| {
+                    recur_view_review::style::note_btn(
+                        "prh-title-cancel",
+                        "Cancel",
+                        false,
+                        saving,
+                        backdrop,
+                        lh,
+                        cx,
+                    )
+                    .debug_selector(|| "prh-title-cancel".into())
+                    .when(!saving, |b| {
+                        b.on_click(cx.listener(|d, _, _, cx| {
                             d.editing_title = false;
                             cx.notify();
-                        }))),
+                        }))
+                    }),
                 )
                 .child(
                     recur_view_review::style::note_btn(
@@ -219,20 +266,24 @@ impl PrDetail {
                         cx,
                     )
                     .debug_selector(|| "prh-title-save".into())
-                    .when(!empty && !saving, |b| b.on_click(cx.listener(|d, _, _, cx| d.save_title(cx)))),
+                    .when(!empty && !saving, |b| {
+                        b.on_click(cx.listener(|d, _, _, cx| d.save_title(cx)))
+                    }),
                 );
         } else {
             let title = pr.title.clone();
             prh_t = prh_t.child(
-                div().min_w_0().child(
-                    text(title.clone())
-                        .size(17.)
-                        .weight(600.)
-                        .tracking(-0.01)
-                        .truncate()
-                        .id("prh-title"),
-                )
-                .debug_selector(move || format!("prh-title={title}")),
+                div()
+                    .min_w_0()
+                    .child(
+                        text(title.clone())
+                            .size(17.)
+                            .weight(600.)
+                            .tracking(-0.01)
+                            .truncate()
+                            .id("prh-title"),
+                    )
+                    .debug_selector(move || format!("prh-title={title}")),
             );
             if self.can_edit_pr(cx) {
                 prh_t = prh_t.child(
@@ -241,7 +292,9 @@ impl PrDetail {
                         "Edit title",
                         cmt_act("prh-edit-title", IconName::Pencil, false, cx)
                             .debug_selector(|| "cmt-act:Edit title".into())
-                            .on_click(cx.listener(|d, _, window, cx| d.start_edit_title(window, cx))),
+                            .on_click(
+                                cx.listener(|d, _, window, cx| d.start_edit_title(window, cx)),
+                            ),
                     )),
                 );
             }
@@ -287,7 +340,9 @@ impl PrDetail {
         if !matches!(life, Some(PrLifecycle::Merged | PrLifecycle::Closed)) {
             for line in pr_attention_labels(pr) {
                 let l2 = line.clone();
-                side = side.child(pill2(None, &line, cx).debug_selector(move || format!("pr-attn-pill={l2}")));
+                side = side.child(
+                    pill2(None, &line, cx).debug_selector(move || format!("pr-attn-pill={l2}")),
+                );
             }
         }
         let branch = format!("{} → {}", pr.branch, pr.base);
@@ -299,7 +354,11 @@ impl PrDetail {
         let head_bounds = self.head_bounds.clone();
         prh.child(prh_t)
             .child(side)
-            .child(canvas(move |b, _, _| head_bounds.set(Some(b)), |_, _, _, _| {}).absolute().inset_0())
+            .child(
+                canvas(move |b, _, _| head_bounds.set(Some(b)), |_, _, _, _| {})
+                    .absolute()
+                    .inset_0(),
+            )
             .into_any_element()
     }
 
@@ -328,11 +387,18 @@ impl PrDetail {
                 pr_agent_is_running(pr, &s.workspaces, &s.workspaces_running)
             };
             let (title, label) = if running {
-                ("Show left panel — agent running (⌥⌘B)", "Show left panel. Agent running")
+                (
+                    "Show left panel — agent running (⌥⌘B)",
+                    "Show left panel. Agent running",
+                )
             } else {
                 ("Show left panel (⌥⌘B)", "Show left panel")
             };
-            let o = if running { pulse_opacity(2.4, window, cx) } else { 1. };
+            let o = if running {
+                pulse_opacity(2.4, window, cx)
+            } else {
+                1.
+            };
             let color = if running { t.amber } else { t.faint };
             let hover = if running { t.amber } else { t.text };
             let ring = recur_ui::style::is_focus_visible(&self.toggle_focus, window);
@@ -342,7 +408,9 @@ impl PrDetail {
                     title,
                     div()
                         .id("prd-chat-toggle")
-                        .debug_selector(move || format!("button:{label}{}", if running { ":running" } else { "" }))
+                        .debug_selector(move || {
+                            format!("button:{label}{}", if running { ":running" } else { "" })
+                        })
                         .track_focus(&self.toggle_focus)
                         .relative()
                         .flex()
@@ -354,16 +422,27 @@ impl PrDetail {
                         .cursor_pointer()
                         .text_color(hsla(color))
                         .hover(move |s| s.text_color(hsla(hover)).bg(hsla(t.pane_2)))
-                        .child(div().opacity(o).child(icon(IconName::PanelLeft).size(px(16.))))
+                        .child(
+                            div()
+                                .opacity(o)
+                                .child(icon(IconName::PanelLeft).size(px(16.))),
+                        )
                         .when(ring, |d| d.child(recur_ui::style::focus_ring(4., 0., cx)))
-                        .on_mouse_down(MouseButton::Left, cx.listener(|d, _, window, cx| {
-                            window.focus(&d.toggle_focus, cx);
-                        }))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|d, _, window, cx| {
+                                window.focus(&d.toggle_focus, cx);
+                            }),
+                        )
                         .on_click(cx.listener(|d, _, window, cx| d.show_agent_dock(window, cx))),
                 )),
             );
         }
-        let pending = (self.conv_pending(cx), self.commits_pending(cx), self.checks_pending(cx));
+        let pending = (
+            self.conv_pending(cx),
+            self.commits_pending(cx),
+            self.checks_pending(cx),
+        );
         let items = self.thread_items(cx);
         let desc = items.iter().any(|c| c.kind == "description");
         let timeline = items
@@ -380,7 +459,12 @@ impl PrDetail {
         let roll = checks_rollup(&checks, pr.map(|p| p.checks_ok), pr.map(|p| p.has_checks));
         let passed = checks.iter().filter(|c| c.passed).count();
         let (roll_color, roll_icon) = rollup_look(roll, &t);
-        let chip = |label: String, color: Option<Color>, pending: bool, window: &mut Window, cx: &mut Context<Self>| -> AnyElement {
+        let chip = |label: String,
+                    color: Option<Color>,
+                    pending: bool,
+                    window: &mut Window,
+                    cx: &mut Context<Self>|
+         -> AnyElement {
             if pending {
                 return recur_ui::style::skeleton(window, cx)
                     .flex_none()
@@ -405,7 +489,12 @@ impl PrDetail {
                 )
                 .into_any_element()
         };
-        let mk = |me: &mut Self, key: PrTab, name: &'static str, lead: AnyElement, count: AnyElement, cx: &mut Context<Self>| {
+        let mk = |me: &mut Self,
+                  key: PrTab,
+                  name: &'static str,
+                  lead: AnyElement,
+                  count: AnyElement,
+                  cx: &mut Context<Self>| {
             let on = tab == key;
             let fg = if on { t.text } else { t.muted };
             let border = if on && lit {
@@ -418,7 +507,13 @@ impl PrDetail {
             let _ = me;
             div()
                 .id(SharedString::from(format!("prtab-{name}")))
-                .debug_selector(move || format!("prtab:{name}:{}{}", if on { "on" } else { "off" }, if on && lit { ":lit" } else { "" }))
+                .debug_selector(move || {
+                    format!(
+                        "prtab:{name}:{}{}",
+                        if on { "on" } else { "off" },
+                        if on && lit { ":lit" } else { "" }
+                    )
+                })
                 .flex()
                 .items_center()
                 .gap(px(6.))
@@ -435,25 +530,60 @@ impl PrDetail {
                 .on_click(cx.listener(move |d, _, _, cx| d.set_tab(key, cx)))
         };
         let conv_chip = chip(conv_n.to_string(), None, pending.0, window, cx);
-        bar = bar.child(mk(self, PrTab::Conv, "Conversation", icon(IconName::Message).size(px(14.)).into_any_element(), conv_chip, cx));
+        bar = bar.child(mk(
+            self,
+            PrTab::Conv,
+            "Conversation",
+            icon(IconName::Message).size(px(14.)).into_any_element(),
+            conv_chip,
+            cx,
+        ));
         let commits_chip = chip(commits_n.to_string(), None, pending.1, window, cx);
-        bar = bar.child(mk(self, PrTab::Commits, "Commits", icon(IconName::GitCommit).size(px(14.)).into_any_element(), commits_chip, cx));
+        bar = bar.child(mk(
+            self,
+            PrTab::Commits,
+            "Commits",
+            icon(IconName::GitCommit).size(px(14.)).into_any_element(),
+            commits_chip,
+            cx,
+        ));
         let files_chip = chip(files_n.to_string(), None, false, window, cx);
-        bar = bar.child(mk(self, PrTab::Files, "Files changed", icon(IconName::FileDiff).size(px(14.)).into_any_element(), files_chip, cx));
+        bar = bar.child(mk(
+            self,
+            PrTab::Files,
+            "Files changed",
+            icon(IconName::FileDiff).size(px(14.)).into_any_element(),
+            files_chip,
+            cx,
+        ));
         let (kind, color, name) = if pending.2 {
             ("none", t.faint, IconName::Clock)
         } else {
             (rollup_kind(roll), roll_color, roll_icon)
         };
-        let deg = if !pending.2 && roll == RollupKind::Pending { spin_deg(window, cx) } else { 0. };
+        let deg = if !pending.2 && roll == RollupKind::Pending {
+            spin_deg(window, cx)
+        } else {
+            0.
+        };
         let lead = div()
             .debug_selector(move || format!("prtab-check={kind}"))
             .flex_none()
             .text_color(hsla(color))
             .child(icon(name).size(px(14.)).rotate(deg))
             .into_any_element();
-        let checks_color = if roll == RollupKind::None { None } else { Some(roll_color) };
-        let checks_chip = chip(format!("{passed}/{}", checks.len()), checks_color, pending.2, window, cx);
+        let checks_color = if roll == RollupKind::None {
+            None
+        } else {
+            Some(roll_color)
+        };
+        let checks_chip = chip(
+            format!("{passed}/{}", checks.len()),
+            checks_color,
+            pending.2,
+            window,
+            cx,
+        );
         bar = bar.child(mk(self, PrTab::Checks, "Checks", lead, checks_chip, cx));
         bar.into_any_element()
     }
@@ -508,7 +638,11 @@ pub(crate) fn top_fade(cx: &App) -> Div {
         .left_0()
         .right_0()
         .h(px(40.))
-        .child(recur_ui::style::gradient_fill(180., (t.bg, 0.), (t.bg.fade(0.), 1.)))
+        .child(recur_ui::style::gradient_fill(
+            180.,
+            (t.bg, 0.),
+            (t.bg.fade(0.), 1.),
+        ))
 }
 
 fn statepill(bg: Color, fg: Color, d: Div, label: &str) -> Div {
@@ -523,7 +657,15 @@ fn statepill(bg: Color, fg: Color, d: Div, label: &str) -> Div {
         .bg(hsla(bg))
         .child(d)
         // `.prh-t`'s `letter-spacing: -.01em` (of 17px) inherits as an absolute length.
-        .child(text(label.to_string()).mono().size(11.).weight(500.).tracking_px(-0.17).color(fg).nowrap())
+        .child(
+            text(label.to_string())
+                .mono()
+                .size(11.)
+                .weight(500.)
+                .tracking_px(-0.17)
+                .color(fg)
+                .nowrap(),
+        )
 }
 
 /// `.prh-side .pill2`.
@@ -537,8 +679,14 @@ fn pill2(ic: Option<IconName>, label: &str, cx: &App) -> Div {
         .py(px(3.))
         .px(px(9.))
         .text_color(hsla(t.text))
-        .when_some(ic, |d, i| d.child(div().flex_none().child(icon(i).size(px(11.)))))
-        .child(div().min_w_0().child(text(label.to_string()).mono().size(10.5).truncate()))
+        .when_some(ic, |d, i| {
+            d.child(div().flex_none().child(icon(i).size(px(11.))))
+        })
+        .child(
+            div()
+                .min_w_0()
+                .child(text(label.to_string()).mono().size(10.5).truncate()),
+        )
 }
 
 pub(crate) fn rollup_look(r: RollupKind, t: &recur_ui::Tokens) -> (Color, IconName) {
@@ -604,9 +752,12 @@ impl Render for PrDetail {
             if tab_now == PrTab::Files {
                 let focus = self.stack.focus.clone();
                 window.defer(cx, move |window, cx| {
-                    let typing = window
-                        .focused(cx)
-                        .is_some_and(|_| window.context_stack().iter().any(|c| c.contains("TextEntry") || c.contains("Input")));
+                    let typing = window.focused(cx).is_some_and(|_| {
+                        window
+                            .context_stack()
+                            .iter()
+                            .any(|c| c.contains("TextEntry") || c.contains("Input"))
+                    });
                     if !typing {
                         window.focus(&focus, cx);
                     }
@@ -631,7 +782,8 @@ impl Render for PrDetail {
             .flex_row()
             .overflow_hidden();
         let agent_ws = self.agent_ws(cx);
-        if !agent_ws.is_empty() && self.state().read(cx).pr_agent_dock_open
+        if !agent_ws.is_empty()
+            && self.state().read(cx).pr_agent_dock_open
             && let Some(dock) = self.agent_dock(window, cx)
         {
             split = split.child(
@@ -663,7 +815,12 @@ impl Render for PrDetail {
             .child(body)
             .children(self.more_menu(window, cx));
         split = split.child(col);
-        let pop = if self.hovered_people && let (Some(p), Some(b), Some(h)) = (pr.as_ref(), self.people_bounds.get(), self.head_bounds.get()) {
+        let pop = if self.hovered_people
+            && let (Some(p), Some(b), Some(h)) = (
+                pr.as_ref(),
+                self.people_bounds.get(),
+                self.head_bounds.get(),
+            ) {
             let people = pr_people(p);
             (!people.is_empty()).then(|| {
                 let left = f32::from(b.origin.x) - f32::from(h.origin.x);
@@ -686,12 +843,15 @@ impl Render for PrDetail {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .on_mouse_down(MouseButton::Left, cx.listener(|d, _, window, cx| {
-                // `onPRChromeMouseDown`: park focus on the column so the tabs light up.
-                if !d.dock_focus.contains_focused(window, cx) {
-                    window.focus(&d.col_focus, cx);
-                }
-            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|d, _, window, cx| {
+                    // `onPRChromeMouseDown`: park focus on the column so the tabs light up.
+                    if !d.dock_focus.contains_focused(window, cx) {
+                        window.focus(&d.col_focus, cx);
+                    }
+                }),
+            )
             .child(header)
             .child(split)
             .children(pop)
@@ -715,7 +875,11 @@ impl PrDetail {
     }
 
     /// Re-render when the dock's Observatory changes (its elements render inside this view).
-    fn watch_dock(&mut self, obs: &gpui_kit::Entity<recur_view_observatory::Observatory>, cx: &mut Context<Self>) {
+    fn watch_dock(
+        &mut self,
+        obs: &gpui_kit::Entity<recur_view_observatory::Observatory>,
+        cx: &mut Context<Self>,
+    ) {
         let id = obs.entity_id();
         if self.watched == Some(id) {
             return;
@@ -725,7 +889,11 @@ impl PrDetail {
     }
 
     /// `.cmt-more-menu`: Open in GitHub, Copy link, Quote reply, Edit, Delete.
-    pub(crate) fn more_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub(crate) fn more_menu(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
         if self.more.id.is_empty() {
             return None;
         }
@@ -736,16 +904,18 @@ impl PrDetail {
         let locked = self.conversation_locked(cx);
         let can_edit = match &target {
             Some(c) if c.kind == "description" => self.can_edit_pr(cx),
-            Some(c) => recur_engine::view::comment_thread::can_edit_pr_comment(pr.as_ref(), Some(c)),
+            Some(c) => {
+                recur_engine::view::comment_thread::can_edit_pr_comment(pr.as_ref(), Some(c))
+            }
             None => false,
         };
-        let can_delete = target
-            .as_ref()
-            .is_some_and(|c| recur_engine::view::comment_thread::can_delete_pr_comment(pr.as_ref(), Some(c)));
+        let can_delete = target.as_ref().is_some_and(|c| {
+            recur_engine::view::comment_thread::can_delete_pr_comment(pr.as_ref(), Some(c))
+        });
         let can_quote = !locked
-            && target
-                .as_ref()
-                .is_some_and(|c| !recur_engine::view::comment_thread::comment_source(Some(c)).is_empty());
+            && target.as_ref().is_some_and(|c| {
+                !recur_engine::view::comment_thread::comment_source(Some(c)).is_empty()
+            });
         let link = self.more_permalink(cx);
         let vp = window.viewport_size();
         let (top, right) = recur_ui::logic::menu_space::more_menu_fixed_box(
@@ -755,7 +925,12 @@ impl PrDetail {
             self.more.menu.map_or(0., |b| f32::from(b.size.height)),
             (f32::from(vp.width), f32::from(vp.height)),
         );
-        let item = |id: &'static str, name: IconName, label: &'static str, danger: bool, action: super::MoreAction, cx: &mut Context<Self>| {
+        let item = |id: &'static str,
+                    name: IconName,
+                    label: &'static str,
+                    danger: bool,
+                    action: super::MoreAction,
+                    cx: &mut Context<Self>| {
             let fg = if danger { t.coral } else { t.text };
             let ic = if danger { t.coral } else { t.faint };
             div()
@@ -777,17 +952,52 @@ impl PrDetail {
         };
         let mut items = Vec::new();
         if !link.is_empty() {
-            items.push(item("pr-more-gh", IconName::Github, "Open in GitHub", false, super::MoreAction::OpenGitHub, cx));
-            items.push(item("pr-more-copy", IconName::Copy, "Copy link", false, super::MoreAction::CopyLink, cx));
+            items.push(item(
+                "pr-more-gh",
+                IconName::Github,
+                "Open in GitHub",
+                false,
+                super::MoreAction::OpenGitHub,
+                cx,
+            ));
+            items.push(item(
+                "pr-more-copy",
+                IconName::Copy,
+                "Copy link",
+                false,
+                super::MoreAction::CopyLink,
+                cx,
+            ));
         }
         if can_quote {
-            items.push(item("pr-more-quote", IconName::Quote, "Quote reply", false, super::MoreAction::Quote, cx));
+            items.push(item(
+                "pr-more-quote",
+                IconName::Quote,
+                "Quote reply",
+                false,
+                super::MoreAction::Quote,
+                cx,
+            ));
         }
         if can_edit {
-            items.push(item("pr-more-edit", IconName::Pencil, "Edit", false, super::MoreAction::Edit, cx));
+            items.push(item(
+                "pr-more-edit",
+                IconName::Pencil,
+                "Edit",
+                false,
+                super::MoreAction::Edit,
+                cx,
+            ));
         }
         if can_delete {
-            items.push(item("pr-more-del", IconName::Trash, "Delete", true, super::MoreAction::Delete, cx));
+            items.push(item(
+                "pr-more-del",
+                IconName::Trash,
+                "Delete",
+                true,
+                super::MoreAction::Delete,
+                cx,
+            ));
         }
         let me = cx.entity().downgrade();
         let probe = canvas(
@@ -814,7 +1024,13 @@ impl PrDetail {
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
         let panel = recur_ui::shadow::with_shadow(
             card,
-            &[recur_ui::shadow::css_box_shadow(0., 6., 18., 0., recur_ui::rgba(0, 0, 0, 0.3))],
+            &[recur_ui::shadow::css_box_shadow(
+                0.,
+                6.,
+                18.,
+                0.,
+                recur_ui::rgba(0, 0, 0, 0.3),
+            )],
             8.,
         );
         let left_of = f32::from(vp.width) - right;
@@ -832,7 +1048,11 @@ impl PrDetail {
                         if d.more.menu.is_some_and(|m| m.contains(&e.position)) {
                             return;
                         }
-                        if d.more.triggers.get(&d.more.id).is_some_and(|b| b.contains(&e.position)) {
+                        if d.more
+                            .triggers
+                            .get(&d.more.id)
+                            .is_some_and(|b| b.contains(&e.position))
+                        {
                             return;
                         }
                         d.close_more(cx);
@@ -858,7 +1078,8 @@ impl PrDetail {
             div()
                 .child(listeners)
                 .child(
-                    gpui_kit::deferred(recur_ui::style::anchored_at(left_of - w, top, panel)).with_priority(40),
+                    gpui_kit::deferred(recur_ui::style::anchored_at(left_of - w, top, panel))
+                        .with_priority(40),
                 )
                 .into_any_element(),
         )

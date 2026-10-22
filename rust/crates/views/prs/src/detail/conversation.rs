@@ -6,9 +6,9 @@ use std::sync::LazyLock;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    StyledImage, AnyElement, App, Context, Div, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
-    ParentElement, SharedString, StatefulInteractiveElement, Styled, Window, canvas, div, img,
-    px,
+    AnyElement, App, Context, Div, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
+    ParentElement, SharedString, StatefulInteractiveElement, Styled, StyledImage, Window, canvas,
+    div, img, px,
 };
 use recur_domain::{Finding, Pr, PrComment, PrSource};
 use recur_engine::view::comment_thread::{
@@ -23,13 +23,15 @@ use recur_ui::{Color, IconName, Theme, Tokens, icon, rgba};
 use recur_view_core::pr::{PrLifecycle, pr_icon_name, pr_lifecycle};
 use recur_view_review::avatar::avatar;
 use recur_view_review::comment_header::{ReviewDecision, comment_header_verb, review_decision};
-use recur_view_review::comment_hunk::{ClipOpts, clip_comment_hunk, comment_hunk_path_label, parse_diff_hunk};
+use recur_view_review::comment_hunk::{
+    ClipOpts, clip_comment_hunk, comment_hunk_path_label, parse_diff_hunk,
+};
 use recur_view_review::style::note_btn;
 use regex::Regex;
 
-use super::html::html_spans;
 use super::PrDetail;
 use super::field::Field;
+use super::html::html_spans;
 use crate::style::{hsla, spin_deg};
 use crate::ui::PrTab;
 
@@ -50,7 +52,13 @@ pub(crate) enum Compose {
 
 impl PrDetail {
     /// `whenStamp(c, cls)`: the time, linked to GitHub when there is a permalink.
-    pub(crate) fn when_stamp(&self, c: &PrComment, pr_url: &str, tl: bool, cx: &App) -> Option<AnyElement> {
+    pub(crate) fn when_stamp(
+        &self,
+        c: &PrComment,
+        pr_url: &str,
+        tl: bool,
+        cx: &App,
+    ) -> Option<AnyElement> {
         if c.time.is_empty() {
             return None;
         }
@@ -142,13 +150,31 @@ impl PrDetail {
     }
 
     /// `.finding-note-compose.cmt-edit`: the textarea, the ⌘↵ hint, Cancel and the primary.
-    pub(crate) fn compose_box(&mut self, which: Compose, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn compose_box(
+        &mut self,
+        which: Compose,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let (field, key, primary, saving_key, grows): (&Field, String, &str, String, bool) = match &which {
-            Compose::Desc => (&self.desc, "desc".into(), "Save", "desc".into(), false),
-            Compose::Comment(id) => (&self.comment, format!("edit-{id}"), "Save", id.clone(), false),
-            Compose::Reply(id) => (&self.reply, format!("reply-{id}"), "Reply", format!("reply-{id}"), true),
-        };
+        let (field, key, primary, saving_key, grows): (&Field, String, &str, String, bool) =
+            match &which {
+                Compose::Desc => (&self.desc, "desc".into(), "Save", "desc".into(), false),
+                Compose::Comment(id) => (
+                    &self.comment,
+                    format!("edit-{id}"),
+                    "Save",
+                    id.clone(),
+                    false,
+                ),
+                Compose::Reply(id) => (
+                    &self.reply,
+                    format!("reply-{id}"),
+                    "Reply",
+                    format!("reply-{id}"),
+                    true,
+                ),
+            };
         let area = field.area.clone();
         let value = area.read(cx).value().to_string();
         let empty = value.trim().is_empty();
@@ -157,7 +183,10 @@ impl PrDetail {
             Compose::Desc => saving,
             _ => empty || saving,
         };
-        let lh = recur_ui::style::button_label("x", 11., 400.).measure(None, window).2.height;
+        let lh = recur_ui::style::button_label("x", 11., 400.)
+            .measure(None, window)
+            .2
+            .height;
         let backdrop = t.bg;
         let w1 = which.clone();
         let w2 = which.clone();
@@ -198,15 +227,33 @@ impl PrDetail {
             .text_color(hsla(t.faint))
             .child(recur_ui::kbd::kbd("⌘↵").size(11.).color(t.faint))
             .child(text("to save").size(11.).nowrap());
-        let cancel = note_btn(SharedString::from(format!("{key}-cancel")), "Cancel", false, saving, backdrop, lh, cx)
-            .debug_selector(|| "finding-note-btn:Cancel".into())
-            .when(!saving, |b| b.on_click(cx.listener(move |d, _, _, cx| d.cancel_compose(&w2, cx))));
+        let cancel = note_btn(
+            SharedString::from(format!("{key}-cancel")),
+            "Cancel",
+            false,
+            saving,
+            backdrop,
+            lh,
+            cx,
+        )
+        .debug_selector(|| "finding-note-btn:Cancel".into())
+        .when(!saving, |b| {
+            b.on_click(cx.listener(move |d, _, _, cx| d.cancel_compose(&w2, cx)))
+        });
         let label = if saving { "Saving…" } else { primary };
-        let go = note_btn(SharedString::from(format!("{key}-go")), label, true, primary_disabled, backdrop, lh, cx)
-            .debug_selector(move || format!("finding-note-btn-primary:{primary}"))
-            .when(!primary_disabled, |b| {
-                b.on_click(cx.listener(move |d, _, window, cx| d.save_compose(&w3, window, cx)))
-            });
+        let go = note_btn(
+            SharedString::from(format!("{key}-go")),
+            label,
+            true,
+            primary_disabled,
+            backdrop,
+            lh,
+            cx,
+        )
+        .debug_selector(move || format!("finding-note-btn-primary:{primary}"))
+        .when(!primary_disabled, |b| {
+            b.on_click(cx.listener(move |d, _, window, cx| d.save_compose(&w3, window, cx)))
+        });
         recur_ui::style::card(t.bg, t.line, 10.)
             .mt(px(6.))
             .flex()
@@ -222,7 +269,15 @@ impl PrDetail {
                     .px(px(8.))
                     .pb(px(8.))
                     .child(hint)
-                    .child(div().ml_auto().flex().items_center().gap(px(6.)).child(cancel).child(go)),
+                    .child(
+                        div()
+                            .ml_auto()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .child(cancel)
+                            .child(go),
+                    ),
             )
             .into_any_element()
     }
@@ -245,7 +300,13 @@ impl PrDetail {
     }
 
     /// `commentBody(c, locShown)`.
-    fn comment_body(&mut self, c: &PrComment, loc_shown: bool, window: &mut Window, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    fn comment_body(
+        &mut self,
+        c: &PrComment,
+        loc_shown: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<AnyElement> {
         let t = Theme::of(cx).tokens;
         let mut out = Vec::new();
         if self.editing_comment == c.id {
@@ -257,10 +318,17 @@ impl PrDetail {
                 out.push(loc_line(&c.body_html, &t).into_any_element());
             }
             let md = self.md(&c.id, &c.body_md, cx);
-            out.push(div().debug_selector({
-                let id = c.id.clone();
-                move || format!("cm-md:{id}")
-            }).min_w_0().text_color(hsla(t.text)).child(md).into_any_element());
+            out.push(
+                div()
+                    .debug_selector({
+                        let id = c.id.clone();
+                        move || format!("cm-md:{id}")
+                    })
+                    .min_w_0()
+                    .text_color(hsla(t.text))
+                    .child(md)
+                    .into_any_element(),
+            );
         } else if !c.body_html.is_empty() && !loc_shown {
             out.push(cm_html(&c.body_html, &t).into_any_element());
         }
@@ -278,9 +346,19 @@ impl PrDetail {
     }
 
     /// The description card.
-    fn description_card(&mut self, d: &PrComment, pr: &Pr, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn description_card(
+        &mut self,
+        d: &PrComment,
+        pr: &Pr,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let more_id = if d.id.is_empty() { "gh-description".to_string() } else { d.id.clone() };
+        let more_id = if d.id.is_empty() {
+            "gh-description".to_string()
+        } else {
+            d.id.clone()
+        };
         let can_edit = self.can_edit_pr(cx);
         let mut ch = div()
             .flex()
@@ -288,7 +366,15 @@ impl PrDetail {
             .gap(px(8.))
             .mb(px(5.))
             .text_color(hsla(t.muted))
-            .child(text(d.author.clone()).size(CH_SIZE).weight(600.).line_height(ch_line()).color(t.text).nowrap().id("desc-cn"))
+            .child(
+                text(d.author.clone())
+                    .size(CH_SIZE)
+                    .weight(600.)
+                    .line_height(ch_line())
+                    .color(t.text)
+                    .nowrap()
+                    .id("desc-cn"),
+            )
             .debug_selector({
                 let a = d.author.clone();
                 move || format!("desc-cn={a}")
@@ -347,18 +433,29 @@ impl PrDetail {
                             div()
                                 .relative()
                                 .my(px(3.))
-                                .child(div().absolute().left(px(-18.)).w(px(18.)).flex().justify_end().pr(px(7.)).child(
-                                    text("•").size(12.5).leading(1.6).color(t.muted),
-                                ))
-                                .child(rich(it, 12.5, 1.6, t.muted, &t).id(SharedString::from(format!("sum-li-{i}-{it}")))),
+                                .child(
+                                    div()
+                                        .absolute()
+                                        .left(px(-18.))
+                                        .w(px(18.))
+                                        .flex()
+                                        .justify_end()
+                                        .pr(px(7.))
+                                        .child(text("•").size(12.5).leading(1.6).color(t.muted)),
+                                )
+                                .child(
+                                    rich(it, 12.5, 1.6, t.muted, &t)
+                                        .id(SharedString::from(format!("sum-li-{i}-{it}"))),
+                                ),
                         );
                     }
                     body = body.child(ul);
                 } else {
                     body = body.child(
-                        div()
-                            .when(!last, |d| d.mb(px(10.)))
-                            .child(rich(&para.html, 12.5, 1.6, t.muted, &t).id(SharedString::from(format!("sum-p-{i}")))),
+                        div().when(!last, |d| d.mb(px(10.))).child(
+                            rich(&para.html, 12.5, 1.6, t.muted, &t)
+                                .id(SharedString::from(format!("sum-p-{i}"))),
+                        ),
                     );
                 }
             }
@@ -367,7 +464,12 @@ impl PrDetail {
             body = body.child(self.focus_callout(pr, cx));
         }
         card(
-            card_h(IconName::AlignLeft, "Summary", Some("written by Maestro · review this first"), &t),
+            card_h(
+                IconName::AlignLeft,
+                "Summary",
+                Some("written by Maestro · review this first"),
+                &t,
+            ),
             body,
             &t,
         )
@@ -381,8 +483,19 @@ impl PrDetail {
         let mut col = div()
             .flex_1()
             .min_w_0()
-            .child(text(pr.focus.title.clone()).size(12.).color(t.text).id("focus-ft"))
-            .child(div().mt(px(3.)).child(rich(&pr.focus.body, 10.5, 1.5, t.muted, &t).family(Family::Mono).id("focus-ff")));
+            .child(
+                text(pr.focus.title.clone())
+                    .size(12.)
+                    .color(t.text)
+                    .id("focus-ft"),
+            )
+            .child(
+                div().mt(px(3.)).child(
+                    rich(&pr.focus.body, 10.5, 1.5, t.muted, &t)
+                        .family(Family::Mono)
+                        .id("focus-ff"),
+                ),
+            );
         let chips: Vec<_> = pr
             .impact
             .iter()
@@ -397,7 +510,10 @@ impl PrDetail {
                 let (path, line) = (it.path.clone(), it.line);
                 row = row.child(
                     div()
-                        .id(SharedString::from(format!("impact-{}-{}-{}", it.kind, it.path, it.name)))
+                        .id(SharedString::from(format!(
+                            "impact-{}-{}-{}",
+                            it.kind, it.path, it.name
+                        )))
                         .debug_selector({
                             let l = label.clone();
                             move || format!("impact-chip:{l}")
@@ -411,8 +527,12 @@ impl PrDetail {
                         .text_color(hsla(t.text))
                         .cursor_pointer()
                         .hover(move |s| s.border_color(hsla(t.amber)).text_color(hsla(t.amber)))
-                        .child(recur_ui::style::button_label(label, 10.5, 400.).family(Family::Mono))
-                        .on_click(cx.listener(move |d, _, _, cx| d.jump_to_impact(&path, line, cx))),
+                        .child(
+                            recur_ui::style::button_label(label, 10.5, 400.).family(Family::Mono),
+                        )
+                        .on_click(
+                            cx.listener(move |d, _, _, cx| d.jump_to_impact(&path, line, cx)),
+                        ),
                 );
             }
             col = col.child(row);
@@ -423,7 +543,13 @@ impl PrDetail {
                 .debug_selector(|| "focus-fl".into())
                 .mt(px(6.))
                 .cursor_pointer()
-                .child(text("jump to the diff →").mono().size(9.5).color(t.amber).nowrap())
+                .child(
+                    text("jump to the diff →")
+                        .mono()
+                        .size(9.5)
+                        .color(t.amber)
+                        .nowrap(),
+                )
                 .on_click(cx.listener(|d, _, _, cx| d.set_tab(PrTab::Files, cx))),
         );
         div()
@@ -437,39 +563,69 @@ impl PrDetail {
             .border_1()
             .border_color(hsla(rgba(242, 179, 61, 0.2)))
             .bg(hsla(amber))
-            .child(div().flex_none().mt(px(2.)).text_color(hsla(t.amber)).child(icon(IconName::TriangleAlert).size(px(14.))))
+            .child(
+                div()
+                    .flex_none()
+                    .mt(px(2.))
+                    .text_color(hsla(t.amber))
+                    .child(icon(IconName::TriangleAlert).size(px(14.))),
+            )
             .child(col)
             .into_any_element()
     }
 
     /// The Reviewer findings card.
-    fn findings_card(&mut self, listed: &[Finding], window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn findings_card(
+        &mut self,
+        listed: &[Finding],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let can_post = self.can_post_findings(cx);
         let postable = self.postable_findings(cx);
-        let postable_ids: std::collections::HashSet<String> = postable.iter().map(|f| f.id.clone()).collect();
+        let postable_ids: std::collections::HashSet<String> =
+            postable.iter().map(|f| f.id.clone()).collect();
         let posted = Self::posted_ids(cx);
-        let lh = recur_ui::style::button_label("x", 11., 400.).measure(None, window).2.height;
-        let mut end = div()
-            .ml_auto()
-            .flex()
-            .items_center()
-            .gap(px(8.))
-            .child(text(format!("{} open", listed.len())).mono().size(10.).weight(400.).color(t.faint).nowrap());
+        let lh = recur_ui::style::button_label("x", 11., 400.)
+            .measure(None, window)
+            .2
+            .height;
+        let mut end = div().ml_auto().flex().items_center().gap(px(8.)).child(
+            text(format!("{} open", listed.len()))
+                .mono()
+                .size(10.)
+                .weight(400.)
+                .color(t.faint)
+                .nowrap(),
+        );
         if can_post && !postable.is_empty() {
             let busy = postable.iter().any(|f| self.posting.contains(&f.id));
             let list = postable.clone();
             end = end.child(
                 note_btn("findings-post-all", "Post all", false, busy, t.pane, lh, cx)
                     .debug_selector(|| "button:Post all".into())
-                    .when(!busy, |b| b.on_click(cx.listener(move |d, _, _, cx| d.post_findings(list.clone(), cx)))),
+                    .when(!busy, |b| {
+                        b.on_click(
+                            cx.listener(move |d, _, _, cx| d.post_findings(list.clone(), cx)),
+                        )
+                    }),
             );
         }
-        let head = card_h_with(IconName::Search, "Reviewer findings", end.into_any_element(), &t);
+        let head = card_h_with(
+            IconName::Search,
+            "Reviewer findings",
+            end.into_any_element(),
+            &t,
+        );
         let mut body = card_b();
         for f in listed {
             let sev = f.severity.as_str().to_string();
-            let sev_color = if matches!(sev.as_str(), "high" | "critical") { t.coral } else { t.amber };
+            let sev_color = if matches!(sev.as_str(), "high" | "critical") {
+                t.coral
+            } else {
+                t.amber
+            };
             let loc = if f.line > 0 {
                 if f.end_line > f.line {
                     format!("{}:{}-{}", f.file, f.line, f.end_line)
@@ -493,11 +649,29 @@ impl PrDetail {
                 .py(px(8.))
                 .cursor_pointer()
                 .hover(move |s| s.bg(hsla(t.pane_2)))
-                .child(div().flex_none().w(px(64.)).child(text(sev.clone()).mono().size(10.).uppercase().color(sev_color).nowrap()))
+                .child(
+                    div().flex_none().w(px(64.)).child(
+                        text(sev.clone())
+                            .mono()
+                            .size(10.)
+                            .uppercase()
+                            .color(sev_color)
+                            .nowrap(),
+                    ),
+                )
                 .child(div().w(px(8.)).flex_none())
-                .child(div().flex_1().min_w_0().child(text(f.message.clone()).size(12.).color(t.text).truncate()))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .child(text(f.message.clone()).size(12.).color(t.text).truncate()),
+                )
                 .child(div().w(px(8.)).flex_none())
-                .child(div().flex_none().child(text(loc).mono().size(10.5).color(t.faint).nowrap()))
+                .child(
+                    div()
+                        .flex_none()
+                        .child(text(loc).mono().size(10.5).color(t.faint).nowrap()),
+                )
                 .on_click(cx.listener(move |d, _, _, cx| d.jump_to_impact(&ff.file, ff.line, cx)));
             let mut actions = div()
                 .flex()
@@ -509,23 +683,46 @@ impl PrDetail {
             if can_post && postable_ids.contains(&f.id) {
                 let busy = self.posting.contains(&f.id);
                 let one = vec![f.clone()];
-                actions = actions.child(div().mr(px(2.)).child(titled(
-                    SharedString::from(format!("post-one-t-{}", f.id)),
-                    "Queue as a GitHub review comment",
-                    note_btn(SharedString::from(format!("post-one-{}", f.id)), "Post", false, busy, t.pane, lh, cx)
+                actions = actions.child(
+                    div().mr(px(2.)).child(titled(
+                        SharedString::from(format!("post-one-t-{}", f.id)),
+                        "Queue as a GitHub review comment",
+                        note_btn(
+                            SharedString::from(format!("post-one-{}", f.id)),
+                            "Post",
+                            false,
+                            busy,
+                            t.pane,
+                            lh,
+                            cx,
+                        )
                         .debug_selector({
                             let m = f.message.clone();
                             move || format!("button:Post as GitHub comment:{m}")
                         })
-                        .when(!busy, |b| b.on_click(cx.listener(move |d, _, _, cx| d.post_findings(one.clone(), cx)))),
-                )));
+                        .when(!busy, |b| {
+                            b.on_click(
+                                cx.listener(move |d, _, _, cx| d.post_findings(one.clone(), cx)),
+                            )
+                        }),
+                    )),
+                );
             } else if posted.contains(&f.id) {
                 let busy = self.settling.contains(&f.id);
                 let fid = f.id.clone();
-                actions = actions.child(div().mr(px(2.)).child(titled(
-                    SharedString::from(format!("resolve-t-{}", f.id)),
-                    "Mark the finding resolved",
-                    note_btn(SharedString::from(format!("resolve-{}", f.id)), "Resolve", false, busy, t.pane, lh, cx)
+                actions = actions.child(
+                    div().mr(px(2.)).child(titled(
+                        SharedString::from(format!("resolve-t-{}", f.id)),
+                        "Mark the finding resolved",
+                        note_btn(
+                            SharedString::from(format!("resolve-{}", f.id)),
+                            "Resolve",
+                            false,
+                            busy,
+                            t.pane,
+                            lh,
+                            cx,
+                        )
                         .debug_selector({
                             let m = f.message.clone();
                             move || format!("button:Resolve finding:{m}")
@@ -538,17 +735,24 @@ impl PrDetail {
                                 }
                             }))
                         }),
-                )));
+                    )),
+                );
             }
             body = body.child(actions);
         }
-        card(head, body, &t).debug_selector(|| "card:Reviewer findings".into()).into_any_element()
+        card(head, body, &t)
+            .debug_selector(|| "card:Reviewer findings".into())
+            .into_any_element()
     }
 
     /// The Local PR `Verified in browser` card.
     fn verify_card(&mut self, pr: &Pr, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let by = if pr.when.is_empty() { "QA agent".to_string() } else { format!("QA agent · {}", pr.when) };
+        let by = if pr.when.is_empty() {
+            "QA agent".to_string()
+        } else {
+            format!("QA agent · {}", pr.when)
+        };
         let mut col = div().flex().flex_col();
         let steps = pr.verify.clone().unwrap_or_default();
         let n = steps.len();
@@ -560,7 +764,9 @@ impl PrDetail {
                 .gap(px(11.))
                 .py(px(9.))
                 .px(px(15.))
-                .when(i + 1 < n, |d| d.border_b_1().border_color(hsla(t.line_soft)))
+                .when(i + 1 < n, |d| {
+                    d.border_b_1().border_color(hsla(t.line_soft))
+                })
                 .child(
                     div()
                         .flex_none()
@@ -571,17 +777,31 @@ impl PrDetail {
                         .flex()
                         .items_center()
                         .justify_center()
-                        .child(icon(if v.passed { IconName::Check } else { IconName::X }).size(px(11.)).stroke_width(3.)),
+                        .child(
+                            icon(if v.passed {
+                                IconName::Check
+                            } else {
+                                IconName::X
+                            })
+                            .size(px(11.))
+                            .stroke_width(3.),
+                        ),
                 )
-                .child(div().flex_1().min_w_0().child(
-                    Text::from_spans(html_spans(&v.html, &|tags, s| {
-                        if tags.contains(&"b") { s.color(t.text).weight(500.) } else { s }
-                    }))
-                    .mono()
-                    .size(11.5)
-                    .color(t.muted)
-                    .id(SharedString::from(format!("estep-{i}"))),
-                ));
+                .child(
+                    div().flex_1().min_w_0().child(
+                        Text::from_spans(html_spans(&v.html, &|tags, s| {
+                            if tags.contains(&"b") {
+                                s.color(t.text).weight(500.)
+                            } else {
+                                s
+                            }
+                        }))
+                        .mono()
+                        .size(11.5)
+                        .color(t.muted)
+                        .id(SharedString::from(format!("estep-{i}"))),
+                    ),
+                );
             let frame = || {
                 div()
                     .relative()
@@ -592,21 +812,32 @@ impl PrDetail {
                     .border_1()
                     .border_color(hsla(t.line))
                     .overflow_hidden()
-                    .child(recur_ui::style::css_gradient(135., (recur_ui::hex(0x1a2230), 0.), (recur_ui::hex(0x0e1318), 1.), 5., 1., t.line))
+                    .child(recur_ui::style::css_gradient(
+                        135.,
+                        (recur_ui::hex(0x1a2230), 0.),
+                        (recur_ui::hex(0x0e1318), 1.),
+                        5.,
+                        1.,
+                        t.line,
+                    ))
             };
             if shot.is_empty() {
-                row = row.child(
-                    titled(
-                        SharedString::from(format!("shot-{i}")),
-                        v.screenshot.clone(),
-                        frame()
-                            .id(SharedString::from(format!("shot-el-{i}")))
-                            .cursor_pointer()
-                            .child(div().absolute().inset_0().flex().items_center().justify_center().child(
-                                text("▸ view").mono().size(8.).color(t.muted).nowrap(),
-                            )),
-                    ),
-                );
+                row = row.child(titled(
+                    SharedString::from(format!("shot-{i}")),
+                    v.screenshot.clone(),
+                    frame()
+                        .id(SharedString::from(format!("shot-el-{i}")))
+                        .cursor_pointer()
+                        .child(
+                            div()
+                                .absolute()
+                                .inset_0()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(text("▸ view").mono().size(8.).color(t.muted).nowrap()),
+                        ),
+                ));
             } else {
                 let href = shot.clone();
                 row = row.child(titled(
@@ -615,22 +846,46 @@ impl PrDetail {
                     frame()
                         .id(SharedString::from(format!("shot-el-{i}")))
                         .cursor_pointer()
-                        .child(img(SharedString::from(shot)).absolute().inset_0().size_full())
-                        .child(div().absolute().inset_0().flex().items_center().justify_center().child(
-                            text("▸ view").mono().size(8.).color(t.muted).nowrap(),
-                        ))
-                        .on_click(move |_, _, cx| recur_content::links::open_external_url(&href, cx)),
+                        .child(
+                            img(SharedString::from(shot))
+                                .absolute()
+                                .inset_0()
+                                .size_full(),
+                        )
+                        .child(
+                            div()
+                                .absolute()
+                                .inset_0()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(text("▸ view").mono().size(8.).color(t.muted).nowrap()),
+                        )
+                        .on_click(move |_, _, cx| {
+                            recur_content::links::open_external_url(&href, cx)
+                        }),
                 ));
             }
             col = col.child(row);
         }
-        card(card_h(IconName::RefreshCcw, "Verified in browser", Some(&by), &t), col, &t)
-            .debug_selector(|| "card:Verified in browser".into())
-            .into_any_element()
+        card(
+            card_h(IconName::RefreshCcw, "Verified in browser", Some(&by), &t),
+            col,
+            &t,
+        )
+        .debug_selector(|| "card:Verified in browser".into())
+        .into_any_element()
     }
 
     /// One timeline row.
-    fn timeline_item(&mut self, c: &PrComment, items: &[PrComment], pr: &Pr, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn timeline_item(
+        &mut self,
+        c: &PrComment,
+        items: &[PrComment],
+        pr: &Pr,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         if c.kind == "action" && !c.commit_sha.is_empty() && !is_merge_action(c) {
             return self.commit_event(c, pr, window, cx);
         }
@@ -640,17 +895,29 @@ impl PrDetail {
         self.comment_row(c, items, pr, window, cx)
     }
 
-    fn commit_event(&mut self, c: &PrComment, pr: &Pr, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn commit_event(
+        &mut self,
+        c: &PrComment,
+        pr: &Pr,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let local = self.local_commit_index(&c.commit_sha, cx);
         let title = commit_title(c);
-        let ico = tl_ico(&t, None, false)
-            .child(if !c.avatar_url.is_empty() {
-                img(SharedString::from(c.avatar_url.clone())).size_full().object_fit(gpui_kit::ObjectFit::Cover).into_any_element()
-            } else {
-                icon(IconName::GitCommit).size(px(14.)).into_any_element()
-            });
-        let msg_text = text(title.clone()).size(12.5).weight(500.).truncate().id(SharedString::from(format!("tl-msg-{}", c.id)));
+        let ico = tl_ico(&t, None, false).child(if !c.avatar_url.is_empty() {
+            img(SharedString::from(c.avatar_url.clone()))
+                .size_full()
+                .object_fit(gpui_kit::ObjectFit::Cover)
+                .into_any_element()
+        } else {
+            icon(IconName::GitCommit).size(px(14.)).into_any_element()
+        });
+        let msg_text = text(title.clone())
+            .size(12.5)
+            .weight(500.)
+            .truncate()
+            .id(SharedString::from(format!("tl-msg-{}", c.id)));
         let msg: AnyElement = match local {
             Some(i) => titled(
                 SharedString::from(format!("tl-msg-t-{}", c.id)),
@@ -673,25 +940,49 @@ impl PrDetail {
                         .min_w_0()
                         .cursor_pointer()
                         .child(msg_text)
-                        .on_click(move |_, _, cx| recur_content::links::open_external_url(&href, cx)),
+                        .on_click(move |_, _, cx| {
+                            recur_content::links::open_external_url(&href, cx)
+                        }),
                 )
                 .into_any_element()
             }
             None => div().min_w_0().child(msg_text).into_any_element(),
         };
-        let mut tx = div().flex().items_center().gap_x(px(8.)).flex_1().min_w_0().child(div().flex_initial().min_w_0().child(msg));
+        let mut tx = div()
+            .flex()
+            .items_center()
+            .gap_x(px(8.))
+            .flex_1()
+            .min_w_0()
+            .child(div().flex_initial().min_w_0().child(msg));
         if !c.time.is_empty() {
-            tx = tx.child(div().flex_none().child(text(c.time.clone()).mono().size(9.5).color(t.faint).nowrap()));
+            tx = tx.child(
+                div().flex_none().child(
+                    text(c.time.clone())
+                        .mono()
+                        .size(9.5)
+                        .color(t.faint)
+                        .nowrap(),
+                ),
+            );
         }
         let sha = short_sha(&c.commit_sha);
-        let sha_text = text(sha.clone()).mono().size(11.).weight(400.).color(t.faint).nowrap();
+        let sha_text = text(sha.clone())
+            .mono()
+            .size(11.)
+            .weight(400.)
+            .color(t.faint)
+            .nowrap();
         let sha_el: AnyElement = match local {
             Some(i) => titled(
                 SharedString::from(format!("tl-sha-t-{}", c.id)),
                 "View commit",
                 div()
                     .id(SharedString::from(format!("tl-sha-b-{}", c.id)))
-                    .debug_selector({ let s = sha.clone(); move || format!("tl-sha:{s}") })
+                    .debug_selector({
+                        let s = sha.clone();
+                        move || format!("tl-sha:{s}")
+                    })
                     .cursor_pointer()
                     .child(sha_text)
                     .on_click(cx.listener(move |d, _, _, cx| d.open_local_commit(i, cx))),
@@ -704,24 +995,50 @@ impl PrDetail {
                     "Open commit on GitHub",
                     div()
                         .id(SharedString::from(format!("tl-sha-a-{}", c.id)))
-                        .debug_selector({ let s = sha.clone(); move || format!("tl-sha:{s}") })
+                        .debug_selector({
+                            let s = sha.clone();
+                            move || format!("tl-sha:{s}")
+                        })
                         .cursor_pointer()
                         .child(sha_text)
-                        .on_click(move |_, _, cx| recur_content::links::open_external_url(&href, cx)),
+                        .on_click(move |_, _, cx| {
+                            recur_content::links::open_external_url(&href, cx)
+                        }),
                 )
                 .into_any_element()
             }
-            None => div().debug_selector({ let s = sha.clone(); move || format!("tl-sha:{s}") }).child(sha_text).into_any_element(),
+            None => div()
+                .debug_selector({
+                    let s = sha.clone();
+                    move || format!("tl-sha:{s}")
+                })
+                .child(sha_text)
+                .into_any_element(),
         };
-        let mut meta = div().flex().flex_none().items_center().gap(px(8.)).ml_auto();
+        let mut meta = div()
+            .flex()
+            .flex_none()
+            .items_center()
+            .gap(px(8.))
+            .ml_auto();
         if c.verified {
             meta = meta.child(verified(&t));
         }
-        meta = meta.child(commit_check(&c.check_status, &format!("tl-{}", c.id), window, cx)).child(sha_el);
+        meta = meta
+            .child(commit_check(
+                &c.check_status,
+                &format!("tl-{}", c.id),
+                window,
+                cx,
+            ))
+            .child(sha_el);
         tx = tx.child(meta);
         let _ = pr;
         tl_event(&t, false, None)
-            .debug_selector({ let id = c.id.clone(); move || format!("tl-commit:{id}") })
+            .debug_selector({
+                let id = c.id.clone();
+                move || format!("tl-commit:{id}")
+            })
             .child(ico)
             .child(tx)
             .into_any_element()
@@ -735,14 +1052,27 @@ impl PrDetail {
         let decision = review_decision(Some(c));
         let ico = tl_ico(&t, Some(decision), merge);
         let ico = match decision {
-            ReviewDecision::Approved => ico.child(icon(IconName::Check).size(px(14.)).stroke_width(3.)),
+            ReviewDecision::Approved => {
+                ico.child(icon(IconName::Check).size(px(14.)).stroke_width(3.))
+            }
             ReviewDecision::Changes => ico.child(icon(IconName::X).size(px(14.)).stroke_width(3.)),
-            _ if !c.avatar_url.is_empty() => ico.child(img(SharedString::from(c.avatar_url.clone())).size_full().object_fit(gpui_kit::ObjectFit::Cover)),
+            _ if !c.avatar_url.is_empty() => ico.child(
+                img(SharedString::from(c.avatar_url.clone()))
+                    .size_full()
+                    .object_fit(gpui_kit::ObjectFit::Cover),
+            ),
             _ => ico.child(icon(action_icon(c)).size(px(14.))),
         };
         let b = |s: &str| text(s.to_string()).size(12.5).weight(600.).color(t.text);
         let plain = |s: &str| text(s.to_string()).size(12.5).color(t.muted);
-        let mut tx = div().flex().flex_wrap().items_center().gap_x(px(8.)).gap_y(px(6.)).flex_1().min_w_0();
+        let mut tx = div()
+            .flex()
+            .flex_wrap()
+            .items_center()
+            .gap_x(px(8.))
+            .gap_y(px(6.))
+            .flex_1()
+            .min_w_0();
         if let Some((verb, whom)) = behalf {
             let href = comment_permalink(&pr.url, c);
             tx = tx.child(b(&c.author));
@@ -758,32 +1088,54 @@ impl PrDetail {
                         .text_color(hsla(t.muted))
                         .hover(move |s| s.text_color(hsla(t.text)))
                         .child(text(verb.clone()).size(12.5))
-                        .on_click(move |_, _, cx| recur_content::links::open_external_url(&href, cx)),
+                        .on_click(move |_, _, cx| {
+                            recur_content::links::open_external_url(&href, cx)
+                        }),
                 ));
             }
             tx = tx.child(plain("on behalf of")).child(b(&whom));
         } else if let Some((sha, rest, href)) = merge_link {
             tx = tx.child(b(&c.author)).child(plain("merged commit"));
-            let sha_text = text(sha.clone()).mono().size(11.).weight(400.).color(t.faint).nowrap();
+            let sha_text = text(sha.clone())
+                .mono()
+                .size(11.)
+                .weight(400.)
+                .color(t.faint)
+                .nowrap();
             if href.is_empty() {
-                tx = tx.child(div().debug_selector({ let s = sha.clone(); move || format!("tl-sha:{s}") }).child(sha_text));
+                tx = tx.child(
+                    div()
+                        .debug_selector({
+                            let s = sha.clone();
+                            move || format!("tl-sha:{s}")
+                        })
+                        .child(sha_text),
+                );
             } else {
                 tx = tx.child(titled(
                     SharedString::from(format!("tl-merge-sha-{}", c.id)),
                     "Open commit on GitHub",
                     div()
                         .id(SharedString::from(format!("tl-merge-sha-a-{}", c.id)))
-                        .debug_selector({ let s = sha.clone(); let h = href.clone(); move || format!("tl-sha-a:{s}={h}") })
+                        .debug_selector({
+                            let s = sha.clone();
+                            let h = href.clone();
+                            move || format!("tl-sha-a:{s}={h}")
+                        })
                         .cursor_pointer()
                         .child(sha_text)
-                        .on_click(move |_, _, cx| recur_content::links::open_external_url(&href, cx)),
+                        .on_click(move |_, _, cx| {
+                            recur_content::links::open_external_url(&href, cx)
+                        }),
                 ));
             }
             if !rest.is_empty() {
                 tx = tx.child(plain(&rest));
             }
         } else if decision == ReviewDecision::Approved {
-            tx = tx.child(b(&c.author)).child(plain("approved these changes"));
+            tx = tx
+                .child(b(&c.author))
+                .child(plain("approved these changes"));
         } else if decision == ReviewDecision::Changes {
             tx = tx.child(b(&c.author)).child(plain("requested changes"));
         } else {
@@ -799,7 +1151,11 @@ impl PrDetail {
         tl_event(&t, merge, Some(decision))
             .debug_selector({
                 let id = c.id.clone();
-                let d = match decision { ReviewDecision::Approved => ":review-ok", ReviewDecision::Changes => ":review-ask", _ => "" };
+                let d = match decision {
+                    ReviewDecision::Approved => ":review-ok",
+                    ReviewDecision::Changes => ":review-ask",
+                    _ => "",
+                };
                 move || format!("tl-event:{id}{d}:{text_all}")
             })
             .child(ico)
@@ -809,35 +1165,50 @@ impl PrDetail {
 
     /// A timeline comment (`.cmt`): avatar with the review badge, header, body, and the line
     /// notes its review submitted.
-    fn comment_row(&mut self, c: &PrComment, items: &[PrComment], pr: &Pr, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn comment_row(
+        &mut self,
+        c: &PrComment,
+        items: &[PrComment],
+        pr: &Pr,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let verb = comment_header_verb(Some(c));
         let decision = review_decision(Some(c));
-        let mut face = div().relative().flex_none().size(px(28.)).child(Self::person_avatar(c, cx));
+        let mut face = div()
+            .relative()
+            .flex_none()
+            .size(px(28.))
+            .child(Self::person_avatar(c, cx));
         if matches!(decision, ReviewDecision::Approved | ReviewDecision::Changes) {
             let ok = decision == ReviewDecision::Approved;
-            face = face.child(
-                titled(
-                    SharedString::from(format!("badge-{}", c.id)),
-                    if ok { "Approved" } else { "Changes requested" },
-                    div()
-                        .id(SharedString::from(format!("badge-el-{}", c.id)))
-                        .debug_selector(move || format!("cmt-review-badge:{}", if ok { "ok" } else { "ask" }))
-                        .absolute()
-                        .right(px(-5.))
-                        .bottom(px(-5.))
-                        .size(px(16.))
-                        .rounded_full()
-                        .border_2()
-                        .border_color(hsla(t.bg))
-                        .bg(hsla(if ok { t.emerald } else { t.coral }))
-                        .text_color(hsla(recur_ui::hex(0xffffff)))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(icon(if ok { IconName::Check } else { IconName::X }).size(px(12.)).stroke_width(3.)),
-                ),
-            );
+            face = face.child(titled(
+                SharedString::from(format!("badge-{}", c.id)),
+                if ok { "Approved" } else { "Changes requested" },
+                div()
+                    .id(SharedString::from(format!("badge-el-{}", c.id)))
+                    .debug_selector(move || {
+                        format!("cmt-review-badge:{}", if ok { "ok" } else { "ask" })
+                    })
+                    .absolute()
+                    .right(px(-5.))
+                    .bottom(px(-5.))
+                    .size(px(16.))
+                    .rounded_full()
+                    .border_2()
+                    .border_color(hsla(t.bg))
+                    .bg(hsla(if ok { t.emerald } else { t.coral }))
+                    .text_color(hsla(recur_ui::hex(0xffffff)))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        icon(if ok { IconName::Check } else { IconName::X })
+                            .size(px(12.))
+                            .stroke_width(3.),
+                    ),
+            ));
         }
         let can_edit = can_edit_pr_comment(Some(pr), Some(c));
         let mut ch = div()
@@ -846,9 +1217,22 @@ impl PrDetail {
             .gap(px(8.))
             .mb(px(5.))
             .text_color(hsla(t.muted))
-            .child(text(c.author.clone()).size(CH_SIZE).weight(600.).line_height(ch_line()).color(t.text).nowrap());
+            .child(
+                text(c.author.clone())
+                    .size(CH_SIZE)
+                    .weight(600.)
+                    .line_height(ch_line())
+                    .color(t.text)
+                    .nowrap(),
+            );
         if !verb.is_empty() {
-            ch = ch.child(text(verb).size(CH_SIZE).line_height(ch_line()).color(t.muted).nowrap());
+            ch = ch.child(
+                text(verb)
+                    .size(CH_SIZE)
+                    .line_height(ch_line())
+                    .color(t.muted)
+                    .nowrap(),
+            );
         }
         if let Some(w) = self.when_stamp(c, &pr.url, false, cx) {
             ch = ch.child(w);
@@ -856,7 +1240,11 @@ impl PrDetail {
         if self.editing_comment != c.id && self.has_more(c, can_edit, cx) {
             ch = ch.child(self.more_btn(&c.id, cx));
         }
-        let mut cc = div().flex_1().min_w_0().child(ch).children(self.comment_body(c, false, window, cx));
+        let mut cc = div()
+            .flex_1()
+            .min_w_0()
+            .child(ch)
+            .children(self.comment_body(c, false, window, cx));
         let kids: Vec<PrComment> = review_children(items, &c.id).into_iter().cloned().collect();
         if !kids.is_empty() {
             let mut col = div().mt(px(10.)).flex().flex_col().gap(px(12.));
@@ -869,7 +1257,11 @@ impl PrDetail {
         div()
             .debug_selector({
                 let id = c.id.clone();
-                let d = match decision { ReviewDecision::Approved => ":review-ok", ReviewDecision::Changes => ":review-ask", _ => "" };
+                let d = match decision {
+                    ReviewDecision::Approved => ":review-ok",
+                    ReviewDecision::Changes => ":review-ask",
+                    _ => "",
+                };
                 move || format!("cmt:{id}{d}:{all}")
             })
             .flex()
@@ -884,10 +1276,20 @@ impl PrDetail {
     }
 
     /// `.cmt-kid`: one line-note thread under its review.
-    fn kid(&mut self, child: &PrComment, items: &[PrComment], pr: &Pr, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn kid(
+        &mut self,
+        child: &PrComment,
+        items: &[PrComment],
+        pr: &Pr,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let locked = self.conversation_locked(cx);
-        let replies: Vec<PrComment> = thread_replies(items, &child.id).into_iter().cloned().collect();
+        let replies: Vec<PrComment> = thread_replies(items, &child.id)
+            .into_iter()
+            .cloned()
+            .collect();
         let hunk = clip_comment_hunk(
             &parse_diff_hunk(&child.diff_hunk),
             &ClipOpts {
@@ -920,11 +1322,23 @@ impl PrDetail {
         if !child.path.is_empty() || !hunk.is_empty() {
             let mut ctx = div().flex().flex_col();
             if !child.path.is_empty() {
-                let label = comment_hunk_path_label(&child.path, child.line, child.start_line, child.outdated);
-                let title = if hide_hunk { "Show context" } else { "Hide context" };
+                let label = comment_hunk_path_label(
+                    &child.path,
+                    child.line,
+                    child.start_line,
+                    child.outdated,
+                );
+                let title = if hide_hunk {
+                    "Show context"
+                } else {
+                    "Hide context"
+                };
                 let id = child.id.clone();
                 let resolved = child.resolved;
-                let (path, line) = (child.path.clone(), if child.outdated { 0 } else { child.line });
+                let (path, line) = (
+                    child.path.clone(),
+                    if child.outdated { 0 } else { child.line },
+                );
                 let group = SharedString::from(format!("ctx-h-{}", child.id));
                 let toggle = {
                     let id = id.clone();
@@ -934,7 +1348,9 @@ impl PrDetail {
                     let id = id.clone();
                     cx.listener(move |d, _, _, cx| d.toggle_kid_hunk(&id, resolved, cx))
                 };
-                let chev = icon(IconName::ChevronDown).size(px(12.)).rotate(if hide_hunk { -90. } else { 0. });
+                let chev = icon(IconName::ChevronDown)
+                    .size(px(12.))
+                    .rotate(if hide_hunk { -90. } else { 0. });
                 ctx = ctx.child(
                     div()
                         .id(group.clone())
@@ -950,7 +1366,12 @@ impl PrDetail {
                             title,
                             div()
                                 .id(SharedString::from(format!("ctx-toggle-{id}")))
-                                .debug_selector(move || format!("cmt-ctx-toggle:{}", if hide_hunk { "collapsed" } else { "open" }))
+                                .debug_selector(move || {
+                                    format!(
+                                        "cmt-ctx-toggle:{}",
+                                        if hide_hunk { "collapsed" } else { "open" }
+                                    )
+                                })
                                 .flex()
                                 .flex_none()
                                 .items_center()
@@ -968,7 +1389,10 @@ impl PrDetail {
                             "View in Files changed",
                             div()
                                 .id(SharedString::from(format!("ctx-path-{id}")))
-                                .debug_selector({ let l = label.clone(); move || format!("cmt-ctx-path={l}") })
+                                .debug_selector({
+                                    let l = label.clone();
+                                    move || format!("cmt-ctx-path={l}")
+                                })
                                 .flex_none()
                                 .max_w(gpui_kit::relative(0.7))
                                 .min_w_0()
@@ -978,7 +1402,9 @@ impl PrDetail {
                                 .text_color(hsla(t.muted))
                                 .hover(move |s| s.text_color(hsla(t.text)))
                                 .child(text(label.clone()).mono().size(11.).truncate())
-                                .on_click(cx.listener(move |d, _, _, cx| d.jump_to_impact(&path, line, cx))),
+                                .on_click(cx.listener(move |d, _, _, cx| {
+                                    d.jump_to_impact(&path, line, cx)
+                                })),
                         ))
                         .child(titled(
                             SharedString::from(format!("ctx-fill-t-{id}")),
@@ -995,7 +1421,10 @@ impl PrDetail {
                 );
             }
             if !hide_hunk && !hunk.is_empty() {
-                let mut diff = div().debug_selector(|| "cmt-ctx-diff".into()).border_b_1().border_color(hsla(t.line_soft));
+                let mut diff = div()
+                    .debug_selector(|| "cmt-ctx-diff".into())
+                    .border_b_1()
+                    .border_color(hsla(t.line_soft));
                 for hl in &hunk {
                     diff = diff.child(hunk_line(hl, cx));
                 }
@@ -1003,7 +1432,12 @@ impl PrDetail {
             }
             kid = kid.child(ctx);
         } else if !child.body_html.is_empty() && resolved_open {
-            kid = kid.child(div().pt(px(10.)).px(px(12.)).child(loc_line(&child.body_html, &t)));
+            kid = kid.child(
+                div()
+                    .pt(px(10.))
+                    .px(px(12.))
+                    .child(loc_line(&child.body_html, &t)),
+            );
         }
         if resolved_open {
             kid = kid.child(self.line_note(child, pr, true, window, cx));
@@ -1018,7 +1452,10 @@ impl PrDetail {
                 foot = foot.child(
                     div()
                         .id(SharedString::from(format!("reply-ph-{}", child.id)))
-                        .debug_selector({ let id = child.id.clone(); move || format!("cmt-reply-ph:{id}") })
+                        .debug_selector({
+                            let id = child.id.clone();
+                            move || format!("cmt-reply-ph:{id}")
+                        })
                         .w_full()
                         .py(px(7.))
                         .px(px(10.))
@@ -1030,16 +1467,27 @@ impl PrDetail {
                         .cursor_text()
                         .hover(move |s| s.text_color(hsla(t.muted)).border_color(hsla(t.muted)))
                         .child(recur_ui::style::button_label("Reply…", 12.5, 400.))
-                        .on_click(cx.listener(move |d, _, window, cx| d.open_reply(&id, window, cx))),
+                        .on_click(
+                            cx.listener(move |d, _, window, cx| d.open_reply(&id, window, cx)),
+                        ),
                 );
             }
             if can_resolve_line_note(Some(pr), Some(child)) {
-                foot = foot.child(div().flex().justify_end().mt(px(8.)).child(self.resolve_btn(child, window, cx)));
+                foot = foot.child(
+                    div()
+                        .flex()
+                        .justify_end()
+                        .mt(px(8.))
+                        .child(self.resolve_btn(child, window, cx)),
+                );
             }
             kid = kid.child(foot);
         } else {
             let mut bar = div()
-                .debug_selector({ let id = child.id.clone(); move || format!("cmt-resolved-bar:{id}") })
+                .debug_selector({
+                    let id = child.id.clone();
+                    move || format!("cmt-resolved-bar:{id}")
+                })
                 .flex()
                 .items_center()
                 .justify_between()
@@ -1058,7 +1506,11 @@ impl PrDetail {
     }
 
     fn toggle_kid_hunk(&mut self, id: &str, resolved: bool, cx: &mut Context<Self>) {
-        let set = if resolved { &mut self.open_resolved } else { &mut self.collapsed_ctx };
+        let set = if resolved {
+            &mut self.open_resolved
+        } else {
+            &mut self.collapsed_ctx
+        };
         if !set.remove(id) {
             set.insert(id.to_string());
         }
@@ -1066,22 +1518,51 @@ impl PrDetail {
     }
 
     /// `resolveThreadBtn`.
-    fn resolve_btn(&mut self, c: &PrComment, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn resolve_btn(
+        &mut self,
+        c: &PrComment,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let busy = self.saving == format!("res-{}", line_thread_key(Some(c)));
-        let lh = recur_ui::style::button_label("x", 11., 400.).measure(None, window).2.height;
-        let label = if c.resolved { "Unresolve" } else { "Resolve conversation" };
+        let lh = recur_ui::style::button_label("x", 11., 400.)
+            .measure(None, window)
+            .2
+            .height;
+        let label = if c.resolved {
+            "Unresolve"
+        } else {
+            "Resolve conversation"
+        };
         let backdrop = if c.resolved { t.pane_2 } else { t.pane };
         let cc = c.clone();
         let to = !c.resolved;
-        note_btn(SharedString::from(format!("resolve-{}", c.id)), label, false, busy, backdrop, lh, cx)
-            .debug_selector(move || format!("cmt-resolve:{label}"))
-            .when(!busy, |b| b.on_click(cx.listener(move |d, _, _, cx| d.set_thread_resolved(&cc, to, cx))))
-            .into_any_element()
+        note_btn(
+            SharedString::from(format!("resolve-{}", c.id)),
+            label,
+            false,
+            busy,
+            backdrop,
+            lh,
+            cx,
+        )
+        .debug_selector(move || format!("cmt-resolve:{label}"))
+        .when(!busy, |b| {
+            b.on_click(cx.listener(move |d, _, _, cx| d.set_thread_resolved(&cc, to, cx)))
+        })
+        .into_any_element()
     }
 
     /// `lineNote(c)`: a note row inside a `.cmt-kid`.
-    fn line_note(&mut self, c: &PrComment, pr: &Pr, first: bool, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn line_note(
+        &mut self,
+        c: &PrComment,
+        pr: &Pr,
+        first: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let can_edit = can_edit_pr_comment(Some(pr), Some(c));
         let mut ch = div()
@@ -1090,24 +1571,46 @@ impl PrDetail {
             .gap(px(8.))
             .mb(px(5.))
             .text_color(hsla(t.muted))
-            .child(text(c.author.clone()).size(CH_SIZE).weight(600.).line_height(ch_line()).color(t.text).nowrap());
+            .child(
+                text(c.author.clone())
+                    .size(CH_SIZE)
+                    .weight(600.)
+                    .line_height(ch_line())
+                    .color(t.text)
+                    .nowrap(),
+            );
         if let Some(w) = self.when_stamp(c, &pr.url, false, cx) {
             ch = ch.child(w);
         }
         if self.editing_comment != c.id && self.has_more(c, can_edit, cx) {
             ch = ch.child(self.more_btn(&c.id, cx));
         }
-        let cc = div().flex_1().min_w_0().child(ch).children(self.comment_body(c, true, window, cx));
+        let cc = div()
+            .flex_1()
+            .min_w_0()
+            .child(ch)
+            .children(self.comment_body(c, true, window, cx));
         let all = comment_source(Some(c));
         div()
-            .debug_selector({ let id = c.id.clone(); move || format!("cmt-kid-note:{id}:{all}") })
+            .debug_selector({
+                let id = c.id.clone();
+                move || format!("cmt-kid-note:{id}:{all}")
+            })
             .flex()
             .gap(px(10.))
             .pt(px(10.))
             .px(px(12.))
             .pb(px(8.))
             .when(!first, |d| d.border_t_1().border_color(hsla(t.line_soft)))
-            .child(avatar(&c.code, &c.avatar_css, &c.avatar_url, 22., 5., 8.5, cx))
+            .child(avatar(
+                &c.code,
+                &c.avatar_css,
+                &c.avatar_url,
+                22.,
+                5.,
+                8.5,
+                cx,
+            ))
             .child(cc)
             .into_any_element()
     }
@@ -1143,7 +1646,9 @@ impl PrDetail {
             .debug_selector(|| "composer-go:Comment".into())
             .child(recur_ui::style::button_label("Comment", 13., 600.))
             .child(recur_ui::style::button_label("⌘↵", 12., 500.).opacity(0.55))
-            .when(!disabled, |b| b.on_click(cx.listener(|d, _, window, cx| d.submit_composer(window, cx))));
+            .when(!disabled, |b| {
+                b.on_click(cx.listener(|d, _, window, cx| d.submit_composer(window, cx)))
+            });
         let _ = window;
         // `.composer { margin-top: 4px }` collapses into the checks card's 14px.
         recur_ui::style::card(t.bg, t.line, 10.)
@@ -1152,7 +1657,16 @@ impl PrDetail {
             .flex_col()
             .overflow_hidden()
             .child(input)
-            .child(div().flex().items_center().gap(px(8.)).pt(px(2.)).px(px(10.)).pb(px(10.)).child(go))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .pt(px(2.))
+                    .px(px(10.))
+                    .pb(px(10.))
+                    .child(go),
+            )
             .into_any_element()
     }
 
@@ -1161,14 +1675,25 @@ impl PrDetail {
         let t = Theme::of(cx).tokens;
         let merged = pr_lifecycle(Some(pr)) == Some(PrLifecycle::Merged);
         let (border, bg, ico_bg, ico_fg) = if merged {
-            (t.indigo.mix(0.45, t.line), t.indigo.mix(0.08, t.pane), t.indigo, recur_ui::hex(0x0a0c10))
+            (
+                t.indigo.mix(0.45, t.line),
+                t.indigo.mix(0.08, t.pane),
+                t.indigo,
+                recur_ui::hex(0x0a0c10),
+            )
         } else {
             (t.muted.mix(0.5, t.line), t.pane, t.pane_2, t.muted)
         };
         let (h, s) = if merged {
-            ("Pull request successfully merged and closed", "You're all set — the branch has been merged.")
+            (
+                "Pull request successfully merged and closed",
+                "You're all set — the branch has been merged.",
+            )
         } else {
-            ("Pull request closed", "This pull request was closed without merging.")
+            (
+                "Pull request closed",
+                "This pull request was closed without merging.",
+            )
         };
         recur_ui::style::card(bg, border, 10.)
             .debug_selector(move || format!("pr-settled:{h}"))
@@ -1195,15 +1720,31 @@ impl PrDetail {
                     .flex_1()
                     .min_w_0()
                     .child(text(h).size(14.).weight(650.).color(t.text).id("settled-h"))
-                    .child(div().mt(px(4.)).child(text(s).size(12.5).color(t.muted).id("settled-s"))),
+                    .child(
+                        div()
+                            .mt(px(4.))
+                            .child(text(s).size(12.5).color(t.muted).id("settled-s")),
+                    ),
             )
             .into_any_element()
     }
 
     /// The Conversation pane.
-    pub(crate) fn conversation(&mut self, pr: Option<&Pr>, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn conversation(
+        &mut self,
+        pr: Option<&Pr>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let mut wrap = div().w_full().max_w(px(840.)).mx_auto().p(px(18.)).min_w_0().flex().flex_col();
+        let mut wrap = div()
+            .w_full()
+            .max_w(px(840.))
+            .mx_auto()
+            .p(px(18.))
+            .min_w_0()
+            .flex()
+            .flex_col();
         if let Some(pr) = pr {
             if !pr.updating_base.is_empty() {
                 wrap = wrap.child(rework(pr, window, cx));
@@ -1228,7 +1769,11 @@ impl PrDetail {
                 if !gh {
                     wrap = wrap.child(self.verify_card(pr, cx));
                 }
-                let mut thread = div().debug_selector(|| "thread".into()).pt(px(6.)).flex().flex_col();
+                let mut thread = div()
+                    .debug_selector(|| "thread".into())
+                    .pt(px(6.))
+                    .flex()
+                    .flex_col();
                 for c in items.iter().filter(|c| is_timeline_root(Some(c))) {
                     thread = thread.child(self.timeline_item(c, &items, pr, window, cx));
                 }
@@ -1236,7 +1781,11 @@ impl PrDetail {
                 if self.conversation_locked(cx) {
                     wrap = wrap.child(Self::settled(pr, cx));
                 } else {
-                    wrap = wrap.child(div().mt(px(14.)).child(self.checks_card(pr, true, window, cx)));
+                    wrap = wrap.child(
+                        div()
+                            .mt(px(14.))
+                            .child(self.checks_card(pr, true, window, cx)),
+                    );
                     wrap = wrap.child(self.composer_box(window, cx));
                 }
             }
@@ -1258,7 +1807,9 @@ fn loc_line(html: &str, t: &Tokens) -> Div {
 
 /// `.cmt .cm`: trusted markup on the comment line height.
 fn cm_html(html: &str, t: &Tokens) -> Div {
-    div().child(rich_code(html, 12.5, 1.55, t.faint, None, t).id(SharedString::from(format!("cm-{html}"))))
+    div().child(
+        rich_code(html, 12.5, 1.55, t.faint, None, t).id(SharedString::from(format!("cm-{html}"))),
+    )
 }
 
 /// `.cmt .react`.
@@ -1275,7 +1826,13 @@ fn react(html: &str, t: &Tokens) -> Div {
             .border_1()
             .border_color(hsla(rgba(76, 198, 214, 0.2)))
             .bg(hsla(rgba(76, 198, 214, 0.07)))
-            .child(Text::from_spans(html_spans(html, &|_, s| s)).mono().size(10.5).color(t.cyan).nowrap()),
+            .child(
+                Text::from_spans(html_spans(html, &|_, s| s))
+                    .mono()
+                    .size(10.5)
+                    .color(t.cyan)
+                    .nowrap(),
+            ),
     )
 }
 
@@ -1337,7 +1894,16 @@ pub(crate) fn card(head: Div, body: impl IntoElement, t: &Tokens) -> Div {
 pub(crate) fn card_h(ic: IconName, title: &str, by: Option<&str>, t: &Tokens) -> Div {
     let d = card_h_base(ic, title, t);
     match by {
-        Some(b) => d.child(div().ml_auto().child(text(b.to_string()).mono().size(10.).weight(400.).color(t.faint).nowrap())),
+        Some(b) => d.child(
+            div().ml_auto().child(
+                text(b.to_string())
+                    .mono()
+                    .size(10.)
+                    .weight(400.)
+                    .color(t.faint)
+                    .nowrap(),
+            ),
+        ),
         None => d,
     }
 }
@@ -1355,7 +1921,12 @@ fn card_h_base(ic: IconName, title: &str, t: &Tokens) -> Div {
         .px(px(15.))
         .border_b_1()
         .border_color(hsla(t.line))
-        .child(div().flex_none().text_color(hsla(t.amber)).child(icon(ic).size(px(15.))))
+        .child(
+            div()
+                .flex_none()
+                .text_color(hsla(t.amber))
+                .child(icon(ic).size(px(15.))),
+        )
         .child(text(title.to_string()).size(12.5).weight(600.).nowrap())
 }
 
@@ -1396,12 +1967,27 @@ fn rework(pr: &Pr, window: &mut Window, cx: &App) -> AnyElement {
         .child(
             div()
                 .flex_1()
-                .child(text(format!("Updating with latest {base}")).size(12.5).weight(600.).color(t.amber).id("rw-t"))
+                .child(
+                    text(format!("Updating with latest {base}"))
+                        .size(12.5)
+                        .weight(600.)
+                        .color(t.amber)
+                        .id("rw-t"),
+                )
                 .child(
                     div().mt(px(2.)).child(
-                        rich(&format!("Integrating <code>{}</code> into this branch…", html_escape(&base)), 10.5, 1.45, t.muted, &t)
-                            .family(Family::Mono)
-                            .id("rw-d"),
+                        rich(
+                            &format!(
+                                "Integrating <code>{}</code> into this branch…",
+                                html_escape(&base)
+                            ),
+                            10.5,
+                            1.45,
+                            t.muted,
+                            &t,
+                        )
+                        .family(Family::Mono)
+                        .id("rw-d"),
                     ),
                 ),
         )
@@ -1409,7 +1995,9 @@ fn rework(pr: &Pr, window: &mut Window, cx: &App) -> AnyElement {
 }
 
 fn html_escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// The `.tl-event` row.
@@ -1473,13 +2061,19 @@ pub(crate) fn commit_check(status: &str, key: &str, window: &mut Window, cx: &Ap
         .items_center()
         .justify_center();
     if status.is_empty() {
-        return slot.debug_selector(|| "tl-ck:empty".into()).into_any_element();
+        return slot
+            .debug_selector(|| "tl-ck:empty".into())
+            .into_any_element();
     }
     let (name, color, spin, title) = match status {
         "pass" => (IconName::Check, t.emerald, false, "Checks passed"),
         "fail" => (IconName::X, t.coral, false, "Checks failed"),
-        _ if recur_forge::view::is_skipped_check(status, "") => (IconName::CircleSlash, t.muted, false, "Checks pending"),
-        _ if recur_forge::view::is_pending_check(status) => (IconName::Loader, t.amber, true, "Checks pending"),
+        _ if recur_forge::view::is_skipped_check(status, "") => {
+            (IconName::CircleSlash, t.muted, false, "Checks pending")
+        }
+        _ if recur_forge::view::is_pending_check(status) => {
+            (IconName::Loader, t.amber, true, "Checks pending")
+        }
         _ => (IconName::X, t.coral, false, "Checks pending"),
     };
     let deg = if spin { spin_deg(window, cx) } else { 0. };
@@ -1499,8 +2093,22 @@ fn hunk_line(hl: &recur_view_review::comment_hunk::HunkLine, cx: &App) -> AnyEle
     let t = Theme::of(cx).tokens;
     let light = recur_view_review::style::light_diff_text(cx);
     let (bg, cd) = match hl.r#type {
-        "add" => (Some(recur_view_review::style::ADD_BG), if light { t.text } else { recur_view_review::style::ADD_CD }),
-        "del" => (Some(recur_view_review::style::DEL_BG), if light { t.text } else { recur_view_review::style::DEL_CD }),
+        "add" => (
+            Some(recur_view_review::style::ADD_BG),
+            if light {
+                t.text
+            } else {
+                recur_view_review::style::ADD_CD
+            },
+        ),
+        "del" => (
+            Some(recur_view_review::style::DEL_BG),
+            if light {
+                t.text
+            } else {
+                recur_view_review::style::DEL_CD
+            },
+        ),
         _ => (None, t.muted),
     };
     let overlay = if hl.target {
@@ -1520,13 +2128,24 @@ fn hunk_line(hl: &recur_view_review::comment_hunk::HunkLine, cx: &App) -> AnyEle
             .border_color(hsla(t.line_soft))
             .flex()
             .justify_end()
-            .child(text(s.to_string()).mono().size(10.).line_height(LineHeight::Px(line)).color(t.faint).nowrap())
+            .child(
+                text(s.to_string())
+                    .mono()
+                    .size(10.)
+                    .line_height(LineHeight::Px(line))
+                    .color(t.faint)
+                    .nowrap(),
+            )
     };
     let cls = format!(
         "hline:{}{}{}",
         hl.r#type,
         if hl.target { ":target" } else { "" },
-        if hl.in_range && !hl.target { ":in-range" } else { "" }
+        if hl.in_range && !hl.target {
+            ":in-range"
+        } else {
+            ""
+        }
     );
     let txt = hl.text.clone();
     div()
@@ -1534,7 +2153,9 @@ fn hunk_line(hl: &recur_view_review::comment_hunk::HunkLine, cx: &App) -> AnyEle
         .relative()
         .flex()
         .when_some(bg, |d, b| d.bg(hsla(b)))
-        .when_some(overlay, |d, o| d.child(div().absolute().inset_0().bg(hsla(o))))
+        .when_some(overlay, |d, o| {
+            d.child(div().absolute().inset_0().bg(hsla(o)))
+        })
         .child(ln(&hl.old))
         .child(ln(&hl.new))
         .child(
@@ -1546,15 +2167,21 @@ fn hunk_line(hl: &recur_view_review::comment_hunk::HunkLine, cx: &App) -> AnyEle
                     .color(cd)
                     .pre_wrap()
                     .break_anywhere()
-                    .id(SharedString::from(format!("hl-{}-{}-{}", hl.old, hl.new, hl.text))),
+                    .id(SharedString::from(format!(
+                        "hl-{}-{}-{}",
+                        hl.old, hl.new, hl.text
+                    ))),
             ),
         )
         .into_any_element()
 }
 
-static COMMIT_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^committed\s+").expect("re"));
-static COMMIT_SUFFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)\s+\([0-9a-f]{7,}\)\s*$").expect("re"));
-static MERGE_COMMIT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^merged commit ([0-9a-f]{7,40})(.*)$").expect("re"));
+static COMMIT_PREFIX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^committed\s+").expect("re"));
+static COMMIT_SUFFIX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)\s+\([0-9a-f]{7,}\)\s*$").expect("re"));
+static MERGE_COMMIT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^merged commit ([0-9a-f]{7,40})(.*)$").expect("re"));
 static BEHALF: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(started reviewing|started work|finished reviewing|finished work|stopped work) on behalf of (.+?)(?: due to an error)?$").expect("re")
 });
@@ -1585,9 +2212,15 @@ pub(crate) fn action_icon(c: &PrComment) -> IconName {
         IconName::GitBranch
     } else if t.starts_with("closed") {
         IconName::CircleSlash
-    } else if ["started review", "started work", "finished work", "finished review", "stopped work"]
-        .iter()
-        .any(|k| t.contains(k))
+    } else if [
+        "started review",
+        "started work",
+        "finished work",
+        "finished review",
+        "stopped work",
+    ]
+    .iter()
+    .any(|k| t.contains(k))
     {
         IconName::GitBranch
     } else if t.contains("review") {
@@ -1609,19 +2242,31 @@ pub(crate) fn merge_commit_link(c: &PrComment, pr_url: &str) -> Option<(String, 
     let m = MERGE_COMMIT.captures(&c.body_md)?;
     let sha = m.get(1)?.as_str();
     let rest = m.get(2).map_or("", |r| r.as_str()).trim().to_string();
-    let full = if c.commit_sha.trim().is_empty() { sha.to_string() } else { c.commit_sha.trim().to_string() };
-    Some((short_sha(sha), rest, recur_forge::github::commit_url(pr_url, &full)))
+    let full = if c.commit_sha.trim().is_empty() {
+        sha.to_string()
+    } else {
+        c.commit_sha.trim().to_string()
+    };
+    Some((
+        short_sha(sha),
+        rest,
+        recur_forge::github::commit_url(pr_url, &full),
+    ))
 }
 
 /// `actionBehalf`: (verb, whom).
 pub(crate) fn action_behalf(c: &PrComment) -> Option<(String, String)> {
     let m = BEHALF.captures(&c.body_md)?;
-    Some((m.get(1)?.as_str().to_string(), m.get(2)?.as_str().to_string()))
+    Some((
+        m.get(1)?.as_str().to_string(),
+        m.get(2)?.as_str().to_string(),
+    ))
 }
 
 /// `shotURL`: an evidence screenshot path as its `/workspaces/…` URL.
 pub(crate) fn shot_url(p: &str) -> String {
-    p.find("/workspaces/").map_or(String::new(), |i| p[i..].to_string())
+    p.find("/workspaces/")
+        .map_or(String::new(), |i| p[i..].to_string())
 }
 
 #[cfg(test)]
@@ -1638,15 +2283,24 @@ mod tests {
 
     #[test]
     fn timeline_rules() {
-        assert_eq!(commit_title(&act("committed Fix tests (abc1234)")), "Fix tests");
+        assert_eq!(
+            commit_title(&act("committed Fix tests (abc1234)")),
+            "Fix tests"
+        );
         assert_eq!(short_sha("abcdef123456"), "abcdef1");
         assert_eq!(short_sha("abc"), "abc");
         assert_eq!(action_icon(&act("committed x")), IconName::GitCommit);
         assert_eq!(action_icon(&act("merged commit abc")), IconName::GitMerge);
-        assert_eq!(action_icon(&act("deleted the x branch")), IconName::GitBranch);
+        assert_eq!(
+            action_icon(&act("deleted the x branch")),
+            IconName::GitBranch
+        );
         assert_eq!(action_icon(&act("closed this")), IconName::CircleSlash);
         assert_eq!(action_icon(&act("requested a review")), IconName::Eye);
-        assert_eq!(action_icon(&act("force-pushed the branch")), IconName::GitBranch);
+        assert_eq!(
+            action_icon(&act("force-pushed the branch")),
+            IconName::GitBranch
+        );
         assert_eq!(action_icon(&act("reopened")), IconName::GitPullRequest);
         assert!(is_merge_action(&act("Merged commit")));
         let mut m = act("merged commit a3f73e2 into main");
@@ -1663,7 +2317,10 @@ mod tests {
             action_behalf(&act("started reviewing on behalf of avery due to an error")),
             Some(("started reviewing".into(), "avery".into()))
         );
-        assert_eq!(shot_url("/x/workspaces/1/screenshots/a.png"), "/workspaces/1/screenshots/a.png");
+        assert_eq!(
+            shot_url("/x/workspaces/1/screenshots/a.png"),
+            "/workspaces/1/screenshots/a.png"
+        );
         assert_eq!(shot_url("/x/a.png"), "");
     }
 }

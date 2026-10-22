@@ -691,12 +691,9 @@ impl FileStack {
                         recur_ui::widgets::scroll_area("diffscroll-sa")
                             .track(&self.pane.scroll)
                             .child(match self.chrome.max_width {
-                                Some(w) => div()
-                                    .w_full()
-                                    .max_w(px(w))
-                                    .mx_auto()
-                                    .px(px(pad))
-                                    .child(col),
+                                Some(w) => {
+                                    div().w_full().max_w(px(w)).mx_auto().px(px(pad)).child(col)
+                                }
                                 None => div().px(px(pad)).child(col),
                             }),
                     ),

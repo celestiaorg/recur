@@ -47,7 +47,11 @@ impl PrDetail {
                 continue;
             }
             let m = match_finding_path(&f.file, &paths);
-            let p = if m.is_empty() { f.file.clone() } else { m.to_string() };
+            let p = if m.is_empty() {
+                f.file.clone()
+            } else {
+                m.to_string()
+            };
             match out.iter_mut().find(|(k, _)| *k == p) {
                 Some((_, v)) => v.push(f),
                 None => out.push((p, vec![f])),
@@ -62,7 +66,11 @@ impl PrDetail {
         let mut list: Vec<FileDiff> = self
             .review_files(cx)
             .into_iter()
-            .filter(|f| q.is_empty() || f.path.to_lowercase().contains(&q) || f.old_path.to_lowercase().contains(&q))
+            .filter(|f| {
+                q.is_empty()
+                    || f.path.to_lowercase().contains(&q)
+                    || f.old_path.to_lowercase().contains(&q)
+            })
             .collect();
         if self.findings_only {
             let by = self.findings_by_path(cx);
@@ -76,7 +84,9 @@ impl PrDetail {
     }
 
     pub(crate) fn split_fallback(&self) -> bool {
-        self.diff_layout == DiffLayout::Split && self.pane_width > 0. && self.pane_width < SPLIT_MIN_PX
+        self.diff_layout == DiffLayout::Split
+            && self.pane_width > 0.
+            && self.pane_width < SPLIT_MIN_PX
     }
 
     /// `diffLayoutSeg`.
@@ -89,9 +99,19 @@ impl PrDetail {
                 titled(
                     "pr-dl-unified-t",
                     "Unified",
-                    seg_btn("pr-dl-unified", IconName::Rows2, layout == DiffLayout::Unified, None, cx)
-                        .debug_selector(move || format!("button:Unified diff:{}", layout == DiffLayout::Unified))
-                        .on_click(cx.listener(|d, _, _, cx| d.set_diff_layout(DiffLayout::Unified, cx))),
+                    seg_btn(
+                        "pr-dl-unified",
+                        IconName::Rows2,
+                        layout == DiffLayout::Unified,
+                        None,
+                        cx,
+                    )
+                    .debug_selector(move || {
+                        format!("button:Unified diff:{}", layout == DiffLayout::Unified)
+                    })
+                    .on_click(
+                        cx.listener(|d, _, _, cx| d.set_diff_layout(DiffLayout::Unified, cx)),
+                    ),
                 )
                 .into_any_element(),
                 titled(
@@ -101,13 +121,21 @@ impl PrDetail {
                     } else {
                         "Side by side"
                     },
-                    seg_btn("pr-dl-split", IconName::Columns2, layout == DiffLayout::Split, fallback.then_some(t.pane), cx)
-                        .debug_selector(move || format!("button:Side-by-side diff:{}", layout == DiffLayout::Split))
-                        .on_click(cx.listener(move |d, _, _, cx| {
-                            if !fallback {
-                                d.set_diff_layout(DiffLayout::Split, cx)
-                            }
-                        })),
+                    seg_btn(
+                        "pr-dl-split",
+                        IconName::Columns2,
+                        layout == DiffLayout::Split,
+                        fallback.then_some(t.pane),
+                        cx,
+                    )
+                    .debug_selector(move || {
+                        format!("button:Side-by-side diff:{}", layout == DiffLayout::Split)
+                    })
+                    .on_click(cx.listener(move |d, _, _, cx| {
+                        if !fallback {
+                            d.set_diff_layout(DiffLayout::Split, cx)
+                        }
+                    })),
                 )
                 .into_any_element(),
             ],
@@ -117,7 +145,12 @@ impl PrDetail {
     }
 
     /// The Files changed pane.
-    pub(crate) fn files_pane(&mut self, pr: Option<&Pr>, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn files_pane(
+        &mut self,
+        pr: Option<&Pr>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let Some(pr) = pr else {
             return div().flex_1().into_any_element();
@@ -147,7 +180,10 @@ impl PrDetail {
         let postable_ids: HashSet<String> = postable.iter().map(|f| f.id.clone()).collect();
         let list_w = self.state().read(cx).panels.size(PanelKey::PrFileList);
         let open = self.sidebar_open;
-        let lh = recur_ui::style::button_label("x", 11., 400.).measure(None, window).2.height;
+        let lh = recur_ui::style::button_label("x", 11., 400.)
+            .measure(None, window)
+            .2
+            .height;
 
         // The stack and the list follow the inputs each frame.
         let files: Vec<Rc<FileDiff>> = matched.iter().cloned().map(Rc::new).collect();
@@ -157,7 +193,9 @@ impl PrDetail {
         let mut hooks = DiffFileHooks::default();
         if !ws.is_empty() {
             let st = state.clone();
-            hooks.open_file = Some(Rc::new(move |p, l, _, cx| PrDetail::open_in_workspace(&st, &p, l, cx)));
+            hooks.open_file = Some(Rc::new(move |p, l, _, cx| {
+                PrDetail::open_in_workspace(&st, &p, l, cx)
+            }));
             let me = cx.entity().downgrade();
             hooks.open_finding = Some(Rc::new(move |f: Finding, _, cx| {
                 let _ = me.update(cx, |d, cx| d.open_finding(&f, cx));
@@ -169,7 +207,11 @@ impl PrDetail {
                 let _ = me.update(cx, |d, cx| d.post_findings(vec![f], cx));
             }));
         }
-        let layout = if self.split_fallback() { DiffLayout::Unified } else { self.diff_layout };
+        let layout = if self.split_fallback() {
+            DiffLayout::Unified
+        } else {
+            self.diff_layout
+        };
         self.stack.set_props(CardProps {
             layout,
             note_mode: None,
@@ -194,7 +236,11 @@ impl PrDetail {
         self.list.update(cx, |l, cx| l.set_props(props, cx));
 
         // `.fl-head`
-        let toggle_label = if open { "Hide file list" } else { "Show file list" };
+        let toggle_label = if open {
+            "Hide file list"
+        } else {
+            "Show file list"
+        };
         let toggle = titled(
             "pr-fl-toggle-t",
             toggle_label,
@@ -220,7 +266,11 @@ impl PrDetail {
             .min_w_0()
             .px(px(8.))
             .border_r_1()
-            .border_color(hsla(if open { t.line } else { recur_ui::color::TRANSPARENT }))
+            .border_color(hsla(if open {
+                t.line
+            } else {
+                recur_ui::color::TRANSPARENT
+            }))
             .child(toggle);
         if open {
             let mode = self.file_list_mode;
@@ -230,17 +280,37 @@ impl PrDetail {
                         titled(
                             "pr-fl-flat-t",
                             "Flat list",
-                            seg_btn("pr-fl-flat", IconName::List, mode == FileListMode::Flat, None, cx)
-                                .debug_selector(move || format!("button:Flat list:{}", mode == FileListMode::Flat))
-                                .on_click(cx.listener(|d, _, _, cx| d.set_file_list_mode(FileListMode::Flat, cx))),
+                            seg_btn(
+                                "pr-fl-flat",
+                                IconName::List,
+                                mode == FileListMode::Flat,
+                                None,
+                                cx,
+                            )
+                            .debug_selector(move || {
+                                format!("button:Flat list:{}", mode == FileListMode::Flat)
+                            })
+                            .on_click(cx.listener(|d, _, _, cx| {
+                                d.set_file_list_mode(FileListMode::Flat, cx)
+                            })),
                         )
                         .into_any_element(),
                         titled(
                             "pr-fl-tree-t",
                             "Tree",
-                            seg_btn("pr-fl-tree", IconName::Workflow, mode == FileListMode::Tree, None, cx)
-                                .debug_selector(move || format!("button:Tree:{}", mode == FileListMode::Tree))
-                                .on_click(cx.listener(|d, _, _, cx| d.set_file_list_mode(FileListMode::Tree, cx))),
+                            seg_btn(
+                                "pr-fl-tree",
+                                IconName::Workflow,
+                                mode == FileListMode::Tree,
+                                None,
+                                cx,
+                            )
+                            .debug_selector(move || {
+                                format!("button:Tree:{}", mode == FileListMode::Tree)
+                            })
+                            .on_click(cx.listener(|d, _, _, cx| {
+                                d.set_file_list_mode(FileListMode::Tree, cx)
+                            })),
                         )
                         .into_any_element(),
                     ],
@@ -282,17 +352,34 @@ impl PrDetail {
         )));
         main = main.child(div().ml(px(8.)).child(self.diff_layout_seg(true, cx)));
         let any = self.stack.any_expanded();
-        let fold_label = if any { "Collapse all files" } else { "Expand all files" };
-        main = main.child(div().ml(px(4.)).child(titled(
-            "pr-fold-all-t",
-            fold_label,
-            icon_btn("pr-fold-all", if any { IconName::FoldVertical } else { IconName::UnfoldVertical }, 26., 15., None, cx)
+        let fold_label = if any {
+            "Collapse all files"
+        } else {
+            "Expand all files"
+        };
+        main = main.child(
+            div().ml(px(4.)).child(titled(
+                "pr-fold-all-t",
+                fold_label,
+                icon_btn(
+                    "pr-fold-all",
+                    if any {
+                        IconName::FoldVertical
+                    } else {
+                        IconName::UnfoldVertical
+                    },
+                    26.,
+                    15.,
+                    None,
+                    cx,
+                )
                 .debug_selector(move || format!("button:{fold_label}"))
                 .on_click(cx.listener(|d, _, _, cx| {
                     d.stack.toggle_fold_all();
                     cx.notify();
                 })),
-        )));
+            )),
+        );
         if can_post && !postable.is_empty() {
             let busy = postable.iter().any(|f| self.posting.contains(&f.id));
             let list = postable.clone();
@@ -300,7 +387,11 @@ impl PrDetail {
                 div().ml(px(8.)).child(
                     note_btn("pr-fl-post-all", "Post all", false, busy, t.pane, lh, cx)
                         .debug_selector(|| "fl-head:Post all".into())
-                        .when(!busy, |b| b.on_click(cx.listener(move |d, _, _, cx| d.post_findings(list.clone(), cx)))),
+                        .when(!busy, |b| {
+                            b.on_click(
+                                cx.listener(move |d, _, _, cx| d.post_findings(list.clone(), cx)),
+                            )
+                        }),
                 ),
             );
         }
@@ -322,9 +413,20 @@ impl PrDetail {
             .child(div().flex_1().min_w_0().h_full().child(main));
 
         // `.diffwrap`
-        let mut wrap = div().debug_selector(|| "diffwrap".into()).flex_1().min_h_0().min_w_0().flex();
+        let mut wrap = div()
+            .debug_selector(|| "diffwrap".into())
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .flex();
         if open {
-            wrap = wrap.child(self.file_list_panel(list_w, !listed.is_empty(), !comments_by.is_empty(), window, cx));
+            wrap = wrap.child(self.file_list_panel(
+                list_w,
+                !listed.is_empty(),
+                !comments_by.is_empty(),
+                window,
+                cx,
+            ));
         }
         let empty = (filtering && matched.is_empty()).then(|| {
             recur_view_review::commits::empty_clear_filter(
@@ -353,7 +455,11 @@ impl PrDetail {
             let pane = self.stack.pane.clone();
             canvas(
                 move |b, _, cx| {
-                    let bar = if pane.max_scroll() > 0.5 { f32::from(recur_ui::theme::SCROLLBAR_SIZE) } else { 0. };
+                    let bar = if pane.max_scroll() > 0.5 {
+                        f32::from(recur_ui::theme::SCROLLBAR_SIZE)
+                    } else {
+                        0.
+                    };
                     let w = f32::from(b.size.width) - bar;
                     let me = me.clone();
                     cx.defer(move |cx| {
@@ -370,7 +476,17 @@ impl PrDetail {
             .absolute()
             .inset_0()
         };
-        wrap = wrap.child(div().relative().flex_1().min_w_0().min_h_0().flex().flex_col().child(stack).child(probe));
+        wrap = wrap.child(
+            div()
+                .relative()
+                .flex_1()
+                .min_w_0()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(stack)
+                .child(probe),
+        );
         div()
             .debug_selector(|| "prpane:files".into())
             .flex_1()
@@ -385,20 +501,31 @@ impl PrDetail {
     }
 
     /// `.filelist`: the resize handle, the filter row and the list.
-    fn file_list_panel(&mut self, width: f32, has_findings: bool, has_comments: bool, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn file_list_panel(
+        &mut self,
+        width: f32,
+        has_findings: bool,
+        has_comments: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let state = self.state().clone();
         let focus = cx.focus_handle();
         let handle = resize_handle("pr-fl-resize", Axis::X, Edge::End, width, &focus)
             .on_live({
                 let state = state.clone();
-                move |w, _, cx| state.update(cx, |s, cx| s.set_panel_live(PanelKey::PrFileList, w, cx))
+                move |w, _, cx| {
+                    state.update(cx, |s, cx| s.set_panel_live(PanelKey::PrFileList, w, cx))
+                }
             })
             .on_commit({
                 let state = state.clone();
                 move |_, cx| state.update(cx, |s, _| s.persist_panels())
             })
-            .on_step(move |w, _, cx| state.update(cx, |s, cx| s.set_panel(PanelKey::PrFileList, w, cx)));
+            .on_step(move |w, _, cx| {
+                state.update(cx, |s, cx| s.set_panel(PanelKey::PrFileList, w, cx))
+            });
         let mut filter = div()
             .debug_selector(|| "fl-filter".into())
             .flex()
@@ -427,43 +554,71 @@ impl PrDetail {
                     }))
                     .child(icon(IconName::Search).size(px(12.)))
                     .child(
-                        div().flex_1().min_w_0().h(px(19.)).flex().items_center().child(recur_ui::style::text_field(
-                            &self.filter,
-                            &SharedString::from("Filter files"),
-                            t.faint,
-                            Family::Ui,
-                            12.,
-                            window,
-                            cx,
-                        )),
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .h(px(19.))
+                            .flex()
+                            .items_center()
+                            .child(recur_ui::style::text_field(
+                                &self.filter,
+                                &SharedString::from("Filter files"),
+                                t.faint,
+                                Family::Ui,
+                                12.,
+                                window,
+                                cx,
+                            )),
                     ),
             );
         if has_findings {
             let on = self.findings_only;
-            let label = if on { "Show all files" } else { "Show files with open findings" };
+            let label = if on {
+                "Show all files"
+            } else {
+                "Show files with open findings"
+            };
             filter = filter.child(titled(
                 "pr-fl-findings-t",
                 label,
-                toggle_btn("pr-fl-findings", IconName::HatGlasses, on, t.amber, t.amber_d, cx)
-                    .debug_selector(move || format!("button:{label}:{on}"))
-                    .on_click(cx.listener(move |d, _, _, cx| {
-                        d.findings_only = !on;
-                        cx.notify();
-                    })),
+                toggle_btn(
+                    "pr-fl-findings",
+                    IconName::HatGlasses,
+                    on,
+                    t.amber,
+                    t.amber_d,
+                    cx,
+                )
+                .debug_selector(move || format!("button:{label}:{on}"))
+                .on_click(cx.listener(move |d, _, _, cx| {
+                    d.findings_only = !on;
+                    cx.notify();
+                })),
             ));
         }
         if has_comments {
             let on = self.comments_only;
-            let label = if on { "Show all files" } else { "Show files with unresolved comments" };
+            let label = if on {
+                "Show all files"
+            } else {
+                "Show files with unresolved comments"
+            };
             filter = filter.child(titled(
                 "pr-fl-comments-t",
                 label,
-                toggle_btn("pr-fl-comments", IconName::MessageSquare, on, t.cyan, t.cyan.fade(0.14), cx)
-                    .debug_selector(move || format!("button:{label}:{on}"))
-                    .on_click(cx.listener(move |d, _, _, cx| {
-                        d.comments_only = !on;
-                        cx.notify();
-                    })),
+                toggle_btn(
+                    "pr-fl-comments",
+                    IconName::MessageSquare,
+                    on,
+                    t.cyan,
+                    t.cyan.fade(0.14),
+                    cx,
+                )
+                .debug_selector(move || format!("button:{label}:{on}"))
+                .on_click(cx.listener(move |d, _, _, cx| {
+                    d.comments_only = !on;
+                    cx.notify();
+                })),
             ));
         }
         div()
@@ -480,13 +635,28 @@ impl PrDetail {
             .bg(hsla(t.bg))
             .child(handle)
             .child(filter)
-            .child(div().relative().flex_1().min_h_0().flex().flex_col().child(self.list.clone()))
+            .child(
+                div()
+                    .relative()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .child(self.list.clone()),
+            )
             .into_any_element()
     }
 }
 
 /// `.fl-filter .obs-icon-btn` with its `.on` tint.
-fn toggle_btn(id: &'static str, name: IconName, on: bool, fg: recur_ui::Color, bg: recur_ui::Color, cx: &App) -> gpui_kit::Stateful<gpui_kit::Div> {
+fn toggle_btn(
+    id: &'static str,
+    name: IconName,
+    on: bool,
+    fg: recur_ui::Color,
+    bg: recur_ui::Color,
+    cx: &App,
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     let t = Theme::of(cx).tokens;
     div()
         .id(id)
@@ -499,6 +669,8 @@ fn toggle_btn(id: &'static str, name: IconName, on: bool, fg: recur_ui::Color, b
         .cursor_pointer()
         .text_color(hsla(if on { fg } else { t.faint }))
         .when(on, |d| d.bg(hsla(bg)))
-        .when(!on, |d| d.hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2))))
+        .when(!on, |d| {
+            d.hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
+        })
         .child(icon(name).size(px(15.)).stroke_width(2.2))
 }

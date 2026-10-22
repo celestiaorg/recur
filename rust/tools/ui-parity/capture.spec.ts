@@ -159,6 +159,7 @@ type Scene = {
   tab?: string
   dock?: string
   seg?: string
+  review?: string
   fixture?: string
 }
 type Row = Record<string, unknown> & { id: string }
@@ -273,7 +274,7 @@ for (const scene of scenes) {
       return body ? r.fulfill({ contentType: mime, body }) : r.fulfill({ status: 404 })
     })
     let extra = scene.treeScroll ? `&treeScroll=${scene.treeScroll}` : ''
-    for (const k of ['route', 'pr', 'tab', 'dock', 'seg'] as const) {
+    for (const k of ['route', 'pr', 'tab', 'dock', 'seg', 'review'] as const) {
       if (scene[k]) extra += `&${k}=${encodeURIComponent(scene[k]!)}`
     }
     await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}${extra}`)

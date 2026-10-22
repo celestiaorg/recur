@@ -1,13 +1,13 @@
 <script lang="ts">
   // PR scenes (`prs` in scenes.json): the whole window as Shell.svelte mounts it, over the
   // scene's edited seed, with the PR routes shown. `route` opens the dashboard or PR detail
-  // (`pr`), `tab` picks PR detail's tab, `seg` the dashboard's lifecycle, as `recur_view_prs::gallery` does. Every other routed
-  // view stays hidden.
+  // (`pr`), `tab` picks PR detail's tab, `review` opens the review modal, `seg` the dashboard's
+  // lifecycle, as `recur_view_prs::gallery` does. Every other routed view stays hidden.
   import { onMount } from 'svelte'
   import App from '../../../../../frontend/src/App.svelte'
   import {
     initEditorTheme, initEditorPrefs, initPanelWidths, initCodePanelSides, initExplorerPrefs,
-    initRailCollapsed, initTerminalPrefs, go, openPR, prDetailTab, prAgentDockOpen, prListSeg,
+    initRailCollapsed, initTerminalPrefs, go, openPR, openPRReview, prDetailTab, prAgentDockOpen, prListSeg,
   } from '../../../../../frontend/src/lib/stores'
 
   let { onready }: { onready: () => void } = $props()
@@ -41,6 +41,8 @@
         await frames(3)
         const tab = q.get('tab')
         if (tab) prDetailTab.set(tab as 'conv' | 'commits' | 'files' | 'checks')
+        const review = q.get('review')
+        if (review) openPRReview(review as 'approve' | 'request')
       } else {
         const seg = q.get('seg')
         if (seg) prListSeg.set(seg as 'open' | 'draft' | 'merged' | 'closed' | 'all')

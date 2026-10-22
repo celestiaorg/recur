@@ -49,7 +49,8 @@ pub fn register(r: &mut ViewRegistry) {
         left: None,
         right: Some(cx.new(|cx| PrTitlebarActions::new(vcx, window, cx)).into()),
     });
-    r.overlay(OverlaySlot::PrReviewModal, |vcx: &ViewContext, window, cx| {
-        cx.new(|cx| PrReviewModal::new(vcx, window, cx)).into()
-    });
+    r.overlay(
+        OverlaySlot::PrReviewModal,
+        |vcx: &ViewContext, window, cx| cx.new(|cx| PrReviewModal::new(vcx, window, cx)).into(),
+    );
 }

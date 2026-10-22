@@ -28,8 +28,8 @@ use recur_content::{MarkdownClass, MarkdownEvent, MarkdownView};
 use recur_domain::{Commit, FileDiff, Finding, PendingLineComment, Pr, PrComment, PrSource};
 use recur_engine::view::comment_thread::{
     PENDING_REPLY_PREFIX, apply_thread_resolved, can_edit_pr_comment, comment_source,
-    is_dropped_comment, is_line_note, is_pending_comment, keep_pending_replies,
-    line_thread_key, same_thread_reply, settle_posted_reply,
+    is_dropped_comment, is_line_note, is_pending_comment, keep_pending_replies, line_thread_key,
+    same_thread_reply, settle_posted_reply,
 };
 use recur_engine::view::pr_detail_pending::{
     pr_checks_pending, pr_commits_pending, pr_conv_pending, pr_files_pending,
@@ -43,7 +43,9 @@ use recur_services::AppEvent;
 use recur_ui::widgets::ToastKind;
 use recur_view_core::pr::keep_merged_pr;
 use recur_view_core::pr_commits::keep_commit_files;
-use recur_view_core::{AppState, AppliedEvent, ObsJump, ShellEvent, ViewContext, ViewName, call, toast};
+use recur_view_core::{
+    AppState, AppliedEvent, ObsJump, ShellEvent, ViewContext, ViewName, call, toast,
+};
 use recur_view_review::commits::CopiedShas;
 use recur_view_review::file_list::ReviewFileList;
 use recur_view_review::line_note::{note_sheet, now_ms, spread};
@@ -177,8 +179,22 @@ impl PrDetail {
         recur_ui::style::style_text_input(&title_input, cx);
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter files"));
         recur_ui::style::style_text_input(&filter, cx);
-        let desc = Field::new(&state, "Description", (2, 2), |_: &mut Self, _| {}, window, cx);
-        let comment = Field::new(&state, "Edit comment", (2, 2), |_: &mut Self, _| {}, window, cx);
+        let desc = Field::new(
+            &state,
+            "Description",
+            (2, 2),
+            |_: &mut Self, _| {},
+            window,
+            cx,
+        );
+        let comment = Field::new(
+            &state,
+            "Edit comment",
+            (2, 2),
+            |_: &mut Self, _| {},
+            window,
+            cx,
+        );
         let reply = Field::new(&state, "Reply…", (1, 6), |_: &mut Self, _| {}, window, cx);
         let composer = Field::new(
             &state,
@@ -204,7 +220,9 @@ impl PrDetail {
             )
         });
         let subs = vec![
-            cx.observe_in(&state, window, |d, _, window, cx| d.state_changed(window, cx)),
+            cx.observe_in(&state, window, |d, _, window, cx| {
+                d.state_changed(window, cx)
+            }),
             cx.observe_in(&ui, window, |d, _, window, cx| d.ui_changed(window, cx)),
             cx.subscribe_in(&state, window, |d, _, ev: &AppliedEvent, window, cx| {
                 d.on_event(&ev.0, window, cx)
@@ -294,10 +312,11 @@ impl PrDetail {
         };
         d.stack.set_spy_suppress(Duration::from_millis(1400));
         d.commit_stack.set_stub_selects_in_place(true);
-        d.commit_stack.set_chrome(recur_view_review::stack::StackChrome {
-            pad: 18.,
-            max_width: Some(1560.),
-        });
+        d.commit_stack
+            .set_chrome(recur_view_review::stack::StackChrome {
+                pad: 18.,
+                max_width: Some(1560.),
+            });
         d.state_changed(window, cx);
         d
     }
@@ -328,10 +347,7 @@ impl PrDetail {
 
     /// `threadItems`: the PR's comments, then the live ones.
     pub(crate) fn thread_items(&self, cx: &App) -> Vec<PrComment> {
-        let mut out = self
-            .pr(cx)
-            .and_then(|p| p.comments)
-            .unwrap_or_default();
+        let mut out = self.pr(cx).and_then(|p| p.comments).unwrap_or_default();
         out.extend(self.live_comments.iter().cloned());
         out
     }
@@ -517,7 +533,11 @@ impl PrDetail {
                     .map(|c| c.id.clone());
                 if let Some(pid) = pending {
                     let prid = selected.clone();
-                    self.patch_comments(&prid, |list| settle_posted_reply(list, &pid, Some(row)), cx);
+                    self.patch_comments(
+                        &prid,
+                        |list| settle_posted_reply(list, &pid, Some(row)),
+                        cx,
+                    );
                     return;
                 }
                 self.live_comments.push(row);
@@ -607,7 +627,8 @@ impl PrDetail {
             .as_ref()
             .and_then(|p| p.comments.clone())
             .unwrap_or_default();
-        let mut comments = keep_pending_replies(&prev_comments, next.comments.take().unwrap_or_default());
+        let mut comments =
+            keep_pending_replies(&prev_comments, next.comments.take().unwrap_or_default());
         apply_review_holds(&mut comments, cx);
         next.comments = Some(comments);
         next.commits = keep_commit_files(
@@ -677,10 +698,7 @@ impl PrDetail {
 
     /// `listedFindings`: open, without a pending draft, not settling.
     pub(crate) fn listed_findings(&self, cx: &App) -> Vec<Finding> {
-        let pending = self
-            .pr(cx)
-            .map(|p| p.pending_comments)
-            .unwrap_or_default();
+        let pending = self.pr(cx).map(|p| p.pending_comments).unwrap_or_default();
         let files = self.review_files(cx);
         self.open_findings()
             .into_iter()
@@ -754,17 +772,26 @@ impl PrDetail {
                     line: a.line,
                     side: "RIGHT".into(),
                     start_line: a.start_line,
-                    start_side: if a.start_line > 0 { "RIGHT".into() } else { String::new() },
+                    start_side: if a.start_line > 0 {
+                        "RIGHT".into()
+                    } else {
+                        String::new()
+                    },
                     body: body.clone(),
                     finding_id: f.id.clone(),
                 };
                 let pcid = pc.id.clone();
                 let _ = cx.update(|cx| {
-                    patch_pr_pending_comments(&state, &pr_id, |prev| {
-                        let mut v = prev.to_vec();
-                        v.push(pc);
-                        v
-                    }, cx)
+                    patch_pr_pending_comments(
+                        &state,
+                        &pr_id,
+                        |prev| {
+                            let mut v = prev.to_vec();
+                            v.push(pc);
+                            v
+                        },
+                        cx,
+                    )
                 });
                 let ok = call(
                     cx,
@@ -776,9 +803,12 @@ impl PrDetail {
                 .await;
                 if ok.is_none() {
                     let _ = cx.update(|cx| {
-                        patch_pr_pending_comments(&state, &pr_id, |prev| {
-                            prev.iter().filter(|x| x.id != pcid).cloned().collect()
-                        }, cx)
+                        patch_pr_pending_comments(
+                            &state,
+                            &pr_id,
+                            |prev| prev.iter().filter(|x| x.id != pcid).cloned().collect(),
+                            cx,
+                        )
                     });
                     continue;
                 }
@@ -840,10 +870,7 @@ impl PrDetail {
             return;
         }
         self.settle_for = pr_id.to_string();
-        let pending = self
-            .pr(cx)
-            .map(|p| p.pending_comments)
-            .unwrap_or_default();
+        let pending = self.pr(cx).map(|p| p.pending_comments).unwrap_or_default();
         let comments = self.thread_items(cx);
         let files = self.review_files(cx);
         let posted = Self::posted_ids(cx);
@@ -886,7 +913,9 @@ impl PrDetail {
                 }
                 let ok = call(
                     cx,
-                    services.observatory.set_finding_status(&ws, &f.id, "resolved"),
+                    services
+                        .observatory
+                        .set_finding_status(&ws, &f.id, "resolved"),
                     "Could not resolve the finding",
                 )
                 .await;
@@ -923,7 +952,12 @@ impl PrDetail {
     // ---- fix checks ----
 
     /// `requestFixChecks(prId, args)`.
-    pub(crate) fn request_fix_checks(state: &Entity<AppState>, pr_id: &str, args: &str, cx: &mut App) {
+    pub(crate) fn request_fix_checks(
+        state: &Entity<AppState>,
+        pr_id: &str,
+        args: &str,
+        cx: &mut App,
+    ) {
         let id = pr_id.trim().to_string();
         if id.is_empty() {
             return;
@@ -942,7 +976,9 @@ impl PrDetail {
             None => {}
             Some(FixChecksStep::Run(ws)) => {
                 let a = args.to_string();
-                state.update(cx, |s, cx| s.request_prompt_action(&ws, "fix-checks", &a, cx));
+                state.update(cx, |s, cx| {
+                    s.request_prompt_action(&ws, "fix-checks", &a, cx)
+                });
             }
             Some(FixChecksStep::CreateWorkspace(p)) => {
                 ui.update(cx, |u, _| u.pending_fix_checks = Some(p));
@@ -1013,7 +1049,12 @@ impl PrDetail {
     }
 
     /// `setThreadResolved`.
-    pub(crate) fn set_thread_resolved(&mut self, c: &PrComment, resolved: bool, cx: &mut Context<Self>) {
+    pub(crate) fn set_thread_resolved(
+        &mut self,
+        c: &PrComment,
+        resolved: bool,
+        cx: &mut Context<Self>,
+    ) {
         let key = line_thread_key(Some(c));
         if resolved {
             self.open_resolved.remove(&c.id);
@@ -1064,7 +1105,13 @@ impl PrDetail {
             .as_ref()
             .map(|m| m.author.clone())
             .filter(|a| !a.is_empty())
-            .unwrap_or_else(|| if login.is_empty() { "You".into() } else { login.clone() });
+            .unwrap_or_else(|| {
+                if login.is_empty() {
+                    "You".into()
+                } else {
+                    login.clone()
+                }
+            });
         let root = root.unwrap_or_default();
         PrComment {
             id: format!("{PENDING_REPLY_PREFIX}{}", now_ms()),
@@ -1075,8 +1122,14 @@ impl PrDetail {
                 .unwrap_or_else(|| author.chars().take(2).collect::<String>().to_uppercase()),
             author,
             author_login: login,
-            avatar_css: mine.as_ref().map(|m| m.avatar_css.clone()).unwrap_or_default(),
-            avatar_url: mine.as_ref().map(|m| m.avatar_url.clone()).unwrap_or_default(),
+            avatar_css: mine
+                .as_ref()
+                .map(|m| m.avatar_css.clone())
+                .unwrap_or_default(),
+            avatar_url: mine
+                .as_ref()
+                .map(|m| m.avatar_url.clone())
+                .unwrap_or_default(),
             time: "now".into(),
             body_md: body.to_string(),
             verb: "commented".into(),
@@ -1097,7 +1150,12 @@ impl PrDetail {
     }
 
     /// `submitReply`: the composer closes before the GitHub write returns.
-    pub(crate) fn submit_reply(&mut self, root_id: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn submit_reply(
+        &mut self,
+        root_id: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let body = self.reply.value(cx).trim().to_string();
         if body.is_empty() || !self.saving.is_empty() || self.conversation_locked(cx) {
             return;
@@ -1105,10 +1163,14 @@ impl PrDetail {
         let pr_id = self.pr_id(cx);
         let pending = self.optimistic_reply(root_id, &body, cx);
         let pending_id = pending.id.clone();
-        self.patch_comments(&pr_id, |mut v| {
-            v.push(pending);
-            v
-        }, cx);
+        self.patch_comments(
+            &pr_id,
+            |mut v| {
+                v.push(pending);
+                v
+            },
+            cx,
+        );
         self.reply_for.clear();
         self.reply.set("", window, cx);
         cx.notify();
@@ -1124,7 +1186,11 @@ impl PrDetail {
             let _ = d.update(cx, |d, cx| match posted.filter(|p| !p.id.is_empty()) {
                 Some(posted) => {
                     let pid = posted.id.clone();
-                    d.patch_comments(&pr_id, |v| settle_posted_reply(v, &pending_id, Some(posted)), cx);
+                    d.patch_comments(
+                        &pr_id,
+                        |v| settle_posted_reply(v, &pending_id, Some(posted)),
+                        cx,
+                    );
                     d.live_comments.retain(|c| c.id != pid);
                     toast(ToastKind::Success, "Reply posted", cx);
                     cx.notify();
@@ -1161,10 +1227,14 @@ impl PrDetail {
         }
         self.saving = format!("del-{id}");
         let idc = id.to_string();
-        self.patch_comments(&pr_id, |mut v| {
-            v.retain(|c| !is_dropped_comment(c, &idc));
-            v
-        }, cx);
+        self.patch_comments(
+            &pr_id,
+            |mut v| {
+                v.retain(|c| !is_dropped_comment(c, &idc));
+                v
+            },
+            cx,
+        );
         self.live_comments.retain(|c| !is_dropped_comment(c, &idc));
         if self.editing_comment == id {
             self.editing_comment.clear();
@@ -1184,10 +1254,14 @@ impl PrDetail {
             let _ = d.update(cx, |d, cx| {
                 d.saving.clear();
                 let Some(updated) = updated.filter(|p| !p.id.is_empty()) else {
-                    d.patch_comments(&pr_id, |mut v| {
-                        v.extend(from_pr);
-                        v
-                    }, cx);
+                    d.patch_comments(
+                        &pr_id,
+                        |mut v| {
+                            v.extend(from_pr);
+                            v
+                        },
+                        cx,
+                    );
                     d.live_comments.extend(from_live);
                     cx.notify();
                     return;
@@ -1205,7 +1279,12 @@ impl PrDetail {
 
     /// `quoteReply`: a line note quotes into its thread's reply box, anything else into the
     /// conversation composer.
-    pub(crate) fn quote_reply(&mut self, c: &PrComment, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn quote_reply(
+        &mut self,
+        c: &PrComment,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.conversation_locked(cx) {
             return;
         }
@@ -1221,7 +1300,11 @@ impl PrDetail {
             + "\n\n";
         let root = if is_line_note(Some(c)) {
             let r = c.in_reply_to_id.trim();
-            if r.is_empty() { c.id.clone() } else { r.to_string() }
+            if r.is_empty() {
+                c.id.clone()
+            } else {
+                r.to_string()
+            }
         } else {
             String::new()
         };
@@ -1293,7 +1376,12 @@ impl PrDetail {
         recur_forge::github::comment_permalink(&url, &target)
     }
 
-    pub(crate) fn more_action(&mut self, a: MoreAction, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn more_action(
+        &mut self,
+        a: MoreAction,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let target = self.more_target(cx);
         let link = self.more_permalink(cx);
         self.close_more(cx);
@@ -1338,7 +1426,9 @@ impl PrDetail {
     }
 
     pub(crate) fn description(&self, cx: &App) -> Option<PrComment> {
-        self.thread_items(cx).into_iter().find(|c| c.kind == "description")
+        self.thread_items(cx)
+            .into_iter()
+            .find(|c| c.kind == "description")
     }
 
     pub(crate) fn start_edit_title(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -1369,7 +1459,12 @@ impl PrDetail {
         cx.notify();
     }
 
-    pub(crate) fn start_edit_comment(&mut self, c: &PrComment, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn start_edit_comment(
+        &mut self,
+        c: &PrComment,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.editing_comment = c.id.clone();
         self.comment.set(comment_source(Some(c)), window, cx);
         self.comment.focus(window, cx);
@@ -1466,11 +1561,18 @@ impl PrDetail {
                     next.body_md = body.clone();
                     *c = next;
                 };
-                d.patch_comments(&pr_id, |mut v| {
-                    v.iter_mut().filter(|c| c.id == id).for_each(fix);
-                    v
-                }, cx);
-                d.live_comments.iter_mut().filter(|c| c.id == id).for_each(fix);
+                d.patch_comments(
+                    &pr_id,
+                    |mut v| {
+                        v.iter_mut().filter(|c| c.id == id).for_each(fix);
+                        v
+                    },
+                    cx,
+                );
+                d.live_comments
+                    .iter_mut()
+                    .filter(|c| c.id == id)
+                    .for_each(fix);
                 d.editing_comment.clear();
                 toast(ToastKind::Success, "Comment updated", cx);
             });
@@ -1500,10 +1602,14 @@ impl PrDetail {
                 d.saving.clear();
                 cx.notify();
                 let Some(posted) = posted else { return };
-                d.patch_comments(&pr_id, |mut v| {
-                    v.push(posted);
-                    v
-                }, cx);
+                d.patch_comments(
+                    &pr_id,
+                    |mut v| {
+                        v.push(posted);
+                        v
+                    },
+                    cx,
+                );
                 d.ui.update(cx, |u, cx| u.set_composer_draft("", cx));
                 toast(ToastKind::Success, "Comment posted", cx);
             });
@@ -1573,7 +1679,12 @@ impl PrDetail {
             }
             return;
         }
-        if let Some(cached) = self.commit_cache.get(&hash).filter(|f| !f.is_empty()).cloned() {
+        if let Some(cached) = self
+            .commit_cache
+            .get(&hash)
+            .filter(|f| !f.is_empty())
+            .cloned()
+        {
             self.commit_gen += 1;
             self.select_first_commit_file(&cached);
             self.commit_files = Some(cached);
@@ -1689,7 +1800,8 @@ impl PrDetail {
             return;
         }
         let paths: Vec<String> = self.review_files(cx).into_iter().map(|f| f.path).collect();
-        let resolved = recur_code::view::finding_paths::match_finding_path(path, &paths).to_string();
+        let resolved =
+            recur_code::view::finding_paths::match_finding_path(path, &paths).to_string();
         if !resolved.is_empty() {
             self.set_tab(PrTab::Files, cx);
             self.select_path(&resolved, line, cx);
@@ -1718,10 +1830,17 @@ impl PrDetail {
     }
 
     /// `openInWorkspace(path, line?)`.
-    pub(crate) fn open_in_workspace(state: &Entity<AppState>, path: &str, line: Option<i64>, cx: &mut App) {
+    pub(crate) fn open_in_workspace(
+        state: &Entity<AppState>,
+        path: &str,
+        line: Option<i64>,
+        cx: &mut App,
+    ) {
         let ws = {
             let s = state.read(cx);
-            s.pr(&s.selected_pr_id).map(|p| p.workspace_id.clone()).unwrap_or_default()
+            s.pr(&s.selected_pr_id)
+                .map(|p| p.workspace_id.clone())
+                .unwrap_or_default()
         };
         if ws.is_empty() {
             return;
@@ -1825,7 +1944,12 @@ impl PrDetail {
     }
 
     /// The markdown body for a conversation row (`.cm-md`), kept per comment id.
-    pub(crate) fn md(&mut self, key: &str, body: &str, cx: &mut Context<Self>) -> Entity<MarkdownView> {
+    pub(crate) fn md(
+        &mut self,
+        key: &str,
+        body: &str,
+        cx: &mut Context<Self>,
+    ) -> Entity<MarkdownView> {
         if let Some(v) = self.mds.get(key) {
             v.update(cx, |v, cx| {
                 if v.text().as_ref() != body {
@@ -1843,10 +1967,16 @@ impl PrDetail {
         let sub = cx.subscribe(&v, move |_, _, ev: &MarkdownEvent, cx| match ev {
             MarkdownEvent::LightboxOpen(open) => {
                 let open = *open;
-                state.update(cx, |s, cx| s.set_chat_occluder("attachment-lightbox", open, cx));
+                state.update(cx, |s, cx| {
+                    s.set_chat_occluder("attachment-lightbox", open, cx)
+                });
             }
             MarkdownEvent::Toast { error, message } => {
-                let kind = if *error { ToastKind::Error } else { ToastKind::Info };
+                let kind = if *error {
+                    ToastKind::Error
+                } else {
+                    ToastKind::Info
+                };
                 toast(kind, message.clone(), cx);
             }
             MarkdownEvent::TextChanged => {}
@@ -1857,8 +1987,13 @@ impl PrDetail {
     }
 
     /// The reaction row for a conversation item.
-    pub(crate) fn reactions(&mut self, c: &PrComment, cx: &mut Context<Self>) -> Entity<CommentReactions> {
-        let can = recur_engine::view::comment_thread::can_react_pr_comment(self.pr(cx).as_ref(), Some(c));
+    pub(crate) fn reactions(
+        &mut self,
+        c: &PrComment,
+        cx: &mut Context<Self>,
+    ) -> Entity<CommentReactions> {
+        let can =
+            recur_engine::view::comment_thread::can_react_pr_comment(self.pr(cx).as_ref(), Some(c));
         if let Some(r) = self.rxns.get(&c.id) {
             r.update(cx, |r, cx| r.set(c.clone(), can, cx));
             return r.clone();
@@ -1880,7 +2015,9 @@ fn flush(state: &Entity<AppState>, ui: &Entity<PrUi>, cx: &mut App) {
     };
     if let Some(((ws, args), rest)) = run {
         ui.update(cx, |u, _| u.pending_fix_checks = rest);
-        state.update(cx, |s, cx| s.request_prompt_action(&ws, "fix-checks", &args, cx));
+        state.update(cx, |s, cx| {
+            s.request_prompt_action(&ws, "fix-checks", &args, cx)
+        });
     }
 }
 

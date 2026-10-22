@@ -7,8 +7,8 @@
 //! Ownership is per method (plan §2.4). E1 implements the loop-flow
 //! signals, E2 the chat, artifact, rename, permission, plan, skill and
 //! terminal tools, E3 the conductor hands, E4 switch_mode, create_workspace,
-//! the child tools and the Ask Recur briefing tools; every other method keeps
-//! the trait default (Go's `noopReporter`) until its slice adds it here.
+//! the child tools and the Ask Recur briefing tools, E5 `open_pr` and
+//! `send_back`.
 
 pub mod backfill;
 pub mod chat;
@@ -356,6 +356,27 @@ impl Host for EngineHost {
                 allow: false,
                 reason: "no permission broker is attached".into(),
             }),
+        }
+    }
+
+    async fn open_pr(
+        &self,
+        ws: &str,
+        _agent: &str,
+        title: &str,
+        body: &str,
+        draft: bool,
+    ) -> String {
+        match self.engine() {
+            Some(e) => e.open_pr_from_agent(ws, title, body, draft).await,
+            None => "ignored".into(),
+        }
+    }
+
+    async fn send_back(&self, ws: &str, _agent: &str, instruction: &str) -> String {
+        match self.engine() {
+            Some(e) => e.maestro_send_back(ws, instruction).await,
+            None => "ignored".into(),
         }
     }
 

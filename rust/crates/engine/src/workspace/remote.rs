@@ -1,12 +1,14 @@
 //! The main working copy against its remote (Go `workspace_remote.go`, E1
 //! half): fetch the tips the titlebar compares against, update from the
-//! tracking branch, and push. The open forge PR head fetch is E5's.
+//! tracking branch, and push. The open forge PR head fetch and the land
+//! state are E5's (`prs`).
 
 use std::time::Duration;
 
 use recur_domain::{
     UPDATE_WORKSPACE_AUTOSTASH, UPDATE_WORKSPACE_NOOP, UPDATE_WORKSPACE_UPDATED, UpdateBaseMethod,
-    UpdateWorkspaceResult, Workspace, effective_update_base_method, normalize_update_base_method,
+    UpdateWorkspaceResult, Workspace, WorkspaceLandState, effective_update_base_method,
+    normalize_update_base_method,
 };
 
 use crate::Engine;
@@ -16,16 +18,15 @@ use crate::text::html_escape;
 const REMOTE_OP_TIMEOUT: Duration = Duration::from_secs(60);
 
 impl Engine {
-    /// Refreshes the remote tips the titlebar compares against: the main
-    /// copy's tracking branch, a workspace's merge base, and an open forge
-    /// PR head. Best-effort, never an error. (Go returned the land state
-    /// too; that read is E5's `workspace_land_state`, which wraps this.)
-    pub async fn fetch_working_copy_upstream(&self, workspace_id: &str) {
+    /// Refreshes the remote tips the titlebar compares against (the main
+    /// copy's tracking branch, a workspace's merge base, an open forge PR
+    /// head) and returns the land state. Best-effort, never an error.
+    pub async fn fetch_working_copy_upstream(&self, workspace_id: &str) -> WorkspaceLandState {
         let Some(ws) = self.store.workspace(workspace_id) else {
-            return;
+            return self.workspace_land_state(workspace_id).await;
         };
         if ws.worktree_path.is_empty() || !recur_git::is_repo(&ws.worktree_path).await {
-            return;
+            return self.workspace_land_state(workspace_id).await;
         }
         if ws.is_main {
             let mgr = recur_git::Manager::new(&ws.worktree_path, &self.worktree_root);
@@ -35,10 +36,11 @@ impl Engine {
                 }
             })
             .await;
-            return;
+            return self.workspace_land_state(workspace_id).await;
         }
         self.fetch_workspace_merge_base(&ws).await;
         self.fetch_open_pr_remote(&ws).await;
+        self.workspace_land_state(workspace_id).await
     }
 
     async fn fetch_workspace_merge_base(&self, ws: &Workspace) {

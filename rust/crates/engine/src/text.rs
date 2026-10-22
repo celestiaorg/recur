@@ -18,6 +18,56 @@ pub fn html_escape(s: &str) -> String {
     out
 }
 
+/// Go `html.UnescapeString` for text the diff highlighter escaped: the
+/// five `html_escape` entities, `&quot;`/`&apos;`/`&nbsp;` and numeric
+/// references. Anything else stays literal.
+// simplify: not the full HTML5 named-entity table (recur-chroma keeps that
+// one crate-private); diff code HTML only ever carries the entities above.
+pub fn html_unescape(s: &str) -> String {
+    if !s.contains('&') {
+        return s.to_owned();
+    }
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(i) = rest.find('&') {
+        out.push_str(&rest[..i]);
+        rest = &rest[i..];
+        let Some(end) = rest[1..].find(';').map(|e| e + 1).filter(|&e| e <= 12) else {
+            out.push('&');
+            rest = &rest[1..];
+            continue;
+        };
+        let name = &rest[1..end];
+        let decoded = match name {
+            "amp" => Some('&'),
+            "lt" => Some('<'),
+            "gt" => Some('>'),
+            "quot" => Some('"'),
+            "apos" => Some('\''),
+            "nbsp" => Some('\u{a0}'),
+            _ => name.strip_prefix('#').and_then(|n| {
+                let v = match n.strip_prefix(['x', 'X']) {
+                    Some(h) => u32::from_str_radix(h, 16).ok(),
+                    None => n.parse().ok(),
+                }?;
+                Some(char::from_u32(v).unwrap_or('\u{fffd}'))
+            }),
+        };
+        match decoded {
+            Some(c) => {
+                out.push(c);
+                rest = &rest[end + 1..];
+            }
+            None => {
+                out.push('&');
+                rest = &rest[1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
 /// Go `time.Now().UnixNano()`.
 pub fn unix_nanos() -> i64 {
     std::time::SystemTime::now()

@@ -429,7 +429,7 @@ impl Engine {
     }
 
     /// The avatar resolver for Local PR people (the registered forge's).
-    fn local_pr_avatar(&self, login: &str, provided: &str) -> String {
+    pub(crate) fn local_pr_avatar(&self, login: &str, provided: &str) -> String {
         match self.forges.all().first() {
             Some(f) => f.avatar_url(login, provided, 56),
             None => provided.to_owned(),

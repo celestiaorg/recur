@@ -6,8 +6,9 @@
 //! [`bus`], the [`governor`], the chat concurrency kernel ([`chatlife`]), the
 //! loop control plane ([`loop_handle`], [`loop_registry`]), attention and the
 //! chat inbox, workspace lifecycle ([`workspace`]), the worktree watcher
-//! ([`fswatch`]), roles and guards, and the E1 [`host`] methods. Calls into
-//! later slices go through the named hook points in `deferred.rs`.
+//! ([`fswatch`]), roles and guards, and the E1 [`host`] methods. Later
+//! slices add the turn pipeline (E2), loops (E3), chat and coordination (E4)
+//! and pull requests with PR chat hosts ([`prs`], [`hoist`], E5).
 
 pub mod app_chat;
 pub mod artifacts;
@@ -23,11 +24,11 @@ pub mod codes;
 pub mod composer;
 mod core;
 mod deadline;
-mod deferred;
 pub mod feed;
 pub mod fswatch;
 pub mod governor;
 pub mod guard;
+pub mod hoist;
 pub mod host;
 pub mod lifecycle;
 pub mod loop_handle;
@@ -36,6 +37,7 @@ pub mod loops;
 pub mod mcp_attach;
 pub mod permissions;
 pub mod plan;
+pub mod prs;
 pub mod publish;
 pub mod registry;
 pub mod renames;
@@ -58,6 +60,8 @@ mod golden_e2_tests;
 mod golden_e3_tests;
 #[cfg(test)]
 mod golden_e4_tests;
+#[cfg(test)]
+mod golden_e5_tests;
 #[cfg(test)]
 mod golden_tests;
 

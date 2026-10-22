@@ -71,6 +71,7 @@ fn registry() -> ViewRegistry {
     recur_view_chat::register(&mut r);
     recur_view_review::register(&mut r);
     recur_view_observatory::register(&mut r);
+    recur_view_workspace::register(&mut r);
     r
 }
 

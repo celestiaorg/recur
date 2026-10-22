@@ -25,6 +25,13 @@ const BRIEFING_REFRESH_DELAY: Duration = Duration::from_millis(120);
 /// pruning cannot wipe them, and they never join `workspaces_running`.
 const APP_AGENTS_BUCKET: &str = "app";
 
+/// A backend event re-emitted after [`AppState::apply_event`] applied it, so a view's handler
+/// reads the updated stores (`agentsRunning` before `onAgent`), as api.ts's listeners did.
+#[derive(Clone, Debug)]
+pub struct AppliedEvent(pub AppEvent);
+
+impl gpui_kit::EventEmitter<AppliedEvent> for AppState {}
+
 /// An agent counts as running for the sidebar indicator while it is mid-turn.
 pub fn is_agent_running_status(status: &str) -> bool {
     matches!(status, "working" | "directing" | "planning" | "replanning")
@@ -852,7 +859,11 @@ impl AppState {
         self.event_bridge = Some(cx.spawn(
             async move |this: WeakEntity<AppState>, cx: &mut AsyncApp| {
                 while let Some(ev) = events.recv().await {
-                    if this.update(cx, |s, cx| s.apply_event(ev, cx)).is_err() {
+                    let applied = this.update(cx, |s, cx| {
+                        s.apply_event(ev.clone(), cx);
+                        cx.emit(AppliedEvent(ev));
+                    });
+                    if applied.is_err() {
                         break;
                     }
                 }

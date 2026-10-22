@@ -123,6 +123,8 @@ pub struct TriggerStyle {
     /// The value keeps its natural width (`flex: none`).
     pub value_auto: bool,
     pub auto_width: bool,
+    /// No value text (`.sel-val { display: none }`): the icon and chevron only.
+    pub hide_value: bool,
 }
 
 /// The select. Create with [`Select::new`] in an owning view, keep the entity, and render it.
@@ -297,6 +299,14 @@ impl Select {
         &self.values
     }
     /// Disabled, faded over the color it sits on.
+    /// Restyle the trigger as its context changes (a container width crossing a breakpoint).
+    pub fn set_trigger_style(&mut self, t: TriggerStyle, cx: &mut Context<Self>) {
+        if self.trigger != t {
+            self.trigger = t;
+            cx.notify();
+        }
+    }
+
     pub fn set_disabled(&mut self, backdrop: Option<Color>, cx: &mut Context<Self>) {
         self.disabled_over = backdrop;
         if backdrop.is_some() {
@@ -786,11 +796,13 @@ impl Render for Select {
         if let Some(c) = first.as_ref().and_then(|o| o.tint) {
             val = val.color(c);
         }
-        button = button.child(if self.ghost || tr.value_auto {
-            div().flex_none().child(val)
-        } else {
-            div().flex_1().min_w_0().child(val)
-        });
+        if !tr.hide_value {
+            button = button.child(if self.ghost || tr.value_auto {
+                div().flex_none().child(val)
+            } else {
+                div().flex_1().min_w_0().child(val)
+            });
+        }
         // Chevron: `sm` uses chevrons-up-down and never rotates; otherwise chevron-down rotates
         // 180° over .12s when open. `.sel.ghost .sel-chev` (11px) comes after `.sel.sm`'s 12px.
         let chev_size = tr.chevron_size.unwrap_or(if self.ghost {

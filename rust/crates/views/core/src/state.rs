@@ -93,6 +93,14 @@ pub struct ObsJump {
     pub prefer_diff: bool,
 }
 
+/// A jump into PR detail's diff (`prDiffJump`): the PR chat host's transcript chips open
+/// files there instead of in the Observatory.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PrDiffJump {
+    pub file: String,
+    pub line: u32,
+}
+
 /// The Approve / Request changes modal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrReviewKind {
@@ -319,6 +327,8 @@ pub struct AppState {
     /// Active Settings pane (survives leaving Settings).
     pub settings_section: String,
     pub observatory_jump: Option<ObsJump>,
+    /// Consumed by PR detail's Files tab.
+    pub pr_diff_jump: Option<PrDiffJump>,
     /// One-shot: WorkspaceView selects this agent tab when the workspace lands.
     pub pending_chat_focus: Option<ChatRef>,
     /// The chat tab on screen.
@@ -459,6 +469,7 @@ impl AppState {
             briefing_focus: String::new(),
             settings_section: "general".into(),
             observatory_jump: None,
+            pr_diff_jump: None,
             pending_chat_focus: None,
             focused_chat: None,
             pr_agent_dock_open: true,

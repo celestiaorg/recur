@@ -6751,6 +6751,7 @@ dependencies = [
  "recur-view-core",
  "recur-view-observatory",
  "recur-view-review",
+ "recur-view-workspace",
  "serde_json",
  "tokio",
  "tracing",
@@ -7374,6 +7375,40 @@ dependencies = [
  "recur-services",
  "recur-ui",
  "recur-view-core",
+]
+
+[[package]]
+name = "recur-view-workspace"
+version = "0.0.0"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "futures",
+ "gpui-kit",
+ "gpui-pre",
+ "parking_lot",
+ "pretty_assertions",
+ "recur-agent",
+ "recur-app",
+ "recur-bundles",
+ "recur-content",
+ "recur-domain",
+ "recur-editor",
+ "recur-engine",
+ "recur-services",
+ "recur-terminal-view",
+ "recur-textmate",
+ "recur-ui",
+ "recur-view-chat",
+ "recur-view-core",
+ "recur-view-observatory",
+ "recur-view-review",
+ "recur-view-workspace",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

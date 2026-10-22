@@ -857,6 +857,11 @@ fn break_lines(
     let mut i = 0;
     while i < opportunities.len() {
         let (pos, kind) = opportunities[i];
+        // An overlong split can end exactly at this opportunity: nothing is left before it.
+        if pos <= start {
+            i += 1;
+            continue;
+        }
         let w = para.width(text, start..pos);
         if w <= max + eps {
             if kind == BreakOpportunity::Mandatory {
@@ -1886,6 +1891,41 @@ mod tests {
         assert_eq!(p.line_start(3), 13.);
         assert_eq!(p.width("ab cd", 3..5), 22.);
         assert_eq!(p.line_start(4), 24.);
+    }
+
+    #[test]
+    fn breaking_anywhere_never_inverts_a_range_at_an_inline_box() {
+        // "every `id`/`ids` is": the box over "ids" opens at byte 41 and brings 8px of
+        // padding, so an empty range there is wider than a near-zero probe width.
+        let text = "every id/ids is";
+        let mut x = 0.;
+        let mut edges = Vec::new();
+        let mut box_starts = Vec::new();
+        for i in 0..=text.len() {
+            if i == 9 {
+                box_starts.push((i, x));
+                x += 8.;
+            }
+            edges.push((i, x));
+            x += 6.;
+        }
+        let p = Para {
+            range: 0..text.len(),
+            edges,
+            glyphs: Vec::new(),
+            boxes: Vec::new(),
+            box_starts,
+        };
+        for max in [0., 0.5, 3., 7.] {
+            let lines = break_lines(&p, 0, text, Some(max), true, 0.25);
+            let mut at = 0;
+            for l in &lines {
+                assert!(l.range.start <= l.range.end, "{:?} at max {max}", l.range);
+                assert_eq!(l.range.start, at, "lines must tile the text at max {max}");
+                at = l.range.end;
+            }
+            assert_eq!(at, text.len());
+        }
     }
 
     #[test]

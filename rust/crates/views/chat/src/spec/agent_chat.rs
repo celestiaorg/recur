@@ -49,13 +49,9 @@ fn blocks(h: &mut H) -> Vec<Block> {
 
 #[gpui::test]
 async fn plain_notices_stay_escaped_engine_wrap_facts_render_html(cx: &mut TestAppContext) {
-    let mut h = boot(
-        cx,
-        MockOptions::default(),
+    let mut h = boot(cx, MockOptions::default(),
         readonly(),
-        ChatHooks::default(),
-        false,
-    );
+        ChatHooks::default());
     h.set_messages(vec![note(
         "Subagent",
         "fix <img src=x onerror=alert(1)> (child-1)",
@@ -84,13 +80,9 @@ async fn plain_notices_stay_escaped_engine_wrap_facts_render_html(cx: &mut TestA
 
 #[gpui::test]
 async fn subagent_notices_fold_into_the_following_steps_group(cx: &mut TestAppContext) {
-    let mut h = boot(
-        cx,
-        MockOptions::default(),
+    let mut h = boot(cx, MockOptions::default(),
         readonly(),
-        ChatHooks::default(),
-        false,
-    );
+        ChatHooks::default());
     h.set_messages(vec![
         note("Subagent", "Goal finished (child-1)", false, 1),
         tool("Read", "a.ts", "ok", 2),
@@ -173,13 +165,9 @@ fn log(l: ChatLog) -> AgentMsg {
 async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(
     cx: &mut TestAppContext,
 ) {
-    let mut h = boot(
-        cx,
-        MockOptions::default(),
+    let mut h = boot(cx, MockOptions::default(),
         readonly(),
-        ChatHooks::default(),
-        false,
-    );
+        ChatHooks::default());
     let vcx = h
         .host
         .read_with(h.cx, |host, cx| recur_view_core::ViewContext {
@@ -236,13 +224,9 @@ async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(
 
 #[gpui::test]
 async fn final_reply_stays_visible_when_compaction_follows_the_turn(cx: &mut TestAppContext) {
-    let mut h = boot(
-        cx,
-        MockOptions::default(),
+    let mut h = boot(cx, MockOptions::default(),
         readonly(),
-        ChatHooks::default(),
-        false,
-    );
+        ChatHooks::default());
     let reply = "Check-in only renders when Apollo Sync returns one.";
     h.set_messages(vec![
         AgentMsg {

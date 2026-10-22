@@ -1,26 +1,23 @@
-//! The shell with the chat's overlays registered: `loop-lifecycle.spec.ts` (the workspace
-//! titlebar's Remove) and the floating permission card, ask toast, Stop palette and
-//! typeahead overlays.
+//! The shell with the chat's overlays registered: the floating permission card, ask toast,
+//! Stop palette and typeahead overlays. (`loop-lifecycle.spec.ts` is the workspace view's.)
 
 use std::sync::Arc;
 
-use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext};
+use gpui::{Entity, TestAppContext, VisualTestContext};
 use gpui_kit::{AppContext as _, Focusable};
 use recur_app::gallery::scene_seed;
 use recur_app::{Shell, ShellOptions};
 use recur_services::mock::{MockBridge, MockOptions};
 use recur_ui::widgets::ToastStore;
-use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
+use recur_view_core::{AppState, LocalStorage, ViewContext, ViewRegistry};
 use serde_json::json;
 
 use super::harness::init;
 
-const SETTLED: &str = "LOOP-2224";
 const RUNNING: &str = "LOOP-2229";
 
 struct S<'a> {
     state: Entity<AppState>,
-    bridge: Arc<MockBridge>,
     cx: &'a mut VisualTestContext,
 }
 
@@ -44,7 +41,7 @@ fn boot(cx: &mut TestAppContext, opts: MockOptions) -> S<'_> {
         let f = shell.focus_handle(cx);
         window.focus(&f, cx);
     });
-    let mut s = S { state, bridge, cx };
+    let mut s = S { state, cx };
     s.settle();
     s
 }
@@ -67,17 +64,6 @@ impl S<'_> {
         self.cx.debug_bounds(leak(sel)).is_some()
     }
 
-    fn click(&mut self, sel: &str) {
-        self.settle();
-        let p = self
-            .cx
-            .debug_bounds(leak(sel))
-            .unwrap_or_else(|| panic!("no element {sel}"))
-            .center();
-        self.cx.simulate_mouse_move(p, None, Modifiers::none());
-        self.cx.simulate_click(p, Modifiers::none());
-        self.settle();
-    }
 
     fn open(&mut self, id: &str) {
         let id = id.to_string();
@@ -86,25 +72,8 @@ impl S<'_> {
         self.settle();
     }
 
-    fn view(&mut self) -> ViewName {
-        self.state.read_with(self.cx, |s, _| s.view)
-    }
 
-    /// Still listed (not archived) on the backend.
-    fn present(&mut self, id: &str) -> bool {
-        self.bridge
-            .with_seed(|s| s.loop_by_id(id).is_some_and(|l| l["archived"] != true))
-    }
 
-    fn agent(&mut self, ws: &str, status: &str) {
-        self.bridge
-            .dispatch_wire(
-                "agent.updated",
-                json!({"workspaceId": ws, "agentId": format!("{ws}-MA"), "status": status}),
-            )
-            .unwrap();
-        self.settle();
-    }
 
     fn toasts(&mut self) -> Vec<String> {
         self.cx.update(|_, cx| {
@@ -116,66 +85,6 @@ impl S<'_> {
                 .collect()
         })
     }
-}
-
-// ---- loop-lifecycle.spec.ts ----
-
-#[gpui::test]
-async fn a_settled_loop_offers_remove_a_running_loop_shows_it_disabled(cx: &mut TestAppContext) {
-    let mut s = boot(cx, MockOptions::default());
-    s.open(SETTLED);
-    assert!(s.has("tb-remove"));
-    s.open(RUNNING);
-    assert!(s.has("tb-remove"));
-    s.click("tb-remove");
-    s.click("tb-remove");
-    assert!(s.present(RUNNING), "a disabled Remove never confirms");
-    assert_eq!(s.view(), ViewName::Detail);
-}
-
-#[gpui::test]
-async fn an_armed_remove_disarms_when_an_agent_turn_starts(cx: &mut TestAppContext) {
-    let mut s = boot(cx, MockOptions::default());
-    s.open(SETTLED);
-    s.click("tb-remove");
-    s.agent(SETTLED, "working");
-    s.click("tb-remove");
-    assert!(s.present(SETTLED), "disabled while the turn runs");
-    s.agent(SETTLED, "idle");
-    s.click("tb-remove");
-    assert!(
-        s.present(SETTLED),
-        "the turn disarmed it: this click only arms again"
-    );
-}
-
-#[gpui::test]
-async fn remove_requires_a_second_click_then_hides_the_loop_and_returns_to_inbox(
-    cx: &mut TestAppContext,
-) {
-    let mut s = boot(cx, MockOptions::default());
-    s.open(SETTLED);
-    s.click("tb-remove");
-    assert!(s.present(SETTLED));
-    s.click("tb-remove");
-    assert!(s.toasts().iter().any(|t| t == "Workspace removed"));
-    assert_eq!(s.view(), ViewName::Briefing);
-    assert!(!s.present(SETTLED));
-}
-
-#[gpui::test]
-async fn remove_confirms_on_a_double_click(cx: &mut TestAppContext) {
-    let mut s = boot(cx, MockOptions::default());
-    s.open(SETTLED);
-    s.settle();
-    let p = s.cx.debug_bounds("tb-remove").expect("remove").center();
-    s.cx.simulate_mouse_move(p, None, Modifiers::none());
-    s.cx.simulate_click(p, Modifiers::none());
-    s.cx.simulate_click(p, Modifiers::none());
-    s.settle();
-    assert!(s.toasts().iter().any(|t| t == "Workspace removed"));
-    assert_eq!(s.view(), ViewName::Briefing);
-    assert!(!s.present(SETTLED));
 }
 
 // ---- the chat overlays in the shell ----

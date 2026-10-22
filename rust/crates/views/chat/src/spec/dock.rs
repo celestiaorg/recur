@@ -1,5 +1,6 @@
-//! `maestro-dock.spec.ts` and `loading-states.spec.ts` (the chat halves; the dock's panel
-//! placement is the workspace view's), and Ask Recur (`AppChat.svelte`).
+//! The chat halves of `maestro-dock.spec.ts` and `loading-states.spec.ts` (the dock's routing
+//! and panel placement are the workspace view's, specced there), and Ask Recur
+//! (`AppChat.svelte`).
 
 use std::sync::Arc;
 
@@ -10,58 +11,11 @@ use recur_engine::view::loop_cockpit::merge_loop_cockpit;
 use recur_services::mock::{MockBridge, MockOptions, Release, Reply};
 use recur_view_core::prefs::{CodePanelKey, PanelLayout, PanelSide};
 use recur_view_core::{AppState, LocalStorage, ViewContext};
-use serde_json::{Value, json};
+use serde_json::json;
 
 use super::harness::*;
 use crate::app_chat::{ACTIVE_KEY, APP, AppChat};
 use crate::session_feed::SessionFeed;
-
-fn echo_opts(store: Store) -> MockOptions {
-    let s2 = store.clone();
-    MockOptions::default()
-        .resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])))
-        .resolver("SendWorkspaceMessage", move |a, _, _| {
-            let mut st = store.lock();
-            let list = st.entry("MA".into()).or_default();
-            list.push(json!({"role": "user", "kind": "text", "text": a[2]}));
-            list.push(json!({"role": "assistant", "kind": "text", "text": "On it — steering the loop (mock reply)."}));
-            Reply::value(json!("On it — steering the loop (mock reply)."))
-        })
-        .resolver("WorkspaceChatItems", move |_, _, _| Reply::value(Value::Array(s2.lock().get("MA").cloned().unwrap_or_default())))
-}
-
-#[gpui::test]
-async fn the_dock_opens_with_the_loop_tab_sends_a_message_and_toggles_closed(
-    cx: &mut TestAppContext,
-) {
-    let mut h = boot(
-        cx,
-        echo_opts(Store::default()),
-        ws_props(),
-        ws_hooks(),
-        true,
-    );
-    assert!(h.has("chat-composer"));
-    assert_eq!(h.read(|c| c.props.agent_code.clone()), "MA");
-    h.fill("steer from dock");
-    h.click("chat-send");
-    assert!(h.me("steer from dock"));
-    assert!(h.assistant("On it — steering the loop (mock reply)."));
-    h.remount();
-    assert!(h.has("chat-composer"));
-    assert!(h.me("steer from dock"));
-}
-
-#[gpui::test]
-async fn hiding_the_left_panel_still_works_after_visiting_the_linked_pr(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks(), true);
-    assert!(h.has("chat-composer"));
-    // The PR's agent dock hosts the same chat under its own key, then the workspace again.
-    h.host(|h, cx| h.switch_ws("LOOP-2231-pr", cx));
-    h.host(|h, cx| h.switch_ws(WS, cx));
-    h.remount();
-    assert!(h.has("chat-composer"));
-}
 
 #[test]
 fn the_chat_panel_can_open_on_the_right_when_configured() {
@@ -93,7 +47,7 @@ async fn the_loop_chat_renders_session_cards_once_the_delayed_fetch_resolves(
             r
         })
         .resolver("WorkspaceFacts", |_, _, _| Reply::value(json!([])));
-    let mut h = boot(cx, opts, ws_props(), ws_hooks(), true);
+    let mut h = boot(cx, opts, ws_props(), ws_hooks());
     let services = h.bridge.services();
     let feed = h.cx.update(|_, cx| cx.new(|_| SessionFeed::new(services)));
     feed.update(h.cx, |f, cx| f.attach(WS, "MA", cx));

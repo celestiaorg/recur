@@ -236,10 +236,11 @@ impl FileStack {
             .files
             .iter()
             .filter_map(|f| {
+                // `offsetTop` / `offsetHeight`: pixel-snapped edges.
                 cards.bounds.get(&f.path).map(|&(top, h)| CardRange {
                     path: f.path.clone(),
-                    top: top - base,
-                    bottom: top - base + h,
+                    top: (top - base).round(),
+                    bottom: (top - base + h).round(),
                 })
             })
             .collect();
@@ -310,8 +311,7 @@ impl FileStack {
         if let Some((path, passes)) = self.pending_select.take() {
             let ranges = self.ranges();
             if let Some(r) = ranges.iter().find(|r| r.path == path) {
-                // `scrollTo({ top: el.offsetTop })`: offsetTop is a whole pixel.
-                self.pane.set_scroll_top(r.top.round());
+                self.pane.set_scroll_top(r.top);
                 if passes > 1 {
                     self.pending_select = Some((path, passes - 1));
                 } else {

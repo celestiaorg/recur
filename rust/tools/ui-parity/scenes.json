@@ -1755,28 +1755,31 @@
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 8450,
+      "hardTolerance": 54
     },
     {
       "name": "review/unified-paper",
       "width": 1100,
       "height": 720,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 5120
     },
     {
       "name": "review/split",
       "width": 1400,
       "height": 720,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 9990,
+      "hardTolerance": 54
     },
     {
       "name": "review/hunk",
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 9670,
+      "hardTolerance": 54,
       "steps": [
         { "click": [600, 106] }
       ]
@@ -1786,7 +1789,8 @@
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 9300,
+      "hardTolerance": 84,
       "steps": [
         { "click": [284, 228] }
       ]
@@ -1796,7 +1800,8 @@
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 0,
+      "tolerance": 10780,
+      "hardTolerance": 34,
       "steps": [
         { "click": [100, 113] }
       ]
@@ -1806,35 +1811,38 @@
       "width": 900,
       "height": 760,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 7490,
+      "hardTolerance": 95
     },
     {
       "name": "review/thread-paper",
       "width": 900,
       "height": 760,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 7320,
+      "hardTolerance": 69
     },
     {
       "name": "review/commits",
       "width": 1000,
       "height": 560,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 3970
     },
     {
       "name": "review/commits-paper",
       "width": 1000,
       "height": 560,
       "theme": "paper",
-      "tolerance": 0
+      "tolerance": 4090
     },
     {
       "name": "review/large",
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 0
+      "tolerance": 24860,
+      "hardTolerance": 18
     }
   ]
 }

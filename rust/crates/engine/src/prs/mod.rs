@@ -8,6 +8,7 @@
 //! forge's `label()`, refspecs come from `head_ref`, and comment ids, merge
 //! plans and API calls stay inside the forge.
 
+pub mod base_branch;
 pub mod forge_glue;
 pub mod from_pr;
 pub mod holds;
@@ -15,6 +16,7 @@ pub mod linking;
 pub mod merge;
 pub mod ops;
 pub mod refresh;
+pub mod rework;
 pub mod sync;
 pub mod workspace;
 

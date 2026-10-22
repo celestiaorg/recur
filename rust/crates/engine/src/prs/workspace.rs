@@ -1185,3 +1185,88 @@ impl Engine {
         );
     }
 }
+
+/// The `open_pr` tool result: what opened or got pushed, and why a
+/// requested forge PR fell back to Local (the forge's command output only).
+pub fn format_open_pr_tool_result(
+    pr: &Pr,
+    forge_label: &str,
+    want_forge: bool,
+    had_open: bool,
+    was_local: bool,
+    fail_diag: &str,
+) -> String {
+    if pr.source != PrSource::Local {
+        let kind = if pr.draft {
+            format!("{forge_label} draft PR")
+        } else {
+            format!("{forge_label} PR")
+        };
+        if was_local {
+            return format!("Opened {kind} #{} (promoted from Local).", pr.number);
+        }
+        if had_open {
+            return format!(
+                "Pushed new commits to {forge_label} PR #{} (description unchanged).",
+                pr.number
+            );
+        }
+        return format!("Opened {kind} #{}.", pr.number);
+    }
+    let fail = hard_truncate_runes(fail_diag.trim(), 240);
+    let n = pr.number;
+    match (had_open, want_forge, fail.is_empty()) {
+        (true, true, false) => {
+            format!("PR #{n} is already open (Local). {forge_label} create failed ({fail}) — retry Open PR.")
+        }
+        (true, true, true) => {
+            format!("PR #{n} is already open (Local). {forge_label} create failed — retry Open PR.")
+        }
+        (true, false, _) => format!("PR #{n} is already open (Local)."),
+        (false, true, false) => {
+            format!("Opened Local PR #{n} ({forge_label} create failed: {fail} — retry Open PR).")
+        }
+        (false, true, true) => {
+            format!("Opened Local PR #{n} ({forge_label} create failed — retry Open PR).")
+        }
+        (false, false, _) => format!("Opened Local PR #{n}."),
+    }
+}
+
+impl Engine {
+    /// The agent's `open_pr` tool: opens or syncs the workspace PR and
+    /// reports it in the tool result.
+    pub async fn open_pr_from_agent(&self, workspace_id: &str, title: &str, body: &str, draft: bool) -> String {
+        let existing = self.store.pr_by_workspace(workspace_id);
+        let had_open = existing
+            .as_ref()
+            .is_some_and(|p| p.state != "Merged" && p.group != "merged");
+        let was_local = had_open && existing.as_ref().is_some_and(|p| p.source == PrSource::Local);
+        let (id, fail) = match self
+            .open_workspace_pr_inner(workspace_id, title, body, draft, false)
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => return format!("open_pr: {e}"),
+        };
+        let Some(pr) = self.store.pr(&id) else {
+            return format!("Opened PR {id}.");
+        };
+        let proj = self
+            .store
+            .workspace(workspace_id)
+            .and_then(|ws| self.store.project(&ws.project_id));
+        let want_forge = proj.as_ref().is_some_and(|p| p.pr_on_github);
+        let repo = proj.map(|p| p.repo_path).unwrap_or_default();
+        let forge = match self.pr_forge(&pr) {
+            Some(f) => Some(f),
+            None => self.project_forge(&repo).await,
+        };
+        let label = forge.as_ref().map_or("", |f| f.label()).to_owned();
+        let diag = match (&forge, fail.trim().is_empty()) {
+            (Some(f), false) => f.failure_diag(fail.trim()),
+            _ => fail.trim().to_owned(),
+        };
+        format_open_pr_tool_result(&pr, &label, want_forge, had_open, was_local, &diag)
+    }
+}

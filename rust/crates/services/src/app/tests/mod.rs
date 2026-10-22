@@ -6,8 +6,10 @@
 mod assets;
 mod code_service;
 mod editor_session;
+mod observatory;
 mod open_path;
 mod services;
+mod settings;
 mod shell;
 mod workspace_base;
 mod workspace_create;

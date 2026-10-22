@@ -9,12 +9,12 @@ use gpui_kit::{
     px,
 };
 use recur_domain::PendingLineComment;
+use recur_ui::exact::vgap;
+use recur_ui::fonts::Family;
 use recur_ui::fonts::weight;
 use recur_ui::shadow::with_shadow;
-use recur_ui::style::{
-    self, MODAL_SHADOW, button_label, esc_key, modal_panel, modal_scrim, primary_button,
-};
-use recur_ui::text::{TextStyled, text};
+use recur_ui::style::{self, MODAL_SHADOW, button_label, modal_panel, modal_scrim, primary_button};
+use recur_ui::text::{TextStyled, strut_metrics, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerStyle};
 use recur_ui::{IconName, LineHeight, Theme, icon};
@@ -354,6 +354,32 @@ impl PrReviewModal {
     }
 }
 
+/// `.nt-x .esc`: an inline span in the close button, so its box is the 9.5px system font's
+/// content area plus padding and border, set on the button's 11px Inter strut by baseline.
+fn esc_hint(hovered: bool, window: &Window, cx: &App) -> gpui_kit::Div {
+    let t = Theme::of(cx).tokens;
+    let strut = strut_metrics(&Family::Ui, 11., LineHeight::Normal, window);
+    let m = strut_metrics(&Family::System, 9.5, LineHeight::Normal, window);
+    let content = m.ascent + m.descent;
+    let top = strut.baseline - m.ascent - 3.;
+    div().h(px(strut.height)).child(
+        div()
+            .relative()
+            .top(px(top))
+            .border(px(1.))
+            .border_color(hsla(if hovered { t.line_bright } else { t.line }))
+            .rounded(px(4.))
+            .py(px(2.))
+            .px(px(6.))
+            .child(
+                recur_ui::kbd::kbd("esc")
+                    .size(9.5)
+                    .line_height(LineHeight::Px(content))
+                    .color(if hovered { t.muted } else { t.faint }),
+            ),
+    )
+}
+
 impl Render for PrReviewModal {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let Some(kind) = self.kind(cx) else {
@@ -392,7 +418,7 @@ impl Render for PrReviewModal {
                 cx.notify();
             }))
             .on_click(cx.listener(|m, _, _, cx| m.close(cx)))
-            .child(esc_key(self.hover_x, cx));
+            .child(esc_hint(self.hover_x, window, cx));
         let head = div()
             .flex()
             .flex_none()
@@ -425,6 +451,10 @@ impl Render for PrReviewModal {
                 .gap(px(6.))
                 .max_h(px(168.))
                 .overflow_y_scroll();
+            let strut = strut_metrics(&Family::Ui, 13., LineHeight::Scale(1.45), window);
+            let loc_m = strut_metrics(&Family::Mono, 11., LineHeight::Normal, window);
+            let above = strut.baseline.max(loc_m.baseline);
+            let below = (strut.height - strut.baseline).max(loc_m.height - loc_m.baseline);
             for (i, pc) in pending.iter().enumerate() {
                 let label = comment_hunk_path_label(&pc.file, pc.line, pc.start_line, false);
                 let (loc_f, del_f) = (self.loc_focus[i].clone(), self.del_focus[i].clone());
@@ -447,9 +477,13 @@ impl Render for PrReviewModal {
                     .group("pr-rev-loc")
                     .on_click(cx.listener(move |m, _, _, cx| m.jump_to_pending(&pj, cx)))
                     .child(
-                        div()
-                            .group_hover("pr-rev-loc", |s| s.underline())
-                            .child(text(label).mono().size(11.).color(t.amber)),
+                        div().group_hover("pr-rev-loc", |s| s.underline()).child(
+                            text(label)
+                                .mono()
+                                .size(11.)
+                                .line_height(LineHeight::Normal)
+                                .color(t.amber),
+                        ),
                     )
                     .when(loc_ring, |d| d.child(style::focus_ring(4., 0., cx)));
                 let loc = titled(
@@ -457,7 +491,15 @@ impl Render for PrReviewModal {
                     "View in Files changed",
                     loc,
                 );
-                let main = div().flex_1().min_w_0().child(loc).child(
+                // `display: inline`: the button sits on the body's strut, baseline to baseline.
+                let line = div()
+                    .flex()
+                    .flex_col()
+                    .items_start()
+                    .child(vgap(above - loc_m.baseline, window))
+                    .child(loc)
+                    .child(vgap(below - (loc_m.height - loc_m.baseline), window));
+                let main = div().flex_1().min_w_0().child(line).child(
                     div().mt(px(3.)).child(
                         text(pc.body.clone())
                             .size(12.5)

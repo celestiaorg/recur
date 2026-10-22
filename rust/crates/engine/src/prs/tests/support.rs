@@ -19,8 +19,14 @@ pub struct Px {
 
 impl Px {
     pub fn new() -> Self {
+        Self::with(None)
+    }
+
+    /// Turns go to `provider` (`None` fails them closed).
+    pub fn with(provider: Option<Arc<dyn recur_agent::Provider>>) -> Self {
         let forge = Arc::new(FakeForge::new());
         let te = TestEngine::with(TestOptions {
+            provider,
             forges: vec![forge.clone()],
             ..TestOptions::default()
         });
@@ -169,4 +175,26 @@ pub fn ws(id: &str, branch: &str) -> Workspace {
         branch: branch.into(),
         ..Workspace::default()
     }
+}
+
+/// Go `initCloneWithPullHead`: a clone whose origin carries `branch` only
+/// as `refs/pull/<number>/head`.
+pub fn clone_with_pull_head(number: i64, branch: &str) -> (Keep, String) {
+    let seed = init_repo();
+    git(&seed.path, &["checkout", "-b", branch]);
+    std::fs::write(Path::new(&seed.path).join("pr.txt"), "pr head\n").unwrap();
+    git(&seed.path, &["add", "."]);
+    git(&seed.path, &["commit", "-m", "pr head"]);
+    let sha = crate::testing::git_out(&seed.path, &["rev-parse", "HEAD"]).unwrap();
+    git(&seed.path, &["checkout", "main"]);
+    let dirs: Vec<tempfile::TempDir> = (0..3).map(|_| tempfile::tempdir().unwrap()).collect();
+    let bare = dirs[0].path().join("upstream.git").to_string_lossy().into_owned();
+    let cwd = dirs[1].path().to_string_lossy().into_owned();
+    git(&cwd, &["clone", "--bare", &seed.path, &bare]);
+    let clone = dirs[2].path().join("work").to_string_lossy().into_owned();
+    git(&cwd, &["clone", &bare, &clone]);
+    git(&clone, &["push", "origin", &format!("{}:refs/pull/{number}/head", sha.trim())]);
+    let mut keep: Vec<Box<dyn std::any::Any + Send>> = vec![Box::new(seed)];
+    keep.extend(dirs.into_iter().map(|d| Box::new(d) as Box<dyn std::any::Any + Send>));
+    (Keep(keep), clone)
 }

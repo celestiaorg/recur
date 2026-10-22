@@ -368,7 +368,7 @@ impl Engine {
 
     /// Stamps an open PR onto the land state so the titlebar can switch to
     /// View PR / Pull updates / Push updates.
-    async fn attach_open_pr_land(
+    pub(crate) async fn attach_open_pr_land(
         &self,
         st: &mut WorkspaceLandState,
         workspace_id: &str,

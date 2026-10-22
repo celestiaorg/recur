@@ -6,4 +6,5 @@
 //! [`recur_forge::testing::FakeForge`] handlers.
 
 mod support;
+mod linking;
 mod sync;

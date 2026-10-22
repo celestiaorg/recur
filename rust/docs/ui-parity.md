@@ -88,6 +88,15 @@ The `chat` list in `scenes.json` holds the agent chat (`chat/…`) over the fixt
 
 Scenes: the empty chat; a finished turn with a file chip, a thought, tool calls with results (group opened by a click), markdown with a fence, a list, a link and the turn footer, in `default` and `paper`; a reply streaming mid-turn with the turn clock; inline permission, question, plan and fan-out cards; the composer with file chips and the `/` menu open; each mode's composer toolbar (`ask`, `plan`, `agent`, `review`, `loop`, and `agent` in `paper`); the model picker open; and Ask Recur in `default` and `paper`.
 
+## Review scenes
+
+The `review` list in `scenes.json` holds the review surface (`review/…`) over the fixtures in `rust/tools/ui-parity/content/review.json`: base, working and commit diffs, dirty paths, findings, commits, and replies added to PR #482's seeded thread.
+
+- **Reference.** `web/scenes/Review.svelte` mounts `ReviewSurface` as the Observatory does (`capture.spec.ts` answers `DiffVsBase`, `DiffWorking`, `ListCommits` and `CommitDiff` from the fixtures), and for the thread scenes a PR-mode `DiffFile` inside PR detail's files pane (`.prpane > .diffwrap > .diffscroll > .cfile`) with PR #482 selected. The large scene generates its 40 files the way `recur_view_review::gallery::large_files` does.
+- **Candidate.** `recur_view_review::gallery` (feature `gallery`) builds the same `ReviewSurface` or a `FileStack` with one card over `MockBridge::fresh`, with the same local storage (`recur.prDiffLayout`, `recur.reviewFileListMode`).
+
+Scenes: the unified stack with the tree file list, findings and dirty marks in `default` and `paper`; split layout; a collapsed hunk (clicked); a collapsed card (clicked); the flat file list after selecting a file (a stuck card header, the list's reveal); a line-note thread with replies and reactions in `default` and `paper`; the commits tab with its uncommitted row in `default` and `paper`; and a 40-file mixed-size diff windowed into stubs and hydrated cards.
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -119,7 +128,7 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 - **Editor code text.** The editor's content is a custom element that shapes and paints lines through GPUI's text system (as CodeMirror owns its DOM); its chrome (panels, tooltips, the vim panel) goes through recur-ui text. Glyph rasterization differences in code count as text.
 - **Synthetic italics.** WebKit's synthetic-oblique glyphs and CoreGraphics' differ on a couple of edge pixels per italic glyph run (the slanted top of an `i` dot, a `t` bar); every skew construction, angle and snapping variant tried leaves those pixels as they are or moves more of them. Counted as anti-aliasing (max 18 levels).
 - **Frosted terminal cells.** With transparent cells (the maximized dock on a dark palette) the canvas is composited over the frosted dock, which the grid cannot read, so glyph edges miss the backdrop light described above. Opaque palettes are exact.
-- **Sticky headers.** GPUI has no `position: sticky`. The sidebar lays its tree out from fixed row heights and paints group and project headers in an absolute layer at their sticky positions, with the `::before` full-bleed band and `::after` under-fade as separate elements; the bottom `mask-image` fade is a rail-colored gradient over the scrollport (identical over the rail's opaque background).
+- **Sticky headers.** GPUI has no `position: sticky`. The review stack paints a card's stuck `.df-head` in an absolute layer inside the card, and the review file list lays its rows out from fixed heights with folder rows in a sticky layer. The sidebar lays its tree out from fixed row heights and paints group and project headers in an absolute layer at their sticky positions, with the `::before` full-bleed band and `::after` under-fade as separate elements; the bottom `mask-image` fade is a rail-colored gradient over the scrollport (identical over the rail's opaque background).
 - **Pointer events during transitions.** A collapsing rail slides out over 160ms; WebKit stops hit-testing it at once (`pointer-events: none`), GPUI keeps it hit-testable until it is gone. No scene or test depends on that window.
 - **Overlay scroller.** The tab strip's `scrollbar-width: thin` scroller follows macOS overlay scrollers: it shows only after wheel scrolling, so programmatic reveals do not flash it.
 
@@ -144,6 +153,8 @@ Every other scene allows no hard pixels.
 | `shell/tree`, `shell/hover` | 1 | Curved-edge coverage at the working copy branch chip's rounded left border |
 | `shell/scrolled` | 2 | WebKit dithers a stuck header's under-fade by a level; where the noise lands on a child row's faint connector edge it exceeds the soft-edge rule (recur-ui paints the fade smooth) |
 | `markdown/chat`, `markdown/paper` | 95, 132 | The native task checkbox's shading and edges (above) and the edge pixels of WebKit's synthesized list bullets |
+| `review/unified`, `review/split`, `review/hunk`, `review/collapsed`, `review/filelist`, `review/large` | 54, 54, 54, 84, 34, 18 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc: GPUI antialiases both edges, WebKit clips the header once (8 to 13 pixels per corner; `PARITY.md` follow-up) |
+| `review/thread`, `review/thread-paper` | 95, 69 | The `.react` pill after `✓` ends one device pixel early: the fallback glyph's advance is 6.33px in recur-ui and 6.49px in WebKit (`PARITY.md` follow-up); `review/thread` adds the card's top corners (above) |
 | `pdf/page` | 15 | The page field's number, which gpui-base's editor draws (typed input text, above) |
 
 ## Results
@@ -248,6 +259,17 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `chat/pickers` | 0 | 3906 | 249 | 4580 | 0 |
 | `chat/app` | 0 | 1866 | 660 | 2780 | 0 |
 | `chat/app-paper` | 0 | 1884 | 532 | 2660 | 0 |
+| `review/unified` | 54 | 7372 | 308 | 8450 | 54 |
+| `review/unified-paper` | 0 | 4140 | 514 | 5120 | 0 |
+| `review/split` | 54 | 8690 | 383 | 9990 | 54 |
+| `review/hunk` | 54 | 8420 | 369 | 9670 | 54 |
+| `review/collapsed` | 84 | 8192 | 257 | 9300 | 84 |
+| `review/filelist` | 34 | 9491 | 304 | 10780 | 34 |
+| `review/thread` | 95 | 5375 | 1432 | 7490 | 95 |
+| `review/thread-paper` | 69 | 4778 | 1868 | 7320 | 69 |
+| `review/commits` | 0 | 3014 | 594 | 3970 | 0 |
+| `review/commits-paper` | 0 | 3023 | 689 | 4090 | 0 |
+| `review/large` | 18 | 22530 | 66 | 24860 | 18 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
@@ -256,3 +278,5 @@ Terminal tolerances: every grid difference left is synthetic-italic edge coverag
 Content tolerances: text is glyph subpixel phase in prose, code and diagram labels; anti-aliasing is image resampling (the PDF page, the lightbox, the inline chart), shape edges inside PDF pages and Mermaid strokes, and rounded fence and table corners.
 
 Chat tolerances: text is glyph subpixel phase in transcript prose, code, chips, labels and placeholders; anti-aliasing is icon, chip and card edges and the composer's shadow. No chat scene allows hard pixels.
+
+Review tolerances: text is glyph subpixel phase in code rows, paths, labels and note bodies; anti-aliasing is icon, chip, avatar and card edges.

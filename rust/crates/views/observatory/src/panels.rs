@@ -1142,8 +1142,11 @@ impl Observatory {
                             let _ = to;
                             o.restore_target_rect()
                         };
-                        let t =
-                            (start.elapsed().as_secs_f32() * 1000. / TERM_MAX_MS as f32).min(1.);
+                        let t = recur_ui::motion::progress(
+                            start,
+                            Duration::from_millis(TERM_MAX_MS),
+                            cx,
+                        );
                         let e = recur_ui::motion::Easing::Bezier(0.22, 1., 0.36, 1.).apply(t);
                         let lerp = |a: f32, b: f32| a + (b - a) * e;
                         o.overlay_rect = OverlayRect {
@@ -1158,6 +1161,7 @@ impl Observatory {
                             if end == TermMaxPhase::Max {
                                 o.overlay_rect = o.full_rect();
                             }
+                            o.sync_side_effects(cx);
                         }
                         cx.notify();
                         t >= 1.

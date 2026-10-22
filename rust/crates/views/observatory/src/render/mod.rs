@@ -483,6 +483,7 @@ impl Observatory {
         bar = bar.child(
             div()
                 .id("obs-tb-center")
+                .debug_selector(|| "obs-tb-center".into())
                 .track_focus(&self.tabs_focus)
                 .flex_1()
                 .min_w_0()
@@ -852,6 +853,8 @@ impl Render for Observatory {
         if self.term_overlaying() {
             root = root.overflow_hidden();
         }
+        // The Svelte `$effect`s that mirror this frame's state outward.
+        cx.defer_in(window, |o, _, cx| o.sync_side_effects(cx));
         root
     }
 }

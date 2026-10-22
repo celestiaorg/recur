@@ -72,6 +72,8 @@ mod scm;
 pub mod session_host;
 pub mod session_tabs;
 pub mod snippets;
+#[cfg(test)]
+mod spec;
 pub mod style;
 mod tabs;
 pub mod textmate;

@@ -364,15 +364,15 @@ impl Observatory {
             actions = actions.child(titled(
                 "fullscreen-t",
                 "Full screen",
-                icon_btn("fullscreen", IconName::Maximize, false, None, cx).on_click(cx.listener(
-                    |o, _, window, cx| {
+                icon_btn("fullscreen", IconName::Maximize, false, None, cx)
+                    .debug_selector(|| "crumb:fullscreen".into())
+                    .on_click(cx.listener(|o, _, window, cx| {
                         if o.preview_kind().is_some() {
                             o.view_mode = EditorViewMode::Preview;
                             o.sync_editors(window, cx);
                         }
                         o.set_editor_fullscreen(true, window, cx);
-                    },
-                )),
+                    })),
             ));
         }
         actions.into_any_element()
@@ -636,6 +636,7 @@ impl Observatory {
                 "video-zoom-t",
                 "Zoom",
                 icon_btn("video-zoom", IconName::ZoomIn, false, None, cx)
+                    .debug_selector(|| "video-zoom".into())
                     .on_click(cx.listener(|o, _, _, cx| o.zoom_video(cx))),
             )
             .into_any_element();
@@ -1297,6 +1298,7 @@ impl Observatory {
                         "fs-exit-t",
                         "Exit full screen (Esc)",
                         icon_btn("fs-exit", IconName::Minimize, false, None, cx)
+                            .debug_selector(|| "fs-exit".into())
                             .bg(hsla(t.pane_2))
                             .border_1()
                             .border_color(hsla(t.line))

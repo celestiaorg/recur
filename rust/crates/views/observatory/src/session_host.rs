@@ -109,10 +109,24 @@ fn enqueue(workspace_id: &str, job: Job, cx: &mut App) {
 }
 
 fn to_patch(p: recur_editor::session::WirePatch) -> EditorSessionPatch {
-    serde_json::to_value(&p)
-        .ok()
-        .and_then(|v| serde_json::from_value(v).ok())
-        .unwrap_or_default()
+    let mut v = serde_json::to_value(&p).unwrap_or_default();
+    // Scroll offsets are whole CSS px on the wire (WebKit's `scrollTop`; the Go model is int).
+    if let Some(views) = v
+        .pointer_mut("/meta/fileViews")
+        .and_then(Value::as_object_mut)
+    {
+        for view in views.values_mut().filter_map(Value::as_object_mut) {
+            for n in view.values_mut() {
+                if let Some(f) = n.as_f64().filter(|_| n.is_f64()) {
+                    *n = Value::from(f.trunc() as i64);
+                }
+            }
+        }
+    }
+    serde_json::from_value(v).unwrap_or_else(|e| {
+        tracing::warn!("editor session patch: {e}");
+        EditorSessionPatch::default()
+    })
 }
 
 fn string_map(v: Option<&Value>) -> BTreeMap<String, String> {

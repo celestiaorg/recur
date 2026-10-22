@@ -248,6 +248,7 @@ impl Observatory {
                 );
                 if cleared != cx.default_global::<crate::UnseenArtifacts>().0 {
                     cx.default_global::<crate::UnseenArtifacts>().0 = cleared;
+                    cx.notify();
                 }
             }
             self.refresh_chord_index(cx);

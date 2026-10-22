@@ -511,7 +511,14 @@ impl ArtifactsPanel {
                         .child(icon(IconName::Trash).size(px(12.))),
                 )
                 .when(!reveal_del, |d| d.invisible())
-                .on_click(cx.listener(move |p, _, _, cx| p.on_delete_click(row.clone(), cx)));
+                // A sibling of the row in the page: its press must not reach the row's click.
+                .on_mouse_down(
+                    gpui_kit::MouseButton::Left,
+                    cx.listener(move |p, _, _, cx| {
+                        cx.stop_propagation();
+                        p.on_delete_click(row.clone(), cx);
+                    }),
+                );
             item = item.child(titled(
                 SharedString::from(format!("art-del-t-{}", a.id)),
                 if armed { "Confirm delete" } else { "Delete" },
@@ -526,6 +533,7 @@ impl ArtifactsPanel {
         let btn = |id: &'static str, label: &'static str| {
             div()
                 .id(id)
+                .debug_selector(move || id.to_string())
                 .flex()
                 .items_center()
                 .gap(px(16.))

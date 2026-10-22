@@ -4,7 +4,7 @@
 //! parity renderer can freeze every animation at a chosen time, the way the reference capture
 //! pauses `document.getAnimations()`.
 
-use gpui_kit::{App, Global};
+use gpui_kit::{App, ElementId, Entity, Global, Window};
 use std::time::{Duration, Instant};
 
 #[derive(Default)]
@@ -117,6 +117,78 @@ pub fn eased(start: Instant, duration: Duration, easing: Easing, cx: &App) -> f3
     easing.apply(progress(start, duration, cx))
 }
 
+/// A CSS `transition` between an element's rest and hover styles (`transition: background
+/// .12s ease`): [`Hover::k`] eases from 0 to 1 after the pointer enters and back after it
+/// leaves, reversing from where it is when interrupted. Mix the rest and hover values by it
+/// (`Color::mix`) instead of a `.hover(..)` style, which snaps, and attach
+/// [`Hover::listener`] with `on_hover`.
+pub struct Hover {
+    k: f32,
+    state: Entity<HoverState>,
+}
+
+#[derive(Default)]
+struct HoverState {
+    on: bool,
+    /// Progress when the pointer last crossed, and when.
+    from: f32,
+    at: Option<Instant>,
+}
+
+impl HoverState {
+    fn k(&self, duration: Duration, easing: Easing, cx: &App) -> (f32, bool) {
+        let to = if self.on { 1. } else { 0. };
+        let Some(at) = self.at else { return (to, false) };
+        let p = progress(at, duration, cx);
+        (self.from + (to - self.from) * easing.apply(p), p < 1.)
+    }
+}
+
+/// The hover transition of the element keyed `id` in the current view (see [`Hover`]).
+pub fn hover(
+    id: impl Into<ElementId>,
+    duration: Duration,
+    easing: Easing,
+    window: &mut Window,
+    cx: &mut App,
+) -> Hover {
+    let state = window.use_keyed_state(id, cx, |_, _| HoverState::default());
+    let (k, running) = state.read(cx).k(duration, easing, cx);
+    if running && !is_frozen(cx) {
+        window.request_animation_frame();
+    }
+    Hover { k, state }
+}
+
+impl Hover {
+    /// The transition's progress, `0` at rest and `1` hovered.
+    pub fn k(&self) -> f32 {
+        self.k
+    }
+
+    /// Whether the pointer is over the element.
+    pub fn on(&self, cx: &App) -> bool {
+        self.state.read(cx).on
+    }
+
+    /// For the element's `on_hover`.
+    pub fn listener(&self) -> impl Fn(&bool, &mut Window, &mut App) + 'static {
+        let (state, k) = (self.state.clone(), self.k);
+        move |on, _, cx| {
+            state.update(cx, |s, cx| {
+                if s.on != *on {
+                    *s = HoverState {
+                        on: *on,
+                        from: k,
+                        at: Some(Instant::now()),
+                    };
+                    cx.notify();
+                }
+            })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,5 +204,34 @@ mod tests {
         assert!(Easing::EASE_IN.apply(0.5) < 0.5);
         // ease at 50% ≈ 0.8024 (the reference value of cubic-bezier(.25,.1,.25,1)).
         assert!((Easing::EASE.apply(0.5) - 0.8024).abs() < 1e-3);
+    }
+
+    #[gpui_kit::test]
+    fn hover_eases_in_and_reverses_from_where_it_is(cx: &mut gpui_kit::TestAppContext) {
+        let ms = Duration::from_millis;
+        cx.update(|cx| {
+            let k = |s: &HoverState| s.k(ms(120), Easing::Linear, cx).0;
+            let rest = HoverState::default();
+            assert_eq!(k(&rest), 0.);
+            let entering = HoverState {
+                on: true,
+                from: 0.,
+                at: Some(Instant::now() - ms(60)),
+            };
+            assert!((k(&entering) - 0.5).abs() < 0.2);
+            // Leaving halfway in: back down from 0.5, done in 120ms.
+            let leaving = HoverState {
+                on: false,
+                from: 0.5,
+                at: Some(Instant::now() - ms(60)),
+            };
+            assert!((k(&leaving) - 0.25).abs() < 0.2);
+            let settled = HoverState {
+                on: true,
+                from: 0.,
+                at: Some(Instant::now() - ms(500)),
+            };
+            assert_eq!(k(&settled), 1.);
+        });
     }
 }

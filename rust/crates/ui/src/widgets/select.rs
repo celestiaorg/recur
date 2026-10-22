@@ -669,6 +669,14 @@ impl Render for Select {
                 tr.hover_color.unwrap_or(fg),
             )
         };
+        // `.sel.ghost .sel-btn { transition: color .15s ease, background .15s ease }`.
+        let ghost_hover = (self.ghost && !disabled).then(|| {
+            motion::hover("sel-btn-hover", Duration::from_millis(150), Easing::EASE, window, cx)
+        });
+        if let Some(h) = &ghost_hover {
+            bg = hover_bg.mix(h.k(), bg);
+            fg = hover_fg.mix(h.k(), fg);
+        }
         // `.sel-btn:disabled { opacity: .55 }`.
         if let Some(back) = self.disabled_over {
             let fill = bg;
@@ -727,14 +735,17 @@ impl Render for Select {
             // `.sel-btn:hover:not(:disabled)` outranks `:focus-visible`; `.sel.open .sel-btn`
             // ties it and comes later, so an open trigger keeps its amber border under hover.
             let keep_border = self.open && !self.ghost;
-            button = button.hover(move |s| {
-                let s = s.bg(hover_bg).text_color(Hsla::from(hover_fg));
-                if keep_border {
-                    s
-                } else {
-                    s.border_color(Hsla::from(hover_border))
-                }
-            });
+            button = match &ghost_hover {
+                Some(h) => button.on_hover(h.listener()),
+                None => button.hover(move |s| {
+                    let s = s.bg(hover_bg).text_color(Hsla::from(hover_fg));
+                    if keep_border {
+                        s
+                    } else {
+                        s.border_color(Hsla::from(hover_border))
+                    }
+                }),
+            };
         }
         // Icon: custom, the selected option's app icon (tinted), or its provider mark.
         if let Some(i) = self.custom_icon {

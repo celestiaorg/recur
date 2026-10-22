@@ -10,6 +10,7 @@ mod glue;
 mod hoist;
 mod linking;
 mod merge;
+mod rework;
 mod send;
 mod sync;
 mod thread;

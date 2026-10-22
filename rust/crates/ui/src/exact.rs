@@ -111,7 +111,8 @@ fn snap(v: f32, scale: f32) -> f32 {
     (v * scale).round() / scale
 }
 
-pub(crate) fn floor_dp(v: f32, scale: f32) -> f32 {
+/// `v` floored to the device grid.
+pub fn floor_dp(v: f32, scale: f32) -> f32 {
     ((v * scale) + 1e-3).floor() / scale
 }
 

@@ -187,6 +187,32 @@ for (const scene of scenes) {
         const r = el.getBoundingClientRect()
         if (r.width > 0 && r.height > 0) rects.push([r.x, r.y, r.width, r.height])
       }
+      // Placeholders are text with no text node: an empty field's `placeholder` and string
+      // `::before` / `::after` content (`.chat-composer.empty:before`). Each covers its first
+      // line, measured in its own font.
+      const measure = document.createElement('canvas').getContext('2d')!
+      const line = (el: Element, s: string, cs: CSSStyleDeclaration, centered: boolean) => {
+        const r = el.getBoundingClientRect()
+        const box = getComputedStyle(el)
+        const left = r.x + parseFloat(box.borderLeftWidth) + parseFloat(box.paddingLeft)
+        const top = r.y + parseFloat(box.borderTopWidth) + parseFloat(box.paddingTop)
+        const inner = r.height - parseFloat(box.borderTopWidth) - parseFloat(box.borderBottomWidth)
+          - parseFloat(box.paddingTop) - parseFloat(box.paddingBottom)
+        measure.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+        const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.25
+        const w = measure.measureText(s).width + s.length * (parseFloat(cs.letterSpacing) || 0)
+        if (w > 0) rects.push([left, centered ? top + (inner - lh) / 2 : top, w, lh])
+      }
+      for (const el of document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')) {
+        if (!el.value && el.placeholder) line(el, el.placeholder, getComputedStyle(el, '::placeholder'), el.tagName === 'INPUT')
+      }
+      for (const el of document.body.querySelectorAll('*')) {
+        for (const pseudo of ['::before', '::after']) {
+          const cs = getComputedStyle(el, pseudo)
+          const m = /^"(.{3,})"$/.exec(cs.content)
+          if (m && cs.display !== 'none') line(el, m[1], cs, false)
+        }
+      }
       return rects
     })
     writeFileSync(join(out, `${file}.text.json`), JSON.stringify(textRects))

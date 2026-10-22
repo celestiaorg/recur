@@ -476,9 +476,10 @@ impl IntoElement for Flow {
     }
 }
 
-/// The width the children were placed at (the last frame's), in the element's state.
+/// The width the children were placed at and a shrink-wrapped flow's exact width, both from
+/// the last frame, in the element's state.
 #[derive(Clone, Default)]
-struct Placed(Rc<Cell<Option<f32>>>);
+struct Placed(Rc<Cell<Option<f32>>>, Rc<Cell<Option<f32>>>);
 
 pub struct FlowState {
     layout: Rc<RefCell<Option<FlowLayout>>>,
@@ -569,17 +570,29 @@ impl Element for Flow {
             }),
             None => Placed::default(),
         };
-        let mut leaves = exact::measured(
+        // A shrink-wrapped flow reports its width floored to the device grid (GPUI would round
+        // it) and a spacer adds the exact rest from the last frame; laid out at the floored
+        // width, it gets the device pixel back as slack so its lines break as they measured.
+        let fit_rest = if fit {
+            placed.1.get().map_or(0., |w| w - exact::floor_dp(w, window.scale_factor()))
+        } else {
+            0.
+        };
+        let leaves = exact::measured(
             Length::Auto,
             exact.as_ref(),
             min_h,
             window,
             cx,
             move |known, avail, window| {
-                let w = known.width.map(f32::from).unwrap_or(match avail.width {
-                    AvailableSpace::Definite(w) => w.into(),
-                    _ => f32::MAX / 4.,
-                });
+                let dp = 1. / window.scale_factor();
+                let w = known
+                    .width
+                    .map(|k| f32::from(k) + if fit { dp } else { 0. })
+                    .unwrap_or(match avail.width {
+                        AvailableSpace::Definite(w) => w.into(),
+                        _ => f32::MAX / 4.,
+                    });
                 let l = FlowLayout::compute(&content, &sizes, &st, w, window);
                 let extra = if trailing {
                     shape_width(" ", &st, window).0
@@ -587,13 +600,24 @@ impl Element for Flow {
                     0.
                 };
                 let out = (
-                    if fit { (l.max_line + extra).min(w) } else { w },
+                    if fit {
+                        exact::floor_dp((l.max_line + extra).min(w), window.scale_factor())
+                    } else {
+                        w
+                    },
                     l.height.max(min_h),
                 );
                 *slot.borrow_mut() = Some(l);
                 out
             },
         );
+        let mut nodes = vec![window.request_layout(Style::default(), leaves, cx)];
+        if fit_rest > 1e-4 {
+            let mut rest = Style::default();
+            rest.size.height = px(1. / window.scale_factor()).into();
+            rest.aspect_ratio = Some(fit_rest * window.scale_factor());
+            nodes.push(window.request_layout(rest, [], cx));
+        }
         // Children are placed from the last frame's line layout; a new width lays the
         // window out again (see `prepaint`).
         let placed_at = placed.0.get();
@@ -607,11 +631,13 @@ impl Element for Flow {
             }
             None => Vec::new(),
         };
-        leaves.extend(children.iter_mut().map(|c| c.request_layout(window, cx)));
+        nodes.extend(children.iter_mut().map(|c| c.request_layout(window, cx)));
         let mut style = Style::default();
         style.position = gpui_kit::Position::Relative;
+        style.display = gpui_kit::Display::Flex;
+        style.align_items = Some(gpui_kit::AlignItems::FlexStart);
         (
-            window.request_layout(style, leaves, cx),
+            window.request_layout(style, nodes, cx),
             FlowState {
                 layout,
                 exact,
@@ -657,6 +683,20 @@ impl Element for Flow {
             .as_ref()
             .map_or(0., |l| l.height.max(self.min_height));
         exact::settle(state.exact.as_ref(), height, window);
+        if self.fit {
+            let exact_w = state.layout.borrow().as_ref().map(|l| {
+                let extra = if self.trailing_space {
+                    shape_width(" ", &self.style, window).0
+                } else {
+                    0.
+                };
+                (l.max_line + extra).min(l.width)
+            });
+            if state.placed.1.get() != exact_w {
+                state.placed.1.set(exact_w);
+                window.refresh();
+            }
+        }
         if state.placed_at != Some(width) {
             state.placed.0.set(Some(width));
             window.refresh();

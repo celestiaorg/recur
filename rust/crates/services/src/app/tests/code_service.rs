@@ -39,7 +39,12 @@ async fn list_changed_files_live_worktree() {
     let repo = fx.init_git_repo();
     let (_, wt) = worktree_workspace(&fx, &repo, "loop-live", "live-refresh").await;
     let code = &fx.s.code;
-    assert!(code.list_changed_files("loop-live").await.unwrap().is_empty());
+    assert!(
+        code.list_changed_files("loop-live")
+            .await
+            .unwrap()
+            .is_empty()
+    );
     write(format!("{wt}/README.md"), "hi\nedited\n");
     write(format!("{wt}/new.go"), "package main\n");
     let mut got = code.list_changed_files("loop-live").await.unwrap();
@@ -53,14 +58,17 @@ async fn read_file_and_list_tree_report_not_found() {
     let fx = Fx::new().await;
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
-    let e = fx
-        .s
-        .code
-        .read_file(&pid, "", "does-not-exist.txt")
-        .await
-        .unwrap_err();
+    let e =
+        fx.s.code
+            .read_file(&pid, "", "does-not-exist.txt")
+            .await
+            .unwrap_err();
     assert_eq!(e.message, "not found: does-not-exist.txt");
-    let e = fx.s.code.list_tree(&pid, "", "no/such/dir").await.unwrap_err();
+    let e =
+        fx.s.code
+            .list_tree(&pid, "", "no/such/dir")
+            .await
+            .unwrap_err();
     assert_eq!(e.message, "not found: no/such/dir");
     fx.close().await;
 }
@@ -88,8 +96,14 @@ async fn diff_vs_base_and_commits() {
     let working = code.diff_working(&pid, "ws-review").await.unwrap();
     let working = working.files.unwrap_or_default();
     let working = paths(&working);
-    assert!(working.contains("feat.txt") && working.contains("new.txt"), "{working:?}");
-    assert!(!working.contains("clean.txt"), "committed and clean vs HEAD");
+    assert!(
+        working.contains("feat.txt") && working.contains("new.txt"),
+        "{working:?}"
+    );
+    assert!(
+        !working.contains("clean.txt"),
+        "committed and clean vs HEAD"
+    );
 
     let commits = code.list_commits(&pid, "ws-review").await.unwrap();
     assert_eq!(commits.len(), 2);
@@ -97,7 +111,10 @@ async fn diff_vs_base_and_commits() {
         .iter()
         .find(|c| c.message == "add feat")
         .expect("add feat");
-    let diff = code.commit_diff(&pid, "ws-review", &feat.hash).await.unwrap();
+    let diff = code
+        .commit_diff(&pid, "ws-review", &feat.hash)
+        .await
+        .unwrap();
     assert!(paths(&diff).contains("feat.txt"), "{diff:?}");
     fx.close().await;
 }
@@ -118,7 +135,10 @@ async fn list_commits_main_working_copy() {
         .unwrap();
     let commits = fx.s.code.list_commits(&pid, "main-wc").await.unwrap();
     assert_eq!(
-        commits.iter().map(|c| c.message.as_str()).collect::<Vec<_>>(),
+        commits
+            .iter()
+            .map(|c| c.message.as_str())
+            .collect::<Vec<_>>(),
         ["initial"]
     );
     fx.close().await;
@@ -145,6 +165,9 @@ async fn diff_working_unborn_head() {
     let got = fx.s.code.diff_working(&pid, "unborn").await.unwrap();
     let got = got.files.unwrap_or_default();
     let got = paths(&got);
-    assert!(got.contains("staged.txt") && got.contains("loose.txt"), "{got:?}");
+    assert!(
+        got.contains("staged.txt") && got.contains("loose.txt"),
+        "{got:?}"
+    );
     fx.close().await;
 }

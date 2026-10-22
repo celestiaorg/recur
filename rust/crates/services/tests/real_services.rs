@@ -25,7 +25,11 @@ fn git(dir: &std::path::Path, args: &[&str]) {
         .env("GIT_COMMITTER_EMAIL", "test@example.com")
         .output()
         .expect("git");
-    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }
 
 /// Collects events until `done` holds for one of them (or 20s pass).
@@ -148,7 +152,12 @@ async fn chat_loop_and_pr_sync_emit_app_events() {
         .unwrap()
         .id;
     assert!(
-        s.projects.list_projects().await.unwrap().iter().any(|p| p.id == pid),
+        s.projects
+            .list_projects()
+            .await
+            .unwrap()
+            .iter()
+            .any(|p| p.id == pid),
         "list projects"
     );
 
@@ -164,7 +173,17 @@ async fn chat_loop_and_pr_sync_emit_app_events() {
     .await;
     let reply = s
         .workspaces
-        .send_workspace_message(&ws.id, "", "hello", "", &BTreeMap::new(), &[], "agent", "", false)
+        .send_workspace_message(
+            &ws.id,
+            "",
+            "hello",
+            "",
+            &BTreeMap::new(),
+            &[],
+            "agent",
+            "",
+            false,
+        )
         .await
         .unwrap();
     assert_eq!(reply, "working");
@@ -194,7 +213,12 @@ async fn chat_loop_and_pr_sync_emit_app_events() {
     })
     .await;
     let looped = names(&seen);
-    for want in ["workspace.updated", "agent.updated", "workspace.event", "pr.updated"] {
+    for want in [
+        "workspace.updated",
+        "agent.updated",
+        "workspace.event",
+        "pr.updated",
+    ] {
         assert!(looped.contains(&want), "loop missing {want}: {looped:?}");
     }
     let pr = s
@@ -211,10 +235,18 @@ async fn chat_loop_and_pr_sync_emit_app_events() {
     // A PR sync importing the forge's open PR.
     seen.clear();
     let synced = s.prs.sync_github_prs().await.unwrap();
-    assert!(synced.iter().any(|p| p.number == 12 && p.project_id == pid), "{synced:?}");
+    assert!(
+        synced.iter().any(|p| p.number == 12 && p.project_id == pid),
+        "{synced:?}"
+    );
     collect_until(&mut rx, &mut seen, |e| matches!(e, AppEvent::PrsSynced(_))).await;
     assert!(
-        s.prs.list_prs().await.unwrap().iter().any(|p| p.number == 12),
+        s.prs
+            .list_prs()
+            .await
+            .unwrap()
+            .iter()
+            .any(|p| p.number == 12),
         "the synced PR is listed"
     );
 

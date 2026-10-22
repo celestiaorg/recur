@@ -76,7 +76,8 @@ pub fn apply_catalog_fallbacks(mut set: Settings, groups: &[ModelGroup]) -> Sett
     }
     let (id, flags) = first_catalog_choice(groups);
     if id.is_empty() {
-        set.disabled_providers = strip_disabled_provider(&set.disabled_providers, PROVIDER_CLAUDE_CODE);
+        set.disabled_providers =
+            strip_disabled_provider(&set.disabled_providers, PROVIDER_CLAUDE_CODE);
         return set.normalize_providers();
     }
     let probe = set.clone();
@@ -137,12 +138,7 @@ impl AppServices {
     /// or app-server); each provider remembers the result for remaps.
     pub(crate) async fn model_catalog(&self) -> Vec<ModelGroup> {
         let set = self.store().settings();
-        let cursor = self
-            .providers
-            .cursor
-            .models(&set)
-            .await
-            .unwrap_or_default();
+        let cursor = self.providers.cursor.models(&set).await.unwrap_or_default();
         let codex = self.providers.codex.models(&set).await.unwrap_or_default();
         build_model_catalog(&set, cursor, codex)
     }
@@ -162,12 +158,7 @@ impl AppServices {
         if !first_catalog_choice(&groups).0.is_empty() {
             return groups;
         }
-        let cursor = self
-            .providers
-            .cursor
-            .models(set)
-            .await
-            .unwrap_or_default();
+        let cursor = self.providers.cursor.models(set).await.unwrap_or_default();
         let groups = build_model_catalog(set, cursor.clone(), codex_cached);
         if !first_catalog_choice(&groups).0.is_empty() {
             return groups;

@@ -67,28 +67,48 @@ fn diff(path: &str, a: &Value, b: &Value, out: &mut Vec<String>) {
 async fn calls(s: &Services) -> Vec<(String, Result<Value, String>)> {
     let ws = "LOOP-2231";
     let mut out: Vec<(String, Result<Value, String>)> = Vec::new();
-    for id in ["LOOP-2218", "LOOP-2224", "LOOP-2229", "LOOP-2231", "LOOP-2235"] {
-        out.push((format!("ListLoopAgents({id})"), json(s.agents.list_loop_agents(id).await)));
-        out.push((format!("GetWorkspaceFeed({id})"), json(s.workspaces.get_workspace_feed(id).await)));
+    for id in [
+        "LOOP-2218",
+        "LOOP-2224",
+        "LOOP-2229",
+        "LOOP-2231",
+        "LOOP-2235",
+    ] {
+        out.push((
+            format!("ListLoopAgents({id})"),
+            json(s.agents.list_loop_agents(id).await),
+        ));
+        out.push((
+            format!("GetWorkspaceFeed({id})"),
+            json(s.workspaces.get_workspace_feed(id).await),
+        ));
     }
     for id in ["471", "479", "482"] {
         out.push((format!("GetPR({id})"), json(s.prs.get_pr(id).await)));
     }
-    out.extend([
-        ("ListProjects", json(s.projects.list_projects().await)),
-        ("ListWorkspaces", json(s.workspaces.list_workspaces().await)),
-        ("GetWorkspace", json(s.workspaces.get_workspace(ws).await)),
-        ("GetEscalation", json(s.escalation.get_escalation("LOOP-2218").await)),
-        ("ListPRs", json(s.prs.list_prs().await)),
-        ("GetInbox", json(s.inbox.get_inbox().await)),
-        ("GetPolicy", json(s.policy.get_policy().await)),
-        ("GetSettings", json(s.settings.get_settings().await)),
-        ("ListFindings", json(s.observatory.list_findings(ws).await)),
-        ("GetResource", json(s.settings.get_resource().await)),
-        ("GetWorkspace(missing)", json(s.workspaces.get_workspace("nope").await)),
-        ("GetPR(missing)", json(s.prs.get_pr("nope").await)),
-    ]
-    .map(|(n, v)| (n.to_owned(), v)));
+    out.extend(
+        [
+            ("ListProjects", json(s.projects.list_projects().await)),
+            ("ListWorkspaces", json(s.workspaces.list_workspaces().await)),
+            ("GetWorkspace", json(s.workspaces.get_workspace(ws).await)),
+            (
+                "GetEscalation",
+                json(s.escalation.get_escalation("LOOP-2218").await),
+            ),
+            ("ListPRs", json(s.prs.list_prs().await)),
+            ("GetInbox", json(s.inbox.get_inbox().await)),
+            ("GetPolicy", json(s.policy.get_policy().await)),
+            ("GetSettings", json(s.settings.get_settings().await)),
+            ("ListFindings", json(s.observatory.list_findings(ws).await)),
+            ("GetResource", json(s.settings.get_resource().await)),
+            (
+                "GetWorkspace(missing)",
+                json(s.workspaces.get_workspace("nope").await),
+            ),
+            ("GetPR(missing)", json(s.prs.get_pr("nope").await)),
+        ]
+        .map(|(n, v)| (n.to_owned(), v)),
+    );
     out
 }
 
@@ -144,7 +164,12 @@ async fn real_and_mock_agree_on_reads() {
 
     let pr = real.services().prs.get_pr("482").await.unwrap();
     let commits = pr.commits.unwrap_or_default();
-    assert!(!commits.is_empty() && commits.iter().all(|c| c.files.as_ref().is_none_or(Vec::is_empty)));
+    assert!(
+        !commits.is_empty()
+            && commits
+                .iter()
+                .all(|c| c.files.as_ref().is_none_or(Vec::is_empty))
+    );
     let ws = "LOOP-2231";
     assert!(real.services().escalation.get_escalation(ws).await.is_err());
     let esc = mock.services().escalation.get_escalation(ws).await.unwrap();

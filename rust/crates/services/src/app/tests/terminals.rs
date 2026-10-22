@@ -21,7 +21,9 @@ fn same_dir(a: &str, b: &str) -> bool {
 }
 
 fn decode(replay: &str) -> String {
-    let b = base64::engine::general_purpose::STANDARD.decode(replay).expect("base64 replay");
+    let b = base64::engine::general_purpose::STANDARD
+        .decode(replay)
+        .expect("base64 replay");
     String::from_utf8_lossy(&b).into_owned()
 }
 
@@ -82,9 +84,20 @@ async fn terminal_cwd_prefers_the_worktree_then_the_repo() {
     let pid = fx.add_project(&repo);
     add_ws(&fx, "ws-worktree", &pid, &worktree);
     add_ws(&fx, "ws-no-worktree", &pid, "");
-    add_ws(&fx, "ws-stale-worktree", &pid, &format!("{worktree}/archived-and-deleted"));
-    assert!(same_dir(&fx.svc.terminal_cwd("ws-worktree").unwrap(), &worktree));
-    assert!(same_dir(&fx.svc.terminal_cwd("ws-no-worktree").unwrap(), &repo));
+    add_ws(
+        &fx,
+        "ws-stale-worktree",
+        &pid,
+        &format!("{worktree}/archived-and-deleted"),
+    );
+    assert!(same_dir(
+        &fx.svc.terminal_cwd("ws-worktree").unwrap(),
+        &worktree
+    ));
+    assert!(same_dir(
+        &fx.svc.terminal_cwd("ws-no-worktree").unwrap(),
+        &repo
+    ));
     assert!(
         fx.svc.terminal_cwd("ws-stale-worktree").is_err(),
         "a removed worktree must not fall back to the project checkout"
@@ -104,7 +117,12 @@ async fn terminal_cwd_rejects_unknown_workspace() {
 async fn open_terminal_fails_without_a_resolvable_directory() {
     let fx = Fx::new().await;
     add_ws(&fx, "ws-nowhere", "ghost", "");
-    assert!(fx.s.terminal.open_terminal("ws-nowhere", 80, 24).await.is_err());
+    assert!(
+        fx.s.terminal
+            .open_terminal("ws-nowhere", 80, 24)
+            .await
+            .is_err()
+    );
     fx.close().await;
 }
 
@@ -115,15 +133,23 @@ async fn open_attach_and_replay_through_the_bound_service() {
     let t = &fx.s.terminal;
     let info = t.open_terminal("ws-1", 100, 30).await.unwrap();
     let list = t.list_terminals("ws-1").await.unwrap();
-    assert_eq!(list.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), [info.id.as_str()]);
+    assert_eq!(
+        list.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(),
+        [info.id.as_str()]
+    );
     t.attach_terminal(&info.id).await.unwrap();
-    t.write_terminal(&info.id, "echo bound-service-marker\n").await.unwrap();
+    t.write_terminal(&info.id, "echo bound-service-marker\n")
+        .await
+        .unwrap();
     t.resize_terminal(&info.id, 120, 40).await.unwrap();
     wait_for_replay(&fx.s, &info.id, "bound-service-marker").await;
     t.clear_terminal(&info.id).await.unwrap();
     t.detach_terminal(&info.id).await.unwrap();
     let replay = t.attach_terminal(&info.id).await.unwrap();
-    assert!(!decode(&replay).contains("bound-service-marker"), "cleared output replayed");
+    assert!(
+        !decode(&replay).contains("bound-service-marker"),
+        "cleared output replayed"
+    );
     t.close_terminal(&info.id).await.unwrap();
     fx.close().await;
 }
@@ -136,13 +162,18 @@ async fn terminal_persist_round_trip_across_shutdown() {
     let info = t.open_terminal("ws-1", 80, 24).await.unwrap();
     t.set_terminal_title(&info.id, "dev").await.unwrap();
     t.set_active_terminal("ws-1", &info.id).await.unwrap();
-    t.write_terminal(&info.id, "echo persist-marker\n").await.unwrap();
+    t.write_terminal(&info.id, "echo persist-marker\n")
+        .await
+        .unwrap();
     wait_for_replay(&fx.s, &info.id, "persist-marker").await;
     fx.svc.terminal_shutdown().await;
 
     let svc2 = fx.reopen().await;
     let t2 = svc2.services().terminal;
-    let restored = t2.restore_workspace_terminals("ws-1", 80, 24).await.unwrap();
+    let restored = t2
+        .restore_workspace_terminals("ws-1", 80, 24)
+        .await
+        .unwrap();
     assert_eq!(restored.len(), 1);
     assert_eq!(restored[0].title, "dev");
     assert!(restored[0].active, "restored tab is active");
@@ -160,7 +191,10 @@ async fn restore_does_not_duplicate_live_sessions() {
     let t = &fx.s.terminal;
     let info = t.open_terminal("ws-1", 80, 24).await.unwrap();
     let got = t.restore_workspace_terminals("ws-1", 80, 24).await.unwrap();
-    assert_eq!(got.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), [info.id.as_str()]);
+    assert_eq!(
+        got.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(),
+        [info.id.as_str()]
+    );
     assert_eq!(t.list_terminals("ws-1").await.unwrap().len(), 1);
     fx.close().await;
 }
@@ -178,7 +212,12 @@ async fn closing_last_tab_drops_persisted_snapshot() {
     assert!(fx.svc.read_terminal_snapshot("ws-1").is_none());
 
     let svc2 = fx.reopen().await;
-    let got = svc2.services().terminal.restore_workspace_terminals("ws-1", 80, 24).await.unwrap();
+    let got = svc2
+        .services()
+        .terminal
+        .restore_workspace_terminals("ws-1", 80, 24)
+        .await
+        .unwrap();
     assert!(got.is_empty());
     svc2.terminal_shutdown().await;
     fx.close().await;
@@ -198,7 +237,11 @@ async fn restore_falls_back_when_saved_cwd_is_gone() {
             },
         )
         .unwrap();
-    let got = fx.s.terminal.restore_workspace_terminals("ws-1", 80, 24).await.unwrap();
+    let got =
+        fx.s.terminal
+            .restore_workspace_terminals("ws-1", 80, 24)
+            .await
+            .unwrap();
     assert_eq!(got.len(), 1);
     assert!(same_dir(&got[0].cwd, &repo), "{}", got[0].cwd);
     fx.close().await;
@@ -220,7 +263,11 @@ async fn restore_keeps_live_cwd_when_worktree_is_gone() {
             },
         )
         .unwrap();
-    let got = fx.s.terminal.restore_workspace_terminals("ws-1", 80, 24).await.unwrap();
+    let got =
+        fx.s.terminal
+            .restore_workspace_terminals("ws-1", 80, 24)
+            .await
+            .unwrap();
     assert_eq!(got.len(), 1);
     assert!(same_dir(&got[0].cwd, &alive), "{}", got[0].cwd);
     fx.close().await;
@@ -244,7 +291,12 @@ async fn terminal_dock_chrome_round_trip_across_shutdown() {
     fx.svc.terminal_shutdown().await;
 
     let svc2 = fx.reopen().await;
-    let got = svc2.services().terminal.list_terminal_dock_chrome().await.unwrap();
+    let got = svc2
+        .services()
+        .terminal
+        .list_terminal_dock_chrome()
+        .await
+        .unwrap();
     assert_eq!(got, vec![want]);
     svc2.terminal_shutdown().await;
     fx.close().await;
@@ -270,10 +322,15 @@ async fn set_terminal_dock_chrome_closed_keeps_beside() {
     let fx = Fx::new().await;
     add_ws(&fx, "ws-1", "p", "");
     let t = &fx.s.terminal;
-    t.set_terminal_dock_chrome("ws-1", &chrome(false, true, 40)).await.unwrap();
+    t.set_terminal_dock_chrome("ws-1", &chrome(false, true, 40))
+        .await
+        .unwrap();
     let got = t.list_terminal_dock_chrome().await.unwrap();
     assert_eq!(got.len(), 1);
-    assert!(!got[0].open && got[0].beside && got[0].beside_pct == 40, "{got:?}");
+    assert!(
+        !got[0].open && got[0].beside && got[0].beside_pct == 40,
+        "{got:?}"
+    );
     fx.close().await;
 }
 
@@ -282,12 +339,19 @@ async fn beside_pct_survives_closed_below_restart() {
     let fx = Fx::new().await;
     add_ws(&fx, "ws-1", "p", "");
     let t = &fx.s.terminal;
-    t.set_terminal_dock_chrome("ws-1", &chrome(true, true, 40)).await.unwrap();
-    t.set_terminal_dock_chrome("ws-1", &chrome(false, false, 40)).await.unwrap();
+    t.set_terminal_dock_chrome("ws-1", &chrome(true, true, 40))
+        .await
+        .unwrap();
+    t.set_terminal_dock_chrome("ws-1", &chrome(false, false, 40))
+        .await
+        .unwrap();
     let closed_below = |got: &[TerminalDockChrome]| {
         assert_eq!(got.len(), 1);
         assert!(
-            got[0].workspace_id == "ws-1" && !got[0].open && !got[0].beside && got[0].beside_pct == 40,
+            got[0].workspace_id == "ws-1"
+                && !got[0].open
+                && !got[0].beside
+                && got[0].beside_pct == 40,
             "{got:?}"
         );
     };
@@ -298,7 +362,14 @@ async fn beside_pct_survives_closed_below_restart() {
     fx.svc.terminal_shutdown().await;
 
     let svc2 = fx.reopen().await;
-    closed_below(&svc2.services().terminal.list_terminal_dock_chrome().await.unwrap());
+    closed_below(
+        &svc2
+            .services()
+            .terminal
+            .list_terminal_dock_chrome()
+            .await
+            .unwrap(),
+    );
     svc2.terminal_shutdown().await;
     fx.close().await;
 }
@@ -307,7 +378,11 @@ async fn beside_pct_survives_closed_below_restart() {
 async fn restore_empty_when_nothing_saved() {
     let fx = Fx::new().await;
     add_ws(&fx, "ws-1", "p", "");
-    let got = fx.s.terminal.restore_workspace_terminals("ws-1", 80, 24).await.unwrap();
+    let got =
+        fx.s.terminal
+            .restore_workspace_terminals("ws-1", 80, 24)
+            .await
+            .unwrap();
     assert!(got.is_empty());
     fx.close().await;
 }
@@ -330,10 +405,22 @@ fn persist_delay_caps_trailing_debounce() {
     let (debounce, max_age) = (Duration::from_secs(1), Duration::from_secs(5));
     let ago = |ms: u64| Some(now - Duration::from_millis(ms));
     assert_eq!(persist_delay(now, None, debounce, max_age), debounce);
-    assert_eq!(persist_delay(now, ago(4000), debounce, max_age), Duration::from_secs(1));
-    assert_eq!(persist_delay(now, ago(4500), debounce, max_age), Duration::from_millis(500));
-    assert_eq!(persist_delay(now, ago(5000), debounce, max_age), Duration::ZERO);
-    assert_eq!(persist_delay(now, ago(6000), debounce, max_age), Duration::ZERO);
+    assert_eq!(
+        persist_delay(now, ago(4000), debounce, max_age),
+        Duration::from_secs(1)
+    );
+    assert_eq!(
+        persist_delay(now, ago(4500), debounce, max_age),
+        Duration::from_millis(500)
+    );
+    assert_eq!(
+        persist_delay(now, ago(5000), debounce, max_age),
+        Duration::ZERO
+    );
+    assert_eq!(
+        persist_delay(now, ago(6000), debounce, max_age),
+        Duration::ZERO
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -355,7 +442,10 @@ async fn list_terminal_dock_chrome_caches_disk_read() {
     let open_max = |got: &[TerminalDockChrome]| got.len() == 1 && got[0].open && got[0].maximized;
     assert!(open_max(&t.list_terminal_dock_chrome().await.unwrap()));
     fx.svc.remove_terminal_snapshot("ws-1").unwrap();
-    assert!(open_max(&t.list_terminal_dock_chrome().await.unwrap()), "cached chrome");
+    assert!(
+        open_max(&t.list_terminal_dock_chrome().await.unwrap()),
+        "cached chrome"
+    );
     fx.close().await;
 }
 

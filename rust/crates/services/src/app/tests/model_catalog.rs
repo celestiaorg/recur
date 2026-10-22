@@ -10,8 +10,7 @@ use recur_domain::{
 
 use super::{Fx, write};
 use crate::app::model_catalog::{
-    apply_catalog_fallbacks, build_model_catalog, first_catalog_choice,
-    provider_enablement_changed,
+    apply_catalog_fallbacks, build_model_catalog, first_catalog_choice, provider_enablement_changed,
 };
 
 fn cursor_models(ids: &[(&str, &str)]) -> Vec<recur_provider_cursor::Model> {
@@ -59,7 +58,10 @@ fn model_catalog_omits_disabled_providers() {
     let groups = build_model_catalog(
         &off(&[PROVIDER_CURSOR, PROVIDER_CODEX]),
         cursor(&[("composer-2.5", "Composer 2.5")]),
-        recur_provider_codex::catalog::catalog_models(&codex_models("gpt-5.6-luna", "GPT-5.6-Luna")),
+        recur_provider_codex::catalog::catalog_models(&codex_models(
+            "gpt-5.6-luna",
+            "GPT-5.6-Luna",
+        )),
     );
     assert_eq!(providers(&groups), [PROVIDER_CLAUDE_CODE]);
 }
@@ -88,7 +90,10 @@ fn apply_catalog_fallbacks_repoints_claude_when_off() {
     let want = "cursor/composer-2.5";
     assert_eq!(slots(&got), [want; 4]);
     assert_eq!(got.model_review, want);
-    assert_eq!(got.model_workspace_title, want, "empty title defaults to haiku");
+    assert_eq!(
+        got.model_workspace_title, want,
+        "empty title defaults to haiku"
+    );
     assert!(got.provider_enabled(PROVIDER_CURSOR) && !got.provider_enabled(PROVIDER_CLAUDE_CODE));
 }
 
@@ -119,7 +124,11 @@ fn apply_catalog_fallbacks_leaves_empty_review() {
         ..off(&[PROVIDER_CLAUDE_CODE])
     };
     let groups = build_model_catalog(&set, cursor(&[("composer-2.5", "Composer 2.5")]), vec![]);
-    assert_eq!(apply_catalog_fallbacks(set, &groups).model_review, "", "inherits Loop");
+    assert_eq!(
+        apply_catalog_fallbacks(set, &groups).model_review,
+        "",
+        "inherits Loop"
+    );
 }
 
 #[test]
@@ -194,15 +203,26 @@ async fn set_settings_uses_cached_catalog() {
         .providers
         .cursor
         .remember_models(cursor_models(&[("composer-2.5", "Composer 2.5")]));
-    write(fx.root.join("cursor-bridge/bin/cursor-sdk-bridge"), "#!/bin/sh\n");
+    write(
+        fx.root.join("cursor-bridge/bin/cursor-sdk-bridge"),
+        "#!/bin/sh\n",
+    );
     let mut set = fx.s.settings.get_settings().await.unwrap();
     set.cursor_api_key = "sk-x".into();
     set.disabled_providers = vec![PROVIDER_CLAUDE_CODE.into()];
-    for m in [&mut set.model_ask, &mut set.model_plan, &mut set.model_agent, &mut set.model_loop] {
+    for m in [
+        &mut set.model_ask,
+        &mut set.model_plan,
+        &mut set.model_agent,
+        &mut set.model_loop,
+    ] {
         *m = "claude-code/sonnet".into();
     }
     let got = fx.s.settings.set_settings(&set).await.unwrap();
-    assert_eq!(got.model_agent, "cursor/composer-2.5", "from the cached catalogue");
+    assert_eq!(
+        got.model_agent, "cursor/composer-2.5",
+        "from the cached catalogue"
+    );
     assert!(!got.provider_enabled(PROVIDER_CLAUDE_CODE));
     fx.close().await;
 }
@@ -285,11 +305,23 @@ fn model_catalog_includes_compatible_providers() {
     let groups = build_model_catalog(&set, vec![], vec![]);
     assert_eq!(providers(&groups), ["openai", "groq"]);
     assert_eq!(groups[0].label, "OpenAI");
-    let refs = |g: &ModelGroup| g.models.iter().map(|m| m.model_ref.clone()).collect::<Vec<_>>();
+    let refs = |g: &ModelGroup| {
+        g.models
+            .iter()
+            .map(|m| m.model_ref.clone())
+            .collect::<Vec<_>>()
+    };
     assert_eq!(refs(&groups[0]), ["openai/gpt-5"]);
-    assert_eq!(groups[0].models[0].flags.len(), 2, "effort + verbosity, no wire");
+    assert_eq!(
+        groups[0].models[0].flags.len(),
+        2,
+        "effort + verbosity, no wire"
+    );
     assert_eq!(refs(&groups[1]), ["groq/llama-3.1-70b"]);
 
     set.disabled_providers.push("openai".into());
-    assert_eq!(providers(&build_model_catalog(&set, vec![], vec![])), ["groq"]);
+    assert_eq!(
+        providers(&build_model_catalog(&set, vec![], vec![])),
+        ["groq"]
+    );
 }

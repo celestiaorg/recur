@@ -66,11 +66,21 @@ async fn serve_workspace_file_streams_body() {
 
     let text = fx.get(&file("big.txt")).await;
     assert_eq!(text.body, body.as_bytes());
-    assert!(text.content_type.starts_with("text/plain"), "{}", text.content_type);
+    assert!(
+        text.content_type.starts_with("text/plain"),
+        "{}",
+        text.content_type
+    );
     let img = fx.get(&file("icon.png")).await;
-    assert_eq!((img.body.as_slice(), img.content_type.as_str()), (&PNG[..], "image/png"));
+    assert_eq!(
+        (img.body.as_slice(), img.content_type.as_str()),
+        (&PNG[..], "image/png")
+    );
     let pdf = fx.get(&file("doc.pdf")).await;
-    assert_eq!((pdf.body.as_slice(), pdf.content_type.as_str()), (&b"%PDF-1.4\n"[..], "application/pdf"));
+    assert_eq!(
+        (pdf.body.as_slice(), pdf.content_type.as_str()),
+        (&b"%PDF-1.4\n"[..], "application/pdf")
+    );
     assert_eq!(fx.status(&file("blob.bin")).await, 415);
     assert!(matches!(fx.status(&file("../secret")).await, 400 | 404));
 
@@ -105,7 +115,10 @@ async fn serve_workspace_file_at_base() {
     assert_eq!(fx.status(&file("path=notes.txt&at=base")).await, 400);
     assert_eq!(fx.status(&file("path=icon.png&at=HEAD")).await, 400);
     assert_eq!(fx.status(&file("path=nope.png&at=base")).await, 404);
-    assert!(matches!(fx.status(&file("path=../secret.png&at=base")).await, 400 | 404));
+    assert!(matches!(
+        fx.status(&file("path=../secret.png&at=base")).await,
+        400 | 404
+    ));
     fx.close().await;
 }
 
@@ -124,7 +137,10 @@ async fn serve_chat_image() {
     let url = |p: &str| format!("/chat-image?path={}", q(p));
 
     let got = fx.get(&url(&png)).await;
-    assert_eq!((got.body.as_slice(), got.content_type.as_str()), (&PNG[..], "image/png"));
+    assert_eq!(
+        (got.body.as_slice(), got.content_type.as_str()),
+        (&PNG[..], "image/png")
+    );
     assert!(matches!(fx.status(&url("shot.png")).await, 400 | 415));
     assert!(matches!(fx.status(&url(&txt)).await, 400 | 415));
     assert_eq!(fx.status(&url(&missing)).await, 404);
@@ -145,7 +161,11 @@ async fn serve_external_file() {
 
     let got = fx.get(&url(&csv)).await;
     assert_eq!(got.body, b"a,b\n1,2\n");
-    assert!(got.content_type.starts_with("text/plain"), "{}", got.content_type);
+    assert!(
+        got.content_type.starts_with("text/plain"),
+        "{}",
+        got.content_type
+    );
     assert_eq!(fx.status(&url(&bin)).await, 415);
     assert_eq!(fx.status(&url("export-111.csv")).await, 400);
     let other = format!("{dir}/other.csv");
@@ -159,7 +179,14 @@ fn tiff_header(w: u32, h: u32) -> Vec<u8> {
     let mut b = b"II*\x00".to_vec();
     b.extend(8u32.to_le_bytes());
     b.extend(6u16.to_le_bytes());
-    for (tag, typ, val) in [(256u16, 4u16, w), (257, 4, h), (258, 3, 8), (262, 3, 1), (273, 4, 86), (279, 4, 1)] {
+    for (tag, typ, val) in [
+        (256u16, 4u16, w),
+        (257, 4, h),
+        (258, 3, 8),
+        (262, 3, 1),
+        (273, 4, 86),
+        (279, 4, 1),
+    ] {
         b.extend(tag.to_le_bytes());
         b.extend(typ.to_le_bytes());
         b.extend(1u32.to_le_bytes());
@@ -176,12 +203,23 @@ async fn serve_workspace_file_tiff() {
     let root = fx.temp();
     let mut small = Vec::new();
     image::DynamicImage::new_luma8(3, 2)
-        .write_to(&mut std::io::Cursor::new(&mut small), image::ImageFormat::Tiff)
+        .write_to(
+            &mut std::io::Cursor::new(&mut small),
+            image::ImageFormat::Tiff,
+        )
         .unwrap();
     git(&root, &["init", "-b", "main"]);
     std::fs::write(format!("{root}/scan.tif"), &small).unwrap();
-    std::fs::write(format!("{root}/huge.tiff"), tiff_header(1 << 13, (1 << 13) + 1)).unwrap();
-    std::fs::write(format!("{root}/overflow.tif"), tiff_header(u32::MAX, u32::MAX)).unwrap();
+    std::fs::write(
+        format!("{root}/huge.tiff"),
+        tiff_header(1 << 13, (1 << 13) + 1),
+    )
+    .unwrap();
+    std::fs::write(
+        format!("{root}/overflow.tif"),
+        tiff_header(u32::MAX, u32::MAX),
+    )
+    .unwrap();
     git(&root, &["add", "."]);
     git(&root, &["commit", "-m", "init"]);
     project(&fx, "p-tiff", &root);
@@ -202,7 +240,11 @@ async fn serve_workspace_file_tiff() {
     }
     set_transcode_tiff(true);
     for name in ["huge.tiff", "overflow.tif"] {
-        assert_eq!(fx.status(&file(&format!("path={name}"))).await, 415, "{name}");
+        assert_eq!(
+            fx.status(&file(&format!("path={name}"))).await,
+            415,
+            "{name}"
+        );
     }
     set_transcode_tiff(prev);
     fx.close().await;
@@ -210,7 +252,8 @@ async fn serve_workspace_file_tiff() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn serve_forge_image() {
-    const ASSET: &str = "https://github.com/user-attachments/assets/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const ASSET: &str =
+        "https://github.com/user-attachments/assets/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
     let forge = Arc::new(FakeForge::new());
     forge.on_fetch_image(|(url,)| async move {
         match url.as_str() {
@@ -218,7 +261,9 @@ async fn serve_forge_image() {
                 content_type: "image/png".into(),
                 bytes: PNG.to_vec(),
             })),
-            "https://github.com/html" => Err(ForgeError::new(ForgeErrorKind::Http(415), "not an image")),
+            "https://github.com/html" => {
+                Err(ForgeError::new(ForgeErrorKind::Http(415), "not an image"))
+            }
             _ => Ok(None),
         }
     });

@@ -37,7 +37,11 @@ fn clamp_shell_state_keeps_view_ids() {
     });
     assert_eq!(got, st("detail", "WS-1"), "detail keeps only the workspace");
     for view in ["inbox", "schedules", "issues", "briefing"] {
-        assert_eq!(clamp_shell_state(st(view, "WS-1")), st(view, ""), "{view} drops ids");
+        assert_eq!(
+            clamp_shell_state(st(view, "WS-1")),
+            st(view, ""),
+            "{view} drops ids"
+        );
     }
     assert_eq!(clamp_shell_state(st("nope", "WS-1")), ShellState::default());
 }
@@ -49,14 +53,25 @@ async fn shell_state_round_trip() {
     assert_eq!(sh.get_shell_state().await.unwrap(), ShellState::default());
     let want = st("detail", "WS-9");
     sh.set_shell_state(&want).await.unwrap();
-    assert_eq!(sh.get_shell_state().await.unwrap(), want, "memory before flush");
+    assert_eq!(
+        sh.get_shell_state().await.unwrap(),
+        want,
+        "memory before flush"
+    );
     sh.flush().await.unwrap();
     assert_eq!(file_state(&fx), want);
-    assert_eq!(fresh_shell(&fx).await.get_shell_state().await.unwrap(), want, "load");
+    assert_eq!(
+        fresh_shell(&fx).await.get_shell_state().await.unwrap(),
+        want,
+        "load"
+    );
     sh.set_shell_state(&want).await.unwrap();
     sh.set_shell_state(&st("inbox", "WS-9")).await.unwrap();
     sh.flush().await.unwrap();
-    assert_eq!(fresh_shell(&fx).await.get_shell_state().await.unwrap(), st("inbox", ""));
+    assert_eq!(
+        fresh_shell(&fx).await.get_shell_state().await.unwrap(),
+        st("inbox", "")
+    );
     fx.close().await;
 }
 
@@ -79,7 +94,10 @@ async fn set_shell_state_debounced_until_flush() {
     let sh = &fx.s.shell;
     let want = st("detail", "WS-1");
     sh.set_shell_state(&want).await.unwrap();
-    assert!(!fx.root.join(SHELL_STATE_FILE).exists(), "written before flush");
+    assert!(
+        !fx.root.join(SHELL_STATE_FILE).exists(),
+        "written before flush"
+    );
     assert_eq!(sh.get_shell_state().await.unwrap(), want);
     sh.flush().await.unwrap();
     assert_eq!(file_state(&fx), want);
@@ -95,8 +113,14 @@ async fn flush_retries_after_write_error() {
     let block = fx.root.join(SHELL_STATE_FILE);
     std::fs::create_dir(&block).unwrap();
     sh.flush().await.unwrap();
-    assert!(fx.svc.shell_fail_delay() >= SHELL_SAVE_DEBOUNCE * 2, "backoff not armed");
-    assert!(!fx.root.join(format!("{SHELL_STATE_FILE}.tmp")).exists(), "tmp left behind");
+    assert!(
+        fx.svc.shell_fail_delay() >= SHELL_SAVE_DEBOUNCE * 2,
+        "backoff not armed"
+    );
+    assert!(
+        !fx.root.join(format!("{SHELL_STATE_FILE}.tmp")).exists(),
+        "tmp left behind"
+    );
     std::fs::remove_dir(&block).unwrap();
     sh.flush().await.unwrap();
     assert_eq!(file_state(&fx), want);
@@ -107,7 +131,10 @@ async fn flush_retries_after_write_error() {
 async fn load_shell_state_corrupt() {
     let fx = Fx::new().await;
     write(fx.root.join(SHELL_STATE_FILE), "{not json");
-    assert_eq!(fx.s.shell.get_shell_state().await.unwrap(), ShellState::default());
+    assert_eq!(
+        fx.s.shell.get_shell_state().await.unwrap(),
+        ShellState::default()
+    );
     fx.close().await;
 }
 
@@ -122,7 +149,11 @@ async fn expanded_schedules_round_trip() {
     let file: serde_json::Value =
         serde_json::from_slice(&std::fs::read(fx.root.join(SCHEDULE_VIEW_FILE)).unwrap()).unwrap();
     assert_eq!(file["expanded"], serde_json::json!(["a", "b"]));
-    let reload = fresh_shell(&fx).await.get_expanded_schedules().await.unwrap();
+    let reload = fresh_shell(&fx)
+        .await
+        .get_expanded_schedules()
+        .await
+        .unwrap();
     assert_eq!(reload, ["a", "b"]);
     fx.close().await;
 }
@@ -131,7 +162,13 @@ async fn expanded_schedules_round_trip() {
 async fn expanded_schedules_corrupt() {
     let fx = Fx::new().await;
     write(fx.root.join(SCHEDULE_VIEW_FILE), "{not json");
-    assert!(fx.s.shell.get_expanded_schedules().await.unwrap().is_empty());
+    assert!(
+        fx.s.shell
+            .get_expanded_schedules()
+            .await
+            .unwrap()
+            .is_empty()
+    );
     fx.close().await;
 }
 
@@ -149,7 +186,10 @@ async fn issues_view_round_trip() {
         projects: vec!["p1".into()],
     };
     sh.set_issues_view(&want).await.unwrap();
-    assert_eq!(fresh_shell(&fx).await.get_issues_view().await.unwrap(), want);
+    assert_eq!(
+        fresh_shell(&fx).await.get_issues_view().await.unwrap(),
+        want
+    );
     write(fx.root.join(ISSUES_VIEW_FILE), "{not json");
     assert_eq!(sh.get_issues_view().await.unwrap().layout, "");
     fx.close().await;
@@ -190,7 +230,12 @@ async fn list_scheduled_prompts_across_projects() {
     assert_eq!(p.list_scheduled_prompts("").await.unwrap().len(), 2);
     for id in ["one", "two"] {
         let got = p.list_scheduled_prompts(id).await.unwrap();
-        assert_eq!(got.iter().map(|s| s.project_id.as_str()).collect::<Vec<_>>(), [id]);
+        assert_eq!(
+            got.iter()
+                .map(|s| s.project_id.as_str())
+                .collect::<Vec<_>>(),
+            [id]
+        );
     }
     fx.close().await;
 }

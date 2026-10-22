@@ -59,7 +59,8 @@ fn backend(
     _rt: &tokio::runtime::Runtime,
     _store: recur_store::Store,
 ) -> (Services, Option<Arc<AppServices>>) {
-    let bridge = recur_services::mock::MockBridge::fresh(recur_services::mock::MockOptions::default());
+    let bridge =
+        recur_services::mock::MockBridge::fresh(recur_services::mock::MockOptions::default());
     (bridge.services(), None)
 }
 
@@ -300,7 +301,7 @@ fn main() {
         });
         // simplify: complete scripts get no LSP diagnostics until the editor's LSP client
         // keeps a problems list (Svelte `lspProblems`); pass it here when it lands.
-        let diagnostics: Rc<dyn Fn(&str) -> Vec<String>> = Rc::new(|_| Vec::new());
+        let diagnostics: macro_runtime::Diagnostics = Rc::new(|_| Vec::new());
         recur_view_chat::prompt_actions::PromptCatalog::set_runners(
             Some(macros.prompt_runner()),
             Some(macros.complete_runner(diagnostics)),
@@ -390,8 +391,13 @@ fn main() {
         // every loop and chat, persist terminals and stop language servers and the usage
         // poller before the store closes (Go `stopIPC(); eng.Shutdown()` in OnShutdown). The
         // flock is released when the instance drops, after the run loop.
-        let (hub, gate, ipc, real, handle) =
-            (hub.clone(), gate.clone(), ipc.clone(), real.clone(), rt.clone());
+        let (hub, gate, ipc, real, handle) = (
+            hub.clone(),
+            gate.clone(),
+            ipc.clone(),
+            real.clone(),
+            rt.clone(),
+        );
         cx.on_app_quit(move |_| {
             revoke_open_ui(&hub, &gate);
             if let Some(ipc) = ipc.borrow_mut().take() {

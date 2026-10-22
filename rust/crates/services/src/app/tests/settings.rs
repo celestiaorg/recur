@@ -3,8 +3,8 @@
 //! recur-usage; Go's nil-poller case cannot occur here).
 
 use recur_domain::{
-    BranchPrefixMode, CompatibleFlagDim, CompatibleFlagOption, CompatibleModel,
-    CompatibleProvider, DEFAULT_BRANCH_NAME_PREFIX, DEFAULT_MAX_LOOPS, McpServer, Settings,
+    BranchPrefixMode, CompatibleFlagDim, CompatibleFlagOption, CompatibleModel, CompatibleProvider,
+    DEFAULT_BRANCH_NAME_PREFIX, DEFAULT_MAX_LOOPS, McpServer, Settings,
 };
 
 use super::Fx;
@@ -57,7 +57,12 @@ fn opt(value: &str, label: &str, default: bool) -> CompatibleFlagOption {
     }
 }
 
-fn flag(id: &str, label: &str, wire: &str, options: Vec<CompatibleFlagOption>) -> CompatibleFlagDim {
+fn flag(
+    id: &str,
+    label: &str,
+    wire: &str,
+    options: Vec<CompatibleFlagOption>,
+) -> CompatibleFlagDim {
     CompatibleFlagDim {
         id: id.into(),
         label: label.into(),
@@ -112,13 +117,19 @@ async fn set_settings_rejects_reserved_mcp() {
     });
     assert!(fx.s.settings.set_settings(&set).await.is_err());
     let stored = fx.settings().await.mcp_servers;
-    assert_eq!(stored.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(), ["acme"]);
+    assert_eq!(
+        stored.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+        ["acme"]
+    );
     fx.close().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn set_settings_rejects_invalid_compatible_provider() {
-    let good = openai("https://api.openai.com", vec![model("gpt-5", "GPT-5", vec![])]);
+    let good = openai(
+        "https://api.openai.com",
+        vec![model("gpt-5", "GPT-5", vec![])],
+    );
     let bad = openai("not-a-url", vec![model("gpt-5", "", vec![])]);
     refuses_compatible(good, bad, "").await;
 }
@@ -127,11 +138,17 @@ async fn set_settings_rejects_invalid_compatible_provider() {
 async fn set_settings_rejects_duplicate_compatible_model() {
     let good = openai(
         "https://api.openai.com",
-        vec![model("gpt-5", "GPT-5", vec![]), model("gpt-4o", "GPT-4o", vec![])],
+        vec![
+            model("gpt-5", "GPT-5", vec![]),
+            model("gpt-4o", "GPT-4o", vec![]),
+        ],
     );
     let mut clobber = model("gpt-5", "Clobber", vec![]);
     clobber.context_window = 1;
-    let bad = openai("https://api.openai.com", vec![model("gpt-5", "GPT-5", vec![]), clobber]);
+    let bad = openai(
+        "https://api.openai.com",
+        vec![model("gpt-5", "GPT-5", vec![]), clobber],
+    );
     refuses_compatible(good, bad, "duplicate model id").await;
 }
 
@@ -166,7 +183,11 @@ async fn set_settings_rejects_duplicate_compatible_flag_option() {
                     "effort",
                     "Effort",
                     "reasoning.effort",
-                    vec![opt("low", "Low", false), opt(second, "Medium", true), opt("high", "High", false)],
+                    vec![
+                        opt("low", "Low", false),
+                        opt(second, "Medium", true),
+                        opt("high", "High", false),
+                    ],
                 )],
             )],
         )
@@ -178,7 +199,10 @@ async fn set_settings_rejects_duplicate_compatible_flag_option() {
 async fn set_settings_normalizes_branch_name_prefix() {
     let fx = Fx::new().await;
     let mut set = fx.settings().await;
-    assert_eq!(set.branch_name_prefix.as_deref(), Some(DEFAULT_BRANCH_NAME_PREFIX));
+    assert_eq!(
+        set.branch_name_prefix.as_deref(),
+        Some(DEFAULT_BRANCH_NAME_PREFIX)
+    );
     set.branch_name_prefix = Some("My Team".into());
     let mut got = fx.save(&set).await;
     assert_eq!(got.branch_name_prefix.as_deref(), Some("my-team"));
@@ -199,7 +223,11 @@ async fn set_settings_governor_caps() {
     set.max_loops = 0;
     set.max_agents = 128;
     let mut got = fx.save(&set).await;
-    assert_eq!((got.max_loops, got.max_agents), (0, 128), "unlimited, no upper clamp");
+    assert_eq!(
+        (got.max_loops, got.max_agents),
+        (0, 128),
+        "unlimited, no upper clamp"
+    );
     got.max_loops = -1;
     got.max_agents = 3;
     let got = fx.save(&got).await;
@@ -248,7 +276,10 @@ async fn drop_orphan_cursor_key() {
     assert_eq!(fx.store().settings().cursor_api_key, "");
 
     let dir = fx.temp();
-    super::write(format!("{dir}/cursor-usage-auth.json"), r#"{"accessToken":"sess"}"#);
+    super::write(
+        format!("{dir}/cursor-usage-auth.json"),
+        r#"{"accessToken":"sess"}"#,
+    );
     let mut set = fx.store().settings();
     set.cursor_api_key = "crsr_kept".into();
     fx.save(&set).await;
@@ -257,6 +288,9 @@ async fn drop_orphan_cursor_key() {
         .usage
         .drop_orphan_cursor_key(fx.store().settings(), std::path::Path::new(&dir))
         .await;
-    assert_eq!(got.cursor_api_key, "crsr_kept", "a Connect file keeps the key");
+    assert_eq!(
+        got.cursor_api_key, "crsr_kept",
+        "a Connect file keeps the key"
+    );
     fx.close().await;
 }

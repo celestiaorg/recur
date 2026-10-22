@@ -33,7 +33,6 @@ mod workspaces;
 #[cfg(test)]
 mod tests;
 
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -411,11 +410,8 @@ impl AppServices {
 
 impl Providers {
     fn all(&self) -> Vec<Arc<dyn Provider>> {
-        let mut out: Vec<Arc<dyn Provider>> = vec![
-            self.claude.clone(),
-            self.cursor.clone(),
-            self.codex.clone(),
-        ];
+        let mut out: Vec<Arc<dyn Provider>> =
+            vec![self.claude.clone(), self.cursor.clone(), self.codex.clone()];
         for (_, _, p) in self.compatible.lock().iter() {
             out.push(p.clone());
         }

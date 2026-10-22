@@ -127,7 +127,11 @@ impl AppServices {
         Ok(res)
     }
 
-    async fn finish_loose_file(&self, mut res: OpenPathResult, abs: &str) -> Result<OpenPathResult> {
+    async fn finish_loose_file(
+        &self,
+        mut res: OpenPathResult,
+        abs: &str,
+    ) -> Result<OpenPathResult> {
         let (p, created) = self.ensure_files_project().await?;
         let ws = self.engine.open_main_workspace(&p.id).await.map_err(err)?;
         self.loose.allow(abs);

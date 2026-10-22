@@ -40,7 +40,8 @@ fn no_cache(content_type: impl Into<String>, body: Vec<u8>) -> Asset {
 /// Go `writeTIFFAsPNG`: the file is not modified.
 fn tiff_as_png(data: &[u8]) -> Served {
     let fail = |e: String| AssetError::new(415, e);
-    let dec = image::codecs::tiff::TiffDecoder::new(Cursor::new(data)).map_err(|e| fail(e.to_string()))?;
+    let dec = image::codecs::tiff::TiffDecoder::new(Cursor::new(data))
+        .map_err(|e| fail(e.to_string()))?;
     let (w, h) = dec.dimensions();
     if h > 0 && u64::from(w) > MAX_TIFF_PIXELS / u64::from(h) {
         return Err(fail(format!("image too large ({w}x{h})")));
@@ -81,7 +82,8 @@ fn serve_prepared(abs: &Path, mime: &str) -> Served {
         return Err(AssetError::new(415, e.to_string()));
     }
     let mut body = Vec::new();
-    std::io::Read::read_to_end(&mut f, &mut body).map_err(|e| AssetError::new(500, e.to_string()))?;
+    std::io::Read::read_to_end(&mut f, &mut body)
+        .map_err(|e| AssetError::new(500, e.to_string()))?;
     if mime == "image/tiff" && TRANSCODE_TIFF.load(Ordering::SeqCst) {
         return tiff_as_png(&body);
     }
@@ -189,7 +191,11 @@ impl AppServices {
             .resolve_read_path(project_id, q.get("workspace"), rel)
             .map_err(|e| {
                 let msg = e.to_string();
-                let status = if msg.contains("outside the workspace") { 403 } else { 404 };
+                let status = if msg.contains("outside the workspace") {
+                    403
+                } else {
+                    404
+                };
                 AssetError::new(status, msg)
             })?;
         let (abs, mime) = recur_code::prepare_serve(&root, &rel)
@@ -206,12 +212,16 @@ impl AppServices {
         rel: &str,
     ) -> Served {
         if rel.starts_with('/') {
-            return Err(AssetError::new(400, "base revision is only for workspace paths"));
+            return Err(AssetError::new(
+                400,
+                "base revision is only for workspace paths",
+            ));
         }
         let (root, _, base) = self
             .resolve_scope(project_id, workspace_id)
             .map_err(|e| AssetError::new(404, e.to_string()))?;
-        let abs = recur_code::safe_join(&root, rel).map_err(|e| AssetError::new(400, e.to_string()))?;
+        let abs =
+            recur_code::safe_join(&root, rel).map_err(|e| AssetError::new(400, e.to_string()))?;
         let rel = recur_code::rel_slash(&root, &abs);
         let mime = recur_code::image_mime(&rel);
         if mime.is_empty() {

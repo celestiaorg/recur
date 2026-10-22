@@ -287,8 +287,7 @@ impl AppServices {
         if workspace_id.is_empty() {
             return None;
         }
-        let snap: PersistedTerminals =
-            read_gz_json(&snapshot_path(self.data_dir(), workspace_id))?;
+        let snap: PersistedTerminals = read_gz_json(&snapshot_path(self.data_dir(), workspace_id))?;
         (!snapshot_idle(&snap)).then_some(snap)
     }
 
@@ -351,10 +350,7 @@ impl AppServices {
             }
         }
         let active_id = self.term.active_id(workspace_id);
-        let active = snaps
-            .iter()
-            .rposition(|s| s.id == active_id)
-            .unwrap_or(0) as i64;
+        let active = snaps.iter().rposition(|s| s.id == active_id).unwrap_or(0) as i64;
         let tabs = snaps
             .into_iter()
             .map(|s| PersistedTab {

@@ -20,8 +20,21 @@ async fn code_and_observatory_services() {
         .unwrap();
     let code = &fx.s.code;
     assert!(!code.list_tree("p-obs", "", "").await.unwrap().is_empty());
-    assert!(!code.read_file("p-obs", "", "main.go").await.unwrap().content.is_empty());
-    assert!(!code.outline("p-obs", "", "main.go").await.unwrap().is_empty());
+    assert!(
+        !code
+            .read_file("p-obs", "", "main.go")
+            .await
+            .unwrap()
+            .content
+            .is_empty()
+    );
+    assert!(
+        !code
+            .outline("p-obs", "", "main.go")
+            .await
+            .unwrap()
+            .is_empty()
+    );
 
     fx.store()
         .add_workspace(Workspace {
@@ -40,7 +53,10 @@ async fn code_and_observatory_services() {
         ..Default::default()
     });
     let list = fx.s.observatory.list_findings("w-obs").await.unwrap();
-    assert_eq!(list.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(), ["f1"]);
+    assert_eq!(
+        list.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(),
+        ["f1"]
+    );
     fx.close().await;
 }
 
@@ -61,14 +77,22 @@ async fn create_finding() {
         .await
         .unwrap();
     assert_eq!(
-        (got.file.as_str(), got.line, got.end_line, got.message.as_str()),
+        (
+            got.file.as_str(),
+            got.line,
+            got.end_line,
+            got.message.as_str()
+        ),
         ("src/main.go", 12, 0, "check the timeout")
     );
     assert_eq!(got.status, FindingStatus::Open.as_str());
     assert_eq!(got.severity, Severity::Info);
     assert_eq!(got.source, FINDING_SOURCE_USER);
     let list = obs.list_findings("w-note").await.unwrap();
-    assert_eq!(list.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(), [got.id.as_str()]);
+    assert_eq!(
+        list.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(),
+        [got.id.as_str()]
+    );
 
     for (name, ws, file, line, msg) in [
         ("empty message", "w-note", "a.go", 1, "  "),
@@ -76,14 +100,32 @@ async fn create_finding() {
         ("negative line", "w-note", "a.go", -1, "x"),
         ("missing workspace", "nope", "a.go", 1, "x"),
     ] {
-        assert!(obs.create_finding(ws, file, line, msg, 0).await.is_err(), "{name}");
+        assert!(
+            obs.create_finding(ws, file, line, msg, 0).await.is_err(),
+            "{name}"
+        );
     }
-    let span = obs.create_finding("w-note", "src/main.go", 10, "this span", 14).await.unwrap();
+    let span = obs
+        .create_finding("w-note", "src/main.go", 10, "this span", 14)
+        .await
+        .unwrap();
     assert_eq!((span.line, span.end_line), (10, 14));
-    let same = obs.create_finding("w-note", "src/main.go", 8, "same line", 8).await.unwrap();
+    let same = obs
+        .create_finding("w-note", "src/main.go", 8, "same line", 8)
+        .await
+        .unwrap();
     assert_eq!(same.end_line, 0);
-    for (name, line, end) in [("negative end", 1, -1), ("end before start", 10, 5), ("end without start", 0, 5)] {
-        assert!(obs.create_finding("w-note", "a.go", line, "x", end).await.is_err(), "{name}");
+    for (name, line, end) in [
+        ("negative end", 1, -1),
+        ("end before start", 10, 5),
+        ("end without start", 0, 5),
+    ] {
+        assert!(
+            obs.create_finding("w-note", "a.go", line, "x", end)
+                .await
+                .is_err(),
+            "{name}"
+        );
     }
     fx.close().await;
 }

@@ -8,8 +8,8 @@ use recur_agent::{CredentialDraft, Provider as _, ProviderStatus};
 use recur_domain::{
     BranchPrefixMode, CompatibleFlagDim, CompatibleProvider, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX,
     PROVIDER_CURSOR, Resource, Settings, effective_agent_turn_timeout_minutes,
-    effective_max_agents, effective_max_loops, normalize_mcp_servers, validate_compatible_providers,
-    validate_mcp_servers,
+    effective_max_agents, effective_max_loops, normalize_mcp_servers,
+    validate_compatible_providers, validate_mcp_servers,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -91,7 +91,9 @@ impl AppServices {
                 set.codex_configured()
                     && recur_provider_codex::locate::locate(&set.codex_bin_path).is_ok()
             }
-            _ => set.compatible_by_id(provider).is_some_and(|p| p.configured()),
+            _ => set
+                .compatible_by_id(provider)
+                .is_some_and(|p| p.configured()),
         }
     }
 

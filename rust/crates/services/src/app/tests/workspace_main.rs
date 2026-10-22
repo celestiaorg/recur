@@ -1,8 +1,8 @@
 //! `workspace_main_test.go`.
 
 use recur_domain::{
-    Project, UPDATE_WORKSPACE_AUTOSTASH, UPDATE_WORKSPACE_NOOP, UPDATE_WORKSPACE_UPDATED, WORKSPACE_MAIN,
-    Workspace,
+    Project, UPDATE_WORKSPACE_AUTOSTASH, UPDATE_WORKSPACE_NOOP, UPDATE_WORKSPACE_UPDATED,
+    WORKSPACE_MAIN, Workspace,
 };
 
 use super::{Fx, git, git_out, read, write};
@@ -23,15 +23,14 @@ async fn open_main_workspace() {
     assert!(ws.base_branch.is_empty());
     let ws2 = fx.s.workspaces.open_main_workspace(&pid).await.unwrap();
     assert_eq!(ws2.id, ws.id, "singleton per project");
-    let mains = fx
-        .s
-        .workspaces
-        .list_workspaces()
-        .await
-        .unwrap()
-        .iter()
-        .filter(|w| w.is_main && w.project_id == pid)
-        .count();
+    let mains =
+        fx.s.workspaces
+            .list_workspaces()
+            .await
+            .unwrap()
+            .iter()
+            .filter(|w| w.is_main && w.project_id == pid)
+            .count();
     assert_eq!(mains, 1);
     fx.s.code
         .write_file(&pid, &ws.id, "main.txt", "hi\n")
@@ -56,15 +55,14 @@ async fn open_main_workspace_concurrent_singleton() {
     let got = futures::future::join_all(calls).await;
     let ids: Vec<String> = got.into_iter().map(|r| r.unwrap().id).collect();
     assert!(ids.iter().all(|id| *id == ids[0]), "{ids:?}");
-    let mains = fx
-        .s
-        .workspaces
-        .list_workspaces()
-        .await
-        .unwrap()
-        .iter()
-        .filter(|w| w.is_main && w.project_id == pid)
-        .count();
+    let mains =
+        fx.s.workspaces
+            .list_workspaces()
+            .await
+            .unwrap()
+            .iter()
+            .filter(|w| w.is_main && w.project_id == pid)
+            .count();
     assert_eq!(mains, 1);
     fx.close().await;
 }
@@ -82,7 +80,10 @@ async fn open_main_workspace_repairs_moved_repo() {
     let ws2 = fx.s.workspaces.open_main_workspace(&pid).await.unwrap();
     assert_eq!(ws2.id, ws.id);
     assert!(same(&ws2.worktree_path, &repo2));
-    assert!(same(&fx.store().workspace(&ws.id).unwrap().worktree_path, &repo2));
+    assert!(same(
+        &fx.store().workspace(&ws.id).unwrap().worktree_path,
+        &repo2
+    ));
     fx.close().await;
 }
 
@@ -99,9 +100,19 @@ async fn main_workspace_refuses_loop_and_pr() {
             .await
             .is_err()
     );
-    assert!(fx.s.workspaces.open_workspace_pr(&ws.id, false).await.is_err());
+    assert!(
+        fx.s.workspaces
+            .open_workspace_pr(&ws.id, false)
+            .await
+            .is_err()
+    );
     assert!(fx.s.workspaces.merge_workspace(&ws.id, "").await.is_err());
-    assert!(fx.s.workspaces.update_workspace_with_base(&ws.id, "").await.is_err());
+    assert!(
+        fx.s.workspaces
+            .update_workspace_with_base(&ws.id, "")
+            .await
+            .is_err()
+    );
     assert!(fx.s.workspaces.remove_workspace(&ws.id).await.is_err());
     fx.close().await;
 }
@@ -121,8 +132,20 @@ async fn staged_files_non_git_working_copy() {
         })
         .unwrap();
     let ws = fx.s.workspaces.open_main_workspace(&p.id).await.unwrap();
-    assert!(fx.s.code.staged_files(&p.id, &ws.id).await.unwrap().is_empty());
-    assert!(fx.s.code.working_status(&p.id, &ws.id).await.unwrap().is_empty());
+    assert!(
+        fx.s.code
+            .staged_files(&p.id, &ws.id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        fx.s.code
+            .working_status(&p.id, &ws.id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
     fx.close().await;
 }
 
@@ -162,10 +185,22 @@ async fn staged_files_non_writable_root() {
         })
         .unwrap();
     staged_empty("stale-wt").await;
-    assert!(fx.s.code.working_status(&pid, "stale-wt").await.unwrap().is_empty());
+    assert!(
+        fx.s.code
+            .working_status(&pid, "stale-wt")
+            .await
+            .unwrap()
+            .is_empty()
+    );
     let wd = fx.s.code.diff_working(&pid, "stale-wt").await.unwrap();
     assert!(wd.files.unwrap_or_default().is_empty());
-    assert!(fx.s.code.git_status(&pid, "stale-wt").await.unwrap().is_empty());
+    assert!(
+        fx.s.code
+            .git_status(&pid, "stale-wt")
+            .await
+            .unwrap()
+            .is_empty()
+    );
     let e = fx.s.code.list_tree(&pid, "stale-wt", "").await.unwrap_err();
     assert!(e.message.starts_with("worktree is not a directory"), "{e}");
     assert!(
@@ -182,17 +217,16 @@ async fn staged_files_non_writable_root() {
 async fn add_project_seeds_working_copy_from_checkout() {
     let fx = Fx::new().await;
     let repo = fx.init_git_repo();
-    let p = fx
-        .s
-        .projects
-        .add_project(&Project {
-            name: "app".into(),
-            repo_path: repo,
-            base_branch: "origin/main".into(),
-            ..Default::default()
-        })
-        .await
-        .unwrap();
+    let p =
+        fx.s.projects
+            .add_project(&Project {
+                name: "app".into(),
+                repo_path: repo,
+                base_branch: "origin/main".into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
     let main = fx
         .store()
         .workspaces()
@@ -260,7 +294,10 @@ async fn main_working_copy_land_and_remote() {
     let ws = w.open_main_workspace(&pid).await.unwrap();
     let land = w.workspace_land_state(&ws.id).await.unwrap();
     assert!(!land.dirty && !land.unmerged && land.ahead_base == 0 && land.behind_base == 0);
-    assert_eq!((land.remote.as_str(), land.base.as_str()), ("origin", "origin/main"));
+    assert_eq!(
+        (land.remote.as_str(), land.base.as_str()),
+        ("origin", "origin/main")
+    );
 
     write(format!("{clone}/dirty.txt"), "wip\n");
     assert!(w.workspace_land_state(&ws.id).await.unwrap().dirty);
@@ -281,7 +318,10 @@ async fn main_working_copy_land_and_remote() {
     assert_eq!(land.ahead_base, 0);
     assert!(land.dirty);
     assert_eq!(read(format!("{clone}/leftover.txt")), "still here\n");
-    assert_eq!(git_out(&bare, &["show", "HEAD:dirty.txt"]).unwrap().trim(), "wip");
+    assert_eq!(
+        git_out(&bare, &["show", "HEAD:dirty.txt"]).unwrap().trim(),
+        "wip"
+    );
 
     advance_origin(&fx, &bare, "from-origin.txt", "theirs\n", "origin advance");
     write(format!("{clone}/README.md"), "hello\nlocal edit\n");
@@ -290,7 +330,10 @@ async fn main_working_copy_land_and_remote() {
     let res = w.update_working_copy_from_remote(&ws.id, "").await.unwrap();
     assert_eq!(res.status, UPDATE_WORKSPACE_UPDATED);
     assert_eq!(read(format!("{clone}/from-origin.txt")).trim(), "theirs");
-    assert_eq!(read(format!("{clone}/README.md")).trim(), "hello\nlocal edit");
+    assert_eq!(
+        read(format!("{clone}/README.md")).trim(),
+        "hello\nlocal edit"
+    );
     assert_eq!(read(format!("{clone}/leftover.txt")), "still here\n");
     let land = w.workspace_land_state(&ws.id).await.unwrap();
     assert_eq!(land.behind_base, 0);
@@ -307,19 +350,31 @@ async fn main_working_copy_update_conflict_aborts() {
     let pid = fx.add_project(&clone);
     let ws = fx.s.workspaces.open_main_workspace(&pid).await.unwrap();
     write(format!("{clone}/README.md"), "ours\n");
-    assert!(fx.s.code.commit(&pid, &ws.id, "local readme").await.unwrap().committed);
+    assert!(
+        fx.s.code
+            .commit(&pid, &ws.id, "local readme")
+            .await
+            .unwrap()
+            .committed
+    );
     write(format!("{clone}/notes.txt"), "wip notes\n");
     advance_origin(&fx, &bare, "README.md", "theirs\n", "origin readme");
-    let e = fx
-        .s
-        .workspaces
-        .update_working_copy_from_remote(&ws.id, "")
-        .await
-        .unwrap_err();
+    let e =
+        fx.s.workspaces
+            .update_working_copy_from_remote(&ws.id, "")
+            .await
+            .unwrap_err();
     assert!(e.message.contains("left unchanged"), "{e}");
     assert_eq!(read(format!("{clone}/README.md")).trim(), "ours");
     assert_eq!(read(format!("{clone}/notes.txt")).trim(), "wip notes");
-    assert!(!fx.s.workspaces.workspace_land_state(&ws.id).await.unwrap().unmerged);
+    assert!(
+        !fx.s
+            .workspaces
+            .workspace_land_state(&ws.id)
+            .await
+            .unwrap()
+            .unmerged
+    );
     fx.close().await;
 }
 
@@ -330,7 +385,13 @@ async fn main_working_copy_update_refuses_in_progress() {
     let pid = fx.add_project(&clone);
     let ws = fx.s.workspaces.open_main_workspace(&pid).await.unwrap();
     write(format!("{clone}/README.md"), "ours\n");
-    assert!(fx.s.code.commit(&pid, &ws.id, "local readme").await.unwrap().committed);
+    assert!(
+        fx.s.code
+            .commit(&pid, &ws.id, "local readme")
+            .await
+            .unwrap()
+            .committed
+    );
     advance_origin(&fx, &bare, "README.md", "theirs\n", "origin readme");
     git(&clone, &["fetch", "origin"]);
     let merged = std::process::Command::new("git")
@@ -344,15 +405,23 @@ async fn main_working_copy_update_refuses_in_progress() {
         .unwrap();
     assert!(!merged.status.success(), "expected a conflicting merge");
     write(format!("{clone}/README.md"), "partial resolution\n");
-    let e = fx
-        .s
-        .workspaces
-        .update_working_copy_from_remote(&ws.id, "")
-        .await
-        .unwrap_err();
+    let e =
+        fx.s.workspaces
+            .update_working_copy_from_remote(&ws.id, "")
+            .await
+            .unwrap_err();
     assert!(e.message.contains("already in progress"), "{e}");
-    assert_eq!(read(format!("{clone}/README.md")).trim(), "partial resolution");
-    assert!(fx.s.workspaces.workspace_land_state(&ws.id).await.unwrap().unmerged);
+    assert_eq!(
+        read(format!("{clone}/README.md")).trim(),
+        "partial resolution"
+    );
+    assert!(
+        fx.s.workspaces
+            .workspace_land_state(&ws.id)
+            .await
+            .unwrap()
+            .unmerged
+    );
     fx.close().await;
 }
 
@@ -364,17 +433,23 @@ async fn main_working_copy_autostash_left_in_stash() {
     let ws = fx.s.workspaces.open_main_workspace(&pid).await.unwrap();
     write(format!("{clone}/README.md"), "hello\nlocal\n");
     advance_origin(&fx, &bare, "README.md", "hello\nremote\n", "origin readme");
-    let res = fx
-        .s
-        .workspaces
-        .update_working_copy_from_remote(&ws.id, "")
-        .await
-        .unwrap();
+    let res =
+        fx.s.workspaces
+            .update_working_copy_from_remote(&ws.id, "")
+            .await
+            .unwrap();
     assert_eq!(res.status, UPDATE_WORKSPACE_AUTOSTASH);
     assert_eq!(read(format!("{clone}/README.md")).trim(), "hello\nremote");
     let stash = git_out(&clone, &["stash", "list"]).unwrap();
     assert!(stash.to_lowercase().contains("autostash"), "{stash}");
-    assert!(!fx.s.workspaces.workspace_land_state(&ws.id).await.unwrap().unmerged);
+    assert!(
+        !fx.s
+            .workspaces
+            .workspace_land_state(&ws.id)
+            .await
+            .unwrap()
+            .unmerged
+    );
     fx.close().await;
 }
 
@@ -383,14 +458,18 @@ async fn main_working_copy_remote_refused_on_loop() {
     let fx = Fx::new().await;
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
-    let ws = fx
-        .s
-        .workspaces
-        .create_workspace(&pid, "not main", "", "agent", "", "", None)
-        .await
-        .unwrap();
+    let ws =
+        fx.s.workspaces
+            .create_workspace(&pid, "not main", "", "agent", "", "", None)
+            .await
+            .unwrap();
     fx.wait_ready(&ws.id).await;
-    assert!(fx.s.workspaces.update_working_copy_from_remote(&ws.id, "").await.is_err());
+    assert!(
+        fx.s.workspaces
+            .update_working_copy_from_remote(&ws.id, "")
+            .await
+            .is_err()
+    );
     assert!(fx.s.workspaces.push_working_copy(&ws.id).await.is_err());
     fx.close().await;
 }

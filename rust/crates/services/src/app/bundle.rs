@@ -12,8 +12,8 @@ use parking_lot::Mutex;
 use recur_bundles::go::quote;
 use recur_bundles::{
     Catalog, Command, DiscoverRoots, ExpandAction, Grammar, LanguageData, PromptAction,
-    PromptCompleteHit, PromptRunContext, RunContext, RunCtx, SearchAction, Snippet, Symbol, Theme,
-    TerminalTheme,
+    PromptCompleteHit, PromptRunContext, RunContext, RunCtx, SearchAction, Snippet, Symbol,
+    TerminalTheme, Theme,
 };
 use recur_domain::{
     PrSource, SETTING_LINEAR_API_KEY, SETTING_LINEAR_TEAM_KEY, effective_update_base_method,
@@ -23,10 +23,10 @@ use super::rt::rt;
 use super::{AppServices, err};
 use crate::api::{
     BundleService, BundleSettingInfo, BundleSkipInfo, CommandInfo, CommandPromptDto, GrammarInfo,
-    LoopInfo, PaletteSearchDto, PaletteSearchGroupDto, PolicyInfo, PromptActionInfo,
-    PromptArgInfo, PromptCompleteHitDto, PromptCompleteRequestDto, PromptCompleteResultDto,
-    PromptContextDto, PromptResultDto, RoleInfo, RunContextDto, RunResultDto, SnippetInfo,
-    SymbolInfo, TerminalPaletteInfo, TerminalThemeInfo, ThemeInfo, ThemePreviewInfo,
+    LoopInfo, PaletteSearchDto, PaletteSearchGroupDto, PolicyInfo, PromptActionInfo, PromptArgInfo,
+    PromptCompleteHitDto, PromptCompleteRequestDto, PromptCompleteResultDto, PromptContextDto,
+    PromptResultDto, RoleInfo, RunContextDto, RunResultDto, SnippetInfo, SymbolInfo,
+    TerminalPaletteInfo, TerminalThemeInfo, ThemeInfo, ThemePreviewInfo,
 };
 use crate::{Error, Result};
 
@@ -461,7 +461,11 @@ impl AppServices {
         }
     }
 
-    async fn run_prompt_action_at(&self, id: &str, rc: &PromptContextDto) -> Result<PromptResultDto> {
+    async fn run_prompt_action_at(
+        &self,
+        id: &str,
+        rc: &PromptContextDto,
+    ) -> Result<PromptResultDto> {
         let cat = self.catalog().await?;
         let prompt = recur_bundles::find_prompt_by_id(&cat.prompts, id)
             .ok_or_else(|| Error::new(format!("prompt {} not found", quote(id))))?
@@ -592,9 +596,12 @@ impl AppServices {
             bundle_settings: self.bundle_setting_env(&cat, &se.bundle_id),
             ..Default::default()
         };
-        let groups =
-            recur_bundles::collect_search_groups(&RunCtx::background(), &cat.searches, Some(&make_rc))
-                .await;
+        let groups = recur_bundles::collect_search_groups(
+            &RunCtx::background(),
+            &cat.searches,
+            Some(&make_rc),
+        )
+        .await;
         Ok(PaletteSearchDto {
             groups: Some(
                 groups
@@ -880,7 +887,11 @@ impl BundleService for AppServices {
 
     async fn list_terminal_themes(&self) -> Result<Vec<TerminalThemeInfo>> {
         let cat = self.catalog().await?;
-        Ok(cat.terminal_themes.iter().map(to_terminal_theme_info).collect())
+        Ok(cat
+            .terminal_themes
+            .iter()
+            .map(to_terminal_theme_info)
+            .collect())
     }
 
     async fn list_themes(&self) -> Result<Vec<ThemeInfo>> {

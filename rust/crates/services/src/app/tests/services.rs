@@ -56,7 +56,10 @@ async fn get_pr_omits_commit_diffs() {
     let pr = fx.s.prs.get_pr("482").await.unwrap();
     let commits = pr.commits.unwrap();
     assert_eq!(commits.len(), 1);
-    assert!(commits[0].files.is_none(), "GetPR must drop per-commit files");
+    assert!(
+        commits[0].files.is_none(),
+        "GetPR must drop per-commit files"
+    );
     let c = fx.s.prs.get_commit_diff("482", "abc1234").await.unwrap();
     assert_eq!(c.files.unwrap().len(), 1);
     fx.close().await;
@@ -86,12 +89,11 @@ async fn bus_fan_out() {
 async fn answer_escalation_resumes_loop() {
     let fx = Fx::new().await;
     let before = fx.s.settings.get_resource().await.unwrap().needs_you;
-    let e = fx
-        .s
-        .escalation
-        .answer_escalation("LOOP-2218", "Token bucket with refill", "", "")
-        .await
-        .unwrap();
+    let e =
+        fx.s.escalation
+            .answer_escalation("LOOP-2218", "Token bucket with refill", "", "")
+            .await
+            .unwrap();
     assert_eq!(e.status, "answered");
     assert_eq!(e.answer, "Token bucket with refill");
     let l = fx.s.workspaces.get_workspace("LOOP-2218").await.unwrap();
@@ -104,11 +106,10 @@ async fn answer_escalation_resumes_loop() {
     assert!(fx.names().contains(&"escalation.resolved"));
     assert_eq!(fx.svc.engine.governor().loops_running(), 0);
 
-    let again = fx
-        .s
-        .escalation
-        .answer_escalation("LOOP-2218", "Token bucket", "100 req/min per key", "")
-        .await;
+    let again =
+        fx.s.escalation
+            .answer_escalation("LOOP-2218", "Token bucket", "100 req/min per key", "")
+            .await;
     assert!(again.is_err(), "a second answer is a no-op error");
     assert_eq!(fx.svc.engine.governor().loops_running(), 0);
     fx.close().await;
@@ -128,20 +129,18 @@ async fn send_back_to_loop_is_conductor_turn() {
         })
         .await
         .unwrap();
-    let before = fx
-        .s
-        .prs
-        .get_pr("482")
-        .await
-        .unwrap()
-        .comments
-        .map_or(0, |c| c.len());
-    let p = fx
-        .s
-        .prs
-        .send_back_to_loop("482", &["fix the secret".into()])
-        .await
-        .unwrap();
+    let before =
+        fx.s.prs
+            .get_pr("482")
+            .await
+            .unwrap()
+            .comments
+            .map_or(0, |c| c.len());
+    let p =
+        fx.s.prs
+            .send_back_to_loop("482", &["fix the secret".into()])
+            .await
+            .unwrap();
     assert_eq!((p.state.as_str(), p.group.as_str()), ("In review", "you"));
     let got = fx.s.prs.get_pr("482").await.unwrap();
     assert_eq!(got.state, "In review");
@@ -172,7 +171,12 @@ async fn submit_review_and_comment() {
         })
         .unwrap();
     let prs = &fx.s.prs;
-    let before = prs.get_pr("10").await.unwrap().comments.map_or(0, |c| c.len());
+    let before = prs
+        .get_pr("10")
+        .await
+        .unwrap()
+        .comments
+        .map_or(0, |c| c.len());
     prs.add_pr_comment(
         "10",
         "src/auth/oauth.ts",
@@ -184,11 +188,17 @@ async fn submit_review_and_comment() {
     .await
     .unwrap();
     let after = prs.get_pr("10").await.unwrap();
-    assert_eq!(after.comments.map_or(0, |c| c.len()), before, "line note stays pending");
+    assert_eq!(
+        after.comments.map_or(0, |c| c.len()),
+        before,
+        "line note stays pending"
+    );
     assert_eq!(after.pending_comments.len(), 1);
     assert_eq!(after.pending_comments[0].line, 12);
 
-    prs.submit_review("10", "approve", "looks good").await.unwrap();
+    prs.submit_review("10", "approve", "looks good")
+        .await
+        .unwrap();
     let got = prs.get_pr("10").await.unwrap();
     assert!(got.pending_comments.is_empty());
     let comments = got.comments.unwrap_or_default();
@@ -214,7 +224,9 @@ async fn submit_review_and_comment() {
         .await
         .unwrap();
     assert_eq!(reply.in_reply_to_id, line_id);
-    prs.set_pr_thread_resolved("10", &line_id, true).await.unwrap();
+    prs.set_pr_thread_resolved("10", &line_id, true)
+        .await
+        .unwrap();
     let marked = prs.get_pr("10").await.unwrap();
     assert!(
         marked
@@ -286,9 +298,15 @@ async fn closed_pr_rejects_comments() {
         .await
         .unwrap_err();
     assert!(e.message.contains("closed"), "{e}");
-    let e = prs.submit_review("471", "approve", "lgtm").await.unwrap_err();
+    let e = prs
+        .submit_review("471", "approve", "lgtm")
+        .await
+        .unwrap_err();
     assert!(e.message.contains("closed"), "{e}");
-    let e = prs.reply_pr_comment("471", "c1", "too late").await.unwrap_err();
+    let e = prs
+        .reply_pr_comment("471", "c1", "too late")
+        .await
+        .unwrap_err();
     assert!(e.message.contains("closed"), "{e}");
     assert!(prs.update_pr_details("471", "nope", "nope").await.is_err());
     fx.close().await;
@@ -324,31 +342,32 @@ async fn policy_toggle_round_trip() {
 async fn add_project_assigns_slug_and_defaults() {
     let fx = Fx::new().await;
     let before = fx.s.projects.list_projects().await.unwrap().len();
-    let p = fx
-        .s
-        .projects
-        .add_project(&Project {
-            name: "My New App".into(),
-            repo_path: "~/code/my-new-app".into(),
-            base_branch: "main".into(),
-            ..Default::default()
-        })
-        .await
-        .unwrap();
+    let p =
+        fx.s.projects
+            .add_project(&Project {
+                name: "My New App".into(),
+                repo_path: "~/code/my-new-app".into(),
+                base_branch: "main".into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
     assert_eq!(p.id, "my-new-app");
     assert_eq!(p.pic, "M");
     assert!(!p.color.is_empty());
     assert!(p.open, "new projects default to expanded");
-    assert_eq!(fx.s.projects.list_projects().await.unwrap().len(), before + 1);
-    let p2 = fx
-        .s
-        .projects
-        .add_project(&Project {
-            name: "My New App".into(),
-            ..Default::default()
-        })
-        .await
-        .unwrap();
+    assert_eq!(
+        fx.s.projects.list_projects().await.unwrap().len(),
+        before + 1
+    );
+    let p2 =
+        fx.s.projects
+            .add_project(&Project {
+                name: "My New App".into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
     assert_eq!(p2.id, "my-new-app-2");
     fx.close().await;
 }
@@ -359,21 +378,28 @@ async fn preview_copy_files() {
     let repo = fx.temp();
     write(format!("{repo}/.env"), "A=1\n");
     write(format!("{repo}/apps/.env.local"), "B=2\n");
-    let p = fx
-        .s
-        .projects
-        .add_project(&Project {
-            name: "copy-preview".into(),
-            repo_path: repo,
-            base_branch: "main".into(),
-            ..Default::default()
-        })
-        .await
-        .unwrap();
-    let got = fx.s.projects.preview_copy_files(&p.id, ".env*").await.unwrap();
+    let p =
+        fx.s.projects
+            .add_project(&Project {
+                name: "copy-preview".into(),
+                repo_path: repo,
+                base_branch: "main".into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+    let got =
+        fx.s.projects
+            .preview_copy_files(&p.id, ".env*")
+            .await
+            .unwrap();
     assert!(got.error.is_empty(), "{}", got.error);
     assert_eq!(got.count, 2, "{:?}", got.files);
-    let missing = fx.s.projects.preview_copy_files("nope", ".env*").await.unwrap();
+    let missing =
+        fx.s.projects
+            .preview_copy_files("nope", ".env*")
+            .await
+            .unwrap();
     assert!(!missing.error.is_empty());
     fx.close().await;
 }
@@ -381,24 +407,22 @@ async fn preview_copy_files() {
 #[tokio::test(flavor = "multi_thread")]
 async fn project_group_assign_and_delete() {
     let fx = Fx::new().await;
-    let g = fx
-        .s
-        .projects
-        .add_project_group(&ProjectGroup {
-            name: "Side projects".into(),
-            ..Default::default()
-        })
-        .await
-        .unwrap();
+    let g =
+        fx.s.projects
+            .add_project_group(&ProjectGroup {
+                name: "Side projects".into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
     assert!(uuid::Uuid::parse_str(&g.id).is_ok() && g.open, "{g:?}");
     assert_eq!(g.name, "Side projects");
     let projs = fx.s.projects.list_projects().await.unwrap();
-    let saved = fx
-        .s
-        .projects
-        .set_project_group(&projs[0].id, &g.id)
-        .await
-        .unwrap();
+    let saved =
+        fx.s.projects
+            .set_project_group(&projs[0].id, &g.id)
+            .await
+            .unwrap();
     assert_eq!(saved.group_id, g.id);
     assert!(
         fx.s.projects
@@ -439,12 +463,11 @@ async fn start_workspace_service_end_to_end() {
     fx.store().set_policy(p);
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
-    let id = fx
-        .s
-        .workspaces
-        .start_workspace(&pid, "Add a service file", "", "")
-        .await
-        .unwrap();
+    let id =
+        fx.s.workspaces
+            .start_workspace(&pid, "Add a service file", "", "")
+            .await
+            .unwrap();
     assert!(!id.is_empty());
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     let mut state = WorkspaceState::default();
@@ -456,7 +479,14 @@ async fn start_workspace_service_end_to_end() {
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     assert_eq!(state, WorkspaceState::PrOpen);
-    assert!(!fx.s.workspaces.get_workspace_feed(&id).await.unwrap().is_empty());
+    assert!(
+        !fx.s
+            .workspaces
+            .get_workspace_feed(&id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
     assert!(
         fx.s.workspaces
             .list_workspaces()
@@ -479,11 +509,26 @@ async fn getters_error_on_missing() {
     assert!(fx.s.agents.get_agent_trace(bogus, "CO").await.is_err());
     assert!(fx.s.prs.get_pr(bogus).await.is_err());
     assert!(fx.s.prs.get_commit_diff("482", bogus).await.is_err());
-    assert!(fx.s.prs.add_pr_comment(bogus, "", 0, "hi", 0, "").await.is_err());
-    assert!(fx.s.prs.submit_review(bogus, "comment", "hi").await.is_err());
+    assert!(
+        fx.s.prs
+            .add_pr_comment(bogus, "", 0, "hi", 0, "")
+            .await
+            .is_err()
+    );
+    assert!(
+        fx.s.prs
+            .submit_review(bogus, "comment", "hi")
+            .await
+            .is_err()
+    );
     assert!(fx.s.prs.update_pr_details(bogus, "t", "b").await.is_err());
     assert!(fx.s.prs.update_pr_comment(bogus, "c1", "hi").await.is_err());
-    assert!(fx.s.prs.send_back_to_loop(bogus, &["x".into()]).await.is_err());
+    assert!(
+        fx.s.prs
+            .send_back_to_loop(bogus, &["x".into()])
+            .await
+            .is_err()
+    );
     assert!(fx.s.prs.merge_pr(bogus, "").await.is_err());
     // Go's %q in the not-found text.
     assert_eq!(
@@ -491,7 +536,11 @@ async fn getters_error_on_missing() {
         "project \"does-not-exist\" not found"
     );
     assert_eq!(
-        fx.s.workspaces.get_workspace(bogus).await.unwrap_err().message,
+        fx.s.workspaces
+            .get_workspace(bogus)
+            .await
+            .unwrap_err()
+            .message,
         "loop \"does-not-exist\" not found"
     );
     fx.close().await;
@@ -501,7 +550,10 @@ fn commit_file(repo: &str, name: &str, body: &str, msg: &str) -> String {
     write(format!("{repo}/{name}"), body);
     git(repo, &["add", name]);
     git(repo, &["commit", "-m", msg]);
-    super::git_out(repo, &["rev-parse", "HEAD"]).unwrap().trim().to_owned()
+    super::git_out(repo, &["rev-parse", "HEAD"])
+        .unwrap()
+        .trim()
+        .to_owned()
 }
 
 async fn point_pr_482(fx: &Fx, repo: &str, worktree: &str, full: &str, msg: &str) {
@@ -543,7 +595,13 @@ async fn get_commit_diff_fills_lazy_files() {
     let again = fx.s.prs.get_commit_diff("482", &full).await.unwrap();
     assert!(!again.files.unwrap().is_empty());
     let pr = fx.store().pr("482").unwrap();
-    assert!(!pr.commits.unwrap()[0].files.clone().unwrap_or_default().is_empty());
+    assert!(
+        !pr.commits.unwrap()[0]
+            .files
+            .clone()
+            .unwrap_or_default()
+            .is_empty()
+    );
     fx.close().await;
 }
 
@@ -568,7 +626,10 @@ async fn get_commit_diff_caches_empty() {
     let fx = Fx::new().await;
     let repo = fx.init_git_repo();
     git(&repo, &["commit", "--allow-empty", "-m", "empty"]);
-    let full = super::git_out(&repo, &["rev-parse", "HEAD"]).unwrap().trim().to_owned();
+    let full = super::git_out(&repo, &["rev-parse", "HEAD"])
+        .unwrap()
+        .trim()
+        .to_owned();
     point_pr_482(&fx, &repo, &repo, &full, "empty").await;
     let got = fx.s.prs.get_commit_diff("482", &full[..7]).await.unwrap();
     assert!(got.files.is_some(), "an empty diff is cached as []");
@@ -594,11 +655,10 @@ async fn get_commit_diff_caches_empty() {
 #[tokio::test(flavor = "multi_thread")]
 async fn start_workspace_unknown_project_errors() {
     let fx = Fx::new().await;
-    let res = fx
-        .s
-        .workspaces
-        .start_workspace("no-such-project", "do something", "", "")
-        .await;
+    let res =
+        fx.s.workspaces
+            .start_workspace("no-such-project", "do something", "", "")
+            .await;
     assert!(res.is_err());
     fx.close().await;
 }
@@ -613,7 +673,10 @@ async fn remove_and_delete_workspace_service() {
     let res = loop {
         let r = fx.s.workspaces.delete_workspace("LOOP-2224").await;
         match &r {
-            Err(e) if e.message.contains("being removed") && tokio::time::Instant::now() < deadline => {
+            Err(e)
+                if e.message.contains("being removed")
+                    && tokio::time::Instant::now() < deadline =>
+            {
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
             _ => break r,

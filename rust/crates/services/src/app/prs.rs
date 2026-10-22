@@ -44,7 +44,9 @@ impl AppServices {
                 changed = true;
             }
         }
-        let findings = self.store().findings(&self.engine.pr_findings_workspace_id(p));
+        let findings = self
+            .store()
+            .findings(&self.engine.pr_findings_workspace_id(p));
         if recur_code::observe::project_findings_onto_diff(
             p.files.as_deref_mut().unwrap_or_default(),
             &findings,

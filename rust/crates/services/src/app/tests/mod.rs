@@ -113,7 +113,12 @@ impl Fx {
     /// restart): fresh terminal, shell and editor caches.
     pub async fn reopen(&self) -> Arc<AppServices> {
         let config = self.svc.config().clone();
-        let opts = test_options(&config, Some(Arc::new(ScriptedProvider::new(vec![]))), None, &self.trackers);
+        let opts = test_options(
+            &config,
+            Some(Arc::new(ScriptedProvider::new(vec![]))),
+            None,
+            &self.trackers,
+        );
         AppServices::new(self.svc.engine.store.clone(), config, opts).await
     }
 
@@ -233,9 +238,11 @@ fn test_options(
     trackers: &[Arc<FakeTracker>],
 ) -> AppOptions {
     let forges = forges.unwrap_or_else(|| {
-        vec![Arc::new(recur_forge::github::GitHub::with_gh(recur_forge::Gh::new(
-            "/nonexistent/recur-test-gh",
-        ))) as Arc<dyn Forge>]
+        vec![
+            Arc::new(recur_forge::github::GitHub::with_gh(recur_forge::Gh::new(
+                "/nonexistent/recur-test-gh",
+            ))) as Arc<dyn Forge>,
+        ]
     });
     AppOptions {
         pin: Some(provider),

@@ -29,7 +29,9 @@ impl AppServices {
     fn publish_findings_updated(&self, workspace_id: &str) {
         self.engine
             .bus
-            .publish(EngineEvent::FindingsUpdated(WorkspaceRef::new(workspace_id)));
+            .publish(EngineEvent::FindingsUpdated(WorkspaceRef::new(
+                workspace_id,
+            )));
     }
 
     /// Publishes the unread count (Go `emitInbox`).

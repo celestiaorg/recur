@@ -19,9 +19,8 @@ use crate::types::{CursorUsageConnect, ProviderQuota, Snapshot, empty_snapshot};
 pub type SettingsSource = Arc<dyn Fn() -> Settings + Send + Sync>;
 /// Saves settings through the full Settings save path (Go `SetSettings`),
 /// whose side effects (provider remap, governor caps) are async.
-pub type SettingsSink = Arc<
-    dyn Fn(Settings) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send>> + Send + Sync,
->;
+pub type SettingsSink =
+    Arc<dyn Fn(Settings) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send>> + Send + Sync>;
 pub type DataDirSource = Arc<dyn Fn() -> Option<PathBuf> + Send + Sync>;
 
 pub struct UsageService {

@@ -29,7 +29,10 @@ async fn fixture() -> Fx {
 }
 
 fn session_file(fx: &Fx, ws: &str) -> PathBuf {
-    fx.root.join("workspaces").join(ws).join(EDITOR_SESSION_FILE)
+    fx.root
+        .join("workspaces")
+        .join(ws)
+        .join(EDITOR_SESSION_FILE)
 }
 
 fn meta_patch(open: &[&str], selected: &str) -> EditorSessionPatch {
@@ -55,7 +58,10 @@ fn buf(draft: &str, hash: &str) -> EditorBuffer {
 }
 
 fn map<V>(entries: impl IntoIterator<Item = (&'static str, V)>) -> BTreeMap<String, V> {
-    entries.into_iter().map(|(k, v)| (k.to_owned(), v)).collect()
+    entries
+        .into_iter()
+        .map(|(k, v)| (k.to_owned(), v))
+        .collect()
 }
 
 impl Fx {
@@ -106,14 +112,20 @@ async fn editor_session_round_trip() {
     fx.update(WS, patch).await;
 
     let sess = fx.session(WS).await.unwrap();
-    assert_eq!(sess.buffers["src/main.go"], buf("package main // edited\n", "abc123"));
+    assert_eq!(
+        sess.buffers["src/main.go"],
+        buf("package main // edited\n", "abc123")
+    );
     assert_eq!(sess.scratch_docs["scratch://1-notes.txt"].content, "todo\n");
     assert_eq!(sess.open_files.as_ref().map(Vec::len), Some(2));
     assert_eq!(sess.selected_path, "src/main.go");
     assert_eq!(sess.file_views["src/main.go"], view);
 
     let fresh = fx.session_from_disk(WS).await.unwrap();
-    assert_eq!(fresh.buffers["src/main.go"].draft, "package main // edited\n");
+    assert_eq!(
+        fresh.buffers["src/main.go"].draft,
+        "package main // edited\n"
+    );
     assert_eq!(fresh.file_views["src/main.go"], view);
     assert!(session_file(&fx, WS).exists());
     fx.close().await;
@@ -135,7 +147,13 @@ async fn editor_session_patch_merge() {
     )
     .await;
     let sess = fx.session(WS).await.unwrap();
-    assert_eq!((sess.buffers["a.go"].draft.as_str(), sess.buffers["b.go"].draft.as_str()), ("A2", "B1"));
+    assert_eq!(
+        (
+            sess.buffers["a.go"].draft.as_str(),
+            sess.buffers["b.go"].draft.as_str()
+        ),
+        ("A2", "B1")
+    );
     assert_eq!(sess.selected_path, "a.go", "meta clobbered");
 
     let mut m = meta(&["a.go", "b.go"], "b.go");
@@ -158,7 +176,13 @@ async fn editor_session_patch_merge() {
     .await;
     let sess = fx.session(WS).await.unwrap();
     assert_eq!(sess.selected_path, "b.go");
-    assert_eq!((sess.file_views["b.go"].view_mode.as_str(), sess.file_views["b.go"].line), ("diff", 9));
+    assert_eq!(
+        (
+            sess.file_views["b.go"].view_mode.as_str(),
+            sess.file_views["b.go"].line
+        ),
+        ("diff", 9)
+    );
     assert!(!sess.file_views.contains_key("a.go"), "stale fileView kept");
 
     fx.update(
@@ -184,7 +208,10 @@ async fn editor_session_syntax_maps_round_trip() {
     m.syntax_by_file_type = Some(map([("*.conf", "source.yaml".to_owned())]));
     fx.update(WS, patch).await;
     let check = |sess: &EditorSession| {
-        assert_eq!(sess.syntax_by_path.get("src/main.go").map(String::as_str), Some(""));
+        assert_eq!(
+            sess.syntax_by_path.get("src/main.go").map(String::as_str),
+            Some("")
+        );
         assert_eq!(sess.syntax_by_file_type["*.conf"], "source.yaml");
     };
     check(&fx.session(WS).await.unwrap());
@@ -199,7 +226,8 @@ async fn editor_session_syntax_maps_round_trip() {
     .await;
     check(&fx.session(WS).await.unwrap());
 
-    fx.update(WS, meta_patch(&["src/other.go"], "src/other.go")).await;
+    fx.update(WS, meta_patch(&["src/other.go"], "src/other.go"))
+        .await;
     check(&fx.session(WS).await.unwrap());
     check(&fx.session_from_disk(WS).await.unwrap());
     fx.close().await;
@@ -240,9 +268,16 @@ async fn editor_session_review_only_is_kept() {
     fx.update(WS, review).await;
     assert_eq!(fx.session(WS).await.unwrap().main_surface, "review");
     assert!(session_file(&fx, WS).exists());
-    assert_eq!(fx.session_from_disk(WS).await.unwrap().main_surface, "review");
+    assert_eq!(
+        fx.session_from_disk(WS).await.unwrap().main_surface,
+        "review"
+    );
     fx.update(WS, meta_patch(&[], "")).await;
-    assert_eq!(fx.session(WS).await, None, "editor-only empty session is gone");
+    assert_eq!(
+        fx.session(WS).await,
+        None,
+        "editor-only empty session is gone"
+    );
     fx.close().await;
 }
 
@@ -260,16 +295,29 @@ async fn editor_session_pane_chrome_only_is_kept() {
     };
     fx.update(WS, pane("findings", "scm", Some(false))).await;
     let sess = fx.session(WS).await.unwrap();
-    assert_eq!((sess.left_kind.as_str(), sess.right_kind.as_str()), ("findings", "scm"));
-    assert_eq!((sess.left_open, sess.right_open), (Some(false), Some(false)));
+    assert_eq!(
+        (sess.left_kind.as_str(), sess.right_kind.as_str()),
+        ("findings", "scm")
+    );
+    assert_eq!(
+        (sess.left_open, sess.right_open),
+        (Some(false), Some(false))
+    );
     assert!(session_file(&fx, WS).exists());
     let fresh = fx.session_from_disk(WS).await.unwrap();
-    assert_eq!((fresh.left_kind.as_str(), fresh.right_kind.as_str()), ("findings", "scm"));
+    assert_eq!(
+        (fresh.left_kind.as_str(), fresh.right_kind.as_str()),
+        ("findings", "scm")
+    );
 
     fx.update(WS, pane("maestro", "files", Some(true))).await;
     assert_eq!(fx.session(WS).await, None, "default chrome is empty");
     fx.update(WS, pane("nope", "", None)).await;
-    assert_eq!(fx.session(WS).await, None, "an unknown kind must not pin a session");
+    assert_eq!(
+        fx.session(WS).await,
+        None,
+        "an unknown kind must not pin a session"
+    );
     fx.close().await;
 }
 
@@ -308,7 +356,10 @@ async fn editor_session_unknown_workspace_refused() {
             .await
             .is_err()
     );
-    assert!(!fx.root.join("workspaces/nope").exists(), "phantom workspace dir");
+    assert!(
+        !fx.root.join("workspaces/nope").exists(),
+        "phantom workspace dir"
+    );
     assert_eq!(fx.session("nope").await, None);
     fx.close().await;
 }
@@ -347,7 +398,8 @@ async fn editor_session_does_not_allow_undropped_abs_path() {
     let fx = fixture().await;
     let abs = format!("{}/export-111.csv", fx.temp());
     write(&abs, "a,b\n1,2\n");
-    fx.update(WS, meta_patch(&[&abs, "src/main.go"], &abs)).await;
+    fx.update(WS, meta_patch(&[&abs, "src/main.go"], &abs))
+        .await;
     assert!(fx.session_from_disk(WS).await.is_some());
     let e = recur_code::prepare_external(&abs).unwrap_err();
     assert!(e.to_string().contains("path not allowed"), "{e}");

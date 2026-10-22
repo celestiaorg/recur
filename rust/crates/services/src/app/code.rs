@@ -223,8 +223,8 @@ impl AppServices {
             let (root, rel) = self
                 .resolve_read_path(project_id, workspace_id, path)
                 .map_err(err)?;
-            let mut fc = blocking(move || recur_code::read_file(&root, &rel, true).map_err(err))
-                .await?;
+            let mut fc =
+                blocking(move || recur_code::read_file(&root, &rel, true).map_err(err)).await?;
             fc.path = path.to_owned();
             return Ok(fc);
         }
@@ -248,7 +248,10 @@ impl AppServices {
             blocking(move || recur_code::write_file(&root, &rel, &content).map_err(err)).await?;
             self.record_human_edit(
                 workspace_id,
-                format!("Patched <code>{}</code> (not committed).", html_escape(path)),
+                format!(
+                    "Patched <code>{}</code> (not committed).",
+                    html_escape(path)
+                ),
             );
             return Ok(());
         }
@@ -296,12 +299,20 @@ impl AppServices {
         recur_code::file_diff(&root, &base, path).await.map_err(err)
     }
 
-    async fn diff_vs_base_at(&self, project_id: &str, workspace_id: &str) -> Result<FileDiffResult> {
+    async fn diff_vs_base_at(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+    ) -> Result<FileDiffResult> {
         let (root, _, base) = self.resolve_scope(project_id, workspace_id).map_err(err)?;
         diff_working(&root, &base).await
     }
 
-    async fn diff_working_at(&self, project_id: &str, workspace_id: &str) -> Result<FileDiffResult> {
+    async fn diff_working_at(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+    ) -> Result<FileDiffResult> {
         let root = match self.resolve_root(project_id, workspace_id) {
             Err(e) if worktree_missing(&e) => return Ok(empty_diff()),
             r => r.map_err(err)?.0,
@@ -514,7 +525,11 @@ impl AppServices {
             deletions: res.deletions,
         };
         if out.committed {
-            let what = if staged_only { "Committed staged" } else { "Committed" };
+            let what = if staged_only {
+                "Committed staged"
+            } else {
+                "Committed"
+            };
             self.record_human_edit(
                 workspace_id,
                 format!(
@@ -553,7 +568,12 @@ impl AppServices {
             .map_err(err)
     }
 
-    async fn discard_at(&self, project_id: &str, workspace_id: &str, path: Option<&str>) -> Result<()> {
+    async fn discard_at(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+        path: Option<&str>,
+    ) -> Result<()> {
         let root = self.writable_root(
             project_id,
             workspace_id,

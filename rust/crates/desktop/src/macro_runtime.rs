@@ -15,7 +15,9 @@ use std::time::Duration;
 use futures::FutureExt as _;
 use parking_lot::Mutex;
 use recur_bundles::PromptRunContext;
-use recur_services::api::{PromptCompleteHitDto, PromptCompleteRequestDto, PromptCompleteResultDto, PromptResultDto};
+use recur_services::api::{
+    PromptCompleteHitDto, PromptCompleteRequestDto, PromptCompleteResultDto, PromptResultDto,
+};
 use recur_view_chat::prompt_actions::{CompleteModuleRunner, PromptModuleRunner};
 use recur_view_core::commands::{MacroContext, MacroResult, MacroRunner};
 use serde_json::{Map, Value, json};
@@ -130,6 +132,9 @@ async function run({ code, ctx }) {
 }
 "#;
 
+/// A workspace's LSP problems as `lspProblemArgs` lines.
+pub type Diagnostics = Rc<dyn Fn(&str) -> Vec<String>>;
+
 type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>;
 
 struct Proc {
@@ -202,8 +207,15 @@ impl Worker {
                 let _ = tx.send(if reply.get("ok") == Some(&Value::Bool(true)) {
                     Ok(reply)
                 } else {
-                    let msg = reply.get("error").and_then(Value::as_str).unwrap_or_default();
-                    Err(if msg.is_empty() { format!("{what} failed") } else { msg.to_owned() })
+                    let msg = reply
+                        .get("error")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+                    Err(if msg.is_empty() {
+                        format!("{what} failed")
+                    } else {
+                        msg.to_owned()
+                    })
                 });
             }
             // The worker died (`onerror`): fail what is in flight and start fresh next call.
@@ -231,7 +243,11 @@ impl Worker {
 
     /// Posts one call and waits for its reply, the timeout, or the worker dying. A call
     /// dropped before it settles (a cancelled prompt or complete) kills the worker.
-    async fn call(self: Arc<Self>, mut msg: Map<String, Value>, timeout: Duration) -> Result<Value, String> {
+    async fn call(
+        self: Arc<Self>,
+        mut msg: Map<String, Value>,
+        timeout: Duration,
+    ) -> Result<Value, String> {
         let proc = self.get()?;
         let id = self.seq.fetch_add(1, Ordering::SeqCst) + 1;
         msg.insert("id".into(), json!(id));
@@ -243,7 +259,14 @@ impl Worker {
         };
         let mut line = serde_json::to_string(&msg).map_err(|e| e.to_string())?;
         line.push('\n');
-        if proc.stdin.lock().await.write_all(line.as_bytes()).await.is_err() {
+        if proc
+            .stdin
+            .lock()
+            .await
+            .write_all(line.as_bytes())
+            .await
+            .is_err()
+        {
             guard.worker = None;
             proc.pending.lock().remove(&id);
             self.reset_if(&proc, &format!("{} worker error", self.what));
@@ -325,7 +348,11 @@ impl MacroRuntime {
     pub fn macro_runner(self: &Rc<Self>) -> MacroRunner {
         let me = self.clone();
         Rc::new(move |code, ctx, timeout| {
-            let timeout = if timeout.is_zero() { Duration::from_secs(10) } else { timeout };
+            let timeout = if timeout.is_zero() {
+                Duration::from_secs(10)
+            } else {
+                timeout
+            };
             let msg = obj([("code", json!(code)), ("ctx", macro_ctx(&ctx))]);
             let call = me.spawn(&me.macros, msg, timeout);
             Box::pin(async move { call.await.map(|r| macro_result(&r)) })
@@ -336,7 +363,11 @@ impl MacroRuntime {
     pub fn prompt_runner(self: &Rc<Self>) -> PromptModuleRunner {
         let me = self.clone();
         Rc::new(move |code, ctx, chat_code, name, timeout| {
-            let timeout = if timeout.is_zero() { Duration::from_secs(5) } else { timeout };
+            let timeout = if timeout.is_zero() {
+                Duration::from_secs(5)
+            } else {
+                timeout
+            };
             let msg = obj([
                 ("code", json!(code)),
                 ("ctx", prompt_ctx(&ctx, &chat_code)),
@@ -358,11 +389,15 @@ impl MacroRuntime {
     /// problems (`lspProblemArgs` lines) from `diagnostics`.
     pub fn complete_runner(
         self: &Rc<Self>,
-        diagnostics: Rc<dyn Fn(&str) -> Vec<String>>,
+        diagnostics: Diagnostics,
     ) -> CompleteModuleRunner {
         let me = self.clone();
         Rc::new(move |code, req, timeout| {
-            let timeout = if timeout.is_zero() { Duration::from_secs(4) } else { timeout };
+            let timeout = if timeout.is_zero() {
+                Duration::from_secs(4)
+            } else {
+                timeout
+            };
             let ctx = complete_ctx(&req, diagnostics(&req.workspace_id));
             let msg = obj([("code", json!(code)), ("ctx", ctx)]);
             let call = me.spawn(&me.completes, msg, timeout);
@@ -376,7 +411,10 @@ fn obj<const N: usize>(pairs: [(&str, Value); N]) -> Map<String, Value> {
 }
 
 fn str_of(v: &Value, key: &str) -> String {
-    v.get(key).and_then(Value::as_str).unwrap_or_default().to_owned()
+    v.get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned()
 }
 
 /// `MacroContext` as the worker receives it.
@@ -436,7 +474,10 @@ fn prompt_ctx(c: &PromptRunContext, chat_code: &str) -> Value {
 
 /// `{ args, arg, params, diagnostics }` (`completePromptArgs`).
 fn complete_ctx(req: &PromptCompleteRequestDto, diagnostics: Vec<String>) -> Value {
-    let mut ctx = obj([("args", json!(req.args)), ("diagnostics", json!(diagnostics))]);
+    let mut ctx = obj([
+        ("args", json!(req.args)),
+        ("diagnostics", json!(diagnostics)),
+    ]);
     if !req.arg.is_empty() {
         ctx.insert("arg".into(), json!(req.arg));
     }
@@ -500,11 +541,17 @@ mod tests {
                 open_in_preview: Some(true),
             }
         );
-        let s = r(format!("{CJS}() => 'plain'"), ctx.clone(), Duration::ZERO).await.unwrap();
+        let s = r(format!("{CJS}() => 'plain'"), ctx.clone(), Duration::ZERO)
+            .await
+            .unwrap();
         assert_eq!((s.text.as_str(), s.output.as_str()), ("plain", ""));
-        let e = r(format!("{CJS}42"), ctx.clone(), Duration::ZERO).await.unwrap_err();
+        let e = r(format!("{CJS}42"), ctx.clone(), Duration::ZERO)
+            .await
+            .unwrap_err();
         assert_eq!(e, "macro must export default function (ctx) { … }");
-        let e = r(format!("{CJS}() => 7"), ctx, Duration::ZERO).await.unwrap_err();
+        let e = r(format!("{CJS}() => 7"), ctx, Duration::ZERO)
+            .await
+            .unwrap_err();
         assert!(e.starts_with("macro must return a string"), "{e}");
     }
 
@@ -514,7 +561,9 @@ mod tests {
         let probe = format!(
             "{CJS}(ctx) => {{ console.log('to stderr'); ctx.input = 'changed'; return [typeof require, typeof process, typeof setTimeout, ctx.input, Object.isFrozen(ctx.prompts)].join(',') }}"
         );
-        let got = r(probe, MacroContext::default(), Duration::ZERO).await.unwrap();
+        let got = r(probe, MacroContext::default(), Duration::ZERO)
+            .await
+            .unwrap();
         assert_eq!(got.text, "undefined,undefined,function,,true");
     }
 
@@ -522,11 +571,17 @@ mod tests {
     async fn timeout_kills_the_worker_and_the_next_call_works() {
         let r = rt().macro_runner();
         let hang = format!("{CJS}() => new Promise(() => {{}})");
-        let e = r(hang, MacroContext::default(), Duration::from_millis(200)).await.unwrap_err();
-        assert_eq!(e, "macro timed out");
-        let ok = r(format!("{CJS}() => 'again'"), MacroContext::default(), Duration::ZERO)
+        let e = r(hang, MacroContext::default(), Duration::from_millis(200))
             .await
-            .unwrap();
+            .unwrap_err();
+        assert_eq!(e, "macro timed out");
+        let ok = r(
+            format!("{CJS}() => 'again'"),
+            MacroContext::default(),
+            Duration::ZERO,
+        )
+        .await
+        .unwrap();
         assert_eq!(ok.text, "again");
     }
 
@@ -537,13 +592,42 @@ mod tests {
             args: "fix it".into(),
             ..Default::default()
         };
-        let code = format!("{CJS}(ctx) => ({{ prompt: 'do: ' + ctx.args + ' in ' + ctx.chatCode, display: '  two\\nlines  ' }})");
-        let got = r(code, ctx.clone(), "PA2".into(), "Name".into(), Duration::ZERO).await.unwrap();
-        assert_eq!((got.prompt.as_str(), got.display.as_str()), ("do: fix it in PA2", "two lines"));
+        let code = format!(
+            "{CJS}(ctx) => ({{ prompt: 'do: ' + ctx.args + ' in ' + ctx.chatCode, display: '  two\\nlines  ' }})"
+        );
+        let got = r(
+            code,
+            ctx.clone(),
+            "PA2".into(),
+            "Name".into(),
+            Duration::ZERO,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            (got.prompt.as_str(), got.display.as_str()),
+            ("do: fix it in PA2", "two lines")
+        );
         let code = format!("{CJS}() => ({{ prompt: 'p' }})");
-        let got = r(code, ctx.clone(), "PA".into(), "Fallback Name".into(), Duration::ZERO).await.unwrap();
+        let got = r(
+            code,
+            ctx.clone(),
+            "PA".into(),
+            "Fallback Name".into(),
+            Duration::ZERO,
+        )
+        .await
+        .unwrap();
         assert_eq!(got.display, "Fallback Name");
-        let e = r(format!("{CJS}() => 'x'"), ctx, "PA".into(), "N".into(), Duration::ZERO).await.unwrap_err();
+        let e = r(
+            format!("{CJS}() => 'x'"),
+            ctx,
+            "PA".into(),
+            "N".into(),
+            Duration::ZERO,
+        )
+        .await
+        .unwrap_err();
         assert_eq!(e, "prompt must return { prompt, display? }");
     }
 
@@ -561,7 +645,9 @@ mod tests {
         let got = r(code, req, Duration::ZERO).await.unwrap();
         let hits = got.hits.unwrap();
         assert_eq!(
-            hits.iter().map(|h| (h.insert.as_str(), h.label.as_str())).collect::<Vec<_>>(),
+            hits.iter()
+                .map(|h| (h.insert.as_str(), h.label.as_str()))
+                .collect::<Vec<_>>(),
             [("main", "main"), ("x", "a.go:1:1 error: in W1")]
         );
         assert_eq!(got.message, "ma");

@@ -52,7 +52,9 @@ fn gh_pr(id: &str, ws: &Workspace, number: i64) -> Pr {
 }
 
 fn shows(repo: &str, spec: &str) -> Option<String> {
-    git_out(repo, &["show", spec]).ok().map(|s| s.trim().to_owned())
+    git_out(repo, &["show", spec])
+        .ok()
+        .map(|s| s.trim().to_owned())
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -62,14 +64,23 @@ async fn workspace_open_pr_and_merge() {
     let pid = fx.add_project(&repo);
     let ws = fx.solo(&pid, "add a feature", "").await;
     let w = &fx.s.workspaces;
-    assert!(w.open_workspace_pr(&ws.id, false).await.is_err(), "empty workspace");
+    assert!(
+        w.open_workspace_pr(&ws.id, false).await.is_err(),
+        "empty workspace"
+    );
     fx.s.code
         .write_file(&pid, &ws.id, "feature.txt", "the feature\n")
         .await
         .unwrap();
     let e = w.open_workspace_pr(&ws.id, false).await.unwrap_err();
     assert!(e.message.contains("uncommitted"), "{e}");
-    assert!(fx.s.code.commit(&pid, &ws.id, "solo: add feature").await.unwrap().committed);
+    assert!(
+        fx.s.code
+            .commit(&pid, &ws.id, "solo: add feature")
+            .await
+            .unwrap()
+            .committed
+    );
 
     let pr_id = w.open_workspace_pr(&ws.id, false).await.unwrap();
     let pr = fx.s.prs.get_pr(&pr_id).await.unwrap();
@@ -78,13 +89,26 @@ async fn workspace_open_pr_and_merge() {
         "{pr:?}"
     );
     let d = description(&pr);
-    assert!(d.contains("add a feature") && d.contains("## Changes"), "{d}");
+    assert!(
+        d.contains("add a feature") && d.contains("## Changes"),
+        "{d}"
+    );
     let land = w.workspace_land_state(&ws.id).await.unwrap();
-    assert_eq!((land.pr_id.as_str(), land.pr_number), (pr_id.as_str(), pr.number));
-    assert_eq!(w.open_workspace_pr(&ws.id, false).await.unwrap(), pr_id, "idempotent");
+    assert_eq!(
+        (land.pr_id.as_str(), land.pr_number),
+        (pr_id.as_str(), pr.number)
+    );
+    assert_eq!(
+        w.open_workspace_pr(&ws.id, false).await.unwrap(),
+        pr_id,
+        "idempotent"
+    );
 
     let merged = fx.s.prs.merge_pr(&pr_id, "").await.unwrap();
-    assert_eq!((merged.state.as_str(), merged.group.as_str()), ("Merged", "merged"));
+    assert_eq!(
+        (merged.state.as_str(), merged.group.as_str()),
+        ("Merged", "merged")
+    );
     assert_eq!(
         shows(&repo, &format!("{}:feature.txt", ws.base_branch)).as_deref(),
         Some("the feature")
@@ -98,8 +122,14 @@ async fn workspace_open_pr_with_agent_body() {
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
     let ws = fx.solo(&pid, "scratch name", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
     const BODY: &str = "This covers the whole workspace diff, not just this chat.";
     let eng = &fx.svc.engine;
     let pr_id = eng
@@ -110,8 +140,12 @@ async fn workspace_open_pr_with_agent_body() {
     assert_eq!(pr.title, "Agent-written title");
     assert_eq!(description(&pr), BODY);
 
-    fx.commit_file(&pid, &ws.id, "more.txt", "more\n", "solo: more").await;
-    fx.s.workspaces.open_workspace_pr(&ws.id, false).await.unwrap();
+    fx.commit_file(&pid, &ws.id, "more.txt", "more\n", "solo: more")
+        .await;
+    fx.s.workspaces
+        .open_workspace_pr(&ws.id, false)
+        .await
+        .unwrap();
     let again = fx.s.prs.get_pr(&pr_id).await.unwrap();
     assert_eq!(again.title, "Agent-written title");
     assert_eq!(description(&again), BODY);
@@ -140,9 +174,20 @@ async fn workspace_open_pr_fallback_skips_prompt_action_wire() {
             w.goal_display = label.into();
         })
         .unwrap();
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
-    let pr_id = fx.svc.engine.open_workspace_pr(&ws.id, false).await.unwrap();
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
+    let pr_id = fx
+        .svc
+        .engine
+        .open_workspace_pr(&ws.id, false)
+        .await
+        .unwrap();
     let pr = fx.s.prs.get_pr(&pr_id).await.unwrap();
     assert_eq!(pr.title, label);
     let d = description(&pr);
@@ -161,7 +206,10 @@ async fn workspace_merge_local() {
     let pid = fx.add_project(&repo);
     let ws = fx.solo(&pid, "add a feature", "").await;
     let w = &fx.s.workspaces;
-    assert!(w.merge_workspace(&ws.id, "").await.is_err(), "empty workspace");
+    assert!(
+        w.merge_workspace(&ws.id, "").await.is_err(),
+        "empty workspace"
+    );
     assert_eq!(w.workspace_land_state(&ws.id).await.unwrap().ahead_base, 0);
     fx.s.code
         .write_file(&pid, &ws.id, "feature.txt", "the feature\n")
@@ -169,7 +217,13 @@ async fn workspace_merge_local() {
         .unwrap();
     assert!(w.workspace_land_state(&ws.id).await.unwrap().dirty);
     assert!(w.merge_workspace(&ws.id, "").await.is_err(), "uncommitted");
-    assert!(fx.s.code.commit(&pid, &ws.id, "solo: add feature").await.unwrap().committed);
+    assert!(
+        fx.s.code
+            .commit(&pid, &ws.id, "solo: add feature")
+            .await
+            .unwrap()
+            .committed
+    );
     assert!(w.workspace_land_state(&ws.id).await.unwrap().ahead_base >= 1);
 
     let merged = w.merge_workspace(&ws.id, "").await.unwrap();
@@ -206,7 +260,8 @@ async fn workspace_merge_refused_has_run() {
             w.phase = "idle".into();
         })
         .unwrap();
-    fx.commit_file(&pid, &ws.id, "idle.txt", "done\n", "idle: add file").await;
+    fx.commit_file(&pid, &ws.id, "idle.txt", "done\n", "idle: add file")
+        .await;
     w.open_workspace_pr(&ws.id, false).await.unwrap();
     fx.close().await;
 }
@@ -217,8 +272,14 @@ async fn workspace_update_with_base() {
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
     let ws = fx.solo(&pid, "catch up", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
     let w = &fx.s.workspaces;
     let land = w.workspace_land_state(&ws.id).await.unwrap();
     assert!(
@@ -233,7 +294,10 @@ async fn workspace_update_with_base() {
 
     let res = w.update_workspace_with_base(&ws.id, "").await.unwrap();
     assert_eq!(res.status, UPDATE_WORKSPACE_UPDATED);
-    assert_eq!(shows(&ws.worktree_path, "HEAD:extra.txt").as_deref(), Some("base moved"));
+    assert_eq!(
+        shows(&ws.worktree_path, "HEAD:extra.txt").as_deref(),
+        Some("base moved")
+    );
     assert_eq!(w.workspace_land_state(&ws.id).await.unwrap().behind_base, 0);
     let noop = w.update_workspace_with_base(&ws.id, "").await.unwrap();
     assert_eq!(noop.status, UPDATE_WORKSPACE_NOOP);
@@ -246,8 +310,14 @@ async fn workspace_update_with_base_conflict() {
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
     let ws = fx.solo(&pid, "conflict", "").await;
-    fx.commit_file(&pid, &ws.id, "README.md", "workspace edit\n", "solo: edit readme")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "README.md",
+        "workspace edit\n",
+        "solo: edit readme",
+    )
+    .await;
     write(format!("{repo}/README.md"), "main edit\n");
     git(&repo, &["add", "README.md"]);
     git(&repo, &["commit", "-m", "advance main with conflict"]);
@@ -268,7 +338,13 @@ async fn workspace_remove() {
     let removed = fx.s.workspaces.remove_workspace(&ws.id).await.unwrap();
     assert!(removed.archived);
     assert!(removed.worktree_path.is_empty());
-    assert!(fx.s.workspaces.get_workspace(&ws.id).await.unwrap().archived);
+    assert!(
+        fx.s.workspaces
+            .get_workspace(&ws.id)
+            .await
+            .unwrap()
+            .archived
+    );
     let deadline = Instant::now() + Duration::from_secs(5);
     while std::path::Path::new(&path).exists() {
         assert!(Instant::now() < deadline, "worktree still at {path}");
@@ -284,12 +360,24 @@ async fn merge_workspace_pushes_remote_base() {
     let pid = project(&fx, "premote", &clone, "origin/main", false);
     let ws = fx.solo(&pid, "land on origin", "").await;
     let w = &fx.s.workspaces;
-    assert_eq!(w.workspace_land_state(&ws.id).await.unwrap().remote, "origin");
-    fx.commit_file(&pid, &ws.id, "feature.txt", "from workspace\n", "solo: add feature")
-        .await;
+    assert_eq!(
+        w.workspace_land_state(&ws.id).await.unwrap().remote,
+        "origin"
+    );
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "from workspace\n",
+        "solo: add feature",
+    )
+    .await;
     let merged = w.merge_workspace(&ws.id, "squash").await.unwrap();
     assert_eq!(merged.state, WorkspaceState::Merged);
-    assert_eq!(shows(&bare, "HEAD:feature.txt").as_deref(), Some("from workspace"));
+    assert_eq!(
+        shows(&bare, "HEAD:feature.txt").as_deref(),
+        Some("from workspace")
+    );
     fx.close().await;
 }
 
@@ -313,12 +401,24 @@ async fn merge_workspace_refused_when_github_requires_pr() {
     let ws = fx.solo(&pid, "land on origin", "").await;
     let w = &fx.s.workspaces;
     assert!(w.workspace_land_state(&ws.id).await.unwrap().require_pr);
-    fx.commit_file(&pid, &ws.id, "feature.txt", "from workspace\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "from workspace\n",
+        "solo: add feature",
+    )
+    .await;
     let e = w.merge_workspace(&ws.id, "squash").await.unwrap_err();
     assert!(e.message.contains("requires a GitHub pull request"), "{e}");
-    assert!(shows(&bare, "HEAD:feature.txt").is_none(), "landed on origin");
-    assert_ne!(fx.store().workspace(&ws.id).unwrap().state, WorkspaceState::Merged);
+    assert!(
+        shows(&bare, "HEAD:feature.txt").is_none(),
+        "landed on origin"
+    );
+    assert_ne!(
+        fx.store().workspace(&ws.id).unwrap().state,
+        WorkspaceState::Merged
+    );
     fx.close().await;
 }
 
@@ -330,11 +430,20 @@ async fn merge_workspace_github_remote_when_pr_not_required() {
     let ws = fx.solo(&pid, "land on origin", "").await;
     let w = &fx.s.workspaces;
     assert!(!w.workspace_land_state(&ws.id).await.unwrap().require_pr);
-    fx.commit_file(&pid, &ws.id, "feature.txt", "from workspace\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "from workspace\n",
+        "solo: add feature",
+    )
+    .await;
     let merged = w.merge_workspace(&ws.id, "squash").await.unwrap();
     assert_eq!(merged.state, WorkspaceState::Merged);
-    assert_eq!(shows(&bare, "HEAD:feature.txt").as_deref(), Some("from workspace"));
+    assert_eq!(
+        shows(&bare, "HEAD:feature.txt").as_deref(),
+        Some("from workspace")
+    );
     fx.close().await;
 }
 
@@ -346,11 +455,23 @@ async fn merge_workspace_marks_merged_when_push_fails() {
     git(&clone, &["remote", "set-url", "origin", &missing]);
     let pid = project(&fx, "ppushfail", &clone, "origin/main", false);
     let ws = fx.solo(&pid, "land locally", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "from workspace\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "from workspace\n",
+        "solo: add feature",
+    )
+    .await;
     let w = &fx.s.workspaces;
-    assert!(w.merge_workspace(&ws.id, "squash").await.is_err(), "push fails");
-    assert_eq!(fx.store().workspace(&ws.id).unwrap().state, WorkspaceState::Merged);
+    assert!(
+        w.merge_workspace(&ws.id, "squash").await.is_err(),
+        "push fails"
+    );
+    assert_eq!(
+        fx.store().workspace(&ws.id).unwrap().state,
+        WorkspaceState::Merged
+    );
     let again = w.merge_workspace(&ws.id, "squash").await.unwrap();
     assert_eq!(again.state, WorkspaceState::Merged);
     fx.close().await;
@@ -363,12 +484,24 @@ async fn merge_workspace_pushes_local_base_when_origin_exists() {
     let pid = project(&fx, "plocalbase", &clone, "main", false);
     let ws = fx.solo(&pid, "land and push", "main").await;
     let w = &fx.s.workspaces;
-    assert_eq!(w.workspace_land_state(&ws.id).await.unwrap().remote, "origin");
-    fx.commit_file(&pid, &ws.id, "feature.txt", "from workspace\n", "solo: add feature")
-        .await;
+    assert_eq!(
+        w.workspace_land_state(&ws.id).await.unwrap().remote,
+        "origin"
+    );
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "from workspace\n",
+        "solo: add feature",
+    )
+    .await;
     let merged = w.merge_workspace(&ws.id, "squash").await.unwrap();
     assert_eq!(merged.state, WorkspaceState::Merged);
-    assert_eq!(shows(&bare, "HEAD:feature.txt").as_deref(), Some("from workspace"));
+    assert_eq!(
+        shows(&bare, "HEAD:feature.txt").as_deref(),
+        Some("from workspace")
+    );
     fx.close().await;
 }
 
@@ -395,7 +528,13 @@ async fn behind_merge_base_fetches_remote_tip() {
     );
     fx.svc.engine.refresh_pr_behind("gh-111").await;
     assert!(fx.store().pr("gh-111").unwrap().behind_base >= 1);
-    assert!(w.fetch_working_copy_upstream(&ws.id).await.unwrap().behind_base >= 1);
+    assert!(
+        w.fetch_working_copy_upstream(&ws.id)
+            .await
+            .unwrap()
+            .behind_base
+            >= 1
+    );
     fx.close().await;
 }
 
@@ -414,8 +553,14 @@ async fn get_pr_fetches_remote_base_before_commit_log() {
     git(&other, &["commit", "-m", "advance merge base"]);
     git(&other, &["push", "origin", "main"]);
     git(&ws.worktree_path, &["fetch", "origin", "main"]);
-    git(&ws.worktree_path, &["merge", "origin/main", "-m", "sync with base"]);
-    git(&clone, &["update-ref", "refs/remotes/origin/main", stale.trim()]);
+    git(
+        &ws.worktree_path,
+        &["merge", "origin/main", "-m", "sync with base"],
+    );
+    git(
+        &clone,
+        &["update-ref", "refs/remotes/origin/main", stale.trim()],
+    );
     fx.store()
         .add_pr(Pr {
             id: "pr-stale-base".into(),
@@ -432,7 +577,9 @@ async fn get_pr_fetches_remote_base_before_commit_log() {
     let pr = fx.s.prs.get_pr("pr-stale-base").await.unwrap();
     let commits = pr.commits.unwrap_or_default();
     assert!(
-        !commits.iter().any(|c| c.message.contains("advance merge base")),
+        !commits
+            .iter()
+            .any(|c| c.message.contains("advance merge base")),
         "{commits:?}"
     );
     assert!(
@@ -463,11 +610,20 @@ async fn behind_remote_develop_base_without_pr() {
     write(format!("{other}/main-only.txt"), "from main\n");
     git(&other, &["checkout", "main"]);
     git(&other, &["add", "main-only.txt"]);
-    git(&other, &["commit", "-m", "advance main, must not be the compare tip"]);
+    git(
+        &other,
+        &["commit", "-m", "advance main, must not be the compare tip"],
+    );
     git(&other, &["push", "origin", "main"]);
 
     let w = &fx.s.workspaces;
-    assert!(w.fetch_working_copy_upstream(&ws.id).await.unwrap().behind_base >= 1);
+    assert!(
+        w.fetch_working_copy_upstream(&ws.id)
+            .await
+            .unwrap()
+            .behind_base
+            >= 1
+    );
     let res = w.update_workspace_with_base(&ws.id, "").await.unwrap();
     assert_eq!(res.status, UPDATE_WORKSPACE_UPDATED);
     assert_eq!(
@@ -487,8 +643,14 @@ async fn merge_workspace_github_pr_does_not_land_locally() {
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
     let ws = fx.solo(&pid, "gh land", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "gh only\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "gh only\n",
+        "solo: add feature",
+    )
+    .await;
     fx.store()
         .add_pr(Pr {
             id: "gh-99".into(),
@@ -501,7 +663,12 @@ async fn merge_workspace_github_pr_does_not_land_locally() {
             ..Default::default()
         })
         .unwrap();
-    assert!(fx.s.workspaces.merge_workspace(&ws.id, "squash").await.is_err());
+    assert!(
+        fx.s.workspaces
+            .merge_workspace(&ws.id, "squash")
+            .await
+            .is_err()
+    );
     assert!(shows(&repo, "HEAD:feature.txt").is_none(), "landed locally");
     fx.close().await;
 }
@@ -512,12 +679,19 @@ async fn workspace_github_pr_ahead_and_behind_remote() {
     let (clone, bare) = fx.init_git_repo_with_remote();
     let pid = fx.add_project(&clone);
     let ws = fx.solo(&pid, "add a feature", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
     let head = format!("HEAD:refs/heads/{}", ws.branch);
     git(&ws.worktree_path, &["push", "-u", "origin", &head]);
     fx.store().add_pr(gh_pr("gh-9", &ws, 9)).unwrap();
-    fx.commit_file(&pid, &ws.id, "local.txt", "local\n", "solo: local").await;
+    fx.commit_file(&pid, &ws.id, "local.txt", "local\n", "solo: local")
+        .await;
     let w = &fx.s.workspaces;
     assert!(w.workspace_land_state(&ws.id).await.unwrap().ahead_remote >= 1);
     git(
@@ -532,10 +706,19 @@ async fn workspace_github_pr_ahead_and_behind_remote() {
     git(&other, &["commit", "-m", "from github"]);
     git(&other, &["push", "origin", "HEAD"]);
 
-    assert!(w.fetch_working_copy_upstream(&ws.id).await.unwrap().behind_remote >= 1);
+    assert!(
+        w.fetch_working_copy_upstream(&ws.id)
+            .await
+            .unwrap()
+            .behind_remote
+            >= 1
+    );
     let res = w.pull_workspace_pr(&ws.id).await.unwrap();
     assert_eq!(res.status, UPDATE_WORKSPACE_UPDATED);
-    assert_eq!(w.workspace_land_state(&ws.id).await.unwrap().behind_remote, 0);
+    assert_eq!(
+        w.workspace_land_state(&ws.id).await.unwrap().behind_remote,
+        0
+    );
     assert_eq!(
         read(format!("{}/from-github.txt", ws.worktree_path)).trim(),
         "remote"
@@ -671,7 +854,10 @@ async fn list_pr_findings_uses_chat_host() {
         ..Default::default()
     });
     let got = fx.s.prs.list_pr_findings("gh-p-5").await.unwrap();
-    assert_eq!(got.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(), ["f1"]);
+    assert_eq!(
+        got.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(),
+        ["f1"]
+    );
     fx.close().await;
 }
 
@@ -681,11 +867,25 @@ async fn workspace_open_pr_retries_github_after_local_fallback() {
     let repo = fx.init_git_repo();
     let pid = project(&fx, "pgh", &repo, "main", true);
     let ws = fx.solo(&pid, "add a feature", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
-    let pr_id = fx.s.workspaces.open_workspace_pr(&ws.id, false).await.unwrap();
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
+    let pr_id =
+        fx.s.workspaces
+            .open_workspace_pr(&ws.id, false)
+            .await
+            .unwrap();
     let pr = fx.s.prs.get_pr(&pr_id).await.unwrap();
-    assert_eq!(pr.source, PrSource::Local, "local fallback when gh create fails");
+    assert_eq!(
+        pr.source,
+        PrSource::Local,
+        "local fallback when gh create fails"
+    );
     let again = fx
         .svc
         .engine
@@ -693,7 +893,10 @@ async fn workspace_open_pr_retries_github_after_local_fallback() {
         .await
         .unwrap();
     assert_eq!(again, pr_id);
-    assert_eq!(fx.s.prs.get_pr(&pr_id).await.unwrap().source, PrSource::Local);
+    assert_eq!(
+        fx.s.prs.get_pr(&pr_id).await.unwrap().source,
+        PrSource::Local
+    );
     fx.close().await;
 }
 
@@ -703,8 +906,14 @@ async fn workspace_open_pr_draft_persists_on_local_fallback() {
     let repo = fx.init_git_repo();
     let pid = project(&fx, "pgh-draft", &repo, "main", true);
     let ws = fx.solo(&pid, "add a feature", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
     let pr_id = fx
         .svc
         .engine
@@ -714,7 +923,13 @@ async fn workspace_open_pr_draft_persists_on_local_fallback() {
     let pr = fx.s.prs.get_pr(&pr_id).await.unwrap();
     assert_eq!(pr.source, PrSource::Local);
     assert!(pr.draft, "a later GitHub retry stays a draft");
-    assert!(fx.s.workspaces.workspace_land_state(&ws.id).await.unwrap().pr_draft);
+    assert!(
+        fx.s.workspaces
+            .workspace_land_state(&ws.id)
+            .await
+            .unwrap()
+            .pr_draft
+    );
     fx.close().await;
 }
 
@@ -734,20 +949,38 @@ async fn workspace_force_push_diverged_github_pr() {
     let (clone, bare) = fx.init_git_repo_with_remote();
     let pid = fx.add_project(&clone);
     let ws = fx.solo(&pid, "add a feature", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
     let head = format!("HEAD:refs/heads/{}", ws.branch);
     git(&ws.worktree_path, &["push", "-u", "origin", &head]);
     fx.store().add_pr(gh_pr("gh-11", &ws, 11)).unwrap();
-    fx.commit_file(&pid, &ws.id, "rebased.txt", "after rebase\n", "solo: rebased")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "rebased.txt",
+        "after rebase\n",
+        "solo: rebased",
+    )
+    .await;
     diverge_remote(&fx, &bare, &ws, "stale.txt", "stale github tip");
 
     let w = &fx.s.workspaces;
     let land = w.fetch_working_copy_upstream(&ws.id).await.unwrap();
-    assert!(land.ahead_remote >= 1 && land.behind_remote >= 1, "{land:?}");
+    assert!(
+        land.ahead_remote >= 1 && land.behind_remote >= 1,
+        "{land:?}"
+    );
     let stale = format!("{}:stale.txt", ws.branch);
-    assert!(w.open_workspace_pr(&ws.id, false).await.is_err(), "regular push refused");
+    assert!(
+        w.open_workspace_pr(&ws.id, false).await.is_err(),
+        "regular push refused"
+    );
     git_out(&bare, &["cat-file", "-e", &stale]).expect("remote-only stale.txt kept");
 
     w.open_workspace_pr(&ws.id, true).await.unwrap();
@@ -757,7 +990,10 @@ async fn workspace_force_push_diverged_github_pr() {
         shows(&bare, &format!("{}:rebased.txt", ws.branch)).as_deref(),
         Some("after rebase")
     );
-    assert!(git_out(&bare, &["cat-file", "-e", &stale]).is_err(), "stale.txt survived");
+    assert!(
+        git_out(&bare, &["cat-file", "-e", &stale]).is_err(),
+        "stale.txt survived"
+    );
     fx.close().await;
 }
 
@@ -767,8 +1003,14 @@ async fn workspace_update_with_base_pushes_github_pr() {
     let (clone, bare) = fx.init_git_repo_with_remote();
     let pid = fx.add_project(&clone);
     let ws = fx.solo(&pid, "catch up", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
     let head = format!("HEAD:refs/heads/{}", ws.branch);
     git(&ws.worktree_path, &["push", "-u", "origin", &head]);
     fx.store().add_pr(gh_pr("gh-14", &ws, 14)).unwrap();
@@ -777,7 +1019,10 @@ async fn workspace_update_with_base_pushes_github_pr() {
     git(&clone, &["commit", "-m", "advance main"]);
 
     let w = &fx.s.workspaces;
-    let res = w.update_workspace_with_base(&ws.id, "rebase").await.unwrap();
+    let res = w
+        .update_workspace_with_base(&ws.id, "rebase")
+        .await
+        .unwrap();
     assert_eq!(res.status, UPDATE_WORKSPACE_UPDATED);
     assert_eq!(res.pushed_pr, 14, "auto-push after rebase");
     assert!(res.force_pushed);
@@ -796,8 +1041,14 @@ async fn workspace_update_with_base_merge_does_not_force_github_pr() {
     let (clone, bare) = fx.init_git_repo_with_remote();
     let pid = fx.add_project(&clone);
     let ws = fx.solo(&pid, "catch up", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "solo: add feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "solo: add feature",
+    )
+    .await;
     let head = format!("HEAD:refs/heads/{}", ws.branch);
     git(&ws.worktree_path, &["push", "-u", "origin", &head]);
     fx.store().add_pr(gh_pr("gh-15", &ws, 15)).unwrap();
@@ -806,17 +1057,22 @@ async fn workspace_update_with_base_merge_does_not_force_github_pr() {
     git(&clone, &["add", "from-main.txt"]);
     git(&clone, &["commit", "-m", "advance main"]);
 
-    let res = fx
-        .s
-        .workspaces
-        .update_workspace_with_base(&ws.id, "merge")
-        .await
-        .unwrap();
+    let res =
+        fx.s.workspaces
+            .update_workspace_with_base(&ws.id, "merge")
+            .await
+            .unwrap();
     assert_eq!(res.status, UPDATE_WORKSPACE_UPDATED);
-    assert_eq!(res.pushed_pr, 0, "regular push must not overwrite a remote-only commit");
+    assert_eq!(
+        res.pushed_pr, 0,
+        "regular push must not overwrite a remote-only commit"
+    );
     assert!(!res.force_pushed);
-    git_out(&bare, &["cat-file", "-e", &format!("{}:stale.txt", ws.branch)])
-        .expect("remote-only stale.txt kept");
+    git_out(
+        &bare,
+        &["cat-file", "-e", &format!("{}:stale.txt", ws.branch)],
+    )
+    .expect("remote-only stale.txt kept");
     assert!(std::path::Path::new(&format!("{}/from-main.txt", ws.worktree_path)).exists());
     fx.close().await;
 }
@@ -850,11 +1106,23 @@ async fn workspace_push_cross_repo_pr_pushes_to_fork() {
 
     let pid = fx.add_project(&clone);
     let ws = fx.solo(&pid, "fork PR", "").await;
-    fx.commit_file(&pid, &ws.id, "feature.txt", "the feature\n", "fork: feature")
-        .await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "the feature\n",
+        "fork: feature",
+    )
+    .await;
     const HEAD: &str = "recur/tab-close-context-menu";
-    git(&ws.worktree_path, &["push", &fork, &format!("HEAD:refs/heads/{HEAD}")]);
-    git(&ws.worktree_path, &["push", &origin, "HEAD:refs/pull/9/head"]);
+    git(
+        &ws.worktree_path,
+        &["push", &fork, &format!("HEAD:refs/heads/{HEAD}")],
+    );
+    git(
+        &ws.worktree_path,
+        &["push", &origin, "HEAD:refs/pull/9/head"],
+    );
     fx.store()
         .add_pr(Pr {
             branch: HEAD.into(),
@@ -862,11 +1130,16 @@ async fn workspace_push_cross_repo_pr_pushes_to_fork() {
             ..gh_pr("gh-9", &ws, 9)
         })
         .unwrap();
-    fx.commit_file(&pid, &ws.id, "local.txt", "local\n", "fork: local").await;
+    fx.commit_file(&pid, &ws.id, "local.txt", "local\n", "fork: local")
+        .await;
 
     let w = &fx.s.workspaces;
     let land = w.fetch_working_copy_upstream(&ws.id).await.unwrap();
-    assert_eq!((land.ahead_remote, land.behind_remote), (1, 0), "vs pull/9/head");
+    assert_eq!(
+        (land.ahead_remote, land.behind_remote),
+        (1, 0),
+        "vs pull/9/head"
+    );
 
     let e = w.open_workspace_pr(&ws.id, false).await.unwrap_err();
     assert!(e.message.contains("fork"), "{e}");
@@ -886,7 +1159,11 @@ exit 1
         Some("local")
     );
     assert!(
-        git_out(&origin, &["rev-parse", "--verify", &format!("refs/heads/{HEAD}")]).is_err(),
+        git_out(
+            &origin,
+            &["rev-parse", "--verify", &format!("refs/heads/{HEAD}")]
+        )
+        .is_err(),
         "origin gained the fork branch"
     );
     let land = w.workspace_land_state(&ws.id).await.unwrap();

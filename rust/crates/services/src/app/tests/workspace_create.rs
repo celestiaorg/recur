@@ -10,15 +10,17 @@ async fn create_solo_workspace() {
     let fx = Fx::new().await;
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
-    let ws = fx
-        .s
-        .workspaces
-        .create_workspace(&pid, "tidy the header", "", "agent", "", "", None)
-        .await
-        .unwrap();
+    let ws =
+        fx.s.workspaces
+            .create_workspace(&pid, "tidy the header", "", "agent", "", "", None)
+            .await
+            .unwrap();
     assert_eq!(ws.r#type, WORKSPACE_SOLO);
     assert!(!ws.branch.is_empty());
-    assert!(ws.worktree_path.is_empty(), "returns before the worktree exists");
+    assert!(
+        ws.worktree_path.is_empty(),
+        "returns before the worktree exists"
+    );
     let ws = fx.wait_ready(&ws.id).await;
     assert!(!ws.worktree_path.is_empty());
     assert!(
@@ -29,12 +31,11 @@ async fn create_solo_workspace() {
             .iter()
             .any(|w| w.id == ws.id)
     );
-    let newer = fx
-        .s
-        .workspaces
-        .create_workspace(&pid, "after", "", "agent", "", "", None)
-        .await
-        .unwrap();
+    let newer =
+        fx.s.workspaces
+            .create_workspace(&pid, "after", "", "agent", "", "", None)
+            .await
+            .unwrap();
     let list = fx.s.workspaces.list_workspaces().await.unwrap();
     assert_eq!(list[0].id, newer.id, "newest first");
     fx.wait_ready(&newer.id).await;
@@ -49,7 +50,11 @@ async fn create_solo_workspace() {
         .write_file(&pid, &ws.id, "solo.txt", "hi\n")
         .await
         .unwrap();
-    let res = fx.s.code.commit(&pid, &ws.id, "solo: add file").await.unwrap();
+    let res =
+        fx.s.code
+            .commit(&pid, &ws.id, "solo: add file")
+            .await
+            .unwrap();
     assert!(res.committed);
     fx.close().await;
 }
@@ -59,19 +64,17 @@ async fn generate_commit_message_requires_staged() {
     let fx = Fx::new().await;
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
-    let ws = fx
-        .s
-        .workspaces
-        .create_workspace(&pid, "scm ai", "", "agent", "", "", None)
-        .await
-        .unwrap();
+    let ws =
+        fx.s.workspaces
+            .create_workspace(&pid, "scm ai", "", "agent", "", "", None)
+            .await
+            .unwrap();
     let ws = fx.wait_ready(&ws.id).await;
-    let e = fx
-        .s
-        .code
-        .generate_commit_message(&pid, &ws.id)
-        .await
-        .unwrap_err();
+    let e =
+        fx.s.code
+            .generate_commit_message(&pid, &ws.id)
+            .await
+            .unwrap_err();
     assert_eq!(e.message, "stage changes to generate a commit message");
     fx.s.code
         .write_file(&pid, &ws.id, "msg.txt", "x\n")
@@ -109,7 +112,15 @@ async fn create_workspace_refuses_non_git() {
     );
     assert!(
         fx.s.workspaces
-            .create_workspace(&p.id, "nope", "main", "loop", "do a thing", "balanced", None)
+            .create_workspace(
+                &p.id,
+                "nope",
+                "main",
+                "loop",
+                "do a thing",
+                "balanced",
+                None
+            )
             .await
             .is_err()
     );
@@ -126,12 +137,11 @@ async fn list_branches_for_path_no_phantom_preferred() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-m", "initial"]);
     for preferred in ["", "main", "origin/main"] {
-        let choices = fx
-            .s
-            .projects
-            .list_branches_for_path(&dir, preferred)
-            .await
-            .unwrap();
+        let choices =
+            fx.s.projects
+                .list_branches_for_path(&dir, preferred)
+                .await
+                .unwrap();
         assert!(
             choices
                 .iter()
@@ -163,12 +173,11 @@ fn seed_upstream(fx: &Fx, branches: &[&str]) -> String {
 async fn list_branches_for_path_works_without_project_id() {
     let fx = Fx::new().await;
     let clone = seed_upstream(&fx, &["develop"]);
-    let choices = fx
-        .s
-        .projects
-        .list_branches_for_path(&clone, "origin/main")
-        .await
-        .unwrap();
+    let choices =
+        fx.s.projects
+            .list_branches_for_path(&clone, "origin/main")
+            .await
+            .unwrap();
     let mut last = "";
     for c in &choices {
         assert!(
@@ -227,16 +236,15 @@ async fn list_branches_missing_default_stays_in_group() {
 async fn add_project_suggests_origin_main() {
     let fx = Fx::new().await;
     let clone = seed_upstream(&fx, &[]);
-    let p = fx
-        .s
-        .projects
-        .add_project(&Project {
-            name: "suggest-base".into(),
-            repo_path: clone,
-            ..Default::default()
-        })
-        .await
-        .unwrap();
+    let p =
+        fx.s.projects
+            .add_project(&Project {
+                name: "suggest-base".into(),
+                repo_path: clone,
+                ..Default::default()
+            })
+            .await
+            .unwrap();
     assert_eq!(p.base_branch, "origin/main");
     fx.close().await;
 }
@@ -279,13 +287,15 @@ async fn create_solo_workspace_default_title() {
     let fx = Fx::new().await;
     let repo = fx.init_git_repo();
     let pid = fx.add_project(&repo);
-    let ws = fx
-        .s
-        .workspaces
-        .create_workspace(&pid, "", "", "agent", "", "", None)
-        .await
-        .unwrap();
-    assert_eq!((ws.goal.as_str(), ws.short.as_str()), ("New Workspace", "New Workspace"));
+    let ws =
+        fx.s.workspaces
+            .create_workspace(&pid, "", "", "agent", "", "", None)
+            .await
+            .unwrap();
+    assert_eq!(
+        (ws.goal.as_str(), ws.short.as_str()),
+        ("New Workspace", "New Workspace")
+    );
     assert!(!ws.has_run());
     let ws = fx.wait_ready(&ws.id).await;
     assert_eq!(ws.status_label, "Idle");

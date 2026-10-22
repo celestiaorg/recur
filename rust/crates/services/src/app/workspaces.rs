@@ -24,7 +24,12 @@ fn not_found(id: &str) -> Error {
 impl AppServices {
     /// Empty loop / policy ids fall back to Settings, then the shipped
     /// defaults (Go `resolveEngageIDs`).
-    fn resolve_engage_ids(&self, loop_id: &str, policy_id: &str, autonomy: &str) -> (String, String) {
+    fn resolve_engage_ids(
+        &self,
+        loop_id: &str,
+        policy_id: &str,
+        autonomy: &str,
+    ) -> (String, String) {
         let set = self.store().settings();
         let mut loop_id = loop_id.trim().to_owned();
         let mut policy_id = policy_id.trim().to_owned();
@@ -150,7 +155,11 @@ impl AppServices {
         }
     }
 
-    async fn set_workspace_issue_at(&self, workspace_id: &str, issue: IssueRef) -> Result<Workspace> {
+    async fn set_workspace_issue_at(
+        &self,
+        workspace_id: &str,
+        issue: IssueRef,
+    ) -> Result<Workspace> {
         if issue.source.is_empty() || issue.id.is_empty() {
             return Err(Error::new("issue source and id are required"));
         }
@@ -169,7 +178,12 @@ impl AppServices {
                 self.store().update_workspace(&w.id, |w| w.issue = None);
             }
         }
-        recur_issues::claim(&self.engine.trackers().all(), &issue, &self.store().settings()).await;
+        recur_issues::claim(
+            &self.engine.trackers().all(),
+            &issue,
+            &self.store().settings(),
+        )
+        .await;
         Ok(ws)
     }
 

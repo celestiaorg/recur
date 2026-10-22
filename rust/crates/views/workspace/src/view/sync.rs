@@ -383,7 +383,8 @@ impl WorkspaceView {
             self.sync_marks.feed_for = Some(feed_mark);
             self.feed.update(cx, |f, cx| f.attach(&id, &code, cx));
         }
-        let live = self.specialist_live(cx);
+        let mut live = self.specialist_live(cx);
+        live.sort();
         if live != self.sync_marks.feed_live {
             self.sync_marks.feed_live = live.clone();
             self.feed
@@ -473,14 +474,18 @@ impl WorkspaceView {
             let props = self.chat_props(cx);
             self.chat.update(cx, |c, cx| c.set_props(props, cx));
         }
+        self.push_obs_props(window, cx);
+        let toolbar = self.toolbar.clone();
+        toolbar.update(cx, |t, cx| t.sync(self, window, cx));
+    }
+
+    pub(crate) fn push_obs_props(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let obs = self.obs_props(cx);
         if self.sync_marks.obs_props.as_ref() != Some(&obs) {
             self.sync_marks.obs_props = Some(obs.clone());
             self.observatory
                 .update(cx, |o, cx| o.set_props(obs, window, cx));
         }
-        let toolbar = self.toolbar.clone();
-        toolbar.update(cx, |t, cx| t.sync(self, window, cx));
     }
 
     /// `focusedChat`: which tab is on screen, so PermissionPrompts can skip a floating card

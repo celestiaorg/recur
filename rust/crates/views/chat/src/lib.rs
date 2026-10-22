@@ -78,6 +78,8 @@ mod spec;
 pub mod strip;
 pub mod style;
 pub mod suggest;
+#[cfg(any(test, feature = "test-support"))]
+mod testing;
 pub mod tools;
 pub mod transcript;
 pub mod transcript_ui;

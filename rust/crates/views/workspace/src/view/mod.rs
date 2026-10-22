@@ -475,11 +475,14 @@ impl WorkspaceView {
         &self.chat
     }
 
-    pub fn set_shell_active(&mut self, on: bool, cx: &mut Context<Self>) {
+    /// The live workbench, or a parked hot shell. The Observatory hears at once: a parked one
+    /// must give up the menu, watcher and command ownership before the live one claims them.
+    pub fn set_shell_active(&mut self, on: bool, window: &mut Window, cx: &mut Context<Self>) {
         if self.shell_active == on {
             return;
         }
         self.shell_active = on;
+        self.push_obs_props(window, cx);
         self.touch(cx);
     }
 

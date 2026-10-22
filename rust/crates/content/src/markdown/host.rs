@@ -281,6 +281,13 @@ impl MarkdownHost {
     }
 
     fn wake(&self) {
+        if RENDER_INLINE.load(std::sync::atomic::Ordering::Relaxed) {
+            while let Some(job) = next_job(&self.state) {
+                let res = render_sync(&job.src);
+                finish(&self.state, job, res);
+            }
+            return;
+        }
         let mut w = self.wake.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(tx) = w.as_ref()
             && tx.send(()).is_ok()
@@ -304,6 +311,14 @@ impl MarkdownHost {
             }
         }
     }
+}
+
+static RENDER_INLINE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Render async jobs on the caller instead of the worker thread: GPUI's deterministic test
+/// scheduler rejects wakes from other threads.
+pub fn set_markdown_render_inline(on: bool) {
+    RENDER_INLINE.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
 /// `pump`'s dequeue: the next job not already answered by the cache.

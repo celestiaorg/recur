@@ -25,6 +25,7 @@ pub fn init(cx: &mut TestAppContext) {
         recur_ui::init(cx);
         recur_terminal_view::init(cx);
         recur_ui::motion::freeze(None, cx);
+        recur_content::markdown::set_markdown_render_inline(true);
         cx.set_global(recur_view_review::store::ReviewStore::default());
     });
 }
@@ -47,6 +48,7 @@ impl Render for Root {
 
 pub struct H<'a> {
     pub state: Entity<AppState>,
+    pub root: Entity<Root>,
     pub detail: Entity<WorkspaceDetail>,
     pub bridge: Arc<MockBridge>,
     pub cx: &'a mut VisualTestContext,
@@ -88,8 +90,10 @@ pub fn boot_with<'a>(
     });
     let detail = root.read_with(vcx_cx, |r, _| r.detail.clone());
     vcx_cx.simulate_resize(gpui::size(px(1280.), px(800.)));
+    vcx_cx.update(|_, cx| install_prompt_runner(cx));
     let mut h = H {
         state,
+        root,
         detail,
         bridge,
         cx: vcx_cx,
@@ -103,7 +107,82 @@ pub fn boot(cx: &mut TestAppContext, opts: MockOptions) -> H<'_> {
     boot_with(cx, |_| {}, opts, |_| {}, WS)
 }
 
+/// Runs the bundles' compiled TypeScript prompt modules in `node`, as the desktop's macro
+/// workers do (`exports.default(ctx)` → `{prompt, display, …}`).
+pub fn install_prompt_runner(cx: &mut gpui_kit::App) {
+    use futures::FutureExt as _;
+    let runner: recur_view_chat::prompt_actions::PromptModuleRunner =
+        std::rc::Rc::new(|code, ctx, chat_code, _name, _timeout| {
+            async move {
+                let ctx = serde_json::json!({
+                    "workspaceId": ctx.workspace_id,
+                    "projectId": ctx.project_id,
+                    "worktree": ctx.worktree,
+                    "args": ctx.args,
+                    "surface": ctx.surface,
+                    "chatCode": chat_code,
+                });
+                let script = format!(
+                    "const module={{exports:{{}}}};const exports=module.exports;{code}\n;Promise.resolve((module.exports.default||exports.default)({ctx})).then(r=>process.stdout.write(JSON.stringify(r)))"
+                );
+                let out = std::process::Command::new("node")
+                    .arg("-e")
+                    .arg(script)
+                    .output()
+                    .map_err(|e| e.to_string())?;
+                if !out.status.success() {
+                    return Err(String::from_utf8_lossy(&out.stderr).to_string());
+                }
+                serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())
+            }
+            .boxed_local()
+        });
+    recur_view_chat::prompt_actions::PromptCatalog::set_runners(Some(runner), None, cx);
+}
+
 impl H<'_> {
+    /// A reload: a fresh `AppState` and detail route over the same backend and local storage,
+    /// with the module caches (strip, heap, transcript UI, hoist) cleared as a page load does.
+    pub fn reload(&mut self, ws: &str) {
+        let services = self.bridge.services();
+        let state = self.state.clone();
+        let root = self.root.clone();
+        let new_state = self.cx.update(|window, cx| {
+            let mut st = LocalStorage::in_memory();
+            let old = state.read(cx).storage();
+            let pairs: Vec<(String, String)> = old
+                .keys()
+                .map(|k| (k.to_string(), old.get(k).unwrap_or_default().to_string()))
+                .collect();
+            for (k, v) in pairs {
+                st.set(&k, v);
+            }
+            cx.set_global(recur_view_chat::strip::ChatStripCache::default());
+            cx.set_global(recur_view_chat::heap::ChatHeapCache::default());
+            cx.set_global(recur_view_chat::transcript_ui::TranscriptUiCache::default());
+            cx.set_global(recur_view_chat::hoist::HoistState::default());
+            let new_state = AppState::install(services.clone(), st, cx);
+            new_state.update(cx, |s, cx| {
+                s.wire_events(cx);
+                s.load_initial(cx).detach();
+            });
+            let vcx = ViewContext {
+                state: new_state.clone(),
+                services,
+            };
+            let detail = cx.new(|cx| WorkspaceDetail::new(&vcx, window, cx));
+            root.update(cx, |r, cx| {
+                r.detail = detail;
+                cx.notify();
+            });
+            new_state
+        });
+        self.state = new_state;
+        self.detail = self.root.read_with(self.cx, |r, _| r.detail.clone());
+        self.settle();
+        self.open(ws);
+    }
+
     pub fn settle(&mut self) {
         for _ in 0..4 {
             self.cx.run_until_parked();
@@ -256,12 +335,41 @@ impl H<'_> {
 
     /// Select a chat tab through the strip.
     pub fn select_tab(&mut self, code: &str) {
-        self.click(&format!("tab-chip:chat-tab-{code}"));
+        let sel = self.chip(code).unwrap_or_else(|| panic!("no chat tab {code}"));
+        self.click(&sel);
+    }
+
+    /// The chip's selector (`tab-chip:chat-tab-<code>`, `:on` while active), when shown.
+    pub fn chip(&mut self, code: &str) -> Option<String> {
+        let base = format!("tab-chip:chat-tab-{code}");
+        let on = format!("{base}:on");
+        if self.has(&base) {
+            Some(base)
+        } else if self.has(&on) {
+            Some(on)
+        } else {
+            None
+        }
     }
 
     /// Push a backend event the way specs dispatched them.
     pub fn dispatch(&mut self, name: &str, data: Value) {
         self.bridge.dispatch_wire(name, data).expect("event");
+        self.settle();
+    }
+
+    /// Run the action of the newest toast whose button reads `label`.
+    pub fn toast_action(&mut self, label: &str) {
+        let run = self.cx.update(|_, cx| {
+            recur_ui::widgets::ToastStore::global(cx)
+                .read(cx)
+                .toasts()
+                .iter()
+                .rev()
+                .find_map(|t| t.action.as_ref().filter(|a| a.label.as_ref() == label).map(|a| a.run.clone()))
+        });
+        let run = run.unwrap_or_else(|| panic!("no toast action {label}"));
+        self.cx.update(|window, cx| run(window, cx));
         self.settle();
     }
 

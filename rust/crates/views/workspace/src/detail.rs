@@ -104,10 +104,13 @@ impl WorkspaceDetail {
             self.hot = next;
         }
         self.views.retain(|id, _| self.hot.contains(id));
-        for id in self.hot.clone() {
+        // Park the outgoing shell before the incoming one claims the menu and watcher.
+        let mut order = self.hot.clone();
+        order.sort_by_key(|id| *id == bound);
+        for id in order {
             let active = id == bound;
             match self.views.get(&id) {
-                Some(v) => v.update(cx, |v, cx| v.set_shell_active(active, cx)),
+                Some(v) => v.update(cx, |v, cx| v.set_shell_active(active, window, cx)),
                 None => {
                     let vcx = self.vcx.clone();
                     let props = WorkspaceProps {
@@ -193,7 +196,7 @@ fn on_hoist(ev: &AppEvent, cx: &mut gpui_kit::App) {
 }
 
 impl Render for WorkspaceDetail {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bound = self.bound_id(cx);
         let mut root = div()
             .id("v-detail")
@@ -209,6 +212,8 @@ impl Render for WorkspaceDetail {
             if *id == bound {
                 root = root.child(div().flex_1().min_h_0().flex().flex_col().child(v));
             } else {
+                // A parked shell keeps running its effects (queues, seeds, live events).
+                v.update(cx, |v, cx| v.sync(window, cx));
                 root = root.child(
                     div()
                         .absolute()

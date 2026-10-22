@@ -1174,6 +1174,21 @@ impl Observatory {
     }
 
     /// The artifact open in the focused pane, if any.
+    /// The file open in the main editor.
+    pub fn selected_path(&self) -> &str {
+        &self.selected_path
+    }
+
+    /// The explorer row highlighted as current (`treePath`).
+    pub fn tree_path(&self) -> &str {
+        &self.tree_path
+    }
+
+    /// The panel the right dock shows.
+    pub fn right_panel(&self, cx: &App) -> Option<CodePanelKey> {
+        self.right_meta(cx)
+    }
+
     pub fn selected_artifact_id(&self) -> String {
         recur_engine::view::artifacts::artifact_id_from_scratch_path(self.active_path())
     }

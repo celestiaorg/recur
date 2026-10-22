@@ -18,3 +18,21 @@ fn probe_people_layout(cx: &mut TestAppContext) {
         eprintln!("{sel}: {:?}", s.bounds(sel));
     }
 }
+
+#[gpui::test]
+fn probe_detail_layout(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_pr("482");
+    s.state.update(s.cx, |st, cx| {
+        st.pr_agent_dock_open = false;
+        cx.notify();
+    });
+    s.settle();
+    for sel in ["cmt-reply-ph:gh-inline-1", "cmt-resolve:Resolve conversation"] {
+        eprintln!("{sel}: {:?}", s.bounds(sel));
+    }
+    s.click("prtab:Files changed:off");
+    for sel in ["cmt-reply-ph:gh-inline-1", "cmt-resolve:gh-inline-1"] {
+        eprintln!("files {sel}: {:?}", s.bounds(sel));
+    }
+}

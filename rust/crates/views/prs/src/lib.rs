@@ -9,6 +9,7 @@
 //! `prdetail` route (PR detail, with the review and merge actions leading `.tb-right`).
 
 pub mod chrome;
+pub mod detail;
 pub mod findings;
 #[cfg(feature = "gallery")]
 pub mod gallery;
@@ -24,6 +25,7 @@ pub mod ui;
 use gpui_kit::AppContext as _;
 use recur_view_core::{TitlebarParts, ViewContext, ViewName, ViewRegistry};
 
+use crate::detail::PrDetail;
 use crate::list::PrList;
 use crate::list_titlebar::PrListTitlebar;
 
@@ -35,5 +37,8 @@ pub fn register(r: &mut ViewRegistry) {
     .titlebar(|vcx, _, cx| TitlebarParts {
         left: Some(cx.new(|cx| PrListTitlebar::new(vcx, cx)).into()),
         right: None,
+    });
+    r.view(&[ViewName::PrDetail], |vcx: &ViewContext, window, cx| {
+        cx.new(|cx| PrDetail::new(vcx, window, cx)).into()
     });
 }

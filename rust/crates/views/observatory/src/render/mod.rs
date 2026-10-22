@@ -558,6 +558,12 @@ impl Observatory {
                 "prd-chat-toggle-t",
                 "Hide left panel (⌥⌘B)",
                 pane_toggle("prd-chat-toggle", IconName::PanelLeft, on, None, cx)
+                    .track_focus(&self.pr_toggle_focus)
+                    .debug_selector(|| "button:Hide left panel".into())
+                    .on_mouse_down(
+                        gpui_kit::MouseButton::Left,
+                        cx.listener(|o, _, window, cx| window.focus(&o.pr_toggle_focus, cx)),
+                    )
                     .on_click(cx.listener(|o, _, _, cx| o.set_pr_agent_dock_open(false, cx))),
             ));
         }

@@ -42,6 +42,12 @@ impl LooseFiles {
     pub fn ok(&self, abs: &str) -> bool {
         !abs.is_empty() && self.0.lock().contains(&clean(abs))
     }
+
+    /// A restart: only editor sessions re-allow paths.
+    #[cfg(test)]
+    pub(crate) fn clear(&self) {
+        self.0.lock().clear();
+    }
 }
 
 /// Go `filepath.Clean` for an absolute path.

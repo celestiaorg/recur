@@ -6,6 +6,7 @@
 mod assets;
 mod code_service;
 mod editor_session;
+mod open_path;
 mod services;
 mod workspace_base;
 mod workspace_create;

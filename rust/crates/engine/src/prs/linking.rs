@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 
-use recur_domain::{PrSource, Workspace};
+use recur_domain::Workspace;
 
 use crate::Engine;
 use crate::prs::pr_settled;
@@ -181,7 +181,7 @@ impl Engine {
         {
             let mut indexes: HashMap<String, HashMap<String, Workspace>> = HashMap::new();
             for p in self.store.prs() {
-                if p.source == PrSource::Local || pr_settled(&p) {
+                if self.pr_forge(&p).is_none() || pr_settled(&p) {
                     continue;
                 }
                 if !self.live_pr_workspace_id(&p.workspace_id).is_empty() {
@@ -224,7 +224,7 @@ impl Engine {
             return;
         }
         for p in self.store.prs() {
-            if p.source == PrSource::Local || pr_settled(&p) {
+            if self.pr_forge(&p).is_none() || pr_settled(&p) {
                 continue;
             }
             if self.pr_project_id(&p) != ws.project_id {

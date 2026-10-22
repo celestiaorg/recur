@@ -572,3 +572,19 @@ async fn create_from_pr_checks_out_named_head() {
     assert!(!w.worktree_path.is_empty());
     assert_eq!(px.pr("gh-acme-42").workspace_id, rec.id);
 }
+
+#[tokio::test]
+async fn unset_source_is_not_a_forge_pr() {
+    let px = Px::new();
+    px.add_project("acme", "/tmp/acme");
+    px.add_pr(Pr {
+        source: PrSource::default(),
+        ..gh_pr(12, "feat/oauth")
+    });
+    px.add_ws(ws("ws-oauth", "feat/oauth"));
+    px.eng().link_unlinked_prs().await;
+    assert_eq!(px.pr("gh-acme-12").workspace_id, "", "Go linked only forge PRs");
+    assert!(px.eng().pr_forge(&px.pr("gh-acme-12")).is_none());
+    assert_eq!(px.eng().pr_source_label(&PrSource::default()), "Local");
+    assert_eq!(px.eng().pr_source_label(&PrSource::GitHub), "GitHub");
+}

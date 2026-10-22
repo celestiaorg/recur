@@ -22,7 +22,7 @@ use crate::loops::open_pr::{
 use crate::prs::forge_glue::{fetch_pr_tracking_head, pr_tracking_ref};
 use crate::prs::merge::format_squash_commit_message;
 use crate::prs::refresh::behind_base;
-use crate::prs::{none_if_empty, touch_pr_updated};
+use crate::prs::{is_forge_source, none_if_empty, touch_pr_updated};
 use crate::text::{hard_truncate_runes, html_escape, plural, truncate};
 use crate::turn::oneshot::cap_github_pr_body;
 use crate::workspace::create::DEFAULT_WORKSPACE_TITLE;
@@ -119,12 +119,10 @@ async fn fill_commit_files(mgr: &recur_git::Manager, worktree: &str, commits: &m
 impl Engine {
     /// The name the user sees for a PR source ("Local" or the forge's).
     pub(crate) fn pr_source_label(&self, source: &PrSource) -> String {
-        if *source == PrSource::Local {
-            return "Local".into();
+        match self.forges.for_pr_source(source) {
+            Some(f) if is_forge_source(source) => f.label().to_owned(),
+            _ => "Local".into(),
         }
-        self.forges
-            .for_pr_source(source)
-            .map_or_else(|| source.as_str().to_owned(), |f| f.label().to_owned())
     }
 
     /// A project's forge name for copy, "forge" when none is registered.
@@ -939,6 +937,7 @@ impl Engine {
         }
         let mut forge_fail = String::new();
         let local = existing.source == PrSource::Local;
+        let forge = self.pr_forge(existing).is_some();
         if local && proj.pr_on_github {
             match self
                 .promote_local_pr_to_forge(ws, proj, existing, mgr, base, &branch, title, body, draft)
@@ -950,7 +949,8 @@ impl Engine {
         }
         if local {
             self.apply_local_pr_details(&existing.id, title, body);
-        } else {
+        }
+        if forge {
             let head = if existing.branch.is_empty() {
                 branch.clone()
             } else {
@@ -973,7 +973,7 @@ impl Engine {
         if let Err(e) = self.refresh_workspace_pr_snapshot(ws, existing, mgr, base).await {
             return Err(e);
         }
-        if local {
+        if !forge {
             self.store
                 .update_pr(&existing.id, |p| p.branch = branch.clone());
         }
@@ -982,10 +982,10 @@ impl Engine {
             .pr(&existing.id)
             .ok_or_else(|| EngineError(format!("update PR {}", existing.id)))?;
         let kind = self.pr_source_label(&existing.source);
-        let verb = match (local, force) {
-            (true, _) => "Updated",
-            (false, true) => "Force-pushed",
-            (false, false) => "Pushed",
+        let verb = match (forge, force) {
+            (false, _) => "Updated",
+            (true, true) => "Force-pushed",
+            (true, false) => "Pushed",
         };
         self.emit_workspace_event(
             &ws.id,
@@ -1101,7 +1101,7 @@ impl Engine {
             return;
         }
         self.store.update_pr(pr_id, |p| {
-            if p.source != PrSource::Local {
+            if is_forge_source(&p.source) {
                 return;
             }
             if !title.is_empty() {
@@ -1196,7 +1196,7 @@ pub fn format_open_pr_tool_result(
     was_local: bool,
     fail_diag: &str,
 ) -> String {
-    if pr.source != PrSource::Local {
+    if is_forge_source(&pr.source) {
         let kind = if pr.draft {
             format!("{forge_label} draft PR")
         } else {

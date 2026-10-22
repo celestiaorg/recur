@@ -126,6 +126,12 @@ pub(crate) fn comments(p: &Pr) -> &[PrComment] {
     p.comments.as_deref().unwrap_or_default()
 }
 
+/// A row of some forge (any source but Local and unset; Go compared to
+/// `SourceGitHub`, the only forge).
+pub fn is_forge_source(s: &PrSource) -> bool {
+    *s != PrSource::Local && !s.as_str().is_empty()
+}
+
 pub(crate) fn none_if_empty<T>(v: Vec<T>) -> Option<Vec<T>> {
     (!v.is_empty()).then_some(v)
 }
@@ -134,7 +140,7 @@ impl Engine {
     /// The forge that owns this PR row; `None` for a Local PR (or a source
     /// no registered forge claims).
     pub fn pr_forge(&self, pr: &Pr) -> Option<Arc<dyn Forge>> {
-        if pr.source == PrSource::Local {
+        if !is_forge_source(&pr.source) {
             return None;
         }
         self.forges.for_pr_source(&pr.source)

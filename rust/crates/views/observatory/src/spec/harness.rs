@@ -99,8 +99,21 @@ pub fn mount<'a>(
     storage: impl FnOnce(&mut LocalStorage),
     props: impl FnOnce(&mut ObservatoryProps),
 ) -> H<'a> {
+    mount_seeded(cx, |_| {}, opts, storage, props)
+}
+
+/// [`mount`] over the e2e seed edited by `seed`.
+pub fn mount_seeded<'a>(
+    cx: &'a mut TestAppContext,
+    seed: impl FnOnce(&mut recur_services::mock::Seed),
+    opts: MockOptions,
+    storage: impl FnOnce(&mut LocalStorage),
+    props: impl FnOnce(&mut ObservatoryProps),
+) -> H<'a> {
     init(cx);
-    let bridge = MockBridge::fresh(opts);
+    let mut sd = recur_services::mock::fixtures::base_seed().clone();
+    seed(&mut sd);
+    let bridge = MockBridge::new(sd, opts);
     let mut st = LocalStorage::in_memory();
     storage(&mut st);
     let services = bridge.services();

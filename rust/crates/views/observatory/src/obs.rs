@@ -306,6 +306,7 @@ pub struct Observatory {
     /// The left and side docks' resize handles.
     pub(crate) resize_focus: [FocusHandle; 2],
     pub(crate) focus_zone: FocusZone,
+    pub(crate) last_focus: Option<FocusHandle>,
 
     // ---- root ----
     pub(crate) loaded_root: String,
@@ -580,6 +581,7 @@ impl Observatory {
             review_focus: cx.focus_handle(),
             resize_focus: [cx.focus_handle(), cx.focus_handle()],
             focus_zone: FocusZone::Editor,
+            last_focus: None,
             loaded_root: String::new(),
             root_token: 0,
             editor_session_key: String::new(),

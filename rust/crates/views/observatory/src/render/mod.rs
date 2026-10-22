@@ -853,8 +853,18 @@ impl Render for Observatory {
         if self.term_overlaying() {
             root = root.overflow_hidden();
         }
-        // The Svelte `$effect`s that mirror this frame's state outward.
-        cx.defer_in(window, |o, _, cx| o.sync_side_effects(cx));
+        // The Svelte `$effect`s that mirror this frame's state outward, and `focusin` for a
+        // move the zone watchers could not see (focus taken while a watcher was arming).
+        cx.defer_in(window, |o, window, cx| {
+            o.sync_side_effects(cx);
+            let focused = window.focused(cx);
+            if focused != o.last_focus {
+                o.last_focus = focused;
+                if o.focus.contains_focused(window, cx) {
+                    o.on_obs_focus_in(window, cx);
+                }
+            }
+        });
         root
     }
 }

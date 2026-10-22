@@ -123,13 +123,13 @@ pub struct TerminalDock {
     backend: Arc<dyn TerminalBackend>,
     workspace_id: String,
     pub props: DockProps,
-    tabs: Vec<Tab>,
-    active_id: String,
+    pub(crate) tabs: Vec<Tab>,
+    pub(crate) active_id: String,
     loading: bool,
-    panes: HashMap<String, Entity<TerminalView>>,
+    pub(crate) panes: HashMap<String, Entity<TerminalView>>,
     pane_subs: HashMap<String, Subscription>,
     find: Entity<TerminalFindBar>,
-    find_open: bool,
+    pub(crate) find_open: bool,
     searched_id: String,
     pub(crate) focus: FocusHandle,
     resize_focus: FocusHandle,
@@ -1364,6 +1364,10 @@ impl Render for TerminalDock {
             let view = p.clone();
             let el = div()
                 .id(SharedString::from(format!("term-pane-{}", tab.id)))
+                .debug_selector({
+                    let id = tab.id.clone();
+                    move || format!("term-pane:{id}")
+                })
                 .absolute()
                 .inset_0()
                 .when(!active, |d| d.invisible())

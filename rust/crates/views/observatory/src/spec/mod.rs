@@ -4,3 +4,4 @@
 
 mod harness;
 mod observatory;
+mod terminal_dock;

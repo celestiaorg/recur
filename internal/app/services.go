@@ -1161,7 +1161,9 @@ type EscalationService struct{ base }
 func (s *EscalationService) GetEscalation(workspaceID string) (domain.Escalation, error) {
 	e, ok := s.st().Escalation(workspaceID)
 	if !ok {
-		return domain.Escalation{}, fmt.Errorf("no escalation for loop %q", workspaceID)
+		// Most workspaces have no escalation. The UI probes this while loading
+		// each workspace, so absence is an ordinary empty state, not an error.
+		return domain.Escalation{}, nil
 	}
 	return e, nil
 }

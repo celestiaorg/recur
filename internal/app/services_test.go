@@ -91,6 +91,17 @@ func TestSeedDataShape(t *testing.T) {
 	}
 }
 
+func TestGetMissingEscalationReturnsEmptyState(t *testing.T) {
+	svc, _ := newTestServices(t)
+	esc, err := svc.Escalation.GetEscalation("workspace-without-escalation")
+	if err != nil {
+		t.Fatalf("GetEscalation for workspace without an escalation: %v", err)
+	}
+	if esc.ID != "" || esc.Status != "" {
+		t.Errorf("missing escalation = %+v, want empty value", esc)
+	}
+}
+
 func TestGetPROmitsCommitDiffs(t *testing.T) {
 	svc, _ := newTestServices(t)
 	files := []domain.FileDiff{{Path: "a.go", Status: "m"}}
@@ -676,9 +687,8 @@ func disableVerifyRail(t *testing.T, st *store.Store) {
 	st.SetPolicy(p)
 }
 
-// TestGettersErrorOnMissing asserts every getter that now returns (T, error)
-// reports a non-nil error for a bogus id, instead of silently returning a zero
-// struct (the M0-era swallow this phase removes).
+// TestGettersErrorOnMissing asserts resource getters report a non-nil error for
+// a bogus id, instead of silently returning a zero struct.
 func TestGettersErrorOnMissing(t *testing.T) {
 	svc, _ := newTestServices(t)
 	const bogus = "does-not-exist"
@@ -688,9 +698,6 @@ func TestGettersErrorOnMissing(t *testing.T) {
 	}
 	if _, err := svc.Workspaces.GetWorkspace(bogus); err == nil {
 		t.Error("GetWorkspace: expected error for missing loop")
-	}
-	if _, err := svc.Escalation.GetEscalation(bogus); err == nil {
-		t.Error("GetEscalation: expected error for missing loop")
 	}
 	if _, err := svc.Agents.GetAgentTrace(bogus, "CO"); err == nil {
 		t.Error("GetAgentTrace: expected error for missing agent")

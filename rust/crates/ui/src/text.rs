@@ -929,6 +929,25 @@ fn font_extent(run: &RunStyle, size: f32, window: &Window) -> (f32, f32, f32) {
     )
 }
 
+/// The line box a strut of `family` at `size` and `line_height` makes on its own: where an
+/// inline replaced element (an `<svg>` in a `<span>`) sits outside a text run.
+pub fn strut_metrics(
+    family: &Family,
+    size: f32,
+    line_height: LineHeight,
+    window: &Window,
+) -> LineMetrics {
+    let ts = window.text_system();
+    let id = ts.resolve_font(&family.font(400., false, FontFeatures::default()));
+    line_metrics(
+        ts.ascent(id, px(size)).into(),
+        -f32::from(ts.descent(id, px(size))),
+        crate::font_metrics::line_gap(family, size),
+        size,
+        line_height,
+    )
+}
+
 /// The content-area extent of an inline box's font: WebKit's rounded ascent and descent.
 fn rounded_extent(run: &RunStyle, window: &Window) -> (f32, f32) {
     let (a, d, _) = font_extent(run, run.size, window);

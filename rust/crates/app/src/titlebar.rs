@@ -312,6 +312,7 @@ impl Shell {
         let state = self.state.clone();
         let mut left = div()
             .id("tb-left")
+            .debug_selector(|| "tb-left".into())
             .flex_1()
             .flex()
             .items_center()

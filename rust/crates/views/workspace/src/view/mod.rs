@@ -516,6 +516,11 @@ impl WorkspaceView {
         self.tabs.as_deref().unwrap_or_default()
     }
 
+    /// The chat tabs' codes, in strip order.
+    pub fn tab_codes(&self) -> Vec<String> {
+        self.tabs().iter().map(|t| t.code.clone()).collect()
+    }
+
     /// `activeCode`: the selected tab, else the first, else `PA`.
     pub fn active_code(&self) -> String {
         self.active

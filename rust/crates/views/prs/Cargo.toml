@@ -1,0 +1,53 @@
+[package]
+name = "recur-view-prs"
+description = "Pull requests: the PR list dashboard, PR detail, the titlebar review and merge actions, and the review modal."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Parity scenes for `rust/tools/ui-parity` (`gallery::build`).
+gallery = [
+    "recur-services/mock",
+    "recur-ui/gallery",
+    "recur-content/gallery",
+    "recur-view-review/gallery",
+    "recur-view-workspace/gallery",
+    "recur-view-observatory/gallery",
+    "dep:recur-app",
+]
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-forge.workspace = true
+recur-code.workspace = true
+recur-view-core.workspace = true
+recur-view-chat.workspace = true
+recur-view-review.workspace = true
+recur-view-workspace.workspace = true
+recur-view-observatory.workspace = true
+recur-app = { workspace = true, features = ["gallery"], optional = true }
+chrono.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["mock"] }
+recur-view-prs = { path = ".", features = ["gallery"] }
+recur-app = { workspace = true, features = ["gallery"] }
+pretty_assertions.workspace = true
+parking_lot.workspace = true
+
+[lints]
+workspace = true

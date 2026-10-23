@@ -339,6 +339,7 @@ impl Render for AttachmentLightbox {
             );
         let overlay = div()
             .id("chat-att-lb")
+            .debug_selector(|| "chat-att-lb".into())
             .track_focus(&self.focus)
             .key_context("Lightbox")
             .capture_key_down(cx.listener(Self::key_down))

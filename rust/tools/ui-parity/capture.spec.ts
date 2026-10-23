@@ -22,12 +22,13 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   review?: Scene[]
   observatory?: Scene[]
   workspace?: Scene[]
+  prs?: Scene[]
 }
 // Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
 // mount App.svelte over an edited seed (see `patchSeed`).
 const scenes = [
   ...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? []), ...(spec.content ?? []), ...(spec.chat ?? []),
-  ...(spec.review ?? []), ...(spec.observatory ?? []), ...(spec.workspace ?? []),
+  ...(spec.review ?? []), ...(spec.observatory ?? []), ...(spec.workspace ?? []), ...(spec.prs ?? []),
 ]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
@@ -111,6 +112,21 @@ function workspaceResolvers(name: string) {
   }
 }
 
+const prs = JSON.parse(readFileSync(join(here, 'content', 'prs.json'), 'utf8'))
+
+/** A PR scene's fixture in `content/prs.json`: its seed edits and canned replies. */
+function prsFixture(scene: Scene): { seed?: SeedPatch; resolvers?: Record<string, unknown> } {
+  return prs.fixtures[scene.fixture ?? ''] ?? {}
+}
+
+/** PR scenes answer the calls their fixture lists in `resolvers` with its canned value, as
+ *  `recur_view_prs::gallery` does. */
+function prsResolvers(scene: Scene) {
+  const out: Record<string, () => unknown> = {}
+  for (const [k, v] of Object.entries(prsFixture(scene).resolvers ?? {})) out[k] = () => structuredClone(v)
+  return out
+}
+
 /** `/workspace-file?…&path=…[&at=base]`: the fixture's raster and PDF bytes. */
 function workspaceFile(url: string) {
   const q = new URL(url).searchParams
@@ -138,6 +154,13 @@ type Scene = {
   seed?: SeedPatch
   storage?: Record<string, string>
   treeScroll?: number
+  route?: string
+  pr?: string
+  tab?: string
+  dock?: string
+  seg?: string
+  review?: string
+  fixture?: string
 }
 type Row = Record<string, unknown> & { id: string }
 type SeedPatch = {
@@ -226,8 +249,8 @@ for (const scene of scenes) {
     const replay = scene.input === undefined ? undefined : spec.terminalInputs?.[scene.input]
     const sceneSeed = structuredClone(seed)
     if (scene.name.startsWith('workspace/')) patchSeed(sceneSeed as Record<string, any>, scene.seed)
-    if (scene.name.startsWith('shell/')) {
-      patchSeed(sceneSeed as Record<string, any>, scene.seed)
+    if (scene.name.startsWith('shell/') || scene.name.startsWith('prs/')) {
+      patchSeed(sceneSeed as Record<string, any>, scene.name.startsWith('prs/') ? prsFixture(scene).seed : scene.seed)
       // App prefs the shell reads at startup (`initRailCollapsed`, …), and the scene theme.
       const storage = { 'recur.theme': scene.theme, ...(scene.storage ?? {}) }
       await page.addInitScript((items) => {
@@ -238,13 +261,22 @@ for (const scene of scenes) {
       resolvers: { AttachTerminal: () => Buffer.from(replay, 'utf8').toString('base64') },
     } : scene.name.startsWith('review/') ? { resolvers: reviewResolvers(scene.name) }
       : scene.name.startsWith('observatory/') ? { resolvers: observatoryResolvers(scene.name) }
-      : scene.name.startsWith('workspace/') ? { resolvers: workspaceResolvers(scene.name) } : {})
+      : scene.name.startsWith('workspace/') ? { resolvers: workspaceResolvers(scene.name) }
+      : scene.name.startsWith('prs/') ? { resolvers: prsResolvers(scene) } : {})
+    if (scene.name.startsWith('prs/')) {
+      // Avatar photos come from the network in the app; neither renderer fetches them here.
+      await page.route('https://github.com/**', (r) => r.abort())
+      await page.route('https://avatars.githubusercontent.com/**', (r) => r.abort())
+    }
     await page.route('**/workspace-file?**', (r) => {
       const body = workspaceFile(r.request().url())
       const mime = /\.pdf(&|$)/.test(r.request().url()) ? 'application/pdf' : 'image/png'
       return body ? r.fulfill({ contentType: mime, body }) : r.fulfill({ status: 404 })
     })
-    const extra = scene.treeScroll ? `&treeScroll=${scene.treeScroll}` : ''
+    let extra = scene.treeScroll ? `&treeScroll=${scene.treeScroll}` : ''
+    for (const k of ['route', 'pr', 'tab', 'dock', 'seg', 'review'] as const) {
+      if (scene[k]) extra += `&${k}=${encodeURIComponent(scene[k]!)}`
+    }
     await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}${extra}`)
     await page.waitForSelector('[data-scene-ready]')
     // Faces load on first use; wait until every declared face is in (icon fonts included).

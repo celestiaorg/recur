@@ -684,62 +684,7 @@ impl DiffFile {
     }
 
     fn remove_pending(&mut self, pc: PendingLineComment, cx: &mut Context<Self>) {
-        let side = if pc.side.is_empty() {
-            "RIGHT"
-        } else {
-            pc.side.as_str()
-        };
-        let signed = if side == "LEFT" { -pc.line } else { pc.line };
-        let start = pc.start_line;
-        let start_side = [&pc.start_side, &pc.side]
-            .into_iter()
-            .find(|s| !s.is_empty())
-            .map_or("RIGHT", |s| s.as_str());
-        let start_signed = if start > 0 && start < pc.line {
-            if start_side == "LEFT" { -start } else { start }
-        } else {
-            0
-        };
-        let pr_id = self.state.read(cx).selected_pr_id.clone();
-        let id = pc.id.clone();
-        patch_pr_pending_comments(
-            &self.state,
-            &pr_id,
-            |prev| prev.iter().filter(|x| x.id != id).cloned().collect(),
-            cx,
-        );
-        let services = self.state.read(cx).services().clone();
-        let state = self.state.clone();
-        let finding = if pc.finding_id.is_empty() {
-            pc.id.clone()
-        } else {
-            pc.finding_id.clone()
-        };
-        cx.spawn(async move |_, cx| {
-            let ok = call(
-                cx,
-                services
-                    .prs
-                    .add_pr_comment(&pr_id, &pc.file, signed, "", start_signed, &finding),
-                "Could not remove pending comment",
-            )
-            .await;
-            if ok.is_none() {
-                cx.update(|cx| {
-                    patch_pr_pending_comments(
-                        &state,
-                        &pr_id,
-                        |prev| {
-                            let mut v = prev.to_vec();
-                            v.push(pc);
-                            v
-                        },
-                        cx,
-                    )
-                });
-            }
-        })
-        .detach();
+        remove_pending_comment(&self.state, pc, cx);
     }
 
     fn copy_path(&mut self, cx: &mut Context<Self>) {
@@ -2543,4 +2488,65 @@ impl Render for DiffFile {
         });
         root.children(layer).child(frame)
     }
+}
+
+/// Drops a pending line comment from the selected PR (an empty-body `AddPRComment` on its signed
+/// lines), restoring it if the call fails. The diff's pending cards and the review modal share it.
+pub fn remove_pending_comment(state: &Entity<AppState>, pc: PendingLineComment, cx: &mut App) {
+    let side = if pc.side.is_empty() {
+        "RIGHT"
+    } else {
+        pc.side.as_str()
+    };
+    let signed = if side == "LEFT" { -pc.line } else { pc.line };
+    let start = pc.start_line;
+    let start_side = [&pc.start_side, &pc.side]
+        .into_iter()
+        .find(|s| !s.is_empty())
+        .map_or("RIGHT", |s| s.as_str());
+    let start_signed = if start > 0 && start < pc.line {
+        if start_side == "LEFT" { -start } else { start }
+    } else {
+        0
+    };
+    let pr_id = state.read(cx).selected_pr_id.clone();
+    let id = pc.id.clone();
+    patch_pr_pending_comments(
+        state,
+        &pr_id,
+        |prev| prev.iter().filter(|x| x.id != id).cloned().collect(),
+        cx,
+    );
+    let services = state.read(cx).services().clone();
+    let state = state.clone();
+    let finding = if pc.finding_id.is_empty() {
+        pc.id.clone()
+    } else {
+        pc.finding_id.clone()
+    };
+    cx.spawn(async move |cx| {
+        let ok = call(
+            cx,
+            services
+                .prs
+                .add_pr_comment(&pr_id, &pc.file, signed, "", start_signed, &finding),
+            "Could not remove pending comment",
+        )
+        .await;
+        if ok.is_none() {
+            cx.update(|cx| {
+                patch_pr_pending_comments(
+                    &state,
+                    &pr_id,
+                    |prev| {
+                        let mut v = prev.to_vec();
+                        v.push(pc);
+                        v
+                    },
+                    cx,
+                )
+            });
+        }
+    })
+    .detach();
 }

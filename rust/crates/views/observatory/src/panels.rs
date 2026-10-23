@@ -3,6 +3,7 @@
 //! zones and the ⌘1 / ⌘2 / ⌘3 workbench focus, the terminal maximize overlay, findings, and
 //! the editor's native full screen.
 
+use gpui_kit::FocusHandle;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -36,6 +37,11 @@ impl Observatory {
         self.show_side = open;
         self.persist_editor_session(cx);
         cx.notify();
+    }
+
+    /// The portaled PR dock's hide toggle, for PR detail's focus restore.
+    pub fn pr_dock_toggle_focus(&self) -> Option<FocusHandle> {
+        Some(self.pr_toggle_focus.clone())
     }
 
     /// The PR-detail agent dock, when that is the visible chat.

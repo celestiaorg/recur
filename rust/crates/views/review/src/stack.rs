@@ -44,6 +44,23 @@ const SPY_SUPPRESS: Duration = Duration::from_millis(700);
 /// The host's `onToggleCollapse` for a card: (path, collapsed).
 pub type ToggleCard<H> = Rc<dyn Fn(&mut H, String, bool, &mut Context<H>)>;
 
+/// The box the cards sit in inside the scroller: `.diffscroll`'s 14px padding, or PR detail's
+/// `.commits-wrap.detail` (18px, centered at 1560px).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StackChrome {
+    pub pad: f32,
+    pub max_width: Option<f32>,
+}
+
+impl Default for StackChrome {
+    fn default() -> Self {
+        StackChrome {
+            pad: 14.,
+            max_width: None,
+        }
+    }
+}
+
 /// What every card's [`DiffFile`] gets besides its file.
 #[derive(Clone, Default)]
 pub struct CardProps {
@@ -96,6 +113,11 @@ pub struct FileStack {
     /// `refreshWindow` runs on scroll and after the list, selection or collapse changes (not
     /// every frame: a hydration swap that resizes cards must not feed back into itself).
     window_dirty: bool,
+    /// How long a selection keeps the spy from re-picking (PR detail's Files tab: 1.4s).
+    spy_suppress: Duration,
+    /// A stub's header selects its file without scrolling (PR detail's commit diff).
+    stub_selects_in_place: bool,
+    chrome: StackChrome,
 }
 
 impl FileStack {
@@ -122,7 +144,30 @@ impl FileStack {
             seen_top: -1.,
             active: true,
             window_dirty: true,
+            spy_suppress: SPY_SUPPRESS,
+            stub_selects_in_place: false,
+            chrome: StackChrome::default(),
         }
+    }
+
+    pub fn set_chrome(&mut self, chrome: StackChrome) {
+        self.chrome = chrome;
+    }
+
+    pub fn set_spy_suppress(&mut self, d: Duration) {
+        self.spy_suppress = d;
+    }
+
+    pub fn set_stub_selects_in_place(&mut self, on: bool) {
+        self.stub_selects_in_place = on;
+    }
+
+    /// A stub header in a commit diff: select it in place, so it hydrates where it is.
+    pub fn select_in_place(&mut self, path: &str) {
+        self.spy_until = Some(Instant::now() + SPY_SUPPRESS);
+        self.pin_gen += 1;
+        self.selected = path.to_string();
+        self.window_dirty = true;
     }
 
     pub fn files(&self) -> &[Rc<FileDiff>] {
@@ -213,7 +258,7 @@ impl FileStack {
     pub fn select_path(&mut self, path: &str) {
         self.selected = path.to_string();
         self.collapsed.remove(path);
-        self.spy_until = Some(Instant::now() + SPY_SUPPRESS);
+        self.spy_until = Some(Instant::now() + self.spy_suppress);
         self.pin_gen += 1;
         self.pending_pin = None;
         self.pending_select = Some((path.to_string(), 2));
@@ -440,10 +485,11 @@ impl FileStack {
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let host: WeakEntity<H> = cx.entity().downgrade();
-        let mut col = div().flex().flex_col().w_full().pb(px(14.));
+        let pad = self.chrome.pad;
+        let mut col = div().flex().flex_col().w_full().pb(px(pad));
         let mut first = true;
         let mut push = |el: AnyElement, col: &mut gpui_kit::Div| {
-            let wrapped = div().when(first, |d| d.mt(px(14.))).child(el);
+            let wrapped = div().when(first, |d| d.mt(px(pad))).child(el);
             first = false;
             *col = std::mem::replace(col, div()).child(wrapped);
         };
@@ -537,7 +583,12 @@ impl FileStack {
                         .on_click(move |_, _, cx| {
                             let path = path.clone();
                             let _ = h.update(cx, |host, cx| {
-                                stack_of(host).select_path(&path);
+                                let s = stack_of(host);
+                                if s.stub_selects_in_place {
+                                    s.select_in_place(&path);
+                                } else {
+                                    s.select_path(&path);
+                                }
                                 cx.notify();
                             });
                         })
@@ -570,7 +621,7 @@ impl FileStack {
                     .child(cfile_frame(t.bg, t.line, stripes.is_some()))
                     .child(body)
                     .child(probe);
-                col = col.child(div().when(first, |d| d.mt(px(14.))).child(card));
+                col = col.child(div().when(first, |d| d.mt(px(pad))).child(card));
                 first = false;
             }
         }
@@ -639,7 +690,12 @@ impl FileStack {
                     .child(
                         recur_ui::widgets::scroll_area("diffscroll-sa")
                             .track(&self.pane.scroll)
-                            .child(div().px(px(14.)).child(col)),
+                            .child(match self.chrome.max_width {
+                                Some(w) => {
+                                    div().w_full().max_w(px(w)).mx_auto().px(px(pad)).child(col)
+                                }
+                                None => div().px(px(pad)).child(col),
+                            }),
                     ),
             )
             .child(frame)

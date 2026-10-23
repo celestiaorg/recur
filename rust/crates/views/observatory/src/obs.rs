@@ -305,6 +305,8 @@ pub struct Observatory {
     pub(crate) review_focus: FocusHandle,
     /// The left and side docks' resize handles.
     pub(crate) resize_focus: [FocusHandle; 2],
+    /// The portaled PR dock's hide toggle (`#prd-agent button.prd-chat-toggle`).
+    pub(crate) pr_toggle_focus: FocusHandle,
     pub(crate) focus_zone: FocusZone,
     pub(crate) last_focus: Option<FocusHandle>,
     pub(crate) seen_syntax_epoch: Option<u64>,
@@ -584,6 +586,7 @@ impl Observatory {
             tabs_focus: cx.focus_handle(),
             review_focus: cx.focus_handle(),
             resize_focus: [cx.focus_handle(), cx.focus_handle()],
+            pr_toggle_focus: cx.focus_handle().tab_stop(true),
             focus_zone: FocusZone::Editor,
             last_focus: None,
             seen_syntax_epoch: None,

@@ -26,6 +26,7 @@
   import Review from './scenes/Review.svelte'
   import ObservatoryScene from './scenes/Observatory.svelte'
   import WorkspaceScene from './scenes/Workspace.svelte'
+  import PrsScene from './scenes/Prs.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
@@ -38,7 +39,7 @@
   }
   onMount(() => {
     // Terminal and shell scenes report their own readiness.
-    if (kind === 'terminal' || kind === 'shell' || kind === 'chat' || kind === 'review' || kind === 'observatory' || kind === 'workspace' || CONTENT.includes(kind)) return
+    if (kind === 'terminal' || kind === 'shell' || kind === 'chat' || kind === 'review' || kind === 'observatory' || kind === 'workspace' || kind === 'prs' || CONTENT.includes(kind)) return
     const settle = () => requestAnimationFrame(() => requestAnimationFrame(() => (ready = true)))
     const wait = (left: number) => (painted() || left <= 0 ? settle() : setTimeout(() => wait(left - 1), 50))
     wait(100)
@@ -98,6 +99,8 @@
     <ObservatoryScene {name} onready={() => (ready = true)} />
   {:else if kind === 'workspace'}
     <WorkspaceScene onready={() => (ready = true)} />
+  {:else if kind === 'prs'}
+    <PrsScene onready={() => (ready = true)} />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

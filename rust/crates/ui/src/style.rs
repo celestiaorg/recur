@@ -528,6 +528,19 @@ pub fn tbtn(
     b
 }
 
+/// `border-right: 1px solid rgba(0, 0, 0, .15)` on a split button's main half (`.merge-split`,
+/// `.update-split`). GPUI borders take one color, so the darker right edge is a strip over the
+/// button's own border; a child of the relatively positioned button.
+pub fn split_divider() -> Div {
+    div()
+        .absolute()
+        .top(px(-1.))
+        .bottom(px(-1.))
+        .right(px(-1.))
+        .w(px(1.))
+        .bg(rgba(0, 0, 0, 0.15))
+}
+
 /// `.rbtn` variants (`_prs.scss`, `_observatory.scss`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Rbtn {

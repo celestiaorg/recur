@@ -155,6 +155,9 @@ pub struct TriggerStyle {
     pub min_height: Option<f32>,
 }
 
+/// A trigger icon drawn by the owner (the `icon` snippet: `.nt-pic` project pictures).
+pub type IconSlot = std::rc::Rc<dyn Fn(&mut Window, &mut App) -> AnyElement>;
+
 /// The select. Create with [`Select::new`] in an owning view, keep the entity, and render it.
 pub struct Select {
     focus: FocusHandle,
@@ -172,6 +175,7 @@ pub struct Select {
     variant: MenuVariant,
     trigger: TriggerStyle,
     custom_icon: Option<IconName>,
+    icon_slot: Option<IconSlot>,
     open: bool,
     opened_at: Option<Instant>,
     closed_at: Option<Instant>,
@@ -289,6 +293,7 @@ impl Select {
             variant: MenuVariant::Default,
             trigger: TriggerStyle::default(),
             custom_icon: None,
+            icon_slot: None,
             open: false,
             opened_at: None,
             closed_at: None,
@@ -357,6 +362,11 @@ impl Select {
     }
 
     /// Swap the trigger's custom icon (a sort control showing the current order's icon).
+    /// The `icon` snippet as an element (wins over [`Select::set_icon`]).
+    pub fn set_icon_slot(&mut self, slot: Option<IconSlot>, cx: &mut Context<Self>) {
+        self.icon_slot = slot;
+        cx.notify();
+    }
     pub fn set_icon(&mut self, i: Option<IconName>, cx: &mut Context<Self>) {
         if self.custom_icon != i {
             self.custom_icon = i;
@@ -839,7 +849,9 @@ impl Render for Select {
             };
         }
         // Icon: custom, the selected option's app icon (tinted), or its provider mark.
-        if let Some(i) = self.custom_icon {
+        if let Some(slot) = self.icon_slot.clone() {
+            button = button.child(div().flex_none().text_color(ico_color).child(slot(window, cx)));
+        } else if let Some(i) = self.custom_icon {
             button = button.child(
                 div()
                     .flex_none()

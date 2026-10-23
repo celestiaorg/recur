@@ -4,11 +4,10 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, FocusHandle, Focusable, InteractiveElement,
-    IntoElement, ParentElement, Render, ScrollHandle, SharedString, StatefulInteractiveElement,
-    Styled, Subscription, Task, Window, div, px,
+    IntoElement, ParentElement, Render, ScrollHandle,
+    Styled, Subscription, Task, Window, div,
 };
 use recur_domain::Settings;
 use recur_services::AppEvent;
@@ -16,9 +15,6 @@ use recur_services::api::{
     BundleSettingInfo, BundleSkipInfo, ClaudeStatus, CodexStatus, CursorStatus, GrammarInfo,
     PromptActionInfo, ThemeInfo,
 };
-use recur_ui::fonts::weight;
-use recur_ui::icon;
-use recur_ui::text::{TextStyled, text};
 use recur_ui::widgets::{Select, SelectEvent, ToastKind};
 use recur_view_chat::pickers::{LoopPolicyEvent, LoopPolicyPickers, ModelPickers, PickerEvent};
 use recur_view_core::commands::RegisteredCommand;
@@ -31,7 +27,7 @@ use crate::field::{Field, FieldEvent, FieldOpts};
 use crate::mono_fonts::MonoFont;
 use crate::nav::{Section, filtered_nav, section_after_filter};
 use crate::rules::{PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, compatible_configured};
-use crate::style::{hsla, narrow, search_box, tokens};
+use crate::style::{hsla, tokens};
 
 /// A list loaded for a pane: rows, the loading flag and the error text.
 pub struct Loadable<T> {
@@ -751,114 +747,33 @@ impl SettingsView {
     // ---- render ----
 
     fn nav(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let t = tokens(cx);
         let input = self.field("nav-search", FieldOpts::default(), window, cx);
         let query = self.field_value("nav-search", cx);
         let current = self.vcx.state.read(cx).settings_section.clone();
-        let groups = filtered_nav(&query);
-        let narrow = narrow(window);
-        let mut list = div().flex().flex_col().gap(px(1.));
-        if groups.is_empty() {
-            list = list.child(
-                div().py(px(14.)).px(px(10.)).child(
-                    text("No matching settings")
-                        .size(12.)
-                        .leading(1.45)
-                        .color(t.faint),
-                ),
-            );
-        }
-        for g in groups {
-            list = list.child(
-                div().pt(px(12.)).px(px(10.)).pb(px(5.)).child(
-                    text(g.group)
-                        .mono()
-                        .size(9.5)
-                        .leading(1.45)
-                        .tracking(0.08)
-                        .uppercase()
-                        .color(t.faint),
-                ),
-            );
-            for item in g.items {
-                let on = current == item.id.id();
-                let id = item.id;
-                // Light palettes darken instead (`_tokens.scss`).
-                let light = recur_ui::Theme::of(cx).is_light();
-                let (hover, on_bg) = if light {
-                    (recur_ui::rgba(0, 0, 0, 0.04), recur_ui::rgba(0, 0, 0, 0.07))
-                } else {
-                    (
-                        recur_ui::rgba(255, 255, 255, 0.03),
-                        recur_ui::rgba(255, 255, 255, 0.06),
-                    )
-                };
-                let label = item.label;
-                list = list.child(
-                    div()
-                        .id(SharedString::from(format!("set-nav-{}", id.id())))
-                        .debug_selector(move || {
-                            format!("set-nav:{label}{}", if on { ":on" } else { "" })
-                        })
-                        .flex()
-                        .items_center()
-                        .gap(px(9.))
-                        .w_full()
-                        .py(px(7.))
-                        .px(px(10.))
-                        .rounded(px(7.))
-                        .text_color(hsla(if on { t.text } else { t.muted }))
-                        .when(on, |d| d.bg(hsla(on_bg)))
-                        .cursor_pointer()
-                        .when(!on, |d| {
-                            d.hover(move |s| s.bg(hsla(hover)).text_color(hsla(t.text)))
-                        })
-                        .on_click(cx.listener(move |this, _, _, cx| this.set_section(id, cx)))
-                        .child(
-                            div()
-                                .flex_none()
-                                .size(px(16.))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .opacity(0.85)
-                                .child(icon(item.icon).size(px(15.))),
-                        )
-                        .child(recur_ui::style::button_label(label, 12.5, weight::REGULAR)),
-                );
-            }
-        }
-        let bg = t.pane.mix(0.72, t.bg);
-        let (w, pad_y, pad_x) = if narrow {
-            (188., 12., 8.)
-        } else {
-            (220., 14., 12.)
-        };
-        div()
-            .flex_none()
-            .w(px(w))
-            .h_full()
-            .border_r(px(1.))
-            .border_color(hsla(t.line))
-            .bg(hsla(bg))
-            .flex()
-            .flex_col()
-            .child(
-                recur_ui::widgets::scroll_area("set-nav")
-                    .track(&self.nav_scroll)
-                    .scroller(move |d| d.flex().flex_col().gap(px(10.)).py(px(pad_y)).px(px(pad_x)))
-                    .child(
-                        div()
-                            .debug_selector(|| "set-search".into())
-                            .flex()
-                            .flex_col()
-                            .flex_shrink(1.)
-                            .min_h(px(23.))
-                            .child(search_box(&input, &"Search settings".into(), window, cx)),
-                    )
-                    .child(list.flex_none()),
-            )
-            .into_any_element()
+        let me = cx.entity().downgrade();
+        let groups = filtered_nav(&query)
+            .into_iter()
+            .map(|g| {
+                let items = g
+                    .items
+                    .into_iter()
+                    .map(|item| {
+                        let (id, me) = (item.id, me.clone());
+                        recur_ui::set::NavEntry {
+                            key: id.id().into(),
+                            label: item.label.into(),
+                            icon: item.icon,
+                            on: current == id.id(),
+                            on_click: std::rc::Rc::new(move |_, cx| {
+                                let _ = me.update(cx, |this, cx| this.set_section(id, cx));
+                            }),
+                        }
+                    })
+                    .collect();
+                (g.group.into(), items)
+            })
+            .collect();
+        recur_ui::set::nav_panel(&input, groups, &self.nav_scroll, window, cx)
     }
 }
 
@@ -868,26 +783,8 @@ impl Render for SettingsView {
         let on = self.vcx.state.read(cx).view == ViewName::Settings;
         let section = self.section(cx);
         let nav = self.nav(window, cx);
-        let pad_x = if narrow(window) { 18. } else { 28. };
         let title = section.map(Section::title).unwrap_or_default();
-        let head = div()
-            .debug_selector(move || format!("set-head={title}"))
-            .flex_none()
-            .flex()
-            .items_start()
-            .justify_between()
-            .gap(px(16.))
-            .pt(px(22.))
-            .px(px(pad_x))
-            .pb(px(6.))
-            .child(
-                text(title)
-                    .size(22.)
-                    .weight(weight::SEMIBOLD)
-                    .leading(1.45)
-                    .tracking(-0.02)
-                    .color(t.text),
-            );
+        let head = recur_ui::set::page_head(title, None, window, cx);
         let body = crate::sections::pane(self, section, window, cx);
         div()
             .id("v-settings")
@@ -898,23 +795,7 @@ impl Render for SettingsView {
             .flex()
             .bg(hsla(t.bg))
             .child(nav)
-            .child(
-                div().flex_1().min_w_0().h_full().flex().flex_col().child(
-                    recur_ui::widgets::scroll_area("set-main")
-                        .track(&self.main_scroll)
-                        .child(
-                            div().flex().flex_col().child(head).child(
-                                div()
-                                    .debug_selector(|| "set-body".into())
-                                    .max_w(px(760.))
-                                    .pt(px(8.))
-                                    .px(px(pad_x))
-                                    .pb(px(36.))
-                                    .child(body),
-                            ),
-                        ),
-                ),
-            )
+            .child(recur_ui::set::page_main(head, body, &self.main_scroll, window))
     }
 }
 

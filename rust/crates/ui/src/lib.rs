@@ -17,6 +17,7 @@ pub mod color;
 #[cfg(target_os = "macos")]
 mod ct_text;
 pub mod exact;
+pub mod field;
 pub mod file_icons;
 pub mod font_metrics;
 pub mod fonts;
@@ -29,6 +30,7 @@ pub mod kbd;
 mod kit;
 pub mod logic;
 pub mod motion;
+pub mod set;
 pub mod shadow;
 pub mod style;
 pub mod text;

@@ -206,7 +206,7 @@ impl ScheduledPrompts {
         cx: &mut Context<Self>,
     ) -> Self {
         let project_select = project.is_none().then(|| {
-            let s = cx.new(|cx| {
+            cx.new(|cx| {
                 Select::new(Vec::new(), window, cx)
                     .label("Filter by project")
                     .placeholder("All projects")
@@ -216,8 +216,7 @@ impl ScheduledPrompts {
                         value_shrink: true,
                         ..Default::default()
                     })
-            });
-            s
+            })
         });
         let mut subs = vec![
             cx.observe(&vcx.state, |this, _, cx| this.on_state(cx)),

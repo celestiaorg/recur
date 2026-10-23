@@ -1982,7 +1982,7 @@ impl EditorView {
         let l = self.layout.borrow();
         let mut h = l.content_height() as f32;
         if let Some(m) = &self.mini
-            && self.state.doc.len() == 0
+            && self.state.doc.is_empty()
         {
             let lines = m.placeholder.split('\n').count().max(1) as f32;
             h = h.max(lines * self.metrics.line_height() + 2.0 * self.metrics.content_padding_y);

@@ -179,6 +179,13 @@ impl NewProjectModal {
         self.path.value(cx)
     }
 
+    /// Types `path` into the Repository path field (drivers and specs).
+    pub fn set_repo_path(&mut self, path: &str, window: &mut Window, cx: &mut Context<Self>) {
+        self.apply_repo_path(path, window, cx);
+        self.effects(cx);
+        cx.notify();
+    }
+
     pub fn can_save(&self, cx: &App) -> bool {
         !self.path.value(cx).trim().is_empty() && !self.saving
     }

@@ -144,7 +144,7 @@ pub fn draft_for(
                 base_branch: target.map(|p| p.base_branch.clone()).unwrap_or_default(),
                 mode: "ask".into(),
                 model: defaults.model,
-                flags: defaults.flags.into(),
+                flags: defaults.flags,
                 simplify: Some(settings.is_none_or(|s| s.simplify_enabled())),
                 cadence: "cron".into(),
                 cron: "0 9 * * MON-FRI".into(),
@@ -156,8 +156,8 @@ pub fn draft_for(
             }
         }
     };
-    let flags: FlagMap = d.flags.clone().into();
-    d.flags = normalize_flags(&flags_for_model(models, &d.model), Some(&flags)).into();
+    let flags: FlagMap = d.flags.clone();
+    d.flags = normalize_flags(&flags_for_model(models, &d.model), Some(&flags));
     if d.simplify.is_none() {
         d.simplify = Some(settings.is_none_or(|s| s.simplify_enabled()));
     }
@@ -423,9 +423,9 @@ impl ScheduleEditor {
                     match ev {
                         PickerEvent::Model(r, f) => {
                             d.model = r.clone();
-                            d.flags = f.clone().into();
+                            d.flags = f.clone();
                         }
-                        PickerEvent::Flags(f) => d.flags = f.clone().into(),
+                        PickerEvent::Flags(f) => d.flags = f.clone(),
                     }
                 }
                 cx.notify();
@@ -552,9 +552,8 @@ impl ScheduleEditor {
             let models = load.await;
             let _ = this.update(cx, |m, cx| {
                 if let Some(d) = m.draft.as_mut() {
-                    let flags: FlagMap = d.flags.clone().into();
-                    d.flags =
-                        normalize_flags(&flags_for_model(&models, &d.model), Some(&flags)).into();
+                    let flags: FlagMap = d.flags.clone();
+                    d.flags = normalize_flags(&flags_for_model(&models, &d.model), Some(&flags));
                 }
                 m.models = models;
                 cx.notify();
@@ -718,7 +717,7 @@ impl ScheduleEditor {
         let Some(d) = self.draft.as_mut() else {
             return;
         };
-        let flags: FlagMap = d.flags.clone().into();
+        let flags: FlagMap = d.flags.clone();
         if is_mode_default_selection(
             ChatMode::from_key(&d.mode).key(),
             &d.model,
@@ -728,7 +727,7 @@ impl ScheduleEditor {
         ) {
             let def = resolved_default_for_mode(m.key(), settings.as_ref(), &models);
             d.model = def.model;
-            d.flags = def.flags.into();
+            d.flags = def.flags;
         }
         d.mode = m.key().to_string();
         cx.notify();
@@ -978,7 +977,7 @@ impl ScheduleEditor {
             });
         } else {
             let models = self.models.clone();
-            let flags: FlagMap = d.flags.clone().into();
+            let flags: FlagMap = d.flags.clone();
             let model = d.model.clone();
             self.model_pickers
                 .update(cx, |mp, cx| mp.set(models, &model, &flags, None, cx));

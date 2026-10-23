@@ -287,6 +287,9 @@ pub(crate) const REPO: &str = "repo";
 pub(crate) const LINEAR: &str = "linear";
 pub(crate) const APP_URL: &str = "app-url";
 
+/// Undoes view state when an override save fails.
+pub(crate) type OnFail = Rc<dyn Fn(&mut ProjectView)>;
+
 pub(crate) fn run_name_key(id: u64) -> String {
     format!("run-name-{id}")
 }
@@ -690,7 +693,6 @@ impl ProjectView {
             .map(|r| RunCommand {
                 name: self.field_value(&run_name_key(r.id), cx),
                 cmd: r.cmd.clone(),
-                ..Default::default()
             })
             .collect()
     }
@@ -938,7 +940,6 @@ impl ProjectView {
             .map(|r| RunCommand {
                 name: r.name.trim().to_string(),
                 cmd: r.cmd.trim().to_string(),
-                ..r
             })
             .filter(|r| !r.cmd.is_empty())
             .collect();
@@ -1002,7 +1003,7 @@ impl ProjectView {
         mcp: bool,
         disabled: Vec<String>,
         enabled: Vec<String>,
-        on_fail: Option<Rc<dyn Fn(&mut ProjectView)>>,
+        on_fail: Option<OnFail>,
         cx: &mut Context<Self>,
     ) {
         let Some(sel) = self.selected(cx) else { return };

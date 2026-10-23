@@ -879,7 +879,16 @@ impl ProjectView {
         let del = f.delete_branch_on_remove;
         type Get = fn(&recur_domain::Project) -> String;
         type Set = fn(&mut recur_domain::Project, &str);
-        let groups: [(&str, String, &str, Vec<(&str, &str)>, Get, Set); 4] = [
+        /// Title, the global default's label, description, options, getter and setter.
+        type Group = (
+            &'static str,
+            String,
+            &'static str,
+            Vec<(&'static str, &'static str)>,
+            Get,
+            Set,
+        );
+        let groups: [Group; 4] = [
             (
                 "Merge method",
                 format!("Use global default ({global_merge})"),
@@ -1245,7 +1254,7 @@ impl ProjectView {
             return;
         }
         // A failed save keeps the overrides, so the panel stays open.
-        let reopen: Rc<dyn Fn(&mut ProjectView)> = Rc::new(move |v: &mut ProjectView| match kind {
+        let reopen: super::OnFail = Rc::new(move |v: &mut ProjectView| match kind {
             SkillKind::Recur => v.override_recur = true,
             _ => v.override_user = true,
         });

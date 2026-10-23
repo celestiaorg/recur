@@ -531,7 +531,7 @@ impl Issues {
             {
                 return;
             }
-            let _ = cx.update(|cx| recur_content::links::open_external_url(&url, cx));
+            cx.update(|cx| recur_content::links::open_external_url(&url, cx));
         })
         .detach();
     }

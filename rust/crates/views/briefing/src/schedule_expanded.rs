@@ -34,7 +34,7 @@ pub fn load(services: &Services, cx: &mut App) {
     let services = services.clone();
     cx.spawn(async move |cx| {
         if let Ok(ids) = services.shell.get_expanded_schedules().await {
-            let _ = cx.update(|cx| cx.set_global(ScheduleExpanded(expanded_from_ids(&ids))));
+            cx.update(|cx| cx.set_global(ScheduleExpanded(expanded_from_ids(&ids))));
         }
     })
     .detach();

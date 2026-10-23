@@ -24,7 +24,7 @@ Gaps found while porting that are not yet owned by a slice. Each must be closed 
 - [ ] **Review: card corner coverage.** Where a `.df-head` corner meets the `.cfile` border arc, GPUI's two antialiased edges leave a little more card background than WebKit's single clip (8 to 13 device pixels per corner; every `review/*` scene with a card in view). Needs a rounded clip on children in `recur_ui` or a shared-edge paint.
 - [ ] **Review: layering.** `recur-view-review` depends on `recur-view-chat` (the suggest typeahead and `finding_sev_icon`) and `recur-code` (finding paths). PR detail and the Observatory will depend on `recur-view-review`. Move the shared pieces down (suggest into a widgets crate) if a view crate must not depend on another.
 - [ ] **Review: text selection in diffs.** Rows are not selectable text yet (WebKit selects code across rows; `.diff-file.selecting` turns it off while dragging `+`). Needs `recur_ui` selection across text elements.
-- [~] **Review: Observatory and PR detail hosts.** The embedding API is in `recur_view_review`'s crate docs. Done for the Observatory (`recur_view_observatory`), which owns the Review changes toggle, ⌥⌘R, the Changes / Commits chips and the resizable review body (the obs-body handle's runtime max); PR detail owns the Files tab chrome, the review modal and the approve flow.
+- [x] **Review: Observatory and PR detail hosts.** The embedding API is in `recur_view_review`'s crate docs. Done for the Observatory (`recur_view_observatory`), which owns the Review changes toggle, ⌥⌘R, the Changes / Commits chips and the resizable review body (the obs-body handle's runtime max), and for PR detail (`recur_view_prs::detail`), which owns the Files tab chrome, the Commits stack, the review modal and the approve flow.
 - [x] **Editor LSP adapter.** `recur_view_observatory::lsp::client::Client` implements `recur_editor::lsp::LspClient` over `LspService` (request ids, 12s timeouts, `initialize`, document versions, change batching, server requests, diagnostics into `lsp::problems`).
 - [ ] **Observatory: video playback.** GPUI has no media element: the video pane shows a poster and its zoom opens the file in the system player.
 - [ ] **Observatory: `SyntaxPalette`.** The status bar's language button opens `AppState::open_syntax_mode_picker`; the picker list is unported (the palettes' port). Its pick goes through `EditorEnv::apply_language_mode`, as `spec::editor_syntax` drives it.
@@ -36,11 +36,18 @@ Gaps found while porting that are not yet owned by a slice. Each must be closed 
 - [ ] **Editor: CodeMirror gap estimates.** `recur_editor` estimates unmeasured line heights with CodeMirror's `HeightOracle` (`lineLength = contentWidth / charWidth`), but CodeMirror's `heightForGap` over a viewport gap still differs for long wrapped files, so the scroll thumb length can differ by a pixel or two after a jump (the `workspace/tabs` scene uses the explorer session for that reason).
 - [ ] **Tab strip: mount-time reveal.** The web strip reveals the active chip after its first layout pass, the Rust strip on the first frame, so a strip that overflows at mount can sit at a different scroll offset (`workspace/tabs` is 1180 wide so the active chip fits either way).
 - [ ] **Status bar wrap outside the editor.** The adaptive wrap on overflow is the editor status bar's; the review and explorer bars still clip.
-- [ ] **Workspace: PR detail halves.** The four `PR view …` tests of `workspace-base.spec.ts`, `#prd-agent` (the PR detail's agent dock through `WorkspaceView::render_pr_agent_dock`), the `pr_diff_jump` consumer and the findings-ui PR halves (`recur_view_review` with PR detail) wait for PR detail.
+- [x] **Workspace: PR detail halves.** `recur-view-prs` renders `#prd-agent` (the bound workspace's Observatory left aside, found through `WorkspaceDetail::current`), consumes `pr_diff_jump`, owns the findings-ui PR halves (`recur_view_prs::findings`) and ports the four `PR view …` tests of `workspace-base.spec.ts` (`spec::workspace_pr`).
 - [ ] **Plan editor: MiniScriptEditor chrome.** The plan body uses `recur_editor` with MiniScriptEditor's prefs (`plan_panel::mini_prefs`); the component itself (`MiniScriptEditor.svelte`) is unported for its other hosts.
 - [ ] **Bottom-pinned transcripts: integral scroll max.** WebKit clamps `scrollTop` to an integer maximum, GPUI keeps the fractional one, so a pinned transcript can sit a fraction of a pixel lower (inside the text tolerance today).
 - [ ] **Rounded header inside a bordered card.** Where a header's rounded corner meets its card's border, GPUI anti-aliases both edges where WebKit clips once (8 to 13 hard pixels per corner; every `review/*` scene with a card, up to 95).
 - [ ] **`✓` fallback advance.** `recur_ui` gives the `✓` fallback glyph a 6.33px advance where WebKit uses 6.49px, so the reaction pill ends a device pixel early. Match WebKit's fallback face and advance.
+
+- [x] **PR detail seams in shared crates.** `recur_ui`: `Select` caps (`TriggerStyle::{max_width, value_shrink, no_outline}`, `set_icon`, `trigger`, `is_open`), `font_metrics::zero_advance` (CSS `1ch`), `text::strut_metrics`, `style::split_divider` (a split button's darker right edge; GPUI borders take one color, so the land splits in `recur-app` darkened all four sides before), and the classic scrollbar thumb laid out from the scroller's whole-pixel edge as WebKit's `snappedIntRect` does. `recur_view_core::land` holds `Land` / `LandCache` as a global (moved from `recur-app`, which the land chrome and PR detail's titlebar share, as `workspace-land-cache.ts`). `recur_view_review`: `FileStack::{set_spy_suppress, set_stub_selects_in_place, select_in_place, set_chrome}` and `diff_file::remove_pending_comment`. `recur_view_workspace`: `WorkspaceDetail::current`, `WorkspaceView::tab_codes`. `recur_view_observatory`: the portaled dock toggle's focus handle (`pr_dock_toggle_focus`). Spec handles: `md-img:{src}` and `chat-att-lb` in `recur-content`, `tb-left` in `recur-app`.
+- [ ] **`Select` trigger tooltip.** The web trigger carries `title={shown}` (the full value under an ellipsis). Adding it to `recur_ui::widgets::Select` moved the hover state of `select/*` and `shell/base-select`, so it waits for a tooltip that does not take the trigger's hover.
+- [ ] **Fractional-position paint.** WebKit paints rounded backgrounds, box-shadow glows and image clips at unsnapped fractional positions; GPUI paints at device-snapped bounds. The tails of the PR list's 5px status-dot glows (2 to 8 device pixels per row), the people stack's avatar edges (1), the Fix checks button's corners (4) and the avatar ring under a menu shadow (7) differ by more than the soft-edge rule (`prs/*` allowances in `ui-parity.md`).
+- [ ] **Scroll height across a rounding boundary.** GPUI's device-pixel layout gives a 989.5px conversation where WebKit has 989.28, so `scrollHeight` rounds to 990 against 989 and the classic thumb is a pixel shorter (`prs/actions-merged`, 13 hard pixels).
+- [ ] **PR dock chat strip after a round trip.** Leaving PR detail for another route lays the parked shell's chat strip out at the workspace's width; back on PR detail the strip keeps that offset, so the active chat tab can sit outside the 360px dock (the web strip remounts with the dock and chases its active chip). The selection itself survives (`spec::dock::selected_agent_chat_tab_stays_in_view_when_opening_a_pr`).
+- [ ] **`observatory/terminal-max`.** Fails on `mycodecrafting/rust-gpui-port` as merged here (506 hard pixels: the terminal's block cursor is missing), unrelated to the PR port.
 
 - [ ] **Panics abort the app.** A panic inside a GPUI callback crosses the platform FFI boundary and aborts the process ("failed to initiate panic"), so one bad render takes the whole app down (seen with the `recur_ui::text` line-breaking bug fixed in `9c11b9d4`). Install a panic hook that logs to `recur.log` with a backtrace, and keep render paths panic-free (no slicing or indexing on unchecked ranges).
 - [ ] **Real-data smoke.** Every smoke run so far used a fresh or seeded data dir; the first run on a copy of real data crashed. The final audit must boot, browse every view and stream a turn against a copy of a long-lived `recur.db`.
@@ -462,8 +469,8 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [ ] `Briefing.svelte` (247 lines)
 - [ ] `NewProject.svelte` (239 lines)
 - [ ] `NewTask.svelte` (642 lines)
-- [ ] `PRDetail.svelte` (2329 lines)
-- [ ] `PRList.svelte` (226 lines)
+- [x] `PRDetail.svelte` (2329 lines) → `recur_view_prs::detail::PrDetail` (the `prdetail` route): header (state pill, number, title edit, people stack, attention pills, branch), the agent dock with its toggle and ⌥⌘B focus moves, tabs with chips and the checks rollup, Conversation (description edit, summary, focus callout, findings card with post / post all / resolve and settle, verify, timeline commits and events, comment threads with review badges, nested line notes with hunk context, replies, resolve, reactions, edit, delete, quote reply, permalinks, emoji and `@mention` typeahead, composer, merged and closed states), Commits (list and per-commit stack with lazy diffs), Files changed (`ReviewFileList` beside `FileStack`, filters, layout and mode prefs, Post all, open in workspace), Checks (groups, live durations, Fix); skeletons, hydrate give-up and polling, live `PrComment` / `PrUpdated` / findings events, every keyboard path. Scenes `prs/detail-*`; `spec::{detail, conversation, checks, dock}`
+- [x] `PRList.svelte` (226 lines) → `recur_view_prs::list::PrList` (the `pr` route): lifecycle segments, project / status / sort selects, GitHub sync, grouped buckets with sticky headers, rows (source icon and number, open in GitHub, running dot, unseen count, why, checks, diff, files, CI mark, when; the wide layout's people and why columns), people popouts, empty and skeleton states. Scenes `prs/list*`, `prs/filters`, `prs/people`; `spec::list`
 - [ ] `Project.svelte` (1302 lines)
 - [ ] `Settings.svelte` (3571 lines)
 - [ ] `Welcome.svelte` (300 lines)
@@ -540,10 +547,10 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [x] `ModelPickers.svelte` (79 lines) → `recur_view_chat::pickers::ModelPickers` (scenes `chat/mode-*`, `chat/pickers`)
 - [x] `Observatory.svelte` (8371 lines) → `recur-view-observatory` (`Observatory` entity; embedding API in the crate docs): explorer and its file operations, Changed / All scope, editor tabs and parking, code, merge and split editors, previews (FilePreview, PdfPreview, images, lightbox), review tab, findings and artifacts panels, Quick Open, bundle commands and `CommandPrompts`, run controls, Source Control and Search, panel resizing and persistence, every keyboard path, the LSP client (`lsp::client`). Scenes `observatory/*`
 - [ ] `OpenInPalette.svelte` (235 lines)
-- [ ] `PRListTitlebar.svelte` (15 lines)
-- [ ] `PRPeopleStack.svelte` (64 lines)
-- [ ] `PRReviewModal.svelte` (180 lines)
-- [ ] `PRTitlebarActions.svelte` (520 lines)
+- [x] `PRListTitlebar.svelte` (15 lines) → `recur_view_prs::list_titlebar::PrListTitlebar` (scenes `prs/list*`)
+- [x] `PRPeopleStack.svelte` (64 lines) → `recur_view_prs::people` (faces, review rings and marks, `+N`, the hover popout; scenes `prs/people`, `prs/people-detail`)
+- [x] `PRReviewModal.svelte` (180 lines) → `recur_view_prs::review_modal::PrReviewModal` in the `PrReviewModal` overlay slot: kind select, pending chips (jump, remove), the body with emoji and `@mention` typeahead, ⌘↵ submit, Tab cycling with the `.kb-focus` ring, Escape rules, closes off PR detail. Scenes `prs/review-modal*`
+- [x] `PRTitlebarActions.svelte` (520 lines) → `recur_view_prs::actions::PrTitlebarActions` (PR detail's `.tb-right` part): Open in GitHub, Send back, Update with base and its method menu, Pull / Push / Force push over the shared land cache (`FetchWorkingCopyUpstream` two frames in, `WorkspaceLandState` on fs and focus), the pending chip, Approve / Request changes split, draft state, Fix checks, queued / blocked / conflicts, the merge split with methods, confirm, optimistic merged, merge queue and the `GetPR` fallback; menus close on outside presses. Scenes `prs/actions-*`; `spec::{actions, workspace_pr}`
 - [x] `PdfPreview.svelte` (289 lines) → `recur_content::PdfPreview` on pdf.js 6.3.289 in a hidden WebKit page (scene `pdf/page`; decision in `ARCHITECTURE.md`)
   - [x] Fit-to-width on load, zoom (toolbar, ⌘+ / ⌘-) within 0.1-8, page field (Enter / blur commit) and previous / next, page follows the scroll, pages render while they intersect the viewport and are discarded when they leave it, loading and error states
 - [x] `PermissionCard.svelte` (116 lines) → `recur_view_chat::cards::permission` (inline and floating; scene `chat/permission`)
@@ -734,7 +741,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/file-icons/index.ts` (41 lines) → `recur_ui::file_icons::{file_icon_class, file_icon}` (dotenv rule, basename matching, fallback; glyphs from the icon fonts through CoreGraphics with smoothing off); scenes `icons/file`, `icons/file-light`
 - [x] `lib/file-icons/types.ts` (26 lines) → `recur_ui::file_icons`
 - [x] `lib/finding-paths.ts` (112 lines) → see above
-- [~] `lib/findings-ui.ts` (396 lines) → the review half in `recur_view_review::findings` (`severityRank`, `findingFlagForPath`, `findingIdsOnPending`, `dropFindingIdsRemovedFromPending`; cases ported) and `finding_sev_icon` from the chat half. Left for PR detail: `findingPublicId`, `findingReviewAnchor`, `findingCommentBody`, `findingHasPendingComment`, `findingHasSubmittedComment`, `findingReadyToSettle`
+- [x] `lib/findings-ui.ts` (396 lines) → the review half in `recur_view_review::findings` (`severityRank`, `findingFlagForPath`, `findingIdsOnPending`, `dropFindingIdsRemovedFromPending`; cases ported) and `finding_sev_icon` from the chat half. The PR detail half (`findingPublicId`, `findingReviewAnchor`, `findingCommentBody`, `findingHasPendingComment`, `findingHasSubmittedComment`, `findingReadyToSettle`) is `recur_view_prs::findings` (cases ported)
 - [x] `lib/fuzzy.ts` (145 lines) → `recur_ui::logic::fuzzy` (`fuzzy_score`, `prepare_fuzzy`, `fuzzy_filter_prepared`, `fuzzy_filter`, CLDR punctuation collation; cases ported)
 - [ ] `lib/glob.ts` (64 lines)
 - [x] `lib/hoist-chat-keys.ts` (286 lines) → `recur_view_chat::hoist` (cases ported)
@@ -775,20 +782,18 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/pdf-preview.ts` (85 lines) → `recur_content::pdf::logic`; `discardPageCanvas` is the slot drop, `pdfjsAssetDirs` the `recur-pdf:` asset routes (`pdf/engine.rs` test)
 - [x] `lib/permissionTools.ts` (60 lines) → `recur_agent_tools::display::permission_tools::permission_tool_label`
 - [x] `lib/plantools.ts` (120 lines) → `recur_agent_tools::display::plan_tools` (step/attachment/body parsing, labels, ack title recovery)
-- [ ] `lib/pr-attention.ts` (98 lines)
-- [ ] `lib/pr-checks.ts` (139 lines)
 - [ ] `lib/permissionTools.ts` (60 lines)
 - [ ] `lib/plantools.ts` (120 lines)
 - [x] `lib/pr-attention.ts` (98 lines) → `recur_forge::view` (`pr_attention_codes`, `pr_attention_labels`, `pr_has_review_request`, `pr_has_check_status`, `pr_checks_rollup`, `pr_checks_passing`); test file ported
 - [x] `lib/pr-checks.ts` (139 lines) → `recur_forge::view` (`is_pending_check`, `is_skipped_check`, `group_checks`, `checks_rollup` → `RollupKind`, `checks_heading` with the forge label, `check_group_collapsed`, `checks_box_byline`) and `Forge::{checks_url, check_run_url}`; test file ported
 - [x] `lib/pr-commits.ts` (23 lines) → `recur_view_core::pr_commits` (`keep_commit_files`, `commit_keys_match`; cases ported)
-- [ ] `lib/pr-detail-pending.ts` (48 lines)
-- [ ] `lib/pr-fix-checks.ts` (53 lines)
-- [ ] `lib/pr-list-filter.ts` (190 lines)
-- [ ] `lib/pr-merge-action.ts` (276 lines)
+- [x] `lib/pr-detail-pending.ts` (48 lines) → `recur_engine::view::pr_detail_pending` (cases ported), used by `recur_view_prs::detail`
+- [x] `lib/pr-fix-checks.ts` (53 lines) → `recur_engine::view::pr_fix_checks` (cases ported); the store and flush in `recur_view_prs::detail` (`request_fix_checks`)
+- [x] `lib/pr-list-filter.ts` (190 lines) → `recur_view_prs::list_filter` (test file ported)
+- [x] `lib/pr-merge-action.ts` (276 lines) → `recur_engine::view::pr_merge_action` (test file ported), used by `recur_view_prs::actions`
 - [x] `lib/pr-participants.ts` (165 lines) → `recur_forge::view` (`PrPerson`, `PR_FACE_CAP`, `pr_participants`, `pr_people_with_reviews`, `reviewer_summary`, `review_state_label`, `participant_label`, `participant_initials`, `participant_avatar_url` via `Forge::avatar_url(.., 40)`, `pr_face_slots`, `person_key`); test file ported
 - [x] `lib/pr-thread-resolved.ts` (43 lines) → `recur_engine::view::pr_thread_resolved` (E5); the review store keeps its holds
-- [~] `lib/pr-workspace.ts` (107 lines): `prAgentWorkspaceId`, `prChatHostRunningCount`, `prChatHostUnseenCount`, `prIdForChatWorkspace` → `recur_view_core::pr`; the rest moves with PR detail
+- [x] `lib/pr-workspace.ts` (107 lines): `prAgentWorkspaceId`, `prChatHostRunningCount`, `prChatHostUnseenCount`, `prIdForChatWorkspace` → `recur_view_core::pr`; `prEditableWorkspaceId` and the rest → `recur_engine::view::pr_workspace` (cases ported)
 - [x] `lib/preview-find.ts` (260 lines) → `recur_content::preview::find` over rendered text blocks (the DOM walk's script / style / hidden skips have no native counterpart: those nodes never render)
 - [x] `lib/preview-scroll.ts` (237 lines) → `recur_content::preview::scroll`; `preview-scroll.test.ts` ported
 - [x] `lib/preview.ts` (139 lines) → `recur_content::preview` (kinds, find gating, CSP, srcdoc shell and scripts byte-identical); the iframe find-reveal case needs a live webview and is not ported as a unit test
@@ -875,7 +880,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [x] Palette: `.palette-bg`, `.palette`, `.cmd-palette`, `.pal-in` (with WebKit's input padding), `.pal-g`, `.pal-row` with `.pic`/`.pl`/`.psub`/`.pk`/`.dot`, `.pal-empty`, `.pal-foot` (scene `overlays/palette`)
   - [x] `.toasts`, `.toast*` (scenes `toasts/*`), `.emoji-suggest` panel, `.skel` with its shimmer and `.skelrow`, global `:focus-visible` ring (scenes `overlays/misc*`, `select/focus`)
   - [x] Box shadows as WebKit's ShadowBlur, diagonal gradients, backgrounds under opaque borders (`recur_ui::shadow`, `style::css_gradient`, `style::inset_background`)
-- [~] `styles/_prs.scss`: the review rules (`.fl-*`, `.diffscroll`, `.cfile`, `.df-head`, `.hline`, `.addc`, `.icmt*`, `.cmt*`, `.react*`, `.finding-note-*`, commits) in `recur-view-review` (scenes `review/*`); PR detail's own rules move with it
+- [x] `styles/_prs.scss`: the review rules (`.fl-*`, `.diffscroll`, `.cfile`, `.df-head`, `.hline`, `.addc`, `.icmt*`, `.cmt*`, `.react*`, `.finding-note-*`, commits) in `recur-view-review` (scenes `review/*`); the PR list, PR detail, titlebar actions, review modal and people stack rules (with the `.tb-right` split rules of `_base.scss` and the modal rules of `_forms.scss`) in `recur-view-prs` (scenes `prs/*`)
 - [ ] `styles/_settings.scss`
 - [ ] `styles/_sidebar.scss`
 - [~] `styles/_terminal.scss`
@@ -1325,7 +1330,7 @@ Checked against Go-generated fixtures: catalog text (`crates/agent-tools/tests/c
 Playwright e2e specs (`frontend/e2e/*.spec.ts`) and the seeded fixture (`frontend/e2e/fixtures/seed.json`) describe UI behavior. Port each spec's scenarios to GPUI `TestAppContext` tests in `recur-app` and drive the same seed.
 
 - [~] `a11y-keys.spec.ts` (8 tests) → `crates/app/tests/shell.rs`: Esc from detail and PR detail, Esc in text entry, Add project not focused after launch, ⇧⌘N blank workspace. Icon-button names are `aria_label`s (not queryable from tests); the New workspace modal and select menus move with NewTask
-- [x] `activity.spec.ts` (17 tests) → `recur-view-workspace`'s `spec::activity` (17: cockpit cards, tool cards, facts, the plan panel, recents)
+- [x] `activity.spec.ts` (17 tests) → `recur-view-workspace`'s `spec::activity` (17: cockpit cards, tool cards, facts, the plan panel, recents); the PR-opened fact also opens the real PR detail in `recur-view-prs`'s `spec::dock`
 - [ ] `briefing.spec.ts` (18 tests)
 - [ ] `bundles.spec.ts` (7 tests)
 - [x] `chat.spec.ts` (68 tests) → `recur-view-workspace`'s `spec::chat` (69 tests: the queue / steer scenario runs once per setting) over the real `WorkspaceView`; the chat-only halves stay in `recur-view-chat`'s `spec::{agent_chat, composer}`
@@ -1337,14 +1342,14 @@ Playwright e2e specs (`frontend/e2e/*.spec.ts`) and the seeded fixture (`fronten
 - [x] `loop-lifecycle.spec.ts` (4 tests) → `recur-view-workspace`'s `spec::shell` (the workspace titlebar's Remove in the full shell)
 - [x] `maestro-dock.spec.ts` (3 tests) → `recur-view-chat`'s `spec::dock` (the chat halves: send, unmount and remount keep the transcript) and `recur-view-workspace`'s `spec::chat` (2) and `spec::shell` (hiding the left panel after visiting the linked PR). The PR detail's own agent dock moves with PR detail
 - [x] `observatory.spec.ts` (47 tests) → `recur-view-observatory`'s `spec::observatory` (34 host scenarios) and `recur-view-review`'s `spec::observatory` (9 review-surface scenarios). The project-setup and inbox / Briefing scenarios belong to the views that host them
-- [~] `pr-review.spec.ts` (77 tests) → `recur-view-review`'s `spec::pr_review` (14 Files-pane scenarios on PR #482 through a PR detail double: TOC plus stack, collapse, open in workspace, findings cards, comment flags and jumps, posted notes and replies, quote-reply, inline and multi-line comments, keyboard `+`, removing pending comments, reactions, delete, slow writes). The rest need the PR detail host (PR list, tabs, review modal and approve flow, conversation, checks, merge) and move with its port
+- [x] `pr-review.spec.ts` (77 tests) → `recur-view-review`'s `spec::pr_review` (14 Files-pane scenarios on PR #482 through a PR detail double: TOC plus stack, collapse, open in workspace, findings cards, comment flags and jumps, posted notes and replies, quote-reply, inline and multi-line comments, keyboard `+`, removing pending comments, reactions, delete, slow writes) and `recur-view-prs`'s `spec::{list, detail, conversation, actions, checks, dock}` (the other 68, plus the PR detail halves of the inline, multi-line, slow-reply and findings scenarios, on the full shell). The host-PR inbox scenario checks the unseen state, the PR nav count and the PR the card opens; the Briefing card itself waits for `Briefing.svelte`
 - [ ] `scheduled-prompts.spec.ts` (4 tests)
 - [ ] `settings-newloop.spec.ts` (34 tests)
 - [~] `shell.spec.ts` (38 tests) → `crates/app/tests/shell.rs` (20 scenarios): boot, needs-you flags, hidden PR host in a collapsed group, restart restore (workspace and briefing), selection cleared on Inbox / PRs, hover actions, two-click Remove and its disabled state, expand / collapse persistence, hide and reveal, hidden projects at boot, flyout and its Escape, ⌥⌘ cycling and peek-until-dwell, drag into a group, group rename. Icons, chips, tree lines and scrollbar stacking are covered by the `shell/*` parity scenes. Palettes, the workspace view, escalation chat, project settings and Open In move with their views
 - [x] `terminal-dock.spec.ts` (34 tests) → `recur-view-observatory`'s `spec::terminal_dock` (30). ⌃` / ⌃⇧` and the ⌘R / ⌘⇧R palettes are the shell's and the palettes'; their effects on the dock are driven through the app state they set. The xterm DOM class collision test has no GPUI counterpart
 - [~] `toasts.spec.ts` (3 tests): toast lifetimes are tested in `recur_ui::widgets::toasts` and through the shell (`a_failed_save_shows_an_error_toast_that_auto_dismisses`); the PR approve / merge flows move with PR detail
 - [ ] `welcome.spec.ts` (14 tests)
-- [~] `workspace-base.spec.ts` (37 tests) → `recur-view-workspace`'s `spec::shell` (33). The four `PR view …` tests need PR detail
+- [x] `workspace-base.spec.ts` (37 tests) → `recur-view-workspace`'s `spec::shell` (33) and `recur-view-prs`'s `spec::workspace_pr` (the four `PR view …` tests)
 
 Frontend unit tests (`vitest`, 170 files) are logic specs for the matching `lib/` modules; port their cases with the module.
 

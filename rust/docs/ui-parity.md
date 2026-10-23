@@ -116,6 +116,15 @@ The `workspace` list in `scenes.json` holds the detail route (`workspace/…`) b
 
 Scenes: the chat with the Observatory in `default` and `paper`; many chat tabs overflowing the strip (`tabs`, 1180 wide so the active chip is revealed the same way on both sides, see `PARITY.md`); the plan panel and the findings panel (their dock toggles clicked); and a running Loop with the maestro dock in `default` and `paper`.
 
+## PR scenes
+
+The `prs` list in `scenes.json` holds the PR routes (`prs/…`): the dashboard and PR detail in the whole window as Shell.svelte mounts it, over the e2e seed with the edits of `rust/tools/ui-parity/content/prs.json` (`list` adds six GitHub PRs covering every group, status and attention badge; the detail fixtures patch PR #482 into each titlebar state: behind its base, draft, failing checks while blocked, blocked, conflicts without a workspace, queued, merge queue, merged, two pending line comments).
+
+- **Reference.** `web/scenes/Prs.svelte` mounts `App` and, once the tree loads, opens PR detail (`pr`, the dock closed with `dock: "closed"`, then `tab` and `review` three frames later, after PRDetail's per-PR reset lands on Conversation) or the dashboard (`seg`), overriding Shell.svelte's global `.main > *` rule so the route shows. `capture.spec.ts` applies the fixture's seed edits and answers its resolvers (`prsFixture`, `prsResolvers`), and aborts avatar fetches so faces fall back to initials on both sides.
+- **Candidate.** `recur_view_prs::gallery` (feature `gallery`) builds the desktop's registry (chat, review, Observatory, workspace, PRs) and a `Shell` over a `MockBridge` with the same seed edits and resolvers, then navigates the same way after boot (the tab and review modal three frames later).
+
+Scenes: the dashboard on All in `default` and `paper`, wide (1800, people and why on the row), with the sort menu open and with a people popout; PR detail on Conversation in `default` and `paper`, Files changed, Commits and Checks; the titlebar in each merge state (Update with main beside Merge, Ready for review, Fix checks, Merge blocked, Conflicts, Queued, Add to merge queue, merged, two pending comments in `default` and `paper`), with the merge, update and review menus open, and confirming a merge; the review modal with pending chips (Request changes in `default`, Approve in `paper`); and the header's people popout.
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -179,6 +188,10 @@ Every other scene allows no hard pixels.
 | `observatory/review` | 18 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc (as `review/*`) |
 | `observatory/terminal-max` | 2 | Frosted terminal cells (above): glyph edges over the maximized dock's frost |
 | `observatory/pdf` | 262 | The page field's number (typed input text, above) and glyph edges inside the page raster, which GPUI's bilinear filter resamples (image resampling, above) past the soft-edge rule |
+| `prs/list`, `prs/list-paper`, `prs/list-wide`, `prs/filters`, `prs/people` | 39, 36, 45, 27, 35 | The far tails of the rows' 5px status-dot glows, which WebKit paints at their fractional x (806.6) and GPUI at the snapped one (2 to 8 pixels per row), and an avatar's edge at a fractional offset (1); `prs/list-paper` adds the running dot's glow over the light rail (as `shell/paper`) (`PARITY.md` follow-up) |
+| `prs/detail-*`, `prs/actions-*`, `prs/review-modal`, `prs/people-detail` | 0 to 7 | An avatar's edge at a fractional offset in the header's people stack (1); `prs/actions-checks` adds the Fix checks button's corners at a fractional x (4), `prs/actions-review-menu` the avatar ring under the menu's shadow (7), and the `paper` scenes the running dot's glow (as `shell/paper`) |
+| `prs/detail-files` | 37 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc (as `review/*`) and the avatar edge (above) |
+| `prs/actions-merged` | 14 | The classic thumb is a pixel shorter: GPUI lays the merged conversation out 989.5px tall where WebKit has 989.28, and `scrollHeight` rounds across the boundary (`PARITY.md` follow-up); the avatar edge (above) |
 
 ## Results
 
@@ -317,6 +330,33 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `workspace/findings` | 0 | 44051 | 355 | 48850 | 0 |
 | `workspace/loop` | 1 | 45803 | 964 | 51450 | 1 |
 | `workspace/loop-paper` | 5 | 46057 | 1008 | 51780 | 5 |
+| `prs/list` | 39 | 20193 | 4766 | 27460 | 39 |
+| `prs/list-paper` | 36 | 20429 | 4733 | 27680 | 36 |
+| `prs/list-wide` | 45 | 25861 | 5067 | 34030 | 45 |
+| `prs/filters` | 27 | 25922 | 3708 | 32600 | 27 |
+| `prs/people` | 35 | 19283 | 4485 | 26150 | 35 |
+| `prs/detail-conv` | 1 | 9756 | 3440 | 14520 | 1 |
+| `prs/detail-conv-paper` | 6 | 9864 | 3597 | 14810 | 6 |
+| `prs/detail-files` | 37 | 16718 | 2524 | 21170 | 37 |
+| `prs/detail-commits` | 1 | 10492 | 2257 | 14030 | 1 |
+| `prs/detail-checks` | 1 | 7383 | 1815 | 10120 | 1 |
+| `prs/actions-update` | 1 | 12329 | 3526 | 17450 | 1 |
+| `prs/actions-ready` | 1 | 8630 | 3347 | 13180 | 1 |
+| `prs/actions-checks` | 5 | 10125 | 3422 | 14910 | 5 |
+| `prs/actions-blocked` | 1 | 11856 | 3333 | 16710 | 1 |
+| `prs/actions-conflicts` | 1 | 11967 | 3343 | 16850 | 1 |
+| `prs/actions-queued` | 1 | 10191 | 3364 | 14920 | 1 |
+| `prs/actions-queue` | 1 | 11267 | 3452 | 16200 | 1 |
+| `prs/actions-merged` | 14 | 8083 | 3225 | 12440 | 14 |
+| `prs/actions-pending` | 1 | 11387 | 3612 | 16500 | 1 |
+| `prs/actions-pending-paper` | 6 | 11420 | 3793 | 16740 | 6 |
+| `prs/review-modal` | 1 | 12490 | 1784 | 15710 | 1 |
+| `prs/review-modal-paper` | 0 | 12939 | 4272 | 18940 | 0 |
+| `prs/actions-merge-menu` | 1 | 8883 | 3416 | 13530 | 1 |
+| `prs/actions-confirm` | 1 | 10861 | 3436 | 15730 | 1 |
+| `prs/actions-review-menu` | 7 | 9462 | 3017 | 13730 | 7 |
+| `prs/actions-update-menu` | 0 | 12537 | 3108 | 17210 | 0 |
+| `prs/people-detail` | 1 | 16148 | 3715 | 21850 | 1 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
@@ -331,3 +371,5 @@ Review tolerances: text is glyph subpixel phase in code rows, paths, labels and 
 Observatory tolerances: text is glyph subpixel phase in code, paths, labels, tabs and the terminal grid; anti-aliasing is icon, chip and card edges, the checkerboard and image resampling (the image pane, the PDF page and its shapes).
 
 Workspace tolerances: text is glyph subpixel phase in the transcript, the composer, tab chips, pickers, panels and the Observatory beside them; anti-aliasing is icon, chip, card and dot edges, the composer's shadow and the running dot's glow.
+
+PR tolerances: text is glyph subpixel phase in row titles, mono metadata, pills, tabs, the thread, diffs, buttons and the modal; anti-aliasing is icon, chip, avatar, card and dot edges, the menu and modal shadows and the status-dot glows.

@@ -839,7 +839,7 @@ impl SettingsView {
     }
 
     /// `installBridge`: progress arrives as `cursor.install` events while it runs.
-    pub(crate) fn install_bridge(&mut self, cx: &mut Context<Self>) {
+    pub fn install_bridge(&mut self, cx: &mut Context<Self>) {
         self.installing = true;
         self.install_msg = "Starting…".into();
         self.install_pct = -1;

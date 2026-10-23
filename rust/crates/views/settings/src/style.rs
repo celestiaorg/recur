@@ -322,7 +322,11 @@ pub fn mm_radio(
         .when(on, |d| {
             d.child(div().size(px(7.)).rounded_full().bg(hsla(t.emerald)))
         });
-    let hover = rgba(255, 255, 255, 0.03);
+    let hover = if Theme::of(cx).is_light() {
+        rgba(0, 0, 0, 0.04)
+    } else {
+        rgba(255, 255, 255, 0.03)
+    };
     div()
         .id(id)
         .flex()
@@ -511,7 +515,8 @@ pub fn inp(
         ))
 }
 
-/// `.set-search`: the magnifier and a borderless Inter 12px field on a `--pane` pill.
+/// `.set-search`: the magnifier and a borderless Inter 12px field on a `--pane` pill, 32px tall
+/// but shrinking (in a column that overflows) down to the field's own 21px.
 pub fn search_box(
     input: &Entity<gpui_kit::base::input::InputState>,
     placeholder: &SharedString,
@@ -527,25 +532,34 @@ pub fn search_box(
     };
     card(t.pane, border, 8.)
         .flex()
-        .flex_none()
+        .flex_shrink(1.)
         .items_center()
         .gap(px(8.))
         .h(px(32.))
+        .min_h(px(23.))
         .px(px(10.))
         .child(
             div()
                 .flex_none()
                 .child(icon(IconName::Search).size(px(13.)).color(ico)),
         )
-        .child(text_field(
-            input,
-            placeholder,
-            t.faint,
-            Family::Ui,
-            12.,
-            window,
-            cx,
-        ))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .h(px(21.))
+                .flex()
+                .items_center()
+                .child(text_field(
+                    input,
+                    placeholder,
+                    t.faint,
+                    Family::Ui,
+                    12.,
+                    window,
+                    cx,
+                )),
+        )
 }
 
 // ---- notes and messages ----

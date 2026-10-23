@@ -193,6 +193,19 @@ pub struct SettingsView {
     pub(crate) _events: Task<()>,
 }
 
+/// The Settings view of the app (one per window), for galleries and specs.
+pub struct CurrentSettings(pub gpui_kit::WeakEntity<SettingsView>);
+
+impl gpui_kit::Global for CurrentSettings {}
+
+impl SettingsView {
+    /// The live Settings view, once the shell has built it.
+    pub fn current(cx: &App) -> Option<Entity<SettingsView>> {
+        cx.try_global::<CurrentSettings>()
+            .and_then(|c| c.0.upgrade())
+    }
+}
+
 impl Focusable for SettingsView {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus.clone()
@@ -350,6 +363,8 @@ impl SettingsView {
             _subs: subs,
             _events: events_task,
         };
+        let me = cx.entity().downgrade();
+        cx.set_global(CurrentSettings(me));
         v.sync(window, cx);
         v
     }
@@ -750,8 +765,13 @@ impl SettingsView {
             for item in g.items {
                 let on = current == item.id.id();
                 let id = item.id;
-                let hover = recur_ui::rgba(255, 255, 255, 0.03);
-                let on_bg = recur_ui::rgba(255, 255, 255, 0.06);
+                // Light palettes darken instead (`_tokens.scss`).
+                let light = recur_ui::Theme::of(cx).is_light();
+                let (hover, on_bg) = if light {
+                    (recur_ui::rgba(0, 0, 0, 0.04), recur_ui::rgba(0, 0, 0, 0.07))
+                } else {
+                    (recur_ui::rgba(255, 255, 255, 0.03), recur_ui::rgba(255, 255, 255, 0.06))
+                };
                 let label = item.label;
                 list = list.child(
                     div()
@@ -805,25 +825,17 @@ impl SettingsView {
             .child(
                 recur_ui::widgets::scroll_area("set-nav")
                     .track(&self.nav_scroll)
+                    .scroller(move |d| d.flex().flex_col().gap(px(10.)).py(px(pad_y)).px(px(pad_x)))
                     .child(
                         div()
+                            .debug_selector(|| "set-search".into())
                             .flex()
                             .flex_col()
-                            .gap(px(10.))
-                            .py(px(pad_y))
-                            .px(px(pad_x))
-                            .child(
-                                div()
-                                    .debug_selector(|| "set-search".into())
-                                    .child(search_box(
-                                        &input,
-                                        &"Search settings".into(),
-                                        window,
-                                        cx,
-                                    )),
-                            )
-                            .child(list),
-                    ),
+                            .flex_shrink(1.)
+                            .min_h(px(23.))
+                            .child(search_box(&input, &"Search settings".into(), window, cx)),
+                    )
+                    .child(list.flex_none()),
             )
             .into_any_element()
     }
@@ -891,7 +903,7 @@ impl Render for SettingsView {
 
 /// The modal and card events.
 impl SettingsView {
-    pub(crate) fn open_compat_modal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_compat_modal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let taken: Vec<String> = self
             .settings(cx)
             .map(|s| s.compatible_providers.iter().map(|p| p.id.clone()).collect())

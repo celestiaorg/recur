@@ -6749,6 +6749,7 @@ dependencies = [
  "recur-ui",
  "recur-view-chat",
  "recur-view-core",
+ "recur-view-home",
  "recur-view-observatory",
  "recur-view-prs",
  "recur-view-review",
@@ -7224,6 +7225,7 @@ dependencies = [
  "recur-terminal-view",
  "recur-ui",
  "recur-view-chat",
+ "recur-view-home",
  "recur-view-observatory",
  "recur-view-prs",
  "recur-view-review",
@@ -7312,6 +7314,36 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tracing",
+]
+
+[[package]]
+name = "recur-view-home"
+version = "0.0.0"
+dependencies = [
+ "core-graphics 0.24.0",
+ "futures",
+ "gpui-kit",
+ "gpui-pre",
+ "image",
+ "parking_lot",
+ "recur-app",
+ "recur-bundles",
+ "recur-content",
+ "recur-domain",
+ "recur-engine",
+ "recur-services",
+ "recur-ui",
+ "recur-view-chat",
+ "recur-view-core",
+ "recur-view-home",
+ "recur-view-observatory",
+ "recur-view-prs",
+ "recur-view-review",
+ "recur-view-settings",
+ "recur-view-workspace",
+ "serde",
+ "serde_json",
+ "smallvec",
 ]
 
 [[package]]

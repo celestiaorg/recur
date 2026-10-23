@@ -1964,5 +1964,11 @@
     {"name": "settings/usage-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 23000, "hardTolerance": 51, "fixture": "usage", "section": "general", "steps": [{"click": [222, 753]}]},
     {"name": "settings/keybinding-menu", "width": 1280, "height": 800, "theme": "default", "tolerance": 34190, "hardTolerance": 16, "fixture": "base", "section": "general", "act": "keybinding-menu"},
     {"name": "settings/keybinding-menu-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 13800, "hardTolerance": 21, "fixture": "base", "section": "general", "act": "keybinding-menu"}
+  ],
+  "home": [
+    {"name": "home/welcome", "width": 1280, "height": 800, "theme": "default", "tolerance": 3470, "hardTolerance": 11, "fixture": "first-run", "route": "welcome"},
+    {"name": "home/welcome-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 3530, "fixture": "first-run", "route": "welcome"},
+    {"name": "home/welcome-modes", "width": 1280, "height": 800, "theme": "default", "tolerance": 7990, "hardTolerance": 11, "fixture": "no-workspaces", "route": "welcome"},
+    {"name": "home/welcome-done", "width": 1280, "height": 800, "theme": "default", "tolerance": 7550, "fixture": "base", "route": "welcome"}
   ]
 }

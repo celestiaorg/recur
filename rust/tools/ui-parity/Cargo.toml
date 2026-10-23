@@ -23,6 +23,7 @@ recur-view-observatory = { workspace = true, features = ["gallery"] }
 recur-view-workspace = { workspace = true, features = ["gallery"] }
 recur-view-prs = { workspace = true, features = ["gallery"] }
 recur-view-settings = { workspace = true, features = ["gallery"] }
+recur-view-home = { workspace = true, features = ["gallery"] }
 gpui-kit = { workspace = true, features = ["test-support"] }
 image = { workspace = true, features = ["png"] }
 serde.workspace = true

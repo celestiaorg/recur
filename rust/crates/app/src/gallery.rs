@@ -213,6 +213,97 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     Some(cx.new(|_| ShellSceneView { shell, tree_scroll }).into())
 }
 
+/// A fixture's canned replies (`resolvers`); `{"$pending": true}` holds the call forever.
+pub fn fixture_resolvers(fx: &Value) -> MockOptions {
+    let mut opts = MockOptions::default();
+    if let Some(m) = fx["resolvers"].as_object() {
+        for (k, v) in m {
+            let v = v.clone();
+            let pending = v["$pending"].as_bool() == Some(true);
+            opts = opts.resolver(k, move |_, _, _| {
+                if pending {
+                    recur_services::mock::Reply::Later(Box::pin(std::future::pending::<
+                        recur_services::mock::Reply,
+                    >()))
+                } else {
+                    recur_services::mock::Reply::value(v.clone())
+                }
+            });
+        }
+    }
+    opts
+}
+
+/// What a view crate's whole-window scene does once the shell has booted: navigate, then
+/// three frames later act (open a menu, a modal).
+pub type SceneHook = Box<dyn Fn(&Entity<AppState>, &mut App)>;
+
+struct ViewSceneView {
+    shell: Entity<Shell>,
+    navigate: Option<SceneHook>,
+    act: Option<SceneHook>,
+    frames: u8,
+}
+
+impl Render for ViewSceneView {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let state = self.shell.read(cx).state().clone();
+        if let Some(nav) = self.navigate.take() {
+            if state.read(cx).booted {
+                cx.defer(move |cx| nav(&state, cx));
+            } else {
+                self.navigate = Some(nav);
+            }
+            cx.notify();
+        } else if self.frames < 3 {
+            self.frames += 1;
+            if self.frames == 3
+                && let Some(act) = self.act.take()
+            {
+                cx.defer(move |cx| act(&state, cx));
+            }
+            cx.notify();
+        }
+        div().size_full().child(self.shell.clone())
+    }
+}
+
+/// A whole-window scene for a view crate: the shell with `registry` over the e2e seed edited by
+/// the fixture's `seed` (answering its `resolvers`), local storage with the theme and
+/// `storage`, then `navigate` once booted and `act` three frames later. Returns the bridge for
+/// scenes that dispatch events.
+#[allow(clippy::too_many_arguments)]
+pub fn view_scene(
+    fx: &Value,
+    theme: &str,
+    storage: &BTreeMap<String, String>,
+    registry: ViewRegistry,
+    navigate: SceneHook,
+    act: Option<SceneHook>,
+    window: &mut Window,
+    cx: &mut App,
+) -> (AnyView, std::sync::Arc<MockBridge>) {
+    let bridge = MockBridge::new(scene_seed(&fx["seed"]), fixture_resolvers(fx));
+    let services = bridge.services();
+    let mut st = LocalStorage::in_memory();
+    st.set("recur.theme", theme.to_string());
+    for (k, v) in storage {
+        st.set(k, v.clone());
+    }
+    let state: Entity<AppState> = AppState::install(services.clone(), st, cx);
+    let ctx = ViewContext { state, services };
+    let shell = cx.new(|cx| Shell::new(ctx, registry, ShellOptions::default(), window, cx));
+    let view = cx
+        .new(|_| ViewSceneView {
+            shell,
+            navigate: Some(navigate),
+            act,
+            frames: 0,
+        })
+        .into();
+    (view, bridge)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

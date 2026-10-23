@@ -1,0 +1,11 @@
+{
+  "fixtures": {
+    "base": {},
+    "first-run": {
+      "resolvers": { "ListProjects": [], "ListWorkspaces": [] }
+    },
+    "no-workspaces": {
+      "resolvers": { "ListWorkspaces": [] }
+    }
+  }
+}

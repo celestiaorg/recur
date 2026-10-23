@@ -60,6 +60,10 @@ export const SHORTCUTS: ShortcutEntry[] = [
   { group: 'Workbench', label: 'Run…', keys: '⌘R', terms: ['dev server', 'run command', 'run menu'] },
   { group: 'Workbench', label: 'Stop run', keys: '⌘⇧R', terms: ['dev server', 'interrupt'] },
   { group: 'Workbench', label: 'Reload from disk', keys: 'F5' },
+  { group: 'Workbench', label: 'Zoom in', keys: '⌘+', terms: ['bigger', 'larger', 'scale', 'ui size'] },
+  { group: 'Workbench', label: 'Zoom out', keys: '⌘-', terms: ['smaller', 'scale', 'ui size'] },
+  { group: 'Workbench', label: 'Actual size', keys: '⌘0', terms: ['reset zoom', 'scale', 'ui size'] },
+  { group: 'Workbench', label: 'Zoom with mouse wheel', keys: '⌘Scroll', terms: ['ctrl', 'scale', 'ui size'] },
 
   // Editor
   { group: 'Editor', label: 'Cycle view', keys: '⌘⇧V', terms: ['code', 'diff', 'preview', 'toggle'] },

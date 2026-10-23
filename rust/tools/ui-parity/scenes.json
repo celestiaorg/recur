@@ -1969,6 +1969,9 @@
     {"name": "home/welcome", "width": 1280, "height": 800, "theme": "default", "tolerance": 3470, "hardTolerance": 11, "fixture": "first-run", "route": "welcome"},
     {"name": "home/welcome-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 3530, "fixture": "first-run", "route": "welcome"},
     {"name": "home/welcome-modes", "width": 1280, "height": 800, "theme": "default", "tolerance": 7990, "hardTolerance": 11, "fixture": "no-workspaces", "route": "welcome"},
-    {"name": "home/welcome-done", "width": 1280, "height": 800, "theme": "default", "tolerance": 7550, "fixture": "base", "route": "welcome"}
+    {"name": "home/welcome-done", "width": 1280, "height": 800, "theme": "default", "tolerance": 7550, "fixture": "base", "route": "welcome"},
+    {"name": "home/new-project", "width": 1280, "height": 800, "theme": "default", "tolerance": 4040, "fixture": "base", "route": "newproject"},
+    {"name": "home/new-project-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 4350, "fixture": "base", "route": "newproject"},
+    {"name": "home/new-project-path", "width": 1280, "height": 800, "theme": "default", "tolerance": 7370, "hardTolerance": 189, "fixture": "base", "route": "newproject", "steps": [{"type": "/Users/dev/code/storefront"}, {"wait": 400}]}
   ]
 }

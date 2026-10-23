@@ -10,14 +10,19 @@
 
 #[cfg(feature = "gallery")]
 pub mod gallery;
+mod dialog;
+pub mod new_project;
 pub mod welcome;
 mod wordmark;
 
-use recur_view_core::{ViewContext, ViewName, ViewRegistry};
+use recur_view_core::{OverlaySlot, ViewContext, ViewName, ViewRegistry};
 
 /// Registers the Welcome route and the creation modals.
 pub fn register(r: &mut ViewRegistry) {
     r.view(&[ViewName::Welcome], |vcx: &ViewContext, window, cx| {
         welcome::build(vcx, window, cx).into()
+    });
+    r.overlay(OverlaySlot::NewProject, |vcx: &ViewContext, window, cx| {
+        new_project::build(vcx, window, cx).into()
     });
 }

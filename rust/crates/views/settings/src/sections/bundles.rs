@@ -17,8 +17,8 @@ use recur_view_core::commands::RegisteredCommand;
 
 use crate::field::FieldOpts;
 use crate::style::{
-    Row, RowsCtx, copy, ctrl, ctrl_text, hsla, lead, rows, search_box, skill_copy,
-    skill_list, tog, tokens,
+    Row, RowsCtx, copy, ctrl, ctrl_text, hsla, lead, rows, search_box, skill_copy, skill_list, tog,
+    tokens,
 };
 use crate::view::SettingsView;
 
@@ -62,7 +62,11 @@ fn list_of(s: &Settings, l: List) -> &[String] {
 }
 
 /// Items grouped by bundle name (`fallback` when empty), groups A–Z, items in input order.
-fn by_bundle<T: Clone>(items: &[T], name: impl Fn(&T) -> &str, fallback: &str) -> Vec<(String, Vec<T>)> {
+fn by_bundle<T: Clone>(
+    items: &[T],
+    name: impl Fn(&T) -> &str,
+    fallback: &str,
+) -> Vec<(String, Vec<T>)> {
     let mut groups: Vec<(String, Vec<T>)> = Vec::new();
     for it in items {
         let n = match name(it) {
@@ -101,7 +105,11 @@ pub fn command_groups(cmds: &[RegisteredCommand]) -> Vec<(String, Vec<Registered
     meta.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| locale_compare(&a.0, &b.0)));
     meta.into_iter()
         .map(|(cat, _, mut list)| {
-            list.sort_by(|a, b| a.order.cmp(&b.order).then_with(|| locale_compare(&a.label, &b.label)));
+            list.sort_by(|a, b| {
+                a.order
+                    .cmp(&b.order)
+                    .then_with(|| locale_compare(&a.label, &b.label))
+            });
             (cat, list)
         })
         .collect()
@@ -127,7 +135,12 @@ pub fn grammar_groups(list: &[GrammarInfo], query: &str) -> Vec<(String, Vec<Gra
         .iter()
         .filter(|g| {
             q.is_empty() || {
-                let mut hay = vec![grammar_title(g), g.scope_name.clone(), g.id.clone(), g.bundle_name.clone()];
+                let mut hay = vec![
+                    grammar_title(g),
+                    g.scope_name.clone(),
+                    g.id.clone(),
+                    g.bundle_name.clone(),
+                ];
                 hay.extend(g.file_types.iter().cloned());
                 hay.join(" ").to_lowercase().contains(&q)
             }
@@ -135,8 +148,11 @@ pub fn grammar_groups(list: &[GrammarInfo], query: &str) -> Vec<(String, Vec<Gra
         .cloned()
         .collect();
     items.sort_by(|a, b| {
-        locale_compare(&grammar_title(a).to_lowercase(), &grammar_title(b).to_lowercase())
-            .then_with(|| locale_compare(&a.id, &b.id))
+        locale_compare(
+            &grammar_title(a).to_lowercase(),
+            &grammar_title(b).to_lowercase(),
+        )
+        .then_with(|| locale_compare(&a.id, &b.id))
     });
     by_bundle(&items, |g| &g.bundle_name, "Grammars")
 }
@@ -204,7 +220,11 @@ pub fn snippet_groups(
         })
         .cloned()
         .collect();
-    by_bundle(&items, |s| s.bundle_name.as_deref().unwrap_or(""), "Snippets")
+    by_bundle(
+        &items,
+        |s| s.bundle_name.as_deref().unwrap_or(""),
+        "Snippets",
+    )
 }
 
 /// `promptGroups`: by slash then name, grouped by bundle.
@@ -212,7 +232,9 @@ pub fn prompt_groups(
     list: &[recur_services::api::PromptActionInfo],
 ) -> Vec<(String, Vec<recur_services::api::PromptActionInfo>)> {
     let mut items = list.to_vec();
-    items.sort_by(|a, b| locale_compare(&a.slash, &b.slash).then_with(|| locale_compare(&a.name, &b.name)));
+    items.sort_by(|a, b| {
+        locale_compare(&a.slash, &b.slash).then_with(|| locale_compare(&a.name, &b.name))
+    });
     by_bundle(&items, |p| &p.bundle_name, "Prompts")
 }
 
@@ -260,17 +282,45 @@ impl SettingsView {
     }
 
     /// A loading / error / empty note in place of the list.
-    fn state_note(&self, id: &str, loading: bool, err: &str, loading_msg: &str, window: &Window, cx: &App) -> Option<AnyElement> {
+    fn state_note(
+        &self,
+        id: &str,
+        loading: bool,
+        err: &str,
+        loading_msg: &str,
+        window: &Window,
+        cx: &App,
+    ) -> Option<AnyElement> {
         if loading {
-            return Some(ctrl_text(SharedString::from(format!("{id}-msg")), vec![span(loading_msg.to_string())], window, cx).into_any_element());
+            return Some(
+                ctrl_text(
+                    SharedString::from(format!("{id}-msg")),
+                    vec![span(loading_msg.to_string())],
+                    window,
+                    cx,
+                )
+                .into_any_element(),
+            );
         }
         if !err.is_empty() {
-            return Some(ctrl_text(SharedString::from(format!("{id}-msg")), vec![span(err.to_string())], window, cx).into_any_element());
+            return Some(
+                ctrl_text(
+                    SharedString::from(format!("{id}-msg")),
+                    vec![span(err.to_string())],
+                    window,
+                    cx,
+                )
+                .into_any_element(),
+            );
         }
         None
     }
 
-    pub(crate) fn commands_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn commands_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = tokens(cx);
         let mut out = settings_groups().child(lead(
             "cmds-lead",
@@ -279,17 +329,34 @@ impl SettingsView {
             )],
             cx,
         ));
-        if let Some(n) = self.state_note("cmds", self.cmds.loading, &self.cmds.err, "Loading commands…", window, cx) {
+        if let Some(n) = self.state_note(
+            "cmds",
+            self.cmds.loading,
+            &self.cmds.err,
+            "Loading commands…",
+            window,
+            cx,
+        ) {
             return out.child(n).into_any_element();
         }
         let groups = command_groups(&self.cmds.rows);
         if groups.is_empty() && self.skips.is_empty() {
             return out
-                .child(ctrl_text("cmds-msg", vec![span("No bundle commands discovered.")], window, cx))
+                .child(ctrl_text(
+                    "cmds-msg",
+                    vec![span("No bundle commands discovered.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
         if groups.is_empty() {
-            out = out.child(ctrl_text("cmds-msg", vec![span("No loadable bundle commands.")], window, cx));
+            out = out.child(ctrl_text(
+                "cmds-msg",
+                vec![span("No loadable bundle commands.")],
+                window,
+                cx,
+            ));
         }
         for (cat, cmds) in groups {
             let mut list = Vec::new();
@@ -358,7 +425,9 @@ impl SettingsView {
             out = out.child(
                 settings_group("grp-skips", "Skipped packs")
                     .blurb_spans(vec![
-                        span("These directories were found but not loaded. Fix the manifest or run "),
+                        span(
+                            "These directories were found but not loaded. Fix the manifest or run ",
+                        ),
                         recur_ui::widgets::blurb_code("recur bundles lint"),
                         span("."),
                     ])
@@ -368,7 +437,11 @@ impl SettingsView {
         out.into_any_element()
     }
 
-    pub(crate) fn prompts_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn prompts_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let mut out = settings_groups().child(lead(
             "prompts-lead",
             vec![span(
@@ -376,13 +449,25 @@ impl SettingsView {
             )],
             cx,
         ));
-        if let Some(n) = self.state_note("prompts", self.prompts.loading, &self.prompts.err, "Loading prompt actions…", window, cx) {
+        if let Some(n) = self.state_note(
+            "prompts",
+            self.prompts.loading,
+            &self.prompts.err,
+            "Loading prompt actions…",
+            window,
+            cx,
+        ) {
             return out.child(n).into_any_element();
         }
         let groups = prompt_groups(&self.prompts.rows);
         if groups.is_empty() {
             return out
-                .child(ctrl_text("prompts-msg", vec![span("No prompt actions discovered.")], window, cx))
+                .child(ctrl_text(
+                    "prompts-msg",
+                    vec![span("No prompt actions discovered.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
         for (bundle, items) in groups {
@@ -395,47 +480,106 @@ impl SettingsView {
                 } else {
                     None
                 };
-                let copy = skill_copy(&format!("prompt-{}", p.id), format!("/{}", p.slash), d, None, cx);
+                let copy = skill_copy(
+                    &format!("prompt-{}", p.id),
+                    format!("/{}", p.slash),
+                    d,
+                    None,
+                    cx,
+                );
                 let toggle = self.bundle_tog(List::Prompts, &p.id, &format!("/{}", p.slash), cx);
-                list.push((copy, vec![div().flex_none().mt(px(2.)).child(toggle).into_any_element()]));
+                list.push((
+                    copy,
+                    vec![
+                        div()
+                            .flex_none()
+                            .mt(px(2.))
+                            .child(toggle)
+                            .into_any_element(),
+                    ],
+                ));
             }
             out = out.child(
-                settings_group(SharedString::from(format!("grp-prompt-{bundle}")), bundle.clone())
-                    .child(skill_list(list, cx)),
+                settings_group(
+                    SharedString::from(format!("grp-prompt-{bundle}")),
+                    bundle.clone(),
+                )
+                .child(skill_list(list, cx)),
             );
         }
         out.into_any_element()
     }
 
     /// The search pill over a bundle list.
-    fn list_search(&mut self, key: &str, placeholder: &str, label: &'static str, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn list_search(
+        &mut self,
+        key: &str,
+        placeholder: &str,
+        label: &'static str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let input = self.field(key, FieldOpts::default(), window, cx);
         div()
             .debug_selector(move || format!("inp:{label}"))
-            .child(search_box(&input, &placeholder.to_string().into(), window, cx))
+            .child(search_box(
+                &input,
+                &placeholder.to_string().into(),
+                window,
+                cx,
+            ))
             .into_any_element()
     }
 
-    pub(crate) fn grammars_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn grammars_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let mut out = settings_groups().child(lead(
             "grammars-lead",
-            vec![span("Syntax highlighting. Off grammars are not used for those file types.")],
+            vec![span(
+                "Syntax highlighting. Off grammars are not used for those file types.",
+            )],
             cx,
         ));
-        if let Some(n) = self.state_note("grammars", self.grammars.loading, &self.grammars.err, "Loading grammars…", window, cx) {
+        if let Some(n) = self.state_note(
+            "grammars",
+            self.grammars.loading,
+            &self.grammars.err,
+            "Loading grammars…",
+            window,
+            cx,
+        ) {
             return out.child(n).into_any_element();
         }
         if self.grammars.rows.is_empty() {
             return out
-                .child(ctrl_text("grammars-msg", vec![span("No grammars discovered.")], window, cx))
+                .child(ctrl_text(
+                    "grammars-msg",
+                    vec![span("No grammars discovered.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
-        out = out.child(self.list_search("grammar-q", "Search grammars", "Search grammars", window, cx));
+        out = out.child(self.list_search(
+            "grammar-q",
+            "Search grammars",
+            "Search grammars",
+            window,
+            cx,
+        ));
         let q = self.field_value("grammar-q", cx);
         let groups = grammar_groups(&self.grammars.rows, &q);
         if groups.is_empty() {
             return out
-                .child(ctrl_text("grammars-msg", vec![span("No grammars match.")], window, cx))
+                .child(ctrl_text(
+                    "grammars-msg",
+                    vec![span("No grammars match.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
         for (bundle, items) in groups {
@@ -445,19 +589,31 @@ impl SettingsView {
                 let blurb = g.file_types.join(", ");
                 list.push(
                     Row::new()
-                        .child(copy(&g.id, title.clone(), (!blurb.is_empty()).then(|| vec![span(blurb)]), cx))
+                        .child(copy(
+                            &g.id,
+                            title.clone(),
+                            (!blurb.is_empty()).then(|| vec![span(blurb)]),
+                            cx,
+                        ))
                         .child(ctrl().child(self.bundle_tog(List::Grammars, &g.id, &title, cx))),
                 );
             }
             out = out.child(
-                settings_group(SharedString::from(format!("grp-grammar-{bundle}")), bundle.clone())
-                    .child(rows(IN_GROUP, list, window, cx)),
+                settings_group(
+                    SharedString::from(format!("grp-grammar-{bundle}")),
+                    bundle.clone(),
+                )
+                .child(rows(IN_GROUP, list, window, cx)),
             );
         }
         out.into_any_element()
     }
 
-    pub(crate) fn themes_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn themes_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let mut out = settings_groups().child(lead(
             "themes-lead",
             vec![span(
@@ -465,26 +621,53 @@ impl SettingsView {
             )],
             cx,
         ));
-        if let Some(n) = self.state_note("themes", self.themes.loading, &self.themes.err, "Loading themes…", window, cx) {
+        if let Some(n) = self.state_note(
+            "themes",
+            self.themes.loading,
+            &self.themes.err,
+            "Loading themes…",
+            window,
+            cx,
+        ) {
             return out.child(n).into_any_element();
         }
         if self.themes.rows.is_empty() {
             return out
-                .child(ctrl_text("themes-msg", vec![span("No themes discovered.")], window, cx))
+                .child(ctrl_text(
+                    "themes-msg",
+                    vec![span("No themes discovered.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
-        out = out.child(self.list_search("theme-q", "Search themes", "Search bundle themes", window, cx));
+        out = out.child(self.list_search(
+            "theme-q",
+            "Search themes",
+            "Search bundle themes",
+            window,
+            cx,
+        ));
         let q = self.field_value("theme-q", cx);
         let groups = theme_groups(&self.themes.rows, &q);
         if groups.is_empty() {
             return out
-                .child(ctrl_text("themes-msg", vec![span("No themes match.")], window, cx))
+                .child(ctrl_text(
+                    "themes-msg",
+                    vec![span("No themes match.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
         for (bundle, items) in groups {
             let mut list = Vec::new();
             for th in items {
-                let kind = if th.ui_theme == "light" { "Light" } else { "Dark" };
+                let kind = if th.ui_theme == "light" {
+                    "Light"
+                } else {
+                    "Dark"
+                };
                 list.push(
                     Row::new()
                         .child(copy(&th.id, th.name.clone(), Some(vec![span(kind)]), cx))
@@ -492,14 +675,21 @@ impl SettingsView {
                 );
             }
             out = out.child(
-                settings_group(SharedString::from(format!("grp-theme-{bundle}")), bundle.clone())
-                    .child(rows(IN_GROUP, list, window, cx)),
+                settings_group(
+                    SharedString::from(format!("grp-theme-{bundle}")),
+                    bundle.clone(),
+                )
+                .child(rows(IN_GROUP, list, window, cx)),
             );
         }
         out.into_any_element()
     }
 
-    pub(crate) fn snippets_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn snippets_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let mut out = settings_groups().child(lead(
             "snippets-lead",
             vec![span(
@@ -507,20 +697,43 @@ impl SettingsView {
             )],
             cx,
         ));
-        if let Some(n) = self.state_note("snippets", self.snippets.loading, &self.snippets.err, "Loading snippets…", window, cx) {
+        if let Some(n) = self.state_note(
+            "snippets",
+            self.snippets.loading,
+            &self.snippets.err,
+            "Loading snippets…",
+            window,
+            cx,
+        ) {
             return out.child(n).into_any_element();
         }
         if self.snippets.rows.is_empty() {
             return out
-                .child(ctrl_text("snippets-msg", vec![span("No snippets discovered.")], window, cx))
+                .child(ctrl_text(
+                    "snippets-msg",
+                    vec![span("No snippets discovered.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
-        out = out.child(self.list_search("snippet-q", "Search snippets", "Search snippets", window, cx));
+        out = out.child(self.list_search(
+            "snippet-q",
+            "Search snippets",
+            "Search snippets",
+            window,
+            cx,
+        ));
         let q = self.field_value("snippet-q", cx);
         let groups = snippet_groups(&self.snippets.rows, &q);
         if groups.is_empty() {
             return out
-                .child(ctrl_text("snippets-msg", vec![span("No snippets match.")], window, cx))
+                .child(ctrl_text(
+                    "snippets-msg",
+                    vec![span("No snippets match.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
         for (bundle, items) in groups {
@@ -534,20 +747,27 @@ impl SettingsView {
                 control = control.child(self.bundle_tog(List::Snippets, &s.id, &s.label, cx));
                 list.push(
                     Row::new()
-                        .child(copy(&s.id, s.label.clone(), (!blurb.is_empty()).then(|| vec![span(blurb)]), cx))
+                        .child(copy(
+                            &s.id,
+                            s.label.clone(),
+                            (!blurb.is_empty()).then(|| vec![span(blurb)]),
+                            cx,
+                        ))
                         .child(control),
                 );
             }
             out = out.child(
-                settings_group(SharedString::from(format!("grp-snippet-{bundle}")), bundle.clone())
-                    .child(rows(IN_GROUP, list, window, cx)),
+                settings_group(
+                    SharedString::from(format!("grp-snippet-{bundle}")),
+                    bundle.clone(),
+                )
+                .child(rows(IN_GROUP, list, window, cx)),
             );
         }
         out.into_any_element()
     }
 
     pub(crate) fn lsp_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-
         let out = settings_groups().child(lead(
             "lsp-lead",
             vec![span(
@@ -555,12 +775,24 @@ impl SettingsView {
             )],
             cx,
         ));
-        if let Some(n) = self.state_note("lsp", self.lsp.loading, &self.lsp.err, "Loading language servers…", window, cx) {
+        if let Some(n) = self.state_note(
+            "lsp",
+            self.lsp.loading,
+            &self.lsp.err,
+            "Loading language servers…",
+            window,
+            cx,
+        ) {
             return out.child(n).into_any_element();
         }
         if self.lsp.rows.is_empty() {
             return out
-                .child(ctrl_text("lsp-msg", vec![span("No language servers discovered.")], window, cx))
+                .child(ctrl_text(
+                    "lsp-msg",
+                    vec![span("No language servers discovered.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
         let mut list = Vec::new();
@@ -587,7 +819,11 @@ impl SettingsView {
                             .flex_1()
                             .min_w_0()
                             .child(title_text)
-                            .child(crate::style::desc(SharedString::from(format!("lsp-desc-{}", ls.id)), vec![span(d)], cx)),
+                            .child(crate::style::desc(
+                                SharedString::from(format!("lsp-desc-{}", ls.id)),
+                                vec![span(d)],
+                                cx,
+                            )),
                     )
                     .child(ctrl().child(self.bundle_tog(List::Lsp, &ls.id, &ls.id, cx))),
             );
@@ -610,7 +846,11 @@ impl SettingsView {
         let services = self.vcx.services.clone();
         cx.spawn(async move |this, cx| {
             let cmds = all.await;
-            let skips = services.bundle.list_skipped_bundles().await.unwrap_or_default();
+            let skips = services
+                .bundle
+                .list_skipped_bundles()
+                .await
+                .unwrap_or_default();
             let _ = this.update(cx, |this, cx| {
                 if this.fx.live("section", g) {
                     this.cmds.rows = cmds;
@@ -627,7 +867,8 @@ impl SettingsView {
         self.prompts.loading = true;
         self.prompts.err.clear();
         let epoch = self.vcx.state.read(cx).bundles_epoch;
-        let load = recur_view_chat::prompt_actions::PromptCatalog::load(&self.vcx.services, epoch, cx);
+        let load =
+            recur_view_chat::prompt_actions::PromptCatalog::load(&self.vcx.services, epoch, cx);
         cx.spawn(async move |this, cx| {
             let list = load.await;
             let _ = this.update(cx, |this, cx| {
@@ -700,17 +941,19 @@ impl SettingsView {
                     let mut out: Vec<_> = l
                         .iter()
                         .map(|s| {
-                            recur_editor::snippet::RegisteredSnippet::from_info(&recur_editor::snippet::SnippetInfo {
-                                id: s.id.clone(),
-                                name: s.name.clone(),
-                                tab_trigger: s.tab_trigger.clone(),
-                                scope: s.scope.clone(),
-                                file_glob: s.file_glob.clone(),
-                                body: s.body.clone(),
-                                order: s.order,
-                                bundle_name: s.bundle_name.clone(),
-                                key_equivalent: s.key_equivalent.clone(),
-                            })
+                            recur_editor::snippet::RegisteredSnippet::from_info(
+                                &recur_editor::snippet::SnippetInfo {
+                                    id: s.id.clone(),
+                                    name: s.name.clone(),
+                                    tab_trigger: s.tab_trigger.clone(),
+                                    scope: s.scope.clone(),
+                                    file_glob: s.file_glob.clone(),
+                                    body: s.body.clone(),
+                                    order: s.order,
+                                    bundle_name: s.bundle_name.clone(),
+                                    key_equivalent: s.key_equivalent.clone(),
+                                },
+                            )
                         })
                         .collect();
                     recur_editor::snippet::sort_snippets(&mut out);
@@ -825,7 +1068,12 @@ mod tests {
         };
         let list = vec![
             g("recur.languages.go", "go", "Languages", &["go"]),
-            g("recur.languages.ts", "TypeScript", "Languages", &["ts", "tsx"]),
+            g(
+                "recur.languages.ts",
+                "TypeScript",
+                "Languages",
+                &["ts", "tsx"],
+            ),
             g("x.toml", "", "Extras", &["toml"]),
         ];
         let groups = grammar_groups(&list, "");
@@ -842,7 +1090,12 @@ mod tests {
             ..Default::default()
         };
         let themes = theme_groups(
-            &[th("z", "Zebra", 0), th("b", "Beta", 20), th("a", "Alpha", 10), th("y", "Ash", 0)],
+            &[
+                th("z", "Zebra", 0),
+                th("b", "Beta", 20),
+                th("a", "Alpha", 10),
+                th("y", "Ash", 0),
+            ],
             "",
         );
         let ids: Vec<&str> = themes[0].1.iter().map(|t| t.id.as_str()).collect();
@@ -866,7 +1119,11 @@ mod tests {
             bundle_name: bundle.into(),
             ..Default::default()
         };
-        let groups = prompt_groups(&[p("2", "review", "Chat"), p("1", "commit", "Chat"), p("3", "x", "")]);
+        let groups = prompt_groups(&[
+            p("2", "review", "Chat"),
+            p("1", "commit", "Chat"),
+            p("3", "x", ""),
+        ]);
         assert_eq!(groups[0].0, "Chat");
         assert_eq!(groups[0].1[0].slash, "commit");
         assert_eq!(groups[1].0, "Prompts");

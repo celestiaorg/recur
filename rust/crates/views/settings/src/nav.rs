@@ -308,7 +308,10 @@ mod tests {
         assert_eq!(g.len(), 1);
         assert_eq!(g[0].items[0].id, Section::Editor);
         let g = filtered_nav("linear");
-        let ids: Vec<Section> = g.iter().flat_map(|g| g.items.iter().map(|i| i.id)).collect();
+        let ids: Vec<Section> = g
+            .iter()
+            .flat_map(|g| g.items.iter().map(|i| i.id))
+            .collect();
         assert_eq!(
             ids,
             [Section::Integrations, Section::Mcp, Section::BundlePrompts]

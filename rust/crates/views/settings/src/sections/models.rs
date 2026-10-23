@@ -101,7 +101,13 @@ fn set_slot(s: &mut Settings, slot: &str, model: Option<String>, flags: FlagMap)
 
 impl SettingsView {
     /// `setModel`.
-    pub(crate) fn set_model(&mut self, slot: &'static str, r: String, f: FlagMap, cx: &mut Context<Self>) {
+    pub(crate) fn set_model(
+        &mut self,
+        slot: &'static str,
+        r: String,
+        f: FlagMap,
+        cx: &mut Context<Self>,
+    ) {
         self.patch(false, move |s| set_slot(s, slot, Some(r), f), cx)
             .detach();
     }
@@ -118,10 +124,7 @@ impl SettingsView {
     /// The Models effect: the catalog, re-fetched when provider readiness or the catalog
     /// revision changes.
     pub(crate) fn load_models(&mut self, g: u64, cx: &mut Context<Self>) {
-        let load = self
-            .vcx
-            .state
-            .update(cx, |s, cx| s.load_model_catalog(cx));
+        let load = self.vcx.state.update(cx, |s, cx| s.load_model_catalog(cx));
         cx.spawn(async move |this, cx| {
             let models = load.await;
             let _ = this.update(cx, |this, cx| {
@@ -170,17 +173,23 @@ impl SettingsView {
         let t = tokens(cx);
         Row::new()
             .child(copy(slot, title, Some(vec![span(desc)]), cx))
-            .child(ctrl().child(
-                card(t.pane, t.line, 9.)
-                    .flex()
-                    .items_center()
-                    .min_w_0()
-                    .p(px(3.))
-                    .child(picker),
-            ))
+            .child(
+                ctrl().child(
+                    card(t.pane, t.line, 9.)
+                        .flex()
+                        .items_center()
+                        .min_w_0()
+                        .p(px(3.))
+                        .child(picker),
+                ),
+            )
     }
 
-    pub(crate) fn models_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn models_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let Some(s) = self.settings(cx).cloned() else {
             return div().into_any_element();
         };

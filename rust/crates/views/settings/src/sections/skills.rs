@@ -1,8 +1,8 @@
 //! Skills: turn Recur and personal skills on or off (projects override these).
 
 use gpui_kit::{
-    AnyElement, Context, IntoElement, ParentElement, SharedString,
-    StatefulInteractiveElement, Styled, Window, px,
+    AnyElement, Context, IntoElement, ParentElement, SharedString, StatefulInteractiveElement,
+    Styled, Window, px,
 };
 use recur_code::view::skills::{
     SkillKind, map_skill_rows, skill_kind, skill_location, toggle_disabled_name,
@@ -14,7 +14,11 @@ use crate::style::{ctrl_text, lead, skill_copy, skill_list, tog};
 use crate::view::SettingsView;
 
 impl SettingsView {
-    pub(crate) fn skills_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn skills_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let mut out = settings_groups().child(lead(
             "skills-lead",
             vec![span(
@@ -24,7 +28,12 @@ impl SettingsView {
         ));
         if self.skills.loading {
             return out
-                .child(ctrl_text("skills-msg", vec![span("Loading skills…")], window, cx))
+                .child(ctrl_text(
+                    "skills-msg",
+                    vec![span("Loading skills…")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
         if !self.skills.err.is_empty() {
@@ -42,7 +51,8 @@ impl SettingsView {
                 user.push(s.clone());
             }
         }
-        let by_name = |a: &recur_code::view::skills::SkillRow, b: &recur_code::view::skills::SkillRow| {
+        let by_name = |a: &recur_code::view::skills::SkillRow,
+                       b: &recur_code::view::skills::SkillRow| {
             recur_editor::text::locale_compare(&a.name, &b.name)
         };
         recur.sort_by(by_name);
@@ -58,7 +68,12 @@ impl SettingsView {
         ];
         if groups.iter().all(|g| g.3.is_empty()) {
             return out
-                .child(ctrl_text("skills-msg", vec![span("No skills found yet.")], window, cx))
+                .child(ctrl_text(
+                    "skills-msg",
+                    vec![span("No skills found yet.")],
+                    window,
+                    cx,
+                ))
                 .into_any_element();
         }
         let disabled = self
@@ -101,7 +116,8 @@ impl SettingsView {
                         this.patch(
                             false,
                             move |s| {
-                                s.disabled_skills = toggle_disabled_name(&s.disabled_skills, &n, !on)
+                                s.disabled_skills =
+                                    toggle_disabled_name(&s.disabled_skills, &n, !on)
                             },
                             cx,
                         )

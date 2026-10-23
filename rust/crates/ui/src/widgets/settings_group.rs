@@ -64,11 +64,7 @@ impl SettingsGroup {
     }
 
     /// Make blurb span `index` an inline link button (a `.lnk` in `blurbContent`).
-    pub fn blurb_link(
-        mut self,
-        index: usize,
-        f: impl Fn(&mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub fn blurb_link(mut self, index: usize, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.blurb_links.push((index, Rc::new(f)));
         self
     }

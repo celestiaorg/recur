@@ -109,9 +109,7 @@ impl Render for SceneView {
             if state.read(cx).booted {
                 self.navigated = true;
                 let section = self.scene.section.clone();
-                cx.defer(move |cx| {
-                    state.update(cx, |s, cx| s.open_settings(Some(&section), cx))
-                });
+                cx.defer(move |cx| state.update(cx, |s, cx| s.open_settings(Some(&section), cx)));
             }
             cx.notify();
         } else if self.frames < 3 {
@@ -148,7 +146,9 @@ fn run_act(act: &str, bridge: &Arc<MockBridge>, cx: &mut App) {
             );
         }
         "keybinding-menu" => {
-            use recur_view_observatory::keybinding_menu::{KeybindingMenuItem, open_keybinding_menu};
+            use recur_view_observatory::keybinding_menu::{
+                KeybindingMenuItem, open_keybinding_menu,
+            };
             let item = |id: &str, label: &str, category: &str, order: i64| KeybindingMenuItem {
                 id: id.into(),
                 label: label.into(),

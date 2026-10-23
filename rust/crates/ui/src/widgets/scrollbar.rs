@@ -164,7 +164,8 @@ pub struct ScrollArea {
     children: Vec<AnyElement>,
 }
 
-type ScrollerStyle = Box<dyn FnOnce(gpui_kit::Stateful<gpui_kit::Div>) -> gpui_kit::Stateful<gpui_kit::Div>>;
+type ScrollerStyle =
+    Box<dyn FnOnce(gpui_kit::Stateful<gpui_kit::Div>) -> gpui_kit::Stateful<gpui_kit::Div>>;
 
 pub fn scroll_area(id: impl Into<ElementId>) -> ScrollArea {
     ScrollArea {
@@ -196,8 +197,7 @@ impl ScrollArea {
     /// items shrink to fit before it scrolls).
     pub fn scroller(
         mut self,
-        f: impl FnOnce(gpui_kit::Stateful<gpui_kit::Div>) -> gpui_kit::Stateful<gpui_kit::Div>
-        + 'static,
+        f: impl FnOnce(gpui_kit::Stateful<gpui_kit::Div>) -> gpui_kit::Stateful<gpui_kit::Div> + 'static,
     ) -> Self {
         self.scroller = Some(Box::new(f));
         self

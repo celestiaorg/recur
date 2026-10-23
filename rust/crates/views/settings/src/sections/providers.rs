@@ -18,8 +18,8 @@ use recur_view_core::{bridge_error_message, call, toast};
 use crate::field::{FieldEvent, FieldOpts};
 use crate::rules::{PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, can_disable_provider};
 use crate::style::{
-    Head, InpStyle, Row, RowsCtx, code, copy, ctrl, desc, desc_text, field_msg, inp, rows,
-    status_head, status_table, tbtn, tbtn_icon, tbtn_label, tog, tokens,
+    Head, InpStyle, Row, RowsCtx, code, copy, ctrl, desc, field_msg, inp, rows, status_head,
+    status_table, tbtn, tbtn_icon, tbtn_label, tog, tokens,
 };
 use crate::view::SettingsView;
 
@@ -35,7 +35,11 @@ fn acct() -> Div {
 }
 
 impl SettingsView {
-    pub(crate) fn providers_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn providers_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let s = self.settings(cx).cloned();
         let claude_on = self.provider_on(PROVIDER_CLAUDE, cx);
         let cursor_on = self.provider_on(PROVIDER_CURSOR, cx);
@@ -69,10 +73,17 @@ impl SettingsView {
         if s.is_some() {
             out = out.child(self.cursor_group(cursor_on, window, cx));
             out = out.child(self.codex_group(codex_on, window, cx));
-            let compat = s.as_ref().map(|s| s.compatible_providers.clone()).unwrap_or_default();
+            let compat = s
+                .as_ref()
+                .map(|s| s.compatible_providers.clone())
+                .unwrap_or_default();
             let disabled = self.disabled_providers(cx);
             for p in compat {
-                let name = if p.name.is_empty() { p.id.clone() } else { p.name.clone() };
+                let name = if p.name.is_empty() {
+                    p.id.clone()
+                } else {
+                    p.name.clone()
+                };
                 let on = provider_enabled(&disabled, &p.id);
                 let card = self.compat_card(&p, window, cx);
                 let testing = self.compat_testing.get(&p.id).copied().unwrap_or(false);
@@ -85,12 +96,21 @@ impl SettingsView {
                 let id = p.id.clone();
                 let this = cx.entity().downgrade();
                 out = out.child(
-                    settings_group(SharedString::from(format!("grp-compat-{}", p.id)), name.clone())
-                        .override_toggle(on, false, Some(format!("Enable {name}").into()), move |on, _, cx| {
+                    settings_group(
+                        SharedString::from(format!("grp-compat-{}", p.id)),
+                        name.clone(),
+                    )
+                    .override_toggle(
+                        on,
+                        false,
+                        Some(format!("Enable {name}").into()),
+                        move |on, _, cx| {
                             let id = id.clone();
-                            let _ = this.update(cx, |this, cx| this.set_provider_enabled(&id, on, cx));
-                        })
-                        .child(card),
+                            let _ =
+                                this.update(cx, |this, cx| this.set_provider_enabled(&id, on, cx));
+                        },
+                    )
+                    .child(card),
                 );
             }
             out = out.child(
@@ -120,7 +140,12 @@ impl SettingsView {
         out.into_any_element()
     }
 
-    fn claude_group(&mut self, on: bool, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn claude_group(
+        &mut self,
+        on: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let st = self.claude_status.clone();
         let mut status = acct();
         if self.claude_busy && st.is_none() {
@@ -140,7 +165,7 @@ impl SettingsView {
                     items.push((dt, dd.clone(), titled));
                 }
             }
-            status = status.child(status_table("claude", items, cx)).child(desc_text(
+            status = status.child(status_table("claude", items, cx)).child(desc(
                 "claude-desc",
                 vec![
                     span("To switch accounts, run "),
@@ -183,18 +208,30 @@ impl SettingsView {
                     span(", then reopen Settings."),
                 ]
             };
-            status = status.child(desc_text("claude-desc", spans, cx));
+            status = status.child(desc("claude-desc", spans, cx));
         }
         let this = cx.entity().downgrade();
         settings_group("grp-claude", "Claude Code")
-            .override_toggle(on, false, Some("Enable Claude Code".into()), move |on, _, cx| {
-                let _ = this.update(cx, |this, cx| this.set_provider_enabled(PROVIDER_CLAUDE, on, cx));
-            })
+            .override_toggle(
+                on,
+                false,
+                Some("Enable Claude Code".into()),
+                move |on, _, cx| {
+                    let _ = this.update(cx, |this, cx| {
+                        this.set_provider_enabled(PROVIDER_CLAUDE, on, cx)
+                    });
+                },
+            )
             .child(rows(SIDES, vec![Row::stack().child(status)], window, cx))
             .into_any_element()
     }
 
-    fn cursor_group(&mut self, on: bool, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn cursor_group(
+        &mut self,
+        on: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = tokens(cx);
         let s = self.settings(cx).cloned().unwrap_or_default();
         let usage = self.cursor_usage(cx).cloned();
@@ -227,30 +264,47 @@ impl SettingsView {
                     .debug_selector(|| "btn:Cancel".into())
                     .on_click(cx.listener(|this, _, _, cx| {
                         let services = this.vcx.services.clone();
-                        cx.background_executor().spawn(async move {
-                            let _ = services.settings.cancel_cursor_usage_connect().await;
-                        })
-                        .detach();
+                        cx.background_executor()
+                            .spawn(async move {
+                                let _ = services.settings.cancel_cursor_usage_connect().await;
+                            })
+                            .detach();
                     })),
             );
         } else if signed_in {
             buttons = buttons
                 .gap(px(8.))
                 .child(
-                    tbtn_label("cursor-reconnect", if busy { "Opening…" } else { "Reconnect" }, busy, cx)
-                        .debug_selector(|| "btn:Reconnect".into())
-                        .when(!busy, |d| d.on_click(cx.listener(|this, _, _, cx| this.connect_cursor(cx)))),
+                    tbtn_label(
+                        "cursor-reconnect",
+                        if busy { "Opening…" } else { "Reconnect" },
+                        busy,
+                        cx,
+                    )
+                    .debug_selector(|| "btn:Reconnect".into())
+                    .when(!busy, |d| {
+                        d.on_click(cx.listener(|this, _, _, cx| this.connect_cursor(cx)))
+                    }),
                 )
                 .child(
                     tbtn_label("cursor-disconnect", "Disconnect", busy, cx)
                         .debug_selector(|| "btn:Disconnect".into())
-                        .when(!busy, |d| d.on_click(cx.listener(|this, _, _, cx| this.disconnect_cursor(cx)))),
+                        .when(!busy, |d| {
+                            d.on_click(cx.listener(|this, _, _, cx| this.disconnect_cursor(cx)))
+                        }),
                 );
         } else {
             buttons = buttons.child(
-                tbtn_label("cursor-connect", if busy { "Opening…" } else { "Connect" }, busy, cx)
-                    .debug_selector(|| "btn:Connect".into())
-                    .when(!busy, |d| d.on_click(cx.listener(|this, _, _, cx| this.connect_cursor(cx)))),
+                tbtn_label(
+                    "cursor-connect",
+                    if busy { "Opening…" } else { "Connect" },
+                    busy,
+                    cx,
+                )
+                .debug_selector(|| "btn:Connect".into())
+                .when(!busy, |d| {
+                    d.on_click(cx.listener(|this, _, _, cx| this.connect_cursor(cx)))
+                }),
             );
         }
         let mut acct_col = acct().child(
@@ -268,8 +322,16 @@ impl SettingsView {
         let (msg, pct) = (self.install_msg.clone(), self.install_pct);
         if sdk_missing {
             let note_text = if installing {
-                let m = if msg.is_empty() { "Installing…".to_string() } else { msg.clone() };
-                if pct >= 0 { format!("{m} · {pct}%") } else { m }
+                let m = if msg.is_empty() {
+                    "Installing…".to_string()
+                } else {
+                    msg.clone()
+                };
+                if pct >= 0 {
+                    format!("{m} · {pct}%")
+                } else {
+                    m
+                }
             } else {
                 "The Cursor SDK is not installed, so Cursor agents cannot run yet. About 50 MB to download.".into()
             };
@@ -286,7 +348,11 @@ impl SettingsView {
                     .py(px(12.))
                     .px(px(13.))
                     .text_color(crate::style::hsla(t.text))
-                    .child(div().flex_none().child(icon(IconName::TriangleAlert).size(px(15.)).color(t.coral)))
+                    .child(
+                        div()
+                            .flex_none()
+                            .child(icon(IconName::TriangleAlert).size(px(15.)).color(t.coral)),
+                    )
                     .child(
                         div().flex_1().min_w_0().child(
                             text(note_text)
@@ -297,9 +363,20 @@ impl SettingsView {
                         ),
                     )
                     .child(
-                        tbtn_label("sdk-note-install", if installing { "Installing…" } else { "Install SDK" }, installing, cx)
-                            .debug_selector(|| "btn:Install SDK".into())
-                            .when(!installing, |d| d.on_click(cx.listener(|this, _, _, cx| this.install_bridge(cx)))),
+                        tbtn_label(
+                            "sdk-note-install",
+                            if installing {
+                                "Installing…"
+                            } else {
+                                "Install SDK"
+                            },
+                            installing,
+                            cx,
+                        )
+                        .debug_selector(|| "btn:Install SDK".into())
+                        .when(!installing, |d| {
+                            d.on_click(cx.listener(|this, _, _, cx| this.install_bridge(cx)))
+                        }),
                     ),
             );
         }
@@ -316,8 +393,16 @@ impl SettingsView {
 
         // SDK row.
         let sdk_desc = if installing {
-            let m = if msg.is_empty() { "Installing…".to_string() } else { msg.clone() };
-            if pct >= 0 { format!("{m} — {pct}%") } else { m }
+            let m = if msg.is_empty() {
+                "Installing…".to_string()
+            } else {
+                msg.clone()
+            };
+            if pct >= 0 {
+                format!("{m} — {pct}%")
+            } else {
+                m
+            }
         } else if let Some(st) = status.as_ref().filter(|s| s.bridge_installed) {
             let mut d = "Installed".to_string();
             if !st.bridge_version.is_empty() {
@@ -334,8 +419,7 @@ impl SettingsView {
         let mut sdk_copy = copy("sdk", "SDK", Some(vec![span(sdk_desc)]), cx);
         if installing && pct >= 0 {
             sdk_copy = sdk_copy.child(
-                progress(pct as f32 / 100., cx)
-                    .debug_selector(move || format!("prog:{pct}")),
+                progress(pct as f32 / 100., cx).debug_selector(move || format!("prog:{pct}")),
             );
         }
         let sdk_label = if installing {
@@ -347,7 +431,11 @@ impl SettingsView {
         } else {
             "Install"
         };
-        let (strict, commits, prs) = (s.cursor_strict_config, s.cursor_attribute_commits, s.cursor_attribute_prs);
+        let (strict, commits, prs) = (
+            s.cursor_strict_config,
+            s.cursor_attribute_commits,
+            s.cursor_attribute_prs,
+        );
         let list = vec![
             Row::stack().child(acct_col),
             Row::new().child(sdk_copy).child(ctrl().child(
@@ -415,7 +503,9 @@ impl SettingsView {
         let this = cx.entity().downgrade();
         settings_group("grp-cursor", "Cursor")
             .override_toggle(on, false, Some("Enable Cursor".into()), move |on, _, cx| {
-                let _ = this.update(cx, |this, cx| this.set_provider_enabled(PROVIDER_CURSOR, on, cx));
+                let _ = this.update(cx, |this, cx| {
+                    this.set_provider_enabled(PROVIDER_CURSOR, on, cx)
+                });
             })
             .child(rows(SIDES, list, window, cx))
             .into_any_element()
@@ -437,9 +527,11 @@ impl SettingsView {
             status = status
                 .child(status_head(Head::Bad, "Not configured", cx))
                 .children(path_table(&st, cx))
-                .child(desc_text(
+                .child(desc(
                     "codex-desc",
-                    vec![span("Add an API key or enable ChatGPT auth below to connect Codex models.")],
+                    vec![span(
+                        "Add an API key or enable ChatGPT auth below to connect Codex models.",
+                    )],
                     cx,
                 ));
         } else if let Some(c) = st.as_ref().filter(|c| c.authenticated) {
@@ -457,7 +549,7 @@ impl SettingsView {
             status = status
                 .child(status_head(Head::Ok, "Connected", cx))
                 .child(status_table("codex", items, cx))
-                .child(desc_text(
+                .child(desc(
                     "codex-desc",
                     vec![
                         span("To switch ChatGPT accounts, run "),
@@ -491,7 +583,7 @@ impl SettingsView {
             status = status
                 .child(status_head(Head::Bad, err, cx))
                 .children(path_table(&st, cx))
-                .child(desc_text("codex-desc", spans, cx));
+                .child(desc("codex-desc", spans, cx));
         }
 
         let chatgpt = s.codex_chat_gpt_auth;
@@ -508,10 +600,20 @@ impl SettingsView {
                     ]),
                     cx,
                 ))
-                .child(ctrl().child(
-                    tog("tog-chatgpt", "toggle Codex ChatGPT auth", chatgpt, false, cx)
-                        .on_click(cx.listener(move |this, _, _, cx| this.toggle_chatgpt(!chatgpt, cx))),
-                )),
+                .child(
+                    ctrl().child(
+                        tog(
+                            "tog-chatgpt",
+                            "toggle Codex ChatGPT auth",
+                            chatgpt,
+                            false,
+                            cx,
+                        )
+                        .on_click(
+                            cx.listener(move |this, _, _, cx| this.toggle_chatgpt(!chatgpt, cx)),
+                        ),
+                    ),
+                ),
         ];
         if !chatgpt {
             let visible = self.codex_key_visible;
@@ -553,9 +655,20 @@ impl SettingsView {
                             tbtn("codex-eye", draft.is_empty(), cx)
                                 .h_auto()
                                 .debug_selector(move || {
-                                    format!("btn:{}", if visible { "Hide API key" } else { "Show API key" })
+                                    format!(
+                                        "btn:{}",
+                                        if visible {
+                                            "Hide API key"
+                                        } else {
+                                            "Show API key"
+                                        }
+                                    )
                                 })
-                                .child(tbtn_icon(if visible { IconName::EyeOff } else { IconName::Eye }))
+                                .child(tbtn_icon(if visible {
+                                    IconName::EyeOff
+                                } else {
+                                    IconName::Eye
+                                }))
                                 .when(!draft.is_empty(), |d| {
                                     d.on_click(cx.listener(|this, _, _, cx| {
                                         this.codex_key_visible = !this.codex_key_visible;
@@ -568,7 +681,9 @@ impl SettingsView {
                                 .h_auto()
                                 .debug_selector(|| "btn:Test".into())
                                 .when(!(testing || draft.is_empty()), |d| {
-                                    d.on_click(cx.listener(|this, _, _, cx| this.test_codex_key(cx)))
+                                    d.on_click(
+                                        cx.listener(|this, _, _, cx| this.test_codex_key(cx)),
+                                    )
                                 }),
                         )
                         .child(
@@ -576,7 +691,9 @@ impl SettingsView {
                                 .h_auto()
                                 .debug_selector(|| "btn:Save".into())
                                 .when(dirty && !testing, |d| {
-                                    d.on_click(cx.listener(|this, _, _, cx| this.save_codex_key(cx)))
+                                    d.on_click(
+                                        cx.listener(|this, _, _, cx| this.save_codex_key(cx)),
+                                    )
                                 }),
                         ),
                 );
@@ -625,22 +742,42 @@ impl SettingsView {
             .map(|c| c.bin_path.clone())
             .filter(|p| !p.is_empty())
             .unwrap_or_else(|| "/path/to/codex".into());
-        let bin = self.bound_field("codex-bin", &s.codex_bin_path, FieldOpts::default(), window, cx);
+        let bin = self.bound_field(
+            "codex-bin",
+            &s.codex_bin_path,
+            FieldOpts::default(),
+            window,
+            cx,
+        );
         list.push(
             Row::stack()
-                .child(div().flex_1().min_w_0().child(crate::style::title("Binary", cx)).child(desc("codex-bin-desc", bin_desc, cx)))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .child(crate::style::title("Binary", cx))
+                        .child(desc("codex-bin-desc", bin_desc, cx)),
+                )
                 .child(
                     div()
                         .flex()
                         .w_full()
                         .debug_selector(|| "inp:Codex binary path".into())
-                        .child(inp(&bin, &bin_placeholder.into(), InpStyle::BASE, window, cx)),
+                        .child(inp(
+                            &bin,
+                            &bin_placeholder.into(),
+                            InpStyle::BASE,
+                            window,
+                            cx,
+                        )),
                 ),
         );
         let this = cx.entity().downgrade();
         settings_group("grp-codex", "Codex")
             .override_toggle(on, false, Some("Enable Codex".into()), move |on, _, cx| {
-                let _ = this.update(cx, |this, cx| this.set_provider_enabled(PROVIDER_CODEX, on, cx));
+                let _ = this.update(cx, |this, cx| {
+                    this.set_provider_enabled(PROVIDER_CODEX, on, cx)
+                });
             })
             .child(rows(SIDES, list, window, cx))
             .into_any_element()
@@ -748,7 +885,9 @@ impl SettingsView {
                 return;
             }
             if let Ok(next) = services.settings.get_settings().await {
-                let live = this.update(cx, |this, _| this.fx.live("cursor", g)).unwrap_or(false);
+                let live = this
+                    .update(cx, |this, _| this.fx.live("cursor", g))
+                    .unwrap_or(false);
                 if live && next.cursor_api_key != prev {
                     cx.update(|cx| state.update(cx, |s, cx| s.set_settings(next, cx)));
                 }
@@ -779,14 +918,20 @@ impl SettingsView {
         let services = self.vcx.services.clone();
         cx.spawn(async move |this, cx| {
             match services.settings.connect_cursor_usage().await {
-                Ok(r) if !r.error.is_empty() => cx.update(|cx| toast(ToastKind::Error, r.error, cx)),
+                Ok(r) if !r.error.is_empty() => {
+                    cx.update(|cx| toast(ToastKind::Error, r.error, cx))
+                }
                 Ok(r) if !r.login_url.is_empty() => {
                     cx.update(|cx| recur_content::links::open_external_url(&r.login_url, cx))
                 }
                 Ok(_) => {}
                 Err(e) => {
                     let m = bridge_error_message(&e);
-                    let m = if m.is_empty() { "Could not start Cursor sign-in".to_string() } else { m };
+                    let m = if m.is_empty() {
+                        "Could not start Cursor sign-in".to_string()
+                    } else {
+                        m
+                    };
                     cx.update(|cx| toast(ToastKind::Error, m, cx));
                 }
             }
@@ -828,7 +973,11 @@ impl SettingsView {
             .await;
             if let Err(e) = res {
                 let m = bridge_error_message(&e);
-                let m = if m.is_empty() { "Could not disconnect Cursor".to_string() } else { m };
+                let m = if m.is_empty() {
+                    "Could not disconnect Cursor".to_string()
+                } else {
+                    m
+                };
                 cx.update(|cx| toast(ToastKind::Error, m, cx));
             }
             let _ = this.update(cx, |this, cx| {
@@ -900,7 +1049,11 @@ impl SettingsView {
     }
 
     /// After a Codex save: re-probe when it saved.
-    fn refresh_codex_after(&mut self, save: gpui_kit::Task<Option<recur_domain::Settings>>, cx: &mut Context<Self>) {
+    fn refresh_codex_after(
+        &mut self,
+        save: gpui_kit::Task<Option<recur_domain::Settings>>,
+        cx: &mut Context<Self>,
+    ) {
         cx.notify();
         let services = self.vcx.services.clone();
         cx.spawn(async move |this, cx| {
@@ -930,7 +1083,11 @@ impl SettingsView {
             let res = services.settings.test_codex_key(&draft, chatgpt).await;
             let msg = match res {
                 Ok(s) if s.authenticated => {
-                    let who = if s.email.is_empty() { s.login_method } else { s.email };
+                    let who = if s.email.is_empty() {
+                        s.login_method
+                    } else {
+                        s.email
+                    };
                     (
                         true,
                         if who.is_empty() {
@@ -940,10 +1097,24 @@ impl SettingsView {
                         },
                     )
                 }
-                Ok(s) => (false, if s.error.is_empty() { "Key was rejected".into() } else { s.error }),
+                Ok(s) => (
+                    false,
+                    if s.error.is_empty() {
+                        "Key was rejected".into()
+                    } else {
+                        s.error
+                    },
+                ),
                 Err(e) => {
                     let m = bridge_error_message(&e);
-                    (false, if m.is_empty() { "Could not reach Codex".into() } else { m })
+                    (
+                        false,
+                        if m.is_empty() {
+                            "Could not reach Codex".into()
+                        } else {
+                            m
+                        },
+                    )
                 }
             };
             let _ = this.update(cx, |this, cx| {
@@ -956,14 +1127,21 @@ impl SettingsView {
     }
 
     /// Codex field events.
-    pub(crate) fn codex_field(&mut self, key: &str, ev: FieldEvent, value: String, cx: &mut Context<Self>) {
+    pub(crate) fn codex_field(
+        &mut self,
+        key: &str,
+        ev: FieldEvent,
+        value: String,
+        cx: &mut Context<Self>,
+    ) {
         match (key, ev) {
             ("codex-key", FieldEvent::Input) => {
                 self.codex_key_dirty = true;
                 self.codex_key_test = None;
             }
             ("codex-bin", FieldEvent::Change) => {
-                self.patch(true, move |s| s.codex_bin_path = value, cx).detach();
+                self.patch(true, move |s| s.codex_bin_path = value, cx)
+                    .detach();
             }
             _ => {}
         }
@@ -973,7 +1151,11 @@ impl SettingsView {
 
     /// `updateCompatible`: a change that leaves no model id keeps the saved models (or saves
     /// nothing when there were none).
-    pub(crate) fn update_compatible(&mut self, mut next: CompatibleProvider, cx: &mut Context<Self>) {
+    pub(crate) fn update_compatible(
+        &mut self,
+        mut next: CompatibleProvider,
+        cx: &mut Context<Self>,
+    ) {
         let list = self
             .settings(cx)
             .map(|s| s.compatible_providers.clone())
@@ -990,14 +1172,19 @@ impl SettingsView {
             .into_iter()
             .map(|p| if p.id == next.id { next.clone() } else { p })
             .collect();
-        self.patch(true, move |s| s.compatible_providers = list, cx).detach();
+        self.patch(true, move |s| s.compatible_providers = list, cx)
+            .detach();
     }
 
     pub(crate) fn remove_compatible(&mut self, id: &str, cx: &mut Context<Self>) {
         let id = id.to_string();
         let keep = id.clone();
-        self.patch(true, move |s| s.compatible_providers.retain(|p| p.id != keep), cx)
-            .detach();
+        self.patch(
+            true,
+            move |s| s.compatible_providers.retain(|p| p.id != keep),
+            cx,
+        )
+        .detach();
         self.compat_test.remove(&id);
         cx.notify();
     }
@@ -1018,10 +1205,24 @@ impl SettingsView {
             let res = services.settings.test_compatible_provider(&p).await;
             let msg = match res {
                 Ok(r) if r.ok => (true, "Connected".to_string()),
-                Ok(r) => (false, if r.error.is_empty() { "Could not reach endpoint".into() } else { r.error }),
+                Ok(r) => (
+                    false,
+                    if r.error.is_empty() {
+                        "Could not reach endpoint".into()
+                    } else {
+                        r.error
+                    },
+                ),
                 Err(e) => {
                     let m = bridge_error_message(&e);
-                    (false, if m.is_empty() { "Could not reach endpoint".into() } else { m })
+                    (
+                        false,
+                        if m.is_empty() {
+                            "Could not reach endpoint".into()
+                        } else {
+                            m
+                        },
+                    )
                 }
             };
             let _ = this.update(cx, |this, cx| {

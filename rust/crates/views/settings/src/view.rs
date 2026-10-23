@@ -17,12 +17,10 @@ use recur_services::api::{
     PromptActionInfo, ThemeInfo,
 };
 use recur_ui::fonts::weight;
+use recur_ui::icon;
 use recur_ui::text::{TextStyled, text};
 use recur_ui::widgets::{Select, SelectEvent, ToastKind};
-use recur_ui::icon;
-use recur_view_chat::pickers::{
-    LoopPolicyEvent, LoopPolicyPickers, ModelPickers, PickerEvent,
-};
+use recur_view_chat::pickers::{LoopPolicyEvent, LoopPolicyPickers, ModelPickers, PickerEvent};
 use recur_view_core::commands::RegisteredCommand;
 use recur_view_core::models::{CatalogModel, provider_enabled};
 use recur_view_core::{ViewContext, ViewName, call, toast};
@@ -32,9 +30,7 @@ use crate::compatible::modal::{CompatibleProviderModal, ModalEvent};
 use crate::field::{Field, FieldEvent, FieldOpts};
 use crate::mono_fonts::MonoFont;
 use crate::nav::{Section, filtered_nav, section_after_filter};
-use crate::rules::{
-    PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, compatible_configured,
-};
+use crate::rules::{PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, compatible_configured};
 use crate::style::{hsla, narrow, search_box, tokens};
 
 /// A list loaded for a pane: rows, the loading flag and the error text.
@@ -249,13 +245,15 @@ impl SettingsView {
             cx.notify();
         })];
         for (i, p) in model_pickers.iter().enumerate() {
-            subs.push(cx.subscribe(p, move |this: &mut Self, _, ev: &PickerEvent, cx| {
-                let slot = MODEL_SLOTS[i];
-                match ev {
-                    PickerEvent::Model(r, f) => this.set_model(slot, r.clone(), f.clone(), cx),
-                    PickerEvent::Flags(f) => this.set_flags(slot, f.clone(), cx),
-                }
-            }));
+            subs.push(
+                cx.subscribe(p, move |this: &mut Self, _, ev: &PickerEvent, cx| {
+                    let slot = MODEL_SLOTS[i];
+                    match ev {
+                        PickerEvent::Model(r, f) => this.set_model(slot, r.clone(), f.clone(), cx),
+                        PickerEvent::Flags(f) => this.set_flags(slot, f.clone(), cx),
+                    }
+                }),
+            );
         }
         subs.push(cx.subscribe(
             &loop_pickers,
@@ -270,12 +268,14 @@ impl SettingsView {
                 }
             },
         ));
-        subs.push(cx.subscribe(&font_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
-            if let SelectEvent::Change(v) = ev {
-                let v = v.to_string();
-                this.set_editor_prefs(|p| p.font_face = v, cx);
-            }
-        }));
+        subs.push(
+            cx.subscribe(&font_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
+                if let SelectEvent::Change(v) = ev {
+                    let v = v.to_string();
+                    this.set_editor_prefs(|p| p.font_face = v, cx);
+                }
+            }),
+        );
         subs.push(cx.subscribe(
             &term_font_select,
             |this: &mut Self, _, ev: &SelectEvent, cx| {
@@ -718,7 +718,13 @@ impl SettingsView {
         }
     }
 
-    fn field_event(&mut self, key: &str, ev: FieldEvent, window: &mut Window, cx: &mut Context<Self>) {
+    fn field_event(
+        &mut self,
+        key: &str,
+        ev: FieldEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         match ev {
             FieldEvent::Focus => {
                 if let Some(f) = self.fields.get_mut(key) {
@@ -726,10 +732,7 @@ impl SettingsView {
                 }
             }
             FieldEvent::Change => {
-                let changed = self
-                    .fields
-                    .get_mut(key)
-                    .is_some_and(|f| f.take_change(cx));
+                let changed = self.fields.get_mut(key).is_some_and(|f| f.take_change(cx));
                 if !changed {
                     return;
                 }
@@ -782,7 +785,10 @@ impl SettingsView {
                 let (hover, on_bg) = if light {
                     (recur_ui::rgba(0, 0, 0, 0.04), recur_ui::rgba(0, 0, 0, 0.07))
                 } else {
-                    (recur_ui::rgba(255, 255, 255, 0.03), recur_ui::rgba(255, 255, 255, 0.06))
+                    (
+                        recur_ui::rgba(255, 255, 255, 0.03),
+                        recur_ui::rgba(255, 255, 255, 0.06),
+                    )
                 };
                 let label = item.label;
                 list = list.child(
@@ -815,16 +821,16 @@ impl SettingsView {
                                 .opacity(0.85)
                                 .child(icon(item.icon).size(px(15.))),
                         )
-                        .child(recur_ui::style::button_label(
-                            label,
-                            12.5,
-                            weight::REGULAR,
-                        )),
+                        .child(recur_ui::style::button_label(label, 12.5, weight::REGULAR)),
                 );
             }
         }
         let bg = t.pane.mix(0.72, t.bg);
-        let (w, pad_y, pad_x) = if narrow { (188., 12., 8.) } else { (220., 14., 12.) };
+        let (w, pad_y, pad_x) = if narrow {
+            (188., 12., 8.)
+        } else {
+            (220., 14., 12.)
+        };
         div()
             .flex_none()
             .w(px(w))
@@ -894,19 +900,15 @@ impl Render for SettingsView {
                     recur_ui::widgets::scroll_area("set-main")
                         .track(&self.main_scroll)
                         .child(
-                            div()
-                                .flex()
-                                .flex_col()
-                                .child(head)
-                                .child(
-                                    div()
-                                        .debug_selector(|| "set-body".into())
-                                        .max_w(px(760.))
-                                        .pt(px(8.))
-                                        .px(px(pad_x))
-                                        .pb(px(36.))
-                                        .child(body),
-                                ),
+                            div().flex().flex_col().child(head).child(
+                                div()
+                                    .debug_selector(|| "set-body".into())
+                                    .max_w(px(760.))
+                                    .pt(px(8.))
+                                    .px(px(pad_x))
+                                    .pb(px(36.))
+                                    .child(body),
+                            ),
                         ),
                 ),
             )
@@ -918,7 +920,12 @@ impl SettingsView {
     pub fn open_compat_modal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let taken: Vec<String> = self
             .settings(cx)
-            .map(|s| s.compatible_providers.iter().map(|p| p.id.clone()).collect())
+            .map(|s| {
+                s.compatible_providers
+                    .iter()
+                    .map(|p| p.id.clone())
+                    .collect()
+            })
             .unwrap_or_default();
         let services = self.vcx.services.clone();
         let modal = cx.new(|cx| CompatibleProviderModal::new(taken, services, window, cx));
@@ -945,7 +952,8 @@ impl SettingsView {
             cx.notify();
         });
         self._subs.push(sub);
-        window.focus(&modal.focus_handle(cx), cx);
+        let first = modal.read(cx).initial_focus(cx);
+        window.focus(&first, cx);
         cx.set_global(crate::ModalSlot(Some(modal.clone().into())));
         self.compat_modal = Some(modal);
         cx.notify();
@@ -971,11 +979,14 @@ impl SettingsView {
         let services = self.vcx.services.clone();
         let card = cx.new(|cx| CompatibleProviderCard::new(p.clone(), services, window, cx));
         let id = p.id.clone();
-        let sub = cx.subscribe(&card, move |this: &mut Self, _, ev: &CardEvent, cx| match ev {
-            CardEvent::Change(next) => this.update_compatible(next.clone(), cx),
-            CardEvent::Test => this.test_compatible(&id, cx),
-            CardEvent::Remove => this.remove_compatible(&id, cx),
-        });
+        let sub = cx.subscribe(
+            &card,
+            move |this: &mut Self, _, ev: &CardEvent, cx| match ev {
+                CardEvent::Change(next) => this.update_compatible(next.clone(), cx),
+                CardEvent::Test => this.test_compatible(&id, cx),
+                CardEvent::Remove => this.remove_compatible(&id, cx),
+            },
+        );
         self._subs.push(sub);
         self.compat_cards.insert(p.id.clone(), card.clone());
         card

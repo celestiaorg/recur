@@ -55,7 +55,11 @@ fn terminal_line_height_label(n: f64) -> &'static str {
 }
 
 /// One `.seg` choice: label, whether it is on, and what clicking does.
-type Choice = (String, bool, Box<dyn Fn(&mut SettingsView, &mut Context<SettingsView>)>);
+type Choice = (
+    String,
+    bool,
+    Box<dyn Fn(&mut SettingsView, &mut Context<SettingsView>)>,
+);
 
 impl SettingsView {
     /// A labelled `.seg` row control (`role="group"` named `group`).
@@ -73,9 +77,16 @@ impl SettingsView {
             let g = group.clone();
             let act = std::rc::Rc::new(act);
             s = s.child(
-                seg_btn(SharedString::from(format!("{group}-{i}")), label, on, false, pad_x, cx)
-                    .debug_selector(move || format!("seg:{g}:{l}{}", if on { ":on" } else { "" }))
-                    .on_click(cx.listener(move |this, _, _, cx| act(this, cx))),
+                seg_btn(
+                    SharedString::from(format!("{group}-{i}")),
+                    label,
+                    on,
+                    false,
+                    pad_x,
+                    cx,
+                )
+                .debug_selector(move || format!("seg:{g}:{l}{}", if on { ":on" } else { "" }))
+                .on_click(cx.listener(move |this, _, _, cx| act(this, cx))),
             );
         }
         ctrl().child(s)
@@ -94,7 +105,11 @@ impl SettingsView {
         )
     }
 
-    fn on_off(group: &'static str, cur: bool, set: fn(&mut EditorPrefs, bool)) -> (&'static str, Vec<Choice>) {
+    fn on_off(
+        group: &'static str,
+        cur: bool,
+        set: fn(&mut EditorPrefs, bool),
+    ) -> (&'static str, Vec<Choice>) {
         (
             group,
             vec![
@@ -104,11 +119,19 @@ impl SettingsView {
         )
     }
 
-    pub(crate) fn editor_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn editor_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let p = self.vcx.state.read(cx).editor_prefs.clone();
         let tp = self.vcx.state.read(cx).terminal_prefs.clone();
         // Svelte trims the space opening `{#if monoFontsLoading} · scanning…{/if}`.
-        let scanning = if self.mono_loading { "· scanning…" } else { "" };
+        let scanning = if self.mono_loading {
+            "· scanning…"
+        } else {
+            ""
+        };
 
         // Font pickers.
         let mut opts: Vec<SelectOption> = self
@@ -118,7 +141,10 @@ impl SettingsView {
             .collect();
         let have_fonts = !opts.is_empty();
         if have_fonts && !p.font_face.is_empty() && !opts.iter().any(|o| o.value == p.font_face) {
-            opts.insert(0, SelectOption::new(p.font_face.clone(), p.font_face.clone()));
+            opts.insert(
+                0,
+                SelectOption::new(p.font_face.clone(), p.font_face.clone()),
+            );
         }
         let ed_opts: Vec<SelectOption> = opts
             .iter()
@@ -138,8 +164,9 @@ impl SettingsView {
         } else {
             tp.font_size as f32
         };
-        let mut term_opts = vec![SelectOption::new("", "Match editor")
-            .font(recur_ui::fonts::Family::Ui, term_size)];
+        let mut term_opts = vec![
+            SelectOption::new("", "Match editor").font(recur_ui::fonts::Family::Ui, term_size),
+        ];
         term_opts.extend(opts.iter().cloned().map(|o| {
             let stack = font_stack(&o.value);
             o.font(stack, term_size)
@@ -163,7 +190,10 @@ impl SettingsView {
                 s.set_disabled((!have_fonts).then_some(backdrop), cx);
             });
         }
-        let term_props = format!("{:?}", (&term_opts, &tp.font_face, &term_face, term_size, have_fonts));
+        let term_props = format!(
+            "{:?}",
+            (&term_opts, &tp.font_face, &term_face, term_size, have_fonts)
+        );
         if self.props_changed("term-font-select", term_props) {
             let value = tp.font_face.clone();
             let tr = font_trigger.clone();
@@ -200,7 +230,9 @@ impl SettingsView {
                 "Editor font size",
                 EDITOR_FONT_SIZES
                     .iter()
-                    .map(|n| Self::prefs_choice(n.to_string(), p.font_size, *n, |p, v| p.font_size = v))
+                    .map(|n| {
+                        Self::prefs_choice(n.to_string(), p.font_size, *n, |p, v| p.font_size = v)
+                    })
                     .collect(),
             ),
             (
@@ -210,9 +242,12 @@ impl SettingsView {
                 EDITOR_LINE_HEIGHTS
                     .iter()
                     .map(|n| {
-                        Self::prefs_choice(line_height_label(*n).into(), p.line_height, *n, |p, v| {
-                            p.line_height = v
-                        })
+                        Self::prefs_choice(
+                            line_height_label(*n).into(),
+                            p.line_height,
+                            *n,
+                            |p, v| p.line_height = v,
+                        )
                     })
                     .collect(),
             ),
@@ -221,8 +256,12 @@ impl SettingsView {
                 None,
                 "Line wrapping",
                 vec![
-                    Self::prefs_choice("Wrap".into(), p.line_wrapping, true, |p, v| p.line_wrapping = v),
-                    Self::prefs_choice("Scroll".into(), p.line_wrapping, false, |p, v| p.line_wrapping = v),
+                    Self::prefs_choice("Wrap".into(), p.line_wrapping, true, |p, v| {
+                        p.line_wrapping = v
+                    }),
+                    Self::prefs_choice("Scroll".into(), p.line_wrapping, false, |p, v| {
+                        p.line_wrapping = v
+                    }),
                 ],
             ),
             (
@@ -231,7 +270,9 @@ impl SettingsView {
                 "Tab size",
                 EDITOR_TAB_SIZES
                     .iter()
-                    .map(|n| Self::prefs_choice(n.to_string(), p.tab_size, *n, |p, v| p.tab_size = v))
+                    .map(|n| {
+                        Self::prefs_choice(n.to_string(), p.tab_size, *n, |p, v| p.tab_size = v)
+                    })
                     .collect(),
             ),
             (
@@ -240,7 +281,9 @@ impl SettingsView {
                 "Default indent style",
                 INDENT_OPTIONS
                     .iter()
-                    .map(|(k, l, _)| Self::prefs_choice((*l).into(), p.indent, *k, |p, v| p.indent = v))
+                    .map(|(k, l, _)| {
+                        Self::prefs_choice((*l).into(), p.indent, *k, |p, v| p.indent = v)
+                    })
                     .collect(),
             ),
         ];
@@ -318,7 +361,13 @@ impl SettingsView {
             .collect::<Vec<_>>(),
         );
         let mut more: Vec<(&str, Option<&str>, &'static str, Vec<Choice>)> = vec![ws];
-        let toggles: [(&str, Option<&str>, &'static str, bool, fn(&mut EditorPrefs, bool)); 10] = [
+        let toggles: [(
+            &str,
+            Option<&str>,
+            &'static str,
+            bool,
+            fn(&mut EditorPrefs, bool),
+        ); 10] = [
             (
                 "Special characters",
                 Some("Highlight NBSP, zero-width, and other invisible chars."),
@@ -326,11 +375,23 @@ impl SettingsView {
                 p.special_chars,
                 |p, v| p.special_chars = v,
             ),
-            ("Line numbers", None, "Line numbers", p.line_numbers, |p, v| p.line_numbers = v),
-            ("Highlight active line", None, "Highlight active line", p.active_line, |p, v| {
-                p.active_line = v
+            (
+                "Line numbers",
+                None,
+                "Line numbers",
+                p.line_numbers,
+                |p, v| p.line_numbers = v,
+            ),
+            (
+                "Highlight active line",
+                None,
+                "Highlight active line",
+                p.active_line,
+                |p, v| p.active_line = v,
+            ),
+            ("Fold gutter", None, "Fold gutter", p.fold_gutter, |p, v| {
+                p.fold_gutter = v
             }),
-            ("Fold gutter", None, "Fold gutter", p.fold_gutter, |p, v| p.fold_gutter = v),
             (
                 "Diff gutter",
                 Some("Add, modify, and delete hints versus the workspace base."),
@@ -338,9 +399,13 @@ impl SettingsView {
                 p.diff_gutter,
                 |p, v| p.diff_gutter = v,
             ),
-            ("Bracket matching", None, "Bracket matching", p.bracket_matching, |p, v| {
-                p.bracket_matching = v
-            }),
+            (
+                "Bracket matching",
+                None,
+                "Bracket matching",
+                p.bracket_matching,
+                |p, v| p.bracket_matching = v,
+            ),
             (
                 "Scroll past end",
                 Some("Allow the last lines to sit mid-viewport."),
@@ -348,8 +413,16 @@ impl SettingsView {
                 p.scroll_past_end,
                 |p, v| p.scroll_past_end = v,
             ),
-            ("Cursor blink", None, "Cursor blink", p.cursor_blink, |p, v| p.cursor_blink = v),
-            ("Thick caret", None, "Thick caret", p.thick_caret, |p, v| p.thick_caret = v),
+            (
+                "Cursor blink",
+                None,
+                "Cursor blink",
+                p.cursor_blink,
+                |p, v| p.cursor_blink = v,
+            ),
+            ("Thick caret", None, "Thick caret", p.thick_caret, |p, v| {
+                p.thick_caret = v
+            }),
             (
                 "Rectangular selection",
                 Some("Option/Alt-drag to select columns."),
@@ -363,7 +436,12 @@ impl SettingsView {
             more.push((title, d, g, c));
         }
         let (g, c) = Self::on_off("Drop cursor", p.drop_cursor, |p, v| p.drop_cursor = v);
-        more.push(("Drop cursor", Some("Show a caret while dragging text."), g, c));
+        more.push((
+            "Drop cursor",
+            Some("Show a caret while dragging text."),
+            g,
+            c,
+        ));
         more.push((
             "Print margin",
             Some("Vertical ruler at a column."),
@@ -371,7 +449,11 @@ impl SettingsView {
             EDITOR_RULER_COLUMNS
                 .iter()
                 .map(|n| {
-                    let label = if *n == 0 { "Off".to_string() } else { n.to_string() };
+                    let label = if *n == 0 {
+                        "Off".to_string()
+                    } else {
+                        n.to_string()
+                    };
                     Self::prefs_choice(label, p.ruler_column, *n, |p, v| p.ruler_column = v)
                 })
                 .collect(),
@@ -414,11 +496,19 @@ impl SettingsView {
                     Some(vec![span("Tab strip limit. Use 0 for unlimited.")]),
                     cx,
                 ))
-                .child(ctrl().child(
-                    div()
-                        .debug_selector(|| "inp:Max open files".into())
-                        .child(inp(&max_open, &SharedString::default(), InpStyle::NUM, window, cx)),
-                )),
+                .child(
+                    ctrl().child(
+                        div()
+                            .debug_selector(|| "inp:Max open files".into())
+                            .child(inp(
+                                &max_open,
+                                &SharedString::default(),
+                                InpStyle::NUM,
+                                window,
+                                cx,
+                            )),
+                    ),
+                ),
         );
 
         // Terminal.
@@ -436,9 +526,9 @@ impl SettingsView {
                 n.to_string(),
                 tp.font_size as u32 == n,
                 Box::new(move |this, cx| {
-                    this.vcx
-                        .state
-                        .update(cx, |s, cx| s.set_terminal_prefs(|p| p.font_size = n as u8, cx))
+                    this.vcx.state.update(cx, |s, cx| {
+                        s.set_terminal_prefs(|p| p.font_size = n as u8, cx)
+                    })
                 }),
             ));
         }
@@ -474,7 +564,9 @@ impl SettingsView {
                 .child(copy(
                     "term-lh",
                     "Line height",
-                    Some(vec![span("Tighter than the editor fits more rows in the dock.")]),
+                    Some(vec![span(
+                        "Tighter than the editor fits more rows in the dock.",
+                    )]),
                     cx,
                 ))
                 .child(self.seg_group("Terminal line height", term_lh, 11., cx)),
@@ -526,14 +618,25 @@ impl SettingsView {
                             .flex()
                             .debug_selector(move || format!("inp:Exclude pattern {}", i + 1))
                             // `.inp`'s padding comes later than `.exclude-inp`'s and wins.
-                            .child(inp(&input, &"**/pattern".into(), InpStyle::BASE, window, cx)),
+                            .child(inp(
+                                &input,
+                                &"**/pattern".into(),
+                                InpStyle::BASE,
+                                window,
+                                cx,
+                            )),
                     )
                     .child(recur_ui::tooltip::titled(
                         SharedString::from(format!("exclude-rm-tip-{i}")),
                         "Remove pattern",
-                        rm_btn(SharedString::from(format!("exclude-rm-{i}")), IconName::X, false, cx)
-                            .debug_selector(move || format!("btn:Remove pattern {}", i + 1))
-                            .on_click(cx.listener(move |this, _, _, cx| this.remove_exclude(i, cx))),
+                        rm_btn(
+                            SharedString::from(format!("exclude-rm-{i}")),
+                            IconName::X,
+                            false,
+                            cx,
+                        )
+                        .debug_selector(move || format!("btn:Remove pattern {}", i + 1))
+                        .on_click(cx.listener(move |this, _, _, cx| this.remove_exclude(i, cx))),
                     )),
             );
         }
@@ -610,13 +713,24 @@ impl SettingsView {
     }
 
     /// The Code editor pane's field events.
-    pub(crate) fn editor_field(&mut self, key: &str, ev: FieldEvent, value: String, cx: &mut Context<Self>) {
+    pub(crate) fn editor_field(
+        &mut self,
+        key: &str,
+        ev: FieldEvent,
+        value: String,
+        cx: &mut Context<Self>,
+    ) {
         if key == "max-open-files" && ev == FieldEvent::Change {
             let n = number_input_value(&value);
-            self.set_editor_prefs(move |p| p.max_open_files = n.max(0.).min(u32::MAX as f64) as u32, cx);
+            self.set_editor_prefs(
+                move |p| p.max_open_files = n.max(0.).min(u32::MAX as f64) as u32,
+                cx,
+            );
             return;
         }
-        if let Some(i) = key.strip_prefix("exclude:").and_then(|i| i.parse::<usize>().ok())
+        if let Some(i) = key
+            .strip_prefix("exclude:")
+            .and_then(|i| i.parse::<usize>().ok())
             && ev == FieldEvent::Input
         {
             let mut next = self.vcx.state.read(cx).explorer_exclude();

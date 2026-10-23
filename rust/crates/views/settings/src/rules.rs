@@ -68,8 +68,14 @@ pub const COMPATIBLE_WIRES: [&str; 5] = [
     "max_output_tokens",
 ];
 
-pub const RESERVED_PROVIDER_SLUGS: [&str; 6] =
-    ["claude-code", "cursor", "codex", "anthropic", "gemini", "ollama"];
+pub const RESERVED_PROVIDER_SLUGS: [&str; 6] = [
+    "claude-code",
+    "cursor",
+    "codex",
+    "anthropic",
+    "gemini",
+    "ollama",
+];
 
 /// `COMPATIBLE_SLUG_RE`: `^[a-z][a-z0-9-]{0,47}$`.
 fn slug_ok(s: &str) -> bool {
@@ -564,9 +570,7 @@ mod tests {
             false,
             &openai
         ));
-        assert!(can_disable_provider(
-            "openai", &none, false, false, &openai
-        ));
+        assert!(can_disable_provider("openai", &none, false, false, &openai));
         assert!(!can_disable_provider(
             "openai", &claude, false, false, &openai
         ));

@@ -12,7 +12,7 @@ use recur_domain::{CompatibleModel, CompatibleProvider};
 use recur_services::Services;
 use recur_ui::fonts::{Family, weight};
 use recur_ui::shadow::with_shadow;
-use recur_ui::style::{MODAL_SHADOW, button_label, modal_panel, modal_scrim, primary_button};
+use recur_ui::style::{MODAL_SHADOW, button_label, modal_panel, primary_button};
 use recur_ui::text::{LineHeight, TextStyled, strut_metrics, text};
 
 use crate::field::{Field, FieldEvent, FieldOpts};
@@ -26,6 +26,9 @@ pub enum ModalEvent {
     /// `onAdd(provider)`.
     Add(CompatibleProvider),
 }
+
+/// `.titlebar`'s height: the part of the window the scrim leaves to the titlebar.
+const TITLEBAR_H: f32 = 52.;
 
 /// The modal's fields, in tab order.
 const FIELDS: [(&str, &str, &str); 5] = [
@@ -57,7 +60,6 @@ pub struct CompatibleProviderModal {
     error: String,
     saving: bool,
     hover_x: bool,
-    focused_once: bool,
 }
 
 impl EventEmitter<ModalEvent> for CompatibleProviderModal {}
@@ -69,23 +71,36 @@ impl Focusable for CompatibleProviderModal {
 }
 
 impl CompatibleProviderModal {
-    pub fn new(taken: Vec<String>, services: Services, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        taken: Vec<String>,
+        services: Services,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let mut m = CompatibleProviderModal {
             focus: cx.focus_handle(),
             taken,
             services,
             preset: "openai",
             fields: HashMap::new(),
-            preset_focus: COMPATIBLE_PRESETS.iter().map(|_| cx.focus_handle().tab_stop(true)).collect(),
+            preset_focus: COMPATIBLE_PRESETS
+                .iter()
+                .map(|_| cx.focus_handle().tab_stop(true))
+                .collect(),
             submit_focus: cx.focus_handle().tab_stop(true),
             kb: None,
             error: String::new(),
             saving: false,
             hover_x: false,
-            focused_once: false,
         };
         for (k, _, _) in FIELDS {
-            let f = Field::new(k.to_string(), FieldOpts::default(), Self::field_event, window, cx);
+            let f = Field::new(
+                k.to_string(),
+                FieldOpts::default(),
+                Self::field_event,
+                window,
+                cx,
+            );
             m.fields.insert(k.to_string(), f);
         }
         m.apply_values(&COMPATIBLE_PRESETS[0], "openai");
@@ -118,6 +133,11 @@ impl CompatibleProviderModal {
         self.apply_values(&p, slug);
         self.error.clear();
         cx.notify();
+    }
+
+    /// `slugEl.focus()` once the modal opens.
+    pub fn initial_focus(&self, cx: &App) -> FocusHandle {
+        self.handle(Stop::Field(0), cx)
     }
 
     fn value(&self, k: &str, cx: &App) -> String {
@@ -226,7 +246,9 @@ impl CompatibleProviderModal {
     /// `cycleDialogTab`.
     fn cycle(&mut self, back: bool, window: &mut Window, cx: &mut Context<Self>) {
         let stops = self.stops(cx);
-        let at = stops.iter().position(|s| self.handle(*s, cx).is_focused(window));
+        let at = stops
+            .iter()
+            .position(|s| self.handle(*s, cx).is_focused(window));
         let next = match at {
             None if back => stops.len() - 1,
             None => 0,
@@ -293,12 +315,6 @@ fn esc_hint(hovered: bool, window: &Window, cx: &App) -> gpui_kit::Div {
 impl Render for CompatibleProviderModal {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = tokens(cx);
-        if !self.focused_once {
-            self.focused_once = true;
-            // `setTimeout(() => slugEl.focus(), 0)`.
-            let h = self.handle(Stop::Field(0), cx);
-            cx.on_next_frame(window, move |_, window, cx| window.focus(&h, cx));
-        }
         let mut inputs: Vec<Entity<gpui_kit::base::input::InputState>> = Vec::new();
         for (k, _, _) in FIELDS {
             if let Some(f) = self.fields.get_mut(k) {
@@ -307,7 +323,13 @@ impl Render for CompatibleProviderModal {
                 inputs.push(f.input.clone());
             }
         }
-        let lbl = |s: &str| text(s.to_string()).size(13.).leading(1.45).color(t.text).nowrap();
+        let lbl = |s: &str| {
+            text(s.to_string())
+                .size(13.)
+                .leading(1.45)
+                .color(t.text)
+                .nowrap()
+        };
         let row = |label: &str, i: usize, window: &Window, cx: &App| {
             let (_, aria, placeholder) = FIELDS[i];
             div()
@@ -320,7 +342,13 @@ impl Render for CompatibleProviderModal {
                     div()
                         .flex()
                         .debug_selector(move || format!("inp:{aria}"))
-                        .child(inp(&inputs[i], &placeholder.into(), InpStyle::BASE, window, cx)),
+                        .child(inp(
+                            &inputs[i],
+                            &placeholder.into(),
+                            InpStyle::BASE,
+                            window,
+                            cx,
+                        )),
                 )
         };
         let mut presets = div().flex().flex_wrap().gap(px(6.)).w_full();
@@ -332,7 +360,11 @@ impl Render for CompatibleProviderModal {
             presets = presets.child(
                 recur_ui::style::tbtn(
                     SharedString::from(format!("preset-{id}")),
-                    if on { recur_ui::style::Tbtn::On } else { recur_ui::style::Tbtn::Default },
+                    if on {
+                        recur_ui::style::Tbtn::On
+                    } else {
+                        recur_ui::style::Tbtn::Default
+                    },
                     recur_ui::style::TbtnSize::BASE,
                     None,
                     cx,
@@ -430,11 +462,22 @@ impl Render for CompatibleProviderModal {
                     .flex()
                     .gap(px(10.))
                     .min_w_0()
-                    .child(recur_ui::style::flex_share(1., row("Model id", 3, window, cx).flex_1()))
-                    .child(recur_ui::style::flex_share(1., row("Label", 4, window, cx).flex_1())),
+                    .child(recur_ui::style::flex_share(
+                        1.,
+                        row("Model id", 3, window, cx).flex_1(),
+                    ))
+                    .child(recur_ui::style::flex_share(
+                        1.,
+                        row("Label", 4, window, cx).flex_1(),
+                    )),
             );
         if !self.error.is_empty() {
-            body = body.child(field_msg("compat-err", &self.error.clone(), Some(false), cx));
+            body = body.child(field_msg(
+                "compat-err",
+                &self.error.clone(),
+                Some(false),
+                cx,
+            ));
         }
         let foot = div()
             .flex()
@@ -481,12 +524,32 @@ impl Render for CompatibleProviderModal {
                     cx.notify();
                 }),
             );
-        modal_scrim(window, panel)
+        // `.nt-bg` sits inside `.body`, so the titlebar paints over its top 52px; the panel
+        // still hangs 22vh below the window top.
+        let vh = f32::from(window.viewport_size().height);
+        let drop = recur_ui::exact::lu(0.22 * vh) - TITLEBAR_H;
+        div()
+            .absolute()
+            .top(px(TITLEBAR_H))
+            .left_0()
+            .right_0()
+            .bottom_0()
+            .bg(hsla(recur_ui::rgba(5, 7, 10, 0.55)))
+            .flex()
+            .flex_col()
+            .items_center()
+            .px(px(16.))
+            .pb(px(24.))
+            .child(recur_ui::exact::vgap(drop.max(0.), window))
+            .child(div().flex_none().flex().flex_col().child(panel))
             .id("v-compat-provider")
             .debug_selector(|| "v-compat-provider".into())
             .track_focus(&self.focus)
             .occlude()
-            .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, cx| cx.emit(ModalEvent::Close)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|_, _, _, cx| cx.emit(ModalEvent::Close)),
+            )
             .child(keys)
     }
 }

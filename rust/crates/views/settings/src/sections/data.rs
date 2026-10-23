@@ -59,7 +59,11 @@ impl SettingsView {
                                     d.on_click(cx.listener(|this, _, _, cx| this.clear_all(cx)))
                                 })
                                 .child(button_label(
-                                    if clearing { "Clearing…" } else { "Yes, clear all" },
+                                    if clearing {
+                                        "Clearing…"
+                                    } else {
+                                        "Yes, clear all"
+                                    },
                                     12.,
                                     weight::MEDIUM,
                                 )),
@@ -137,9 +141,13 @@ impl SettingsView {
         let services = self.vcx.services.clone();
         let state = self.vcx.state.clone();
         cx.spawn(async move |this, cx| {
-            let ok = call(cx, services.settings.clear_all_data(), "Could not clear data")
-                .await
-                .is_some();
+            let ok = call(
+                cx,
+                services.settings.clear_all_data(),
+                "Could not clear data",
+            )
+            .await
+            .is_some();
             if ok {
                 let load = cx.update(|cx| state.update(cx, |s, cx| s.load_initial(cx)));
                 let _ = load.await;

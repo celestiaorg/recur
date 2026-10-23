@@ -57,7 +57,10 @@ const CHOICES: [Choice; 4] = [
         opts: &[
             ("title", "Pull request title"),
             ("title-and-commits", "Pull request title and commit details"),
-            ("title-and-description", "Pull request title and description"),
+            (
+                "title-and-description",
+                "Pull request title and description",
+            ),
         ],
         default: "title-and-commits",
         read: |s| s.default_squash_commit_message.as_str().to_string(),
@@ -69,7 +72,10 @@ const CHOICES: [Choice; 4] = [
         desc: "Presented when merging a pull request with a merge commit. Projects can override this.",
         opts: &[
             ("title", "Pull request title"),
-            ("title-and-description", "Pull request title and description"),
+            (
+                "title-and-description",
+                "Pull request title and description",
+            ),
         ],
         default: "title",
         read: |s| s.default_merge_commit_message.as_str().to_string(),

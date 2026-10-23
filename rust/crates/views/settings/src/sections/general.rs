@@ -1,8 +1,8 @@
 //! General: Simplify, concurrency caps, agent turns, power, workspace branches and schedules.
 
 use gpui_kit::{
-    AnyElement, Context, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+    AnyElement, Context, InteractiveElement, IntoElement, MouseButton, ParentElement, SharedString,
+    StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_ui::text::span;
 use recur_ui::widgets::{settings_group, settings_groups};
@@ -41,12 +41,22 @@ impl SettingsView {
             .child(
                 div()
                     .debug_selector(move || format!("inp:{label}"))
-                    .child(inp(&input, &SharedString::default(), InpStyle::NUM, window, cx)),
+                    .child(inp(
+                        &input,
+                        &SharedString::default(),
+                        InpStyle::NUM,
+                        window,
+                        cx,
+                    )),
             )
             .into_any_element()
     }
 
-    pub(crate) fn general_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn general_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let Some(s) = self.settings(cx).cloned() else {
             return settings_groups().into_any_element();
         };
@@ -58,17 +68,30 @@ impl SettingsView {
                 Some(vec![span("On by default for new chats")]),
                 cx,
             ))
-            .child(ctrl().child(
-                tog("tog-simplify", "toggle default simplify", simplify, false, cx).on_click(
-                    cx.listener(move |this, _, _, cx| {
+            .child(
+                ctrl().child(
+                    tog(
+                        "tog-simplify",
+                        "toggle default simplify",
+                        simplify,
+                        false,
+                        cx,
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
                         this.patch(false, |s| s.simplify = Some(!simplify), cx)
                             .detach();
-                    }),
+                    })),
                 ),
-            ));
+            );
 
         let loops = self.num_field("max-loops", "Max concurrent loops", s.max_loops, window, cx);
-        let agents = self.num_field("max-agents", "Max concurrent agents", s.max_agents, window, cx);
+        let agents = self.num_field(
+            "max-agents",
+            "Max concurrent agents",
+            s.max_agents,
+            window,
+            cx,
+        );
         let timeout_v = if s.agent_turn_timeout_minutes == 0 {
             240
         } else {
@@ -100,7 +123,8 @@ impl SettingsView {
         } else {
             saved.clone()
         };
-        let branch_input = self.bound_field("branch-prefix", &shown, FieldOpts::default(), window, cx);
+        let branch_input =
+            self.bound_field("branch-prefix", &shown, FieldOpts::default(), window, cx);
         let value_now = self.field_value("branch-prefix", cx);
         let example = branch_prefix_example(if dirty { &value_now } else { &saved });
         let login = self.github_login.clone();
@@ -147,7 +171,9 @@ impl SettingsView {
                 None
             };
             presets = presets.child(match tip {
-                Some(tip) => recur_ui::tooltip::titled("prefix-github-tip", tip, b).into_any_element(),
+                Some(tip) => {
+                    recur_ui::tooltip::titled("prefix-github-tip", tip, b).into_any_element()
+                }
                 None => b.into_any_element(),
             });
         }
@@ -450,4 +476,3 @@ impl SettingsView {
         .detach();
     }
 }
-

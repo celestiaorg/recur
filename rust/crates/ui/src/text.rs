@@ -361,7 +361,12 @@ impl Text {
 
 /// The boxes span `index` covers, one per line it is on: its text's horizontal extent and
 /// the line box.
-fn span_rects(laid: &Laid, bounds: Bounds<Pixels>, align: Align, index: usize) -> Vec<Bounds<Pixels>> {
+fn span_rects(
+    laid: &Laid,
+    bounds: Bounds<Pixels>,
+    align: Align,
+    index: usize,
+) -> Vec<Bounds<Pixels>> {
     let box_w = f32::from(bounds.size.width);
     let mut out = Vec::new();
     for line in &laid.lines {
@@ -1542,10 +1547,26 @@ impl Element for Text {
         let hovered = paint_links(&self.links, hits, window);
         if clip {
             window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
-                paint_lines(laid, bounds, at, align, self.mask.as_ref(), &hovered, window)
+                paint_lines(
+                    laid,
+                    bounds,
+                    at,
+                    align,
+                    self.mask.as_ref(),
+                    &hovered,
+                    window,
+                )
             });
         } else {
-            paint_lines(laid, bounds, at, align, self.mask.as_ref(), &hovered, window);
+            paint_lines(
+                laid,
+                bounds,
+                at,
+                align,
+                self.mask.as_ref(),
+                &hovered,
+                window,
+            );
         }
     }
 }

@@ -8,19 +8,19 @@ use gpui_kit::{
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_agent::mcp::{
-    custom_mcp_servers, linear_mcp_on, remove_mcp_server, set_custom_mcp_enabled,
-    slug_mcp_id, update_mcp_server, upsert_linear_enabled, valid_mcp_id,
+    custom_mcp_servers, linear_mcp_on, remove_mcp_server, set_custom_mcp_enabled, slug_mcp_id,
+    update_mcp_server, upsert_linear_enabled, valid_mcp_id,
 };
 use recur_domain::{McpServer, SETTING_LINEAR_API_KEY};
 use recur_ui::text::{TextStyled, span};
 use recur_ui::widgets::{settings_group, settings_groups};
 
 use crate::field::FieldOpts;
-use crate::rules::{mcp_auth_header, split_args};
 use crate::nav::Section;
+use crate::rules::{mcp_auth_header, split_args};
 use crate::style::{
-    InpStyle, Row, RowsCtx, copy, ctrl_text, inp, lead, rows, skill_copy, skill_list,
-    tbtn_label, tog, tokens,
+    InpStyle, Row, RowsCtx, copy, ctrl_text, inp, lead, rows, skill_copy, skill_list, tbtn_label,
+    tog, tokens,
 };
 use crate::view::SettingsView;
 
@@ -48,14 +48,23 @@ impl SettingsView {
         div()
             .flex()
             .debug_selector(move || format!("inp:{label}"))
-            .child(inp(&input, &placeholder.to_string().into(), InpStyle::BASE, window, cx))
+            .child(inp(
+                &input,
+                &placeholder.to_string().into(),
+                InpStyle::BASE,
+                window,
+                cx,
+            ))
             .into_any_element()
     }
 
     pub(crate) fn mcp_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let t = tokens(cx);
         let s = self.settings(cx).cloned();
-        let servers: Vec<McpServer> = s.as_ref().map(|s| s.mcp_servers.clone()).unwrap_or_default();
+        let servers: Vec<McpServer> = s
+            .as_ref()
+            .map(|s| s.mcp_servers.clone())
+            .unwrap_or_default();
         let linear_on = linear_mcp_on(&servers);
         let key_set = s
             .as_ref()
@@ -95,9 +104,17 @@ impl SettingsView {
         if !custom.is_empty() {
             let mut list = Vec::new();
             for sv in &custom {
-                let name = if sv.name.is_empty() { sv.id.clone() } else { sv.name.clone() };
+                let name = if sv.name.is_empty() {
+                    sv.id.clone()
+                } else {
+                    sv.name.clone()
+                };
                 let d = if sv.transport == "stdio" {
-                    if sv.command.is_empty() { "stdio".to_string() } else { sv.command.clone() }
+                    if sv.command.is_empty() {
+                        "stdio".to_string()
+                    } else {
+                        sv.command.clone()
+                    }
                 } else if sv.url.is_empty() {
                     "http".to_string()
                 } else {
@@ -116,25 +133,37 @@ impl SettingsView {
                 )
                 .mt(px(2.));
                 if has {
-                    tg = tg.on_click(cx.listener(move |this, _, _, cx| this.set_mcp_enabled(&id, !on, cx)));
+                    tg = tg.on_click(
+                        cx.listener(move |this, _, _, cx| this.set_mcp_enabled(&id, !on, cx)),
+                    );
                 }
                 list.push((
                     copy,
                     vec![
-                        tbtn_label(SharedString::from(format!("mcp-edit-{}", sv.id)), "Edit", false, cx)
-                            .debug_selector({
-                                let n = name.clone();
-                                move || format!("btn:Edit {n}")
-                            })
-                            .on_click(cx.listener(move |this, _, _, cx| this.start_mcp_edit(&edit, cx)))
-                            .into_any_element(),
-                        tbtn_label(SharedString::from(format!("mcp-rm-{}", sv.id)), "Remove", false, cx)
-                            .debug_selector({
-                                let n = name.clone();
-                                move || format!("btn:Remove {n}")
-                            })
-                            .on_click(cx.listener(move |this, _, _, cx| this.delete_mcp(&rm, cx)))
-                            .into_any_element(),
+                        tbtn_label(
+                            SharedString::from(format!("mcp-edit-{}", sv.id)),
+                            "Edit",
+                            false,
+                            cx,
+                        )
+                        .debug_selector({
+                            let n = name.clone();
+                            move || format!("btn:Edit {n}")
+                        })
+                        .on_click(cx.listener(move |this, _, _, cx| this.start_mcp_edit(&edit, cx)))
+                        .into_any_element(),
+                        tbtn_label(
+                            SharedString::from(format!("mcp-rm-{}", sv.id)),
+                            "Remove",
+                            false,
+                            cx,
+                        )
+                        .debug_selector({
+                            let n = name.clone();
+                            move || format!("btn:Remove {n}")
+                        })
+                        .on_click(cx.listener(move |this, _, _, cx| this.delete_mcp(&rm, cx)))
+                        .into_any_element(),
                         tg.into_any_element(),
                     ],
                 ));
@@ -157,7 +186,9 @@ impl SettingsView {
                     .child(
                         tbtn_label("mcp-add-stdio", "Add stdio", false, cx)
                             .debug_selector(|| "btn:Add stdio".into())
-                            .on_click(cx.listener(|this, _, _, cx| this.open_mcp_form("stdio", cx))),
+                            .on_click(
+                                cx.listener(|this, _, _, cx| this.open_mcp_form("stdio", cx)),
+                            ),
                     ),
             );
         } else {
@@ -167,9 +198,18 @@ impl SettingsView {
                     .iter()
                     .find(|c| c.id == self.mcp.edit_id)
                     .is_some_and(|c| c.headers.contains_key("Authorization"));
-            let mut form = vec![Row::stack()
-                .child(copy("mcp-name", "Name", None, cx))
-                .child(self.mcp_input("mcp-name", "Name", if stdio { "filesystem" } else { "acme" }, false, window, cx))];
+            let mut form = vec![
+                Row::stack()
+                    .child(copy("mcp-name", "Name", None, cx))
+                    .child(self.mcp_input(
+                        "mcp-name",
+                        "Name",
+                        if stdio { "filesystem" } else { "acme" },
+                        false,
+                        window,
+                        cx,
+                    )),
+            ];
             if stdio {
                 form.push(
                     Row::stack()
@@ -179,14 +219,26 @@ impl SettingsView {
                 form.push(
                     Row::stack()
                         .child(copy("mcp-args", "Args", None, cx))
-                        .child(self.mcp_input("mcp-args", "Args", "-y @example/mcp", false, window, cx)),
+                        .child(self.mcp_input(
+                            "mcp-args",
+                            "Args",
+                            "-y @example/mcp",
+                            false,
+                            window,
+                            cx,
+                        )),
                 );
             } else {
-                form.push(
-                    Row::stack()
-                        .child(copy("mcp-url", "URL", None, cx))
-                        .child(self.mcp_input("mcp-url", "URL", "https://example.com/mcp", false, window, cx)),
-                );
+                form.push(Row::stack().child(copy("mcp-url", "URL", None, cx)).child(
+                    self.mcp_input(
+                        "mcp-url",
+                        "URL",
+                        "https://example.com/mcp",
+                        false,
+                        window,
+                        cx,
+                    ),
+                ));
                 form.push(
                     Row::stack()
                         .child(copy(
@@ -199,7 +251,14 @@ impl SettingsView {
                             })]),
                             cx,
                         ))
-                        .child(self.mcp_input("mcp-auth", "Authorization", "Bearer …", true, window, cx)),
+                        .child(self.mcp_input(
+                            "mcp-auth",
+                            "Authorization",
+                            "Bearer …",
+                            true,
+                            window,
+                            cx,
+                        )),
                 );
             }
             let err = self.mcp.err.clone();
@@ -219,18 +278,25 @@ impl SettingsView {
                         window,
                         cx,
                     ))
-                    .when(!err.is_empty(), |d| d.child(ctrl_text("mcp-err", vec![span(err)], window, cx)))
+                    .when(!err.is_empty(), |d| {
+                        d.child(ctrl_text("mcp-err", vec![span(err)], window, cx))
+                    })
                     .child(
                         div()
                             .flex()
                             .gap(px(8.))
                             .mt(px(4.))
                             .child(
-                                tbtn_label("mcp-submit", if editing { "Save" } else { "Add" }, false, cx)
-                                    .debug_selector(move || {
-                                        format!("btn:{}", if editing { "Save" } else { "Add" })
-                                    })
-                                    .on_click(cx.listener(|this, _, _, cx| this.submit_mcp(cx))),
+                                tbtn_label(
+                                    "mcp-submit",
+                                    if editing { "Save" } else { "Add" },
+                                    false,
+                                    cx,
+                                )
+                                .debug_selector(move || {
+                                    format!("btn:{}", if editing { "Save" } else { "Add" })
+                                })
+                                .on_click(cx.listener(|this, _, _, cx| this.submit_mcp(cx))),
                             )
                             .child(
                                 tbtn_label("mcp-cancel", "Cancel", false, cx)
@@ -275,14 +341,22 @@ impl SettingsView {
         if self.settings(cx).is_none() {
             return;
         }
-        self.patch(false, move |s| s.mcp_servers = upsert_linear_enabled(&s.mcp_servers, on), cx)
-            .detach();
+        self.patch(
+            false,
+            move |s| s.mcp_servers = upsert_linear_enabled(&s.mcp_servers, on),
+            cx,
+        )
+        .detach();
     }
 
     fn set_mcp_enabled(&mut self, id: &str, on: bool, cx: &mut Context<Self>) {
         let id = id.to_string();
-        self.patch(false, move |s| s.mcp_servers = set_custom_mcp_enabled(&s.mcp_servers, &id, on), cx)
-            .detach();
+        self.patch(
+            false,
+            move |s| s.mcp_servers = set_custom_mcp_enabled(&s.mcp_servers, &id, on),
+            cx,
+        )
+        .detach();
     }
 
     fn delete_mcp(&mut self, id: &str, cx: &mut Context<Self>) {
@@ -293,17 +367,30 @@ impl SettingsView {
             self.reset_mcp_form();
         }
         let id = id.to_string();
-        self.patch(false, move |s| s.mcp_servers = remove_mcp_server(&s.mcp_servers, &id), cx)
-            .detach();
+        self.patch(
+            false,
+            move |s| s.mcp_servers = remove_mcp_server(&s.mcp_servers, &id),
+            cx,
+        )
+        .detach();
         cx.notify();
     }
 
     /// `startMCPEdit`: the form over the server's values (the token is never shown).
     fn start_mcp_edit(&mut self, s: &McpServer, cx: &mut Context<Self>) {
         self.mcp.edit_id = s.id.clone();
-        self.mcp.kind = if s.transport == "stdio" { "stdio" } else { "http" }.into();
+        self.mcp.kind = if s.transport == "stdio" {
+            "stdio"
+        } else {
+            "http"
+        }
+        .into();
         self.mcp.err.clear();
-        let name = if s.name.is_empty() { s.id.clone() } else { s.name.clone() };
+        let name = if s.name.is_empty() {
+            s.id.clone()
+        } else {
+            s.name.clone()
+        };
         self.field_rewrite("mcp-name", name);
         self.field_rewrite("mcp-url", s.url.clone());
         self.field_rewrite("mcp-auth", String::new());
@@ -324,15 +411,28 @@ impl SettingsView {
         let args = split_args(&self.field_value("mcp-args", cx));
         let stdio = self.mcp.kind == "stdio";
         if !self.mcp.edit_id.is_empty() {
-            let Some(cur) = settings.mcp_servers.iter().find(|s| s.id == self.mcp.edit_id).cloned() else {
+            let Some(cur) = settings
+                .mcp_servers
+                .iter()
+                .find(|s| s.id == self.mcp.edit_id)
+                .cloned()
+            else {
                 self.mcp.err = "That server is gone.".into();
                 cx.notify();
                 return;
             };
             let mut patch = McpServer {
-                name: if name.is_empty() { cur.id.clone() } else { name },
+                name: if name.is_empty() {
+                    cur.id.clone()
+                } else {
+                    name
+                },
                 transport: if self.mcp.kind.is_empty() {
-                    if cur.transport.is_empty() { "http".into() } else { cur.transport.clone() }
+                    if cur.transport.is_empty() {
+                        "http".into()
+                    } else {
+                        cur.transport.clone()
+                    }
                 } else {
                     self.mcp.kind.clone()
                 },
@@ -388,7 +488,8 @@ impl SettingsView {
         }
         let id = slug_mcp_id(&name);
         if !valid_mcp_id(&id) {
-            self.mcp.err = "Name must start with a letter (a–z) and use letters, digits, or hyphens.".into();
+            self.mcp.err =
+                "Name must start with a letter (a–z) and use letters, digits, or hyphens.".into();
             cx.notify();
             return;
         }
@@ -401,7 +502,11 @@ impl SettingsView {
             name: if name.is_empty() { id.clone() } else { name },
             id,
             enabled: true,
-            transport: if self.mcp.kind.is_empty() { "http".into() } else { self.mcp.kind.clone() },
+            transport: if self.mcp.kind.is_empty() {
+                "http".into()
+            } else {
+                self.mcp.kind.clone()
+            },
             ..Default::default()
         };
         if stdio {
@@ -420,11 +525,13 @@ impl SettingsView {
             }
             row.url = url;
             if !auth.is_empty() {
-                row.headers = BTreeMap::from([("Authorization".to_string(), mcp_auth_header(&auth))]);
+                row.headers =
+                    BTreeMap::from([("Authorization".to_string(), mcp_auth_header(&auth))]);
             }
         }
         self.reset_mcp_form();
-        self.patch(false, move |s| s.mcp_servers.push(row), cx).detach();
+        self.patch(false, move |s| s.mcp_servers.push(row), cx)
+            .detach();
         cx.notify();
     }
 }

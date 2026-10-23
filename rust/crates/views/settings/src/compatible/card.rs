@@ -23,8 +23,8 @@ use crate::rules::{
     unused_key,
 };
 use crate::style::{
-    InpStyle, Row, RowsCtx, code, copy, ctrl, danger_btn, field_msg, hsla, inp, rm_btn, rows,
-    tbtn, tbtn_icon, tbtn_label, tokens,
+    InpStyle, Row, RowsCtx, code, copy, ctrl, danger_btn, field_msg, hsla, inp, rm_btn, rows, tbtn,
+    tbtn_icon, tbtn_label, tokens,
 };
 
 /// What the card asks its host to do.
@@ -119,12 +119,17 @@ impl CompatibleProviderCard {
     }
 
     /// `setHeader`.
-    fn set_header(&mut self, i: usize, key: Option<String>, value: Option<String>, cx: &mut Context<Self>) {
+    fn set_header(
+        &mut self,
+        i: usize,
+        key: Option<String>,
+        value: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
         let saved = self.header_saved();
         let n = saved.len();
-        let patch = |(k, v): (String, String)| {
-            (key.clone().unwrap_or(k), value.clone().unwrap_or(v))
-        };
+        let patch =
+            |(k, v): (String, String)| (key.clone().unwrap_or(k), value.clone().unwrap_or(v));
         if i < n {
             let next: Vec<_> = saved
                 .into_iter()
@@ -140,7 +145,11 @@ impl CompatibleProviderCard {
             .enumerate()
             .map(|(j, r)| if j + n == i { patch(r) } else { r })
             .collect();
-        let ready: Vec<_> = next.iter().filter(|r| !r.0.trim().is_empty()).cloned().collect();
+        let ready: Vec<_> = next
+            .iter()
+            .filter(|r| !r.0.trim().is_empty())
+            .cloned()
+            .collect();
         self.header_drafts = next.into_iter().filter(|r| r.0.trim().is_empty()).collect();
         if !ready.is_empty() {
             let mut all = saved;
@@ -216,7 +225,10 @@ impl CompatibleProviderCard {
             })
             .collect();
         let ready = persistable_models(&next);
-        self.drafts = next.into_iter().filter(|m| m.id.trim().is_empty()).collect();
+        self.drafts = next
+            .into_iter()
+            .filter(|m| m.id.trim().is_empty())
+            .collect();
         if !ready.is_empty() {
             let mut all = saved;
             all.extend(ready);
@@ -240,7 +252,11 @@ impl CompatibleProviderCard {
         self.customizing.remove(&i);
         if kind == "custom" {
             self.customizing.insert(i);
-            let cur = self.rows().get(i).map(|m| m.flags.clone()).unwrap_or_default();
+            let cur = self
+                .rows()
+                .get(i)
+                .map(|m| m.flags.clone())
+                .unwrap_or_default();
             if !cur.is_empty() {
                 cx.notify();
                 return;
@@ -277,7 +293,13 @@ impl CompatibleProviderCard {
         .detach();
     }
 
-    fn set_flag(&mut self, i: usize, di: usize, f: impl Fn(&mut CompatibleFlagDim), cx: &mut Context<Self>) {
+    fn set_flag(
+        &mut self,
+        i: usize,
+        di: usize,
+        f: impl Fn(&mut CompatibleFlagDim),
+        cx: &mut Context<Self>,
+    ) {
         let Some(m) = self.rows().get(i).cloned() else {
             return;
         };
@@ -402,7 +424,14 @@ impl CompatibleProviderCard {
 
     // ---- fields ----
 
-    fn bound(&mut self, key: &str, v: &str, opts: FieldOpts, window: &mut Window, cx: &mut Context<Self>) -> Entity<gpui_kit::base::input::InputState> {
+    fn bound(
+        &mut self,
+        key: &str,
+        v: &str,
+        opts: FieldOpts,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Entity<gpui_kit::base::input::InputState> {
         if !self.fields.contains_key(key) {
             let f = Field::new(key.to_string(), opts, Self::field_event, window, cx);
             self.fields.insert(key.to_string(), f);
@@ -413,7 +442,13 @@ impl CompatibleProviderCard {
         f.input.clone()
     }
 
-    fn field_event(&mut self, key: &str, ev: FieldEvent, _window: &mut Window, cx: &mut Context<Self>) {
+    fn field_event(
+        &mut self,
+        key: &str,
+        ev: FieldEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         match ev {
             FieldEvent::Focus => {
                 if let Some(f) = self.fields.get_mut(key) {
@@ -434,7 +469,12 @@ impl CompatibleProviderCard {
             .map(|f| f.value(cx))
             .unwrap_or_default();
         let parts: Vec<&str> = key.split(':').collect();
-        let idx = |k: usize| parts.get(k).and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+        let idx = |k: usize| {
+            parts
+                .get(k)
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(0)
+        };
         match parts.first().copied().unwrap_or("") {
             "name" => self.emit_set(|p| p.name = v, cx),
             "url" => self.emit_set(|p| p.base_url = v, cx),
@@ -454,7 +494,11 @@ impl CompatibleProviderCard {
             "mlabel" => self.set_model(idx(1), move |m| m.label = v.clone(), cx),
             "mctx" => {
                 let n = crate::rules::number_input_value(&v);
-                let w = if n > 0. { crate::rules::js_round(n) as i64 } else { 0 };
+                let w = if n > 0. {
+                    crate::rules::js_round(n) as i64
+                } else {
+                    0
+                };
                 self.set_model(idx(1), move |m| m.context_window = w, cx)
             }
             "fl" => self.set_flag(idx(1), idx(2), move |d| d.label = v.clone(), cx),
@@ -488,28 +532,47 @@ impl CompatibleProviderCard {
             return s.clone();
         }
         let sel = cx.new(|cx| build(window, cx));
-        self._subs.push(cx.subscribe(&sel, move |this: &mut Self, _, ev: &SelectEvent, cx| {
-            if let SelectEvent::Change(v) = ev {
-                on(this, v.to_string(), cx);
-            }
-        }));
+        self._subs.push(
+            cx.subscribe(&sel, move |this: &mut Self, _, ev: &SelectEvent, cx| {
+                if let SelectEvent::Change(v) = ev {
+                    on(this, v.to_string(), cx);
+                }
+            }),
+        );
         self.selects.insert(key.to_string(), sel.clone());
         sel
     }
 }
 
 /// An `.inp` cell with its spec handle.
-fn cell(label: String, input: &Entity<gpui_kit::base::input::InputState>, placeholder: &str, style: InpStyle, window: &Window, cx: &App) -> Div {
+fn cell(
+    label: String,
+    input: &Entity<gpui_kit::base::input::InputState>,
+    placeholder: &str,
+    style: InpStyle,
+    window: &Window,
+    cx: &App,
+) -> Div {
     div()
         .flex()
         .min_w_0()
         .debug_selector(move || format!("inp:{label}"))
-        .child(inp(input, &placeholder.to_string().into(), style, window, cx))
+        .child(inp(
+            input,
+            &placeholder.to_string().into(),
+            style,
+            window,
+            cx,
+        ))
 }
 
 /// `.compat-cols`: 11px `--muted`.
 fn cols(s: &str, cx: &App) -> Text {
-    text(s.to_string()).size(11.).leading(1.45).color(tokens(cx).muted).nowrap()
+    text(s.to_string())
+        .size(11.)
+        .leading(1.45)
+        .color(tokens(cx).muted)
+        .nowrap()
 }
 
 impl Render for CompatibleProviderCard {
@@ -543,14 +606,27 @@ impl Render for CompatibleProviderCard {
                     .items_stretch()
                     .gap(px(8.))
                     .w_full()
-                    .child(cell("API key".into(), &key, "sk-…", InpStyle::BASE, window, cx).flex_1())
+                    .child(
+                        cell("API key".into(), &key, "sk-…", InpStyle::BASE, window, cx).flex_1(),
+                    )
                     .child(
                         tbtn("compat-eye", p.api_key.is_empty(), cx)
                             .h_auto()
                             .debug_selector(move || {
-                                format!("btn:{}", if visible { "Hide API key" } else { "Show API key" })
+                                format!(
+                                    "btn:{}",
+                                    if visible {
+                                        "Hide API key"
+                                    } else {
+                                        "Show API key"
+                                    }
+                                )
                             })
-                            .child(tbtn_icon(if visible { IconName::EyeOff } else { IconName::Eye }))
+                            .child(tbtn_icon(if visible {
+                                IconName::EyeOff
+                            } else {
+                                IconName::Eye
+                            }))
                             .when(!p.api_key.is_empty(), |d| {
                                 d.on_click(cx.listener(|this, _, _, cx| {
                                     this.key_visible = !this.key_visible;
@@ -559,12 +635,17 @@ impl Render for CompatibleProviderCard {
                             }),
                     )
                     .child(
-                        tbtn_label("compat-test", "Test", self.testing || p.base_url.is_empty(), cx)
-                            .h_auto()
-                            .debug_selector(|| "btn:Test".into())
-                            .when(!(self.testing || p.base_url.is_empty()), |d| {
-                                d.on_click(cx.listener(|_, _, _, cx| cx.emit(CardEvent::Test)))
-                            }),
+                        tbtn_label(
+                            "compat-test",
+                            "Test",
+                            self.testing || p.base_url.is_empty(),
+                            cx,
+                        )
+                        .h_auto()
+                        .debug_selector(|| "btn:Test".into())
+                        .when(!(self.testing || p.base_url.is_empty()), |d| {
+                            d.on_click(cx.listener(|_, _, _, cx| cx.emit(CardEvent::Test)))
+                        }),
                     ),
             );
         if self.testing {
@@ -583,13 +664,40 @@ impl Render for CompatibleProviderCard {
                     .flex()
                     .items_stretch()
                     .gap(px(6.))
-                    .child(flex_share(1., cell("Header key".into(), &ki, "Key", InpStyle::COMPAT, window, cx).flex_1()))
-                    .child(flex_share(1.2, cell("Header value".into(), &vi, "Value", InpStyle::COMPAT, window, cx).flex_1()))
+                    .child(flex_share(
+                        1.,
+                        cell(
+                            "Header key".into(),
+                            &ki,
+                            "Key",
+                            InpStyle::COMPAT,
+                            window,
+                            cx,
+                        )
+                        .flex_1(),
+                    ))
+                    .child(flex_share(
+                        1.2,
+                        cell(
+                            "Header value".into(),
+                            &vi,
+                            "Value",
+                            InpStyle::COMPAT,
+                            window,
+                            cx,
+                        )
+                        .flex_1(),
+                    ))
                     .child(
                         div().flex().items_center().child(
-                            rm_btn(SharedString::from(format!("hrm-{i}")), IconName::Trash, false, cx)
-                                .debug_selector(move || format!("btn:Remove header {i}"))
-                                .on_click(cx.listener(move |this, _, _, cx| this.remove_header(i, cx))),
+                            rm_btn(
+                                SharedString::from(format!("hrm-{i}")),
+                                IconName::Trash,
+                                false,
+                                cx,
+                            )
+                            .debug_selector(move || format!("btn:Remove header {i}"))
+                            .on_click(cx.listener(move |this, _, _, cx| this.remove_header(i, cx))),
                         ),
                     ),
             );
@@ -599,7 +707,11 @@ impl Render for CompatibleProviderCard {
                 tbtn("compat-add-header", false, cx)
                     .debug_selector(|| "btn:Add header".into())
                     .child(tbtn_icon(IconName::Plus))
-                    .child(recur_ui::style::button_label("Add header", 12., weight::MEDIUM))
+                    .child(recur_ui::style::button_label(
+                        "Add header",
+                        12.,
+                        weight::MEDIUM,
+                    ))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.header_drafts.push((String::new(), String::new()));
                         cx.notify();
@@ -611,17 +723,18 @@ impl Render for CompatibleProviderCard {
         let rows_now = self.rows();
         let saved_n = p.models.len();
         let n_rows = rows_now.len();
-        let model_grid = |a: AnyElement, b: AnyElement, c: AnyElement, d: AnyElement, e: AnyElement| {
-            div()
-                .flex()
-                .items_stretch()
-                .gap(px(6.))
-                .child(flex_share(1.2, div().flex_1().min_w_0().flex().child(a)))
-                .child(flex_share(1., div().flex_1().min_w_0().flex().child(b)))
-                .child(div().flex_none().w(px(88.)).flex().child(c))
-                .child(div().flex_none().w(px(176.)).flex().flex_col().child(d))
-                .child(div().flex_none().w(px(28.)).flex().items_center().child(e))
-        };
+        let model_grid =
+            |a: AnyElement, b: AnyElement, c: AnyElement, d: AnyElement, e: AnyElement| {
+                div()
+                    .flex()
+                    .items_stretch()
+                    .gap(px(6.))
+                    .child(flex_share(1.2, div().flex_1().min_w_0().flex().child(a)))
+                    .child(flex_share(1., div().flex_1().min_w_0().flex().child(b)))
+                    .child(div().flex_none().w(px(88.)).flex().child(c))
+                    .child(div().flex_none().w(px(176.)).flex().flex_col().child(d))
+                    .child(div().flex_none().w(px(28.)).flex().items_center().child(e))
+            };
         let mut models = div().flex().flex_col().gap(px(8.)).w_full().child(
             model_grid(
                 cols("Model id", cx).into_any_element(),
@@ -640,9 +753,25 @@ impl Render for CompatibleProviderCard {
         for (i, m) in rows_now.iter().enumerate() {
             let kind = self.controls_kind(m, i);
             let mid = self.bound(&format!("mid:{i}"), &m.id, FieldOpts::default(), window, cx);
-            let ml = self.bound(&format!("mlabel:{i}"), &m.label, FieldOpts::default(), window, cx);
-            let ctx_v = if m.context_window > 0 { m.context_window.to_string() } else { String::new() };
-            let mc = self.bound(&format!("mctx:{i}"), &ctx_v, FieldOpts::default(), window, cx);
+            let ml = self.bound(
+                &format!("mlabel:{i}"),
+                &m.label,
+                FieldOpts::default(),
+                window,
+                cx,
+            );
+            let ctx_v = if m.context_window > 0 {
+                m.context_window.to_string()
+            } else {
+                String::new()
+            };
+            let mc = self.bound(
+                &format!("mctx:{i}"),
+                &ctx_v,
+                FieldOpts::default(),
+                window,
+                cx,
+            );
             let sel = self.select(
                 &format!("ctl:{i}"),
                 |window, cx| {
@@ -671,14 +800,50 @@ impl Render for CompatibleProviderCard {
             });
             let disabled = n_rows <= 1 || (i < saved_n && saved_n <= 1);
             let mut block = div().flex().flex_col().gap(px(8.)).child(model_grid(
-                cell("Model id".into(), &mid, "model-id", InpStyle::COMPAT, window, cx).flex_1().into_any_element(),
-                cell("Model label".into(), &ml, "Label", InpStyle::COMPAT, window, cx).flex_1().into_any_element(),
-                cell("Context window tokens".into(), &mc, "128000", InpStyle::COMPAT, window, cx).flex_1().into_any_element(),
+                cell(
+                    "Model id".into(),
+                    &mid,
+                    "model-id",
+                    InpStyle::COMPAT,
+                    window,
+                    cx,
+                )
+                .flex_1()
+                .into_any_element(),
+                cell(
+                    "Model label".into(),
+                    &ml,
+                    "Label",
+                    InpStyle::COMPAT,
+                    window,
+                    cx,
+                )
+                .flex_1()
+                .into_any_element(),
+                cell(
+                    "Context window tokens".into(),
+                    &mc,
+                    "128000",
+                    InpStyle::COMPAT,
+                    window,
+                    cx,
+                )
+                .flex_1()
+                .into_any_element(),
                 sel.into_any_element(),
-                rm_btn(SharedString::from(format!("mrm-{i}")), IconName::Trash, disabled, cx)
-                    .debug_selector(move || format!("btn:Remove model {i}{}", if disabled { ":off" } else { "" }))
-                    .when(!disabled, |d| d.on_click(cx.listener(move |this, _, _, cx| this.remove_model(i, cx))))
-                    .into_any_element(),
+                rm_btn(
+                    SharedString::from(format!("mrm-{i}")),
+                    IconName::Trash,
+                    disabled,
+                    cx,
+                )
+                .debug_selector(move || {
+                    format!("btn:Remove model {i}{}", if disabled { ":off" } else { "" })
+                })
+                .when(!disabled, |d| {
+                    d.on_click(cx.listener(move |this, _, _, cx| this.remove_model(i, cx)))
+                })
+                .into_any_element(),
             ));
             if !kind.is_empty() && kind != "custom" {
                 block = block.child(self.flag_summary(m, window, cx));
@@ -692,7 +857,11 @@ impl Render for CompatibleProviderCard {
                 tbtn("compat-add-model", false, cx)
                     .debug_selector(|| "btn:Add model".into())
                     .child(tbtn_icon(IconName::Plus))
-                    .child(recur_ui::style::button_label("Add model", 12., weight::MEDIUM))
+                    .child(recur_ui::style::button_label(
+                        "Add model",
+                        12.,
+                        weight::MEDIUM,
+                    ))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.drafts.push(CompatibleModel::default());
                         cx.notify();
@@ -719,7 +888,19 @@ impl Render for CompatibleProviderCard {
                         ]),
                         cx,
                     ))
-                    .child(div().flex().w_full().child(cell("Provider display name".into(), &name, "", InpStyle::BASE, window, cx).flex_1())),
+                    .child(
+                        div().flex().w_full().child(
+                            cell(
+                                "Provider display name".into(),
+                                &name,
+                                "",
+                                InpStyle::BASE,
+                                window,
+                                cx,
+                            )
+                            .flex_1(),
+                        ),
+                    ),
                 Row::stack()
                     .child(copy(
                         &format!("{id}-url"),
@@ -731,13 +912,27 @@ impl Render for CompatibleProviderCard {
                         ]),
                         cx,
                     ))
-                    .child(div().flex().w_full().child(cell("Base URL".into(), &url, "https://api.openai.com", InpStyle::BASE, window, cx).flex_1())),
+                    .child(
+                        div().flex().w_full().child(
+                            cell(
+                                "Base URL".into(),
+                                &url,
+                                "https://api.openai.com",
+                                InpStyle::BASE,
+                                window,
+                                cx,
+                            )
+                            .flex_1(),
+                        ),
+                    ),
                 key_row,
                 Row::stack()
                     .child(copy(
                         &format!("{id}-headers"),
                         "Extra headers",
-                        Some(vec![span("Optional. Sent on every request to this endpoint.")]),
+                        Some(vec![span(
+                            "Optional. Sent on every request to this endpoint.",
+                        )]),
                         cx,
                     ))
                     .child(headers),
@@ -757,16 +952,20 @@ impl Render for CompatibleProviderCard {
                     .child(copy(
                         &format!("{id}-remove"),
                         "Remove provider",
-                        Some(vec![span("Drops this endpoint and its models from pickers.")]),
+                        Some(vec![span(
+                            "Drops this endpoint and its models from pickers.",
+                        )]),
                         cx,
                     ))
-                    .child(ctrl().child(
-                        danger_btn("compat-remove", false, false, cx)
-                            .debug_selector(|| "btn:Remove".into())
-                            .hover(move |s| s.border_color(hsla(t.line_bright)))
-                            .child(recur_ui::style::button_label("Remove", 12., weight::MEDIUM))
-                            .on_click(cx.listener(|_, _, _, cx| cx.emit(CardEvent::Remove))),
-                    )),
+                    .child(
+                        ctrl().child(
+                            danger_btn("compat-remove", false, false, cx)
+                                .debug_selector(|| "btn:Remove".into())
+                                .hover(move |s| s.border_color(hsla(t.line_bright)))
+                                .child(recur_ui::style::button_label("Remove", 12., weight::MEDIUM))
+                                .on_click(cx.listener(|_, _, _, cx| cx.emit(CardEvent::Remove))),
+                        ),
+                    ),
             ],
             window,
             cx,
@@ -779,16 +978,24 @@ impl CompatibleProviderCard {
     fn flag_summary(&self, m: &CompatibleModel, window: &Window, cx: &App) -> AnyElement {
         let t = tokens(cx);
         let courier = Family::Stack("Courier".into(), Vec::new());
-        let lead = if m.flags.len() == 1 { "this dropdown" } else { "these dropdowns" };
+        let lead = if m.flags.len() == 1 {
+            "this dropdown"
+        } else {
+            "these dropdowns"
+        };
         let names: Vec<Text> = m
             .flags
             .iter()
             .map(|d| {
-                text(if d.label.is_empty() { d.id.clone() } else { d.label.clone() })
-                    .size(12.)
-                    .leading(1.45)
-                    .color(t.text)
-                    .nowrap()
+                text(if d.label.is_empty() {
+                    d.id.clone()
+                } else {
+                    d.label.clone()
+                })
+                .size(12.)
+                .leading(1.45)
+                .color(t.text)
+                .nowrap()
             })
             .collect();
         let wire_spans = |d: &CompatibleFlagDim| -> Vec<Span> {
@@ -803,7 +1010,14 @@ impl CompatibleProviderCard {
         let wire_w = m
             .flags
             .iter()
-            .map(|d| w_of(&Text::from_spans(wire_spans(d)).size(12.).leading(1.45).nowrap()))
+            .map(|d| {
+                w_of(
+                    &Text::from_spans(wire_spans(d))
+                        .size(12.)
+                        .leading(1.45)
+                        .nowrap(),
+                )
+            })
             .fold(0., f32::max);
         let mut grid = card(recur_ui::color::TRANSPARENT, t.line, 6.)
             .debug_selector(|| "compat-flag-summary".into())
@@ -831,7 +1045,11 @@ impl CompatibleProviderCard {
                 }
                 let mut s = span(format!(
                     "{}{}",
-                    if o.label.is_empty() { &o.value } else { &o.label },
+                    if o.label.is_empty() {
+                        &o.value
+                    } else {
+                        &o.label
+                    },
                     if o.default { " (default)" } else { "" }
                 ));
                 if o.default {
@@ -868,7 +1086,13 @@ impl CompatibleProviderCard {
     }
 
     /// `.compat-flags`: the custom control editor.
-    fn flag_editor(&mut self, i: usize, m: &CompatibleModel, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn flag_editor(
+        &mut self,
+        i: usize,
+        m: &CompatibleModel,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = tokens(cx);
         let mut col = div().flex().flex_col().gap(px(8.)).pl(px(12.)).child(
             crate::style::desc_text(
@@ -880,7 +1104,13 @@ impl CompatibleProviderCard {
             ),
         );
         for (di, d) in m.flags.iter().enumerate() {
-            let label = self.bound(&format!("fl:{i}:{di}"), &d.label, FieldOpts::default(), window, cx);
+            let label = self.bound(
+                &format!("fl:{i}:{di}"),
+                &d.label,
+                FieldOpts::default(),
+                window,
+                cx,
+            );
             let wire = self.select(
                 &format!("wire:{i}:{di}"),
                 |window, cx| {
@@ -915,10 +1145,26 @@ impl CompatibleProviderCard {
                     .child(div().flex_none().w(px(28.))),
             );
             for (oi, o) in d.options.iter().enumerate() {
-                let vi = self.bound(&format!("ov:{i}:{di}:{oi}"), &o.value, FieldOpts::default(), window, cx);
-                let li = self.bound(&format!("ol:{i}:{di}:{oi}"), &o.label, FieldOpts::default(), window, cx);
+                let vi = self.bound(
+                    &format!("ov:{i}:{di}:{oi}"),
+                    &o.value,
+                    FieldOpts::default(),
+                    window,
+                    cx,
+                );
+                let li = self.bound(
+                    &format!("ol:{i}:{di}:{oi}"),
+                    &o.label,
+                    FieldOpts::default(),
+                    window,
+                    cx,
+                );
                 let on = o.default;
-                let nm = if o.label.is_empty() { o.value.clone() } else { o.label.clone() };
+                let nm = if o.label.is_empty() {
+                    o.value.clone()
+                } else {
+                    o.label.clone()
+                };
                 let dot = div()
                     .id(SharedString::from(format!("def-{i}-{di}-{oi}")))
                     .debug_selector(move || format!("compat-default:Default {nm}:{on}"))
@@ -931,26 +1177,67 @@ impl CompatibleProviderCard {
                     .items_center()
                     .justify_center()
                     .cursor_pointer()
-                    .text_color(hsla(if on { t.bg } else { recur_ui::color::TRANSPARENT }))
+                    .text_color(hsla(if on {
+                        t.bg
+                    } else {
+                        recur_ui::color::TRANSPARENT
+                    }))
                     .when(!on, |d| d.hover(move |s| s.text_color(hsla(t.muted))))
                     .child(icon(IconName::Check).stroke_width(3.).size(px(12.)))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.set_option(i, di, oi, move |o| o.default = !on, cx)
                     }));
-                opts_grid = opts_grid.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.))
-                        .child(div().flex_none().w(px(52.)).flex().justify_center().child(dot))
-                        .child(flex_share(1., cell("Option value".into(), &vi, "value", InpStyle::FLAG, window, cx).flex_1()))
-                        .child(flex_share(1., cell("Option label".into(), &li, "Label", InpStyle::FLAG, window, cx).flex_1()))
-                        .child(
-                            rm_btn(SharedString::from(format!("orm-{i}-{di}-{oi}")), IconName::Trash, false, cx)
+                opts_grid =
+                    opts_grid.child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .child(
+                                div()
+                                    .flex_none()
+                                    .w(px(52.))
+                                    .flex()
+                                    .justify_center()
+                                    .child(dot),
+                            )
+                            .child(flex_share(
+                                1.,
+                                cell(
+                                    "Option value".into(),
+                                    &vi,
+                                    "value",
+                                    InpStyle::FLAG,
+                                    window,
+                                    cx,
+                                )
+                                .flex_1(),
+                            ))
+                            .child(flex_share(
+                                1.,
+                                cell(
+                                    "Option label".into(),
+                                    &li,
+                                    "Label",
+                                    InpStyle::FLAG,
+                                    window,
+                                    cx,
+                                )
+                                .flex_1(),
+                            ))
+                            .child(
+                                rm_btn(
+                                    SharedString::from(format!("orm-{i}-{di}-{oi}")),
+                                    IconName::Trash,
+                                    false,
+                                    cx,
+                                )
                                 .debug_selector(move || format!("btn:Remove option {oi}"))
-                                .on_click(cx.listener(move |this, _, _, cx| this.remove_option(i, di, oi, cx))),
-                        ),
-                );
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| this.remove_option(i, di, oi, cx),
+                                )),
+                            ),
+                    );
             }
             let flag_card = card(recur_ui::color::TRANSPARENT, t.line, 6.)
                 .debug_selector(move || format!("compat-flag-card:{di}"))
@@ -965,14 +1252,33 @@ impl CompatibleProviderCard {
                         .gap(px(6.))
                         .child(flex_share(
                             1.,
-                            cell("Control name".into(), &label, "Control name", InpStyle { family_ui: true, weight: weight::SEMIBOLD, ..InpStyle::FLAG }, window, cx).flex_1(),
+                            cell(
+                                "Control name".into(),
+                                &label,
+                                "Control name",
+                                InpStyle {
+                                    family_ui: true,
+                                    weight: weight::SEMIBOLD,
+                                    ..InpStyle::FLAG
+                                },
+                                window,
+                                cx,
+                            )
+                            .flex_1(),
                         ))
                         .child(div().flex_none().child(cols("sent as", cx)))
                         .child(flex_share(1., div().flex_1().min_w_0().child(wire)))
                         .child(
-                            rm_btn(SharedString::from(format!("frm-{i}-{di}")), IconName::Trash, false, cx)
-                                .debug_selector(move || format!("btn:Remove control {di}"))
-                                .on_click(cx.listener(move |this, _, _, cx| this.remove_flag(i, di, cx))),
+                            rm_btn(
+                                SharedString::from(format!("frm-{i}-{di}")),
+                                IconName::Trash,
+                                false,
+                                cx,
+                            )
+                            .debug_selector(move || format!("btn:Remove control {di}"))
+                            .on_click(
+                                cx.listener(move |this, _, _, cx| this.remove_flag(i, di, cx)),
+                            ),
                         ),
                 )
                 .child(opts_grid)
@@ -981,8 +1287,14 @@ impl CompatibleProviderCard {
                         tbtn(SharedString::from(format!("addopt-{i}-{di}")), false, cx)
                             .debug_selector(move || format!("btn:Add option {di}"))
                             .child(tbtn_icon(IconName::Plus))
-                            .child(recur_ui::style::button_label("Add option", 12., weight::MEDIUM))
-                            .on_click(cx.listener(move |this, _, _, cx| this.add_option(i, di, cx))),
+                            .child(recur_ui::style::button_label(
+                                "Add option",
+                                12.,
+                                weight::MEDIUM,
+                            ))
+                            .on_click(
+                                cx.listener(move |this, _, _, cx| this.add_option(i, di, cx)),
+                            ),
                     ),
                 );
             col = col.child(flag_card);
@@ -992,7 +1304,11 @@ impl CompatibleProviderCard {
                 tbtn(SharedString::from(format!("addflag-{i}")), false, cx)
                     .debug_selector(|| "btn:Add control".into())
                     .child(tbtn_icon(IconName::Plus))
-                    .child(recur_ui::style::button_label("Add control", 12., weight::MEDIUM))
+                    .child(recur_ui::style::button_label(
+                        "Add control",
+                        12.,
+                        weight::MEDIUM,
+                    ))
                     .on_click(cx.listener(move |this, _, _, cx| this.add_flag(i, cx))),
             ),
         );

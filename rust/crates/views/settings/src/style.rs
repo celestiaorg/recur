@@ -37,15 +37,19 @@ pub fn title(label: impl Into<SharedString>, cx: &App) -> Text {
 
 /// `.set-desc` (and `.set-lead`'s) inline `<code>`: mono 11px amber on an amber wash.
 pub fn code(c: impl Into<SharedString>, cx: &App) -> Span {
-    span(c).mono().size(11.).color(tokens(cx).amber).boxed(InlineBox {
-        pad_top: 1.,
-        pad_bottom: 1.,
-        pad_left: 6.,
-        pad_right: 6.,
-        background: Some(hsla(rgba(242, 179, 61, 0.1))),
-        radius: 4.,
-        ..Default::default()
-    })
+    span(c)
+        .mono()
+        .size(11.)
+        .color(tokens(cx).amber)
+        .boxed(InlineBox {
+            pad_top: 1.,
+            pad_bottom: 1.,
+            pad_left: 6.,
+            pad_right: 6.,
+            background: Some(hsla(rgba(242, 179, 61, 0.1))),
+            radius: 4.,
+            ..Default::default()
+        })
 }
 
 /// `.set-desc` text (no margin): 12px `--faint`, line-height 1.4.
@@ -201,7 +205,13 @@ pub fn rows(ctx: RowsCtx, list: Vec<Row>, window: &Window, cx: &App) -> Div {
             row.flex_row()
                 .gap(px(16.))
                 .when(wrap, |d| d.flex_wrap())
-                .map(|d| if r.danger { d.items_start() } else { d.items_center() })
+                .map(|d| {
+                    if r.danger {
+                        d.items_start()
+                    } else {
+                        d.items_center()
+                    }
+                })
         };
         if rule {
             row = row.border_b(px(1.)).border_color(hsla(t.line_soft));
@@ -239,7 +249,13 @@ pub fn radio_rows(
             row.flex_col().gap(px(10.)).child(copy).child(control)
         } else {
             row.flex_row()
-                .map(|d| if radios { d.items_start() } else { d.items_center() })
+                .map(|d| {
+                    if radios {
+                        d.items_start()
+                    } else {
+                        d.items_center()
+                    }
+                })
                 .child(div().flex_1().min_w_0().flex().child(copy))
                 .child(
                     div()
@@ -377,7 +393,12 @@ pub fn tbtn_label(
 }
 
 /// `.tbtn.set-danger-btn` (`.solid` fills it coral).
-pub fn danger_btn(id: impl Into<ElementId>, solid: bool, disabled: bool, cx: &App) -> Stateful<Div> {
+pub fn danger_btn(
+    id: impl Into<ElementId>,
+    solid: bool,
+    disabled: bool,
+    cx: &App,
+) -> Stateful<Div> {
     let t = tokens(cx);
     let (bg, border, fg) = if solid {
         (t.coral, t.coral, recur_ui::hex(0x0a0c10))
@@ -489,7 +510,9 @@ pub fn inp(
     } else {
         Family::Mono
     };
-    card(t.pane, border, 6.)
+    // A focused field matches the global `:focus-visible`, whose `border-radius: 4px` comes later
+    // than `.inp`'s 6px.
+    card(t.pane, border, if focused { 4. } else { 6. })
         .flex()
         .items_center()
         .py(px(style.pad_y))
@@ -640,12 +663,7 @@ pub fn status_table(id: &str, items: Vec<(&str, String, bool)>, cx: &App) -> Div
             .bg(hsla(t.pane_2.mix(0.7, recur_ui::color::TRANSPARENT)))
             .when(i == 0, |d| d.rounded_tl(px(7.)))
             .when(i + 1 == n, |d| d.rounded_bl(px(7.)))
-            .child(
-                text(dt.to_string())
-                    .size(12.5)
-                    .leading(1.35)
-                    .color(t.muted),
-            );
+            .child(text(dt.to_string()).size(12.5).leading(1.35).color(t.muted));
         let dd_text = text(dd.clone())
             .size(12.5)
             .leading(1.35)
@@ -768,17 +786,19 @@ pub fn skill_copy(
         );
     }
     if let Some((loc, full)) = path {
-        c = c.child(div().mt(px(5.)).child(recur_ui::tooltip::titled(
-            SharedString::from(format!("{id}:path-tip")),
-            full,
-            text(loc)
-                .id(SharedString::from(format!("{id}:path")))
-                .mono()
-                .size(11.)
-                .leading(1.35)
-                .color(t.muted)
-                .break_anywhere(),
-        )));
+        c = c.child(
+            div().mt(px(5.)).child(recur_ui::tooltip::titled(
+                SharedString::from(format!("{id}:path-tip")),
+                full,
+                text(loc)
+                    .id(SharedString::from(format!("{id}:path")))
+                    .mono()
+                    .size(11.)
+                    .leading(1.35)
+                    .color(t.muted)
+                    .break_anywhere(),
+            )),
+        );
     }
     c
 }
@@ -798,7 +818,9 @@ pub fn skill_list(rows: Vec<(Div, Vec<AnyElement>)>, cx: &App) -> Div {
                 .gap(px(16.))
                 .pt(px(12.))
                 .pb(px(if last { 2. } else { 12. }))
-                .when(!last, |d| d.border_b(px(1.)).border_color(hsla(t.line_soft)))
+                .when(!last, |d| {
+                    d.border_b(px(1.)).border_color(hsla(t.line_soft))
+                })
                 .child(copy)
                 .children(trailing),
         );

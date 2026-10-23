@@ -19,8 +19,9 @@ impl SettingsView {
         let backdrop = tokens(cx).bg;
         let props = format!("{:?}", (&l, &p, &loops, &policies, backdrop));
         if self.props_changed("loop-pickers", props) {
-            self.loop_pickers
-                .update(cx, |x, cx| x.set(&l, &p, &loops, &policies, false, backdrop, cx));
+            self.loop_pickers.update(cx, |x, cx| {
+                x.set(&l, &p, &loops, &policies, false, backdrop, cx)
+            });
         }
         rows(
             RowsCtx {

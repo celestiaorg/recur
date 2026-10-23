@@ -6,9 +6,9 @@ use std::time::Duration;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, Bounds, Context, Div, Entity, InteractiveElement, IntoElement,
-    ParentElement, Pixels, SharedString, StatefulInteractiveElement, Styled, Window, canvas, div,
-    point, px, relative,
+    AnyElement, App, Bounds, Context, Div, Entity, InteractiveElement, IntoElement, ParentElement,
+    Pixels, SharedString, StatefulInteractiveElement, Styled, Window, canvas, div, point, px,
+    relative,
 };
 use recur_editor::theme::catalog::{EditorThemeCard, filter_for_list};
 use recur_services::api::TerminalThemeInfo;
@@ -24,7 +24,7 @@ use recur_view_core::prefs::TERMINAL_MATCH_EDITOR;
 use recur_view_core::themes::is_light_theme;
 
 use crate::field::FieldOpts;
-use crate::style::{copy, ctrl, css_color, hsla, seg, seg_btn, swatch, thauto_label, tokens};
+use crate::style::{copy, css_color, ctrl, hsla, seg, seg_btn, swatch, thauto_label, tokens};
 use crate::view::{SettingsView, ThemeKind};
 
 /// What a theme card shows: background, three dots, and the `.tha` sample (text and accent).
@@ -53,7 +53,10 @@ impl SettingsView {
     ) -> Div {
         let t = tokens(cx);
         let mut s = seg(cx);
-        for (on, label, val) in [(!auto, "Single theme", false), (auto, "Sync with system", true)] {
+        for (on, label, val) in [
+            (!auto, "Single theme", false),
+            (auto, "Sync with system", true),
+        ] {
             let state = self.vcx.state.clone();
             s = s.child(
                 seg_btn(
@@ -64,9 +67,7 @@ impl SettingsView {
                     11.,
                     cx,
                 )
-                .debug_selector(move || {
-                    format!("seg:{id}:{label}{}", if on { ":on" } else { "" })
-                })
+                .debug_selector(move || format!("seg:{id}:{label}{}", if on { ":on" } else { "" }))
                 .on_click(move |_, _, cx| state.update(cx, |s, cx| set(s, val, cx))),
             );
         }
@@ -121,17 +122,14 @@ impl SettingsView {
             .bg(hsla(look.bg))
             .child(dots)
             .child(
-                recur_ui::text::Text::from_spans(vec![
-                    span(s1).color(c1),
-                    span(s2).color(c2),
-                ])
-                .mono()
-                .size(13.)
-                .weight(weight::SEMIBOLD)
-                .tracking(-0.02)
-                .line_height(LineHeight::Normal)
-                .align(Align::Center)
-                .nowrap(),
+                recur_ui::text::Text::from_spans(vec![span(s1).color(c1), span(s2).color(c2)])
+                    .mono()
+                    .size(13.)
+                    .weight(weight::SEMIBOLD)
+                    .tracking(-0.02)
+                    .line_height(LineHeight::Normal)
+                    .align(Align::Center)
+                    .nowrap(),
             );
         let meta = div()
             .py(px(9.))
@@ -150,12 +148,16 @@ impl SettingsView {
                     .nowrap(),
             )
             .child(
-                div().ml_auto().flex_none().opacity(if on { 1. } else { 0. }).child(
-                    icon(IconName::Check)
-                        .stroke_width(2.6)
-                        .size(px(15.))
-                        .color(t.amber),
-                ),
+                div()
+                    .ml_auto()
+                    .flex_none()
+                    .opacity(if on { 1. } else { 0. })
+                    .child(
+                        icon(IconName::Check)
+                            .stroke_width(2.6)
+                            .size(px(15.))
+                            .color(t.amber),
+                    ),
             );
         let mut c = card(t.pane, border, 9.)
             .id(id)
@@ -224,7 +226,13 @@ impl SettingsView {
     }
 
     /// `themeGrid`.
-    fn app_grid(&mut self, cur: &str, mode: Option<bool>, window: &mut Window, cx: &mut Context<Self>) -> Div {
+    fn app_grid(
+        &mut self,
+        cur: &str,
+        mode: Option<bool>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Div {
         let mut cards = Vec::new();
         for id in ThemeId::ALL {
             if let Some(light) = mode
@@ -341,7 +349,12 @@ impl SettingsView {
             return div()
                 .py(px(18.))
                 .px(px(4.))
-                .child(text("No themes match.").size(12.5).leading(1.45).color(t.muted))
+                .child(
+                    text("No themes match.")
+                        .size(12.5)
+                        .leading(1.45)
+                        .color(t.muted),
+                )
                 .into_any_element();
         }
         let vh = f32::from(window.viewport_size().height);
@@ -393,7 +406,9 @@ impl SettingsView {
                 .w_full()
                 .py(px(8.))
                 .px(px(12.))
-                .when(label.is_none(), |d| d.border_t(px(1.)).border_color(hsla(t.line_soft)))
+                .when(label.is_none(), |d| {
+                    d.border_t(px(1.)).border_color(hsla(t.line_soft))
+                })
                 .cursor_pointer()
                 .when(on, |d| d.bg(hsla(t.amber.fade(bg_mix))))
                 .when(!on, |d| d.hover(move |s| s.bg(hsla(hover_bg))))
@@ -507,33 +522,45 @@ impl SettingsView {
         .h(relative(1.))
     }
 
-    pub(crate) fn appearance_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn appearance_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = tokens(cx);
         let s = self.vcx.state.read(cx);
         let app_auto = s.appearance.sync.auto;
         let app_cur = ThemeId::from_key(&s.appearance.theme);
-        let (app_light, app_dark) = (s.appearance.sync.light.clone(), s.appearance.sync.dark.clone());
+        let (app_light, app_dark) = (
+            s.appearance.sync.light.clone(),
+            s.appearance.sync.dark.clone(),
+        );
         let ed_auto = s.editor_sync.auto;
         let ed_cur = s.editor_theme.clone();
         let (ed_light, ed_dark) = (s.editor_sync.light.clone(), s.editor_sync.dark.clone());
         let term_auto = s.terminal_sync.auto;
         let term_cur = s.terminal_prefs.theme.clone();
-        let (term_light, term_dark) = (
-            s.terminal_sync.light.clone(),
-            s.terminal_sync.dark.clone(),
-        );
+        let (term_light, term_dark) = (s.terminal_sync.light.clone(), s.terminal_sync.dark.clone());
         let cards = s.editor_themes_for_picker();
 
         // App theme.
-        let mut app_body = div()
-            .flex()
-            .flex_col()
-            .child(self.theme_mode_row("App theme mode", app_auto, AppState::set_theme_auto, cx));
+        let mut app_body = div().flex().flex_col().child(self.theme_mode_row(
+            "App theme mode",
+            app_auto,
+            AppState::set_theme_auto,
+            cx,
+        ));
         if app_auto {
-            for (light, label, cur) in [(true, "Light mode", app_light), (false, "Dark mode", app_dark)] {
-                app_body = app_body
-                    .child(thauto_label(label, cx))
-                    .child(self.app_grid(&cur, Some(light), window, cx));
+            for (light, label, cur) in [
+                (true, "Light mode", app_light),
+                (false, "Dark mode", app_dark),
+            ] {
+                app_body = app_body.child(thauto_label(label, cx)).child(self.app_grid(
+                    &cur,
+                    Some(light),
+                    window,
+                    cx,
+                ));
             }
         } else {
             app_body = app_body.child(self.app_grid(app_cur.key(), None, window, cx));
@@ -562,23 +589,27 @@ impl SettingsView {
             .fields
             .get("edth-search")
             .is_some_and(|f| f.is_focused(window, cx));
-        let search = card(t.bg, if focused { t.line_bright } else { t.line }, 7.)
-            .debug_selector(|| "inp:Search editor themes".into())
-            .flex_1()
-            .min_w(px(160.))
-            .h(px(30.))
-            .px(px(10.))
-            .flex()
-            .items_center()
-            .child(text_field(
-                &query_input,
-                &"Search themes…".into(),
-                recur_ui::style::UA_PLACEHOLDER,
-                Family::Ui,
-                12.5,
-                window,
-                cx,
-            ));
+        let search = card(
+            t.bg,
+            if focused { t.line_bright } else { t.line },
+            if focused { 4. } else { 7. },
+        )
+        .debug_selector(|| "inp:Search editor themes".into())
+        .flex_1()
+        .min_w(px(160.))
+        .h(px(30.))
+        .px(px(10.))
+        .flex()
+        .items_center()
+        .child(text_field(
+            &query_input,
+            &"Search themes…".into(),
+            recur_ui::style::UA_PLACEHOLDER,
+            Family::Ui,
+            12.5,
+            window,
+            cx,
+        ));
         let mut toolbar = div()
             .mt(px(if has_current { 10. } else { 8. }))
             .mb(px(10.))
@@ -596,14 +627,21 @@ impl SettingsView {
             ] {
                 let on = self.theme_kind == k;
                 sg = sg.child(
-                    seg_btn(SharedString::from(format!("edkind-{label}")), label, on, false, 11., cx)
-                        .debug_selector(move || {
-                            format!("seg:Filter by kind:{label}{}", if on { ":on" } else { "" })
-                        })
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.theme_kind = k;
-                            cx.notify();
-                        })),
+                    seg_btn(
+                        SharedString::from(format!("edkind-{label}")),
+                        label,
+                        on,
+                        false,
+                        11.,
+                        cx,
+                    )
+                    .debug_selector(move || {
+                        format!("seg:Filter by kind:{label}{}", if on { ":on" } else { "" })
+                    })
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.theme_kind = k;
+                        cx.notify();
+                    })),
                 );
             }
             toolbar = toolbar.child(sg);
@@ -611,7 +649,10 @@ impl SettingsView {
         ed_body = ed_body.child(toolbar);
         let state = self.vcx.state.clone();
         if ed_auto {
-            for (light, label, cur) in [(true, "Light mode", ed_light), (false, "Dark mode", ed_dark)] {
+            for (light, label, cur) in [
+                (true, "Light mode", ed_light),
+                (false, "Dark mode", ed_dark),
+            ] {
                 let st = state.clone();
                 let list = filter_for_list(&cards, &query, Some(!light));
                 let pick: Rc<dyn Fn(&EditorThemeCard, &mut App)> = Rc::new(move |c, cx| {
@@ -651,8 +692,18 @@ impl SettingsView {
         ));
         if term_auto {
             for (light, label, cur, app_key) in [
-                (true, "Light mode", term_light, app_light_key(&self.vcx.state, true, cx)),
-                (false, "Dark mode", term_dark, app_light_key(&self.vcx.state, false, cx)),
+                (
+                    true,
+                    "Light mode",
+                    term_light,
+                    app_light_key(&self.vcx.state, true, cx),
+                ),
+                (
+                    false,
+                    "Dark mode",
+                    term_dark,
+                    app_light_key(&self.vcx.state, false, cx),
+                ),
             ] {
                 let app = if app_auto { app_for(&app_key) } else { app_cur };
                 term_body = term_body
@@ -683,7 +734,12 @@ impl SettingsView {
     }
 
     /// `.edth-current`: the selected theme; clicking it clears the filters and reveals it.
-    fn editor_current(&mut self, sel: &EditorThemeCard, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn editor_current(
+        &mut self,
+        sel: &EditorThemeCard,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let t = tokens(cx);
         let border = t.amber.mix(0.45, t.line);
         let bg = t.amber.mix(0.12, t.pane);
@@ -767,5 +823,9 @@ impl SettingsView {
 /// `appThemeFor(mode)`'s key: the light or dark pick of the app sync.
 fn app_light_key(state: &Entity<AppState>, light: bool, cx: &App) -> String {
     let s = &state.read(cx).appearance.sync;
-    if light { s.light.clone() } else { s.dark.clone() }
+    if light {
+        s.light.clone()
+    } else {
+        s.dark.clone()
+    }
 }

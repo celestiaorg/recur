@@ -67,7 +67,11 @@ pub fn committed_values(
 }
 
 impl SettingsView {
-    pub(crate) fn integrations_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn integrations_pane(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         if self.bundle_settings.loading && self.bundle_settings.rows.is_empty() {
             return ctrl_text("int-msg", vec![span("Loading…")], window, cx).into_any_element();
         }
@@ -96,7 +100,11 @@ impl SettingsView {
         for (bundle, items) in setting_groups(&self.bundle_settings.rows) {
             let mut list = Vec::new();
             for s in items {
-                let label = if s.label.is_empty() { s.name.clone() } else { s.label.clone() };
+                let label = if s.label.is_empty() {
+                    s.name.clone()
+                } else {
+                    s.label.clone()
+                };
                 let key = format!("bundle:{}", s.id);
                 let visible = self.bundle_visible.contains(&s.id);
                 let draft = self.bundle_drafts.get(&s.id).cloned().unwrap_or_default();
@@ -116,7 +124,13 @@ impl SettingsView {
                             .min_w_0()
                             .flex()
                             .debug_selector(move || format!("inp:{aria}"))
-                            .child(inp(&input, &s.placeholder.clone().into(), InpStyle::BASE, window, cx)),
+                            .child(inp(
+                                &input,
+                                &s.placeholder.clone().into(),
+                                InpStyle::BASE,
+                                window,
+                                cx,
+                            )),
                     );
                 if s.secret {
                     let id = s.id.clone();
@@ -125,19 +139,27 @@ impl SettingsView {
                     pick = pick.child(recur_ui::tooltip::titled(
                         SharedString::from(format!("bundle-eye-tip-{}", s.id)),
                         tip,
-                        tbtn(SharedString::from(format!("bundle-eye-{}", s.id)), draft.is_empty(), cx)
-                            .h_auto()
-                            .debug_selector(move || format!("btn:{name}"))
-                            .child(tbtn_icon(if visible { IconName::EyeOff } else { IconName::Eye }))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                if this.bundle_drafts.get(&id).is_none_or(String::is_empty) {
-                                    return;
-                                }
-                                if !this.bundle_visible.remove(&id) {
-                                    this.bundle_visible.insert(id.clone());
-                                }
-                                cx.notify();
-                            })),
+                        tbtn(
+                            SharedString::from(format!("bundle-eye-{}", s.id)),
+                            draft.is_empty(),
+                            cx,
+                        )
+                        .h_auto()
+                        .debug_selector(move || format!("btn:{name}"))
+                        .child(tbtn_icon(if visible {
+                            IconName::EyeOff
+                        } else {
+                            IconName::Eye
+                        }))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            if this.bundle_drafts.get(&id).is_none_or(String::is_empty) {
+                                return;
+                            }
+                            if !this.bundle_visible.remove(&id) {
+                                this.bundle_visible.insert(id.clone());
+                            }
+                            cx.notify();
+                        })),
                     ));
                 }
                 list.push(
@@ -151,7 +173,11 @@ impl SettingsView {
                         .child(pick),
                 );
                 if !s.url.is_empty() {
-                    let open = if s.url_label.is_empty() { "Open".to_string() } else { s.url_label.clone() };
+                    let open = if s.url_label.is_empty() {
+                        "Open".to_string()
+                    } else {
+                        s.url_label.clone()
+                    };
                     let url = s.url.clone();
                     let o = open.clone();
                     list.push(
@@ -162,17 +188,31 @@ impl SettingsView {
                                 Some(vec![span("Opens in your browser.")]),
                                 cx,
                             ))
-                            .child(ctrl().child(
-                                tbtn_label(SharedString::from(format!("bundle-url-{}", s.id)), open, false, cx)
+                            .child(
+                                ctrl().child(
+                                    tbtn_label(
+                                        SharedString::from(format!("bundle-url-{}", s.id)),
+                                        open,
+                                        false,
+                                        cx,
+                                    )
                                     .debug_selector(move || format!("btn:{o}"))
-                                    .on_click(move |_, _, cx| recur_content::links::open_external_url(&url, cx)),
-                            )),
+                                    .on_click(
+                                        move |_, _, cx| {
+                                            recur_content::links::open_external_url(&url, cx)
+                                        },
+                                    ),
+                                ),
+                            ),
                     );
                 }
             }
             out = out.child(
-                settings_group(SharedString::from(format!("grp-int-{bundle}")), bundle.clone())
-                    .child(rows(GROUP_ROWS, list, window, cx)),
+                settings_group(
+                    SharedString::from(format!("grp-int-{bundle}")),
+                    bundle.clone(),
+                )
+                .child(rows(GROUP_ROWS, list, window, cx)),
             );
         }
         out.into_any_element()
@@ -199,7 +239,13 @@ impl SettingsView {
     }
 
     /// Integrations field events (`id` is the setting id).
-    pub(crate) fn bundle_field(&mut self, id: &str, ev: FieldEvent, value: String, cx: &mut Context<Self>) {
+    pub(crate) fn bundle_field(
+        &mut self,
+        id: &str,
+        ev: FieldEvent,
+        value: String,
+        cx: &mut Context<Self>,
+    ) {
         match ev {
             FieldEvent::Focus => self.bundle_focus = id.to_string(),
             FieldEvent::Blur => self.bundle_focus.clear(),
@@ -222,7 +268,8 @@ impl SettingsView {
                     .settings(cx)
                     .map(|s| s.bundle_values.clone())
                     .unwrap_or_default();
-                committed_values(&live, &id, &v).map(|next| this.patch(false, move |s| s.bundle_values = next, cx))
+                committed_values(&live, &id, &v)
+                    .map(|next| this.patch(false, move |s| s.bundle_values = next, cx))
             });
             if let Ok(Some(task)) = save {
                 task.await;

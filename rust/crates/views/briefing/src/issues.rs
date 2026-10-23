@@ -62,6 +62,11 @@ struct SavedView(Option<IssuesView>);
 
 impl Global for SavedView {}
 
+/// Forgets the session's view (a fresh app, as the parity scenes start).
+pub fn reset_saved_view(cx: &mut App) {
+    cx.set_global(SavedView(None));
+}
+
 /// The filters and layout (`applyView`): unknown values fall back to the defaults.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewState {
@@ -1392,23 +1397,13 @@ impl Render for Issues {
             .cloned()
             .collect();
         let body: AnyElement = if self.view.layout == "board" && !grouped.is_empty() {
-            let mut board = div()
-                .id("iss-board")
-                .debug_selector(|| "iss-board".into())
-                .flex_1()
-                .min_h_0()
-                .flex()
-                .gap(px(12.))
-                .py(px(12.))
-                .px(px(16.))
-                .overflow_x_scroll()
-                .track_scroll(&self.board_scroll);
+            let mut columns_el: Vec<AnyElement> = Vec::new();
             for c in cols.iter().rev() {
                 let mut col_body = div().flex().flex_col().gap(px(8.)).pb(px(16.));
                 for i in &c.items {
                     col_body = col_body.child(self.card(i, window, cx));
                 }
-                board = board.child(
+                columns_el.push(
                     div()
                         .flex_none()
                         .w(px(325.))
@@ -1418,6 +1413,7 @@ impl Render for Issues {
                         .gap(px(8.))
                         .child(
                             bucket_head(&c.label, &c.label, c.items.len(), c.color, cx)
+                                .h(px(crate::style::HEAD_H + 1.))
                                 .border_1()
                                 .rounded(px(6.)),
                         )
@@ -1429,10 +1425,23 @@ impl Render for Issues {
                                 )))
                                 .child(col_body),
                             ),
-                        ),
+                        )
+                        .into_any_element(),
                 );
             }
-            board.into_any_element()
+            div()
+                .debug_selector(|| "iss-board".into())
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .child(
+                    recur_ui::widgets::scroll_area("iss-board")
+                        .horizontal()
+                        .track(&self.board_scroll)
+                        .scroller(|d| d.flex().gap(px(12.)).py(px(12.)).px(px(16.)))
+                        .children(columns_el),
+                )
+                .into_any_element()
         } else {
             let mut overview = div().flex().flex_col().pb(px(32.));
             if self.loading && self.issues.is_empty() {

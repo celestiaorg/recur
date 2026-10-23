@@ -234,7 +234,19 @@ impl ProjectView {
                         div()
                             .flex()
                             .debug_selector(|| "inp:Linear projects".into())
-                            .child(inp(&linear, &"Mobile App, ENG".into(), InpStyle::BASE, window, cx)),
+                            .child(inp(
+                                &linear,
+                                &"Mobile App, ENG".into(),
+                                // An `<input>` without a width takes WebKit's `size=20` width:
+                                // 20 average advances of the 12px mono face plus its
+                                // max-minus-average advance (170px), in 12px sides and a border.
+                                InpStyle {
+                                    width: Some(196.),
+                                    ..InpStyle::BASE
+                                },
+                                window,
+                                cx,
+                            )),
                     ))],
                 window,
                 cx,
@@ -277,6 +289,8 @@ impl ProjectView {
                     font_size: 14.,
                 },
             ));
+        // `.set-ctrl`'s `justify-content: flex-end` packs the grid's one auto column at the
+        // end at its max-content width, so the buttons keep their own widths.
         let mut kinds = seg(cx).w_full();
         for (k, l) in [("letter", "Letter"), ("icon", "Icon"), ("image", "Image")] {
             kinds = kinds.child(
@@ -289,6 +303,7 @@ impl ProjectView {
                     cx,
                 )
                 .flex_1()
+                .flex_shrink_0()
                 .justify_center()
                 .debug_selector(move || format!("ident-kind:{l}"))
                 .on_click(cx.listener(move |v, _, window, cx| v.set_avatar_kind(k, window, cx))),
@@ -297,6 +312,9 @@ impl ProjectView {
         let slot: AnyElement = match &parsed {
             ParsedPic::Letter(_) => {
                 let letter = self.field(LETTER, window, cx);
+                letter.update(cx, |s, cx| {
+                    s.set_text_align(gpui_kit::TextAlign::Center, cx)
+                });
                 div()
                     .flex()
                     .debug_selector(|| "inp:Avatar letter".into())
@@ -400,15 +418,20 @@ impl ProjectView {
                 .child(icon(IconName::Plus).size(px(10.)).color(t.muted));
         }
         colors = colors.child(custom);
+        let track = div()
+            .flex_none()
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .child(div().h(px(28.)).flex().items_center().child(kinds))
+            .child(div().h(px(30.)).flex().items_center().min_w_0().child(slot))
+            .child(colors);
         let control = div()
             .flex_none()
             .w(px(204.))
             .flex()
-            .flex_col()
-            .gap(px(8.))
-            .child(div().h(px(28.)).flex().child(kinds))
-            .child(div().h(px(30.)).flex().items_center().min_w_0().child(slot))
-            .child(colors);
+            .justify_end()
+            .child(track);
         Row::new()
             .id("avatar")
             .danger()

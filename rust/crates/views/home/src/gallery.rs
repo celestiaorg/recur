@@ -1,6 +1,7 @@
 //! Parity scenes: the `home` list in `rust/tools/ui-parity/scenes.json`, built the way
 //! `web/scenes/Views.svelte` mounts `App.svelte`: the whole shell over the e2e seed edited by
-//! the scene's fixture in `content/views.json`, then the scene's `route` once booted.
+//! the scene's fixture in `content/views.json`, then the scene's `route` once booted. The
+//! briefing and projects galleries build their lists through [`build_in`].
 
 use std::collections::BTreeMap;
 
@@ -23,24 +24,25 @@ struct HomeScene {
     storage: BTreeMap<String, String>,
 }
 
-#[derive(Deserialize)]
-struct Specs {
-    #[serde(default)]
-    home: Vec<Value>,
+/// The scenes of one list of `scenes.json` (`home`, `briefing`, `projects`).
+pub fn parsed_in(list: &str) -> Vec<Value> {
+    serde_json::from_str::<Value>(SCENES_JSON)
+        .ok()
+        .and_then(|v| v.get(list).and_then(|l| l.as_array()).cloned())
+        .unwrap_or_default()
 }
 
-fn parsed() -> Vec<Value> {
-    serde_json::from_str::<Specs>(SCENES_JSON)
-        .map(|s| s.home)
-        .unwrap_or_default()
+/// Every scene of `list`, in file order.
+pub fn specs_in(list: &str) -> Vec<SceneSpec> {
+    parsed_in(list)
+        .into_iter()
+        .filter_map(|v| serde_json::from_value(v).ok())
+        .collect()
 }
 
 /// Every home scene, in file order.
 pub fn specs() -> Vec<SceneSpec> {
-    parsed()
-        .into_iter()
-        .filter_map(|v| serde_json::from_value(v).ok())
-        .collect()
+    specs_in("home")
 }
 
 pub fn exists(name: &str) -> bool {
@@ -79,10 +81,23 @@ pub fn reset(cx: &mut App) {
 }
 
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
-    let raw = parsed().into_iter().find(|v| v["name"] == name)?;
+    build_in("home", name, &|_| {}, window, cx)
+}
+
+/// A scene of `list`, the shell's registry extended by `extra` (the crates that sit above
+/// this one).
+pub fn build_in(
+    list: &str,
+    name: &str,
+    extra: &dyn Fn(&mut ViewRegistry),
+    window: &mut Window,
+    cx: &mut App,
+) -> Option<AnyView> {
+    let raw = parsed_in(list).into_iter().find(|v| v["name"] == name)?;
     let scene: HomeScene = serde_json::from_value(raw).ok()?;
     reset(cx);
-    let registry = registry();
+    let mut registry = registry();
+    extra(&mut registry);
     if cx.try_global::<InitsRan>().is_none() {
         cx.set_global(InitsRan);
         for init in &registry.inits {
@@ -91,10 +106,17 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     }
     let route = scene.route.clone();
     let navigate: recur_app::gallery::SceneHook = Box::new(move |state, cx| {
-        state.update(cx, |s, cx| match route.as_str() {
+        let mut parts = route.split(':');
+        let kind = parts.next().unwrap_or("");
+        let id = parts.next().unwrap_or("").to_string();
+        state.update(cx, |s, cx| match kind {
             "welcome" => s.go(ViewName::Welcome, None, cx),
+            "briefing" => s.go(ViewName::Briefing, None, cx),
+            "issues" => s.go(ViewName::Issues, None, cx),
+            "schedules" => s.go(ViewName::Schedules, None, cx),
             "newtask" => s.open_new_task("", None, cx),
             "newproject" => s.open_new_project(false, cx),
+            "project" => s.open_project(&id, cx),
             _ => {}
         })
     });
@@ -117,7 +139,10 @@ mod tests {
 
     #[test]
     fn every_scene_has_a_fixture() {
-        for v in parsed() {
+        for v in ["home", "briefing", "projects"]
+            .into_iter()
+            .flat_map(parsed_in)
+        {
             let s: HomeScene = serde_json::from_value(v).expect("scene");
             assert!(fixture(&s.fixture).is_object(), "{}", s.name);
         }

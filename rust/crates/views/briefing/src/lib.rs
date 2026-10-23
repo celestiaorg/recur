@@ -8,6 +8,8 @@
 //! [`schedules::ScheduledPrompts`] for one project.
 
 pub mod briefing;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 pub mod issues;
 pub mod schedule_expanded;
 pub mod schedules;

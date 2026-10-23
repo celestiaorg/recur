@@ -7,6 +7,8 @@
 //! list).
 
 mod color_panel;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 pub mod mini;
 pub mod pic;
 pub mod project;

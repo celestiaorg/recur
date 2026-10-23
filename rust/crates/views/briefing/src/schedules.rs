@@ -681,11 +681,47 @@ impl ScheduledPrompts {
 
 // ---- render ----
 
-/// `.sc-acts .tb-icon-btn`: 24px, faint until hover; disabled at .4.
-fn act_btn(id: SharedString, disabled: bool, cx: &App) -> gpui_kit::Stateful<gpui_kit::Div> {
-    recur_ui::style::titlebar_icon_button(id, false, cx)
+/// `.sc-acts .tb-icon-btn`: 24px, faint until hover (`--text` on `--pane-2`, or `hover_fg`
+/// for `.sc-del`); disabled at .4. `confirm` is `.sc-confirm` (coral on `--coral-d`).
+fn act_btn(
+    id: SharedString,
+    disabled: bool,
+    hover_fg: Option<Color>,
+    confirm: bool,
+    cx: &App,
+) -> gpui_kit::Stateful<gpui_kit::Div> {
+    let t = Theme::of(cx).tokens;
+    let (fg, bg) = if confirm {
+        (t.coral, Some(t.coral_d))
+    } else {
+        (t.faint, None)
+    };
+    let hover_fg = if confirm {
+        t.coral
+    } else {
+        hover_fg.unwrap_or(t.text)
+    };
+    let hover_bg = bg.unwrap_or(t.pane_2);
+    div()
+        .id(id)
+        .flex()
+        .flex_none()
+        .items_center()
+        .justify_center()
+        .gap(px(1.))
         .h(px(24.))
-        .when(disabled, |d| d.opacity(0.4).cursor_default())
+        .px(px(6.))
+        .rounded(px(6.))
+        .text_color(hsla(fg))
+        .when_some(bg, |d, b| d.bg(hsla(b)))
+        .map(|d| {
+            if disabled {
+                d.opacity(0.4).cursor_default()
+            } else {
+                d.cursor_pointer()
+                    .hover(move |s| s.bg(hsla(hover_bg)).text_color(hsla(hover_fg)))
+            }
+        })
 }
 
 /// `.ibs > * + *::before`: `·` 8px either side in `--line-bright`.
@@ -965,7 +1001,7 @@ impl ScheduledPrompts {
             acts = acts.child(titled(
                 action("open-t", &id),
                 "Open last workspace",
-                act_btn(action("open", &id), busy, cx)
+                act_btn(action("open", &id), busy, None, false, cx)
                     .debug_selector({
                         let id = id.clone();
                         move || format!("sc-btn:Open workspace:{id}")
@@ -983,7 +1019,7 @@ impl ScheduledPrompts {
         acts = acts.child(titled(
             action("run-t", &id),
             "Run now",
-            act_btn(action("run", &id), busy, cx)
+            act_btn(action("run", &id), busy, None, false, cx)
                 .debug_selector({
                     let id = id.clone();
                     move || format!("sc-btn:Run now:{id}")
@@ -1011,7 +1047,7 @@ impl ScheduledPrompts {
         acts = acts.child(titled(
             action("pause-t", &id),
             pause_label,
-            act_btn(action("pause", &id), busy, cx)
+            act_btn(action("pause", &id), busy, None, false, cx)
                 .debug_selector({
                     let id = id.clone();
                     move || format!("sc-btn:{pause_label}:{id}")
@@ -1044,7 +1080,7 @@ impl ScheduledPrompts {
         acts = acts.child(titled(
             action("edit-t", &id),
             "Edit",
-            act_btn(action("edit", &id), busy, cx)
+            act_btn(action("edit", &id), busy, None, false, cx)
                 .debug_selector({
                     let id = id.clone();
                     move || format!("sc-btn:Edit:{id}")
@@ -1060,14 +1096,11 @@ impl ScheduledPrompts {
         if self.deleting == p.id {
             let del_id = id.clone();
             acts = acts.child(
-                act_btn(action("confirm", &id), busy, cx)
+                act_btn(action("confirm", &id), busy, None, true, cx)
                     .debug_selector({
                         let id = id.clone();
                         move || format!("sc-btn:Confirm delete:{id}")
                     })
-                    .bg(hsla(t.coral_d))
-                    .text_color(hsla(t.coral))
-                    .hover(move |s| s.bg(hsla(t.coral_d)).text_color(hsla(t.coral)))
                     .when(!busy, |d| {
                         d.on_click(cx.listener(move |v, _, _, cx| {
                             cx.stop_propagation();
@@ -1099,18 +1132,17 @@ impl ScheduledPrompts {
             acts = acts.child(titled(
                 action("del-t", &id),
                 "Delete",
-                act_btn(action("del", &id), busy, cx)
+                act_btn(action("del", &id), busy, Some(t.coral), false, cx)
                     .debug_selector({
                         let id = id.clone();
                         move || format!("sc-btn:Delete:{id}")
                     })
                     .when(!busy, |d| {
-                        d.hover(move |s| s.text_color(hsla(t.coral)))
-                            .on_click(cx.listener(move |v, _, _, cx| {
-                                cx.stop_propagation();
-                                v.deleting = del_id.clone();
-                                cx.notify();
-                            }))
+                        d.on_click(cx.listener(move |v, _, _, cx| {
+                            cx.stop_propagation();
+                            v.deleting = del_id.clone();
+                            cx.notify();
+                        }))
                     })
                     .child(icon(IconName::Trash).size(px(14.))),
             ));

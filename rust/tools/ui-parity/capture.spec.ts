@@ -312,7 +312,7 @@ for (const scene of scenes) {
       : scene.name.startsWith('prs/') ? { resolvers: prsResolvers(scene) }
       : scene.name.startsWith('settings/') ? { resolvers: settingsResolvers(scene) }
       : isViewScene(scene) ? { resolvers: viewsResolvers(scene) } : {})
-    if (scene.name.startsWith('prs/')) {
+    if (scene.name.startsWith('prs/') || isViewScene(scene)) {
       // Avatar photos come from the network in the app; neither renderer fetches them here.
       await page.route('https://github.com/**', (r) => r.abort())
       await page.route('https://avatars.githubusercontent.com/**', (r) => r.abort())

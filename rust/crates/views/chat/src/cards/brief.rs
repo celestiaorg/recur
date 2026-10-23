@@ -270,7 +270,9 @@ pub fn brief_row(
                 .self_center()
                 .ml(px(8.))
                 .min_w(px(18.))
-                .rounded_full()
+                .py(px(1.))
+                .px(px(6.))
+                .rounded(px(9.))
                 .bg(hsla(t.coral))
                 .flex()
                 .justify_center()
@@ -316,7 +318,8 @@ pub fn brief_row(
     let age = format_relative_age(brief.last_activity_at, crate::chat::now_ms());
     let has_unread = unread > 0 || brief.changed_since_viewed;
     let (state, b, target) = (state.clone(), brief.clone(), open_target.to_string());
-    let rem = 13.;
+    // The root font size (`rem`), not the body's 13px.
+    let rem = 16.;
     div()
         .id(id.clone())
         .flex()
@@ -370,18 +373,22 @@ pub fn brief_row(
                 .when_some(diff, |d, x| d.child(x)),
         )
         .child(
-            div()
-                .flex_none()
-                .w(px(2.5 * rem))
-                .flex()
-                .justify_end()
-                .when_some(age, |d, a| {
-                    d.child(recur_ui::tooltip::titled(
-                        SharedString::from(format!("{id}-age")),
-                        a.full,
-                        label(a.rel, Family::Mono, 10.5, 400.).color(t.faint),
-                    ))
-                }),
+            // `text-align: right` in a 2.5rem track: a wider age starts at the track and
+            // overflows to the right, as a too-wide line box does.
+            div().flex_none().w(px(2.5 * rem)).flex().child(
+                div()
+                    .flex_none()
+                    .min_w(px(2.5 * rem))
+                    .flex()
+                    .justify_end()
+                    .when_some(age, |d, a| {
+                        d.child(recur_ui::tooltip::titled(
+                            SharedString::from(format!("{id}-age")),
+                            a.full,
+                            label(a.rel, Family::Mono, 10.5, 400.).color(t.faint),
+                        ))
+                    }),
+            ),
         )
         .on_click(move |_, _, cx| open(&state, &b, &target, cx))
         .into_any_element()

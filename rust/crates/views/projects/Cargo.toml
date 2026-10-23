@@ -1,0 +1,70 @@
+[package]
+name = "recur-view-projects"
+description = "Projects and schedules: project settings, the Schedules list and the schedule editor."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Parity scenes for `rust/tools/ui-parity` (`gallery::build`).
+gallery = [
+    "recur-services/mock",
+    "recur-ui/gallery",
+    "recur-content/gallery",
+    "recur-view-chat/gallery",
+    "dep:recur-app",
+    "dep:recur-view-review",
+    "dep:recur-view-observatory",
+    "dep:recur-view-workspace",
+    "dep:recur-view-prs",
+    "dep:recur-view-settings",
+    "dep:recur-view-home",
+    "dep:serde",
+]
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-bundles.workspace = true
+recur-editor.workspace = true
+recur-textmate.workspace = true
+recur-code.workspace = true
+recur-agent.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+base64.workspace = true
+recur-view-core.workspace = true
+recur-view-chat.workspace = true
+recur-app = { workspace = true, features = ["gallery"], optional = true }
+recur-view-review = { workspace = true, features = ["gallery"], optional = true }
+recur-view-observatory = { workspace = true, features = ["gallery"], optional = true }
+recur-view-workspace = { workspace = true, features = ["gallery"], optional = true }
+recur-view-prs = { workspace = true, features = ["gallery"], optional = true }
+recur-view-settings = { workspace = true, features = ["gallery"], optional = true }
+recur-view-home = { workspace = true, features = ["gallery"], optional = true }
+serde = { workspace = true, optional = true }
+serde_json.workspace = true
+futures.workspace = true
+image = { workspace = true, features = ["png"] }
+smallvec.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-foundation.workspace = true
+objc2-app-kit = { workspace = true, features = ["NSColorPanel", "NSColor", "NSColorSpace", "NSPanel", "NSWindow", "NSResponder", "NSView"] }
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["mock"] }
+recur-view-projects = { path = ".", features = ["gallery"] }
+recur-app = { workspace = true, features = ["gallery"] }
+parking_lot.workspace = true
+
+[lints]
+workspace = true

@@ -7380,6 +7380,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-view-projects"
+version = "0.0.0"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "chrono-tz",
+ "futures",
+ "gpui-kit",
+ "gpui-pre",
+ "image",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "parking_lot",
+ "recur-agent",
+ "recur-app",
+ "recur-bundles",
+ "recur-code",
+ "recur-content",
+ "recur-domain",
+ "recur-editor",
+ "recur-engine",
+ "recur-services",
+ "recur-textmate",
+ "recur-ui",
+ "recur-view-chat",
+ "recur-view-core",
+ "recur-view-home",
+ "recur-view-observatory",
+ "recur-view-projects",
+ "recur-view-prs",
+ "recur-view-review",
+ "recur-view-settings",
+ "recur-view-workspace",
+ "serde",
+ "serde_json",
+ "smallvec",
+]
+
+[[package]]
 name = "recur-view-prs"
 version = "0.0.0"
 dependencies = [

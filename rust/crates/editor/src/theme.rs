@@ -105,6 +105,55 @@ pub struct EditorTheme {
     pub light: bool,
 }
 
+/// `MiniScriptEditor`'s layout chrome (`layoutChrome` in `MiniScriptEditor.svelte`): an
+/// 18px line in the app's mono face (Inter for `md` prose), its own content and line
+/// padding, a 10.5px line-number gutter, and the faint placeholder.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MiniChrome {
+    /// `md` prose: Inter at 12.5px with 6px content padding; else mono 12px with 8px.
+    pub prose: bool,
+    /// `fill`: 4px content padding (the host stretches the editor).
+    pub fill: bool,
+    pub placeholder: String,
+}
+
+impl MiniChrome {
+    /// `lineH`.
+    pub const LINE_PX: f32 = 18.0;
+
+    pub fn font_size(&self) -> f32 {
+        if self.prose { 12.5 } else { 12.0 }
+    }
+
+    /// `.cm-scroller { lineHeight: lineH / fontSize }` (a unitless factor).
+    pub fn line_factor(&self) -> f32 {
+        Self::LINE_PX / self.font_size()
+    }
+
+    pub fn content_padding_y(&self) -> f32 {
+        if self.fill {
+            4.0
+        } else if self.prose {
+            6.0
+        } else {
+            8.0
+        }
+    }
+
+    pub fn family(&self) -> recur_ui::fonts::Family {
+        if self.prose {
+            recur_ui::fonts::Family::Ui
+        } else {
+            recur_ui::fonts::Family::Mono
+        }
+    }
+
+    /// `.cm-lineNumbers .cm-gutterElement { fontSize: 10.5px }`.
+    pub const GUTTER_FONT: f32 = 10.5;
+    /// `.cm-lineNumbers .cm-gutterElement { padding: 0 8px 0 6px }`.
+    pub const GUTTER_PAD: (f32, f32) = (6.0, 8.0);
+}
+
 /// Layout metrics from prefs (`editorChromeExtension`, `.cm-line` padding,
 /// gutter element padding).
 #[derive(Clone, Debug, PartialEq)]
@@ -124,6 +173,22 @@ pub struct EditorMetrics {
 }
 
 impl EditorMetrics {
+    /// `MiniScriptEditor`'s metrics: `.cm-line { padding: 0 10px 0 4px }`.
+    pub fn mini(prefs: &EditorPrefs, mini: &MiniChrome) -> EditorMetrics {
+        let mut m = EditorMetrics::from_prefs(prefs);
+        m.font_families = if mini.prose {
+            vec![recur_ui::fonts::UI.to_string()]
+        } else {
+            crate::prefs::font_stack(recur_ui::fonts::MONO)
+        };
+        m.font_size = mini.font_size();
+        m.line_height_factor = mini.line_factor();
+        m.content_padding_y = mini.content_padding_y();
+        m.line_padding_left = 4.0;
+        m.line_padding_right = 10.0;
+        m
+    }
+
     pub fn from_prefs(prefs: &EditorPrefs) -> EditorMetrics {
         let (caret_width, caret_nudge) = prefs.caret_metrics();
         EditorMetrics {
@@ -151,6 +216,35 @@ fn opt(c: Option<&String>) -> Option<Rgba> {
 }
 
 impl EditorTheme {
+    /// `MiniScriptEditor`'s `fallbackChrome()` until (or when no) paired theme lands:
+    /// transparent editor and gutters, `--faint` numbers, a `--cyan` caret and a cyan (dark)
+    /// or black (light) selection wash.
+    pub fn mini_fallback(app: ThemeId) -> EditorTheme {
+        let light = app.is_light();
+        let mut t = EditorTheme::resolve(None, !light, app);
+        let tokens = app.tokens();
+        t.background = TRANSPARENT;
+        t.source_background = TRANSPARENT;
+        t.text_background = TRANSPARENT;
+        t.foreground = tokens.text.into();
+        t.gutter_background = TRANSPARENT;
+        t.gutter_border = TRANSPARENT;
+        t.gutter_foreground = tokens.faint.into();
+        t.active_line_gutter = TRANSPARENT;
+        t.caret = tokens.cyan.into();
+        t.selection = if light {
+            rgba_f(0.0, 0.0, 0.0, 0.18)
+        } else {
+            rgba_f(109.0 / 255.0, 211.0 / 255.0, 232.0 / 255.0, 0.18)
+        };
+        t.active_line = if light {
+            rgba_f(0.0, 0.0, 0.0, 0.06)
+        } else {
+            rgba_f(109.0 / 255.0, 211.0 / 255.0, 232.0 / 255.0, 0.06)
+        };
+        t
+    }
+
     /// Resolve a TextMate theme's chrome; without one, CodeMirror's bare
     /// dark/light base theme (`EditorView.darkTheme`).
     pub fn resolve(

@@ -57,6 +57,8 @@ Gaps found while porting that are not yet owned by a slice. Each must be closed 
 - [ ] **Panics abort the app.** A panic inside a GPUI callback crosses the platform FFI boundary and aborts the process ("failed to initiate panic"), so one bad render takes the whole app down (seen with the `recur_ui::text` line-breaking bug fixed in `9c11b9d4`). Install a panic hook that logs to `recur.log` with a backtrace, and keep render paths panic-free (no slicing or indexing on unchecked ranges).
 - [ ] **Real-data smoke.** Every smoke run so far used a fresh or seeded data dir; the first run on a copy of real data crashed. The final audit must boot, browse every view and stream a turn against a copy of a long-lived `recur.db`.
 
+- [ ] **Flaky engine/services tests under full-suite load.** `recur-engine` `chat::tests::recover::auto_resume_continues_an_interrupted_chat` (`create_workspace` errored at `test_support.rs:104`, passes 5/5 alone) and `recur-services` `workspace_pr::workspace_merge_refused_has_run` (2 in ~30 runs). Find what `create_workspace` and the merge check race on under load; do not paper over with retries.
+
 ## Application services (former Wails bindings)
 
 Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/app`. Rust home: `recur-services`. The contract is `recur_services::api` (one async trait per service, annotated below with `Trait::method`). `recur_services::AppServices` implements all of it over the engine (`services/src/app`, every `internal/app/*_test.go` ported under `app/tests`, plus `tests/real_services.rs` and `tests/contract.rs`); `recur_services::mock` answers the same contract from the e2e seed for view tests.

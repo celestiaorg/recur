@@ -11,8 +11,7 @@ use recur_code::glob::{CompiledGlob, is_excluded_by};
 use recur_domain::TreeEntry;
 use recur_editor::session::remap_open_files;
 use recur_ui::widgets::ToastKind;
-use recur_view_core::{LocalStorage, bridge_error_message, call, toast};
-use serde_json::Value;
+use recur_view_core::{bridge_error_message, call, toast};
 
 use crate::explorer_visible::is_path_visible_in_explorer_tree;
 use crate::model::{base_name, is_under, join_path, parent_path, rewrite_under};
@@ -21,40 +20,9 @@ use crate::obs::{
     LIVE_REFRESH_MS, Observatory, OpenRequest, REVIEW_REFRESH_MS, SKELETON_DELAY_MS,
 };
 
-const EXPLORER_PREFS_KEY: &str = "recur.explorerPrefs";
-
-/// `DEFAULT_EXPLORER_EXCLUDE`: VCS dirs and OS junk.
-pub const DEFAULT_EXPLORER_EXCLUDE: [&str; 5] = [
-    "**/.git",
-    "**/.svn",
-    "**/.hg",
-    "**/.DS_Store",
-    "**/Thumbs.db",
-];
-
-/// `explorerPrefs.exclude` (`normalizeExplorerPrefs`): the saved globs, else the defaults.
-pub fn explorer_exclude(storage: &LocalStorage) -> Vec<String> {
-    let saved: Option<Value> = storage
-        .get(EXPLORER_PREFS_KEY)
-        .and_then(|raw| serde_json::from_str(raw).ok());
-    match saved
-        .as_ref()
-        .and_then(|v| v.get("exclude"))
-        .and_then(Value::as_array)
-    {
-        Some(list) => list
-            .iter()
-            .map(|p| match p {
-                Value::String(s) => s.clone(),
-                other => other.to_string(),
-            })
-            .collect(),
-        None => DEFAULT_EXPLORER_EXCLUDE
-            .iter()
-            .map(|s| s.to_string())
-            .collect(),
-    }
-}
+pub use recur_view_core::prefs::explorer_exclude;
+#[cfg(test)]
+use recur_view_core::{LocalStorage, prefs::EXPLORER_PREFS_KEY};
 
 /// `patchChildren`: merge one folder's fresh listing into the tree.
 pub fn patch_children(nodes: &[TreeEntry], path: &str, kids: &[TreeEntry]) -> Vec<TreeEntry> {

@@ -160,8 +160,12 @@ pub struct ScrollArea {
     axis: Axis,
     overlay: bool,
     handle: Option<ScrollHandle>,
+    scroller: Option<ScrollerStyle>,
     children: Vec<AnyElement>,
 }
+
+type ScrollerStyle =
+    Box<dyn FnOnce(gpui_kit::Stateful<gpui_kit::Div>) -> gpui_kit::Stateful<gpui_kit::Div>>;
 
 pub fn scroll_area(id: impl Into<ElementId>) -> ScrollArea {
     ScrollArea {
@@ -169,6 +173,7 @@ pub fn scroll_area(id: impl Into<ElementId>) -> ScrollArea {
         axis: Axis::Y,
         overlay: false,
         handle: None,
+        scroller: None,
         children: Vec::new(),
     }
 }
@@ -184,6 +189,17 @@ impl ScrollArea {
     pub fn overlay(mut self) -> Self {
         self.axis = Axis::Y;
         self.overlay = true;
+        self
+    }
+
+    /// Style the scroll container itself, as when the CSS scroller is also the layout box
+    /// (`display: flex; flex-direction: column; overflow: auto` with padding and gaps, whose
+    /// items shrink to fit before it scrolls).
+    pub fn scroller(
+        mut self,
+        f: impl FnOnce(gpui_kit::Stateful<gpui_kit::Div>) -> gpui_kit::Stateful<gpui_kit::Div> + 'static,
+    ) -> Self {
+        self.scroller = Some(Box::new(f));
         self
     }
 
@@ -271,7 +287,10 @@ impl RenderOnce for ScrollArea {
         } else {
             t.scrollbar_thumb
         };
-        let base = div().id(self.id.clone()).flex_1().min_w_0().min_h_0();
+        let mut base = div().id(self.id.clone()).flex_1().min_w_0().min_h_0();
+        if let Some(f) = self.scroller {
+            base = f(base);
+        }
         let content = match axis {
             Axis::X => base.overflow_x_scroll(),
             Axis::Y => base.overflow_y_scroll(),

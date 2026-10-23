@@ -73,6 +73,7 @@ fn registry() -> ViewRegistry {
     recur_view_observatory::register(&mut r);
     recur_view_workspace::register(&mut r);
     recur_view_prs::register(&mut r);
+    recur_view_settings::register(&mut r);
     r
 }
 

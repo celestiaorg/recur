@@ -27,6 +27,9 @@ fn name_cmp(a: &str, b: &str) -> Ordering {
 
 impl AppState {
     pub(crate) fn init_themes(&mut self) {
+        // `initTheme` → `applyTheme(saved)`: a legacy key is stored under its current name.
+        let saved = self.appearance.theme.clone();
+        self.apply_app_theme(&saved);
         self.reapply_syncs();
     }
 
@@ -322,6 +325,66 @@ impl AppState {
         SyncName::TerminalTheme.save_pick(&mut self.storage, dark, key);
         self.reapply_syncs();
         cx.notify();
+    }
+
+    // ---- editor and explorer prefs ----
+
+    /// `setEditorPrefs`: merge, normalize and persist.
+    pub fn set_editor_prefs(
+        &mut self,
+        f: impl FnOnce(&mut recur_editor::prefs::EditorPrefs),
+        cx: &mut Context<Self>,
+    ) {
+        let mut next = self.editor_prefs.clone();
+        f(&mut next);
+        let raw = serde_json::to_value(&next).unwrap_or_default();
+        let merged = recur_editor::prefs::EditorPrefs::normalize(&raw);
+        if let Ok(s) = serde_json::to_string(&merged) {
+            self.storage.set(prefs::EDITOR_PREFS_KEY, s);
+        }
+        self.editor_prefs = merged;
+        cx.notify();
+    }
+
+    /// `setEditorIndentForLang`: set or clear (`None`) a language's indent override.
+    pub fn set_editor_indent_for_lang(
+        &mut self,
+        lang: &str,
+        indent: Option<recur_editor::prefs::EditorIndent>,
+        cx: &mut Context<Self>,
+    ) {
+        let lang = lang.to_string();
+        self.set_editor_prefs(
+            move |p| match indent {
+                Some(i) => {
+                    p.indent_by_lang.insert(lang, i);
+                }
+                None => {
+                    p.indent_by_lang.remove(&lang);
+                }
+            },
+            cx,
+        );
+    }
+
+    /// `explorerPrefs.exclude`.
+    pub fn explorer_exclude(&self) -> Vec<String> {
+        prefs::explorer_exclude(&self.storage)
+    }
+
+    /// `setExplorerExclude`.
+    pub fn set_explorer_exclude(&mut self, patterns: Vec<String>, cx: &mut Context<Self>) {
+        prefs::save_explorer_exclude(&mut self.storage, &patterns);
+        cx.notify();
+    }
+
+    /// `resetExplorerExclude`.
+    pub fn reset_explorer_exclude(&mut self, cx: &mut Context<Self>) {
+        let d: Vec<String> = prefs::DEFAULT_EXPLORER_EXCLUDE
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        self.set_explorer_exclude(d, cx);
     }
 
     // ---- catalogs ----

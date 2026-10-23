@@ -1,0 +1,423 @@
+//! `settings-newloop.spec.ts`: the Settings scenarios. The New workspace modal, the project
+//! settings view and the add-project modal halves belong to the views that host them.
+
+use gpui::TestAppContext;
+use recur_services::mock::{MockOptions, Reply};
+use recur_ui::widgets::ToastKind;
+use recur_view_core::LocalStorage;
+use serde_json::{Value, json};
+
+use super::harness::{S, boot, plain, with};
+
+fn models_and_loops(s: &mut S) {
+    s.open_settings();
+    assert!(s.has("set-head=General"));
+    s.section("Models");
+    for label in ["Ask", "Plan", "Agent / Coder", "Review", "Loop"] {
+        assert!(
+            s.has(&format!("sel:{label} model=Sonnet 5.5")),
+            "{label} model"
+        );
+    }
+    assert!(s.has("sel:Review flags=High"));
+    s.section("Loops");
+    assert!(s.has("sel:Loop=recur.loops.pr"));
+    assert!(s.has("sel:Policy=Balanced"));
+}
+
+#[gpui::test]
+fn settings_exposes_editable_models_and_the_fixed_rail_set(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    models_and_loops(&mut s);
+}
+
+#[gpui::test]
+fn cursor_without_the_sdk_warns_and_installs(cx: &mut TestAppContext) {
+    let installed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let status = |on: bool| {
+        json!({
+            "bridgeInstalled": on, "authenticated": on,
+            "email": if on { "dev@example.com" } else { "" },
+            "error": if on { "" } else { "cursor-sdk-bridge not found" },
+        })
+    };
+    let usage = json!({
+        "fetchedAt": 1, "stale": false,
+        "providers": [{ "id": "cursor", "name": "Cursor", "email": "dev@example.com",
+            "source": "Cursor Connect", "sourceId": "cursor_connect", "windows": [] }],
+    });
+    let (a, b) = (installed.clone(), installed.clone());
+    let (u1, u2) = (usage.clone(), usage);
+    let opts = MockOptions::default()
+        .resolver("GetCursorStatus", move |_, _, _| {
+            Reply::value(status(a.load(std::sync::atomic::Ordering::SeqCst)))
+        })
+        .resolver("InstallCursorBridge", move |_, _, _| {
+            b.store(true, std::sync::atomic::Ordering::SeqCst);
+            Reply::value(status(true))
+        })
+        .resolver("GetProviderUsage", move |_, _, _| Reply::value(u1.clone()))
+        .resolver("RefreshProviderUsage", move |_, _, _| {
+            Reply::value(u2.clone())
+        });
+    let mut s = with(
+        cx,
+        |sd| sd.settings["cursorApiKey"] = json!("crsr_test"),
+        opts,
+    );
+    s.open_settings();
+    s.section("Providers");
+    assert!(s.has("status-head:Warn:Connected, SDK not installed"));
+    assert!(s.has("acct-sdk-note"));
+    s.click("btn:Install SDK");
+    assert!(s.until(|s| !s.has("acct-sdk-note")));
+    assert!(!s.has("status-head:Warn:Connected, SDK not installed"));
+}
+
+#[gpui::test]
+fn adding_a_compatible_provider_reaches_the_model_catalog(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("ListModelCatalog", |_, sd, _| {
+        let mut out = vec![json!({
+            "provider": "claude-code", "label": "Claude Code",
+            "models": [{ "ref": "claude-code/claude-opus-5-5", "label": "Opus 5.5", "flags": [] }],
+        })];
+        for p in sd.settings["compatibleProviders"]
+            .as_array()
+            .into_iter()
+            .flatten()
+        {
+            let id = p["id"].as_str().unwrap_or_default();
+            let models: Vec<Value> = p["models"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|m| {
+                    json!({ "ref": format!("{id}/{}", m["id"].as_str().unwrap_or_default()),
+                        "label": m["label"], "flags": [] })
+                })
+                .collect();
+            out.push(json!({ "provider": id, "label": p["name"], "models": models }));
+        }
+        Reply::value(Value::Array(out))
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.open_settings();
+    s.section("Models");
+    s.click("sel:Agent / Coder model=claude-sonnet-5-5");
+    assert!(s.has("sel-opt:Opus 5.5"));
+    assert!(!s.has("sel-opt:GPT-4o"));
+    s.keys("escape");
+
+    s.section("Providers");
+    s.click("btn:Add provider");
+    assert!(s.has("v-compat-provider"));
+    s.click("preset:OpenRouter");
+    s.click("nt-go:on");
+    assert!(!s.has("v-compat-provider"));
+    assert_eq!(s.saved()["compatibleProviders"][0]["id"], "openrouter");
+
+    s.section("Models");
+    s.click("sel:Agent / Coder model=claude-sonnet-5-5");
+    assert!(s.until(|s| s.has("sel-opt:GPT-4o")));
+}
+
+#[gpui::test]
+fn changing_the_agent_model_is_accepted(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Models");
+    s.pick("Agent / Coder model", "Sonnet 5.5", "Haiku 4.5");
+    assert!(s.has("sel:Agent / Coder model=Haiku 4.5"));
+    assert_eq!(
+        s.saved()["modelAgent"],
+        "claude-code/claude-haiku-4-5-20251001"
+    );
+}
+
+#[gpui::test]
+fn changing_review_flags_is_accepted(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Models");
+    s.pick("Review flags", "High", "Extra High");
+    assert!(s.has("sel:Review flags=Extra High"));
+    assert_eq!(s.saved()["flagsReview"]["effort"], "xhigh");
+}
+
+#[gpui::test]
+fn appearance_picker_switches_and_persists_the_theme(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Appearance");
+    for id in recur_ui::theme::ThemeId::ALL {
+        assert!(
+            s.has(&format!("thcard:app-{}", id.key()))
+                || s.has(&format!("thcard:app-{}:on", id.key())),
+            "{id:?}"
+        );
+    }
+    assert!(s.has("thcard:app-default:on"));
+    assert_eq!(s.theme(), "default");
+
+    for key in ["nord", "paper", "catppuccin-latte"] {
+        s.click(&format!("thcard:app-{key}"));
+        assert_eq!(s.theme(), key);
+        assert!(s.has(&format!("thcard:app-{key}:on")));
+        assert_eq!(s.storage("recur.theme").as_deref(), Some(key));
+    }
+    s.click("thcard:app-default");
+    assert_eq!(s.theme(), "default");
+}
+
+#[gpui::test]
+fn legacy_catppuccin_theme_key_migrates_to_mocha(cx: &mut TestAppContext) {
+    let mut storage = LocalStorage::in_memory();
+    storage.set("recur.theme", "catppuccin".to_string());
+    let mut s = boot(cx, |_| {}, MockOptions::default(), storage);
+    assert_eq!(s.theme(), "catppuccin-mocha");
+    assert_eq!(
+        s.storage("recur.theme").as_deref(),
+        Some("catppuccin-mocha")
+    );
+}
+
+#[gpui::test]
+fn match_system_appearance_uses_the_chosen_light_and_dark_themes(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.system_dark(false);
+    s.open_settings();
+    s.section("Appearance");
+
+    s.click("seg:App theme mode:Sync with system");
+    assert_eq!(s.theme(), "paper");
+    let light = recur_ui::theme::ThemeId::ALL
+        .iter()
+        .filter(|id| id.is_light())
+        .count();
+    assert_eq!(light, 2);
+    assert!(s.has("thcard:app-light-paper:on"));
+    assert!(s.has("thcard:app-light-catppuccin-latte"));
+    assert!(s.has("thcard:app-dark-default:on"));
+    s.click("thcard:app-dark-nord");
+    s.system_dark(true);
+    assert_eq!(s.theme(), "nord");
+
+    s.click("thcard:app-dark-default");
+    assert_eq!(s.theme(), "default");
+
+    s.click("seg:App theme mode:Single theme");
+    s.click("thcard:app-slate");
+    s.system_dark(false);
+    assert_eq!(s.theme(), "slate");
+}
+
+fn terminal_theme(s: &mut S) -> String {
+    let raw = s.storage("recur.terminalPrefs").unwrap_or_default();
+    serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null)["theme"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
+}
+
+#[gpui::test]
+fn editor_and_terminal_themes_can_sync_with_the_system(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.system_dark(false);
+    s.open_settings();
+    s.section("Appearance");
+
+    s.click("seg:Code editor theme mode:Sync with system");
+    assert!(s.has("edth-list:edth-light"));
+    assert!(s.has("edth-list:edth-dark"));
+    assert!(s.until(|s| s.storage("recur.editorTheme").as_deref() == Some("paper")));
+    s.system_dark(true);
+    assert_eq!(s.storage("recur.editorTheme").as_deref(), Some("recur"));
+
+    s.click("seg:Terminal theme mode:Sync with system");
+    assert!(s.until(|s| s.has("thcard:term-dark-homebrew")));
+    s.click("thcard:term-dark-homebrew");
+    assert_eq!(terminal_theme(&mut s), "homebrew");
+    s.system_dark(false);
+    assert_eq!(terminal_theme(&mut s), "");
+}
+
+#[gpui::test]
+fn terminal_theme_picker_is_independent_and_persists(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Appearance");
+    assert!(s.has("thcard:term-match:on"));
+    assert!(s.until(|s| s.has("thcard:term-homebrew")));
+    s.click("thcard:term-homebrew");
+    assert!(s.has("thcard:term-homebrew:on"));
+    assert_eq!(terminal_theme(&mut s), "homebrew");
+}
+
+#[gpui::test]
+fn code_editor_theme_is_independent_and_persists(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Appearance");
+    assert!(s.until(|s| s.has("edth:Charcoal:on")));
+    assert!(s.has("edth:Paper"));
+    assert!(s.until(|s| s.has("edth:Cool Glow")));
+
+    s.click("edth:Paper");
+    assert!(s.has("edth:Paper:on"));
+    assert_eq!(s.storage("recur.editorTheme").as_deref(), Some("paper"));
+
+    s.click("edth:Cool Glow");
+    assert!(s.has("edth:Cool Glow:on"));
+    assert_eq!(s.storage("recur.editorTheme").as_deref(), Some("cool-glow"));
+    assert_eq!(s.theme(), "default");
+}
+
+#[gpui::test]
+fn code_editor_layout_prefs_persist(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Code editor");
+
+    s.click("sel:Editor font=JetBrains Mono");
+    s.click("sel-opt:IBM Plex Mono");
+    assert!(s.has("sel:Editor font=IBM Plex Mono"));
+
+    for (group, label) in [
+        ("Editor font size", "11"),
+        ("Line wrapping", "Scroll"),
+        ("Tab size", "2"),
+        ("Default indent style", "2 spaces"),
+    ] {
+        s.click(&format!("seg:{group}:{label}"));
+    }
+    s.click("seg:Go indent:4");
+    assert!(s.has("indent-desc:go=Override · 4 spaces"));
+    assert!(!s.has("indent-desc:go=Auto · Tabs(gofmt)"));
+    assert!(s.has("indent-desc:typescript=Auto · 2 spaces"));
+
+    for (group, label) in [
+        ("Render whitespace", "Trailing"),
+        ("Special characters", "Off"),
+        ("Line numbers", "Off"),
+        ("Scroll past end", "On"),
+        ("Line height", "Relaxed"),
+        ("Thick caret", "On"),
+        ("Print margin", "80"),
+        ("Editor keymap", "Vim"),
+    ] {
+        s.click(&format!("seg:{group}:{label}"));
+    }
+
+    let saved: Value =
+        serde_json::from_str(&s.storage("recur.editorPrefs").expect("editor prefs")).unwrap();
+    let want = json!({
+        "fontFace": "IBM Plex Mono", "fontSize": 11, "lineWrapping": false, "tabSize": 2,
+        "indent": "spaces-2", "indentByLang": { "go": "spaces-4" }, "whitespace": "trailing",
+        "specialChars": false, "lineNumbers": false, "scrollPastEnd": true, "lineHeight": 1.7,
+        "thickCaret": true, "rulerColumn": 80, "keymap": "vim",
+    });
+    for (k, v) in want.as_object().unwrap() {
+        assert_eq!(&saved[k], v, "{k}");
+    }
+}
+
+#[gpui::test]
+fn loops_section_shows_loop_and_policy_pickers(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Loops");
+    assert!(s.has("sel:Loop=recur.loops.pr"));
+    s.pick("Policy", "Balanced", "Aggressive");
+    assert!(s.has("sel:Policy=Aggressive"));
+}
+
+#[gpui::test]
+fn a_failed_policy_save_shows_an_error_toast(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("SetSettings", |_, _, _| {
+        Reply::error("settings save failed")
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.open_settings();
+    s.section("Loops");
+    s.pick("Policy", "Balanced", "Aggressive");
+    assert!(s.until(|s| s.toasted(ToastKind::Error, "")));
+}
+
+#[gpui::test]
+fn general_settings_include_a_branch_name_prefix_field(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("General");
+    assert!(s.has("inp:Branch name prefix"));
+    assert!(s.has("seg:Prefix presets:Recur:on"));
+    assert!(s.has("branch-example=recur/crispy-quiche"));
+    s.fill("inp:Branch name prefix", "typed-prefix");
+    assert!(s.has("branch-example=typed-prefix/crispy-quiche"));
+    s.click("seg:Prefix presets:None");
+    assert!(s.has("branch-example=crispy-quiche"));
+    assert_eq!(s.saved()["branchNamePrefix"], "");
+    assert!(s.until(|s| s.has("seg:Prefix presets:GitHub")));
+    s.click("seg:Prefix presets:GitHub");
+    assert!(s.has("branch-example=mycodecrafting/crispy-quiche"));
+    assert_eq!(s.saved()["branchNamePrefix"], "mycodecrafting");
+    s.click("seg:Prefix presets:Recur");
+    assert!(s.has("branch-example=recur/crispy-quiche"));
+    assert!(s.has("seg:Prefix presets:Recur:on"));
+}
+
+#[gpui::test]
+fn general_settings_include_live_concurrency_caps(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("General");
+    assert!(s.has("inp:Max concurrent loops"));
+    assert!(s.has("inp:Max concurrent agents"));
+    let v =
+        s.cx.update(|_, cx| crate::view::SettingsView::current(cx))
+            .expect("settings view");
+    let (loops, agents) = s.cx.update(|_, cx| {
+        let v = v.read(cx);
+        (
+            v.field_value("max-loops", cx),
+            v.field_value("max-agents", cx),
+        )
+    });
+    assert_eq!((loops.as_str(), agents.as_str()), ("4", "8"));
+}
+
+#[gpui::test]
+fn pr_settings_radio_dots_share_a_column(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Pull requests");
+    let mut xs = Vec::new();
+    for c in &crate::sections::prs::CHOICES {
+        let (title, first) = (c.title, c.opts[0].1);
+        let sel = [true, false]
+            .into_iter()
+            .map(|on| format!("radio:{title}:{first}:{on}"))
+            .find(|sel| s.has(sel))
+            .unwrap_or_else(|| panic!("{title}"));
+        xs.push(f32::from(s.bounds(&sel).unwrap().origin.x));
+    }
+    assert_eq!(xs.len(), 4);
+    for x in &xs {
+        assert!((x - xs[0]).abs() < 1., "{xs:?}");
+    }
+}
+
+/// The menu item (`menu.action` `settings`, as `observatory.spec.ts` sends it) and ⌘, open
+/// Settings on General.
+#[gpui::test]
+fn the_menu_action_and_cmd_comma_open_settings(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.wire("menu.action", json!("settings"));
+    assert_eq!(s.view(), recur_view_core::ViewName::Settings);
+    assert!(s.has("set-head=General"));
+    s.section("Data");
+    s.click("nav-pr");
+    assert_ne!(s.view(), recur_view_core::ViewName::Settings);
+    s.keys("cmd-,");
+    assert_eq!(s.view(), recur_view_core::ViewName::Settings);
+    assert!(s.has("v-settings:on"));
+}

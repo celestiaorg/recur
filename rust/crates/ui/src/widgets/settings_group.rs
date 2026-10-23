@@ -27,6 +27,7 @@ pub struct SettingsGroup {
     id: ElementId,
     title: SharedString,
     blurb: Vec<Span>,
+    blurb_links: Vec<(usize, crate::text::SpanClick)>,
     over: Option<Override>,
     nested: bool,
     children: Vec<AnyElement>,
@@ -37,6 +38,7 @@ pub fn settings_group(id: impl Into<ElementId>, title: impl Into<SharedString>) 
         id: id.into(),
         title: title.into(),
         blurb: Vec::new(),
+        blurb_links: Vec::new(),
         over: None,
         nested: false,
         children: Vec::new(),
@@ -58,6 +60,12 @@ impl SettingsGroup {
     /// Rich blurb (`blurbContent`): text runs, e.g. with [`blurb_code`].
     pub fn blurb_spans(mut self, spans: Vec<Span>) -> Self {
         self.blurb = spans;
+        self
+    }
+
+    /// Make blurb span `index` an inline link button (a `.lnk` in `blurbContent`).
+    pub fn blurb_link(mut self, index: usize, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.blurb_links.push((index, Rc::new(f)));
         self
     }
 
@@ -109,15 +117,16 @@ impl RenderOnce for SettingsGroup {
         let mut blocks: Vec<(f32, Text)> = vec![(0., title)];
         if !self.blurb.is_empty() {
             // Only `.set-subhead-copy` (the override layout) spaces title and blurb.
-            blocks.push((
-                if self.over.is_some() { 3. } else { 0. },
-                Text::from_spans(self.blurb)
-                    .ui()
-                    .size(12.)
-                    .weight(weight::REGULAR)
-                    .leading(1.4)
-                    .color(t.faint),
-            ));
+            let mut blurb = Text::from_spans(self.blurb)
+                .ui()
+                .size(12.)
+                .weight(weight::REGULAR)
+                .leading(1.4)
+                .color(t.faint);
+            for (i, f) in self.blurb_links {
+                blurb = blurb.on_click_span(i, move |w, cx| f(w, cx));
+            }
+            blocks.push((if self.over.is_some() { 3. } else { 0. }, blurb));
         }
         let copy = text_stack(blocks).id((self.id.clone(), "copy"));
 

@@ -368,6 +368,8 @@ pub struct AppState {
     pub editor_theme: String,
     pub editor_sync: SystemSync,
     pub terminal_prefs: TerminalPrefs,
+    /// `editorPrefs` (`recur.editorPrefs`): font, indent, keymap and display for every editor.
+    pub editor_prefs: recur_editor::prefs::EditorPrefs,
     pub terminal_sync: SystemSync,
     /// Bundle editor themes (`listThemeMeta`), in catalog order.
     pub editor_theme_catalog: Vec<ThemeInfo>,
@@ -500,6 +502,7 @@ impl AppState {
             editor_theme: prefs::load_editor_theme(&storage),
             editor_sync: SyncName::EditorTheme.load(&storage),
             terminal_prefs: TerminalPrefs::load(&storage),
+            editor_prefs: prefs::load_editor_prefs(&storage),
             terminal_sync: SyncName::TerminalTheme.load(&storage),
             editor_theme_catalog: Vec::new(),
             terminal_theme_catalog: Vec::new(),

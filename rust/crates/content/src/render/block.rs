@@ -735,7 +735,13 @@ impl Build<'_, '_> {
             let kids = self.blocks(&li.children, inner, "li");
             let (body, first, last) = stack(kids, self.window);
             let marker = match marker_kind {
-                Some(shape) => symbol_marker(shape, flow, ink(self.env.t, flow.ink), self.window),
+                Some(shape) => symbol_marker(
+                    shape,
+                    flow.size,
+                    flow.leading,
+                    ink(self.env.t, flow.ink),
+                    self.window,
+                ),
                 None => div()
                     .absolute()
                     .top_0()
@@ -1301,11 +1307,17 @@ enum Shape {
 
 /// An outside `disc` / `circle` / `square` marker as WebKit synthesizes it: a shape sized from
 /// the font's integer ascent, in a marker box `ascent * 2 / 3 + 8` before the content edge.
-fn symbol_marker(shape: Shape, flow: Flow, color: Color, window: &Window) -> AnyElement {
+fn symbol_marker(
+    shape: Shape,
+    size: f32,
+    leading: f32,
+    color: Color,
+    window: &Window,
+) -> AnyElement {
     let (_, _, m) = recur_ui::text("x")
         .ui()
-        .size(flow.size)
-        .leading(flow.leading)
+        .size(size)
+        .leading(leading)
         .measure(None, window);
     // Margins come from the integer ascent; the shape from the float one.
     let ascent = m.ascent;
@@ -1339,6 +1351,12 @@ fn symbol_marker(shape: Shape, flow: Flow, color: Color, window: &Window) -> Any
     .left_0()
     .size_full()
     .into_any_element()
+}
+
+/// A top-level `<ul>` item's outside `disc` marker for UI text at `size` / `leading`: an
+/// absolutely positioned child of the `<li>` content box.
+pub fn disc_marker(size: f32, leading: f32, color: Color, window: &Window) -> AnyElement {
+    symbol_marker(Shape::Disc, size, leading, color, window)
 }
 
 /// Stack blocks with collapsed sibling margins. Returns the column and the outer margins of

@@ -365,6 +365,82 @@ pub fn attached(below: bool, gap: f32, dx: f32, child: impl IntoElement) -> Div 
     d.child(child)
 }
 
+/// `deferred` that keeps the clip it was laid out under: CSS `z-index` lifts a popover above
+/// later siblings but its scroll container's `overflow` still clips it, where `deferred` paints
+/// unclipped.
+pub fn deferred_clipped(child: impl IntoElement, priority: usize) -> ClippedDeferred {
+    ClippedDeferred {
+        child: Some(child.into_any_element()),
+        priority,
+    }
+}
+
+pub struct ClippedDeferred {
+    child: Option<gpui_kit::AnyElement>,
+    priority: usize,
+}
+
+impl IntoElement for ClippedDeferred {
+    type Element = Self;
+    fn into_element(self) -> Self {
+        self
+    }
+}
+
+impl gpui_kit::Element for ClippedDeferred {
+    type RequestLayoutState = ();
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (gpui_kit::LayoutId, ()) {
+        let id = match self.child.as_mut() {
+            Some(c) => c.request_layout(window, cx),
+            None => window.request_layout(gpui_kit::Style::default(), [], cx),
+        };
+        (id, ())
+    }
+
+    fn prepaint(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        _: gpui_kit::Bounds<Pixels>,
+        _: &mut (),
+        window: &mut Window,
+        _: &mut App,
+    ) {
+        if let Some(child) = self.child.take() {
+            let mask = window.content_mask();
+            window.defer_draw(child, window.element_offset(), self.priority, Some(mask));
+        }
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        _: gpui_kit::Bounds<Pixels>,
+        _: &mut (),
+        _: &mut (),
+        _: &mut Window,
+        _: &mut App,
+    ) {
+    }
+}
+
 /// The root every window renders its content in. WebKit snaps a box edge that lands exactly on
 /// a half device pixel down and to the right; GPUI rounds halves toward zero. Shifting the whole
 /// tree by 1/4096 px (through `aspect_ratio` spacers, since authored lengths round to whole

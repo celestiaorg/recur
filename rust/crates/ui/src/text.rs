@@ -242,8 +242,12 @@ pub struct Text {
     opacity: f32,
     mask: Option<AlphaMask>,
     field: bool,
+    links: Vec<(usize, SpanClick)>,
     layout: Rc<RefCell<Option<Laid>>>,
 }
+
+/// What clicking an inline link span does.
+pub type SpanClick = Rc<dyn Fn(&mut Window, &mut App)>;
 
 /// A horizontal alpha mask over the window (CSS px → alpha multiplier), like a CSS
 /// `mask-image` gradient. Applied per glyph at the glyph's center.
@@ -269,6 +273,7 @@ impl Text {
             opacity: 1.,
             mask: None,
             field: false,
+            links: Vec::new(),
             layout: Rc::default(),
         }
     }
@@ -342,6 +347,105 @@ impl Text {
         self.spans.push(s);
         self
     }
+    /// Make span `index` an inline link button (`.lnk` in running text): a pointer over its
+    /// boxes, underlined while hovered, `f` on click.
+    pub fn on_click_span(
+        mut self,
+        index: usize,
+        f: impl Fn(&mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.links.push((index, Rc::new(f)));
+        self
+    }
+}
+
+/// The boxes span `index` covers, one per line it is on: its text's horizontal extent and
+/// the line box.
+fn span_rects(
+    laid: &Laid,
+    bounds: Bounds<Pixels>,
+    align: Align,
+    index: usize,
+) -> Vec<Bounds<Pixels>> {
+    let box_w = f32::from(bounds.size.width);
+    let mut out = Vec::new();
+    for line in &laid.lines {
+        let p = &laid.paras[line.para];
+        let start_x = p.line_start(line.range.start);
+        let offset = match align {
+            Align::Left => 0.,
+            Align::Center => (box_w - line.width) / 2.,
+            Align::Right => box_w - line.width,
+        };
+        let left = f32::from(bounds.origin.x) + offset - start_x;
+        let top = f32::from(bounds.origin.y) + line.top;
+        for (ri, r) in run_slices(
+            &laid.key.runs,
+            p.range.start + line.range.start..p.range.start + line.range.end,
+        ) {
+            if laid.key.runs[ri].span != index {
+                continue;
+            }
+            let x0 = left + p.x_at(r.start - p.range.start);
+            let x1 = left + p.x_at(r.end - p.range.start);
+            out.push(Bounds::from_corners(
+                point(px(x0), px(top)),
+                point(px(x1), px(top + line.height)),
+            ));
+        }
+    }
+    out
+}
+
+/// Hitboxes for the link spans of a laid block.
+fn link_hitboxes(
+    laid: &Laid,
+    bounds: Bounds<Pixels>,
+    align: Align,
+    links: &[(usize, SpanClick)],
+    window: &mut Window,
+) -> Vec<(usize, gpui_kit::Hitbox)> {
+    let mut out = Vec::new();
+    for (i, (span, _)) in links.iter().enumerate() {
+        for r in span_rects(laid, bounds, align, *span) {
+            out.push((i, window.insert_hitbox(r, gpui_kit::HitboxBehavior::Normal)));
+        }
+    }
+    out
+}
+
+/// Cursor, hover repaint and click for link hitboxes; the spans hovered now.
+fn paint_links(
+    links: &[(usize, SpanClick)],
+    hits: &[(usize, gpui_kit::Hitbox)],
+    window: &mut Window,
+) -> Vec<usize> {
+    let mut hovered = Vec::new();
+    for (i, hb) in hits {
+        window.set_cursor_style(gpui_kit::CursorStyle::PointingHand, hb);
+        let was = hb.is_hovered(window);
+        if was {
+            hovered.push(links[*i].0);
+        }
+        let h = hb.clone();
+        window.on_mouse_event(move |_: &gpui_kit::MouseMoveEvent, phase, window, _| {
+            if phase == gpui_kit::DispatchPhase::Bubble && h.is_hovered(window) != was {
+                window.refresh();
+            }
+        });
+        let h = hb.clone();
+        let f = links[*i].1.clone();
+        window.on_mouse_event(move |e: &gpui_kit::MouseUpEvent, phase, window, cx| {
+            if phase == gpui_kit::DispatchPhase::Bubble
+                && e.button == gpui_kit::MouseButton::Left
+                && h.is_hovered(window)
+            {
+                f(window, cx);
+                cx.stop_propagation();
+            }
+        });
+    }
+    hovered
 }
 
 impl TextStyled for Text {
@@ -1268,7 +1372,7 @@ impl Text {
 
 impl Element for Text {
     type RequestLayoutState = TextState;
-    type PrepaintState = ();
+    type PrepaintState = Vec<(usize, gpui_kit::Hitbox)>;
 
     fn id(&self) -> Option<ElementId> {
         self.id.clone()
@@ -1405,7 +1509,8 @@ impl Element for Text {
         state: &mut TextState,
         window: &mut Window,
         _: &mut App,
-    ) {
+    ) -> Vec<(usize, gpui_kit::Hitbox)> {
+        let mut hits = Vec::new();
         if let Some(laid) = state.layout.borrow_mut().as_mut() {
             laid.relayout(
                 Some(bounds.size.width.into()),
@@ -1416,8 +1521,12 @@ impl Element for Text {
                 window,
             );
             crate::exact::settle(state.exact.as_ref(), laid.measured().1, window);
+            if !self.links.is_empty() {
+                hits = link_hitboxes(laid, bounds, self.align, &self.links, window);
+            }
         }
         state.snapped = resolve_probes(&state.probes, window);
+        hits
     }
 
     fn paint(
@@ -1426,7 +1535,7 @@ impl Element for Text {
         _: Option<&InspectorElementId>,
         bounds: Bounds<Pixels>,
         state: &mut TextState,
-        _: &mut (),
+        hits: &mut Vec<(usize, gpui_kit::Hitbox)>,
         window: &mut Window,
         _: &mut App,
     ) {
@@ -1435,12 +1544,29 @@ impl Element for Text {
         let clip = self.ellipsis || self.clamp.is_some();
         let align = self.align;
         let at = (0., state.snapped.as_slice());
+        let hovered = paint_links(&self.links, hits, window);
         if clip {
             window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
-                paint_lines(laid, bounds, at, align, self.mask.as_ref(), window)
+                paint_lines(
+                    laid,
+                    bounds,
+                    at,
+                    align,
+                    self.mask.as_ref(),
+                    &hovered,
+                    window,
+                )
             });
         } else {
-            paint_lines(laid, bounds, at, align, self.mask.as_ref(), window);
+            paint_lines(
+                laid,
+                bounds,
+                at,
+                align,
+                self.mask.as_ref(),
+                &hovered,
+                window,
+            );
         }
     }
 }
@@ -1510,7 +1636,7 @@ pub struct StackState {
 
 impl Element for TextStack {
     type RequestLayoutState = StackState;
-    type PrepaintState = ();
+    type PrepaintState = Vec<Vec<(usize, gpui_kit::Hitbox)>>;
 
     fn id(&self) -> Option<ElementId> {
         self.id.clone()
@@ -1609,7 +1735,7 @@ impl Element for TextStack {
         state: &mut StackState,
         window: &mut Window,
         _: &mut App,
-    ) {
+    ) -> Vec<Vec<(usize, gpui_kit::Hitbox)>> {
         let mut layouts = self.layouts.borrow_mut();
         self.relayout(&mut layouts, Some(bounds.size.width.into()), true, window);
         let h = self
@@ -1620,6 +1746,23 @@ impl Element for TextStack {
             .sum();
         crate::exact::settle(state.exact.as_ref(), h, window);
         state.snapped = resolve_probes(&state.probes, window);
+        let mut y = f32::from(bounds.origin.y);
+        let mut hits = Vec::new();
+        for ((gap, t), laid) in self.blocks.iter().zip(layouts.iter()) {
+            y += gap;
+            let (_, bh) = laid.measured();
+            let b = Bounds {
+                origin: point(bounds.origin.x, px(y)),
+                size: size(bounds.size.width, px(bh)),
+            };
+            hits.push(if t.links.is_empty() {
+                Vec::new()
+            } else {
+                link_hitboxes(laid, b, t.align, &t.links, window)
+            });
+            y += bh;
+        }
+        hits
     }
 
     fn paint(
@@ -1628,13 +1771,17 @@ impl Element for TextStack {
         _: Option<&InspectorElementId>,
         bounds: Bounds<Pixels>,
         state: &mut StackState,
-        _: &mut (),
+        hits: &mut Vec<Vec<(usize, gpui_kit::Hitbox)>>,
         window: &mut Window,
         _: &mut App,
     ) {
         let layouts = self.layouts.borrow();
         let mut y = f32::from(bounds.origin.y);
-        for ((gap, t), laid) in self.blocks.iter().zip(layouts.iter()) {
+        for (i, ((gap, t), laid)) in self.blocks.iter().zip(layouts.iter()).enumerate() {
+            let hovered = hits
+                .get(i)
+                .map(|h| paint_links(&t.links, h, window))
+                .unwrap_or_default();
             y += gap;
             let (_, h) = laid.measured();
             let b = Bounds {
@@ -1644,10 +1791,10 @@ impl Element for TextStack {
             let at = (y - f32::from(bounds.origin.y), state.snapped.as_slice());
             if t.ellipsis || t.clamp.is_some() {
                 window.with_content_mask(Some(gpui_kit::ContentMask { bounds: b }), |window| {
-                    paint_lines(laid, b, at, t.align, t.mask.as_ref(), window)
+                    paint_lines(laid, b, at, t.align, t.mask.as_ref(), &hovered, window)
                 });
             } else {
-                paint_lines(laid, b, at, t.align, t.mask.as_ref(), window);
+                paint_lines(laid, b, at, t.align, t.mask.as_ref(), &hovered, window);
             }
             y += h;
         }
@@ -1662,6 +1809,7 @@ fn paint_lines(
     at: (f32, &[(Probe, f32)]),
     align: Align,
     mask: Option<&AlphaMask>,
+    hovered_links: &[usize],
     window: &mut Window,
 ) {
     let scale = window.scale_factor();
@@ -1727,13 +1875,14 @@ fn paint_lines(
             p.range.start + line.range.start..p.range.start + line.range.end,
         ) {
             let run = &laid.key.runs[ri];
-            if !(run.underline || run.line_through) {
+            let underline = run.underline || hovered_links.contains(&run.span);
+            if !(underline || run.line_through) {
                 continue;
             }
             let x0 = left + p.x_at(r.start - p.range.start);
             let x1 = left + p.x_at(r.end - p.range.start);
             let deco = crate::font_metrics::decorations(&run.family, run.size);
-            if run.underline {
+            if underline {
                 window.paint_underline(
                     point(px(x0), px(baseline + deco.underline_offset)),
                     px(x1 - x0),

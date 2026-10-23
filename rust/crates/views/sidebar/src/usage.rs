@@ -705,7 +705,8 @@ impl Render for UsageMeter {
                         .items_center()
                         .gap(px(3.))
                         .child(provider_icon(&chip.id).size(px(11.)).color(t.faint))
-                        .child(svg_markup(rings_svg(&rings, t.line)).size(px(RING_SIZE))),
+                        // `.rail-foot-bar svg { width: 14px }` outranks the 16px attributes.
+                        .child(svg_markup(rings_svg(&rings, t.line)).size(px(14.))),
                 );
             }
             if animating && !recur_ui::motion::is_frozen(cx) {

@@ -234,6 +234,17 @@ impl ModelPickers {
         }
     }
 
+    /// Restyle both triggers for the context they sit in (Settings' `.model-pickers.chip`
+    /// inherits the global `.chip` mono font).
+    pub fn set_trigger_style(&mut self, t: TriggerStyle, cx: &mut Context<Self>) {
+        let t2 = t.clone();
+        self.model_select
+            .update(cx, |s, cx| s.set_trigger_style(t, cx));
+        self.flags_select.update(cx, |f, cx| {
+            f.select.update(cx, |s, cx| s.set_trigger_style(t2, cx))
+        });
+    }
+
     /// The props: catalog, current model and flags, disabled (faded over `backdrop`).
     pub fn set(
         &mut self,
@@ -337,7 +348,8 @@ fn autonomy_trigger(t: &recur_ui::Tokens) -> TriggerStyle {
         open_color: Some(t.text),
         no_ring: true,
         icon_color: Some(t.amber),
-        open_icon_color: Some(t.muted),
+        open_icon_color: Some(t.amber),
+        open_chevron_color: Some(t.muted),
         auto_width: true,
         ..Default::default()
     }
@@ -450,7 +462,7 @@ impl LoopPolicyPickers {
 }
 
 impl Render for LoopPolicyPickers {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = Theme::of(cx).tokens;
         let mut row = div()
             .flex()
@@ -481,42 +493,66 @@ impl Render for LoopPolicyPickers {
                     })),
             );
             if open {
-                let b = |s: &str| span(s.to_string()).weight(700.).color(t.text);
+                // `.nt-tip-pop`: `<b>` at 600 in `--text`; the `<ul>` 8px down with a 1.1em
+                // indent and `disc` markers, items 3px apart.
+                let b = |s: &str| span(s.to_string()).weight(600.).color(t.text);
                 let line = |head: &str, rest: &str| -> Text {
                     Text::from_spans(vec![b(head), span(rest.to_string())])
+                        .size(12.)
+                        .leading(1.45)
                 };
-                let bullet =
-                    |head: &str, rest: &str| {
-                        div()
-                            .flex()
-                            .gap(px(6.))
-                            .child(recur_ui::text("•").nowrap())
-                            .child(div().flex_1().min_w_0().child(
-                                line(head, rest).id(SharedString::from(format!("tip-{head}"))),
-                            ))
-                    };
+                let item = |head: &str, rest: &str, window: &Window| {
+                    div()
+                        .relative()
+                        .child(recur_content::render::block::disc_marker(
+                            12., 1.45, t.muted, window,
+                        ))
+                        .child(line(head, rest).id(SharedString::from(format!("tip-{head}"))))
+                };
                 let intro: Vec<Span> = vec![
                     b("Policy"),
                     span(" is how hard this loop pushes before it asks you."),
                 ];
+                let gap = |h: f32, window: &Window| recur_ui::exact::vgap(h, window);
                 let pop = recur_ui::style::popover(cx)
-                    .child(Text::from_spans(intro).id("tip-intro"))
+                    .child(
+                        Text::from_spans(intro)
+                            .size(12.)
+                            .leading(1.45)
+                            .id("tip-intro"),
+                    )
                     .child(
                         div()
+                            .mt(px(8.))
+                            .mb(px(3.))
                             .flex()
-                            .flex_col()
-                            .pl(px(18.))
-                            .child(bullet(
-                                "Cautious",
-                                " — every finding; escalate after 2 rounds",
-                            ))
-                            .child(bullet("Balanced", " — medium and up; escalate after 4"))
-                            .child(bullet(
-                                "Aggressive",
-                                " — ship-blockers only; proceed after 6",
-                            )),
+                            .child(recur_ui::exact::hgap(13.2, window))
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .flex()
+                                    .flex_col()
+                                    .child(item(
+                                        "Cautious",
+                                        " — every finding; escalate after 2 rounds",
+                                        window,
+                                    ))
+                                    .child(gap(3., window))
+                                    .child(item(
+                                        "Balanced",
+                                        " — medium and up; escalate after 4",
+                                        window,
+                                    ))
+                                    .child(gap(3., window))
+                                    .child(item(
+                                        "Aggressive",
+                                        " — ship-blockers only; proceed after 6",
+                                        window,
+                                    )),
+                            ),
                     );
-                tip = tip.child(
+                tip = tip.child(recur_ui::style::deferred_clipped(
                     div()
                         .absolute()
                         .left_0()
@@ -527,7 +563,8 @@ impl Render for LoopPolicyPickers {
                             &recur_ui::style::POPOVER_SHADOW,
                             9.,
                         )),
-                );
+                    200,
+                ));
             }
             row = row.child(tip);
         }

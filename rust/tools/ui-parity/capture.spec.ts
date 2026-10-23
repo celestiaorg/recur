@@ -23,12 +23,14 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   observatory?: Scene[]
   workspace?: Scene[]
   prs?: Scene[]
+  settings?: Scene[]
 }
 // Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
 // mount App.svelte over an edited seed (see `patchSeed`).
 const scenes = [
   ...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? []), ...(spec.content ?? []), ...(spec.chat ?? []),
   ...(spec.review ?? []), ...(spec.observatory ?? []), ...(spec.workspace ?? []), ...(spec.prs ?? []),
+  ...(spec.settings ?? []),
 ]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
@@ -127,6 +129,23 @@ function prsResolvers(scene: Scene) {
   return out
 }
 
+const settingsFx = JSON.parse(readFileSync(join(here, 'content', 'settings.json'), 'utf8'))
+
+/** A Settings scene's fixture in `content/settings.json`. */
+function settingsFixture(scene: Scene): { seed?: SeedPatch; resolvers?: Record<string, unknown> } {
+  return settingsFx.fixtures[scene.fixture ?? ''] ?? {}
+}
+
+/** Settings scenes answer their fixture's calls with its canned value; `{"$pending": true}`
+ *  never answers (a call held in flight), as `recur_view_settings::gallery` does. */
+function settingsResolvers(scene: Scene) {
+  const out: Record<string, () => unknown> = {}
+  for (const [k, v] of Object.entries(settingsFixture(scene).resolvers ?? {})) {
+    out[k] = (v as { $pending?: boolean })?.$pending ? () => new Promise(() => {}) : () => structuredClone(v)
+  }
+  return out
+}
+
 /** `/workspace-file?…&path=…[&at=base]`: the fixture's raster and PDF bytes. */
 function workspaceFile(url: string) {
   const q = new URL(url).searchParams
@@ -161,6 +180,8 @@ type Scene = {
   seg?: string
   review?: string
   fixture?: string
+  section?: string
+  act?: string
 }
 type Row = Record<string, unknown> & { id: string }
 type SeedPatch = {
@@ -249,8 +270,12 @@ for (const scene of scenes) {
     const replay = scene.input === undefined ? undefined : spec.terminalInputs?.[scene.input]
     const sceneSeed = structuredClone(seed)
     if (scene.name.startsWith('workspace/')) patchSeed(sceneSeed as Record<string, any>, scene.seed)
-    if (scene.name.startsWith('shell/') || scene.name.startsWith('prs/')) {
-      patchSeed(sceneSeed as Record<string, any>, scene.name.startsWith('prs/') ? prsFixture(scene).seed : scene.seed)
+    if (scene.name.startsWith('shell/') || scene.name.startsWith('prs/') || scene.name.startsWith('settings/')) {
+      patchSeed(
+        sceneSeed as Record<string, any>,
+        scene.name.startsWith('prs/') ? prsFixture(scene).seed
+          : scene.name.startsWith('settings/') ? settingsFixture(scene).seed : scene.seed,
+      )
       // App prefs the shell reads at startup (`initRailCollapsed`, …), and the scene theme.
       const storage = { 'recur.theme': scene.theme, ...(scene.storage ?? {}) }
       await page.addInitScript((items) => {
@@ -262,7 +287,8 @@ for (const scene of scenes) {
     } : scene.name.startsWith('review/') ? { resolvers: reviewResolvers(scene.name) }
       : scene.name.startsWith('observatory/') ? { resolvers: observatoryResolvers(scene.name) }
       : scene.name.startsWith('workspace/') ? { resolvers: workspaceResolvers(scene.name) }
-      : scene.name.startsWith('prs/') ? { resolvers: prsResolvers(scene) } : {})
+      : scene.name.startsWith('prs/') ? { resolvers: prsResolvers(scene) }
+      : scene.name.startsWith('settings/') ? { resolvers: settingsResolvers(scene) } : {})
     if (scene.name.startsWith('prs/')) {
       // Avatar photos come from the network in the app; neither renderer fetches them here.
       await page.route('https://github.com/**', (r) => r.abort())
@@ -274,7 +300,7 @@ for (const scene of scenes) {
       return body ? r.fulfill({ contentType: mime, body }) : r.fulfill({ status: 404 })
     })
     let extra = scene.treeScroll ? `&treeScroll=${scene.treeScroll}` : ''
-    for (const k of ['route', 'pr', 'tab', 'dock', 'seg', 'review'] as const) {
+    for (const k of ['route', 'pr', 'tab', 'dock', 'seg', 'review', 'section', 'act'] as const) {
       if (scene[k]) extra += `&${k}=${encodeURIComponent(scene[k]!)}`
     }
     await page.goto(`/?scene=${encodeURIComponent(scene.name)}&theme=${scene.theme}${extra}`)

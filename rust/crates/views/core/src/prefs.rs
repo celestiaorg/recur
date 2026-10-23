@@ -509,6 +509,63 @@ impl TerminalPrefs {
     }
 }
 
+// ---- editor and explorer prefs ----
+
+/// `recur.editorPrefs`.
+pub const EDITOR_PREFS_KEY: &str = "recur.editorPrefs";
+
+/// `initEditorPrefs`: the saved prefs, normalized (defaults when missing or malformed).
+pub fn load_editor_prefs(storage: &LocalStorage) -> recur_editor::prefs::EditorPrefs {
+    storage
+        .get(EDITOR_PREFS_KEY)
+        .and_then(|raw| serde_json::from_str::<Value>(raw).ok())
+        .map(|v| recur_editor::prefs::EditorPrefs::normalize(&v))
+        .unwrap_or_default()
+}
+
+/// `recur.explorerPrefs`.
+pub const EXPLORER_PREFS_KEY: &str = "recur.explorerPrefs";
+
+/// `DEFAULT_EXPLORER_EXCLUDE`: VCS dirs and OS junk.
+pub const DEFAULT_EXPLORER_EXCLUDE: [&str; 5] = [
+    "**/.git",
+    "**/.svn",
+    "**/.hg",
+    "**/.DS_Store",
+    "**/Thumbs.db",
+];
+
+/// `explorerPrefs.exclude` (`normalizeExplorerPrefs`): the saved globs (blank rows kept so
+/// Add pattern stays editable), else the defaults.
+pub fn explorer_exclude(storage: &LocalStorage) -> Vec<String> {
+    let saved: Option<Value> = storage
+        .get(EXPLORER_PREFS_KEY)
+        .and_then(|raw| serde_json::from_str(raw).ok());
+    match saved
+        .as_ref()
+        .and_then(|v| v.get("exclude"))
+        .and_then(Value::as_array)
+    {
+        Some(list) => list
+            .iter()
+            .map(|p| match p {
+                Value::String(s) => s.clone(),
+                other => other.to_string(),
+            })
+            .collect(),
+        None => DEFAULT_EXPLORER_EXCLUDE
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+    }
+}
+
+/// `setExplorerExclude`: `{"exclude":[…]}`.
+pub fn save_explorer_exclude(storage: &mut LocalStorage, patterns: &[String]) {
+    let v = serde_json::json!({ "exclude": patterns });
+    storage.set(EXPLORER_PREFS_KEY, v.to_string());
+}
+
 // ---- terminal dock chrome ----
 
 /// Per-workspace terminal dock layout (`terminalDockOpenBy` and friends). The dock costs a

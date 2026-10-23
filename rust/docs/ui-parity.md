@@ -34,7 +34,7 @@ Taffy lays out in unrounded floats and GPUI snaps each box's absolute edges afte
 - **Text metrics.** `text::line_metrics` is WebKit's line box: ascent rounded and descent ceiled to 1/64, `normal` as rounded ascent + descent + gap, numeric line heights floored to 1/64, half-leading floored, widths ceiled to 1/64. Each line's box is the union of the strut and every inline run on it, each with its own font, size and half-leading. An inline box that starts a line brings its left margin, border and padding onto that line. A truncation drops the spaces before its ellipsis. A text field's text (`Text::field`, placeholders) counts a negative half-leading twice, as WebKit's inner editor does (measured across Inter sizes, within 1/64 px).
 - **Ties.** WebKit rounds half pixels down and right, GPUI toward zero. `style::window_root` shifts the tree by 1/4096 px through `aspect_ratio` spacers; `style::anchored_at` places free-standing overlays at their exact fractional position.
 - **Flex.** CSS takes `flex: 1`'s zero basis as the item's border box without flooring it at padding and border; Taffy floors it, so padded items share space unequally. `style::flex_share` puts the share on an unpadded wrapper. GPUI does not collapse margins: ports collapse them by hand (a child's top margin into its parent's).
-- **Paint order.** GPUI paints a box's border after its children, CSS before them, so anything that must paint over a parent's border (a `z-index` overlay, its shadow) paints `deferred`. GPUI clips rectangles: a child in a rounded `overflow: hidden` box rounds its own corners (a menu's search header, a palette's footer).
+- **Paint order.** GPUI paints a box's border after its children, CSS before them, so anything that must paint over a parent's border (a `z-index` overlay, its shadow) paints `deferred`; one that must stay clipped by its scroll container (a `z-index` popover inside `overflow: auto`) paints through `style::deferred_clipped`. GPUI clips rectangles: a child in a rounded `overflow: hidden` box rounds its own corners (a menu's search header, a palette's footer).
 - **Glyphs.** Bundled faces are rasterized through CoreGraphics with WebKit's settings (subpixel positioning and quantization, smoothing as `-webkit-font-smoothing` asks), keyed by the run's own face, which is verified against the face's cmap because GPUI's id-to-font lookup is ambiguous. `system-ui` is shaped and drawn through CoreText with the CSS weight on SF's `wght` axis and as the CoreText weight trait (fallback glyphs such as `↵` then come from the same font WebKit picks).
 - **Icons.** SVGs rasterize through CoreGraphics at the exact CSS size from a snapped origin, as WebKit paints an SVG root. Monochrome icons carry coverage as alpha with the exact color. CSS masks apply per pixel column.
 - **Shadows.** `shadow::with_shadow` and `shadow::box_shadow` draw blurred `box-shadow`s as WebKit's ShadowBlur: three box blurs per axis over a CSS-pixel layer, scaled up bilinearly, clipped out of the box without anti-aliasing. GPUI's own shader samples the Gaussian four times. `with_shadow` is a shrinkable column, so a max height around it reaches the content.
@@ -125,6 +125,13 @@ The `prs` list in `scenes.json` holds the PR routes (`prs/…`): the dashboard a
 
 Scenes: the dashboard on All in `default` and `paper`, wide (1800, people and why on the row), with the sort menu open and with a people popout; PR detail on Conversation in `default` and `paper`, Files changed, Commits and Checks; the titlebar in each merge state (Update with main beside Merge, Ready for review, Fix checks, Merge blocked, Conflicts, Queued, Add to merge queue, merged, two pending comments in `default` and `paper`), with the merge, update and review menus open, and confirming a merge; the review modal with pending chips (Request changes in `default`, Approve in `paper`); and the header's people popout.
 
+## Settings scenes
+
+The `settings` list in `scenes.json` holds full-window scenes (`settings/…`) of the Settings route at 1280×800, in `default` and `paper`: one per pane, the Add provider modal, the Cursor SDK install mid-download, the default policy menu and its help, the rail's usage meter and the keybinding menu.
+
+- **Reference.** `web/scenes/SettingsPage.svelte` mounts `App.svelte` as the shell scenes do, opens Settings on the scene's `section` and runs its `act` (a click on Add provider, Install SDK followed by a `cursor.install` progress event, the policy or help button, the usage meter, `openKeybindingMenu`). Each scene names a fixture in `content/settings.json`: edits to the e2e seed and canned resolvers; `{"$pending": true}` leaves a call unanswered (the install in flight).
+- **Candidate.** `recur_view_settings::gallery` (feature `gallery`) builds the desktop's registry and `Shell` over a `MockBridge` with the same fixture, opens Settings on `section` once the state has booted, and three frames later runs the same `act` (the policy, help and usage scenes click instead, through `steps`).
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -192,6 +199,11 @@ Every other scene allows no hard pixels.
 | `prs/detail-*`, `prs/actions-*`, `prs/review-modal`, `prs/people-detail` | 0 to 7 | An avatar's edge at a fractional offset in the header's people stack (1); `prs/actions-checks` adds the Fix checks button's corners at a fractional x (4), `prs/actions-review-menu` the avatar ring under the menu's shadow (7), and the `paper` scenes the running dot's glow (as `shell/paper`) |
 | `prs/detail-files` | 37 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc (as `review/*`) and the avatar edge (above) |
 | `prs/actions-merged` | 14 | The classic thumb is a pixel shorter: GPUI lays the merged conversation out 989.5px tall where WebKit has 989.28, and `scrollHeight` rounds across the boundary (`PARITY.md` follow-up); the avatar edge (above) |
+| `settings/*-paper` (panes) | 6 | The running dot's glow over the light rail (as `shell/paper`) |
+| `settings/general`, `settings/general-paper`, `settings/usage`, `settings/keybinding-menu` | 8, 21, 8, 16 | The concurrency field's `8`, which gpui-base's editor draws (typed input text, above); the paper scene adds the rail glow, `settings/keybinding-menu` the nav search box's corners at a fractional height |
+| `settings/appearance`, `settings/appearance-paper`, `settings/cursor-install`, `settings/cursor-install-paper` | 22, 21, 13, 21 | The page's classic thumb across a rounding boundary (as `prs/actions-merged`), the Nord card's top corners (curved-edge coverage) and the rail glow on paper |
+| `settings/mcp-paper`, `settings/policy-menu-paper`, `settings/policy-tip-paper`, `settings/usage-paper`, `settings/keybinding-menu-paper` | 16, 15, 20, 51, 21 | Curved-edge coverage at popover and card corners over the light page, and the rail glow |
+| `settings/compat-modal`, `settings/compat-modal-paper` | 114, 206 | The modal's prefilled slug, name, base URL and model fields (typed input text, above) and, on paper, the panel's corners |
 
 ## Results
 
@@ -357,6 +369,52 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `prs/actions-review-menu` | 7 | 9462 | 3017 | 13730 | 7 |
 | `prs/actions-update-menu` | 0 | 12537 | 3108 | 17210 | 0 |
 | `prs/people-detail` | 1 | 16148 | 3715 | 21850 | 1 |
+| `settings/general` | 8 | 5857 | 1986 | 7850 | 8 |
+| `settings/general-paper` | 21 | 5846 | 2222 | 8070 | 21 |
+| `settings/appearance` | 22 | 9831 | 3552 | 13390 | 22 |
+| `settings/appearance-paper` | 21 | 9713 | 4075 | 13790 | 21 |
+| `settings/editor` | 0 | 7729 | 1076 | 8810 | 0 |
+| `settings/editor-paper` | 6 | 7524 | 1408 | 8940 | 6 |
+| `settings/skills` | 0 | 3821 | 1520 | 5350 | 0 |
+| `settings/skills-paper` | 6 | 3769 | 1631 | 5400 | 6 |
+| `settings/data` | 0 | 5210 | 989 | 6200 | 0 |
+| `settings/data-paper` | 6 | 5181 | 1066 | 6250 | 6 |
+| `settings/providers` | 0 | 6542 | 1944 | 8490 | 0 |
+| `settings/providers-paper` | 6 | 6043 | 2187 | 8230 | 6 |
+| `settings/models` | 0 | 8842 | 1138 | 9980 | 0 |
+| `settings/models-paper` | 6 | 8774 | 1374 | 10150 | 6 |
+| `settings/loops` | 0 | 4499 | 804 | 5310 | 0 |
+| `settings/loops-paper` | 6 | 4437 | 879 | 5320 | 6 |
+| `settings/prs` | 0 | 19043 | 1817 | 20860 | 0 |
+| `settings/prs-paper` | 6 | 18419 | 2139 | 20560 | 6 |
+| `settings/integrations` | 0 | 5051 | 933 | 5990 | 0 |
+| `settings/integrations-paper` | 6 | 4855 | 1151 | 6010 | 6 |
+| `settings/mcp` | 0 | 5669 | 1606 | 7280 | 0 |
+| `settings/mcp-paper` | 16 | 5619 | 1975 | 7600 | 16 |
+| `settings/commands` | 0 | 4192 | 1618 | 5810 | 0 |
+| `settings/commands-paper` | 6 | 4022 | 1646 | 5670 | 6 |
+| `settings/prompts` | 0 | 4675 | 2733 | 7410 | 0 |
+| `settings/prompts-paper` | 6 | 4457 | 2829 | 7290 | 6 |
+| `settings/grammars` | 0 | 6073 | 1088 | 7170 | 0 |
+| `settings/grammars-paper` | 6 | 5968 | 1206 | 7180 | 6 |
+| `settings/lsp` | 0 | 5256 | 1676 | 6940 | 0 |
+| `settings/lsp-paper` | 6 | 4950 | 1762 | 6720 | 6 |
+| `settings/themes` | 0 | 5551 | 1592 | 7150 | 0 |
+| `settings/themes-paper` | 6 | 5505 | 1682 | 7190 | 6 |
+| `settings/snippets` | 0 | 6545 | 1390 | 7940 | 0 |
+| `settings/snippets-paper` | 6 | 6431 | 1481 | 7920 | 6 |
+| `settings/compat-modal` | 114 | 7835 | 4258 | 12100 | 114 |
+| `settings/compat-modal-paper` | 206 | 11317 | 47000 | 58320 | 206 |
+| `settings/cursor-install` | 13 | 7203 | 2045 | 9250 | 13 |
+| `settings/cursor-install-paper` | 21 | 6945 | 8025 | 14970 | 21 |
+| `settings/policy-menu` | 0 | 9038 | 847 | 9890 | 0 |
+| `settings/policy-menu-paper` | 15 | 9038 | 996 | 10040 | 15 |
+| `settings/policy-tip` | 0 | 7231 | 950 | 8190 | 0 |
+| `settings/policy-tip-paper` | 20 | 7261 | 1460 | 8730 | 20 |
+| `settings/usage` | 8 | 5897 | 2364 | 8270 | 8 |
+| `settings/usage-paper` | 51 | 7110 | 15890 | 23000 | 51 |
+| `settings/keybinding-menu` | 16 | 12117 | 22066 | 34190 | 16 |
+| `settings/keybinding-menu-paper` | 21 | 7414 | 6383 | 13800 | 21 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
@@ -373,3 +431,5 @@ Observatory tolerances: text is glyph subpixel phase in code, paths, labels, tab
 Workspace tolerances: text is glyph subpixel phase in the transcript, the composer, tab chips, pickers, panels and the Observatory beside them; anti-aliasing is icon, chip, card and dot edges, the composer's shadow and the running dot's glow.
 
 PR tolerances: text is glyph subpixel phase in row titles, mono metadata, pills, tabs, the thread, diffs, buttons and the modal; anti-aliasing is icon, chip, avatar, card and dot edges, the menu and modal shadows and the status-dot glows.
+
+Settings tolerances: text is glyph subpixel phase in the nav, titles, descriptions, chips, selects, status tables and the rail beside them; anti-aliasing is icon, toggle, card and dot edges, the theme card previews, the menu, popover and modal shadows (1 to 3 levels over a wide blur) and the scrim over the page (1 level, `settings/keybinding-menu`).

@@ -14,7 +14,6 @@ use recur_editor::theme::catalog::{EditorThemeCard, filter_for_list};
 use recur_services::api::TerminalThemeInfo;
 use recur_ui::fonts::{Family, weight};
 use recur_ui::motion::{self, Easing};
-use recur_ui::shadow::{box_shadow, css_box_shadow};
 use recur_ui::style::{card, text_field};
 use recur_ui::text::{Align, LineHeight, TextStyled, span, text};
 use recur_ui::theme::{Swatches, ThemeId};
@@ -171,7 +170,19 @@ impl SettingsView {
             .child(prev)
             .child(meta);
         if on {
-            c = c.child(box_shadow(&[css_box_shadow(0., 0., 0., 1., t.amber)], 9., 1.));
+            // The amber border and `box-shadow: 0 0 0 1px` read as one 2px ring; drawn as one
+            // shape, two anti-aliased rings would leave a seam between them.
+            c = c.child(
+                div()
+                    .absolute()
+                    .top(px(-2.))
+                    .left(px(-2.))
+                    .right(px(-2.))
+                    .bottom(px(-2.))
+                    .border(px(2.))
+                    .border_color(hsla(t.amber))
+                    .rounded(px(10.)),
+            );
         }
         c.into_any_element()
     }
@@ -183,10 +194,14 @@ impl SettingsView {
         while it.peek().is_some() {
             let mut row = div().flex().gap(px(11.));
             for _ in 0..3 {
-                row = row.child(match it.next() {
-                    Some(c) => c,
-                    None => div().flex_1().min_w_0().into_any_element(),
-                });
+                // Grid tracks share the row exactly; a bordered card's flex basis would not.
+                row = row.child(recur_ui::style::flex_share(
+                    1.,
+                    match it.next() {
+                        Some(c) => c,
+                        None => div().flex_1().min_w_0().into_any_element(),
+                    },
+                ));
             }
             g = g.child(row);
         }
@@ -198,7 +213,7 @@ impl SettingsView {
         let sample = if sample_app {
             ("recur", s.text, "_", s.accent)
         } else {
-            ("ls", s.text, " ~", s.ok)
+            ("ls", s.text, "~", s.ok)
         };
         CardLook {
             bg: s.bg,
@@ -294,7 +309,7 @@ impl SettingsView {
             let look = CardLook {
                 bg: css_color(&p.background, tokens(cx).bg),
                 dots: [or_fg(&p.red), green, or_fg(&p.blue)],
-                sample: ("ls", fg, " ~", green),
+                sample: ("ls", fg, "~", green),
                 name: th.name.clone(),
             };
             let state = self.vcx.state.clone();
@@ -345,6 +360,7 @@ impl SettingsView {
             if let Some(l) = label {
                 rows.push(
                     div()
+                        .when(i == 0, |d| d.rounded_t(px(8.)))
                         .pt(px(8.))
                         .px(px(12.))
                         .pb(px(4.))

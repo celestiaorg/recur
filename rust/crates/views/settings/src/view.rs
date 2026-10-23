@@ -218,7 +218,19 @@ impl SettingsView {
         let mut model_pickers = Vec::new();
         for slot in MODEL_SLOTS {
             let (ml, fl) = crate::sections::models::picker_labels(slot);
-            let p = cx.new(|cx| ModelPickers::with_labels(&ml, &fl, true, false, window, cx));
+            let p = cx.new(|cx| {
+                let mut p = ModelPickers::with_labels(&ml, &fl, true, false, window, cx);
+                // `.model-pickers.chip` also matches `_loop.scss`'s global `.chip`, whose mono
+                // font the ghost triggers inherit.
+                p.set_trigger_style(
+                    recur_ui::widgets::TriggerStyle {
+                        mono_font: true,
+                        ..Default::default()
+                    },
+                    cx,
+                );
+                p
+            });
             model_pickers.push(p);
         }
         let loop_pickers = cx.new(|cx| LoopPolicyPickers::new(false, false, true, window, cx));

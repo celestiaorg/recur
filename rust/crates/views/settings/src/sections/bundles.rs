@@ -547,7 +547,7 @@ impl SettingsView {
     }
 
     pub(crate) fn lsp_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let t = tokens(cx);
+
         let out = settings_groups().child(lead(
             "lsp-lead",
             vec![span(
@@ -565,27 +565,7 @@ impl SettingsView {
         }
         let mut list = Vec::new();
         for ls in self.lsp.rows.clone() {
-            let mut title = vec![span(ls.id.clone())];
-            if !ls.available && ls.managed.is_empty() {
-                title.push(span(" "));
-                title.push(
-                    span("Not installed")
-                        .size(10.)
-                        .weight(weight::BOLD)
-                        .tracking(0.02)
-                        .color(t.amber)
-                        .boxed(InlineBox {
-                            margin_left: 8.,
-                            pad_top: 1.,
-                            pad_bottom: 1.,
-                            pad_left: 6.,
-                            pad_right: 6.,
-                            background: Some(hsla(t.amber.fade(0.16))),
-                            radius: 4.,
-                            ..Default::default()
-                        }),
-                );
-            }
+            let missing = !ls.available && ls.managed.is_empty();
             let mut d = ls.languages.clone().unwrap_or_default().join(", ");
             if !ls.managed.is_empty() {
                 d.push_str(&format!(" · managed ({})", ls.managed));
@@ -593,12 +573,13 @@ impl SettingsView {
             if !ls.bundle_name.is_empty() {
                 d.push_str(&format!(" · {}", ls.bundle_name));
             }
-            let title_text = recur_ui::text::Text::from_spans(title)
-                .id(SharedString::from(format!("lsp-title-{}", ls.id)))
-                .size(13.)
-                .weight(weight::SEMIBOLD)
-                .leading(1.45)
-                .color(t.text);
+            let title_text = crate::style::title(ls.id.clone(), cx)
+                .id(SharedString::from(format!("lsp-title-{}", ls.id)));
+            let title_text = if missing {
+                lsp_title_with_badge(title_text, &ls.id, window, cx).into_any_element()
+            } else {
+                title_text.into_any_element()
+            };
             list.push(
                 Row::new()
                     .child(
@@ -890,4 +871,60 @@ mod tests {
         assert_eq!(groups[0].1[0].slash, "commit");
         assert_eq!(groups[1].0, "Prompts");
     }
+}
+
+/// A language server title with `.set-lsp-miss`: an inline-block after a space and 8px, raised
+/// 2px (`vertical-align: 2px`), its own 10px bold line at the inherited 1.45, padded 1px 6px.
+fn lsp_title_with_badge(
+    title: recur_ui::text::Text,
+    id: &str,
+    window: &Window,
+    cx: &App,
+) -> gpui_kit::Div {
+    use recur_ui::fonts::Family;
+    use recur_ui::text::strut_metrics;
+    let t = tokens(cx);
+    let measure = |spans: Vec<recur_ui::text::Span>| {
+        recur_ui::text::Text::from_spans(spans)
+            .size(13.)
+            .weight(weight::SEMIBOLD)
+            .leading(1.45)
+            .nowrap()
+            .measure(None, window)
+            .0
+    };
+    let w = measure(vec![span(id.to_string()), span(" "), span("x")]) - measure(vec![span("x")]);
+    let line = strut_metrics(&Family::Ui, 13., LineHeight::Scale(1.45), window);
+    let badge_line = strut_metrics(&Family::Ui, 10., LineHeight::Scale(1.45), window);
+    let top = line.baseline - 2. - (1. + badge_line.baseline);
+    let badge = div()
+        .flex_none()
+        .py(px(1.))
+        .px(px(6.))
+        .rounded(px(4.))
+        .bg(hsla(t.amber.fade(0.16)))
+        .child(
+            text("Not installed")
+                .size(10.)
+                .weight(weight::BOLD)
+                .tracking(0.02)
+                .leading(1.45)
+                .color(t.amber)
+                .nowrap(),
+        );
+    div().relative().child(title).child(
+        div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .flex()
+            .flex_col()
+            .child(recur_ui::exact::vgap(top.max(0.), window))
+            .child(
+                div()
+                    .flex()
+                    .child(recur_ui::exact::hgap(w + 8., window))
+                    .child(badge),
+            ),
+    )
 }

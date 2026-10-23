@@ -234,6 +234,17 @@ impl ModelPickers {
         }
     }
 
+    /// Restyle both triggers for the context they sit in (Settings' `.model-pickers.chip`
+    /// inherits the global `.chip` mono font).
+    pub fn set_trigger_style(&mut self, t: TriggerStyle, cx: &mut Context<Self>) {
+        let t2 = t.clone();
+        self.model_select
+            .update(cx, |s, cx| s.set_trigger_style(t, cx));
+        self.flags_select.update(cx, |f, cx| {
+            f.select.update(cx, |s, cx| s.set_trigger_style(t2, cx))
+        });
+    }
+
     /// The props: catalog, current model and flags, disabled (faded over `backdrop`).
     pub fn set(
         &mut self,

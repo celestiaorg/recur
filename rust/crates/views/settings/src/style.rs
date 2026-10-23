@@ -456,12 +456,6 @@ impl InpStyle {
         width: Some(72.),
         ..InpStyle::BASE
     };
-    /// `.exclude-inp`: padding 7px 10px.
-    pub const EXCLUDE: InpStyle = InpStyle {
-        pad_y: 7.,
-        pad_x: 10.,
-        ..InpStyle::BASE
-    };
     /// `.compat-models .inp`: at least 36px tall.
     pub const COMPAT: InpStyle = InpStyle {
         min_h: Some(36.),

@@ -107,7 +107,8 @@ impl SettingsView {
     pub(crate) fn editor_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let p = self.vcx.state.read(cx).editor_prefs.clone();
         let tp = self.vcx.state.read(cx).terminal_prefs.clone();
-        let scanning = if self.mono_loading { " · scanning…" } else { "" };
+        // Svelte trims the space opening `{#if monoFontsLoading} · scanning…{/if}`.
+        let scanning = if self.mono_loading { "· scanning…" } else { "" };
 
         // Font pickers.
         let mut opts: Vec<SelectOption> = self
@@ -260,7 +261,8 @@ impl SettingsView {
             let d = match (over, conv) {
                 (Some(o), _) => format!("Override · {}", o.label()),
                 (None, Some(c)) => match hint {
-                    Some(h) => format!("Auto · {} ({h})", c.label()),
+                    // Svelte trims the space opening `{#if lang.hint} (…){/if}`.
+                    Some(h) => format!("Auto · {}({h})", c.label()),
                     None => format!("Auto · {}", c.label()),
                 },
                 (None, None) => format!("Auto · {} (global)", effective.label()),
@@ -523,7 +525,8 @@ impl SettingsView {
                             .min_w_0()
                             .flex()
                             .debug_selector(move || format!("inp:Exclude pattern {}", i + 1))
-                            .child(inp(&input, &"**/pattern".into(), InpStyle::EXCLUDE, window, cx)),
+                            // `.inp`'s padding comes later than `.exclude-inp`'s and wins.
+                            .child(inp(&input, &"**/pattern".into(), InpStyle::BASE, window, cx)),
                     )
                     .child(recur_ui::tooltip::titled(
                         SharedString::from(format!("exclude-rm-tip-{i}")),

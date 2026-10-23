@@ -6750,6 +6750,7 @@ dependencies = [
  "recur-view-chat",
  "recur-view-core",
  "recur-view-observatory",
+ "recur-view-prs",
  "recur-view-review",
  "recur-view-workspace",
  "serde_json",

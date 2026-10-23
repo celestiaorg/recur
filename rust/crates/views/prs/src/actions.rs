@@ -27,7 +27,7 @@ use recur_ui::{IconName, Theme, color::rgba, icon};
 use recur_view_core::land::{Land, LandCache};
 use recur_view_core::modes::ws_has_run;
 use recur_view_core::pr::{PrLifecycle, keep_merged_pr, pr_lifecycle};
-use recur_view_core::{AppState, AppliedEvent, PrReviewKind, ViewContext, call, toast};
+use recur_view_core::{AppState, AppliedEvent, PrReviewKind, ViewContext, ViewName, call, toast};
 
 use crate::detail::PrDetail;
 use crate::style::spin_deg;
@@ -119,6 +119,7 @@ pub struct PrTitlebarActions {
     pushing: bool,
     sending_back: bool,
     review_pr_id: String,
+    mounted: bool,
     hits: HashMap<&'static str, Bounds<Pixels>>,
     _subs: Vec<Subscription>,
 }
@@ -187,6 +188,7 @@ impl PrTitlebarActions {
             pushing: false,
             sending_back: false,
             review_pr_id,
+            mounted: false,
             hits: HashMap::new(),
             _subs: subs,
         };
@@ -293,10 +295,22 @@ impl PrTitlebarActions {
     // ---- land state ----
 
     fn state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let (selected, pr) = {
+        let (selected, pr, on) = {
             let s = self.state.read(cx);
-            (s.selected_pr_id.clone(), s.pr(&s.selected_pr_id).cloned())
+            (
+                s.selected_pr_id.clone(),
+                s.pr(&s.selected_pr_id).cloned(),
+                s.view == ViewName::PrDetail,
+            )
         };
+        // The bar mounts with PR detail on the web: entering the route starts it fresh.
+        if on && !self.mounted {
+            self.mount();
+        }
+        self.mounted = on;
+        if !on {
+            return;
+        }
         if selected != self.review_pr_id {
             self.review_pr_id = selected;
             self.reset_for_pr(cx);
@@ -424,6 +438,29 @@ impl PrTitlebarActions {
             AppEvent::AppFocused(_) => self.refresh_land(cx),
             _ => {}
         }
+    }
+
+    /// A fresh component's state: land recalled from the cache and unconfirmed until git
+    /// answers, nothing in flight.
+    fn mount(&mut self) {
+        self.confirming_merge = false;
+        self.merge_menu_open = false;
+        self.review_menu_open = false;
+        self.update_menu_open = false;
+        self.review_kind = PrReviewKind::Approve;
+        self.merge_override = None;
+        self.update_override = None;
+        self.awaiting_update = false;
+        self.draft_busy = false;
+        self.merge_busy = false;
+        self.pulling = false;
+        self.pushing = false;
+        self.sending_back = false;
+        self.land_tracked.clear();
+        self.refresh_key = None;
+        self.fetch_key.clear();
+        self.fetch_gen += 1;
+        self.fs_timer = None;
     }
 
     /// Selecting another PR resets the menus, overrides and the review draft.

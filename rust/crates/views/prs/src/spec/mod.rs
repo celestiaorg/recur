@@ -5,3 +5,4 @@ mod detail;
 mod dock;
 mod harness;
 mod list;
+mod workspace_pr;

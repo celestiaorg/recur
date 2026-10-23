@@ -392,3 +392,45 @@ fn request_changes_from_the_titlebar_split_on_any_tab(cx: &mut TestAppContext) {
     );
     assert!(s.has("thread"));
 }
+
+#[gpui::test]
+fn files_changed_findings_open_in_findings_and_filter_the_toc(cx: &mut TestAppContext) {
+    let mut race = race_finding("");
+    race.as_object_mut().unwrap().remove("workspaceId");
+    let r2 = race.clone();
+    let mut s = boot(
+        cx,
+        |_| {},
+        MockOptions::default()
+            .resolver("ListPRFindings", move |_, _, _| {
+                Reply::value(json!([race.clone()]))
+            })
+            .resolver("ListFindings", move |_, _, _| {
+                Reply::value(json!([r2.clone()]))
+            }),
+    );
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(s.has(&format!("obs-finding-flag:{SESSION}")));
+    s.click(&format!("fl-row:file:{SESSION}"));
+    assert!(s.has("icmt-finding:f-race"));
+    s.click("open-in-findings:f-race");
+    assert_eq!(s.view(), recur_view_core::ViewName::Detail);
+
+    s.click("tb-view-pr");
+    assert_eq!(s.view(), recur_view_core::ViewName::PrDetail);
+    s.tab("Files changed");
+    s.click("button:Show files with open findings:false");
+    let paths = [
+        "src/auth/oauth.ts",
+        SESSION,
+        "src/checkout/SignInButtons.tsx",
+    ];
+    let rows = paths
+        .iter()
+        .filter(|p| s.has(&format!("fl-row:file:{p}")))
+        .count();
+    assert_eq!(rows, 1);
+    assert!(s.has(&format!("fl-row:file:{SESSION}")));
+    assert!(s.has("button:Show all files:true"));
+}

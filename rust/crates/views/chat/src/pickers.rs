@@ -348,7 +348,8 @@ fn autonomy_trigger(t: &recur_ui::Tokens) -> TriggerStyle {
         open_color: Some(t.text),
         no_ring: true,
         icon_color: Some(t.amber),
-        open_icon_color: Some(t.muted),
+        open_icon_color: Some(t.amber),
+        open_chevron_color: Some(t.muted),
         auto_width: true,
         ..Default::default()
     }

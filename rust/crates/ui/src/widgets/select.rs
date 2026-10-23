@@ -133,6 +133,8 @@ pub struct TriggerStyle {
     pub chevron_size: Option<f32>,
     /// Icon and chevron color while open / focused.
     pub open_icon_color: Option<Color>,
+    /// The chevron's, where it differs from the icon's.
+    pub open_chevron_color: Option<Color>,
     /// While open, `.sel.open`'s ring and amber icons win over the host's (a later sheet, same
     /// specificity); `no_ring` and `open_icon_color` then apply to `:focus-visible` only.
     pub sel_open_wins: bool,
@@ -724,7 +726,10 @@ impl Render for Select {
                 t.amber
             });
             ico_color = c;
-            chev_color = c;
+            chev_color = tr
+                .open_chevron_color
+                .filter(|_| !(tr.sel_open_wins && self.open))
+                .unwrap_or(c);
         }
         let (hover_bg, hover_border, hover_fg) = if self.ghost {
             (

@@ -132,6 +132,15 @@ The `settings` list in `scenes.json` holds full-window scenes (`settings/…`) o
 - **Reference.** `web/scenes/SettingsPage.svelte` mounts `App.svelte` as the shell scenes do, opens Settings on the scene's `section` and runs its `act` (a click on Add provider, Install SDK followed by a `cursor.install` progress event, the policy or help button, the usage meter, `openKeybindingMenu`). Each scene names a fixture in `content/settings.json`: edits to the e2e seed and canned resolvers; `{"$pending": true}` leaves a call unanswered (the install in flight).
 - **Candidate.** `recur_view_settings::gallery` (feature `gallery`) builds the desktop's registry and `Shell` over a `MockBridge` with the same fixture, opens Settings on `section` once the state has booted, and three frames later runs the same `act` (the policy, help and usage scenes click instead, through `steps`).
 
+## Home, briefing and project scenes
+
+The `home`, `briefing` and `projects` lists in `scenes.json` hold full-window scenes (`home/…`, `briefing/…`, `projects/…`) of Welcome, the New workspace and New project modals, the Inbox, Issues, Schedules with the schedule editor, and project settings, in `default` and `paper`. Each names a fixture in `content/views.json` (edits to the e2e seed and canned replies: `first-run` and `no-workspaces` empty the lists; `issues`, `issues-board` and `schedules` answer `ListAssignedIssues`, `GetIssuesView`, `ListScheduledPrompts` and `PreviewScheduledPrompt` with fixed dates) and a `route`.
+
+- **Reference.** `web/scenes/Views.svelte` mounts `App.svelte` over the edited seed and, once the rail is up, navigates to the route (`welcome`, `briefing`, `issues`, `schedules`, `newtask`, `newproject`, `project:{id}`), hiding every main-area view but the routed one. Steps then click (picker menus, a project section, the Schedules page's New schedule) and park the pointer. Avatar fetches are aborted, as for the PR scenes.
+- **Candidate.** `recur_view_home::gallery::build_in` (feature `gallery`; the briefing and projects galleries call it with their crates' registrations) builds the desktop's registry and a `Shell` over a `MockBridge` with the same fixture and storage, navigates the same way after boot and replays the steps. Each scene starts from fresh module state (the Issues view cache, expanded schedule rows).
+
+Scenes: Welcome on first run, its modes and its completed state; New project empty and with a typed path; New workspace in agent and loop mode with each picker open (repository, base, mode, model, flags, loop, policy, the policy help) and the slash menu; the Inbox with every bucket and Elsewhere, with the Ask dock closed and as a drawer at 1000px; Issues as a list and a board; Schedules across projects and the schedule editor; project settings General (also 1500px tall), Run (also 1800px tall), Schedules, Pull requests, Skills, MCP and Danger zone.
+
 ## Rules for UI crates
 
 To stay pixel-exact, crates built on recur-ui must:
@@ -204,6 +213,15 @@ Every other scene allows no hard pixels.
 | `settings/appearance`, `settings/appearance-paper`, `settings/cursor-install`, `settings/cursor-install-paper` | 22, 21, 13, 21 | The page's classic thumb across a rounding boundary (as `prs/actions-merged`), the Nord card's top corners (curved-edge coverage) and the rail glow on paper |
 | `settings/mcp-paper`, `settings/policy-menu-paper`, `settings/policy-tip-paper`, `settings/usage-paper`, `settings/keybinding-menu-paper` | 16, 15, 20, 51, 21 | Curved-edge coverage at popover and card corners over the light page, and the rail glow |
 | `settings/compat-modal`, `settings/compat-modal-paper` | 114, 206 | The modal's prefilled slug, name, base URL and model fields (typed input text, above) and, on paper, the panel's corners |
+| `home/welcome`, `home/welcome-modes` | 11 | Curved-edge coverage where the rows' rounded ends meet the list's border arc |
+| `home/new-project-path` | 189 | The typed path, which gpui-base's editor draws (typed input text, above), and the focused field's corners |
+| `home/new-task-slash` | 3 | Curved-edge coverage at the slash menu's corner |
+| `briefing/inbox`, `briefing/inbox-paper`, `briefing/inbox-closed` | 163, 157, 163 | The bucket segment group sits within 0.1px of WebKit's 999.78 but across the device-pixel rounding boundary, so its first button's fill starts a device pixel early; `paper` adds the rail glow (as `shell/paper`) |
+| `briefing/schedules`, `briefing/schedules-paper` | 20, 28 | The state segment's first button (as `briefing/inbox`); `paper` adds the rail glow |
+| `briefing/issues`, `briefing/issues-paper` | 24, 14 | The far tails of the status dots' 5px glows at fractional x (as `prs/list`) |
+| `briefing/schedule-editor`, `briefing/schedule-editor-paper` | 126, 119 | The cron expression, which gpui-base's editor draws (typed input text, above), and the state segment behind the scrim (as `briefing/schedules`) |
+| `projects/general`, `projects/general-tall`, `projects/general-paper` | 58, 58, 117 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) and the rail glow |
+| `projects/run`, `projects/run-tall` | 223, 291 | The Files to copy placeholder, which gpui-base's textarea draws (typed input text, above), and its resize grip, which GPUI's textarea does not have (`PARITY.md` follow-up) |
 
 ## Results
 

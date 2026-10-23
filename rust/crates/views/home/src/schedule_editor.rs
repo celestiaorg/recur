@@ -1156,6 +1156,8 @@ impl Render for ScheduleEditor {
             .min_w_0()
             .child(div().flex_none().child(self.repeat_sel.clone()));
         if d.cadence == "once" {
+            // simplify: WebKit's `type=date` / `type=time` segmented pickers are plain
+            // `YYYY-MM-DD` / `HH:MM` fields. Upgrade: a date / time field in recur_ui.
             when = when
                 .child(
                     sc_in(

@@ -1987,28 +1987,28 @@
     {"name": "home/new-task-slash", "width": 1280, "height": 800, "theme": "default", "tolerance": 11330, "hardTolerance": 3, "fixture": "base", "route": "newtask", "steps": [{"type": "/"}, {"wait": 300}]}
   ],
   "briefing": [
-    {"name": "briefing/inbox", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "briefing"},
-    {"name": "briefing/inbox-paper", "width": 1280, "height": 800, "theme": "paper", "fixture": "base", "route": "briefing"},
-    {"name": "briefing/inbox-closed", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "briefing", "storage": {"recur.askRecurOpen": "0"}},
-    {"name": "briefing/issues", "width": 1280, "height": 800, "theme": "default", "fixture": "issues", "route": "issues"},
-    {"name": "briefing/issues-paper", "width": 1280, "height": 800, "theme": "paper", "fixture": "issues", "route": "issues"},
-    {"name": "briefing/issues-board", "width": 1280, "height": 800, "theme": "default", "fixture": "issues-board", "route": "issues"},
-    {"name": "briefing/schedules", "width": 1280, "height": 800, "theme": "default", "fixture": "schedules", "route": "schedules"},
-    {"name": "briefing/schedules-paper", "width": 1280, "height": 800, "theme": "paper", "fixture": "schedules", "route": "schedules"},
-    {"name": "briefing/inbox-narrow", "width": 1000, "height": 760, "theme": "default", "fixture": "base", "route": "briefing"},
-    {"name": "briefing/schedule-editor", "width": 1280, "height": 800, "theme": "default", "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]},
-    {"name": "briefing/schedule-editor-paper", "width": 1280, "height": 800, "theme": "paper", "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]}
+    {"name": "briefing/inbox", "width": 1280, "height": 800, "theme": "default", "tolerance": 22480, "hardTolerance": 163, "fixture": "base", "route": "briefing"},
+    {"name": "briefing/inbox-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 22760, "hardTolerance": 157, "fixture": "base", "route": "briefing"},
+    {"name": "briefing/inbox-closed", "width": 1280, "height": 800, "theme": "default", "tolerance": 8880, "hardTolerance": 163, "fixture": "base", "route": "briefing", "storage": {"recur.askRecurOpen": "0"}},
+    {"name": "briefing/issues", "width": 1280, "height": 800, "theme": "default", "tolerance": 23620, "hardTolerance": 24, "fixture": "issues", "route": "issues"},
+    {"name": "briefing/issues-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 23360, "hardTolerance": 14, "fixture": "issues", "route": "issues"},
+    {"name": "briefing/issues-board", "width": 1280, "height": 800, "theme": "default", "tolerance": 12210, "fixture": "issues-board", "route": "issues"},
+    {"name": "briefing/schedules", "width": 1280, "height": 800, "theme": "default", "tolerance": 8000, "hardTolerance": 20, "fixture": "schedules", "route": "schedules"},
+    {"name": "briefing/schedules-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 8040, "hardTolerance": 28, "fixture": "schedules", "route": "schedules"},
+    {"name": "briefing/inbox-narrow", "width": 1000, "height": 760, "theme": "default", "tolerance": 5800, "fixture": "base", "route": "briefing"},
+    {"name": "briefing/schedule-editor", "width": 1280, "height": 800, "theme": "default", "tolerance": 14620, "hardTolerance": 126, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]},
+    {"name": "briefing/schedule-editor-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 16160, "hardTolerance": 119, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]}
   ],
   "projects": [
-    {"name": "projects/general", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront"},
-    {"name": "projects/general-tall", "width": 1280, "height": 1500, "theme": "default", "fixture": "base", "route": "project:storefront"},
-    {"name": "projects/general-paper", "width": 1280, "height": 800, "theme": "paper", "fixture": "base", "route": "project:storefront"},
-    {"name": "projects/run", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 760]}, {"wait": 500}]},
-    {"name": "projects/run-tall", "width": 1280, "height": 1800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 1760]}, {"wait": 500}]},
-    {"name": "projects/schedules", "width": 1280, "height": 800, "theme": "default", "fixture": "schedules", "route": "project:storefront", "steps": [{"click": [328, 216]}, {"move": [1180, 760]}, {"wait": 500}]},
-    {"name": "projects/prs", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 247]}, {"move": [1180, 760]}, {"wait": 300}]},
-    {"name": "projects/skills", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 278]}, {"move": [1180, 760]}, {"wait": 500}]},
-    {"name": "projects/mcp", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 308]}, {"move": [1180, 760]}, {"wait": 300}]},
-    {"name": "projects/danger", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 371]}, {"move": [1180, 760]}, {"wait": 300}]}
+    {"name": "projects/general", "width": 1280, "height": 800, "theme": "default", "tolerance": 8940, "hardTolerance": 58, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/general-tall", "width": 1280, "height": 1500, "theme": "default", "tolerance": 9480, "hardTolerance": 58, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/general-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 9170, "hardTolerance": 117, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/run", "width": 1280, "height": 800, "theme": "default", "tolerance": 27550, "hardTolerance": 223, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 760]}, {"wait": 500}]},
+    {"name": "projects/run-tall", "width": 1280, "height": 1800, "theme": "default", "tolerance": 62300, "hardTolerance": 291, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 1760]}, {"wait": 500}]},
+    {"name": "projects/schedules", "width": 1280, "height": 800, "theme": "default", "tolerance": 6840, "fixture": "schedules", "route": "project:storefront", "steps": [{"click": [328, 216]}, {"move": [1180, 760]}, {"wait": 500}]},
+    {"name": "projects/prs", "width": 1280, "height": 800, "theme": "default", "tolerance": 34940, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 247]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "projects/skills", "width": 1280, "height": 800, "theme": "default", "tolerance": 5300, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 278]}, {"move": [1180, 760]}, {"wait": 500}]},
+    {"name": "projects/mcp", "width": 1280, "height": 800, "theme": "default", "tolerance": 4950, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 308]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "projects/danger", "width": 1280, "height": 800, "theme": "default", "tolerance": 6480, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 371]}, {"move": [1180, 760]}, {"wait": 300}]}
   ]
 }

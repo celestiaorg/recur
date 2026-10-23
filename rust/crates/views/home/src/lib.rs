@@ -14,6 +14,7 @@ pub mod gallery;
 pub mod new_project;
 pub mod new_task;
 pub mod new_workspace;
+pub mod schedule_editor;
 #[cfg(test)]
 mod spec;
 pub mod welcome;
@@ -29,6 +30,10 @@ pub fn register(r: &mut ViewRegistry) {
     r.overlay(OverlaySlot::NewTask, |vcx: &ViewContext, window, cx| {
         new_task::build(vcx, window, cx).into()
     });
+    r.overlay(
+        OverlaySlot::ScheduleEditor,
+        |vcx: &ViewContext, window, cx| schedule_editor::build(vcx, window, cx).into(),
+    );
     r.overlay(OverlaySlot::NewProject, |vcx: &ViewContext, window, cx| {
         new_project::build(vcx, window, cx).into()
     });

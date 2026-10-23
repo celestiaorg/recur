@@ -123,7 +123,7 @@ impl Focusable for NewTaskModal {
 }
 
 /// `.nt-pickers .sel-btn`: borderless 30px triggers in the UI font, `--pane-2` on hover.
-fn picker_trigger(t: &recur_ui::Tokens, vw: f32) -> TriggerStyle {
+pub(crate) fn picker_trigger(t: &recur_ui::Tokens, vw: f32) -> TriggerStyle {
     TriggerStyle {
         height: Some(30.),
         pad_x: Some(8.),
@@ -1393,50 +1393,63 @@ impl NewTaskModal {
         }
     }
 
-    /// `.wsv-simplify` in `.nt-foot`: the feather alone, 4px sides.
     fn simplify_chip(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let t = Theme::of(cx).tokens;
-        let h = motion::hover(
-            "nt-simplify-hover",
-            std::time::Duration::from_millis(150),
-            motion::Easing::EASE,
-            window,
-            cx,
-        );
         let on = self.simplify_on;
-        let lit = if on { 1. } else { h.k() };
-        let fg = t.text.mix(lit, t.muted);
-        let bg = t.pane_2.fade(lit);
-        let ring = recur_ui::style::is_focus_visible(&self.simplify_focus, window);
-        let btn = div()
-            .id("nt-simplify")
-            .debug_selector(move || format!("nt-simplify:{}", if on { "on" } else { "off" }))
-            .track_focus(&self.simplify_focus)
-            .relative()
-            .flex()
-            .flex_none()
-            .items_center()
-            .h(px(24.))
-            .px(px(4.))
-            .rounded(px(6.))
-            .bg(Hsla::from(bg))
-            .text_color(Hsla::from(fg))
-            .cursor_pointer()
-            .on_hover(h.listener())
-            .on_click(cx.listener(|m, _, _, cx| {
-                m.simplify_on = !m.simplify_on;
-                m.simplify_seeded = true;
-                cx.notify();
-            }))
-            .child(icon(IconName::Feather).size(px(12.)))
-            .when(ring, |d| d.child(outline(2., 2., 6., 0., t.amber)));
-        titled(
-            "nt-simplify-t",
-            if on { "Simplify on" } else { "Simplify off" },
-            div().id("nt-simplify-wrap").flex_none().child(btn),
-        )
-        .into_any_element()
+        let toggle = cx.listener(|m: &mut Self, _: &gpui_kit::ClickEvent, _, cx| {
+            m.simplify_on = !m.simplify_on;
+            m.simplify_seeded = true;
+            cx.notify();
+        });
+        simplify_chip("nt-simplify", on, &self.simplify_focus, toggle, window, cx)
     }
+}
+
+/// `.wsv-simplify` in `.nt-foot`: the feather alone, 4px sides (`id` names the spec handle,
+/// `{id}:on|off`).
+pub(crate) fn simplify_chip(
+    id: &'static str,
+    on: bool,
+    focus: &FocusHandle,
+    on_click: impl Fn(&gpui_kit::ClickEvent, &mut Window, &mut App) + 'static,
+    window: &mut Window,
+    cx: &mut App,
+) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    let h = motion::hover(
+        format!("{id}-hover"),
+        std::time::Duration::from_millis(150),
+        motion::Easing::EASE,
+        window,
+        cx,
+    );
+    let lit = if on { 1. } else { h.k() };
+    let fg = t.text.mix(lit, t.muted);
+    let bg = t.pane_2.fade(lit);
+    let ring = recur_ui::style::is_focus_visible(focus, window);
+    let btn = div()
+        .id(id)
+        .debug_selector(move || format!("{id}:{}", if on { "on" } else { "off" }))
+        .track_focus(focus)
+        .relative()
+        .flex()
+        .flex_none()
+        .items_center()
+        .h(px(24.))
+        .px(px(4.))
+        .rounded(px(6.))
+        .bg(Hsla::from(bg))
+        .text_color(Hsla::from(fg))
+        .cursor_pointer()
+        .on_hover(h.listener())
+        .on_click(on_click)
+        .child(icon(IconName::Feather).size(px(12.)))
+        .when(ring, |d| d.child(outline(2., 2., 6., 0., t.amber)));
+    titled(
+        format!("{id}-t"),
+        if on { "Simplify on" } else { "Simplify off" },
+        div().id(format!("{id}-wrap")).flex_none().child(btn),
+    )
+    .into_any_element()
 }
 
 impl Render for NewTaskModal {

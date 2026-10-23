@@ -7351,10 +7351,12 @@ dependencies = [
 name = "recur-view-home"
 version = "0.0.0"
 dependencies = [
+ "chrono-tz",
  "core-graphics 0.24.0",
  "futures",
  "gpui-kit",
  "gpui-pre",
+ "iana-time-zone",
  "image",
  "parking_lot",
  "recur-app",

@@ -606,9 +606,7 @@ impl EditorView {
                     let ch = recur_ui::font_metrics::zero_advance(&m.family(), size);
                     (self.text_width_at(&digits, size, window) + l + r).max(2.2 * ch)
                 }
-                None => {
-                    (self.text_width(&digits, window) + 8.0).max(20.0)
-                }
+                None => (self.text_width(&digits, window) + 8.0).max(20.0),
             };
             kinds.push((GutterKind::LineNumbers, w));
         }

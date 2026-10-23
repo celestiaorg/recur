@@ -17,7 +17,7 @@ gallery = [
     "recur-view-prs/gallery",
     "dep:recur-app",
     "dep:recur-view-review",
-    "dep:recur-view-observatory",
+    "recur-view-observatory/gallery",
     "dep:recur-view-workspace",
     "dep:recur-view-settings",
     "dep:recur-view-home",
@@ -34,11 +34,13 @@ recur-engine.workspace = true
 recur-view-core.workspace = true
 recur-view-chat.workspace = true
 recur-view-prs.workspace = true
+recur-view-observatory.workspace = true
+recur-forge.workspace = true
+recur-editor.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
 recur-app = { workspace = true, features = ["gallery"], optional = true }
 recur-view-review = { workspace = true, features = ["gallery"], optional = true }
-recur-view-observatory = { workspace = true, features = ["gallery"], optional = true }
 recur-view-workspace = { workspace = true, features = ["gallery"], optional = true }
 recur-view-settings = { workspace = true, features = ["gallery"], optional = true }
 recur-view-home = { workspace = true, features = ["gallery"], optional = true }

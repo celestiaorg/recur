@@ -39,6 +39,9 @@ export type MenuAction =
   | 'reload-bundles'
   | 'run-dev'
   | 'stop-run'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'zoom-reset'
   | `app-theme:${string}`
   | `editor-theme:${string}`
   | `terminal-theme:${string}`

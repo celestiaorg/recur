@@ -209,6 +209,13 @@ func installAppMenu(wapp *application.App, updates bool) {
 	items.stopRun = accel(view.Add("Stop Run"), "CmdOrCtrl+Shift+R").
 		SetEnabled(false).
 		OnClick(emit("stop-run"))
+	view.AddSeparator()
+	accel(view.Add("Zoom In"), "CmdOrCtrl+Plus").
+		OnClick(emit("zoom-in"))
+	accel(view.Add("Zoom Out"), "CmdOrCtrl+-").
+		OnClick(emit("zoom-out"))
+	accel(view.Add("Actual Size"), "CmdOrCtrl+0").
+		OnClick(emit("zoom-reset"))
 	if runtime.GOOS != "darwin" {
 		view.AddSeparator()
 		accel(view.Add("Settings…"), "CmdOrCtrl+,").

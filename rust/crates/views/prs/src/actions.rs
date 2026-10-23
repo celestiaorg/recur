@@ -347,7 +347,7 @@ impl PrTitlebarActions {
                             if let Ok(st) =
                                 services.workspaces.fetch_working_copy_upstream(&id).await
                             {
-                                let _ = me.update(cx, |a, cx| {
+                                me.update(cx, |a, cx| {
                                     if a.fetch_gen == gen_ {
                                         a.land_seq += 1;
                                         a.apply_land(&st, cx);

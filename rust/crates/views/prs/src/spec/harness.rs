@@ -14,9 +14,6 @@ use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName};
 use serde_json::{Value, json};
 
-/// The seed's richest PR (commits, files, diffs, thread).
-pub const RICH: &str = "482";
-
 pub struct S<'a> {
     pub state: Entity<AppState>,
     pub bridge: Arc<MockBridge>,
@@ -192,9 +189,15 @@ impl S<'_> {
     /// (a tab strip scrolls under the wheel at the tab's row).
     pub fn reveal_within(&mut self, sel: &str, pane: &str) {
         for _ in 0..12 {
-            let (Some(b), Some(p)) = (self.bounds(sel), self.bounds(pane)) else { return };
+            let (Some(b), Some(p)) = (self.bounds(sel), self.bounds(pane)) else {
+                return;
+            };
             let (dx, dy, at) = if b.origin.y < p.origin.y || b.bottom() > p.bottom() {
-                (0., f32::from(p.center().y) - f32::from(b.center().y), p.center())
+                (
+                    0.,
+                    f32::from(p.center().y) - f32::from(b.center().y),
+                    p.center(),
+                )
             } else if b.origin.x < p.origin.x || b.right() > p.right() {
                 let dx = f32::from(p.center().x) - f32::from(b.center().x);
                 (dx, 0., point(p.center().x, b.center().y))
@@ -215,7 +218,9 @@ impl S<'_> {
 
     /// Clicks a dock chat tab, scrolling the strip to it first.
     pub fn click_chip(&mut self, code: &str) {
-        let chip = self.chip(code).unwrap_or_else(|| panic!("no chat tab {code}"));
+        let chip = self
+            .chip(code)
+            .unwrap_or_else(|| panic!("no chat tab {code}"));
         self.reveal_within(&chip, "prd-agent");
         let chip = self.chip(code).expect(code);
         self.click(&chip);
@@ -360,7 +365,8 @@ impl S<'_> {
 
     /// `prReviewDraft`.
     pub fn review_draft(&mut self) -> String {
-        self.cx.update(|_, cx| crate::ui::ui(cx).read(cx).review_draft.clone())
+        self.cx
+            .update(|_, cx| crate::ui::ui(cx).read(cx).review_draft.clone())
     }
 
     /// The open typeahead's logins or emoji names.
@@ -410,7 +416,12 @@ impl Findings {
         let (list, list2, settled) = (self.list.clone(), self.list.clone(), self.settled.clone());
         MockOptions::default()
             .resolver("ListPRFindings", move |_, _, _| {
-                let open: Vec<Value> = list.lock().iter().filter(|f| f["status"] == "open").cloned().collect();
+                let open: Vec<Value> = list
+                    .lock()
+                    .iter()
+                    .filter(|f| f["status"] == "open")
+                    .cloned()
+                    .collect();
                 recur_services::mock::Reply::value(Value::Array(open))
             })
             .resolver("SetFindingStatus", move |a, _, _| {
@@ -444,7 +455,10 @@ pub fn race_finding(workspace: &str) -> Value {
 
 /// PR #482's seeded comments plus a submitted inline note matching `f-race`.
 pub fn comments_with_race_note(id: &str) -> Value {
-    let mut c = recur_services::mock::fixtures::seed().pr_by_id("482").unwrap()["comments"].clone();
+    let mut c = recur_services::mock::fixtures::seed()
+        .pr_by_id("482")
+        .unwrap()["comments"]
+        .clone();
     c.as_array_mut().unwrap().push(json!({
         "id": id, "code": "AR", "author": "Avery Rourke", "authorLogin": "avery", "time": "1m",
         "bodyMd": "token refresh can race across two tabs", "parentId": "gh-review-99",
@@ -457,13 +471,15 @@ impl S<'_> {
     /// The workspace view PR detail's agent dock shows (the shell's bound workspace).
     pub fn dock(&mut self) -> Option<Entity<recur_view_workspace::view::WorkspaceView>> {
         self.cx.update(|_, cx| {
-            recur_view_workspace::detail::WorkspaceDetail::current(cx).and_then(|d| d.read(cx).bound_view(cx))
+            recur_view_workspace::detail::WorkspaceDetail::current(cx)
+                .and_then(|d| d.read(cx).bound_view(cx))
         })
     }
 
     pub fn dock_ws(&mut self) -> String {
         let v = self.dock().expect("dock");
-        self.cx.update(|_, cx| v.read(cx).workspace_id().to_string())
+        self.cx
+            .update(|_, cx| v.read(cx).workspace_id().to_string())
     }
 
     pub fn dock_codes(&mut self) -> Vec<String> {
@@ -517,8 +533,14 @@ impl S<'_> {
     pub fn pr_nav(&mut self) -> (usize, i64) {
         self.state.read_with(self.cx, |s, _| {
             (
-                recur_view_core::pr::pr_chat_host_running_count(&s.workspaces, &s.workspaces_running),
-                recur_view_core::pr::pr_chat_host_unseen_count(&s.workspaces, &s.attention.by_workspace),
+                recur_view_core::pr::pr_chat_host_running_count(
+                    &s.workspaces,
+                    &s.workspaces_running,
+                ),
+                recur_view_core::pr::pr_chat_host_unseen_count(
+                    &s.workspaces,
+                    &s.attention.by_workspace,
+                ),
             )
         })
     }

@@ -70,17 +70,19 @@ impl Field {
         cx: &mut Context<H>,
     ) -> Field {
         let (area, me) = (self.area.clone(), cx.entity().downgrade());
-        self._submit = Some(cx.intercept_keystrokes(move |ev: &KeystrokeEvent, window, cx| {
-            let k = &ev.keystroke;
-            if k.key != "enter" || !(k.modifiers.platform || k.modifiers.control) {
-                return;
-            }
-            if !area.read(cx).focus_handle(cx).is_focused(window) {
-                return;
-            }
-            cx.stop_propagation();
-            let _ = me.update(cx, |h, cx| f(h, window, cx));
-        }));
+        self._submit = Some(
+            cx.intercept_keystrokes(move |ev: &KeystrokeEvent, window, cx| {
+                let k = &ev.keystroke;
+                if k.key != "enter" || !(k.modifiers.platform || k.modifiers.control) {
+                    return;
+                }
+                if !area.read(cx).focus_handle(cx).is_focused(window) {
+                    return;
+                }
+                cx.stop_propagation();
+                let _ = me.update(cx, |h, cx| f(h, window, cx));
+            }),
+        );
         self
     }
 

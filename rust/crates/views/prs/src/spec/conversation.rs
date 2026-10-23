@@ -60,7 +60,10 @@ fn a_dragged_multiline_comment_lists_its_span_in_the_review_modal(cx: &mut TestA
     s.open_pr("482");
     s.tab("Files changed");
     s.reveal_within(&format!("addc:{OAUTH}:right:13"), "diffscroll");
-    s.drag(&format!("addc:{OAUTH}:right:13"), &format!("addc:{OAUTH}:right:15"));
+    s.drag(
+        &format!("addc:{OAUTH}:right:13"),
+        &format!("addc:{OAUTH}:right:15"),
+    );
     assert!(s.has("finding-note-input"));
     s.type_text("E2E: this span should stay together");
     s.click("compose-add");
@@ -69,13 +72,17 @@ fn a_dragged_multiline_comment_lists_its_span_in_the_review_modal(cx: &mut TestA
 }
 
 #[gpui::test]
-fn long_inline_code_in_a_pr_description_and_comment_does_not_widen_the_pane(cx: &mut TestAppContext) {
+fn long_inline_code_in_a_pr_description_and_comment_does_not_widen_the_pane(
+    cx: &mut TestAppContext,
+) {
     let token = "localStorage.setItem('eden-onboarding-storage',JSON.stringify({state:{hasCompletedOnboarding:true,hasSkippedOnboarding:false,hasStartedOnboarding:true,currentStep:0,onboardingVersion:\"v1\"},version:0}))";
     let mut s = plain_with(cx, |sd| {
         let mut comments = sd.pr_by_id("482").unwrap()["comments"].clone();
         for c in comments.as_array_mut().unwrap() {
             if c["kind"] == "description" {
-                c["bodyMd"] = json!(format!("1. Bypass onboarding: `{token}`\n2. Navigate to `/mint`."));
+                c["bodyMd"] = json!(format!(
+                    "1. Bypass onboarding: `{token}`\n2. Navigate to `/mint`."
+                ));
             }
             if c["id"] == "c1" {
                 c["bodyHtml"] = json!("");
@@ -106,13 +113,19 @@ fn edits_the_github_pr_title_and_an_owned_comment_and_quote_replies(cx: &mut Tes
     s.click("menuitem:Edit");
     fill(&mut s, "Retitled description for checkout OAuth.");
     s.keys("cmd-enter");
-    assert_eq!(comment_body(&mut s, "gh-description").as_deref(), Some("Retitled description for checkout OAuth."));
+    assert_eq!(
+        comment_body(&mut s, "gh-description").as_deref(),
+        Some("Retitled description for checkout OAuth.")
+    );
 
     s.click("cmt-more:c1");
     s.click("menuitem:Edit");
     fill(&mut s, "Edited: confirm secrets.init() still runs first.");
     s.keys("cmd-enter");
-    assert_eq!(comment_body(&mut s, "c1").as_deref(), Some("Edited: confirm secrets.init() still runs first."));
+    assert_eq!(
+        comment_body(&mut s, "c1").as_deref(),
+        Some("Edited: confirm secrets.init() still runs first.")
+    );
 
     s.click("cmt-more:c1");
     s.click("menuitem:Quote reply");
@@ -196,7 +209,9 @@ fn replies_to_and_deletes_a_line_note_in_conversation(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
-fn closes_the_conversation_reply_composer_before_a_slow_github_write_returns(cx: &mut TestAppContext) {
+fn closes_the_conversation_reply_composer_before_a_slow_github_write_returns(
+    cx: &mut TestAppContext,
+) {
     let (tx, rx) = std::sync::mpsc::channel();
     let mut s = boot(
         cx,
@@ -246,14 +261,20 @@ fn submits_a_review_with_pending_line_notes_as_one_conversation_unit(cx: &mut Te
 
     s.tab("Conversation");
     let comments = s.pr("482").comments.unwrap_or_default();
-    let unit = comments.iter().find(|c| c.body_md == "review wrap").expect("review");
+    let unit = comments
+        .iter()
+        .find(|c| c.body_md == "review wrap")
+        .expect("review");
     let kid = comments
         .iter()
         .find(|c| c.body_md == "group me under the review")
         .expect("line note");
     assert_eq!(kid.parent_id, unit.id);
     assert!(s.has(&format!("cmt-kid:{}", kid.id)));
-    assert!(!s.has(&format!("cmt:{}:{} group me under the review", kid.id, kid.author)));
+    assert!(!s.has(&format!(
+        "cmt:{}:{} group me under the review",
+        kid.id, kid.author
+    )));
 }
 
 #[gpui::test]

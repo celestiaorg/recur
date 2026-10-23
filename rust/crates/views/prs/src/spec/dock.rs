@@ -24,15 +24,20 @@ fn echo() -> MockOptions {
             let text = a.get(2).and_then(Value::as_str).unwrap_or("").to_string();
             let mut l = log.lock();
             l.push(json!({"role": "user", "kind": "text", "text": text}));
-            l.push(json!({"role": "assistant", "kind": "text", "text": format!("reply to: {text}")}));
+            l.push(
+                json!({"role": "assistant", "kind": "text", "text": format!("reply to: {text}")}),
+            );
             Reply::value(json!(format!("reply to: {text}")))
         })
-        .resolver("WorkspaceChatItems", move |_, _, _| Reply::value(Value::Array(l2.lock().clone())))
+        .resolver("WorkspaceChatItems", move |_, _, _| {
+            Reply::value(Value::Array(l2.lock().clone()))
+        })
 }
 
 fn open_ws(s: &mut S, id: &str) {
     let id = id.to_string();
-    s.state.update(s.cx, |st, cx| st.open_workspace(&id, false, cx));
+    s.state
+        .update(s.cx, |st, cx| st.open_workspace(&id, false, cx));
     s.settle();
 }
 
@@ -61,7 +66,10 @@ fn shows_the_linked_workspace_chat_with_the_same_tabs(cx: &mut TestAppContext) {
     assert!((f32::from(head.size.width) - f32::from(split.size.width)).abs() < 2.);
     let agent = s.bounds("button:Hide left panel").unwrap();
     let tabs = s.bounds("prtabs").unwrap();
-    assert!(tabs.contains(&gpui::point(tabs.center().x, agent.center().y)), "the dock head sits on the tabs row");
+    assert!(
+        tabs.contains(&gpui::point(tabs.center().x, agent.center().y)),
+        "the dock head sits on the tabs row"
+    );
     assert!(agent.right() <= tabs.origin.x + gpui::px(2.));
 }
 
@@ -83,7 +91,8 @@ fn selected_agent_chat_tab_stays_in_view_when_opening_a_pr(cx: &mut TestAppConte
     let visible = |s: &mut S, code: &str| {
         let chip = s.chip(code).expect(code);
         let b = s.bounds(&chip).unwrap();
-        let overlap = f32::from(b.right().min(dock.right())) - f32::from(b.origin.x.max(dock.origin.x));
+        let overlap =
+            f32::from(b.right().min(dock.right())) - f32::from(b.origin.x.max(dock.origin.x));
         overlap > 24.
     };
     s.click_chip("PA9");
@@ -138,7 +147,11 @@ fn a_message_sent_on_the_pr_is_visible_after_view_workspace(cx: &mut TestAppCont
 /// The workspace strip's "New chat" tab.
 fn s_chip_new(s: &mut S) -> String {
     let codes = s.dock_codes();
-    let fresh = codes.iter().find(|c| c.starts_with("PA")).cloned().unwrap_or_else(|| "PA".into());
+    let fresh = codes
+        .iter()
+        .find(|c| c.starts_with("PA"))
+        .cloned()
+        .unwrap_or_else(|| "PA".into());
     s.chip(&fresh).expect("a chat tab")
 }
 
@@ -177,7 +190,10 @@ fn nav_and_list_show_when_a_host_agent_is_running_with_no_workspace(cx: &mut Tes
     let host = host_id.lock().clone();
     assert!(s.until(|s| s.pr_nav().0 == 1));
     assert!(s.has("nav-pr-sd-dot") || s.pr_nav().0 == 1);
-    assert!(!s.has(&format!("hit:{host}")), "a host stays out of the tree");
+    assert!(
+        !s.has(&format!("hit:{host}")),
+        "a host stays out of the tree"
+    );
     assert!(s.has("foot-prs"));
 
     s.prs_nav();
@@ -188,7 +204,10 @@ fn nav_and_list_show_when_a_host_agent_is_running_with_no_workspace(cx: &mut Tes
     hide_dock(&mut s);
     assert!(s.has("button:Show left panel. Agent running:running"));
 
-    s.wire("agent.updated", json!({ "workspaceId": host, "agentId": format!("{host}-PA"), "status": "idle" }));
+    s.wire(
+        "agent.updated",
+        json!({ "workspaceId": host, "agentId": format!("{host}-PA"), "status": "idle" }),
+    );
     assert!(s.until(|s| s.pr_nav().0 == 0));
     assert!(s.has("button:Show left panel"));
     s.prs_nav();
@@ -197,7 +216,11 @@ fn nav_and_list_show_when_a_host_agent_is_running_with_no_workspace(cx: &mut Tes
 
 #[gpui::test]
 fn shows_the_agent_dock_when_the_pr_has_no_workspace(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |sd| patch_pr(sd, "482", json!({ "workspaceId": "" })), no_agents());
+    let mut s = boot(
+        cx,
+        |sd| patch_pr(sd, "482", json!({ "workspaceId": "" })),
+        no_agents(),
+    );
     s.open_pr("482");
     assert!(s.has("obs-left"));
     assert!(s.has("chat-composer"));
@@ -210,7 +233,11 @@ fn shows_the_agent_dock_when_the_pr_has_no_workspace(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn pr_chat_survives_creating_a_workspace(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |sd| patch_pr(sd, "482", json!({ "workspaceId": "" })), echo());
+    let mut s = boot(
+        cx,
+        |sd| patch_pr(sd, "482", json!({ "workspaceId": "" })),
+        echo(),
+    );
     s.open_pr("482");
     s.dock_send("from the imported PR");
     assert!(s.until(|s| s.me("from the imported PR")));
@@ -312,7 +339,11 @@ fn a_finish_while_the_pr_dock_is_hidden_raises_unseen(cx: &mut TestAppContext) {
 
     s.bridge.simulate_chat_turn_idle(LINKED, &code);
     s.settle();
-    let unseen = |s: &mut S| s.state.read_with(s.cx, |st, _| st.attention.by_workspace.get(LINKED).copied().unwrap_or(0));
+    let unseen = |s: &mut S| {
+        s.state.read_with(s.cx, |st, _| {
+            st.attention.by_workspace.get(LINKED).copied().unwrap_or(0)
+        })
+    };
     assert!(s.until(|s| unseen(s) == 1));
     s.prs_nav();
     s.seg("All");
@@ -323,7 +354,11 @@ fn a_finish_while_the_pr_dock_is_hidden_raises_unseen(cx: &mut TestAppContext) {
 fn a_finish_on_a_host_pr_with_no_workspace_lands_in_inbox(cx: &mut TestAppContext) {
     let host = std::sync::Arc::new(parking_lot::Mutex::new(String::new()));
     let h2 = host.clone();
-    let mut s = boot(cx, move |sd| *h2.lock() = add_host_pr(sd, "gh-host-inbox", 808, "Imported checkout review"), no_agents());
+    let mut s = boot(
+        cx,
+        move |sd| *h2.lock() = add_host_pr(sd, "gh-host-inbox", 808, "Imported checkout review"),
+        no_agents(),
+    );
     let host = host.lock().clone();
     s.open_pr("gh-host-inbox");
     assert!(s.has("chat-composer"));
@@ -344,7 +379,8 @@ fn a_finish_on_a_host_pr_with_no_workspace_lands_in_inbox(cx: &mut TestAppContex
     assert!(s.has("prrow-ct:gh-host-inbox=1"));
 
     // The Briefing card opens a host's PR (the Briefing view is not ported yet).
-    s.state.update(s.cx, |st, cx| st.open_pr("gh-host-inbox", cx));
+    s.state
+        .update(s.cx, |st, cx| st.open_pr("gh-host-inbox", cx));
     s.settle();
     assert_eq!(s.view(), ViewName::PrDetail);
     assert!(s.has("obs-left"));
@@ -353,7 +389,9 @@ fn a_finish_on_a_host_pr_with_no_workspace_lands_in_inbox(cx: &mut TestAppContex
 }
 
 #[gpui::test]
-fn pr_nav_unread_is_the_sum_of_hidden_host_chats_and_counts_down_as_they_are_read(cx: &mut TestAppContext) {
+fn pr_nav_unread_is_the_sum_of_hidden_host_chats_and_counts_down_as_they_are_read(
+    cx: &mut TestAppContext,
+) {
     let hosts = std::sync::Arc::new(parking_lot::Mutex::new((String::new(), String::new())));
     let h2 = hosts.clone();
     let mut s = boot(
@@ -438,11 +476,19 @@ fn pr_opened_fact_shows_completed_time_and_opens_the_pr(cx: &mut TestAppContext)
         cx,
         |_| {},
         MockOptions::default()
-            .resolver("WorkspaceSessions", move |_, _, _| Reply::value(sessions.clone()))
+            .resolver("WorkspaceSessions", move |_, _, _| {
+                Reply::value(sessions.clone())
+            })
             .resolver("WorkspaceFacts", move |_, _, _| Reply::value(facts.clone())),
     );
-    let ws = s.state.read_with(s.cx, |st, _| st.selected_workspace_id.clone());
-    let ws = if ws.is_empty() { LINKED.to_string() } else { ws };
+    let ws = s
+        .state
+        .read_with(s.cx, |st, _| st.selected_workspace_id.clone());
+    let ws = if ws.is_empty() {
+        LINKED.to_string()
+    } else {
+        ws
+    };
     open_ws(&mut s, &ws);
     let ma = s.chip("MA").expect("the Loop tab");
     s.click(&ma);

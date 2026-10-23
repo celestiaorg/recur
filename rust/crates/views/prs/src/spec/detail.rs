@@ -13,11 +13,19 @@ const ABORT: &str = "refresh ignores abort";
 const SESSION: &str = "src/hooks/useOAuthSession.ts";
 
 fn pending_ids(s: &mut S) -> Vec<String> {
-    s.pr("482").pending_comments.iter().map(|p| p.id.clone()).collect()
+    s.pr("482")
+        .pending_comments
+        .iter()
+        .map(|p| p.id.clone())
+        .collect()
 }
 
 fn pending_bodies(s: &mut S) -> Vec<String> {
-    s.pr("482").pending_comments.iter().map(|p| p.body.clone()).collect()
+    s.pr("482")
+        .pending_comments
+        .iter()
+        .map(|p| p.body.clone())
+        .collect()
 }
 
 #[gpui::test]
@@ -44,7 +52,11 @@ fn github_only_findings_post_as_pending_review_comments(cx: &mut TestAppContext)
     race.as_object_mut().unwrap().remove("workspaceId");
     abort.as_object_mut().unwrap().remove("workspaceId");
     let f = Findings::new(vec![race, abort]);
-    let mut s = boot(cx, |sd| patch_pr(sd, "482", json!({ "workspaceId": "" })), f.options(0));
+    let mut s = boot(
+        cx,
+        |sd| patch_pr(sd, "482", json!({ "workspaceId": "" })),
+        f.options(0),
+    );
     s.open_pr("482");
     s.tab("Conversation");
     assert!(s.has("card:Reviewer findings"));
@@ -85,7 +97,13 @@ fn a_matching_submitted_comment_does_not_hide_or_auto_resolve_a_finding(cx: &mut
     let f = Findings::new(vec![race_finding("WS-1")]);
     let mut s = boot(
         cx,
-        |sd| patch_pr(sd, "482", json!({ "comments": comments_with_race_note("gh-inline-pre") })),
+        |sd| {
+            patch_pr(
+                sd,
+                "482",
+                json!({ "comments": comments_with_race_note("gh-inline-pre") }),
+            )
+        },
         f.options(0),
     );
     s.open_pr("482");
@@ -106,7 +124,11 @@ fn persisted_draft() -> Value {
 #[gpui::test]
 fn a_persisted_finding_draft_resolves_after_submit(cx: &mut TestAppContext) {
     let f = Findings::new(vec![race_finding("LOOP-2231")]);
-    let mut s = boot(cx, |sd| patch_pr(sd, "482", persisted_draft()), f.options(0));
+    let mut s = boot(
+        cx,
+        |sd| patch_pr(sd, "482", persisted_draft()),
+        f.options(0),
+    );
     s.open_pr("482");
     assert!(s.has("pr-act:pending=1 pending"));
     assert!(!s.has("card:Reviewer findings"));
@@ -119,11 +141,19 @@ fn a_persisted_finding_draft_resolves_after_submit(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
-fn deleting_a_finding_draft_does_not_resolve_from_an_older_matching_comment(cx: &mut TestAppContext) {
+fn deleting_a_finding_draft_does_not_resolve_from_an_older_matching_comment(
+    cx: &mut TestAppContext,
+) {
     let f = Findings::new(vec![race_finding("LOOP-2231")]);
     let mut s = boot(
         cx,
-        |sd| patch_pr(sd, "482", json!({ "comments": comments_with_race_note("gh-inline-pre") })),
+        |sd| {
+            patch_pr(
+                sd,
+                "482",
+                json!({ "comments": comments_with_race_note("gh-inline-pre") }),
+            )
+        },
         f.options(0),
     );
     s.open_pr("482");
@@ -142,7 +172,11 @@ fn deleting_a_finding_draft_does_not_resolve_from_an_older_matching_comment(cx: 
 #[gpui::test]
 fn a_failed_settle_offers_resolve_without_posting_again(cx: &mut TestAppContext) {
     let f = Findings::new(vec![race_finding("LOOP-2231")]);
-    let mut s = boot(cx, |sd| patch_pr(sd, "482", persisted_draft()), f.options(1));
+    let mut s = boot(
+        cx,
+        |sd| patch_pr(sd, "482", persisted_draft()),
+        f.options(1),
+    );
     s.open_pr("482");
     assert!(s.has("pr-act:pending=1 pending"));
     s.click("pr-act:pending=1 pending");
@@ -188,8 +222,17 @@ fn files_changed_filters_do_not_carry_over_to_another_pr(cx: &mut TestAppContext
         let files = sd.pr_by_id("482").unwrap()["files"].clone();
         patch_pr(sd, "479", json!({ "files": files, "fileCount": 3 }));
     });
-    let paths = ["src/auth/oauth.ts", SESSION, "src/checkout/SignInButtons.tsx"];
-    let rows = |s: &mut S| paths.iter().filter(|p| s.has(&format!("fl-row:file:{p}"))).count();
+    let paths = [
+        "src/auth/oauth.ts",
+        SESSION,
+        "src/checkout/SignInButtons.tsx",
+    ];
+    let rows = |s: &mut S| {
+        paths
+            .iter()
+            .filter(|p| s.has(&format!("fl-row:file:{p}")))
+            .count()
+    };
     s.open_pr("482");
     s.tab("Files changed");
     s.click("button:Show files with unresolved comments:false");
@@ -221,14 +264,23 @@ fn opens_first_commit(s: &mut S) {
 fn commit_detail_shows_the_per_commit_diff(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     opens_first_commit(&mut s);
-    let commit = s.pr("482").commits.unwrap().into_iter().find(|c| c.message == FIRST_COMMIT).unwrap();
+    let commit = s
+        .pr("482")
+        .commits
+        .unwrap()
+        .into_iter()
+        .find(|c| c.message == FIRST_COMMIT)
+        .unwrap();
     let path = commit.files.unwrap()[0].path.clone();
     assert!(s.has(&format!("cfile:live:{path}")));
 }
 
 #[gpui::test]
 fn commit_detail_loads_a_lazy_per_commit_diff(cx: &mut TestAppContext) {
-    let original = recur_services::mock::fixtures::seed().pr_by_id("482").unwrap()["commits"].clone();
+    let original = recur_services::mock::fixtures::seed()
+        .pr_by_id("482")
+        .unwrap()["commits"]
+        .clone();
     let mut stripped = original.clone();
     for c in stripped.as_array_mut().unwrap() {
         c["files"] = json!([]);
@@ -250,7 +302,9 @@ fn commit_detail_loads_a_lazy_per_commit_diff(cx: &mut TestAppContext) {
         }),
     );
     opens_first_commit(&mut s);
-    let commit = recur_services::mock::fixtures::seed().pr_by_id("482").unwrap()["commits"]
+    let commit = recur_services::mock::fixtures::seed()
+        .pr_by_id("482")
+        .unwrap()["commits"]
         .as_array()
         .unwrap()
         .iter()
@@ -306,7 +360,11 @@ fn tab_inserts_a_mentionable_github_user_from_repository_search(cx: &mut TestApp
     );
     open_review_modal(&mut s);
     s.type_text("@octo");
-    assert!(s.until(|s| s.suggestions(SuggestKind::Mention).iter().any(|l| l == "octocat")));
+    assert!(s.until(|s| {
+        s.suggestions(SuggestKind::Mention)
+            .iter()
+            .any(|l| l == "octocat")
+    }));
     s.keys("tab");
     assert_eq!(s.review_draft(), "@octocat ");
     assert!(!s.has("user-mention-row:0"));
@@ -328,6 +386,9 @@ fn request_changes_from_the_titlebar_split_on_any_tab(cx: &mut TestAppContext) {
     assert!(!s.has("v-pr-review"));
     s.tab("Conversation");
     let comments = s.pr("482").comments.unwrap_or_default();
-    assert!(comments.iter().any(|c| c.body_md.contains(body)), "the review body joins the thread");
+    assert!(
+        comments.iter().any(|c| c.body_md.contains(body)),
+        "the review body joins the thread"
+    );
     assert!(s.has("thread"));
 }

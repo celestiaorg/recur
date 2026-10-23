@@ -21,7 +21,13 @@ fn writer(over: serde_json::Value) -> serde_json::Value {
 
 #[gpui::test]
 fn pr_list_labels_a_draft_as_draft_not_in_review(cx: &mut TestAppContext) {
-    let mut s = plain_with(cx, |sd| patch_pr(sd, "482", json!({ "draft": true, "mergeStateStatus": "DRAFT" })));
+    let mut s = plain_with(cx, |sd| {
+        patch_pr(
+            sd,
+            "482",
+            json!({ "draft": true, "mergeStateStatus": "DRAFT" }),
+        )
+    });
     s.prs_nav();
     s.seg("All");
     assert!(s.has("pr-checks:482=Draft"));
@@ -76,7 +82,13 @@ fn hides_approve_on_your_own_github_pr_but_still_offers_merge(cx: &mut TestAppCo
 
 #[gpui::test]
 fn a_behind_github_pr_offers_update_with_main_instead_of_merge(cx: &mut TestAppContext) {
-    let mut s = plain_with(cx, |sd| patch_pr(sd, "482", writer(json!({ "mergeStateStatus": "BEHIND", "behindBase": 2 }))));
+    let mut s = plain_with(cx, |sd| {
+        patch_pr(
+            sd,
+            "482",
+            writer(json!({ "mergeStateStatus": "BEHIND", "behindBase": 2 })),
+        )
+    });
     s.open_pr("482");
     assert!(s.has("pr-act:pr-update=Update with main"));
     assert!(!s.has("pr-act:pr-merge=Merge"));
@@ -85,7 +97,13 @@ fn a_behind_github_pr_offers_update_with_main_instead_of_merge(cx: &mut TestAppC
 
 #[gpui::test]
 fn the_pr_update_split_can_switch_from_merge_to_rebase_onto_the_base(cx: &mut TestAppContext) {
-    let mut s = plain_with(cx, |sd| patch_pr(sd, "482", writer(json!({ "mergeStateStatus": "BEHIND", "behindBase": 2 }))));
+    let mut s = plain_with(cx, |sd| {
+        patch_pr(
+            sd,
+            "482",
+            writer(json!({ "mergeStateStatus": "BEHIND", "behindBase": 2 })),
+        )
+    });
     s.open_pr("482");
     s.click("pr-update-chev");
     assert!(s.has("pr-update-rebase"));
@@ -98,7 +116,11 @@ fn the_pr_update_split_can_switch_from_merge_to_rebase_onto_the_base(cx: &mut Te
 #[gpui::test]
 fn a_behind_draft_still_offers_update_with_main_next_to_ready_for_review(cx: &mut TestAppContext) {
     let mut s = plain_with(cx, |sd| {
-        patch_pr(sd, "482", writer(json!({ "draft": true, "mergeStateStatus": "DRAFT", "behindBase": 2 })))
+        patch_pr(
+            sd,
+            "482",
+            writer(json!({ "draft": true, "mergeStateStatus": "DRAFT", "behindBase": 2 })),
+        )
     });
     s.open_pr("482");
     assert!(s.has("pr-act:pr-ready=Ready for review"));
@@ -106,8 +128,16 @@ fn a_behind_draft_still_offers_update_with_main_next_to_ready_for_review(cx: &mu
 }
 
 #[gpui::test]
-fn a_github_pr_that_is_behind_locally_still_offers_merge_when_github_says_clean(cx: &mut TestAppContext) {
-    let mut s = plain_with(cx, |sd| patch_pr(sd, "482", writer(json!({ "mergeStateStatus": "CLEAN", "behindBase": 2 }))));
+fn a_github_pr_that_is_behind_locally_still_offers_merge_when_github_says_clean(
+    cx: &mut TestAppContext,
+) {
+    let mut s = plain_with(cx, |sd| {
+        patch_pr(
+            sd,
+            "482",
+            writer(json!({ "mergeStateStatus": "CLEAN", "behindBase": 2 })),
+        )
+    });
     s.open_pr("482");
     assert!(s.has("pr-act:pr-update=Update with main"));
     assert!(s.has("pr-act:pr-merge=Merge"));
@@ -119,7 +149,9 @@ fn a_behind_github_pr_waiting_for_review_still_offers_update_with_main(cx: &mut 
         patch_pr(
             sd,
             "482",
-            writer(json!({ "mergeStateStatus": "BLOCKED", "behindBase": 2, "checksOk": true, "reviewDecision": "REVIEW_REQUIRED" })),
+            writer(
+                json!({ "mergeStateStatus": "BLOCKED", "behindBase": 2, "checksOk": true, "reviewDecision": "REVIEW_REQUIRED" }),
+            ),
         )
     });
     s.open_pr("482");
@@ -129,7 +161,13 @@ fn a_behind_github_pr_waiting_for_review_still_offers_update_with_main(cx: &mut 
 
 #[gpui::test]
 fn a_repo_that_allows_squash_and_rebase_hides_merge_commit(cx: &mut TestAppContext) {
-    let mut s = plain_with(cx, |sd| patch_pr(sd, "482", writer(json!({ "allowedMergeMethods": ["squash", "rebase"] }))));
+    let mut s = plain_with(cx, |sd| {
+        patch_pr(
+            sd,
+            "482",
+            writer(json!({ "allowedMergeMethods": ["squash", "rebase"] })),
+        )
+    });
     s.open_pr("482");
     s.click("pr-merge-chev");
     assert!(s.has("pr-merge-squash"));
@@ -139,7 +177,13 @@ fn a_repo_that_allows_squash_and_rebase_hides_merge_commit(cx: &mut TestAppConte
 
 #[gpui::test]
 fn a_repo_that_only_allows_squash_hides_the_other_merge_methods(cx: &mut TestAppContext) {
-    let mut s = plain_with(cx, |sd| patch_pr(sd, "482", writer(json!({ "allowedMergeMethods": ["squash"] }))));
+    let mut s = plain_with(cx, |sd| {
+        patch_pr(
+            sd,
+            "482",
+            writer(json!({ "allowedMergeMethods": ["squash"] })),
+        )
+    });
     s.open_pr("482");
     assert!(s.has("pr-act:pr-merge=Squash and merge"));
     assert!(!s.has("pr-merge-chev"));
@@ -147,7 +191,11 @@ fn a_repo_that_only_allows_squash_hides_the_other_merge_methods(cx: &mut TestApp
 }
 
 fn clean(sd: &mut recur_services::mock::Seed) {
-    patch_pr(sd, "482", writer(json!({ "mergeStateStatus": "CLEAN", "draft": false })));
+    patch_pr(
+        sd,
+        "482",
+        writer(json!({ "mergeStateStatus": "CLEAN", "draft": false })),
+    );
 }
 
 #[gpui::test]
@@ -163,7 +211,13 @@ fn confirming_merge_paints_merged_before_github_returns(cx: &mut TestAppContext)
                 reply
             })
             .resolver("GetPR", |a, seed, _| {
-                Reply::value(a.first().and_then(|id| id.as_str()).and_then(|id| seed.pr_by_id(id)).cloned().unwrap_or_default())
+                Reply::value(
+                    a.first()
+                        .and_then(|id| id.as_str())
+                        .and_then(|id| seed.pr_by_id(id))
+                        .cloned()
+                        .unwrap_or_default(),
+                )
             }),
     );
     s.open_pr("482");
@@ -177,7 +231,10 @@ fn confirming_merge_paints_merged_before_github_returns(cx: &mut TestAppContext)
     assert!(s.has("statepill=Merged"));
     assert!(!s.has("pr-act:pr-merge=Merge"));
 
-    let mut row = recur_services::mock::fixtures::seed().pr_by_id("482").cloned().unwrap();
+    let mut row = recur_services::mock::fixtures::seed()
+        .pr_by_id("482")
+        .cloned()
+        .unwrap();
     row["state"] = json!("In review");
     row["group"] = json!("you");
     rx.try_recv().expect("merging").send(Reply::value(row));
@@ -187,7 +244,9 @@ fn confirming_merge_paints_merged_before_github_returns(cx: &mut TestAppContext)
 }
 
 #[gpui::test]
-fn a_failed_merge_restores_the_button_and_keeps_updates_from_the_round_trip(cx: &mut TestAppContext) {
+fn a_failed_merge_restores_the_button_and_keeps_updates_from_the_round_trip(
+    cx: &mut TestAppContext,
+) {
     let (tx, rx) = std::sync::mpsc::channel();
     let merging = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let m2 = merging.clone();
@@ -224,11 +283,19 @@ fn a_failed_merge_restores_the_button_and_keeps_updates_from_the_round_trip(cx: 
 
     s.tab("Commits");
     s.tab("Conversation");
-    let has_landed = |s: &mut S| s.pr("482").comments.unwrap_or_default().iter().any(|c| c.id == "during-merge");
+    let has_landed = |s: &mut S| {
+        s.pr("482")
+            .comments
+            .unwrap_or_default()
+            .iter()
+            .any(|c| c.id == "during-merge")
+    };
     assert!(s.until(has_landed));
     assert!(s.has("cmt:during-merge:sam landed while merging"));
 
-    rx.try_recv().expect("merging").send(Reply::error("protected branch"));
+    rx.try_recv()
+        .expect("merging")
+        .send(Reply::error("protected branch"));
     s.settle();
     assert!(s.until(|s| s.toasted(ToastKind::Error, "protected branch")));
     assert!(s.until(|s| s.has("pr-act:pr-merge=Merge")));

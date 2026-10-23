@@ -214,7 +214,12 @@ impl PrDetail {
                         .debug_selector(|| "prh-title-input".into())
                         .flex_1()
                         .min_w_0()
-                        .map(|d| super::field::press_focuses(d, self.title_input.read(cx).focus_handle(cx)))
+                        .map(|d| {
+                            super::field::press_focuses(
+                                d,
+                                self.title_input.read(cx).focus_handle(cx),
+                            )
+                        })
                         .key_context("TextEntry")
                         .on_key_down(cx.listener(|d, ev: &KeyDownEvent, _, cx| {
                             if ev.keystroke.key == "enter" {

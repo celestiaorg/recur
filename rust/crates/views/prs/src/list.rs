@@ -912,20 +912,10 @@ impl PrList {
         let t = Theme::of(cx).tokens;
         let any_git = self.state().read(cx).projects.iter().any(|p| p.is_git);
         let state = self.state().clone();
-        let (label, act): (&str, Box<dyn Fn(&mut App)>) = if any_git {
-            (
-                "Start a loop",
-                Box::new(move |cx: &mut App| {
-                    state.update(cx, |s, cx| s.open_new_task("", None, cx))
-                }),
-            )
+        let label = if any_git {
+            "Start a loop"
         } else {
-            (
-                "Get started",
-                Box::new(move |cx: &mut App| {
-                    state.update(cx, |s, cx| s.go(ViewName::Welcome, None, cx))
-                }),
-            )
+            "Get started"
         };
         let btn = recur_ui::style::tbtn(
             "pr-empty-go",
@@ -935,7 +925,15 @@ impl PrList {
             cx,
         )
         .debug_selector(move || format!("button:{label}"))
-        .on_click(move |_, _, cx| act(cx))
+        .on_click(move |_, _, cx| {
+            state.update(cx, |s, cx| {
+                if any_git {
+                    s.open_new_task("", None, cx)
+                } else {
+                    s.go(ViewName::Welcome, None, cx)
+                }
+            })
+        })
         .child(recur_ui::style::button_label(label, 12., 500.));
         empty_state(
             Some(

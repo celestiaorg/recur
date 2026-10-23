@@ -9,7 +9,10 @@ use crate::list_filter::title_counts;
 
 fn tb_sub(s: &mut S) -> String {
     let c = s.state.read_with(s.cx, |st, _| title_counts(&st.prs));
-    format!("tb-sub={} need you · {} open · {} merged", c.you, c.open, c.merged)
+    format!(
+        "tb-sub={} need you · {} open · {} merged",
+        c.you, c.open, c.merged
+    )
 }
 
 fn row(s: &mut S, id: &str) -> bool {
@@ -66,7 +69,9 @@ fn pr_list_filters_by_lifecycle_and_status(cx: &mut TestAppContext) {
     assert!(row(&mut s, "gh-storefront-91"));
     assert!(!row(&mut s, "471"));
     s.seg("All");
-    let ids: Vec<String> = s.state.read_with(s.cx, |st, _| st.prs.iter().map(|p| p.id.clone()).collect());
+    let ids: Vec<String> = s
+        .state
+        .read_with(s.cx, |st, _| st.prs.iter().map(|p| p.id.clone()).collect());
     for id in &ids {
         assert!(row(&mut s, id), "{id}");
     }
@@ -93,8 +98,22 @@ fn pr_list_sorts_within_groups(cx: &mut TestAppContext) {
         |sd| {
             sd.set_prs(Vec::new());
             for (id, n, title, when, created, updated) in [
-                ("gh-10", 10, "Zebra late", "now", "2026-08-28T12:00:00Z", "2026-08-26T12:00:00Z"),
-                ("gh-20", 20, "Alpha recent", "2d", "2026-08-01T12:00:00Z", "2026-08-28T11:00:00Z"),
+                (
+                    "gh-10",
+                    10,
+                    "Zebra late",
+                    "now",
+                    "2026-08-28T12:00:00Z",
+                    "2026-08-26T12:00:00Z",
+                ),
+                (
+                    "gh-20",
+                    20,
+                    "Alpha recent",
+                    "2d",
+                    "2026-08-01T12:00:00Z",
+                    "2026-08-28T11:00:00Z",
+                ),
             ] {
                 sd.insert_pr(pr_row(json!({
                     "id": id, "number": n, "title": title, "when": when, "state": "Open",
@@ -107,7 +126,11 @@ fn pr_list_sorts_within_groups(cx: &mut TestAppContext) {
     s.prs_nav();
     let order = |s: &mut S| {
         let (a, z) = (row_y(s, "gh-20"), row_y(s, "gh-10"));
-        if a < z { ["Alpha recent", "Zebra late"] } else { ["Zebra late", "Alpha recent"] }
+        if a < z {
+            ["Alpha recent", "Zebra late"]
+        } else {
+            ["Zebra late", "Alpha recent"]
+        }
     };
     assert_eq!(order(&mut s), ["Alpha recent", "Zebra late"]);
     assert!(s.has("sel:Sort pull requests=Recently updated"));
@@ -167,7 +190,9 @@ fn pr_list_meta_columns_align_across_rows(cx: &mut TestAppContext) {
     let mut s = boot_sized(cx, |_| {}, MockOptions::default(), 1800., 900.);
     s.prs_nav();
     s.seg("All");
-    let ids: Vec<String> = s.state.read_with(s.cx, |st, _| st.prs.iter().map(|p| p.id.clone()).collect());
+    let ids: Vec<String> = s
+        .state
+        .read_with(s.cx, |st, _| st.prs.iter().map(|p| p.id.clone()).collect());
     assert!(ids.len() > 1);
     let col = |s: &mut S, id: &str, sel: &str| -> f32 {
         let full = if sel == "pr-src:" {
@@ -188,7 +213,9 @@ fn pr_list_meta_columns_align_across_rows(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn pr_list_stacks_participant_avatars_and_names_them_on_hover(cx: &mut TestAppContext) {
-    let crowd: Vec<_> = (0..8).map(|i| json!({ "login": format!("user{i}") })).collect();
+    let crowd: Vec<_> = (0..8)
+        .map(|i| json!({ "login": format!("user{i}") }))
+        .collect();
     let mut s = boot_sized(
         cx,
         |sd| patch_pr(sd, "479", json!({ "participants": crowd })),
@@ -198,7 +225,9 @@ fn pr_list_stacks_participant_avatars_and_names_them_on_hover(cx: &mut TestAppCo
     );
     s.prs_nav();
     s.seg("All");
-    let faces = s.state.read_with(s.cx, |st, _| crate::people::pr_people(st.pr("482").unwrap()));
+    let faces = s.state.read_with(s.cx, |st, _| {
+        crate::people::pr_people(st.pr("482").unwrap())
+    });
     assert_eq!(faces.len().min(5), 5);
     let people = s.bounds("pr-people:row-482").expect("people");
     let why = s.bounds("pr-why:482=Needs your review").expect("why");
@@ -245,7 +274,9 @@ fn sticky_group_headers_stay_above_hovered_pr_row_chrome(cx: &mut TestAppContext
 }
 
 #[gpui::test]
-fn pr_list_prefixes_titles_with_a_source_icon_and_number_instead_of_a_chip(cx: &mut TestAppContext) {
+fn pr_list_prefixes_titles_with_a_source_icon_and_number_instead_of_a_chip(
+    cx: &mut TestAppContext,
+) {
     let mut s = plain(cx);
     s.prs_nav();
     s.seg("All");
@@ -257,7 +288,10 @@ fn pr_list_prefixes_titles_with_a_source_icon_and_number_instead_of_a_chip(cx: &
     assert!(src.origin.x > row.origin.x);
 
     s.click("pr-out:482");
-    assert_eq!(s.cx.opened_url().as_deref(), Some("https://github.com/acme/app/pull/482"));
+    assert_eq!(
+        s.cx.opened_url().as_deref(),
+        Some("https://github.com/acme/app/pull/482")
+    );
     assert_eq!(s.view(), recur_view_core::ViewName::Pr);
 
     s.click("prrow:482");
@@ -281,7 +315,10 @@ fn pr_list_prefixes_titles_with_a_source_icon_and_number_instead_of_a_chip(cx: &
 
 #[gpui::test]
 fn github_pr_detail_skeletons_the_thread_until_get_pr_hydrates_it(cx: &mut TestAppContext) {
-    let full = recur_services::mock::fixtures::seed().pr_by_id("482").cloned().unwrap();
+    let full = recur_services::mock::fixtures::seed()
+        .pr_by_id("482")
+        .cloned()
+        .unwrap();
     let mut summary = full.clone();
     for k in ["comments", "files", "commits", "checks"] {
         summary[k] = json!([]);
@@ -293,7 +330,9 @@ fn github_pr_detail_skeletons_the_thread_until_get_pr_hydrates_it(cx: &mut TestA
         cx,
         move |sd| patch_pr(sd, "482", summary),
         MockOptions::default().resolver("GetPR", move |_, _, _| {
-            gate.lock().take().unwrap_or_else(|| Reply::value(full2.clone()))
+            gate.lock()
+                .take()
+                .unwrap_or_else(|| Reply::value(full2.clone()))
         }),
     );
     s.prs_nav();
@@ -340,10 +379,15 @@ const PNG_1X1: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42
 #[gpui::test]
 fn renders_github_description_and_comment_images_via_gh_image(cx: &mut TestAppContext) {
     let asset = "https://github.com/user-attachments/assets/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    let mut comments = recur_services::mock::fixtures::seed().pr_by_id("482").unwrap()["comments"].clone();
+    let mut comments = recur_services::mock::fixtures::seed()
+        .pr_by_id("482")
+        .unwrap()["comments"]
+        .clone();
     for c in comments.as_array_mut().unwrap() {
         match c["id"].as_str() {
-            Some("gh-description") => c["bodyMd"] = json!(format!("<img alt=\"Screenshot\" src=\"{asset}\" />")),
+            Some("gh-description") => {
+                c["bodyMd"] = json!(format!("<img alt=\"Screenshot\" src=\"{asset}\" />"))
+            }
             Some("c1") => c["bodyMd"] = json!(format!("![inline]({asset})")),
             _ => {}
         }
@@ -356,7 +400,10 @@ fn renders_github_description_and_comment_images_via_gh_image(cx: &mut TestAppCo
         }),
     );
     s.open_pr("482");
-    let src = format!("md-img:{}", recur_content::markdown::github_image_src(asset));
+    let src = format!(
+        "md-img:{}",
+        recur_content::markdown::github_image_src(asset)
+    );
     assert!(src.starts_with("md-img:/gh-image?url="), "{src}");
     assert!(s.until(|s| s.has(&src)));
     s.click(&src);
@@ -368,7 +415,9 @@ fn renders_github_description_and_comment_images_via_gh_image(cx: &mut TestAppCo
 }
 
 #[gpui::test]
-fn pr_list_drops_avatars_under_the_title_with_attention_copy_on_a_narrow_pane(cx: &mut TestAppContext) {
+fn pr_list_drops_avatars_under_the_title_with_attention_copy_on_a_narrow_pane(
+    cx: &mut TestAppContext,
+) {
     let mut s = plain(cx);
     s.prs_nav();
     s.seg("All");
@@ -417,9 +466,13 @@ fn project_filter_uses_the_app_select(cx: &mut TestAppContext) {
     s.click("sel-opt:payments-api");
     assert!(s.has("sel-menu"), "a multiple select stays open");
     s.click("sel-opt:storefront");
-    let ids = s.cx.update(|_, cx| crate::ui::ui(cx).read(cx).project_ids.clone());
+    let ids =
+        s.cx.update(|_, cx| crate::ui::ui(cx).read(cx).project_ids.clone());
     assert_eq!(ids.len(), 2);
     s.keys("escape");
     assert!(!s.has("sel-menu"));
-    assert!(s.has("sel:Filter by project=payments-api, storefront") || s.has("sel:Filter by project=storefront, payments-api"));
+    assert!(
+        s.has("sel:Filter by project=payments-api, storefront")
+            || s.has("sel:Filter by project=storefront, payments-api")
+    );
 }

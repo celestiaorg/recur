@@ -180,16 +180,33 @@ impl PrDetail {
         recur_ui::style::style_text_input(&title_input, cx);
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter files"));
         recur_ui::style::style_text_input(&filter, cx);
-        let desc = Field::new(&state, "Description", (2, 2), |_: &mut Self, _| {}, window, cx)
-            .on_submit(|d: &mut Self, w, cx| d.save_compose(&Compose::Desc, w, cx), cx);
-        let comment = Field::new(&state, "Edit comment", (2, 2), |_: &mut Self, _| {}, window, cx)
-            .on_submit(
-                |d: &mut Self, w, cx| {
-                    let id = d.editing_comment.clone();
-                    d.save_compose(&Compose::Comment(id), w, cx)
-                },
-                cx,
-            );
+        let desc = Field::new(
+            &state,
+            "Description",
+            (2, 2),
+            |_: &mut Self, _| {},
+            window,
+            cx,
+        )
+        .on_submit(
+            |d: &mut Self, w, cx| d.save_compose(&Compose::Desc, w, cx),
+            cx,
+        );
+        let comment = Field::new(
+            &state,
+            "Edit comment",
+            (2, 2),
+            |_: &mut Self, _| {},
+            window,
+            cx,
+        )
+        .on_submit(
+            |d: &mut Self, w, cx| {
+                let id = d.editing_comment.clone();
+                d.save_compose(&Compose::Comment(id), w, cx)
+            },
+            cx,
+        );
         let reply = Field::new(&state, "Reply…", (1, 6), |_: &mut Self, _| {}, window, cx)
             .on_submit(
                 |d: &mut Self, w, cx| {
@@ -552,10 +569,8 @@ impl PrDetail {
                 cx.notify();
             }
             // `onPRRefresh`.
-            AppEvent::PrUpdated(d) => {
-                if d.pr_id == selected && !d.pending_only {
-                    self.refresh(&selected, true, true, cx).detach();
-                }
+            AppEvent::PrUpdated(d) if d.pr_id == selected && !d.pending_only => {
+                self.refresh(&selected, true, true, cx).detach();
             }
             // `onFindingsUpdated`: review-mode findings land on the dock workspace.
             AppEvent::FindingsUpdated(d) => {
@@ -789,7 +804,7 @@ impl PrDetail {
                     finding_id: f.id.clone(),
                 };
                 let pcid = pc.id.clone();
-                let _ = cx.update(|cx| {
+                cx.update(|cx| {
                     patch_pr_pending_comments(
                         &state,
                         &pr_id,
@@ -810,7 +825,7 @@ impl PrDetail {
                 )
                 .await;
                 if ok.is_none() {
-                    let _ = cx.update(|cx| {
+                    cx.update(|cx| {
                         patch_pr_pending_comments(
                             &state,
                             &pr_id,
@@ -821,12 +836,12 @@ impl PrDetail {
                     continue;
                 }
                 let fid = f.id.clone();
-                let _ = cx.update(|cx| {
+                cx.update(|cx| {
                     ReviewStore::global_mut(cx).posted_finding_ids.insert(fid);
                 });
                 n += 1;
             }
-            let _ = cx.update(|cx| {
+            cx.update(|cx| {
                 if n == 1 {
                     toast(ToastKind::Success, "Saved — submit your review to post", cx);
                 } else if n > 1 {
@@ -999,7 +1014,7 @@ impl PrDetail {
                         "Could not create the workspace",
                     )
                     .await;
-                    let _ = cx.update(|cx| {
+                    cx.update(|cx| {
                         let Some(ws) = ws else {
                             ui.update(cx, |u, _| u.pending_fix_checks = None);
                             return;
@@ -2055,7 +2070,8 @@ pub(crate) mod spec_handle {
 
     pub fn composer_focused(window: &gpui_kit::Window, cx: &gpui_kit::App) -> bool {
         cx.global::<Live>().0.upgrade().is_some_and(|d| {
-            gpui_kit::Focusable::focus_handle(d.read(cx).composer.area.read(cx), cx).is_focused(window)
+            gpui_kit::Focusable::focus_handle(d.read(cx).composer.area.read(cx), cx)
+                .is_focused(window)
         })
     }
 
@@ -2064,10 +2080,17 @@ pub(crate) mod spec_handle {
         if open {
             return super::render::dock_toggle_focus(cx).is_some_and(|f| f.is_focused(window));
         }
-        cx.global::<Live>().0.upgrade().is_some_and(|d| d.read(cx).toggle_focus.is_focused(window))
+        cx.global::<Live>()
+            .0
+            .upgrade()
+            .is_some_and(|d| d.read(cx).toggle_focus.is_focused(window))
     }
 
     pub fn reply_text(cx: &gpui_kit::App) -> String {
-        cx.global::<Live>().0.upgrade().map(|d| d.read(cx).reply.value(cx)).unwrap_or_default()
+        cx.global::<Live>()
+            .0
+            .upgrade()
+            .map(|d| d.read(cx).reply.value(cx))
+            .unwrap_or_default()
     }
 }

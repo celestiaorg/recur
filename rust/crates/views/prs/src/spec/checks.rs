@@ -13,8 +13,10 @@ use crate::detail::PrDetail;
 
 const CHECKS: &str = "https://github.com/acme/app/pull/482/checks";
 
-/// `SendWorkspaceMessage` recorder: (text, display).
-fn sender(opts: MockOptions) -> (MockOptions, Arc<Mutex<Vec<(String, String)>>>) {
+/// What `SendWorkspaceMessage` received: (text, display).
+type Sent = Arc<Mutex<Vec<(String, String)>>>;
+
+fn sender(opts: MockOptions) -> (MockOptions, Sent) {
     let sent = Arc::new(Mutex::new(Vec::new()));
     let s2 = sent.clone();
     let opts = opts
@@ -29,7 +31,9 @@ fn sender(opts: MockOptions) -> (MockOptions, Arc<Mutex<Vec<(String, String)>>>)
 }
 
 #[gpui::test]
-fn a_blocked_github_pr_with_failing_checks_offers_fix_checks_instead_of_merge(cx: &mut TestAppContext) {
+fn a_blocked_github_pr_with_failing_checks_offers_fix_checks_instead_of_merge(
+    cx: &mut TestAppContext,
+) {
     let (opts, sent) = sender(MockOptions::default());
     let mut s = boot(
         cx,
@@ -103,7 +107,9 @@ fn in_progress_check_duration_keeps_counting(cx: &mut TestAppContext) {
         );
         patch_pr(sd, "482", json!({ "checks": checks, "checksOk": false }));
     });
-    let at = chrono::DateTime::parse_from_rfc3339("2026-08-21T12:00:45Z").unwrap().to_utc();
+    let at = chrono::DateTime::parse_from_rfc3339("2026-08-21T12:00:45Z")
+        .unwrap()
+        .to_utc();
     s.cx.update(|_, cx| PrDetail::set_clock(at, cx));
     s.open_pr("482");
     s.tab("Checks");
@@ -123,7 +129,10 @@ fn rollup(cx: &mut TestAppContext, checks: Option<Value>, kind: &str, heading: &
     s.open_pr("482");
     assert!(s.has(&format!("prtab-check={kind}")));
     assert!(s.has(&format!("checks-h-ico={kind}")));
-    assert!(s.has(&format!("checks-h-link={heading}={CHECKS}")), "{heading}");
+    assert!(
+        s.has(&format!("checks-h-link={heading}={CHECKS}")),
+        "{heading}"
+    );
     if spin {
         assert!(s.has("checkrow:build=:spin"));
     }
@@ -150,7 +159,9 @@ fn checks_tab_and_card_header_show_pending(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
-fn conversation_collapses_successful_checks_the_checks_tab_leaves_them_open(cx: &mut TestAppContext) {
+fn conversation_collapses_successful_checks_the_checks_tab_leaves_them_open(
+    cx: &mut TestAppContext,
+) {
     let mut s = plain_with(cx, |sd| {
         patch_pr(
             sd,
@@ -196,7 +207,10 @@ fn conversation_commit_shas_stay_aligned_when_some_rows_have_no_checks(cx: &mut 
             },
         ]);
         let existing = sd.pr_by_id("482").unwrap()["comments"].clone();
-        comments.as_array_mut().unwrap().extend(existing.as_array().unwrap().iter().cloned());
+        comments
+            .as_array_mut()
+            .unwrap()
+            .extend(existing.as_array().unwrap().iter().cloned());
         patch_pr(sd, "482", json!({ "comments": comments }));
     });
     s.open_pr("482");
@@ -218,7 +232,10 @@ fn posts_a_conversation_comment_without_submitting_a_review(cx: &mut TestAppCont
     s.type_text(body);
     s.click("composer-go:Comment");
     let comments = s.pr("482").comments.unwrap_or_default();
-    let c = comments.iter().find(|c| c.body_md == body).expect("comment");
+    let c = comments
+        .iter()
+        .find(|c| c.body_md == body)
+        .expect("comment");
     assert!(c.verb != "approved" && c.verb != "changes_requested");
     assert!(s.has("composer-go:Comment"));
     assert!(s.cx.update(|_, cx| crate::ui::ui(cx).read(cx).composer_draft.is_empty()));
@@ -265,7 +282,10 @@ fn merged_prs_hide_commenting_and_conversation_checks(cx: &mut TestAppContext) {
 }
 
 fn scroll(s: &mut S, pane: &str, dy: f32) {
-    let b = s.bounds(&format!("prpane:{pane}")).or_else(|| s.bounds(&format!("prpane:{pane}:fade-top"))).unwrap();
+    let b = s
+        .bounds(&format!("prpane:{pane}"))
+        .or_else(|| s.bounds(&format!("prpane:{pane}:fade-top")))
+        .unwrap();
     s.cx.simulate_event(gpui::ScrollWheelEvent {
         position: b.center(),
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(dy))),
@@ -279,13 +299,23 @@ fn tab_panes_fade_at_the_top_only_after_scroll(cx: &mut TestAppContext) {
     // A short window so every pane scrolls (the spec pads short panes instead).
     let mut s = boot_sized(cx, |_| {}, MockOptions::default(), 1380., 400.);
     s.open_pr("482");
-    for (tab, pane) in [("Conversation", "conv"), ("Commits", "commits"), ("Checks", "checks")] {
+    for (tab, pane) in [
+        ("Conversation", "conv"),
+        ("Commits", "commits"),
+        ("Checks", "checks"),
+    ] {
         s.tab(tab);
         assert!(s.has(&format!("prpane:{pane}")), "{pane} starts unfaded");
         scroll(&mut s, pane, -80.);
-        assert!(s.has(&format!("prpane:{pane}:fade-top")), "{pane} fades once scrolled");
+        assert!(
+            s.has(&format!("prpane:{pane}:fade-top")),
+            "{pane} fades once scrolled"
+        );
         scroll(&mut s, pane, 400.);
-        assert!(s.has(&format!("prpane:{pane}")), "{pane} unfades at the top");
+        assert!(
+            s.has(&format!("prpane:{pane}")),
+            "{pane} unfades at the top"
+        );
     }
     s.tab("Files changed");
     assert!(s.has("fl-body"));

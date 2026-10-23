@@ -4,7 +4,8 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AppContext as _, Context, Entity, EventEmitter, InteractiveElement, IntoElement, ParentElement,
+    App, AppContext as _, Context, Entity, EventEmitter, FocusHandle, Focusable, InteractiveElement,
+    IntoElement, ParentElement,
     Render, SharedString, StatefulInteractiveElement, Styled, Subscription, Window, div, px,
 };
 use recur_engine::view::loops::{LoopInfo, PolicyInfo, loop_select_options, policy_select_options};
@@ -214,6 +215,12 @@ impl ModelPickers {
             s
         });
         let flags_select = cx.new(|cx| ModelFlagsSelect::new(flags_label, ghost, up, window, cx));
+        // `.flags-menu` in `.model-pickers` is `.sel-menu-model` too (min 240px).
+        flags_select.update(cx, |f, cx| {
+            f.select.update(cx, |s, cx| {
+                s.set_menu_variant(recur_ui::logic::menu_space::MenuVariant::Model, cx)
+            })
+        });
         let subs = vec![
             cx.subscribe(&model_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
                 let SelectEvent::Change(r) = ev else { return };
@@ -243,6 +250,20 @@ impl ModelPickers {
         self.flags_select.update(cx, |f, cx| {
             f.select.update(cx, |s, cx| s.set_trigger_style(t2, cx))
         });
+    }
+
+    /// A menu is open (`.sel.open`).
+    pub fn is_open(&self, cx: &App) -> bool {
+        self.model_select.read(cx).is_open() || self.flags_select.read(cx).select.read(cx).is_open()
+    }
+
+    /// The Tab stops, in order: the model select, then the flags select when it shows.
+    pub fn focus_handles(&self, cx: &App) -> Vec<FocusHandle> {
+        let mut v = vec![self.model_select.focus_handle(cx)];
+        if !flags_for_model(&self.models, &self.model).is_empty() {
+            v.push(self.flags_select.read(cx).select.focus_handle(cx));
+        }
+        v
     }
 
     /// The props: catalog, current model and flags, disabled (faded over `backdrop`).
@@ -384,11 +405,13 @@ impl LoopPolicyPickers {
         let mk = |label: &str, policy: bool, window: &mut Window, cx: &mut Context<Self>| {
             cx.new(|cx| {
                 // `.sel.ghost .sel-btn` outranks `.nt-autonomy .sel-btn`: a ghost pair keeps
-                // only the amber icon.
+                // only the amber icon, which `.nt-autonomy .sel.open .sel-ico` (later than
+                // `.sel.ghost.open .sel-ico`) keeps amber while open; the chevron goes muted.
                 let style = if ghost {
                     TriggerStyle {
                         icon_color: Some(t.amber),
-                        open_icon_color: Some(t.muted),
+                        open_icon_color: Some(t.amber),
+                        open_chevron_color: Some(t.muted),
                         ..Default::default()
                     }
                 } else {
@@ -406,7 +429,8 @@ impl LoopPolicyPickers {
                 if policy {
                     s = s.trigger_icon(IconName::Shield);
                 }
-                s
+                // Inside `.nt-autonomy` the menu is `.sel-menu-compact` (`portalMenuMods`).
+                s.menu_variant(recur_ui::logic::menu_space::MenuVariant::Compact)
             })
         };
         let loop_select = mk("Loop", false, window, cx);
@@ -429,6 +453,33 @@ impl LoopPolicyPickers {
             show_tip,
             tip_open: false,
             _subs: subs,
+        }
+    }
+
+    /// A menu is open (`.sel.open`).
+    pub fn is_open(&self, cx: &App) -> bool {
+        self.loop_select.read(cx).is_open() || self.policy_select.read(cx).is_open()
+    }
+
+    /// The Tab stops: the loop and policy selects.
+    pub fn focus_handles(&self, cx: &App) -> Vec<FocusHandle> {
+        vec![
+            self.loop_select.focus_handle(cx),
+            self.policy_select.focus_handle(cx),
+        ]
+    }
+
+    /// `.nt-modal .sel-btn.kb-focus` on both triggers (see `TriggerStyle::kb_ring`).
+    pub fn set_kb_ring(&mut self, on: bool, cx: &mut Context<Self>) {
+        for s in [&self.loop_select, &self.policy_select] {
+            s.update(cx, |s, cx| {
+                let mut t = s.trigger().clone();
+                if t.kb_ring != on {
+                    t.kb_ring = on;
+                    t.no_outline = on;
+                    s.set_trigger_style(t, cx);
+                }
+            });
         }
     }
 

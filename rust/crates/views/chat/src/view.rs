@@ -220,7 +220,9 @@ impl Render for AgentChat {
             .flex()
             .flex_col()
             .min_h_0()
-            .when(!session, |d| d.size_full().bg(hsla(t.bg)))
+            // `.nt-body .chat.composer-only { height: auto; background: transparent }`.
+            .when(!session && !composer_only, |d| d.size_full().bg(hsla(t.bg)))
+            .when(composer_only, |d| d.w_full())
             .when(session, |d| d.max_h(px(self.props.session_max)))
             .text_size(px(self.props.font_size))
             .text_color(hsla(t.text));

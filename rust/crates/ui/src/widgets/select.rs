@@ -153,6 +153,9 @@ pub struct TriggerStyle {
     pub no_outline: bool,
     /// `min-height` with `pad_y` (`.editor-prefs .font-sel .sel-btn`).
     pub min_height: Option<f32>,
+    /// Inside a modal dialog (`.nt-modal .sel-btn.kb-focus`): reached by Tab, the trigger
+    /// shows a 2px `--amber` ring 2px out instead of the global `:focus-visible` ring.
+    pub kb_ring: bool,
 }
 
 /// A trigger icon drawn by the owner (the `icon` snippet: `.nt-pic` project pictures).
@@ -362,6 +365,11 @@ impl Select {
     }
 
     /// Swap the trigger's custom icon (a sort control showing the current order's icon).
+    /// `portalMenuMods`' menu class for the context the select sits in.
+    pub fn set_menu_variant(&mut self, v: MenuVariant, cx: &mut Context<Self>) {
+        self.variant = v;
+        cx.notify();
+    }
     /// The `icon` snippet as an element (wins over [`Select::set_icon`]).
     pub fn set_icon_slot(&mut self, slot: Option<IconSlot>, cx: &mut Context<Self>) {
         self.icon_slot = slot;
@@ -826,7 +834,11 @@ impl Render for Select {
             ));
         }
         // `:focus-visible`'s outline outranks `.sel-btn { outline: none }` by coming later.
-        if focus_visible && !disabled && !tr.no_outline {
+        if focus_visible && !disabled && tr.kb_ring {
+            button = button
+                .relative()
+                .child(crate::style::outline(2., 2., radius, border_w, t.amber));
+        } else if focus_visible && !disabled && !tr.no_outline {
             button = button
                 .relative()
                 .child(crate::style::focus_ring(radius, border_w, cx));

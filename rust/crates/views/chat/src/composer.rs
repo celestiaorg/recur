@@ -427,7 +427,9 @@ impl AgentChat {
         }
     }
 
-    pub(crate) fn menu_open(&self) -> bool {
+    /// A slash, `@` or prompt-argument menu is open (`.chat-mention`): it owns Tab and Escape
+    /// over a host dialog's (`composerOwnsDialogTab`).
+    pub fn menu_open(&self) -> bool {
         self.mention.is_some() || self.skill_mention.is_some() || self.prompt_args.is_some()
     }
 

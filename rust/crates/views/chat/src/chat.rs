@@ -813,6 +813,11 @@ impl AgentChat {
         &self.input
     }
 
+    /// The attachment lightbox or its image menu is up (`.chat-att-lb, .att-ctx`).
+    pub fn image_overlay_open(&self) -> bool {
+        self.lightbox.is_some() || self.img_ctx.is_some()
+    }
+
     /// The image drafts (`bind:attachments`).
     pub fn attachments(&self) -> &[ChatAttachmentDraft] {
         &self.attachments

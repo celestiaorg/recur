@@ -1972,6 +1972,18 @@
     {"name": "home/welcome-done", "width": 1280, "height": 800, "theme": "default", "tolerance": 7550, "fixture": "base", "route": "welcome"},
     {"name": "home/new-project", "width": 1280, "height": 800, "theme": "default", "tolerance": 4040, "fixture": "base", "route": "newproject"},
     {"name": "home/new-project-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 4350, "fixture": "base", "route": "newproject"},
-    {"name": "home/new-project-path", "width": 1280, "height": 800, "theme": "default", "tolerance": 7370, "hardTolerance": 189, "fixture": "base", "route": "newproject", "steps": [{"type": "/Users/dev/code/storefront"}, {"wait": 400}]}
+    {"name": "home/new-project-path", "width": 1280, "height": 800, "theme": "default", "tolerance": 7370, "hardTolerance": 189, "fixture": "base", "route": "newproject", "steps": [{"type": "/Users/dev/code/storefront"}, {"wait": 400}]},
+    {"name": "home/new-task", "width": 1280, "height": 800, "theme": "default", "tolerance": 5160, "fixture": "base", "route": "newtask"},
+    {"name": "home/new-task-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 5380, "fixture": "base", "route": "newtask"},
+    {"name": "home/new-task-loop", "width": 1280, "height": 800, "theme": "default", "tolerance": 4100, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}},
+    {"name": "home/new-task-repo", "width": 1280, "height": 800, "theme": "default", "tolerance": 5330, "fixture": "base", "route": "newtask", "steps": [{"click": [397, 205]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-branch", "width": 1280, "height": 800, "theme": "default", "tolerance": 11890, "fixture": "base", "route": "newtask", "steps": [{"click": [506, 205]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-mode", "width": 1280, "height": 800, "theme": "default", "tolerance": 11540, "fixture": "base", "route": "newtask", "steps": [{"click": [374, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-model", "width": 1280, "height": 800, "theme": "default", "tolerance": 8190, "fixture": "base", "route": "newtask", "steps": [{"click": [477, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-flags", "width": 1280, "height": 800, "theme": "default", "tolerance": 8320, "fixture": "base", "route": "newtask", "steps": [{"click": [557, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-loop-picker", "width": 1280, "height": 800, "theme": "default", "tolerance": 4350, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}, "steps": [{"click": [470, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-policy", "width": 1280, "height": 800, "theme": "default", "tolerance": 7710, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}, "steps": [{"click": [575, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-tip", "width": 1280, "height": 800, "theme": "default", "tolerance": 9960, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}, "steps": [{"click": [640, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-slash", "width": 1280, "height": 800, "theme": "default", "tolerance": 11330, "hardTolerance": 3, "fixture": "base", "route": "newtask", "steps": [{"type": "/"}, {"wait": 300}]}
   ]
 }

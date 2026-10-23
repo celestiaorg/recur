@@ -18,8 +18,7 @@ use recur_view_core::AppState;
 
 use crate::snippets::BundleSnippets;
 
-/// `recur.editorPrefs`.
-pub const EDITOR_PREFS_KEY: &str = "recur.editorPrefs";
+pub use recur_view_core::prefs::EDITOR_PREFS_KEY;
 
 pub struct EditorEnv {
     services: Services,
@@ -82,12 +81,7 @@ impl EditorEnv {
     fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
         let s = state.read(cx);
         let services = s.services().clone();
-        let prefs = s
-            .storage()
-            .get(EDITOR_PREFS_KEY)
-            .and_then(|raw| serde_json::from_str::<serde_json::Value>(raw).ok())
-            .map(|v| EditorPrefs::normalize(&v))
-            .unwrap_or_default();
+        let prefs = s.editor_prefs.clone();
         let mut env = EditorEnv {
             snippets: Rc::new(BundleSnippets::new(services.clone())),
             services,
@@ -135,6 +129,7 @@ impl EditorEnv {
 
     fn state_changed(&mut self, state: &Entity<AppState>, cx: &mut Context<Self>) {
         self.sync_disabled_snippets(state, cx);
+        self.reload_prefs(state, cx);
         let s = state.read(cx);
         if s.bundles_epoch != self.seen_bundles_epoch {
             self.seen_bundles_epoch = s.bundles_epoch;
@@ -266,15 +261,9 @@ impl EditorEnv {
         self.bump(cx);
     }
 
-    /// Re-read `recur.editorPrefs` (Settings wrote it).
+    /// Follow `AppState::editor_prefs` (Settings → Code editor changed them).
     pub fn reload_prefs(&mut self, state: &Entity<AppState>, cx: &mut Context<Self>) {
-        let next = state
-            .read(cx)
-            .storage()
-            .get(EDITOR_PREFS_KEY)
-            .and_then(|raw| serde_json::from_str::<serde_json::Value>(raw).ok())
-            .map(|v| EditorPrefs::normalize(&v))
-            .unwrap_or_default();
+        let next = state.read(cx).editor_prefs.clone();
         if next != self.prefs {
             self.prefs = next;
             self.bump(cx);

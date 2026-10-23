@@ -49,6 +49,9 @@ pub struct ViewEntry {
 /// overlays in this order, then `Toasts`, then `TitleTooltip` (always last).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OverlaySlot {
+    /// Settings → Providers' Add provider modal (`.nt-bg` inside the Settings view, under the
+    /// app-level modals).
+    CompatibleProvider,
     NewTask,
     ScheduleEditor,
     PrReviewModal,

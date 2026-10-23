@@ -41,6 +41,8 @@ pub struct SelectOption {
     pub tint: Option<Color>,
     /// One-line description after the label.
     pub hint: Option<SharedString>,
+    /// `optionStyle`: the label's own font stack and size at line-height 1.45 (font pickers).
+    pub font: Option<(crate::fonts::Family, f32)>,
 }
 
 impl SelectOption {
@@ -69,6 +71,11 @@ impl SelectOption {
     }
     pub fn hint(mut self, h: impl Into<SharedString>) -> Self {
         self.hint = Some(h.into());
+        self
+    }
+    /// Draw the label in `family` at `size` px, line-height 1.45 (`optionStyle`).
+    pub fn font(mut self, family: crate::fonts::Family, size: f32) -> Self {
+        self.font = Some((family, size));
         self
     }
 }
@@ -106,6 +113,8 @@ pub struct TriggerStyle {
     pub font_size: Option<f32>,
     /// `font-family: inherit` (UI) instead of mono.
     pub ui_font: bool,
+    /// Mono even where the size sets the UI font (`.compat-flag-card .sel-btn`).
+    pub mono_font: bool,
     pub weight: Option<f32>,
     /// Background, border and text at rest (None keeps the variant's).
     pub bg: Option<Color>,
@@ -140,6 +149,8 @@ pub struct TriggerStyle {
     /// No `:focus-visible` outline (`.nt-modal .sel-btn:focus-visible { outline: none }`); the
     /// host draws its own keyboard ring.
     pub no_outline: bool,
+    /// `min-height` with `pad_y` (`.editor-prefs .font-sel .sel-btn`).
+    pub min_height: Option<f32>,
 }
 
 /// The select. Create with [`Select::new`] in an owning view, keep the entity, and render it.
@@ -169,6 +180,7 @@ pub struct Select {
     trigger_bounds: Option<Bounds<Pixels>>,
     list_scroll: ScrollHandle,
     display_override: Option<SharedString>,
+    value_font: Option<(crate::fonts::Family, f32)>,
     _subs: Vec<Subscription>,
 }
 
@@ -285,6 +297,7 @@ impl Select {
             trigger_bounds: None,
             list_scroll: ScrollHandle::new(),
             display_override: None,
+            value_font: None,
             _subs: vec![sub],
         }
     }
@@ -306,6 +319,17 @@ impl Select {
     pub fn set_display(&mut self, display: Option<SharedString>, cx: &mut Context<Self>) {
         self.display_override = display;
         cx.notify();
+    }
+    /// `valueStyle`: the closed trigger's value in `family` at `size` px.
+    pub fn set_value_font(
+        &mut self,
+        font: Option<(crate::fonts::Family, f32)>,
+        cx: &mut Context<Self>,
+    ) {
+        if self.value_font != font {
+            self.value_font = font;
+            cx.notify();
+        }
     }
     pub fn value(&self) -> &SharedString {
         &self.value
@@ -658,7 +682,7 @@ impl Render for Select {
             tr.gap.unwrap_or(gap),
             tr.font_size.unwrap_or(size),
         );
-        let ui = ui || tr.ui_font;
+        let ui = (ui || tr.ui_font) && !tr.mono_font;
         let (mut bg, mut border, mut fg) = if self.ghost {
             (
                 crate::color::TRANSPARENT,
@@ -756,6 +780,7 @@ impl Render for Select {
                 Some(py) => b.py(px(py)),
                 None => b.h(px(h)),
             })
+            .when_some(tr.min_height, |b, mh| b.min_h(px(mh)))
             .px(px(pad))
             .rounded(px(radius))
             .when(tr.square_left, |b| b.rounded_l(px(0.)))
@@ -836,6 +861,9 @@ impl Render for Select {
         let mut val = text(self.display())
             .truncate()
             .line_height(LineHeight::Normal);
+        if let Some((family, size)) = &self.value_font {
+            val = val.family(family.clone()).size(*size);
+        }
         if let Some(c) = first.as_ref().and_then(|o| o.tint) {
             val = val.color(c);
         }
@@ -1017,6 +1045,12 @@ impl Select {
             let mut lbl = text(o.label.clone())
                 .truncate()
                 .line_height(LineHeight::Normal);
+            if let Some((family, size)) = &o.font {
+                lbl = lbl
+                    .family(family.clone())
+                    .size(*size)
+                    .line_height(LineHeight::Scale(1.45));
+            }
             if let Some(c) = o.tint {
                 lbl = lbl.color(c);
             }

@@ -102,11 +102,16 @@ mod tests {
         }
         let mut bytes = Vec::new();
         image::DynamicImage::ImageRgba8(src)
-            .write_to(&mut std::io::Cursor::new(&mut bytes), image::ImageFormat::Png)
+            .write_to(
+                &mut std::io::Cursor::new(&mut bytes),
+                image::ImageFormat::Png,
+            )
             .unwrap();
         let url = pic_from_image_bytes(&bytes).unwrap();
         let b64 = url.strip_prefix("data:image/png;base64,").unwrap();
-        let png = base64::engine::general_purpose::STANDARD.decode(b64).unwrap();
+        let png = base64::engine::general_purpose::STANDARD
+            .decode(b64)
+            .unwrap();
         let out = image::load_from_memory(&png).unwrap();
         assert_eq!((out.width(), out.height()), (128, 128));
         assert!(pic_from_image_bytes(b"not an image").is_err());

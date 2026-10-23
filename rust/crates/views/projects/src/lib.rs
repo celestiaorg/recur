@@ -1,6 +1,21 @@
-//! Projects and schedules: project settings (`Project.svelte` with `MiniScriptEditor.svelte`),
-//! the Schedules list (`ScheduledPrompts.svelte`) and the schedule editor
-//! (`ScheduleEditor.svelte`), with `lib/schedule-expanded.ts`.
+//! Project settings (`Project.svelte` with `MiniScriptEditor.svelte`): one project's identity,
+//! repository, run settings, schedules, pull request defaults, skill and MCP overrides.
+//!
+//! # Embedding
+//!
+//! Call [`register`] after `recur_view_briefing::register` (the Schedules section embeds its
+//! list).
 
-pub mod pic;
+mod color_panel;
 pub mod mini;
+pub mod pic;
+pub mod project;
+
+use recur_view_core::{ViewContext, ViewName, ViewRegistry};
+
+/// Registers the `project` route.
+pub fn register(r: &mut ViewRegistry) {
+    r.view(&[ViewName::Project], |vcx: &ViewContext, window, cx| {
+        project::build(vcx, window, cx).into()
+    });
+}

@@ -11,14 +11,13 @@ use futures::FutureExt as _;
 use futures::future::Shared;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, EventEmitter, Focusable, Global, Hsla,
-    IntoElement, ParentElement, Render, Styled, Subscription, Task, Window,
-    div, px,
+    App, AppContext as _, Context, Entity, EventEmitter, Focusable, Global, Hsla, IntoElement,
+    ParentElement, Render, Styled, Subscription, Task, Window, div, px,
 };
+use recur_editor::element::EditorElement;
 use recur_editor::highlight::{SharedTextMate, TextMate};
 use recur_editor::theme::MiniChrome;
 use recur_editor::theme::catalog::editor_theme_id_for_app_chrome;
-use recur_editor::element::EditorElement;
 use recur_editor::view::{EditorEvent, EditorOptions, EditorView};
 use recur_services::Services;
 use recur_textmate::{GrammarInfo, ParsedTmTheme, parse_theme_json};
@@ -99,7 +98,9 @@ fn paired_engine(state: &Entity<AppState>, cx: &mut App) -> (String, PairedLoad)
         if let Ok(grammars) = services.bundle.list_grammars().await {
             let mut t = tm.borrow_mut();
             for g in &grammars {
-                let Some(info) = grammar_info(g) else { continue };
+                let Some(info) = grammar_info(g) else {
+                    continue;
+                };
                 let scope = g.scope_name.clone();
                 let svc = services.clone();
                 let cache: Rc<RefCell<Option<Option<String>>>> = Rc::default();
@@ -112,7 +113,8 @@ fn paired_engine(state: &Entity<AppState>, cx: &mut App) -> (String, PairedLoad)
                         // simplify: the catalog's loader is synchronous (as the Observatory's),
                         // so a grammar read blocks once per scope. Upgrade: an async loader in
                         // recur_textmate.
-                        let text = futures::executor::block_on(svc.bundle.read_grammar(&scope)).ok();
+                        let text =
+                            futures::executor::block_on(svc.bundle.read_grammar(&scope)).ok();
                         *cache.borrow_mut() = Some(text.clone());
                         text
                     }),

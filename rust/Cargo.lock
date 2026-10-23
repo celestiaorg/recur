@@ -7261,6 +7261,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-view-briefing"
+version = "0.0.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "futures",
+ "gpui-kit",
+ "gpui-pre",
+ "parking_lot",
+ "recur-app",
+ "recur-content",
+ "recur-domain",
+ "recur-engine",
+ "recur-services",
+ "recur-ui",
+ "recur-view-briefing",
+ "recur-view-chat",
+ "recur-view-core",
+ "recur-view-home",
+ "recur-view-observatory",
+ "recur-view-prs",
+ "recur-view-review",
+ "recur-view-settings",
+ "recur-view-workspace",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "recur-view-chat"
 version = "0.0.0"
 dependencies = [
@@ -7298,6 +7327,8 @@ dependencies = [
 name = "recur-view-core"
 version = "0.0.0"
 dependencies = [
+ "chrono",
+ "chrono-tz",
  "futures",
  "gpui-kit",
  "gpui-pre",
@@ -7405,6 +7436,7 @@ dependencies = [
  "recur-services",
  "recur-textmate",
  "recur-ui",
+ "recur-view-briefing",
  "recur-view-chat",
  "recur-view-core",
  "recur-view-home",

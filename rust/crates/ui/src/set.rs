@@ -760,11 +760,11 @@ pub fn tog(
         .debug_selector(move || format!("tog:{l}:{on}"))
 }
 
-/// `.skill-copy`: a mono name, an optional description and an optional `title`d path.
+/// `.skill-copy`: a mono name, its `.skill-desc` lines and an optional `title`d path.
 pub fn skill_copy(
     id: &str,
     name: impl Into<SharedString>,
-    desc: Option<String>,
+    desc: impl IntoIterator<Item = String>,
     path: Option<(String, String)>,
     cx: &App,
 ) -> Div {
@@ -777,11 +777,16 @@ pub fn skill_copy(
             .leading(1.45)
             .color(t.text),
     );
-    if let Some(d) = desc {
+    for (i, d) in desc.into_iter().enumerate() {
+        let key = if i == 0 {
+            format!("{id}:desc")
+        } else {
+            format!("{id}:desc{i}")
+        };
         c = c.child(
             div().mt(px(3.)).child(
                 text(d)
-                    .id(SharedString::from(format!("{id}:desc")))
+                    .id(SharedString::from(key))
                     .size(12.)
                     .leading(1.4)
                     .color(t.faint),

@@ -8,6 +8,7 @@ mod checks;
 mod commits;
 mod conversation;
 pub(crate) mod field;
+use conversation::Compose;
 mod files;
 mod html;
 mod render;
@@ -179,23 +180,24 @@ impl PrDetail {
         recur_ui::style::style_text_input(&title_input, cx);
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter files"));
         recur_ui::style::style_text_input(&filter, cx);
-        let desc = Field::new(
-            &state,
-            "Description",
-            (2, 2),
-            |_: &mut Self, _| {},
-            window,
-            cx,
-        );
-        let comment = Field::new(
-            &state,
-            "Edit comment",
-            (2, 2),
-            |_: &mut Self, _| {},
-            window,
-            cx,
-        );
-        let reply = Field::new(&state, "Reply…", (1, 6), |_: &mut Self, _| {}, window, cx);
+        let desc = Field::new(&state, "Description", (2, 2), |_: &mut Self, _| {}, window, cx)
+            .on_submit(|d: &mut Self, w, cx| d.save_compose(&Compose::Desc, w, cx), cx);
+        let comment = Field::new(&state, "Edit comment", (2, 2), |_: &mut Self, _| {}, window, cx)
+            .on_submit(
+                |d: &mut Self, w, cx| {
+                    let id = d.editing_comment.clone();
+                    d.save_compose(&Compose::Comment(id), w, cx)
+                },
+                cx,
+            );
+        let reply = Field::new(&state, "Reply…", (1, 6), |_: &mut Self, _| {}, window, cx)
+            .on_submit(
+                |d: &mut Self, w, cx| {
+                    let id = d.reply_for.clone();
+                    d.save_compose(&Compose::Reply(id), w, cx)
+                },
+                cx,
+            );
         let composer = Field::new(
             &state,
             "Leave a comment…",
@@ -206,7 +208,8 @@ impl PrDetail {
             },
             window,
             cx,
-        );
+        )
+        .on_submit(|d: &mut Self, w, cx| d.submit_composer(w, cx), cx);
         let me = cx.entity().downgrade();
         let list = cx.new(|_| {
             ReviewFileList::new(
@@ -318,6 +321,11 @@ impl PrDetail {
                 max_width: Some(1560.),
             });
         d.state_changed(window, cx);
+        #[cfg(test)]
+        {
+            let me = cx.entity().downgrade();
+            cx.set_global(spec_handle::Live(me));
+        }
         d
     }
 
@@ -2037,4 +2045,15 @@ pub(crate) enum MoreAction {
     Quote,
     Edit,
     Delete,
+}
+
+/// The PR detail the specs drive, for reading its fields.
+#[cfg(test)]
+pub(crate) mod spec_handle {
+    pub struct Live(pub gpui_kit::WeakEntity<super::PrDetail>);
+    impl gpui_kit::Global for Live {}
+
+    pub fn reply_text(cx: &gpui_kit::App) -> String {
+        cx.global::<Live>().0.upgrade().map(|d| d.read(cx).reply.value(cx)).unwrap_or_default()
+    }
 }

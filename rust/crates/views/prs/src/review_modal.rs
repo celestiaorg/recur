@@ -112,7 +112,8 @@ impl PrReviewModal {
             },
             window,
             cx,
-        );
+        )
+        .on_submit(|m: &mut Self, _, cx| m.submit(cx), cx);
         let subs = vec![
             cx.subscribe(&kind_select, |m, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
@@ -410,6 +411,7 @@ impl Render for PrReviewModal {
             });
         let x = div()
             .id("pr-rev-x")
+            .debug_selector(|| "pr-rev-x".into())
             .ml_auto()
             .flex_none()
             .cursor_pointer()
@@ -571,13 +573,6 @@ impl Render for PrReviewModal {
             .line_height(px(14. * 1.55))
             .text_color(hsla(t.text))
             .key_context("TextEntry")
-            .on_key_down(cx.listener(|m, ev: &KeyDownEvent, _, cx| {
-                let k = &ev.keystroke;
-                if k.key == "enter" && (k.modifiers.platform || k.modifiers.control) {
-                    cx.stop_propagation();
-                    m.submit(cx);
-                }
-            }))
             .child(gpui_kit::base::input::Textarea::new(&self.body.area));
         body = body.child(area);
 

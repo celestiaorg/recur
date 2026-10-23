@@ -28,7 +28,8 @@ pub fn boot<'a>(
     seed: impl FnOnce(&mut Seed),
     opts: MockOptions,
 ) -> S<'a> {
-    boot_sized(cx, seed, opts, 1280., 800.)
+    // playwright.config.ts's viewport.
+    boot_sized(cx, seed, opts, 1380., 880.)
 }
 
 pub fn boot_sized<'a>(
@@ -165,7 +166,50 @@ impl S<'_> {
         self.bounds(sel).is_some()
     }
 
+    /// Scrolls an off-screen `sel` to the middle of the window, as Playwright scrolls a target
+    /// into view before acting on it.
+    pub fn reveal(&mut self, sel: &str) {
+        for _ in 0..12 {
+            let Some(b) = self.bounds(sel) else { return };
+            let vh = f32::from(self.cx.update(|w, _| w.viewport_size().height));
+            if f32::from(b.origin.y) >= 0. && f32::from(b.bottom()) <= vh {
+                return;
+            }
+            let dy = vh / 2. - f32::from(b.center().y);
+            self.cx.simulate_event(gpui::ScrollWheelEvent {
+                position: point(b.center().x, px(vh / 2.)),
+                delta: gpui::ScrollDelta::Pixels(point(px(0.), px(dy))),
+                ..Default::default()
+            });
+            self.settle();
+            if self.bounds(sel).is_some_and(|n| n.origin.y == b.origin.y) {
+                return;
+            }
+        }
+    }
+
+    /// Scrolls `sel` fully inside the `pane` that clips it.
+    pub fn reveal_within(&mut self, sel: &str, pane: &str) {
+        for _ in 0..12 {
+            let (Some(b), Some(p)) = (self.bounds(sel), self.bounds(pane)) else { return };
+            if b.origin.y >= p.origin.y && b.bottom() <= p.bottom() {
+                return;
+            }
+            let dy = f32::from(p.center().y) - f32::from(b.center().y);
+            self.cx.simulate_event(gpui::ScrollWheelEvent {
+                position: p.center(),
+                delta: gpui::ScrollDelta::Pixels(point(px(0.), px(dy))),
+                ..Default::default()
+            });
+            self.settle();
+            if self.bounds(sel).is_some_and(|n| n.origin.y == b.origin.y) {
+                return;
+            }
+        }
+    }
+
     pub fn click(&mut self, sel: &str) {
+        self.reveal(sel);
         let p = self
             .bounds(sel)
             .unwrap_or_else(|| panic!("no element {sel}"))
@@ -176,6 +220,7 @@ impl S<'_> {
     }
 
     pub fn hover(&mut self, sel: &str) {
+        self.reveal(sel);
         let p = self
             .bounds(sel)
             .unwrap_or_else(|| panic!("no element {sel}"))
@@ -188,6 +233,7 @@ impl S<'_> {
 
     /// Press on `from`, move to `to`, release (`dragTo`).
     pub fn drag(&mut self, from: &str, to: &str) {
+        self.reveal(from);
         let a = self.bounds(from).expect(from).center();
         let b = self.bounds(to).expect(to).center();
         self.cx.simulate_mouse_move(a, None, Modifiers::none());

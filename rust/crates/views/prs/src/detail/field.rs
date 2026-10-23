@@ -2,7 +2,10 @@
 //! `@mention` typeaheads attached (`emojiShortcodes`, `userMentions`).
 
 use gpui_kit::base::input::{InputEvent, TextareaMode, TextareaState};
-use gpui_kit::{App, AppContext as _, Context, Entity, SharedString, Subscription, Window};
+use gpui_kit::{
+    App, AppContext as _, Context, Entity, Focusable as _, KeystrokeEvent, SharedString,
+    Subscription, Window,
+};
 use std::rc::Rc;
 
 use recur_view_chat::suggest::{SetFn, SuggestAttach, attach_emoji, attach_user_mentions};
@@ -15,6 +18,7 @@ pub struct Field {
         Entity<SuggestAttach<TextareaMode>>,
     ),
     _sub: Subscription,
+    _submit: Option<Subscription>,
 }
 
 impl Field {
@@ -54,7 +58,30 @@ impl Field {
             area,
             _attach: (emoji, mentions),
             _sub: sub,
+            _submit: None,
         }
+    }
+
+    /// ⌘↵ / Ctrl+↵ while focused runs `f` (`composeKey`). The keystroke is taken before the
+    /// textarea's `secondary-enter` binding, which would insert a newline first.
+    pub fn on_submit<H: 'static>(
+        mut self,
+        f: fn(&mut H, &mut Window, &mut Context<H>),
+        cx: &mut Context<H>,
+    ) -> Field {
+        let (area, me) = (self.area.clone(), cx.entity().downgrade());
+        self._submit = Some(cx.intercept_keystrokes(move |ev: &KeystrokeEvent, window, cx| {
+            let k = &ev.keystroke;
+            if k.key != "enter" || !(k.modifiers.platform || k.modifiers.control) {
+                return;
+            }
+            if !area.read(cx).focus_handle(cx).is_focused(window) {
+                return;
+            }
+            cx.stop_propagation();
+            let _ = me.update(cx, |h, cx| f(h, window, cx));
+        }));
+        self
     }
 
     pub fn value(&self, cx: &App) -> String {

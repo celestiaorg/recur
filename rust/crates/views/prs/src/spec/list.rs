@@ -111,7 +111,7 @@ fn pr_list_sorts_within_groups(cx: &mut TestAppContext) {
     };
     assert_eq!(order(&mut s), ["Alpha recent", "Zebra late"]);
     assert!(s.has("sel:Sort pull requests=Recently updated"));
-    let mut pick = |s: &mut S, from: &str, opt: &str| {
+    let pick = |s: &mut S, from: &str, opt: &str| {
         s.click(&format!("sel:Sort pull requests={from}"));
         assert!(s.has("sel-menu"));
         s.click(&format!("sel-opt:{opt}"));
@@ -361,8 +361,8 @@ fn renders_github_description_and_comment_images_via_gh_image(cx: &mut TestAppCo
     assert!(s.until(|s| s.has(&src)));
     s.click(&src);
     let lb = s.bounds("chat-att-lb").expect("lightbox");
-    assert_eq!(f32::from(lb.size.width), 1280.);
-    assert_eq!(f32::from(lb.size.height), 800.);
+    assert_eq!(f32::from(lb.size.width), 1380.);
+    assert_eq!(f32::from(lb.size.height), 880.);
     s.keys("escape");
     assert!(!s.has("chat-att-lb"));
 }

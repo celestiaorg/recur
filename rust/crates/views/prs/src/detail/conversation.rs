@@ -208,13 +208,8 @@ impl PrDetail {
             .text_color(hsla(t.text))
             .when(saving, |d| d.opacity(0.55))
             .key_context("TextEntry")
-            .on_key_down(cx.listener(move |d, ev: &KeyDownEvent, window, cx| {
-                let k = &ev.keystroke;
-                let cmd = k.modifiers.platform || k.modifiers.control;
-                if k.key == "enter" && cmd {
-                    cx.stop_propagation();
-                    d.save_compose(&w1, window, cx);
-                } else if k.key == "escape" {
+            .capture_key_down(cx.listener(move |d, ev: &KeyDownEvent, _, cx| {
+                if ev.keystroke.key == "escape" {
                     cx.stop_propagation();
                     d.cancel_compose(&w1, cx);
                 }
@@ -282,7 +277,7 @@ impl PrDetail {
             .into_any_element()
     }
 
-    fn save_compose(&mut self, which: &Compose, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn save_compose(&mut self, which: &Compose, window: &mut Window, cx: &mut Context<Self>) {
         match which {
             Compose::Desc => self.save_desc(cx),
             Compose::Comment(id) => self.save_comment(id, cx),
@@ -1634,13 +1629,6 @@ impl PrDetail {
             .line_height(px(18.75))
             .text_color(hsla(t.text))
             .key_context("TextEntry")
-            .on_key_down(cx.listener(|d, ev: &KeyDownEvent, window, cx| {
-                let k = &ev.keystroke;
-                if k.key == "enter" && (k.modifiers.platform || k.modifiers.control) {
-                    cx.stop_propagation();
-                    d.submit_composer(window, cx);
-                }
-            }))
             .child(gpui_kit::base::input::Textarea::new(&area));
         let go = recur_ui::style::primary_button("composer-go", disabled.then_some(t.bg), cx)
             .debug_selector(|| "composer-go:Comment".into())

@@ -289,6 +289,9 @@
     term.attachCustomKeyEventHandler((e) => {
       if (e.metaKey) return false
       if (e.ctrlKey && !e.altKey && isBackquote(e)) return false
+      // Ctrl + = / + / - / 0 zoom the whole UI (handled in App), like VS Code,
+      // rather than reaching the shell as readline chords such as undo.
+      if (e.ctrlKey && !e.altKey && (/^(Equal|Minus|Digit0|NumpadAdd|NumpadSubtract|Numpad0)$/.test(e.code) || /^[-=+0]$/.test(e.key))) return false
       return true
     })
 

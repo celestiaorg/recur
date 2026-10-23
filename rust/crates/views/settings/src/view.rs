@@ -6,8 +6,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, FocusHandle, Focusable, InteractiveElement,
-    IntoElement, ParentElement, Render, ScrollHandle,
-    Styled, Subscription, Task, Window, div,
+    IntoElement, ParentElement, Render, ScrollHandle, Styled, Subscription, Task, Window, div,
 };
 use recur_domain::Settings;
 use recur_services::AppEvent;
@@ -795,7 +794,12 @@ impl Render for SettingsView {
             .flex()
             .bg(hsla(t.bg))
             .child(nav)
-            .child(recur_ui::set::page_main(head, body, &self.main_scroll, window))
+            .child(recur_ui::set::page_main(
+                head,
+                body,
+                &self.main_scroll,
+                window,
+            ))
     }
 }
 

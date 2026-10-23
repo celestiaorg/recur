@@ -95,7 +95,9 @@ pub struct NewTaskModal {
     flags: FlagMap,
     simplify_on: bool,
     simplify_seeded: bool,
-    seen_settings: Option<Option<Settings>>,
+    seen_settings: Option<(Option<Settings>, u64)>,
+    /// Bumped whenever `catalog_models` changes (the open effect tracks it).
+    catalog_gen: u64,
     seen_catalog_rev: Option<u64>,
     prompt_busy: bool,
     prompt_abort: Option<Abort>,
@@ -175,15 +177,16 @@ impl NewTaskModal {
                 cx,
             )
         });
-        let mk = |label: &'static str, searchable: bool, window: &mut Window, cx: &mut Context<Self>| {
-            cx.new(|cx| {
-                // `.nt-pickers` menus are `.sel-menu-wide` (`portalMenuMods`).
-                let s = Select::new(Vec::new(), window, cx)
-                    .label(label)
-                    .menu_variant(recur_ui::logic::menu_space::MenuVariant::Wide);
-                if searchable { s.searchable() } else { s }
-            })
-        };
+        let mk =
+            |label: &'static str, searchable: bool, window: &mut Window, cx: &mut Context<Self>| {
+                cx.new(|cx| {
+                    // `.nt-pickers` menus are `.sel-menu-wide` (`portalMenuMods`).
+                    let s = Select::new(Vec::new(), window, cx)
+                        .label(label)
+                        .menu_variant(recur_ui::logic::menu_space::MenuVariant::Wide);
+                    if searchable { s.searchable() } else { s }
+                })
+            };
         let repo_sel = mk("Repository", false, window, cx);
         let branch_sel = mk("Base branch", true, window, cx);
         branch_sel.update(cx, |s, cx| s.set_icon(Some(IconName::GitBranch), cx));
@@ -213,39 +216,57 @@ impl NewTaskModal {
         });
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| this.sync(window, cx)),
-            cx.subscribe_in(&chat, window, |this, chat, ev: &ChatEvent, _, cx| match ev {
-                ChatEvent::Draft => {
-                    let c = chat.read(cx);
-                    this.task = c.input().to_string();
-                    this.attachments = c.attachments().to_vec();
-                    this.sync_chat(cx);
-                    cx.notify();
-                }
-                ChatEvent::Send { .. } => this.start(cx),
-                ChatEvent::PromptAction { slash, args, .. } => {
-                    this.invoke_prompt_action(slash.clone(), args.clone(), cx)
-                }
-                _ => {}
+            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+                this.sync(window, cx)
             }),
-            cx.subscribe_in(&repo_sel, window, |this, _, ev: &SelectEvent, window, cx| {
-                if let SelectEvent::Change(v) = ev {
-                    this.repo_id = v.to_string();
-                    this.effects(window, cx);
-                }
-            }),
-            cx.subscribe_in(&branch_sel, window, |this, _, ev: &SelectEvent, window, cx| {
-                if let SelectEvent::Change(v) = ev {
-                    this.base_branch = v.to_string();
-                    this.effects(window, cx);
-                }
-            }),
-            cx.subscribe_in(&mode_sel, window, |this, _, ev: &SelectEvent, window, cx| {
-                if let SelectEvent::Change(v) = ev {
-                    this.pick_mode(ChatMode::from_key(v), cx);
-                    this.effects(window, cx);
-                }
-            }),
+            cx.subscribe_in(
+                &chat,
+                window,
+                |this, chat, ev: &ChatEvent, _, cx| match ev {
+                    ChatEvent::Draft => {
+                        let c = chat.read(cx);
+                        this.task = c.input().to_string();
+                        this.attachments = c.attachments().to_vec();
+                        this.sync_chat(cx);
+                        cx.notify();
+                    }
+                    ChatEvent::Send { .. } => this.start(cx),
+                    ChatEvent::PromptAction { slash, args, .. } => {
+                        this.invoke_prompt_action(slash.clone(), args.clone(), cx)
+                    }
+                    _ => {}
+                },
+            ),
+            cx.subscribe_in(
+                &repo_sel,
+                window,
+                |this, _, ev: &SelectEvent, window, cx| {
+                    if let SelectEvent::Change(v) = ev {
+                        this.repo_id = v.to_string();
+                        this.effects(window, cx);
+                    }
+                },
+            ),
+            cx.subscribe_in(
+                &branch_sel,
+                window,
+                |this, _, ev: &SelectEvent, window, cx| {
+                    if let SelectEvent::Change(v) = ev {
+                        this.base_branch = v.to_string();
+                        this.effects(window, cx);
+                    }
+                },
+            ),
+            cx.subscribe_in(
+                &mode_sel,
+                window,
+                |this, _, ev: &SelectEvent, window, cx| {
+                    if let SelectEvent::Change(v) = ev {
+                        this.pick_mode(ChatMode::from_key(v), cx);
+                        this.effects(window, cx);
+                    }
+                },
+            ),
             cx.subscribe(&loops, |this, _, ev: &LoopPolicyEvent, cx| {
                 match ev {
                     LoopPolicyEvent::Loop(id) => this.loop_id = id.clone(),
@@ -300,6 +321,7 @@ impl NewTaskModal {
             simplify_on: true,
             simplify_seeded: false,
             seen_settings: None,
+            catalog_gen: 0,
             seen_catalog_rev: None,
             prompt_busy: false,
             prompt_abort: None,
@@ -381,8 +403,14 @@ impl NewTaskModal {
             self.open = true;
             self.on_open(window, cx);
         } else if !open && self.open {
+            // Focus inside the closed dialog falls back to the document (`body`).
+            let inside = self.stops(cx).iter().any(|h| h.is_focused(window))
+                || self.chat.focus_handle(cx).contains_focused(window, cx);
             self.open = false;
             self.on_close(cx);
+            if inside {
+                window.blur(cx);
+            }
         }
         self.effects(window, cx);
     }
@@ -452,11 +480,7 @@ impl NewTaskModal {
 
     /// The draft effect: a prefill from the Issues list, Welcome or a palette.
     fn apply_draft(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(d) = self
-            .vcx
-            .state
-            .update(cx, |s, _| s.new_task_draft.take())
-        else {
+        let Some(d) = self.vcx.state.update(cx, |s, _| s.new_task_draft.take()) else {
             return;
         };
         if !d.mode.is_empty() {
@@ -489,7 +513,7 @@ impl NewTaskModal {
             self.repo_preference(cx);
             self.defaults_effect(window, cx);
             self.simplify_effect(cx);
-            self.catalog_effect(cx);
+            self.catalog_effect(window, cx);
         }
         self.branches_effect(cx);
         self.eager_effect(cx);
@@ -523,7 +547,7 @@ impl NewTaskModal {
     /// mode's model; the mode keeps the remembered choice.
     fn defaults_effect(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let settings = self.vcx.state.read(cx).settings.clone();
-        let key = Some(settings.clone());
+        let key = Some((settings.clone(), self.catalog_gen));
         if self.seen_settings == key {
             return;
         }
@@ -548,16 +572,16 @@ impl NewTaskModal {
     }
 
     /// Load the model catalog on open and whenever it is invalidated.
-    fn catalog_effect(&mut self, cx: &mut Context<Self>) {
+    fn catalog_effect(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let rev = self.vcx.state.read(cx).model_catalog_rev();
         if self.seen_catalog_rev == Some(rev) {
             return;
         }
         self.seen_catalog_rev = Some(rev);
         let load = self.vcx.state.update(cx, |s, cx| s.load_model_catalog(cx));
-        cx.spawn(async move |this, cx| {
+        cx.spawn_in(window, async move |this, cx| {
             let models = load.await;
-            let _ = this.update(cx, |m, cx| {
+            let _ = this.update_in(cx, |m, window, cx| {
                 if !m.open {
                     return;
                 }
@@ -571,7 +595,8 @@ impl NewTaskModal {
                     m.flags = normalize_flags(&flags_for_model(&models, &m.model), Some(&m.flags));
                 }
                 m.catalog_models = models;
-                cx.notify();
+                m.catalog_gen += 1;
+                m.effects(window, cx);
             });
         })
         .detach();
@@ -734,9 +759,9 @@ impl NewTaskModal {
             self.flags = d.flags;
         }
         self.mode = m;
-        self.vcx
-            .state
-            .update(cx, |s, _| s.storage_mut().set(MODE_KEY, m.key().to_string()));
+        self.vcx.state.update(cx, |s, _| {
+            s.storage_mut().set(MODE_KEY, m.key().to_string())
+        });
         cx.notify();
     }
 
@@ -778,7 +803,9 @@ impl NewTaskModal {
     }
 
     fn go_add_project(&mut self, cx: &mut Context<Self>) {
-        self.vcx.state.update(cx, |s, cx| s.open_new_project(true, cx));
+        self.vcx
+            .state
+            .update(cx, |s, cx| s.open_new_project(true, cx));
     }
 
     /// `submit`: a typed task goes through the composer (so a committed `/prompt` runs);
@@ -822,11 +849,8 @@ impl NewTaskModal {
             self.policy_id.clone(),
         );
         let (model, flags, simplify) = (self.model.clone(), self.flags.clone(), self.simplify_on);
-        let link = self
-            .offer_linear_link(cx)
-            .then(|| self.link_linear)
-            .filter(|on| *on)
-            .map(|_| self.linear_key.clone());
+        let link =
+            (self.offer_linear_link(cx) && self.link_linear).then(|| self.linear_key.clone());
         cx.spawn(async move |this, cx| {
             let Some(repo) = repo else { return };
             let mut display = String::new();
@@ -1011,12 +1035,7 @@ impl NewTaskModal {
     /// `invokePromptAction`: a committed `/prompt` in the composer runs before the workspace
     /// is created (in its pending worktree); a prompt that returns text starts the workspace
     /// with it.
-    fn invoke_prompt_action(
-        &mut self,
-        slash: String,
-        args: String,
-        cx: &mut Context<Self>,
-    ) {
+    fn invoke_prompt_action(&mut self, slash: String, args: String, cx: &mut Context<Self>) {
         if self.prompt_busy || self.starting {
             return;
         }
@@ -1046,7 +1065,11 @@ impl NewTaskModal {
                 let actions: Vec<PromptAction> = list.iter().map(prompt_action).collect();
                 let Some(found) = find_prompt_by_slash(&slash_name, &actions).cloned() else {
                     cx.update(|cx| {
-                        toast(ToastKind::Error, format!("Unknown prompt /{slash_name}"), cx)
+                        toast(
+                            ToastKind::Error,
+                            format!("Unknown prompt /{slash_name}"),
+                            cx,
+                        )
                     });
                     return Ok(());
                 };
@@ -1090,9 +1113,12 @@ impl NewTaskModal {
                     .read_with(cx, |m, _| (m.pending_id.clone(), m.pending.clone()))
                     .unwrap_or_default();
                 let rows = state.read_with(cx, |s, _| s.workspaces.clone());
-                let mut ws =
-                    recur_engine::view::new_workspace::take_eager_workspace(&pending_id, pending, &rows)
-                        .await;
+                let mut ws = recur_engine::view::new_workspace::take_eager_workspace(
+                    &pending_id,
+                    pending,
+                    &rows,
+                )
+                .await;
                 if !still(cx) {
                     return Ok(());
                 }
@@ -1101,7 +1127,9 @@ impl NewTaskModal {
                     && w.worktree_path.trim().is_empty()
                 {
                     if !w.last_error.is_empty() || w.phase == "failed" {
-                        cx.update(|cx| toast(ToastKind::Error, "Could not create the workspace", cx));
+                        cx.update(|cx| {
+                            toast(ToastKind::Error, "Could not create the workspace", cx)
+                        });
                         return Ok(());
                     }
                     let ready = wait_for_worktree(&state, &w.id, &abort, cx).await;
@@ -1112,7 +1140,9 @@ impl NewTaskModal {
                         return Ok(());
                     }
                     let Some(ready) = ready else {
-                        cx.update(|cx| toast(ToastKind::Error, "Could not create the workspace", cx));
+                        cx.update(|cx| {
+                            toast(ToastKind::Error, "Could not create the workspace", cx)
+                        });
                         return Ok(());
                     };
                     ws = Some(ready);
@@ -1184,11 +1214,7 @@ impl NewTaskModal {
                 cx.update(|cx| toast(ToastKind::Error, msg, cx));
             }
             let _ = this.update(cx, |m, cx| {
-                if m
-                    .prompt_abort
-                    .as_ref()
-                    .is_some_and(|a| a.same(&abort))
-                {
+                if m.prompt_abort.as_ref().is_some_and(|a| a.same(&abort)) {
                     m.prompt_abort = None;
                 }
                 m.prompt_busy = false;
@@ -1300,7 +1326,9 @@ impl NewTaskModal {
                 project_pic(r.pic.clone(), r.color.clone(), r.name.clone(), PicBox::NT)
                     .into_any_element()
             }),
-            None => std::rc::Rc::new(|_, _| icon(IconName::Folder).size(px(14.)).into_any_element()),
+            None => {
+                std::rc::Rc::new(|_, _| icon(IconName::Folder).size(px(14.)).into_any_element())
+            }
         };
         let trig = picker_trigger(&t, vw);
         self.repo_sel.update(cx, |s, cx| {
@@ -1351,11 +1379,15 @@ impl NewTaskModal {
             let loops = enabled_loops(&self.catalog_loops, settings.as_ref());
             let policies = enabled_policies(&self.catalog_policies, settings.as_ref());
             let (l, p) = (self.loop_id.clone(), self.policy_id.clone());
-            self.loops
-                .update(cx, |lp, cx| lp.set(&l, &p, &loops, &policies, false, t.pane, cx));
+            self.loops.update(cx, |lp, cx| {
+                lp.set(&l, &p, &loops, &policies, false, t.pane, cx)
+            });
         } else if self.pickers_ready() {
-            let (models, model, flags) =
-                (self.catalog_models.clone(), self.model.clone(), self.flags.clone());
+            let (models, model, flags) = (
+                self.catalog_models.clone(),
+                self.model.clone(),
+                self.flags.clone(),
+            );
             self.models
                 .update(cx, |mp, cx| mp.set(models, &model, &flags, None, cx));
         }
@@ -1446,14 +1478,15 @@ impl Render for NewTaskModal {
                             .relative()
                             .track_focus(&self.empty_focus)
                             .cursor_pointer()
-                            .on_hover(move |o, _, cx| hh.update(cx, |v, cx| {
-                                *v = *o;
-                                cx.notify();
-                            }))
+                            .on_hover(move |o, _, cx| {
+                                hh.update(cx, |v, cx| {
+                                    *v = *o;
+                                    cx.notify();
+                                })
+                            })
                             .on_click(cx.listener(|m, _, _, cx| m.go_add_project(cx)))
                             .child(
-                                recur_ui::style::lnk("add a repository first", cx)
-                                    .underline(over),
+                                recur_ui::style::lnk("add a repository first", cx).underline(over),
                             )
                             .when(ring, |d| d.child(recur_ui::style::focus_ring(4., 0., cx))),
                     ),
@@ -1476,14 +1509,20 @@ impl Render for NewTaskModal {
                     "{} Linear “{}” issues to {} from now on",
                     if on { "Will send" } else { "Send" },
                     key,
-                    if repo.name.is_empty() { &repo.id } else { &repo.name }
+                    if repo.name.is_empty() {
+                        &repo.id
+                    } else {
+                        &repo.name
+                    }
                 );
                 let ring = recur_ui::style::is_focus_visible(&self.link_focus, window);
                 pickers = pickers.child(titled(
                     "nt-link-t",
                     tip,
                     recur_ui::style::link_button("nt-link", on, cx)
-                        .debug_selector(move || format!("nt-link:{}", if on { "on" } else { "off" }))
+                        .debug_selector(move || {
+                            format!("nt-link:{}", if on { "on" } else { "off" })
+                        })
                         .relative()
                         .track_focus(&self.link_focus)
                         .on_click(cx.listener(|m, _, _, cx| {
@@ -1491,7 +1530,11 @@ impl Render for NewTaskModal {
                             cx.notify();
                         }))
                         .child(icon(IconName::Link).size(px(12.)))
-                        .child(button_label(format!("Remember for {key}"), 12., weight::REGULAR))
+                        .child(button_label(
+                            format!("Remember for {key}"),
+                            12.,
+                            weight::REGULAR,
+                        ))
                         .when(ring, |d| d.child(outline(2., 2., 6., 0., t.amber))),
                 ));
             }
@@ -1544,13 +1587,21 @@ impl Render for NewTaskModal {
             .track_focus(&self.go_focus);
         go = if self.starting {
             go.child(button_label(
-                if loop_mode { "Starting…" } else { "Creating…" },
+                if loop_mode {
+                    "Starting…"
+                } else {
+                    "Creating…"
+                },
                 13.,
                 weight::SEMIBOLD,
             ))
         } else {
             go.child(button_label(
-                if loop_mode { "Start" } else { "Create workspace" },
+                if loop_mode {
+                    "Start"
+                } else {
+                    "Create workspace"
+                },
                 13.,
                 weight::SEMIBOLD,
             ))
@@ -1598,7 +1649,8 @@ impl gpui_kit::Global for CurrentNewTask {}
 
 impl NewTaskModal {
     pub fn current(cx: &App) -> Option<Entity<NewTaskModal>> {
-        cx.try_global::<CurrentNewTask>().and_then(|c| c.0.upgrade())
+        cx.try_global::<CurrentNewTask>()
+            .and_then(|c| c.0.upgrade())
     }
 
     /// The composer's draft (`bind:input`).

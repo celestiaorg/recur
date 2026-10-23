@@ -8,9 +8,9 @@
 //! the New workspace and New project modals in their overlay slots; each shows itself from
 //! `AppState::overlays`.
 
+mod dialog;
 #[cfg(feature = "gallery")]
 pub mod gallery;
-mod dialog;
 pub mod new_project;
 pub mod new_task;
 pub mod new_workspace;

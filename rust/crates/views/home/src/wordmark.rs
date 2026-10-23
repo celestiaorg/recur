@@ -32,7 +32,14 @@ fn placement(sw: u32, sh: u32, scale: f32) -> (u32, u32, f32, f32, f32, f32) {
     let (bw, bh) = (BOX.0 * scale, BOX.1 * scale);
     let k = (bw / sw as f32).min(bh / sh as f32);
     let (iw, ih) = (sw as f32 * k, sh as f32 * k);
-    (bw.round() as u32, bh.round() as u32, (bw - iw) / 2., (bh - ih) / 2., iw, ih)
+    (
+        bw.round() as u32,
+        bh.round() as u32,
+        (bw - iw) / 2.,
+        (bh - ih) / 2.,
+        iw,
+        ih,
+    )
 }
 
 /// The mask's coverage of each device pixel of the box. WebKit draws the mask image through
@@ -135,14 +142,22 @@ pub fn coverage(scale: f32) -> Option<(u32, u32, Vec<f32>)> {
     Some((w, h, out))
 }
 
+/// The last raster, keyed by scale and color.
+type Cached = Option<((u32, [u8; 4]), Arc<RenderImage>)>;
+
 thread_local! {
-    static CACHE: RefCell<Option<((u32, [u8; 4]), Arc<RenderImage>)>> = const { RefCell::new(None) };
+    static CACHE: RefCell<Cached> = const { RefCell::new(None) };
 }
 
 fn raster(scale: f32, color: Color) -> Option<Arc<RenderImage>> {
     let rgba = color.to_rgba8();
     let key = (scale.to_bits(), rgba);
-    if let Some(hit) = CACHE.with(|c| c.borrow().as_ref().filter(|(k, _)| *k == key).map(|(_, i)| i.clone())) {
+    if let Some(hit) = CACHE.with(|c| {
+        c.borrow()
+            .as_ref()
+            .filter(|(k, _)| *k == key)
+            .map(|(_, i)| i.clone())
+    }) {
         return Some(hit);
     }
     let (w, h, cov) = coverage(scale)?;
@@ -184,7 +199,11 @@ mod tests {
         assert_eq!((w, h), (192, 48));
         // 720×172 scaled to 96px wide is 22.93px tall: the top and bottom device rows are
         // empty, the middle carries ink.
-        let row = |y: u32| cov[(y * w) as usize..((y + 1) * w) as usize].iter().sum::<f32>();
+        let row = |y: u32| {
+            cov[(y * w) as usize..((y + 1) * w) as usize]
+                .iter()
+                .sum::<f32>()
+        };
         assert_eq!(row(0), 0.);
         assert_eq!(row(47), 0.);
         assert!(row(24) > 0.);

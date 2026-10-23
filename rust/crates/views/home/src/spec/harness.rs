@@ -1,20 +1,16 @@
 //! The shell with every view registered, as the desktop mounts it, on the mock bridge over the
-//! e2e seed, with selector-driven input (`debug_selector` keys) for the Settings spec ports.
+//! e2e seed, with selector-driven input (`debug_selector` keys) for the home spec ports.
 
-use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, point, px};
 use gpui_kit::{Bounds, Focusable, Pixels};
 use recur_app::{Shell, ShellOptions};
 use recur_services::mock::{MockBridge, MockOptions, Seed};
-use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName};
-use serde_json::Value;
 
 pub struct S<'a> {
     pub state: Entity<AppState>,
-    pub bridge: Arc<MockBridge>,
     pub cx: &'a mut VisualTestContext,
 }
 
@@ -49,7 +45,8 @@ pub fn boot<'a>(
         let f = shell.focus_handle(cx);
         window.focus(&f, cx);
     });
-    let mut s = S { state, bridge, cx };
+    let _ = bridge;
+    let mut s = S { state, cx };
     s.settle();
     s
 }
@@ -167,43 +164,6 @@ impl S<'_> {
         self.state.read_with(self.cx, |s, _| s.view)
     }
 
-    pub fn toasted(&mut self, kind: ToastKind, text: &str) -> bool {
-        self.cx.update(|_, cx| {
-            ToastStore::global(cx)
-                .read(cx)
-                .toasts()
-                .iter()
-                .any(|t| t.kind == kind && t.text.contains(text))
-        })
-    }
-
-    pub fn wire(&mut self, name: &str, data: Value) {
-        self.bridge.dispatch_wire(name, data).unwrap();
-        self.settle();
-    }
-
-    /// The settings the bridge holds (what `SetSettings` saved).
-    pub fn saved(&mut self) -> Value {
-        self.bridge.with_seed(|s| s.settings.clone())
-    }
-
-    pub fn storage(&mut self, key: &str) -> Option<String> {
-        self.state
-            .read_with(self.cx, |s, _| s.storage().get(key).map(str::to_string))
-    }
-
-    /// The app chrome theme key painted now (`data-theme`, `charcoal` for none).
-    pub fn theme(&mut self) -> &'static str {
-        self.cx.update(|_, cx| recur_ui::Theme::of(cx).id.key())
-    }
-
-    /// `emulateMedia({ colorScheme })`.
-    pub fn system_dark(&mut self, dark: bool) {
-        self.state
-            .update(self.cx, |s, cx| s.set_native_dark(dark, cx));
-        self.settle();
-    }
-
     /// `openSettings`: the rail foot's Settings button.
     pub fn open_settings(&mut self) {
         self.click("foot-settings");
@@ -219,11 +179,5 @@ impl S<'_> {
         }
         assert!(self.has(&on), "{label} not selected");
         assert!(self.has(&format!("set-head={label}")), "{label} heading");
-    }
-
-    /// Opens the select labelled `label` showing `shown`, then picks `option`.
-    pub fn pick(&mut self, label: &str, shown: &str, option: &str) {
-        self.click(&format!("sel:{label}={shown}"));
-        self.click(&format!("sel-opt:{option}"));
     }
 }

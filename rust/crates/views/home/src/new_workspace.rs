@@ -148,7 +148,7 @@ pub async fn wait_for_worktree(
     loop {
         futures::select_biased! {
             _ = aborted => return None,
-            n = rx.next() => if n.is_none() { return None },
+            n = rx.next() => n?,
         }
         if let Some(v) = state.read_with(cx, |s, _| current(s)) {
             return v;
@@ -349,7 +349,8 @@ pub async fn link_linear_project(
     key: &str,
     cx: &mut AsyncApp,
 ) {
-    let (projects, services) = state.read_with(cx, |s, _| (s.projects.clone(), s.services().clone()));
+    let (projects, services) =
+        state.read_with(cx, |s, _| (s.projects.clone(), s.services().clone()));
     for (id, list) in linear_link_edits(&projects, project_id, key) {
         let Some(mut p) = projects.iter().find(|p| p.id == id).cloned() else {
             continue;

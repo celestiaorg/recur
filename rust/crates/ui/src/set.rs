@@ -1,15 +1,15 @@
 //! `_settings.scss` and the shared rules Settings and project settings use (`.seg`, `.tbtn`,
 //! `.inp`, the theme cards of `_overlays.scss`): rows, copy, controls, notes and fields.
 
+use crate::fonts::{Family, weight};
+use crate::style::{card, text_field};
+use crate::text::{InlineBox, LineHeight, Span, Text, TextStyled, span, text};
+use crate::{Color, IconName, Theme, Tokens, icon, rgba};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, Div, ElementId, Entity, Hsla, InteractiveElement, IntoElement, ParentElement,
     SharedString, Stateful, StatefulInteractiveElement, Styled, Window, div, px, relative,
 };
-use crate::fonts::{Family, weight};
-use crate::style::{card, text_field};
-use crate::text::{InlineBox, LineHeight, Span, Text, TextStyled, span, text};
-use crate::{Color, IconName, Theme, Tokens, icon, rgba};
 
 pub fn hsla(c: Color) -> Hsla {
     c.into()
@@ -840,7 +840,7 @@ pub struct NavEntry {
     pub label: SharedString,
     pub icon: IconName,
     pub on: bool,
-    pub on_click: std::rc::Rc<dyn Fn(&mut Window, &mut App)>,
+    pub on_click: crate::text::SpanClick,
 }
 
 /// `.set-nav`: the search box, then each group's `.set-group` label and its items (or
@@ -887,7 +887,9 @@ pub fn nav_panel(
             list = list.child(
                 div()
                     .id(SharedString::from(format!("set-nav-{}", item.key)))
-                    .debug_selector(move || format!("set-nav:{label}{}", if on { ":on" } else { "" }))
+                    .debug_selector(move || {
+                        format!("set-nav:{label}{}", if on { ":on" } else { "" })
+                    })
                     .flex()
                     .items_center()
                     .gap(px(9.))
@@ -912,7 +914,11 @@ pub fn nav_panel(
                             .opacity(0.85)
                             .child(icon(item.icon).size(px(15.))),
                     )
-                    .child(crate::style::button_label(item.label, 12.5, weight::REGULAR)),
+                    .child(crate::style::button_label(
+                        item.label,
+                        12.5,
+                        weight::REGULAR,
+                    )),
             );
         }
     }

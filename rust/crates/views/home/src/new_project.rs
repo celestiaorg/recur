@@ -5,8 +5,8 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, FocusHandle, Focusable, InteractiveElement,
-    IntoElement, KeyDownEvent, MouseButton, ParentElement, PathPromptOptions, Render,
+    App, AppContext as _, Context, Entity, FocusHandle, Focusable, InteractiveElement, IntoElement,
+    KeyDownEvent, MouseButton, ParentElement, PathPromptOptions, Render,
     StatefulInteractiveElement, Styled, Subscription, Task, Window, div, px,
 };
 use recur_domain::{BranchChoice, Project};
@@ -86,7 +86,9 @@ impl NewProjectModal {
         });
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| this.sync(window, cx)),
+            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+                this.sync(window, cx)
+            }),
             cx.subscribe(&branch, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.base_branch = v.to_string();
@@ -94,8 +96,20 @@ impl NewProjectModal {
                 }
             }),
         ];
-        let path = Field::new("path".into(), FieldOpts::default(), Self::field_event, window, cx);
-        let name = Field::new("name".into(), FieldOpts::default(), Self::field_event, window, cx);
+        let path = Field::new(
+            "path".into(),
+            FieldOpts::default(),
+            Self::field_event,
+            window,
+            cx,
+        );
+        let name = Field::new(
+            "name".into(),
+            FieldOpts::default(),
+            Self::field_event,
+            window,
+            cx,
+        );
         NewProjectModal {
             vcx: vcx.clone(),
             focus: cx.focus_handle(),
@@ -132,6 +146,14 @@ impl NewProjectModal {
         if !open && self.open {
             self.suggest = None;
             self.list = None;
+            // Focus inside the closed dialog falls back to the document (`body`).
+            if self
+                .stops(cx)
+                .iter()
+                .any(|s| self.handle(*s, cx).is_focused(window))
+            {
+                window.blur(cx);
+            }
         }
         self.open = open;
         cx.notify();
@@ -370,7 +392,9 @@ impl NewProjectModal {
         if key == "tab" && !m.platform && !m.control && !m.alt {
             cx.stop_propagation();
             let stops = self.stops(cx);
-            let at = stops.iter().position(|s| self.handle(*s, cx).is_focused(window));
+            let at = stops
+                .iter()
+                .position(|s| self.handle(*s, cx).is_focused(window));
             if let Some(i) = cycle(stops.len(), at, m.shift) {
                 let s = stops[i];
                 // `.kb-focus` rings only pickers and the submit button.
@@ -412,11 +436,15 @@ impl Render for NewProjectModal {
             .map(|b| SelectOption::new(b.name.clone(), b.name.clone()).group(b.group.clone()))
             .collect();
         let shown = if self.base_branch.is_empty() {
-            options.first().map(|o| o.value.to_string()).unwrap_or_default()
+            options
+                .first()
+                .map(|o| o.value.to_string())
+                .unwrap_or_default()
         } else {
             self.base_branch.clone()
         };
-        let branch_ring = self.kb == Some(Stop::Branch) && self.branch.focus_handle(cx).is_focused(window);
+        let branch_ring =
+            self.kb == Some(Stop::Branch) && self.branch.focus_handle(cx).is_focused(window);
         self.branch.update(cx, |s, cx| {
             if s.value() != &shown {
                 s.set_value(shown.clone(), cx);
@@ -429,7 +457,13 @@ impl Render for NewProjectModal {
             s.set_options(options.clone(), cx);
         });
 
-        let lbl = |s: &str| text(s.to_string()).size(13.).leading(1.45).color(t.text).nowrap();
+        let lbl = |s: &str| {
+            text(s.to_string())
+                .size(13.)
+                .leading(1.45)
+                .color(t.text)
+                .nowrap()
+        };
         let picking = self.picking;
         let browse = tbtn("np-browse", Tbtn::Default, TbtnSize::BASE, None, cx)
             .h_auto()
@@ -463,7 +497,13 @@ impl Render for NewProjectModal {
                             .flex_1()
                             .min_w_0()
                             .debug_selector(|| "inp:Repository path".into())
-                            .child(inp(&self.path.input, &"~/code/my-app".into(), InpStyle::BASE, window, cx)),
+                            .child(inp(
+                                &self.path.input,
+                                &"~/code/my-app".into(),
+                                InpStyle::BASE,
+                                window,
+                                cx,
+                            )),
                     )
                     .child(browse),
             );
@@ -477,7 +517,13 @@ impl Render for NewProjectModal {
                 div()
                     .flex()
                     .debug_selector(|| "inp:Project name".into())
-                    .child(inp(&self.name.input, &"my-app".into(), InpStyle::BASE, window, cx)),
+                    .child(inp(
+                        &self.name.input,
+                        &"my-app".into(),
+                        InpStyle::BASE,
+                        window,
+                        cx,
+                    )),
             );
         let mut body = div()
             .flex()
@@ -593,9 +639,28 @@ impl Render for NewProjectModal {
     }
 }
 
+/// The window's New project modal, for specs.
+pub struct CurrentNewProject(pub gpui_kit::WeakEntity<NewProjectModal>);
+
+impl gpui_kit::Global for CurrentNewProject {}
+
+impl NewProjectModal {
+    pub fn current(cx: &App) -> Option<Entity<NewProjectModal>> {
+        cx.try_global::<CurrentNewProject>()
+            .and_then(|c| c.0.upgrade())
+    }
+
+    /// The Name field.
+    pub fn name(&self, cx: &App) -> String {
+        self.name.value(cx)
+    }
+}
+
 /// The overlay (`OverlaySlot::NewProject`).
 pub fn build(vcx: &ViewContext, window: &mut Window, cx: &mut App) -> Entity<NewProjectModal> {
-    cx.new(|cx| NewProjectModal::new(vcx, window, cx))
+    let e = cx.new(|cx| NewProjectModal::new(vcx, window, cx));
+    cx.set_global(CurrentNewProject(e.downgrade()));
+    e
 }
 
 #[cfg(test)]

@@ -4,9 +4,9 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, EventEmitter, FocusHandle, Focusable, InteractiveElement,
-    IntoElement, ParentElement,
-    Render, SharedString, StatefulInteractiveElement, Styled, Subscription, Window, div, px,
+    App, AppContext as _, Context, Entity, EventEmitter, FocusHandle, Focusable,
+    InteractiveElement, IntoElement, ParentElement, Render, SharedString,
+    StatefulInteractiveElement, Styled, Subscription, Window, div, px,
 };
 use recur_engine::view::loops::{LoopInfo, PolicyInfo, loop_select_options, policy_select_options};
 use recur_services::api::FlagDimension;

@@ -862,7 +862,12 @@ impl Render for Select {
         }
         // Icon: custom, the selected option's app icon (tinted), or its provider mark.
         if let Some(slot) = self.icon_slot.clone() {
-            button = button.child(div().flex_none().text_color(ico_color).child(slot(window, cx)));
+            button = button.child(
+                div()
+                    .flex_none()
+                    .text_color(ico_color)
+                    .child(slot(window, cx)),
+            );
         } else if let Some(i) = self.custom_icon {
             button = button.child(
                 div()

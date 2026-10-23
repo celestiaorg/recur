@@ -138,9 +138,7 @@ fn a_cursor_key_counts_as_a_connected_agent_without_claude(cx: &mut TestAppConte
 }
 
 #[gpui::test]
-fn a_cursor_key_without_the_sdk_is_not_ready_until_install_sdk_completes(
-    cx: &mut TestAppContext,
-) {
+fn a_cursor_key_without_the_sdk_is_not_ready_until_install_sdk_completes(cx: &mut TestAppContext) {
     let installed = Arc::new(AtomicBool::new(false));
     let status = |on: bool| {
         json!({
@@ -158,7 +156,11 @@ fn a_cursor_key_without_the_sdk_is_not_ready_until_install_sdk_completes(
             b.store(true, Ordering::SeqCst);
             Reply::value(status(true))
         });
-    let mut s = with(cx, |s| s.settings["cursorApiKey"] = json!("crsr_test"), opts);
+    let mut s = with(
+        cx,
+        |s| s.settings["cursorApiKey"] = json!("crsr_test"),
+        opts,
+    );
     assert_eq!(s.current_step(), 1);
     assert!(s.has("wprov:cursor:warn"));
     assert!(s.has(
@@ -222,8 +224,7 @@ fn with_a_project_but_no_workspace_a_mode_row_opens_an_empty_new_workspace_dialo
 ) {
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.newWorkspaceMode", "loop".to_string());
-    let opts = MockOptions::default()
-        .resolver("ListWorkspaces", |_, _, _| Reply::value(json!([])));
+    let opts = MockOptions::default().resolver("ListWorkspaces", |_, _, _| Reply::value(json!([])));
     let mut s = boot(cx, |_| {}, opts, storage);
     s.get_started();
     assert_eq!(s.current_step(), 3);
@@ -367,8 +368,7 @@ fn a_set_up_user_does_not_see_the_setup_flow_while_agents_are_still_being_probed
 fn fits_a_narrow_pane_in_the_light_theme(cx: &mut TestAppContext) {
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.theme", "paper".to_string());
-    let opts = MockOptions::default()
-        .resolver("ListWorkspaces", |_, _, _| Reply::value(json!([])));
+    let opts = MockOptions::default().resolver("ListWorkspaces", |_, _, _| Reply::value(json!([])));
     let mut s = boot(cx, |_| {}, opts, storage);
     s.cx.simulate_resize(gpui::size(gpui::px(760.), gpui::px(900.)));
     s.settle();

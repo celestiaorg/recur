@@ -84,7 +84,9 @@ pub fn task_started(w: &Workspace) -> bool {
     !w.archived
         && !w.is_main
         && w.host_pr_id.trim().is_empty()
-        && (ws_has_run(w) || w.last_activity_at > 0 || (!goal.is_empty() && goal != "New Workspace"))
+        && (ws_has_run(w)
+            || w.last_activity_at > 0
+            || (!goal.is_empty() && goal != "New Workspace"))
 }
 
 /// The probe results and the checklist inputs `step` reads.
@@ -148,12 +150,15 @@ impl Probe {
     }
     pub fn codex_detail(&self) -> String {
         let c = self.codex.as_ref();
-        [c.map(|c| c.email.as_str()), c.map(|c| c.login_method.as_str())]
-            .into_iter()
-            .flatten()
-            .find(|s| !s.is_empty())
-            .unwrap_or("Signed in")
-            .to_string()
+        [
+            c.map(|c| c.email.as_str()),
+            c.map(|c| c.login_method.as_str()),
+        ]
+        .into_iter()
+        .flatten()
+        .find(|s| !s.is_empty())
+        .unwrap_or("Signed in")
+        .to_string()
     }
     pub fn cursor_detail(&self) -> String {
         let c = self.cursor.as_ref();
@@ -445,10 +450,12 @@ impl WelcomeView {
         let h = hovered.clone();
         self.button(key, window, cx)
             .flex_none()
-            .on_hover(move |over, _, cx| h.update(cx, |v, cx| {
-                *v = *over;
-                cx.notify();
-            }))
+            .on_hover(move |over, _, cx| {
+                h.update(cx, |v, cx| {
+                    *v = *over;
+                    cx.notify();
+                })
+            })
             .on_click(cx.listener(move |this, _, window, cx| run(this, window, cx)))
             .child(
                 text(label.to_string())
@@ -503,7 +510,10 @@ impl WelcomeView {
                 )
             })
             .child(if done {
-                icon(IconName::Check).size(px(13.)).color(fg).into_any_element()
+                icon(IconName::Check)
+                    .size(px(13.))
+                    .color(fg)
+                    .into_any_element()
             } else {
                 text(n.to_string())
                     .mono()
@@ -533,7 +543,11 @@ impl WelcomeView {
             .child(
                 text(title.to_string())
                     .size(15.)
-                    .weight(if current { weight::SEMIBOLD } else { weight::MEDIUM })
+                    .weight(if current {
+                        weight::SEMIBOLD
+                    } else {
+                        weight::MEDIUM
+                    })
                     .color(if current { t.text } else { t.muted })
                     .nowrap(),
             );
@@ -644,6 +658,7 @@ impl WelcomeView {
 
     /// One `.wprov li`: name, note and action in a `104px | 1fr | auto` grid (one column
     /// with the note below at 720px and narrower).
+    #[allow(clippy::too_many_arguments)]
     fn provider_row(
         &mut self,
         slug: &'static str,
@@ -671,12 +686,18 @@ impl WelcomeView {
             .debug_selector(move || sel.clone())
             .py(px(11.))
             .px(px(14.))
-            .bg(if warn { t.amber.mix(0.06, t.pane) } else { t.pane })
+            .bg(if warn {
+                t.amber.mix(0.06, t.pane)
+            } else {
+                t.pane
+            })
             .when(!first, |d| {
                 d.border_t(px(1.)).border_color(Hsla::from(t.line_soft))
             });
         if narrow {
-            row.flex().flex_col().gap(px(14.))
+            row.flex()
+                .flex_col()
+                .gap(px(14.))
                 .child(
                     div()
                         .flex()
@@ -704,11 +725,13 @@ impl WelcomeView {
         );
         div()
             .debug_selector(move || sel.clone())
-            .child(Text::from_spans(spans)
-            .id(SharedString::from(format!("wprov-note-{id}")))
-            .size(12.5)
-            .leading(1.5)
-            .color(t.muted))
+            .child(
+                Text::from_spans(spans)
+                    .id(SharedString::from(format!("wprov-note-{id}")))
+                    .size(12.5)
+                    .leading(1.5)
+                    .color(t.muted),
+            )
             .into_any_element()
     }
 
@@ -739,12 +762,7 @@ impl WelcomeView {
             .gap(px(6.))
             .min_w_0()
             .child(icon(IconName::Check).size(px(13.)).color(t.emerald))
-            .child(
-                text(detail)
-                    .size(12.5)
-                    .leading(1.5)
-                    .color(t.text),
-            )
+            .child(text(detail).size(12.5).leading(1.5).color(t.text))
             .into_any_element()
     }
 
@@ -767,12 +785,17 @@ impl WelcomeView {
         } else if !p.claude_on {
             (
                 Self::plain_note("claude", vec![span("Turned off.")], cx),
-                Some(self.lnk("wprov:claude:Turn on", "Turn on", window, cx, |v, _, cx| {
-                    v.go_settings("agent", cx)
-                })),
+                Some(
+                    self.lnk("wprov:claude:Turn on", "Turn on", window, cx, |v, _, cx| {
+                        v.go_settings("agent", cx)
+                    }),
+                ),
             )
         } else if !p.claude_checked {
-            (Self::plain_note("claude", vec![span("Checking…")], cx), None)
+            (
+                Self::plain_note("claude", vec![span("Checking…")], cx),
+                None,
+            )
         } else {
             (
                 Self::plain_note(
@@ -784,9 +807,13 @@ impl WelcomeView {
                     ],
                     cx,
                 ),
-                Some(self.lnk("wprov:claude:Check again", "Check again", window, cx, |v, _, cx| {
-                    v.check_agents(cx)
-                })),
+                Some(self.lnk(
+                    "wprov:claude:Check again",
+                    "Check again",
+                    window,
+                    cx,
+                    |v, _, cx| v.check_agents(cx),
+                )),
             )
         };
         rows.push(self.provider_row(
@@ -806,9 +833,11 @@ impl WelcomeView {
         } else if !p.codex_on {
             (
                 Self::plain_note("codex", vec![span("Turned off.")], cx),
-                Some(self.lnk("wprov:codex:Turn on", "Turn on", window, cx, |v, _, cx| {
-                    v.go_settings("agent", cx)
-                })),
+                Some(
+                    self.lnk("wprov:codex:Turn on", "Turn on", window, cx, |v, _, cx| {
+                        v.go_settings("agent", cx)
+                    }),
+                ),
             )
         } else if !p.codex_checked {
             (Self::plain_note("codex", vec![span("Checking…")], cx), None)
@@ -823,16 +852,26 @@ impl WelcomeView {
                     ],
                     cx,
                 ),
-                Some(self.lnk("wprov:codex:Check again", "Check again", window, cx, |v, _, cx| {
-                    v.check_agents(cx)
-                })),
+                Some(self.lnk(
+                    "wprov:codex:Check again",
+                    "Check again",
+                    window,
+                    cx,
+                    |v, _, cx| v.check_agents(cx),
+                )),
             )
         } else {
             (
-                Self::plain_note("codex", vec![span("Sign in with ChatGPT or an API key.")], cx),
-                Some(self.lnk("wprov:codex:Connect", "Connect", window, cx, |v, _, cx| {
-                    v.go_settings("agent", cx)
-                })),
+                Self::plain_note(
+                    "codex",
+                    vec![span("Sign in with ChatGPT or an API key.")],
+                    cx,
+                ),
+                Some(
+                    self.lnk("wprov:codex:Connect", "Connect", window, cx, |v, _, cx| {
+                        v.go_settings("agent", cx)
+                    }),
+                ),
             )
         };
         rows.push(self.provider_row(
@@ -882,7 +921,11 @@ impl WelcomeView {
                     )
                     .when(installing, |d| d.cursor_default())
                     .child(button_label(
-                        if installing { "Installing…" } else { "Install SDK" },
+                        if installing {
+                            "Installing…"
+                        } else {
+                            "Install SDK"
+                        },
                         12.5,
                         weight::MEDIUM,
                     )),
@@ -903,16 +946,20 @@ impl WelcomeView {
                             .child(icon(IconName::TriangleAlert).size(px(13.)).color(t.amber)),
                     )
                     .child(
-                        div().flex_1().min_w_0().debug_selector({
-                            let sel = format!("wprov-note:cursor={msg}");
-                            move || sel.clone()
-                        }).child(
-                            text(msg.clone())
-                                .id("wprov-cursor-warn")
-                                .size(12.5)
-                                .leading(1.5)
-                                .color(t.text),
-                        ),
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .debug_selector({
+                                let sel = format!("wprov-note:cursor={msg}");
+                                move || sel.clone()
+                            })
+                            .child(
+                                text(msg.clone())
+                                    .id("wprov-cursor-warn")
+                                    .size(12.5)
+                                    .leading(1.5)
+                                    .color(t.text),
+                            ),
                     )
                     .into_any_element(),
                 Some(btn.into_any_element()),
@@ -928,10 +975,17 @@ impl WelcomeView {
                 ),
             )
         } else if p.cursor_signed_in() && !p.cursor_checked {
-            (Self::plain_note("cursor", vec![span("Checking…")], cx), None)
+            (
+                Self::plain_note("cursor", vec![span("Checking…")], cx),
+                None,
+            )
         } else {
             (
-                Self::plain_note("cursor", vec![span("Sign in with your Cursor account.")], cx),
+                Self::plain_note(
+                    "cursor",
+                    vec![span("Sign in with your Cursor account.")],
+                    cx,
+                ),
                 Some(
                     self.lnk("wprov:cursor:Connect", "Connect", window, cx, |v, _, cx| {
                         v.go_settings("agent", cx)
@@ -956,17 +1010,13 @@ impl WelcomeView {
             .flex()
             .flex_col()
             .children(round_ends(rows));
-        let mut links = div()
-            .flex()
-            .gap(px(18.))
-            .mt(px(12.))
-            .child(self.lnk(
-                "ws-links:Provider settings",
-                "Provider settings",
-                window,
-                cx,
-                |v, _, cx| v.go_settings("agent", cx),
-            ));
+        let mut links = div().flex().gap(px(18.)).mt(px(12.)).child(self.lnk(
+            "ws-links:Provider settings",
+            "Provider settings",
+            window,
+            cx,
+            |v, _, cx| v.go_settings("agent", cx),
+        ));
         if step == 1 {
             links = links.child(self.lnk(
                 "ws-links:Continue without an agent",
@@ -983,7 +1033,13 @@ impl WelcomeView {
     }
 
     /// `.wmode`: one mode row of step 3.
-    fn mode_row(&mut self, m: ChatMode, first: bool, window: &mut Window, cx: &mut Context<Self>) -> Div {
+    fn mode_row(
+        &mut self,
+        m: ChatMode,
+        first: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Div {
         let t = Theme::of(cx).tokens;
         let accent = m.tint(&t);
         let (line, prompt) = example(m);
@@ -1023,10 +1079,12 @@ impl WelcomeView {
             .w_full()
             .py(px(13.))
             .px(px(14.))
-            .on_hover(move |over, _, cx| h.update(cx, |v, cx| {
-                *v = *over;
-                cx.notify();
-            }))
+            .on_hover(move |over, _, cx| {
+                h.update(cx, |v, cx| {
+                    *v = *over;
+                    cx.notify();
+                })
+            })
             .on_click(cx.listener(move |v, _, _, cx| v.start_with(m, cx)))
             .child(
                 div()
@@ -1049,11 +1107,11 @@ impl WelcomeView {
                     .child(name)
                     .child(prompt),
             )
-            .child(
-                icon(IconName::ChevronRight)
-                    .size(px(14.))
-                    .color(if on { t.text } else { t.faint }),
-            );
+            .child(icon(IconName::ChevronRight).size(px(14.)).color(if on {
+                t.text
+            } else {
+                t.faint
+            }));
         div()
             .bg(if on { t.pane_2 } else { t.pane })
             .when(!first, |d| {
@@ -1108,10 +1166,12 @@ impl WelcomeView {
             .w_full()
             .py(px(13.))
             .px(px(14.))
-            .on_hover(move |over, _, cx| h.update(cx, |v, cx| {
-                *v = *over;
-                cx.notify();
-            }))
+            .on_hover(move |over, _, cx| {
+                h.update(cx, |v, cx| {
+                    *v = *over;
+                    cx.notify();
+                })
+            })
             .on_click(cx.listener(move |v, _, _, cx| {
                 v.vcx.state.update(cx, |s, cx| match name {
                     "Inbox" => s.go(ViewName::Briefing, None, cx),
@@ -1143,11 +1203,11 @@ impl WelcomeView {
                             .color(t.muted),
                     ),
             )
-            .child(
-                icon(IconName::ChevronRight)
-                    .size(px(14.))
-                    .color(if on { t.text } else { t.faint }),
-            );
+            .child(icon(IconName::ChevronRight).size(px(14.)).color(if on {
+                t.text
+            } else {
+                t.faint
+            }));
         div()
             .bg(if on { t.pane_2 } else { t.pane })
             .when(!first, |d| {
@@ -1180,7 +1240,11 @@ impl WelcomeView {
         .when(kbd, |d| d.gap(px(10.)))
         .child(button_label(label.to_string(), 13., weight::MEDIUM));
         if kbd {
-            b = b.child(recur_ui::kbd::kbd("⌘N").size(13.).color(Theme::of(cx).tokens.on_amber));
+            b = b.child(
+                recur_ui::kbd::kbd("⌘N")
+                    .size(13.)
+                    .color(Theme::of(cx).tokens.on_amber),
+            );
         }
         self.button(key, window, cx)
             .flex_none()
@@ -1232,7 +1296,14 @@ impl Render for WelcomeView {
         let h1 = div()
             .mb(px(28.))
             .debug_selector(move || {
-                format!("welcome-h1={}", if step == 4 { "You’re set up." } else { "Set up Recur" })
+                format!(
+                    "welcome-h1={}",
+                    if step == 4 {
+                        "You’re set up."
+                    } else {
+                        "Set up Recur"
+                    }
+                )
             })
             .child(h1);
 
@@ -1245,15 +1316,13 @@ impl Render for WelcomeView {
             cx,
         ));
         if step == 4 {
-            s1 = s1.child(
-                div()
-                    .absolute()
-                    .right_0()
-                    .top(px(3.))
-                    .child(self.lnk("ws-head-link:Providers", "Providers", window, cx, |v, _, cx| {
-                        v.go_settings("agent", cx)
-                    })),
-            );
+            s1 = s1.child(div().absolute().right_0().top(px(3.)).child(self.lnk(
+                "ws-head-link:Providers",
+                "Providers",
+                window,
+                cx,
+                |v, _, cx| v.go_settings("agent", cx),
+            )));
         }
         if step < 4 {
             let body = if !loaded {
@@ -1358,11 +1427,24 @@ impl Render for WelcomeView {
                 .flex()
                 .flex_col()
                 .children(round_ends(rows));
-            let foot = div().flex().items_center().flex_wrap().gap(px(10.)).mt(px(24.)).child(
-                self.amber_button("wexplore-foot:New workspace", "New workspace", true, window, cx, |v, cx| {
-                    v.vcx.state.update(cx, |s, cx| s.open_new_task("", None, cx))
-                }),
-            );
+            let foot = div()
+                .flex()
+                .items_center()
+                .flex_wrap()
+                .gap(px(10.))
+                .mt(px(24.))
+                .child(self.amber_button(
+                    "wexplore-foot:New workspace",
+                    "New workspace",
+                    true,
+                    window,
+                    cx,
+                    |v, cx| {
+                        v.vcx
+                            .state
+                            .update(cx, |s, cx| s.open_new_task("", None, cx))
+                    },
+                ));
             let section = div()
                 .child(
                     div().mb(px(12.)).child(
@@ -1437,10 +1519,12 @@ impl WelcomeView {
             .items_center()
             .gap(px(8.))
             .mt(px(16.))
-            .on_hover(move |over, _, cx| h.update(cx, |v, cx| {
-                *v = *over;
-                cx.notify();
-            }))
+            .on_hover(move |over, _, cx| {
+                h.update(cx, |v, cx| {
+                    *v = *over;
+                    cx.notify();
+                })
+            })
             .on_click(cx.listener(|v, _, _, cx| {
                 let first = v
                     .vcx
@@ -1465,7 +1549,13 @@ impl WelcomeView {
                     .underline_offset(3.)
                     .nowrap(),
             )
-            .child(recur_ui::kbd::kbd("⌘N").size(10.).color(color).underline(true).underline_offset(3.))
+            .child(
+                recur_ui::kbd::kbd("⌘N")
+                    .size(10.)
+                    .color(color)
+                    .underline(true)
+                    .underline_offset(3.),
+            )
     }
 }
 

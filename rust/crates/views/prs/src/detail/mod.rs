@@ -2053,6 +2053,20 @@ pub(crate) mod spec_handle {
     pub struct Live(pub gpui_kit::WeakEntity<super::PrDetail>);
     impl gpui_kit::Global for Live {}
 
+    pub fn composer_focused(window: &gpui_kit::Window, cx: &gpui_kit::App) -> bool {
+        cx.global::<Live>().0.upgrade().is_some_and(|d| {
+            gpui_kit::Focusable::focus_handle(d.read(cx).composer.area.read(cx), cx).is_focused(window)
+        })
+    }
+
+    /// The dock's Hide toggle when `open`, else PR detail's Show toggle.
+    pub fn toggle_focused(open: bool, window: &gpui_kit::Window, cx: &gpui_kit::App) -> bool {
+        if open {
+            return super::render::dock_toggle_focus(cx).is_some_and(|f| f.is_focused(window));
+        }
+        cx.global::<Live>().0.upgrade().is_some_and(|d| d.read(cx).toggle_focus.is_focused(window))
+    }
+
     pub fn reply_text(cx: &gpui_kit::App) -> String {
         cx.global::<Live>().0.upgrade().map(|d| d.read(cx).reply.value(cx)).unwrap_or_default()
     }

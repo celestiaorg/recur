@@ -188,24 +188,37 @@ impl S<'_> {
         }
     }
 
-    /// Scrolls `sel` fully inside the `pane` that clips it.
+    /// Scrolls `sel` fully inside the `pane` that clips it, vertically and then sideways
+    /// (a tab strip scrolls under the wheel at the tab's row).
     pub fn reveal_within(&mut self, sel: &str, pane: &str) {
         for _ in 0..12 {
             let (Some(b), Some(p)) = (self.bounds(sel), self.bounds(pane)) else { return };
-            if b.origin.y >= p.origin.y && b.bottom() <= p.bottom() {
+            let (dx, dy, at) = if b.origin.y < p.origin.y || b.bottom() > p.bottom() {
+                (0., f32::from(p.center().y) - f32::from(b.center().y), p.center())
+            } else if b.origin.x < p.origin.x || b.right() > p.right() {
+                let dx = f32::from(p.center().x) - f32::from(b.center().x);
+                (dx, 0., point(p.center().x, b.center().y))
+            } else {
                 return;
-            }
-            let dy = f32::from(p.center().y) - f32::from(b.center().y);
+            };
             self.cx.simulate_event(gpui::ScrollWheelEvent {
-                position: p.center(),
-                delta: gpui::ScrollDelta::Pixels(point(px(0.), px(dy))),
+                position: at,
+                delta: gpui::ScrollDelta::Pixels(point(px(dx), px(dy))),
                 ..Default::default()
             });
             self.settle();
-            if self.bounds(sel).is_some_and(|n| n.origin.y == b.origin.y) {
+            if self.bounds(sel).is_some_and(|n| n.origin == b.origin) {
                 return;
             }
         }
+    }
+
+    /// Clicks a dock chat tab, scrolling the strip to it first.
+    pub fn click_chip(&mut self, code: &str) {
+        let chip = self.chip(code).unwrap_or_else(|| panic!("no chat tab {code}"));
+        self.reveal_within(&chip, "prd-agent");
+        let chip = self.chip(code).expect(code);
+        self.click(&chip);
     }
 
     pub fn click(&mut self, sel: &str) {
@@ -438,4 +451,75 @@ pub fn comments_with_race_note(id: &str) -> Value {
         "path": "src/hooks/useOAuthSession.ts", "line": 2, "side": "RIGHT",
     }));
     c
+}
+
+impl S<'_> {
+    /// The workspace view PR detail's agent dock shows (the shell's bound workspace).
+    pub fn dock(&mut self) -> Option<Entity<recur_view_workspace::view::WorkspaceView>> {
+        self.cx.update(|_, cx| {
+            recur_view_workspace::detail::WorkspaceDetail::current(cx).and_then(|d| d.read(cx).bound_view(cx))
+        })
+    }
+
+    pub fn dock_ws(&mut self) -> String {
+        let v = self.dock().expect("dock");
+        self.cx.update(|_, cx| v.read(cx).workspace_id().to_string())
+    }
+
+    pub fn dock_codes(&mut self) -> Vec<String> {
+        let v = self.dock().expect("dock");
+        self.cx.update(|_, cx| v.read(cx).tab_codes())
+    }
+
+    pub fn dock_active(&mut self) -> String {
+        let v = self.dock().expect("dock");
+        self.cx.update(|_, cx| v.read(cx).active_code())
+    }
+
+    /// `fill` the dock's composer and press Send.
+    pub fn dock_send(&mut self, text: &str) {
+        let v = self.dock().expect("dock");
+        let t = text.to_string();
+        self.cx.update(|window, cx| {
+            let chat = v.read(cx).chat().clone();
+            chat.update(cx, |c, cx| {
+                c.set_draft(t, Vec::new(), cx);
+                c.focus_composer(window, cx);
+            });
+        });
+        self.settle();
+        self.click("chat-send");
+    }
+
+    /// A user row in the shown transcript.
+    pub fn me(&mut self, body: &str) -> bool {
+        self.has(&format!("me:{}", recur_view_chat::chat::debug_key(body)))
+    }
+
+    /// The chat tab chip for `code`, as shown (`:on` while active).
+    pub fn chip(&mut self, code: &str) -> Option<String> {
+        let base = format!("tab-chip:chat-tab-{code}");
+        let on = format!("{base}:on");
+        if self.has(&on) {
+            Some(on)
+        } else if self.has(&base) {
+            Some(base)
+        } else {
+            None
+        }
+    }
+
+    pub fn attention(&mut self) -> recur_services::mock::ChatAttention {
+        self.bridge.attention()
+    }
+
+    /// The PR nav's running and unseen counts, as the sidebar computes them.
+    pub fn pr_nav(&mut self) -> (usize, i64) {
+        self.state.read_with(self.cx, |s, _| {
+            (
+                recur_view_core::pr::pr_chat_host_running_count(&s.workspaces, &s.workspaces_running),
+                recur_view_core::pr::pr_chat_host_unseen_count(&s.workspaces, &s.attention.by_workspace),
+            )
+        })
+    }
 }

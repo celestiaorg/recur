@@ -30,14 +30,14 @@ pub fn format_elapsed(sec: i64) -> String {
 }
 
 /// `new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone })`
-/// in en-US ("Oct 21, 2026, 3:04 PM"), or "" when `zone` is not an IANA zone (Intl throws).
+/// in en-US ("Oct 21, 2026 at 3:04 PM"), or "" when `zone` is not an IANA zone (Intl throws).
 pub fn format_medium_short_in(ms: i64, zone: &str) -> String {
     use chrono::TimeZone as _;
     let Ok(tz) = zone.parse::<chrono_tz::Tz>() else {
         return String::new();
     };
     match tz.timestamp_millis_opt(ms).single() {
-        Some(d) => d.format("%b %-d, %Y, %-I:%M %p").to_string(),
+        Some(d) => d.format("%b %-d, %Y at %-I:%M %p").to_string(),
         None => String::new(),
     }
 }
@@ -51,10 +51,10 @@ mod tests {
     fn medium_short_in_a_zone() {
         // 2026-10-21T15:04:00Z
         let ms = 1_792_595_040_000;
-        assert_eq!(format_medium_short_in(ms, "UTC"), "Oct 21, 2026, 3:04 PM");
+        assert_eq!(format_medium_short_in(ms, "UTC"), "Oct 21, 2026 at 3:04 PM");
         assert_eq!(
             format_medium_short_in(ms, "America/New_York"),
-            "Oct 21, 2026, 11:04 AM"
+            "Oct 21, 2026 at 11:04 AM"
         );
         assert_eq!(format_medium_short_in(ms, "Local"), "");
         assert_eq!(format_medium_short_in(ms, ""), "");

@@ -2012,7 +2012,7 @@ mod tests {
         assert_eq!(status_of(&p), ("Running", Tone::Amber, true));
         let mut q = sp("cron", "0 9 * * *");
         q.next_run_at = 1_792_595_040_000;
-        assert_eq!(next_of(&q), "Oct 21, 2026, 3:04 PM");
+        assert_eq!(next_of(&q), "Oct 21, 2026 at 3:04 PM");
     }
 
     #[test]

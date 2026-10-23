@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use gpui_kit::base::input::{InputEditorStyle, InputEvent, InputState, Textarea, TextareaState};
+use gpui_kit::base::input::{InputEvent, InputState, Textarea, TextareaState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, FocusHandle, Focusable, Hsla,
@@ -220,6 +220,7 @@ pub struct ScheduleEditor {
     simplify_focus: FocusHandle,
     go_focus: FocusHandle,
     hover_x: bool,
+    hover_field: Option<&'static str>,
     prompt_ph: &'static str,
     _subs: Vec<Subscription>,
 }
@@ -236,29 +237,20 @@ fn sc_in(
     placeholder: &str,
     mono: bool,
     width: Option<f32>,
+    hovered: bool,
     window: &Window,
     cx: &App,
 ) -> gpui_kit::Stateful<gpui_kit::Div> {
     let t = Theme::of(cx).tokens;
     let focused = input.read(cx).focus_handle(cx).is_focused(window);
+    let lit = focused || hovered;
     let family = if mono {
         recur_ui::fonts::Family::Mono
     } else {
         recur_ui::fonts::Family::Ui
     };
-    div()
-        .id(SharedString::from(format!("sc-in-{placeholder}")))
-        .flex()
-        .flex_none()
-        .items_center()
-        .h(px(24.))
-        .px(px(6.))
-        .rounded(px(6.))
-        .when_some(width, |d, w| d.w(px(w)))
-        .text_color(Hsla::from(if focused { t.text } else { t.muted }))
-        .when(focused, |d| d.bg(Hsla::from(t.pane_2)))
-        .hover(move |s| s.bg(Hsla::from(t.pane_2)).text_color(Hsla::from(t.text)))
-        .child(recur_ui::style::text_field(
+    let field = div().flex().items_center().h(px(24.)).px(px(6.)).child(
+        recur_ui::style::text_field(
             input,
             &SharedString::from(placeholder.to_string()),
             t.faint,
@@ -266,7 +258,24 @@ fn sc_in(
             12.,
             window,
             cx,
-        ))
+        )
+        .text_color(Hsla::from(if lit { t.text } else { t.muted })),
+    );
+    let el = div()
+        .id(SharedString::from(format!("sc-in-{placeholder}")))
+        .relative()
+        .flex()
+        .flex_none()
+        .h(px(24.))
+        .rounded(px(6.))
+        .when(lit, |d| d.bg(Hsla::from(t.pane_2)));
+    match width {
+        // A fractional width (`24ch`) stays exact: a leaf that long, the field over it.
+        Some(w) => el
+            .child(recur_ui::exact::hgap(w, window))
+            .child(div().absolute().inset_0().child(field)),
+        None => el.child(field),
+    }
 }
 
 impl ScheduleEditor {
@@ -460,11 +469,21 @@ impl ScheduleEditor {
             simplify_focus: cx.focus_handle().tab_stop(true),
             go_focus: cx.focus_handle().tab_stop(true),
             hover_x: false,
+            hover_field: None,
             prompt_ph: "",
             _subs: subs,
         };
         me.sync(window, cx);
         me
+    }
+
+    fn hover(&mut self, on: bool, name: &'static str, cx: &mut Context<Self>) {
+        if on {
+            self.hover_field = Some(name);
+        } else if self.hover_field == Some(name) {
+            self.hover_field = None;
+        }
+        cx.notify();
     }
 
     pub fn draft(&self) -> Option<&ScheduledPrompt> {
@@ -970,18 +989,18 @@ impl ScheduleEditor {
             if prompt_ph != ph {
                 s.set_placeholder(ph, window, cx);
             }
-            s.set_editor_style(InputEditorStyle {
-                foreground: t.text.into(),
-                muted_foreground: t.faint.into(),
-                background: Hsla::transparent_black(),
-                border: Hsla::transparent_black(),
-                selection: t.amber.fade(0.3).into(),
-                caret: t.text.into(),
-                ..Default::default()
-            });
         });
-        for f in [&self.cron, &self.date, &self.time] {
-            recur_ui::style::style_text_input(f, cx);
+        recur_ui::style::style_textarea(&self.prompt, t.faint, cx);
+        // `.sc-in` is `--muted` until hovered or focused.
+        for (name, f) in [
+            ("cron", &self.cron),
+            ("date", &self.date),
+            ("time", &self.time),
+        ] {
+            let lit =
+                self.hover_field == Some(name) || f.read(cx).focus_handle(cx).is_focused(window);
+            let fg = if lit { t.text } else { t.muted };
+            recur_ui::style::style_text_input_fg(f, fg, cx);
         }
     }
 
@@ -1135,26 +1154,46 @@ impl Render for ScheduleEditor {
         if d.cadence == "once" {
             when = when
                 .child(
-                    sc_in(&self.date, "YYYY-MM-DD", false, None, window, cx)
-                        .debug_selector(|| "inp:Date".into()),
+                    sc_in(
+                        &self.date,
+                        "YYYY-MM-DD",
+                        false,
+                        None,
+                        self.hover_field == Some("date"),
+                        window,
+                        cx,
+                    )
+                    .debug_selector(|| "inp:Date".into())
+                    .on_hover(cx.listener(|m, h: &bool, _, cx| m.hover(*h, "date", cx))),
                 )
                 .child(
-                    sc_in(&self.time, "HH:MM", false, None, window, cx)
-                        .debug_selector(|| "inp:Time".into()),
+                    sc_in(
+                        &self.time,
+                        "HH:MM",
+                        false,
+                        None,
+                        self.hover_field == Some("time"),
+                        window,
+                        cx,
+                    )
+                    .debug_selector(|| "inp:Time".into())
+                    .on_hover(cx.listener(|m, h: &bool, _, cx| m.hover(*h, "time", cx))),
                 );
         } else {
-            // `.sc-cron { width: 24ch }` in the mono face.
+            // `.sc-cron { width: 24ch }` in the mono face, padding included (`border-box`).
             let ch = recur_ui::font_metrics::zero_advance(&recur_ui::fonts::Family::Mono, 12.);
             when = when.child(
                 sc_in(
                     &self.cron,
                     "0 9 * * MON-FRI",
                     true,
-                    Some(24. * ch + 12.),
+                    Some(24. * ch),
+                    self.hover_field == Some("cron"),
                     window,
                     cx,
                 )
-                .debug_selector(|| "inp:Cron expression".into()),
+                .debug_selector(|| "inp:Cron expression".into())
+                .on_hover(cx.listener(|m, h: &bool, _, cx| m.hover(*h, "cron", cx))),
             );
             let on = self.cron_help;
             let ring = recur_ui::style::is_focus_visible(&self.help_focus, window);
@@ -1390,7 +1429,7 @@ mod tests {
         d.cron = "0 9 * * *".into();
         assert_eq!(
             next_label(&d, &[1_792_595_040_000], false, ""),
-            "Next Oct 21, 2026, 3:04 PM"
+            "Next Oct 21, 2026 at 3:04 PM"
         );
     }
 

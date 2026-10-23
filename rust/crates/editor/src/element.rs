@@ -1341,10 +1341,19 @@ impl EditorView {
         if gutter_width > 0.0 {
             let gb = rect(bx, by, gutter_width, bh);
             plan.gutter_bounds = Some(gb);
-            plan.gutter
-                .push(Op::Quad(fill(gb, h(theme.gutter_background))));
+            // The mini editor's `.cm-gutters` is as tall as its content (lines and padding),
+            // not the box its `min-height` grows.
+            let gh = if self.mini.is_some() {
+                self.content_height().min(bh)
+            } else {
+                bh
+            };
             plan.gutter.push(Op::Quad(fill(
-                rect(bx + gutters_w, by, 1.0, bh),
+                rect(bx, by, gutter_width, gh),
+                h(theme.gutter_background),
+            )));
+            plan.gutter.push(Op::Quad(fill(
+                rect(bx + gutters_w, by, 1.0, gh),
                 h(theme.gutter_border),
             )));
             self.plan_gutters(

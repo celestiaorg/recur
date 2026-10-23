@@ -632,8 +632,7 @@ impl ProjectView {
                                     v.copy_tick += 1;
                                     v.changed(window, cx);
                                 }))
-                            })
-                            .child(icon(IconName::Refresh).size(px(14.))),
+                            }),
                     ),
             );
         if !self.copy_preview.files.is_empty() {
@@ -738,8 +737,7 @@ impl ProjectView {
                         .aria_label("Remove command")
                         .on_click(
                             cx.listener(move |v, _, window, cx| v.remove_run_row(id, window, cx)),
-                        )
-                        .child(icon(IconName::Trash).size(px(14.))),
+                        ),
                     ),
             );
         }
@@ -845,7 +843,7 @@ impl ProjectView {
                     .blurb("Dotenv script (KEY=value, # comments) injected into setup, teardown, runs, and terminals. Do not put secrets here. They are written into .recur/project.toml, which is meant to be committed. Keep API keys in gitignored .env files; copy them into worktrees and let the process load them. Recur does not auto-export those keys.")
                     .child(rows(
                         IN_GROUP,
-                        vec![Row::stack().child(env).child(env_desc)],
+                        vec![Row::stack().child(env).child(div().mt(px(3.)).mb(px(12.)).child(env_desc))],
                         window,
                         cx,
                     )),

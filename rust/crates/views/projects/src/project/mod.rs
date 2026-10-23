@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
-use gpui_kit::base::input::{InputEditorStyle, TextareaState};
+use gpui_kit::base::input::TextareaState;
 use gpui_kit::{
     App, AppContext as _, Context, Entity, FocusHandle, Focusable, Hsla, InteractiveElement,
     IntoElement, ParentElement, Render, ScrollHandle, SharedString, Styled, Subscription, Task,
@@ -1185,17 +1185,7 @@ impl ProjectView {
 
 pub(crate) fn style_area(area: &Entity<TextareaState>, cx: &mut App) {
     let t = recur_ui::Theme::of(cx).tokens;
-    area.update(cx, |s, _| {
-        s.set_editor_style(InputEditorStyle {
-            foreground: t.text.into(),
-            muted_foreground: t.faint.into(),
-            background: Hsla::transparent_black(),
-            border: Hsla::transparent_black(),
-            selection: t.amber.fade(0.3).into(),
-            caret: t.text.into(),
-            ..Default::default()
-        })
-    });
+    recur_ui::style::style_textarea(area, t.faint, cx);
 }
 
 impl Render for ProjectView {

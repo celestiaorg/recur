@@ -2004,6 +2004,7 @@
     {"name": "projects/general-tall", "width": 1280, "height": 1500, "theme": "default", "fixture": "base", "route": "project:storefront"},
     {"name": "projects/general-paper", "width": 1280, "height": 800, "theme": "paper", "fixture": "base", "route": "project:storefront"},
     {"name": "projects/run", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 760]}, {"wait": 500}]},
+    {"name": "projects/run-tall", "width": 1280, "height": 1800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 1760]}, {"wait": 500}]},
     {"name": "projects/schedules", "width": 1280, "height": 800, "theme": "default", "fixture": "schedules", "route": "project:storefront", "steps": [{"click": [328, 216]}, {"move": [1180, 760]}, {"wait": 500}]},
     {"name": "projects/prs", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 247]}, {"move": [1180, 760]}, {"wait": 300}]},
     {"name": "projects/skills", "width": 1280, "height": 800, "theme": "default", "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 278]}, {"move": [1180, 760]}, {"wait": 500}]},

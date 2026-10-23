@@ -993,6 +993,12 @@ pub fn input_box(
 /// which hides carets) is nearly transparent instead.
 pub fn style_text_input(input: &Entity<InputState>, cx: &mut App) {
     let t = tokens(cx);
+    style_text_input_fg(input, t.text, cx);
+}
+
+/// [`style_text_input`] with the typed text in `fg` (a field whose color follows its state).
+pub fn style_text_input_fg(input: &Entity<InputState>, fg: Color, cx: &mut App) {
+    let t = tokens(cx);
     let hidden: Hsla = t.text.with_alpha(0.001).into();
     let caret = if crate::motion::is_frozen(cx) {
         hidden
@@ -1001,8 +1007,34 @@ pub fn style_text_input(input: &Entity<InputState>, cx: &mut App) {
     };
     input.update(cx, |s, _| {
         s.set_editor_style(InputEditorStyle {
-            foreground: t.text.into(),
+            foreground: fg.into(),
             muted_foreground: hidden,
+            background: Hsla::transparent_black(),
+            border: Hsla::transparent_black(),
+            selection: t.amber.fade(0.3).into(),
+            caret,
+            ..Default::default()
+        })
+    });
+}
+
+/// Colors a `<textarea>` (gpui-base's own placeholder in `placeholder`); the caret hides in a
+/// parity capture as in [`style_text_input`].
+pub fn style_textarea(
+    area: &Entity<gpui_kit::base::input::TextareaState>,
+    placeholder: Color,
+    cx: &mut App,
+) {
+    let t = tokens(cx);
+    let caret: Hsla = if crate::motion::is_frozen(cx) {
+        t.text.with_alpha(0.001).into()
+    } else {
+        t.text.into()
+    };
+    area.update(cx, |s, _| {
+        s.set_editor_style(InputEditorStyle {
+            foreground: t.text.into(),
+            muted_foreground: placeholder.into(),
             background: Hsla::transparent_black(),
             border: Hsla::transparent_black(),
             selection: t.amber.fade(0.3).into(),

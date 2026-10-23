@@ -804,11 +804,11 @@ fn schedule_counts(s: &AppState, cx: &App) -> impl IntoElement {
 }
 
 /// `Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })` in en-US:
-/// "Oct 21, 2026, 3:04 PM", in local time.
+/// "Oct 21, 2026 at 3:04 PM", in local time.
 pub fn format_medium_short(ms: i64) -> String {
     use chrono::{Local, TimeZone};
     match Local.timestamp_millis_opt(ms).single() {
-        Some(d) => d.format("%b %-d, %Y, %-I:%M %p").to_string(),
+        Some(d) => d.format("%b %-d, %Y at %-I:%M %p").to_string(),
         None => String::new(),
     }
 }

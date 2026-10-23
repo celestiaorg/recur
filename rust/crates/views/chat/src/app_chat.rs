@@ -256,7 +256,13 @@ impl AppChat {
         }
     }
 
-    fn tab_busy(&self, code: &str, cx: &gpui_kit::App) -> bool {
+    /// The strip's selected tab is lit (the chat has focus while shown).
+    pub fn lit(&self, window: &Window, cx: &gpui_kit::App) -> bool {
+        self.visible && self.focus.contains_focused(window, cx)
+    }
+
+    /// A tab's turn is running (`aria-busy`).
+    pub fn tab_busy(&self, code: &str, cx: &gpui_kit::App) -> bool {
         self.sending_by.get(code).copied().unwrap_or(false)
             || self
                 .state
@@ -739,6 +745,7 @@ impl Render for AppChat {
             "New chat",
             // `.wsv-chat-new { color: var(--muted) }`; `.tab-strip-act svg` is 15px.
             tab_strip_action("ask-new", false, false, cx)
+                .debug_selector(|| "ask-new".into())
                 .text_color(hsla(Theme::of(cx).tokens.muted))
                 .child(icon(IconName::Plus).size(px(15.)))
                 .on_click(cx.listener(|a, _, _, cx| a.new_tab(cx))),
@@ -749,6 +756,7 @@ impl Render for AppChat {
             "Hide chat panel",
             div()
                 .id("ask-hide")
+                .debug_selector(|| "ask-hide".into())
                 .flex()
                 .flex_none()
                 .items_center()

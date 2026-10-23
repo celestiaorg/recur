@@ -781,8 +781,12 @@ impl ScheduleEditor {
         .detach();
     }
 
+    pub fn prompt(&self) -> &Entity<TextareaState> {
+        &self.prompt
+    }
+
     /// The dialog's Tab stops in DOM order (disabled controls and `tabindex=-1` skipped).
-    fn stops(&self, cx: &App) -> Vec<FocusHandle> {
+    pub fn stops(&self, cx: &App) -> Vec<FocusHandle> {
         let Some(d) = &self.draft else {
             return Vec::new();
         };

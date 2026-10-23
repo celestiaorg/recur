@@ -278,6 +278,11 @@ impl ScheduledPrompts {
         me
     }
 
+    /// The New schedule button's focus (where focus returns when the editor closes).
+    pub fn new_focus(&self) -> &FocusHandle {
+        &self.new_focus
+    }
+
     fn state(&self) -> &Entity<AppState> {
         &self.vcx.state
     }
@@ -903,7 +908,7 @@ impl ScheduledPrompts {
             .id(SharedString::from(format!("sc-status-{id}")))
             .debug_selector({
                 let id = id.clone();
-                move || format!("sc-status:{id}")
+                move || format!("sc-status:{id}={st_label}")
             })
             .flex()
             .items_center()
@@ -967,19 +972,24 @@ impl ScheduledPrompts {
             );
         }
         if n_runs > 0 {
+            let rid = id.clone();
             side = side.child(
-                text(format!(
-                    "{n_runs} {}",
-                    if n_runs == 1 {
-                        "workspace"
-                    } else {
-                        "workspaces"
-                    }
-                ))
-                .size(if embedded { 10.5 } else { 11. })
-                .leading(1.45)
-                .color(t.muted)
-                .nowrap(),
+                div()
+                    .debug_selector(move || format!("sc-runs-n:{rid}={n_runs}"))
+                    .child(
+                        text(format!(
+                            "{n_runs} {}",
+                            if n_runs == 1 {
+                                "workspace"
+                            } else {
+                                "workspaces"
+                            }
+                        ))
+                        .size(if embedded { 10.5 } else { 11. })
+                        .leading(1.45)
+                        .color(t.muted)
+                        .nowrap(),
+                    ),
             );
         }
 
@@ -1153,7 +1163,7 @@ impl ScheduledPrompts {
         let kid = id.clone();
         let hid = id.clone();
         let article = ibrow(SharedString::from(format!("scrow-{id}")), hovered, cx)
-            .debug_selector(move || format!("article:{name}:{open}"))
+            .debug_selector(move || format!("article:{name}:{}", open && n_runs > 0))
             .relative()
             .when(paused, |d| d.opacity(0.62))
             .map(|d| {
@@ -1267,7 +1277,10 @@ impl ScheduledPrompts {
                     .child(
                         div()
                             .id(SharedString::from(format!("sc-runs-all-{}", p.id)))
-                            .debug_selector(move || format!("sc-runs-all:{aria}"))
+                            .debug_selector({
+                                let l = label.clone();
+                                move || format!("sc-runs-all:{aria}={l}")
+                            })
                             .min_w_0()
                             .when(disabled, |d| d.opacity(0.4))
                             .when(!disabled, |d| {
@@ -1509,8 +1522,9 @@ impl ScheduledPrompts {
             }
             let mut main = div().flex_1().min_w_0().child(title_spans);
             if !snippet.is_empty() {
+                let sel = format!("sc-run-now:{wid}={snippet}");
                 main = main.child(
-                    div().mt(px(1.)).child(
+                    div().debug_selector(move || sel).mt(px(1.)).child(
                         text(snippet)
                             .id(SharedString::from(format!("sc-run-now-{wid}")))
                             .size(12.)

@@ -262,10 +262,12 @@ pub fn brief_row(
         } else {
             note_titles.join(" · ")
         };
+        let sel = format!("wbrief-unread:{}={unread}:{tip}", brief.title);
         title = title.child(recur_ui::tooltip::titled(
             SharedString::from(format!("{id}-u")),
             tip,
             div()
+                .debug_selector(move || sel)
                 .flex_none()
                 .self_center()
                 .ml(px(8.))
@@ -322,6 +324,10 @@ pub fn brief_row(
     let rem = 16.;
     div()
         .id(id.clone())
+        .debug_selector({
+            let t = brief.title.clone();
+            move || format!("wbrief-row:{t}")
+        })
         .flex()
         .items_center()
         .gap(px(12.))

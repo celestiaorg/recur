@@ -257,7 +257,10 @@ fn back_button(
 /// `.tb-sub`: mono 11px `--faint` counts beside the crumb.
 fn tb_sub(label: impl Into<SharedString>, cx: &App) -> impl IntoElement {
     let t = Theme::of(cx).tokens;
+    let label: SharedString = label.into();
+    let l = label.clone();
     div()
+        .debug_selector(move || format!("tb-sub={l}"))
         .flex_none()
         .child(text(label).mono().size(11.).color(t.faint).nowrap())
 }
@@ -484,6 +487,7 @@ impl Shell {
             if unread > 0 {
                 right = right.child(no_drag(
                     tbtn("tb-mark-read", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
+                        .debug_selector(|| "tb-mark-read".into())
                         .on_click({
                             let state = state.clone();
                             move |_, _, cx| mark_all_inbox_read(&state, cx)

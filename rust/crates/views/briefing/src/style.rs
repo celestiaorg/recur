@@ -50,10 +50,9 @@ pub fn seg_count_btn(
     cx: &App,
 ) -> Stateful<Div> {
     let t = Theme::of(cx).tokens;
-    let n = count.unwrap_or(0);
     recur_view_prs::style::seg_text_btn(id, label, on, cx)
         .gap(px(4.))
-        .debug_selector(move || format!("seg:{label}:{on}:{n}"))
+        .debug_selector(move || format!("seg:{label}:{on}"))
         .when_some(count, |d, n| {
             d.child(
                 div().ml(px(1.)).child(
@@ -143,14 +142,17 @@ pub fn empty(
         );
     }
     let et = et.to_string();
+    let sel = format!("empty:{et}");
     d = d.child(
-        text(et.clone())
-            .size(14.)
-            .weight(600.)
-            .leading(1.45)
-            .color(t.text)
-            .align(recur_ui::text::Align::Center)
-            .id(SharedString::from(format!("empty-et-{et}"))),
+        div().debug_selector(move || sel).child(
+            text(et.clone())
+                .size(14.)
+                .weight(600.)
+                .leading(1.45)
+                .color(t.text)
+                .align(recur_ui::text::Align::Center)
+                .id(SharedString::from(format!("empty-et-{et}"))),
+        ),
     );
     if let Some(ed) = ed {
         d = d.child(div().max_w(px(340.)).flex().justify_center().child(ed));

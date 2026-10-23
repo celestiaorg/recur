@@ -12,6 +12,8 @@ pub mod gallery;
 pub mod mini;
 pub mod pic;
 pub mod project;
+#[cfg(test)]
+mod spec;
 
 use recur_view_core::{ViewContext, ViewName, ViewRegistry};
 

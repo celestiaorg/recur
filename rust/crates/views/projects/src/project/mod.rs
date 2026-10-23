@@ -10,9 +10,8 @@ use std::time::Duration;
 
 use gpui_kit::base::input::TextareaState;
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, FocusHandle, Focusable, Hsla, InteractiveElement,
-    IntoElement, ParentElement, Render, ScrollHandle, SharedString, Styled, Subscription, Task,
-    Window, div,
+    App, AppContext as _, Context, Entity, FocusHandle, Focusable, InteractiveElement, IntoElement,
+    ParentElement, Render, ScrollHandle, SharedString, Styled, Subscription, Task, Window, div,
 };
 use recur_code::view::skills::{SkillKind, SkillRow, map_skill_rows, skill_kind_has_overrides};
 use recur_domain::{BranchChoice, Project, RunCommand};

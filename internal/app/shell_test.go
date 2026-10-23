@@ -252,3 +252,32 @@ func TestIssuesViewRoundTrip(t *testing.T) {
 		t.Fatalf("corrupt file should zero: %+v", got)
 	}
 }
+
+func TestUIZoom(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("RECUR_DATA_DIR", dir)
+	svc := &ShellService{}
+	if got := svc.GetUIZoom(); got != 1 {
+		t.Fatalf("empty data dir: %v", got)
+	}
+	if err := svc.SetUIZoom(1.25); err != nil {
+		t.Fatal(err)
+	}
+	if got := (&ShellService{}).GetUIZoom(); got != 1.25 {
+		t.Fatalf("round trip: %v", got)
+	}
+	for in, want := range map[float64]float64{0.1: 0.5, 9: 2, 0: 1} {
+		if err := svc.SetUIZoom(in); err != nil {
+			t.Fatal(err)
+		}
+		if got := svc.GetUIZoom(); got != want {
+			t.Fatalf("clamp %v: got %v want %v", in, got, want)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(dir, uiViewFile), []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := svc.GetUIZoom(); got != 1 {
+		t.Fatalf("corrupt file: %v", got)
+	}
+}

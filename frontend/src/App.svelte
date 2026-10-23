@@ -34,6 +34,7 @@
   import { loadScheduleExpanded } from './lib/schedule-expanded'
   import { copySelectedWorkspacePath } from './lib/workspace-path'
   import { isTitlebarZoomTarget } from './lib/titlebar'
+  import { initZoom, zoomIn, zoomOut, zoomReset } from './lib/zoom'
   import { wsMainBlocked, wsRunActive, workspaceCanRemove, workspaceShowsRemove } from './lib/modes'
   import { removeWorkspace } from './lib/remove-workspace'
   import { prForWorkspace, prIconName, prLifecycle } from './lib/colors'
@@ -730,6 +731,7 @@
       applyOpenPathResult(e?.data)
     })
     void maybeRunBridgeBench()
+    void initZoom()
     const unsubMenu = onMenuAction((action) => {
       if (action.startsWith('app-theme:')) {
         setTheme(action.slice('app-theme:'.length))
@@ -801,6 +803,15 @@
             })
             .catch((err) => pushToast('error', `Reload bundles failed: ${err instanceof Error ? err.message : String(err)}`))
           return
+        case 'zoom-in':
+          zoomIn()
+          return
+        case 'zoom-out':
+          zoomOut()
+          return
+        case 'zoom-reset':
+          zoomReset()
+          return
         case 'toggle-terminal': {
           const wsId = get(view) === 'detail' ? get(selectedWorkspaceId) : ''
           if (wsId && !wsMainBlocked(get(workspaces).find((w) => w.id === wsId))) toggleTerminalDock(wsId)
@@ -824,6 +835,20 @@
       }
     })
     const onKey = (e: KeyboardEvent) => {
+      // ⌘/Ctrl + = / + / - / 0 (and numpad) — whole-UI zoom. Matched on e.code
+      // and e.key because Shift turns = into + and layouts move the physical key.
+      if (isCmdOrCtrl(e) && !e.altKey) {
+        const zoom =
+          e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '=' || e.key === '+' ? zoomIn
+          : e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '-' ? zoomOut
+          : e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0' ? zoomReset
+          : null
+        if (zoom) {
+          e.preventDefault()
+          zoom()
+          return
+        }
+      }
       if (isCmdOrCtrl(e) && e.key.toLowerCase() === 'k' && !e.shiftKey) {
         e.preventDefault()
         toggleGoPalette()
@@ -945,8 +970,21 @@
       }
     }
     window.addEventListener('keydown', onKey)
+    // Capture phase and non-passive so CodeMirror and xterm cannot swallow it.
+    // Throttled so one trackpad gesture does not jump several steps.
+    let lastWheelZoom = 0
+    const onWheel = (e: WheelEvent) => {
+      if (!isCmdOrCtrl(e) || e.deltaY === 0) return
+      e.preventDefault()
+      if (e.timeStamp - lastWheelZoom < 120) return
+      lastWheelZoom = e.timeStamp
+      if (e.deltaY < 0) zoomIn()
+      else zoomOut()
+    }
+    window.addEventListener('wheel', onWheel, { capture: true, passive: false })
     return () => {
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('wheel', onWheel, { capture: true })
       unsubMenu()
     }
   })

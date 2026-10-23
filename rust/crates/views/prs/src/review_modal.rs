@@ -572,6 +572,7 @@ impl Render for PrReviewModal {
             .text_size(px(14.))
             .line_height(px(14. * 1.55))
             .text_color(hsla(t.text))
+            .map(|d| crate::detail::field::press_focuses(d, self.body.area.read(cx).focus_handle(cx)))
             .key_context("TextEntry")
             .child(gpui_kit::base::input::Textarea::new(&self.body.area));
         body = body.child(area);

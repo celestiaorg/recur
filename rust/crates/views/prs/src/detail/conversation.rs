@@ -207,6 +207,7 @@ impl PrDetail {
             .line_height(px(18.75))
             .text_color(hsla(t.text))
             .when(saving, |d| d.opacity(0.55))
+            .map(|d| super::field::press_focuses(d, gpui_kit::Focusable::focus_handle(area.read(cx), cx)))
             .key_context("TextEntry")
             .capture_key_down(cx.listener(move |d, ev: &KeyDownEvent, _, cx| {
                 if ev.keystroke.key == "escape" {
@@ -1628,6 +1629,7 @@ impl PrDetail {
             .text_size(px(12.5))
             .line_height(px(18.75))
             .text_color(hsla(t.text))
+            .map(|d| super::field::press_focuses(d, gpui_kit::Focusable::focus_handle(area.read(cx), cx)))
             .key_context("TextEntry")
             .child(gpui_kit::base::input::Textarea::new(&area));
         let go = recur_ui::style::primary_button("composer-go", disabled.then_some(t.bg), cx)

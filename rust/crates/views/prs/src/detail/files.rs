@@ -544,6 +544,7 @@ impl PrDetail {
                     .gap(px(6.))
                     .flex_1()
                     .min_w_0()
+                    .map(|d| super::field::press_focuses(d, gpui_kit::Focusable::focus_handle(self.filter.read(cx), cx)))
                     .key_context("TextEntry")
                     .on_key_down(cx.listener(|d, ev: &KeyDownEvent, window, cx| {
                         if ev.keystroke.key == "escape" {

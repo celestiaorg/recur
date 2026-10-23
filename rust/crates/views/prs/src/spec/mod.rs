@@ -1,3 +1,5 @@
+mod actions;
+mod checks;
 mod conversation;
 mod detail;
 mod harness;

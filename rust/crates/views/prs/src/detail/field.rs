@@ -97,3 +97,12 @@ impl Field {
         self.area.update(cx, |a, cx| a.focus(window, cx));
     }
 }
+
+/// A press anywhere on a field's box focuses the field and goes no further: the padding is
+/// the textarea's own in the web build, and `onPRChromeMouseDown` skips text entries.
+pub fn press_focuses<E: gpui_kit::InteractiveElement>(el: E, focus: gpui_kit::FocusHandle) -> E {
+    el.on_mouse_down(gpui_kit::MouseButton::Left, move |_, window, cx| {
+        window.focus(&focus, cx);
+        cx.stop_propagation();
+    })
+}

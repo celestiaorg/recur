@@ -2,4 +2,4 @@
 //! `settings-newloop.spec.ts`, on the whole shell over the mock bridge.
 
 mod harness;
-mod probe;
+mod welcome;

@@ -24,7 +24,7 @@ use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind};
 use recur_ui::{IconName, Theme, icon};
 use recur_view_core::{ViewContext, call, toast};
 
-use crate::dialog::{cycle, key_capture};
+use crate::dialog::{cycle, window_keys};
 
 /// A Tab stop of the dialog, in DOM order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,6 +85,7 @@ impl NewProjectModal {
                 .trigger_icon(IconName::GitBranch)
         });
         let subs = vec![
+            window_keys(cx, Self::on_key),
             cx.observe_in(&vcx.state, window, |this, _, window, cx| this.sync(window, cx)),
             cx.subscribe(&branch, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
@@ -588,7 +589,6 @@ impl Render for NewProjectModal {
             .track_focus(&self.focus)
             .occlude()
             .on_mouse_down(MouseButton::Left, cx.listener(|m, _, _, cx| m.close(cx)))
-            .child(key_capture(cx.entity().downgrade(), Self::on_key))
             .into_any_element()
     }
 }

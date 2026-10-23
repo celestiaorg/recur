@@ -46,7 +46,7 @@ use recur_view_core::modes::{
 };
 use recur_view_core::{ViewContext, call, toast};
 
-use crate::dialog::{cycle, key_capture};
+use crate::dialog::{cycle, window_keys};
 use crate::new_workspace::{
     Abort, OpeningSeed, link_linear_project, reveal_created_workspace, wait_for_worktree,
     wire_attachments,
@@ -212,6 +212,7 @@ impl NewTaskModal {
             )
         });
         let subs = vec![
+            window_keys(cx, Self::on_key),
             cx.observe_in(&vcx.state, window, |this, _, window, cx| this.sync(window, cx)),
             cx.subscribe_in(&chat, window, |this, chat, ev: &ChatEvent, _, cx| match ev {
                 ChatEvent::Draft => {
@@ -1586,12 +1587,33 @@ impl Render for NewTaskModal {
             .track_focus(&self.focus)
             .occlude()
             .on_mouse_down(MouseButton::Left, cx.listener(|m, _, _, cx| m.close(cx)))
-            .child(key_capture(cx.entity().downgrade(), Self::on_key))
             .into_any_element()
+    }
+}
+
+/// The window's New workspace modal, for specs and parity scenes.
+pub struct CurrentNewTask(pub gpui_kit::WeakEntity<NewTaskModal>);
+
+impl gpui_kit::Global for CurrentNewTask {}
+
+impl NewTaskModal {
+    pub fn current(cx: &App) -> Option<Entity<NewTaskModal>> {
+        cx.try_global::<CurrentNewTask>().and_then(|c| c.0.upgrade())
+    }
+
+    /// The composer's draft (`bind:input`).
+    pub fn task(&self) -> &str {
+        &self.task
+    }
+
+    pub fn chat(&self) -> &Entity<AgentChat> {
+        &self.chat
     }
 }
 
 /// The overlay (`OverlaySlot::NewTask`).
 pub fn build(vcx: &ViewContext, window: &mut Window, cx: &mut App) -> Entity<NewTaskModal> {
-    cx.new(|cx| NewTaskModal::new(vcx, window, cx))
+    let e = cx.new(|cx| NewTaskModal::new(vcx, window, cx));
+    cx.set_global(CurrentNewTask(e.downgrade()));
+    e
 }

@@ -698,11 +698,17 @@ impl WelcomeView {
 
     fn plain_note(id: &str, spans: Vec<recur_ui::Span>, cx: &App) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        Text::from_spans(spans)
+        let sel = format!(
+            "wprov-note:{id}={}",
+            spans.iter().map(|s| s.text.as_ref()).collect::<String>()
+        );
+        div()
+            .debug_selector(move || sel.clone())
+            .child(Text::from_spans(spans)
             .id(SharedString::from(format!("wprov-note-{id}")))
             .size(12.5)
             .leading(1.5)
-            .color(t.muted)
+            .color(t.muted))
             .into_any_element()
     }
 
@@ -723,9 +729,11 @@ impl WelcomeView {
             })
     }
 
-    fn on_note(detail: String, cx: &App) -> AnyElement {
+    fn on_note(slug: &str, detail: String, cx: &App) -> AnyElement {
         let t = Theme::of(cx).tokens;
+        let sel = format!("wprov-note:{slug}={detail}");
         div()
+            .debug_selector(move || sel.clone())
             .flex()
             .items_center()
             .gap(px(6.))
@@ -755,7 +763,7 @@ impl WelcomeView {
 
         // Claude Code.
         let (note, action) = if p.claude_ready() {
-            (Self::on_note(p.claude_detail(), cx), None)
+            (Self::on_note("claude", p.claude_detail(), cx), None)
         } else if !p.claude_on {
             (
                 Self::plain_note("claude", vec![span("Turned off.")], cx),
@@ -794,7 +802,7 @@ impl WelcomeView {
 
         // Codex.
         let (note, action) = if p.codex_ready() {
-            (Self::on_note(p.codex_detail(), cx), None)
+            (Self::on_note("codex", p.codex_detail(), cx), None)
         } else if !p.codex_on {
             (
                 Self::plain_note("codex", vec![span("Turned off.")], cx),
@@ -841,7 +849,7 @@ impl WelcomeView {
         // Cursor.
         let warn = p.cursor_needs_sdk();
         let (note, action): (AnyElement, Option<AnyElement>) = if p.cursor_ready() {
-            (Self::on_note(p.cursor_detail(), cx), None)
+            (Self::on_note("cursor", p.cursor_detail(), cx), None)
         } else if warn {
             let msg = if self.installing {
                 let m = if self.install_msg.is_empty() {
@@ -895,8 +903,11 @@ impl WelcomeView {
                             .child(icon(IconName::TriangleAlert).size(px(13.)).color(t.amber)),
                     )
                     .child(
-                        div().flex_1().min_w_0().child(
-                            text(msg)
+                        div().flex_1().min_w_0().debug_selector({
+                            let sel = format!("wprov-note:cursor={msg}");
+                            move || sel.clone()
+                        }).child(
+                            text(msg.clone())
                                 .id("wprov-cursor-warn")
                                 .size(12.5)
                                 .leading(1.5)
@@ -1320,6 +1331,7 @@ impl Render for WelcomeView {
             .child(s3);
 
         let mut col = div()
+            .debug_selector(|| "welcome-col".into())
             .w_full()
             .max_w(px(620.))
             .mx_auto()
@@ -1545,6 +1557,7 @@ mod tests {
     fn a_task_counts_once_something_was_sent() {
         let base = Workspace {
             id: "w".into(),
+            r#type: "solo".into(),
             goal: "New Workspace".into(),
             ..Default::default()
         };

@@ -1,30 +1,23 @@
 //! Modal plumbing shared by New workspace and New project (`lib/dialog-focus.ts`): window
 //! keys in the capture phase, as the Svelte modals listen on `window` with `capture`.
 
-use gpui_kit::{
-    Context, DispatchPhase, IntoElement, KeyDownEvent, Styled, WeakEntity, Window, canvas,
-};
+use gpui_kit::{Context, KeyDownEvent, KeystrokeEvent, Subscription, Window};
 
-/// Routes every key-down to `f` before the focused element sees it, while this element is
-/// painted (that is, while the modal is open).
-pub fn key_capture<V: 'static>(
-    view: WeakEntity<V>,
+/// `window.addEventListener('keydown', …, true)`: every key-down reaches `f` before the
+/// focused element sees it, wherever focus is. `f` stops propagation for keys it takes.
+pub fn window_keys<V: 'static>(
+    cx: &mut Context<V>,
     f: fn(&mut V, &KeyDownEvent, &mut Window, &mut Context<V>),
-) -> impl IntoElement {
-    canvas(
-        |_, _, _| {},
-        move |_, _, window, _| {
-            let view = view.clone();
-            window.on_key_event(move |ev: &KeyDownEvent, phase, window, cx| {
-                if phase != DispatchPhase::Capture {
-                    return;
-                }
-                let _ = view.update(cx, |v, cx| f(v, ev, window, cx));
-            });
-        },
-    )
-    .absolute()
-    .size_0()
+) -> Subscription {
+    let me = cx.entity().downgrade();
+    cx.intercept_keystrokes(move |ev: &KeystrokeEvent, window, cx| {
+        let kd = KeyDownEvent {
+            keystroke: ev.keystroke.clone(),
+            is_held: false,
+            prefer_character_input: false,
+        };
+        let _ = me.update(cx, |v, cx| f(v, &kd, window, cx));
+    })
 }
 
 /// The next stop of `cycleDialogTab`: from `at` (none focused: the first or last), wrapping.

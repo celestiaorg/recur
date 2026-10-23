@@ -60,6 +60,14 @@ export function GetShellState(): $CancellablePromise<$models.ShellState> {
 }
 
 /**
+ * GetUIZoom returns the saved whole-UI zoom factor, or 1 when none exists or
+ * the file is corrupt.
+ */
+export function GetUIZoom(): $CancellablePromise<number> {
+    return $Call.ByID(2538300930);
+}
+
+/**
  * SetExpandedSchedules records expanded schedule dashboard rows.
  */
 export function SetExpandedSchedules(ids: string[]): $CancellablePromise<void> {
@@ -80,6 +88,13 @@ export function SetIssuesView(v: $models.IssuesView): $CancellablePromise<void> 
  */
 export function SetShellState(st: $models.ShellState): $CancellablePromise<void> {
     return $Call.ByID(1255584368, st);
+}
+
+/**
+ * SetUIZoom records the whole-UI zoom factor, clamped to the step range.
+ */
+export function SetUIZoom(zoom: number): $CancellablePromise<void> {
+    return $Call.ByID(2534413310, zoom);
 }
 
 // Private type creation functions

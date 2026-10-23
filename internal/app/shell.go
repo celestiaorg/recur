@@ -16,6 +16,9 @@ const (
 	shellStateFile      = "shell.json"
 	scheduleViewFile    = "schedule-view.json"
 	issuesViewFile      = "issues-view.json"
+	uiViewFile          = "ui-view.json"
+	minUIZoom           = 0.5
+	maxUIZoom           = 2.0
 	shellSaveDebounce   = 250 * time.Millisecond
 	shellSaveBackoffMax = 30 * time.Second
 )
@@ -339,6 +342,45 @@ func (s *ShellService) SetIssuesView(v IssuesView) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return writeDataJSON(issuesViewFile, v)
+}
+
+type uiView struct {
+	Zoom float64 `json:"zoom"`
+}
+
+// clampUIZoom limits z to the UI zoom step range; NaN and unset become 1.
+func clampUIZoom(z float64) float64 {
+	switch {
+	case z != z || z == 0:
+		return 1
+	case z < minUIZoom:
+		return minUIZoom
+	case z > maxUIZoom:
+		return maxUIZoom
+	}
+	return z
+}
+
+// GetUIZoom returns the saved whole-UI zoom factor, or 1 when none exists or
+// the file is corrupt.
+func (s *ShellService) GetUIZoom() float64 {
+	root, err := store.DataDir()
+	if err != nil {
+		return 1
+	}
+	var v uiView
+	data, err := os.ReadFile(filepath.Join(root, uiViewFile))
+	if err != nil || json.Unmarshal(data, &v) != nil {
+		return 1
+	}
+	return clampUIZoom(v.Zoom)
+}
+
+// SetUIZoom records the whole-UI zoom factor, clamped to the step range.
+func (s *ShellService) SetUIZoom(zoom float64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return writeDataJSON(uiViewFile, uiView{Zoom: clampUIZoom(zoom)})
 }
 
 // writeDataJSON atomically writes v as indented JSON to name under DataDir.

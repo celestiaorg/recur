@@ -36,21 +36,34 @@ const INDENT_OPTIONS: [(EditorIndent, &str, &str); 3] = [
     (EditorIndent::Tabs, "Tabs", "Tabs"),
 ];
 
+/// An on / off pref row: title, description, group name, value, setter.
+type Toggle = (
+    &'static str,
+    Option<&'static str>,
+    &'static str,
+    bool,
+    fn(&mut EditorPrefs, bool),
+);
+
 /// `EDITOR_LINE_HEIGHT_LABELS`.
 fn line_height_label(n: f32) -> &'static str {
-    match n {
-        x if x == 1.4 => "Compact",
-        x if x == 1.7 => "Relaxed",
-        _ => "Default",
+    if n == 1.4 {
+        "Compact"
+    } else if n == 1.7 {
+        "Relaxed"
+    } else {
+        "Default"
     }
 }
 
 /// `TERMINAL_LINE_HEIGHT_LABELS`.
 fn terminal_line_height_label(n: f64) -> &'static str {
-    match n {
-        x if x == 1. => "Compact",
-        x if x == 1.35 => "Relaxed",
-        _ => "Default",
+    if n == 1. {
+        "Compact"
+    } else if n == 1.35 {
+        "Relaxed"
+    } else {
+        "Default"
     }
 }
 
@@ -364,13 +377,7 @@ impl SettingsView {
             .collect::<Vec<_>>(),
         );
         let mut more: Vec<(&str, Option<&str>, &'static str, Vec<Choice>)> = vec![ws];
-        let toggles: [(
-            &str,
-            Option<&str>,
-            &'static str,
-            bool,
-            fn(&mut EditorPrefs, bool),
-        ); 10] = [
+        let toggles: [Toggle; 10] = [
             (
                 "Special characters",
                 Some("Highlight NBSP, zero-width, and other invisible chars."),

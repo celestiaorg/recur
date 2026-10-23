@@ -64,6 +64,9 @@ pub enum ThemeKind {
 /// The chat-mode model slots plus the workspace title (`ModeSlot`).
 pub const MODEL_SLOTS: [&str; 6] = ["ask", "plan", "agent", "review", "loop", "title"];
 
+/// The Models effect's key: provider readiness and toggles, and the catalog revision.
+pub(crate) type ModelsKey = (bool, bool, bool, bool, bool, u64);
+
 /// Svelte's `$effect`s, by what they read: one rerun per change of the key, cancelled (by
 /// generation) when the key changes again.
 #[derive(Default)]
@@ -72,7 +75,7 @@ pub(crate) struct Effects {
     pub claude: Option<bool>,
     pub cursor: Option<Option<String>>,
     pub codex: Option<bool>,
-    pub models: Option<Option<(bool, bool, bool, bool, bool, u64)>>,
+    pub models: Option<Option<ModelsKey>>,
     pub section: Option<Section>,
     pub codex_key: Option<(bool, String)>,
     pub bundle_drafts: Option<(BTreeMap<String, String>, String, Vec<String>)>,

@@ -36,6 +36,8 @@ struct CardLook {
 }
 
 /// Which pick a grid changes.
+type PickTheme = Rc<dyn Fn(&EditorThemeCard, &mut App)>;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Pick {
     App(Option<bool>),
@@ -340,7 +342,7 @@ impl SettingsView {
         list_id: &'static str,
         list: Vec<EditorThemeCard>,
         current: &str,
-        pick: Rc<dyn Fn(&EditorThemeCard, &mut App)>,
+        pick: PickTheme,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
@@ -655,7 +657,7 @@ impl SettingsView {
             ] {
                 let st = state.clone();
                 let list = filter_for_list(&cards, &query, Some(!light));
-                let pick: Rc<dyn Fn(&EditorThemeCard, &mut App)> = Rc::new(move |c, cx| {
+                let pick: PickTheme = Rc::new(move |c, cx| {
                     st.update(cx, |s, cx| s.set_system_editor_theme(!light, &c.key, cx))
                 });
                 let rows = self.editor_rows(
@@ -671,7 +673,7 @@ impl SettingsView {
         } else {
             let list = filter_for_list(&cards, &query, kind.map(|light| !light));
             let st = state.clone();
-            let pick: Rc<dyn Fn(&EditorThemeCard, &mut App)> = Rc::new(move |c, cx| {
+            let pick: PickTheme = Rc::new(move |c, cx| {
                 st.update(cx, |s, cx| s.set_editor_theme(&c.key, cx));
                 AppState::toast_editor_theme(&c.name, cx);
             });

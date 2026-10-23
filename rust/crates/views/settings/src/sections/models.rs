@@ -257,8 +257,10 @@ mod tests {
     #[test]
     fn slot_refs_and_labels() {
         assert_eq!(mode_model_ref(None, "ask"), FALLBACK);
-        let mut s = Settings::default();
-        s.model_loop = "codex/gpt-5".into();
+        let mut s = Settings {
+            model_loop: "codex/gpt-5".into(),
+            ..Default::default()
+        };
         assert_eq!(mode_model_ref(Some(&s), "review"), "codex/gpt-5");
         s.model_review = "claude-code/opus".into();
         assert_eq!(mode_model_ref(Some(&s), "review"), "claude-code/opus");

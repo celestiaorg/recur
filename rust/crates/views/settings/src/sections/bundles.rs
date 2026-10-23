@@ -1016,6 +1016,62 @@ fn bundle_kbd(label: &str, cx: &App) -> impl IntoElement {
         )
 }
 
+/// A language server title with `.set-lsp-miss`: an inline-block after a space and 8px, raised
+/// 2px (`vertical-align: 2px`), its own 10px bold line at the inherited 1.45, padded 1px 6px.
+fn lsp_title_with_badge(
+    title: recur_ui::text::Text,
+    id: &str,
+    window: &Window,
+    cx: &App,
+) -> gpui_kit::Div {
+    use recur_ui::fonts::Family;
+    use recur_ui::text::strut_metrics;
+    let t = tokens(cx);
+    let measure = |spans: Vec<recur_ui::text::Span>| {
+        recur_ui::text::Text::from_spans(spans)
+            .size(13.)
+            .weight(weight::SEMIBOLD)
+            .leading(1.45)
+            .nowrap()
+            .measure(None, window)
+            .0
+    };
+    let w = measure(vec![span(id.to_string()), span(" "), span("x")]) - measure(vec![span("x")]);
+    let line = strut_metrics(&Family::Ui, 13., LineHeight::Scale(1.45), window);
+    let badge_line = strut_metrics(&Family::Ui, 10., LineHeight::Scale(1.45), window);
+    let top = line.baseline - 2. - (1. + badge_line.baseline);
+    let badge = div()
+        .flex_none()
+        .py(px(1.))
+        .px(px(6.))
+        .rounded(px(4.))
+        .bg(hsla(t.amber.fade(0.16)))
+        .child(
+            text("Not installed")
+                .size(10.)
+                .weight(weight::BOLD)
+                .tracking(0.02)
+                .leading(1.45)
+                .color(t.amber)
+                .nowrap(),
+        );
+    div().relative().child(title).child(
+        div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .flex()
+            .flex_col()
+            .child(recur_ui::exact::vgap(top.max(0.), window))
+            .child(
+                div()
+                    .flex()
+                    .child(recur_ui::exact::hgap(w + 8., window))
+                    .child(badge),
+            ),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1128,60 +1184,4 @@ mod tests {
         assert_eq!(groups[0].1[0].slash, "commit");
         assert_eq!(groups[1].0, "Prompts");
     }
-}
-
-/// A language server title with `.set-lsp-miss`: an inline-block after a space and 8px, raised
-/// 2px (`vertical-align: 2px`), its own 10px bold line at the inherited 1.45, padded 1px 6px.
-fn lsp_title_with_badge(
-    title: recur_ui::text::Text,
-    id: &str,
-    window: &Window,
-    cx: &App,
-) -> gpui_kit::Div {
-    use recur_ui::fonts::Family;
-    use recur_ui::text::strut_metrics;
-    let t = tokens(cx);
-    let measure = |spans: Vec<recur_ui::text::Span>| {
-        recur_ui::text::Text::from_spans(spans)
-            .size(13.)
-            .weight(weight::SEMIBOLD)
-            .leading(1.45)
-            .nowrap()
-            .measure(None, window)
-            .0
-    };
-    let w = measure(vec![span(id.to_string()), span(" "), span("x")]) - measure(vec![span("x")]);
-    let line = strut_metrics(&Family::Ui, 13., LineHeight::Scale(1.45), window);
-    let badge_line = strut_metrics(&Family::Ui, 10., LineHeight::Scale(1.45), window);
-    let top = line.baseline - 2. - (1. + badge_line.baseline);
-    let badge = div()
-        .flex_none()
-        .py(px(1.))
-        .px(px(6.))
-        .rounded(px(4.))
-        .bg(hsla(t.amber.fade(0.16)))
-        .child(
-            text("Not installed")
-                .size(10.)
-                .weight(weight::BOLD)
-                .tracking(0.02)
-                .leading(1.45)
-                .color(t.amber)
-                .nowrap(),
-        );
-    div().relative().child(title).child(
-        div()
-            .absolute()
-            .top_0()
-            .left_0()
-            .flex()
-            .flex_col()
-            .child(recur_ui::exact::vgap(top.max(0.), window))
-            .child(
-                div()
-                    .flex()
-                    .child(recur_ui::exact::hgap(w + 8., window))
-                    .child(badge),
-            ),
-    )
 }

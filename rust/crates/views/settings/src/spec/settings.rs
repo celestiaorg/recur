@@ -405,3 +405,19 @@ fn pr_settings_radio_dots_share_a_column(cx: &mut TestAppContext) {
         assert!((x - xs[0]).abs() < 1., "{xs:?}");
     }
 }
+
+/// The menu item (`menu.action` `settings`, as `observatory.spec.ts` sends it) and ⌘, open
+/// Settings on General.
+#[gpui::test]
+fn the_menu_action_and_cmd_comma_open_settings(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.wire("menu.action", json!("settings"));
+    assert_eq!(s.view(), recur_view_core::ViewName::Settings);
+    assert!(s.has("set-head=General"));
+    s.section("Data");
+    s.click("nav-pr");
+    assert_ne!(s.view(), recur_view_core::ViewName::Settings);
+    s.keys("cmd-,");
+    assert_eq!(s.view(), recur_view_core::ViewName::Settings);
+    assert!(s.has("v-settings:on"));
+}

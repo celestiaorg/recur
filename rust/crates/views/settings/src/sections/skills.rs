@@ -87,7 +87,7 @@ impl SettingsView {
             }
             let mut rows = Vec::new();
             for sk in list {
-                let on = !disabled.iter().any(|d| *d == sk.name);
+                let on = !disabled.contains(&sk.name);
                 let loc = if kind == "user" {
                     skill_location(&sk.path, &sk.scope, "")
                 } else {

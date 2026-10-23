@@ -58,11 +58,7 @@ pub fn on_field(
     cx: &mut Context<SettingsView>,
 ) {
     match key {
-        "nav-search" => {
-            if ev == FieldEvent::Input {
-                v.sync(window, cx);
-            }
-        }
+        "nav-search" if ev == FieldEvent::Input => v.sync(window, cx),
         "codex-key" | "codex-bin" => v.codex_field(key, ev, value, cx),
         "max-loops" | "max-agents" | "turn-timeout" | "sched-keep" | "branch-prefix" => {
             v.general_field(key, ev, value, cx)

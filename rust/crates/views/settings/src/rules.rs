@@ -97,7 +97,7 @@ pub fn compatible_slug_error(id: &str, taken: &[String]) -> String {
     if RESERVED_PROVIDER_SLUGS.contains(&slug.as_str()) {
         return format!("Slug {slug} is reserved.");
     }
-    if taken.iter().any(|t| *t == slug) {
+    if taken.contains(&slug) {
         return format!("A provider named {slug} already exists.");
     }
     String::new()
@@ -430,8 +430,7 @@ mod tests {
 
     #[test]
     fn unused_key_repeats_and_skips_live_ids() {
-        let mut values: Vec<String> = Vec::new();
-        values.push(unused_key(values.iter().map(String::as_str), "value"));
+        let mut values: Vec<String> = vec![unused_key(std::iter::empty(), "value")];
         values.push(unused_key(values.iter().map(String::as_str), "value"));
         assert_eq!(values, ["value", "value2"]);
 

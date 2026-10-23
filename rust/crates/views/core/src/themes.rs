@@ -27,6 +27,9 @@ fn name_cmp(a: &str, b: &str) -> Ordering {
 
 impl AppState {
     pub(crate) fn init_themes(&mut self) {
+        // `initTheme` → `applyTheme(saved)`: a legacy key is stored under its current name.
+        let saved = self.appearance.theme.clone();
+        self.apply_app_theme(&saved);
         self.reapply_syncs();
     }
 

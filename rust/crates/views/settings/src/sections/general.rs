@@ -177,17 +177,21 @@ impl SettingsView {
                 None => b.into_any_element(),
             });
         }
+        let shown_example = example.clone();
         let branch_row = Row::stack()
-            .child(copy(
-                "branch",
-                "Branch name prefix",
-                Some(vec![
-                    span("Prepended to new workspace branch names, e.g. "),
-                    code(example, cx),
-                    span(". Leave blank for none."),
-                ]),
-                cx,
-            ))
+            .child(
+                copy(
+                    "branch",
+                    "Branch name prefix",
+                    Some(vec![
+                        span("Prepended to new workspace branch names, e.g. "),
+                        code(example, cx),
+                        span(". Leave blank for none."),
+                    ]),
+                    cx,
+                )
+                .debug_selector(move || format!("branch-example={shown_example}")),
+            )
             .child(
                 div().flex().flex_col().gap(px(6.)).w_full().child(
                     div()

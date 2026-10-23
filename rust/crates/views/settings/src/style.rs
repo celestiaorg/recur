@@ -639,14 +639,17 @@ pub fn status_head(kind: Head, label: impl Into<SharedString>, cx: &App) -> Div 
             None => dot.flex_none().into_any_element(),
         });
     }
-    head.child(
-        text(label)
-            .size(13.)
-            .weight(wt)
-            .line_height(LineHeight::Scale(1.2))
-            .color(color)
-            .nowrap(),
-    )
+    let label: SharedString = label.into();
+    let sel = label.clone();
+    head.debug_selector(move || format!("status-head:{kind:?}:{sel}"))
+        .child(
+            text(label)
+                .size(13.)
+                .weight(wt)
+                .line_height(LineHeight::Scale(1.2))
+                .color(color)
+                .nowrap(),
+        )
 }
 
 /// `.acct-status-table` with `(dt, dd, titled)` rows; a titled `dd` tooltips its full value.

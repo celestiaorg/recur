@@ -723,20 +723,65 @@ impl Render for CompatibleProviderCard {
         let rows_now = self.rows();
         let saved_n = p.models.len();
         let n_rows = rows_now.len();
-        let model_grid =
-            |a: AnyElement, b: AnyElement, c: AnyElement, d: AnyElement, e: AnyElement| {
-                div()
-                    .flex()
-                    .items_stretch()
-                    .gap(px(6.))
-                    .child(flex_share(1.2, div().flex_1().min_w_0().flex().child(a)))
-                    .child(flex_share(1., div().flex_1().min_w_0().flex().child(b)))
-                    .child(div().flex_none().w(px(88.)).flex().child(c))
-                    .child(div().flex_none().w(px(176.)).flex().flex_col().child(d))
-                    .child(div().flex_none().w(px(28.)).flex().items_center().child(e))
+        // Spec handles: `{row}:{column}` on each column (`compat-cols` heads, `compat-model:{i}`).
+        let model_grid = |row: String,
+                          a: AnyElement,
+                          b: AnyElement,
+                          c: AnyElement,
+                          d: AnyElement,
+                          e: AnyElement| {
+            let at = |n: usize| {
+                let sel = format!("{row}:{n}");
+                move || sel.clone()
             };
-        let mut models = div().flex().flex_col().gap(px(8.)).w_full().child(
-            model_grid(
+            div()
+                .flex()
+                .items_stretch()
+                .gap(px(6.))
+                .child(flex_share(
+                    1.2,
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .debug_selector(at(0))
+                        .child(a),
+                ))
+                .child(flex_share(
+                    1.,
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .debug_selector(at(1))
+                        .child(b),
+                ))
+                .child(
+                    div()
+                        .flex_none()
+                        .w(px(88.))
+                        .flex()
+                        .debug_selector(at(2))
+                        .child(c),
+                )
+                .child(
+                    div()
+                        .flex_none()
+                        .w(px(176.))
+                        .flex()
+                        .flex_col()
+                        .debug_selector(at(3))
+                        .child(d),
+                )
+                .child(div().flex_none().w(px(28.)).flex().items_center().child(e))
+        };
+        let mut models = div()
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .w_full()
+            .child(model_grid(
+                "compat-cols".into(),
                 cols("Model id", cx).into_any_element(),
                 cols("Label", cx).into_any_element(),
                 recur_ui::tooltip::titled(
@@ -747,9 +792,7 @@ impl Render for CompatibleProviderCard {
                 .into_any_element(),
                 cols("Picker controls", cx).into_any_element(),
                 div().into_any_element(),
-            )
-            .debug_selector(|| "compat-cols".into()),
-        );
+            ));
         for (i, m) in rows_now.iter().enumerate() {
             let kind = self.controls_kind(m, i);
             let mid = self.bound(&format!("mid:{i}"), &m.id, FieldOpts::default(), window, cx);
@@ -800,6 +843,7 @@ impl Render for CompatibleProviderCard {
             });
             let disabled = n_rows <= 1 || (i < saved_n && saved_n <= 1);
             let mut block = div().flex().flex_col().gap(px(8.)).child(model_grid(
+                format!("compat-model:{i}"),
                 cell(
                     "Model id".into(),
                     &mid,
@@ -1057,10 +1101,12 @@ impl CompatibleProviderCard {
                 }
                 opts.push(s);
             }
+            let shown: String = opts.iter().map(|s| s.text.as_ref()).collect();
             grid = grid.child(
                 div()
                     .flex()
                     .gap(px(16.))
+                    .debug_selector(move || format!("compat-flag-opts:{shown}"))
                     .child(div().flex_none().w(px(name_w)).child(name))
                     .child(
                         div().flex_1().min_w_0().child(
@@ -1167,7 +1213,7 @@ impl CompatibleProviderCard {
                 };
                 let dot = div()
                     .id(SharedString::from(format!("def-{i}-{di}-{oi}")))
-                    .debug_selector(move || format!("compat-default:Default {nm}:{on}"))
+                    .debug_selector(move || format!("compat-default:{di}:Default {nm}:{on}"))
                     .size(px(20.))
                     .rounded_full()
                     .border(px(1.))

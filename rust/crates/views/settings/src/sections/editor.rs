@@ -340,7 +340,10 @@ impl SettingsView {
             let group = format!("{label} indent");
             langs.push(
                 Row::new()
-                    .child(copy(id, *label, Some(vec![span(d)]), cx))
+                    .child({
+                        let sel = format!("indent-desc:{id}={d}");
+                        copy(id, *label, Some(vec![span(d)]), cx).debug_selector(move || sel)
+                    })
                     .child(self.seg_group(group, choices, 8., cx)),
             );
         }

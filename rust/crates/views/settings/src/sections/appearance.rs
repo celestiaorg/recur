@@ -106,7 +106,7 @@ impl SettingsView {
             t.line_bright.mix(hover.k(), t.line)
         };
         let (s1, c1, s2, c2) = look.sample;
-        let name = look.name.clone();
+        let sel = id.clone();
         let mut dots = div().flex().gap(px(5.));
         for d in look.dots {
             dots = dots.child(div().size(px(11.)).rounded_full().bg(hsla(d)));
@@ -161,7 +161,7 @@ impl SettingsView {
             );
         let mut c = card(t.pane, border, 9.)
             .id(id)
-            .debug_selector(move || format!("thcard:{name}{}", if on { ":on" } else { "" }))
+            .debug_selector(move || format!("thcard:{sel}{}", if on { ":on" } else { "" }))
             .flex_1()
             .min_w_0()
             .flex()

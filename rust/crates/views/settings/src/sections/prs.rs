@@ -14,17 +14,17 @@ type Read = fn(&Settings) -> String;
 type Write = fn(&mut Settings, &str);
 
 /// One radio row: id, title, description, options, the default when unset, read and write.
-struct Choice {
+pub(crate) struct Choice {
     id: &'static str,
-    title: &'static str,
+    pub(crate) title: &'static str,
     desc: &'static str,
-    opts: &'static [(&'static str, &'static str)],
+    pub(crate) opts: &'static [(&'static str, &'static str)],
     default: &'static str,
     read: Read,
     write: Write,
 }
 
-const CHOICES: [Choice; 4] = [
+pub(crate) const CHOICES: [Choice; 4] = [
     Choice {
         id: "merge",
         title: "Default merge method",

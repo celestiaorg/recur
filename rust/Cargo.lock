@@ -7231,6 +7231,7 @@ dependencies = [
  "recur-view-chat",
  "recur-view-home",
  "recur-view-observatory",
+ "recur-view-palettes",
  "recur-view-projects",
  "recur-view-prs",
  "recur-view-review",

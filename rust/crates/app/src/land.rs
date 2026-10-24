@@ -64,6 +64,8 @@ pub struct LandChrome {
     update_menu_open: bool,
     open_pr_menu_open: bool,
     menus_for: String,
+    /// `landBusy` as last seen: its menus close when it turns on, as App.svelte's effect does.
+    was_busy: bool,
     pending_pr_create: Option<(String, String)>,
     base_select: Option<(Entity<Select>, Subscription)>,
     base_branches: Vec<recur_domain::BranchChoice>,
@@ -535,7 +537,9 @@ impl Shell {
             }
         }
         let view = self.land.view(self.state.read(cx));
-        if view.land_busy {
+        let turned_busy = view.land_busy && !self.land.was_busy;
+        self.land.was_busy = view.land_busy;
+        if turned_busy {
             let l = &mut self.land;
             l.confirming_merge = false;
             l.merge_menu_open = false;

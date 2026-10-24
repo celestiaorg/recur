@@ -1,14 +1,18 @@
 <script lang="ts">
-  // Scenes of the home, briefing and project view crates (`home`, `briefing` and `projects` in
-  // scenes.json): the whole window as Shell.svelte mounts it, over the scene's edited seed, then
-  // the scene's `route` once the app has loaded, as the crates' galleries navigate. Only the
-  // routed view shows in `.main`; modal routes leave it empty behind their scrim.
+  // Scenes of the home, briefing, project and palette view crates (`home`, `briefing`,
+  // `projects` and `palettes` in scenes.json): the whole window as Shell.svelte mounts it, over
+  // the scene's edited seed, then the scene's `route` once the app has loaded, as the crates'
+  // galleries navigate. Only the routed view shows in `.main`; modal and palette routes leave it
+  // empty behind their scrim. A palette route's path stands in for the focused editor.
   import { onMount, tick } from 'svelte'
   import App from '../../../../../frontend/src/App.svelte'
   import {
     initEditorTheme, initEditorPrefs, initPanelWidths, initCodePanelSides, initExplorerPrefs,
     initRailCollapsed, initTerminalPrefs, go, openNewTask, openNewProject, openProject,
+    paletteOpen, commandsOpen, shortcutsOpen, openInOpen, openWorkspace, openSyntaxModePicker,
   } from '../../../../../frontend/src/lib/stores'
+  import { setEditorFocusProvider } from '../../../../../frontend/src/lib/commands'
+  import { openRunMenu } from '../../../../../frontend/src/lib/run-dev'
 
   let { onready }: { onready: () => void } = $props()
 
@@ -39,6 +43,19 @@
       case 'newtask': openNewTask(); break
       case 'newproject': openNewProject(); break
       case 'project': openProject(id ?? ''); void section; break
+      case 'palette': paletteOpen.set(true); break
+      case 'commands':
+        setEditorFocusProvider(() => ({ scope: section ?? '', path: id ?? '' }))
+        commandsOpen.set(true)
+        break
+      case 'shortcuts': shortcutsOpen.set(true); break
+      // Landing on the workspace closes palettes: open them once it has.
+      case 'openin': openWorkspace(id ?? ''); setTimeout(() => openInOpen.set(true), 300); break
+      case 'run': openWorkspace(id ?? ''); setTimeout(() => openRunMenu(id ?? ''), 300); break
+      case 'syntax':
+        setEditorFocusProvider(() => ({ scope: '', path: id ?? '' }))
+        openSyntaxModePicker()
+        break
     }
   }
 

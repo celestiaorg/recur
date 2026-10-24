@@ -35,7 +35,7 @@
   const variant = $derived(name.split('/').slice(1).join('/'))
   let ready = $state(false)
   const CONTENT = ['markdown', 'mermaid', 'pdf', 'file-preview', 'lightbox']
-  const VIEWS = ['home', 'briefing', 'projects']
+  const VIEWS = ['home', 'briefing', 'projects', 'palettes']
   // Editor scenes are ready once TextMate has painted tokens.
   function painted(): boolean {
     return kind !== 'editor' || !!document.querySelector('.cm-line span')

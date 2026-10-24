@@ -2010,5 +2010,26 @@
     {"name": "projects/skills", "width": 1280, "height": 800, "theme": "default", "tolerance": 5300, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 278]}, {"move": [1180, 760]}, {"wait": 500}]},
     {"name": "projects/mcp", "width": 1280, "height": 800, "theme": "default", "tolerance": 4950, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 308]}, {"move": [1180, 760]}, {"wait": 300}]},
     {"name": "projects/danger", "width": 1280, "height": 800, "theme": "default", "tolerance": 6480, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 371]}, {"move": [1180, 760]}, {"wait": 300}]}
+  ],
+  "palettes": [
+    {"name": "palettes/goto", "width": 1280, "height": 800, "theme": "default", "tolerance": 5220, "fixture": "base", "route": "palette"},
+    {"name": "palettes/goto-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 5670, "fixture": "base", "route": "palette"},
+    {"name": "palettes/goto-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 4570, "hardTolerance": 19, "fixture": "base", "route": "palette", "steps": [{"type": "check"}, {"wait": 300}]},
+    {"name": "palettes/goto-empty", "width": 1280, "height": 800, "theme": "default", "tolerance": 4080, "hardTolerance": 56, "fixture": "base", "route": "palette", "steps": [{"type": "zzzz"}, {"wait": 300}]},
+    {"name": "palettes/commands", "width": 1280, "height": 800, "theme": "default", "tolerance": 3400, "fixture": "base", "route": "commands:src/main.go:source.go", "storage": {"recur.commandUsage": "{\"recur.text.sort-lines-asc\":{\"count\":3,\"lastUsed\":1767225600000},\"recur.text.uppercase\":{\"count\":1,\"lastUsed\":1767139200000}}"}},
+    {"name": "palettes/commands-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 3680, "fixture": "base", "route": "commands:src/main.go:source.go", "storage": {"recur.commandUsage": "{\"recur.text.sort-lines-asc\":{\"count\":3,\"lastUsed\":1767225600000},\"recur.text.uppercase\":{\"count\":1,\"lastUsed\":1767139200000}}"}},
+    {"name": "palettes/commands-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 3320, "hardTolerance": 1, "fixture": "base", "route": "commands:src/main.go:source.go", "steps": [{"type": "sort"}]},
+    {"name": "palettes/open-in", "width": 1280, "height": 800, "theme": "default", "tolerance": 8060, "fixture": "base", "route": "openin:LOOP-2231", "steps": [{"wait": 400}]},
+    {"name": "palettes/open-in-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 8540, "fixture": "base", "route": "openin:LOOP-2231", "steps": [{"wait": 400}]},
+    {"name": "palettes/open-in-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 7960, "fixture": "base", "route": "openin:LOOP-2231", "steps": [{"wait": 400}, {"type": "cur"}]},
+    {"name": "palettes/run", "width": 1280, "height": 800, "theme": "default", "tolerance": 13780, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}]},
+    {"name": "palettes/run-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 14430, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}]},
+    {"name": "palettes/run-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 10450, "hardTolerance": 1, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}, {"type": "test"}]},
+    {"name": "palettes/syntax", "width": 1280, "height": 800, "theme": "default", "tolerance": 4430, "fixture": "base", "route": "syntax:src/main.go"},
+    {"name": "palettes/syntax-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 4660, "fixture": "base", "route": "syntax:src/main.go"},
+    {"name": "palettes/syntax-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 3970, "hardTolerance": 2, "fixture": "base", "route": "syntax:src/main.go", "steps": [{"type": "pyth"}]},
+    {"name": "palettes/shortcuts", "width": 1280, "height": 800, "theme": "default", "tolerance": 5880, "fixture": "base", "route": "shortcuts"},
+    {"name": "palettes/shortcuts-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 6330, "fixture": "base", "route": "shortcuts"},
+    {"name": "palettes/shortcuts-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 5340, "hardTolerance": 35, "fixture": "base", "route": "shortcuts", "steps": [{"type": "terminal"}]}
   ]
 }

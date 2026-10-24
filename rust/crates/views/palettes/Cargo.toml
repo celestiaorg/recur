@@ -9,7 +9,13 @@ publish = false
 
 [features]
 # Parity scenes for `rust/tools/ui-parity` (`gallery::build`).
-gallery = ["recur-services/mock", "recur-ui/gallery", "dep:recur-app", "dep:serde"]
+gallery = [
+    "recur-services/mock",
+    "recur-ui/gallery",
+    "recur-view-observatory/gallery",
+    "dep:recur-app",
+    "dep:serde",
+]
 
 [dependencies]
 gpui-kit.workspace = true

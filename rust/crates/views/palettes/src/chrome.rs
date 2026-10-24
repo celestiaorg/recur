@@ -116,7 +116,7 @@ pub fn footer(kind: Kind, hints: &[(&str, &str)], cx: &App) -> Div {
         f = f.flex_wrap().gap_x(px(14.)).gap_y(px(8.));
     }
     f.children(hints.iter().map(|(k, label)| {
-        Text::from_spans(vec![footer_key(k.to_string(), cx), span(label.to_string())])
+        Text::from_spans(vec![footer_key(k.to_string(), cx), span(label.to_string())]).nowrap()
     }))
 }
 

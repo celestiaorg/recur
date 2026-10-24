@@ -669,7 +669,7 @@ impl ReviewFileList {
                 if open_dirs.binary_search(&i).is_ok() {
                     flow = flow.child(div().flex_none().h(px(TREE_ROW_H)));
                 } else {
-                    flow = flow.child(self.row_el(r, &rows, None, &flags, &by, window, cx));
+                    flow = flow.child(self.row_el(r, rows, None, &flags, by, window, cx));
                 }
             }
             flow = flow.child(vgap(content_h - (rows[b].top + rows[b].height), window));
@@ -690,10 +690,10 @@ impl ReviewFileList {
             let (is_stuck, fade_under) = sticky[k];
             let row_el = self.row_el(
                 r,
-                &rows,
+                rows,
                 Some((is_stuck, fade_under)),
                 &flags,
-                &by,
+                by,
                 window,
                 cx,
             );

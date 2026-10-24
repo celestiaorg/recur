@@ -52,6 +52,8 @@ pub struct ObservatoryProps {
 /// What [`Observatory::scope_paths`], [`Observatory::review_paths`] and
 /// [`Observatory::exclude_matchers`] last computed, keyed by their inputs.
 type ReviewMemo = (Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>);
+type ExcludedMemo = (Rc<Vec<CompiledGlob>>, HashMap<String, bool>);
+type ChangedTreeMemo = (Rc<Vec<String>>, Rc<Vec<TreeEntry>>);
 
 #[derive(Default)]
 pub(crate) struct PathsMemo {
@@ -61,9 +63,9 @@ pub(crate) struct PathsMemo {
     review: Option<ReviewMemo>,
     dir_status: Option<(u64, Rc<BTreeMap<String, String>>)>,
     /// Exclusion by path under the matchers it was tested against.
-    excluded: Option<(Rc<Vec<CompiledGlob>>, HashMap<String, bool>)>,
+    excluded: Option<ExcludedMemo>,
     /// The changed-files tree of the review paths it was built from.
-    changed_tree: Option<(Rc<Vec<String>>, Rc<Vec<TreeEntry>>)>,
+    changed_tree: Option<ChangedTreeMemo>,
 }
 
 /// The host-owned content the Svelte component took as snippets.

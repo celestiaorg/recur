@@ -2,7 +2,7 @@
 //! drives every view, reporting panics, error toasts and hangs.
 //!
 //! `cargo run -p recur-desktop --example real_data_smoke -- <data dir> [sandbox dir]`
-//! (`wails3 task smoke:rust -- <data dir>`)
+//! (`wails3 task smoke:rust DATA="<data dir>" [SANDBOX=<dir>]`)
 //!
 //! The source is only read. The sandbox gets:
 //! - `data/`: a `VACUUM INTO` snapshot of `recur.db` (safe while the owning app runs) and the

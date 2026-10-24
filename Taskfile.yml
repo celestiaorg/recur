@@ -154,10 +154,10 @@ tasks:
       - cargo test --workspace
 
   smoke:rust:
-    summary: Boots the Rust desktop on a sandbox built from a Recur data dir (read only) and drives every view; `wails3 task smoke:rust -- <data dir> [sandbox dir]` (see rust/crates/desktop/examples/real_data_smoke.rs)
+    summary: Boots the Rust desktop on a sandbox built from a Recur data dir (read only) and drives every view; `wails3 task smoke:rust DATA="<data dir>" [SANDBOX=<dir>]` (see rust/crates/desktop/examples/real_data_smoke.rs)
     dir: rust
     cmds:
-      - cargo run -p recur-desktop --example real_data_smoke -- {{.CLI_ARGS}}
+      - cargo run -p recur-desktop --example real_data_smoke -- "{{.DATA}}" {{.SANDBOX}}
 
   test:rust:ui-parity:
     summary: Captures WebKit references of the recur-ui scenes from the Svelte UI and diffs the Rust renders against them (macOS; see rust/docs/ui-parity.md)

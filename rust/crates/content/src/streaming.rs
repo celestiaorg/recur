@@ -24,7 +24,8 @@ pub fn complete_stream_prefix(text: &str, revealed: usize, complete: bool) -> us
         return text.len();
     };
     if nl < revealed {
-        return revealed;
+        // The text is append-only by contract, but a replaced one must not cut a char.
+        return text.floor_char_boundary(revealed);
     }
     nl + 1
 }
@@ -222,6 +223,11 @@ mod tests {
             complete_stream_prefix("hi", 10, false),
             2,
             "clamps when it shrinks"
+        );
+        assert_eq!(
+            complete_stream_prefix("\n\u{e9}\u{e9}\u{e9}", 4, false),
+            3,
+            "a replaced text keeps a char boundary"
         );
     }
 }

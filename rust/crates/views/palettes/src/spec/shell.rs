@@ -131,12 +131,7 @@ fn open_in_palette_opens_from_the_titlebar_and_cmd_o_on_a_workspace(cx: &mut Tes
     s.keys("cmd-o");
     assert!(s.has("open-in-palette"));
     assert!(s.until(|s| row(s, "oi-row:", "finder")));
-    let finder = if s.has("oi-row:finder:sel") {
-        "oi-row:finder:sel"
-    } else {
-        "oi-row:finder"
-    };
-    s.click(finder);
+    s.click_row("oi-row:finder");
     assert!(!s.has("open-in-palette"));
     s.click("tb-copy-path");
     assert!(s.until(|s| s.toasted(ToastKind::Info, "Copied path")));

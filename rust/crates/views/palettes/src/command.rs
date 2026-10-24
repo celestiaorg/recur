@@ -492,8 +492,10 @@ impl CommandPalette {
         let Some(c) = self.flat(cx).get(i).cloned() else {
             return;
         };
+        // The field hides before the action runs, so what it opens sees no focused field.
+        chrome::release_focus(&self.input, window, cx);
         self.close(cx);
-        run_action(&self.state, c.action, window, cx);
+        run_action(&self.state, c.action, cx);
     }
 
     fn on_key(&mut self, ev: &KeystrokeEvent, window: &mut Window, cx: &mut Context<Self>) -> bool {
@@ -525,8 +527,7 @@ impl CommandPalette {
 }
 
 /// `c.run()`.
-fn run_action(state: &Entity<AppState>, action: Action, window: &mut Window, cx: &mut App) {
-    let _ = window;
+fn run_action(state: &Entity<AppState>, action: Action, cx: &mut App) {
     state.update(cx, |s, cx| match action {
         Action::NewWorkspace => s.open_new_task("", None, cx),
         Action::NewProject => s.open_new_project(false, cx),
@@ -631,7 +632,12 @@ impl Render for CommandPalette {
                 if items.is_empty() {
                     continue;
                 }
-                rows.push(palette_group(g.clone(), false, cx).into_any_element());
+                let sel = format!("pal-group:{g}");
+                rows.push(
+                    palette_group(g.clone(), false, cx)
+                        .debug_selector(move || sel)
+                        .into_any_element(),
+                );
                 for (idx, c) in items {
                     let on = idx == self.sel;
                     if on {

@@ -457,7 +457,11 @@ impl Render for SyntaxPalette {
             rows.push(palette_empty(msg, true, cx).into_any_element());
         } else {
             if !acts.is_empty() {
-                rows.push(palette_group("This file", true, cx).into_any_element());
+                rows.push(
+                    palette_group("This file", true, cx)
+                        .debug_selector(|| "syn-group:This file".into())
+                        .into_any_element(),
+                );
                 for (i, r) in acts.iter().enumerate() {
                     if i == self.sel {
                         sel_child = Some(rows.len());
@@ -466,7 +470,12 @@ impl Render for SyntaxPalette {
                 }
             }
             if !langs.is_empty() {
-                rows.push(palette_group(lang_title, true, cx).into_any_element());
+                let sel = format!("syn-group:{lang_title}");
+                rows.push(
+                    palette_group(lang_title, true, cx)
+                        .debug_selector(move || sel)
+                        .into_any_element(),
+                );
                 for (i, r) in langs.iter().enumerate() {
                     let idx = acts.len() + i;
                     if idx == self.sel {

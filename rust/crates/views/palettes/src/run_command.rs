@@ -286,13 +286,17 @@ impl RunCommandPalette {
         record_command_usage(&self.state, &r.id, cx);
         match r.target {
             Target::Command(id) => {
-                let task = self.state.update(cx, |s, cx| s.run_editor_command(&id, cx));
-                cx.spawn(async move |_, cx| {
-                    if let Err(e) = task.await {
-                        cx.update(|cx| recur_view_core::toast(ToastKind::Error, e, cx));
-                    }
-                })
-                .detach();
+                // The editor's handler updates the window, so it runs once this update is out.
+                let state = self.state.clone();
+                cx.defer(move |cx| {
+                    let task = AppState::run_editor_command(&state, &id, cx);
+                    cx.spawn(async move |cx| {
+                        if let Err(e) = task.await {
+                            cx.update(|cx| recur_view_core::toast(ToastKind::Error, e, cx));
+                        }
+                    })
+                    .detach();
+                });
             }
             Target::Snippet(sn) => {
                 if let Err(e) =
@@ -362,7 +366,14 @@ impl Render for RunCommandPalette {
             rows.push(palette_empty(msg, true, cx).into_any_element());
         } else {
             for (title, items) in &sections {
-                rows.push(palette_group(title.clone(), true, cx).into_any_element());
+                rows.push(
+                    palette_group(title.clone(), true, cx)
+                        .debug_selector({
+                            let t = title.clone();
+                            move || format!("rc-group:{t}")
+                        })
+                        .into_any_element(),
+                );
                 let recent = title == RECENT;
                 for (idx, r) in items {
                     let (idx, on) = (*idx, *idx == self.sel);

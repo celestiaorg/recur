@@ -35,7 +35,6 @@ impl Render for Root {
 
 pub struct S<'a> {
     pub state: Entity<AppState>,
-    pub bridge: Arc<MockBridge>,
     pub cx: &'a mut VisualTestContext,
 }
 
@@ -71,7 +70,7 @@ pub fn boot(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: MockOpt
         let f = shell.focus_handle(cx);
         window.focus(&f, cx);
     });
-    let mut s = S { state, bridge, cx };
+    let mut s = S { state, cx };
     s.settle();
     s
 }
@@ -181,6 +180,16 @@ impl S<'_> {
         self.settle();
         self.cx.simulate_click(p, Modifiers::none());
         self.settle();
+    }
+
+    /// Clicks a palette row, selected (`…:sel`) or not.
+    pub fn click_row(&mut self, sel: &str) {
+        let on = format!("{sel}:sel");
+        if self.has(&on) {
+            self.click(&on);
+        } else {
+            self.click(sel);
+        }
     }
 
     /// Types into the focused field, one character at a time.

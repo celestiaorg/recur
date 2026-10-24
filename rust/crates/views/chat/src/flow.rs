@@ -701,7 +701,7 @@ impl Element for Flow {
             .borrow()
             .as_ref()
             .map_or(0., |l| l.height.max(self.min_height));
-        exact::settle(state.exact.as_ref(), height, window);
+        exact::settle(state.exact.as_ref(), height, window, cx);
         if self.fit {
             let exact_w = state.layout.borrow().as_ref().map(|l| {
                 let extra = if self.trailing_space {

@@ -1556,7 +1556,7 @@ impl Element for Text {
         bounds: Bounds<Pixels>,
         state: &mut TextState,
         window: &mut Window,
-        _: &mut App,
+        cx: &mut App,
     ) -> Vec<(usize, gpui_kit::Hitbox)> {
         let mut hits = Vec::new();
         if let Some(laid) = state.layout.borrow_mut().as_mut() {
@@ -1568,7 +1568,7 @@ impl Element for Text {
                 self.ellipsis,
                 window,
             );
-            crate::exact::settle(state.exact.as_ref(), laid.measured().1, window);
+            crate::exact::settle(state.exact.as_ref(), laid.measured().1, window, cx);
             if !self.links.is_empty() {
                 hits = link_hitboxes(laid, bounds, self.align, &self.links, window);
             }
@@ -1782,7 +1782,7 @@ impl Element for TextStack {
         bounds: Bounds<Pixels>,
         state: &mut StackState,
         window: &mut Window,
-        _: &mut App,
+        cx: &mut App,
     ) -> Vec<Vec<(usize, gpui_kit::Hitbox)>> {
         let mut layouts = self.layouts.borrow_mut();
         self.relayout(&mut layouts, Some(bounds.size.width.into()), true, window);
@@ -1792,7 +1792,7 @@ impl Element for TextStack {
             .zip(layouts.iter())
             .map(|((gap, _), laid)| gap + laid.measured().1)
             .sum();
-        crate::exact::settle(state.exact.as_ref(), h, window);
+        crate::exact::settle(state.exact.as_ref(), h, window, cx);
         state.snapped = resolve_probes(&state.probes, window);
         let mut y = f32::from(bounds.origin.y);
         let mut hits = Vec::new();

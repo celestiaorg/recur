@@ -109,13 +109,14 @@ pub fn measured(
     leaves
 }
 
-/// After the final layout of a [`measured`] box: remember its exact height, and lay the
-/// window out again when it changed.
-pub fn settle(exact: Option<&ExactCell>, height: f32, window: &mut Window) {
+/// After the final layout of a [`measured`] box: remember its exact height, and lay the box's
+/// view out again when it changed. Notifying the view, not refreshing the window, keeps
+/// other cached views (`AnyView::cached`) from re-rendering every time any box settles.
+pub fn settle(exact: Option<&ExactCell>, height: f32, window: &mut Window, cx: &mut App) {
     if let Some(c) = exact
         && c.get().is_none_or(|h| (h - height).abs() > 1e-3)
     {
         c.set(Some(height));
-        window.refresh();
+        cx.notify(window.current_view());
     }
 }

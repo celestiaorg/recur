@@ -94,6 +94,7 @@ impl<V: 'static> Guarded<V> for Context<'_, V> {
         &self,
         f: impl Fn(&mut V, &E, &mut Window, &mut Context<V>) + 'static,
     ) -> impl Fn(&E, &mut Window, &mut App) + 'static {
+        #[allow(clippy::disallowed_methods)]
         self.listener(move |this: &mut V, e: &E, window, cx| {
             if catch(type_name::<V>(), || f(this, e, window, cx)).is_none() {
                 cx.defer(report);

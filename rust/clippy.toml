@@ -1,0 +1,3 @@
+disallowed-methods = [
+    { path = "gpui::Context::listener", reason = "a panic in the handler aborts the app; use recur_ui::guard::Guarded::guarded_listener" },
+]

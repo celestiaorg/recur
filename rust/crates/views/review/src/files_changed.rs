@@ -1115,11 +1115,11 @@ impl FilesChangedView {
                     .flex_col()
                     // Cached: scrolling the cards (or anything above) leaves the list's
                     // layout alone; it redraws when it notifies.
-                    .child(
-                        self.list
-                            .clone()
-                            .cached(gpui_kit::StyleRefinement::default().flex_1().min_h_0()),
-                    ),
+                    .child(recur_ui::style::cached_view(
+                        &self.list,
+                        gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
+                        cx,
+                    )),
             )
             .into_any_element()
     }
@@ -1306,6 +1306,7 @@ impl FilesChangedView {
             .absolute()
             .inset_0()
         };
+        let stack_pane = self.stack_pane(cx);
         let mut wrap = div()
             .debug_selector(|| "diffwrap".into())
             .flex_1()
@@ -1324,14 +1325,14 @@ impl FilesChangedView {
                 .min_h_0()
                 .flex()
                 .flex_col()
-                .child(
-                    self.stack_pane(cx).cached(
-                        gpui_kit::StyleRefinement::default()
-                            .flex_1()
-                            .min_h_0()
-                            .min_w_0(),
-                    ),
-                )
+                .child(recur_ui::style::cached_view(
+                    &stack_pane,
+                    gpui_kit::StyleRefinement::default()
+                        .flex_1()
+                        .min_h_0()
+                        .min_w_0(),
+                    cx,
+                ))
                 .child(pane_probe),
         );
         let surface_probe = {

@@ -786,6 +786,8 @@ fn step() -> &'static Mutex<String> {
 }
 
 static BEAT: AtomicU64 = AtomicU64::new(0);
+/// Transcript pane renders in the last frame drawn (stuck-scroll reports).
+static TRANSCRIPT_RENDERS: AtomicU64 = AtomicU64::new(0);
 /// `session.delta` events the UI received.
 static DELTAS: AtomicU64 = AtomicU64::new(0);
 
@@ -1085,6 +1087,14 @@ fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     BEAT.store(now_ms(), Ordering::SeqCst);
     let took = t.elapsed();
     let renders = recur_ui::guard::take_render_counts();
+    TRANSCRIPT_RENDERS.store(
+        renders
+            .iter()
+            .filter(|(k, _)| k.ends_with("::TranscriptPane"))
+            .map(|(_, n)| u64::from(*n))
+            .sum(),
+        Ordering::SeqCst,
+    );
     if took > Duration::from_millis(500) {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
         if std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
@@ -1437,7 +1447,7 @@ async fn scroll_transcript(
     let mut at_end = 0;
     let mut reached = false;
     let mut unmoved = 0;
-    let mut trail: std::collections::VecDeque<(f32, f32)> = Default::default();
+    let mut trail: std::collections::VecDeque<(f32, f32, u64)> = Default::default();
     for _ in 0..2000 {
         let page = f32::from(handle.bounds().size.height).max(200.);
         let max = f32::from(handle.max_offset().y);
@@ -1445,7 +1455,7 @@ async fn scroll_transcript(
         if trail.len() == 8 {
             trail.pop_front();
         }
-        trail.push_back((y, max));
+        trail.push_back((y, max, TRANSCRIPT_RENDERS.load(Ordering::SeqCst)));
         if y >= max - 0.5 {
             at_end += 1;
             if at_end >= 3 {
@@ -1493,10 +1503,13 @@ async fn scroll_transcript(
     }
     if !reached {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+        let line = format!(
+            "the transcript never scrolled to its end (last offsets, ends and pane renders {trail:?}; scroller {:?}) at: {s}",
+            handle.bounds()
+        );
+        println!("STALL {line}");
         if let Ok(mut r) = report().lock() {
-            r.stalls.push(format!(
-                "the transcript never scrolled to its end (last offsets and ends {trail:?}) at: {s}"
-            ));
+            r.stalls.push(line);
         }
     }
     if chat.read_with(cx, |c, _| c.props().messages.len()) >= LONG_CHAT_ROWS {

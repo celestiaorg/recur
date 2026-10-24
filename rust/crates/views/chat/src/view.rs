@@ -391,7 +391,11 @@ impl AgentChat {
         } else {
             let (transcript, dock) = self.panes(cx);
             root = root
-                .child(transcript.cached(gpui_kit::StyleRefinement::default().flex_1().min_h_0()))
+                .child(recur_ui::style::cached_view(
+                    &transcript,
+                    gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
+                    cx,
+                ))
                 .child(dock);
         }
         if let Some(lb) = &self.lightbox {

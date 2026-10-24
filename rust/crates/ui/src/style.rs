@@ -462,6 +462,20 @@ pub fn window_root(content: impl IntoElement) -> Div {
         )
 }
 
+/// `entity` as a cached view laid out at `style` (see `rust/docs/ARCHITECTURE.md`, "Frame
+/// cost"). It reads the entity first: GPUI only invalidates a view the window saw accessed in a
+/// draw, and a cached view's own render does not count when the entity was already touched
+/// earlier in that frame (as on the frame its parent created it). Without the read, a view
+/// reused from then on drops its own notifies until something refreshes the whole window.
+pub fn cached_view<V: gpui_kit::Render>(
+    entity: &gpui_kit::Entity<V>,
+    style: gpui_kit::StyleRefinement,
+    cx: &App,
+) -> gpui_kit::AnyElement {
+    let _ = entity.read(cx);
+    entity.clone().cached(style).into_any_element()
+}
+
 /// The root of a cached view's content: [`window_root`]'s tie nudge (a cached view lays out as
 /// its own root from a snapped origin, without the window's) around a column the content fills.
 pub fn cached_root(content: impl IntoElement) -> Div {

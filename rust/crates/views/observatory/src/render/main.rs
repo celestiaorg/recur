@@ -11,6 +11,7 @@ use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
 use recur_ui::guard::Guarded;
 use recur_ui::kbd::kbd;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
+use recur_ui::style::cached_view;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon};
@@ -649,7 +650,7 @@ impl Observatory {
                         .min_h_0()
                         .flex()
                         .flex_col()
-                        .child(p.clone().cached(fill())),
+                        .child(cached_view(p, fill(), cx)),
                 );
             }
             pdf = pdf.child(
@@ -700,13 +701,10 @@ impl Observatory {
             && let Some(ed) = self.main_editor.clone()
         {
             let off = show_preview || show_diff || self.view_mode == EditorViewMode::Diff;
-            pane = pane.child(surface(ed.cached(fill()).into_any_element(), off));
+            pane = pane.child(surface(cached_view(&ed, fill(), cx), off));
         }
         if let Some((_, fp)) = &self.file_preview {
-            pane = pane.child(surface(
-                fp.clone().cached(fill()).into_any_element(),
-                !show_preview,
-            ));
+            pane = pane.child(surface(cached_view(fp, fill(), cx), !show_preview));
         }
         if show_diff {
             if let Some((_, m)) = &self.merge_editor {
@@ -717,7 +715,7 @@ impl Observatory {
                         .flex()
                         .flex_col()
                         .overflow_hidden()
-                        .child(m.clone().cached(fill())),
+                        .child(cached_view(m, fill(), cx)),
                 );
             }
         } else if self.editor_path.is_empty() && !show_preview {
@@ -842,7 +840,7 @@ impl Observatory {
         if !self.split_path.is_empty()
             && let Some(ed) = self.split_editor.clone()
         {
-            side = side.child(surface(ed.cached(fill()).into_any_element(), false));
+            side = side.child(surface(cached_view(&ed, fill(), cx), false));
         } else {
             side = side.child(obs_empty(
                 "Open a file — it will land in this pane while focused.",

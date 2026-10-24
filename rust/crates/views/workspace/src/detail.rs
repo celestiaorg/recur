@@ -257,7 +257,11 @@ impl WorkspaceDetail {
                         .left_0()
                         .size_full()
                         .invisible()
-                        .child(v.cached(gpui_kit::StyleRefinement::default().size_full())),
+                        .child(recur_ui::style::cached_view(
+                            &v,
+                            gpui_kit::StyleRefinement::default().size_full(),
+                            cx,
+                        )),
                 );
             }
         }

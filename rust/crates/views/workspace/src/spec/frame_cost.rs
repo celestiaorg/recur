@@ -120,12 +120,16 @@ async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) 
     let counts = recur_ui::guard::take_render_counts();
     recur_ui::guard::count_renders(false);
     // One frame per key, and only the bound workspace's path in it: a parked shell (and the
-    // review it shows) is not laid out again however many workspaces came before.
+    // review it shows) is not laid out again however many workspaces came before. The bound
+    // review's host redraws with its Observatory; its cards and file list are cached.
     for (view, n) in [
         ("::Shell", 3),
         ("::WorkspaceView", 3),
         ("::Observatory", 3),
-        ("::ReviewSurface", 0),
+        ("::ReviewSurface", 3),
+        ("::StackPane", 0),
+        ("::ReviewFileList", 0),
+        ("::DiffFile", 0),
         ("::TranscriptPane", 0),
     ] {
         assert_eq!(renders(view, &counts), n, "{view}: {counts:?}");

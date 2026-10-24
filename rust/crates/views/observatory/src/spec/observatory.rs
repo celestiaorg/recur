@@ -113,6 +113,37 @@ async fn save_keeps_the_file_tab_selected(cx: &mut TestAppContext) {
     assert!(s(&w[0], 3).contains("}\n // edit"), "wrote {:?}", w[0]);
 }
 
+/// `bundles.spec.ts` "willSave runs mocked gofmt transform before WriteFile": the Go bundle's
+/// save command reformats the buffer (the mock collapses blank-line runs and trims trailing
+/// blanks) before it is written.
+#[gpui::test]
+async fn will_save_runs_the_gofmt_transform_before_write_file(cx: &mut TestAppContext) {
+    let writes = Calls::default();
+    let opts = MockOptions::default()
+        .resolver("ReadFile", |_, _, _| {
+            Reply::value(json!({
+                "path": "src/main.go", "language": "go",
+                "content": "package main\n\n\nfunc main() {}   \n", "size": 40, "writable": true,
+            }))
+        })
+        .resolver("WriteFile", record(&writes, |_| Reply::null()));
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    open_main_go(&mut h);
+    h.click("view-mode:Code");
+    h.focus_editor();
+    // Touch the buffer so Save has something to write.
+    h.type_text(" ");
+    h.keys("backspace");
+    h.wait(100);
+    h.keys("cmd-s");
+    h.wait(500);
+    let w = writes.lock().clone();
+    assert!(!w.is_empty());
+    let text = s(&w[0], 3);
+    assert!(!regex::Regex::new(r"[ \t]+\n").unwrap().is_match(&text), "{text:?}");
+    assert!(!text.contains("\n\n\n"), "{text:?}");
+}
+
 #[gpui::test]
 async fn opening_a_folder_keeps_the_open_file_and_breadcrumbs(cx: &mut TestAppContext) {
     let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});

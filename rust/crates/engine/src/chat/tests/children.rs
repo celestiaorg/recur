@@ -983,7 +983,7 @@ async fn stop_during_a_queued_report_is_honored() {
         )
         .await
     });
-    within3(&h.started, "first turn starts").await;
+    within_hang(&h.started, "first turn starts").await;
     let (eng, id, kid) = (Arc::clone(fx.eng()), caller.id.clone(), child.clone());
     let reported = tokio::spawn(async move { eng.report_child(&id, &kid).await });
     // Stop only once the notice has taken its ticket (the live turn holds the first), which
@@ -1004,7 +1004,7 @@ async fn stop_during_a_queued_report_is_honored() {
         ok,
         "report_child must give up (not retry) after a human Stop"
     );
-    join3(first, "first send").await;
+    join_hang(first, "first send").await;
     assert_eq!(h.runs(), 1, "a stopped notice must not start a turn");
     assert_eq!(outcome(&fx, &child.id), CHILD_OUTCOME_SETTLED);
     let note = fx.ws(&child.id).fan_out.unwrap().note;
@@ -1071,7 +1071,7 @@ async fn message_child_injects_into_a_live_turn() {
         )
         .await
     });
-    within3(&h.started, "child turn starts").await;
+    within_hang(&h.started, "child turn starts").await;
     let steer = "please stop and fix tests";
     let got = fx
         .eng()
@@ -1079,7 +1079,7 @@ async fn message_child_injects_into_a_live_turn() {
         .await;
     assert!(got.contains("mid-turn"), "{got}");
     h.release.cancel();
-    let reply = join3(first, "child turn").await;
+    let reply = join_hang(first, "child turn").await;
     assert_ne!(reply, CHAT_INJECTED_SENTINEL);
     assert_eq!(
         h.runs(),

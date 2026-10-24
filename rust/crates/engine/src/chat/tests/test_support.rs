@@ -408,16 +408,21 @@ impl HoldUntil {
     }
 }
 
-/// Waits for a token with the Go tests' 3 s bound.
-pub async fn within3(t: &CancellationToken, what: &str) {
-    tokio::time::timeout(Duration::from_secs(3), t.cancelled())
+/// How long a step may take before a test calls it hung. Go's tests used 3s, but a stopped
+/// or finished turn writes its git checkpoint before the send returns, and under a loaded
+/// full-suite run that alone can pass 3s (0.2s idle, 1.4s at load 66).
+const HANG: Duration = Duration::from_secs(10);
+
+/// Waits for a token, failing as hung after [`HANG`].
+pub async fn within_hang(t: &CancellationToken, what: &str) {
+    tokio::time::timeout(HANG, t.cancelled())
         .await
         .unwrap_or_else(|_| panic!("timed out: {what}"));
 }
 
-/// Awaits a spawned send with the 3 s bound.
-pub async fn join3<T>(h: tokio::task::JoinHandle<T>, what: &str) -> T {
-    tokio::time::timeout(Duration::from_secs(3), h)
+/// Awaits a spawned send, failing as hung after [`HANG`].
+pub async fn join_hang<T>(h: tokio::task::JoinHandle<T>, what: &str) -> T {
+    tokio::time::timeout(HANG, h)
         .await
         .unwrap_or_else(|_| panic!("timed out: {what}"))
         .expect("task")

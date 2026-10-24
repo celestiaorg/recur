@@ -140,7 +140,7 @@ async fn a_live_switch_remounts_with_the_new_tools() {
     let fx = Fx::new(Some(hold_first_runner(&c, started.clone(), Duration::ZERO)));
     let ws = fx.workspace("remount").await;
     let first = spawn_send(&fx, &ws.id, "build this feature", CHAT_MODE_AGENT);
-    within3(&started, "first turn starts").await;
+    within_hang(&started, "first turn starts").await;
     let msg = fx
         .eng()
         .switch_chat_mode(&ws.id, "PA", CHAT_MODE_PLAN)
@@ -150,7 +150,7 @@ async fn a_live_switch_remounts_with_the_new_tools() {
         "{msg}"
     );
     assert!(msg.contains("remounting"), "{msg}");
-    join3(first, "first turn after the park").await;
+    join_hang(first, "first turn after the park").await;
     let specs = wait_coder_turns(&c, 2).await;
     let (first, cont) = (&specs[0], &specs[1]);
     assert!(has_tool(first, "Edit") && !has_tool(first, mcp::SUBMIT_PLAN));
@@ -174,12 +174,12 @@ async fn stop_after_switch(delay: Duration) {
     let fx = Fx::new(Some(hold_first_runner(&c, started.clone(), delay)));
     let ws = fx.workspace("stop-no-remount").await;
     let first = spawn_send(&fx, &ws.id, "build this", CHAT_MODE_AGENT);
-    within3(&started, "first turn starts").await;
+    within_hang(&started, "first turn starts").await;
     fx.eng()
         .switch_chat_mode(&ws.id, "PA", CHAT_MODE_PLAN)
         .await;
     assert!(fx.eng().cancel_chat(&ws.id, "PA").await);
-    let reply = join3(first, "first turn after stop").await;
+    let reply = join_hang(first, "first turn after stop").await;
     assert!(!reply.is_empty() && !reply.contains("continued"), "{reply}");
     tokio::time::sleep(ASK_USER_PARK_DELAY + Duration::from_millis(200)).await;
     assert_eq!(

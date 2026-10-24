@@ -41,13 +41,13 @@ async fn a_follow_up_steers_the_live_turn() {
         let fx = Fx::new(Some(r.provider()));
         let ws = fx.workspace(&format!("steer {model}")).await;
         let first = spawn_send(&fx, &ws.id, "do the thing", model);
-        within3(&r.started, "first turn starts").await;
+        within_hang(&r.started, "first turn starts").await;
         let got = fx
             .send(&ws.id, "PA", "please stop and fix tests", model)
             .await;
         assert_eq!(got, CHAT_INJECTED_SENTINEL, "{model}");
         r.release.cancel();
-        assert_ne!(join3(first, "first turn").await, CHAT_INJECTED_SENTINEL);
+        assert_ne!(join_hang(first, "first turn").await, CHAT_INJECTED_SENTINEL);
         assert_eq!(r.runs(), 1, "{model}: the follow-up must steer, not run");
         assert_eq!(r.injected_users(), ["please stop and fix tests"], "{model}");
         fx.te.close().await;
@@ -60,9 +60,9 @@ async fn a_steer_waiting_for_its_ack_does_not_hold_the_life_lock() {
     let fx = Fx::new(Some(r.provider()));
     let ws = fx.workspace("inject-life").await;
     let first = spawn_send(&fx, &ws.id, "do the thing", "sonnet");
-    within3(&r.started, "first turn starts").await;
+    within_hang(&r.started, "first turn starts").await;
     let follow = spawn_send(&fx, &ws.id, "please stop and fix tests", "sonnet");
-    within3(&r.got_inject, "follow-up reaches the steer").await;
+    within_hang(&r.got_inject, "follow-up reaches the steer").await;
     let msg = tokio::time::timeout(
         Duration::from_secs(2),
         fx.eng().switch_chat_mode(&ws.id, "PA", CHAT_MODE_PLAN),
@@ -71,9 +71,9 @@ async fn a_steer_waiting_for_its_ack_does_not_hold_the_life_lock() {
     .expect("switch_mode deadlocked on the life lock held across the ack");
     assert!(msg.contains("plan"), "{msg}");
     r.ack_wait.as_ref().unwrap().cancel();
-    assert_eq!(join3(follow, "follow-up").await, CHAT_INJECTED_SENTINEL);
+    assert_eq!(join_hang(follow, "follow-up").await, CHAT_INJECTED_SENTINEL);
     r.release.cancel();
-    join3(first, "first turn").await;
+    join_hang(first, "first turn").await;
     fx.te.close().await;
 }
 
@@ -170,17 +170,17 @@ async fn a_racing_follow_up_does_not_cancel_the_first_send() {
             _ => None,
         }));
     let first = spawn_send(&fx, &ws.id, "first prompt", "cursor/composer-2.5");
-    within3(&first_in, "first send enters its prologue").await;
+    within_hang(&first_in, "first send enters its prologue").await;
     let second = spawn_send(&fx, &ws.id, "second prompt", "cursor/composer-2.5");
-    within3(&second_in, "second send takes a ticket").await;
+    within_hang(&second_in, "second send takes a ticket").await;
     proceed.cancel();
-    within3(&r.started, "the turn starts").await;
+    within_hang(&r.started, "the turn starts").await;
     assert_eq!(
-        join3(second, "the quick send").await,
+        join_hang(second, "the quick send").await,
         CHAT_INJECTED_SENTINEL
     );
     r.release.cancel();
-    join3(first, "the first send").await;
+    join_hang(first, "the first send").await;
     assert_eq!(r.runs(), 1);
     assert!(r.last_spec().unwrap().prompt.contains("first prompt"));
     assert_eq!(r.injected_users(), ["second prompt"]);
@@ -208,22 +208,22 @@ async fn a_follow_up_does_not_restart_after_stop() {
         }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
     });
     let first = spawn_send(&fx, &ws.id, "do the thing", "cursor/composer-2.5");
-    within3(&r.started, "first turn starts").await;
+    within_hang(&r.started, "first turn starts").await;
     let follow = spawn_send(&fx, &ws.id, "late steer", "cursor/composer-2.5");
-    within3(&blocked, "follow-up enters its prologue").await;
+    within_hang(&blocked, "follow-up enters its prologue").await;
     assert!(fx.eng().cancel_chat(&ws.id, "PA").await);
     proceed.cancel();
-    assert_eq!(join3(follow, "follow-up").await, CHAT_STOPPED_REPLY);
+    assert_eq!(join_hang(follow, "follow-up").await, CHAT_STOPPED_REPLY);
     assert_eq!(r.runs(), 1);
     r.release.cancel();
-    join3(first, "first turn").await;
+    join_hang(first, "first turn").await;
     fx.te.close().await;
 }
 
 async fn steer_once(fx: &Fx, r: &Arc<HoldInject>, text: &str, display: &str) {
     let ws = fx.workspace("steer once").await;
     let first = spawn_send(fx, &ws.id, "do the thing", "cursor/composer-2.5");
-    within3(&r.started, "first turn starts").await;
+    within_hang(&r.started, "first turn starts").await;
     let got = fx
         .eng()
         .send_workspace_message(
@@ -239,7 +239,7 @@ async fn steer_once(fx: &Fx, r: &Arc<HoldInject>, text: &str, display: &str) {
         .await;
     assert_eq!(got, CHAT_INJECTED_SENTINEL);
     r.release.cancel();
-    join3(first, "first turn").await;
+    join_hang(first, "first turn").await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -275,7 +275,7 @@ async fn a_steer_never_carries_the_fork_preamble() {
     let fx = Fx::new(Some(r.provider()));
     let ws = fx.workspace("cursor fork inject").await;
     let first = spawn_send(&fx, &ws.id, "only turn", "cursor/composer-2.5");
-    within3(&r.started, "first turn starts").await;
+    within_hang(&r.started, "first turn starts").await;
     let sess = fx.te.store.session_for_loop_agent(&ws.id, "PA").unwrap();
     let mut cfg = AgentConfig::parse(&sess.config_json);
     cfg.fork_inject = true;
@@ -291,7 +291,7 @@ async fn a_steer_never_carries_the_fork_preamble() {
     assert_eq!(r.injected_users(), ["steer later"]);
     assert!(!r.injected.lock()[0].0.contains(FORK_PREAMBLE_LEAD));
     r.release.cancel();
-    join3(first, "first turn").await;
+    join_hang(first, "first turn").await;
     fx.te.close().await;
 }
 
@@ -301,7 +301,7 @@ async fn no_steer_lands_after_stop() {
     let fx = Fx::new(Some(r.provider()));
     let ws = fx.workspace("cursor stop").await;
     let first = spawn_send(&fx, &ws.id, "do the thing", "cursor/composer-2.5");
-    within3(&r.started, "first turn starts").await;
+    within_hang(&r.started, "first turn starts").await;
     assert!(fx.eng().cancel_chat(&ws.id, "PA").await);
     assert!(
         !fx.eng()
@@ -310,7 +310,7 @@ async fn no_steer_lands_after_stop() {
         "a discarded steer must not be acknowledged"
     );
     r.release.cancel();
-    join3(first, "first turn").await;
+    join_hang(first, "first turn").await;
     fx.te.close().await;
 }
 
@@ -320,11 +320,11 @@ async fn no_steer_lands_after_the_result() {
     let fx = Fx::new(Some(r.provider()));
     let ws = fx.workspace("cursor result").await;
     let first = spawn_send(&fx, &ws.id, "do the thing", "cursor/composer-2.5");
-    within3(&r.started, "first turn emits its result").await;
+    within_hang(&r.started, "first turn emits its result").await;
     let follow = spawn_send(&fx, &ws.id, "late steer", "cursor/composer-2.5");
     r.release.cancel();
-    join3(first, "first turn").await;
-    within3(&r.second_started, "the replacement turn starts").await;
+    join_hang(first, "first turn").await;
+    within_hang(&r.second_started, "the replacement turn starts").await;
     assert_eq!(fx.te.store.agent(&ws.id, "PA").unwrap().status, "working");
     assert_eq!(
         r.spec_resume(1),
@@ -332,7 +332,7 @@ async fn no_steer_lands_after_the_result() {
         "resume refreshed after the predecessor unregistered"
     );
     r.second_release.cancel();
-    assert_ne!(join3(follow, "follow-up").await, CHAT_INJECTED_SENTINEL);
+    assert_ne!(join_hang(follow, "follow-up").await, CHAT_INJECTED_SENTINEL);
     fx.te.close().await;
 }
 
@@ -342,7 +342,7 @@ async fn a_turn_that_cannot_steer_is_waited_out_not_swapped() {
     let fx = Fx::new(Some(r.provider()));
     let ws = fx.workspace("no swap").await;
     let first = spawn_send(&fx, &ws.id, "do the thing", "claude-code/sonnet");
-    within3(&r.started, "first turn starts").await;
+    within_hang(&r.started, "first turn starts").await;
     let follow = spawn_send(&fx, &ws.id, "steer please", "cursor/composer-2.5");
     tokio::time::sleep(Duration::from_millis(80)).await;
     assert!(
@@ -351,8 +351,8 @@ async fn a_turn_that_cannot_steer_is_waited_out_not_swapped() {
     );
     assert_eq!((*r.runs.lock(), *r.cancels.lock()), (1, 0));
     r.release.cancel();
-    join3(first, "first turn").await;
-    assert_ne!(join3(follow, "follow-up").await, CHAT_INJECTED_SENTINEL);
+    join_hang(first, "first turn").await;
+    assert_ne!(join_hang(follow, "follow-up").await, CHAT_INJECTED_SENTINEL);
     assert_eq!((*r.runs.lock(), *r.cancels.lock()), (2, 0));
     fx.te.close().await;
 }
@@ -363,7 +363,7 @@ async fn a_fresh_session_never_steers_the_live_turn() {
     let fx = Fx::new(Some(r.provider()));
     let ws = fx.workspace("fresh live").await;
     let first = spawn_send(&fx, &ws.id, "do the thing", "cursor/composer-2.5");
-    within3(&r.started, "first turn starts").await;
+    within_hang(&r.started, "first turn starts").await;
     let (eng, id) = (Arc::clone(fx.eng()), ws.id.clone());
     let follow = tokio::spawn(async move {
         eng.send_workspace_turn(
@@ -386,8 +386,11 @@ async fn a_fresh_session_never_steers_the_live_turn() {
     );
     assert_eq!(r.runs(), 1);
     r.release.cancel();
-    join3(first, "first turn").await;
-    assert_ne!(join3(follow, "fresh send").await, CHAT_INJECTED_SENTINEL);
+    join_hang(first, "first turn").await;
+    assert_ne!(
+        join_hang(follow, "fresh send").await,
+        CHAT_INJECTED_SENTINEL
+    );
     let specs = r.specs.lock().clone();
     assert_eq!(specs.len(), 2);
     assert!(
@@ -415,7 +418,7 @@ async fn a_remount_registers_only_after_its_fifo_claim() {
             _ => None,
         }));
     let first = spawn_send(&fx, &ws.id, "user prompt", "cursor/composer-2.5");
-    within3(&first_in, "first send enters its prologue").await;
+    within_hang(&first_in, "first send enters its prologue").await;
     let epoch = fx.eng().alloc_continue_gen(&ws.id, "PA");
     let (eng, id) = (Arc::clone(fx.eng()), ws.id.clone());
     let cont = tokio::spawn(async move {
@@ -433,7 +436,7 @@ async fn a_remount_registers_only_after_its_fifo_claim() {
         )
         .await
     });
-    within3(&cont_in, "the remount enters its prologue").await;
+    within_hang(&cont_in, "the remount enters its prologue").await;
     for _ in 0..16 {
         assert!(
             fx.eng().live_chat_turn(&ws.id, "PA").is_none(),
@@ -442,10 +445,10 @@ async fn a_remount_registers_only_after_its_fifo_claim() {
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
     proceed.cancel();
-    within3(&r.started, "the first turn starts").await;
+    within_hang(&r.started, "the first turn starts").await;
     r.release.cancel();
-    join3(first, "first send").await;
-    join3(cont, "the remount").await;
+    join_hang(first, "first send").await;
+    join_hang(cont, "the remount").await;
     fx.te.close().await;
 }
 
@@ -456,7 +459,7 @@ async fn a_subagent_notice_queues_as_its_own_turn() {
     let ws = fx.workspace("notice").await;
     let model = "claude-code/sonnet";
     let first = spawn_send(&fx, &ws.id, "do the thing", model);
-    within3(&r.started, "first turn starts").await;
+    within_hang(&r.started, "first turn starts").await;
     let (eng, id) = (Arc::clone(fx.eng()), ws.id.clone());
     let notice = tokio::spawn(async move {
         eng.send_workspace_message(
@@ -475,7 +478,7 @@ async fn a_subagent_notice_queues_as_its_own_turn() {
     assert_eq!(r.runs(), 1, "the notice must wait, not start yet");
     r.release.cancel();
     for h in [first, notice] {
-        assert_ne!(join3(h, "a turn").await, CHAT_INJECTED_SENTINEL);
+        assert_ne!(join_hang(h, "a turn").await, CHAT_INJECTED_SENTINEL);
     }
     assert_eq!(r.runs(), 2, "the notice runs as its own turn");
     assert!(r.injected.lock().is_empty(), "the notice must not steer");

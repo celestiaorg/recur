@@ -3,6 +3,7 @@
 //! status facets, project filter and sort in the pane header, and a GitHub sync when the
 //! route opens.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -419,7 +420,7 @@ impl PrList {
             segs = segs.child(
                 seg_text_btn(SharedString::from(format!("seg-{label}")), label, on, cx)
                     .debug_selector(move || format!("seg:{label}:{on}"))
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                         this.ui.update(cx, |u, cx| {
                             u.seg = life;
                             cx.notify();
@@ -839,8 +840,8 @@ impl PrList {
                     }
                 });
             })
-            .on_click(cx.listener(move |this, _, _, cx| this.open(&open_id, cx)))
-            .on_key_down(cx.listener(move |this, ev: &KeyDownEvent, _, cx| {
+            .on_click(cx.guarded_listener(move |this, _, _, cx| this.open(&open_id, cx)))
+            .on_key_down(cx.guarded_listener(move |this, ev: &KeyDownEvent, _, cx| {
                 if ev.keystroke.key == "enter" {
                     cx.stop_propagation();
                     this.open(&key_id, cx);
@@ -1083,8 +1084,12 @@ fn exact_cell(w: f32, content: Option<AnyElement>, window: &Window) -> Div {
         })
 }
 
-impl Render for PrList {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PrList {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let booted = self.state().read(cx).booted;
         let total = self.state().read(cx).prs.len();
@@ -1255,5 +1260,11 @@ impl Render for PrList {
                             .child(overview),
                     ),
             )
+    }
+}
+
+impl Render for PrList {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

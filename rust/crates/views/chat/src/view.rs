@@ -8,6 +8,7 @@ use gpui_kit::{
     KeystrokeEvent, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
     Subscription, Window, canvas, div, px,
 };
+use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, text};
 use recur_ui::{IconName, Theme, icon, rgba};
@@ -162,7 +163,7 @@ impl AgentChat {
                 .hover(|s| s.bg(hsla(t.pane)))
                 .child(icon(ic).size(px(14.)).color(hsla(t.muted)))
                 .child(text(s).line_height(LineHeight::Normal).nowrap())
-                .on_click(cx.listener(move |c, _, _, cx| {
+                .on_click(cx.guarded_listener(move |c, _, _, cx| {
                     c.fork_menu = None;
                     cx.emit(if to_ws {
                         ChatEvent::ForkToWorkspace(mid.clone())
@@ -190,7 +191,7 @@ impl AgentChat {
         )
         .id("fork-menu")
         .occlude()
-        .on_mouse_down_out(cx.listener(|c, _, _, cx| {
+        .on_mouse_down_out(cx.guarded_listener(|c, _, _, cx| {
             c.fork_menu = None;
             cx.notify();
         }));
@@ -202,8 +203,12 @@ impl AgentChat {
     }
 }
 
-impl Render for AgentChat {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl AgentChat {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         self.tc_shift = crate::rows::tc_icon_shift(window);
         self.scale = window.scale_factor();
@@ -318,7 +323,7 @@ impl Render for AgentChat {
         if self.props.readonly || self.app_surface() {
             return root;
         }
-        root.on_drag_move::<ExternalPaths>(cx.listener(
+        root.on_drag_move::<ExternalPaths>(cx.guarded_listener(
             |c, ev: &DragMoveEvent<ExternalPaths>, _, cx| {
                 let over = ev.bounds.contains(&ev.event.position);
                 if over != c.file_drop_over {
@@ -327,7 +332,7 @@ impl Render for AgentChat {
                 }
             },
         ))
-        .on_drag_move::<WorkspaceFileDrag>(cx.listener(
+        .on_drag_move::<WorkspaceFileDrag>(cx.guarded_listener(
             |c, ev: &DragMoveEvent<WorkspaceFileDrag>, _, cx| {
                 let over = ev.bounds.contains(&ev.event.position);
                 if over != c.file_drop_over {
@@ -336,7 +341,7 @@ impl Render for AgentChat {
                 }
             },
         ))
-        .on_drop(cx.listener(|c, paths: &ExternalPaths, window, cx| {
+        .on_drop(cx.guarded_listener(|c, paths: &ExternalPaths, window, cx| {
             c.file_drop_over = false;
             let list: Vec<String> = paths
                 .0
@@ -345,9 +350,17 @@ impl Render for AgentChat {
                 .collect();
             c.apply_os_drop(list, window, cx);
         }))
-        .on_drop(cx.listener(|c, drag: &WorkspaceFileDrag, window, cx| {
-            let paths = drag.paths.clone();
-            c.drop_explorer_paths(&paths, window, cx);
-        }))
+        .on_drop(
+            cx.guarded_listener(|c, drag: &WorkspaceFileDrag, window, cx| {
+                let paths = drag.paths.clone();
+                c.drop_explorer_paths(&paths, window, cx);
+            }),
+        )
+    }
+}
+
+impl Render for AgentChat {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

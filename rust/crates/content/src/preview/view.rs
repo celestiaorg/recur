@@ -1,6 +1,7 @@
 //! `FilePreview.svelte`: the Preview surface of dual-nature files (markdown, SVG, HTML,
 //! Mermaid) with find-in-page and per-path scroll that survives remounts and restores.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -589,8 +590,12 @@ impl Drop for FilePreview {
     }
 }
 
-impl Render for FilePreview {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl FilePreview {
+    fn render_view(
+        &mut self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let this = cx.entity().downgrade();
         let track = canvas(
@@ -688,7 +693,7 @@ impl Render for FilePreview {
             .id("file-preview-host")
             .track_focus(&self.focus)
             .key_context("FilePreview")
-            .capture_key_down(cx.listener(Self::key_down))
+            .capture_key_down(cx.guarded_listener(Self::key_down))
             .flex_1()
             .min_h_0()
             .size_full()
@@ -697,6 +702,12 @@ impl Render for FilePreview {
             .overflow_hidden()
             .when(self.find_open, |d| d.child(self.bar.clone()))
             .child(surface)
+    }
+}
+
+impl Render for FilePreview {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

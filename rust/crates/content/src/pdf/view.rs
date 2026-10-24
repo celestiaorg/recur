@@ -2,6 +2,7 @@
 //! they intersect the viewport (and discarded when they leave it), a page field that follows
 //! the scroll, and zoom by toolbar or ⌘+ / ⌘-.
 
+use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -398,7 +399,7 @@ impl PdfPreview {
             .when(disabled, |d| d.opacity(0.35))
             .when(!disabled, |d| {
                 d.hover(move |s| s.text_color(t.text).bg(t.pane_2))
-                    .on_click(cx.listener(move |p, _, window, cx| on(p, window, cx)))
+                    .on_click(cx.guarded_listener(move |p, _, window, cx| on(p, window, cx)))
             })
             .child(icon(name).size(px(15.)));
         titled(id, title, b).into_any_element()
@@ -458,7 +459,7 @@ impl PdfPreview {
             .items_center()
             .text_color(t.muted)
             .hover(move |s| s.text_color(t.text).bg(t.pane_2))
-            .on_click(cx.listener(|p, _, _, cx| p.fit_width(cx)))
+            .on_click(cx.guarded_listener(|p, _, _, cx| p.fit_width(cx)))
             .child(
                 recur_ui::text(pct)
                     .family(Family::Mono)
@@ -576,8 +577,12 @@ impl PdfPreview {
     }
 }
 
-impl Render for PdfPreview {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PdfPreview {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         recur_ui::style::style_text_input(&self.input, cx);
         let t = Theme::of(cx).tokens;
         self.sync_slots(window, cx);
@@ -630,7 +635,7 @@ impl Render for PdfPreview {
             .overflow_scroll()
             .on_mouse_down(
                 gpui_kit::MouseButton::Left,
-                cx.listener(|p, _, window, cx| p.focus.focus(window, cx)),
+                cx.guarded_listener(|p, _, window, cx| p.focus.focus(window, cx)),
             )
             .child(div().p(px(VIEW_PAD)).flex().min_w_full().child(pages))
             .when(hidden, |d| d.invisible());
@@ -666,7 +671,7 @@ impl Render for PdfPreview {
         div()
             .id("obs-pdf-preview")
             .key_context("PdfPreview")
-            .on_key_down(cx.listener(Self::key_down))
+            .on_key_down(cx.guarded_listener(Self::key_down))
             .relative()
             .flex_1()
             .min_h_0()
@@ -686,5 +691,11 @@ impl Render for PdfPreview {
                     .child(measure)
                     .child(viewport),
             )
+    }
+}
+
+impl Render for PdfPreview {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

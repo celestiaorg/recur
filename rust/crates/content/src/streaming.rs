@@ -170,9 +170,15 @@ impl StreamingMarkdown {
     }
 }
 
-impl Render for StreamingMarkdown {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl StreamingMarkdown {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         self.view.clone()
+    }
+}
+
+impl Render for StreamingMarkdown {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

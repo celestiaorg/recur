@@ -3,6 +3,7 @@
 //! line-note composer (click or drag the `+` to pick a range). Long files window their rows
 //! against the scrolling pane (`review-window.ts`).
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -1163,7 +1164,7 @@ impl DiffFile {
             .child(probe)
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(move |d, _, _, cx| {
+                cx.guarded_listener(move |d, _, _, cx| {
                     cx.stop_propagation();
                     d.begin_range(line_i, side, cx);
                 }),
@@ -1171,9 +1172,9 @@ impl DiffFile {
             // A quick click can land before the window-level release listener is painted.
             .on_mouse_up(
                 MouseButton::Left,
-                cx.listener(move |d, _, window, cx| d.end_range(line_i, window, cx)),
+                cx.guarded_listener(move |d, _, window, cx| d.end_range(line_i, window, cx)),
             )
-            .on_click(cx.listener(move |d, e: &ClickEvent, window, cx| {
+            .on_click(cx.guarded_listener(move |d, e: &ClickEvent, window, cx| {
                 if matches!(e, ClickEvent::Keyboard(_)) {
                     d.open_composer(line_i, side, 0, window, cx);
                 }
@@ -1391,7 +1392,7 @@ impl DiffFile {
                         .truncate(),
                 ),
             )
-            .on_click(cx.listener(move |d, _, _, cx| d.toggle_hunk(i, cx)))
+            .on_click(cx.guarded_listener(move |d, _, _, cx| d.toggle_hunk(i, cx)))
             .into_any_element()
     }
 
@@ -1513,16 +1514,18 @@ impl DiffFile {
             .text_color(hsla(t.text))
             .when(posting, |d| d.opacity(0.55))
             .key_context("TextEntry")
-            .on_key_down(cx.listener(move |d, ev: &KeyDownEvent, window, cx| {
-                let k = &ev.keystroke;
-                if k.key == "enter" && (k.modifiers.platform || k.modifiers.control) {
-                    cx.stop_propagation();
-                    d.submit(line_i, window, cx);
-                } else if k.key == "escape" {
-                    cx.stop_propagation();
-                    d.dismiss_composer(window, cx);
-                }
-            }))
+            .on_key_down(
+                cx.guarded_listener(move |d, ev: &KeyDownEvent, window, cx| {
+                    let k = &ev.keystroke;
+                    if k.key == "enter" && (k.modifiers.platform || k.modifiers.control) {
+                        cx.stop_propagation();
+                        d.submit(line_i, window, cx);
+                    } else if k.key == "escape" {
+                        cx.stop_propagation();
+                        d.dismiss_composer(window, cx);
+                    }
+                }),
+            )
             .child(Textarea::new(&self.draft));
         let hint_text = if mode == NoteMode::Finding {
             "saves a finding on this line"
@@ -1564,9 +1567,9 @@ impl DiffFile {
                         )
                         .debug_selector(|| "compose-cancel".into())
                         .when(!posting, |b| {
-                            b.on_click(
-                                cx.listener(|d, _, window, cx| d.dismiss_composer(window, cx)),
-                            )
+                            b.on_click(cx.guarded_listener(|d, _, window, cx| {
+                                d.dismiss_composer(window, cx)
+                            }))
                         }),
                     )
                     .child(
@@ -1581,9 +1584,9 @@ impl DiffFile {
                         )
                         .debug_selector(|| "compose-add".into())
                         .when(!posting && !empty, |b| {
-                            b.on_click(
-                                cx.listener(move |d, _, window, cx| d.submit(line_i, window, cx)),
-                            )
+                            b.on_click(cx.guarded_listener(move |d, _, window, cx| {
+                                d.submit(line_i, window, cx)
+                            }))
                         }),
                     ),
             );
@@ -1638,7 +1641,7 @@ impl DiffFile {
             .group_hover(group.clone(), |s| s.opacity(1.))
             .hover(|s| s.text_color(hsla(t.coral)).bg(hsla(t.pane.fade(0.7))))
             .child(icon(IconName::Trash).size(px(13.)))
-            .on_click(cx.listener(move |d, _, _, cx| d.remove_pending(pc2.clone(), cx)));
+            .on_click(cx.guarded_listener(move |d, _, _, cx| d.remove_pending(pc2.clone(), cx)));
         let card = recur_ui::style::card(t.bg, t.amber.mix(0.45, t.line), 10.)
             .group(group)
             .pt(px(8.))
@@ -2008,7 +2011,7 @@ impl DiffFile {
             head = head
                 .cursor_pointer()
                 .hover(|s| s.bg(hsla(t.pane_2)))
-                .on_click(cx.listener(|d, _, window, cx| d.toggle_collapsed(window, cx)))
+                .on_click(cx.guarded_listener(|d, _, window, cx| d.toggle_collapsed(window, cx)))
                 .child(
                     div()
                         .debug_selector({
@@ -2087,7 +2090,7 @@ impl DiffFile {
                 copied.then_some(t.emerald),
                 cx,
             )
-            .on_click(cx.listener(|d, _, _, cx| {
+            .on_click(cx.guarded_listener(|d, _, _, cx| {
                 cx.stop_propagation();
                 d.copy_path(cx)
             })),
@@ -2144,8 +2147,12 @@ fn side_key(side: DiffSide) -> &'static str {
     }
 }
 
-impl Render for DiffFile {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl DiffFile {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         {
             let mut g = self.geom.borrow_mut();
@@ -2487,6 +2494,12 @@ impl Render for DiffFile {
                 .child(head)
         });
         root.children(layer).child(frame)
+    }
+}
+
+impl Render for DiffFile {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

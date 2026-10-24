@@ -2,6 +2,7 @@
 //! (Open in GitHub, Send back, Update with base, Pull / Push / Force push, the pending chip,
 //! Approve / Request changes, draft state, Fix checks, and the merge split).
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -880,7 +881,7 @@ impl PrTitlebarActions {
         .child(icon(ico).size(px(13.)).rotate(spin))
         .child(style::button_label(label, 11.5, weight::MEDIUM));
         if let Some(f) = on_click.filter(|_| !off) {
-            b = b.on_click(cx.listener(move |a, _, _, cx| f(a, cx)));
+            b = b.on_click(cx.guarded_listener(move |a, _, _, cx| f(a, cx)));
         }
         let b = no_drag(b);
         match tip {
@@ -918,13 +919,13 @@ impl PrTitlebarActions {
         .relative()
         .child(style::split_divider());
         if !d.busy {
-            main = main.on_click(cx.listener(|a, _, _, cx| a.update_with_base(cx)));
+            main = main.on_click(cx.guarded_listener(|a, _, _, cx| a.update_with_base(cx)));
         }
         let chev = tbtn("pr-update-chev", Tbtn::Solid, TbtnSize::TITLEBAR, None, cx)
             .debug_selector(|| "pr-update-chev".into())
             .rounded_l(px(0.))
             .px(px(5.))
-            .on_click(cx.listener(|a, _, _, cx| {
+            .on_click(cx.guarded_listener(|a, _, _, cx| {
                 a.update_menu_open = !a.update_menu_open;
                 a.merge_menu_open = false;
                 a.review_menu_open = false;
@@ -958,7 +959,7 @@ impl PrTitlebarActions {
                         update_method_menu_label(m),
                         cx,
                     )
-                    .on_click(cx.listener(move |a, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |a, _, _, cx| {
                         a.update_override = Some(m.to_string());
                         a.update_menu_open = false;
                         cx.notify();
@@ -1007,8 +1008,8 @@ impl PrTitlebarActions {
         .px(px(5.));
         if !d.busy {
             let kind = self.review_kind;
-            main = main.on_click(cx.listener(move |a, _, _, cx| a.open_review(kind, cx)));
-            chev = chev.on_click(cx.listener(|a, _, _, cx| {
+            main = main.on_click(cx.guarded_listener(move |a, _, _, cx| a.open_review(kind, cx)));
+            chev = chev.on_click(cx.guarded_listener(|a, _, _, cx| {
                 a.review_menu_open = !a.review_menu_open;
                 a.merge_menu_open = false;
                 a.update_menu_open = false;
@@ -1045,7 +1046,7 @@ impl PrTitlebarActions {
                     "pr-review-request"
                 };
                 menu_item(id, self.review_kind == k, l, cx)
-                    .on_click(cx.listener(move |a, _, _, cx| a.open_review(k, cx)))
+                    .on_click(cx.guarded_listener(move |a, _, _, cx| a.open_review(k, cx)))
                     .into_any_element()
             })
             .collect();
@@ -1084,7 +1085,7 @@ impl PrTitlebarActions {
                 .child(style::split_divider())
         };
         if !d.busy {
-            main = main.on_click(cx.listener(|a, _, _, cx| a.request_merge(cx)));
+            main = main.on_click(cx.guarded_listener(|a, _, _, cx| a.request_merge(cx)));
         }
         let mut split = div()
             .id("pr-merge-split")
@@ -1107,7 +1108,7 @@ impl PrTitlebarActions {
                 .rounded_l(px(0.))
                 .px(px(5.));
             if !d.busy {
-                chev = chev.on_click(cx.listener(|a, _, _, cx| {
+                chev = chev.on_click(cx.guarded_listener(|a, _, _, cx| {
                     a.merge_menu_open = !a.merge_menu_open;
                     a.confirming_merge = false;
                     a.update_menu_open = false;
@@ -1130,7 +1131,7 @@ impl PrTitlebarActions {
                             merge_method_label(m).unwrap_or("Merge"),
                             cx,
                         )
-                        .on_click(cx.listener(move |a, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |a, _, _, cx| {
                             a.merge_override = Some(m.to_string());
                             a.merge_menu_open = false;
                             a.confirming_merge = false;
@@ -1168,7 +1169,7 @@ impl PrTitlebarActions {
                 .px(px(8.))
                 .cursor_pointer()
                 .hover(move |s| s.border_color(Hsla::from(hover)))
-                .on_click(cx.listener(move |a, _, _, cx| {
+                .on_click(cx.guarded_listener(move |a, _, _, cx| {
                     if open {
                         let k = a.review_kind;
                         a.open_review(k, cx);
@@ -1246,8 +1247,12 @@ fn outside_closer(which: &'static str, cx: &mut Context<PrTitlebarActions>) -> A
     .into_any_element()
 }
 
-impl Render for PrTitlebarActions {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PrTitlebarActions {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let root = div()
             .id("pr-review-actions")
             .flex()
@@ -1442,6 +1447,12 @@ impl Render for PrTitlebarActions {
             }
         }
         root.children(out)
+    }
+}
+
+impl Render for PrTitlebarActions {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

@@ -3,6 +3,7 @@
 //! copy controls on fences, Mermaid placeholders hydrated into diagrams, and images that open
 //! the lightbox.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -454,8 +455,12 @@ fn handlers(this: WeakEntity<MarkdownView>) -> Handlers {
     }
 }
 
-impl Render for MarkdownView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl MarkdownView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let theme = Theme::of(cx).clone();
         if self.scale != Some(window.scale_factor()) {
             self.scale = Some(window.scale_factor());
@@ -566,14 +571,16 @@ impl Render for MarkdownView {
             .flex_col()
             .min_w_0()
             .when(self.hover_link.is_some(), |d| d.cursor_pointer())
-            .on_mouse_move(cx.listener(|v, e: &gpui_kit::MouseMoveEvent, window, cx| {
-                let hit = v.link_at(e.position, window).map(|(id, l, _)| (id, l));
-                if hit != v.hover_link {
-                    v.hover_link = hit;
-                    cx.notify();
-                }
-            }))
-            .on_hover(cx.listener(|v, hovered: &bool, _, cx| {
+            .on_mouse_move(
+                cx.guarded_listener(|v, e: &gpui_kit::MouseMoveEvent, window, cx| {
+                    let hit = v.link_at(e.position, window).map(|(id, l, _)| (id, l));
+                    if hit != v.hover_link {
+                        v.hover_link = hit;
+                        cx.notify();
+                    }
+                }),
+            )
+            .on_hover(cx.guarded_listener(|v, hovered: &bool, _, cx| {
                 if !hovered && v.hover_link.is_some() {
                     v.hover_link = None;
                     cx.notify();
@@ -581,7 +588,7 @@ impl Render for MarkdownView {
             }))
             .on_mouse_up(
                 gpui_kit::MouseButton::Left,
-                cx.listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
+                cx.guarded_listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
                     if e.click_count == 1
                         && let Some((_, _, href)) = v.link_at(e.position, window)
                     {
@@ -591,7 +598,7 @@ impl Render for MarkdownView {
             )
             .on_mouse_up(
                 gpui_kit::MouseButton::Middle,
-                cx.listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
+                cx.guarded_listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
                     if let Some((_, _, href)) = v.link_at(e.position, window) {
                         crate::links::open_external_url(&href, cx);
                     }
@@ -607,6 +614,12 @@ impl Render for MarkdownView {
     }
 }
 
+impl Render for MarkdownView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use gpui_kit::{AppContext, Entity, IntoElement, ParentElement, Render, Styled, div, px};
@@ -616,9 +629,19 @@ mod tests {
 
     struct Column(Entity<MarkdownView>);
 
-    impl Render for Column {
-        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    impl Column {
+        fn render_view(
+            &mut self,
+            _: &mut Window,
+            _: &mut Context<Self>,
+        ) -> impl IntoElement + use<> {
             div().w(px(320.)).child(self.0.clone())
+        }
+    }
+
+    impl Render for Column {
+        fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            recur_ui::guard::view(self, window, cx, Self::render_view)
         }
     }
 

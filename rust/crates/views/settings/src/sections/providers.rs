@@ -8,6 +8,7 @@ use gpui_kit::{
 };
 use recur_code::view::skills::toggle_disabled_name;
 use recur_domain::CompatibleProvider;
+use recur_ui::guard::Guarded;
 use recur_ui::style::progress;
 use recur_ui::text::{Span, TextStyled, span, text};
 use recur_ui::widgets::{ToastKind, settings_group, settings_groups};
@@ -58,7 +59,7 @@ impl SettingsView {
                     ))
                     .child(ctrl().child(
                         tog("tog-bypass", "toggle bypass permissions", bypass, false, cx).on_click(
-                            cx.listener(move |this, _, _, cx| {
+                            cx.guarded_listener(move |this, _, _, cx| {
                                 this.patch(false, |s| s.bypass_permissions = !bypass, cx)
                                     .detach()
                             }),
@@ -130,7 +131,7 @@ impl SettingsView {
                         .child(ctrl().child(
                             tbtn_label("compat-add", "Add provider", false, cx)
                                 .debug_selector(|| "btn:Add provider".into())
-                                .on_click(cx.listener(|this, _, window, cx| this.open_compat_modal(window, cx))),
+                                .on_click(cx.guarded_listener(|this, _, window, cx| this.open_compat_modal(window, cx))),
                         ))],
                     window,
                     cx,
@@ -262,7 +263,7 @@ impl SettingsView {
             buttons = buttons.child(
                 tbtn_label("cursor-cancel", "Cancel", false, cx)
                     .debug_selector(|| "btn:Cancel".into())
-                    .on_click(cx.listener(|this, _, _, cx| {
+                    .on_click(cx.guarded_listener(|this, _, _, cx| {
                         let services = this.vcx.services.clone();
                         cx.background_executor()
                             .spawn(async move {
@@ -283,14 +284,16 @@ impl SettingsView {
                     )
                     .debug_selector(|| "btn:Reconnect".into())
                     .when(!busy, |d| {
-                        d.on_click(cx.listener(|this, _, _, cx| this.connect_cursor(cx)))
+                        d.on_click(cx.guarded_listener(|this, _, _, cx| this.connect_cursor(cx)))
                     }),
                 )
                 .child(
                     tbtn_label("cursor-disconnect", "Disconnect", busy, cx)
                         .debug_selector(|| "btn:Disconnect".into())
                         .when(!busy, |d| {
-                            d.on_click(cx.listener(|this, _, _, cx| this.disconnect_cursor(cx)))
+                            d.on_click(
+                                cx.guarded_listener(|this, _, _, cx| this.disconnect_cursor(cx)),
+                            )
                         }),
                 );
         } else {
@@ -303,7 +306,7 @@ impl SettingsView {
                 )
                 .debug_selector(|| "btn:Connect".into())
                 .when(!busy, |d| {
-                    d.on_click(cx.listener(|this, _, _, cx| this.connect_cursor(cx)))
+                    d.on_click(cx.guarded_listener(|this, _, _, cx| this.connect_cursor(cx)))
                 }),
             );
         }
@@ -375,7 +378,9 @@ impl SettingsView {
                         )
                         .debug_selector(|| "btn:Install SDK".into())
                         .when(!installing, |d| {
-                            d.on_click(cx.listener(|this, _, _, cx| this.install_bridge(cx)))
+                            d.on_click(
+                                cx.guarded_listener(|this, _, _, cx| this.install_bridge(cx)),
+                            )
                         }),
                     ),
             );
@@ -441,7 +446,7 @@ impl SettingsView {
             Row::new().child(sdk_copy).child(ctrl().child(
                 tbtn_label("sdk-install", sdk_label, installing, cx)
                     .debug_selector(move || format!("btn:SDK {sdk_label}"))
-                    .when(!installing, |d| d.on_click(cx.listener(|this, _, _, cx| this.install_bridge(cx)))),
+                    .when(!installing, |d| d.on_click(cx.guarded_listener(|this, _, _, cx| this.install_bridge(cx)))),
             )),
             Row::new()
                 .child(copy(
@@ -460,7 +465,7 @@ impl SettingsView {
                 ))
                 .child(ctrl().child(
                     tog("tog-strict", "toggle strict cursor config", strict, false, cx).on_click(
-                        cx.listener(move |this, _, _, cx| {
+                        cx.guarded_listener(move |this, _, _, cx| {
                             this.patch(false, |s| s.cursor_strict_config = !strict, cx).detach()
                         }),
                     ),
@@ -478,7 +483,7 @@ impl SettingsView {
                 ))
                 .child(ctrl().child(
                     tog("tog-attr-commits", "toggle cursor commit attribution", commits, false, cx)
-                        .on_click(cx.listener(move |this, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |this, _, _, cx| {
                             this.patch(false, |s| s.cursor_attribute_commits = !commits, cx)
                                 .detach()
                         })),
@@ -494,7 +499,7 @@ impl SettingsView {
                 ))
                 .child(ctrl().child(
                     tog("tog-attr-prs", "toggle cursor PR attribution", prs, false, cx).on_click(
-                        cx.listener(move |this, _, _, cx| {
+                        cx.guarded_listener(move |this, _, _, cx| {
                             this.patch(false, |s| s.cursor_attribute_prs = !prs, cx).detach()
                         }),
                     ),
@@ -609,9 +614,9 @@ impl SettingsView {
                             false,
                             cx,
                         )
-                        .on_click(
-                            cx.listener(move |this, _, _, cx| this.toggle_chatgpt(!chatgpt, cx)),
-                        ),
+                        .on_click(cx.guarded_listener(
+                            move |this, _, _, cx| this.toggle_chatgpt(!chatgpt, cx),
+                        )),
                     ),
                 ),
         ];
@@ -624,79 +629,80 @@ impl SettingsView {
             let draft = self.field_value("codex-key", cx);
             let testing = self.codex_key_testing;
             let dirty = self.codex_key_dirty;
-            let mut key_row = Row::stack()
-                .child(copy(
-                    "codex-key",
-                    "API key",
-                    Some(vec![
-                        span("Exported as "),
-                        code("CODEX_API_KEY", cx),
-                        span(". Stored locally in Recur’s data directory."),
-                    ]),
-                    cx,
-                ))
-                .child(
-                    div()
-                        .flex()
-                        .items_stretch()
-                        .gap(px(8.))
-                        .w_full()
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .flex()
-                                .debug_selector(|| "inp:Codex API key".into())
-                                .child(inp(&input, &"sk-…".into(), InpStyle::BASE, window, cx)),
-                        )
-                        .child(recur_ui::tooltip::titled(
-                            "codex-eye-tip",
-                            if visible { "Hide" } else { "Show" },
-                            tbtn("codex-eye", draft.is_empty(), cx)
-                                .h_auto()
-                                .debug_selector(move || {
-                                    format!(
-                                        "btn:{}",
-                                        if visible {
-                                            "Hide API key"
-                                        } else {
-                                            "Show API key"
-                                        }
-                                    )
-                                })
-                                .child(tbtn_icon(if visible {
-                                    IconName::EyeOff
-                                } else {
-                                    IconName::Eye
-                                }))
-                                .when(!draft.is_empty(), |d| {
-                                    d.on_click(cx.listener(|this, _, _, cx| {
-                                        this.codex_key_visible = !this.codex_key_visible;
-                                        cx.notify();
+            let mut key_row =
+                Row::stack()
+                    .child(copy(
+                        "codex-key",
+                        "API key",
+                        Some(vec![
+                            span("Exported as "),
+                            code("CODEX_API_KEY", cx),
+                            span(". Stored locally in Recur’s data directory."),
+                        ]),
+                        cx,
+                    ))
+                    .child(
+                        div()
+                            .flex()
+                            .items_stretch()
+                            .gap(px(8.))
+                            .w_full()
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .flex()
+                                    .debug_selector(|| "inp:Codex API key".into())
+                                    .child(inp(&input, &"sk-…".into(), InpStyle::BASE, window, cx)),
+                            )
+                            .child(recur_ui::tooltip::titled(
+                                "codex-eye-tip",
+                                if visible { "Hide" } else { "Show" },
+                                tbtn("codex-eye", draft.is_empty(), cx)
+                                    .h_auto()
+                                    .debug_selector(move || {
+                                        format!(
+                                            "btn:{}",
+                                            if visible {
+                                                "Hide API key"
+                                            } else {
+                                                "Show API key"
+                                            }
+                                        )
+                                    })
+                                    .child(tbtn_icon(if visible {
+                                        IconName::EyeOff
+                                    } else {
+                                        IconName::Eye
                                     }))
-                                }),
-                        ))
-                        .child(
-                            tbtn_label("codex-test", "Test", testing || draft.is_empty(), cx)
-                                .h_auto()
-                                .debug_selector(|| "btn:Test".into())
-                                .when(!(testing || draft.is_empty()), |d| {
-                                    d.on_click(
-                                        cx.listener(|this, _, _, cx| this.test_codex_key(cx)),
-                                    )
-                                }),
-                        )
-                        .child(
-                            tbtn_label("codex-save", "Save", !dirty || testing, cx)
-                                .h_auto()
-                                .debug_selector(|| "btn:Save".into())
-                                .when(dirty && !testing, |d| {
-                                    d.on_click(
-                                        cx.listener(|this, _, _, cx| this.save_codex_key(cx)),
-                                    )
-                                }),
-                        ),
-                );
+                                    .when(!draft.is_empty(), |d| {
+                                        d.on_click(cx.guarded_listener(|this, _, _, cx| {
+                                            this.codex_key_visible = !this.codex_key_visible;
+                                            cx.notify();
+                                        }))
+                                    }),
+                            ))
+                            .child(
+                                tbtn_label("codex-test", "Test", testing || draft.is_empty(), cx)
+                                    .h_auto()
+                                    .debug_selector(|| "btn:Test".into())
+                                    .when(!(testing || draft.is_empty()), |d| {
+                                        d.on_click(cx.guarded_listener(|this, _, _, cx| {
+                                            this.test_codex_key(cx)
+                                        }))
+                                    }),
+                            )
+                            .child(
+                                tbtn_label("codex-save", "Save", !dirty || testing, cx)
+                                    .h_auto()
+                                    .debug_selector(|| "btn:Save".into())
+                                    .when(dirty && !testing, |d| {
+                                        d.on_click(cx.guarded_listener(|this, _, _, cx| {
+                                            this.save_codex_key(cx)
+                                        }))
+                                    }),
+                            ),
+                    );
             if testing {
                 key_row = key_row.child(field_msg("codex-msg", "Testing…", None, cx));
             } else if let Some((ok, msg)) = self.codex_key_test.clone() {
@@ -719,7 +725,7 @@ impl SettingsView {
                 ))
                 .child(ctrl().child(
                     tog("tog-codex-net", "toggle Codex sandbox network access", network, false, cx)
-                        .on_click(cx.listener(move |this, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |this, _, _, cx| {
                             this.patch(false, |s| s.codex_network_access = !network, cx).detach()
                         })),
                 )),

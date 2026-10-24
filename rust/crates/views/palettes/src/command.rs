@@ -2,6 +2,7 @@
 //! projects, plus the bundle `[[search]]` groups (`SearchPalette`, such as Linear issues)
 //! once the query has two characters.
 
+use recur_ui::guard::Guarded;
 use std::time::Duration;
 
 use gpui_kit::base::input::{InputEvent, InputState};
@@ -632,8 +633,12 @@ fn pick_search_hit(insert: String, action: String, s: &mut AppState, cx: &mut Co
     .detach();
 }
 
-impl Render for CommandPalette {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl CommandPalette {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open(cx) {
             return div().into_any_element();
         }
@@ -716,13 +721,15 @@ impl Render for CommandPalette {
                         row = row.child(palette_key(c.kb.clone(), on, cx));
                     }
                     rows.push(
-                        row.on_mouse_move(cx.listener(move |p, _, _, cx| {
+                        row.on_mouse_move(cx.guarded_listener(move |p, _, _, cx| {
                             if p.sel != idx {
                                 p.sel = idx;
                                 cx.notify();
                             }
                         }))
-                        .on_click(cx.listener(move |p, _, window, cx| p.run(idx, window, cx)))
+                        .on_click(
+                            cx.guarded_listener(move |p, _, window, cx| p.run(idx, window, cx)),
+                        )
                         .into_any_element(),
                     );
                 }
@@ -757,6 +764,12 @@ impl Render for CommandPalette {
             window,
             cx,
         )
+    }
+}
+
+impl Render for CommandPalette {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

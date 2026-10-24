@@ -99,9 +99,15 @@ pub fn resolvers(variant: &str) -> MockOptions {
 /// `.main` with the detail route in it.
 struct WorkspaceScene(Entity<WorkspaceDetail>);
 
-impl Render for WorkspaceScene {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl WorkspaceScene {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         body(cx).size_full().flex().flex_col().child(self.0.clone())
+    }
+}
+
+impl Render for WorkspaceScene {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

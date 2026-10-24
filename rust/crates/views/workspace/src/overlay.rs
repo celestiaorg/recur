@@ -2,6 +2,7 @@
 //! workspace is created (or failed to be), and `.wsv-strip`, the setup-failed bar above the
 //! workbench once a tree exists.
 
+use recur_ui::guard::Guarded;
 use std::time::Instant;
 
 use gpui_kit::prelude::FluentBuilder as _;
@@ -63,8 +64,12 @@ impl MainOverlay {
     }
 }
 
-impl Render for MainOverlay {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl MainOverlay {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let Some(ws) = self.state.read(cx).workspace(&self.ws_id).cloned() else {
             return div().into_any_element();
@@ -176,6 +181,12 @@ impl Render for MainOverlay {
     }
 }
 
+impl Render for MainOverlay {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 /// `.wsv-creating-err`: the error output, mono, wrapping (or one clipped line in the strip).
 fn err_block(err: &str, clip: bool, cx: &gpui_kit::App) -> AnyElement {
     let t = Theme::of(cx).tokens;
@@ -252,7 +263,7 @@ pub(crate) fn failed_strip(
                     12.,
                     500.,
                 ))
-                .on_click(cx.listener(|v, _, _, cx| {
+                .on_click(cx.guarded_listener(|v, _, _, cx| {
                     v.setup_err_open = !v.setup_err_open;
                     v.touch(cx);
                 })),
@@ -272,7 +283,7 @@ pub(crate) fn failed_strip(
             )
             .child(button_label("Retry setup", 12., 500.))
             .when(!creating, |b| {
-                b.on_click(cx.listener(move |v, _, _, cx| {
+                b.on_click(cx.guarded_listener(move |v, _, _, cx| {
                     let (svc, id) = (v.services.clone(), id.clone());
                     cx.spawn(async move |_, cx| {
                         call(
@@ -296,7 +307,7 @@ pub(crate) fn failed_strip(
                 cx,
             )
             .child(button_label("Edit setup command", 12., 500.))
-            .on_click(cx.listener(move |v, _, _, cx| {
+            .on_click(cx.guarded_listener(move |v, _, _, cx| {
                 v.state.update(cx, |s, cx| s.open_project(&project, cx))
             })),
         );
@@ -305,7 +316,7 @@ pub(crate) fn failed_strip(
     acts = acts.child(
         tbtn("wsv-remove-strip", Tbtn::Default, TbtnSize::BASE, None, cx)
             .child(button_label("Remove", 12., 500.))
-            .on_click(cx.listener(move |v, _, _, cx| remove_workspace(&v.state, &id, cx))),
+            .on_click(cx.guarded_listener(move |v, _, _, cx| remove_workspace(&v.state, &id, cx))),
     );
     strip = strip.child(acts);
     if !err.is_empty() && multi && open {

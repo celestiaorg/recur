@@ -2,6 +2,7 @@
 //! absolute layer over the scrolled content (GPUI has no `position: sticky`), the under-fades,
 //! the bottom mask and the overlay scrollbar.
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, HashSet};
 use std::time::Duration;
 
@@ -416,7 +417,9 @@ impl Sidebar {
                         window,
                         cx,
                     )
-                    .on_click(cx.listener(move |this, _, _, cx| this.on_view_pr(&pr_id, cx)));
+                    .on_click(
+                        cx.guarded_listener(move |this, _, _, cx| this.on_view_pr(&pr_id, cx)),
+                    );
                 box_ = box_.child(titled(
                     SharedString::from(format!("{key}-pr-tip")),
                     label,
@@ -443,13 +446,13 @@ impl Sidebar {
                 .when_some(bg, |d, bg| d.bg(bg))
                 .on_mouse_up(
                     MouseButton::Left,
-                    cx.listener(move |this, _, _, cx| {
+                    cx.guarded_listener(move |this, _, _, cx| {
                         this.on_remove_pointer_up(&up_id, can_rm, cx)
                     }),
                 )
-                .on_click(
-                    cx.listener(move |this, _, _, cx| this.on_remove_click(&click_id, can_rm, cx)),
-                )
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                    this.on_remove_click(&click_id, can_rm, cx)
+                }))
                 .child(icon(IconName::Trash).size(px(12.)));
             if !can_rm {
                 rm = rm.opacity(0.4).cursor_default();
@@ -469,7 +472,7 @@ impl Sidebar {
         let hover_id = id.clone();
         el.debug_selector(|| key.clone())
             .id(SharedString::from(key.clone()))
-            .on_hover(cx.listener(move |this, h: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(move |this, h: &bool, _, cx| {
                 this.set_hover(&format!("row:{hover_id}"), *h, cx);
                 if *h {
                     if can_rm {
@@ -571,17 +574,19 @@ impl Sidebar {
         let ring = is_focus_visible(&f, window);
         let title = format!("Working copy — {}'s real checkout", p.project.name);
         let hover_key = key.clone();
-        let el = el
-            .debug_selector(|| key.clone())
-            .id(SharedString::from(key.clone()))
-            .track_focus(&f)
-            .role(gpui_kit::Role::Button)
-            .cursor_pointer()
-            .when(ring, |d| d.child(style::focus_ring(4., 0., cx)))
-            .on_hover(cx.listener(move |this, h: &bool, _, cx| this.set_hover(&hover_key, *h, cx)))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                this.open_main(&pid, None, cx).detach();
-            }));
+        let el =
+            el.debug_selector(|| key.clone())
+                .id(SharedString::from(key.clone()))
+                .track_focus(&f)
+                .role(gpui_kit::Role::Button)
+                .cursor_pointer()
+                .when(ring, |d| d.child(style::focus_ring(4., 0., cx)))
+                .on_hover(cx.guarded_listener(move |this, h: &bool, _, cx| {
+                    this.set_hover(&hover_key, *h, cx)
+                }))
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                    this.open_main(&pid, None, cx).detach();
+                }));
         titled(SharedString::from(format!("{key}-tip")), title, el).into_any_element()
     }
 
@@ -647,10 +652,12 @@ impl Sidebar {
                 .aria_expanded(!closed)
                 .cursor_pointer()
                 .when(ring, |d| d.child(style::focus_ring(4., 0., cx)))
-                .on_hover(
-                    cx.listener(move |this, h: &bool, _, cx| this.set_hover(&hover_key, *h, cx)),
+                .on_hover(cx.guarded_listener(move |this, h: &bool, _, cx| {
+                    this.set_hover(&hover_key, *h, cx)
+                }))
+                .on_click(
+                    cx.guarded_listener(move |this, _, _, cx| this.toggle_scheduled(&pid, cx)),
                 )
-                .on_click(cx.listener(move |this, _, _, cx| this.toggle_scheduled(&pid, cx)))
                 .into_any_element()
         } else {
             head.into_any_element()
@@ -990,12 +997,14 @@ impl Sidebar {
                         .aria_label("Group name")
                         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                         .on_click(|_, _, cx| cx.stop_propagation())
-                        .capture_key_down(cx.listener(|this, e: &gpui_kit::KeyDownEvent, _, cx| {
-                            if e.keystroke.key == "escape" {
-                                cx.stop_propagation();
-                                this.cancel_rename(cx);
-                            }
-                        }))
+                        .capture_key_down(cx.guarded_listener(
+                            |this, e: &gpui_kit::KeyDownEvent, _, cx| {
+                                if e.keystroke.key == "escape" {
+                                    cx.stop_propagation();
+                                    this.cancel_rename(cx);
+                                }
+                            },
+                        ))
                         .child(field),
                 );
             }
@@ -1027,7 +1036,7 @@ impl Sidebar {
                     window,
                     cx,
                 )
-                .on_click(cx.listener(move |this, _, window, cx| {
+                .on_click(cx.guarded_listener(move |this, _, window, cx| {
                     cx.stop_propagation();
                     let name = this
                         .state()
@@ -1052,7 +1061,7 @@ impl Sidebar {
                     window,
                     cx,
                 )
-                .on_click(cx.listener(move |this, _, _, cx| {
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
                     cx.stop_propagation();
                     this.delete_group(&gid, cx);
                 }));
@@ -1098,41 +1107,44 @@ impl Sidebar {
         let (hover_key, click_id, down_id, menu_id) =
             (key.clone(), id.to_string(), id.to_string(), id.to_string());
         let dragging = self.drag.as_ref().is_some_and(|d| d.active);
-        let mut el = div()
-            .debug_selector(|| key.clone())
-            .id(SharedString::from(key))
-            .track_focus(&f)
-            .role(gpui_kit::Role::Button)
-            .relative()
-            .size_full()
-            .rounded(px(6.))
-            .when(!dragging, |d| d.cursor_grab())
-            .when(ring, |d| d.child(style::focus_ring(4., 0., cx)))
-            .on_hover(cx.listener(move |this, h: &bool, _, cx| this.set_hover(&hover_key, *h, cx)))
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(move |this, e: &gpui_kit::MouseDownEvent, _, cx| {
-                    this.press_header(group, &down_id, e.position, cx)
-                }),
-            )
-            .on_click(cx.listener(move |this, _, _, cx| {
-                if std::mem::take(&mut this.suppress_click) {
-                    return;
-                }
-                if group {
-                    if this.renaming().is_some_and(|(r, _)| r == &click_id) {
+        let mut el =
+            div()
+                .debug_selector(|| key.clone())
+                .id(SharedString::from(key))
+                .track_focus(&f)
+                .role(gpui_kit::Role::Button)
+                .relative()
+                .size_full()
+                .rounded(px(6.))
+                .when(!dragging, |d| d.cursor_grab())
+                .when(ring, |d| d.child(style::focus_ring(4., 0., cx)))
+                .on_hover(cx.guarded_listener(move |this, h: &bool, _, cx| {
+                    this.set_hover(&hover_key, *h, cx)
+                }))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.guarded_listener(move |this, e: &gpui_kit::MouseDownEvent, _, cx| {
+                        this.press_header(group, &down_id, e.position, cx)
+                    }),
+                )
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                    if std::mem::take(&mut this.suppress_click) {
                         return;
                     }
-                    this.toggle_group(&click_id, cx);
-                } else {
-                    this.toggle_project(&click_id, cx);
-                }
-            }))
-            .child(content);
+                    if group {
+                        if this.renaming().is_some_and(|(r, _)| r == &click_id) {
+                            return;
+                        }
+                        this.toggle_group(&click_id, cx);
+                    } else {
+                        this.toggle_project(&click_id, cx);
+                    }
+                }))
+                .child(content);
         if !group {
             el = el.on_mouse_down(
                 MouseButton::Right,
-                cx.listener(move |this, e: &gpui_kit::MouseDownEvent, _, cx| {
+                cx.guarded_listener(move |this, e: &gpui_kit::MouseDownEvent, _, cx| {
                     cx.stop_propagation();
                     this.open_move_menu(&menu_id, e.position, cx);
                 }),

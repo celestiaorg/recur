@@ -219,8 +219,12 @@ fn on_hoist(ev: &AppEvent, cx: &mut gpui_kit::App) {
     });
 }
 
-impl Render for WorkspaceDetail {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl WorkspaceDetail {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let bound = self.bound_id(cx);
         let mut root = div()
             .id("v-detail")
@@ -252,5 +256,11 @@ impl Render for WorkspaceDetail {
             }
         }
         root
+    }
+}
+
+impl Render for WorkspaceDetail {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

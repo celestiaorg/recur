@@ -7,6 +7,7 @@ use gpui_kit::{
 use recur_code::view::skills::{
     SkillKind, map_skill_rows, skill_kind, skill_location, toggle_disabled_name,
 };
+use recur_ui::guard::Guarded;
 use recur_ui::text::span;
 use recur_ui::widgets::{settings_group, settings_groups};
 
@@ -111,7 +112,7 @@ impl SettingsView {
                 )
                 .mt(px(2.));
                 if has_settings {
-                    t = t.on_click(cx.listener(move |this, _, _, cx| {
+                    t = t.on_click(cx.guarded_listener(move |this, _, _, cx| {
                         let n = name.clone();
                         this.patch(
                             false,

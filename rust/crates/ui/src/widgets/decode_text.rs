@@ -96,8 +96,8 @@ fn rng_seed() -> u64 {
         | 1
 }
 
-impl RenderOnce for DecodeText {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+impl DecodeText {
+    fn render_view(self, window: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let state = window.use_keyed_state(self.id.clone(), cx, |_, _| State {
             display: self.text.clone(),
             ..State::default()
@@ -166,6 +166,12 @@ impl RenderOnce for DecodeText {
         }
         // `.decoding { opacity: 0.85 }`.
         label.opacity(if s.decoding { 0.85 } else { 1. })
+    }
+}
+
+impl RenderOnce for DecodeText {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

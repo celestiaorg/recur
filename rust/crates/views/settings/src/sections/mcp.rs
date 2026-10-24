@@ -1,5 +1,6 @@
 //! MCP: the Linear server switch and your own HTTP and stdio servers.
 
+use recur_ui::guard::Guarded;
 use std::collections::BTreeMap;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -133,9 +134,9 @@ impl SettingsView {
                 )
                 .mt(px(2.));
                 if has {
-                    tg = tg.on_click(
-                        cx.listener(move |this, _, _, cx| this.set_mcp_enabled(&id, !on, cx)),
-                    );
+                    tg = tg.on_click(cx.guarded_listener(move |this, _, _, cx| {
+                        this.set_mcp_enabled(&id, !on, cx)
+                    }));
                 }
                 list.push((
                     copy,
@@ -150,7 +151,11 @@ impl SettingsView {
                             let n = name.clone();
                             move || format!("btn:Edit {n}")
                         })
-                        .on_click(cx.listener(move |this, _, _, cx| this.start_mcp_edit(&edit, cx)))
+                        .on_click(
+                            cx.guarded_listener(move |this, _, _, cx| {
+                                this.start_mcp_edit(&edit, cx)
+                            }),
+                        )
                         .into_any_element(),
                         tbtn_label(
                             SharedString::from(format!("mcp-rm-{}", sv.id)),
@@ -162,7 +167,9 @@ impl SettingsView {
                             let n = name.clone();
                             move || format!("btn:Remove {n}")
                         })
-                        .on_click(cx.listener(move |this, _, _, cx| this.delete_mcp(&rm, cx)))
+                        .on_click(
+                            cx.guarded_listener(move |this, _, _, cx| this.delete_mcp(&rm, cx)),
+                        )
                         .into_any_element(),
                         tg.into_any_element(),
                     ],
@@ -173,24 +180,27 @@ impl SettingsView {
             yours = yours.child(ctrl_text("mcp-none", vec![span("None yet.")], window, cx));
         }
         if self.mcp.kind.is_empty() {
-            yours = yours.child(
-                div()
-                    .flex()
-                    .gap(px(8.))
-                    .mt(px(12.))
-                    .child(
-                        tbtn_label("mcp-add-http", "Add HTTP", false, cx)
-                            .debug_selector(|| "btn:Add HTTP".into())
-                            .on_click(cx.listener(|this, _, _, cx| this.open_mcp_form("http", cx))),
-                    )
-                    .child(
-                        tbtn_label("mcp-add-stdio", "Add stdio", false, cx)
-                            .debug_selector(|| "btn:Add stdio".into())
-                            .on_click(
-                                cx.listener(|this, _, _, cx| this.open_mcp_form("stdio", cx)),
-                            ),
-                    ),
-            );
+            yours =
+                yours.child(
+                    div()
+                        .flex()
+                        .gap(px(8.))
+                        .mt(px(12.))
+                        .child(
+                            tbtn_label("mcp-add-http", "Add HTTP", false, cx)
+                                .debug_selector(|| "btn:Add HTTP".into())
+                                .on_click(cx.guarded_listener(|this, _, _, cx| {
+                                    this.open_mcp_form("http", cx)
+                                })),
+                        )
+                        .child(
+                            tbtn_label("mcp-add-stdio", "Add stdio", false, cx)
+                                .debug_selector(|| "btn:Add stdio".into())
+                                .on_click(cx.guarded_listener(|this, _, _, cx| {
+                                    this.open_mcp_form("stdio", cx)
+                                })),
+                        ),
+                );
         } else {
             let stdio = self.mcp.kind == "stdio";
             let editing_auth = !self.mcp.edit_id.is_empty()
@@ -296,12 +306,14 @@ impl SettingsView {
                                 .debug_selector(move || {
                                     format!("btn:{}", if editing { "Save" } else { "Add" })
                                 })
-                                .on_click(cx.listener(|this, _, _, cx| this.submit_mcp(cx))),
+                                .on_click(
+                                    cx.guarded_listener(|this, _, _, cx| this.submit_mcp(cx)),
+                                ),
                             )
                             .child(
                                 tbtn_label("mcp-cancel", "Cancel", false, cx)
                                     .debug_selector(|| "btn:Cancel".into())
-                                    .on_click(cx.listener(|this, _, _, cx| {
+                                    .on_click(cx.guarded_listener(|this, _, _, cx| {
                                         this.reset_mcp_form();
                                         cx.notify();
                                     })),

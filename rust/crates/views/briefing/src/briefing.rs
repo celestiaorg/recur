@@ -3,6 +3,7 @@
 //! label-style filters, and the Ask Recur dock on the left. The dock's visibility
 //! (`inboxChatOpen`, `recur.askRecurOpen`) lives here; below 1100px the dock is a drawer.
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
@@ -441,7 +442,7 @@ impl BriefingView {
                 )
                 .debug_selector(|| "ask-reopen".into())
                 .mr(px(2.))
-                .on_click(cx.listener(|v, _, _, cx| v.set_chat_open(true, cx)))
+                .on_click(cx.guarded_listener(|v, _, _, cx| v.set_chat_open(true, cx)))
                 .when(unseen, |d| {
                     d.child(titled(
                         "ask-unseen-t",
@@ -479,7 +480,7 @@ impl BriefingView {
                     unread_only,
                     cx,
                 )
-                .on_click(cx.listener(|v, _, _, cx| {
+                .on_click(cx.guarded_listener(|v, _, _, cx| {
                     v.unread_only = !v.unread_only;
                     v.save_filters(cx);
                     cx.notify();
@@ -489,7 +490,7 @@ impl BriefingView {
         let b = self.bucket;
         let mut seg = filter_seg(cx).child(
             seg_count_btn("br-seg-all", "All", None, b == Bucket::All, cx)
-                .on_click(cx.listener(|v, _, _, cx| v.set_bucket(Bucket::All, cx))),
+                .on_click(cx.guarded_listener(|v, _, _, cx| v.set_bucket(Bucket::All, cx))),
         );
         for (label, which, n) in [
             ("Needs you", Bucket::Needs, l.needs_n),
@@ -504,7 +505,7 @@ impl BriefingView {
                     b == which,
                     cx,
                 )
-                .on_click(cx.listener(move |v, _, _, cx| v.set_bucket(which, cx))),
+                .on_click(cx.guarded_listener(move |v, _, _, cx| v.set_bucket(which, cx))),
             );
         }
         bar.child(seg).into_any_element()
@@ -566,7 +567,7 @@ impl BriefingView {
             })
             .cursor_pointer()
             .when(read, |d| d.opacity(0.62))
-            .on_hover(cx.listener(move |v, h: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(move |v, h: &bool, _, cx| {
                 if *h {
                     v.hover_row = Some(hid.clone());
                 } else if v.hover_row.as_deref() == Some(hid.as_str()) {
@@ -574,7 +575,7 @@ impl BriefingView {
                 }
                 cx.notify();
             }))
-            .on_click(cx.listener(move |v, _, _, cx| {
+            .on_click(cx.guarded_listener(move |v, _, _, cx| {
                 v.vcx.state.update(cx, |s, cx| {
                     s.mark_inbox_item_read(&id, cx);
                     s.route_target(&target, cx);
@@ -630,8 +631,12 @@ impl Lists {
     }
 }
 
-impl Render for BriefingView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl BriefingView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let on = self.vcx.state.read(cx).view == ViewName::Briefing;
         let wide = f32::from(window.viewport_size().width) >= WIDE_MIN;
@@ -645,7 +650,7 @@ impl Render for BriefingView {
                     "Nothing matches these filters",
                     Some(
                         clear_button("br-clear", cx)
-                            .on_click(cx.listener(|v, _, _, cx| v.clear_filters(cx)))
+                            .on_click(cx.guarded_listener(|v, _, _, cx| v.clear_filters(cx)))
                             .into_any_element(),
                     ),
                     None,
@@ -721,12 +726,12 @@ impl Render for BriefingView {
                 } else {
                     format!("Show all {}", l.pickup.len())
                 };
-                section = section.child(more_button("br-more", label, cx).on_click(cx.listener(
-                    |v, _, _, cx| {
+                section = section.child(more_button("br-more", label, cx).on_click(
+                    cx.guarded_listener(|v, _, _, cx| {
                         v.pickup_expanded = !v.pickup_expanded;
                         cx.notify();
-                    },
-                )));
+                    }),
+                ));
             }
             overview.push(section.into_any_element());
         }
@@ -845,6 +850,12 @@ impl Render for BriefingView {
             .overflow_hidden()
             .bg(hsla(t.bg))
             .child(body)
+    }
+}
+
+impl Render for BriefingView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

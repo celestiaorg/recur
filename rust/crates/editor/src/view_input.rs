@@ -2240,11 +2240,14 @@ impl EntityInputHandler for EditorView {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<String> {
-        let doc = &self.state.doc;
-        let from = doc.utf16_to_byte(range.start);
-        let to = doc.utf16_to_byte(range.end).max(from);
-        *adjusted = Some(doc.byte_to_utf16(from)..doc.byte_to_utf16(to));
-        Some(doc.slice(from, to))
+        recur_ui::guard::catch("editor text_for_range", || {
+            let doc = &self.state.doc;
+            let from = doc.utf16_to_byte(range.start);
+            let to = doc.utf16_to_byte(range.end).max(from);
+            *adjusted = Some(doc.byte_to_utf16(from)..doc.byte_to_utf16(to));
+            Some(doc.slice(from, to))
+        })
+        .flatten()
     }
 
     fn selected_text_range(
@@ -2253,12 +2256,15 @@ impl EntityInputHandler for EditorView {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<UTF16Selection> {
-        let main = self.state.selection.main();
-        let doc = &self.state.doc;
-        Some(UTF16Selection {
-            range: doc.byte_to_utf16(main.from)..doc.byte_to_utf16(main.to),
-            reversed: main.head() < main.anchor(),
+        recur_ui::guard::catch("editor selected_text_range", || {
+            let main = self.state.selection.main();
+            let doc = &self.state.doc;
+            Some(UTF16Selection {
+                range: doc.byte_to_utf16(main.from)..doc.byte_to_utf16(main.to),
+                reversed: main.head() < main.anchor(),
+            })
         })
+        .flatten()
     }
 
     fn marked_text_range(
@@ -2266,13 +2272,18 @@ impl EntityInputHandler for EditorView {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<Range<usize>> {
-        let (from, to) = self.marked?;
-        let doc = &self.state.doc;
-        Some(doc.byte_to_utf16(from)..doc.byte_to_utf16(to))
+        recur_ui::guard::catch("editor marked_text_range", || {
+            let (from, to) = self.marked?;
+            let doc = &self.state.doc;
+            Some(doc.byte_to_utf16(from)..doc.byte_to_utf16(to))
+        })
+        .flatten()
     }
 
     fn unmark_text(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.end_composition(window, cx);
+        recur_ui::guard::catch("editor unmark_text", || {
+            self.end_composition(window, cx);
+        });
     }
 
     fn replace_text_in_range(
@@ -2282,19 +2293,21 @@ impl EntityInputHandler for EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (from, to) = match (range, self.marked) {
-            (Some(r), _) => (
-                self.state.doc.utf16_to_byte(r.start),
-                self.state.doc.utf16_to_byte(r.end),
-            ),
-            (None, Some(m)) => m,
-            (None, None) => {
-                let m = self.state.selection.main();
-                (m.from, m.to)
-            }
-        };
-        self.input_text(from, to, text, window, cx);
-        self.end_composition(window, cx);
+        recur_ui::guard::catch("editor replace_text_in_range", || {
+            let (from, to) = match (range, self.marked) {
+                (Some(r), _) => (
+                    self.state.doc.utf16_to_byte(r.start),
+                    self.state.doc.utf16_to_byte(r.end),
+                ),
+                (None, Some(m)) => m,
+                (None, None) => {
+                    let m = self.state.selection.main();
+                    (m.from, m.to)
+                }
+            };
+            self.input_text(from, to, text, window, cx);
+            self.end_composition(window, cx);
+        });
     }
 
     fn replace_and_mark_text_in_range(
@@ -2305,43 +2318,45 @@ impl EntityInputHandler for EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.composing {
-            self.composing = true;
-            self.composition_first = true;
-            self.completion.composition_start();
-            if let Some(v) = self.vim.as_mut() {
-                v.use_next_text_input = true;
+        recur_ui::guard::catch("editor replace_and_mark_text_in_range", || {
+            if !self.composing {
+                self.composing = true;
+                self.composition_first = true;
+                self.completion.composition_start();
+                if let Some(v) = self.vim.as_mut() {
+                    v.use_next_text_input = true;
+                }
             }
-        }
-        let (from, to) = match (range, self.marked) {
-            (Some(r), _) => (
-                self.state.doc.utf16_to_byte(r.start),
-                self.state.doc.utf16_to_byte(r.end),
-            ),
-            (None, Some(m)) => m,
-            (None, None) => {
-                let m = self.state.selection.main();
-                (m.from, m.to)
+            let (from, to) = match (range, self.marked) {
+                (Some(r), _) => (
+                    self.state.doc.utf16_to_byte(r.start),
+                    self.state.doc.utf16_to_byte(r.end),
+                ),
+                (None, Some(m)) => m,
+                (None, None) => {
+                    let m = self.state.selection.main();
+                    (m.from, m.to)
+                }
+            };
+            self.input_text(from, to, new_text, window, cx);
+            if !self.composing {
+                return;
             }
-        };
-        self.input_text(from, to, new_text, window, cx);
-        if !self.composing {
-            return;
-        }
-        let end = from + new_text.len();
-        self.marked = (!new_text.is_empty()).then_some((from, end));
-        if let Some(sel) = new_selected {
-            let base16 = self.state.doc.byte_to_utf16(from);
-            let a = self.state.doc.utf16_to_byte(base16 + sel.start);
-            let b = self.state.doc.utf16_to_byte(base16 + sel.end);
-            if self.state.selection.main().from != a || self.state.selection.main().to != b {
-                self.dispatch(
-                    TransactionSpec::default().selection(EditorSelection::single(a, b)),
-                    window,
-                    cx,
-                );
+            let end = from + new_text.len();
+            self.marked = (!new_text.is_empty()).then_some((from, end));
+            if let Some(sel) = new_selected {
+                let base16 = self.state.doc.byte_to_utf16(from);
+                let a = self.state.doc.utf16_to_byte(base16 + sel.start);
+                let b = self.state.doc.utf16_to_byte(base16 + sel.end);
+                if self.state.selection.main().from != a || self.state.selection.main().to != b {
+                    self.dispatch(
+                        TransactionSpec::default().selection(EditorSelection::single(a, b)),
+                        window,
+                        cx,
+                    );
+                }
             }
-        }
+        });
     }
 
     fn bounds_for_range(
@@ -2351,17 +2366,20 @@ impl EntityInputHandler for EditorView {
         window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
-        let f = self.frame.as_ref()?;
-        let pos = self.state.doc.utf16_to_byte(range_utf16.start);
-        let (top, bottom) = self.with_layout_view(window, |lv| lv.row_box(pos, 1));
-        let x = self.with_layout_view(window, |lv| lv.x_at(pos, 1));
-        let left = f32::from(f.bounds.origin.x) + f.gutter_width - self.scroll_left
-            + self.metrics.line_padding_left
-            + x;
-        Some(Bounds::new(
-            point(px(left), px(f.scroller_top - self.scroll_top + top)),
-            size(px(2.0), px(bottom - top)),
-        ))
+        recur_ui::guard::catch("editor bounds_for_range", || {
+            let f = self.frame.as_ref()?;
+            let pos = self.state.doc.utf16_to_byte(range_utf16.start);
+            let (top, bottom) = self.with_layout_view(window, |lv| lv.row_box(pos, 1));
+            let x = self.with_layout_view(window, |lv| lv.x_at(pos, 1));
+            let left = f32::from(f.bounds.origin.x) + f.gutter_width - self.scroll_left
+                + self.metrics.line_padding_left
+                + x;
+            Some(Bounds::new(
+                point(px(left), px(f.scroller_top - self.scroll_top + top)),
+                size(px(2.0), px(bottom - top)),
+            ))
+        })
+        .flatten()
     }
 
     fn character_index_for_point(
@@ -2370,8 +2388,11 @@ impl EntityInputHandler for EditorView {
         window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<usize> {
-        let (pos, _) = self.pos_at_pointer(p, window);
-        Some(self.state.doc.byte_to_utf16(pos))
+        recur_ui::guard::catch("editor character_index_for_point", || {
+            let (pos, _) = self.pos_at_pointer(p, window);
+            Some(self.state.doc.byte_to_utf16(pos))
+        })
+        .flatten()
     }
 
     fn accepts_text_input(&self, _window: &mut Window, _cx: &mut Context<Self>) -> bool {

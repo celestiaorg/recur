@@ -2,6 +2,7 @@
 //! verify cards, reviewer findings, the timeline (commit and review events, comments with
 //! their line-note threads), then the settled notice or the checks card and the composer.
 
+use recur_ui::guard::Guarded;
 use std::sync::LazyLock;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -141,7 +142,7 @@ impl PrDetail {
                     .debug_selector(move || format!("cmt-more:{sid}"))
                     .child(probe)
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                    .on_click(cx.listener(move |d, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |d, _, _, cx| {
                         cx.stop_propagation();
                         d.toggle_more(&tid, cx)
                     })),
@@ -211,7 +212,7 @@ impl PrDetail {
                 super::field::press_focuses(d, gpui_kit::Focusable::focus_handle(area.read(cx), cx))
             })
             .key_context("TextEntry")
-            .capture_key_down(cx.listener(move |d, ev: &KeyDownEvent, _, cx| {
+            .capture_key_down(cx.guarded_listener(move |d, ev: &KeyDownEvent, _, cx| {
                 if ev.keystroke.key == "escape" {
                     cx.stop_propagation();
                     d.cancel_compose(&w1, cx);
@@ -236,7 +237,7 @@ impl PrDetail {
         )
         .debug_selector(|| "finding-note-btn:Cancel".into())
         .when(!saving, |b| {
-            b.on_click(cx.listener(move |d, _, _, cx| d.cancel_compose(&w2, cx)))
+            b.on_click(cx.guarded_listener(move |d, _, _, cx| d.cancel_compose(&w2, cx)))
         });
         let label = if saving { "Saving…" } else { primary };
         let go = note_btn(
@@ -250,7 +251,7 @@ impl PrDetail {
         )
         .debug_selector(move || format!("finding-note-btn-primary:{primary}"))
         .when(!primary_disabled, |b| {
-            b.on_click(cx.listener(move |d, _, window, cx| d.save_compose(&w3, window, cx)))
+            b.on_click(cx.guarded_listener(move |d, _, window, cx| d.save_compose(&w3, window, cx)))
         });
         recur_ui::style::card(t.bg, t.line, 10.)
             .mt(px(6.))
@@ -533,9 +534,9 @@ impl PrDetail {
                         .child(
                             recur_ui::style::button_label(label, 10.5, 400.).family(Family::Mono),
                         )
-                        .on_click(
-                            cx.listener(move |d, _, _, cx| d.jump_to_impact(&path, line, cx)),
-                        ),
+                        .on_click(cx.guarded_listener(move |d, _, _, cx| {
+                            d.jump_to_impact(&path, line, cx)
+                        })),
                 );
             }
             col = col.child(row);
@@ -553,7 +554,7 @@ impl PrDetail {
                         .color(t.amber)
                         .nowrap(),
                 )
-                .on_click(cx.listener(|d, _, _, cx| d.set_tab(PrTab::Files, cx))),
+                .on_click(cx.guarded_listener(|d, _, _, cx| d.set_tab(PrTab::Files, cx))),
         );
         div()
             .debug_selector(|| "focus".into())
@@ -605,15 +606,16 @@ impl PrDetail {
         if can_post && !postable.is_empty() {
             let busy = postable.iter().any(|f| self.posting.contains(&f.id));
             let list = postable.clone();
-            end = end.child(
-                note_btn("findings-post-all", "Post all", false, busy, t.pane, lh, cx)
-                    .debug_selector(|| "button:Post all".into())
-                    .when(!busy, |b| {
-                        b.on_click(
-                            cx.listener(move |d, _, _, cx| d.post_findings(list.clone(), cx)),
-                        )
-                    }),
-            );
+            end =
+                end.child(
+                    note_btn("findings-post-all", "Post all", false, busy, t.pane, lh, cx)
+                        .debug_selector(|| "button:Post all".into())
+                        .when(!busy, |b| {
+                            b.on_click(cx.guarded_listener(move |d, _, _, cx| {
+                                d.post_findings(list.clone(), cx)
+                            }))
+                        }),
+                );
         }
         let head = card_h_with(
             IconName::Search,
@@ -675,7 +677,9 @@ impl PrDetail {
                         .flex_none()
                         .child(text(loc).mono().size(10.5).color(t.faint).nowrap()),
                 )
-                .on_click(cx.listener(move |d, _, _, cx| d.jump_to_impact(&ff.file, ff.line, cx)));
+                .on_click(
+                    cx.guarded_listener(move |d, _, _, cx| d.jump_to_impact(&ff.file, ff.line, cx)),
+                );
             let mut actions = div()
                 .flex()
                 .items_center()
@@ -704,9 +708,9 @@ impl PrDetail {
                             move || format!("button:Post as GitHub comment:{m}")
                         })
                         .when(!busy, |b| {
-                            b.on_click(
-                                cx.listener(move |d, _, _, cx| d.post_findings(one.clone(), cx)),
-                            )
+                            b.on_click(cx.guarded_listener(move |d, _, _, cx| {
+                                d.post_findings(one.clone(), cx)
+                            }))
                         }),
                     )),
                 );
@@ -731,7 +735,7 @@ impl PrDetail {
                             move || format!("button:Resolve finding:{m}")
                         })
                         .when(!busy, |b| {
-                            b.on_click(cx.listener(move |d, _, _, cx| {
+                            b.on_click(cx.guarded_listener(move |d, _, _, cx| {
                                 let id = d.pr_id(cx);
                                 if !id.is_empty() {
                                     d.settle_posted_findings(&id, Some(vec![fid.clone()]), cx);
@@ -930,7 +934,7 @@ impl PrDetail {
                     .min_w_0()
                     .cursor_pointer()
                     .child(msg_text)
-                    .on_click(cx.listener(move |d, _, _, cx| d.open_local_commit(i, cx))),
+                    .on_click(cx.guarded_listener(move |d, _, _, cx| d.open_local_commit(i, cx))),
             )
             .into_any_element(),
             None if !c.url.is_empty() => {
@@ -988,7 +992,7 @@ impl PrDetail {
                     })
                     .cursor_pointer()
                     .child(sha_text)
-                    .on_click(cx.listener(move |d, _, _, cx| d.open_local_commit(i, cx))),
+                    .on_click(cx.guarded_listener(move |d, _, _, cx| d.open_local_commit(i, cx))),
             )
             .into_any_element(),
             None if !c.url.is_empty() => {
@@ -1345,11 +1349,11 @@ impl PrDetail {
                 let group = SharedString::from(format!("ctx-h-{}", child.id));
                 let toggle = {
                     let id = id.clone();
-                    cx.listener(move |d, _, _, cx| d.toggle_kid_hunk(&id, resolved, cx))
+                    cx.guarded_listener(move |d, _, _, cx| d.toggle_kid_hunk(&id, resolved, cx))
                 };
                 let fill_toggle = {
                     let id = id.clone();
-                    cx.listener(move |d, _, _, cx| d.toggle_kid_hunk(&id, resolved, cx))
+                    cx.guarded_listener(move |d, _, _, cx| d.toggle_kid_hunk(&id, resolved, cx))
                 };
                 let chev = icon(IconName::ChevronDown)
                     .size(px(12.))
@@ -1405,7 +1409,7 @@ impl PrDetail {
                                 .text_color(hsla(t.muted))
                                 .hover(move |s| s.text_color(hsla(t.text)))
                                 .child(text(label.clone()).mono().size(11.).truncate())
-                                .on_click(cx.listener(move |d, _, _, cx| {
+                                .on_click(cx.guarded_listener(move |d, _, _, cx| {
                                     d.jump_to_impact(&path, line, cx)
                                 })),
                         ))
@@ -1470,9 +1474,9 @@ impl PrDetail {
                         .cursor_text()
                         .hover(move |s| s.text_color(hsla(t.muted)).border_color(hsla(t.muted)))
                         .child(recur_ui::style::button_label("Reply…", 12.5, 400.))
-                        .on_click(
-                            cx.listener(move |d, _, window, cx| d.open_reply(&id, window, cx)),
-                        ),
+                        .on_click(cx.guarded_listener(move |d, _, window, cx| {
+                            d.open_reply(&id, window, cx)
+                        })),
                 );
             }
             if can_resolve_line_note(Some(pr), Some(child)) {
@@ -1552,7 +1556,7 @@ impl PrDetail {
         )
         .debug_selector(move || format!("cmt-resolve:{label}"))
         .when(!busy, |b| {
-            b.on_click(cx.listener(move |d, _, _, cx| d.set_thread_resolved(&cc, to, cx)))
+            b.on_click(cx.guarded_listener(move |d, _, _, cx| d.set_thread_resolved(&cc, to, cx)))
         })
         .into_any_element()
     }
@@ -1646,7 +1650,7 @@ impl PrDetail {
             .child(recur_ui::style::button_label("Comment", 13., 600.))
             .child(recur_ui::style::button_label("⌘↵", 12., 500.).opacity(0.55))
             .when(!disabled, |b| {
-                b.on_click(cx.listener(|d, _, window, cx| d.submit_composer(window, cx)))
+                b.on_click(cx.guarded_listener(|d, _, window, cx| d.submit_composer(window, cx)))
             });
         let _ = window;
         // `.composer { margin-top: 4px }` collapses into the checks card's 14px.

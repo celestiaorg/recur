@@ -4,6 +4,7 @@
 //! disposing detaches without killing the shell. Output is parsed as it arrives and acked in
 //! 32KB batches once parsed, which is what releases the session's flow control.
 
+use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -1398,8 +1399,12 @@ impl TerminalView {
     }
 }
 
-impl Render for TerminalView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl TerminalView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         self.sync_focus(window, cx);
         let pane = div()
             .id(gpui_kit::ElementId::Name(
@@ -1407,12 +1412,14 @@ impl Render for TerminalView {
             ))
             .track_focus(&self.focus)
             .key_context(KEY_CONTEXT)
-            .on_key_down(cx.listener(Self::key_down))
-            .on_action(cx.listener(Self::copy))
-            .on_action(cx.listener(Self::paste_action))
-            .on_drop(cx.listener(|v, drag: &WorkspaceFileDrag, window, cx| {
-                v.drop_paths(&drag.0, window, cx)
-            }))
+            .on_key_down(cx.guarded_listener(Self::key_down))
+            .on_action(cx.guarded_listener(Self::copy))
+            .on_action(cx.guarded_listener(Self::paste_action))
+            .on_drop(
+                cx.guarded_listener(|v, drag: &WorkspaceFileDrag, window, cx| {
+                    v.drop_paths(&drag.0, window, cx)
+                }),
+            )
             .size_full()
             .min_h_0()
             .pt(px(PANE_PADDING_TOP))
@@ -1428,6 +1435,12 @@ impl Render for TerminalView {
         } else {
             pane.invisible().absolute().top_0().left_0()
         }
+    }
+}
+
+impl Render for TerminalView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

@@ -649,8 +649,8 @@ pub fn file_icon(name: impl Into<SharedString>) -> FileIcon {
     FileIcon { name: name.into() }
 }
 
-impl RenderOnce for FileIcon {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+impl FileIcon {
+    fn render_view(self, window: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let light = Theme::of(cx).is_light();
         let fallback = Color::from_hsla(window.text_style().color);
         let class = file_icon_class(&self.name, light);
@@ -663,6 +663,12 @@ impl RenderOnce for FileIcon {
             draw_glyph(glyph, *color, 14., w, hh, scale)
         })
         .size(px(14.))
+    }
+}
+
+impl RenderOnce for FileIcon {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

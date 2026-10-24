@@ -102,8 +102,8 @@ struct SceneView {
     frames: u8,
 }
 
-impl Render for SceneView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SceneView {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         if !self.navigated {
             let state = self.shell.read(cx).state().clone();
             if state.read(cx).booted {
@@ -122,6 +122,12 @@ impl Render for SceneView {
             cx.notify();
         }
         div().size_full().child(self.shell.clone())
+    }
+}
+
+impl Render for SceneView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

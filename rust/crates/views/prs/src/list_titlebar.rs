@@ -27,8 +27,8 @@ impl PrListTitlebar {
     }
 }
 
-impl Render for PrListTitlebar {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PrListTitlebar {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let s = self.state.read(cx);
         let ids = &self.ui.read(cx).project_ids;
@@ -45,5 +45,11 @@ impl Render for PrListTitlebar {
             .debug_selector(move || sel.clone())
             .flex_none()
             .child(text(label).mono().size(11.).color(t.faint).nowrap())
+    }
+}
+
+impl Render for PrListTitlebar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

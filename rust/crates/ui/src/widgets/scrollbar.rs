@@ -216,8 +216,8 @@ impl ParentElement for ScrollArea {
     }
 }
 
-impl RenderOnce for ScrollArea {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+impl ScrollArea {
+    fn render_view(self, window: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let (axis, overlay) = (self.axis, self.overlay);
         let state = window.use_keyed_state(self.id.clone(), cx, |_, _| State::default());
@@ -437,6 +437,12 @@ impl RenderOnce for ScrollArea {
         };
 
         root.child(capture).child(track)
+    }
+}
+
+impl RenderOnce for ScrollArea {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

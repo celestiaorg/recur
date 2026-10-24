@@ -7,6 +7,7 @@
 //! app-wide [`SuggestStore`]; the shell paints it through the [`SuggestOverlay`]s registered
 //! in the `EmojiSuggest` / `UserMentionSuggest` overlay slots. Carets are byte offsets.
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -793,8 +794,12 @@ impl SuggestOverlay {
     }
 }
 
-impl Render for SuggestOverlay {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SuggestOverlay {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let Some(open) = self.store.read(cx).slot(self.kind).cloned() else {
             self.shown = None;
             return div().into_any_element();
@@ -900,7 +905,7 @@ impl Render for SuggestOverlay {
                 }
             }
             let store = self.store.clone();
-            row.on_mouse_move(cx.listener(move |o, ev: &MouseMoveEvent, _, cx| {
+            row.on_mouse_move(cx.guarded_listener(move |o, ev: &MouseMoveEvent, _, cx| {
                 if o.hover
                     .allows(f32::from(ev.position.x), f32::from(ev.position.y))
                 {
@@ -938,6 +943,12 @@ impl Render for SuggestOverlay {
         gpui_kit::deferred(div().absolute().inset_0().child(placed))
             .with_priority(60)
             .into_any_element()
+    }
+}
+
+impl Render for SuggestOverlay {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

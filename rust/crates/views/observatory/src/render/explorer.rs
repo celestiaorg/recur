@@ -6,6 +6,7 @@
 //! 26px), so the panel lays itself out, paints only what is near the viewport, and draws open
 //! folder headers in a layer at their sticky positions (GPUI has no `position: sticky`).
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, BTreeSet};
 
 use gpui_kit::prelude::FluentBuilder;
@@ -67,8 +68,8 @@ pub struct FileDragGhost {
     dir: bool,
 }
 
-impl Render for FileDragGhost {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl FileDragGhost {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         div()
             .flex()
@@ -95,6 +96,12 @@ impl Render for FileDragGhost {
                     .line_height(LineHeight::Scale(1.35))
                     .nowrap(),
             )
+    }
+}
+
+impl Render for FileDragGhost {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -330,7 +337,7 @@ impl Observatory {
             .h(px(DRAFT_ROW_H))
             .pl(px(10. + depth as f32 * 12.))
             .pr(px(10.))
-            .capture_key_down(cx.listener(|o, e: &gpui_kit::KeyDownEvent, _, cx| {
+            .capture_key_down(cx.guarded_listener(|o, e: &gpui_kit::KeyDownEvent, _, cx| {
                 if e.keystroke.key == "escape" {
                     cx.stop_propagation();
                     o.cancel_draft(cx);
@@ -629,7 +636,7 @@ impl Observatory {
         let ghost_name = SharedString::from(e.name.clone());
         let ghost_dir = e.dir;
         let d = d
-            .on_hover(cx.listener(move |o, on: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(move |o, on: &bool, _, cx| {
                 if *on {
                     o.hovered_row = Some(path.clone());
                 } else if o.hovered_row.as_deref() == Some(path.as_str()) {
@@ -637,13 +644,13 @@ impl Observatory {
                 }
                 cx.notify();
             }))
-            .on_click(cx.listener(move |o, ev: &ClickEvent, window, cx| {
+            .on_click(cx.guarded_listener(move |o, ev: &ClickEvent, window, cx| {
                 o.on_node_click(&entry, ev.click_count(), window, cx);
                 window.focus(&o.files_focus, cx);
             }))
             .on_mouse_down(
                 MouseButton::Right,
-                cx.listener(move |o, ev: &MouseDownEvent, window, cx| {
+                cx.guarded_listener(move |o, ev: &MouseDownEvent, window, cx| {
                     cx.stop_propagation();
                     o.open_ctx(
                         f32::from(ev.position.x),
@@ -667,12 +674,14 @@ impl Observatory {
                 },
             )
             .drag_over::<WorkspaceFileDrag>(move |s, _, _, _| s)
-            .on_drop(cx.listener(move |o, drag: &WorkspaceFileDrag, window, cx| {
-                let Some(dir) = o.tree_drop_target(Some((&entry3.path, entry3.dir))) else {
-                    return;
-                };
-                o.on_tree_drop(dir, drag.paths.clone(), window, cx);
-            }));
+            .on_drop(
+                cx.guarded_listener(move |o, drag: &WorkspaceFileDrag, window, cx| {
+                    let Some(dir) = o.tree_drop_target(Some((&entry3.path, entry3.dir))) else {
+                        return;
+                    };
+                    o.on_tree_drop(dir, drag.paths.clone(), window, cx);
+                }),
+            );
         let d = if drop_into {
             div()
                 .relative()
@@ -941,17 +950,19 @@ impl Observatory {
                         .border_color(hsla(if focused_ring { t.line_bright } else { t.line })),
                 )
             })
-            .on_key_down(cx.listener(|o, e: &gpui_kit::KeyDownEvent, window, cx| {
-                let k = &e.keystroke;
-                let m = k.modifiers;
-                let typing = o.draft_edit.is_some();
-                if o.on_files_key(&k.key, m.secondary(), m.alt, m.shift, typing, window, cx) {
-                    cx.stop_propagation();
-                }
-            }))
+            .on_key_down(
+                cx.guarded_listener(|o, e: &gpui_kit::KeyDownEvent, window, cx| {
+                    let k = &e.keystroke;
+                    let m = k.modifiers;
+                    let typing = o.draft_edit.is_some();
+                    if o.on_files_key(&k.key, m.secondary(), m.alt, m.shift, typing, window, cx) {
+                        cx.stop_propagation();
+                    }
+                }),
+            )
             .on_mouse_down(
                 MouseButton::Right,
-                cx.listener(|o, ev: &MouseDownEvent, window, cx| {
+                cx.guarded_listener(|o, ev: &MouseDownEvent, window, cx| {
                     o.open_ctx(
                         f32::from(ev.position.x),
                         f32::from(ev.position.y),
@@ -964,11 +975,13 @@ impl Observatory {
                     );
                 }),
             )
-            .on_drop(cx.listener(|o, drag: &WorkspaceFileDrag, window, cx| {
-                if let Some(dir) = o.tree_drop_target(None) {
-                    o.on_tree_drop(dir, drag.paths.clone(), window, cx);
-                }
-            }))
+            .on_drop(
+                cx.guarded_listener(|o, drag: &WorkspaceFileDrag, window, cx| {
+                    if let Some(dir) = o.tree_drop_target(None) {
+                        o.on_tree_drop(dir, drag.paths.clone(), window, cx);
+                    }
+                }),
+            )
             .into_any_element()
     }
 
@@ -1009,7 +1022,7 @@ impl Observatory {
                         .text_color(hsla(t.muted))
                         .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
                         .child(icon(name).size(px(14.)))
-                        .on_click(cx.listener(move |o, _, window, cx| {
+                        .on_click(cx.guarded_listener(move |o, _, window, cx| {
                             let dir = o.action_dir(cx);
                             o.start_new(folder, &dir, window, cx);
                         })),
@@ -1041,7 +1054,7 @@ impl Observatory {
                 crate::style::linkish("obs-dirty-link", Some(t.amber), cx)
                     .debug_selector(|| "obs-dirty-link".into())
                     .child(crate::style::link_text(format!("{dirty} dirty")).weight(600.))
-                    .on_click(cx.listener(|o, _, window, cx| {
+                    .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.select_code_panel(recur_view_core::prefs::CodePanelKey::Scm, window, cx)
                     })),
             );
@@ -1059,7 +1072,7 @@ impl Observatory {
                         ))
                         .weight(600.),
                     )
-                    .on_click(cx.listener(|o, _, window, cx| {
+                    .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.select_code_panel(
                             recur_view_core::prefs::CodePanelKey::Findings,
                             window,

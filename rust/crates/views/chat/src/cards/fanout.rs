@@ -3,6 +3,7 @@
 //! transcript (conductor turns, specialist cards and engine facts merged as its loop tab showed
 //! them), read-only. A Plan-panel link can ask for a child (`childTranscriptRequest`).
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, HashMap};
 use std::time::{Duration, Instant};
 
@@ -425,8 +426,12 @@ impl FanOutCard {
     }
 }
 
-impl Render for FanOutCard {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl FanOutCard {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let Some(wave) = self.wave() else {
             let mut st = crate::html_inline::InlineStyle::meta(11., t.faint, &t);
@@ -641,7 +646,7 @@ impl Render for FanOutCard {
                 ))
                 .child(name)
                 .child(state)
-                .on_click(cx.listener(move |c, _, _, cx| c.on_row(&child, cx)));
+                .on_click(cx.guarded_listener(move |c, _, _, cx| c.on_row(&child, cx)));
             card = card.child(recur_ui::tooltip::titled(
                 SharedString::from(format!("{id}-tip")),
                 tip,
@@ -678,6 +683,12 @@ impl Render for FanOutCard {
             }
         }
         card.into_any_element()
+    }
+}
+
+impl Render for FanOutCard {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

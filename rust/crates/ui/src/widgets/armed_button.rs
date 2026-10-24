@@ -149,8 +149,8 @@ impl ArmedButton {
     }
 }
 
-impl RenderOnce for ArmedButton {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+impl ArmedButton {
+    fn render_view(self, window: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let state = window.use_keyed_state(self.id.clone(), cx, |_, _| State::default());
         let disabled = self.disabled_over.is_some();
         if disabled && (state.read(cx).armed || state.read(cx).gate.armed) {
@@ -236,6 +236,12 @@ impl RenderOnce for ArmedButton {
             Some(t) => titled((self.id, "title"), t, button).into_any_element(),
             None => button.into_any_element(),
         }
+    }
+}
+
+impl RenderOnce for ArmedButton {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

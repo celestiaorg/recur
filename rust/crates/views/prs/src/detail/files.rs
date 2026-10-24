@@ -2,6 +2,7 @@
 //! split, fold all, Post all), the file list with its filter and the findings / comments
 //! toggles, and the stacked diffs.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -110,7 +111,9 @@ impl PrDetail {
                         format!("button:Unified diff:{}", layout == DiffLayout::Unified)
                     })
                     .on_click(
-                        cx.listener(|d, _, _, cx| d.set_diff_layout(DiffLayout::Unified, cx)),
+                        cx.guarded_listener(|d, _, _, cx| {
+                            d.set_diff_layout(DiffLayout::Unified, cx)
+                        }),
                     ),
                 )
                 .into_any_element(),
@@ -131,7 +134,7 @@ impl PrDetail {
                     .debug_selector(move || {
                         format!("button:Side-by-side diff:{}", layout == DiffLayout::Split)
                     })
-                    .on_click(cx.listener(move |d, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |d, _, _, cx| {
                         if !fallback {
                             d.set_diff_layout(DiffLayout::Split, cx)
                         }
@@ -257,7 +260,7 @@ impl PrDetail {
                 .text_color(hsla(if open { t.text } else { t.faint }))
                 .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
                 .child(icon(IconName::PanelLeft).size(px(16.)))
-                .on_click(cx.listener(move |d, _, _, cx| d.set_sidebar_open(!open, cx))),
+                .on_click(cx.guarded_listener(move |d, _, _, cx| d.set_sidebar_open(!open, cx))),
         );
         let mut cluster = div()
             .flex()
@@ -290,9 +293,9 @@ impl PrDetail {
                             .debug_selector(move || {
                                 format!("button:Flat list:{}", mode == FileListMode::Flat)
                             })
-                            .on_click(cx.listener(|d, _, _, cx| {
-                                d.set_file_list_mode(FileListMode::Flat, cx)
-                            })),
+                            .on_click(cx.guarded_listener(
+                                |d, _, _, cx| d.set_file_list_mode(FileListMode::Flat, cx),
+                            )),
                         )
                         .into_any_element(),
                         titled(
@@ -308,9 +311,9 @@ impl PrDetail {
                             .debug_selector(move || {
                                 format!("button:Tree:{}", mode == FileListMode::Tree)
                             })
-                            .on_click(cx.listener(|d, _, _, cx| {
-                                d.set_file_list_mode(FileListMode::Tree, cx)
-                            })),
+                            .on_click(cx.guarded_listener(
+                                |d, _, _, cx| d.set_file_list_mode(FileListMode::Tree, cx),
+                            )),
                         )
                         .into_any_element(),
                     ],
@@ -374,7 +377,7 @@ impl PrDetail {
                     cx,
                 )
                 .debug_selector(move || format!("button:{fold_label}"))
-                .on_click(cx.listener(|d, _, _, cx| {
+                .on_click(cx.guarded_listener(|d, _, _, cx| {
                     d.stack.toggle_fold_all();
                     cx.notify();
                 })),
@@ -388,9 +391,9 @@ impl PrDetail {
                     note_btn("pr-fl-post-all", "Post all", false, busy, t.pane, lh, cx)
                         .debug_selector(|| "fl-head:Post all".into())
                         .when(!busy, |b| {
-                            b.on_click(
-                                cx.listener(move |d, _, _, cx| d.post_findings(list.clone(), cx)),
-                            )
+                            b.on_click(cx.guarded_listener(move |d, _, _, cx| {
+                                d.post_findings(list.clone(), cx)
+                            }))
                         }),
                 ),
             );
@@ -430,7 +433,7 @@ impl PrDetail {
         }
         let empty = (filtering && matched.is_empty()).then(|| {
             recur_view_review::commits::empty_clear_filter(
-                cx.listener(|d, _, window, cx| {
+                cx.guarded_listener(|d, _, window, cx| {
                     d.filter.update(cx, |f, cx| f.set_value("", window, cx));
                     d.findings_only = false;
                     d.comments_only = false;
@@ -551,7 +554,7 @@ impl PrDetail {
                         )
                     })
                     .key_context("TextEntry")
-                    .on_key_down(cx.listener(|d, ev: &KeyDownEvent, window, cx| {
+                    .on_key_down(cx.guarded_listener(|d, ev: &KeyDownEvent, window, cx| {
                         if ev.keystroke.key == "escape" {
                             cx.stop_propagation();
                             d.filter.update(cx, |f, cx| f.set_value("", window, cx));
@@ -596,7 +599,7 @@ impl PrDetail {
                     cx,
                 )
                 .debug_selector(move || format!("button:{label}:{on}"))
-                .on_click(cx.listener(move |d, _, _, cx| {
+                .on_click(cx.guarded_listener(move |d, _, _, cx| {
                     d.findings_only = !on;
                     cx.notify();
                 })),
@@ -621,7 +624,7 @@ impl PrDetail {
                     cx,
                 )
                 .debug_selector(move || format!("button:{label}:{on}"))
-                .on_click(cx.listener(move |d, _, _, cx| {
+                .on_click(cx.guarded_listener(move |d, _, _, cx| {
                     d.comments_only = !on;
                     cx.notify();
                 })),

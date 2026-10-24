@@ -3,6 +3,7 @@
 
 use crate::assets::{LucideEntry, lucide_icons, lucide_suggested};
 use crate::fonts::UI;
+use crate::guard::Guarded;
 use crate::icon::{icon, lucide_icon};
 use crate::icon_name::IconName;
 use crate::logic::fuzzy::{fuzzy_filter_prepared, prepare_fuzzy};
@@ -208,8 +209,12 @@ impl IconPicker {
     }
 }
 
-impl Render for IconPicker {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl IconPicker {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         style_search_input(&self.search, cx);
         let t = Theme::of(cx).tokens;
         let disabled = self.disabled_over.is_some();
@@ -312,7 +317,7 @@ impl Render for IconPicker {
                 .size_full(),
             );
         if !disabled {
-            button = button.on_click(cx.listener(|this, _: &ClickEvent, window, cx| {
+            button = button.on_click(cx.guarded_listener(|this, _: &ClickEvent, window, cx| {
                 if this.open {
                     this.close(false, window, cx);
                 } else {
@@ -327,6 +332,12 @@ impl Render for IconPicker {
             root = root.child(m);
         }
         root
+    }
+}
+
+impl Render for IconPicker {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        crate::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -379,18 +390,20 @@ impl IconPicker {
                     .text_color(t.amber);
             }
             let pick = name.clone();
-            c = c
-                .on_mouse_move(cx.listener(move |this, ev: &MouseMoveEvent, _, cx| {
-                    if this.gate.allows(ev.position.x.into(), ev.position.y.into())
-                        && this.active != i
-                    {
-                        this.active = i;
-                        cx.notify();
-                    }
-                }))
-                .on_click(cx.listener(move |this, _: &ClickEvent, window, cx| {
-                    this.pick(pick.clone(), window, cx)
-                }));
+            c =
+                c.on_mouse_move(
+                    cx.guarded_listener(move |this, ev: &MouseMoveEvent, _, cx| {
+                        if this.gate.allows(ev.position.x.into(), ev.position.y.into())
+                            && this.active != i
+                        {
+                            this.active = i;
+                            cx.notify();
+                        }
+                    }),
+                )
+                .on_click(cx.guarded_listener(
+                    move |this, _: &ClickEvent, window, cx| this.pick(pick.clone(), window, cx),
+                ));
             cells.push(crate::tooltip::titled(("ico-tip", i), name, c).into_any_element());
         }
         let grid = if cells.is_empty() {
@@ -436,8 +449,10 @@ impl IconPicker {
             .max_h(px(max_h))
             .font_family(UI)
             .occlude()
-            .on_mouse_down_out(cx.listener(|this, _, window, cx| this.close(false, window, cx)))
-            .on_key_down(cx.listener(|this, e: &KeyDownEvent, window, cx| {
+            .on_mouse_down_out(
+                cx.guarded_listener(|this, _, window, cx| this.close(false, window, cx)),
+            )
+            .on_key_down(cx.guarded_listener(|this, e: &KeyDownEvent, window, cx| {
                 if this.on_search_key(e, window, cx) {
                     cx.stop_propagation();
                 }

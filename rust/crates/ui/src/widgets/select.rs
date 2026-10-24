@@ -4,6 +4,7 @@
 
 use crate::color::Color;
 use crate::fonts::{MONO, UI};
+use crate::guard::Guarded;
 use crate::icon::{icon, provider_icon};
 use crate::icon_name::IconName;
 use crate::logic::fuzzy::{fuzzy_filter_prepared, prepare_fuzzy};
@@ -672,8 +673,12 @@ impl Select {
     }
 }
 
-impl Render for Select {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Select {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         style_search_input(&self.search, cx);
         let t = Theme::of(cx).tokens;
         let disabled = self.disabled_over.is_some();
@@ -946,8 +951,10 @@ impl Render for Select {
         button = button.child(chev);
         let entity = cx.entity();
         button = button
-            .on_click(cx.listener(|this, _: &ClickEvent, window, cx| this.toggle(window, cx)))
-            .on_key_down(cx.listener(|this, e: &KeyDownEvent, window, cx| {
+            .on_click(
+                cx.guarded_listener(|this, _: &ClickEvent, window, cx| this.toggle(window, cx)),
+            )
+            .on_key_down(cx.guarded_listener(|this, e: &KeyDownEvent, window, cx| {
                 if this.on_key(e, false, window, cx) {
                     cx.stop_propagation();
                 }
@@ -978,6 +985,12 @@ impl Render for Select {
             root = root.child(menu);
         }
         root
+    }
+}
+
+impl Render for Select {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        crate::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -1110,8 +1123,8 @@ impl Select {
                         ),
                 );
             }
-            opt = opt
-                .on_mouse_move(cx.listener(move |this, e: &MouseMoveEvent, _, cx| {
+            opt =
+                opt.on_mouse_move(cx.guarded_listener(move |this, e: &MouseMoveEvent, _, cx| {
                     if this.gate.allows(e.position.x.into(), e.position.y.into())
                         && this.active != Some(ix)
                     {
@@ -1119,9 +1132,9 @@ impl Select {
                         cx.notify();
                     }
                 }))
-                .on_click(cx.listener(move |this, _: &ClickEvent, window, cx| {
-                    this.pick(value.clone(), window, cx)
-                }));
+                .on_click(cx.guarded_listener(
+                    move |this, _: &ClickEvent, window, cx| this.pick(value.clone(), window, cx),
+                ));
             list.push(opt.into_any_element());
         }
         if filtered.is_empty() {
@@ -1150,7 +1163,9 @@ impl Select {
             .when_some(self.variant.max_width(vw), |d, w| d.max_w(px(w)))
             .font_family(UI)
             .occlude()
-            .on_mouse_down_out(cx.listener(|this, _, window, cx| this.close(false, window, cx)));
+            .on_mouse_down_out(
+                cx.guarded_listener(|this, _, window, cx| this.close(false, window, cx)),
+            );
         if self.searchable {
             menu = menu
                 .p_0()
@@ -1160,7 +1175,7 @@ impl Select {
                     window,
                     cx,
                 ))
-                .on_key_down(cx.listener(|this, e: &KeyDownEvent, window, cx| {
+                .on_key_down(cx.guarded_listener(|this, e: &KeyDownEvent, window, cx| {
                     if this.on_key(e, true, window, cx) {
                         cx.stop_propagation();
                     }

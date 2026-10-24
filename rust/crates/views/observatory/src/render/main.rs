@@ -8,6 +8,7 @@ use gpui_kit::{
     SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
+use recur_ui::guard::Guarded;
 use recur_ui::kbd::kbd;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, TextStyled, text};
@@ -101,7 +102,9 @@ impl Observatory {
                             .min_w_0()
                             .child(text(name).mono().size(11.).truncate()),
                     )
-                    .on_click(cx.listener(move |o, _, window, cx| o.focus_pane(pane, window, cx)));
+                    .on_click(
+                        cx.guarded_listener(move |o, _, window, cx| o.focus_pane(pane, window, cx)),
+                    );
                 if dirty {
                     b = b.child(
                         div()
@@ -192,7 +195,7 @@ impl Observatory {
                 .child(text(part.clone()).mono().size(11.).truncate())
                 .when(!is_file, |d| {
                     let p = prefix.clone();
-                    d.on_click(cx.listener(move |o, _, window, cx| {
+                    d.on_click(cx.guarded_listener(move |o, _, window, cx| {
                         o.reveal_in_tree(&format!("{p}/_"), cx).detach();
                         o.select_code_panel(CodePanelKey::Files, window, cx);
                     }))
@@ -244,7 +247,7 @@ impl Observatory {
                         .nowrap(),
                 )
                 .when(!disabled, |b| {
-                    b.on_click(cx.listener(move |o, _, window, cx| {
+                    b.on_click(cx.guarded_listener(move |o, _, window, cx| {
                         o.set_view_mode(mode, window, cx).detach();
                     }))
                 })
@@ -328,12 +331,12 @@ impl Observatory {
             actions = actions.child(titled(
                 "all-diffs-t",
                 format!("All diffs — review changes since {base} (⌥⌘R)"),
-                icon_btn("all-diffs", IconName::Rows3, false, None, cx).on_click(cx.listener(
-                    |o, _, _, cx| {
+                icon_btn("all-diffs", IconName::Rows3, false, None, cx).on_click(
+                    cx.guarded_listener(|o, _, _, cx| {
                         o.set_review_tab(recur_view_review::review_diff::ReviewTab::Changes, cx);
                         o.toggle_review(cx);
-                    },
-                )),
+                    }),
+                ),
             ));
         }
         let can_find = self.can_toggle_find();
@@ -350,7 +353,9 @@ impl Observatory {
                 )
                 .debug_selector(|| "crumb:find".into())
                 .when(can_find, |b| {
-                    b.on_click(cx.listener(|o, _, window, cx| o.toggle_find_panel(window, cx)))
+                    b.on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.toggle_find_panel(window, cx)),
+                    )
                 }),
             ))
             .child(titled(
@@ -361,7 +366,7 @@ impl Observatory {
                     let b = icon_btn("split", IconName::Columns, false, None, cx)
                         .debug_selector(|| "crumb:split".into());
                     let b = if on { b.text_color(hsla(t.text)) } else { b };
-                    b.on_click(cx.listener(|o, _, window, cx| o.toggle_split(window, cx)))
+                    b.on_click(cx.guarded_listener(|o, _, window, cx| o.toggle_split(window, cx)))
                 },
             ))
             .child(titled(
@@ -369,7 +374,9 @@ impl Observatory {
                 "Reload from disk (F5)",
                 icon_btn("reload", IconName::Refresh, false, None, cx)
                     .debug_selector(|| "crumb:reload".into())
-                    .on_click(cx.listener(|o, _, window, cx| o.reload_from_disk(window, cx))),
+                    .on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.reload_from_disk(window, cx)),
+                    ),
             ));
         if preview_kind.is_some()
             || !self.selected_artifact_id().is_empty()
@@ -382,7 +389,7 @@ impl Observatory {
                 "Full screen",
                 icon_btn("fullscreen", IconName::Maximize, false, None, cx)
                     .debug_selector(|| "crumb:fullscreen".into())
-                    .on_click(cx.listener(|o, _, window, cx| {
+                    .on_click(cx.guarded_listener(|o, _, window, cx| {
                         if o.preview_kind().is_some() {
                             o.view_mode = EditorViewMode::Preview;
                             o.sync_editors(window, cx);
@@ -491,7 +498,7 @@ impl Observatory {
                 )
                 .size_full()
             })
-            .on_click(cx.listener(move |o, _, window, cx| {
+            .on_click(cx.guarded_listener(move |o, _, window, cx| {
                 o.zoom_image(src.clone(), name.clone(), base, window, cx)
             }));
         if !compare {
@@ -589,11 +596,11 @@ impl Observatory {
             titled(
                 "img-zoom-t",
                 "Zoom",
-                icon_btn("img-zoom", IconName::ZoomIn, false, None, cx).on_click(cx.listener(
-                    move |o, _, window, cx| {
+                icon_btn("img-zoom", IconName::ZoomIn, false, None, cx).on_click(
+                    cx.guarded_listener(move |o, _, window, cx| {
                         o.zoom_image(src.clone(), name.clone(), false, window, cx)
-                    },
-                )),
+                    }),
+                ),
             )
             .into_any_element()
         });
@@ -614,7 +621,7 @@ impl Observatory {
             .min_h_0()
             .overflow_hidden()
             .when(self.split_open, |d| {
-                d.capture_any_mouse_down(cx.listener(
+                d.capture_any_mouse_down(cx.guarded_listener(
                     |o, e: &gpui_kit::MouseDownEvent, window, cx| {
                         if e.button == MouseButton::Left && o.focused_pane != Pane::Main {
                             o.focus_pane(Pane::Main, window, cx)
@@ -652,7 +659,7 @@ impl Observatory {
                 "Zoom",
                 icon_btn("video-zoom", IconName::ZoomIn, false, None, cx)
                     .debug_selector(|| "video-zoom".into())
-                    .on_click(cx.listener(|o, _, _, cx| o.zoom_video(cx))),
+                    .on_click(cx.guarded_listener(|o, _, _, cx| o.zoom_video(cx))),
             )
             .into_any_element();
             let video = crate::render::checkerboard(cx)
@@ -815,11 +822,13 @@ impl Observatory {
             .overflow_hidden()
             .border_l_1()
             .border_color(hsla(t.line))
-            .capture_any_mouse_down(cx.listener(|o, e: &gpui_kit::MouseDownEvent, window, cx| {
-                if e.button == MouseButton::Left && o.focused_pane != Pane::Split {
-                    o.focus_pane(Pane::Split, window, cx)
-                }
-            }));
+            .capture_any_mouse_down(cx.guarded_listener(
+                |o, e: &gpui_kit::MouseDownEvent, window, cx| {
+                    if e.button == MouseButton::Left && o.focused_pane != Pane::Split {
+                        o.focus_pane(Pane::Split, window, cx)
+                    }
+                },
+            ));
         if !self.split_path.is_empty()
             && let Some(ed) = self.split_editor.clone()
         {
@@ -860,7 +869,7 @@ impl Observatory {
                     .hover(move |s| s.bg(hsla(t.amber.fade(0.55))))
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(|o, _, _, cx| {
+                        cx.guarded_listener(|o, _, _, cx| {
                             o.split_resizing = true;
                             cx.stop_propagation();
                             cx.notify();
@@ -869,18 +878,20 @@ impl Observatory {
                     .on_drag((), |_, _, _, cx| {
                         gpui_kit::AppContext::new(cx, |_| gpui_kit::Empty)
                     })
-                    .on_drag_move(cx.listener(|o, ev: &gpui_kit::DragMoveEvent<()>, _, cx| {
-                        let b = o.bounds.editors.get();
-                        let w = f32::from(b.size.width);
-                        if w <= 0. {
-                            return;
-                        }
-                        let x = f32::from(ev.event.position.x - b.origin.x);
-                        o.set_split_pct((x / w * 100.) as f64, false, cx);
-                    }))
+                    .on_drag_move(cx.guarded_listener(
+                        |o, ev: &gpui_kit::DragMoveEvent<()>, _, cx| {
+                            let b = o.bounds.editors.get();
+                            let w = f32::from(b.size.width);
+                            if w <= 0. {
+                                return;
+                            }
+                            let x = f32::from(ev.event.position.x - b.origin.x);
+                            o.set_split_pct((x / w * 100.) as f64, false, cx);
+                        },
+                    ))
                     .on_mouse_up(
                         MouseButton::Left,
-                        cx.listener(|o, _, _, cx| {
+                        cx.guarded_listener(|o, _, _, cx| {
                             if o.split_resizing {
                                 o.split_resizing = false;
                                 let p = o.split_pct as f64;
@@ -888,7 +899,7 @@ impl Observatory {
                             }
                         }),
                     )
-                    .on_key_down(cx.listener(|o, e: &gpui_kit::KeyDownEvent, _, cx| {
+                    .on_key_down(cx.guarded_listener(|o, e: &gpui_kit::KeyDownEvent, _, cx| {
                         let step = if e.keystroke.modifiers.shift { 5. } else { 2. };
                         let p = o.split_pct as f64;
                         match e.keystroke.key.as_str() {
@@ -985,7 +996,7 @@ impl Observatory {
                 linkish("status-lang", None, cx)
                     .debug_selector(|| "status:lang".into())
                     .child(w(link_text(lang)))
-                    .on_click(cx.listener(|o, _, window, cx| {
+                    .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.quick_open.update(cx, |q, cx| q.close(cx));
                         o.state.update(cx, |s, cx| s.open_syntax_mode_picker(cx));
                         let _ = window;
@@ -997,7 +1008,7 @@ impl Observatory {
                 "Commands and snippets for this file",
                 linkish("status-bundles", None, cx)
                     .child(w(link_text("Bundles")))
-                    .on_click(cx.listener(|o, _, _, cx| {
+                    .on_click(cx.guarded_listener(|o, _, _, cx| {
                         o.state.update(cx, |s, cx| s.open_commands_palette(cx))
                     })),
             ))
@@ -1088,7 +1099,7 @@ impl Observatory {
                 linkish("status-problems", Some(c), cx)
                     .gap(px(6.))
                     .children(parts)
-                    .on_click(cx.listener(|o, _, window, cx| {
+                    .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.select_code_panel(CodePanelKey::Problems, window, cx)
                     })),
             ));
@@ -1124,7 +1135,7 @@ impl Observatory {
                         .min_w_0()
                         .max_w(px(28. * 6.3))
                         .child(w(foot_text(name)).truncate())
-                        .on_click(cx.listener(|o, _, window, cx| {
+                        .on_click(cx.guarded_listener(|o, _, window, cx| {
                             o.open_quick_open(crate::quick_open::QuickOpenMode::Symbol, window, cx)
                         })),
                 ))
@@ -1134,7 +1145,7 @@ impl Observatory {
             .child(
                 linkish("status-gosym", None, cx)
                     .child(w(link_text("Go to Symbol")))
-                    .on_click(cx.listener(|o, _, window, cx| {
+                    .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.open_quick_open(crate::quick_open::QuickOpenMode::Symbol, window, cx)
                     })),
             )
@@ -1194,7 +1205,7 @@ impl Observatory {
                         link_text(format!("{n} finding{}", if n == 1 { "" } else { "s" }))
                             .weight(600.),
                     )
-                    .on_click(cx.listener(|o, _, window, cx| {
+                    .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.select_code_panel(CodePanelKey::Findings, window, cx)
                     })),
             );
@@ -1254,14 +1265,16 @@ impl Observatory {
             .min_h_0()
             .bg(hsla(t.bg))
             .child(crate::geometry::probe(&self.bounds.main))
-            .on_key_down(cx.listener(|o, e: &gpui_kit::KeyDownEvent, window, cx| {
-                if o.editor_fullscreen && e.keystroke.key == "escape" {
-                    o.set_editor_fullscreen(false, window, cx);
-                    cx.stop_propagation();
-                }
-            }))
+            .on_key_down(
+                cx.guarded_listener(|o, e: &gpui_kit::KeyDownEvent, window, cx| {
+                    if o.editor_fullscreen && e.keystroke.key == "escape" {
+                        o.set_editor_fullscreen(false, window, cx);
+                        cx.stop_propagation();
+                    }
+                }),
+            )
             .when(fs, |d| {
-                d.on_mouse_move(cx.listener(|o, _, _, cx| o.reveal_fs_exit(cx)))
+                d.on_mouse_move(cx.guarded_listener(|o, _, _, cx| o.reveal_fs_exit(cx)))
             });
         if beside {
             let pct = self.term_beside_pct(cx) as f32 / 100.;
@@ -1332,7 +1345,7 @@ impl Observatory {
                     .top_0()
                     .right_0()
                     .p(px(12.))
-                    .on_hover(cx.listener(|o, on: &bool, _, cx| {
+                    .on_hover(cx.guarded_listener(|o, on: &bool, _, cx| {
                         o.fs_exit_hovered = *on;
                         cx.notify();
                     }))
@@ -1345,7 +1358,7 @@ impl Observatory {
                             .border_1()
                             .border_color(hsla(t.line))
                             .when(!show, |d| d.opacity(0.))
-                            .on_click(cx.listener(|o, _, window, cx| {
+                            .on_click(cx.guarded_listener(|o, _, window, cx| {
                                 o.set_editor_fullscreen(false, window, cx)
                             })),
                     )),
@@ -1380,7 +1393,7 @@ impl Observatory {
                     .hover(move |s| s.bg(hsla(t.amber.fade(0.55))))
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(|o, _, _, cx| {
+                        cx.guarded_listener(|o, _, _, cx| {
                             o.term_beside_resizing = true;
                             cx.stop_propagation();
                             cx.notify();
@@ -1389,21 +1402,23 @@ impl Observatory {
                     .on_drag((), |_, _, _, cx| {
                         gpui_kit::AppContext::new(cx, |_| gpui_kit::Empty)
                     })
-                    .on_drag_move(cx.listener(|o, ev: &gpui_kit::DragMoveEvent<()>, _, cx| {
-                        let b = o.bounds.main.get();
-                        let w = f32::from(b.size.width);
-                        if w <= 0. {
-                            return;
-                        }
-                        let x = f32::from(ev.event.position.x - b.origin.x);
-                        let id = o.props.workspace_id.clone();
-                        o.state.update(cx, |s, cx| {
-                            s.set_terminal_beside_pct(&id, (x / w * 100.) as f64, false, cx)
-                        });
-                    }))
+                    .on_drag_move(cx.guarded_listener(
+                        |o, ev: &gpui_kit::DragMoveEvent<()>, _, cx| {
+                            let b = o.bounds.main.get();
+                            let w = f32::from(b.size.width);
+                            if w <= 0. {
+                                return;
+                            }
+                            let x = f32::from(ev.event.position.x - b.origin.x);
+                            let id = o.props.workspace_id.clone();
+                            o.state.update(cx, |s, cx| {
+                                s.set_terminal_beside_pct(&id, (x / w * 100.) as f64, false, cx)
+                            });
+                        },
+                    ))
                     .on_mouse_up(
                         MouseButton::Left,
-                        cx.listener(|o, _, _, cx| {
+                        cx.guarded_listener(|o, _, _, cx| {
                             if o.term_beside_resizing {
                                 o.term_beside_resizing = false;
                                 let id = o.props.workspace_id.clone();
@@ -1414,7 +1429,7 @@ impl Observatory {
                             }
                         }),
                     )
-                    .on_key_down(cx.listener(|o, e: &gpui_kit::KeyDownEvent, _, cx| {
+                    .on_key_down(cx.guarded_listener(|o, e: &gpui_kit::KeyDownEvent, _, cx| {
                         let step = if e.keystroke.modifiers.shift { 5. } else { 2. };
                         let p = o.term_beside_pct(cx) as f64;
                         let id = o.props.workspace_id.clone();

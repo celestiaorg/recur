@@ -38,14 +38,20 @@ impl Global for ModalSlot {}
 /// The overlay that shows [`ModalSlot`].
 struct ModalHost;
 
-impl Render for ModalHost {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ModalHost {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let mut d = div().absolute().top_0().left_0().size_full();
         match cx.try_global::<ModalSlot>().and_then(|s| s.0.clone()) {
             Some(v) => d = d.child(v),
             None => return div().into_any_element(),
         }
         d.into_any_element()
+    }
+}
+
+impl Render for ModalHost {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

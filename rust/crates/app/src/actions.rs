@@ -5,6 +5,7 @@
 use gpui_kit::{Context, Div, InteractiveElement, Stateful, Window};
 use recur_platform::updater::UpdaterEvent;
 use recur_services::AppEvent;
+use recur_ui::guard::Guarded;
 use recur_ui::widgets::{ToastKind, ToastOptions, push_toast, toast_action};
 use recur_view_core::ViewName;
 use recur_view_core::menu::terminal_id_from_menu;
@@ -32,7 +33,7 @@ impl Shell {
         };
         macro_rules! emit {
             ($root:expr, $($t:ty),*) => {
-                $root$(.on_action(cx.listener(|this, a: &$t, window, cx| {
+                $root$(.on_action(cx.guarded_listener(|this, a: &$t, window, cx| {
                     if let Some(name) = menu_action_name(a) {
                         this.emit_menu_action(name, window, cx);
                     }
@@ -62,7 +63,7 @@ impl Shell {
             ($root:expr, $($t:ty => $on:expr),*) => {{
                 let mut r = $root;
                 $( if $on.unwrap_or(false) {
-                    r = r.on_action(cx.listener(|this, a: &$t, window, cx| {
+                    r = r.on_action(cx.guarded_listener(|this, a: &$t, window, cx| {
                         if let Some(name) = menu_action_name(a) {
                             this.emit_menu_action(name, window, cx);
                         }
@@ -91,12 +92,12 @@ impl Shell {
             PrevTab => menu.prev_tab,
             NextTab => menu.next_tab
         );
-        root.on_action(cx.listener(|this, a: &PickTheme, window, cx| {
+        root.on_action(cx.guarded_listener(|this, a: &PickTheme, window, cx| {
             if !a.action.is_empty() {
                 this.emit_menu_action(&a.action, window, cx);
             }
         }))
-        .on_action(cx.listener(|_, _: &About, window, cx| {
+        .on_action(cx.guarded_listener(|_, _: &About, window, cx| {
             drop(window.prompt(
                 gpui_kit::PromptLevel::Info,
                 recur_platform::identity::APP_NAME,
@@ -105,17 +106,17 @@ impl Shell {
                 cx,
             ));
         }))
-        .on_action(cx.listener(|_, _: &HideApp, _, cx| cx.hide()))
-        .on_action(cx.listener(|_, _: &HideOthers, _, cx| cx.hide_other_apps()))
-        .on_action(cx.listener(|_, _: &ShowAll, _, cx| cx.unhide_other_apps()))
-        .on_action(cx.listener(|_, _: &QuitApp, _, cx| cx.quit()))
-        .on_action(cx.listener(|_, _: &Minimize, window, _| window.minimize_window()))
-        .on_action(cx.listener(|_, _: &Zoom, window, _| window.zoom_window()))
-        .on_action(cx.listener(|_, _: &BringAllToFront, window, cx| {
+        .on_action(cx.guarded_listener(|_, _: &HideApp, _, cx| cx.hide()))
+        .on_action(cx.guarded_listener(|_, _: &HideOthers, _, cx| cx.hide_other_apps()))
+        .on_action(cx.guarded_listener(|_, _: &ShowAll, _, cx| cx.unhide_other_apps()))
+        .on_action(cx.guarded_listener(|_, _: &QuitApp, _, cx| cx.quit()))
+        .on_action(cx.guarded_listener(|_, _: &Minimize, window, _| window.minimize_window()))
+        .on_action(cx.guarded_listener(|_, _: &Zoom, window, _| window.zoom_window()))
+        .on_action(cx.guarded_listener(|_, _: &BringAllToFront, window, cx| {
             cx.activate(true);
             window.activate_window();
         }))
-        .on_action(cx.listener(|_, _: &OpenDevTools, window, cx| {
+        .on_action(cx.guarded_listener(|_, _: &OpenDevTools, window, cx| {
             #[cfg(any(debug_assertions, feature = "devtools"))]
             window.toggle_inspector(cx);
             #[cfg(not(any(debug_assertions, feature = "devtools")))]

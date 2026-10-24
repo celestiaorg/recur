@@ -8,6 +8,7 @@ use gpui_kit::{
 };
 use recur_domain::PlanStep;
 use recur_ui::fonts::Family;
+use recur_ui::guard::Guarded;
 use recur_ui::shadow::{box_shadow, css_box_shadow};
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{IconName, Theme, Tokens, icon};
@@ -187,9 +188,9 @@ impl AgentChat {
                     .cursor_pointer()
                     .hover(|s| s.bg(hsla(t.pane_2)))
                     .child(recur_ui::style::button_label("Open plan", 11., 400.).color(t.cyan))
-                    .on_click(
-                        cx.listener(move |this, _, _, cx| this.open_plan_panel(&w, "details", cx)),
-                    ),
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                        this.open_plan_panel(&w, "details", cx)
+                    })),
             ));
         }
         let mut card = recur_ui::style::card(t.pane, t.line, 8.)
@@ -232,9 +233,9 @@ impl AgentChat {
                         "Open the Todos pane",
                         title_text,
                     ))
-                    .on_click(
-                        cx.listener(move |this, _, _, cx| this.open_plan_panel(&w, "todos", cx)),
-                    )
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                        this.open_plan_panel(&w, "todos", cx)
+                    }))
                     .into_any_element()
             } else {
                 title_text.into_any_element()

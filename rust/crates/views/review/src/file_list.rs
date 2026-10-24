@@ -6,6 +6,7 @@
 //! list lays itself out and paints open folder headers in a layer at their sticky positions
 //! (GPUI has no `position: sticky`).
 
+use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -348,7 +349,7 @@ impl ReviewFileList {
             .cursor_pointer()
             .text_color(hsla(t.text))
             .when_some(bg, |d, c| d.bg(hsla(c)))
-            .on_hover(cx.listener({
+            .on_hover(cx.guarded_listener({
                 let path = path.clone();
                 move |l, on: &bool, _, cx| {
                     let next = on.then(|| path.clone());
@@ -358,7 +359,7 @@ impl ReviewFileList {
                     }
                 }
             }))
-            .on_click(cx.listener({
+            .on_click(cx.guarded_listener({
                 let path = path.clone();
                 move |l, _, window, cx| {
                     if is_dir {
@@ -430,7 +431,7 @@ impl ReviewFileList {
                             t.cyan
                         })),
                 )
-                .on_click(cx.listener(move |l, _, window, cx| {
+                .on_click(cx.guarded_listener(move |l, _, window, cx| {
                     cx.stop_propagation();
                     if !is_dir {
                         l.jump_to_notes(&p2, window, cx);
@@ -538,8 +539,12 @@ fn fst(st: &str, dirty: bool, t: &Tokens) -> AnyElement {
         .into_any_element()
 }
 
-impl Render for ReviewFileList {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ReviewFileList {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let (rows, content_h) = self.layout();
         let by = self.by_path();
@@ -705,5 +710,11 @@ impl Render for ReviewFileList {
                     .child(flow),
             )
             .child(probe)
+    }
+}
+
+impl Render for ReviewFileList {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

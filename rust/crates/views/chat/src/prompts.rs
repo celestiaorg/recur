@@ -125,8 +125,12 @@ impl PermissionPrompts {
     }
 }
 
-impl Render for PermissionPrompts {
-    fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl PermissionPrompts {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        _: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let Some(card) = self.card.clone() else {
             return div().into_any_element();
         };
@@ -141,6 +145,12 @@ impl Render for PermissionPrompts {
             .occlude()
             .child(card)
             .into_any_element()
+    }
+}
+
+impl Render for PermissionPrompts {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -242,9 +252,15 @@ impl QuestionPrompts {
     }
 }
 
-impl Render for QuestionPrompts {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl QuestionPrompts {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         div()
+    }
+}
+
+impl Render for QuestionPrompts {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

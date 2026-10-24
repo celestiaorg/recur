@@ -12,6 +12,7 @@ use recur_domain::PendingLineComment;
 use recur_ui::exact::vgap;
 use recur_ui::fonts::Family;
 use recur_ui::fonts::weight;
+use recur_ui::guard::Guarded;
 use recur_ui::shadow::with_shadow;
 use recur_ui::style::{self, MODAL_SHADOW, button_label, modal_panel, modal_scrim, primary_button};
 use recur_ui::text::{TextStyled, strut_metrics, text};
@@ -381,8 +382,12 @@ fn esc_hint(hovered: bool, window: &Window, cx: &App) -> gpui_kit::Div {
     )
 }
 
-impl Render for PrReviewModal {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PrReviewModal {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let Some(kind) = self.kind(cx) else {
             return div().into_any_element();
         };
@@ -415,11 +420,11 @@ impl Render for PrReviewModal {
             .ml_auto()
             .flex_none()
             .cursor_pointer()
-            .on_hover(cx.listener(|m, h: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| {
                 m.hover_x = *h;
                 cx.notify();
             }))
-            .on_click(cx.listener(|m, _, _, cx| m.close(cx)))
+            .on_click(cx.guarded_listener(|m, _, _, cx| m.close(cx)))
             .child(esc_hint(self.hover_x, window, cx));
         let head = div()
             .flex()
@@ -477,7 +482,7 @@ impl Render for PrReviewModal {
                     .max_w_full()
                     .cursor_pointer()
                     .group("pr-rev-loc")
-                    .on_click(cx.listener(move |m, _, _, cx| m.jump_to_pending(&pj, cx)))
+                    .on_click(cx.guarded_listener(move |m, _, _, cx| m.jump_to_pending(&pj, cx)))
                     .child(
                         div().group_hover("pr-rev-loc", |s| s.underline()).child(
                             text(label)
@@ -552,7 +557,7 @@ impl Render for PrReviewModal {
                         .px(px(10.))
                         .bg(hsla(t.bg))
                         .rounded(px(10.))
-                        .on_hover(cx.listener(move |m, h: &bool, _, cx| {
+                        .on_hover(cx.guarded_listener(move |m, h: &bool, _, cx| {
                             m.hover_chip = h.then(|| id.clone());
                             cx.notify();
                         }))
@@ -599,7 +604,7 @@ impl Render for PrReviewModal {
                 .child(recur_ui::kbd::kbd("⌘↵").size(12.).opacity(0.55))
         };
         if !disabled {
-            go = go.on_click(cx.listener(|m, _, _, cx| m.submit(cx)));
+            go = go.on_click(cx.guarded_listener(|m, _, _, cx| m.submit(cx)));
         }
         if kb_on(Stop::Submit, window, cx) {
             go = go.child(style::outline(2., 2., 8., 0., t.amber));
@@ -656,7 +661,7 @@ impl Render for PrReviewModal {
             // `clearKeyboardFocus(modal)` on pointer down.
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|m, _: &MouseDownEvent, _, cx| {
+                cx.guarded_listener(|m, _: &MouseDownEvent, _, cx| {
                     m.kb = None;
                     cx.stop_propagation();
                     cx.notify();
@@ -666,8 +671,17 @@ impl Render for PrReviewModal {
             .id("v-pr-review")
             .debug_selector(|| "v-pr-review".into())
             .occlude()
-            .on_mouse_down(MouseButton::Left, cx.listener(|m, _, _, cx| m.close(cx)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.guarded_listener(|m, _, _, cx| m.close(cx)),
+            )
             .child(keys)
             .into_any_element()
+    }
+}
+
+impl Render for PrReviewModal {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

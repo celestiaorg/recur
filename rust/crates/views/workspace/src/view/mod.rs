@@ -738,8 +738,12 @@ impl WorkspaceView {
     }
 }
 
-impl Render for WorkspaceView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl WorkspaceView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         self.sync(window, cx);
         let strip = self.render_failed_strip(cx);
         div()
@@ -758,5 +762,11 @@ impl Render for WorkspaceView {
                     .overflow_hidden()
                     .child(self.observatory.clone()),
             )
+    }
+}
+
+impl Render for WorkspaceView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

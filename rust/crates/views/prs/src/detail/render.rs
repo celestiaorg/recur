@@ -11,6 +11,7 @@ use recur_domain::{Pr, PrSource};
 use recur_engine::view::pr_workspace::pr_agent_is_running;
 use recur_forge::view::{RollupKind, checks_rollup, pr_attention_labels};
 use recur_ui::fonts::Family;
+use recur_ui::guard::Guarded;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{Color, IconName, Theme, icon};
@@ -221,7 +222,7 @@ impl PrDetail {
                             )
                         })
                         .key_context("TextEntry")
-                        .on_key_down(cx.listener(|d, ev: &KeyDownEvent, _, cx| {
+                        .on_key_down(cx.guarded_listener(|d, ev: &KeyDownEvent, _, cx| {
                             if ev.keystroke.key == "enter" {
                                 cx.stop_propagation();
                                 d.save_title(cx);
@@ -255,7 +256,7 @@ impl PrDetail {
                     )
                     .debug_selector(|| "prh-title-cancel".into())
                     .when(!saving, |b| {
-                        b.on_click(cx.listener(|d, _, _, cx| {
+                        b.on_click(cx.guarded_listener(|d, _, _, cx| {
                             d.editing_title = false;
                             cx.notify();
                         }))
@@ -273,7 +274,7 @@ impl PrDetail {
                     )
                     .debug_selector(|| "prh-title-save".into())
                     .when(!empty && !saving, |b| {
-                        b.on_click(cx.listener(|d, _, _, cx| d.save_title(cx)))
+                        b.on_click(cx.guarded_listener(|d, _, _, cx| d.save_title(cx)))
                     }),
                 );
         } else {
@@ -298,9 +299,9 @@ impl PrDetail {
                         "Edit title",
                         cmt_act("prh-edit-title", IconName::Pencil, false, cx)
                             .debug_selector(|| "cmt-act:Edit title".into())
-                            .on_click(
-                                cx.listener(|d, _, window, cx| d.start_edit_title(window, cx)),
-                            ),
+                            .on_click(cx.guarded_listener(|d, _, window, cx| {
+                                d.start_edit_title(window, cx)
+                            })),
                     )),
                 );
             }
@@ -436,11 +437,13 @@ impl PrDetail {
                         .when(ring, |d| d.child(recur_ui::style::focus_ring(4., 0., cx)))
                         .on_mouse_down(
                             MouseButton::Left,
-                            cx.listener(|d, _, window, cx| {
+                            cx.guarded_listener(|d, _, window, cx| {
                                 window.focus(&d.toggle_focus, cx);
                             }),
                         )
-                        .on_click(cx.listener(|d, _, window, cx| d.show_agent_dock(window, cx))),
+                        .on_click(
+                            cx.guarded_listener(|d, _, window, cx| d.show_agent_dock(window, cx)),
+                        ),
                 )),
             );
         }
@@ -533,7 +536,7 @@ impl PrDetail {
                 .child(lead)
                 .child(recur_ui::style::button_label(name, 12., 500.).family(Family::Ui))
                 .child(count)
-                .on_click(cx.listener(move |d, _, _, cx| d.set_tab(key, cx)))
+                .on_click(cx.guarded_listener(move |d, _, _, cx| d.set_tab(key, cx)))
         };
         let conv_chip = chip(conv_n.to_string(), None, pending.0, window, cx);
         bar = bar.child(mk(
@@ -721,8 +724,12 @@ pub(crate) fn dock_toggle_focus(cx: &App) -> Option<gpui_kit::FocusHandle> {
     obs.read(cx).pr_dock_toggle_focus()
 }
 
-impl Render for PrDetail {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PrDetail {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let pr = self.pr(cx);
         // `prDetailFocus`: the dock holds focus.
@@ -851,7 +858,7 @@ impl Render for PrDetail {
             .overflow_hidden()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|d, _, window, cx| {
+                cx.guarded_listener(|d, _, window, cx| {
                     // `onPRChromeMouseDown`: park focus on the column so the tabs light up.
                     if !d.dock_focus.contains_focused(window, cx) {
                         window.focus(&d.col_focus, cx);
@@ -861,6 +868,12 @@ impl Render for PrDetail {
             .child(header)
             .child(split)
             .children(pop)
+    }
+}
+
+impl Render for PrDetail {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -953,7 +966,9 @@ impl PrDetail {
                 .hover(move |s| s.bg(hsla(t.pane_2)))
                 .child(icon(name).size(px(13.)).color(hsla(ic)))
                 .child(recur_ui::style::button_label(label, 12.5, 500.).color(fg))
-                .on_click(cx.listener(move |d, _, window, cx| d.more_action(action, window, cx)))
+                .on_click(
+                    cx.guarded_listener(move |d, _, window, cx| d.more_action(action, window, cx)),
+                )
                 .into_any_element()
         };
         let mut items = Vec::new();

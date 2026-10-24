@@ -61,8 +61,8 @@ pub fn ring_svg(size: f32, prog: f32, color: Color) -> String {
     )
 }
 
-impl RenderOnce for Ring {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+impl Ring {
+    fn render_view(self, _: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let color = self.color.unwrap_or(t.amber);
         let big = self.size > 90.;
@@ -109,6 +109,12 @@ impl RenderOnce for Ring {
                     .justify_center()
                     .child(label),
             )
+    }
+}
+
+impl RenderOnce for Ring {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

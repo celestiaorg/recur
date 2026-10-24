@@ -101,8 +101,8 @@ impl ParentElement for SettingsGroup {
     }
 }
 
-impl RenderOnce for SettingsGroup {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+impl SettingsGroup {
+    fn render_view(self, _: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let show_body = self.over.as_ref().is_none_or(|o| o.on) && !self.children.is_empty();
         let collapsed = self.over.as_ref().is_some_and(|o| !o.on);
@@ -191,6 +191,12 @@ impl RenderOnce for SettingsGroup {
                         .children(self.children),
                 )
             })
+    }
+}
+
+impl RenderOnce for SettingsGroup {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

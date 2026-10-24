@@ -7,6 +7,7 @@ use gpui_kit::{
 };
 use recur_domain::Settings;
 use recur_engine::view::modes::CHAT_MODES;
+use recur_ui::guard::Guarded;
 use recur_ui::style::card;
 use recur_ui::text::span;
 use recur_view_core::models::{FlagMap, flags_equal, flags_for_model, normalize_flags};
@@ -209,7 +210,7 @@ impl SettingsView {
             radios = radios.child(
                 mm_radio(SharedString::from(format!("child-{val}")), label, on, cx)
                     .debug_selector(move || format!("radio:Child workspace model:{label}:{on}"))
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                         this.patch(false, |s| s.child_workspace_model = val.to_string(), cx)
                             .detach()
                     })),

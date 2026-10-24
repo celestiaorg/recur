@@ -334,8 +334,12 @@ impl ShortcutsHelp {
     }
 }
 
-impl Render for ShortcutsHelp {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ShortcutsHelp {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open(cx) {
             return div().into_any_element();
         }
@@ -387,6 +391,12 @@ impl Render for ShortcutsHelp {
             window,
             cx,
         )
+    }
+}
+
+impl Render for ShortcutsHelp {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

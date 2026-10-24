@@ -12,6 +12,7 @@ use gpui_kit::{
 use recur_domain::{BranchChoice, Project};
 use recur_ui::field::{Field, FieldEvent, FieldOpts};
 use recur_ui::fonts::weight;
+use recur_ui::guard::Guarded;
 use recur_ui::set::{InpStyle, inp};
 use recur_ui::shadow::with_shadow;
 use recur_ui::style::{
@@ -427,8 +428,12 @@ impl NewProjectModal {
     }
 }
 
-impl Render for NewProjectModal {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl NewProjectModal {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open {
             return div().into_any_element();
         }
@@ -478,7 +483,7 @@ impl Render for NewProjectModal {
             .debug_selector(|| "np-browse".into())
             .aria_label("Browse for repository")
             .when(!picking, |d| {
-                d.on_click(cx.listener(|m, _, window, cx| m.pick_repo(window, cx)))
+                d.on_click(cx.guarded_listener(|m, _, window, cx| m.pick_repo(window, cx)))
             })
             .child(icon(IconName::Folder).size(px(13.)))
             .child(button_label(
@@ -571,7 +576,7 @@ impl Render for NewProjectModal {
                 .child(recur_ui::kbd::kbd("⌘↵").size(12.).opacity(0.55))
         };
         if can_save {
-            go = go.on_click(cx.listener(|m, _, _, cx| m.create(cx)));
+            go = go.on_click(cx.guarded_listener(|m, _, _, cx| m.create(cx)));
         }
         if self.kb == Some(Stop::Go) && self.go_focus.is_focused(window) {
             go = go.child(outline(2., 2., 8., 0., t.amber));
@@ -582,11 +587,11 @@ impl Render for NewProjectModal {
             .ml_auto()
             .flex_none()
             .cursor_pointer()
-            .on_hover(cx.listener(|m, h: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| {
                 m.hover_x = *h;
                 cx.notify();
             }))
-            .on_click(cx.listener(|m, _, _, cx| m.close(cx)))
+            .on_click(cx.guarded_listener(|m, _, _, cx| m.close(cx)))
             .child(nt_esc_hint(self.hover_x, window, cx));
         let head = div()
             .flex()
@@ -630,7 +635,7 @@ impl Render for NewProjectModal {
             // `clearKeyboardFocus(modal)` on pointer down.
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|m, _, _, cx| {
+                cx.guarded_listener(|m, _, _, cx| {
                     m.kb = None;
                     cx.stop_propagation();
                     cx.notify();
@@ -641,8 +646,17 @@ impl Render for NewProjectModal {
             .debug_selector(|| "v-newproject".into())
             .track_focus(&self.focus)
             .occlude()
-            .on_mouse_down(MouseButton::Left, cx.listener(|m, _, _, cx| m.close(cx)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.guarded_listener(|m, _, _, cx| m.close(cx)),
+            )
             .into_any_element()
+    }
+}
+
+impl Render for NewProjectModal {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

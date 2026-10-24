@@ -1,6 +1,7 @@
 //! The window's root view (`App.svelte`): titlebar, sidebar, the routed main area, the
 //! overlays host, global keys, menu actions and boot.
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -402,8 +403,12 @@ impl Focusable for Shell {
     }
 }
 
-impl Render for Shell {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Shell {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         // App.svelte's window keydown sees keys with nothing focused (focus on `body`).
         if window.focused(cx).is_none() {
             window.focus(&self.focus, cx);
@@ -421,7 +426,9 @@ impl Render for Shell {
             .track_focus(&self.focus)
             .relative()
             .size_full()
-            .on_key_down(cx.listener(|this, ev, window, cx| this.on_key_down(ev, window, cx)))
+            .on_key_down(
+                cx.guarded_listener(|this, ev, window, cx| this.on_key_down(ev, window, cx)),
+            )
             .on_drop(move |paths: &ExternalPaths, _, cx| {
                 let files: Vec<String> = paths
                     .paths()
@@ -449,5 +456,11 @@ impl Render for Shell {
             .child(self.toasts.clone())
             .child(self.tooltip.clone());
         self.with_menu_actions(root, cx)
+    }
+}
+
+impl Render for Shell {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

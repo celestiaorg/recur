@@ -1,6 +1,7 @@
 //! `ContextUsageMeter.svelte`: the last turn's context fill as a 14px ring in the composer,
 //! with a popover breaking it down. Disabled until a turn reports usage.
 
+use recur_ui::guard::Guarded;
 use std::time::Instant;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -139,8 +140,12 @@ impl Default for ContextMeter {
     }
 }
 
-impl Render for ContextMeter {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ContextMeter {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let v = meter_values(self.usage.as_ref());
         let color = ring_color(&v, &t);
@@ -175,7 +180,7 @@ impl Render for ContextMeter {
             .when(ready, |d| {
                 d.cursor_pointer()
                     .hover(|s| s.bg(hsla(t.pane_2)))
-                    .on_click(cx.listener(|m, _, _, cx| {
+                    .on_click(cx.guarded_listener(|m, _, _, cx| {
                         cx.stop_propagation();
                         m.open = !m.open;
                         cx.notify();
@@ -285,6 +290,12 @@ impl Render for ContextMeter {
             );
         }
         root
+    }
+}
+
+impl Render for ContextMeter {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

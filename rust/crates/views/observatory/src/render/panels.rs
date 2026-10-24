@@ -7,6 +7,7 @@ use gpui_kit::{
     AnyElement, App, Context, InteractiveElement, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, Window, div, px,
 };
+use recur_ui::guard::Guarded;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon};
@@ -44,7 +45,7 @@ pub(crate) fn more_row(
                 .line_height(LineHeight::Normal)
                 .nowrap(),
         )
-        .on_click(cx.listener(move |o, _, _, cx| {
+        .on_click(cx.guarded_listener(move |o, _, _, cx| {
             o.expanded_lists.insert(key.to_string());
             cx.notify();
         }))
@@ -124,7 +125,9 @@ impl Observatory {
                                 .nowrap(),
                         ),
                     )
-                    .on_click(cx.listener(|o, _, window, cx| o.set_browse(false, window, cx)));
+                    .on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.set_browse(false, window, cx)),
+                    );
                 let all = seg_text_btn("scope-all", browse, None, cx)
                     .debug_selector(|| "obs-scope:all".into())
                     .gap(px(4.))
@@ -137,7 +140,9 @@ impl Observatory {
                             .line_height(LineHeight::Normal)
                             .nowrap(),
                     )
-                    .on_click(cx.listener(|o, _, window, cx| o.set_browse(true, window, cx)));
+                    .on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.set_browse(true, window, cx)),
+                    );
                 Some(
                     div()
                         .ml_auto()
@@ -179,9 +184,9 @@ impl Observatory {
                                 None,
                                 cx,
                             )
-                            .on_click(cx.listener(|o, _, _, cx| {
-                                o.set_scm_file_list_mode(FileListMode::Flat, cx)
-                            })),
+                            .on_click(cx.guarded_listener(
+                                |o, _, _, cx| o.set_scm_file_list_mode(FileListMode::Flat, cx),
+                            )),
                         ))
                         .child(titled(
                             "scm-tree-t",
@@ -193,27 +198,30 @@ impl Observatory {
                                 None,
                                 cx,
                             )
-                            .on_click(cx.listener(|o, _, _, cx| {
-                                o.set_scm_file_list_mode(FileListMode::Tree, cx)
-                            })),
+                            .on_click(cx.guarded_listener(
+                                |o, _, _, cx| o.set_scm_file_list_mode(FileListMode::Tree, cx),
+                            )),
                         )),
                 );
                 if self.working_dirty_count() > 0 {
-                    tools = tools
-                        .child(titled(
-                            "scm-review-t",
-                            "Review uncommitted changes",
-                            icon_btn("scm-review", IconName::FileDiff, false, None, cx).on_click(
-                                cx.listener(|o, _, window, cx| o.open_working_review(window, cx)),
-                            ),
-                        ))
-                        .child(titled(
-                            "scm-discard-all-t",
-                            "Discard all uncommitted changes",
-                            icon_btn("scm-discard-all", IconName::Undo, false, None, cx).on_click(
-                                cx.listener(|o, _, window, cx| o.discard_all_working(window, cx)),
-                            ),
-                        ));
+                    tools =
+                        tools
+                            .child(titled(
+                                "scm-review-t",
+                                "Review uncommitted changes",
+                                icon_btn("scm-review", IconName::FileDiff, false, None, cx)
+                                    .on_click(cx.guarded_listener(|o, _, window, cx| {
+                                        o.open_working_review(window, cx)
+                                    })),
+                            ))
+                            .child(titled(
+                                "scm-discard-all-t",
+                                "Discard all uncommitted changes",
+                                icon_btn("scm-discard-all", IconName::Undo, false, None, cx)
+                                    .on_click(cx.guarded_listener(|o, _, window, cx| {
+                                        o.discard_all_working(window, cx)
+                                    })),
+                            ));
                 }
                 Some(tools.into_any_element())
             }
@@ -258,7 +266,7 @@ impl Observatory {
                             ),
                         );
                     }
-                    chips = chips.child(b.on_click(cx.listener(move |o, _, _, cx| {
+                    chips = chips.child(b.on_click(cx.guarded_listener(move |o, _, _, cx| {
                         o.findings_filter = f;
                         cx.notify();
                     })));
@@ -276,7 +284,7 @@ impl Observatory {
                         format!("Fix open findings ({open})"),
                         icon_btn("fix-findings", IconName::Wrench, false, None, cx)
                             .debug_selector(|| "fix-findings".into())
-                            .on_click(cx.listener(|o, _, window, cx| {
+                            .on_click(cx.guarded_listener(|o, _, window, cx| {
                                 o.select_code_panel(CodePanelKey::Maestro, window, cx);
                                 cx.emit(crate::obs::ObservatoryEvent::FixFindings);
                             })),
@@ -376,7 +384,7 @@ impl Observatory {
                     .line_height(LineHeight::Normal)
                     .nowrap(),
             )
-            .on_click(cx.listener(|o, _, window, cx| {
+            .on_click(cx.guarded_listener(|o, _, window, cx| {
                 o.open_quick_open(crate::quick_open::QuickOpenMode::Symbol, window, cx)
             }));
         let mut list = div().flex().flex_col();
@@ -416,8 +424,8 @@ impl Observatory {
                             .color(t.faint)
                             .nowrap(),
                     )
-                    .on_click(
-                        cx.listener(move |o, ev: &gpui_kit::ClickEvent, window, cx| {
+                    .on_click(cx.guarded_listener(
+                        move |o, ev: &gpui_kit::ClickEvent, window, cx| {
                             if ev.click_count() > 1 {
                                 let n = recur_textmate::symbol_lookup_name(&s2.name, &s2.kind);
                                 o.goto_def(&n, window, cx);
@@ -427,8 +435,8 @@ impl Observatory {
                             o.scroll_to_line(line, 0, 0, 0, window, cx);
                             let n = recur_textmate::symbol_lookup_name(&s1.name, &s1.kind);
                             o.find_refs(&n, line, window, cx);
-                        }),
-                    ),
+                        },
+                    )),
             ));
         }
         let more = self.more("outline", syms.len(), cx);
@@ -620,7 +628,7 @@ impl Observatory {
                             )
                             .child(meta),
                     )
-                    .on_click(cx.listener(move |o, _, window, cx| {
+                    .on_click(cx.guarded_listener(move |o, _, window, cx| {
                         o.open_path(
                             OpenRequest::new(open_p.path.clone()).line(open_p.line.max(0) as usize),
                             window,
@@ -666,9 +674,9 @@ impl Observatory {
                             .nowrap(),
                     )
                     .when(!busy_any, |d| {
-                        d.on_click(
-                            cx.listener(move |o, _, _, cx| o.apply_problem_fix(fix_p.clone(), cx)),
-                        )
+                        d.on_click(cx.guarded_listener(move |o, _, _, cx| {
+                            o.apply_problem_fix(fix_p.clone(), cx)
+                        }))
                     }),
             );
             let state = self.state.clone();
@@ -677,7 +685,7 @@ impl Observatory {
                 "Ask the agent to fix this",
                 fix_btn(format!("prob-ai-{i}"))
                     .child(icon(IconName::Sparkle).size(px(12.)))
-                    .on_click(cx.listener(move |_, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |_, _, _, cx| {
                         crate::lsp::client::fix_problem_with_ai(&ai_p, &state, cx)
                     })),
             );
@@ -694,7 +702,7 @@ impl Observatory {
                     .border_color(hsla(t.line_soft))
                     .when(hovered, |d| d.bg(hsla(t.pane_2)))
                     .when(fixing, |d| d.opacity(0.7))
-                    .on_hover(cx.listener(move |o, on: &bool, _, cx| {
+                    .on_hover(cx.guarded_listener(move |o, on: &bool, _, cx| {
                         o.problem_hovered = if *on {
                             Some(i)
                         } else if o.problem_hovered == Some(i) {
@@ -771,20 +779,20 @@ impl Observatory {
             .items_center()
             .gap(px(8.))
             .child(
-                checkbox("search-regex", "Regex", self.search_regex, cx).on_click(cx.listener(
-                    |o, _, _, cx| {
+                checkbox("search-regex", "Regex", self.search_regex, cx).on_click(
+                    cx.guarded_listener(|o, _, _, cx| {
                         o.search_regex = !o.search_regex;
                         cx.notify();
-                    },
-                )),
+                    }),
+                ),
             )
             .child(
-                checkbox("search-case", "Case", self.search_case, cx).on_click(cx.listener(
-                    |o, _, _, cx| {
+                checkbox("search-case", "Case", self.search_case, cx).on_click(
+                    cx.guarded_listener(|o, _, _, cx| {
                         o.search_case = !o.search_case;
                         cx.notify();
-                    },
-                )),
+                    }),
+                ),
             )
             .child(
                 recur_ui::style::rbtn("search-find", recur_ui::style::Rbtn::Default, None, cx)
@@ -795,7 +803,9 @@ impl Observatory {
                             .line_height(LineHeight::Normal)
                             .nowrap(),
                     )
-                    .on_click(cx.listener(|o, _, window, cx| o.run_search(true, window, cx))),
+                    .on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.run_search(true, window, cx)),
+                    ),
             )
             .when(writable, |d| {
                 let disabled = q.trim().is_empty();
@@ -814,7 +824,9 @@ impl Observatory {
                             .nowrap(),
                     )
                     .when(!disabled, |b| {
-                        b.on_click(cx.listener(|o, _, window, cx| o.run_replace(window, cx)))
+                        b.on_click(
+                            cx.guarded_listener(|o, _, window, cx| o.run_replace(window, cx)),
+                        )
                     }),
                 )
             });
@@ -873,7 +885,7 @@ impl Observatory {
                             .nowrap(),
                     )
                     .child(text(h.preview.clone()).size(11.).color(t.muted).truncate())
-                    .on_click(cx.listener(move |o, _, window, cx| {
+                    .on_click(cx.guarded_listener(move |o, _, window, cx| {
                         o.open_path(
                             OpenRequest::new(path.clone()).line(line.max(0) as usize),
                             window,
@@ -901,7 +913,9 @@ impl Observatory {
                             .line_height(LineHeight::Normal)
                             .nowrap(),
                     )
-                    .on_click(cx.listener(|o, _, window, cx| o.run_search(false, window, cx))),
+                    .on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.run_search(false, window, cx)),
+                    ),
             );
         }
         div()
@@ -938,7 +952,7 @@ impl Observatory {
                         .nowrap(),
                     )
                     .child(text(r.text.clone()).size(11.).color(t.muted).truncate())
-                    .on_click(cx.listener(move |o, _, window, cx| {
+                    .on_click(cx.guarded_listener(move |o, _, window, cx| {
                         o.open_path(
                             OpenRequest::new(path.clone()).line(line.max(0) as usize),
                             window,

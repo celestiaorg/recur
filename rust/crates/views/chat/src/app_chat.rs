@@ -2,6 +2,7 @@
 //! chips on an empty transcript, and the model pickers. Transcripts and live events are the
 //! `""` workspace's; the host shows or hides the panel and handles [`AppChatEvent::Hide`].
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, HashMap};
 
 use gpui_kit::{
@@ -688,8 +689,12 @@ impl AppChat {
     }
 }
 
-impl Render for AppChat {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl AppChat {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         self.sync_children(cx);
         let t = Theme::of(cx).tokens;
         let lit = self.visible && self.focus.contains_focused(window, cx);
@@ -748,7 +753,7 @@ impl Render for AppChat {
                 .debug_selector(|| "ask-new".into())
                 .text_color(hsla(Theme::of(cx).tokens.muted))
                 .child(icon(IconName::Plus).size(px(15.)))
-                .on_click(cx.listener(|a, _, _, cx| a.new_tab(cx))),
+                .on_click(cx.guarded_listener(|a, _, _, cx| a.new_tab(cx))),
         );
         let strip = strip.trailing(new_btn);
         let toggle = recur_ui::tooltip::titled(
@@ -767,7 +772,7 @@ impl Render for AppChat {
                 .cursor_pointer()
                 .hover(|s| s.bg(hsla(t.pane_2)))
                 .child(icon(IconName::PanelLeft).size(px(16.)))
-                .on_click(cx.listener(|_, _, _, cx| cx.emit(AppChatEvent::Hide))),
+                .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(AppChatEvent::Hide))),
         );
         let head = div()
             .flex()
@@ -808,13 +813,23 @@ impl Render for AppChat {
     }
 }
 
+impl Render for AppChat {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 /// The `empty` snippet: the blurb and the ask chips.
 struct AskEmpty {
     app: WeakEntity<AppChat>,
 }
 
-impl Render for AskEmpty {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl AskEmpty {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let hover_bg = t.text.mix(0.06, t.pane_2);
         let chips: Vec<_> = ASK_CHIPS
@@ -862,6 +877,12 @@ impl Render for AskEmpty {
                     .color(t.muted),
             )
             .child(div().flex().flex_wrap().gap(px(8.)).children(chips))
+    }
+}
+
+impl Render for AskEmpty {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

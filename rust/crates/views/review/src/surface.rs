@@ -450,8 +450,8 @@ impl ReviewSurface {
     }
 }
 
-impl Render for ReviewSurface {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ReviewSurface {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let mut root = div()
             .debug_selector(|| "obs-review-surface".into())
@@ -485,5 +485,11 @@ impl Render for ReviewSurface {
             );
         }
         root
+    }
+}
+
+impl Render for ReviewSurface {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

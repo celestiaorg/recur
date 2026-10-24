@@ -9,6 +9,7 @@ mod main;
 mod panels;
 mod scm;
 
+use recur_ui::guard::Guarded;
 use std::time::{Duration, Instant};
 
 use gpui_kit::prelude::FluentBuilder;
@@ -140,7 +141,9 @@ impl Observatory {
         .debug_selector(move || format!("panel-toggle:{}", k.key()))
         .when(n > 0, |d| d.child(pane_badge(n, cx)))
         .when(!blocked, |d| {
-            d.on_click(cx.listener(move |o, _, window, cx| o.select_code_panel(k, window, cx)))
+            d.on_click(
+                cx.guarded_listener(move |o, _, window, cx| o.select_code_panel(k, window, cx)),
+            )
         });
         titled(SharedString::from(format!("panel-t-{}", k.key())), title, b).into_any_element()
     }
@@ -213,9 +216,9 @@ impl Observatory {
                 },
                 pane_toggle("left-gutter", IconName::PanelLeft, left_open, None, cx)
                     .debug_selector(|| "obs-left-toggle".into())
-                    .on_click(
-                        cx.listener(move |o, _, _, cx| o.set_left_gutter_open(!left_open, cx)),
-                    ),
+                    .on_click(cx.guarded_listener(move |o, _, _, cx| {
+                        o.set_left_gutter_open(!left_open, cx)
+                    })),
             );
             let icons = self.panel_icons(PanelSide::Left, cx);
             bar = bar.child(left_col(
@@ -281,7 +284,7 @@ impl Observatory {
                     .badge(count)
                     .active(tab == ReviewTab::Changes)
                     .lit(lit)
-                    .on_click(cx.listener(move |o, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |o, _, _, cx| {
                         if !o.props.main_blocked {
                             o.set_review_tab(ReviewTab::Changes, cx);
                         }
@@ -305,7 +308,7 @@ impl Observatory {
                         .dirty(dirty > 0)
                         .active(tab == ReviewTab::Commits)
                         .lit(lit)
-                        .on_click(cx.listener(move |o, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |o, _, _, cx| {
                             if !o.props.main_blocked {
                                 o.set_review_tab(ReviewTab::Commits, cx);
                             }
@@ -376,16 +379,18 @@ impl Observatory {
                     .lit(lit)
                     .dirty(self.tab_is_dirty(&p))
                     .reorderable(!blocked && n > 1)
-                    .on_click(cx.listener(move |o, _, window, cx| {
+                    .on_click(cx.guarded_listener(move |o, _, window, cx| {
                         if !o.props.main_blocked {
                             o.open_path(OpenRequest::new(p1.clone()), window, cx)
                                 .detach();
                         }
                     }));
                 if !blocked {
-                    chip = chip
-                        .on_close(cx.listener(move |o, _, window, cx| o.close_mru(&p2, window, cx)))
-                        .on_context_menu(cx.listener(
+                    chip =
+                        chip.on_close(cx.guarded_listener(move |o, _, window, cx| {
+                            o.close_mru(&p2, window, cx)
+                        }))
+                        .on_context_menu(cx.guarded_listener(
                             move |o, e: &gpui_kit::MouseDownEvent, window, cx| {
                                 o.open_ctx(
                                     f32::from(e.position.x),
@@ -418,7 +423,7 @@ impl Observatory {
                 pane_toggle("editor-toggle", IconName::Code, editor_on, dis, cx)
                     .debug_selector(|| "obs-editor-toggle".into())
                     .when(!blocked, |d| {
-                        d.on_click(cx.listener(|o, _, _, cx| o.toggle_editor_surface(cx)))
+                        d.on_click(cx.guarded_listener(|o, _, _, cx| o.toggle_editor_surface(cx)))
                     }),
             ));
             if self.is_git(cx) {
@@ -432,7 +437,7 @@ impl Observatory {
                     pane_toggle("review-toggle", IconName::FileDiff, review, dis, cx)
                         .debug_selector(|| "obs-review-toggle".into())
                         .when(!blocked, |d| {
-                            d.on_click(cx.listener(|o, _, _, cx| o.toggle_review(cx)))
+                            d.on_click(cx.guarded_listener(|o, _, _, cx| o.toggle_review(cx)))
                         }),
                 ));
             }
@@ -450,7 +455,7 @@ impl Observatory {
                 pane_toggle("term-toggle", IconName::Terminal, term_open, dis, cx)
                     .debug_selector(|| "obs-term-toggle".into())
                     .when(!blocked, |d| {
-                        d.on_click(cx.listener(move |o, _, _, cx| {
+                        d.on_click(cx.guarded_listener(move |o, _, _, cx| {
                             o.state
                                 .update(cx, |s, cx| s.set_terminal_dock_open(&ws, !term_open, cx));
                         }))
@@ -476,7 +481,7 @@ impl Observatory {
                 )
                 .debug_selector(|| "obs-term-beside-toggle".into())
                 .when(!beside_dis, |d| {
-                    d.on_click(cx.listener(|o, _, _, cx| o.toggle_term_beside(cx)))
+                    d.on_click(cx.guarded_listener(|o, _, _, cx| o.toggle_term_beside(cx)))
                 }),
             ));
         }
@@ -513,7 +518,7 @@ impl Observatory {
                 )
                 .debug_selector(|| "obs-side-toggle".into())
                 .when(!blocked, |d| {
-                    d.on_click(cx.listener(move |o, _, _, cx| o.set_show_side(!show, cx)))
+                    d.on_click(cx.guarded_listener(move |o, _, _, cx| o.set_show_side(!show, cx)))
                 }),
             );
             let mut right = group()
@@ -562,9 +567,13 @@ impl Observatory {
                     .debug_selector(|| "button:Hide left panel".into())
                     .on_mouse_down(
                         gpui_kit::MouseButton::Left,
-                        cx.listener(|o, _, window, cx| window.focus(&o.pr_toggle_focus, cx)),
+                        cx.guarded_listener(|o, _, window, cx| {
+                            window.focus(&o.pr_toggle_focus, cx)
+                        }),
                     )
-                    .on_click(cx.listener(|o, _, _, cx| o.set_pr_agent_dock_open(false, cx))),
+                    .on_click(
+                        cx.guarded_listener(|o, _, _, cx| o.set_pr_agent_dock_open(false, cx)),
+                    ),
             ));
         }
         if agent_head {
@@ -631,7 +640,7 @@ impl Observatory {
             .bg(hsla(t.bg))
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|o, _, window, cx| {
+                cx.guarded_listener(|o, _, window, cx| {
                     if !o.left_focus.contains_focused(window, cx) {
                         o.left_focus.focus(window, cx);
                     }
@@ -820,8 +829,12 @@ impl Observatory {
     }
 }
 
-impl Render for Observatory {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Observatory {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         if let Some(path) = self.pending_rehydrate.take()
             && path == self.selected_path
@@ -872,5 +885,11 @@ impl Render for Observatory {
             }
         });
         root
+    }
+}
+
+impl Render for Observatory {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

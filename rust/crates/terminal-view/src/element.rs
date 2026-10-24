@@ -20,6 +20,7 @@ use crate::font::{CellMetrics, mono_font_stack};
 #[cfg(target_os = "macos")]
 use crate::tiles;
 use crate::view::{GridLayout, TerminalView};
+use recur_ui::guard;
 
 pub(crate) struct TerminalElement {
     view: Entity<TerminalView>,
@@ -136,10 +137,31 @@ impl Element for TerminalElement {
             window.scale_factor(),
         );
 
-        let (layout, frame, active) = self.view.update(cx, |v, cx| {
-            let layout = v.fit(bounds, metrics, cx);
-            let blink_on = v.blink.as_ref().is_none_or(|b| b.is_visible());
-            (layout, v.screen.frame(v.focused, blink_on), v.active)
+        let fitted = self.view.update(cx, |v, cx| {
+            guard::catch("terminal layout", || {
+                let layout = v.fit(bounds, metrics, cx);
+                let blink_on = v.blink.as_ref().is_none_or(|b| b.is_visible());
+                (layout, v.screen.frame(v.focused, blink_on), v.active)
+            })
+        });
+        // A pane whose layout panicked paints nothing and takes no pointer events.
+        let (layout, frame, active) = fitted.unwrap_or_else(|| {
+            let layout = GridLayout {
+                content: bounds,
+                origin: bounds.origin,
+                metrics,
+                cols: 0,
+                rows: 0,
+            };
+            let frame = Frame {
+                cols: 0,
+                rows: 0,
+                background: Rgba::default(),
+                rects: Vec::new(),
+                glyphs: Vec::new(),
+                cursor: None,
+            };
+            (layout, frame, false)
         });
         let hitboxes = active.then(|| {
             (
@@ -335,11 +357,15 @@ impl Element for TerminalElement {
                 return;
             }
             v.update(cx, |v, cx| {
-                v.window_mouse_down(cx.background_executor().now())
+                guard::catch("terminal mouse_down", || {
+                    v.window_mouse_down(cx.background_executor().now())
+                });
             });
             if hitbox.is_hovered(window) {
                 v.update(cx, |v, cx| {
-                    v.mouse_down(e.position, e.button, e.click_count, e.modifiers, window, cx)
+                    guard::catch("terminal mouse_down", || {
+                        v.mouse_down(e.position, e.button, e.click_count, e.modifiers, window, cx)
+                    });
                 });
             }
         });
@@ -350,7 +376,9 @@ impl Element for TerminalElement {
             }
             let hovered = hitbox.is_hovered(window);
             v.update(cx, |v, cx| {
-                v.mouse_move(e.position, e.pressed_button, e.modifiers, hovered, cx)
+                guard::catch("terminal mouse_move", || {
+                    v.mouse_move(e.position, e.pressed_button, e.modifiers, hovered, cx)
+                });
             });
         });
         let v = self.view.clone();
@@ -359,13 +387,17 @@ impl Element for TerminalElement {
                 return;
             }
             v.update(cx, |v, cx| {
-                v.mouse_up(e.position, e.button, e.modifiers, cx)
+                guard::catch("terminal mouse_up", || {
+                    v.mouse_up(e.position, e.button, e.modifiers, cx)
+                });
             });
         });
         let v = self.view.clone();
         window.on_mouse_event(move |_: &MouseExitEvent, phase, _window, cx| {
             if phase == DispatchPhase::Bubble {
-                v.update(cx, |v, cx| v.mouse_exited(cx));
+                v.update(cx, |v, cx| {
+                    guard::catch("terminal mouse_exited", || v.mouse_exited(cx));
+                });
             }
         });
         let (v, hitbox) = (self.view.clone(), grid_hitbox.clone());
@@ -373,7 +405,9 @@ impl Element for TerminalElement {
             if phase != DispatchPhase::Bubble || !hitbox.should_handle_scroll(window) {
                 return;
             }
-            v.update(cx, |v, cx| v.scroll_wheel(e, cx));
+            v.update(cx, |v, cx| {
+                guard::catch("terminal scroll_wheel", || v.scroll_wheel(e, cx));
+            });
         });
     }
 }

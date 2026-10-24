@@ -2,6 +2,7 @@
 //! inspector with body, notes and Ignore / Mark invalid / Reopen below), its resizable split
 //! (`recur.findingsSplitPct`), deep-link selection and the note composer.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 
 use gpui_kit::base::input::{InputEvent, TextareaState};
@@ -430,8 +431,12 @@ fn status_label(st: &str, t: &recur_ui::Tokens) -> impl IntoElement {
         .nowrap()
 }
 
-impl Render for FindingsPanel {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl FindingsPanel {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         if let Some(id) = self.pending_compose.take() {
             self.open_compose(&id, window, cx);
@@ -492,6 +497,12 @@ impl Render for FindingsPanel {
     }
 }
 
+impl Render for FindingsPanel {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 fn empty(s: impl Into<SharedString>, t: &recur_ui::Tokens) -> AnyElement {
     div()
         .px(px(12.))
@@ -521,7 +532,7 @@ impl FindingsPanel {
             .hover(move |s| s.bg(hsla(t.amber.fade(0.55))))
             .on_mouse_down(
                 gpui_kit::MouseButton::Left,
-                cx.listener(|p, _, _, cx| {
+                cx.guarded_listener(|p, _, _, cx| {
                     p.split_resizing = true;
                     cx.stop_propagation();
                     cx.notify();
@@ -529,7 +540,7 @@ impl FindingsPanel {
             )
             .on_drag((), |_, _, _, cx| cx.new(|_| gpui_kit::Empty))
             .on_drag_move(
-                cx.listener(move |p, ev: &gpui_kit::DragMoveEvent<()>, _, cx| {
+                cx.guarded_listener(move |p, ev: &gpui_kit::DragMoveEvent<()>, _, cx| {
                     let split = p.split_bounds.get();
                     let top = f32::from(split.origin.y);
                     let height = f32::from(split.size.height);
@@ -543,7 +554,7 @@ impl FindingsPanel {
             )
             .on_mouse_up(
                 gpui_kit::MouseButton::Left,
-                cx.listener(|p, _, _, cx| {
+                cx.guarded_listener(|p, _, _, cx| {
                     if p.split_resizing {
                         p.split_resizing = false;
                         p.persist_split(cx);
@@ -669,7 +680,7 @@ impl FindingsPanel {
             .cursor_pointer()
             .text_color(hsla(t.text))
             .when_some(bg, |d, c| d.bg(hsla(c)))
-            .on_hover(cx.listener({
+            .on_hover(cx.guarded_listener({
                 let fid = fid.clone();
                 move |p, on: &bool, _, cx| {
                     if *on {
@@ -680,7 +691,7 @@ impl FindingsPanel {
                     cx.notify();
                 }
             }))
-            .on_click(cx.listener(move |p, _, _, cx| p.select(&ff, cx)))
+            .on_click(cx.guarded_listener(move |p, _, _, cx| p.select(&ff, cx)))
             .child(
                 div().w(px(18.)).flex_none().flex().justify_center().child(
                     icon(finding_sev_icon(&f.severity.to_string()))
@@ -832,7 +843,7 @@ impl FindingsPanel {
                     )
                     .debug_selector(|| "finding-act:ignore".into())
                     .when(!disabled, |d| {
-                        d.on_click(cx.listener(move |_, _, _, cx| {
+                        d.on_click(cx.guarded_listener(move |_, _, _, cx| {
                             cx.emit(FindingsPanelEvent::SetStatus(
                                 Box::new(f1.clone()),
                                 "ignored".into(),
@@ -851,7 +862,7 @@ impl FindingsPanel {
                     )
                     .debug_selector(|| "finding-act:invalid".into())
                     .when(!disabled, |d| {
-                        d.on_click(cx.listener(move |_, _, _, cx| {
+                        d.on_click(cx.guarded_listener(move |_, _, _, cx| {
                             cx.emit(FindingsPanelEvent::SetStatus(
                                 Box::new(f2.clone()),
                                 "invalid".into(),
@@ -872,7 +883,7 @@ impl FindingsPanel {
                 )
                 .debug_selector(|| "finding-act:reopen".into())
                 .when(!disabled, |d| {
-                    d.on_click(cx.listener(move |_, _, _, cx| {
+                    d.on_click(cx.guarded_listener(move |_, _, _, cx| {
                         cx.emit(FindingsPanelEvent::SetStatus(
                             Box::new(f1.clone()),
                             "open".into(),
@@ -883,20 +894,23 @@ impl FindingsPanel {
         }
         if !noting {
             let id = f.id.clone();
-            actions = actions.child(
-                self.act_btn(
-                    "fa-note".into(),
-                    "Add note",
-                    IconName::NotebookPen,
-                    false,
-                    disabled,
-                    cx,
-                )
-                .debug_selector(|| "finding-act:note".into())
-                .when(!disabled, |d| {
-                    d.on_click(cx.listener(move |p, _, window, cx| p.open_compose(&id, window, cx)))
-                }),
-            );
+            actions =
+                actions.child(
+                    self.act_btn(
+                        "fa-note".into(),
+                        "Add note",
+                        IconName::NotebookPen,
+                        false,
+                        disabled,
+                        cx,
+                    )
+                    .debug_selector(|| "finding-act:note".into())
+                    .when(!disabled, |d| {
+                        d.on_click(cx.guarded_listener(move |p, _, window, cx| {
+                            p.open_compose(&id, window, cx)
+                        }))
+                    }),
+                );
         }
         let head = div()
             .flex_none()
@@ -924,7 +938,7 @@ impl FindingsPanel {
             .when(has_file, |d| {
                 d.cursor_pointer()
                     .hover(move |s| s.text_color(hsla(t.text)))
-                    .on_click(cx.listener(move |_, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |_, _, _, cx| {
                         cx.emit(FindingsPanelEvent::Open(Box::new(loc_open.clone())))
                     }))
             })
@@ -1096,7 +1110,7 @@ impl FindingsPanel {
                 .when(!disabled, |d| {
                     d.cursor_pointer()
                         .hover(move |s| s.text_color(hsla(t.coral)).bg(hsla(t.pane.fade(0.7))))
-                        .on_click(cx.listener(move |_, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |_, _, _, cx| {
                             cx.emit(FindingsPanelEvent::DeleteNote(
                                 Box::new(ff.clone()),
                                 nid.clone(),
@@ -1131,7 +1145,7 @@ impl FindingsPanel {
             .py(px(6.))
             .rounded(px(6.))
             .bg(hsla(if hovered { t.pane_2 } else { t.bg }))
-            .on_hover(cx.listener(move |p, on: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(move |p, on: &bool, _, cx| {
                 if *on {
                     p.hovered_comment = Some(hk.clone());
                 } else if p.hovered_comment.as_deref() == Some(hk.as_str()) {
@@ -1157,7 +1171,7 @@ impl FindingsPanel {
         let (fid1, fid2) = (f.id.clone(), f.id.clone());
         let cancel = note_btn("fnc-cancel", "Cancel", false, disabled, t.bg, 24., cx)
             .when(!disabled, |d| {
-                d.on_click(cx.listener(move |p, _, _, cx| p.close_compose_now(&fid1, cx)))
+                d.on_click(cx.guarded_listener(move |p, _, _, cx| p.close_compose_now(&fid1, cx)))
             });
         let save = note_btn(
             "fnc-save",
@@ -1169,7 +1183,7 @@ impl FindingsPanel {
             cx,
         )
         .when(!disabled && !empty_draft, |d| {
-            d.on_click(cx.listener(move |p, _, _, cx| p.submit_note(&fid2, cx)))
+            d.on_click(cx.guarded_listener(move |p, _, _, cx| p.submit_note(&fid2, cx)))
         });
         let foot = div()
             .flex()
@@ -1218,7 +1232,7 @@ impl FindingsPanel {
                     .child(field)
                     .child(foot),
             )
-            .on_key_down(cx.listener({
+            .on_key_down(cx.guarded_listener({
                 let id = f.id.clone();
                 move |p, e: &gpui_kit::KeyDownEvent, _, cx| {
                     if e.keystroke.key == "escape" {

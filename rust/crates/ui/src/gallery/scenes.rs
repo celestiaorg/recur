@@ -67,13 +67,23 @@ struct Stage {
     overlays: Vec<AnyView>,
 }
 
-impl Render for Stage {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Stage {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         body(cx)
             .relative()
             .size_full()
             .child((self.content)(window, cx))
             .children(self.overlays.iter().cloned())
+    }
+}
+
+impl Render for Stage {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        crate::guard::view(self, window, cx, Self::render_view)
     }
 }
 

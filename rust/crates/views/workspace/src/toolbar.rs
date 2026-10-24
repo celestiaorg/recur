@@ -208,8 +208,12 @@ impl DockToolbar {
     }
 }
 
-impl Render for DockToolbar {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl DockToolbar {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let mut row = div()
             .flex()
@@ -305,5 +309,11 @@ impl Render for DockToolbar {
             if on { "Simplify on" } else { "Simplify off" },
             div().id("wsv-simplify-wrap").child(btn),
         ))
+    }
+}
+
+impl Render for DockToolbar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

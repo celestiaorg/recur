@@ -3,6 +3,7 @@
 //! (layout, highlighting, completion, panels, dirty tracking, scrolling,
 //! caret blink). Mirrors `CodeEditor.svelte` and `MergeEditor.svelte`.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -1931,18 +1932,20 @@ impl gpui_kit::Render for EditorView {
             .relative()
             .track_focus(&self.focus)
             .key_context("RecurEditor")
-            .on_key_down(cx.listener(|v, ev: &gpui_kit::KeyDownEvent, window, cx| {
-                if v.key_down(ev, window, cx) {
-                    cx.stop_propagation();
-                }
-            }))
-            .on_modifiers_changed(
-                cx.listener(|v, _: &gpui_kit::ModifiersChangedEvent, _, cx| {
-                    if v.prefs.rectangular_select {
-                        cx.notify();
+            .on_key_down(
+                cx.guarded_listener(|v, ev: &gpui_kit::KeyDownEvent, window, cx| {
+                    if v.key_down(ev, window, cx) {
+                        cx.stop_propagation();
                     }
                 }),
             )
+            .on_modifiers_changed(cx.guarded_listener(
+                |v, _: &gpui_kit::ModifiersChangedEvent, _, cx| {
+                    if v.prefs.rectangular_select {
+                        cx.notify();
+                    }
+                },
+            ))
             .child(crate::element::EditorElement { view: cx.entity() });
         div()
             .size_full()

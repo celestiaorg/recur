@@ -1,6 +1,7 @@
 //! `PermissionCard.svelte`: one live "may I run this tool?" card, inline in a transcript
 //! (`compact`) or as the floating corner panel.
 
+use recur_ui::guard::Guarded;
 use std::time::{Duration, Instant};
 
 use gpui_kit::prelude::FluentBuilder;
@@ -106,8 +107,12 @@ impl PermissionCard {
     }
 }
 
-impl Render for PermissionCard {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PermissionCard {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let compact = self.compact;
         let tool_label = permission_tool_label(&self.request.tool);
@@ -242,9 +247,9 @@ impl Render for PermissionCard {
                                 .size(px(11.))
                                 .color(hsla(t.muted.fade(0.55))),
                         )
-                        .on_click(
-                            cx.listener(|_, _, _, cx| cx.emit(PermissionCardEvent::OpenWhere)),
-                        ),
+                        .on_click(cx.guarded_listener(|_, _, _, cx| {
+                            cx.emit(PermissionCardEvent::OpenWhere)
+                        })),
                 )),
             );
         }
@@ -277,7 +282,7 @@ impl Render for PermissionCard {
                     .line_height(LineHeight::Normal)
                     .nowrap(),
                 )
-                .on_click(cx.listener(|c, _, _, cx| {
+                .on_click(cx.guarded_listener(|c, _, _, cx| {
                     c.show_detail = !c.show_detail;
                     cx.notify();
                 }));
@@ -382,7 +387,7 @@ impl Render for PermissionCard {
                 }),
                 _ => el.hover(move |s| s.border_color(hsla(t.text)).bg(hsla(t.pane_2))),
             };
-            el.on_click(cx.listener(move |c, _, _, cx| match kind {
+            el.on_click(cx.guarded_listener(move |c, _, _, cx| match kind {
                 0 => c.answer(false, "denied by the human", false, cx),
                 1 => c.answer(true, "", false, cx),
                 _ => c.answer(true, "", true, cx),
@@ -465,6 +470,12 @@ impl Render for PermissionCard {
             .opacity(k)
             .into_any_element()
         }
+    }
+}
+
+impl Render for PermissionCard {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

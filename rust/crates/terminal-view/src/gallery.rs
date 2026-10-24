@@ -146,8 +146,8 @@ struct DockBody {
     _subscriptions: Vec<Subscription>,
 }
 
-impl Render for DockBody {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl DockBody {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let app: ThemeId = Theme::of(cx).id;
         let bg = crate::element::gpui_color(self.theme.surface_bg(app));
         body(cx)
@@ -166,6 +166,12 @@ impl Render for DockBody {
                     .child(self.terminal.clone()),
             )
             .child(self.tooltip.clone())
+    }
+}
+
+impl Render for DockBody {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

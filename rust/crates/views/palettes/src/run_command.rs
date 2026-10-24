@@ -10,6 +10,7 @@ use gpui_kit::{
 };
 use recur_editor::snippet::{RegisteredSnippet, snippet_trigger_hint};
 use recur_editor::text::locale_compare;
+use recur_ui::guard::Guarded;
 use recur_ui::style::{
     palette_empty, palette_group, palette_key, palette_row, palette_sub, style_text_input,
 };
@@ -342,8 +343,12 @@ impl RunCommandPalette {
     }
 }
 
-impl Render for RunCommandPalette {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl RunCommandPalette {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open(cx) {
             return div().into_any_element();
         }
@@ -419,13 +424,15 @@ impl Render for RunCommandPalette {
                         row = row.child(if r.hint.is_empty() { pk } else { pk.ml(px(8.)) });
                     }
                     rows.push(
-                        row.on_mouse_move(cx.listener(move |p, _, _, cx| {
+                        row.on_mouse_move(cx.guarded_listener(move |p, _, _, cx| {
                             if p.sel != idx {
                                 p.sel = idx;
                                 cx.notify();
                             }
                         }))
-                        .on_click(cx.listener(move |p, _, window, cx| p.run(idx, window, cx)))
+                        .on_click(
+                            cx.guarded_listener(move |p, _, window, cx| p.run(idx, window, cx)),
+                        )
                         .into_any_element(),
                     );
                 }
@@ -458,6 +465,12 @@ impl Render for RunCommandPalette {
             window,
             cx,
         )
+    }
+}
+
+impl Render for RunCommandPalette {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

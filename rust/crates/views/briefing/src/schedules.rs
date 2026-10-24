@@ -3,6 +3,7 @@
 //! project Settings → Schedules it lists one project's in a card. Rows expand to the
 //! workspaces their runs created, which open, multi-select and two-click remove.
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeSet, HashMap};
 use std::time::Duration;
 
@@ -834,7 +835,7 @@ impl ScheduledPrompts {
                     cx.notify();
                 })
             })
-            .on_click(cx.listener(move |v, _, _, cx| {
+            .on_click(cx.guarded_listener(move |v, _, _, cx| {
                 cx.stop_propagation();
                 v.edit(Some(edit_p.clone()), cx);
             }))
@@ -1016,7 +1017,7 @@ impl ScheduledPrompts {
                         move || format!("sc-btn:Open workspace:{id}")
                     })
                     .when(!busy, |d| {
-                        d.on_click(cx.listener(move |v, _, _, cx| {
+                        d.on_click(cx.guarded_listener(move |v, _, _, cx| {
                             cx.stop_propagation();
                             v.open_workspace(ws.clone(), cx);
                         }))
@@ -1034,7 +1035,7 @@ impl ScheduledPrompts {
                     move || format!("sc-btn:Run now:{id}")
                 })
                 .when(!busy, |d| {
-                    d.on_click(cx.listener(move |v, _, _, cx| {
+                    d.on_click(cx.guarded_listener(move |v, _, _, cx| {
                         cx.stop_propagation();
                         let services = v.vcx.services.clone();
                         let id = run_id.clone();
@@ -1062,7 +1063,7 @@ impl ScheduledPrompts {
                     move || format!("sc-btn:{pause_label}:{id}")
                 })
                 .when(!busy, |d| {
-                    d.on_click(cx.listener(move |v, _, _, cx| {
+                    d.on_click(cx.guarded_listener(move |v, _, _, cx| {
                         cx.stop_propagation();
                         let services = v.vcx.services.clone();
                         let id = pause_id.clone();
@@ -1095,7 +1096,7 @@ impl ScheduledPrompts {
                     move || format!("sc-btn:Edit:{id}")
                 })
                 .when(!busy, |d| {
-                    d.on_click(cx.listener(move |v, _, _, cx| {
+                    d.on_click(cx.guarded_listener(move |v, _, _, cx| {
                         cx.stop_propagation();
                         v.edit(Some(edit_p.clone()), cx);
                     }))
@@ -1111,7 +1112,7 @@ impl ScheduledPrompts {
                         move || format!("sc-btn:Confirm delete:{id}")
                     })
                     .when(!busy, |d| {
-                        d.on_click(cx.listener(move |v, _, _, cx| {
+                        d.on_click(cx.guarded_listener(move |v, _, _, cx| {
                             cx.stop_propagation();
                             let services = v.vcx.services.clone();
                             let id = del_id.clone();
@@ -1147,7 +1148,7 @@ impl ScheduledPrompts {
                         move || format!("sc-btn:Delete:{id}")
                     })
                     .when(!busy, |d| {
-                        d.on_click(cx.listener(move |v, _, _, cx| {
+                        d.on_click(cx.guarded_listener(move |v, _, _, cx| {
                             cx.stop_propagation();
                             v.deleting = del_id.clone();
                             cx.notify();
@@ -1172,7 +1173,7 @@ impl ScheduledPrompts {
                     d.cursor_default()
                 }
             })
-            .on_hover(cx.listener(move |v, h: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(move |v, h: &bool, _, cx| {
                 if *h {
                     v.hover_row = Some(hid.clone());
                 } else if v.hover_row.as_deref() == Some(hid.as_str()) {
@@ -1180,8 +1181,8 @@ impl ScheduledPrompts {
                 }
                 cx.notify();
             }))
-            .on_click(cx.listener(move |v, _, _, cx| v.toggle(&tid, n_runs, cx)))
-            .on_key_down(cx.listener(move |v, ev: &KeyDownEvent, _, cx| {
+            .on_click(cx.guarded_listener(move |v, _, _, cx| v.toggle(&tid, n_runs, cx)))
+            .on_key_down(cx.guarded_listener(move |v, ev: &KeyDownEvent, _, cx| {
                 if !focused {
                     return;
                 }
@@ -1260,48 +1261,47 @@ impl ScheduledPrompts {
             let ah = all_hover.clone();
             let all_over = *all_hover.read(cx) && !disabled;
             let rm_ids = removable.clone();
-            let mut bar =
-                div()
-                    .id(SharedString::from(format!("sc-runs-bar-{}", p.id)))
-                    .debug_selector(|| "sc-runs-bar".into())
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(8.))
-                    .py(px(7.))
-                    .px(px(16.))
-                    .border_b_1()
-                    .border_color(hsla(t.line_soft))
-                    .when(bulk_armed, |d| d.bg(hsla(t.pane_2)))
-                    .child(
-                        div()
-                            .id(SharedString::from(format!("sc-runs-all-{}", p.id)))
-                            .debug_selector({
-                                let l = label.clone();
-                                move || format!("sc-runs-all:{aria}={l}")
-                            })
-                            .min_w_0()
-                            .when(disabled, |d| d.opacity(0.4))
-                            .when(!disabled, |d| {
-                                d.cursor_pointer()
-                                    .on_hover(move |h, _, cx| {
-                                        ah.update(cx, |v, cx| {
-                                            *v = *h;
-                                            cx.notify();
-                                        })
+            let mut bar = div()
+                .id(SharedString::from(format!("sc-runs-bar-{}", p.id)))
+                .debug_selector(|| "sc-runs-bar".into())
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap(px(8.))
+                .py(px(7.))
+                .px(px(16.))
+                .border_b_1()
+                .border_color(hsla(t.line_soft))
+                .when(bulk_armed, |d| d.bg(hsla(t.pane_2)))
+                .child(
+                    div()
+                        .id(SharedString::from(format!("sc-runs-all-{}", p.id)))
+                        .debug_selector({
+                            let l = label.clone();
+                            move || format!("sc-runs-all:{aria}={l}")
+                        })
+                        .min_w_0()
+                        .when(disabled, |d| d.opacity(0.4))
+                        .when(!disabled, |d| {
+                            d.cursor_pointer()
+                                .on_hover(move |h, _, cx| {
+                                    ah.update(cx, |v, cx| {
+                                        *v = *h;
+                                        cx.notify();
                                     })
-                                    .on_click(cx.listener(move |v, _, _, cx| {
-                                        v.toggle_select_all(&rm_ids, cx)
-                                    }))
-                            })
-                            .child(
-                                text(label)
-                                    .size(11.)
-                                    .leading(1.45)
-                                    .color(if all_over { t.text } else { t.muted })
-                                    .nowrap(),
-                            ),
-                    );
+                                })
+                                .on_click(cx.guarded_listener(move |v, _, _, cx| {
+                                    v.toggle_select_all(&rm_ids, cx)
+                                }))
+                        })
+                        .child(
+                            text(label)
+                                .size(11.)
+                                .leading(1.45)
+                                .color(if all_over { t.text } else { t.muted })
+                                .nowrap(),
+                        ),
+                );
             let mut end = div()
                 .flex()
                 .justify_end()
@@ -1326,15 +1326,15 @@ impl ScheduledPrompts {
                         &t,
                     )
                     .debug_selector(move || format!("sc-bulk-rm:{title}"))
-                    .on_click(
-                        cx.listener(move |v, _, _, cx| v.on_remove_bulk(&sid, ids.clone(), cx)),
-                    ),
+                    .on_click(cx.guarded_listener(move |v, _, _, cx| {
+                        v.on_remove_bulk(&sid, ids.clone(), cx)
+                    })),
                 ));
             }
             bar = bar.child(end);
             let picked_hover = picked.clone();
             let bid = bulk_id.clone();
-            bar = bar.on_hover(cx.listener(move |v, h: &bool, _, cx| {
+            bar = bar.on_hover(cx.guarded_listener(move |v, h: &bool, _, cx| {
                 if *h {
                     for id in &picked_hover {
                         v.fetch_remove_risk(id, false, cx);
@@ -1435,7 +1435,7 @@ impl ScheduledPrompts {
                         d
                     }
                 })
-                .on_hover(cx.listener({
+                .on_hover(cx.guarded_listener({
                     let wid = wid.clone();
                     move |v, h: &bool, _, cx| {
                         if *h {
@@ -1479,7 +1479,9 @@ impl ScheduledPrompts {
                                         cx.notify();
                                     })
                                 })
-                                .on_click(cx.listener(move |v, _, _, cx| v.toggle_pick(&pid, cx)))
+                                .on_click(
+                                    cx.guarded_listener(move |v, _, _, cx| v.toggle_pick(&pid, cx)),
+                                )
                                 .child(ico_slot(if show_check {
                                     icon(IconName::SquareCheck).size(px(14.)).into_any_element()
                                 } else {
@@ -1561,14 +1563,16 @@ impl ScheduledPrompts {
                 .items_center()
                 .gap(px(12.))
                 .cursor_pointer()
-                .on_click(cx.listener(move |v, ev: &gpui_kit::ClickEvent, _, cx| {
-                    let m = ev.modifiers();
-                    if can_pick && can_rm && (m.platform || m.control) {
-                        v.toggle_pick(&oid, cx);
-                        return;
-                    }
-                    v.open_run_workspace(oid.clone(), cx);
-                }));
+                .on_click(
+                    cx.guarded_listener(move |v, ev: &gpui_kit::ClickEvent, _, cx| {
+                        let m = ev.modifiers();
+                        if can_pick && can_rm && (m.platform || m.control) {
+                            v.toggle_pick(&oid, cx);
+                            return;
+                        }
+                        v.open_run_workspace(oid.clone(), cx);
+                    }),
+                );
             if !can_pick {
                 let k = kind(window, cx);
                 open_btn = open_btn.child(div().w(px(24.)).flex_none().flex().child(ico_slot(k)));
@@ -1592,41 +1596,42 @@ impl ScheduledPrompts {
                 .filter(|r| !r.is_empty())
                 .unwrap_or_else(|| w.elapsed_label.clone());
             let full = age.map(|a| a.full).unwrap_or_default();
-            let end: AnyElement = if lit {
-                let rt = rm_title.clone();
-                titled(
-                    SharedString::from(format!("sc-run-rm-t-{wid}")),
-                    rm_title,
-                    self.rm_button(
-                        SharedString::from(format!("sc-run-rm-{wid}")),
-                        rm_armed,
-                        !can_rm,
-                        &t,
-                    )
-                    .debug_selector(move || format!("sc-run-rm:{rt}"))
-                    .when(can_rm, |d| {
-                        d.on_click(
-                            cx.listener(move |v, _, _, cx| v.on_remove_run(&rid, can_rm, cx)),
+            let end: AnyElement =
+                if lit {
+                    let rt = rm_title.clone();
+                    titled(
+                        SharedString::from(format!("sc-run-rm-t-{wid}")),
+                        rm_title,
+                        self.rm_button(
+                            SharedString::from(format!("sc-run-rm-{wid}")),
+                            rm_armed,
+                            !can_rm,
+                            &t,
                         )
-                    }),
-                )
-                .into_any_element()
-            } else {
-                let tx = text(when)
-                    .id(SharedString::from(format!("sc-run-when-{wid}")))
-                    .mono()
-                    .size(10.5)
-                    .leading(1.45)
-                    .tabular()
-                    .color(t.faint)
-                    .nowrap();
-                if full.is_empty() {
-                    tx.into_any_element()
+                        .debug_selector(move || format!("sc-run-rm:{rt}"))
+                        .when(can_rm, |d| {
+                            d.on_click(cx.guarded_listener(move |v, _, _, cx| {
+                                v.on_remove_run(&rid, can_rm, cx)
+                            }))
+                        }),
+                    )
+                    .into_any_element()
                 } else {
-                    titled(SharedString::from(format!("sc-run-when-t-{wid}")), full, tx)
-                        .into_any_element()
-                }
-            };
+                    let tx = text(when)
+                        .id(SharedString::from(format!("sc-run-when-{wid}")))
+                        .mono()
+                        .size(10.5)
+                        .leading(1.45)
+                        .tabular()
+                        .color(t.faint)
+                        .nowrap();
+                    if full.is_empty() {
+                        tx.into_any_element()
+                    } else {
+                        titled(SharedString::from(format!("sc-run-when-t-{wid}")), full, tx)
+                            .into_any_element()
+                    }
+                };
             row = row.child(
                 div()
                     .flex_none()
@@ -1696,15 +1701,16 @@ impl ScheduledPrompts {
             );
         }
         if self.filtered() && visible == 0 {
-            let clear =
-                crate::style::clear_button("sc-clear", cx).on_click(cx.listener(|v, _, _, cx| {
+            let clear = crate::style::clear_button("sc-clear", cx).on_click(cx.guarded_listener(
+                |v, _, _, cx| {
                     v.project_filter.clear();
                     v.state_filter = StateFilter::All;
                     if let Some(sel) = &v.project_select {
                         sel.update(cx, |s, cx| s.set_values(Vec::new(), cx));
                     }
                     cx.notify();
-                }));
+                },
+            ));
             return Some(
                 empty(
                     Some(IconName::Filter),
@@ -1725,7 +1731,7 @@ impl ScheduledPrompts {
                 .relative()
                 .track_focus(&self.new_focus)
                 .when(!disabled, |d| {
-                    d.on_click(cx.listener(|v, _, _, cx| v.edit(None, cx)))
+                    d.on_click(cx.guarded_listener(|v, _, _, cx| v.edit(None, cx)))
                 })
                 .child(recur_ui::set::tbtn_icon(IconName::Plus))
                 .child(recur_ui::style::button_label(
@@ -1790,7 +1796,7 @@ impl ScheduledPrompts {
                 .debug_selector(|| "sc-new-bar".into())
                 .when(!disabled, |d| {
                     d.text_color(hsla(t.muted))
-                        .on_click(cx.listener(|v, _, _, cx| v.edit(None, cx)))
+                        .on_click(cx.guarded_listener(|v, _, _, cx| v.edit(None, cx)))
                 })
                 .child(icon(IconName::Plus).size(px(14.))),
         ));
@@ -1806,7 +1812,7 @@ impl ScheduledPrompts {
         let f = self.state_filter;
         let mut seg = filter_seg(cx).child(
             seg_count_btn("sc-seg-all", "All", None, f == StateFilter::All, cx).on_click(
-                cx.listener(|v, _, _, cx| {
+                cx.guarded_listener(|v, _, _, cx| {
                     v.state_filter = StateFilter::All;
                     cx.notify();
                 }),
@@ -1824,7 +1830,7 @@ impl ScheduledPrompts {
                     f == which,
                     cx,
                 )
-                .on_click(cx.listener(move |v, _, _, cx| {
+                .on_click(cx.guarded_listener(move |v, _, _, cx| {
                     v.state_filter = if v.state_filter == which {
                         StateFilter::All
                     } else {
@@ -1838,8 +1844,12 @@ impl ScheduledPrompts {
     }
 }
 
-impl Render for ScheduledPrompts {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ScheduledPrompts {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         self.snippets_effect(cx);
         let visible = self.visible();
@@ -1867,7 +1877,7 @@ impl Render for ScheduledPrompts {
                             .relative()
                             .track_focus(&self.new_focus)
                             .when(!disabled, |d| {
-                                d.on_click(cx.listener(|v, _, _, cx| v.edit(None, cx)))
+                                d.on_click(cx.guarded_listener(|v, _, _, cx| v.edit(None, cx)))
                             })
                             .child(recur_ui::set::tbtn_icon(IconName::Plus))
                             .child(recur_ui::style::button_label(
@@ -1940,6 +1950,12 @@ impl Render for ScheduledPrompts {
     }
 }
 
+impl Render for ScheduledPrompts {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 /// The Schedules route: App.svelte mounts the list only while `$view === 'schedules'`, so
 /// each visit starts a fresh list (and its poll).
 pub struct SchedulesPage {
@@ -1979,9 +1995,15 @@ impl SchedulesPage {
     }
 }
 
-impl Render for SchedulesPage {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl SchedulesPage {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         div().size_full().flex().children(self.list.clone())
+    }
+}
+
+impl Render for SchedulesPage {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

@@ -11,6 +11,7 @@ use gpui_kit::{
     Window, div, point, px,
 };
 use recur_ui::fonts::Family;
+use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::style::{button_label, card, text_field};
 use recur_ui::tooltip::titled;
@@ -386,7 +387,7 @@ impl EditorView {
         e: gpui_kit::Stateful<gpui_kit::Div>,
         cx: &mut Context<Self>,
     ) -> gpui_kit::Stateful<gpui_kit::Div> {
-        e.on_hover(cx.listener(move |v, hovered: &bool, _, cx| {
+        e.on_hover(cx.guarded_listener(move |v, hovered: &bool, _, cx| {
             let next = if *hovered {
                 Some(id)
             } else if v.hovered_control == Some(id) {
@@ -433,7 +434,7 @@ impl EditorView {
             .text_color(h(fg))
             .when_some(bg, |d, bg| d.bg(h(bg)))
             .child(icon(name).size(px(15.)).color(h(fg)))
-            .on_click(cx.listener(move |v, _, window, cx| on_click(v, window, cx)));
+            .on_click(cx.guarded_listener(move |v, _, window, cx| on_click(v, window, cx)));
         titled(id, title, self.hover_tracked(id, b, cx)).into_any_element()
     }
 
@@ -462,7 +463,7 @@ impl EditorView {
             .h(px(26.))
             .px(px(8.))
             .child(button_label(label, 11., 500.).ui().color(h(fg)))
-            .on_click(cx.listener(move |v, _, window, cx| on_click(v, window, cx)));
+            .on_click(cx.guarded_listener(move |v, _, window, cx| on_click(v, window, cx)));
         titled(id, title, self.hover_tracked(id, b, cx)).into_any_element()
     }
 
@@ -640,7 +641,7 @@ impl EditorView {
             .flex()
             .flex_col()
             .text_color(h(t.text))
-            .capture_key_down(cx.listener(Self::search_panel_key))
+            .capture_key_down(cx.guarded_listener(Self::search_panel_key))
             .child(find_row);
         if SearchPanel::has_replace(&self.state) {
             panel = panel.child(
@@ -698,7 +699,7 @@ impl EditorView {
             .pr(px(8.))
             .text_color(h(t.text))
             .capture_key_down(
-                cx.listener(move |v, ev: &KeyDownEvent, window, cx| {
+                cx.guarded_listener(move |v, ev: &KeyDownEvent, window, cx| {
                     v.dialog_key(id, ev, window, cx)
                 }),
             )
@@ -791,7 +792,7 @@ impl EditorView {
             .gap(px(10.))
             .p(px(12.))
             .text_color(h(t.text))
-            .capture_key_down(cx.listener(|v, ev: &KeyDownEvent, window, cx| {
+            .capture_key_down(cx.guarded_listener(|v, ev: &KeyDownEvent, window, cx| {
                 if ev.keystroke.key == "escape" {
                     cx.stop_propagation();
                     v.finish_rename(false, window, cx);

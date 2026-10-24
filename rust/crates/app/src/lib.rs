@@ -56,11 +56,17 @@ struct WindowRoot {
     shell: Entity<Shell>,
 }
 
-impl Render for WindowRoot {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl WindowRoot {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         div()
             .size_full()
             .child(recur_ui::style::window_root(self.shell.clone()))
+    }
+}
+
+impl Render for WindowRoot {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

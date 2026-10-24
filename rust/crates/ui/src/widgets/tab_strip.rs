@@ -337,8 +337,8 @@ fn chip_index(order: &[SharedString], key: &str) -> Option<usize> {
     order.iter().position(|k| k == key)
 }
 
-impl RenderOnce for TabStrip {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+impl TabStrip {
+    fn render_view(self, window: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let shared = self.scroll.clone();
         let state = window.use_keyed_state(self.id.clone(), cx, move |_, _| State {
@@ -579,6 +579,12 @@ impl RenderOnce for TabStrip {
             );
         }
         root
+    }
+}
+
+impl RenderOnce for TabStrip {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

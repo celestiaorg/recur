@@ -123,8 +123,8 @@ impl ResizeHandle {
     }
 }
 
-impl RenderOnce for ResizeHandle {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+impl ResizeHandle {
+    fn render_view(self, window: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let state = window.use_keyed_state(self.id.clone(), cx, |_, _| State::default());
         let dragging = state.read(cx).dragging.is_some();
@@ -222,6 +222,12 @@ impl RenderOnce for ResizeHandle {
         // which GPUI would otherwise draw on top of the panel's children.
         let id = self.id;
         deferred(titled((id, "tip"), "Drag to resize", d.child(tracker))).with_priority(8)
+    }
+}
+
+impl RenderOnce for ResizeHandle {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

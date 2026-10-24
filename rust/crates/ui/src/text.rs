@@ -574,9 +574,8 @@ fn shape_run(window: &Window, run: &RunStyle, text: &str) -> (Vec<(usize, f32, G
     let own = |r: &gpui_kit::ShapedRun| {
         parsed.as_ref().is_some_and(|p| {
             r.glyphs.iter().any(|g| {
-                text[g.index..]
-                    .chars()
-                    .next()
+                text.get(g.index..)
+                    .and_then(|t| t.chars().next())
                     .and_then(|c| p.glyph_index(c))
                     .is_some_and(|id| u32::from(id.0) == g.id.0)
             })
@@ -591,7 +590,8 @@ fn shape_run(window: &Window, run: &RunStyle, text: &str) -> (Vec<(usize, f32, G
         let ours = own(r);
         for g in &r.glyphs {
             out.push((
-                g.index,
+                // Everything downstream slices the text at glyph indices.
+                text.floor_char_boundary(g.index),
                 f32::from(g.position.x),
                 GlyphSrc::Gpui {
                     font_id: r.font_id,
@@ -1070,7 +1070,25 @@ fn rounded_extent(run: &RunStyle, window: &Window) -> (f32, f32) {
 }
 
 impl Laid {
+    /// Shapes `key`, or lays it out as empty if shaping panicked.
     fn build(key: Resolved, window: &Window) -> Laid {
+        let fallback = key.clone();
+        crate::guard::catch("text shaping", || Self::shape(key, window)).unwrap_or(Laid {
+            key: fallback,
+            paras: Vec::new(),
+            metrics: LineMetrics {
+                height: 0.,
+                baseline: 0.,
+                ascent: 0.,
+                descent: 0.,
+            },
+            extents: Vec::new(),
+            ellipsis: None,
+            lines: Vec::new(),
+        })
+    }
+
+    fn shape(key: Resolved, window: &Window) -> Laid {
         let field = key.field;
         let metrics_of = |a, d, g, size| {
             let m = line_metrics(a, d, g, size, key.line_height);
@@ -1116,7 +1134,26 @@ impl Laid {
         (above + below, above)
     }
 
+    /// Breaks the lines at `width`, or leaves none if line breaking panicked.
     fn relayout(
+        &mut self,
+        width: Option<f32>,
+        ws: WhiteSpace,
+        anywhere: bool,
+        clamp: Option<usize>,
+        truncate: bool,
+        window: &Window,
+    ) {
+        let done = crate::guard::catch("text line breaking", || {
+            self.break_all(width, ws, anywhere, clamp, truncate, window)
+        });
+        if done.is_none() {
+            self.lines.clear();
+            self.ellipsis = None;
+        }
+    }
+
+    fn break_all(
         &mut self,
         width: Option<f32>,
         ws: WhiteSpace,
@@ -1869,7 +1906,11 @@ fn paint_lines(
             let run = &laid.key.runs[g.run];
             let mut color = run.color;
             if let Some(mask) = mask {
-                let next = g.index + text[g.index..].chars().next().map_or(1, char::len_utf8);
+                let next = g.index
+                    + text
+                        .get(g.index..)
+                        .and_then(|t| t.chars().next())
+                        .map_or(1, char::len_utf8);
                 let center = left + (p.x_at(g.index) + p.x_at(next)) / 2.;
                 color = color.opacity(mask(center));
             }

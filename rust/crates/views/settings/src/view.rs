@@ -776,8 +776,12 @@ impl SettingsView {
     }
 }
 
-impl Render for SettingsView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SettingsView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = tokens(cx);
         let on = self.vcx.state.read(cx).view == ViewName::Settings;
         let section = self.section(cx);
@@ -800,6 +804,12 @@ impl Render for SettingsView {
                 &self.main_scroll,
                 window,
             ))
+    }
+}
+
+impl Render for SettingsView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

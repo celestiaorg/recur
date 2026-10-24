@@ -172,8 +172,8 @@ struct ShellSceneView {
     tree_scroll: f32,
 }
 
-impl Render for ShellSceneView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ShellSceneView {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         if self.tree_scroll > 0. {
             let sidebar = self.shell.read(cx).sidebar.clone();
             if sidebar.read(cx).tree_ready(cx) {
@@ -186,6 +186,12 @@ impl Render for ShellSceneView {
             cx.notify();
         }
         div().size_full().child(self.shell.clone())
+    }
+}
+
+impl Render for ShellSceneView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -245,8 +251,8 @@ struct ViewSceneView {
     frames: u8,
 }
 
-impl Render for ViewSceneView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ViewSceneView {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let state = self.shell.read(cx).state().clone();
         if let Some(nav) = self.navigate.take() {
             if state.read(cx).booted {
@@ -265,6 +271,12 @@ impl Render for ViewSceneView {
             cx.notify();
         }
         div().size_full().child(self.shell.clone())
+    }
+}
+
+impl Render for ViewSceneView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

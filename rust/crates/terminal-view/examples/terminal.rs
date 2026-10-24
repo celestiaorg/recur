@@ -2,6 +2,7 @@
 //!
 //! ⌘F (Ctrl+Shift+F elsewhere) opens the find bar; Enter / Shift+Enter step, Escape closes.
 
+use recur_ui::guard::Guarded;
 use std::sync::Arc;
 
 use futures::StreamExt;
@@ -90,13 +91,13 @@ impl Demo {
     }
 }
 
-impl Render for Demo {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Demo {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         window_root(
             body(cx)
                 .track_focus(&self.focus)
-                .capture_key_down(cx.listener(Self::key_down))
+                .capture_key_down(cx.guarded_listener(Self::key_down))
                 .size_full()
                 .flex()
                 .flex_col()
@@ -111,6 +112,12 @@ impl Render for Demo {
                 )
                 .child(self.tooltip.clone()),
         )
+    }
+}
+
+impl Render for Demo {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

@@ -10,6 +10,7 @@ use gpui_kit::{
 };
 use recur_domain::OutlineSymbol;
 use recur_services::AppEvent;
+use recur_ui::guard::Guarded;
 use recur_ui::logic::hover_gate::HoverGate;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, TextStyled, text};
@@ -352,8 +353,12 @@ impl QuickOpen {
     }
 }
 
-impl Render for QuickOpen {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl QuickOpen {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open {
             return div().into_any_element();
         }
@@ -419,16 +424,18 @@ impl Render for QuickOpen {
                     .cursor_pointer()
                     .text_color(hsla(t.text))
                     .when(on, |d| d.bg(hsla(t.amber_d)))
-                    .on_mouse_move(cx.listener(move |q, e: &gpui_kit::MouseMoveEvent, _, cx| {
-                        if q.hover
-                            .allows(f32::from(e.position.x), f32::from(e.position.y))
-                            && q.sel != i
-                        {
-                            q.sel = i;
-                            cx.notify();
-                        }
-                    }))
-                    .on_click(cx.listener(move |q, _, _, cx| q.run(i, cx)));
+                    .on_mouse_move(cx.guarded_listener(
+                        move |q, e: &gpui_kit::MouseMoveEvent, _, cx| {
+                            if q.hover
+                                .allows(f32::from(e.position.x), f32::from(e.position.y))
+                                && q.sel != i
+                            {
+                                q.sel = i;
+                                cx.notify();
+                            }
+                        },
+                    ))
+                    .on_click(cx.guarded_listener(move |q, _, _, cx| q.run(i, cx)));
                 row = match r {
                     Row::Symbol(s) => row
                         .child(
@@ -510,18 +517,24 @@ impl Render for QuickOpen {
                         .w(px(560.))
                         .max_w(gpui_kit::relative(0.92))
                         .occlude()
-                        .on_key_down(
-                            cx.listener(|q, e: &gpui_kit::KeyDownEvent, _, cx| q.on_key(e, cx)),
-                        )
+                        .on_key_down(cx.guarded_listener(|q, e: &gpui_kit::KeyDownEvent, _, cx| {
+                            q.on_key(e, cx)
+                        }))
                         .child(card),
                 )
                 .on_mouse_down(
                     gpui_kit::MouseButton::Left,
-                    cx.listener(|q, _, _, cx| q.close(cx)),
+                    cx.guarded_listener(|q, _, _, cx| q.close(cx)),
                 ),
         )
         .with_priority(80)
         .into_any_element()
+    }
+}
+
+impl Render for QuickOpen {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

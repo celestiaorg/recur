@@ -1188,8 +1188,12 @@ pub(crate) fn style_area(area: &Entity<TextareaState>, cx: &mut App) {
     recur_ui::style::style_textarea(area, t.faint, cx);
 }
 
-impl Render for ProjectView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ProjectView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = recur_ui::Theme::of(cx).tokens;
         let on = self.vcx.state.read(cx).view == ViewName::Project;
         let search = self.field(NAV, window, cx);
@@ -1235,6 +1239,12 @@ impl Render for ProjectView {
             .bg(t.bg)
             .child(nav)
             .child(page_main(head, body, &self.main_scroll, window))
+    }
+}
+
+impl Render for ProjectView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

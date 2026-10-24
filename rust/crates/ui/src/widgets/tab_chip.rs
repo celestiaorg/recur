@@ -218,8 +218,8 @@ impl TabChip {
     }
 }
 
-impl RenderOnce for TabChip {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+impl TabChip {
+    fn render_view(self, window: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let wash = self.busy && !self.active && !motion::reduced(cx);
         let group = SharedString::from(format!("tab-chip-{}", self.id));
@@ -453,6 +453,12 @@ impl RenderOnce for TabChip {
             Some(shadow) => with_shadow(chip, &[shadow], 0.).h_full().into_any_element(),
             None => chip.into_any_element(),
         }
+    }
+}
+
+impl RenderOnce for TabChip {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

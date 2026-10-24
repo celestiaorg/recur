@@ -2,6 +2,7 @@
 //! In…, the titlebar button), or copy its path. 1–9 pick a row while the filter is empty;
 //! ⌘↩ or the pin makes an app the default, listed first.
 
+use recur_ui::guard::Guarded;
 use std::sync::Arc;
 
 use gpui_kit::base::input::{InputEvent, InputState};
@@ -307,8 +308,12 @@ impl OpenInPalette {
     }
 }
 
-impl Render for OpenInPalette {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl OpenInPalette {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open(cx) {
             return div().into_any_element();
         }
@@ -386,21 +391,23 @@ impl Render for OpenInPalette {
                             let id = id.clone();
                             move || format!("oi-pin:{id}")
                         })
-                        .on_hover(cx.listener(move |p, h: &bool, _, cx| {
+                        .on_hover(cx.guarded_listener(move |p, h: &bool, _, cx| {
                             p.pin_hover = h.then(|| hover_id.clone());
                             cx.notify();
                         }))
-                        .on_click(cx.listener(move |p, _, _, cx| {
-                            cx.stop_propagation();
-                            p.make_default(&pin_id, cx);
-                        })),
+                        .on_click(cx.guarded_listener(
+                            move |p, _, _, cx| {
+                                cx.stop_propagation();
+                                p.make_default(&pin_id, cx);
+                            },
+                        )),
                     );
                 }
                 if !filtered && idx < 9 {
                     row = row.child(chrome::digit_key(idx + 1, on, has_pin, cx));
                 }
                 rows.push(
-                    row.on_mouse_move(cx.listener(move |p, ev: &MouseMoveEvent, _, cx| {
+                    row.on_mouse_move(cx.guarded_listener(move |p, ev: &MouseMoveEvent, _, cx| {
                         if p.hover
                             .allows(f32::from(ev.position.x), f32::from(ev.position.y))
                             && p.sel != idx
@@ -409,7 +416,7 @@ impl Render for OpenInPalette {
                             cx.notify();
                         }
                     }))
-                    .on_click(cx.listener(move |p, _, _, cx| p.run(idx, cx)))
+                    .on_click(cx.guarded_listener(move |p, _, _, cx| p.run(idx, cx)))
                     .into_any_element(),
                 );
             }
@@ -447,6 +454,12 @@ impl Render for OpenInPalette {
             window,
             cx,
         )
+    }
+}
+
+impl Render for OpenInPalette {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

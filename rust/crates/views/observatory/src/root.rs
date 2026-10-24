@@ -1262,17 +1262,21 @@ impl Observatory {
 
     /// Drop keep-alive entries and parked tabs of workspaces that no longer exist.
     fn prune_caches(&mut self, cx: &mut Context<Self>) {
-        let live: HashSet<String> = self
-            .state
-            .read(cx)
-            .workspaces
-            .iter()
-            .map(|w| w.id.clone())
-            .collect();
-        if live == self.pruned_live {
+        // Runs on every store change: fingerprint the ids before collecting them.
+        let ids = || self.state.read(cx).workspaces.iter().map(|w| w.id.as_str());
+        let mark = {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::hash::DefaultHasher::new();
+            for id in ids() {
+                id.hash(&mut h);
+            }
+            h.finish()
+        };
+        if self.pruned_live == Some(mark) {
             return;
         }
-        self.pruned_live = live.clone();
+        self.pruned_live = Some(mark);
+        let live: HashSet<String> = ids().map(str::to_string).collect();
         crate::obs_cache::cache(cx).prune(&live);
         crate::session_tabs::parks(cx).prune_workspaces(&live);
     }

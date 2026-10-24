@@ -404,7 +404,8 @@ pub struct Observatory {
     pub(crate) file_tab_reveal_nonce: u64,
     pub(crate) file_tab_scroll: ScrollHandle,
     pub(crate) max_open_files_seen: usize,
-    pub(crate) pruned_live: HashSet<String>,
+    /// A fingerprint of the workspace ids the caches were last pruned to.
+    pub(crate) pruned_live: Option<u64>,
 
     // ---- the main pane ----
     pub(crate) selected_path: String,
@@ -676,7 +677,7 @@ impl Observatory {
             file_tab_reveal_nonce: 0,
             file_tab_scroll: ScrollHandle::new(),
             max_open_files_seen: 0,
-            pruned_live: HashSet::new(),
+            pruned_live: None,
             selected_path: String::new(),
             file: None,
             selected_is_dir: false,

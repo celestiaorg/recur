@@ -1097,7 +1097,7 @@ fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     );
     if took > Duration::from_millis(500) {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
-        if std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
+        if took > Duration::from_secs(2) || std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
             let views: Vec<String> = renders
                 .iter()
                 .map(|(k, n)| format!("{}×{n}", k.rsplit("::").next().unwrap_or(k)))

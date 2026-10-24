@@ -1,0 +1,468 @@
+//! `settings-newloop.spec.ts`: the New workspace modal and add-project scenarios.
+
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+
+use gpui::TestAppContext;
+use recur_services::mock::{MockOptions, Reply};
+use recur_view_core::ViewName;
+use serde_json::{Value, json};
+
+use super::harness::{S, plain, with};
+use crate::new_task::NewTaskModal;
+
+impl S<'_> {
+    /// The non-main, live rows the rail shows (`.rail .tloop:not(.tmain)`).
+    fn rail_rows(&mut self) -> usize {
+        self.state.read_with(self.cx, |s, _| {
+            s.workspaces
+                .iter()
+                .filter(|w| !w.archived && !w.is_main && w.host_pr_id.trim().is_empty())
+                .count()
+        })
+    }
+
+    fn open_new_task(&mut self) {
+        self.keys("cmd-n");
+        assert!(self.has("v-newtask"), "New workspace open");
+    }
+
+    fn modal(&mut self) -> gpui::Entity<NewTaskModal> {
+        self.cx
+            .update(|_, cx| NewTaskModal::current(cx))
+            .expect("modal")
+    }
+
+    /// The model picker's `sel:Model=…` handle.
+    fn model_handle(&mut self) -> String {
+        let m = self.modal();
+        let (model, models) = self.cx.update(|_, cx| {
+            let m = m.read(cx);
+            (m.model().0.to_string(), cx.global_or_none_models())
+        });
+        let label = models
+            .iter()
+            .find(|c| c.r#ref == model)
+            .map(|c| c.label.clone())
+            .unwrap_or(model);
+        format!("sel:Model={label}")
+    }
+
+    fn flags_handle(&mut self) -> String {
+        let m = self.modal();
+        let (model, flags) = self.cx.update(|_, cx| {
+            let m = m.read(cx);
+            (m.model().0.to_string(), m.model().1.clone())
+        });
+        let models = self.cx.update(|_, cx| cx.global_or_none_models());
+        let dims = recur_view_core::models::flags_for_model(&models, &model);
+        format!(
+            "sel:Model flags={}",
+            recur_view_chat::pickers::flags_summary(&dims, &flags)
+        )
+    }
+}
+
+trait Catalog {
+    fn global_or_none_models(&self) -> Vec<recur_view_core::modes::CatalogModel>;
+}
+
+impl Catalog for gpui::App {
+    fn global_or_none_models(&self) -> Vec<recur_view_core::modes::CatalogModel> {
+        recur_view_core::AppState::try_global(self)
+            .map(|s| s.read(self).peek_model_catalog().to_vec())
+            .unwrap_or_default()
+    }
+}
+
+#[gpui::test]
+fn new_loop_modal_has_repository_and_base_branch_pickers(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_new_task();
+    s.click("sel:Mode=Agent");
+    s.click("sel-opt:Loop");
+    assert!(s.has("sel:Mode=Loop"));
+    s.click("sel:Repository=storefront");
+    for p in ["storefront", "payments-api", "marketing-site"] {
+        assert!(s.has(&format!("sel-opt:{p}")), "{p}");
+    }
+    s.keys("escape");
+    assert!(s.has("v-newtask"), "Escape closes the menu first");
+    s.click("sel:Base branch=main");
+    s.type_text("auth");
+    assert!(s.has("sel-opt:feature/auth"));
+    assert!(!s.has("sel-opt:main"));
+    s.click("sel-opt:feature/auth");
+    assert!(s.has("sel:Base branch=feature/auth"));
+    assert!(s.has("sel:Loop=recur.loops.pr") || s.has("sel:Loop=PR"));
+    s.click("sel:Policy=Balanced");
+    for p in ["Cautious", "Balanced", "Aggressive"] {
+        assert!(s.has(&format!("sel-opt:{p}")), "{p}");
+    }
+    s.keys("escape");
+    assert!(s.has("nt-go:off"), "a loop needs a task");
+    assert!(s.has("nt-simplify:on"));
+    s.keys("escape");
+    assert!(!s.has("v-newtask"));
+}
+
+#[gpui::test]
+fn escape_abandons_eager_create_so_a_second_cmd_n_is_one_row(cx: &mut TestAppContext) {
+    let n = Arc::new(AtomicUsize::new(0));
+    let c = n.clone();
+    let opts = MockOptions::default().resolver("CreateWorkspace", move |a, _, _| {
+        let i = c.fetch_add(1, Ordering::SeqCst) + 1;
+        let id = format!("WS-EAGER-{i}");
+        Reply::value(json!({
+            "id": id, "projectId": a[0], "type": "solo", "statusLabel": "Creating",
+            "phase": "creating", "goal": "New Workspace", "short": "New Workspace",
+            "branch": format!("recur/{id}"), "baseBranch": a[2], "archived": false, "isMain": false,
+        }))
+    });
+    let mut s = with(cx, |_| {}, opts);
+    let before = s.rail_rows();
+    for _ in 0..2 {
+        s.open_new_task();
+        assert!(s.until(|s| s.rail_rows() == before + 1));
+        s.keys("escape");
+        assert!(!s.has("v-newtask"));
+        assert!(s.until(|s| s.rail_rows() == before));
+    }
+    assert_eq!(n.load(Ordering::SeqCst), 2);
+}
+
+#[gpui::test]
+fn create_workspace_model_menu_stays_inside_the_window(cx: &mut TestAppContext) {
+    let effort = json!({ "id": "effort", "label": "Effort", "options": [
+        { "value": "low", "label": "Low" }, { "value": "high", "label": "High", "default": true },
+    ]});
+    let models: Vec<Value> = (0..24)
+        .map(|i| {
+            json!({ "ref": format!("claude-code/model-{i}"), "label": format!("Model {:02}", i + 1),
+                "flags": [effort], "contextWindow": 200_000 })
+        })
+        .collect();
+    let opts = MockOptions::default().resolver("ListModelCatalog", move |_, _, _| {
+        Reply::value(
+            json!([{ "provider": "claude-code", "label": "Claude Code", "models": models }]),
+        )
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.open_new_task();
+    let h = s.model_handle();
+    s.click(&h);
+    let menu = s.bounds("sel-menu").expect("menu");
+    let vh = f32::from(s.cx.update(|w, _| w.viewport_size().height));
+    assert!(f32::from(menu.origin.y) >= 0., "{menu:?}");
+    assert!(f32::from(menu.bottom()) <= vh, "{menu:?}");
+    assert!(s.has("sel-opt:Model 01"));
+    let first = s.bounds("sel-opt:Model 01").expect("first row");
+    assert!(first.origin.y >= menu.origin.y - gpui::px(1.));
+}
+
+#[gpui::test]
+fn model_and_flags_stay_on_one_row_in_create_workspace_and_chat_composer(cx: &mut TestAppContext) {
+    let flags = json!([
+        { "id": "effort", "label": "Effort", "options": [
+            { "value": "low", "label": "Low" }, { "value": "medium", "label": "Medium", "default": true },
+            { "value": "high", "label": "High" } ] },
+        { "id": "context", "label": "Context", "options": [
+            { "value": "272k", "label": "272K", "default": true }, { "value": "1m", "label": "1M" } ] },
+        { "id": "thinking", "label": "On", "options": [
+            { "value": "true", "label": "Yes", "default": true }, { "value": "false", "label": "No" } ] },
+    ]);
+    let opts = MockOptions::default().resolver("ListModelCatalog", move |_, _, _| {
+        Reply::value(json!([{ "provider": "openai", "label": "OpenAI", "models": [{
+            "ref": "openai/gpt-6-astra", "label": "GPT-6 Astra", "flags": flags, "contextWindow": 272_000,
+        }]}]))
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.open_new_task();
+    let (mh, fh) = (s.model_handle(), s.flags_handle());
+    let model = s.bounds(&mh).expect("model picker");
+    let fl = s.bounds(&fh).expect("flags picker");
+    assert!((f32::from(model.origin.y) - f32::from(fl.origin.y)).abs() < 4.);
+    s.keys("escape");
+    assert!(!s.has("v-newtask"));
+}
+
+#[gpui::test]
+fn creating_a_workspace_keeps_chat_visible_while_the_editor_is_blocked(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.click("foot-help");
+    assert_eq!(s.view(), ViewName::Welcome);
+    s.open_new_task();
+    s.type_text("review the auth flow");
+    assert!(s.has("nt-go:on"));
+    s.click("nt-go:on");
+    assert!(!s.has("v-newtask"));
+    assert!(s.until(|s| s.view() == ViewName::Detail));
+    assert_eq!(
+        s.state
+            .read_with(s.cx, |st, _| st.selected_workspace_id.clone()),
+        "WS-NEW"
+    );
+    // A send held for setup is a queued `.chat-row.me`.
+    assert!(s.until(|s| s.has("me:review the auth flow") || s.has("queued:review the auth flow")));
+    assert!(s.has("wsv-creating"));
+}
+
+#[gpui::test]
+fn inbox_create_shows_the_opening_prompt_after_opening_the_rail_row(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    assert_eq!(s.view(), ViewName::Briefing);
+    s.open_new_task();
+    s.type_text("review the auth flow");
+    s.click("nt-go:on");
+    assert!(!s.has("v-newtask"));
+    assert_eq!(s.view(), ViewName::Briefing);
+    let seeded = s
+        .state
+        .read_with(s.cx, |st, _| st.workspace_seeds.get("WS-NEW").cloned());
+    assert_eq!(seeded.map(|x| x.text), Some("review the auth flow".into()));
+    s.state
+        .update(s.cx, |st, cx| st.open_workspace("WS-NEW", false, cx));
+    s.settle();
+    assert_eq!(s.view(), ViewName::Detail);
+    assert!(s.until(|s| s.has("me:review the auth flow") || s.has("queued:review the auth flow")));
+}
+
+#[gpui::test]
+fn add_project_is_a_create_modal(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.state.update(s.cx, |st, cx| st.open_project("", cx));
+    s.settle();
+    assert!(s.has("v-newproject"));
+    assert_ne!(s.view(), ViewName::Project);
+    s.fill("inp:Repository path", "/tmp/quick-app");
+    let name = s.cx.update(|_, cx| {
+        crate::new_project::NewProjectModal::current(cx)
+            .map(|m| m.read(cx).name(cx))
+            .unwrap_or_default()
+    });
+    assert_eq!(name, "quick-app");
+    s.click("np-go:on");
+    assert!(s.until(|s| !s.has("v-newproject")));
+    let added = s.state.read_with(s.cx, |st, _| {
+        st.projects.iter().any(|p| p.name == "quick-app")
+    });
+    assert!(added);
+}
+
+#[gpui::test]
+fn adding_a_compatible_provider_shows_its_models_in_an_already_loaded_picker(
+    cx: &mut TestAppContext,
+) {
+    let opts = MockOptions::default().resolver("ListModelCatalog", |_, sd, _| {
+        let mut out = vec![json!({
+            "provider": "claude-code", "label": "Claude Code",
+            "models": [{ "ref": "claude-code/claude-opus-5-5", "label": "Opus 5.5", "flags": [] }],
+        })];
+        for p in sd.settings["compatibleProviders"]
+            .as_array()
+            .into_iter()
+            .flatten()
+        {
+            let id = p["id"].as_str().unwrap_or_default();
+            let models: Vec<Value> = p["models"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|m| {
+                    json!({ "ref": format!("{id}/{}", m["id"].as_str().unwrap_or_default()),
+                    "label": m["label"], "flags": [] })
+                })
+                .collect();
+            out.push(json!({ "provider": id, "label": p["name"], "models": models }));
+        }
+        Reply::value(Value::Array(out))
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.open_new_task();
+    let h = s.model_handle();
+    s.click(&h);
+    assert!(s.has("sel-opt:Opus 5.5"));
+    assert!(!s.has("sel-opt:GPT-4o"));
+    s.keys("escape");
+    s.keys("escape");
+    assert!(!s.has("v-newtask"));
+
+    s.open_settings();
+    s.section("Providers");
+    s.click("btn:Add provider");
+    s.click("preset:OpenRouter");
+    s.click("nt-go:on");
+    assert!(!s.has("v-compat-provider"));
+
+    s.open_new_task();
+    let h = s.model_handle();
+    s.click(&h);
+    assert!(s.until(|s| s.has("sel-opt:GPT-4o")));
+}
+
+#[gpui::test]
+fn a_late_project_refresh_does_not_reload_branches_or_disable_create(cx: &mut TestAppContext) {
+    let gate = Arc::new(AtomicBool::new(false));
+    let list_branches = Arc::new(AtomicUsize::new(0));
+    let release: Arc<Mutex<Option<recur_services::mock::Release>>> = Arc::default();
+    let (g, r, lb) = (gate.clone(), release.clone(), list_branches.clone());
+    let opts = MockOptions::default()
+        .resolver("ListProjects", move |_, sd, _| {
+            if !g.load(Ordering::SeqCst) {
+                return Reply::value(Value::Array(sd.projects.clone()));
+            }
+            let late: Vec<Value> = sd
+                .projects
+                .iter()
+                .map(|p| {
+                    let mut p = p.clone();
+                    p["name"] = json!(format!("{}-late", p["name"].as_str().unwrap_or_default()));
+                    p
+                })
+                .collect();
+            let (reply, rel) = Reply::deferred();
+            *r.lock().unwrap() = Some(rel);
+            let _ = late.clone();
+            // The deferred reply is answered with the renamed list on release.
+            LATE.with(|l| *l.borrow_mut() = Some(Value::Array(late)));
+            reply
+        })
+        .resolver("ListBranches", move |_, _, _| {
+            lb.fetch_add(1, Ordering::SeqCst);
+            Reply::value(json!([{ "name": "main", "group": "Local" }, { "name": "develop", "group": "Local" }]))
+        });
+    let mut s = with(cx, |_| {}, opts);
+    gate.store(true, Ordering::SeqCst);
+    s.open_new_task();
+    assert!(s.until(|s| s.has("nt-go:on")));
+    assert!(s.has("sel:Repository=storefront"));
+    let late = LATE
+        .with(|l| l.borrow_mut().take())
+        .expect("refresh in flight");
+    release
+        .lock()
+        .unwrap()
+        .take()
+        .expect("deferred")
+        .send(Reply::value(late));
+    assert!(s.until(|s| s.has("sel:Repository=storefront-late")));
+    assert!(s.has("nt-go:on"));
+    assert_eq!(list_branches.load(Ordering::SeqCst), 1);
+}
+
+thread_local! {
+    static LATE: std::cell::RefCell<Option<Value>> = const { std::cell::RefCell::new(None) };
+}
+
+#[gpui::test]
+fn slash_menu_offers_prompts_and_skills_and_at_searches_the_project(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("ListFiles", |_, _, _| {
+        Reply::value(json!(["README.md", "src/main.go", "PROGRESS.md"]))
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.open_new_task();
+    let chat_focused = s.cx.update(|w, cx| {
+        let m = NewTaskModal::current(cx).expect("modal");
+        let c = m.read(cx).chat().clone();
+        gpui_kit::Focusable::focus_handle(c.read(cx), cx).is_focused(w)
+    });
+    assert!(chat_focused, "the composer has focus");
+    s.type_text("/");
+    let menu = s.bounds("chat-mention").expect("slash menu");
+    assert!(s.has("mention:/commit"));
+    let composer = s.bounds("chat-composer").expect("composer");
+    let vh = f32::from(s.cx.update(|w, _| w.viewport_size().height));
+    assert!(f32::from(menu.origin.y) >= 0.);
+    assert!(f32::from(menu.bottom()) <= vh);
+    assert!(menu.origin.y > composer.origin.y);
+    assert!(menu.origin.y < composer.origin.y + gpui::px(72.));
+    s.type_text("design");
+    assert!(s.until(|s| s.has("mention:/design-audit") || s.has("mention:design-audit")));
+    s.keys("escape");
+    assert!(!s.has("chat-mention"));
+    assert!(s.has("v-newtask"));
+    s.keys("cmd-a backspace");
+    s.type_text("@PROG");
+    assert!(s.until(|s| s.has("chat-mention")));
+    assert!(s.until(|s| s.has("mention:PROGRESS.md")));
+    s.keys("enter");
+    let draft = s.cx.update(|_, cx| {
+        NewTaskModal::current(cx)
+            .map(|m| m.read(cx).task().to_string())
+            .unwrap_or_default()
+    });
+    assert!(draft.contains("PROGRESS.md"), "{draft}");
+}
+
+#[gpui::test]
+fn picking_a_skill_chips_it_and_create_sends_it_as_the_opening_message(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.click("foot-help");
+    s.open_new_task();
+    s.type_text("/design");
+    assert!(s.until(|s| s.has("mention:design-audit") || s.has("mention:/design-audit")));
+    if s.has("mention:design-audit") {
+        s.click("mention:design-audit");
+    } else {
+        s.click("mention:/design-audit");
+    }
+    let draft = s.cx.update(|_, cx| {
+        NewTaskModal::current(cx)
+            .map(|m| m.read(cx).task().to_string())
+            .unwrap_or_default()
+    });
+    assert!(draft.contains("design-audit"), "{draft}");
+    s.click("nt-go:on");
+    assert!(!s.has("v-newtask"));
+    assert!(s.until(|s| s.view() == ViewName::Detail));
+    assert!(s.until(|s| s.has("me:/design-audit") || s.has("queued:/design-audit")));
+}
+
+#[gpui::test]
+fn picking_review_runs_the_prompt_and_opens_the_workspace(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("CreateWorkspace", |a, _, _| {
+        Reply::value(json!({
+            "id": "WS-NEW", "projectId": a[0], "type": "solo", "statusLabel": "Creating",
+            "phase": "creating", "branch": "recur/new", "baseBranch": a[2],
+            "worktreePath": "/tmp/recur-e2e/WS-NEW",
+        }))
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.click("foot-help");
+    s.open_new_task();
+    s.type_text("/review");
+    assert!(s.until(|s| s.has("mention:/review")));
+    s.click("mention:/review");
+    assert!(s.until(|s| !s.has("v-newtask")));
+    assert!(s.until(|s| s.view() == ViewName::Detail));
+    assert!(s.until(|s| {
+        let t = "Please review the changes in this worktree and file any real";
+        s.has(&format!("me:{t}")) || s.has(&format!("queued:{t}"))
+    }));
+}
+
+#[gpui::test]
+fn plain_enter_inserts_a_newline(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_new_task();
+    s.type_text("first line");
+    s.keys("enter");
+    assert!(s.has("v-newtask"));
+    s.type_text("second line");
+    let draft = s.cx.update(|_, cx| {
+        NewTaskModal::current(cx)
+            .map(|m| m.read(cx).task().to_string())
+            .unwrap_or_default()
+    });
+    assert_eq!(draft, "first line\nsecond line");
+}
+
+#[gpui::test]
+fn empty_cmd_enter_from_the_focused_composer_creates_a_workspace(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_new_task();
+    assert!(s.until(|s| s.has("nt-go:on")));
+    s.keys("cmd-enter");
+    assert!(s.until(|s| !s.has("v-newtask")));
+    assert_eq!(s.view(), ViewName::Briefing);
+}

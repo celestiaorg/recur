@@ -24,13 +24,16 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   workspace?: Scene[]
   prs?: Scene[]
   settings?: Scene[]
+  home?: Scene[]
+  briefing?: Scene[]
+  projects?: Scene[]
 }
 // Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
 // mount App.svelte over an edited seed (see `patchSeed`).
 const scenes = [
   ...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? []), ...(spec.content ?? []), ...(spec.chat ?? []),
   ...(spec.review ?? []), ...(spec.observatory ?? []), ...(spec.workspace ?? []), ...(spec.prs ?? []),
-  ...(spec.settings ?? []),
+  ...(spec.settings ?? []), ...(spec.home ?? []), ...(spec.briefing ?? []), ...(spec.projects ?? []),
 ]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
@@ -141,6 +144,24 @@ function settingsFixture(scene: Scene): { seed?: SeedPatch; resolvers?: Record<s
 function settingsResolvers(scene: Scene) {
   const out: Record<string, () => unknown> = {}
   for (const [k, v] of Object.entries(settingsFixture(scene).resolvers ?? {})) {
+    out[k] = (v as { $pending?: boolean })?.$pending ? () => new Promise(() => {}) : () => structuredClone(v)
+  }
+  return out
+}
+
+const viewsFx = JSON.parse(readFileSync(join(here, 'content', 'views.json'), 'utf8'))
+/** Scenes of the home, briefing and project view crates (`content/views.json` fixtures). */
+const VIEW_KINDS = ['home/', 'briefing/', 'projects/']
+const isViewScene = (scene: Scene) => VIEW_KINDS.some((k) => scene.name.startsWith(k))
+
+/** A view scene's fixture: seed edits and canned replies (`{"$pending": true}` never answers). */
+function viewsFixture(scene: Scene): { seed?: SeedPatch; resolvers?: Record<string, unknown> } {
+  return viewsFx.fixtures[scene.fixture ?? ''] ?? {}
+}
+
+function viewsResolvers(scene: Scene) {
+  const out: Record<string, () => unknown> = {}
+  for (const [k, v] of Object.entries(viewsFixture(scene).resolvers ?? {})) {
     out[k] = (v as { $pending?: boolean })?.$pending ? () => new Promise(() => {}) : () => structuredClone(v)
   }
   return out
@@ -270,11 +291,12 @@ for (const scene of scenes) {
     const replay = scene.input === undefined ? undefined : spec.terminalInputs?.[scene.input]
     const sceneSeed = structuredClone(seed)
     if (scene.name.startsWith('workspace/')) patchSeed(sceneSeed as Record<string, any>, scene.seed)
-    if (scene.name.startsWith('shell/') || scene.name.startsWith('prs/') || scene.name.startsWith('settings/')) {
+    if (scene.name.startsWith('shell/') || scene.name.startsWith('prs/') || scene.name.startsWith('settings/') || isViewScene(scene)) {
       patchSeed(
         sceneSeed as Record<string, any>,
         scene.name.startsWith('prs/') ? prsFixture(scene).seed
-          : scene.name.startsWith('settings/') ? settingsFixture(scene).seed : scene.seed,
+          : scene.name.startsWith('settings/') ? settingsFixture(scene).seed
+            : isViewScene(scene) ? viewsFixture(scene).seed : scene.seed,
       )
       // App prefs the shell reads at startup (`initRailCollapsed`, …), and the scene theme.
       const storage = { 'recur.theme': scene.theme, ...(scene.storage ?? {}) }
@@ -288,8 +310,9 @@ for (const scene of scenes) {
       : scene.name.startsWith('observatory/') ? { resolvers: observatoryResolvers(scene.name) }
       : scene.name.startsWith('workspace/') ? { resolvers: workspaceResolvers(scene.name) }
       : scene.name.startsWith('prs/') ? { resolvers: prsResolvers(scene) }
-      : scene.name.startsWith('settings/') ? { resolvers: settingsResolvers(scene) } : {})
-    if (scene.name.startsWith('prs/')) {
+      : scene.name.startsWith('settings/') ? { resolvers: settingsResolvers(scene) }
+      : isViewScene(scene) ? { resolvers: viewsResolvers(scene) } : {})
+    if (scene.name.startsWith('prs/') || isViewScene(scene)) {
       // Avatar photos come from the network in the app; neither renderer fetches them here.
       await page.route('https://github.com/**', (r) => r.abort())
       await page.route('https://avatars.githubusercontent.com/**', (r) => r.abort())

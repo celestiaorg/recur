@@ -66,7 +66,7 @@ fn keystroke(key: &str) -> String {
 }
 
 /// Every scene: recur-ui's widgets (including the editor's, built by
-/// `recur_editor::gallery`), then the terminal's, the app shell's, rich content's, the chat's, the review surface's, the Observatory's, the workspace view's and the PR views'.
+/// `recur_editor::gallery`), then the terminal's, the app shell's, rich content's, the chat's, the review surface's, the Observatory's, the workspace view's, the PR views', Settings', the home views', the briefing views' and project settings'.
 fn all_specs() -> Vec<SceneSpec> {
     let mut specs = gallery::specs();
     specs.extend(recur_terminal_view::gallery::specs());
@@ -78,6 +78,9 @@ fn all_specs() -> Vec<SceneSpec> {
     specs.extend(recur_view_workspace::gallery::specs());
     specs.extend(recur_view_prs::gallery::specs());
     specs.extend(recur_view_settings::gallery::specs());
+    specs.extend(recur_view_home::gallery::specs());
+    specs.extend(recur_view_briefing::gallery::specs());
+    specs.extend(recur_view_projects::gallery::specs());
     specs
 }
 
@@ -93,6 +96,9 @@ fn exists(name: &str) -> bool {
         || recur_view_workspace::gallery::exists(name)
         || recur_view_prs::gallery::exists(name)
         || recur_view_settings::gallery::exists(name)
+        || recur_view_home::gallery::exists(name)
+        || recur_view_briefing::gallery::exists(name)
+        || recur_view_projects::gallery::exists(name)
 }
 
 fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyView> {
@@ -122,6 +128,15 @@ fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyV
     }
     if recur_view_settings::gallery::exists(name) {
         return recur_view_settings::gallery::build(name, window, cx);
+    }
+    if recur_view_home::gallery::exists(name) {
+        return recur_view_home::gallery::build(name, window, cx);
+    }
+    if recur_view_briefing::gallery::exists(name) {
+        return recur_view_briefing::gallery::build(name, window, cx);
+    }
+    if recur_view_projects::gallery::exists(name) {
+        return recur_view_projects::gallery::build(name, window, cx);
     }
     recur_editor::gallery::build(name, window, cx).or_else(|| gallery::build(name, window, cx))
 }

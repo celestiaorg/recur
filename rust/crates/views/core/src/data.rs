@@ -278,49 +278,70 @@ impl AppState {
         .detach();
     }
 
+    /// `hideWorkspacesNow`: mark the rows removed at once (leaving the detail view if one is on
+    /// screen) and return the originals.
+    fn hide_workspaces_now(&mut self, ids: &[String], cx: &mut Context<Self>) -> Vec<Workspace> {
+        let mut originals = Vec::new();
+        for w in self.workspaces.iter_mut() {
+            if ids.contains(&w.id) {
+                originals.push(w.clone());
+                *w = mark_removed(w);
+            }
+        }
+        if self.view == crate::ViewName::Detail && ids.contains(&self.selected_workspace_id) {
+            self.go(crate::ViewName::Briefing, None, cx);
+        }
+        cx.notify();
+        originals
+    }
+
     /// `removeWorkspace` (`lib/remove-workspace.ts`): hide the row at once (leaving the detail
     /// view if it is on screen), archive it, and restore the list on failure.
     pub fn remove_workspace(&mut self, id: &str, cx: &mut Context<Self>) -> Task<bool> {
         if id.is_empty() {
             return Task::ready(false);
         }
-        let viewing = self.view == crate::ViewName::Detail && self.selected_workspace_id == id;
-        let original = self.workspace(id).cloned();
-        if let Some(w) = self.workspaces.iter_mut().find(|w| w.id == id) {
-            *w = mark_removed(w);
-        }
-        if viewing {
-            self.go(crate::ViewName::Briefing, None, cx);
-        }
-        cx.notify();
+        let ids = vec![id.to_string()];
+        let original = self.hide_workspaces_now(&ids, cx).pop();
         let services = self.services.clone();
         let id = id.to_string();
         cx.spawn(async move |this, cx| {
-            if let Some(removed) = call(
-                cx,
-                services.workspaces.remove_workspace(&id),
-                "Remove failed",
-            )
-            .await
-            {
-                let _ = this.update(cx, |s, cx| {
-                    s.replace_workspace(removed, cx);
-                    s.prune_workspace_client_state(&id, cx);
-                    toast(ToastKind::Success, "Workspace removed", cx);
-                });
-                return true;
+            finish_remove(&this, &services, &id, original, false, &[], cx).await
+        })
+    }
+
+    /// `removeWorkspaces`: archive several workspaces one after another and toast once.
+    pub fn remove_workspaces(&mut self, ids: &[String], cx: &mut Context<Self>) -> Task<usize> {
+        let mut unique: Vec<String> = Vec::new();
+        for id in ids {
+            if !id.is_empty() && !unique.contains(id) {
+                unique.push(id.clone());
             }
-            match services.workspaces.list_workspaces().await {
-                Ok(list) => {
-                    let _ = this.update(cx, |s, cx| s.set_workspaces_from_list(list, cx));
-                }
-                Err(_) => {
-                    if let Some(original) = original {
-                        let _ = this.update(cx, |s, cx| s.upsert_workspace(original, cx));
-                    }
+        }
+        if unique.len() == 1 {
+            let one = self.remove_workspace(&unique[0], cx);
+            return cx.spawn(async move |_, _| usize::from(one.await));
+        }
+        if unique.is_empty() {
+            return Task::ready(0);
+        }
+        let originals = self.hide_workspaces_now(&unique, cx);
+        let services = self.services.clone();
+        cx.spawn(async move |this, cx| {
+            let mut n = 0;
+            for (i, id) in unique.iter().enumerate() {
+                let original = originals.iter().find(|w| &w.id == id).cloned();
+                let pending = unique.get(i + 1..).unwrap_or_default();
+                if finish_remove(&this, &services, id, original, true, pending, cx).await {
+                    n += 1;
                 }
             }
-            false
+            let _ = this.update(cx, |_, cx| match n {
+                0 => {}
+                1 => toast(ToastKind::Success, "Workspace removed", cx),
+                n => toast(ToastKind::Success, format!("{n} workspaces removed"), cx),
+            });
+            n
         })
     }
 
@@ -1196,6 +1217,56 @@ impl AppState {
 }
 
 /// `markRemoved`: archived, no worktree, no port.
+/// `finishRemove`: archive one hidden workspace; on failure reload the list (keeping the rows
+/// still `pending` hidden) or restore the original.
+async fn finish_remove(
+    this: &WeakEntity<AppState>,
+    services: &recur_services::Services,
+    id: &str,
+    original: Option<Workspace>,
+    silent: bool,
+    pending: &[String],
+    cx: &mut AsyncApp,
+) -> bool {
+    if let Some(removed) = call(
+        cx,
+        services.workspaces.remove_workspace(id),
+        "Remove failed",
+    )
+    .await
+    {
+        let _ = this.update(cx, |s, cx| {
+            s.replace_workspace(removed, cx);
+            s.prune_workspace_client_state(id, cx);
+            if !silent {
+                toast(ToastKind::Success, "Workspace removed", cx);
+            }
+        });
+        return true;
+    }
+    match services.workspaces.list_workspaces().await {
+        Ok(list) => {
+            let list = list
+                .into_iter()
+                .map(|w| {
+                    if pending.contains(&w.id) {
+                        mark_removed(&w)
+                    } else {
+                        w
+                    }
+                })
+                .collect();
+            let _ = this.update(cx, |s, cx| s.set_workspaces_from_list(list, cx));
+        }
+        Err(_) => {
+            if let Some(original) = original {
+                let _ = this.update(cx, |s, cx| s.upsert_workspace(original, cx));
+            }
+        }
+    }
+    false
+}
+
 fn mark_removed(w: &Workspace) -> Workspace {
     Workspace {
         archived: true,

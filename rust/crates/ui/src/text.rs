@@ -83,6 +83,8 @@ pub struct TextStyle {
     pub uppercase: Option<bool>,
     pub tabular: Option<bool>,
     pub underline: Option<bool>,
+    /// `text-underline-offset`: the underline's top this far below the baseline.
+    pub underline_offset: Option<f32>,
     pub line_through: Option<bool>,
 }
 
@@ -98,6 +100,7 @@ impl TextStyle {
             uppercase: self.uppercase.or(base.uppercase),
             tabular: self.tabular.or(base.tabular),
             underline: self.underline.or(base.underline),
+            underline_offset: self.underline_offset.or(base.underline_offset),
             line_through: self.line_through.or(base.line_through),
         }
     }
@@ -164,6 +167,11 @@ pub trait TextStyled: Sized {
     }
     fn underline(mut self, on: bool) -> Self {
         self.text_style_mut().underline = Some(on);
+        self
+    }
+    /// `text-underline-offset` in px.
+    fn underline_offset(mut self, px: f32) -> Self {
+        self.text_style_mut().underline_offset = Some(px);
         self
     }
     fn line_through(mut self, on: bool) -> Self {
@@ -478,6 +486,7 @@ struct RunStyle {
     color: Hsla,
     tracking: f32,
     underline: bool,
+    underline_offset: Option<f32>,
     line_through: bool,
 }
 
@@ -686,6 +695,7 @@ impl Text {
             uppercase: Some(false),
             tabular: Some(false),
             underline: Some(false),
+            underline_offset: None,
             line_through: Some(false),
         };
         let base_style = self.style.over(&parent);
@@ -706,6 +716,7 @@ impl Text {
                 color: s.color.unwrap_or_default().opacity(self.opacity),
                 tracking: s.tracking.unwrap_or(Tracking::Px(0.)).px(size),
                 underline: s.underline.unwrap_or(false),
+                underline_offset: s.underline_offset,
                 line_through: s.line_through.unwrap_or(false),
             }
         };
@@ -1883,8 +1894,9 @@ fn paint_lines(
             let x1 = left + p.x_at(r.end - p.range.start);
             let deco = crate::font_metrics::decorations(&run.family, run.size);
             if underline {
+                let y = run.underline_offset.unwrap_or(deco.underline_offset);
                 window.paint_underline(
-                    point(px(x0), px(baseline + deco.underline_offset)),
+                    point(px(x0), px(baseline + y)),
                     px(x1 - x0),
                     &UnderlineStyle {
                         thickness: px(deco.underline_thickness),
@@ -2000,6 +2012,7 @@ mod tests {
             color: Hsla::default(),
             tracking: 0.,
             underline: false,
+            underline_offset: None,
             line_through: false,
         }
     }

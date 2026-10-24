@@ -993,6 +993,12 @@ pub fn input_box(
 /// which hides carets) is nearly transparent instead.
 pub fn style_text_input(input: &Entity<InputState>, cx: &mut App) {
     let t = tokens(cx);
+    style_text_input_fg(input, t.text, cx);
+}
+
+/// [`style_text_input`] with the typed text in `fg` (a field whose color follows its state).
+pub fn style_text_input_fg(input: &Entity<InputState>, fg: Color, cx: &mut App) {
+    let t = tokens(cx);
     let hidden: Hsla = t.text.with_alpha(0.001).into();
     let caret = if crate::motion::is_frozen(cx) {
         hidden
@@ -1001,8 +1007,34 @@ pub fn style_text_input(input: &Entity<InputState>, cx: &mut App) {
     };
     input.update(cx, |s, _| {
         s.set_editor_style(InputEditorStyle {
-            foreground: t.text.into(),
+            foreground: fg.into(),
             muted_foreground: hidden,
+            background: Hsla::transparent_black(),
+            border: Hsla::transparent_black(),
+            selection: t.amber.fade(0.3).into(),
+            caret,
+            ..Default::default()
+        })
+    });
+}
+
+/// Colors a `<textarea>` (gpui-base's own placeholder in `placeholder`); the caret hides in a
+/// parity capture as in [`style_text_input`].
+pub fn style_textarea(
+    area: &Entity<gpui_kit::base::input::TextareaState>,
+    placeholder: Color,
+    cx: &mut App,
+) {
+    let t = tokens(cx);
+    let caret: Hsla = if crate::motion::is_frozen(cx) {
+        t.text.with_alpha(0.001).into()
+    } else {
+        t.text.into()
+    };
+    area.update(cx, |s, _| {
+        s.set_editor_style(InputEditorStyle {
+            foreground: t.text.into(),
+            muted_foreground: placeholder.into(),
             background: Hsla::transparent_black(),
             border: Hsla::transparent_black(),
             selection: t.amber.fade(0.3).into(),
@@ -1275,6 +1307,34 @@ pub fn esc_key(hovered: bool, cx: &App) -> Div {
                 .size(9.5)
                 .color(if hovered { t.muted } else { t.faint }),
         )
+}
+
+/// `.nt-x .esc`: an inline span in the close button, so its box is the 9.5px system font's
+/// content area plus padding and border, set on the button's 11px Inter strut by baseline.
+pub fn nt_esc_hint(hovered: bool, window: &Window, cx: &App) -> Div {
+    use crate::fonts::Family;
+    use crate::text::strut_metrics;
+    let t = tokens(cx);
+    let strut = strut_metrics(&Family::Ui, 11., LineHeight::Normal, window);
+    let m = strut_metrics(&Family::System, 9.5, LineHeight::Normal, window);
+    let content = m.ascent + m.descent;
+    let top = strut.baseline - m.ascent - 3.;
+    div().h(px(strut.height)).child(
+        div()
+            .relative()
+            .top(px(top))
+            .border(px(1.))
+            .border_color(Hsla::from(if hovered { t.line_bright } else { t.line }))
+            .rounded(px(4.))
+            .py(px(2.))
+            .px(px(6.))
+            .child(
+                crate::kbd::kbd("esc")
+                    .size(9.5)
+                    .line_height(LineHeight::Px(content))
+                    .color(if hovered { t.muted } else { t.faint }),
+            ),
+    )
 }
 
 /// `.nt-tip-pop`: the hover help popover, `--pane-2` with `--line-bright`, radius 9, 280px wide

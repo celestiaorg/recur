@@ -153,7 +153,13 @@ pub struct TriggerStyle {
     pub no_outline: bool,
     /// `min-height` with `pad_y` (`.editor-prefs .font-sel .sel-btn`).
     pub min_height: Option<f32>,
+    /// Inside a modal dialog (`.nt-modal .sel-btn.kb-focus`): reached by Tab, the trigger
+    /// shows a 2px `--amber` ring 2px out instead of the global `:focus-visible` ring.
+    pub kb_ring: bool,
 }
+
+/// A trigger icon drawn by the owner (the `icon` snippet: `.nt-pic` project pictures).
+pub type IconSlot = std::rc::Rc<dyn Fn(&mut Window, &mut App) -> AnyElement>;
 
 /// The select. Create with [`Select::new`] in an owning view, keep the entity, and render it.
 pub struct Select {
@@ -172,6 +178,7 @@ pub struct Select {
     variant: MenuVariant,
     trigger: TriggerStyle,
     custom_icon: Option<IconName>,
+    icon_slot: Option<IconSlot>,
     open: bool,
     opened_at: Option<Instant>,
     closed_at: Option<Instant>,
@@ -289,6 +296,7 @@ impl Select {
             variant: MenuVariant::Default,
             trigger: TriggerStyle::default(),
             custom_icon: None,
+            icon_slot: None,
             open: false,
             opened_at: None,
             closed_at: None,
@@ -357,6 +365,16 @@ impl Select {
     }
 
     /// Swap the trigger's custom icon (a sort control showing the current order's icon).
+    /// `portalMenuMods`' menu class for the context the select sits in.
+    pub fn set_menu_variant(&mut self, v: MenuVariant, cx: &mut Context<Self>) {
+        self.variant = v;
+        cx.notify();
+    }
+    /// The `icon` snippet as an element (wins over [`Select::set_icon`]).
+    pub fn set_icon_slot(&mut self, slot: Option<IconSlot>, cx: &mut Context<Self>) {
+        self.icon_slot = slot;
+        cx.notify();
+    }
     pub fn set_icon(&mut self, i: Option<IconName>, cx: &mut Context<Self>) {
         if self.custom_icon != i {
             self.custom_icon = i;
@@ -816,7 +834,11 @@ impl Render for Select {
             ));
         }
         // `:focus-visible`'s outline outranks `.sel-btn { outline: none }` by coming later.
-        if focus_visible && !disabled && !tr.no_outline {
+        if focus_visible && !disabled && tr.kb_ring {
+            button = button
+                .relative()
+                .child(crate::style::outline(2., 2., radius, border_w, t.amber));
+        } else if focus_visible && !disabled && !tr.no_outline {
             button = button
                 .relative()
                 .child(crate::style::focus_ring(radius, border_w, cx));
@@ -839,7 +861,14 @@ impl Render for Select {
             };
         }
         // Icon: custom, the selected option's app icon (tinted), or its provider mark.
-        if let Some(i) = self.custom_icon {
+        if let Some(slot) = self.icon_slot.clone() {
+            button = button.child(
+                div()
+                    .flex_none()
+                    .text_color(ico_color)
+                    .child(slot(window, cx)),
+            );
+        } else if let Some(i) = self.custom_icon {
             button = button.child(
                 div()
                     .flex_none()

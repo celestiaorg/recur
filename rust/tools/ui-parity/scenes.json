@@ -1964,5 +1964,51 @@
     {"name": "settings/usage-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 23000, "hardTolerance": 51, "fixture": "usage", "section": "general", "steps": [{"click": [222, 753]}]},
     {"name": "settings/keybinding-menu", "width": 1280, "height": 800, "theme": "default", "tolerance": 34190, "hardTolerance": 16, "fixture": "base", "section": "general", "act": "keybinding-menu"},
     {"name": "settings/keybinding-menu-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 13800, "hardTolerance": 21, "fixture": "base", "section": "general", "act": "keybinding-menu"}
+  ],
+  "home": [
+    {"name": "home/welcome", "width": 1280, "height": 800, "theme": "default", "tolerance": 3470, "hardTolerance": 11, "fixture": "first-run", "route": "welcome"},
+    {"name": "home/welcome-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 3530, "fixture": "first-run", "route": "welcome"},
+    {"name": "home/welcome-modes", "width": 1280, "height": 800, "theme": "default", "tolerance": 7990, "hardTolerance": 11, "fixture": "no-workspaces", "route": "welcome"},
+    {"name": "home/welcome-done", "width": 1280, "height": 800, "theme": "default", "tolerance": 7550, "fixture": "base", "route": "welcome"},
+    {"name": "home/new-project", "width": 1280, "height": 800, "theme": "default", "tolerance": 4040, "fixture": "base", "route": "newproject"},
+    {"name": "home/new-project-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 4350, "fixture": "base", "route": "newproject"},
+    {"name": "home/new-project-path", "width": 1280, "height": 800, "theme": "default", "tolerance": 7370, "hardTolerance": 189, "fixture": "base", "route": "newproject", "steps": [{"type": "/Users/dev/code/storefront"}, {"wait": 400}]},
+    {"name": "home/new-task", "width": 1280, "height": 800, "theme": "default", "tolerance": 5160, "fixture": "base", "route": "newtask"},
+    {"name": "home/new-task-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 5380, "fixture": "base", "route": "newtask"},
+    {"name": "home/new-task-loop", "width": 1280, "height": 800, "theme": "default", "tolerance": 4100, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}},
+    {"name": "home/new-task-repo", "width": 1280, "height": 800, "theme": "default", "tolerance": 5330, "fixture": "base", "route": "newtask", "steps": [{"click": [397, 205]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-branch", "width": 1280, "height": 800, "theme": "default", "tolerance": 11890, "fixture": "base", "route": "newtask", "steps": [{"click": [506, 205]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-mode", "width": 1280, "height": 800, "theme": "default", "tolerance": 11540, "fixture": "base", "route": "newtask", "steps": [{"click": [374, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-model", "width": 1280, "height": 800, "theme": "default", "tolerance": 8190, "fixture": "base", "route": "newtask", "steps": [{"click": [477, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-flags", "width": 1280, "height": 800, "theme": "default", "tolerance": 8320, "fixture": "base", "route": "newtask", "steps": [{"click": [557, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-loop-picker", "width": 1280, "height": 800, "theme": "default", "tolerance": 4350, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}, "steps": [{"click": [470, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-policy", "width": 1280, "height": 800, "theme": "default", "tolerance": 7710, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}, "steps": [{"click": [575, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-tip", "width": 1280, "height": 800, "theme": "default", "tolerance": 9960, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}, "steps": [{"click": [640, 395]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "home/new-task-slash", "width": 1280, "height": 800, "theme": "default", "tolerance": 11330, "hardTolerance": 3, "fixture": "base", "route": "newtask", "steps": [{"type": "/"}, {"wait": 300}]}
+  ],
+  "briefing": [
+    {"name": "briefing/inbox", "width": 1280, "height": 800, "theme": "default", "tolerance": 22480, "hardTolerance": 163, "fixture": "base", "route": "briefing"},
+    {"name": "briefing/inbox-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 22760, "hardTolerance": 157, "fixture": "base", "route": "briefing"},
+    {"name": "briefing/inbox-closed", "width": 1280, "height": 800, "theme": "default", "tolerance": 8880, "hardTolerance": 163, "fixture": "base", "route": "briefing", "storage": {"recur.askRecurOpen": "0"}},
+    {"name": "briefing/issues", "width": 1280, "height": 800, "theme": "default", "tolerance": 23620, "hardTolerance": 24, "fixture": "issues", "route": "issues"},
+    {"name": "briefing/issues-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 23360, "hardTolerance": 14, "fixture": "issues", "route": "issues"},
+    {"name": "briefing/issues-board", "width": 1280, "height": 800, "theme": "default", "tolerance": 12210, "fixture": "issues-board", "route": "issues"},
+    {"name": "briefing/schedules", "width": 1280, "height": 800, "theme": "default", "tolerance": 8000, "hardTolerance": 20, "fixture": "schedules", "route": "schedules"},
+    {"name": "briefing/schedules-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 8040, "hardTolerance": 28, "fixture": "schedules", "route": "schedules"},
+    {"name": "briefing/inbox-narrow", "width": 1000, "height": 760, "theme": "default", "tolerance": 5800, "fixture": "base", "route": "briefing"},
+    {"name": "briefing/schedule-editor", "width": 1280, "height": 800, "theme": "default", "tolerance": 14620, "hardTolerance": 126, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]},
+    {"name": "briefing/schedule-editor-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 16160, "hardTolerance": 119, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]}
+  ],
+  "projects": [
+    {"name": "projects/general", "width": 1280, "height": 800, "theme": "default", "tolerance": 8940, "hardTolerance": 58, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/general-tall", "width": 1280, "height": 1500, "theme": "default", "tolerance": 9480, "hardTolerance": 58, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/general-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 9170, "hardTolerance": 117, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/run", "width": 1280, "height": 800, "theme": "default", "tolerance": 27550, "hardTolerance": 223, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 760]}, {"wait": 500}]},
+    {"name": "projects/run-tall", "width": 1280, "height": 1800, "theme": "default", "tolerance": 62300, "hardTolerance": 291, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 1760]}, {"wait": 500}]},
+    {"name": "projects/schedules", "width": 1280, "height": 800, "theme": "default", "tolerance": 6840, "fixture": "schedules", "route": "project:storefront", "steps": [{"click": [328, 216]}, {"move": [1180, 760]}, {"wait": 500}]},
+    {"name": "projects/prs", "width": 1280, "height": 800, "theme": "default", "tolerance": 34940, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 247]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "projects/skills", "width": 1280, "height": 800, "theme": "default", "tolerance": 5300, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 278]}, {"move": [1180, 760]}, {"wait": 500}]},
+    {"name": "projects/mcp", "width": 1280, "height": 800, "theme": "default", "tolerance": 4950, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 308]}, {"move": [1180, 760]}, {"wait": 300}]},
+    {"name": "projects/danger", "width": 1280, "height": 800, "theme": "default", "tolerance": 6480, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 371]}, {"move": [1180, 760]}, {"wait": 300}]}
   ]
 }

@@ -28,19 +28,21 @@
   import WorkspaceScene from './scenes/Workspace.svelte'
   import PrsScene from './scenes/Prs.svelte'
   import SettingsPage from './scenes/SettingsPage.svelte'
+  import Views from './scenes/Views.svelte'
 
   let { name }: { name: string } = $props()
   const kind = $derived(name.split('/')[0])
   const variant = $derived(name.split('/').slice(1).join('/'))
   let ready = $state(false)
   const CONTENT = ['markdown', 'mermaid', 'pdf', 'file-preview', 'lightbox']
+  const VIEWS = ['home', 'briefing', 'projects']
   // Editor scenes are ready once TextMate has painted tokens.
   function painted(): boolean {
     return kind !== 'editor' || !!document.querySelector('.cm-line span')
   }
   onMount(() => {
     // Terminal and shell scenes report their own readiness.
-    if (kind === 'terminal' || kind === 'shell' || kind === 'chat' || kind === 'review' || kind === 'observatory' || kind === 'workspace' || kind === 'prs' || kind === 'settings' || CONTENT.includes(kind)) return
+    if (kind === 'terminal' || kind === 'shell' || kind === 'chat' || kind === 'review' || kind === 'observatory' || kind === 'workspace' || kind === 'prs' || kind === 'settings' || VIEWS.includes(kind) || CONTENT.includes(kind)) return
     const settle = () => requestAnimationFrame(() => requestAnimationFrame(() => (ready = true)))
     const wait = (left: number) => (painted() || left <= 0 ? settle() : setTimeout(() => wait(left - 1), 50))
     wait(100)
@@ -104,6 +106,8 @@
     <PrsScene onready={() => (ready = true)} />
   {:else if kind === 'settings'}
     <SettingsPage onready={() => (ready = true)} />
+  {:else if VIEWS.includes(kind)}
+    <Views onready={() => (ready = true)} />
   {:else}
     <p>unknown scene {name} ({variant})</p>
   {/if}

@@ -10,10 +10,10 @@ use gpui_kit::{
 };
 use recur_domain::{CompatibleModel, CompatibleProvider};
 use recur_services::Services;
-use recur_ui::fonts::{Family, weight};
+use recur_ui::fonts::weight;
 use recur_ui::shadow::with_shadow;
 use recur_ui::style::{MODAL_SHADOW, button_label, modal_panel, primary_button};
-use recur_ui::text::{LineHeight, TextStyled, strut_metrics, text};
+use recur_ui::text::{TextStyled, text};
 
 use crate::field::{Field, FieldEvent, FieldOpts};
 use crate::rules::{COMPATIBLE_PRESETS, CompatiblePreset, compatible_slug_error};
@@ -285,33 +285,6 @@ impl CompatibleProviderModal {
     }
 }
 
-/// `.nt-x .esc`: an inline span in the close button, so its box is the 9.5px system font's
-/// content area plus padding and border, set on the button's 11px Inter strut by baseline (as
-/// `recur_view_prs::review_modal` draws it).
-fn esc_hint(hovered: bool, window: &Window, cx: &App) -> gpui_kit::Div {
-    let t = tokens(cx);
-    let strut = strut_metrics(&Family::Ui, 11., LineHeight::Normal, window);
-    let m = strut_metrics(&Family::System, 9.5, LineHeight::Normal, window);
-    let content = m.ascent + m.descent;
-    let top = strut.baseline - m.ascent - 3.;
-    div().h(px(strut.height)).child(
-        div()
-            .relative()
-            .top(px(top))
-            .border(px(1.))
-            .border_color(hsla(if hovered { t.line_bright } else { t.line }))
-            .rounded(px(4.))
-            .py(px(2.))
-            .px(px(6.))
-            .child(
-                recur_ui::kbd::kbd("esc")
-                    .size(9.5)
-                    .line_height(LineHeight::Px(content))
-                    .color(if hovered { t.muted } else { t.faint }),
-            ),
-    )
-}
-
 impl Render for CompatibleProviderModal {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = tokens(cx);
@@ -419,7 +392,7 @@ impl Render for CompatibleProviderModal {
                 cx.notify();
             }))
             .on_click(cx.listener(|_, _, _, cx| cx.emit(ModalEvent::Close)))
-            .child(esc_hint(self.hover_x, window, cx));
+            .child(recur_ui::style::nt_esc_hint(self.hover_x, window, cx));
         let head = div()
             .flex()
             .flex_none()

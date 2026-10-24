@@ -257,7 +257,10 @@ fn back_button(
 /// `.tb-sub`: mono 11px `--faint` counts beside the crumb.
 fn tb_sub(label: impl Into<SharedString>, cx: &App) -> impl IntoElement {
     let t = Theme::of(cx).tokens;
+    let label: SharedString = label.into();
+    let l = label.clone();
     div()
+        .debug_selector(move || format!("tb-sub={l}"))
         .flex_none()
         .child(text(label).mono().size(11.).color(t.faint).nowrap())
 }
@@ -484,6 +487,7 @@ impl Shell {
             if unread > 0 {
                 right = right.child(no_drag(
                     tbtn("tb-mark-read", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
+                        .debug_selector(|| "tb-mark-read".into())
                         .on_click({
                             let state = state.clone();
                             move |_, _, cx| mark_all_inbox_read(&state, cx)
@@ -804,11 +808,11 @@ fn schedule_counts(s: &AppState, cx: &App) -> impl IntoElement {
 }
 
 /// `Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })` in en-US:
-/// "Oct 21, 2026, 3:04 PM", in local time.
+/// "Oct 21, 2026 at 3:04 PM", in local time.
 pub fn format_medium_short(ms: i64) -> String {
     use chrono::{Local, TimeZone};
     match Local.timestamp_millis_opt(ms).single() {
-        Some(d) => d.format("%b %-d, %Y, %-I:%M %p").to_string(),
+        Some(d) => d.format("%b %-d, %Y at %-I:%M %p").to_string(),
         None => String::new(),
     }
 }

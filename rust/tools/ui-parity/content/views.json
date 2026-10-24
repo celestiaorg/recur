@@ -1,0 +1,357 @@
+{
+  "fixtures": {
+    "base": {},
+    "first-run": {
+      "resolvers": {
+        "ListProjects": [],
+        "ListWorkspaces": []
+      }
+    },
+    "no-workspaces": {
+      "resolvers": {
+        "ListWorkspaces": []
+      }
+    },
+    "issues": {
+      "resolvers": {
+        "ListAssignedIssues": [
+          {
+            "source": "linear",
+            "id": "lin-1",
+            "ref": "ENG-412",
+            "title": "Rate-limit the public API per key",
+            "url": "https://linear.app/acme/issue/ENG-412",
+            "createdAt": "2024-03-01T10:00:00Z",
+            "updatedAt": "2024-06-02T10:00:00Z",
+            "group": "progress",
+            "state": "In Progress",
+            "stateColor": "f2c94c",
+            "statePosition": 2,
+            "priority": 1,
+            "priorityLabel": "Urgent",
+            "project": "Payments",
+            "labels": [
+              {
+                "name": "backend",
+                "color": "5e6ad2"
+              },
+              {
+                "name": "api",
+                "color": "26b5ce"
+              }
+            ],
+            "comments": 3,
+            "assignees": [
+              {
+                "login": "jd",
+                "name": "Josh D"
+              }
+            ],
+            "projectId": "payments",
+            "linearProject": "Payments",
+            "linearTeam": "ENG"
+          },
+          {
+            "source": "github",
+            "id": "gh-88",
+            "ref": "acme/storefront#88",
+            "title": "Checkout button overlaps the cart drawer on narrow screens",
+            "url": "https://github.com/acme/storefront/issues/88",
+            "createdAt": "2024-02-11T10:00:00Z",
+            "updatedAt": "2024-05-20T10:00:00Z",
+            "group": "todo",
+            "state": "Open",
+            "stateColor": "",
+            "statePosition": 0,
+            "priority": 0,
+            "priorityLabel": "",
+            "project": "acme/storefront",
+            "labels": [
+              {
+                "name": "bug",
+                "color": "d73a4a"
+              }
+            ],
+            "comments": 1,
+            "assignees": [],
+            "projectId": "storefront",
+            "linearProject": "",
+            "linearTeam": ""
+          },
+          {
+            "source": "linear",
+            "id": "lin-2",
+            "ref": "ENG-415",
+            "title": "Retry webhooks with exponential backoff",
+            "url": "https://linear.app/acme/issue/ENG-415",
+            "createdAt": "2024-01-05T10:00:00Z",
+            "updatedAt": "2024-04-10T10:00:00Z",
+            "group": "todo",
+            "state": "Todo",
+            "stateColor": "e2e2e2",
+            "statePosition": 1,
+            "priority": 2,
+            "priorityLabel": "High",
+            "project": "Payments",
+            "labels": [],
+            "comments": 0,
+            "assignees": [
+              {
+                "login": "ana",
+                "name": "Ana Ruiz"
+              }
+            ],
+            "projectId": "payments",
+            "linearProject": "Payments",
+            "linearTeam": "ENG"
+          },
+          {
+            "source": "linear",
+            "id": "lin-3",
+            "ref": "WEB-31",
+            "title": "Refresh the pricing page hero copy",
+            "url": "https://linear.app/acme/issue/WEB-31",
+            "createdAt": "2023-12-01T10:00:00Z",
+            "updatedAt": "2024-03-15T10:00:00Z",
+            "group": "backlog",
+            "state": "Backlog",
+            "stateColor": "bec2c8",
+            "statePosition": 0,
+            "priority": 4,
+            "priorityLabel": "Low",
+            "project": "Website",
+            "labels": [
+              {
+                "name": "copy",
+                "color": "f2994a"
+              }
+            ],
+            "comments": 0,
+            "assignees": [],
+            "projectId": "",
+            "linearProject": "Website",
+            "linearTeam": "WEB"
+          }
+        ],
+        "GetIssuesView": {}
+      }
+    },
+    "issues-board": {
+      "resolvers": {
+        "ListAssignedIssues": [
+          {
+            "source": "linear",
+            "id": "lin-1",
+            "ref": "ENG-412",
+            "title": "Rate-limit the public API per key",
+            "url": "https://linear.app/acme/issue/ENG-412",
+            "createdAt": "2024-03-01T10:00:00Z",
+            "updatedAt": "2024-06-02T10:00:00Z",
+            "group": "progress",
+            "state": "In Progress",
+            "stateColor": "f2c94c",
+            "statePosition": 2,
+            "priority": 1,
+            "priorityLabel": "Urgent",
+            "project": "Payments",
+            "labels": [
+              {
+                "name": "backend",
+                "color": "5e6ad2"
+              },
+              {
+                "name": "api",
+                "color": "26b5ce"
+              }
+            ],
+            "comments": 3,
+            "assignees": [
+              {
+                "login": "jd",
+                "name": "Josh D"
+              }
+            ],
+            "projectId": "payments",
+            "linearProject": "Payments",
+            "linearTeam": "ENG"
+          },
+          {
+            "source": "github",
+            "id": "gh-88",
+            "ref": "acme/storefront#88",
+            "title": "Checkout button overlaps the cart drawer on narrow screens",
+            "url": "https://github.com/acme/storefront/issues/88",
+            "createdAt": "2024-02-11T10:00:00Z",
+            "updatedAt": "2024-05-20T10:00:00Z",
+            "group": "todo",
+            "state": "Open",
+            "stateColor": "",
+            "statePosition": 0,
+            "priority": 0,
+            "priorityLabel": "",
+            "project": "acme/storefront",
+            "labels": [
+              {
+                "name": "bug",
+                "color": "d73a4a"
+              }
+            ],
+            "comments": 1,
+            "assignees": [],
+            "projectId": "storefront",
+            "linearProject": "",
+            "linearTeam": ""
+          },
+          {
+            "source": "linear",
+            "id": "lin-2",
+            "ref": "ENG-415",
+            "title": "Retry webhooks with exponential backoff",
+            "url": "https://linear.app/acme/issue/ENG-415",
+            "createdAt": "2024-01-05T10:00:00Z",
+            "updatedAt": "2024-04-10T10:00:00Z",
+            "group": "todo",
+            "state": "Todo",
+            "stateColor": "e2e2e2",
+            "statePosition": 1,
+            "priority": 2,
+            "priorityLabel": "High",
+            "project": "Payments",
+            "labels": [],
+            "comments": 0,
+            "assignees": [
+              {
+                "login": "ana",
+                "name": "Ana Ruiz"
+              }
+            ],
+            "projectId": "payments",
+            "linearProject": "Payments",
+            "linearTeam": "ENG"
+          },
+          {
+            "source": "linear",
+            "id": "lin-3",
+            "ref": "WEB-31",
+            "title": "Refresh the pricing page hero copy",
+            "url": "https://linear.app/acme/issue/WEB-31",
+            "createdAt": "2023-12-01T10:00:00Z",
+            "updatedAt": "2024-03-15T10:00:00Z",
+            "group": "backlog",
+            "state": "Backlog",
+            "stateColor": "bec2c8",
+            "statePosition": 0,
+            "priority": 4,
+            "priorityLabel": "Low",
+            "project": "Website",
+            "labels": [
+              {
+                "name": "copy",
+                "color": "f2994a"
+              }
+            ],
+            "comments": 0,
+            "assignees": [],
+            "projectId": "",
+            "linearProject": "Website",
+            "linearTeam": "WEB"
+          }
+        ],
+        "GetIssuesView": {
+          "layout": "board"
+        }
+      }
+    },
+    "schedules": {
+      "resolvers": {
+        "ListScheduledPrompts": [
+          {
+            "id": "sc-1",
+            "projectId": "storefront",
+            "name": "Nightly test sweep",
+            "prompt": "Run the full test suite and fix flaky tests",
+            "baseBranch": "main",
+            "mode": "agent",
+            "model": "claude-code/sonnet",
+            "cadence": "cron",
+            "cron": "0 2 * * *",
+            "date": "",
+            "time": "",
+            "timeZone": "UTC",
+            "paused": false,
+            "nextRunAt": 1924999200000,
+            "lastRun": {
+              "id": "r1",
+              "scheduleId": "sc-1",
+              "dueAt": 1700000000000,
+              "workspaceId": "",
+              "status": "finished",
+              "detail": "Done"
+            }
+          },
+          {
+            "id": "sc-2",
+            "projectId": "storefront",
+            "name": "Weekly dependency review",
+            "prompt": "Review outdated dependencies",
+            "baseBranch": "main",
+            "mode": "ask",
+            "model": "claude-code/sonnet",
+            "cadence": "cron",
+            "cron": "0 9 * * MON",
+            "date": "",
+            "time": "",
+            "timeZone": "America/New_York",
+            "paused": true,
+            "nextRunAt": 0
+          },
+          {
+            "id": "sc-3",
+            "projectId": "payments",
+            "name": "Release notes draft",
+            "prompt": "Draft release notes",
+            "baseBranch": "main",
+            "mode": "plan",
+            "model": "claude-code/sonnet",
+            "cadence": "once",
+            "cron": "",
+            "date": "2031-01-15",
+            "time": "09:30",
+            "timeZone": "Europe/Berlin",
+            "paused": false,
+            "nextRunAt": 1926059400000,
+            "lastRun": {
+              "id": "r3",
+              "scheduleId": "sc-3",
+              "dueAt": 1700000000000,
+              "workspaceId": "",
+              "status": "failed",
+              "detail": "Could not create the worktree"
+            }
+          },
+          {
+            "id": "sc-4",
+            "projectId": "payments",
+            "name": "Boot check",
+            "prompt": "Check the dev server boots",
+            "baseBranch": "main",
+            "mode": "review",
+            "model": "claude-code/sonnet",
+            "cadence": "cron",
+            "cron": "@reboot",
+            "date": "",
+            "time": "",
+            "timeZone": "UTC",
+            "paused": false,
+            "nextRunAt": 0
+          }
+        ],
+        "PreviewScheduledPrompt": [
+          1924999200000,
+          1925085600000,
+          1925172000000
+        ]
+      }
+    }
+  }
+}

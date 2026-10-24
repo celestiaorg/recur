@@ -562,10 +562,14 @@ impl EditorView {
     }
 
     fn text_width(&self, text: &str, window: &Window) -> f32 {
+        self.text_width_at(text, self.metrics.font_size, window)
+    }
+
+    fn text_width_at(&self, text: &str, size: f32, window: &Window) -> f32 {
         let m = GpuiMeasure {
             ts: window.text_system(),
             font: self.font.clone(),
-            size: px(self.metrics.font_size),
+            size: px(size),
         };
         crate::display::TextMeasure::char_xs(&m, text)
             .last()
@@ -593,8 +597,18 @@ impl EditorView {
                 max = max * 10 + 9;
             }
             let digits = max.to_string();
-            let w = self.text_width(&digits, window);
-            kinds.push((GutterKind::LineNumbers, (w + 8.0).max(20.0)));
+            let w = match &self.mini {
+                // `.cm-lineNumbers .cm-gutterElement { minWidth: 2.2ch; padding: 0 8px 0 6px;
+                // fontSize: 10.5px }` (border-box).
+                Some(m) => {
+                    let size = crate::theme::MiniChrome::GUTTER_FONT;
+                    let (l, r) = crate::theme::MiniChrome::GUTTER_PAD;
+                    let ch = recur_ui::font_metrics::zero_advance(&m.family(), size);
+                    (self.text_width_at(&digits, size, window) + l + r).max(2.2 * ch)
+                }
+                None => (self.text_width(&digits, window) + 8.0).max(20.0),
+            };
+            kinds.push((GutterKind::LineNumbers, w));
         }
         if self.prefs.fold_gutter {
             kinds.push((GutterKind::Fold, self.text_width("\u{203a}", window) + 2.0));
@@ -770,6 +784,35 @@ impl EditorView {
             .push(Op::Quad(fill(rect(bx, by, bw, bh), h(theme.background))));
         plan.scroller
             .push(Op::Quad(fill(rect(bx, by, bw, bh), h(scope_bg))));
+
+        // `placeholder()`: the mini editor's faint hint while the document is empty (upright:
+        // the bundled code faces have no italic, see `ui-parity.md`).
+        if let Some(m) = self.mini.as_ref().filter(|_| self.state.doc.is_empty()) {
+            let top = doc_top + self.metrics.content_padding_y;
+            for (i, line) in m.placeholder.split('\n').enumerate() {
+                if line.is_empty() {
+                    continue;
+                }
+                let shaped = window.text_system().shape_line(
+                    SharedString::from(line.to_string()),
+                    px(self.metrics.font_size),
+                    &[TextRun {
+                        len: line.len(),
+                        font: self.font.clone(),
+                        color: theme.tokens.faint.into(),
+                        background_color: None,
+                        underline: None,
+                        strikethrough: None,
+                    }],
+                    None,
+                );
+                plan.text.push(Op::Text {
+                    line: Box::new(shaped),
+                    origin: point(px(text_left), px(top + i as f32 * lh)),
+                    line_height: px(lh),
+                });
+            }
+        }
 
         let doc = self.state.doc.clone();
         let lines_total = doc.lines();
@@ -1298,10 +1341,19 @@ impl EditorView {
         if gutter_width > 0.0 {
             let gb = rect(bx, by, gutter_width, bh);
             plan.gutter_bounds = Some(gb);
-            plan.gutter
-                .push(Op::Quad(fill(gb, h(theme.gutter_background))));
+            // The mini editor's `.cm-gutters` is as tall as its content (lines and padding),
+            // not the box its `min-height` grows.
+            let gh = if self.mini.is_some() {
+                self.content_height().min(bh)
+            } else {
+                bh
+            };
             plan.gutter.push(Op::Quad(fill(
-                rect(bx + gutters_w, by, 1.0, bh),
+                rect(bx, by, gutter_width, gh),
+                h(theme.gutter_background),
+            )));
+            plan.gutter.push(Op::Quad(fill(
+                rect(bx + gutters_w, by, 1.0, gh),
                 h(theme.gutter_border),
             )));
             self.plan_gutters(
@@ -1940,6 +1992,33 @@ impl EditorView {
                     }
                 }
                 match g.kind {
+                    GutterKind::LineNumbers if self.mini.is_some() => {
+                        // Top-aligned in the 18px element, on its own 10.5px line box
+                        // (the scroller's unitless line-height), 8px from the right.
+                        let size = crate::theme::MiniChrome::GUTTER_FONT;
+                        let label = n.to_string();
+                        let shaped = window.text_system().shape_line(
+                            SharedString::from(label.clone()),
+                            px(size),
+                            &[TextRun {
+                                len: label.len(),
+                                font: self.font.clone(),
+                                color: h(theme.gutter_foreground),
+                                background_color: None,
+                                underline: None,
+                                strikethrough: None,
+                            }],
+                            None,
+                        );
+                        let pad = crate::theme::MiniChrome::GUTTER_PAD.1;
+                        let x = gx + g.width - pad - f32::from(shaped.width);
+                        let box_h = (size * self.metrics.line_height_factor * 64.0).floor() / 64.0;
+                        plan.gutter.push(Op::Text {
+                            line: Box::new(shaped),
+                            origin: point(px(x), px(top)),
+                            line_height: px(box_h),
+                        });
+                    }
                     GutterKind::LineNumbers => {
                         let label = n.to_string();
                         let shaped = window.text_system().shape_line(

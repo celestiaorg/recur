@@ -743,7 +743,9 @@ impl Sidebar {
             });
         let chip = self.unread_chip(&key, p.unseen, p.parked, cx);
         let has_chip = chip.is_some();
+        let on_key = format!("on:{key}");
         let mut el = div()
+            .when(on, |d| d.debug_selector(move || on_key))
             .flex()
             .items_center()
             .gap(px(8.))

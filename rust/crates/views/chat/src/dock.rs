@@ -555,8 +555,10 @@ impl AgentChat {
             .rounded(px(3.))
             .bg(hsla(t.pane_2))
             .child(
+                // A flex item of the row `<button>`: `line-height: normal`.
                 label(s, Family::Ui, 10., 600.)
                     .tracking(0.02)
+                    .line_height(LineHeight::Normal)
                     .color(t.muted),
             )
             .into_any_element()
@@ -805,6 +807,7 @@ impl AgentChat {
                                                 .child(
                                                     label(a.clone(), Family::Ui, 10., 600.)
                                                         .tracking(0.02)
+                                                        .line_height(LineHeight::Normal)
                                                         .color(t.muted),
                                                 )
                                         }))
@@ -862,16 +865,19 @@ impl AgentChat {
         if self.mention_sel < rows.len() {
             self.menu_scroll.scroll_to_item(self.mention_sel);
         }
+        // `overflow: auto` with WebKit's classic scrollbar inside the border.
         let panel = recur_ui::style::card(t.pane, t.line_bright, 10.)
             .id("chat-mention")
             .debug_selector(|| "chat-mention".into())
             .max_h(px(220.))
-            .overflow_y_scroll()
-            .track_scroll(&self.menu_scroll)
-            .p(px(4.))
             .flex()
             .flex_col()
-            .children(rows);
+            .child(
+                recur_ui::widgets::scroll_area("chat-mention-list")
+                    .track(&self.menu_scroll)
+                    .scroller(|d| d.p(px(4.)).flex().flex_col())
+                    .children(rows),
+            );
         let panel = with_shadow(panel, &recur_ui::style::SUGGEST_SHADOW, 10.);
         let el = if self.props.composer_only {
             let top = self
@@ -879,8 +885,17 @@ impl AgentChat {
                 .borrow()
                 .as_ref()
                 .map(|l| {
+                    // `composerCaretClientRect`: a collapsed range's rect is the text box (the
+                    // font's content area) centered in the 1.55 line, not the line box.
                     let (_, y, h) = l.caret(self.doc.caret);
-                    18. + y + h + 4.
+                    let m = recur_ui::text::strut_metrics(
+                        &recur_ui::fonts::Family::Ui,
+                        14.,
+                        recur_ui::text::LineHeight::Normal,
+                        window,
+                    );
+                    let content = m.ascent + m.descent;
+                    18. + y + (h - content) / 2. + content + 4.
                 })
                 .unwrap_or(18. + 1.55 * 14. + 4.);
             let vh = f32::from(window.viewport_size().height);

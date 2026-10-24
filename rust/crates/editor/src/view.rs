@@ -35,7 +35,7 @@ use crate::state::{
     Transaction, TransactionSpec,
 };
 use crate::text::Text;
-use crate::theme::{EditorMetrics, EditorTheme};
+use crate::theme::{EditorMetrics, EditorTheme, MiniChrome};
 use crate::view_state::{FileViewState, is_buffer_dirty};
 
 /// Debounce for `DocChanged` (`EMIT_DEBOUNCE_MS`).
@@ -105,6 +105,8 @@ pub struct EditorOptions {
     /// The per-file undo cache scope (`sessionKey` / `historyScope`); empty keeps undo
     /// live-only.
     pub history_scope: String,
+    /// `MiniScriptEditor`'s compact chrome instead of the code editor's.
+    pub mini: Option<MiniChrome>,
 }
 
 impl EditorOptions {
@@ -124,6 +126,7 @@ impl EditorOptions {
             view_state: None,
             lit: true,
             history_scope: String::new(),
+            mini: None,
         }
     }
 }
@@ -176,6 +179,20 @@ impl TextMeasure for GpuiMeasure<'_> {
             }
         }
         xs
+    }
+}
+
+/// The editor's colors: the TextMate theme's chrome, or without one CodeMirror's bare theme
+/// (the mini editor's `fallbackChrome()`).
+pub(crate) fn resolve_theme(
+    parsed: Option<&ParsedTmTheme>,
+    dark_fallback: bool,
+    mini: bool,
+    app: recur_ui::ThemeId,
+) -> EditorTheme {
+    match parsed {
+        None if mini => EditorTheme::mini_fallback(app),
+        _ => EditorTheme::resolve(parsed, dark_fallback, app),
     }
 }
 
@@ -238,6 +255,7 @@ pub struct EditorView {
     pub(crate) snippets: Option<Rc<dyn SnippetProvider>>,
     pub(crate) lsp: Option<crate::lsp::LspAttachment>,
     pub(crate) history_scope: String,
+    pub(crate) mini: Option<MiniChrome>,
     /// The scroll a state rebuilt from the undo cache was captured at.
     pub(crate) restored_scroll: Option<(f32, f32)>,
     pub(crate) read_only: bool,
@@ -348,10 +366,14 @@ impl EditorView {
             .textmate
             .as_ref()
             .is_some_and(|tm| tm.borrow().catalog.has_grammar(&scope));
-        let metrics = EditorMetrics::from_prefs(&options.prefs);
-        let theme = EditorTheme::resolve(
+        let metrics = match &options.mini {
+            Some(m) => EditorMetrics::mini(&options.prefs, m),
+            None => EditorMetrics::from_prefs(&options.prefs),
+        };
+        let theme = resolve_theme(
             options.theme.as_deref(),
             options.dark_fallback,
+            options.mini.is_some(),
             recur_ui::Theme::of(cx).id,
         );
         let lsp_attached = false;
@@ -386,6 +408,7 @@ impl EditorView {
             snippets: options.snippets.clone(),
             lsp: None,
             history_scope: options.history_scope.clone(),
+            mini: options.mini.clone(),
             restored_scroll: None,
             read_only: options.read_only,
             lit: options.lit,
@@ -1188,7 +1211,10 @@ impl EditorView {
         self.prefs = prefs;
         // The features compartment builds a fresh `foldGutter()`.
         self.fold_markers_live = true;
-        self.metrics = EditorMetrics::from_prefs(&self.prefs);
+        self.metrics = match &self.mini {
+            Some(m) => EditorMetrics::mini(&self.prefs, m),
+            None => EditorMetrics::from_prefs(&self.prefs),
+        };
         self.font = editor_font(&self.metrics);
         let config = self.state_config();
         self.dispatch(
@@ -1219,9 +1245,10 @@ impl EditorView {
         if let (Some(tm), Some(parsed)) = (self.tm.as_ref(), self.parsed_theme.as_ref()) {
             tm.borrow_mut().activate_theme(parsed.clone());
         }
-        self.theme = EditorTheme::resolve(
+        self.theme = resolve_theme(
             self.parsed_theme.as_deref(),
             dark_fallback,
+            self.mini.is_some(),
             recur_ui::Theme::of(cx).id,
         );
         self.restyle_panel_inputs(cx);
@@ -1241,6 +1268,22 @@ impl EditorView {
             self.lit = lit;
             cx.notify();
         }
+    }
+
+    /// Swap the TextMate engine (a host that pairs its own, as `MiniScriptEditor` does):
+    /// re-resolve the scope and remount highlighting.
+    pub fn set_textmate(
+        &mut self,
+        tm: Option<SharedTextMate>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.tm = tm;
+        if let Some(h) = self.highlighter.as_mut() {
+            h.destroy();
+        }
+        self.highlighter = None;
+        self.ensure_language(window, cx);
     }
 
     /// The grammar for this path may have arrived or changed (bundle
@@ -1933,6 +1976,20 @@ impl EditorView {
     }
 
     /// The vertical scroll offset.
+    /// The laid-out document height (content padding included); a mini editor's empty doc
+    /// counts its placeholder's lines (`.cm-placeholder` is an inline block in line 1).
+    pub fn content_height(&self) -> f32 {
+        let l = self.layout.borrow();
+        let mut h = l.content_height() as f32;
+        if let Some(m) = &self.mini
+            && self.state.doc.is_empty()
+        {
+            let lines = m.placeholder.split('\n').count().max(1) as f32;
+            h = h.max(lines * self.metrics.line_height() + 2.0 * self.metrics.content_padding_y);
+        }
+        h
+    }
+
     pub fn scroll_top(&self) -> f32 {
         self.scroll_top
     }

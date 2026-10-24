@@ -134,6 +134,20 @@ impl AppState {
         })
     }
 
+    /// `markInboxItemRead`: one notification row, read.
+    pub fn mark_inbox_item_read(&mut self, id: &str, cx: &mut Context<Self>) {
+        let services = self.services.clone();
+        let id = id.to_string();
+        for i in self.inbox.iter_mut().filter(|i| i.id == id) {
+            i.unread = false;
+        }
+        cx.background_spawn(async move {
+            let _ = services.inbox.mark_inbox_read(&id).await;
+        })
+        .detach();
+        cx.notify();
+    }
+
     /// `markWorkspaceInboxRead`: every unread notification of a workspace, read.
     pub fn mark_workspace_inbox_read(&mut self, workspace_id: &str, cx: &mut Context<Self>) {
         if workspace_id.is_empty() {

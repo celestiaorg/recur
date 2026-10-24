@@ -50,6 +50,7 @@ use gpui_kit::App;
 
 /// Register fonts, install the theme and the shared widget state.
 pub fn init(cx: &mut App) {
+    text::clear_shaped_cache();
     // The faces are compiled in; a failure here means a corrupt bundle, which the font tests
     // catch. The app still runs on system fallbacks.
     let _ = fonts::register(cx);

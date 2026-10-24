@@ -42,10 +42,9 @@ fn renders(name: &str, counts: &BTreeMap<&'static str, u32>) -> u32 {
 async fn a_keystroke_in_a_long_chat_redraws_only_the_dock_path(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
     s.open(ACTIVE);
-    let view = s
-        .cx
-        .update(|_, cx| WorkspaceDetail::current(cx)?.read(cx).bound_view(cx))
-        .expect("bound view");
+    let view =
+        s.cx.update(|_, cx| WorkspaceDetail::current(cx)?.read(cx).bound_view(cx))
+            .expect("bound view");
     s.cx.update(|_, cx| {
         view.update(cx, |v, cx| {
             let key = v.active_key();
@@ -73,6 +72,10 @@ async fn a_keystroke_in_a_long_chat_redraws_only_the_dock_path(cx: &mut TestAppC
     // One frame per key: nothing a render does may schedule another.
     assert_eq!(renders("::Shell", &counts), 3, "{counts:?}");
     for quiet in ["::TranscriptPane", "::Sidebar", "::MarkdownView"] {
-        assert_eq!(renders(quiet, &counts), 0, "{quiet} re-rendered: {counts:?}");
+        assert_eq!(
+            renders(quiet, &counts),
+            0,
+            "{quiet} re-rendered: {counts:?}"
+        );
     }
 }

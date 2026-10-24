@@ -18,6 +18,7 @@ use gpui_kit::{
 };
 use smallvec::SmallVec;
 use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use std::rc::Rc;
 use unicode_linebreak::{BreakOpportunity, linebreaks};
@@ -605,6 +606,7 @@ fn shape_run(window: &Window, run: &RunStyle, text: &str) -> (Vec<(usize, f32, G
     (out, f32::from(shaped.width))
 }
 
+#[derive(Clone)]
 struct Line {
     para: usize,
     range: Range<usize>,
@@ -619,13 +621,162 @@ struct Line {
 
 struct Laid {
     key: Resolved,
-    paras: Vec<Para>,
+    paras: Rc<Vec<Para>>,
     /// The strut: the line box of the text's own font.
     metrics: LineMetrics,
     /// Each run's byte range and how far its inline box reaches above and below the baseline.
-    extents: Vec<(Range<usize>, f32, f32)>,
+    extents: Rc<Vec<(Range<usize>, f32, f32)>>,
     ellipsis: Option<(Vec<PaintGlyph>, f32)>,
     lines: Vec<Line>,
+    /// Line breaks already computed for this shaping, by width and settings (shared with
+    /// [`SHAPED`], so a text drawn again next frame breaks no lines).
+    breaks: Rc<RefCell<Vec<(BreakKey, Vec<Line>, Option<(Vec<PaintGlyph>, f32)>)>>>,
+}
+
+/// `(width bits, white-space, anywhere, clamp, truncate, scale bits)`.
+type BreakKey = (Option<u32>, WhiteSpace, bool, Option<usize>, bool, u32);
+
+/// How many widths a shaping remembers (a flex pass probes min-content, max-content and the
+/// final width; a resize adds one).
+const BREAKS_PER_TEXT: usize = 8;
+
+/// Shaped text across frames, by resolved content and style. Views rebuild their elements
+/// every render, so without it every visible text is shaped and broken again each frame.
+/// Byte-budgeted (see `SHAPED_MAX_BYTES`), least recently used out first.
+#[derive(Default)]
+struct ShapedCache {
+    entries: HashMap<u64, ShapedEntry>,
+    order: BTreeMap<u64, u64>,
+    stamp: u64,
+    bytes: usize,
+}
+
+struct ShapedEntry {
+    key: Resolved,
+    scale: u32,
+    paras: Rc<Vec<Para>>,
+    metrics: LineMetrics,
+    extents: Rc<Vec<(Range<usize>, f32, f32)>>,
+    breaks: Rc<RefCell<Vec<(BreakKey, Vec<Line>, Option<(Vec<PaintGlyph>, f32)>)>>>,
+    bytes: usize,
+    stamp: u64,
+}
+
+/// The shaped-text budget: a long transcript's visible blocks plus the window's chrome come
+/// to a few MiB; this keeps every text of the last several screens.
+pub const SHAPED_MAX_BYTES: usize = 48 * 1024 * 1024;
+
+thread_local! {
+    static SHAPED: RefCell<ShapedCache> = RefCell::default();
+}
+
+/// Drops every cached shaping (font ids belong to one app's text system).
+pub fn clear_shaped_cache() {
+    SHAPED.with_borrow_mut(|c| *c = ShapedCache::default());
+}
+
+/// `(entries, bytes)` of the shaped-text cache.
+pub fn shaped_cache_stats() -> (usize, usize) {
+    SHAPED.with_borrow(|c| (c.entries.len(), c.bytes))
+}
+
+fn resolved_hash(k: &Resolved) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::hash::DefaultHasher::new();
+    k.content.as_ref().hash(&mut h);
+    k.font_size.to_bits().hash(&mut h);
+    k.field.hash(&mut h);
+    for r in std::iter::once(&k.base).chain(&k.runs) {
+        (
+            r.len,
+            r.span,
+            &r.family,
+            r.size.to_bits(),
+            r.weight.to_bits(),
+            r.italic,
+        )
+            .hash(&mut h);
+        (
+            r.color.h.to_bits(),
+            r.color.s.to_bits(),
+            r.color.l.to_bits(),
+            r.color.a.to_bits(),
+        )
+            .hash(&mut h);
+    }
+    h.finish()
+}
+
+fn para_bytes(paras: &[Para]) -> usize {
+    paras
+        .iter()
+        .map(|p| {
+            std::mem::size_of::<Para>()
+                + p.edges.capacity() * std::mem::size_of::<(usize, f32)>()
+                + p.glyphs.capacity() * std::mem::size_of::<PaintGlyph>()
+                + p.boxes.capacity() * std::mem::size_of::<(usize, f32, f32, Range<usize>)>()
+                + p.box_starts.capacity() * std::mem::size_of::<(usize, f32)>()
+        })
+        .sum()
+}
+
+impl ShapedCache {
+    fn get(&mut self, hash: u64, key: &Resolved, scale: u32) -> Option<Laid> {
+        let e = self
+            .entries
+            .get_mut(&hash)
+            .filter(|e| e.scale == scale && e.key == *key)?;
+        self.order.remove(&e.stamp);
+        self.stamp += 1;
+        e.stamp = self.stamp;
+        self.order.insert(self.stamp, hash);
+        Some(Laid {
+            key: e.key.clone(),
+            paras: e.paras.clone(),
+            metrics: e.metrics,
+            extents: e.extents.clone(),
+            ellipsis: None,
+            lines: Vec::new(),
+            breaks: e.breaks.clone(),
+        })
+    }
+
+    fn insert(&mut self, hash: u64, laid: &Laid, scale: u32) {
+        if let Some(old) = self.entries.remove(&hash) {
+            self.order.remove(&old.stamp);
+            self.bytes -= old.bytes;
+        }
+        let bytes = 128
+            + laid.key.content.len()
+            + para_bytes(&laid.paras)
+            + laid.extents.len() * 32
+            // Up to BREAKS_PER_TEXT line sets.
+            + BREAKS_PER_TEXT * 4 * std::mem::size_of::<Line>() * laid.paras.len().max(1);
+        self.stamp += 1;
+        self.order.insert(self.stamp, hash);
+        self.entries.insert(
+            hash,
+            ShapedEntry {
+                key: laid.key.clone(),
+                scale,
+                paras: laid.paras.clone(),
+                metrics: laid.metrics,
+                extents: laid.extents.clone(),
+                breaks: laid.breaks.clone(),
+                bytes,
+                stamp: self.stamp,
+            },
+        );
+        self.bytes += bytes;
+        while self.bytes > SHAPED_MAX_BYTES && self.entries.len() > 1 {
+            let Some((_, oldest)) = self.order.pop_first() else {
+                break;
+            };
+            if let Some(e) = self.entries.remove(&oldest) {
+                self.bytes -= e.bytes;
+            }
+        }
+    }
 }
 
 /// Line box metrics in CSS px.
@@ -1070,22 +1221,35 @@ fn rounded_extent(run: &RunStyle, window: &Window) -> (f32, f32) {
 }
 
 impl Laid {
-    /// Shapes `key`, or lays it out as empty if shaping panicked.
+    /// Shapes `key` (or takes the shaping from [`SHAPED`]), or lays it out as empty if
+    /// shaping panicked.
     fn build(key: Resolved, window: &Window) -> Laid {
+        let scale = window.scale_factor().to_bits();
+        let hash = resolved_hash(&key) ^ u64::from(scale);
+        if let Some(hit) = SHAPED.with_borrow_mut(|c| c.get(hash, &key, scale)) {
+            return hit;
+        }
         let fallback = key.clone();
-        crate::guard::catch("text shaping", || Self::shape(key, window)).unwrap_or(Laid {
-            key: fallback,
-            paras: Vec::new(),
-            metrics: LineMetrics {
-                height: 0.,
-                baseline: 0.,
-                ascent: 0.,
-                descent: 0.,
+        match crate::guard::catch("text shaping", || Self::shape(key, window)) {
+            Some(laid) => {
+                SHAPED.with_borrow_mut(|c| c.insert(hash, &laid, scale));
+                laid
+            }
+            None => Laid {
+                key: fallback,
+                paras: Rc::default(),
+                metrics: LineMetrics {
+                    height: 0.,
+                    baseline: 0.,
+                    ascent: 0.,
+                    descent: 0.,
+                },
+                extents: Rc::default(),
+                ellipsis: None,
+                lines: Vec::new(),
+                breaks: Rc::default(),
             },
-            extents: Vec::new(),
-            ellipsis: None,
-            lines: Vec::new(),
-        })
+        }
     }
 
     fn shape(key: Resolved, window: &Window) -> Laid {
@@ -1112,11 +1276,12 @@ impl Laid {
         }
         Laid {
             key,
-            paras,
+            paras: Rc::new(paras),
             metrics,
-            extents,
+            extents: Rc::new(extents),
             ellipsis: None,
             lines: Vec::new(),
+            breaks: Rc::default(),
         }
     }
 
@@ -1125,7 +1290,7 @@ impl Laid {
     fn line_box(&self, range: Range<usize>) -> (f32, f32) {
         let m = self.metrics;
         let (mut above, mut below) = (m.baseline, m.height - m.baseline);
-        for (r, a, b) in &self.extents {
+        for (r, a, b) in self.extents.iter() {
             if r.start < range.end && range.start < r.end {
                 above = above.max(*a);
                 below = below.max(*b);
@@ -1144,13 +1309,32 @@ impl Laid {
         truncate: bool,
         window: &Window,
     ) {
+        let key: BreakKey = (
+            width.map(f32::to_bits),
+            ws,
+            anywhere,
+            clamp,
+            truncate,
+            window.scale_factor().to_bits(),
+        );
+        if let Some((_, lines, ellipsis)) = self.breaks.borrow().iter().find(|b| b.0 == key) {
+            self.lines = lines.clone();
+            self.ellipsis = ellipsis.clone();
+            return;
+        }
         let done = crate::guard::catch("text line breaking", || {
             self.break_all(width, ws, anywhere, clamp, truncate, window)
         });
         if done.is_none() {
             self.lines.clear();
             self.ellipsis = None;
+            return;
         }
+        let mut breaks = self.breaks.borrow_mut();
+        if breaks.len() >= BREAKS_PER_TEXT {
+            breaks.remove(0);
+        }
+        breaks.push((key, self.lines.clone(), self.ellipsis.clone()));
     }
 
     fn break_all(
@@ -1162,6 +1346,7 @@ impl Laid {
         truncate: bool,
         window: &Window,
     ) {
+        self.ellipsis = None;
         let eps = 0.5 / window.scale_factor();
         let wrap = if ws == WhiteSpace::NoWrap {
             None

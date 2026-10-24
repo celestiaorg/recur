@@ -4,9 +4,9 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, AppContext as _, Context, DragMoveEvent, ExternalPaths, InteractiveElement, IntoElement,
-    KeystrokeEvent, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
-    Subscription, Window, canvas, div, px,
+    AnyElement, AppContext as _, Context, DragMoveEvent, ExternalPaths, InteractiveElement,
+    IntoElement, KeystrokeEvent, ParentElement, Render, SharedString, StatefulInteractiveElement,
+    Styled, Subscription, Window, canvas, div, px,
 };
 use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};

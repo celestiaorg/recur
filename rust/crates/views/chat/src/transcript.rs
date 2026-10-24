@@ -121,9 +121,10 @@ impl AgentChat {
     ) -> Vec<AnyElement> {
         let t = Theme::of(cx).tokens;
         let msgs = self.transcript();
-        let (blocks, keys) = self.blocks(&msgs);
+        let shared = self.model_blocks();
+        let (blocks, keys) = (&shared.0, &shared.1);
         let windowed = self.window_chat();
-        let first_checkpoint = self.first_checkpoint(&msgs, &blocks, cx);
+        let first_checkpoint = self.first_checkpoint(&msgs, blocks, cx);
         let mut out = Vec::new();
         if msgs.is_empty() {
             let empty = match &self.empty {

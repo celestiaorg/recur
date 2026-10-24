@@ -199,8 +199,7 @@ impl MarkdownView {
         let opts = ParseOptions {
             demote_images: self.demote_images,
         };
-        if self.text.len() > ASYNC_RENDER_MIN_BYTES && !markdown_doc_is_cached(&self.text, opts)
-        {
+        if self.text.len() > ASYNC_RENDER_MIN_BYTES && !markdown_doc_is_cached(&self.text, opts) {
             // A large file preview parses for long enough to freeze the window; the previous
             // document stays up until it lands.
             let src = self.text.clone();

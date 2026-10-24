@@ -1394,8 +1394,9 @@ async fn visit_workspace(
     }
 }
 
-/// Top to bottom, a viewport at a time; windowed blocks hydrate as they come into view, so the
-/// end is where the offset stops growing.
+/// Top to bottom, a viewport at a time, with wheel events over the transcript as a user
+/// scrolls; windowed blocks hydrate as they come into view, so the end is where the offset
+/// stops growing.
 async fn scroll_transcript(
     start: Instant,
     cx: &mut AsyncApp,
@@ -1406,14 +1407,26 @@ async fn scroll_transcript(
 ) {
     at(start, format!("workspace {id} chat {code}: scroll"));
     let handle = chat.read_with(cx, |c, _| c.test_scroll().clone());
-    handle.set_offset(point(px(0.), px(0.)));
+    let at_point = handle.bounds().center();
+    let _ = cx.update_window(window, |_, window, cx| {
+        window.dispatch_event(
+            gpui_kit::PlatformInput::MouseMove(gpui_kit::MouseMoveEvent {
+                position: at_point,
+                pressed_button: None,
+                modifiers: Default::default(),
+            }),
+            cx,
+        );
+    });
+    frames(cx, window, 1).await;
+    wheel(cx, window, &handle, 1e9);
     frames(cx, window, 3).await;
-    let mut y = 0.;
     let mut at_end = 0;
     for _ in 0..2000 {
         let page = f32::from(handle.bounds().size.height).max(200.);
         let max = f32::from(handle.max_offset().y);
-        if y >= max {
+        let y = -f32::from(handle.offset().y);
+        if y >= max - 0.5 {
             at_end += 1;
             if at_end >= 3 {
                 break;
@@ -1421,10 +1434,11 @@ async fn scroll_transcript(
         } else {
             at_end = 0;
         }
-        y = (y + page * 0.9).min(max);
-        handle.set_offset(point(px(0.), px(-y)));
         sleep(cx, 60).await;
-        let took = draw(cx, window);
+        let t = Instant::now();
+        wheel(cx, window, &handle, -page * 0.9);
+        draw(cx, window);
+        let took = t.elapsed();
         timed(Budget::ScrollStep, took);
         stall_check(took);
         collect_toasts(cx);
@@ -1432,6 +1446,19 @@ async fn scroll_transcript(
     if chat.read_with(cx, |c, _| c.props().messages.len()) >= LONG_CHAT_ROWS {
         type_in_long_chat(start, cx, window, chat, id, code).await;
     }
+}
+
+/// One wheel event of `dy` pixels over the scroller (positive scrolls toward the top).
+fn wheel(cx: &mut AsyncApp, window: AnyWindowHandle, handle: &gpui_kit::ScrollHandle, dy: f32) {
+    let ev = gpui_kit::ScrollWheelEvent {
+        position: handle.bounds().center(),
+        delta: gpui_kit::ScrollDelta::Pixels(point(px(0.), px(dy))),
+        modifiers: Default::default(),
+        touch_phase: gpui_kit::TouchPhase::Moved,
+    };
+    let _ = cx.update_window(window, |_, window, cx| {
+        window.dispatch_event(gpui_kit::PlatformInput::ScrollWheel(ev), cx);
+    });
 }
 
 /// Types into the composer and erases it again, timing each key through its frame.

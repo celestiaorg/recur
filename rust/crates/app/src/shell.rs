@@ -459,13 +459,15 @@ impl Shell {
                         // Cached at the rail's own box: typing, scrolling and streaming in
                         // the main area never re-render the project tree.
                         .when(!rail_collapsed, |d| {
-                            d.child(self.sidebar.clone().cached(
-                                gpui_kit::StyleRefinement::default()
-                                    .flex_none()
-                                    .w(gpui_kit::px(rail_width))
-                                    .h_full()
-                                    .min_h_0(),
-                            ))
+                            d.child(
+                                self.sidebar.clone().cached(
+                                    gpui_kit::StyleRefinement::default()
+                                        .flex_none()
+                                        .w(gpui_kit::px(rail_width))
+                                        .h_full()
+                                        .min_h_0(),
+                                ),
+                            )
                         })
                         .child(main)
                         .when(rail_collapsed, |d| d.child(self.sidebar.clone())),

@@ -406,7 +406,11 @@ fn main_navigation_shows_schedules_across_projects_and_restores_after_reload(
     assert!(s.has(&format!("sel:Repository={n2}")));
     s.keys("escape");
     assert!(!s.has("v-schedule-editor"));
-    // The command palette's New schedule action waits for `CommandPalette.svelte`'s port.
+    // Command palette action.
+    s.keys("cmd-k");
+    s.type_text("New schedule");
+    s.click("pal-row:New schedule:sel");
+    assert!(s.has("sc-modal:New schedule"));
 }
 
 fn dash_seed(s: &mut Seed, ws: &[Value]) {

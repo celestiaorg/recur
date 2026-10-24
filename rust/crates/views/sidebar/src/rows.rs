@@ -4,6 +4,7 @@
 
 use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, HashSet};
+use std::rc::Rc;
 use std::time::Duration;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -145,7 +146,21 @@ fn vline(cx: &App) -> Div {
 }
 
 impl Sidebar {
-    fn row_ctx(&self, cx: &App) -> RowCtx {
+    /// What the rows read from the stores (memoized per store change).
+    fn row_ctx(&self, cx: &App) -> Rc<RowCtx> {
+        let dragging = self.drag.as_ref().is_some_and(|d| d.active);
+        if let Some((rev, drag, rc)) = self.row_ctx_memo.borrow().as_ref()
+            && *rev == self.state_rev
+            && *drag == dragging
+        {
+            return rc.clone();
+        }
+        let rc = Rc::new(self.build_row_ctx(cx));
+        *self.row_ctx_memo.borrow_mut() = Some((self.state_rev, dragging, rc.clone()));
+        rc
+    }
+
+    fn build_row_ctx(&self, cx: &App) -> RowCtx {
         let s = self.state().read(cx);
         let ev = &s.scan_event;
         let scan_highlight = ((ev.seq > 0 && ev.kind == ScanKind::Land)

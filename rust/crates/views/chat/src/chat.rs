@@ -46,8 +46,8 @@ use crate::transcript_ui::{
     snapshot_transcript_ui, transcript_fingerprint,
 };
 use crate::window::{
-    BlockRange, CHAT_HYDRATE_ALL_BELOW, CHAT_HYDRATE_MAX, CHAT_HYDRATE_OVERSCAN, CHAT_VIEW_PAD_PX,
-    block_at_scroll_top, in_view_keys, pick_hydrated,
+    BlockRange, BlockShape, CHAT_HYDRATE_ALL_BELOW, CHAT_HYDRATE_MAX, CHAT_HYDRATE_OVERSCAN,
+    CHAT_VIEW_PAD_PX, block_at_scroll_top, estimate_chat_block_height, in_view_keys, pick_hydrated,
 };
 
 /// Which surface the chat serves: a workspace chat, or the restricted Ask Recur panel (no
@@ -411,6 +411,8 @@ pub(crate) fn now_ms() -> i64 {
 pub(crate) struct TranscriptModel {
     pub(crate) msgs: Rc<Vec<AgentMsg>>,
     pub(crate) blocks: Rc<(Vec<Block>, Vec<String>)>,
+    /// Each block's estimated height (a stub that never laid out reserves it).
+    pub(crate) estimates: Vec<f32>,
 }
 
 pub struct AgentChat {
@@ -1082,9 +1084,24 @@ impl AgentChat {
         );
         let blocks = group_blocks(&msgs);
         let keys = block_keys(&self.props.reset_key, &blocks, &msgs);
+        let estimates = blocks
+            .iter()
+            .map(|b| match b {
+                Block::Steps { .. } => estimate_chat_block_height(BlockShape::Steps),
+                Block::Msg(i) => {
+                    let m = &msgs[*i];
+                    estimate_chat_block_height(BlockShape::Msg {
+                        me: m.me,
+                        turn_end: m.turn_end,
+                        body: &m.body,
+                    })
+                }
+            })
+            .collect();
         let m = Rc::new(TranscriptModel {
             msgs,
             blocks: Rc::new((blocks, keys)),
+            estimates,
         });
         *self.transcript_memo.borrow_mut() = Some(m.clone());
         m
@@ -1104,6 +1121,11 @@ impl AgentChat {
         let blocks = group_blocks(msgs);
         let keys = block_keys(&self.props.reset_key, &blocks, msgs);
         (blocks, keys)
+    }
+
+    /// The transcript's rows, blocks, keys and height estimates, shared.
+    pub(crate) fn transcript_model(&self) -> Rc<TranscriptModel> {
+        self.model()
     }
 
     /// The transcript's blocks and keys, shared.

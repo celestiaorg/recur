@@ -32,7 +32,7 @@ use crate::html_inline::{InlineStyle, inline_html};
 use crate::rows::{accord_detail, finding_row_wrap, findings_list, labeled_note};
 use crate::style::{GREEN, ag_color, hsla, label};
 use crate::tools::{base_name, format_duration};
-use crate::window::{BlockShape, CHAT_TAIL_LIVE, estimate_chat_block_height, reserved_chat_height};
+use crate::window::{CHAT_TAIL_LIVE, reserved_chat_height};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -121,7 +121,8 @@ impl AgentChat {
     ) -> Vec<AnyElement> {
         let t = Theme::of(cx).tokens;
         let msgs = self.transcript();
-        let shared = self.model_blocks();
+        let model = self.transcript_model();
+        let shared = model.blocks.clone();
         let (blocks, keys) = (&shared.0, &shared.1);
         let windowed = self.window_chat();
         let first_checkpoint = self.first_checkpoint(&msgs, blocks, cx);
@@ -157,17 +158,7 @@ impl AgentChat {
             let k = keys[bi].clone();
             let live = !windowed || self.chat_hydrated.contains(&k) || bi + CHAT_TAIL_LIVE >= n;
             if !live {
-                let estimate = match b {
-                    Block::Steps { .. } => estimate_chat_block_height(BlockShape::Steps),
-                    Block::Msg(i) => {
-                        let m = &msgs[*i];
-                        estimate_chat_block_height(BlockShape::Msg {
-                            me: m.me,
-                            turn_end: m.turn_end,
-                            body: &m.body,
-                        })
-                    }
-                };
+                let estimate = model.estimates[bi];
                 let measured = self.block_heights().get(&k).copied();
                 let h = reserved_chat_height(false, measured, estimate).unwrap_or(estimate);
                 // Each stub reserved its own device-rounded height.

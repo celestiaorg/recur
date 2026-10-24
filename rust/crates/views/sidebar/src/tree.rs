@@ -128,7 +128,7 @@ pub struct Tree {
 }
 
 /// Collapse state the sidebar keeps per project, group and scheduled section.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Collapse {
     pub projects: HashMap<String, bool>,
     pub groups: HashMap<String, bool>,

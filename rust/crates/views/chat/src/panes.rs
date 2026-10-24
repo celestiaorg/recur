@@ -8,7 +8,8 @@
 //! transcript's cached layout in place.
 
 use gpui_kit::{
-    AnyElement, Context, Entity, IntoElement, Render, Subscription, WeakEntity, Window, div,
+    AnyElement, Context, Entity, IntoElement, ParentElement, Render, Subscription, WeakEntity,
+    Window, div,
 };
 
 use recur_ui::guard::Guarded;
@@ -30,7 +31,12 @@ impl TranscriptPane {
 
     fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         match self.chat.upgrade() {
-            Some(chat) => chat.update(cx, |c, cx| c.transcript_main(window, cx)),
+            // A cached view lays out as its own root from a snapped origin: the window root's
+            // tie nudge has to apply inside it too, or half-pixel edges round the other way.
+            Some(chat) => {
+                recur_ui::style::window_root(chat.update(cx, |c, cx| c.transcript_main(window, cx)))
+                    .into_any_element()
+            }
             None => div().into_any_element(),
         }
     }

@@ -22,7 +22,7 @@
 //! scrolled top to bottom), the Observatory's explorer, a file, the review and the terminal on
 //! live workspaces, every PR on each detail tab, every Settings section, Briefing, Issues,
 //! Schedules and each palette, and streams one chat turn. `RECUR_SMOKE_LIMIT=n` caps the
-//! workspaces and PRs visited. It exits non-zero on any panic (contained or not), error toast or
+//! workspaces and PRs visited and `RECUR_SMOKE_FROM=n` starts the workspaces at the nth. It exits non-zero on any panic (contained or not), error toast or
 //! a UI stall over 20s.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -774,6 +774,16 @@ fn watchdog() {
                 let s = step().lock().map(|s| s.clone()).unwrap_or_default();
                 let line = format!("UI stalled {}s at: {s}", idle / 1000);
                 println!("STALL {line}");
+                // What the main thread is doing, for the report (macOS `sample`).
+                let out = std::env::temp_dir().join(format!("recur-smoke-stall-{flagged}.txt"));
+                let sampled = Command::new("sample")
+                    .args([&std::process::id().to_string(), "5", "-file"])
+                    .arg(&out)
+                    .output()
+                    .is_ok_and(|o| o.status.success());
+                if sampled {
+                    println!("STALL stacks in {}", out.display());
+                }
                 if let Ok(mut r) = report().lock() {
                     r.stalls.push(line);
                 }
@@ -1135,7 +1145,12 @@ async fn run(
     }
 
     let mut streamed = false;
-    for (i, (id, archived, wt)) in workspaces.iter().enumerate().take(limit()) {
+    // `RECUR_SMOKE_FROM=n` starts the workspace pass at the nth (1-based), to reproduce a late finding.
+    let from = std::env::var("RECUR_SMOKE_FROM")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .map_or(0, |n| n.saturating_sub(1));
+    for (i, (id, archived, wt)) in workspaces.iter().enumerate().skip(from).take(limit()) {
         let live = !archived && !wt.is_empty() && Path::new(wt).is_dir();
         at(
             start,

@@ -86,7 +86,7 @@ The `chat` list in `scenes.json` holds the agent chat (`chat/…`) over the fixt
 - **Reference.** `web/scenes/Chat.svelte` mounts `AgentChat` as the workspace dock does (compact, the Loop or agent tab's copy, the `view` store on `detail` so inline permission and question cards show) with the dock's mode toolbar on the `mode-*` scenes (the chat mode `Select`, then `ModelPickers` or `LoopPolicyPickers`), and `AppChat` under the Briefing body's `--obs-chrome-h`. It is ready once the model catalog has loaded and the prompt index and file icons have painted.
 - **Candidate.** `recur_view_chat::gallery` (feature `gallery`) builds the same `AgentChat` / `AppChat` over `MockBridge::fresh` and clears the transcript UI cache per scene (scenes share one app).
 
-Scenes: the empty chat; a finished turn with a file chip, a thought, tool calls with results (group opened by a click), markdown with a fence, a list, a link and the turn footer, in `default` and `paper`; a reply streaming mid-turn with the turn clock; inline permission, question, plan and fan-out cards; the composer with file chips and the `/` menu open; each mode's composer toolbar (`ask`, `plan`, `agent`, `review`, `loop`, and `agent` in `paper`); the model picker open; and Ask Recur in `default` and `paper`.
+Scenes: the empty chat; a `present_workspace` result with its brief card in the tool row and on the turn footer (`brief-card`, `default` and `paper`); a finished turn with a file chip, a thought, tool calls with results (group opened by a click), markdown with a fence, a list, a link and the turn footer, in `default` and `paper`; a reply streaming mid-turn with the turn clock; inline permission, question, plan and fan-out cards; the composer with file chips and the `/` menu open; each mode's composer toolbar (`ask`, `plan`, `agent`, `review`, `loop`, and `agent` in `paper`); the model picker open; and Ask Recur in `default` and `paper`.
 
 ## Review scenes
 
@@ -140,6 +140,13 @@ The `home`, `briefing` and `projects` lists in `scenes.json` hold full-window sc
 - **Candidate.** `recur_view_home::gallery::build_in` (feature `gallery`; the briefing and projects galleries call it with their crates' registrations) builds the desktop's registry and a `Shell` over a `MockBridge` with the same fixture and storage, navigates the same way after boot and replays the steps. Each scene starts from fresh module state (the Issues view cache, expanded schedule rows).
 
 Scenes: Welcome on first run, its modes and its completed state; New project empty and with a typed path; New workspace in agent and loop mode with each picker open (repository, base, mode, model, flags, loop, policy, the policy help) and the slash menu; the Inbox with every bucket and Elsewhere, with the Ask dock closed and as a drawer at 1000px; Issues as a list and a board; Schedules across projects and the schedule editor; project settings General (also 1500px tall), Run (also 1800px tall), Schedules, Pull requests, Skills, MCP and Danger zone.
+
+## Palette scenes
+
+The `palettes` list in `scenes.json` holds full-window scenes (`palettes/…`) of every palette over the shell, in `default` and `paper`: Go to (⌘K) with its overflowing list, a filter and no matches; Run Command (⌘⇧P) for `src/main.go` with Recent from `recur.commandUsage`, and filtered; Open in on LOOP-2231 and filtered; Run with five commands and a pinned default (fixture `palette-runs` in `content/views.json`) and filtered; the language picker for `src/main.go` and filtered; and the shortcuts list and filtered.
+
+- **Reference.** `web/scenes/Views.svelte` routes `palette`, `commands:{path}:{scope}`, `shortcuts`, `openin:{workspace}`, `run:{workspace}` and `syntax:{path}`: a route's path stands in for the focused editor (`setEditorFocusProvider`), and Open in and Run open 300ms after the workspace lands (landing closes palettes). `.main > *` stays hidden, as for the other view scenes.
+- **Candidate.** `recur_view_palettes::gallery` builds a `Shell` over the same fixture with only the palettes registered (the main area is empty, as the reference hides it), sets the same editor focus provider, and opens Open in and Run from a 300ms timer that the scenes' `wait` step reaches.
 
 ## Rules for UI crates
 
@@ -221,6 +228,7 @@ Every other scene allows no hard pixels.
 | `briefing/issues`, `briefing/issues-paper` | 24, 14 | The far tails of the status dots' 5px glows at fractional x (as `prs/list`) |
 | `briefing/schedule-editor`, `briefing/schedule-editor-paper` | 126, 119 | The cron expression, which gpui-base's editor draws (typed input text, above), and the state segment behind the scrim (as `briefing/schedules`) |
 | `projects/general`, `projects/general-tall`, `projects/general-paper` | 58, 58, 117 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) and the rail glow |
+| `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/run-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 19, 56, 1, 1, 2, 35 | The typed query, which gpui-base's editor draws (typed input text, above) |
 | `projects/run`, `projects/run-tall` | 223, 291 | The Files to copy placeholder, which gpui-base's textarea draws (typed input text, above), and its resize grip, which GPUI's textarea does not have (`PARITY.md` follow-up) |
 
 ## Results
@@ -312,6 +320,8 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `chat/empty` | 0 | 133 | 132 | 290 | 0 |
 | `chat/transcript` | 0 | 13388 | 529 | 15310 | 0 |
 | `chat/transcript-paper` | 0 | 13612 | 1247 | 16350 | 0 |
+| `chat/brief-card` | 0 | 4139 | 477 | 5080 | 0 |
+| `chat/brief-card-paper` | 0 | 4034 | 647 | 5150 | 0 |
 | `chat/streaming` | 0 | 1270 | 456 | 1900 | 0 |
 | `chat/permission` | 0 | 2689 | 752 | 4900 | 0 |
 | `chat/question` | 0 | 1092 | 691 | 1970 | 0 |
@@ -473,6 +483,25 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `projects/skills` | 0 | 3551 | 1262 | 5300 | 0 |
 | `projects/mcp` | 0 | 3452 | 1047 | 4950 | 0 |
 | `projects/danger` | 0 | 4948 | 939 | 6480 | 0 |
+| `palettes/goto` | 0 | 3964 | 774 | 5220 | 0 |
+| `palettes/goto-paper` | 0 | 4100 | 1048 | 5670 | 0 |
+| `palettes/goto-filter` | 19 | 2825 | 1325 | 4570 | 19 |
+| `palettes/goto-empty` | 56 | 2654 | 1054 | 4080 | 56 |
+| `palettes/commands` | 0 | 2506 | 580 | 3400 | 0 |
+| `palettes/commands-paper` | 0 | 2625 | 718 | 3680 | 0 |
+| `palettes/commands-filter` | 1 | 2342 | 669 | 3320 | 1 |
+| `palettes/open-in` | 0 | 6506 | 813 | 8060 | 0 |
+| `palettes/open-in-paper` | 0 | 6611 | 1144 | 8540 | 0 |
+| `palettes/open-in-filter` | 0 | 6380 | 848 | 7960 | 0 |
+| `palettes/run` | 0 | 11669 | 857 | 13780 | 0 |
+| `palettes/run-paper` | 0 | 11899 | 1217 | 14430 | 0 |
+| `palettes/run-filter` | 1 | 8509 | 988 | 10450 | 1 |
+| `palettes/syntax` | 0 | 3429 | 595 | 4430 | 0 |
+| `palettes/syntax-paper` | 0 | 3511 | 724 | 4660 | 0 |
+| `palettes/syntax-filter` | 2 | 2790 | 813 | 3970 | 2 |
+| `palettes/shortcuts` | 0 | 4392 | 951 | 5880 | 0 |
+| `palettes/shortcuts-paper` | 0 | 4557 | 1192 | 6330 | 0 |
+| `palettes/shortcuts-filter` | 35 | 3090 | 1764 | 5340 | 35 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 
@@ -491,3 +520,5 @@ Workspace tolerances: text is glyph subpixel phase in the transcript, the compos
 PR tolerances: text is glyph subpixel phase in row titles, mono metadata, pills, tabs, the thread, diffs, buttons and the modal; anti-aliasing is icon, chip, avatar, card and dot edges, the menu and modal shadows and the status-dot glows.
 
 Settings tolerances: text is glyph subpixel phase in the nav, titles, descriptions, chips, selects, status tables and the rail beside them; anti-aliasing is icon, toggle, card and dot edges, the theme card previews, the menu, popover and modal shadows (1 to 3 levels over a wide blur) and the scrim over the page (1 level, `settings/keybinding-menu`).
+
+Palette tolerances: text is glyph subpixel phase in rows, keycaps, the footer, placeholders and the shell around the scrim (on the detail route also the titlebar's branch chip, which ellipsizes `recur/oauth-checkout` where WebKit fits it; `PARITY.md` follow-up); anti-aliasing is icon, tile, keycap and card edges and the palette shadow.

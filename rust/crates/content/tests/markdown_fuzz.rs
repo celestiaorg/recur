@@ -151,7 +151,7 @@ fn random_markdown_lays_out_at_any_width(cx: &mut gpui::TestAppContext) {
     let (view, cx) = cx.add_window_view(|_, cx| {
         recur_content::MarkdownView::new("", recur_content::MarkdownClass::ChatCanvas, false, cx)
     });
-    let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
+    let mut rng = Rng(0x9e37_79b9_7f4b_dbf5);
     for i in 0..iterations {
         let src = case(&mut rng);
         let width = [24., 80., 190., 420., 900.][rng.below(5)];

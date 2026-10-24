@@ -466,3 +466,74 @@ fn empty_cmd_enter_from_the_focused_composer_creates_a_workspace(cx: &mut TestAp
     assert!(s.until(|s| !s.has("v-newtask")));
     assert_eq!(s.view(), ViewName::Briefing);
 }
+
+impl S<'_> {
+    fn focused(&mut self) -> Option<&'static str> {
+        let m = self.modal();
+        self.cx.update(|window, cx| m.read(cx).focused_stop(window, cx))
+    }
+}
+
+/// `a11y-keys.spec.ts` "Tab reaches every field and Enter/arrows change them": the
+/// `dialog-focus.ts` cycle (`cycleDialogTab` over `dialogFocusables`, wrapping both ways, the
+/// prompt first), pickers opened and changed from the keyboard keep focus on their trigger.
+#[gpui::test]
+fn tab_reaches_every_field_and_enter_and_arrows_change_them(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_new_task();
+    assert_eq!(s.focused(), Some("Prompt"));
+    let model = s.model_handle();
+    assert!(s.has(&model));
+    for want in ["Mode", "Model", "Model flags", "Simplify"] {
+        s.keys("tab");
+        assert_eq!(s.focused(), Some(want));
+    }
+    assert!(s.has("nt-simplify:on"));
+    for want in ["Create", "Repository", "Base branch", "Prompt"] {
+        s.keys("tab");
+        assert_eq!(s.focused(), Some(want), "after {want}");
+    }
+    s.keys("shift-tab");
+    assert_eq!(s.focused(), Some("Base branch"));
+    s.keys("enter");
+    assert!(s.has("sel-menu"));
+    s.type_text("auth");
+    assert!(s.has("sel-opt:feature/auth"));
+    s.keys("enter");
+    assert!(!s.has("sel-menu"));
+    assert!(s.has("sel:Base branch=feature/auth"));
+    assert_eq!(s.focused(), Some("Base branch"));
+    // Mode from the keyboard: Enter opens, ↓↓ reaches Loop, Enter picks it.
+    s.keys("tab tab");
+    assert_eq!(s.focused(), Some("Mode"));
+    s.keys("enter");
+    assert!(s.has("sel-opt:Loop"));
+    s.keys("down down enter");
+    assert!(s.has("sel:Mode=Loop"));
+    assert_eq!(s.focused(), Some("Mode"));
+    s.keys("tab");
+    assert_eq!(s.focused(), Some("Loop"));
+    s.keys("tab");
+    assert_eq!(s.focused(), Some("Policy"));
+    s.keys("enter");
+    assert!(s.has("sel-menu"));
+    s.keys("down enter");
+    assert!(!s.has("sel-menu"));
+    assert_eq!(s.focused(), Some("Policy"));
+}
+
+/// `composerOwnsDialogTab`: while the slash menu is open Tab belongs to the composer (it picks
+/// the highlighted prompt), so the dialog cycle leaves focus in the prompt.
+#[gpui::test]
+fn tab_belongs_to_the_slash_menu_while_it_is_open(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_new_task();
+    assert_eq!(s.focused(), Some("Prompt"));
+    s.type_text("/");
+    let m = s.modal();
+    let menu = |s: &mut S| s.cx.update(|_, cx| m.read(cx).chat_menu_open(cx));
+    assert!(menu(&mut s));
+    s.keys("tab");
+    assert_eq!(s.focused(), Some("Prompt"));
+    assert!(!menu(&mut s), "the menu took the Tab");
+}

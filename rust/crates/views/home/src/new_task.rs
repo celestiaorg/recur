@@ -1255,6 +1255,35 @@ impl NewTaskModal {
         v
     }
 
+    /// The composer's `/` or `@` menu is up (it owns Tab and Escape).
+    #[cfg(test)]
+    pub(crate) fn chat_menu_open(&self, cx: &App) -> bool {
+        self.chat.read(cx).menu_open()
+    }
+
+    /// The Tab stop holding focus, by its control's label (the a11y spec's `toBeFocused`).
+    #[cfg(test)]
+    pub(crate) fn focused_stop(&self, window: &Window, cx: &App) -> Option<&'static str> {
+        let mut named: Vec<(&'static str, FocusHandle)> = vec![
+            ("Repository", self.repo_sel.focus_handle(cx)),
+            ("Base branch", self.branch_sel.focus_handle(cx)),
+            ("Link", self.link_focus.clone()),
+            ("Add project", self.empty_focus.clone()),
+            ("Prompt", self.chat.focus_handle(cx)),
+            ("Mode", self.mode_sel.focus_handle(cx)),
+            ("Simplify", self.simplify_focus.clone()),
+            ("Create", self.go_focus.clone()),
+        ];
+        let models = self.models.read(cx).focus_handles(cx);
+        named.extend(["Model", "Model flags"].into_iter().zip(models));
+        let loops = self.loops.read(cx).focus_handles(cx);
+        named.extend(["Loop", "Policy"].into_iter().zip(loops));
+        named
+            .into_iter()
+            .find(|(_, h)| h.contains_focused(window, cx))
+            .map(|(n, _)| n)
+    }
+
     fn any_select_open(&self, cx: &App) -> bool {
         [&self.repo_sel, &self.branch_sel, &self.mode_sel]
             .iter()

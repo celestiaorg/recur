@@ -162,3 +162,39 @@ async fn a_cached_view_built_in_its_parents_render_redraws_on_notify(cx: &mut Te
 async fn gpui_drops_notifies_of_a_lazily_built_cached_view(cx: &mut TestAppContext) {
     assert_eq!(leaf_renders_on_notify(cx, true), 0);
 }
+
+#[gpui::test]
+async fn store_changes_redraw_the_transcript_only_when_they_concern_it(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    h.set_messages(long_chat(40));
+    let state = h.read(|c| c.state.clone());
+    let pane_renders = |h: &mut H, f: &dyn Fn(&mut recur_view_core::AppState)| {
+        recur_ui::guard::count_renders(true);
+        h.cx.update(|_, cx| {
+            state.update(cx, |s, cx| {
+                f(s);
+                cx.notify();
+            })
+        });
+        h.cx.run_until_parked();
+        let n = renders("::TranscriptPane", &recur_ui::guard::take_render_counts());
+        recur_ui::guard::count_renders(false);
+        n
+    };
+    // Another workspace's permission card: not this transcript's.
+    let other: recur_domain::PermissionRequest = serde_json::from_value(serde_json::json!({
+        "id": "perm-x", "workspaceId": "LOOP-9999", "agentCode": "PA", "surface": "chat",
+        "tool": "Bash", "input": "{}", "createdAt": 1
+    }))
+    .unwrap();
+    assert_eq!(
+        pane_renders(&mut h, &|s| s.permission_requests.push(other.clone())),
+        0
+    );
+    let mine: recur_domain::PermissionRequest = serde_json::from_value(serde_json::json!({
+        "id": "perm-ma", "workspaceId": WS, "agentCode": "MA", "surface": "chat",
+        "tool": "Bash", "input": "{}", "createdAt": 1
+    }))
+    .unwrap();
+    assert!(pane_renders(&mut h, &|s| s.permission_requests.push(mine.clone())) >= 1);
+}

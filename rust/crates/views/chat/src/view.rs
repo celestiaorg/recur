@@ -241,6 +241,8 @@ impl AgentChat {
         self.tc_shift = crate::rows::tc_icon_shift(window);
         self.scale = window.scale_factor();
         self.snapshot_tool_data(cx);
+        // What it shows from the store as of now (see `transcript_store_changed`).
+        self.transcript_store_changed(cx);
         self.markdown_seen.clear();
         self.sync_turn_clock(cx);
         let session = self.props.session_body;

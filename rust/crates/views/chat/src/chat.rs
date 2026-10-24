@@ -407,6 +407,15 @@ pub(crate) fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
+/// What [`AgentChat::transcript_store_changed`] compares.
+#[derive(PartialEq)]
+pub(crate) struct TranscriptStoreSeen {
+    view: ViewName,
+    permissions: Vec<String>,
+    questions: Vec<String>,
+    workspace: Option<recur_domain::Workspace>,
+}
+
 /// What [`AgentChat::model`] derives from the props.
 pub(crate) struct TranscriptModel {
     pub(crate) msgs: Rc<Vec<AgentMsg>>,
@@ -555,6 +564,7 @@ pub struct AgentChat {
     pub(crate) transcript_memo: std::cell::RefCell<Option<Rc<TranscriptModel>>>,
     /// Replies whose markdown is parsing on a background thread (by markdown key).
     pub(crate) parsing: HashSet<String>,
+    pub(crate) store_seen: Option<TranscriptStoreSeen>,
     /// How far into `props.messages` (for `reset_key`) the markdown prewarm has reached.
     pub(crate) prewarmed: (String, usize),
     pub(crate) prewarm_task: Option<Task<()>>,
@@ -590,9 +600,15 @@ impl AgentChat {
             TranscriptUiCache::global(cx).claim(&props.reset_key)
         };
         let mut subs = vec![cx.guarded_observe(&state, |this: &mut Self, _, cx| {
-            this.tool_data_stale = true;
             this.sync_mentions_from_stores(cx);
-            cx.notify();
+            // The store changes many times a second while agents run; the transcript redraws
+            // only when what it shows from it does (the dock follows every change).
+            if this.transcript_store_changed(cx) {
+                this.tool_data_stale = true;
+                cx.notify();
+            } else {
+                this.notify_dock(cx);
+            }
         })];
         subs.push(
             cx.guarded_subscribe(&state, |_: &mut Self, _, ev: &ShellEvent, cx| {
@@ -742,6 +758,7 @@ impl AgentChat {
             markdown_seen: HashSet::new(),
             transcript_memo: Default::default(),
             parsing: HashSet::new(),
+            store_seen: None,
             prewarmed: (String::new(), 0),
             prewarm_task: None,
             panes: None,
@@ -1043,6 +1060,35 @@ impl AgentChat {
         p.escalation
             .clone()
             .filter(|e| e.status.as_str() == "open" && !e.question.is_empty())
+    }
+
+    /// Whether the store data the transcript reads changed since it last looked: the route,
+    /// this chat's permission and question cards, its workspace (the plan card) and the PRs and
+    /// briefs its tool rows resolve.
+    pub(crate) fn transcript_store_changed(&mut self, cx: &App) -> bool {
+        let s = self.state.read(cx);
+        let p = &self.props;
+        let seen = TranscriptStoreSeen {
+            view: s.view,
+            permissions: s
+                .permission_requests
+                .iter()
+                .filter(|r| r.workspace_id == p.workspace_id && r.agent_code == p.agent_code)
+                .map(|r| r.id.clone())
+                .collect(),
+            questions: s
+                .user_questions
+                .iter()
+                .filter(|q| q.workspace_id == p.workspace_id && q.agent_code == p.agent_code)
+                .map(|q| q.id.clone())
+                .collect(),
+            workspace: s.workspace(&p.workspace_id).cloned(),
+        };
+        let tools_changed = s.prs != self.tool_data.prs
+            || s.briefing.workspaces.as_deref().unwrap_or_default() != self.tool_data.briefs;
+        let changed = tools_changed || self.store_seen.as_ref() != Some(&seen);
+        self.store_seen = Some(seen);
+        changed
     }
 
     /// Refreshes [`ToolData`] from the props and stores.

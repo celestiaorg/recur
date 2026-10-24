@@ -79,3 +79,44 @@ async fn a_keystroke_in_a_long_chat_redraws_only_the_dock_path(cx: &mut TestAppC
         );
     }
 }
+
+/// The bound workspace view after `open`.
+fn bound(s: &mut super::shell::S) -> gpui::Entity<crate::view::WorkspaceView> {
+    s.cx.update(|_, cx| WorkspaceDetail::current(cx)?.read(cx).bound_view(cx))
+        .expect("bound view")
+}
+
+#[gpui::test]
+async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    // Each workspace opens its review, so a parked shell holds the heaviest surface there is.
+    for id in ["LOOP-2224", "LOOP-2229", "LOOP-2218", "LOOP-2235", ACTIVE] {
+        s.open(id);
+        let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
+        s.cx.update(|_, cx| obs.update(cx, |o, cx| o.click_review_toggle(cx)));
+        s.settle();
+    }
+    let chat = bound(&mut s).read_with(s.cx, |v, _| v.chat().clone());
+    s.cx.update(|window, cx| chat.update(cx, |c, cx| c.focus_composer(window, cx)));
+    s.settle();
+    s.cx.simulate_input("a");
+    s.cx.run_until_parked();
+    recur_ui::guard::count_renders(true);
+    for ch in ["b", "c", "d"] {
+        s.cx.simulate_input(ch);
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    // One frame per key, and only the bound workspace's path in it: a parked shell (and the
+    // review it shows) is not laid out again however many workspaces came before.
+    for (view, n) in [
+        ("::Shell", 3),
+        ("::WorkspaceView", 3),
+        ("::Observatory", 3),
+        ("::ReviewSurface", 0),
+        ("::TranscriptPane", 0),
+    ] {
+        assert_eq!(renders(view, &counts), n, "{view}: {counts:?}");
+    }
+}

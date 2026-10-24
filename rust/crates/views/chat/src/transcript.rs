@@ -39,6 +39,8 @@ use std::rc::Rc;
 
 /// Markdown parsed inside one transcript render before the rest goes to a background thread.
 const MD_SYNC_BUDGET: std::time::Duration = std::time::Duration::from_millis(12);
+/// Replies longer than this always parse off the UI thread.
+const MD_SYNC_MAX_BYTES: usize = 2 * 1024;
 
 /// A run of windowed-out blocks at their reserved heights, recording each one's range.
 fn stub_spacer(
@@ -277,7 +279,8 @@ impl AgentChat {
         {
             return true;
         }
-        if std::time::Instant::now() < until {
+        // Only short replies parse here: one long reply can take longer than the whole budget.
+        if m.body.len() <= MD_SYNC_MAX_BYTES && std::time::Instant::now() < until {
             markdown_doc_cached(&m.body, opts);
             return true;
         }

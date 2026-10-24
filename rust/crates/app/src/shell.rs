@@ -59,6 +59,8 @@ pub struct Shell {
     pub(crate) land: LandChrome,
     /// What the native menubar was last built from.
     menu_built: Option<(recur_services::events::MenuState, MenuThemes)>,
+    /// The theme menus and a fingerprint of the catalogs they were sorted from.
+    themes_memo: Option<(u64, MenuThemes)>,
     /// The chat-occluded value last reported (`SetChatUIOccluded`).
     occluded: Option<bool>,
     /// An updater check the user asked for reports every outcome.
@@ -153,6 +155,7 @@ impl Shell {
             titlebar: TitlebarState::default(),
             land: LandChrome::default(),
             menu_built: None,
+            themes_memo: None,
             occluded: None,
             update_manual: false,
             update_ready: None,
@@ -303,7 +306,30 @@ impl Shell {
                 && !recur_view_core::modes::ws_main_blocked(s.selected_workspace());
             menu_state.open_in = Some(on);
             menu_state.copy_path = Some(on);
-            (menu_state, s.menu_themes())
+            // This runs on every store change: sort the theme lists only when they change.
+            let mark = {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::hash::DefaultHasher::new();
+                for t in &s.editor_theme_catalog {
+                    (&t.id, &t.name).hash(&mut h);
+                }
+                for t in &s.terminal_theme_catalog {
+                    (&t.id, &t.name).hash(&mut h);
+                }
+                if let Some(st) = &s.settings {
+                    st.disabled_bundle_themes.hash(&mut h);
+                }
+                h.finish()
+            };
+            let themes = match &self.themes_memo {
+                Some((m, t)) if *m == mark => t.clone(),
+                _ => {
+                    let t = s.menu_themes();
+                    self.themes_memo = Some((mark, t.clone()));
+                    t
+                }
+            };
+            (menu_state, themes)
         };
         let key = (menu_state, themes);
         if self.menu_built.as_ref() == Some(&key) {

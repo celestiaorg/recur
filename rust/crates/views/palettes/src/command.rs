@@ -6,9 +6,9 @@ use std::time::Duration;
 
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, Focusable, InteractiveElement,
-    IntoElement, KeystrokeEvent, ParentElement, Render, ScrollHandle, SharedString,
-    StatefulInteractiveElement, Styled, Subscription, Task, Window, div, px,
+    AnyElement, App, AppContext as _, Context, Entity, Focusable, InteractiveElement, IntoElement,
+    KeystrokeEvent, ParentElement, Render, ScrollHandle, SharedString, StatefulInteractiveElement,
+    Styled, Subscription, Task, Window, div, px,
 };
 use recur_domain::{Pr, Project, Workspace};
 use recur_services::api::PaletteSearchDto;
@@ -21,7 +21,9 @@ use recur_ui::{Color, IconName, Theme, svg_markup};
 use recur_view_core::modes::ws_main_blocked;
 use recur_view_core::pr::pr_icon_name;
 use recur_view_core::run::workspace_dev_cmd;
-use recur_view_core::{AppState, NewTaskDraft, ScheduleEditorRequest, ViewName, bridge_error_message};
+use recur_view_core::{
+    AppState, NewTaskDraft, ScheduleEditorRequest, ViewName, bridge_error_message,
+};
 
 use crate::chrome::{self, Kind, js_len, plain, step};
 
@@ -61,7 +63,10 @@ pub enum Action {
     OpenProject(String),
     /// A `[[search]]` hit: `settings:<section>` actions open Settings, the rest expand
     /// `insert` into a New workspace draft.
-    SearchHit { insert: String, action: String },
+    SearchHit {
+        insert: String,
+        action: String,
+    },
 }
 
 /// `Cmd`.
@@ -124,9 +129,27 @@ pub fn all_commands(i: &Inputs) -> Vec<Cmd> {
         && !workspace_dev_cmd(i.selected_workspace_id, i.workspaces, i.projects).is_empty();
     let a = "Actions";
     let mut out = vec![
-        Cmd::icon(a, IconName::Plus, "New workspace", "⌘N", Action::NewWorkspace),
-        Cmd::icon(a, IconName::HousePlus, "New project", "", Action::NewProject),
-        Cmd::icon(a, IconName::ClockPlus, "New schedule", "", Action::NewSchedule),
+        Cmd::icon(
+            a,
+            IconName::Plus,
+            "New workspace",
+            "⌘N",
+            Action::NewWorkspace,
+        ),
+        Cmd::icon(
+            a,
+            IconName::HousePlus,
+            "New project",
+            "",
+            Action::NewProject,
+        ),
+        Cmd::icon(
+            a,
+            IconName::ClockPlus,
+            "New schedule",
+            "",
+            Action::NewSchedule,
+        ),
         Cmd::icon(
             a,
             IconName::Plus,
@@ -150,7 +173,13 @@ pub fn all_commands(i: &Inputs) -> Vec<Cmd> {
             "⌘O",
             Action::OpenIn,
         ));
-        out.push(Cmd::icon(a, IconName::Copy, "Copy path", "", Action::CopyPath));
+        out.push(Cmd::icon(
+            a,
+            IconName::Copy,
+            "Copy path",
+            "",
+            Action::CopyPath,
+        ));
     }
     if i.editor_file_open {
         out.push(Cmd::icon(
@@ -447,9 +476,9 @@ impl CommandPalette {
         }
         if open != self.was_open {
             if !open && self.was_open {
-            chrome::release_focus(&self.input, window, cx);
-        }
-        self.was_open = open;
+                chrome::release_focus(&self.input, window, cx);
+            }
+            self.was_open = open;
             self.query_changed(cx);
         }
         self.clamp_sel(cx);
@@ -662,11 +691,11 @@ impl Render for CommandPalette {
                             palette_pic(*name, on, cx).into_any_element()
                         }
                         Pic::Icon(_, svg) => palette_tile(on, cx)
-                            .child(
-                                svg_markup(svg.clone())
-                                    .size(px(14.))
-                                    .color(if on { t.amber } else { t.muted }),
-                            )
+                            .child(svg_markup(svg.clone()).size(px(14.)).color(if on {
+                                t.amber
+                            } else {
+                                t.muted
+                            }))
                             .into_any_element(),
                     };
                     let mut row = palette_row(id.clone(), on, false, cx)
@@ -797,7 +826,12 @@ mod tests {
         archived.archived = true;
         let mut host = ws("H", "active", "Host");
         host.host_pr_id = "482".into();
-        let w = vec![ws("N", "needs", "Needs"), archived, host, ws("X", "", "Odd")];
+        let w = vec![
+            ws("N", "needs", "Needs"),
+            archived,
+            host,
+            ws("X", "", "Odd"),
+        ];
         let mut i = inputs(&w, &[], &[]);
         i.needs = recur_ui::hex(0xff0000);
         let loops: Vec<Cmd> = all_commands(&i)
@@ -857,7 +891,14 @@ mod tests {
         assert_eq!(labels(&f), ["ENG-1", "eng work"]);
         assert_eq!(
             pal_order(&names),
-            ["Actions", "Go to", "Linear", "Loops", "Pull requests", "Projects"]
+            [
+                "Actions",
+                "Go to",
+                "Linear",
+                "Loops",
+                "Pull requests",
+                "Projects"
+            ]
         );
     }
 }

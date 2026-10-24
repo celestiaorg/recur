@@ -370,11 +370,7 @@ impl Render for ShortcutsHelp {
             }
         }
         let list = chrome::list("sc-list", Kind::Palette, &self.scroll, rows);
-        let foot = chrome::footer(
-            Kind::Palette,
-            &[("⌘⇧/", "shortcuts"), ("esc", "close")],
-            cx,
-        );
+        let foot = chrome::footer(Kind::Palette, &[("⌘⇧/", "shortcuts"), ("esc", "close")], cx);
         chrome::frame(
             Kind::Palette,
             72.,

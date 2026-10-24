@@ -470,7 +470,9 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
         assert_eq!(sent.lock().clone(), [json!(defaults)]);
-        state.update(cx, |s, cx| s.set_explorer_exclude(vec!["**/dist".into()], cx));
+        state.update(cx, |s, cx| {
+            s.set_explorer_exclude(vec!["**/dist".into()], cx)
+        });
         cx.run_until_parked();
         assert_eq!(sent.lock().last().cloned(), Some(json!(["**/dist"])));
         assert_eq!(sent.lock().len(), 2);
@@ -493,13 +495,22 @@ mod tests {
                 f.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             })))
         });
-        let (a, b) = state.read_with(cx, |s, _| (s.workspaces[0].id.clone(), s.workspaces[1].id.clone()));
+        let (a, b) = state.read_with(cx, |s, _| {
+            (s.workspaces[0].id.clone(), s.workspaces[1].id.clone())
+        });
         state.update(cx, |s, cx| s.open_workspace(&a, false, cx));
-        let _ = state.update(cx, |s, cx| s.remove_workspace(&b, cx));
+        state
+            .update(cx, |s, cx| s.remove_workspace(&b, cx))
+            .detach();
         assert_eq!(flushed.load(std::sync::atomic::Ordering::SeqCst), 0);
-        let _ = state.update(cx, |s, cx| s.remove_workspace(&a, cx));
+        state
+            .update(cx, |s, cx| s.remove_workspace(&a, cx))
+            .detach();
         assert_eq!(flushed.load(std::sync::atomic::Ordering::SeqCst), 1);
-        assert_eq!(state.read_with(cx, |s, _| s.view), crate::ViewName::Briefing);
+        assert_eq!(
+            state.read_with(cx, |s, _| s.view),
+            crate::ViewName::Briefing
+        );
         cx.run_until_parked();
     }
 }

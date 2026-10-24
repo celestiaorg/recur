@@ -369,7 +369,8 @@ fn ask_recur_briefing_tools_skip_json_only_present_workspace_is_a_card(cx: &mut 
     s.click(&format!("wbrief:{RATE}"));
     assert_eq!(s.view(), ViewName::Detail);
     assert_eq!(
-        s.state.read_with(s.cx, |s, _| s.selected_workspace_id.clone()),
+        s.state
+            .read_with(s.cx, |s, _| s.selected_workspace_id.clone()),
         "LOOP-2218"
     );
 }

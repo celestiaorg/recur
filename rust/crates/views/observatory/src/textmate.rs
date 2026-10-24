@@ -278,7 +278,10 @@ impl EditorEnv {
 
     /// `applyLanguageMode`: the language picker's per-file pick (`None` auto-detects).
     pub fn apply_language_mode(&mut self, path: &str, scope: Option<&str>, cx: &mut Context<Self>) {
-        self.tm.borrow_mut().catalog.apply_language_mode(path, scope);
+        self.tm
+            .borrow_mut()
+            .catalog
+            .apply_language_mode(path, scope);
         self.syntax_changed(cx);
     }
 

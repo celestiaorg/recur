@@ -69,11 +69,16 @@ fn go_to_palette_scrolls_selection_into_view_with_arrow_keys(cx: &mut TestAppCon
     let list = s.bounds("pal-list").expect("list");
     let last = labels.last().cloned().unwrap_or_default();
     let last_row = s.bounds(&format!("pal-row:{last}")).expect("last row");
-    assert!(last_row.bottom() > list.bottom() + gpui::px(1.), "the list overflows");
+    assert!(
+        last_row.bottom() > list.bottom() + gpui::px(1.),
+        "the list overflows"
+    );
     for _ in 0..count - 1 {
         s.keys("down");
     }
-    let sel = s.bounds(&format!("pal-row:{last}:sel")).expect("selected row");
+    let sel = s
+        .bounds(&format!("pal-row:{last}:sel"))
+        .expect("selected row");
     let list = s.bounds("pal-list").expect("list");
     assert!(sel.top() >= list.top() - gpui::px(1.) && sel.bottom() <= list.bottom() + gpui::px(1.));
     let first = s.bounds("pal-row:New workspace").expect("first row");
@@ -101,9 +106,18 @@ fn keyboard_shortcuts_opens_on_cmd_shift_slash_and_filters(cx: &mut TestAppConte
 fn go_to_palette_matches_a_loop_by_project_id_and_a_pr_by_number(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     let (loop_goal, project, pr_title, pr_number) = s.read(|st| {
-        let l = &st.workspaces.iter().find(|w| w.id == "LOOP-2218").expect("seed loop");
+        let l = &st
+            .workspaces
+            .iter()
+            .find(|w| w.id == "LOOP-2218")
+            .expect("seed loop");
         let p = st.prs.iter().find(|p| p.id == "482").expect("seed pr");
-        (l.goal.clone(), l.project_id.clone(), p.title.clone(), p.number)
+        (
+            l.goal.clone(),
+            l.project_id.clone(),
+            p.title.clone(),
+            p.number,
+        )
     });
     s.keys("cmd-k");
     s.type_text(&project);
@@ -173,7 +187,10 @@ fn open_in_keys_pick_digits_and_cmd_enter_makes_the_default(cx: &mut TestAppCont
     assert!(s.until(|s| s.rows("oi-row:", &ids).len() == 4));
     s.keys("down down");
     s.keys("cmd-enter");
-    assert_eq!(s.storage("recur.openInDefault").as_deref(), Some("terminal"));
+    assert_eq!(
+        s.storage("recur.openInDefault").as_deref(),
+        Some("terminal")
+    );
     assert_eq!(s.rows("oi-row:", &ids)[0], "terminal:sel");
     // 2 opens the second row.
     s.keys("2");

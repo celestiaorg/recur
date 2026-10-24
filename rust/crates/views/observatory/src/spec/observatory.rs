@@ -140,7 +140,10 @@ async fn will_save_runs_the_gofmt_transform_before_write_file(cx: &mut TestAppCo
     let w = writes.lock().clone();
     assert!(!w.is_empty());
     let text = s(&w[0], 3);
-    assert!(!regex::Regex::new(r"[ \t]+\n").unwrap().is_match(&text), "{text:?}");
+    assert!(
+        !regex::Regex::new(r"[ \t]+\n").unwrap().is_match(&text),
+        "{text:?}"
+    );
     assert!(!text.contains("\n\n\n"), "{text:?}");
 }
 

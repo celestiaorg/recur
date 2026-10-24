@@ -1298,7 +1298,13 @@ impl AgentChat {
         if rows.len() == 1 {
             let r = rows[0];
             self.body_tail = false;
-            let row = self.step_row(&msgs[r].clone(), &r.to_string(), first_checkpoint, window, cx);
+            let row = self.step_row(
+                &msgs[r].clone(),
+                &r.to_string(),
+                first_checkpoint,
+                window,
+                cx,
+            );
             // An open body's 6px bottom margin collapses into `.steps`' 16px (no flex between).
             if std::mem::take(&mut self.body_tail) {
                 el = el.mb(px(10.));

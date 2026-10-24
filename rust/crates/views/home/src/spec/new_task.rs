@@ -470,7 +470,8 @@ fn empty_cmd_enter_from_the_focused_composer_creates_a_workspace(cx: &mut TestAp
 impl S<'_> {
     fn focused(&mut self) -> Option<&'static str> {
         let m = self.modal();
-        self.cx.update(|window, cx| m.read(cx).focused_stop(window, cx))
+        self.cx
+            .update(|window, cx| m.read(cx).focused_stop(window, cx))
     }
 }
 

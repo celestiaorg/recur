@@ -166,5 +166,9 @@ fn run_command_palette_inserts_a_snippet_with_its_tab_trigger_hint(cx: &mut Test
         .and_then(|a| a.get(3).and_then(Value::as_str).map(str::to_string))
         .unwrap_or_default();
     assert!(written.contains("if err != nil {"), "{written}");
-    assert!(s.storage("recur.commandUsage").unwrap_or_default().contains("recur.go.ife"));
+    assert!(
+        s.storage("recur.commandUsage")
+            .unwrap_or_default()
+            .contains("recur.go.ife")
+    );
 }

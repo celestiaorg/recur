@@ -5,9 +5,9 @@
 
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, Focusable, InteractiveElement,
-    IntoElement, KeystrokeEvent, MouseMoveEvent, ParentElement, Render, ScrollHandle,
-    SharedString, StatefulInteractiveElement, Subscription, Window, div,
+    AnyElement, App, AppContext as _, Context, Entity, Focusable, InteractiveElement, IntoElement,
+    KeystrokeEvent, MouseMoveEvent, ParentElement, Render, ScrollHandle, SharedString,
+    StatefulInteractiveElement, Subscription, Window, div,
 };
 use recur_code::fuzzy::{fuzzy_filter_prepared, prepare_fuzzy};
 use recur_textmate::{
@@ -15,7 +15,9 @@ use recur_textmate::{
 };
 use recur_ui::IconName;
 use recur_ui::logic::hover_gate::HoverGate;
-use recur_ui::style::{palette_empty, palette_group, palette_key, palette_row, palette_sub, style_text_input};
+use recur_ui::style::{
+    palette_empty, palette_group, palette_key, palette_row, palette_sub, style_text_input,
+};
 use recur_view_core::AppState;
 use recur_view_observatory::textmate::{EditorEnv, editor_env};
 
@@ -54,7 +56,9 @@ impl FileModes {
         let modes = &catalog.syntax_mode;
         let detected = catalog.detect_scope_for_path(path, None);
         let assoc = file_type_association_for_path(path);
-        let assoc_scope = assoc.as_ref().and_then(|a| modes.file_type_override(&a.key));
+        let assoc_scope = assoc
+            .as_ref()
+            .and_then(|a| modes.file_type_override(&a.key));
         FileModes {
             detected_label: detected
                 .as_deref()
@@ -142,12 +146,19 @@ pub fn visible_actions(actions: Vec<Row>, q: &str) -> Vec<Row> {
     }
     actions
         .into_iter()
-        .filter(|r| r.label.to_lowercase().contains(&query) || r.psub.to_lowercase().contains(&query))
+        .filter(|r| {
+            r.label.to_lowercase().contains(&query) || r.psub.to_lowercase().contains(&query)
+        })
         .collect()
 }
 
 /// `langRows`: every language, or the best 80 fuzzy matches of `label language scope`.
-pub fn lang_rows(langs: &[SyntaxLanguage], q: &str, current: Option<&str>, associate: bool) -> Vec<Row> {
+pub fn lang_rows(
+    langs: &[SyntaxLanguage],
+    q: &str,
+    current: Option<&str>,
+    associate: bool,
+) -> Vec<Row> {
     let hits: Vec<SyntaxLanguage> = if q.trim().is_empty() {
         langs.to_vec()
     } else {
@@ -242,9 +253,9 @@ impl SyntaxPalette {
         }
         if open != self.was_open {
             if !open && self.was_open {
-            chrome::release_focus(&self.input, window, cx);
-        }
-        self.was_open = open;
+                chrome::release_focus(&self.input, window, cx);
+            }
+            self.was_open = open;
             self.hover.reset();
             let state = self.state.clone();
             cx.defer(move |cx| state.update(cx, |s, cx| s.set_chat_occluder(OCCLUDER, open, cx)));
@@ -262,7 +273,12 @@ impl SyntaxPalette {
     /// `(visibleActions, langRows, the languages section title, file modes)`.
     fn lists(&self, cx: &App) -> (Vec<Row>, Vec<Row>, String, FileModes) {
         let Some(env) = &self.env else {
-            return (Vec::new(), Vec::new(), "Languages".into(), FileModes::default());
+            return (
+                Vec::new(),
+                Vec::new(),
+                "Languages".into(),
+                FileModes::default(),
+            );
         };
         let tm = env.read(cx).tm.clone();
         let tm = tm.borrow();
@@ -317,7 +333,9 @@ impl SyntaxPalette {
         let path = self.path.clone();
         let assoc = file_type_association_for_path(&path).filter(|_| self.associate);
         env.update(cx, |e, cx| match (&assoc, scope) {
-            (Some(a), Some(scope)) => e.set_file_type_language(&a.key, Some(scope), Some(&path), cx),
+            (Some(a), Some(scope)) => {
+                e.set_file_type_language(&a.key, Some(scope), Some(&path), cx)
+            }
             _ => e.apply_language_mode(&path, scope, cx),
         });
         self.close(cx);
@@ -392,14 +410,19 @@ impl SyntaxPalette {
     fn row(&self, idx: usize, r: &Row, cx: &mut Context<Self>) -> AnyElement {
         let on = idx == self.sel;
         let label = r.label.clone();
-        let mut row = palette_row(SharedString::from(format!("syn-row:{}", r.id)), on, true, cx)
-            .debug_selector(move || format!("syn-row:{label}{}", if on { ":sel" } else { "" }))
-            .child(chrome::label(
-                SharedString::from(format!("syn-pl:{}", r.id)),
-                r.label.clone(),
-                Kind::Command,
-                cx,
-            ));
+        let mut row = palette_row(
+            SharedString::from(format!("syn-row:{}", r.id)),
+            on,
+            true,
+            cx,
+        )
+        .debug_selector(move || format!("syn-row:{label}{}", if on { ":sel" } else { "" }))
+        .child(chrome::label(
+            SharedString::from(format!("syn-pl:{}", r.id)),
+            r.label.clone(),
+            Kind::Command,
+            cx,
+        ));
         if !r.psub.is_empty() {
             row = row.child(palette_sub(r.psub.clone(), cx));
         }
@@ -554,7 +577,11 @@ mod tests {
     fn auto_detect_is_current_without_overrides() {
         assert_eq!(
             summary(&actions(&go(), false)),
-            [s("auto", "Go", true), s("plain", "", false), s("assoc", "", false)]
+            [
+                s("auto", "Go", true),
+                s("plain", "", false),
+                s("assoc", "", false)
+            ]
         );
         assert_eq!(actions(&go(), false)[2].label, "Always open *.go as…");
     }
@@ -599,21 +626,30 @@ mod tests {
     #[test]
     fn actions_filter_on_label_and_psub() {
         let rows = visible_actions(actions(&go(), false), " GO ");
-        assert_eq!(summary(&rows), [s("auto", "Go", true), s("assoc", "", false)]);
+        assert_eq!(
+            summary(&rows),
+            [s("auto", "Go", true), s("assoc", "", false)]
+        );
     }
 
     #[test]
     fn languages_fuzzy_filter_and_mark_the_current_one() {
-        let langs: Vec<SyntaxLanguage> = [("source.go", "Go", "go"), ("source.python", "Python", "python")]
-            .iter()
-            .map(|(scope, label, lang)| SyntaxLanguage {
-                scope_name: scope.to_string(),
-                label: label.to_string(),
-                language: lang.to_string(),
-            })
-            .collect();
+        let langs: Vec<SyntaxLanguage> = [
+            ("source.go", "Go", "go"),
+            ("source.python", "Python", "python"),
+        ]
+        .iter()
+        .map(|(scope, label, lang)| SyntaxLanguage {
+            scope_name: scope.to_string(),
+            label: label.to_string(),
+            language: lang.to_string(),
+        })
+        .collect();
         let all = lang_rows(&langs, "", Some("source.go"), false);
-        assert_eq!(summary(&all), [s("source.go", "", true), s("source.python", "", false)]);
+        assert_eq!(
+            summary(&all),
+            [s("source.go", "", true), s("source.python", "", false)]
+        );
         assert!(!lang_rows(&langs, "", Some("source.go"), true)[0].current);
         let hits = lang_rows(&langs, "pyth", None, false);
         assert_eq!(hits.len(), 1);

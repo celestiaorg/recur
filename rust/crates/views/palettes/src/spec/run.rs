@@ -65,10 +65,7 @@ fn the_run_palette_filters_to_matching_commands_as_you_type(cx: &mut TestAppCont
     assert_eq!(s.rows("run-row:", &NAMES)[3], "check:sel");
     // A new query starts over at its first match.
     s.type_text("test");
-    assert_eq!(
-        s.rows("run-row:", &NAMES),
-        ["test:go:sel", "test:frontend"]
-    );
+    assert_eq!(s.rows("run-row:", &NAMES), ["test:go:sel", "test:frontend"]);
 }
 
 #[gpui::test]
@@ -87,9 +84,7 @@ fn the_run_palette_takes_digits_and_escape_like_open_in(cx: &mut TestAppContext)
 }
 
 #[gpui::test]
-fn cmd_shift_r_opens_the_stop_palette_when_several_commands_are_running(
-    cx: &mut TestAppContext,
-) {
+fn cmd_shift_r_opens_the_stop_palette_when_several_commands_are_running(cx: &mut TestAppContext) {
     let t = Calls::default();
     let mut s = mount(
         cx,
@@ -130,8 +125,9 @@ fn cmd_enter_and_the_pin_make_a_run_the_project_default(cx: &mut TestAppContext)
     s.keys("cmd-r");
     s.keys("down down");
     s.keys("cmd-enter");
-    assert!(s.until(|s| s.rows("run-row:", &NAMES).first().map(String::as_str)
-        == Some("test:frontend:sel")));
+    assert!(s.until(
+        |s| s.rows("run-row:", &NAMES).first().map(String::as_str) == Some("test:frontend:sel")
+    ));
     assert!(s.has("run-pin:test:frontend"));
     let pinned = s.read(|s| {
         s.projects
@@ -142,6 +138,7 @@ fn cmd_enter_and_the_pin_make_a_run_the_project_default(cx: &mut TestAppContext)
     assert_eq!(pinned.as_deref(), Some("test:frontend"));
     s.hover("run-row:tidy");
     s.click("run-pin:tidy");
-    assert!(s.until(|s| s.rows("run-row:", &NAMES).first().map(String::as_str)
-        == Some("tidy:sel")));
+    assert!(
+        s.until(|s| s.rows("run-row:", &NAMES).first().map(String::as_str) == Some("tidy:sel"))
+    );
 }

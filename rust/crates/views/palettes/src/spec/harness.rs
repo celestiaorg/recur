@@ -92,9 +92,12 @@ pub fn with_runs(runs: &[(&str, &str)]) -> impl FnOnce(&mut Seed) {
     }
 }
 
+/// One recorded bound call: its Go name and arguments.
+pub type Call = (String, Vec<Value>);
+
 /// Bound calls by name, recorded.
 #[derive(Clone, Default)]
-pub struct Calls(pub Arc<Mutex<Vec<(String, Vec<Value>)>>>);
+pub struct Calls(pub Arc<Mutex<Vec<Call>>>);
 
 impl Calls {
     pub fn named(&self, name: &str) -> Vec<Vec<Value>> {
@@ -243,12 +246,8 @@ impl S<'_> {
 
     /// The window's focused element is a palette's query field.
     pub fn input_focused(&mut self) -> bool {
-        self.cx.update(|window, _| {
-            window
-                .context_stack()
-                .iter()
-                .any(|c| c.contains("Input"))
-        })
+        self.cx
+            .update(|window, _| window.context_stack().iter().any(|c| c.contains("Input")))
     }
 
     pub fn toasted(&mut self, kind: ToastKind, text: &str) -> bool {

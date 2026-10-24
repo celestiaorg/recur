@@ -481,7 +481,10 @@ mod tests {
         let apps = [app("finder", "Finder"), app("cursor", "Cursor")];
         let ids = |r: &[Row]| r.iter().map(|r| r.id.clone()).collect::<Vec<_>>();
         assert_eq!(ids(&rows(&apps, "")), ["finder", "cursor", "copy-path"]);
-        assert_eq!(ids(&rows(&apps, "cursor")), ["cursor", "finder", "copy-path"]);
+        assert_eq!(
+            ids(&rows(&apps, "cursor")),
+            ["cursor", "finder", "copy-path"]
+        );
         assert_eq!(rows(&apps, "")[2].label, "Copy path");
     }
 

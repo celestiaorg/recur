@@ -4,8 +4,8 @@
 use gpui_kit::base::input::InputState;
 use gpui_kit::{
     AnyElement, App, Div, ElementId, Entity, InteractiveElement, IntoElement, Keystroke,
-    MouseButton, ParentElement, ScrollHandle, SharedString, Stateful,
-    Styled, Window, div, prelude::FluentBuilder, px,
+    MouseButton, ParentElement, ScrollHandle, SharedString, Stateful, Styled, Window, div,
+    prelude::FluentBuilder, px,
 };
 use recur_ui::fonts::Family;
 use recur_ui::kbd::kbd;
@@ -61,7 +61,11 @@ pub fn head(
     cx: &App,
 ) -> Div {
     let t = Theme::of(cx).tokens;
-    let (icon_px, font) = if kind.dense() { (14., 13.) } else { (16., 14.5) };
+    let (icon_px, font) = if kind.dense() {
+        (14., 13.)
+    } else {
+        (16., 14.5)
+    };
     palette_input_row(kind.dense(), cx)
         .child(icon(name).size(px(icon_px)).color(t.faint))
         // WebKit keeps an input's default 1px padding; only the border is reset.
@@ -109,11 +113,11 @@ pub fn list(
         .flex_col()
         .debug_selector(move || sel)
         .child(
-        scroll_area(id)
-            .track(scroll)
-            .scroller(move |d| d.p(px(pad)).flex().flex_col())
-            .children(children),
-    )
+            scroll_area(id)
+                .track(scroll)
+                .scroller(move |d| d.p(px(pad)).flex().flex_col())
+                .children(children),
+        )
 }
 
 /// `.pal-foot`: `<Kbd class="k">` hints with their labels. GPUI clips rectangles, so the
@@ -164,7 +168,12 @@ pub fn frame(
 
 /// `.pal-row .pl`: 13px and `flex: 1` in `.palette`, 12.5px at line-height 1.3 in
 /// `.cmd-palette`. Labels wrap where the row is too narrow, as the span does.
-pub fn label(id: impl Into<ElementId>, s: impl Into<SharedString>, kind: Kind, cx: &App) -> AnyElement {
+pub fn label(
+    id: impl Into<ElementId>,
+    s: impl Into<SharedString>,
+    kind: Kind,
+    cx: &App,
+) -> AnyElement {
     let t = Theme::of(cx).tokens;
     if kind.dense() {
         text(s)
@@ -235,7 +244,13 @@ pub fn app_tile(selected: bool, os: bool, cx: &App) -> Div {
 
 /// `.open-in-pin`: the 22px Set as default button, shown on the selected row and on the
 /// default (`.on`); amber while hovered or on. Its `title` is the tooltip.
-pub fn pin(id: SharedString, on: bool, row_selected: bool, hovered: bool, cx: &App) -> Stateful<Div> {
+pub fn pin(
+    id: SharedString,
+    on: bool,
+    row_selected: bool,
+    hovered: bool,
+    cx: &App,
+) -> Stateful<Div> {
     let t = Theme::of(cx).tokens;
     let tip = if on { "Default" } else { "Set as default" };
     let visible = on || row_selected;
@@ -246,7 +261,9 @@ pub fn pin(id: SharedString, on: bool, row_selected: bool, hovered: bool, cx: &A
         .items_center()
         .justify_center()
         .rounded(px(5.))
-        .when(visible, |d| d.child(icon(IconName::Pin).size(px(12.)).color(color)));
+        .when(visible, |d| {
+            d.child(icon(IconName::Pin).size(px(12.)).color(color))
+        });
     div()
         .id(id.clone())
         .flex_none()

@@ -1238,8 +1238,7 @@ impl AgentChat {
                 v.is_present_workspace()
                     && !m.result_pending
                     && !m.result_error
-                    && v
-                        .present_workspace_result()
+                    && v.present_workspace_result()
                         .is_some_and(|c| c.error.is_empty() && c.brief.is_some())
             };
             let body = self.tool_body(m, key, window, cx);

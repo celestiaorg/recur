@@ -4,9 +4,9 @@
 
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, Focusable, InteractiveElement,
-    IntoElement, KeystrokeEvent, ParentElement, Render, ScrollHandle, SharedString,
-    StatefulInteractiveElement, Styled, Subscription, Window, div, px,
+    AnyElement, App, AppContext as _, Context, Entity, Focusable, InteractiveElement, IntoElement,
+    KeystrokeEvent, ParentElement, Render, ScrollHandle, SharedString, StatefulInteractiveElement,
+    Styled, Subscription, Window, div, px,
 };
 use recur_editor::snippet::{RegisteredSnippet, snippet_trigger_hint};
 use recur_editor::text::locale_compare;
@@ -119,7 +119,12 @@ pub type Section = (String, Vec<(usize, Row)>);
 
 /// `flat` and `displaySections`: the recent rows still available here and matching (in
 /// frecency order), then each category's remaining matches.
-pub fn layout(rows: &[Row], cats: &[String], recent: &[String], q: &str) -> (Vec<Row>, Vec<Section>) {
+pub fn layout(
+    rows: &[Row],
+    cats: &[String],
+    recent: &[String],
+    q: &str,
+) -> (Vec<Row>, Vec<Section>) {
     let query = q.trim().to_lowercase();
     let by_id = |id: &str| rows.iter().find(|r| r.id == id);
     let recent: Vec<&Row> = recent
@@ -140,7 +145,11 @@ pub fn layout(rows: &[Row], cats: &[String], recent: &[String], q: &str) -> (Vec
     if !recent.is_empty() {
         let items: Vec<(usize, Row)> = recent
             .iter()
-            .filter_map(|r| flat.iter().position(|x| x.id == r.id).map(|i| (i, flat[i].clone())))
+            .filter_map(|r| {
+                flat.iter()
+                    .position(|x| x.id == r.id)
+                    .map(|i| (i, flat[i].clone()))
+            })
             .collect();
         if !items.is_empty() {
             out.push((RECENT.into(), items));
@@ -240,11 +249,8 @@ impl RunCommandPalette {
         if open && !self.was_open {
             self.input.update(cx, |s, cx| s.set_value("", window, cx));
             self.sel = 0;
-            self.recent = ranked_command_ids(
-                self.state.read(cx).storage(),
-                RECENT_SECTION_SIZE,
-                now_ms(),
-            );
+            self.recent =
+                ranked_command_ids(self.state.read(cx).storage(), RECENT_SECTION_SIZE, now_ms());
             let focus = self.input.focus_handle(cx);
             window.defer(cx, move |window, cx| window.focus(&focus, cx));
             let (scope, path) = self.state.read(cx).current_editor_focus(cx);
@@ -382,16 +388,17 @@ impl Render for RunCommandPalette {
                     }
                     let key = format!("{title}:{}", r.id);
                     let label = r.label.clone();
-                    let mut row = palette_row(SharedString::from(format!("rc-row:{key}")), on, true, cx)
-                        .debug_selector(move || {
-                            format!("rc-row:{label}{}", if on { ":sel" } else { "" })
-                        })
-                        .child(chrome::label(
-                            SharedString::from(format!("rc-pl:{key}")),
-                            r.label.clone(),
-                            Kind::Command,
-                            cx,
-                        ));
+                    let mut row =
+                        palette_row(SharedString::from(format!("rc-row:{key}")), on, true, cx)
+                            .debug_selector(move || {
+                                format!("rc-row:{label}{}", if on { ":sel" } else { "" })
+                            })
+                            .child(chrome::label(
+                                SharedString::from(format!("rc-pl:{key}")),
+                                r.label.clone(),
+                                Kind::Command,
+                                cx,
+                            ));
                     if recent {
                         row = row.child(palette_sub(r.category.clone(), cx));
                     }
@@ -505,7 +512,10 @@ mod tests {
             cmd("sort", "Sort Lines", "Text", 10, true),
             cmd("fmt", "gofmt", "Go", 20, false),
         ];
-        let snips = [snip("ife", "If Err", Some("Go"), " ife "), snip("x", "X", None, "")];
+        let snips = [
+            snip("ife", "If Err", Some("Go"), " ife "),
+            snip("x", "X", None, ""),
+        ];
         let r = rows(&cmds, &snips);
         assert_eq!(ids(&r), ["sort", "ife", "x"]);
         assert_eq!(r[1].hint, "ife⇥");
@@ -541,7 +551,10 @@ mod tests {
         assert_eq!(ids(&flat), ["c", "a", "b"]);
         let titles: Vec<&str> = secs.iter().map(|s| s.0.as_str()).collect();
         assert_eq!(titles, ["Recent", "Text"]);
-        assert_eq!(secs[0].1.iter().map(|(i, _)| *i).collect::<Vec<_>>(), [0, 1]);
+        assert_eq!(
+            secs[0].1.iter().map(|(i, _)| *i).collect::<Vec<_>>(),
+            [0, 1]
+        );
         assert_eq!(secs[1].1[0].0, 2);
         // A query filters Recent too.
         let (flat, secs) = layout(&r, &cats, &recent, "alp");

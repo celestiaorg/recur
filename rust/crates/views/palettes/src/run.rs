@@ -3,9 +3,9 @@
 
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, Focusable, InteractiveElement,
-    IntoElement, KeystrokeEvent, MouseMoveEvent, ParentElement, Render, ScrollHandle,
-    SharedString, StatefulInteractiveElement, Styled, Subscription, Window, div, px,
+    AnyElement, App, AppContext as _, Context, Entity, Focusable, InteractiveElement, IntoElement,
+    KeystrokeEvent, MouseMoveEvent, ParentElement, Render, ScrollHandle, SharedString,
+    StatefulInteractiveElement, Styled, Subscription, Window, div, px,
 };
 use recur_domain::RunCommand;
 use recur_ui::IconName;

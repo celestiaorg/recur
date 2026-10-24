@@ -25,33 +25,48 @@ use recur_view_core::{OverlaySlot, ViewContext, ViewRegistry};
 
 /// Registers every palette in its App.svelte overlay slot.
 pub fn register(r: &mut ViewRegistry) {
-    r.overlay(OverlaySlot::CommandPalette, |vcx: &ViewContext, window, cx| {
-        let state = vcx.state.clone();
-        cx.new(|cx| command::CommandPalette::new(state, window, cx))
-            .into()
-    });
-    r.overlay(OverlaySlot::RunCommandPalette, |vcx: &ViewContext, window, cx| {
-        let state = vcx.state.clone();
-        cx.new(|cx| run_command::RunCommandPalette::new(state, window, cx))
-            .into()
-    });
-    r.overlay(OverlaySlot::OpenInPalette, |vcx: &ViewContext, window, cx| {
-        let state = vcx.state.clone();
-        cx.new(|cx| open_in::OpenInPalette::new(state, window, cx))
-            .into()
-    });
+    r.overlay(
+        OverlaySlot::CommandPalette,
+        |vcx: &ViewContext, window, cx| {
+            let state = vcx.state.clone();
+            cx.new(|cx| command::CommandPalette::new(state, window, cx))
+                .into()
+        },
+    );
+    r.overlay(
+        OverlaySlot::RunCommandPalette,
+        |vcx: &ViewContext, window, cx| {
+            let state = vcx.state.clone();
+            cx.new(|cx| run_command::RunCommandPalette::new(state, window, cx))
+                .into()
+        },
+    );
+    r.overlay(
+        OverlaySlot::OpenInPalette,
+        |vcx: &ViewContext, window, cx| {
+            let state = vcx.state.clone();
+            cx.new(|cx| open_in::OpenInPalette::new(state, window, cx))
+                .into()
+        },
+    );
     r.overlay(OverlaySlot::RunPalette, |vcx: &ViewContext, window, cx| {
         let state = vcx.state.clone();
         cx.new(|cx| run::RunPalette::new(state, window, cx)).into()
     });
-    r.overlay(OverlaySlot::SyntaxPalette, |vcx: &ViewContext, window, cx| {
-        let state = vcx.state.clone();
-        cx.new(|cx| syntax::SyntaxPalette::new(state, window, cx))
-            .into()
-    });
-    r.overlay(OverlaySlot::ShortcutsHelp, |vcx: &ViewContext, window, cx| {
-        let state = vcx.state.clone();
-        cx.new(|cx| shortcuts::ShortcutsHelp::new(state, window, cx))
-            .into()
-    });
+    r.overlay(
+        OverlaySlot::SyntaxPalette,
+        |vcx: &ViewContext, window, cx| {
+            let state = vcx.state.clone();
+            cx.new(|cx| syntax::SyntaxPalette::new(state, window, cx))
+                .into()
+        },
+    );
+    r.overlay(
+        OverlaySlot::ShortcutsHelp,
+        |vcx: &ViewContext, window, cx| {
+            let state = vcx.state.clone();
+            cx.new(|cx| shortcuts::ShortcutsHelp::new(state, window, cx))
+                .into()
+        },
+    );
 }

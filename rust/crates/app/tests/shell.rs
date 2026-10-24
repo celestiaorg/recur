@@ -742,8 +742,13 @@ fn reload_bundles_rereads_the_catalog_and_reports_skipped_bundles(cx: &mut TestA
     h.settle();
     assert_eq!(*calls.lock(), ["InvalidateCatalog", "ListSkippedBundles"]);
     assert_eq!(h.read(|s| s.bundles_epoch), epoch + 1);
-    assert!(toast(&mut h, recur_ui::widgets::ToastKind::Success, "Bundles reloaded"));
-    *skipped.lock() = json!([{"name": "broken", "reason": "bad toml"}, {"name": "old", "reason": "x"}]);
+    assert!(toast(
+        &mut h,
+        recur_ui::widgets::ToastKind::Success,
+        "Bundles reloaded"
+    ));
+    *skipped.lock() =
+        json!([{"name": "broken", "reason": "bad toml"}, {"name": "old", "reason": "x"}]);
     h.state
         .update(h.cx, |s, cx| s.dispatch_menu_action("reload-bundles", cx));
     h.settle();

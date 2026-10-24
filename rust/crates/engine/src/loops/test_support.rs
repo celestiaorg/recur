@@ -560,6 +560,9 @@ pub struct FanOutRunner {
     pub fail_on: String,
     pub slow_on: String,
     pub slow_delay: std::time::Duration,
+    /// With `slow_on`: the slow turn ends as soon as this marked title has started (still
+    /// at most `slow_delay`), so ordering tests do not race the machine's speed.
+    pub slow_until: Option<&'static str>,
     pub mark_on: Vec<&'static str>,
     pub plans: bool,
     pub state: Mutex<FanOutState>,
@@ -649,7 +652,14 @@ impl FanOutRunner {
         }
         self.stamp(&text, false);
         if !self.slow_on.is_empty() && text.contains(&self.slow_on) {
-            tokio::time::sleep(self.slow_delay).await;
+            let deadline = tokio::time::Instant::now() + self.slow_delay;
+            while tokio::time::Instant::now() < deadline
+                && self
+                    .slow_until
+                    .is_none_or(|t| !self.state.lock().started.contains_key(t))
+            {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
         }
         let name = format!(
             "{}.txt",

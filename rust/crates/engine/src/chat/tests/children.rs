@@ -986,7 +986,14 @@ async fn stop_during_a_queued_report_is_honored() {
     within3(&h.started, "first turn starts").await;
     let (eng, id, kid) = (Arc::clone(fx.eng()), caller.id.clone(), child.clone());
     let reported = tokio::spawn(async move { eng.report_child(&id, &kid).await });
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    // Stop only once the notice has taken its ticket (the live turn holds the first), which
+    // fixes the stop generation it answers to: a Stop before that is not "during a queued
+    // report", and the notice then rightly starts its own turn.
+    let slot = fx.eng().chat_tab_slot(&caller.id, "PA");
+    wait_for(Duration::from_secs(5), "report queued", || {
+        slot.lock().next >= 2
+    })
+    .await;
     assert!(fx.eng().cancel_chat(&caller.id, "PA").await);
     h.release.cancel();
     let ok = tokio::time::timeout(Duration::from_secs(5), reported)

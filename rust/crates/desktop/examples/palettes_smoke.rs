@@ -225,16 +225,21 @@ async fn until(
     f(cx)
 }
 
-/// Opens a palette with `chord`, types `query`, moves down and up, closes it with Escape.
+/// A palette: its name, the chord that opens it, a query, and its open flag.
+type Case = (
+    &'static str,
+    &'static str,
+    &'static str,
+    fn(&Overlays) -> bool,
+);
+
+/// Opens a palette with its chord, types the query, moves down and up, closes it with Escape.
 async fn exercise(
     start: Instant,
     cx: &mut AsyncApp,
     window: AnyWindowHandle,
     state: &Entity<AppState>,
-    name: &str,
-    chord: &str,
-    query: &str,
-    open: fn(&Overlays) -> bool,
+    (name, chord, query, open): Case,
 ) -> bool {
     keys(cx, window, chord);
     if !until(cx, window, 5, |cx| {
@@ -302,19 +307,12 @@ async fn run(
         state.update(cx, |s, cx| s.go(ViewName::Briefing, None, cx));
         frames(cx, window, 6).await;
         say(start, format!("theme {theme}"));
-        ok &= exercise(start, cx, window, &state, "Go to", "cmd-k", "inbox", |o| {
-            o.palette
-        })
-        .await;
         ok &= exercise(
             start,
             cx,
             window,
             &state,
-            "Run Command",
-            "cmd-shift-p",
-            "sort",
-            |o| o.commands,
+            ("Go to", "cmd-k", "inbox", |o| o.palette),
         )
         .await;
         ok &= exercise(
@@ -322,10 +320,15 @@ async fn run(
             cx,
             window,
             &state,
-            "Shortcuts",
-            "cmd-shift-/",
-            "tab",
-            |o| o.shortcuts,
+            ("Run Command", "cmd-shift-p", "sort", |o| o.commands),
+        )
+        .await;
+        ok &= exercise(
+            start,
+            cx,
+            window,
+            &state,
+            ("Shortcuts", "cmd-shift-/", "tab", |o| o.shortcuts),
         )
         .await;
         state.update(cx, |s, cx| s.open_workspace(ws, false, cx));
@@ -342,13 +345,21 @@ async fn run(
             return false;
         }
         frames(cx, window, 10).await;
-        ok &= exercise(start, cx, window, &state, "Open in", "cmd-o", "fin", |o| {
-            o.open_in
-        })
+        ok &= exercise(
+            start,
+            cx,
+            window,
+            &state,
+            ("Open in", "cmd-o", "fin", |o| o.open_in),
+        )
         .await;
-        ok &= exercise(start, cx, window, &state, "Run", "cmd-r", "te", |o| {
-            o.run_menu
-        })
+        ok &= exercise(
+            start,
+            cx,
+            window,
+            &state,
+            ("Run", "cmd-r", "te", |o| o.run_menu),
+        )
         .await;
         state.update(cx, |s, cx| s.open_syntax_mode_picker(cx));
         frames(cx, window, 4).await;

@@ -739,8 +739,11 @@ enum Budget {
     /// The first key after mouse input: GPUI redraws the whole window, every cache off, when the
     /// input modality changes.
     FirstKey,
-    /// One frame of scrolling a transcript or a review (hydrating what comes into view).
+    /// One wheel step (0.9 of the viewport) of a transcript, through its frame: blocks coming
+    /// into view hydrate.
     ScrollStep,
+    /// One wheel step of a review: nearly a page of diff rows the frame has not laid out.
+    ReviewScrollStep,
     /// Opening a workspace: the route change through its first frame.
     WorkspaceSwitch,
 }
@@ -752,7 +755,8 @@ impl Budget {
         match self {
             Budget::Keystroke => (ms(100), ms(150)),
             Budget::FirstKey => (ms(600), ms(800)),
-            Budget::ScrollStep => (ms(250), ms(1200)),
+            Budget::ScrollStep => (ms(300), ms(1200)),
+            Budget::ReviewScrollStep => (ms(700), ms(1500)),
             Budget::WorkspaceSwitch => (ms(1000), ms(1500)),
         }
     }
@@ -1433,10 +1437,15 @@ async fn scroll_transcript(
     let mut at_end = 0;
     let mut reached = false;
     let mut unmoved = 0;
+    let mut trail: std::collections::VecDeque<(f32, f32)> = Default::default();
     for _ in 0..2000 {
         let page = f32::from(handle.bounds().size.height).max(200.);
         let max = f32::from(handle.max_offset().y);
         let y = -f32::from(handle.offset().y);
+        if trail.len() == 8 {
+            trail.pop_front();
+        }
+        trail.push_back((y, max));
         if y >= max - 0.5 {
             at_end += 1;
             if at_end >= 3 {
@@ -1485,8 +1494,9 @@ async fn scroll_transcript(
     if !reached {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
         if let Ok(mut r) = report().lock() {
-            r.stalls
-                .push(format!("the transcript never scrolled to its end at: {s}"));
+            r.stalls.push(format!(
+                "the transcript never scrolled to its end (last offsets and ends {trail:?}) at: {s}"
+            ));
         }
     }
     if chat.read_with(cx, |c, _| c.props().messages.len()) >= LONG_CHAT_ROWS {
@@ -1639,7 +1649,7 @@ async fn observatory(
             wheel_at(cx, window, at_point, -page.max(200.) * 0.9);
             draw(cx, window);
             let took = t.elapsed();
-            timed(Budget::ScrollStep, took);
+            timed(Budget::ReviewScrollStep, took);
             stall_check(took);
             collect_toasts(cx);
         }

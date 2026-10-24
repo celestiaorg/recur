@@ -375,7 +375,25 @@ impl AppState {
     /// `setExplorerExclude`.
     pub fn set_explorer_exclude(&mut self, patterns: Vec<String>, cx: &mut Context<Self>) {
         prefs::save_explorer_exclude(&mut self.storage, &patterns);
+        self.sync_file_index_exclude(cx);
         cx.notify();
+    }
+
+    /// `syncFileIndexExclude`: push `files.exclude` into the backend so the path index (Quick
+    /// Open, `@` files) matches the explorer. Non-fatal: search still filters `.git` and
+    /// `node_modules`.
+    pub fn sync_file_index_exclude(&self, cx: &mut Context<Self>) {
+        let patterns = self.explorer_exclude();
+        let services = self.services.clone();
+        gpui_kit::AppContext::background_spawn(cx, async move {
+            if let Err(err) = services.code.set_file_index_exclude(&patterns).await {
+                tracing::warn!(
+                    "SetFileIndexExclude failed: {}",
+                    crate::state::bridge_error_message(&err)
+                );
+            }
+        })
+        .detach();
     }
 
     /// `resetExplorerExclude`.

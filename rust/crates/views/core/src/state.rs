@@ -265,6 +265,9 @@ impl Global for GlobalAppState {}
 /// Runs the injected drop hook (the desktop allowlists Finder drops for file serving).
 pub type DropHook = std::rc::Rc<dyn Fn(&[String])>;
 
+/// Writes the pending editor session now (`flushEditorSessionNow`).
+pub type SessionFlusher = std::rc::Rc<dyn Fn(&mut App)>;
+
 pub struct AppState {
     pub(crate) services: Services,
     pub(crate) storage: LocalStorage,
@@ -381,6 +384,7 @@ pub struct AppState {
     pub run: RunStore,
     pub(crate) busy_watch: HashMap<String, Task<()>>,
     pub(crate) drop_hook: Option<DropHook>,
+    pub(crate) session_flusher: Option<SessionFlusher>,
     pub(crate) commands: crate::commands::CommandRegistry,
     pub(crate) chat: crate::chat::ChatStores,
 }
@@ -511,6 +515,7 @@ impl AppState {
             run: RunStore::default(),
             busy_watch: HashMap::new(),
             drop_hook: None,
+            session_flusher: None,
             commands: Default::default(),
             chat: Default::default(),
             storage,
@@ -550,6 +555,11 @@ impl AppState {
     /// The desktop's hook for Finder drops (allowlisting them for file serving).
     pub fn set_drop_hook(&mut self, hook: DropHook) {
         self.drop_hook = Some(hook);
+    }
+
+    /// The editor session host's flush, run before a workspace on screen is removed.
+    pub fn set_session_flusher(&mut self, flush: Option<SessionFlusher>) {
+        self.session_flusher = flush;
     }
 
     pub fn workspace(&self, id: &str) -> Option<&Workspace> {

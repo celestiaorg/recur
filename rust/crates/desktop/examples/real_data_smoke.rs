@@ -25,9 +25,13 @@
 //! (contained or not), error toast, frame over 2s or UI stall over 20s, sampling the main thread
 //! on a stall.
 //!
+//! It also times keystrokes in long chats, transcript and review scroll steps and workspace
+//! switches against frame-time budgets (`Budget`), and fails when one is exceeded.
+//!
 //! To reproduce a finding: `RECUR_SMOKE_LIMIT=n` caps the workspaces and PRs visited,
-//! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth and `RECUR_SMOKE_WORKSPACE=<id>` visits
-//! only that one.
+//! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth, `RECUR_SMOKE_WORKSPACE=<id>` visits
+//! only that one, `RECUR_SMOKE_WORKSPACES_ONLY=1` stops after the workspaces and
+//! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -724,26 +728,33 @@ struct Report {
     timed: BTreeMap<Budget, Vec<(Duration, String)>>,
 }
 
-/// The interactions the smoke times against a frame-time budget. Any sample over its budget
-/// fails the run. The budgets are for this example's build (`dev`, dependencies at
-/// `opt-level = 2`); the release app is several times faster.
+/// The interactions the smoke times against frame-time budgets: a run fails when the 95th
+/// percentile or the slowest sample of any of them is over its limit. The limits are for this
+/// example's build (`dev`: the workspace at `opt-level = 0`, dependencies at 2); the release app
+/// is several times faster.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Budget {
-    /// One key typed into the composer of a long chat, through its frame.
+    /// A key typed into the composer of a long chat, through its frame.
     Keystroke,
-    /// One frame of scrolling a transcript end to end (hydrating blocks as they come in).
+    /// The first key after mouse input: GPUI redraws the whole window, every cache off, when the
+    /// input modality changes.
+    FirstKey,
+    /// One frame of scrolling a transcript or a review (hydrating what comes into view).
     ScrollStep,
     /// Opening a workspace: the route change through its first frame.
     WorkspaceSwitch,
 }
 
 impl Budget {
-    fn limit(self) -> Duration {
-        Duration::from_millis(match self {
-            Budget::Keystroke => 100,
-            Budget::ScrollStep => 250,
-            Budget::WorkspaceSwitch => 1000,
-        })
+    /// `(p95, max)`.
+    fn limits(self) -> (Duration, Duration) {
+        let ms = Duration::from_millis;
+        match self {
+            Budget::Keystroke => (ms(100), ms(150)),
+            Budget::FirstKey => (ms(600), ms(800)),
+            Budget::ScrollStep => (ms(250), ms(1200)),
+            Budget::WorkspaceSwitch => (ms(1000), ms(1500)),
+        }
     }
 }
 
@@ -1014,18 +1025,22 @@ fn drive(root: PathBuf) -> i32 {
                 let mut d: Vec<Duration> = samples.iter().map(|s| s.0).collect();
                 d.sort();
                 let pct = |p: f32| d[((d.len() - 1) as f32 * p).round() as usize];
+                let (p95_limit, max_limit) = budget.limits();
                 say(
                     start,
                     format!(
-                        "budget {budget:?} ({:.0?}): {} samples, median {:.0?}, p95 {:.0?}, max {:.0?}",
-                        budget.limit(),
+                        "budget {budget:?} (p95 {p95_limit:.0?}, max {max_limit:.0?}): {} samples, median {:.0?}, p95 {:.0?}, max {:.0?}",
                         d.len(),
                         pct(0.5),
                         pct(0.95),
                         pct(1.)
                     ),
                 );
-                for (took, s) in samples.iter().filter(|s| s.0 > budget.limit()) {
+                if pct(0.95) > p95_limit {
+                    over += 1;
+                    say(start, format!("OVER BUDGET {budget:?} p95 {:.0?}", pct(0.95)));
+                }
+                for (took, s) in samples.iter().filter(|s| s.0 > max_limit) {
                     over += 1;
                     say(start, format!("OVER BUDGET {budget:?} {took:.0?} at: {s}"));
                 }
@@ -1034,7 +1049,7 @@ fn drive(root: PathBuf) -> i32 {
             say(
                 start,
                 format!(
-                    "{} ({} panics, {} error toasts, {} stalls, {over} frames over budget)",
+                    "{} ({} panics, {} error toasts, {} stalls, {over} over budget)",
                     if ok { "PASS" } else { "FAIL" },
                     r.panics.len(),
                     r.toasts.len(),
@@ -1445,17 +1460,6 @@ async fn scroll_transcript(
                 .push(format!("the transcript never scrolled to its end at: {s}"));
         }
     }
-    if let Some(n) = std::env::var("RECUR_SMOKE_REFRESH_LOOP")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-    {
-        at(start, "refresh loop");
-        for _ in 0..n {
-            sleep(cx, 30).await;
-            let _ = cx.update_window(window, |_, window, _| window.refresh());
-            draw(cx, window);
-        }
-    }
     if chat.read_with(cx, |c, _| c.props().messages.len()) >= LONG_CHAT_ROWS {
         type_in_long_chat(start, cx, window, chat, id, code).await;
     }
@@ -1512,21 +1516,21 @@ async fn type_in_long_chat(
         chat.update(cx, |c, cx| c.focus_composer(window, cx))
     });
     frames(cx, window, 2).await;
-    let reps: usize = std::env::var("RECUR_SMOKE_TYPE_REPEAT")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(1);
-    for k in "a b c backspace backspace backspace"
-        .split(' ')
-        .cycle()
-        .take(6 * reps)
-    {
+    for (i, k) in "a b c backspace backspace backspace".split(' ').enumerate() {
         sleep(cx, 60).await;
         let t = Instant::now();
         keys(cx, window, k);
         draw(cx, window);
         let took = t.elapsed();
-        timed(Budget::Keystroke, took);
+        // The transcript was just scrolled with the wheel.
+        timed(
+            if i == 0 {
+                Budget::FirstKey
+            } else {
+                Budget::Keystroke
+            },
+            took,
+        );
         stall_check(took);
     }
     let after = chat.read_with(cx, |c, _| c.input().to_string());

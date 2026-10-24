@@ -90,12 +90,23 @@ fn bound(s: &mut super::shell::S) -> gpui::Entity<crate::view::WorkspaceView> {
 async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
     // Each workspace opens its review, so a parked shell holds the heaviest surface there is.
+    let mut visited = Vec::new();
     for id in ["LOOP-2224", "LOOP-2229", "LOOP-2218", "LOOP-2235", ACTIVE] {
         s.open(id);
-        let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
+        let view = bound(&mut s);
+        visited.push(view.downgrade());
+        let obs = view.read_with(s.cx, |v, _| v.observatory().clone());
         s.cx.update(|_, cx| obs.update(cx, |o, cx| o.click_review_toggle(cx)));
         s.settle();
     }
+    // Only the hot shells stay alive: a shell that left them (and its chat, Observatory and
+    // review) is released, so nothing a visit built outlives it.
+    let alive = visited.iter().filter(|v| v.upgrade().is_some()).count();
+    assert_eq!(
+        alive,
+        recur_view_observatory::hot_shells::HOT_SHELL_MAX,
+        "workspace views alive after a browse"
+    );
     let chat = bound(&mut s).read_with(s.cx, |v, _| v.chat().clone());
     s.cx.update(|window, cx| chat.update(cx, |c, cx| c.focus_composer(window, cx)));
     s.settle();

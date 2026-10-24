@@ -60,6 +60,10 @@ pub(crate) struct PathsMemo {
     /// The scope and excludes it was filtered from, and the review paths.
     review: Option<ReviewMemo>,
     dir_status: Option<(u64, Rc<BTreeMap<String, String>>)>,
+    /// Exclusion by path under the matchers it was tested against.
+    excluded: Option<(Rc<Vec<CompiledGlob>>, HashMap<String, bool>)>,
+    /// The changed-files tree of the review paths it was built from.
+    changed_tree: Option<(Rc<Vec<String>>, Rc<Vec<TreeEntry>>)>,
 }
 
 /// The host-owned content the Svelte component took as snippets.
@@ -863,6 +867,11 @@ impl Observatory {
         self.main_surface(cx) == MainSurface::Review
     }
 
+    /// The main area's bounds from the last frame (the editor or the review).
+    pub fn main_bounds(&self) -> gpui_kit::Bounds<gpui_kit::Pixels> {
+        self.bounds.main.get()
+    }
+
     /// What the toolbar's Review changes button does.
     pub fn click_review_toggle(&mut self, cx: &mut Context<Self>) {
         self.toggle_review(cx);
@@ -1162,6 +1171,41 @@ impl Observatory {
         let v = Rc::new(crate::explorer::dir_status_index(&self.git_status));
         memo.dir_status = Some((key, v.clone()));
         v
+    }
+
+    /// Whether the exclude globs hide `path` (memoized per path until the globs change).
+    pub(crate) fn excluded(&self, path: &str, matchers: &Rc<Vec<CompiledGlob>>) -> bool {
+        let mut memo = self.paths_memo.borrow_mut();
+        if memo
+            .excluded
+            .as_ref()
+            .is_none_or(|(m, _)| !Rc::ptr_eq(m, matchers))
+        {
+            memo.excluded = Some((matchers.clone(), HashMap::new()));
+        }
+        let (_, by) = memo.excluded.as_mut().expect("excluded memo");
+        if let Some(&x) = by.get(path) {
+            return x;
+        }
+        let x = is_excluded_by(path, matchers);
+        by.insert(path.to_string(), x);
+        x
+    }
+
+    /// The tree of [`Observatory::review_paths`] (memoized).
+    pub(crate) fn changed_tree(&self, cx: &App) -> Rc<Vec<TreeEntry>> {
+        let paths = self.review_paths(cx);
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((p, t)) = &memo.changed_tree
+            && Rc::ptr_eq(p, &paths)
+        {
+            return t.clone();
+        }
+        let t = Rc::new(recur_code::view::changed_tree::build_tree_from_paths(
+            &paths,
+        ));
+        memo.changed_tree = Some((paths, t.clone()));
+        t
     }
 
     /// Changed-since-base membership after the exclude globs (`reviewPaths`).

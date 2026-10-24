@@ -689,10 +689,11 @@ impl FileStack {
                 col = col.child(self.skipped_cards(skipped, first, window));
             }
         }
+        let paths: HashSet<&str> = self.files.iter().map(|f| f.path.as_str()).collect();
         self.cards
             .borrow_mut()
             .bounds
-            .retain(|p, _| self.files.iter().any(|f| &f.path == p));
+            .retain(|p, _| paths.contains(p.as_str()));
         let pane = self.pane.clone();
         let entity = host.clone();
         let painted = self.cards.clone();

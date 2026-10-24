@@ -8,6 +8,7 @@
 
 use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, BTreeSet};
+use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
@@ -27,7 +28,7 @@ use recur_view_core::workspace_nav::scroll_delta_to_reveal;
 use recur_view_review::style::hsla;
 use recur_view_review::tree_sticky::{StickyHeader, fade_hits_rows, sync_tree_sticky_fades};
 
-use crate::explorer::visible_entries;
+use crate::explorer::visible_entries_by;
 use crate::lsp::problems::{PathProblemFlag, ProblemSeverity, group_by_path};
 use crate::obs::{DraftMode, Observatory};
 use crate::style::{git_color, obs_empty, statusbar};
@@ -142,13 +143,15 @@ impl Observatory {
     fn explorer_rows(&self, cx: &gpui_kit::App) -> (Vec<Row>, f32) {
         let matchers = self.exclude_matchers(cx);
         let changed = self.filter_changed();
-        let changed_tree;
+        let changed_tree = if changed {
+            self.changed_tree(cx)
+        } else {
+            Rc::default()
+        };
         let roots: Vec<&TreeEntry> = if changed {
-            changed_tree =
-                recur_code::view::changed_tree::build_tree_from_paths(&self.review_paths(cx));
             changed_tree.iter().collect()
         } else {
-            visible_entries(&self.tree, &matchers, None)
+            visible_entries_by(&self.tree, |p| self.excluded(p, &matchers), None)
         };
         let mut rows = Vec::new();
         let mut y = 0.;
@@ -168,7 +171,7 @@ impl Observatory {
             nodes: &[&TreeEntry],
             depth: usize,
             changed: bool,
-            matchers: &[recur_code::glob::CompiledGlob],
+            matchers: &Rc<Vec<recur_code::glob::CompiledGlob>>,
             draft_new: &Option<String>,
             renaming: &Option<String>,
             rows: &mut Vec<Row>,
@@ -202,7 +205,7 @@ impl Observatory {
                         let kids: Vec<&TreeEntry> = if changed {
                             e.children.iter().collect()
                         } else {
-                            visible_entries(&e.children, matchers, None)
+                            visible_entries_by(&e.children, |p| o.excluded(p, matchers), None)
                         };
                         let drafting_here = draft_new.as_deref() == Some(e.path.as_str());
                         if kids.is_empty() {

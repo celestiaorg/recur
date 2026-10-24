@@ -754,6 +754,9 @@ fn timed(budget: Budget, took: Duration) {
     }
 }
 
+/// Pages of the review scrolled on each live workspace.
+const REVIEW_PAGES: usize = 12;
+
 /// A chat this long gets its keystrokes timed.
 const LONG_CHAT_ROWS: usize = 200;
 
@@ -1407,17 +1410,7 @@ async fn scroll_transcript(
 ) {
     at(start, format!("workspace {id} chat {code}: scroll"));
     let handle = chat.read_with(cx, |c, _| c.test_scroll().clone());
-    let at_point = handle.bounds().center();
-    let _ = cx.update_window(window, |_, window, cx| {
-        window.dispatch_event(
-            gpui_kit::PlatformInput::MouseMove(gpui_kit::MouseMoveEvent {
-                position: at_point,
-                pressed_button: None,
-                modifiers: Default::default(),
-            }),
-            cx,
-        );
-    });
+    move_mouse(cx, window, handle.bounds().center());
     frames(cx, window, 1).await;
     wheel(cx, window, &handle, 1e9);
     frames(cx, window, 3).await;
@@ -1452,6 +1445,17 @@ async fn scroll_transcript(
                 .push(format!("the transcript never scrolled to its end at: {s}"));
         }
     }
+    if let Some(n) = std::env::var("RECUR_SMOKE_REFRESH_LOOP")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+    {
+        at(start, "refresh loop");
+        for _ in 0..n {
+            sleep(cx, 30).await;
+            let _ = cx.update_window(window, |_, window, _| window.refresh());
+            draw(cx, window);
+        }
+    }
     if chat.read_with(cx, |c, _| c.props().messages.len()) >= LONG_CHAT_ROWS {
         type_in_long_chat(start, cx, window, chat, id, code).await;
     }
@@ -1459,8 +1463,31 @@ async fn scroll_transcript(
 
 /// One wheel event of `dy` pixels over the scroller (positive scrolls toward the top).
 fn wheel(cx: &mut AsyncApp, window: AnyWindowHandle, handle: &gpui_kit::ScrollHandle, dy: f32) {
+    wheel_at(cx, window, handle.bounds().center(), dy);
+}
+
+fn move_mouse(cx: &mut AsyncApp, window: AnyWindowHandle, at: gpui_kit::Point<gpui_kit::Pixels>) {
+    let _ = cx.update_window(window, |_, window, cx| {
+        window.dispatch_event(
+            gpui_kit::PlatformInput::MouseMove(gpui_kit::MouseMoveEvent {
+                position: at,
+                pressed_button: None,
+                modifiers: Default::default(),
+            }),
+            cx,
+        );
+    });
+}
+
+/// One wheel event of `dy` pixels at `at`.
+fn wheel_at(
+    cx: &mut AsyncApp,
+    window: AnyWindowHandle,
+    at: gpui_kit::Point<gpui_kit::Pixels>,
+    dy: f32,
+) {
     let ev = gpui_kit::ScrollWheelEvent {
-        position: handle.bounds().center(),
+        position: at,
         delta: gpui_kit::ScrollDelta::Pixels(point(px(0.), px(dy))),
         modifiers: Default::default(),
         touch_phase: gpui_kit::TouchPhase::Moved,
@@ -1563,10 +1590,32 @@ async fn observatory(
         frames(cx, window, 12).await;
     }
     at(start, format!("workspace {id}: review"));
-    obs.update(cx, |o, cx| o.click_review_toggle(cx));
+    let restored = obs.read_with(cx, |o, cx| o.showing_review(cx));
+    if !restored {
+        obs.update(cx, |o, cx| o.click_review_toggle(cx));
+    }
     frames(cx, window, 15).await;
-    obs.update(cx, |o, cx| o.click_review_toggle(cx));
-    frames(cx, window, 4).await;
+    if obs.read_with(cx, |o, cx| o.showing_review(cx)) {
+        at(start, format!("workspace {id}: review scroll"));
+        let at_point = obs.read_with(cx, |o, _| o.main_bounds().center());
+        let page = obs.read_with(cx, |o, _| f32::from(o.main_bounds().size.height));
+        move_mouse(cx, window, at_point);
+        for _ in 0..REVIEW_PAGES {
+            sleep(cx, 60).await;
+            let t = Instant::now();
+            wheel_at(cx, window, at_point, -page.max(200.) * 0.9);
+            draw(cx, window);
+            let took = t.elapsed();
+            timed(Budget::ScrollStep, took);
+            stall_check(took);
+            collect_toasts(cx);
+        }
+        frames(cx, window, 4).await;
+    }
+    if !restored {
+        obs.update(cx, |o, cx| o.click_review_toggle(cx));
+        frames(cx, window, 4).await;
+    }
     at(start, format!("workspace {id}: terminal"));
     state.update(cx, |s, cx| s.set_terminal_dock_open(id, true, cx));
     frames(cx, window, 20).await;

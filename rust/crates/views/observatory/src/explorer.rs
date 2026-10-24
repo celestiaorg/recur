@@ -210,10 +210,19 @@ pub fn visible_entries<'a>(
     matchers: &[CompiledGlob],
     changed: Option<(&BTreeSet<String>, &BTreeSet<String>)>,
 ) -> Vec<&'a TreeEntry> {
+    visible_entries_by(entries, |p| is_excluded_by(p, matchers), changed)
+}
+
+/// [`visible_entries`] with the exclusion test supplied (the Observatory memoizes it).
+pub fn visible_entries_by<'a>(
+    entries: &'a [TreeEntry],
+    excluded: impl Fn(&str) -> bool,
+    changed: Option<(&BTreeSet<String>, &BTreeSet<String>)>,
+) -> Vec<&'a TreeEntry> {
     entries
         .iter()
         .filter(|e| {
-            if is_excluded_by(&e.path, matchers) {
+            if excluded(&e.path) {
                 return false;
             }
             if let Some((set, dirs)) = changed {

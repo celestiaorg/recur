@@ -44,7 +44,7 @@ const SB_OUT: Duration = Duration::from_millis(450);
 const CARET: Duration = Duration::from_millis(120);
 
 /// Overscan above and below the tree's viewport, in px, before rows become spacers.
-const ROW_BAND_PAD_PX: f32 = 400.;
+const ROW_BAND_PAD_PX: f32 = 150.;
 
 /// What every row reads from the stores, gathered once per frame.
 pub(crate) struct RowCtx {

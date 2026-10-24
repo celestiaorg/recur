@@ -11,6 +11,8 @@ use gpui_kit::{
     AnyElement, Context, Entity, IntoElement, Render, Subscription, WeakEntity, Window, div,
 };
 
+use recur_ui::guard::Guarded;
+
 use crate::chat::AgentChat;
 
 pub struct TranscriptPane {
@@ -22,7 +24,7 @@ impl TranscriptPane {
     pub(crate) fn new(chat: &Entity<AgentChat>, cx: &mut Context<Self>) -> Self {
         TranscriptPane {
             chat: chat.downgrade(),
-            _sub: cx.observe(chat, |_, _, cx| cx.notify()),
+            _sub: cx.guarded_observe(chat, |_, _, cx| cx.notify()),
         }
     }
 

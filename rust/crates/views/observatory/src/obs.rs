@@ -51,11 +51,14 @@ pub struct ObservatoryProps {
 
 /// What [`Observatory::scope_paths`], [`Observatory::review_paths`] and
 /// [`Observatory::exclude_matchers`] last computed, keyed by their inputs.
+type ReviewMemo = (Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>);
+
 #[derive(Default)]
 pub(crate) struct PathsMemo {
     scope: Option<(u64, Rc<Vec<String>>)>,
     excludes: Option<(Vec<String>, Rc<Vec<CompiledGlob>>)>,
-    review: Option<(Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>)>,
+    /// The scope and excludes it was filtered from, and the review paths.
+    review: Option<ReviewMemo>,
     dir_status: Option<(u64, Rc<BTreeMap<String, String>>)>,
 }
 

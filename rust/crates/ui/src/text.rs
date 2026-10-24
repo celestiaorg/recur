@@ -630,11 +630,14 @@ struct Laid {
     lines: Vec<Line>,
     /// Line breaks already computed for this shaping, by width and settings (shared with
     /// [`SHAPED`], so a text drawn again next frame breaks no lines).
-    breaks: Rc<RefCell<Vec<(BreakKey, Vec<Line>, Option<(Vec<PaintGlyph>, f32)>)>>>,
+    breaks: Breaks,
 }
 
 /// `(width bits, white-space, anywhere, clamp, truncate, scale bits)`.
 type BreakKey = (Option<u32>, WhiteSpace, bool, Option<usize>, bool, u32);
+
+/// A shaping's line breaks by [`BreakKey`]: the lines and the ellipsis glyphs.
+type Breaks = Rc<RefCell<Vec<(BreakKey, Vec<Line>, Option<(Vec<PaintGlyph>, f32)>)>>>;
 
 /// How many widths a shaping remembers (a flex pass probes min-content, max-content and the
 /// final width; a resize adds one).
@@ -657,7 +660,7 @@ struct ShapedEntry {
     paras: Rc<Vec<Para>>,
     metrics: LineMetrics,
     extents: Rc<Vec<(Range<usize>, f32, f32)>>,
-    breaks: Rc<RefCell<Vec<(BreakKey, Vec<Line>, Option<(Vec<PaintGlyph>, f32)>)>>>,
+    breaks: Breaks,
     bytes: usize,
     stamp: u64,
 }

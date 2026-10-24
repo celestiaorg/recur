@@ -1595,7 +1595,7 @@ impl AgentChat {
             }
         };
         let mut next = pick_hydrated(
-            &keys,
+            keys,
             &selected,
             &in_view,
             CHAT_HYDRATE_MAX,

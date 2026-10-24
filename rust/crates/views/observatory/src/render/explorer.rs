@@ -27,7 +27,7 @@ use recur_view_core::workspace_nav::scroll_delta_to_reveal;
 use recur_view_review::style::hsla;
 use recur_view_review::tree_sticky::{StickyHeader, fade_hits_rows, sync_tree_sticky_fades};
 
-use crate::explorer::{dir_status_index, visible_entries};
+use crate::explorer::visible_entries;
 use crate::lsp::problems::{PathProblemFlag, ProblemSeverity, group_by_path};
 use crate::obs::{DraftMode, Observatory};
 use crate::style::{git_color, obs_empty, statusbar};
@@ -709,7 +709,7 @@ impl Observatory {
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let (rows, content_h) = self.explorer_rows(cx);
-        let dir_index = dir_status_index(&self.git_status);
+        let dir_index = self.dir_status();
         let finding_flags = self.open_findings_by_path(cx);
         let problems = group_by_path(&self.problems(cx));
         let unsaved: BTreeSet<String> = self.unsaved_paths().into_iter().collect();

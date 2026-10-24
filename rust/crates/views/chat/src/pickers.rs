@@ -525,7 +525,6 @@ impl LoopPolicyPickers {
             s.set_value(p, cx);
             s.set_disabled(pd.then_some(backdrop), cx);
         });
-        cx.notify();
     }
 }
 

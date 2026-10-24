@@ -57,15 +57,21 @@ async fn a_keystroke_in_a_long_chat_redraws_only_the_dock_path(cx: &mut TestAppC
     let chat = view.read_with(s.cx, |v, _| v.chat().clone());
     s.cx.update(|window, cx| chat.update(cx, |c, cx| c.focus_composer(window, cx)));
     s.settle();
+    // The first key after a click switches GPUI's input modality, which refreshes the whole
+    // window once; steady-state typing is what is measured.
+    s.cx.simulate_input("a");
+    s.cx.run_until_parked();
     recur_ui::guard::count_renders(true);
-    for ch in ["a", "b", "c"] {
+    for ch in ["b", "c", "d"] {
         s.cx.simulate_input(ch);
         s.cx.run_until_parked();
     }
     let counts = recur_ui::guard::take_render_counts();
     recur_ui::guard::count_renders(false);
-    assert_eq!(chat.read_with(s.cx, |c, _| c.input().to_string()), "abc");
+    assert_eq!(chat.read_with(s.cx, |c, _| c.input().to_string()), "abcd");
     assert!(renders("::DockPane", &counts) >= 3, "{counts:?}");
+    // One frame per key: nothing a render does may schedule another.
+    assert_eq!(renders("::Shell", &counts), 3, "{counts:?}");
     for quiet in ["::TranscriptPane", "::Sidebar", "::MarkdownView"] {
         assert_eq!(renders(quiet, &counts), 0, "{quiet} re-rendered: {counts:?}");
     }

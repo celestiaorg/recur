@@ -40,15 +40,18 @@ async fn typing_redraws_the_dock_but_not_the_transcript(cx: &mut TestAppContext)
     let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
     h.set_messages(long_chat(300));
     h.focus_composer();
+    // The first key after a click switches GPUI's input modality, which refreshes the whole
+    // window once; steady-state typing is what is measured.
+    h.cx.simulate_input("a");
+    h.cx.run_until_parked();
     recur_ui::guard::count_renders(true);
-    for ch in ["a", "b", "c"] {
+    for ch in ["b", "c", "d"] {
         h.cx.simulate_input(ch);
         h.cx.run_until_parked();
-        eprintln!("after {ch}: {:?}", recur_ui::guard::take_render_counts());
     }
     let counts = recur_ui::guard::take_render_counts();
     recur_ui::guard::count_renders(false);
-    assert_eq!(h.input(), "abc");
+    assert_eq!(h.input(), "abcd");
     assert!(renders("::DockPane", &counts) >= 3, "{counts:?}");
     assert_eq!(renders("::TranscriptPane", &counts), 0, "{counts:?}");
 }

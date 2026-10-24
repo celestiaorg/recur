@@ -2,7 +2,6 @@
 //! and the values `Observatory.svelte` derived from it.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -57,6 +56,7 @@ pub(crate) struct PathsMemo {
     scope: Option<(u64, Rc<Vec<String>>)>,
     excludes: Option<(Vec<String>, Rc<Vec<CompiledGlob>>)>,
     review: Option<(Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>)>,
+    dir_status: Option<(u64, Rc<BTreeMap<String, String>>)>,
 }
 
 /// The host-owned content the Svelte component took as snippets.
@@ -340,6 +340,8 @@ pub struct Observatory {
     /// path → m|a|d|u versus base (workspace) or HEAD (project).
     pub(crate) git_status: BTreeMap<String, String>,
     pub(crate) git_status_ready: bool,
+    /// Bumped whenever `changed_paths` or `git_status` changes (keys `paths_memo`).
+    pub(crate) paths_gen: u64,
     pub(crate) paths_memo: std::cell::RefCell<PathsMemo>,
     /// Uncommitted porcelain versus HEAD.
     pub(crate) working_status: BTreeMap<String, String>,
@@ -616,6 +618,7 @@ impl Observatory {
             changed_paths: Vec::new(),
             git_status: BTreeMap::new(),
             git_status_ready: false,
+            paths_gen: 0,
             paths_memo: Default::default(),
             working_status: BTreeMap::new(),
             staged_files: Vec::new(),
@@ -1114,14 +1117,7 @@ impl Observatory {
     /// The changed-since-base paths plus every git status path, sorted (memoized: the explorer,
     /// the review count and the panel badges read it on every render).
     pub(crate) fn scope_paths(&self) -> Rc<Vec<String>> {
-        let key = {
-            let mut h = std::hash::DefaultHasher::new();
-            self.changed_paths.hash(&mut h);
-            for k in self.git_status.keys() {
-                k.hash(&mut h);
-            }
-            h.finish()
-        };
+        let key = self.paths_gen;
         let mut memo = self.paths_memo.borrow_mut();
         if let Some((k, v)) = &memo.scope
             && *k == key
@@ -1148,6 +1144,21 @@ impl Observatory {
         let m = Rc::new(compile_excludes(&patterns));
         memo.excludes = Some((patterns, m.clone()));
         m
+    }
+
+    /// [`crate::explorer::dir_status_index`] of the git status (memoized: every explorer row
+    /// reads it).
+    pub(crate) fn dir_status(&self) -> Rc<BTreeMap<String, String>> {
+        let key = self.paths_gen;
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((k, v)) = &memo.dir_status
+            && *k == key
+        {
+            return v.clone();
+        }
+        let v = Rc::new(crate::explorer::dir_status_index(&self.git_status));
+        memo.dir_status = Some((key, v.clone()));
+        v
     }
 
     /// Changed-since-base membership after the exclude globs (`reviewPaths`).

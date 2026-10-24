@@ -364,14 +364,13 @@ impl Shell {
         for (i, v) in self.views.iter().enumerate() {
             let on = Some(i) == active;
             if on {
-                // Cached: a route re-renders when it (or a view inside it) notifies, not on
-                // every frame the shell draws.
                 main = main.child(
-                    div().flex_1().min_h_0().flex().flex_col().child(
-                        v.view
-                            .clone()
-                            .cached(gpui_kit::StyleRefinement::default().size_full()),
-                    ),
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .flex_col()
+                        .child(v.view.clone()),
                 );
             } else if v.keep_laid_out {
                 // `#v-detail.view`: hidden but laid out at the main area's size. Cached: GPUI lays
@@ -419,9 +418,13 @@ impl Shell {
         if window.focused(cx).is_none() {
             window.focus(&self.focus, cx);
         }
-        let (view, rail_collapsed) = {
+        let (view, rail_collapsed, rail_width) = {
             let s = self.state.read(cx);
-            (s.view, s.rail_collapsed)
+            (
+                s.view,
+                s.rail_collapsed,
+                s.panels.size(recur_view_core::prefs::PanelKey::Rail),
+            )
         };
         let titlebar = self.render_titlebar(window, cx);
         let main = self.main_area(view, cx);
@@ -453,7 +456,17 @@ impl Shell {
                         .relative()
                         .overflow_hidden()
                         // A collapsed rail is an overlay, so it paints after the content.
-                        .when(!rail_collapsed, |d| d.child(self.sidebar.clone()))
+                        // Cached at the rail's own box: typing, scrolling and streaming in
+                        // the main area never re-render the project tree.
+                        .when(!rail_collapsed, |d| {
+                            d.child(self.sidebar.clone().cached(
+                                gpui_kit::StyleRefinement::default()
+                                    .flex_none()
+                                    .w(gpui_kit::px(rail_width))
+                                    .h_full()
+                                    .min_h_0(),
+                            ))
+                        })
                         .child(main)
                         .when(rail_collapsed, |d| d.child(self.sidebar.clone())),
                 ),

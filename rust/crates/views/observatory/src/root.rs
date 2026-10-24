@@ -713,6 +713,7 @@ impl Observatory {
         self.changed_collapsed = snap.changed_collapsed;
         self.changed_paths = snap.changed_paths;
         self.git_status = snap.git_status;
+        self.paths_gen += 1;
         self.git_status_ready = snap.git_status_ready;
         self.working_status = snap.working_status;
         self.staged_files = snap.staged_files;

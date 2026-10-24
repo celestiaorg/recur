@@ -314,6 +314,7 @@ impl Observatory {
         self.maybe_clear_gone_confirm();
         self.changed_paths.clear();
         self.git_status.clear();
+        self.paths_gen += 1;
         self.git_status_ready = false;
         self.working_status.clear();
         self.staged_files.clear();
@@ -406,6 +407,7 @@ impl Observatory {
                     let prev = o.git_status.clone();
                     o.git_status = compact_status(st);
                     o.changed_paths = o.git_status.keys().cloned().collect();
+                    o.paths_gen += 1;
                     o.maybe_hydrate_restored_current(&prev, cx);
                 }
                 if let Some(ws) = ws {
@@ -652,6 +654,7 @@ impl Observatory {
         if (!wid.is_empty() && self.worktree_path(cx).is_empty()) || !self.is_git(cx) {
             self.working_status_gen += 1;
             self.git_status.clear();
+            self.paths_gen += 1;
             self.working_status.clear();
             self.staged_files.clear();
             cx.notify();
@@ -669,6 +672,7 @@ impl Observatory {
                     let next = compact_status(st);
                     if next != o.git_status {
                         let prev = std::mem::replace(&mut o.git_status, next);
+                        o.paths_gen += 1;
                         o.maybe_hydrate_restored_current(&prev, cx);
                         o.sync_review_props_later(cx);
                         cx.notify();
@@ -727,6 +731,7 @@ impl Observatory {
         if wid.is_empty() || !self.is_git(cx) {
             if !self.is_git(cx) {
                 self.changed_paths.clear();
+                self.paths_gen += 1;
             }
             return Task::ready(());
         }
@@ -752,6 +757,7 @@ impl Observatory {
                     o.browse_all = true;
                 }
                 o.changed_paths = ch;
+                o.paths_gen += 1;
                 o.sync_review_props_later(cx);
                 cx.notify();
             });
@@ -810,7 +816,10 @@ impl Observatory {
                 )
                 .await
             {
-                let _ = this.update(cx, |o, _| o.changed_paths = ch);
+                let _ = this.update(cx, |o, _| {
+                    o.changed_paths = ch;
+                    o.paths_gen += 1;
+                });
             }
             let _ = this.update(cx, |o, cx| {
                 o.files_scroll.set_offset(scroll);
@@ -1121,7 +1130,7 @@ impl Observatory {
             self.toggle_dir(&e.path, false, cx).detach();
             cx.notify();
         } else {
-            let st = self.entry_status(e, &dir_status_index(&self.git_status));
+            let st = self.entry_status(e, &self.dir_status());
             let prefer = self.filter_changed() || st == "d";
             self.open_path(
                 OpenRequest::new(e.path.clone()).prefer_diff(prefer),
@@ -1991,7 +2000,7 @@ impl Observatory {
             let e = entry();
             if !e.as_ref().is_some_and(|e| e.dir) {
                 let st = e
-                    .map(|e| self.entry_status(&e, &dir_status_index(&self.git_status)))
+                    .map(|e| self.entry_status(&e, &self.dir_status()))
                     .unwrap_or_default();
                 let prefer = self.filter_changed() || st == "d";
                 self.open_path(OpenRequest::new(path).prefer_diff(prefer), window, cx)

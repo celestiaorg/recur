@@ -643,7 +643,14 @@ impl Observatory {
                 .flex_col()
                 .bg(hsla(t.bg));
             if let Some(p) = &self.pdf_preview {
-                pdf = pdf.child(div().flex_1().min_h_0().flex().flex_col().child(p.clone()));
+                pdf = pdf.child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .flex_col()
+                        .child(p.clone().cached(fill())),
+                );
             }
             pdf = pdf.child(
                 div()
@@ -693,10 +700,13 @@ impl Observatory {
             && let Some(ed) = self.main_editor.clone()
         {
             let off = show_preview || show_diff || self.view_mode == EditorViewMode::Diff;
-            pane = pane.child(surface(ed.into_any_element(), off));
+            pane = pane.child(surface(ed.cached(fill()).into_any_element(), off));
         }
         if let Some((_, fp)) = &self.file_preview {
-            pane = pane.child(surface(fp.clone().into_any_element(), !show_preview));
+            pane = pane.child(surface(
+                fp.clone().cached(fill()).into_any_element(),
+                !show_preview,
+            ));
         }
         if show_diff {
             if let Some((_, m)) = &self.merge_editor {
@@ -707,7 +717,7 @@ impl Observatory {
                         .flex()
                         .flex_col()
                         .overflow_hidden()
-                        .child(m.clone()),
+                        .child(m.clone().cached(fill())),
                 );
             }
         } else if self.editor_path.is_empty() && !show_preview {
@@ -832,7 +842,7 @@ impl Observatory {
         if !self.split_path.is_empty()
             && let Some(ed) = self.split_editor.clone()
         {
-            side = side.child(surface(ed.into_any_element(), false));
+            side = side.child(surface(ed.cached(fill()).into_any_element(), false));
         } else {
             side = side.child(obs_empty(
                 "Open a file — it will land in this pane while focused.",
@@ -1481,6 +1491,12 @@ impl Observatory {
 }
 
 /// `.obs-surface` (`.off` keeps it mounted but hidden and inert).
+/// A pane's editor or preview as a cached view: it re-renders when it notifies, not on every
+/// frame the Observatory draws (typing in the chat beside it redraws the Observatory).
+fn fill() -> gpui_kit::StyleRefinement {
+    gpui_kit::StyleRefinement::default().size_full()
+}
+
 fn surface(child: AnyElement, off: bool) -> AnyElement {
     let d = div()
         .flex_1()

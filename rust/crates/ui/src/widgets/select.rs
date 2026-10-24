@@ -313,21 +313,33 @@ impl Select {
         }
     }
 
+    // Owners push these from their own render: an unchanged value must not notify, or the
+    // select (and every view above it) re-renders on the next frame for nothing.
     pub fn set_options(&mut self, options: Vec<SelectOption>, cx: &mut Context<Self>) {
-        self.options = options;
-        cx.notify();
+        if self.options != options {
+            self.options = options;
+            cx.notify();
+        }
     }
     pub fn set_value(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
-        self.value = value.into();
-        cx.notify();
+        let value = value.into();
+        if self.value != value {
+            self.value = value;
+            cx.notify();
+        }
     }
     pub fn set_values(&mut self, values: Vec<SharedString>, cx: &mut Context<Self>) {
-        self.values = values;
-        cx.notify();
+        if self.values != values {
+            self.values = values;
+            cx.notify();
+        }
     }
     /// The closed trigger's text, when the owner summarizes the selection itself
     /// (`ModelFlagsSelect`'s `Fast · High`).
     pub fn set_display(&mut self, display: Option<SharedString>, cx: &mut Context<Self>) {
+        if self.display_override == display {
+            return;
+        }
         self.display_override = display;
         cx.notify();
     }
@@ -384,6 +396,9 @@ impl Select {
     }
 
     pub fn set_disabled(&mut self, backdrop: Option<Color>, cx: &mut Context<Self>) {
+        if self.disabled_over == backdrop && (backdrop.is_none() || !self.open) {
+            return;
+        }
         self.disabled_over = backdrop;
         if backdrop.is_some() {
             self.open = false;

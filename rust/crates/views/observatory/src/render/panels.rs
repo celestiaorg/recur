@@ -305,16 +305,16 @@ impl Observatory {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         match kind {
-            // The host's views are cached: the Observatory's own redraws (explorer, editor,
-            // review) never re-render the chat or the plan, and theirs never re-render it.
-            CodePanelKey::Maestro => self.slots.left_panel.clone().map_or_else(
-                || div().into_any_element(),
-                |v| v.cached(slot_style()).into_any_element(),
-            ),
-            CodePanelKey::Plan => self.slots.plan_panel.clone().map_or_else(
-                || div().into_any_element(),
-                |v| v.cached(slot_style()).into_any_element(),
-            ),
+            CodePanelKey::Maestro => self
+                .slots
+                .left_panel
+                .clone()
+                .map_or_else(|| div().into_any_element(), |v| v.into_any_element()),
+            CodePanelKey::Plan => self
+                .slots
+                .plan_panel
+                .clone()
+                .map_or_else(|| div().into_any_element(), |v| v.into_any_element()),
             CodePanelKey::Findings => {
                 let findings = self.findings.clone();
                 let (filter, busy) = (self.findings_filter, self.finding_busy_id.clone());
@@ -970,10 +970,4 @@ impl Observatory {
             .children(more)
             .into_any_element()
     }
-}
-
-/// A slot view fills its panel body (a flex column).
-fn slot_style() -> gpui_kit::StyleRefinement {
-    use gpui_kit::Styled as _;
-    gpui_kit::StyleRefinement::default().flex_1().min_h_0()
 }

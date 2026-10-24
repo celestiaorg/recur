@@ -156,7 +156,7 @@ impl AgentChat {
                         cx,
                     ),
                 }
-                cx.notify();
+                c.notify_dock(cx);
             });
         }));
     }
@@ -183,7 +183,7 @@ impl AgentChat {
                 c.prompt_index = list;
                 c.rehydrate_for_specs(cx);
                 c.sync_mention_from_caret(cx);
-                cx.notify();
+                c.notify_dock(cx);
             });
         }));
     }

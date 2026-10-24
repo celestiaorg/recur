@@ -120,24 +120,24 @@ fn copy_dir(from: &Path, to: &Path) -> Res<()> {
     Ok(())
 }
 
-/// Copies the real worktree's modified and untracked (not ignored) files, so the sandbox
-/// worktree is as dirty as the real one. `git ls-files` only reads the real worktree.
+/// Mirrors the real worktree's changes against HEAD (staged or not) and its untracked, not
+/// ignored files into the sandbox worktree. `git diff` and `git ls-files` only read the real
+/// one.
 fn carry_dirty(real: &Path, dst: &Path) {
-    let Ok(list) = git(
-        real,
-        &[
-            "ls-files",
-            "-z",
-            "--modified",
-            "--others",
-            "--exclude-standard",
-        ],
-    ) else {
-        return;
-    };
-    for rel in list.split('\0').filter(|r| !r.is_empty()) {
+    let changed = git(real, &["diff", "--name-only", "-z", "HEAD"]).unwrap_or_default();
+    let untracked =
+        git(real, &["ls-files", "-z", "--others", "--exclude-standard"]).unwrap_or_default();
+    for rel in changed
+        .split('\0')
+        .chain(untracked.split('\0'))
+        .filter(|r| !r.is_empty())
+    {
         let from = real.join(rel);
         let to = dst.join(rel);
+        if !from.exists() {
+            let _ = std::fs::remove_file(&to);
+            continue;
+        }
         if !from.is_file() {
             continue;
         }

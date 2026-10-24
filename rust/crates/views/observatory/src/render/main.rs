@@ -925,29 +925,25 @@ impl Observatory {
         }
         self.sync_review_surface(window, cx);
         let r = self.review_surface.clone()?;
-        let off = self.main_surface(cx) == MainSurface::Editor;
-        let el = div()
-            .id("obs-review-host")
-            .debug_selector(|| "obs-review-host".into())
-            .track_focus(&self.review_focus)
-            .flex()
-            .flex_col()
-            .flex_1()
-            .min_h_0()
-            .min_w_0()
-            .overflow_hidden()
-            .child(r);
-        Some(if off {
+        // `.obs-review-host.off` is `display: none`: the surface keeps its state but leaves the
+        // layout (laid out hidden, a large diff costs seconds a frame).
+        if self.main_surface(cx) == MainSurface::Editor {
+            return None;
+        }
+        Some(
             div()
-                .absolute()
-                .size_0()
+                .id("obs-review-host")
+                .debug_selector(|| "obs-review-host".into())
+                .track_focus(&self.review_focus)
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_h_0()
+                .min_w_0()
                 .overflow_hidden()
-                .invisible()
-                .child(el)
-                .into_any_element()
-        } else {
-            el.into_any_element()
-        })
+                .child(r)
+                .into_any_element(),
+        )
     }
 
     /// The editor's status bar (`Ln, Col · language · Bundles · git · problems · symbol`).

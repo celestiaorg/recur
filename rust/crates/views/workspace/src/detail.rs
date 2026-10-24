@@ -235,34 +235,19 @@ impl WorkspaceDetail {
             .flex_col()
             .size_full()
             .min_h_0();
-        // Parked shells stay laid out at the live slot's size, hidden (`#wsv-park`). They paint
-        // first: GPUI still hit-tests an invisible subtree, and `visibility: hidden` takes no
-        // pointer events, so the live shell must be on top.
-        let mut order: Vec<&String> = self.hot.iter().filter(|id| **id != bound).collect();
-        order.extend(self.hot.iter().filter(|id| **id == bound));
-        for id in order {
+        // A parked shell stays alive and keeps running its effects (queues, seeds, live events),
+        // but is not laid out: Svelte keeps `#wsv-park` in the DOM, where layout is incremental,
+        // while GPUI would lay the whole workspace out again on every switch (seconds on a large
+        // one). Unrendered, its editors and terminals keep their size and its entities their
+        // state; it renders fresh when it is bound again.
+        for id in &self.hot {
             let Some(v) = self.views.get(id).cloned() else {
                 continue;
             };
             if *id == bound {
                 root = root.child(div().flex_1().min_h_0().flex().flex_col().child(v));
             } else {
-                // A parked shell keeps running its effects (queues, seeds, live events); its layout
-                // is cached until it notifies.
                 v.update(cx, |v, cx| v.sync(window, cx));
-                root = root.child(
-                    div()
-                        .absolute()
-                        .top_0()
-                        .left_0()
-                        .size_full()
-                        .invisible()
-                        .child(recur_ui::style::cached_view(
-                            &v,
-                            gpui_kit::StyleRefinement::default().size_full(),
-                            cx,
-                        )),
-                );
             }
         }
         root

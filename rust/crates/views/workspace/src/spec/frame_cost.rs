@@ -169,3 +169,41 @@ async fn the_wheel_scrolls_the_live_chat_over_a_parked_one(cx: &mut TestAppConte
         "the live chat did not scroll: {before} -> {after}"
     );
 }
+
+#[gpui::test]
+async fn a_parked_chat_comes_back_where_it_was_scrolled(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    s.open(ACTIVE);
+    let view = bound(&mut s);
+    s.cx.update(|_, cx| {
+        view.update(cx, |v, cx| {
+            let key = v.active_key();
+            v.chat_by_key.insert(key, long_chat(60));
+            v.touch(cx);
+        })
+    });
+    s.settle();
+    let chat = view.read_with(s.cx, |v, _| v.chat().clone());
+    let handle = chat.read_with(s.cx, |c, _| c.test_scroll().clone());
+    let at = handle.bounds().center();
+    s.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
+    s.cx.simulate_event(gpui::ScrollWheelEvent {
+        position: at,
+        delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(1e6))),
+        modifiers: gpui::Modifiers::none(),
+        touch_phase: gpui::TouchPhase::Moved,
+    });
+    s.settle();
+    s.cx.simulate_event(gpui::ScrollWheelEvent {
+        position: at,
+        delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(-900.))),
+        modifiers: gpui::Modifiers::none(),
+        touch_phase: gpui::TouchPhase::Moved,
+    });
+    s.settle();
+    let before = -f32::from(handle.offset().y);
+    assert!(before > 100., "scrolled to {before}");
+    s.open("LOOP-2229");
+    s.open(ACTIVE);
+    assert_eq!(-f32::from(handle.offset().y), before);
+}

@@ -439,6 +439,9 @@ pub struct AgentChat {
     pub(crate) caret_blink_epoch: std::time::Instant,
     /// When this view mounted: the clock CSS animations run on.
     pub(crate) anim_epoch: std::time::Instant,
+    /// The row just built ends in an open `.tc-body` (its 6px bottom margin), for a lone
+    /// step to collapse into its own.
+    pub(crate) body_tail: bool,
     pub(crate) think_scrolls: HashMap<String, ScrollHandle>,
     pub(crate) tool_data: Rc<ToolData>,
     pub(crate) image_loading: HashMap<String, Task<()>>,
@@ -607,6 +610,7 @@ impl AgentChat {
             prompt_slot_focus: None,
             caret_blink_epoch: std::time::Instant::now(),
             anim_epoch: std::time::Instant::now(),
+            body_tail: false,
             think_scrolls: HashMap::new(),
             tool_data: Rc::default(),
             image_loading: HashMap::new(),

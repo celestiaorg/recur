@@ -1647,6 +1647,20 @@
       ]
     },
     {
+      "name": "chat/brief-card",
+      "width": 640,
+      "height": 520,
+      "theme": "default",
+      "tolerance": 5080
+    },
+    {
+      "name": "chat/brief-card-paper",
+      "width": 640,
+      "height": 520,
+      "theme": "paper",
+      "tolerance": 5150
+    },
+    {
       "name": "chat/streaming",
       "width": 560,
       "height": 480,

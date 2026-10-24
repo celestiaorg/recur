@@ -363,6 +363,15 @@ fn ask_recur_briefing_tools_skip_json_only_present_workspace_is_a_card(cx: &mut 
     assert!(s.has(&format!("turn-end-link:Open {RATE}")));
     s.click(&format!("turn-end-link:Open {RATE}"));
     assert_eq!(s.view(), ViewName::Detail);
+    // `WorkspaceBriefCard`: the pinned card opens its primary target too.
+    s.go(ViewName::Briefing);
+    assert!(s.until(|s| s.has(&format!("wbrief:{RATE}"))));
+    s.click(&format!("wbrief:{RATE}"));
+    assert_eq!(s.view(), ViewName::Detail);
+    assert_eq!(
+        s.state.read_with(s.cx, |s, _| s.selected_workspace_id.clone()),
+        "LOOP-2218"
+    );
 }
 
 #[gpui::test]

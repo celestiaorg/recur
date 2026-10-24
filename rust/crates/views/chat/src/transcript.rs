@@ -685,14 +685,15 @@ impl AgentChat {
                 .cursor_pointer()
                 .text_color(hsla(t.cyan))
                 .hover(|s| s.text_color(hsla(t.text)))
-                .child(text(s).nowrap())
+                // `.turn-end { font-variant-numeric: tabular-nums }` reaches the buttons.
+                .child(text(s).tabular().nowrap())
                 .on_click(cx.listener(move |this, _, _, cx| f(this, cx)))
                 .into_any_element()
         };
         let sep = || {
             div()
                 .opacity(0.55)
-                .child(text("·").nowrap())
+                .child(text("·").tabular().nowrap())
                 .into_any_element()
         };
         let mut row = div()
@@ -1296,15 +1297,13 @@ impl AgentChat {
         let mut el = div().mt(px(4.)).mb(px(16.));
         if rows.len() == 1 {
             let r = rows[0];
-            return el
-                .child(self.step_row(
-                    &msgs[r].clone(),
-                    &r.to_string(),
-                    first_checkpoint,
-                    window,
-                    cx,
-                ))
-                .into_any_element();
+            self.body_tail = false;
+            let row = self.step_row(&msgs[r].clone(), &r.to_string(), first_checkpoint, window, cx);
+            // An open body's 6px bottom margin collapses into `.steps`' 16px (no flex between).
+            if std::mem::take(&mut self.body_tail) {
+                el = el.mb(px(10.));
+            }
+            return el.child(row).into_any_element();
         }
         let open = crate::glance::live_group_open(
             self.open_groups.get(&start).copied(),

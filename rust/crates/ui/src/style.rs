@@ -309,8 +309,8 @@ pub fn body(cx: &App) -> Div {
 }
 
 /// How far [`window_root`] shifts the tree so half-pixel ties round down and right, as WebKit's
-/// do.
-const TIE_NUDGE: f32 = 1. / 4096.;
+/// do. A cached view lays out as its own root and applies it again inside.
+pub const TIE_NUDGE: f32 = 1. / 4096.;
 
 /// `anchored()` at a fractional window position, as WebKit places a box. GPUI rounds an anchored
 /// offset to whole CSS pixels; this anchors at the whole pixel and moves the child the exact rest

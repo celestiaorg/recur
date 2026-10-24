@@ -263,6 +263,25 @@ impl AgentChat {
             .w_full()
             .when(!session, |d| d.max_w(px(720.)).mx_auto())
             .children(kids);
+        // The horizontal half of the tie nudge (see the spacer above the scroller), inside
+        // the content-sized scroll column.
+        let col = if session {
+            col.into_any_element()
+        } else {
+            // `items_start`: a stretched item is laid out twice (measured, then stretched),
+            // and this one is the whole transcript.
+            div()
+                .flex()
+                .items_start()
+                .child(
+                    div()
+                        .flex_none()
+                        .h(px(1.))
+                        .aspect_ratio(recur_ui::style::TIE_NUDGE),
+                )
+                .child(div().flex_1().min_w_0().flex().flex_col().child(col))
+                .into_any_element()
+        };
         let id = SharedString::from(format!("chat-scroll-{}", self.props.reset_key));
         let scroller = if session {
             div()
@@ -307,6 +326,18 @@ impl AgentChat {
             .when(session, |d| d.flex_initial().min_h_0())
             .flex()
             .flex_col()
+            // The cached pane lays out as its own root from a snapped origin, so the window
+            // root's tie nudge (`style::window_root`) has to apply inside it too, or half-pixel
+            // edges round the other way. A column spacer, not the root's row: a row would
+            // measure the whole transcript's intrinsic width every frame.
+            .when(!session, |d| {
+                d.child(
+                    div()
+                        .flex_none()
+                        .w(px(1.))
+                        .aspect_ratio(1. / recur_ui::style::TIE_NUDGE),
+                )
+            })
             .child(scroller)
             .child(probe)
             .children(self.fades(cx))

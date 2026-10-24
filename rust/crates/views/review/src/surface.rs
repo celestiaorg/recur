@@ -456,6 +456,7 @@ impl ReviewSurface {
         let t = Theme::of(cx).tokens;
         let mut root = div()
             .debug_selector(|| "obs-review-surface".into())
+            .size_full()
             .flex_1()
             .min_h_0()
             .min_w_0()

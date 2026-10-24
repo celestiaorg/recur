@@ -21,9 +21,13 @@
 //! The drive opens every project, every workspace and each of its chat tabs (transcripts
 //! scrolled top to bottom), the Observatory's explorer, a file, the review and the terminal on
 //! live workspaces, every PR on each detail tab, every Settings section, Briefing, Issues,
-//! Schedules and each palette, and streams one chat turn. `RECUR_SMOKE_LIMIT=n` caps the
-//! workspaces and PRs visited and `RECUR_SMOKE_FROM=n` starts the workspaces at the nth. It exits non-zero on any panic (contained or not), error toast or
-//! a UI stall over 20s.
+//! Schedules and each palette, and streams one chat turn. It exits non-zero on any panic
+//! (contained or not), error toast, frame over 2s or UI stall over 20s, sampling the main thread
+//! on a stall.
+//!
+//! To reproduce a finding: `RECUR_SMOKE_LIMIT=n` caps the workspaces and PRs visited,
+//! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth and `RECUR_SMOKE_WORKSPACE=<id>` visits
+//! only that one.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -1150,7 +1154,14 @@ async fn run(
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
         .map_or(0, |n| n.saturating_sub(1));
-    for (i, (id, archived, wt)) in workspaces.iter().enumerate().skip(from).take(limit()) {
+    let only = std::env::var("RECUR_SMOKE_WORKSPACE").ok();
+    for (i, (id, archived, wt)) in workspaces
+        .iter()
+        .enumerate()
+        .skip(from)
+        .filter(|(_, (id, _, _))| only.as_ref().is_none_or(|o| o == id))
+        .take(limit())
+    {
         let live = !archived && !wt.is_empty() && Path::new(wt).is_dir();
         at(
             start,

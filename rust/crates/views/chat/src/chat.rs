@@ -414,6 +414,7 @@ pub(crate) struct TranscriptStoreSeen {
     permissions: Vec<String>,
     questions: Vec<String>,
     workspace: Option<recur_domain::Workspace>,
+    prs: u64,
 }
 
 /// What [`AgentChat::model`] derives from the props.
@@ -1083,9 +1084,21 @@ impl AgentChat {
                 .map(|q| q.id.clone())
                 .collect(),
             workspace: s.workspace(&p.workspace_id).cloned(),
+            prs: {
+                // The PR fields tool rows and completion facts read; comments and checks
+                // (most of a PR) never show in the transcript.
+                use std::hash::{Hash, Hasher};
+                let mut h = std::hash::DefaultHasher::new();
+                for pr in &s.prs {
+                    (&pr.id, pr.number, &pr.workspace_id, &pr.state, &pr.group).hash(&mut h);
+                    (pr.merge_queued, pr.draft, &pr.merge_state_status).hash(&mut h);
+                    (pr.source == recur_domain::PrSource::GitHub).hash(&mut h);
+                }
+                h.finish()
+            },
         };
-        let tools_changed = s.prs != self.tool_data.prs
-            || s.briefing.workspaces.as_deref().unwrap_or_default() != self.tool_data.briefs;
+        let tools_changed =
+            s.briefing.workspaces.as_deref().unwrap_or_default() != self.tool_data.briefs;
         let changed = tools_changed || self.store_seen.as_ref() != Some(&seen);
         self.store_seen = Some(seen);
         changed

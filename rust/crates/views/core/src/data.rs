@@ -912,7 +912,9 @@ impl AppState {
                     cx.notify();
                 }
             }
-            AppEvent::WorkspaceUpdated(d) => self.apply_workspace_updated(*d, cx),
+            AppEvent::WorkspaceUpdated(d) => {
+                self.apply_workspace_updated(std::sync::Arc::unwrap_or_clone(d), cx)
+            }
             AppEvent::WorkspaceDeleted(d) => {
                 if d.workspace_id.is_empty() {
                     return;
@@ -977,8 +979,13 @@ impl AppState {
                 self.schedule_briefing_refresh(cx);
                 cx.notify();
             }
-            AppEvent::PrUpdated(d) => self.apply_pr_updated(*d, cx),
-            AppEvent::PrsSynced(d) => self.merge_project_prs_sync(d.prs.unwrap_or_default(), cx),
+            AppEvent::PrUpdated(d) => self.apply_pr_updated(std::sync::Arc::unwrap_or_clone(d), cx),
+            AppEvent::PrsSynced(d) => self.merge_project_prs_sync(
+                d.prs
+                    .map(std::sync::Arc::unwrap_or_clone)
+                    .unwrap_or_default(),
+                cx,
+            ),
             AppEvent::PrRemoved(d) => {
                 if d.pr_id.is_empty() {
                     return;

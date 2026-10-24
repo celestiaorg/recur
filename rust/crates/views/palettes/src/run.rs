@@ -106,6 +106,9 @@ impl RunPalette {
             let focus = self.input.focus_handle(cx);
             window.defer(cx, move |window, cx| window.focus(&focus, cx));
         }
+        if !open && self.was_open {
+            chrome::release_focus(&self.input, window, cx);
+        }
         self.was_open = open;
         self.clamp_sel(cx);
         cx.notify();

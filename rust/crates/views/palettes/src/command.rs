@@ -446,7 +446,10 @@ impl CommandPalette {
             window.defer(cx, move |window, cx| window.focus(&focus, cx));
         }
         if open != self.was_open {
-            self.was_open = open;
+            if !open && self.was_open {
+            chrome::release_focus(&self.input, window, cx);
+        }
+        self.was_open = open;
             self.query_changed(cx);
         }
         self.clamp_sel(cx);
@@ -744,9 +747,9 @@ mod tests {
             projects,
             any_run_running: false,
             editor_file_open: false,
-            needs: Color::default(),
-            active: Color::default(),
-            ready: Color::default(),
+            needs: recur_ui::hex(0),
+            active: recur_ui::hex(0),
+            ready: recur_ui::hex(0),
         }
     }
 
@@ -790,7 +793,7 @@ mod tests {
         host.host_pr_id = "482".into();
         let w = vec![ws("N", "needs", "Needs"), archived, host, ws("X", "", "Odd")];
         let mut i = inputs(&w, &[], &[]);
-        i.needs = Color::from(recur_ui::hex(0xff0000));
+        i.needs = recur_ui::hex(0xff0000);
         let loops: Vec<Cmd> = all_commands(&i)
             .into_iter()
             .filter(|c| c.g == "Loops")

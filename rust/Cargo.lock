@@ -7436,7 +7436,7 @@ dependencies = [
  "recur-services",
  "recur-textmate",
  "recur-ui",
- "recur-view-chat",
+ "recur-view-briefing",
  "recur-view-core",
  "recur-view-home",
  "recur-view-observatory",

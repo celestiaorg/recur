@@ -315,6 +315,9 @@ impl ShortcutsHelp {
             })
             .detach();
         }
+        if !open && self.was_open {
+            chrome::release_focus(&self.input, window, cx);
+        }
         self.was_open = open;
         cx.notify();
     }

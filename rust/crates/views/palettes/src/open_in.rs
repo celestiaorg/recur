@@ -212,6 +212,9 @@ impl OpenInPalette {
             })
             .detach();
         }
+        if !open && self.was_open {
+            chrome::release_focus(&self.input, window, cx);
+        }
         self.was_open = open;
         self.clamp_sel(cx);
         cx.notify();

@@ -100,7 +100,15 @@ pub fn list(
     children: Vec<AnyElement>,
 ) -> Div {
     let pad = if kind.dense() { 4. } else { 6. };
-    div().flex_auto().min_h_0().flex().flex_col().child(
+    let id: ElementId = id.into();
+    let sel = id.to_string();
+    div()
+        .flex_auto()
+        .min_h_0()
+        .flex()
+        .flex_col()
+        .debug_selector(move || sel)
+        .child(
         scroll_area(id)
             .track(scroll)
             .scroller(move |d| d.p(px(pad)).flex().flex_col())
@@ -249,6 +257,14 @@ pub fn pin(id: SharedString, on: bool, row_selected: bool, hovered: bool, cx: &A
             tip,
             inner,
         ))
+}
+
+/// A palette closed: its query field stops rendering, so give focus back to the window as WebKit
+/// does for a field that is no longer displayed (the shell's keys see the next chord).
+pub fn release_focus(input: &Entity<InputState>, window: &mut Window, cx: &mut App) {
+    if gpui_kit::Focusable::focus_handle(input.read(cx), cx).is_focused(window) {
+        window.blur(cx);
+    }
 }
 
 /// No ⌘, Ctrl or ⌥ (a palette's own keys skip chords).

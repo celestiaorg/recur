@@ -507,6 +507,7 @@ impl Shell {
                     "tb-open-in-tip",
                     "Open in… (⌘O)",
                     no_drag(style::titlebar_icon_button("tb-open-in", open, cx))
+                        .debug_selector(|| "tb-open-in".into())
                         .on_click({
                             let state = state.clone();
                             move |_, _, cx| state.update(cx, |s, cx| s.toggle_open_in(cx))
@@ -517,6 +518,7 @@ impl Shell {
                     "tb-copy-path-tip",
                     "Copy path",
                     no_drag(style::titlebar_icon_button("tb-copy-path", false, cx))
+                        .debug_selector(|| "tb-copy-path".into())
                         .on_click({
                             let state = state.clone();
                             move |_, _, cx| copy_selected_workspace_path(&state, cx)

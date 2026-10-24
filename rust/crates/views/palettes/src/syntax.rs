@@ -241,7 +241,10 @@ impl SyntaxPalette {
             window.defer(cx, move |window, cx| window.focus(&focus, cx));
         }
         if open != self.was_open {
-            self.was_open = open;
+            if !open && self.was_open {
+            chrome::release_focus(&self.input, window, cx);
+        }
+        self.was_open = open;
             self.hover.reset();
             let state = self.state.clone();
             cx.defer(move |cx| state.update(cx, |s, cx| s.set_chat_occluder(OCCLUDER, open, cx)));

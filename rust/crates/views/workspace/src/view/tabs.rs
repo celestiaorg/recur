@@ -543,7 +543,7 @@ impl WorkspaceView {
     }
 
     /// Select a chat tab: focus it on the engine, clear its unseen chip, focus the composer.
-    pub(crate) fn select_chat_tab(&mut self, code: &str, cx: &mut Context<Self>) {
+    pub fn select_chat_tab(&mut self, code: &str, cx: &mut Context<Self>) {
         let (svc, id) = (self.services.clone(), self.ws_id.clone());
         let c = code.to_string();
         cx.background_executor()

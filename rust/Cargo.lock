@@ -6736,14 +6736,19 @@ dependencies = [
 name = "recur-desktop"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "chrono",
  "futures",
  "gpui-kit",
  "parking_lot",
+ "recur-agent",
  "recur-app",
  "recur-bundles",
  "recur-code",
  "recur-domain",
+ "recur-forge",
  "recur-platform",
+ "recur-provider-claude",
  "recur-services",
  "recur-store",
  "recur-ui",
@@ -6758,6 +6763,7 @@ dependencies = [
  "recur-view-review",
  "recur-view-settings",
  "recur-view-workspace",
+ "rusqlite",
  "serde_json",
  "tokio",
  "tracing",

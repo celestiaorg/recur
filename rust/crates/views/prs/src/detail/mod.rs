@@ -690,7 +690,7 @@ impl PrDetail {
     // ---- tabs ----
 
     /// `setTab`: Commits starts from the list and refreshes; Checks refreshes GitHub PRs.
-    pub(crate) fn set_tab(&mut self, t: PrTab, cx: &mut Context<Self>) {
+    pub fn set_tab(&mut self, t: PrTab, cx: &mut Context<Self>) {
         self.ui.update(cx, |u, cx| u.set_tab(t, cx));
         let id = self.pr_id(cx);
         if t == PrTab::Commits {

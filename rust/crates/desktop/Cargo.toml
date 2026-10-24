@@ -43,5 +43,14 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+[dev-dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+recur-agent.workspace = true
+recur-forge.workspace = true
+recur-provider-claude.workspace = true
+recur-view-chat = { workspace = true, features = ["test-support"] }
+rusqlite.workspace = true
+
 [lints]
 workspace = true

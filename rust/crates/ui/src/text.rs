@@ -628,6 +628,8 @@ struct Laid {
     extents: Rc<Vec<(Range<usize>, f32, f32)>>,
     ellipsis: Option<(Vec<PaintGlyph>, f32)>,
     lines: Vec<Line>,
+    /// The widths the last line breaking holds for (`None`: only its exact width).
+    valid_widths: Option<(f32, f32)>,
     /// Line breaks already computed for this shaping, by width and settings (shared with
     /// [`SHAPED`], so a text drawn again next frame breaks no lines).
     breaks: Breaks,
@@ -636,8 +638,17 @@ struct Laid {
 /// `(width bits, white-space, anywhere, clamp, truncate, scale bits)`.
 type BreakKey = (Option<u32>, WhiteSpace, bool, Option<usize>, bool, u32);
 
-/// A shaping's line breaks by [`BreakKey`]: the lines and the ellipsis glyphs.
-type Breaks = Rc<RefCell<Vec<(BreakKey, Vec<Line>, Option<(Vec<PaintGlyph>, f32)>)>>>;
+/// One line breaking of a shaping: its key, the widths it holds for, the lines and the
+/// ellipsis glyphs.
+struct Broken {
+    key: BreakKey,
+    valid: Option<(f32, f32)>,
+    lines: Vec<Line>,
+    ellipsis: Option<(Vec<PaintGlyph>, f32)>,
+}
+
+/// A shaping's line breaks, most recent last.
+type Breaks = Rc<RefCell<Vec<Broken>>>;
 
 /// How many widths a shaping remembers (a flex pass probes min-content, max-content and the
 /// final width; a resize adds one).
@@ -739,6 +750,7 @@ impl ShapedCache {
             extents: e.extents.clone(),
             ellipsis: None,
             lines: Vec::new(),
+            valid_widths: None,
             breaks: e.breaks.clone(),
         })
     }
@@ -1105,6 +1117,8 @@ impl Para {
     }
 }
 
+/// Greedy line breaking at `max`. `range` narrows to the widths that break the same way: every
+/// width compared against `max` moves one of its ends.
 fn break_lines(
     para: &Para,
     pi: usize,
@@ -1112,6 +1126,7 @@ fn break_lines(
     max: Option<f32>,
     anywhere: bool,
     eps: f32,
+    range: &mut (f32, f32),
 ) -> Vec<Line> {
     let line = |range: Range<usize>, width: f32| Line {
         para: pi,
@@ -1127,6 +1142,15 @@ fn break_lines(
     };
     // A box narrower than its margins lays out at zero width, where an empty line still fits.
     let max = max.max(0.);
+    let mut fits = |w: f32| {
+        let ok = w <= max + eps;
+        if ok {
+            range.0 = range.0.max(w - eps);
+        } else {
+            range.1 = range.1.min(w - eps);
+        }
+        ok
+    };
     let opportunities: Vec<(usize, BreakOpportunity)> = linebreaks(text).collect();
     let mut lines = Vec::new();
     let mut start = 0;
@@ -1140,7 +1164,7 @@ fn break_lines(
             continue;
         }
         let w = para.width(text, start..pos);
-        if w <= max + eps {
+        if fits(w) {
             if kind == BreakOpportunity::Mandatory {
                 lines.push(line(start..pos, w));
                 start = pos;
@@ -1161,7 +1185,7 @@ fn break_lines(
             let mut cut = start;
             for (bi, ch) in text[start..pos].char_indices() {
                 let end = start + bi + ch.len_utf8();
-                if para.width(text, start..end) > max + eps {
+                if !fits(para.width(text, start..end)) {
                     break;
                 }
                 cut = end;
@@ -1258,6 +1282,7 @@ impl Laid {
                 extents: Rc::default(),
                 ellipsis: None,
                 lines: Vec::new(),
+                valid_widths: None,
                 breaks: Rc::default(),
             },
         }
@@ -1292,6 +1317,7 @@ impl Laid {
             extents: Rc::new(extents),
             ellipsis: None,
             lines: Vec::new(),
+            valid_widths: None,
             breaks: Rc::default(),
         }
     }
@@ -1328,9 +1354,23 @@ impl Laid {
             truncate,
             window.scale_factor().to_bits(),
         );
-        if let Some((_, lines, ellipsis)) = self.breaks.borrow().iter().find(|b| b.0 == key) {
-            self.lines = lines.clone();
-            self.ellipsis = ellipsis.clone();
+        let scale = window.scale_factor().to_bits();
+        let hit = self.breaks.borrow().iter().rev().find_map(|b| {
+            let same = b.key == key
+                || width.zip(b.valid).is_some_and(|(w, (lo, hi))| {
+                    // Another width that breaks the same way (Taffy probes several a frame).
+                    let w = w.max(0.);
+                    b.key.0.is_some()
+                        && (b.key.1, b.key.2, b.key.3, b.key.4, b.key.5)
+                            == (ws, anywhere, clamp, truncate, scale)
+                        && w >= lo
+                        && w < hi
+                });
+            same.then(|| (b.lines.clone(), b.ellipsis.clone()))
+        });
+        if let Some((lines, ellipsis)) = hit {
+            self.lines = lines;
+            self.ellipsis = ellipsis;
             return;
         }
         let done = crate::guard::catch("text line breaking", || {
@@ -1345,7 +1385,12 @@ impl Laid {
         if breaks.len() >= BREAKS_PER_TEXT {
             breaks.remove(0);
         }
-        breaks.push((key, self.lines.clone(), self.ellipsis.clone()));
+        breaks.push(Broken {
+            key,
+            valid: self.valid_widths,
+            lines: self.lines.clone(),
+            ellipsis: self.ellipsis.clone(),
+        });
     }
 
     fn break_all(
@@ -1365,9 +1410,10 @@ impl Laid {
             width
         };
         let mut lines = Vec::new();
+        let mut range = (f32::NEG_INFINITY, f32::INFINITY);
         for (pi, p) in self.paras.iter().enumerate() {
             let text = &self.key.content[p.range.clone()];
-            lines.extend(break_lines(p, pi, text, wrap, anywhere, eps));
+            lines.extend(break_lines(p, pi, text, wrap, anywhere, eps, &mut range));
         }
         let mut cut_last = false;
         if let Some(n) = clamp
@@ -1376,6 +1422,8 @@ impl Laid {
             lines.truncate(n);
             cut_last = true;
         }
+        // An ellipsis is placed at the exact width; anything else holds across the range.
+        self.valid_widths = (width.is_some() && !cut_last && !truncate).then_some(range);
         if let Some(w) = width
             && (cut_last || truncate)
         {
@@ -2316,7 +2364,7 @@ mod tests {
             box_starts,
         };
         for max in [0., 0.5, 3., 7.] {
-            let lines = break_lines(&p, 0, text, Some(max), true, 0.25);
+            let lines = break_lines(&p, 0, text, Some(max), true, 0.25, &mut (0., 0.));
             let mut at = 0;
             for l in &lines {
                 assert!(l.range.start <= l.range.end, "{:?} at max {max}", l.range);
@@ -2324,6 +2372,40 @@ mod tests {
                 at = l.range.end;
             }
             assert_eq!(at, text.len());
+        }
+    }
+
+    #[test]
+    fn a_line_breaking_holds_across_its_valid_widths() {
+        let text = "the quick brown fox jumps over the lazy dog again and again";
+        let edges: Vec<(usize, f32)> = (0..=text.len()).map(|i| (i, i as f32 * 7.)).collect();
+        let p = Para {
+            range: 0..text.len(),
+            edges,
+            glyphs: Vec::new(),
+            boxes: Vec::new(),
+            box_starts: Vec::new(),
+        };
+        let ranges = |l: &[Line]| l.iter().map(|l| l.range.clone()).collect::<Vec<_>>();
+        for anywhere in [false, true] {
+            for max in [30., 95.5, 140., 201.25, 333.] {
+                let mut valid = (f32::NEG_INFINITY, f32::INFINITY);
+                let at = break_lines(&p, 0, text, Some(max), anywhere, 0.25, &mut valid);
+                assert!(valid.0 <= max && max < valid.1, "{valid:?} excludes {max}");
+                // Anywhere inside the range the lines are the same (the range is sufficient,
+                // not tight).
+                for w in [
+                    valid.0,
+                    (valid.0 + max) / 2.,
+                    max,
+                    (max + valid.1.min(1e6)) / 2.,
+                ] {
+                    if w < valid.1 {
+                        let l = break_lines(&p, 0, text, Some(w), anywhere, 0.25, &mut (0., 0.));
+                        assert_eq!(ranges(&l), ranges(&at), "w {w} in {valid:?} (max {max})");
+                    }
+                }
+            }
         }
     }
 

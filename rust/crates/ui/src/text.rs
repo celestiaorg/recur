@@ -729,10 +729,9 @@ impl ShapedCache {
             .entries
             .get_mut(&hash)
             .filter(|e| e.scale == scale && e.key == *key)?;
-        self.order.remove(&e.stamp);
+        // Lazy LRU: a hit only restamps; eviction requeues entries used since.
         self.stamp += 1;
         e.stamp = self.stamp;
-        self.order.insert(self.stamp, hash);
         Some(Laid {
             key: e.key.clone(),
             paras: e.paras.clone(),
@@ -772,11 +771,20 @@ impl ShapedCache {
         );
         self.bytes += bytes;
         while self.bytes > SHAPED_MAX_BYTES && self.entries.len() > 1 {
-            let Some((_, oldest)) = self.order.pop_first() else {
+            let Some((at, oldest)) = self.order.pop_first() else {
                 break;
             };
-            if let Some(e) = self.entries.remove(&oldest) {
-                self.bytes -= e.bytes;
+            match self.entries.get(&oldest) {
+                Some(e) if e.stamp != at => {
+                    let used = e.stamp;
+                    self.order.insert(used, oldest);
+                }
+                Some(_) => {
+                    if let Some(e) = self.entries.remove(&oldest) {
+                        self.bytes -= e.bytes;
+                    }
+                }
+                None => {}
             }
         }
     }

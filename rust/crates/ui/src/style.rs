@@ -462,6 +462,25 @@ pub fn window_root(content: impl IntoElement) -> Div {
         )
 }
 
+/// The root of a cached view's content: [`window_root`]'s tie nudge (a cached view lays out as
+/// its own root from a snapped origin, without the window's) around a column the content fills.
+pub fn cached_root(content: impl IntoElement) -> Div {
+    const NUDGE: f32 = 1. / TIE_NUDGE;
+    div()
+        .size_full()
+        .flex()
+        .flex_col()
+        .child(div().flex_none().w(px(1.)).aspect_ratio(NUDGE))
+        .child(
+            div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .child(div().flex_none().h(px(1.)).aspect_ratio(1. / NUDGE))
+                .child(div().flex_1().min_w_0().flex().flex_col().child(content)),
+        )
+}
+
 /// Button label text: `<button>` resets `font` (13.333px, line-height normal) and the class
 /// then sets size and weight.
 pub fn button_label(label: impl Into<gpui_kit::SharedString>, size: f32, weight: f32) -> Text {

@@ -763,7 +763,8 @@ impl ReviewFileList {
 
 impl Render for ReviewFileList {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        recur_ui::guard::view(self, window, cx, Self::render_view)
+        // The files view caches the list.
+        recur_ui::style::cached_root(recur_ui::guard::view(self, window, cx, Self::render_view))
     }
 }
 

@@ -1405,7 +1405,7 @@ async fn visit_workspace(
             }
             frames(cx, window, 1).await;
         }
-        scroll_transcript(start, cx, window, &chat, id, code).await;
+        scroll_transcript(start, cx, window, state, &chat, id, code).await;
     }
     if live {
         observatory(start, cx, window, state, &view, id).await;
@@ -1419,6 +1419,7 @@ async fn scroll_transcript(
     start: Instant,
     cx: &mut AsyncApp,
     window: AnyWindowHandle,
+    state: &Entity<AppState>,
     chat: &Entity<recur_view_chat::chat::AgentChat>,
     id: &str,
     code: &str,
@@ -1431,6 +1432,7 @@ async fn scroll_transcript(
     frames(cx, window, 3).await;
     let mut at_end = 0;
     let mut reached = false;
+    let mut unmoved = 0;
     for _ in 0..2000 {
         let page = f32::from(handle.bounds().size.height).max(200.);
         let max = f32::from(handle.max_offset().y);
@@ -1452,6 +1454,33 @@ async fn scroll_transcript(
         timed(Budget::ScrollStep, took);
         stall_check(took);
         collect_toasts(cx);
+        // A wheel that moves nothing short of the end: something took the events.
+        unmoved = if -f32::from(handle.offset().y) == y && y < max - 0.5 {
+            unmoved + 1
+        } else {
+            0
+        };
+        if unmoved >= 5 {
+            let what = state.read_with(cx, |s, _| {
+                format!(
+                    "offset {y:.0} of {max:.0} at {:?} in {:?}; {} permission cards, {} questions, overlays {:?}",
+                    handle.bounds().center(),
+                    handle.bounds(),
+                    s.permission_requests.len(),
+                    s.user_questions.len(),
+                    s.overlays
+                )
+            });
+            let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+            println!("STUCK {what} at {s}");
+            if let Ok(mut r) = report().lock() {
+                r.stalls.push(format!(
+                    "the transcript did not move under the wheel ({what}) at: {s}"
+                ));
+            }
+            reached = true;
+            break;
+        }
     }
     if !reached {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();

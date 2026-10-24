@@ -71,7 +71,7 @@ mod mac {
         Ct(usize),
     }
 
-    #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+    #[derive(Clone, Copy, PartialEq, Eq)]
     struct Key {
         source: Source,
         glyph: u32,
@@ -80,6 +80,39 @@ mod mac {
         color: [u8; 4],
         scale: u32,
     }
+
+    impl std::hash::Hash for Key {
+        fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+            let (kind, ix) = match self.source {
+                Source::Face(i) => (0u64, i as u64),
+                Source::Ct(i) => (1, i as u64),
+            };
+            h.write_u64(kind << 63 | ix << 32 | u64::from(self.glyph));
+            h.write_u64(u64::from(self.size) << 32 | u64::from(self.frac));
+            h.write_u64(u64::from(u32::from_le_bytes(self.color)) << 32 | u64::from(self.scale));
+        }
+    }
+
+    /// A multiply-rotate hasher for the raster map: every painted glyph looks one up each
+    /// frame, and SipHash showed in the frame time.
+    #[derive(Default)]
+    struct KeyHasher(u64);
+
+    impl std::hash::Hasher for KeyHasher {
+        fn finish(&self) -> u64 {
+            self.0
+        }
+        fn write(&mut self, bytes: &[u8]) {
+            for b in bytes {
+                self.write_u64(u64::from(*b));
+            }
+        }
+        fn write_u64(&mut self, v: u64) {
+            self.0 = (self.0.rotate_left(5) ^ v).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+        }
+    }
+
+    type KeyMap<V> = HashMap<Key, V, std::hash::BuildHasherDefault<KeyHasher>>;
 
     struct Raster {
         image: Arc<RenderImage>,
@@ -97,7 +130,7 @@ mod mac {
     #[derive(Default)]
     struct State {
         faces: HashMap<FontId, Option<usize>>,
-        rasters: HashMap<Key, (Option<Raster>, u64)>,
+        rasters: KeyMap<(Option<Raster>, u64)>,
         order: std::collections::BTreeMap<u64, Key>,
         stamp: u64,
         bytes: usize,
@@ -122,26 +155,33 @@ mod mac {
             let stamp = self.stamp;
             let mut evicted = Vec::new();
             match self.rasters.get_mut(&key) {
-                Some((_, at)) => {
-                    self.order.remove(at);
-                    *at = stamp;
-                }
+                // Lazy LRU: a hit only restamps; eviction requeues entries used since.
+                Some((_, at)) => *at = stamp,
                 None => {
                     let r = render();
                     self.bytes += Self::raster_bytes(&r);
                     self.rasters.insert(key, (r, stamp));
+                    self.order.insert(stamp, key);
                     while self.bytes > RASTER_MAX_BYTES && self.rasters.len() > 1 {
-                        let Some((_, old)) = self.order.pop_first() else {
+                        let Some((at, old)) = self.order.pop_first() else {
                             break;
                         };
-                        if let Some((r, _)) = self.rasters.remove(&old) {
-                            self.bytes -= Self::raster_bytes(&r);
-                            evicted.extend(r.map(|r| r.image));
+                        match self.rasters.get(&old) {
+                            Some((_, used)) if *used != at => {
+                                let used = *used;
+                                self.order.insert(used, old);
+                            }
+                            Some(_) => {
+                                if let Some((r, _)) = self.rasters.remove(&old) {
+                                    self.bytes -= Self::raster_bytes(&r);
+                                    evicted.extend(r.map(|r| r.image));
+                                }
+                            }
+                            None => {}
                         }
                     }
                 }
             }
-            self.order.insert(stamp, key);
             let hit = self.rasters[&key]
                 .0
                 .as_ref()

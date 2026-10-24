@@ -9,6 +9,7 @@
 //! margin-box sizes.
 
 use std::cell::{Cell, RefCell};
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -220,9 +221,110 @@ fn break_lines(p: &Para, text: &str, max: f32, eps: f32) -> Vec<Range<usize>> {
     lines
 }
 
+/// What a [`FlowLayout`] depends on (the color does not move anything).
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct FlowKey {
+    content: String,
+    atoms: Vec<(u32, u32)>,
+    family: Family,
+    size: u32,
+    weight: u32,
+    leading: u32,
+    width: u32,
+    scale: u32,
+}
+
+/// Flow layouts across frames and measure passes: the composer and every visible user bubble
+/// are measured several times a frame by Taffy, and a frame redraws them whenever anything
+/// above them changes. Byte-budgeted, least recently used out first.
+#[derive(Default)]
+struct FlowCache {
+    entries: HashMap<FlowKey, (FlowLayout, usize, u64)>,
+    order: BTreeMap<u64, FlowKey>,
+    stamp: u64,
+    bytes: usize,
+}
+
+const FLOW_CACHE_MAX_BYTES: usize = 8 * 1024 * 1024;
+
+thread_local! {
+    static FLOWS: RefCell<FlowCache> = RefCell::default();
+}
+
+impl FlowCache {
+    fn get(&mut self, key: &FlowKey) -> Option<FlowLayout> {
+        self.stamp += 1;
+        let stamp = self.stamp;
+        let (l, _, at) = self.entries.get_mut(key)?;
+        // Lazy LRU: the order map keeps the old stamp until eviction finds it stale.
+        *at = stamp;
+        Some(l.clone())
+    }
+
+    fn insert(&mut self, key: FlowKey, l: &FlowLayout) {
+        let bytes = 96
+            + key.content.len() * 2
+            + l.lines.len() * std::mem::size_of::<FlowLine>()
+            + l.paras.iter().map(|p| p.edges.len() * 16).sum::<usize>();
+        self.stamp += 1;
+        if let Some((_, b, _)) = self
+            .entries
+            .insert(key.clone(), (l.clone(), bytes, self.stamp))
+        {
+            self.bytes -= b;
+        }
+        self.order.insert(self.stamp, key);
+        self.bytes += bytes;
+        while self.bytes > FLOW_CACHE_MAX_BYTES && self.entries.len() > 1 {
+            let Some((at, k)) = self.order.pop_first() else {
+                break;
+            };
+            match self.entries.get(&k) {
+                Some((_, b, used)) if *used == at => {
+                    self.bytes -= *b;
+                    self.entries.remove(&k);
+                }
+                Some((_, _, used)) => {
+                    let used = *used;
+                    self.order.insert(used, k);
+                }
+                None => {}
+            }
+        }
+    }
+}
+
 impl FlowLayout {
-    /// Lays `content` out at `width` with chip sizes in order.
+    /// Lays `content` out at `width` with chip sizes in order (cached across frames).
     pub fn compute(
+        content: &str,
+        atoms: &[(f32, f32)],
+        s: &FlowStyle,
+        width: f32,
+        window: &Window,
+    ) -> FlowLayout {
+        let key = FlowKey {
+            content: content.to_string(),
+            atoms: atoms
+                .iter()
+                .map(|(w, h)| (w.to_bits(), h.to_bits()))
+                .collect(),
+            family: s.family.clone(),
+            size: s.size.to_bits(),
+            weight: s.weight.to_bits(),
+            leading: s.leading.to_bits(),
+            width: width.to_bits(),
+            scale: window.scale_factor().to_bits(),
+        };
+        if let Some(hit) = FLOWS.with_borrow_mut(|c| c.get(&key)) {
+            return hit;
+        }
+        let l = Self::compute_uncached(content, atoms, s, width, window);
+        FLOWS.with_borrow_mut(|c| c.insert(key, &l));
+        l
+    }
+
+    fn compute_uncached(
         content: &str,
         atoms: &[(f32, f32)],
         s: &FlowStyle,

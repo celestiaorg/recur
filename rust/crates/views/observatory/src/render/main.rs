@@ -951,16 +951,10 @@ impl Observatory {
                 .min_h_0()
                 .min_w_0()
                 .overflow_hidden()
-                // Cached: the review only re-lays out when it (or what it read) notifies, not on
-                // every keystroke elsewhere in the window.
-                .child(
-                    r.cached(
-                        gpui_kit::StyleRefinement::default()
-                            .flex_1()
-                            .min_h_0()
-                            .min_w_0(),
-                    ),
-                )
+                // Not cached itself: the review's own scrolling notifies through it, and a cached
+                // view that misses rebuilds everything inside. Its card stack and file list are
+                // the cached leaves.
+                .child(r)
                 .into_any_element(),
         )
     }

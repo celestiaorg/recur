@@ -1452,10 +1452,14 @@ impl gpui_kit::EntityInputHandler for TerminalView {
         _w: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<String> {
-        let text: Vec<u16> = self.composition.as_ref()?.text.encode_utf16().collect();
-        let range = range.start.min(text.len())..range.end.min(text.len());
-        *adjusted = Some(range.clone());
-        Some(String::from_utf16_lossy(&text[range]))
+        recur_ui::guard::catch("terminal text_for_range", || {
+            let text: Vec<u16> = self.composition.as_ref()?.text.encode_utf16().collect();
+            let end = range.end.min(text.len());
+            let range = range.start.min(end)..end;
+            *adjusted = Some(range.clone());
+            Some(String::from_utf16_lossy(&text[range]))
+        })
+        .flatten()
     }
 
     fn selected_text_range(
@@ -1464,14 +1468,17 @@ impl gpui_kit::EntityInputHandler for TerminalView {
         _w: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<UTF16Selection> {
-        let len = self
-            .composition
-            .as_ref()
-            .map_or(0, |c| c.text.encode_utf16().count());
-        Some(UTF16Selection {
-            range: len..len,
-            reversed: false,
+        recur_ui::guard::catch("terminal selected_text_range", || {
+            let len = self
+                .composition
+                .as_ref()
+                .map_or(0, |c| c.text.encode_utf16().count());
+            Some(UTF16Selection {
+                range: len..len,
+                reversed: false,
+            })
         })
+        .flatten()
     }
 
     fn marked_text_range(
@@ -1479,13 +1486,18 @@ impl gpui_kit::EntityInputHandler for TerminalView {
         _w: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<std::ops::Range<usize>> {
-        self.composition
-            .as_ref()
-            .map(|c| 0..c.text.encode_utf16().count())
+        recur_ui::guard::catch("terminal marked_text_range", || {
+            self.composition
+                .as_ref()
+                .map(|c| 0..c.text.encode_utf16().count())
+        })
+        .flatten()
     }
 
     fn unmark_text(&mut self, _w: &mut Window, cx: &mut Context<Self>) {
-        self.unmark(cx);
+        recur_ui::guard::catch("terminal unmark_text", || {
+            self.unmark(cx);
+        });
     }
 
     fn replace_text_in_range(
@@ -1495,7 +1507,9 @@ impl gpui_kit::EntityInputHandler for TerminalView {
         _w: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.commit_text(text, cx);
+        recur_ui::guard::catch("terminal replace_text_in_range", || {
+            self.commit_text(text, cx);
+        });
     }
 
     fn replace_and_mark_text_in_range(
@@ -1506,7 +1520,9 @@ impl gpui_kit::EntityInputHandler for TerminalView {
         _w: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.set_marked_text(new_text, cx);
+        recur_ui::guard::catch("terminal replace_and_mark_text_in_range", || {
+            self.set_marked_text(new_text, cx);
+        });
     }
 
     fn bounds_for_range(
@@ -1516,7 +1532,7 @@ impl gpui_kit::EntityInputHandler for TerminalView {
         _w: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
-        self.cursor_bounds()
+        recur_ui::guard::catch("terminal bounds_for_range", || self.cursor_bounds()).flatten()
     }
 
     fn character_index_for_point(
@@ -1525,7 +1541,7 @@ impl gpui_kit::EntityInputHandler for TerminalView {
         _w: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<usize> {
-        None
+        recur_ui::guard::catch("terminal character_index_for_point", || None).flatten()
     }
 }
 

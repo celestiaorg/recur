@@ -20,7 +20,7 @@ use recur_ui::Theme;
 
 use crate::images::{self, Decoded, ImageCache};
 use crate::lightbox::AttachmentLightbox;
-use crate::markdown::{ParseOptions, render_markdown_cached};
+use crate::markdown::{ParseOptions, markdown_doc_cached, markdown_doc_is_cached};
 use crate::render::block::{
     Build, Counters, Env, Handlers, ImageSlot, MermaidSlot, TextBlock, stack,
 };
@@ -199,32 +199,33 @@ impl MarkdownView {
         let opts = ParseOptions {
             demote_images: self.demote_images,
         };
-        if self.text.len() > ASYNC_RENDER_MIN_BYTES {
+        if self.text.len() > ASYNC_RENDER_MIN_BYTES && !markdown_doc_is_cached(&self.text, opts)
+        {
             // A large file preview parses for long enough to freeze the window; the previous
             // document stays up until it lands.
             let src = self.text.clone();
             let render = cx
                 .background_executor()
-                .spawn(async move { render_markdown_cached(&src, opts) });
+                .spawn(async move { markdown_doc_cached(&src, opts) });
             self.render_task = Some(cx.spawn(async move |this, cx| {
-                let html = render.await;
+                let doc = render.await;
                 let _ = this.update(cx, |v, cx| {
                     v.render_task = None;
-                    v.set_html(&html, cx);
+                    v.set_doc(doc, cx);
                 });
             }));
             return;
         }
-        let html = if self.text.is_empty() {
-            Arc::from("")
-        } else {
-            render_markdown_cached(&self.text, opts)
-        };
-        self.set_html(&html, cx);
+        let doc = markdown_doc_cached(&self.text, opts);
+        self.set_doc(doc, cx);
     }
 
     pub(crate) fn set_html(&mut self, html: &str, cx: &mut Context<Self>) {
-        self.doc = Arc::new(Doc::parse(html));
+        self.set_doc(Arc::new(Doc::parse(html)), cx);
+    }
+
+    fn set_doc(&mut self, doc: Arc<Doc>, cx: &mut Context<Self>) {
+        self.doc = doc;
         self.fences = fence_texts(&self.doc);
         self.hover_fence = None;
         self.copied.clear();

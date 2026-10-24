@@ -720,7 +720,42 @@ struct Report {
     notes: Vec<String>,
     /// Frames over 500ms and the step they were drawn in.
     slow: Vec<(Duration, String)>,
+    /// Timed interactions per budget.
+    timed: BTreeMap<Budget, Vec<(Duration, String)>>,
 }
+
+/// The interactions the smoke times against a frame-time budget. Any sample over its budget
+/// fails the run. The budgets are for this example's build (`dev`, dependencies at
+/// `opt-level = 2`); the release app is several times faster.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Budget {
+    /// One key typed into the composer of a long chat, through its frame.
+    Keystroke,
+    /// One frame of scrolling a transcript end to end (hydrating blocks as they come in).
+    ScrollStep,
+    /// Opening a workspace: the route change through its first frame.
+    WorkspaceSwitch,
+}
+
+impl Budget {
+    fn limit(self) -> Duration {
+        Duration::from_millis(match self {
+            Budget::Keystroke => 100,
+            Budget::ScrollStep => 250,
+            Budget::WorkspaceSwitch => 1000,
+        })
+    }
+}
+
+fn timed(budget: Budget, took: Duration) {
+    let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+    if let Ok(mut r) = report().lock() {
+        r.timed.entry(budget).or_default().push((took, s));
+    }
+}
+
+/// A chat this long gets its keystrokes timed.
+const LONG_CHAT_ROWS: usize = 200;
 
 fn report() -> &'static Mutex<Report> {
     static R: OnceLock<Mutex<Report>> = OnceLock::new();
@@ -841,6 +876,7 @@ fn drive(root: PathBuf) -> i32 {
         None => fmt.try_init(),
     };
     count_panics();
+    recur_ui::guard::count_renders(true);
     BEAT.store(now_ms(), Ordering::SeqCst);
     watchdog();
     recur_platform::cliinstall::ensure_path();
@@ -970,11 +1006,32 @@ fn drive(root: PathBuf) -> i32 {
             for (d, s) in slow.iter().take(15) {
                 say(start, format!("  {d:.0?} at: {s}"));
             }
-            let ok = r.panics.is_empty() && r.toasts.is_empty() && r.stalls.is_empty();
+            let mut over = 0;
+            for (budget, samples) in &r.timed {
+                let mut d: Vec<Duration> = samples.iter().map(|s| s.0).collect();
+                d.sort();
+                let pct = |p: f32| d[((d.len() - 1) as f32 * p).round() as usize];
+                say(
+                    start,
+                    format!(
+                        "budget {budget:?} ({:.0?}): {} samples, median {:.0?}, p95 {:.0?}, max {:.0?}",
+                        budget.limit(),
+                        d.len(),
+                        pct(0.5),
+                        pct(0.95),
+                        pct(1.)
+                    ),
+                );
+                for (took, s) in samples.iter().filter(|s| s.0 > budget.limit()) {
+                    over += 1;
+                    say(start, format!("OVER BUDGET {budget:?} {took:.0?} at: {s}"));
+                }
+            }
+            let ok = r.panics.is_empty() && r.toasts.is_empty() && r.stalls.is_empty() && over == 0;
             say(
                 start,
                 format!(
-                    "{} ({} panics, {} error toasts, {} stalls)",
+                    "{} ({} panics, {} error toasts, {} stalls, {over} frames over budget)",
                     if ok { "PASS" } else { "FAIL" },
                     r.panics.len(),
                     r.toasts.len(),
@@ -996,31 +1053,39 @@ async fn sleep(cx: &AsyncApp, ms: u64) {
         .await;
 }
 
+/// Draws one frame and returns how long it took.
+fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
+    let t = Instant::now();
+    let _ = cx.update_window(window, |_, window, cx| {
+        let drawn = window.draw(cx);
+        drawn.clear(cx);
+    });
+    BEAT.store(now_ms(), Ordering::SeqCst);
+    let took = t.elapsed();
+    let renders = recur_ui::guard::take_render_counts();
+    if took > Duration::from_millis(500) {
+        let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+        if std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
+            let views: Vec<String> = renders
+                .iter()
+                .map(|(k, n)| format!("{}×{n}", k.rsplit("::").next().unwrap_or(k)))
+                .collect();
+            println!("slow frame {took:.0?} at {s}: {}", views.join(" "));
+        }
+        if let Ok(mut r) = report().lock() {
+            r.slow.push((took, s));
+        }
+    }
+    took
+}
+
 /// Draws frames (an unfocused window gets no display-link frames) and collects new error
 /// toasts. A frame over 2s is a stall.
 async fn frames(cx: &mut AsyncApp, window: AnyWindowHandle, n: usize) {
     for _ in 0..n {
         sleep(cx, 60).await;
-        let t = Instant::now();
-        let _ = cx.update_window(window, |_, window, cx| {
-            let drawn = window.draw(cx);
-            drawn.clear(cx);
-        });
-        BEAT.store(now_ms(), Ordering::SeqCst);
-        let took = t.elapsed();
-        if took > Duration::from_millis(500) {
-            let s = step().lock().map(|s| s.clone()).unwrap_or_default();
-            if let Ok(mut r) = report().lock() {
-                r.slow.push((took, s));
-            }
-        }
-        if took > Duration::from_secs(2) {
-            let s = step().lock().map(|s| s.clone()).unwrap_or_default();
-            if let Ok(mut r) = report().lock() {
-                r.stalls
-                    .push(format!("a frame took {:.1?} at: {s}", t.elapsed()));
-            }
-        }
+        let took = draw(cx, window);
+        stall_check(took);
         collect_toasts(cx);
     }
 }
@@ -1182,6 +1247,10 @@ async fn run(
     if !streamed {
         note("no live workspace to stream a chat turn in".into());
     }
+    if std::env::var_os("RECUR_SMOKE_WORKSPACES_ONLY").is_some() {
+        at(start, "done");
+        return;
+    }
 
     for (i, id) in prs.iter().enumerate().take(limit()) {
         at(start, format!("PR {}/{} {id}", i + 1, prs.len()));
@@ -1287,7 +1356,11 @@ async fn visit_workspace(
     id: &str,
     live: bool,
 ) {
+    sleep(cx, 60).await;
+    let t = Instant::now();
     state.update(cx, |s, cx| s.open_workspace(id, false, cx));
+    draw(cx, window);
+    timed(Budget::WorkspaceSwitch, t.elapsed());
     let bound = until(cx, window, 15, |cx| {
         bound_view(cx).is_some_and(|v| cx.update(|cx| !v.read(cx).tab_codes().is_empty()))
     })
@@ -1350,7 +1423,63 @@ async fn scroll_transcript(
         }
         y = (y + page * 0.9).min(max);
         handle.set_offset(point(px(0.), px(-y)));
-        frames(cx, window, 1).await;
+        sleep(cx, 60).await;
+        let took = draw(cx, window);
+        timed(Budget::ScrollStep, took);
+        stall_check(took);
+        collect_toasts(cx);
+    }
+    if chat.read_with(cx, |c, _| c.props().messages.len()) >= LONG_CHAT_ROWS {
+        type_in_long_chat(start, cx, window, chat, id, code).await;
+    }
+}
+
+/// Types into the composer and erases it again, timing each key through its frame.
+async fn type_in_long_chat(
+    start: Instant,
+    cx: &mut AsyncApp,
+    window: AnyWindowHandle,
+    chat: &Entity<recur_view_chat::chat::AgentChat>,
+    id: &str,
+    code: &str,
+) {
+    at(start, format!("workspace {id} chat {code}: type"));
+    let before = chat.read_with(cx, |c, _| c.input().to_string());
+    let _ = cx.update_window(window, |_, window, cx| {
+        chat.update(cx, |c, cx| c.focus_composer(window, cx))
+    });
+    frames(cx, window, 2).await;
+    let reps: usize = std::env::var("RECUR_SMOKE_TYPE_REPEAT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1);
+    for k in "a b c backspace backspace backspace"
+        .split(' ')
+        .cycle()
+        .take(6 * reps)
+    {
+        sleep(cx, 60).await;
+        let t = Instant::now();
+        keys(cx, window, k);
+        draw(cx, window);
+        let took = t.elapsed();
+        timed(Budget::Keystroke, took);
+        stall_check(took);
+    }
+    let after = chat.read_with(cx, |c, _| c.input().to_string());
+    if after != before {
+        note(format!(
+            "typing in {id} {code} left the draft {after:?} (was {before:?})"
+        ));
+    }
+}
+
+fn stall_check(took: Duration) {
+    if took > Duration::from_secs(2) {
+        let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+        if let Ok(mut r) = report().lock() {
+            r.stalls.push(format!("a frame took {took:.1?} at: {s}"));
+        }
     }
 }
 

@@ -7,9 +7,11 @@ mod parse;
 use std::sync::OnceLock;
 
 pub use host::{
-    CACHE_ENTRY_MAX_BYTES, CACHE_MAX_BYTES, RenderError, clear_markdown_cache,
-    markdown_cache_stats_for_tests, peek_markdown_cache, remember_markdown, render_markdown_async,
-    render_markdown_cached, set_markdown_cache_max_bytes_for_tests, set_markdown_render_inline,
+    CACHE_ENTRY_MAX_BYTES, CACHE_MAX_BYTES, DOC_CACHE_MAX_BYTES, RenderError,
+    clear_markdown_cache, markdown_cache_stats_for_tests, markdown_doc_cache_stats,
+    markdown_doc_cached, markdown_doc_is_cached, peek_markdown_cache, remember_markdown,
+    render_markdown_async, render_markdown_cached, set_markdown_cache_max_bytes_for_tests,
+    set_markdown_render_inline,
 };
 pub use parse::{
     GH_IMAGE_PATH, ParseOptions, escape_text, github_image_src, is_github_image_url, parse_markdown,

@@ -4,7 +4,7 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, Context, DragMoveEvent, ExternalPaths, InteractiveElement, IntoElement,
+    AnyElement, AppContext as _, Context, DragMoveEvent, ExternalPaths, InteractiveElement, IntoElement,
     KeystrokeEvent, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
     Subscription, Window, canvas, div, px,
 };
@@ -204,20 +204,137 @@ impl AgentChat {
 }
 
 impl AgentChat {
+    /// The transcript pane and the dock pane, built once the chat is an entity.
+    fn panes(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> (
+        gpui_kit::Entity<crate::panes::TranscriptPane>,
+        gpui_kit::Entity<crate::panes::DockPane>,
+    ) {
+        if self.panes.is_none() {
+            let me = cx.entity();
+            let transcript = cx.new(|cx| crate::panes::TranscriptPane::new(&me, cx));
+            let dock = cx.new(|_| crate::panes::DockPane::new(&me));
+            self.panes = Some((transcript, dock));
+        }
+        self.panes.clone().expect("panes")
+    }
+
+    /// Redraws the composer dock without invalidating the transcript (see `panes`).
+    pub(crate) fn notify_dock(&mut self, cx: &mut Context<Self>) {
+        match &self.panes {
+            Some((_, dock)) if !self.props.session_body && !self.props.composer_only => {
+                dock.update(cx, |_, cx| cx.notify())
+            }
+            _ => cx.notify(),
+        }
+    }
+
+    /// The scrolling transcript with its probe, fades and fork menu (`.chat-scroll` and what
+    /// hangs off it).
+    pub(crate) fn transcript_main(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        self.tc_shift = crate::rows::tc_icon_shift(window);
+        self.scale = window.scale_factor();
+        self.snapshot_tool_data(cx);
+        self.markdown_seen.clear();
+        self.sync_turn_clock(cx);
+        let session = self.props.session_body;
+        let compact = self.props.compact;
+        let kids = self.transcript_children(window, cx);
+        let entity = cx.entity();
+        let probe = canvas(
+            move |b, _, cx| {
+                let h = f32::from(b.size.height);
+                let e = entity.clone();
+                cx.defer(move |cx| e.update(cx, |c, cx| c.on_scroll_frame(h, cx)));
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0();
+        let col = div()
+            .flex()
+            .flex_col()
+            .w_full()
+            .when(!session, |d| d.max_w(px(720.)).mx_auto())
+            .children(kids);
+        let id = SharedString::from(format!("chat-scroll-{}", self.props.reset_key));
+        let scroller = if session {
+            div()
+                .id(id)
+                .debug_selector(|| "chat-scroll".into())
+                .track_scroll(&self.scroll)
+                .overflow_y_scroll()
+                .flex_initial()
+                .min_h_0()
+                .max_h(px(self.props.session_max))
+                .pt(px(2.))
+                .px(px(10.))
+                .pb(px(6.))
+                .child(col)
+                .into_any_element()
+        } else {
+            // `.chat-scroll` keeps WebKit's classic scrollbar, which takes layout width
+            // while the transcript overflows.
+            let pad = if compact { 18. } else { 28. };
+            div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(
+                    recur_ui::widgets::scrollbar::scroll_area(id)
+                        .track(&self.scroll)
+                        .child(
+                            div()
+                                .debug_selector(|| "chat-scroll".into())
+                                .pt(px(if compact { 18. } else { 26. }))
+                                .px(px(pad))
+                                .pb(px(8.))
+                                .child(col),
+                        ),
+                )
+                .into_any_element()
+        };
+        let main = div()
+            .relative()
+            .when(!session, |d| d.size_full().min_h_0())
+            .when(session, |d| d.flex_initial().min_h_0())
+            .flex()
+            .flex_col()
+            .child(scroller)
+            .child(probe)
+            .children(self.fades(cx))
+            .children(self.fork_menu_el(cx))
+            .into_any_element();
+        // Drop the cached markdown of rows that left the transcript.
+        let seen = std::mem::take(&mut self.markdown_seen);
+        self.markdown.retain(|k, _| seen.contains(k));
+        self.streams.retain(|k, _| seen.contains(k));
+        let perms: Vec<String> = self
+            .chat_permissions(cx)
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
+        let qs: Vec<String> = self.chat_questions(cx).into_iter().map(|q| q.id).collect();
+        self.cards.retain(&perms, &qs);
+        main
+    }
+
     fn render_view(
         &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
-        self.tc_shift = crate::rows::tc_icon_shift(window);
         self.scale = window.scale_factor();
-        self.snapshot_tool_data(cx);
-        self.markdown_seen.clear();
-        self.sync_turn_clock(cx);
         let composer_only = self.props.composer_only;
         let session = self.props.session_body;
-        let compact = self.props.compact;
         let mut root = div()
             .id(SharedString::from(format!("chat-{}", self.props.reset_key)))
             .debug_selector(|| "chat".into())
@@ -231,77 +348,20 @@ impl AgentChat {
             .when(session, |d| d.max_h(px(self.props.session_max)))
             .text_size(px(self.props.font_size))
             .text_color(hsla(t.text));
-        if !composer_only {
-            let kids = self.transcript_children(window, cx);
-            let entity = cx.entity();
-            let probe = canvas(
-                move |b, _, cx| {
-                    let h = f32::from(b.size.height);
-                    let e = entity.clone();
-                    cx.defer(move |cx| e.update(cx, |c, cx| c.on_scroll_frame(h, cx)));
-                },
-                |_, _, _, _| {},
-            )
-            .absolute()
-            .inset_0();
-            let col = div()
-                .flex()
-                .flex_col()
-                .w_full()
-                .when(!session, |d| d.max_w(px(720.)).mx_auto())
-                .children(kids);
-            let id = SharedString::from(format!("chat-scroll-{}", self.props.reset_key));
-            let scroller = if session {
-                div()
-                    .id(id)
-                    .debug_selector(|| "chat-scroll".into())
-                    .track_scroll(&self.scroll)
-                    .overflow_y_scroll()
-                    .flex_initial()
-                    .min_h_0()
-                    .max_h(px(self.props.session_max))
-                    .pt(px(2.))
-                    .px(px(10.))
-                    .pb(px(6.))
-                    .child(col)
-                    .into_any_element()
-            } else {
-                // `.chat-scroll` keeps WebKit's classic scrollbar, which takes layout width
-                // while the transcript overflows.
-                let pad = if compact { 18. } else { 28. };
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .flex()
-                    .flex_col()
-                    .child(
-                        recur_ui::widgets::scrollbar::scroll_area(id)
-                            .track(&self.scroll)
-                            .child(
-                                div()
-                                    .debug_selector(|| "chat-scroll".into())
-                                    .pt(px(if compact { 18. } else { 26. }))
-                                    .px(px(pad))
-                                    .pb(px(8.))
-                                    .child(col),
-                            ),
-                    )
-                    .into_any_element()
-            };
-            let main = div()
-                .relative()
-                .when(!session, |d| d.flex_1().min_h_0())
-                .when(session, |d| d.flex_initial().min_h_0())
-                .flex()
-                .flex_col()
-                .child(scroller)
-                .child(probe)
-                .children(self.fades(cx))
-                .children(self.fork_menu_el(cx));
-            root = root.child(main);
-        }
-        if let Some(dock) = self.dock(window, cx) {
-            root = root.child(dock);
+        if session || composer_only {
+            // Content-sized: a cached view needs a definite size, and these are small.
+            if session {
+                let main = self.transcript_main(window, cx);
+                root = root.child(main);
+            }
+            if let Some(dock) = self.dock(window, cx) {
+                root = root.child(dock);
+            }
+        } else {
+            let (transcript, dock) = self.panes(cx);
+            root = root
+                .child(transcript.cached(gpui_kit::StyleRefinement::default().flex_1().min_h_0()))
+                .child(dock);
         }
         if let Some(lb) = &self.lightbox {
             root = root.child(lb.clone());
@@ -309,17 +369,6 @@ impl AgentChat {
         if let Some(menu) = &self.img_ctx {
             root = root.child(menu.clone());
         }
-        // Drop the cached markdown of rows that left the transcript.
-        let seen = std::mem::take(&mut self.markdown_seen);
-        self.markdown.retain(|k, _| seen.contains(k));
-        self.streams.retain(|k, _| seen.contains(k));
-        let perms: Vec<String> = self
-            .chat_permissions(cx)
-            .into_iter()
-            .map(|r| r.id)
-            .collect();
-        let qs: Vec<String> = self.chat_questions(cx).into_iter().map(|q| q.id).collect();
-        self.cards.retain(&perms, &qs);
         if self.props.readonly || self.app_surface() {
             return root;
         }

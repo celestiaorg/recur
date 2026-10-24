@@ -20,6 +20,8 @@
 //! first, contained or not.
 
 use std::any::type_name;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use gpui_kit::{
@@ -49,7 +51,31 @@ pub fn view<V: 'static, E: IntoElement>(
     body: impl FnOnce(&mut V, &mut Window, &mut Context<V>) -> E,
 ) -> AnyElement {
     let name = type_name::<V>();
+    count_render(name);
     catch(name, || body(this, window, cx).into_any_element()).unwrap_or_else(|| failed(name, cx))
+}
+
+thread_local! {
+    static RENDERS: RefCell<Option<BTreeMap<&'static str, u32>>> = const { RefCell::new(None) };
+}
+
+fn count_render(name: &'static str) {
+    RENDERS.with_borrow_mut(|r| {
+        if let Some(r) = r {
+            *r.entry(name).or_default() += 1;
+        }
+    });
+}
+
+/// Starts (or stops) counting [`view`] renders by view type on this thread, for frame-cost
+/// tests and the real-data smoke.
+pub fn count_renders(on: bool) {
+    RENDERS.with_borrow_mut(|r| *r = on.then(BTreeMap::new));
+}
+
+/// The renders counted since the last call, by view type name.
+pub fn take_render_counts() -> BTreeMap<&'static str, u32> {
+    RENDERS.with_borrow_mut(|r| r.as_mut().map(std::mem::take).unwrap_or_default())
 }
 
 /// A `RenderOnce` body, contained like [`view`].

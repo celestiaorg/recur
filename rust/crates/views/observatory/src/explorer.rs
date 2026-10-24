@@ -570,7 +570,7 @@ impl Observatory {
     /// `expandChangedAncestors`: load and expand every changed file's folders in one batch.
     pub(crate) fn expand_changed_ancestors(&mut self, cx: &mut Context<Self>) -> Task<()> {
         let scope = self.scope_paths();
-        let dirs = ancestor_dirs_of(&scope);
+        let dirs = ancestor_dirs_of(scope.iter());
         if dirs.is_empty() {
             return Task::ready(());
         }

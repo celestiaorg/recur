@@ -2,6 +2,7 @@
 
 mod activity;
 mod chat;
+mod frame_cost;
 mod harness;
 mod shell;
 mod smoke;

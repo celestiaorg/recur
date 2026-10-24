@@ -122,6 +122,9 @@ impl SessionCard {
     }
 
     pub fn set_props(&mut self, props: SessionCardProps, cx: &mut Context<Self>) {
+        if props == self.props {
+            return;
+        }
         self.props = props;
         if let Some(chat) = self.chat.clone() {
             let p = self.chat_props();

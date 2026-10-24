@@ -60,7 +60,7 @@ pub enum ChatSurfaceKind {
 }
 
 /// The Svelte props (everything but the bindable draft, the snippets and the callbacks).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChatProps {
     pub messages: Vec<AgentMsg>,
     pub sending: bool,
@@ -507,6 +507,8 @@ pub struct AgentChat {
     /// Block tops and heights in the column, from the last frame.
     pub(crate) block_ranges: Rc<std::cell::RefCell<BTreeMap<String, (f32, f32)>>>,
     pub(crate) chat_hydrated: HashSet<String>,
+    /// Blocks laid out live in the last transcript render.
+    pub(crate) live_blocks: usize,
     pub(crate) chat_in_view: Vec<String>,
     pub(crate) reveal_key: String,
     pub(crate) copied_row: Option<String>,
@@ -539,6 +541,15 @@ pub struct AgentChat {
     pub(crate) streams: HashMap<String, Entity<StreamingMarkdown>>,
     pub(crate) cards: crate::cards::CardViews,
     pub(crate) markdown_seen: HashSet<String>,
+
+    /// How far into `props.messages` (for `reset_key`) the markdown prewarm has reached.
+    pub(crate) prewarmed: (String, usize),
+    pub(crate) prewarm_task: Option<Task<()>>,
+    /// The transcript and dock views (see `panes`), built on first render.
+    pub(crate) panes: Option<(
+        Entity<crate::panes::TranscriptPane>,
+        Entity<crate::panes::DockPane>,
+    )>,
 
     pub(crate) _subs: Vec<Subscription>,
     pub(crate) _events: Option<Task<()>>,
@@ -688,6 +699,7 @@ impl AgentChat {
             block_h_by_chat: HashMap::new(),
             block_ranges: Rc::default(),
             chat_hydrated: HashSet::new(),
+            live_blocks: 0,
             chat_in_view: Vec::new(),
             reveal_key: String::new(),
             copied_row: None,
@@ -713,6 +725,9 @@ impl AgentChat {
             streams: HashMap::new(),
             cards: Default::default(),
             markdown_seen: HashSet::new(),
+            prewarmed: (String::new(), 0),
+            prewarm_task: None,
+            panes: None,
             _subs: subs,
             _events: None,
         };
@@ -756,6 +771,11 @@ impl AgentChat {
     /// Replaces the props. A new `reset_key` saves the leaving chat's chrome and restores the
     /// entering one's, as one AgentChat serves every tab.
     pub fn set_props(&mut self, props: ChatProps, cx: &mut Context<Self>) {
+        // Hosts push props from their render (a session card inside the transcript): unchanged
+        // props must not notify, or every frame re-renders the chat and its ancestors.
+        if props == self.props {
+            return;
+        }
         let key_changed = props.reset_key != self.props.reset_key;
         let scope_changed = props.project_id != self.props.project_id
             || props.workspace_id != self.props.workspace_id;
@@ -804,13 +824,63 @@ impl AgentChat {
             }
             self.chat_hydrated.clear();
             self.chat_in_view.clear();
+            self.block_ranges.borrow_mut().clear();
         }
         if was_windowed != self.window_chat() && !self.window_chat() {
             self.chat_hydrated.clear();
         }
         self.check_expansion_guard();
         self.sync_turn_clock(cx);
+        self.prewarm_markdown(cx);
         cx.notify();
+    }
+
+    /// Parses the settled replies' markdown on a background thread, newest first, so blocks
+    /// that hydrate as the transcript scrolls find their documents cached
+    /// (`recur_content::markdown::markdown_doc_cached`).
+    fn prewarm_markdown(&mut self, cx: &mut Context<Self>) {
+        let msgs = &self.props.messages;
+        let from = if self.prewarmed.0 == self.props.reset_key {
+            self.prewarmed.1.min(msgs.len())
+        } else {
+            0
+        };
+        // A streaming reply settles later: stop before it so it is picked up then.
+        let to = msgs[from..]
+            .iter()
+            .position(|m| m.streaming)
+            .map_or(msgs.len(), |i| from + i);
+        if from == to {
+            return;
+        }
+        self.prewarmed = (self.props.reset_key.clone(), to);
+        let opts = recur_content::markdown::ParseOptions::default();
+        let srcs: Vec<String> = msgs[from..to]
+            .iter()
+            .rev()
+            .filter(|m| {
+                m.log.is_none()
+                    && !m.me
+                    && !m.turn_end
+                    && !m.note
+                    && !m.stopped
+                    && !m.error
+                    && !m.body.is_empty()
+            })
+            .map(|m| m.body.clone())
+            .collect();
+        if srcs.is_empty() {
+            return;
+        }
+        let prev = self.prewarm_task.take();
+        self.prewarm_task = Some(cx.background_executor().spawn(async move {
+            if let Some(prev) = prev {
+                prev.await;
+            }
+            for src in srcs {
+                recur_content::markdown::markdown_doc_cached(&src, opts);
+            }
+        }));
     }
 
     /// The draft wire text (`bind:input`).
@@ -1377,7 +1447,24 @@ impl AgentChat {
         if from_top || !(self.near_bottom && max > crate::transcript_ui::NEAR_BOTTOM_PX) {
             self.fade_ready = true;
         }
+        self.record_block_heights();
         self.refresh_chat_window(top, viewport_h, cx);
+    }
+
+    /// `recordStubHeight`: every laid-out block's height, for its stub to reserve once it
+    /// leaves the window (stubs report the height they reserved).
+    fn record_block_heights(&mut self) {
+        let prefix = crate::transcript_ui::transcript_block_key(&self.props.reset_key, "");
+        let ranges = self.block_ranges.borrow();
+        let m = self
+            .block_h_by_chat
+            .entry(self.props.reset_key.clone())
+            .or_default();
+        for (k, &(_, h)) in ranges.iter() {
+            if h > 0. && k.starts_with(&prefix) {
+                m.insert(k.clone(), h);
+            }
+        }
     }
 
     fn apply_pending_scroll(&mut self, client_h: f32, scroll_h: f32, cx: &mut Context<Self>) {
@@ -2160,7 +2247,7 @@ impl AgentChat {
             );
         }
         cx.emit(ChatEvent::Draft);
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     pub(crate) fn caret_wire(&self) -> usize {

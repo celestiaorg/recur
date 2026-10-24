@@ -102,6 +102,29 @@ impl Doc {
         Doc { nodes }
     }
 
+    /// The heap the tree holds, for byte-budgeted caches.
+    pub fn heap_bytes(&self) -> usize {
+        fn nodes(ns: &[Node]) -> usize {
+            ns.iter()
+                .map(|n| {
+                    std::mem::size_of::<Node>()
+                        + match n {
+                            Node::Text(t) => t.capacity(),
+                            Node::El(e) => {
+                                e.tag.capacity()
+                                    + e.attrs
+                                        .iter()
+                                        .map(|(k, v)| 48 + k.capacity() + v.capacity())
+                                        .sum::<usize>()
+                                    + nodes(&e.children)
+                            }
+                        }
+                })
+                .sum()
+        }
+        nodes(&self.nodes)
+    }
+
     /// Every element in tree order.
     pub fn walk<'a>(&'a self, f: &mut impl FnMut(&'a El)) {
         fn go<'a>(nodes: &'a [Node], f: &mut impl FnMut(&'a El)) {

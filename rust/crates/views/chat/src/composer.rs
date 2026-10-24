@@ -613,7 +613,7 @@ impl AgentChat {
     fn menus_changed(&mut self, cx: &mut Context<Self>) {
         self.after_menu_change(cx);
         self.schedule_complete(cx);
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     /// The prompt-argument complete script, 200ms after the args settle.
@@ -679,7 +679,7 @@ impl AgentChat {
                     }
                 }
                 c.after_menu_change(cx);
-                cx.notify();
+                c.notify_dock(cx);
             });
         }));
     }
@@ -744,7 +744,7 @@ impl AgentChat {
                 next.extend(files);
                 c.set_mention_hits(next);
                 c.after_menu_change(cx);
-                cx.notify();
+                c.notify_dock(cx);
             });
         }));
     }
@@ -1082,7 +1082,7 @@ impl AgentChat {
             cx.defer(move |cx| {
                 let _ = this.update(cx, |c, cx| {
                     c.rebuild_prompt_slots(focus, cx);
-                    cx.notify();
+                    c.notify_dock(cx);
                 });
             });
             return;
@@ -1116,7 +1116,7 @@ impl AgentChat {
                         this.prompt_slot_focus = Some(i);
                         this.sync_mention_from_caret(cx);
                     }
-                    InputEvent::Blur => cx.notify(),
+                    InputEvent::Blur => this.notify_dock(cx),
                     InputEvent::PressEnter { .. } => {}
                 },
             );
@@ -1162,7 +1162,7 @@ impl AgentChat {
             s.focus(window, cx);
             s.select_all(window, cx);
         });
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     pub(crate) fn focused_slot(&self, window: &Window, cx: &App) -> Option<usize> {
@@ -1230,12 +1230,12 @@ impl AgentChat {
                     if !hits.is_empty() {
                         self.mention_sel = (self.mention_sel + 1).min(hits.len() - 1);
                     }
-                    cx.notify();
+                    self.notify_dock(cx);
                     return true;
                 }
                 "up" => {
                     self.mention_sel = self.mention_sel.saturating_sub(1);
-                    cx.notify();
+                    self.notify_dock(cx);
                     return true;
                 }
                 "escape" => {
@@ -1309,12 +1309,12 @@ impl AgentChat {
                 if len > 0 {
                     self.mention_sel = (self.mention_sel + 1).min(len - 1);
                 }
-                cx.notify();
+                self.notify_dock(cx);
                 true
             }
             "up" => {
                 self.mention_sel = self.mention_sel.saturating_sub(1);
-                cx.notify();
+                self.notify_dock(cx);
                 true
             }
             "enter" | "tab" => {
@@ -1547,7 +1547,7 @@ impl AgentChat {
         self.sync_mention_from_caret(cx);
         self.caret_blink_epoch = std::time::Instant::now();
         self.reveal_caret();
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     /// `scrollComposerCaretIntoView`: keep the caret 6px inside the composer's box.
@@ -1577,7 +1577,7 @@ impl AgentChat {
         self.prompt_slot_focus = None;
         window.focus(&self.focus, cx);
         self.caret_blink_epoch = std::time::Instant::now();
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     // ---- inserting chips and drafts ----
@@ -1945,7 +1945,7 @@ impl AgentChat {
             return;
         }
         self.doc.move_to(byte, true);
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     pub(crate) fn utf16_range_to_bytes(&self, r: Range<usize>) -> Range<usize> {
@@ -1997,7 +1997,7 @@ impl EntityInputHandler for AgentChat {
     fn unmark_text(&mut self, _: &mut Window, cx: &mut Context<Self>) {
         recur_ui::guard::catch("composer unmark_text", || {
             self.composer_marked = None;
-            cx.notify();
+            self.notify_dock(cx);
         });
     }
 
@@ -2050,7 +2050,7 @@ impl EntityInputHandler for AgentChat {
                 self.doc.caret = b;
             }
             // Composition does not commit to the wire or undo until it ends.
-            cx.notify();
+            self.notify_dock(cx);
         });
     }
 

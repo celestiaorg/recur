@@ -2,6 +2,7 @@
 //! and the values `Observatory.svelte` derived from it.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -47,6 +48,15 @@ pub struct ObservatoryProps {
     /// The live workbench. Parked hot shells keep their state but take no focus, watchers,
     /// key bindings or menu.
     pub shell_active: bool,
+}
+
+/// What [`Observatory::scope_paths`], [`Observatory::review_paths`] and
+/// [`Observatory::exclude_matchers`] last computed, keyed by their inputs.
+#[derive(Default)]
+pub(crate) struct PathsMemo {
+    scope: Option<(u64, Rc<Vec<String>>)>,
+    excludes: Option<(Vec<String>, Rc<Vec<CompiledGlob>>)>,
+    review: Option<(Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>)>,
 }
 
 /// The host-owned content the Svelte component took as snippets.
@@ -330,6 +340,7 @@ pub struct Observatory {
     /// path → m|a|d|u versus base (workspace) or HEAD (project).
     pub(crate) git_status: BTreeMap<String, String>,
     pub(crate) git_status_ready: bool,
+    pub(crate) paths_memo: std::cell::RefCell<PathsMemo>,
     /// Uncommitted porcelain versus HEAD.
     pub(crate) working_status: BTreeMap<String, String>,
     pub(crate) staged_files: Vec<String>,
@@ -605,6 +616,7 @@ impl Observatory {
             changed_paths: Vec::new(),
             git_status: BTreeMap::new(),
             git_status_ready: false,
+            paths_memo: Default::default(),
             working_status: BTreeMap::new(),
             staged_files: Vec::new(),
             browse_all: false,
@@ -1099,27 +1111,65 @@ impl Observatory {
     // ---- derived: explorer scope ----
 
     /// Paths changed since base (git status ∪ changed files), locale-sorted.
-    pub(crate) fn scope_paths(&self) -> Vec<String> {
+    /// The changed-since-base paths plus every git status path, sorted (memoized: the explorer,
+    /// the review count and the panel badges read it on every render).
+    pub(crate) fn scope_paths(&self) -> Rc<Vec<String>> {
+        let key = {
+            let mut h = std::hash::DefaultHasher::new();
+            self.changed_paths.hash(&mut h);
+            for k in self.git_status.keys() {
+                k.hash(&mut h);
+            }
+            h.finish()
+        };
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((k, v)) = &memo.scope
+            && *k == key
+        {
+            return v.clone();
+        }
         let mut set: BTreeSet<String> = self.changed_paths.iter().cloned().collect();
         set.extend(self.git_status.keys().cloned());
         let mut v: Vec<String> = set.into_iter().collect();
         v.sort_by(|a, b| recur_code::collate::locale_compare(a, b));
+        let v = Rc::new(v);
+        memo.scope = Some((key, v.clone()));
         v
     }
 
-    pub(crate) fn exclude_matchers(&self, cx: &App) -> Vec<CompiledGlob> {
-        compile_excludes(&crate::explorer::explorer_exclude(
-            self.state.read(cx).storage(),
-        ))
+    pub(crate) fn exclude_matchers(&self, cx: &App) -> Rc<Vec<CompiledGlob>> {
+        let patterns = crate::explorer::explorer_exclude(self.state.read(cx).storage());
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((p, m)) = &memo.excludes
+            && *p == patterns
+        {
+            return m.clone();
+        }
+        let m = Rc::new(compile_excludes(&patterns));
+        memo.excludes = Some((patterns, m.clone()));
+        m
     }
 
     /// Changed-since-base membership after the exclude globs (`reviewPaths`).
-    pub(crate) fn review_paths(&self, cx: &App) -> Vec<String> {
+    pub(crate) fn review_paths(&self, cx: &App) -> Rc<Vec<String>> {
         let m = self.exclude_matchers(cx);
-        self.scope_paths()
-            .into_iter()
-            .filter(|p| !is_excluded_by(p, &m))
-            .collect()
+        let scope = self.scope_paths();
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((sc, ex, v)) = &memo.review
+            && Rc::ptr_eq(sc, &scope)
+            && Rc::ptr_eq(ex, &m)
+        {
+            return v.clone();
+        }
+        let v = Rc::new(
+            scope
+                .iter()
+                .filter(|p| !is_excluded_by(p, &m))
+                .cloned()
+                .collect(),
+        );
+        memo.review = Some((scope, m, Rc::clone(&v)));
+        v
     }
 
     pub(crate) fn filter_changed(&self) -> bool {

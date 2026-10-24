@@ -33,6 +33,43 @@ use crate::rows::{accord_detail, finding_row_wrap, findings_list, labeled_note};
 use crate::style::{GREEN, ag_color, hsla, label};
 use crate::tools::{base_name, format_duration};
 use crate::window::{BlockShape, CHAT_TAIL_LIVE, estimate_chat_block_height, reserved_chat_height};
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::rc::Rc;
+
+/// A run of windowed-out blocks at their reserved heights, recording each one's range.
+fn stub_spacer(
+    stubs: Vec<(String, f32)>,
+    ranges: &Rc<RefCell<BTreeMap<String, (f32, f32)>>>,
+) -> Option<AnyElement> {
+    let first = stubs.first()?.0.clone();
+    let total: f32 = stubs.iter().map(|s| s.1).sum();
+    let n = stubs.len();
+    let rec = ranges.clone();
+    let probe = canvas(
+        move |bounds, _, _| {
+            let mut y = f32::from(bounds.origin.y);
+            let mut r = rec.borrow_mut();
+            for (k, h) in &stubs {
+                r.insert(k.clone(), (y, *h));
+                y += h;
+            }
+        },
+        |_, _, _, _| {},
+    )
+    .absolute()
+    .inset_0();
+    Some(
+        div()
+            .id(SharedString::from(format!("cstubs-{first}")))
+            .debug_selector(move || format!("stubs:{n}:{first}"))
+            .relative()
+            .flex_none()
+            .h(px(total))
+            .child(probe)
+            .into_any_element(),
+    )
+}
 
 /// `.chat-think-dots`: three 5px amber dots bouncing in turn.
 pub(crate) fn think_dots(
@@ -110,37 +147,47 @@ impl AgentChat {
         }
         let ranges = self.block_ranges.clone();
         let n = blocks.len();
+        // Consecutive stubs lay out as one spacer: a long windowed transcript is a handful of
+        // nodes plus its live blocks, whatever its length.
+        let mut stubs: Vec<(String, f32)> = Vec::new();
+        let scale = self.scale.max(1.);
+        self.live_blocks = 0;
         for (bi, b) in blocks.iter().enumerate() {
             let k = keys[bi].clone();
             let live = !windowed || self.chat_hydrated.contains(&k) || bi + CHAT_TAIL_LIVE >= n;
-            let estimate = match b {
-                Block::Steps { .. } => estimate_chat_block_height(BlockShape::Steps),
-                Block::Msg(i) => {
-                    let m = &msgs[*i];
-                    estimate_chat_block_height(BlockShape::Msg {
-                        me: m.me,
-                        turn_end: m.turn_end,
-                        body: &m.body,
-                    })
-                }
-            };
-            let measured = self.block_heights().get(&k).copied();
-            let reserved = reserved_chat_height(live, measured, estimate);
-            let body = if live {
-                Some(match b {
-                    Block::Msg(i) => self.msg_block(&msgs, *i, window, cx),
-                    Block::Steps { start, rows } => self.steps_block(
-                        &msgs,
-                        *start,
-                        rows,
-                        bi + 1 == n,
-                        first_checkpoint,
-                        window,
-                        cx,
-                    ),
-                })
-            } else {
-                None
+            if !live {
+                let estimate = match b {
+                    Block::Steps { .. } => estimate_chat_block_height(BlockShape::Steps),
+                    Block::Msg(i) => {
+                        let m = &msgs[*i];
+                        estimate_chat_block_height(BlockShape::Msg {
+                            me: m.me,
+                            turn_end: m.turn_end,
+                            body: &m.body,
+                        })
+                    }
+                };
+                let measured = self.block_heights().get(&k).copied();
+                let h = reserved_chat_height(false, measured, estimate).unwrap_or(estimate);
+                // Each stub reserved its own device-rounded height.
+                stubs.push((k, (h * scale).round() / scale));
+                continue;
+            }
+            if let Some(el) = stub_spacer(std::mem::take(&mut stubs), &ranges) {
+                out.push(el);
+            }
+            self.live_blocks += 1;
+            let body = match b {
+                Block::Msg(i) => self.msg_block(&msgs, *i, window, cx),
+                Block::Steps { start, rows } => self.steps_block(
+                    &msgs,
+                    *start,
+                    rows,
+                    bi + 1 == n,
+                    first_checkpoint,
+                    window,
+                    cx,
+                ),
             };
             // `registerChatBlock` / `recordStubHeight`: where each block sits, and live
             // heights for stubs to reserve.
@@ -160,15 +207,17 @@ impl AgentChat {
             out.push(
                 div()
                     .id(SharedString::from(format!("cblk-{k}")))
-                    .debug_selector(|| format!("{}:{k}", if live { "cblk" } else { "stub" }))
+                    .debug_selector(|| format!("cblk:{k}"))
                     .relative()
                     .flex()
                     .flex_col()
-                    .when_some(reserved, |d, h| d.min_h(px(h)))
-                    .children(body)
+                    .child(body)
                     .child(probe)
                     .into_any_element(),
             );
+        }
+        if let Some(el) = stub_spacer(stubs, &ranges) {
+            out.push(el);
         }
         for req in self.chat_permissions(cx) {
             let card = self.permission_card(&req, window, cx);

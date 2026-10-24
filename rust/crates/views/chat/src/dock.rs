@@ -458,7 +458,7 @@ impl AgentChat {
             }
             _ => self.composer_mouse_down(b, ev.modifiers.shift, window, cx),
         }
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     // ---- the menu ----
@@ -493,14 +493,14 @@ impl AgentChat {
                     let (x, y) = (f32::from(ev.position.x), f32::from(ev.position.y));
                     if this.hover_gate.allows(x, y) && this.mention_sel != i {
                         this.mention_sel = i;
-                        cx.notify();
+                        this.notify_dock(cx);
                     }
                 }),
             )
             .on_hover(cx.guarded_listener(move |this, hovered: &bool, _, cx| {
                 if *hovered && this.hover_gate.armed && this.mention_sel != i {
                     this.mention_sel = i;
-                    cx.notify();
+                    this.notify_dock(cx);
                 }
             }))
     }

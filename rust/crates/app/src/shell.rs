@@ -364,13 +364,14 @@ impl Shell {
         for (i, v) in self.views.iter().enumerate() {
             let on = Some(i) == active;
             if on {
+                // Cached: a route re-renders when it (or a view inside it) notifies, not on
+                // every frame the shell draws.
                 main = main.child(
-                    div()
-                        .flex_1()
-                        .min_h_0()
-                        .flex()
-                        .flex_col()
-                        .child(v.view.clone()),
+                    div().flex_1().min_h_0().flex().flex_col().child(
+                        v.view
+                            .clone()
+                            .cached(gpui_kit::StyleRefinement::default().size_full()),
+                    ),
                 );
             } else if v.keep_laid_out {
                 // `#v-detail.view`: hidden but laid out at the main area's size. Cached: GPUI lays

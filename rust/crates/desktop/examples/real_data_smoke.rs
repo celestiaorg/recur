@@ -754,8 +754,8 @@ impl Budget {
         let ms = Duration::from_millis;
         match self {
             Budget::Keystroke => (ms(100), ms(150)),
-            Budget::FirstKey => (ms(600), ms(800)),
-            Budget::ScrollStep => (ms(300), ms(1200)),
+            Budget::FirstKey => (ms(600), ms(900)),
+            Budget::ScrollStep => (ms(400), ms(1200)),
             Budget::ReviewScrollStep => (ms(700), ms(1500)),
             Budget::WorkspaceSwitch => (ms(1000), ms(1500)),
         }

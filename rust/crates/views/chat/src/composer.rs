@@ -3,6 +3,7 @@
 //! chip with its slot inputs, editing keys, paste and drops of images and files, undo, and the
 //! platform text input (IME) over the [`ComposerDoc`].
 
+use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::time::Duration;
@@ -1107,7 +1108,7 @@ impl AgentChat {
                 })
                 .ok();
             let Some(slot) = slot else { continue };
-            let sub = cx.subscribe(
+            let sub = cx.guarded_subscribe(
                 &slot,
                 move |this: &mut Self, _, ev: &InputEvent, cx| match ev {
                     InputEvent::Change => this.on_slot_changed(cx),
@@ -1960,9 +1961,12 @@ impl EntityInputHandler for AgentChat {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<String> {
-        let r = self.utf16_range_to_bytes(range);
-        *adjusted = Some(self.doc.utf16_of_byte(r.start)..self.doc.utf16_of_byte(r.end));
-        Some(self.doc.text[r].replace(ATOM, "\u{FFFC}"))
+        recur_ui::guard::catch("composer text_for_range", || {
+            let r = self.utf16_range_to_bytes(range);
+            *adjusted = Some(self.doc.utf16_of_byte(r.start)..self.doc.utf16_of_byte(r.end));
+            Some(self.doc.text[r].replace(ATOM, "\u{FFFC}"))
+        })
+        .flatten()
     }
 
     fn selected_text_range(
@@ -1971,22 +1975,30 @@ impl EntityInputHandler for AgentChat {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<UTF16Selection> {
-        let s = self.doc.selection();
-        Some(UTF16Selection {
-            range: self.doc.utf16_of_byte(s.start)..self.doc.utf16_of_byte(s.end),
-            reversed: self.doc.caret < self.doc.anchor,
+        recur_ui::guard::catch("composer selected_text_range", || {
+            let s = self.doc.selection();
+            Some(UTF16Selection {
+                range: self.doc.utf16_of_byte(s.start)..self.doc.utf16_of_byte(s.end),
+                reversed: self.doc.caret < self.doc.anchor,
+            })
         })
+        .flatten()
     }
 
     fn marked_text_range(&self, _: &mut Window, _: &mut Context<Self>) -> Option<Range<usize>> {
-        self.composer_marked
-            .as_ref()
-            .map(|r| self.doc.utf16_of_byte(r.start)..self.doc.utf16_of_byte(r.end))
+        recur_ui::guard::catch("composer marked_text_range", || {
+            self.composer_marked
+                .as_ref()
+                .map(|r| self.doc.utf16_of_byte(r.start)..self.doc.utf16_of_byte(r.end))
+        })
+        .flatten()
     }
 
     fn unmark_text(&mut self, _: &mut Window, cx: &mut Context<Self>) {
-        self.composer_marked = None;
-        cx.notify();
+        recur_ui::guard::catch("composer unmark_text", || {
+            self.composer_marked = None;
+            cx.notify();
+        });
     }
 
     fn replace_text_in_range(
@@ -1996,18 +2008,20 @@ impl EntityInputHandler for AgentChat {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.props.readonly {
-            return;
-        }
-        let r = range
-            .map(|r| self.utf16_range_to_bytes(r))
-            .or(self.composer_marked.clone())
-            .unwrap_or_else(|| self.doc.selection());
-        self.doc.caret = r.end;
-        self.doc.anchor = r.start;
-        self.doc.insert_text(text);
-        self.composer_marked = None;
-        self.after_edit(true, cx);
+        recur_ui::guard::catch("composer replace_text_in_range", || {
+            if self.props.readonly {
+                return;
+            }
+            let r = range
+                .map(|r| self.utf16_range_to_bytes(r))
+                .or(self.composer_marked.clone())
+                .unwrap_or_else(|| self.doc.selection());
+            self.doc.caret = r.end;
+            self.doc.anchor = r.start;
+            self.doc.insert_text(text);
+            self.composer_marked = None;
+            self.after_edit(true, cx);
+        });
     }
 
     fn replace_and_mark_text_in_range(
@@ -2018,24 +2032,26 @@ impl EntityInputHandler for AgentChat {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let r = range
-            .map(|r| self.utf16_range_to_bytes(r))
-            .or(self.composer_marked.clone())
-            .unwrap_or_else(|| self.doc.selection());
-        self.doc.caret = r.end;
-        self.doc.anchor = r.start;
-        self.doc.insert_text(new_text);
-        let start = r.start;
-        self.composer_marked = (!new_text.is_empty()).then(|| start..start + new_text.len());
-        if let Some(sel) = new_selected {
-            let base = self.doc.utf16_of_byte(start);
-            let a = self.doc.byte_of_utf16(base + sel.start);
-            let b = self.doc.byte_of_utf16(base + sel.end);
-            self.doc.anchor = a;
-            self.doc.caret = b;
-        }
-        // Composition does not commit to the wire or undo until it ends.
-        cx.notify();
+        recur_ui::guard::catch("composer replace_and_mark_text_in_range", || {
+            let r = range
+                .map(|r| self.utf16_range_to_bytes(r))
+                .or(self.composer_marked.clone())
+                .unwrap_or_else(|| self.doc.selection());
+            self.doc.caret = r.end;
+            self.doc.anchor = r.start;
+            self.doc.insert_text(new_text);
+            let start = r.start;
+            self.composer_marked = (!new_text.is_empty()).then(|| start..start + new_text.len());
+            if let Some(sel) = new_selected {
+                let base = self.doc.utf16_of_byte(start);
+                let a = self.doc.byte_of_utf16(base + sel.start);
+                let b = self.doc.byte_of_utf16(base + sel.end);
+                self.doc.anchor = a;
+                self.doc.caret = b;
+            }
+            // Composition does not commit to the wire or undo until it ends.
+            cx.notify();
+        });
     }
 
     fn bounds_for_range(
@@ -2045,13 +2061,16 @@ impl EntityInputHandler for AgentChat {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
-        let l = self.composer_layout.borrow().clone()?;
-        let b = self.doc.byte_of_utf16(range.start);
-        let (x, y, h) = l.caret(b);
-        Some(Bounds::new(
-            bounds.origin + point(px(x), px(y)),
-            gpui_kit::size(px(2.), px(h)),
-        ))
+        recur_ui::guard::catch("composer bounds_for_range", || {
+            let l = self.composer_layout.borrow().clone()?;
+            let b = self.doc.byte_of_utf16(range.start);
+            let (x, y, h) = l.caret(b);
+            Some(Bounds::new(
+                bounds.origin + point(px(x), px(y)),
+                gpui_kit::size(px(2.), px(h)),
+            ))
+        })
+        .flatten()
     }
 
     fn character_index_for_point(
@@ -2060,6 +2079,9 @@ impl EntityInputHandler for AgentChat {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<usize> {
-        Some(self.doc.utf16_of_byte(self.composer_byte_at(p)))
+        recur_ui::guard::catch("composer character_index_for_point", || {
+            Some(self.doc.utf16_of_byte(self.composer_byte_at(p)))
+        })
+        .flatten()
     }
 }

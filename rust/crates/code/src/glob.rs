@@ -75,15 +75,35 @@ pub fn compile_excludes(patterns: &[String]) -> Vec<CompiledGlob> {
         .collect()
 }
 
+/// Match results by compiled pattern (its `Arc`, alive for the process in `CACHE`) and path.
+/// Views test every changed path against every exclude on each render; the backtracking
+/// matcher made that seconds a frame for a diff of a few thousand files.
+static MATCHES: LazyLock<Mutex<HashMap<usize, HashMap<String, bool>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Paths remembered per pattern before its memo starts over.
+const MATCHES_PER_PATTERN: usize = 200_000;
+
 /// Whether `path` matches any compiled exclude.
 pub fn is_excluded_by(path: &str, compiled: &[CompiledGlob]) -> bool {
     if compiled.is_empty() {
         return false;
     }
-    let rel: Vec<u16> = path.trim_start_matches('/').encode_utf16().collect();
-    compiled
-        .iter()
-        .any(|re| re.0.find_from_ucs2(&rel, 0).next().is_some())
+    let rel = path.trim_start_matches('/');
+    let mut memo = MATCHES.lock();
+    compiled.iter().any(|re| {
+        let seen = memo.entry(Arc::as_ptr(&re.0) as usize).or_default();
+        if let Some(&hit) = seen.get(rel) {
+            return hit;
+        }
+        let units: Vec<u16> = rel.encode_utf16().collect();
+        let hit = re.0.find_from_ucs2(&units, 0).next().is_some();
+        if seen.len() >= MATCHES_PER_PATTERN {
+            seen.clear();
+        }
+        seen.insert(rel.to_owned(), hit);
+        hit
+    })
 }
 
 #[cfg(test)]
@@ -114,5 +134,14 @@ mod tests {
         assert!(!ex(&[], "a"));
         assert!(ex(&["*.log"], "x.log"));
         assert!(!ex(&["*.log"], "d/x.log"));
+    }
+
+    #[test]
+    fn remembered_matches_stay_per_pattern() {
+        for _ in 0..2 {
+            assert!(ex(&["**/*.map"], "a/b.map"));
+            assert!(!ex(&["**/*.css"], "a/b.map"));
+            assert!(ex(&["**/*.css", "**/*.map"], "/a/b.map"));
+        }
     }
 }

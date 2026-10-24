@@ -62,14 +62,20 @@ struct Root {
     tips: Entity<recur_ui::tooltip::TitleTooltip>,
 }
 
-impl Render for Root {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Root {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         recur_ui::style::window_root(
             recur_ui::style::body(cx)
                 .size_full()
                 .child(self.editor.clone())
                 .child(self.tips.clone()),
         )
+    }
+}
+
+impl Render for Root {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

@@ -4,6 +4,7 @@
 
 use gpui_kit::base::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::{AppContext as _, Context, Entity, SharedString, Subscription, Window};
+use recur_ui::guard::Guarded;
 use recur_view_chat::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 use recur_view_core::AppState;
 
@@ -45,38 +46,37 @@ impl Inputs {
         });
         let emoji = attach_emoji(&commit, None, window, cx);
         let mentions = attach_user_mentions(&commit, state, None, window, cx);
-        let subs = vec![
-            cx.subscribe_in(
-                &query,
-                window,
-                |o, _, ev: &InputEvent, window, cx| match ev {
-                    InputEvent::PressEnter { .. } => o.run_search(true, window, cx),
-                    InputEvent::Change => cx.notify(),
-                    _ => {}
-                },
-            ),
-            cx.subscribe(&replace, |_, _, ev: &InputEvent, cx| {
-                if matches!(ev, InputEvent::Change) {
-                    cx.notify();
-                }
-            }),
-            cx.subscribe(&glob, |_, _, ev: &InputEvent, cx| {
-                if matches!(ev, InputEvent::Change) {
-                    cx.notify();
-                }
-            }),
-            cx.subscribe_in(
-                &commit,
-                window,
-                |o, _, ev: &InputEvent, window, cx| match ev {
-                    InputEvent::PressEnter { secondary, .. } if *secondary => {
-                        o.human_commit(window, cx);
+        let subs =
+            vec![
+                cx.guarded_subscribe_in(
+                    &query,
+                    window,
+                    |o, _, ev: &InputEvent, window, cx| match ev {
+                        InputEvent::PressEnter { .. } => o.run_search(true, window, cx),
+                        InputEvent::Change => cx.notify(),
+                        _ => {}
+                    },
+                ),
+                cx.guarded_subscribe(&replace, |_, _, ev: &InputEvent, cx| {
+                    if matches!(ev, InputEvent::Change) {
+                        cx.notify();
                     }
-                    InputEvent::Change => cx.notify(),
-                    _ => {}
-                },
-            ),
-        ];
+                }),
+                cx.guarded_subscribe(&glob, |_, _, ev: &InputEvent, cx| {
+                    if matches!(ev, InputEvent::Change) {
+                        cx.notify();
+                    }
+                }),
+                cx.guarded_subscribe_in(&commit, window, |o, _, ev: &InputEvent, window, cx| {
+                    match ev {
+                        InputEvent::PressEnter { secondary, .. } if *secondary => {
+                            o.human_commit(window, cx);
+                        }
+                        InputEvent::Change => cx.notify(),
+                        _ => {}
+                    }
+                }),
+            ];
         Inputs {
             query,
             replace,

@@ -174,8 +174,8 @@ impl HtmlPreview {
     }
 }
 
-impl Render for HtmlPreview {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl HtmlPreview {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         #[cfg(target_os = "macos")]
         let page = self.web.as_ref().map(|p| p.handle());
@@ -199,6 +199,12 @@ impl Render for HtmlPreview {
             .size_full()
             .bg(gpui_kit::white())
             .child(place)
+    }
+}
+
+impl Render for HtmlPreview {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

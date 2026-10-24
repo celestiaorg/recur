@@ -8,6 +8,7 @@ mod rows;
 pub mod tree;
 pub mod usage;
 
+use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
@@ -165,7 +166,7 @@ impl Sidebar {
         let state = ctx.state.clone();
         let usage = cx.new(|cx| UsageMeter::new(state.clone(), cx));
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.state_changed(window, cx)
             }),
             cx.observe_window_activation(window, |this, window, cx| {
@@ -809,13 +810,14 @@ impl Sidebar {
             s.focus(window, cx);
             s.select_all(window, cx);
         });
-        self.rename_subs =
-            vec![
-                cx.subscribe_in(&input, window, |this, _, ev: &InputEvent, _, cx| match ev {
-                    InputEvent::PressEnter { .. } | InputEvent::Blur => this.commit_rename(cx),
-                    _ => {}
-                }),
-            ];
+        self.rename_subs = vec![cx.guarded_subscribe_in(
+            &input,
+            window,
+            |this, _, ev: &InputEvent, _, cx| match ev {
+                InputEvent::PressEnter { .. } | InputEvent::Blur => this.commit_rename(cx),
+                _ => {}
+            },
+        )];
         self.renaming = Some((id.to_string(), input));
         cx.notify();
     }
@@ -1538,21 +1540,23 @@ impl Sidebar {
                 });
             })
             .child(icon(IconName::Plus).size(px(14.)));
-        let schedules = self
-            .nav_row("nav-schedules", on(ViewName::Schedules), window, cx)
-            .on_hover(cx.listener(|this, h: &bool, _, cx| this.set_hover("nav-schedules", *h, cx)))
-            .on_click(go(ViewName::Schedules, st))
-            .child(Self::nav_icon(IconName::Clock, on(ViewName::Schedules), cx))
-            .child(style::button_label("Schedules", 12.5, weight::REGULAR))
-            .child(
-                div()
-                    .ml_auto()
-                    .flex()
-                    .items_center()
-                    .gap(px(1.))
-                    .flex_none()
-                    .child(titled("nav-schedules-add-tip", "New schedule", add)),
-            );
+        let schedules =
+            self.nav_row("nav-schedules", on(ViewName::Schedules), window, cx)
+                .on_hover(cx.guarded_listener(|this, h: &bool, _, cx| {
+                    this.set_hover("nav-schedules", *h, cx)
+                }))
+                .on_click(go(ViewName::Schedules, st))
+                .child(Self::nav_icon(IconName::Clock, on(ViewName::Schedules), cx))
+                .child(style::button_label("Schedules", 12.5, weight::REGULAR))
+                .child(
+                    div()
+                        .ml_auto()
+                        .flex()
+                        .items_center()
+                        .gap(px(1.))
+                        .flex_none()
+                        .child(titled("nav-schedules-add-tip", "New schedule", add)),
+                );
         div()
             .flex_none()
             .pt(px(10.))
@@ -1617,13 +1621,13 @@ impl Sidebar {
                 } else {
                     gpui_kit::Toggled::False
                 })
-                .on_click(cx.listener(|this, _, _, cx| this.toggle_show_hidden(cx)));
+                .on_click(cx.guarded_listener(|this, _, _, cx| this.toggle_show_hidden(cx)));
             sa = sa.child(titled("sec-hidden-tip", label, b));
         }
         let label: SharedString = "Add group".into();
         let add_group = self
             .sec_button("sec-add-group", &label, IconName::FolderPlus, window, cx)
-            .on_click(cx.listener(|this, _, window, cx| this.add_group(window, cx)));
+            .on_click(cx.guarded_listener(|this, _, window, cx| this.add_group(window, cx)));
         sa = sa.child(titled("sec-add-group-tip", label, add_group));
         let label: SharedString = "Add project".into();
         let state = self.state.clone();
@@ -1885,7 +1889,7 @@ impl Sidebar {
             .flex_col()
             .gap(px(1.))
             .occlude()
-            .on_mouse_down_out(cx.listener(|this, _, _, cx| this.close_move_menu(cx)))
+            .on_mouse_down_out(cx.guarded_listener(|this, _, _, cx| this.close_move_menu(cx)))
             .child(
                 item(
                     "rail-move-hide".into(),
@@ -1896,7 +1900,7 @@ impl Sidebar {
                     }
                     .into(),
                 )
-                .on_click(cx.listener(move |this, _, _, cx| {
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
                     let pid = pid.clone();
                     this.state
                         .update(cx, |s, cx| s.set_project_hidden(&pid, !hidden, cx))
@@ -1919,7 +1923,9 @@ impl Sidebar {
             let pid = menu.project_id.clone();
             panel = panel.child(
                 item("rail-move-ungrouped".into(), "Ungrouped".into()).on_click(
-                    cx.listener(move |this, _, _, cx| this.move_project_to_group(&pid, "", cx)),
+                    cx.guarded_listener(move |this, _, _, cx| {
+                        this.move_project_to_group(&pid, "", cx)
+                    }),
                 ),
             );
         }
@@ -1941,14 +1947,14 @@ impl Sidebar {
                     SharedString::from(format!("rail-move-{}", g.id)),
                     g.name.clone().into(),
                 )
-                .on_click(
-                    cx.listener(move |this, _, _, cx| this.move_project_to_group(&pid, &gid, cx)),
-                ),
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                    this.move_project_to_group(&pid, &gid, cx)
+                })),
             );
         }
         let entity = cx.entity();
         let panel = panel
-            .on_key_down(cx.listener(|this, e: &KeyDownEvent, _, cx| {
+            .on_key_down(cx.guarded_listener(|this, e: &KeyDownEvent, _, cx| {
                 if e.keystroke.key == "escape" {
                     cx.stop_propagation();
                     this.close_move_menu(cx);
@@ -2074,8 +2080,12 @@ fn set_group_open(s: &mut AppState, id: &str, open: bool, cx: &mut Context<AppSt
     s.set_project_groups(list, cx);
 }
 
-impl Render for Sidebar {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Sidebar {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let (collapsed, peek, width) = {
             let s = self.state.read(cx);
@@ -2158,7 +2168,7 @@ impl Render for Sidebar {
                 .top_0()
                 .bottom_0()
                 .left(px(-width * (1. - slide)))
-                .on_hover(cx.listener(|this, h: &bool, _, cx| {
+                .on_hover(cx.guarded_listener(|this, h: &bool, _, cx| {
                     if !*h {
                         this.schedule_hide_peek(cx);
                     }
@@ -2180,5 +2190,11 @@ impl Render for Sidebar {
             .child(hotzone)
             .children(rail)
             .into_any_element()
+    }
+}
+
+impl Render for Sidebar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

@@ -4,6 +4,7 @@
 //! tab drag reorder, and the dock's own chords. Shells outlive the dock: unmounting parks the
 //! panes (`term-park`) and the next dock adopts them.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -191,10 +192,10 @@ impl TerminalDock {
         wire(&services, cx);
         let find = cx.new(|cx| TerminalFindBar::new(window, cx));
         let mut subs = vec![
-            cx.subscribe_in(&find, window, |d, _, ev: &FindBarEvent, window, cx| {
+            cx.guarded_subscribe_in(&find, window, |d, _, ev: &FindBarEvent, window, cx| {
                 d.on_find_bar(ev, window, cx)
             }),
-            cx.observe_in(&state, window, |d, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |d, _, window, cx| {
                 d.state_changed(window, cx)
             }),
         ];
@@ -481,7 +482,7 @@ impl TerminalDock {
                 }
             };
             let sid = id.clone();
-            let sub = cx.subscribe_in(
+            let sub = cx.guarded_subscribe_in(
                 &view,
                 window,
                 move |d, _, ev: &TerminalEvent, window, cx| d.on_pane_event(&sid, ev, window, cx),
@@ -1152,8 +1153,12 @@ async fn finish_started(state: &Entity<AppState>, id: &str, cx: &mut gpui_kit::A
     state.update(cx, |s, _| s.mark_run_started(id));
 }
 
-impl Render for TerminalDock {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl TerminalDock {
+    fn render_view(
+        &mut self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let app = Theme::of(cx).id;
         let ctx = theme_context(self.state.read(cx));
@@ -1196,8 +1201,8 @@ impl Render for TerminalDock {
             .muted(tab.exited)
             .reorderable(n > 1)
             .close_label(format!("Close {}", tab.title))
-            .on_click(cx.listener(move |d, _, window, cx| d.select_tab(&id1, window, cx)))
-            .on_close(cx.listener(move |d, _, window, cx| d.close_tab(&id2, window, cx)))
+            .on_click(cx.guarded_listener(move |d, _, window, cx| d.select_tab(&id1, window, cx)))
+            .on_close(cx.guarded_listener(move |d, _, window, cx| d.close_tab(&id2, window, cx)))
             .on_key_down({
                 let id = tab.id.clone();
                 let me = cx.entity().downgrade();
@@ -1232,7 +1237,7 @@ impl Render for TerminalDock {
                         })
                         .size(px(15.)),
                     )
-                    .on_click(cx.listener(|d, _, window, cx| d.run_or_stop(window, cx))),
+                    .on_click(cx.guarded_listener(|d, _, window, cx| d.run_or_stop(window, cx))),
             ));
         }
         strip = strip
@@ -1242,7 +1247,7 @@ impl Render for TerminalDock {
                 tab_strip_action("term-new", false, false, cx)
                     .debug_selector(|| "term-act:new".into())
                     .child(icon(IconName::Plus).size(px(15.)))
-                    .on_click(cx.listener(|d, _, window, cx| d.new_tab(window, cx))),
+                    .on_click(cx.guarded_listener(|d, _, window, cx| d.new_tab(window, cx))),
             ))
             .trailing(titled(
                 "term-clear-t",
@@ -1251,7 +1256,7 @@ impl Render for TerminalDock {
                     .debug_selector(|| "term-act:clear".into())
                     .child(icon(IconName::Ban).size(px(15.)))
                     .when(!self.active_id.is_empty(), |b| {
-                        b.on_click(cx.listener(|d, _, _, cx| {
+                        b.on_click(cx.guarded_listener(|d, _, _, cx| {
                             if let Some(p) = d.panes.get(&d.active_id).cloned() {
                                 p.update(cx, |v, cx| v.clear(cx));
                             }
@@ -1275,7 +1280,7 @@ impl Render for TerminalDock {
                         })
                         .size(px(15.)),
                     )
-                    .on_click(cx.listener(move |d, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |d, _, _, cx| {
                         let ws = d.workspace_id.clone();
                         d.state.update(cx, |s, cx| {
                             s.set_terminal_dock_maximized(&ws, !maximized, cx)
@@ -1288,7 +1293,7 @@ impl Render for TerminalDock {
                 tab_strip_action("term-hide", false, false, cx)
                     .debug_selector(|| "term-act:hide".into())
                     .child(icon(IconName::PanelBottom).size(px(15.)))
-                    .on_click(cx.listener(|d, _, _, cx| {
+                    .on_click(cx.guarded_listener(|d, _, _, cx| {
                         let ws = d.workspace_id.clone();
                         d.state
                             .update(cx, |s, cx| s.set_terminal_dock_open(&ws, false, cx));
@@ -1358,19 +1363,20 @@ impl Render for TerminalDock {
             term_bg
         };
         let beside = self.props.beside;
-        let mut root = div()
-            .id(SharedString::from(format!("term-dock-{ws}")))
-            .debug_selector(|| "term-dock".into())
-            .track_focus(&self.focus)
-            .relative()
-            .flex()
-            .flex_col()
-            .size_full()
-            .min_h_0()
-            .bg(hsla(bg))
-            .capture_key_down(cx.listener(|d, e: &gpui_kit::KeyDownEvent, window, cx| {
-                d.on_dock_key(e, window, cx)
-            }));
+        let mut root =
+            div()
+                .id(SharedString::from(format!("term-dock-{ws}")))
+                .debug_selector(|| "term-dock".into())
+                .track_focus(&self.focus)
+                .relative()
+                .flex()
+                .flex_col()
+                .size_full()
+                .min_h_0()
+                .bg(hsla(bg))
+                .capture_key_down(cx.guarded_listener(
+                    |d, e: &gpui_kit::KeyDownEvent, window, cx| d.on_dock_key(e, window, cx),
+                ));
         if beside {
             root = root.min_w_0().border_l_1().border_color(hsla(t.line));
         } else if !overlay {
@@ -1414,6 +1420,12 @@ impl Render for TerminalDock {
             );
         }
         root.child(strip_el).child(body)
+    }
+}
+
+impl Render for TerminalDock {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -1531,7 +1543,7 @@ impl crate::obs::Observatory {
                     d.set_main_bounds(main);
                     d
                 });
-                let sub = cx.subscribe(&d, |o, _, ev: &DockEvent, cx| {
+                let sub = cx.guarded_subscribe(&d, |o, _, ev: &DockEvent, cx| {
                     let DockEvent::TabsChanged(n) = ev;
                     o.term_tab_count = *n;
                     o.sync_side_effects(cx);

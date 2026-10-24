@@ -227,11 +227,28 @@ pub fn tee_app_log_to(
     {
         let file = Arc::clone(&file);
         let prev_hook = Arc::clone(&prev_hook);
+        let seen = Mutex::new(std::collections::HashMap::<String, u64>::new());
         std::panic::set_hook(Box::new(move |info| {
-            let bt = std::backtrace::Backtrace::force_capture();
             let thread = std::thread::current();
             let name = thread.name().unwrap_or("<unnamed>");
-            file.write_crash(format!("thread '{name}' {info}\n{bt}\n").as_bytes());
+            let what = format!("thread '{name}' {info}");
+            // A contained panic in a render path recurs every frame: log it with its backtrace
+            // once, then only at powers of two, so it cannot rotate the rest of the log away.
+            let n = seen.try_lock_for(Duration::from_millis(500)).map(|mut m| {
+                let n = m.entry(what.clone()).or_default();
+                *n += 1;
+                *n
+            });
+            match n {
+                Some(1) | None => {
+                    let bt = std::backtrace::Backtrace::force_capture();
+                    file.write_crash(go_log_line(&format!("{what}\n{bt}")).as_bytes());
+                }
+                Some(n) if n.is_power_of_two() => {
+                    file.write_crash(go_log_line(&format!("{what} (seen {n} times)")).as_bytes());
+                }
+                Some(_) => {}
+            }
             prev_hook(info);
         }));
     }
@@ -418,12 +435,23 @@ mod tests {
                 .spawn(|| panic!("boom for the crash log"))
                 .unwrap()
                 .join();
+            for _ in 0..5 {
+                let _ = std::thread::Builder::new()
+                    .name("again".into())
+                    .spawn(|| panic!("same place every frame"))
+                    .unwrap()
+                    .join();
+            }
             guard.cleanup();
             let body = std::fs::read_to_string(app_log_path(root.path())).unwrap();
             assert!(
                 body.contains("thread 'crasher'") && body.contains("boom for the crash log"),
                 "{body}"
             );
+            // The first occurrence carries a backtrace; repeats log at 2 and 4 only.
+            assert_eq!(body.matches("same place every frame").count(), 3, "{body}");
+            assert!(body.contains("(seen 2 times)") && body.contains("(seen 4 times)"));
+            assert!(!body.contains("(seen 3 times)") && !body.contains("(seen 5 times)"));
         });
     }
 }

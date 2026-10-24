@@ -15,6 +15,7 @@ use recur_domain::{IssueRef, Workspace};
 use recur_engine::view::artifacts::format_relative_age;
 use recur_services::api::{AssignedIssue, IssuesView};
 use recur_ui::fonts::weight;
+use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
@@ -306,7 +307,7 @@ impl Issues {
             .ghost()
         });
         let subs = vec![
-            cx.observe(&vcx.state, |this, _, cx| this.on_state(cx)),
+            cx.guarded_observe(&vcx.state, |this, _, cx| this.on_state(cx)),
             // The menu's window keydown (capture): Escape closes it.
             {
                 let me = cx.entity().downgrade();
@@ -321,19 +322,19 @@ impl Issues {
                     }
                 })
             },
-            cx.subscribe(&project_select, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&project_select, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Values(ids) = ev {
                     this.view.projects = ids.iter().map(|s| s.to_string()).collect();
                     this.save_view(cx);
                 }
             }),
-            cx.subscribe(&group_select, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&group_select, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Values(ids) = ev {
                     this.view.groups = ids.iter().map(|s| s.to_string()).collect();
                     this.save_view(cx);
                 }
             }),
-            cx.subscribe(&sort_select, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&sort_select, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.view.sort = v.to_string();
                     this.save_view(cx);
@@ -776,7 +777,7 @@ impl Issues {
         })
         .when(compact, |d| d.h(px(24.)).px(px(8.)))
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .on_click(cx.listener(move |v, _, _, cx| {
+        .on_click(cx.guarded_listener(move |v, _, _, cx| {
             cx.stop_propagation();
             match &ws {
                 Some(w) => {
@@ -917,7 +918,7 @@ impl Issues {
             .when(!last, |d| d.border_b_1().border_color(hsla(t.line_soft)))
             .when(hovered, |d| d.bg(hsla(t.pane_2)))
             .cursor_pointer()
-            .on_hover(cx.listener(move |v, h: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(move |v, h: &bool, _, cx| {
                 if *h {
                     v.hover_row = Some(hk.clone());
                 } else if v.hover_row.as_deref() == Some(hk.as_str()) {
@@ -925,8 +926,8 @@ impl Issues {
                 }
                 cx.notify();
             }))
-            .on_click(cx.listener(move |v, _, _, cx| v.open_issue(&oi, cx)))
-            .on_key_down(cx.listener(move |v, ev: &KeyDownEvent, _, cx| {
+            .on_click(cx.guarded_listener(move |v, _, _, cx| v.open_issue(&oi, cx)))
+            .on_key_down(cx.guarded_listener(move |v, ev: &KeyDownEvent, _, cx| {
                 if ev.keystroke.key == "enter" {
                     cx.stop_propagation();
                     v.open_issue(&ki, cx);
@@ -934,7 +935,7 @@ impl Issues {
             }))
             .on_mouse_down(
                 MouseButton::Right,
-                cx.listener(move |v, ev: &MouseDownEvent, window, cx| {
+                cx.guarded_listener(move |v, ev: &MouseDownEvent, window, cx| {
                     v.open_menu(ev, &mi, window, cx)
                 }),
             )
@@ -1049,7 +1050,7 @@ impl Issues {
         .py(px(10.))
         .px(px(12.))
         .cursor_pointer()
-        .on_hover(cx.listener(move |v, h: &bool, _, cx| {
+        .on_hover(cx.guarded_listener(move |v, h: &bool, _, cx| {
             if *h {
                 v.hover_row = Some(hk.clone());
             } else if v.hover_row.as_deref() == Some(hk.as_str()) {
@@ -1057,8 +1058,8 @@ impl Issues {
             }
             cx.notify();
         }))
-        .on_click(cx.listener(move |v, _, _, cx| v.open_issue(&oi, cx)))
-        .on_key_down(cx.listener(move |v, ev: &KeyDownEvent, _, cx| {
+        .on_click(cx.guarded_listener(move |v, _, _, cx| v.open_issue(&oi, cx)))
+        .on_key_down(cx.guarded_listener(move |v, ev: &KeyDownEvent, _, cx| {
             if ev.keystroke.key == "enter" {
                 cx.stop_propagation();
                 v.open_issue(&ki, cx);
@@ -1066,7 +1067,9 @@ impl Issues {
         }))
         .on_mouse_down(
             MouseButton::Right,
-            cx.listener(move |v, ev: &MouseDownEvent, window, cx| v.open_menu(ev, &mi, window, cx)),
+            cx.guarded_listener(move |v, ev: &MouseDownEvent, window, cx| {
+                v.open_menu(ev, &mi, window, cx)
+            }),
         )
         .child(main)
         .child(foot)
@@ -1126,7 +1129,7 @@ impl Issues {
             menu = menu.child(
                 item("iss-ctx-view".into(), false)
                     .debug_selector(|| "iss-ctx:View workspace".into())
-                    .on_click(cx.listener(move |v, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |v, _, _, cx| {
                         v.close_menu(cx);
                         v.vcx
                             .state
@@ -1143,7 +1146,7 @@ impl Issues {
                             let name = name.clone();
                             move || format!("iss-ctx:Unlink from {name}")
                         })
-                        .on_click(cx.listener(move |v, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |v, _, _, cx| {
                             v.close_menu(cx);
                             v.vcx
                                 .state
@@ -1225,7 +1228,7 @@ impl Issues {
                         move || format!("iss-ctx-ws:{name}:{current}")
                     })
                     .when(!current, |d| {
-                        d.on_click(cx.listener(move |v, _, _, cx| {
+                        d.on_click(cx.guarded_listener(move |v, _, _, cx| {
                             v.close_menu(cx);
                             let r = IssueRef {
                                 source: issue.source.clone(),
@@ -1252,7 +1255,7 @@ impl Issues {
             deferred(
                 anchored().position(point(px(m.x), px(m.y))).child(
                     div()
-                        .on_mouse_down_out(cx.listener(|v, _, _, cx| v.close_menu(cx)))
+                        .on_mouse_down_out(cx.guarded_listener(|v, _, _, cx| v.close_menu(cx)))
                         .child(menu),
                 ),
             )
@@ -1317,7 +1320,7 @@ impl Issues {
             recur_ui::set::tbtn("iss-refresh", loading, cx)
                 .debug_selector(|| "iss-refresh".into())
                 .when(!loading, |d| {
-                    d.on_click(cx.listener(|v, _, _, cx| {
+                    d.on_click(cx.guarded_listener(|v, _, _, cx| {
                         v.vcx.state.update(cx, |s, cx| {
                             s.issues_stale += 1;
                             cx.notify();
@@ -1337,7 +1340,7 @@ impl Issues {
                     on,
                     cx,
                 )
-                .on_click(cx.listener(move |v, _, _, cx| {
+                .on_click(cx.guarded_listener(move |v, _, _, cx| {
                     v.view.owner = id.to_string();
                     v.save_view(cx);
                 })),
@@ -1350,7 +1353,7 @@ impl Issues {
                 let on = self.view.source == id;
                 src = src.child(
                     seg_count_btn(SharedString::from(format!("iss-src-{id}")), l, None, on, cx)
-                        .on_click(cx.listener(move |v, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |v, _, _, cx| {
                             v.view.source = id.to_string();
                             v.save_view(cx);
                         })),
@@ -1375,7 +1378,7 @@ impl Issues {
                 )
                 .debug_selector(move || format!("iss-layout:{id}:{on}"))
                 .child(icon(ic).size(px(13.)))
-                .on_click(cx.listener(move |v, _, _, cx| {
+                .on_click(cx.guarded_listener(move |v, _, _, cx| {
                     v.view.layout = id.to_string();
                     v.save_view(cx);
                 })),
@@ -1385,8 +1388,12 @@ impl Issues {
     }
 }
 
-impl Render for Issues {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Issues {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let filters = self.filters(window, cx);
         let visible = self.visible(cx);
@@ -1533,6 +1540,12 @@ impl Render for Issues {
     }
 }
 
+impl Render for Issues {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 /// The Issues route: App.svelte mounts the list only while `$view === 'issues'`.
 pub struct IssuesPage {
     vcx: ViewContext,
@@ -1542,9 +1555,11 @@ pub struct IssuesPage {
 
 impl IssuesPage {
     pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let subs = vec![cx.observe_in(&vcx.state, window, |this, _, window, cx| {
-            this.sync(window, cx)
-        })];
+        let subs = vec![
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+                this.sync(window, cx)
+            }),
+        ];
         let mut me = IssuesPage {
             vcx: vcx.clone(),
             list: None,
@@ -1571,9 +1586,15 @@ impl IssuesPage {
     }
 }
 
-impl Render for IssuesPage {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl IssuesPage {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         div().size_full().flex().children(self.list.clone())
+    }
+}
+
+impl Render for IssuesPage {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

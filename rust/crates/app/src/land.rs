@@ -4,6 +4,7 @@
 //! workspace. Land state is `WorkspaceLandState`, recalled from a per-workspace snapshot so
 //! the bar keeps its width while git answers.
 
+use recur_ui::guard::Guarded;
 use std::time::Duration;
 
 use gpui_kit::{
@@ -1139,7 +1140,9 @@ impl Shell {
                     creating.then_some("Create a Recur workspace on this pull request"),
                 );
                 if !creating {
-                    b = b.on_click(cx.listener(|this, _, _, cx| this.create_pr_workspace(cx)));
+                    b = b.on_click(
+                        cx.guarded_listener(|this, _, _, cx| this.create_pr_workspace(cx)),
+                    );
                 }
                 out.push(
                     spec_wrap(
@@ -1180,7 +1183,7 @@ impl Shell {
                     v.land_busy.then_some(tip.as_str()),
                 );
                 if !v.land_busy {
-                    b = b.on_click(cx.listener(|this, _, _, cx| {
+                    b = b.on_click(cx.guarded_listener(|this, _, _, cx| {
                         let v = this.land.view(this.state.read(cx));
                         if !v.land_busy {
                             this.request_prompt_action("commit", cx);
@@ -1224,7 +1227,8 @@ impl Shell {
                 .rounded(px(6.))
                 .text_size(px(11.5));
                 if !v.land_busy {
-                    b = b.on_click(cx.listener(|this, _, _, cx| this.push_working_copy(cx)));
+                    b = b
+                        .on_click(cx.guarded_listener(|this, _, _, cx| this.push_working_copy(cx)));
                 }
                 out.push(
                     spec_wrap(
@@ -1259,7 +1263,7 @@ impl Shell {
                             v.land_busy.then_some(tip.as_str()),
                         );
                         if !v.land_busy {
-                            b = b.on_click(cx.listener(move |this, _, _, cx| f(this, cx)));
+                            b = b.on_click(cx.guarded_listener(move |this, _, _, cx| f(this, cx)));
                         }
                         spec_wrap(
                             id,
@@ -1423,8 +1427,8 @@ impl Shell {
         .rounded_l(px(0.))
         .px(px(5.));
         if !v.land_busy {
-            main = main.on_click(cx.listener(|this, _, _, cx| this.update_workspace(cx)));
-            chev = chev.on_click(cx.listener(|this, _, _, cx| {
+            main = main.on_click(cx.guarded_listener(|this, _, _, cx| this.update_workspace(cx)));
+            chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.land.update_menu_open = !this.land.update_menu_open;
                 this.land.merge_menu_open = false;
                 this.land.open_pr_menu_open = false;
@@ -1467,7 +1471,7 @@ impl Shell {
                         update_method_menu_label(&m),
                         cx,
                     )
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                         this.land.update_method_override = Some(m.clone());
                         this.land.update_menu_open = false;
                         cx.notify();
@@ -1513,8 +1517,8 @@ impl Shell {
             .rounded_l(px(0.))
             .px(px(5.));
         if !v.land_busy {
-            main = main.on_click(cx.listener(|this, _, _, cx| this.merge_workspace(cx)));
-            chev = chev.on_click(cx.listener(|this, _, _, cx| {
+            main = main.on_click(cx.guarded_listener(|this, _, _, cx| this.merge_workspace(cx)));
+            chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.land.merge_menu_open = !this.land.merge_menu_open;
                 this.land.open_pr_menu_open = false;
                 this.land.confirming_merge = false;
@@ -1553,7 +1557,7 @@ impl Shell {
                         label,
                         cx,
                     )
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                         this.land.merge_method_override = Some(m.clone());
                         this.land.merge_menu_open = false;
                         this.land.confirming_merge = false;
@@ -1596,8 +1600,9 @@ impl Shell {
         .rounded_l(px(0.))
         .px(px(5.));
         if !off {
-            main = main.on_click(cx.listener(|this, _, _, cx| this.request_open_pr(false, cx)));
-            chev = chev.on_click(cx.listener(|this, _, _, cx| {
+            main = main
+                .on_click(cx.guarded_listener(|this, _, _, cx| this.request_open_pr(false, cx)));
+            chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.land.open_pr_menu_open = !this.land.open_pr_menu_open;
                 this.land.merge_menu_open = false;
                 this.land.update_menu_open = false;
@@ -1622,10 +1627,10 @@ impl Shell {
         if self.land.open_pr_menu_open {
             let items = vec![
                 menu_item("open-pr-item", true, None, "Open PR", cx)
-                    .on_click(cx.listener(|this, _, _, cx| this.request_open_pr(false, cx)))
+                    .on_click(cx.guarded_listener(|this, _, _, cx| this.request_open_pr(false, cx)))
                     .into_any_element(),
                 menu_item("open-draft-pr-item", false, None, "Open draft PR", cx)
-                    .on_click(cx.listener(|this, _, _, cx| this.request_open_pr(true, cx)))
+                    .on_click(cx.guarded_listener(|this, _, _, cx| this.request_open_pr(true, cx)))
                     .into_any_element(),
             ];
             split = split.child(split_menu(items, cx));
@@ -1701,7 +1706,7 @@ impl Shell {
                         ..Default::default()
                     })
             });
-            let sub = cx.subscribe(&sel, |this, _, ev: &SelectEvent, cx| {
+            let sub = cx.guarded_subscribe(&sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(next) = ev {
                     this.set_base_branch(next.to_string(), cx);
                 }
@@ -1888,7 +1893,7 @@ impl Shell {
                     .trigger_icon(IconName::CircleDot)
                     .trigger_style(style)
             });
-            let sub = cx.subscribe(&sel, |this, _, ev: &SelectEvent, cx| {
+            let sub = cx.guarded_subscribe(&sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(next) = ev {
                     this.change_issue(next.to_string(), cx);
                 }

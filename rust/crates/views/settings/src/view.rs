@@ -2,6 +2,7 @@
 //! their loads (Svelte's `$effect`s keyed on the active section and the values they read) and
 //! `patchSettings`.
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use gpui_kit::{
@@ -238,13 +239,15 @@ impl SettingsView {
                 .label("Terminal font")
                 .menu_variant(recur_ui::logic::menu_space::MenuVariant::Font)
         });
-        let mut subs = vec![cx.observe_in(&state, window, |this, _, window, cx| {
-            this.sync(window, cx);
-            cx.notify();
-        })];
+        let mut subs = vec![
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
+                this.sync(window, cx);
+                cx.notify();
+            }),
+        ];
         for (i, p) in model_pickers.iter().enumerate() {
             subs.push(
-                cx.subscribe(p, move |this: &mut Self, _, ev: &PickerEvent, cx| {
+                cx.guarded_subscribe(p, move |this: &mut Self, _, ev: &PickerEvent, cx| {
                     let slot = MODEL_SLOTS[i];
                     match ev {
                         PickerEvent::Model(r, f) => this.set_model(slot, r.clone(), f.clone(), cx),
@@ -253,7 +256,7 @@ impl SettingsView {
                 }),
             );
         }
-        subs.push(cx.subscribe(
+        subs.push(cx.guarded_subscribe(
             &loop_pickers,
             |this: &mut Self, _, ev: &LoopPolicyEvent, cx| match ev {
                 LoopPolicyEvent::Loop(id) => {
@@ -266,15 +269,16 @@ impl SettingsView {
                 }
             },
         ));
-        subs.push(
-            cx.subscribe(&font_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
+        subs.push(cx.guarded_subscribe(
+            &font_select,
+            |this: &mut Self, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     let v = v.to_string();
                     this.set_editor_prefs(|p| p.font_face = v, cx);
                 }
-            }),
-        );
-        subs.push(cx.subscribe(
+            },
+        ));
+        subs.push(cx.guarded_subscribe(
             &term_font_select,
             |this: &mut Self, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
@@ -776,8 +780,12 @@ impl SettingsView {
     }
 }
 
-impl Render for SettingsView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SettingsView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = tokens(cx);
         let on = self.vcx.state.read(cx).view == ViewName::Settings;
         let section = self.section(cx);
@@ -803,6 +811,12 @@ impl Render for SettingsView {
     }
 }
 
+impl Render for SettingsView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 /// The modal and card events.
 impl SettingsView {
     pub fn open_compat_modal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -817,28 +831,29 @@ impl SettingsView {
             .unwrap_or_default();
         let services = self.vcx.services.clone();
         let modal = cx.new(|cx| CompatibleProviderModal::new(taken, services, window, cx));
-        let sub = cx.subscribe_in(&modal, window, |this, _, ev: &ModalEvent, window, cx| {
-            match ev {
-                ModalEvent::Close => this.close_compat_modal(window, cx),
-                ModalEvent::Add(p) => {
-                    let mut list = this
-                        .settings(cx)
-                        .map(|s| s.compatible_providers.clone())
-                        .unwrap_or_default();
-                    list.push(p.clone());
-                    let save = this.patch(true, |s| s.compatible_providers = list, cx);
-                    cx.spawn_in(window, async move |this, cx| {
-                        if save.await.is_some() {
-                            let _ = this.update_in(cx, |this, window, cx| {
-                                this.close_compat_modal(window, cx)
-                            });
-                        }
-                    })
-                    .detach();
+        let sub =
+            cx.guarded_subscribe_in(&modal, window, |this, _, ev: &ModalEvent, window, cx| {
+                match ev {
+                    ModalEvent::Close => this.close_compat_modal(window, cx),
+                    ModalEvent::Add(p) => {
+                        let mut list = this
+                            .settings(cx)
+                            .map(|s| s.compatible_providers.clone())
+                            .unwrap_or_default();
+                        list.push(p.clone());
+                        let save = this.patch(true, |s| s.compatible_providers = list, cx);
+                        cx.spawn_in(window, async move |this, cx| {
+                            if save.await.is_some() {
+                                let _ = this.update_in(cx, |this, window, cx| {
+                                    this.close_compat_modal(window, cx)
+                                });
+                            }
+                        })
+                        .detach();
+                    }
                 }
-            }
-            cx.notify();
-        });
+                cx.notify();
+            });
         self._subs.push(sub);
         let first = modal.read(cx).initial_focus(cx);
         window.focus(&first, cx);
@@ -867,7 +882,7 @@ impl SettingsView {
         let services = self.vcx.services.clone();
         let card = cx.new(|cx| CompatibleProviderCard::new(p.clone(), services, window, cx));
         let id = p.id.clone();
-        let sub = cx.subscribe(
+        let sub = cx.guarded_subscribe(
             &card,
             move |this: &mut Self, _, ev: &CardEvent, cx| match ev {
                 CardEvent::Change(next) => this.update_compatible(next.clone(), cx),

@@ -36,7 +36,7 @@ async fn stop_interrupts_a_live_chat_turn() {
     })
     .await;
     assert!(fx.eng().cancel_chat(&ws.id, "PA").await);
-    assert_eq!(join3(done, "send after stop").await, CHAT_STOPPED_REPLY);
+    assert_eq!(join_hang(done, "send after stop").await, CHAT_STOPPED_REPLY);
     wait_for(Duration::from_secs(2), "chat agent idle", || {
         st.agent(&id, "PA").is_some_and(|a| a.status == "idle")
     })
@@ -145,7 +145,10 @@ async fn stop_interrupts_a_maestro_turn() {
     })
     .await;
     assert!(fx.eng().cancel_chat(&ws.id, MAESTRO_AGENT_CODE).await);
-    assert_eq!(join3(done, "maestro after stop").await, CHAT_STOPPED_REPLY);
+    assert_eq!(
+        join_hang(done, "maestro after stop").await,
+        CHAT_STOPPED_REPLY
+    );
     let st = Arc::clone(&fx.te.store);
     wait_for(Duration::from_secs(2), "maestro idle", || {
         st.agent(&id, MAESTRO_AGENT_CODE)
@@ -166,7 +169,7 @@ async fn stop_stamps_one_footer_from_the_returned_duration() {
     })
     .await;
     assert!(fx.eng().cancel_chat(&ws.id, "PA").await);
-    assert_eq!(join3(done, "send after stop").await, CHAT_STOPPED_REPLY);
+    assert_eq!(join_hang(done, "send after stop").await, CHAT_STOPPED_REPLY);
     let items = fx.eng().workspace_chat_items(&ws.id, "PA").await;
     let footers: Vec<i64> = items
         .iter()
@@ -188,7 +191,7 @@ async fn a_parked_chat_has_no_turn_footer() {
     })
     .await;
     assert!(fx.eng().park_chat_turn(&ws.id, "PA"));
-    assert_eq!(join3(done, "send after park").await, "working on it");
+    assert_eq!(join_hang(done, "send after park").await, "working on it");
     let items = fx.eng().workspace_chat_items(&ws.id, "PA").await;
     assert!(items.iter().all(|it| it.kind != "turn"), "{items:?}");
     fx.te.close().await;
@@ -221,13 +224,13 @@ async fn stop_in_window(set_hook: impl FnOnce(&Fx, CancellationToken, Cancellati
     let (blocked, proceed) = (CancellationToken::new(), CancellationToken::new());
     set_hook(&fx, blocked.clone(), proceed.clone());
     let done = spawn_send(&fx, &ws.id, "start me");
-    within3(&blocked, "the send reaches the window").await;
+    within_hang(&blocked, "the send reaches the window").await;
     assert!(
         fx.eng().cancel_chat(&ws.id, "PA").await,
         "Stop must record against a ticketed send"
     );
     proceed.cancel();
-    assert_eq!(join3(done, "send after stop").await, CHAT_STOPPED_REPLY);
+    assert_eq!(join_hang(done, "send after stop").await, CHAT_STOPPED_REPLY);
     assert_eq!(runs.load(Ordering::SeqCst), 0, "the turn must not run");
     fx.te.close().await;
 }
@@ -258,7 +261,7 @@ async fn a_send_after_stop_waits_for_the_predecessor_to_unregister() {
     let fx = Fx::new(Some(slow_unwind_runner(started.clone(), unwind.clone())));
     let ws = fx.workspace("stop wait owner").await;
     let first = spawn_send(&fx, &ws.id, "long task");
-    within3(&started, "first turn starts").await;
+    within_hang(&started, "first turn starts").await;
     assert!(fx.eng().cancel_chat(&ws.id, "PA").await);
     let second = spawn_send(&fx, &ws.id, "go on");
     tokio::time::sleep(Duration::from_millis(80)).await;
@@ -267,7 +270,7 @@ async fn a_send_after_stop_waits_for_the_predecessor_to_unregister() {
         "the second send returned before the first unregistered"
     );
     unwind.cancel();
-    join3(first, "first send").await;
-    join3(second, "second send").await;
+    join_hang(first, "first send").await;
+    join_hang(second, "second send").await;
     fx.te.close().await;
 }

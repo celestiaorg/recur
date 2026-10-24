@@ -10,7 +10,7 @@
 //! ```ignore
 //! let chat = cx.new(|cx| AgentChat::new(&vcx, ChatProps { reset_key: format!("{ws}:{code}"), ..Default::default() }, window, cx));
 //! chat.update(cx, |c, cx| c.set_hooks(ChatHooks { send: true, stop: true, ..Default::default() }, cx));
-//! cx.subscribe_in(&chat, window, |host, chat, ev: &ChatEvent, window, cx| match ev {
+//! cx.guarded_subscribe_in(&chat, window, |host, chat, ev: &ChatEvent, window, cx| match ev {
 //!     ChatEvent::Send { alt } => { let text = chat.read(cx).input().to_string(); /* send, then */ chat.update(cx, |c, cx| c.set_draft(String::new(), Vec::new(), cx)); }
 //!     ChatEvent::Stop => { /* cancel the turn */ }
 //!     _ => {}

@@ -2,6 +2,7 @@
 //! note and its replies with reactions, reply / edit composers with the emoji and `@mention`
 //! typeaheads, the ⋯ menu (Open in GitHub, Copy link, Quote reply, Edit, Delete) and resolve.
 
+use recur_ui::guard::Guarded;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -122,7 +123,7 @@ impl LineNoteThread {
             .and_then(|s| s.drafts.get(&root.id).cloned())
             .unwrap_or_default();
         let mut subs = vec![cx.on_release(|this: &mut Self, cx| this.save_draft(cx))];
-        subs.push(cx.observe(&state, |this: &mut Self, state, cx| {
+        subs.push(cx.guarded_observe(&state, |this: &mut Self, state, cx| {
             if this.more_id.is_empty() {
                 return;
             }
@@ -246,7 +247,7 @@ impl LineNoteThread {
         crate::style::style_textarea(&area, cx);
         let emoji = attach_emoji(&area, None, window, cx);
         let mentions = attach_user_mentions(&area, self.state.clone(), None, window, cx);
-        let sub = cx.subscribe(&area, |_, _, ev: &InputEvent, cx| {
+        let sub = cx.guarded_subscribe(&area, |_, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 cx.notify();
             }
@@ -636,7 +637,7 @@ impl LineNoteThread {
             v
         });
         let state = self.state.clone();
-        let sub = cx.subscribe(&v, move |_, _, ev: &MarkdownEvent, cx| match ev {
+        let sub = cx.guarded_subscribe(&v, move |_, _, ev: &MarkdownEvent, cx| match ev {
             MarkdownEvent::LightboxOpen(open) => {
                 let open = *open;
                 state.update(cx, |s, cx| {
@@ -709,23 +710,25 @@ impl LineNoteThread {
             .text_color(hsla(t.text))
             .when(saving_this, |d| d.opacity(0.55))
             .key_context("TextEntry")
-            .on_key_down(cx.listener(move |this, ev: &KeyDownEvent, window, cx| {
-                let k = &ev.keystroke;
-                let cmd = k.modifiers.platform || k.modifiers.control;
-                if k.key == "enter" && cmd {
-                    cx.stop_propagation();
-                    match which {
-                        Which::Reply => this.submit_reply(window, cx),
-                        Which::Edit => this.save_edit(&c_id2, cx),
+            .on_key_down(
+                cx.guarded_listener(move |this, ev: &KeyDownEvent, window, cx| {
+                    let k = &ev.keystroke;
+                    let cmd = k.modifiers.platform || k.modifiers.control;
+                    if k.key == "enter" && cmd {
+                        cx.stop_propagation();
+                        match which {
+                            Which::Reply => this.submit_reply(window, cx),
+                            Which::Edit => this.save_edit(&c_id2, cx),
+                        }
+                    } else if k.key == "escape" {
+                        cx.stop_propagation();
+                        match which {
+                            Which::Reply => this.close_reply(cx),
+                            Which::Edit => this.cancel_edit(cx),
+                        }
                     }
-                } else if k.key == "escape" {
-                    cx.stop_propagation();
-                    match which {
-                        Which::Reply => this.close_reply(cx),
-                        Which::Edit => this.cancel_edit(cx),
-                    }
-                }
-            }))
+                }),
+            )
             .child(Textarea::new(&area));
         let hint = div()
             .flex()
@@ -751,7 +754,7 @@ impl LineNoteThread {
                     cx,
                 )
                 .debug_selector(|| "note-cancel".into())
-                .on_click(cx.listener(|this, _, _, cx| this.close_reply(cx))),
+                .on_click(cx.guarded_listener(|this, _, _, cx| this.close_reply(cx))),
                 note_btn(
                     SharedString::from(format!("reply-go-{}", self.root.id)),
                     "Reply",
@@ -763,7 +766,9 @@ impl LineNoteThread {
                 )
                 .debug_selector(|| "note-reply".into())
                 .when(!empty, |d| {
-                    d.on_click(cx.listener(|this, _, window, cx| this.submit_reply(window, cx)))
+                    d.on_click(
+                        cx.guarded_listener(|this, _, window, cx| this.submit_reply(window, cx)),
+                    )
                 }),
             ),
             Which::Edit => {
@@ -780,7 +785,7 @@ impl LineNoteThread {
                     )
                     .debug_selector(|| "note-cancel".into())
                     .when(!saving_this, |d| {
-                        d.on_click(cx.listener(|this, _, _, cx| this.cancel_edit(cx)))
+                        d.on_click(cx.guarded_listener(|this, _, _, cx| this.cancel_edit(cx)))
                     }),
                     note_btn(
                         SharedString::from(format!("edit-save-{c_id}")),
@@ -793,7 +798,9 @@ impl LineNoteThread {
                     )
                     .debug_selector(|| "note-save".into())
                     .when(!empty && !saving_this, |d| {
-                        d.on_click(cx.listener(move |this, _, _, cx| this.save_edit(&id, cx)))
+                        d.on_click(
+                            cx.guarded_listener(move |this, _, _, cx| this.save_edit(&id, cx)),
+                        )
                     }),
                 )
             }
@@ -915,7 +922,7 @@ impl LineNoteThread {
                 .child(icon(IconName::Ellipsis).size(px(13.)))
                 .child(probe)
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(cx.listener({
+                .on_click(cx.guarded_listener({
                     let id = c.id.clone();
                     move |this, _, _, cx| {
                         cx.stop_propagation();
@@ -1006,9 +1013,9 @@ impl LineNoteThread {
                         .color(fg)
                         .nowrap(),
                 )
-                .on_click(
-                    cx.listener(move |this, _, window, cx| this.more_action(action, window, cx)),
-                )
+                .on_click(cx.guarded_listener(move |this, _, window, cx| {
+                    this.more_action(action, window, cx)
+                }))
                 .into_any_element()
         };
         let mut items = Vec::new();
@@ -1129,8 +1136,12 @@ enum MoreAction {
     Delete,
 }
 
-impl Render for LineNoteThread {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl LineNoteThread {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let root = self.root.clone();
         let replies = self.replies();
@@ -1180,7 +1191,9 @@ impl Render for LineNoteThread {
                         move || format!("cmt-unresolve:{r}")
                     })
                     .when(!self.resolving, |d| {
-                        d.on_click(cx.listener(|this, _, _, cx| this.set_resolved(false, cx)))
+                        d.on_click(
+                            cx.guarded_listener(|this, _, _, cx| this.set_resolved(false, cx)),
+                        )
                     }),
                 );
             }
@@ -1212,7 +1225,9 @@ impl Render for LineNoteThread {
                     .cursor_text()
                     .hover(|s| s.text_color(hsla(t.muted)).border_color(hsla(t.muted)))
                     .child(recur_ui::style::button_label("Reply…", 12.5, 400.))
-                    .on_click(cx.listener(|this, _, window, cx| this.open_reply(window, cx))),
+                    .on_click(
+                        cx.guarded_listener(|this, _, window, cx| this.open_reply(window, cx)),
+                    ),
             );
         }
         if can_resolve && !root.resolved {
@@ -1232,7 +1247,9 @@ impl Render for LineNoteThread {
                         move || format!("cmt-resolve:{r}")
                     })
                     .when(!self.resolving, |d| {
-                        d.on_click(cx.listener(|this, _, _, cx| this.set_resolved(true, cx)))
+                        d.on_click(
+                            cx.guarded_listener(|this, _, _, cx| this.set_resolved(true, cx)),
+                        )
                     }),
                 ),
             );
@@ -1309,6 +1326,12 @@ impl Render for LineNoteThread {
             .child(kid)
             .child(listeners)
             .children(menu)
+    }
+}
+
+impl Render for LineNoteThread {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

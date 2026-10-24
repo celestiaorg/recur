@@ -40,6 +40,12 @@ use crate::style::hsla;
 
 /// How long a TOC click keeps the spy from re-picking while the pane settles.
 const SPY_SUPPRESS: Duration = Duration::from_millis(700);
+/// A card's bottom margin (`.cfile`).
+const CARD_GAP: f32 = 14.;
+/// A stub card: its 40px header inside the 1px frame.
+const STUB_CARD_H: f32 = 42.;
+/// How far beyond the viewport stub cards stay mounted.
+const STACK_MOUNT_PAD_PX: f32 = 1200.;
 
 /// The host's `onToggleCollapse` for a card: (path, collapsed).
 pub type ToggleCard<H> = Rc<dyn Fn(&mut H, String, bool, &mut Context<H>)>;
@@ -471,6 +477,32 @@ impl FileStack {
         props
     }
 
+    /// A run of unmounted stub cards: one exact spacer as tall as the cards and their gaps,
+    /// recording each card's bounds where it would have painted.
+    fn skipped_cards(&self, run: Vec<(String, f32)>, first: bool, window: &Window) -> AnyElement {
+        let total: f32 = run.iter().map(|(_, h)| h + CARD_GAP).sum();
+        let cards = self.cards.clone();
+        let probe = canvas(
+            move |b, _, _| {
+                let mut c = cards.borrow_mut();
+                let mut y = f32::from(b.origin.y);
+                for (path, h) in &run {
+                    c.bounds.insert(path.clone(), (y, *h));
+                    y += h + CARD_GAP;
+                }
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0();
+        div()
+            .when(first, |d| d.mt(px(self.chrome.pad)))
+            .relative()
+            .child(recur_ui::exact::vgap(total, window))
+            .child(probe)
+            .into_any_element()
+    }
+
     /// The `.diffscroll` pane: `header` (scope headers, notices) above the cards, or `empty`
     /// in place of them. `stack_of` projects the host entity to this stack.
     #[allow(clippy::too_many_arguments)]
@@ -500,6 +532,16 @@ impl FileStack {
             push(e, &mut col);
         } else {
             let files = self.files.clone();
+            // Stubs far from the viewport stay unmounted (thousands of cards laid out each
+            // frame cost seconds): each run of them is one exact spacer that still records
+            // every card's bounds, so ranges, the spy and selection scrolls see all cards.
+            let (top, view_h) = (self.pane.scroll_top(), self.pane.client_height());
+            let (lo, hi) = (
+                top - STACK_MOUNT_PAD_PX,
+                top + view_h.max(0.) + STACK_MOUNT_PAD_PX,
+            );
+            let mut y = 0.;
+            let mut skipped: Vec<(String, f32)> = Vec::new();
             for f in &files {
                 let live = self.hydrated.contains(&f.path);
                 let collapsed = self.collapsed.contains(&f.path);
@@ -511,6 +553,25 @@ impl FileStack {
                     collapsed,
                     self.measured.get(&f.path).copied(),
                 );
+                let stub_h = reserved.unwrap_or(0.).max(STUB_CARD_H);
+                let est = self
+                    .cards
+                    .borrow()
+                    .bounds
+                    .get(&f.path)
+                    .map_or(stub_h, |b| b.1);
+                let near = y + est >= lo && y <= hi;
+                y += est + CARD_GAP;
+                if !(live || near || f.path == self.selected) {
+                    self.diff_files.remove(&f.path);
+                    skipped.push((f.path.clone(), stub_h));
+                    continue;
+                }
+                if !skipped.is_empty() {
+                    col =
+                        col.child(self.skipped_cards(std::mem::take(&mut skipped), first, window));
+                    first = false;
+                }
                 let body = if live {
                     let props = self.card_props(f);
                     let entity = match self.diff_files.get(&f.path) {
@@ -616,13 +677,16 @@ impl FileStack {
                     .relative()
                     .p(px(1.))
                     .debug_selector(move || sel.clone())
-                    .mb(px(14.))
+                    .mb(px(CARD_GAP))
                     .when_some(reserved, |d, h| d.min_h(px(h)))
                     .child(cfile_frame(t.bg, t.line, stripes.is_some()))
                     .child(body)
                     .child(probe);
                 col = col.child(div().when(first, |d| d.mt(px(pad))).child(card));
                 first = false;
+            }
+            if !skipped.is_empty() {
+                col = col.child(self.skipped_cards(skipped, first, window));
             }
         }
         self.cards

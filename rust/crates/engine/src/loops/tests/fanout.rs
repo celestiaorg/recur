@@ -355,7 +355,10 @@ async fn fast_child_unblocks_dependent_while_sibling_runs() {
     let repo = init_repo();
     let runner = Arc::new(FanOutRunner {
         slow_on: "Write the slow writer".into(),
-        slow_delay: Duration::from_secs(2),
+        // The writer runs until the dependent starts: a wave barrier would hold that start
+        // behind the writer, which then ends at the cap, after it.
+        slow_delay: Duration::from_secs(20),
+        slow_until: Some("Wire the parser"),
         mark_on: vec!["Write the slow writer", "Wire the parser"],
         ..FanOutRunner::default()
     });

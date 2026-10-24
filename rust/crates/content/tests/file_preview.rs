@@ -204,3 +204,22 @@ fn restores_highlights_for_the_active_preview_and_ignores_inactive_paints(cx: &m
     assert_eq!(painted(&a, cx), ["needle"]);
     assert!(painted(&b, cx).is_empty());
 }
+
+#[gpui::test]
+fn highlights_left_from_older_content_never_cut_a_char(cx: &mut TestAppContext) {
+    init(cx);
+    let (view, cx) = mount(cx, PreviewKind::Markdown, "ab needle", "notes.md");
+    cx.update(|window, cx| view.update(cx, |v, cx| v.toggle_search(window, cx)));
+    cx.run_until_parked();
+    type_find(cx, "needle");
+    assert_eq!(count(&view, cx), "1 / 1");
+    // The old match (bytes 3..9) now starts inside the second `é`.
+    cx.update(|window, cx| {
+        view.update(cx, |v, cx| {
+            v.set_content("\u{e9}\u{e9}\u{e9}\u{e9}\u{e9}\u{e9}", window, cx)
+        })
+    });
+    cx.run_until_parked();
+    assert!(cx.debug_bounds("guard-failed").is_none());
+    assert_eq!(count(&view, cx), "No results");
+}

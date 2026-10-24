@@ -2,6 +2,7 @@
 //! (`KeybindingMenu.svelte`, `lib/keybinding-menu.ts`): 1–9 pick a row, ↑↓ and ↩ move and run,
 //! Esc or a click on the scrim closes.
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -183,8 +184,12 @@ impl KeybindingMenu {
     }
 }
 
-impl Render for KeybindingMenu {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl KeybindingMenu {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !keybinding_menu_open(cx) {
             return div().into_any_element();
         }
@@ -249,13 +254,15 @@ impl Render for KeybindingMenu {
                         .py(px(5.))
                         .min_h(px(26.))
                         .when(sel, |d| d.bg(rgba(255, 255, 255, 0.08)))
-                        .on_mouse_move(cx.listener(move |m, _, _, cx| {
+                        .on_mouse_move(cx.guarded_listener(move |m, _, _, cx| {
                             if m.sel != i {
                                 m.sel = i;
                                 cx.notify();
                             }
                         }))
-                        .on_click(cx.listener(move |m, _, window, cx| m.run_at(i, window, cx)))
+                        .on_click(
+                            cx.guarded_listener(move |m, _, window, cx| m.run_at(i, window, cx)),
+                        )
                         .child(
                             div().flex_1().min_w_0().child(
                                 text(item.label.clone())
@@ -281,8 +288,10 @@ impl Render for KeybindingMenu {
             .id("kb-menu-bg")
             .key_context(CONTEXT)
             .track_focus(&self.focus)
-            .on_action(cx.listener(|_, _: &Close, _, cx| close_keybinding_menu(cx)))
-            .on_key_down(cx.listener(|m, e: &KeyDownEvent, window, cx| m.on_key(e, window, cx)))
+            .on_action(cx.guarded_listener(|_, _: &Close, _, cx| close_keybinding_menu(cx)))
+            .on_key_down(
+                cx.guarded_listener(|m, e: &KeyDownEvent, window, cx| m.on_key(e, window, cx)),
+            )
             .absolute()
             .inset_0()
             .occlude()
@@ -303,6 +312,12 @@ impl Render for KeybindingMenu {
                 10.,
             ))
             .into_any_element()
+    }
+}
+
+impl Render for KeybindingMenu {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

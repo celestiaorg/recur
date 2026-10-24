@@ -3,6 +3,7 @@
 //! the image thumbnail and the prompt chip with its slot inputs). Each comes with its
 //! margin-box size for [`crate::flow`].
 
+use recur_ui::guard::Guarded;
 use std::sync::Arc;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -279,7 +280,9 @@ impl AgentChat {
                     chip.debug_selector(|| format!("file-inline:{}", file_mention_label(path)));
                 let el = if enabled {
                     chip.cursor_pointer()
-                        .on_click(cx.listener(move |this, _, _, cx| this.open_file_chip(&p, cx)))
+                        .on_click(
+                            cx.guarded_listener(move |this, _, _, cx| this.open_file_chip(&p, cx)),
+                        )
                         .into_any_element()
                 } else {
                     chip.into_any_element()
@@ -330,9 +333,9 @@ impl AgentChat {
                 let tid = tid.clone();
                 (
                     chip.cursor_pointer()
-                        .on_click(
-                            cx.listener(move |this, _, _, cx| this.open_terminal_chip(&tid, cx)),
-                        )
+                        .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                            this.open_terminal_chip(&tid, cx)
+                        }))
                         .into_any_element(),
                     w,
                     26.,
@@ -375,9 +378,9 @@ impl AgentChat {
                 let aid = aid.clone();
                 (
                     chip.cursor_pointer()
-                        .on_click(
-                            cx.listener(move |this, _, _, cx| this.open_artifact_chip(&aid, cx)),
-                        )
+                        .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                            this.open_artifact_chip(&aid, cx)
+                        }))
                         .into_any_element(),
                     w,
                     26.,
@@ -407,14 +410,16 @@ impl AgentChat {
                     .when_some(d, |el, d| {
                         el.child(image_box(d.image.clone(), d.width, d.height, Fit::Fill, 5.))
                     })
-                    .on_click(cx.listener(move |this, _, window, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, window, cx| {
                         this.open_lightbox(&s, &n, window, cx)
                     }))
                     .on_mouse_down(
                         gpui_kit::MouseButton::Right,
-                        cx.listener(move |this, ev: &gpui_kit::MouseDownEvent, window, cx| {
-                            this.open_image_menu(&s2, ev.position, window, cx);
-                        }),
+                        cx.guarded_listener(
+                            move |this, ev: &gpui_kit::MouseDownEvent, window, cx| {
+                                this.open_image_menu(&s2, ev.position, window, cx);
+                            },
+                        ),
                     )
                     .into_any_element();
                 (el, bw, bh)
@@ -443,7 +448,7 @@ impl AgentChat {
             .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
                 cx.stop_propagation()
             })
-            .on_click(cx.listener(move |this, _, window, cx| {
+            .on_click(cx.guarded_listener(move |this, _, window, cx| {
                 cx.stop_propagation();
                 this.remove_chip(i, window, cx);
             }));
@@ -566,9 +571,10 @@ impl AgentChat {
                 } else {
                     gpui_kit::CursorStyle::PointingHand
                 });
-                let el = el.on_click(
-                    cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
-                );
+                let el =
+                    el.on_click(cx.guarded_listener(move |this, _, window, cx| {
+                        this.click_chip(i, window, cx)
+                    }));
                 (
                     recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el)
                         .into_any_element(),
@@ -618,7 +624,7 @@ impl AgentChat {
                     window,
                 );
                 let el = el.child(x).cursor_pointer().on_click(
-                    cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
+                    cx.guarded_listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
                 );
                 (
                     recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el)
@@ -657,7 +663,7 @@ impl AgentChat {
                     window,
                 );
                 let el = el.child(x).cursor_pointer().on_click(
-                    cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
+                    cx.guarded_listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
                 );
                 (
                     recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el)
@@ -699,9 +705,9 @@ impl AgentChat {
                         ))
                     }))
                     .child(x)
-                    .on_click(
-                        cx.listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
-                    );
+                    .on_click(cx.guarded_listener(move |this, _, window, cx| {
+                        this.click_chip(i, window, cx)
+                    }));
                 (
                     recur_ui::tooltip::titled(
                         SharedString::from(format!("{id}-tip")),
@@ -825,7 +831,7 @@ impl AgentChat {
                     )
                     .on_mouse_down(
                         gpui_kit::MouseButton::Left,
-                        cx.listener(move |this, _, window, cx| {
+                        cx.guarded_listener(move |this, _, window, cx| {
                             cx.stop_propagation();
                             this.focus_prompt_slot(si, window, cx);
                         }),

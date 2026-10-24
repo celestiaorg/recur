@@ -7,6 +7,7 @@
 //! app-wide [`SuggestStore`]; the shell paints it through the [`SuggestOverlay`]s registered
 //! in the `EmojiSuggest` / `UserMentionSuggest` overlay slots. Carets are byte offsets.
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -312,7 +313,7 @@ impl<M: InputModeKind> SuggestAttach<M> {
     ) -> Entity<Self> {
         let store = SuggestStore::global(cx);
         cx.new(|cx| {
-            let mut subs = vec![cx.subscribe_in(
+            let mut subs = vec![cx.guarded_subscribe_in(
                 input,
                 window,
                 |this: &mut Self, _, ev: &InputEvent, window, cx| match ev {
@@ -336,18 +337,20 @@ impl<M: InputModeKind> SuggestAttach<M> {
             )];
             if kind == SuggestKind::Mention {
                 // `selectionchange` while open: follow the caret.
-                subs.push(cx.observe_in(input, window, |this, input, window, cx| {
-                    let owner = input.entity_id();
-                    if this
-                        .store
-                        .read(cx)
-                        .slot(this.kind)
-                        .is_none_or(|s| s.owner != owner)
-                    {
-                        return;
-                    }
-                    this.sync(window, cx);
-                }));
+                subs.push(
+                    cx.guarded_observe_in(input, window, |this, input, window, cx| {
+                        let owner = input.entity_id();
+                        if this
+                            .store
+                            .read(cx)
+                            .slot(this.kind)
+                            .is_none_or(|s| s.owner != owner)
+                        {
+                            return;
+                        }
+                        this.sync(window, cx);
+                    }),
+                );
             }
             let me = cx.entity().downgrade();
             subs.push(
@@ -781,7 +784,7 @@ pub struct SuggestOverlay {
 impl SuggestOverlay {
     pub fn new(kind: SuggestKind, cx: &mut Context<Self>) -> Self {
         let store = SuggestStore::global(cx);
-        let _sub = cx.observe(&store, |_, _, cx| cx.notify());
+        let _sub = cx.guarded_observe(&store, |_, _, cx| cx.notify());
         SuggestOverlay {
             kind,
             store,
@@ -793,8 +796,12 @@ impl SuggestOverlay {
     }
 }
 
-impl Render for SuggestOverlay {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SuggestOverlay {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let Some(open) = self.store.read(cx).slot(self.kind).cloned() else {
             self.shown = None;
             return div().into_any_element();
@@ -900,7 +907,7 @@ impl Render for SuggestOverlay {
                 }
             }
             let store = self.store.clone();
-            row.on_mouse_move(cx.listener(move |o, ev: &MouseMoveEvent, _, cx| {
+            row.on_mouse_move(cx.guarded_listener(move |o, ev: &MouseMoveEvent, _, cx| {
                 if o.hover
                     .allows(f32::from(ev.position.x), f32::from(ev.position.y))
                 {
@@ -938,6 +945,12 @@ impl Render for SuggestOverlay {
         gpui_kit::deferred(div().absolute().inset_0().child(placed))
             .with_priority(60)
             .into_any_element()
+    }
+}
+
+impl Render for SuggestOverlay {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

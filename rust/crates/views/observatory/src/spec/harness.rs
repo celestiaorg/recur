@@ -132,6 +132,8 @@ pub fn mount_seeded<'a>(
             ..Default::default()
         };
         let obs = cx.new(|cx| Observatory::new(s2.clone(), p, slots, window, cx));
+        // Specs let a panic in the callback fail the test.
+        #[allow(clippy::disallowed_methods)]
         let sub = cx.subscribe_in(
             &obs,
             window,

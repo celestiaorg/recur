@@ -5,6 +5,7 @@ use gpui_kit::{
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_domain::Settings;
+use recur_ui::guard::Guarded;
 use recur_ui::text::span;
 
 use crate::style::{copy, mm_radio, radio_rows, radios_width};
@@ -110,7 +111,7 @@ impl SettingsView {
                         cx,
                     )
                     .debug_selector(move || format!("radio:{title}:{label}:{on}"))
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                         this.patch(false, |s| write(s, val), cx).detach()
                     })),
                 );

@@ -225,6 +225,8 @@ pub fn surface<'a>(
     let (host, vcx) = cx.add_window_view(move |window, cx| {
         let surface = cx.new(|cx| ReviewSurface::new(st, p, window, cx));
         let events: Rc<RefCell<Vec<SurfaceEvent>>> = Rc::default();
+        // Specs let a panic in the callback fail the test.
+        #[allow(clippy::disallowed_methods)]
         let sub = cx.subscribe_in(
             &surface,
             window,

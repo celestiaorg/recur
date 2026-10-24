@@ -1,6 +1,7 @@
 //! `FilePreview.svelte`: the Preview surface of dual-nature files (markdown, SVG, HTML,
 //! Mermaid) with find-in-page and per-path scroll that survives remounts and restores.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -109,16 +110,17 @@ impl FilePreview {
     ) -> Self {
         let path = path.into();
         let bar = cx.new(|cx| PreviewFindBar::new(window, cx));
-        let sub = cx.subscribe_in(
-            &bar,
-            window,
-            |p, _, ev: &FindBarEvent, window, cx| match ev {
-                FindBarEvent::Changed => p.refresh(window, cx),
-                FindBarEvent::Next => p.step(1, window, cx),
-                FindBarEvent::Previous => p.step(-1, window, cx),
-                FindBarEvent::Close => p.close_search(window, cx),
-            },
-        );
+        let sub =
+            cx.guarded_subscribe_in(
+                &bar,
+                window,
+                |p, _, ev: &FindBarEvent, window, cx| match ev {
+                    FindBarEvent::Changed => p.refresh(window, cx),
+                    FindBarEvent::Next => p.step(1, window, cx),
+                    FindBarEvent::Previous => p.step(-1, window, cx),
+                    FindBarEvent::Close => p.close_search(window, cx),
+                },
+            );
         let mut fp = FilePreview {
             kind,
             content: SharedString::default(),
@@ -172,7 +174,7 @@ impl FilePreview {
             (PreviewKind::Markdown, _) => {
                 let v = cx.new(|cx| MarkdownView::new(content, MarkdownClass::MdDoc, false, cx));
                 // `MutationObserver`: re-collect matches when the rendered tree changes.
-                self._subs.push(cx.subscribe_in(
+                self._subs.push(cx.guarded_subscribe_in(
                     &v,
                     window,
                     |p, _, ev: &MarkdownEvent, window, cx| {
@@ -201,7 +203,7 @@ impl FilePreview {
                 let path = self.path.clone();
                 let h =
                     cx.new(|cx| HtmlPreview::new(&content, &path, self.scroll.clone(), window, cx));
-                self._subs.push(cx.subscribe_in(
+                self._subs.push(cx.guarded_subscribe_in(
                     &h,
                     window,
                     |p, _, ev: &HtmlPreviewEvent, window, cx| p.on_page(ev, window, cx),
@@ -216,7 +218,7 @@ impl FilePreview {
                 let path = self.path.clone();
                 let scroll = self.scroll.clone();
                 let m = cx.new(|cx| MermaidPreview::new(&content, &path, Some(scroll), window, cx));
-                self._subs.push(cx.subscribe_in(
+                self._subs.push(cx.guarded_subscribe_in(
                     &m,
                     window,
                     |p, _, _: &DiagramChanged, window, cx| {
@@ -589,8 +591,12 @@ impl Drop for FilePreview {
     }
 }
 
-impl Render for FilePreview {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl FilePreview {
+    fn render_view(
+        &mut self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let this = cx.entity().downgrade();
         let track = canvas(
@@ -688,7 +694,7 @@ impl Render for FilePreview {
             .id("file-preview-host")
             .track_focus(&self.focus)
             .key_context("FilePreview")
-            .capture_key_down(cx.listener(Self::key_down))
+            .capture_key_down(cx.guarded_listener(Self::key_down))
             .flex_1()
             .min_h_0()
             .size_full()
@@ -697,6 +703,12 @@ impl Render for FilePreview {
             .overflow_hidden()
             .when(self.find_open, |d| d.child(self.bar.clone()))
             .child(surface)
+    }
+}
+
+impl Render for FilePreview {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

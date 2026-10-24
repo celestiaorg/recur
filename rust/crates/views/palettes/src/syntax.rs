@@ -14,6 +14,7 @@ use recur_textmate::{
     FileTypeAssociation, SYNTAX_PLAIN, SyntaxLanguage, TmCatalog, file_type_association_for_path,
 };
 use recur_ui::IconName;
+use recur_ui::guard::Guarded;
 use recur_ui::logic::hover_gate::HoverGate;
 use recur_ui::style::{
     palette_empty, palette_group, palette_key, palette_row, palette_sub, style_text_input,
@@ -199,10 +200,10 @@ impl SyntaxPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
-            cx.subscribe(&input, |this, _, _: &InputEvent, cx| {
+            cx.guarded_subscribe(&input, |this, _, _: &InputEvent, cx| {
                 this.list_changed(cx);
                 cx.notify();
             }),
@@ -242,7 +243,7 @@ impl SyntaxPalette {
             if self.env.is_none() {
                 // The catalog's grammars register asynchronously; follow them.
                 let env = editor_env(&self.state, cx);
-                self._subs.push(cx.observe(&env, |this, _, cx| {
+                self._subs.push(cx.guarded_observe(&env, |this, _, cx| {
                     this.list_changed(cx);
                     cx.notify();
                 }));
@@ -429,7 +430,7 @@ impl SyntaxPalette {
         if r.current {
             row = row.child(palette_key("current", on, cx));
         }
-        row.on_mouse_move(cx.listener(move |p, ev: &MouseMoveEvent, _, cx| {
+        row.on_mouse_move(cx.guarded_listener(move |p, ev: &MouseMoveEvent, _, cx| {
             if p.hover
                 .allows(f32::from(ev.position.x), f32::from(ev.position.y))
                 && p.sel != idx
@@ -438,13 +439,17 @@ impl SyntaxPalette {
                 cx.notify();
             }
         }))
-        .on_click(cx.listener(move |p, _, window, cx| p.run(idx, window, cx)))
+        .on_click(cx.guarded_listener(move |p, _, window, cx| p.run(idx, window, cx)))
         .into_any_element()
     }
 }
 
-impl Render for SyntaxPalette {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SyntaxPalette {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open(cx) {
             return div().into_any_element();
         }
@@ -543,6 +548,12 @@ impl Render for SyntaxPalette {
             window,
             cx,
         )
+    }
+}
+
+impl Render for SyntaxPalette {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

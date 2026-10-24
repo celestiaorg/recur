@@ -2,6 +2,7 @@
 //! `_settings.scss` rules only they use (`.proj-ident*`, `.copy-files*`, `.run-*`,
 //! `.set-confirm*`).
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -108,7 +109,7 @@ impl ProjectView {
                     .debug_selector(|| "proj-browse".into())
                     .aria_label("Browse for repository")
                     .when(!picking, |d| {
-                        d.on_click(cx.listener(|v, _, window, cx| v.pick_repo(window, cx)))
+                        d.on_click(cx.guarded_listener(|v, _, window, cx| v.pick_repo(window, cx)))
                     })
                     .child(tbtn_icon(IconName::Folder))
                     .child(recur_ui::style::button_label(
@@ -201,7 +202,7 @@ impl ProjectView {
                     ))
                     .child(ctrl().child(
                         tog("proj-hide-tog", "toggle hide from sidebar", hidden, false, cx)
-                            .on_click(cx.listener(move |v, _, _, cx| {
+                            .on_click(cx.guarded_listener(move |v, _, _, cx| {
                                 let id = id.clone();
                                 v.vcx
                                     .state
@@ -306,7 +307,9 @@ impl ProjectView {
                 .flex_shrink_0()
                 .justify_center()
                 .debug_selector(move || format!("ident-kind:{l}"))
-                .on_click(cx.listener(move |v, _, window, cx| v.set_avatar_kind(k, window, cx))),
+                .on_click(
+                    cx.guarded_listener(move |v, _, window, cx| v.set_avatar_kind(k, window, cx)),
+                ),
             );
         }
         let slot: AnyElement = match &parsed {
@@ -356,7 +359,7 @@ impl ProjectView {
                         .h(px(30.))
                         .flex_1()
                         .justify_center()
-                        .on_click(cx.listener(|v, _, window, cx| v.pick_image(window, cx)))
+                        .on_click(cx.guarded_listener(|v, _, window, cx| v.pick_image(window, cx)))
                         .child(tbtn_icon(IconName::Photo))
                         .child(recur_ui::style::button_label("Browse", 12., weight::MEDIUM)),
                 )
@@ -365,7 +368,7 @@ impl ProjectView {
                         .h(px(30.))
                         .flex_1()
                         .justify_center()
-                        .on_click(cx.listener(|v, _, window, cx| {
+                        .on_click(cx.guarded_listener(|v, _, window, cx| {
                             let p = project_pic_from_name(&v.form.name);
                             v.form.pic = if p.is_empty() { "P".into() } else { p };
                             v.changed(window, cx);
@@ -381,7 +384,7 @@ impl ProjectView {
                 swatch(SharedString::from(format!("swatch-{c}")), on, &t)
                     .bg(Hsla::from(fill))
                     .debug_selector(move || format!("swatch:{c}{}", if on { ":on" } else { "" }))
-                    .on_click(cx.listener(move |v, _, window, cx| {
+                    .on_click(cx.guarded_listener(move |v, _, window, cx| {
                         v.form.color = c.to_string();
                         v.changed(window, cx);
                     })),
@@ -407,7 +410,9 @@ impl ProjectView {
             .flex()
             .items_center()
             .justify_center()
-            .on_click(cx.listener(move |v, _, window, cx| v.open_color_panel(&hex, window, cx)));
+            .on_click(
+                cx.guarded_listener(move |v, _, window, cx| v.open_color_panel(&hex, window, cx)),
+            );
         if custom_on {
             custom = custom.border_color(Hsla::transparent_black());
         } else {
@@ -628,7 +633,7 @@ impl ProjectView {
                         rm_btn("copy-refresh", IconName::Refresh, loading || is_new, cx)
                             .aria_label("Refresh matching files")
                             .when(!(loading || is_new), |d| {
-                                d.on_click(cx.listener(|v, _, window, cx| {
+                                d.on_click(cx.guarded_listener(|v, _, window, cx| {
                                     v.copy_tick += 1;
                                     v.changed(window, cx);
                                 }))
@@ -735,9 +740,9 @@ impl ProjectView {
                         )
                         .mt(px(3.))
                         .aria_label("Remove command")
-                        .on_click(
-                            cx.listener(move |v, _, window, cx| v.remove_run_row(id, window, cx)),
-                        ),
+                        .on_click(cx.guarded_listener(
+                            move |v, _, window, cx| v.remove_run_row(id, window, cx),
+                        )),
                     ),
             );
         }
@@ -745,7 +750,7 @@ impl ProjectView {
             div().flex().gap(px(8.)).mt(px(4.)).child(
                 tbtn("run-add", false, cx)
                     .debug_selector(|| "run-add".into())
-                    .on_click(cx.listener(|v, _, window, cx| {
+                    .on_click(cx.guarded_listener(|v, _, window, cx| {
                         v.add_run_row("", "", window, cx);
                         v.changed(window, cx);
                     }))
@@ -959,7 +964,7 @@ impl ProjectView {
                 )
                 .into_any_element(),
                 tog("pr-gh-tog", "toggle GitHub PRs", gh, false, cx)
-                    .on_click(cx.listener(move |v, _, window, cx| {
+                    .on_click(cx.guarded_listener(move |v, _, window, cx| {
                         v.form.pr_on_github = !gh;
                         v.changed(window, cx);
                     }))
@@ -975,7 +980,7 @@ impl ProjectView {
                 )
                 .into_any_element(),
                 tog("pr-del-tog", "toggle delete branch on remove", del, false, cx)
-                    .on_click(cx.listener(move |v, _, window, cx| {
+                    .on_click(cx.guarded_listener(move |v, _, window, cx| {
                         v.form.delete_branch_on_remove = !del;
                         v.changed(window, cx);
                     }))
@@ -994,7 +999,7 @@ impl ProjectView {
                 radios = radios.child(
                     mm_radio(SharedString::from(format!("pr-{gi}-{val}")), label, on, cx)
                         .debug_selector(move || format!("radio:{title}:{l}:{on}"))
-                        .on_click(cx.listener(move |v, _, window, cx| {
+                        .on_click(cx.guarded_listener(move |v, _, window, cx| {
                             set(&mut v.form, val);
                             v.changed(window, cx);
                         })),
@@ -1094,8 +1099,9 @@ impl ProjectView {
             .mt(px(2.));
             if !saving {
                 let _ = v;
-                tg = tg
-                    .on_click(cx.listener(move |v, _, _, cx| v.set_project_skill(&name, !on, cx)));
+                tg = tg.on_click(
+                    cx.guarded_listener(move |v, _, _, cx| v.set_project_skill(&name, !on, cx)),
+                );
             }
             (copy, vec![tg.into_any_element()])
         };
@@ -1330,7 +1336,7 @@ impl ProjectView {
             )
             .mt(px(2.));
             if !disabled {
-                tg = tg.on_click(cx.listener(move |v, _, _, cx| {
+                tg = tg.on_click(cx.guarded_listener(move |v, _, _, cx| {
                     let (d, e) = project_skill_override_lists(
                         &id,
                         !on,
@@ -1367,7 +1373,7 @@ impl ProjectView {
         let control: AnyElement = if !self.confirming_delete {
             danger_btn("proj-delete", false, false, cx)
                 .debug_selector(|| "proj-delete".into())
-                .on_click(cx.listener(|v, _, _, cx| {
+                .on_click(cx.guarded_listener(|v, _, _, cx| {
                     v.confirming_delete = true;
                     cx.notify();
                 }))
@@ -1401,7 +1407,9 @@ impl ProjectView {
                             danger_btn("proj-delete-go", true, deleting, cx)
                                 .debug_selector(|| "proj-delete-go".into())
                                 .when(!deleting, |d| {
-                                    d.on_click(cx.listener(|v, _, _, cx| v.delete_project(cx)))
+                                    d.on_click(
+                                        cx.guarded_listener(|v, _, _, cx| v.delete_project(cx)),
+                                    )
                                 })
                                 .child(recur_ui::style::button_label(
                                     if deleting {
@@ -1417,7 +1425,7 @@ impl ProjectView {
                             tbtn_label("proj-delete-cancel", "Cancel", deleting, cx).when(
                                 !deleting,
                                 |d| {
-                                    d.on_click(cx.listener(|v, _, _, cx| {
+                                    d.on_click(cx.guarded_listener(|v, _, _, cx| {
                                         v.confirming_delete = false;
                                         cx.notify();
                                     }))

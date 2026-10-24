@@ -3,6 +3,7 @@
 //! richer ask_user notice with its draining TTL bar.
 
 use crate::fonts::weight;
+use crate::guard::Guarded;
 use crate::icon::icon;
 use crate::icon_name::IconName;
 use crate::motion::{self, Easing};
@@ -265,7 +266,7 @@ pub struct Toasts {
 impl Toasts {
     pub fn new(cx: &mut Context<Self>) -> Toasts {
         let store = ToastStore::global(cx);
-        cx.observe(&store, |_, _, cx| cx.notify()).detach();
+        cx.guarded_observe(&store, |_, _, cx| cx.notify()).detach();
         Toasts { store }
     }
 }
@@ -278,8 +279,12 @@ fn activate(store: &Entity<ToastStore>, t: &Toast, window: &mut Window, cx: &mut
     (action.run)(window, cx);
 }
 
-impl Render for Toasts {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Toasts {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let vp = window.viewport_size();
         let (vw, vh) = (f32::from(vp.width), f32::from(vp.height));
         let toasts: Vec<Toast> = self.store.read(cx).toasts.clone();
@@ -306,6 +311,12 @@ impl Render for Toasts {
             .flex_col()
             .gap(px(8.))
             .children(items)
+    }
+}
+
+impl Render for Toasts {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        crate::guard::view(self, window, cx, Self::render_view)
     }
 }
 

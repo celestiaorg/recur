@@ -2,6 +2,7 @@
 //!
 //! ⌘F (Ctrl+Shift+F elsewhere) opens the find bar; Enter / Shift+Enter step, Escape closes.
 
+use recur_ui::guard::Guarded;
 use std::sync::Arc;
 
 use futures::StreamExt;
@@ -41,7 +42,7 @@ impl Demo {
                 None => {
                     let bar = cx.new(|cx| TerminalFindBar::new(window, cx));
                     self._subs
-                        .push(cx.subscribe_in(&bar, window, Self::find_event));
+                        .push(cx.guarded_subscribe_in(&bar, window, Self::find_event));
                     self.find = Some(bar.clone());
                     bar
                 }
@@ -90,13 +91,13 @@ impl Demo {
     }
 }
 
-impl Render for Demo {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Demo {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         window_root(
             body(cx)
                 .track_focus(&self.focus)
-                .capture_key_down(cx.listener(Self::key_down))
+                .capture_key_down(cx.guarded_listener(Self::key_down))
                 .size_full()
                 .flex()
                 .flex_col()
@@ -111,6 +112,12 @@ impl Render for Demo {
                 )
                 .child(self.tooltip.clone()),
         )
+    }
+}
+
+impl Render for Demo {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -177,7 +184,7 @@ fn main() {
                     });
                     terminal.update(cx, |t, cx| t.focus(window, cx));
                     cx.new(|cx| {
-                        let subs = vec![cx.subscribe(
+                        let subs = vec![cx.guarded_subscribe(
                             &terminal,
                             |demo: &mut Demo, _, e: &TerminalEvent, cx| match e {
                                 TerminalEvent::Title(t) => eprintln!("title: {t}"),

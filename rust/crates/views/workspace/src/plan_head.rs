@@ -31,8 +31,12 @@ impl PlanHead {
     }
 }
 
-impl Render for PlanHead {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PlanHead {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let Some(view) = self.view.upgrade() else {
             return div().into_any_element();
@@ -127,6 +131,12 @@ impl Render for PlanHead {
             .items_stretch()
             .child(strip)
             .into_any_element()
+    }
+}
+
+impl Render for PlanHead {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

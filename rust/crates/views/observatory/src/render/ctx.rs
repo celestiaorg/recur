@@ -1,5 +1,6 @@
 //! `.obs-ctx`: the tree / file tab right-click menu.
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -271,7 +272,7 @@ impl Observatory {
                         .when(!disabled, |d| {
                             d.cursor_pointer()
                                 .hover(move |s| s.bg(hsla(t.pane_2)))
-                                .on_click(cx.listener(move |o, _, w, cx| act(o, w, cx)))
+                                .on_click(cx.guarded_listener(move |o, _, w, cx| act(o, w, cx)))
                         })
                         .child(
                             div()
@@ -294,7 +295,7 @@ impl Observatory {
             deferred(
                 anchored().position(point(px(m.x), px(m.y))).child(
                     div()
-                        .on_mouse_down_out(cx.listener(|o, _, _, cx| o.close_ctx(cx)))
+                        .on_mouse_down_out(cx.guarded_listener(|o, _, _, cx| o.close_ctx(cx)))
                         .child(menu),
                 ),
             )

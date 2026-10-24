@@ -24,7 +24,8 @@ pub fn complete_stream_prefix(text: &str, revealed: usize, complete: bool) -> us
         return text.len();
     };
     if nl < revealed {
-        return revealed;
+        // The text is append-only by contract, but a replaced one must not cut a char.
+        return text.floor_char_boundary(revealed);
     }
     nl + 1
 }
@@ -170,9 +171,15 @@ impl StreamingMarkdown {
     }
 }
 
-impl Render for StreamingMarkdown {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl StreamingMarkdown {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         self.view.clone()
+    }
+}
+
+impl Render for StreamingMarkdown {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -216,6 +223,11 @@ mod tests {
             complete_stream_prefix("hi", 10, false),
             2,
             "clamps when it shrinks"
+        );
+        assert_eq!(
+            complete_stream_prefix("\n\u{e9}\u{e9}\u{e9}", 4, false),
+            3,
+            "a replaced text keeps a char boundary"
         );
     }
 }

@@ -1,6 +1,7 @@
 //! `PermissionPrompts.svelte` (the floating tool-permission card for requests no focused chat
 //! is showing) and `QuestionPrompts.svelte` (an ask toast for off-tab `ask_user` questions).
 
+use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 
 use gpui_kit::{
@@ -47,7 +48,7 @@ impl PermissionPrompts {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe(&state, |this, _, cx| this.sync(cx)),
+            cx.guarded_observe(&state, |this, _, cx| this.sync(cx)),
             cx.intercept_keystrokes(move |ev: &KeystrokeEvent, _, cx| {
                 if ev.keystroke.key != "escape" || ev.keystroke.modifiers.modified() {
                     return;
@@ -108,7 +109,7 @@ impl PermissionPrompts {
                 let state = self.state.clone();
                 let card = cx.new(|_| PermissionCard::new(req, false, state));
                 card.update(cx, |c, cx| c.set_where(where_label, queued, cx));
-                self.card_sub = Some(cx.subscribe(
+                self.card_sub = Some(cx.guarded_subscribe(
                     &card,
                     |this, card, _: &PermissionCardEvent, cx| {
                         let ws = card.read(cx).request.workspace_id.clone();
@@ -125,8 +126,12 @@ impl PermissionPrompts {
     }
 }
 
-impl Render for PermissionPrompts {
-    fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl PermissionPrompts {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        _: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let Some(card) = self.card.clone() else {
             return div().into_any_element();
         };
@@ -141,6 +146,12 @@ impl Render for PermissionPrompts {
             .occlude()
             .child(card)
             .into_any_element()
+    }
+}
+
+impl Render for PermissionPrompts {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -201,7 +212,7 @@ pub struct QuestionPrompts {
 
 impl QuestionPrompts {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
-        let _sub = cx.observe(&state, |this, state, cx| this.sync(&state, cx));
+        let _sub = cx.guarded_observe(&state, |this, state, cx| this.sync(&state, cx));
         let mut this = QuestionPrompts {
             toasted: HashSet::new(),
             _sub,
@@ -242,9 +253,15 @@ impl QuestionPrompts {
     }
 }
 
-impl Render for QuestionPrompts {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl QuestionPrompts {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         div()
+    }
+}
+
+impl Render for QuestionPrompts {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

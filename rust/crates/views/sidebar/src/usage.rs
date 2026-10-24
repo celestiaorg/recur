@@ -2,6 +2,7 @@
 //! (`lib/providerUsage.ts`): one ring chip per provider with session quota, and a hover /
 //! click popover with every window, reset time and Cursor model bucket.
 
+use recur_ui::guard::Guarded;
 use std::time::{Duration, Instant};
 
 use gpui_kit::{
@@ -250,7 +251,7 @@ pub struct UsageMeter {
 
 impl UsageMeter {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
-        cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        cx.guarded_observe(&state, |_, _, cx| cx.notify()).detach();
         // `onMount`: fill the meter after first paint.
         state.update(cx, |s, cx| s.prefetch_provider_usage(cx).detach());
         Self {
@@ -458,7 +459,7 @@ impl UsageMeter {
                             .id("use-cursor-link")
                             .mt(px(8.))
                             .cursor_pointer()
-                            .on_click(cx.listener(move |m, _, _, cx| {
+                            .on_click(cx.guarded_listener(move |m, _, _, cx| {
                                 m.open = false;
                                 state.update(cx, |s, cx| s.open_settings(Some("agent"), cx));
                                 cx.notify();
@@ -613,8 +614,12 @@ impl UsageMeter {
     }
 }
 
-impl Render for UsageMeter {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl UsageMeter {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let (snap, disabled) = {
             let s = self.state.read(cx);
@@ -672,7 +677,7 @@ impl Render for UsageMeter {
             .text_color(if open { t.muted } else { t.faint })
             .when(open, |d| d.bg(t.pane))
             .hover(move |s| s.bg(t.pane).text_color(Hsla::from(t.muted)))
-            .on_click(cx.listener(|m, _, _, cx| m.toggle(cx)));
+            .on_click(cx.guarded_listener(|m, _, _, cx| m.toggle(cx)));
         if recur_ui::style::is_focus_visible(&self.focus, window) {
             // `.use-btn:focus-visible { box-shadow: 0 0 0 2px var(--amber-d) }`.
             btn = btn.shadow(vec![recur_ui::style::css_shadow(0., 0., 0., 2., t.amber_d)]);
@@ -721,20 +726,22 @@ impl Render for UsageMeter {
             .flex()
             .items_center()
             .h(px(26.))
-            .on_hover(cx.listener(|m, hovered: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(|m, hovered: &bool, _, cx| {
                 if *hovered {
                     m.on_enter(cx);
                 } else {
                     m.on_leave(cx);
                 }
             }))
-            .on_mouse_down_out(cx.listener(|m, _, _, cx| m.close(cx)))
-            .on_key_down(cx.listener(|m, ev: &gpui_kit::KeyDownEvent, _, cx| {
-                if ev.keystroke.key == "escape" && m.open {
-                    m.close(cx);
-                    cx.stop_propagation();
-                }
-            }))
+            .on_mouse_down_out(cx.guarded_listener(|m, _, _, cx| m.close(cx)))
+            .on_key_down(
+                cx.guarded_listener(|m, ev: &gpui_kit::KeyDownEvent, _, cx| {
+                    if ev.keystroke.key == "escape" && m.open {
+                        m.close(cx);
+                        cx.stop_propagation();
+                    }
+                }),
+            )
             .child(
                 canvas(
                     move |bounds, _, cx| {
@@ -750,6 +757,12 @@ impl Render for UsageMeter {
                 d.child(self.popover(&rows, snap.as_ref(), &disabled, cx))
             })
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+    }
+}
+
+impl Render for UsageMeter {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

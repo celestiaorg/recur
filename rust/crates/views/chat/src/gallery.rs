@@ -78,8 +78,12 @@ struct ChatScene {
     focus_composer: bool,
 }
 
-impl Render for ChatScene {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ChatScene {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if std::mem::take(&mut self.focus_composer) {
             self.chat.update(cx, |c, cx| c.focus_composer(window, cx));
         }
@@ -91,11 +95,23 @@ impl Render for ChatScene {
     }
 }
 
+impl Render for ChatScene {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 struct AppScene(Entity<AppChat>);
 
-impl Render for AppScene {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl AppScene {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         body(cx).size_full().flex().flex_col().child(self.0.clone())
+    }
+}
+
+impl Render for AppScene {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -188,8 +204,8 @@ impl ModeToolbar {
     }
 }
 
-impl Render for ModeToolbar {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl ModeToolbar {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         let mut row = div()
             .flex()
             .items_center()
@@ -203,6 +219,12 @@ impl Render for ModeToolbar {
             row = row.child(l.clone());
         }
         row
+    }
+}
+
+impl Render for ModeToolbar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

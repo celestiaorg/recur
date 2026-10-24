@@ -1,5 +1,6 @@
 //! Appearance: the app chrome, code editor and terminal themes, each with Sync with system.
 
+use recur_ui::guard::Guarded;
 use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -640,7 +641,7 @@ impl SettingsView {
                     .debug_selector(move || {
                         format!("seg:Filter by kind:{label}{}", if on { ":on" } else { "" })
                     })
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                         this.theme_kind = k;
                         cx.notify();
                     })),
@@ -759,7 +760,7 @@ impl SettingsView {
             .px(px(12.))
             .cursor_pointer()
             .hover(move |s| s.border_color(hsla(t.amber)))
-            .on_click(cx.listener(|this, _, _, cx| {
+            .on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.theme_kind = ThemeKind::All;
                 this.field_rewrite("edth-search", String::new());
                 this.edth_scroll_pending = true;

@@ -2,6 +2,7 @@
 //! prompt-argument menu, the contenteditable composer as a native editor (flow layout,
 //! caret, selection, IME), the toolbar slot, the context meter, and Stop / Send.
 
+use recur_ui::guard::Guarded;
 use std::cell::Cell;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -189,7 +190,7 @@ impl AgentChat {
                     .cursor_pointer()
                     .on_hover(h.listener())
                     .child(icon(IconName::OctagonX).size(px(15.)))
-                    .on_click(cx.listener(|this, _, _, cx| this.stop(cx))),
+                    .on_click(cx.guarded_listener(|this, _, _, cx| this.stop(cx))),
             ));
         }
         let can_send = self.can_send();
@@ -228,10 +229,12 @@ impl AgentChat {
                     .text_color(hsla(t.on_amber.mix(h.k(), t.bg)))
                     .cursor_pointer()
                     .on_hover(h.listener())
-                    .on_click(cx.listener(|this, ev: &gpui_kit::ClickEvent, window, cx| {
-                        let m = ev.modifiers();
-                        this.send(m.platform || m.control, window, cx);
-                    }))
+                    .on_click(
+                        cx.guarded_listener(|this, ev: &gpui_kit::ClickEvent, window, cx| {
+                            let m = ev.modifiers();
+                            this.send(m.platform || m.control, window, cx);
+                        }),
+                    )
             })
             .when(!can_send, |d| {
                 d.bg(hsla(t.pane_2))
@@ -395,17 +398,17 @@ impl AgentChat {
             .cursor(gpui_kit::CursorStyle::IBeam)
             .text_color(hsla(t.text))
             .on_key_down(
-                cx.listener(|this, ev: &gpui_kit::KeyDownEvent, window, cx| {
+                cx.guarded_listener(|this, ev: &gpui_kit::KeyDownEvent, window, cx| {
                     this.on_composer_key(ev, window, cx)
                 }),
             )
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|this, ev: &MouseDownEvent, window, cx| {
+                cx.guarded_listener(|this, ev: &MouseDownEvent, window, cx| {
                     this.composer_press(ev, window, cx)
                 }),
             )
-            .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, _, cx| {
+            .on_mouse_move(cx.guarded_listener(|this, ev: &MouseMoveEvent, _, cx| {
                 if ev.pressed_button == Some(MouseButton::Left) {
                     let b = this.composer_byte_at(ev.position);
                     this.composer_mouse_drag(b, cx);
@@ -413,7 +416,7 @@ impl AgentChat {
             }))
             .on_mouse_up(
                 MouseButton::Left,
-                cx.listener(|this, _, _, cx| {
+                cx.guarded_listener(|this, _, _, cx| {
                     this.selecting = false;
                     this.sync_mention_from_caret(cx);
                 }),
@@ -485,14 +488,16 @@ impl AgentChat {
             .when(disabled, |d| d.opacity(0.5))
             .when(!disabled, |d| d.cursor_pointer())
             .children(kids)
-            .on_mouse_move(cx.listener(move |this, ev: &MouseMoveEvent, _, cx| {
-                let (x, y) = (f32::from(ev.position.x), f32::from(ev.position.y));
-                if this.hover_gate.allows(x, y) && this.mention_sel != i {
-                    this.mention_sel = i;
-                    cx.notify();
-                }
-            }))
-            .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
+            .on_mouse_move(
+                cx.guarded_listener(move |this, ev: &MouseMoveEvent, _, cx| {
+                    let (x, y) = (f32::from(ev.position.x), f32::from(ev.position.y));
+                    if this.hover_gate.allows(x, y) && this.mention_sel != i {
+                        this.mention_sel = i;
+                        cx.notify();
+                    }
+                }),
+            )
+            .on_hover(cx.guarded_listener(move |this, hovered: &bool, _, cx| {
                 if *hovered && this.hover_gate.armed && this.mention_sel != i {
                     this.mention_sel = i;
                     cx.notify();
@@ -667,7 +672,7 @@ impl AgentChat {
                             ],
                         };
                         self.menu_row(i, i == self.mention_sel, false, kids, cx)
-                            .on_click(cx.listener(move |this, _, window, cx| {
+                            .on_click(cx.guarded_listener(move |this, _, window, cx| {
                                 this.pick_mention_hit(i, window, cx)
                             }))
                             .into_any_element()
@@ -708,7 +713,7 @@ impl AgentChat {
                             }
                             let hit = h.clone();
                             self.menu_row(i, i == self.mention_sel, false, kids, cx)
-                                .on_click(cx.listener(move |this, _, window, cx| {
+                                .on_click(cx.guarded_listener(move |this, _, window, cx| {
                                     this.pick_prompt_complete_hit(&hit, true, window, cx)
                                 }))
                                 .into_any_element()
@@ -738,7 +743,7 @@ impl AgentChat {
                             let (s, a) = (slash.clone(), args.clone());
                             self.menu_row(i, i == self.mention_sel, !can_invoke, kids, cx)
                                 .when(can_invoke, |d| {
-                                    d.on_click(cx.listener(move |this, _, window, cx| {
+                                    d.on_click(cx.guarded_listener(move |this, _, window, cx| {
                                         this.apply_prompt_args(&s, &a, true, window, cx)
                                     }))
                                 })
@@ -827,7 +832,7 @@ impl AgentChat {
                             let s = slash.clone();
                             self.menu_row(i, i == self.mention_sel, busy, kids, cx)
                                 .when(!busy, |d| {
-                                    d.on_click(cx.listener(move |this, _, window, cx| {
+                                    d.on_click(cx.guarded_listener(move |this, _, window, cx| {
                                         this.pick_prompt(&s, window, cx)
                                     }))
                                 })
@@ -851,7 +856,7 @@ impl AgentChat {
                             ];
                             let name = s.name.clone();
                             self.menu_row(i, i == self.mention_sel, false, kids, cx)
-                                .on_click(cx.listener(move |this, _, window, cx| {
+                                .on_click(cx.guarded_listener(move |this, _, window, cx| {
                                     this.pick_skill(&name, window, cx)
                                 }))
                                 .into_any_element()

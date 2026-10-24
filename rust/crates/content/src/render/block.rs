@@ -252,8 +252,9 @@ impl Build<'_, '_> {
                     .iter()
                     .find(|(r, cur)| *cur && r.start < at && r.end > start)
             {
-                let s0 = r.start.max(start) - start;
-                let e0 = r.end.min(at) - start;
+                // Highlights can trail a text that just changed (a streaming reply).
+                let s0 = text.floor_char_boundary(r.start.max(start) - start);
+                let e0 = text.ceil_char_boundary(r.end.min(at) - start);
                 pieces = [
                     (text[..s0].to_string(), false),
                     (text[s0..e0].to_string(), true),

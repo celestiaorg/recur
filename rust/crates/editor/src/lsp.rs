@@ -261,7 +261,9 @@ impl SignatureState {
                         a[1].as_u64().unwrap_or(0) as usize,
                     );
                     if t > 0 {
-                        active_param = Some(utf16_range_to_bytes(&label, f, t));
+                        // A server can send a reversed range; `slice` makes it empty.
+                        let (f, t) = utf16_range_to_bytes(&label, f, t);
+                        active_param = Some((f, t.max(f)));
                     }
                 }
                 Some(Value::String(s)) => {
@@ -1066,6 +1068,13 @@ mod tests {
         let v = sig.view().unwrap();
         assert_eq!(v.active_param, Some((9, 14)));
         assert_eq!(v.counter, None);
+        let reversed = SignatureState {
+            data: json!({"signatures": [{"label": "f(\u{e9}, b)", "parameters": [{"label": [6, 2]}]}], "activeParameter": 0}),
+            active: 0,
+            pos: 0,
+        };
+        let (f, t) = reversed.view().unwrap().active_param.unwrap();
+        assert!(f <= t && "f(\u{e9}, b)".is_char_boundary(f) && "f(\u{e9}, b)".is_char_boundary(t));
     }
 
     #[test]

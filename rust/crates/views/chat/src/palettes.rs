@@ -1,6 +1,7 @@
 //! `StopPalette.svelte` (⌘⇧R: pick a running command to stop) and `CommandPrompts.svelte`
 //! (a bundle command's `prompts` form before it runs).
 
+use recur_ui::guard::Guarded;
 use std::collections::BTreeMap;
 
 use gpui_kit::base::input::InputState;
@@ -101,10 +102,10 @@ impl StopPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
-            cx.subscribe(
+            cx.guarded_subscribe(
                 &input,
                 |this, _, _: &gpui_kit::base::input::InputEvent, cx| {
                     this.clamp_sel(cx);
@@ -237,8 +238,12 @@ impl StopPalette {
     }
 }
 
-impl Render for StopPalette {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl StopPalette {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open(cx) {
             return div().into_any_element();
         }
@@ -331,7 +336,7 @@ impl Render for StopPalette {
                                     ),
                             )
                         })
-                        .on_mouse_move(cx.listener(move |p, ev: &MouseMoveEvent, _, cx| {
+                        .on_mouse_move(cx.guarded_listener(move |p, ev: &MouseMoveEvent, _, cx| {
                             if p.hover
                                 .allows(f32::from(ev.position.x), f32::from(ev.position.y))
                                 && p.sel != i
@@ -340,7 +345,7 @@ impl Render for StopPalette {
                                 cx.notify();
                             }
                         }))
-                        .on_click(cx.listener(move |p, _, _, cx| p.pick(i, cx)))
+                        .on_click(cx.guarded_listener(move |p, _, _, cx| p.pick(i, cx)))
                         .into_any_element()
                 });
             div()
@@ -383,8 +388,17 @@ impl Render for StopPalette {
         palette_scrim(window, panel)
             .id("stop-palette-bg")
             .occlude()
-            .on_mouse_down(MouseButton::Left, cx.listener(|p, _, _, cx| p.close(cx)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.guarded_listener(|p, _, _, cx| p.close(cx)),
+            )
             .into_any_element()
+    }
+}
+
+impl Render for StopPalette {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -463,14 +477,17 @@ impl CommandPrompts {
                         s.set_value(p.default.clone(), cx);
                         s
                     });
-                    subs.push(cx.subscribe(&select, move |this, _, ev: &SelectEvent, cx| {
-                        if let (SelectEvent::Change(v), Some(Field::Choice(_, cur))) =
-                            (ev, this.fields.get_mut(i))
-                        {
-                            *cur = v.clone();
-                            cx.notify();
-                        }
-                    }));
+                    subs.push(cx.guarded_subscribe(
+                        &select,
+                        move |this, _, ev: &SelectEvent, cx| {
+                            if let (SelectEvent::Change(v), Some(Field::Choice(_, cur))) =
+                                (ev, this.fields.get_mut(i))
+                            {
+                                *cur = v.clone();
+                                cx.notify();
+                            }
+                        },
+                    ));
                     Field::Choice(select, p.default.clone().into())
                 } else {
                     let masked = p.r#type == "password";
@@ -542,8 +559,12 @@ impl CommandPrompts {
     }
 }
 
-impl Render for CommandPrompts {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl CommandPrompts {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.is_open {
             return div().into_any_element();
         }
@@ -620,7 +641,9 @@ impl Render for CommandPrompts {
                     .id("cmd-cancel")
                     .cursor_pointer()
                     .child(text("Cancel").color(t.text).line_height(LineHeight::Normal))
-                    .on_click(cx.listener(|_, _, _, cx| cx.emit(CommandPromptsEvent::Cancel))),
+                    .on_click(
+                        cx.guarded_listener(|_, _, _, cx| cx.emit(CommandPromptsEvent::Cancel)),
+                    ),
             )
             .child(
                 div()
@@ -636,7 +659,7 @@ impl Render for CommandPrompts {
                             .color(t.on_amber)
                             .line_height(LineHeight::Normal),
                     )
-                    .on_click(cx.listener(|p, _, _, cx| p.submit(cx))),
+                    .on_click(cx.guarded_listener(|p, _, _, cx| p.submit(cx))),
             );
         let vh = f32::from(window.viewport_size().height);
         let panel = recur_ui::style::palette_panel(window, cx)
@@ -655,9 +678,15 @@ impl Render for CommandPrompts {
             .occlude()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|_, _, _, cx| cx.emit(CommandPromptsEvent::Cancel)),
+                cx.guarded_listener(|_, _, _, cx| cx.emit(CommandPromptsEvent::Cancel)),
             )
             .into_any_element()
+    }
+}
+
+impl Render for CommandPrompts {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

@@ -10,6 +10,7 @@ use recur_domain::Settings;
 use recur_editor::text::locale_compare;
 use recur_services::api::{GrammarInfo, ThemeInfo};
 use recur_ui::fonts::weight;
+use recur_ui::guard::Guarded;
 use recur_ui::style::card;
 use recur_ui::text::{InlineBox, LineHeight, TextStyled, span, text};
 use recur_ui::widgets::{settings_group, settings_groups};
@@ -254,7 +255,7 @@ impl SettingsView {
         );
         if has {
             let id = id.to_string();
-            t = t.on_click(cx.listener(move |this, _, _, cx| {
+            t = t.on_click(cx.guarded_listener(move |this, _, _, cx| {
                 let id = id.clone();
                 let save = this.patch(
                     false,

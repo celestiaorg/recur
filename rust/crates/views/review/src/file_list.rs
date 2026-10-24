@@ -6,6 +6,7 @@
 //! list lays itself out and paints open folder headers in a layer at their sticky positions
 //! (GPUI has no `position: sticky`).
 
+use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -37,6 +38,8 @@ use crate::tree_sticky::{StickyHeader, fade_hits_rows, sync_tree_sticky_fades};
 pub const TREE_ROW_H: f32 = 24.;
 /// `--tree-fade`.
 pub const TREE_FADE: f32 = 20.;
+/// How far beyond the viewport the list keeps rows mounted.
+const LIST_PAD_PX: f32 = 600.;
 /// A file row: `padding: 3px 10px` around a 12.5px × 1.35 line.
 pub const FILE_ROW_H: f32 = 3. + 12.5 * 1.35 + 3.;
 
@@ -348,7 +351,7 @@ impl ReviewFileList {
             .cursor_pointer()
             .text_color(hsla(t.text))
             .when_some(bg, |d, c| d.bg(hsla(c)))
-            .on_hover(cx.listener({
+            .on_hover(cx.guarded_listener({
                 let path = path.clone();
                 move |l, on: &bool, _, cx| {
                     let next = on.then(|| path.clone());
@@ -358,7 +361,7 @@ impl ReviewFileList {
                     }
                 }
             }))
-            .on_click(cx.listener({
+            .on_click(cx.guarded_listener({
                 let path = path.clone();
                 move |l, _, window, cx| {
                     if is_dir {
@@ -430,7 +433,7 @@ impl ReviewFileList {
                             t.cyan
                         })),
                 )
-                .on_click(cx.listener(move |l, _, window, cx| {
+                .on_click(cx.guarded_listener(move |l, _, window, cx| {
                     cx.stop_propagation();
                     if !is_dir {
                         l.jump_to_notes(&p2, window, cx);
@@ -538,8 +541,12 @@ fn fst(st: &str, dirty: bool, t: &Tokens) -> AnyElement {
         .into_any_element()
 }
 
-impl Render for ReviewFileList {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ReviewFileList {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let (rows, content_h) = self.layout();
         let by = self.by_path();
@@ -618,16 +625,31 @@ impl Render for ReviewFileList {
             fade_hits_rows(h.top + TREE_ROW_H, TREE_FADE, &others)
         });
 
+        // Only rows near the viewport mount; exact spacers keep every row's position (a few
+        // thousand rows laid out each frame cost seconds).
+        let (lo, hi) = (scroll - LIST_PAD_PX, scroll + view_h.max(0.) + LIST_PAD_PX);
+        let near = |r: &Row| r.top + r.height >= lo && r.top <= hi;
+        let first = rows.iter().position(near);
+        let last = rows.iter().rposition(near);
         let mut flow = div().relative().flex().flex_col().w_full();
-        for (i, r) in rows.iter().enumerate() {
-            if open_dirs.contains(&i) {
-                flow = flow.child(div().flex_none().h(px(TREE_ROW_H)));
-            } else {
-                flow = flow.child(self.row_el(r, &rows, None, &flags, &by, window, cx));
+        if let (Some(a), Some(b)) = (first, last) {
+            flow = flow.child(vgap(rows[a].top, window));
+            for (i, r) in rows.iter().enumerate().take(b + 1).skip(a) {
+                if open_dirs.binary_search(&i).is_ok() {
+                    flow = flow.child(div().flex_none().h(px(TREE_ROW_H)));
+                } else {
+                    flow = flow.child(self.row_el(r, &rows, None, &flags, &by, window, cx));
+                }
             }
+            flow = flow.child(vgap(content_h - (rows[b].top + rows[b].height), window));
+        } else {
+            flow = flow.child(vgap(content_h, window));
         }
-        // The header layer: non-stuck headers in tree order, then stuck ones deepest first.
-        let mut order: Vec<usize> = (0..open_dirs.len()).filter(|&k| !sticky[k].0).collect();
+        // The header layer: non-stuck headers in tree order, then stuck ones deepest first; a
+        // header out of reach stays unmounted like its rows.
+        let mut order: Vec<usize> = (0..open_dirs.len())
+            .filter(|&k| !sticky[k].0 && tops[k] + TREE_ROW_H >= lo && tops[k] <= hi)
+            .collect();
         let mut stuck: Vec<usize> = (0..open_dirs.len()).filter(|&k| sticky[k].0).collect();
         stuck.sort_by(|a, b| rows[open_dirs[*b]].depth.cmp(&rows[open_dirs[*a]].depth));
         order.extend(stuck);
@@ -705,5 +727,73 @@ impl Render for ReviewFileList {
                     .child(flow),
             )
             .child(probe)
+    }
+}
+
+impl Render for ReviewFileList {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::{AppContext as _, Entity, TestAppContext};
+
+    struct Host(Entity<ReviewFileList>);
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div()
+                .w(px(320.))
+                .h(px(400.))
+                .flex()
+                .flex_col()
+                .child(self.0.clone())
+        }
+    }
+
+    #[gpui::test]
+    fn a_long_list_mounts_only_the_rows_near_the_viewport(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+        });
+        let files: Vec<Rc<FileDiff>> = (0..2000)
+            .map(|i| {
+                Rc::new(FileDiff {
+                    path: format!("f{i:04}.rs"),
+                    status: "m".into(),
+                    ..FileDiff::default()
+                })
+            })
+            .collect();
+        let props = FileListProps {
+            files,
+            mode: FileListMode::Flat,
+            ..FileListProps::default()
+        };
+        let (host, cx) =
+            cx.add_window_view(move |_, cx| Host(cx.new(|_| ReviewFileList::new(props, None))));
+        cx.run_until_parked();
+        let row = |cx: &mut gpui::VisualTestContext, i: usize| {
+            let sel: &'static str = Box::leak(format!("fl-row:file:f{i:04}.rs").into_boxed_str());
+            cx.debug_bounds(sel)
+        };
+        assert!(row(cx, 0).is_some());
+        assert!(row(cx, 100).is_none(), "row 100 is far below the fold");
+        let list = host.read_with(cx, |h, _| h.0.clone());
+        let scroll = list.read_with(cx, |l, _| l.scroll.clone());
+        // The spacers keep the full height: the last row is reachable and where it belongs.
+        let max = f32::from(scroll.max_offset().y);
+        assert!((max - (2000. * FILE_ROW_H - 400.)).abs() < 1., "{max}");
+        scroll.set_offset(point(px(0.), px(-max)));
+        list.update(cx, |_, cx| cx.notify());
+        cx.run_until_parked();
+        let last = row(cx, 1999).expect("the last row mounts at the bottom");
+        assert!(row(cx, 0).is_none());
+        let body = cx.debug_bounds("fl-body").expect("list body");
+        assert!((f32::from(last.bottom()) - f32::from(body.bottom())).abs() < 1.);
     }
 }

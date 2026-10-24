@@ -10,6 +10,7 @@ use gpui_kit::{
 };
 use recur_engine::view::loops::{LoopInfo, PolicyInfo, loop_select_options, policy_select_options};
 use recur_services::api::FlagDimension;
+use recur_ui::guard::Guarded;
 use recur_ui::text::{Span, Text, TextStyled, span};
 use recur_ui::widgets::select::{Select, SelectEvent, SelectOption, TriggerStyle};
 use recur_ui::{IconName, Theme, icon};
@@ -122,7 +123,7 @@ impl ModelFlagsSelect {
             }
             s
         });
-        let sub = cx.subscribe(&select, |this: &mut Self, _, ev: &SelectEvent, cx| {
+        let sub = cx.guarded_subscribe(&select, |this: &mut Self, _, ev: &SelectEvent, cx| {
             let SelectEvent::Values(vs) = ev else { return };
             let had = flag_values(&this.selected);
             let mut next = this.selected.clone();
@@ -169,9 +170,15 @@ impl ModelFlagsSelect {
     }
 }
 
-impl Render for ModelFlagsSelect {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl ModelFlagsSelect {
+    fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
         div().flex_none().child(self.select.clone())
+    }
+}
+
+impl Render for ModelFlagsSelect {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -222,12 +229,12 @@ impl ModelPickers {
             })
         });
         let subs = vec![
-            cx.subscribe(&model_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&model_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
                 let SelectEvent::Change(r) = ev else { return };
                 let next = normalize_flags(&flags_for_model(&this.models, r), None);
                 cx.emit(PickerEvent::Model(r.to_string(), next));
             }),
-            cx.subscribe(&flags_select, |_, _, f: &FlagMap, cx| {
+            cx.guarded_subscribe(&flags_select, |_, _, f: &FlagMap, cx| {
                 cx.emit(PickerEvent::Flags(f.clone()))
             }),
         ];
@@ -302,8 +309,12 @@ impl ModelPickers {
     }
 }
 
-impl Render for ModelPickers {
-    fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl ModelPickers {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        _: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let has_dims = !flags_for_model(&self.models, &self.model).is_empty();
         let vw = f32::from(window.viewport_size().width);
         let max = 320f32.min(0.52 * vw);
@@ -328,6 +339,12 @@ impl Render for ModelPickers {
                         .child(self.flags_select.clone()),
                 )
             })
+    }
+}
+
+impl Render for ModelPickers {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -436,12 +453,12 @@ impl LoopPolicyPickers {
         let loop_select = mk("Loop", false, window, cx);
         let policy_select = mk("Policy", true, window, cx);
         let subs = vec![
-            cx.subscribe(&loop_select, |_, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&loop_select, |_, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     cx.emit(LoopPolicyEvent::Loop(v.to_string()));
                 }
             }),
-            cx.subscribe(&policy_select, |_, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&policy_select, |_, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     cx.emit(LoopPolicyEvent::Policy(v.to_string()));
                 }
@@ -512,8 +529,12 @@ impl LoopPolicyPickers {
     }
 }
 
-impl Render for LoopPolicyPickers {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl LoopPolicyPickers {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let mut row = div()
             .flex()
@@ -538,7 +559,7 @@ impl Render for LoopPolicyPickers {
                     .when(open, |d| d.bg(hsla(t.pane_2)))
                     .hover(|s| s.bg(hsla(t.pane_2)).text_color(hsla(t.muted)))
                     .child(icon(IconName::Info).size(px(14.)))
-                    .on_click(cx.listener(|p, _, _, cx| {
+                    .on_click(cx.guarded_listener(|p, _, _, cx| {
                         p.tip_open = !p.tip_open;
                         cx.notify();
                     })),
@@ -620,6 +641,12 @@ impl Render for LoopPolicyPickers {
             row = row.child(tip);
         }
         row
+    }
+}
+
+impl Render for LoopPolicyPickers {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

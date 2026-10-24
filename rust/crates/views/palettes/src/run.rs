@@ -9,6 +9,7 @@ use gpui_kit::{
 };
 use recur_domain::RunCommand;
 use recur_ui::IconName;
+use recur_ui::guard::Guarded;
 use recur_ui::logic::hover_gate::HoverGate;
 use recur_ui::style::{palette_empty, palette_row, palette_sub, style_text_input};
 use recur_view_core::AppState;
@@ -37,10 +38,10 @@ impl RunPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
-            cx.subscribe(&input, |this, _, _: &InputEvent, cx| {
+            cx.guarded_subscribe(&input, |this, _, _: &InputEvent, cx| {
                 this.query_changed(cx);
                 cx.notify();
             }),
@@ -206,8 +207,12 @@ impl RunPalette {
     }
 }
 
-impl Render for RunPalette {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl RunPalette {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open(cx) {
             return div().into_any_element();
         }
@@ -274,11 +279,11 @@ impl Render for RunPalette {
                         let name = name.clone();
                         move || format!("run-pin:{name}")
                     })
-                    .on_hover(cx.listener(move |p, h: &bool, _, cx| {
+                    .on_hover(cx.guarded_listener(move |p, h: &bool, _, cx| {
                         p.pin_hover = h.then(|| hover_name.clone());
                         cx.notify();
                     }))
-                    .on_click(cx.listener(move |p, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |p, _, _, cx| {
                         cx.stop_propagation();
                         p.make_default(&pin_name, cx);
                     })),
@@ -287,7 +292,7 @@ impl Render for RunPalette {
                     row = row.child(chrome::digit_key(idx + 1, on, true, cx));
                 }
                 rows.push(
-                    row.on_mouse_move(cx.listener(move |p, ev: &MouseMoveEvent, _, cx| {
+                    row.on_mouse_move(cx.guarded_listener(move |p, ev: &MouseMoveEvent, _, cx| {
                         if p.hover
                             .allows(f32::from(ev.position.x), f32::from(ev.position.y))
                             && p.sel != idx
@@ -296,7 +301,7 @@ impl Render for RunPalette {
                             cx.notify();
                         }
                     }))
-                    .on_click(cx.listener(move |p, _, _, cx| p.run(idx, cx)))
+                    .on_click(cx.guarded_listener(move |p, _, _, cx| p.run(idx, cx)))
                     .into_any_element(),
                 );
             }
@@ -334,5 +339,11 @@ impl Render for RunPalette {
             window,
             cx,
         )
+    }
+}
+
+impl Render for RunPalette {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

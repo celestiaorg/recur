@@ -1,6 +1,7 @@
 //! The Commits pane: every commit (newest first) with its verified and check marks, and one
 //! commit's header and windowed diff.
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -101,7 +102,7 @@ impl PrDetail {
                 } else {
                     icon(IconName::Copy).size(px(12.))
                 })
-                .on_click(cx.listener(move |d, _, _, cx| {
+                .on_click(cx.guarded_listener(move |d, _, _, cx| {
                     cx.stop_propagation();
                     d.copied.copy(&s2, |d: &mut PrDetail| &mut d.copied, cx);
                     cx.notify();
@@ -273,7 +274,7 @@ impl PrDetail {
                                     recur_ui::style::button_label("← all commits", 11., 400.)
                                         .family(Family::Mono),
                                 )
-                                .on_click(cx.listener(|d, _, _, cx| {
+                                .on_click(cx.guarded_listener(|d, _, _, cx| {
                                     d.commit_idx = None;
                                     d.discard_commit_diff();
                                     cx.notify();

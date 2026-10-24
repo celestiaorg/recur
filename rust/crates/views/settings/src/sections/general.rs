@@ -4,6 +4,7 @@ use gpui_kit::{
     AnyElement, Context, InteractiveElement, IntoElement, MouseButton, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, Window, div, px,
 };
+use recur_ui::guard::Guarded;
 use recur_ui::text::span;
 use recur_ui::widgets::{settings_group, settings_groups};
 
@@ -77,7 +78,7 @@ impl SettingsView {
                         false,
                         cx,
                     )
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                         this.patch(false, |s| s.simplify = Some(!simplify), cx)
                             .detach();
                     })),
@@ -157,9 +158,13 @@ impl SettingsView {
                 b = b
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(|this, _, _, _| this.skip_prefix_commit = true),
+                        cx.guarded_listener(|this, _, _, _| this.skip_prefix_commit = true),
                     )
-                    .on_click(cx.listener(move |this, _, _, cx| this.pick_branch_prefix(kind, cx)));
+                    .on_click(
+                        cx.guarded_listener(move |this, _, _, cx| {
+                            this.pick_branch_prefix(kind, cx)
+                        }),
+                    );
             }
             let tip = if kind == "github" {
                 Some(if login.is_empty() {
@@ -288,7 +293,7 @@ impl SettingsView {
                                         false,
                                         cx,
                                     )
-                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                                         this.patch(false, |s| s.queue_follow_ups = !queue, cx)
                                             .detach()
                                     })),
@@ -320,7 +325,7 @@ impl SettingsView {
                                     false,
                                     cx,
                                 )
-                                .on_click(cx.listener(move |this, _, _, cx| {
+                                .on_click(cx.guarded_listener(move |this, _, _, cx| {
                                     this.patch(false, |s| s.prevent_sleep_while_agents_run = !sleep, cx)
                                         .detach()
                                 })),

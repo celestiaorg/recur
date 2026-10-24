@@ -470,8 +470,12 @@ impl TitleTooltip {
     }
 }
 
-impl Render for TitleTooltip {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl TitleTooltip {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let viewport = window.viewport_size();
         if (self.viewport.is_some_and(|v| v != viewport) || !window.is_window_active())
             && (self.core.visible || self.core.pending.is_some())
@@ -546,6 +550,12 @@ impl Render for TitleTooltip {
             root = root.child(self.tip(c, window, cx));
         }
         root
+    }
+}
+
+impl Render for TitleTooltip {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        crate::guard::view(self, window, cx, Self::render_view)
     }
 }
 

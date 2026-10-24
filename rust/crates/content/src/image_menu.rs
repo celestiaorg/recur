@@ -5,6 +5,7 @@ use gpui_kit::{
     InteractiveElement, IntoElement, KeyDownEvent, MouseButton, ParentElement, Render,
     StatefulInteractiveElement, Styled, Window, div, px,
 };
+use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::style::anchored_at;
 use recur_ui::{TextStyled, Theme, rgba};
@@ -84,8 +85,8 @@ impl ImageContextMenu {
     }
 }
 
-impl Render for ImageContextMenu {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ImageContextMenu {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let item = div()
             .id("att-ctx-copy")
@@ -99,7 +100,7 @@ impl Render for ImageContextMenu {
             .text_color(t.text)
             .cursor_pointer()
             .hover(move |s| s.bg(t.pane_2))
-            .on_click(cx.listener(|m, _, _, cx| m.copy(cx)))
+            .on_click(cx.guarded_listener(|m, _, _, cx| m.copy(cx)))
             .child(
                 div()
                     .flex_1()
@@ -124,13 +125,13 @@ impl Render for ImageContextMenu {
             .inset_0()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|_, _, _, cx| cx.emit(ImageMenuEvent::Close)),
+                cx.guarded_listener(|_, _, _, cx| cx.emit(ImageMenuEvent::Close)),
             )
             .on_mouse_down(
                 MouseButton::Right,
-                cx.listener(|_, _, _, cx| cx.emit(ImageMenuEvent::Close)),
+                cx.guarded_listener(|_, _, _, cx| cx.emit(ImageMenuEvent::Close)),
             )
-            .capture_key_down(cx.listener(|_, e: &KeyDownEvent, _, cx| {
+            .capture_key_down(cx.guarded_listener(|_, e: &KeyDownEvent, _, cx| {
                 if e.keystroke.key == "escape" {
                     cx.stop_propagation();
                     cx.emit(ImageMenuEvent::Close);
@@ -143,6 +144,12 @@ impl Render for ImageContextMenu {
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                     .child(menu),
             ))
+    }
+}
+
+impl Render for ImageContextMenu {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

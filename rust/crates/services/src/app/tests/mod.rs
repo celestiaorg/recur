@@ -178,7 +178,9 @@ impl Fx {
             .id
     }
 
-    /// Go `waitWorkspaceReady`: the background `git worktree add` landed.
+    /// Go `waitWorkspaceReady`: the background `git worktree add` landed and the allocation
+    /// finished, including its tail that dispatches a run stamped meanwhile; a test that
+    /// stamps one before then races that dispatch.
     pub async fn wait_ready(&self, id: &str) -> Workspace {
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         while tokio::time::Instant::now() < deadline {
@@ -186,7 +188,10 @@ impl Fx {
                 if !ws.last_error.is_empty() && ws.worktree_path.is_empty() {
                     panic!("workspace create failed: {}", ws.last_error);
                 }
-                if !ws.worktree_path.is_empty() && ws.phase != "creating" {
+                if !ws.worktree_path.is_empty()
+                    && ws.phase != "creating"
+                    && !self.svc.engine.creating_in_flight(id)
+                {
                     return ws;
                 }
             }

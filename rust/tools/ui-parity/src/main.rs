@@ -654,3 +654,33 @@ fn main() -> Result<()> {
         other => bail!("unknown command {other}; use render, diff or check"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Input restarts the cursor blink on both sides, and the scene samples it `wait` later: WebKit
+    /// on real timers (plus its capture latency), the renderer on a simulated clock. A sample at a
+    /// toggle (every `BLINK_INTERVAL` after the input) shows the cursor on whichever side fired
+    /// first, so samples keep a quarter interval clear of the next toggle and of any earlier one.
+    #[test]
+    fn terminal_scenes_sample_between_blink_toggles() {
+        let interval = recur_terminal_view::BLINK_INTERVAL.as_millis() as u64;
+        for spec in all_specs().iter().filter(|s| s.name.contains("terminal")) {
+            let Some(last_input) = spec.steps.iter().rposition(|s| !matches!(s, Step::Wait(_)))
+            else {
+                continue;
+            };
+            let wait: u64 = spec.steps[last_input..]
+                .iter()
+                .map(|s| if let Step::Wait(ms) = s { *ms } else { 0 })
+                .sum();
+            let into = wait % interval;
+            assert!(
+                into <= interval * 3 / 4 && (wait < interval || into >= interval / 4),
+                "{} samples {wait}ms after input, {into}ms into a {interval}ms blink phase",
+                spec.name
+            );
+        }
+    }
+}

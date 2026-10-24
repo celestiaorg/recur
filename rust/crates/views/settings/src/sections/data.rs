@@ -6,6 +6,7 @@ use gpui_kit::{
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_ui::fonts::weight;
+use recur_ui::guard::Guarded;
 use recur_ui::style::button_label;
 use recur_ui::text::{TextStyled, span, text};
 use recur_ui::widgets::ToastKind;
@@ -27,7 +28,7 @@ impl SettingsView {
             danger_btn("clear-all", false, false, cx)
                 .debug_selector(|| "btn:Clear all data".into())
                 .hover(move |s| s.border_color(Hsla::from(t.line_bright)))
-                .on_click(cx.listener(|this, _, _, cx| {
+                .on_click(cx.guarded_listener(|this, _, _, cx| {
                     this.confirming_clear = true;
                     cx.notify();
                 }))
@@ -56,7 +57,9 @@ impl SettingsView {
                             danger_btn("clear-yes", true, clearing, cx)
                                 .debug_selector(|| "btn:Yes, clear all".into())
                                 .when(!clearing, |d| {
-                                    d.on_click(cx.listener(|this, _, _, cx| this.clear_all(cx)))
+                                    d.on_click(
+                                        cx.guarded_listener(|this, _, _, cx| this.clear_all(cx)),
+                                    )
                                 })
                                 .child(button_label(
                                     if clearing {
@@ -72,7 +75,7 @@ impl SettingsView {
                             tbtn_label("clear-cancel", "Cancel", clearing, cx)
                                 .debug_selector(|| "btn:Cancel".into())
                                 .when(!clearing, |d| {
-                                    d.on_click(cx.listener(|this, _, _, cx| {
+                                    d.on_click(cx.guarded_listener(|this, _, _, cx| {
                                         this.confirming_clear = false;
                                         cx.notify();
                                     }))
@@ -93,7 +96,7 @@ impl SettingsView {
                     .child(ctrl().child(
                         tbtn_label("reveal-logs", "Reveal in Finder", false, cx)
                             .debug_selector(|| "btn:Reveal in Finder".into())
-                            .on_click(cx.listener(|this, _, _, cx| this.reveal_logs(cx))),
+                            .on_click(cx.guarded_listener(|this, _, _, cx| this.reveal_logs(cx))),
                     )),
                 Row::new()
                     .danger()

@@ -3,6 +3,7 @@
 //! they handle in [`ChatHooks`], subscribe to [`ChatEvent`] (the callbacks), and read the
 //! draft back (`bind:input` / `bind:attachments`).
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
 use std::time::Duration;
@@ -564,12 +565,12 @@ impl AgentChat {
         } else {
             TranscriptUiCache::global(cx).claim(&props.reset_key)
         };
-        let mut subs = vec![cx.observe(&state, |this: &mut Self, _, cx| {
+        let mut subs = vec![cx.guarded_observe(&state, |this: &mut Self, _, cx| {
             this.sync_mentions_from_stores(cx);
             cx.notify();
         })];
         subs.push(
-            cx.subscribe(&state, |_: &mut Self, _, ev: &ShellEvent, cx| {
+            cx.guarded_subscribe(&state, |_: &mut Self, _, ev: &ShellEvent, cx| {
                 if let ShellEvent::WorkspaceGone(_) = ev {
                     cx.notify();
                 }
@@ -1978,7 +1979,7 @@ impl AgentChat {
                 cx,
             )
         });
-        let sub = cx.subscribe(&lb, |_, _, ev: &recur_content::LightboxEvent, cx| {
+        let sub = cx.guarded_subscribe(&lb, |_, _, ev: &recur_content::LightboxEvent, cx| {
             let recur_content::LightboxEvent::Toast { error, message } = ev;
             recur_view_core::toast(
                 if *error {
@@ -2018,7 +2019,7 @@ impl AgentChat {
                 cx,
             )
         });
-        let sub = cx.subscribe(
+        let sub = cx.guarded_subscribe(
             &menu,
             |this: &mut Self, _, ev: &recur_content::image_menu::ImageMenuEvent, cx| {
                 use recur_content::image_menu::ImageMenuEvent;

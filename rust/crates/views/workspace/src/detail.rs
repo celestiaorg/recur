@@ -3,6 +3,7 @@
 //! keeps the previous one mounted as a parked hot shell, starts a PR's chat host, and leaves
 //! a stale selection for the Briefing.
 
+use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
 
 use gpui_kit::{
@@ -37,10 +38,10 @@ impl WorkspaceDetail {
         // Subscribed before any WorkspaceView, so the hoist bookkeeping api.ts did ahead of its
         // `onChatsChanged` listeners runs first.
         let subs = vec![
-            cx.subscribe(&vcx.state, |_, _, ev: &AppliedEvent, cx| {
+            cx.guarded_subscribe(&vcx.state, |_, _, ev: &AppliedEvent, cx| {
                 on_hoist(&ev.0, cx)
             }),
-            cx.observe_in(&vcx.state, window, |d, _, window, cx| d.sync(window, cx)),
+            cx.guarded_observe_in(&vcx.state, window, |d, _, window, cx| d.sync(window, cx)),
         ];
         let mut d = WorkspaceDetail {
             vcx: vcx.clone(),
@@ -219,8 +220,12 @@ fn on_hoist(ev: &AppEvent, cx: &mut gpui_kit::App) {
     });
 }
 
-impl Render for WorkspaceDetail {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl WorkspaceDetail {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let bound = self.bound_id(cx);
         let mut root = div()
             .id("v-detail")
@@ -238,7 +243,8 @@ impl Render for WorkspaceDetail {
             if *id == bound {
                 root = root.child(div().flex_1().min_h_0().flex().flex_col().child(v));
             } else {
-                // A parked shell keeps running its effects (queues, seeds, live events).
+                // A parked shell keeps running its effects (queues, seeds, live events); its layout
+                // is cached until it notifies.
                 v.update(cx, |v, cx| v.sync(window, cx));
                 root = root.child(
                     div()
@@ -247,10 +253,16 @@ impl Render for WorkspaceDetail {
                         .left_0()
                         .size_full()
                         .invisible()
-                        .child(v),
+                        .child(v.cached(gpui_kit::StyleRefinement::default().size_full())),
                 );
             }
         }
         root
+    }
+}
+
+impl Render for WorkspaceDetail {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

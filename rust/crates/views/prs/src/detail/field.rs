@@ -6,6 +6,7 @@ use gpui_kit::{
     App, AppContext as _, Context, Entity, Focusable as _, KeystrokeEvent, SharedString,
     Subscription, Window,
 };
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 
 use recur_view_chat::suggest::{SetFn, SuggestAttach, attach_emoji, attach_user_mentions};
@@ -48,7 +49,7 @@ impl Field {
         });
         let emoji = attach_emoji(&area, Some(on_set.clone()), window, cx);
         let mentions = attach_user_mentions(&area, state.clone(), Some(on_set), window, cx);
-        let sub = cx.subscribe(&area, move |h, _, ev: &InputEvent, cx| {
+        let sub = cx.guarded_subscribe(&area, move |h, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 on_change(h, cx);
                 cx.notify();

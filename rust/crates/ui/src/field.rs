@@ -2,6 +2,7 @@
 //! since focus is committed (Enter or blur), `focus` / `blur`, and Svelte's one-way
 //! `value={expr}` (the field takes the expression's value whenever the expression changes).
 
+use crate::guard::Guarded;
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::{AppContext as _, Context, Entity, SharedString, Subscription, Window};
 
@@ -47,7 +48,7 @@ impl Field {
             }
             s
         });
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &input,
             window,
             move |view: &mut V, _, ev: &InputEvent, window, cx| {

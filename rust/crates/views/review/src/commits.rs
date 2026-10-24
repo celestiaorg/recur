@@ -1,6 +1,7 @@
 //! `CommitsView.svelte` and `CommitRow.svelte`: the commit list (uncommitted work first), and
 //! the commit header Files changed shows for a commit scope. `.commit*` rules from `_prs.scss`.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::Duration;
@@ -543,8 +544,8 @@ impl CommitsView {
     }
 }
 
-impl Render for CommitsView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl CommitsView {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let vs = js::trim(&self.base_label).to_string();
         let show_working = self.working_dirty_count > 0;
@@ -618,7 +619,9 @@ impl Render for CommitsView {
                     )
                     .child(chash("—", &t))
                     .child(chevron(group, &t))
-                    .on_click(cx.listener(|_, _, _, cx| cx.emit(CommitsEvent::OpenWorking))),
+                    .on_click(
+                        cx.guarded_listener(|_, _, _, cx| cx.emit(CommitsEvent::OpenWorking)),
+                    ),
                 );
             }
             for (i, c) in self.commits.clone().iter().enumerate() {
@@ -680,5 +683,11 @@ impl Render for CommitsView {
             .flex_col()
             .bg(hsla(t.bg))
             .child(wrap)
+    }
+}
+
+impl Render for CommitsView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

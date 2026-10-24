@@ -18,6 +18,7 @@ use recur_engine::view::loop_cockpit::{
 };
 use recur_engine::view::mentions::strip_attachment_markers;
 use recur_ui::fonts::Family;
+use recur_ui::guard::Guarded;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{IconName, Theme, icon, motion};
 use recur_view_core::format::format_elapsed;
@@ -404,7 +405,7 @@ impl AgentChat {
                             .child(
                                 recur_ui::style::button_label("Retry", 12., 600.).color(t.on_amber),
                             )
-                            .on_click(cx.listener(|this, _, _, cx| this.retry(cx))),
+                            .on_click(cx.guarded_listener(|this, _, _, cx| this.retry(cx))),
                     )),
             );
         }
@@ -521,7 +522,7 @@ impl AgentChat {
                             .text_color(hsla(t.cyan))
                             .hover(|s| s.text_color(hsla(t.text)))
                             .child(text(done.pr_label.clone()).nowrap())
-                            .on_click(cx.listener(move |this, _, _, cx| {
+                            .on_click(cx.guarded_listener(move |this, _, _, cx| {
                                 this.state.update(cx, |s, cx| s.open_pr(&pid, cx))
                             })),
                     ),
@@ -687,7 +688,7 @@ impl AgentChat {
                 .hover(|s| s.text_color(hsla(t.text)))
                 // `.turn-end { font-variant-numeric: tabular-nums }` reaches the buttons.
                 .child(text(s).tabular().nowrap())
-                .on_click(cx.listener(move |this, _, _, cx| f(this, cx)))
+                .on_click(cx.guarded_listener(move |this, _, _, cx| f(this, cx)))
                 .into_any_element()
         };
         let sep = || {
@@ -923,7 +924,7 @@ impl AgentChat {
                         .text_color(hsla(if copied { GREEN } else { t.text }))
                 })
                 .child(ic)
-                .on_click(cx.listener(move |this, _, window, cx| {
+                .on_click(cx.guarded_listener(move |this, _, window, cx| {
                     cx.stop_propagation();
                     f(this, window, cx)
                 })),
@@ -1073,11 +1074,13 @@ impl AgentChat {
                                                     })
                                                 })
                                                 .child(icon(IconName::Trash).size(px(13.)))
-                                                .on_click(cx.listener(move |this, _, _, cx| {
-                                                    if !busy {
-                                                        this.delete_digest_note(&fid, &nid, cx);
-                                                    }
-                                                })),
+                                                .on_click(cx.guarded_listener(
+                                                    move |this, _, _, cx| {
+                                                        if !busy {
+                                                            this.delete_digest_note(&fid, &nid, cx);
+                                                        }
+                                                    },
+                                                )),
                                         )),
                                 );
                             }
@@ -1132,7 +1135,7 @@ impl AgentChat {
                 })
                 .child(icon(ic).size(px(13.)))
                 .child(text(s.to_string()).line_height(LineHeight::Normal).nowrap())
-                .on_click(cx.listener(move |this, _, window, cx| {
+                .on_click(cx.guarded_listener(move |this, _, window, cx| {
                     if !busy {
                         f(this, window, cx)
                     }
@@ -1229,8 +1232,8 @@ impl AgentChat {
                     .line_height(relative(1.5))
                     .text_color(hsla(t.text))
                     .when(busy, |d| d.opacity(0.55))
-                    .on_key_down(
-                        cx.listener(move |this, ev: &gpui_kit::KeyDownEvent, _, cx| {
+                    .on_key_down(cx.guarded_listener(
+                        move |this, ev: &gpui_kit::KeyDownEvent, _, cx| {
                             let k = &ev.keystroke;
                             if k.key == "enter" && (k.modifiers.platform || k.modifiers.control) {
                                 cx.stop_propagation();
@@ -1239,8 +1242,8 @@ impl AgentChat {
                                 cx.stop_propagation();
                                 this.cancel_digest_compose(cx);
                             }
-                        }),
-                    )
+                        },
+                    ))
                     .child(gpui_kit::base::input::Textarea::new(&input)),
             )
             .child(
@@ -1268,10 +1271,12 @@ impl AgentChat {
                             .items_center()
                             .gap(px(6.))
                             .child(btn("digest-cancel", "Cancel", false, busy).on_click(
-                                cx.listener(|this, _, _, cx| this.cancel_digest_compose(cx)),
+                                cx.guarded_listener(|this, _, _, cx| {
+                                    this.cancel_digest_compose(cx)
+                                }),
                             ))
                             .child(btn("digest-save", "Save", true, busy || empty).on_click(
-                                cx.listener(move |this, _, _, cx| {
+                                cx.guarded_listener(move |this, _, _, cx| {
                                     this.submit_digest_comment(&f2, cx)
                                 }),
                             )),
@@ -1355,7 +1360,9 @@ impl AgentChat {
                     ),
                 )
                 .child(text(summary).line_height(LineHeight::Scale(1.45)).nowrap())
-                .on_click(cx.listener(move |this, _, _, cx| this.toggle_group(start, open, cx))),
+                .on_click(
+                    cx.guarded_listener(move |this, _, _, cx| this.toggle_group(start, open, cx)),
+                ),
             self.props.font_size,
             1.45,
             2. + (line - 12.) / 2. + 12.,
@@ -1576,7 +1583,7 @@ impl AgentChat {
                             } else {
                                 icon(IconName::Copy).size(px(13.))
                             })
-                            .on_click(cx.listener(move |this, _, _, cx| {
+                            .on_click(cx.guarded_listener(move |this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.copy_text(plain.clone(), cx);
                                 this.mark_copied(None, Some(key.clone()), cx);
@@ -1651,7 +1658,7 @@ impl AgentChat {
                                 .line_height(LineHeight::Scale(1.))
                                 .nowrap(),
                         )
-                        .on_click(cx.listener(move |_, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |_, _, _, cx| {
                             cx.emit(ChatEvent::RemoveQueued(pid.clone()))
                         })),
                 )),

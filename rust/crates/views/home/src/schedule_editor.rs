@@ -2,6 +2,7 @@
 //! `AppState::schedule_editor`. It shares New workspace's chrome; a save bumps
 //! `schedulesVersion` so the lists refresh.
 
+use recur_ui::guard::Guarded;
 use std::time::Duration;
 
 use gpui_kit::base::input::{InputEvent, InputState, Textarea, TextareaState};
@@ -340,10 +341,10 @@ impl ScheduleEditor {
         model_pickers.update(cx, |m, cx| m.set_trigger_style(ghost.clone(), cx));
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
-            cx.subscribe(&prompt, |this, area, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&prompt, |this, area, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change)
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -351,7 +352,7 @@ impl ScheduleEditor {
                     cx.notify();
                 }
             }),
-            cx.subscribe(&cron, |this, f, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&cron, |this, f, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change)
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -359,7 +360,7 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&date, |this, f, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&date, |this, f, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change)
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -367,7 +368,7 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&time, |this, f, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&time, |this, f, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change)
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -375,12 +376,12 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&repo_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&repo_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.choose_project(v, cx);
                 }
             }),
-            cx.subscribe(&branch_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&branch_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -388,7 +389,7 @@ impl ScheduleEditor {
                     cx.notify();
                 }
             }),
-            cx.subscribe(&repeat_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&repeat_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -396,7 +397,7 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&zone_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&zone_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -404,12 +405,12 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&mode_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&mode_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.pick_mode(ChatMode::from_key(v), cx);
                 }
             }),
-            cx.subscribe(&loop_pickers, |this, _, ev: &LoopPolicyEvent, cx| {
+            cx.guarded_subscribe(&loop_pickers, |this, _, ev: &LoopPolicyEvent, cx| {
                 if let Some(d) = this.draft.as_mut() {
                     match ev {
                         LoopPolicyEvent::Loop(id) => d.loop_id = id.clone(),
@@ -418,7 +419,7 @@ impl ScheduleEditor {
                 }
                 cx.notify();
             }),
-            cx.subscribe(&model_pickers, |this, _, ev: &PickerEvent, cx| {
+            cx.guarded_subscribe(&model_pickers, |this, _, ev: &PickerEvent, cx| {
                 if let Some(d) = this.draft.as_mut() {
                     match ev {
                         PickerEvent::Model(r, f) => {
@@ -1090,8 +1091,12 @@ impl ScheduleEditor {
     }
 }
 
-impl Render for ScheduleEditor {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ScheduleEditor {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let Some(d) = self.draft.clone() else {
             return div().into_any_element();
         };
@@ -1122,11 +1127,11 @@ impl Render for ScheduleEditor {
                     .ml_auto()
                     .flex_none()
                     .cursor_pointer()
-                    .on_hover(cx.listener(|m, h: &bool, _, cx| {
+                    .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| {
                         m.hover_x = *h;
                         cx.notify();
                     }))
-                    .on_click(cx.listener(|m, _, window, cx| m.close(window, cx)))
+                    .on_click(cx.guarded_listener(|m, _, window, cx| m.close(window, cx)))
                     .child(nt_esc_hint(self.hover_x, window, cx)),
             );
 
@@ -1169,7 +1174,7 @@ impl Render for ScheduleEditor {
                         cx,
                     )
                     .debug_selector(|| "inp:Date".into())
-                    .on_hover(cx.listener(|m, h: &bool, _, cx| m.hover(*h, "date", cx))),
+                    .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| m.hover(*h, "date", cx))),
                 )
                 .child(
                     sc_in(
@@ -1182,7 +1187,7 @@ impl Render for ScheduleEditor {
                         cx,
                     )
                     .debug_selector(|| "inp:Time".into())
-                    .on_hover(cx.listener(|m, h: &bool, _, cx| m.hover(*h, "time", cx))),
+                    .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| m.hover(*h, "time", cx))),
                 );
         } else {
             // `.sc-cron { width: 24ch }` in the mono face, padding included (`border-box`).
@@ -1198,7 +1203,7 @@ impl Render for ScheduleEditor {
                     cx,
                 )
                 .debug_selector(|| "inp:Cron expression".into())
-                .on_hover(cx.listener(|m, h: &bool, _, cx| m.hover(*h, "cron", cx))),
+                .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| m.hover(*h, "cron", cx))),
             );
             let on = self.cron_help;
             let ring = recur_ui::style::is_focus_visible(&self.help_focus, window);
@@ -1218,7 +1223,7 @@ impl Render for ScheduleEditor {
                     .text_color(Hsla::from(if lit { t.muted } else { t.faint }))
                     .when(lit, |d| d.bg(Hsla::from(t.pane_2)))
                     .hover(move |s| s.bg(Hsla::from(t.pane_2)).text_color(Hsla::from(t.muted)))
-                    .on_click(cx.listener(|m, _, _, cx| {
+                    .on_click(cx.guarded_listener(|m, _, _, cx| {
                         m.cron_help = !m.cron_help;
                         cx.notify();
                     }))
@@ -1265,7 +1270,7 @@ impl Render for ScheduleEditor {
             foot = foot.child(self.model_pickers.clone());
         }
         let on = d.simplify.unwrap_or(true);
-        let toggle = cx.listener(|m: &mut Self, _: &gpui_kit::ClickEvent, _, cx| {
+        let toggle = cx.guarded_listener(|m: &mut Self, _: &gpui_kit::ClickEvent, _, cx| {
             if let Some(d) = m.draft.as_mut() {
                 d.simplify = Some(!d.simplify.unwrap_or(true));
             }
@@ -1322,7 +1327,7 @@ impl Render for ScheduleEditor {
             )
         };
         if can {
-            go = go.on_click(cx.listener(|m, _, window, cx| m.submit(window, cx)));
+            go = go.on_click(cx.guarded_listener(|m, _, window, cx| m.submit(window, cx)));
         }
         if recur_ui::style::is_focus_visible(&self.go_focus, window) {
             go = go.child(outline(2., 2., 8., 0., t.amber));
@@ -1362,9 +1367,15 @@ impl Render for ScheduleEditor {
             .occlude()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|m, _, window, cx| m.close(window, cx)),
+                cx.guarded_listener(|m, _, window, cx| m.close(window, cx)),
             )
             .into_any_element()
+    }
+}
+
+impl Render for ScheduleEditor {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

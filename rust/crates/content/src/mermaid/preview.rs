@@ -2,6 +2,7 @@
 //! drawing (vectors and labels re-rasterize at the new size, as the SVG's width/height do),
 //! the camera persists per path, and find pans to a match.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 use std::ops::Range;
 use std::rc::Rc;
@@ -307,7 +308,7 @@ impl MermaidPreview {
             .when(!last, |d| d.border_r_1().border_color(t.line))
             .when(!disabled, |d| {
                 d.hover(move |s| s.bg(t.pane_2).border_color(t.line_bright))
-                    .on_click(cx.listener(move |p, _, _, cx| on(p, cx)))
+                    .on_click(cx.guarded_listener(move |p, _, _, cx| on(p, cx)))
             })
             .when(disabled, |d| d.opacity(0.35))
             .child(glyph);
@@ -329,7 +330,7 @@ impl MermaidPreview {
             .border_r_1()
             .border_color(t.line)
             .hover(move |s| s.bg(t.pane_2).border_color(t.line_bright))
-            .on_click(cx.listener(|p, _, _, cx| p.reset_view(cx)))
+            .on_click(cx.guarded_listener(|p, _, _, cx| p.reset_view(cx)))
             .child(
                 recur_ui::text(pct)
                     .mono()
@@ -386,8 +387,12 @@ impl MermaidPreview {
 
 impl gpui_kit::EventEmitter<DiagramChanged> for MermaidPreview {}
 
-impl Render for MermaidPreview {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl MermaidPreview {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let message = |label: String, error: bool| {
             let color = if error {
@@ -486,7 +491,7 @@ impl Render for MermaidPreview {
             })
             .child(measure)
             .when(!hidden, |d| d.children(stage))
-            .on_scroll_wheel(cx.listener(|p, e: &ScrollWheelEvent, window, cx| {
+            .on_scroll_wheel(cx.guarded_listener(|p, e: &ScrollWheelEvent, window, cx| {
                 if !p.interactive() {
                     return;
                 }
@@ -501,7 +506,7 @@ impl Render for MermaidPreview {
             }))
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|p, e: &MouseDownEvent, _, cx| {
+                cx.guarded_listener(|p, e: &MouseDownEvent, _, cx| {
                     if !p.interactive() {
                         return;
                     }
@@ -513,7 +518,7 @@ impl Render for MermaidPreview {
                     cx.notify();
                 }),
             )
-            .on_mouse_move(cx.listener(|p, e: &MouseMoveEvent, _, cx| {
+            .on_mouse_move(cx.guarded_listener(|p, e: &MouseMoveEvent, _, cx| {
                 if let Some((o, tx, ty)) = p.drag {
                     p.tx = tx + f32::from(e.position.x - o.x);
                     p.ty = ty + f32::from(e.position.y - o.y);
@@ -522,7 +527,7 @@ impl Render for MermaidPreview {
             }))
             .on_mouse_up(
                 MouseButton::Left,
-                cx.listener(|p, _: &MouseUpEvent, _, cx| {
+                cx.guarded_listener(|p, _: &MouseUpEvent, _, cx| {
                     if p.drag.take().is_some() {
                         cx.notify();
                     }
@@ -539,5 +544,11 @@ impl Render for MermaidPreview {
         }
         let _ = point(px(0.), px(0.));
         root
+    }
+}
+
+impl Render for MermaidPreview {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

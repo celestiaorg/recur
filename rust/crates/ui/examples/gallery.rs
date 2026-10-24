@@ -11,6 +11,7 @@ use gpui_kit::{
     div, point, prelude::FluentBuilder, px, size,
 };
 use recur_ui::gallery::{self, SceneSpec};
+use recur_ui::guard::Guarded;
 use recur_ui::style::{Tbtn, TbtnSize, body, button_label, tbtn, window_root};
 use recur_ui::theme::{Theme, ThemeId};
 use recur_ui::widgets::scroll_area;
@@ -35,8 +36,8 @@ impl Gallery {
     }
 }
 
-impl Render for Gallery {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Gallery {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let spec = self.specs[self.current].clone();
         let b = TbtnSize::BASE;
@@ -49,7 +50,7 @@ impl Render for Gallery {
                 .px(px(12.))
                 .when(on, |d| d.bg(t.pane_2))
                 .cursor_pointer()
-                .on_click(cx.listener(move |this, _, window, cx| this.show(i, window, cx)))
+                .on_click(cx.guarded_listener(move |this, _, window, cx| this.show(i, window, cx)))
                 .child(
                     text(s.name.clone())
                         .mono()
@@ -71,7 +72,7 @@ impl Render for Gallery {
                     None,
                     cx,
                 )
-                .on_click(cx.listener(move |this, _, window, cx| {
+                .on_click(cx.guarded_listener(move |this, _, window, cx| {
                     this.theme = id;
                     let current = this.current;
                     this.show(current, window, cx);
@@ -126,6 +127,12 @@ impl Render for Gallery {
                         .child(frame),
                 ),
         )
+    }
+}
+
+impl Render for Gallery {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

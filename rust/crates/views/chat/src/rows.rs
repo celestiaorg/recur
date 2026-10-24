@@ -2,6 +2,7 @@
 //! their per-tool bodies, thinking and compaction cards, fallback and notice rows, folded
 //! narration, and the flat skill / mode / rename / child / PR / artifact rows.
 
+use recur_ui::guard::Guarded;
 use std::time::Duration;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -706,7 +707,7 @@ impl AgentChat {
                     .text_color(hsla(t.cyan))
                     .hover(|s| s.text_color(hsla(t.text)))
                     .child(recur_ui::style::button_label("View PR", 13.333, 400.))
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
                         this.state.update(cx, |s, cx| s.open_pr(&id, cx));
                     }))
                     .into_any_element(),
@@ -908,7 +909,7 @@ impl AgentChat {
             head = head
                 .cursor_pointer()
                 .hover(|s| s.bg(hsla(t.pane)))
-                .on_click(cx.listener(move |this, _, _, cx| {
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
                     if let Some(f) = &toggle {
                         f(this, cx);
                     }
@@ -1091,7 +1092,7 @@ impl AgentChat {
                         .self_center()
                         .cursor_pointer()
                         .hover(|s| s.bg(hsla(crate::style::cyan_a(0.16))))
-                        .on_click(cx.listener(move |_, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |_, _, _, cx| {
                             cx.stop_propagation();
                             cx.emit(ChatEvent::OpenFile {
                                 path: path.clone(),
@@ -1212,7 +1213,7 @@ impl AgentChat {
                         } else {
                             icon(IconName::Copy).size(px(13.))
                         })
-                        .on_click(cx.listener(move |this, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.copy_text(cmd.clone(), cx);
                             this.mark_copied(Some(k.clone()), None, cx);
@@ -2546,7 +2547,7 @@ impl AgentChat {
                 .id(SharedString::from(idk.to_string()))
                 .cursor_pointer()
                 .hover(|s| s.bg(hsla(crate::style::cyan_a(0.16))))
-                .on_click(cx.listener(move |_, _, _, cx| {
+                .on_click(cx.guarded_listener(move |_, _, _, cx| {
                     cx.emit(ChatEvent::OpenFile {
                         path: path.clone(),
                         line,
@@ -2849,7 +2850,7 @@ impl AgentChat {
             )
             .child(div().flex_1().min_w_0().child(main))
             .child(trail)
-            .on_click(cx.listener(move |this, _, _, cx| this.toggle_finding_accord(&a, cx)))
+            .on_click(cx.guarded_listener(move |this, _, _, cx| this.toggle_finding_accord(&a, cx)))
             .into_any_element()
     }
 
@@ -2872,7 +2873,7 @@ impl AgentChat {
                 .id(SharedString::from(idk.to_string()))
                 .cursor_pointer()
                 .hover(|s| s.bg(hsla(crate::style::cyan_a(0.16))))
-                .on_click(cx.listener(move |_, _, _, cx| {
+                .on_click(cx.guarded_listener(move |_, _, _, cx| {
                     cx.emit(ChatEvent::OpenFile {
                         path: path.clone(),
                         line,
@@ -3033,7 +3034,7 @@ impl AgentChat {
                     };
                     row.cursor_pointer()
                         .hover(|s| s.bg(hsla(t.pane_2)))
-                        .on_click(cx.listener(move |_, _, _, cx| {
+                        .on_click(cx.guarded_listener(move |_, _, _, cx| {
                             cx.emit(ChatEvent::OpenArtifact(art.clone()))
                         }))
                         .into_any_element()

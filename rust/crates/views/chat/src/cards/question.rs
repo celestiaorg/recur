@@ -2,6 +2,7 @@
 //! submit on click; options tagged `notes` select first and Answer sends the choice with the
 //! typed notes (the loop's "Proceed with my notes" plan approval).
 
+use recur_ui::guard::Guarded;
 use std::time::{Duration, Instant};
 
 use gpui_kit::base::input::{InputEvent, InputState, Textarea, TextareaState};
@@ -112,13 +113,13 @@ impl QuestionCard {
         });
         let mut subs =
             vec![
-                cx.subscribe(&input, |c: &mut Self, _, ev: &InputEvent, cx| match ev {
+                cx.guarded_subscribe(&input, |c: &mut Self, _, ev: &InputEvent, cx| match ev {
                     InputEvent::PressEnter { shift: false, .. } => c.answer_free(cx),
                     InputEvent::Change => cx.notify(),
                     _ => {}
                 }),
             ];
-        subs.push(cx.observe(&notes, |_, _, cx| cx.notify()));
+        subs.push(cx.guarded_observe(&notes, |_, _, cx| cx.notify()));
         // Enter (no Shift) in the notes field submits, as the textarea's keydown did.
         let me = cx.entity().downgrade();
         subs.push(cx.intercept_keystrokes(move |ev, window, cx| {
@@ -250,8 +251,12 @@ impl QuestionCard {
     }
 }
 
-impl Render for QuestionCard {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl QuestionCard {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let k = motion::eased(
             self.mounted,
@@ -341,7 +346,7 @@ impl Render for QuestionCard {
                         d.hover(|s| s.border_color(hsla(t.text)).bg(hsla(t.pane_2)))
                     })
                     .child(div().w_full().child(self.option_md[i].clone()))
-                    .on_click(cx.listener(move |c, _, window, cx| c.pick(i, window, cx)));
+                    .on_click(cx.guarded_listener(move |c, _, window, cx| c.pick(i, window, cx)));
                 if !opt.desc.is_empty() {
                     btn = btn.child(
                         text(opt.desc.clone())
@@ -446,7 +451,7 @@ impl Render for QuestionCard {
                         s.bg(hsla(amber.brightness(1.07)))
                             .border_color(hsla(amber.brightness(1.07)))
                     })
-                    .on_click(cx.listener(|c, _, _, cx| c.answer_free(cx)))
+                    .on_click(cx.guarded_listener(|c, _, _, cx| c.answer_free(cx)))
             });
         card = card.child(
             div()
@@ -466,5 +471,11 @@ impl Render for QuestionCard {
             .text_size(px(12.5))
             .opacity(k)
             .child(card)
+    }
+}
+
+impl Render for QuestionCard {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

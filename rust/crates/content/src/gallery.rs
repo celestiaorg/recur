@@ -42,21 +42,27 @@ pub fn exists(name: &str) -> bool {
 /// A padded markdown block on the page body (`.pad` in `Content.svelte`).
 struct Padded(Entity<MarkdownView>);
 
-impl Render for Padded {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Padded {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         body(cx)
             .size_full()
             .flex()
             .flex_col()
             .child(div().p(px(16.)).child(self.0.clone()))
+    }
+}
+
+impl Render for Padded {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
 /// A padded live stream.
 struct Streaming(Entity<crate::StreamingMarkdown>);
 
-impl Render for Streaming {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Streaming {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         body(cx)
             .size_full()
             .flex()
@@ -65,20 +71,32 @@ impl Render for Streaming {
     }
 }
 
+impl Render for Streaming {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 /// A preview filling the window (`.content-scene`).
 struct Full(AnyView);
 
-impl Render for Full {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Full {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         body(cx).size_full().flex().flex_col().child(self.0.clone())
+    }
+}
+
+impl Render for Full {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
 /// `.obs-pdf` (`--bg`, filling the window) around the PDF preview.
 struct Pdf(Entity<crate::pdf::PdfPreview>);
 
-impl Render for Pdf {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Pdf {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let bg = recur_ui::Theme::of(cx).tokens.bg;
         body(cx).size_full().flex().flex_col().child(
             div()
@@ -92,20 +110,32 @@ impl Render for Pdf {
     }
 }
 
+impl Render for Pdf {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 /// A padded message with the lightbox open over it.
 struct Lightbox(
     Entity<MarkdownView>,
     Entity<crate::lightbox::AttachmentLightbox>,
 );
 
-impl Render for Lightbox {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Lightbox {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         body(cx)
             .size_full()
             .flex()
             .flex_col()
             .child(div().p(px(16.)).child(self.0.clone()))
             .child(self.1.clone())
+    }
+}
+
+impl Render for Lightbox {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

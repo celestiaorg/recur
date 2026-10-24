@@ -3,6 +3,7 @@
 //! right-click opens Copy Image. Hosts raise unseen attention while it is open
 //! (`MarkdownEvent::LightboxOpen`, `setChatOccluder`).
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -159,7 +160,7 @@ impl AttachmentLightbox {
         let png = self.image.as_ref().map(|d| d.png.clone());
         let at = (f32::from(e.position.x), f32::from(e.position.y));
         let menu = cx.new(|cx| ImageContextMenu::new(at, png, window, cx));
-        cx.subscribe_in(
+        cx.guarded_subscribe_in(
             &menu,
             window,
             |lb, _, ev: &ImageMenuEvent, window, cx| match ev {
@@ -207,7 +208,7 @@ impl AttachmentLightbox {
             .cursor_pointer()
             .hover(move |s| s.bg(t.pane_2))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .on_click(cx.listener(move |lb, _, window, cx| {
+            .on_click(cx.guarded_listener(move |lb, _, window, cx| {
                 cx.stop_propagation();
                 on(lb, window, cx)
             }))
@@ -216,8 +217,12 @@ impl AttachmentLightbox {
     }
 }
 
-impl Render for AttachmentLightbox {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl AttachmentLightbox {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let vp = window.viewport_size();
         let (vw, vh) = (f32::from(vp.width), f32::from(vp.height));
@@ -264,7 +269,7 @@ impl Render for AttachmentLightbox {
                 .inset_0(),
             )
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .on_click(cx.listener(move |lb, _, _, cx| {
+            .on_click(cx.guarded_listener(move |lb, _, _, cx| {
                 cx.stop_propagation();
                 if scaled {
                     lb.actual = !lb.actual;
@@ -273,7 +278,7 @@ impl Render for AttachmentLightbox {
             }))
             .on_mouse_down(
                 MouseButton::Right,
-                cx.listener(|lb, e: &MouseDownEvent, window, cx| {
+                cx.guarded_listener(|lb, e: &MouseDownEvent, window, cx| {
                     cx.stop_propagation();
                     lb.open_menu(e, window, cx);
                 }),
@@ -287,7 +292,7 @@ impl Render for AttachmentLightbox {
             .overflow_scroll()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|lb, _, window, cx| lb.close(window, cx)),
+                cx.guarded_listener(|lb, _, window, cx| lb.close(window, cx)),
             )
             // `margin: auto`, at WebKit's fractional offsets (it snaps the box's edges, not its
             // margins).
@@ -342,7 +347,7 @@ impl Render for AttachmentLightbox {
             .debug_selector(|| "chat-att-lb".into())
             .track_focus(&self.focus)
             .key_context("Lightbox")
-            .capture_key_down(cx.listener(Self::key_down))
+            .capture_key_down(cx.guarded_listener(Self::key_down))
             .w(px(vw))
             .h(px(vh))
             .relative()
@@ -351,6 +356,12 @@ impl Render for AttachmentLightbox {
             .child(actions)
             .children(self.menu.clone());
         deferred(anchored_at(0., 0., overlay)).with_priority(220)
+    }
+}
+
+impl Render for AttachmentLightbox {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

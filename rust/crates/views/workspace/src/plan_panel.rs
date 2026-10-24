@@ -3,6 +3,7 @@
 //! Observatory's plan pane header owns the tabs ([`crate::plan_head::PlanHead`]); edits ride
 //! `SubmitPlan` / `UpdatePlanStep` / `UpdatePlan`.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 
 use gpui_kit::base::input::{InputEvent, Textarea, TextareaState};
@@ -247,12 +248,12 @@ impl PlanPanel {
             )
         });
         let subs = vec![
-            cx.observe(&vcx.state, |p, _, cx| {
+            cx.guarded_observe(&vcx.state, |p, _, cx| {
                 p.sync_drafts(cx);
                 cx.notify();
             }),
-            cx.observe(&feed, |_, _, cx| cx.notify()),
-            cx.subscribe(&artifacts, |_, _, ev: &ArtifactsPanelEvent, cx| {
+            cx.guarded_observe(&feed, |_, _, cx| cx.notify()),
+            cx.guarded_subscribe(&artifacts, |_, _, ev: &ArtifactsPanelEvent, cx| {
                 if let ArtifactsPanelEvent::Open(a) = ev {
                     cx.emit(PlanPanelEvent::OpenArtifact(OpenArtifact {
                         id: a.id.clone(),
@@ -263,7 +264,7 @@ impl PlanPanel {
                     }));
                 }
             }),
-            cx.subscribe_in(&summary, window, |p, _, ev: &InputEvent, window, cx| {
+            cx.guarded_subscribe_in(&summary, window, |p, _, ev: &InputEvent, window, cx| {
                 // Enter in the headline moves to the body (Shift+Enter stays a newline).
                 if let InputEvent::PressEnter { secondary, shift } = ev
                     && !secondary
@@ -403,7 +404,7 @@ impl PlanPanel {
         });
         style_area(&area, cx);
         let k = key.to_string();
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &area,
             window,
             move |p, area, ev: &InputEvent, window, cx| {
@@ -615,7 +616,7 @@ impl PlanPanel {
             opts.pane = format!("plan-{}", self.ws_id);
             EditorView::new(opts, window, cx)
         });
-        let sub = cx.subscribe(&editor, |p, _, ev: &EditorEvent, _| {
+        let sub = cx.guarded_subscribe(&editor, |p, _, ev: &EditorEvent, _| {
             if let EditorEvent::DocChanged(text) = ev {
                 p.body_draft = text.clone();
             }
@@ -930,8 +931,12 @@ fn style_area(area: &Entity<TextareaState>, cx: &mut gpui_kit::App) {
     });
 }
 
-impl Render for PlanPanel {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PlanPanel {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let page = match self.tab {
             PlanTab::Details => self.details(window, cx),
@@ -975,6 +980,12 @@ impl Render for PlanPanel {
                     .overflow_hidden()
                     .child(page),
             )
+    }
+}
+
+impl Render for PlanPanel {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -1035,7 +1046,7 @@ impl PlanPanel {
             .flex_col()
             .flex_1()
             .min_h_0()
-            .on_key_down(cx.listener(|p, ev: &KeyDownEvent, _, cx| p.on_edit_key(ev, cx)));
+            .on_key_down(cx.guarded_listener(|p, ev: &KeyDownEvent, _, cx| p.on_edit_key(ev, cx)));
         if self.editing {
             let headline = div()
                 .flex()
@@ -1174,7 +1185,7 @@ impl PlanPanel {
                         .h_full()
                         .child(
                             self.foot_button("plan-cancel", None, "Cancel", cx)
-                                .on_click(cx.listener(|p, _, _, cx| p.cancel_edit(cx))),
+                                .on_click(cx.guarded_listener(|p, _, _, cx| p.cancel_edit(cx))),
                         )
                         .child(titled(
                             "plan-save-t",
@@ -1201,13 +1212,13 @@ impl PlanPanel {
                                         .line_height(LineHeight::Scale(1.))
                                         .color(recur_ui::hex(0x0A0C10)),
                                 )
-                                .on_click(cx.listener(|p, _, _, cx| p.save_plan(cx))),
+                                .on_click(cx.guarded_listener(|p, _, _, cx| p.save_plan(cx))),
                         )),
                 )
         } else {
             self.foot(cx).child(
                 self.foot_button("plan-edit", Some(IconName::Pencil), "Edit", cx)
-                    .on_click(cx.listener(|p, _, window, cx| p.start_edit(window, cx))),
+                    .on_click(cx.guarded_listener(|p, _, window, cx| p.start_edit(window, cx))),
             )
         };
         pane.child(foot).into_any_element()
@@ -1307,15 +1318,16 @@ impl PlanPanel {
         titled(
             SharedString::from(format!("plan-step-check-t-{}", d.key)),
             format!("{label} — click to change"),
-            b.cursor_pointer().on_click(cx.listener(move |p, _, _, cx| {
-                let cur = p
-                    .drafts
-                    .iter()
-                    .find(|d| d.key == id)
-                    .map(|d| d.status.clone())
-                    .unwrap_or_default();
-                p.cycle_step(&id, &cur, cx)
-            })),
+            b.cursor_pointer()
+                .on_click(cx.guarded_listener(move |p, _, _, cx| {
+                    let cur = p
+                        .drafts
+                        .iter()
+                        .find(|d| d.key == id)
+                        .map(|d| d.status.clone())
+                        .unwrap_or_default();
+                    p.cycle_step(&id, &cur, cx)
+                })),
         )
         .into_any_element()
     }
@@ -1412,7 +1424,7 @@ impl PlanPanel {
                             .when(d.status == "done", |s| s.line_through())
                             .on_key_down({
                                 let k = d.key.clone();
-                                cx.listener(move |p, ev: &KeyDownEvent, window, cx| {
+                                cx.guarded_listener(move |p, ev: &KeyDownEvent, window, cx| {
                                     let ks = &ev.keystroke;
                                     if ks.key != "backspace"
                                         || ks.modifiers.platform
@@ -1487,7 +1499,7 @@ impl PlanPanel {
                                     .line_height(LineHeight::Normal)
                                     .nowrap(),
                             )
-                            .on_click(cx.listener(move |p, _, _, cx| {
+                            .on_click(cx.guarded_listener(move |p, _, _, cx| {
                                 let t = target.clone();
                                 p.state.update(cx, |s, cx| {
                                     if gone {
@@ -1521,9 +1533,9 @@ impl PlanPanel {
                         .hover(|s| s.bg(hsla(t.pane_2)).text_color(hsla(t.text)))
                         .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
                         .child(icon(IconName::Trash).size(px(14.)))
-                        .on_click(
-                            cx.listener(move |p, _, window, cx| p.remove_step(&k, window, cx)),
-                        ),
+                        .on_click(cx.guarded_listener(move |p, _, window, cx| {
+                            p.remove_step(&k, window, cx)
+                        })),
                 );
                 list = list.child(
                     div()
@@ -1707,7 +1719,9 @@ impl PlanPanel {
             pane = pane.child(
                 self.foot(cx).child(
                     self.foot_button("plan-add-step", Some(IconName::Plus), "Add step", cx)
-                        .on_click(cx.listener(|p, _, window, cx| p.add_step(None, window, cx))),
+                        .on_click(
+                            cx.guarded_listener(|p, _, window, cx| p.add_step(None, window, cx)),
+                        ),
                 ),
             );
         }

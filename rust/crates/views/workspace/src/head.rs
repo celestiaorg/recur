@@ -48,8 +48,8 @@ fn hsla(c: recur_ui::Color) -> Hsla {
     c.into()
 }
 
-impl Render for ChatTabsHead {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ChatTabsHead {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let Some(view) = self.view.upgrade() else {
             return div().into_any_element();
         };
@@ -144,6 +144,12 @@ impl Render for ChatTabsHead {
             .items_stretch()
             .child(strip)
             .into_any_element()
+    }
+}
+
+impl Render for ChatTabsHead {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

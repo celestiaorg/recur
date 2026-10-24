@@ -3,6 +3,7 @@
 //! operations (new, rename, move, copy / cut / paste, duplicate, delete), the context menu and
 //! the explorer's keyboard map.
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
 
@@ -1257,7 +1258,7 @@ impl Observatory {
             s.set_value(name, window, cx);
             s
         });
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &input,
             window,
             |o, _, ev: &gpui_kit::base::input::InputEvent, window, cx| match ev {

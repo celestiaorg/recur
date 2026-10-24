@@ -1,0 +1,8 @@
+# A panic in these callbacks aborts the app; recur_ui::guard::Guarded has contained variants.
+disallowed-methods = [
+    { path = "gpui::Context::listener", reason = "use recur_ui::guard::Guarded::guarded_listener" },
+    { path = "gpui::Context::subscribe", reason = "use recur_ui::guard::Guarded::guarded_subscribe" },
+    { path = "gpui::Context::subscribe_in", reason = "use recur_ui::guard::Guarded::guarded_subscribe_in" },
+    { path = "gpui::Context::observe", reason = "use recur_ui::guard::Guarded::guarded_observe" },
+    { path = "gpui::Context::observe_in", reason = "use recur_ui::guard::Guarded::guarded_observe_in" },
+]

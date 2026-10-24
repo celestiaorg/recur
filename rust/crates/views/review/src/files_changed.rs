@@ -4,6 +4,7 @@
 //! base, the working tree vs HEAD, or one commit, loaded with the queue and scope rules of
 //! the Svelte `load()`.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::Instant;
@@ -156,13 +157,13 @@ impl FilesChangedView {
             )
         });
         let subs = vec![
-            cx.subscribe(&filter, |v: &mut Self, _, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&filter, |v: &mut Self, _, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change) {
                     v.sync_stack(cx);
                     cx.notify();
                 }
             }),
-            cx.observe(&state, |_, _, cx| cx.notify()),
+            cx.guarded_observe(&state, |_, _, cx| cx.notify()),
         ];
         let stack = FileStack::new(state.clone(), cx);
         let mut v = FilesChangedView {
@@ -701,7 +702,7 @@ impl FilesChangedView {
                 .text_color(hsla(if open { t.text } else { t.faint }))
                 .hover(|s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
                 .child(icon(IconName::PanelLeft).size(px(16.)))
-                .on_click(cx.listener(move |v, _, _, cx| v.set_sidebar_open(!open, cx))),
+                .on_click(cx.guarded_listener(move |v, _, _, cx| v.set_sidebar_open(!open, cx))),
         );
         let mut cluster = div()
             .flex()
@@ -734,9 +735,9 @@ impl FilesChangedView {
                             .debug_selector(|| {
                                 format!("button:Flat list:{}", mode == FileListMode::Flat)
                             })
-                            .on_click(cx.listener(|v, _, _, cx| {
-                                v.set_file_list_mode(FileListMode::Flat, cx)
-                            })),
+                            .on_click(cx.guarded_listener(
+                                |v, _, _, cx| v.set_file_list_mode(FileListMode::Flat, cx),
+                            )),
                         )
                         .into_any_element(),
                         titled(
@@ -752,9 +753,9 @@ impl FilesChangedView {
                             .debug_selector(|| {
                                 format!("button:Tree:{}", mode == FileListMode::Tree)
                             })
-                            .on_click(cx.listener(|v, _, _, cx| {
-                                v.set_file_list_mode(FileListMode::Tree, cx)
-                            })),
+                            .on_click(cx.guarded_listener(
+                                |v, _, _, cx| v.set_file_list_mode(FileListMode::Tree, cx),
+                            )),
                         )
                         .into_any_element(),
                     ],
@@ -820,7 +821,7 @@ impl FilesChangedView {
                         11.,
                         400.,
                     ))
-                    .on_click(cx.listener(|_, _, _, cx| cx.emit(FilesEvent::ShowFindings))),
+                    .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(FilesEvent::ShowFindings))),
             );
         }
         let matched = self.matched_files(cx);
@@ -852,9 +853,9 @@ impl FilesChangedView {
                             cx,
                         )
                         .debug_selector(|| "button:Unified diff".into())
-                        .on_click(
-                            cx.listener(|v, _, _, cx| v.set_diff_layout(DiffLayout::Unified, cx)),
-                        ),
+                        .on_click(cx.guarded_listener(|v, _, _, cx| {
+                            v.set_diff_layout(DiffLayout::Unified, cx)
+                        })),
                     )
                     .into_any_element(),
                     titled(
@@ -872,11 +873,13 @@ impl FilesChangedView {
                             cx,
                         )
                         .debug_selector(|| "button:Side-by-side diff".into())
-                        .on_click(cx.listener(move |v, _, _, cx| {
-                            if !fallback {
-                                v.set_diff_layout(DiffLayout::Split, cx)
-                            }
-                        })),
+                        .on_click(cx.guarded_listener(
+                            move |v, _, _, cx| {
+                                if !fallback {
+                                    v.set_diff_layout(DiffLayout::Split, cx)
+                                }
+                            },
+                        )),
                     )
                     .into_any_element(),
                 ],
@@ -906,7 +909,7 @@ impl FilesChangedView {
                     cx,
                 )
                 .debug_selector(move || format!("button:{fold_label}"))
-                .on_click(cx.listener(|v, _, _, cx| v.toggle_fold_all(cx))),
+                .on_click(cx.guarded_listener(|v, _, _, cx| v.toggle_fold_all(cx))),
             )),
         );
         let _ = window;
@@ -971,7 +974,7 @@ impl FilesChangedView {
                     .flex_1()
                     .min_w_0()
                     .key_context("TextEntry")
-                    .on_key_down(cx.listener(|v, ev: &KeyDownEvent, window, cx| {
+                    .on_key_down(cx.guarded_listener(|v, ev: &KeyDownEvent, window, cx| {
                         if ev.keystroke.key == "escape" {
                             cx.stop_propagation();
                             v.filter.update(cx, |f, cx| f.set_value("", window, cx));
@@ -1022,7 +1025,7 @@ impl FilesChangedView {
                     d.hover(|s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
                 })
                 .child(icon(IconName::HatGlasses).size(px(15.)).stroke_width(2.2))
-                .on_click(cx.listener(move |v, _, _, cx| v.set_findings_only(!on, cx)));
+                .on_click(cx.guarded_listener(move |v, _, _, cx| v.set_findings_only(!on, cx)));
             filter = filter.child(titled("fl-findings-only-t", label, btn));
         }
         div()
@@ -1062,12 +1065,12 @@ impl FilesChangedView {
             .text_color(hsla(t.muted))
             .hover(|s| s.text_color(hsla(t.text)))
             .child(recur_ui::style::button_label("← all commits", 11., 400.).family(Family::Mono))
-            .on_click(cx.listener(|_, _, _, cx| cx.emit(FilesEvent::ClearScope)));
+            .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(FilesEvent::ClearScope)));
         let p = &self.props;
         let backdrop = t.bg;
         let older = if p.can_step_older {
             icon_btn("step-older", IconName::ChevronLeft, 26., 15., None, cx)
-                .on_click(cx.listener(|_, _, _, cx| cx.emit(FilesEvent::StepScope(-1))))
+                .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(FilesEvent::StepScope(-1))))
         } else {
             crate::style::icon_btn_disabled(
                 "step-older",
@@ -1080,7 +1083,7 @@ impl FilesChangedView {
         };
         let newer = if p.can_step_newer {
             icon_btn("step-newer", IconName::ChevronRight, 26., 15., None, cx)
-                .on_click(cx.listener(|_, _, _, cx| cx.emit(FilesEvent::StepScope(1))))
+                .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(FilesEvent::StepScope(1))))
         } else {
             crate::style::icon_btn_disabled(
                 "step-newer",
@@ -1179,8 +1182,12 @@ impl FilesChangedView {
     }
 }
 
-impl Render for FilesChangedView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl FilesChangedView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let panel = self.state.read(cx).panels.size(PanelKey::PrFileList);
         let stacked = self.surface_width > 0. && self.surface_width <= STACK_BELOW_PX;
@@ -1236,7 +1243,7 @@ impl Render for FilesChangedView {
             ))
         } else if (!q.is_empty() || self.findings_only) && matched_empty {
             Some(crate::commits::empty_clear_filter(
-                cx.listener(|v, _, window, cx| v.clear_filter(window, cx)),
+                cx.guarded_listener(|v, _, window, cx| v.clear_filter(window, cx)),
                 cx,
             ))
         } else if matched_empty {
@@ -1340,5 +1347,11 @@ impl Render for FilesChangedView {
             .child(toolbar)
             .child(wrap)
             .child(surface_probe)
+    }
+}
+
+impl Render for FilesChangedView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

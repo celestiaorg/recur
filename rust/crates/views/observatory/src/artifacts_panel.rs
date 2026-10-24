@@ -2,6 +2,7 @@
 //! with open, inline rename, reveal, and delete (armed for 3s, or confirmed from the context
 //! menu). Refreshes when an artifact is created or presented.
 
+use recur_ui::guard::Guarded;
 use std::time::Duration;
 
 use gpui_kit::base::input::{InputEvent, InputState};
@@ -206,21 +207,24 @@ impl ArtifactsPanel {
         });
         recur_ui::style::style_text_input(&input, cx);
         let r = row.clone();
-        self._subs = vec![cx.subscribe_in(
-            &input,
-            window,
-            move |p, inp, ev: &InputEvent, _, cx| match ev {
-                InputEvent::PressEnter { .. } => {
-                    let v = inp.read(cx).value().to_string();
-                    p.commit_rename(&r, v, cx);
-                }
-                InputEvent::Blur if p.renaming.as_ref().is_some_and(|(id, _)| *id == r.id) => {
-                    let v = inp.read(cx).value().to_string();
-                    p.commit_rename(&r, v, cx);
-                }
-                _ => {}
-            },
-        )];
+        self._subs =
+            vec![
+                cx.guarded_subscribe_in(&input, window, move |p, inp, ev: &InputEvent, _, cx| {
+                    match ev {
+                        InputEvent::PressEnter { .. } => {
+                            let v = inp.read(cx).value().to_string();
+                            p.commit_rename(&r, v, cx);
+                        }
+                        InputEvent::Blur
+                            if p.renaming.as_ref().is_some_and(|(id, _)| *id == r.id) =>
+                        {
+                            let v = inp.read(cx).value().to_string();
+                            p.commit_rename(&r, v, cx);
+                        }
+                        _ => {}
+                    }
+                }),
+            ];
         input.update(cx, |s, cx| {
             s.focus(window, cx);
             s.select_all(window, cx);
@@ -374,89 +378,88 @@ impl ArtifactsPanel {
             .as_ref()
             .filter(|(id, _)| *id == a.id)
             .map(|(_, i)| i.clone());
-        let body =
-            if let Some(input) = renaming {
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.))
-                    .w_full()
-                    .p(px(8.))
-                    .rounded(px(8.))
-                    .bg(hsla(t.pane_2))
-                    .child(div().w(px(14.)).flex_none().child(icon_el))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .flex()
-                            .bg(hsla(t.pane))
-                            .border_1()
-                            .border_color(hsla(t.line_bright))
-                            .rounded(px(4.))
-                            .px(px(4.))
-                            .py(px(1.))
-                            .child(recur_ui::style::text_field(
-                                &input,
-                                &SharedString::default(),
-                                recur_ui::style::UA_PLACEHOLDER,
-                                recur_ui::fonts::Family::Ui,
-                                13.,
-                                window,
-                                cx,
-                            )),
-                    )
-                    .child(kind)
-                    .into_any_element()
-            } else {
-                let (open, menu_row) = (a.clone(), a.clone());
-                div()
-                    .id(SharedString::from(format!("art-{}", a.id)))
-                    .debug_selector({
-                        let id = a.id.clone();
-                        move || format!("art-row:{id}")
-                    })
-                    .flex()
-                    .items_center()
-                    .gap(px(8.))
-                    .w_full()
-                    .p(px(8.))
-                    .rounded(px(8.))
-                    .cursor_pointer()
-                    .when(a.id == self.selected_id || hovered, |d| {
-                        d.bg(hsla(t.pane_2))
-                    })
-                    .on_click(cx.listener(move |_, _, _, cx| {
-                        cx.emit(ArtifactsPanelEvent::Open(open.clone()))
-                    }))
-                    .on_mouse_down(
-                        gpui_kit::MouseButton::Right,
-                        cx.listener(move |p, e: &gpui_kit::MouseDownEvent, window, cx| {
-                            p.open_menu(
-                                f32::from(e.position.x),
-                                f32::from(e.position.y),
-                                menu_row.clone(),
-                                window,
-                                cx,
-                            )
-                        }),
-                    )
-                    .child(div().w(px(14.)).flex_none().child(icon_el))
-                    .child(
-                        div().flex_1().min_w_0().child(
-                            text(title.clone())
-                                .size(13.)
-                                .line_height(LineHeight::Normal)
-                                .truncate(),
-                        ),
-                    )
-                    .child(kind)
-                    .into_any_element()
-            };
+        let body = if let Some(input) = renaming {
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .w_full()
+                .p(px(8.))
+                .rounded(px(8.))
+                .bg(hsla(t.pane_2))
+                .child(div().w(px(14.)).flex_none().child(icon_el))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .bg(hsla(t.pane))
+                        .border_1()
+                        .border_color(hsla(t.line_bright))
+                        .rounded(px(4.))
+                        .px(px(4.))
+                        .py(px(1.))
+                        .child(recur_ui::style::text_field(
+                            &input,
+                            &SharedString::default(),
+                            recur_ui::style::UA_PLACEHOLDER,
+                            recur_ui::fonts::Family::Ui,
+                            13.,
+                            window,
+                            cx,
+                        )),
+                )
+                .child(kind)
+                .into_any_element()
+        } else {
+            let (open, menu_row) = (a.clone(), a.clone());
+            div()
+                .id(SharedString::from(format!("art-{}", a.id)))
+                .debug_selector({
+                    let id = a.id.clone();
+                    move || format!("art-row:{id}")
+                })
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .w_full()
+                .p(px(8.))
+                .rounded(px(8.))
+                .cursor_pointer()
+                .when(a.id == self.selected_id || hovered, |d| {
+                    d.bg(hsla(t.pane_2))
+                })
+                .on_click(cx.guarded_listener(move |_, _, _, cx| {
+                    cx.emit(ArtifactsPanelEvent::Open(open.clone()))
+                }))
+                .on_mouse_down(
+                    gpui_kit::MouseButton::Right,
+                    cx.guarded_listener(move |p, e: &gpui_kit::MouseDownEvent, window, cx| {
+                        p.open_menu(
+                            f32::from(e.position.x),
+                            f32::from(e.position.y),
+                            menu_row.clone(),
+                            window,
+                            cx,
+                        )
+                    }),
+                )
+                .child(div().w(px(14.)).flex_none().child(icon_el))
+                .child(
+                    div().flex_1().min_w_0().child(
+                        text(title.clone())
+                            .size(13.)
+                            .line_height(LineHeight::Normal)
+                            .truncate(),
+                    ),
+                )
+                .child(kind)
+                .into_any_element()
+        };
         let mut item = div()
             .id(SharedString::from(format!("art-item-{}", a.id)))
             .relative()
-            .on_hover(cx.listener({
+            .on_hover(cx.guarded_listener({
                 let id = a.id.clone();
                 move |p, on: &bool, _, cx| {
                     if *on {
@@ -514,7 +517,7 @@ impl ArtifactsPanel {
                 // A sibling of the row in the page: its press must not reach the row's click.
                 .on_mouse_down(
                     gpui_kit::MouseButton::Left,
-                    cx.listener(move |p, _, _, cx| {
+                    cx.guarded_listener(move |p, _, _, cx| {
                         cx.stop_propagation();
                         p.on_delete_click(row.clone(), cx);
                     }),
@@ -559,18 +562,19 @@ impl ArtifactsPanel {
             .p(px(4.))
             .flex()
             .flex_col()
-            .child(
-                btn("art-ctx-rename", "Rename…")
-                    .on_click(cx.listener(move |p, _, window, cx| p.start_rename(&r1, window, cx))),
-            )
+            .child(btn("art-ctx-rename", "Rename…").on_click(
+                cx.guarded_listener(move |p, _, window, cx| p.start_rename(&r1, window, cx)),
+            ))
             .child(
                 btn("art-ctx-reveal", "Reveal in Finder")
-                    .on_click(cx.listener(move |p, _, _, cx| p.reveal(&r2, cx))),
+                    .on_click(cx.guarded_listener(move |p, _, _, cx| p.reveal(&r2, cx))),
             )
             .child(div().h(px(1.)).mx(px(6.)).my(px(4.)).bg(hsla(t.line)))
-            .child(btn("art-ctx-delete", "Delete").on_click(
-                cx.listener(move |p, _, window, cx| p.delete_from_menu(r3.clone(), window, cx)),
-            ));
+            .child(
+                btn("art-ctx-delete", "Delete").on_click(cx.guarded_listener(
+                    move |p, _, window, cx| p.delete_from_menu(r3.clone(), window, cx),
+                )),
+            );
         let card = recur_ui::style::card(t.pane, t.line_bright, 8.).child(panel);
         deferred(anchored_at(
             m.x,
@@ -582,7 +586,7 @@ impl ArtifactsPanel {
             )
             .id("art-ctx-shield")
             .occlude()
-            .on_mouse_down_out(cx.listener(|p, _, _, cx| {
+            .on_mouse_down_out(cx.guarded_listener(|p, _, _, cx| {
                 p.menu = None;
                 cx.notify();
             })),
@@ -592,8 +596,12 @@ impl ArtifactsPanel {
     }
 }
 
-impl Render for ArtifactsPanel {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ArtifactsPanel {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let empty = |s: String| {
             div().px(px(12.)).py(px(16.)).opacity(0.65).child(
@@ -611,7 +619,7 @@ impl Render for ArtifactsPanel {
             .h_full()
             .min_h_0()
             .text_color(hsla(t.text))
-            .on_key_down(cx.listener(|p, e: &gpui_kit::KeyDownEvent, _, cx| {
+            .on_key_down(cx.guarded_listener(|p, e: &gpui_kit::KeyDownEvent, _, cx| {
                 if e.keystroke.key == "escape" {
                     if p.menu.is_some() {
                         p.menu = None;
@@ -640,5 +648,11 @@ impl Render for ArtifactsPanel {
             root = root.child(el);
         }
         root
+    }
+}
+
+impl Render for ArtifactsPanel {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

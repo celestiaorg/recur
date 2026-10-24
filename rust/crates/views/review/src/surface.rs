@@ -2,6 +2,7 @@
 //! vs the base) and Commits (uncommitted work and the branch's commits), with a commit or the
 //! working tree opened as a Files changed scope and stepped through newest-first.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -107,12 +108,12 @@ impl ReviewSurface {
             cx.new(|cx| FilesChangedView::new(state.clone(), FilesProps::default(), window, cx));
         let commits_view = cx.new(|_| CommitsView::new());
         let subs = vec![
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &files,
                 window,
                 |s: &mut Self, _, ev: &FilesEvent, window, cx| s.on_files(ev, window, cx),
             ),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &commits_view,
                 window,
                 |s: &mut Self, _, ev: &CommitsEvent, window, cx| match ev {
@@ -450,11 +451,12 @@ impl ReviewSurface {
     }
 }
 
-impl Render for ReviewSurface {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ReviewSurface {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let mut root = div()
             .debug_selector(|| "obs-review-surface".into())
+            .size_full()
             .flex_1()
             .min_h_0()
             .min_w_0()
@@ -485,5 +487,11 @@ impl Render for ReviewSurface {
             );
         }
         root
+    }
+}
+
+impl Render for ReviewSurface {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

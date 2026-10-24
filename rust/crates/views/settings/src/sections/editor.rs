@@ -11,6 +11,7 @@ use recur_editor::prefs::{
     language_indent_default,
 };
 use recur_ui::IconName;
+use recur_ui::guard::Guarded;
 use recur_ui::text::span;
 use recur_ui::widgets::{SelectOption, TriggerStyle, settings_group, settings_groups};
 use recur_view_core::prefs::{CodePanelKey, PanelSide, TERMINAL_LINE_HEIGHTS};
@@ -99,7 +100,7 @@ impl SettingsView {
                     cx,
                 )
                 .debug_selector(move || format!("seg:{g}:{l}{}", if on { ":on" } else { "" }))
-                .on_click(cx.listener(move |this, _, _, cx| act(this, cx))),
+                .on_click(cx.guarded_listener(move |this, _, _, cx| act(this, cx))),
             );
         }
         ctrl().child(s)
@@ -646,7 +647,9 @@ impl SettingsView {
                             cx,
                         )
                         .debug_selector(move || format!("btn:Remove pattern {}", i + 1))
-                        .on_click(cx.listener(move |this, _, _, cx| this.remove_exclude(i, cx))),
+                        .on_click(
+                            cx.guarded_listener(move |this, _, _, cx| this.remove_exclude(i, cx)),
+                        ),
                     )),
             );
         }
@@ -658,7 +661,7 @@ impl SettingsView {
                 .child(
                     tbtn_label("exclude-add", "Add pattern", false, cx)
                         .debug_selector(|| "btn:Add pattern".into())
-                        .on_click(cx.listener(|this, _, _, cx| {
+                        .on_click(cx.guarded_listener(|this, _, _, cx| {
                             let mut next = this.vcx.state.read(cx).explorer_exclude();
                             next.push(String::new());
                             this.vcx
@@ -669,7 +672,7 @@ impl SettingsView {
                 .child(
                     tbtn_label("exclude-reset", "Reset defaults", false, cx)
                         .debug_selector(|| "btn:Reset defaults".into())
-                        .on_click(cx.listener(|this, _, _, cx| {
+                        .on_click(cx.guarded_listener(|this, _, _, cx| {
                             this.vcx
                                 .state
                                 .update(cx, |s, cx| s.reset_explorer_exclude(cx))

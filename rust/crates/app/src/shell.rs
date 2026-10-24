@@ -1,6 +1,7 @@
 //! The window's root view (`App.svelte`): titlebar, sidebar, the routed main area, the
 //! overlays host, global keys, menu actions and boot.
 
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -86,11 +87,11 @@ impl Shell {
     ) -> Self {
         let state = ctx.state.clone();
         let subscriptions = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.state_changed(window, cx)
             }),
             // The shell's own `menu.action` handling runs first: it subscribed before any view.
-            cx.subscribe_in(&state, window, |this, _, ev: &ShellEvent, window, cx| {
+            cx.guarded_subscribe_in(&state, window, |this, _, ev: &ShellEvent, window, cx| {
                 if let ShellEvent::MenuAction(action) = ev {
                     this.menu_action(action, window, cx);
                 }
@@ -372,7 +373,8 @@ impl Shell {
                         .child(v.view.clone()),
                 );
             } else if v.keep_laid_out {
-                // `#v-detail.view`: hidden but laid out at the main area's size.
+                // `#v-detail.view`: hidden but laid out at the main area's size. Cached: GPUI lays
+                // the whole tree out every frame, and a hidden route only changes when notified.
                 main = main.child(
                     div()
                         .absolute()
@@ -380,7 +382,11 @@ impl Shell {
                         .left_0()
                         .size_full()
                         .invisible()
-                        .child(v.view.clone()),
+                        .child(
+                            v.view
+                                .clone()
+                                .cached(gpui_kit::StyleRefinement::default().size_full()),
+                        ),
                 );
             }
         }
@@ -402,8 +408,12 @@ impl Focusable for Shell {
     }
 }
 
-impl Render for Shell {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Shell {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         // App.svelte's window keydown sees keys with nothing focused (focus on `body`).
         if window.focused(cx).is_none() {
             window.focus(&self.focus, cx);
@@ -421,7 +431,9 @@ impl Render for Shell {
             .track_focus(&self.focus)
             .relative()
             .size_full()
-            .on_key_down(cx.listener(|this, ev, window, cx| this.on_key_down(ev, window, cx)))
+            .on_key_down(
+                cx.guarded_listener(|this, ev, window, cx| this.on_key_down(ev, window, cx)),
+            )
             .on_drop(move |paths: &ExternalPaths, _, cx| {
                 let files: Vec<String> = paths
                     .paths()
@@ -449,5 +461,11 @@ impl Render for Shell {
             .child(self.toasts.clone())
             .child(self.tooltip.clone());
         self.with_menu_actions(root, cx)
+    }
+}
+
+impl Render for Shell {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

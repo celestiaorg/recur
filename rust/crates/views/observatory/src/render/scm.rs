@@ -5,6 +5,7 @@
 //! Rows lay out in flow; each open folder records its content offset and its branch's end
 //! (probes from the last frame), and folders scrolled past paint again in a sticky layer.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -131,9 +132,9 @@ impl Observatory {
                     let k = key.clone();
                     move || format!("scm-stage:{k}")
                 })
-                .on_click(
-                    cx.listener(move |o, _, _, cx| o.stage_paths(vec![p1.clone()], !staged, cx)),
-                ),
+                .on_click(cx.guarded_listener(move |o, _, _, cx| {
+                    o.stage_paths(vec![p1.clone()], !staged, cx)
+                })),
         );
         let mut file = div()
             .id(SharedString::from(format!("scm-file-{key}")))
@@ -192,11 +193,11 @@ impl Observatory {
         let file = titled(
             SharedString::from(format!("scm-file-t-{key}")),
             path.to_string(),
-            file.on_hover(cx.listener(move |o, on: &bool, _, cx| {
+            file.on_hover(cx.guarded_listener(move |o, on: &bool, _, cx| {
                 o.scm_name_hover = on.then(|| hk.clone());
                 cx.notify();
             }))
-            .on_click(cx.listener(move |o, _, window, cx| {
+            .on_click(cx.guarded_listener(move |o, _, window, cx| {
                 o.open_path(
                     crate::obs::OpenRequest::new(p2.clone()).prefer_diff(true),
                     window,
@@ -213,7 +214,7 @@ impl Observatory {
                     let k = key.clone();
                     move || format!("scm-discard:{k}")
                 })
-                .on_click(cx.listener(move |o, _, window, cx| {
+                .on_click(cx.guarded_listener(move |o, _, window, cx| {
                     let p = p3.clone();
                     o.discard_paths(vec![p.clone()], &p, window, cx)
                 })),
@@ -228,7 +229,7 @@ impl Observatory {
             .pr(px(10.))
             .py(px(3.))
             .when(hovered, |d| d.bg(hsla(t.pane_2)))
-            .on_hover(cx.listener(move |o, on: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(move |o, on: &bool, _, cx| {
                 if *on {
                     o.scm_hovered = Some(hk.clone());
                 } else if o.scm_hovered.as_deref() == Some(hk.as_str()) {
@@ -267,7 +268,9 @@ impl Observatory {
             SharedString::from(format!("scm-dstage-t-{key}")),
             label,
             self.scm_stage_btn(format!("scm-dstage-{key}"), staged, String::new(), cx)
-                .on_click(cx.listener(move |o, _, _, cx| o.stage_paths(f1.clone(), !staged, cx))),
+                .on_click(
+                    cx.guarded_listener(move |o, _, _, cx| o.stage_paths(f1.clone(), !staged, cx)),
+                ),
         );
         let p2 = path.clone();
         let toggle = titled(
@@ -296,14 +299,14 @@ impl Observatory {
                             .truncate(),
                     ),
                 )
-                .on_click(cx.listener(move |o, _, _, cx| o.toggle_scm_dir(&p2, cx))),
+                .on_click(cx.guarded_listener(move |o, _, _, cx| o.toggle_scm_dir(&p2, cx))),
         );
         let p3 = path.clone();
         let discard = titled(
             SharedString::from(format!("scm-ddiscard-t-{key}")),
             "Discard changes",
             self.scm_discard_btn(format!("scm-ddiscard-{key}"), hovered, cx)
-                .on_click(cx.listener(move |o, _, window, cx| {
+                .on_click(cx.guarded_listener(move |o, _, window, cx| {
                     o.discard_paths(f2.clone(), &p3, window, cx)
                 })),
         );
@@ -317,7 +320,7 @@ impl Observatory {
             .pl(px(10. + depth as f32 * 12.))
             .pr(px(10.))
             .bg(hsla(if hovered { t.pane_2 } else { t.bg }))
-            .on_hover(cx.listener(move |o, on: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(move |o, on: &bool, _, cx| {
                 if *on {
                     o.scm_hovered = Some(hk.clone());
                 } else if o.scm_hovered.as_deref() == Some(hk.as_str()) {
@@ -444,7 +447,7 @@ impl Observatory {
                             .line_height(LineHeight::Scale(1.45))
                             .nowrap(),
                     )
-                    .on_click(cx.listener(move |o, _, _, cx| {
+                    .on_click(cx.guarded_listener(move |o, _, _, cx| {
                         if staged {
                             o.unstage_all(cx)
                         } else {
@@ -654,28 +657,31 @@ impl Observatory {
         let pulse = (msg_busy && !recur_ui::motion::reduced(cx))
             .then(|| crate::render::pulse_opacity(self.anim_epoch, window, cx));
         let gen_color = if msg_busy { t.amber } else { t.faint };
-        let gen_btn = titled(
-            "scm-gen-t",
-            gen_title,
-            div()
-                .id("scm-gen")
-                .debug_selector(|| "scm-gen".into())
-                .flex()
-                .flex_none()
-                .items_center()
-                .justify_center()
-                .size(px(24.))
-                .rounded(px(5.))
-                .text_color(hsla(gen_color))
-                .when(gen_disabled && !msg_busy, |d| d.opacity(0.35))
-                .when_some(pulse, |d, k| d.opacity(k))
-                .when(!gen_disabled, |d| {
-                    d.cursor_pointer()
-                        .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
-                        .on_click(cx.listener(|o, _, window, cx| o.generate_commit_msg(window, cx)))
-                })
-                .child(icon(IconName::Sparkle).size(px(13.))),
-        );
+        let gen_btn =
+            titled(
+                "scm-gen-t",
+                gen_title,
+                div()
+                    .id("scm-gen")
+                    .debug_selector(|| "scm-gen".into())
+                    .flex()
+                    .flex_none()
+                    .items_center()
+                    .justify_center()
+                    .size(px(24.))
+                    .rounded(px(5.))
+                    .text_color(hsla(gen_color))
+                    .when(gen_disabled && !msg_busy, |d| d.opacity(0.35))
+                    .when_some(pulse, |d, k| d.opacity(k))
+                    .when(!gen_disabled, |d| {
+                        d.cursor_pointer()
+                            .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
+                            .on_click(cx.guarded_listener(|o, _, window, cx| {
+                                o.generate_commit_msg(window, cx)
+                            }))
+                    })
+                    .child(icon(IconName::Sparkle).size(px(13.))),
+            );
         let can_commit = !busy && staged > 0 && !msg.trim().is_empty();
         let title = if staged > 0 {
             format!("Commit {staged} file{}", if staged == 1 { "" } else { "s" })
@@ -717,8 +723,9 @@ impl Observatory {
                         .opacity(0.55),
                 )
                 .when(can_commit, |d| {
-                    d.cursor_pointer()
-                        .on_click(cx.listener(|o, _, window, cx| o.human_commit(window, cx)))
+                    d.cursor_pointer().on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.human_commit(window, cx)),
+                    )
                 }),
         );
         let field = div()

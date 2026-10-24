@@ -1,5 +1,6 @@
 //! `CompatibleProviderModal.svelte`: add an OpenAI-compatible endpoint from a preset.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -285,8 +286,12 @@ impl CompatibleProviderModal {
     }
 }
 
-impl Render for CompatibleProviderModal {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl CompatibleProviderModal {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = tokens(cx);
         let mut inputs: Vec<Entity<gpui_kit::base::input::InputState>> = Vec::new();
         for (k, _, _) in FIELDS {
@@ -345,8 +350,8 @@ impl Render for CompatibleProviderModal {
                 .relative()
                 .track_focus(&self.preset_focus[i])
                 .debug_selector(move || format!("preset:{name}{}", if on { ":on" } else { "" }))
-                .on_click(cx.listener(move |m, _, _, cx| m.apply_preset(id, cx)))
-                .on_key_down(cx.listener(move |m, e: &KeyDownEvent, _, cx| {
+                .on_click(cx.guarded_listener(move |m, _, _, cx| m.apply_preset(id, cx)))
+                .on_key_down(cx.guarded_listener(move |m, e: &KeyDownEvent, _, cx| {
                     if matches!(e.keystroke.key.as_str(), "enter" | "space") {
                         cx.stop_propagation();
                         m.apply_preset(id, cx);
@@ -370,8 +375,8 @@ impl Render for CompatibleProviderModal {
         };
         if can_save {
             go = go
-                .on_click(cx.listener(|m, _, _, cx| m.submit(cx)))
-                .on_key_down(cx.listener(|m, e: &KeyDownEvent, _, cx| {
+                .on_click(cx.guarded_listener(|m, _, _, cx| m.submit(cx)))
+                .on_key_down(cx.guarded_listener(|m, e: &KeyDownEvent, _, cx| {
                     if matches!(e.keystroke.key.as_str(), "enter" | "space") {
                         cx.stop_propagation();
                         m.submit(cx);
@@ -387,11 +392,11 @@ impl Render for CompatibleProviderModal {
             .ml_auto()
             .flex_none()
             .cursor_pointer()
-            .on_hover(cx.listener(|m, h: &bool, _, cx| {
+            .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| {
                 m.hover_x = *h;
                 cx.notify();
             }))
-            .on_click(cx.listener(|_, _, _, cx| cx.emit(ModalEvent::Close)))
+            .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(ModalEvent::Close)))
             .child(recur_ui::style::nt_esc_hint(self.hover_x, window, cx));
         let head = div()
             .flex()
@@ -491,7 +496,7 @@ impl Render for CompatibleProviderModal {
             // `clearKeyboardFocus(modal)` on pointer down.
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|m, _, _, cx| {
+                cx.guarded_listener(|m, _, _, cx| {
                     m.kb = None;
                     cx.stop_propagation();
                     cx.notify();
@@ -521,8 +526,14 @@ impl Render for CompatibleProviderModal {
             .occlude()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|_, _, _, cx| cx.emit(ModalEvent::Close)),
+                cx.guarded_listener(|_, _, _, cx| cx.emit(ModalEvent::Close)),
             )
             .child(keys)
+    }
+}
+
+impl Render for CompatibleProviderModal {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

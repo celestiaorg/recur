@@ -1256,3 +1256,17 @@ async fn pane_kinds_and_visibility_are_remembered_on_hold_warm_remount_and_cold_
     assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
     assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Scm);
 }
+
+#[gpui::test]
+async fn a_hidden_review_leaves_the_layout(cx: &mut TestAppContext) {
+    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    h.click("obs-review-toggle");
+    assert!(h.has("obs-review-host"));
+    h.click("obs-editor-toggle");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    // `.obs-review-host.off` is `display: none`; the surface itself stays for a warm return.
+    assert!(!h.has("obs-review-host"));
+    assert!(h.read(|o, _| o.review_surface.is_some()));
+    h.click("obs-review-toggle");
+    assert!(h.has("obs-review-host"));
+}

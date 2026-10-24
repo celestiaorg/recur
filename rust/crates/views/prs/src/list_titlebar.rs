@@ -4,6 +4,7 @@ use gpui_kit::{
     Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div,
 };
 use recur_ui::Theme;
+use recur_ui::guard::Guarded;
 use recur_ui::text::{TextStyled, text};
 use recur_view_core::{AppState, ViewContext};
 
@@ -18,8 +19,9 @@ pub struct PrListTitlebar {
 impl PrListTitlebar {
     pub fn new(vcx: &ViewContext, cx: &mut Context<Self>) -> Self {
         let ui = ui(cx);
-        cx.observe(&vcx.state, |_, _, cx| cx.notify()).detach();
-        cx.observe(&ui, |_, _, cx| cx.notify()).detach();
+        cx.guarded_observe(&vcx.state, |_, _, cx| cx.notify())
+            .detach();
+        cx.guarded_observe(&ui, |_, _, cx| cx.notify()).detach();
         PrListTitlebar {
             state: vcx.state.clone(),
             ui,
@@ -27,8 +29,8 @@ impl PrListTitlebar {
     }
 }
 
-impl Render for PrListTitlebar {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PrListTitlebar {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let s = self.state.read(cx);
         let ids = &self.ui.read(cx).project_ids;
@@ -45,5 +47,11 @@ impl Render for PrListTitlebar {
             .debug_selector(move || sel.clone())
             .flex_none()
             .child(text(label).mono().size(11.).color(t.faint).nowrap())
+    }
+}
+
+impl Render for PrListTitlebar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

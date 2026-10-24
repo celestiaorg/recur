@@ -10,6 +10,7 @@ use gpui_kit::{
 use recur_domain::Finding;
 use recur_engine::view::chat::AgentMsg;
 use recur_engine::view::loop_cockpit::specialist_mode;
+use recur_ui::guard::Guarded;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{IconName, Theme, Tokens, icon};
 use recur_view_core::ViewContext;
@@ -172,14 +173,19 @@ impl SessionCard {
             );
             c
         });
-        self._sub = Some(cx.subscribe(&chat, |_, _, ev: &ChatEvent, cx| cx.emit(ev.clone())));
+        self._sub =
+            Some(cx.guarded_subscribe(&chat, |_, _, ev: &ChatEvent, cx| cx.emit(ev.clone())));
         self.chat = Some(chat.clone());
         chat
     }
 }
 
-impl Render for SessionCard {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SessionCard {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let expanded = self.expanded();
         let live = self.props.live;
@@ -298,7 +304,7 @@ impl Render for SessionCard {
             .child(steps_slot(&group, chips, true, expanded, &t))
             .child(name_el)
             .child(state)
-            .on_click(cx.listener(|c, _, _, cx| c.toggle(cx)));
+            .on_click(cx.guarded_listener(|c, _, _, cx| c.toggle(cx)));
         let mut out = div().flex().flex_col().child(row);
         if expanded {
             let chat = self.ensure_chat(window, cx);
@@ -323,6 +329,12 @@ impl Render for SessionCard {
             );
         }
         out
+    }
+}
+
+impl Render for SessionCard {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

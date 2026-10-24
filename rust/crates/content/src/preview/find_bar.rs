@@ -11,6 +11,7 @@ use gpui_kit::{
     Subscription, Window, div, px,
 };
 use recur_ui::fonts::Family;
+use recur_ui::guard::Guarded;
 use recur_ui::style::{self, card, focus_ring, is_focus_visible, outline, text_field};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, TextStyled, Theme, icon, text};
@@ -107,22 +108,23 @@ impl Focusable for PreviewFindBar {
 impl PreviewFindBar {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = style::text_input(&"Find".into(), window, cx);
-        let subs =
-            vec![
-                cx.subscribe_in(&input, window, |bar, _, ev: &InputEvent, _w, cx| match ev {
-                    InputEvent::Change => {
-                        bar.reset_counts();
-                        cx.emit(FindBarEvent::Changed);
-                        cx.notify();
-                    }
-                    InputEvent::PressEnter { shift, .. } => cx.emit(if *shift {
-                        FindBarEvent::Previous
-                    } else {
-                        FindBarEvent::Next
-                    }),
-                    InputEvent::Focus | InputEvent::Blur => cx.notify(),
+        let subs = vec![cx.guarded_subscribe_in(
+            &input,
+            window,
+            |bar, _, ev: &InputEvent, _w, cx| match ev {
+                InputEvent::Change => {
+                    bar.reset_counts();
+                    cx.emit(FindBarEvent::Changed);
+                    cx.notify();
+                }
+                InputEvent::PressEnter { shift, .. } => cx.emit(if *shift {
+                    FindBarEvent::Previous
+                } else {
+                    FindBarEvent::Next
                 }),
-            ];
+                InputEvent::Focus | InputEvent::Blur => cx.notify(),
+            },
+        )];
         Self {
             input,
             focus: cx.focus_handle(),
@@ -282,8 +284,8 @@ impl PreviewFindBar {
                         .hover(move |s| s.text_color(t.text).bg(t.pane_2))
                 }
             })
-            .on_click(cx.listener(move |bar, _, _, cx| bar.press(b, cx)))
-            .on_key_down(cx.listener(move |bar, e: &KeyDownEvent, _, cx| {
+            .on_click(cx.guarded_listener(move |bar, _, _, cx| bar.press(b, cx)))
+            .on_key_down(cx.guarded_listener(move |bar, e: &KeyDownEvent, _, cx| {
                 if matches!(e.keystroke.key.as_str(), "enter" | "space") {
                     cx.stop_propagation();
                     bar.press(b, cx);
@@ -297,8 +299,12 @@ impl PreviewFindBar {
     }
 }
 
-impl Render for PreviewFindBar {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl PreviewFindBar {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         style::style_text_input(&self.input, cx);
         let theme = Theme::of(cx).clone();
         let t = theme.tokens;
@@ -394,7 +400,7 @@ impl Render for PreviewFindBar {
             .id("file-preview-find")
             .track_focus(&self.focus)
             .key_context("PreviewFind")
-            .capture_key_down(cx.listener(Self::key_down))
+            .capture_key_down(cx.guarded_listener(Self::key_down))
             .flex_none()
             .flex()
             .flex_col()
@@ -402,5 +408,11 @@ impl Render for PreviewFindBar {
             .border_color(t.line)
             .bg(t.pane)
             .child(row)
+    }
+}
+
+impl Render for PreviewFindBar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

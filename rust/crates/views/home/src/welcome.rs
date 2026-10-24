@@ -3,6 +3,7 @@
 //! derived from live state, so it resumes wherever the user left off; agent probes run only
 //! while the page is shown (and again on each return to it).
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -248,7 +249,7 @@ fn chip_ico(el: impl IntoElement, t: &Tokens) -> Div {
 
 impl WelcomeView {
     pub fn new(vcx: &ViewContext, _: &mut Window, cx: &mut Context<Self>) -> Self {
-        let subs = vec![cx.observe(&vcx.state, |this, _, cx| this.sync(cx))];
+        let subs = vec![cx.guarded_observe(&vcx.state, |this, _, cx| this.sync(cx))];
         // `cursor.install` progress while InstallCursorBridge runs.
         let mut events = vcx.services.subscribe();
         let ev = cx.spawn(async move |this, cx| {
@@ -456,7 +457,7 @@ impl WelcomeView {
                     cx.notify();
                 })
             })
-            .on_click(cx.listener(move |this, _, window, cx| run(this, window, cx)))
+            .on_click(cx.guarded_listener(move |this, _, window, cx| run(this, window, cx)))
             .child(
                 text(label.to_string())
                     .mono()
@@ -931,7 +932,7 @@ impl WelcomeView {
                     )),
                 )
                 .when(!installing, |d| {
-                    d.on_click(cx.listener(|v, _, _, cx| v.install_cursor_sdk(cx)))
+                    d.on_click(cx.guarded_listener(|v, _, _, cx| v.install_cursor_sdk(cx)))
                 });
             (
                 div()
@@ -1085,7 +1086,7 @@ impl WelcomeView {
                     cx.notify();
                 })
             })
-            .on_click(cx.listener(move |v, _, _, cx| v.start_with(m, cx)))
+            .on_click(cx.guarded_listener(move |v, _, _, cx| v.start_with(m, cx)))
             .child(
                 div()
                     .flex_none()
@@ -1172,7 +1173,7 @@ impl WelcomeView {
                     cx.notify();
                 })
             })
-            .on_click(cx.listener(move |v, _, _, cx| {
+            .on_click(cx.guarded_listener(move |v, _, _, cx| {
                 v.vcx.state.update(cx, |s, cx| match name {
                     "Inbox" => s.go(ViewName::Briefing, None, cx),
                     "Pull requests" => s.go(ViewName::Pr, None, cx),
@@ -1248,7 +1249,7 @@ impl WelcomeView {
         }
         self.button(key, window, cx)
             .flex_none()
-            .on_click(cx.listener(move |v, _, _, cx| run(v, cx)))
+            .on_click(cx.guarded_listener(move |v, _, _, cx| run(v, cx)))
             .child(b)
     }
 
@@ -1268,8 +1269,12 @@ impl WelcomeView {
     }
 }
 
-impl Render for WelcomeView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl WelcomeView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let (on, loaded) = {
             let s = self.vcx.state.read(cx);
@@ -1479,6 +1484,12 @@ impl Render for WelcomeView {
     }
 }
 
+impl Render for WelcomeView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 impl WelcomeView {
     /// `.ws`: `padding: 0 0 28px 40px`, `current` while it is the step.
     fn step_li(&self, n: u8, step: u8, _: &App) -> Div {
@@ -1525,7 +1536,7 @@ impl WelcomeView {
                     cx.notify();
                 })
             })
-            .on_click(cx.listener(|v, _, _, cx| {
+            .on_click(cx.guarded_listener(|v, _, _, cx| {
                 let first = v
                     .vcx
                     .state

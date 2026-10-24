@@ -3,6 +3,7 @@
 //! copy controls on fences, Mermaid placeholders hydrated into diagrams, and images that open
 //! the lightbox.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -54,6 +55,8 @@ pub struct MarkdownView {
     loading: HashMap<String, Task<()>>,
     pub(crate) mermaid: Vec<MermaidSlot>,
     mermaid_task: Option<Task<()>>,
+    /// A large document rendering off the UI thread.
+    render_task: Option<Task<()>>,
     width: f32,
     /// The window's device scale, from the last frame.
     scale: Option<f32>,
@@ -121,6 +124,9 @@ pub(crate) fn mermaid_sources(doc: &Doc) -> Vec<String> {
     out
 }
 
+/// Sources past this render on a background thread instead of inside `set_text`.
+const ASYNC_RENDER_MIN_BYTES: usize = 64 * 1024;
+
 impl MarkdownView {
     pub fn new(
         text: impl Into<SharedString>,
@@ -143,6 +149,7 @@ impl MarkdownView {
             loading: HashMap::new(),
             mermaid: Vec::new(),
             mermaid_task: None,
+            render_task: None,
             width: 0.,
             scale: None,
             hover_link: None,
@@ -188,15 +195,30 @@ impl MarkdownView {
             return;
         }
         self.text = text;
+        self.render_task = None;
+        let opts = ParseOptions {
+            demote_images: self.demote_images,
+        };
+        if self.text.len() > ASYNC_RENDER_MIN_BYTES {
+            // A large file preview parses for long enough to freeze the window; the previous
+            // document stays up until it lands.
+            let src = self.text.clone();
+            let render = cx
+                .background_executor()
+                .spawn(async move { render_markdown_cached(&src, opts) });
+            self.render_task = Some(cx.spawn(async move |this, cx| {
+                let html = render.await;
+                let _ = this.update(cx, |v, cx| {
+                    v.render_task = None;
+                    v.set_html(&html, cx);
+                });
+            }));
+            return;
+        }
         let html = if self.text.is_empty() {
             Arc::from("")
         } else {
-            render_markdown_cached(
-                &self.text,
-                ParseOptions {
-                    demote_images: self.demote_images,
-                },
-            )
+            render_markdown_cached(&self.text, opts)
         };
         self.set_html(&html, cx);
     }
@@ -331,7 +353,7 @@ impl MarkdownView {
                 cx,
             )
         });
-        cx.subscribe(&lb, |_, _, ev: &crate::lightbox::LightboxEvent, cx| {
+        cx.guarded_subscribe(&lb, |_, _, ev: &crate::lightbox::LightboxEvent, cx| {
             let crate::lightbox::LightboxEvent::Toast { error, message } = ev;
             cx.emit(MarkdownEvent::Toast {
                 error: *error,
@@ -454,8 +476,12 @@ fn handlers(this: WeakEntity<MarkdownView>) -> Handlers {
     }
 }
 
-impl Render for MarkdownView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl MarkdownView {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let theme = Theme::of(cx).clone();
         if self.scale != Some(window.scale_factor()) {
             self.scale = Some(window.scale_factor());
@@ -566,14 +592,16 @@ impl Render for MarkdownView {
             .flex_col()
             .min_w_0()
             .when(self.hover_link.is_some(), |d| d.cursor_pointer())
-            .on_mouse_move(cx.listener(|v, e: &gpui_kit::MouseMoveEvent, window, cx| {
-                let hit = v.link_at(e.position, window).map(|(id, l, _)| (id, l));
-                if hit != v.hover_link {
-                    v.hover_link = hit;
-                    cx.notify();
-                }
-            }))
-            .on_hover(cx.listener(|v, hovered: &bool, _, cx| {
+            .on_mouse_move(
+                cx.guarded_listener(|v, e: &gpui_kit::MouseMoveEvent, window, cx| {
+                    let hit = v.link_at(e.position, window).map(|(id, l, _)| (id, l));
+                    if hit != v.hover_link {
+                        v.hover_link = hit;
+                        cx.notify();
+                    }
+                }),
+            )
+            .on_hover(cx.guarded_listener(|v, hovered: &bool, _, cx| {
                 if !hovered && v.hover_link.is_some() {
                     v.hover_link = None;
                     cx.notify();
@@ -581,7 +609,7 @@ impl Render for MarkdownView {
             }))
             .on_mouse_up(
                 gpui_kit::MouseButton::Left,
-                cx.listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
+                cx.guarded_listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
                     if e.click_count == 1
                         && let Some((_, _, href)) = v.link_at(e.position, window)
                     {
@@ -591,7 +619,7 @@ impl Render for MarkdownView {
             )
             .on_mouse_up(
                 gpui_kit::MouseButton::Middle,
-                cx.listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
+                cx.guarded_listener(|v, e: &gpui_kit::MouseUpEvent, window, cx| {
                     if let Some((_, _, href)) = v.link_at(e.position, window) {
                         crate::links::open_external_url(&href, cx);
                     }
@@ -607,6 +635,12 @@ impl Render for MarkdownView {
     }
 }
 
+impl Render for MarkdownView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use gpui_kit::{AppContext, Entity, IntoElement, ParentElement, Render, Styled, div, px};
@@ -616,9 +650,19 @@ mod tests {
 
     struct Column(Entity<MarkdownView>);
 
-    impl Render for Column {
-        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    impl Column {
+        fn render_view(
+            &mut self,
+            _: &mut Window,
+            _: &mut Context<Self>,
+        ) -> impl IntoElement + use<> {
             div().w(px(320.)).child(self.0.clone())
+        }
+    }
+
+    impl Render for Column {
+        fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            recur_ui::guard::view(self, window, cx, Self::render_view)
         }
     }
 

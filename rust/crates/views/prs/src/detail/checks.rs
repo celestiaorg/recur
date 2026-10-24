@@ -1,6 +1,7 @@
 //! `checksPanel`: the checks card (the conversation's compact one with its own scroller, and
 //! the Checks tab's), with live durations and the Fix checks flow; and the Checks pane.
 
+use recur_ui::guard::Guarded;
 use std::sync::LazyLock;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -208,7 +209,11 @@ impl PrDetail {
                             .uppercase()
                             .nowrap(),
                     )
-                    .on_click(cx.listener(move |d, _, _, cx| d.toggle_check_group(&k, scroll, cx)))
+                    .on_click(
+                        cx.guarded_listener(move |d, _, _, cx| {
+                            d.toggle_check_group(&k, scroll, cx)
+                        }),
+                    )
                     .into_any_element(),
             ));
             if collapsed {

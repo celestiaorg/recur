@@ -8,6 +8,7 @@ use gpui_kit::{
 };
 use recur_domain::{PrComment, PrReaction, reaction_mine};
 use recur_forge::view::{REACTIONS, reaction_icon, reaction_label, visible_reactions};
+use recur_ui::guard::Guarded;
 use recur_ui::logic::menu_space::{MENU_EDGE_PX, popover_top};
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, TextStyled, text};
@@ -150,7 +151,7 @@ impl CommentReactions {
             pill = pill
                 .cursor_pointer()
                 .hover(move |s| s.bg(hsla(hover_bg)).border_color(hsla(hover_border)))
-                .on_click(cx.listener(move |c, _, _, cx| c.react(&content, cx)));
+                .on_click(cx.guarded_listener(move |c, _, _, cx| c.react(&content, cx)));
         }
         titled(SharedString::from(format!("{id}-t{i}")), title, pill).into_any_element()
     }
@@ -192,7 +193,7 @@ impl CommentReactions {
                 .when(is_mine, |d| d.bg(hsla(t.pane_2)))
                 .hover(|s| s.bg(hsla(t.pane_2)))
                 .when_some(icon_name(key), |d, n| d.child(icon(n).size(px(16.))))
-                .on_click(cx.listener(move |c, _, _, cx| c.react(content, cx)));
+                .on_click(cx.guarded_listener(move |c, _, _, cx| c.react(content, cx)));
             row = row.child(titled(
                 SharedString::from(format!("rxn-pick-t-{}-{content}", self.comment.id)),
                 label,
@@ -234,8 +235,12 @@ impl CommentReactions {
     }
 }
 
-impl Render for CommentReactions {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl CommentReactions {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let pills = visible_reactions(&self.comment.reactions);
         let show = !self.comment.id.is_empty() && (!pills.is_empty() || self.can_react);
@@ -282,7 +287,7 @@ impl Render for CommentReactions {
                 .hover(|s| s.border_color(hsla(t.line_bright)).text_color(hsla(t.text)))
                 .child(icon(IconName::Smile).size(px(14.)))
                 .child(trigger_probe)
-                .on_click(cx.listener(|c, _, _, cx| {
+                .on_click(cx.guarded_listener(|c, _, _, cx| {
                     cx.stop_propagation();
                     c.open_picker(cx)
                 }));
@@ -352,6 +357,12 @@ impl Render for CommentReactions {
             .child(listeners)
             .children(picker)
             .into_any_element()
+    }
+}
+
+impl Render for CommentReactions {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

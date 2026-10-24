@@ -3,6 +3,7 @@
 //! (`editorThemeIdForAppChrome`), highlighted by its own TextMate engine so the code editor's
 //! theme is untouched (`ensureChromePairedTmEngine`), on `recur_editor`'s mini chrome.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -221,7 +222,7 @@ impl MiniScriptEditor {
             EditorView::new(opts, window, cx)
         });
         let subs = vec![
-            cx.subscribe(&editor, |this: &mut Self, _, ev: &EditorEvent, cx| {
+            cx.guarded_subscribe(&editor, |this: &mut Self, _, ev: &EditorEvent, cx| {
                 if let EditorEvent::DocChanged(text) = ev
                     && !this.applying
                 {
@@ -317,8 +318,12 @@ impl MiniScriptEditor {
     }
 }
 
-impl Render for MiniScriptEditor {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl MiniScriptEditor {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         self.apply_paired_theme(window, cx);
         let t = Theme::of(cx).tokens;
         let focused = self.editor.focus_handle(cx).contains_focused(window, cx);
@@ -358,5 +363,11 @@ impl Render for MiniScriptEditor {
             .when(ro, |d| d.cursor_default())
             .child(div().w_full().h(px(h)).child(editor))
             .into_any_element()
+    }
+}
+
+impl Render for MiniScriptEditor {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }

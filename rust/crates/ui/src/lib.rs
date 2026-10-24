@@ -24,6 +24,7 @@ pub mod fonts;
 #[cfg(feature = "gallery")]
 pub mod gallery;
 mod glyph;
+pub mod guard;
 pub mod icon;
 pub mod icon_name;
 pub mod kbd;

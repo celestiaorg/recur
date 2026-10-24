@@ -682,7 +682,10 @@ async fn a_stopped_retry_does_not_inherit_the_prior_footer() {
     })
     .await;
     assert!(fx.eng().cancel_chat(&ws.id, "PA").await);
-    assert_eq!(join3(retry, "retry after stop").await, CHAT_STOPPED_REPLY);
+    assert_eq!(
+        join_hang(retry, "retry after stop").await,
+        CHAT_STOPPED_REPLY
+    );
     let items = fx.eng().workspace_chat_items(&ws.id, "PA").await;
     let footers: Vec<usize> = items
         .iter()
@@ -990,13 +993,13 @@ async fn a_mode_switch_remount_keeps_the_original_request() {
         )
         .await
     });
-    within3(&started, "first turn starts").await;
+    within_hang(&started, "first turn starts").await;
     let msg = fx
         .eng()
         .switch_chat_mode(&ws.id, "PA", CHAT_MODE_PLAN)
         .await;
     assert!(msg.contains("remounting"), "{msg}");
-    join3(first, "first turn after the park").await;
+    join_hang(first, "first turn after the park").await;
     let cont = wait_coder_turns(&c, 2).await.remove(1);
     assert!(cont.skip_record_user);
     assert!(!cont.recur_session_id.is_empty());

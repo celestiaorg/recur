@@ -165,8 +165,8 @@ fn data_url_image(url: &str) -> Option<Arc<Image>> {
     Some(Arc::new(Image::from_bytes(format, bytes)))
 }
 
-impl RenderOnce for ProjectPic {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+impl ProjectPic {
+    fn render_view(self, _: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let theme = Theme::of(cx);
         let parsed = parse_project_pic(&self.pic, &letter_from_name(&self.name, "?"));
         let bg = theme.resolve_css_color(&self.color);
@@ -207,6 +207,12 @@ impl RenderOnce for ProjectPic {
                     .nowrap(),
             ),
         }
+    }
+}
+
+impl RenderOnce for ProjectPic {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        crate::guard::component(self, window, cx, Self::render_view)
     }
 }
 

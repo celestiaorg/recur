@@ -304,6 +304,11 @@ fn break_lines(para: &Para, text: &str, max: f32, anywhere: bool, eps: f32) -> V
     let mut i = 0;
     while i < ops.len() {
         let (pos, kind) = ops[i];
+        // An overlong split can end exactly at this opportunity: nothing is left before it.
+        if pos <= start {
+            i += 1;
+            continue;
+        }
         let w = para.width(text, start..pos);
         if w <= max + eps {
             if kind == BreakOpportunity::Mandatory {
@@ -349,4 +354,42 @@ fn break_lines(para: &Para, text: &str, max: f32, anywhere: bool, eps: f32) -> V
         lines.push(start..text.len());
     }
     lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `recur_ui::text`'s `breaking_anywhere_never_inverts_a_range_at_an_inline_box`: the
+    /// mirror breaks lines the same way and panicked on the same input.
+    #[test]
+    fn breaking_anywhere_never_inverts_a_range_at_an_inline_box() {
+        let text = "every id/ids is";
+        let mut x = 0.;
+        let mut edges = Vec::new();
+        let mut box_starts = Vec::new();
+        for i in 0..=text.len() {
+            if i == 9 {
+                box_starts.push((i, x));
+                x += 8.;
+            }
+            edges.push((i, x));
+            x += 6.;
+        }
+        let p = Para {
+            range: 0..text.len(),
+            edges,
+            box_starts,
+        };
+        for max in [0., 0.5, 3., 7.] {
+            let lines = break_lines(&p, text, max, true, 0.25);
+            let mut at = 0;
+            for l in &lines {
+                assert!(l.start <= l.end, "{l:?} at max {max}");
+                assert_eq!(l.start, at, "lines must tile the text at max {max}");
+                at = l.end;
+            }
+            assert_eq!(at, text.len());
+        }
+    }
 }

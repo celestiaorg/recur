@@ -5,6 +5,7 @@
 //! prefs (`recur.editorPrefs`), and the bundle snippet catalog. Editors observe the entity and
 //! re-apply on [`EditorEnv::epoch`] changes.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -102,7 +103,7 @@ impl EditorEnv {
             _subs: Vec::new(),
         };
         env._subs
-            .push(cx.observe(&state, |env, state, cx| env.state_changed(&state, cx)));
+            .push(cx.guarded_observe(&state, |env, state, cx| env.state_changed(&state, cx)));
         env.sync_disabled_snippets(&state, cx);
         env.load_grammars(false, &state, cx);
         env.state_changed(&state, cx);

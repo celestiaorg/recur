@@ -2,6 +2,7 @@
 //! `web/scenes/Review.svelte` mounts ReviewSurface and a PR-mode DiffFile, over
 //! `content/review.json`.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -135,7 +136,7 @@ struct SurfaceScene(
 
 impl SurfaceScene {
     fn new(surface: Entity<ReviewSurface>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &surface,
             window,
             |_, s, ev: &crate::surface::SurfaceEvent, window, cx| {
@@ -153,9 +154,15 @@ impl SurfaceScene {
     }
 }
 
-impl Render for SurfaceScene {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SurfaceScene {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         body(cx).size_full().flex().flex_col().child(self.0.clone())
+    }
+}
+
+impl Render for SurfaceScene {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 
@@ -180,8 +187,12 @@ impl ThreadScene {
     }
 }
 
-impl Render for ThreadScene {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl ThreadScene {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let stack = self.stack.render(
             Vec::new(),
             None,
@@ -198,6 +209,12 @@ impl Render for ThreadScene {
             .flex()
             .flex_col()
             .child(div().flex_1().min_h_0().flex().flex_col().child(stack))
+    }
+}
+
+impl Render for ThreadScene {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

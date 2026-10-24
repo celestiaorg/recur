@@ -1,6 +1,7 @@
 //! Integrations: the bundles' `[[setting]]` values (the Linear API key among them), with
 //! secrets masked and their links.
 
+use recur_ui::guard::Guarded;
 use std::collections::BTreeMap;
 
 use gpui_kit::{
@@ -151,15 +152,17 @@ impl SettingsView {
                         } else {
                             IconName::Eye
                         }))
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            if this.bundle_drafts.get(&id).is_none_or(String::is_empty) {
-                                return;
-                            }
-                            if !this.bundle_visible.remove(&id) {
-                                this.bundle_visible.insert(id.clone());
-                            }
-                            cx.notify();
-                        })),
+                        .on_click(cx.guarded_listener(
+                            move |this, _, _, cx| {
+                                if this.bundle_drafts.get(&id).is_none_or(String::is_empty) {
+                                    return;
+                                }
+                                if !this.bundle_visible.remove(&id) {
+                                    this.bundle_visible.insert(id.clone());
+                                }
+                                cx.notify();
+                            },
+                        )),
                     ));
                 }
                 list.push(

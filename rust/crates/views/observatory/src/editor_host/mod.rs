@@ -8,6 +8,7 @@ pub(crate) mod commands;
 mod open;
 mod save;
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -481,9 +482,10 @@ impl Observatory {
         o.read_only = ro;
         o.saved_doc = saved.map(str::to_string);
         let ed = cx.new(|cx| EditorView::new(o, window, cx));
-        let sub = cx.subscribe_in(&ed, window, move |obs, _, ev: &EditorEvent, window, cx| {
-            obs.on_editor_event(pane, ev, window, cx)
-        });
+        let sub =
+            cx.guarded_subscribe_in(&ed, window, move |obs, _, ev: &EditorEvent, window, cx| {
+                obs.on_editor_event(pane, ev, window, cx)
+            });
         self.editor_subs.push(sub);
         ed
     }
@@ -792,9 +794,10 @@ impl Observatory {
             o.read_only = ro;
             o.view_state = vs;
             let ed = cx.new(|cx| EditorView::new(o, window, cx));
-            let sub = cx.subscribe_in(&ed, window, |obs, _, ev: &EditorEvent, window, cx| {
-                obs.on_merge_event(ev, window, cx)
-            });
+            let sub =
+                cx.guarded_subscribe_in(&ed, window, |obs, _, ev: &EditorEvent, window, cx| {
+                    obs.on_merge_event(ev, window, cx)
+                });
             self.editor_subs.push(sub);
             if refocus {
                 ed.update(cx, |e, cx| e.focus(window, cx));
@@ -862,10 +865,11 @@ impl Observatory {
                 let fp = cx.new(|cx| {
                     FilePreview::new(kind, draft.clone(), path.clone(), scroll, window, cx)
                 });
-                let sub = cx.subscribe_in(&fp, window, |obs, _, ev: &FilePreviewEvent, _, cx| {
-                    let FilePreviewEvent::SearchOpenChanged(_) = ev;
-                    obs.sync_find_panel_open(cx);
-                });
+                let sub =
+                    cx.guarded_subscribe_in(&fp, window, |obs, _, ev: &FilePreviewEvent, _, cx| {
+                        let FilePreviewEvent::SearchOpenChanged(_) = ev;
+                        obs.sync_find_panel_open(cx);
+                    });
                 self.editor_subs.push(sub);
                 self.file_preview = Some((kind, fp.clone()));
                 fp

@@ -420,6 +420,8 @@ async fn command_prompts_resolve_with_their_values_and_escape_cancels(cx: &mut T
         let prompts = cx.new(crate::palettes::CommandPrompts::new);
         let events: std::rc::Rc<std::cell::RefCell<Vec<_>>> = Default::default();
         let ev = events.clone();
+        // Specs let a panic in the callback fail the test.
+        #[allow(clippy::disallowed_methods)]
         let _sub = cx.subscribe(
             &prompts,
             move |_, _, e: &crate::palettes::CommandPromptsEvent, _| {

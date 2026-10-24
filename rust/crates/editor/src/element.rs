@@ -423,9 +423,11 @@ impl Element for EditorElement {
         window: &mut Window,
         cx: &mut App,
     ) -> Plan {
-        let mut plan = self
-            .view
-            .update(cx, |view, cx| view.plan(bounds, window, cx));
+        // `plan` pushes nothing onto the window's stacks, so a panic in it can be contained.
+        let mut plan = self.view.update(cx, |view, cx| {
+            recur_ui::guard::catch("editor layout", || view.plan(bounds, window, cx))
+                .unwrap_or_default()
+        });
         plan.hitbox = Some(window.insert_hitbox(bounds, HitboxBehavior::Normal));
         let mut rest = Vec::new();
         for op in std::mem::take(&mut plan.gutter) {
@@ -516,7 +518,9 @@ impl Element for EditorElement {
             let view = view.clone();
             move |e: &MouseDownEvent, phase, window, cx| {
                 if phase == DispatchPhase::Bubble && bounds.contains(&e.position) {
-                    view.update(cx, |v, cx| v.mouse_down(e, window, cx));
+                    view.update(cx, |v, cx| {
+                        recur_ui::guard::catch("editor mouse_down", || v.mouse_down(e, window, cx));
+                    });
                 }
             }
         });
@@ -524,7 +528,11 @@ impl Element for EditorElement {
             let view = view.clone();
             move |e: &MouseMoveEvent, phase, window, cx| {
                 if phase == DispatchPhase::Bubble {
-                    view.update(cx, |v, cx| v.mouse_move(e, bounds, window, cx));
+                    view.update(cx, |v, cx| {
+                        recur_ui::guard::catch("editor mouse_move", || {
+                            v.mouse_move(e, bounds, window, cx)
+                        });
+                    });
                 }
             }
         });
@@ -532,13 +540,17 @@ impl Element for EditorElement {
             let view = view.clone();
             move |e: &MouseUpEvent, phase, window, cx| {
                 if phase == DispatchPhase::Bubble {
-                    view.update(cx, |v, cx| v.mouse_up(e, window, cx));
+                    view.update(cx, |v, cx| {
+                        recur_ui::guard::catch("editor mouse_up", || v.mouse_up(e, window, cx));
+                    });
                 }
             }
         });
         window.on_mouse_event(move |e: &ScrollWheelEvent, phase, window, cx| {
             if phase == DispatchPhase::Bubble && bounds.contains(&e.position) {
-                view.update(cx, |v, cx| v.scroll_wheel(e, window, cx));
+                view.update(cx, |v, cx| {
+                    recur_ui::guard::catch("editor scroll_wheel", || v.scroll_wheel(e, window, cx));
+                });
             }
         });
     }

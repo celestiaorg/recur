@@ -457,7 +457,7 @@ async fn a_resume_skips_a_live_user_turn() {
         fx.eng().cancel_chat(&ws.id, "PA").await,
         "the user turn is still registered"
     );
-    assert_eq!(join3(done, "user turn").await, CHAT_STOPPED_REPLY);
+    assert_eq!(join_hang(done, "user turn").await, CHAT_STOPPED_REPLY);
     fx.te.close().await;
 }
 
@@ -546,7 +546,7 @@ async fn a_turn_that_completed_during_quit_goes_idle() {
         eng.send_workspace_message(&id, "PA", "almost done", "sonnet", None, &[], "", "")
             .await
     });
-    within3(&started, "turn starts").await;
+    within_hang(&started, "turn starts").await;
     let eng = Arc::clone(fx.eng());
     let quit = tokio::spawn(async move { eng.shutdown().await });
     tokio::time::sleep(Duration::from_millis(20)).await;

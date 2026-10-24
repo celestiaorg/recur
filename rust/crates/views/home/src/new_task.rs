@@ -29,6 +29,7 @@ use recur_engine::view::prompts::{
     prompt_action_error_message, prompt_enabled,
 };
 use recur_ui::fonts::weight;
+use recur_ui::guard::Guarded;
 use recur_ui::shadow::with_shadow;
 use recur_ui::style::{MODAL_SHADOW, button_label, modal_panel, modal_scrim, nt_esc_hint, outline};
 use recur_ui::text::{LineHeight, TextStyled, text};
@@ -216,10 +217,10 @@ impl NewTaskModal {
         });
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &chat,
                 window,
                 |this, chat, ev: &ChatEvent, _, cx| match ev {
@@ -237,7 +238,7 @@ impl NewTaskModal {
                     _ => {}
                 },
             ),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &repo_sel,
                 window,
                 |this, _, ev: &SelectEvent, window, cx| {
@@ -247,7 +248,7 @@ impl NewTaskModal {
                     }
                 },
             ),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &branch_sel,
                 window,
                 |this, _, ev: &SelectEvent, window, cx| {
@@ -257,7 +258,7 @@ impl NewTaskModal {
                     }
                 },
             ),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &mode_sel,
                 window,
                 |this, _, ev: &SelectEvent, window, cx| {
@@ -267,14 +268,14 @@ impl NewTaskModal {
                     }
                 },
             ),
-            cx.subscribe(&loops, |this, _, ev: &LoopPolicyEvent, cx| {
+            cx.guarded_subscribe(&loops, |this, _, ev: &LoopPolicyEvent, cx| {
                 match ev {
                     LoopPolicyEvent::Loop(id) => this.loop_id = id.clone(),
                     LoopPolicyEvent::Policy(id) => this.policy_id = id.clone(),
                 }
                 cx.notify();
             }),
-            cx.subscribe(&models, |this, _, ev: &PickerEvent, cx| {
+            cx.guarded_subscribe(&models, |this, _, ev: &PickerEvent, cx| {
                 match ev {
                     PickerEvent::Model(r, f) => {
                         this.model = r.clone();
@@ -1424,7 +1425,7 @@ impl NewTaskModal {
 
     fn simplify_chip(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let on = self.simplify_on;
-        let toggle = cx.listener(|m: &mut Self, _: &gpui_kit::ClickEvent, _, cx| {
+        let toggle = cx.guarded_listener(|m: &mut Self, _: &gpui_kit::ClickEvent, _, cx| {
             m.simplify_on = !m.simplify_on;
             m.simplify_seeded = true;
             cx.notify();
@@ -1481,8 +1482,12 @@ pub(crate) fn simplify_chip(
     .into_any_element()
 }
 
-impl Render for NewTaskModal {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl NewTaskModal {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         if !self.open {
             return div().into_any_element();
         }
@@ -1526,7 +1531,7 @@ impl Render for NewTaskModal {
                                     cx.notify();
                                 })
                             })
-                            .on_click(cx.listener(|m, _, _, cx| m.go_add_project(cx)))
+                            .on_click(cx.guarded_listener(|m, _, _, cx| m.go_add_project(cx)))
                             .child(
                                 recur_ui::style::lnk("add a repository first", cx).underline(over),
                             )
@@ -1567,7 +1572,7 @@ impl Render for NewTaskModal {
                         })
                         .relative()
                         .track_focus(&self.link_focus)
-                        .on_click(cx.listener(|m, _, _, cx| {
+                        .on_click(cx.guarded_listener(|m, _, _, cx| {
                             m.link_linear = !m.link_linear;
                             cx.notify();
                         }))
@@ -1589,11 +1594,11 @@ impl Render for NewTaskModal {
                 .ml_auto()
                 .flex_none()
                 .cursor_pointer()
-                .on_hover(cx.listener(|m, h: &bool, _, cx| {
+                .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| {
                     m.hover_x = *h;
                     cx.notify();
                 }))
-                .on_click(cx.listener(|m, _, _, cx| m.close(cx)))
+                .on_click(cx.guarded_listener(|m, _, _, cx| m.close(cx)))
                 .child(nt_esc_hint(self.hover_x, window, cx)),
         );
 
@@ -1655,7 +1660,7 @@ impl Render for NewTaskModal {
             )
         };
         if can {
-            go = go.on_click(cx.listener(|m, _, window, cx| m.submit(window, cx)));
+            go = go.on_click(cx.guarded_listener(|m, _, window, cx| m.submit(window, cx)));
         }
         if recur_ui::style::is_focus_visible(&self.go_focus, window) {
             go = go.child(outline(2., 2., 8., 0., t.amber));
@@ -1679,8 +1684,17 @@ impl Render for NewTaskModal {
             .debug_selector(|| "v-newtask".into())
             .track_focus(&self.focus)
             .occlude()
-            .on_mouse_down(MouseButton::Left, cx.listener(|m, _, _, cx| m.close(cx)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.guarded_listener(|m, _, _, cx| m.close(cx)),
+            )
             .into_any_element()
+    }
+}
+
+impl Render for NewTaskModal {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

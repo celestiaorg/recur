@@ -3,6 +3,7 @@
 //! (`showConfirm` / `openNotification`), the "recording @x" message, and
 //! the virtual prompt mappings type into (`sendKeyToPrompt`).
 
+use recur_ui::guard::Guarded;
 use std::cell::Cell;
 use std::time::Duration;
 
@@ -303,7 +304,7 @@ pub(crate) fn show_prompt(cm: &mut Cm, mut opts: PromptOptions) {
             cx.stop_propagation();
         }
     });
-    let blur = cm.cx.subscribe_in(
+    let blur = cm.cx.guarded_subscribe_in(
         &input,
         cm.window,
         move |_, input, ev: &InputEvent, window, cx| {
@@ -795,11 +796,11 @@ pub(crate) fn render_panel(
             let mut row = div()
                 .flex()
                 .flex_1()
-                .capture_key_up(
-                    cx.listener(move |v, ev: &gpui_kit::KeyUpEvent, window, cx| {
+                .capture_key_up(cx.guarded_listener(
+                    move |v, ev: &gpui_kit::KeyUpEvent, window, cx| {
                         prompt_key_up(v, id, &ev.keystroke, window, cx)
-                    }),
-                )
+                    },
+                ))
                 .child(
                     div()
                         .flex()

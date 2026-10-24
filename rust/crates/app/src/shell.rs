@@ -373,7 +373,8 @@ impl Shell {
                         .child(v.view.clone()),
                 );
             } else if v.keep_laid_out {
-                // `#v-detail.view`: hidden but laid out at the main area's size.
+                // `#v-detail.view`: hidden but laid out at the main area's size. Cached: GPUI lays
+                // the whole tree out every frame, and a hidden route only changes when notified.
                 main = main.child(
                     div()
                         .absolute()
@@ -381,7 +382,11 @@ impl Shell {
                         .left_0()
                         .size_full()
                         .invisible()
-                        .child(v.view.clone()),
+                        .child(
+                            v.view
+                                .clone()
+                                .cached(gpui_kit::StyleRefinement::default().size_full()),
+                        ),
                 );
             }
         }

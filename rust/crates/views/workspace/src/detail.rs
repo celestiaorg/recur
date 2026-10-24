@@ -243,7 +243,8 @@ impl WorkspaceDetail {
             if *id == bound {
                 root = root.child(div().flex_1().min_h_0().flex().flex_col().child(v));
             } else {
-                // A parked shell keeps running its effects (queues, seeds, live events).
+                // A parked shell keeps running its effects (queues, seeds, live events); its layout
+                // is cached until it notifies.
                 v.update(cx, |v, cx| v.sync(window, cx));
                 root = root.child(
                     div()
@@ -252,7 +253,7 @@ impl WorkspaceDetail {
                         .left_0()
                         .size_full()
                         .invisible()
-                        .child(v),
+                        .child(v.cached(gpui_kit::StyleRefinement::default().size_full())),
                 );
             }
         }

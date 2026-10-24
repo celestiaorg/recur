@@ -1231,21 +1231,33 @@ impl AgentChat {
             .rounded(px(7.))
             .child(head);
         if open {
+            // `.tc-card:has(.wbrief)`: a presented workspace already paints its card.
+            let bare = {
+                let data = self.tool_data.clone();
+                let v = ToolView::new(m, data.cx());
+                v.is_present_workspace()
+                    && !m.result_pending
+                    && !m.result_error
+                    && v.present_workspace_result()
+                        .is_some_and(|c| c.error.is_empty() && c.brief.is_some())
+            };
             let body = self.tool_body(m, key, window, cx);
             let border = if m.result_error {
                 coral_a(0.35)
             } else {
                 t.line
             };
-            card = card.child(
-                div().mt(px(3.)).mb(px(6.)).min_w_0().child(
-                    recur_ui::style::card(t.pane, border, 6.)
-                        .flex()
-                        .flex_col()
-                        .overflow_hidden()
-                        .children(body),
-                ),
-            );
+            let inner = if bare {
+                div().flex().flex_col().children(body)
+            } else {
+                recur_ui::style::card(t.pane, border, 6.)
+                    .flex()
+                    .flex_col()
+                    .overflow_hidden()
+                    .children(body)
+            };
+            card = card.child(div().mt(px(3.)).mb(px(6.)).min_w_0().child(inner));
+            self.body_tail = true;
         }
         card.into_any_element()
     }
@@ -3317,6 +3329,7 @@ impl AgentChat {
             let rk = format!("{}:{key}", self.props.reset_key);
             let md = self.md(format!("{rk}-narr"), &m.body, None, false, cx);
             card = card.child(div().mt(px(3.)).mb(px(6.)).min_w_0().child(md));
+            self.body_tail = true;
         }
         card.into_any_element()
     }

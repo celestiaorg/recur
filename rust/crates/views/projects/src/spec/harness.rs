@@ -22,6 +22,7 @@ pub fn registry() -> ViewRegistry {
     let mut r = recur_view_home::gallery::registry();
     recur_view_briefing::register(&mut r);
     crate::register(&mut r);
+    recur_view_palettes::register(&mut r);
     r
 }
 

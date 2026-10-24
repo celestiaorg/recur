@@ -281,6 +281,12 @@ impl AppState {
     /// `hideWorkspacesNow`: mark the rows removed at once (leaving the detail view if one is on
     /// screen) and return the originals.
     fn hide_workspaces_now(&mut self, ids: &[String], cx: &mut Context<Self>) -> Vec<Workspace> {
+        let viewing =
+            self.view == crate::ViewName::Detail && ids.contains(&self.selected_workspace_id);
+        // The pending editor session lands before the archive call.
+        if viewing && let Some(flush) = self.session_flusher.clone() {
+            flush(cx);
+        }
         let mut originals = Vec::new();
         for w in self.workspaces.iter_mut() {
             if ids.contains(&w.id) {
@@ -288,7 +294,7 @@ impl AppState {
                 *w = mark_removed(w);
             }
         }
-        if self.view == crate::ViewName::Detail && ids.contains(&self.selected_workspace_id) {
+        if viewing {
             self.go(crate::ViewName::Briefing, None, cx);
         }
         cx.notify();
@@ -876,6 +882,8 @@ impl AppState {
         if self.event_bridge.is_some() {
             return;
         }
+        // `wireFileIndexEvents`: the index starts from the explorer's excludes.
+        self.sync_file_index_exclude(cx);
         let mut events = self.services.subscribe();
         self.event_bridge = Some(cx.spawn(
             async move |this: WeakEntity<AppState>, cx: &mut AsyncApp| {

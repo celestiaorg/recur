@@ -1529,6 +1529,9 @@ impl Observatory {
         self.state.update(cx, |s, _| {
             s.set_editor_command_handler(Some(handler));
             s.set_editor_focus_provider(Some(focus));
+            s.set_session_flusher(Some(std::rc::Rc::new(
+                crate::session_host::flush_editor_session_now,
+            )));
         });
         let weak = self.weak.clone();
         crate::snippets::set_editor_snippet_handler(

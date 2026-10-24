@@ -27,6 +27,7 @@ const spec = JSON.parse(readFileSync(join(here, 'scenes.json'), 'utf8')) as {
   home?: Scene[]
   briefing?: Scene[]
   projects?: Scene[]
+  palettes?: Scene[]
 }
 // Terminal scenes replay `terminalInputs[input]` as the session's attach bytes; shell scenes
 // mount App.svelte over an edited seed (see `patchSeed`).
@@ -34,6 +35,7 @@ const scenes = [
   ...spec.scenes, ...(spec.terminal ?? []), ...(spec.shell ?? []), ...(spec.content ?? []), ...(spec.chat ?? []),
   ...(spec.review ?? []), ...(spec.observatory ?? []), ...(spec.workspace ?? []), ...(spec.prs ?? []),
   ...(spec.settings ?? []), ...(spec.home ?? []), ...(spec.briefing ?? []), ...(spec.projects ?? []),
+  ...(spec.palettes ?? []),
 ]
 const only = process.env.UI_PARITY_SCENES?.split(',').filter(Boolean)
 const seed = loadSeed()
@@ -150,8 +152,8 @@ function settingsResolvers(scene: Scene) {
 }
 
 const viewsFx = JSON.parse(readFileSync(join(here, 'content', 'views.json'), 'utf8'))
-/** Scenes of the home, briefing and project view crates (`content/views.json` fixtures). */
-const VIEW_KINDS = ['home/', 'briefing/', 'projects/']
+/** Scenes of the home, briefing, project and palette view crates (`content/views.json` fixtures). */
+const VIEW_KINDS = ['home/', 'briefing/', 'projects/', 'palettes/']
 const isViewScene = (scene: Scene) => VIEW_KINDS.some((k) => scene.name.startsWith(k))
 
 /** A view scene's fixture: seed edits and canned replies (`{"$pending": true}` never answers). */

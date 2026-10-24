@@ -352,6 +352,38 @@
           1925172000000
         ]
       }
+    },
+    "palette-runs": {
+      "seed": {
+        "projects": [
+          {
+            "id": "storefront",
+            "runCommands": [
+              {
+                "name": "dev",
+                "cmd": "wails3 task dev"
+              },
+              {
+                "name": "test:go",
+                "cmd": "wails3 task test:go"
+              },
+              {
+                "name": "test:frontend",
+                "cmd": "wails3 task test:frontend"
+              },
+              {
+                "name": "check",
+                "cmd": "wails3 task check"
+              },
+              {
+                "name": "tidy",
+                "cmd": "wails3 task common:go:mod:tidy"
+              }
+            ],
+            "pinnedRun": "check"
+          }
+        ]
+      }
     }
   }
 }

@@ -77,5 +77,13 @@
   "policies": [
     { "id": "recur.policies.standard", "name": "Standard", "hint": "Two review passes" },
     { "id": "recur.policies.strict", "name": "Strict", "hint": "No open findings" }
-  ]
+  ],
+  "brief-card": {
+    "items": [
+      { "role": "user", "kind": "text", "text": "Which workspace needs me?" },
+      { "role": "assistant", "kind": "tool", "tool": "mcp__recur__present_workspace", "input": "{\"target\":\"workspace:LOOP-2218\" }", "result": "{\"ok\":true,\"target\":\"workspace:LOOP-2218\",\"kind\":\"workspace\",\"brief\":{\"workspaceId\":\"LOOP-2218\",\"projectName\":\"payments\",\"title\":\"Rate-limit the public API\",\"branch\":\"recur/rate-limit\",\"bucket\":\"needs\",\"reasons\":[\"escalation\",\"plan_approval\"],\"now\":\"Escalated: ambiguous burst-limit spec\",\"next\":\"Answer the question\",\"primary\":{\"label\":\"Answer\",\"target\":\"workspace:LOOP-2218\" }}}" },
+      { "role": "assistant", "kind": "text", "text": "Rate-limit is waiting on your answer about burst limits." },
+      { "role": "assistant", "kind": "turn", "durationMs": 1400}
+    ]
+  }
 }

@@ -448,4 +448,69 @@ mod tests {
         let now = state.update(cx, |s, cx| s.load_model_catalog(cx)).await;
         assert_eq!(now[0].r#ref, "claude-code/b");
     }
+
+    // file-index.ts `syncFileIndexExclude` / `wireFileIndexEvents`.
+    #[gpui::test]
+    async fn the_file_index_follows_the_explorer_excludes(cx: &mut TestAppContext) {
+        let sent = Arc::new(parking_lot::Mutex::new(Vec::<serde_json::Value>::new()));
+        let s2 = sent.clone();
+        let bridge = MockBridge::fresh(MockOptions::default().resolver(
+            "SetFileIndexExclude",
+            move |a, _, _| {
+                s2.lock().push(a.first().cloned().unwrap_or_default());
+                Reply::null()
+            },
+        ));
+        let state =
+            cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
+        state.update(cx, |s, cx| s.wire_events(cx));
+        cx.run_until_parked();
+        let defaults: Vec<String> = crate::prefs::DEFAULT_EXPLORER_EXCLUDE
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        assert_eq!(sent.lock().clone(), [json!(defaults)]);
+        state.update(cx, |s, cx| {
+            s.set_explorer_exclude(vec!["**/dist".into()], cx)
+        });
+        cx.run_until_parked();
+        assert_eq!(sent.lock().last().cloned(), Some(json!(["**/dist"])));
+        assert_eq!(sent.lock().len(), 2);
+    }
+
+    // remove-workspace.ts: `hideWorkspacesNow` flushes the editor session of the workspace on
+    // screen before hiding it.
+    #[gpui::test]
+    async fn removing_the_workspace_on_screen_flushes_the_editor_session_first(
+        cx: &mut TestAppContext,
+    ) {
+        let bridge = MockBridge::fresh(MockOptions::default());
+        let state =
+            cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
+        state.update(cx, |s, cx| s.load_initial(cx)).await.ok();
+        let flushed = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let f = flushed.clone();
+        state.update(cx, |s, _| {
+            s.set_session_flusher(Some(std::rc::Rc::new(move |_| {
+                f.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            })))
+        });
+        let (a, b) = state.read_with(cx, |s, _| {
+            (s.workspaces[0].id.clone(), s.workspaces[1].id.clone())
+        });
+        state.update(cx, |s, cx| s.open_workspace(&a, false, cx));
+        state
+            .update(cx, |s, cx| s.remove_workspace(&b, cx))
+            .detach();
+        assert_eq!(flushed.load(std::sync::atomic::Ordering::SeqCst), 0);
+        state
+            .update(cx, |s, cx| s.remove_workspace(&a, cx))
+            .detach();
+        assert_eq!(flushed.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            state.read_with(cx, |s, _| s.view),
+            crate::ViewName::Briefing
+        );
+        cx.run_until_parked();
+    }
 }

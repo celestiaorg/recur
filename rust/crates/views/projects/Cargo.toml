@@ -63,6 +63,7 @@ objc2-app-kit = { workspace = true, features = ["NSColorPanel", "NSColor", "NSCo
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
+recur-view-palettes.workspace = true
 recur-services = { workspace = true, features = ["mock"] }
 recur-view-projects = { path = ".", features = ["gallery"] }
 recur-app = { workspace = true, features = ["gallery"] }

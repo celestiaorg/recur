@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use gpui_kit::{App, AppContext, Context, Task};
+use gpui_kit::{App, AppContext, Context, Entity, Task};
 use recur_editor::keyequiv::{effective_key_equivalent, format_key_equivalent_display};
 use recur_services::api::{CommandInfo, RunContextDto};
 
@@ -714,9 +714,15 @@ impl AppState {
         self.commands.editor_handler = handler;
     }
 
-    /// `runEditorCommand`.
-    pub fn run_editor_command(&self, id: &str, cx: &mut App) -> Task<Result<(), String>> {
-        match &self.commands.editor_handler {
+    /// `runEditorCommand`. The handler reads the state and updates its window, so it runs with
+    /// neither borrowed.
+    pub fn run_editor_command(
+        this: &Entity<Self>,
+        id: &str,
+        cx: &mut App,
+    ) -> Task<Result<(), String>> {
+        let handler = this.read(cx).commands.editor_handler.clone();
+        match handler {
             Some(h) => h(id.to_string(), cx),
             None => Task::ready(Err(
                 "No editor is focused — open a file in the Observatory first".into(),

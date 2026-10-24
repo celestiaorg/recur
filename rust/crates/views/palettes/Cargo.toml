@@ -1,0 +1,46 @@
+[package]
+name = "recur-view-palettes"
+description = "The palettes: Go to, Run Command, Open in, Run, the language-mode picker and the keyboard shortcuts list."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Parity scenes for `rust/tools/ui-parity` (`gallery::build`).
+gallery = [
+    "recur-services/mock",
+    "recur-ui/gallery",
+    "recur-view-observatory/gallery",
+    "dep:recur-app",
+    "dep:serde",
+]
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-editor.workspace = true
+recur-textmate.workspace = true
+recur-code.workspace = true
+recur-view-core.workspace = true
+recur-view-observatory.workspace = true
+base64.workspace = true
+futures.workspace = true
+serde_json.workspace = true
+recur-app = { workspace = true, features = ["gallery"], optional = true }
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["mock"] }
+recur-view-palettes = { path = ".", features = ["gallery"] }
+recur-app = { workspace = true, features = ["gallery"] }
+recur-view-home = { workspace = true, features = ["gallery"] }
+recur-view-briefing.workspace = true
+parking_lot.workspace = true
+
+[lints]
+workspace = true

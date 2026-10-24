@@ -186,8 +186,10 @@ pub fn brief_card(
         );
     }
     let (state, b, target) = (state.clone(), brief.clone(), open_target.to_string());
+    let sel = format!("wbrief:{}", brief.title);
     div()
         .id(id)
+        .debug_selector(move || sel)
         .relative()
         .flex()
         .gap(px(10.))

@@ -281,8 +281,27 @@ impl EditorEnv {
         self.tm
             .borrow_mut()
             .catalog
-            .syntax_mode
-            .set_for_path(path, scope);
+            .apply_language_mode(path, scope);
+        self.syntax_changed(cx);
+    }
+
+    /// The picker's "Always open *.ext as…": associate the file type (`None` clears it) and drop
+    /// `path`'s own override so the association applies.
+    pub fn set_file_type_language(
+        &mut self,
+        key: &str,
+        scope: Option<&str>,
+        path: Option<&str>,
+        cx: &mut Context<Self>,
+    ) {
+        {
+            let mut tm = self.tm.borrow_mut();
+            let modes = &mut tm.catalog.syntax_mode;
+            modes.set_for_file_type(key, scope);
+            if let Some(p) = path {
+                modes.set_for_path(p, None);
+            }
+        }
         self.syntax_changed(cx);
     }
 

@@ -26,6 +26,7 @@ recur-view-settings = { workspace = true, features = ["gallery"] }
 recur-view-home = { workspace = true, features = ["gallery"] }
 recur-view-briefing = { workspace = true, features = ["gallery"] }
 recur-view-projects = { workspace = true, features = ["gallery"] }
+recur-view-palettes = { workspace = true, features = ["gallery"] }
 gpui-kit = { workspace = true, features = ["test-support"] }
 image = { workspace = true, features = ["png"] }
 serde.workspace = true

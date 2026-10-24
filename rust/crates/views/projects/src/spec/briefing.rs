@@ -296,7 +296,18 @@ fn footer_needs_you_opens_the_list_focused_clearing_bucket_filters(cx: &mut Test
     assert!(s.has("briefing-needs"));
 }
 
-// `go-to palette reaches Briefing` waits for `CommandPalette.svelte`'s port (the ⌘K palette).
+#[gpui::test]
+fn go_to_palette_reaches_briefing(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.click("nav-pr");
+    assert_eq!(s.view(), ViewName::Pr);
+    s.keys("cmd-k");
+    assert!(s.has("palette"));
+    s.type_text("Inbox");
+    s.click("pal-row:Inbox:sel");
+    assert_eq!(s.view(), ViewName::Briefing);
+    assert!(s.has("briefing-needs"));
+}
 
 #[gpui::test]
 fn opening_a_brief_row_lands_on_the_workspace(cx: &mut TestAppContext) {
@@ -352,6 +363,16 @@ fn ask_recur_briefing_tools_skip_json_only_present_workspace_is_a_card(cx: &mut 
     assert!(s.has(&format!("turn-end-link:Open {RATE}")));
     s.click(&format!("turn-end-link:Open {RATE}"));
     assert_eq!(s.view(), ViewName::Detail);
+    // `WorkspaceBriefCard`: the pinned card opens its primary target too.
+    s.go(ViewName::Briefing);
+    assert!(s.until(|s| s.has(&format!("wbrief:{RATE}"))));
+    s.click(&format!("wbrief:{RATE}"));
+    assert_eq!(s.view(), ViewName::Detail);
+    assert_eq!(
+        s.state
+            .read_with(s.cx, |s, _| s.selected_workspace_id.clone()),
+        "LOOP-2218"
+    );
 }
 
 #[gpui::test]

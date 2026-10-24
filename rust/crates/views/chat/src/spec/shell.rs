@@ -230,6 +230,45 @@ async fn an_emoji_shortcode_in_an_attached_field_expands_and_suggests(cx: &mut T
     assert!(!open);
 }
 
+/// `textarea-caret.test.ts`: the caret rect the typeaheads anchor to (`textareaCaretRect`, here
+/// the field's own `range_to_bounds`) is finite, inside the field, and moves right along a line.
+#[gpui::test]
+async fn the_caret_rect_sits_in_the_field_and_moves_right_along_a_line(cx: &mut TestAppContext) {
+    init(cx);
+    let (field, cx) = cx.add_window_view(|window, cx| {
+        let input = cx.new(|cx| gpui_kit::base::input::InputState::new(window, cx));
+        let attach = crate::suggest::attach_emoji(&input, None, window, cx);
+        let emoji = cx
+            .new(|cx| crate::suggest::SuggestOverlay::new(crate::suggest::SuggestKind::Emoji, cx));
+        Field {
+            input,
+            emoji,
+            _attach: attach,
+        }
+    });
+    let input = field.read_with(cx, |f, _| f.input.clone());
+    cx.update(|window, cx| {
+        let focus = input.focus_handle(cx);
+        window.focus(&focus, cx);
+    });
+    cx.simulate_input("hello :roc");
+    cx.run_until_parked();
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+    let len = input.read_with(cx, |i, _| i.value().len());
+    let rect = |at: usize, cx: &mut gpui::VisualTestContext| {
+        input
+            .read_with(cx, |i, _| i.range_to_bounds(&(at..at)))
+            .expect("caret bounds")
+    };
+    let (start, end) = (rect(0, cx), rect(len, cx));
+    assert!(f32::from(end.origin.x).is_finite() && f32::from(end.origin.y).is_finite());
+    assert!(f32::from(end.size.height) > 0.);
+    // The field starts at the view's 40px padding.
+    assert!(f32::from(end.origin.x) >= 40. - 1.);
+    assert!(end.origin.x > start.origin.x);
+}
+
 struct MentionField {
     input: Entity<gpui_kit::base::input::InputState>,
     overlay: Entity<crate::suggest::SuggestOverlay>,

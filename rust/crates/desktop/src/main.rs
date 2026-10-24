@@ -77,6 +77,7 @@ fn registry() -> ViewRegistry {
     recur_view_home::register(&mut r);
     recur_view_briefing::register(&mut r);
     recur_view_projects::register(&mut r);
+    recur_view_palettes::register(&mut r);
     r
 }
 

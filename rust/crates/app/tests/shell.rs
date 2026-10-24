@@ -709,3 +709,53 @@ fn dragging_a_project_into_a_group_moves_it_there(cx: &mut TestAppContext) {
     );
     assert!(h.has("ph:storefront"));
 }
+
+/// Navigate → Reload Bundles (`lib/bundle-reload.ts` and App.svelte's toasts): the catalog is
+/// re-read, bundle-derived state rebuilds off the epoch, and skipped bundles are reported.
+#[gpui::test]
+fn reload_bundles_rereads_the_catalog_and_reports_skipped_bundles(cx: &mut TestAppContext) {
+    let calls = Arc::new(parking_lot::Mutex::new(Vec::<String>::new()));
+    let skipped = Arc::new(parking_lot::Mutex::new(json!([])));
+    let (c1, c2, s2) = (calls.clone(), calls.clone(), skipped.clone());
+    let opts = MockOptions::default()
+        .resolver("InvalidateCatalog", move |_, _, _| {
+            c1.lock().push("InvalidateCatalog".into());
+            Reply::null()
+        })
+        .resolver("ListSkippedBundles", move |_, _, _| {
+            c2.lock().push("ListSkippedBundles".into());
+            Reply::value(s2.lock().clone())
+        });
+    let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
+    let toast = |h: &mut H, kind: recur_ui::widgets::ToastKind, text: &str| {
+        h.cx.update(|_, cx| {
+            ToastStore::global(cx)
+                .read(cx)
+                .toasts()
+                .iter()
+                .any(|t| t.kind == kind && t.text == text)
+        })
+    };
+    let epoch = h.read(|s| s.bundles_epoch);
+    h.state
+        .update(h.cx, |s, cx| s.dispatch_menu_action("reload-bundles", cx));
+    h.settle();
+    assert_eq!(*calls.lock(), ["InvalidateCatalog", "ListSkippedBundles"]);
+    assert_eq!(h.read(|s| s.bundles_epoch), epoch + 1);
+    assert!(toast(
+        &mut h,
+        recur_ui::widgets::ToastKind::Success,
+        "Bundles reloaded"
+    ));
+    *skipped.lock() =
+        json!([{"name": "broken", "reason": "bad toml"}, {"name": "old", "reason": "x"}]);
+    h.state
+        .update(h.cx, |s, cx| s.dispatch_menu_action("reload-bundles", cx));
+    h.settle();
+    assert_eq!(h.read(|s| s.bundles_epoch), epoch + 2);
+    assert!(toast(
+        &mut h,
+        recur_ui::widgets::ToastKind::Info,
+        "Bundles reloaded, 2 skipped (see Settings → Bundles)"
+    ));
+}

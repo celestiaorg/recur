@@ -171,6 +171,10 @@ impl StopPalette {
             let focus = self.input.focus_handle(cx);
             window.defer(cx, move |window, cx| window.focus(&focus, cx));
         }
+        // The hidden field would keep focus; WebKit blurs a field that stops rendering.
+        if !open && self.was_open && self.input.focus_handle(cx).is_focused(window) {
+            window.blur(cx);
+        }
         self.was_open = open;
         if open && self.rows(cx).is_empty() {
             self.close(cx);

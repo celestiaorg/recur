@@ -34,6 +34,7 @@ recur-view-settings.workspace = true
 recur-view-home.workspace = true
 recur-view-briefing.workspace = true
 recur-view-projects.workspace = true
+recur-view-palettes.workspace = true
 gpui-kit.workspace = true
 futures.workspace = true
 parking_lot.workspace = true

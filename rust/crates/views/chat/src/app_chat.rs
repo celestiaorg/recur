@@ -130,7 +130,7 @@ impl AppChat {
         chat.update(cx, |c, cx| c.set_empty(Some(empty.into()), cx));
         let focus = cx.focus_handle();
         let subs = vec![
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &chat,
                 window,
                 |this, chat, ev: &ChatEvent, _, cx| match ev {
@@ -143,14 +143,14 @@ impl AppChat {
                     _ => {}
                 },
             ),
-            cx.subscribe(&pickers, |this, _, ev: &PickerEvent, cx| match ev {
+            cx.guarded_subscribe(&pickers, |this, _, ev: &PickerEvent, cx| match ev {
                 PickerEvent::Model(r, f) => this.remember(r.clone(), f.clone(), cx),
                 PickerEvent::Flags(f) => {
                     let m = this.model.clone();
                     this.remember(m, f.clone(), cx)
                 }
             }),
-            cx.observe(&state, |this, _, cx| {
+            cx.guarded_observe(&state, |this, _, cx| {
                 this.sync_catalog(cx);
                 this.props_dirty = true;
                 cx.notify();

@@ -341,10 +341,10 @@ impl ScheduleEditor {
         model_pickers.update(cx, |m, cx| m.set_trigger_style(ghost.clone(), cx));
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
-            cx.subscribe(&prompt, |this, area, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&prompt, |this, area, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change)
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -352,7 +352,7 @@ impl ScheduleEditor {
                     cx.notify();
                 }
             }),
-            cx.subscribe(&cron, |this, f, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&cron, |this, f, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change)
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -360,7 +360,7 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&date, |this, f, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&date, |this, f, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change)
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -368,7 +368,7 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&time, |this, f, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&time, |this, f, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change)
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -376,12 +376,12 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&repo_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&repo_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.choose_project(v, cx);
                 }
             }),
-            cx.subscribe(&branch_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&branch_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -389,7 +389,7 @@ impl ScheduleEditor {
                     cx.notify();
                 }
             }),
-            cx.subscribe(&repeat_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&repeat_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -397,7 +397,7 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&zone_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&zone_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev
                     && let Some(d) = this.draft.as_mut()
                 {
@@ -405,12 +405,12 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.subscribe(&mode_sel, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&mode_sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.pick_mode(ChatMode::from_key(v), cx);
                 }
             }),
-            cx.subscribe(&loop_pickers, |this, _, ev: &LoopPolicyEvent, cx| {
+            cx.guarded_subscribe(&loop_pickers, |this, _, ev: &LoopPolicyEvent, cx| {
                 if let Some(d) = this.draft.as_mut() {
                     match ev {
                         LoopPolicyEvent::Loop(id) => d.loop_id = id.clone(),
@@ -419,7 +419,7 @@ impl ScheduleEditor {
                 }
                 cx.notify();
             }),
-            cx.subscribe(&model_pickers, |this, _, ev: &PickerEvent, cx| {
+            cx.guarded_subscribe(&model_pickers, |this, _, ev: &PickerEvent, cx| {
                 if let Some(d) = this.draft.as_mut() {
                     match ev {
                         PickerEvent::Model(r, f) => {

@@ -196,10 +196,10 @@ impl RunCommandPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
-            cx.subscribe(&input, |this, _, _: &InputEvent, cx| {
+            cx.guarded_subscribe(&input, |this, _, _: &InputEvent, cx| {
                 this.clamp_sel(cx);
                 cx.notify();
             }),

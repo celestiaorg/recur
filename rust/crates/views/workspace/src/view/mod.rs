@@ -13,6 +13,7 @@ mod send;
 mod sync;
 mod tabs;
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
 
@@ -327,13 +328,13 @@ impl WorkspaceView {
         let observatory = cx.new(|cx| Observatory::new(st, obs_props, slots, window, cx));
 
         let subs = vec![
-            cx.observe(&state, |v, _, cx| v.touch(cx)),
-            cx.subscribe_in(&chat, window, Self::on_chat_event),
-            cx.subscribe_in(&observatory, window, Self::on_observatory_event),
-            cx.subscribe(&state, Self::on_applied_event),
-            cx.subscribe(&state, Self::on_shell_event),
-            cx.observe(&feed, |v, _, cx| v.touch(cx)),
-            cx.subscribe_in(&plan_panel, window, Self::on_plan_event),
+            cx.guarded_observe(&state, |v, _, cx| v.touch(cx)),
+            cx.guarded_subscribe_in(&chat, window, Self::on_chat_event),
+            cx.guarded_subscribe_in(&observatory, window, Self::on_observatory_event),
+            cx.guarded_subscribe(&state, Self::on_applied_event),
+            cx.guarded_subscribe(&state, Self::on_shell_event),
+            cx.guarded_observe(&feed, |v, _, cx| v.touch(cx)),
+            cx.guarded_subscribe_in(&plan_panel, window, Self::on_plan_event),
             cx.on_release(|v: &mut Self, cx| v.release(cx)),
         ];
 

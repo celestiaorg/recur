@@ -226,12 +226,12 @@ impl DiffFile {
         let emoji = attach_emoji(&draft, None, window, cx);
         let mentions = attach_user_mentions(&draft, state.clone(), None, window, cx);
         let subs = vec![
-            cx.subscribe(&draft, |_, _, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&draft, |_, _, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change) {
                     cx.notify();
                 }
             }),
-            cx.observe(&state, |_, _, cx| cx.notify()),
+            cx.guarded_observe(&state, |_, _, cx| cx.notify()),
         ];
         let mut me = DiffFile {
             state,

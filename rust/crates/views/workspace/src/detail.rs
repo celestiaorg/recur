@@ -3,6 +3,7 @@
 //! keeps the previous one mounted as a parked hot shell, starts a PR's chat host, and leaves
 //! a stale selection for the Briefing.
 
+use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
 
 use gpui_kit::{
@@ -37,10 +38,10 @@ impl WorkspaceDetail {
         // Subscribed before any WorkspaceView, so the hoist bookkeeping api.ts did ahead of its
         // `onChatsChanged` listeners runs first.
         let subs = vec![
-            cx.subscribe(&vcx.state, |_, _, ev: &AppliedEvent, cx| {
+            cx.guarded_subscribe(&vcx.state, |_, _, ev: &AppliedEvent, cx| {
                 on_hoist(&ev.0, cx)
             }),
-            cx.observe_in(&vcx.state, window, |d, _, window, cx| d.sync(window, cx)),
+            cx.guarded_observe_in(&vcx.state, window, |d, _, window, cx| d.sync(window, cx)),
         ];
         let mut d = WorkspaceDetail {
             vcx: vcx.clone(),

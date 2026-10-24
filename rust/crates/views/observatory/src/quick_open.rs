@@ -81,7 +81,7 @@ impl QuickOpen {
         let input = cx.new(|cx| InputState::new(window, cx));
         recur_ui::style::style_text_input(&input, cx);
         let subs = vec![
-            cx.subscribe_in(&input, window, |q, _, ev: &InputEvent, _, cx| {
+            cx.guarded_subscribe_in(&input, window, |q, _, ev: &InputEvent, _, cx| {
                 if matches!(ev, InputEvent::Change) {
                     q.sel = 0;
                     q.query_changed(cx);

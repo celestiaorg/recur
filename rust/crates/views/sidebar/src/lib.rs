@@ -166,7 +166,7 @@ impl Sidebar {
         let state = ctx.state.clone();
         let usage = cx.new(|cx| UsageMeter::new(state.clone(), cx));
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.state_changed(window, cx)
             }),
             cx.observe_window_activation(window, |this, window, cx| {
@@ -810,13 +810,14 @@ impl Sidebar {
             s.focus(window, cx);
             s.select_all(window, cx);
         });
-        self.rename_subs =
-            vec![
-                cx.subscribe_in(&input, window, |this, _, ev: &InputEvent, _, cx| match ev {
-                    InputEvent::PressEnter { .. } | InputEvent::Blur => this.commit_rename(cx),
-                    _ => {}
-                }),
-            ];
+        self.rename_subs = vec![cx.guarded_subscribe_in(
+            &input,
+            window,
+            |this, _, ev: &InputEvent, _, cx| match ev {
+                InputEvent::PressEnter { .. } | InputEvent::Blur => this.commit_rename(cx),
+                _ => {}
+            },
+        )];
         self.renaming = Some((id.to_string(), input));
         cx.notify();
     }

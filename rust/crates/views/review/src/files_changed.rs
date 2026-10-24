@@ -157,13 +157,13 @@ impl FilesChangedView {
             )
         });
         let subs = vec![
-            cx.subscribe(&filter, |v: &mut Self, _, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&filter, |v: &mut Self, _, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change) {
                     v.sync_stack(cx);
                     cx.notify();
                 }
             }),
-            cx.observe(&state, |_, _, cx| cx.notify()),
+            cx.guarded_observe(&state, |_, _, cx| cx.notify()),
         ];
         let stack = FileStack::new(state.clone(), cx);
         let mut v = FilesChangedView {

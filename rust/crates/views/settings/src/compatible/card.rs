@@ -533,13 +533,14 @@ impl CompatibleProviderCard {
             return s.clone();
         }
         let sel = cx.new(|cx| build(window, cx));
-        self._subs.push(
-            cx.subscribe(&sel, move |this: &mut Self, _, ev: &SelectEvent, cx| {
+        self._subs.push(cx.guarded_subscribe(
+            &sel,
+            move |this: &mut Self, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     on(this, v.to_string(), cx);
                 }
-            }),
-        );
+            },
+        ));
         self.selects.insert(key.to_string(), sel.clone());
         sel
     }

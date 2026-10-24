@@ -13,8 +13,8 @@
 //!   draws [`failed`] in the view's place and the rest of the window keeps working.
 //! - [`catch`] wraps the pure layout work of custom elements (text shaping and line breaking,
 //!   editor rows, terminal tiles), which then lay out as empty.
-//! - [`Guarded::guarded_listener`] is `cx.listener` with the handler body caught: the event does
-//!   nothing and an error toast says so.
+//! - [`Guarded`] is `cx.listener`, `cx.subscribe`, `cx.observe` and their window variants with
+//!   the callback caught: the event does nothing and an error toast says so.
 //!
 //! The panic hook (`recur_store::applog`) logs every panic with its backtrace to `recur.log`
 //! first, contained or not.
@@ -23,8 +23,8 @@ use std::any::type_name;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use gpui_kit::{
-    AnyElement, App, Context, InteractiveElement, IntoElement, ParentElement, Styled, Window, div,
-    px,
+    AnyElement, App, Context, Entity, EventEmitter, InteractiveElement, IntoElement, ParentElement,
+    Styled, Subscription, Window, div, px,
 };
 
 use crate::theme::Theme;
@@ -81,21 +81,98 @@ pub fn failed(name: &str, cx: &App) -> AnyElement {
         .into_any_element()
 }
 
-/// `cx.listener` with the handler contained.
+/// `cx.listener`, `cx.subscribe`, `cx.observe` and their window variants with the callback
+/// contained: a panic drops the event and an error toast says so.
 pub trait Guarded<V> {
     fn guarded_listener<E: ?Sized>(
         &self,
         f: impl Fn(&mut V, &E, &mut Window, &mut Context<V>) + 'static,
     ) -> impl Fn(&E, &mut Window, &mut App) + 'static;
+
+    fn guarded_subscribe<T: EventEmitter<Evt>, Evt: 'static>(
+        &mut self,
+        entity: &Entity<T>,
+        f: impl FnMut(&mut V, Entity<T>, &Evt, &mut Context<V>) + 'static,
+    ) -> Subscription;
+
+    fn guarded_subscribe_in<T: EventEmitter<Evt>, Evt: 'static>(
+        &mut self,
+        entity: &Entity<T>,
+        window: &Window,
+        f: impl FnMut(&mut V, &Entity<T>, &Evt, &mut Window, &mut Context<V>) + 'static,
+    ) -> Subscription;
+
+    fn guarded_observe<T: 'static>(
+        &mut self,
+        entity: &Entity<T>,
+        f: impl FnMut(&mut V, Entity<T>, &mut Context<V>) + 'static,
+    ) -> Subscription;
+
+    fn guarded_observe_in<T: 'static>(
+        &mut self,
+        entity: &Entity<T>,
+        window: &mut Window,
+        f: impl FnMut(&mut V, Entity<T>, &mut Window, &mut Context<V>) + 'static,
+    ) -> Subscription;
 }
 
+#[allow(clippy::disallowed_methods)]
 impl<V: 'static> Guarded<V> for Context<'_, V> {
     fn guarded_listener<E: ?Sized>(
         &self,
         f: impl Fn(&mut V, &E, &mut Window, &mut Context<V>) + 'static,
     ) -> impl Fn(&E, &mut Window, &mut App) + 'static {
-        #[allow(clippy::disallowed_methods)]
         self.listener(move |this: &mut V, e: &E, window, cx| {
+            if catch(type_name::<V>(), || f(this, e, window, cx)).is_none() {
+                cx.defer(report);
+            }
+        })
+    }
+
+    fn guarded_subscribe<T: EventEmitter<Evt>, Evt: 'static>(
+        &mut self,
+        entity: &Entity<T>,
+        mut f: impl FnMut(&mut V, Entity<T>, &Evt, &mut Context<V>) + 'static,
+    ) -> Subscription {
+        self.subscribe(entity, move |this, e, ev, cx| {
+            if catch(type_name::<V>(), || f(this, e, ev, cx)).is_none() {
+                cx.defer(report);
+            }
+        })
+    }
+
+    fn guarded_subscribe_in<T: EventEmitter<Evt>, Evt: 'static>(
+        &mut self,
+        entity: &Entity<T>,
+        window: &Window,
+        mut f: impl FnMut(&mut V, &Entity<T>, &Evt, &mut Window, &mut Context<V>) + 'static,
+    ) -> Subscription {
+        self.subscribe_in(entity, window, move |this, e, ev, window, cx| {
+            if catch(type_name::<V>(), || f(this, e, ev, window, cx)).is_none() {
+                cx.defer(report);
+            }
+        })
+    }
+
+    fn guarded_observe<T: 'static>(
+        &mut self,
+        entity: &Entity<T>,
+        mut f: impl FnMut(&mut V, Entity<T>, &mut Context<V>) + 'static,
+    ) -> Subscription {
+        self.observe(entity, move |this, e, cx| {
+            if catch(type_name::<V>(), || f(this, e, cx)).is_none() {
+                cx.defer(report);
+            }
+        })
+    }
+
+    fn guarded_observe_in<T: 'static>(
+        &mut self,
+        entity: &Entity<T>,
+        window: &mut Window,
+        mut f: impl FnMut(&mut V, Entity<T>, &mut Window, &mut Context<V>) + 'static,
+    ) -> Subscription {
+        self.observe_in(entity, window, move |this, e, window, cx| {
             if catch(type_name::<V>(), || f(this, e, window, cx)).is_none() {
                 cx.defer(report);
             }
@@ -119,8 +196,8 @@ fn report(cx: &mut App) {
 mod tests {
     use super::*;
     use gpui_kit::{
-        ClickEvent, InteractiveElement, Render, StatefulInteractiveElement, TestAppContext,
-        VisualTestContext,
+        AppContext, ClickEvent, InteractiveElement, Render, StatefulInteractiveElement,
+        TestAppContext, VisualTestContext,
     };
 
     struct Boom {
@@ -195,6 +272,39 @@ mod tests {
         assert_eq!(toasts, 1);
         cx.simulate_click(at, Default::default());
         assert_eq!(boom.read_with(cx, |b, _| b.clicks), 3);
+    }
+
+    struct Emitter;
+    impl EventEmitter<u32> for Emitter {}
+
+    struct Listener {
+        seen: Vec<u32>,
+        _sub: Option<Subscription>,
+    }
+
+    #[gpui_kit::test]
+    fn a_panicking_subscription_keeps_the_subscriber_and_toasts(cx: &mut TestAppContext) {
+        let emitter = cx.new(|_| Emitter);
+        let listener = cx.new(|cx: &mut Context<Listener>| {
+            let sub = cx.guarded_subscribe(&emitter, |this: &mut Listener, _, n: &u32, _| {
+                this.seen.push(*n);
+                assert!(*n != 2, "event 2 exploded");
+            });
+            Listener {
+                seen: Vec::new(),
+                _sub: Some(sub),
+            }
+        });
+        for n in 1..=3 {
+            emitter.update(cx, |_, cx| cx.emit(n));
+        }
+        cx.run_until_parked();
+        assert_eq!(listener.read_with(cx, |l, _| l.seen.clone()), [1, 2, 3]);
+        let toasts = cx.update(|cx| {
+            let store = crate::widgets::toasts::ToastStore::global(cx);
+            store.read(cx).toasts().len()
+        });
+        assert_eq!(toasts, 1);
     }
 
     #[test]

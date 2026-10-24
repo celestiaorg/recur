@@ -2,6 +2,7 @@
 //! vs the base) and Commits (uncommitted work and the branch's commits), with a commit or the
 //! working tree opened as a Files changed scope and stepped through newest-first.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -107,12 +108,12 @@ impl ReviewSurface {
             cx.new(|cx| FilesChangedView::new(state.clone(), FilesProps::default(), window, cx));
         let commits_view = cx.new(|_| CommitsView::new());
         let subs = vec![
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &files,
                 window,
                 |s: &mut Self, _, ev: &FilesEvent, window, cx| s.on_files(ev, window, cx),
             ),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &commits_view,
                 window,
                 |s: &mut Self, _, ev: &CommitsEvent, window, cx| match ev {

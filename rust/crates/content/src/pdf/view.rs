@@ -61,15 +61,18 @@ impl PdfPreview {
     /// `src`: the document's bytes (`None` shows nothing).
     pub fn new(data: Option<Arc<[u8]>>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = cx.new(|cx| InputState::new(window, cx));
-        let subs = vec![cx.subscribe_in(
-            &input,
-            window,
-            |p, _, ev: &InputEvent, window, cx| match ev {
-                InputEvent::PressEnter { .. } => p.commit_page(window, cx),
-                InputEvent::Blur => p.commit_page(window, cx),
-                InputEvent::Change | InputEvent::Focus => cx.notify(),
-            },
-        )];
+        let subs =
+            vec![
+                cx.guarded_subscribe_in(
+                    &input,
+                    window,
+                    |p, _, ev: &InputEvent, window, cx| match ev {
+                        InputEvent::PressEnter { .. } => p.commit_page(window, cx),
+                        InputEvent::Blur => p.commit_page(window, cx),
+                        InputEvent::Change | InputEvent::Focus => cx.notify(),
+                    },
+                ),
+            ];
         let mut p = Self {
             data: None,
             doc: None,

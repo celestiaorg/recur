@@ -42,7 +42,7 @@ impl Demo {
                 None => {
                     let bar = cx.new(|cx| TerminalFindBar::new(window, cx));
                     self._subs
-                        .push(cx.subscribe_in(&bar, window, Self::find_event));
+                        .push(cx.guarded_subscribe_in(&bar, window, Self::find_event));
                     self.find = Some(bar.clone());
                     bar
                 }
@@ -184,7 +184,7 @@ fn main() {
                     });
                     terminal.update(cx, |t, cx| t.focus(window, cx));
                     cx.new(|cx| {
-                        let subs = vec![cx.subscribe(
+                        let subs = vec![cx.guarded_subscribe(
                             &terminal,
                             |demo: &mut Demo, _, e: &TerminalEvent, cx| match e {
                                 TerminalEvent::Title(t) => eprintln!("title: {t}"),

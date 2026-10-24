@@ -1706,7 +1706,7 @@ impl Shell {
                         ..Default::default()
                     })
             });
-            let sub = cx.subscribe(&sel, |this, _, ev: &SelectEvent, cx| {
+            let sub = cx.guarded_subscribe(&sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(next) = ev {
                     this.set_base_branch(next.to_string(), cx);
                 }
@@ -1893,7 +1893,7 @@ impl Shell {
                     .trigger_icon(IconName::CircleDot)
                     .trigger_style(style)
             });
-            let sub = cx.subscribe(&sel, |this, _, ev: &SelectEvent, cx| {
+            let sub = cx.guarded_subscribe(&sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(next) = ev {
                     this.change_issue(next.to_string(), cx);
                 }

@@ -109,22 +109,23 @@ impl Focusable for TerminalFindBar {
 impl TerminalFindBar {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = style::text_input(&"Find".into(), window, cx);
-        let subs =
-            vec![
-                cx.subscribe_in(&input, window, |bar, _, ev: &InputEvent, _w, cx| match ev {
-                    InputEvent::Change => {
-                        bar.reset_counts();
-                        cx.emit(FindBarEvent::Changed);
-                        cx.notify();
-                    }
-                    InputEvent::PressEnter { shift, .. } => cx.emit(if *shift {
-                        FindBarEvent::Previous
-                    } else {
-                        FindBarEvent::Next
-                    }),
-                    InputEvent::Focus | InputEvent::Blur => cx.notify(),
+        let subs = vec![cx.guarded_subscribe_in(
+            &input,
+            window,
+            |bar, _, ev: &InputEvent, _w, cx| match ev {
+                InputEvent::Change => {
+                    bar.reset_counts();
+                    cx.emit(FindBarEvent::Changed);
+                    cx.notify();
+                }
+                InputEvent::PressEnter { shift, .. } => cx.emit(if *shift {
+                    FindBarEvent::Previous
+                } else {
+                    FindBarEvent::Next
                 }),
-            ];
+                InputEvent::Focus | InputEvent::Blur => cx.notify(),
+            },
+        )];
         Self {
             input,
             focus: cx.focus_handle(),

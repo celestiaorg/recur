@@ -192,10 +192,10 @@ impl TerminalDock {
         wire(&services, cx);
         let find = cx.new(|cx| TerminalFindBar::new(window, cx));
         let mut subs = vec![
-            cx.subscribe_in(&find, window, |d, _, ev: &FindBarEvent, window, cx| {
+            cx.guarded_subscribe_in(&find, window, |d, _, ev: &FindBarEvent, window, cx| {
                 d.on_find_bar(ev, window, cx)
             }),
-            cx.observe_in(&state, window, |d, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |d, _, window, cx| {
                 d.state_changed(window, cx)
             }),
         ];
@@ -482,7 +482,7 @@ impl TerminalDock {
                 }
             };
             let sid = id.clone();
-            let sub = cx.subscribe_in(
+            let sub = cx.guarded_subscribe_in(
                 &view,
                 window,
                 move |d, _, ev: &TerminalEvent, window, cx| d.on_pane_event(&sid, ev, window, cx),
@@ -1543,7 +1543,7 @@ impl crate::obs::Observatory {
                     d.set_main_bounds(main);
                     d
                 });
-                let sub = cx.subscribe(&d, |o, _, ev: &DockEvent, cx| {
+                let sub = cx.guarded_subscribe(&d, |o, _, ev: &DockEvent, cx| {
                     let DockEvent::TabsChanged(n) = ev;
                     o.term_tab_count = *n;
                     o.sync_side_effects(cx);

@@ -123,7 +123,7 @@ impl LineNoteThread {
             .and_then(|s| s.drafts.get(&root.id).cloned())
             .unwrap_or_default();
         let mut subs = vec![cx.on_release(|this: &mut Self, cx| this.save_draft(cx))];
-        subs.push(cx.observe(&state, |this: &mut Self, state, cx| {
+        subs.push(cx.guarded_observe(&state, |this: &mut Self, state, cx| {
             if this.more_id.is_empty() {
                 return;
             }
@@ -247,7 +247,7 @@ impl LineNoteThread {
         crate::style::style_textarea(&area, cx);
         let emoji = attach_emoji(&area, None, window, cx);
         let mentions = attach_user_mentions(&area, self.state.clone(), None, window, cx);
-        let sub = cx.subscribe(&area, |_, _, ev: &InputEvent, cx| {
+        let sub = cx.guarded_subscribe(&area, |_, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 cx.notify();
             }
@@ -637,7 +637,7 @@ impl LineNoteThread {
             v
         });
         let state = self.state.clone();
-        let sub = cx.subscribe(&v, move |_, _, ev: &MarkdownEvent, cx| match ev {
+        let sub = cx.guarded_subscribe(&v, move |_, _, ev: &MarkdownEvent, cx| match ev {
             MarkdownEvent::LightboxOpen(open) => {
                 let open = *open;
                 state.update(cx, |s, cx| {

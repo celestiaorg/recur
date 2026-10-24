@@ -248,12 +248,12 @@ impl PlanPanel {
             )
         });
         let subs = vec![
-            cx.observe(&vcx.state, |p, _, cx| {
+            cx.guarded_observe(&vcx.state, |p, _, cx| {
                 p.sync_drafts(cx);
                 cx.notify();
             }),
-            cx.observe(&feed, |_, _, cx| cx.notify()),
-            cx.subscribe(&artifacts, |_, _, ev: &ArtifactsPanelEvent, cx| {
+            cx.guarded_observe(&feed, |_, _, cx| cx.notify()),
+            cx.guarded_subscribe(&artifacts, |_, _, ev: &ArtifactsPanelEvent, cx| {
                 if let ArtifactsPanelEvent::Open(a) = ev {
                     cx.emit(PlanPanelEvent::OpenArtifact(OpenArtifact {
                         id: a.id.clone(),
@@ -264,7 +264,7 @@ impl PlanPanel {
                     }));
                 }
             }),
-            cx.subscribe_in(&summary, window, |p, _, ev: &InputEvent, window, cx| {
+            cx.guarded_subscribe_in(&summary, window, |p, _, ev: &InputEvent, window, cx| {
                 // Enter in the headline moves to the body (Shift+Enter stays a newline).
                 if let InputEvent::PressEnter { secondary, shift } = ev
                     && !secondary
@@ -404,7 +404,7 @@ impl PlanPanel {
         });
         style_area(&area, cx);
         let k = key.to_string();
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &area,
             window,
             move |p, area, ev: &InputEvent, window, cx| {
@@ -616,7 +616,7 @@ impl PlanPanel {
             opts.pane = format!("plan-{}", self.ws_id);
             EditorView::new(opts, window, cx)
         });
-        let sub = cx.subscribe(&editor, |p, _, ev: &EditorEvent, _| {
+        let sub = cx.guarded_subscribe(&editor, |p, _, ev: &EditorEvent, _| {
             if let EditorEvent::DocChanged(text) = ev {
                 p.body_draft = text.clone();
             }

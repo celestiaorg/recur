@@ -2,6 +2,7 @@
 //! `web/scenes/Review.svelte` mounts ReviewSurface and a PR-mode DiffFile, over
 //! `content/review.json`.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -135,7 +136,7 @@ struct SurfaceScene(
 
 impl SurfaceScene {
     fn new(surface: Entity<ReviewSurface>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &surface,
             window,
             |_, s, ev: &crate::surface::SurfaceEvent, window, cx| {

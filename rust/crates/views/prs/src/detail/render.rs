@@ -904,7 +904,7 @@ impl PrDetail {
             return;
         }
         self.watched = Some(id);
-        self.watch = Some(cx.observe(obs, |_, _, cx| cx.notify()));
+        self.watch = Some(cx.guarded_observe(obs, |_, _, cx| cx.notify()));
     }
 
     /// `.cmt-more-menu`: Open in GitHub, Copy link, Quote reply, Edit, Delete.

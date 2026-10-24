@@ -102,10 +102,10 @@ impl StopPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
-            cx.subscribe(
+            cx.guarded_subscribe(
                 &input,
                 |this, _, _: &gpui_kit::base::input::InputEvent, cx| {
                     this.clamp_sel(cx);
@@ -477,14 +477,17 @@ impl CommandPrompts {
                         s.set_value(p.default.clone(), cx);
                         s
                     });
-                    subs.push(cx.subscribe(&select, move |this, _, ev: &SelectEvent, cx| {
-                        if let (SelectEvent::Change(v), Some(Field::Choice(_, cur))) =
-                            (ev, this.fields.get_mut(i))
-                        {
-                            *cur = v.clone();
-                            cx.notify();
-                        }
-                    }));
+                    subs.push(cx.guarded_subscribe(
+                        &select,
+                        move |this, _, ev: &SelectEvent, cx| {
+                            if let (SelectEvent::Change(v), Some(Field::Choice(_, cur))) =
+                                (ev, this.fields.get_mut(i))
+                            {
+                                *cur = v.clone();
+                                cx.notify();
+                            }
+                        },
+                    ));
                     Field::Choice(select, p.default.clone().into())
                 } else {
                     let masked = p.r#type == "password";

@@ -113,13 +113,13 @@ impl QuestionCard {
         });
         let mut subs =
             vec![
-                cx.subscribe(&input, |c: &mut Self, _, ev: &InputEvent, cx| match ev {
+                cx.guarded_subscribe(&input, |c: &mut Self, _, ev: &InputEvent, cx| match ev {
                     InputEvent::PressEnter { shift: false, .. } => c.answer_free(cx),
                     InputEvent::Change => cx.notify(),
                     _ => {}
                 }),
             ];
-        subs.push(cx.observe(&notes, |_, _, cx| cx.notify()));
+        subs.push(cx.guarded_observe(&notes, |_, _, cx| cx.notify()));
         // Enter (no Shift) in the notes field submits, as the textarea's keydown did.
         let me = cx.entity().downgrade();
         subs.push(cx.intercept_keystrokes(move |ev, window, cx| {

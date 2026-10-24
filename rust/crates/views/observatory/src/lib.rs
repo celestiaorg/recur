@@ -15,7 +15,7 @@
 //!     ObservatorySlots { left_panel: Some(chat.into()), left_head: Some(tabs.into()), ..Default::default() },
 //!     window, cx,
 //! ));
-//! cx.subscribe_in(&obs, window, |host, obs, ev: &ObservatoryEvent, window, cx| { /* … */ });
+//! cx.guarded_subscribe_in(&obs, window, |host, obs, ev: &ObservatoryEvent, window, cx| { /* … */ });
 //! ```
 //!
 //! - **Props** ([`ObservatoryProps`]): push changes with [`Observatory::set_props`]. A new

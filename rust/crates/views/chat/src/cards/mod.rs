@@ -1,6 +1,7 @@
 //! The cards the transcript embeds: permission and question prompts, plan and fan-out wave
 //! cards, specialist sessions and workspace briefs.
 
+use recur_ui::guard::Guarded;
 use std::collections::HashMap;
 
 use gpui_kit::{AnyElement, AppContext as _, Context, Entity, IntoElement, Window};
@@ -107,7 +108,7 @@ impl AgentChat {
                     cx,
                 )
             });
-            let sub = cx.subscribe(&card, |_, _, a: &QuestionAnswered, cx| {
+            let sub = cx.guarded_subscribe(&card, |_, _, a: &QuestionAnswered, cx| {
                 cx.emit(ChatEvent::AnswerEscalation {
                     choice: a.choice.clone(),
                     text: a.text.clone(),
@@ -152,7 +153,7 @@ impl AgentChat {
         let fs = self.props.font_size;
         card.update(cx, |c, _| c.font_size = fs);
         if created {
-            let sub = cx.subscribe(&card, |_, _, ev: &ChatEvent, cx| cx.emit(ev.clone()));
+            let sub = cx.guarded_subscribe(&card, |_, _, ev: &ChatEvent, cx| cx.emit(ev.clone()));
             self._subs.push(sub);
         } else {
             let (d, f) = (data.to_string(), fallback.to_string());

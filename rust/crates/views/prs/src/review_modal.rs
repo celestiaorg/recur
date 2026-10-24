@@ -116,7 +116,7 @@ impl PrReviewModal {
         )
         .on_submit(|m: &mut Self, _, cx| m.submit(cx), cx);
         let subs = vec![
-            cx.subscribe(&kind_select, |m, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&kind_select, |m, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     let kind = match v.as_ref() {
                         "approve" => Some(PrReviewKind::Approve),
@@ -128,10 +128,10 @@ impl PrReviewModal {
                     }
                 }
             }),
-            cx.observe_in(&state, window, |m, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |m, _, window, cx| {
                 m.state_changed(window, cx)
             }),
-            cx.observe_in(&ui, window, |m, _, window, cx| m.ui_changed(window, cx)),
+            cx.guarded_observe_in(&ui, window, |m, _, window, cx| m.ui_changed(window, cx)),
         ];
         PrReviewModal {
             state,

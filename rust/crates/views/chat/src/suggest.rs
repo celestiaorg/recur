@@ -313,7 +313,7 @@ impl<M: InputModeKind> SuggestAttach<M> {
     ) -> Entity<Self> {
         let store = SuggestStore::global(cx);
         cx.new(|cx| {
-            let mut subs = vec![cx.subscribe_in(
+            let mut subs = vec![cx.guarded_subscribe_in(
                 input,
                 window,
                 |this: &mut Self, _, ev: &InputEvent, window, cx| match ev {
@@ -337,18 +337,20 @@ impl<M: InputModeKind> SuggestAttach<M> {
             )];
             if kind == SuggestKind::Mention {
                 // `selectionchange` while open: follow the caret.
-                subs.push(cx.observe_in(input, window, |this, input, window, cx| {
-                    let owner = input.entity_id();
-                    if this
-                        .store
-                        .read(cx)
-                        .slot(this.kind)
-                        .is_none_or(|s| s.owner != owner)
-                    {
-                        return;
-                    }
-                    this.sync(window, cx);
-                }));
+                subs.push(
+                    cx.guarded_observe_in(input, window, |this, input, window, cx| {
+                        let owner = input.entity_id();
+                        if this
+                            .store
+                            .read(cx)
+                            .slot(this.kind)
+                            .is_none_or(|s| s.owner != owner)
+                        {
+                            return;
+                        }
+                        this.sync(window, cx);
+                    }),
+                );
             }
             let me = cx.entity().downgrade();
             subs.push(
@@ -782,7 +784,7 @@ pub struct SuggestOverlay {
 impl SuggestOverlay {
     pub fn new(kind: SuggestKind, cx: &mut Context<Self>) -> Self {
         let store = SuggestStore::global(cx);
-        let _sub = cx.observe(&store, |_, _, cx| cx.notify());
+        let _sub = cx.guarded_observe(&store, |_, _, cx| cx.notify());
         SuggestOverlay {
             kind,
             store,

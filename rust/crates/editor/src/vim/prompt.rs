@@ -304,7 +304,7 @@ pub(crate) fn show_prompt(cm: &mut Cm, mut opts: PromptOptions) {
             cx.stop_propagation();
         }
     });
-    let blur = cm.cx.subscribe_in(
+    let blur = cm.cx.guarded_subscribe_in(
         &input,
         cm.window,
         move |_, input, ev: &InputEvent, window, cx| {

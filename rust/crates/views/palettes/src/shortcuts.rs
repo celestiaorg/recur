@@ -8,6 +8,7 @@ use gpui_kit::{
     Window, div, px,
 };
 use recur_editor::text::locale_compare;
+use recur_ui::guard::Guarded;
 use recur_ui::style::{palette_empty, palette_group, palette_key, style_text_input};
 use recur_ui::text::{TextStyled, text};
 use recur_ui::{IconName, Theme};
@@ -269,10 +270,10 @@ impl ShortcutsHelp {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
-            cx.subscribe(&input, |_, _, _: &InputEvent, cx| cx.notify()),
+            cx.guarded_subscribe(&input, |_, _, _: &InputEvent, cx| cx.notify()),
             cx.intercept_keystrokes(move |ev, window, cx| {
                 let Some(me) = me.upgrade() else { return };
                 if me.update(cx, |p, cx| p.on_key(ev, window, cx)) {

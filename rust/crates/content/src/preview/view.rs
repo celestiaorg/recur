@@ -110,16 +110,17 @@ impl FilePreview {
     ) -> Self {
         let path = path.into();
         let bar = cx.new(|cx| PreviewFindBar::new(window, cx));
-        let sub = cx.subscribe_in(
-            &bar,
-            window,
-            |p, _, ev: &FindBarEvent, window, cx| match ev {
-                FindBarEvent::Changed => p.refresh(window, cx),
-                FindBarEvent::Next => p.step(1, window, cx),
-                FindBarEvent::Previous => p.step(-1, window, cx),
-                FindBarEvent::Close => p.close_search(window, cx),
-            },
-        );
+        let sub =
+            cx.guarded_subscribe_in(
+                &bar,
+                window,
+                |p, _, ev: &FindBarEvent, window, cx| match ev {
+                    FindBarEvent::Changed => p.refresh(window, cx),
+                    FindBarEvent::Next => p.step(1, window, cx),
+                    FindBarEvent::Previous => p.step(-1, window, cx),
+                    FindBarEvent::Close => p.close_search(window, cx),
+                },
+            );
         let mut fp = FilePreview {
             kind,
             content: SharedString::default(),
@@ -173,7 +174,7 @@ impl FilePreview {
             (PreviewKind::Markdown, _) => {
                 let v = cx.new(|cx| MarkdownView::new(content, MarkdownClass::MdDoc, false, cx));
                 // `MutationObserver`: re-collect matches when the rendered tree changes.
-                self._subs.push(cx.subscribe_in(
+                self._subs.push(cx.guarded_subscribe_in(
                     &v,
                     window,
                     |p, _, ev: &MarkdownEvent, window, cx| {
@@ -202,7 +203,7 @@ impl FilePreview {
                 let path = self.path.clone();
                 let h =
                     cx.new(|cx| HtmlPreview::new(&content, &path, self.scroll.clone(), window, cx));
-                self._subs.push(cx.subscribe_in(
+                self._subs.push(cx.guarded_subscribe_in(
                     &h,
                     window,
                     |p, _, ev: &HtmlPreviewEvent, window, cx| p.on_page(ev, window, cx),
@@ -217,7 +218,7 @@ impl FilePreview {
                 let path = self.path.clone();
                 let scroll = self.scroll.clone();
                 let m = cx.new(|cx| MermaidPreview::new(&content, &path, Some(scroll), window, cx));
-                self._subs.push(cx.subscribe_in(
+                self._subs.push(cx.guarded_subscribe_in(
                     &m,
                     window,
                     |p, _, _: &DiagramChanged, window, cx| {

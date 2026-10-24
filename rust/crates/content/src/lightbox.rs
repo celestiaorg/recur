@@ -160,7 +160,7 @@ impl AttachmentLightbox {
         let png = self.image.as_ref().map(|d| d.png.clone());
         let at = (f32::from(e.position.x), f32::from(e.position.y));
         let menu = cx.new(|cx| ImageContextMenu::new(at, png, window, cx));
-        cx.subscribe_in(
+        cx.guarded_subscribe_in(
             &menu,
             window,
             |lb, _, ev: &ImageMenuEvent, window, cx| match ev {

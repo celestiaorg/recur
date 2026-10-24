@@ -87,11 +87,11 @@ impl Shell {
     ) -> Self {
         let state = ctx.state.clone();
         let subscriptions = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.state_changed(window, cx)
             }),
             // The shell's own `menu.action` handling runs first: it subscribed before any view.
-            cx.subscribe_in(&state, window, |this, _, ev: &ShellEvent, window, cx| {
+            cx.guarded_subscribe_in(&state, window, |this, _, ev: &ShellEvent, window, cx| {
                 if let ShellEvent::MenuAction(action) = ev {
                     this.menu_action(action, window, cx);
                 }

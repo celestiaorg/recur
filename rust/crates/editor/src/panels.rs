@@ -111,55 +111,54 @@ impl EditorView {
             let model = SearchPanel::new(&self.state);
             let find = self.new_input(&model.search, "Find", window, cx);
             let replace = self.new_input(&model.replace, "Replace", window, cx);
-            let subs =
-                vec![
-                    cx.subscribe_in(
-                        &find,
-                        window,
-                        |v, input, ev: &InputEvent, window, cx| match ev {
-                            InputEvent::Change => {
-                                let value = input.read(cx).value().to_string();
-                                if let Some(s) = v.search.as_mut()
-                                    && s.model.search != value
-                                {
-                                    s.model.search = value;
-                                    v.commit_search(window, cx);
-                                }
+            let subs = vec![
+                cx.guarded_subscribe_in(&find, window, |v, input, ev: &InputEvent, window, cx| {
+                    match ev {
+                        InputEvent::Change => {
+                            let value = input.read(cx).value().to_string();
+                            if let Some(s) = v.search.as_mut()
+                                && s.model.search != value
+                            {
+                                s.model.search = value;
+                                v.commit_search(window, cx);
                             }
-                            InputEvent::PressEnter { shift, .. } => {
-                                v.run_cmd(
-                                    if *shift {
-                                        Cmd::FindPrevious
-                                    } else {
-                                        Cmd::FindNext
-                                    },
-                                    window,
-                                    cx,
-                                );
-                            }
-                            InputEvent::Focus | InputEvent::Blur => cx.notify(),
-                        },
-                    ),
-                    cx.subscribe_in(&replace, window, |v, input, ev: &InputEvent, window, cx| {
-                        match ev {
-                            InputEvent::Change => {
-                                let value = input.read(cx).value().to_string();
-                                if let Some(s) = v.search.as_mut()
-                                    && s.model.replace != value
-                                {
-                                    s.model.replace = value;
-                                    v.commit_search(window, cx);
-                                }
-                            }
-                            InputEvent::PressEnter { .. } => {
-                                let state = v.state.clone();
-                                let run = crate::search::replace_next(&state);
-                                v.run_search_run(run, window, cx);
-                            }
-                            InputEvent::Focus | InputEvent::Blur => cx.notify(),
                         }
-                    }),
-                ];
+                        InputEvent::PressEnter { shift, .. } => {
+                            v.run_cmd(
+                                if *shift {
+                                    Cmd::FindPrevious
+                                } else {
+                                    Cmd::FindNext
+                                },
+                                window,
+                                cx,
+                            );
+                        }
+                        InputEvent::Focus | InputEvent::Blur => cx.notify(),
+                    }
+                }),
+                cx.guarded_subscribe_in(
+                    &replace,
+                    window,
+                    |v, input, ev: &InputEvent, window, cx| match ev {
+                        InputEvent::Change => {
+                            let value = input.read(cx).value().to_string();
+                            if let Some(s) = v.search.as_mut()
+                                && s.model.replace != value
+                            {
+                                s.model.replace = value;
+                                v.commit_search(window, cx);
+                            }
+                        }
+                        InputEvent::PressEnter { .. } => {
+                            let state = v.state.clone();
+                            let run = crate::search::replace_next(&state);
+                            v.run_search_run(run, window, cx);
+                        }
+                        InputEvent::Focus | InputEvent::Blur => cx.notify(),
+                    },
+                ),
+            ];
             self.search = Some(SearchUi {
                 model,
                 find,
@@ -250,15 +249,17 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Vec<Subscription> {
-        vec![cx.subscribe_in(
-            input,
-            window,
-            move |v, _, ev: &InputEvent, window, cx| match ev {
-                InputEvent::PressEnter { .. } => v.submit_dialog(id, window, cx),
-                InputEvent::Focus | InputEvent::Blur => cx.notify(),
-                InputEvent::Change => {}
-            },
-        )]
+        vec![
+            cx.guarded_subscribe_in(
+                input,
+                window,
+                move |v, _, ev: &InputEvent, window, cx| match ev {
+                    InputEvent::PressEnter { .. } => v.submit_dialog(id, window, cx),
+                    InputEvent::Focus | InputEvent::Blur => cx.notify(),
+                    InputEvent::Change => {}
+                },
+            ),
+        ]
     }
 
     /// `recurGotoLine` (⌥⌘G).
@@ -285,14 +286,17 @@ impl EditorView {
     /// `renameWithWorkspaceLoad`'s `window.prompt('New name', word)`.
     pub(crate) fn open_rename(&mut self, word: &str, window: &mut Window, cx: &mut Context<Self>) {
         let input = self.new_input(word, "", window, cx);
-        let subs = vec![cx.subscribe_in(
-            &input,
-            window,
-            |v, _, ev: &InputEvent, window, cx| match ev {
-                InputEvent::PressEnter { .. } => v.finish_rename(true, window, cx),
-                InputEvent::Focus | InputEvent::Blur | InputEvent::Change => cx.notify(),
-            },
-        )];
+        let subs =
+            vec![
+                cx.guarded_subscribe_in(
+                    &input,
+                    window,
+                    |v, _, ev: &InputEvent, window, cx| match ev {
+                        InputEvent::PressEnter { .. } => v.finish_rename(true, window, cx),
+                        InputEvent::Focus | InputEvent::Blur | InputEvent::Change => cx.notify(),
+                    },
+                ),
+            ];
         input.update(cx, |s, cx| {
             s.focus(window, cx);
             s.select_all(window, cx);

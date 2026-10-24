@@ -3,6 +3,7 @@
 //! backend events (worktree changes, findings, artifacts), deep links (`observatoryJump`), the
 //! shell activation edges (hot shells), the worktree watcher and the native menu state.
 
+use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use gpui_kit::{AppContext as _, Context, Task, Window};
@@ -78,10 +79,10 @@ impl Observatory {
     pub(crate) fn subscribe(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let state = self.state.clone();
         self._subscriptions
-            .push(cx.observe_in(&state, window, |o, _, window, cx| {
+            .push(cx.guarded_observe_in(&state, window, |o, _, window, cx| {
                 o.after_state_change(window, cx)
             }));
-        self._subscriptions.push(cx.subscribe_in(
+        self._subscriptions.push(cx.guarded_subscribe_in(
             &state,
             window,
             |o, _, ev: &ShellEvent, window, cx| match ev {
@@ -92,7 +93,7 @@ impl Observatory {
         ));
         let env = crate::textmate::editor_env(&state, cx);
         self._subscriptions
-            .push(cx.observe_in(&env, window, |o, env, window, cx| {
+            .push(cx.guarded_observe_in(&env, window, |o, env, window, cx| {
                 o.sync_editors(window, cx);
                 // The session remembers language picks (`syntaxByPath` / `syntaxByFileType`).
                 let syntax = env.read(cx).seen_syntax_epoch;
@@ -119,7 +120,7 @@ impl Observatory {
                 |_, _, cx| cx.notify(),
             ),
         );
-        self._subscriptions.push(cx.subscribe_in(
+        self._subscriptions.push(cx.guarded_subscribe_in(
             &self.prompts.clone(),
             window,
             |o, _, ev: &recur_view_chat::palettes::CommandPromptsEvent, _, cx| match ev {
@@ -166,7 +167,7 @@ impl Observatory {
             .push(cx.observe_window_bounds(window, |o, window, cx| {
                 o.window_fullscreen_changed(window, cx)
             }));
-        self._subscriptions.push(cx.subscribe_in(
+        self._subscriptions.push(cx.guarded_subscribe_in(
             &self.findings_panel.clone(),
             window,
             |o, _, ev: &crate::findings_panel::FindingsPanelEvent, window, cx| {
@@ -186,7 +187,7 @@ impl Observatory {
                 }
             },
         ));
-        self._subscriptions.push(cx.subscribe_in(
+        self._subscriptions.push(cx.guarded_subscribe_in(
             &self.quick_open.clone(),
             window,
             |o, _, ev: &crate::quick_open::QuickOpenEvent, window, cx| {

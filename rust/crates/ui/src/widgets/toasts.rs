@@ -3,6 +3,7 @@
 //! richer ask_user notice with its draining TTL bar.
 
 use crate::fonts::weight;
+use crate::guard::Guarded;
 use crate::icon::icon;
 use crate::icon_name::IconName;
 use crate::motion::{self, Easing};
@@ -265,7 +266,7 @@ pub struct Toasts {
 impl Toasts {
     pub fn new(cx: &mut Context<Self>) -> Toasts {
         let store = ToastStore::global(cx);
-        cx.observe(&store, |_, _, cx| cx.notify()).detach();
+        cx.guarded_observe(&store, |_, _, cx| cx.notify()).detach();
         Toasts { store }
     }
 }

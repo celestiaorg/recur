@@ -251,7 +251,7 @@ pub struct UsageMeter {
 
 impl UsageMeter {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
-        cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        cx.guarded_observe(&state, |_, _, cx| cx.notify()).detach();
         // `onMount`: fill the meter after first paint.
         state.update(cx, |s, cx| s.prefetch_provider_usage(cx).detach());
         Self {

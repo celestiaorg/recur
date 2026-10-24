@@ -352,7 +352,7 @@ impl Observatory {
             p.set_selected(&sel, cx);
             p
         });
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &p,
             window,
             |o, _, ev: &crate::artifacts_panel::ArtifactsPanelEvent, window, cx| {

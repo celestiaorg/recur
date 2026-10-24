@@ -392,10 +392,10 @@ impl CommandPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
-            cx.subscribe(&input, |this, _, ev: &InputEvent, cx| {
+            cx.guarded_subscribe(&input, |this, _, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change) {
                     this.query_changed(cx);
                 }

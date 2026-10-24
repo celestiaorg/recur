@@ -332,7 +332,7 @@ impl MarkdownView {
                 cx,
             )
         });
-        cx.subscribe(&lb, |_, _, ev: &crate::lightbox::LightboxEvent, cx| {
+        cx.guarded_subscribe(&lb, |_, _, ev: &crate::lightbox::LightboxEvent, cx| {
             let crate::lightbox::LightboxEvent::Toast { error, message } = ev;
             cx.emit(MarkdownEvent::Toast {
                 error: *error,

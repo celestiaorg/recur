@@ -3,6 +3,7 @@
 //! (`editorThemeIdForAppChrome`), highlighted by its own TextMate engine so the code editor's
 //! theme is untouched (`ensureChromePairedTmEngine`), on `recur_editor`'s mini chrome.
 
+use recur_ui::guard::Guarded;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -221,7 +222,7 @@ impl MiniScriptEditor {
             EditorView::new(opts, window, cx)
         });
         let subs = vec![
-            cx.subscribe(&editor, |this: &mut Self, _, ev: &EditorEvent, cx| {
+            cx.guarded_subscribe(&editor, |this: &mut Self, _, ev: &EditorEvent, cx| {
                 if let EditorEvent::DocChanged(text) = ev
                     && !this.applying
                 {

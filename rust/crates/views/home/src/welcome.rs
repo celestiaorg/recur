@@ -249,7 +249,7 @@ fn chip_ico(el: impl IntoElement, t: &Tokens) -> Div {
 
 impl WelcomeView {
     pub fn new(vcx: &ViewContext, _: &mut Window, cx: &mut Context<Self>) -> Self {
-        let subs = vec![cx.observe(&vcx.state, |this, _, cx| this.sync(cx))];
+        let subs = vec![cx.guarded_observe(&vcx.state, |this, _, cx| this.sync(cx))];
         // `cursor.install` progress while InstallCursorBridge runs.
         let mut events = vcx.services.subscribe();
         let ev = cx.spawn(async move |this, cx| {

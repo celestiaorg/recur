@@ -142,7 +142,7 @@ impl PrList {
                 .with_value(sort.id())
         });
         let subs = vec![
-            cx.subscribe(
+            cx.guarded_subscribe(
                 &project_select,
                 |this: &mut Self, _, ev: &SelectEvent, cx| {
                     if let SelectEvent::Values(v) = ev {
@@ -154,7 +154,7 @@ impl PrList {
                     }
                 },
             ),
-            cx.subscribe(
+            cx.guarded_subscribe(
                 &status_select,
                 |this: &mut Self, _, ev: &SelectEvent, cx| {
                     if let SelectEvent::Values(v) = ev {
@@ -166,7 +166,7 @@ impl PrList {
                     }
                 },
             ),
-            cx.subscribe(
+            cx.guarded_subscribe(
                 &sort_select,
                 |this: &mut Self, sel, ev: &SelectEvent, cx| {
                     if let SelectEvent::Change(v) = ev
@@ -183,8 +183,8 @@ impl PrList {
                     }
                 },
             ),
-            cx.observe(&ui, |_, _, cx| cx.notify()),
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.guarded_observe(&ui, |_, _, cx| cx.notify()),
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
                 this.sync_route(window, cx);
                 cx.notify();
             }),

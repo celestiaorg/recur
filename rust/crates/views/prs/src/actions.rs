@@ -157,11 +157,11 @@ impl PrTitlebarActions {
         let state = vcx.state.clone();
         let ui = ui(cx);
         let subs = vec![
-            cx.observe_in(&state, window, |a, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |a, _, window, cx| {
                 a.state_changed(window, cx)
             }),
-            cx.observe(&ui, |_, _, cx| cx.notify()),
-            cx.subscribe(&state, |a, _, ev: &AppliedEvent, cx| a.on_event(&ev.0, cx)),
+            cx.guarded_observe(&ui, |_, _, cx| cx.notify()),
+            cx.guarded_subscribe(&state, |a, _, ev: &AppliedEvent, cx| a.on_event(&ev.0, cx)),
         ];
         let review_pr_id = state.read(cx).selected_pr_id.clone();
         let mut a = PrTitlebarActions {

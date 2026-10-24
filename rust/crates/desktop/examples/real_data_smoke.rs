@@ -461,7 +461,7 @@ impl Provider for PacedProvider {
             if cx.cancel.is_cancelled() {
                 return Err(ProviderError::canceled());
             }
-            tokio::time::sleep(Duration::from_millis(40)).await;
+            tokio::time::sleep(Duration::from_millis(120)).await;
             cx.sink.emit(AgentEvent::TextDelta {
                 text: word.to_string(),
                 parent: String::new(),
@@ -714,6 +714,8 @@ struct Report {
     toasts: Vec<String>,
     stalls: Vec<String>,
     notes: Vec<String>,
+    /// Frames over 500ms and the step they were drawn in.
+    slow: Vec<(Duration, String)>,
 }
 
 fn report() -> &'static Mutex<Report> {
@@ -727,6 +729,8 @@ fn step() -> &'static Mutex<String> {
 }
 
 static BEAT: AtomicU64 = AtomicU64::new(0);
+/// `session.delta` events the UI received.
+static DELTAS: AtomicU64 = AtomicU64::new(0);
 
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
@@ -867,6 +871,16 @@ fn drive(root: PathBuf) -> i32 {
     svc.recover();
     at(start, format!("recovered ({:.1?})", t.elapsed()));
     let services = svc.services();
+    rt.spawn({
+        let mut rx = services.subscribe();
+        async move {
+            while let Some(ev) = rx.recv().await {
+                if matches!(ev, recur_services::AppEvent::SessionDelta(_)) {
+                    DELTAS.fetch_add(1, Ordering::SeqCst);
+                }
+            }
+        }
+    });
     rt.block_on(svc.start());
     at(start, "services started");
 
@@ -933,6 +947,15 @@ fn drive(root: PathBuf) -> i32 {
             for s in &r.stalls {
                 say(start, format!("STALL {s}"));
             }
+            let mut slow = r.slow.clone();
+            slow.sort_by_key(|s| std::cmp::Reverse(s.0));
+            say(
+                start,
+                format!("{} frames over 500ms; the slowest:", slow.len()),
+            );
+            for (d, s) in slow.iter().take(15) {
+                say(start, format!("  {d:.0?} at: {s}"));
+            }
             let ok = r.panics.is_empty() && r.toasts.is_empty() && r.stalls.is_empty();
             say(
                 start,
@@ -970,7 +993,14 @@ async fn frames(cx: &mut AsyncApp, window: AnyWindowHandle, n: usize) {
             drawn.clear(cx);
         });
         BEAT.store(now_ms(), Ordering::SeqCst);
-        if t.elapsed() > Duration::from_secs(2) {
+        let took = t.elapsed();
+        if took > Duration::from_millis(500) {
+            let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+            if let Ok(mut r) = report().lock() {
+                r.slow.push((took, s));
+            }
+        }
+        if took > Duration::from_secs(2) {
             let s = step().lock().map(|s| s.clone()).unwrap_or_default();
             if let Ok(mut r) = report().lock() {
                 r.stalls
@@ -1111,6 +1141,13 @@ async fn run(
             start,
             format!("workspace {}/{} {id}", i + 1, workspaces.len()),
         );
+        if *archived {
+            // Archived workspaces never bind a detail view (`liveWorkspaceIds`); the route
+            // still has to draw.
+            state.update(cx, |s, cx| s.open_workspace(id, false, cx));
+            frames(cx, window, 2).await;
+            continue;
+        }
         visit_workspace(start, cx, window, &state, id, live).await;
         if live && !streamed {
             streamed = stream_turn(start, cx, window, &state, id).await;
@@ -1359,6 +1396,7 @@ async fn stream_turn(
     };
     let chat = view.read_with(cx, |v, _| v.chat().clone());
     let before = chat.read_with(cx, |c, _| c.props().messages.len());
+    let deltas = DELTAS.load(Ordering::SeqCst);
     let _ = cx.update_window(window, |_, window, cx| {
         chat.update(cx, |c, cx| c.focus_composer(window, cx))
     });
@@ -1376,6 +1414,7 @@ async fn stream_turn(
     })
     .await;
     let perms = state.read_with(cx, |s, _| s.permission_requests.len());
+    let deltas = DELTAS.load(Ordering::SeqCst) - deltas;
     if !ended {
         note(format!("the streamed turn in {id} did not end within 120s"));
         return false;
@@ -1393,12 +1432,16 @@ async fn stream_turn(
     say(
         start,
         format!(
-            "turn ended; streamed rows seen: {}; permissions {perms}; reply {reply:?}",
+            "turn ended; streamed rows seen: {}; {deltas} session.delta events; permissions {perms}; reply {reply:?}",
             saw_stream.get()
         ),
     );
-    if !saw_stream.get() {
-        note(format!("the turn in {id} ended without a streaming row"));
+    if deltas == 0 {
+        note(format!("the turn in {id} streamed no session.delta events"));
+    } else if !saw_stream.get() {
+        note(format!(
+            "the turn in {id} ended without a streaming row on screen"
+        ));
     }
     true
 }

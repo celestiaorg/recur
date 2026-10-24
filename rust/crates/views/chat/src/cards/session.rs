@@ -173,7 +173,8 @@ impl SessionCard {
             );
             c
         });
-        self._sub = Some(cx.subscribe(&chat, |_, _, ev: &ChatEvent, cx| cx.emit(ev.clone())));
+        self._sub =
+            Some(cx.guarded_subscribe(&chat, |_, _, ev: &ChatEvent, cx| cx.emit(ev.clone())));
         self.chat = Some(chat.clone());
         chat
     }

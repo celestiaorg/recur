@@ -220,14 +220,14 @@ impl ScheduledPrompts {
             })
         });
         let mut subs = vec![
-            cx.observe(&vcx.state, |this, _, cx| this.on_state(cx)),
+            cx.guarded_observe(&vcx.state, |this, _, cx| this.on_state(cx)),
             cx.observe_global::<ScheduleExpanded>(|this, cx| {
                 this.snippets_effect(cx);
                 cx.notify();
             }),
         ];
         if let Some(sel) = &project_select {
-            subs.push(cx.subscribe(sel, |this, _, ev: &SelectEvent, cx| {
+            subs.push(cx.guarded_subscribe(sel, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Values(ids) = ev {
                     this.project_filter = ids.iter().map(|s| s.to_string()).collect();
                     cx.notify();
@@ -1966,9 +1966,11 @@ pub struct SchedulesPage {
 
 impl SchedulesPage {
     pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let subs = vec![cx.observe_in(&vcx.state, window, |this, _, window, cx| {
-            this.sync(window, cx)
-        })];
+        let subs = vec![
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+                this.sync(window, cx)
+            }),
+        ];
         let mut me = SchedulesPage {
             vcx: vcx.clone(),
             list: None,

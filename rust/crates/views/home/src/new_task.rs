@@ -217,10 +217,10 @@ impl NewTaskModal {
         });
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &chat,
                 window,
                 |this, chat, ev: &ChatEvent, _, cx| match ev {
@@ -238,7 +238,7 @@ impl NewTaskModal {
                     _ => {}
                 },
             ),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &repo_sel,
                 window,
                 |this, _, ev: &SelectEvent, window, cx| {
@@ -248,7 +248,7 @@ impl NewTaskModal {
                     }
                 },
             ),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &branch_sel,
                 window,
                 |this, _, ev: &SelectEvent, window, cx| {
@@ -258,7 +258,7 @@ impl NewTaskModal {
                     }
                 },
             ),
-            cx.subscribe_in(
+            cx.guarded_subscribe_in(
                 &mode_sel,
                 window,
                 |this, _, ev: &SelectEvent, window, cx| {
@@ -268,14 +268,14 @@ impl NewTaskModal {
                     }
                 },
             ),
-            cx.subscribe(&loops, |this, _, ev: &LoopPolicyEvent, cx| {
+            cx.guarded_subscribe(&loops, |this, _, ev: &LoopPolicyEvent, cx| {
                 match ev {
                     LoopPolicyEvent::Loop(id) => this.loop_id = id.clone(),
                     LoopPolicyEvent::Policy(id) => this.policy_id = id.clone(),
                 }
                 cx.notify();
             }),
-            cx.subscribe(&models, |this, _, ev: &PickerEvent, cx| {
+            cx.guarded_subscribe(&models, |this, _, ev: &PickerEvent, cx| {
                 match ev {
                     PickerEvent::Model(r, f) => {
                         this.model = r.clone();

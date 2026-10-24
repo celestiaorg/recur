@@ -207,21 +207,24 @@ impl ArtifactsPanel {
         });
         recur_ui::style::style_text_input(&input, cx);
         let r = row.clone();
-        self._subs = vec![cx.subscribe_in(
-            &input,
-            window,
-            move |p, inp, ev: &InputEvent, _, cx| match ev {
-                InputEvent::PressEnter { .. } => {
-                    let v = inp.read(cx).value().to_string();
-                    p.commit_rename(&r, v, cx);
-                }
-                InputEvent::Blur if p.renaming.as_ref().is_some_and(|(id, _)| *id == r.id) => {
-                    let v = inp.read(cx).value().to_string();
-                    p.commit_rename(&r, v, cx);
-                }
-                _ => {}
-            },
-        )];
+        self._subs =
+            vec![
+                cx.guarded_subscribe_in(&input, window, move |p, inp, ev: &InputEvent, _, cx| {
+                    match ev {
+                        InputEvent::PressEnter { .. } => {
+                            let v = inp.read(cx).value().to_string();
+                            p.commit_rename(&r, v, cx);
+                        }
+                        InputEvent::Blur
+                            if p.renaming.as_ref().is_some_and(|(id, _)| *id == r.id) =>
+                        {
+                            let v = inp.read(cx).value().to_string();
+                            p.commit_rename(&r, v, cx);
+                        }
+                        _ => {}
+                    }
+                }),
+            ];
         input.update(cx, |s, cx| {
             s.focus(window, cx);
             s.select_all(window, cx);

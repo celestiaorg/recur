@@ -4,6 +4,7 @@
 //! the editor's native full screen.
 
 use gpui_kit::FocusHandle;
+use recur_ui::guard::Guarded;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -416,25 +417,27 @@ impl Observatory {
                     r.set_add_finding(Some(add), window, cx);
                 });
                 let sub =
-                    cx.subscribe_in(&r, window, |o, _, ev: &SurfaceEvent, window, cx| match ev {
-                        SurfaceEvent::TabChange(t) => o.set_review_tab(*t, cx),
-                        SurfaceEvent::OpenFile(path, line) => {
-                            o.open_path(
-                                OpenRequest::new(path.clone())
-                                    .line(line.unwrap_or(0).max(0) as usize)
-                                    .prefer_diff(true),
-                                window,
-                                cx,
-                            )
-                            .detach();
-                        }
-                        SurfaceEvent::OpenFinding(f) => o.open_review_finding(f, window, cx),
-                        SurfaceEvent::ShowFindings => {
-                            o.select_code_panel(CodePanelKey::Findings, window, cx)
-                        }
-                        SurfaceEvent::Bound(b) => {
-                            o.review_bound = b.clone();
-                            cx.notify();
+                    cx.guarded_subscribe_in(&r, window, |o, _, ev: &SurfaceEvent, window, cx| {
+                        match ev {
+                            SurfaceEvent::TabChange(t) => o.set_review_tab(*t, cx),
+                            SurfaceEvent::OpenFile(path, line) => {
+                                o.open_path(
+                                    OpenRequest::new(path.clone())
+                                        .line(line.unwrap_or(0).max(0) as usize)
+                                        .prefer_diff(true),
+                                    window,
+                                    cx,
+                                )
+                                .detach();
+                            }
+                            SurfaceEvent::OpenFinding(f) => o.open_review_finding(f, window, cx),
+                            SurfaceEvent::ShowFindings => {
+                                o.select_code_panel(CodePanelKey::Findings, window, cx)
+                            }
+                            SurfaceEvent::Bound(b) => {
+                                o.review_bound = b.clone();
+                                cx.notify();
+                            }
                         }
                     });
                 self.review_subs = vec![sub];

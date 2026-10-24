@@ -202,7 +202,7 @@ impl EventEmitter<ChatEvent> for FanOutCard {}
 
 impl FanOutCard {
     pub fn new(vcx: ViewContext, data: String, fallback: String, cx: &mut Context<Self>) -> Self {
-        let sub = cx.observe(&vcx.state, |c: &mut Self, _, cx| {
+        let sub = cx.guarded_observe(&vcx.state, |c: &mut Self, _, cx| {
             c.take_child_request(cx);
             cx.notify();
         });

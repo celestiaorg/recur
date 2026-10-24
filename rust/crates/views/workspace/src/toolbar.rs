@@ -2,6 +2,7 @@
 //! pickers (Loop mode, the MA tab), the model pickers, or their loading skeleton, and the
 //! Simplify toggle. `.wsv-mode` and `.wsv-simplify` follow the `chat-in` container's width.
 
+use recur_ui::guard::Guarded;
 use std::time::Duration;
 
 use gpui_kit::prelude::FluentBuilder as _;
@@ -64,7 +65,7 @@ impl DockToolbar {
         let loops = cx.new(|cx| LoopPolicyPickers::new(true, true, false, window, cx));
         let models = cx.new(|cx| ModelPickers::new(true, true, window, cx));
         let subs = vec![
-            cx.subscribe(&mode, |t, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&mode, |t, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     let m = ChatMode::from_key(v);
                     let _ = t
@@ -72,7 +73,7 @@ impl DockToolbar {
                         .update(cx, |v, cx| v.on_chat_mode_change(m, cx).detach());
                 }
             }),
-            cx.subscribe(&loops, |t, _, ev: &LoopPolicyEvent, cx| {
+            cx.guarded_subscribe(&loops, |t, _, ev: &LoopPolicyEvent, cx| {
                 let _ = t.view.update(cx, |v, cx| {
                     let (l, p) = match ev {
                         LoopPolicyEvent::Loop(id) => (id.clone(), v.dock_policy_id(cx)),
@@ -81,7 +82,7 @@ impl DockToolbar {
                     v.persist_loop_policy(&l, &p, cx).detach();
                 });
             }),
-            cx.subscribe(&models, |t, _, ev: &PickerEvent, cx| {
+            cx.guarded_subscribe(&models, |t, _, ev: &PickerEvent, cx| {
                 let _ = t.view.update(cx, |v, cx| match ev {
                     PickerEvent::Model(r, f) => v.on_chat_model_change(r.clone(), f.clone(), cx),
                     PickerEvent::Flags(f) => v.on_chat_flags_change(f.clone(), cx),

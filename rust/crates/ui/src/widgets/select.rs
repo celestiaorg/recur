@@ -259,7 +259,7 @@ struct Row {
 impl Select {
     pub fn new(options: Vec<SelectOption>, window: &mut Window, cx: &mut Context<Self>) -> Select {
         let search = search_input(window, cx, SEARCH_PLACEHOLDER);
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &search,
             window,
             |this: &mut Select, input, e: &InputEvent, _, cx| {

@@ -293,7 +293,7 @@ impl FindingsPanel {
         });
         style_textarea(&area, cx);
         let fid = id.to_string();
-        self._subs.push(cx.subscribe_in(
+        self._subs.push(cx.guarded_subscribe_in(
             &area,
             window,
             move |p, _, ev: &InputEvent, _, cx| match ev {

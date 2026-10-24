@@ -123,7 +123,7 @@ impl ModelFlagsSelect {
             }
             s
         });
-        let sub = cx.subscribe(&select, |this: &mut Self, _, ev: &SelectEvent, cx| {
+        let sub = cx.guarded_subscribe(&select, |this: &mut Self, _, ev: &SelectEvent, cx| {
             let SelectEvent::Values(vs) = ev else { return };
             let had = flag_values(&this.selected);
             let mut next = this.selected.clone();
@@ -229,12 +229,12 @@ impl ModelPickers {
             })
         });
         let subs = vec![
-            cx.subscribe(&model_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&model_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
                 let SelectEvent::Change(r) = ev else { return };
                 let next = normalize_flags(&flags_for_model(&this.models, r), None);
                 cx.emit(PickerEvent::Model(r.to_string(), next));
             }),
-            cx.subscribe(&flags_select, |_, _, f: &FlagMap, cx| {
+            cx.guarded_subscribe(&flags_select, |_, _, f: &FlagMap, cx| {
                 cx.emit(PickerEvent::Flags(f.clone()))
             }),
         ];
@@ -453,12 +453,12 @@ impl LoopPolicyPickers {
         let loop_select = mk("Loop", false, window, cx);
         let policy_select = mk("Policy", true, window, cx);
         let subs = vec![
-            cx.subscribe(&loop_select, |_, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&loop_select, |_, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     cx.emit(LoopPolicyEvent::Loop(v.to_string()));
                 }
             }),
-            cx.subscribe(&policy_select, |_, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&policy_select, |_, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     cx.emit(LoopPolicyEvent::Policy(v.to_string()));
                 }

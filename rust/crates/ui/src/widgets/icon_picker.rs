@@ -83,7 +83,7 @@ impl IconPicker {
         cx: &mut Context<Self>,
     ) -> Self {
         let search = search_input(window, cx, SEARCH_PLACEHOLDER);
-        let sub = cx.subscribe_in(
+        let sub = cx.guarded_subscribe_in(
             &search,
             window,
             |this: &mut IconPicker, input, e: &InputEvent, _, cx| {

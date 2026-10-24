@@ -152,15 +152,15 @@ impl BriefingView {
                 .with_values(values)
         });
         let subs = vec![
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
-            cx.subscribe(&chat, |this, _, ev: &AppChatEvent, cx| {
+            cx.guarded_subscribe(&chat, |this, _, ev: &AppChatEvent, cx| {
                 if matches!(ev, AppChatEvent::Hide) {
                     this.set_chat_open(false, cx);
                 }
             }),
-            cx.subscribe(&project_select, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&project_select, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Values(ids) = ev {
                     this.project_filter = ids.iter().map(|s| s.to_string()).collect();
                     this.save_filters(cx);

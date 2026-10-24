@@ -307,7 +307,7 @@ impl Issues {
             .ghost()
         });
         let subs = vec![
-            cx.observe(&vcx.state, |this, _, cx| this.on_state(cx)),
+            cx.guarded_observe(&vcx.state, |this, _, cx| this.on_state(cx)),
             // The menu's window keydown (capture): Escape closes it.
             {
                 let me = cx.entity().downgrade();
@@ -322,19 +322,19 @@ impl Issues {
                     }
                 })
             },
-            cx.subscribe(&project_select, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&project_select, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Values(ids) = ev {
                     this.view.projects = ids.iter().map(|s| s.to_string()).collect();
                     this.save_view(cx);
                 }
             }),
-            cx.subscribe(&group_select, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&group_select, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Values(ids) = ev {
                     this.view.groups = ids.iter().map(|s| s.to_string()).collect();
                     this.save_view(cx);
                 }
             }),
-            cx.subscribe(&sort_select, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&sort_select, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.view.sort = v.to_string();
                     this.save_view(cx);
@@ -1555,9 +1555,11 @@ pub struct IssuesPage {
 
 impl IssuesPage {
     pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let subs = vec![cx.observe_in(&vcx.state, window, |this, _, window, cx| {
-            this.sync(window, cx)
-        })];
+        let subs = vec![
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+                this.sync(window, cx)
+            }),
+        ];
         let mut me = IssuesPage {
             vcx: vcx.clone(),
             list: None,

@@ -200,10 +200,10 @@ impl SyntaxPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.observe_in(&state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
-            cx.subscribe(&input, |this, _, _: &InputEvent, cx| {
+            cx.guarded_subscribe(&input, |this, _, _: &InputEvent, cx| {
                 this.list_changed(cx);
                 cx.notify();
             }),
@@ -243,7 +243,7 @@ impl SyntaxPalette {
             if self.env.is_none() {
                 // The catalog's grammars register asynchronously; follow them.
                 let env = editor_env(&self.state, cx);
-                self._subs.push(cx.observe(&env, |this, _, cx| {
+                self._subs.push(cx.guarded_observe(&env, |this, _, cx| {
                     this.list_changed(cx);
                     cx.notify();
                 }));

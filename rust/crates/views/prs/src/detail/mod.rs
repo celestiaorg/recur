@@ -9,6 +9,7 @@ mod commits;
 mod conversation;
 pub(crate) mod field;
 use conversation::Compose;
+use recur_ui::guard::Guarded;
 mod files;
 mod html;
 mod render;
@@ -240,14 +241,14 @@ impl PrDetail {
             )
         });
         let subs = vec![
-            cx.observe_in(&state, window, |d, _, window, cx| {
+            cx.guarded_observe_in(&state, window, |d, _, window, cx| {
                 d.state_changed(window, cx)
             }),
-            cx.observe_in(&ui, window, |d, _, window, cx| d.ui_changed(window, cx)),
-            cx.subscribe_in(&state, window, |d, _, ev: &AppliedEvent, window, cx| {
+            cx.guarded_observe_in(&ui, window, |d, _, window, cx| d.ui_changed(window, cx)),
+            cx.guarded_subscribe_in(&state, window, |d, _, ev: &AppliedEvent, window, cx| {
                 d.on_event(&ev.0, window, cx)
             }),
-            cx.subscribe(&state, |d, _, ev: &ShellEvent, cx| {
+            cx.guarded_subscribe(&state, |d, _, ev: &ShellEvent, cx| {
                 if let ShellEvent::PrOpened(_) = ev {
                     d.ui.update(cx, |u, cx| u.reset_for_open(cx));
                 }
@@ -1987,7 +1988,7 @@ impl PrDetail {
             v
         });
         let state = self.state().clone();
-        let sub = cx.subscribe(&v, move |_, _, ev: &MarkdownEvent, cx| match ev {
+        let sub = cx.guarded_subscribe(&v, move |_, _, ev: &MarkdownEvent, cx| match ev {
             MarkdownEvent::LightboxOpen(open) => {
                 let open = *open;
                 state.update(cx, |s, cx| {

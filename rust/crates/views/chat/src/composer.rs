@@ -3,6 +3,7 @@
 //! chip with its slot inputs, editing keys, paste and drops of images and files, undo, and the
 //! platform text input (IME) over the [`ComposerDoc`].
 
+use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::time::Duration;
@@ -1107,7 +1108,7 @@ impl AgentChat {
                 })
                 .ok();
             let Some(slot) = slot else { continue };
-            let sub = cx.subscribe(
+            let sub = cx.guarded_subscribe(
                 &slot,
                 move |this: &mut Self, _, ev: &InputEvent, cx| match ev {
                     InputEvent::Change => this.on_slot_changed(cx),

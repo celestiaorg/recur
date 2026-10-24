@@ -2,6 +2,7 @@
 //! way `web/scenes/Terminal.svelte` mounts the Svelte pane. A scene is the dock body (find bar
 //! when open, then the panes) around one pane whose session replays the scene's input bytes.
 
+use recur_ui::guard::Guarded;
 use std::sync::Arc;
 
 use gpui_kit::{
@@ -204,7 +205,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         .then(|| cx.new(|cx| TerminalFindBar::new(window, cx)));
     let tooltip = TitleTooltip::new(cx);
     let view = cx.new(|cx| {
-        let mut subs = vec![cx.subscribe(
+        let mut subs = vec![cx.guarded_subscribe(
             &terminal,
             |body: &mut DockBody, _, e: &TerminalEvent, cx| {
                 if let (
@@ -222,23 +223,25 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         )];
         if let Some(bar) = &find {
             let terminal = terminal.clone();
-            subs.push(cx.subscribe(bar, move |_, bar, e: &FindBarEvent, cx| {
-                let (query, mut opts) = bar.read_with(cx, |b, cx| (b.query(cx), b.options()));
-                terminal.update(cx, |t, cx| match e {
-                    FindBarEvent::Changed if query.is_empty() => t.clear_search(cx),
-                    FindBarEvent::Changed => {
-                        opts.incremental = true;
-                        t.find_next(&query, opts, cx);
-                    }
-                    FindBarEvent::Next if !query.is_empty() => {
-                        t.find_next(&query, opts, cx);
-                    }
-                    FindBarEvent::Previous if !query.is_empty() => {
-                        t.find_previous(&query, opts, cx);
-                    }
-                    _ => {}
-                });
-            }));
+            subs.push(
+                cx.guarded_subscribe(bar, move |_, bar, e: &FindBarEvent, cx| {
+                    let (query, mut opts) = bar.read_with(cx, |b, cx| (b.query(cx), b.options()));
+                    terminal.update(cx, |t, cx| match e {
+                        FindBarEvent::Changed if query.is_empty() => t.clear_search(cx),
+                        FindBarEvent::Changed => {
+                            opts.incremental = true;
+                            t.find_next(&query, opts, cx);
+                        }
+                        FindBarEvent::Next if !query.is_empty() => {
+                            t.find_next(&query, opts, cx);
+                        }
+                        FindBarEvent::Previous if !query.is_empty() => {
+                            t.find_previous(&query, opts, cx);
+                        }
+                        _ => {}
+                    });
+                }),
+            );
         }
         DockBody {
             terminal,

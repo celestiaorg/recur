@@ -87,10 +87,10 @@ impl NewProjectModal {
         });
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
-            cx.subscribe(&branch, |this, _, ev: &SelectEvent, cx| {
+            cx.guarded_subscribe(&branch, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.base_branch = v.to_string();
                     cx.notify();

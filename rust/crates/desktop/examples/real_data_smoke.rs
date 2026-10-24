@@ -1422,6 +1422,7 @@ async fn scroll_transcript(
     wheel(cx, window, &handle, 1e9);
     frames(cx, window, 3).await;
     let mut at_end = 0;
+    let mut reached = false;
     for _ in 0..2000 {
         let page = f32::from(handle.bounds().size.height).max(200.);
         let max = f32::from(handle.max_offset().y);
@@ -1429,6 +1430,7 @@ async fn scroll_transcript(
         if y >= max - 0.5 {
             at_end += 1;
             if at_end >= 3 {
+                reached = true;
                 break;
             }
         } else {
@@ -1442,6 +1444,13 @@ async fn scroll_transcript(
         timed(Budget::ScrollStep, took);
         stall_check(took);
         collect_toasts(cx);
+    }
+    if !reached {
+        let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+        if let Ok(mut r) = report().lock() {
+            r.stalls
+                .push(format!("the transcript never scrolled to its end at: {s}"));
+        }
     }
     if chat.read_with(cx, |c, _| c.props().messages.len()) >= LONG_CHAT_ROWS {
         type_in_long_chat(start, cx, window, chat, id, code).await;

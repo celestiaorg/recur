@@ -361,7 +361,20 @@ impl Shell {
             .min_w_0()
             .bg(recur_ui::Theme::of(cx).tokens.bg)
             .relative();
-        for (i, v) in self.views.iter().enumerate() {
+        // Hidden routes paint first: GPUI still hit-tests an invisible subtree, so the routed
+        // view must be on top of them.
+        let order = self
+            .views
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| Some(*i) != active)
+            .chain(
+                self.views
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| Some(*i) == active),
+            );
+        for (i, v) in order {
             let on = Some(i) == active;
             if on {
                 main = main.child(

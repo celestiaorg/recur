@@ -269,6 +269,9 @@ pub struct EditorView {
     pub(crate) blink_start: std::time::Instant,
     pub(crate) blink_epoch: u64,
     pub(crate) blink_task: Option<Task<()>>,
+    /// The editor holds focus; only then does the caret blink (an unfocused caret is drawn
+    /// steady, so a blink would only redraw the editor and every view above it).
+    pub(crate) has_focus: bool,
     pub(crate) completion: CompletionDriver,
     pub(crate) completion_timer: Option<Task<()>>,
     pub(crate) highlight_timer: Option<Task<()>>,
@@ -420,6 +423,7 @@ impl EditorView {
             blink_start: std::time::Instant::now(),
             blink_epoch: 0,
             blink_task: None,
+            has_focus: false,
             completion: CompletionDriver::default(),
             completion_timer: None,
             highlight_timer: None,
@@ -469,6 +473,7 @@ impl EditorView {
         view._subscriptions = vec![
             cx.on_blur(&focus, window, |v, window, cx| v.blurred(window, cx)),
             cx.on_focus(&focus, window, |v, _window, cx| {
+                v.has_focus = true;
                 v.restart_blink(cx);
                 cx.notify();
             }),
@@ -1020,7 +1025,7 @@ impl EditorView {
         self.blink_start = std::time::Instant::now();
         self.blink_epoch += 1;
         let rate = self.metrics.cursor_blink_ms;
-        if rate == 0 || recur_ui::motion::is_frozen(cx) {
+        if rate == 0 || !self.has_focus || recur_ui::motion::is_frozen(cx) {
             self.blink_task = None;
             return;
         }

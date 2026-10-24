@@ -2421,6 +2421,8 @@ impl EditorView {
     /// The editor lost focus: close completion unless it moved into the
     /// list (dispatched 10ms later, like CodeMirror).
     pub(crate) fn blurred(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.has_focus = false;
+        self.blink_task = None;
         self.end_composition(window, cx);
         if let Some(spec) = self.completion.blur(&self.state, false) {
             cx.spawn_in(window, async move |this, cx| {

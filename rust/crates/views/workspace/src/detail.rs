@@ -235,8 +235,12 @@ impl WorkspaceDetail {
             .flex_col()
             .size_full()
             .min_h_0();
-        // Parked shells stay laid out at the live slot's size, hidden (`#wsv-park`).
-        for id in &self.hot {
+        // Parked shells stay laid out at the live slot's size, hidden (`#wsv-park`). They paint
+        // first: GPUI still hit-tests an invisible subtree, and `visibility: hidden` takes no
+        // pointer events, so the live shell must be on top.
+        let mut order: Vec<&String> = self.hot.iter().filter(|id| **id != bound).collect();
+        order.extend(self.hot.iter().filter(|id| **id == bound));
+        for id in order {
             let Some(v) = self.views.get(id).cloned() else {
                 continue;
             };

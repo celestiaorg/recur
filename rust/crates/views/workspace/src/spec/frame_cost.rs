@@ -120,3 +120,37 @@ async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) 
         assert_eq!(renders(view, &counts), n, "{view}: {counts:?}");
     }
 }
+
+#[gpui::test]
+async fn the_wheel_scrolls_the_live_chat_over_a_parked_one(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    for id in ["LOOP-2229", ACTIVE] {
+        s.open(id);
+        let view = bound(&mut s);
+        s.cx.update(|_, cx| {
+            view.update(cx, |v, cx| {
+                let key = v.active_key();
+                v.chat_by_key.insert(key, long_chat(60));
+                v.touch(cx);
+            })
+        });
+        s.settle();
+    }
+    let chat = bound(&mut s).read_with(s.cx, |v, _| v.chat().clone());
+    let handle = chat.read_with(s.cx, |c, _| c.test_scroll().clone());
+    let before = f32::from(handle.offset().y);
+    let at = handle.bounds().center();
+    s.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
+    s.cx.simulate_event(gpui::ScrollWheelEvent {
+        position: at,
+        delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(300.))),
+        modifiers: gpui::Modifiers::none(),
+        touch_phase: gpui::TouchPhase::Moved,
+    });
+    s.settle();
+    let after = f32::from(handle.offset().y);
+    assert!(
+        after > before + 100.,
+        "the live chat did not scroll: {before} -> {after}"
+    );
+}

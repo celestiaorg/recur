@@ -102,10 +102,27 @@ pub enum FilesEvent {
 
 impl EventEmitter<FilesEvent> for FilesChangedView {}
 
+/// `(files_gen, exclude matchers, scoped)` and, for the matched list, the filter query, the
+/// findings-only toggle and the findings map.
+type VisibleKey = (u64, usize, bool);
+type MatchedKey = (VisibleKey, String, bool, usize);
+
+#[derive(Default)]
+struct MatchedMemo {
+    visible: Option<(VisibleKey, Vec<Rc<FileDiff>>)>,
+    matched: Option<(MatchedKey, Vec<Rc<FileDiff>>)>,
+}
+
 pub struct FilesChangedView {
     state: Entity<AppState>,
     props: FilesProps,
     files: Vec<Rc<FileDiff>>,
+    /// Bumped whenever `files` changes (keys `matched_memo`).
+    files_gen: u64,
+    /// The last `visible_files` / `matched_files` and the inputs they were computed from: the
+    /// toolbar, the list and the stack read them several times a render, and a large diff
+    /// has thousands of paths to glob, filter and sort.
+    matched_memo: std::cell::RefCell<MatchedMemo>,
     files_truncated: bool,
     loading: bool,
     error: bool,
@@ -170,6 +187,8 @@ impl FilesChangedView {
             state,
             props: FilesProps::default(),
             files: Vec::new(),
+            files_gen: 0,
+            matched_memo: Default::default(),
             files_truncated: false,
             loading: false,
             error: false,
@@ -294,7 +313,13 @@ impl FilesChangedView {
 
     /// `visibleFiles`: explorer excludes apply only to the branch-vs-base list.
     pub fn visible_files(&self) -> Vec<Rc<FileDiff>> {
-        match (&self.props.exclude_matchers, self.scoped()) {
+        let key = self.visible_key();
+        if let Some((k, v)) = &self.matched_memo.borrow().visible
+            && *k == key
+        {
+            return v.clone();
+        }
+        let v: Vec<Rc<FileDiff>> = match (&self.props.exclude_matchers, self.scoped()) {
             (Some(m), false) if !m.is_empty() => self
                 .files
                 .iter()
@@ -302,7 +327,20 @@ impl FilesChangedView {
                 .cloned()
                 .collect(),
             _ => self.files.clone(),
-        }
+        };
+        self.matched_memo.borrow_mut().visible = Some((key, v.clone()));
+        v
+    }
+
+    fn visible_key(&self) -> VisibleKey {
+        (
+            self.files_gen,
+            self.props
+                .exclude_matchers
+                .as_ref()
+                .map_or(0, |m| Rc::as_ptr(m) as usize),
+            self.scoped(),
+        )
     }
 
     fn filter_q(&self, cx: &App) -> String {
@@ -312,6 +350,26 @@ impl FilesChangedView {
     /// `matchedFiles`.
     pub fn matched_files(&self, cx: &App) -> Vec<Rc<FileDiff>> {
         let q = self.filter_q(cx);
+        let key = (
+            self.visible_key(),
+            q.clone(),
+            self.findings_only,
+            self.props
+                .findings_by_path
+                .as_ref()
+                .map_or(0, |b| Rc::as_ptr(b) as usize),
+        );
+        if let Some((k, v)) = &self.matched_memo.borrow().matched
+            && *k == key
+        {
+            return v.clone();
+        }
+        let v = self.compute_matched(q);
+        self.matched_memo.borrow_mut().matched = Some((key, v.clone()));
+        v
+    }
+
+    fn compute_matched(&self, q: String) -> Vec<Rc<FileDiff>> {
         let mut list: Vec<Rc<FileDiff>> = self
             .visible_files()
             .into_iter()
@@ -517,6 +575,7 @@ impl FilesChangedView {
     fn adopt_files_scope(&mut self, scope: String) {
         if self.files_scope != scope {
             self.files.clear();
+            self.files_gen += 1;
             self.files_truncated = false;
             self.loading = true;
             self.error = false;
@@ -531,6 +590,7 @@ impl FilesChangedView {
             return;
         }
         self.files.clear();
+        self.files_gen += 1;
         self.files_truncated = false;
         self.files_scope.clear();
         self.load_scope.clear();
@@ -643,6 +703,7 @@ impl FilesChangedView {
                             let restore = got.clone();
                             if let Some(next) = reuse_file_diffs(&v.files, got) {
                                 v.files = next;
+                                v.files_gen += 1;
                                 v.apply_restore(&restore);
                             }
                         }
@@ -650,6 +711,7 @@ impl FilesChangedView {
                             v.error = true;
                             if v.files_scope != scope {
                                 v.files.clear();
+                                v.files_gen += 1;
                                 v.files_truncated = false;
                             }
                         }

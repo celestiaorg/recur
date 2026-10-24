@@ -55,6 +55,8 @@ pub struct MarkdownView {
     loading: HashMap<String, Task<()>>,
     pub(crate) mermaid: Vec<MermaidSlot>,
     mermaid_task: Option<Task<()>>,
+    /// A large document rendering off the UI thread.
+    render_task: Option<Task<()>>,
     width: f32,
     /// The window's device scale, from the last frame.
     scale: Option<f32>,
@@ -122,6 +124,9 @@ pub(crate) fn mermaid_sources(doc: &Doc) -> Vec<String> {
     out
 }
 
+/// Sources past this render on a background thread instead of inside `set_text`.
+const ASYNC_RENDER_MIN_BYTES: usize = 64 * 1024;
+
 impl MarkdownView {
     pub fn new(
         text: impl Into<SharedString>,
@@ -144,6 +149,7 @@ impl MarkdownView {
             loading: HashMap::new(),
             mermaid: Vec::new(),
             mermaid_task: None,
+            render_task: None,
             width: 0.,
             scale: None,
             hover_link: None,
@@ -189,15 +195,30 @@ impl MarkdownView {
             return;
         }
         self.text = text;
+        self.render_task = None;
+        let opts = ParseOptions {
+            demote_images: self.demote_images,
+        };
+        if self.text.len() > ASYNC_RENDER_MIN_BYTES {
+            // A large file preview parses for long enough to freeze the window; the previous
+            // document stays up until it lands.
+            let src = self.text.clone();
+            let render = cx
+                .background_executor()
+                .spawn(async move { render_markdown_cached(&src, opts) });
+            self.render_task = Some(cx.spawn(async move |this, cx| {
+                let html = render.await;
+                let _ = this.update(cx, |v, cx| {
+                    v.render_task = None;
+                    v.set_html(&html, cx);
+                });
+            }));
+            return;
+        }
         let html = if self.text.is_empty() {
             Arc::from("")
         } else {
-            render_markdown_cached(
-                &self.text,
-                ParseOptions {
-                    demote_images: self.demote_images,
-                },
-            )
+            render_markdown_cached(&self.text, opts)
         };
         self.set_html(&html, cx);
     }

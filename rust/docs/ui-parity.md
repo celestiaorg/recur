@@ -433,6 +433,46 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `settings/usage-paper` | 51 | 7110 | 15890 | 23000 | 51 |
 | `settings/keybinding-menu` | 16 | 12117 | 22066 | 34190 | 16 |
 | `settings/keybinding-menu-paper` | 21 | 7414 | 6383 | 13800 | 21 |
+| `home/welcome` | 11 | 2344 | 803 | 3470 | 11 |
+| `home/welcome-paper` | 0 | 2357 | 847 | 3530 | 0 |
+| `home/welcome-modes` | 11 | 5679 | 1579 | 7990 | 11 |
+| `home/welcome-done` | 0 | 4702 | 2156 | 7550 | 0 |
+| `home/new-project` | 0 | 3038 | 631 | 4040 | 0 |
+| `home/new-project-paper` | 0 | 3176 | 774 | 4350 | 0 |
+| `home/new-project-path` | 189 | 3100 | 3594 | 7370 | 189 |
+| `home/new-task` | 0 | 4052 | 635 | 5160 | 0 |
+| `home/new-task-paper` | 0 | 4121 | 769 | 5380 | 0 |
+| `home/new-task-loop` | 0 | 3109 | 613 | 4100 | 0 |
+| `home/new-task-repo` | 0 | 4154 | 683 | 5330 | 0 |
+| `home/new-task-branch` | 0 | 10007 | 802 | 11890 | 0 |
+| `home/new-task-mode` | 0 | 9743 | 739 | 11540 | 0 |
+| `home/new-task-model` | 0 | 6665 | 780 | 8190 | 0 |
+| `home/new-task-flags` | 0 | 6840 | 715 | 8320 | 0 |
+| `home/new-task-loop-picker` | 0 | 3279 | 673 | 4350 | 0 |
+| `home/new-task-policy` | 0 | 6323 | 686 | 7710 | 0 |
+| `home/new-task-tip` | 0 | 8119 | 928 | 9960 | 0 |
+| `home/new-task-slash` | 3 | 9581 | 714 | 11330 | 3 |
+| `briefing/inbox` | 163 | 18260 | 2171 | 22480 | 163 |
+| `briefing/inbox-paper` | 157 | 18240 | 2445 | 22760 | 157 |
+| `briefing/inbox-closed` | 163 | 6389 | 1676 | 8880 | 163 |
+| `briefing/issues` | 24 | 18605 | 2859 | 23620 | 24 |
+| `briefing/issues-paper` | 14 | 18862 | 2366 | 23360 | 14 |
+| `briefing/issues-board` | 0 | 9986 | 1112 | 12210 | 0 |
+| `briefing/schedules` | 20 | 5603 | 1663 | 8000 | 20 |
+| `briefing/schedules-paper` | 28 | 5791 | 1509 | 8040 | 28 |
+| `briefing/inbox-narrow` | 0 | 3969 | 1296 | 5800 | 0 |
+| `briefing/schedule-editor` | 126 | 11256 | 2030 | 14620 | 126 |
+| `briefing/schedule-editor-paper` | 119 | 11708 | 2981 | 16160 | 119 |
+| `projects/general` | 58 | 4796 | 3327 | 8940 | 58 |
+| `projects/general-tall` | 58 | 5023 | 3591 | 9480 | 58 |
+| `projects/general-paper` | 117 | 4744 | 3586 | 9170 | 117 |
+| `projects/run` | 223 | 22799 | 2244 | 27550 | 223 |
+| `projects/run-tall` | 291 | 53587 | 3048 | 62300 | 291 |
+| `projects/schedules` | 0 | 4790 | 1426 | 6840 | 0 |
+| `projects/prs` | 0 | 29441 | 2317 | 34940 | 0 |
+| `projects/skills` | 0 | 3551 | 1262 | 5300 | 0 |
+| `projects/mcp` | 0 | 3452 | 1047 | 4950 | 0 |
+| `projects/danger` | 0 | 4948 | 939 | 6480 | 0 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 

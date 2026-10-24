@@ -553,6 +553,8 @@ pub struct AgentChat {
     pub(crate) markdown_seen: HashSet<String>,
 
     pub(crate) transcript_memo: std::cell::RefCell<Option<Rc<TranscriptModel>>>,
+    /// Replies whose markdown is parsing on a background thread (by markdown key).
+    pub(crate) parsing: HashSet<String>,
     /// How far into `props.messages` (for `reset_key`) the markdown prewarm has reached.
     pub(crate) prewarmed: (String, usize),
     pub(crate) prewarm_task: Option<Task<()>>,
@@ -739,6 +741,7 @@ impl AgentChat {
             cards: Default::default(),
             markdown_seen: HashSet::new(),
             transcript_memo: Default::default(),
+            parsing: HashSet::new(),
             prewarmed: (String::new(), 0),
             prewarm_task: None,
             panes: None,

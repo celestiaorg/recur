@@ -353,6 +353,11 @@ pub fn set_markdown_render_inline(on: bool) {
     RENDER_INLINE.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// Whether [`set_markdown_render_inline`] is on.
+pub fn markdown_render_inline() -> bool {
+    RENDER_INLINE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// `pump`'s dequeue: the next job not already answered by the cache.
 fn next_job(state: &Mutex<State>) -> Option<Job> {
     let mut s = lock(state);

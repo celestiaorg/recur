@@ -125,7 +125,7 @@ pub(crate) fn mermaid_sources(doc: &Doc) -> Vec<String> {
 }
 
 /// Sources past this render on a background thread instead of inside `set_text`.
-const ASYNC_RENDER_MIN_BYTES: usize = 64 * 1024;
+const ASYNC_RENDER_MIN_BYTES: usize = 16 * 1024;
 
 impl MarkdownView {
     pub fn new(

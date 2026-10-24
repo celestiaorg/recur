@@ -37,6 +37,9 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+/// Markdown parsed inside one transcript render before the rest goes to a background thread.
+const MD_SYNC_BUDGET: std::time::Duration = std::time::Duration::from_millis(12);
+
 /// A run of windowed-out blocks at their reserved heights, recording each one's range.
 fn stub_spacer(
     stubs: Vec<(String, f32)>,
@@ -154,9 +157,14 @@ impl AgentChat {
         let mut stubs: Vec<(String, f32)> = Vec::new();
         let scale = self.scale.max(1.);
         self.live_blocks = 0;
+        let parse_until = std::time::Instant::now() + MD_SYNC_BUDGET;
         for (bi, b) in blocks.iter().enumerate() {
             let k = keys[bi].clone();
-            let live = !windowed || self.chat_hydrated.contains(&k) || bi + CHAT_TAIL_LIVE >= n;
+            let live = (!windowed || self.chat_hydrated.contains(&k) || bi + CHAT_TAIL_LIVE >= n)
+                && match b {
+                    Block::Msg(i) => self.markdown_ready(&msgs, *i, parse_until, cx),
+                    Block::Steps { .. } => true,
+                };
             if !live {
                 let estimate = model.estimates[bi];
                 let measured = self.block_heights().get(&k).copied();
@@ -232,6 +240,62 @@ impl AgentChat {
             out.push(self.turn_row(self.props.status_text.clone(), false, window, cx));
         }
         out
+    }
+
+    /// Whether message `i` can lay out now: anything but a settled reply can, and a reply can
+    /// once its parsed document is cached (or its view exists). Replies are parsed here until
+    /// `until`; past it they parse on a background thread and stay stubs at their reserved
+    /// height until the chat redraws with them, so opening a long chat never parses a window
+    /// of replies inside one frame.
+    fn markdown_ready(
+        &mut self,
+        msgs: &[AgentMsg],
+        i: usize,
+        until: std::time::Instant,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let m = &msgs[i];
+        if m.log.is_some()
+            || m.turn_end
+            || m.note
+            || m.stopped
+            || m.error
+            || m.me
+            || m.streaming
+            || m.body.is_empty()
+        {
+            return true;
+        }
+        use recur_content::markdown::{
+            ParseOptions, markdown_doc_cached, markdown_doc_is_cached, markdown_render_inline,
+        };
+        let key = format!("{}:m{i}-md", self.props.reset_key);
+        let opts = ParseOptions::default();
+        if self.markdown.contains_key(&key)
+            || markdown_render_inline()
+            || markdown_doc_is_cached(&m.body, opts)
+        {
+            return true;
+        }
+        if std::time::Instant::now() < until {
+            markdown_doc_cached(&m.body, opts);
+            return true;
+        }
+        if self.parsing.insert(key.clone()) {
+            let body = m.body.clone();
+            let parse = cx
+                .background_executor()
+                .spawn(async move { markdown_doc_cached(&body, opts) });
+            cx.spawn(async move |this, cx| {
+                parse.await;
+                let _ = this.update(cx, |c, cx| {
+                    c.parsing.remove(&key);
+                    cx.notify();
+                });
+            })
+            .detach();
+        }
+        false
     }
 
     /// `.chat-turn`: the bouncing dots and the elapsed clock or the setup status.

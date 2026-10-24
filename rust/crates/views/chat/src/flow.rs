@@ -173,6 +173,8 @@ fn shape_para(
 }
 
 fn break_lines(p: &Para, text: &str, max: f32, eps: f32) -> Vec<Range<usize>> {
+    // A box narrower than its margins lays out at zero width, where an empty line still fits.
+    let max = max.max(0.);
     let ops: Vec<(usize, BreakOpportunity)> = linebreaks(text).collect();
     let mut lines = Vec::new();
     let mut start = 0;
@@ -180,6 +182,11 @@ fn break_lines(p: &Para, text: &str, max: f32, eps: f32) -> Vec<Range<usize>> {
     let mut i = 0;
     while i < ops.len() {
         let (pos, _) = ops[i];
+        // An overlong split can end at or past this opportunity: nothing is left before it.
+        if pos <= start {
+            i += 1;
+            continue;
+        }
         if p.width(text, start..pos) <= max + eps {
             last_fit = Some(pos);
             i += 1;
@@ -775,5 +782,32 @@ mod tests {
             assert_eq!(two.hit(0., two.lines[1].top + 1.), 2);
             assert_eq!(two.vertical(0, true), Some(2));
         });
+    }
+
+    #[test]
+    fn lines_tile_the_text_at_any_width() {
+        // 6px per char, with a 40px chip at byte 4.
+        let text = format!("a b {ATOM}cd e");
+        let mut edges = Vec::new();
+        let mut x = 0.;
+        for (bi, ch) in text.char_indices() {
+            edges.push((bi, x));
+            x += if ch == ATOM { 40. } else { 6. };
+        }
+        edges.push((text.len(), x));
+        let p = Para {
+            range: 0..text.len(),
+            edges,
+        };
+        for max in [-5., 0., 0.5, 3., 7., 30.] {
+            let lines = break_lines(&p, &text, max, 0.25);
+            let mut at = 0;
+            for l in &lines {
+                assert!(l.start <= l.end, "{l:?} at max {max}");
+                assert_eq!(l.start, at, "lines must tile the text at max {max}");
+                at = l.end;
+            }
+            assert_eq!(at, text.len());
+        }
     }
 }

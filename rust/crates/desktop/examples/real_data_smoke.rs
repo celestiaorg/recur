@@ -120,6 +120,34 @@ fn copy_dir(from: &Path, to: &Path) -> Res<()> {
     Ok(())
 }
 
+/// Copies the real worktree's modified and untracked (not ignored) files, so the sandbox
+/// worktree is as dirty as the real one. `git ls-files` only reads the real worktree.
+fn carry_dirty(real: &Path, dst: &Path) {
+    let Ok(list) = git(
+        real,
+        &[
+            "ls-files",
+            "-z",
+            "--modified",
+            "--others",
+            "--exclude-standard",
+        ],
+    ) else {
+        return;
+    };
+    for rel in list.split('\0').filter(|r| !r.is_empty()) {
+        let from = real.join(rel);
+        let to = dst.join(rel);
+        if !from.is_file() {
+            continue;
+        }
+        if let Some(dir) = to.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let _ = std::fs::copy(&from, &to);
+    }
+}
+
 fn prepare(src: &Path, root: &Path) -> Res<()> {
     let src = src
         .canonicalize()
@@ -234,6 +262,14 @@ fn prepare(src: &Path, root: &Path) -> Res<()> {
                 "no-push://recur-smoke",
             ],
         )?;
+        // The main checkout: the branch the real one is on, with its uncommitted files.
+        if let Ok(branch) = git(
+            Path::new(repo),
+            &["symbolic-ref", "--quiet", "--short", "HEAD"],
+        ) {
+            let _ = git(&dst, &["checkout", "--quiet", &branch]);
+        }
+        carry_dirty(Path::new(repo), &dst);
         println!("cloned {id} ({:.0?})", t.elapsed());
         moved.insert(repo.clone(), dst.to_string_lossy().into_owned());
         clones.insert(id.clone(), dst);
@@ -298,7 +334,10 @@ fn prepare(src: &Path, root: &Path) -> Res<()> {
                     git(clone, &["worktree", "add", "--quiet", "--detach", &path])
                 };
                 match res {
-                    Ok(_) => added += 1,
+                    Ok(_) => {
+                        added += 1;
+                        carry_dirty(Path::new(&wt), &dst);
+                    }
                     Err(err) => println!("workspace {id}: {err}"),
                 }
             }

@@ -5,6 +5,7 @@
 mod atlas;
 mod backend;
 mod blink;
+pub use blink::BLINK_INTERVAL;
 #[rustfmt::skip]
 mod custom_glyph_data;
 mod custom_glyphs;

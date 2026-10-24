@@ -108,12 +108,14 @@ fn to_chunks(changes: &[DiffChange], a: &Text, b: &Text, precise: bool) -> Vec<C
         let change = changes[i];
         let (from_a, from_b) = from_line(change.from_a, change.from_b, a, b);
         let (mut to_a, mut to_b) = to_line(change.to_a, change.to_b, a, b);
+        // A change that starts at a line end opens its chunk on the next line, so its start is
+        // one before the chunk (JS keeps it negative); inside the chunk that is position 0.
         let rel = |c: DiffChange| {
             DiffChange::new(
-                c.from_a - from_a,
-                c.to_a - from_a,
-                c.from_b - from_b,
-                c.to_b - from_b,
+                c.from_a.saturating_sub(from_a),
+                c.to_a.saturating_sub(from_a),
+                c.from_b.saturating_sub(from_b),
+                c.to_b.saturating_sub(from_b),
             )
         };
         let mut chunk = vec![rel(change)];
@@ -773,6 +775,16 @@ mod tests {
         let mut s = EditorState::create(doc, StateConfig::default());
         s.merge = Some(Rc::new(MergeState::new(original, &s.doc)));
         s
+    }
+
+    #[test]
+    fn a_change_at_a_line_end_starts_its_chunk_on_the_next_line() {
+        // "\nXX" inserted at the end of "ab": the chunk opens one past the change.
+        let (a, b) = (Text::of("ab\ncd"), Text::of("ab\nXX\ncd"));
+        let chunks = to_chunks(&[DiffChange::new(2, 2, 2, 5)], &a, &b, false);
+        assert_eq!(chunks.len(), 1);
+        assert_eq!((chunks[0].from_a, chunks[0].from_b), (3, 3));
+        assert_eq!(&*chunks[0].changes, &[DiffChange::new(0, 0, 0, 2)]);
     }
 
     #[test]

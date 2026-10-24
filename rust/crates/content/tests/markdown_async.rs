@@ -1,7 +1,7 @@
 //! A large markdown document parses on a background thread: `set_text` returns at once and
 //! the blocks land on a later frame (a 200 KB file preview froze the window for seconds).
 
-use gpui::{AppContext as _, TestAppContext};
+use gpui::TestAppContext;
 use recur_content::markdown::peek_markdown_cache;
 use recur_content::{MarkdownClass, MarkdownView};
 

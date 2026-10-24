@@ -50,6 +50,7 @@ recur-view-settings = { path = "crates/views/settings" }
 recur-view-home = { path = "crates/views/home" }
 recur-view-projects = { path = "crates/views/projects" }
 recur-view-briefing = { path = "crates/views/briefing" }
+recur-view-palettes = { path = "crates/views/palettes" }
 
 # UI. gpui-kit pins an exact gpui-pre snapshot; bump only together with it.
 gpui-kit = "0.8.0"

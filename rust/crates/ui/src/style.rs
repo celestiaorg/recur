@@ -852,6 +852,12 @@ pub fn palette_scrim(window: &Window, panel: impl IntoElement) -> Div {
     vh_scrim(11., Some(64.), window, panel)
 }
 
+/// `.palette-bg` around a panel at most `max_vh` tall (`.cmd-palette` 56vh, `.shortcuts-panel`
+/// 72vh).
+pub fn palette_scrim_capped(max_vh: f32, window: &Window, panel: impl IntoElement) -> Div {
+    vh_scrim(11., Some(max_vh), window, panel)
+}
+
 /// A viewport scrim whose panel hangs `top` vh below its top (`padding-top: 11vh` on a
 /// centering flex row) and is at most `max` vh tall, both at the exact LayoutUnits WebKit
 /// resolves them to: authored lengths would round, a percentage of the scrim reaches layout

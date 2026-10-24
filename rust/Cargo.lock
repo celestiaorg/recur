@@ -6752,6 +6752,7 @@ dependencies = [
  "recur-view-core",
  "recur-view-home",
  "recur-view-observatory",
+ "recur-view-palettes",
  "recur-view-projects",
  "recur-view-prs",
  "recur-view-review",
@@ -7416,6 +7417,31 @@ dependencies = [
  "serde_json",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "recur-view-palettes"
+version = "0.0.0"
+dependencies = [
+ "base64 0.23.1",
+ "futures",
+ "gpui-kit",
+ "gpui-pre",
+ "parking_lot",
+ "recur-app",
+ "recur-code",
+ "recur-domain",
+ "recur-editor",
+ "recur-services",
+ "recur-textmate",
+ "recur-ui",
+ "recur-view-chat",
+ "recur-view-core",
+ "recur-view-home",
+ "recur-view-observatory",
+ "recur-view-palettes",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

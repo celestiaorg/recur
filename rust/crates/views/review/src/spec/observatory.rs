@@ -391,3 +391,47 @@ async fn review_changes_survives_scrolling_a_large_mixed_size_diff(cx: &mut Test
     });
     assert!(live > 0 && live <= crate::review_window::REVIEW_HYDRATE_MAX);
 }
+
+#[gpui::test]
+async fn a_huge_diff_mounts_only_the_cards_near_the_viewport(cx: &mut TestAppContext) {
+    let files = crate::gallery::large_files(2000);
+    let last = files.as_array().and_then(|a| a.last()).expect("files")["path"]
+        .as_str()
+        .expect("path")
+        .to_string();
+    let opts = MockOptions::default().resolver("DiffVsBase", move |_, _, _| {
+        Reply::value(json!({ "files": files.clone() }))
+    });
+    let (mut h, host) = surface(cx, opts, |p| p.count = 2000);
+    let stub = |p: &str| format!("cfile:stub:{p}");
+    h.settle();
+    let mut mounted = 0;
+    for i in 0..2000 {
+        let p = format!("src/pkg{}/file{i}.ts", i % 9);
+        for sel in [stub(&p), format!("cfile:live:{p}")] {
+            let sel: &'static str = Box::leak(sel.into_boxed_str());
+            if h.cx.debug_bounds(sel).is_some() {
+                mounted += 1;
+            }
+        }
+    }
+    assert!(mounted < 200, "{mounted} cards mounted");
+    assert!(!h.has(&stub(&last)));
+    // The unmounted cards keep their place: selecting the last one scrolls to it.
+    host.update(h.cx, |hst, cx| {
+        hst.surface.update(cx, |s, cx| {
+            s.files_view().update(cx, |f, cx| f.select_path(&last, cx))
+        })
+    });
+    h.settle();
+    h.settle();
+    let pane = h.bounds("diffscroll").expect("pane");
+    let card = h
+        .bounds(&stub(&last))
+        .or_else(|| h.bounds(&format!("cfile:live:{last}")))
+        .expect("the selected card mounts");
+    assert!(
+        card.top() >= pane.top() - gpui::px(1.) && card.top() < pane.bottom(),
+        "{card:?} in {pane:?}"
+    );
+}

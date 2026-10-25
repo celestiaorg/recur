@@ -435,3 +435,19 @@ async fn a_huge_diff_mounts_only_the_cards_near_the_viewport(cx: &mut TestAppCon
         "{card:?} in {pane:?}"
     );
 }
+
+/// A reload that brings back the same diff (a watcher event, a commit draft written while
+/// typing) leaves the review, and the Observatory that hosts it, as they were.
+#[gpui::test]
+fn a_reload_that_finds_the_same_diff_does_not_notify(cx: &mut TestAppContext) {
+    let (mut h, host) = surface(cx, MockOptions::default(), |_| {});
+    let files =
+        h.cx.update(|_, cx| host.read(cx).surface.read(cx).files_view().clone());
+    let n = std::rc::Rc::new(std::cell::Cell::new(0));
+    let seen = n.clone();
+    let _sub =
+        h.cx.update(|_, cx| cx.observe(&files, move |_, _| seen.set(seen.get() + 1)));
+    h.cx.update(|_, cx| files.update(cx, |f, cx| f.load(cx)));
+    h.cx.run_until_parked();
+    assert_eq!(n.get(), 0);
+}

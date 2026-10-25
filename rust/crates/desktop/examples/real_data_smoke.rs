@@ -1051,9 +1051,37 @@ fn drive(root: PathBuf) -> i32 {
     rt.spawn({
         let mut rx = services.subscribe();
         async move {
+            // A worktree that changes every few seconds re-runs the review's diff each time:
+            // name what keeps changing.
+            let mut fs: BTreeMap<String, (Instant, u32, BTreeSet<String>, u32)> = BTreeMap::new();
             while let Some(ev) = rx.recv().await {
-                if matches!(ev, recur_services::AppEvent::SessionDelta(_)) {
-                    DELTAS.fetch_add(1, Ordering::SeqCst);
+                match ev {
+                    recur_services::AppEvent::SessionDelta(_) => {
+                        DELTAS.fetch_add(1, Ordering::SeqCst);
+                    }
+                    recur_services::AppEvent::WorkspaceFsChanged(e) => {
+                        let slot = fs
+                            .entry(e.workspace_id.clone())
+                            .or_insert_with(|| (Instant::now(), 0, BTreeSet::new(), 0));
+                        if slot.0.elapsed() > Duration::from_secs(30) {
+                            *slot = (Instant::now(), 0, BTreeSet::new(), slot.3);
+                        }
+                        slot.1 += 1;
+                        slot.2.extend(e.paths.iter().take(8).cloned());
+                        if e.rescan == Some(true) {
+                            slot.2.insert("<rescan>".into());
+                        }
+                        if slot.1 == 10 && slot.3 < 3 {
+                            slot.3 += 1;
+                            println!(
+                                "note: {} changed on disk 10 times in {:.0?}: {:?}",
+                                e.workspace_id,
+                                slot.0.elapsed(),
+                                slot.2.iter().take(20).collect::<Vec<_>>()
+                            );
+                        }
+                    }
+                    _ => {}
                 }
             }
         }

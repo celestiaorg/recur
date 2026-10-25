@@ -42,6 +42,7 @@ pub mod findings;
 pub mod gallery;
 pub mod html;
 pub mod line_note;
+pub mod note_portal;
 pub mod pane;
 pub mod reactions;
 pub mod review_diff;

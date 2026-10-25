@@ -711,6 +711,15 @@ impl Observatory {
         layer
     }
 
+    /// The review's open line notes' text boxes, drawn here because the review host is cached
+    /// (see `recur_view_review::note_portal`).
+    fn review_note_portals(&self, cx: &App) -> Vec<AnyElement> {
+        self.review_surface
+            .as_ref()
+            .map(|r| r.read(cx).files_view().read(cx).stack().pane.portals())
+            .unwrap_or_default()
+    }
+
     fn side_pane_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         match self.right_meta(cx) {
             Some(kind) => self.render_side_aside(kind, window, cx),
@@ -928,6 +937,7 @@ impl Observatory {
             .child(body)
             .children(overlay)
             .children(ctx)
+            .children(self.review_note_portals(cx))
             .children(self.layers.iter().map(|l| {
                 recur_ui::style::cached_view(
                     l,

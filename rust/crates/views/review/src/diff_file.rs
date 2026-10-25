@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::time::Duration;
 
-use gpui_kit::base::input::{InputEvent, Textarea, TextareaMode, TextareaState};
+use gpui_kit::base::input::{Textarea, TextareaMode, TextareaState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, AppContext as _, Bounds, ClickEvent, ClipboardItem, Context, DispatchPhase,
@@ -44,6 +44,7 @@ use crate::diff_rows::{
 };
 use crate::html::{Token, code_runs, hunk_label};
 use crate::line_note::{LineNoteThread, pr_conversation_locked};
+use crate::note_portal::{Draft, Slot};
 use crate::pane::Pane;
 use crate::review_diff::{DiffLayout, path_label};
 use crate::review_scroll::{JumpTarget, PANE_SCROLL_BIAS, pane_scroll_to, pick_diff_jump};
@@ -173,6 +174,9 @@ pub struct DiffFile {
     open_line: Option<OpenLine>,
     open_side: DiffSide,
     open_start: i64,
+    /// The composer's text box, drawn by a host outside the stack while the card has a pane.
+    draft_portal: Option<(Rc<Slot>, Entity<DraftView>)>,
+    draft_line: usize,
     selecting: Option<Selecting>,
     draft: Entity<TextareaState>,
     _attach: (
@@ -225,14 +229,7 @@ impl DiffFile {
         crate::style::style_textarea(&draft, cx);
         let emoji = attach_emoji(&draft, None, window, cx);
         let mentions = attach_user_mentions(&draft, state.clone(), None, window, cx);
-        let subs = vec![
-            cx.guarded_subscribe(&draft, |_, _, ev: &InputEvent, cx| {
-                if matches!(ev, InputEvent::Change) {
-                    cx.notify();
-                }
-            }),
-            cx.guarded_observe(&state, |_, _, cx| cx.notify()),
-        ];
+        let subs = vec![cx.guarded_observe(&state, |_, _, cx| cx.notify())];
         let mut me = DiffFile {
             state,
             props,
@@ -242,6 +239,8 @@ impl DiffFile {
             open_line: None,
             open_side: DiffSide::Right,
             open_start: 0,
+            draft_portal: None,
+            draft_line: 0,
             selecting: None,
             draft,
             _attach: (emoji, mentions),
@@ -526,6 +525,7 @@ impl DiffFile {
             d.set_placeholder(ph, window, cx);
             d.focus(window, cx);
         });
+        self.open_portal(line_i, cx);
         cx.notify();
     }
 
@@ -551,7 +551,63 @@ impl DiffFile {
         self.open_line = None;
         self.open_start = 0;
         self.draft.update(cx, |d, cx| d.set_value("", window, cx));
+        self.close_portal(cx);
         cx.notify();
+    }
+
+    /// Mounts the composer's text box for the host while the card has a pane.
+    fn open_portal(&mut self, line_i: usize, cx: &mut Context<Self>) {
+        self.draft_line = line_i;
+        let Some(pane) = self.pane.clone() else {
+            return;
+        };
+        let card = cx.entity();
+        let (slot, view) = self
+            .draft_portal
+            .get_or_insert_with(|| {
+                let view = cx.new(|_| DraftView {
+                    card: card.downgrade(),
+                });
+                (Rc::new(Slot::default()), view)
+            })
+            .clone();
+        pane.set_draft(Draft {
+            card: card.entity_id(),
+            slot,
+            view: view.into(),
+        });
+    }
+
+    fn close_portal(&mut self, cx: &mut Context<Self>) {
+        if let Some(pane) = &self.pane {
+            pane.clear_draft(cx.entity_id());
+        }
+    }
+
+    /// The composer's card, live, at the size of its place in the card.
+    fn draft_input(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let (line_i, split) = (self.draft_line, self.props.layout == DiffLayout::Split);
+        self.composer_card(line_i, split, true, window, cx)
+            .size_full()
+            .into_any_element()
+    }
+
+    /// ⌘↵ adds the note, Escape drops it.
+    fn composer_key(
+        &mut self,
+        line_i: usize,
+        ev: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let k = &ev.keystroke;
+        if k.key == "enter" && (k.modifiers.platform || k.modifiers.control) {
+            cx.stop_propagation();
+            self.submit(line_i, window, cx);
+        } else if k.key == "escape" {
+            cx.stop_propagation();
+            self.dismiss_composer(window, cx);
+        }
     }
 
     /// A line-note composer is open (`.icmt-compose`).
@@ -672,6 +728,7 @@ impl DiffFile {
         self.draft.update(cx, |a, cx| a.set_value("", window, cx));
         self.open_line = None;
         self.open_start = 0;
+        self.close_portal(cx);
         cx.notify();
         let services = self.state.read(cx).services().clone();
         let state = self.state.clone();
@@ -1502,16 +1559,19 @@ impl DiffFile {
         d.child(self.record_row(side, n)).into_any_element()
     }
 
-    fn composer_box(
+    /// The composer's card. `live` with the text box; without, an empty stand-in of the same
+    /// size (a card whose text box a host draws, see [`crate::note_portal`]).
+    fn composer_card(
         &self,
         line_i: usize,
         split: bool,
+        live: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> AnyElement {
+    ) -> gpui_kit::Div {
         let t = Theme::of(cx).tokens;
         let mode = self.mode();
-        let empty = js::trim(&self.draft_text(cx)).is_empty();
+        let empty = !live || js::trim(&self.draft_text(cx)).is_empty();
         let posting = self.posting;
         let line = 12.5 * 1.5;
         let lh = recur_ui::style::button_label("x", 11., 400.)
@@ -1531,20 +1591,15 @@ impl DiffFile {
             .line_height(px(line))
             .text_color(hsla(t.text))
             .when(posting, |d| d.opacity(0.55))
-            .key_context("TextEntry")
-            .on_key_down(
-                cx.guarded_listener(move |d, ev: &KeyDownEvent, window, cx| {
-                    let k = &ev.keystroke;
-                    if k.key == "enter" && (k.modifiers.platform || k.modifiers.control) {
-                        cx.stop_propagation();
-                        d.submit(line_i, window, cx);
-                    } else if k.key == "escape" {
-                        cx.stop_propagation();
-                        d.dismiss_composer(window, cx);
-                    }
-                }),
-            )
-            .child(Textarea::new(&self.draft));
+            .when(live, |d| {
+                d.key_context("TextEntry")
+                    .on_key_down(
+                        cx.guarded_listener(move |d, ev: &KeyDownEvent, window, cx| {
+                            d.composer_key(line_i, ev, window, cx)
+                        }),
+                    )
+                    .child(Textarea::new(&self.draft))
+            });
         let hint_text = if mode == NoteMode::Finding {
             "saves a finding on this line"
         } else {
@@ -1584,7 +1639,7 @@ impl DiffFile {
                             cx,
                         )
                         .debug_selector(|| "compose-cancel".into())
-                        .when(!posting, |b| {
+                        .when(!posting && live, |b| {
                             b.on_click(cx.guarded_listener(|d, _, window, cx| {
                                 d.dismiss_composer(window, cx)
                             }))
@@ -1608,13 +1663,47 @@ impl DiffFile {
                         }),
                     ),
             );
-        let card = recur_ui::style::card(t.bg, t.line, 10.)
+        recur_ui::style::card(t.bg, t.line, 10.)
             .flex()
             .flex_col()
             .overflow_hidden()
             .when(!split, |d| d.max_w(px(640.)))
             .child(input)
-            .child(foot);
+            .child(foot)
+    }
+
+    fn composer_box(
+        &self,
+        line_i: usize,
+        split: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        // With a pane the host draws the card at this place (a key then redraws the card, not
+        // the stack); this one lays out invisibly at the same size and records where it is
+        // and what clips it each time the stack draws.
+        let card = match (&self.draft_portal, &self.pane) {
+            (Some((slot, _)), Some(pane)) => {
+                let (slot, draws) = (slot.clone(), pane.clone());
+                self.composer_card(line_i, split, false, window, cx)
+                    .relative()
+                    .invisible()
+                    .child(
+                        canvas(
+                            move |b, window, _| {
+                                slot.bounds.set(Some(b));
+                                slot.clip.set(Some(window.content_mask().bounds));
+                                slot.drawn.set(draws.draws());
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .absolute()
+                        .inset_0(),
+                    )
+            }
+            _ => self.composer_card(line_i, split, true, window, cx),
+        };
         div()
             .debug_selector(|| "icmt-compose".into())
             .bg(hsla(t.pane))
@@ -2580,4 +2669,24 @@ pub fn remove_pending_comment(state: &Entity<AppState>, pc: PendingLineComment, 
         }
     })
     .detach();
+}
+
+/// The open composer's text box, drawn by the host (see [`crate::note_portal`]).
+pub struct DraftView {
+    card: gpui_kit::WeakEntity<DiffFile>,
+}
+
+impl DraftView {
+    fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        match self.card.upgrade() {
+            Some(card) => card.update(cx, |d, cx| d.draft_input(window, cx)),
+            None => div().into_any_element(),
+        }
+    }
+}
+
+impl gpui_kit::Render for DraftView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
 }

@@ -1,15 +1,22 @@
 //! The `.diffscroll` pane a stack of diff files scrolls in, shared with the files so each can
 //! window its rows against it (`root.closest('.diffscroll')`).
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use gpui_kit::{Bounds, Pixels, ScrollHandle, point, px};
+use gpui_kit::{AnyElement, Bounds, EntityId, IntoElement, Pixels, ScrollHandle, point, px};
+
+use crate::note_portal::{Draft, Portal};
 
 #[derive(Clone, Default)]
 pub struct Pane {
     pub scroll: ScrollHandle,
     bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
+    /// How many times the stack in this pane has drawn: a note's slot drawn in another draw
+    /// is off screen.
+    draws: Rc<Cell<u64>>,
+    /// The line notes open in this pane's cards (see [`crate::note_portal`]).
+    drafts: Rc<RefCell<Vec<Draft>>>,
 }
 
 impl Pane {
@@ -55,5 +62,41 @@ impl Pane {
     /// The viewport y of the pane's top edge.
     pub fn top(&self) -> f32 {
         self.bounds().map_or(0., |b| f32::from(b.origin.y))
+    }
+
+    /// The stack is drawing again.
+    pub fn begin_draw(&self) {
+        self.draws.set(self.draws.get() + 1);
+    }
+
+    pub fn draws(&self) -> u64 {
+        self.draws.get()
+    }
+
+    pub fn set_draft(&self, draft: Draft) {
+        let mut d = self.drafts.borrow_mut();
+        d.retain(|x| x.card != draft.card);
+        d.push(draft);
+    }
+
+    pub fn clear_draft(&self, card: EntityId) {
+        self.drafts.borrow_mut().retain(|x| x.card != card);
+    }
+
+    /// The open line notes' text boxes, for a host outside the cached review to mount after it.
+    pub fn portals(&self) -> Vec<AnyElement> {
+        self.drafts
+            .borrow()
+            .iter()
+            .map(|d| {
+                Portal {
+                    slot: d.slot.clone(),
+                    draws: self.draws.clone(),
+                    child: d.view.clone().into_any_element(),
+                    shown: None,
+                }
+                .into_any_element()
+            })
+            .collect()
     }
 }

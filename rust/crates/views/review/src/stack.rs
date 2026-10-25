@@ -521,6 +521,7 @@ impl FileStack {
         cx: &mut Context<H>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
+        self.pane.begin_draw();
         let host: WeakEntity<H> = cx.entity().downgrade();
         let pad = self.chrome.pad;
         let mut col = div().flex().flex_col().w_full().pb(px(pad));

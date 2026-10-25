@@ -382,7 +382,8 @@ impl Render for PrHost {
                 .size_full()
                 .flex()
                 .child(div().w(px(250.)).flex().flex_col().child(self.list.clone()))
-                .child(div().flex_1().min_w_0().flex().flex_col().child(stack)),
+                .child(div().flex_1().min_w_0().flex().flex_col().child(stack))
+                .children(self.stack.pane.portals()),
         )
     }
 }

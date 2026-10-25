@@ -230,3 +230,54 @@ async fn a_parked_chat_comes_back_where_it_was_scrolled(cx: &mut TestAppContext)
     s.open(ACTIVE);
     assert_eq!(-f32::from(handle.offset().y), before);
 }
+
+#[gpui::test]
+async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    s.open(ACTIVE);
+    let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
+    s.cx.update(|_, cx| obs.update(cx, |o, cx| o.click_review_toggle(cx)));
+    s.settle();
+    let cards: Vec<_> = obs.read_with(s.cx, |o, cx| {
+        o.review_surface()
+            .map(|r| {
+                r.read(cx)
+                    .files_view()
+                    .read(cx)
+                    .stack()
+                    .diff_files()
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default()
+    });
+    let opened = cards.iter().any(|card| {
+        s.cx.update(|window, cx| card.update(cx, |c, cx| c.open_first_note(window, cx)))
+    });
+    assert!(opened, "no card took a line note");
+    s.settle();
+    s.cx.simulate_input("a");
+    s.cx.run_until_parked();
+    recur_ui::guard::count_renders(true);
+    for ch in ["b", "c", "d"] {
+        s.cx.simulate_input(ch);
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    assert!(renders("::DraftView", &counts) >= 3, "{counts:?}");
+    for quiet in [
+        "::DiffFile",
+        "::StackPane",
+        "::ReviewSurface",
+        "::FilesChangedView",
+        "::ReviewFileList",
+        "::TranscriptPane",
+    ] {
+        assert_eq!(renders(quiet, &counts), 0, "{quiet} rendered: {counts:?}");
+    }
+    let typed = cards
+        .iter()
+        .find_map(|c| c.read_with(s.cx, |c, cx| c.composer_open().then(|| c.draft_text(cx))));
+    assert_eq!(typed.as_deref(), Some("abcd"));
+}

@@ -39,15 +39,37 @@ impl Observatory {
     }
 
     /// `.obs-crumbbar`: the path crumbs (or the two pane names in a split) and the actions.
+    fn has_crumbbar(&self, cx: &App) -> bool {
+        !(self.selected_path.is_empty() && (!self.split_open || self.split_path.is_empty()))
+            && self.main_surface(cx) == MainSurface::Editor
+    }
+
+    fn crumb_pane_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        self.render_crumbbar(window, cx)
+            .unwrap_or_else(|| div().into_any_element())
+    }
+
+    /// The editor's or the review's status bar. Starting to wrap redraws the Observatory, which
+    /// then lays the bar out inline at its wrapped height.
+    fn status_pane_body(&mut self, _: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let corner = self.status_corner;
+        if self.main_surface(cx) == MainSurface::Review {
+            return self.render_review_status(corner, cx);
+        }
+        let wrapped = self.status_wrap.is_some();
+        let bar = self.render_editor_status(corner, cx);
+        if self.status_wrap.is_some() != wrapped {
+            cx.notify();
+        }
+        bar
+    }
+
     fn render_crumbbar(
         &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
-        if self.selected_path.is_empty() && (!self.split_open || self.split_path.is_empty()) {
-            return None;
-        }
-        if self.main_surface(cx) != MainSurface::Editor {
+        if !self.has_crumbbar(cx) {
             return None;
         }
         let t = Theme::of(cx).tokens;
@@ -1226,19 +1248,47 @@ impl Observatory {
         let no_left = !self.has_left(cx) || !self.left_gutter_open();
         let no_side = !self.has_right(cx) || !self.show_side;
         let corner = (rail_collapsed && no_left && no_dock, no_side && no_dock);
-        let crumb = (!hidden)
-            .then(|| self.render_crumbbar(window, cx))
-            .flatten();
+        // The crumb and status bars are their own cached views at their fixed heights, so a key
+        // typed in the chat does not lay them out (a wrapping status bar stays inline).
+        let crumb = (!hidden && self.has_crumbbar(cx)).then(|| {
+            let pane = self
+                .crumb_pane
+                .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::crumb_pane_body))
+                .clone();
+            cached_view(
+                &pane,
+                gpui_kit::StyleRefinement::default()
+                    .flex_none()
+                    .w_full()
+                    .h(px(crate::style::CHROME_H)),
+                cx,
+            )
+        });
         let editors = (!hidden).then(|| self.render_editors(window, cx)).flatten();
         let review = (!hidden)
             .then(|| self.render_review_host(window, cx))
             .flatten();
+        let editor_status =
+            !self.active_path().is_empty() && self.main_surface(cx) == MainSurface::Editor;
+        let review_status = self.main_surface(cx) == MainSurface::Review;
         let status = if hidden {
             None
-        } else if !self.active_path().is_empty() && self.main_surface(cx) == MainSurface::Editor {
+        } else if editor_status && self.status_wrap.is_some() {
             Some(self.render_editor_status(corner, cx))
-        } else if self.main_surface(cx) == MainSurface::Review {
-            Some(self.render_review_status(corner, cx))
+        } else if editor_status || review_status {
+            self.status_corner = corner;
+            let pane = self
+                .status_pane
+                .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::status_pane_body))
+                .clone();
+            Some(cached_view(
+                &pane,
+                gpui_kit::StyleRefinement::default()
+                    .flex_none()
+                    .w_full()
+                    .h(px(crate::style::FOOT_H)),
+                cx,
+            ))
         } else {
             None
         };

@@ -69,11 +69,16 @@ impl Default for Span {
 }
 
 impl Span {
-    /// The thresholds to test this frame: the whole pixel, then the interval left last frame.
+    /// The thresholds to test this frame: the whole pixel, then the interval left last frame. A
+    /// settled edge only checks its interval's ends, and starts over if it moved past one.
     fn thresholds(self) -> Vec<f32> {
         let n = STEPS as f32;
-        let mut t: Vec<f32> = (1..STEPS).map(|k| -0.5 + k as f32 / n).collect();
-        if self.hi - self.lo < 1. - 1e-6 {
+        let mut t: Vec<f32> = if self.settled() {
+            vec![self.lo, self.hi]
+        } else {
+            (1..STEPS).map(|k| -0.5 + k as f32 / n).collect()
+        };
+        if !self.settled() && self.hi - self.lo < 1. - 1e-6 {
             t.extend((0..=STEPS).map(|j| self.lo + (self.hi - self.lo) * j as f32 / n));
         }
         t.retain(|t| t.abs() < 0.5 - 1e-5);
@@ -112,7 +117,6 @@ struct Edges {
 
 /// The markers this frame placed, with the threshold each tests.
 pub struct Probes {
-    edges: Edges,
     left: Vec<(f32, LayoutId)>,
     top: Vec<(f32, LayoutId)>,
     right: Vec<(f32, LayoutId)>,
@@ -230,7 +234,6 @@ impl Element for LayoutRoot {
         (
             layout,
             Probes {
-                edges,
                 left,
                 top,
                 right,
@@ -291,15 +294,7 @@ impl Element for LayoutRoot {
         let settled = [edges.left, edges.top, edges.right, edges.bottom]
             .iter()
             .all(|e| e.settled());
-        let moved = [
-            (probes.edges.left, edges.left),
-            (probes.edges.top, edges.top),
-            (probes.edges.right, edges.right),
-            (probes.edges.bottom, edges.bottom),
-        ]
-        .iter()
-        .any(|(a, b)| a != b);
-        if !settled && moved {
+        if !settled {
             window.request_animation_frame();
         }
         // Unrounded edges in device px, and the content's unrounded size in px.
@@ -377,12 +372,32 @@ mod tests {
     }
 
     #[test]
+    fn a_settled_edge_holds_on_two_markers_and_reopens_when_it_moves() {
+        let mut s = Span::default();
+        for _ in 0..3 {
+            s = frame(s, 0.1);
+        }
+        assert!(s.settled());
+        assert_eq!(s.thresholds().len(), 2);
+        assert_eq!(frame(s, 0.1), s);
+        let moved = frame(s, 0.3);
+        assert!(!moved.settled() && moved.lo < 0.3 && 0.3 <= moved.hi);
+        let mut s = moved;
+        for _ in 0..3 {
+            s = frame(s, 0.3);
+        }
+        assert!(s.settled() && s.lo < 0.3 && 0.3 <= s.hi);
+    }
+
+    #[test]
     fn a_moved_edge_starts_over_from_the_whole_pixel() {
         let mut s = Span::default();
         for _ in 0..3 {
             s = frame(s, 0.1);
         }
         let s = frame(s, -0.3);
-        assert!(s.lo <= -0.3 && -0.3 <= s.hi && s.hi - s.lo <= 1. / STEPS as f32 + 1e-6);
+        assert!(s.lo < -0.3 && -0.3 <= s.hi && !s.settled());
+        let s = frame(s, -0.3);
+        assert!(s.lo < -0.3 && -0.3 <= s.hi && s.hi - s.lo <= 1. / STEPS as f32 + 1e-6);
     }
 }

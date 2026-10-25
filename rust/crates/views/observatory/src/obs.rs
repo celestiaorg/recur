@@ -527,6 +527,10 @@ pub struct Observatory {
     /// The main pane's empty state as its own cached view.
     pub(crate) empty_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) toolbar_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) crumb_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) status_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    /// The window-corner padding the status bar needs, as of the last render.
+    pub(crate) status_corner: (bool, bool),
     /// The side heads' views (the chat tabs, the plan head) behind cached boundaries.
     pub(crate) head_layers: Vec<(gpui_kit::EntityId, Entity<recur_ui::pane::Layer>)>,
     pub(crate) prompts_reply:
@@ -790,6 +794,9 @@ impl Observatory {
             side_pane: None,
             empty_pane: None,
             toolbar_pane: None,
+            crumb_pane: None,
+            status_pane: None,
+            status_corner: (false, false),
             head_layers: Vec::new(),
             quick_open,
             prompts,

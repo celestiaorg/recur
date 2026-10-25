@@ -57,10 +57,19 @@ fn type_keys(s: &mut S) {
     s.cx.run_until_parked();
 }
 
-/// A key renders PR detail (the box's host, on the key's path) but never its conversation:
-/// the items are cached blocks, and the fixture's have markdown bodies and reactions.
+/// What rendered besides the field a key went to.
+fn beside_the_field(counts: &BTreeMap<&'static str, u32>) -> BTreeMap<&'static str, u32> {
+    counts
+        .iter()
+        .filter(|(k, _)| !k.ends_with("::FieldView"))
+        .map(|(k, n)| (*k, *n))
+        .collect()
+}
+
+/// A key renders the comment box alone: the box is an isolated view, so neither PR detail
+/// (its host) nor the conversation beside it renders.
 #[gpui::test]
-async fn a_key_in_the_pr_comment_box_renders_pr_detail_only(cx: &mut TestAppContext) {
+async fn a_key_in_the_pr_comment_box_renders_the_box_only(cx: &mut TestAppContext) {
     let mut s = open(cx);
     let d =
         s.cx.update(|_, cx| crate::detail::spec_handle::current(cx))
@@ -73,7 +82,8 @@ async fn a_key_in_the_pr_comment_box_renders_pr_detail_only(cx: &mut TestAppCont
             type_keys(s);
         }
     });
-    assert!(renders("::PrDetail", &counts) >= 3, "{counts:?}");
+    assert!(renders("::FieldView", &counts) >= 3, "{counts:?}");
+    assert_eq!(beside_the_field(&counts), BTreeMap::new(), "comment key");
     assert_quiet("comment key", &HIDDEN, &counts);
     assert_quiet("comment key", &CONVERSATION, &counts);
     assert_quiet(
@@ -89,7 +99,7 @@ async fn a_key_in_the_pr_comment_box_renders_pr_detail_only(cx: &mut TestAppCont
 }
 
 #[gpui::test]
-async fn a_key_in_the_review_modal_renders_the_modal_and_pr_detail_only(cx: &mut TestAppContext) {
+async fn a_key_in_the_review_modal_renders_its_box_only(cx: &mut TestAppContext) {
     let mut s = open(cx);
     let state = s.state.clone();
     s.cx.update(|_, cx| state.update(cx, |st, cx| st.open_pr_review(PrReviewKind::Approve, cx)));
@@ -100,7 +110,8 @@ async fn a_key_in_the_review_modal_renders_the_modal_and_pr_detail_only(cx: &mut
             type_keys(s);
         }
     });
-    assert!(renders("::PrReviewModal", &counts) >= 3, "{counts:?}");
+    assert!(renders("::FieldView", &counts) >= 3, "{counts:?}");
+    assert_eq!(beside_the_field(&counts), BTreeMap::new(), "review key");
     assert_quiet("review key", &HIDDEN, &counts);
     assert_quiet("review key", &CONVERSATION, &counts);
     assert_quiet(

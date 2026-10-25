@@ -1073,6 +1073,8 @@ struct CachedViewRecord {
     paint_pending: bool,
     opacity: f32,
     island: Option<Rc<crate::view::Island>>,
+    /// The entities an isolated view read.
+    accessed: Rc<FxHashSet<EntityId>>,
 }
 
 /// A frame index as a list of counters, so a replay can map any of them.
@@ -1236,6 +1238,7 @@ impl Frame {
         global_id: GlobalElementId,
         prepaint: Range<PrepaintStateIndex>,
         island: Option<Rc<crate::view::Island>>,
+        accessed: Rc<FxHashSet<EntityId>>,
     ) -> usize {
         if let Some(island) = &island {
             self.island_ids.insert(island.entity_id());
@@ -1247,15 +1250,29 @@ impl Frame {
             paint_pending: false,
             opacity: 1.,
             island,
+            accessed,
         });
         self.cached_views.len() - 1
     }
 
-    pub(crate) fn set_cached_view_paint(&mut self, ix: usize, paint: Range<PaintIndex>, opacity: f32) {
+    pub(crate) fn set_cached_view_paint(
+        &mut self,
+        ix: usize,
+        paint: Range<PaintIndex>,
+        opacity: f32,
+        painted: &FxHashSet<EntityId>,
+    ) {
         let record = &mut self.cached_views[ix];
         record.paint = paint;
         record.paint_pending = false;
         record.opacity = opacity;
+        if !painted.is_empty() {
+            Rc::make_mut(&mut record.accessed).extend(painted.iter().copied());
+        }
+    }
+
+    pub(crate) fn is_island(&self, ix: usize) -> bool {
+        self.cached_views[ix].island.is_some()
     }
 
     pub(crate) fn clear(&mut self) {
@@ -2417,6 +2434,12 @@ impl Window {
                 absorbed = true;
                 break;
             }
+        }
+        // A model (no view path) that only isolated views read: those observe it themselves.
+        if isolate && !absorbed && self.rendered_frame.dispatch_tree.view_path_reversed(view_id).next().is_none() {
+            absorbed = self.rendered_frame.cached_views.iter().any(|record| {
+                record.island.is_some() && record.accessed.contains(&view_id)
+            });
         }
         self.dirty_outside_islands |= !absorbed;
     }
@@ -4278,13 +4301,14 @@ impl Window {
                 continue;
             }
             let prepaint = map_index(&segments, &p.start)..map_index(&segments, &p.end);
-            let (global_id, paint, opacity, island) = (
+            let (global_id, paint, opacity, island, accessed) = (
                 record.global_id.clone(),
                 record.paint.clone(),
                 record.opacity,
                 record.island.clone(),
+                record.accessed.clone(),
             );
-            let new = self.next_frame.push_cached_view(global_id, prepaint, island);
+            let new = self.next_frame.push_cached_view(global_id, prepaint, island, accessed);
             let new = &mut self.next_frame.cached_views[new];
             new.paint = paint;
             new.paint_pending = true;

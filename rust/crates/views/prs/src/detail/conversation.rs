@@ -219,7 +219,7 @@ impl PrDetail {
                     d.cancel_compose(&w1, cx);
                 }
             }))
-            .child(gpui_kit::base::input::Textarea::new(&area));
+            .child(field.element(18.75, cx));
         let hint = div()
             .flex()
             .items_center()
@@ -1645,7 +1645,7 @@ impl PrDetail {
                 super::field::press_focuses(d, gpui_kit::Focusable::focus_handle(area.read(cx), cx))
             })
             .key_context("TextEntry")
-            .child(gpui_kit::base::input::Textarea::new(&area));
+            .child(self.composer.element(18.75, cx));
         let go = recur_ui::style::primary_button("composer-go", disabled.then_some(t.bg), cx)
             .debug_selector(|| "composer-go:Comment".into())
             .child(recur_ui::style::button_label("Comment", 13., 600.))

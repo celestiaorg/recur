@@ -582,11 +582,16 @@ fn prepaint_view(
                     })
                 });
                 let (element, prepaint_range, accessed_entities) =
-                    render_cached(bounds, window, cx, render);
+                    render_cached(bounds, island.is_some(), window, cx, render);
+                let accessed = match island {
+                    Some(_) => Rc::new(accessed_entities.clone()),
+                    None => Rc::default(),
+                };
                 let record = window.next_frame.push_cached_view(
                     global_id.unwrap().clone(),
                     prepaint_range.clone(),
                     island,
+                    accessed,
                 );
 
                 (
@@ -640,9 +645,14 @@ fn paint_view(
 
                     let paint_start = window.paint_index();
 
+                    let isolated = element_state
+                        .record
+                        .is_some_and(|ix| window.next_frame.is_island(ix));
+                    let mut painted = FxHashSet::default();
                     if let Some(element) = element {
                         let refreshing = mem::replace(&mut window.refreshing, true);
-                        element.paint(window, cx);
+                        painted = paint_tracked(isolated, cx, |cx| element.paint(window, cx));
+                        element_state.accessed_entities.extend(painted.iter().copied());
                         window.refreshing = refreshing;
                     } else {
                         window.reuse_paint(element_state.paint_range.clone(), cx);
@@ -655,6 +665,7 @@ fn paint_view(
                             record,
                             element_state.paint_range.clone(),
                             window.element_opacity,
+                            &painted,
                         );
                     }
 
@@ -680,23 +691,43 @@ fn paint_component(
 }
 
 /// Renders a cached view's content as its own layout root at `bounds`, nested caches off.
+/// An isolated view records every entity it reads, not only those first read this frame.
 fn render_cached(
     bounds: Bounds<Pixels>,
+    isolated: bool,
     window: &mut Window,
     cx: &mut App,
     render: &mut dyn FnMut(&mut Window, &mut App) -> AnyElement,
 ) -> (AnyElement, Range<PrepaintStateIndex>, FxHashSet<EntityId>) {
     let refreshing = mem::replace(&mut window.refreshing, true);
     let prepaint_start = window.prepaint_index();
-    let (element, accessed_entities) = cx.detect_accessed_entities(|cx| {
+    let outer = isolated.then(|| mem::take(cx.entities.accessed_entities.get_mut()));
+    let (element, mut accessed_entities) = cx.detect_accessed_entities(|cx| {
         let mut element = render(window, cx);
         element.layout_as_root(Size::<AvailableSpace>::from(bounds.size), window, cx);
         element.prepaint_at(bounds.origin, window, cx);
         element
     });
+    if let Some(outer) = outer {
+        accessed_entities = mem::replace(cx.entities.accessed_entities.get_mut(), outer);
+        cx.entities.extend_accessed(&accessed_entities);
+    }
     let prepaint_end = window.prepaint_index();
     window.refreshing = refreshing;
     (element, prepaint_start..prepaint_end, accessed_entities)
+}
+
+/// Paints, returning what an isolated view read while painting (a caret blink's state).
+fn paint_tracked(isolated: bool, cx: &mut App, paint: impl FnOnce(&mut App)) -> FxHashSet<EntityId> {
+    if !isolated {
+        paint(cx);
+        return FxHashSet::default();
+    }
+    let outer = mem::take(cx.entities.accessed_entities.get_mut());
+    paint(cx);
+    let painted = mem::replace(cx.entities.accessed_entities.get_mut(), outer);
+    cx.entities.extend_accessed(&painted);
+    painted
 }
 
 /// What an isolated view needs to draw again in place, without its ancestors: the context
@@ -737,7 +768,7 @@ impl Island {
                 let mut state = state.expect("an island keeps its view state");
                 let view = self.view.clone();
                 let (element, prepaint_range, mut accessed) =
-                    render_cached(self.bounds, window, cx, &mut |window, cx| {
+                    render_cached(self.bounds, true, window, cx, &mut |window, cx| {
                         (view.render)(&view, window, cx)
                     });
                 accessed.insert(self.entity_id());
@@ -747,6 +778,7 @@ impl Island {
                     self.global_id.clone(),
                     prepaint_range.clone(),
                     Some(self.clone()),
+                    Rc::new(accessed.clone()),
                 );
                 state.prepaint_range = prepaint_range;
                 state.accessed_entities = accessed;
@@ -770,13 +802,17 @@ impl Island {
                 let previous = mem::replace(&mut window.element_opacity, opacity);
                 let refreshing = mem::replace(&mut window.refreshing, true);
                 let paint_start = window.paint_index();
-                element.paint(window, cx);
+                let painted = paint_tracked(true, cx, |cx| element.paint(window, cx));
+                state.accessed_entities.extend(painted.iter().copied());
                 state.paint_range = paint_start..window.paint_index();
                 window.refreshing = refreshing;
                 window.element_opacity = previous;
-                window
-                    .next_frame
-                    .set_cached_view_paint(record, state.paint_range.clone(), opacity);
+                window.next_frame.set_cached_view_paint(
+                    record,
+                    state.paint_range.clone(),
+                    opacity,
+                    &painted,
+                );
                 ((), state)
             })
         })

@@ -27,6 +27,7 @@ mod glyph;
 pub mod guard;
 pub mod icon;
 pub mod icon_name;
+pub mod isolated;
 #[cfg(test)]
 mod isolated_spec;
 pub mod kbd;

@@ -4,6 +4,7 @@
 //! (`inboxChatOpen`, `recur.askRecurOpen`) lives here; below 1100px the dock is a drawer.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
@@ -152,7 +153,7 @@ impl BriefingView {
                 .with_values(values)
         });
         let subs = vec![
-            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
             cx.guarded_subscribe(&chat, |this, _, ev: &AppChatEvent, cx| {

@@ -23,6 +23,7 @@ use recur_ui::text::{TextStyled, text};
 use recur_ui::widgets::project_pic::project_pic_from_name;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind};
 use recur_ui::{IconName, Theme, icon};
+use recur_view_core::{ObserveState as _, Topics};
 use recur_view_core::{ViewContext, call, toast};
 
 use crate::dialog::{cycle, window_keys};
@@ -87,7 +88,7 @@ impl NewProjectModal {
         });
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
             cx.guarded_subscribe(&branch, |this, _, ev: &SelectEvent, cx| {

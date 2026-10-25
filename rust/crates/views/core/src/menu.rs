@@ -84,7 +84,7 @@ impl AppState {
     /// `setMenuState`: push enable/disable state for contextual menubar items.
     pub fn set_menu_state(&mut self, patch: MenuState, cx: &mut Context<Self>) {
         if merge_menu_state(&mut self.menu_state, &patch) {
-            cx.notify();
+            self.changed(crate::topics::Topics::MENU, cx);
         }
     }
 

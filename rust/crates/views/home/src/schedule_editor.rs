@@ -3,6 +3,7 @@
 //! `schedulesVersion` so the lists refresh.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::time::Duration;
 
 use gpui_kit::base::input::{InputEvent, InputState, Textarea, TextareaState};
@@ -341,7 +342,7 @@ impl ScheduleEditor {
         model_pickers.update(cx, |m, cx| m.set_trigger_style(ghost.clone(), cx));
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
             cx.guarded_subscribe(&prompt, |this, area, ev: &InputEvent, cx| {

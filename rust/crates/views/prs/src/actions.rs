@@ -3,6 +3,7 @@
 //! Approve / Request changes, draft state, Fix checks, and the merge split).
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -184,7 +185,7 @@ impl PrTitlebarActions {
         let state = vcx.state.clone();
         let ui = ui(cx);
         let subs = vec![
-            cx.guarded_observe_in(&state, window, |a, _, window, cx| {
+            cx.observe_state_in(&state, Topics::ALL, window, |a, _, window, cx| {
                 a.state_changed(window, cx)
             }),
             cx.guarded_observe(&ui, |_, _, cx| cx.notify()),

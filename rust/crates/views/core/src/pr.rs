@@ -59,6 +59,34 @@ pub fn keep_merged_pr(prev: Option<&Pr>, mut next: Pr) -> Pr {
     next
 }
 
+/// `pr` without what can be large (files, commits, comments, checks): what chrome and the
+/// comment rules read. A view that keeps a PR keeps this, never the store's record.
+pub fn pr_head(pr: &Pr) -> Pr {
+    Pr {
+        id: pr.id.clone(),
+        workspace_id: pr.workspace_id.clone(),
+        project_id: pr.project_id.clone(),
+        group: pr.group.clone(),
+        number: pr.number,
+        source: pr.source.clone(),
+        url: pr.url.clone(),
+        head_sha: pr.head_sha.clone(),
+        draft: pr.draft,
+        branch: pr.branch.clone(),
+        base: pr.base.clone(),
+        title: pr.title.clone(),
+        state: pr.state.clone(),
+        merge_queued: pr.merge_queued,
+        author_login: pr.author_login.clone(),
+        viewer_login: pr.viewer_login.clone(),
+        viewer_can_write: pr.viewer_can_write,
+        node_id: pr.node_id.clone(),
+        mergeable: pr.mergeable.clone(),
+        merge_state_status: pr.merge_state_status.clone(),
+        ..Pr::default()
+    }
+}
+
 /// Chrome glyph for a PR: draft dotted, closed crossed, merged git-merge, queued dashed.
 pub fn pr_icon_name(pr: Option<&Pr>) -> IconName {
     match pr_lifecycle(pr) {

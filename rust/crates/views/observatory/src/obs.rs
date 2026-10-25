@@ -406,6 +406,9 @@ pub struct Observatory {
     pub(crate) max_open_files_seen: usize,
     /// A fingerprint of the workspace ids the caches were last pruned to.
     pub(crate) pruned_live: Option<u64>,
+    /// What this Observatory reads of the store topics that change with every agent event in
+    /// any workspace (`ObsStoreKey`).
+    pub(crate) store_key: Option<crate::root::ObsStoreKey>,
 
     // ---- the main pane ----
     pub(crate) selected_path: String,
@@ -692,6 +695,7 @@ impl Observatory {
             file_tab_scroll: ScrollHandle::new(),
             max_open_files_seen: 0,
             pruned_live: None,
+            store_key: None,
             selected_path: String::new(),
             file: None,
             selected_is_dir: false,

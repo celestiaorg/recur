@@ -387,6 +387,10 @@ pub struct AppState {
     pub(crate) session_flusher: Option<SessionFlusher>,
     pub(crate) commands: crate::commands::CommandRegistry,
     pub(crate) chat: crate::chat::ChatStores,
+    pub(crate) pending_topics: crate::topics::Topics,
+    /// A revision per PR row, bumped whenever the row changes (`pr_rev`).
+    pub(crate) pr_revs: HashMap<String, u64>,
+    pub(crate) pr_rev_seq: u64,
 }
 
 impl EventEmitter<ShellEvent> for AppState {}
@@ -518,6 +522,9 @@ impl AppState {
             session_flusher: None,
             commands: Default::default(),
             chat: Default::default(),
+            pending_topics: Default::default(),
+            pr_revs: HashMap::new(),
+            pr_rev_seq: 0,
             storage,
         };
         state.init_themes();
@@ -906,7 +913,7 @@ impl AppState {
     /// `setPanelWidthLive`: per-frame drag updates, not persisted.
     pub fn set_panel_live(&mut self, key: PanelKey, size: f32, cx: &mut Context<Self>) {
         self.panels.set_live(key, size);
-        cx.notify();
+        self.changed(crate::topics::Topics::PANELS, cx);
     }
 
     /// `persistPanelWidths`: once a drag settles.
@@ -1255,7 +1262,7 @@ impl AppState {
             TermEvent::Idle { id, .. } | TermEvent::Exit { id, .. } => self.run.on_done(id),
             TermEvent::Data { .. } => return,
         }
-        cx.notify();
+        self.changed(crate::topics::Topics::RUN, cx);
     }
 
     /// `pinProjectRun`: persist the pinned Run-button default on the project.

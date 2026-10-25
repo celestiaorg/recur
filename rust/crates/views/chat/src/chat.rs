@@ -4,6 +4,7 @@
 //! draft back (`bind:input` / `bind:attachments`).
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
 use std::time::Duration;
@@ -601,17 +602,19 @@ impl AgentChat {
         } else {
             TranscriptUiCache::global(cx).claim(&props.reset_key)
         };
-        let mut subs = vec![cx.guarded_observe(&state, |this: &mut Self, _, cx| {
-            this.sync_mentions_from_stores(cx);
-            // The store changes many times a second while agents run; the transcript redraws
-            // only when what it shows from it does (the dock follows every change).
-            if this.transcript_store_changed(cx) {
-                this.tool_data_stale = true;
-                cx.notify();
-            } else {
-                this.notify_dock(cx);
-            }
-        })];
+        let mut subs = vec![
+            cx.observe_state(&state, Topics::ALL, |this: &mut Self, _, cx| {
+                this.sync_mentions_from_stores(cx);
+                // The store changes many times a second while agents run; the transcript redraws
+                // only when what it shows from it does (the dock follows every change).
+                if this.transcript_store_changed(cx) {
+                    this.tool_data_stale = true;
+                    cx.notify();
+                } else {
+                    this.notify_dock(cx);
+                }
+            }),
+        ];
         subs.push(
             cx.guarded_subscribe(&state, |_: &mut Self, _, ev: &ShellEvent, cx| {
                 if let ShellEvent::WorkspaceGone(_) = ev {

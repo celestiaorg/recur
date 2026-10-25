@@ -4,6 +4,7 @@
 //! workspaces their runs created, which open, multi-select and two-click remove.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{BTreeSet, HashMap};
 use std::time::Duration;
 
@@ -220,7 +221,7 @@ impl ScheduledPrompts {
             })
         });
         let mut subs = vec![
-            cx.guarded_observe(&vcx.state, |this, _, cx| this.on_state(cx)),
+            cx.observe_state(&vcx.state, Topics::ALL, |this, _, cx| this.on_state(cx)),
             cx.observe_global::<ScheduleExpanded>(|this, cx| {
                 this.snippets_effect(cx);
                 cx.notify();
@@ -1966,11 +1967,12 @@ pub struct SchedulesPage {
 
 impl SchedulesPage {
     pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let subs = vec![
-            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
-                this.sync(window, cx)
-            }),
-        ];
+        let subs =
+            vec![
+                cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
+                    this.sync(window, cx)
+                }),
+            ];
         let mut me = SchedulesPage {
             vcx: vcx.clone(),
             list: None,

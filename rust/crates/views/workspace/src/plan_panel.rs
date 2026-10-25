@@ -4,6 +4,7 @@
 //! `SubmitPlan` / `UpdatePlanStep` / `UpdatePlan`.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::HashMap;
 
 use gpui_kit::base::input::{InputEvent, Textarea, TextareaState};
@@ -248,7 +249,7 @@ impl PlanPanel {
             )
         });
         let subs = vec![
-            cx.guarded_observe(&vcx.state, |p, _, cx| {
+            cx.observe_state(&vcx.state, Topics::ALL, |p, _, cx| {
                 p.sync_drafts(cx);
                 cx.notify();
             }),

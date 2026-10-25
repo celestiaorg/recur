@@ -4,6 +4,7 @@
 //! route opens.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -184,7 +185,7 @@ impl PrList {
                 },
             ),
             cx.guarded_observe(&ui, |_, _, cx| cx.notify()),
-            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync_route(window, cx);
                 cx.notify();
             }),

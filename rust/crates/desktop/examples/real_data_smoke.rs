@@ -1326,34 +1326,39 @@ async fn run(
     let storm = std::cell::Cell::new((Instant::now(), 0u32, 0u32));
     let last = std::cell::RefCell::new(String::new());
     cx.update(|cx| {
-        cx.observe(&state, move |state, cx| {
-            STORE_NOTIFIES.fetch_add(1, Ordering::SeqCst);
-            let (since, n, printed) = storm.get();
-            let (since, n) = if since.elapsed() > Duration::from_secs(1) {
-                (Instant::now(), 0)
-            } else {
-                (since, n + 1)
-            };
-            let mut printed = printed;
-            if n > 2000 && printed < 40 {
-                let s = state.read(cx);
-                let now = format!(
-                    "view {:?} ws {} pr {} overlays {:?} menu {:?}",
-                    s.view, s.selected_workspace_id, s.selected_pr_id, s.overlays, s.menu_state
-                );
-                let mut l = last.borrow_mut();
-                say(
-                    start,
-                    format!(
-                        "STORM store notify {n}: {now} (same as last: {})",
-                        *l == now
-                    ),
-                );
-                *l = now;
-                printed += 1;
-            }
-            storm.set((since, n, printed));
-        })
+        recur_view_core::observe_state_app(
+            &state,
+            recur_view_core::Topics::ALL,
+            move |state, cx| {
+                STORE_NOTIFIES.fetch_add(1, Ordering::SeqCst);
+                let (since, n, printed) = storm.get();
+                let (since, n) = if since.elapsed() > Duration::from_secs(1) {
+                    (Instant::now(), 0)
+                } else {
+                    (since, n + 1)
+                };
+                let mut printed = printed;
+                if n > 2000 && printed < 40 {
+                    let s = state.read(cx);
+                    let now = format!(
+                        "view {:?} ws {} pr {} overlays {:?} menu {:?}",
+                        s.view, s.selected_workspace_id, s.selected_pr_id, s.overlays, s.menu_state
+                    );
+                    let mut l = last.borrow_mut();
+                    say(
+                        start,
+                        format!(
+                            "STORM store notify {n}: {now} (same as last: {})",
+                            *l == now
+                        ),
+                    );
+                    *l = now;
+                    printed += 1;
+                }
+                storm.set((since, n, printed));
+            },
+            cx,
+        )
         .detach();
     });
     at(start, "waiting for boot");

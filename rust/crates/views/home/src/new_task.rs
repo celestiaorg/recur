@@ -45,6 +45,7 @@ use recur_view_core::models::{FlagMap, flags_for_model, normalize_flags};
 use recur_view_core::modes::{
     CatalogModel, ChatMode, is_mode_default_selection, resolved_default_for_mode,
 };
+use recur_view_core::{ObserveState as _, Topics};
 use recur_view_core::{ViewContext, call, toast};
 
 use crate::dialog::{cycle, window_keys};
@@ -217,7 +218,7 @@ impl NewTaskModal {
         });
         let subs = vec![
             window_keys(cx, Self::on_key),
-            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
             cx.guarded_subscribe_in(

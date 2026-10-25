@@ -5,6 +5,7 @@
 //! the Svelte `load()`.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::Instant;
@@ -115,6 +116,8 @@ struct MatchedMemo {
 
 pub struct FilesChangedView {
     state: Entity<AppState>,
+    /// The file list width the view last drew with.
+    seen_list_w: Option<f32>,
     /// Mount the open line notes' text boxes here (see `note_portal`); off when a host above a
     /// cached view of this one mounts them.
     note_portals_here: bool,
@@ -185,11 +188,19 @@ impl FilesChangedView {
                     cx.notify();
                 }
             }),
-            cx.guarded_observe(&state, |_, _, cx| cx.notify()),
+            // The file list's width is all the view reads of the store.
+            cx.observe_state(&state, Topics::PANELS, |v: &mut Self, state, cx| {
+                let w = state.read(cx).panels.size(PanelKey::PrFileList);
+                if v.seen_list_w != Some(w) {
+                    v.seen_list_w = Some(w);
+                    cx.notify();
+                }
+            }),
         ];
         let stack = FileStack::new(state.clone(), cx);
         let mut v = FilesChangedView {
             state,
+            seen_list_w: None,
             props: FilesProps::default(),
             files: Vec::new(),
             files_gen: 0,

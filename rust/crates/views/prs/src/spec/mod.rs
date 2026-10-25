@@ -3,6 +3,7 @@ mod checks;
 mod conversation;
 mod detail;
 mod dock;
+mod frame_cost;
 mod harness;
 mod list;
 mod workspace_pr;

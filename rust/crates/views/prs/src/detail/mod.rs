@@ -2141,6 +2141,10 @@ pub(crate) mod spec_handle {
     pub struct Live(pub gpui_kit::WeakEntity<super::PrDetail>);
     impl gpui_kit::Global for Live {}
 
+    pub fn current(cx: &gpui_kit::App) -> Option<gpui_kit::Entity<super::PrDetail>> {
+        cx.try_global::<Live>()?.0.upgrade()
+    }
+
     pub fn composer_focused(window: &gpui_kit::Window, cx: &gpui_kit::App) -> bool {
         cx.global::<Live>().0.upgrade().is_some_and(|d| {
             gpui_kit::Focusable::focus_handle(d.read(cx).composer.area.read(cx), cx)

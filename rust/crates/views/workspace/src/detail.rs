@@ -31,6 +31,11 @@ pub struct WorkspaceDetail {
     hot: Vec<String>,
     views: HashMap<String, Entity<WorkspaceView>>,
     host_attempt: String,
+    /// While the route is hidden, the bound shell is not laid out: its notifies run its effects
+    /// through this route (PR detail's agent dock shows its chat).
+    hidden_watch: Option<(gpui_kit::EntityId, Subscription)>,
+    /// Whether the last render laid the bound shell out.
+    shown: bool,
     _subs: Vec<Subscription>,
 }
 
@@ -52,6 +57,8 @@ impl WorkspaceDetail {
             hot: Vec::new(),
             views: HashMap::new(),
             host_attempt: String::new(),
+            hidden_watch: None,
+            shown: false,
             _subs: subs,
         };
         cx.set_global(CurrentDetail(cx.entity().downgrade()));
@@ -241,6 +248,18 @@ impl WorkspaceDetail {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let bound = self.bound_id(cx);
+        // Hidden behind another route, the bound shell is not laid out either, as a parked one:
+        // the hidden route is one cached view, so anything in it that notified (its chat, its
+        // Observatory on a store change) laid the whole workspace out again under that route,
+        // and every whole-window refresh did too.
+        let shown = self.state().read(cx).view == ViewName::Detail;
+        if shown
+            && !self.shown
+            && let Some(v) = self.views.get(&bound)
+        {
+            v.update(cx, |v, cx| v.restore_laid_out(cx));
+        }
+        self.shown = shown;
         let mut root = div()
             .id("v-detail")
             .debug_selector(|| "v-detail".into())
@@ -258,11 +277,20 @@ impl WorkspaceDetail {
             let Some(v) = self.views.get(id).cloned() else {
                 continue;
             };
-            if *id == bound {
+            if *id == bound && shown {
                 root = root.child(div().flex_1().min_h_0().flex().flex_col().child(v));
             } else {
                 v.update(cx, |v, cx| v.sync(window, cx));
             }
+        }
+        let watch = (!shown).then(|| self.views.get(&bound).cloned()).flatten();
+        match watch {
+            Some(v) if self.hidden_watch.as_ref().map(|(id, _)| *id) != Some(v.entity_id()) => {
+                let sub = cx.guarded_observe(&v, |_, _, cx| cx.notify());
+                self.hidden_watch = Some((v.entity_id(), sub));
+            }
+            Some(_) => {}
+            None => self.hidden_watch = None,
         }
         root
     }

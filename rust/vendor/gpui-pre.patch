@@ -507,10 +507,10 @@ index 081edd9a..884462c2 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..c26647df 100644
+index 1214b035..6cbf294b 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
-@@ -1057,6 +1057,117 @@ pub(crate) struct Frame {
+@@ -1057,6 +1057,122 @@ pub(crate) struct Frame {
      #[cfg(any(feature = "inspector", debug_assertions))]
      pub(crate) inspector_hitboxes: FxHashMap<HitboxId, crate::InspectorElementId>,
      pub(crate) tab_stops: TabStopMap,
@@ -612,8 +612,10 @@ index 1214b035..c26647df 100644
 +            let (a, b) = (old.start.parts()[i], old.end.parts()[i]);
 +            if a <= *x && *x <= b {
 +                let (na, nb) = (new.start.parts()[i], new.end.parts()[i]);
++                // A copy is the same length, except line layouts after a font change, which it
++                // skips: keep the index inside what the copy produced.
 +                mapped[i] = if *copied {
-+                    na + (x - a)
++                    (na + (x - a)).min(nb)
 +                } else if *x == a {
 +                    na
 +                } else {
@@ -624,11 +626,14 @@ index 1214b035..c26647df 100644
 +            }
 +        }
 +    }
-+    index.with_parts(&mapped)
++    match segments.first() {
++        Some((_, new, _)) => new.start.with_parts(&mapped),
++        None => index.clone(),
++    }
  }
  
  #[derive(Clone, Default)]
-@@ -1116,9 +1227,54 @@ impl Frame {
+@@ -1116,9 +1232,54 @@ impl Frame {
              #[cfg(any(feature = "inspector", debug_assertions))]
              inspector_hitboxes: FxHashMap::default(),
              tab_stops: TabStopMap::default(),
@@ -683,7 +688,7 @@ index 1214b035..c26647df 100644
      pub(crate) fn clear(&mut self) {
          self.element_states.clear();
          self.accessed_element_states.clear();
-@@ -1132,6 +1288,9 @@ impl Frame {
+@@ -1132,6 +1293,9 @@ impl Frame {
          self.window_control_hitboxes.clear();
          self.deferred_draws.clear();
          self.tab_stops.clear();
@@ -693,7 +698,7 @@ index 1214b035..c26647df 100644
          self.focus = None;
  
          #[cfg(any(test, feature = "test-support"))]
-@@ -1254,6 +1413,13 @@ pub struct Window {
+@@ -1254,6 +1418,13 @@ pub struct Window {
      pub(crate) tooltip_bounds: Option<TooltipBounds>,
      pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
      pub(crate) dirty_views: FxHashSet<EntityId>,
@@ -707,7 +712,7 @@ index 1214b035..c26647df 100644
      focus_listeners: SubscriberSet<(), AnyWindowFocusListener>,
      pub(crate) focus_lost_listeners: SubscriberSet<(), AnyObserver>,
      focus_lost_path: SmallVec<[FocusId; 8]>,
-@@ -2154,6 +2320,9 @@ impl Window {
+@@ -2154,6 +2325,9 @@ impl Window {
              next_tooltip_id: TooltipId::default(),
              tooltip_bounds: None,
              dirty_views: FxHashSet::default(),
@@ -717,7 +722,7 @@ index 1214b035..c26647df 100644
              focus_listeners: SubscriberSet::new(),
              focus_lost_listeners: SubscriberSet::new(),
              focus_lost_path: SmallVec::new(),
-@@ -2251,16 +2420,28 @@ impl ContentMask<Pixels> {
+@@ -2251,16 +2425,28 @@ impl ContentMask<Pixels> {
  impl Window {
      fn mark_view_dirty(&mut self, view_id: EntityId) {
          // Mark ancestor views as dirty. If already in the `dirty_views` set, then all its ancestors
@@ -748,7 +753,7 @@ index 1214b035..c26647df 100644
      }
  
      pub(crate) fn refresh_visibility(&mut self, cx: &mut App) {
-@@ -3472,6 +3653,8 @@ impl Window {
+@@ -3472,6 +3658,8 @@ impl Window {
              }
          }
          self.dirty_views.clear();
@@ -757,7 +762,7 @@ index 1214b035..c26647df 100644
          self.next_frame.window_active = self.active.get();
  
          // Register requested input handler with the platform window.
-@@ -3506,6 +3689,7 @@ impl Window {
+@@ -3506,6 +3694,7 @@ impl Window {
          self.layout_engine.as_mut().unwrap().clear();
          self.text_system().finish_frame();
          self.next_frame.finish(&mut self.rendered_frame);
@@ -765,7 +770,7 @@ index 1214b035..c26647df 100644
  
          self.invalidator.set_phase(DrawPhase::Focus);
          let previous_focus_path = self.rendered_frame.focus_path();
-@@ -3578,9 +3762,29 @@ impl Window {
+@@ -3578,9 +3767,29 @@ impl Window {
          arena_scope.exit(&cx.element_arena)
      }
  
@@ -795,7 +800,7 @@ index 1214b035..c26647df 100644
          let handle = self.handle;
          cx.record_entities_accessed(
              handle,
-@@ -3699,15 +3903,45 @@ impl Window {
+@@ -3699,15 +3908,45 @@ impl Window {
          let scale_factor = self.scale_factor();
          #[cfg(feature = "profiler")]
          let request_layout_start = Instant::now();
@@ -849,7 +854,7 @@ index 1214b035..c26647df 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          let inspector_element = self.prepaint_inspector(_inspector_width, cx);
-@@ -3743,7 +3977,16 @@ impl Window {
+@@ -3743,7 +3982,16 @@ impl Window {
          #[cfg(feature = "profiler")]
          let paint_start = Instant::now();
          self.invalidator.set_phase(DrawPhase::Paint);
@@ -867,7 +872,7 @@ index 1214b035..c26647df 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          self.paint_inspector(inspector_element, cx);
-@@ -3923,7 +4166,7 @@ impl Window {
+@@ -3923,7 +4171,7 @@ impl Window {
                      });
                      self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
                  } else {
@@ -876,7 +881,7 @@ index 1214b035..c26647df 100644
                  }
                  let prepaint_end = self.prepaint_index();
                  self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
-@@ -3966,7 +4209,7 @@ impl Window {
+@@ -3966,7 +4214,7 @@ impl Window {
                      })
                  })
              } else {
@@ -885,7 +890,7 @@ index 1214b035..c26647df 100644
              }
              let paint_end = self.paint_index();
              deferred_draw.paint_range = paint_start..paint_end;
-@@ -3993,7 +4236,93 @@ impl Window {
+@@ -3993,7 +4241,93 @@ impl Window {
          }
      }
  
@@ -980,7 +985,7 @@ index 1214b035..c26647df 100644
          self.next_frame.hitboxes.extend(
              self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
                  .iter()
-@@ -4011,19 +4340,17 @@ impl Window {
+@@ -4011,19 +4345,17 @@ impl Window {
                  .iter()
                  .map(|(id, type_id)| (id.clone(), *type_id)),
          );
@@ -1005,7 +1010,7 @@ index 1214b035..c26647df 100644
          self.next_frame.deferred_draws.extend(
              self.rendered_frame.deferred_draws
                  [range.start.deferred_draws_index..range.end.deferred_draws_index]
-@@ -4042,6 +4369,7 @@ impl Window {
+@@ -4042,6 +4374,7 @@ impl Window {
                      paint_range: deferred_draw.paint_range.clone(),
                  }),
          );
@@ -1013,7 +1018,7 @@ index 1214b035..c26647df 100644
      }
  
      pub(crate) fn paint_index(&self) -> PaintIndex {
-@@ -4058,7 +4386,44 @@ impl Window {
+@@ -4058,7 +4391,44 @@ impl Window {
          }
      }
  
@@ -1059,7 +1064,7 @@ index 1214b035..c26647df 100644
          // Cached elements still exist in the frame even when their paint methods don't run.
          #[cfg(any(test, feature = "test-support"))]
          for (selector, bounds) in &self.rendered_frame.debug_bounds_records
-@@ -4096,12 +4461,14 @@ impl Window {
+@@ -4096,12 +4466,14 @@ impl Window {
                  [range.start.tab_handle_index..range.end.tab_handle_index],
          );
  

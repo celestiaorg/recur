@@ -1155,8 +1155,10 @@ fn map_index<I: FrameIndex>(segments: &[(Range<I>, Range<I>, bool)], index: &I) 
             let (a, b) = (old.start.parts()[i], old.end.parts()[i]);
             if a <= *x && *x <= b {
                 let (na, nb) = (new.start.parts()[i], new.end.parts()[i]);
+                // A copy is the same length, except line layouts after a font change, which it
+                // skips: keep the index inside what the copy produced.
                 mapped[i] = if *copied {
-                    na + (x - a)
+                    (na + (x - a)).min(nb)
                 } else if *x == a {
                     na
                 } else {
@@ -1167,7 +1169,10 @@ fn map_index<I: FrameIndex>(segments: &[(Range<I>, Range<I>, bool)], index: &I) 
             }
         }
     }
-    index.with_parts(&mapped)
+    match segments.first() {
+        Some((_, new, _)) => new.start.with_parts(&mapped),
+        None => index.clone(),
+    }
 }
 
 #[derive(Clone, Default)]

@@ -739,8 +739,8 @@ struct Report {
 /// is several times faster.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Budget {
-    /// A key typed into a text input (the composer of a long chat, the commit message, a PR's
-    /// comment box), through its frame.
+    /// A key typed into a text input (the composer of a long chat, the commit message, a line
+    /// note in a review, a PR's comment box), through its frame.
     Keystroke,
     /// The first key after mouse input: GPUI redraws the whole window, every cache off, when the
     /// input modality changes.
@@ -1752,6 +1752,39 @@ async fn observatory(
             collect_toasts(cx);
         }
         frames(cx, window, 4).await;
+        // A line note on the first card that takes one and is on screen.
+        let cards: Vec<Entity<recur_view_review::diff_file::DiffFile>> = obs.read_with(cx, |o, cx| {
+            o.review_surface()
+                .map(|r| {
+                    r.read(cx)
+                        .files_view()
+                        .read(cx)
+                        .stack()
+                        .diff_files()
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default()
+        });
+        for card in cards.iter().take(8) {
+            let focused = cx
+                .update_window(window, |_, window, cx| {
+                    card.update(cx, |c, cx| c.open_first_note(window, cx))
+                })
+                .unwrap_or(false);
+            frames(cx, window, 4).await;
+            if focused {
+                at(start, format!("workspace {id}: line note: type"));
+                type_keys(cx, window, "line note").await;
+            }
+            let _ = cx.update_window(window, |_, window, cx| {
+                card.update(cx, |c, cx| c.dismiss_composer(window, cx))
+            });
+            frames(cx, window, 2).await;
+            if focused {
+                break;
+            }
+        }
     }
     if !restored {
         obs.update(cx, |o, cx| o.click_review_toggle(cx));

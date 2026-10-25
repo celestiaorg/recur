@@ -506,6 +506,11 @@ impl FileStack {
     /// The `.diffscroll` pane: `header` (scope headers, notices) above the cards, or `empty`
     /// in place of them. `stack_of` projects the host entity to this stack.
     #[allow(clippy::too_many_arguments)]
+    /// The card views built so far.
+    pub fn diff_files(&self) -> impl Iterator<Item = &Entity<DiffFile>> {
+        self.diff_files.values()
+    }
+
     pub fn render<H: 'static>(
         &mut self,
         header: Vec<AnyElement>,

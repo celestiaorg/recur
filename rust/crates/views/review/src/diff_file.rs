@@ -529,6 +529,24 @@ impl DiffFile {
         cx.notify();
     }
 
+    /// Open a line-note composer on the first new-side line that takes a note and focus it;
+    /// whether it took focus (a card off screen has nothing to focus).
+    pub fn open_first_note(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        let pr = self.pr(cx);
+        if !self.can_note_side(DiffSide::Right, pr.as_ref()) {
+            return false;
+        }
+        let Some(i) = self
+            .lines()
+            .iter()
+            .position(|l| l.r#type != "hunk" && l.r#type != "del" && !l.new.is_empty())
+        else {
+            return false;
+        };
+        self.open_composer(i, DiffSide::Right, 0, window, cx);
+        gpui_kit::Focusable::focus_handle(self.draft.read(cx), cx).is_focused(window)
+    }
+
     pub fn dismiss_composer(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.open_line = None;
         self.open_start = 0;

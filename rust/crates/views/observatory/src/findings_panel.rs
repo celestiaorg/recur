@@ -51,6 +51,8 @@ pub struct FindingsPanel {
     pending_scroll: Option<String>,
     selected_id: String,
     drafts: HashMap<String, Entity<TextareaState>>,
+    /// Each draft as an isolated field: a key renders it, not the panel.
+    draft_views: HashMap<String, recur_ui::isolated::IsolatedArea>,
     compose_for: String,
     split_pct: i64,
     split_resizing: bool,
@@ -160,6 +162,7 @@ impl FindingsPanel {
             pending_scroll: None,
             selected_id: String::new(),
             drafts: HashMap::new(),
+            draft_views: HashMap::new(),
             compose_for: String::new(),
             split_pct: split,
             split_resizing: false,
@@ -300,10 +303,13 @@ impl FindingsPanel {
                 InputEvent::PressEnter {
                     secondary: true, ..
                 } => p.submit_note(&fid, cx),
-                InputEvent::Change => cx.notify(),
                 _ => {}
             },
         ));
+        self.draft_views.insert(
+            id.to_string(),
+            recur_ui::isolated::IsolatedArea::new(&area, (2, 6), cx),
+        );
         self.drafts.insert(id.to_string(), area.clone());
         area
     }
@@ -1218,7 +1224,9 @@ impl FindingsPanel {
             .text_size(px(12.5))
             .line_height(gpui_kit::relative(1.5))
             .when(disabled, |d| d.opacity(0.55))
-            .child(gpui_kit::base::input::Textarea::new(&area));
+            .when_some(self.draft_views.get(&f.id), |d, v| {
+                d.child(v.element(18.75, cx))
+            });
         div()
             .flex_none()
             .px(px(14.))

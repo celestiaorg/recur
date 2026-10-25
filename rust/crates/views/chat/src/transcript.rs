@@ -1352,7 +1352,9 @@ impl AgentChat {
                             }
                         },
                     ))
-                    .child(gpui_kit::base::input::Textarea::new(&input)),
+                    .when_some(self.digest_comment_view.as_ref(), |d, v| {
+                        d.child(v.element(18.75, cx))
+                    }),
             )
             .child(
                 div()

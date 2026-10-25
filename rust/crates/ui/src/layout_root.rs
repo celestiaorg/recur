@@ -15,6 +15,9 @@
 //! each frame places [`STEPS`] markers across the whole pixel and as many inside the interval the
 //! last frame left, narrowing it until it is far finer than the tie nudge.
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use gpui_kit::{
     AnyElement, App, Bounds, Element, ElementId, FlexDirection, GlobalElementId,
     InspectorElementId, IntoElement, LayoutId, ParentElement, Pixels, Position, Refineable, Style,
@@ -341,6 +344,393 @@ impl Element for LayoutRoot {
     }
 }
 
+/// A block that takes its content's height, the content laid out once, as its own root, at the
+/// block's width: for list items whose nesting would have layout lay them out over and over (a PR
+/// conversation's comments). Like [`LayoutRoot`] it reads its unrounded left, top and right edges
+/// off probe markers and lays the content out shifted by the remainder; markers under the content
+/// read its unrounded height, which the block takes (whole device pixels, then an `aspect_ratio`
+/// spacer for the rest), so what follows lands exactly where it would in place. A new height
+/// lays the block out again on the next frame.
+pub struct LayoutBlock {
+    id: ElementId,
+    estimate: f32,
+    child: Option<AnyElement>,
+    root: Option<AnyElement>,
+    markers: Rc<RefCell<BottomMarkers>>,
+}
+
+/// `child` as a [`LayoutBlock`], `estimate` px tall until its first layout.
+pub fn layout_block(
+    id: impl Into<ElementId>,
+    estimate: f32,
+    child: impl IntoElement,
+) -> LayoutBlock {
+    LayoutBlock {
+        id: id.into(),
+        estimate,
+        child: Some(child.into_any_element()),
+        root: None,
+        markers: Rc::default(),
+    }
+}
+
+impl IntoElement for LayoutBlock {
+    type Element = Self;
+
+    fn into_element(self) -> Self {
+        self
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+struct BlockState {
+    left: Span,
+    top: Span,
+    right: Span,
+    /// Where the content's bottom sits past its snapped position.
+    bottom: Span,
+    /// The content's unrounded height, px (`None` before the first layout).
+    height: Option<f32>,
+}
+
+/// Markers in the content's own layout: one at its root's origin (every reading is relative to
+/// it: a bounds read after the root's prepaint lacks the root's offset), one at the content's
+/// bottom, then one per threshold under it.
+#[derive(Default)]
+struct BottomMarkers {
+    thresholds: Vec<f32>,
+    origin: Option<LayoutId>,
+    at: Option<LayoutId>,
+    under: Vec<(f32, LayoutId)>,
+}
+
+/// Records the content root's origin.
+struct Origin(Rc<RefCell<BottomMarkers>>);
+
+/// Places [`BottomMarkers`] at the content's bottom (`top: 100%` of the content box).
+struct Bottom(Rc<RefCell<BottomMarkers>>);
+
+macro_rules! marker_element {
+    ($t:ty, $req:expr) => {
+        impl IntoElement for $t {
+            type Element = Self;
+
+            fn into_element(self) -> Self {
+                self
+            }
+        }
+
+        impl Element for $t {
+            type RequestLayoutState = ();
+            type PrepaintState = ();
+
+            fn id(&self) -> Option<ElementId> {
+                None
+            }
+
+            fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
+                None
+            }
+
+            fn request_layout(
+                &mut self,
+                _: Option<&GlobalElementId>,
+                _: Option<&InspectorElementId>,
+                window: &mut Window,
+                cx: &mut App,
+            ) -> (LayoutId, ()) {
+                ($req)(self, window, cx)
+            }
+
+            fn prepaint(
+                &mut self,
+                _: Option<&GlobalElementId>,
+                _: Option<&InspectorElementId>,
+                _: Bounds<Pixels>,
+                _: &mut (),
+                _: &mut Window,
+                _: &mut App,
+            ) {
+            }
+
+            fn paint(
+                &mut self,
+                _: Option<&GlobalElementId>,
+                _: Option<&InspectorElementId>,
+                _: Bounds<Pixels>,
+                _: &mut (),
+                _: &mut (),
+                _: &mut Window,
+                _: &mut App,
+            ) {
+            }
+        }
+    };
+}
+
+fn zero(window: &mut Window, cx: &mut App) -> LayoutId {
+    node(
+        Style {
+            flex_shrink: 0.,
+            ..Default::default()
+        },
+        &[],
+        window,
+        cx,
+    )
+}
+
+marker_element!(Origin, |o: &mut Origin,
+                         window: &mut Window,
+                         cx: &mut App| {
+    let m = zero(window, cx);
+    o.0.borrow_mut().origin = Some(m);
+    (m, ())
+});
+
+marker_element!(Bottom, |b: &mut Bottom,
+                         window: &mut Window,
+                         cx: &mut App| {
+    let dp = 1. / window.scale_factor();
+    let below = || Style {
+        display: gpui_kit::Display::Flex,
+        flex_direction: FlexDirection::Column,
+        position: Position::Absolute,
+        inset: gpui_kit::Edges {
+            top: gpui_kit::relative(1.).into(),
+            left: px(0.).into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut m = b.0.borrow_mut();
+    let thresholds = m.thresholds.clone();
+    let at = zero(window, cx);
+    let mut kids = vec![node(below(), &[at], window, cx)];
+    m.at = Some(at);
+    m.under.clear();
+    for t in thresholds {
+        // The bottom is past `t` when a marker `0.5 - t` under it rounds up.
+        let mk = zero(window, cx);
+        let gap = spacer((0.5 - t) * dp, true, dp, window, cx);
+        kids.push(node(below(), &[gap, mk], window, cx));
+        m.under.push((t, mk));
+    }
+    let wrap = Style {
+        position: Position::Absolute,
+        size: gpui_kit::Size {
+            width: gpui_kit::relative(1.).into(),
+            height: gpui_kit::relative(1.).into(),
+        },
+        ..Default::default()
+    };
+    (node(wrap, &kids, window, cx), ())
+});
+
+pub struct BlockProbes {
+    state: BlockState,
+    left: Vec<(f32, LayoutId)>,
+    top: Vec<(f32, LayoutId)>,
+    right: Vec<(f32, LayoutId)>,
+}
+
+impl Element for LayoutBlock {
+    type RequestLayoutState = BlockProbes;
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<ElementId> {
+        Some(self.id.clone())
+    }
+
+    fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        id: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (LayoutId, BlockProbes) {
+        let state = id.map_or_else(BlockState::default, |id| {
+            window.with_element_state::<BlockState, _>(id, |s, _| {
+                let s = s.unwrap_or_default();
+                (s, s)
+            })
+        });
+        let scale = window.scale_factor();
+        let dp = 1. / scale;
+        let mut probes = Vec::new();
+        let mut place = |span: Span, vertical: bool, far: bool, window: &mut Window| {
+            span.thresholds()
+                .into_iter()
+                .map(|t| {
+                    let offset = if far { t + 0.5 } else { 0.5 - t };
+                    let (wrap, marker) = probe(offset * dp, vertical, far, dp, window, cx);
+                    probes.push(wrap);
+                    (t, marker)
+                })
+                .collect::<Vec<_>>()
+        };
+        let left = place(state.left, false, false, window);
+        let top = place(state.top, true, false, window);
+        let right = place(state.right, false, true, window);
+        self.markers.borrow_mut().thresholds = state.bottom.thresholds();
+        // Whole device pixels in the box, the rest in a spacer under it.
+        let h = state.height.unwrap_or(self.estimate).max(0.);
+        let whole = (h * scale).floor() / scale;
+        let mut boxed = Style {
+            position: Position::Relative,
+            flex_shrink: 0.,
+            ..Default::default()
+        };
+        boxed.size.width = gpui_kit::relative(1.).into();
+        boxed.size.height = px(whole).into();
+        let mut kids = vec![node(boxed, &probes, window, cx)];
+        if h - whole > 1e-4 {
+            kids.push(spacer(h - whole, true, dp, window, cx));
+        }
+        let mut outer = Style {
+            display: gpui_kit::Display::Flex,
+            flex_direction: FlexDirection::Column,
+            flex_shrink: 0.,
+            ..Default::default()
+        };
+        outer.size.width = gpui_kit::relative(1.).into();
+        (
+            node(outer, &kids, window, cx),
+            BlockProbes {
+                state,
+                left,
+                top,
+                right,
+            },
+        )
+    }
+
+    fn prepaint(
+        &mut self,
+        id: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        probes: &mut BlockProbes,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        let Some(child) = self.child.take() else {
+            return;
+        };
+        let s = window.scale_factor();
+        let dp = 1. / s;
+        let dev = |v: Pixels| (f32::from(v) * s).round();
+        let (x0, y0) = (dev(bounds.origin.x), dev(bounds.origin.y));
+        let x1 = dev(bounds.origin.x + bounds.size.width);
+        let read = |list: &[(f32, LayoutId)],
+                    snapped: f32,
+                    far: bool,
+                    vertical: bool,
+                    window: &mut Window| {
+            let results: Vec<(f32, bool)> = list
+                .iter()
+                .map(|&(t, marker)| {
+                    let o = window.layout_bounds(marker).origin;
+                    let v = dev(if vertical { o.y } else { o.x });
+                    (
+                        t,
+                        if far {
+                            v > snapped - 0.5
+                        } else {
+                            v > snapped + 0.5
+                        },
+                    )
+                })
+                .collect();
+            Span::narrowed(&results)
+        };
+        let mut state = probes.state;
+        state.left = read(&probes.left, x0, false, false, window);
+        state.top = read(&probes.top, y0, false, true, window);
+        state.right = read(&probes.right, x1, true, false, window);
+        let (sx, sy) = (state.left.mid() + 1., state.top.mid() + 1.);
+        let w = ((x1 + state.right.mid()) - (x0 + state.left.mid())) / s;
+        let aw = (w + sx * dp).max(1e-6);
+        let mut content = div()
+            .absolute()
+            .flex()
+            .flex_col()
+            .child(child)
+            .child(Bottom(self.markers.clone()));
+        let st = content.style();
+        st.inset.left = Some(gpui_kit::relative(sx * dp / aw).into());
+        st.inset.top = Some(px(0.).into());
+        st.size.width = Some(gpui_kit::relative(w.max(0.) / aw).into());
+        let mut root = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .child(Origin(self.markers.clone()))
+            .child(div().flex_none().w(px(dp)).aspect_ratio(1. / sy))
+            .child(div().relative().w_full().child(content))
+            .into_any_element();
+        let origin = gpui_kit::point(px(x0 / s - dp), px(y0 / s - dp));
+        root.layout_as_root(
+            gpui_kit::size(
+                gpui_kit::AvailableSpace::Definite(px(aw)),
+                gpui_kit::AvailableSpace::MaxContent,
+            ),
+            window,
+            cx,
+        );
+        root.prepaint_at(origin, window, cx);
+        // The content's bottom in its root's device pixels: snapped at the marker on it, its
+        // fraction from the markers under it.
+        let m = self.markers.borrow();
+        if let (Some(o), Some(at)) = (m.origin, m.at) {
+            let base = dev(window.layout_bounds(o).origin.y);
+            let rb = dev(window.layout_bounds(at).origin.y) - base;
+            let results: Vec<(f32, bool)> = m
+                .under
+                .iter()
+                .map(|&(t, mk)| (t, dev(window.layout_bounds(mk).origin.y) - base > rb + 0.5))
+                .collect();
+            state.bottom = Span::narrowed(&results);
+            // The content's top sits `sy` device px into its root.
+            let height = (rb + state.bottom.mid() - sy) / s;
+            if state.height.is_none_or(|h| (h - height).abs() > 1e-3) {
+                state.height = Some(height);
+                window.request_animation_frame();
+            }
+        }
+        drop(m);
+        let settled = [state.left, state.top, state.right, state.bottom]
+            .iter()
+            .all(|e| e.settled());
+        if !settled {
+            window.request_animation_frame();
+        }
+        if let Some(id) = id {
+            window.with_element_state::<BlockState, _>(id, |_, _| ((), state));
+        }
+        self.root = Some(root);
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        _: Bounds<Pixels>,
+        _: &mut BlockProbes,
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        if let Some(root) = self.root.as_mut() {
+            root.paint(window, cx);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -392,5 +782,49 @@ mod tests {
         assert!(s.lo < -0.3 && -0.3 <= s.hi && !s.settled());
         let s = frame(s, -0.3);
         assert!(s.lo < -0.3 && -0.3 <= s.hi && s.hi - s.lo <= 1. / STEPS as f32 + 1e-6);
+    }
+}
+
+#[cfg(test)]
+mod block_tests {
+    use gpui_kit::{
+        Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div, px,
+    };
+
+    struct Col;
+
+    impl Render for Col {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .child(div().flex_none().w(px(1.)).aspect_ratio(1. / 0.3))
+                .child(div().flex_none().h(px(10.)))
+                .child(super::layout_block("a", 5., div().h(px(40.)).w_full()))
+                .child(super::layout_block("b", 5., div().h(px(30.)).w_full()))
+                .child(div().h(px(5.)).debug_selector(|| "after".into()))
+        }
+    }
+
+    #[gpui_kit::test]
+    fn blocks_take_their_contents_height_from_a_fractional_offset(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            crate::init(cx);
+        });
+        let (_view, cx) = cx.add_window_view(|_, _| Col);
+        for _ in 0..6 {
+            cx.update(|window, cx| {
+                window.refresh();
+                let _ = window.draw(cx);
+            });
+        }
+        // 10px + 0.3px (a fractional offset) + 10px + 40px + 30px, snapped as in place.
+        let after = cx.debug_bounds("after").expect("laid out");
+        let y = f32::from(after.origin.y);
+        assert!((y - 80.5).abs() < 0.01, "after at {y}");
     }
 }

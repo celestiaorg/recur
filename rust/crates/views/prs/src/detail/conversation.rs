@@ -1823,7 +1823,12 @@ impl PrDetail {
                             let el = self.description_card(d, pr, window, cx);
                             self.timeline.live(d, el, view)
                         }
-                        None => self.description_card(d, pr, window, cx),
+                        None => recur_ui::layout_root::layout_block(
+                            "desc-block",
+                            super::timeline::estimate(d),
+                            self.description_card(d, pr, window, cx),
+                        )
+                        .into_any_element(),
                     };
                     wrap = wrap.child(card);
                 }
@@ -1847,8 +1852,15 @@ impl PrDetail {
                 let roots: Vec<&PrComment> =
                     items.iter().filter(|c| is_timeline_root(Some(c))).collect();
                 if roots.len() < TIMELINE_WINDOW_FROM {
+                    // Each item lays out once, as its own root, at its exact place and height:
+                    // nested in the page it would be laid out again for every pass above it.
                     for c in roots {
-                        thread = thread.child(self.timeline_item(c, &items, pr, window, cx));
+                        let el = self.timeline_item(c, &items, pr, window, cx);
+                        thread = thread.child(recur_ui::layout_root::layout_block(
+                            SharedString::from(format!("tlb-{}", c.id)),
+                            super::timeline::estimate(c),
+                            el,
+                        ));
                     }
                 } else {
                     let view = cx.entity_id();

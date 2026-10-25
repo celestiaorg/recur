@@ -46,7 +46,8 @@ pub(crate) struct TimelineWindow {
 /// `None` mounts the item; `Some(h)` reserves `h` px for it.
 pub(crate) type Plan = Vec<Option<f32>>;
 
-fn estimate(c: &PrComment) -> f32 {
+/// A height for an item that has not laid out yet.
+pub(crate) fn estimate(c: &PrComment) -> f32 {
     if c.kind == "action" {
         return 36.;
     }

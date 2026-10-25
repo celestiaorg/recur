@@ -29,7 +29,8 @@
 //! switches against frame-time budgets (`Budget`), and fails when one is exceeded.
 //!
 //! To reproduce a finding: `RECUR_SMOKE_LIMIT=n` caps the workspaces and PRs visited,
-//! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth, `RECUR_SMOKE_WORKSPACE=<id>` visits
+//! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth and `RECUR_SMOKE_TO=m` ends them at the
+//! mth (1-based, inclusive: a full run can be covered in ranges), `RECUR_SMOKE_WORKSPACE=<id>` visits
 //! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
 //! stops after the workspaces and
 //! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered and
@@ -1290,11 +1291,16 @@ async fn run(
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
         .map_or(0, |n| n.saturating_sub(1));
+    let to = std::env::var("RECUR_SMOKE_TO")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(usize::MAX);
     let only = std::env::var("RECUR_SMOKE_WORKSPACE").ok();
     for (i, (id, archived, wt)) in workspaces
         .iter()
         .enumerate()
         .skip(from)
+        .take_while(|(i, _)| *i < to)
         .filter(|(_, (id, _, _))| only.as_ref().is_none_or(|o| o == id))
         .take(limit())
     {

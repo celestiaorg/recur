@@ -54,6 +54,8 @@ pub struct ObservatoryProps {
 type ReviewMemo = (Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>);
 type ExcludedMemo = (Rc<Vec<CompiledGlob>>, HashMap<String, bool>);
 type ChangedTreeMemo = (Rc<Vec<String>>, Rc<Vec<TreeEntry>>);
+/// The staged and unstaged paths of the working status, sorted.
+pub(crate) type WorkingPaths = (Vec<String>, Vec<String>);
 
 #[derive(Default)]
 pub(crate) struct PathsMemo {
@@ -356,7 +358,7 @@ pub struct Observatory {
     pub(crate) working_status: BTreeMap<String, String>,
     pub(crate) staged_files: Vec<String>,
     /// `working_paths`, until `working_status` or `staged_files` next change.
-    pub(crate) working_paths_memo: std::cell::RefCell<Option<Rc<(Vec<String>, Vec<String>)>>>,
+    pub(crate) working_paths_memo: std::cell::RefCell<Option<Rc<WorkingPaths>>>,
     pub(crate) browse_all: bool,
     pub(crate) scope_chosen: bool,
     pub(crate) changed_collapsed: BTreeSet<String>,

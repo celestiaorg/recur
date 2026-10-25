@@ -457,7 +457,7 @@ impl Observatory {
             );
         let mut rows: Vec<AnyElement> = Vec::new();
         if self.scm_file_list_mode == FileListMode::Tree {
-            let tree = build_tree_from_paths(&paths);
+            let tree = build_tree_from_paths(paths);
             let cap = if self.expanded_lists.contains(key) {
                 usize::MAX
             } else {

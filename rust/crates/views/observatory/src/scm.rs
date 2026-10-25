@@ -12,7 +12,7 @@ use crate::obs::{Observatory, OpenRequest};
 impl Observatory {
     /// `stagedPaths` / `unstagedPaths` of the working status, sorted. Every folder row of the
     /// changes list reads them, so they are sorted once per status change, not once per row.
-    pub(crate) fn working_paths(&self) -> std::rc::Rc<(Vec<String>, Vec<String>)> {
+    pub(crate) fn working_paths(&self) -> std::rc::Rc<crate::obs::WorkingPaths> {
         if let Some(m) = self.working_paths_memo.borrow().as_ref() {
             return m.clone();
         }

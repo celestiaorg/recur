@@ -51,9 +51,10 @@ pub struct Shell {
     /// `.main`, where focus parks when the rail flyout closes on it.
     main_focus: FocusHandle,
     views: Vec<MountedView>,
-    overlays: Vec<AnyView>,
-    toasts: Entity<Toasts>,
-    tooltip: Entity<TitleTooltip>,
+    /// The overlays, toast host and tooltip, each behind a cached boundary, so a redraw passing
+    /// through the shell (a key typed in a chat) does not render them.
+    layers: Vec<Entity<recur_ui::pane::Layer>>,
+    titlebar_pane: Option<Entity<recur_ui::pane::Pane<Shell>>>,
     pub(crate) focus: FocusHandle,
     pub(crate) titlebar: TitlebarState,
     pub(crate) land: LandChrome,
@@ -135,21 +136,29 @@ impl Shell {
                 }
             })
             .collect();
-        let overlays = registry
+        let overlays: Vec<AnyView> = registry
             .overlays
             .iter()
             .map(|(_, build)| build(&ctx, window, cx))
             .collect();
         let toasts = cx.new(Toasts::new);
         let tooltip = TitleTooltip::new(cx);
+        let layers = overlays
+            .iter()
+            .cloned()
+            .chain([
+                AnyView::from(toasts.clone()),
+                AnyView::from(tooltip.clone()),
+            ])
+            .map(|v| recur_ui::pane::Layer::new(v, cx))
+            .collect();
         let mut shell = Self {
             state,
             opts,
             sidebar,
             views,
-            overlays,
-            toasts,
-            tooltip,
+            layers,
+            titlebar_pane: None,
             focus: cx.focus_handle(),
             main_focus,
             titlebar: TitlebarState::default(),
@@ -464,7 +473,18 @@ impl Shell {
                 s.panels.size(recur_view_core::prefs::PanelKey::Rail),
             )
         };
-        let titlebar = self.render_titlebar(window, cx);
+        let titlebar_pane = self
+            .titlebar_pane
+            .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Shell::render_titlebar))
+            .clone();
+        let titlebar = recur_ui::style::cached_view(
+            &titlebar_pane,
+            gpui_kit::StyleRefinement::default()
+                .flex_none()
+                .w_full()
+                .h(gpui_kit::px(crate::titlebar::TITLEBAR_HEIGHT)),
+            cx,
+        );
         let main = self.main_area(view, cx);
         let state = self.state.clone();
         let root = style::body(cx)
@@ -511,9 +531,13 @@ impl Shell {
                         .when(rail_collapsed, |d| d.child(self.sidebar.clone())),
                 ),
             )
-            .children(self.overlays.iter().cloned())
-            .child(self.toasts.clone())
-            .child(self.tooltip.clone());
+            .children(self.layers.iter().map(|l| {
+                recur_ui::style::cached_view(
+                    l,
+                    gpui_kit::StyleRefinement::default().absolute().inset_0(),
+                    cx,
+                )
+            }));
         self.with_menu_actions(root, cx)
     }
 }

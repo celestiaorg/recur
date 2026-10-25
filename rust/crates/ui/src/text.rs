@@ -253,6 +253,8 @@ pub struct Text {
     field: bool,
     links: Vec<(usize, SpanClick)>,
     layout: Rc<RefCell<Option<Laid>>>,
+    /// The view that built this element, while layouts are counted (`guard::count_layouts`).
+    owner: Option<&'static str>,
 }
 
 /// What clicking an inline link span does.
@@ -284,6 +286,7 @@ impl Text {
             field: false,
             links: Vec::new(),
             layout: Rc::default(),
+            owner: crate::guard::layout_owner(),
         }
     }
 
@@ -1681,6 +1684,9 @@ impl Element for Text {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, TextState) {
+        if let Some(owner) = self.owner {
+            crate::guard::count_layout(owner);
+        }
         let key = self.resolve(window);
         let layout = self.layout.clone();
         {

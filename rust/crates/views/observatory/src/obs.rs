@@ -520,6 +520,15 @@ pub struct Observatory {
     pub(crate) artifacts_panel: Option<Entity<crate::artifacts_panel::ArtifactsPanel>>,
     pub(crate) quick_open: Entity<crate::quick_open::QuickOpen>,
     pub(crate) prompts: Entity<recur_view_chat::palettes::CommandPrompts>,
+    /// Quick Open and the command prompts behind cached boundaries (see `recur_ui::pane`).
+    pub(crate) layers: [Entity<recur_ui::pane::Layer>; 2],
+    /// The side panel as its own cached view, when it holds no chat.
+    pub(crate) side_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    /// The main pane's empty state as its own cached view.
+    pub(crate) empty_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) toolbar_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    /// The side heads' views (the chat tabs, the plan head) behind cached boundaries.
+    pub(crate) head_layers: Vec<(gpui_kit::EntityId, Entity<recur_ui::pane::Layer>)>,
     pub(crate) prompts_reply:
         Option<futures::channel::oneshot::Sender<Option<BTreeMap<String, String>>>>,
     pub(crate) chord_index: Rc<crate::keys::ChordIndex>,
@@ -774,6 +783,14 @@ impl Observatory {
             inputs,
             findings_panel,
             artifacts_panel: None,
+            layers: [
+                recur_ui::pane::Layer::new(quick_open.clone(), cx),
+                recur_ui::pane::Layer::new(prompts.clone(), cx),
+            ],
+            side_pane: None,
+            empty_pane: None,
+            toolbar_pane: None,
+            head_layers: Vec::new(),
             quick_open,
             prompts,
             prompts_reply: None,

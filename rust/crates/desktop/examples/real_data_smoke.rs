@@ -32,7 +32,8 @@
 //! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth, `RECUR_SMOKE_WORKSPACE=<id>` visits
 //! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
 //! stops after the workspaces and
-//! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered.
+//! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered and
+//! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -1575,7 +1576,12 @@ async fn type_in_long_chat(
         chat.update(cx, |c, cx| c.focus_composer(window, cx))
     });
     frames(cx, window, 2).await;
-    for (i, k) in "a b c backspace backspace backspace".split(' ').enumerate() {
+    let rounds = std::env::var("RECUR_SMOKE_KEY_ROUNDS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(1);
+    let seq = "a b c backspace backspace backspace ".repeat(rounds);
+    for (i, k) in seq.split_whitespace().enumerate() {
         sleep(cx, 60).await;
         let t = Instant::now();
         keys(cx, window, k);

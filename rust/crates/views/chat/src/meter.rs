@@ -18,6 +18,8 @@ use recur_ui::{Color, Theme, Tokens, motion, rgba, svg_markup};
 use crate::style::{hsla, label};
 
 const SIZE: f32 = 14.;
+/// The meter's box.
+pub(crate) const METER_PX: f32 = 24.;
 const SW: f32 = 2.25;
 
 /// The meter's numbers (`ready`, `used`, `pct`, …).
@@ -170,7 +172,7 @@ impl ContextMeter {
         };
         let btn = div()
             .id("ctx-btn")
-            .size(px(24.))
+            .size(px(METER_PX))
             .rounded(px(6.))
             .flex()
             .items_center()

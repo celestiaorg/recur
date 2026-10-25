@@ -430,7 +430,8 @@ pub struct AgentChat {
     pub(crate) services: Services,
     pub(crate) props: ChatProps,
     pub(crate) hooks: ChatHooks,
-    pub(crate) toolbar: Option<AnyView>,
+    /// The toolbar behind a cached boundary: typing redraws the dock, not its pickers.
+    pub(crate) toolbar: Option<Entity<recur_ui::pane::Layer>>,
     pub(crate) empty: Option<AnyView>,
     pub(crate) session_card: Option<SessionCardRenderer>,
     pub(crate) focus: FocusHandle,
@@ -790,7 +791,7 @@ impl AgentChat {
 
     /// `toolbar`: rendered inside the input box, bottom-left (the model selector).
     pub fn set_toolbar(&mut self, toolbar: Option<AnyView>, cx: &mut Context<Self>) {
-        self.toolbar = toolbar;
+        self.toolbar = toolbar.map(|v| recur_ui::pane::Layer::centered(v, cx));
         cx.notify();
     }
 

@@ -719,31 +719,20 @@ impl Observatory {
                 );
             }
         } else if self.editor_path.is_empty() && !show_preview {
-            let name = self
-                .selected_path
-                .rsplit('/')
-                .next()
-                .unwrap_or(&self.selected_path)
-                .to_string();
-            let el = if self.show_file_loading {
-                obs_empty(format!("Loading {name}…"), true, cx)
-                    .text_color(hsla(t.muted))
-                    .into_any_element()
-            } else if self.file_loading {
-                obs_empty("", true, cx).into_any_element()
-            } else if self.selected_is_dir {
-                obs_empty(
-                    "This path is a directory (often a git submodule). Use Diff to see the recorded change, or browse it from the Files tree.",
-                    true,
-                    cx,
-                )
-                .into_any_element()
-            } else if self.tree_writable() {
-                obs_empty("Select a file to view/edit.", true, cx).into_any_element()
-            } else {
-                obs_empty("Select a file to view.", true, cx).into_any_element()
-            };
-            pane = pane.child(el);
+            // Its own cached view, filling the rest of the pane: a key typed in the chat redraws
+            // the Observatory but must not lay this out again.
+            let empty = self
+                .empty_pane
+                .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::main_empty))
+                .clone();
+            pane = pane.child(cached_view(
+                &empty,
+                gpui_kit::StyleRefinement::default()
+                    .flex_1()
+                    .min_h_0()
+                    .w_full(),
+                cx,
+            ));
         }
         if (self.show_file_loading || self.diff_pending()) && !self.editor_path.is_empty() {
             let name = self
@@ -949,10 +938,10 @@ impl Observatory {
                 .min_h_0()
                 .min_w_0()
                 .overflow_hidden()
-                // Not cached itself: the review's own scrolling notifies through it, and a cached
-                // view that misses rebuilds everything inside. Its card stack and file list are
-                // the cached leaves.
-                .child(r)
+                // Cached, so a redraw passing through the Observatory (a key typed in the chat)
+                // does not render it. Its own scrolling dirties it and rebuilds what is inside;
+                // the card stack and the file list are memoized for that.
+                .child(cached_view(&r, fill(), cx))
                 .into_any_element(),
         )
     }
@@ -1507,5 +1496,36 @@ fn surface(child: AnyElement, off: bool) -> AnyElement {
             .into_any_element()
     } else {
         d.into_any_element()
+    }
+}
+
+impl Observatory {
+    /// The main pane with no file open: loading, a directory, or the prompt to pick a file.
+    fn main_empty(&mut self, _: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let name = self
+            .selected_path
+            .rsplit('/')
+            .next()
+            .unwrap_or(&self.selected_path)
+            .to_string();
+        if self.show_file_loading {
+            obs_empty(format!("Loading {name}…"), true, cx)
+                .text_color(hsla(t.muted))
+                .into_any_element()
+        } else if self.file_loading {
+            obs_empty("", true, cx).into_any_element()
+        } else if self.selected_is_dir {
+            obs_empty(
+                "This path is a directory (often a git submodule). Use Diff to see the recorded change, or browse it from the Files tree.",
+                true,
+                cx,
+            )
+            .into_any_element()
+        } else if self.tree_writable() {
+            obs_empty("Select a file to view/edit.", true, cx).into_any_element()
+        } else {
+            obs_empty("Select a file to view.", true, cx).into_any_element()
+        }
     }
 }

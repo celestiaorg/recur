@@ -38,8 +38,22 @@ fn renders(name: &str, counts: &BTreeMap<&'static str, u32>) -> u32 {
         .sum()
 }
 
+/// The views GPUI must render for a key typed into the composer: the composer's dock and its
+/// ancestors (a notify marks every ancestor view dirty, and an uncached view renders when its
+/// parent does). Everything else on screen is a cached boundary and is reused as it was.
+const COMPOSER_PATH: [&str; 6] = [
+    "::Shell",
+    "::WorkspaceDetail",
+    "::WorkspaceView",
+    "::Observatory",
+    "::AgentChat",
+    "::DockPane",
+];
+
 #[gpui::test]
-async fn a_keystroke_in_a_long_chat_redraws_only_the_dock_path(cx: &mut TestAppContext) {
+async fn a_keystroke_in_a_long_chat_renders_and_lays_out_only_the_composer(
+    cx: &mut TestAppContext,
+) {
     let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
     s.open(ACTIVE);
     let view =
@@ -61,23 +75,31 @@ async fn a_keystroke_in_a_long_chat_redraws_only_the_dock_path(cx: &mut TestAppC
     s.cx.simulate_input("a");
     s.cx.run_until_parked();
     recur_ui::guard::count_renders(true);
+    recur_ui::guard::count_layouts(true);
     for ch in ["b", "c", "d"] {
         s.cx.simulate_input(ch);
         s.cx.run_until_parked();
     }
     let counts = recur_ui::guard::take_render_counts();
+    let layouts = recur_ui::guard::take_layout_counts();
     recur_ui::guard::count_renders(false);
+    recur_ui::guard::count_layouts(false);
     assert_eq!(chat.read_with(s.cx, |c, _| c.input().to_string()), "abcd");
-    assert!(renders("::DockPane", &counts) >= 3, "{counts:?}");
-    // One frame per key: nothing a render does may schedule another.
-    assert_eq!(renders("::Shell", &counts), 3, "{counts:?}");
-    for quiet in ["::TranscriptPane", "::Sidebar", "::MarkdownView"] {
-        assert_eq!(
-            renders(quiet, &counts),
-            0,
-            "{quiet} re-rendered: {counts:?}"
+    for (view, n) in &counts {
+        assert!(
+            COMPOSER_PATH.iter().any(|p| view.ends_with(p)),
+            "{view} rendered on a keystroke: {counts:?}"
         );
+        // One frame per key: nothing a render does may schedule another.
+        assert_eq!(*n, 3, "{view}: {counts:?}");
     }
+    for p in COMPOSER_PATH {
+        assert_eq!(renders(p, &counts), 3, "{p}: {counts:?}");
+    }
+    assert!(
+        layouts.is_empty(),
+        "text laid out outside the composer: {layouts:?}"
+    );
 }
 
 /// The bound workspace view after `open`.
@@ -119,14 +141,15 @@ async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) 
     }
     let counts = recur_ui::guard::take_render_counts();
     recur_ui::guard::count_renders(false);
-    // One frame per key, and only the bound workspace's path in it: a parked shell (and the
-    // review it shows) is not laid out again however many workspaces came before. The bound
-    // review's host redraws with its Observatory; its cards and file list are cached.
+    // One frame per key, and only the composer's path in it: a parked shell (and the review it
+    // shows) is not laid out again however many workspaces came before, and the bound review
+    // is cached.
     for (view, n) in [
         ("::Shell", 3),
         ("::WorkspaceView", 3),
         ("::Observatory", 3),
-        ("::ReviewSurface", 3),
+        ("::ReviewSurface", 0),
+        ("::FilesChangedView", 0),
         ("::StackPane", 0),
         ("::ReviewFileList", 0),
         ("::DiffFile", 0),

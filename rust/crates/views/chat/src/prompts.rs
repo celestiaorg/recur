@@ -2,6 +2,7 @@
 //! is showing) and `QuestionPrompts.svelte` (an ask toast for off-tab `ask_user` questions).
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::HashSet;
 
 use gpui_kit::{
@@ -48,7 +49,7 @@ impl PermissionPrompts {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.guarded_observe(&state, |this, _, cx| this.sync(cx)),
+            cx.observe_state(&state, Topics::ALL, |this, _, cx| this.sync(cx)),
             cx.intercept_keystrokes(move |ev: &KeystrokeEvent, _, cx| {
                 if ev.keystroke.key != "escape" || ev.keystroke.modifiers.modified() {
                     return;
@@ -212,7 +213,7 @@ pub struct QuestionPrompts {
 
 impl QuestionPrompts {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
-        let _sub = cx.guarded_observe(&state, |this, state, cx| this.sync(&state, cx));
+        let _sub = cx.observe_state(&state, Topics::ALL, |this, state, cx| this.sync(&state, cx));
         let mut this = QuestionPrompts {
             toasted: HashSet::new(),
             _sub,

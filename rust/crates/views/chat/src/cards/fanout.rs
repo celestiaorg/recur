@@ -4,6 +4,7 @@
 //! them), read-only. A Plan-panel link can ask for a child (`childTranscriptRequest`).
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{BTreeMap, HashMap};
 use std::time::{Duration, Instant};
 
@@ -202,7 +203,7 @@ impl EventEmitter<ChatEvent> for FanOutCard {}
 
 impl FanOutCard {
     pub fn new(vcx: ViewContext, data: String, fallback: String, cx: &mut Context<Self>) -> Self {
-        let sub = cx.guarded_observe(&vcx.state, |c: &mut Self, _, cx| {
+        let sub = cx.observe_state(&vcx.state, Topics::ALL, |c: &mut Self, _, cx| {
             c.take_child_request(cx);
             cx.notify();
         });

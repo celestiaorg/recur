@@ -3,7 +3,7 @@
 //! the bottom mask and the overlay scrollbar.
 
 use recur_ui::guard::Guarded;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -24,7 +24,7 @@ use recur_view_core::format::format_compact_count;
 use recur_view_core::modes::{
     parked_needs_you_by_workspace, workspace_can_remove, workspace_is_running,
 };
-use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle};
 use recur_view_core::workspace_nav::project_id_from_main_scan;
 use recur_view_core::{ScanKind, ScheduleEditorRequest, ViewName};
 
@@ -48,7 +48,8 @@ const ROW_BAND_PAD_PX: f32 = 150.;
 
 /// What every row reads from the stores, gathered once per frame.
 pub(crate) struct RowCtx {
-    prs: Vec<Pr>,
+    /// Each workspace's chrome PR (`pr_for_workspace`), without its files and comments.
+    prs: HashMap<String, Pr>,
     running: HashSet<String>,
     attention: BTreeMap<String, i64>,
     parked: BTreeMap<String, usize>,
@@ -170,7 +171,15 @@ impl Sidebar {
             || (s.scan_pending && project_id_from_main_scan(&ev.workspace_id).is_some()))
         .then(|| ev.workspace_id.clone());
         RowCtx {
-            prs: s.prs.clone(),
+            prs: {
+                let ids: HashSet<&str> = s.prs.iter().map(|p| p.workspace_id.as_str()).collect();
+                ids.into_iter()
+                    .filter_map(|id| {
+                        let pr = pr_for_workspace(&s.prs, id)?;
+                        Some((id.to_string(), pr_head(pr)))
+                    })
+                    .collect()
+            },
             running: s.workspaces_running.clone(),
             attention: s.attention.by_workspace.clone(),
             parked: parked_needs_you_by_workspace(
@@ -250,7 +259,7 @@ impl Sidebar {
         let l = &row.ws;
         let id = l.id.clone();
         let key = format!("row:{id}");
-        let pr = pr_for_workspace(&rc.prs, &id).cloned();
+        let pr = rc.prs.get(&id).cloned();
         let merged_ws = l.state.as_str() == "merged";
         let life = pr_lifecycle(pr.as_ref()).or(merged_ws.then_some(PrLifecycle::Merged));
         let merged = merged_ws || life == Some(PrLifecycle::Merged);

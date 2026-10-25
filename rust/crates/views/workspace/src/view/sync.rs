@@ -319,6 +319,19 @@ impl WorkspaceView {
     }
 
     /// Runs the effects, then pushes props to the children.
+    /// The shell is laid out again after it was not (parked, or bound behind another route):
+    /// its elements render fresh, so re-apply the chat's offset and the strip's scroll.
+    pub(crate) fn restore_laid_out(&mut self, cx: &mut Context<Self>) {
+        self.chat.update(cx, |c, cx| c.restore_parked_scroll(cx));
+        if let Some(left) = recur_view_chat::strip::ChatStripCache::global(cx)
+            .get(&self.ws_id)
+            .and_then(|s| s.tab_scroll_left)
+        {
+            let id = self.strip_restore.map_or(1, |(_, id)| id + 1);
+            self.strip_restore = Some((left, id));
+        }
+    }
+
     pub(crate) fn sync(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.ws(cx).is_none() {
             return;
@@ -343,15 +356,7 @@ impl WorkspaceView {
 
         // A parked shell coming back: re-apply the chat's offset and refetch the strip.
         if self.shell_active && !self.was_shell_active {
-            self.chat.update(cx, |c, cx| c.restore_parked_scroll(cx));
-            // A parked shell is not laid out, so the strip's scroller comes back fresh.
-            if let Some(left) = recur_view_chat::strip::ChatStripCache::global(cx)
-                .get(&self.ws_id)
-                .and_then(|s| s.tab_scroll_left)
-            {
-                let id = self.strip_restore.map_or(1, |(_, id)| id + 1);
-                self.strip_restore = Some((left, id));
-            }
+            self.restore_laid_out(cx);
             self.refetch_tabs(cx);
         }
         self.was_shell_active = self.shell_active;

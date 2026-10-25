@@ -3,6 +3,7 @@
 //! `""` workspace's; the host shows or hides the panel and handles [`AppChatEvent::Hide`].
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{BTreeMap, HashMap};
 
 use gpui_kit::{
@@ -150,7 +151,7 @@ impl AppChat {
                     this.remember(m, f.clone(), cx)
                 }
             }),
-            cx.guarded_observe(&state, |this, _, cx| {
+            cx.observe_state(&state, Topics::ALL, |this, _, cx| {
                 this.sync_catalog(cx);
                 this.props_dirty = true;
                 cx.notify();

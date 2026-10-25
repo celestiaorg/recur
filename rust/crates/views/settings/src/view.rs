@@ -3,6 +3,7 @@
 //! `patchSettings`.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use gpui_kit::{
@@ -239,12 +240,13 @@ impl SettingsView {
                 .label("Terminal font")
                 .menu_variant(recur_ui::logic::menu_space::MenuVariant::Font)
         });
-        let mut subs = vec![
-            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
-                this.sync(window, cx);
-                cx.notify();
-            }),
-        ];
+        let mut subs =
+            vec![
+                cx.observe_state_in(&state, Topics::ALL, window, |this, _, window, cx| {
+                    this.sync(window, cx);
+                    cx.notify();
+                }),
+            ];
         for (i, p) in model_pickers.iter().enumerate() {
             subs.push(
                 cx.guarded_subscribe(p, move |this: &mut Self, _, ev: &PickerEvent, cx| {

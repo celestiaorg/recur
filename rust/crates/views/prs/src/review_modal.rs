@@ -22,6 +22,7 @@ use recur_ui::{IconName, LineHeight, Theme, icon};
 use recur_view_chat::suggest::{SuggestKind, SuggestStore};
 use recur_view_core::state::PrDiffJump;
 use recur_view_core::{AppState, PrReviewKind, ViewContext, ViewName, call, toast};
+use recur_view_core::{ObserveState as _, Topics};
 use recur_view_review::comment_hunk::comment_hunk_path_label;
 use recur_view_review::diff_file::remove_pending_comment;
 
@@ -128,7 +129,7 @@ impl PrReviewModal {
                     }
                 }
             }),
-            cx.guarded_observe_in(&state, window, |m, _, window, cx| {
+            cx.observe_state_in(&state, Topics::ALL, window, |m, _, window, cx| {
                 m.state_changed(window, cx)
             }),
             cx.guarded_observe_in(&ui, window, |m, _, window, cx| m.ui_changed(window, cx)),

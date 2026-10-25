@@ -2,6 +2,7 @@
 //! overlays host, global keys, menu actions and boot.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -90,7 +91,7 @@ impl Shell {
     ) -> Self {
         let state = ctx.state.clone();
         let subscriptions = vec![
-            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
+            cx.observe_state_in(&state, Topics::ALL, window, |this, _, window, cx| {
                 this.state_changed(window, cx)
             }),
             // The shell's own `menu.action` handling runs first: it subscribed before any view.

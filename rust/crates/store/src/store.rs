@@ -193,6 +193,17 @@ pub(crate) fn fill_missing_pr_times(p: &mut Pr) -> bool {
 /// A PR without its commits and files, copied field by field so the
 /// (possibly huge) diffs are never cloned. The exhaustive pattern fails to
 /// compile when Pr gains a field.
+/// A stored PR's identity: [`Store::pr_keys`].
+#[derive(Clone, Debug)]
+pub struct PrKey {
+    pub id: String,
+    pub source: PrSource,
+    pub project_id: String,
+    pub workspace_id: String,
+    pub url: String,
+    pub number: i64,
+}
+
 fn pr_list_row(p: &Pr) -> Pr {
     let Pr {
         id,
@@ -1360,6 +1371,33 @@ impl Store {
             .iter()
             .map(|p| clone_pr(&pr_list_row(p)))
             .collect()
+    }
+
+    /// What a sweep indexes the stored PRs by, without copying their comments and checks.
+    pub fn pr_keys(&self) -> Vec<PrKey> {
+        self.state
+            .read()
+            .prs
+            .iter()
+            .map(|p| PrKey {
+                id: p.id.clone(),
+                source: p.source.clone(),
+                project_id: p.project_id.clone(),
+                workspace_id: p.workspace_id.clone(),
+                url: p.url.clone(),
+                number: p.number,
+            })
+            .collect()
+    }
+
+    /// One PR as [`Store::prs`] lists it (without its commits and files).
+    pub fn pr_row(&self, id: &str) -> Option<Pr> {
+        self.state
+            .read()
+            .prs
+            .iter()
+            .find(|p| p.id == id)
+            .map(|p| clone_pr(&pr_list_row(p)))
     }
 
     pub fn pr(&self, id: &str) -> Option<Pr> {

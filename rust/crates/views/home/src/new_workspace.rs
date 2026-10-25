@@ -140,9 +140,14 @@ pub async fn wait_for_worktree(
     }
     let (tx, mut rx) = futures::channel::mpsc::unbounded::<()>();
     let _sub = cx.update(|cx| {
-        cx.observe(state, move |_, _| {
-            let _ = tx.unbounded_send(());
-        })
+        recur_view_core::observe_state_app(
+            state,
+            recur_view_core::Topics::ALL,
+            move |_, _| {
+                let _ = tx.unbounded_send(());
+            },
+            cx,
+        )
     });
     let mut aborted = abort.signal();
     loop {

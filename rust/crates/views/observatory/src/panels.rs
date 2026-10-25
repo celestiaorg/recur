@@ -962,6 +962,14 @@ impl Observatory {
         if self.props.main_blocked || self.root_token != token {
             return;
         }
+        // Behind another route the shell is not laid out: focus there would leave keys no
+        // path to the shell (the web drops focus from a hidden element). Only the agent dock
+        // shows, portaled into PR detail.
+        let on_screen = self.state.read(cx).view == recur_view_core::ViewName::Detail
+            || (zone == FocusZone::Agent && self.portal_agent_to_pr(cx));
+        if !on_screen {
+            return;
+        }
         let code_or_terminal =
             |o: &mut Observatory, window: &mut Window, cx: &mut Context<Observatory>| {
                 if o.editor_hidden(cx) && o.term_open(cx) && !o.props.workspace_id.is_empty() {

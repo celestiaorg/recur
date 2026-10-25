@@ -9,6 +9,7 @@ pub mod tree;
 pub mod usage;
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -160,6 +161,14 @@ pub struct Sidebar {
     _subscriptions: Vec<Subscription>,
 }
 
+/// The store topics the sidebar reads (the usage meter follows its own).
+const SIDEBAR_TOPICS: Topics = Topics::ALL.without(
+    Topics::USAGE
+        .union(Topics::MENU)
+        .union(Topics::RESOURCE)
+        .union(Topics::BRIEFING),
+);
+
 impl Sidebar {
     /// `main_focus` is the content column, where focus parks when the flyout closes on it.
     pub fn new(
@@ -171,7 +180,7 @@ impl Sidebar {
         let state = ctx.state.clone();
         let usage = cx.new(|cx| UsageMeter::new(state.clone(), cx));
         let subs = vec![
-            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
+            cx.observe_state_in(&state, SIDEBAR_TOPICS, window, |this, _, window, cx| {
                 this.state_rev += 1;
                 this.state_changed(window, cx)
             }),

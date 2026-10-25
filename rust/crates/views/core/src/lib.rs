@@ -32,6 +32,7 @@ pub mod run;
 pub mod shell_state;
 pub mod state;
 pub mod themes;
+pub mod topics;
 pub mod view;
 pub mod workspace_nav;
 
@@ -43,4 +44,5 @@ pub use state::{
     PromptActionRequest, ScanKind, ScheduleEditorRequest, ShellEvent, WorkspaceScanEvent,
     WorkspaceSeed, bridge_error_message, call, toast,
 };
+pub use topics::{ObserveState, StateChanged, Topics, observe_state_app};
 pub use view::{OverlaySlot, TitlebarParts, ViewContext, ViewRegistry};

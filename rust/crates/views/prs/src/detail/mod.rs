@@ -10,6 +10,7 @@ mod conversation;
 pub(crate) mod field;
 use conversation::Compose;
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 mod files;
 mod html;
 mod render;
@@ -152,7 +153,7 @@ pub struct PrDetail {
     pub(crate) commits_scroll: ScrollHandle,
     pub(crate) checks_scroll: ScrollHandle,
     pub(crate) checks_box_scroll: ScrollHandle,
-    pub(crate) mds: HashMap<String, Entity<MarkdownView>>,
+    pub(crate) mds: HashMap<String, (Entity<MarkdownView>, Subscription)>,
     pub(crate) rxns: HashMap<String, Entity<CommentReactions>>,
     pub(crate) col_focus: FocusHandle,
     pub(crate) dock_focus: FocusHandle,
@@ -248,7 +249,7 @@ impl PrDetail {
             )
         });
         let subs = vec![
-            cx.guarded_observe_in(&state, window, |d, _, window, cx| {
+            cx.observe_state_in(&state, Topics::ALL, window, |d, _, window, cx| {
                 d.state_changed(window, cx)
             }),
             cx.guarded_observe_in(&ui, window, |d, _, window, cx| d.ui_changed(window, cx)),
@@ -434,6 +435,9 @@ impl PrDetail {
         if id != self.cache_pr {
             self.cache_pr = id.clone();
             self.commit_cache.clear();
+            // Conversation bodies and reactions are per comment of this PR.
+            self.mds.clear();
+            self.rxns.clear();
             self.filter.update(cx, |f, cx| f.set_value("", window, cx));
             self.findings_only = false;
             self.comments_only = false;
@@ -655,7 +659,6 @@ impl PrDetail {
                     cx.notify();
                     return;
                 };
-                d.upsert_full(full.clone(), cx);
                 let persisted: HashSet<String> = full
                     .comments
                     .iter()
@@ -663,6 +666,7 @@ impl PrDetail {
                     .map(|c| c.id.clone())
                     .filter(|s| !s.is_empty())
                     .collect();
+                d.upsert_full(full, cx);
                 if silent {
                     d.live_comments.retain(|c| !persisted.contains(&c.id));
                 } else {
@@ -676,29 +680,30 @@ impl PrDetail {
         })
     }
 
+    /// Merge a fetched PR into the store's record, read in place (a PR with its patches can be
+    /// tens of MB), and announce it only when something changed: the detail polls every 15s.
     fn upsert_full(&mut self, full: Pr, cx: &mut Context<Self>) {
         let state = self.state().clone();
-        let prev = state.read(cx).pr(&full.id).cloned();
-        let mut next = full;
-        let prev_comments = prev
-            .as_ref()
-            .and_then(|p| p.comments.clone())
-            .unwrap_or_default();
-        let mut comments =
-            keep_pending_replies(&prev_comments, next.comments.take().unwrap_or_default());
-        apply_review_holds(&mut comments, cx);
-        next.comments = Some(comments);
-        next.commits = keep_commit_files(
-            prev.as_ref().and_then(|p| p.commits.as_ref()),
-            Some(next.commits.take().unwrap_or_default()),
-        );
-        let merged = keep_merged_pr(prev.as_ref(), next);
         state.update(cx, |s, cx| {
+            let prev = s.pr(&full.id);
+            let mut next = full;
+            let prev_comments = prev.and_then(|p| p.comments.as_deref()).unwrap_or_default();
+            let mut comments =
+                keep_pending_replies(prev_comments, next.comments.take().unwrap_or_default());
+            apply_review_holds(&mut comments, cx);
+            next.comments = Some(comments);
+            next.commits = keep_commit_files(
+                prev.and_then(|p| p.commits.as_ref()),
+                Some(next.commits.take().unwrap_or_default()),
+            );
+            let merged = keep_merged_pr(prev, next);
+            let id = merged.id.clone();
             match s.prs.iter_mut().find(|p| p.id == merged.id) {
+                Some(p) if *p == merged => return,
                 Some(p) => *p = merged,
                 None => s.prs.push(merged),
             }
-            cx.notify();
+            s.pr_row_changed(&id, cx);
         });
     }
 
@@ -2032,7 +2037,7 @@ impl PrDetail {
         body: &str,
         cx: &mut Context<Self>,
     ) -> Entity<MarkdownView> {
-        if let Some(v) = self.mds.get(key) {
+        if let Some((v, _)) = self.mds.get(key) {
             v.update(cx, |v, cx| {
                 if v.text().as_ref() != body {
                     v.set_text(body.to_string(), cx)
@@ -2063,8 +2068,7 @@ impl PrDetail {
             }
             MarkdownEvent::TextChanged => {}
         });
-        self._subs.push(sub);
-        self.mds.insert(key.to_string(), v.clone());
+        self.mds.insert(key.to_string(), (v.clone(), sub));
         v
     }
 
@@ -2136,6 +2140,10 @@ impl PrDetail {
 pub(crate) mod spec_handle {
     pub struct Live(pub gpui_kit::WeakEntity<super::PrDetail>);
     impl gpui_kit::Global for Live {}
+
+    pub fn current(cx: &gpui_kit::App) -> Option<gpui_kit::Entity<super::PrDetail>> {
+        cx.try_global::<Live>()?.0.upgrade()
+    }
 
     pub fn composer_focused(window: &gpui_kit::Window, cx: &gpui_kit::App) -> bool {
         cx.global::<Live>().0.upgrade().is_some_and(|d| {

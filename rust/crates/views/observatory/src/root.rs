@@ -4,9 +4,10 @@
 //! shell activation edges (hot shells), the worktree watcher and the native menu state.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use gpui_kit::{AppContext as _, Context, Task, Window};
+use gpui_kit::{App, AppContext as _, Context, Task, Window};
 use recur_editor::session::{
     Session, StashedBuffer, max_scratch_seq, prune_scratch_docs, unique_open_files,
 };
@@ -37,6 +38,33 @@ fn split_root(root: &str) -> (String, String) {
         Some(i) => (root[..i].to_string(), root[i + 1..].to_string()),
         None => (root.to_string(), String::new()),
     }
+}
+
+/// The store topics the Observatory reads; live agents, the inbox, briefing, usage, resource
+/// and the menu state it pushes itself are not among them.
+const OBS_TOPICS: Topics = Topics::ALL.without(
+    Topics::AGENTS
+        .union(Topics::INBOX)
+        .union(Topics::BRIEFING)
+        .union(Topics::USAGE)
+        .union(Topics::RESOURCE)
+        .union(Topics::MENU),
+);
+
+/// Topics that change with every agent event in any workspace: the Observatory follows only
+/// what it shows of them ([`ObsStoreKey`]).
+const KEYED_TOPICS: Topics = Topics::WORKSPACES
+    .union(Topics::ATTENTION)
+    .union(Topics::PRS);
+
+/// What the Observatory reads of [`KEYED_TOPICS`]: its workspace, which workspaces exist, its
+/// unseen chat badge and whether its agent docks beside the selected PR.
+#[derive(PartialEq)]
+pub(crate) struct ObsStoreKey {
+    workspace: Option<recur_domain::Workspace>,
+    ids: u64,
+    unseen: usize,
+    portal: bool,
 }
 
 impl Observatory {
@@ -78,10 +106,17 @@ impl Observatory {
     /// Observe the app state, the editor environment, problems and backend events.
     pub(crate) fn subscribe(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let state = self.state.clone();
-        self._subscriptions
-            .push(cx.guarded_observe_in(&state, window, |o, _, window, cx| {
+        self._subscriptions.push(cx.observe_state_changes_in(
+            &state,
+            OBS_TOPICS,
+            window,
+            |o, topics, window, cx| {
+                if topics.without(KEYED_TOPICS).is_empty() && !o.store_key_changed(cx) {
+                    return;
+                }
                 o.after_state_change(window, cx)
-            }));
+            },
+        ));
         self._subscriptions.push(cx.guarded_subscribe_in(
             &state,
             window,
@@ -221,6 +256,30 @@ impl Observatory {
     }
 
     /// Things the Svelte derived from stores (`$workspaces`, `$codePanelSides`, dock maps…).
+    /// Whether what this Observatory reads of the [`KEYED_TOPICS`] changed since it last looked.
+    fn store_key_changed(&mut self, cx: &App) -> bool {
+        let s = self.state.read(cx);
+        let ids = {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::hash::DefaultHasher::new();
+            for w in &s.workspaces {
+                (&w.id, w.archived).hash(&mut h);
+            }
+            h.finish()
+        };
+        let key = ObsStoreKey {
+            workspace: s.workspace(&self.props.workspace_id).cloned(),
+            ids,
+            unseen: self.unseen_chat_count(cx),
+            portal: self.portal_agent_to_pr(cx),
+        };
+        if self.store_key.as_ref() == Some(&key) {
+            return false;
+        }
+        self.store_key = Some(key);
+        true
+    }
+
     pub(crate) fn after_state_change(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.track_base(cx);
         self.keep_panel_kinds_valid(cx);

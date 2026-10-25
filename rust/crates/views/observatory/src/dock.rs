@@ -5,6 +5,7 @@
 //! panes (`term-park`) and the next dock adopts them.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -140,8 +141,23 @@ pub struct TerminalDock {
     run_task: Option<Task<()>>,
     reorder_task: Option<Task<()>>,
     released: bool,
+    seen_workspace: Option<recur_domain::Workspace>,
+    /// The terminal theme context and what it was built from (`theme_key`).
+    theme_memo: Option<(u64, ThemeContext)>,
     _subs: Vec<Subscription>,
 }
+
+/// The store topics the dock reads: its workspace row, the run store, prefs and chrome.
+const DOCK_TOPICS: Topics = Topics::ALL.without(
+    Topics::PRS
+        .union(Topics::ATTENTION)
+        .union(Topics::AGENTS)
+        .union(Topics::INBOX)
+        .union(Topics::BRIEFING)
+        .union(Topics::USAGE)
+        .union(Topics::RESOURCE)
+        .union(Topics::MENU),
+);
 
 impl EventEmitter<DockEvent> for TerminalDock {}
 
@@ -149,6 +165,17 @@ impl Focusable for TerminalDock {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus.clone()
     }
+}
+
+/// What [`theme_context`] reads: the picked theme and the catalog's themes.
+fn theme_key(state: &AppState) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::hash::DefaultHasher::new();
+    (&state.terminal_prefs.theme, state.bundles_epoch).hash(&mut h);
+    for t in &state.terminal_theme_catalog {
+        (&t.id, &t.name).hash(&mut h);
+    }
+    h.finish()
 }
 
 fn theme_context(state: &AppState) -> ThemeContext {
@@ -195,7 +222,15 @@ impl TerminalDock {
             cx.guarded_subscribe_in(&find, window, |d, _, ev: &FindBarEvent, window, cx| {
                 d.on_find_bar(ev, window, cx)
             }),
-            cx.guarded_observe_in(&state, window, |d, _, window, cx| {
+            cx.observe_state_changes_in(&state, DOCK_TOPICS, window, |d, topics, window, cx| {
+                // Workspace rows change with every agent event: follow only this one's.
+                if topics == Topics::WORKSPACES {
+                    let ws = d.state.read(cx).workspace(&d.workspace_id).cloned();
+                    if ws == d.seen_workspace {
+                        return;
+                    }
+                    d.seen_workspace = ws;
+                }
                 d.state_changed(window, cx)
             }),
         ];
@@ -222,6 +257,8 @@ impl TerminalDock {
             run_task: None,
             reorder_task: None,
             released: false,
+            seen_workspace: None,
+            theme_memo: None,
             _subs: subs,
         };
         d.mount(window, cx);
@@ -438,7 +475,22 @@ impl TerminalDock {
         self.emit_tabs(cx);
     }
 
-    fn pane_options(&self, id: &str, cx: &App) -> TerminalOptions {
+    /// The terminal theme context, rebuilt only when its theme or catalog changed.
+    fn theme(&mut self, cx: &App) -> ThemeContext {
+        let s = self.state.read(cx);
+        let key = theme_key(s);
+        match &self.theme_memo {
+            Some((k, t)) if *k == key => t.clone(),
+            _ => {
+                let t = theme_context(s);
+                self.theme_memo = Some((key, t.clone()));
+                t
+            }
+        }
+    }
+
+    fn pane_options(&mut self, id: &str, cx: &App) -> TerminalOptions {
+        let theme = self.theme(cx);
         let s = self.state.read(cx);
         TerminalOptions {
             session_id: id.to_string(),
@@ -446,7 +498,7 @@ impl TerminalDock {
             active: id == self.active_id,
             frosted: self.frosted(cx),
             font: font_for(s, cx),
-            theme: theme_context(s),
+            theme,
             workspace_root: s
                 .workspace(&self.workspace_id)
                 .map(|w| w.worktree_path.trim_end_matches('/').to_string())
@@ -786,7 +838,7 @@ impl TerminalDock {
             self.select_tab(&f.id, window, cx);
         }
         let opts_font = font_for(self.state.read(cx), cx);
-        let theme = theme_context(self.state.read(cx));
+        let theme = self.theme(cx);
         for p in self.panes.values() {
             p.update(cx, |v, cx| {
                 v.set_font(opts_font.clone(), cx);

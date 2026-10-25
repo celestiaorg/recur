@@ -161,6 +161,47 @@ fn carry_dirty(real: &Path, dst: &Path) {
     }
 }
 
+/// Copies the files a workspace's saved editor session has open from the real worktree when
+/// the sandbox lacks them: ignored files (an `.env`) are not carried by [`carry_dirty`], and a
+/// restored tab for a file the real worktree has would toast `Read failed` only here.
+fn carry_session_files(src: &Path, workspace_id: &str, real: &Path, dst: &Path) {
+    use std::io::Read as _;
+    let path = src
+        .join("workspaces")
+        .join(workspace_id)
+        .join("editor-session.json.gz");
+    let Ok(file) = std::fs::File::open(&path) else {
+        return;
+    };
+    let mut json = String::new();
+    if flate2::read::GzDecoder::new(file)
+        .read_to_string(&mut json)
+        .is_err()
+    {
+        return;
+    }
+    let Ok(sess) = serde_json::from_str::<serde_json::Value>(&json) else {
+        return;
+    };
+    let open = sess["openFiles"].as_array().into_iter().flatten();
+    for rel in open
+        .chain(std::iter::once(&sess["splitPath"]))
+        .filter_map(|v| v.as_str())
+    {
+        if rel.is_empty() || Path::new(rel).is_absolute() || rel.contains("..") {
+            continue;
+        }
+        let (from, to) = (real.join(rel), dst.join(rel));
+        if to.exists() || !from.is_file() {
+            continue;
+        }
+        if let Some(dir) = to.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let _ = std::fs::copy(&from, &to);
+    }
+}
+
 fn prepare(src: &Path, root: &Path) -> Res<()> {
     let src = src
         .canonicalize()
@@ -315,6 +356,8 @@ fn prepare(src: &Path, root: &Path) -> Res<()> {
         }
         let project = v["projectId"].as_str().unwrap_or("");
         let next = if let Some(m) = moved.get(&wt) {
+            // A workspace on the project's main checkout (or one another workspace shares).
+            carry_session_files(&src, &id, Path::new(&wt), Path::new(m));
             m.clone()
         } else {
             let name = Path::new(&wt)
@@ -350,6 +393,7 @@ fn prepare(src: &Path, root: &Path) -> Res<()> {
                     Ok(_) => {
                         added += 1;
                         carry_dirty(Path::new(&wt), &dst);
+                        carry_session_files(&src, &id, Path::new(&wt), &dst);
                     }
                     Err(err) => println!("workspace {id}: {err}"),
                 }
@@ -1009,9 +1053,37 @@ fn drive(root: PathBuf) -> i32 {
     rt.spawn({
         let mut rx = services.subscribe();
         async move {
+            // A worktree that changes every few seconds re-runs the review's diff each time:
+            // name what keeps changing.
+            let mut fs: BTreeMap<String, (Instant, u32, BTreeSet<String>, u32)> = BTreeMap::new();
             while let Some(ev) = rx.recv().await {
-                if matches!(ev, recur_services::AppEvent::SessionDelta(_)) {
-                    DELTAS.fetch_add(1, Ordering::SeqCst);
+                match ev {
+                    recur_services::AppEvent::SessionDelta(_) => {
+                        DELTAS.fetch_add(1, Ordering::SeqCst);
+                    }
+                    recur_services::AppEvent::WorkspaceFsChanged(e) => {
+                        let slot = fs
+                            .entry(e.workspace_id.clone())
+                            .or_insert_with(|| (Instant::now(), 0, BTreeSet::new(), 0));
+                        if slot.0.elapsed() > Duration::from_secs(30) {
+                            *slot = (Instant::now(), 0, BTreeSet::new(), slot.3);
+                        }
+                        slot.1 += 1;
+                        slot.2.extend(e.paths.iter().take(8).cloned());
+                        if e.rescan == Some(true) {
+                            slot.2.insert("<rescan>".into());
+                        }
+                        if slot.1 == 10 && slot.3 < 3 {
+                            slot.3 += 1;
+                            println!(
+                                "note: {} changed on disk 10 times in {:.0?}: {:?}",
+                                e.workspace_id,
+                                slot.0.elapsed(),
+                                slot.2.iter().take(20).collect::<Vec<_>>()
+                            );
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -1326,34 +1398,39 @@ async fn run(
     let storm = std::cell::Cell::new((Instant::now(), 0u32, 0u32));
     let last = std::cell::RefCell::new(String::new());
     cx.update(|cx| {
-        cx.observe(&state, move |state, cx| {
-            STORE_NOTIFIES.fetch_add(1, Ordering::SeqCst);
-            let (since, n, printed) = storm.get();
-            let (since, n) = if since.elapsed() > Duration::from_secs(1) {
-                (Instant::now(), 0)
-            } else {
-                (since, n + 1)
-            };
-            let mut printed = printed;
-            if n > 2000 && printed < 40 {
-                let s = state.read(cx);
-                let now = format!(
-                    "view {:?} ws {} pr {} overlays {:?} menu {:?}",
-                    s.view, s.selected_workspace_id, s.selected_pr_id, s.overlays, s.menu_state
-                );
-                let mut l = last.borrow_mut();
-                say(
-                    start,
-                    format!(
-                        "STORM store notify {n}: {now} (same as last: {})",
-                        *l == now
-                    ),
-                );
-                *l = now;
-                printed += 1;
-            }
-            storm.set((since, n, printed));
-        })
+        recur_view_core::observe_state_app(
+            &state,
+            recur_view_core::Topics::ALL,
+            move |state, cx| {
+                STORE_NOTIFIES.fetch_add(1, Ordering::SeqCst);
+                let (since, n, printed) = storm.get();
+                let (since, n) = if since.elapsed() > Duration::from_secs(1) {
+                    (Instant::now(), 0)
+                } else {
+                    (since, n + 1)
+                };
+                let mut printed = printed;
+                if n > 2000 && printed < 40 {
+                    let s = state.read(cx);
+                    let now = format!(
+                        "view {:?} ws {} pr {} overlays {:?} menu {:?}",
+                        s.view, s.selected_workspace_id, s.selected_pr_id, s.overlays, s.menu_state
+                    );
+                    let mut l = last.borrow_mut();
+                    say(
+                        start,
+                        format!(
+                            "STORM store notify {n}: {now} (same as last: {})",
+                            *l == now
+                        ),
+                    );
+                    *l = now;
+                    printed += 1;
+                }
+                storm.set((since, n, printed));
+            },
+            cx,
+        )
         .detach();
     });
     at(start, "waiting for boot");

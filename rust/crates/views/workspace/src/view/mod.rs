@@ -14,6 +14,7 @@ mod sync;
 mod tabs;
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
 
@@ -328,7 +329,7 @@ impl WorkspaceView {
         let observatory = cx.new(|cx| Observatory::new(st, obs_props, slots, window, cx));
 
         let subs = vec![
-            cx.guarded_observe(&state, |v, _, cx| v.touch(cx)),
+            cx.observe_state(&state, Topics::ALL, |v, _, cx| v.touch(cx)),
             cx.guarded_subscribe_in(&chat, window, Self::on_chat_event),
             cx.guarded_subscribe_in(&observatory, window, Self::on_observatory_event),
             cx.guarded_subscribe(&state, Self::on_applied_event),

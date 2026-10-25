@@ -13,9 +13,10 @@ use recur_services::AppEvent;
 use recur_services::events::{AttentionUpdated, PrUpdated, WorkspaceUpdated};
 use recur_ui::widgets::ToastKind;
 
-use crate::pr::keep_merged_pr;
+use crate::pr::{PrLifecycle, keep_merged_pr, pr_lifecycle};
 use crate::pr_commits::keep_commit_files;
 use crate::state::{AppState, ShellEvent, call, toast};
+use crate::topics::Topics;
 use crate::workspace_nav::unique_by_id;
 
 /// Matches the engine's `githubPRSyncMinInterval`, so a dashboard revisit skips the call.
@@ -445,6 +446,23 @@ impl AppState {
 
     // ---- PRs ----
 
+    /// The revision of PR `id`'s row: it moves whenever the row changes, so a view keeps what
+    /// it derived from a PR (tens of MB with its patches) until then.
+    pub fn pr_rev(&self, id: &str) -> u64 {
+        self.pr_revs.get(id).copied().unwrap_or(0)
+    }
+
+    fn bump_pr(&mut self, id: &str) {
+        self.pr_rev_seq += 1;
+        self.pr_revs.insert(id.to_string(), self.pr_rev_seq);
+    }
+
+    /// A view replaced PR `id`'s row in place.
+    pub fn pr_row_changed(&mut self, id: &str, cx: &mut Context<Self>) {
+        self.bump_pr(id);
+        self.changed(Topics::PRS, cx);
+    }
+
     /// `githubPRSyncDue`.
     pub fn github_pr_sync_due(&self) -> bool {
         self.last_github_pr_sync
@@ -465,8 +483,22 @@ impl AppState {
             .collect();
         // A sweep usually brings back what the store has: every view reads the store.
         if next != self.prs {
+            let mut touched: Vec<String> = next
+                .iter()
+                .filter(|p| prev.get(p.id.as_str()).is_none_or(|o| *o != *p))
+                .map(|p| p.id.clone())
+                .collect();
+            let kept: BTreeSet<&str> = next.iter().map(|p| p.id.as_str()).collect();
+            touched.extend(
+                prev.keys()
+                    .filter(|id| !kept.contains(*id))
+                    .map(|id| id.to_string()),
+            );
             self.prs = next;
-            cx.notify();
+            for id in touched {
+                self.bump_pr(&id);
+            }
+            self.changed(Topics::PRS, cx);
         }
     }
 
@@ -476,7 +508,7 @@ impl AppState {
             return;
         }
         let mut incoming: Vec<Option<Pr>> = list.into_iter().map(Some).collect();
-        let mut changed = false;
+        let mut touched = Vec::new();
         for prev in self.prs.iter_mut() {
             if let Some(slot) = incoming
                 .iter_mut()
@@ -486,19 +518,25 @@ impl AppState {
                 let merged = merge_synced_pr(prev, p);
                 if merged != *prev {
                     *prev = merged;
-                    changed = true;
+                    touched.push(prev.id.clone());
                 }
             }
         }
-        let before = self.prs.len();
-        self.prs.extend(incoming.into_iter().flatten());
-        if changed || self.prs.len() != before {
-            cx.notify();
+        for p in incoming.into_iter().flatten() {
+            touched.push(p.id.clone());
+            self.prs.push(p);
+        }
+        if !touched.is_empty() {
+            for id in touched {
+                self.bump_pr(&id);
+            }
+            self.changed(Topics::PRS, cx);
         }
     }
 
     /// `upsertPR`: merge a full PR, inserting unknown ones.
     pub fn upsert_pr(&mut self, mut pr: Pr, cx: &mut Context<Self>) {
+        let id = pr.id.clone();
         match self.prs.iter_mut().find(|p| p.id == pr.id) {
             None => self.prs.push(pr),
             Some(prev) => {
@@ -509,13 +547,15 @@ impl AppState {
                 *prev = keep_merged_pr(Some(prev), pr);
             }
         }
-        cx.notify();
+        self.bump_pr(&id);
+        self.changed(Topics::PRS, cx);
     }
 
     pub fn update_pr(&mut self, id: &str, f: impl FnOnce(&mut Pr), cx: &mut Context<Self>) {
         if let Some(p) = self.prs.iter_mut().find(|p| p.id == id) {
             f(p);
-            cx.notify();
+            self.bump_pr(id);
+            self.changed(Topics::PRS, cx);
         }
     }
 
@@ -541,7 +581,10 @@ impl AppState {
             self.schedule_briefing_refresh(cx);
             return;
         };
-        let mut next = prev.clone();
+        // In place: a PR with its files and commits can be tens of MB.
+        let kept = (pr_lifecycle(Some(prev)) == Some(PrLifecycle::Merged))
+            .then(|| (prev.state.clone(), prev.group.clone()));
+        let next = prev;
         macro_rules! take {
             ($($f:ident),*) => { $( if let Some(v) = d.$f { next.$f = v; } )* };
         }
@@ -586,9 +629,15 @@ impl AppState {
         if let Some(v) = d.draft {
             next.draft = v;
         }
-        *prev = keep_merged_pr(Some(prev), next);
+        if let Some((state, group)) = kept
+            && pr_lifecycle(Some(next)) != Some(PrLifecycle::Merged)
+        {
+            next.state = state;
+            next.group = group;
+        }
+        self.bump_pr(&d.pr_id);
         self.schedule_briefing_refresh(cx);
-        cx.notify();
+        self.changed(Topics::PRS, cx);
     }
 
     // ---- agents running ----
@@ -717,8 +766,10 @@ impl AppState {
             let _ = this.update(cx, |s, _| s.briefing_refresh = None);
             if let Ok(b) = services.briefing.get_briefing().await {
                 let _ = this.update(cx, |s, cx| {
-                    s.briefing = b;
-                    cx.notify();
+                    if s.briefing != b {
+                        s.briefing = b;
+                        s.changed(Topics::BRIEFING, cx);
+                    }
                 });
             }
         }));
@@ -728,10 +779,7 @@ impl AppState {
         let services = self.services.clone();
         cx.spawn(async move |this, cx| {
             if let Ok(ib) = services.inbox.get_inbox().await {
-                let _ = this.update(cx, |s, cx| {
-                    s.inbox = ib;
-                    cx.notify();
-                });
+                let _ = this.update(cx, |s, cx| s.set_inbox(ib, cx));
             }
         })
         .detach();
@@ -739,8 +787,10 @@ impl AppState {
 
     /// Replace the inbox (a view marked items read).
     pub fn set_inbox(&mut self, inbox: Vec<recur_domain::InboxItem>, cx: &mut Context<Self>) {
-        self.inbox = inbox;
-        cx.notify();
+        if self.inbox != inbox {
+            self.inbox = inbox;
+            self.changed(Topics::INBOX, cx);
+        }
     }
 
     /// `prefetchProviderUsage`: fill the sidebar meter after first paint (collect can take
@@ -750,8 +800,10 @@ impl AppState {
         cx.spawn(async move |this, cx| {
             if let Ok(s) = services.settings.get_provider_usage().await {
                 let _ = this.update(cx, |st, cx| {
-                    st.provider_usage = Some(s);
-                    cx.notify();
+                    if st.provider_usage.as_ref() != Some(&s) {
+                        st.provider_usage = Some(s);
+                        st.changed(Topics::USAGE, cx);
+                    }
                 });
             }
         })
@@ -763,8 +815,10 @@ impl AppState {
         cx.spawn(async move |this, cx| {
             if let Ok(s) = services.settings.refresh_provider_usage().await {
                 let _ = this.update(cx, |st, cx| {
-                    st.provider_usage = Some(s);
-                    cx.notify();
+                    if st.provider_usage.as_ref() != Some(&s) {
+                        st.provider_usage = Some(s);
+                        st.changed(Topics::USAGE, cx);
+                    }
                 });
             }
         })
@@ -817,6 +871,9 @@ impl AppState {
                 s.project_groups = unique_by_id(&pg, true);
                 s.set_workspaces_from_list(lp.clone(), cx);
                 s.prs = pr;
+                for id in s.prs.iter().map(|p| p.id.clone()).collect::<Vec<_>>() {
+                    s.bump_pr(&id);
+                }
                 s.inbox = ib;
                 if let Some(att) = att {
                     s.apply_attention(att);
@@ -857,8 +914,10 @@ impl AppState {
         cx.spawn(async move |this, cx| {
             if let Ok(b) = services.briefing.get_briefing().await {
                 let _ = this.update(cx, |s, cx| {
-                    s.briefing = b;
-                    cx.notify();
+                    if s.briefing != b {
+                        s.briefing = b;
+                        s.changed(Topics::BRIEFING, cx);
+                    }
                 });
             }
         })
@@ -917,8 +976,11 @@ impl AppState {
                     return;
                 }
                 if let Some(w) = self.workspaces.iter_mut().find(|w| w.id == e.workspace_id) {
-                    w.last = strip_tags(&e.event.text);
-                    cx.notify();
+                    let last = strip_tags(&e.event.text);
+                    if w.last != last {
+                        w.last = last;
+                        self.changed(Topics::WORKSPACES, cx);
+                    }
                 }
             }
             AppEvent::WorkspaceUpdated(d) => {
@@ -956,12 +1018,14 @@ impl AppState {
                 if !app {
                     self.schedule_briefing_refresh(cx);
                 }
-                cx.notify();
+                self.changed(Topics::AGENTS, cx);
             }
             AppEvent::ResourceUpdated(r) => {
                 self.note_git_warning(&r.git_warning, cx);
-                self.resource = Some(r);
-                cx.notify();
+                if self.resource.as_ref() != Some(&r) {
+                    self.resource = Some(r);
+                    self.changed(Topics::RESOURCE, cx);
+                }
             }
             AppEvent::NotificationOpen(target) => self.open_notification(&target, cx),
             AppEvent::InboxUpdated(_) => {
@@ -971,7 +1035,7 @@ impl AppState {
                     if let Ok(att) = services.workspaces.attention_counts().await {
                         let _ = this.update(cx, |s, cx| {
                             s.apply_attention(att);
-                            cx.notify();
+                            s.changed(Topics::ATTENTION, cx);
                         });
                     }
                 })
@@ -986,7 +1050,7 @@ impl AppState {
                     ..counts
                 });
                 self.schedule_briefing_refresh(cx);
-                cx.notify();
+                self.changed(Topics::ATTENTION, cx);
             }
             AppEvent::PrUpdated(d) => self.apply_pr_updated(std::sync::Arc::unwrap_or_clone(d), cx),
             AppEvent::PrsSynced(d) => self.merge_project_prs_sync(
@@ -1000,7 +1064,8 @@ impl AppState {
                     return;
                 }
                 self.prs.retain(|p| p.id != d.pr_id);
-                cx.notify();
+                self.bump_pr(&d.pr_id);
+                self.changed(Topics::PRS, cx);
             }
             AppEvent::PermissionRequested(d) => {
                 if d.id.is_empty() {
@@ -1084,6 +1149,7 @@ impl AppState {
                     ps.iter()
                         .any(|p| p.id == "cursor" && p.source_id == "cursor_connect")
                 });
+                let changed = self.provider_usage.as_ref() != Some(&snapshot);
                 self.provider_usage = Some(snapshot);
                 let has_key = self
                     .settings
@@ -1098,7 +1164,9 @@ impl AppState {
                     })
                     .detach();
                 }
-                cx.notify();
+                if changed {
+                    self.changed(Topics::USAGE, cx);
+                }
             }
             AppEvent::FindingsUpdated(_) | AppEvent::BriefingUpdated(_) => {
                 self.schedule_briefing_refresh(cx)
@@ -1159,6 +1227,7 @@ impl AppState {
                 w.plan = Some(p);
             }
         }
+        self.schedule_briefing_refresh(cx);
         if !d.workspace_id.is_empty()
             && let Some(code) = d.focus_chat_code.as_ref().filter(|c| !c.is_empty())
         {
@@ -1166,9 +1235,10 @@ impl AppState {
                 workspace_id: d.workspace_id.clone(),
                 code: code.clone(),
             });
+            cx.notify();
+        } else {
+            self.changed(Topics::WORKSPACES, cx);
         }
-        self.schedule_briefing_refresh(cx);
-        cx.notify();
     }
 
     /// `notification.open`: mark the target's inbox rows read and route to it.
@@ -1319,7 +1389,14 @@ mod tests {
         state.update(cx, |s, cx| s.set_prs_from_sync(vec![pr("a", "A")], cx));
         let notified = std::rc::Rc::new(std::cell::Cell::new(0));
         let n = notified.clone();
-        let _sub = cx.update(|cx| cx.observe(&state, move |_, _| n.set(n.get() + 1)));
+        let _sub = cx.update(|cx| {
+            crate::observe_state_app(
+                &state,
+                crate::Topics::ALL,
+                move |_, _| n.set(n.get() + 1),
+                cx,
+            )
+        });
         state.update(cx, |s, cx| {
             s.set_prs_from_sync(vec![pr("a", "A")], cx);
             s.merge_project_prs_sync(vec![pr("a", "A")], cx);

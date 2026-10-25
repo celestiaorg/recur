@@ -23,6 +23,7 @@ use recur_ui::widgets::{Select, SelectEvent, SelectOption, TriggerStyle};
 use recur_ui::{Color, IconName, Theme, Tokens, icon, rgba};
 use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_icon_name, pr_lifecycle};
 use recur_view_core::{NewTaskDraft, ViewContext, ViewName};
+use recur_view_core::{ObserveState as _, Topics};
 use recur_view_prs::list_filter::LIST_SORTS;
 
 use crate::style::{bucket_head, empty, filter_seg, filters_bar, hsla, seg_count_btn};
@@ -307,7 +308,7 @@ impl Issues {
             .ghost()
         });
         let subs = vec![
-            cx.guarded_observe(&vcx.state, |this, _, cx| this.on_state(cx)),
+            cx.observe_state(&vcx.state, Topics::ALL, |this, _, cx| this.on_state(cx)),
             // The menu's window keydown (capture): Escape closes it.
             {
                 let me = cx.entity().downgrade();
@@ -1555,11 +1556,12 @@ pub struct IssuesPage {
 
 impl IssuesPage {
     pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let subs = vec![
-            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
-                this.sync(window, cx)
-            }),
-        ];
+        let subs =
+            vec![
+                cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
+                    this.sync(window, cx)
+                }),
+            ];
         let mut me = IssuesPage {
             vcx: vcx.clone(),
             list: None,

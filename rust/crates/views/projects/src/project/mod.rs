@@ -5,6 +5,7 @@
 mod sections;
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
@@ -312,7 +313,7 @@ impl ProjectView {
         });
         let icon_picker = cx.new(|cx| IconPicker::new("box", window, cx));
         let subs = vec![
-            cx.guarded_observe_in(&vcx.state, window, |this, _, window, cx| {
+            cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync(window, cx)
             }),
             cx.guarded_subscribe_in(&copy_files, window, |this, area, ev, window, cx| {

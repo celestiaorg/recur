@@ -17,6 +17,7 @@ use recur_forge::model::{
     reconcile_listed_checks,
 };
 use recur_forge::{Forge, PrListRow, PrListState};
+use recur_store::PrKey;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
@@ -50,24 +51,24 @@ impl Drop for SweepDone<'_> {
     }
 }
 
-/// Stored forge PRs keyed by project + URL and project + number.
-type StoredIndex = HashMap<String, Pr>;
+/// Stored forge PR ids keyed by project + URL and project + number.
+type StoredIndex = HashMap<String, String>;
 
 fn stored_key(project_id: &str, kind: &str, v: &str) -> String {
     format!("{project_id}\x00{kind}\x00{v}")
 }
 
-fn lookup_indexed(idx: &StoredIndex, project_id: &str, row: &PrListRow) -> Option<Pr> {
+fn lookup_indexed<'a>(idx: &'a StoredIndex, project_id: &str, row: &PrListRow) -> Option<&'a str> {
     let u = normalize_pr_url(&row.url);
     if !u.is_empty()
-        && let Some(p) = idx.get(&stored_key(project_id, "u", &u))
+        && let Some(id) = idx.get(&stored_key(project_id, "u", &u))
     {
-        return Some(p.clone());
+        return Some(id);
     }
     if row.number > 0 {
         return idx
             .get(&stored_key(project_id, "n", &row.number.to_string()))
-            .cloned();
+            .map(String::as_str);
     }
     None
 }
@@ -284,40 +285,50 @@ impl Engine {
     ) -> Option<Pr> {
         let url = normalize_pr_url(url);
         let source = forge.pr_source();
-        self.store.prs().into_iter().find(|p| {
+        let key = self.store.pr_keys().into_iter().find(|p| {
             if p.source != source {
                 return false;
             }
             if !url.is_empty()
                 && normalize_pr_url(&p.url) == url
-                && self.pr_project_id(p) == project_id
+                && self.key_project_id(p) == project_id
             {
                 return true;
             }
-            number > 0 && p.number == number && self.pr_project_id(p) == project_id
-        })
+            number > 0 && p.number == number && self.key_project_id(p) == project_id
+        })?;
+        self.store.pr_row(&key.id)
     }
 
     fn index_stored_prs(&self, forge: &dyn Forge) -> StoredIndex {
         let source = forge.pr_source();
         let mut out = HashMap::new();
-        for p in self.store.prs() {
+        for p in self.store.pr_keys() {
             if p.source != source {
                 continue;
             }
-            let pid = self.pr_project_id(&p);
+            let pid = self.key_project_id(&p);
             if pid.is_empty() {
                 continue;
             }
             let u = normalize_pr_url(&p.url);
             if !u.is_empty() {
-                out.insert(stored_key(&pid, "u", &u), p.clone());
+                out.insert(stored_key(&pid, "u", &u), p.id.clone());
             }
             if p.number > 0 {
-                out.insert(stored_key(&pid, "n", &p.number.to_string()), p);
+                out.insert(stored_key(&pid, "n", &p.number.to_string()), p.id);
             }
         }
         out
+    }
+
+    /// [`Engine::pr_project_id`] for a [`PrKey`].
+    fn key_project_id(&self, p: &PrKey) -> String {
+        let id = p.project_id.trim();
+        if !id.is_empty() {
+            return id.to_owned();
+        }
+        self.loop_project_id(&p.workspace_id)
     }
 
     /// Applies one list row without the sweep's indexes.
@@ -352,6 +363,7 @@ impl Engine {
         let (state, group) = listed_state_group(row, viewer);
         let existing = stored
             .and_then(|s| lookup_indexed(s, project_id, row))
+            .and_then(|id| self.store.pr_row(id))
             .or_else(|| self.find_forge_pr(forge, project_id, row.number, &row.url));
         let mut ws_id = existing
             .as_ref()

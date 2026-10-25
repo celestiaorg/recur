@@ -3,6 +3,7 @@
 //! typeaheads, the ⋯ menu (Open in GitHub, Copy link, Quote reply, Edit, Delete) and resolve.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -123,14 +124,16 @@ impl LineNoteThread {
             .and_then(|s| s.drafts.get(&root.id).cloned())
             .unwrap_or_default();
         let mut subs = vec![cx.on_release(|this: &mut Self, cx| this.save_draft(cx))];
-        subs.push(cx.guarded_observe(&state, |this: &mut Self, state, cx| {
-            if this.more_id.is_empty() {
-                return;
-            }
-            if state.read(cx).app_overlay_open() {
-                this.close_more(cx);
-            }
-        }));
+        subs.push(
+            cx.observe_state(&state, Topics::NONE, |this: &mut Self, state, cx| {
+                if this.more_id.is_empty() {
+                    return;
+                }
+                if state.read(cx).app_overlay_open() {
+                    this.close_more(cx);
+                }
+            }),
+        );
         let mut me = LineNoteThread {
             state,
             root,

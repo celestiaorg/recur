@@ -20,7 +20,8 @@
 //!
 //! The drive opens every project, every workspace and each of its chat tabs (transcripts
 //! scrolled top to bottom), the Observatory's explorer, a file, the review and the terminal on
-//! live workspaces, every PR on each detail tab, every Settings section, Briefing, Issues,
+//! live workspaces, every PR on each detail tab (typing in its comment and review boxes), every
+//! Settings section, Briefing, Issues,
 //! Schedules and each palette, and streams one chat turn. It exits non-zero on any panic
 //! (contained or not), error toast, frame over 2s or UI stall over 20s, sampling the main thread
 //! on a stall and during a frame that passes 1.5s.
@@ -60,7 +61,7 @@ use recur_domain::{
 use recur_forge::{Forge, ForgeError};
 use recur_services::{AppConfig, AppOptions, AppServices};
 use recur_view_core::prefs::CodePanelKey;
-use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
+use recur_view_core::{AppState, LocalStorage, PrReviewKind, ViewContext, ViewName, ViewRegistry};
 use recur_view_prs::detail::PrDetail;
 use recur_view_prs::ui::PrTab;
 use recur_view_workspace::detail::WorkspaceDetail;
@@ -1471,6 +1472,12 @@ async fn run(
         if focused {
             type_keys(cx, window, "PR comment").await;
         }
+        at(start, format!("PR {id} review: type"));
+        state.update(cx, |s, cx| s.open_pr_review(PrReviewKind::Approve, cx));
+        frames(cx, window, 6).await;
+        type_keys(cx, window, "PR review").await;
+        state.update(cx, |s, cx| s.close_pr_review(cx));
+        frames(cx, window, 2).await;
     }
 
     at(start, "Settings");

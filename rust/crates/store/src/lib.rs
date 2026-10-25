@@ -45,7 +45,7 @@ mod store;
 pub use error::{Error, Result};
 pub use migrations::latest_schema_version;
 pub use schedules::{ACTIVE_RUN_FILTER, RUN_SELECT};
-pub use store::Store;
+pub use store::{PrKey, Store};
 
 #[cfg(test)]
 mod testenv;

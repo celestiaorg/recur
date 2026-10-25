@@ -79,7 +79,6 @@ impl Observatory {
         }
     }
 
-    /// `selectCodePanel`: show a panel on its side (and load / focus what it needs).
     /// The branch review, once it has been shown.
     pub fn review_surface(&self) -> Option<&Entity<recur_view_review::surface::ReviewSurface>> {
         self.review_surface.as_ref()
@@ -92,6 +91,7 @@ impl Observatory {
         self.inputs.focus_commit_msg(window, cx)
     }
 
+    /// `selectCodePanel`: show a panel on its side (and load / focus what it needs).
     pub fn select_code_panel(
         &mut self,
         next: CodePanelKey,

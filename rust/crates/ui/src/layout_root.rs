@@ -19,7 +19,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use gpui_kit::{
-    AnyElement, App, Bounds, Element, ElementId, FlexDirection, GlobalElementId,
+    AnyElement, AnyView, App, Bounds, Element, ElementId, FlexDirection, GlobalElementId,
     InspectorElementId, IntoElement, LayoutId, ParentElement, Pixels, Position, Refineable, Style,
     StyleRefinement, Styled, Window, div, px,
 };
@@ -354,9 +354,14 @@ impl Element for LayoutRoot {
 pub struct LayoutBlock {
     id: ElementId,
     estimate: f32,
-    child: Option<AnyElement>,
+    child: Option<Content>,
     root: Option<AnyElement>,
     markers: Rc<RefCell<BottomMarkers>>,
+}
+
+enum Content {
+    Inline(AnyElement),
+    Cached(AnyView, Rc<BlockSlot>),
 }
 
 /// `child` as a [`LayoutBlock`], `estimate` px tall until its first layout.
@@ -368,11 +373,108 @@ pub fn layout_block(
     LayoutBlock {
         id: id.into(),
         estimate,
-        child: Some(child.into_any_element()),
+        child: Some(Content::Inline(child.into_any_element())),
         root: None,
         markers: Rc::default(),
     }
 }
+
+/// `view` as a [`LayoutBlock`] whose content is a cached view: a redraw of the page that does
+/// not dirty `view` replays it, laid out exactly where the content of a [`layout_block`] would
+/// be. The view renders its content through [`block_content`] with the same `slot`.
+pub fn cached_block<V: gpui_kit::Render>(
+    id: impl Into<ElementId>,
+    estimate: f32,
+    view: &gpui_kit::Entity<V>,
+    slot: &Rc<BlockSlot>,
+    cx: &App,
+) -> LayoutBlock {
+    // The window tracks a cached view it saw accessed (`style::cached_view`).
+    let _ = view.read(cx);
+    LayoutBlock {
+        id: id.into(),
+        estimate,
+        child: Some(Content::Cached(view.clone().into(), slot.clone())),
+        root: None,
+        markers: slot.markers.clone(),
+    }
+}
+
+/// Where a cached block's content sits in its root, and the bottom span to probe.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Place {
+    /// Device px from the root's corner to the content's.
+    sx: f32,
+    sy: f32,
+    /// The content's unrounded width and the root's snapped width, px.
+    w: f32,
+    root_w: f32,
+    bottom: Span,
+}
+
+/// What a [`cached_block`] and its view share: the place the block computed this frame, the
+/// place the view last rendered at, and the height the view measured when it last laid out.
+#[derive(Default)]
+pub struct BlockSlot {
+    place: std::cell::Cell<Option<Place>>,
+    rendered: std::cell::Cell<Option<Place>>,
+    measured: std::cell::Cell<Option<(f32, Span)>>,
+    markers: Rc<RefCell<BottomMarkers>>,
+}
+
+/// A cached block's content, as its view renders it.
+pub fn block_content(slot: &Rc<BlockSlot>, child: impl IntoElement, window: &Window) -> AnyElement {
+    let Some(p) = slot.place.get() else {
+        return div().w_full().child(child).into_any_element();
+    };
+    slot.rendered.set(Some(p));
+    slot.markers.borrow_mut().thresholds = p.bottom.thresholds();
+    let dp = 1. / window.scale_factor();
+    let mut content = div()
+        .absolute()
+        .flex()
+        .flex_col()
+        .child(child)
+        .child(Bottom(slot.markers.clone()));
+    let st = content.style();
+    st.inset.left = Some(gpui_kit::relative(p.sx * dp / p.root_w.max(1e-6)).into());
+    st.inset.top = Some(px(0.).into());
+    st.size.width = Some(gpui_kit::relative(p.w.max(0.) / p.root_w.max(1e-6)).into());
+    div()
+        .w_full()
+        .flex()
+        .flex_col()
+        .child(Origin(slot.markers.clone()))
+        .child(div().flex_none().w(px(dp)).aspect_ratio(1. / p.sy))
+        .child(div().relative().w_full().child(content))
+        .child(Measure(slot.clone()))
+        .into_any_element()
+}
+
+/// The content's unrounded height under its root's top spacer of `sy` device px, and where its
+/// bottom sits past its snapped position, read off the markers of the last layout.
+fn read_bottom(m: &BottomMarkers, sy: f32, window: &mut Window) -> Option<(f32, Span)> {
+    let (o, at) = (m.origin?, m.at?);
+    let s = window.scale_factor();
+    let dev = |v: Pixels| (f32::from(v) * s).round();
+    let base = dev(window.layout_bounds(o).origin.y);
+    let rb = dev(window.layout_bounds(at).origin.y) - base;
+    let results: Vec<(f32, bool)> = m
+        .under
+        .iter()
+        .map(|&(t, mk)| (t, dev(window.layout_bounds(mk).origin.y) - base > rb + 0.5))
+        .collect();
+    let bottom = Span::narrowed(&results);
+    Some(((rb + bottom.mid() - sy) / s, bottom))
+}
+
+/// GPUI's snap of a device-px coordinate: half pixels toward zero.
+fn round_half_toward_zero(v: f32) -> f32 {
+    (v.abs() - 0.5).ceil().copysign(v)
+}
+
+/// Reads a cached block's height once its view has laid out.
+struct Measure(Rc<BlockSlot>);
 
 impl IntoElement for LayoutBlock {
     type Element = Self;
@@ -527,11 +629,95 @@ marker_element!(Bottom, |b: &mut Bottom,
     (node(wrap, &kids, window, cx), ())
 });
 
+impl IntoElement for Measure {
+    type Element = Self;
+
+    fn into_element(self) -> Self {
+        self
+    }
+}
+
+impl Element for Measure {
+    type RequestLayoutState = ();
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (LayoutId, ()) {
+        let s = Style {
+            position: Position::Absolute,
+            ..Default::default()
+        };
+        (node(s, &[], window, cx), ())
+    }
+
+    fn prepaint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        _: Bounds<Pixels>,
+        _: &mut (),
+        window: &mut Window,
+        _: &mut App,
+    ) {
+        let Some(p) = self.0.rendered.get() else {
+            return;
+        };
+        let m = self.0.markers.borrow();
+        self.0.measured.set(read_bottom(&m, p.sy, window));
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        _: Bounds<Pixels>,
+        _: &mut (),
+        _: &mut (),
+        _: &mut Window,
+        _: &mut App,
+    ) {
+    }
+}
+
 pub struct BlockProbes {
     state: BlockState,
     left: Vec<(f32, LayoutId)>,
     top: Vec<(f32, LayoutId)>,
     right: Vec<(f32, LayoutId)>,
+}
+
+impl LayoutBlock {
+    fn finish(
+        &mut self,
+        id: Option<&GlobalElementId>,
+        state: BlockState,
+        root: AnyElement,
+        window: &mut Window,
+    ) {
+        let settled = [state.left, state.top, state.right, state.bottom]
+            .iter()
+            .all(|e| e.settled());
+        if !settled {
+            window.request_animation_frame();
+        }
+        if let Some(id) = id {
+            window.with_element_state::<BlockState, _>(id, |_, _| ((), state));
+        }
+        self.root = Some(root);
+    }
 }
 
 impl Element for LayoutBlock {
@@ -655,6 +841,49 @@ impl Element for LayoutBlock {
         let (sx, sy) = (state.left.mid() + 1., state.top.mid() + 1.);
         let w = ((x1 + state.right.mid()) - (x0 + state.left.mid())) / s;
         let aw = (w + sx * dp).max(1e-6);
+        let origin = gpui_kit::point(px(x0 / s - dp), px(y0 / s - dp));
+        let child = match child {
+            Content::Inline(child) => child,
+            Content::Cached(view, slot) => {
+                let place = Place {
+                    sx,
+                    sy,
+                    w,
+                    root_w: round_half_toward_zero(aw * s) / s,
+                    bottom: state.bottom,
+                };
+                slot.place.set(Some(place));
+                let h = state.height.unwrap_or(self.estimate).max(0.);
+                let entity = view.entity_id();
+                let mut root = view
+                    .cached(gpui_kit::StyleRefinement::default().size_full())
+                    .into_any_element();
+                root.layout_as_root(
+                    gpui_kit::size(
+                        gpui_kit::AvailableSpace::Definite(px(aw)),
+                        gpui_kit::AvailableSpace::Definite(px(sy * dp + h)),
+                    ),
+                    window,
+                    cx,
+                );
+                root.prepaint_at(origin, window, cx);
+                // A view replayed from its cache keeps the place it rendered at: render it
+                // again at this one on the next frame.
+                if slot.rendered.get() != Some(place) {
+                    cx.notify(entity);
+                    window.request_animation_frame();
+                }
+                if let Some((height, bottom)) = slot.measured.take() {
+                    state.bottom = bottom;
+                    if state.height.is_none_or(|h| (h - height).abs() > 1e-3) {
+                        state.height = Some(height);
+                        window.request_animation_frame();
+                    }
+                }
+                self.finish(id, state, root, window);
+                return;
+            }
+        };
         let mut content = div()
             .absolute()
             .flex()
@@ -673,7 +902,6 @@ impl Element for LayoutBlock {
             .child(div().flex_none().w(px(dp)).aspect_ratio(1. / sy))
             .child(div().relative().w_full().child(content))
             .into_any_element();
-        let origin = gpui_kit::point(px(x0 / s - dp), px(y0 / s - dp));
         root.layout_as_root(
             gpui_kit::size(
                 gpui_kit::AvailableSpace::Definite(px(aw)),
@@ -685,34 +913,15 @@ impl Element for LayoutBlock {
         root.prepaint_at(origin, window, cx);
         // The content's bottom in its root's device pixels: snapped at the marker on it, its
         // fraction from the markers under it.
-        let m = self.markers.borrow();
-        if let (Some(o), Some(at)) = (m.origin, m.at) {
-            let base = dev(window.layout_bounds(o).origin.y);
-            let rb = dev(window.layout_bounds(at).origin.y) - base;
-            let results: Vec<(f32, bool)> = m
-                .under
-                .iter()
-                .map(|&(t, mk)| (t, dev(window.layout_bounds(mk).origin.y) - base > rb + 0.5))
-                .collect();
-            state.bottom = Span::narrowed(&results);
-            // The content's top sits `sy` device px into its root.
-            let height = (rb + state.bottom.mid() - sy) / s;
+        let read = read_bottom(&self.markers.borrow(), sy, window);
+        if let Some((height, bottom)) = read {
+            state.bottom = bottom;
             if state.height.is_none_or(|h| (h - height).abs() > 1e-3) {
                 state.height = Some(height);
                 window.request_animation_frame();
             }
         }
-        drop(m);
-        let settled = [state.left, state.top, state.right, state.bottom]
-            .iter()
-            .all(|e| e.settled());
-        if !settled {
-            window.request_animation_frame();
-        }
-        if let Some(id) = id {
-            window.with_element_state::<BlockState, _>(id, |_, _| ((), state));
-        }
-        self.root = Some(root);
+        self.finish(id, state, root, window);
     }
 
     fn paint(
@@ -826,5 +1035,88 @@ mod block_tests {
         let after = cx.debug_bounds("after").expect("laid out");
         let y = f32::from(after.origin.y);
         assert!((y - 80.5).abs() < 0.01, "after at {y}");
+    }
+
+    thread_local! {
+        static BODY_RENDERS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    }
+
+    struct Body {
+        h: f32,
+        slot: std::rc::Rc<super::BlockSlot>,
+    }
+
+    impl Render for Body {
+        fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            BODY_RENDERS.with(|n| n.set(n.get() + 1));
+            let h = self.h;
+            super::block_content(
+                &self.slot,
+                div()
+                    .h(px(h))
+                    .w_full()
+                    .debug_selector(move || format!("body:{h}")),
+                window,
+            )
+        }
+    }
+
+    struct CachedCol {
+        a: gpui_kit::Entity<Body>,
+        b: gpui_kit::Entity<Body>,
+    }
+
+    impl Render for CachedCol {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let (sa, sb) = (self.a.read(cx).slot.clone(), self.b.read(cx).slot.clone());
+            div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .child(div().flex_none().w(px(1.)).aspect_ratio(1. / 0.3))
+                .child(div().flex_none().h(px(10.)))
+                .child(super::cached_block("a", 5., &self.a, &sa, cx))
+                .child(super::cached_block("b", 5., &self.b, &sb, cx))
+                .child(div().h(px(5.)).debug_selector(|| "after".into()))
+        }
+    }
+
+    #[gpui_kit::test]
+    fn cached_blocks_lay_out_as_inline_ones_and_replay_on_a_host_redraw(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        use gpui_kit::AppContext as _;
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            crate::init(cx);
+        });
+        let (view, cx) = cx.add_window_view(|_, cx| {
+            let body = |h, cx: &mut gpui_kit::App| {
+                cx.new(|_| Body {
+                    h,
+                    slot: std::rc::Rc::default(),
+                })
+            };
+            CachedCol {
+                a: body(40., cx),
+                b: body(30., cx),
+            }
+        });
+        for _ in 0..6 {
+            cx.update(|window, cx| {
+                window.refresh();
+                let _ = window.draw(cx);
+            });
+        }
+        cx.run_until_parked();
+        let y = f32::from(cx.debug_bounds("after").expect("laid out").origin.y);
+        assert!((y - 80.5).abs() < 0.01, "after at {y}");
+        let b = cx.debug_bounds("body:30").expect("b laid out");
+        assert!((f32::from(b.origin.y) - 50.5).abs() < 0.01, "b at {b:?}");
+        let before = BODY_RENDERS.with(|n| n.get());
+        cx.update(|_, cx| view.update(cx, |_, cx| cx.notify()));
+        cx.run_until_parked();
+        assert_eq!(BODY_RENDERS.with(|n| n.get()), before, "a host redraw re-rendered a block");
+        assert!(cx.debug_bounds("body:30").is_some(), "a replayed block lost its content");
     }
 }

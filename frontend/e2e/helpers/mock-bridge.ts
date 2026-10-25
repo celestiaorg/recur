@@ -1350,6 +1350,11 @@ export const resolvers: Record<string, Resolver> = {
     (s as any).shellState = a[0] ?? { view: '' }
     return null
   },
+  GetUIZoom: (_a, s) => (s as any).uiZoom ?? 1,
+  SetUIZoom: (a, s) => {
+    (s as any).uiZoom = a[0]
+    return null
+  },
   GetExpandedSchedules: (_a, s) => (s as any).expandedSchedules ?? [],
   SetExpandedSchedules: (a, s) => {
     (s as any).expandedSchedules = a[0] ?? []

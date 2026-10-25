@@ -770,7 +770,8 @@ impl Observatory {
                 return;
             };
             let _ = this.update(cx, |o, cx| {
-                if token != o.changed_files_gen {
+                // A watcher event re-lists them; the same list redraws nothing.
+                if token != o.changed_files_gen || ch == o.changed_paths {
                     return;
                 }
                 // Changed files appearing for the first time while the full tree shows keep
@@ -1000,6 +1001,8 @@ impl Observatory {
             let _ = this.update(cx, |o, cx| {
                 o.refresh_loaded_dirs_in_flight = false;
                 let pending = o.refresh_loaded_dirs_pending;
+                let missing = o.worktree_missing;
+                let mut changed = false;
                 if token == o.root_token {
                     match batch {
                         Err(e) => {
@@ -1038,6 +1041,7 @@ impl Observatory {
                                     Some(_) => o.arm_gone_confirm(cx),
                                 }
                             }
+                            changed = next != o.tree || !gone.is_empty();
                             o.tree = next;
                             for d in &gone {
                                 o.dir_not_found_since.remove(d);
@@ -1051,7 +1055,11 @@ impl Observatory {
                 if pending {
                     o.schedule_live_refresh(cx);
                 }
-                cx.notify();
+                // Every watcher event re-lists the folders on screen; a listing that changed
+                // nothing must not redraw the explorer (and every other region of the view).
+                if changed || o.worktree_missing != missing {
+                    cx.notify();
+                }
             });
         })
     }

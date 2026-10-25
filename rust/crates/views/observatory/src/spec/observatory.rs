@@ -1287,3 +1287,24 @@ async fn a_working_status_refresh_that_changes_nothing_does_not_notify(cx: &mut 
     h.update(|o, _, cx| o.refresh_working_status(cx).detach());
     assert_eq!(n.get(), 0);
 }
+
+/// The other watcher refreshes (the changed files, the folders on screen) likewise notify
+/// only on a change: each redrew the explorer tree beside the commit message.
+#[gpui::test]
+async fn a_live_refresh_that_changes_nothing_does_not_notify(cx: &mut TestAppContext) {
+    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    h.update(|o, _, cx| {
+        o.refresh_changed_files(cx).detach();
+        o.refresh_loaded_dirs(cx).detach();
+    });
+    let n = std::rc::Rc::new(std::cell::Cell::new(0));
+    let seen = n.clone();
+    let obs = h.obs.clone();
+    let _sub =
+        h.cx.update(|_, cx| cx.observe(&obs, move |_, _| seen.set(seen.get() + 1)));
+    h.update(|o, _, cx| {
+        o.refresh_changed_files(cx).detach();
+        o.refresh_loaded_dirs(cx).detach();
+    });
+    assert_eq!(n.get(), 0);
+}

@@ -476,6 +476,19 @@ pub fn cached_view<V: gpui_kit::Render>(
     entity.clone().cached(style).into_any_element()
 }
 
+/// `entity` as an isolated view laid out at `style`: a notify of it, or of a view inside it,
+/// renders only it, in place, while the frame replays its ancestors (Recur's gpui-pre patch,
+/// `rust/vendor/README.md`). Its size comes from `style`, never its content: a view that needs
+/// another size notifies its host. Reads the entity first, as [`cached_view`] does.
+pub fn isolated_view<V: gpui_kit::Render>(
+    entity: &gpui_kit::Entity<V>,
+    style: gpui_kit::StyleRefinement,
+    cx: &App,
+) -> gpui_kit::AnyElement {
+    let _ = entity.read(cx);
+    entity.clone().isolated(style).into_any_element()
+}
+
 /// The root of a cached view's content: [`window_root`]'s tie nudge (a cached view lays out as
 /// its own root from a snapped origin, without the window's) around a column the content fills.
 pub fn cached_root(content: impl IntoElement) -> Div {

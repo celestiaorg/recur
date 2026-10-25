@@ -1057,6 +1057,115 @@ pub(crate) struct Frame {
     #[cfg(any(feature = "inspector", debug_assertions))]
     pub(crate) inspector_hitboxes: FxHashMap<HitboxId, crate::InspectorElementId>,
     pub(crate) tab_stops: TabStopMap,
+    /// Where each cached view's content is in this frame, kept current when an ancestor
+    /// replays it, so an isolated view can draw again in place.
+    cached_views: Vec<CachedViewRecord>,
+    island_ids: FxHashSet<EntityId>,
+    /// The root's content and the size it was laid out at.
+    root: Option<(Range<PrepaintStateIndex>, Range<PaintIndex>, Size<Pixels>)>,
+}
+
+struct CachedViewRecord {
+    global_id: GlobalElementId,
+    prepaint: Range<PrepaintStateIndex>,
+    paint: Range<PaintIndex>,
+    /// `paint` is still the previous frame's, until the replay that copies it maps it.
+    paint_pending: bool,
+    opacity: f32,
+    island: Option<Rc<crate::view::Island>>,
+}
+
+/// A frame index as a list of counters, so a replay can map any of them.
+trait FrameIndex: Clone {
+    fn parts(&self) -> SmallVec<[usize; 12]>;
+    fn with_parts(&self, parts: &[usize]) -> Self;
+}
+
+impl FrameIndex for PrepaintStateIndex {
+    fn parts(&self) -> SmallVec<[usize; 12]> {
+        let mut parts = SmallVec::from_slice(&[
+            self.hitboxes_index,
+            self.tooltips_index,
+            self.deferred_draws_index,
+            self.dispatch_tree_index,
+            self.accessed_element_states_index,
+        ]);
+        parts.extend(self.line_layout_index.parts());
+        parts
+    }
+
+    fn with_parts(&self, p: &[usize]) -> Self {
+        PrepaintStateIndex {
+            hitboxes_index: p[0],
+            tooltips_index: p[1],
+            deferred_draws_index: p[2],
+            dispatch_tree_index: p[3],
+            accessed_element_states_index: p[4],
+            line_layout_index: self.line_layout_index.with_parts(&p[5..]),
+        }
+    }
+}
+
+impl FrameIndex for PaintIndex {
+    fn parts(&self) -> SmallVec<[usize; 12]> {
+        let mut parts = SmallVec::from_slice(&[
+            self.scene_index,
+            self.mouse_listeners_index,
+            self.input_handlers_index,
+            self.cursor_styles_index,
+            self.accessed_element_states_index,
+            self.tab_handle_index,
+            #[cfg(any(test, feature = "test-support"))]
+            self.debug_bounds_index,
+        ]);
+        parts.extend(self.line_layout_index.parts());
+        parts
+    }
+
+    fn with_parts(&self, p: &[usize]) -> Self {
+        PaintIndex {
+            scene_index: p[0],
+            mouse_listeners_index: p[1],
+            input_handlers_index: p[2],
+            cursor_styles_index: p[3],
+            accessed_element_states_index: p[4],
+            tab_handle_index: p[5],
+            #[cfg(any(test, feature = "test-support"))]
+            debug_bounds_index: p[6],
+            line_layout_index: self.line_layout_index.with_parts(&p[p.len() - 4..]),
+        }
+    }
+}
+
+fn index_within<I: FrameIndex>(range: &Range<I>, inner: &Range<I>) -> bool {
+    let (a, b, c, d) = (range.start.parts(), range.end.parts(), inner.start.parts(), inner.end.parts());
+    (0..a.len()).all(|i| a[i] <= c[i] && d[i] <= b[i])
+}
+
+/// Maps an index of the previous frame through a replay: `segments` are its runs, each the
+/// old range and where it landed, in order. A run copied unchanged shifts the counters inside
+/// it; a view drawn again in its place maps only its own edges.
+fn map_index<I: FrameIndex>(segments: &[(Range<I>, Range<I>, bool)], index: &I) -> I {
+    let parts = index.parts();
+    let mut mapped = parts.clone();
+    for (i, x) in parts.iter().enumerate() {
+        for (old, new, copied) in segments {
+            let (a, b) = (old.start.parts()[i], old.end.parts()[i]);
+            if a <= *x && *x <= b {
+                let (na, nb) = (new.start.parts()[i], new.end.parts()[i]);
+                mapped[i] = if *copied {
+                    na + (x - a)
+                } else if *x == a {
+                    na
+                } else {
+                    debug_assert_eq!(*x, b, "an index inside a view drawn again");
+                    nb
+                };
+                break;
+            }
+        }
+    }
+    index.with_parts(&mapped)
 }
 
 #[derive(Clone, Default)]
@@ -1116,7 +1225,37 @@ impl Frame {
             #[cfg(any(feature = "inspector", debug_assertions))]
             inspector_hitboxes: FxHashMap::default(),
             tab_stops: TabStopMap::default(),
+            cached_views: Vec::new(),
+            island_ids: FxHashSet::default(),
+            root: None,
         }
+    }
+
+    pub(crate) fn push_cached_view(
+        &mut self,
+        global_id: GlobalElementId,
+        prepaint: Range<PrepaintStateIndex>,
+        island: Option<Rc<crate::view::Island>>,
+    ) -> usize {
+        if let Some(island) = &island {
+            self.island_ids.insert(island.entity_id());
+        }
+        self.cached_views.push(CachedViewRecord {
+            global_id,
+            prepaint,
+            paint: PaintIndex::default()..PaintIndex::default(),
+            paint_pending: false,
+            opacity: 1.,
+            island,
+        });
+        self.cached_views.len() - 1
+    }
+
+    pub(crate) fn set_cached_view_paint(&mut self, ix: usize, paint: Range<PaintIndex>, opacity: f32) {
+        let record = &mut self.cached_views[ix];
+        record.paint = paint;
+        record.paint_pending = false;
+        record.opacity = opacity;
     }
 
     pub(crate) fn clear(&mut self) {
@@ -1132,6 +1271,9 @@ impl Frame {
         self.window_control_hitboxes.clear();
         self.deferred_draws.clear();
         self.tab_stops.clear();
+        self.cached_views.clear();
+        self.island_ids.clear();
+        self.root = None;
         self.focus = None;
 
         #[cfg(any(test, feature = "test-support"))]
@@ -1254,6 +1396,13 @@ pub struct Window {
     pub(crate) tooltip_bounds: Option<TooltipBounds>,
     pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
     pub(crate) dirty_views: FxHashSet<EntityId>,
+    /// A notify this frame reached a view outside every isolated view (or no view at all).
+    dirty_outside_islands: bool,
+    /// Isolated views drawn again inside a replay, waiting for the replay's paint: the
+    /// previous frame's record, the element, and this frame's record.
+    island_elements: Vec<(usize, AnyElement, usize)>,
+    /// Every entity the last frame read, for a frame that replays the whole root.
+    last_accessed: FxHashSet<EntityId>,
     focus_listeners: SubscriberSet<(), AnyWindowFocusListener>,
     pub(crate) focus_lost_listeners: SubscriberSet<(), AnyObserver>,
     focus_lost_path: SmallVec<[FocusId; 8]>,
@@ -2154,6 +2303,9 @@ impl Window {
             next_tooltip_id: TooltipId::default(),
             tooltip_bounds: None,
             dirty_views: FxHashSet::default(),
+            dirty_outside_islands: false,
+            island_elements: Vec::new(),
+            last_accessed: FxHashSet::default(),
             focus_listeners: SubscriberSet::new(),
             focus_lost_listeners: SubscriberSet::new(),
             focus_lost_path: SmallVec::new(),
@@ -2251,16 +2403,22 @@ impl ContentMask<Pixels> {
 impl Window {
     fn mark_view_dirty(&mut self, view_id: EntityId) {
         // Mark ancestor views as dirty. If already in the `dirty_views` set, then all its ancestors
-        // should already be dirty.
+        // should already be dirty. An isolated view draws again in place, so the walk stops there.
+        let isolate = !self.a11y.is_active();
+        let mut absorbed = false;
         for view_id in self
             .rendered_frame
             .dispatch_tree
             .view_path_reversed(view_id)
         {
-            if !self.dirty_views.insert(view_id) {
+            if !self.dirty_views.insert(view_id)
+                || (isolate && self.rendered_frame.island_ids.contains(&view_id))
+            {
+                absorbed = true;
                 break;
             }
         }
+        self.dirty_outside_islands |= !absorbed;
     }
 
     pub(crate) fn refresh_visibility(&mut self, cx: &mut App) {
@@ -3472,6 +3630,8 @@ impl Window {
             }
         }
         self.dirty_views.clear();
+        self.dirty_outside_islands = false;
+        self.island_elements.clear();
         self.next_frame.window_active = self.active.get();
 
         // Register requested input handler with the platform window.
@@ -3506,6 +3666,7 @@ impl Window {
         self.layout_engine.as_mut().unwrap().clear();
         self.text_system().finish_frame();
         self.next_frame.finish(&mut self.rendered_frame);
+        self.rebase_cached_view_states();
 
         self.invalidator.set_phase(DrawPhase::Focus);
         let previous_focus_path = self.rendered_frame.focus_path();
@@ -3578,9 +3739,29 @@ impl Window {
         arena_scope.exit(&cx.element_arena)
     }
 
+    /// Points every cached view's state at where this frame put it, so a later frame that
+    /// renders an ancestor again finds what it replays (a replayed root moves them all).
+    fn rebase_cached_view_states(&mut self) {
+        let frame = &mut self.next_frame;
+        for record in &frame.cached_views {
+            if record.paint_pending {
+                continue;
+            }
+            let key = (record.global_id.clone(), TypeId::of::<crate::view::ViewElementState>());
+            if let Some(state) = frame.element_states.get_mut(&key) {
+                crate::view::rebase_view_state(
+                    &mut *state.inner,
+                    record.prepaint.clone(),
+                    record.paint.clone(),
+                );
+            }
+        }
+    }
+
     fn record_entities_accessed(&mut self, cx: &mut App) {
         let mut entities_ref = cx.entities.accessed_entities.get_mut();
         let mut entities = mem::take(entities_ref.deref_mut());
+        self.last_accessed.clone_from(&entities);
         let handle = self.handle;
         cx.record_entities_accessed(
             handle,
@@ -3699,15 +3880,45 @@ impl Window {
         let scale_factor = self.scale_factor();
         #[cfg(feature = "profiler")]
         let request_layout_start = Instant::now();
-        let mut root_element = self.root.as_ref().unwrap().clone().into_any_element();
-        let root_layout_id = root_element.request_layout(self, cx);
+        let replay_root = self
+            .rendered_frame
+            .root
+            .clone()
+            .filter(|(.., size)| {
+                *size == root_size
+                    && !self.refreshing
+                    && !self.dirty_outside_islands
+                    && !self.dirty_views.is_empty()
+                    && !self.a11y.is_active()
+                    && !self.is_inspector_picking(cx)
+            });
+        let mut root_element = None;
+        let root_prepaint_start = self.prepaint_index();
         #[cfg(feature = "profiler")]
-        let prepaint_start = Instant::now();
-        self.layout_engine
-            .as_mut()
-            .unwrap()
-            .stretch_auto_size_to_fill(root_layout_id, root_size, scale_factor);
-        root_element.prepaint_as_root(Point::default(), root_size.into(), self, cx);
+        let prepaint_start;
+        if let Some((prepaint, ..)) = &replay_root {
+            // Only isolated views are dirty: replay the root and draw them again in place.
+            #[cfg(feature = "profiler")]
+            {
+                prepaint_start = Instant::now();
+            }
+            cx.entities.extend_accessed(&self.last_accessed);
+            self.reuse_prepaint(prepaint.clone(), cx);
+        } else {
+            let mut element = self.root.as_ref().unwrap().clone().into_any_element();
+            let root_layout_id = element.request_layout(self, cx);
+            #[cfg(feature = "profiler")]
+            {
+                prepaint_start = Instant::now();
+            }
+            self.layout_engine
+                .as_mut()
+                .unwrap()
+                .stretch_auto_size_to_fill(root_layout_id, root_size, scale_factor);
+            element.prepaint_as_root(Point::default(), root_size.into(), self, cx);
+            root_element = Some(element);
+        }
+        let root_prepaint = root_prepaint_start..self.prepaint_index();
 
         #[cfg(any(feature = "inspector", debug_assertions))]
         let inspector_element = self.prepaint_inspector(_inspector_width, cx);
@@ -3743,7 +3954,16 @@ impl Window {
         #[cfg(feature = "profiler")]
         let paint_start = Instant::now();
         self.invalidator.set_phase(DrawPhase::Paint);
-        root_element.paint(self, cx);
+        let root_paint_start = self.paint_index();
+        if let Some(mut element) = root_element {
+            element.paint(self, cx);
+        } else if let Some((_, paint, _)) = replay_root {
+            self.reuse_paint(paint, cx);
+            self.next_frame
+                .window_control_hitboxes
+                .clone_from(&self.rendered_frame.window_control_hitboxes);
+        }
+        self.next_frame.root = Some((root_prepaint, root_paint_start..self.paint_index(), root_size));
 
         #[cfg(any(feature = "inspector", debug_assertions))]
         self.paint_inspector(inspector_element, cx);
@@ -3923,7 +4143,7 @@ impl Window {
                     });
                     self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
                 } else {
-                    self.reuse_prepaint(prepaint_range);
+                    self.reuse_prepaint(prepaint_range, cx);
                 }
                 let prepaint_end = self.prepaint_index();
                 self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
@@ -3966,7 +4186,7 @@ impl Window {
                     })
                 })
             } else {
-                self.reuse_paint(deferred_draw.paint_range.clone());
+                self.reuse_paint(deferred_draw.paint_range.clone(), cx);
             }
             let paint_end = self.paint_index();
             deferred_draw.paint_range = paint_start..paint_end;
@@ -3993,7 +4213,92 @@ impl Window {
         }
     }
 
-    pub(crate) fn reuse_prepaint(&mut self, range: Range<PrepaintStateIndex>) {
+    /// Replays `range` of the previous frame's prepaint, drawing any dirty isolated view in it
+    /// again in place.
+    pub(crate) fn reuse_prepaint(&mut self, range: Range<PrepaintStateIndex>, cx: &mut App) {
+        let mut holes: Vec<usize> = (0..self.rendered_frame.cached_views.len())
+            .filter(|&ix| {
+                let record = &self.rendered_frame.cached_views[ix];
+                let p = &record.prepaint;
+                record
+                    .island
+                    .as_ref()
+                    .is_some_and(|island| self.dirty_views.contains(&island.entity_id()))
+                    && range.start.dispatch_tree_index < p.start.dispatch_tree_index
+                    && p.end.dispatch_tree_index <= range.end.dispatch_tree_index
+            })
+            .collect();
+        holes.sort_by_key(|&ix| self.rendered_frame.cached_views[ix].prepaint.start.dispatch_tree_index);
+        let mut outer_end = 0;
+        holes.retain(|&ix| {
+            let p = &self.rendered_frame.cached_views[ix].prepaint;
+            let outermost = p.start.dispatch_tree_index >= outer_end;
+            if outermost {
+                outer_end = p.end.dispatch_tree_index;
+            }
+            outermost
+        });
+
+        let mut reused = crate::ReusedSubtree::default();
+        let mut segments = Vec::new();
+        let mut at = range.start.clone();
+        for ix in holes {
+            let record = &self.rendered_frame.cached_views[ix];
+            let (hole, island) = (record.prepaint.clone(), record.island.clone().unwrap());
+            self.reuse_prepaint_run(at..hole.start.clone(), &mut reused, &mut segments);
+            self.next_frame
+                .dispatch_tree
+                .reuse_hole(&mut reused, DispatchNodeId::new(hole.start.dispatch_tree_index - 1));
+            let start = self.prepaint_index();
+            let (element, new_record) = island.prepaint(self, cx);
+            self.island_elements.push((ix, element, new_record));
+            segments.push((hole.clone(), start..self.prepaint_index(), false));
+            at = hole.end;
+        }
+        self.reuse_prepaint_run(at..range.end.clone(), &mut reused, &mut segments);
+        self.next_frame.dispatch_tree.finish_reuse(&mut reused);
+        if reused.contains_focus() {
+            self.next_frame.focus = self.focus;
+        }
+
+        // Carry the records of the cached views replayed, at their new place.
+        let drawn = segments
+            .iter()
+            .filter(|(.., copied)| !copied)
+            .map(|(old, ..)| old.clone())
+            .collect::<SmallVec<[_; 2]>>();
+        for ix in 0..self.rendered_frame.cached_views.len() {
+            let record = &self.rendered_frame.cached_views[ix];
+            let p = &record.prepaint;
+            let inside = |r: &Range<PrepaintStateIndex>| {
+                r.start.dispatch_tree_index <= p.start.dispatch_tree_index
+                    && p.end.dispatch_tree_index <= r.end.dispatch_tree_index
+            };
+            if !inside(&range) || drawn.iter().any(inside) {
+                continue;
+            }
+            let prepaint = map_index(&segments, &p.start)..map_index(&segments, &p.end);
+            let (global_id, paint, opacity, island) = (
+                record.global_id.clone(),
+                record.paint.clone(),
+                record.opacity,
+                record.island.clone(),
+            );
+            let new = self.next_frame.push_cached_view(global_id, prepaint, island);
+            let new = &mut self.next_frame.cached_views[new];
+            new.paint = paint;
+            new.paint_pending = true;
+            new.opacity = opacity;
+        }
+    }
+
+    fn reuse_prepaint_run(
+        &mut self,
+        range: Range<PrepaintStateIndex>,
+        reused_subtree: &mut crate::ReusedSubtree,
+        segments: &mut Vec<(Range<PrepaintStateIndex>, Range<PrepaintStateIndex>, bool)>,
+    ) {
+        let start = self.prepaint_index();
         self.next_frame.hitboxes.extend(
             self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
                 .iter()
@@ -4011,18 +4316,16 @@ impl Window {
                 .iter()
                 .map(|(id, type_id)| (id.clone(), *type_id)),
         );
-        self.text_system
-            .reuse_layouts(range.start.line_layout_index..range.end.line_layout_index);
+        self.text_system.reuse_layouts(
+            range.start.line_layout_index.clone()..range.end.line_layout_index.clone(),
+        );
 
-        let reused_subtree = self.next_frame.dispatch_tree.reuse_subtree(
+        self.next_frame.dispatch_tree.reuse_run(
+            reused_subtree,
             range.start.dispatch_tree_index..range.end.dispatch_tree_index,
             &mut self.rendered_frame.dispatch_tree,
             self.focus,
         );
-
-        if reused_subtree.contains_focus() {
-            self.next_frame.focus = self.focus;
-        }
 
         self.next_frame.deferred_draws.extend(
             self.rendered_frame.deferred_draws
@@ -4042,6 +4345,7 @@ impl Window {
                     paint_range: deferred_draw.paint_range.clone(),
                 }),
         );
+        segments.push((range, start..self.prepaint_index(), true));
     }
 
     pub(crate) fn paint_index(&self) -> PaintIndex {
@@ -4058,7 +4362,44 @@ impl Window {
         }
     }
 
-    pub(crate) fn reuse_paint(&mut self, range: Range<PaintIndex>) {
+    /// Replays `range` of the previous frame's paint, painting the isolated views
+    /// [`Self::reuse_prepaint`] drew again in their place.
+    pub(crate) fn reuse_paint(&mut self, range: Range<PaintIndex>, cx: &mut App) {
+        let mut segments = Vec::new();
+        let mut at = range.start.clone();
+        let islands = mem::take(&mut self.island_elements);
+        let (inside, rest): (Vec<_>, Vec<_>) = islands.into_iter().partition(|(ix, ..)| {
+            index_within(&range, &self.rendered_frame.cached_views[*ix].paint)
+        });
+        self.island_elements = rest;
+        for (ix, mut element, record) in inside {
+            let old = &self.rendered_frame.cached_views[ix];
+            let (hole, opacity, island) = (old.paint.clone(), old.opacity, old.island.clone().unwrap());
+            self.reuse_paint_run(at..hole.start.clone(), &mut segments);
+            let start = self.paint_index();
+            island.paint(&mut element, record, opacity, self, cx);
+            segments.push((hole.clone(), start..self.paint_index(), false));
+            at = hole.end;
+        }
+        self.reuse_paint_run(at..range.end.clone(), &mut segments);
+        for ix in 0..self.next_frame.cached_views.len() {
+            let record = &self.next_frame.cached_views[ix];
+            if record.paint_pending && index_within(&range, &record.paint) {
+                let paint = map_index(&segments, &record.paint.start)
+                    ..map_index(&segments, &record.paint.end);
+                let record = &mut self.next_frame.cached_views[ix];
+                record.paint = paint;
+                record.paint_pending = false;
+            }
+        }
+    }
+
+    fn reuse_paint_run(
+        &mut self,
+        range: Range<PaintIndex>,
+        segments: &mut Vec<(Range<PaintIndex>, Range<PaintIndex>, bool)>,
+    ) {
+        let start = self.paint_index();
         // Cached elements still exist in the frame even when their paint methods don't run.
         #[cfg(any(test, feature = "test-support"))]
         for (selector, bounds) in &self.rendered_frame.debug_bounds_records
@@ -4096,12 +4437,14 @@ impl Window {
                 [range.start.tab_handle_index..range.end.tab_handle_index],
         );
 
-        self.text_system
-            .reuse_layouts(range.start.line_layout_index..range.end.line_layout_index);
+        self.text_system.reuse_layouts(
+            range.start.line_layout_index.clone()..range.end.line_layout_index.clone(),
+        );
         self.next_frame.scene.replay(
             range.start.scene_index..range.end.scene_index,
             &self.rendered_frame.scene,
         );
+        segments.push((range, start..self.paint_index(), true));
     }
 
     /// Push a text style onto the stack, and call a function with that style active.

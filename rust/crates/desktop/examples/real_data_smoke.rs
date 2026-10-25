@@ -161,6 +161,47 @@ fn carry_dirty(real: &Path, dst: &Path) {
     }
 }
 
+/// Copies the files a workspace's saved editor session has open from the real worktree when
+/// the sandbox lacks them: ignored files (an `.env`) are not carried by [`carry_dirty`], and a
+/// restored tab for a file the real worktree has would toast `Read failed` only here.
+fn carry_session_files(src: &Path, workspace_id: &str, real: &Path, dst: &Path) {
+    use std::io::Read as _;
+    let path = src
+        .join("workspaces")
+        .join(workspace_id)
+        .join("editor-session.json.gz");
+    let Ok(file) = std::fs::File::open(&path) else {
+        return;
+    };
+    let mut json = String::new();
+    if flate2::read::GzDecoder::new(file)
+        .read_to_string(&mut json)
+        .is_err()
+    {
+        return;
+    }
+    let Ok(sess) = serde_json::from_str::<serde_json::Value>(&json) else {
+        return;
+    };
+    let open = sess["openFiles"].as_array().into_iter().flatten();
+    for rel in open
+        .chain(std::iter::once(&sess["splitPath"]))
+        .filter_map(|v| v.as_str())
+    {
+        if rel.is_empty() || Path::new(rel).is_absolute() || rel.contains("..") {
+            continue;
+        }
+        let (from, to) = (real.join(rel), dst.join(rel));
+        if to.exists() || !from.is_file() {
+            continue;
+        }
+        if let Some(dir) = to.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let _ = std::fs::copy(&from, &to);
+    }
+}
+
 fn prepare(src: &Path, root: &Path) -> Res<()> {
     let src = src
         .canonicalize()
@@ -350,6 +391,7 @@ fn prepare(src: &Path, root: &Path) -> Res<()> {
                     Ok(_) => {
                         added += 1;
                         carry_dirty(Path::new(&wt), &dst);
+                        carry_session_files(&src, &id, Path::new(&wt), &dst);
                     }
                     Err(err) => println!("workspace {id}: {err}"),
                 }

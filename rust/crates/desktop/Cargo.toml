@@ -46,6 +46,7 @@ tracing-subscriber.workspace = true
 [dev-dependencies]
 async-trait.workspace = true
 chrono.workspace = true
+flate2.workspace = true
 recur-agent.workspace = true
 recur-forge.workspace = true
 recur-provider-claude.workspace = true

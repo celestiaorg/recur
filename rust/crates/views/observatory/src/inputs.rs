@@ -46,36 +46,38 @@ impl Inputs {
         });
         let emoji = attach_emoji(&commit, None, window, cx);
         let mentions = attach_user_mentions(&commit, state, None, window, cx);
-        let subs =
-            vec![
-                cx.guarded_subscribe_in(
-                    &query,
-                    window,
-                    |o, _, ev: &InputEvent, window, cx| match ev {
-                        InputEvent::PressEnter { .. } => o.run_search(true, window, cx),
-                        InputEvent::Change => cx.notify(),
-                        _ => {}
-                    },
-                ),
-                cx.guarded_subscribe(&replace, |_, _, ev: &InputEvent, cx| {
-                    if matches!(ev, InputEvent::Change) {
-                        cx.notify();
-                    }
-                }),
-                cx.guarded_subscribe(&glob, |_, _, ev: &InputEvent, cx| {
-                    if matches!(ev, InputEvent::Change) {
-                        cx.notify();
-                    }
-                }),
-                // No notify on a change: the source control panel reads the message as it
-                // renders, so its view redraws on its own, and a notify would redraw every
-                // region of the Observatory on every key.
-                cx.guarded_subscribe_in(&commit, window, |o, _, ev: &InputEvent, window, cx| {
-                    if let InputEvent::PressEnter { secondary: true, .. } = ev {
-                        o.human_commit(window, cx);
-                    }
-                }),
-            ];
+        let subs = vec![
+            cx.guarded_subscribe_in(
+                &query,
+                window,
+                |o, _, ev: &InputEvent, window, cx| match ev {
+                    InputEvent::PressEnter { .. } => o.run_search(true, window, cx),
+                    InputEvent::Change => cx.notify(),
+                    _ => {}
+                },
+            ),
+            cx.guarded_subscribe(&replace, |_, _, ev: &InputEvent, cx| {
+                if matches!(ev, InputEvent::Change) {
+                    cx.notify();
+                }
+            }),
+            cx.guarded_subscribe(&glob, |_, _, ev: &InputEvent, cx| {
+                if matches!(ev, InputEvent::Change) {
+                    cx.notify();
+                }
+            }),
+            // No notify on a change: the source control panel reads the message as it
+            // renders, so its view redraws on its own, and a notify would redraw every
+            // region of the Observatory on every key.
+            cx.guarded_subscribe_in(&commit, window, |o, _, ev: &InputEvent, window, cx| {
+                if let InputEvent::PressEnter {
+                    secondary: true, ..
+                } = ev
+                {
+                    o.human_commit(window, cx);
+                }
+            }),
+        ];
         Inputs {
             query,
             replace,

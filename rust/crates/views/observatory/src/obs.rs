@@ -527,6 +527,7 @@ pub struct Observatory {
     /// The main pane's empty state as its own cached view.
     pub(crate) empty_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) toolbar_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) scm_body_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) crumb_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) status_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     /// The window-corner padding the status bar needs, as of the last render.
@@ -794,6 +795,7 @@ impl Observatory {
             side_pane: None,
             empty_pane: None,
             toolbar_pane: None,
+            scm_body_pane: None,
             crumb_pane: None,
             status_pane: None,
             status_corner: (false, false),

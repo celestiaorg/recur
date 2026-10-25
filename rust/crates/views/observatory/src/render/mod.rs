@@ -837,9 +837,10 @@ impl Observatory {
             && let Some(kind) = self.right_meta(cx)
             && !(portal && kind == CodePanelKey::Maestro)
         {
-            // Its own cached view unless it holds the chat (whose composer would dirty it on every
-            // key) or stacks under the main area at its content's height.
-            if kind != CodePanelKey::Maestro && !narrow {
+            // Its own cached view unless it holds the chat or the commit message (whose keys
+            // would dirty it, redrawing all of it) or stacks under the main area at its content's
+            // height. Source control caches its changes list inside instead.
+            if !matches!(kind, CodePanelKey::Maestro | CodePanelKey::Scm) && !narrow {
                 let pane = self
                     .side_pane
                     .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::side_pane_body))

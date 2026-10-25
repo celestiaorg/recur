@@ -825,7 +825,14 @@ impl PrDetail {
             .flex_col()
             .overflow_hidden()
             .child(tabs)
-            .child(body)
+            .child(recur_ui::layout_root::layout_root(
+                "prd-body",
+                gpui_kit::StyleRefinement::default()
+                    .flex_1()
+                    .min_h_0()
+                    .min_w_0(),
+                div().size_full().flex().flex_col().child(body),
+            ))
             .children(self.more_menu(window, cx));
         split = split.child(col);
         let pop = if self.hovered_people

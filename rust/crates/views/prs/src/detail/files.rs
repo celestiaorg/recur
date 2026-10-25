@@ -483,7 +483,16 @@ impl PrDetail {
                 cx,
             )
         } else {
-            self.stack_element(window, cx)
+            let el = self.stack_element(window, cx);
+            recur_ui::layout_root::layout_root(
+                "pr-stack",
+                gpui_kit::StyleRefinement::default()
+                    .flex_1()
+                    .min_h_0()
+                    .min_w_0(),
+                div().size_full().flex().flex_col().child(el),
+            )
+            .into_any_element()
         };
         let probe = {
             let me = cx.entity().downgrade();

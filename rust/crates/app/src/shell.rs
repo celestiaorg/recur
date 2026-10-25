@@ -403,14 +403,13 @@ impl Shell {
         for (i, v) in order {
             let on = Some(i) == active;
             if on {
-                main = main.child(
-                    div()
-                        .flex_1()
-                        .min_h_0()
-                        .flex()
-                        .flex_col()
-                        .child(v.view.clone()),
-                );
+                // Its own layout root: the shell's nesting would lay the route out dozens of times
+                // a frame (see `recur_ui::layout_root`).
+                main = main.child(recur_ui::layout_root::layout_root(
+                    "route",
+                    gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
+                    div().size_full().flex().flex_col().child(v.view.clone()),
+                ));
             } else if v.keep_laid_out {
                 // `#v-detail.view`: hidden but laid out at the main area's size. Cached: GPUI lays
                 // the whole tree out every frame, and a hidden route only changes when notified.

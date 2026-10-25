@@ -6738,6 +6738,7 @@ version = "0.0.0"
 dependencies = [
  "async-trait",
  "chrono",
+ "flate2",
  "futures",
  "gpui-kit",
  "parking_lot",

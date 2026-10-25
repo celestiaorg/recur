@@ -1849,10 +1849,10 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
     let mut settle_total = 0;
     for (i, k) in seq.split_whitespace().enumerate() {
         sleep(cx, 60).await;
+        let settles = settle_frames(cx, window);
+        settle_total += settles;
         let moved = MOUSE_MOVES.swap(0, Ordering::SeqCst);
         let stored = STORE_NOTIFIES.swap(0, Ordering::SeqCst);
-        let settles = recur_ui::layout_root::take_settle_frames();
-        settle_total += settles;
         let t = Instant::now();
         FRAME_START.store(now_ms(), Ordering::SeqCst);
         keys(cx, window, k);
@@ -1870,7 +1870,8 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
             } else {
                 ""
             };
-            let after = format!("{after}, {stored} store notifies, {settles} settle frames before");
+            let after =
+                format!("{after}, {stored} store notifies, {settles} settle frames drawn before");
             println!(
                 "slow key {took:.0?} (#{i} {k}, dispatch {dispatched:.0?}) in {input}{after}: {views}"
             );
@@ -1897,6 +1898,18 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
             let _ = std::fs::remove_file(out);
         }
     }
+}
+
+/// Draws the frames layout roots and blocks asked for to settle, as the display link does
+/// between keys in the app (the smoke's unfocused window gets none, so they would land on the
+/// next key). Returns how many it drew.
+fn settle_frames(cx: &mut AsyncApp, window: AnyWindowHandle) -> u64 {
+    let mut drawn = 0;
+    while drawn < 64 && recur_ui::layout_root::take_settle_frames() > 0 {
+        draw(cx, window);
+        drawn += 1;
+    }
+    drawn
 }
 
 /// A key this slow lists what it rendered (`RECUR_SMOKE_SLOW_KEY_MS`, 100ms by default).

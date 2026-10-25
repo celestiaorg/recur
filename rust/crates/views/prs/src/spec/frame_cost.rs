@@ -176,3 +176,35 @@ async fn a_pr_tab_switch_does_not_lay_out_the_hidden_workspace(cx: &mut TestAppC
         &counts,
     );
 }
+
+/// Another workspace's agent event does not redraw the conversation: PR detail does not notify
+/// its items for a store change that leaves what it shows as it was. A change to this PR still
+/// redraws them.
+#[gpui::test]
+async fn an_unrelated_store_change_leaves_the_conversation_alone(cx: &mut TestAppContext) {
+    let mut s = open(cx);
+    let state = s.state.clone();
+    let counts = counted(&mut s, |s| {
+        s.cx.update(|_, cx| {
+            // What `apply_event` does with an agent event.
+            state.update(cx, |st, cx| {
+                let w = st.workspaces.iter_mut().find(|w| w.id == "LOOP-2224");
+                w.expect("workspace").last = "a new event".into();
+                st.changed(Topics::WORKSPACES, cx);
+            })
+        });
+        s.cx.run_until_parked();
+    });
+    assert_quiet("agent event", &CONVERSATION, &counts);
+
+    let counts = counted(&mut s, |s| {
+        s.cx.update(|_, cx| {
+            state.update(cx, |st, cx| {
+                let id = st.selected_pr_id.clone();
+                st.update_pr(&id, |p| p.title.push('!'), cx);
+            })
+        });
+        s.cx.run_until_parked();
+    });
+    assert!(renders("::ItemPane", &counts) > 0, "{counts:?}");
+}

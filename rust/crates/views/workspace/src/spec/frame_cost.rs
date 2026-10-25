@@ -38,17 +38,10 @@ fn renders(name: &str, counts: &BTreeMap<&'static str, u32>) -> u32 {
         .sum()
 }
 
-/// The views GPUI must render for a key typed into the composer: the composer's dock and its
-/// ancestors (a notify marks every ancestor view dirty, and an uncached view renders when its
-/// parent does). Everything else on screen is a cached boundary and is reused as it was.
-const COMPOSER_PATH: [&str; 6] = [
-    "::Shell",
-    "::WorkspaceDetail",
-    "::WorkspaceView",
-    "::Observatory",
-    "::AgentChat",
-    "::DockPane",
-];
+/// The views a key typed into the composer renders: the dock alone. It is an isolated view,
+/// so the frame replays its ancestors (Shell, the workspace, the Observatory, the chat) and
+/// everything beside it, and the toolbar and meter cached inside it.
+const COMPOSER_PATH: [&str; 1] = ["::DockPane"];
 
 #[gpui::test]
 async fn a_keystroke_in_a_long_chat_renders_and_lays_out_only_the_composer(
@@ -156,13 +149,13 @@ async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) 
     }
     let counts = recur_ui::guard::take_render_counts();
     recur_ui::guard::count_renders(false);
-    // One frame per key, and only the composer's path in it: a parked shell (and the review it
-    // shows) is not laid out again however many workspaces came before, and the bound review
-    // is cached.
+    // One frame per key, rendering the dock alone: a parked shell (and the review it shows) is
+    // not laid out again however many workspaces came before, and the bound review is cached.
     for (view, n) in [
-        ("::Shell", 3),
-        ("::WorkspaceView", 3),
-        ("::Observatory", 3),
+        ("::DockPane", 3),
+        ("::Shell", 0),
+        ("::WorkspaceView", 0),
+        ("::Observatory", 0),
         ("::ReviewSurface", 0),
         ("::FilesChangedView", 0),
         ("::StackPane", 0),
@@ -328,6 +321,14 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
     let counts = recur_ui::guard::take_render_counts();
     recur_ui::guard::count_renders(false);
     assert!(renders("::DraftView", &counts) >= 3, "{counts:?}");
+    let beside: Vec<_> = counts
+        .keys()
+        .filter(|k| !k.ends_with("::DraftView"))
+        .collect();
+    assert!(
+        beside.is_empty(),
+        "a key rendered beside the text box: {counts:?}"
+    );
     for quiet in [
         "::DiffFile",
         "::StackPane",
@@ -343,4 +344,41 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
         .iter()
         .find_map(|c| c.read_with(s.cx, |c, cx| c.composer_open().then(|| c.draft_text(cx))));
     assert_eq!(typed.as_deref(), Some("abcd"));
+}
+
+/// A key in the commit message renders the box alone, not the source control panel, the
+/// Observatory or the chat beside it.
+#[gpui::test]
+async fn a_key_in_the_commit_message_renders_the_box_only(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    s.open(ACTIVE);
+    let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
+    s.cx.update(|window, cx| {
+        obs.update(cx, |o, cx| {
+            o.select_code_panel(recur_view_core::prefs::CodePanelKey::Scm, window, cx)
+        })
+    });
+    s.settle();
+    let focused =
+        s.cx.update(|window, cx| obs.update(cx, |o, cx| o.focus_commit_msg(window, cx)));
+    assert!(focused, "no commit box");
+    s.settle();
+    s.cx.simulate_input("a");
+    s.cx.run_until_parked();
+    recur_ui::guard::count_renders(true);
+    for ch in ["b", "c", "d"] {
+        s.cx.simulate_input(ch);
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    assert!(renders("::FieldView", &counts) >= 3, "{counts:?}");
+    let beside: Vec<_> = counts
+        .keys()
+        .filter(|k| !k.ends_with("::FieldView"))
+        .collect();
+    assert!(
+        beside.is_empty(),
+        "a commit key rendered beside the box: {counts:?}"
+    );
 }

@@ -2,11 +2,16 @@
 //! everything around it (`style::isolated_view`, Recur's gpui-pre patch in
 //! `rust/vendor/README.md`).
 
-use gpui_kit::base::input::{InputBaseState, InputModeKind};
+use std::cell::Cell;
+use std::rc::Rc;
+
+use gpui_kit::base::input::{InputBaseState, InputEvent, InputModeKind, Textarea, TextareaState};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, IntoElement, Render, StyleRefinement,
-    Styled as _, Window, div, px,
+    AnyElement, App, AppContext as _, Context, Entity, EntityId, IntoElement, ParentElement as _,
+    Render, StyleRefinement, Styled as _, Subscription, Window, canvas, div, px,
 };
+
+use crate::guard::Guarded as _;
 
 type Content = Box<dyn Fn(&mut Window, &mut App) -> AnyElement>;
 
@@ -66,4 +71,98 @@ pub fn textarea_style(rows: usize, line_height: f32) -> StyleRefinement {
         .h_full()
         .min_h(px(rows as f32 * line_height));
     d.style().clone()
+}
+
+/// A growing gpui-base textarea as an isolated field. Its host lays it out with
+/// [`Self::element`] and redraws only when what it derives changes: whether the value is
+/// empty (submit buttons) and the rows (the box's height).
+pub struct IsolatedArea {
+    view: Entity<FieldView>,
+    area: Entity<TextareaState>,
+    rows: (usize, usize),
+    _sub: Subscription,
+}
+
+impl IsolatedArea {
+    /// `area` (auto-growing within `rows`), rendered by the view of `cx`.
+    pub fn new<H: 'static>(
+        area: &Entity<TextareaState>,
+        rows: (usize, usize),
+        cx: &mut Context<H>,
+    ) -> Self {
+        let view = {
+            let area = area.clone();
+            FieldView::new(move |_, _| Textarea::new(&area).into_any_element(), cx)
+        };
+        let shown = Cell::new(None);
+        let sub = cx.guarded_subscribe(area, move |_, area, ev: &InputEvent, cx| {
+            if matches!(ev, InputEvent::Change) {
+                let now = (
+                    area.read(cx).value().trim().is_empty(),
+                    textarea_rows(&area, rows, cx),
+                );
+                if shown.replace(Some(now)) != Some(now) {
+                    cx.notify();
+                }
+            }
+        });
+        IsolatedArea {
+            view,
+            area: area.clone(),
+            rows,
+            _sub: sub,
+        }
+    }
+
+    /// The textarea, in a box whose text has `line_height`.
+    pub fn element(&self, line_height: f32, cx: &App) -> AnyElement {
+        let rows = textarea_rows(&self.area, self.rows, cx);
+        FieldView::element(&self.view, textarea_style(rows, line_height), cx)
+    }
+}
+
+/// The height an isolated view's content measured, shared with the host that lays it out:
+/// for a view whose height follows content the host cannot compute (the chat's dock).
+#[derive(Default)]
+pub struct Fit {
+    height: Cell<Option<f32>>,
+    host: Cell<Option<EntityId>>,
+}
+
+impl Fit {
+    /// The isolated view's content, measured; the host redraws when its height changes.
+    pub fn content(self: &Rc<Self>, child: impl IntoElement) -> gpui_kit::Div {
+        let fit = self.clone();
+        let probe = canvas(
+            move |b, _, cx| {
+                let h = f32::from(b.size.height);
+                if fit.height.replace(Some(h)) != Some(h)
+                    && let Some(host) = fit.host.get()
+                {
+                    cx.defer(move |cx| cx.notify(host));
+                }
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0();
+        div().relative().w_full().child(child).child(probe)
+    }
+
+    /// The host's side: `entity` isolated, full width, at its content's measured height
+    /// (`estimate` until it has measured).
+    pub fn view<V: Render>(
+        self: &Rc<Self>,
+        entity: &Entity<V>,
+        estimate: f32,
+        window: &Window,
+        cx: &App,
+    ) -> AnyElement {
+        self.host.set(Some(window.current_view()));
+        let mut style = div()
+            .w_full()
+            .flex_none()
+            .h(px(self.height.get().unwrap_or(estimate)));
+        crate::style::isolated_view(entity, style.style().clone(), cx)
+    }
 }

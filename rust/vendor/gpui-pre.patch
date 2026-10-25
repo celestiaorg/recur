@@ -154,7 +154,7 @@ index f0bf1211..a6dadf1f 100644
      pub fn new(
          platform_text_system: Arc<dyn PlatformTextSystem>,
 diff --git a/rust/vendor/gpui-pre/src/view.rs b/rust/vendor/gpui-pre/src/view.rs
-index 081edd9a..f01ccda8 100644
+index 081edd9a..884462c2 100644
 --- a/rust/vendor/gpui-pre/src/view.rs
 +++ b/rust/vendor/gpui-pre/src/view.rs
 @@ -2,13 +2,15 @@ use crate::{
@@ -356,13 +356,15 @@ index 081edd9a..f01ccda8 100644
  
                      ((), element_state)
                  },
-@@ -637,3 +689,146 @@ fn paint_component(
+@@ -637,3 +689,149 @@ fn paint_component(
          element.as_mut().unwrap().paint(window, cx);
      });
  }
 +
 +/// Renders a cached view's content as its own layout root at `bounds`, nested caches off.
-+/// An isolated view records every entity it reads, not only those first read this frame.
++/// An isolated view keeps them on (every cached view's state points at its place in the last
++/// frame, `Window::rebase_cached_view_states`) and records every entity it reads, not only
++/// those first read this frame.
 +fn render_cached(
 +    bounds: Bounds<Pixels>,
 +    isolated: bool,
@@ -370,7 +372,8 @@ index 081edd9a..f01ccda8 100644
 +    cx: &mut App,
 +    render: &mut dyn FnMut(&mut Window, &mut App) -> AnyElement,
 +) -> (AnyElement, Range<PrepaintStateIndex>, FxHashSet<EntityId>) {
-+    let refreshing = mem::replace(&mut window.refreshing, true);
++    let nested_off = window.refreshing || !isolated;
++    let refreshing = mem::replace(&mut window.refreshing, nested_off);
 +    let prepaint_start = window.prepaint_index();
 +    let outer = isolated.then(|| mem::take(cx.entities.accessed_entities.get_mut()));
 +    let (element, mut accessed_entities) = cx.detect_accessed_entities(|cx| {

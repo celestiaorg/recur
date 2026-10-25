@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use gpui_kit::base::input::{InputEvent, Textarea, TextareaState};
+use gpui_kit::base::input::TextareaState;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, AppContext as _, Bounds, ClipboardItem, Context, DispatchPhase, Entity,
@@ -25,6 +25,7 @@ use recur_engine::view::comment_thread::{
 };
 use recur_engine::view::js;
 use recur_forge::github::comment_permalink;
+use recur_ui::isolated::IsolatedArea;
 use recur_ui::logic::menu_space::{more_menu_fixed_box, rects_overlap};
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, TextStyled, text};
@@ -82,11 +83,12 @@ type Area = Entity<TextareaState>;
 
 struct Composer {
     area: Area,
+    /// The textarea as an isolated field: a key renders it, not the thread or the stack.
+    isolated: IsolatedArea,
     _attach: (
         Entity<SuggestAttach<gpui_kit::base::input::TextareaMode>>,
         Entity<SuggestAttach<gpui_kit::base::input::TextareaMode>>,
     ),
-    _sub: Subscription,
 }
 
 pub struct LineNoteThread {
@@ -250,15 +252,10 @@ impl LineNoteThread {
         crate::style::style_textarea(&area, cx);
         let emoji = attach_emoji(&area, None, window, cx);
         let mentions = attach_user_mentions(&area, self.state.clone(), None, window, cx);
-        let sub = cx.guarded_subscribe(&area, |_, _, ev: &InputEvent, cx| {
-            if matches!(ev, InputEvent::Change) {
-                cx.notify();
-            }
-        });
         Composer {
+            isolated: IsolatedArea::new(&area, (1, 6), cx),
             area,
             _attach: (emoji, mentions),
-            _sub: sub,
         }
     }
 
@@ -732,7 +729,7 @@ impl LineNoteThread {
                     }
                 }),
             )
-            .child(Textarea::new(&area));
+            .child(composer.isolated.element(line, cx));
         let hint = div()
             .flex()
             .items_center()

@@ -5,6 +5,7 @@
 use gpui_kit::base::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::{AppContext as _, Context, Entity, SharedString, Subscription, Window};
 use recur_ui::guard::Guarded;
+use recur_ui::isolated::IsolatedArea;
 use recur_view_chat::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 use recur_view_core::AppState;
 
@@ -15,6 +16,8 @@ pub struct Inputs {
     pub replace: Entity<InputState>,
     pub glob: Entity<InputState>,
     pub commit: Entity<TextareaState>,
+    /// The commit box as an isolated field: a key renders the box, not the Observatory.
+    pub commit_view: IsolatedArea,
     pub _attach: (
         Entity<SuggestAttach<gpui_kit::base::input::TextareaMode>>,
         Entity<SuggestAttach<gpui_kit::base::input::TextareaMode>>,
@@ -44,6 +47,7 @@ impl Inputs {
                 .auto_grow(2, 5)
                 .placeholder(SharedString::from(COMMIT_PLACEHOLDER))
         });
+        let commit_view = IsolatedArea::new(&commit, (2, 5), cx);
         let emoji = attach_emoji(&commit, None, window, cx);
         let mentions = attach_user_mentions(&commit, state, None, window, cx);
         let subs = vec![
@@ -83,6 +87,7 @@ impl Inputs {
             replace,
             glob,
             commit,
+            commit_view,
             _attach: (emoji, mentions),
             _subs: subs,
         }

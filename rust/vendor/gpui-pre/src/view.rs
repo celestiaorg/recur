@@ -691,7 +691,9 @@ fn paint_component(
 }
 
 /// Renders a cached view's content as its own layout root at `bounds`, nested caches off.
-/// An isolated view records every entity it reads, not only those first read this frame.
+/// An isolated view keeps them on (every cached view's state points at its place in the last
+/// frame, `Window::rebase_cached_view_states`) and records every entity it reads, not only
+/// those first read this frame.
 fn render_cached(
     bounds: Bounds<Pixels>,
     isolated: bool,
@@ -699,7 +701,8 @@ fn render_cached(
     cx: &mut App,
     render: &mut dyn FnMut(&mut Window, &mut App) -> AnyElement,
 ) -> (AnyElement, Range<PrepaintStateIndex>, FxHashSet<EntityId>) {
-    let refreshing = mem::replace(&mut window.refreshing, true);
+    let nested_off = window.refreshing || !isolated;
+    let refreshing = mem::replace(&mut window.refreshing, nested_off);
     let prepaint_start = window.prepaint_index();
     let outer = isolated.then(|| mem::take(cx.entities.accessed_entities.get_mut()));
     let (element, mut accessed_entities) = cx.detect_accessed_entities(|cx| {

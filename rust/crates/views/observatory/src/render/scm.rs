@@ -756,7 +756,7 @@ impl Observatory {
             .text_size(px(12.5))
             .line_height(gpui_kit::relative(1.5))
             .when(busy, |d| d.opacity(0.55))
-            .child(gpui_kit::base::input::Textarea::new(&self.inputs.commit));
+            .child(self.inputs.commit_view.element(18.75, cx));
         let compose = recur_ui::style::card(t.bg, t.line, 10.)
             .flex()
             .flex_col()

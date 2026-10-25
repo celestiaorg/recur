@@ -1,14 +1,13 @@
 //! The PR textareas (`.finding-note-input`): a gpui-base textarea with the emoji and GitHub
 //! `@mention` typeaheads attached (`emojiShortcodes`, `userMentions`).
 
-use gpui_kit::base::input::{InputEvent, Textarea, TextareaMode, TextareaState};
+use gpui_kit::base::input::{InputEvent, TextareaMode, TextareaState};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, Focusable as _, IntoElement as _,
-    KeystrokeEvent, SharedString, Subscription, Window,
+    AnyElement, App, AppContext as _, Context, Entity, Focusable as _, KeystrokeEvent,
+    SharedString, Subscription, Window,
 };
 use recur_ui::guard::Guarded;
-use recur_ui::isolated::{FieldView, textarea_rows, textarea_style};
-use std::cell::Cell;
+use recur_ui::isolated::IsolatedArea;
 use std::rc::Rc;
 
 use recur_view_chat::suggest::{SetFn, SuggestAttach, attach_emoji, attach_user_mentions};
@@ -17,8 +16,7 @@ use recur_view_core::AppState;
 pub struct Field {
     pub area: Entity<TextareaState>,
     /// The textarea as its own isolated view: a key renders it alone, not its host.
-    view: Entity<FieldView>,
-    rows: (usize, usize),
+    isolated: IsolatedArea,
     _attach: (
         Entity<SuggestAttach<TextareaMode>>,
         Entity<SuggestAttach<TextareaMode>>,
@@ -45,10 +43,7 @@ impl Field {
         });
         recur_view_review::style::style_textarea(&area, cx);
         // A typeahead pick rewrites the value without an input event.
-        let view = {
-            let area = area.clone();
-            FieldView::new(move |_, _| Textarea::new(&area).into_any_element(), cx)
-        };
+        let isolated = IsolatedArea::new(&area, rows, cx);
         let me = cx.entity().downgrade();
         let on_set: SetFn = Rc::new(move |_, _, cx| {
             let _ = me.update(cx, |h, cx| {
@@ -58,25 +53,15 @@ impl Field {
         });
         let emoji = attach_emoji(&area, Some(on_set.clone()), window, cx);
         let mentions = attach_user_mentions(&area, state.clone(), Some(on_set), window, cx);
-        // A key renders only the textarea; the host redraws for what it derives from it:
-        // whether it is empty (the submit buttons) and its rows (its height).
-        let shown = Cell::new(None);
-        let sub = cx.guarded_subscribe(&area, move |h, area, ev: &InputEvent, cx| {
+        // A key renders only the textarea (`isolated` redraws the host for what it derives).
+        let sub = cx.guarded_subscribe(&area, move |h, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 on_change(h, cx);
-                let now = (
-                    area.read(cx).value().trim().is_empty(),
-                    textarea_rows(&area, rows, cx),
-                );
-                if shown.replace(Some(now)) != Some(now) {
-                    cx.notify();
-                }
             }
         });
         Field {
             area,
-            view,
-            rows,
+            isolated,
             _attach: (emoji, mentions),
             _sub: sub,
             _submit: None,
@@ -109,8 +94,7 @@ impl Field {
 
     /// The textarea, in a box whose text has `line_height`.
     pub fn element(&self, line_height: f32, cx: &App) -> AnyElement {
-        let rows = textarea_rows(&self.area, self.rows, cx);
-        FieldView::element(&self.view, textarea_style(rows, line_height), cx)
+        self.isolated.element(line_height, cx)
     }
 
     pub fn value(&self, cx: &App) -> String {

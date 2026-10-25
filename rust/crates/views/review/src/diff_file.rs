@@ -4,6 +4,7 @@
 //! against the scrolling pane (`review-window.ts`).
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -24,6 +25,7 @@ use recur_code::view::finding_paths::{
 use recur_domain::{DiffLine, FileDiff, Finding, PendingLineComment, Pr, PrComment};
 use recur_engine::view::comment_thread::{
     DiffSide, is_line_note_root, line_notes_covering_row, line_notes_on_row, same_comment_path,
+    thread_replies,
 };
 use recur_engine::view::js;
 use recur_ui::exact::vgap;
@@ -208,8 +210,45 @@ pub struct DiffFile {
     /// and changes to the slots, composer, drag or highlight (as the Svelte effect), never
     /// for its own window change.
     line_window_key: String,
+    /// What the card reads of the selected PR, kept until the store changes it.
+    facts: Rc<PrFacts>,
     /// `.diff-file.selecting` hovered row for `draft-tip` hover state.
     _subs: Vec<Subscription>,
+}
+
+/// What a card reads of the selected PR: the PR without its files, commits and comments, the
+/// file's pending comments and its line notes with their replies. A card never holds the PR
+/// itself (tens of MB with its patches), and redraws only when these change.
+#[derive(Default, PartialEq)]
+struct PrFacts {
+    head: Option<Rc<Pr>>,
+    pending: Vec<PendingLineComment>,
+    notes: Vec<PrComment>,
+}
+
+fn replies_to(notes: &[PrComment], root: &PrComment) -> Vec<PrComment> {
+    thread_replies(notes, &root.id)
+        .into_iter()
+        .cloned()
+        .collect()
+}
+
+/// The line notes on `path` and every reply to them.
+fn file_notes(comments: &[PrComment], path: &str) -> Vec<PrComment> {
+    let roots: Vec<&PrComment> = comments
+        .iter()
+        .filter(|c| same_comment_path(&c.path, path))
+        .collect();
+    let mut out: Vec<PrComment> = roots.iter().map(|c| (*c).clone()).collect();
+    for root in &roots {
+        out.extend(
+            thread_replies(comments, &root.id)
+                .into_iter()
+                .filter(|c| !same_comment_path(&c.path, path))
+                .cloned(),
+        );
+    }
+    out
 }
 
 impl DiffFile {
@@ -229,7 +268,11 @@ impl DiffFile {
         crate::style::style_textarea(&draft, cx);
         let emoji = attach_emoji(&draft, None, window, cx);
         let mentions = attach_user_mentions(&draft, state.clone(), None, window, cx);
-        let subs = vec![cx.guarded_observe(&state, |_, _, cx| cx.notify())];
+        let subs = vec![
+            cx.observe_state(&state, Topics::PRS, |this: &mut Self, _, cx| {
+                this.refresh_facts(cx)
+            }),
+        ];
         let mut me = DiffFile {
             state,
             props,
@@ -263,8 +306,10 @@ impl DiffFile {
             head_stuck: false,
             placeholder: "Comment…".into(),
             line_window_key: String::new(),
+            facts: Rc::default(),
             _subs: subs,
         };
+        me.facts = Rc::new(me.read_facts(cx));
         me.reset_for_path();
         if me.props.highlight_line > 0 {
             me.begin_jump(me.props.highlight_line, window, cx);
@@ -300,6 +345,7 @@ impl DiffFile {
         }
         let jump = props.highlight_line != self.props.highlight_line;
         self.props = props;
+        self.facts = Rc::new(self.read_facts(cx));
         let path_changed = self.props.file.path != self.loaded_path;
         self.reset_for_path();
         if path_changed {
@@ -359,26 +405,37 @@ impl DiffFile {
         })
     }
 
-    fn pr(&self, cx: &App) -> Option<Pr> {
+    fn read_facts(&self, cx: &App) -> PrFacts {
         if self.mode() != NoteMode::Pr {
-            return None;
+            return PrFacts::default();
         }
         let s = self.state.read(cx);
-        s.pr(&s.selected_pr_id).cloned()
+        let Some(pr) = s.pr(&s.selected_pr_id) else {
+            return PrFacts::default();
+        };
+        let path = &self.props.file.path;
+        PrFacts {
+            head: Some(Rc::new(recur_view_core::pr::pr_head(pr))),
+            pending: pr
+                .pending_comments
+                .iter()
+                .filter(|pc| pc.file == *path)
+                .cloned()
+                .collect(),
+            notes: file_notes(pr.comments.as_deref().unwrap_or_default(), path),
+        }
     }
 
-    fn pending_here(&self, pr: Option<&Pr>) -> Vec<PendingLineComment> {
-        if self.mode() != NoteMode::Pr {
-            return Vec::new();
+    fn refresh_facts(&mut self, cx: &mut Context<Self>) {
+        let facts = self.read_facts(cx);
+        if facts != *self.facts {
+            self.facts = Rc::new(facts);
+            cx.notify();
         }
-        pr.map(|p| {
-            p.pending_comments
-                .iter()
-                .filter(|pc| pc.file == self.props.file.path)
-                .cloned()
-                .collect()
-        })
-        .unwrap_or_default()
+    }
+
+    fn pr(&self) -> Option<&Pr> {
+        self.facts.head.as_deref()
     }
 
     fn can_comment(&self, pr: Option<&Pr>) -> bool {
@@ -454,19 +511,15 @@ impl DiffFile {
     }
 
     /// The classes of the row with number `n` on `side` (unified layout), for hosts and tests.
-    pub fn row_classes(&self, n: i64, side: DiffSide, cx: &App) -> Option<RowFlags> {
+    pub fn row_classes(&self, n: i64, side: DiffSide, _cx: &App) -> Option<RowFlags> {
         let i = find_line(self.lines(), n, side)?;
-        let pr = self.pr(cx);
-        let pending = self.pending_here(pr.as_ref());
-        let notes: Vec<PrComment> = if self.mode() == NoteMode::Pr {
-            pr.as_ref()
-                .and_then(|p| p.comments.clone())
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        };
         let split = self.props.layout == DiffLayout::Split;
-        Some(self.row_flags(i, split.then_some(side), &pending, &notes))
+        Some(self.row_flags(
+            i,
+            split.then_some(side),
+            &self.facts.pending,
+            &self.facts.notes,
+        ))
     }
 
     /// The mounted line-note threads.
@@ -497,8 +550,7 @@ impl DiffFile {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let pr = self.pr(cx);
-        if !self.can_note_side(side, pr.as_ref()) {
+        if !self.can_note_side(side, self.pr()) {
             return;
         }
         let line = self.lines()[line_i].clone();
@@ -532,8 +584,7 @@ impl DiffFile {
     /// Open a line-note composer on the first new-side line that takes a note and focus it;
     /// whether it took focus (a card off screen has nothing to focus).
     pub fn open_first_note(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        let pr = self.pr(cx);
-        if !self.can_note_side(DiffSide::Right, pr.as_ref()) {
+        if !self.can_note_side(DiffSide::Right, self.pr()) {
             return false;
         }
         let Some(i) = self
@@ -635,8 +686,7 @@ impl DiffFile {
 
     fn submit(&mut self, line_i: usize, window: &mut Window, cx: &mut Context<Self>) {
         let body = js::trim(&self.draft_text(cx)).to_string();
-        let pr = self.pr(cx);
-        if body.is_empty() || self.posting || !self.can_comment(pr.as_ref()) {
+        if body.is_empty() || self.posting || !self.can_comment(self.pr()) {
             return;
         }
         let line = self.lines()[line_i].clone();
@@ -810,8 +860,7 @@ impl DiffFile {
     // ---- range drag over the `+` controls ----
 
     fn begin_range(&mut self, line_i: usize, side: DiffSide, cx: &mut Context<Self>) {
-        let pr = self.pr(cx);
-        if !self.can_note_side(side, pr.as_ref()) {
+        if !self.can_note_side(side, self.pr()) {
             return;
         }
         let n = row_num(&self.lines()[line_i], side);
@@ -898,12 +947,12 @@ impl DiffFile {
         cx.notify();
     }
 
-    fn post_threads_on_file(&self, cx: &App) -> Vec<PrComment> {
-        self.pr(cx)
-            .and_then(|p| p.comments)
-            .unwrap_or_default()
-            .into_iter()
+    fn post_threads_on_file(&self) -> Vec<PrComment> {
+        self.facts
+            .notes
+            .iter()
             .filter(|c| is_line_note_root(c) && same_comment_path(&c.path, &self.props.file.path))
+            .cloned()
             .collect()
     }
 
@@ -951,7 +1000,7 @@ impl DiffFile {
         let hl = self.props.highlight_line;
         let jumping = hl > 0 && self.last_jump != hl;
         let jump_slot = if jumping {
-            let threads = self.post_threads_on_file(cx);
+            let threads = self.post_threads_on_file();
             let refs: Vec<&PrComment> = threads.iter().collect();
             if self.props.layout == DiffLayout::Split {
                 slot_of_split_highlight(self.lines(), &self.slots_split(), hl, &refs)
@@ -1952,13 +2001,13 @@ impl DiffFile {
         let entity = match self.threads.get(&note.id) {
             Some(e) => {
                 e.update(cx, |th, cx| {
-                    th.set(note.clone(), notes.to_vec(), pr.cloned(), cx)
+                    th.set(note.clone(), replies_to(notes, note), pr.cloned(), cx)
                 });
                 e.clone()
             }
             None => {
                 let state = self.state.clone();
-                let (n, items, p) = (note.clone(), notes.to_vec(), pr.cloned());
+                let (n, items, p) = (note.clone(), replies_to(notes, note), pr.cloned());
                 let e = cx.new(|cx| LineNoteThread::new(state, n, items, p, window, cx));
                 self.threads.insert(note.id.clone(), e.clone());
                 e
@@ -2270,17 +2319,10 @@ impl DiffFile {
             g.addcs.clear();
         }
         self.threads_seen.clear();
-        let pr = self.pr(cx);
-        let pending = self.pending_here(pr.as_ref());
-        let notes: Vec<PrComment> = pr
-            .as_ref()
-            .and_then(|p| p.comments.clone())
-            .unwrap_or_default();
-        let notes = if self.mode() == NoteMode::Pr {
-            notes
-        } else {
-            Vec::new()
-        };
+        let facts = self.facts.clone();
+        let pr = facts.head.as_deref();
+        let pending = &facts.pending;
+        let notes = &facts.notes;
         let collapsed = self.is_collapsed();
         let mut root = div()
             .id(SharedString::from(format!(
@@ -2321,9 +2363,9 @@ impl DiffFile {
                                 left.map(|c| c.i),
                                 DiffSide::Left,
                                 slot,
-                                pr.as_ref(),
-                                &pending,
-                                &notes,
+                                pr,
+                                pending,
+                                notes,
                                 group.clone(),
                                 window,
                                 cx,
@@ -2332,9 +2374,9 @@ impl DiffFile {
                                 right.map(|c| c.i),
                                 DiffSide::Right,
                                 slot,
-                                pr.as_ref(),
-                                &pending,
-                                &notes,
+                                pr,
+                                pending,
+                                notes,
                                 group.clone(),
                                 window,
                                 cx,
@@ -2355,9 +2397,9 @@ impl DiffFile {
                                 kids.extend(self.comment_block(
                                     c.i,
                                     false,
-                                    pr.as_ref(),
-                                    &pending,
-                                    &notes,
+                                    pr,
+                                    pending,
+                                    notes,
                                     &format!("{slot}l"),
                                     window,
                                     cx,
@@ -2369,9 +2411,9 @@ impl DiffFile {
                                 kids.extend(self.comment_block(
                                     c.i,
                                     false,
-                                    pr.as_ref(),
-                                    &pending,
-                                    &notes,
+                                    pr,
+                                    pending,
+                                    notes,
                                     &format!("{slot}r"),
                                     window,
                                     cx,
@@ -2394,25 +2436,25 @@ impl DiffFile {
                                 Some(DiffSide::Right),
                             );
                             let pend_l = ll.as_ref().map_or(Vec::new(), |l| {
-                                pending_on(&pending, l, Some(DiffSide::Left))
+                                pending_on(pending, l, Some(DiffSide::Left))
                                     .into_iter()
                                     .cloned()
                                     .collect::<Vec<_>>()
                             });
                             let pend_r = rl.as_ref().map_or(Vec::new(), |l| {
-                                pending_on(&pending, l, Some(DiffSide::Right))
+                                pending_on(pending, l, Some(DiffSide::Right))
                                     .into_iter()
                                     .cloned()
                                     .collect::<Vec<_>>()
                             });
                             let notes_l: Vec<PrComment> = ll.as_ref().map_or(Vec::new(), |l| {
-                                line_notes_on_row(&notes, &path, l, Some(DiffSide::Left))
+                                line_notes_on_row(notes, &path, l, Some(DiffSide::Left))
                                     .into_iter()
                                     .cloned()
                                     .collect()
                             });
                             let notes_r: Vec<PrComment> = rl.as_ref().map_or(Vec::new(), |l| {
-                                line_notes_on_row(&notes, &path, l, Some(DiffSide::Right))
+                                line_notes_on_row(notes, &path, l, Some(DiffSide::Right))
                                     .into_iter()
                                     .cloned()
                                     .collect()
@@ -2434,19 +2476,14 @@ impl DiffFile {
                                             || !notes_r.is_empty()))
                                     || !finds_r.is_empty());
                             if show {
-                                let can = self.can_comment(pr.as_ref());
+                                let can = self.can_comment(pr);
                                 let mut lcol = div().flex_1().min_w_0().flex().flex_col();
                                 let mut rcol = div().flex_1().min_w_0().flex().flex_col();
                                 if pr_mode {
                                     for n in &notes_l {
-                                        lcol = lcol.child(self.thread_block(
-                                            n,
-                                            &notes,
-                                            pr.as_ref(),
-                                            true,
-                                            window,
-                                            cx,
-                                        ));
+                                        lcol = lcol.child(
+                                            self.thread_block(n, notes, pr, true, window, cx),
+                                        );
                                     }
                                     for pc in &pend_l {
                                         lcol = lcol.child(self.pending_card(pc, true, window, cx));
@@ -2460,14 +2497,9 @@ impl DiffFile {
                                 }
                                 if pr_mode {
                                     for n in &notes_r {
-                                        rcol = rcol.child(self.thread_block(
-                                            n,
-                                            &notes,
-                                            pr.as_ref(),
-                                            true,
-                                            window,
-                                            cx,
-                                        ));
+                                        rcol = rcol.child(
+                                            self.thread_block(n, notes, pr, true, window, cx),
+                                        );
                                     }
                                     for pc in &pend_r {
                                         rcol = rcol.child(self.pending_card(pc, true, window, cx));
@@ -2495,21 +2527,13 @@ impl DiffFile {
                     let kids = if self.lines()[i].r#type == "hunk" {
                         vec![self.hunk_row(i, slot, window, cx)]
                     } else {
-                        let mut v = vec![self.unified_row(
-                            i,
-                            slot,
-                            pr.as_ref(),
-                            &pending,
-                            &notes,
-                            window,
-                            cx,
-                        )];
+                        let mut v = vec![self.unified_row(i, slot, pr, pending, notes, window, cx)];
                         v.extend(self.comment_block(
                             i,
                             true,
-                            pr.as_ref(),
-                            &pending,
-                            &notes,
+                            pr,
+                            pending,
+                            notes,
                             &slot.to_string(),
                             window,
                             cx,

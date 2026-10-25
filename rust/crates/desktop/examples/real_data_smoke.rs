@@ -356,6 +356,8 @@ fn prepare(src: &Path, root: &Path) -> Res<()> {
         }
         let project = v["projectId"].as_str().unwrap_or("");
         let next = if let Some(m) = moved.get(&wt) {
+            // A workspace on the project's main checkout (or one another workspace shares).
+            carry_session_files(&src, &id, Path::new(&wt), Path::new(m));
             m.clone()
         } else {
             let name = Path::new(&wt)

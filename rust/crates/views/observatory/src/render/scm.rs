@@ -253,8 +253,8 @@ impl Observatory {
     ) -> gpui_kit::Stateful<gpui_kit::Div> {
         let t = Theme::of(cx).tokens;
         let open = !self.scm_collapsed.contains(&e.path);
-        let (staged_p, unstaged_p) = self.working_paths();
-        let files = paths_under_dir(&e.path, if staged { &staged_p } else { &unstaged_p });
+        let wp = self.working_paths();
+        let files = paths_under_dir(&e.path, if staged { &wp.0 } else { &wp.1 });
         let n = files.len();
         let key = format!("{}:{}/", if staged { "s" } else { "u" }, e.path);
         let hovered = self.scm_hovered.as_deref() == Some(key.as_str());
@@ -401,8 +401,8 @@ impl Observatory {
 
     fn scm_section(&self, staged: bool, cx: &mut Context<Self>) -> Option<AnyElement> {
         let t = Theme::of(cx).tokens;
-        let (staged_p, unstaged_p) = self.working_paths();
-        let paths = if staged { staged_p } else { unstaged_p };
+        let wp = self.working_paths();
+        let paths = if staged { &wp.0 } else { &wp.1 };
         if paths.is_empty() {
             return None;
         }
@@ -457,7 +457,7 @@ impl Observatory {
             );
         let mut rows: Vec<AnyElement> = Vec::new();
         if self.scm_file_list_mode == FileListMode::Tree {
-            let tree = build_tree_from_paths(&paths);
+            let tree = build_tree_from_paths(paths);
             let cap = if self.expanded_lists.contains(key) {
                 usize::MAX
             } else {
@@ -501,7 +501,7 @@ impl Observatory {
         let rows = self.scm_probes.rows.borrow().clone();
         let ends = self.scm_probes.ends.borrow().clone();
         let mut out: Vec<(usize, AnyElement)> = Vec::new();
-        let (staged_p, unstaged_p) = self.working_paths();
+        let wp = self.working_paths();
         for (key, (natural, depth)) in rows {
             let Some(end) = ends.get(&key).copied() else {
                 continue;
@@ -520,7 +520,7 @@ impl Observatory {
             if top <= content_top + 0.01 {
                 continue;
             }
-            let paths = if staged { &staged_p } else { &unstaged_p };
+            let paths = if staged { &wp.0 } else { &wp.1 };
             let tree = build_tree_from_paths(paths);
             let Some(e) = crate::explorer::find_entry(&tree, &path).cloned() else {
                 continue;

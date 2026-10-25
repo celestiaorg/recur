@@ -150,6 +150,8 @@ pub struct PrDetail {
     /// The conversation's items as of its last render, for the timeline's item panes.
     pub(crate) conv_items: Rc<Vec<PrComment>>,
     render_pr: Option<Option<Rc<Pr>>>,
+    /// The selected PR's own comments for a render, until the store next notifies.
+    render_comments: Option<Rc<Vec<PrComment>>>,
     pub(crate) commits_scroll: ScrollHandle,
     pub(crate) checks_scroll: ScrollHandle,
     pub(crate) checks_box_scroll: ScrollHandle,
@@ -325,6 +327,7 @@ impl PrDetail {
             timeline: Default::default(),
             conv_items: Rc::default(),
             render_pr: None,
+            render_comments: None,
             commits_scroll: ScrollHandle::new(),
             checks_scroll: ScrollHandle::new(),
             checks_box_scroll: ScrollHandle::new(),
@@ -397,6 +400,29 @@ impl PrDetail {
         pr_agent_workspace_id(s.pr(&s.selected_pr_id), &s.workspaces)
     }
 
+    /// [`thread_items`](Self::thread_items) for a render: the PR's comments are copied once per
+    /// store change, not on every frame of a key typed beside them.
+    pub(crate) fn render_items(&mut self, cx: &App) -> Rc<Vec<PrComment>> {
+        let stored = match &self.render_comments {
+            Some(c) => c.clone(),
+            None => {
+                let c = Rc::new(
+                    self.pr_ref(cx)
+                        .and_then(|p| p.comments.clone())
+                        .unwrap_or_default(),
+                );
+                self.render_comments = Some(c.clone());
+                c
+            }
+        };
+        if self.live_comments.is_empty() {
+            return stored;
+        }
+        let mut out = (*stored).clone();
+        out.extend(self.live_comments.iter().cloned());
+        Rc::new(out)
+    }
+
     /// `threadItems`: the PR's comments, then the live ones.
     pub(crate) fn thread_items(&self, cx: &App) -> Vec<PrComment> {
         let mut out = self
@@ -427,6 +453,7 @@ impl PrDetail {
 
     fn state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.render_pr = None;
+        self.render_comments = None;
         let (view, id) = {
             let s = self.state().read(cx);
             (s.view, s.selected_pr_id.clone())

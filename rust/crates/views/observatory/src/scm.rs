@@ -10,12 +10,24 @@ use recur_view_review::review_diff::{FileListMode, write_file_list_mode};
 use crate::obs::{Observatory, OpenRequest};
 
 impl Observatory {
-    /// `stagedPaths` / `unstagedPaths` of the working status, sorted.
-    pub(crate) fn working_paths(&self) -> (Vec<String>, Vec<String>) {
+    /// `stagedPaths` / `unstagedPaths` of the working status, sorted. Every folder row of the
+    /// changes list reads them, so they are sorted once per status change, not once per row.
+    pub(crate) fn working_paths(&self) -> std::rc::Rc<crate::obs::WorkingPaths> {
+        if let Some(m) = self.working_paths_memo.borrow().as_ref() {
+            return m.clone();
+        }
+        let staged: std::collections::HashSet<&str> =
+            self.staged_files.iter().map(String::as_str).collect();
         let mut all: Vec<String> = self.working_status.keys().cloned().collect();
         all.sort_by(|a, b| recur_code::collate::locale_compare(a, b));
-        all.into_iter()
-            .partition(|p| self.staged_files.iter().any(|s| s == p))
+        let m = std::rc::Rc::new(all.into_iter().partition(|p| staged.contains(p.as_str())));
+        *self.working_paths_memo.borrow_mut() = Some(m.clone());
+        m
+    }
+
+    /// Drops `working_paths` after `working_status` or `staged_files` changed.
+    pub(crate) fn working_changed(&self) {
+        self.working_paths_memo.borrow_mut().take();
     }
 
     pub(crate) fn set_scm_file_list_mode(&mut self, next: FileListMode, cx: &mut Context<Self>) {
@@ -271,12 +283,12 @@ impl Observatory {
     }
 
     pub(crate) fn stage_all(&mut self, cx: &mut Context<Self>) {
-        let (_, unstaged) = self.working_paths();
+        let unstaged = self.working_paths().1.clone();
         self.stage_paths(unstaged, true, cx);
     }
 
     pub(crate) fn unstage_all(&mut self, cx: &mut Context<Self>) {
-        let (staged, _) = self.working_paths();
+        let staged = self.working_paths().0.clone();
         self.stage_paths(staged, false, cx);
     }
 

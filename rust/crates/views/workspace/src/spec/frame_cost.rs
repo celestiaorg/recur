@@ -292,7 +292,14 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
     s.open(ACTIVE);
     let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
     s.cx.update(|_, cx| obs.update(cx, |o, cx| o.click_review_toggle(cx)));
+    // The findings beside the review, in the left dock.
+    s.cx.update(|window, cx| {
+        obs.update(cx, |o, cx| {
+            o.select_code_panel(recur_view_core::prefs::CodePanelKey::Findings, window, cx)
+        })
+    });
     s.settle();
+    assert!(s.has("obs-left"), "no left dock");
     let cards: Vec<_> = obs.read_with(s.cx, |o, cx| {
         o.review_surface()
             .map(|r| {
@@ -328,6 +335,7 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
         "::FilesChangedView",
         "::ReviewFileList",
         "::TranscriptPane",
+        "::FindingsPanel",
     ] {
         assert_eq!(renders(quiet, &counts), 0, "{quiet} rendered: {counts:?}");
     }

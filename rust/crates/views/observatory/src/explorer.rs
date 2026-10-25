@@ -327,6 +327,7 @@ impl Observatory {
         self.git_status_ready = false;
         self.working_status.clear();
         self.staged_files.clear();
+        self.working_changed();
         self.worktree_missing = false;
         self.outline.clear();
         self.hits.clear();
@@ -425,6 +426,7 @@ impl Observatory {
                 if let Some(staged) = staged {
                     o.staged_files = staged;
                 }
+                o.working_changed();
                 o.git_status_ready = true;
                 if !soft {
                     o.end_tree_load();
@@ -666,6 +668,7 @@ impl Observatory {
             self.paths_gen += 1;
             self.working_status.clear();
             self.staged_files.clear();
+            self.working_changed();
             cx.notify();
             return Task::ready(());
         }
@@ -701,6 +704,7 @@ impl Observatory {
             self.working_status_gen += 1;
             self.working_status.clear();
             self.staged_files.clear();
+            self.working_changed();
             cx.notify();
             return Task::ready(());
         }
@@ -723,12 +727,26 @@ impl Observatory {
                 if token != o.working_status_gen {
                     return;
                 }
-                if let Some(st) = st {
-                    o.working_status = compact_status(st);
+                // A watcher event refreshes the status; one that changed nothing redraws
+                // nothing (the changes list beside the commit message is costly on a large
+                // change set).
+                let mut changed = false;
+                if let Some(st) = st.map(compact_status)
+                    && st != o.working_status
+                {
+                    o.working_status = st;
+                    changed = true;
                 }
-                if let Some(s) = staged {
+                if let Some(s) = staged
+                    && s != o.staged_files
+                {
                     o.staged_files = s;
+                    changed = true;
                 }
+                if !changed {
+                    return;
+                }
+                o.working_changed();
                 o.sync_review_props_later(cx);
                 cx.notify();
             });
@@ -752,7 +770,8 @@ impl Observatory {
                 return;
             };
             let _ = this.update(cx, |o, cx| {
-                if token != o.changed_files_gen {
+                // A watcher event re-lists them; the same list redraws nothing.
+                if token != o.changed_files_gen || ch == o.changed_paths {
                     return;
                 }
                 // Changed files appearing for the first time while the full tree shows keep
@@ -982,6 +1001,8 @@ impl Observatory {
             let _ = this.update(cx, |o, cx| {
                 o.refresh_loaded_dirs_in_flight = false;
                 let pending = o.refresh_loaded_dirs_pending;
+                let missing = o.worktree_missing;
+                let mut changed = false;
                 if token == o.root_token {
                     match batch {
                         Err(e) => {
@@ -1020,6 +1041,7 @@ impl Observatory {
                                     Some(_) => o.arm_gone_confirm(cx),
                                 }
                             }
+                            changed = next != o.tree || !gone.is_empty();
                             o.tree = next;
                             for d in &gone {
                                 o.dir_not_found_since.remove(d);
@@ -1033,7 +1055,11 @@ impl Observatory {
                 if pending {
                     o.schedule_live_refresh(cx);
                 }
-                cx.notify();
+                // Every watcher event re-lists the folders on screen; a listing that changed
+                // nothing must not redraw the explorer (and every other region of the view).
+                if changed || o.worktree_missing != missing {
+                    cx.notify();
+                }
             });
         })
     }

@@ -452,7 +452,7 @@ impl PrDetail {
             self.commits_pending(cx),
             self.checks_pending(cx),
         );
-        let items = self.thread_items(cx);
+        let items = self.render_items(cx);
         let desc = items.iter().any(|c| c.kind == "description");
         let timeline = items
             .iter()

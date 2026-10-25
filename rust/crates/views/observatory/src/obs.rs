@@ -54,6 +54,8 @@ pub struct ObservatoryProps {
 type ReviewMemo = (Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>);
 type ExcludedMemo = (Rc<Vec<CompiledGlob>>, HashMap<String, bool>);
 type ChangedTreeMemo = (Rc<Vec<String>>, Rc<Vec<TreeEntry>>);
+/// The staged and unstaged paths of the working status, sorted.
+pub(crate) type WorkingPaths = (Vec<String>, Vec<String>);
 
 #[derive(Default)]
 pub(crate) struct PathsMemo {
@@ -355,6 +357,8 @@ pub struct Observatory {
     /// Uncommitted porcelain versus HEAD.
     pub(crate) working_status: BTreeMap<String, String>,
     pub(crate) staged_files: Vec<String>,
+    /// `working_paths`, until `working_status` or `staged_files` next change.
+    pub(crate) working_paths_memo: std::cell::RefCell<Option<Rc<WorkingPaths>>>,
     pub(crate) browse_all: bool,
     pub(crate) scope_chosen: bool,
     pub(crate) changed_collapsed: BTreeSet<String>,
@@ -527,6 +531,7 @@ pub struct Observatory {
     pub(crate) layers: [Entity<recur_ui::pane::Layer>; 2],
     /// The side panel as its own cached view, when it holds no chat.
     pub(crate) side_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) left_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     /// The main pane's empty state as its own cached view.
     pub(crate) empty_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) toolbar_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
@@ -649,6 +654,7 @@ impl Observatory {
             paths_memo: Default::default(),
             working_status: BTreeMap::new(),
             staged_files: Vec::new(),
+            working_paths_memo: Default::default(),
             browse_all: false,
             scope_chosen: false,
             changed_collapsed: BTreeSet::new(),
@@ -797,6 +803,7 @@ impl Observatory {
                 recur_ui::pane::Layer::new(prompts.clone(), cx),
             ],
             side_pane: None,
+            left_pane: None,
             empty_pane: None,
             toolbar_pane: None,
             scm_body_pane: None,

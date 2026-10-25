@@ -35,6 +35,9 @@ const HIDDEN: [&str; 7] = [
     "::TranscriptPane",
 ];
 
+/// The conversation beside the comment and review boxes: cached blocks a key replays.
+const CONVERSATION: [&str; 3] = ["::ItemPane", "::MarkdownView", "::CommentReactions"];
+
 fn assert_quiet(what: &str, quiet: &[&str], counts: &BTreeMap<&'static str, u32>) {
     for q in quiet {
         assert_eq!(renders(q, counts), 0, "{what}: {q} rendered: {counts:?}");
@@ -54,6 +57,8 @@ fn type_keys(s: &mut S) {
     s.cx.run_until_parked();
 }
 
+/// A key renders PR detail (the box's host, on the key's path) but never its conversation:
+/// the items are cached blocks, and the fixture's have markdown bodies and reactions.
 #[gpui::test]
 async fn a_key_in_the_pr_comment_box_renders_pr_detail_only(cx: &mut TestAppContext) {
     let mut s = open(cx);
@@ -70,6 +75,7 @@ async fn a_key_in_the_pr_comment_box_renders_pr_detail_only(cx: &mut TestAppCont
     });
     assert!(renders("::PrDetail", &counts) >= 3, "{counts:?}");
     assert_quiet("comment key", &HIDDEN, &counts);
+    assert_quiet("comment key", &CONVERSATION, &counts);
     assert_quiet(
         "comment key",
         &[
@@ -96,6 +102,7 @@ async fn a_key_in_the_review_modal_renders_the_modal_and_pr_detail_only(cx: &mut
     });
     assert!(renders("::PrReviewModal", &counts) >= 3, "{counts:?}");
     assert_quiet("review key", &HIDDEN, &counts);
+    assert_quiet("review key", &CONVERSATION, &counts);
     assert_quiet(
         "review key",
         &[

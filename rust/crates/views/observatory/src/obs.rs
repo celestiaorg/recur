@@ -531,6 +531,7 @@ pub struct Observatory {
     pub(crate) layers: [Entity<recur_ui::pane::Layer>; 2],
     /// The side panel as its own cached view, when it holds no chat.
     pub(crate) side_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) left_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     /// The main pane's empty state as its own cached view.
     pub(crate) empty_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) toolbar_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
@@ -802,6 +803,7 @@ impl Observatory {
                 recur_ui::pane::Layer::new(prompts.clone(), cx),
             ],
             side_pane: None,
+            left_pane: None,
             empty_pane: None,
             toolbar_pane: None,
             scm_body_pane: None,

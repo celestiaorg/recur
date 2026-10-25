@@ -720,6 +720,13 @@ impl Observatory {
             .unwrap_or_default()
     }
 
+    fn left_pane_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        match self.left_meta(cx) {
+            Some(kind) => self.render_left_aside(kind, false, window, cx),
+            None => div().into_any_element(),
+        }
+    }
+
     fn side_pane_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         match self.right_meta(cx) {
             Some(kind) => self.render_side_aside(kind, window, cx),
@@ -825,7 +832,25 @@ impl Observatory {
             && self.left_gutter_open()
             && let Some(kind) = self.left_meta(cx)
         {
-            body = body.child(self.render_left_aside(kind, false, window, cx));
+            // Cached like the right dock (a key in a line note or the chat beside it would
+            // redraw the findings and their markdown), unless it holds a text field itself.
+            if !matches!(kind, CodePanelKey::Maestro | CodePanelKey::Scm) && !narrow {
+                let pane = self
+                    .left_pane
+                    .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::left_pane_body))
+                    .clone();
+                let width = self.state.read(cx).panels.size(PanelKey::MaestroDock);
+                body = body.child(recur_ui::style::cached_view(
+                    &pane,
+                    gpui_kit::StyleRefinement::default()
+                        .flex_none()
+                        .w(px(width))
+                        .h_full(),
+                    cx,
+                ));
+            } else {
+                body = body.child(self.render_left_aside(kind, false, window, cx));
+            }
         }
         let main = self.render_main(window, cx);
         let mut work = div()

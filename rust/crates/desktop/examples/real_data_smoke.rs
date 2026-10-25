@@ -30,7 +30,8 @@
 //!
 //! To reproduce a finding: `RECUR_SMOKE_LIMIT=n` caps the workspaces and PRs visited,
 //! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth, `RECUR_SMOKE_WORKSPACE=<id>` visits
-//! only that one, `RECUR_SMOKE_WORKSPACES_ONLY=1` stops after the workspaces and
+//! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
+//! stops after the workspaces and
 //! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -1284,7 +1285,13 @@ async fn run(
         return;
     }
 
-    for (i, id) in prs.iter().enumerate().take(limit()) {
+    let only = std::env::var("RECUR_SMOKE_PR").ok();
+    for (i, id) in prs
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| only.as_ref().is_none_or(|o| o == *id))
+        .take(limit())
+    {
         at(start, format!("PR {}/{} {id}", i + 1, prs.len()));
         state.update(cx, |s, cx| s.open_pr(id, cx));
         let detail = cx.update(|cx| {

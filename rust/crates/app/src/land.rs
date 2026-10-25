@@ -1074,12 +1074,20 @@ impl Shell {
         let backdrop = t.titlebar;
         if view == ViewName::PrDetail {
             let s = self.state.read(cx);
-            let Some(pr) = s.pr(&s.selected_pr_id).cloned() else {
+            let Some((pr_id, wid, done)) = s.pr(&s.selected_pr_id).map(|pr| {
+                (
+                    pr.id.clone(),
+                    pr.workspace_id.clone(),
+                    matches!(
+                        pr_lifecycle(Some(pr)),
+                        Some(PrLifecycle::Merged | PrLifecycle::Closed)
+                    ),
+                )
+            }) else {
                 return out;
             };
-            if !pr.workspace_id.is_empty() {
+            if !wid.is_empty() {
                 let state = self.state.clone();
-                let wid = pr.workspace_id.clone();
                 out.push(
                     spec_wrap(
                         "tb-view-workspace",
@@ -1113,15 +1121,12 @@ impl Shell {
                     )
                     .into_any_element(),
                 );
-            } else if !matches!(
-                pr_lifecycle(Some(&pr)),
-                Some(PrLifecycle::Merged | PrLifecycle::Closed)
-            ) {
+            } else if !done {
                 let creating = self
                     .land
                     .pending_pr_create
                     .as_ref()
-                    .is_some_and(|p| p.0 == pr.id);
+                    .is_some_and(|p| p.0 == pr_id);
                 let label = if creating {
                     "Creating…"
                 } else {

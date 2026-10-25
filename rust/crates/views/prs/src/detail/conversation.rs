@@ -33,6 +33,7 @@ use regex::Regex;
 use super::PrDetail;
 use super::field::Field;
 use super::html::html_spans;
+use super::timeline::{TIMELINE_WINDOW_FROM, TimelineWindow};
 use crate::style::{hsla, spin_deg};
 use crate::ui::PrTab;
 
@@ -101,14 +102,14 @@ impl PrDetail {
         if can_edit {
             return true;
         }
-        let pr = self.pr(cx);
-        if can_delete_pr_comment(pr.as_ref(), Some(c)) {
+        let pr = self.pr_ref(cx);
+        if can_delete_pr_comment(pr, Some(c)) {
             return true;
         }
         if !comment_source(Some(c)).is_empty() {
             return true;
         }
-        !comment_permalink(pr.as_ref().map_or("", |p| p.url.as_str()), c).is_empty()
+        !comment_permalink(pr.map_or("", |p| p.url.as_str()), c).is_empty()
     }
 
     /// `.cmt-more`: the ⋯ trigger for `id`.
@@ -1777,8 +1778,33 @@ impl PrDetail {
                     .pt(px(6.))
                     .flex()
                     .flex_col();
-                for c in items.iter().filter(|c| is_timeline_root(Some(c))) {
-                    thread = thread.child(self.timeline_item(c, &items, pr, window, cx));
+                let roots: Vec<&PrComment> =
+                    items.iter().filter(|c| is_timeline_root(Some(c))).collect();
+                if roots.len() < TIMELINE_WINDOW_FROM {
+                    for c in roots {
+                        thread = thread.child(self.timeline_item(c, &items, pr, window, cx));
+                    }
+                } else {
+                    let view = cx.entity_id();
+                    let plan = self.timeline.plan(&pr.id, &roots, &self.conv_scroll);
+                    thread = thread
+                        .relative()
+                        .child(self.timeline.thread_probe(&self.conv_scroll, view));
+                    let mut gap = 0.;
+                    for (c, slot) in roots.into_iter().zip(plan) {
+                        if let Some(h) = slot {
+                            gap += h;
+                            continue;
+                        }
+                        if gap > 0. {
+                            thread = thread.child(TimelineWindow::gap(std::mem::take(&mut gap)));
+                        }
+                        let el = self.timeline_item(c, &items, pr, window, cx);
+                        thread = thread.child(self.timeline.live(c, el, view));
+                    }
+                    if gap > 0. {
+                        thread = thread.child(TimelineWindow::gap(gap));
+                    }
                 }
                 wrap = wrap.child(thread);
                 if self.conversation_locked(cx) {

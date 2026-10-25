@@ -8,8 +8,9 @@ use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, Context, InteractiveElement, IntoElement, KeyDownEvent, ParentElement,
-    SharedString, StatefulInteractiveElement, Styled, Window, canvas, div, px,
+    AnyElement, App, AppContext as _, Context, Entity, InteractiveElement, IntoElement,
+    KeyDownEvent, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
+    Subscription, WeakEntity, Window, canvas, div, px,
 };
 use recur_code::view::changed_tree::sort_files_by_changed_tree;
 use recur_code::view::finding_paths::{findings_for_path, match_finding_path};
@@ -29,6 +30,35 @@ use recur_view_review::stack::CardProps;
 use recur_view_review::style::{icon_btn, note_btn, seg, seg_btn};
 
 use super::PrDetail;
+
+/// Diffs at least this long render their card stack through [`StackPane`].
+const CACHED_STACK_MIN_LINES: usize = 2000;
+
+/// The Files changed card stack as its own cached view: a redraw from elsewhere (the agent
+/// dock, another route, a store change the PR does not show) reuses its layout, where a big
+/// diff takes seconds to lay out again. Any notify of the PR detail redraws it.
+pub struct StackPane {
+    detail: WeakEntity<PrDetail>,
+    _sub: Subscription,
+}
+
+impl StackPane {
+    fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        match self.detail.upgrade() {
+            Some(d) => {
+                recur_ui::style::cached_root(d.update(cx, |d, cx| d.stack_element(window, cx)))
+                    .into_any_element()
+            }
+            None => div().into_any_element(),
+        }
+    }
+}
+
+impl Render for StackPane {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
 use crate::style::hsla;
 
 /// Side-by-side needs this much pane width.
@@ -41,7 +71,11 @@ impl PrDetail {
 
     /// `findingsByPath`: listed findings keyed by their PR file.
     pub(crate) fn findings_by_path(&self, cx: &App) -> FindingsByPath {
-        let paths: Vec<String> = self.review_files(cx).into_iter().map(|f| f.path).collect();
+        let paths: Vec<String> = self
+            .review_files(cx)
+            .iter()
+            .map(|f| f.path.clone())
+            .collect();
         let mut out: FindingsByPath = Vec::new();
         for f in self.listed_findings(cx) {
             if f.file.is_empty() {
@@ -66,12 +100,13 @@ impl PrDetail {
         let q = self.filter_q(cx);
         let mut list: Vec<FileDiff> = self
             .review_files(cx)
-            .into_iter()
+            .iter()
             .filter(|f| {
                 q.is_empty()
                     || f.path.to_lowercase().contains(&q)
                     || f.old_path.to_lowercase().contains(&q)
             })
+            .cloned()
             .collect();
         if self.findings_only {
             let by = self.findings_by_path(cx);
@@ -169,7 +204,7 @@ impl PrDetail {
                 .child(super::skeleton::files_skel(window, cx))
                 .into_any_element();
         }
-        let review = self.review_files(cx);
+        let review_len = self.review_files(cx).len();
         let matched = self.matched_files(cx);
         let q = self.filter_q(cx);
         let filtering = !q.is_empty() || self.findings_only || self.comments_only;
@@ -323,9 +358,9 @@ impl PrDetail {
         }
         let total = pr.files.as_ref().map_or(0, Vec::len);
         let count = if filtering {
-            format!("{}/{} files", matched.len(), review.len())
+            format!("{}/{} files", matched.len(), review_len)
         } else {
-            format!("{}/{} files", review.len(), total)
+            format!("{}/{} files", review_len, total)
         };
         let mut main = div()
             .flex()
@@ -431,28 +466,25 @@ impl PrDetail {
                 cx,
             ));
         }
-        let empty = (filtering && matched.is_empty()).then(|| {
-            recur_view_review::commits::empty_clear_filter(
-                cx.guarded_listener(|d, _, window, cx| {
-                    d.filter.update(cx, |f, cx| f.set_value("", window, cx));
-                    d.findings_only = false;
-                    d.comments_only = false;
-                    cx.notify();
-                }),
+        self.stack_filtered_empty = filtering && matched.is_empty();
+        let diff_lines: usize = matched
+            .iter()
+            .map(|f| f.lines.as_ref().map_or(0, Vec::len))
+            .sum();
+        // A cached view lays out from a snapped origin, which rounds a fraction of a device
+        // pixel differently from the page around it, so only a diff worth caching gets one.
+        let stack = if diff_lines >= CACHED_STACK_MIN_LINES {
+            recur_ui::style::cached_view(
+                &self.stack_pane(cx),
+                gpui_kit::StyleRefinement::default()
+                    .flex_1()
+                    .min_h_0()
+                    .min_w_0(),
                 cx,
             )
-        });
-        let stack = self.stack.render(
-            Vec::new(),
-            empty,
-            |d: &mut PrDetail| &mut d.stack,
-            Rc::new(|d: &mut PrDetail, path, next, cx| {
-                d.stack.toggle_collapsed(&path, next);
-                cx.notify();
-            }),
-            window,
-            cx,
-        );
+        } else {
+            self.stack_element(window, cx)
+        };
         let probe = {
             let me = cx.entity().downgrade();
             let pane = self.stack.pane.clone();
@@ -501,6 +533,45 @@ impl PrDetail {
             .child(head)
             .child(wrap)
             .into_any_element()
+    }
+
+    fn stack_pane(&mut self, cx: &mut Context<Self>) -> Entity<StackPane> {
+        if let Some(p) = &self.stack_pane {
+            return p.clone();
+        }
+        let me = cx.entity();
+        let pane = cx.new(|cx| StackPane {
+            detail: me.downgrade(),
+            _sub: cx.guarded_observe(&me, |_, _, cx| cx.notify()),
+        });
+        self.stack_pane = Some(pane.clone());
+        pane
+    }
+
+    /// The card stack and its empty state: [`StackPane`]'s content.
+    fn stack_element(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let empty = self.stack_filtered_empty.then(|| {
+            recur_view_review::commits::empty_clear_filter(
+                cx.guarded_listener(|d, _, window, cx| {
+                    d.filter.update(cx, |f, cx| f.set_value("", window, cx));
+                    d.findings_only = false;
+                    d.comments_only = false;
+                    cx.notify();
+                }),
+                cx,
+            )
+        });
+        self.stack.render(
+            Vec::new(),
+            empty,
+            |d: &mut PrDetail| &mut d.stack,
+            Rc::new(|d: &mut PrDetail, path, next, cx| {
+                d.stack.toggle_collapsed(&path, next);
+                cx.notify();
+            }),
+            window,
+            cx,
+        )
     }
 
     /// `.filelist`: the resize handle, the filter row and the list.

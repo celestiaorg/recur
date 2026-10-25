@@ -125,9 +125,36 @@ pub struct PrTitlebarActions {
     _subs: Vec<Subscription>,
 }
 
+/// What the bar reads off the PR, without its comments, commits and patches.
+struct PrBrief {
+    id: String,
+    number: i64,
+    draft: bool,
+    behind_base: i64,
+    pending_comments: usize,
+    merge_queue_enabled: bool,
+    state: String,
+    group: String,
+}
+
+impl PrBrief {
+    fn of(pr: &Pr) -> Self {
+        PrBrief {
+            id: pr.id.clone(),
+            number: pr.number,
+            draft: pr.draft,
+            behind_base: pr.behind_base,
+            pending_comments: pr.pending_comments.len(),
+            merge_queue_enabled: pr.merge_queue_enabled,
+            state: pr.state.clone(),
+            group: pr.group.clone(),
+        }
+    }
+}
+
 /// What the bar derives from the store for the PR on screen.
 struct Derived {
-    pr: Pr,
+    pr: PrBrief,
     merged: bool,
     github_href: String,
     can_send_back: bool,
@@ -204,12 +231,12 @@ impl PrTitlebarActions {
 
     fn derive(&self, cx: &App) -> Option<Derived> {
         let s = self.state.read(cx);
-        let pr = s.pr(&s.selected_pr_id)?.clone();
-        let merged = is_merged(&pr);
+        let pr = s.pr(&s.selected_pr_id)?;
+        let merged = is_merged(pr);
         let pr_ws = s.workspaces.iter().find(|w| w.id == pr.workspace_id);
         let can_send_back = !merged && pr_ws.is_some_and(ws_has_run);
         let land_ws = pr.workspace_id.trim().to_string();
-        let github_open = github_open(&pr);
+        let github_open = github_open(pr);
         let agent_busy = !land_ws.is_empty() && s.workspaces_running.contains(&land_ws);
         let land_pending = github_open && !land_ws.is_empty() && !self.land_known;
         let busy =
@@ -218,12 +245,12 @@ impl PrTitlebarActions {
         let l = &self.land;
         let clean = github_open && !land_ws.is_empty() && !l.dirty && !l.unmerged;
         let diverged = github_open && l.ahead_remote > 0 && l.behind_remote > 0;
-        let action = pr_merge_action(Some(&pr), self.awaiting_update);
-        let can_draft = can_set_pr_draft(Some(&pr));
+        let action = pr_merge_action(Some(pr), self.awaiting_update);
+        let can_draft = can_set_pr_draft(Some(pr));
         let is_draft = pr.draft || action.kind == MergeActionKind::Ready;
-        let can_approve = !is_draft && can_approve_pr_review(Some(&pr));
-        let show_update = show_pr_update(Some(&pr), &action);
-        let merge_keys = allowed_merge_methods(Some(&pr));
+        let can_approve = !is_draft && can_approve_pr_review(Some(pr));
+        let show_update = show_pr_update(Some(pr), &action);
+        let merge_keys = allowed_merge_methods(Some(pr));
         let show_merge_menu = merge_keys.len() > 1 && !pr.merge_queue_enabled;
         let project = pr_ws
             .and_then(|w| s.project(&w.project_id))
@@ -264,7 +291,7 @@ impl PrTitlebarActions {
         );
         Some(Derived {
             merged,
-            github_href: github_href(&pr),
+            github_href: github_href(pr),
             can_send_back,
             remote_busy,
             busy,
@@ -289,7 +316,7 @@ impl PrTitlebarActions {
             update_label: update_with_base_label(update_method, &pr.base),
             update_base_name: short_base_name(&pr.base),
             land_ws,
-            pr,
+            pr: PrBrief::of(pr),
         })
     }
 
@@ -1376,7 +1403,7 @@ impl PrTitlebarActions {
                     cx,
                 ));
             }
-            let pending = d.pr.pending_comments.len();
+            let pending = d.pr.pending_comments;
             if pending > 0 {
                 out.push(self.pending_chip(pending, &d, cx));
             }

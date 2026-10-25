@@ -14,6 +14,7 @@ mod files;
 mod html;
 mod render;
 mod skeleton;
+mod timeline;
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
@@ -134,6 +135,8 @@ pub struct PrDetail {
     pub(crate) file_list_mode: FileListMode,
     pub(crate) sidebar_open: bool,
     pub(crate) stack: FileStack,
+    stack_pane: Option<Entity<files::StackPane>>,
+    stack_filtered_empty: bool,
     pub(crate) list: Entity<ReviewFileList>,
     pub(crate) filter: Entity<InputState>,
     pub(crate) findings_only: bool,
@@ -142,6 +145,8 @@ pub struct PrDetail {
     pub(crate) highlight: i64,
     // Panes.
     pub(crate) conv_scroll: ScrollHandle,
+    pub(crate) timeline: timeline::TimelineWindow,
+    render_pr: Option<Option<Rc<Pr>>>,
     pub(crate) commits_scroll: ScrollHandle,
     pub(crate) checks_scroll: ScrollHandle,
     pub(crate) checks_box_scroll: ScrollHandle,
@@ -305,6 +310,8 @@ impl PrDetail {
             file_list_mode: mode,
             sidebar_open: sidebar,
             stack: FileStack::new(state.clone(), cx),
+            stack_pane: None,
+            stack_filtered_empty: false,
             list,
             filter,
             findings_only: false,
@@ -312,6 +319,8 @@ impl PrDetail {
             pane_width: 0.,
             highlight: 0,
             conv_scroll: ScrollHandle::new(),
+            timeline: Default::default(),
+            render_pr: None,
             commits_scroll: ScrollHandle::new(),
             checks_scroll: ScrollHandle::new(),
             checks_box_scroll: ScrollHandle::new(),
@@ -357,8 +366,21 @@ impl PrDetail {
 
     /// `pr`: the selected PR from the store.
     pub(crate) fn pr(&self, cx: &App) -> Option<Pr> {
+        self.pr_ref(cx).cloned()
+    }
+
+    /// The selected PR for a render, shared between renders until the store next notifies.
+    pub(crate) fn render_pr(&mut self, cx: &App) -> Option<Rc<Pr>> {
+        if self.render_pr.is_none() {
+            self.render_pr = Some(self.pr(cx).map(Rc::new));
+        }
+        self.render_pr.clone().flatten()
+    }
+
+    /// The selected PR in the store, borrowed: a PR with its patches can be tens of MB.
+    pub(crate) fn pr_ref<'a>(&self, cx: &'a App) -> Option<&'a Pr> {
         let s = self.state().read(cx);
-        s.pr(&s.selected_pr_id).cloned()
+        s.pr(&s.selected_pr_id)
     }
 
     pub(crate) fn tab(&self, cx: &App) -> PrTab {
@@ -373,30 +395,34 @@ impl PrDetail {
 
     /// `threadItems`: the PR's comments, then the live ones.
     pub(crate) fn thread_items(&self, cx: &App) -> Vec<PrComment> {
-        let mut out = self.pr(cx).and_then(|p| p.comments).unwrap_or_default();
+        let mut out = self
+            .pr_ref(cx)
+            .and_then(|p| p.comments.clone())
+            .unwrap_or_default();
         out.extend(self.live_comments.iter().cloned());
         out
     }
 
     pub(crate) fn conv_pending(&self, cx: &App) -> bool {
-        pr_conv_pending(self.pr(cx).as_ref(), self.hydrate_give_up)
+        pr_conv_pending(self.pr_ref(cx), self.hydrate_give_up)
     }
 
     pub(crate) fn files_pending(&self, cx: &App) -> bool {
-        pr_files_pending(self.pr(cx).as_ref(), self.refreshing, self.hydrate_give_up)
+        pr_files_pending(self.pr_ref(cx), self.refreshing, self.hydrate_give_up)
     }
 
     pub(crate) fn commits_pending(&self, cx: &App) -> bool {
-        pr_commits_pending(self.pr(cx).as_ref(), self.refreshing)
+        pr_commits_pending(self.pr_ref(cx), self.refreshing)
     }
 
     pub(crate) fn checks_pending(&self, cx: &App) -> bool {
-        pr_checks_pending(self.pr(cx).as_ref(), self.refreshing)
+        pr_checks_pending(self.pr_ref(cx), self.refreshing)
     }
 
     // ---- effects ----
 
     fn state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.render_pr = None;
         let (view, id) = {
             let s = self.state().read(cx);
             (s.view, s.selected_pr_id.clone())
@@ -437,16 +463,17 @@ impl PrDetail {
             });
         }
         // `markPostedFinding` for every pending draft that carries a finding.
-        if let Some(pr) = self.pr(cx) {
-            let ids: Vec<String> = pr
-                .pending_comments
-                .iter()
-                .map(|pc| pc.finding_id.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            let store = ReviewStore::global_mut(cx);
-            store.posted_finding_ids.extend(ids);
-        }
+        let ids: Vec<String> = self
+            .pr_ref(cx)
+            .map(|pr| {
+                pr.pending_comments
+                    .iter()
+                    .map(|pc| pc.finding_id.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default();
+        ReviewStore::global_mut(cx).posted_finding_ids.extend(ids);
         let on = view == ViewName::PrDetail;
         if on && (!self.on_route || switched) {
             self.route_opened(&id, window, cx);
@@ -547,7 +574,10 @@ impl PrDetail {
                 if row.id.is_empty() {
                     return;
                 }
-                let comments = self.pr(cx).and_then(|p| p.comments).unwrap_or_default();
+                let comments = self
+                    .pr_ref(cx)
+                    .and_then(|p| p.comments.clone())
+                    .unwrap_or_default();
                 if comments.iter().any(|c| c.id == row.id)
                     || self.live_comments.iter().any(|c| c.id == row.id)
                 {
@@ -699,7 +729,11 @@ impl PrDetail {
             self.discard_commit_diff();
             self.refresh(&id, true, false, cx).detach();
         }
-        if t == PrTab::Checks && self.pr(cx).is_some_and(|p| p.source == PrSource::GitHub) {
+        if t == PrTab::Checks
+            && self
+                .pr_ref(cx)
+                .is_some_and(|p| p.source == PrSource::GitHub)
+        {
             self.refresh(&id, true, false, cx).detach();
         }
         cx.notify();
@@ -716,18 +750,23 @@ impl PrDetail {
             .collect()
     }
 
-    pub(crate) fn review_files(&self, cx: &App) -> Vec<FileDiff> {
-        self.pr(cx).and_then(|p| p.files).unwrap_or_default()
+    pub(crate) fn review_files<'a>(&self, cx: &'a App) -> &'a [FileDiff] {
+        self.pr_ref(cx)
+            .and_then(|p| p.files.as_deref())
+            .unwrap_or_default()
     }
 
     /// `listedFindings`: open, without a pending draft, not settling.
     pub(crate) fn listed_findings(&self, cx: &App) -> Vec<Finding> {
-        let pending = self.pr(cx).map(|p| p.pending_comments).unwrap_or_default();
+        let pending = self
+            .pr_ref(cx)
+            .map(|p| p.pending_comments.clone())
+            .unwrap_or_default();
         let files = self.review_files(cx);
         self.open_findings()
             .into_iter()
             .filter(|f| {
-                !finding_has_pending_comment(f, &pending, &files) && !self.settling.contains(&f.id)
+                !finding_has_pending_comment(f, &pending, files) && !self.settling.contains(&f.id)
             })
             .collect()
     }
@@ -744,16 +783,18 @@ impl PrDetail {
         let posted = Self::posted_ids(cx);
         self.listed_findings(cx)
             .into_iter()
-            .filter(|f| finding_review_anchor(f, &files).is_some() && !posted.contains(&f.id))
+            .filter(|f| finding_review_anchor(f, files).is_some() && !posted.contains(&f.id))
             .collect()
     }
 
     pub(crate) fn conversation_locked(&self, cx: &App) -> bool {
-        recur_view_review::line_note::pr_conversation_locked(self.pr(cx).as_ref())
+        recur_view_review::line_note::pr_conversation_locked(self.pr_ref(cx))
     }
 
     pub(crate) fn can_post_findings(&self, cx: &App) -> bool {
-        self.pr(cx).is_some_and(|p| p.source == PrSource::GitHub) && !self.conversation_locked(cx)
+        self.pr_ref(cx)
+            .is_some_and(|p| p.source == PrSource::GitHub)
+            && !self.conversation_locked(cx)
     }
 
     /// `postFindings`: queue each as a pending review comment at its GitHub anchor.
@@ -769,10 +810,10 @@ impl PrDetail {
             .filter(|f| {
                 !self.posting.contains(&f.id)
                     && !posted.contains(&f.id)
-                    && !finding_has_pending_comment(f, &pr.pending_comments, &files)
+                    && !finding_has_pending_comment(f, &pr.pending_comments, files)
             })
             .filter_map(|f| {
-                let a = finding_review_anchor(&f, &files)?;
+                let a = finding_review_anchor(&f, files)?;
                 let body = finding_comment_body(&f.message).to_string();
                 (!body.is_empty()).then_some((f, a, body))
             })
@@ -876,7 +917,7 @@ impl PrDetail {
         let posted = Self::posted_ids(cx);
         let due = self.open_findings().iter().any(|f| {
             !self.settle_failed.contains(&f.id)
-                && finding_ready_to_settle(f, &pr.pending_comments, &comments, &files, &posted)
+                && finding_ready_to_settle(f, &pr.pending_comments, &comments, files, &posted)
         });
         if due {
             self.settle_posted_findings(&pr.id, None, cx);
@@ -894,7 +935,10 @@ impl PrDetail {
             return;
         }
         self.settle_for = pr_id.to_string();
-        let pending = self.pr(cx).map(|p| p.pending_comments).unwrap_or_default();
+        let pending = self
+            .pr_ref(cx)
+            .map(|p| p.pending_comments.clone())
+            .unwrap_or_default();
         let comments = self.thread_items(cx);
         let files = self.review_files(cx);
         let posted = Self::posted_ids(cx);
@@ -907,7 +951,7 @@ impl PrDetail {
                     Some(r) => !r.contains(&f.id),
                     None => self.settle_failed.contains(&f.id),
                 };
-                !skip && finding_ready_to_settle(f, &pending, &comments, &files, &posted)
+                !skip && finding_ready_to_settle(f, &pending, &comments, files, &posted)
             })
             .collect();
         if due.is_empty() {
@@ -1391,7 +1435,7 @@ impl PrDetail {
     }
 
     pub(crate) fn more_permalink(&self, cx: &App) -> String {
-        let url = self.pr(cx).map(|p| p.url).unwrap_or_default();
+        let url = self.pr_ref(cx).map(|p| p.url.clone()).unwrap_or_default();
         let target = self.more_target(cx).unwrap_or(PrComment {
             id: "gh-description".into(),
             kind: "description".into(),
@@ -1446,7 +1490,7 @@ impl PrDetail {
     // ---- title, description and comment edits ----
 
     pub(crate) fn can_edit_pr(&self, cx: &App) -> bool {
-        self.pr(cx).is_some_and(|p| p.can_edit_details())
+        self.pr_ref(cx).is_some_and(|p| p.can_edit_details())
     }
 
     pub(crate) fn description(&self, cx: &App) -> Option<PrComment> {
@@ -1459,7 +1503,7 @@ impl PrDetail {
         if !self.can_edit_pr(cx) {
             return;
         }
-        let title = self.pr(cx).map(|p| p.title).unwrap_or_default();
+        let title = self.pr_ref(cx).map(|p| p.title.clone()).unwrap_or_default();
         self.title_input.update(cx, |i, cx| {
             i.set_value(title, window, cx);
             i.focus(window, cx);
@@ -1553,7 +1597,7 @@ impl PrDetail {
         if !self.saving.is_empty() {
             return;
         }
-        let title = self.pr(cx).map(|p| p.title).unwrap_or_default();
+        let title = self.pr_ref(cx).map(|p| p.title.clone()).unwrap_or_default();
         let body = self.desc.value(cx);
         self.save_pr_field("desc", title, body, "Description updated", cx);
     }
@@ -1644,8 +1688,10 @@ impl PrDetail {
     // ---- commits ----
 
     /// `prCommits`: newest first, as the store keeps them.
-    pub(crate) fn commits(&self, cx: &App) -> Vec<Commit> {
-        self.pr(cx).and_then(|p| p.commits).unwrap_or_default()
+    pub(crate) fn commits<'a>(&self, cx: &'a App) -> &'a [Commit] {
+        self.pr_ref(cx)
+            .and_then(|p| p.commits.as_deref())
+            .unwrap_or_default()
     }
 
     /// `detailFiles`.
@@ -1823,7 +1869,11 @@ impl PrDetail {
         if path.is_empty() || self.files_pending(cx) {
             return;
         }
-        let paths: Vec<String> = self.review_files(cx).into_iter().map(|f| f.path).collect();
+        let paths: Vec<String> = self
+            .review_files(cx)
+            .iter()
+            .map(|f| f.path.clone())
+            .collect();
         let resolved =
             recur_code::view::finding_paths::match_finding_path(path, &paths).to_string();
         if !resolved.is_empty() {
@@ -1883,7 +1933,10 @@ impl PrDetail {
 
     /// `openFinding`: the Findings panel in the PR's workspace, else the conversation.
     pub(crate) fn open_finding(&mut self, f: &Finding, cx: &mut Context<Self>) {
-        let ws = self.pr(cx).map(|p| p.workspace_id).unwrap_or_default();
+        let ws = self
+            .pr_ref(cx)
+            .map(|p| p.workspace_id.clone())
+            .unwrap_or_default();
         if !ws.is_empty() && !f.id.is_empty() {
             self.state().update(cx, |s, cx| {
                 s.observatory_jump = Some(ObsJump {
@@ -1904,7 +1957,11 @@ impl PrDetail {
     /// `commentsByPath`.
     pub(crate) fn comments_by_path(&self, cx: &App) -> Vec<(String, Vec<PrComment>)> {
         let items = self.thread_items(cx);
-        let paths: Vec<String> = self.review_files(cx).into_iter().map(|f| f.path).collect();
+        let paths: Vec<String> = self
+            .review_files(cx)
+            .iter()
+            .map(|f| f.path.clone())
+            .collect();
         recur_engine::view::comment_thread::unresolved_line_notes_by_path(&items, &paths)
             .into_iter()
             .map(|(p, v)| (p, v.into_iter().cloned().collect()))
@@ -1915,18 +1972,16 @@ impl PrDetail {
 
     /// The 1s tick while a check is pending (`checkNow`).
     fn sync_check_tick(&mut self, cx: &mut Context<Self>) {
+        let checks = self
+            .pr_ref(cx)
+            .and_then(|p| p.checks.as_deref())
+            .unwrap_or_default();
         let pending = self.on_route
-            && self
-                .pr(cx)
-                .and_then(|p| p.checks)
-                .unwrap_or_default()
+            && checks
                 .iter()
                 .any(|c| recur_forge::view::is_pending_check(&c.status));
-        if let Some(pr) = self.pr(cx) {
-            recur_forge::view::prune_pending_clocks(
-                &mut self.clocks.borrow_mut(),
-                pr.checks.as_deref().unwrap_or_default(),
-            );
+        if self.pr_ref(cx).is_some() {
+            recur_forge::view::prune_pending_clocks(&mut self.clocks.borrow_mut(), checks);
         }
         if !pending {
             self.check_tick = None;
@@ -2017,7 +2072,7 @@ impl PrDetail {
         cx: &mut Context<Self>,
     ) -> Entity<CommentReactions> {
         let can =
-            recur_engine::view::comment_thread::can_react_pr_comment(self.pr(cx).as_ref(), Some(c));
+            recur_engine::view::comment_thread::can_react_pr_comment(self.pr_ref(cx), Some(c));
         if let Some(r) = self.rxns.get(&c.id) {
             r.update(cx, |r, cx| r.set(c.clone(), can, cx));
             return r.clone();

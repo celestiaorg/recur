@@ -2112,9 +2112,20 @@ fn paint_lines(
 ) {
     let scale = window.scale_factor();
     let box_w = f32::from(bounds.size.width);
+    // Only what the clip shows paints: a minified file's one paragraph can be thousands of
+    // lines and a million glyphs.
+    let clip = window.content_mask().bounds;
+    let (clip_top, clip_bottom) = (f32::from(clip.origin.y), f32::from(clip.bottom()));
+    let (clip_left, clip_right) = (f32::from(clip.origin.x), f32::from(clip.right()));
+    // Paragraphs whose glyphs run in byte order (no right-to-left reordering) find a line's
+    // glyphs by binary search instead of scanning them all for every line.
+    let mut sorted: Vec<Option<bool>> = vec![None; laid.paras.len()];
     for line in &laid.lines {
         let p = &laid.paras[line.para];
         let top = f32::from(bounds.origin.y) + line.top;
+        if top > clip_bottom || top + line.height < clip_top {
+            continue;
+        }
         let base_off = at.0 + line.top + line.baseline;
         let baseline =
             snapped(at.1, Probe::Y(base_off)).unwrap_or_else(|| snap(top + line.baseline, scale));
@@ -2152,8 +2163,31 @@ fn paint_lines(
             ));
         }
         let text = &laid.key.content[p.range.clone()];
-        for g in p.glyphs.iter().filter(|g| line.range.contains(&g.index)) {
+        let in_order =
+            *sorted[line.para].get_or_insert_with(|| p.glyphs.is_sorted_by_key(|g| g.index));
+        let (lo, hi) = if in_order {
+            (
+                p.glyphs.partition_point(|g| g.index < line.range.start),
+                p.glyphs.partition_point(|g| g.index < line.range.end),
+            )
+        } else {
+            (0, p.glyphs.len())
+        };
+        for g in p.glyphs[lo..hi]
+            .iter()
+            .filter(|g| line.range.contains(&g.index))
+        {
             let run = &laid.key.runs[g.run];
+            let x = left + g.x;
+            if x > clip_right {
+                if in_order {
+                    break;
+                }
+                continue;
+            }
+            if x + 2. * run.size < clip_left {
+                continue;
+            }
             let mut color = run.color;
             if let Some(mask) = mask {
                 let next = g.index

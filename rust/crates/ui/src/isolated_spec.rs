@@ -70,6 +70,7 @@ impl Render for Sibling {
                 cx.notify();
             }))
             .child(div().size_full().debug_selector(move || label.clone()))
+            .child("some text, so the replay carries line layouts")
     }
 }
 
@@ -294,4 +295,23 @@ fn replays_keep_the_frame_around_them_working(cx: &mut TestAppContext) {
         assert_eq!(f.at(&format!("field2:{}", 2 * round)), p_field2);
         assert_eq!(f.at(&format!("pop:{round}")), p_pop);
     }
+}
+
+/// A font change between replays: GPUI does not carry line layouts across one, so a replayed
+/// run is shorter than the one it copies, and the views it carries must stay in bounds.
+#[gpui_kit::test]
+fn a_font_change_between_replays_keeps_the_frame(cx: &mut TestAppContext) {
+    let mut f = fixture(cx);
+    let field = f.field.clone();
+    f.key_into(&field);
+    f.cx.update(|_, cx| crate::fonts::register(cx).expect("fonts"));
+    f.key_into(&field);
+    let host = f.host.clone();
+    f.cx.update(|_, cx| host.update(cx, |_, cx| cx.notify()));
+    f.cx.run_until_parked();
+    f.key_into(&field);
+    f.cx.update(|_, cx| host.update(cx, |_, cx| cx.notify()));
+    f.cx.run_until_parked();
+    f.at("field:6");
+    f.at("sib:0");
 }

@@ -1,6 +1,9 @@
 //! The diff's trusted markup: `codeHtml` (chroma token spans over escaped text) and the hunk
 //! header labels, parsed as `{@html}` parses them.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::LazyLock;
 
 use recur_content::render::doc::{Doc, El, Node};
@@ -54,7 +57,43 @@ pub struct CodeRun {
 }
 
 /// The text runs of a `codeHtml` cell.
-pub fn code_runs(html: &str) -> Vec<CodeRun> {
+/// Parsed cells kept across frames: every row a stack redraws (each scroll step) parsed its
+/// markup again. Two generations bounded by bytes: a hit in the old one moves to the new, and a
+/// full new one becomes the old.
+#[derive(Default)]
+struct RunsCache {
+    now: HashMap<String, Rc<Vec<CodeRun>>>,
+    old: HashMap<String, Rc<Vec<CodeRun>>>,
+    bytes: usize,
+}
+
+const CODE_RUNS_MAX_BYTES: usize = 16 * 1024 * 1024;
+
+thread_local! {
+    static RUNS: RefCell<RunsCache> = RefCell::default();
+}
+
+/// [`parse_code_runs`], memoized by the cell's markup.
+pub fn code_runs(html: &str) -> Rc<Vec<CodeRun>> {
+    RUNS.with_borrow_mut(|c| {
+        if let Some(r) = c.now.get(html) {
+            return r.clone();
+        }
+        let runs = c
+            .old
+            .remove(html)
+            .unwrap_or_else(|| Rc::new(parse_code_runs(html)));
+        c.bytes += 2 * html.len() + 64;
+        c.now.insert(html.to_string(), runs.clone());
+        if c.bytes > CODE_RUNS_MAX_BYTES {
+            c.old = std::mem::take(&mut c.now);
+            c.bytes = 0;
+        }
+        runs
+    })
+}
+
+pub fn parse_code_runs(html: &str) -> Vec<CodeRun> {
     fn walk(nodes: &[Node], token: Option<Token>, out: &mut Vec<CodeRun>) {
         for n in nodes {
             match n {
@@ -166,7 +205,7 @@ mod tests {
             r#"<span class="kw">const</span> a = <span class="str">'&lt;b&gt;'</span> &amp;&amp; x"#,
         );
         assert_eq!(
-            runs,
+            *runs,
             vec![
                 CodeRun {
                     text: "const".into(),

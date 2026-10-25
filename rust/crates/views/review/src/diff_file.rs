@@ -1112,7 +1112,7 @@ impl DiffFile {
         };
         let mut col = 0usize;
         let spans: Vec<Span> = code_runs(html)
-            .into_iter()
+            .iter()
             .map(|r| {
                 let c = r.token.map_or(base, |tok: Token| token_color(tok, &t));
                 span(expand_tabs(&r.text, &mut col)).color(c)
@@ -1429,8 +1429,8 @@ impl DiffFile {
         let t = Theme::of(cx).tokens;
         let html = hunk_label(&self.lines()[i].code_html);
         let text_runs = code_runs(&html)
-            .into_iter()
-            .map(|r| r.text)
+            .iter()
+            .map(|r| r.text.as_str())
             .collect::<String>();
         let caret = if self.collapsed_hunks.contains(&i) {
             "▸"

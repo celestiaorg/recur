@@ -13,6 +13,7 @@ use recur_ui::style::{palette_empty, palette_group, palette_key, style_text_inpu
 use recur_ui::text::{TextStyled, text};
 use recur_ui::{IconName, Theme};
 use recur_view_core::AppState;
+use recur_view_core::{ObserveState as _, Topics};
 
 use crate::chrome::{self, Kind};
 
@@ -270,7 +271,7 @@ impl ShortcutsHelp {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
+            cx.observe_state_in(&state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
             cx.guarded_subscribe(&input, |_, _, _: &InputEvent, cx| cx.notify()),
@@ -302,6 +303,10 @@ impl ShortcutsHelp {
 
     fn sync_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let open = self.open(cx);
+        // A closed palette has nothing to follow: the store changes many times a second.
+        if !open && !self.was_open {
+            return;
+        }
         if open && !self.was_open {
             self.input.update(cx, |s, cx| s.set_value("", window, cx));
             let focus = self.input.focus_handle(cx);

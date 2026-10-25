@@ -3,6 +3,7 @@
 //! once the query has two characters.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::time::Duration;
 
 use gpui_kit::base::input::{InputEvent, InputState};
@@ -392,7 +393,7 @@ impl CommandPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
+            cx.observe_state_in(&state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
             cx.guarded_subscribe(&input, |this, _, ev: &InputEvent, cx| {
@@ -469,6 +470,10 @@ impl CommandPalette {
 
     fn sync_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let open = self.open(cx);
+        // A closed palette has nothing to follow: the store changes many times a second.
+        if !open && !self.was_open {
+            return;
+        }
         if open && !self.was_open {
             self.input.update(cx, |s, cx| s.set_value("", window, cx));
             self.sel = 0;

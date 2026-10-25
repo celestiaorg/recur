@@ -16,6 +16,7 @@ use recur_view_core::AppState;
 use recur_view_core::run::{
     filter_runs, order_runs, project_for_workspace, workspace_run, workspace_runs,
 };
+use recur_view_core::{ObserveState as _, Topics};
 
 use crate::chrome::{self, Kind, cmd_or_ctrl, plain, row_digit, step};
 use crate::open_in::stretch_sub;
@@ -38,7 +39,7 @@ impl RunPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
+            cx.observe_state_in(&state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
             cx.guarded_subscribe(&input, |this, _, _: &InputEvent, cx| {
@@ -100,6 +101,10 @@ impl RunPalette {
 
     fn sync_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let open = self.open(cx);
+        // A closed palette has nothing to follow: the store changes many times a second.
+        if !open && !self.was_open {
+            return;
+        }
         if open && !self.was_open {
             self.input.update(cx, |s, cx| s.set_value("", window, cx));
             self.sel = 0;

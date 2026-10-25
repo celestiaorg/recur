@@ -18,6 +18,7 @@ use recur_ui::widgets::ToastKind;
 use recur_ui::{IconName, TextStyled, Theme};
 use recur_view_core::AppState;
 use recur_view_core::commands::{RegisteredCommand, categories};
+use recur_view_core::{ObserveState as _, Topics};
 use recur_view_observatory::command_usage::{
     RECENT_SECTION_SIZE, ranked_command_ids, record_command_usage,
 };
@@ -196,7 +197,7 @@ impl RunCommandPalette {
         let input = cx.new(|cx| InputState::new(window, cx));
         let me = cx.entity().downgrade();
         let subs = vec![
-            cx.guarded_observe_in(&state, window, |this, _, window, cx| {
+            cx.observe_state_in(&state, Topics::ALL, window, |this, _, window, cx| {
                 this.sync_open(window, cx)
             }),
             cx.guarded_subscribe(&input, |this, _, _: &InputEvent, cx| {
@@ -247,6 +248,10 @@ impl RunCommandPalette {
 
     fn sync_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let open = self.open(cx);
+        // A closed palette has nothing to follow: the store changes many times a second.
+        if !open && !self.was_open {
+            return;
+        }
         if open && !self.was_open {
             self.input.update(cx, |s, cx| s.set_value("", window, cx));
             self.sel = 0;

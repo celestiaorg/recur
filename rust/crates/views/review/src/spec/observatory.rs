@@ -440,7 +440,7 @@ async fn a_huge_diff_mounts_only_the_cards_near_the_viewport(cx: &mut TestAppCon
 /// typing) leaves the review, and the Observatory that hosts it, as they were.
 #[gpui::test]
 fn a_reload_that_finds_the_same_diff_does_not_notify(cx: &mut TestAppContext) {
-    let (mut h, host) = surface(cx, MockOptions::default(), |_| {});
+    let (h, host) = surface(cx, MockOptions::default(), |_| {});
     let files =
         h.cx.update(|_, cx| host.read(cx).surface.read(cx).files_view().clone());
     let n = std::rc::Rc::new(std::cell::Cell::new(0));

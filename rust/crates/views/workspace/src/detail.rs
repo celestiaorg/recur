@@ -4,6 +4,7 @@
 //! a stale selection for the Briefing.
 
 use recur_ui::guard::Guarded;
+use recur_view_core::{ObserveState as _, Topics};
 use std::collections::{HashMap, HashSet};
 
 use gpui_kit::{
@@ -41,7 +42,9 @@ impl WorkspaceDetail {
             cx.guarded_subscribe(&vcx.state, |_, _, ev: &AppliedEvent, cx| {
                 on_hoist(&ev.0, cx)
             }),
-            cx.guarded_observe_in(&vcx.state, window, |d, _, window, cx| d.sync(window, cx)),
+            cx.observe_state_in(&vcx.state, Topics::ALL, window, |d, _, window, cx| {
+                d.sync(window, cx)
+            }),
         ];
         let mut d = WorkspaceDetail {
             vcx: vcx.clone(),
@@ -121,7 +124,18 @@ impl WorkspaceDetail {
         if next != self.hot {
             self.hot = next;
         }
+        // A shell leaving the hot list is parked before it is released: whatever still holds it
+        // (a turn in flight) must not keep it claiming the menu and keys.
+        let gone: Vec<_> = self
+            .views
+            .iter()
+            .filter(|(id, _)| !self.hot.contains(*id))
+            .map(|(_, v)| v.clone())
+            .collect();
         self.views.retain(|id, _| self.hot.contains(id));
+        for v in gone {
+            v.update(cx, |v, cx| v.set_shell_active(false, window, cx));
+        }
         // Park the outgoing shell before the incoming one claims the menu and watcher.
         let mut order = self.hot.clone();
         order.sort_by_key(|id| *id == bound);

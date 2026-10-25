@@ -174,6 +174,46 @@ async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) 
     }
 }
 
+/// A shell whose workspace leaves the live list while something still holds it (an
+/// archived workspace's turn in flight keeps its view alive) is parked as it is released: two
+/// live Observatories pushed their menu states over each other in an endless store loop.
+#[gpui::test]
+async fn a_shell_released_while_held_is_parked(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    s.open("LOOP-2224");
+    let held = bound(&mut s);
+    let state = s.state.clone();
+    s.cx.update(|_, cx| {
+        state.update(cx, |st, cx| {
+            let mut w = st.workspace("LOOP-2224").cloned().expect("workspace");
+            w.archived = true;
+            st.replace_workspace(w, cx);
+        })
+    });
+    s.settle();
+    s.open(ACTIVE);
+    assert!(
+        !held.read_with(s.cx, |v, _| v.shell_active),
+        "a released shell still claims the menu"
+    );
+    let changes = std::rc::Rc::new(std::cell::Cell::new(0));
+    let n = changes.clone();
+    let _sub = s.cx.update(|_, cx| {
+        recur_view_core::observe_state_app(
+            &state,
+            recur_view_core::Topics::ALL,
+            move |_, _| n.set(n.get() + 1),
+            cx,
+        )
+    });
+    s.settle();
+    assert!(
+        changes.get() < 10,
+        "the store kept changing: {}",
+        changes.get()
+    );
+}
+
 #[gpui::test]
 async fn the_wheel_scrolls_the_live_chat_over_a_parked_one(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});

@@ -24,6 +24,31 @@ use gpui_kit::{
     StyleRefinement, Styled, Window, div, px,
 };
 
+/// Frames layout roots and blocks asked for to settle (`take_settle_frames`).
+static SETTLE_FRAMES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Asks for another frame. `request_animation_frame` notifies the view being drawn, which also
+/// wakes everything observing it; a cached block notifies its own view instead, which redraws
+/// that view and dirties its ancestors (so the block is laid out again) and nothing else: a PR
+/// conversation's items all observe the PR detail drawing them.
+fn settle_frame(window: &mut Window, view: Option<gpui_kit::EntityId>, cx: &mut App) {
+    SETTLE_FRAMES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    match view {
+        Some(v) => {
+            // Dirty from inside the draw: applied to whichever draw comes next.
+            cx.notify(v);
+            window.on_next_frame(move |_, cx| cx.notify(v));
+        }
+        None => window.request_animation_frame(),
+    }
+}
+
+/// How many frames layout roots and blocks have asked for since the last call: each one
+/// notifies the view that drew them, so a root that never settles redraws its view forever.
+pub fn take_settle_frames() -> u64 {
+    SETTLE_FRAMES.swap(0, std::sync::atomic::Ordering::Relaxed)
+}
+
 /// Markers per edge and per pass: each frame narrows an edge's interval this many times.
 const STEPS: usize = 24;
 /// Narrower than this (device px) an edge is settled.
@@ -298,7 +323,7 @@ impl Element for LayoutRoot {
             .iter()
             .all(|e| e.settled());
         if !settled {
-            window.request_animation_frame();
+            settle_frame(window, None, cx);
         }
         // Unrounded edges in device px, and the content's unrounded size in px.
         let (ux0, uy0) = (x0 + edges.left.mid(), y0 + edges.top.mid());
@@ -705,13 +730,15 @@ impl LayoutBlock {
         id: Option<&GlobalElementId>,
         state: BlockState,
         root: AnyElement,
+        view: Option<gpui_kit::EntityId>,
         window: &mut Window,
+        cx: &mut App,
     ) {
         let settled = [state.left, state.top, state.right, state.bottom]
             .iter()
             .all(|e| e.settled());
         if !settled {
-            window.request_animation_frame();
+            settle_frame(window, view, cx);
         }
         if let Some(id) = id {
             window.with_element_state::<BlockState, _>(id, |_, _| ((), state));
@@ -869,18 +896,18 @@ impl Element for LayoutBlock {
                 root.prepaint_at(origin, window, cx);
                 // A view replayed from its cache keeps the place it rendered at: render it
                 // again at this one on the next frame.
-                if slot.rendered.get() != Some(place) {
-                    cx.notify(entity);
-                    window.request_animation_frame();
-                }
+                let mut settle = slot.rendered.get() != Some(place);
                 if let Some((height, bottom)) = slot.measured.take() {
                     state.bottom = bottom;
                     if state.height.is_none_or(|h| (h - height).abs() > 1e-3) {
                         state.height = Some(height);
-                        window.request_animation_frame();
+                        settle = true;
                     }
                 }
-                self.finish(id, state, root, window);
+                if settle {
+                    settle_frame(window, Some(entity), cx);
+                }
+                self.finish(id, state, root, Some(entity), window, cx);
                 return;
             }
         };
@@ -918,10 +945,10 @@ impl Element for LayoutBlock {
             state.bottom = bottom;
             if state.height.is_none_or(|h| (h - height).abs() > 1e-3) {
                 state.height = Some(height);
-                window.request_animation_frame();
+                settle_frame(window, None, cx);
             }
         }
-        self.finish(id, state, root, window);
+        self.finish(id, state, root, None, window, cx);
     }
 
     fn paint(

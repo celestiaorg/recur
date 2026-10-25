@@ -304,30 +304,23 @@ impl Element for LayoutRoot {
         // The root starts one device px before the snapped corner, so the shift is positive.
         let (sx, sy) = (edges.left.mid() + 1., edges.top.mid() + 1.);
         let dp = 1. / s;
+        // The content box sits at the shift and takes the unrounded size, both as percentages
+        // of the root (authored lengths would round to device pixels), and lays out once: no
+        // flex container above it to measure it again.
+        let (aw, ah) = (w + sx * dp, h + sy * dp);
+        let mut content = div().absolute().flex().flex_col().child(child);
+        let st = content.style();
+        st.inset.left = Some(gpui_kit::relative(sx * dp / aw.max(1e-6)).into());
+        st.inset.top = Some(gpui_kit::relative(sy * dp / ah.max(1e-6)).into());
+        st.size.width = Some(gpui_kit::relative(w / aw.max(1e-6)).into());
+        st.size.height = Some(gpui_kit::relative(h / ah.max(1e-6)).into());
         let mut root = div()
             .size_full()
-            .flex()
-            .flex_col()
-            .child(div().flex_none().w(px(dp)).aspect_ratio(1. / sy))
-            .child(
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .flex()
-                    .child(div().flex_none().h(px(dp)).aspect_ratio(sx))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .min_h_0()
-                            .flex()
-                            .flex_col()
-                            .child(child),
-                    ),
-            )
+            .relative()
+            .child(content)
             .into_any_element();
         let origin = gpui_kit::point(px(x0 / s - dp), px(y0 / s - dp));
-        let available = gpui_kit::size(px(w + sx * dp), px(h + sy * dp));
+        let available = gpui_kit::size(px(aw), px(ah));
         root.prepaint_as_root(origin, available.into(), window, cx);
         self.root = Some(root);
     }

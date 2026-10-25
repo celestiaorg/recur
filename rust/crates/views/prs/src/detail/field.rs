@@ -49,10 +49,11 @@ impl Field {
         });
         let emoji = attach_emoji(&area, Some(on_set.clone()), window, cx);
         let mentions = attach_user_mentions(&area, state.clone(), Some(on_set), window, cx);
+        // The host re-renders on its own as a key changes the area (its render reads it); a
+        // notify would also wake everything observing the host (its cached panes).
         let sub = cx.guarded_subscribe(&area, move |h, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 on_change(h, cx);
-                cx.notify();
             }
         });
         Field {

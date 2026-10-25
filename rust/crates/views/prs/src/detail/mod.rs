@@ -146,6 +146,8 @@ pub struct PrDetail {
     // Panes.
     pub(crate) conv_scroll: ScrollHandle,
     pub(crate) timeline: timeline::TimelineWindow,
+    /// The conversation's items as of its last render, for the timeline's item panes.
+    pub(crate) conv_items: Rc<Vec<PrComment>>,
     render_pr: Option<Option<Rc<Pr>>>,
     pub(crate) commits_scroll: ScrollHandle,
     pub(crate) checks_scroll: ScrollHandle,
@@ -320,6 +322,7 @@ impl PrDetail {
             highlight: 0,
             conv_scroll: ScrollHandle::new(),
             timeline: Default::default(),
+            conv_items: Rc::default(),
             render_pr: None,
             commits_scroll: ScrollHandle::new(),
             checks_scroll: ScrollHandle::new(),
@@ -2116,6 +2119,16 @@ pub(crate) enum MoreAction {
     Quote,
     Edit,
     Delete,
+}
+
+impl PrDetail {
+    /// Focus the conversation's comment box; whether it took focus (a locked conversation
+    /// has none).
+    pub fn focus_composer(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        let f = gpui_kit::Focusable::focus_handle(self.composer.area.read(cx), cx);
+        window.focus(&f, cx);
+        f.is_focused(window)
+    }
 }
 
 /// The PR detail the specs drive, for reading its fields.

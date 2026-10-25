@@ -728,6 +728,8 @@ struct Report {
     slow: Vec<(Duration, String)>,
     /// Timed interactions per budget.
     timed: BTreeMap<Budget, Vec<(Duration, String)>>,
+    /// Keystrokes per text input.
+    keys: BTreeMap<&'static str, Vec<Duration>>,
 }
 
 /// The interactions the smoke times against frame-time budgets: a run fails when the 95th
@@ -736,7 +738,8 @@ struct Report {
 /// is several times faster.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Budget {
-    /// A key typed into the composer of a long chat, through its frame.
+    /// A key typed into a text input (the composer of a long chat, the commit message, a PR's
+    /// comment box), through its frame.
     Keystroke,
     /// The first key after mouse input: GPUI redraws the whole window, every cache off, when the
     /// input modality changes.
@@ -755,6 +758,8 @@ impl Budget {
     fn limits(self) -> (Duration, Duration) {
         let ms = Duration::from_millis;
         match self {
+            // Release: a key through its painted frame in 20ms at p95.
+            Budget::Keystroke if !cfg!(debug_assertions) => (ms(20), ms(100)),
             Budget::Keystroke => (ms(100), ms(150)),
             Budget::FirstKey => (ms(600), ms(900)),
             Budget::ScrollStep => (ms(400), ms(1200)),
@@ -1053,6 +1058,38 @@ fn drive(root: PathBuf) -> i32 {
                     say(start, format!("OVER BUDGET {budget:?} {took:.0?} at: {s}"));
                 }
             }
+            for (input, d) in &r.keys {
+                let mut d = d.clone();
+                d.sort();
+                let pct = |p: f32| d[((d.len() - 1) as f32 * p).round() as usize];
+                say(
+                    start,
+                    format!(
+                        "keystroke {input}: {} samples, p50 {:.1?}, p95 {:.1?}, max {:.1?}",
+                        d.len(),
+                        pct(0.5),
+                        pct(0.95),
+                        pct(1.)
+                    ),
+                );
+            }
+            if let Some(keys) = r.timed.get(&Budget::Keystroke) {
+                let mut by_step: BTreeMap<&str, Vec<Duration>> = BTreeMap::new();
+                for (d, step) in keys {
+                    by_step.entry(step.as_str()).or_default().push(*d);
+                }
+                let mut steps: Vec<(Duration, &str)> = by_step
+                    .into_iter()
+                    .map(|(step, mut d)| {
+                        d.sort();
+                        (d[d.len() / 2], step)
+                    })
+                    .collect();
+                steps.sort_by_key(|s| std::cmp::Reverse(s.0));
+                for (median, step) in steps.iter().take(5) {
+                    say(start, format!("  keystroke median {median:.1?} at: {step}"));
+                }
+            }
             let ok = r.panics.is_empty() && r.toasts.is_empty() && r.stalls.is_empty() && over == 0;
             say(
                 start,
@@ -1310,6 +1347,18 @@ async fn run(
             at(start, format!("PR {id} {tab:?}"));
             detail.update(cx, |d, cx| d.set_tab(tab, cx));
             frames(cx, window, 12).await;
+        }
+        at(start, format!("PR {id} comment: type"));
+        detail.update(cx, |d, cx| d.set_tab(PrTab::Conv, cx));
+        frames(cx, window, 4).await;
+        let focused = cx
+            .update_window(window, |_, window, cx| {
+                detail.update(cx, |d, cx| d.focus_composer(window, cx))
+            })
+            .unwrap_or(false);
+        frames(cx, window, 4).await;
+        if focused {
+            type_keys(cx, window, "PR comment").await;
         }
     }
 
@@ -1576,6 +1625,18 @@ async fn type_in_long_chat(
         chat.update(cx, |c, cx| c.focus_composer(window, cx))
     });
     frames(cx, window, 2).await;
+    type_keys(cx, window, "chat composer").await;
+    let after = chat.read_with(cx, |c, _| c.input().to_string());
+    if after != before {
+        note(format!(
+            "typing in {id} {code} left the draft {after:?} (was {before:?})"
+        ));
+    }
+}
+
+/// Types `a b c` and three backspaces (`RECUR_SMOKE_KEY_ROUNDS` times) into the focused input,
+/// timing each key through its frame. The input ends as it started.
+async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static str) {
     let rounds = std::env::var("RECUR_SMOKE_KEY_ROUNDS")
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
@@ -1587,22 +1648,16 @@ async fn type_in_long_chat(
         keys(cx, window, k);
         draw(cx, window);
         let took = t.elapsed();
-        // The transcript was just scrolled with the wheel.
-        timed(
-            if i == 0 {
-                Budget::FirstKey
-            } else {
-                Budget::Keystroke
-            },
-            took,
-        );
+        // The first key follows mouse input (or a scroll): GPUI refreshes the whole window.
+        if i == 0 {
+            timed(Budget::FirstKey, took);
+        } else {
+            timed(Budget::Keystroke, took);
+            if let Ok(mut r) = report().lock() {
+                r.keys.entry(input).or_default().push(took);
+            }
+        }
         stall_check(took);
-    }
-    let after = chat.read_with(cx, |c, _| c.input().to_string());
-    if after != before {
-        note(format!(
-            "typing in {id} {code} left the draft {after:?} (was {before:?})"
-        ));
     }
 }
 
@@ -1631,6 +1686,17 @@ async fn observatory(
         })
     });
     frames(cx, window, 8).await;
+    at(start, format!("workspace {id}: commit message: type"));
+    let focused = cx
+        .update_window(window, |_, window, cx| {
+            obs.update(cx, |o, cx| o.focus_commit_msg(window, cx))
+        })
+        .unwrap_or(false);
+    frames(cx, window, 4).await;
+    // Keys with nothing to type into would reach the window's shortcuts.
+    if focused {
+        type_keys(cx, window, "commit message").await;
+    }
     let wt = state.read_with(cx, |s, _| {
         s.workspaces
             .iter()

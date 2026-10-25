@@ -8,10 +8,14 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use gpui_kit::{
-    AnyElement, App, EntityId, InteractiveElement, IntoElement, ParentElement, ScrollHandle,
-    SharedString, Styled, canvas, div, point, px,
+    AnyElement, App, AppContext as _, Context, Entity, EntityId, InteractiveElement, IntoElement,
+    ParentElement, Render, ScrollHandle, SharedString, Styled, Subscription, WeakEntity, Window,
+    canvas, div, point, px,
 };
 use recur_domain::PrComment;
+use recur_ui::guard::Guarded;
+
+use super::PrDetail;
 
 /// Timelines shorter than this mount whole.
 pub(crate) const TIMELINE_WINDOW_FROM: usize = 40;
@@ -35,6 +39,8 @@ pub(crate) struct TimelineWindow {
     /// The height each item reserved in the last plan, for scroll anchoring.
     reserved: HashMap<String, f32>,
     planned_view_h: f32,
+    /// Measured items as their own cached views, by id.
+    panes: HashMap<String, Entity<ItemPane>>,
 }
 
 /// `None` mounts the item; `Some(h)` reserves `h` px for it.
@@ -61,6 +67,7 @@ impl TimelineWindow {
         if self.pr != pr {
             self.pr = pr.to_string();
             self.reserved.clear();
+            self.panes.clear();
             *self.probe.borrow_mut() = Probe::default();
         }
         let probe = self.probe.borrow();
@@ -127,11 +134,13 @@ impl TimelineWindow {
         .into_any_element()
     }
 
-    /// A mounted item, measuring itself; a height other than the reserved one replans.
+    /// An item mounting for the first time, measuring itself; a height other than the reserved
+    /// one replans.
     pub(crate) fn live(&self, c: &PrComment, el: AnyElement, view: EntityId) -> AnyElement {
         let rec = self.probe.clone();
-        let reserved = self.reserved.get(&c.id).copied();
         let key = c.id.clone();
+        let id = SharedString::from(format!("tli-{}", c.id));
+        let reserved = self.reserved.get(&c.id).copied();
         let probe = canvas(
             move |bounds, _, cx: &mut App| {
                 let h = f32::from(bounds.size.height);
@@ -145,7 +154,7 @@ impl TimelineWindow {
         .absolute()
         .inset_0();
         div()
-            .id(SharedString::from(format!("tli-{}", c.id)))
+            .id(id)
             .relative()
             .flex()
             .flex_col()
@@ -154,9 +163,85 @@ impl TimelineWindow {
             .into_any_element()
     }
 
+    /// The height `id` laid out at, once it has mounted.
+    pub(crate) fn measured(&self, id: &str) -> Option<f32> {
+        self.probe.borrow().heights.get(id).copied()
+    }
+
+    /// The cached view for a measured item.
+    pub(crate) fn pane(&mut self, id: &str, cx: &mut Context<PrDetail>) -> Entity<ItemPane> {
+        if let Some(p) = self.panes.get(id) {
+            return p.clone();
+        }
+        let detail = cx.entity();
+        let probe = self.probe.clone();
+        let id = id.to_string();
+        let pane = cx.new(|cx| ItemPane {
+            detail: detail.downgrade(),
+            probe,
+            id: id.clone(),
+            _sub: cx.guarded_observe(&detail, |_, _, cx| cx.notify()),
+        });
+        self.panes.insert(id, pane.clone());
+        pane
+    }
+
     /// A run of windowed-out items as one spacer.
     pub(crate) fn gap(h: f32) -> AnyElement {
         div().flex_none().h(px(h)).into_any_element()
+    }
+}
+
+/// A measured timeline item as its own cached view, mounted at its measured height: a redraw
+/// of the page that does not notify the PR detail (a key typed in the comment box) reuses its
+/// layout. Any notify of the PR detail redraws it; a new natural height replans the window.
+pub struct ItemPane {
+    detail: WeakEntity<PrDetail>,
+    probe: Rc<RefCell<Probe>>,
+    id: String,
+    _sub: Subscription,
+}
+
+impl ItemPane {
+    fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let Some(detail) = self.detail.upgrade() else {
+            return div().into_any_element();
+        };
+        let id = self.id.clone();
+        let el = detail.update(cx, |d, cx| d.timeline_item_by_id(&id, window, cx));
+        let (rec, view) = (self.probe.clone(), detail.entity_id());
+        let measure = canvas(
+            move |bounds, _, cx: &mut App| {
+                let h = f32::from(bounds.size.height);
+                let changed = rec
+                    .borrow()
+                    .heights
+                    .get(&id)
+                    .is_none_or(|r| (r - h).abs() > 0.5);
+                if changed {
+                    rec.borrow_mut().heights.insert(id.clone(), h);
+                    cx.notify(view);
+                }
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0();
+        // Sized by its content, not the box, so the probe reads the item's natural height.
+        div()
+            .w_full()
+            .relative()
+            .flex()
+            .flex_col()
+            .child(el)
+            .child(measure)
+            .into_any_element()
+    }
+}
+
+impl Render for ItemPane {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

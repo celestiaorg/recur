@@ -103,6 +103,12 @@ impl Inputs {
         self.commit.read(cx).value().to_string()
     }
 
+    /// Focus the commit message box (the SCM panel shows it).
+    pub fn focus_commit_msg(&self, window: &mut Window, cx: &mut gpui_kit::App) -> bool {
+        self.commit.update(cx, |s, cx| s.focus(window, cx));
+        gpui_kit::Focusable::focus_handle(self.commit.read(cx), cx).is_focused(window)
+    }
+
     pub fn set_commit_msg(&self, text: &str, window: &mut Window, cx: &mut gpui_kit::App) {
         let text = text.to_string();
         self.commit

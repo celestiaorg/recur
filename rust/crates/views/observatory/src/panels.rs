@@ -80,6 +80,13 @@ impl Observatory {
     }
 
     /// `selectCodePanel`: show a panel on its side (and load / focus what it needs).
+    /// Show the source control panel with its commit message box focused; whether it took
+    /// focus.
+    pub fn focus_commit_msg(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        self.select_code_panel(CodePanelKey::Scm, window, cx);
+        self.inputs.focus_commit_msg(window, cx)
+    }
+
     pub fn select_code_panel(
         &mut self,
         next: CodePanelKey,

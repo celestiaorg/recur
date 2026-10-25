@@ -1734,6 +1734,49 @@ impl PrDetail {
     }
 
     /// The Conversation pane.
+    /// A timeline item: inline the first time it mounts, measuring itself, then its own cached
+    /// view at that height, so a redraw of the page (a key typed in the comment box) reuses it.
+    fn timeline_slot(
+        &mut self,
+        c: &PrComment,
+        items: &[PrComment],
+        pr: &Pr,
+        view: gpui_kit::EntityId,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        if let Some(h) = self.timeline.measured(&c.id) {
+            let pane = self.timeline.pane(&c.id, cx);
+            return recur_ui::style::cached_view(
+                &pane,
+                gpui_kit::StyleRefinement::default()
+                    .w_full()
+                    .flex_none()
+                    .h(px(h)),
+                cx,
+            );
+        }
+        let el = self.timeline_item(c, items, pr, window, cx);
+        self.timeline.live(c, el, view)
+    }
+
+    /// One timeline item by id, for its [`ItemPane`](super::timeline::ItemPane).
+    pub(crate) fn timeline_item_by_id(
+        &mut self,
+        id: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let items = self.conv_items.clone();
+        let (Some(c), Some(pr)) = (items.iter().find(|c| c.id == id), self.render_pr(cx)) else {
+            return div().into_any_element();
+        };
+        if c.kind == "description" {
+            return self.description_card(c, &pr, window, cx);
+        }
+        self.timeline_item(c, &items, &pr, window, cx)
+    }
+
     pub(crate) fn conversation(
         &mut self,
         pr: Option<&Pr>,
@@ -1756,10 +1799,33 @@ impl PrDetail {
             if self.conv_pending(cx) {
                 wrap = wrap.child(super::skeleton::conv_skel(window, cx));
             } else {
-                let items = self.thread_items(cx);
+                let items = std::rc::Rc::new(self.thread_items(cx));
+                self.conv_items = items.clone();
                 let desc = items.iter().find(|c| c.kind == "description").cloned();
+                let windowed = items.iter().filter(|c| is_timeline_root(Some(c))).count()
+                    >= TIMELINE_WINDOW_FROM;
                 if let Some(d) = &desc {
-                    wrap = wrap.child(self.description_card(d, pr, window, cx));
+                    // A long conversation's description is cached like its timeline items.
+                    let view = cx.entity_id();
+                    let card = match self.timeline.measured(&d.id).filter(|_| windowed) {
+                        Some(h) => {
+                            let pane = self.timeline.pane(&d.id, cx);
+                            recur_ui::style::cached_view(
+                                &pane,
+                                gpui_kit::StyleRefinement::default()
+                                    .w_full()
+                                    .flex_none()
+                                    .h(px(h)),
+                                cx,
+                            )
+                        }
+                        None if windowed => {
+                            let el = self.description_card(d, pr, window, cx);
+                            self.timeline.live(d, el, view)
+                        }
+                        None => self.description_card(d, pr, window, cx),
+                    };
+                    wrap = wrap.child(card);
                 }
                 let gh = pr.source == PrSource::GitHub;
                 let has_focus = !pr.focus.title.is_empty() || !pr.focus.body.is_empty();
@@ -1799,8 +1865,7 @@ impl PrDetail {
                         if gap > 0. {
                             thread = thread.child(TimelineWindow::gap(std::mem::take(&mut gap)));
                         }
-                        let el = self.timeline_item(c, &items, pr, window, cx);
-                        thread = thread.child(self.timeline.live(c, el, view));
+                        thread = thread.child(self.timeline_slot(c, &items, pr, view, window, cx));
                     }
                     if gap > 0. {
                         thread = thread.child(TimelineWindow::gap(gap));

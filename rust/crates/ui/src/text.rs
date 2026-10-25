@@ -2177,39 +2177,48 @@ fn paint_lines(
         } else {
             (0, p.glyphs.len())
         };
-        for g in p.glyphs[lo..hi]
-            .iter()
-            .filter(|g| line.range.contains(&g.index))
-        {
-            let run = &laid.key.runs[g.run];
-            let x = left + g.x;
-            if x > clip_right {
-                if in_order {
-                    break;
+        // One layer per line: the scene orders it as one primitive, where each glyph would
+        // be one more insert (and one more again whenever a cached view replays it).
+        let reach = 2. * line.height;
+        let layer = Bounds::from_corners(
+            point(px(clip_left), px(top - reach)),
+            point(px(clip_right), px(top + line.height + reach)),
+        );
+        window.paint_layer(layer, |window| {
+            for g in p.glyphs[lo..hi]
+                .iter()
+                .filter(|g| line.range.contains(&g.index))
+            {
+                let run = &laid.key.runs[g.run];
+                let x = left + g.x;
+                if x > clip_right {
+                    if in_order {
+                        break;
+                    }
+                    continue;
                 }
-                continue;
+                if x + 2. * run.size < clip_left {
+                    continue;
+                }
+                let mut color = run.color;
+                if let Some(mask) = mask {
+                    let next = g.index
+                        + text
+                            .get(g.index..)
+                            .and_then(|t| t.chars().next())
+                            .map_or(1, char::len_utf8);
+                    let center = left + (p.x_at(g.index) + p.x_at(next)) / 2.;
+                    color = color.opacity(mask(center));
+                }
+                paint_one(
+                    window,
+                    point(px(left + g.x), px(baseline)),
+                    g,
+                    run.size,
+                    color,
+                );
             }
-            if x + 2. * run.size < clip_left {
-                continue;
-            }
-            let mut color = run.color;
-            if let Some(mask) = mask {
-                let next = g.index
-                    + text
-                        .get(g.index..)
-                        .and_then(|t| t.chars().next())
-                        .map_or(1, char::len_utf8);
-                let center = left + (p.x_at(g.index) + p.x_at(next)) / 2.;
-                color = color.opacity(mask(center));
-            }
-            paint_one(
-                window,
-                point(px(left + g.x), px(baseline)),
-                g,
-                run.size,
-                color,
-            );
-        }
+        });
         for (ri, r) in run_slices(
             &laid.key.runs,
             p.range.start + line.range.start..p.range.start + line.range.end,

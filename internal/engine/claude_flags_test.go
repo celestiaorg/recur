@@ -23,6 +23,12 @@ func TestResolveClaudeContextWindow(t *testing.T) {
 	if got := ResolveClaudeContextWindow("claude-fable-5-1", nil); got != 1_000_000 {
 		t.Errorf("fable 5.1 = %d, want 1000000", got)
 	}
+	if got := ResolveClaudeContextWindow("claude-mythos-5-1", nil); got != 1_000_000 {
+		t.Errorf("mythos 5.1 = %d, want 1000000", got)
+	}
+	if got := ResolveClaudeContextWindow("claude-haiku-5-5", nil); got != 1_000_000 {
+		t.Errorf("haiku 5.5 = %d, want 1000000", got)
+	}
 
 	// 4.6 models: 200K default, 1M when selected.
 	if got := ResolveClaudeContextWindow("claude-sonnet-4-6", map[string]string{"context": "200k"}); got != 200_000 {

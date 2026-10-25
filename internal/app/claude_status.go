@@ -1,9 +1,11 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -136,6 +138,46 @@ func probeClaudeVersion(ctx context.Context) string {
 		return ""
 	}
 	return parseClaudeVersion(string(out))
+}
+
+// claudeModelInfo is one entry of the models list Claude Code returns from the
+// stream-json initialize handshake.
+type claudeModelInfo struct {
+	Value         string `json:"value"`
+	ResolvedModel string `json:"resolvedModel"`
+	DisplayName   string `json:"displayName"`
+}
+
+// probeClaudeModels asks Claude Code which models the logged-in account can
+// use. Only the initialize handshake is sent, so no turn runs and no tokens
+// are spent. Returns nil when claude is missing or the reply is unreadable.
+func probeClaudeModels(ctx context.Context) []claudeModelInfo {
+	cmd := exec.CommandContext(ctx, "claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose")
+	cmd.Dir = os.TempDir()
+	cmd.Stdin = strings.NewReader(`{"type":"control_request","request_id":"models","request":{"subtype":"initialize"}}` + "\n")
+	out, _ := cmd.Output()
+	return parseClaudeInitModels(out)
+}
+
+func parseClaudeInitModels(out []byte) []claudeModelInfo {
+	dec := json.NewDecoder(bytes.NewReader(out))
+	for {
+		var line struct {
+			Type     string `json:"type"`
+			Response struct {
+				RequestID string `json:"request_id"`
+				Response  struct {
+					Models []claudeModelInfo `json:"models"`
+				} `json:"response"`
+			} `json:"response"`
+		}
+		if err := dec.Decode(&line); err != nil {
+			return nil
+		}
+		if line.Type == "control_response" && line.Response.RequestID == "models" {
+			return line.Response.Response.Models
+		}
+	}
 }
 
 func parseClaudeVersion(raw string) string {

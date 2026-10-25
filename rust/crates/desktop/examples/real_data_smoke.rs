@@ -1250,6 +1250,40 @@ async fn run(
     shell: Entity<Shell>,
     state: Entity<AppState>,
 ) {
+    // A store notified thousands of times a second is an observer writing back what another
+    // undoes: print what changes between notifies so the stall names the field.
+    let storm = std::cell::Cell::new((Instant::now(), 0u32, 0u32));
+    let last = std::cell::RefCell::new(String::new());
+    cx.update(|cx| {
+        cx.observe(&state, move |state, cx| {
+            let (since, n, printed) = storm.get();
+            let (since, n) = if since.elapsed() > Duration::from_secs(1) {
+                (Instant::now(), 0)
+            } else {
+                (since, n + 1)
+            };
+            let mut printed = printed;
+            if n > 2000 && printed < 40 {
+                let s = state.read(cx);
+                let now = format!(
+                    "view {:?} ws {} pr {} overlays {:?} menu {:?}",
+                    s.view, s.selected_workspace_id, s.selected_pr_id, s.overlays, s.menu_state
+                );
+                let mut l = last.borrow_mut();
+                say(
+                    start,
+                    format!(
+                        "STORM store notify {n}: {now} (same as last: {})",
+                        *l == now
+                    ),
+                );
+                *l = now;
+                printed += 1;
+            }
+            storm.set((since, n, printed));
+        })
+        .detach();
+    });
     at(start, "waiting for boot");
     if !until(cx, window, 60, |cx| state.read_with(cx, |s, _| s.booted)).await {
         note("the app did not boot within 60s".into());
@@ -1753,19 +1787,20 @@ async fn observatory(
         }
         frames(cx, window, 4).await;
         // A line note on the first card that takes one and is on screen.
-        let cards: Vec<Entity<recur_view_review::diff_file::DiffFile>> = obs.read_with(cx, |o, cx| {
-            o.review_surface()
-                .map(|r| {
-                    r.read(cx)
-                        .files_view()
-                        .read(cx)
-                        .stack()
-                        .diff_files()
-                        .cloned()
-                        .collect()
-                })
-                .unwrap_or_default()
-        });
+        let cards: Vec<Entity<recur_view_review::diff_file::DiffFile>> =
+            obs.read_with(cx, |o, cx| {
+                o.review_surface()
+                    .map(|r| {
+                        r.read(cx)
+                            .files_view()
+                            .read(cx)
+                            .stack()
+                            .diff_files()
+                            .cloned()
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            });
         for card in cards.iter().take(8) {
             let focused = cx
                 .update_window(window, |_, window, cx| {

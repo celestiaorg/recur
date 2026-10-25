@@ -81,7 +81,9 @@ impl Observatory {
 
     /// `selectCodePanel`: show a panel on its side (and load / focus what it needs).
     /// The branch review, once it has been shown.
-    pub fn review_surface(&self) -> Option<&Entity<recur_view_review::surface::ReviewSurface>> {
+    pub fn review_surface(
+        &self,
+    ) -> Option<&gpui_kit::Entity<recur_view_review::surface::ReviewSurface>> {
         self.review_surface.as_ref()
     }
 

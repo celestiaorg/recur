@@ -33,8 +33,9 @@
 //! mth (1-based, inclusive: a full run can be covered in ranges), `RECUR_SMOKE_WORKSPACE=<id>` visits
 //! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
 //! stops after the workspaces and
-//! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered and
-//! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times.
+//! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered,
+//! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times and
+//! `RECUR_SMOKE_SAMPLE_MS=n` samples the main thread during frames and keys over n ms.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -869,15 +870,19 @@ fn watchdog() {
     });
 }
 
-/// Samples the main thread once during each frame that passes 1.5s: what a slow frame did,
-/// which its renders alone do not say.
+/// Samples the main thread once during each frame (or key) that passes 1.5s
+/// (`RECUR_SMOKE_SAMPLE_MS`): what a slow frame did, which its renders alone do not say.
 fn frame_watchdog() {
-    std::thread::spawn(|| {
+    let threshold = std::env::var("RECUR_SMOKE_SAMPLE_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(1_500);
+    std::thread::spawn(move || {
         let mut sampled = 0;
         loop {
             std::thread::sleep(Duration::from_millis(100));
             let at = FRAME_START.load(Ordering::SeqCst);
-            if at == 0 || at == sampled || now_ms().saturating_sub(at) < 1_500 {
+            if at == 0 || at == sampled || now_ms().saturating_sub(at) < threshold {
                 continue;
             }
             sampled = at;
@@ -1753,6 +1758,7 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
         let moved = MOUSE_MOVES.swap(0, Ordering::SeqCst);
         let stored = STORE_NOTIFIES.swap(0, Ordering::SeqCst);
         let t = Instant::now();
+        FRAME_START.store(now_ms(), Ordering::SeqCst);
         keys(cx, window, k);
         draw(cx, window);
         let took = t.elapsed();

@@ -36,7 +36,9 @@
 //! stops after the workspaces and
 //! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered,
 //! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times and
-//! `RECUR_SMOKE_SAMPLE_MS=n` samples the main thread during frames and keys over n ms.
+//! `RECUR_SMOKE_SAMPLE_MS=n` samples the main thread during frames and keys over n ms and
+//! `RECUR_SMOKE_SAMPLE_KEYS=1` samples every typing burst at 1ms, keeping the stacks of bursts
+//! with a key over 100ms.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -1837,6 +1839,12 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
         .and_then(|v| v.parse::<usize>().ok())
         .unwrap_or(1);
     let seq = "a b c backspace backspace backspace ".repeat(rounds);
+    let sampler = sample_keys(rounds);
+    if sampler.is_some() {
+        // `sample` attaches before the first key.
+        sleep(cx, 400).await;
+    }
+    let mut slow = false;
     for (i, k) in seq.split_whitespace().enumerate() {
         sleep(cx, 60).await;
         let moved = MOUSE_MOVES.swap(0, Ordering::SeqCst);
@@ -1844,9 +1852,11 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
         let t = Instant::now();
         FRAME_START.store(now_ms(), Ordering::SeqCst);
         keys(cx, window, k);
+        let dispatched = t.elapsed();
         draw(cx, window);
         let took = t.elapsed();
         if i > 0 && took > Duration::from_millis(100) {
+            slow = true;
             let views = last_renders()
                 .lock()
                 .map(|r| view_list(&r))
@@ -1857,7 +1867,9 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
                 ""
             };
             let after = format!("{after}, {stored} store notifies");
-            println!("slow key {took:.0?} ({k}) in {input}{after}: {views}");
+            println!(
+                "slow key {took:.0?} ({k}, dispatch {dispatched:.0?}) in {input}{after}: {views}"
+            );
         }
         // The first key follows mouse input (or a scroll): GPUI refreshes the whole window.
         if i == 0 {
@@ -1870,6 +1882,35 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
         }
         stall_check(took);
     }
+    if let Some((mut child, out)) = sampler {
+        let _ = child.wait();
+        if slow {
+            println!("slow key stacks ({input}) in {}", out.display());
+        } else {
+            let _ = std::fs::remove_file(out);
+        }
+    }
+}
+
+/// `sample` at 1ms over a typing burst (`RECUR_SMOKE_SAMPLE_KEYS=1`): a key of a few hundred
+/// ms is over before the frame watchdog's sampler attaches.
+fn sample_keys(rounds: usize) -> Option<(std::process::Child, PathBuf)> {
+    std::env::var_os("RECUR_SMOKE_SAMPLE_KEYS")?;
+    let secs = (rounds as f32 * 6. * 0.15 + 1.5).ceil() as u32;
+    let out = std::env::temp_dir().join(format!("recur-smoke-keys-{}.txt", now_ms()));
+    Command::new("sample")
+        .args([
+            &std::process::id().to_string(),
+            &secs.to_string(),
+            "1",
+            "-file",
+        ])
+        .arg(&out)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()
+        .map(|c| (c, out))
 }
 
 fn stall_check(took: Duration) {

@@ -776,6 +776,7 @@ impl Observatory {
         self.git_status_ready = snap.git_status_ready;
         self.working_status = snap.working_status;
         self.staged_files = snap.staged_files;
+        self.working_changed();
         self.open_files = unique_open_files(&snap.open_files);
         self.closed_tabs = snap.closed_tabs;
         self.selected_path = snap.selected_path.clone();

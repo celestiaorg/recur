@@ -327,6 +327,7 @@ impl Observatory {
         self.git_status_ready = false;
         self.working_status.clear();
         self.staged_files.clear();
+        self.working_changed();
         self.worktree_missing = false;
         self.outline.clear();
         self.hits.clear();
@@ -425,6 +426,7 @@ impl Observatory {
                 if let Some(staged) = staged {
                     o.staged_files = staged;
                 }
+                o.working_changed();
                 o.git_status_ready = true;
                 if !soft {
                     o.end_tree_load();
@@ -666,6 +668,7 @@ impl Observatory {
             self.paths_gen += 1;
             self.working_status.clear();
             self.staged_files.clear();
+            self.working_changed();
             cx.notify();
             return Task::ready(());
         }
@@ -701,6 +704,7 @@ impl Observatory {
             self.working_status_gen += 1;
             self.working_status.clear();
             self.staged_files.clear();
+            self.working_changed();
             cx.notify();
             return Task::ready(());
         }
@@ -723,12 +727,26 @@ impl Observatory {
                 if token != o.working_status_gen {
                     return;
                 }
-                if let Some(st) = st {
-                    o.working_status = compact_status(st);
+                // A watcher event refreshes the status; one that changed nothing redraws
+                // nothing (the changes list beside the commit message is costly on a large
+                // change set).
+                let mut changed = false;
+                if let Some(st) = st.map(compact_status)
+                    && st != o.working_status
+                {
+                    o.working_status = st;
+                    changed = true;
                 }
-                if let Some(s) = staged {
+                if let Some(s) = staged
+                    && s != o.staged_files
+                {
                     o.staged_files = s;
+                    changed = true;
                 }
+                if !changed {
+                    return;
+                }
+                o.working_changed();
                 o.sync_review_props_later(cx);
                 cx.notify();
             });

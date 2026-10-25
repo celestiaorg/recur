@@ -355,6 +355,8 @@ pub struct Observatory {
     /// Uncommitted porcelain versus HEAD.
     pub(crate) working_status: BTreeMap<String, String>,
     pub(crate) staged_files: Vec<String>,
+    /// `working_paths`, until `working_status` or `staged_files` next change.
+    pub(crate) working_paths_memo: std::cell::RefCell<Option<Rc<(Vec<String>, Vec<String>)>>>,
     pub(crate) browse_all: bool,
     pub(crate) scope_chosen: bool,
     pub(crate) changed_collapsed: BTreeSet<String>,
@@ -649,6 +651,7 @@ impl Observatory {
             paths_memo: Default::default(),
             working_status: BTreeMap::new(),
             staged_files: Vec::new(),
+            working_paths_memo: Default::default(),
             browse_all: false,
             scope_chosen: false,
             changed_collapsed: BTreeSet::new(),

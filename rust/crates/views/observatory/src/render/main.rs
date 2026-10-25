@@ -1299,7 +1299,8 @@ impl Observatory {
             .children(editors)
             .children(review)
             .children(status.filter(|_| !fs));
-        let dock_el = self.dock.as_ref().map(|(_, d)| d.clone());
+        // Cached: a key in the chat beside it redraws the Observatory, not the terminal.
+        let dock_el = self.dock.as_ref().map(|(_, d)| cached_view(d, fill(), cx));
         let mut main = div()
             .id("obs-main")
             .debug_selector(|| "obs-main".into())
@@ -1494,7 +1495,7 @@ impl Observatory {
 
     /// The maximized dock (`.obs.term-max .term-dock`): fixed over the Observatory at the
     /// animated rectangle, with the scrim under it.
-    pub(crate) fn render_term_overlay(&mut self, _cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub(crate) fn render_term_overlay(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
         if !self.term_overlaying() {
             return None;
         }
@@ -1514,7 +1515,7 @@ impl Observatory {
                         .w(px(r.width))
                         .h(px(r.height))
                         .child(crate::geometry::probe(&self.bounds.dock))
-                        .child(d),
+                        .child(cached_view(&d, fill(), cx)),
                 )
                 .into_any_element(),
         )

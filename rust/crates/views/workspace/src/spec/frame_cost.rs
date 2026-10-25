@@ -54,8 +54,23 @@ const COMPOSER_PATH: [&str; 6] = [
 async fn a_keystroke_in_a_long_chat_renders_and_lays_out_only_the_composer(
     cx: &mut TestAppContext,
 ) {
+    keystroke_renders_only_the_composer(cx, false);
+}
+
+/// The terminal dock beside the chat is a sibling of the composer's path, so a key reuses it.
+#[gpui::test]
+async fn a_keystroke_beside_an_open_terminal_does_not_redraw_it(cx: &mut TestAppContext) {
+    keystroke_renders_only_the_composer(cx, true);
+}
+
+fn keystroke_renders_only_the_composer(cx: &mut TestAppContext, terminal: bool) {
     let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
     s.open(ACTIVE);
+    if terminal {
+        let state = s.state.clone();
+        s.cx.update(|_, cx| state.update(cx, |st, cx| st.set_terminal_dock_open(ACTIVE, true, cx)));
+        s.settle();
+    }
     let view =
         s.cx.update(|_, cx| WorkspaceDetail::current(cx)?.read(cx).bound_view(cx))
             .expect("bound view");

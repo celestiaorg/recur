@@ -205,9 +205,11 @@
     if (!(e.metaKey || e.ctrlKey)) return
     if (e.key === '+' || e.key === '=' || e.code === 'Equal' || e.code === 'NumpadAdd') {
       e.preventDefault()
+      e.stopPropagation()
       scale = zoomStep(scale, 1)
     } else if (e.key === '-' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
       e.preventDefault()
+      e.stopPropagation()
       scale = zoomStep(scale, -1)
     }
   }

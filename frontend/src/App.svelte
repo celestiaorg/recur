@@ -34,7 +34,7 @@
   import { loadScheduleExpanded } from './lib/schedule-expanded'
   import { copySelectedWorkspacePath } from './lib/workspace-path'
   import { isTitlebarZoomTarget } from './lib/titlebar'
-  import { initZoom, zoomIn, zoomOut, zoomReset } from './lib/zoom'
+  import { initZoom, zoomChordAction, zoomIn, zoomOut, zoomReset } from './lib/zoom'
   import { wsMainBlocked, wsRunActive, workspaceCanRemove, workspaceShowsRemove } from './lib/modes'
   import { removeWorkspace } from './lib/remove-workspace'
   import { prForWorkspace, prIconName, prLifecycle } from './lib/colors'
@@ -835,19 +835,11 @@
       }
     })
     const onKey = (e: KeyboardEvent) => {
-      // ⌘/Ctrl + = / + / - / 0 (and numpad) — whole-UI zoom. Matched on e.code
-      // and e.key because Shift turns = into + and layouts move the physical key.
-      if (isCmdOrCtrl(e) && !e.altKey) {
-        const zoom =
-          e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '=' || e.key === '+' ? zoomIn
-          : e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '-' ? zoomOut
-          : e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0' ? zoomReset
-          : null
-        if (zoom) {
-          e.preventDefault()
-          zoom()
-          return
-        }
+      const zoom = zoomChordAction(e)
+      if (zoom) {
+        e.preventDefault()
+        zoom()
+        return
       }
       if (isCmdOrCtrl(e) && e.key.toLowerCase() === 'k' && !e.shiftKey) {
         e.preventDefault()

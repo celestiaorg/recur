@@ -49,7 +49,7 @@ test.describe('ui zoom', () => {
 
   test('the level survives a reload', async ({ page }) => {
     await gotoApp(page)
-    // SetUIZoom is debounced; wait for the call to land before the "restart".
+    // Wait for the call to land before the "restart".
     const persisted = page.waitForRequest(
       (r) => r.url().endsWith('/wails/runtime') && (r.postData() ?? '').includes('1.25'),
     )

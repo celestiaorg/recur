@@ -61,6 +61,7 @@ pub fn view<V: 'static, E: IntoElement>(
 thread_local! {
     static RENDERS: RefCell<Option<BTreeMap<&'static str, u32>>> = const { RefCell::new(None) };
     static LAYOUTS: RefCell<Option<BTreeMap<&'static str, u32>>> = const { RefCell::new(None) };
+    static MEASURES: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// The views whose render is running, innermost last.
     static RENDERING: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
 }
@@ -79,6 +80,17 @@ pub(crate) fn count_layout(owner: &'static str) {
             *l.entry(owner).or_default() += 1;
         }
     });
+}
+
+/// One measure of a counted text by layout, served from its memo or not.
+pub(crate) fn count_measure() {
+    MEASURES.with(|m| m.set(m.get() + 1));
+}
+
+/// How many times layout measured counted texts since the last call: nested flex passes show
+/// as many measures per text.
+pub fn take_measure_count() -> u32 {
+    MEASURES.with(|m| m.replace(0))
 }
 
 /// Starts (or stops) counting text layouts on this thread, by the view whose render built the

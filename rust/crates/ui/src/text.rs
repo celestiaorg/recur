@@ -1698,6 +1698,7 @@ impl Element for Text {
         let (ws, anywhere, clamp, truncate) =
             (self.white_space, self.anywhere, self.clamp, self.ellipsis);
         let measure_slot = layout.clone();
+        let counted = self.owner.is_some();
         // Taffy keeps one measure result per constraint kind, so nested flex passes that probe
         // several widths would re-break the same text many times in a frame.
         let memo = RefCell::new(Vec::<(Option<f32>, (f32, f32))>::new());
@@ -1762,6 +1763,9 @@ impl Element for Text {
             window,
             cx,
             move |known, available, window| {
+                if counted {
+                    crate::guard::count_measure();
+                }
                 let mut slot = measure_slot.borrow_mut();
                 let Some(laid) = slot.as_mut() else {
                     return (0., 0.);

@@ -449,11 +449,9 @@ impl ComposerDoc {
     pub fn ensure_chip_boundaries(&mut self) {
         let mut i = 0;
         let mut chip = 0;
-        while i < self.text.len() {
-            if !self.text[i..].starts_with(ATOM) {
-                i = self.next_boundary(i);
-                continue;
-            }
+        // Jump from chip to chip: only a chip's neighbors can need a space.
+        while let Some(off) = self.text[i..].find(ATOM) {
+            i += off;
             let kind = self.chips.get(chip).and_then(chip_kind);
             chip += 1;
             let needs = matches!(

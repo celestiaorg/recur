@@ -369,6 +369,12 @@ impl AgentChat {
                     style.clone(),
                 )
                 .layout_into(self.composer_layout.clone())
+                .visible({
+                    // The scroller's viewport in the flow's coordinates, a viewport each side.
+                    let view = crate::composer::composer_max_height();
+                    let top = -f32::from(self.composer_scroll.offset().y) - pad_top;
+                    top - view..top + 2. * view
+                })
                 .min_height(style.size * style.leading),
             )
             .child(overlay);

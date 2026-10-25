@@ -198,3 +198,36 @@ async fn store_changes_redraw_the_transcript_only_when_they_concern_it(cx: &mut 
     .unwrap();
     assert!(pane_renders(&mut h, &|s| s.permission_requests.push(mine.clone())) >= 1);
 }
+
+#[gpui::test]
+async fn a_key_in_a_long_draft_lays_out_its_paragraph_and_the_visible_lines(
+    cx: &mut TestAppContext,
+) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let para = "The quick brown fox jumps over the lazy dog and naps in the sun. ".repeat(3);
+    let draft: String = (0..200).map(|i| format!("{i}: {para}\n")).collect();
+    let chat = h.chat();
+    h.cx.update(|_, cx| chat.update(cx, |c, cx| c.set_draft(draft.clone(), Vec::new(), cx)));
+    h.settle();
+    h.focus_composer();
+    h.cx.simulate_input("x");
+    h.cx.run_until_parked();
+    let before = crate::flow::para_layouts();
+    recur_ui::guard::count_layouts(true);
+    for ch in ["y", "z", "w"] {
+        h.cx.simulate_input(ch);
+        h.cx.run_until_parked();
+    }
+    let layouts = recur_ui::guard::take_layout_counts();
+    recur_ui::guard::count_layouts(false);
+    // The paragraph typed in, at each width layout measures the composer at (its max-content
+    // width and its box), whatever the draft's length.
+    let paras = crate::flow::para_layouts() - before;
+    assert!(paras <= 3 * 2, "{paras} paragraphs laid out for 3 keys");
+    // The composer places the lines its scroller can show, not the draft's ~600.
+    let placed = renders("::DockPane", &layouts);
+    assert!(
+        placed < 3 * 80,
+        "{placed} text runs laid out for 3 keys: {layouts:?}"
+    );
+}

@@ -106,9 +106,20 @@ fn intern(font: CTFont, size: f32) -> usize {
 }
 
 /// Ascent, descent and line gap of the system font at a weight and size.
-pub(crate) fn metrics(weight: f32, size: f32) -> (f32, f32, f32) {
+/// Ascent, descent and leading.
+type Metrics = (f32, f32, f32);
+
+pub(crate) fn metrics(weight: f32, size: f32) -> Metrics {
+    thread_local! {
+        static METRICS: std::cell::RefCell<HashMap<(u32, u32), Metrics>> =
+            std::cell::RefCell::default();
+    }
+    let key = (weight.to_bits(), size.to_bits());
+    if let Some(m) = METRICS.with_borrow(|m| m.get(&key).copied()) {
+        return m;
+    }
     let i = system_font(weight, size);
-    FONTS.with(|f| {
+    let m = FONTS.with(|f| {
         let f = f.borrow();
         let font = &f.fonts[i];
         (
@@ -116,7 +127,9 @@ pub(crate) fn metrics(weight: f32, size: f32) -> (f32, f32, f32) {
             font.descent() as f32,
             font.leading() as f32,
         )
-    })
+    });
+    METRICS.with_borrow_mut(|c| c.insert(key, m));
+    m
 }
 
 /// Shape `text` in the system font; returns glyphs and the advance width.

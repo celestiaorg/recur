@@ -794,6 +794,10 @@ fn step() -> &'static Mutex<String> {
 }
 
 static BEAT: AtomicU64 = AtomicU64::new(0);
+/// Pointer moves the window received.
+static MOUSE_MOVES: AtomicU64 = AtomicU64::new(0);
+/// Store notifies.
+static STORE_NOTIFIES: AtomicU64 = AtomicU64::new(0);
 /// When the frame being drawn started (ms), 0 between frames.
 static FRAME_START: AtomicU64 = AtomicU64::new(0);
 /// Transcript pane renders in the last frame drawn (stuck-scroll reports).
@@ -896,7 +900,26 @@ struct WindowRoot(Entity<Shell>);
 
 impl WindowRoot {
     fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
-        recur_ui::style::window_root(self.0.clone())
+        use gpui_kit::{ParentElement as _, Styled as _};
+        // Real pointer input over the window (the smoke's window is on screen): GPUI refreshes
+        // the whole window on the next key after it, which a slow key then reports.
+        let moves = gpui_kit::canvas(
+            |_, _, _| {},
+            |_, _, window, _| {
+                window.on_mouse_event(|_: &gpui_kit::MouseMoveEvent, phase, _, _| {
+                    if phase == gpui_kit::DispatchPhase::Capture {
+                        MOUSE_MOVES.fetch_add(1, Ordering::SeqCst);
+                    }
+                });
+            },
+        )
+        .absolute()
+        .size_full();
+        gpui_kit::div()
+            .size_full()
+            .relative()
+            .child(recur_ui::style::window_root(self.0.clone()))
+            .child(moves)
     }
 }
 
@@ -1145,6 +1168,21 @@ async fn sleep(cx: &AsyncApp, ms: u64) {
         .await;
 }
 
+/// The views the last [`draw`] rendered (and the key dispatch before it).
+fn last_renders() -> &'static Mutex<BTreeMap<&'static str, u32>> {
+    static R: OnceLock<Mutex<BTreeMap<&'static str, u32>>> = OnceLock::new();
+    R.get_or_init(Mutex::default)
+}
+
+/// `views` as `Name×n`.
+fn view_list(views: &BTreeMap<&'static str, u32>) -> String {
+    views
+        .iter()
+        .map(|(k, n)| format!("{}×{n}", k.rsplit("::").next().unwrap_or(k)))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Draws one frame and returns how long it took.
 fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     let t = Instant::now();
@@ -1157,6 +1195,7 @@ fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     BEAT.store(now_ms(), Ordering::SeqCst);
     let took = t.elapsed();
     let renders = recur_ui::guard::take_render_counts();
+    *last_renders().lock().unwrap_or_else(|e| e.into_inner()) = renders.clone();
     TRANSCRIPT_RENDERS.store(
         renders
             .iter()
@@ -1168,11 +1207,7 @@ fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     if took > Duration::from_millis(500) {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
         if took > Duration::from_secs(2) || std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
-            let views: Vec<String> = renders
-                .iter()
-                .map(|(k, n)| format!("{}×{n}", k.rsplit("::").next().unwrap_or(k)))
-                .collect();
-            println!("slow frame {took:.0?} at {s}: {}", views.join(" "));
+            println!("slow frame {took:.0?} at {s}: {}", view_list(&renders));
         }
         if let Ok(mut r) = report().lock() {
             r.slow.push((took, s));
@@ -1286,6 +1321,7 @@ async fn run(
     let last = std::cell::RefCell::new(String::new());
     cx.update(|cx| {
         cx.observe(&state, move |state, cx| {
+            STORE_NOTIFIES.fetch_add(1, Ordering::SeqCst);
             let (since, n, printed) = storm.get();
             let (since, n) = if since.elapsed() > Duration::from_secs(1) {
                 (Instant::now(), 0)
@@ -1714,10 +1750,25 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
     let seq = "a b c backspace backspace backspace ".repeat(rounds);
     for (i, k) in seq.split_whitespace().enumerate() {
         sleep(cx, 60).await;
+        let moved = MOUSE_MOVES.swap(0, Ordering::SeqCst);
+        let stored = STORE_NOTIFIES.swap(0, Ordering::SeqCst);
         let t = Instant::now();
         keys(cx, window, k);
         draw(cx, window);
         let took = t.elapsed();
+        if i > 0 && took > Duration::from_millis(100) {
+            let views = last_renders()
+                .lock()
+                .map(|r| view_list(&r))
+                .unwrap_or_default();
+            let after = if moved > 0 {
+                ", after pointer input"
+            } else {
+                ""
+            };
+            let after = format!("{after}, {stored} store notifies");
+            println!("slow key {took:.0?} ({k}) in {input}{after}: {views}");
+        }
         // The first key follows mouse input (or a scroll): GPUI refreshes the whole window.
         if i == 0 {
             timed(Budget::FirstKey, took);

@@ -731,7 +731,7 @@ impl PrDetail {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
-        let pr = self.pr(cx);
+        let pr = self.render_pr(cx);
         // `prDetailFocus`: the dock holds focus.
         let agent = self.dock_focus.contains_focused(window, cx);
         if agent != self.ui.read(cx).focus_agent {
@@ -777,14 +777,14 @@ impl PrDetail {
                 });
             }
         }
-        let header = self.header(pr.as_ref(), window, cx);
-        let tabs = self.tabs(pr.as_ref(), window, cx);
+        let header = self.header(pr.as_deref(), window, cx);
+        let tabs = self.tabs(pr.as_deref(), window, cx);
         let tab = self.tab(cx);
         let body = match tab {
-            PrTab::Conv => self.conversation(pr.as_ref(), window, cx),
-            PrTab::Commits => self.commits_pane(pr.as_ref(), window, cx),
-            PrTab::Files => self.files_pane(pr.as_ref(), window, cx),
-            PrTab::Checks => self.checks_pane(pr.as_ref(), window, cx),
+            PrTab::Conv => self.conversation(pr.as_deref(), window, cx),
+            PrTab::Commits => self.commits_pane(pr.as_deref(), window, cx),
+            PrTab::Files => self.files_pane(pr.as_deref(), window, cx),
+            PrTab::Checks => self.checks_pane(pr.as_deref(), window, cx),
         };
         let mut split = div()
             .debug_selector(|| "prd-split".into())
@@ -825,12 +825,19 @@ impl PrDetail {
             .flex_col()
             .overflow_hidden()
             .child(tabs)
-            .child(body)
+            .child(recur_ui::layout_root::layout_root(
+                "prd-body",
+                gpui_kit::StyleRefinement::default()
+                    .flex_1()
+                    .min_h_0()
+                    .min_w_0(),
+                div().size_full().flex().flex_col().child(body),
+            ))
             .children(self.more_menu(window, cx));
         split = split.child(col);
         let pop = if self.hovered_people
             && let (Some(p), Some(b), Some(h)) = (
-                pr.as_ref(),
+                pr.as_deref(),
                 self.people_bounds.get(),
                 self.head_bounds.get(),
             ) {

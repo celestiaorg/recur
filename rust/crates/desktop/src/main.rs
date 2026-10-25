@@ -309,15 +309,16 @@ fn main() {
             }));
             s.set_macro_runner(Some(macros.macro_runner()));
         });
-        // The runner has no `App`, so it reads a mirror of the editor's problem store.
-        let problems: Rc<RefCell<Vec<problems::LspProblem>>> = Rc::default();
+        // The runner has no `App`, so it reads a snapshot of the editor's problem store, sorted
+        // only when a macro asks.
+        let problems: Rc<RefCell<problems::LspProblems>> = Rc::default();
         cx.observe_global::<problems::LspProblems>({
             let problems = problems.clone();
-            move |cx| *problems.borrow_mut() = problems::peek_problems(cx)
+            move |cx| *problems.borrow_mut() = cx.global::<problems::LspProblems>().clone()
         })
         .detach();
         let diagnostics: macro_runtime::Diagnostics = Rc::new(move |ws| {
-            problems::problems_for_workspace(&problems.borrow(), ws)
+            problems::problems_for_workspace(&problems.borrow().all(), ws)
                 .iter()
                 .map(problems::problem_args)
                 .collect()

@@ -46,8 +46,8 @@ use crate::transcript_ui::{
     snapshot_transcript_ui, transcript_fingerprint,
 };
 use crate::window::{
-    BlockRange, CHAT_HYDRATE_ALL_BELOW, CHAT_HYDRATE_MAX, CHAT_HYDRATE_OVERSCAN, CHAT_VIEW_PAD_PX,
-    block_at_scroll_top, in_view_keys, pick_hydrated,
+    BlockRange, BlockShape, CHAT_HYDRATE_ALL_BELOW, CHAT_HYDRATE_MAX, CHAT_HYDRATE_OVERSCAN,
+    CHAT_VIEW_PAD_PX, block_at_scroll_top, estimate_chat_block_height, in_view_keys, pick_hydrated,
 };
 
 /// Which surface the chat serves: a workspace chat, or the restricted Ask Recur panel (no
@@ -60,7 +60,7 @@ pub enum ChatSurfaceKind {
 }
 
 /// The Svelte props (everything but the bindable draft, the snippets and the callbacks).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChatProps {
     pub messages: Vec<AgentMsg>,
     pub sending: bool,
@@ -407,12 +407,31 @@ pub(crate) fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
+/// What [`AgentChat::transcript_store_changed`] compares.
+#[derive(PartialEq)]
+pub(crate) struct TranscriptStoreSeen {
+    view: ViewName,
+    permissions: Vec<String>,
+    questions: Vec<String>,
+    workspace: Option<recur_domain::Workspace>,
+    prs: u64,
+}
+
+/// What [`AgentChat::model`] derives from the props.
+pub(crate) struct TranscriptModel {
+    pub(crate) msgs: Rc<Vec<AgentMsg>>,
+    pub(crate) blocks: Rc<(Vec<Block>, Vec<String>)>,
+    /// Each block's estimated height (a stub that never laid out reserves it).
+    pub(crate) estimates: Vec<f32>,
+}
+
 pub struct AgentChat {
     pub(crate) state: Entity<AppState>,
     pub(crate) services: Services,
     pub(crate) props: ChatProps,
     pub(crate) hooks: ChatHooks,
-    pub(crate) toolbar: Option<AnyView>,
+    /// The toolbar behind a cached boundary: typing redraws the dock, not its pickers.
+    pub(crate) toolbar: Option<Entity<recur_ui::pane::Layer>>,
     pub(crate) empty: Option<AnyView>,
     pub(crate) session_card: Option<SessionCardRenderer>,
     pub(crate) focus: FocusHandle,
@@ -445,6 +464,8 @@ pub struct AgentChat {
     pub(crate) body_tail: bool,
     pub(crate) think_scrolls: HashMap<String, ScrollHandle>,
     pub(crate) tool_data: Rc<ToolData>,
+    /// The store or the props changed since `tool_data` was taken.
+    pub(crate) tool_data_stale: bool,
     pub(crate) image_loading: HashMap<String, Task<()>>,
     /// Fork buttons' bounds from the last frame (the menu anchors to them).
     pub(crate) fork_anchor:
@@ -507,6 +528,8 @@ pub struct AgentChat {
     /// Block tops and heights in the column, from the last frame.
     pub(crate) block_ranges: Rc<std::cell::RefCell<BTreeMap<String, (f32, f32)>>>,
     pub(crate) chat_hydrated: HashSet<String>,
+    /// Blocks laid out live in the last transcript render.
+    pub(crate) live_blocks: usize,
     pub(crate) chat_in_view: Vec<String>,
     pub(crate) reveal_key: String,
     pub(crate) copied_row: Option<String>,
@@ -540,6 +563,19 @@ pub struct AgentChat {
     pub(crate) cards: crate::cards::CardViews,
     pub(crate) markdown_seen: HashSet<String>,
 
+    pub(crate) transcript_memo: std::cell::RefCell<Option<Rc<TranscriptModel>>>,
+    /// Replies whose markdown is parsing on a background thread (by markdown key).
+    pub(crate) parsing: HashSet<String>,
+    pub(crate) store_seen: Option<TranscriptStoreSeen>,
+    /// How far into `props.messages` (for `reset_key`) the markdown prewarm has reached.
+    pub(crate) prewarmed: (String, usize),
+    pub(crate) prewarm_task: Option<Task<()>>,
+    /// The transcript and dock views (see `panes`), built on first render.
+    pub(crate) panes: Option<(
+        Entity<crate::panes::TranscriptPane>,
+        Entity<crate::panes::DockPane>,
+    )>,
+
     pub(crate) _subs: Vec<Subscription>,
     pub(crate) _events: Option<Task<()>>,
 }
@@ -567,7 +603,14 @@ impl AgentChat {
         };
         let mut subs = vec![cx.guarded_observe(&state, |this: &mut Self, _, cx| {
             this.sync_mentions_from_stores(cx);
-            cx.notify();
+            // The store changes many times a second while agents run; the transcript redraws
+            // only when what it shows from it does (the dock follows every change).
+            if this.transcript_store_changed(cx) {
+                this.tool_data_stale = true;
+                cx.notify();
+            } else {
+                this.notify_dock(cx);
+            }
         })];
         subs.push(
             cx.guarded_subscribe(&state, |_: &mut Self, _, ev: &ShellEvent, cx| {
@@ -614,6 +657,7 @@ impl AgentChat {
             body_tail: false,
             think_scrolls: HashMap::new(),
             tool_data: Rc::default(),
+            tool_data_stale: true,
             image_loading: HashMap::new(),
             fork_anchor: Rc::default(),
             composer_geom: Rc::default(),
@@ -688,6 +732,7 @@ impl AgentChat {
             block_h_by_chat: HashMap::new(),
             block_ranges: Rc::default(),
             chat_hydrated: HashSet::new(),
+            live_blocks: 0,
             chat_in_view: Vec::new(),
             reveal_key: String::new(),
             copied_row: None,
@@ -713,11 +758,18 @@ impl AgentChat {
             streams: HashMap::new(),
             cards: Default::default(),
             markdown_seen: HashSet::new(),
+            transcript_memo: Default::default(),
+            parsing: HashSet::new(),
+            store_seen: None,
+            prewarmed: (String::new(), 0),
+            prewarm_task: None,
+            panes: None,
             _subs: subs,
             _events: None,
         };
         this.listen(cx);
         this.props.reset_key = props.reset_key.clone();
+        this.transcript_memo.borrow_mut().take();
         this.set_props(props, cx);
         if initial.is_some() {
             this.restore_transcript_ui(initial, cx);
@@ -733,12 +785,13 @@ impl AgentChat {
 
     pub fn set_hooks(&mut self, hooks: ChatHooks, cx: &mut Context<Self>) {
         self.hooks = hooks;
+        self.tool_data_stale = true;
         cx.notify();
     }
 
     /// `toolbar`: rendered inside the input box, bottom-left (the model selector).
     pub fn set_toolbar(&mut self, toolbar: Option<AnyView>, cx: &mut Context<Self>) {
-        self.toolbar = toolbar;
+        self.toolbar = toolbar.map(|v| recur_ui::pane::Layer::centered(v, cx));
         cx.notify();
     }
 
@@ -756,6 +809,11 @@ impl AgentChat {
     /// Replaces the props. A new `reset_key` saves the leaving chat's chrome and restores the
     /// entering one's, as one AgentChat serves every tab.
     pub fn set_props(&mut self, props: ChatProps, cx: &mut Context<Self>) {
+        // Hosts push props from their render (a session card inside the transcript): unchanged
+        // props must not notify, or every frame re-renders the chat and its ancestors.
+        if props == self.props {
+            return;
+        }
         let key_changed = props.reset_key != self.props.reset_key;
         let scope_changed = props.project_id != self.props.project_id
             || props.workspace_id != self.props.workspace_id;
@@ -769,6 +827,8 @@ impl AgentChat {
             }
         }
         self.props = props;
+        self.transcript_memo.borrow_mut().take();
+        self.tool_data_stale = true;
         if findings_changed {
             self.findings_gen += 1;
             if self.digest_notes_at.is_some_and(|g| g != self.findings_gen)
@@ -804,13 +864,63 @@ impl AgentChat {
             }
             self.chat_hydrated.clear();
             self.chat_in_view.clear();
+            self.block_ranges.borrow_mut().clear();
         }
         if was_windowed != self.window_chat() && !self.window_chat() {
             self.chat_hydrated.clear();
         }
         self.check_expansion_guard();
         self.sync_turn_clock(cx);
+        self.prewarm_markdown(cx);
         cx.notify();
+    }
+
+    /// Parses the settled replies' markdown on a background thread, newest first, so blocks
+    /// that hydrate as the transcript scrolls find their documents cached
+    /// (`recur_content::markdown::markdown_doc_cached`).
+    fn prewarm_markdown(&mut self, cx: &mut Context<Self>) {
+        let msgs = &self.props.messages;
+        let from = if self.prewarmed.0 == self.props.reset_key {
+            self.prewarmed.1.min(msgs.len())
+        } else {
+            0
+        };
+        // A streaming reply settles later: stop before it so it is picked up then.
+        let to = msgs[from..]
+            .iter()
+            .position(|m| m.streaming)
+            .map_or(msgs.len(), |i| from + i);
+        if from == to {
+            return;
+        }
+        self.prewarmed = (self.props.reset_key.clone(), to);
+        let opts = recur_content::markdown::ParseOptions::default();
+        let srcs: Vec<String> = msgs[from..to]
+            .iter()
+            .rev()
+            .filter(|m| {
+                m.log.is_none()
+                    && !m.me
+                    && !m.turn_end
+                    && !m.note
+                    && !m.stopped
+                    && !m.error
+                    && !m.body.is_empty()
+            })
+            .map(|m| m.body.clone())
+            .collect();
+        if srcs.is_empty() {
+            return;
+        }
+        let prev = self.prewarm_task.take();
+        self.prewarm_task = Some(cx.background_executor().spawn(async move {
+            if let Some(prev) = prev {
+                prev.await;
+            }
+            for src in srcs {
+                recur_content::markdown::markdown_doc_cached(&src, opts);
+            }
+        }));
     }
 
     /// The draft wire text (`bind:input`).
@@ -954,8 +1064,53 @@ impl AgentChat {
             .filter(|e| e.status.as_str() == "open" && !e.question.is_empty())
     }
 
+    /// Whether the store data the transcript reads changed since it last looked: the route,
+    /// this chat's permission and question cards, its workspace (the plan card) and the PRs and
+    /// briefs its tool rows resolve.
+    pub(crate) fn transcript_store_changed(&mut self, cx: &App) -> bool {
+        let s = self.state.read(cx);
+        let p = &self.props;
+        let seen = TranscriptStoreSeen {
+            view: s.view,
+            permissions: s
+                .permission_requests
+                .iter()
+                .filter(|r| r.workspace_id == p.workspace_id && r.agent_code == p.agent_code)
+                .map(|r| r.id.clone())
+                .collect(),
+            questions: s
+                .user_questions
+                .iter()
+                .filter(|q| q.workspace_id == p.workspace_id && q.agent_code == p.agent_code)
+                .map(|q| q.id.clone())
+                .collect(),
+            workspace: s.workspace(&p.workspace_id).cloned(),
+            prs: {
+                // The PR fields tool rows and completion facts read; comments and checks
+                // (most of a PR) never show in the transcript.
+                use std::hash::{Hash, Hasher};
+                let mut h = std::hash::DefaultHasher::new();
+                for pr in &s.prs {
+                    (&pr.id, pr.number, &pr.workspace_id, &pr.state, &pr.group).hash(&mut h);
+                    (pr.merge_queued, pr.draft, &pr.merge_state_status).hash(&mut h);
+                    (pr.source == recur_domain::PrSource::GitHub).hash(&mut h);
+                }
+                h.finish()
+            },
+        };
+        let tools_changed =
+            s.briefing.workspaces.as_deref().unwrap_or_default() != self.tool_data.briefs;
+        let changed = tools_changed || self.store_seen.as_ref() != Some(&seen);
+        self.store_seen = Some(seen);
+        changed
+    }
+
     /// Refreshes [`ToolData`] from the props and stores.
     pub(crate) fn snapshot_tool_data(&mut self, cx: &App) {
+        if !self.tool_data_stale {
+            return;
+        }
+        self.tool_data_stale = false;
         let s = self.state.read(cx);
         self.tool_data = Rc::new(ToolData {
             root_path: self.props.root_path.clone(),
@@ -976,23 +1131,73 @@ impl AgentChat {
             .collect()
     }
 
-    pub(crate) fn transcript(&self) -> Vec<AgentMsg> {
-        self.props
-            .messages
+    /// The transcript rows, their blocks and block keys for the current props (memoized:
+    /// rendering, scrolling and windowing read them several times a frame).
+    fn model(&self) -> Rc<TranscriptModel> {
+        if let Some(m) = self.transcript_memo.borrow().as_ref() {
+            return m.clone();
+        }
+        let msgs: Rc<Vec<AgentMsg>> = Rc::new(
+            self.props
+                .messages
+                .iter()
+                .filter(|m| !m.queued)
+                .cloned()
+                .collect(),
+        );
+        let blocks = group_blocks(&msgs);
+        let keys = block_keys(&self.props.reset_key, &blocks, &msgs);
+        let estimates = blocks
             .iter()
-            .filter(|m| !m.queued)
-            .cloned()
-            .collect()
+            .map(|b| match b {
+                Block::Steps { .. } => estimate_chat_block_height(BlockShape::Steps),
+                Block::Msg(i) => {
+                    let m = &msgs[*i];
+                    estimate_chat_block_height(BlockShape::Msg {
+                        me: m.me,
+                        turn_end: m.turn_end,
+                        body: &m.body,
+                    })
+                }
+            })
+            .collect();
+        let m = Rc::new(TranscriptModel {
+            msgs,
+            blocks: Rc::new((blocks, keys)),
+            estimates,
+        });
+        *self.transcript_memo.borrow_mut() = Some(m.clone());
+        m
     }
 
+    pub(crate) fn transcript(&self) -> Rc<Vec<AgentMsg>> {
+        self.model().msgs.clone()
+    }
+
+    /// The blocks of `msgs` and their keys (the memoized ones when `msgs` is the transcript).
+    #[cfg(test)]
     pub(crate) fn blocks(&self, msgs: &[AgentMsg]) -> (Vec<Block>, Vec<String>) {
+        let m = self.model();
+        if std::ptr::eq(msgs, m.msgs.as_slice()) {
+            return (*m.blocks).clone();
+        }
         let blocks = group_blocks(msgs);
         let keys = block_keys(&self.props.reset_key, &blocks, msgs);
         (blocks, keys)
     }
 
+    /// The transcript's rows, blocks, keys and height estimates, shared.
+    pub(crate) fn transcript_model(&self) -> Rc<TranscriptModel> {
+        self.model()
+    }
+
+    /// The transcript's blocks and keys, shared.
+    pub(crate) fn model_blocks(&self) -> Rc<(Vec<Block>, Vec<String>)> {
+        self.model().blocks.clone()
+    }
+
     pub(crate) fn window_chat(&self) -> bool {
-        group_blocks(&self.transcript()).len() > CHAT_HYDRATE_ALL_BELOW
+        self.model().blocks.0.len() > CHAT_HYDRATE_ALL_BELOW
     }
 
     pub(crate) fn last_retry_error(&self, msgs: &[AgentMsg]) -> Option<usize> {
@@ -1377,7 +1582,24 @@ impl AgentChat {
         if from_top || !(self.near_bottom && max > crate::transcript_ui::NEAR_BOTTOM_PX) {
             self.fade_ready = true;
         }
+        self.record_block_heights();
         self.refresh_chat_window(top, viewport_h, cx);
+    }
+
+    /// `recordStubHeight`: every laid-out block's height, for its stub to reserve once it
+    /// leaves the window (stubs report the height they reserved).
+    fn record_block_heights(&mut self) {
+        let prefix = crate::transcript_ui::transcript_block_key(&self.props.reset_key, "");
+        let ranges = self.block_ranges.borrow();
+        let m = self
+            .block_h_by_chat
+            .entry(self.props.reset_key.clone())
+            .or_default();
+        for (k, &(_, h)) in ranges.iter() {
+            if h > 0. && k.starts_with(&prefix) {
+                m.insert(k.clone(), h);
+            }
+        }
     }
 
     fn apply_pending_scroll(&mut self, client_h: f32, scroll_h: f32, cx: &mut Context<Self>) {
@@ -1429,8 +1651,8 @@ impl AgentChat {
         if !self.window_chat() {
             return;
         }
-        let msgs = self.transcript();
-        let (_, keys) = self.blocks(&msgs);
+        let shared = self.model_blocks();
+        let keys = &shared.1;
         let ranges: Vec<BlockRange> = {
             let r = self.block_ranges.borrow();
             let mut v: Vec<BlockRange> = keys
@@ -1458,7 +1680,7 @@ impl AgentChat {
             }
         };
         let mut next = pick_hydrated(
-            &keys,
+            keys,
             &selected,
             &in_view,
             CHAT_HYDRATE_MAX,
@@ -2160,7 +2382,7 @@ impl AgentChat {
             );
         }
         cx.emit(ChatEvent::Draft);
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     pub(crate) fn caret_wire(&self) -> usize {

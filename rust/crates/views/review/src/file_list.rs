@@ -62,6 +62,13 @@ pub struct FileListProps {
     pub reveal: u64,
 }
 
+/// What [`ReviewFileList::model`] derives from the props and folds.
+struct ListModel {
+    rows: Vec<Row>,
+    content_h: f32,
+    by: HashMap<String, Rc<FileDiff>>,
+}
+
 /// One laid-out row.
 #[derive(Clone)]
 struct Row {
@@ -77,6 +84,9 @@ pub struct ReviewFileList {
     props: FileListProps,
     on_select: Option<SelectFn>,
     collapsed: HashSet<String>,
+    /// Bumped when the props or the folds change (keys `model_memo`).
+    model_gen: u64,
+    model_memo: std::cell::RefCell<Option<(u64, Rc<ListModel>)>>,
     scroll: ScrollHandle,
     last_reveal: u64,
     pending_reveal: Option<String>,
@@ -90,6 +100,8 @@ impl ReviewFileList {
             props,
             on_select,
             collapsed: HashSet::new(),
+            model_gen: 0,
+            model_memo: Default::default(),
             scroll: ScrollHandle::new(),
             pending_reveal: None,
             hovered: None,
@@ -110,6 +122,7 @@ impl ReviewFileList {
             }
         }
         self.props = props;
+        self.model_gen += 1;
         cx.notify();
     }
 
@@ -129,6 +142,7 @@ impl ReviewFileList {
         if !self.collapsed.remove(path) {
             self.collapsed.insert(path.to_string());
         }
+        self.model_gen += 1;
         cx.notify();
     }
 
@@ -142,6 +156,7 @@ impl ReviewFileList {
             acc.push_str(part);
             self.collapsed.remove(&acc);
         }
+        self.model_gen += 1;
     }
 
     fn select(&self, path: &str, highlight: Option<i64>, window: &mut Window, cx: &mut App) {
@@ -150,12 +165,28 @@ impl ReviewFileList {
         }
     }
 
-    fn by_path(&self) -> HashMap<String, Rc<FileDiff>> {
-        self.props
+    /// The rows, their height and the files by path for the current props and folds
+    /// (memoized: a large diff has thousands of paths to tree and index).
+    fn model(&self) -> Rc<ListModel> {
+        if let Some((g, m)) = self.model_memo.borrow().as_ref()
+            && *g == self.model_gen
+        {
+            return m.clone();
+        }
+        let (rows, content_h) = self.layout();
+        let by = self
+            .props
             .files
             .iter()
             .map(|f| (f.path.clone(), f.clone()))
-            .collect()
+            .collect();
+        let m = Rc::new(ListModel {
+            rows,
+            content_h,
+            by,
+        });
+        *self.model_memo.borrow_mut() = Some((self.model_gen, m.clone()));
+        m
     }
 
     fn finding_flags(&self) -> Vec<(String, FindingFlag)> {
@@ -548,8 +579,8 @@ impl ReviewFileList {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
-        let (rows, content_h) = self.layout();
-        let by = self.by_path();
+        let model = self.model();
+        let (rows, content_h, by) = (&model.rows, model.content_h, &model.by);
         let flags = self.finding_flags();
         let view = self.scroll.bounds();
         let view_h = f32::from(view.size.height);
@@ -638,7 +669,7 @@ impl ReviewFileList {
                 if open_dirs.binary_search(&i).is_ok() {
                     flow = flow.child(div().flex_none().h(px(TREE_ROW_H)));
                 } else {
-                    flow = flow.child(self.row_el(r, &rows, None, &flags, &by, window, cx));
+                    flow = flow.child(self.row_el(r, rows, None, &flags, by, window, cx));
                 }
             }
             flow = flow.child(vgap(content_h - (rows[b].top + rows[b].height), window));
@@ -659,10 +690,10 @@ impl ReviewFileList {
             let (is_stuck, fade_under) = sticky[k];
             let row_el = self.row_el(
                 r,
-                &rows,
+                rows,
                 Some((is_stuck, fade_under)),
                 &flags,
-                &by,
+                by,
                 window,
                 cx,
             );
@@ -732,7 +763,8 @@ impl ReviewFileList {
 
 impl Render for ReviewFileList {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        recur_ui::guard::view(self, window, cx, Self::render_view)
+        // The files view caches the list.
+        recur_ui::style::cached_root(recur_ui::guard::view(self, window, cx, Self::render_view))
     }
 }
 

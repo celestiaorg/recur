@@ -66,6 +66,7 @@ pub mod hoist;
 pub mod html_inline;
 pub mod meter;
 pub mod palettes;
+pub mod panes;
 pub mod pickers;
 pub mod prompt_actions;
 pub mod prompts;

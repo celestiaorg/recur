@@ -12,8 +12,9 @@ pub const CHAT_HYDRATE_OVERSCAN: usize = 4;
 pub const CHAT_HYDRATE_ALL_BELOW: usize = 48;
 /// Always mount this many trailing blocks so streaming never paints a stub.
 pub const CHAT_TAIL_LIVE: usize = 3;
-/// Prefetch band above and below the scrollport, in px.
-pub const CHAT_VIEW_PAD_PX: f32 = 600.;
+/// Prefetch band above and below the scrollport, in px. Half the web's 600: GPUI lays the
+/// whole window out on every frame, where the browser lays out only what changed.
+pub const CHAT_VIEW_PAD_PX: f32 = 300.;
 /// A collapsed step-group header.
 pub const CHAT_BLOCK_HEAD_PX: f32 = 36.;
 

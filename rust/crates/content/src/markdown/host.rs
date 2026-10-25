@@ -17,6 +17,7 @@ use futures::channel::oneshot;
 use super::parse::{ParseOptions, parse_markdown};
 use super::sanitize_markdown;
 use crate::js::utf16_len;
+use crate::render::doc::Doc;
 
 /// Settled HTML cache budget. Byte-budgeted like editor undo history (20 MiB): generous for
 /// chat, findings and a few file previews.
@@ -58,21 +59,33 @@ struct Job {
     reply: Reply,
 }
 
-struct Cached {
-    html: Arc<str>,
+struct Cached<V> {
+    value: V,
     bytes: usize,
     stamp: u64,
 }
 
-#[derive(Default)]
-struct Cache {
-    entries: HashMap<String, Cached>,
+/// A byte-budgeted LRU: the oldest entries go once the total passes the budget (the newest
+/// always stays).
+pub(crate) struct Cache<V> {
+    entries: HashMap<String, Cached<V>>,
     order: BTreeMap<u64, String>,
     stamp: u64,
     total: usize,
 }
 
-impl Cache {
+impl<V> Default for Cache<V> {
+    fn default() -> Self {
+        Cache {
+            entries: HashMap::new(),
+            order: BTreeMap::new(),
+            stamp: 0,
+            total: 0,
+        }
+    }
+}
+
+impl<V: Clone> Cache<V> {
     fn drop_entry(&mut self, key: &str) {
         if let Some(c) = self.entries.remove(key) {
             self.order.remove(&c.stamp);
@@ -92,28 +105,27 @@ impl Cache {
     }
 
     /// LRU-promoting read.
-    fn get(&mut self, key: &str) -> Option<Arc<str>> {
+    pub(crate) fn get(&mut self, key: &str) -> Option<V> {
         let c = self.entries.get_mut(key)?;
         self.order.remove(&c.stamp);
         self.stamp += 1;
         c.stamp = self.stamp;
         self.order.insert(self.stamp, key.to_string());
-        Some(c.html.clone())
+        Some(c.value.clone())
     }
 
-    fn set(&mut self, key: &str, html: Arc<str>, max: usize) {
-        // JS strings are UTF-16: this tracks heap, not UTF-8 on the wire.
-        let bytes = (utf16_len(key) + utf16_len(&html)) * 2;
-        if bytes > CACHE_ENTRY_MAX_BYTES {
-            return;
-        }
+    pub(crate) fn contains(&self, key: &str) -> bool {
+        self.entries.contains_key(key)
+    }
+
+    pub(crate) fn insert(&mut self, key: &str, value: V, bytes: usize, max: usize) {
         self.drop_entry(key);
         self.stamp += 1;
         self.order.insert(self.stamp, key.to_string());
         self.entries.insert(
             key.to_string(),
             Cached {
-                html,
+                value,
                 bytes,
                 stamp: self.stamp,
             },
@@ -121,10 +133,30 @@ impl Cache {
         self.total += bytes;
         self.evict(max);
     }
+
+    /// `(entries, bytes)`.
+    pub(crate) fn stats(&self) -> (usize, usize) {
+        (self.entries.len(), self.total)
+    }
+
+    pub(crate) fn clear(&mut self) {
+        *self = Cache::default();
+    }
+}
+
+impl Cache<Arc<str>> {
+    fn set(&mut self, key: &str, html: Arc<str>, max: usize) {
+        // JS strings are UTF-16: this tracks heap, not UTF-8 on the wire.
+        let bytes = (utf16_len(key) + utf16_len(&html)) * 2;
+        if bytes > CACHE_ENTRY_MAX_BYTES {
+            return;
+        }
+        self.insert(key, html, bytes, max);
+    }
 }
 
 struct State {
-    cache: Cache,
+    cache: Cache<Arc<str>>,
     max_bytes: usize,
     seq: u64,
     waiting: VecDeque<Job>,
@@ -141,7 +173,7 @@ fn lock(m: &Mutex<State>) -> MutexGuard<'_, State> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn cache_key(src: &str, opts: ParseOptions) -> String {
+pub(crate) fn cache_key(src: &str, opts: ParseOptions) -> String {
     if opts.demote_images {
         format!("\u{1e}demoteimg\n{src}")
     } else {
@@ -321,6 +353,11 @@ pub fn set_markdown_render_inline(on: bool) {
     RENDER_INLINE.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// Whether [`set_markdown_render_inline`] is on.
+pub fn markdown_render_inline() -> bool {
+    RENDER_INLINE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// `pump`'s dequeue: the next job not already answered by the cache.
 fn next_job(state: &Mutex<State>) -> Option<Job> {
     let mut s = lock(state);
@@ -477,7 +514,49 @@ pub fn render_markdown_async(
 
 /// `clearMarkdownCache` on the app's host.
 pub fn clear_markdown_cache() {
-    MarkdownHost::global().clear()
+    MarkdownHost::global().clear();
+    lock_docs().clear();
+}
+
+/// Parsed documents of settled markdown on the app's host, keyed like the HTML cache: a view
+/// that mounts a source it has shown before (a transcript block scrolled back into view, a
+/// tab switched back to) builds no DOM. A `Doc` holds about three times its HTML.
+pub const DOC_CACHE_MAX_BYTES: usize = 64 * 1024 * 1024;
+
+fn lock_docs() -> MutexGuard<'static, Cache<Arc<Doc>>> {
+    static DOCS: OnceLock<Mutex<Cache<Arc<Doc>>>> = OnceLock::new();
+    DOCS.get_or_init(Mutex::default)
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+}
+
+/// The parsed document of `src`: cache hit, or [`render_markdown_cached`] and parse. Safe off
+/// the UI thread, which is how transcripts prewarm it.
+pub fn markdown_doc_cached(src: &str, opts: ParseOptions) -> Arc<Doc> {
+    if src.is_empty() {
+        return Arc::default();
+    }
+    let key = cache_key(src, opts);
+    if let Some(doc) = lock_docs().get(&key) {
+        return doc;
+    }
+    let html = render_markdown_cached(src, opts);
+    let doc = Arc::new(Doc::parse(&html));
+    let bytes = key.len() + doc.heap_bytes();
+    if bytes <= CACHE_ENTRY_MAX_BYTES * 3 {
+        lock_docs().insert(&key, doc.clone(), bytes, DOC_CACHE_MAX_BYTES);
+    }
+    doc
+}
+
+/// Whether `src`'s document is cached.
+pub fn markdown_doc_is_cached(src: &str, opts: ParseOptions) -> bool {
+    src.is_empty() || lock_docs().contains(&cache_key(src, opts))
+}
+
+/// `(entries, bytes)` of the document cache.
+pub fn markdown_doc_cache_stats() -> (usize, usize) {
+    lock_docs().stats()
 }
 
 /// `setMarkdownCacheMaxBytesForTests` on the app's host.

@@ -31,7 +31,7 @@ use recur_view_core::AppState;
 use serde_json::{Map, Value, json};
 
 use super::lang::lsp_language_id_for_path;
-use super::problems::{LspProblem, ProblemCode, ProblemSeverity, peek_problems, update_problems};
+use super::problems::{LspProblem, LspProblems, ProblemCode, ProblemSeverity, update_problems};
 
 /// `timeout: 12_000`.
 pub const REQUEST_TIMEOUT_MS: u64 = 12_000;
@@ -2189,9 +2189,10 @@ pub fn merged_diagnostics(
     cx: &App,
 ) -> Vec<recur_editor::lint::Diagnostic> {
     use recur_editor::lint::{Diagnostic, DiagnosticAction, Severity};
-    peek_problems(cx)
+    LspProblems::global(cx)
+        .map(|s| s.for_uri(uri))
+        .unwrap_or_default()
         .into_iter()
-        .filter(|p| p.uri == uri)
         .map(|p| {
             let p = Rc::new(p);
             let fix = {
@@ -2245,6 +2246,8 @@ mod tests {
     use gpui::TestAppContext;
     use parking_lot::Mutex;
     use recur_services::mock::{MockBridge, MockOptions, Reply};
+
+    use crate::lsp::problems::peek_problems;
 
     use super::*;
 

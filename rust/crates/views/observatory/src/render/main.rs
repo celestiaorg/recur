@@ -11,6 +11,7 @@ use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
 use recur_ui::guard::Guarded;
 use recur_ui::kbd::kbd;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
+use recur_ui::style::cached_view;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon};
@@ -38,15 +39,37 @@ impl Observatory {
     }
 
     /// `.obs-crumbbar`: the path crumbs (or the two pane names in a split) and the actions.
+    fn has_crumbbar(&self, cx: &App) -> bool {
+        !(self.selected_path.is_empty() && (!self.split_open || self.split_path.is_empty()))
+            && self.main_surface(cx) == MainSurface::Editor
+    }
+
+    fn crumb_pane_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        self.render_crumbbar(window, cx)
+            .unwrap_or_else(|| div().into_any_element())
+    }
+
+    /// The editor's or the review's status bar. Starting to wrap redraws the Observatory, which
+    /// then lays the bar out inline at its wrapped height.
+    fn status_pane_body(&mut self, _: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let corner = self.status_corner;
+        if self.main_surface(cx) == MainSurface::Review {
+            return self.render_review_status(corner, cx);
+        }
+        let wrapped = self.status_wrap.is_some();
+        let bar = self.render_editor_status(corner, cx);
+        if self.status_wrap.is_some() != wrapped {
+            cx.notify();
+        }
+        bar
+    }
+
     fn render_crumbbar(
         &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
-        if self.selected_path.is_empty() && (!self.split_open || self.split_path.is_empty()) {
-            return None;
-        }
-        if self.main_surface(cx) != MainSurface::Editor {
+        if !self.has_crumbbar(cx) {
             return None;
         }
         let t = Theme::of(cx).tokens;
@@ -643,7 +666,14 @@ impl Observatory {
                 .flex_col()
                 .bg(hsla(t.bg));
             if let Some(p) = &self.pdf_preview {
-                pdf = pdf.child(div().flex_1().min_h_0().flex().flex_col().child(p.clone()));
+                pdf = pdf.child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .flex_col()
+                        .child(cached_view(p, fill(), cx)),
+                );
             }
             pdf = pdf.child(
                 div()
@@ -693,10 +723,10 @@ impl Observatory {
             && let Some(ed) = self.main_editor.clone()
         {
             let off = show_preview || show_diff || self.view_mode == EditorViewMode::Diff;
-            pane = pane.child(surface(ed.into_any_element(), off));
+            pane = pane.child(surface(cached_view(&ed, fill(), cx), off));
         }
         if let Some((_, fp)) = &self.file_preview {
-            pane = pane.child(surface(fp.clone().into_any_element(), !show_preview));
+            pane = pane.child(surface(cached_view(fp, fill(), cx), !show_preview));
         }
         if show_diff {
             if let Some((_, m)) = &self.merge_editor {
@@ -707,35 +737,24 @@ impl Observatory {
                         .flex()
                         .flex_col()
                         .overflow_hidden()
-                        .child(m.clone()),
+                        .child(cached_view(m, fill(), cx)),
                 );
             }
         } else if self.editor_path.is_empty() && !show_preview {
-            let name = self
-                .selected_path
-                .rsplit('/')
-                .next()
-                .unwrap_or(&self.selected_path)
-                .to_string();
-            let el = if self.show_file_loading {
-                obs_empty(format!("Loading {name}…"), true, cx)
-                    .text_color(hsla(t.muted))
-                    .into_any_element()
-            } else if self.file_loading {
-                obs_empty("", true, cx).into_any_element()
-            } else if self.selected_is_dir {
-                obs_empty(
-                    "This path is a directory (often a git submodule). Use Diff to see the recorded change, or browse it from the Files tree.",
-                    true,
-                    cx,
-                )
-                .into_any_element()
-            } else if self.tree_writable() {
-                obs_empty("Select a file to view/edit.", true, cx).into_any_element()
-            } else {
-                obs_empty("Select a file to view.", true, cx).into_any_element()
-            };
-            pane = pane.child(el);
+            // Its own cached view, filling the rest of the pane: a key typed in the chat redraws
+            // the Observatory but must not lay this out again.
+            let empty = self
+                .empty_pane
+                .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::main_empty))
+                .clone();
+            pane = pane.child(cached_view(
+                &empty,
+                gpui_kit::StyleRefinement::default()
+                    .flex_1()
+                    .min_h_0()
+                    .w_full(),
+                cx,
+            ));
         }
         if (self.show_file_loading || self.diff_pending()) && !self.editor_path.is_empty() {
             let name = self
@@ -832,7 +851,7 @@ impl Observatory {
         if !self.split_path.is_empty()
             && let Some(ed) = self.split_editor.clone()
         {
-            side = side.child(surface(ed.into_any_element(), false));
+            side = side.child(surface(cached_view(&ed, fill(), cx), false));
         } else {
             side = side.child(obs_empty(
                 "Open a file — it will land in this pane while focused.",
@@ -941,16 +960,10 @@ impl Observatory {
                 .min_h_0()
                 .min_w_0()
                 .overflow_hidden()
-                // Cached: the review only re-lays out when it (or what it read) notifies, not on
-                // every keystroke elsewhere in the window.
-                .child(
-                    r.cached(
-                        gpui_kit::StyleRefinement::default()
-                            .flex_1()
-                            .min_h_0()
-                            .min_w_0(),
-                    ),
-                )
+                // Cached, so a redraw passing through the Observatory (a key typed in the chat)
+                // does not render it. Its own scrolling dirties it and rebuilds what is inside;
+                // the card stack and the file list are memoized for that.
+                .child(cached_view(&r, fill(), cx))
                 .into_any_element(),
         )
     }
@@ -1235,19 +1248,47 @@ impl Observatory {
         let no_left = !self.has_left(cx) || !self.left_gutter_open();
         let no_side = !self.has_right(cx) || !self.show_side;
         let corner = (rail_collapsed && no_left && no_dock, no_side && no_dock);
-        let crumb = (!hidden)
-            .then(|| self.render_crumbbar(window, cx))
-            .flatten();
+        // The crumb and status bars are their own cached views at their fixed heights, so a key
+        // typed in the chat does not lay them out (a wrapping status bar stays inline).
+        let crumb = (!hidden && self.has_crumbbar(cx)).then(|| {
+            let pane = self
+                .crumb_pane
+                .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::crumb_pane_body))
+                .clone();
+            cached_view(
+                &pane,
+                gpui_kit::StyleRefinement::default()
+                    .flex_none()
+                    .w_full()
+                    .h(px(crate::style::CHROME_H)),
+                cx,
+            )
+        });
         let editors = (!hidden).then(|| self.render_editors(window, cx)).flatten();
         let review = (!hidden)
             .then(|| self.render_review_host(window, cx))
             .flatten();
+        let editor_status =
+            !self.active_path().is_empty() && self.main_surface(cx) == MainSurface::Editor;
+        let review_status = self.main_surface(cx) == MainSurface::Review;
         let status = if hidden {
             None
-        } else if !self.active_path().is_empty() && self.main_surface(cx) == MainSurface::Editor {
+        } else if editor_status && self.status_wrap.is_some() {
             Some(self.render_editor_status(corner, cx))
-        } else if self.main_surface(cx) == MainSurface::Review {
-            Some(self.render_review_status(corner, cx))
+        } else if editor_status || review_status {
+            self.status_corner = corner;
+            let pane = self
+                .status_pane
+                .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::status_pane_body))
+                .clone();
+            Some(cached_view(
+                &pane,
+                gpui_kit::StyleRefinement::default()
+                    .flex_none()
+                    .w_full()
+                    .h(px(crate::style::FOOT_H)),
+                cx,
+            ))
         } else {
             None
         };
@@ -1481,6 +1522,12 @@ impl Observatory {
 }
 
 /// `.obs-surface` (`.off` keeps it mounted but hidden and inert).
+/// A pane's editor or preview as a cached view: it re-renders when it notifies, not on every
+/// frame the Observatory draws (typing in the chat beside it redraws the Observatory).
+fn fill() -> gpui_kit::StyleRefinement {
+    gpui_kit::StyleRefinement::default().size_full()
+}
+
 fn surface(child: AnyElement, off: bool) -> AnyElement {
     let d = div()
         .flex_1()
@@ -1499,5 +1546,36 @@ fn surface(child: AnyElement, off: bool) -> AnyElement {
             .into_any_element()
     } else {
         d.into_any_element()
+    }
+}
+
+impl Observatory {
+    /// The main pane with no file open: loading, a directory, or the prompt to pick a file.
+    fn main_empty(&mut self, _: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let name = self
+            .selected_path
+            .rsplit('/')
+            .next()
+            .unwrap_or(&self.selected_path)
+            .to_string();
+        if self.show_file_loading {
+            obs_empty(format!("Loading {name}…"), true, cx)
+                .text_color(hsla(t.muted))
+                .into_any_element()
+        } else if self.file_loading {
+            obs_empty("", true, cx).into_any_element()
+        } else if self.selected_is_dir {
+            obs_empty(
+                "This path is a directory (often a git submodule). Use Diff to see the recorded change, or browse it from the Files tree.",
+                true,
+                cx,
+            )
+            .into_any_element()
+        } else if self.tree_writable() {
+            obs_empty("Select a file to view/edit.", true, cx).into_any_element()
+        } else {
+            obs_empty("Select a file to view.", true, cx).into_any_element()
+        }
     }
 }

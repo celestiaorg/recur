@@ -506,6 +506,11 @@ impl FileStack {
     /// The `.diffscroll` pane: `header` (scope headers, notices) above the cards, or `empty`
     /// in place of them. `stack_of` projects the host entity to this stack.
     #[allow(clippy::too_many_arguments)]
+    /// The card views built so far.
+    pub fn diff_files(&self) -> impl Iterator<Item = &Entity<DiffFile>> {
+        self.diff_files.values()
+    }
+
     pub fn render<H: 'static>(
         &mut self,
         header: Vec<AnyElement>,
@@ -689,10 +694,11 @@ impl FileStack {
                 col = col.child(self.skipped_cards(skipped, first, window));
             }
         }
+        let paths: HashSet<&str> = self.files.iter().map(|f| f.path.as_str()).collect();
         self.cards
             .borrow_mut()
             .bounds
-            .retain(|p, _| self.files.iter().any(|f| &f.path == p));
+            .retain(|p, _| paths.contains(p.as_str()));
         let pane = self.pane.clone();
         let entity = host.clone();
         let painted = self.cards.clone();

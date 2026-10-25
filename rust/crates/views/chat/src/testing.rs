@@ -86,6 +86,10 @@ impl AgentChat {
         &self.scroll
     }
 
+    pub fn test_live_block_count(&self) -> usize {
+        self.live_blocks
+    }
+
     pub fn test_window_chat(&self) -> bool {
         self.window_chat()
     }

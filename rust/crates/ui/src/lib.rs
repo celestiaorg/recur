@@ -29,8 +29,10 @@ pub mod icon;
 pub mod icon_name;
 pub mod kbd;
 mod kit;
+pub mod layout_root;
 pub mod logic;
 pub mod motion;
+pub mod pane;
 pub mod set;
 pub mod shadow;
 pub mod style;
@@ -50,6 +52,7 @@ use gpui_kit::App;
 
 /// Register fonts, install the theme and the shared widget state.
 pub fn init(cx: &mut App) {
+    text::clear_shaped_cache();
     // The faces are compiled in; a failure here means a corrupt bundle, which the font tests
     // catch. The app still runs on system fallbacks.
     let _ = fonts::register(cx);

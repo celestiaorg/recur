@@ -44,13 +44,35 @@ fn utf16(text: &str) -> usize {
     text.encode_utf16().count()
 }
 
-/// A byte offset as a UTF-16 index (JS string offsets).
-fn utf16_at(text: &str, byte: usize) -> usize {
-    text.get(..byte.min(text.len())).map_or(0, utf16)
+/// The length of the longest common prefix of `a` and `b`, on a char boundary.
+fn common_prefix(a: &str, b: &str) -> usize {
+    let n = a.bytes().zip(b.bytes()).take_while(|(x, y)| x == y).count();
+    (0..=n).rev().find(|&i| a.is_char_boundary(i)).unwrap_or(0)
 }
 
-fn line_count(text: &str) -> usize {
-    text.split('\n').count()
+/// The length of the longest common suffix of `a` and `b`, on a char boundary.
+fn common_suffix(a: &str, b: &str) -> usize {
+    let n = a
+        .bytes()
+        .rev()
+        .zip(b.bytes().rev())
+        .take_while(|(x, y)| x == y)
+        .count();
+    (0..=n)
+        .rev()
+        .find(|&i| a.is_char_boundary(a.len() - i))
+        .unwrap_or(0)
+}
+
+/// `byte` as a UTF-16 index, counted from `from` (both texts share `..from`): only the
+/// difference between two such indices is meaningful.
+fn utf16_from(text: &str, from: usize, byte: usize) -> i64 {
+    let byte = byte.min(text.len());
+    if byte >= from {
+        text.get(from..byte).map_or(0, utf16) as i64
+    } else {
+        -(text.get(byte..from).map_or(0, utf16) as i64)
+    }
 }
 
 impl<A: HasId + Clone> ComposerUndo<A> {
@@ -90,15 +112,19 @@ impl<A: HasId + Clone> ComposerUndo<A> {
             self.stack[self.i] = s;
             return;
         }
-        let delta = utf16(&s.text) as i64 - utf16(&top.text) as i64;
-        let same_lines = line_count(&s.text) == line_count(&top.text);
+        // Where the texts differ bounds every count below: the shared prefix and suffix cancel.
+        let (a, b) = (top.text.as_str(), s.text.as_str());
+        let pre = common_prefix(a, b);
+        let suf = common_suffix(&a[pre..], &b[pre..]);
+        let (da, db) = (&a[pre..a.len() - suf], &b[pre..b.len() - suf]);
+        let delta = utf16(db) as i64 - utf16(da) as i64;
+        let same_lines = da.matches('\n').count() == db.matches('\n').count();
         let kind = if delta.abs() == 1 && same_atts && same_lines {
             delta
         } else {
             0
         };
-        let caret_jump =
-            (utf16_at(&s.text, s.caret) as i64 - utf16_at(&top.text, top.caret) as i64).abs();
+        let caret_jump = (utf16_from(b, pre, s.caret) - utf16_from(a, pre, top.caret)).abs();
         let merge = kind != 0
             && kind == self.kind
             && now_ms.saturating_sub(self.last_at) < self.pause_ms

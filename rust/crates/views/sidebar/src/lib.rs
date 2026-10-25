@@ -10,6 +10,7 @@ pub mod usage;
 
 use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::prelude::FluentBuilder;
@@ -113,6 +114,10 @@ pub struct Sidebar {
     focus: HashMap<SharedString, FocusHandle>,
     usage: Entity<UsageMeter>,
     collapse: Collapse,
+    /// Bumped on every store change (keys the tree and row memos).
+    pub(crate) state_rev: u64,
+    tree_memo: std::cell::RefCell<Option<(u64, Collapse, Rc<Tree>)>>,
+    pub(crate) row_ctx_memo: std::cell::RefCell<Option<(u64, bool, Rc<rows::RowCtx>)>>,
     scan: ScanPeek,
     seen_scan_seq: u64,
     seen_selection: (ViewName, String),
@@ -167,6 +172,7 @@ impl Sidebar {
         let usage = cx.new(|cx| UsageMeter::new(state.clone(), cx));
         let subs = vec![
             cx.guarded_observe_in(&state, window, |this, _, window, cx| {
+                this.state_rev += 1;
                 this.state_changed(window, cx)
             }),
             cx.observe_window_activation(window, |this, window, cx| {
@@ -184,6 +190,9 @@ impl Sidebar {
             focus: HashMap::new(),
             usage,
             collapse: Collapse::default(),
+            state_rev: 0,
+            tree_memo: Default::default(),
+            row_ctx_memo: Default::default(),
             scan: ScanPeek::default(),
             seen_scan_seq: 0,
             seen_selection: (ViewName::Briefing, String::new()),
@@ -301,8 +310,18 @@ impl Sidebar {
         }
     }
 
-    pub(crate) fn tree(&self, cx: &App) -> Tree {
-        Tree::build(self.state.read(cx), &self.collapse)
+    /// The project tree for the stores and folds (memoized per store change: rows, drags
+    /// and the header layer read it many times a render).
+    pub(crate) fn tree(&self, cx: &App) -> Rc<Tree> {
+        if let Some((rev, collapse, tree)) = self.tree_memo.borrow().as_ref()
+            && *rev == self.state_rev
+            && *collapse == self.collapse
+        {
+            return tree.clone();
+        }
+        let tree = Rc::new(Tree::build(self.state.read(cx), &self.collapse));
+        *self.tree_memo.borrow_mut() = Some((self.state_rev, self.collapse.clone(), tree.clone()));
+        tree
     }
 
     /// The tree's layout as it renders now (with the drag placeholder).

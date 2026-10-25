@@ -117,11 +117,11 @@ pub enum AppEvent {
     /// `permission.resolved`
     PermissionResolved(PermissionResolved),
     /// `pr.comment`
-    PrComment(Box<PrCommentEvent>),
+    PrComment(Arc<PrCommentEvent>),
     /// `pr.removed`
     PrRemoved(PrRef),
     /// `pr.updated`
-    PrUpdated(Box<PrUpdated>),
+    PrUpdated(Arc<PrUpdated>),
     /// `provider.usage`
     ProviderUsage(Snapshot),
     /// `prs.synced`
@@ -180,7 +180,7 @@ pub enum AppEvent {
     /// `workspace.removed`
     WorkspaceRemoved(WorkspaceRef),
     /// `workspace.updated`
-    WorkspaceUpdated(Box<WorkspaceUpdated>),
+    WorkspaceUpdated(Arc<WorkspaceUpdated>),
 }
 
 /// An event name or payload [`AppEvent::from_wire`] cannot read.
@@ -366,9 +366,9 @@ impl AppEvent {
             "notify" => Self::Notify(de(name, d)?),
             "permission.requested" => Self::PermissionRequested(de(name, d)?),
             "permission.resolved" => Self::PermissionResolved(de(name, d)?),
-            "pr.comment" => Self::PrComment(Box::new(de(name, d)?)),
+            "pr.comment" => Self::PrComment(std::sync::Arc::new(de(name, d)?)),
             "pr.removed" => Self::PrRemoved(de(name, d)?),
-            "pr.updated" => Self::PrUpdated(Box::new(de(name, d)?)),
+            "pr.updated" => Self::PrUpdated(std::sync::Arc::new(de(name, d)?)),
             "provider.usage" => Self::ProviderUsage(de(name, d)?),
             "prs.synced" => Self::PrsSynced(de(name, d)?),
             "question.answered" => Self::QuestionAnswered(de(name, d)?),
@@ -398,7 +398,7 @@ impl AppEvent {
             "workspace.file_index" => Self::WorkspaceFileIndex(de(name, d)?),
             "workspace.fs_changed" => Self::WorkspaceFsChanged(de(name, d)?),
             "workspace.removed" => Self::WorkspaceRemoved(de(name, d)?),
-            "workspace.updated" => Self::WorkspaceUpdated(Box::new(de(name, d)?)),
+            "workspace.updated" => Self::WorkspaceUpdated(std::sync::Arc::new(de(name, d)?)),
             _ if name.starts_with(UPDATER_PREFIX) => Self::Updater(updater_from_wire(name, d)?),
             _ => return Err(WireError::UnknownName(name.to_owned())),
         })
@@ -892,8 +892,8 @@ pub struct PrUpdated {
 #[serde(default, rename_all = "camelCase")]
 pub struct PrsSynced {
     pub project_id: String,
-    /// `None` is Go's nil slice (`null`).
-    pub prs: Option<Vec<Pr>>,
+    /// `None` is Go's nil slice (`null`). Shared: every subscriber gets the event.
+    pub prs: Option<Arc<Vec<Pr>>>,
 }
 
 /// `question.answered`. A cleared question carries an empty answer.

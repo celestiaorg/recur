@@ -148,6 +148,9 @@ fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyV
 
 fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
     std::fs::create_dir_all(out)?;
+    // A scene is captured from the frames it is built in: markdown renders there, not on a
+    // worker the headless app does not wait for (the test harnesses do the same).
+    recur_content::markdown::set_markdown_render_inline(true);
     let mut cx = HeadlessAppContext::with_platform(
         gpui_kit::platform::current_platform(true).text_system(),
         Arc::new(recur_ui::Assets),

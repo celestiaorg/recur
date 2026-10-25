@@ -576,12 +576,22 @@ impl Observatory {
                     ),
             ));
         }
-        if agent_head {
-            let v = self.slots.left_head.clone().expect("left head");
-            head = head.child(div().flex_1().min_w_0().flex().items_stretch().child(v));
+        let slot = if agent_head {
+            self.slots.left_head.clone()
         } else if plan_head {
-            let v = self.slots.plan_head.clone().expect("plan head");
-            head = head.child(div().flex_1().min_w_0().flex().items_stretch().child(v));
+            self.slots.plan_head.clone()
+        } else {
+            None
+        };
+        if let Some(v) = slot {
+            let layer = self.head_layer(v, cx);
+            head = head.child(div().flex_1().min_w_0().flex().items_stretch().child(
+                recur_ui::style::cached_view(
+                    &layer,
+                    gpui_kit::StyleRefinement::default().flex_1().min_w_0(),
+                    cx,
+                ),
+            ));
         } else {
             head = head.child(side_title(label, cx));
             head = head.children(self.render_head_extras(kind, cx));
@@ -685,6 +695,27 @@ impl Observatory {
             return None;
         }
         Some(self.render_left_aside(CodePanelKey::Maestro, true, window, cx))
+    }
+
+    fn head_layer(
+        &mut self,
+        view: gpui_kit::AnyView,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Entity<recur_ui::pane::Layer> {
+        let id = view.entity_id();
+        if let Some((_, l)) = self.head_layers.iter().find(|(e, _)| *e == id) {
+            return l.clone();
+        }
+        let layer = recur_ui::pane::Layer::new(view, cx);
+        self.head_layers.push((id, layer.clone()));
+        layer
+    }
+
+    fn side_pane_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        match self.right_meta(cx) {
+            Some(kind) => self.render_side_aside(kind, window, cx),
+            None => div().into_any_element(),
+        }
     }
 
     /// `.obs-side`: the right dock (`obsSide` wide).
@@ -806,7 +837,26 @@ impl Observatory {
             && let Some(kind) = self.right_meta(cx)
             && !(portal && kind == CodePanelKey::Maestro)
         {
-            work = work.child(self.render_side_aside(kind, window, cx));
+            // Its own cached view unless it holds the chat or the commit message (whose keys
+            // would dirty it, redrawing all of it) or stacks under the main area at its content's
+            // height. Source control caches its changes list inside instead.
+            if !matches!(kind, CodePanelKey::Maestro | CodePanelKey::Scm) && !narrow {
+                let pane = self
+                    .side_pane
+                    .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::side_pane_body))
+                    .clone();
+                let width = self.obs_side_width(cx);
+                work = work.child(recur_ui::style::cached_view(
+                    &pane,
+                    gpui_kit::StyleRefinement::default()
+                        .flex_none()
+                        .w(px(width))
+                        .h_full(),
+                    cx,
+                ));
+            } else {
+                work = work.child(self.render_side_aside(kind, window, cx));
+            }
         }
         if self.props.main_blocked
             && let Some(v) = self.slots.main_overlay.clone()
@@ -842,7 +892,18 @@ impl Observatory {
             self.hydrate_file(&path, 0, 0, 0, 0, window, cx).detach();
         }
         self.sync_editors(window, cx);
-        let toolbar = self.render_toolbar(window, cx);
+        let toolbar_pane = self
+            .toolbar_pane
+            .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::render_toolbar))
+            .clone();
+        let toolbar = recur_ui::style::cached_view(
+            &toolbar_pane,
+            gpui_kit::StyleRefinement::default()
+                .flex_none()
+                .w_full()
+                .h(px(CHROME_H)),
+            cx,
+        );
         let body = self.render_body(window, cx);
         let overlay = self.render_term_overlay(cx);
         let ctx = self.render_ctx_menu(cx);
@@ -867,8 +928,13 @@ impl Observatory {
             .child(body)
             .children(overlay)
             .children(ctx)
-            .child(self.quick_open.clone())
-            .child(self.prompts.clone());
+            .children(self.layers.iter().map(|l| {
+                recur_ui::style::cached_view(
+                    l,
+                    gpui_kit::StyleRefinement::default().absolute().inset_0(),
+                    cx,
+                )
+            }));
         if self.term_overlaying() {
             root = root.overflow_hidden();
         }

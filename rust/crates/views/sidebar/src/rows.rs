@@ -4,6 +4,7 @@
 
 use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, HashSet};
+use std::rc::Rc;
 use std::time::Duration;
 
 use gpui_kit::prelude::FluentBuilder;
@@ -41,6 +42,9 @@ const PIC: PicBox = PicBox {
 const FLIP: Duration = Duration::from_millis(180);
 const SB_OUT: Duration = Duration::from_millis(450);
 const CARET: Duration = Duration::from_millis(120);
+
+/// Overscan above and below the tree's viewport, in px, before rows become spacers.
+const ROW_BAND_PAD_PX: f32 = 150.;
 
 /// What every row reads from the stores, gathered once per frame.
 pub(crate) struct RowCtx {
@@ -145,7 +149,21 @@ fn vline(cx: &App) -> Div {
 }
 
 impl Sidebar {
-    fn row_ctx(&self, cx: &App) -> RowCtx {
+    /// What the rows read from the stores (memoized per store change).
+    fn row_ctx(&self, cx: &App) -> Rc<RowCtx> {
+        let dragging = self.drag.as_ref().is_some_and(|d| d.active);
+        if let Some((rev, drag, rc)) = self.row_ctx_memo.borrow().as_ref()
+            && *rev == self.state_rev
+            && *drag == dragging
+        {
+            return rc.clone();
+        }
+        let rc = Rc::new(self.build_row_ctx(cx));
+        *self.row_ctx_memo.borrow_mut() = Some((self.state_rev, dragging, rc.clone()));
+        rc
+    }
+
+    fn build_row_ctx(&self, cx: &App) -> RowCtx {
         let s = self.state().read(cx);
         let ev = &s.scan_event;
         let scan_highlight = ((ev.seq > 0 && ev.kind == ScanKind::Land)
@@ -687,6 +705,7 @@ impl Sidebar {
         p: &ProjectNode,
         rc: &RowCtx,
         live: bool,
+        band: Option<(f32, f32, &crate::tree::Layout)>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Div {
@@ -696,8 +715,25 @@ impl Sidebar {
         if !p.scheduled.is_empty() {
             loops = loops.child(self.sched_section(p, rc, live, window, cx));
         }
+        // Rows outside the visible band (plus overscan) are one spacer per run: a long project
+        // lays out the rows on screen, not all of them.
+        let mut skipped = 0usize;
         for r in &p.regular {
+            if let Some((lo, hi, layout)) = band
+                && let Some(&top) = layout.rows.get(&r.ws.id)
+                && (top + crate::tree::ROW_H < lo || top > hi)
+            {
+                skipped += 1;
+                continue;
+            }
+            if skipped > 0 {
+                loops = loops.child(div().h(px(skipped as f32 * crate::tree::ROW_H)));
+                skipped = 0;
+            }
             loops = loops.child(self.task_row(r, rc, live, window, cx));
+        }
+        if skipped > 0 {
+            loops = loops.child(div().h(px(skipped as f32 * crate::tree::ROW_H)));
         }
         if p.regular.is_empty() && p.scheduled.is_empty() && p.project.is_git {
             loops = loops.child(Self::empty_line("no active workspaces", cx));
@@ -1275,6 +1311,16 @@ impl Sidebar {
         }
         let fade_top = scroll > 1.;
         let fade_bot = max_scroll > 1. && scroll < max_scroll - 1.;
+        // Virtualize rows only while nothing moves them (a drag, a flip animation).
+        let flipping = self
+            .flip
+            .keys()
+            .any(|k| self.flip_offset(k, cx).abs() > 0.01);
+        let band = (view_h > 0. && self.drag.is_none() && !flipping).then_some((
+            scroll - ROW_BAND_PAD_PX,
+            scroll + view_h + ROW_BAND_PAD_PX,
+            &layout,
+        ));
 
         // Sticky headers.
         let mut group_heads: Vec<(usize, Header, f32)> = Vec::new();
@@ -1396,7 +1442,7 @@ impl Sidebar {
                     }
                     let off = self.flip_offset(&format!("p:{}", p.project.id), cx);
                     let loops =
-                        (!p.collapsed).then(|| self.project_loops(p, &rc, true, window, cx));
+                        (!p.collapsed).then(|| self.project_loops(p, &rc, true, band, window, cx));
                     body = body.child(
                         div()
                             .relative()
@@ -1416,7 +1462,7 @@ impl Sidebar {
                 continue;
             }
             let off = self.flip_offset(&format!("p:{}", p.project.id), cx);
-            let loops = (!p.collapsed).then(|| self.project_loops(p, &rc, true, window, cx));
+            let loops = (!p.collapsed).then(|| self.project_loops(p, &rc, true, band, window, cx));
             content = content.child(
                 div()
                     .relative()
@@ -1668,7 +1714,7 @@ impl Sidebar {
                     let header = self.project_header(p, false, window, cx);
                     let on = self.project_on(&p.project, cx);
                     let loops =
-                        (!p.collapsed).then(|| self.project_loops(p, rc, false, window, cx));
+                        (!p.collapsed).then(|| self.project_loops(p, rc, false, None, window, cx));
                     b = b.child(
                         div()
                             .pl(px(4.))
@@ -1695,7 +1741,7 @@ impl Sidebar {
                 .clone();
             let header = self.project_header(&p, false, window, cx);
             let on = self.project_on(&p.project, cx);
-            let loops = (!p.collapsed).then(|| self.project_loops(&p, rc, false, window, cx));
+            let loops = (!p.collapsed).then(|| self.project_loops(&p, rc, false, None, window, cx));
             div()
                 .w(px(w))
                 .px(px(9.))

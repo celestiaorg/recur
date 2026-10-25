@@ -25,9 +25,16 @@
 //! (contained or not), error toast, frame over 2s or UI stall over 20s, sampling the main thread
 //! on a stall.
 //!
+//! It also times keystrokes in long chats, transcript and review scroll steps and workspace
+//! switches against frame-time budgets (`Budget`), and fails when one is exceeded.
+//!
 //! To reproduce a finding: `RECUR_SMOKE_LIMIT=n` caps the workspaces and PRs visited,
-//! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth and `RECUR_SMOKE_WORKSPACE=<id>` visits
-//! only that one.
+//! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth and `RECUR_SMOKE_TO=m` ends them at the
+//! mth (1-based, inclusive: a full run can be covered in ranges), `RECUR_SMOKE_WORKSPACE=<id>` visits
+//! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
+//! stops after the workspaces and
+//! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered and
+//! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -720,7 +727,61 @@ struct Report {
     notes: Vec<String>,
     /// Frames over 500ms and the step they were drawn in.
     slow: Vec<(Duration, String)>,
+    /// Timed interactions per budget.
+    timed: BTreeMap<Budget, Vec<(Duration, String)>>,
+    /// Keystrokes per text input.
+    keys: BTreeMap<&'static str, Vec<Duration>>,
 }
+
+/// The interactions the smoke times against frame-time budgets: a run fails when the 95th
+/// percentile or the slowest sample of any of them is over its limit. The limits are for this
+/// example's build (`dev`: the workspace at `opt-level = 0`, dependencies at 2); the release app
+/// is several times faster.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Budget {
+    /// A key typed into a text input (the composer of a long chat, the commit message, a line
+    /// note in a review, a PR's comment box), through its frame.
+    Keystroke,
+    /// The first key after mouse input: GPUI redraws the whole window, every cache off, when the
+    /// input modality changes.
+    FirstKey,
+    /// One wheel step (0.9 of the viewport) of a transcript, through its frame: blocks coming
+    /// into view hydrate.
+    ScrollStep,
+    /// One wheel step of a review: nearly a page of diff rows the frame has not laid out.
+    ReviewScrollStep,
+    /// Opening a workspace: the route change through its first frame.
+    WorkspaceSwitch,
+}
+
+impl Budget {
+    /// `(p95, max)`.
+    fn limits(self) -> (Duration, Duration) {
+        let ms = Duration::from_millis;
+        match self {
+            // Release: a key through its painted frame in 20ms at p95.
+            Budget::Keystroke if !cfg!(debug_assertions) => (ms(20), ms(100)),
+            Budget::Keystroke => (ms(100), ms(150)),
+            Budget::FirstKey => (ms(600), ms(900)),
+            Budget::ScrollStep => (ms(400), ms(1200)),
+            Budget::ReviewScrollStep => (ms(700), ms(1500)),
+            Budget::WorkspaceSwitch => (ms(1000), ms(1500)),
+        }
+    }
+}
+
+fn timed(budget: Budget, took: Duration) {
+    let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+    if let Ok(mut r) = report().lock() {
+        r.timed.entry(budget).or_default().push((took, s));
+    }
+}
+
+/// Pages of the review scrolled on each live workspace.
+const REVIEW_PAGES: usize = 12;
+
+/// A chat this long gets its keystrokes timed.
+const LONG_CHAT_ROWS: usize = 200;
 
 fn report() -> &'static Mutex<Report> {
     static R: OnceLock<Mutex<Report>> = OnceLock::new();
@@ -733,6 +794,8 @@ fn step() -> &'static Mutex<String> {
 }
 
 static BEAT: AtomicU64 = AtomicU64::new(0);
+/// Transcript pane renders in the last frame drawn (stuck-scroll reports).
+static TRANSCRIPT_RENDERS: AtomicU64 = AtomicU64::new(0);
 /// `session.delta` events the UI received.
 static DELTAS: AtomicU64 = AtomicU64::new(0);
 
@@ -841,6 +904,7 @@ fn drive(root: PathBuf) -> i32 {
         None => fmt.try_init(),
     };
     count_panics();
+    recur_ui::guard::count_renders(true);
     BEAT.store(now_ms(), Ordering::SeqCst);
     watchdog();
     recur_platform::cliinstall::ensure_path();
@@ -970,11 +1034,68 @@ fn drive(root: PathBuf) -> i32 {
             for (d, s) in slow.iter().take(15) {
                 say(start, format!("  {d:.0?} at: {s}"));
             }
-            let ok = r.panics.is_empty() && r.toasts.is_empty() && r.stalls.is_empty();
+            let mut over = 0;
+            for (budget, samples) in &r.timed {
+                let mut d: Vec<Duration> = samples.iter().map(|s| s.0).collect();
+                d.sort();
+                let pct = |p: f32| d[((d.len() - 1) as f32 * p).round() as usize];
+                let (p95_limit, max_limit) = budget.limits();
+                say(
+                    start,
+                    format!(
+                        "budget {budget:?} (p95 {p95_limit:.0?}, max {max_limit:.0?}): {} samples, median {:.0?}, p95 {:.0?}, max {:.0?}",
+                        d.len(),
+                        pct(0.5),
+                        pct(0.95),
+                        pct(1.)
+                    ),
+                );
+                if pct(0.95) > p95_limit {
+                    over += 1;
+                    say(start, format!("OVER BUDGET {budget:?} p95 {:.0?}", pct(0.95)));
+                }
+                for (took, s) in samples.iter().filter(|s| s.0 > max_limit) {
+                    over += 1;
+                    say(start, format!("OVER BUDGET {budget:?} {took:.0?} at: {s}"));
+                }
+            }
+            for (input, d) in &r.keys {
+                let mut d = d.clone();
+                d.sort();
+                let pct = |p: f32| d[((d.len() - 1) as f32 * p).round() as usize];
+                say(
+                    start,
+                    format!(
+                        "keystroke {input}: {} samples, p50 {:.1?}, p95 {:.1?}, max {:.1?}",
+                        d.len(),
+                        pct(0.5),
+                        pct(0.95),
+                        pct(1.)
+                    ),
+                );
+            }
+            if let Some(keys) = r.timed.get(&Budget::Keystroke) {
+                let mut by_step: BTreeMap<&str, Vec<Duration>> = BTreeMap::new();
+                for (d, step) in keys {
+                    by_step.entry(step.as_str()).or_default().push(*d);
+                }
+                let mut steps: Vec<(Duration, &str)> = by_step
+                    .into_iter()
+                    .map(|(step, mut d)| {
+                        d.sort();
+                        (d[d.len() / 2], step)
+                    })
+                    .collect();
+                steps.sort_by_key(|s| std::cmp::Reverse(s.0));
+                for (median, step) in steps.iter().take(5) {
+                    say(start, format!("  keystroke median {median:.1?} at: {step}"));
+                }
+            }
+            let ok = r.panics.is_empty() && r.toasts.is_empty() && r.stalls.is_empty() && over == 0;
             say(
                 start,
                 format!(
-                    "{} ({} panics, {} error toasts, {} stalls)",
+                    "{} ({} panics, {} error toasts, {} stalls, {over} over budget)",
                     if ok { "PASS" } else { "FAIL" },
                     r.panics.len(),
                     r.toasts.len(),
@@ -996,31 +1117,47 @@ async fn sleep(cx: &AsyncApp, ms: u64) {
         .await;
 }
 
+/// Draws one frame and returns how long it took.
+fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
+    let t = Instant::now();
+    let _ = cx.update_window(window, |_, window, cx| {
+        let drawn = window.draw(cx);
+        drawn.clear(cx);
+    });
+    BEAT.store(now_ms(), Ordering::SeqCst);
+    let took = t.elapsed();
+    let renders = recur_ui::guard::take_render_counts();
+    TRANSCRIPT_RENDERS.store(
+        renders
+            .iter()
+            .filter(|(k, _)| k.ends_with("::TranscriptPane"))
+            .map(|(_, n)| u64::from(*n))
+            .sum(),
+        Ordering::SeqCst,
+    );
+    if took > Duration::from_millis(500) {
+        let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+        if took > Duration::from_secs(2) || std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
+            let views: Vec<String> = renders
+                .iter()
+                .map(|(k, n)| format!("{}×{n}", k.rsplit("::").next().unwrap_or(k)))
+                .collect();
+            println!("slow frame {took:.0?} at {s}: {}", views.join(" "));
+        }
+        if let Ok(mut r) = report().lock() {
+            r.slow.push((took, s));
+        }
+    }
+    took
+}
+
 /// Draws frames (an unfocused window gets no display-link frames) and collects new error
 /// toasts. A frame over 2s is a stall.
 async fn frames(cx: &mut AsyncApp, window: AnyWindowHandle, n: usize) {
     for _ in 0..n {
         sleep(cx, 60).await;
-        let t = Instant::now();
-        let _ = cx.update_window(window, |_, window, cx| {
-            let drawn = window.draw(cx);
-            drawn.clear(cx);
-        });
-        BEAT.store(now_ms(), Ordering::SeqCst);
-        let took = t.elapsed();
-        if took > Duration::from_millis(500) {
-            let s = step().lock().map(|s| s.clone()).unwrap_or_default();
-            if let Ok(mut r) = report().lock() {
-                r.slow.push((took, s));
-            }
-        }
-        if took > Duration::from_secs(2) {
-            let s = step().lock().map(|s| s.clone()).unwrap_or_default();
-            if let Ok(mut r) = report().lock() {
-                r.stalls
-                    .push(format!("a frame took {:.1?} at: {s}", t.elapsed()));
-            }
-        }
+        let took = draw(cx, window);
+        stall_check(took);
         collect_toasts(cx);
     }
 }
@@ -1154,11 +1291,16 @@ async fn run(
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
         .map_or(0, |n| n.saturating_sub(1));
+    let to = std::env::var("RECUR_SMOKE_TO")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(usize::MAX);
     let only = std::env::var("RECUR_SMOKE_WORKSPACE").ok();
     for (i, (id, archived, wt)) in workspaces
         .iter()
         .enumerate()
         .skip(from)
+        .take_while(|(i, _)| *i < to)
         .filter(|(_, (id, _, _))| only.as_ref().is_none_or(|o| o == id))
         .take(limit())
     {
@@ -1182,8 +1324,18 @@ async fn run(
     if !streamed {
         note("no live workspace to stream a chat turn in".into());
     }
+    if std::env::var_os("RECUR_SMOKE_WORKSPACES_ONLY").is_some() {
+        at(start, "done");
+        return;
+    }
 
-    for (i, id) in prs.iter().enumerate().take(limit()) {
+    let only = std::env::var("RECUR_SMOKE_PR").ok();
+    for (i, id) in prs
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| only.as_ref().is_none_or(|o| o == *id))
+        .take(limit())
+    {
         at(start, format!("PR {}/{} {id}", i + 1, prs.len()));
         state.update(cx, |s, cx| s.open_pr(id, cx));
         let detail = cx.update(|cx| {
@@ -1201,6 +1353,18 @@ async fn run(
             at(start, format!("PR {id} {tab:?}"));
             detail.update(cx, |d, cx| d.set_tab(tab, cx));
             frames(cx, window, 12).await;
+        }
+        at(start, format!("PR {id} comment: type"));
+        detail.update(cx, |d, cx| d.set_tab(PrTab::Conv, cx));
+        frames(cx, window, 4).await;
+        let focused = cx
+            .update_window(window, |_, window, cx| {
+                detail.update(cx, |d, cx| d.focus_composer(window, cx))
+            })
+            .unwrap_or(false);
+        frames(cx, window, 4).await;
+        if focused {
+            type_keys(cx, window, "PR comment").await;
         }
     }
 
@@ -1287,7 +1451,11 @@ async fn visit_workspace(
     id: &str,
     live: bool,
 ) {
+    sleep(cx, 60).await;
+    let t = Instant::now();
     state.update(cx, |s, cx| s.open_workspace(id, false, cx));
+    draw(cx, window);
+    timed(Budget::WorkspaceSwitch, t.elapsed());
     let bound = until(cx, window, 15, |cx| {
         bound_view(cx).is_some_and(|v| cx.update(|cx| !v.read(cx).tab_codes().is_empty()))
     })
@@ -1314,16 +1482,142 @@ async fn visit_workspace(
             }
             frames(cx, window, 1).await;
         }
-        scroll_transcript(start, cx, window, &chat, id, code).await;
+        scroll_transcript(start, cx, window, state, &chat, id, code).await;
     }
     if live {
         observatory(start, cx, window, state, &view, id).await;
     }
 }
 
-/// Top to bottom, a viewport at a time; windowed blocks hydrate as they come into view, so the
-/// end is where the offset stops growing.
+/// Top to bottom, a viewport at a time, with wheel events over the transcript as a user
+/// scrolls; windowed blocks hydrate as they come into view, so the end is where the offset
+/// stops growing.
 async fn scroll_transcript(
+    start: Instant,
+    cx: &mut AsyncApp,
+    window: AnyWindowHandle,
+    state: &Entity<AppState>,
+    chat: &Entity<recur_view_chat::chat::AgentChat>,
+    id: &str,
+    code: &str,
+) {
+    at(start, format!("workspace {id} chat {code}: scroll"));
+    let handle = chat.read_with(cx, |c, _| c.test_scroll().clone());
+    move_mouse(cx, window, handle.bounds().center());
+    frames(cx, window, 1).await;
+    wheel(cx, window, &handle, 1e9);
+    frames(cx, window, 3).await;
+    let mut at_end = 0;
+    let mut reached = false;
+    let mut unmoved = 0;
+    let mut trail: std::collections::VecDeque<(f32, f32, u64)> = Default::default();
+    for _ in 0..2000 {
+        let page = f32::from(handle.bounds().size.height).max(200.);
+        let max = f32::from(handle.max_offset().y);
+        let y = -f32::from(handle.offset().y);
+        if trail.len() == 8 {
+            trail.pop_front();
+        }
+        trail.push_back((y, max, TRANSCRIPT_RENDERS.load(Ordering::SeqCst)));
+        if y >= max - 0.5 {
+            at_end += 1;
+            if at_end >= 3 {
+                reached = true;
+                break;
+            }
+        } else {
+            at_end = 0;
+        }
+        sleep(cx, 60).await;
+        let t = Instant::now();
+        wheel(cx, window, &handle, -page * 0.9);
+        draw(cx, window);
+        let took = t.elapsed();
+        timed(Budget::ScrollStep, took);
+        stall_check(took);
+        collect_toasts(cx);
+        // A wheel that moves nothing short of the end: something took the events.
+        unmoved = if -f32::from(handle.offset().y) == y && y < max - 0.5 {
+            unmoved + 1
+        } else {
+            0
+        };
+        if unmoved >= 5 {
+            let what = state.read_with(cx, |s, _| {
+                format!(
+                    "offset {y:.0} of {max:.0} at {:?} in {:?}; {} permission cards, {} questions, overlays {:?}",
+                    handle.bounds().center(),
+                    handle.bounds(),
+                    s.permission_requests.len(),
+                    s.user_questions.len(),
+                    s.overlays
+                )
+            });
+            let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+            println!("STUCK {what} at {s}");
+            if let Ok(mut r) = report().lock() {
+                r.stalls.push(format!(
+                    "the transcript did not move under the wheel ({what}) at: {s}"
+                ));
+            }
+            reached = true;
+            break;
+        }
+    }
+    if !reached {
+        let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+        let line = format!(
+            "the transcript never scrolled to its end (last offsets, ends and pane renders {trail:?}; scroller {:?}) at: {s}",
+            handle.bounds()
+        );
+        println!("STALL {line}");
+        if let Ok(mut r) = report().lock() {
+            r.stalls.push(line);
+        }
+    }
+    if chat.read_with(cx, |c, _| c.props().messages.len()) >= LONG_CHAT_ROWS {
+        type_in_long_chat(start, cx, window, chat, id, code).await;
+    }
+}
+
+/// One wheel event of `dy` pixels over the scroller (positive scrolls toward the top).
+fn wheel(cx: &mut AsyncApp, window: AnyWindowHandle, handle: &gpui_kit::ScrollHandle, dy: f32) {
+    wheel_at(cx, window, handle.bounds().center(), dy);
+}
+
+fn move_mouse(cx: &mut AsyncApp, window: AnyWindowHandle, at: gpui_kit::Point<gpui_kit::Pixels>) {
+    let _ = cx.update_window(window, |_, window, cx| {
+        window.dispatch_event(
+            gpui_kit::PlatformInput::MouseMove(gpui_kit::MouseMoveEvent {
+                position: at,
+                pressed_button: None,
+                modifiers: Default::default(),
+            }),
+            cx,
+        );
+    });
+}
+
+/// One wheel event of `dy` pixels at `at`.
+fn wheel_at(
+    cx: &mut AsyncApp,
+    window: AnyWindowHandle,
+    at: gpui_kit::Point<gpui_kit::Pixels>,
+    dy: f32,
+) {
+    let ev = gpui_kit::ScrollWheelEvent {
+        position: at,
+        delta: gpui_kit::ScrollDelta::Pixels(point(px(0.), px(dy))),
+        modifiers: Default::default(),
+        touch_phase: gpui_kit::TouchPhase::Moved,
+    };
+    let _ = cx.update_window(window, |_, window, cx| {
+        window.dispatch_event(gpui_kit::PlatformInput::ScrollWheel(ev), cx);
+    });
+}
+
+/// Types into the composer and erases it again, timing each key through its frame.
+async fn type_in_long_chat(
     start: Instant,
     cx: &mut AsyncApp,
     window: AnyWindowHandle,
@@ -1331,26 +1625,54 @@ async fn scroll_transcript(
     id: &str,
     code: &str,
 ) {
-    at(start, format!("workspace {id} chat {code}: scroll"));
-    let handle = chat.read_with(cx, |c, _| c.test_scroll().clone());
-    handle.set_offset(point(px(0.), px(0.)));
-    frames(cx, window, 3).await;
-    let mut y = 0.;
-    let mut at_end = 0;
-    for _ in 0..2000 {
-        let page = f32::from(handle.bounds().size.height).max(200.);
-        let max = f32::from(handle.max_offset().y);
-        if y >= max {
-            at_end += 1;
-            if at_end >= 3 {
-                break;
-            }
+    at(start, format!("workspace {id} chat {code}: type"));
+    let before = chat.read_with(cx, |c, _| c.input().to_string());
+    let _ = cx.update_window(window, |_, window, cx| {
+        chat.update(cx, |c, cx| c.focus_composer(window, cx))
+    });
+    frames(cx, window, 2).await;
+    type_keys(cx, window, "chat composer").await;
+    let after = chat.read_with(cx, |c, _| c.input().to_string());
+    if after != before {
+        note(format!(
+            "typing in {id} {code} left the draft {after:?} (was {before:?})"
+        ));
+    }
+}
+
+/// Types `a b c` and three backspaces (`RECUR_SMOKE_KEY_ROUNDS` times) into the focused input,
+/// timing each key through its frame. The input ends as it started.
+async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static str) {
+    let rounds = std::env::var("RECUR_SMOKE_KEY_ROUNDS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(1);
+    let seq = "a b c backspace backspace backspace ".repeat(rounds);
+    for (i, k) in seq.split_whitespace().enumerate() {
+        sleep(cx, 60).await;
+        let t = Instant::now();
+        keys(cx, window, k);
+        draw(cx, window);
+        let took = t.elapsed();
+        // The first key follows mouse input (or a scroll): GPUI refreshes the whole window.
+        if i == 0 {
+            timed(Budget::FirstKey, took);
         } else {
-            at_end = 0;
+            timed(Budget::Keystroke, took);
+            if let Ok(mut r) = report().lock() {
+                r.keys.entry(input).or_default().push(took);
+            }
         }
-        y = (y + page * 0.9).min(max);
-        handle.set_offset(point(px(0.), px(-y)));
-        frames(cx, window, 1).await;
+        stall_check(took);
+    }
+}
+
+fn stall_check(took: Duration) {
+    if took > Duration::from_secs(2) {
+        let s = step().lock().map(|s| s.clone()).unwrap_or_default();
+        if let Ok(mut r) = report().lock() {
+            r.stalls.push(format!("a frame took {took:.1?} at: {s}"));
+        }
     }
 }
 
@@ -1370,6 +1692,17 @@ async fn observatory(
         })
     });
     frames(cx, window, 8).await;
+    at(start, format!("workspace {id}: commit message: type"));
+    let focused = cx
+        .update_window(window, |_, window, cx| {
+            obs.update(cx, |o, cx| o.focus_commit_msg(window, cx))
+        })
+        .unwrap_or(false);
+    frames(cx, window, 4).await;
+    // Keys with nothing to type into would reach the window's shortcuts.
+    if focused {
+        type_keys(cx, window, "commit message").await;
+    }
     let wt = state.read_with(cx, |s, _| {
         s.workspaces
             .iter()
@@ -1398,10 +1731,65 @@ async fn observatory(
         frames(cx, window, 12).await;
     }
     at(start, format!("workspace {id}: review"));
-    obs.update(cx, |o, cx| o.click_review_toggle(cx));
+    let restored = obs.read_with(cx, |o, cx| o.showing_review(cx));
+    if !restored {
+        obs.update(cx, |o, cx| o.click_review_toggle(cx));
+    }
     frames(cx, window, 15).await;
-    obs.update(cx, |o, cx| o.click_review_toggle(cx));
-    frames(cx, window, 4).await;
+    if obs.read_with(cx, |o, cx| o.showing_review(cx)) {
+        at(start, format!("workspace {id}: review scroll"));
+        let at_point = obs.read_with(cx, |o, _| o.main_bounds().center());
+        let page = obs.read_with(cx, |o, _| f32::from(o.main_bounds().size.height));
+        move_mouse(cx, window, at_point);
+        for _ in 0..REVIEW_PAGES {
+            sleep(cx, 60).await;
+            let t = Instant::now();
+            wheel_at(cx, window, at_point, -page.max(200.) * 0.9);
+            draw(cx, window);
+            let took = t.elapsed();
+            timed(Budget::ReviewScrollStep, took);
+            stall_check(took);
+            collect_toasts(cx);
+        }
+        frames(cx, window, 4).await;
+        // A line note on the first card that takes one and is on screen.
+        let cards: Vec<Entity<recur_view_review::diff_file::DiffFile>> = obs.read_with(cx, |o, cx| {
+            o.review_surface()
+                .map(|r| {
+                    r.read(cx)
+                        .files_view()
+                        .read(cx)
+                        .stack()
+                        .diff_files()
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default()
+        });
+        for card in cards.iter().take(8) {
+            let focused = cx
+                .update_window(window, |_, window, cx| {
+                    card.update(cx, |c, cx| c.open_first_note(window, cx))
+                })
+                .unwrap_or(false);
+            frames(cx, window, 4).await;
+            if focused {
+                at(start, format!("workspace {id}: line note: type"));
+                type_keys(cx, window, "line note").await;
+            }
+            let _ = cx.update_window(window, |_, window, cx| {
+                card.update(cx, |c, cx| c.dismiss_composer(window, cx))
+            });
+            frames(cx, window, 2).await;
+            if focused {
+                break;
+            }
+        }
+    }
+    if !restored {
+        obs.update(cx, |o, cx| o.click_review_toggle(cx));
+        frames(cx, window, 4).await;
+    }
     at(start, format!("workspace {id}: terminal"));
     state.update(cx, |s, cx| s.set_terminal_dock_open(id, true, cx));
     frames(cx, window, 20).await;

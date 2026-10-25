@@ -9,6 +9,7 @@
 //! margin-box sizes.
 
 use std::cell::{Cell, RefCell};
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -63,7 +64,7 @@ pub struct FlowLine {
 struct Para {
     range: Range<usize>,
     /// `(byte offset in the paragraph, x)` for every char start and the end.
-    edges: Vec<(usize, f32)>,
+    edges: Rc<Vec<(usize, f32)>>,
 }
 
 impl Para {
@@ -133,14 +134,13 @@ fn shape_width(text: &str, s: &FlowStyle, window: &Window) -> (f32, Vec<(usize, 
     (f32::from(shaped.width), xs)
 }
 
+/// One paragraph's char edges, its atoms at their offsets in it.
 fn shape_para(
-    content: &str,
-    range: Range<usize>,
+    text: &str,
     atom_w: &dyn Fn(usize) -> f32,
     s: &FlowStyle,
     window: &Window,
-) -> Para {
-    let text = &content[range.clone()];
+) -> Vec<(usize, f32)> {
     let mut edges = Vec::new();
     let mut pen = 0.;
     let mut seg_start = 0;
@@ -163,13 +163,103 @@ fn shape_para(
         if ch == ATOM {
             flush(seg_start, bi, &mut pen, &mut edges);
             edges.push((bi, pen));
-            pen += atom_w(range.start + bi);
+            pen += atom_w(bi);
             seg_start = bi + ATOM_LEN;
         }
     }
     flush(seg_start, text.len(), &mut pen, &mut edges);
     edges.push((text.len(), pen));
-    Para { range, edges }
+    edges
+}
+
+/// One line of a paragraph, in the paragraph's coordinates.
+#[derive(Clone, Debug)]
+struct ParaLine {
+    range: Range<usize>,
+    above: f32,
+    below: f32,
+    left: f32,
+    width: f32,
+}
+
+/// A paragraph laid out at a width: what a keystroke in another paragraph reuses.
+struct ParaFlow {
+    edges: Rc<Vec<(usize, f32)>>,
+    lines: Rc<Vec<ParaLine>>,
+}
+
+/// What a [`ParaFlow`] depends on: its text, its atoms' offsets and sizes, the style and the
+/// width.
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct ParaKey {
+    text: String,
+    atoms: Vec<(usize, u32, u32)>,
+    style: [u32; 4],
+    family: Family,
+    width: u32,
+    scale: u32,
+}
+
+/// Paragraphs across frames: typing re-lays out the edited paragraph only. Byte-budgeted,
+/// least recently used out first.
+#[derive(Default)]
+struct ParaCache {
+    entries: HashMap<ParaKey, (Rc<ParaFlow>, usize, u64)>,
+    order: BTreeMap<u64, ParaKey>,
+    stamp: u64,
+    bytes: usize,
+}
+
+const PARA_CACHE_MAX_BYTES: usize = 8 * 1024 * 1024;
+
+thread_local! {
+    static PARAS: RefCell<ParaCache> = RefCell::default();
+    /// Paragraphs laid out (cache misses), for frame-cost tests.
+    static PARA_LAYOUTS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Paragraphs laid out on this thread so far (a test reads the difference).
+pub fn para_layouts() -> usize {
+    PARA_LAYOUTS.get()
+}
+
+impl ParaCache {
+    fn get(&mut self, key: &ParaKey) -> Option<Rc<ParaFlow>> {
+        self.stamp += 1;
+        let stamp = self.stamp;
+        let (p, _, at) = self.entries.get_mut(key)?;
+        *at = stamp;
+        Some(p.clone())
+    }
+
+    fn insert(&mut self, key: ParaKey, p: Rc<ParaFlow>) {
+        let bytes = 96
+            + key.text.len() * 2
+            + p.edges.len() * 16
+            + p.lines.len() * std::mem::size_of::<ParaLine>();
+        self.stamp += 1;
+        if let Some((_, b, _)) = self.entries.insert(key.clone(), (p, bytes, self.stamp)) {
+            self.bytes -= b;
+        }
+        self.order.insert(self.stamp, key);
+        self.bytes += bytes;
+        while self.bytes > PARA_CACHE_MAX_BYTES && self.entries.len() > 1 {
+            let Some((at, k)) = self.order.pop_first() else {
+                break;
+            };
+            match self.entries.get(&k) {
+                Some((_, b, used)) if *used == at => {
+                    self.bytes -= *b;
+                    self.entries.remove(&k);
+                }
+                Some((_, _, used)) => {
+                    let used = *used;
+                    self.order.insert(used, k);
+                }
+                None => {}
+            }
+        }
+    }
 }
 
 fn break_lines(p: &Para, text: &str, max: f32, eps: f32) -> Vec<Range<usize>> {
@@ -220,9 +310,110 @@ fn break_lines(p: &Para, text: &str, max: f32, eps: f32) -> Vec<Range<usize>> {
     lines
 }
 
+/// What a [`FlowLayout`] depends on (the color does not move anything).
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct FlowKey {
+    content: String,
+    atoms: Vec<(u32, u32)>,
+    family: Family,
+    size: u32,
+    weight: u32,
+    leading: u32,
+    width: u32,
+    scale: u32,
+}
+
+/// Flow layouts across frames and measure passes: the composer and every visible user bubble
+/// are measured several times a frame by Taffy, and a frame redraws them whenever anything
+/// above them changes. Byte-budgeted, least recently used out first.
+#[derive(Default)]
+struct FlowCache {
+    entries: HashMap<FlowKey, (FlowLayout, usize, u64)>,
+    order: BTreeMap<u64, FlowKey>,
+    stamp: u64,
+    bytes: usize,
+}
+
+const FLOW_CACHE_MAX_BYTES: usize = 8 * 1024 * 1024;
+
+thread_local! {
+    static FLOWS: RefCell<FlowCache> = RefCell::default();
+}
+
+impl FlowCache {
+    fn get(&mut self, key: &FlowKey) -> Option<FlowLayout> {
+        self.stamp += 1;
+        let stamp = self.stamp;
+        let (l, _, at) = self.entries.get_mut(key)?;
+        // Lazy LRU: the order map keeps the old stamp until eviction finds it stale.
+        *at = stamp;
+        Some(l.clone())
+    }
+
+    fn insert(&mut self, key: FlowKey, l: &FlowLayout) {
+        let bytes = 96
+            + key.content.len() * 2
+            + l.lines.len() * std::mem::size_of::<FlowLine>()
+            + l.paras.iter().map(|p| p.edges.len() * 16).sum::<usize>();
+        self.stamp += 1;
+        if let Some((_, b, _)) = self
+            .entries
+            .insert(key.clone(), (l.clone(), bytes, self.stamp))
+        {
+            self.bytes -= b;
+        }
+        self.order.insert(self.stamp, key);
+        self.bytes += bytes;
+        while self.bytes > FLOW_CACHE_MAX_BYTES && self.entries.len() > 1 {
+            let Some((at, k)) = self.order.pop_first() else {
+                break;
+            };
+            match self.entries.get(&k) {
+                Some((_, b, used)) if *used == at => {
+                    self.bytes -= *b;
+                    self.entries.remove(&k);
+                }
+                Some((_, _, used)) => {
+                    let used = *used;
+                    self.order.insert(used, k);
+                }
+                None => {}
+            }
+        }
+    }
+}
+
 impl FlowLayout {
-    /// Lays `content` out at `width` with chip sizes in order.
+    /// Lays `content` out at `width` with chip sizes in order (cached across frames).
     pub fn compute(
+        content: &str,
+        atoms: &[(f32, f32)],
+        s: &FlowStyle,
+        width: f32,
+        window: &Window,
+    ) -> FlowLayout {
+        let key = FlowKey {
+            content: content.to_string(),
+            atoms: atoms
+                .iter()
+                .map(|(w, h)| (w.to_bits(), h.to_bits()))
+                .collect(),
+            family: s.family.clone(),
+            size: s.size.to_bits(),
+            weight: s.weight.to_bits(),
+            leading: s.leading.to_bits(),
+            width: width.to_bits(),
+            scale: window.scale_factor().to_bits(),
+        };
+        if let Some(hit) = FLOWS.with_borrow_mut(|c| c.get(&key)) {
+            return hit;
+        }
+        let l = Self::compute_uncached(content, atoms, s, width, window);
+        FLOWS.with_borrow_mut(|c| c.insert(key, &l));
+        l
+    }
+
+    fn compute_uncached(
         content: &str,
         atoms: &[(f32, f32)],
         s: &FlowStyle,
@@ -238,50 +429,96 @@ impl FlowLayout {
                 n += 1;
             }
         }
-        let atom_w = |byte: usize| at.iter().find(|a| a.0 == byte).map_or(0., |a| a.1);
         let (a, d, g, xh) = font_extent(window, s);
         let strut = line_metrics(a, d, g, s.size, LineHeight::Scale(s.leading));
         let xh = (xh * 64.).round() / 64.;
         let eps = 0.5 / window.scale_factor();
         let mut paras = Vec::new();
-        let mut start = 0;
-        for piece in content.split('\n') {
-            paras.push(shape_para(
-                content,
-                start..start + piece.len(),
-                &atom_w,
-                s,
-                window,
-            ));
-            start += piece.len() + 1;
-        }
         let mut lines = Vec::new();
         let mut top = 0.;
         let mut max_line: f32 = 0.;
-        for (pi, p) in paras.iter().enumerate() {
-            let text = &content[p.range.clone()];
-            for r in break_lines(p, text, width, eps) {
-                let abs = p.range.start + r.start..p.range.start + r.end;
-                let (mut above, mut below) = (strut.baseline, strut.height - strut.baseline);
-                for &(b, _, h) in &at {
-                    if b >= abs.start && b < abs.end {
-                        // `vertical-align: middle`: the box's midpoint at baseline − x-height/2.
-                        let mid = xh / 2.;
-                        above = above.max(mid + h / 2.);
-                        below = below.max(h / 2. - mid);
+        let mut start = 0;
+        for piece in content.split('\n') {
+            let range = start..start + piece.len();
+            let local: Vec<(usize, f32, f32)> = at
+                .iter()
+                .filter(|a| a.0 >= range.start && a.0 < range.end)
+                .map(|&(b, w, h)| (b - range.start, w, h))
+                .collect();
+            let key = ParaKey {
+                text: piece.to_string(),
+                atoms: local
+                    .iter()
+                    .map(|&(b, w, h)| (b, w.to_bits(), h.to_bits()))
+                    .collect(),
+                style: [
+                    s.size.to_bits(),
+                    s.weight.to_bits(),
+                    s.leading.to_bits(),
+                    xh.to_bits(),
+                ],
+                family: s.family.clone(),
+                width: width.to_bits(),
+                scale: window.scale_factor().to_bits(),
+            };
+            let flow = match PARAS.with_borrow_mut(|c| c.get(&key)) {
+                Some(f) => f,
+                None => {
+                    PARA_LAYOUTS.set(PARA_LAYOUTS.get() + 1);
+                    let atom_w =
+                        |byte: usize| local.iter().find(|a| a.0 == byte).map_or(0., |a| a.1);
+                    let edges = Rc::new(shape_para(piece, &atom_w, s, window));
+                    let p = Para {
+                        range: 0..piece.len(),
+                        edges: edges.clone(),
+                    };
+                    let mut pl = Vec::new();
+                    for r in break_lines(&p, piece, width, eps) {
+                        let (mut above, mut below) =
+                            (strut.baseline, strut.height - strut.baseline);
+                        for &(b, _, h) in &local {
+                            if b >= r.start && b < r.end {
+                                // `vertical-align: middle`: the box's midpoint at baseline −
+                                // x-height/2.
+                                let mid = xh / 2.;
+                                above = above.max(mid + h / 2.);
+                                below = below.max(h / 2. - mid);
+                            }
+                        }
+                        pl.push(ParaLine {
+                            width: p.width(piece, r.clone()),
+                            left: p.x_at(r.start),
+                            range: r,
+                            above,
+                            below,
+                        });
                     }
+                    let f = Rc::new(ParaFlow {
+                        edges,
+                        lines: Rc::new(pl),
+                    });
+                    PARAS.with_borrow_mut(|c| c.insert(key, f.clone()));
+                    f
                 }
-                max_line = max_line.max(p.width(text, r.clone()));
+            };
+            let pi = paras.len();
+            for l in flow.lines.iter() {
+                max_line = max_line.max(l.width);
                 lines.push(FlowLine {
-                    range: abs,
+                    range: range.start + l.range.start..range.start + l.range.end,
                     top,
-                    height: above + below,
-                    baseline: above,
-                    left: p.x_at(r.start),
+                    height: l.above + l.below,
+                    baseline: l.above,
+                    left: l.left,
                     para: pi,
                 });
-                top += above + below;
+                top += l.above + l.below;
             }
+            paras.push(Para {
+                range: range.clone(),
+                edges: flow.edges.clone(),
+            });
+            start += piece.len() + 1;
         }
         FlowLayout {
             width,
@@ -341,7 +578,7 @@ impl FlowLayout {
         let p = &self.paras[l.para];
         let mut best = l.range.start;
         let mut best_d = f32::MAX;
-        for &(b, ex) in &p.edges {
+        for &(b, ex) in p.edges.iter() {
             let abs = p.range.start + b;
             if abs < l.range.start || abs > l.range.end {
                 continue;
@@ -396,8 +633,16 @@ impl FlowLayout {
     /// Each line's text runs between atoms: `(byte range, x, y)` with `y` the run's line-box
     /// top.
     pub fn runs(&self) -> Vec<(Range<usize>, f32, f32)> {
+        self.runs_in(None)
+    }
+
+    /// [`Self::runs`] on the lines that cross `band` (a y range of the block).
+    pub fn runs_in(&self, band: Option<&Range<f32>>) -> Vec<(Range<usize>, f32, f32)> {
         let mut out = Vec::new();
         for l in &self.lines {
+            if band.is_some_and(|b| l.top >= b.end || l.top + l.height <= b.start) {
+                continue;
+            }
             let y = l.top + l.baseline - self.strut.baseline;
             let mut s = l.range.start;
             let text = &self.content[l.range.clone()];
@@ -430,6 +675,8 @@ pub struct Flow {
     trailing_space: bool,
     min_height: f32,
     out: Option<Rc<RefCell<Option<FlowLayout>>>>,
+    /// The band of the block (its y range) that can show; only lines in it are placed.
+    visible: Option<Range<f32>>,
 }
 
 pub fn flow(
@@ -447,6 +694,7 @@ pub fn flow(
         trailing_space: false,
         min_height: 0.,
         out: None,
+        visible: None,
     }
 }
 
@@ -466,6 +714,13 @@ impl Flow {
     /// The layout of the last frame, for hosts that place a caret or hit-test.
     pub fn layout_into(mut self, out: Rc<RefCell<Option<FlowLayout>>>) -> Self {
         self.out = Some(out);
+        self
+    }
+
+    /// Place only the lines that cross `band` (the block's y range a scroller can show): a long
+    /// draft in the composer lays out and paints its visible lines, not all of them.
+    pub fn visible(mut self, band: Range<f32>) -> Self {
+        self.visible = Some(band);
         self
     }
 
@@ -519,7 +774,12 @@ impl Flow {
                 )
                 .into_any_element()
         };
-        for (r, x, y) in layout.runs() {
+        let band = self.visible.clone();
+        let shows = |y: f32, h: f32| band.as_ref().is_none_or(|b| y < b.end && y + h > b.start);
+        for (r, x, y) in layout.runs_in(band.as_ref()) {
+            if !shows(y, layout.strut.height) {
+                continue;
+            }
             let t = text(layout.content[r].to_string())
                 .family(st.family.clone())
                 .size(st.size)
@@ -532,8 +792,10 @@ impl Flow {
         }
         for (atom, (x, y, w, h)) in self.atoms.iter_mut().zip(layout.atom_boxes()) {
             let el = std::mem::replace(&mut atom.el, gpui_kit::Empty.into_any_element());
-            let _ = (w, h);
-            out.push(at(x, y, el));
+            let _ = w;
+            if shows(y, h) {
+                out.push(at(x, y, el));
+            }
         }
         out
     }
@@ -797,7 +1059,7 @@ mod tests {
         edges.push((text.len(), x));
         let p = Para {
             range: 0..text.len(),
-            edges,
+            edges: Rc::new(edges),
         };
         for max in [-5., 0., 0.5, 3., 7., 30.] {
             let lines = break_lines(&p, &text, max, 0.25);

@@ -32,7 +32,49 @@ use crate::html_inline::{InlineStyle, inline_html};
 use crate::rows::{accord_detail, finding_row_wrap, findings_list, labeled_note};
 use crate::style::{GREEN, ag_color, hsla, label};
 use crate::tools::{base_name, format_duration};
-use crate::window::{BlockShape, CHAT_TAIL_LIVE, estimate_chat_block_height, reserved_chat_height};
+use crate::window::{CHAT_TAIL_LIVE, reserved_chat_height};
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::rc::Rc;
+
+/// Markdown parsed inside one transcript render before the rest goes to a background thread.
+const MD_SYNC_BUDGET: std::time::Duration = std::time::Duration::from_millis(12);
+/// Replies longer than this always parse off the UI thread.
+const MD_SYNC_MAX_BYTES: usize = 2 * 1024;
+
+/// A run of windowed-out blocks at their reserved heights, recording each one's range.
+fn stub_spacer(
+    stubs: Vec<(String, f32)>,
+    ranges: &Rc<RefCell<BTreeMap<String, (f32, f32)>>>,
+) -> Option<AnyElement> {
+    let first = stubs.first()?.0.clone();
+    let total: f32 = stubs.iter().map(|s| s.1).sum();
+    let n = stubs.len();
+    let rec = ranges.clone();
+    let probe = canvas(
+        move |bounds, _, _| {
+            let mut y = f32::from(bounds.origin.y);
+            let mut r = rec.borrow_mut();
+            for (k, h) in &stubs {
+                r.insert(k.clone(), (y, *h));
+                y += h;
+            }
+        },
+        |_, _, _, _| {},
+    )
+    .absolute()
+    .inset_0();
+    Some(
+        div()
+            .id(SharedString::from(format!("cstubs-{first}")))
+            .debug_selector(move || format!("stubs:{n}:{first}"))
+            .relative()
+            .flex_none()
+            .h(px(total))
+            .child(probe)
+            .into_any_element(),
+    )
+}
 
 /// `.chat-think-dots`: three 5px amber dots bouncing in turn.
 pub(crate) fn think_dots(
@@ -84,9 +126,11 @@ impl AgentChat {
     ) -> Vec<AnyElement> {
         let t = Theme::of(cx).tokens;
         let msgs = self.transcript();
-        let (blocks, keys) = self.blocks(&msgs);
+        let model = self.transcript_model();
+        let shared = model.blocks.clone();
+        let (blocks, keys) = (&shared.0, &shared.1);
         let windowed = self.window_chat();
-        let first_checkpoint = self.first_checkpoint(&msgs, &blocks, cx);
+        let first_checkpoint = self.first_checkpoint(&msgs, blocks, cx);
         let mut out = Vec::new();
         if msgs.is_empty() {
             let empty = match &self.empty {
@@ -110,37 +154,42 @@ impl AgentChat {
         }
         let ranges = self.block_ranges.clone();
         let n = blocks.len();
+        // Consecutive stubs lay out as one spacer: a long windowed transcript is a handful of
+        // nodes plus its live blocks, whatever its length.
+        let mut stubs: Vec<(String, f32)> = Vec::new();
+        let scale = self.scale.max(1.);
+        self.live_blocks = 0;
+        let parse_until = std::time::Instant::now() + MD_SYNC_BUDGET;
         for (bi, b) in blocks.iter().enumerate() {
             let k = keys[bi].clone();
-            let live = !windowed || self.chat_hydrated.contains(&k) || bi + CHAT_TAIL_LIVE >= n;
-            let estimate = match b {
-                Block::Steps { .. } => estimate_chat_block_height(BlockShape::Steps),
-                Block::Msg(i) => {
-                    let m = &msgs[*i];
-                    estimate_chat_block_height(BlockShape::Msg {
-                        me: m.me,
-                        turn_end: m.turn_end,
-                        body: &m.body,
-                    })
-                }
-            };
-            let measured = self.block_heights().get(&k).copied();
-            let reserved = reserved_chat_height(live, measured, estimate);
-            let body = if live {
-                Some(match b {
-                    Block::Msg(i) => self.msg_block(&msgs, *i, window, cx),
-                    Block::Steps { start, rows } => self.steps_block(
-                        &msgs,
-                        *start,
-                        rows,
-                        bi + 1 == n,
-                        first_checkpoint,
-                        window,
-                        cx,
-                    ),
-                })
-            } else {
-                None
+            let live = (!windowed || self.chat_hydrated.contains(&k) || bi + CHAT_TAIL_LIVE >= n)
+                && match b {
+                    Block::Msg(i) => self.markdown_ready(&msgs, *i, parse_until, cx),
+                    Block::Steps { .. } => true,
+                };
+            if !live {
+                let estimate = model.estimates[bi];
+                let measured = self.block_heights().get(&k).copied();
+                let h = reserved_chat_height(false, measured, estimate).unwrap_or(estimate);
+                // Each stub reserved its own device-rounded height.
+                stubs.push((k, (h * scale).round() / scale));
+                continue;
+            }
+            if let Some(el) = stub_spacer(std::mem::take(&mut stubs), &ranges) {
+                out.push(el);
+            }
+            self.live_blocks += 1;
+            let body = match b {
+                Block::Msg(i) => self.msg_block(&msgs, *i, window, cx),
+                Block::Steps { start, rows } => self.steps_block(
+                    &msgs,
+                    *start,
+                    rows,
+                    bi + 1 == n,
+                    first_checkpoint,
+                    window,
+                    cx,
+                ),
             };
             // `registerChatBlock` / `recordStubHeight`: where each block sits, and live
             // heights for stubs to reserve.
@@ -160,15 +209,17 @@ impl AgentChat {
             out.push(
                 div()
                     .id(SharedString::from(format!("cblk-{k}")))
-                    .debug_selector(|| format!("{}:{k}", if live { "cblk" } else { "stub" }))
+                    .debug_selector(|| format!("cblk:{k}"))
                     .relative()
                     .flex()
                     .flex_col()
-                    .when_some(reserved, |d, h| d.min_h(px(h)))
-                    .children(body)
+                    .child(body)
                     .child(probe)
                     .into_any_element(),
             );
+        }
+        if let Some(el) = stub_spacer(stubs, &ranges) {
+            out.push(el);
         }
         for req in self.chat_permissions(cx) {
             let card = self.permission_card(&req, window, cx);
@@ -191,6 +242,63 @@ impl AgentChat {
             out.push(self.turn_row(self.props.status_text.clone(), false, window, cx));
         }
         out
+    }
+
+    /// Whether message `i` can lay out now: anything but a settled reply can, and a reply can
+    /// once its parsed document is cached (or its view exists). Replies are parsed here until
+    /// `until`; past it they parse on a background thread and stay stubs at their reserved
+    /// height until the chat redraws with them, so opening a long chat never parses a window
+    /// of replies inside one frame.
+    fn markdown_ready(
+        &mut self,
+        msgs: &[AgentMsg],
+        i: usize,
+        until: std::time::Instant,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let m = &msgs[i];
+        if m.log.is_some()
+            || m.turn_end
+            || m.note
+            || m.stopped
+            || m.error
+            || m.me
+            || m.streaming
+            || m.body.is_empty()
+        {
+            return true;
+        }
+        use recur_content::markdown::{
+            ParseOptions, markdown_doc_cached, markdown_doc_is_cached, markdown_render_inline,
+        };
+        let key = format!("{}:m{i}-md", self.props.reset_key);
+        let opts = ParseOptions::default();
+        if self.markdown.contains_key(&key)
+            || markdown_render_inline()
+            || markdown_doc_is_cached(&m.body, opts)
+        {
+            return true;
+        }
+        // Only short replies parse here: one long reply can take longer than the whole budget.
+        if m.body.len() <= MD_SYNC_MAX_BYTES && std::time::Instant::now() < until {
+            markdown_doc_cached(&m.body, opts);
+            return true;
+        }
+        if self.parsing.insert(key.clone()) {
+            let body = m.body.clone();
+            let parse = cx
+                .background_executor()
+                .spawn(async move { markdown_doc_cached(&body, opts) });
+            cx.spawn(async move |this, cx| {
+                parse.await;
+                let _ = this.update(cx, |c, cx| {
+                    c.parsing.remove(&key);
+                    cx.notify();
+                });
+            })
+            .detach();
+        }
+        false
     }
 
     /// `.chat-turn`: the bouncing dots and the elapsed clock or the setup status.

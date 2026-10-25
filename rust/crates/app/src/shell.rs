@@ -51,14 +51,17 @@ pub struct Shell {
     /// `.main`, where focus parks when the rail flyout closes on it.
     main_focus: FocusHandle,
     views: Vec<MountedView>,
-    overlays: Vec<AnyView>,
-    toasts: Entity<Toasts>,
-    tooltip: Entity<TitleTooltip>,
+    /// The overlays, toast host and tooltip, each behind a cached boundary, so a redraw passing
+    /// through the shell (a key typed in a chat) does not render them.
+    layers: Vec<Entity<recur_ui::pane::Layer>>,
+    titlebar_pane: Option<Entity<recur_ui::pane::Pane<Shell>>>,
     pub(crate) focus: FocusHandle,
     pub(crate) titlebar: TitlebarState,
     pub(crate) land: LandChrome,
     /// What the native menubar was last built from.
     menu_built: Option<(recur_services::events::MenuState, MenuThemes)>,
+    /// The theme menus and a fingerprint of the catalogs they were sorted from.
+    themes_memo: Option<(u64, MenuThemes)>,
     /// The chat-occluded value last reported (`SetChatUIOccluded`).
     occluded: Option<bool>,
     /// An updater check the user asked for reports every outcome.
@@ -133,26 +136,35 @@ impl Shell {
                 }
             })
             .collect();
-        let overlays = registry
+        let overlays: Vec<AnyView> = registry
             .overlays
             .iter()
             .map(|(_, build)| build(&ctx, window, cx))
             .collect();
         let toasts = cx.new(Toasts::new);
         let tooltip = TitleTooltip::new(cx);
+        let layers = overlays
+            .iter()
+            .cloned()
+            .chain([
+                AnyView::from(toasts.clone()),
+                AnyView::from(tooltip.clone()),
+            ])
+            .map(|v| recur_ui::pane::Layer::new(v, cx))
+            .collect();
         let mut shell = Self {
             state,
             opts,
             sidebar,
             views,
-            overlays,
-            toasts,
-            tooltip,
+            layers,
+            titlebar_pane: None,
             focus: cx.focus_handle(),
             main_focus,
             titlebar: TitlebarState::default(),
             land: LandChrome::default(),
             menu_built: None,
+            themes_memo: None,
             occluded: None,
             update_manual: false,
             update_ready: None,
@@ -303,7 +315,30 @@ impl Shell {
                 && !recur_view_core::modes::ws_main_blocked(s.selected_workspace());
             menu_state.open_in = Some(on);
             menu_state.copy_path = Some(on);
-            (menu_state, s.menu_themes())
+            // This runs on every store change: sort the theme lists only when they change.
+            let mark = {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::hash::DefaultHasher::new();
+                for t in &s.editor_theme_catalog {
+                    (&t.id, &t.name).hash(&mut h);
+                }
+                for t in &s.terminal_theme_catalog {
+                    (&t.id, &t.name).hash(&mut h);
+                }
+                if let Some(st) = &s.settings {
+                    st.disabled_bundle_themes.hash(&mut h);
+                }
+                h.finish()
+            };
+            let themes = match &self.themes_memo {
+                Some((m, t)) if *m == mark => t.clone(),
+                _ => {
+                    let t = s.menu_themes();
+                    self.themes_memo = Some((mark, t.clone()));
+                    t
+                }
+            };
+            (menu_state, themes)
         };
         let key = (menu_state, themes);
         if self.menu_built.as_ref() == Some(&key) {
@@ -361,17 +396,29 @@ impl Shell {
             .min_w_0()
             .bg(recur_ui::Theme::of(cx).tokens.bg)
             .relative();
-        for (i, v) in self.views.iter().enumerate() {
+        // Hidden routes paint first: GPUI still hit-tests an invisible subtree, so the routed
+        // view must be on top of them.
+        let order = self
+            .views
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| Some(*i) != active)
+            .chain(
+                self.views
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| Some(*i) == active),
+            );
+        for (i, v) in order {
             let on = Some(i) == active;
             if on {
-                main = main.child(
-                    div()
-                        .flex_1()
-                        .min_h_0()
-                        .flex()
-                        .flex_col()
-                        .child(v.view.clone()),
-                );
+                // Its own layout root: the shell's nesting would lay the route out dozens of times
+                // a frame (see `recur_ui::layout_root`).
+                main = main.child(recur_ui::layout_root::layout_root(
+                    "route",
+                    gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
+                    div().size_full().flex().flex_col().child(v.view.clone()),
+                ));
             } else if v.keep_laid_out {
                 // `#v-detail.view`: hidden but laid out at the main area's size. Cached: GPUI lays
                 // the whole tree out every frame, and a hidden route only changes when notified.
@@ -418,11 +465,26 @@ impl Shell {
         if window.focused(cx).is_none() {
             window.focus(&self.focus, cx);
         }
-        let (view, rail_collapsed) = {
+        let (view, rail_collapsed, rail_width) = {
             let s = self.state.read(cx);
-            (s.view, s.rail_collapsed)
+            (
+                s.view,
+                s.rail_collapsed,
+                s.panels.size(recur_view_core::prefs::PanelKey::Rail),
+            )
         };
-        let titlebar = self.render_titlebar(window, cx);
+        let titlebar_pane = self
+            .titlebar_pane
+            .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Shell::render_titlebar))
+            .clone();
+        let titlebar = recur_ui::style::cached_view(
+            &titlebar_pane,
+            gpui_kit::StyleRefinement::default()
+                .flex_none()
+                .w_full()
+                .h(gpui_kit::px(crate::titlebar::TITLEBAR_HEIGHT)),
+            cx,
+        );
         let main = self.main_area(view, cx);
         let state = self.state.clone();
         let root = style::body(cx)
@@ -452,14 +514,30 @@ impl Shell {
                         .relative()
                         .overflow_hidden()
                         // A collapsed rail is an overlay, so it paints after the content.
-                        .when(!rail_collapsed, |d| d.child(self.sidebar.clone()))
+                        // Cached at the rail's own box: typing, scrolling and streaming in
+                        // the main area never re-render the project tree.
+                        .when(!rail_collapsed, |d| {
+                            d.child(recur_ui::style::cached_view(
+                                &self.sidebar,
+                                gpui_kit::StyleRefinement::default()
+                                    .flex_none()
+                                    .w(gpui_kit::px(rail_width))
+                                    .h_full()
+                                    .min_h_0(),
+                                cx,
+                            ))
+                        })
                         .child(main)
                         .when(rail_collapsed, |d| d.child(self.sidebar.clone())),
                 ),
             )
-            .children(self.overlays.iter().cloned())
-            .child(self.toasts.clone())
-            .child(self.tooltip.clone());
+            .children(self.layers.iter().map(|l| {
+                recur_ui::style::cached_view(
+                    l,
+                    gpui_kit::StyleRefinement::default().absolute().inset_0(),
+                    cx,
+                )
+            }));
         self.with_menu_actions(root, cx)
     }
 }

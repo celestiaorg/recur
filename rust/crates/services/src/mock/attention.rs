@@ -310,12 +310,14 @@ pub(crate) fn install(table: &mut Table, attn: &Arc<Mutex<State>>) {
                     }
                     a.lock()
                         .pending_events
-                        .push(AppEvent::WorkspaceUpdated(Box::new(WorkspaceUpdated {
-                            workspace_id: id,
-                            state: Some("paused".into()),
-                            phase: Some("idle".into()),
-                            ..Default::default()
-                        })));
+                        .push(AppEvent::WorkspaceUpdated(std::sync::Arc::new(
+                            WorkspaceUpdated {
+                                workspace_id: id,
+                                state: Some("paused".into()),
+                                phase: Some("idle".into()),
+                                ..Default::default()
+                            },
+                        )));
                 }
                 inner(&prev, args, seed, t)
             })

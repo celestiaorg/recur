@@ -164,9 +164,12 @@ impl ModelFlagsSelect {
             s.set_display(Some(summary.into()), cx);
             s.set_disabled(disabled_over, cx);
         });
-        self.dims = dims;
-        self.selected = selected;
-        cx.notify();
+        // The dock's host pushes this from its render: only a change redraws.
+        if self.dims != dims || self.selected != selected {
+            self.dims = dims;
+            self.selected = selected;
+            cx.notify();
+        }
     }
 }
 
@@ -302,10 +305,12 @@ impl ModelPickers {
         let f = flags.clone();
         self.flags_select
             .update(cx, |s, cx| s.set(dims, &f, disabled_over, cx));
-        self.models = models;
-        self.model = model.to_string();
-        self.flags = flags.clone();
-        cx.notify();
+        if self.models != models || self.model != model || self.flags != *flags {
+            self.models = models;
+            self.model = model.to_string();
+            self.flags = flags.clone();
+            cx.notify();
+        }
     }
 }
 
@@ -525,7 +530,6 @@ impl LoopPolicyPickers {
             s.set_value(p, cx);
             s.set_disabled(pd.then_some(backdrop), cx);
         });
-        cx.notify();
     }
 }
 

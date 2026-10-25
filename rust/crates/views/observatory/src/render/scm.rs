@@ -606,6 +606,27 @@ impl Observatory {
                 .child(obs_empty("No uncommitted changes.", true, cx))
                 .into_any_element();
         }
+        // The changes list as its own cached view: a key typed in the commit message below it
+        // redraws the panel's foot, not every row.
+        let pane = self
+            .scm_body_pane
+            .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::render_scm_body))
+            .clone();
+        let body = recur_ui::style::cached_view(
+            &pane,
+            gpui_kit::StyleRefinement::default()
+                .flex_1()
+                .min_h_0()
+                .w_full(),
+            cx,
+        );
+        let foot = self.render_commit_foot(window, cx);
+        let _ = t;
+        root.child(body).child(foot).into_any_element()
+    }
+
+    /// The staged and unstaged sections with their sticky headers.
+    fn render_scm_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let scroll = -f32::from(self.scm_scroll.offset().y);
         let mut content = div().relative().flex().flex_col().pt(px(4.)).pb(px(6.));
         if let Some(s) = self.scm_section(true, cx) {
@@ -616,7 +637,7 @@ impl Observatory {
         }
         let layer = self.scm_sticky_layer(scroll, cx, window);
         let body_cell = self.scm_probes.body.clone();
-        let body = div()
+        div()
             .flex_1()
             .min_h_0()
             .relative()
@@ -633,10 +654,8 @@ impl Observatory {
                     .track(&self.scm_scroll)
                     .child(content),
             )
-            .child(div().absolute().inset_0().children(layer));
-        let foot = self.render_commit_foot(window, cx);
-        let _ = t;
-        root.child(body).child(foot).into_any_element()
+            .child(div().absolute().inset_0().children(layer))
+            .into_any_element()
     }
 
     /// `.obs-scm-foot`: the commit message composer.

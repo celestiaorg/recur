@@ -1,7 +1,9 @@
 //! LSP diagnostics surfaced in the Problems panel (`lib/lsp-problems.ts`): one store for the
 //! app, keyed by session and document URI.
 
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap};
+use std::rc::Rc;
 
 use gpui_kit::{App, Global};
 use recur_code::collate::locale_compare;
@@ -190,11 +192,15 @@ pub fn problem_args(p: &LspProblem) -> String {
     )
 }
 
-/// The app's diagnostics (`byUri`): `session\0uri` → problems.
-#[derive(Default)]
+/// The app's diagnostics (`byUri`): `session\0uri` → problems. A clone shares the problem
+/// lists, so a snapshot costs one map of handles.
+#[derive(Clone, Default)]
 pub struct LspProblems {
-    by_key: BTreeMap<String, Vec<LspProblem>>,
+    by_key: BTreeMap<String, Rc<Vec<LspProblem>>>,
     epoch: u64,
+    /// `all()` for the current epoch: language servers publish file by file, and every
+    /// publish wakes each observer.
+    sorted: RefCell<Option<Rc<Vec<LspProblem>>>>,
 }
 
 impl Global for LspProblems {}
@@ -208,16 +214,21 @@ impl LspProblems {
                 return;
             }
         } else {
-            self.by_key.insert(key, problems);
+            self.by_key.insert(key, Rc::new(problems));
         }
+        self.bump();
+    }
+
+    fn bump(&mut self) {
         self.epoch += 1;
+        self.sorted.take();
     }
 
     /// `clearLspProblems`.
     pub fn clear(&mut self) {
         if !self.by_key.is_empty() {
             self.by_key.clear();
-            self.epoch += 1;
+            self.bump();
         }
     }
 
@@ -226,14 +237,46 @@ impl LspProblems {
     }
 
     /// `lspProblems`: every problem, by path, then line, then column.
-    pub fn all(&self) -> Vec<LspProblem> {
-        let mut all: Vec<LspProblem> = self.by_key.values().flatten().cloned().collect();
-        all.sort_by(|a, b| {
-            locale_compare(&a.path, &b.path)
-                .then(a.line.cmp(&b.line))
-                .then(a.character.cmp(&b.character))
-        });
-        all
+    pub fn all(&self) -> Rc<Vec<LspProblem>> {
+        self.sorted
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                let mut all: Vec<LspProblem> = self
+                    .by_key
+                    .values()
+                    .flat_map(|v| v.iter())
+                    .cloned()
+                    .collect();
+                // Collate each distinct path once, not once per comparison.
+                let mut paths: Vec<String> = all.iter().map(|p| p.path.clone()).collect();
+                paths.sort_unstable();
+                paths.dedup();
+                paths.sort_by(|a, b| locale_compare(a, b));
+                let mut rank: HashMap<String, usize> = HashMap::with_capacity(paths.len());
+                let mut r = 0;
+                for (i, p) in paths.iter().enumerate() {
+                    if i > 0 && !locale_compare(&paths[i - 1], p).is_eq() {
+                        r = i;
+                    }
+                    rank.insert(p.clone(), r);
+                }
+                all.sort_by_cached_key(|p| (rank[&p.path], p.line, p.character));
+                Rc::new(all)
+            })
+            .clone()
+    }
+
+    /// The problems on one document, by line, then column.
+    pub fn for_uri(&self, uri: &str) -> Vec<LspProblem> {
+        let mut out: Vec<LspProblem> = self
+            .by_key
+            .values()
+            .flat_map(|v| v.iter())
+            .filter(|p| p.uri == uri)
+            .cloned()
+            .collect();
+        out.sort_by_key(|p| (p.line, p.character));
+        out
     }
 
     pub fn global(cx: &App) -> Option<&LspProblems> {
@@ -247,7 +290,7 @@ pub fn update_problems(cx: &mut App, f: impl FnOnce(&mut LspProblems)) {
 }
 
 /// `peekLspProblems`.
-pub fn peek_problems(cx: &App) -> Vec<LspProblem> {
+pub fn peek_problems(cx: &App) -> Rc<Vec<LspProblem>> {
     LspProblems::global(cx)
         .map(LspProblems::all)
         .unwrap_or_default()
@@ -272,6 +315,45 @@ mod tests {
             session_id: None,
             workspace_id: None,
         }
+    }
+
+    #[test]
+    fn all_sorts_by_collated_path_then_position_and_follows_changes() {
+        let at = |uri: &str, path: &str, line: i64, character: i64| LspProblem {
+            line,
+            character,
+            ..problem(uri, path, "")
+        };
+        let mut store = LspProblems::default();
+        store.set_for_uri(
+            "u:b",
+            vec![at("u:b", "b.rs", 3, 0), at("u:b", "b.rs", 1, 4)],
+            "s1",
+        );
+        store.set_for_uri("u:B", vec![at("u:B", "B.rs", 2, 0)], "s1");
+        store.set_for_uri("u:a", vec![at("u:a", "a.rs", 9, 0)], "s2");
+        store.set_for_uri("u:b", vec![at("u:b", "b.rs", 1, 0)], "s2");
+        let mut want: Vec<LspProblem> = store
+            .by_key
+            .values()
+            .flat_map(|v| v.iter())
+            .cloned()
+            .collect();
+        want.sort_by(|a, b| {
+            locale_compare(&a.path, &b.path)
+                .then(a.line.cmp(&b.line))
+                .then(a.character.cmp(&b.character))
+        });
+        assert_eq!(*store.all(), want);
+        let b: Vec<(i64, i64)> = store
+            .for_uri("u:b")
+            .iter()
+            .map(|p| (p.line, p.character))
+            .collect();
+        assert_eq!(b, [(1, 0), (1, 4), (3, 0)]);
+        store.set_for_uri("u:a", vec![], "s2");
+        assert!(store.all().iter().all(|p| p.path != "a.rs"));
+        assert_eq!(store.all().len(), want.len() - 1);
     }
 
     #[test]
@@ -338,7 +420,7 @@ mod tests {
             vec![problem("file:///r/a.go", "a.go", "a")],
             "s1",
         );
-        let msgs: Vec<String> = s.all().into_iter().map(|p| p.message).collect();
+        let msgs: Vec<String> = s.all().iter().map(|p| p.message.clone()).collect();
         assert_eq!(msgs, ["a", "early", "late"]);
         let e = s.epoch();
         s.set_for_uri("file:///r/a.go", vec![], "s2");

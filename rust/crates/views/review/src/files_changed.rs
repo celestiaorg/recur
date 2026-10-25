@@ -102,10 +102,27 @@ pub enum FilesEvent {
 
 impl EventEmitter<FilesEvent> for FilesChangedView {}
 
+/// `(files_gen, exclude matchers, scoped)` and, for the matched list, the filter query, the
+/// findings-only toggle and the findings map.
+type VisibleKey = (u64, usize, bool);
+type MatchedKey = (VisibleKey, String, bool, usize);
+
+#[derive(Default)]
+struct MatchedMemo {
+    visible: Option<(VisibleKey, Vec<Rc<FileDiff>>)>,
+    matched: Option<(MatchedKey, Vec<Rc<FileDiff>>)>,
+}
+
 pub struct FilesChangedView {
     state: Entity<AppState>,
     props: FilesProps,
     files: Vec<Rc<FileDiff>>,
+    /// Bumped whenever `files` changes (keys `matched_memo`).
+    files_gen: u64,
+    /// The last `visible_files` / `matched_files` and the inputs they were computed from: the
+    /// toolbar, the list and the stack read them several times a render, and a large diff
+    /// has thousands of paths to glob, filter and sort.
+    matched_memo: std::cell::RefCell<MatchedMemo>,
     files_truncated: bool,
     loading: bool,
     error: bool,
@@ -118,6 +135,8 @@ pub struct FilesChangedView {
     surface_width: f32,
     pub(crate) stack: FileStack,
     list: Entity<ReviewFileList>,
+    /// The card stack as its own cached view (see [`StackPane`]), built on first render.
+    stack_pane: Option<Entity<StackPane>>,
     add_finding: Option<AddFindingFn>,
     restored_once: bool,
     restore_root: String,
@@ -170,6 +189,8 @@ impl FilesChangedView {
             state,
             props: FilesProps::default(),
             files: Vec::new(),
+            files_gen: 0,
+            matched_memo: Default::default(),
             files_truncated: false,
             loading: false,
             error: false,
@@ -182,6 +203,7 @@ impl FilesChangedView {
             surface_width: 0.,
             stack,
             list,
+            stack_pane: None,
             add_finding: None,
             restored_once: false,
             restore_root: String::new(),
@@ -294,7 +316,13 @@ impl FilesChangedView {
 
     /// `visibleFiles`: explorer excludes apply only to the branch-vs-base list.
     pub fn visible_files(&self) -> Vec<Rc<FileDiff>> {
-        match (&self.props.exclude_matchers, self.scoped()) {
+        let key = self.visible_key();
+        if let Some((k, v)) = &self.matched_memo.borrow().visible
+            && *k == key
+        {
+            return v.clone();
+        }
+        let v: Vec<Rc<FileDiff>> = match (&self.props.exclude_matchers, self.scoped()) {
             (Some(m), false) if !m.is_empty() => self
                 .files
                 .iter()
@@ -302,7 +330,20 @@ impl FilesChangedView {
                 .cloned()
                 .collect(),
             _ => self.files.clone(),
-        }
+        };
+        self.matched_memo.borrow_mut().visible = Some((key, v.clone()));
+        v
+    }
+
+    fn visible_key(&self) -> VisibleKey {
+        (
+            self.files_gen,
+            self.props
+                .exclude_matchers
+                .as_ref()
+                .map_or(0, |m| Rc::as_ptr(m) as usize),
+            self.scoped(),
+        )
     }
 
     fn filter_q(&self, cx: &App) -> String {
@@ -312,6 +353,26 @@ impl FilesChangedView {
     /// `matchedFiles`.
     pub fn matched_files(&self, cx: &App) -> Vec<Rc<FileDiff>> {
         let q = self.filter_q(cx);
+        let key = (
+            self.visible_key(),
+            q.clone(),
+            self.findings_only,
+            self.props
+                .findings_by_path
+                .as_ref()
+                .map_or(0, |b| Rc::as_ptr(b) as usize),
+        );
+        if let Some((k, v)) = &self.matched_memo.borrow().matched
+            && *k == key
+        {
+            return v.clone();
+        }
+        let v = self.compute_matched(q);
+        self.matched_memo.borrow_mut().matched = Some((key, v.clone()));
+        v
+    }
+
+    fn compute_matched(&self, q: String) -> Vec<Rc<FileDiff>> {
         let mut list: Vec<Rc<FileDiff>> = self
             .visible_files()
             .into_iter()
@@ -517,6 +578,7 @@ impl FilesChangedView {
     fn adopt_files_scope(&mut self, scope: String) {
         if self.files_scope != scope {
             self.files.clear();
+            self.files_gen += 1;
             self.files_truncated = false;
             self.loading = true;
             self.error = false;
@@ -531,6 +593,7 @@ impl FilesChangedView {
             return;
         }
         self.files.clear();
+        self.files_gen += 1;
         self.files_truncated = false;
         self.files_scope.clear();
         self.load_scope.clear();
@@ -643,6 +706,7 @@ impl FilesChangedView {
                             let restore = got.clone();
                             if let Some(next) = reuse_file_diffs(&v.files, got) {
                                 v.files = next;
+                                v.files_gen += 1;
                                 v.apply_restore(&restore);
                             }
                         }
@@ -650,6 +714,7 @@ impl FilesChangedView {
                             v.error = true;
                             if v.files_scope != scope {
                                 v.files.clear();
+                                v.files_gen += 1;
                                 v.files_truncated = false;
                             }
                         }
@@ -1048,7 +1113,13 @@ impl FilesChangedView {
                     .min_h_0()
                     .flex()
                     .flex_col()
-                    .child(self.list.clone()),
+                    // Cached: scrolling the cards (or anything above) leaves the list's
+                    // layout alone; it redraws when it notifies.
+                    .child(recur_ui::style::cached_view(
+                        &self.list,
+                        gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
+                        cx,
+                    )),
             )
             .into_any_element()
     }
@@ -1208,6 +1279,140 @@ impl FilesChangedView {
         // `matchedFiles` and the list follow the inputs each frame.
         self.sync_stack(cx);
         let toolbar = self.toolbar(list_w, stacked, window, cx);
+        let pane_probe = {
+            let me = cx.entity().downgrade();
+            let pane = self.stack.pane.clone();
+            canvas(
+                move |b, _, cx| {
+                    // `contentRect`: inside the 14px padding and the scrollbar while it overflows.
+                    let bar = if pane.max_scroll() > 0.5 {
+                        f32::from(recur_ui::theme::SCROLLBAR_SIZE)
+                    } else {
+                        0.
+                    };
+                    let w = f32::from(b.size.width) - 28. - bar;
+                    let me = me.clone();
+                    cx.defer(move |cx| {
+                        let _ = me.update(cx, |v, cx| {
+                            if (v.pane_width - w).abs() > 0.5 {
+                                v.pane_width = w;
+                                cx.notify();
+                            }
+                        });
+                    });
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0()
+        };
+        let stack_pane = self.stack_pane(cx);
+        let mut wrap = div()
+            .debug_selector(|| "diffwrap".into())
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .flex()
+            .when(stacked && self.sidebar_open, |d| d.flex_col());
+        if self.sidebar_open {
+            wrap = wrap.child(self.file_list_panel(list_w, stacked, window, cx));
+        }
+        wrap = wrap.child(
+            div()
+                .relative()
+                .flex_1()
+                .min_w_0()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(recur_ui::style::cached_view(
+                    &stack_pane,
+                    gpui_kit::StyleRefinement::default()
+                        .flex_1()
+                        .min_h_0()
+                        .min_w_0(),
+                    cx,
+                ))
+                .child(pane_probe),
+        );
+        let surface_probe = {
+            let me = cx.entity().downgrade();
+            canvas(
+                move |b, _, cx| {
+                    let w = f32::from(b.size.width);
+                    let me = me.clone();
+                    cx.defer(move |cx| {
+                        let _ = me.update(cx, |v, cx| {
+                            if (v.surface_width - w).abs() > 0.5 {
+                                v.surface_width = w;
+                                cx.notify();
+                            }
+                        });
+                    });
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0()
+        };
+        div()
+            .debug_selector(|| "review:changes".into())
+            .relative()
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .overflow_hidden()
+            .bg(hsla(t.bg))
+            .child(toolbar)
+            .child(wrap)
+            .child(surface_probe)
+    }
+}
+
+/// The card stack as a cached view: scrolling it re-renders the cards and the toolbar above,
+/// not the file list beside it, and a redraw from elsewhere (typing in the chat beside the
+/// review) reuses its layout. Any notify of the files view redraws it too.
+pub struct StackPane {
+    files: gpui_kit::WeakEntity<FilesChangedView>,
+    _sub: Subscription,
+}
+
+impl StackPane {
+    fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        match self.files.upgrade() {
+            Some(files) => {
+                recur_ui::style::cached_root(files.update(cx, |f, cx| f.stack_element(window, cx)))
+                    .into_any_element()
+            }
+            None => div().into_any_element(),
+        }
+    }
+}
+
+impl Render for StackPane {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
+impl FilesChangedView {
+    fn stack_pane(&mut self, cx: &mut Context<Self>) -> Entity<StackPane> {
+        if let Some(p) = &self.stack_pane {
+            return p.clone();
+        }
+        let me = cx.entity();
+        let pane = cx.new(|cx| StackPane {
+            files: me.downgrade(),
+            _sub: cx.guarded_observe(&me, |_, _, cx| cx.notify()),
+        });
+        self.stack_pane = Some(pane.clone());
+        pane
+    }
+
+    /// The card stack with its header and empty state: [`StackPane`]'s content.
+    fn stack_element(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let q = self.filter_q(cx);
         let matched_empty = self.stack.files().is_empty();
         let mut header: Vec<AnyElement> = Vec::new();
@@ -1258,95 +1463,14 @@ impl FilesChangedView {
         } else {
             None
         };
-        let stack = self.stack.render(
+        self.stack.render(
             header,
             empty,
             |v: &mut FilesChangedView| &mut v.stack,
             Rc::new(|v: &mut FilesChangedView, path, next, cx| v.toggle_collapsed(path, next, cx)),
             window,
             cx,
-        );
-        let pane_probe = {
-            let me = cx.entity().downgrade();
-            let pane = self.stack.pane.clone();
-            canvas(
-                move |b, _, cx| {
-                    // `contentRect`: inside the 14px padding and the scrollbar while it overflows.
-                    let bar = if pane.max_scroll() > 0.5 {
-                        f32::from(recur_ui::theme::SCROLLBAR_SIZE)
-                    } else {
-                        0.
-                    };
-                    let w = f32::from(b.size.width) - 28. - bar;
-                    let me = me.clone();
-                    cx.defer(move |cx| {
-                        let _ = me.update(cx, |v, cx| {
-                            if (v.pane_width - w).abs() > 0.5 {
-                                v.pane_width = w;
-                                cx.notify();
-                            }
-                        });
-                    });
-                },
-                |_, _, _, _| {},
-            )
-            .absolute()
-            .inset_0()
-        };
-        let mut wrap = div()
-            .debug_selector(|| "diffwrap".into())
-            .flex_1()
-            .min_h_0()
-            .min_w_0()
-            .flex()
-            .when(stacked && self.sidebar_open, |d| d.flex_col());
-        if self.sidebar_open {
-            wrap = wrap.child(self.file_list_panel(list_w, stacked, window, cx));
-        }
-        wrap = wrap.child(
-            div()
-                .relative()
-                .flex_1()
-                .min_w_0()
-                .min_h_0()
-                .flex()
-                .flex_col()
-                .child(stack)
-                .child(pane_probe),
-        );
-        let surface_probe = {
-            let me = cx.entity().downgrade();
-            canvas(
-                move |b, _, cx| {
-                    let w = f32::from(b.size.width);
-                    let me = me.clone();
-                    cx.defer(move |cx| {
-                        let _ = me.update(cx, |v, cx| {
-                            if (v.surface_width - w).abs() > 0.5 {
-                                v.surface_width = w;
-                                cx.notify();
-                            }
-                        });
-                    });
-                },
-                |_, _, _, _| {},
-            )
-            .absolute()
-            .inset_0()
-        };
-        div()
-            .debug_selector(|| "review:changes".into())
-            .relative()
-            .flex_1()
-            .min_h_0()
-            .min_w_0()
-            .flex()
-            .flex_col()
-            .overflow_hidden()
-            .bg(hsla(t.bg))
-            .child(toolbar)
-            .child(wrap)
-            .child(surface_probe)
+        )
     }
 }
 

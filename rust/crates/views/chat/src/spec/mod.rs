@@ -3,5 +3,6 @@
 mod agent_chat;
 mod composer;
 mod dock;
+mod frame_cost;
 mod harness;
 mod shell;

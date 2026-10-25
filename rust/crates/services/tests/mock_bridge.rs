@@ -402,12 +402,14 @@ async fn cancelling_the_loop_tab_parks_the_run() {
     let ev = drain(&mut rx);
     assert_eq!(
         ev,
-        [AppEvent::WorkspaceUpdated(Box::new(WorkspaceUpdated {
-            workspace_id: WORKING.into(),
-            state: Some("paused".into()),
-            phase: Some("idle".into()),
-            ..Default::default()
-        }))]
+        [AppEvent::WorkspaceUpdated(std::sync::Arc::new(
+            WorkspaceUpdated {
+                workspace_id: WORKING.into(),
+                state: Some("paused".into()),
+                phase: Some("idle".into()),
+                ..Default::default()
+            }
+        ))]
     );
     let w = s.workspaces.get_workspace(WORKING).await.unwrap();
     assert_eq!((w.state.as_str(), w.phase.as_str()), ("paused", "idle"));

@@ -165,6 +165,13 @@ impl AgentChat {
         let meter = self.meter.clone();
         let usage = self.props.context_usage.clone();
         meter.update(cx, |m, cx| m.set_usage(usage, cx));
+        let meter = recur_ui::style::cached_view(
+            &meter,
+            gpui_kit::StyleRefinement::default()
+                .flex_none()
+                .size(px(crate::meter::METER_PX)),
+            cx,
+        );
         let mut actions = div()
             .ml_auto()
             .flex()
@@ -244,12 +251,16 @@ impl AgentChat {
             })
             .child(icon(IconName::Send).size(px(15.)));
         actions = actions.child(recur_ui::tooltip::titled("chat-send-tip", tip, send));
-        let tools = div()
-            .flex()
-            .items_center()
-            .gap(px(6.))
-            .min_w_0()
-            .children(self.toolbar.clone());
+        // Cached across the row's free width and the send button's height, the pickers centered
+        // in it as the row centers them.
+        let tools = match self.toolbar.as_ref() {
+            Some(l) => {
+                let mut style = gpui_kit::StyleRefinement::default().flex_1().min_w_0();
+                style.align_self = Some(gpui_kit::AlignSelf::Stretch);
+                recur_ui::style::cached_view(l, style, cx)
+            }
+            None => div().min_w_0().into_any_element(),
+        };
         div()
             .flex()
             .items_center()
@@ -358,6 +369,12 @@ impl AgentChat {
                     style.clone(),
                 )
                 .layout_into(self.composer_layout.clone())
+                .visible({
+                    // The scroller's viewport in the flow's coordinates, a viewport each side.
+                    let view = crate::composer::composer_max_height();
+                    let top = -f32::from(self.composer_scroll.offset().y) - pad_top;
+                    top - view..top + 2. * view
+                })
                 .min_height(style.size * style.leading),
             )
             .child(overlay);
@@ -458,7 +475,7 @@ impl AgentChat {
             }
             _ => self.composer_mouse_down(b, ev.modifiers.shift, window, cx),
         }
-        cx.notify();
+        self.notify_dock(cx);
     }
 
     // ---- the menu ----
@@ -493,14 +510,14 @@ impl AgentChat {
                     let (x, y) = (f32::from(ev.position.x), f32::from(ev.position.y));
                     if this.hover_gate.allows(x, y) && this.mention_sel != i {
                         this.mention_sel = i;
-                        cx.notify();
+                        this.notify_dock(cx);
                     }
                 }),
             )
             .on_hover(cx.guarded_listener(move |this, hovered: &bool, _, cx| {
                 if *hovered && this.hover_gate.armed && this.mention_sel != i {
                     this.mention_sel = i;
-                    cx.notify();
+                    this.notify_dock(cx);
                 }
             }))
     }

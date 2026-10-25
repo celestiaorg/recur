@@ -49,6 +49,25 @@ pub struct ObservatoryProps {
     pub shell_active: bool,
 }
 
+/// What [`Observatory::scope_paths`], [`Observatory::review_paths`] and
+/// [`Observatory::exclude_matchers`] last computed, keyed by their inputs.
+type ReviewMemo = (Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>);
+type ExcludedMemo = (Rc<Vec<CompiledGlob>>, HashMap<String, bool>);
+type ChangedTreeMemo = (Rc<Vec<String>>, Rc<Vec<TreeEntry>>);
+
+#[derive(Default)]
+pub(crate) struct PathsMemo {
+    scope: Option<(u64, Rc<Vec<String>>)>,
+    excludes: Option<(Vec<String>, Rc<Vec<CompiledGlob>>)>,
+    /// The scope and excludes it was filtered from, and the review paths.
+    review: Option<ReviewMemo>,
+    dir_status: Option<(u64, Rc<BTreeMap<String, String>>)>,
+    /// Exclusion by path under the matchers it was tested against.
+    excluded: Option<ExcludedMemo>,
+    /// The changed-files tree of the review paths it was built from.
+    changed_tree: Option<ChangedTreeMemo>,
+}
+
 /// The host-owned content the Svelte component took as snippets.
 #[derive(Clone, Default)]
 pub struct ObservatorySlots {
@@ -330,6 +349,9 @@ pub struct Observatory {
     /// path → m|a|d|u versus base (workspace) or HEAD (project).
     pub(crate) git_status: BTreeMap<String, String>,
     pub(crate) git_status_ready: bool,
+    /// Bumped whenever `changed_paths` or `git_status` changes (keys `paths_memo`).
+    pub(crate) paths_gen: u64,
+    pub(crate) paths_memo: std::cell::RefCell<PathsMemo>,
     /// Uncommitted porcelain versus HEAD.
     pub(crate) working_status: BTreeMap<String, String>,
     pub(crate) staged_files: Vec<String>,
@@ -382,7 +404,8 @@ pub struct Observatory {
     pub(crate) file_tab_reveal_nonce: u64,
     pub(crate) file_tab_scroll: ScrollHandle,
     pub(crate) max_open_files_seen: usize,
-    pub(crate) pruned_live: HashSet<String>,
+    /// A fingerprint of the workspace ids the caches were last pruned to.
+    pub(crate) pruned_live: Option<u64>,
 
     // ---- the main pane ----
     pub(crate) selected_path: String,
@@ -497,6 +520,20 @@ pub struct Observatory {
     pub(crate) artifacts_panel: Option<Entity<crate::artifacts_panel::ArtifactsPanel>>,
     pub(crate) quick_open: Entity<crate::quick_open::QuickOpen>,
     pub(crate) prompts: Entity<recur_view_chat::palettes::CommandPrompts>,
+    /// Quick Open and the command prompts behind cached boundaries (see `recur_ui::pane`).
+    pub(crate) layers: [Entity<recur_ui::pane::Layer>; 2],
+    /// The side panel as its own cached view, when it holds no chat.
+    pub(crate) side_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    /// The main pane's empty state as its own cached view.
+    pub(crate) empty_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) toolbar_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) scm_body_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) crumb_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    pub(crate) status_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    /// The window-corner padding the status bar needs, as of the last render.
+    pub(crate) status_corner: (bool, bool),
+    /// The side heads' views (the chat tabs, the plan head) behind cached boundaries.
+    pub(crate) head_layers: Vec<(gpui_kit::EntityId, Entity<recur_ui::pane::Layer>)>,
     pub(crate) prompts_reply:
         Option<futures::channel::oneshot::Sender<Option<BTreeMap<String, String>>>>,
     pub(crate) chord_index: Rc<crate::keys::ChordIndex>,
@@ -605,6 +642,8 @@ impl Observatory {
             changed_paths: Vec::new(),
             git_status: BTreeMap::new(),
             git_status_ready: false,
+            paths_gen: 0,
+            paths_memo: Default::default(),
             working_status: BTreeMap::new(),
             staged_files: Vec::new(),
             browse_all: false,
@@ -652,7 +691,7 @@ impl Observatory {
             file_tab_reveal_nonce: 0,
             file_tab_scroll: ScrollHandle::new(),
             max_open_files_seen: 0,
-            pruned_live: HashSet::new(),
+            pruned_live: None,
             selected_path: String::new(),
             file: None,
             selected_is_dir: false,
@@ -749,6 +788,18 @@ impl Observatory {
             inputs,
             findings_panel,
             artifacts_panel: None,
+            layers: [
+                recur_ui::pane::Layer::new(quick_open.clone(), cx),
+                recur_ui::pane::Layer::new(prompts.clone(), cx),
+            ],
+            side_pane: None,
+            empty_pane: None,
+            toolbar_pane: None,
+            scm_body_pane: None,
+            crumb_pane: None,
+            status_pane: None,
+            status_corner: (false, false),
+            head_layers: Vec::new(),
             quick_open,
             prompts,
             prompts_reply: None,
@@ -843,6 +894,11 @@ impl Observatory {
     /// The review surface is the main surface (the toolbar's Review changes toggle is on).
     pub fn showing_review(&self, cx: &App) -> bool {
         self.main_surface(cx) == MainSurface::Review
+    }
+
+    /// The main area's bounds from the last frame (the editor or the review).
+    pub fn main_bounds(&self) -> gpui_kit::Bounds<gpui_kit::Pixels> {
+        self.bounds.main.get()
     }
 
     /// What the toolbar's Review changes button does.
@@ -1099,27 +1155,108 @@ impl Observatory {
     // ---- derived: explorer scope ----
 
     /// Paths changed since base (git status ∪ changed files), locale-sorted.
-    pub(crate) fn scope_paths(&self) -> Vec<String> {
+    /// The changed-since-base paths plus every git status path, sorted (memoized: the explorer,
+    /// the review count and the panel badges read it on every render).
+    pub(crate) fn scope_paths(&self) -> Rc<Vec<String>> {
+        let key = self.paths_gen;
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((k, v)) = &memo.scope
+            && *k == key
+        {
+            return v.clone();
+        }
         let mut set: BTreeSet<String> = self.changed_paths.iter().cloned().collect();
         set.extend(self.git_status.keys().cloned());
         let mut v: Vec<String> = set.into_iter().collect();
         v.sort_by(|a, b| recur_code::collate::locale_compare(a, b));
+        let v = Rc::new(v);
+        memo.scope = Some((key, v.clone()));
         v
     }
 
-    pub(crate) fn exclude_matchers(&self, cx: &App) -> Vec<CompiledGlob> {
-        compile_excludes(&crate::explorer::explorer_exclude(
-            self.state.read(cx).storage(),
-        ))
+    pub(crate) fn exclude_matchers(&self, cx: &App) -> Rc<Vec<CompiledGlob>> {
+        let patterns = crate::explorer::explorer_exclude(self.state.read(cx).storage());
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((p, m)) = &memo.excludes
+            && *p == patterns
+        {
+            return m.clone();
+        }
+        let m = Rc::new(compile_excludes(&patterns));
+        memo.excludes = Some((patterns, m.clone()));
+        m
+    }
+
+    /// [`crate::explorer::dir_status_index`] of the git status (memoized: every explorer row
+    /// reads it).
+    pub(crate) fn dir_status(&self) -> Rc<BTreeMap<String, String>> {
+        let key = self.paths_gen;
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((k, v)) = &memo.dir_status
+            && *k == key
+        {
+            return v.clone();
+        }
+        let v = Rc::new(crate::explorer::dir_status_index(&self.git_status));
+        memo.dir_status = Some((key, v.clone()));
+        v
+    }
+
+    /// Whether the exclude globs hide `path` (memoized per path until the globs change).
+    pub(crate) fn excluded(&self, path: &str, matchers: &Rc<Vec<CompiledGlob>>) -> bool {
+        let mut memo = self.paths_memo.borrow_mut();
+        if memo
+            .excluded
+            .as_ref()
+            .is_none_or(|(m, _)| !Rc::ptr_eq(m, matchers))
+        {
+            memo.excluded = Some((matchers.clone(), HashMap::new()));
+        }
+        let (_, by) = memo.excluded.as_mut().expect("excluded memo");
+        if let Some(&x) = by.get(path) {
+            return x;
+        }
+        let x = is_excluded_by(path, matchers);
+        by.insert(path.to_string(), x);
+        x
+    }
+
+    /// The tree of [`Observatory::review_paths`] (memoized).
+    pub(crate) fn changed_tree(&self, cx: &App) -> Rc<Vec<TreeEntry>> {
+        let paths = self.review_paths(cx);
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((p, t)) = &memo.changed_tree
+            && Rc::ptr_eq(p, &paths)
+        {
+            return t.clone();
+        }
+        let t = Rc::new(recur_code::view::changed_tree::build_tree_from_paths(
+            &paths,
+        ));
+        memo.changed_tree = Some((paths, t.clone()));
+        t
     }
 
     /// Changed-since-base membership after the exclude globs (`reviewPaths`).
-    pub(crate) fn review_paths(&self, cx: &App) -> Vec<String> {
+    pub(crate) fn review_paths(&self, cx: &App) -> Rc<Vec<String>> {
         let m = self.exclude_matchers(cx);
-        self.scope_paths()
-            .into_iter()
-            .filter(|p| !is_excluded_by(p, &m))
-            .collect()
+        let scope = self.scope_paths();
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((sc, ex, v)) = &memo.review
+            && Rc::ptr_eq(sc, &scope)
+            && Rc::ptr_eq(ex, &m)
+        {
+            return v.clone();
+        }
+        let v = Rc::new(
+            scope
+                .iter()
+                .filter(|p| !is_excluded_by(p, &m))
+                .cloned()
+                .collect(),
+        );
+        memo.review = Some((scope, m, Rc::clone(&v)));
+        v
     }
 
     pub(crate) fn filter_changed(&self) -> bool {

@@ -20,10 +20,11 @@
 //!
 //! The drive opens every project, every workspace and each of its chat tabs (transcripts
 //! scrolled top to bottom), the Observatory's explorer, a file, the review and the terminal on
-//! live workspaces, every PR on each detail tab, every Settings section, Briefing, Issues,
+//! live workspaces, every PR on each detail tab (typing in its comment and review boxes), every
+//! Settings section, Briefing, Issues,
 //! Schedules and each palette, and streams one chat turn. It exits non-zero on any panic
 //! (contained or not), error toast, frame over 2s or UI stall over 20s, sampling the main thread
-//! on a stall.
+//! on a stall and during a frame that passes 1.5s.
 //!
 //! It also times keystrokes in long chats, transcript and review scroll steps and workspace
 //! switches against frame-time budgets (`Budget`), and fails when one is exceeded.
@@ -33,8 +34,9 @@
 //! mth (1-based, inclusive: a full run can be covered in ranges), `RECUR_SMOKE_WORKSPACE=<id>` visits
 //! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
 //! stops after the workspaces and
-//! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered and
-//! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times.
+//! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered,
+//! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times and
+//! `RECUR_SMOKE_SAMPLE_MS=n` samples the main thread during frames and keys over n ms.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -59,7 +61,7 @@ use recur_domain::{
 use recur_forge::{Forge, ForgeError};
 use recur_services::{AppConfig, AppOptions, AppServices};
 use recur_view_core::prefs::CodePanelKey;
-use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
+use recur_view_core::{AppState, LocalStorage, PrReviewKind, ViewContext, ViewName, ViewRegistry};
 use recur_view_prs::detail::PrDetail;
 use recur_view_prs::ui::PrTab;
 use recur_view_workspace::detail::WorkspaceDetail;
@@ -794,6 +796,12 @@ fn step() -> &'static Mutex<String> {
 }
 
 static BEAT: AtomicU64 = AtomicU64::new(0);
+/// Pointer moves the window received.
+static MOUSE_MOVES: AtomicU64 = AtomicU64::new(0);
+/// Store notifies.
+static STORE_NOTIFIES: AtomicU64 = AtomicU64::new(0);
+/// When the frame being drawn started (ms), 0 between frames.
+static FRAME_START: AtomicU64 = AtomicU64::new(0);
 /// Transcript pane renders in the last frame drawn (stuck-scroll reports).
 static TRANSCRIPT_RENDERS: AtomicU64 = AtomicU64::new(0);
 /// `session.delta` events the UI received.
@@ -863,13 +871,61 @@ fn watchdog() {
     });
 }
 
+/// Samples the main thread once during each frame (or key) that passes 1.5s
+/// (`RECUR_SMOKE_SAMPLE_MS`): what a slow frame did, which its renders alone do not say.
+fn frame_watchdog() {
+    let threshold = std::env::var("RECUR_SMOKE_SAMPLE_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(1_500);
+    std::thread::spawn(move || {
+        let mut sampled = 0;
+        loop {
+            std::thread::sleep(Duration::from_millis(100));
+            let at = FRAME_START.load(Ordering::SeqCst);
+            if at == 0 || at == sampled || now_ms().saturating_sub(at) < threshold {
+                continue;
+            }
+            sampled = at;
+            let out = std::env::temp_dir().join(format!("recur-smoke-slow-{at}.txt"));
+            let ok = Command::new("sample")
+                .args([&std::process::id().to_string(), "2", "-file"])
+                .arg(&out)
+                .output()
+                .is_ok_and(|o| o.status.success());
+            if ok {
+                println!("slow frame stacks in {}", out.display());
+            }
+        }
+    });
+}
+
 // ---- The drive
 
 struct WindowRoot(Entity<Shell>);
 
 impl WindowRoot {
     fn render_view(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement + use<> {
-        recur_ui::style::window_root(self.0.clone())
+        use gpui_kit::{ParentElement as _, Styled as _};
+        // Real pointer input over the window (the smoke's window is on screen): GPUI refreshes
+        // the whole window on the next key after it, which a slow key then reports.
+        let moves = gpui_kit::canvas(
+            |_, _, _| {},
+            |_, _, window, _| {
+                window.on_mouse_event(|_: &gpui_kit::MouseMoveEvent, phase, _, _| {
+                    if phase == gpui_kit::DispatchPhase::Capture {
+                        MOUSE_MOVES.fetch_add(1, Ordering::SeqCst);
+                    }
+                });
+            },
+        )
+        .absolute()
+        .size_full();
+        gpui_kit::div()
+            .size_full()
+            .relative()
+            .child(recur_ui::style::window_root(self.0.clone()))
+            .child(moves)
     }
 }
 
@@ -907,6 +963,7 @@ fn drive(root: PathBuf) -> i32 {
     recur_ui::guard::count_renders(true);
     BEAT.store(now_ms(), Ordering::SeqCst);
     watchdog();
+    frame_watchdog();
     recur_platform::cliinstall::ensure_path();
     at(start, format!("boot on {}", data.display()));
 
@@ -1117,16 +1174,34 @@ async fn sleep(cx: &AsyncApp, ms: u64) {
         .await;
 }
 
+/// The views the last [`draw`] rendered (and the key dispatch before it).
+fn last_renders() -> &'static Mutex<BTreeMap<&'static str, u32>> {
+    static R: OnceLock<Mutex<BTreeMap<&'static str, u32>>> = OnceLock::new();
+    R.get_or_init(Mutex::default)
+}
+
+/// `views` as `Name×n`.
+fn view_list(views: &BTreeMap<&'static str, u32>) -> String {
+    views
+        .iter()
+        .map(|(k, n)| format!("{}×{n}", k.rsplit("::").next().unwrap_or(k)))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Draws one frame and returns how long it took.
 fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     let t = Instant::now();
+    FRAME_START.store(now_ms(), Ordering::SeqCst);
     let _ = cx.update_window(window, |_, window, cx| {
         let drawn = window.draw(cx);
         drawn.clear(cx);
     });
+    FRAME_START.store(0, Ordering::SeqCst);
     BEAT.store(now_ms(), Ordering::SeqCst);
     let took = t.elapsed();
     let renders = recur_ui::guard::take_render_counts();
+    *last_renders().lock().unwrap_or_else(|e| e.into_inner()) = renders.clone();
     TRANSCRIPT_RENDERS.store(
         renders
             .iter()
@@ -1138,11 +1213,7 @@ fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     if took > Duration::from_millis(500) {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
         if took > Duration::from_secs(2) || std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
-            let views: Vec<String> = renders
-                .iter()
-                .map(|(k, n)| format!("{}×{n}", k.rsplit("::").next().unwrap_or(k)))
-                .collect();
-            println!("slow frame {took:.0?} at {s}: {}", views.join(" "));
+            println!("slow frame {took:.0?} at {s}: {}", view_list(&renders));
         }
         if let Ok(mut r) = report().lock() {
             r.slow.push((took, s));
@@ -1250,6 +1321,41 @@ async fn run(
     shell: Entity<Shell>,
     state: Entity<AppState>,
 ) {
+    // A store notified thousands of times a second is an observer writing back what another
+    // undoes: print what changes between notifies so the stall names the field.
+    let storm = std::cell::Cell::new((Instant::now(), 0u32, 0u32));
+    let last = std::cell::RefCell::new(String::new());
+    cx.update(|cx| {
+        cx.observe(&state, move |state, cx| {
+            STORE_NOTIFIES.fetch_add(1, Ordering::SeqCst);
+            let (since, n, printed) = storm.get();
+            let (since, n) = if since.elapsed() > Duration::from_secs(1) {
+                (Instant::now(), 0)
+            } else {
+                (since, n + 1)
+            };
+            let mut printed = printed;
+            if n > 2000 && printed < 40 {
+                let s = state.read(cx);
+                let now = format!(
+                    "view {:?} ws {} pr {} overlays {:?} menu {:?}",
+                    s.view, s.selected_workspace_id, s.selected_pr_id, s.overlays, s.menu_state
+                );
+                let mut l = last.borrow_mut();
+                say(
+                    start,
+                    format!(
+                        "STORM store notify {n}: {now} (same as last: {})",
+                        *l == now
+                    ),
+                );
+                *l = now;
+                printed += 1;
+            }
+            storm.set((since, n, printed));
+        })
+        .detach();
+    });
     at(start, "waiting for boot");
     if !until(cx, window, 60, |cx| state.read_with(cx, |s, _| s.booted)).await {
         note("the app did not boot within 60s".into());
@@ -1366,6 +1472,12 @@ async fn run(
         if focused {
             type_keys(cx, window, "PR comment").await;
         }
+        at(start, format!("PR {id} review: type"));
+        state.update(cx, |s, cx| s.open_pr_review(PrReviewKind::Approve, cx));
+        frames(cx, window, 6).await;
+        type_keys(cx, window, "PR review").await;
+        state.update(cx, |s, cx| s.close_pr_review(cx));
+        frames(cx, window, 2).await;
     }
 
     at(start, "Settings");
@@ -1650,10 +1762,26 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
     let seq = "a b c backspace backspace backspace ".repeat(rounds);
     for (i, k) in seq.split_whitespace().enumerate() {
         sleep(cx, 60).await;
+        let moved = MOUSE_MOVES.swap(0, Ordering::SeqCst);
+        let stored = STORE_NOTIFIES.swap(0, Ordering::SeqCst);
         let t = Instant::now();
+        FRAME_START.store(now_ms(), Ordering::SeqCst);
         keys(cx, window, k);
         draw(cx, window);
         let took = t.elapsed();
+        if i > 0 && took > Duration::from_millis(100) {
+            let views = last_renders()
+                .lock()
+                .map(|r| view_list(&r))
+                .unwrap_or_default();
+            let after = if moved > 0 {
+                ", after pointer input"
+            } else {
+                ""
+            };
+            let after = format!("{after}, {stored} store notifies");
+            println!("slow key {took:.0?} ({k}) in {input}{after}: {views}");
+        }
         // The first key follows mouse input (or a scroll): GPUI refreshes the whole window.
         if i == 0 {
             timed(Budget::FirstKey, took);
@@ -1753,19 +1881,20 @@ async fn observatory(
         }
         frames(cx, window, 4).await;
         // A line note on the first card that takes one and is on screen.
-        let cards: Vec<Entity<recur_view_review::diff_file::DiffFile>> = obs.read_with(cx, |o, cx| {
-            o.review_surface()
-                .map(|r| {
-                    r.read(cx)
-                        .files_view()
-                        .read(cx)
-                        .stack()
-                        .diff_files()
-                        .cloned()
-                        .collect()
-                })
-                .unwrap_or_default()
-        });
+        let cards: Vec<Entity<recur_view_review::diff_file::DiffFile>> =
+            obs.read_with(cx, |o, cx| {
+                o.review_surface()
+                    .map(|r| {
+                        r.read(cx)
+                            .files_view()
+                            .read(cx)
+                            .stack()
+                            .diff_files()
+                            .cloned()
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            });
         for card in cards.iter().take(8) {
             let focused = cx
                 .update_window(window, |_, window, cx| {

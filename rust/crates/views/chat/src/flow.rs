@@ -975,12 +975,14 @@ impl Element for Flow {
             });
             if state.placed.1.get() != exact_w {
                 state.placed.1.set(exact_w);
-                window.refresh();
+                cx.notify(window.current_view());
             }
         }
+        // The owning view lays out again, not the whole window (as `exact::settle` does): a
+        // transcript mounts flows as it scrolls.
         if state.placed_at != Some(width) {
             state.placed.0.set(Some(width));
-            window.refresh();
+            cx.notify(window.current_view());
         }
         for c in &mut state.children {
             c.prepaint(window, cx);

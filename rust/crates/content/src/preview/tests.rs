@@ -130,3 +130,69 @@ fn the_find_escape_in_the_script_escapes_regex_metacharacters() {
     assert_eq!(re.replace("a+b", "\\$&"), "a\\+b");
     assert_eq!(re.replace("hello", "\\$&"), "hello");
 }
+
+struct PreviewHost(gpui_kit::Entity<view::FilePreview>);
+
+impl gpui_kit::Render for PreviewHost {
+    fn render(
+        &mut self,
+        _: &mut gpui_kit::Window,
+        _: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{ParentElement as _, Styled as _};
+        gpui_kit::div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(self.0.clone())
+    }
+}
+
+/// A long document of nested lists (`rust/docs/PARITY.md` is 224 KB of them) lays its text
+/// out a few times a frame, not once per pass of every list above it: a whole-window refresh
+/// took 1s a frame with that file open.
+#[gpui::test]
+fn a_long_markdown_preview_measures_each_text_a_few_times(cx: &mut gpui::TestAppContext) {
+    use gpui_kit::AppContext as _;
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        recur_ui::init(cx);
+    });
+    let mut md = String::new();
+    for s in 0..6 {
+        md += &format!("## Section {s}\n\n");
+        for i in 0..6 {
+            md += &format!("- [x] **Item {i}.** Some words about the item that wrap.\n");
+            for j in 0..3 {
+                md += &format!("  - Nested {j} with `code` and more words.\n");
+                md += "    - Deeper still.\n";
+            }
+        }
+        md += "\n";
+    }
+    let (_host, cx) = cx.add_window_view(|window, cx| {
+        let scroll = std::rc::Rc::new(std::cell::RefCell::new(scroll::PreviewScrollStore::new()));
+        let fp = cx.new(|cx| {
+            let mut p =
+                view::FilePreview::new(PreviewKind::Markdown, "", "DOC.md", scroll, window, cx);
+            p.set_content(md, window, cx);
+            p
+        });
+        PreviewHost(fp)
+    });
+    cx.run_until_parked();
+    recur_ui::guard::count_layouts(true);
+    recur_ui::guard::take_measure_count();
+    cx.update(|window, cx| {
+        window.refresh();
+        window.draw(cx).clear(cx);
+    });
+    let texts: u32 = recur_ui::guard::take_layout_counts().values().sum();
+    let measures = recur_ui::guard::take_measure_count();
+    recur_ui::guard::count_layouts(false);
+    assert!(texts > 200, "{texts} texts");
+    assert!(
+        measures <= 16 * texts,
+        "{measures} measures for {texts} texts"
+    );
+}

@@ -1698,6 +1698,7 @@ impl Element for Text {
         let (ws, anywhere, clamp, truncate) =
             (self.white_space, self.anywhere, self.clamp, self.ellipsis);
         let measure_slot = layout.clone();
+        let counted = self.owner.is_some();
         // Taffy keeps one measure result per constraint kind, so nested flex passes that probe
         // several widths would re-break the same text many times in a frame.
         let memo = RefCell::new(Vec::<(Option<f32>, (f32, f32))>::new());
@@ -1762,6 +1763,9 @@ impl Element for Text {
             window,
             cx,
             move |known, available, window| {
+                if counted {
+                    crate::guard::count_measure();
+                }
                 let mut slot = measure_slot.borrow_mut();
                 let Some(laid) = slot.as_mut() else {
                     return (0., 0.);
@@ -2112,9 +2116,20 @@ fn paint_lines(
 ) {
     let scale = window.scale_factor();
     let box_w = f32::from(bounds.size.width);
+    // Only what the clip shows paints: a minified file's one paragraph can be thousands of
+    // lines and a million glyphs.
+    let clip = window.content_mask().bounds;
+    let (clip_top, clip_bottom) = (f32::from(clip.origin.y), f32::from(clip.bottom()));
+    let (clip_left, clip_right) = (f32::from(clip.origin.x), f32::from(clip.right()));
+    // Paragraphs whose glyphs run in byte order (no right-to-left reordering) find a line's
+    // glyphs by binary search instead of scanning them all for every line.
+    let mut sorted: Vec<Option<bool>> = vec![None; laid.paras.len()];
     for line in &laid.lines {
         let p = &laid.paras[line.para];
         let top = f32::from(bounds.origin.y) + line.top;
+        if top > clip_bottom || top + line.height < clip_top {
+            continue;
+        }
         let base_off = at.0 + line.top + line.baseline;
         let baseline =
             snapped(at.1, Probe::Y(base_off)).unwrap_or_else(|| snap(top + line.baseline, scale));
@@ -2152,26 +2167,58 @@ fn paint_lines(
             ));
         }
         let text = &laid.key.content[p.range.clone()];
-        for g in p.glyphs.iter().filter(|g| line.range.contains(&g.index)) {
-            let run = &laid.key.runs[g.run];
-            let mut color = run.color;
-            if let Some(mask) = mask {
-                let next = g.index
-                    + text
-                        .get(g.index..)
-                        .and_then(|t| t.chars().next())
-                        .map_or(1, char::len_utf8);
-                let center = left + (p.x_at(g.index) + p.x_at(next)) / 2.;
-                color = color.opacity(mask(center));
+        let in_order =
+            *sorted[line.para].get_or_insert_with(|| p.glyphs.is_sorted_by_key(|g| g.index));
+        let (lo, hi) = if in_order {
+            (
+                p.glyphs.partition_point(|g| g.index < line.range.start),
+                p.glyphs.partition_point(|g| g.index < line.range.end),
+            )
+        } else {
+            (0, p.glyphs.len())
+        };
+        // One layer per line: the scene orders it as one primitive, where each glyph would
+        // be one more insert (and one more again whenever a cached view replays it).
+        let reach = 2. * line.height;
+        let layer = Bounds::from_corners(
+            point(px(clip_left), px(top - reach)),
+            point(px(clip_right), px(top + line.height + reach)),
+        );
+        window.paint_layer(layer, |window| {
+            for g in p.glyphs[lo..hi]
+                .iter()
+                .filter(|g| line.range.contains(&g.index))
+            {
+                let run = &laid.key.runs[g.run];
+                let x = left + g.x;
+                if x > clip_right {
+                    if in_order {
+                        break;
+                    }
+                    continue;
+                }
+                if x + 2. * run.size < clip_left {
+                    continue;
+                }
+                let mut color = run.color;
+                if let Some(mask) = mask {
+                    let next = g.index
+                        + text
+                            .get(g.index..)
+                            .and_then(|t| t.chars().next())
+                            .map_or(1, char::len_utf8);
+                    let center = left + (p.x_at(g.index) + p.x_at(next)) / 2.;
+                    color = color.opacity(mask(center));
+                }
+                paint_one(
+                    window,
+                    point(px(left + g.x), px(baseline)),
+                    g,
+                    run.size,
+                    color,
+                );
             }
-            paint_one(
-                window,
-                point(px(left + g.x), px(baseline)),
-                g,
-                run.size,
-                color,
-            );
-        }
+        });
         for (ri, r) in run_slices(
             &laid.key.runs,
             p.range.start + line.range.start..p.range.start + line.range.end,

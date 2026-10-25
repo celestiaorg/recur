@@ -644,6 +644,7 @@ impl Build<'_, '_> {
                 let el = div()
                     .flex()
                     .flex_row()
+                    .w_full()
                     .child(div().flex_none().w(px(3.)).bg(hsla(self.env.t.line_bright)))
                     .child(div().flex_none().w(px(sh.blockquote_padding_left)))
                     .child(
@@ -759,7 +760,13 @@ impl Build<'_, '_> {
                     .into_any_element(),
             };
             n += 1;
-            let item = div().relative().flex().flex_col().child(marker).child(body);
+            let item = div()
+                .relative()
+                .flex()
+                .flex_col()
+                .w_full()
+                .child(marker)
+                .child(body);
             items.push(Laid {
                 el: item.into_any_element(),
                 mt: first.max(lu(sh.li_margin * fs)),
@@ -779,6 +786,7 @@ impl Build<'_, '_> {
             el: div()
                 .flex()
                 .flex_row()
+                .w_full()
                 .child(hgap(lu(sh.list_indent * fs), self.window))
                 .child(div().flex_1().min_w_0().child(body))
                 .into_any_element(),
@@ -1363,7 +1371,7 @@ pub fn disc_marker(size: f32, leading: f32, color: Color, window: &Window) -> An
 /// Stack blocks with collapsed sibling margins. Returns the column and the outer margins of
 /// its first and last block, which collapse through a parent without padding or border.
 pub fn stack(blocks: Vec<Laid>, window: &Window) -> (Div, f32, f32) {
-    let mut col = div().flex().flex_col();
+    let mut col = div().flex().flex_col().w_full();
     let mut prev: Option<f32> = None;
     let (mut first, mut last) = (0., 0.);
     let n = blocks.len();

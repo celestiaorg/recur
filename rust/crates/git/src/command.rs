@@ -57,6 +57,41 @@ where
     Command::new_program("git", args)
 }
 
+/// `program` as found on the `PATH` it runs with. Given a bare name and its own `PATH`, std
+/// spawns with `fork`, and forking a large process holds every malloc lock (the UI thread's
+/// too) until the fork is done; a path lets it use `posix_spawn`.
+fn on_path(program: &OsStr, env: &[(OsString, OsString)]) -> OsString {
+    use std::os::unix::fs::PermissionsExt;
+    static FOUND: std::sync::OnceLock<
+        std::sync::Mutex<std::collections::HashMap<(OsString, OsString), OsString>>,
+    > = std::sync::OnceLock::new();
+    if Path::new(program).components().count() != 1 {
+        return program.to_os_string();
+    }
+    let Some((_, path)) = env.iter().find(|(k, _)| k == "PATH") else {
+        return program.to_os_string();
+    };
+    let key = (program.to_os_string(), path.clone());
+    let found = FOUND.get_or_init(Default::default);
+    if let Some(hit) = found.lock().ok().and_then(|f| f.get(&key).cloned()) {
+        return hit;
+    }
+    let Some(hit) = std::env::split_paths(path)
+        .map(|d| d.join(program))
+        .find(|p| {
+            p.metadata()
+                .is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+        })
+    else {
+        return program.to_os_string();
+    };
+    let hit = hit.into_os_string();
+    if let Ok(mut f) = found.lock() {
+        f.insert(key, hit.clone());
+    }
+    hit
+}
+
 /// Output of a run that captured stdout and stderr separately.
 #[derive(Debug)]
 pub(crate) struct Captured {
@@ -190,11 +225,9 @@ impl Command {
     }
 
     fn base_command(&self) -> tokio::process::Command {
-        let mut cmd = tokio::process::Command::new(&self.program);
-        cmd.args(&self.args)
-            .env_clear()
-            .envs(self.environ())
-            .process_group(0);
+        let env = self.environ();
+        let mut cmd = tokio::process::Command::new(on_path(&self.program, &env));
+        cmd.args(&self.args).env_clear().envs(env).process_group(0);
         if let Some(dir) = &self.dir {
             cmd.current_dir(dir);
         }
@@ -587,6 +620,20 @@ mod tests {
     use std::time::Instant as StdInstant;
 
     use super::*;
+
+    #[test]
+    fn a_bare_program_runs_from_its_path() {
+        let env = vec![(
+            OsString::from("PATH"),
+            OsString::from("/recur-no-such-dir:/bin:/usr/bin"),
+        )];
+        assert_eq!(on_path(OsStr::new("sh"), &env), "/bin/sh");
+        assert_eq!(on_path(OsStr::new("./sh"), &env), "./sh");
+        assert_eq!(
+            on_path(OsStr::new("recur-no-such-binary"), &env),
+            "recur-no-such-binary"
+        );
+    }
     use crate::testutil::init_dirty_repo;
 
     #[tokio::test]

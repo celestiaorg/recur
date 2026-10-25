@@ -80,7 +80,9 @@ impl Observatory {
     }
 
     /// The branch review, once it has been shown.
-    pub fn review_surface(&self) -> Option<&Entity<recur_view_review::surface::ReviewSurface>> {
+    pub fn review_surface(
+        &self,
+    ) -> Option<&gpui_kit::Entity<recur_view_review::surface::ReviewSurface>> {
         self.review_surface.as_ref()
     }
 
@@ -416,6 +418,9 @@ impl Observatory {
                 let state = self.state.clone();
                 let r = cx.new(|cx| ReviewSurface::new(state, props, window, cx));
                 let weak = self.weak.clone();
+                // The review host is cached: line notes' text boxes mount here, above it.
+                let files = r.read(cx).files_view().clone();
+                files.update(cx, |f, _| f.mount_note_portals_above());
                 r.update(cx, |r, cx| {
                     let add: recur_view_review::diff_file::AddFindingFn =
                         Rc::new(move |path, line, body, end, _window, cx: &mut App| {

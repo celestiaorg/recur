@@ -115,6 +115,9 @@ struct MatchedMemo {
 
 pub struct FilesChangedView {
     state: Entity<AppState>,
+    /// Mount the open line notes' text boxes here (see `note_portal`); off when a host above a
+    /// cached view of this one mounts them.
+    note_portals_here: bool,
     props: FilesProps,
     files: Vec<Rc<FileDiff>>,
     /// Bumped whenever `files` changes (keys `matched_memo`).
@@ -204,6 +207,7 @@ impl FilesChangedView {
             stack,
             list,
             stack_pane: None,
+            note_portals_here: true,
             add_finding: None,
             restored_once: false,
             restore_root: String::new(),
@@ -232,6 +236,11 @@ impl FilesChangedView {
 
     pub fn files(&self) -> &[Rc<FileDiff>] {
         &self.files
+    }
+
+    /// Leave the open line notes' text boxes to a host above (`Pane::portals`).
+    pub fn mount_note_portals_above(&mut self) {
+        self.note_portals_here = false;
     }
 
     pub fn stack(&self) -> &FileStack {
@@ -676,6 +685,8 @@ impl FilesChangedView {
                     .map_err(|_| ()),
             };
             let _ = this.update(cx, |v, cx| {
+                let shown = (v.files_gen, v.loading, v.error, v.files_truncated);
+                let same_scope = v.files_scope == scope;
                 if let Ok((got, _, Some(c))) = &res
                     && generation == v.load_gen
                 {
@@ -724,8 +735,12 @@ impl FilesChangedView {
                     v.loading = false;
                 }
                 v.load_running = false;
-                v.sync_stack(cx);
-                cx.notify();
+                // A reload that found the same diff (a watcher event, a commit draft) leaves
+                // the review and the Observatory around it as they were.
+                if !same_scope || shown != (v.files_gen, v.loading, v.error, v.files_truncated) {
+                    v.sync_stack(cx);
+                    cx.notify();
+                }
                 if v.load_queued && v.props.active {
                     v.load(cx);
                 }
@@ -1333,7 +1348,12 @@ impl FilesChangedView {
                         .min_w_0(),
                     cx,
                 ))
-                .child(pane_probe),
+                .child(pane_probe)
+                .children(if self.note_portals_here {
+                    self.stack.pane.portals()
+                } else {
+                    Vec::new()
+                }),
         );
         let surface_probe = {
             let me = cx.entity().downgrade();

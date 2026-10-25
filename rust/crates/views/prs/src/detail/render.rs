@@ -874,6 +874,10 @@ impl PrDetail {
             )
             .child(header)
             .child(split)
+            // The open line notes' text boxes: the card stack may be a cached view, so they
+            // draw here, after it (see `recur_view_review::note_portal`).
+            .children(self.stack.pane.portals())
+            .children(self.commit_stack.pane.portals())
             .children(pop)
     }
 }

@@ -455,18 +455,19 @@ impl AppState {
     /// stay; pending comments are client-only.
     pub fn set_prs_from_sync(&mut self, list: Vec<Pr>, cx: &mut Context<Self>) {
         self.last_github_pr_sync = Some(Instant::now());
-        let prev: BTreeMap<String, Pr> = std::mem::take(&mut self.prs)
+        let prev: BTreeMap<&str, &Pr> = self.prs.iter().map(|p| (p.id.as_str(), p)).collect();
+        let next: Vec<Pr> = list
             .into_iter()
-            .map(|p| (p.id.clone(), p))
-            .collect();
-        self.prs = list
-            .into_iter()
-            .map(|p| match prev.get(&p.id) {
+            .map(|p| match prev.get(p.id.as_str()) {
                 Some(old) => merge_synced_pr(old, p),
                 None => p,
             })
             .collect();
-        cx.notify();
+        // A sweep usually brings back what the store has: every view reads the store.
+        if next != self.prs {
+            self.prs = next;
+            cx.notify();
+        }
     }
 
     /// `mergeProjectPRsSync`: one project's rows from a sweep still in flight.
@@ -475,17 +476,25 @@ impl AppState {
             return;
         }
         let mut incoming: Vec<Option<Pr>> = list.into_iter().map(Some).collect();
+        let mut changed = false;
         for prev in self.prs.iter_mut() {
             if let Some(slot) = incoming
                 .iter_mut()
                 .find(|p| p.as_ref().is_some_and(|p| p.id == prev.id))
                 && let Some(p) = slot.take()
             {
-                *prev = merge_synced_pr(prev, p);
+                let merged = merge_synced_pr(prev, p);
+                if merged != *prev {
+                    *prev = merged;
+                    changed = true;
+                }
             }
         }
+        let before = self.prs.len();
         self.prs.extend(incoming.into_iter().flatten());
-        cx.notify();
+        if changed || self.prs.len() != before {
+            cx.notify();
+        }
     }
 
     /// `upsertPR`: merge a full PR, inserting unknown ones.
@@ -1294,6 +1303,35 @@ fn mark_removed(w: &Workspace) -> Workspace {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every view reads the store: a PR sweep that brings back what it has must not wake them.
+    #[gpui::test]
+    async fn a_pr_sweep_that_changes_nothing_does_not_notify(cx: &mut gpui::TestAppContext) {
+        let bridge = recur_services::mock::MockBridge::fresh(Default::default());
+        let state = cx.update(|cx| {
+            AppState::install(bridge.services(), crate::LocalStorage::in_memory(), cx)
+        });
+        let pr = |id: &str, title: &str| Pr {
+            id: id.into(),
+            title: title.into(),
+            ..Default::default()
+        };
+        state.update(cx, |s, cx| s.set_prs_from_sync(vec![pr("a", "A")], cx));
+        let notified = std::rc::Rc::new(std::cell::Cell::new(0));
+        let n = notified.clone();
+        let _sub = cx.update(|cx| cx.observe(&state, move |_, _| n.set(n.get() + 1)));
+        state.update(cx, |s, cx| {
+            s.set_prs_from_sync(vec![pr("a", "A")], cx);
+            s.merge_project_prs_sync(vec![pr("a", "A")], cx);
+        });
+        cx.run_until_parked();
+        assert_eq!(notified.get(), 0);
+        state.update(cx, |s, cx| {
+            s.merge_project_prs_sync(vec![pr("a", "A2")], cx)
+        });
+        cx.run_until_parked();
+        assert_eq!(notified.get(), 1);
+    }
 
     #[test]
     fn strips_tags() {

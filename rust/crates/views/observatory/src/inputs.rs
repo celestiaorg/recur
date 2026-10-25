@@ -67,13 +67,12 @@ impl Inputs {
                         cx.notify();
                     }
                 }),
+                // No notify on a change: the source control panel reads the message as it
+                // renders, so its view redraws on its own, and a notify would redraw every
+                // region of the Observatory on every key.
                 cx.guarded_subscribe_in(&commit, window, |o, _, ev: &InputEvent, window, cx| {
-                    match ev {
-                        InputEvent::PressEnter { secondary, .. } if *secondary => {
-                            o.human_commit(window, cx);
-                        }
-                        InputEvent::Change => cx.notify(),
-                        _ => {}
+                    if let InputEvent::PressEnter { secondary: true, .. } = ev {
+                        o.human_commit(window, cx);
                     }
                 }),
             ];

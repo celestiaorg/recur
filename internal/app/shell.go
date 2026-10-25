@@ -45,6 +45,10 @@ type ShellService struct {
 
 	scheduleLoaded bool
 	expanded       []string
+
+	// Set once by main before the app runs; read-only afterwards.
+	CustomChrome bool
+	MenuSpec     []MenuNode
 }
 
 // GetShellState returns the last persisted shell, or a zero value when none

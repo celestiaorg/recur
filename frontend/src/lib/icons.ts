@@ -63,6 +63,16 @@ export const icons = {
     strokeWidth: 2,
     body: '<path d="M6 12h12"/>',
   },
+  // App menu (hamburger) in the Linux custom title bar.
+  menu: {
+    strokeWidth: 1.9,
+    body: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  },
+  // Window controls (Linux custom title bar): maximize reuses `square`.
+  'window-restore': {
+    strokeWidth: 1.9,
+    body: '<rect x="9" y="4" width="11" height="11" rx="1.5"/><path d="M15 19H6.5A1.5 1.5 0 0 1 5 17.5V9"/>',
+  },
   play: {
     strokeWidth: 1.9,
     body: '<path d="M8 5.5v13l11-6.5-11-6.5z"/>',

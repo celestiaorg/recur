@@ -4277,6 +4277,13 @@ export class Settings {
     "simplify"?: boolean | null;
 
     /**
+     * UseNativeTitleBar keeps the OS title bar and menu bar on Linux. Off (the
+     * default) hides them and the app draws a themed header like macOS does.
+     * Read at startup, so a change applies after a restart. Ignored elsewhere.
+     */
+    "useNativeTitleBar"?: boolean;
+
+    /**
      * DisabledProviders lists provider slugs turned off in Settings → Providers
      * (claude-code, cursor, codex, and user-defined compatible slugs).
      * Credentials stay saved; the provider is omitted from model pickers and
@@ -4345,8 +4352,8 @@ export class Settings {
         const $$createField50_0 = $$createType12;
         const $$createField51_0 = $$createType12;
         const $$createField52_0 = $$createType68;
-        const $$createField54_0 = $$createType12;
-        const $$createField55_0 = $$createType70;
+        const $$createField55_0 = $$createType12;
+        const $$createField56_0 = $$createType70;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("flagsAsk" in $$parsedSource) {
             $$parsedSource["flagsAsk"] = $$createField6_0($$parsedSource["flagsAsk"]);
@@ -4403,10 +4410,10 @@ export class Settings {
             $$parsedSource["mcpServers"] = $$createField52_0($$parsedSource["mcpServers"]);
         }
         if ("disabledProviders" in $$parsedSource) {
-            $$parsedSource["disabledProviders"] = $$createField54_0($$parsedSource["disabledProviders"]);
+            $$parsedSource["disabledProviders"] = $$createField55_0($$parsedSource["disabledProviders"]);
         }
         if ("compatibleProviders" in $$parsedSource) {
-            $$parsedSource["compatibleProviders"] = $$createField55_0($$parsedSource["compatibleProviders"]);
+            $$parsedSource["compatibleProviders"] = $$createField56_0($$parsedSource["compatibleProviders"]);
         }
         return new Settings($$parsedSource as Partial<Settings>);
     }

@@ -1,10 +1,11 @@
 /**
  * CSS `-webkit-app-region: no-drag` inside `.titlebar` (styles/_base.scss) plus
  * the traffic-light spacer (drag-to-move, but not zoom) and popups that hang
- * below the 52px bar (`.sel` / `.sel-menu`).
+ * below the 52px bar (`.sel` / `.sel-menu`). `.tb-menu-wrap` / `.tb-winctl` are
+ * the Linux custom-chrome menu and window controls.
  */
 const TITLEBAR_NO_DRAG =
-  'button, a, input, textarea, select, .tb-rail, .tb-icon-btn, .crumb-arrow, .crumb-base, .tb-traffic-clear, .tb-instance, .sel, .sel-menu, [role="menu"]'
+  'button, a, input, textarea, select, .tb-rail, .tb-icon-btn, .crumb-arrow, .crumb-base, .tb-traffic-clear, .tb-instance, .sel, .sel-menu, [role="menu"], .tb-menu-wrap, .tb-winctl'
 
 /** True when a titlebar pointer event landed on zoomable chrome, not a control. */
 export function isTitlebarZoomTarget(target: EventTarget | null, clientY?: number): boolean {

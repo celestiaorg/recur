@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+
+	"recur/internal/app"
 )
 
 // menuItems holds pointers to items whose Enabled state the frontend drives via
@@ -19,23 +21,8 @@ type menuItems struct {
 	root *application.Menu
 	wapp *application.App
 
-	newTab           *application.MenuItem
-	save             *application.MenuItem
-	openIn           *application.MenuItem
-	copyPath         *application.MenuItem
-	closeTab         *application.MenuItem
-	toggleLeftPanel  *application.MenuItem
-	toggleRightPanel *application.MenuItem
-	toggleEditor     *application.MenuItem
-	toggleTerminal   *application.MenuItem
-	maximizeTerminal *application.MenuItem
-	focusAgent       *application.MenuItem
-	focusEditor      *application.MenuItem
-	focusTerminal    *application.MenuItem
-	prevTab          *application.MenuItem
-	nextTab          *application.MenuItem
-	runDev           *application.MenuItem
-	stopRun          *application.MenuItem
+	// state maps a MenuNode.EnabledKey to its item.
+	state map[string]*application.MenuItem
 
 	appThemeMenu       *application.Menu
 	editorThemeDark    *application.Menu
@@ -79,12 +66,70 @@ func accel(item *application.MenuItem, chord string) *application.MenuItem {
 	return item
 }
 
-// installAppMenu builds the native application menu and registers keyboard
-// accelerators. Menu clicks emit a "menu.action" event the frontend handles —
-// on macOS the menubar owns the key equivalents, so the webview may never see
-// those keydowns (see nativeMenuAccelerators for Linux). Contextual items
-// start disabled; the frontend pushes "menu.state" as focus/tabs change.
-func installAppMenu(wapp *application.App, updates bool) {
+var nativeRoles = map[string]application.Role{
+	"about":      application.About,
+	"services":   application.ServicesMenu,
+	"hide":       application.Hide,
+	"hideOthers": application.HideOthers,
+	"unhide":     application.UnHide,
+	"quit":       application.Quit,
+	"edit":       application.EditMenu,
+	"window":     application.WindowMenu,
+	"devtools":   application.OpenDevTools,
+}
+
+// addMenuNodes builds nodes into parent, recording enable-driven items and the
+// dynamic theme submenus on items.
+func (items *menuItems) addMenuNodes(parent *application.Menu, nodes []app.MenuNode, emit func(string) func(*application.Context)) {
+	for _, n := range nodes {
+		switch {
+		case n.Role != "":
+			parent.AddRole(nativeRoles[n.Role])
+		case n.Kind == app.MenuSeparator:
+			parent.AddSeparator()
+		case n.Kind == app.MenuSubmenu:
+			sub := parent.AddSubmenu(n.Label)
+			switch n.Dynamic {
+			case "app-theme":
+				items.appThemeMenu = sub
+			case "editor-theme-dark":
+				items.editorThemeDark = sub
+			case "editor-theme-light":
+				items.editorThemeLight = sub
+			case "terminal-theme":
+				items.terminalThemeMenu = sub
+			}
+			if n.Dynamic != "" {
+				// Placeholder until the frontend pushes the catalog after TextMate bootstrap.
+				sub.Add("Loading…").SetEnabled(false)
+			}
+			items.addMenuNodes(sub, n.Children, emit)
+		default:
+			item := parent.Add(n.Label)
+			if n.Action == "quit" {
+				item.OnClick(func(*application.Context) { items.wapp.Quit() })
+			} else {
+				item.OnClick(emit(n.Action))
+			}
+			if n.EnabledKey != "" {
+				item.SetEnabled(false)
+				items.state[n.EnabledKey] = item
+			}
+			if n.Accel != "" {
+				accel(item, n.Accel)
+			}
+		}
+	}
+}
+
+// installAppMenu builds the native application menu from spec and registers
+// the menu event handlers. Menu clicks emit a "menu.action" event the frontend
+// handles; on macOS the menubar owns the key equivalents, so the webview may
+// never see those keydowns (see nativeMenuAccelerators for Linux). Contextual
+// items start disabled; the frontend pushes "menu.state" as focus/tabs change.
+// With customChrome the frontend draws the menu from the same spec, so the
+// native menu is built (its handlers keep working) but never attached.
+func installAppMenu(wapp *application.App, spec []app.MenuNode, customChrome bool) {
 	emit := func(action string) func(*application.Context) {
 		return func(*application.Context) {
 			wapp.Event.Emit("menu.action", action)
@@ -95,175 +140,15 @@ func installAppMenu(wapp *application.App, updates bool) {
 	items := &menuItems{
 		root:             menu,
 		wapp:             wapp,
+		state:            map[string]*application.MenuItem{},
 		appThemeItems:    map[string]*application.MenuItem{},
 		editorThemeItems: map[string]*application.MenuItem{},
 	}
+	items.addMenuNodes(menu, spec, emit)
 
-	// —— Recur (macOS app menu) ——
-	if runtime.GOOS == "darwin" {
-		appMenu := menu.AddSubmenu("Recur")
-		appMenu.AddRole(application.About)
-		if updates {
-			appMenu.Add("Check for Updates…").OnClick(emit("check-updates"))
-		}
-		appMenu.AddSeparator()
-		accel(appMenu.Add("Settings…"), "CmdOrCtrl+,").
-			OnClick(emit("settings"))
-		appMenu.AddSeparator()
-		appMenu.AddRole(application.ServicesMenu)
-		appMenu.AddSeparator()
-		appMenu.AddRole(application.Hide)
-		appMenu.AddRole(application.HideOthers)
-		appMenu.AddRole(application.UnHide)
-		appMenu.AddSeparator()
-		appMenu.AddRole(application.Quit)
+	if !customChrome {
+		wapp.Menu.Set(menu)
 	}
-
-	// —— File ——
-	file := menu.AddSubmenu("File")
-	accel(file.Add("Open…"), "CmdOrCtrl+OptionOrAlt+O").
-		OnClick(emit("open-path"))
-	accel(file.Add("New Workspace"), "CmdOrCtrl+N").
-		OnClick(emit("new-loop"))
-	// No CmdOrCtrl+Shift+N accelerator: on macOS the menubar would own that
-	// chord and the webview would never see it, so Explorer's ⇧⌘N New Folder
-	// (D48) would break. App.svelte owns ⇧⌘N and yields to the Files pane.
-	file.Add("New Blank Workspace").
-		OnClick(emit("new-blank-workspace"))
-	// Contextual: new terminal tab or solo/pair agent chat when that dock is
-	// focused. Disabled otherwise (editor file tabs open via Quick Open / tree).
-	items.newTab = accel(file.Add("New Tab"), "CmdOrCtrl+T").
-		SetEnabled(false).
-		OnClick(emit("new-tab"))
-	items.save = accel(file.Add("Save"), "CmdOrCtrl+S").
-		SetEnabled(false).
-		OnClick(emit("save"))
-	file.AddSeparator()
-	items.openIn = accel(file.Add("Open In…"), "CmdOrCtrl+O").
-		SetEnabled(false).
-		OnClick(emit("open-in"))
-	items.copyPath = file.Add("Copy Path").
-		SetEnabled(false).
-		OnClick(emit("copy-path"))
-	file.AddSeparator()
-	// Contextual close: terminal / agent / file tab for the focused context.
-	// Deliberately not Close Window — ⌘W is the tab-close chord.
-	items.closeTab = accel(file.Add("Close Tab"), "CmdOrCtrl+W").
-		SetEnabled(false).
-		OnClick(emit("close-tab"))
-	if runtime.GOOS != "darwin" {
-		file.AddSeparator()
-		// Not the Quit role: it binds CmdOrCtrl+Q natively, and on Linux Ctrl+Q
-		// is the shell's XON (resume after Ctrl+S). Close the window to quit.
-		file.Add("Quit").OnClick(func(*application.Context) { wapp.Quit() })
-	}
-
-	// —— Edit ——
-	// macOS only: the Edit roles route ⌘Z/X/C/V/A through the responder chain,
-	// which WKWebView needs. Off macOS their items are no-ops that would still
-	// bind Ctrl+C/V/X/Z/A natively; WebKitGTK handles those chords itself.
-	if nativeMenuAccelerators {
-		menu.AddRole(application.EditMenu)
-	}
-
-	// —— View ——
-	view := menu.AddSubmenu("View")
-	appearance := view.AddSubmenu("Appearance")
-	items.appThemeMenu = appearance.AddSubmenu("App Theme")
-	editorTheme := appearance.AddSubmenu("Code Editor Theme")
-	items.editorThemeDark = editorTheme.AddSubmenu("Dark")
-	items.editorThemeLight = editorTheme.AddSubmenu("Light")
-	items.terminalThemeMenu = appearance.AddSubmenu("Terminal Theme")
-	// Placeholder until the frontend pushes the catalog after TextMate bootstrap.
-	items.appThemeMenu.Add("Loading…").SetEnabled(false)
-	items.editorThemeDark.Add("Loading…").SetEnabled(false)
-	items.editorThemeLight.Add("Loading…").SetEnabled(false)
-	items.terminalThemeMenu.Add("Loading…").SetEnabled(false)
-	appearance.AddSeparator()
-	accel(appearance.Add("Previous Editor Theme"), "CmdOrCtrl+OptionOrAlt+[").
-		OnClick(emit("prev-editor-theme"))
-	accel(appearance.Add("Next Editor Theme"), "CmdOrCtrl+OptionOrAlt+]").
-		OnClick(emit("next-editor-theme"))
-
-	view.AddSeparator()
-	accel(view.Add("Toggle Sidebar"), "CmdOrCtrl+B").
-		OnClick(emit("toggle-sidebar"))
-	items.toggleLeftPanel = accel(view.Add("Toggle Left Panel"), "CmdOrCtrl+OptionOrAlt+B").
-		SetEnabled(false).
-		OnClick(emit("toggle-left-panel"))
-	items.toggleRightPanel = accel(view.Add("Toggle Right Panel"), "CmdOrCtrl+OptionOrAlt+Shift+B").
-		SetEnabled(false).
-		OnClick(emit("toggle-right-panel"))
-	items.toggleEditor = accel(view.Add("Toggle Editor"), "CmdOrCtrl+OptionOrAlt+E").
-		SetEnabled(false).
-		OnClick(emit("toggle-editor"))
-	items.toggleTerminal = accel(view.Add("Toggle Terminal"), "Ctrl+`").
-		SetEnabled(false).
-		OnClick(emit("toggle-terminal"))
-	items.maximizeTerminal = accel(view.Add("Maximize Terminal"), "Ctrl+Shift+`").
-		SetEnabled(false).
-		OnClick(emit("maximize-terminal"))
-	items.runDev = accel(view.Add("Run…"), "CmdOrCtrl+R").
-		SetEnabled(false).
-		OnClick(emit("run-dev"))
-	items.stopRun = accel(view.Add("Stop Run"), "CmdOrCtrl+Shift+R").
-		SetEnabled(false).
-		OnClick(emit("stop-run"))
-	if runtime.GOOS != "darwin" {
-		view.AddSeparator()
-		accel(view.Add("Settings…"), "CmdOrCtrl+,").
-			OnClick(emit("settings"))
-	}
-	if inspectorAvailable {
-		view.AddSeparator()
-		view.AddRole(application.OpenDevTools)
-	}
-
-	// —— Navigate ——
-	nav := menu.AddSubmenu("Navigate")
-	accel(nav.Add("Go to…"), "CmdOrCtrl+K").
-		OnClick(emit("palette"))
-	accel(nav.Add("Run Command…"), "CmdOrCtrl+Shift+P").
-		OnClick(emit("run-command"))
-	accel(nav.Add("Keyboard Shortcuts…"), "CmdOrCtrl+Shift+/").
-		OnClick(emit("shortcuts"))
-	nav.Add("Reload Bundles").
-		OnClick(emit("reload-bundles"))
-	accel(nav.Add("Quick Open…"), "CmdOrCtrl+P").
-		OnClick(emit("quick-open"))
-	accel(nav.Add("Go to Symbol…"), "CmdOrCtrl+Shift+O").
-		OnClick(emit("go-symbol"))
-	nav.AddSeparator()
-	items.focusAgent = accel(nav.Add("Focus Agent Panel"), "CmdOrCtrl+1").
-		SetEnabled(false).
-		OnClick(emit("focus-agent"))
-	items.focusEditor = accel(nav.Add("Focus Editor"), "CmdOrCtrl+2").
-		SetEnabled(false).
-		OnClick(emit("focus-editor"))
-	items.focusTerminal = accel(nav.Add("Focus Terminal"), "CmdOrCtrl+3").
-		SetEnabled(false).
-		OnClick(emit("focus-terminal"))
-	nav.AddSeparator()
-	items.prevTab = accel(nav.Add("Previous Tab"), "CmdOrCtrl+OptionOrAlt+Left").
-		SetEnabled(false).
-		OnClick(emit("prev-tab"))
-	items.nextTab = accel(nav.Add("Next Tab"), "CmdOrCtrl+OptionOrAlt+Right").
-		SetEnabled(false).
-		OnClick(emit("next-tab"))
-	nav.AddSeparator()
-	accel(nav.Add("Previous Workspace"), "CmdOrCtrl+OptionOrAlt+Up").
-		OnClick(emit("prev-workspace"))
-	accel(nav.Add("Next Workspace"), "CmdOrCtrl+OptionOrAlt+Down").
-		OnClick(emit("next-workspace"))
-
-	// —— Window ——
-	// macOS only: off macOS the role's Minimize / Close items bind Ctrl+M
-	// (shell Enter) and Ctrl+W natively; the window manager covers both.
-	if nativeMenuAccelerators {
-		menu.AddRole(application.WindowMenu)
-	}
-
-	wapp.Menu.Set(menu)
 
 	// Frontend pushes enable/disable as the workbench focus and tab counts change.
 	wapp.Event.On("menu.state", func(e *application.CustomEvent) {
@@ -286,37 +171,11 @@ func applyMenuState(items *menuItems, data any) {
 	}
 	items.mu.Lock()
 	defer items.mu.Unlock()
-	set := func(item *application.MenuItem, key string) {
-		if item == nil {
-			return
+	for key, item := range items.state {
+		if enabled, ok := m[key].(bool); ok {
+			item.SetEnabled(enabled)
 		}
-		v, ok := m[key]
-		if !ok {
-			return
-		}
-		enabled, ok := v.(bool)
-		if !ok {
-			return
-		}
-		item.SetEnabled(enabled)
 	}
-	set(items.newTab, "newTab")
-	set(items.save, "save")
-	set(items.openIn, "openIn")
-	set(items.copyPath, "copyPath")
-	set(items.closeTab, "closeTab")
-	set(items.toggleLeftPanel, "toggleLeftPanel")
-	set(items.toggleRightPanel, "toggleRightPanel")
-	set(items.toggleEditor, "toggleEditor")
-	set(items.toggleTerminal, "toggleTerminal")
-	set(items.maximizeTerminal, "maximizeTerminal")
-	set(items.focusAgent, "focusAgent")
-	set(items.focusEditor, "focusEditor")
-	set(items.focusTerminal, "focusTerminal")
-	set(items.prevTab, "prevTab")
-	set(items.nextTab, "nextTab")
-	set(items.runDev, "runDev")
-	set(items.stopRun, "stopRun")
 	items.refresh(false)
 }
 

@@ -1,8 +1,11 @@
 // Frontend dispatch for native menubar actions (menu.action events from Go).
 // App-level chords land here; Observatory subscribes for workspace-scoped ones.
 // Enabled state is pushed back to Go via menu.state so contextual items grey out.
-import { Events } from '@wailsio/runtime'
-import { get } from 'svelte/store'
+import { Application, Events, Window } from '@wailsio/runtime'
+import { get, writable } from 'svelte/store'
+import { ShellService } from '../../bindings/recur/internal/app'
+import type { MenuNode } from '../../bindings/recur/internal/app'
+import type { ThemeCatalog } from './menu-spec'
 import { themes, theme, editorTheme, terminalPrefs, isLightTheme } from './stores'
 import { allEditorThemesForPicker, compareEditorThemesForCycle } from './cm-themes'
 import { terminalThemeCatalog } from './terminal'
@@ -99,6 +102,21 @@ function dispatch(action: string) {
   for (const h of handlers) h(action as MenuAction)
 }
 
+/** Activate an in-app menu entry (the native menu does this in Go). */
+export function runMenuAction(n: { action: string; role: string }) {
+  if (n.role === 'devtools') void Window.OpenDevTools()
+  else if (n.action === 'quit') void Application.Quit()
+  else if (n.action) dispatch(n.action)
+}
+
+/** Last enable state pushed to the menubar, mirrored for the in-app menu. */
+export const menuState = writable<MenuState>({})
+
+/** The menu tree the Go side builds the native menu from. */
+export function loadMenuSpec(): Promise<MenuNode[]> {
+  return ShellService.GetMenuSpec().then((spec) => spec ?? [])
+}
+
 /** Wire once from App boot — fans Go menu.action events out to subscribers. */
 export function wireMenuEvents() {
   Events.On('menu.action', (e: any) => {
@@ -109,6 +127,7 @@ export function wireMenuEvents() {
 
 /** Push enable/disable state to the native menubar (no-op outside Wails). */
 export function setMenuState(state: MenuState) {
+  menuState.update((cur) => ({ ...cur, ...state }))
   void Events.Emit('menu.state', state).catch(() => {})
 }
 
@@ -122,8 +141,8 @@ export function terminalIdFromMenu(key: string): string {
   return key === MENU_TERMINAL_MATCH ? '' : key
 }
 
-/** Rebuild View → Appearance theme radio menus from the current catalogs. */
-export function pushMenuThemes() {
+/** Theme catalogs and the current selection behind View → Appearance. */
+export function themeCatalog(): ThemeCatalog {
   const editor = allEditorThemesForPicker()
     .map((t) => ({ key: t.key, name: t.name, kind: t.kind }))
     .sort(compareEditorThemesForCycle)
@@ -131,14 +150,19 @@ export function pushMenuThemes() {
     { key: MENU_TERMINAL_MATCH, name: 'Match App' },
     ...get(terminalThemeCatalog).map((t) => ({ key: t.id, name: t.name })),
   ]
-  void Events.Emit('menu.themes', {
+  return {
     app: themes.map((t) => ({ key: t.key, name: t.name })),
     editor,
     terminal,
     appSelected: get(theme),
     editorSelected: get(editorTheme),
     terminalSelected: terminalMenuKey(get(terminalPrefs).theme),
-  }).catch(() => {})
+  }
+}
+
+/** Rebuild View → Appearance theme radio menus from the current catalogs. */
+export function pushMenuThemes() {
+  void Events.Emit('menu.themes', themeCatalog()).catch(() => {})
 }
 
 /** Update Appearance radio checks without rebuilding the catalog. */

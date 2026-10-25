@@ -1204,6 +1204,8 @@ export const resolvers: Record<string, Resolver> = {
   }),
   GetSettings: (_a, s) => s.settings,
   GetInstanceLabel: () => '',
+  GetMenuSpec: () => [],
+  HasCustomChrome: () => false,
   GitHubLogin: () => 'mycodecrafting',
   SetSettings: (a, s) => {
     s.settings = a[0]
@@ -2267,6 +2269,59 @@ export async function installBridge(page: Page, seed: Seed, opts: BridgeOptions 
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
   })
+}
+
+// Menu tree as Go's AppMenuSpec("linux", …) returns it, trimmed to the shapes the
+// in-app menu renders: contextual items, a separator, a dynamic radio submenu,
+// a nested submenu, and Quit.
+export const LINUX_MENU_SPEC = [
+  { kind: 'submenu', label: 'File', children: [
+    { kind: 'item', label: 'New Workspace', action: 'new-loop', accel: 'CmdOrCtrl+N' },
+    { kind: 'item', label: 'Save', action: 'save', accel: 'CmdOrCtrl+S', enabledKey: 'save' },
+    { kind: 'separator' },
+    { kind: 'item', label: 'Quit', action: 'quit' },
+  ] },
+  { kind: 'submenu', label: 'View', children: [
+    { kind: 'submenu', label: 'Appearance', children: [
+      { kind: 'submenu', label: 'App Theme', dynamic: 'app-theme' },
+    ] },
+    { kind: 'item', label: 'Settings…', action: 'settings', accel: 'CmdOrCtrl+,' },
+  ] },
+]
+
+export type WindowOps = { calls: string[]; maximised: boolean; fullscreen: boolean }
+
+const WINDOW_METHODS: Record<number, string> = { 2: 'close', 13: 'isFullscreen', 14: 'isMaximised', 17: 'minimise', 39: 'toggleMaximise' }
+
+/**
+ * Drive the app as the Linux custom-chrome build: OS=linux, HasCustomChrome, the
+ * in-app menu spec, and window ops recorded (not performed). Call after
+ * installBridge so this route wins over the bridge's catch-all.
+ */
+export async function installLinuxChrome(page: Page): Promise<WindowOps> {
+  const ops: WindowOps = { calls: [], maximised: false, fullscreen: false }
+  await page.addInitScript(() => {
+    const w = window as Window & { _wails?: { environment?: { OS?: string } } }
+    w._wails = w._wails ?? {}
+    w._wails.environment = { ...w._wails.environment, OS: 'linux' }
+  })
+  await page.route('**/wails/runtime', async (route: Route) => {
+    let body: any = {}
+    try {
+      body = JSON.parse(route.request().postData() || '{}')
+    } catch {
+      return route.fallback()
+    }
+    const method = body?.object === 6 ? WINDOW_METHODS[body.method] : undefined
+    const quit = body?.object === 2 && body.method === 2
+    if (!method && !quit) return route.fallback()
+    const name = quit ? 'quit' : method!
+    if (name === 'toggleMaximise') ops.maximised = !ops.maximised
+    if (name !== 'isMaximised' && name !== 'isFullscreen') ops.calls.push(name)
+    const value = name === 'isMaximised' ? ops.maximised : name === 'isFullscreen' ? ops.fullscreen : null
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+  })
+  return ops
 }
 
 // gotoApp navigates to the app root and waits for the shell to mount.

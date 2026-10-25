@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
-  import { Events, System } from '@wailsio/runtime'
+  import { Events, System, Window } from '@wailsio/runtime'
   import { loadInitial, wireEvents, WorkspacesService, PRsService, call, upsertWorkspace, onWorkspaceFs, onAppFocused, onGithubBranchRules } from './lib/api'
   import { applyOpenPathResult, pickAndOpenPath } from './lib/open-path'
   import { wireFileIndexEvents } from './lib/file-index'
@@ -34,6 +34,7 @@
   import { loadScheduleExpanded } from './lib/schedule-expanded'
   import { copySelectedWorkspacePath } from './lib/workspace-path'
   import { isTitlebarZoomTarget } from './lib/titlebar'
+  import { customChrome, loadChrome } from './lib/chrome'
   import { wsMainBlocked, wsRunActive, workspaceCanRemove, workspaceShowsRemove } from './lib/modes'
   import { removeWorkspace } from './lib/remove-workspace'
   import { prForWorkspace, prIconName, prLifecycle } from './lib/colors'
@@ -51,6 +52,8 @@
   import UserMentionSuggest from './components/UserMentionSuggest.svelte'
   import DecodeText from './components/DecodeText.svelte'
   import Icon from './components/Icon.svelte'
+  import AppMenuButton from './components/AppMenuButton.svelte'
+  import WindowControls from './components/WindowControls.svelte'
   import WorkspaceBaseSelect from './components/WorkspaceBaseSelect.svelte'
   import WorkspaceIssueButton from './components/WorkspaceIssueButton.svelte'
 
@@ -90,6 +93,7 @@
   const offMac = () => System.IsLinux() || System.IsWindows()
   let trafficClear = $state(!offMac())
   window.addEventListener('wails:runtime-config-ready', () => (trafficClear = !offMac()), { once: true })
+  void loadChrome()
   let pendingPRCreate = $state<{ prId: string; wsId: string } | null>(null)
   const creatingThisPR = $derived(!!titlebarPR?.id && pendingPRCreate?.prId === titlebarPR.id)
 
@@ -685,6 +689,10 @@
     if (e.button !== 0 || e.detail !== 2) return
     if (!isTitlebarZoomTarget(e.target, e.clientY)) return
     e.preventDefault()
+    if (get(customChrome)) {
+      void Window.IsFullscreen().then((fs) => { if (!fs) void Window.ToggleMaximise() })
+      return
+    }
     void Events.Emit('window.titlebarDblclick').catch(() => {})
   }
 
@@ -952,9 +960,10 @@
   })
 </script>
 
-<div class="win">
+<div class="win" class:chrome-custom={$customChrome}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="titlebar" onmousedown={onTitlebarMouseDown}>
+    {#if $customChrome}<AppMenuButton />{/if}
     <div class="tb-left">
       {#if trafficClear}<div class="tb-traffic-clear"></div>{/if}
       <button
@@ -1243,6 +1252,7 @@
         />
       {/if}
     </div>
+    {#if $customChrome}<WindowControls />{/if}
   </div>
 
   <div class="body" class:rail-collapsed={$railCollapsed}>

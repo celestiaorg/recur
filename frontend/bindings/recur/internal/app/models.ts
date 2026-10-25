@@ -1358,6 +1358,67 @@ export class LoopInfo {
 }
 
 /**
+ * MenuNode is one entry of the application menu. The native menu (app_menu.go)
+ * and the in-app menu on Linux (frontend AppMenuButton) are both built from
+ * this tree so they cannot drift.
+ */
+export class MenuNode {
+    "kind": string;
+    "label"?: string;
+
+    /**
+     * Action is what a click emits ("menu.action"). "quit" quits natively.
+     */
+    "action"?: string;
+
+    /**
+     * EnabledKey names the MenuState flag that drives Enabled. Such items
+     * start disabled until the frontend pushes "menu.state".
+     */
+    "enabledKey"?: string;
+
+    /**
+     * Accel is the chord (Wails accelerator syntax). Native accelerators are
+     * bound only where app_menu.go allows; the in-app menu shows it as a label.
+     */
+    "accel"?: string;
+
+    /**
+     * Dynamic marks a submenu whose children the frontend owns:
+     * app-theme, editor-theme-dark, editor-theme-light, terminal-theme.
+     */
+    "dynamic"?: string;
+
+    /**
+     * Role is a native-only role (about, services, hide, hideOthers, unhide,
+     * quit, edit, window) or "devtools", which the in-app menu also honours.
+     */
+    "role"?: string;
+    "children"?: MenuNode[];
+
+    /** Creates a new MenuNode instance. */
+    constructor($$source: Partial<MenuNode> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MenuNode instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MenuNode {
+        const $$createField7_0 = $$createType22;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("children" in $$parsedSource) {
+            $$parsedSource["children"] = $$createField7_0($$parsedSource["children"]);
+        }
+        return new MenuNode($$parsedSource as Partial<MenuNode>);
+    }
+}
+
+/**
  * ModelChoice is one selectable model.
  */
 export class ModelChoice {
@@ -1398,7 +1459,7 @@ export class ModelChoice {
      * Creates a new ModelChoice instance from a string or object.
      */
     static createFrom($$source: any = {}): ModelChoice {
-        const $$createField2_0 = $$createType22;
+        const $$createField2_0 = $$createType24;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("flags" in $$parsedSource) {
             $$parsedSource["flags"] = $$createField2_0($$parsedSource["flags"]);
@@ -1445,7 +1506,7 @@ export class ModelGroup {
      * Creates a new ModelGroup instance from a string or object.
      */
     static createFrom($$source: any = {}): ModelGroup {
-        const $$createField2_0 = $$createType24;
+        const $$createField2_0 = $$createType26;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("models" in $$parsedSource) {
             $$parsedSource["models"] = $$createField2_0($$parsedSource["models"]);
@@ -1473,7 +1534,7 @@ export class PaletteSearchDTO {
      * Creates a new PaletteSearchDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PaletteSearchDTO {
-        const $$createField0_0 = $$createType26;
+        const $$createField0_0 = $$createType28;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("groups" in $$parsedSource) {
             $$parsedSource["groups"] = $$createField0_0($$parsedSource["groups"]);
@@ -1506,7 +1567,7 @@ export class PaletteSearchGroupDTO {
      * Creates a new PaletteSearchGroupDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PaletteSearchGroupDTO {
-        const $$createField2_0 = $$createType28;
+        const $$createField2_0 = $$createType30;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hits" in $$parsedSource) {
             $$parsedSource["hits"] = $$createField2_0($$parsedSource["hits"]);
@@ -1622,7 +1683,7 @@ export class PromptActionInfo {
      * Creates a new PromptActionInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptActionInfo {
-        const $$createField15_0 = $$createType30;
+        const $$createField15_0 = $$createType32;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("args" in $$parsedSource) {
             $$parsedSource["args"] = $$createField15_0($$parsedSource["args"]);
@@ -1755,7 +1816,7 @@ export class PromptCompleteResultDTO {
      * Creates a new PromptCompleteResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptCompleteResultDTO {
-        const $$createField0_0 = $$createType28;
+        const $$createField0_0 = $$createType30;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hits" in $$parsedSource) {
             $$parsedSource["hits"] = $$createField0_0($$parsedSource["hits"]);
@@ -1917,7 +1978,7 @@ export class PromptResultDTO {
      * Creates a new PromptResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptResultDTO {
-        const $$createField3_0 = $$createType32;
+        const $$createField3_0 = $$createType34;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("issue" in $$parsedSource) {
             $$parsedSource["issue"] = $$createField3_0($$parsedSource["issue"]);
@@ -2361,7 +2422,7 @@ export class TerminalThemeInfo {
      * Creates a new TerminalThemeInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): TerminalThemeInfo {
-        const $$createField5_0 = $$createType33;
+        const $$createField5_0 = $$createType35;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("palette" in $$parsedSource) {
             $$parsedSource["palette"] = $$createField5_0($$parsedSource["palette"]);
@@ -2414,7 +2475,7 @@ export class ThemeInfo {
      * Creates a new ThemeInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ThemeInfo {
-        const $$createField5_0 = $$createType34;
+        const $$createField5_0 = $$createType36;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("preview" in $$parsedSource) {
             $$parsedSource["preview"] = $$createField5_0($$parsedSource["preview"]);
@@ -2504,17 +2565,19 @@ const $$createType17 = lsp$0.SessionInfo.createFrom;
 const $$createType18 = $Create.Array($$createType17);
 const $$createType19 = FlagOption.createFrom;
 const $$createType20 = $Create.Array($$createType19);
-const $$createType21 = FlagDimension.createFrom;
+const $$createType21 = MenuNode.createFrom;
 const $$createType22 = $Create.Array($$createType21);
-const $$createType23 = ModelChoice.createFrom;
+const $$createType23 = FlagDimension.createFrom;
 const $$createType24 = $Create.Array($$createType23);
-const $$createType25 = PaletteSearchGroupDTO.createFrom;
+const $$createType25 = ModelChoice.createFrom;
 const $$createType26 = $Create.Array($$createType25);
-const $$createType27 = PromptCompleteHitDTO.createFrom;
+const $$createType27 = PaletteSearchGroupDTO.createFrom;
 const $$createType28 = $Create.Array($$createType27);
-const $$createType29 = PromptArgInfo.createFrom;
+const $$createType29 = PromptCompleteHitDTO.createFrom;
 const $$createType30 = $Create.Array($$createType29);
-const $$createType31 = domain$0.IssueRef.createFrom;
-const $$createType32 = $Create.Nullable($$createType31);
-const $$createType33 = TerminalPaletteInfo.createFrom;
-const $$createType34 = ThemePreviewInfo.createFrom;
+const $$createType31 = PromptArgInfo.createFrom;
+const $$createType32 = $Create.Array($$createType31);
+const $$createType33 = domain$0.IssueRef.createFrom;
+const $$createType34 = $Create.Nullable($$createType33);
+const $$createType35 = TerminalPaletteInfo.createFrom;
+const $$createType36 = ThemePreviewInfo.createFrom;

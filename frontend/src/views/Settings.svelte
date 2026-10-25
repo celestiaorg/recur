@@ -61,7 +61,7 @@
   import SettingsGroup from '../components/SettingsGroup.svelte'
   import SettingsGroups from '../components/SettingsGroups.svelte'
   import type { ClaudeStatus, CodexStatus, CursorStatus } from '../../bindings/recur/internal/app/models'
-  import { Events } from '@wailsio/runtime'
+  import { Events, System } from '@wailsio/runtime'
   import {
     listAllCommandsUnfiltered,
     type RegisteredCommand,
@@ -653,7 +653,7 @@
       group: 'App',
       items: [
         { id: 'general' as const, label: 'General', icon: 'general', keywords: 'general simplify default yagni stdlib sleep caffeinate awake power prevent idle mac agent turn timeout minutes limit deadline concurrent loops agents slots cap governor branch prefix git workspace name github schedule keep last' },
-        { id: 'appearance' as const, label: 'Appearance', icon: 'appearance', keywords: 'theme color palette chrome app editor theme dark light charcoal slate cool glow catppuccin mocha latte paper nord terminal xterm ansi solarized vga tango campbell homebrew snazzy ubuntu' },
+        { id: 'appearance' as const, label: 'Appearance', icon: 'appearance', keywords: 'theme color palette chrome app editor theme dark light charcoal slate cool glow catppuccin mocha latte paper nord terminal xterm ansi solarized vga tango campbell homebrew snazzy ubuntu native title bar menu window linux' },
         { id: 'editor' as const, label: 'Code editor', icon: 'editor', keywords: 'editor code font size face wrap tab indent spaces go python typescript keymap vim emacs whitespace caret ruler panel left right files scm source control outline problems search refs explorer exclude glob hidden max open tabs gutter diff hints terminal' },
         { id: 'skills' as const, label: 'Skills', icon: 'skills', keywords: 'skills agent skill slash disable enable claude cursor codex recur' },
         { id: 'data' as const, label: 'Data', icon: 'data', keywords: 'clear wipe reset delete logs log reveal finder' },
@@ -1394,6 +1394,7 @@
     disabledSkills?: string[]
     mcpServers?: MCPServerRow[]
     simplify?: boolean
+    useNativeTitleBar?: boolean
     disabledProviders?: string[]
     compatibleProviders?: CompatibleProvider[]
     defaultLoop?: string
@@ -2461,6 +2462,28 @@
                 {@render terminalGrid($terminalPrefs.theme, (id) => setTerminalPrefs({ theme: id }), appChromeTheme)}
               {/if}
             </SettingsGroup>
+            {#if System.IsLinux() && $settings}
+              <SettingsGroup title="Window" blurb="Linux title bar and menu.">
+                <div class="set-rows code-panel-sides">
+                  <div class="set-row">
+                    <div class="set-copy">
+                      <div class="set-title">Use native title bar and menu</div>
+                      <div class="set-desc">Show the system title bar and menu bar instead of Recur’s themed header. Takes effect after restarting Recur.</div>
+                    </div>
+                    <div class="set-ctrl">
+                      <button
+                        type="button"
+                        class="tog"
+                        class:on={!!$settings.useNativeTitleBar}
+                        aria-label="toggle native title bar and menu"
+                        aria-pressed={!!$settings.useNativeTitleBar}
+                        onclick={() => patchSettings({ useNativeTitleBar: !$settings!.useNativeTitleBar })}
+                      ></button>
+                    </div>
+                  </div>
+                </div>
+              </SettingsGroup>
+            {/if}
           </SettingsGroups>
         {/if}
 

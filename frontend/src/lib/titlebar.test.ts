@@ -24,6 +24,15 @@ describe('isTitlebarZoomTarget', () => {
     expect(isTitlebarZoomTarget(bar.querySelector('.crumb'))).toBe(true)
   })
 
+  test('Linux custom-chrome menu and window controls do not zoom', () => {
+    const bar = mount(`
+      <div class="tb-menu-wrap"><div class="merge-menu app-menu"><div class="app-menu-sep"></div></div></div>
+      <div class="tb-winctl"><span class="tb-winbtn-icon"></span></div>
+    `)
+    expect(isTitlebarZoomTarget(bar.querySelector('.app-menu-sep'))).toBe(false)
+    expect(isTitlebarZoomTarget(bar.querySelector('.tb-winbtn-icon'))).toBe(false)
+  })
+
   test('buttons, no-drag crumbs, and open menus do not zoom', () => {
     const bar = mount(`
       <button type="button" class="tb-rail">Rail</button>

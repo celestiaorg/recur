@@ -119,6 +119,14 @@ func windowOptionsFromState(st windowState) application.WebviewWindowOptions {
 	return opts
 }
 
+// withCustomChrome drops the native title bar and menu bar; the frontend draws
+// both (Linux, unless the user opted into the native chrome).
+func withCustomChrome(opts application.WebviewWindowOptions) application.WebviewWindowOptions {
+	opts.Frameless = true
+	opts.UseApplicationMenu = false
+	return opts
+}
+
 // persistWindowGeometry watches resize/move/close and writes window.json.
 // Size is only recorded while the window is in a normal (non-maximised /
 // non-fullscreen / non-minimised) state so a maximised session doesn't clobber

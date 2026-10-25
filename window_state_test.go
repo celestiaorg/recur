@@ -88,3 +88,17 @@ func TestWindowOptionsTitleFromInstanceLabel(t *testing.T) {
 		t.Errorf("windowOptionsFromState() Title = %q, want %q", got, "mycodecrafting/smoky-shortcake")
 	}
 }
+
+func TestWithCustomChrome(t *testing.T) {
+	base := windowOptionsFromState(defaultWindowState())
+	if base.Frameless || !base.UseApplicationMenu {
+		t.Fatal("default options must keep the native frame and menu")
+	}
+	opts := withCustomChrome(base)
+	if !opts.Frameless || opts.UseApplicationMenu {
+		t.Errorf("custom chrome: Frameless=%v UseApplicationMenu=%v", opts.Frameless, opts.UseApplicationMenu)
+	}
+	if opts.Title != base.Title {
+		t.Errorf("title must survive for the taskbar: %q", opts.Title)
+	}
+}

@@ -69,6 +69,7 @@ export {
     IssuesView,
     LanguageServerInfo,
     LoopInfo,
+    MenuNode,
     ModelChoice,
     ModelGroup,
     PaletteSearchDTO,

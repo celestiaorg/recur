@@ -130,6 +130,10 @@ func main() {
 	eng.Recover()
 
 	svc := app.NewServices(eng)
+	// Linux draws its own title bar and menu (matching macOS) unless the user
+	// chose the native ones. Fixed for this run; the setting applies on restart.
+	customChrome := runtime.GOOS == "linux" && !st.Settings().UseNativeTitleBar
+	svc.Shell.CustomChrome = customChrome
 	app.StartProviderUsage(svc.Settings)
 	defer app.StopProviderUsage(svc.Settings)
 	attachOpenIPC(gate, svc, hub)
@@ -316,7 +320,14 @@ func main() {
 	// Recur window: dark, frameless-inset title bar so the ported chrome sits beside
 	// the native macOS traffic-light buttons (see DECISIONS D-window). --bg = #0A0C10.
 	// Size/position are restored from ~/Library/Application Support/Recur/window.json.
-	win := wapp.Window.NewWithOptions(windowOptionsFromState(loadWindowState()))
+	winOpts := windowOptionsFromState(loadWindowState())
+	if customChrome {
+		winOpts = withCustomChrome(winOpts)
+	}
+	win := wapp.Window.NewWithOptions(winOpts)
+	if customChrome {
+		setNativeWindowTitle(win, winOpts.Title)
+	}
 	wireOpenHub(wapp, win, hub)
 	// Notification clicks are delivered here when macOS activates this
 	// process instead of spawning another. Focus the existing window and
@@ -387,7 +398,8 @@ func main() {
 		eng.Shutdown()
 	})
 
-	installAppMenu(wapp, installUpdater(wapp))
+	svc.Shell.MenuSpec = app.AppMenuSpec(runtime.GOOS, installUpdater(wapp), inspectorAvailable)
+	installAppMenu(wapp, svc.Shell.MenuSpec, customChrome)
 
 	if err := wapp.Run(); err != nil {
 		log.Fatal(err)

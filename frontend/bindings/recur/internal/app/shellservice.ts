@@ -49,14 +49,32 @@ export function GetIssuesView(): $CancellablePromise<$models.IssuesView> {
 }
 
 /**
+ * GetMenuSpec returns the application menu tree the in-app menu renders.
+ */
+export function GetMenuSpec(): $CancellablePromise<$models.MenuNode[]> {
+    return $Call.ByID(4175158763).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * GetShellState returns the last persisted shell, or a zero value when none
  * exists (first run / corrupt file). The frontend treats an empty View as
  * "stay on the default Inbox" unless first-run routing sends Welcome.
  */
 export function GetShellState(): $CancellablePromise<$models.ShellState> {
     return $Call.ByID(2642875780).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType4($result);
     });
+}
+
+/**
+ * HasCustomChrome reports whether this run draws its own title bar and menu
+ * (Linux without "Use native title bar and menu"). The saved setting may
+ * differ until the next launch.
+ */
+export function HasCustomChrome(): $CancellablePromise<boolean> {
+    return $Call.ByID(590419842);
 }
 
 /**
@@ -85,4 +103,6 @@ export function SetShellState(st: $models.ShellState): $CancellablePromise<void>
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = $models.IssuesView.createFrom;
-const $$createType2 = $models.ShellState.createFrom;
+const $$createType2 = $models.MenuNode.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = $models.ShellState.createFrom;

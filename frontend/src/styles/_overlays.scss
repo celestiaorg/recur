@@ -864,6 +864,99 @@
   -webkit-app-region: no-drag;
 }
 
+/* Linux custom chrome (App.svelte `.win.chrome-custom`): Wails drags on the
+   `--wails-draggable` custom property, not `-webkit-app-region`. Scoped to this
+   class so macOS keeps its own double-click path. The property inherits, so every
+   interactive element opts back out. */
+.win.chrome-custom .titlebar {
+  --wails-draggable: drag;
+  padding-right: 0;
+}
+
+.win.chrome-custom .titlebar :is(button, a, input, textarea, select, .sel, .sel-menu, [role="menu"], .crumb-arrow, .crumb-base, .tb-instance) {
+  --wails-draggable: no-drag;
+}
+
+.tb-menu-wrap {
+  position: relative;
+  flex: none;
+}
+
+.tb-menu.on {
+  color: var(--text);
+  background: var(--pane-2);
+}
+
+.app-menu {
+  left: 0;
+  right: auto;
+  min-width: 260px;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+.app-menu .app-menu-group {
+  margin-left: 14px;
+}
+
+.app-menu .merge-menu-item:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+
+.app-menu .merge-menu-item:disabled:hover {
+  background: none;
+}
+
+.app-menu .merge-menu-item:focus-visible {
+  background: var(--pane-2);
+  outline: none;
+}
+
+.app-menu-accel {
+  margin-left: auto;
+  padding-left: 18px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.app-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line);
+}
+
+.tb-winctl {
+  align-self: stretch;
+  display: flex;
+  flex: none;
+  margin-left: 4px;
+}
+
+.tb-winbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--faint);
+}
+
+.tb-winbtn:hover,
+.tb-winbtn:focus-visible {
+  color: var(--text);
+  background: var(--pane-2);
+}
+
+.tb-winbtn.tb-winclose:hover,
+.tb-winbtn.tb-winclose:focus-visible {
+  color: #fff;
+  background: var(--coral);
+}
+
 /* keep typing/spin animations honored even though the bridge block is appended */
 /* evidence screenshot thumbnails (served from /artifacts/, see main.go middleware) */
 .shot.has-shot {

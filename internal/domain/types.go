@@ -1973,6 +1973,11 @@ type Settings struct {
 	// stays on for agents it starts).
 	Simplify *bool `json:"simplify,omitempty"`
 
+	// UseNativeTitleBar keeps the OS title bar and menu bar on Linux. Off (the
+	// default) hides them and the app draws a themed header like macOS does.
+	// Read at startup, so a change applies after a restart. Ignored elsewhere.
+	UseNativeTitleBar bool `json:"useNativeTitleBar,omitempty"`
+
 	// DisabledProviders lists provider slugs turned off in Settings → Providers
 	// (claude-code, cursor, codex, and user-defined compatible slugs).
 	// Credentials stay saved; the provider is omitted from model pickers and

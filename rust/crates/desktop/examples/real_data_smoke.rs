@@ -23,7 +23,7 @@
 //! live workspaces, every PR on each detail tab, every Settings section, Briefing, Issues,
 //! Schedules and each palette, and streams one chat turn. It exits non-zero on any panic
 //! (contained or not), error toast, frame over 2s or UI stall over 20s, sampling the main thread
-//! on a stall.
+//! on a stall and during a frame that passes 1.5s.
 //!
 //! It also times keystrokes in long chats, transcript and review scroll steps and workspace
 //! switches against frame-time budgets (`Budget`), and fails when one is exceeded.
@@ -794,6 +794,8 @@ fn step() -> &'static Mutex<String> {
 }
 
 static BEAT: AtomicU64 = AtomicU64::new(0);
+/// When the frame being drawn started (ms), 0 between frames.
+static FRAME_START: AtomicU64 = AtomicU64::new(0);
 /// Transcript pane renders in the last frame drawn (stuck-scroll reports).
 static TRANSCRIPT_RENDERS: AtomicU64 = AtomicU64::new(0);
 /// `session.delta` events the UI received.
@@ -863,6 +865,31 @@ fn watchdog() {
     });
 }
 
+/// Samples the main thread once during each frame that passes 1.5s: what a slow frame did,
+/// which its renders alone do not say.
+fn frame_watchdog() {
+    std::thread::spawn(|| {
+        let mut sampled = 0;
+        loop {
+            std::thread::sleep(Duration::from_millis(100));
+            let at = FRAME_START.load(Ordering::SeqCst);
+            if at == 0 || at == sampled || now_ms().saturating_sub(at) < 1_500 {
+                continue;
+            }
+            sampled = at;
+            let out = std::env::temp_dir().join(format!("recur-smoke-slow-{at}.txt"));
+            let ok = Command::new("sample")
+                .args([&std::process::id().to_string(), "2", "-file"])
+                .arg(&out)
+                .output()
+                .is_ok_and(|o| o.status.success());
+            if ok {
+                println!("slow frame stacks in {}", out.display());
+            }
+        }
+    });
+}
+
 // ---- The drive
 
 struct WindowRoot(Entity<Shell>);
@@ -907,6 +934,7 @@ fn drive(root: PathBuf) -> i32 {
     recur_ui::guard::count_renders(true);
     BEAT.store(now_ms(), Ordering::SeqCst);
     watchdog();
+    frame_watchdog();
     recur_platform::cliinstall::ensure_path();
     at(start, format!("boot on {}", data.display()));
 
@@ -1120,10 +1148,12 @@ async fn sleep(cx: &AsyncApp, ms: u64) {
 /// Draws one frame and returns how long it took.
 fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     let t = Instant::now();
+    FRAME_START.store(now_ms(), Ordering::SeqCst);
     let _ = cx.update_window(window, |_, window, cx| {
         let drawn = window.draw(cx);
         drawn.clear(cx);
     });
+    FRAME_START.store(0, Ordering::SeqCst);
     BEAT.store(now_ms(), Ordering::SeqCst);
     let took = t.elapsed();
     let renders = recur_ui::guard::take_render_counts();

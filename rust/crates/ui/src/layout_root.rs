@@ -1116,7 +1116,14 @@ mod block_tests {
         let before = BODY_RENDERS.with(|n| n.get());
         cx.update(|_, cx| view.update(cx, |_, cx| cx.notify()));
         cx.run_until_parked();
-        assert_eq!(BODY_RENDERS.with(|n| n.get()), before, "a host redraw re-rendered a block");
-        assert!(cx.debug_bounds("body:30").is_some(), "a replayed block lost its content");
+        assert_eq!(
+            BODY_RENDERS.with(|n| n.get()),
+            before,
+            "a host redraw re-rendered a block"
+        );
+        assert!(
+            cx.debug_bounds("body:30").is_some(),
+            "a replayed block lost its content"
+        );
     }
 }

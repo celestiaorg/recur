@@ -1799,7 +1799,7 @@ impl PrDetail {
             if self.conv_pending(cx) {
                 wrap = wrap.child(super::skeleton::conv_skel(window, cx));
             } else {
-                let items = std::rc::Rc::new(self.thread_items(cx));
+                let items = self.render_items(cx);
                 self.conv_items = items.clone();
                 let desc = items.iter().find(|c| c.kind == "description").cloned();
                 let windowed = items.iter().filter(|c| is_timeline_root(Some(c))).count()
@@ -1823,12 +1823,17 @@ impl PrDetail {
                             let el = self.description_card(d, pr, window, cx);
                             self.timeline.live(d, el, view)
                         }
-                        None => recur_ui::layout_root::layout_block(
-                            "desc-block",
-                            super::timeline::estimate(d),
-                            self.description_card(d, pr, window, cx),
-                        )
-                        .into_any_element(),
+                        None => {
+                            let (pane, slot) = self.timeline.block(&pr.id, &d.id, cx);
+                            recur_ui::layout_root::cached_block(
+                                "desc-block",
+                                super::timeline::estimate(d),
+                                &pane,
+                                &slot,
+                                cx,
+                            )
+                            .into_any_element()
+                        }
                     };
                     wrap = wrap.child(card);
                 }
@@ -1852,14 +1857,17 @@ impl PrDetail {
                 let roots: Vec<&PrComment> =
                     items.iter().filter(|c| is_timeline_root(Some(c))).collect();
                 if roots.len() < TIMELINE_WINDOW_FROM {
-                    // Each item lays out once, as its own root, at its exact place and height:
-                    // nested in the page it would be laid out again for every pass above it.
+                    // Each item is its own cached view, laid out once, as its own root, at its
+                    // exact place and height: a redraw of the page (a key in the comment box)
+                    // replays it.
                     for c in roots {
-                        let el = self.timeline_item(c, &items, pr, window, cx);
-                        thread = thread.child(recur_ui::layout_root::layout_block(
+                        let (pane, slot) = self.timeline.block(&pr.id, &c.id, cx);
+                        thread = thread.child(recur_ui::layout_root::cached_block(
                             SharedString::from(format!("tlb-{}", c.id)),
                             super::timeline::estimate(c),
-                            el,
+                            &pane,
+                            &slot,
+                            cx,
                         ));
                     }
                 } else {

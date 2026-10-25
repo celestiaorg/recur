@@ -14,6 +14,7 @@ use gpui_kit::{
 };
 use recur_domain::PrComment;
 use recur_ui::guard::Guarded;
+use recur_ui::layout_root::BlockSlot;
 
 use super::PrDetail;
 
@@ -41,6 +42,9 @@ pub(crate) struct TimelineWindow {
     planned_view_h: f32,
     /// Measured items as their own cached views, by id.
     panes: HashMap<String, Entity<ItemPane>>,
+    /// A short timeline's items as cached blocks, by id, for `blocks_pr`.
+    blocks: HashMap<String, (Entity<ItemPane>, Rc<BlockSlot>)>,
+    blocks_pr: String,
 }
 
 /// `None` mounts the item; `Some(h)` reserves `h` px for it.
@@ -181,10 +185,40 @@ impl TimelineWindow {
             detail: detail.downgrade(),
             probe,
             id: id.clone(),
+            block: None,
             _sub: cx.guarded_observe(&detail, |_, _, cx| cx.notify()),
         });
         self.panes.insert(id, pane.clone());
         pane
+    }
+
+    /// A short timeline's item `id` as its own cached view, laid out in place through
+    /// [`recur_ui::layout_root::cached_block`].
+    pub(crate) fn block(
+        &mut self,
+        pr: &str,
+        id: &str,
+        cx: &mut Context<PrDetail>,
+    ) -> (Entity<ItemPane>, Rc<BlockSlot>) {
+        if self.blocks_pr != pr {
+            self.blocks_pr = pr.to_string();
+            self.blocks.clear();
+        }
+        if let Some(b) = self.blocks.get(id) {
+            return b.clone();
+        }
+        let detail = cx.entity();
+        let slot = Rc::new(BlockSlot::default());
+        let pane = cx.new(|cx| ItemPane {
+            detail: detail.downgrade(),
+            probe: Rc::default(),
+            id: id.to_string(),
+            block: Some(slot.clone()),
+            _sub: cx.guarded_observe(&detail, |_, _, cx| cx.notify()),
+        });
+        self.blocks
+            .insert(id.to_string(), (pane.clone(), slot.clone()));
+        (pane, slot)
     }
 
     /// A run of windowed-out items as one spacer.
@@ -200,6 +234,8 @@ pub struct ItemPane {
     detail: WeakEntity<PrDetail>,
     probe: Rc<RefCell<Probe>>,
     id: String,
+    /// Set for a short timeline's item, which its block lays out and measures.
+    block: Option<Rc<BlockSlot>>,
     _sub: Subscription,
 }
 
@@ -210,6 +246,9 @@ impl ItemPane {
         };
         let id = self.id.clone();
         let el = detail.update(cx, |d, cx| d.timeline_item_by_id(&id, window, cx));
+        if let Some(slot) = &self.block {
+            return recur_ui::layout_root::block_content(slot, el, window);
+        }
         let (rec, view) = (self.probe.clone(), detail.entity_id());
         let measure = canvas(
             move |bounds, _, cx: &mut App| {

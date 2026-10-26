@@ -22,7 +22,7 @@
   } from '../lib/mcp'
   import { simplifyEnabled } from '../lib/simplify'
   import {
-    PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR,
+    PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, PROVIDER_CHATGPT,
     canDisableProvider, providerEnabled,
   } from '../lib/providers'
   import {
@@ -30,6 +30,7 @@
   } from '../lib/compatible-providers'
   import type { CompatibleProvider } from '../../bindings/recur/internal/domain/models'
   import CompatibleProviderCard from '../components/CompatibleProviderCard.svelte'
+  import ChatGPTProviderCard from '../components/ChatGPTProviderCard.svelte'
   import CompatibleProviderModal from '../components/CompatibleProviderModal.svelte'
   import {
     allEditorThemesForPicker,
@@ -60,7 +61,7 @@
   import ModelPickers from '../components/ModelPickers.svelte'
   import SettingsGroup from '../components/SettingsGroup.svelte'
   import SettingsGroups from '../components/SettingsGroups.svelte'
-  import type { ClaudeStatus, CodexStatus, CursorStatus } from '../../bindings/recur/internal/app/models'
+  import type { ClaudeStatus, CodexStatus, CursorStatus, ChatGPTStatus } from '../../bindings/recur/internal/app/models'
   import { Events } from '@wailsio/runtime'
   import {
     listAllCommandsUnfiltered,
@@ -144,6 +145,11 @@
   const claudeOn = $derived(providerEnabled($settings?.disabledProviders, PROVIDER_CLAUDE))
   const cursorOn = $derived(providerEnabled($settings?.disabledProviders, PROVIDER_CURSOR))
   const codexOn = $derived(providerEnabled($settings?.disabledProviders, PROVIDER_CODEX))
+  const chatGPTOn = $derived(providerEnabled($settings?.disabledProviders, PROVIDER_CHATGPT))
+  const openAIProviders = $derived([PROVIDER_CHATGPT, PROVIDER_CODEX, ...($settings?.compatibleProviders ?? []).filter((p) => p.id === 'openai').map((p) => p.id)])
+  const openAIOn = $derived(openAIProviders.some((p) => providerEnabled($settings?.disabledProviders, p)))
+  let chatGPTStatus = $state.raw<ChatGPTStatus | null>(null)
+  const codexBinPath = $derived($settings?.codexBinPath ?? '')
 
   // Probe Claude / Cursor / Codex status whenever the Providers pane is open
   // and that provider is on. Skip turned-off providers so we don't start a
@@ -198,6 +204,8 @@
 
   $effect(() => {
     if ($settingsSection !== 'agent' || !codexOn) return
+    // A newly saved binary path must refresh discovery in this pane.
+    void codexBinPath
     let cancelled = false
     // Probe even before auth so the Binary path shows.
     codexBusy = true
@@ -253,6 +261,11 @@
   let codexKeyTesting = $state(false)
   let codexStatus = $state<CodexStatus | null>(null)
   let codexBusy = $state(false)
+  let codexLoginStarting = $state(false)
+  let codexLoginID = $state('')
+  let codexLoginError = $state('')
+  let codexLoginAttempt = 0
+  const codexSigningIn = $derived(codexLoginStarting || !!codexLoginID)
   const codexConfigured = $derived(!!($settings?.codexApiKey || $settings?.codexChatGPTAuth))
   const cursorReady = $derived(cursorSignedIn)
   // Connected but unable to run anything: the SDK bridge is fetched on demand.
@@ -260,7 +273,8 @@
   const codexReady = $derived(!!codexStatus?.authenticated)
   const compatibleProviders = $derived($settings?.compatibleProviders ?? [])
   const extraReady = $derived(
-    compatibleProviders.filter(compatibleConfigured).map((p) => p.id),
+    [...compatibleProviders.filter(compatibleConfigured).map((p) => p.id),
+      ...(chatGPTStatus?.authenticated && chatGPTStatus.modelCount > 0 ? [PROVIDER_CHATGPT] : [])],
   )
 
   let addCompatOpen = $state(false)
@@ -415,6 +429,59 @@
       .catch(() => { codexStatus = null })
       .finally(() => { codexBusy = false })
   }
+
+  async function signInCodex() {
+    const attempt = ++codexLoginAttempt
+    codexLoginStarting = true
+    codexLoginError = ''
+    let loginID = ''
+    try {
+      const login = await SettingsService.StartCodexLogin()
+      loginID = login.loginId
+      if (attempt !== codexLoginAttempt) {
+        await SettingsService.CancelCodexLogin(loginID)
+        return
+      }
+      codexLoginID = loginID
+      codexLoginStarting = false
+      await openExternalUrl(login.authUrl)
+      const status = await SettingsService.WaitCodexLogin(loginID)
+      if (attempt !== codexLoginAttempt) return
+      codexStatus = status
+      const next = await SettingsService.GetSettings()
+      if (attempt !== codexLoginAttempt) return
+      settings.set(next)
+      codexKeyDraft = ''
+      codexKeyDirty = false
+      codexKeyTest = null
+      invalidateModelCatalog()
+      void refreshProviderUsage()
+      pushToast('success', 'Signed in to Codex')
+    } catch (err) {
+      if (attempt === codexLoginAttempt) {
+        codexLoginError = bridgeErrorMessage(err) || 'Could not sign in to Codex'
+      }
+      if (loginID) await SettingsService.CancelCodexLogin(loginID).catch(() => {})
+    } finally {
+      if (attempt === codexLoginAttempt) {
+        codexLoginStarting = false
+        codexLoginID = ''
+      }
+    }
+  }
+
+  function cancelCodexLogin() {
+    ++codexLoginAttempt
+    const loginID = codexLoginID
+    codexLoginID = ''
+    codexLoginStarting = false
+    if (loginID) void callOk(SettingsService.CancelCodexLogin(loginID), 'Could not cancel Codex sign-in')
+  }
+
+  $effect(() => {
+    if ($settingsSection !== 'agent' || !codexOn) return
+    return cancelCodexLogin
+  })
 
   // ---- Bridge install ----
   // The bridge is ~50MB compressed / ~155MB unpacked (a bundled Node runtime),
@@ -1410,6 +1477,19 @@
       .then(() => { void refreshProviderUsage() })
   }
 
+  function setOpenAIEnabled(on: boolean) {
+    if (!$settings) return
+    let disabled = $settings.disabledProviders
+    for (const slug of openAIProviders) {
+      if (!on && !canDisableProvider(slug, disabled, cursorReady, codexReady, extraReady)) {
+        pushToast('error', 'Keep at least one provider on')
+        return
+      }
+      disabled = toggleDisabledName(disabled, slug, on)
+    }
+    void patchSettings({ disabledProviders: disabled }).then(() => { void refreshProviderUsage() })
+  }
+
   const catalogPatchKeys: (keyof SettingsPatch)[] = ['compatibleProviders', 'disabledProviders', 'codexApiKey', 'codexChatGPTAuth', 'codexBinPath']
 
   function patchSettings(patch: SettingsPatch): Promise<typeof $settings | null> {
@@ -1835,8 +1915,14 @@
                   </div>
               </SettingsGroup>
 
+              <SettingsGroup title="OpenAI" blurb="Connect a ChatGPT account, use a Codex runtime, or configure an API endpoint." override={openAIOn} overrideLabel="Enable OpenAI" onOverrideChange={setOpenAIEnabled}>
+              <SettingsGroup class="set-subsec-nested" title="ChatGPT account" override={chatGPTOn} overrideLabel="Enable ChatGPT" onOverrideChange={(on) => setProviderEnabled(PROVIDER_CHATGPT, on)}>
+                <ChatGPTProviderCard onstatus={(status) => { chatGPTStatus = status }} />
+              </SettingsGroup>
+
               <SettingsGroup
-                title="Codex"
+                class="set-subsec-nested"
+                title="Codex runtime"
                 override={codexOn}
                 overrideLabel="Enable Codex"
                 onOverrideChange={(on) => setProviderEnabled(PROVIDER_CODEX, on)}
@@ -1846,6 +1932,12 @@
                     <div class="acct-status">
                       {#if codexBusy && !codexStatus}
                         <div class="acct-status-head muted">Checking…</div>
+                      {:else if codexStatus && !codexStatus.binInstalled}
+                        <div class="acct-status-head bad">
+                          <span class="acct-status-dot" aria-hidden="true"></span>
+                          {codexStatus.error || 'Codex binary not found'}
+                        </div>
+                        <div class="set-desc">Install Codex or set its native Binary path below.</div>
                       {:else if !codexConfigured}
                         <div class="acct-status-head bad">
                           <span class="acct-status-dot" aria-hidden="true"></span>
@@ -1856,7 +1948,7 @@
                             <div class="acct-status-row"><dt>Path</dt><dd title={codexStatus.binPath}>{codexStatus.binPath}</dd></div>
                           </dl>
                         {/if}
-                        <div class="set-desc">Add an API key or enable ChatGPT auth below to connect Codex models.</div>
+                        <div class="set-desc">Sign in with ChatGPT or add an API key below to connect Codex models.</div>
                       {:else if codexStatus?.authenticated}
                         <div class="acct-status-head ok">
                           <span class="acct-status-dot" aria-hidden="true"></span>
@@ -1876,7 +1968,6 @@
                             <div class="acct-status-row"><dt>Email</dt><dd>{codexStatus.email}</dd></div>
                           {/if}
                         </dl>
-                        <div class="set-desc">To switch ChatGPT accounts, run <code>codex login</code> in your terminal.</div>
                       {:else}
                         <div class="acct-status-head bad">
                           <span class="acct-status-dot" aria-hidden="true"></span>
@@ -1890,7 +1981,7 @@
                         {#if !codexStatus?.binInstalled}
                           <div class="set-desc">Install with <code>brew install --cask codex</code>, or set a path / <code>$RECUR_CODEX</code>.</div>
                         {:else}
-                          <div class="set-desc">Set an API key or enable ChatGPT auth, or run <code>codex login</code> in your terminal.</div>
+                          <div class="set-desc">Sign in with ChatGPT below, reuse an existing CLI login, or set an API key.</div>
                         {/if}
                       {/if}
                     </div>
@@ -1898,8 +1989,27 @@
 
                   <div class="set-row">
                     <div class="set-copy">
+                      <div class="set-title">ChatGPT account</div>
+                      <div class="set-desc">{codexLoginStarting ? 'Starting sign-in…' : codexLoginID ? 'Complete sign-in in your browser. This can take up to five minutes.' : 'Sign in through your browser to use your ChatGPT plan. Credentials are saved in Recur’s data directory.'}</div>
+                      {#if codexLoginError}
+                        <div class="set-field-msg bad" role="alert">{codexLoginError}</div>
+                      {/if}
+                    </div>
+                    <div class="set-ctrl">
+                      {#if codexSigningIn}
+                        <button class="tbtn" type="button" onclick={cancelCodexLogin}>Cancel sign-in</button>
+                      {:else}
+                        <button class="tbtn" type="button" disabled={codexKeyTesting} onclick={signInCodex}>
+                          {codexReady && $settings.codexChatGPTAuth ? 'Switch ChatGPT account' : 'Sign in with ChatGPT'}
+                        </button>
+                      {/if}
+                    </div>
+                  </div>
+
+                  <div class="set-row">
+                    <div class="set-copy">
                       <div class="set-title">Use ChatGPT login</div>
-                      <div class="set-desc">Reuse the account from <code>codex login</code> on this machine.</div>
+                      <div class="set-desc">Use the account signed in above, or reuse an existing <code>codex login</code> on this machine.</div>
                     </div>
                     <div class="set-ctrl">
                       <button
@@ -1908,6 +2018,7 @@
                         class:on={!!$settings.codexChatGPTAuth}
                         aria-label="toggle Codex ChatGPT auth"
                         aria-pressed={!!$settings.codexChatGPTAuth}
+                        disabled={codexSigningIn}
                         onclick={() => {
                           const next = !$settings!.codexChatGPTAuth
                           codexBusy = true
@@ -1947,6 +2058,7 @@
                           autocomplete="off"
                           spellcheck="false"
                           aria-label="Codex API key"
+                          disabled={codexSigningIn}
                           value={codexKeyDraft}
                           oninput={(e) => {
                             codexKeyDraft = e.currentTarget.value
@@ -1965,8 +2077,8 @@
                         >
                           <Icon name={codexKeyVisible ? 'eye-off' : 'eye'} />
                         </button>
-                        <button class="tbtn" type="button" disabled={codexKeyTesting || !codexKeyDraft} onclick={testCodexKey}>Test</button>
-                        <button class="tbtn" type="button" disabled={!codexKeyDirty || codexKeyTesting} onclick={saveCodexKey}>Save</button>
+                        <button class="tbtn" type="button" disabled={codexSigningIn || codexKeyTesting || !codexKeyDraft} onclick={testCodexKey}>Test</button>
+                        <button class="tbtn" type="button" disabled={codexSigningIn || !codexKeyDirty || codexKeyTesting} onclick={saveCodexKey}>Save</button>
                       </div>
                       {#if codexKeyTesting}
                         <div class="set-field-msg muted">Testing…</div>
@@ -2000,7 +2112,7 @@
                         {#if codexStatus?.binInstalled}
                           Found{codexStatus.binPath ? ` · ${codexStatus.binPath}` : ''}
                         {:else}
-                          Install with <code>brew install --cask codex</code>, or set a path / <code>$RECUR_CODEX</code>
+                          Install Codex from <a href="https://github.com/openai/codex/releases" target="_blank" rel="noreferrer">official releases</a>, or set a native binary path / <code>$RECUR_CODEX</code>
                         {/if}
                       </div>
                     </div>
@@ -2020,7 +2132,14 @@
                 </div>
               </SettingsGroup>
 
-              {#each compatibleProviders as p (p.id)}
+              {#each compatibleProviders.filter((p) => p.id === 'openai') as p (p.id)}
+                <SettingsGroup class="set-subsec-nested" title="API endpoint" override={providerEnabled($settings.disabledProviders, p.id)} overrideLabel="Enable OpenAI API endpoint" onOverrideChange={(on) => setProviderEnabled(p.id, on)}>
+                  <CompatibleProviderCard provider={p} testing={!!compatTesting[p.id]} testMsg={compatTest[p.id] ?? null} onChange={updateCompatible} onTest={() => void testCompatible(p)} onRemove={() => removeCompatible(p.id)} />
+                </SettingsGroup>
+              {/each}
+              </SettingsGroup>
+
+              {#each compatibleProviders.filter((p) => p.id !== 'openai') as p (p.id)}
                 <SettingsGroup
                   title={p.name || p.id}
                   override={providerEnabled($settings.disabledProviders, p.id)}

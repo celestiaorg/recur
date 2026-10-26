@@ -13,6 +13,8 @@ func ProviderLabel(provider string) string {
 		return "Cursor"
 	case ProviderCodex:
 		return "Codex"
+	case ProviderChatGPT:
+		return "ChatGPT"
 	case ProviderClaudeCode:
 		return "Claude Code"
 	default:

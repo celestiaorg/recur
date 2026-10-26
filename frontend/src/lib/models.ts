@@ -60,11 +60,11 @@ export function flagsEqual(a: FlagMap, b: FlagMap): boolean {
 /** Flatten ListModelCatalog groups into picker rows. */
 export function flattenModelCatalog(groups: Awaited<ReturnType<typeof SettingsService.ListModelCatalog>> | null | undefined): CatalogModel[] {
   if (!groups?.length) return []
-  return groups.flatMap((g) =>
+  const models = groups.flatMap((g) =>
     (g.models ?? []).map((m) => ({
       ref: m.ref,
       label: m.label,
-      group: g.label,
+      group: g.provider === 'chatgpt' || g.provider === 'codex' ? 'OpenAI' : g.label,
       provider: g.provider,
       flags: (m.flags ?? []).map((f) => ({
         id: f.id,
@@ -77,6 +77,16 @@ export function flattenModelCatalog(groups: Awaited<ReturnType<typeof SettingsSe
       })),
     })),
   )
+  // Keep the brand in one picker section while refs still identify the runner.
+  const first = models.findIndex((m) => m.group === 'OpenAI')
+  if (first < 0) return models
+  const openAI = models.filter((m) => m.group === 'OpenAI')
+  const multipleRuntimes = new Set(openAI.map((m) => m.provider)).size > 1
+  return [
+    ...models.slice(0, first),
+    ...openAI.map((m) => ({ ...m, label: multipleRuntimes ? `${m.label} (${m.provider === 'chatgpt' ? 'ChatGPT' : m.provider === 'codex' ? 'Codex' : 'API'})` : m.label })),
+    ...models.slice(first).filter((m) => m.group !== 'OpenAI'),
+  ]
 }
 
 let catalogCache: CatalogModel[] | null = null
@@ -142,7 +152,7 @@ export function shortModelLabel(ref: string): string {
   const i = ref.indexOf('/')
   const id = i >= 0 ? ref.slice(i + 1) : ref
   const provider = i >= 0 ? ref.slice(0, i) : ''
-  if (provider === 'codex' || provider === 'openai') {
+  if (provider === 'codex' || provider === 'openai' || provider === 'chatgpt') {
     return friendlyCodexSlug(id)
   }
   return id

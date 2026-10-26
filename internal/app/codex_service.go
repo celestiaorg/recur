@@ -123,7 +123,7 @@ func (s *SettingsService) probeCodex(bin, apiKey string, chatGPTAuth bool) (code
 		return codexProbe{}, fmt.Errorf("account/read: %w", err)
 	}
 	if acct.Account == nil {
-		return codexProbe{}, fmt.Errorf("not authenticated — set an API key or run `codex login`")
+		return codexProbe{}, fmt.Errorf("not authenticated: sign in with ChatGPT in Settings or set an API key")
 	}
 	models, _ := client.ModelList(ctx, 50)
 	return codexProbe{

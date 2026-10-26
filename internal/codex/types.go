@@ -70,6 +70,19 @@ type AccountReadResult struct {
 	RequiresOpenaiAuth bool     `json:"requiresOpenaiAuth"`
 }
 
+// LoginStartResult is the managed ChatGPT browser login returned by Codex.
+type LoginStartResult struct {
+	LoginID string `json:"loginId"`
+	AuthURL string `json:"authUrl"`
+}
+
+// LoginCompleted is the account/login/completed notification.
+type LoginCompleted struct {
+	LoginID string `json:"loginId"`
+	Success bool   `json:"success"`
+	Error   string `json:"error"`
+}
+
 // ThreadStartParams for thread/start.
 type ThreadStartParams struct {
 	Model                 string `json:"model,omitempty"`

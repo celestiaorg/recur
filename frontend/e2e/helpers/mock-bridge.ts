@@ -1174,6 +1174,7 @@ export const resolvers: Record<string, Resolver> = {
     plan: '',
     error: 'Not logged in. Run `codex login`.',
   }),
+  GetChatGPTStatus: () => ({ authenticated: false, accountId: '', email: '', accounts: [], modelCount: 0, error: '' }),
   GetCursorStatus: () => ({
     bridgeInstalled: true,
     bridgePath: '/tmp/cursor-sdk-bridge',

@@ -3,6 +3,7 @@ import { nameListed, toggleDisabledName } from './skills'
 export const PROVIDER_CLAUDE = 'claude-code'
 export const PROVIDER_CURSOR = 'cursor'
 export const PROVIDER_CODEX = 'codex'
+export const PROVIDER_CHATGPT = 'chatgpt'
 
 const CATALOGUE_PROVIDERS = [PROVIDER_CLAUDE, PROVIDER_CURSOR, PROVIDER_CODEX] as const
 

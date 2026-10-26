@@ -7,6 +7,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as chatgpt$0 from "../chatgpt/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as domain$0 from "../domain/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -15,6 +18,17 @@ import * as usage$0 from "../usage/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
+
+export function CancelChatGPTLogin(loginID: string): $CancellablePromise<void> {
+    return $Call.ByID(2097363624, loginID);
+}
+
+/**
+ * CancelCodexLogin cancels only the specified attempt, leaving newer logins alone.
+ */
+export function CancelCodexLogin(loginID: string): $CancellablePromise<void> {
+    return $Call.ByID(978358184, loginID);
+}
 
 /**
  * CancelCursorUsageConnect aborts an in-flight Connect Cursor login.
@@ -60,6 +74,12 @@ export function DetectAgent(): $CancellablePromise<string> {
     return $Call.ByID(1994472098);
 }
 
+export function DisconnectChatGPT(): $CancellablePromise<$models.ChatGPTStatus> {
+    return $Call.ByID(2163545751).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
 /**
  * DisconnectCursorUsage deletes Recur-owned Cursor Connect tokens and the
  * minted SDK key. A leftover pasted key is also cleared — Connect is the
@@ -67,6 +87,12 @@ export function DetectAgent(): $CancellablePromise<string> {
  */
 export function DisconnectCursorUsage(): $CancellablePromise<void> {
     return $Call.ByID(3276988365);
+}
+
+export function GetChatGPTStatus(): $CancellablePromise<$models.ChatGPTStatus> {
+    return $Call.ByID(339100279).then(($result: any) => {
+        return $$createType3($result);
+    });
 }
 
 /**
@@ -79,7 +105,7 @@ export function DisconnectCursorUsage(): $CancellablePromise<void> {
  */
 export function GetClaudeStatus(): $CancellablePromise<$models.ClaudeStatus> {
     return $Call.ByID(2066424394).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -88,7 +114,7 @@ export function GetClaudeStatus(): $CancellablePromise<$models.ClaudeStatus> {
  */
 export function GetCodexStatus(): $CancellablePromise<$models.CodexStatus> {
     return $Call.ByID(3347632711).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -100,7 +126,7 @@ export function GetCodexStatus(): $CancellablePromise<$models.CodexStatus> {
  */
 export function GetCursorStatus(): $CancellablePromise<$models.CursorStatus> {
     return $Call.ByID(224370346).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -117,7 +143,7 @@ export function GetInstanceLabel(): $CancellablePromise<string> {
  */
 export function GetProviderUsage(): $CancellablePromise<usage$0.Snapshot> {
     return $Call.ByID(1657675638).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
@@ -126,13 +152,13 @@ export function GetProviderUsage(): $CancellablePromise<usage$0.Snapshot> {
  */
 export function GetResource(): $CancellablePromise<domain$0.Resource> {
     return $Call.ByID(897054290).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
 export function GetSettings(): $CancellablePromise<domain$0.Settings> {
     return $Call.ByID(1970920575).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -156,7 +182,7 @@ export function GitHubLogin(): $CancellablePromise<string> {
  */
 export function InstallCursorBridge(): $CancellablePromise<$models.CursorStatus> {
     return $Call.ByID(792986222).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -168,7 +194,7 @@ export function InstallCursorBridge(): $CancellablePromise<$models.CursorStatus>
  */
 export function ListAssignedIssues(): $CancellablePromise<$models.AssignedIssue[]> {
     return $Call.ByID(892580006).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType11($result);
     });
 }
 
@@ -188,7 +214,7 @@ export function ListAssignedIssues(): $CancellablePromise<$models.AssignedIssue[
  */
 export function ListModelCatalog(): $CancellablePromise<$models.ModelGroup[]> {
     return $Call.ByID(119155786).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType13($result);
     });
 }
 
@@ -199,7 +225,7 @@ export function ListModelCatalog(): $CancellablePromise<$models.ModelGroup[]> {
  */
 export function ListMonospaceFonts(): $CancellablePromise<string[]> {
     return $Call.ByID(2980539313).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType14($result);
     });
 }
 
@@ -221,11 +247,20 @@ export function OpenLinearInApp(raw: string): $CancellablePromise<boolean> {
 }
 
 /**
+ * RefreshChatGPTModels queries the signed-in ChatGPT Codex model catalogue.
+ */
+export function RefreshChatGPTModels(): $CancellablePromise<$models.ChatGPTStatus> {
+    return $Call.ByID(3597568274).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * RefreshProviderUsage forces a fetch, joining any in-flight collect.
  */
 export function RefreshProviderUsage(): $CancellablePromise<usage$0.Snapshot> {
     return $Call.ByID(1577098019).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
@@ -239,7 +274,26 @@ export function RevealLogs(): $CancellablePromise<void> {
 
 export function SetSettings($set: domain$0.Settings): $CancellablePromise<domain$0.Settings> {
     return $Call.ByID(742407715, $set).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
+    });
+}
+
+/**
+ * StartChatGPTLogin starts Codex-compatible browser or headless sign-in.
+ * An empty accountID allows a new account; a saved ID pins the selected account.
+ */
+export function StartChatGPTLogin(accountID: string, method: string): $CancellablePromise<chatgpt$0.Login> {
+    return $Call.ByID(648907926, accountID, method).then(($result: any) => {
+        return $$createType15($result);
+    });
+}
+
+/**
+ * StartCodexLogin starts a Recur-owned ChatGPT browser sign-in. No CLI login is needed.
+ */
+export function StartCodexLogin(): $CancellablePromise<$models.CodexLogin> {
+    return $Call.ByID(3597485686).then(($result: any) => {
+        return $$createType16($result);
     });
 }
 
@@ -248,7 +302,7 @@ export function SetSettings($set: domain$0.Settings): $CancellablePromise<domain
  */
 export function TestCodexKey(apiKey: string, chatGPTAuth: boolean): $CancellablePromise<$models.CodexStatus> {
     return $Call.ByID(2186608480, apiKey, chatGPTAuth).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -258,7 +312,7 @@ export function TestCodexKey(apiKey: string, chatGPTAuth: boolean): $Cancellable
  */
 export function TestCompatibleProvider(p: domain$0.CompatibleProvider): $CancellablePromise<$models.CompatibleTestResult> {
     return $Call.ByID(2350671109, p).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType17($result);
     });
 }
 
@@ -268,6 +322,21 @@ export function TestCompatibleProvider(p: domain$0.CompatibleProvider): $Cancell
  */
 export function TestCursorKey(apiKey: string): $CancellablePromise<$models.CursorStatus> {
     return $Call.ByID(2010656227, apiKey).then(($result: any) => {
+        return $$createType6($result);
+    });
+}
+
+export function WaitChatGPTLogin(loginID: string): $CancellablePromise<$models.ChatGPTStatus> {
+    return $Call.ByID(923420319, loginID).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
+ * WaitCodexLogin waits for browser sign-in, then selects the signed-in ChatGPT account.
+ */
+export function WaitCodexLogin(loginID: string): $CancellablePromise<$models.CodexStatus> {
+    return $Call.ByID(2370029731, loginID).then(($result: any) => {
         return $$createType5($result);
     });
 }
@@ -276,15 +345,18 @@ export function TestCursorKey(apiKey: string): $CancellablePromise<$models.Curso
 const $$createType0 = domain$0.CompatibleFlagDim.createFrom;
 const $$createType1 = $Create.Array($$createType0);
 const $$createType2 = usage$0.CursorUsageConnect.createFrom;
-const $$createType3 = $models.ClaudeStatus.createFrom;
-const $$createType4 = $models.CodexStatus.createFrom;
-const $$createType5 = $models.CursorStatus.createFrom;
-const $$createType6 = usage$0.Snapshot.createFrom;
-const $$createType7 = domain$0.Resource.createFrom;
-const $$createType8 = domain$0.Settings.createFrom;
-const $$createType9 = $models.AssignedIssue.createFrom;
-const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = $models.ModelGroup.createFrom;
-const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = $Create.Array($Create.Any);
-const $$createType14 = $models.CompatibleTestResult.createFrom;
+const $$createType3 = $models.ChatGPTStatus.createFrom;
+const $$createType4 = $models.ClaudeStatus.createFrom;
+const $$createType5 = $models.CodexStatus.createFrom;
+const $$createType6 = $models.CursorStatus.createFrom;
+const $$createType7 = usage$0.Snapshot.createFrom;
+const $$createType8 = domain$0.Resource.createFrom;
+const $$createType9 = domain$0.Settings.createFrom;
+const $$createType10 = $models.AssignedIssue.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = $models.ModelGroup.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = $Create.Array($Create.Any);
+const $$createType15 = chatgpt$0.Login.createFrom;
+const $$createType16 = $models.CodexLogin.createFrom;
+const $$createType17 = $models.CompatibleTestResult.createFrom;

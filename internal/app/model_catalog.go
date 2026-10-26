@@ -371,6 +371,10 @@ func buildModelCatalog(set domain.Settings, cursorModels []cursor.Model, codexMo
 			Models:   compatibleCatalogModels(p),
 		})
 	}
+	if set.ProviderOffersModels(domain.ProviderChatGPT) {
+		p := set.ChatGPTProvider()
+		groups = append(groups, ModelGroup{Provider: p.ID, Label: p.Name, Models: compatibleCatalogModels(p)})
+	}
 	return groups
 }
 

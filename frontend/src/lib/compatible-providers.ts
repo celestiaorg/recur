@@ -15,7 +15,7 @@ export const COMPATIBLE_WIRES = [
   { value: 'max_output_tokens', label: 'max_output_tokens' },
 ] as const
 
-export const RESERVED_PROVIDER_SLUGS = ['claude-code', 'cursor', 'codex', 'anthropic', 'gemini', 'ollama']
+export const RESERVED_PROVIDER_SLUGS = ['claude-code', 'cursor', 'codex', 'chatgpt', 'anthropic', 'gemini', 'ollama']
 
 export const COMPATIBLE_SLUG_RE = /^[a-z][a-z0-9-]{0,47}$/
 

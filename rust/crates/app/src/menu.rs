@@ -438,3 +438,22 @@ mod tests {
         assert_eq!(menu_action_name(&About), None);
     }
 }
+
+static REBUILDS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static REBUILD_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Native menubar rebuilds so far and the time they took (each lays out the whole menubar in
+/// AppKit on the UI thread).
+pub fn rebuilds() -> (u64, std::time::Duration) {
+    use std::sync::atomic::Ordering;
+    (
+        REBUILDS.load(Ordering::Relaxed),
+        std::time::Duration::from_nanos(REBUILD_NANOS.load(Ordering::Relaxed)),
+    )
+}
+
+pub(crate) fn count_rebuild(took: std::time::Duration) {
+    use std::sync::atomic::Ordering;
+    REBUILDS.fetch_add(1, Ordering::Relaxed);
+    REBUILD_NANOS.fetch_add(took.as_nanos() as u64, Ordering::Relaxed);
+}

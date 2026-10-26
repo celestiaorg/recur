@@ -1160,6 +1160,8 @@ fn drive(root: PathBuf) -> i32 {
             }
             let mut slow = r.slow.clone();
             slow.sort_by_key(|s| std::cmp::Reverse(s.0));
+            let (n, took) = recur_app::menu::rebuilds();
+            say(start, format!("{n} menubar rebuilds in {took:.0?}"));
             say(
                 start,
                 format!("{} frames over 500ms; the slowest:", slow.len()),
@@ -1278,6 +1280,7 @@ fn rusage() -> (i64, i64, i64) {
 
 fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     let usage = rusage();
+    let menus = recur_app::menu::rebuilds();
     let t = Instant::now();
     FRAME_START.store(now_ms(), Ordering::SeqCst);
     let _ = cx.update_window(window, |_, window, cx| {
@@ -1301,11 +1304,14 @@ fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
         if took > Duration::from_secs(2) || std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
             let now = rusage();
+            let rebuilt = recur_app::menu::rebuilds();
             println!(
-                "slow frame {took:.0?} at {s} ({} faults, {} reclaims, {} preemptions): {}",
+                "slow frame {took:.0?} at {s} ({} faults, {} reclaims, {} preemptions, {} menubar rebuilds in {:.0?}): {}",
                 now.0 - usage.0,
                 now.1 - usage.1,
                 now.2 - usage.2,
+                rebuilt.0 - menus.0,
+                rebuilt.1.saturating_sub(menus.1),
                 view_list(&renders)
             );
         }

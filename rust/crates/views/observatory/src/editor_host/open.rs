@@ -25,8 +25,9 @@ use crate::workspace_file::{
     fetch_workspace_file_text, file_needs_http_body, is_binary_preview_mime,
 };
 
-/// The outline poll while the TextMate idle fill catches up (`outlineOpenFile` retry).
-const OUTLINE_RETRY_MS: u64 = 120;
+/// The outline poll while the TextMate idle fill catches up (`outlineOpenFile` retry): each
+/// poll fills `OUTLINE_FILL_SLICE` on the UI thread.
+const OUTLINE_RETRY_MS: u64 = 24;
 
 fn domain_symbols(v: Vec<recur_textmate::OutlineSymbol>) -> Vec<OutlineSymbol> {
     v.into_iter()

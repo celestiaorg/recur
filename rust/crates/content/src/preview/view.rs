@@ -172,7 +172,12 @@ impl FilePreview {
                 Surface::Markdown(v.clone())
             }
             (PreviewKind::Markdown, _) => {
-                let v = cx.new(|cx| MarkdownView::new(content, MarkdownClass::MdDoc, false, cx));
+                let handle = self.handle.clone();
+                let v = cx.new(|cx| {
+                    let mut v = MarkdownView::new(content, MarkdownClass::MdDoc, false, cx);
+                    v.set_scroller(handle);
+                    v
+                });
                 // `MutationObserver`: re-collect matches when the rendered tree changes.
                 self._subs.push(cx.guarded_subscribe_in(
                     &v,
@@ -458,6 +463,18 @@ impl FilePreview {
         match &self.surface {
             Surface::Markdown(v) => {
                 let Some(b) = v.read(cx).range_bounds(id, r, window) else {
+                    // A block a long document has not laid out: scroll to where it sits,
+                    // then reveal the match once it has painted.
+                    let Some(y) = v.read(cx).text_top(id) else {
+                        return;
+                    };
+                    let half = f32::from(self.handle.bounds().size.height) / 2.;
+                    let mut s = HandleScroller(&self.handle);
+                    let left = s.left();
+                    s.set(f64::from(y - half), left);
+                    v.update(cx, |_, cx| cx.notify());
+                    self.reveal_when_laid(3, window, cx);
+                    cx.notify();
                     return;
                 };
                 let view = self.handle.bounds();
@@ -482,6 +499,27 @@ impl FilePreview {
             Surface::Mermaid(m) => m.update(cx, |m, cx| m.reveal(id, r, window, cx)),
             _ => {}
         }
+    }
+
+    /// Reveals the current match once its block has painted, checking before each of the
+    /// next `tries` frames.
+    fn reveal_when_laid(&mut self, tries: usize, window: &mut Window, cx: &mut Context<Self>) {
+        cx.on_next_frame(window, move |p, window, cx| {
+            let Surface::Markdown(v) = &p.surface else {
+                return;
+            };
+            let laid = p
+                .index
+                .checked_sub(1)
+                .and_then(|i| p.matches.ranges.get(i))
+                .and_then(|(id, r)| v.read(cx).range_bounds(*id, r.clone(), window))
+                .is_some();
+            if laid {
+                p.reveal(window, cx);
+            } else if tries > 1 {
+                p.reveal_when_laid(tries - 1, window, cx);
+            }
+        });
     }
 
     fn on_page(&mut self, ev: &HtmlPreviewEvent, window: &mut Window, cx: &mut Context<Self>) {

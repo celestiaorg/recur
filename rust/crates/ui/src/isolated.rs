@@ -80,6 +80,7 @@ pub struct IsolatedArea {
     view: Entity<FieldView>,
     area: Entity<TextareaState>,
     rows: (usize, usize),
+    redraws: Rc<Cell<Option<EntityId>>>,
     _sub: Subscription,
 }
 
@@ -95,6 +96,8 @@ impl IsolatedArea {
             FieldView::new(move |_, _| Textarea::new(&area).into_any_element(), cx)
         };
         let shown = Cell::new(None);
+        let redraws: Rc<Cell<Option<EntityId>>> = Rc::default();
+        let target = redraws.clone();
         let sub = cx.guarded_subscribe(area, move |_, area, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 let now = (
@@ -102,7 +105,10 @@ impl IsolatedArea {
                     textarea_rows(&area, rows, cx),
                 );
                 if shown.replace(Some(now)) != Some(now) {
-                    cx.notify();
+                    match target.get() {
+                        Some(part) => gpui_kit::App::notify(cx, part),
+                        None => cx.notify(),
+                    }
                 }
             }
         });
@@ -110,8 +116,16 @@ impl IsolatedArea {
             view,
             area: area.clone(),
             rows,
+            redraws,
             _sub: sub,
         }
+    }
+
+    /// Notify `part` (the [`Part`] drawing what derives from the field) instead of the host:
+    /// a host notify also wakes everything observing the host (its cached panes, the items
+    /// of a conversation).
+    pub fn redraws(&self, part: EntityId) {
+        self.redraws.set(Some(part));
     }
 
     /// The textarea, in a box whose text has `line_height`.
@@ -164,5 +178,41 @@ impl Fit {
             .flex_none()
             .h(px(self.height.get().unwrap_or(estimate)));
         crate::style::isolated_view(entity, style.style().clone(), cx)
+    }
+}
+
+/// A region of `owner` as its own uncached view: rendered whenever `owner` renders, and alone
+/// notifiable. Notifying it draws a frame that renders it and the views above it without
+/// waking what observes `owner` ([`IsolatedArea::redraws`]). It adds no layout node.
+pub struct Part<V: 'static> {
+    owner: gpui_kit::WeakEntity<V>,
+    body: fn(&mut V, &mut Window, &mut Context<V>) -> AnyElement,
+}
+
+impl<V: 'static> Part<V> {
+    /// A part for `owner`'s region `body`, from `owner`'s own context.
+    pub fn of(
+        owner: &mut Context<V>,
+        body: fn(&mut V, &mut Window, &mut Context<V>) -> AnyElement,
+    ) -> Entity<Self> {
+        let owner_ref = owner.entity().downgrade();
+        owner.new(|_| Part {
+            owner: owner_ref,
+            body,
+        })
+    }
+
+    fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let body = self.body;
+        match self.owner.upgrade() {
+            Some(owner) => owner.update(cx, |o, cx| body(o, window, cx)),
+            None => div().into_any_element(),
+        }
+    }
+}
+
+impl<V: 'static> Render for Part<V> {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        crate::guard::view(self, window, cx, Self::render_view)
     }
 }

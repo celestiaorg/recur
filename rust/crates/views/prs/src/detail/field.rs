@@ -97,6 +97,11 @@ impl Field {
         self.isolated.element(line_height, cx)
     }
 
+    /// Redraw `part` rather than the host when the box turns empty or not.
+    pub fn redraws(&self, part: gpui_kit::EntityId) {
+        self.isolated.redraws(part);
+    }
+
     pub fn value(&self, cx: &App) -> String {
         self.area.read(cx).value().to_string()
     }

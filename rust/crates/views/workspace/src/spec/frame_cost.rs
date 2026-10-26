@@ -382,3 +382,34 @@ async fn a_key_in_the_commit_message_renders_the_box_only(cx: &mut TestAppContex
         "a commit key rendered beside the box: {counts:?}"
     );
 }
+
+/// The keys that empty the commit message and type into it again redraw its foot (the Commit
+/// button), never the Observatory's cached panes (the changes list).
+#[gpui::test]
+async fn a_key_that_empties_the_commit_message_leaves_the_panes_alone(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    s.open(ACTIVE);
+    let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
+    let focused =
+        s.cx.update(|window, cx| obs.update(cx, |o, cx| o.focus_commit_msg(window, cx)));
+    assert!(focused, "no commit box");
+    s.settle();
+    s.cx.simulate_input("a");
+    s.cx.run_until_parked();
+    recur_ui::guard::count_renders(true);
+    for k in ["backspace", "b", "backspace", "c"] {
+        s.cx.simulate_keystrokes(k);
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    assert!(
+        renders("::Part<recur_view_observatory::obs::Observatory>", &counts) >= 4,
+        "{counts:?}"
+    );
+    assert_eq!(
+        renders("::Pane<recur_view_observatory::obs::Observatory>", &counts),
+        0,
+        "{counts:?}"
+    );
+}

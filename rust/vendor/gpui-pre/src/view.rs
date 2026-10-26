@@ -581,18 +581,21 @@ fn prepaint_view(
                         bounds,
                     })
                 });
+                let recorded = island.is_some() || window.cached_depth == 0;
                 let (element, prepaint_range, accessed_entities) =
                     render_cached(bounds, island.is_some(), window, cx, render);
                 let accessed = match island {
                     Some(_) => Rc::new(accessed_entities.clone()),
                     None => Rc::default(),
                 };
-                let record = window.next_frame.push_cached_view(
-                    global_id.unwrap().clone(),
-                    prepaint_range.clone(),
-                    island,
-                    accessed,
-                );
+                let record = recorded.then(|| {
+                    window.next_frame.push_cached_view(
+                        global_id.unwrap().clone(),
+                        prepaint_range.clone(),
+                        island,
+                        accessed,
+                    )
+                });
 
                 (
                     Some(element),
@@ -605,7 +608,7 @@ fn prepaint_view(
                             content_mask,
                             text_style,
                         },
-                        record: Some(record),
+                        record,
                     },
                 )
             },
@@ -703,6 +706,8 @@ fn render_cached(
 ) -> (AnyElement, Range<PrepaintStateIndex>, FxHashSet<EntityId>) {
     let nested_off = window.refreshing || !isolated;
     let refreshing = mem::replace(&mut window.refreshing, nested_off);
+    let depth = window.cached_depth;
+    window.cached_depth = if isolated { 0 } else { depth + 1 };
     let prepaint_start = window.prepaint_index();
     let outer = isolated.then(|| mem::take(cx.entities.accessed_entities.get_mut()));
     let (element, mut accessed_entities) = cx.detect_accessed_entities(|cx| {
@@ -717,6 +722,7 @@ fn render_cached(
     }
     let prepaint_end = window.prepaint_index();
     window.refreshing = refreshing;
+    window.cached_depth = depth;
     (element, prepaint_start..prepaint_end, accessed_entities)
 }
 

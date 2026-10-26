@@ -620,8 +620,12 @@ impl Observatory {
                 .w_full(),
             cx,
         );
-        let foot = self.render_commit_foot(window, cx);
-        let _ = t;
+        let foot = self
+            .commit_foot
+            .get_or_insert_with(|| recur_ui::isolated::Part::of(cx, Self::render_commit_foot))
+            .clone();
+        self.inputs.commit_view.redraws(foot.entity_id());
+        let _ = (t, window);
         root.child(body).child(foot).into_any_element()
     }
 

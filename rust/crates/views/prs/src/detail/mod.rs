@@ -91,6 +91,8 @@ pub struct PrDetail {
     reset_pr: String,
     /// What PR detail shows of the store as of its last store change (`store_changed`).
     store_key: Option<StoreKey>,
+    /// The comment box and its buttons, redrawn alone when the box turns empty or not.
+    composer_part: Option<Entity<recur_ui::isolated::Part<PrDetail>>>,
     on_route: bool,
     pub(crate) refreshing: bool,
     pub(crate) hydrate_give_up: bool,
@@ -331,6 +333,7 @@ impl PrDetail {
             render_pr: None,
             render_comments: None,
             store_key: None,
+            composer_part: None,
             commits_scroll: ScrollHandle::new(),
             checks_scroll: ScrollHandle::new(),
             checks_box_scroll: ScrollHandle::new(),

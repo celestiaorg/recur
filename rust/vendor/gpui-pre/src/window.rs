@@ -1420,6 +1420,10 @@ pub struct Window {
     pub(crate) dirty_views: FxHashSet<EntityId>,
     /// A notify this frame reached a view outside every isolated view (or no view at all).
     dirty_outside_islands: bool,
+    /// How many cached views the view being drawn sits in, up to the nearest isolated one:
+    /// only views at depth 0 (and isolated ones) are drawn without an ancestor's replay, so
+    /// only those keep records.
+    pub(crate) cached_depth: usize,
     /// Isolated views drawn again inside a replay, waiting for the replay's paint: the
     /// previous frame's record, the element, and this frame's record.
     island_elements: Vec<(usize, AnyElement, usize)>,
@@ -2326,6 +2330,7 @@ impl Window {
             tooltip_bounds: None,
             dirty_views: FxHashSet::default(),
             dirty_outside_islands: false,
+            cached_depth: 0,
             island_elements: Vec::new(),
             last_accessed: FxHashSet::default(),
             focus_listeners: SubscriberSet::new(),
@@ -3771,6 +3776,9 @@ impl Window {
     /// renders an ancestor again finds what it replays (a replayed root moves them all).
     fn rebase_cached_view_states(&mut self) {
         let frame = &mut self.next_frame;
+        frame
+            .cached_views
+            .sort_by_key(|r| r.prepaint.start.dispatch_tree_index);
         for record in &frame.cached_views {
             if record.paint_pending {
                 continue;
@@ -4244,7 +4252,12 @@ impl Window {
     /// Replays `range` of the previous frame's prepaint, drawing any dirty isolated view in it
     /// again in place.
     pub(crate) fn reuse_prepaint(&mut self, range: Range<PrepaintStateIndex>, cx: &mut App) {
-        let mut holes: Vec<usize> = (0..self.rendered_frame.cached_views.len())
+        // The records inside `range` (sorted by where they start, `rebase_cached_view_states`).
+        let records = &self.rendered_frame.cached_views;
+        let (a, b) = (range.start.dispatch_tree_index, range.end.dispatch_tree_index);
+        let lo = records.partition_point(|r| r.prepaint.start.dispatch_tree_index < a);
+        let hi = lo + records[lo..].partition_point(|r| r.prepaint.start.dispatch_tree_index < b);
+        let mut holes: Vec<usize> = (lo..hi)
             .filter(|&ix| {
                 let record = &self.rendered_frame.cached_views[ix];
                 let p = &record.prepaint;
@@ -4256,7 +4269,6 @@ impl Window {
                     && p.end.dispatch_tree_index <= range.end.dispatch_tree_index
             })
             .collect();
-        holes.sort_by_key(|&ix| self.rendered_frame.cached_views[ix].prepaint.start.dispatch_tree_index);
         let mut outer_end = 0;
         holes.retain(|&ix| {
             let p = &self.rendered_frame.cached_views[ix].prepaint;
@@ -4295,7 +4307,7 @@ impl Window {
             .filter(|(.., copied)| !copied)
             .map(|(old, ..)| old.clone())
             .collect::<SmallVec<[_; 2]>>();
-        for ix in 0..self.rendered_frame.cached_views.len() {
+        for ix in lo..hi {
             let record = &self.rendered_frame.cached_views[ix];
             let p = &record.prepaint;
             let inside = |r: &Range<PrepaintStateIndex>| {

@@ -1900,7 +1900,12 @@ impl PrDetail {
                             .mt(px(14.))
                             .child(self.checks_card(pr, true, window, cx)),
                     );
-                    wrap = wrap.child(self.composer_box(window, cx));
+                    let part = self
+                        .composer_part
+                        .get_or_insert_with(|| recur_ui::isolated::Part::of(cx, Self::composer_box))
+                        .clone();
+                    self.composer.redraws(part.entity_id());
+                    wrap = wrap.child(part);
                 }
             }
         }

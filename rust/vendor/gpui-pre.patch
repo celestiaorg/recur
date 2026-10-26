@@ -154,7 +154,7 @@ index f0bf1211..a6dadf1f 100644
      pub fn new(
          platform_text_system: Arc<dyn PlatformTextSystem>,
 diff --git a/rust/vendor/gpui-pre/src/view.rs b/rust/vendor/gpui-pre/src/view.rs
-index 081edd9a..884462c2 100644
+index 081edd9a..7a5550ed 100644
 --- a/rust/vendor/gpui-pre/src/view.rs
 +++ b/rust/vendor/gpui-pre/src/view.rs
 @@ -2,13 +2,15 @@ use crate::{
@@ -259,7 +259,7 @@ index 081edd9a..884462c2 100644
      window: &mut Window,
      cx: &mut App,
      render: &mut dyn FnMut(&mut Window, &mut App) -> AnyElement,
-@@ -535,38 +560,52 @@ fn prepaint_view(
+@@ -535,38 +560,55 @@ fn prepaint_view(
                      && !window.refreshing
                  {
                      let prepaint_start = window.prepaint_index();
@@ -291,22 +291,25 @@ index 081edd9a..884462c2 100644
 +                        rem_size: window.rem_size(),
 +                        bounds,
 +                    })
-                 });
--
--                let prepaint_end = window.prepaint_index();
--                window.refreshing = refreshing;
++                });
++                let recorded = island.is_some() || window.cached_depth == 0;
 +                let (element, prepaint_range, accessed_entities) =
 +                    render_cached(bounds, island.is_some(), window, cx, render);
 +                let accessed = match island {
 +                    Some(_) => Rc::new(accessed_entities.clone()),
 +                    None => Rc::default(),
 +                };
-+                let record = window.next_frame.push_cached_view(
-+                    global_id.unwrap().clone(),
-+                    prepaint_range.clone(),
-+                    island,
-+                    accessed,
-+                );
++                let record = recorded.then(|| {
++                    window.next_frame.push_cached_view(
++                        global_id.unwrap().clone(),
++                        prepaint_range.clone(),
++                        island,
++                        accessed,
++                    )
+                 });
+-
+-                let prepaint_end = window.prepaint_index();
+-                window.refreshing = refreshing;
  
                  (
                      Some(element),
@@ -320,11 +323,11 @@ index 081edd9a..884462c2 100644
                              content_mask,
                              text_style,
                          },
-+                        record: Some(record),
++                        record,
                      },
                  )
              },
-@@ -606,16 +645,29 @@ fn paint_view(
+@@ -606,16 +648,29 @@ fn paint_view(
  
                      let paint_start = window.paint_index();
  
@@ -356,7 +359,7 @@ index 081edd9a..884462c2 100644
  
                      ((), element_state)
                  },
-@@ -637,3 +689,149 @@ fn paint_component(
+@@ -637,3 +692,152 @@ fn paint_component(
          element.as_mut().unwrap().paint(window, cx);
      });
  }
@@ -374,6 +377,8 @@ index 081edd9a..884462c2 100644
 +) -> (AnyElement, Range<PrepaintStateIndex>, FxHashSet<EntityId>) {
 +    let nested_off = window.refreshing || !isolated;
 +    let refreshing = mem::replace(&mut window.refreshing, nested_off);
++    let depth = window.cached_depth;
++    window.cached_depth = if isolated { 0 } else { depth + 1 };
 +    let prepaint_start = window.prepaint_index();
 +    let outer = isolated.then(|| mem::take(cx.entities.accessed_entities.get_mut()));
 +    let (element, mut accessed_entities) = cx.detect_accessed_entities(|cx| {
@@ -388,6 +393,7 @@ index 081edd9a..884462c2 100644
 +    }
 +    let prepaint_end = window.prepaint_index();
 +    window.refreshing = refreshing;
++    window.cached_depth = depth;
 +    (element, prepaint_start..prepaint_end, accessed_entities)
 +}
 +
@@ -507,7 +513,7 @@ index 081edd9a..884462c2 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..6cbf294b 100644
+index 1214b035..79d95581 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
 @@ -1057,6 +1057,122 @@ pub(crate) struct Frame {
@@ -698,12 +704,16 @@ index 1214b035..6cbf294b 100644
          self.focus = None;
  
          #[cfg(any(test, feature = "test-support"))]
-@@ -1254,6 +1418,13 @@ pub struct Window {
+@@ -1254,6 +1418,17 @@ pub struct Window {
      pub(crate) tooltip_bounds: Option<TooltipBounds>,
      pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
      pub(crate) dirty_views: FxHashSet<EntityId>,
 +    /// A notify this frame reached a view outside every isolated view (or no view at all).
 +    dirty_outside_islands: bool,
++    /// How many cached views the view being drawn sits in, up to the nearest isolated one:
++    /// only views at depth 0 (and isolated ones) are drawn without an ancestor's replay, so
++    /// only those keep records.
++    pub(crate) cached_depth: usize,
 +    /// Isolated views drawn again inside a replay, waiting for the replay's paint: the
 +    /// previous frame's record, the element, and this frame's record.
 +    island_elements: Vec<(usize, AnyElement, usize)>,
@@ -712,17 +722,18 @@ index 1214b035..6cbf294b 100644
      focus_listeners: SubscriberSet<(), AnyWindowFocusListener>,
      pub(crate) focus_lost_listeners: SubscriberSet<(), AnyObserver>,
      focus_lost_path: SmallVec<[FocusId; 8]>,
-@@ -2154,6 +2325,9 @@ impl Window {
+@@ -2154,6 +2329,10 @@ impl Window {
              next_tooltip_id: TooltipId::default(),
              tooltip_bounds: None,
              dirty_views: FxHashSet::default(),
 +            dirty_outside_islands: false,
++            cached_depth: 0,
 +            island_elements: Vec::new(),
 +            last_accessed: FxHashSet::default(),
              focus_listeners: SubscriberSet::new(),
              focus_lost_listeners: SubscriberSet::new(),
              focus_lost_path: SmallVec::new(),
-@@ -2251,16 +2425,28 @@ impl ContentMask<Pixels> {
+@@ -2251,16 +2430,28 @@ impl ContentMask<Pixels> {
  impl Window {
      fn mark_view_dirty(&mut self, view_id: EntityId) {
          // Mark ancestor views as dirty. If already in the `dirty_views` set, then all its ancestors
@@ -753,7 +764,7 @@ index 1214b035..6cbf294b 100644
      }
  
      pub(crate) fn refresh_visibility(&mut self, cx: &mut App) {
-@@ -3472,6 +3658,8 @@ impl Window {
+@@ -3472,6 +3663,8 @@ impl Window {
              }
          }
          self.dirty_views.clear();
@@ -762,7 +773,7 @@ index 1214b035..6cbf294b 100644
          self.next_frame.window_active = self.active.get();
  
          // Register requested input handler with the platform window.
-@@ -3506,6 +3694,7 @@ impl Window {
+@@ -3506,6 +3699,7 @@ impl Window {
          self.layout_engine.as_mut().unwrap().clear();
          self.text_system().finish_frame();
          self.next_frame.finish(&mut self.rendered_frame);
@@ -770,7 +781,7 @@ index 1214b035..6cbf294b 100644
  
          self.invalidator.set_phase(DrawPhase::Focus);
          let previous_focus_path = self.rendered_frame.focus_path();
-@@ -3578,9 +3767,29 @@ impl Window {
+@@ -3578,9 +3772,32 @@ impl Window {
          arena_scope.exit(&cx.element_arena)
      }
  
@@ -778,6 +789,9 @@ index 1214b035..6cbf294b 100644
 +    /// renders an ancestor again finds what it replays (a replayed root moves them all).
 +    fn rebase_cached_view_states(&mut self) {
 +        let frame = &mut self.next_frame;
++        frame
++            .cached_views
++            .sort_by_key(|r| r.prepaint.start.dispatch_tree_index);
 +        for record in &frame.cached_views {
 +            if record.paint_pending {
 +                continue;
@@ -800,7 +814,7 @@ index 1214b035..6cbf294b 100644
          let handle = self.handle;
          cx.record_entities_accessed(
              handle,
-@@ -3699,15 +3908,45 @@ impl Window {
+@@ -3699,15 +3916,45 @@ impl Window {
          let scale_factor = self.scale_factor();
          #[cfg(feature = "profiler")]
          let request_layout_start = Instant::now();
@@ -854,7 +868,7 @@ index 1214b035..6cbf294b 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          let inspector_element = self.prepaint_inspector(_inspector_width, cx);
-@@ -3743,7 +3982,16 @@ impl Window {
+@@ -3743,7 +3990,16 @@ impl Window {
          #[cfg(feature = "profiler")]
          let paint_start = Instant::now();
          self.invalidator.set_phase(DrawPhase::Paint);
@@ -872,7 +886,7 @@ index 1214b035..6cbf294b 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          self.paint_inspector(inspector_element, cx);
-@@ -3923,7 +4171,7 @@ impl Window {
+@@ -3923,7 +4179,7 @@ impl Window {
                      });
                      self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
                  } else {
@@ -881,7 +895,7 @@ index 1214b035..6cbf294b 100644
                  }
                  let prepaint_end = self.prepaint_index();
                  self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
-@@ -3966,7 +4214,7 @@ impl Window {
+@@ -3966,7 +4222,7 @@ impl Window {
                      })
                  })
              } else {
@@ -890,7 +904,7 @@ index 1214b035..6cbf294b 100644
              }
              let paint_end = self.paint_index();
              deferred_draw.paint_range = paint_start..paint_end;
-@@ -3993,7 +4241,93 @@ impl Window {
+@@ -3993,7 +4249,97 @@ impl Window {
          }
      }
  
@@ -898,7 +912,12 @@ index 1214b035..6cbf294b 100644
 +    /// Replays `range` of the previous frame's prepaint, drawing any dirty isolated view in it
 +    /// again in place.
 +    pub(crate) fn reuse_prepaint(&mut self, range: Range<PrepaintStateIndex>, cx: &mut App) {
-+        let mut holes: Vec<usize> = (0..self.rendered_frame.cached_views.len())
++        // The records inside `range` (sorted by where they start, `rebase_cached_view_states`).
++        let records = &self.rendered_frame.cached_views;
++        let (a, b) = (range.start.dispatch_tree_index, range.end.dispatch_tree_index);
++        let lo = records.partition_point(|r| r.prepaint.start.dispatch_tree_index < a);
++        let hi = lo + records[lo..].partition_point(|r| r.prepaint.start.dispatch_tree_index < b);
++        let mut holes: Vec<usize> = (lo..hi)
 +            .filter(|&ix| {
 +                let record = &self.rendered_frame.cached_views[ix];
 +                let p = &record.prepaint;
@@ -910,7 +929,6 @@ index 1214b035..6cbf294b 100644
 +                    && p.end.dispatch_tree_index <= range.end.dispatch_tree_index
 +            })
 +            .collect();
-+        holes.sort_by_key(|&ix| self.rendered_frame.cached_views[ix].prepaint.start.dispatch_tree_index);
 +        let mut outer_end = 0;
 +        holes.retain(|&ix| {
 +            let p = &self.rendered_frame.cached_views[ix].prepaint;
@@ -949,7 +967,7 @@ index 1214b035..6cbf294b 100644
 +            .filter(|(.., copied)| !copied)
 +            .map(|(old, ..)| old.clone())
 +            .collect::<SmallVec<[_; 2]>>();
-+        for ix in 0..self.rendered_frame.cached_views.len() {
++        for ix in lo..hi {
 +            let record = &self.rendered_frame.cached_views[ix];
 +            let p = &record.prepaint;
 +            let inside = |r: &Range<PrepaintStateIndex>| {
@@ -985,7 +1003,7 @@ index 1214b035..6cbf294b 100644
          self.next_frame.hitboxes.extend(
              self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
                  .iter()
-@@ -4011,19 +4345,17 @@ impl Window {
+@@ -4011,19 +4357,17 @@ impl Window {
                  .iter()
                  .map(|(id, type_id)| (id.clone(), *type_id)),
          );
@@ -1010,7 +1028,7 @@ index 1214b035..6cbf294b 100644
          self.next_frame.deferred_draws.extend(
              self.rendered_frame.deferred_draws
                  [range.start.deferred_draws_index..range.end.deferred_draws_index]
-@@ -4042,6 +4374,7 @@ impl Window {
+@@ -4042,6 +4386,7 @@ impl Window {
                      paint_range: deferred_draw.paint_range.clone(),
                  }),
          );
@@ -1018,7 +1036,7 @@ index 1214b035..6cbf294b 100644
      }
  
      pub(crate) fn paint_index(&self) -> PaintIndex {
-@@ -4058,7 +4391,44 @@ impl Window {
+@@ -4058,7 +4403,44 @@ impl Window {
          }
      }
  
@@ -1064,7 +1082,7 @@ index 1214b035..6cbf294b 100644
          // Cached elements still exist in the frame even when their paint methods don't run.
          #[cfg(any(test, feature = "test-support"))]
          for (selector, bounds) in &self.rendered_frame.debug_bounds_records
-@@ -4096,12 +4466,14 @@ impl Window {
+@@ -4096,12 +4478,14 @@ impl Window {
                  [range.start.tab_handle_index..range.end.tab_handle_index],
          );
  

@@ -208,3 +208,27 @@ async fn an_unrelated_store_change_leaves_the_conversation_alone(cx: &mut TestAp
     });
     assert!(renders("::ItemPane", &counts) > 0, "{counts:?}");
 }
+
+/// The keys that empty the comment box and type into it again redraw its buttons (the part
+/// drawing the box), never the conversation.
+#[gpui::test]
+async fn a_key_that_empties_the_comment_box_leaves_the_conversation_alone(cx: &mut TestAppContext) {
+    let mut s = open(cx);
+    let d =
+        s.cx.update(|_, cx| crate::detail::spec_handle::current(cx))
+            .expect("pr detail");
+    s.cx.update(|window, cx| d.update(cx, |d, cx| d.focus_composer(window, cx)));
+    s.settle();
+    type_keys(&mut s);
+    let counts = counted(&mut s, |s| {
+        for k in ["backspace", "b", "backspace", "c"] {
+            s.cx.simulate_keystrokes(k);
+            s.cx.run_until_parked();
+        }
+    });
+    assert!(
+        renders("::Part<recur_view_prs::detail::PrDetail>", &counts) >= 4,
+        "{counts:?}"
+    );
+    assert_quiet("emptying key", &CONVERSATION, &counts);
+}

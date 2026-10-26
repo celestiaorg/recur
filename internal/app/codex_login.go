@@ -216,6 +216,9 @@ func (s *codexLoginSession) run(bin, dataDir string) {
 				s.err = fmt.Errorf("Codex did not authenticate a ChatGPT account")
 				return
 			}
+			if s.err = codex.MarkBrowserLogin(srv.Home); s.err != nil {
+				return
+			}
 			s.models, _ = client.ModelList(s.ctx, 50)
 			s.status = CodexStatus{
 				BinInstalled: true, BinPath: bin, Authenticated: true,

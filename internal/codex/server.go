@@ -202,6 +202,9 @@ func ensureTrustedProject(home, worktree string) error {
 }
 
 func seedAuth(from, to string) error {
+	if _, err := os.Stat(filepath.Join(filepath.Dir(to), browserLoginMarker)); err == nil {
+		return nil
+	}
 	raw, err := os.ReadFile(from)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -230,6 +233,15 @@ func seedAuth(from, to string) error {
 		}
 	}
 	return os.WriteFile(to, raw, 0o600)
+}
+
+// browserLoginMarker in CODEX_HOME means auth.json came from a browser sign-in
+// in Recur, so the machine `codex login` must not replace it.
+const browserLoginMarker = "recur-browser-login"
+
+// MarkBrowserLogin records that home's auth.json is a Recur browser sign-in.
+func MarkBrowserLogin(home string) error {
+	return os.WriteFile(filepath.Join(home, browserLoginMarker), nil, 0o600)
 }
 
 // DefaultSeedAuthPath is the user's machine login file.

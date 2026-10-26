@@ -71,7 +71,9 @@ This uses the official app-server `account/login/start` method with
 `type: "chatgpt"`. Codex owns the localhost callback, credential persistence, and
 token refresh. Credentials are stored in `<dataDir>/codex-home/auth.json`; Recur
 does not write `~/.codex/auth.json`. A prior terminal login is not required.
-An existing CLI login can still be imported by the **Use ChatGPT login** toggle.
+An existing CLI login can still be imported by the **Use ChatGPT login** toggle
+until the first browser sign-in. After that, a newer `~/.codex/auth.json` no
+longer replaces Recur's credentials.
 
 The login process stays alive for up to five minutes. **Cancel sign-in**, leaving
 the Providers pane, and app shutdown cancel the attempt and reap its process.

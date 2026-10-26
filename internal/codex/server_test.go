@@ -70,6 +70,31 @@ func TestSeedAuthUsesRecurLoginWithoutMachineLogin(t *testing.T) {
 	}
 }
 
+func TestSeedAuthKeepsBrowserLoginOverNewerMachineLogin(t *testing.T) {
+	home := t.TempDir()
+	to := filepath.Join(home, "auth.json")
+	if err := os.WriteFile(to, []byte("browser"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := MarkBrowserLogin(home); err != nil {
+		t.Fatal(err)
+	}
+	from := filepath.Join(t.TempDir(), "auth.json")
+	if err := os.WriteFile(from, []byte("machine"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	future := time.Now().Add(time.Hour)
+	if err := os.Chtimes(from, future, future); err != nil {
+		t.Fatal(err)
+	}
+	if err := seedAuth(from, to); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(to); string(got) != "browser" {
+		t.Fatalf("auth.json = %q, want the browser login kept", got)
+	}
+}
+
 func TestEnsureTrustedProject(t *testing.T) {
 	home := t.TempDir()
 	wt := t.TempDir()

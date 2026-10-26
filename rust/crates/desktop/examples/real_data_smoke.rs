@@ -34,7 +34,7 @@
 //! mth (1-based, inclusive: a full run can be covered in ranges), `RECUR_SMOKE_WORKSPACE=<id>` visits
 //! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
 //! stops after the workspaces, `RECUR_SMOKE_PR_FROM=n` / `RECUR_SMOKE_PR_TO=m` slice the PRs
-//! (1-based, inclusive) and
+//! (1-based, inclusive), `RECUR_SMOKE_KEYS_OUT=<file>` appends every key's time and
 //! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered,
 //! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times and
 //! `RECUR_SMOKE_SAMPLE_MS=n` samples the main thread during frames and keys over n ms and
@@ -1898,6 +1898,18 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
             timed(Budget::Keystroke, took);
             if let Ok(mut r) = report().lock() {
                 r.keys.entry(input).or_default().push(took);
+            }
+            // `RECUR_SMOKE_KEYS_OUT=<file>` appends each key's time, so runs that split a
+            // range can report its percentiles together.
+            if let Some(path) = std::env::var_os("RECUR_SMOKE_KEYS_OUT") {
+                use std::io::Write as _;
+                if let Ok(mut f) = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(path)
+                {
+                    let _ = writeln!(f, "{input}\t{}", took.as_secs_f64() * 1000.);
+                }
             }
         }
         stall_check(took);

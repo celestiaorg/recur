@@ -1332,3 +1332,30 @@ async fn a_file_event_under_the_review_does_not_notify_the_observatory(cx: &mut 
     );
     assert_eq!(notifies.get(), 0, "a file event notified the Observatory");
 }
+
+/// A long changes list lays out the rows near its viewport: a status change on a large change
+/// set redrew every row, and that frame landed on keys typed in the commit box beside it.
+#[gpui::test]
+async fn a_long_changes_list_lays_out_the_rows_near_its_viewport(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("WorkingStatus", |_, _, _| {
+        Reply::value(json!(
+            (0..250)
+                .map(|i| (format!("f{i:03}.txt"), json!("m")))
+                .collect::<serde_json::Map<_, _>>()
+        ))
+    });
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    h.click("panel-toggle:scm");
+    h.update(|o, _, cx| o.refresh_working_status(cx).detach());
+    h.settle();
+    assert!(h.has("scm-stage:u:f000.txt"));
+    assert!(!h.has("scm-stage:u:f249.txt"));
+    let scroll = h.read(|o, _| o.scm_scroll.clone());
+    let max = scroll.max_offset().y;
+    assert!(max > gpui::px(4000.), "spacers keep the list's height: {max:?}");
+    scroll.set_offset(gpui::point(gpui::px(0.), -max));
+    h.update(|_, _, cx| cx.notify());
+    h.settle();
+    assert!(h.has("scm-stage:u:f249.txt"));
+    assert!(!h.has("scm-stage:u:f000.txt"));
+}

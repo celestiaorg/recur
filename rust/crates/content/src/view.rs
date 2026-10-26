@@ -102,7 +102,9 @@ impl Seg {
     /// A height for a block not laid out yet; measured once it is.
     fn estimate(&self, size: f32, leading: f32, width: f32) -> f32 {
         let per_line = (width / (size * 0.5)).max(1.);
-        let lines = self.lines.max((self.chars as f32 / per_line).ceil() as usize);
+        let lines = self
+            .lines
+            .max((self.chars as f32 / per_line).ceil() as usize);
         lines.max(1) as f32 * size * leading
     }
 }
@@ -268,7 +270,11 @@ impl MarkdownView {
     pub fn text_top(&self, id: usize) -> Option<f32> {
         let w = self.windowed.as_ref()?;
         let seg = w.segs.iter().rposition(|s| s.n.text < id)?;
-        let tops = self.tops(w, self.sheet_or_default().size, self.sheet_or_default().leading);
+        let tops = self.tops(
+            w,
+            self.sheet_or_default().size,
+            self.sheet_or_default().leading,
+        );
         Some(tops[seg] + self.content_y.get().unwrap_or(0.))
     }
 
@@ -698,7 +704,13 @@ impl MarkdownView {
         let (body, first, last) = stack(blocks, b.window);
         let changed = {
             let old = self.texts.borrow();
-            let content = |t: &TextBlock| t.spec.runs.iter().map(|r| r.text.as_str()).collect::<String>();
+            let content = |t: &TextBlock| {
+                t.spec
+                    .runs
+                    .iter()
+                    .map(|r| r.text.as_str())
+                    .collect::<String>()
+            };
             old.len() != texts.len()
                 || old
                     .iter()
@@ -995,9 +1007,15 @@ fn windowed_blocks(
     }
     let pad = visible.1 - visible.0;
     let (lo, hi) = (visible.0 - pad, visible.1 + pad);
-    let a = (0..n).find(|&i| tops[i + 1] >= lo).unwrap_or(n.saturating_sub(1));
+    let a = (0..n)
+        .find(|&i| tops[i + 1] >= lo)
+        .unwrap_or(n.saturating_sub(1));
     let z = (a..n).take_while(|&i| tops[i] <= hi).last().unwrap_or(a);
-    let gap = |i: usize| w.segs.get(i + 1).map_or(0., |next| w.segs[i].mb.max(next.mt));
+    let gap = |i: usize| {
+        w.segs
+            .get(i + 1)
+            .map_or(0., |next| w.segs[i].mb.max(next.mt))
+    };
     let spacer = |from: usize, to: usize| Laid {
         el: div()
             .flex_none()
@@ -1044,6 +1062,10 @@ fn windowed_blocks(
         out.push(spacer(z + 1, n - 1));
     }
     let top = if a == 0 { f32::NEG_INFINITY } else { tops[a] };
-    let bottom = if z + 1 >= n { f32::INFINITY } else { tops[z + 1] };
+    let bottom = if z + 1 >= n {
+        f32::INFINITY
+    } else {
+        tops[z + 1]
+    };
     (out, (top, bottom))
 }

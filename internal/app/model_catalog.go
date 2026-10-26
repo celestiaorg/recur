@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
 
@@ -150,6 +151,7 @@ func withProbedClaudeModels(probed []claudeModelInfo) []ModelChoice {
 		if id == "" {
 			id = strings.TrimSpace(p.Value)
 		}
+		id, _, _ = strings.Cut(id, "[")
 		if !strings.HasPrefix(id, "claude-") {
 			continue
 		}
@@ -180,16 +182,46 @@ func withProbedClaudeModels(probed []claudeModelInfo) []ModelChoice {
 // remembered so SetSettings can remap Claude-off slots without starting another
 // throwaway bridge (boot prefetchModelCatalog warms this).
 func (s *SettingsService) ListModelCatalog() []ModelGroup {
+	return s.listModelCatalog(true)
+}
+
+// lastClaudeModels is the most recent non-empty probe result. It is package
+// level because callers such as schedule validation build a fresh service.
+var lastClaudeModels atomic.Pointer[[]claudeModelInfo]
+
+// claudeProbe returns a fresh probe, falling back to the last good one when the
+// probe fails or times out so account-only models do not flicker out.
+func claudeProbe() []claudeModelInfo {
+	ctx, cancel := context.WithTimeout(context.Background(), claudeCmdTimeout)
+	defer cancel()
+	if probed := probeClaudeModels(ctx); len(probed) > 0 {
+		lastClaudeModels.Store(&probed)
+		return probed
+	}
+	if last := lastClaudeModels.Load(); last != nil {
+		return *last
+	}
+	return nil
+}
+
+// listModelCatalog is ListModelCatalog; probeClaude=false reuses the last probe
+// instead of spawning claude (schedule validation runs on every save).
+func (s *SettingsService) listModelCatalog(probeClaude bool) []ModelGroup {
 	set := s.st().Settings()
 	claudeCh := make(chan []claudeModelInfo, 1)
 	go func() {
-		if !set.ProviderEnabled(domain.ProviderClaudeCode) {
+		switch {
+		case !set.ProviderEnabled(domain.ProviderClaudeCode):
 			claudeCh <- nil
-			return
+		case probeClaude:
+			claudeCh <- claudeProbe()
+		default:
+			var last []claudeModelInfo
+			if p := lastClaudeModels.Load(); p != nil {
+				last = *p
+			}
+			claudeCh <- last
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), claudeCmdTimeout)
-		defer cancel()
-		claudeCh <- probeClaudeModels(ctx)
 	}()
 	cur := s.listCursorModelsFor(set)
 	cod := s.listCodexModelsFor(set)

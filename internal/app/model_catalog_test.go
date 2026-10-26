@@ -738,3 +738,27 @@ func TestProbedClaudeModelsAddAccountOnlyModels(t *testing.T) {
 		t.Fatalf("unreadable probe: got %d models, want pinned list", len(got))
 	}
 }
+
+func TestProbedClaudeModelsStripContextSuffix(t *testing.T) {
+	models := withProbedClaudeModels([]claudeModelInfo{
+		{Value: "opus[1m]", ResolvedModel: "claude-opus-5-5[1m]", DisplayName: "Opus"},
+		{Value: "mythos[1m]", ResolvedModel: "claude-mythos-5-1[1m]", DisplayName: "Mythos 5.1"},
+	})
+	if len(models) != len(claudeCodeModels)+1 {
+		t.Fatalf("got %d models, want pinned list + Mythos", len(models))
+	}
+	if ref := models[len(models)-1].Ref; ref != "claude-code/claude-mythos-5-1" {
+		t.Fatalf("ref = %q, want suffix stripped", ref)
+	}
+}
+
+func TestClaudeProbeFallsBackToLastGood(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	good := []claudeModelInfo{{ResolvedModel: "claude-mythos-5-1", DisplayName: "Mythos 5.1"}}
+	lastClaudeModels.Store(&good)
+	t.Cleanup(func() { lastClaudeModels.Store(nil) })
+	got := claudeProbe()
+	if len(got) != 1 || got[0].ResolvedModel != "claude-mythos-5-1" {
+		t.Fatalf("failed probe returned %+v, want last good result", got)
+	}
+}

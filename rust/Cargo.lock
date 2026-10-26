@@ -6739,6 +6739,7 @@ dependencies = [
  "flate2",
  "futures",
  "gpui-kit",
+ "libc",
  "parking_lot",
  "recur-agent",
  "recur-app",

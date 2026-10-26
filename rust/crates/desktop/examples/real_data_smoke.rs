@@ -1266,7 +1266,18 @@ fn view_list(views: &BTreeMap<&'static str, u32>) -> String {
 }
 
 /// Draws one frame and returns how long it took.
+/// This process's page faults, page reclaims and involuntary context switches so far: a slow
+/// frame with many is the machine (memory pressure, CPU contention), not the frame's work.
+#[allow(unsafe_code)]
+fn rusage() -> (i64, i64, i64) {
+    // SAFETY: `getrusage` fills the zeroed struct it is given.
+    let mut r: libc::rusage = unsafe { std::mem::zeroed() };
+    unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut r) };
+    (r.ru_majflt, r.ru_minflt, r.ru_nivcsw)
+}
+
 fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
+    let usage = rusage();
     let t = Instant::now();
     FRAME_START.store(now_ms(), Ordering::SeqCst);
     let _ = cx.update_window(window, |_, window, cx| {
@@ -1289,7 +1300,14 @@ fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     if took > Duration::from_millis(500) {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
         if took > Duration::from_secs(2) || std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
-            println!("slow frame {took:.0?} at {s}: {}", view_list(&renders));
+            let now = rusage();
+            println!(
+                "slow frame {took:.0?} at {s} ({} faults, {} reclaims, {} preemptions): {}",
+                now.0 - usage.0,
+                now.1 - usage.1,
+                now.2 - usage.2,
+                view_list(&renders)
+            );
         }
         if let Ok(mut r) = report().lock() {
             r.slow.push((took, s));

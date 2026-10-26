@@ -47,6 +47,7 @@ tracing-subscriber.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 flate2.workspace = true
+libc = "0.2"
 recur-agent.workspace = true
 recur-forge.workspace = true
 recur-provider-claude.workspace = true

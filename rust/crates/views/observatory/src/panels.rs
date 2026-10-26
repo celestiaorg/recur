@@ -452,8 +452,10 @@ impl Observatory {
                                 o.select_code_panel(CodePanelKey::Findings, window, cx)
                             }
                             SurfaceEvent::Bound(b) => {
-                                o.review_bound = b.clone();
-                                cx.notify();
+                                if o.review_bound != *b {
+                                    o.review_bound = b.clone();
+                                    cx.notify();
+                                }
                             }
                         }
                     });

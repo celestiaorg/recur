@@ -299,11 +299,13 @@ impl FindingsPanel {
         self._subs.push(cx.guarded_subscribe_in(
             &area,
             window,
-            move |p, _, ev: &InputEvent, _, cx| match ev {
-                InputEvent::PressEnter {
+            move |p, _, ev: &InputEvent, _, cx| {
+                if let InputEvent::PressEnter {
                     secondary: true, ..
-                } => p.submit_note(&fid, cx),
-                _ => {}
+                } = ev
+                {
+                    p.submit_note(&fid, cx)
+                }
             },
         ));
         self.draft_views.insert(

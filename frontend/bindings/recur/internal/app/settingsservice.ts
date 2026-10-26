@@ -176,7 +176,8 @@ export function ListAssignedIssues(): $CancellablePromise<$models.AssignedIssue[
  * ListModelCatalog returns the grouped model list for the pickers.
  * 
  * Each provider appears only when it is on in Settings → Providers. Claude Code
- * needs no Recur-stored key. Cursor appears once Connect has minted a key, and
+ * needs no Recur-stored key; its pinned list gains any extra models the local
+ * CLI reports for the account. Cursor appears once Connect has minted a key, and
  * its models (+ parameters) are fetched live. Codex appears once an API key or
  * ChatGPT auth is set.
  * 

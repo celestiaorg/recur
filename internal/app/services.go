@@ -1528,15 +1528,11 @@ func (s *PRsService) SendBackToLoop(prID string, comments []string) (domain.PR, 
 }
 
 // UpdateWithBase integrates the latest base tip into the PR worktree (D54).
-// Clean path is a direct git merge/rebase; conflicts fall back to a single Coder
-// turn. method is "merge" or "rebase";
+// Clean path is a direct git merge/rebase; conflicts leave markers and return
+// Status=conflict so the UI invokes /update. method is "merge" or "rebase";
 // empty uses project/settings UpdateBaseMethod prefs.
-func (s *PRsService) UpdateWithBase(prID string, method string) (domain.PR, error) {
-	p, ok := s.eng.UpdatePRWithBase(prID, method)
-	if !ok {
-		return domain.PR{}, fmt.Errorf("update-with-base failed — the PR or its loop is unavailable")
-	}
-	return p, nil
+func (s *PRsService) UpdateWithBase(prID string, method string) (domain.UpdateWorkspaceResult, error) {
+	return s.eng.UpdatePRWithBase(prID, method)
 }
 
 // ReadyPR marks a GitHub draft PR ready for review (`gh pr ready`).

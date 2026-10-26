@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"strings"
@@ -39,34 +40,33 @@ func (e *Engine) MaestroSendBack(workspaceID, instruction string) string {
 	return "Sent review back — Maestro will answer or call reenter_phase."
 }
 
+var errPRUnavailable = errors.New("update-with-base failed: the PR or its loop is unavailable")
+
 // UpdatePRWithBase integrates the latest base tip into the PR's worktree (D54).
 // Clean path: engine runs git merge/rebase directly (independent of D53 PR
 // merge method). method is "merge" or "rebase"; empty uses project/settings
-// UpdateBaseMethod prefs. Conflict path: abort, re-begin leaving markers,
-// single Coder turn resolves, engine finishes the git op. The PR stays In review.
-// UpdatingBase ("git" / "coder") is persisted so the PR UI can show progress.
-func (e *Engine) UpdatePRWithBase(prID, method string) (domain.PR, bool) {
+// UpdateBaseMethod prefs. Conflict path: leave markers and return
+// Status=conflict so the UI invokes /update in the workspace's ops tab. The PR
+// stays In review. UpdatingBase ("git") is persisted so the PR UI can show progress.
+func (e *Engine) UpdatePRWithBase(prID, method string) (domain.UpdateWorkspaceResult, error) {
 	pr, ok := e.Store.PR(prID)
 	if !ok {
-		return domain.PR{}, false
+		return domain.UpdateWorkspaceResult{}, errPRUnavailable
 	}
 	if pr.State == "Merged" || pr.Group == "merged" {
-		return pr, false
+		return domain.UpdateWorkspaceResult{}, errPRUnavailable
 	}
 	if pr.UpdatingBase != "" {
-		return pr, true // already in flight
-	}
-	if _, busy := e.updatingBase.Load(prID); busy {
-		return pr, true
+		return domain.UpdateWorkspaceResult{}, nil // already in flight
 	}
 
 	loop, ok := e.Store.Workspace(pr.WorkspaceID)
 	if !ok || loop.WorktreePath == "" {
-		return pr, false
+		return domain.UpdateWorkspaceResult{}, errPRUnavailable
 	}
 	proj, ok := e.Store.Project(loop.ProjectID)
 	if !ok || proj.RepoPath == "" {
-		return pr, false
+		return domain.UpdateWorkspaceResult{}, errPRUnavailable
 	}
 	base := pr.Base
 	if base == "" {
@@ -76,7 +76,7 @@ func (e *Engine) UpdatePRWithBase(prID, method string) (domain.PR, bool) {
 		base = proj.BaseBranch
 	}
 	if base == "" {
-		return pr, false
+		return domain.UpdateWorkspaceResult{}, errPRUnavailable
 	}
 
 	resolved := domain.NormalizeUpdateBaseMethod(method)
@@ -90,41 +90,39 @@ func (e *Engine) UpdatePRWithBase(prID, method string) (domain.PR, bool) {
 	}
 	fetchCancel()
 
-	// Mark git phase so the UI can show an Updating banner while merge/rebase runs.
-	if started, ok := e.Store.UpdatePR(prID, func(p *domain.PR) { p.UpdatingBase = "git" }); ok {
-		pr = started
-		e.publishPRUpdated(prID)
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	err := mgr.UpdateWorktreeWithBase(ctx, loop.WorktreePath, base, string(resolved))
-	cancel()
-	if err == nil {
-		return e.finishUpdateWithBase(prID, loop, mgr, base, resolved)
+	defer cancel()
+	if mgr.UpdateInProgress(ctx, loop.WorktreePath) {
+		return domain.UpdateWorkspaceResult{Status: domain.UpdateWorkspaceConflict, Workspace: loop, Base: base}, nil
 	}
 
-	// Conflict: fall back to a single Coder turn.
-	if _, loaded := e.updatingBase.LoadOrStore(prID, true); loaded {
-		return pr, true
-	}
-	note := nowComment("MA", "Maestro",
-		fmt.Sprintf("Update with base (%s) hit conflicts — resolving with a single Coder turn.",
-			html.EscapeString(domain.UpdateBaseMethodLabel(resolved))))
-	updated, uok := e.Store.UpdatePR(prID, func(p *domain.PR) {
-		p.UpdatingBase = "coder"
-		p.Comments = append(p.Comments, note)
-	})
-	if uok {
-		e.publishPRComment(prID, note)
+	// Mark git phase so the UI can show an Updating banner while merge/rebase runs.
+	if _, ok := e.Store.UpdatePR(prID, func(p *domain.PR) { p.UpdatingBase = "git" }); ok {
 		e.publishPRUpdated(prID)
-	} else {
-		updated = pr
 	}
-	e.emitWorkspaceEvent(pr.WorkspaceID, "MA", "Maestro",
-		"Update with base conflicted — dispatching a lightweight Coder turn (no review/verify).")
 
-	go e.resolveUpdateBaseConflict(prID, base, resolved)
-	return updated, true
+	// UpdateWorktreeWithBase aborts on conflict; Begin re-runs it leaving markers.
+	err := mgr.UpdateWorktreeWithBase(ctx, loop.WorktreePath, base, string(resolved))
+	if err != nil {
+		err = mgr.BeginUpdateWithBase(ctx, loop.WorktreePath, base, string(resolved))
+	}
+	if err == nil {
+		if _, ok := e.finishUpdateWithBase(prID, loop, mgr, base, resolved); !ok {
+			return domain.UpdateWorkspaceResult{}, errPRUnavailable
+		}
+		return domain.UpdateWorkspaceResult{Status: domain.UpdateWorkspaceUpdated, Workspace: loop, Base: base}, nil
+	}
+
+	if _, ok := e.Store.UpdatePR(prID, func(p *domain.PR) { p.UpdatingBase = "" }); ok {
+		e.publishPRUpdated(prID)
+	}
+	if !mgr.UpdateInProgress(ctx, loop.WorktreePath) {
+		return domain.UpdateWorkspaceResult{}, fmt.Errorf("update with %s: %w", base, err)
+	}
+	e.emitWorkspaceEvent(loop.ID, "MA", "Maestro",
+		fmt.Sprintf("Update with base (%s) hit conflicts. Resolving them with /update.",
+			html.EscapeString(domain.UpdateBaseMethodLabel(resolved))))
+	return domain.UpdateWorkspaceResult{Status: domain.UpdateWorkspaceConflict, Workspace: loop, Base: base}, nil
 }
 
 // finishUpdateWithBase refreshes the PR diff/commits after a successful base
@@ -183,143 +181,6 @@ func (e *Engine) finishUpdateWithBase(prID string, loop domain.Workspace, mgr *g
 		fmt.Sprintf("Updated PR with latest <code>%s</code> (%s).",
 			html.EscapeString(base), html.EscapeString(label)))
 	return updated, true
-}
-
-// resolveUpdateBaseConflict is the D54 conflict fallback: re-begin the git op
-// (leaving markers), run one Coder turn to resolve them, then finish the git op
-// and refresh the PR.
-func (e *Engine) resolveUpdateBaseConflict(prID, base string, method domain.UpdateBaseMethod) {
-	defer e.updatingBase.Delete(prID)
-
-	pr, ok := e.Store.PR(prID)
-	if !ok {
-		return
-	}
-	loop, ok := e.Store.Workspace(pr.WorkspaceID)
-	if !ok || loop.WorktreePath == "" {
-		return
-	}
-	proj, ok := e.Store.Project(loop.ProjectID)
-	if !ok || proj.RepoPath == "" {
-		return
-	}
-	mgr := gitpkg.NewManager(proj.RepoPath, e.worktreeRoot)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
-	if err := mgr.BeginUpdateWithBase(ctx, loop.WorktreePath, base, string(method)); err != nil {
-		// Conflict is expected — leave markers for the Coder. If Begin failed for
-		// a non-conflict reason (e.g. missing base), abort and report.
-		if !mgr.UpdateInProgress(ctx, loop.WorktreePath) {
-			_ = mgr.AbortUpdateWithBase(ctx, loop.WorktreePath, string(method))
-			e.failUpdateBase(prID, pr.WorkspaceID, "Could not start conflict resolution: "+err.Error())
-			return
-		}
-	} else {
-		// Clean on retry (race: base moved?) — just finish the refresh.
-		e.finishUpdateWithBase(prID, loop, mgr, base, method)
-		return
-	}
-
-	if err := e.runUpdateBaseCoder(ctx, loop, base, method); err != nil {
-		_ = mgr.AbortUpdateWithBase(ctx, loop.WorktreePath, string(method))
-		e.failUpdateBase(prID, pr.WorkspaceID, "Coder could not resolve conflicts: "+err.Error())
-		return
-	}
-
-	if err := mgr.FinishUpdateWithBase(ctx, loop.WorktreePath, string(method)); err != nil {
-		_ = mgr.AbortUpdateWithBase(ctx, loop.WorktreePath, string(method))
-		e.failUpdateBase(prID, pr.WorkspaceID, "Could not finish update after conflict resolution: "+err.Error())
-		return
-	}
-
-	e.finishUpdateWithBase(prID, loop, mgr, base, method)
-}
-
-func (e *Engine) failUpdateBase(prID, workspaceID, reason string) {
-	note := nowComment("MA", "Maestro",
-		html.EscapeString(reason)+" — send back to the conductor if you want more loop work.")
-	if _, ok := e.Store.UpdatePR(prID, func(p *domain.PR) {
-		p.UpdatingBase = ""
-		p.Comments = append(p.Comments, note)
-	}); ok {
-		e.publishPRComment(prID, note)
-		e.publishPRUpdated(prID)
-	}
-	e.emitWorkspaceEvent(workspaceID, "MA", "Maestro", html.EscapeString(reason))
-}
-
-// runUpdateBaseCoder runs a single Coder turn whose only job is resolving
-// conflict markers left by BeginUpdateWithBase. No commit — FinishUpdateWithBase
-// completes the git op afterwards.
-func (e *Engine) runUpdateBaseCoder(ctx context.Context, loop domain.Workspace, base string, method domain.UpdateBaseMethod) error {
-	rs := roles[domain.RoleCoder]
-	agentID := loop.ID + "-" + rs.code
-	set := e.settings()
-	e.upsertAgent(loop.ID, domain.Agent{
-		ID: agentID, WorkspaceID: loop.ID, Code: rs.code, Name: rs.name,
-		Role: "writes & edits code", Model: set.CoderModel().ID,
-		Status: "working", Color: "var(--cyan)", Task: "resolve update-with-base conflicts", Cur: -1,
-	})
-
-	prompt := fmt.Sprintf(
-		"The worktree has an in-progress %s with %s that produced conflict markers. "+
-			"Resolve every conflicted file: edit out the conflict markers and keep the "+
-			"correct combined result. Do not change feature code beyond what's needed to "+
-			"resolve conflicts. Do not run git commit, git merge, or git rebase — the "+
-			"orchestrator will finish the git operation. When done, call mcp__recur__done.",
-		domain.UpdateBaseMethodLabel(method), base,
-	)
-
-	token, mcpURL, err := e.registerMCP(loop.ID, rs.code, loopOwnerCode(loop), rs.allowedTools, set.CoderModel().String())
-	if err != nil {
-		return err
-	}
-	defer e.unregisterMCP(token)
-
-	spec := AgentSpec{
-		WorkspaceID:    loop.ID,
-		ChatCode:       loopOwnerCode(loop),
-		AgentID:        agentID,
-		Role:           domain.RoleCoder,
-		Model:          set.CoderModel().String(),
-		Flags:          set.CoderFlags(),
-		SystemPrompt:   coderSystemPrompt("Resolve merge/rebase conflicts from updating with base.", "", false),
-		AllowedTools:   rs.allowedTools,
-		Prompt:         prompt,
-		Worktree:       loop.WorktreePath,
-		PermissionMode: set.PermissionMode(),
-		MCPURL:         mcpURL,
-	}
-
-	release, ok := e.acquireAgent(ctx.Done())
-	if !ok {
-		e.updateAgentStatus(loop.ID, rs.code, "idle")
-		return ctx.Err()
-	}
-	defer release()
-
-	// Reuse Loop.onAgentEvent so tool rows render identically to a normal Coder
-	// turn (step kind tint, ToolUseID pairing, tool_result attach).
-	lp := newLoop(e, loop)
-	if proj, pok := e.Store.Project(loop.ProjectID); pok {
-		lp.git = gitpkg.NewManager(proj.RepoPath, e.worktreeRoot)
-	}
-
-	res, err := e.runAgent(ctx, spec, func(ev ParsedEvent) {
-		lp.onAgentEvent(rs, ev)
-	})
-	e.publishResource()
-	e.updateAgentStatus(loop.ID, rs.code, "idle")
-
-	if err != nil {
-		return err
-	}
-	if res.IsError {
-		return fmt.Errorf("coder turn failed: %s", res.Subtype)
-	}
-	return nil
 }
 
 func (e *Engine) sendBackToLoop(prID string, comments []string) (domain.PR, bool) {

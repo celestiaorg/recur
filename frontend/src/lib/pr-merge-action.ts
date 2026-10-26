@@ -120,7 +120,7 @@ export function prMergeAction(pr: PRMergeInput | null | undefined, opts?: { awai
     return {
       kind: 'resolve',
       label: 'Resolve conflicts',
-      title: `Update with ${shortBaseName(base)}; a Coder resolves the conflicts in this workspace`,
+      title: `Update with ${shortBaseName(base)}; an agent resolves the conflicts in the workspace's ops tab`,
       disabled: false,
     }
   }

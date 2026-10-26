@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"recur/internal/domain"
+	gitpkg "recur/internal/git"
 )
 
 // reworkRunner is a TEST DOUBLE that drives the PR lifecycle without real
@@ -164,10 +165,14 @@ func TestRefreshPRBehindAndUpdateWithBase(t *testing.T) {
 		t.Fatalf("RefreshPRBehind: BehindBase=%d, want >=1 (worktree=%s)", p.BehindBase, loop.WorktreePath)
 	}
 
-	updated, ok := eng.UpdatePRWithBase(pr.ID, "")
-	if !ok {
-		t.Fatal("UpdatePRWithBase refused")
+	res, err := eng.UpdatePRWithBase(pr.ID, "")
+	if err != nil {
+		t.Fatalf("UpdatePRWithBase: %v", err)
 	}
+	if res.Status != domain.UpdateWorkspaceUpdated {
+		t.Errorf("Status=%q after clean update, want updated", res.Status)
+	}
+	updated, _ := st.PR(pr.ID)
 	if updated.BehindBase != 0 {
 		t.Errorf("BehindBase=%d after clean update, want 0", updated.BehindBase)
 	}
@@ -188,10 +193,10 @@ func TestRefreshPRBehindAndUpdateWithBase(t *testing.T) {
 		t.Fatalf("advance base again: %v\n%s", err, out)
 	}
 	eng.RefreshPRBehind(pr.ID)
-	rebased, ok := eng.UpdatePRWithBase(pr.ID, "rebase")
-	if !ok {
-		t.Fatal("UpdatePRWithBase(rebase) refused")
+	if _, err := eng.UpdatePRWithBase(pr.ID, "rebase"); err != nil {
+		t.Fatalf("UpdatePRWithBase(rebase): %v", err)
 	}
+	rebased, _ := st.PR(pr.ID)
 	if rebased.BehindBase != 0 {
 		t.Errorf("BehindBase=%d after rebase, want 0", rebased.BehindBase)
 	}
@@ -207,7 +212,7 @@ func TestRefreshPRBehindAndUpdateWithBase(t *testing.T) {
 	}
 }
 
-// TestUpdatePRWithBaseConflict resolves via a single Coder turn (D54).
+// TestUpdatePRWithBaseConflict leaves markers and hands off to /update (D54).
 func TestUpdatePRWithBaseConflict(t *testing.T) {
 	repo := initRepo(t)
 	runner := &reworkRunner{findingsPerIter: []int{0, 0}}
@@ -260,23 +265,46 @@ func TestUpdatePRWithBaseConflict(t *testing.T) {
 		t.Fatalf("BehindBase=%d, want >=1", p.BehindBase)
 	}
 
-	updated, ok := eng.UpdatePRWithBase(pr.ID, "")
-	if !ok {
-		t.Fatal("UpdatePRWithBase refused")
+	res, err := eng.UpdatePRWithBase(pr.ID, "")
+	if err != nil {
+		t.Fatalf("UpdatePRWithBase: %v", err)
 	}
-	if updated.UpdatingBase != "coder" {
-		t.Errorf("UpdatingBase=%q immediately after conflict, want coder", updated.UpdatingBase)
+	if res.Status != domain.UpdateWorkspaceConflict {
+		t.Errorf("Status=%q, want conflict", res.Status)
 	}
-
-	waitFor(t, 15*time.Second, "conflict Coder turn to settle BehindBase=0", func() bool {
-		p, ok := st.PR(pr.ID)
-		return ok && p.BehindBase == 0 && p.UpdatingBase == ""
-	})
 	final, _ := st.PR(pr.ID)
+	if final.UpdatingBase != "" {
+		t.Errorf("UpdatingBase=%q after conflict, want empty", final.UpdatingBase)
+	}
 	if final.Group != "you" {
 		t.Errorf("PR group=%q, want you", final.Group)
 	}
-	if final.UpdatingBase != "" {
-		t.Errorf("UpdatingBase=%q after settle, want empty", final.UpdatingBase)
+	mgr := gitpkg.NewManager(repo, "")
+	if !mgr.UpdateInProgress(context.Background(), loop.WorktreePath) {
+		t.Fatal("conflict should leave the merge in progress for /update")
+	}
+
+	// A second click must not abort the in-progress merge or drop a partial resolution.
+	resolvedBody := []byte("resolved by hand\n")
+	if err := os.WriteFile(workPath, resolvedBody, 0o644); err != nil {
+		t.Fatalf("write resolution: %v", err)
+	}
+	cmd = exec.Command("git", "add", "work.txt")
+	cmd.Dir = loop.WorktreePath
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("stage resolution: %v\n%s", err, out)
+	}
+	res, err = eng.UpdatePRWithBase(pr.ID, "")
+	if err != nil {
+		t.Fatalf("second UpdatePRWithBase: %v", err)
+	}
+	if res.Status != domain.UpdateWorkspaceConflict {
+		t.Errorf("second call Status=%q, want conflict", res.Status)
+	}
+	if !mgr.UpdateInProgress(context.Background(), loop.WorktreePath) {
+		t.Error("second call aborted the in-progress merge")
+	}
+	if got, _ := os.ReadFile(workPath); string(got) != string(resolvedBody) {
+		t.Errorf("work.txt=%q after second call, want staged resolution kept", got)
 	}
 }

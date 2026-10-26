@@ -117,7 +117,8 @@ func (r *HarnessRunner) Run(ctx context.Context, spec AgentSpec, emit func(Parse
 			emit(ParsedEvent{Kind: KindResult, Provider: spec.Provider, Result: &res, Text: res.Text})
 			return res, nil
 		}
-		calls, roundText, roundUsage, respID, err := r.round(ctx, spec, model, instructions, input, tools, emit)
+		var output []responses.InputItem
+		calls, roundText, roundUsage, respID, err := r.round(ctx, spec, model, instructions, input, tools, emit, &output)
 		if err != nil {
 			return r.result(spec, start, text.String(), usage, lastID), err
 		}
@@ -128,7 +129,10 @@ func (r *HarnessRunner) Run(ctx context.Context, spec AgentSpec, emit func(Parse
 			usage = roundUsage
 		}
 		text.WriteString(roundText)
-		if roundText != "" {
+		preserveOutput := r.Client != nil && r.Client.ChatGPT && len(output) > 0
+		if preserveOutput {
+			input = append(input, output...)
+		} else if roundText != "" {
 			input = append(input, responses.AssistantText(roundText))
 		}
 
@@ -139,7 +143,9 @@ func (r *HarnessRunner) Run(ctx context.Context, spec AgentSpec, emit func(Parse
 				return r.result(spec, start, text.String(), usage, lastID), err
 			}
 			for i, call := range calls {
-				input = append(input, responses.FunctionCallItem(call.CallID, call.Name, call.Arguments))
+				if !preserveOutput {
+					input = append(input, responses.FunctionCallItem(call.CallID, call.Name, call.Arguments))
+				}
 				input = append(input, responses.FunctionOutputItem(call.CallID, results[i].text))
 				if results[i].halt {
 					halt = true
@@ -219,7 +225,7 @@ func (r *HarnessRunner) responsesTools(reg *agenttools.Registry, allowed []strin
 	return out
 }
 
-func (r *HarnessRunner) round(ctx context.Context, spec AgentSpec, model, instructions string, input []responses.InputItem, tools []responses.Tool, emit func(ParsedEvent)) (calls []responses.FunctionCall, text string, usage responses.Usage, respID string, err error) {
+func (r *HarnessRunner) round(ctx context.Context, spec AgentSpec, model, instructions string, input []responses.InputItem, tools []responses.Tool, emit func(ParsedEvent), output *[]responses.InputItem) (calls []responses.FunctionCall, text string, usage responses.Usage, respID string, err error) {
 	req := responses.Request{
 		Model:             model,
 		Instructions:      instructions,
@@ -275,6 +281,14 @@ func (r *HarnessRunner) round(ctx context.Context, spec AgentSpec, model, instru
 		client = responses.NewClient(r.Provider)
 	}
 	err = client.StreamJSON(ctx, payload, func(ev responses.Event) {
+		if client.ChatGPT && len(ev.Output) > 0 {
+			if ev.Type == "response.completed" {
+				*output = nil
+			}
+			for _, raw := range ev.Output {
+				*output = append(*output, responses.InputItem{Raw: raw})
+			}
+		}
 		if ev.ResponseID != "" {
 			respID = ev.ResponseID
 		}

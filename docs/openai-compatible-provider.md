@@ -1,5 +1,8 @@
 # OpenAI-compatible LLM provider
 
+For browser-based access through a ChatGPT plan, see the
+[direct ChatGPT provider](chatgpt-provider.md).
+
 Recur can run interactive chats and loops against any HTTP endpoint that
 implements OpenAI's **`POST /v1/responses`** API. This is a first-class Recur
 coding harness: Recur owns the agent loop, the coding tools, and the Recur
@@ -56,11 +59,15 @@ at least one model). An API key is optional (local servers).
 work: `openrouter/openai/gpt-4o` → provider `openrouter`, id `openai/gpt-4o`.
 
 Reserved slugs (cannot be used for a compatible endpoint): `claude-code`,
-`cursor`, `codex`, `anthropic`, `gemini`, `ollama`. **`openai` is allowed.**
+`cursor`, `codex`, `chatgpt`, `anthropic`, `gemini`, `ollama`. **`openai` is allowed.**
 
 ## Settings
 
 Settings → Providers → **Add provider**. Presets:
+
+The OpenAI preset is configured under **OpenAI → API endpoint**, alongside
+ChatGPT account sign-in and the Codex runtime. Their models share one **OpenAI**
+picker section; runtime labels distinguish duplicate models when necessary.
 
 | Preset | Default base URL |
 |---|---|

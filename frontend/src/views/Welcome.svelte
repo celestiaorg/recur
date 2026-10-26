@@ -4,7 +4,7 @@
   import { Events } from '@wailsio/runtime'
   import { CHAT_MODES, wsHasRun, type ChatMode } from '../lib/modes'
   import type { Workspace } from '../../bindings/recur/internal/domain/models'
-  import { providerEnabled, PROVIDER_CLAUDE, PROVIDER_CURSOR, PROVIDER_CODEX } from '../lib/providers'
+  import { providerEnabled, PROVIDER_CLAUDE, PROVIDER_CURSOR, PROVIDER_CODEX, PROVIDER_CHATGPT } from '../lib/providers'
   import { untrack, type Snippet } from 'svelte'
   import Icon from '../components/Icon.svelte'
   import ProviderIcon from '../components/ProviderIcon.svelte'
@@ -23,7 +23,15 @@
   let claudeChecked = $state(false)
   let codexChecked = $state(false)
   let cursorChecked = $state(false)
+  let chatGPTAuth = $state<{ authenticated?: boolean; email?: string; modelCount?: number } | null>(null)
+  let chatGPTChecked = $state(false)
   function checkAgents() {
+    if (chatGPTOn) {
+      SettingsService.GetChatGPTStatus()
+        .then((st) => { chatGPTAuth = st ?? null })
+        .catch(() => { chatGPTAuth = null })
+        .finally(() => { chatGPTChecked = true })
+    }
     if (claudeOn) {
       SettingsService.DetectAgent()
         .then((d) => { detected = d || ''; detectFailed = !d })
@@ -76,12 +84,15 @@
   const claudeOn = $derived(providerEnabled($settings?.disabledProviders, PROVIDER_CLAUDE))
   const cursorOn = $derived(providerEnabled($settings?.disabledProviders, PROVIDER_CURSOR))
   const codexOn = $derived(providerEnabled($settings?.disabledProviders, PROVIDER_CODEX))
+  const chatGPTOn = $derived(providerEnabled($settings?.disabledProviders, PROVIDER_CHATGPT))
+  const chatGPTReady = $derived(chatGPTOn && !!chatGPTAuth?.authenticated && !!chatGPTAuth.modelCount)
   const claudeReady = $derived(claudeOn && !!detected && !detectFailed)
   const cursorSignedIn = $derived(cursorOn && !!$settings?.cursorApiKey)
   const cursorNeedsSdk = $derived(cursorSignedIn && cursorChecked && !cursorStatus?.bridgeInstalled)
   const cursorReady = $derived(cursorSignedIn && !!cursorStatus?.bridgeInstalled)
   const codexReady = $derived(codexOn && !!codexAuth?.authenticated)
-  const hasProvider = $derived(claudeReady || cursorReady || codexReady)
+  const openAIReady = $derived(chatGPTReady || codexReady)
+  const hasProvider = $derived(claudeReady || cursorReady || openAIReady)
   const claudeDetail = $derived(detected.replace(/^Claude Code(\s*·\s*)?/, '') || 'Signed in')
   const codexDetail = $derived(codexAuth?.email || codexAuth?.loginMethod || 'Signed in')
 
@@ -101,7 +112,7 @@
 
   // The flow is derived from real state, so it resumes wherever the user left off.
   // Until the first probes settle, a started task is taken as proof an agent works.
-  const probing = $derived((claudeOn && !claudeChecked) || (codexOn && !codexChecked) || (cursorOn && !cursorChecked))
+  const probing = $derived((claudeOn && !claudeChecked) || (codexOn && !codexChecked) || (cursorOn && !cursorChecked) || (chatGPTOn && !chatGPTChecked))
   const step = $derived(
     !(hasProvider || skipAgent || (probing && hasWorkspace)) ? 1
       : !hasGitProject ? 2
@@ -142,7 +153,7 @@
 {#snippet providerChips()}
   {#if claudeReady}<span class="ws-chip"><span class="ws-chip-ico"><ProviderIcon provider="claude" /></span>Claude Code</span>{/if}
   {#if cursorReady}<span class="ws-chip"><span class="ws-chip-ico"><ProviderIcon provider="cursor" /></span>Cursor</span>{/if}
-  {#if codexReady}<span class="ws-chip"><span class="ws-chip-ico"><ProviderIcon provider="codex" /></span>Codex</span>{/if}
+  {#if openAIReady}<span class="ws-chip"><span class="ws-chip-ico"><ProviderIcon provider="openai" /></span>OpenAI</span>{/if}
 {/snippet}
 
 {#snippet projectChips()}
@@ -171,7 +182,7 @@
           {#if step < 4}
             <div class="ws-body">
               {#if !settingsLoaded}
-                <p class="ws-note" role="status">Checking Claude Code and Codex…</p>
+                <p class="ws-note" role="status">Checking providers…</p>
               {:else}
                 <ul class="wprov">
                   <li class:on={claudeReady} data-provider="claude">
@@ -188,21 +199,22 @@
                       <button class="lnk" onclick={checkAgents}>Check again</button>
                     {/if}
                   </li>
-                  <li class:on={codexReady} data-provider="codex">
-                    <span class="wprov-name">Codex</span>
-                    {#if codexReady}
-                      <span class="wprov-note on"><Icon name="check" size={13} />{codexDetail}</span>
-                    {:else if !codexOn}
+                  <li class:on={openAIReady} data-provider="openai">
+                    <span class="wprov-name">OpenAI</span>
+                    {#if openAIReady}
+                      <span class="wprov-note on"><Icon name="check" size={13} />{chatGPTReady ? chatGPTAuth?.email || 'ChatGPT account' : codexDetail}</span>
+                    {:else if !codexOn && !chatGPTOn}
                       <span class="wprov-note">Turned off.</span>
                       <button class="lnk" onclick={() => openSettings('agent')}>Turn on</button>
-                    {:else if !codexChecked}
+                    {:else if (codexOn && !codexChecked) || (chatGPTOn && !chatGPTChecked)}
                       <span class="wprov-note" role="status">Checking…</span>
                     {:else if $settings?.codexChatGPTAuth}
-                      <span class="wprov-note">Not signed in. Run <code>codex login</code> in a terminal.</span>
+                      <span class="wprov-note">Sign in with ChatGPT or check your existing <code>codex login</code>.</span>
+                      <button class="lnk" onclick={() => openSettings('agent')}>Continue with ChatGPT</button>
                       <button class="lnk" onclick={checkAgents}>Check again</button>
                     {:else}
-                      <span class="wprov-note">Sign in with ChatGPT or an API key.</span>
-                      <button class="lnk" onclick={() => openSettings('agent')}>Connect</button>
+                      <span class="wprov-note">Use your ChatGPT plan directly or configure a Codex runtime.</span>
+                      <button class="lnk" onclick={() => openSettings('agent')}>Continue with ChatGPT</button>
                     {/if}
                   </li>
                   <li class:on={cursorReady} class:warn={cursorNeedsSdk} data-provider="cursor">

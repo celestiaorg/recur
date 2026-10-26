@@ -1025,7 +1025,7 @@ describe('agent error replies', () => {
       '\x1b[2m2026-09-10T15:43:08.630243Z\x1b[0m \x1b[31mERROR\x1b[0m \x1b[2mcodex_login::auth::manager\x1b[0m \x1b[2m-\x1b[0m Failed to refresh token: 401 Unauthorized {'
     const body = `${AGENT_ERROR_PREFIX} ${ansi}`
     expect(agentErrorDetail(body)).toBe(
-      'Codex login expired — run `codex login` in a terminal, then retry.',
+      'Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.',
     )
     expect(agentErrorTitle(body)).toBe('Codex login')
   })
@@ -1044,7 +1044,7 @@ describe('agent error replies', () => {
   test('maps Codex 401 dumps without refresh-token prose', () => {
     const body = `${AGENT_ERROR_PREFIX} ERROR codex_login::auth::manager - 401 Unauthorized`
     expect(agentErrorDetail(body)).toBe(
-      'Codex login expired — run `codex login` in a terminal, then retry.',
+      'Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.',
     )
   })
 

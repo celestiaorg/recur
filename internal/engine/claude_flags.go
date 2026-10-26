@@ -25,7 +25,7 @@ func ResolveClaudeModel(base string, flags map[string]string) string {
 // meter. Claude's modelUsage.contextWindow is the model ceiling and is not a
 // reliable signal of the dock selection for 4.6's 200K↔1M toggle.
 //
-// Always-1M models (Sonnet 5, Fable 5.1, Opus 4.7+) ignore stale "300k" flags.
+// Always-1M models (Sonnet 5, Fable 5.1, Mythos 5.1, Haiku 5.5, Opus 4.7+) ignore stale "300k" flags.
 // Selectable 4.6 models use 200K unless context=1m.
 func ResolveClaudeContextWindow(model string, flags map[string]string) int64 {
 	if flags["context"] == "1m" {
@@ -58,9 +58,11 @@ func claudeAlways1M(model string) bool {
 		"claude-opus-4-8", "claude-opus-4-7":
 		return true
 	}
-	// Future pinned Sonnet 5 / Opus 5.x ids.
+	// Future pinned Sonnet 5 / Opus 5.x ids. Mythos shares Fable's window.
 	if strings.HasPrefix(id, "claude-sonnet-5") ||
 		strings.HasPrefix(id, "claude-fable-5") ||
+		strings.HasPrefix(id, "claude-mythos-5") ||
+		strings.HasPrefix(id, "claude-haiku-5") ||
 		strings.HasPrefix(id, "claude-opus-5") {
 		return true
 	}

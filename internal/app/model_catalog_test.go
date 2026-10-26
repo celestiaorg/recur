@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -714,5 +715,76 @@ func TestModelCatalogIncludesCompatibleProviders(t *testing.T) {
 	groups = buildModelCatalog(set, nil, nil)
 	if len(groups) != 1 || groups[0].Provider != "groq" {
 		t.Errorf("disabled openai groups = %+v, want only groq", groups)
+	}
+}
+
+// Models Claude Code reports beyond the pinned list (Mythos on accounts with
+// access) join the picker; aliases and pinned ids do not duplicate rows.
+func TestProbedClaudeModelsAddAccountOnlyModels(t *testing.T) {
+	out := []byte(`{"type":"system","subtype":"init"}
+{"type":"control_response","response":{"subtype":"success","request_id":"models","response":{"models":[` +
+		`{"value":"default","resolvedModel":"claude-opus-5-5","displayName":"Default (recommended)"},` +
+		`{"value":"claude-fable-5","resolvedModel":"claude-fable-5","displayName":"Fable 5"},` +
+		`{"value":"claude-mythos-5-1","resolvedModel":"claude-mythos-5-1","displayName":"Mythos 5.1"}]}}}
+`)
+	models := withProbedClaudeModels(parseClaudeInitModels(out))
+	if len(models) != len(claudeCodeModels)+1 {
+		t.Fatalf("got %d models, want pinned list + Mythos", len(models))
+	}
+	last := models[len(models)-1]
+	if last.Ref != "claude-code/claude-mythos-5-1" || last.Label != "Mythos 5.1" || len(last.Flags) == 0 || last.ContextWindow != 1_000_000 {
+		t.Fatalf("last = %+v, want Mythos 5.1 with effort flags and a 1M window", last)
+	}
+	if got := withProbedClaudeModels(parseClaudeInitModels([]byte("not json"))); len(got) != len(claudeCodeModels) {
+		t.Fatalf("unreadable probe: got %d models, want pinned list", len(got))
+	}
+}
+
+func TestProbedClaudeModelsStripContextSuffix(t *testing.T) {
+	models := withProbedClaudeModels([]claudeModelInfo{
+		{Value: "opus[1m]", ResolvedModel: "claude-opus-5-5[1m]", DisplayName: "Opus"},
+		{Value: "mythos[1m]", ResolvedModel: "claude-mythos-5-1[1m]", DisplayName: "Mythos 5.1"},
+	})
+	if len(models) != len(claudeCodeModels)+1 {
+		t.Fatalf("got %d models, want pinned list + Mythos", len(models))
+	}
+	if ref := models[len(models)-1].Ref; ref != "claude-code/claude-mythos-5-1" {
+		t.Fatalf("ref = %q, want suffix stripped", ref)
+	}
+}
+
+func TestClaudeProbeFallsBackToLastGood(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	good := []claudeModelInfo{{ResolvedModel: "claude-mythos-5-1", DisplayName: "Mythos 5.1"}}
+	lastClaudeModels.Store(&good)
+	t.Cleanup(func() { lastClaudeModels.Store(nil) })
+	got := claudeProbe()
+	if len(got) != 1 || got[0].ResolvedModel != "claude-mythos-5-1" {
+		t.Fatalf("failed probe returned %+v, want last good result", got)
+	}
+}
+
+func TestCachedClaudeProbeSpawnsOnlyWithoutCache(t *testing.T) {
+	dir := t.TempDir()
+	ran := filepath.Join(dir, "ran")
+	if err := os.WriteFile(filepath.Join(dir, "claude"), []byte("#!/bin/sh\n/usr/bin/touch "+ran+"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	t.Cleanup(func() { lastClaudeModels.Store(nil) })
+
+	good := []claudeModelInfo{{ResolvedModel: "claude-mythos-5-1", DisplayName: "Mythos 5.1"}}
+	lastClaudeModels.Store(&good)
+	if got := cachedClaudeProbe(); len(got) != 1 || got[0].ResolvedModel != "claude-mythos-5-1" {
+		t.Fatalf("cached probe = %+v, want Mythos", got)
+	}
+	if _, err := os.Stat(ran); err == nil {
+		t.Fatal("claude spawned despite a cached probe")
+	}
+
+	lastClaudeModels.Store(nil)
+	cachedClaudeProbe()
+	if _, err := os.Stat(ran); err != nil {
+		t.Fatal("claude not probed without a cached result")
 	}
 }

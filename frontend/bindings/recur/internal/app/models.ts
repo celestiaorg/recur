@@ -7,6 +7,9 @@ import { Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as chatgpt$0 from "../chatgpt/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as domain$0 from "../domain/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -287,6 +290,54 @@ export class BundleSkipInfo {
 }
 
 /**
+ * ChatGPTStatus exposes account metadata only, never OAuth tokens.
+ */
+export class ChatGPTStatus {
+    "authenticated": boolean;
+    "accountId": string;
+    "email": string;
+    "accounts": chatgpt$0.Account[];
+    "modelCount": number;
+    "error": string;
+
+    /** Creates a new ChatGPTStatus instance. */
+    constructor($$source: Partial<ChatGPTStatus> = {}) {
+        if (!("authenticated" in $$source)) {
+            this["authenticated"] = false;
+        }
+        if (!("accountId" in $$source)) {
+            this["accountId"] = "";
+        }
+        if (!("email" in $$source)) {
+            this["email"] = "";
+        }
+        if (!("accounts" in $$source)) {
+            this["accounts"] = [];
+        }
+        if (!("modelCount" in $$source)) {
+            this["modelCount"] = 0;
+        }
+        if (!("error" in $$source)) {
+            this["error"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ChatGPTStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ChatGPTStatus {
+        const $$createField3_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("accounts" in $$parsedSource) {
+            $$parsedSource["accounts"] = $$createField3_0($$parsedSource["accounts"]);
+        }
+        return new ChatGPTStatus($$parsedSource as Partial<ChatGPTStatus>);
+    }
+}
+
+/**
  * ClaudeStatus is what the Settings screen renders for the Claude Code account.
  */
 export class ClaudeStatus {
@@ -366,6 +417,34 @@ export class ClaudeStatus {
     static createFrom($$source: any = {}): ClaudeStatus {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new ClaudeStatus($$parsedSource as Partial<ClaudeStatus>);
+    }
+}
+
+/**
+ * CodexLogin identifies a pending sign-in and the URL to open in the OS browser.
+ */
+export class CodexLogin {
+    "loginId": string;
+    "authUrl": string;
+
+    /** Creates a new CodexLogin instance. */
+    constructor($$source: Partial<CodexLogin> = {}) {
+        if (!("loginId" in $$source)) {
+            this["loginId"] = "";
+        }
+        if (!("authUrl" in $$source)) {
+            this["authUrl"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CodexLogin instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CodexLogin {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CodexLogin($$parsedSource as Partial<CodexLogin>);
     }
 }
 
@@ -511,8 +590,8 @@ export class CommandInfo {
      * Creates a new CommandInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): CommandInfo {
-        const $$createField9_0 = $$createType5;
-        const $$createField10_0 = $$createType7;
+        const $$createField9_0 = $$createType7;
+        const $$createField10_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("triggers" in $$parsedSource) {
             $$parsedSource["triggers"] = $$createField9_0($$parsedSource["triggers"]);
@@ -556,7 +635,7 @@ export class CommandPromptDTO {
      * Creates a new CommandPromptDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): CommandPromptDTO {
-        const $$createField4_0 = $$createType5;
+        const $$createField4_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("choices" in $$parsedSource) {
             $$parsedSource["choices"] = $$createField4_0($$parsedSource["choices"]);
@@ -857,10 +936,10 @@ export class EditorSession {
      * Creates a new EditorSession instance from a string or object.
      */
     static createFrom($$source: any = {}): EditorSession {
-        const $$createField0_0 = $$createType5;
-        const $$createField4_0 = $$createType9;
-        const $$createField5_0 = $$createType11;
-        const $$createField6_0 = $$createType13;
+        const $$createField0_0 = $$createType7;
+        const $$createField4_0 = $$createType11;
+        const $$createField5_0 = $$createType13;
+        const $$createField6_0 = $$createType15;
         const $$createField7_0 = $$createType0;
         const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
@@ -939,10 +1018,10 @@ export class EditorSessionMeta {
      * Creates a new EditorSessionMeta instance from a string or object.
      */
     static createFrom($$source: any = {}): EditorSessionMeta {
-        const $$createField0_0 = $$createType5;
-        const $$createField4_0 = $$createType13;
-        const $$createField5_0 = $$createType14;
-        const $$createField6_0 = $$createType14;
+        const $$createField0_0 = $$createType7;
+        const $$createField4_0 = $$createType15;
+        const $$createField5_0 = $$createType16;
+        const $$createField6_0 = $$createType16;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("openFiles" in $$parsedSource) {
             $$parsedSource["openFiles"] = $$createField0_0($$parsedSource["openFiles"]);
@@ -982,11 +1061,11 @@ export class EditorSessionPatch {
      * Creates a new EditorSessionPatch instance from a string or object.
      */
     static createFrom($$source: any = {}): EditorSessionPatch {
-        const $$createField0_0 = $$createType16;
-        const $$createField1_0 = $$createType11;
-        const $$createField2_0 = $$createType5;
-        const $$createField3_0 = $$createType9;
-        const $$createField4_0 = $$createType5;
+        const $$createField0_0 = $$createType18;
+        const $$createField1_0 = $$createType13;
+        const $$createField2_0 = $$createType7;
+        const $$createField3_0 = $$createType11;
+        const $$createField4_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("meta" in $$parsedSource) {
             $$parsedSource["meta"] = $$createField0_0($$parsedSource["meta"]);
@@ -1055,7 +1134,7 @@ export class EnsureResult {
      * Creates a new EnsureResult instance from a string or object.
      */
     static createFrom($$source: any = {}): EnsureResult {
-        const $$createField9_0 = $$createType18;
+        const $$createField9_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("extra" in $$parsedSource) {
             $$parsedSource["extra"] = $$createField9_0($$parsedSource["extra"]);
@@ -1091,7 +1170,7 @@ export class FlagDimension {
      * Creates a new FlagDimension instance from a string or object.
      */
     static createFrom($$source: any = {}): FlagDimension {
-        const $$createField2_0 = $$createType20;
+        const $$createField2_0 = $$createType22;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("options" in $$parsedSource) {
             $$parsedSource["options"] = $$createField2_0($$parsedSource["options"]);
@@ -1182,10 +1261,10 @@ export class GrammarInfo {
      * Creates a new GrammarInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): GrammarInfo {
-        const $$createField4_0 = $$createType5;
-        const $$createField6_0 = $$createType5;
+        const $$createField4_0 = $$createType7;
+        const $$createField6_0 = $$createType7;
         const $$createField7_0 = $$createType0;
-        const $$createField18_0 = $$createType5;
+        const $$createField18_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("fileTypes" in $$parsedSource) {
             $$parsedSource["fileTypes"] = $$createField4_0($$parsedSource["fileTypes"]);
@@ -1253,8 +1332,8 @@ export class IssuesView {
      * Creates a new IssuesView instance from a string or object.
      */
     static createFrom($$source: any = {}): IssuesView {
-        const $$createField3_0 = $$createType5;
-        const $$createField5_0 = $$createType5;
+        const $$createField3_0 = $$createType7;
+        const $$createField5_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("groups" in $$parsedSource) {
             $$parsedSource["groups"] = $$createField3_0($$parsedSource["groups"]);
@@ -1307,7 +1386,7 @@ export class LanguageServerInfo {
      * Creates a new LanguageServerInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): LanguageServerInfo {
-        const $$createField1_0 = $$createType5;
+        const $$createField1_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("languages" in $$parsedSource) {
             $$parsedSource["languages"] = $$createField1_0($$parsedSource["languages"]);
@@ -1409,7 +1488,7 @@ export class MenuNode {
      * Creates a new MenuNode instance from a string or object.
      */
     static createFrom($$source: any = {}): MenuNode {
-        const $$createField7_0 = $$createType22;
+        const $$createField7_0 = $$createType24;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("children" in $$parsedSource) {
             $$parsedSource["children"] = $$createField7_0($$parsedSource["children"]);
@@ -1459,7 +1538,7 @@ export class ModelChoice {
      * Creates a new ModelChoice instance from a string or object.
      */
     static createFrom($$source: any = {}): ModelChoice {
-        const $$createField2_0 = $$createType24;
+        const $$createField2_0 = $$createType26;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("flags" in $$parsedSource) {
             $$parsedSource["flags"] = $$createField2_0($$parsedSource["flags"]);
@@ -1506,7 +1585,7 @@ export class ModelGroup {
      * Creates a new ModelGroup instance from a string or object.
      */
     static createFrom($$source: any = {}): ModelGroup {
-        const $$createField2_0 = $$createType26;
+        const $$createField2_0 = $$createType28;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("models" in $$parsedSource) {
             $$parsedSource["models"] = $$createField2_0($$parsedSource["models"]);
@@ -1534,7 +1613,7 @@ export class PaletteSearchDTO {
      * Creates a new PaletteSearchDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PaletteSearchDTO {
-        const $$createField0_0 = $$createType28;
+        const $$createField0_0 = $$createType30;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("groups" in $$parsedSource) {
             $$parsedSource["groups"] = $$createField0_0($$parsedSource["groups"]);
@@ -1567,7 +1646,7 @@ export class PaletteSearchGroupDTO {
      * Creates a new PaletteSearchGroupDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PaletteSearchGroupDTO {
-        const $$createField2_0 = $$createType30;
+        const $$createField2_0 = $$createType32;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hits" in $$parsedSource) {
             $$parsedSource["hits"] = $$createField2_0($$parsedSource["hits"]);
@@ -1683,7 +1762,7 @@ export class PromptActionInfo {
      * Creates a new PromptActionInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptActionInfo {
-        const $$createField15_0 = $$createType32;
+        const $$createField15_0 = $$createType34;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("args" in $$parsedSource) {
             $$parsedSource["args"] = $$createField15_0($$parsedSource["args"]);
@@ -1816,7 +1895,7 @@ export class PromptCompleteResultDTO {
      * Creates a new PromptCompleteResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptCompleteResultDTO {
-        const $$createField0_0 = $$createType30;
+        const $$createField0_0 = $$createType32;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hits" in $$parsedSource) {
             $$parsedSource["hits"] = $$createField0_0($$parsedSource["hits"]);
@@ -1978,7 +2057,7 @@ export class PromptResultDTO {
      * Creates a new PromptResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptResultDTO {
-        const $$createField3_0 = $$createType34;
+        const $$createField3_0 = $$createType36;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("issue" in $$parsedSource) {
             $$parsedSource["issue"] = $$createField3_0($$parsedSource["issue"]);
@@ -2029,7 +2108,7 @@ export class RoleInfo {
      * Creates a new RoleInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): RoleInfo {
-        const $$createField5_0 = $$createType5;
+        const $$createField5_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("tools" in $$parsedSource) {
             $$parsedSource["tools"] = $$createField5_0($$parsedSource["tools"]);
@@ -2422,7 +2501,7 @@ export class TerminalThemeInfo {
      * Creates a new TerminalThemeInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): TerminalThemeInfo {
-        const $$createField5_0 = $$createType35;
+        const $$createField5_0 = $$createType37;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("palette" in $$parsedSource) {
             $$parsedSource["palette"] = $$createField5_0($$parsedSource["palette"]);
@@ -2475,7 +2554,7 @@ export class ThemeInfo {
      * Creates a new ThemeInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ThemeInfo {
-        const $$createField5_0 = $$createType36;
+        const $$createField5_0 = $$createType38;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("preview" in $$parsedSource) {
             $$parsedSource["preview"] = $$createField5_0($$parsedSource["preview"]);
@@ -2549,35 +2628,37 @@ const $$createType1 = IssueLabel.createFrom;
 const $$createType2 = $Create.Array($$createType1);
 const $$createType3 = domain$0.PRParticipant.createFrom;
 const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $Create.Array($Create.Any);
-const $$createType6 = CommandPromptDTO.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = EditorScratchDoc.createFrom;
-const $$createType9 = $Create.Map($Create.Any, $$createType8);
-const $$createType10 = EditorBuffer.createFrom;
+const $$createType5 = chatgpt$0.Account.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = $Create.Array($Create.Any);
+const $$createType8 = CommandPromptDTO.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = EditorScratchDoc.createFrom;
 const $$createType11 = $Create.Map($Create.Any, $$createType10);
-const $$createType12 = EditorFileView.createFrom;
+const $$createType12 = EditorBuffer.createFrom;
 const $$createType13 = $Create.Map($Create.Any, $$createType12);
-const $$createType14 = $Create.Nullable($$createType0);
-const $$createType15 = EditorSessionMeta.createFrom;
-const $$createType16 = $Create.Nullable($$createType15);
-const $$createType17 = lsp$0.SessionInfo.createFrom;
-const $$createType18 = $Create.Array($$createType17);
-const $$createType19 = FlagOption.createFrom;
+const $$createType14 = EditorFileView.createFrom;
+const $$createType15 = $Create.Map($Create.Any, $$createType14);
+const $$createType16 = $Create.Nullable($$createType0);
+const $$createType17 = EditorSessionMeta.createFrom;
+const $$createType18 = $Create.Nullable($$createType17);
+const $$createType19 = lsp$0.SessionInfo.createFrom;
 const $$createType20 = $Create.Array($$createType19);
-const $$createType21 = MenuNode.createFrom;
+const $$createType21 = FlagOption.createFrom;
 const $$createType22 = $Create.Array($$createType21);
-const $$createType23 = FlagDimension.createFrom;
+const $$createType23 = MenuNode.createFrom;
 const $$createType24 = $Create.Array($$createType23);
-const $$createType25 = ModelChoice.createFrom;
+const $$createType25 = FlagDimension.createFrom;
 const $$createType26 = $Create.Array($$createType25);
-const $$createType27 = PaletteSearchGroupDTO.createFrom;
+const $$createType27 = ModelChoice.createFrom;
 const $$createType28 = $Create.Array($$createType27);
-const $$createType29 = PromptCompleteHitDTO.createFrom;
+const $$createType29 = PaletteSearchGroupDTO.createFrom;
 const $$createType30 = $Create.Array($$createType29);
-const $$createType31 = PromptArgInfo.createFrom;
+const $$createType31 = PromptCompleteHitDTO.createFrom;
 const $$createType32 = $Create.Array($$createType31);
-const $$createType33 = domain$0.IssueRef.createFrom;
-const $$createType34 = $Create.Nullable($$createType33);
-const $$createType35 = TerminalPaletteInfo.createFrom;
-const $$createType36 = ThemePreviewInfo.createFrom;
+const $$createType33 = PromptArgInfo.createFrom;
+const $$createType34 = $Create.Array($$createType33);
+const $$createType35 = domain$0.IssueRef.createFrom;
+const $$createType36 = $Create.Nullable($$createType35);
+const $$createType37 = TerminalPaletteInfo.createFrom;
+const $$createType38 = ThemePreviewInfo.createFrom;

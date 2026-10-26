@@ -1116,7 +1116,7 @@ export const resolvers: Record<string, Resolver> = {
     pr.comments = [...(pr.comments ?? []), review, ...kids]
     return pr
   },
-  UpdateWithBase: (a, s) => ({ ...(s.prById[a[0]] ?? {}), state: 'In review', group: 'you', behindBase: 0, updatingBase: '' }),
+  UpdateWithBase: (a, s) => ({ status: 'updated', workspace: s.loopById[s.prById[a[0]]?.workspaceId] ?? {}, base: s.prById[a[0]]?.base ?? 'main' }),
   MergePR: (a, s) => ({ ...(s.prById[a[0]] ?? {}), state: 'Merged', group: 'merged' }),
   SetPRDraft: (a, s) => {
     const pr = s.prById[a[0]]
@@ -1174,6 +1174,7 @@ export const resolvers: Record<string, Resolver> = {
     plan: '',
     error: 'Not logged in. Run `codex login`.',
   }),
+  GetChatGPTStatus: () => ({ authenticated: false, accountId: '', email: '', accounts: [], modelCount: 0, error: '' }),
   GetCursorStatus: () => ({
     bridgeInstalled: true,
     bridgePath: '/tmp/cursor-sdk-bridge',

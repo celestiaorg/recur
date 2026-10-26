@@ -23,6 +23,16 @@ func (c *Client) AccountRead(ctx context.Context) (AccountReadResult, error) {
 	return out, err
 }
 
+func (c *Client) AccountLoginStart(ctx context.Context) (LoginStartResult, error) {
+	var out LoginStartResult
+	err := c.conn.Call(ctx, "account/login/start", map[string]any{"type": "chatgpt"}, &out)
+	return out, err
+}
+
+func (c *Client) AccountLoginCancel(ctx context.Context, loginID string) error {
+	return c.conn.Call(ctx, "account/login/cancel", map[string]any{"loginId": loginID}, nil)
+}
+
 func (c *Client) ModelList(ctx context.Context, limit int) ([]Model, error) {
 	if limit <= 0 {
 		limit = 50

@@ -4191,6 +4191,13 @@ export class Settings {
     "codexNetworkAccess"?: boolean;
 
     /**
+     * ChatGPTAccountID identifies a saved ChatGPT account. Tokens are kept
+     * separately in chatgpt-auth.json and are never returned to the frontend.
+     */
+    "chatGPTAccountId"?: string;
+    "chatGPTModels"?: CompatibleModel[];
+
+    /**
      * DisabledBundleCommands lists Recur Bundle command ids the user turned
      * off in Settings → Bundles. Disabled commands are omitted from the Run
      * Command palette, keybindings, and willSave. Empty/nil → all enabled.
@@ -4341,19 +4348,20 @@ export class Settings {
         const $$createField10_0 = $$createType19;
         const $$createField11_0 = $$createType19;
         const $$createField28_0 = $$createType19;
-        const $$createField40_0 = $$createType12;
-        const $$createField41_0 = $$createType12;
+        const $$createField41_0 = $$createType21;
         const $$createField42_0 = $$createType12;
         const $$createField43_0 = $$createType12;
         const $$createField44_0 = $$createType12;
         const $$createField45_0 = $$createType12;
-        const $$createField48_0 = $$createType12;
-        const $$createField49_0 = $$createType12;
+        const $$createField46_0 = $$createType12;
+        const $$createField47_0 = $$createType12;
         const $$createField50_0 = $$createType12;
         const $$createField51_0 = $$createType12;
-        const $$createField52_0 = $$createType68;
-        const $$createField55_0 = $$createType12;
-        const $$createField56_0 = $$createType70;
+        const $$createField52_0 = $$createType12;
+        const $$createField53_0 = $$createType12;
+        const $$createField54_0 = $$createType68;
+        const $$createField57_0 = $$createType12;
+        const $$createField58_0 = $$createType70;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("flagsAsk" in $$parsedSource) {
             $$parsedSource["flagsAsk"] = $$createField6_0($$parsedSource["flagsAsk"]);
@@ -4376,44 +4384,47 @@ export class Settings {
         if ("bundleValues" in $$parsedSource) {
             $$parsedSource["bundleValues"] = $$createField28_0($$parsedSource["bundleValues"]);
         }
+        if ("chatGPTModels" in $$parsedSource) {
+            $$parsedSource["chatGPTModels"] = $$createField41_0($$parsedSource["chatGPTModels"]);
+        }
         if ("disabledBundleCommands" in $$parsedSource) {
-            $$parsedSource["disabledBundleCommands"] = $$createField40_0($$parsedSource["disabledBundleCommands"]);
+            $$parsedSource["disabledBundleCommands"] = $$createField42_0($$parsedSource["disabledBundleCommands"]);
         }
         if ("disabledBundlePrompts" in $$parsedSource) {
-            $$parsedSource["disabledBundlePrompts"] = $$createField41_0($$parsedSource["disabledBundlePrompts"]);
+            $$parsedSource["disabledBundlePrompts"] = $$createField43_0($$parsedSource["disabledBundlePrompts"]);
         }
         if ("disabledBundleGrammars" in $$parsedSource) {
-            $$parsedSource["disabledBundleGrammars"] = $$createField42_0($$parsedSource["disabledBundleGrammars"]);
+            $$parsedSource["disabledBundleGrammars"] = $$createField44_0($$parsedSource["disabledBundleGrammars"]);
         }
         if ("disabledBundleThemes" in $$parsedSource) {
-            $$parsedSource["disabledBundleThemes"] = $$createField43_0($$parsedSource["disabledBundleThemes"]);
+            $$parsedSource["disabledBundleThemes"] = $$createField45_0($$parsedSource["disabledBundleThemes"]);
         }
         if ("disabledBundleSnippets" in $$parsedSource) {
-            $$parsedSource["disabledBundleSnippets"] = $$createField44_0($$parsedSource["disabledBundleSnippets"]);
+            $$parsedSource["disabledBundleSnippets"] = $$createField46_0($$parsedSource["disabledBundleSnippets"]);
         }
         if ("disabledLanguageServers" in $$parsedSource) {
-            $$parsedSource["disabledLanguageServers"] = $$createField45_0($$parsedSource["disabledLanguageServers"]);
+            $$parsedSource["disabledLanguageServers"] = $$createField47_0($$parsedSource["disabledLanguageServers"]);
         }
         if ("disabledBundleLoops" in $$parsedSource) {
-            $$parsedSource["disabledBundleLoops"] = $$createField48_0($$parsedSource["disabledBundleLoops"]);
+            $$parsedSource["disabledBundleLoops"] = $$createField50_0($$parsedSource["disabledBundleLoops"]);
         }
         if ("disabledBundleRoles" in $$parsedSource) {
-            $$parsedSource["disabledBundleRoles"] = $$createField49_0($$parsedSource["disabledBundleRoles"]);
+            $$parsedSource["disabledBundleRoles"] = $$createField51_0($$parsedSource["disabledBundleRoles"]);
         }
         if ("disabledBundlePolicies" in $$parsedSource) {
-            $$parsedSource["disabledBundlePolicies"] = $$createField50_0($$parsedSource["disabledBundlePolicies"]);
+            $$parsedSource["disabledBundlePolicies"] = $$createField52_0($$parsedSource["disabledBundlePolicies"]);
         }
         if ("disabledSkills" in $$parsedSource) {
-            $$parsedSource["disabledSkills"] = $$createField51_0($$parsedSource["disabledSkills"]);
+            $$parsedSource["disabledSkills"] = $$createField53_0($$parsedSource["disabledSkills"]);
         }
         if ("mcpServers" in $$parsedSource) {
-            $$parsedSource["mcpServers"] = $$createField52_0($$parsedSource["mcpServers"]);
+            $$parsedSource["mcpServers"] = $$createField54_0($$parsedSource["mcpServers"]);
         }
         if ("disabledProviders" in $$parsedSource) {
-            $$parsedSource["disabledProviders"] = $$createField55_0($$parsedSource["disabledProviders"]);
+            $$parsedSource["disabledProviders"] = $$createField57_0($$parsedSource["disabledProviders"]);
         }
         if ("compatibleProviders" in $$parsedSource) {
-            $$parsedSource["compatibleProviders"] = $$createField56_0($$parsedSource["compatibleProviders"]);
+            $$parsedSource["compatibleProviders"] = $$createField58_0($$parsedSource["compatibleProviders"]);
         }
         return new Settings($$parsedSource as Partial<Settings>);
     }

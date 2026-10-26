@@ -1914,6 +1914,11 @@ type Settings struct {
 	// sandbox exceptions.
 	CodexNetworkAccess bool `json:"codexNetworkAccess,omitempty"`
 
+	// ChatGPTAccountID identifies a saved ChatGPT account. Tokens are kept
+	// separately in chatgpt-auth.json and are never returned to the frontend.
+	ChatGPTAccountID string            `json:"chatGPTAccountId,omitempty"`
+	ChatGPTModels    []CompatibleModel `json:"chatGPTModels,omitempty"`
+
 	// DisabledBundleCommands lists Recur Bundle command ids the user turned
 	// off in Settings → Bundles. Disabled commands are omitted from the Run
 	// Command palette, keybindings, and willSave. Empty/nil → all enabled.

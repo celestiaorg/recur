@@ -426,19 +426,6 @@ pub fn app_menus(
     menus
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn unit_actions_map_to_menu_action_names() {
-        assert_eq!(menu_action_name(&NewWorkspace), Some("new-loop"));
-        assert_eq!(menu_action_name(&GoTo), Some("palette"));
-        assert_eq!(menu_action_name(&ToggleSidebar), Some("toggle-sidebar"));
-        assert_eq!(menu_action_name(&About), None);
-    }
-}
-
 static REBUILDS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 static REBUILD_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
@@ -456,4 +443,17 @@ pub(crate) fn count_rebuild(took: std::time::Duration) {
     use std::sync::atomic::Ordering;
     REBUILDS.fetch_add(1, Ordering::Relaxed);
     REBUILD_NANOS.fetch_add(took.as_nanos() as u64, Ordering::Relaxed);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unit_actions_map_to_menu_action_names() {
+        assert_eq!(menu_action_name(&NewWorkspace), Some("new-loop"));
+        assert_eq!(menu_action_name(&GoTo), Some("palette"));
+        assert_eq!(menu_action_name(&ToggleSidebar), Some("toggle-sidebar"));
+        assert_eq!(menu_action_name(&About), None);
+    }
 }

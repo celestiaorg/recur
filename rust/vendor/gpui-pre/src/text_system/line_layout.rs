@@ -551,34 +551,44 @@ impl LineLayoutCache {
         let mut current_frame = &mut *self.current_frame.write();
         let mut previous_frame = &mut *self.previous_frame.lock();
 
-        for key in &previous_frame.used_lines[range.start.lines_index..range.end.lines_index] {
+        for key in clip(
+            &previous_frame.used_lines,
+            range.start.lines_index,
+            range.end.lines_index,
+        ) {
             if let Some((key, line)) = previous_frame.lines.remove_entry(key) {
                 current_frame.lines.insert(key, line);
             }
             current_frame.used_lines.push(key.clone());
         }
 
-        for key in &previous_frame.used_wrapped_lines
-            [range.start.wrapped_lines_index..range.end.wrapped_lines_index]
-        {
+        for key in clip(
+            &previous_frame.used_wrapped_lines,
+            range.start.wrapped_lines_index,
+            range.end.wrapped_lines_index,
+        ) {
             if let Some((key, line)) = previous_frame.wrapped_lines.remove_entry(key) {
                 current_frame.wrapped_lines.insert(key, line);
             }
             current_frame.used_wrapped_lines.push(key.clone());
         }
 
-        for key in &previous_frame.used_lines_by_hash
-            [range.start.lines_by_hash_index..range.end.lines_by_hash_index]
-        {
+        for key in clip(
+            &previous_frame.used_lines_by_hash,
+            range.start.lines_by_hash_index,
+            range.end.lines_by_hash_index,
+        ) {
             if let Some((key, line)) = previous_frame.lines_by_hash.remove_entry(key) {
                 current_frame.lines_by_hash.insert(key, line);
             }
             current_frame.used_lines_by_hash.push(key.clone());
         }
 
-        for key in &previous_frame.used_wrapped_lines_by_hash
-            [range.start.wrapped_lines_by_hash_index..range.end.wrapped_lines_by_hash_index]
-        {
+        for key in clip(
+            &previous_frame.used_wrapped_lines_by_hash,
+            range.start.wrapped_lines_by_hash_index,
+            range.end.wrapped_lines_by_hash_index,
+        ) {
             if let Some((key, line)) = previous_frame.wrapped_lines_by_hash.remove_entry(key) {
                 current_frame.wrapped_lines_by_hash.insert(key, line);
             }
@@ -1208,4 +1218,11 @@ mod tests {
         let positions = glyph_x_positions(&layout);
         assert_eq!(positions, vec![0.5, 0.5]);
     }
+}
+
+/// `list[start..end]` within `list`: a replay that spans a font change (Recur's isolated views)
+/// can name layouts the change dropped, and reuse only warms the cache.
+fn clip<T>(list: &[T], start: usize, end: usize) -> &[T] {
+    let end = end.min(list.len());
+    &list[start.min(end)..end]
 }

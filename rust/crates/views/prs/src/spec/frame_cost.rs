@@ -57,10 +57,19 @@ fn type_keys(s: &mut S) {
     s.cx.run_until_parked();
 }
 
-/// A key renders PR detail (the box's host, on the key's path) but never its conversation:
-/// the items are cached blocks, and the fixture's have markdown bodies and reactions.
+/// What rendered besides the field a key went to.
+fn beside_the_field(counts: &BTreeMap<&'static str, u32>) -> BTreeMap<&'static str, u32> {
+    counts
+        .iter()
+        .filter(|(k, _)| !k.ends_with("::FieldView"))
+        .map(|(k, n)| (*k, *n))
+        .collect()
+}
+
+/// A key renders the comment box alone: the box is an isolated view, so neither PR detail
+/// (its host) nor the conversation beside it renders.
 #[gpui::test]
-async fn a_key_in_the_pr_comment_box_renders_pr_detail_only(cx: &mut TestAppContext) {
+async fn a_key_in_the_pr_comment_box_renders_the_box_only(cx: &mut TestAppContext) {
     let mut s = open(cx);
     let d =
         s.cx.update(|_, cx| crate::detail::spec_handle::current(cx))
@@ -73,7 +82,8 @@ async fn a_key_in_the_pr_comment_box_renders_pr_detail_only(cx: &mut TestAppCont
             type_keys(s);
         }
     });
-    assert!(renders("::PrDetail", &counts) >= 3, "{counts:?}");
+    assert!(renders("::FieldView", &counts) >= 3, "{counts:?}");
+    assert_eq!(beside_the_field(&counts), BTreeMap::new(), "comment key");
     assert_quiet("comment key", &HIDDEN, &counts);
     assert_quiet("comment key", &CONVERSATION, &counts);
     assert_quiet(
@@ -89,7 +99,7 @@ async fn a_key_in_the_pr_comment_box_renders_pr_detail_only(cx: &mut TestAppCont
 }
 
 #[gpui::test]
-async fn a_key_in_the_review_modal_renders_the_modal_and_pr_detail_only(cx: &mut TestAppContext) {
+async fn a_key_in_the_review_modal_renders_its_box_only(cx: &mut TestAppContext) {
     let mut s = open(cx);
     let state = s.state.clone();
     s.cx.update(|_, cx| state.update(cx, |st, cx| st.open_pr_review(PrReviewKind::Approve, cx)));
@@ -100,7 +110,8 @@ async fn a_key_in_the_review_modal_renders_the_modal_and_pr_detail_only(cx: &mut
             type_keys(s);
         }
     });
-    assert!(renders("::PrReviewModal", &counts) >= 3, "{counts:?}");
+    assert!(renders("::FieldView", &counts) >= 3, "{counts:?}");
+    assert_eq!(beside_the_field(&counts), BTreeMap::new(), "review key");
     assert_quiet("review key", &HIDDEN, &counts);
     assert_quiet("review key", &CONVERSATION, &counts);
     assert_quiet(
@@ -164,4 +175,60 @@ async fn a_pr_tab_switch_does_not_lay_out_the_hidden_workspace(cx: &mut TestAppC
         &["::WorkspaceView", "::Observatory", "::ReviewSurface"],
         &counts,
     );
+}
+
+/// Another workspace's agent event does not redraw the conversation: PR detail does not notify
+/// its items for a store change that leaves what it shows as it was. A change to this PR still
+/// redraws them.
+#[gpui::test]
+async fn an_unrelated_store_change_leaves_the_conversation_alone(cx: &mut TestAppContext) {
+    let mut s = open(cx);
+    let state = s.state.clone();
+    let counts = counted(&mut s, |s| {
+        s.cx.update(|_, cx| {
+            // What `apply_event` does with an agent event.
+            state.update(cx, |st, cx| {
+                let w = st.workspaces.iter_mut().find(|w| w.id == "LOOP-2224");
+                w.expect("workspace").last = "a new event".into();
+                st.changed(Topics::WORKSPACES, cx);
+            })
+        });
+        s.cx.run_until_parked();
+    });
+    assert_quiet("agent event", &CONVERSATION, &counts);
+
+    let counts = counted(&mut s, |s| {
+        s.cx.update(|_, cx| {
+            state.update(cx, |st, cx| {
+                let id = st.selected_pr_id.clone();
+                st.update_pr(&id, |p| p.title.push('!'), cx);
+            })
+        });
+        s.cx.run_until_parked();
+    });
+    assert!(renders("::ItemPane", &counts) > 0, "{counts:?}");
+}
+
+/// The keys that empty the comment box and type into it again redraw its buttons (the part
+/// drawing the box), never the conversation.
+#[gpui::test]
+async fn a_key_that_empties_the_comment_box_leaves_the_conversation_alone(cx: &mut TestAppContext) {
+    let mut s = open(cx);
+    let d =
+        s.cx.update(|_, cx| crate::detail::spec_handle::current(cx))
+            .expect("pr detail");
+    s.cx.update(|window, cx| d.update(cx, |d, cx| d.focus_composer(window, cx)));
+    s.settle();
+    type_keys(&mut s);
+    let counts = counted(&mut s, |s| {
+        for k in ["backspace", "b", "backspace", "c"] {
+            s.cx.simulate_keystrokes(k);
+            s.cx.run_until_parked();
+        }
+    });
+    assert!(
+        renders("::Part<recur_view_prs::detail::PrDetail>", &counts) >= 4,
+        "{counts:?}"
+    );
+    assert_quiet("emptying key", &CONVERSATION, &counts);
 }

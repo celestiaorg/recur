@@ -392,13 +392,14 @@ impl AgentChat {
             }
         } else {
             let (transcript, dock) = self.panes(cx);
+            let fit = dock.read(cx).fit.clone();
             root = root
                 .child(recur_ui::style::cached_view(
                     &transcript,
                     gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
                     cx,
                 ))
-                .child(dock);
+                .child(fit.view(&dock, crate::composer::composer_min_height(), window, cx));
         }
         if let Some(lb) = &self.lightbox {
             root = root.child(lb.clone());

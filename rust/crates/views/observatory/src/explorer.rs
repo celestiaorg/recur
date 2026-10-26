@@ -897,18 +897,34 @@ impl Observatory {
             cx.background_executor()
                 .timer(Duration::from_millis(REVIEW_REFRESH_MS))
                 .await;
-            let _ = this.update(cx, |o, cx| {
-                o.review_refresh_timer = None;
-                if o.main_surface(cx) != crate::model::MainSurface::Review {
-                    return;
+            let window = this
+                .update(cx, |o, cx| {
+                    o.review_refresh_timer = None;
+                    if o.main_surface(cx) != crate::model::MainSurface::Review {
+                        return None;
+                    }
+                    // A swap while a line-note composer is open would re-anchor the draft.
+                    if o.review_composer_open(cx) {
+                        return None;
+                    }
+                    o.review_refresh += 1;
+                    Some(o.window)
+                })
+                .ok()
+                .flatten();
+            // Push the refresh to the review alone: a notify would redraw every cached pane
+            // of the Observatory (the changes list) on each file event, typing included.
+            match window {
+                Some(Some(w)) => {
+                    let _ = cx.update_window(w, |_, window, cx| {
+                        this.update(cx, |o, cx| o.sync_review_surface(window, cx))
+                    });
                 }
-                // A swap while a line-note composer is open would re-anchor the draft.
-                if o.review_composer_open(cx) {
-                    return;
+                Some(None) => {
+                    let _ = this.update(cx, |o, cx| o.sync_review_props_later(cx));
                 }
-                o.review_refresh += 1;
-                o.sync_review_props_later(cx);
-            });
+                None => {}
+            }
         }));
     }
 

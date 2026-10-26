@@ -5,7 +5,7 @@
 use recur_ui::guard::Guarded;
 use std::time::{Duration, Instant};
 
-use gpui_kit::base::input::{InputEvent, InputState, Textarea, TextareaState};
+use gpui_kit::base::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AppContext as _, Context, Entity, EventEmitter, Focusable, InteractiveElement, IntoElement,
@@ -47,6 +47,8 @@ pub struct QuestionCard {
     state: Entity<AppState>,
     input: Entity<InputState>,
     notes: Entity<TextareaState>,
+    /// The notes box as an isolated field: a key renders it, not the card or the transcript.
+    notes_view: recur_ui::isolated::IsolatedArea,
     notes_opt: Option<String>,
     question_md: Entity<MarkdownView>,
     context_md: Entity<MarkdownView>,
@@ -119,7 +121,6 @@ impl QuestionCard {
                     _ => {}
                 }),
             ];
-        subs.push(cx.guarded_observe(&notes, |_, _, cx| cx.notify()));
         // Enter (no Shift) in the notes field submits, as the textarea's keydown did.
         let me = cx.entity().downgrade();
         subs.push(cx.intercept_keystrokes(move |ev, window, cx| {
@@ -185,6 +186,7 @@ impl QuestionCard {
             host_answers,
             state,
             input,
+            notes_view: recur_ui::isolated::IsolatedArea::new(&notes, (3, 3), cx),
             notes,
             notes_opt: None,
             question_md,
@@ -388,7 +390,7 @@ impl QuestionCard {
                 .text_size(px(12.))
                 .line_height(px(lm.height))
                 .text_color(hsla(t.text))
-                .child(Textarea::new(&self.notes))
+                .child(self.notes_view.element(lm.height, cx))
                 .into_any_element()
         } else {
             let ph = SharedString::from(if self.question.options.is_empty() {

@@ -545,6 +545,8 @@ pub struct AgentChat {
     pub(crate) digest_comment_for: String,
     pub(crate) digest_comment_busy: String,
     pub(crate) digest_comment_input: Option<Entity<gpui_kit::base::input::TextareaState>>,
+    /// The digest note box as an isolated field: a key renders it, not the transcript.
+    pub(crate) digest_comment_view: Option<recur_ui::isolated::IsolatedArea>,
     pub(crate) digest_notes_by_id: HashMap<String, Vec<TurnDigestNote>>,
     /// The findings generation the overlay was written against.
     pub(crate) digest_notes_at: Option<u64>,
@@ -748,6 +750,7 @@ impl AgentChat {
             digest_comment_for: String::new(),
             digest_comment_busy: String::new(),
             digest_comment_input: None,
+            digest_comment_view: None,
             digest_notes_by_id: HashMap::new(),
             digest_notes_at: None,
             findings_gen: 0,
@@ -1998,6 +2001,7 @@ impl AgentChat {
                 .placeholder("Add a note, clarification, or context…")
         });
         input.update(cx, |i, cx| i.focus(window, cx));
+        self.digest_comment_view = Some(recur_ui::isolated::IsolatedArea::new(&input, (2, 2), cx));
         self.digest_comment_input = Some(input);
         cx.notify();
     }

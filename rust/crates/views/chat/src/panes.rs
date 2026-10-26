@@ -3,15 +3,18 @@
 //! GPUI re-renders every view that is not behind a cached boundary on each frame. The
 //! transcript is a cached [`TranscriptPane`]: it re-renders when the chat notifies (any
 //! transcript, props or store change) or when its scroller moves, and is reused otherwise.
-//! The composer is a [`DockPane`]: composer-only edits notify it through
-//! [`AgentChat::notify_dock`], which redraws the chat's chrome and the dock but leaves the
-//! transcript's cached layout in place.
+//! The composer is a [`DockPane`], an isolated view at the height its content measures
+//! ([`Fit`]): composer-only edits notify it through [`AgentChat::notify_dock`], which redraws
+//! the dock alone; the chat redraws when the dock's height changes.
 
 use gpui_kit::{
     AnyElement, Context, Entity, IntoElement, Render, Subscription, WeakEntity, Window, div,
 };
 
+use std::rc::Rc;
+
 use recur_ui::guard::Guarded;
+use recur_ui::isolated::Fit;
 
 use crate::chat::AgentChat;
 
@@ -44,20 +47,24 @@ impl Render for TranscriptPane {
 
 pub struct DockPane {
     chat: WeakEntity<AgentChat>,
+    pub(crate) fit: Rc<Fit>,
 }
 
 impl DockPane {
     pub(crate) fn new(chat: &Entity<AgentChat>) -> Self {
         DockPane {
             chat: chat.downgrade(),
+            fit: Rc::default(),
         }
     }
 
     fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        self.chat
+        let dock = self
+            .chat
             .upgrade()
             .and_then(|chat| chat.update(cx, |c, cx| c.dock(window, cx)))
-            .unwrap_or_else(|| div().into_any_element())
+            .unwrap_or_else(|| div().into_any_element());
+        self.fit.content(dock).into_any_element()
     }
 }
 

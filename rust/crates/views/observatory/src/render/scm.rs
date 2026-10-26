@@ -620,8 +620,12 @@ impl Observatory {
                 .w_full(),
             cx,
         );
-        let foot = self.render_commit_foot(window, cx);
-        let _ = t;
+        let foot = self
+            .commit_foot
+            .get_or_insert_with(|| recur_ui::isolated::Part::of(cx, Self::render_commit_foot))
+            .clone();
+        self.inputs.commit_view.redraws(foot.entity_id());
+        let _ = (t, window);
         root.child(body).child(foot).into_any_element()
     }
 
@@ -756,7 +760,7 @@ impl Observatory {
             .text_size(px(12.5))
             .line_height(gpui_kit::relative(1.5))
             .when(busy, |d| d.opacity(0.55))
-            .child(gpui_kit::base::input::Textarea::new(&self.inputs.commit));
+            .child(self.inputs.commit_view.element(18.75, cx));
         let compose = recur_ui::style::card(t.bg, t.line, 10.)
             .flex()
             .flex_col()

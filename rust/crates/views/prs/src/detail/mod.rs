@@ -41,7 +41,7 @@ use recur_engine::view::pr_detail_pending::{
 use recur_engine::view::pr_fix_checks::{
     FixChecksStep, created_workspace_ready, flush_pending_fix_checks, request_fix_checks,
 };
-use recur_engine::view::pr_workspace::pr_agent_workspace_id;
+use recur_engine::view::pr_workspace::{pr_agent_is_running, pr_agent_workspace_id};
 use recur_forge::view::PendingClock;
 use recur_services::AppEvent;
 use recur_ui::widgets::ToastKind;
@@ -89,6 +89,10 @@ pub struct PrDetail {
     cache_pr: String,
     /// The PR the per-PR resets last ran for (the `$selectedPRId` effect).
     reset_pr: String,
+    /// What PR detail shows of the store as of its last store change (`store_changed`).
+    store_key: Option<StoreKey>,
+    /// The comment box and its buttons, redrawn alone when the box turns empty or not.
+    composer_part: Option<Entity<recur_ui::isolated::Part<PrDetail>>>,
     on_route: bool,
     pub(crate) refreshing: bool,
     pub(crate) hydrate_give_up: bool,
@@ -251,8 +255,8 @@ impl PrDetail {
             )
         });
         let subs = vec![
-            cx.observe_state_in(&state, Topics::ALL, window, |d, _, window, cx| {
-                d.state_changed(window, cx)
+            cx.observe_state_changes_in(&state, Topics::ALL, window, |d, topics, window, cx| {
+                d.store_changed(topics, window, cx)
             }),
             cx.guarded_observe_in(&ui, window, |d, _, window, cx| d.ui_changed(window, cx)),
             cx.guarded_subscribe_in(&state, window, |d, _, ev: &AppliedEvent, window, cx| {
@@ -328,6 +332,8 @@ impl PrDetail {
             conv_items: Rc::default(),
             render_pr: None,
             render_comments: None,
+            store_key: None,
+            composer_part: None,
             commits_scroll: ScrollHandle::new(),
             checks_scroll: ScrollHandle::new(),
             checks_box_scroll: ScrollHandle::new(),
@@ -450,6 +456,44 @@ impl PrDetail {
     }
 
     // ---- effects ----
+
+    /// A store change: one that leaves what PR detail shows as it was (another workspace's
+    /// agent event, another PR's sweep) redraws nothing; every item of the conversation
+    /// observes PR detail.
+    fn store_changed(&mut self, topics: Topics, window: &mut Window, cx: &mut Context<Self>) {
+        let key = self.read_store_key(cx);
+        let keyed = Topics::PRS
+            | Topics::WORKSPACES
+            | Topics::AGENTS
+            | Topics::ATTENTION
+            | Topics::INBOX
+            | Topics::BRIEFING
+            | Topics::USAGE
+            | Topics::RESOURCE
+            | Topics::RUN;
+        if topics.without(keyed).is_empty() && self.store_key.as_ref() == Some(&key) {
+            self.flush_fix_checks(cx);
+            return;
+        }
+        self.store_key = Some(key);
+        self.state_changed(window, cx);
+    }
+
+    fn read_store_key(&self, cx: &App) -> StoreKey {
+        let s = self.state().read(cx);
+        let pr = s.pr(&s.selected_pr_id);
+        let agent_ws = pr_agent_workspace_id(pr, &s.workspaces);
+        StoreKey {
+            pr_rev: s.pr_rev(&s.selected_pr_id),
+            selected: s.selected_pr_id.clone(),
+            agent_running: pr_agent_is_running(pr, &s.workspaces, &s.workspaces_running),
+            agent_root: s
+                .workspace(&agent_ws)
+                .map(|w| w.worktree_path.clone())
+                .unwrap_or_default(),
+            agent_ws,
+        }
+    }
 
     fn state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.render_pr = None;
@@ -2119,6 +2163,16 @@ impl PrDetail {
 }
 
 /// `flushPendingFixChecks`: fire a queued `/fix-checks` once the PR has an Agent worktree.
+/// The store facts PR detail shows under the frequent topics (`store_changed`).
+#[derive(PartialEq)]
+struct StoreKey {
+    selected: String,
+    pr_rev: u64,
+    agent_ws: String,
+    agent_running: bool,
+    agent_root: String,
+}
+
 fn flush(state: &Entity<AppState>, ui: &Entity<PrUi>, cx: &mut App) {
     let run = {
         let s = state.read(cx);

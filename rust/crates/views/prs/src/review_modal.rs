@@ -582,7 +582,7 @@ impl PrReviewModal {
                 crate::detail::field::press_focuses(d, self.body.area.read(cx).focus_handle(cx))
             })
             .key_context("TextEntry")
-            .child(gpui_kit::base::input::Textarea::new(&self.body.area));
+            .child(self.body.element(14. * 1.55, cx));
         body = body.child(area);
 
         // `.nt-foot`.

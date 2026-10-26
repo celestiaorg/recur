@@ -92,11 +92,18 @@ impl Pane {
                 Portal {
                     slot: d.slot.clone(),
                     draws: self.draws.clone(),
-                    child: d.view.clone().into_any_element(),
+                    // Isolated: a key redraws the text box alone, not the host.
+                    child: d.view.clone().isolated(full_size()).into_any_element(),
                     shown: None,
                 }
                 .into_any_element()
             })
             .collect()
     }
+}
+
+fn full_size() -> gpui_kit::StyleRefinement {
+    use gpui_kit::Styled as _;
+    let mut d = gpui_kit::div().size_full();
+    d.style().clone()
 }

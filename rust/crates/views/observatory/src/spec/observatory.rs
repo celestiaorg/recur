@@ -1308,3 +1308,27 @@ async fn a_live_refresh_that_changes_nothing_does_not_notify(cx: &mut TestAppCon
     });
     assert_eq!(n.get(), 0);
 }
+
+/// A file event while the review shows reloads the review alone: it reached the review as an
+/// Observatory notify, which redrew every cached pane (the changes list) on each event, keys
+/// typed meanwhile included.
+#[gpui::test]
+async fn a_file_event_under_the_review_does_not_notify_the_observatory(cx: &mut TestAppContext) {
+    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    h.update(|o, _, cx| o.click_review_toggle(cx));
+    h.settle();
+    let before = h.read(|o, _| o.review_refresh);
+    let notifies = std::rc::Rc::new(std::cell::Cell::new(0));
+    let n = notifies.clone();
+    let obs = h.obs.clone();
+    let _sub =
+        h.cx.update(|_, cx| cx.observe(&obs, move |_, _| n.set(n.get() + 1)));
+    h.fs_changed();
+    h.wait(crate::obs::REVIEW_REFRESH_MS + 200);
+    assert_eq!(
+        h.read(|o, _| o.review_refresh),
+        before + 1,
+        "the review did not reload"
+    );
+    assert_eq!(notifies.get(), 0, "a file event notified the Observatory");
+}

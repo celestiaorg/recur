@@ -162,3 +162,8 @@ opt-level = 2
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# gpui-pre 0.3.9 with Recur's isolated-view patch (`vendor/README.md`). Drop this when gpui-kit's
+# pinned gpui-pre carries the change, or re-apply `vendor/gpui-pre.patch` on a bump.
+[patch.crates-io]
+gpui-pre = { path = "vendor/gpui-pre" }

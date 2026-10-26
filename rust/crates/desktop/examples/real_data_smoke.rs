@@ -33,7 +33,8 @@
 //! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth and `RECUR_SMOKE_TO=m` ends them at the
 //! mth (1-based, inclusive: a full run can be covered in ranges), `RECUR_SMOKE_WORKSPACE=<id>` visits
 //! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
-//! stops after the workspaces and
+//! stops after the workspaces, `RECUR_SMOKE_PR_FROM=n` / `RECUR_SMOKE_PR_TO=m` slice the PRs
+//! (1-based, inclusive), `RECUR_SMOKE_KEYS_OUT=<file>` appends every key's time and
 //! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered,
 //! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times and
 //! `RECUR_SMOKE_SAMPLE_MS=n` samples the main thread during frames and keys over n ms and
@@ -1516,10 +1517,24 @@ async fn run(
     }
 
     let only = std::env::var("RECUR_SMOKE_PR").ok();
+    // `RECUR_SMOKE_PR_FROM=n` / `RECUR_SMOKE_PR_TO=m` cover a slice of the PRs (1-based,
+    // inclusive), so a range splits into runs that each fit a time cap.
+    let pr_bound = |k: &str, d: usize| {
+        std::env::var(k)
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(d)
+    };
+    let (pr_from, pr_to) = (
+        pr_bound("RECUR_SMOKE_PR_FROM", 1),
+        pr_bound("RECUR_SMOKE_PR_TO", usize::MAX),
+    );
     for (i, id) in prs
         .iter()
         .enumerate()
-        .filter(|(_, id)| only.as_ref().is_none_or(|o| o == *id))
+        .filter(|(i, id)| {
+            (pr_from..=pr_to).contains(&(i + 1)) && only.as_ref().is_none_or(|o| o == *id)
+        })
         .take(limit())
     {
         at(start, format!("PR {}/{} {id}", i + 1, prs.len()));
@@ -1849,10 +1864,10 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
     let mut settle_total = 0;
     for (i, k) in seq.split_whitespace().enumerate() {
         sleep(cx, 60).await;
+        let settles = settle_frames(cx, window);
+        settle_total += settles;
         let moved = MOUSE_MOVES.swap(0, Ordering::SeqCst);
         let stored = STORE_NOTIFIES.swap(0, Ordering::SeqCst);
-        let settles = recur_ui::layout_root::take_settle_frames();
-        settle_total += settles;
         let t = Instant::now();
         FRAME_START.store(now_ms(), Ordering::SeqCst);
         keys(cx, window, k);
@@ -1870,7 +1885,8 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
             } else {
                 ""
             };
-            let after = format!("{after}, {stored} store notifies, {settles} settle frames before");
+            let after =
+                format!("{after}, {stored} store notifies, {settles} settle frames drawn before");
             println!(
                 "slow key {took:.0?} (#{i} {k}, dispatch {dispatched:.0?}) in {input}{after}: {views}"
             );
@@ -1882,6 +1898,18 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
             timed(Budget::Keystroke, took);
             if let Ok(mut r) = report().lock() {
                 r.keys.entry(input).or_default().push(took);
+            }
+            // `RECUR_SMOKE_KEYS_OUT=<file>` appends each key's time, so runs that split a
+            // range can report its percentiles together.
+            if let Some(path) = std::env::var_os("RECUR_SMOKE_KEYS_OUT") {
+                use std::io::Write as _;
+                if let Ok(mut f) = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(path)
+                {
+                    let _ = writeln!(f, "{input}\t{}", took.as_secs_f64() * 1000.);
+                }
             }
         }
         stall_check(took);
@@ -1897,6 +1925,18 @@ async fn type_keys(cx: &mut AsyncApp, window: AnyWindowHandle, input: &'static s
             let _ = std::fs::remove_file(out);
         }
     }
+}
+
+/// Draws the frames layout roots and blocks asked for to settle, as the display link does
+/// between keys in the app (the smoke's unfocused window gets none, so they would land on the
+/// next key). Returns how many it drew.
+fn settle_frames(cx: &mut AsyncApp, window: AnyWindowHandle) -> u64 {
+    let mut drawn = 0;
+    while drawn < 64 && recur_ui::layout_root::take_settle_frames() > 0 {
+        draw(cx, window);
+        drawn += 1;
+    }
+    drawn
 }
 
 /// A key this slow lists what it rendered (`RECUR_SMOKE_SLOW_KEY_MS`, 100ms by default).

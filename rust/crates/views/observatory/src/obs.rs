@@ -536,6 +536,9 @@ pub struct Observatory {
     pub(crate) empty_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) toolbar_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) scm_body_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    /// The commit box's foot (the box and its Commit button), redrawn alone when the message
+    /// turns empty or not.
+    pub(crate) commit_foot: Option<Entity<recur_ui::isolated::Part<Observatory>>>,
     pub(crate) crumb_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) status_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     /// The window-corner padding the status bar needs, as of the last render.
@@ -807,6 +810,7 @@ impl Observatory {
             empty_pane: None,
             toolbar_pane: None,
             scm_body_pane: None,
+            commit_foot: None,
             crumb_pane: None,
             status_pane: None,
             status_corner: (false, false),

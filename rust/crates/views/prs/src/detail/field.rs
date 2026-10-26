@@ -3,10 +3,11 @@
 
 use gpui_kit::base::input::{InputEvent, TextareaMode, TextareaState};
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, Focusable as _, KeystrokeEvent, SharedString,
-    Subscription, Window,
+    AnyElement, App, AppContext as _, Context, Entity, Focusable as _, KeystrokeEvent,
+    SharedString, Subscription, Window,
 };
 use recur_ui::guard::Guarded;
+use recur_ui::isolated::IsolatedArea;
 use std::rc::Rc;
 
 use recur_view_chat::suggest::{SetFn, SuggestAttach, attach_emoji, attach_user_mentions};
@@ -14,6 +15,8 @@ use recur_view_core::AppState;
 
 pub struct Field {
     pub area: Entity<TextareaState>,
+    /// The textarea as its own isolated view: a key renders it alone, not its host.
+    isolated: IsolatedArea,
     _attach: (
         Entity<SuggestAttach<TextareaMode>>,
         Entity<SuggestAttach<TextareaMode>>,
@@ -40,6 +43,7 @@ impl Field {
         });
         recur_view_review::style::style_textarea(&area, cx);
         // A typeahead pick rewrites the value without an input event.
+        let isolated = IsolatedArea::new(&area, rows, cx);
         let me = cx.entity().downgrade();
         let on_set: SetFn = Rc::new(move |_, _, cx| {
             let _ = me.update(cx, |h, cx| {
@@ -49,8 +53,7 @@ impl Field {
         });
         let emoji = attach_emoji(&area, Some(on_set.clone()), window, cx);
         let mentions = attach_user_mentions(&area, state.clone(), Some(on_set), window, cx);
-        // The host re-renders on its own as a key changes the area (its render reads it); a
-        // notify would also wake everything observing the host (its cached panes).
+        // A key renders only the textarea (`isolated` redraws the host for what it derives).
         let sub = cx.guarded_subscribe(&area, move |h, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 on_change(h, cx);
@@ -58,6 +61,7 @@ impl Field {
         });
         Field {
             area,
+            isolated,
             _attach: (emoji, mentions),
             _sub: sub,
             _submit: None,
@@ -86,6 +90,16 @@ impl Field {
             }),
         );
         self
+    }
+
+    /// The textarea, in a box whose text has `line_height`.
+    pub fn element(&self, line_height: f32, cx: &App) -> AnyElement {
+        self.isolated.element(line_height, cx)
+    }
+
+    /// Redraw `part` rather than the host when the box turns empty or not.
+    pub fn redraws(&self, part: gpui_kit::EntityId) {
+        self.isolated.redraws(part);
     }
 
     pub fn value(&self, cx: &App) -> String {

@@ -716,3 +716,25 @@ func TestModelCatalogIncludesCompatibleProviders(t *testing.T) {
 		t.Errorf("disabled openai groups = %+v, want only groq", groups)
 	}
 }
+
+// Models Claude Code reports beyond the pinned list (Mythos on accounts with
+// access) join the picker; aliases and pinned ids do not duplicate rows.
+func TestProbedClaudeModelsAddAccountOnlyModels(t *testing.T) {
+	out := []byte(`{"type":"system","subtype":"init"}
+{"type":"control_response","response":{"subtype":"success","request_id":"models","response":{"models":[` +
+		`{"value":"default","resolvedModel":"claude-opus-5-5","displayName":"Default (recommended)"},` +
+		`{"value":"claude-fable-5","resolvedModel":"claude-fable-5","displayName":"Fable 5"},` +
+		`{"value":"claude-mythos-5-1","resolvedModel":"claude-mythos-5-1","displayName":"Mythos 5.1"}]}}}
+`)
+	models := withProbedClaudeModels(parseClaudeInitModels(out))
+	if len(models) != len(claudeCodeModels)+1 {
+		t.Fatalf("got %d models, want pinned list + Mythos", len(models))
+	}
+	last := models[len(models)-1]
+	if last.Ref != "claude-code/claude-mythos-5-1" || last.Label != "Mythos 5.1" || len(last.Flags) == 0 || last.ContextWindow != 1_000_000 {
+		t.Fatalf("last = %+v, want Mythos 5.1 with effort flags and a 1M window", last)
+	}
+	if got := withProbedClaudeModels(parseClaudeInitModels([]byte("not json"))); len(got) != len(claudeCodeModels) {
+		t.Fatalf("unreadable probe: got %d models, want pinned list", len(got))
+	}
+}

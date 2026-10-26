@@ -7,7 +7,9 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -154,6 +156,10 @@ type claudeModelInfo struct {
 func probeClaudeModels(ctx context.Context) []claudeModelInfo {
 	cmd := exec.CommandContext(ctx, "claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose")
 	cmd.Dir = os.TempDir()
+	cmd.Env = slices.DeleteFunc(os.Environ(), func(e string) bool { return strings.HasPrefix(e, "LINEAR_API_KEY=") })
+	cmd.WaitDelay = time.Second
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	cmd.Stdin = strings.NewReader(`{"type":"control_request","request_id":"models","request":{"subtype":"initialize"}}` + "\n")
 	out, _ := cmd.Output()
 	return parseClaudeInitModels(out)

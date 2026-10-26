@@ -25,7 +25,7 @@ func (s *ProjectsService) ListScheduledPrompts(projectID string) ([]domain.Sched
 
 // SaveScheduledPrompt accepts only models offered by the existing model picker.
 func (s *ProjectsService) SaveScheduledPrompt(p domain.ScheduledPrompt) (domain.ScheduledPrompt, error) {
-	for _, group := range (&SettingsService{base: s.base}).ListModelCatalog() {
+	for _, group := range (&SettingsService{base: s.base}).listModelCatalog(false) {
 		for _, model := range group.Models {
 			if model.Ref == p.Model {
 				return s.eng.SaveScheduledPrompt(p)

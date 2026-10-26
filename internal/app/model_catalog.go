@@ -204,8 +204,17 @@ func claudeProbe() []claudeModelInfo {
 	return nil
 }
 
-// listModelCatalog is ListModelCatalog; probeClaude=false reuses the last probe
-// instead of spawning claude (schedule validation runs on every save).
+// cachedClaudeProbe returns the last good probe, probing only until one succeeds.
+func cachedClaudeProbe() []claudeModelInfo {
+	if last := lastClaudeModels.Load(); last != nil {
+		return *last
+	}
+	return claudeProbe()
+}
+
+// listModelCatalog is ListModelCatalog; probeClaude=false reuses the last good
+// probe, spawning claude only until one succeeds (schedule validation runs on
+// every save).
 func (s *SettingsService) listModelCatalog(probeClaude bool) []ModelGroup {
 	set := s.st().Settings()
 	claudeCh := make(chan []claudeModelInfo, 1)
@@ -216,11 +225,7 @@ func (s *SettingsService) listModelCatalog(probeClaude bool) []ModelGroup {
 		case probeClaude:
 			claudeCh <- claudeProbe()
 		default:
-			var last []claudeModelInfo
-			if p := lastClaudeModels.Load(); p != nil {
-				last = *p
-			}
-			claudeCh <- last
+			claudeCh <- cachedClaudeProbe()
 		}
 	}()
 	cur := s.listCursorModelsFor(set)

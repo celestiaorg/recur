@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -760,5 +761,30 @@ func TestClaudeProbeFallsBackToLastGood(t *testing.T) {
 	got := claudeProbe()
 	if len(got) != 1 || got[0].ResolvedModel != "claude-mythos-5-1" {
 		t.Fatalf("failed probe returned %+v, want last good result", got)
+	}
+}
+
+func TestCachedClaudeProbeSpawnsOnlyWithoutCache(t *testing.T) {
+	dir := t.TempDir()
+	ran := filepath.Join(dir, "ran")
+	if err := os.WriteFile(filepath.Join(dir, "claude"), []byte("#!/bin/sh\n/usr/bin/touch "+ran+"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	t.Cleanup(func() { lastClaudeModels.Store(nil) })
+
+	good := []claudeModelInfo{{ResolvedModel: "claude-mythos-5-1", DisplayName: "Mythos 5.1"}}
+	lastClaudeModels.Store(&good)
+	if got := cachedClaudeProbe(); len(got) != 1 || got[0].ResolvedModel != "claude-mythos-5-1" {
+		t.Fatalf("cached probe = %+v, want Mythos", got)
+	}
+	if _, err := os.Stat(ran); err == nil {
+		t.Fatal("claude spawned despite a cached probe")
+	}
+
+	lastClaudeModels.Store(nil)
+	cachedClaudeProbe()
+	if _, err := os.Stat(ran); err != nil {
+		t.Fatal("claude not probed without a cached result")
 	}
 }

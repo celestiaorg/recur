@@ -773,6 +773,9 @@ impl Island {
     /// skips its previous content. Returns the element and this frame's record of it.
     pub(crate) fn prepaint(self: &Rc<Self>, window: &mut Window, cx: &mut App) -> (AnyElement, usize) {
         self.with_context(window, |window| {
+            // The replay copied this state's key; recording it again would grow the frame's
+            // list by one on every replay.
+            window.state_recorded_already = true;
             window.with_element_state::<ViewElementState, _>(&self.global_id, |state, window| {
                 let mut state = state.expect("an island keeps its view state");
                 let view = self.view.clone();
@@ -806,6 +809,9 @@ impl Island {
         cx: &mut App,
     ) {
         self.with_context(window, |window| {
+            // The replay copied this state's key; recording it again would grow the frame's
+            // list by one on every replay.
+            window.state_recorded_already = true;
             window.with_element_state::<ViewElementState, _>(&self.global_id, |state, window| {
                 let mut state = state.expect("an island keeps its view state");
                 let previous = mem::replace(&mut window.element_opacity, opacity);

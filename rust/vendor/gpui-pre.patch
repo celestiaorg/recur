@@ -220,7 +220,7 @@ index f0bf1211..63bc94d8 100644
 +    &list[start.min(end)..end]
 +}
 diff --git a/rust/vendor/gpui-pre/src/view.rs b/rust/vendor/gpui-pre/src/view.rs
-index 081edd9a..7a5550ed 100644
+index 081edd9a..d15cd1e6 100644
 --- a/rust/vendor/gpui-pre/src/view.rs
 +++ b/rust/vendor/gpui-pre/src/view.rs
 @@ -2,13 +2,15 @@ use crate::{
@@ -425,7 +425,7 @@ index 081edd9a..7a5550ed 100644
  
                      ((), element_state)
                  },
-@@ -637,3 +692,152 @@ fn paint_component(
+@@ -637,3 +692,158 @@ fn paint_component(
          element.as_mut().unwrap().paint(window, cx);
      });
  }
@@ -510,6 +510,9 @@ index 081edd9a..7a5550ed 100644
 +    /// skips its previous content. Returns the element and this frame's record of it.
 +    pub(crate) fn prepaint(self: &Rc<Self>, window: &mut Window, cx: &mut App) -> (AnyElement, usize) {
 +        self.with_context(window, |window| {
++            // The replay copied this state's key; recording it again would grow the frame's
++            // list by one on every replay.
++            window.state_recorded_already = true;
 +            window.with_element_state::<ViewElementState, _>(&self.global_id, |state, window| {
 +                let mut state = state.expect("an island keeps its view state");
 +                let view = self.view.clone();
@@ -543,6 +546,9 @@ index 081edd9a..7a5550ed 100644
 +        cx: &mut App,
 +    ) {
 +        self.with_context(window, |window| {
++            // The replay copied this state's key; recording it again would grow the frame's
++            // list by one on every replay.
++            window.state_recorded_already = true;
 +            window.with_element_state::<ViewElementState, _>(&self.global_id, |state, window| {
 +                let mut state = state.expect("an island keeps its view state");
 +                let previous = mem::replace(&mut window.element_opacity, opacity);
@@ -579,7 +585,7 @@ index 081edd9a..7a5550ed 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..79d95581 100644
+index 1214b035..f22847ab 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
 @@ -1057,6 +1057,122 @@ pub(crate) struct Frame {
@@ -770,7 +776,7 @@ index 1214b035..79d95581 100644
          self.focus = None;
  
          #[cfg(any(test, feature = "test-support"))]
-@@ -1254,6 +1418,17 @@ pub struct Window {
+@@ -1254,6 +1418,20 @@ pub struct Window {
      pub(crate) tooltip_bounds: Option<TooltipBounds>,
      pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
      pub(crate) dirty_views: FxHashSet<EntityId>,
@@ -780,6 +786,9 @@ index 1214b035..79d95581 100644
 +    /// only views at depth 0 (and isolated ones) are drawn without an ancestor's replay, so
 +    /// only those keep records.
 +    pub(crate) cached_depth: usize,
++    /// The next element state taken is already in the frame's accessed list: an isolated
++    /// view drawn again inside a replay, whose state key the replay copied.
++    pub(crate) state_recorded_already: bool,
 +    /// Isolated views drawn again inside a replay, waiting for the replay's paint: the
 +    /// previous frame's record, the element, and this frame's record.
 +    island_elements: Vec<(usize, AnyElement, usize)>,
@@ -788,18 +797,19 @@ index 1214b035..79d95581 100644
      focus_listeners: SubscriberSet<(), AnyWindowFocusListener>,
      pub(crate) focus_lost_listeners: SubscriberSet<(), AnyObserver>,
      focus_lost_path: SmallVec<[FocusId; 8]>,
-@@ -2154,6 +2329,10 @@ impl Window {
+@@ -2154,6 +2332,11 @@ impl Window {
              next_tooltip_id: TooltipId::default(),
              tooltip_bounds: None,
              dirty_views: FxHashSet::default(),
 +            dirty_outside_islands: false,
 +            cached_depth: 0,
++            state_recorded_already: false,
 +            island_elements: Vec::new(),
 +            last_accessed: FxHashSet::default(),
              focus_listeners: SubscriberSet::new(),
              focus_lost_listeners: SubscriberSet::new(),
              focus_lost_path: SmallVec::new(),
-@@ -2251,16 +2430,28 @@ impl ContentMask<Pixels> {
+@@ -2251,16 +2434,28 @@ impl ContentMask<Pixels> {
  impl Window {
      fn mark_view_dirty(&mut self, view_id: EntityId) {
          // Mark ancestor views as dirty. If already in the `dirty_views` set, then all its ancestors
@@ -830,7 +840,7 @@ index 1214b035..79d95581 100644
      }
  
      pub(crate) fn refresh_visibility(&mut self, cx: &mut App) {
-@@ -3472,6 +3663,8 @@ impl Window {
+@@ -3472,6 +3667,8 @@ impl Window {
              }
          }
          self.dirty_views.clear();
@@ -839,7 +849,7 @@ index 1214b035..79d95581 100644
          self.next_frame.window_active = self.active.get();
  
          // Register requested input handler with the platform window.
-@@ -3506,6 +3699,7 @@ impl Window {
+@@ -3506,6 +3703,7 @@ impl Window {
          self.layout_engine.as_mut().unwrap().clear();
          self.text_system().finish_frame();
          self.next_frame.finish(&mut self.rendered_frame);
@@ -847,10 +857,23 @@ index 1214b035..79d95581 100644
  
          self.invalidator.set_phase(DrawPhase::Focus);
          let previous_focus_path = self.rendered_frame.focus_path();
-@@ -3578,9 +3772,32 @@ impl Window {
+@@ -3578,9 +3776,45 @@ impl Window {
          arena_scope.exit(&cx.element_arena)
      }
  
++    /// The sizes of the last frame's books (test support): accessed element states, dispatch
++    /// nodes, hitboxes and scene primitives.
++    #[cfg(any(test, feature = "test-support"))]
++    pub fn frame_sizes(&self) -> [usize; 4] {
++        let f = &self.rendered_frame;
++        [
++            f.accessed_element_states.len(),
++            f.dispatch_tree.len(),
++            f.hitboxes.len(),
++            f.scene.len(),
++        ]
++    }
++
 +    /// Points every cached view's state at where this frame put it, so a later frame that
 +    /// renders an ancestor again finds what it replays (a replayed root moves them all).
 +    fn rebase_cached_view_states(&mut self) {
@@ -880,7 +903,7 @@ index 1214b035..79d95581 100644
          let handle = self.handle;
          cx.record_entities_accessed(
              handle,
-@@ -3699,15 +3916,45 @@ impl Window {
+@@ -3699,15 +3933,45 @@ impl Window {
          let scale_factor = self.scale_factor();
          #[cfg(feature = "profiler")]
          let request_layout_start = Instant::now();
@@ -934,7 +957,7 @@ index 1214b035..79d95581 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          let inspector_element = self.prepaint_inspector(_inspector_width, cx);
-@@ -3743,7 +3990,16 @@ impl Window {
+@@ -3743,7 +4007,16 @@ impl Window {
          #[cfg(feature = "profiler")]
          let paint_start = Instant::now();
          self.invalidator.set_phase(DrawPhase::Paint);
@@ -952,7 +975,7 @@ index 1214b035..79d95581 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          self.paint_inspector(inspector_element, cx);
-@@ -3923,7 +4179,7 @@ impl Window {
+@@ -3923,7 +4196,7 @@ impl Window {
                      });
                      self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
                  } else {
@@ -961,7 +984,7 @@ index 1214b035..79d95581 100644
                  }
                  let prepaint_end = self.prepaint_index();
                  self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
-@@ -3966,7 +4222,7 @@ impl Window {
+@@ -3966,7 +4239,7 @@ impl Window {
                      })
                  })
              } else {
@@ -970,7 +993,7 @@ index 1214b035..79d95581 100644
              }
              let paint_end = self.paint_index();
              deferred_draw.paint_range = paint_start..paint_end;
-@@ -3993,7 +4249,97 @@ impl Window {
+@@ -3993,7 +4266,97 @@ impl Window {
          }
      }
  
@@ -1069,7 +1092,7 @@ index 1214b035..79d95581 100644
          self.next_frame.hitboxes.extend(
              self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
                  .iter()
-@@ -4011,19 +4357,17 @@ impl Window {
+@@ -4011,19 +4374,17 @@ impl Window {
                  .iter()
                  .map(|(id, type_id)| (id.clone(), *type_id)),
          );
@@ -1094,7 +1117,7 @@ index 1214b035..79d95581 100644
          self.next_frame.deferred_draws.extend(
              self.rendered_frame.deferred_draws
                  [range.start.deferred_draws_index..range.end.deferred_draws_index]
-@@ -4042,6 +4386,7 @@ impl Window {
+@@ -4042,6 +4403,7 @@ impl Window {
                      paint_range: deferred_draw.paint_range.clone(),
                  }),
          );
@@ -1102,7 +1125,7 @@ index 1214b035..79d95581 100644
      }
  
      pub(crate) fn paint_index(&self) -> PaintIndex {
-@@ -4058,7 +4403,44 @@ impl Window {
+@@ -4058,7 +4420,44 @@ impl Window {
          }
      }
  
@@ -1148,7 +1171,7 @@ index 1214b035..79d95581 100644
          // Cached elements still exist in the frame even when their paint methods don't run.
          #[cfg(any(test, feature = "test-support"))]
          for (selector, bounds) in &self.rendered_frame.debug_bounds_records
-@@ -4096,12 +4478,14 @@ impl Window {
+@@ -4096,12 +4495,14 @@ impl Window {
                  [range.start.tab_handle_index..range.end.tab_handle_index],
          );
  
@@ -1165,3 +1188,14 @@ index 1214b035..79d95581 100644
      }
  
      /// Push a text style onto the stack, and call a function with that style active.
+@@ -7317,7 +7718,9 @@ impl Window {
+         state_type: TypeId,
+     ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
+         let key = (global_id.clone(), state_type);
+-        self.next_frame.accessed_element_states.push(key.clone());
++        if !mem::take(&mut self.state_recorded_already) {
++            self.next_frame.accessed_element_states.push(key.clone());
++        }
+         let state = self
+             .next_frame
+             .element_states

@@ -315,3 +315,19 @@ fn a_font_change_between_replays_keeps_the_frame(cx: &mut TestAppContext) {
     f.at("field:6");
     f.at("sib:0");
 }
+
+/// Typing keeps the frame's books the same size: a replay that drew an isolated view again
+/// recorded its state twice, and the duplicate rode every later replay (frames slowed over a
+/// long run).
+#[gpui_kit::test]
+fn typing_does_not_grow_the_frame(cx: &mut TestAppContext) {
+    let mut f = fixture(cx);
+    let field = f.field.clone();
+    f.key_into(&field);
+    let count = |f: &mut Fixture| f.cx.update(|window, _| window.frame_sizes());
+    let before = count(&mut f);
+    for _ in 0..10 {
+        f.key_into(&field);
+    }
+    assert_eq!(count(&mut f), before);
+}

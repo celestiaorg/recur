@@ -1424,6 +1424,9 @@ pub struct Window {
     /// only views at depth 0 (and isolated ones) are drawn without an ancestor's replay, so
     /// only those keep records.
     pub(crate) cached_depth: usize,
+    /// The next element state taken is already in the frame's accessed list: an isolated
+    /// view drawn again inside a replay, whose state key the replay copied.
+    pub(crate) state_recorded_already: bool,
     /// Isolated views drawn again inside a replay, waiting for the replay's paint: the
     /// previous frame's record, the element, and this frame's record.
     island_elements: Vec<(usize, AnyElement, usize)>,
@@ -2331,6 +2334,7 @@ impl Window {
             dirty_views: FxHashSet::default(),
             dirty_outside_islands: false,
             cached_depth: 0,
+            state_recorded_already: false,
             island_elements: Vec::new(),
             last_accessed: FxHashSet::default(),
             focus_listeners: SubscriberSet::new(),
@@ -3770,6 +3774,19 @@ impl Window {
         // Exit the scope to obtain the arena-clear token this draw owes; the
         // scope's teardown itself happens in `ElementArenaScope::drop`.
         arena_scope.exit(&cx.element_arena)
+    }
+
+    /// The sizes of the last frame's books (test support): accessed element states, dispatch
+    /// nodes, hitboxes and scene primitives.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn frame_sizes(&self) -> [usize; 4] {
+        let f = &self.rendered_frame;
+        [
+            f.accessed_element_states.len(),
+            f.dispatch_tree.len(),
+            f.hitboxes.len(),
+            f.scene.len(),
+        ]
     }
 
     /// Points every cached view's state at where this frame put it, so a later frame that
@@ -7701,7 +7718,9 @@ impl Window {
         state_type: TypeId,
     ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
         let key = (global_id.clone(), state_type);
-        self.next_frame.accessed_element_states.push(key.clone());
+        if !mem::take(&mut self.state_recorded_already) {
+            self.next_frame.accessed_element_states.push(key.clone());
+        }
         let state = self
             .next_frame
             .element_states

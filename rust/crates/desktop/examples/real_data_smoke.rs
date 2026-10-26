@@ -33,7 +33,8 @@
 //! `RECUR_SMOKE_FROM=n` starts the workspaces at the nth and `RECUR_SMOKE_TO=m` ends them at the
 //! mth (1-based, inclusive: a full run can be covered in ranges), `RECUR_SMOKE_WORKSPACE=<id>` visits
 //! only that one (`RECUR_SMOKE_PR=<id>` likewise for PRs), `RECUR_SMOKE_WORKSPACES_ONLY=1`
-//! stops after the workspaces and
+//! stops after the workspaces, `RECUR_SMOKE_PR_FROM=n` / `RECUR_SMOKE_PR_TO=m` slice the PRs
+//! (1-based, inclusive) and
 //! `RECUR_SMOKE_RENDERS=1` lists the views each frame over 500ms rendered,
 //! `RECUR_SMOKE_KEY_ROUNDS=n` types the keystroke sequence n times and
 //! `RECUR_SMOKE_SAMPLE_MS=n` samples the main thread during frames and keys over n ms and
@@ -1516,10 +1517,24 @@ async fn run(
     }
 
     let only = std::env::var("RECUR_SMOKE_PR").ok();
+    // `RECUR_SMOKE_PR_FROM=n` / `RECUR_SMOKE_PR_TO=m` cover a slice of the PRs (1-based,
+    // inclusive), so a range splits into runs that each fit a time cap.
+    let pr_bound = |k: &str, d: usize| {
+        std::env::var(k)
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(d)
+    };
+    let (pr_from, pr_to) = (
+        pr_bound("RECUR_SMOKE_PR_FROM", 1),
+        pr_bound("RECUR_SMOKE_PR_TO", usize::MAX),
+    );
     for (i, id) in prs
         .iter()
         .enumerate()
-        .filter(|(_, id)| only.as_ref().is_none_or(|o| o == *id))
+        .filter(|(i, id)| {
+            (pr_from..=pr_to).contains(&(i + 1)) && only.as_ref().is_none_or(|o| o == *id)
+        })
         .take(limit())
     {
         at(start, format!("PR {}/{} {id}", i + 1, prs.len()));

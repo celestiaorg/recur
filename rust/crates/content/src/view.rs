@@ -823,6 +823,115 @@ impl Render for MarkdownView {
     }
 }
 
+/// The document's index: every top-level block built once, without layout, for its counters,
+/// margins and text blocks.
+fn index(b: &mut Build, items: &[Item], flow: crate::render::block::Flow, width: f32) -> Windowed {
+    b.dry = true;
+    let mut segs = Vec::new();
+    for (i, it) in items.iter().enumerate() {
+        let n = b.n.clone();
+        if let Some(l) = b.item(it, flow) {
+            let (chars, lines) = extent(it);
+            segs.push(Seg {
+                item: i,
+                n,
+                mt: l.mt,
+                mb: l.mb,
+                chars,
+                lines,
+            });
+        }
+    }
+    b.dry = false;
+    b.n = Counters::default();
+    let heights = Rc::new(RefCell::new(vec![None; segs.len()]));
+    Windowed {
+        segs,
+        texts: std::mem::take(&mut b.texts),
+        heights,
+        width,
+    }
+}
+
+/// The blocks near `visible` (a viewport of overscan either side), the rest as spacers at
+/// their measured or estimated heights. Returns them and the span they cover.
+fn windowed_blocks(
+    b: &mut Build,
+    w: &Windowed,
+    items: &[Item],
+    tops: &[f32],
+    visible: (f32, f32),
+    flow: crate::render::block::Flow,
+) -> (Vec<Laid>, (f32, f32)) {
+    let n = w.segs.len();
+    if n == 0 {
+        return (Vec::new(), (f32::NEG_INFINITY, f32::INFINITY));
+    }
+    let pad = visible.1 - visible.0;
+    let (lo, hi) = (visible.0 - pad, visible.1 + pad);
+    let a = (0..n)
+        .find(|&i| tops[i + 1] >= lo)
+        .unwrap_or(n.saturating_sub(1));
+    let z = (a..n).take_while(|&i| tops[i] <= hi).last().unwrap_or(a);
+    let gap = |i: usize| {
+        w.segs
+            .get(i + 1)
+            .map_or(0., |next| w.segs[i].mb.max(next.mt))
+    };
+    let spacer = |from: usize, to: usize| Laid {
+        el: div()
+            .flex_none()
+            .h(px(tops[to + 1] - tops[from] - gap(to)))
+            .into_any_element(),
+        mt: w.segs[from].mt,
+        mb: w.segs[to].mb,
+    };
+    let mut out = Vec::new();
+    if a > 0 {
+        out.push(spacer(0, a - 1));
+    }
+    for i in a..=z {
+        let seg = &w.segs[i];
+        b.n = seg.n.clone();
+        let Some(l) = b.item(&items[seg.item], flow) else {
+            continue;
+        };
+        let heights = w.heights.clone();
+        let probe = canvas(
+            move |bounds, _, _| {
+                if let Some(h) = heights.borrow_mut().get_mut(i) {
+                    *h = Some(f32::from(bounds.size.height));
+                }
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0();
+        out.push(Laid {
+            el: div()
+                .relative()
+                .flex()
+                .flex_col()
+                .w_full()
+                .child(l.el)
+                .child(probe)
+                .into_any_element(),
+            mt: l.mt,
+            mb: l.mb,
+        });
+    }
+    if z + 1 < n {
+        out.push(spacer(z + 1, n - 1));
+    }
+    let top = if a == 0 { f32::NEG_INFINITY } else { tops[a] };
+    let bottom = if z + 1 >= n {
+        f32::INFINITY
+    } else {
+        tops[z + 1]
+    };
+    (out, (top, bottom))
+}
+
 #[cfg(test)]
 mod tests {
     use gpui_kit::{AppContext, Entity, IntoElement, ParentElement, Render, Styled, div, px};
@@ -959,113 +1068,4 @@ mod tests {
         assert!(last.contains(&300), "{last:?}");
         assert!(!last.contains(&1));
     }
-}
-
-/// The document's index: every top-level block built once, without layout, for its counters,
-/// margins and text blocks.
-fn index(b: &mut Build, items: &[Item], flow: crate::render::block::Flow, width: f32) -> Windowed {
-    b.dry = true;
-    let mut segs = Vec::new();
-    for (i, it) in items.iter().enumerate() {
-        let n = b.n.clone();
-        if let Some(l) = b.item(it, flow) {
-            let (chars, lines) = extent(it);
-            segs.push(Seg {
-                item: i,
-                n,
-                mt: l.mt,
-                mb: l.mb,
-                chars,
-                lines,
-            });
-        }
-    }
-    b.dry = false;
-    b.n = Counters::default();
-    let heights = Rc::new(RefCell::new(vec![None; segs.len()]));
-    Windowed {
-        segs,
-        texts: std::mem::take(&mut b.texts),
-        heights,
-        width,
-    }
-}
-
-/// The blocks near `visible` (a viewport of overscan either side), the rest as spacers at
-/// their measured or estimated heights. Returns them and the span they cover.
-fn windowed_blocks(
-    b: &mut Build,
-    w: &Windowed,
-    items: &[Item],
-    tops: &[f32],
-    visible: (f32, f32),
-    flow: crate::render::block::Flow,
-) -> (Vec<Laid>, (f32, f32)) {
-    let n = w.segs.len();
-    if n == 0 {
-        return (Vec::new(), (f32::NEG_INFINITY, f32::INFINITY));
-    }
-    let pad = visible.1 - visible.0;
-    let (lo, hi) = (visible.0 - pad, visible.1 + pad);
-    let a = (0..n)
-        .find(|&i| tops[i + 1] >= lo)
-        .unwrap_or(n.saturating_sub(1));
-    let z = (a..n).take_while(|&i| tops[i] <= hi).last().unwrap_or(a);
-    let gap = |i: usize| {
-        w.segs
-            .get(i + 1)
-            .map_or(0., |next| w.segs[i].mb.max(next.mt))
-    };
-    let spacer = |from: usize, to: usize| Laid {
-        el: div()
-            .flex_none()
-            .h(px(tops[to + 1] - tops[from] - gap(to)))
-            .into_any_element(),
-        mt: w.segs[from].mt,
-        mb: w.segs[to].mb,
-    };
-    let mut out = Vec::new();
-    if a > 0 {
-        out.push(spacer(0, a - 1));
-    }
-    for i in a..=z {
-        let seg = &w.segs[i];
-        b.n = seg.n.clone();
-        let Some(l) = b.item(&items[seg.item], flow) else {
-            continue;
-        };
-        let heights = w.heights.clone();
-        let probe = canvas(
-            move |bounds, _, _| {
-                if let Some(h) = heights.borrow_mut().get_mut(i) {
-                    *h = Some(f32::from(bounds.size.height));
-                }
-            },
-            |_, _, _, _| {},
-        )
-        .absolute()
-        .inset_0();
-        out.push(Laid {
-            el: div()
-                .relative()
-                .flex()
-                .flex_col()
-                .w_full()
-                .child(l.el)
-                .child(probe)
-                .into_any_element(),
-            mt: l.mt,
-            mb: l.mb,
-        });
-    }
-    if z + 1 < n {
-        out.push(spacer(z + 1, n - 1));
-    }
-    let top = if a == 0 { f32::NEG_INFINITY } else { tops[a] };
-    let bottom = if z + 1 >= n {
-        f32::INFINITY
-    } else {
-        tops[z + 1]
-    };
-    (out, (top, bottom))
 }

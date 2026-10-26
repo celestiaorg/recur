@@ -41,8 +41,10 @@ pub(crate) struct ScmProbes {
     /// The rows each section laid out last frame: `(first, end)`.
     pub built: Rc<Cell<[(usize, usize); 2]>>,
     pub body: Rc<Cell<Bounds<Pixels>>>,
-    rows: Rc<RefCell<Option<(ScmRowsKey, Rc<ScmRows>)>>>,
+    rows: Rc<RefCell<Option<ScmRowsMemo>>>,
 }
+
+type ScmRowsMemo = (ScmRowsKey, Rc<ScmRows>);
 
 /// One row of a changes section.
 #[derive(Clone)]

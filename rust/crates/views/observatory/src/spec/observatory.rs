@@ -1352,7 +1352,10 @@ async fn a_long_changes_list_lays_out_the_rows_near_its_viewport(cx: &mut TestAp
     assert!(!h.has("scm-stage:u:f249.txt"));
     let scroll = h.read(|o, _| o.scm_scroll.clone());
     let max = scroll.max_offset().y;
-    assert!(max > gpui::px(4000.), "spacers keep the list's height: {max:?}");
+    assert!(
+        max > gpui::px(4000.),
+        "spacers keep the list's height: {max:?}"
+    );
     scroll.set_offset(gpui::point(gpui::px(0.), -max));
     h.update(|_, _, cx| cx.notify());
     h.settle();

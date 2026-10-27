@@ -388,6 +388,7 @@ internal/engine.TestChildReportPreservesParentModel	crates/engine/src/chat/tests
 internal/engine.TestChildReportsToParentThenMergesOnRequest	crates/engine/src/chat/tests/children.rs::a_child_reports_to_its_parent_then_merges_on_request
 internal/engine.TestClaudeModelLabel	providers/claude/src/flags.rs::labels
 internal/engine.TestClaudeParallelToolUsesEachPersist	crates/engine/src/turn/tests.rs::parallel_tool_uses_each_persist
+internal/engine.TestClaudeProviderDisabledFails	crates/engine/src/turn/tests.rs::disabled_provider_reason_is_the_turn_error, providers/claude/src/lib.rs::availability_and_identity
 internal/engine.TestClaudeRepeatedToolUseYieldsOneStep	crates/engine/src/turn/tests.rs::repeated_tool_use_yields_one_step
 internal/engine.TestClaudeRunnerAppendsRoleNotReplace	providers/claude/src/args.rs::appends_role_not_replace
 internal/engine.TestClaudeRunnerArgsCompletionTurn	providers/claude/src/args.rs::completion_turn
@@ -421,6 +422,8 @@ internal/engine.TestCodexFileChangePermissionInputPreservesKind	providers/codex/
 internal/engine.TestCodexFileChangeStep	providers/codex/src/items.rs::file_change_steps
 internal/engine.TestCodexLongContextOverrides	providers/codex/src/runner.rs::overrides
 internal/engine.TestCodexNetworkOverrides	providers/codex/src/runner.rs::overrides
+internal/engine.TestCodexProviderDisabledFails	providers/codex/src/lib.rs::availability_wording
+internal/engine.TestCodexProviderWithoutConfigFails	providers/codex/src/lib.rs::availability_wording
 internal/engine.TestCodexReasoningSummaryText	providers/codex/src/items.rs::reasoning_summaries
 internal/engine.TestCodexSandboxBypassIsDangerFullAccess	providers/codex/src/runner.rs::bypass_is_danger_full_access
 internal/engine.TestCodexSandboxFollowsAllowedTools	providers/codex/src/runner.rs::sandbox_follows_allowlist
@@ -782,6 +785,7 @@ internal/engine.TestHoldPRChatHoistIsExclusive	crates/engine/src/prs/tests/hoist
 internal/engine.TestHoldPRChatHoistRefusesDeleting	crates/engine/src/prs/tests/hoist.rs::hold_refuses_deleting
 internal/engine.TestHumanDockModeChangeRefreshesStanding	crates/engine/src/chat/tests/modes_send.rs::a_human_dock_mode_change_refreshes_standing_notes
 internal/engine.TestInheritSimplifyFollowsPlanAuthorNotNewestTab	crates/engine/src/simplify/tests.rs::inherit_follows_plan_author_then_newest_choice
+internal/engine.TestInjectedRunnerBeatsProvider	crates/engine/src/turn/tests.rs::injected_provider_beats_routing_and_partials_follow_skip_thinking
 internal/engine.TestIsGitHubAutoMergeDisallowed	crates/forge/src/github/merge.rs::enqueue_targets_url_then_number
 internal/engine.TestIsModeSwitchResumeDeadEnd	crates/engine/src/chat/tests/switch_mode.rs::dead_end_replies
 internal/engine.TestJoinAppendPrompt	crates/engine/src/composer/skills_tests.rs::join_append
@@ -845,7 +849,9 @@ internal/engine.TestModeContinueEpochIsCapturedAtNoteTime	crates/engine/src/chat
 internal/engine.TestModeSwitchContinueDoesNotDisplaceLiveTurn	crates/engine/src/chat/tests/switch_mode.rs::a_remount_never_displaces_a_live_turn
 internal/engine.TestModeSwitchContinueRegistersAfterFIFOClaim	crates/engine/src/chat/tests/steer.rs::a_remount_registers_only_after_its_fifo_claim
 internal/engine.TestModeSwitchContinueSetupFailureRetriesPendingHoist	crates/engine/src/prs/tests/hoist.rs::mode_switch_setup_failure_retries_pending_hoist
+internal/engine.TestModelRefRoundTrip	crates/domain/src/model.rs::parse_model_ref_cases
 internal/engine.TestNewWorkspaceIDAvoidsExisting	crates/engine/src/workspace/tests.rs::new_workspace_id_avoids_existing_and_deleting
+internal/engine.TestNilInjectedRunnerFailsClosed	crates/engine/src/turn/tests.rs::nil_pin_fails_closed
 internal/engine.TestNonClaudeProviderTurnIsMirrored	crates/engine/src/turn/tests.rs::non_claude_turn_is_mirrored_under_its_provider
 internal/engine.TestOwnerRepoFromRemoteURL	crates/forge/src/github/repo.rs::owner_repo_from_remote_urls
 internal/engine.TestPRConversationMinIntervalLetsOpenPRRefresh	crates/engine/src/prs/tests/thread.rs::conversation_min_interval_lets_open_pr_refresh
@@ -905,6 +911,7 @@ internal/engine.TestPersistChatFailureWrappedDisplayDoesNotDuplicate	crates/engi
 internal/engine.TestPlanGitHubMergeFallsBackToCLI	crates/forge/src/github/merge.rs::plan_prefers_rest_then_graphql_then_cli
 internal/engine.TestPlanGitHubMergeGraphQLWhenNoURL	crates/forge/src/github/merge.rs::plan_prefers_rest_then_graphql_then_cli
 internal/engine.TestPlanGitHubMergePrefersRESTFromURL	crates/forge/src/github/merge.rs::plan_prefers_rest_then_graphql_then_cli
+internal/engine.TestProviderNeedsPermissionPromptTool	providers/claude/src/lib.rs::availability_and_identity, providers/cursor/src/provider/tests.rs::identity_and_caps, providers/codex/src/lib.rs::availability_wording
 internal/engine.TestProvisionalTitleStripsLeadingAttachment	crates/engine/src/chat/tests/send.rs::provisional_title_strips_a_leading_attachment
 internal/engine.TestProvisionalWorkspaceTitle	crates/engine/src/chat/tests/send.rs::provisional_title_from_first_message_until_rename
 internal/engine.TestProvisionalWorkspaceTitleFromFirstMessage	crates/engine/src/chat/tests/send.rs::provisional_title_from_first_message_until_rename
@@ -979,6 +986,7 @@ internal/engine.TestRequiresDisplayText	crates/engine/src/turn/tests.rs::display
 internal/engine.TestResolveArtifactMentionByTitleAndPrefix	crates/engine/src/composer/artifacts_tests.rs::resolves_by_title_and_prefix
 internal/engine.TestResolveClaudeContextWindow	providers/claude/src/flags.rs::resolve_context_window
 internal/engine.TestResolveLoopMissionPath	crates/engine/src/composer/tests.rs::loop_mission_path_loads
+internal/engine.TestResolveRunnerIsRaw	n/a: Go's resolveRunner returns a raw runner that runnerFor wraps in mirroringRunner; the Rust engine mirrors every turn inside run_agent with no wrapper type, so there is no raw-versus-wrapped runner (resolution itself: empty_provider_is_claude_code; mirroring: TestRunnerForAlwaysMirrors' row)
 internal/engine.TestResolveTerminalMentionsByTitleAndPrefix	crates/engine/src/composer/artifacts_tests.rs::resolves_by_title_and_prefix
 internal/engine.TestResponsesFreshInputSubtractsCache	providers/compatible/src/tests.rs::fresh_input_subtracts_cache
 internal/engine.TestResumeAfterAskUserClearsReservation	crates/engine/src/ask_user/tests.rs::resume_clears_reservation
@@ -1002,7 +1010,12 @@ internal/engine.TestReviewCheckpointDeltaOnlyOnSameChat	crates/engine/src/turn/c
 internal/engine.TestReviewModeChatFilesFindings	crates/engine/src/chat/tests/modes_send.rs::review_mode_files_findings
 internal/engine.TestRewriteHoistArtifactPath	crates/engine/src/prs/tests/hoist.rs::hoist_rewrites_plan_artifact_paths
 internal/engine.TestRunAgentPreservesCancelWhenCursorOff	providers/cursor/src/provider/tests.rs::run_turn_preserves_cancel_when_cursor_off
+internal/engine.TestRunAgentReleasesCursorReservation	providers/cursor/src/pool/tests.rs::release_counts_down_once
+internal/engine.TestRunAgentStreamsPartialsUnlessSkipThinking	crates/engine/src/turn/tests.rs::injected_provider_beats_routing_and_partials_follow_skip_thinking
+internal/engine.TestRunAgentStripsProviderPrefix	crates/engine/src/turn/tests.rs::injected_provider_beats_routing_and_partials_follow_skip_thinking
 internal/engine.TestRunAgentWrapsCursorOffError	providers/cursor/src/provider/tests.rs::run_turn_wraps_cursor_off_error
+internal/engine.TestRunnerForAlwaysMirrors	crates/engine/src/turn/tests.rs::non_claude_turn_is_mirrored_under_its_provider, crates/engine/src/turn/tests.rs::wrapper_mirrors_specialist_turn
+internal/engine.TestRunnerForClaudeCode	crates/engine/src/turn/tests.rs::empty_provider_is_claude_code
 internal/engine.TestRunnerForEmptyProviderIsClaudeCode	crates/engine/src/turn/tests.rs::empty_provider_is_claude_code
 internal/engine.TestRunnerForUnknownProviderFails	crates/engine/src/turn/tests.rs::unknown_provider_fails_without_fallback
 internal/engine.TestSanitizeCommitMessage	crates/engine/src/turn/oneshot_tests.rs::sanitize_commit_message_cases
@@ -1063,6 +1076,9 @@ internal/engine.TestSendWorkspaceMessageSteersLiveTurn	crates/engine/src/chat/te
 internal/engine.TestSetGitHubThreadResolvedSkipsRefresh	crates/engine/src/prs/tests/thread.rs::set_forge_thread_resolved_skips_refresh
 internal/engine.TestSetPRDraftConvertsToDraft	crates/engine/src/prs/tests/thread.rs::set_draft_converts_to_draft
 internal/engine.TestSetPRDraftLocalPersistsFlag	crates/engine/src/prs/tests/thread.rs::set_draft_local_persists_flag
+internal/engine.TestSettingsCodexConfigured	crates/domain/src/settings.rs::permissions_and_credentials
+internal/engine.TestSettingsCursorConfigured	crates/domain/src/settings.rs::permissions_and_credentials
+internal/engine.TestSettingsPerModeProviders	crates/domain/src/settings.rs::loop_role_accessors_alias_modes, crates/domain/src/settings.rs::workspace_title_model_and_uses_provider
 internal/engine.TestSettledLoopTabNotLockedBySiblingLoop	crates/engine/src/chat/tests/moved.rs::a_settled_loop_tab_is_not_locked_by_a_sibling_loop
 internal/engine.TestShutdownCompletedTurnGoesIdle	crates/engine/src/chat/tests/recover.rs::a_turn_that_completed_during_quit_goes_idle
 internal/engine.TestShutdownLeavesChatWorkingForRecover	crates/engine/src/chat/tests/recover.rs::quit_leaves_a_chat_working_for_recover

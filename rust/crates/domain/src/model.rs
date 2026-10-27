@@ -125,6 +125,10 @@ mod tests {
             parse_model_ref("cursor/composer-2.5").to_string(),
             "cursor/composer-2.5"
         );
+        assert_eq!(
+            parse_model_ref("claude-code/opus").to_string(),
+            "claude-code/opus"
+        );
         assert_eq!(ModelRef::new("", "x").provider, PROVIDER_CLAUDE_CODE);
     }
 

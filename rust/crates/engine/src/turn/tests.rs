@@ -789,6 +789,13 @@ async fn empty_provider_is_claude_code() {
             .id(),
         PROVIDER_CLAUDE_CODE
     );
+    assert_eq!(
+        te.engine
+            .resolve_provider(PROVIDER_CLAUDE_CODE)
+            .unwrap()
+            .id(),
+        PROVIDER_CLAUDE_CODE
+    );
     te.close().await;
 }
 

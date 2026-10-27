@@ -257,6 +257,7 @@ internal/domain.TestProviderEnabledDefaultOn	crates/domain/src/providers.rs::ena
 internal/domain.TestProviderEnabledDisabledList	crates/domain/src/providers.rs::enabled_disabled_list
 internal/domain.TestProviderOffersModels	crates/domain/src/providers.rs::offers_models
 internal/domain.TestSettingsAgentTurnTimeout	crates/domain/src/settings.rs::agent_turn_timeout
+internal/domain.TestSimplifyEnabled	crates/domain/src/settings.rs::skill_and_simplify
 internal/domain.TestSkillEnabled	crates/domain/src/settings.rs::skill_and_simplify
 internal/domain.TestSkillRoots	crates/domain/src/skills.rs::roots
 internal/domain.TestToggleReactions	crates/domain/src/reaction.rs::toggle_cases

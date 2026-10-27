@@ -361,6 +361,23 @@ fn parse_manifest_prompt_validation() {
 }
 
 #[test]
+fn discover_prompts_sorted_by_slash() {
+    let (_g, def) = temp_dir();
+    write_bundle(
+        &def,
+        "Chat",
+        "[bundle]\nname = \"Chat\"\nid = \"b-chat\"\n[[prompt]]\nid = \"p-z\"\nname = \"Zed\"\nslash = \"zed\"\ninterpreter = \"shebang\"\nbody = \"#!/bin/sh\\ntrue\\n\"\n[[prompt]]\nid = \"p-a\"\nname = \"Audit\"\nslash = \"audit\"\ninterpreter = \"shebang\"\nbody = \"#!/bin/sh\\ntrue\\n\"\n",
+    );
+    let (_, prompts, _) = discover_report(&DiscoverRoots {
+        user_dir: String::new(),
+        default_dir: def,
+    })
+    .unwrap();
+    let slashes: Vec<&str> = prompts.iter().map(|p| p.slash.as_str()).collect();
+    assert_eq!(slashes, ["audit", "zed"]);
+}
+
+#[test]
 fn discover_prompt_slash_user_beats_default() {
     let (_g1, def) = temp_dir();
     let (_g2, user) = temp_dir();

@@ -20,8 +20,7 @@ pub fn chat_surface_for_view(view: &str, pr: Option<&Pr>) -> ChatSurface {
             ..ChatSurface::default()
         };
     };
-    let source = pr.source.as_str().to_lowercase();
-    let forge = source == "gh" || source == "github";
+    let forge = recur_domain::PrSource::is_github_alias(pr.source.as_str());
     ChatSurface {
         surface: if forge {
             CHAT_SURFACE_GITHUB_PR

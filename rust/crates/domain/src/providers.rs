@@ -12,7 +12,7 @@ use crate::skills::name_listed;
 // Claude ids are hardcoded in-repo, so they are safe to substitute;
 // Cursor/Codex catalogues are live per account, so those ids are never
 // invented here.
-pub(crate) const FALLBACK_CLAUDE_MODEL: &str = "claude-code/claude-sonnet-5-5";
+pub const FALLBACK_CLAUDE_MODEL: &str = "claude-code/claude-sonnet-5-5";
 pub(crate) const FALLBACK_CLAUDE_TITLE_MODEL: &str = "claude-code/claude-haiku-4-5-20251001";
 
 impl Settings {

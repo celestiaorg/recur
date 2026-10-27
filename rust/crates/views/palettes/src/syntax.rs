@@ -20,8 +20,8 @@ use recur_ui::style::{
     palette_empty, palette_group, palette_key, palette_row, palette_sub, style_text_input,
 };
 use recur_view_core::AppState;
+use recur_view_core::editor_env::{EditorEnv, editor_env};
 use recur_view_core::{ObserveState as _, Topics};
-use recur_view_observatory::textmate::{EditorEnv, editor_env};
 
 use crate::chrome::{self, Kind, plain, step};
 

@@ -189,7 +189,7 @@ async fn install_inner(
         0,
         0,
     );
-    let http = reqwest::Client::new();
+    let http = recur_http::default_client();
     let (wheel, version) = resolve_wheel(&http).await?;
 
     let dest = data_dir.join(BRIDGE_DIR_NAME);
@@ -268,7 +268,7 @@ async fn install_inner(
 
 /// PyPI's latest cursor-sdk version, for the pin-drift check (not Install).
 pub async fn latest_sdk_version() -> Result<String, String> {
-    let resp = reqwest::Client::new()
+    let resp = recur_http::default_client()
         .get(PYPI_PROJECT_JSON)
         .send()
         .await

@@ -434,7 +434,7 @@ impl BriefingView {
             bar = bar.child(titled(
                 "ask-reopen-t",
                 "Show chat panel",
-                recur_view_observatory::style::pane_toggle(
+                recur_view_widgets::chrome::pane_toggle(
                     "ask-reopen",
                     IconName::PanelLeft,
                     false,

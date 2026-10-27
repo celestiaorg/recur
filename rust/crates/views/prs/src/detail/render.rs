@@ -20,9 +20,9 @@ use recur_view_review::scroll_fade::{SCROLL_FADE_SLACK, is_scrolled_from_top};
 
 use super::PrDetail;
 use crate::chrome::{chrome_color, status_label};
-use crate::people::{people_stack, popout_for, pr_people};
 use crate::style::{dot, hsla, pulse_opacity, spin_deg};
 use crate::ui::PrTab;
+use recur_view_widgets::people::{people_stack, popout_for, pr_people};
 
 /// `.prh { background: rgba(10, 12, 16, .85) }` (`rgba(247, 248, 250, .88)` on light themes)
 /// over the view's `--bg`.
@@ -621,6 +621,9 @@ impl PrDetail {
         let t = Theme::of(cx).tokens;
         let top = -f32::from(scroll.offset().y);
         let fade = is_scrolled_from_top(top, SCROLL_FADE_SLACK);
+        let area = recur_ui::widgets::scroll_area(SharedString::from(format!("prpane-{id}")))
+            .track(scroll)
+            .child(content);
         div()
             .debug_selector(move || format!("prpane:{id}{}", if fade { ":fade-top" } else { "" }))
             .relative()
@@ -628,11 +631,7 @@ impl PrDetail {
             .min_h_0()
             .flex()
             .bg(hsla(t.bg))
-            .child(
-                recur_ui::widgets::scroll_area(SharedString::from(format!("prpane-{id}")))
-                    .track(scroll)
-                    .child(content),
-            )
+            .child(area)
             .when(fade, |d| d.child(top_fade(cx)))
             .into_any_element()
     }
@@ -718,10 +717,8 @@ pub(crate) fn rollup_kind(r: RollupKind) -> &'static str {
 
 /// The agent dock's hide toggle, once the dock has rendered.
 pub(crate) fn dock_toggle_focus(cx: &App) -> Option<gpui_kit::FocusHandle> {
-    let detail = recur_view_workspace::detail::WorkspaceDetail::current(cx)?;
-    let view = detail.read(cx).bound_view(cx)?;
-    let obs = view.read(cx).observatory().clone();
-    obs.read(cx).pr_dock_toggle_focus()
+    let (dock, host) = recur_view_core::pr_dock::dock(cx)?;
+    (host.toggle_focus)(&dock, cx)
 }
 
 impl PrDetail {
@@ -866,8 +863,9 @@ impl PrDetail {
             .on_mouse_down(
                 MouseButton::Left,
                 cx.guarded_listener(|d, _, window, cx| {
-                    // `onPRChromeMouseDown`: park focus on the column so the tabs light up.
-                    if !d.dock_focus.contains_focused(window, cx) {
+                    // `onPRChromeMouseDown`: park focus on the column so the tabs light up,
+                    // unless the press started a text selection (which focuses its scope).
+                    if !d.dock_focus.contains_focused(window, cx) && !window.default_prevented() {
                         window.focus(&d.col_focus, cx);
                     }
                 }),
@@ -897,25 +895,29 @@ impl Focusable for PrDetail {
 impl PrDetail {
     /// The PR's agent dock: the bound workspace view's Observatory renders its left aside here.
     fn agent_dock(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
-        let detail = recur_view_workspace::detail::WorkspaceDetail::current(cx)?;
-        let view = detail.read(cx).bound_view(cx)?;
-        let obs = view.read(cx).observatory().clone();
-        self.watch_dock(&obs, cx);
-        obs.update(cx, |o, cx| o.render_pr_agent_dock(window, cx))
+        let (dock, host) = recur_view_core::pr_dock::dock(cx)?;
+        let (render, observe) = (host.render, host.observe);
+        self.watch_dock(&dock, observe, cx);
+        render(&dock, window, cx)
     }
 
     /// Re-render when the dock's Observatory changes (its elements render inside this view).
     fn watch_dock(
         &mut self,
-        obs: &gpui_kit::Entity<recur_view_observatory::Observatory>,
+        dock: &gpui_kit::AnyView,
+        observe: recur_view_core::pr_dock::ObserveDock,
         cx: &mut Context<Self>,
     ) {
-        let id = obs.entity_id();
+        let id = dock.entity_id();
         if self.watched == Some(id) {
             return;
         }
         self.watched = Some(id);
-        self.watch = Some(cx.guarded_observe(obs, |_, _, cx| cx.notify()));
+        let me = cx.entity().downgrade();
+        let notify = Box::new(move |cx: &mut App| {
+            let _ = me.update(cx, |_, cx| cx.notify());
+        });
+        self.watch = observe(dock, notify, cx);
     }
 
     /// `.cmt-more-menu`: Open in GitHub, Copy link, Quote reply, Edit, Delete.

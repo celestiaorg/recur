@@ -14,10 +14,14 @@
 
 pub mod chat;
 pub mod chat_route;
+pub mod command_usage;
 pub mod commands;
 mod data;
+pub mod editor_env;
 pub mod file_drag;
 pub mod format;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 pub mod land;
 pub mod local_storage;
 pub mod menu;
@@ -25,11 +29,16 @@ pub mod models;
 pub mod modes;
 pub mod nav;
 mod navigate;
+pub mod open_in_pref;
 pub mod pr;
 pub mod pr_commits;
+pub mod pr_dock;
+pub mod pr_list_filter;
 pub mod prefs;
+pub mod provider_usage;
 pub mod run;
 pub mod shell_state;
+pub mod snippets;
 pub mod state;
 pub mod themes;
 pub mod topics;

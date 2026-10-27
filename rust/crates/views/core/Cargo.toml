@@ -7,13 +7,19 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# Whole-window parity scenes for `rust/tools/ui-parity` (`gallery`).
+gallery = ["recur-services/mock", "recur-ui/gallery"]
+
 [dependencies]
 gpui-kit.workspace = true
 recur-ui.workspace = true
 recur-editor.workspace = true
+recur-textmate.workspace = true
 recur-services.workspace = true
 recur-domain.workspace = true
 recur-engine.workspace = true
+recur-forge.workspace = true
 recur-term.workspace = true
 regex.workspace = true
 serde.workspace = true

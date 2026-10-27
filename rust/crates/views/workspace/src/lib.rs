@@ -27,6 +27,7 @@ mod toolbar;
 pub mod uuid;
 pub mod view;
 
+mod pr_dock;
 #[cfg(test)]
 mod spec;
 
@@ -36,8 +37,9 @@ use recur_view_core::{ViewContext, ViewName, ViewRegistry};
 pub use detail::WorkspaceDetail;
 pub use view::{WorkspaceProps, WorkspaceView};
 
-/// Registers the detail route.
+/// Registers the detail route and the PR detail agent dock (`recur_view_core::pr_dock`).
 pub fn register(r: &mut ViewRegistry) {
+    r.init(|cx| cx.set_global(pr_dock::host()));
     r.view(&[ViewName::Detail], |vcx: &ViewContext, window, cx| {
         cx.new(|cx| WorkspaceDetail::new(vcx, window, cx)).into()
     })

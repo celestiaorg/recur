@@ -1,7 +1,15 @@
 [workspace]
 resolver = "3"
-# `crates/views` holds view crates, not a manifest, so `crates/*` skips it.
-members = ["crates/[!v]*", "crates/views/*", "providers/*", "tools/*"]
+# `crates/views` and `crates/panes` hold crates, not a manifest, so `crates/*` skips them
+# (`p[!a]*` is `platform` and `project`).
+members = [
+    "crates/[!pv]*",
+    "crates/p[!a]*",
+    "crates/views/*",
+    "crates/panes/*",
+    "providers/*",
+    "tools/*",
+]
 default-members = ["crates/desktop", "crates/cli"]
 
 [workspace.package]
@@ -13,6 +21,7 @@ license = "UNLICENSED"
 [workspace.dependencies]
 recur-domain = { path = "crates/domain" }
 recur-exec = { path = "crates/exec" }
+recur-http = { path = "crates/http" }
 recur-store = { path = "crates/store" }
 recur-project = { path = "crates/project" }
 recur-git = { path = "crates/git" }
@@ -41,10 +50,11 @@ recur-terminal-view = { path = "crates/terminal-view" }
 recur-content = { path = "crates/content" }
 recur-app = { path = "crates/app" }
 recur-view-core = { path = "crates/views/core" }
+recur-view-widgets = { path = "crates/views/widgets" }
 recur-view-sidebar = { path = "crates/views/sidebar" }
-recur-view-chat = { path = "crates/views/chat" }
-recur-view-review = { path = "crates/views/review" }
-recur-view-observatory = { path = "crates/views/observatory" }
+recur-view-chat = { path = "crates/panes/chat" }
+recur-view-review = { path = "crates/panes/review" }
+recur-view-observatory = { path = "crates/panes/observatory" }
 recur-view-workspace = { path = "crates/views/workspace" }
 recur-view-prs = { path = "crates/views/prs" }
 recur-view-settings = { path = "crates/views/settings" }
@@ -182,3 +192,4 @@ codegen-units = 1
 # pinned gpui-pre carries the change, or re-apply `vendor/gpui-pre.patch` on a bump.
 [patch.crates-io]
 gpui-pre = { path = "vendor/gpui-pre" }
+gpui-pre-scheduler = { path = "vendor/gpui-pre-scheduler" }

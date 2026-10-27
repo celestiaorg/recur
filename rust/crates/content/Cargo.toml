@@ -24,7 +24,6 @@ serde_json.workspace = true
 futures.workspace = true
 base64.workspace = true
 smallvec.workspace = true
-unicode-linebreak.workspace = true
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
 resvg = { workspace = true, features = ["text", "system-fonts", "memmap-fonts"] }
 recur-editor.workspace = true

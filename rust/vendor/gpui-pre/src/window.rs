@@ -999,6 +999,16 @@ impl ElementIdStack {
         self.hashes.clear();
     }
 
+    /// Recur: drops what a contained panic left pushed.
+    pub(crate) fn truncate(&mut self, len: usize) {
+        self.ids.truncate(len);
+        self.hashes.truncate(len);
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.ids.len()
+    }
+
     /// The hash of the whole path on the stack.
     fn hash(&self) -> u64 {
         self.hashes
@@ -4926,6 +4936,41 @@ impl Window {
         });
     }
 
+    /// Recur: runs `f` with a panic contained (`unwind::contain`). The stacks `f` may have
+    /// pushed (element ids, text styles, offsets, opacity, content masks, rem sizes, image
+    /// caches, rendered entities, scene layers) return to their depths before `f`.
+    pub(crate) fn contain<R>(
+        &mut self,
+        site: &str,
+        cx: &mut App,
+        f: impl FnOnce(&mut Self, &mut App) -> R,
+    ) -> Option<R> {
+        let ids = self.element_id_stack.len();
+        let text = self.text_style_stack.len();
+        let entities = self.rendered_entity_stack.len();
+        let offsets = self.element_offset_stack.len();
+        let opacity = self.element_opacity;
+        let masks = self.content_mask_stack.len();
+        let rems = self.rem_size_override_stack.len();
+        let images = self.image_cache_stack.len();
+        let layers = self.next_frame.scene.layer_depth();
+        let out = crate::unwind::contain(site, || f(self, cx));
+        if out.is_none() {
+            self.element_id_stack.truncate(ids);
+            self.text_style_stack.truncate(text);
+            self.rendered_entity_stack.truncate(entities);
+            self.element_offset_stack.truncate(offsets);
+            self.element_opacity = opacity;
+            self.content_mask_stack.truncate(masks);
+            self.rem_size_override_stack.truncate(rems);
+            self.image_cache_stack.truncate(images);
+            while self.next_frame.scene.layer_depth() > layers {
+                self.next_frame.scene.pop_layer();
+            }
+        }
+        out
+    }
+
     /// Creates a new painting layer for the specified bounds. A "layer" is a batch
     /// of geometry that are non-overlapping and have the same draw order. This is typically used
     /// for performance reasons.
@@ -6348,7 +6393,9 @@ impl Window {
         // special purposes, such as detecting events outside of a given Bounds.
         for listener in &mut mouse_listeners {
             let listener = listener.as_mut().unwrap();
-            listener(event, DispatchPhase::Capture, self, cx);
+            crate::unwind::contain("a mouse listener", || {
+                listener(event, DispatchPhase::Capture, self, cx)
+            });
             if !cx.propagate_event {
                 break;
             }
@@ -6358,7 +6405,9 @@ impl Window {
         if cx.propagate_event {
             for listener in mouse_listeners.iter_mut().rev() {
                 let listener = listener.as_mut().unwrap();
-                listener(event, DispatchPhase::Bubble, self, cx);
+                crate::unwind::contain("a mouse listener", || {
+                    listener(event, DispatchPhase::Bubble, self, cx)
+                });
                 if !cx.propagate_event {
                     break;
                 }
@@ -6669,7 +6718,9 @@ impl Window {
             let node = self.rendered_frame.dispatch_tree.node(*node_id);
 
             for key_listener in node.key_listeners.clone() {
-                key_listener(event, DispatchPhase::Capture, self, cx);
+                crate::unwind::contain("a key listener", || {
+                    key_listener(event, DispatchPhase::Capture, self, cx)
+                });
                 if !cx.propagate_event {
                     return;
                 }
@@ -6681,7 +6732,9 @@ impl Window {
             // Handle low level key events
             let node = self.rendered_frame.dispatch_tree.node(*node_id);
             for key_listener in node.key_listeners.clone() {
-                key_listener(event, DispatchPhase::Bubble, self, cx);
+                crate::unwind::contain("a key listener", || {
+                    key_listener(event, DispatchPhase::Bubble, self, cx)
+                });
                 if !cx.propagate_event {
                     return;
                 }
@@ -6701,7 +6754,7 @@ impl Window {
         for node_id in dispatch_path.iter().rev() {
             let node = self.rendered_frame.dispatch_tree.node(*node_id);
             for listener in node.modifiers_changed_listeners.clone() {
-                listener(event, self, cx);
+                crate::unwind::contain("a modifiers listener", || listener(event, self, cx));
                 if !cx.propagate_event {
                     return;
                 }
@@ -6904,7 +6957,9 @@ impl Window {
             for listener in &global_listeners {
                 #[cfg(feature = "profiler")]
                 self.window_profiler.begin_action_handler(action, cx);
-                listener(action.as_any(), DispatchPhase::Capture, cx);
+                crate::unwind::contain("an action listener", || {
+                    listener(action.as_any(), DispatchPhase::Capture, cx)
+                });
                 #[cfg(feature = "profiler")]
                 self.window_profiler.end_action_handler();
                 if !cx.propagate_event {
@@ -6938,7 +6993,9 @@ impl Window {
                 if action_type == any_action.type_id() {
                     #[cfg(feature = "profiler")]
                     self.window_profiler.begin_action_handler(action, cx);
-                    listener(any_action, DispatchPhase::Capture, self, cx);
+                    crate::unwind::contain("an action listener", || {
+                        listener(any_action, DispatchPhase::Capture, self, cx)
+                    });
                     #[cfg(feature = "profiler")]
                     self.window_profiler.end_action_handler();
 
@@ -6962,7 +7019,9 @@ impl Window {
                     cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
                     #[cfg(feature = "profiler")]
                     self.window_profiler.begin_action_handler(action, cx);
-                    listener(any_action, DispatchPhase::Bubble, self, cx);
+                    crate::unwind::contain("an action listener", || {
+                        listener(any_action, DispatchPhase::Bubble, self, cx)
+                    });
                     #[cfg(feature = "profiler")]
                     self.window_profiler.end_action_handler();
 
@@ -6983,7 +7042,9 @@ impl Window {
 
                 #[cfg(feature = "profiler")]
                 self.window_profiler.begin_action_handler(action, cx);
-                listener(action.as_any(), DispatchPhase::Bubble, cx);
+                crate::unwind::contain("an action listener", || {
+                    listener(action.as_any(), DispatchPhase::Bubble, cx)
+                });
                 #[cfg(feature = "profiler")]
                 self.window_profiler.end_action_handler();
                 if !cx.propagate_event {

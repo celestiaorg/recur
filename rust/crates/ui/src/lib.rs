@@ -16,6 +16,8 @@ mod cg_raster;
 pub mod color;
 #[cfg(test)]
 mod color_chooser_spec;
+#[cfg(test)]
+mod contained_panic_spec;
 #[cfg(target_os = "macos")]
 mod ct_text;
 #[cfg(test)]

@@ -68,10 +68,7 @@ impl EndpointProvider {
         // on the same host; it also stops after 10 redirects.
         let client = match &cfg.client {
             Some(c) => c.clone(),
-            None => reqwest::Client::builder()
-                .timeout(Duration::from_secs(30))
-                .build()
-                .map_err(err)?,
+            None => recur_http::client(|b| b.timeout(Duration::from_secs(30))),
         };
         Ok(Self { cfg, client })
     }

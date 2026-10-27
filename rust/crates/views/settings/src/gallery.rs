@@ -6,13 +6,12 @@
 use std::sync::Arc;
 
 use gpui_kit::{
-    AnyView, App, AppContext as _, Context, Entity, Global, IntoElement, ParentElement, Render,
-    Styled, Window, div,
+    AnyView, App, AppContext as _, Context, Entity, IntoElement, ParentElement, Render, Styled,
+    Window, div,
 };
-use recur_app::{Shell, ShellOptions};
 use recur_services::mock::{MockBridge, MockOptions, Reply};
 use recur_ui::gallery::SceneSpec;
-use recur_view_core::{AppState, LocalStorage, ViewContext, ViewRegistry};
+use recur_view_core::{AppState, LocalStorage, ViewContext, gallery};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -79,23 +78,9 @@ pub fn resolvers(fx: &Value) -> MockOptions {
     opts
 }
 
-/// The registry the desktop builds.
-pub fn registry() -> ViewRegistry {
-    let mut r = ViewRegistry::default();
-    recur_view_chat::register(&mut r);
-    recur_view_review::register(&mut r);
-    recur_view_observatory::register(&mut r);
-    recur_view_workspace::register(&mut r);
-    recur_view_prs::register(&mut r);
-    crate::register(&mut r);
-    r
-}
-
-struct InitsRan;
-impl Global for InitsRan {}
-
 struct SceneView {
-    shell: Entity<Shell>,
+    state: Entity<AppState>,
+    shell: AnyView,
     bridge: Arc<MockBridge>,
     scene: SettingsScene,
     navigated: bool,
@@ -105,7 +90,7 @@ struct SceneView {
 impl SceneView {
     fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         if !self.navigated {
-            let state = self.shell.read(cx).state().clone();
+            let state = self.state.clone();
             if state.read(cx).booted {
                 self.navigated = true;
                 let section = self.scene.section.clone();
@@ -152,9 +137,7 @@ fn run_act(act: &str, bridge: &Arc<MockBridge>, cx: &mut App) {
             );
         }
         "keybinding-menu" => {
-            use recur_view_observatory::keybinding_menu::{
-                KeybindingMenuItem, open_keybinding_menu,
-            };
+            use recur_view_widgets::keybinding_menu::{KeybindingMenuItem, open_keybinding_menu};
             let item = |id: &str, label: &str, category: &str, order: i64| KeybindingMenuItem {
                 id: id.into(),
                 label: label.into(),
@@ -179,30 +162,24 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let raw = parsed().into_iter().find(|v| v["name"] == name)?;
     let scene: SettingsScene = serde_json::from_value(raw).ok()?;
     // Scenes share one app: no view state carries over.
-    recur_view_observatory::gallery::reset(cx);
-    cx.set_global(recur_view_chat::transcript_ui::TranscriptUiCache::default());
-    cx.set_global(recur_view_chat::heap::ChatHeapCache::default());
-    cx.set_global(recur_view_chat::strip::ChatStripCache::default());
-    cx.set_global(recur_view_chat::hoist::HoistState::default());
-    cx.set_global(recur_content::webhost::BlockingRenders);
+    gallery::reset(cx);
     cx.set_global(crate::ModalSlot(None));
-    let registry = registry();
-    if cx.try_global::<InitsRan>().is_none() {
-        cx.set_global(InitsRan);
-        for init in &registry.inits {
-            init(cx);
-        }
-    }
+    let registry = gallery::registry(cx);
+    gallery::run_inits_once(&registry, cx);
     let fx = fixture(&scene.fixture);
-    let bridge = MockBridge::new(recur_app::gallery::scene_seed(&fx["seed"]), resolvers(&fx));
+    let bridge = MockBridge::new(gallery::scene_seed(&fx["seed"]), resolvers(&fx));
     let services = bridge.services();
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.theme", scene.theme.clone());
     let state: Entity<AppState> = AppState::install(services.clone(), storage, cx);
-    let ctx = ViewContext { state, services };
-    let shell = cx.new(|cx| Shell::new(ctx, registry, ShellOptions::default(), window, cx));
+    let ctx = ViewContext {
+        state: state.clone(),
+        services,
+    };
+    let shell = (cx.global::<gallery::SceneHost>().shell)(ctx, registry, window, cx);
     Some(
         cx.new(|_| SceneView {
+            state,
             shell,
             bridge,
             scene,

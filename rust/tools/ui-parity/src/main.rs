@@ -17,6 +17,8 @@ use gpui_kit::{
 use image::{Rgba, RgbaImage};
 use recur_ui::gallery::{self, SceneSpec, Step};
 use recur_ui::theme::Theme;
+use recur_view_core::ViewRegistry;
+use recur_view_core::gallery::SceneHost;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -103,6 +105,41 @@ fn exists(name: &str) -> bool {
         || recur_view_palettes::gallery::exists(name)
 }
 
+/// The registry the desktop builds (`crates/desktop` `registry`).
+fn registry() -> ViewRegistry {
+    let mut r = ViewRegistry::default();
+    recur_view_chat::register(&mut r);
+    recur_view_review::register(&mut r);
+    recur_view_observatory::register(&mut r);
+    recur_view_workspace::register(&mut r);
+    recur_view_prs::register(&mut r);
+    recur_view_settings::register(&mut r);
+    recur_view_home::register(&mut r);
+    recur_view_briefing::register(&mut r);
+    recur_view_projects::register(&mut r);
+    recur_view_palettes::register(&mut r);
+    r
+}
+
+/// Clears the app globals the view crates keep, since scenes share one app.
+fn reset(cx: &mut gpui_kit::App) {
+    recur_view_observatory::gallery::reset(cx);
+    cx.set_global(recur_view_chat::transcript_ui::TranscriptUiCache::default());
+    cx.set_global(recur_view_chat::heap::ChatHeapCache::default());
+    cx.set_global(recur_view_chat::strip::ChatStripCache::default());
+    cx.set_global(recur_view_chat::hoist::HoistState::default());
+    cx.set_global(recur_content::webhost::BlockingRenders);
+}
+
+/// What the view crates' whole-window scenes take from above them.
+fn scene_host() -> SceneHost {
+    SceneHost {
+        shell: recur_app::gallery::scene_shell,
+        registry,
+        reset,
+    }
+}
+
 fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyView> {
     if recur_terminal_view::gallery::exists(name) {
         return recur_terminal_view::gallery::build(name, window, cx);
@@ -160,6 +197,7 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
         gpui_kit::init(cx);
         recur_ui::init(cx);
         recur_terminal_view::init(cx);
+        cx.set_global(scene_host());
     });
     for spec in specs {
         cx.update(|cx| {

@@ -1227,9 +1227,84 @@ impl Para {
     }
 }
 
-/// Greedy line breaking at `max`. `range` narrows to the widths that break the same way: every
-/// width compared against `max` moves one of its ends.
-fn break_lines(
+/// Greedy line breaking at UAX #14 opportunities, as WebKit breaks a block's lines: a line takes
+/// opportunities while `width(start..pos)` fits `max` within `eps`, a mandatory break ends it,
+/// and a word wider than the line overflows on its own line or, with `anywhere`
+/// (`overflow-wrap: anywhere`), splits after the last char that fits (at least one). A
+/// negative `max` (a box narrower than its margins) is zero. `width` is called only for those
+/// comparisons. The ranges tile `text`. `recur_content`'s line mirror and the chat's flow break
+/// with this too, so they match what paints.
+pub fn break_lines(
+    text: &str,
+    max: f32,
+    eps: f32,
+    anywhere: bool,
+    mut width: impl FnMut(Range<usize>) -> f32,
+) -> Vec<Range<usize>> {
+    let max = max.max(0.);
+    let mut fits = |r: Range<usize>| width(r) <= max + eps;
+    let opportunities: Vec<(usize, BreakOpportunity)> = linebreaks(text).collect();
+    let mut lines = Vec::new();
+    let mut start = 0;
+    let mut last_fit: Option<usize> = None;
+    let mut i = 0;
+    while i < opportunities.len() {
+        let (pos, kind) = opportunities[i];
+        // An overlong split can end exactly at this opportunity: nothing is left before it.
+        if pos <= start {
+            i += 1;
+            continue;
+        }
+        if fits(start..pos) {
+            if kind == BreakOpportunity::Mandatory {
+                lines.push(start..pos);
+                start = pos;
+                last_fit = None;
+            } else {
+                last_fit = Some(pos);
+            }
+            i += 1;
+            continue;
+        }
+        if let Some(b) = last_fit.take() {
+            lines.push(start..b);
+            start = b;
+            continue;
+        }
+        if anywhere {
+            let mut cut = start;
+            for (bi, ch) in text[start..pos].char_indices() {
+                let end = start + bi + ch.len_utf8();
+                if !fits(start..end) {
+                    break;
+                }
+                cut = end;
+            }
+            if cut == start {
+                cut = start + text[start..].chars().next().map_or(1, char::len_utf8);
+            }
+            lines.push(start..cut);
+            start = cut;
+            continue;
+        }
+        // An unbreakable word wider than the box overflows on its own line.
+        if kind == BreakOpportunity::Mandatory {
+            lines.push(start..pos);
+            start = pos;
+        } else {
+            last_fit = Some(pos);
+        }
+        i += 1;
+    }
+    if start < text.len() || lines.is_empty() {
+        lines.push(start..text.len());
+    }
+    lines
+}
+
+/// A paragraph's lines at `max` ([`break_lines`]). `range` narrows to the widths that break the
+/// same way: every width compared against `max` moves one of its ends.
+fn break_para(
     para: &Para,
     pi: usize,
     text: &str,
@@ -1250,76 +1325,22 @@ fn break_lines(
     let Some(max) = max else {
         return vec![line(0..text.len(), para.width(text, 0..text.len()))];
     };
-    // A box narrower than its margins lays out at zero width, where an empty line still fits.
-    let max = max.max(0.);
-    let mut fits = |w: f32| {
-        let ok = w <= max + eps;
-        if ok {
+    let limit = max.max(0.);
+    break_lines(text, max, eps, anywhere, |r| {
+        let w = para.width(text, r);
+        if w <= limit + eps {
             range.0 = range.0.max(w - eps);
         } else {
             range.1 = range.1.min(w - eps);
         }
-        ok
-    };
-    let opportunities: Vec<(usize, BreakOpportunity)> = linebreaks(text).collect();
-    let mut lines = Vec::new();
-    let mut start = 0;
-    let mut last_fit: Option<usize> = None;
-    let mut i = 0;
-    while i < opportunities.len() {
-        let (pos, kind) = opportunities[i];
-        // An overlong split can end exactly at this opportunity: nothing is left before it.
-        if pos <= start {
-            i += 1;
-            continue;
-        }
-        let w = para.width(text, start..pos);
-        if fits(w) {
-            if kind == BreakOpportunity::Mandatory {
-                lines.push(line(start..pos, w));
-                start = pos;
-                last_fit = None;
-            } else {
-                last_fit = Some(pos);
-            }
-            i += 1;
-            continue;
-        }
-        if let Some(b) = last_fit.take() {
-            lines.push(line(start..b, para.width(text, start..b)));
-            start = b;
-            continue;
-        }
-        if anywhere {
-            // Split the overlong word after the last char that still fits.
-            let mut cut = start;
-            for (bi, ch) in text[start..pos].char_indices() {
-                let end = start + bi + ch.len_utf8();
-                if !fits(para.width(text, start..end)) {
-                    break;
-                }
-                cut = end;
-            }
-            if cut == start {
-                cut = start + text[start..].chars().next().map_or(1, char::len_utf8);
-            }
-            lines.push(line(start..cut, para.width(text, start..cut)));
-            start = cut;
-            continue;
-        }
-        // An unbreakable word wider than the box overflows on its own line.
-        if kind == BreakOpportunity::Mandatory {
-            lines.push(line(start..pos, w));
-            start = pos;
-        } else {
-            last_fit = Some(pos);
-        }
-        i += 1;
-    }
-    if start < text.len() || lines.is_empty() {
-        lines.push(line(start..text.len(), para.width(text, start..text.len())));
-    }
-    lines
+        w
+    })
+    .into_iter()
+    .map(|r| {
+        let w = para.width(text, r.clone());
+        line(r, w)
+    })
+    .collect()
 }
 
 /// Unrounded ascent, descent and line gap of a run's primary font.
@@ -1523,7 +1544,7 @@ impl Laid {
         let mut range = (f32::NEG_INFINITY, f32::INFINITY);
         for (pi, p) in self.paras.iter().enumerate() {
             let text = &self.key.content[p.range.clone()];
-            lines.extend(break_lines(p, pi, text, wrap, anywhere, eps, &mut range));
+            lines.extend(break_para(p, pi, text, wrap, anywhere, eps, &mut range));
         }
         let mut cut_last = false;
         if let Some(n) = clamp
@@ -2540,6 +2561,50 @@ mod tests {
         assert_eq!(p.line_start(4), 24.);
     }
 
+    /// The shared breaker the text element, `recur_content`'s mirror and the chat flow all use:
+    /// at every width its lines tile the text, a mandatory break ends a line, a negative width
+    /// lays out as zero and `width` is asked only about ranges that start a line.
+    #[test]
+    fn the_shared_breaker_tiles_the_text_and_honors_mandatory_breaks() {
+        let text = "one two\nthreefourfive  six";
+        let width = |r: Range<usize>| text[r].trim_end().chars().count() as f32 * 6.;
+        for anywhere in [false, true] {
+            let mut prev = None;
+            for max in [-5., 0., 3., 6., 20., 40., 1000.] {
+                let mut asked = Vec::new();
+                let lines = break_lines(text, max, 0.25, anywhere, |r| {
+                    asked.push(r.clone());
+                    width(r)
+                });
+                let mut at = 0;
+                for l in &lines {
+                    assert_eq!(l.start, at, "{lines:?} at {max}");
+                    assert!(l.start < l.end, "{lines:?} at {max}");
+                    at = l.end;
+                }
+                assert_eq!(at, text.len());
+                assert!(
+                    lines.iter().any(|l| l.end == 8),
+                    "the newline ends a line at {max}"
+                );
+                assert!(
+                    asked
+                        .iter()
+                        .all(|r| lines.iter().any(|l| l.start == r.start))
+                );
+                if max == -5. {
+                    prev = Some(lines);
+                } else if max == 0. {
+                    assert_eq!(prev.take(), Some(lines), "a negative width is zero");
+                }
+            }
+        }
+        assert_eq!(
+            break_lines(text, 1000., 0.25, false, width),
+            [0..8, 8..text.len()]
+        );
+    }
+
     #[test]
     fn breaking_anywhere_never_inverts_a_range_at_an_inline_box() {
         // "every `id`/`ids` is": the box over "ids" opens at byte 41 and brings 8px of
@@ -2564,7 +2629,7 @@ mod tests {
             box_starts,
         };
         for max in [0., 0.5, 3., 7.] {
-            let lines = break_lines(&p, 0, text, Some(max), true, 0.25, &mut (0., 0.));
+            let lines = break_para(&p, 0, text, Some(max), true, 0.25, &mut (0., 0.));
             let mut at = 0;
             for l in &lines {
                 assert!(l.range.start <= l.range.end, "{:?} at max {max}", l.range);
@@ -2590,7 +2655,7 @@ mod tests {
         for anywhere in [false, true] {
             for max in [30., 95.5, 140., 201.25, 333.] {
                 let mut valid = (f32::NEG_INFINITY, f32::INFINITY);
-                let at = break_lines(&p, 0, text, Some(max), anywhere, 0.25, &mut valid);
+                let at = break_para(&p, 0, text, Some(max), anywhere, 0.25, &mut valid);
                 assert!(valid.0 <= max && max < valid.1, "{valid:?} excludes {max}");
                 // Anywhere inside the range the lines are the same (the range is sufficient,
                 // not tight).
@@ -2601,7 +2666,7 @@ mod tests {
                     (max + valid.1.min(1e6)) / 2.,
                 ] {
                     if w < valid.1 {
-                        let l = break_lines(&p, 0, text, Some(w), anywhere, 0.25, &mut (0., 0.));
+                        let l = break_para(&p, 0, text, Some(w), anywhere, 0.25, &mut (0., 0.));
                         assert_eq!(ranges(&l), ranges(&at), "w {w} in {valid:?} (max {max})");
                     }
                 }

@@ -14,6 +14,13 @@ string_enum! {
     }
 }
 
+impl PrSource {
+    /// Whether a source string names GitHub: the stored `gh`, or `github` as the UI may send it.
+    pub fn is_github_alias(s: &str) -> bool {
+        s.eq_ignore_ascii_case(PrSource::GitHub.as_str()) || s.eq_ignore_ascii_case("github")
+    }
+}
+
 // Attention reason codes on PR.attention_reasons. The dashboard and PR page
 // map these to labels so "Needs your attention" is never a mystery bucket.
 pub const ATTENTION_REVIEW_REQUESTED: &str = "review_requested";

@@ -1,3 +1,162 @@
+diff --git a/rust/vendor/gpui-pre/src/app.rs b/rust/vendor/gpui-pre/src/app.rs
+index cdbd5593..bc4faba2 100644
+--- a/rust/vendor/gpui-pre/src/app.rs
++++ b/rust/vendor/gpui-pre/src/app.rs
+@@ -1312,7 +1312,12 @@ impl App {
+     #[inline(always)]
+     pub(crate) fn update<R>(&mut self, update: impl FnOnce(&mut Self) -> R) -> R {
+         self.start_update();
+-        let result = update(self);
++        // Recur: an unwind leaves the update without flushing effects mid-panic.
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update(self)))
++            .unwrap_or_else(|panic| {
++                self.pending_updates -= 1;
++                std::panic::resume_unwind(panic)
++            });
+         self.finish_update();
+         result
+     }
+@@ -3151,7 +3156,17 @@ impl App {
+             let root_view = window.root.clone().unwrap();
+ 
+             cx.window_update_stack.push(window.handle.id);
+-            update(Some((root_view, &mut window, cx)));
++            // Recur: the window goes back into the app before an unwind leaves the update.
++            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                update(Some((root_view, &mut window, cx)))
++            }));
++            if let Err(panic) = result {
++                cx.window_update_stack.pop();
++                if let Some(slot) = cx.windows.get_mut(window_id) {
++                    *slot = Some(window);
++                }
++                std::panic::resume_unwind(panic);
++            }
+             fn trail(window_id: WindowId, window: Box<Window>, cx: &mut App) -> Option<()> {
+                 cx.window_update_stack.pop();
+ 
+@@ -3206,8 +3221,14 @@ impl App {
+     ) {
+         self.update(|cx| {
+             let mut lease = cx.entities.lease_erased(handle, entity_type);
+-            update(lease.entity.as_deref_mut().unwrap(), cx);
++            // Recur: the entity goes back into the map before an unwind leaves the update.
++            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                update(lease.entity.as_deref_mut().unwrap(), cx)
++            }));
+             cx.entities.end_lease_erased(handle.entity_id, lease);
++            if let Err(panic) = result {
++                std::panic::resume_unwind(panic);
++            }
+         });
+     }
+ 
+@@ -3562,7 +3583,12 @@ impl<'a, T> Drop for GpuiBorrow<'a, T> {
+         let lease = self.inner.take().unwrap();
+         self.app.notify(lease.id);
+         self.app.entities.end_lease(lease);
+-        self.app.finish_update();
++        // Recur: no effects flush while a panic unwinds through the borrow.
++        if std::thread::panicking() {
++            self.app.pending_updates -= 1;
++        } else {
++            self.app.finish_update();
++        }
+     }
+ }
+ 
+diff --git a/rust/vendor/gpui-pre/src/elements/canvas.rs b/rust/vendor/gpui-pre/src/elements/canvas.rs
+index d57d2f60..ed46af03 100644
+--- a/rust/vendor/gpui-pre/src/elements/canvas.rs
++++ b/rust/vendor/gpui-pre/src/elements/canvas.rs
+@@ -68,7 +68,9 @@ impl<T: 'static> Element for Canvas<T> {
+         window: &mut Window,
+         cx: &mut App,
+     ) -> Option<T> {
+-        Some(self.prepaint.take().unwrap()(bounds, window, cx))
++        // Recur: a panic paints nothing for this canvas (`Window::contain`).
++        let prepaint = self.prepaint.take().unwrap();
++        window.contain("a canvas prepaint", cx, |window, cx| prepaint(bounds, window, cx))
+     }
+ 
+     fn paint(
+@@ -81,9 +83,14 @@ impl<T: 'static> Element for Canvas<T> {
+         window: &mut Window,
+         cx: &mut App,
+     ) {
+-        let prepaint = prepaint.take().unwrap();
++        let Some(prepaint) = prepaint.take() else {
++            return;
++        };
++        let paint = self.paint.take().unwrap();
+         style.paint(bounds, window, cx, |window, cx| {
+-            (self.paint.take().unwrap())(bounds, prepaint, window, cx)
++            window.contain("a canvas paint", cx, |window, cx| {
++                paint(bounds, prepaint, window, cx)
++            });
+         });
+     }
+ }
+diff --git a/rust/vendor/gpui-pre/src/executor.rs b/rust/vendor/gpui-pre/src/executor.rs
+index 78928d0f..1606dd0e 100644
+--- a/rust/vendor/gpui-pre/src/executor.rs
++++ b/rust/vendor/gpui-pre/src/executor.rs
+@@ -120,6 +120,7 @@ impl BackgroundExecutor {
+     where
+         R: Send + 'static,
+     {
++        let future = crate::unwind::Recorded(future);
+         if priority == Priority::RealtimeAudio {
+             self.inner.spawn_realtime(future)
+         } else {
+@@ -355,7 +356,8 @@ impl ForegroundExecutor {
+     where
+         R: 'static,
+     {
+-        self.inner.spawn(future.boxed_local())
++        self.inner
++            .spawn(crate::unwind::Recorded(future.boxed_local()))
+     }
+ 
+     /// Enqueues the given Task to run on the main thread with the given priority.
+@@ -369,7 +371,7 @@ impl ForegroundExecutor {
+         R: 'static,
+     {
+         // Priority is ignored for foreground tasks - they run in order on the main thread
+-        self.inner.spawn(future)
++        self.inner.spawn(crate::unwind::Recorded(future))
+     }
+ 
+     /// On platforms with dedicated support, enqueues the given future to run
+@@ -394,7 +396,7 @@ impl ForegroundExecutor {
+         #[cfg(feature = "profiler")]
+         let foreground_runnables = self.foreground_runnables.clone();
+         self.inner
+-            .spawn_with_dispatch(future.boxed_local(), move |runnable| {
++            .spawn_with_dispatch(crate::unwind::Recorded(future.boxed_local()), move |runnable| {
+                 #[cfg(feature = "profiler")]
+                 if let Some(foreground_runnables) = &foreground_runnables {
+                     foreground_runnables.queued();
+diff --git a/rust/vendor/gpui-pre/src/gpui.rs b/rust/vendor/gpui-pre/src/gpui.rs
+index d4da5aa3..2d3cbfb2 100644
+--- a/rust/vendor/gpui-pre/src/gpui.rs
++++ b/rust/vendor/gpui-pre/src/gpui.rs
+@@ -63,6 +63,7 @@ mod taffy;
+ #[cfg(any(test, feature = "test-support"))]
+ pub mod test;
+ mod text_system;
++mod unwind;
+ mod util;
+ mod view;
+ mod window;
+@@ -100,6 +101,7 @@ pub use accesskit::{Orientation, Role, Toggled};
+ pub use action::*;
+ pub use anyhow::Result;
+ pub use app::*;
++pub use unwind::take_contained_panics;
+ pub(crate) use arena::*;
+ pub use asset_cache::*;
+ pub use assets::*;
 diff --git a/rust/vendor/gpui-pre/src/key_dispatch.rs b/rust/vendor/gpui-pre/src/key_dispatch.rs
 index 2f755b1d..98f87965 100644
 --- a/rust/vendor/gpui-pre/src/key_dispatch.rs
@@ -121,6 +280,62 @@ index 2f755b1d..98f87965 100644
          }
      }
  
+diff --git a/rust/vendor/gpui-pre/src/scene.rs b/rust/vendor/gpui-pre/src/scene.rs
+index be378132..1914983e 100644
+--- a/rust/vendor/gpui-pre/src/scene.rs
++++ b/rust/vendor/gpui-pre/src/scene.rs
+@@ -79,6 +79,11 @@ impl Scene {
+             .push(PaintOperation::StartLayer(bounds));
+     }
+ 
++    /// Recur: open layers, for `Window::contain`.
++    pub(crate) fn layer_depth(&self) -> usize {
++        self.layer_stack.len()
++    }
++
+     pub fn pop_layer(&mut self) {
+         self.layer_stack.pop();
+         self.paint_operations.push(PaintOperation::EndLayer);
+diff --git a/rust/vendor/gpui-pre/src/test.rs b/rust/vendor/gpui-pre/src/test.rs
+index c1c8e666..3f68ea13 100644
+--- a/rust/vendor/gpui-pre/src/test.rs
++++ b/rust/vendor/gpui-pre/src/test.rs
+@@ -78,8 +78,10 @@ pub fn run_test_once<R>(
+     let result = panic::catch_unwind(|| {
+         let dispatcher = TestDispatcher::new(seed);
+         let scheduler = dispatcher.scheduler().clone();
++        crate::unwind::take_contained_panics();
+         let res = test_fn(dispatcher);
+         scheduler.end_test();
++        fail_on_contained_panics();
+         res
+     });
+ 
+@@ -89,6 +91,13 @@ pub fn run_test_once<R>(
+     }
+ }
+ 
++/// Recur: a panic GPUI contained (a listener, a canvas, a task) fails the test unless the test
++/// took it with `take_contained_panics`.
++fn fail_on_contained_panics() {
++    let contained = crate::unwind::take_contained_panics();
++    assert!(contained.is_empty(), "contained panics: {contained:#?}");
++}
++
+ /// Run the given test function with the configured parameters.
+ /// This is intended for use with the `gpui::test` macro
+ /// and generally should not be used directly.
+@@ -110,8 +119,10 @@ pub fn run_test(
+             let result = panic::catch_unwind(|| {
+                 let dispatcher = TestDispatcher::new(seed);
+                 let scheduler = dispatcher.scheduler().clone();
++                crate::unwind::take_contained_panics();
+                 test_fn(dispatcher, seed);
+                 scheduler.end_test();
++                fail_on_contained_panics();
+             });
+ 
+             match result {
 diff --git a/rust/vendor/gpui-pre/src/text_system/line_layout.rs b/rust/vendor/gpui-pre/src/text_system/line_layout.rs
 index f0bf1211..63bc94d8 100644
 --- a/rust/vendor/gpui-pre/src/text_system/line_layout.rs
@@ -585,10 +800,27 @@ index 081edd9a..d15cd1e6 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..f22847ab 100644
+index 1214b035..359e0319 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
-@@ -1057,6 +1057,122 @@ pub(crate) struct Frame {
+@@ -999,6 +999,16 @@ impl ElementIdStack {
+         self.hashes.clear();
+     }
+ 
++    /// Recur: drops what a contained panic left pushed.
++    pub(crate) fn truncate(&mut self, len: usize) {
++        self.ids.truncate(len);
++        self.hashes.truncate(len);
++    }
++
++    pub(crate) fn len(&self) -> usize {
++        self.ids.len()
++    }
++
+     /// The hash of the whole path on the stack.
+     fn hash(&self) -> u64 {
+         self.hashes
+@@ -1057,6 +1067,122 @@ pub(crate) struct Frame {
      #[cfg(any(feature = "inspector", debug_assertions))]
      pub(crate) inspector_hitboxes: FxHashMap<HitboxId, crate::InspectorElementId>,
      pub(crate) tab_stops: TabStopMap,
@@ -711,7 +943,7 @@ index 1214b035..f22847ab 100644
  }
  
  #[derive(Clone, Default)]
-@@ -1116,9 +1232,54 @@ impl Frame {
+@@ -1116,9 +1242,54 @@ impl Frame {
              #[cfg(any(feature = "inspector", debug_assertions))]
              inspector_hitboxes: FxHashMap::default(),
              tab_stops: TabStopMap::default(),
@@ -766,7 +998,7 @@ index 1214b035..f22847ab 100644
      pub(crate) fn clear(&mut self) {
          self.element_states.clear();
          self.accessed_element_states.clear();
-@@ -1132,6 +1293,9 @@ impl Frame {
+@@ -1132,6 +1303,9 @@ impl Frame {
          self.window_control_hitboxes.clear();
          self.deferred_draws.clear();
          self.tab_stops.clear();
@@ -776,7 +1008,7 @@ index 1214b035..f22847ab 100644
          self.focus = None;
  
          #[cfg(any(test, feature = "test-support"))]
-@@ -1254,6 +1418,20 @@ pub struct Window {
+@@ -1254,6 +1428,20 @@ pub struct Window {
      pub(crate) tooltip_bounds: Option<TooltipBounds>,
      pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
      pub(crate) dirty_views: FxHashSet<EntityId>,
@@ -797,7 +1029,7 @@ index 1214b035..f22847ab 100644
      focus_listeners: SubscriberSet<(), AnyWindowFocusListener>,
      pub(crate) focus_lost_listeners: SubscriberSet<(), AnyObserver>,
      focus_lost_path: SmallVec<[FocusId; 8]>,
-@@ -2154,6 +2332,11 @@ impl Window {
+@@ -2154,6 +2342,11 @@ impl Window {
              next_tooltip_id: TooltipId::default(),
              tooltip_bounds: None,
              dirty_views: FxHashSet::default(),
@@ -809,7 +1041,7 @@ index 1214b035..f22847ab 100644
              focus_listeners: SubscriberSet::new(),
              focus_lost_listeners: SubscriberSet::new(),
              focus_lost_path: SmallVec::new(),
-@@ -2251,16 +2434,28 @@ impl ContentMask<Pixels> {
+@@ -2251,16 +2444,28 @@ impl ContentMask<Pixels> {
  impl Window {
      fn mark_view_dirty(&mut self, view_id: EntityId) {
          // Mark ancestor views as dirty. If already in the `dirty_views` set, then all its ancestors
@@ -840,7 +1072,7 @@ index 1214b035..f22847ab 100644
      }
  
      pub(crate) fn refresh_visibility(&mut self, cx: &mut App) {
-@@ -3472,6 +3667,8 @@ impl Window {
+@@ -3472,6 +3677,8 @@ impl Window {
              }
          }
          self.dirty_views.clear();
@@ -849,7 +1081,7 @@ index 1214b035..f22847ab 100644
          self.next_frame.window_active = self.active.get();
  
          // Register requested input handler with the platform window.
-@@ -3506,6 +3703,7 @@ impl Window {
+@@ -3506,6 +3713,7 @@ impl Window {
          self.layout_engine.as_mut().unwrap().clear();
          self.text_system().finish_frame();
          self.next_frame.finish(&mut self.rendered_frame);
@@ -857,7 +1089,7 @@ index 1214b035..f22847ab 100644
  
          self.invalidator.set_phase(DrawPhase::Focus);
          let previous_focus_path = self.rendered_frame.focus_path();
-@@ -3578,9 +3776,45 @@ impl Window {
+@@ -3578,9 +3786,45 @@ impl Window {
          arena_scope.exit(&cx.element_arena)
      }
  
@@ -903,7 +1135,7 @@ index 1214b035..f22847ab 100644
          let handle = self.handle;
          cx.record_entities_accessed(
              handle,
-@@ -3699,15 +3933,45 @@ impl Window {
+@@ -3699,15 +3943,45 @@ impl Window {
          let scale_factor = self.scale_factor();
          #[cfg(feature = "profiler")]
          let request_layout_start = Instant::now();
@@ -957,7 +1189,7 @@ index 1214b035..f22847ab 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          let inspector_element = self.prepaint_inspector(_inspector_width, cx);
-@@ -3743,7 +4007,16 @@ impl Window {
+@@ -3743,7 +4017,16 @@ impl Window {
          #[cfg(feature = "profiler")]
          let paint_start = Instant::now();
          self.invalidator.set_phase(DrawPhase::Paint);
@@ -975,7 +1207,7 @@ index 1214b035..f22847ab 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          self.paint_inspector(inspector_element, cx);
-@@ -3923,7 +4196,7 @@ impl Window {
+@@ -3923,7 +4206,7 @@ impl Window {
                      });
                      self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
                  } else {
@@ -984,7 +1216,7 @@ index 1214b035..f22847ab 100644
                  }
                  let prepaint_end = self.prepaint_index();
                  self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
-@@ -3966,7 +4239,7 @@ impl Window {
+@@ -3966,7 +4249,7 @@ impl Window {
                      })
                  })
              } else {
@@ -993,7 +1225,7 @@ index 1214b035..f22847ab 100644
              }
              let paint_end = self.paint_index();
              deferred_draw.paint_range = paint_start..paint_end;
-@@ -3993,7 +4266,97 @@ impl Window {
+@@ -3993,7 +4276,97 @@ impl Window {
          }
      }
  
@@ -1092,7 +1324,7 @@ index 1214b035..f22847ab 100644
          self.next_frame.hitboxes.extend(
              self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
                  .iter()
-@@ -4011,19 +4374,17 @@ impl Window {
+@@ -4011,19 +4384,17 @@ impl Window {
                  .iter()
                  .map(|(id, type_id)| (id.clone(), *type_id)),
          );
@@ -1117,7 +1349,7 @@ index 1214b035..f22847ab 100644
          self.next_frame.deferred_draws.extend(
              self.rendered_frame.deferred_draws
                  [range.start.deferred_draws_index..range.end.deferred_draws_index]
-@@ -4042,6 +4403,7 @@ impl Window {
+@@ -4042,6 +4413,7 @@ impl Window {
                      paint_range: deferred_draw.paint_range.clone(),
                  }),
          );
@@ -1125,7 +1357,7 @@ index 1214b035..f22847ab 100644
      }
  
      pub(crate) fn paint_index(&self) -> PaintIndex {
-@@ -4058,7 +4420,44 @@ impl Window {
+@@ -4058,7 +4430,44 @@ impl Window {
          }
      }
  
@@ -1171,7 +1403,7 @@ index 1214b035..f22847ab 100644
          // Cached elements still exist in the frame even when their paint methods don't run.
          #[cfg(any(test, feature = "test-support"))]
          for (selector, bounds) in &self.rendered_frame.debug_bounds_records
-@@ -4096,12 +4495,14 @@ impl Window {
+@@ -4096,12 +4505,14 @@ impl Window {
                  [range.start.tab_handle_index..range.end.tab_handle_index],
          );
  
@@ -1188,7 +1420,146 @@ index 1214b035..f22847ab 100644
      }
  
      /// Push a text style onto the stack, and call a function with that style active.
-@@ -7317,7 +7718,9 @@ impl Window {
+@@ -4525,6 +4936,41 @@ impl Window {
+         });
+     }
+ 
++    /// Recur: runs `f` with a panic contained (`unwind::contain`). The stacks `f` may have
++    /// pushed (element ids, text styles, offsets, opacity, content masks, rem sizes, image
++    /// caches, rendered entities, scene layers) return to their depths before `f`.
++    pub(crate) fn contain<R>(
++        &mut self,
++        site: &str,
++        cx: &mut App,
++        f: impl FnOnce(&mut Self, &mut App) -> R,
++    ) -> Option<R> {
++        let ids = self.element_id_stack.len();
++        let text = self.text_style_stack.len();
++        let entities = self.rendered_entity_stack.len();
++        let offsets = self.element_offset_stack.len();
++        let opacity = self.element_opacity;
++        let masks = self.content_mask_stack.len();
++        let rems = self.rem_size_override_stack.len();
++        let images = self.image_cache_stack.len();
++        let layers = self.next_frame.scene.layer_depth();
++        let out = crate::unwind::contain(site, || f(self, cx));
++        if out.is_none() {
++            self.element_id_stack.truncate(ids);
++            self.text_style_stack.truncate(text);
++            self.rendered_entity_stack.truncate(entities);
++            self.element_offset_stack.truncate(offsets);
++            self.element_opacity = opacity;
++            self.content_mask_stack.truncate(masks);
++            self.rem_size_override_stack.truncate(rems);
++            self.image_cache_stack.truncate(images);
++            while self.next_frame.scene.layer_depth() > layers {
++                self.next_frame.scene.pop_layer();
++            }
++        }
++        out
++    }
++
+     /// Creates a new painting layer for the specified bounds. A "layer" is a batch
+     /// of geometry that are non-overlapping and have the same draw order. This is typically used
+     /// for performance reasons.
+@@ -5947,7 +6393,9 @@ impl Window {
+         // special purposes, such as detecting events outside of a given Bounds.
+         for listener in &mut mouse_listeners {
+             let listener = listener.as_mut().unwrap();
+-            listener(event, DispatchPhase::Capture, self, cx);
++            crate::unwind::contain("a mouse listener", || {
++                listener(event, DispatchPhase::Capture, self, cx)
++            });
+             if !cx.propagate_event {
+                 break;
+             }
+@@ -5957,7 +6405,9 @@ impl Window {
+         if cx.propagate_event {
+             for listener in mouse_listeners.iter_mut().rev() {
+                 let listener = listener.as_mut().unwrap();
+-                listener(event, DispatchPhase::Bubble, self, cx);
++                crate::unwind::contain("a mouse listener", || {
++                    listener(event, DispatchPhase::Bubble, self, cx)
++                });
+                 if !cx.propagate_event {
+                     break;
+                 }
+@@ -6268,7 +6718,9 @@ impl Window {
+             let node = self.rendered_frame.dispatch_tree.node(*node_id);
+ 
+             for key_listener in node.key_listeners.clone() {
+-                key_listener(event, DispatchPhase::Capture, self, cx);
++                crate::unwind::contain("a key listener", || {
++                    key_listener(event, DispatchPhase::Capture, self, cx)
++                });
+                 if !cx.propagate_event {
+                     return;
+                 }
+@@ -6280,7 +6732,9 @@ impl Window {
+             // Handle low level key events
+             let node = self.rendered_frame.dispatch_tree.node(*node_id);
+             for key_listener in node.key_listeners.clone() {
+-                key_listener(event, DispatchPhase::Bubble, self, cx);
++                crate::unwind::contain("a key listener", || {
++                    key_listener(event, DispatchPhase::Bubble, self, cx)
++                });
+                 if !cx.propagate_event {
+                     return;
+                 }
+@@ -6300,7 +6754,7 @@ impl Window {
+         for node_id in dispatch_path.iter().rev() {
+             let node = self.rendered_frame.dispatch_tree.node(*node_id);
+             for listener in node.modifiers_changed_listeners.clone() {
+-                listener(event, self, cx);
++                crate::unwind::contain("a modifiers listener", || listener(event, self, cx));
+                 if !cx.propagate_event {
+                     return;
+                 }
+@@ -6503,7 +6957,9 @@ impl Window {
+             for listener in &global_listeners {
+                 #[cfg(feature = "profiler")]
+                 self.window_profiler.begin_action_handler(action, cx);
+-                listener(action.as_any(), DispatchPhase::Capture, cx);
++                crate::unwind::contain("an action listener", || {
++                    listener(action.as_any(), DispatchPhase::Capture, cx)
++                });
+                 #[cfg(feature = "profiler")]
+                 self.window_profiler.end_action_handler();
+                 if !cx.propagate_event {
+@@ -6537,7 +6993,9 @@ impl Window {
+                 if action_type == any_action.type_id() {
+                     #[cfg(feature = "profiler")]
+                     self.window_profiler.begin_action_handler(action, cx);
+-                    listener(any_action, DispatchPhase::Capture, self, cx);
++                    crate::unwind::contain("an action listener", || {
++                        listener(any_action, DispatchPhase::Capture, self, cx)
++                    });
+                     #[cfg(feature = "profiler")]
+                     self.window_profiler.end_action_handler();
+ 
+@@ -6561,7 +7019,9 @@ impl Window {
+                     cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
+                     #[cfg(feature = "profiler")]
+                     self.window_profiler.begin_action_handler(action, cx);
+-                    listener(any_action, DispatchPhase::Bubble, self, cx);
++                    crate::unwind::contain("an action listener", || {
++                        listener(any_action, DispatchPhase::Bubble, self, cx)
++                    });
+                     #[cfg(feature = "profiler")]
+                     self.window_profiler.end_action_handler();
+ 
+@@ -6582,7 +7042,9 @@ impl Window {
+ 
+                 #[cfg(feature = "profiler")]
+                 self.window_profiler.begin_action_handler(action, cx);
+-                listener(action.as_any(), DispatchPhase::Bubble, cx);
++                crate::unwind::contain("an action listener", || {
++                    listener(action.as_any(), DispatchPhase::Bubble, cx)
++                });
+                 #[cfg(feature = "profiler")]
+                 self.window_profiler.end_action_handler();
+                 if !cx.propagate_event {
+@@ -7317,7 +7779,9 @@ impl Window {
          state_type: TypeId,
      ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
          let key = (global_id.clone(), state_type);

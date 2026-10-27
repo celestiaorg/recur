@@ -1,0 +1,27 @@
+[package]
+name = "recur-view-widgets"
+description = "View pieces several view crates show: typeaheads, finding rows, pills, the command prompts form."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-forge.workspace = true
+recur-view-core.workspace = true
+recur-code.workspace = true
+recur-services.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true

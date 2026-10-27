@@ -107,10 +107,7 @@ impl RecurUpdater {
         host: Arc<dyn Host>,
     ) -> Result<Arc<Updater>, String> {
         // No total timeout: it would also bound the ~50 MB body on slow links.
-        let client = reqwest::Client::builder()
-            .connect_timeout(Duration::from_secs(30))
-            .build()
-            .map_err(|e| e.to_string())?;
+        let client = recur_http::client(|b| b.connect_timeout(Duration::from_secs(30)));
         let endpoint = EndpointProvider::new(EndpointConfig {
             url: manifest_url.to_string(),
             client: Some(client),

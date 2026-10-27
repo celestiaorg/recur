@@ -402,6 +402,10 @@ fn press(state: &Entity<State>, e: &MouseDownEvent, window: &mut Window, cx: &mu
     });
     if let Some(f) = state.read(cx).handle.clone() {
         window.focus(&f, cx);
+        // Hosts that park focus on mouse down leave it with the scope.
+        if state.read(cx).anchor.is_some() {
+            window.prevent_default();
+        }
     }
     notify_views(&views, cx);
     window.refresh();

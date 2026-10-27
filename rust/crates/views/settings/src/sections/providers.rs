@@ -851,7 +851,7 @@ impl SettingsView {
                         .as_ref()
                         .map(|s| s.disabled_providers.clone())
                         .unwrap_or_default();
-                    if recur_view_sidebar::usage::snapshot_has_provider_error(
+                    if recur_view_core::provider_usage::snapshot_has_provider_error(
                         s.provider_usage.as_ref(),
                         &disabled,
                     ) {

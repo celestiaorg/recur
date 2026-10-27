@@ -3,8 +3,8 @@
 //!
 //! # Embedding
 //!
-//! Call [`register`] after `recur_view_briefing::register` (the Schedules section embeds its
-//! list).
+//! Call [`register`] once. The Schedules section embeds the Schedules list
+//! (`recur_view_widgets::schedules::ScheduledPrompts`).
 
 mod color_panel;
 #[cfg(feature = "gallery")]

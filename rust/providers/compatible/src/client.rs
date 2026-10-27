@@ -46,7 +46,7 @@ impl Client {
             base_url: p.base_url.clone(),
             api_key: p.api_key.clone(),
             extra_headers: p.extra_headers.clone(),
-            http: reqwest::Client::new(),
+            http: recur_http::default_client(),
         }
     }
 

@@ -9,11 +9,9 @@ use std::rc::Rc;
 use gpui_kit::{AnyView, App, Window};
 use recur_ui::gallery::SceneSpec;
 use recur_view_core::ViewRegistry;
+use recur_view_core::gallery::{SceneHook, fixture, parsed_in, reset, specs_in, view_scene};
 use serde::Deserialize;
 use serde_json::Value;
-
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/views.json");
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
@@ -26,26 +24,16 @@ struct PaletteScene {
 }
 
 fn parsed() -> Vec<Value> {
-    serde_json::from_str::<Value>(SCENES_JSON)
-        .ok()
-        .and_then(|v| v.get("palettes").and_then(|l| l.as_array()).cloned())
-        .unwrap_or_default()
+    parsed_in("palettes")
 }
 
 /// Every palette scene, in file order.
 pub fn specs() -> Vec<SceneSpec> {
-    parsed()
-        .into_iter()
-        .filter_map(|v| serde_json::from_value(v).ok())
-        .collect()
+    specs_in("palettes")
 }
 
 pub fn exists(name: &str) -> bool {
     specs().iter().any(|s| s.name == name)
-}
-
-fn fixture(name: &str) -> Value {
-    serde_json::from_str::<Value>(FIXTURES).unwrap_or(Value::Null)["fixtures"][name].clone()
 }
 
 /// `route`: `palette`, `commands:{path}:{scope}`, `shortcuts`, `openin:{workspace}`,
@@ -56,12 +44,11 @@ fn fixture(name: &str) -> Value {
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let raw = parsed().into_iter().find(|v| v["name"] == name)?;
     let scene: PaletteScene = serde_json::from_value(raw).ok()?;
-    recur_view_observatory::gallery::reset(cx);
+    reset(cx);
     let mut registry = ViewRegistry::default();
     crate::register(&mut registry);
-    recur_view_chat::register(&mut registry);
     let route = scene.route.clone();
-    let navigate: recur_app::gallery::SceneHook = Box::new(move |state, cx| {
+    let navigate: SceneHook = Box::new(move |state, cx| {
         let mut parts = route.splitn(3, ':');
         let kind = parts.next().unwrap_or("").to_string();
         let arg = parts.next().unwrap_or("").to_string();
@@ -83,7 +70,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     });
     // Landing on the workspace closes palettes: open them once it has.
     let route = scene.route.clone();
-    let act: recur_app::gallery::SceneHook = Box::new(move |state, cx| {
+    let act: SceneHook = Box::new(move |state, cx| {
         let (kind, id) = route.split_once(':').unwrap_or((route.as_str(), ""));
         let (kind, id, state) = (kind.to_string(), id.to_string(), state.clone());
         cx.spawn(async move |cx| {
@@ -110,7 +97,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
         })
         .detach();
     });
-    let (view, _) = recur_app::gallery::view_scene(
+    let (view, _) = view_scene(
         &fixture(&scene.fixture),
         &scene.theme,
         &scene.storage,

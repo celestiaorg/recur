@@ -22,12 +22,12 @@ use recur_ui::text::{InlineBox, LineHeight, Span, Text, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{Color, IconName, Theme, Tokens, icon, rgba};
 use recur_view_core::pr::{PrLifecycle, pr_icon_name, pr_lifecycle};
-use recur_view_review::avatar::avatar;
 use recur_view_review::comment_header::{ReviewDecision, comment_header_verb, review_decision};
 use recur_view_review::comment_hunk::{
     ClipOpts, clip_comment_hunk, comment_hunk_path_label, parse_diff_hunk,
 };
 use recur_view_review::style::note_btn;
+use recur_view_widgets::avatar::avatar;
 use regex::Regex;
 
 use super::PrDetail;

@@ -17,9 +17,7 @@ use recur_ui::logic::hover_gate::HoverGate;
 use recur_ui::style::{palette_empty, palette_row, style_text_input};
 use recur_ui::{IconName, TextStyled, Theme, icon};
 use recur_view_core::AppState;
-use recur_view_observatory::open_in_pref::{
-    open_in_default, order_open_in_targets, set_open_in_default,
-};
+use recur_view_core::open_in_pref::{open_in_default, order_open_in_targets, set_open_in_default};
 
 use crate::chrome::{self, Kind, cmd_or_ctrl, plain, row_digit, step};
 

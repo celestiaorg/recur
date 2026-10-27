@@ -3636,8 +3636,6 @@ dependencies = [
 [[package]]
 name = "gpui-pre-scheduler"
 version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83f342555282a59ed8dd58dd7e0a920524fa8ef6aa8c8f30e2edb7019a8f72cb"
 dependencies = [
  "async-task",
  "backtrace",
@@ -7404,6 +7402,7 @@ dependencies = [
  "recur-domain",
  "recur-exec",
  "recur-git",
+ "recur-http",
  "regex",
  "regress",
  "reqwest",
@@ -7455,7 +7454,6 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "unicode-linebreak",
  "url",
  "webkit6",
 ]
@@ -7598,6 +7596,7 @@ dependencies = [
  "pretty_assertions",
  "recur-domain",
  "recur-exec",
+ "recur-http",
  "regex",
  "reqwest",
  "serde",
@@ -7625,6 +7624,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-http"
+version = "0.0.0"
+dependencies = [
+ "reqwest",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "recur-issues"
 version = "0.0.0"
 dependencies = [
@@ -7635,6 +7643,7 @@ dependencies = [
  "recur-domain",
  "recur-exec",
  "recur-forge",
+ "recur-http",
  "regex",
  "reqwest",
  "serde",
@@ -7642,6 +7651,13 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "recur-layering"
+version = "0.0.0"
+dependencies = [
+ "toml 0.9.12+spec-1.1.0",
 ]
 
 [[package]]
@@ -7655,6 +7671,7 @@ dependencies = [
  "pretty_assertions",
  "recur-bundles",
  "recur-exec",
+ "recur-http",
  "reqwest",
  "serde",
  "serde_json",
@@ -7706,6 +7723,7 @@ dependencies = [
  "p256",
  "parking_lot",
  "recur-exec",
+ "recur-http",
  "regex",
  "reqwest",
  "rustix",
@@ -7731,6 +7749,7 @@ dependencies = [
  "nix 0.31.3",
  "pretty_assertions",
  "recur-domain",
+ "recur-http",
  "reqwest",
  "serde",
  "serde_json",
@@ -7795,6 +7814,7 @@ dependencies = [
  "recur-agent",
  "recur-agent-tools",
  "recur-domain",
+ "recur-http",
  "recur-store",
  "reqwest",
  "serde",
@@ -7816,6 +7836,7 @@ dependencies = [
  "recur-agent",
  "recur-domain",
  "recur-exec",
+ "recur-http",
  "reqwest",
  "rustix",
  "serde",
@@ -7989,6 +8010,7 @@ dependencies = [
  "recur-ui",
  "recur-view-briefing",
  "recur-view-chat",
+ "recur-view-core",
  "recur-view-home",
  "recur-view-observatory",
  "recur-view-palettes",
@@ -8013,6 +8035,7 @@ dependencies = [
  "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "recur-http",
  "recur-project",
  "reqwest",
  "serde",
@@ -8048,10 +8071,9 @@ dependencies = [
  "recur-view-chat",
  "recur-view-core",
  "recur-view-home",
- "recur-view-observatory",
- "recur-view-prs",
  "recur-view-review",
  "recur-view-settings",
+ "recur-view-widgets",
  "recur-view-workspace",
  "serde",
  "serde_json",
@@ -8082,12 +8104,12 @@ dependencies = [
  "recur-ui",
  "recur-view-chat",
  "recur-view-core",
+ "recur-view-widgets",
  "regex",
  "serde",
  "serde_json",
  "smallvec",
  "tracing",
- "unicode-linebreak",
  "unicode-segmentation",
 ]
 
@@ -8106,8 +8128,10 @@ dependencies = [
  "recur-domain",
  "recur-editor",
  "recur-engine",
+ "recur-forge",
  "recur-services",
  "recur-term",
+ "recur-textmate",
  "recur-ui",
  "regex",
  "serde",
@@ -8170,10 +8194,10 @@ dependencies = [
  "recur-terminal-view",
  "recur-textmate",
  "recur-ui",
- "recur-view-chat",
  "recur-view-core",
  "recur-view-observatory",
  "recur-view-review",
+ "recur-view-widgets",
  "regex",
  "serde",
  "serde_json",
@@ -8203,6 +8227,10 @@ dependencies = [
  "recur-view-home",
  "recur-view-observatory",
  "recur-view-palettes",
+ "recur-view-prs",
+ "recur-view-review",
+ "recur-view-settings",
+ "recur-view-workspace",
  "serde",
  "serde_json",
 ]
@@ -8243,6 +8271,7 @@ dependencies = [
  "recur-view-prs",
  "recur-view-review",
  "recur-view-settings",
+ "recur-view-widgets",
  "recur-view-workspace",
  "serde",
  "serde_json",
@@ -8271,6 +8300,7 @@ dependencies = [
  "recur-view-observatory",
  "recur-view-prs",
  "recur-view-review",
+ "recur-view-widgets",
  "recur-view-workspace",
  "regex",
  "serde",
@@ -8294,9 +8324,9 @@ dependencies = [
  "recur-forge",
  "recur-services",
  "recur-ui",
- "recur-view-chat",
  "recur-view-core",
  "recur-view-review",
+ "recur-view-widgets",
  "regex",
  "serde",
  "serde_json",
@@ -8327,7 +8357,7 @@ dependencies = [
  "recur-view-prs",
  "recur-view-review",
  "recur-view-settings",
- "recur-view-sidebar",
+ "recur-view-widgets",
  "recur-view-workspace",
  "regex",
  "serde",
@@ -8343,6 +8373,24 @@ dependencies = [
  "recur-services",
  "recur-ui",
  "recur-view-core",
+]
+
+[[package]]
+name = "recur-view-widgets"
+version = "0.0.0"
+dependencies = [
+ "chrono",
+ "gpui-kit",
+ "gpui-pre",
+ "recur-code",
+ "recur-content",
+ "recur-domain",
+ "recur-engine",
+ "recur-forge",
+ "recur-services",
+ "recur-ui",
+ "recur-view-core",
+ "serde_json",
 ]
 
 [[package]]

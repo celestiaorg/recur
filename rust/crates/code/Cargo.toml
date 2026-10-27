@@ -8,6 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+recur-http.workspace = true
 recur-domain.workspace = true
 recur-git.workspace = true
 recur-chroma.workspace = true

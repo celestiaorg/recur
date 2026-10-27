@@ -19,12 +19,12 @@ use recur_ui::text::{TextStyled, strut_metrics, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerStyle};
 use recur_ui::{IconName, LineHeight, Theme, icon};
-use recur_view_chat::suggest::{SuggestKind, SuggestStore};
 use recur_view_core::state::PrDiffJump;
 use recur_view_core::{AppState, PrReviewKind, ViewContext, ViewName, call, toast};
 use recur_view_core::{ObserveState as _, Topics};
 use recur_view_review::comment_hunk::comment_hunk_path_label;
 use recur_view_review::diff_file::remove_pending_comment;
+use recur_view_widgets::suggest::{SuggestKind, SuggestStore};
 
 use crate::detail::field::Field;
 use crate::style::hsla;

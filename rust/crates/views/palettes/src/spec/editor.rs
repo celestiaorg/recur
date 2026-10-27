@@ -98,7 +98,7 @@ fn run_command_palette_runs_sort_lines_ascending_on_the_open_buffer(cx: &mut Tes
 
 fn language(s: &mut S) -> String {
     s.state.read_with(s.cx, |_, cx| {
-        recur_view_observatory::textmate::editor_env_peek(cx)
+        recur_view_core::editor_env::editor_env_peek(cx)
             .map(|e| e.read(cx).language_label("src/main.go"))
             .unwrap_or_default()
     })

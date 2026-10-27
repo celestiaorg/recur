@@ -10,7 +10,6 @@ use gpui_kit::{FontFeatures, TextRun, Window, px};
 use recur_ui::font_metrics::line_gap;
 use recur_ui::fonts::Family;
 use recur_ui::text::{InlineBox, LineHeight, line_metrics};
-use unicode_linebreak::{BreakOpportunity, linebreaks};
 
 /// One span as the text element resolves it.
 #[derive(Clone, Debug, PartialEq)]
@@ -297,63 +296,7 @@ fn shape_para(
 }
 
 fn break_lines(para: &Para, text: &str, max: f32, anywhere: bool, eps: f32) -> Vec<Range<usize>> {
-    let ops: Vec<(usize, BreakOpportunity)> = linebreaks(text).collect();
-    let mut lines = Vec::new();
-    let mut start = 0;
-    let mut last_fit: Option<usize> = None;
-    let mut i = 0;
-    while i < ops.len() {
-        let (pos, kind) = ops[i];
-        // An overlong split can end exactly at this opportunity: nothing is left before it.
-        if pos <= start {
-            i += 1;
-            continue;
-        }
-        let w = para.width(text, start..pos);
-        if w <= max + eps {
-            if kind == BreakOpportunity::Mandatory {
-                lines.push(start..pos);
-                start = pos;
-                last_fit = None;
-            } else {
-                last_fit = Some(pos);
-            }
-            i += 1;
-            continue;
-        }
-        if let Some(b) = last_fit.take() {
-            lines.push(start..b);
-            start = b;
-            continue;
-        }
-        if anywhere {
-            let mut cut = start;
-            for (bi, ch) in text[start..pos].char_indices() {
-                let end = start + bi + ch.len_utf8();
-                if para.width(text, start..end) > max + eps {
-                    break;
-                }
-                cut = end;
-            }
-            if cut == start {
-                cut = start + text[start..].chars().next().map_or(1, char::len_utf8);
-            }
-            lines.push(start..cut);
-            start = cut;
-            continue;
-        }
-        if kind == BreakOpportunity::Mandatory {
-            lines.push(start..pos);
-            start = pos;
-        } else {
-            last_fit = Some(pos);
-        }
-        i += 1;
-    }
-    if start < text.len() || lines.is_empty() {
-        lines.push(start..text.len());
-    }
-    lines
+    recur_ui::text::break_lines(text, max, eps, anywhere, |r| para.width(text, r))
 }
 
 #[cfg(test)]
@@ -391,5 +334,40 @@ mod tests {
             }
             assert_eq!(at, text.len());
         }
+    }
+
+    /// The mirror breaks through `recur_ui::text::break_lines` with the paragraph's `anywhere`:
+    /// without it, a word wider than the line overflows alone and a mandatory break still ends
+    /// its line, as the text element paints them.
+    #[test]
+    fn an_overlong_word_overflows_alone_unless_anywhere() {
+        let text = "a verylongword b\u{2028}c";
+        let edges = text
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain([text.len()])
+            .scan(0., |x, i| {
+                let at = (i, *x);
+                *x += 6.;
+                Some(at)
+            })
+            .collect();
+        let p = Para {
+            range: 0..text.len(),
+            edges,
+            box_starts: Vec::new(),
+        };
+        let words = |lines: Vec<Range<usize>>| {
+            lines
+                .into_iter()
+                .map(|r| text[r].trim_end().to_string())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            words(break_lines(&p, text, 30., false, 0.25)),
+            ["a", "verylongword", "b", "c"]
+        );
+        let split = words(break_lines(&p, text, 30., true, 0.25));
+        assert_eq!(split[..3], ["a", "veryl", "ongwo"]);
     }
 }

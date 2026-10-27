@@ -5,18 +5,17 @@
 //! `review`).
 
 use gpui_kit::{
-    AnyView, App, AppContext as _, Context, Entity, Global, IntoElement, ParentElement, Render,
-    Styled, Window, div,
+    AnyView, App, AppContext as _, Context, Entity, IntoElement, ParentElement, Render, Styled,
+    Window, div,
 };
-use recur_app::{Shell, ShellOptions};
 use recur_services::mock::{MockBridge, MockOptions, Reply};
 use recur_ui::gallery::SceneSpec;
-use recur_view_core::{AppState, LocalStorage, PrReviewKind, ViewContext, ViewName, ViewRegistry};
+use recur_view_core::{AppState, LocalStorage, PrReviewKind, ViewContext, ViewName, gallery};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::list_filter::LIST_SEGS;
 use crate::ui::{PrTab, ui};
+use recur_view_core::pr_list_filter::LIST_SEGS;
 
 const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
 const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/prs.json");
@@ -75,22 +74,9 @@ pub fn resolvers(fx: &Value) -> MockOptions {
     opts
 }
 
-/// The registry the desktop builds, as these scenes mount the shell.
-pub fn registry() -> ViewRegistry {
-    let mut r = ViewRegistry::default();
-    recur_view_chat::register(&mut r);
-    recur_view_review::register(&mut r);
-    recur_view_observatory::register(&mut r);
-    recur_view_workspace::register(&mut r);
-    crate::register(&mut r);
-    r
-}
-
-struct InitsRan;
-impl Global for InitsRan {}
-
 struct PrSceneView {
-    shell: Entity<Shell>,
+    state: Entity<AppState>,
+    shell: AnyView,
     scene: PrScene,
     navigated: bool,
     /// Frames since navigating; the tab is picked a few frames later, after PR detail's
@@ -101,7 +87,7 @@ struct PrSceneView {
 impl PrSceneView {
     fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         if !self.navigated {
-            let state = self.shell.read(cx).state().clone();
+            let state = self.state.clone();
             if state.read(cx).booted {
                 self.navigated = true;
                 let sc = self.scene.clone();
@@ -128,7 +114,7 @@ impl PrSceneView {
                     _ => None,
                 };
                 if let Some(k) = review {
-                    let state = self.shell.read(cx).state().clone();
+                    let state = self.state.clone();
                     cx.defer(move |cx| state.update(cx, |s, cx| s.open_pr_review(k, cx)));
                 }
             }
@@ -172,30 +158,24 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let raw = parsed().into_iter().find(|v| v["name"] == name)?;
     let scene: PrScene = serde_json::from_value(raw).ok()?;
     // Scenes share one app: no view state carries over.
-    recur_view_observatory::gallery::reset(cx);
-    cx.set_global(recur_view_chat::transcript_ui::TranscriptUiCache::default());
-    cx.set_global(recur_view_chat::heap::ChatHeapCache::default());
-    cx.set_global(recur_view_chat::strip::ChatStripCache::default());
-    cx.set_global(recur_view_chat::hoist::HoistState::default());
-    cx.set_global(recur_content::webhost::BlockingRenders);
+    gallery::reset(cx);
     crate::ui::reset(cx);
-    let registry = registry();
-    if cx.try_global::<InitsRan>().is_none() {
-        cx.set_global(InitsRan);
-        for init in &registry.inits {
-            init(cx);
-        }
-    }
+    let registry = gallery::registry(cx);
+    gallery::run_inits_once(&registry, cx);
     let fx = fixture(&scene.fixture);
-    let bridge = MockBridge::new(recur_app::gallery::scene_seed(&fx["seed"]), resolvers(&fx));
+    let bridge = MockBridge::new(gallery::scene_seed(&fx["seed"]), resolvers(&fx));
     let services = bridge.services();
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.theme", scene.theme.clone());
     let state: Entity<AppState> = AppState::install(services.clone(), storage, cx);
-    let ctx = ViewContext { state, services };
-    let shell = cx.new(|cx| Shell::new(ctx, registry, ShellOptions::default(), window, cx));
+    let ctx = ViewContext {
+        state: state.clone(),
+        services,
+    };
+    let shell = (cx.global::<gallery::SceneHost>().shell)(ctx, registry, window, cx);
     Some(
         cx.new(|_| PrSceneView {
+            state,
             shell,
             scene,
             navigated: false,

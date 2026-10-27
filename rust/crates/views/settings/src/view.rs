@@ -417,7 +417,7 @@ impl SettingsView {
 
     /// `cursorSignedIn` (= `cursorConfigured`, `cursorReady`): the usage row came from Connect.
     pub(crate) fn cursor_signed_in(&self, cx: &App) -> bool {
-        recur_view_sidebar::usage::can_disconnect_cursor(
+        recur_view_core::provider_usage::can_disconnect_cursor(
             self.vcx.state.read(cx).provider_usage.as_ref(),
         )
     }

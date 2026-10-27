@@ -34,7 +34,7 @@ use super::{
     run_name_key, style_area,
 };
 use crate::pic::{color_to_hex, parse_hex_color};
-use recur_view_briefing::schedules::ScheduledPrompts;
+use recur_view_widgets::schedules::ScheduledPrompts;
 
 const IN_GROUP: RowsCtx = RowsCtx {
     sides: false,

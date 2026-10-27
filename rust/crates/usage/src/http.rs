@@ -11,10 +11,7 @@ const MAX_BODY: usize = 1 << 20;
 
 /// The default client: a 15 s overall timeout per request.
 pub fn default_client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .timeout(DEFAULT_HTTP_TIMEOUT)
-        .build()
-        .unwrap_or_default()
+    recur_http::client(|b| b.timeout(DEFAULT_HTTP_TIMEOUT))
 }
 
 /// Sends one request and reads at most 1 MiB of the answer. Empty header

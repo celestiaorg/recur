@@ -78,9 +78,6 @@ pub const CHAT_MODES: [ChatModeOption; 5] = [
 /// Placeholder tab label until the first user turn (Go `chatTabTitle`).
 pub const NEW_CHAT_TITLE: &str = "New chat";
 
-const FALLBACK_MODEL: &str = "claude-code/claude-sonnet-5-5";
-const PROVIDER_CLAUDE: &str = "claude-code";
-
 /// Unknown and empty modes degrade to agent.
 pub fn normalize_chat_mode(m: &str) -> &'static str {
     recur_domain::normalize_chat_mode(m)
@@ -145,7 +142,7 @@ pub struct ModelPick {
 fn model_provider(r#ref: &str) -> &str {
     match r#ref.find('/') {
         Some(i) if i > 0 => &r#ref[..i],
-        _ => PROVIDER_CLAUDE,
+        _ => recur_domain::PROVIDER_CLAUDE_CODE,
     }
 }
 
@@ -184,7 +181,7 @@ pub fn default_model_for_mode(mode: &str, set: Option<&Settings>) -> ModelPick {
     let pick = |m: Option<&str>, f: Option<&Flags>| ModelPick {
         model: match m {
             Some(m) if !m.is_empty() => m.to_owned(),
-            _ => FALLBACK_MODEL.to_owned(),
+            _ => recur_domain::providers::FALLBACK_CLAUDE_MODEL.to_owned(),
         },
         flags: f.cloned().unwrap_or_default(),
     };

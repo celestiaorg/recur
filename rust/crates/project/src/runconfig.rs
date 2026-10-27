@@ -73,8 +73,6 @@ pub enum BootError {
     AllocatePort(std::io::Error),
     #[error("start dev server: {0}")]
     Start(std::io::Error),
-    #[error("http client: {0}")]
-    Client(String),
     #[error("dev server exited before serving{}", .0.as_ref().map(|d| format!(": {d}")).unwrap_or_default())]
     Exited(Option<String>),
     #[error("no HTTP response at {url} within {}", go_duration(*timeout))]
@@ -252,7 +250,7 @@ pub async fn boot(
     if probe_url.trim().is_empty() {
         probe_url = format!("http://localhost:{port}");
     }
-    let client = probe_client(&probe_url).map_err(|e| BootError::Client(e.to_string()))?;
+    let client = probe_client(&probe_url);
 
     let mut cmd = shell(dev_cmd, &opts.work_dir);
     cmd.stdout(Stdio::null()).stderr(Stdio::null());
@@ -496,8 +494,7 @@ pub fn substitute_port(s: &str, port: &str) -> String {
 
 /// The probe client: a 2s timeout, redirects followed, and, like Go's
 /// `ProxyFromEnvironment`, never a proxy for localhost or loopback hosts.
-fn probe_client(url: &str) -> reqwest::Result<reqwest::Client> {
-    let mut b = reqwest::Client::builder().timeout(PROBE_REQUEST_TIMEOUT);
+fn probe_client(url: &str) -> reqwest::Client {
     let loopback = reqwest::Url::parse(url).ok().is_some_and(|u| {
         let host = u.host_str().unwrap_or_default();
         host.eq_ignore_ascii_case("localhost")
@@ -507,10 +504,10 @@ fn probe_client(url: &str) -> reqwest::Result<reqwest::Client> {
                 .parse::<std::net::IpAddr>()
                 .is_ok_and(|ip| ip.is_loopback())
     });
-    if loopback {
-        b = b.no_proxy();
-    }
-    b.build()
+    recur_http::client(|b| {
+        let b = b.timeout(PROBE_REQUEST_TIMEOUT);
+        if loopback { b.no_proxy() } else { b }
+    })
 }
 
 /// One GET; any HTTP response (even 4xx/5xx) means the server is up. Only

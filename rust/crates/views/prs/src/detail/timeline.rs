@@ -246,6 +246,10 @@ impl ItemPane {
         };
         let id = self.id.clone();
         let el = detail.update(cx, |d, cx| d.timeline_item_by_id(&id, window, cx));
+        // Its text selects, inside the cached view that replays it (`recur_ui::selection`).
+        let sel =
+            recur_ui::selection::state(SharedString::from(format!("tl-sel-{id}")), window, cx);
+        let el = recur_ui::selection::scope(&sel, false, el, cx);
         if let Some(slot) = &self.block {
             return recur_ui::layout_root::block_content(slot, el, window);
         }

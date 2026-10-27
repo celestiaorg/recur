@@ -269,8 +269,6 @@ fn open_filter_includes_other_open_prs_and_needs_you_group(cx: &mut TestAppConte
 }
 
 #[gpui::test]
-// Linux: Ctrl+Alt+B from the dock toggle reaches the shell's Ctrl+B (rail), not the Observatory (PARITY follow-up).
-#[cfg_attr(not(target_os = "macos"), ignore)]
 fn the_chat_panel_can_be_hidden_and_shown_like_the_observatory(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, no_agents());
     open_ws(&mut s, LINKED);

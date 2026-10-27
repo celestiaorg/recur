@@ -105,7 +105,7 @@ impl DockToolbar {
     }
 
     /// The props from the view: options, values, disabled states and the container width.
-    pub(crate) fn sync(&mut self, v: &WorkspaceView, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn sync(&mut self, v: &WorkspaceView, window: &mut Window, cx: &mut Context<Self>) {
         let t = Theme::of(cx).tokens;
         let busy = v.composer_busy(cx);
         let ma = v.active_code() == "MA";
@@ -129,7 +129,14 @@ impl DockToolbar {
             } else {
                 PanelKey::MaestroDock
             });
-            (w - 1. - 20.).min(780.) - 2. - 24.
+            // Stacked (`max-width: 960px`), the dock spans the window with no side border.
+            let vw = f32::from(window.viewport_size().width);
+            let dock = if vw <= recur_view_observatory::style::NARROW_MAX_W {
+                vw
+            } else {
+                w - 1.
+            };
+            (dock - 20.).min(780.) - 2. - 24.
         };
         let narrow = (chat_in <= 640., chat_in <= 460.);
         let key = (opts.clone(), value, busy, narrow.1);

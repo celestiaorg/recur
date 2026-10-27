@@ -8,6 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+recur-http.workspace = true
 recur-bundles.workspace = true
 flate2.workspace = true
 hex.workspace = true

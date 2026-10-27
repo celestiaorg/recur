@@ -126,7 +126,7 @@ impl Shell {
 
     /// A menu item fired: fan it out as `menu.action` (the shell's own subscription handles
     /// it first, then views).
-    fn emit_menu_action(&mut self, name: &str, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn emit_menu_action(&mut self, name: &str, _: &mut Window, cx: &mut Context<Self>) {
         let name = name.to_string();
         self.state
             .update(cx, |s, cx| s.dispatch_menu_action(name, cx));

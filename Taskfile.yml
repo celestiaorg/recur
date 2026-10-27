@@ -141,11 +141,12 @@ tasks:
       - cargo run -p recur-desktop {{.CLI_ARGS}}
 
   lint:rust:
-    summary: rustfmt check and clippy for the Rust port
+    summary: rustfmt check, clippy and the crate layering check for the Rust port
     dir: rust
     cmds:
       - cargo fmt --all --check
       - cargo clippy --workspace --all-targets -- -D warnings
+      - cargo test -p recur-layering
 
   test:rust:
     summary: Runs the Rust port's tests

@@ -5,7 +5,7 @@ use recur_services::mock::{MockOptions, Reply};
 use serde_json::json;
 
 use super::harness::*;
-use crate::list_filter::title_counts;
+use recur_view_core::pr_list_filter::title_counts;
 
 fn tb_sub(s: &mut S) -> String {
     let c = s.state.read_with(s.cx, |st, _| title_counts(&st.prs));
@@ -226,7 +226,7 @@ fn pr_list_stacks_participant_avatars_and_names_them_on_hover(cx: &mut TestAppCo
     s.prs_nav();
     s.seg("All");
     let faces = s.state.read_with(s.cx, |st, _| {
-        crate::people::pr_people(st.pr("482").unwrap())
+        recur_view_widgets::people::pr_people(st.pr("482").unwrap())
     });
     assert_eq!(faces.len().min(5), 5);
     let people = s.bounds("pr-people:row-482").expect("people");

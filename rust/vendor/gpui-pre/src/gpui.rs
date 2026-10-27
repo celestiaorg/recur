@@ -63,6 +63,7 @@ mod taffy;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test;
 mod text_system;
+mod unwind;
 mod util;
 mod view;
 mod window;
@@ -100,6 +101,7 @@ pub use accesskit::{Orientation, Role, Toggled};
 pub use action::*;
 pub use anyhow::Result;
 pub use app::*;
+pub use unwind::take_contained_panics;
 pub(crate) use arena::*;
 pub use asset_cache::*;
 pub use assets::*;

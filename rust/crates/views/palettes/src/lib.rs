@@ -1,11 +1,11 @@
 //! The palettes App.svelte mounts over every route: Go to (⌘K, `CommandPalette.svelte`), Run
 //! Command (⌘⇧P), Open in (⌘O), Run (⌘R), the language-mode picker and the keyboard
-//! shortcuts list (⌘⇧/). Each reads its open flag from `AppState::overlays`, owns its keys
+//! shortcuts list (⌘⇧/), and Stop (⌘⇧R). Each reads its open flag from `AppState::overlays`, owns its keys
 //! while its query field has focus and renders nothing while closed. The shell's global keys
-//! and menu items open them; the Stop palette (⌘⇧R) is `recur-view-chat`'s.
+//! and menu items open them.
 //!
 //! The Run Command palette orders recently run commands by
-//! `recur_view_observatory::command_usage`, and the language picker applies picks through the
+//! `recur_view_core::command_usage`, and the language picker applies picks through the
 //! Observatory's `EditorEnv`, whose status bar opens it.
 
 mod chrome;
@@ -18,6 +18,7 @@ pub mod run_command;
 pub mod shortcuts;
 #[cfg(test)]
 mod spec;
+pub mod stop;
 pub mod syntax;
 
 use gpui_kit::AppContext as _;
@@ -61,6 +62,11 @@ pub fn register(r: &mut ViewRegistry) {
                 .into()
         },
     );
+    r.overlay(OverlaySlot::StopPalette, |vcx: &ViewContext, window, cx| {
+        let state = vcx.state.clone();
+        cx.new(|cx| stop::StopPalette::new(state, window, cx))
+            .into()
+    });
     r.overlay(
         OverlaySlot::ShortcutsHelp,
         |vcx: &ViewContext, window, cx| {

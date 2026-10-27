@@ -84,7 +84,8 @@ pub struct ChatSurface {
 pub fn normalize_chat_surface_kind(s: &str) -> &'static str {
     match s.trim().to_lowercase().as_str() {
         CHAT_SURFACE_LOCAL_PR | "local-pr" | "local" => CHAT_SURFACE_LOCAL_PR,
-        CHAT_SURFACE_GITHUB_PR | "github-pr" | "gh" | "github" => CHAT_SURFACE_GITHUB_PR,
+        CHAT_SURFACE_GITHUB_PR | "github-pr" => CHAT_SURFACE_GITHUB_PR,
+        s if recur_domain::PrSource::is_github_alias(s) => CHAT_SURFACE_GITHUB_PR,
         _ => CHAT_SURFACE_WORKSPACE,
     }
 }

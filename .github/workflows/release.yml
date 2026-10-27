@@ -33,6 +33,16 @@ name: Release
 #   UPDATER_SIGNING_KEY    `wails3 updater genkey` private key matching
 #                          build/updater.key.pub (rotate both together). Without
 #                          it and RELEASES_TOKEN, builds ship without the updater.
+#
+# Recur Next (the Rust port, rust/) builds beside the Go app from the same tag,
+# with the same secrets: a universal "Recur Next.app" in a DMG plus its updater
+# zip (wails3 task package:rust), and the recur-next Linux tarballs, .debs and
+# .rpms (linux:package:rust). Its assets are RecurNext-<version>-* and
+# recur-next-<version>-*, with SHA256SUMS-next and its own signed
+# manifest-next.json, which RECUR_NEXT_UPDATE_URL points it at. publish-next
+# attaches them to the same releases once publish has made them and every
+# Recur Next build succeeded, so a failed Rust build never holds back or
+# changes the Go release.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -226,3 +236,187 @@ jobs:
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --target main --title "Recur ${GITHUB_REF_NAME#v}" --notes ""
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber
           gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+
+  build-next-mac:
+    runs-on: macos-26
+    timeout-minutes: 150
+    env:
+      HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
+      HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
+      SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || 'Developer ID Application' }}
+      RECUR_NEXT_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' && 'https://github.com/celestiaorg/recur-releases/releases/latest/download/manifest-next.json' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: release
+
+      - name: Import signing certificate and notary credentials
+        if: env.HAS_SIGNING == 'true'
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KC_PW="$(uuidgen)"
+          security create-keychain -p "$KC_PW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KC_PW" "$KC"
+          echo "$MACOS_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KC_PW" "$KC"
+          security list-keychains -d user -s "$KC"
+          security default-keychain -s "$KC"
+          if [ "$HAS_NOTARY" = true ]; then
+            xcrun notarytool store-credentials recur-notary \
+              --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" \
+              --keychain "$KC"
+          fi
+
+      # rust/build/darwin/package.sh signs (and with KEYCHAIN_PROFILE notarizes and
+      # staples) the app and the DMG, as the Go tasks do.
+      - name: Build, sign, notarize
+        run: |
+          export UNIVERSAL=true
+          if [ "$HAS_SIGNING" != true ]; then unset SIGN_IDENTITY; fi
+          if [ "$HAS_NOTARY" = true ]; then export KEYCHAIN_PROFILE=recur-notary; fi
+          wails3 task package:rust VERSION="${GITHUB_REF_NAME#v}"
+
+      - name: Verify
+        run: |
+          APP="rust/target/package/Recur Next.app"
+          codesign --verify --deep --strict "$APP"
+          if [ "$HAS_NOTARY" = true ]; then spctl --assess --type execute "$APP"; fi
+          plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist"
+          for bin in recur recur-cli; do lipo "$APP/Contents/MacOS/$bin" -verify_arch arm64 x86_64; done
+          DMG="rust/target/package/Recur Next.dmg"
+          if [ "$HAS_NOTARY" = true ]; then spctl --assess --type open --context context:primary-signature "$DMG"; fi
+          hdiutil verify "$DMG"
+
+      - name: Rename
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          mkdir -p dist-next
+          mv "rust/target/package/Recur Next.dmg" "dist-next/RecurNext-$V-macos-universal.dmg"
+          mv "rust/target/package/Recur Next.zip" "dist-next/RecurNext-$V-macos-universal.zip"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: next-macos-universal
+          path: dist-next/RecurNext-*-macos-universal.*
+          if-no-files-found: error
+
+  build-next-linux:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    env:
+      HAS_PGP: ${{ secrets.LINUX_PGP_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y
+          libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev
+          libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev
+          libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: release
+      - name: Write PGP signing key
+        if: env.HAS_PGP == 'true'
+        env:
+          LINUX_PGP_KEY: ${{ secrets.LINUX_PGP_KEY }}
+        run: |
+          printf '%s\n' "$LINUX_PGP_KEY" > "$RUNNER_TEMP/pgp.asc"
+          echo "RECUR_PGP_KEY=$RUNNER_TEMP/pgp.asc" >> "$GITHUB_ENV"
+      - env:
+          NFPM_PASSPHRASE: ${{ secrets.LINUX_PGP_PASSPHRASE }}
+        run: wails3 task linux:package:rust VERSION="${GITHUB_REF_NAME#v}"
+      # Installs both packages in a clean Debian 13 container and launches them.
+      - if: matrix.arch == 'amd64'
+        run: wails3 task linux:smoke:rust
+      - run: |
+          V="${GITHUB_REF_NAME#v}"
+          mkdir -p dist-next
+          for ext in tar.gz deb rpm; do
+            mv "rust/target/package/recur-next-linux-${{ matrix.arch }}.$ext" "dist-next/recur-next-$V-linux-${{ matrix.arch }}.$ext"
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: next-linux-${{ matrix.arch }}
+          path: dist-next/recur-next-*-linux-${{ matrix.arch }}.*
+          if-no-files-found: error
+
+  # After publish, so the releases exist; the Go assets and manifest.json are never touched.
+  publish-next:
+    needs: [publish, build-next-mac, build-next-linux]
+    runs-on: ubuntu-24.04
+    env:
+      HAS_PUBLIC: ${{ secrets.RELEASES_TOKEN != '' }}
+      HAS_UPDATER: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' }}
+    steps:
+      - if: env.HAS_UPDATER == 'true'
+        uses: actions/checkout@v7
+      - if: env.HAS_UPDATER == 'true'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+      - if: env.HAS_UPDATER == 'true'
+        uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: next-*
+          path: dist-next
+          merge-multiple: true
+      # The same key and manifest format as the Go app's (recur_platform::updater reads
+      # it), over the Recur Next zip only.
+      - name: Sign update manifest
+        if: env.HAS_UPDATER == 'true'
+        env:
+          UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }}
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          printf '%s\n' "$UPDATER_SIGNING_KEY" > "$RUNNER_TEMP/updater.key"
+          wails3 updater manifest -version "$V" -name "Recur Next $V" -key "$RUNNER_TEMP/updater.key" \
+            -url-prefix "https://github.com/celestiaorg/recur-releases/releases/download/$GITHUB_REF_NAME" \
+            -output dist-next/manifest-next.json "dist-next/RecurNext-$V-macos-universal.zip"
+          rm "$RUNNER_TEMP/updater.key"
+          wails3 updater verify -manifest dist-next/manifest-next.json -publickey build/updater.key.pub
+      - name: Latest-download aliases
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          cd dist-next && for f in RecurNext-"$V"-*.dmg recur-next-"$V"-*.{deb,rpm,tar.gz}; do cp "$f" "${f/-$V/}"; done
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          (cd dist-next && sha256sum -- * > SHA256SUMS-next)
+          gh release upload "$GITHUB_REF_NAME" dist-next/* --clobber
+      - name: Publish public release
+        if: env.HAS_PUBLIC == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          GH_REPO: celestiaorg/recur-releases
+        run: gh release upload "$GITHUB_REF_NAME" dist-next/* --clobber

@@ -16,6 +16,10 @@
 //! - [`Guarded`] is `cx.listener`, `cx.subscribe`, `cx.observe` and their window variants with
 //!   the callback caught: the event does nothing and an error toast says so.
 //!
+//! Below these, Recur's gpui-pre patch contains what reaches GPUI anyway (`rust/vendor/README.md`
+//! "Contained panics"): listeners Recur passes straight to elements, `canvas` closures and
+//! tasks, and an unwind out of an entity or window update puts the entity and the window back.
+//!
 //! The panic hook (`recur_store::applog`) logs every panic with its backtrace to `recur.log`
 //! first, contained or not.
 

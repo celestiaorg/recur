@@ -19,7 +19,14 @@ use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistr
 use serde_json::Value;
 
 pub fn registry() -> ViewRegistry {
-    let mut r = recur_view_home::gallery::registry();
+    let mut r = ViewRegistry::default();
+    recur_view_chat::register(&mut r);
+    recur_view_review::register(&mut r);
+    recur_view_observatory::register(&mut r);
+    recur_view_workspace::register(&mut r);
+    recur_view_prs::register(&mut r);
+    recur_view_settings::register(&mut r);
+    recur_view_home::register(&mut r);
     recur_view_briefing::register(&mut r);
     crate::register(&mut r);
     recur_view_palettes::register(&mut r);
@@ -50,7 +57,7 @@ fn leak(s: &str) -> &'static str {
 /// The module state a page load starts without.
 fn fresh_modules(cx: &mut gpui_kit::App) {
     recur_view_briefing::issues::reset_saved_view(cx);
-    cx.set_global(recur_view_briefing::schedule_expanded::ScheduleExpanded::default());
+    cx.set_global(recur_view_widgets::schedule_expanded::ScheduleExpanded::default());
 }
 
 pub fn boot<'a>(

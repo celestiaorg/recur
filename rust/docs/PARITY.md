@@ -939,7 +939,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 
 ### Styles
 
-- [~] `styles/_base.scss` (the generic parts; view-specific rules belong to their views)
+- [x] `styles/_base.scss`: the generic parts below; the view-specific rules live with the components that use them (`App.svelte`, `PRTitlebarActions.svelte`, the palettes, `Observatory.svelte`, `WorkspaceView.svelte`, all ticked). `.sb-kbd` is used by no component
   - [x] `body` and `window_root` (fonts, colors, line height, WebKit half-pixel ties), `.tbtn` and `.tb-right` buttons, `.tb-icon-btn`, `.tb-rail` (scenes `buttons/*`)
   - [x] `::-webkit-scrollbar` 11px themed scrollbar and `.overlay-sb` (`recur_ui::widgets::scroll_area`)
   - [x] `.kbd` / `.kbd-mod` keycaps (system-ui through CoreText with the weight trait and variation)
@@ -947,19 +947,19 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `styles/_chat.scss` → `recur-view-chat` (the `chat/*` scenes)
 - [x] `styles/_codemirror.scss` → `recur_editor` (`panels.rs`, `tooltip_ui.rs`, `markdown.rs`, `vim/prompt.rs`, `element.rs`)
   - [x] Panels, find / replace / go-to-line, completion list and info, hover, signature help, `.cm-lsp-documentation` (UA block margins collapsed, inline code boxes), title tooltips through `recur_ui::tooltip`
-  - [ ] Link `border-bottom` drawn as an underline and the signature's hanging indent (recur-ui text has no per-side inline border or text-indent)
-- [~] `styles/_forms.scss` (the generic parts)
+  - [x] Link `border-bottom` drawn as an underline and the signature's hanging indent: a recorded intentional difference (`ui-parity.md` "LSP documentation links and signature indent"), since recur-ui text has no per-side inline border, inline underline color or `text-indent`
+- [x] `styles/_forms.scss`: the generic parts below; the rest live with the components that use them (`AgentChat.svelte`, `ScheduleEditor.svelte`, `Select.svelte`, `NewTask.svelte`, `PRReviewModal.svelte`, `ModelFlagsSelect.svelte`, `CompatibleProviderModal.svelte`, `NewProject.svelte`, all ticked). `.dial`, `.dhit`, `.dknob`, `.dlbl`, `.dtrack`, `.gd`, `.gx`, `.isec` and `.nt-atts` are used by no component
   - [x] `.sel*` select and menus, `.tog` toggles, `.prog`, `.hint`, `.nt-go`, `.nt-link`, `.nt-bg` / `.nt-modal`, `.nt-tip-pop` (scenes `select/*`, `toggles/*`, `buttons/*`, `overlays/*`)
-- [ ] `styles/_loop.scss`
-- [ ] `styles/_main.scss`
+- [x] `styles/_loop.scss`: its chat, tab, pane and chip rules live with the components that use them (`AgentChat.svelte`, `AppChat.svelte`, `WorkspaceView.svelte`, `Observatory.svelte`, `PRDetail.svelte`, `PlanPanel.svelte`, `TabChip.svelte`, all ticked). `.chat.file-drop-target-active` is the class the Wails runtime adds during an OS drag; the chat paints the same highlight from its own drag state (`recur_view_chat::view`, `file_drop_over`). The loop-cockpit rules (`.ld-*`, `.ldh`, `.pipe`, `.pstep`, `.plab`, `.pd`, `.pane-code`) are used by no component
+- [x] `styles/_main.scss`: the main-area rules live with the components that use them (`Observatory.svelte`, `WorkspaceView.svelte`, `Issues.svelte`, `ScheduledPrompts.svelte`, `Sidebar.svelte`, `MergeEditor.svelte`, `Welcome.svelte`, `PRList.svelte`, `Project.svelte`, `WorkspaceDetail.svelte`, all ticked). The board and list layouts (`.kboard`, `.kcard*`, `.kcol*`, `.kempty`, `.llist`, `.lgroup`, `.lr*`, `.layout-seg`, `.ava`, `.gc`, `.gdot`) are used by no component
 - [x] `styles/_observatory.scss`: the review surface's rules (`.obs-review-*`, scope headers, `.cback`, the commit list) in `recur-view-review`; the host's rules in `recur_view_observatory::{style, render}` (scenes `observatory/*`)
-- [~] `styles/_overlays.scss` (the generic parts)
+- [x] `styles/_overlays.scss`: the generic parts below; the rest live with the components that use them (Settings, `PermissionCard.svelte`, `Toasts.svelte`, the palettes, `Observatory.svelte`, `ScheduledPrompts.svelte`, all ticked). `.iba`, `.ibgroup`, `.insp`, `.ld-body`, `.lg-acc`, `.lg-dot`, `.lg-ring`, `.urgent`, `.gc` and `.gdot` are used by no component
   - [x] Palette: `.palette-bg`, `.palette`, `.cmd-palette`, `.pal-in` (with WebKit's input padding), `.pal-g`, `.pal-row` with `.pic`/`.pl`/`.psub`/`.pk`/`.dot`, `.pal-empty`, `.pal-foot` (scene `overlays/palette`)
   - [x] `.toasts`, `.toast*` (scenes `toasts/*`), `.emoji-suggest` panel, `.skel` with its shimmer and `.skelrow`, global `:focus-visible` ring (scenes `overlays/misc*`, `select/focus`)
   - [x] Box shadows as WebKit's ShadowBlur, diagonal gradients, backgrounds under opaque borders (`recur_ui::shadow`, `style::css_gradient`, `style::inset_background`)
 - [x] `styles/_prs.scss`: the review rules (`.fl-*`, `.diffscroll`, `.cfile`, `.df-head`, `.hline`, `.addc`, `.icmt*`, `.cmt*`, `.react*`, `.finding-note-*`, commits) in `recur-view-review` (scenes `review/*`); the PR list, PR detail, titlebar actions, review modal and people stack rules (with the `.tb-right` split rules of `_base.scss` and the modal rules of `_forms.scss`) in `recur-view-prs` (scenes `prs/*`)
 - [x] `styles/_settings.scss` → `recur_view_settings::style` (rows, radios, segs, inputs, status tables, notes, theme cards; scenes `settings/*`)
-- [ ] `styles/_sidebar.scss`
+- [x] `styles/_sidebar.scss` → `recur-view-sidebar` (83 of its 93 classes are `Sidebar.svelte`'s; scenes `shell/*`), the rest with the components that share them (`ScheduledPrompts.svelte`, `AgentChat.svelte`, `Observatory.svelte`, `Project.svelte`, `Settings.svelte`, `FanOutCard.svelte`, `TerminalDock.svelte`, all ticked)
 - [x] `styles/_terminal.scss` → `recur_terminal_view` and `recur_view_observatory::dock` (every rule below)
   - [x] Pane padding, bottom-pinned grid, inactive panes hidden and absolutely positioned (`view.rs`)
   - [x] Scrollbar slider colours from the palette, hover/active states (`element.rs`)
@@ -972,7 +972,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
   - [x] Runtime switching (`Theme::set`, windows refresh, gpui-component theme synced) and persisted appearance with system sync (`Appearance`, the `shell.json` shape)
   - [x] Light-theme overrides used by shared widgets (`.skel::after`, tooltip shadows, file-icon color slots)
 - [x] `styles/_welcome.scss` → `recur_view_home::welcome` (scenes `home/welcome*`)
-- [ ] `styles/app.scss`
+- [x] `styles/app.scss`: only `@use`s the partials in cascade order; each partial's row covers its rules
 
 ## Go packages
 
@@ -985,7 +985,7 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] Worktree sandbox (`path`): `code.SafeJoin`, `filepath` Clean/Join/Rel/Abs/Dir/Base, `EvalSymlinks`, nearest-existing-ancestor resolution, `MkdirAll`, `*PathError` text
   - [x] Read, Edit, Write, Bash, TodoWrite + `TodoStore`: 75 recorded Go cases replayed (`tests/coding_golden.rs`); Bash keeps process-group kill on cancel/timeout, `WaitDelay` (2 s), capped capture, `exit: …` text with Go signal names per platform
   - [x] Glob and Grep always built (the `code` feature is gone): ripgrep through `recur_code::rg::locate`, Go-walk fallback through `recur_code::search_opts`, managed binary under `recur_store::paths::data_dir`; all 82 recorded coding cases replay (`tests/coding_golden.rs`)
-- [ ] `internal/app`: 25 files, 8921 lines, 27 test files
+- [x] `internal/app`: 25 files, 8921 lines, 27 test files → `recur-services` (`services/src/app`) and the provider, forge, issues and platform crates below; every service file has its home in "Application services" above (`bridge_bench.go` and `loose_files.go` are in `app/code.rs`, `workspace_open.go` in `app/workspaces.rs`, `schedules.go` in `app/projects.rs`, `fileserver.go` in `app/assets.rs`). Every Go test function is ported or recorded as not applicable (`tools/parity-sweep`, `go-tests.tsv`)
   - [x] `instance.go` + test: `recur_platform::identity::{instance_label, window_title}` (title falls back to `Recur Next` side by side)
   - `open_path.go` stays with `recur-services`: it is WorkspacesService logic (store, engine, git), not OS path handling. Platform takes its result through `open_boot::attach_open_ipc` / `apply_cold_opens`.
   - [x] `model_catalog.go` catalog types → `recur_agent::catalog` (FlagOption, FlagDimension, ModelChoice, ModelGroup serde-identical; `defaultFlagsFromDims`). Per-provider lists, merge and fallbacks belong to P1/P2/P3 and SV
@@ -1065,7 +1065,7 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `settings` + `providers` + `compatible` + `mcp` + `skills`: every Settings field and method (models/flags per mode, loop role aliases, bundle value migration, turn timeout clamp, governor caps, permission mode, branch prefix incl. legacy modes, provider enable/offer/normalize/remap/catalog fallback), compatible providers (slug rules, `net/url.Parse`-exact base URL validation checked against Go in `tests/go_rules.rs`, header/model/flag normalization, presets, wire allowlist), MCP catalog/validation/normalization/Linear URL, skill roots and override rules
   - [x] `schedule`: ScheduledPrompt(+Run), OnStartup, NextScheduledTime with a robfig/cron v3 port (seconds-optional fields, names, steps, descriptors, `@every`, `CRON_TZ=`/`TZ=`, five-year limit) and Go `time.Date` DST resolution on embedded tzdata (chrono-tz); 2,844 Go-computed cases in `tests/go_rules.rs`
   - [x] `briefing`, `observatory`, `model`, `ids`: briefing snapshot types and codes, observatory/search/metrics types, ModelRef (ParseModelRef, String, IsZero, NewModelRef), ProviderLabel, BuiltinProvider, NewID/NewUniqueID/ValidID
-- [ ] `internal/engine`: 88 files, 47557 lines, 106 test files
+- [x] `internal/engine`: 88 files, 47557 lines, 106 test files → `recur-engine` and the provider crates (slices below). Every Go test function is ported or recorded as not applicable (`tools/parity-sweep`, `go-tests.tsv`; the final audit ported 40 engine tests that had no Rust counterpart, all passing against the existing code)
   - [x] Slice A (agent contracts) → `recur-agent` + `recur_provider_claude::{stream, testing}`; Go-generated golden fixtures in `crates/agent/tests/golden/go_agent.json` and `providers/claude/tests/golden/go_stream.json` (generators committed as `.go.txt`)
     - [x] `runner.go` → `recur_agent::{turn, event}` (TurnRequest, SessionRoute, McpAttach, `standing_in_user_prompt`, AgentEvent for every ParsedKind, TurnResult with Go JSON tags, McpServerStatus); `TurnMirror` and `Inject*` become `TurnContext` sink/steer
     - [x] `toolview.go` → `Provider::{display_tool, display_tool_result}` + `recur_agent::display::{display_tool_result, summarize_display_input, canonical_claude_tool}`; the Codex and Cursor mappings are P1/P2 impls
@@ -1421,7 +1421,7 @@ Frontend unit tests (`vitest`, 170 files) are logic specs for the matching `lib/
 
 - [x] `bundles/` seeded into the data dir exactly as `bundles.SeedDefaults` does (stamp/sync semantics): `recur_bundles::seed_defaults(dir, &SHIPPED_BUNDLES, ".")`; the boot call belongs with the `main.go` port
 - [x] `recur-skills/` seeded into `~/.recur/recur-skills`: `seed_defaults(dir, &SHIPPED_SKILLS, ".")`
-- [ ] `internal/store/migrations/*.sql` applied by `recur-store` (same files, same order, same `schema_migrations` bookkeeping)
+- [x] `internal/store/migrations/*.sql` applied by `recur-store` (same files, same order, same `__migrations` bookkeeping as Go): embedded from their repo path with `include_dir!` (`recur_store::migrations`); `migration_runner_baseline_and_sessions`, `schema_guard_refuses_newer_database` and `compat_tests::fresh_schema_matches_go` (a fresh database's schema dump equals Go's)
 - [x] `frontend/src/lib/file-icons` icon font and mapping (embedded fonts, `icondb.js`, `icons.css`, `dotenv-fix.css`, `atom-octicons.css`, `colors.css`; WOFF/WOFF2 decoded with `wuff`)
 - [x] lucide icon set used by `lib/icons.ts` (`assets/icons/lucide/*.svg`, 1776 icons with `lucide.json`)
 - [x] `build/` app icons, Info.plist keys, URL schemes, Linux `.desktop` entry: `rust/build/darwin/Info.plist` carries every key of the Go plist under `build.recur.next` (tested in `recur_platform::identity`; the Go app declares no URL schemes or document types), the `.app` reuses `build/darwin/icons.icns` / `Assets.car`, and `rust/build/linux/build.recur.next.desktop` is the packaged entry

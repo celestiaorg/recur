@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { overlayScrollbar, overlayThumb, scrollFromTrack } from './overlay-scrollbar'
 
 describe('overlayThumb', () => {
@@ -27,6 +27,8 @@ describe('scrollFromTrack', () => {
 })
 
 describe('overlayScrollbar', () => {
+  afterEach(() => vi.useRealTimers())
+
   function mount(scrollHeight = 400, clientHeight = 200) {
     const shell = document.createElement('div')
     const el = document.createElement('div')
@@ -104,7 +106,17 @@ describe('overlayScrollbar', () => {
     vi.advanceTimersByTime(700)
     expect(sb.classList.contains('on')).toBe(false)
     cleanup()
-    vi.useRealTimers()
+  })
+
+  test('enter, leave, enter within one tick stays lit', () => {
+    vi.useFakeTimers()
+    const { sb, cleanup } = mount()
+    sb.dispatchEvent(new PointerEvent('pointerenter'))
+    sb.dispatchEvent(new PointerEvent('pointerleave'))
+    sb.dispatchEvent(new PointerEvent('pointerenter'))
+    vi.advanceTimersByTime(5000)
+    expect(sb.classList.contains('on')).toBe(true)
+    cleanup()
   })
 
   test('gains .live when content grows past the viewport', async () => {

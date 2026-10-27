@@ -21,6 +21,7 @@ license = "UNLICENSED"
 [workspace.dependencies]
 recur-domain = { path = "crates/domain" }
 recur-exec = { path = "crates/exec" }
+recur-http = { path = "crates/http" }
 recur-store = { path = "crates/store" }
 recur-project = { path = "crates/project" }
 recur-git = { path = "crates/git" }

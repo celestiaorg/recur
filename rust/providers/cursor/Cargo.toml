@@ -12,6 +12,7 @@ publish = false
 testing = []
 
 [dependencies]
+recur-http.workspace = true
 recur-domain.workspace = true
 recur-agent.workspace = true
 async-trait.workspace = true

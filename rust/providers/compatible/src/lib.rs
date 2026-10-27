@@ -74,7 +74,7 @@ impl CompatibleProvider {
                 config.name.clone()
             },
             config: RwLock::new(config),
-            http: reqwest::Client::new(),
+            http: recur_http::default_client(),
             data_dir: None,
         }
     }

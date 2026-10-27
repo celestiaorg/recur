@@ -45,10 +45,7 @@ pub(crate) struct HttpTransport {
 
 impl HttpTransport {
     pub fn new() -> Self {
-        let client = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .unwrap_or_default();
+        let client = recur_http::client(|b| b.redirect(reqwest::redirect::Policy::none()));
         Self { client }
     }
 }

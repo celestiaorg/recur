@@ -61,7 +61,7 @@ impl Linear {
         Self {
             endpoint: GRAPHQL_URL.into(),
             env: Arc::new(|k| std::env::var(k).ok()),
-            client: reqwest::Client::new(),
+            client: recur_http::default_client(),
         }
     }
 

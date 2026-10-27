@@ -279,10 +279,7 @@ pub(crate) fn release_sha256(asset: &str) -> Option<&'static str> {
 async fn install(data_dir: &str) -> Result<()> {
     let asset = release_asset()?;
     let url = format!("{RELEASE_BASE}{RELEASE_VERSION}/{asset}");
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(3 * 60))
-        .build()
-        .map_err(|e| Error::msg(format!("rg download: {e}")))?;
+    let client = recur_http::client(|b| b.timeout(Duration::from_secs(3 * 60)));
     let mut res = client
         .get(&url)
         .send()

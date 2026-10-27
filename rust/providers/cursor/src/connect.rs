@@ -255,10 +255,7 @@ impl Client {
             token: token.to_owned(),
             // No global timeout: streams outlive it. Loopback never goes
             // through a proxy (Go's ProxyFromEnvironment skips 127.0.0.1).
-            http: reqwest::Client::builder()
-                .no_proxy()
-                .build()
-                .unwrap_or_default(),
+            http: recur_http::client(|b| b.no_proxy()),
             log: None,
             unary_timeout: UNARY_TIMEOUT,
         }

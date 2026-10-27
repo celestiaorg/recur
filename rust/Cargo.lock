@@ -7402,6 +7402,7 @@ dependencies = [
  "recur-domain",
  "recur-exec",
  "recur-git",
+ "recur-http",
  "regex",
  "regress",
  "reqwest",
@@ -7595,6 +7596,7 @@ dependencies = [
  "pretty_assertions",
  "recur-domain",
  "recur-exec",
+ "recur-http",
  "regex",
  "reqwest",
  "serde",
@@ -7622,6 +7624,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-http"
+version = "0.0.0"
+dependencies = [
+ "reqwest",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "recur-issues"
 version = "0.0.0"
 dependencies = [
@@ -7632,6 +7643,7 @@ dependencies = [
  "recur-domain",
  "recur-exec",
  "recur-forge",
+ "recur-http",
  "regex",
  "reqwest",
  "serde",
@@ -7659,6 +7671,7 @@ dependencies = [
  "pretty_assertions",
  "recur-bundles",
  "recur-exec",
+ "recur-http",
  "reqwest",
  "serde",
  "serde_json",
@@ -7710,6 +7723,7 @@ dependencies = [
  "p256",
  "parking_lot",
  "recur-exec",
+ "recur-http",
  "regex",
  "reqwest",
  "rustix",
@@ -7735,6 +7749,7 @@ dependencies = [
  "nix 0.31.3",
  "pretty_assertions",
  "recur-domain",
+ "recur-http",
  "reqwest",
  "serde",
  "serde_json",
@@ -7799,6 +7814,7 @@ dependencies = [
  "recur-agent",
  "recur-agent-tools",
  "recur-domain",
+ "recur-http",
  "recur-store",
  "reqwest",
  "serde",
@@ -7820,6 +7836,7 @@ dependencies = [
  "recur-agent",
  "recur-domain",
  "recur-exec",
+ "recur-http",
  "reqwest",
  "rustix",
  "serde",
@@ -8018,6 +8035,7 @@ dependencies = [
  "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "recur-http",
  "recur-project",
  "reqwest",
  "serde",

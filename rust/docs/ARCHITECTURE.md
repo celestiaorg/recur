@@ -24,6 +24,7 @@ rust/
     textmate/           recur-textmate     grammars + themes         (frontend lib/tm-*, internal/bundles/grammar)
     lsp/                recur-lsp          language server client    (internal/lsp, frontend lib/lsp.ts)
     term/               recur-term         PTY + emulator state      (internal/term)
+    http/               recur-http         the reqwest client builder (no CA store: HTTPS fails, never panics)
     code/               recur-code         worktree files and search (internal/code, rg, copyfiles)
     usage/              recur-usage        provider usage polling    (internal/usage)
     engine/             recur-engine       orchestration             (internal/engine minus providers/forge)
@@ -74,7 +75,7 @@ terminal-view ────► term, ui
 services ─────────► engine, providers/*, forge, issues, usage, lsp, platform, store, git, code, bundles
 engine ───────────► agent, agent-tools, mcp, bundles, code, git, store, term, forge, issues, project, platform
 agent, forge, issues, bundles, git, code, store, project ─► domain (and each other, downward)
-textmate, term, ui ─ standalone
+textmate, term, ui, http ─ standalone
 ```
 
 Rules:
@@ -217,6 +218,7 @@ GPUI draws a window by rendering its root view, and every view that is not a cac
 - **A view that is not on screen is not laid out.** A parked shell, and the bound shell while another route shows, render nothing: the hidden route is one cached view, so any notify inside it (a chat event, a store change) or any whole-window refresh would lay the whole workspace out again under the visible route. Their entities keep running effects through the route (`WorkspaceDetail` observes a hidden bound shell) and re-apply scroll state when they are laid out again (`WorkspaceView::restore_laid_out`).
 - **A view released while something still holds it is parked first.** An entity outlives its owner's map when a task holds it (a turn in flight): a shell dropped from the hot list without `set_shell_active(false)` kept its Observatory claiming the menu, and two of them pushed their menu states over each other in an endless store loop.
 - **Settle from a draw by notifying the view.** `window.refresh()` during a draw is a no-op in GPUI; an element that learns a size in prepaint and needs another layout calls `cx.notify(window.current_view())` (`exact::settle`, the chat flow).
+- **Build HTTP clients through `recur-http`.** `reqwest::Client::new()`, `Client::default()` and a failed `build()` panic or fail where the platform has no CA store; `recur_http::client(|b| …)` falls back to an empty root store, so HTTPS requests fail and plain HTTP works. `recur-layering` fails on a `Client::new()` / `Client::builder()` outside it.
 - **Write executables through `recur-exec`.** A file this process writes and then executes is written by a short-lived `/bin/sh` (`recur_exec::write_executable` / `create_executable`): written in-process, a concurrent spawn on another thread inherits the write descriptor and the exec fails with `ETXTBSY`.
 - **Spawn subprocesses by path.** std spawns with `posix_spawn` only when the program is a path or the command keeps the parent's `PATH`; a bare name with an explicit `PATH` (`env_clear().envs(..)`) forks, and forking the app holds every malloc lock (the UI thread's too) for as long as copying its page tables takes. Resolve the program first (`recur_git::command::on_path`).
 - **Batch many primitives under one layer.** Each painted primitive costs a bounds-tree insert, again whenever a cached view replays it: text paints a line's glyphs in one `paint_layer`. Do the same for any element that paints hundreds of primitives (a minimap, a heatmap).

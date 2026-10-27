@@ -22,7 +22,7 @@ pub struct CompatibleTestResult {
 /// POSTs a tiny `/v1/responses` ping with the first model of the saved or
 /// draft config. Does not persist anything.
 pub async fn test_compatible_provider(p: CompatibleProvider) -> CompatibleTestResult {
-    test_with(p, reqwest::Client::new()).await
+    test_with(p, recur_http::default_client()).await
 }
 
 pub(crate) async fn test_with(

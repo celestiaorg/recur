@@ -176,10 +176,7 @@ pub(crate) async fn download_verified(
     want_sha256: &str,
     dest: &Path,
 ) -> Result<(), String> {
-    let client = reqwest::Client::builder()
-        .timeout(INSTALL_TIMEOUT)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = recur_http::client(|b| b.timeout(INSTALL_TIMEOUT));
     let mut res = client
         .get(url)
         .send()

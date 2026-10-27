@@ -243,6 +243,38 @@ fn the_engine_names_no_concrete_provider_forge_or_tracker() {
     assert!(bad.is_empty(), "the engine names:\n{}", bad.join("\n"));
 }
 
+/// `recur-http` builds every client: `reqwest`'s own constructors panic without a CA store.
+#[test]
+fn http_clients_come_from_recur_http() {
+    let root = rust_root();
+    let mut files = Vec::new();
+    for dir in subdirs(&root.join("crates"))
+        .into_iter()
+        .chain(subdirs(&root.join("crates/views")))
+        .chain(subdirs(&root.join("crates/panes")))
+        .chain(subdirs(&root.join("providers")))
+    {
+        if !dir.ends_with("http") && dir.join("src").is_dir() {
+            rust_files(&dir.join("src"), &mut files);
+        }
+    }
+    let mut bad = Vec::new();
+    for f in &files {
+        let src = fs::read_to_string(f).expect("source");
+        for (i, line) in code_lines(&src) {
+            if line.contains("Client::new()") || line.contains("Client::builder()") {
+                let rel = f.strip_prefix(&root).unwrap_or(f);
+                bad.push(format!("{}:{}", rel.display(), i + 1));
+            }
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "build clients with recur_http:\n{}",
+        bad.join("\n")
+    );
+}
+
 #[test]
 fn the_id_scan_sees_a_literal() {
     let src = "let a = 1;\nlet p = \"codex\";\n// \"gh\" in a comment\n#[cfg(test)]\nmod t { \"linear\" }";

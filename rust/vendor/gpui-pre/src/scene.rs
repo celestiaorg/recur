@@ -79,6 +79,11 @@ impl Scene {
             .push(PaintOperation::StartLayer(bounds));
     }
 
+    /// Recur: open layers, for `Window::contain`.
+    pub(crate) fn layer_depth(&self) -> usize {
+        self.layer_stack.len()
+    }
+
     pub fn pop_layer(&mut self) {
         self.layer_stack.pop();
         self.paint_operations.push(PaintOperation::EndLayer);

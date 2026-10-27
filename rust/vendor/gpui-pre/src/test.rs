@@ -78,8 +78,10 @@ pub fn run_test_once<R>(
     let result = panic::catch_unwind(|| {
         let dispatcher = TestDispatcher::new(seed);
         let scheduler = dispatcher.scheduler().clone();
+        crate::unwind::take_contained_panics();
         let res = test_fn(dispatcher);
         scheduler.end_test();
+        fail_on_contained_panics();
         res
     });
 
@@ -87,6 +89,13 @@ pub fn run_test_once<R>(
         Ok(r) => r,
         Err(e) => panic::resume_unwind(e),
     }
+}
+
+/// Recur: a panic GPUI contained (a listener, a canvas, a task) fails the test unless the test
+/// took it with `take_contained_panics`.
+fn fail_on_contained_panics() {
+    let contained = crate::unwind::take_contained_panics();
+    assert!(contained.is_empty(), "contained panics: {contained:#?}");
 }
 
 /// Run the given test function with the configured parameters.
@@ -110,8 +119,10 @@ pub fn run_test(
             let result = panic::catch_unwind(|| {
                 let dispatcher = TestDispatcher::new(seed);
                 let scheduler = dispatcher.scheduler().clone();
+                crate::unwind::take_contained_panics();
                 test_fn(dispatcher, seed);
                 scheduler.end_test();
+                fail_on_contained_panics();
             });
 
             match result {

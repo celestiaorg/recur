@@ -10,8 +10,62 @@ pub const UI: &str = "Inter";
 pub const MONO: &str = "JetBrains Mono";
 /// `--disp`.
 pub const DISPLAY: &str = "Space Grotesk";
-/// `system-ui` / `-apple-system` (keycaps).
+/// `system-ui` / `-apple-system` (keycaps): GPUI's name for SF on macOS.
 pub const SYSTEM: &str = ".SystemUIFont";
+
+/// The family `system-ui` resolves to. macOS: SF through [`SYSTEM`], as WebKit draws it.
+/// Linux: fontconfig's match for `system-ui`, the face WebKitGTK (and so the Go app and the
+/// Mermaid labels it measures) uses; GPUI's own `.SystemUIFont` there is IBM Plex Sans.
+pub fn system_family() -> SharedString {
+    #[cfg(target_os = "linux")]
+    {
+        static FAMILY: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+        if let Some(f) = FAMILY.get_or_init(fontconfig::system_ui) {
+            return f.clone().into();
+        }
+    }
+    SYSTEM.into()
+}
+
+#[cfg(target_os = "linux")]
+#[allow(unsafe_code)]
+mod fontconfig {
+    use fontconfig_sys::*;
+    use std::ffi::CStr;
+
+    /// `fc-match system-ui`: the first family of the best match after config substitution.
+    pub fn system_ui() -> Option<String> {
+        // SAFETY: fontconfig's documented match sequence; every object created here is
+        // destroyed here, and the family string is copied before its pattern goes.
+        unsafe {
+            let config = FcInitLoadConfigAndFonts();
+            if config.is_null() {
+                return None;
+            }
+            let pattern = FcNameParse(c"system-ui".as_ptr().cast());
+            let mut family = None;
+            if !pattern.is_null() {
+                FcConfigSubstitute(config, pattern, FcMatchPattern);
+                FcDefaultSubstitute(pattern);
+                let mut result = FcResultMatch;
+                let found = FcFontMatch(config, pattern, &mut result);
+                if !found.is_null() {
+                    let mut name: *mut FcChar8 = std::ptr::null_mut();
+                    if FcPatternGetString(found, constants::FC_FAMILY.as_ptr(), 0, &mut name)
+                        == FcResultMatch
+                        && !name.is_null()
+                    {
+                        family = Some(CStr::from_ptr(name.cast()).to_string_lossy().into_owned());
+                    }
+                    FcPatternDestroy(found);
+                }
+                FcPatternDestroy(pattern);
+            }
+            FcConfigDestroy(config);
+            family
+        }
+    }
+}
 
 /// A CSS `font-family` stack used by the web UI.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -34,16 +88,16 @@ impl Family {
             Family::Ui => UI.into(),
             Family::Mono => MONO.into(),
             Family::Display => DISPLAY.into(),
-            Family::System => SYSTEM.into(),
+            Family::System => system_family(),
             Family::Stack(first, _) => first.clone(),
         }
     }
 
     fn fallbacks(&self) -> Vec<String> {
         match self {
-            Family::Ui => vec![SYSTEM.into()],
+            Family::Ui => vec![system_family().to_string()],
             Family::Mono => vec!["SF Mono".into(), "Menlo".into()],
-            Family::Display => vec![UI.into(), SYSTEM.into()],
+            Family::Display => vec![UI.into(), system_family().to_string()],
             Family::System => vec![],
             Family::Stack(_, rest) => rest.iter().map(|s| s.to_string()).collect(),
         }
@@ -234,6 +288,23 @@ pub fn match_face(family: &str, weight: f32) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
+
+    /// The face `fc-match system-ui` names (when fontconfig's tools are installed).
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn system_ui_is_fontconfigs_match() {
+        let Ok(out) = std::process::Command::new("fc-match")
+            .args(["-f", "%{family[0]}", "system-ui"])
+            .output()
+        else {
+            return;
+        };
+        let expected = String::from_utf8_lossy(&out.stdout).to_string();
+        assert!(!expected.is_empty());
+        assert_eq!(system_family().as_ref(), expected);
+        assert_eq!(Family::System.primary().as_ref(), expected);
+    }
+
     use super::*;
 
     fn w(family: &str, weight: f32) -> f32 {

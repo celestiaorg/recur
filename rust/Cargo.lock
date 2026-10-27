@@ -7625,6 +7625,7 @@ dependencies = [
  "ttf-parser",
  "unicode-linebreak",
  "wuff",
+ "yeslogic-fontconfig-sys",
 ]
 
 [[package]]

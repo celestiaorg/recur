@@ -939,6 +939,7 @@ fn canonical_family(f: Family) -> Family {
             crate::fonts::MONO => Family::Mono,
             crate::fonts::DISPLAY => Family::Display,
             crate::fonts::SYSTEM => Family::System,
+            n if n == crate::fonts::system_family().as_ref() => Family::System,
             _ => Family::Stack(name, rest),
         },
         other => other,

@@ -1,4 +1,4 @@
-//! Project settings (`Project.svelte` with `MiniScriptEditor.svelte`): one project's identity,
+//! Project settings (`Project.svelte`; its `MiniScriptEditor` lives in `recur_view_core::mini`): one project's identity,
 //! repository, run settings, schedules, pull request defaults, skill and MCP overrides.
 //!
 //! # Embedding
@@ -9,7 +9,6 @@
 mod color_panel;
 #[cfg(feature = "gallery")]
 pub mod gallery;
-pub mod mini;
 pub mod pic;
 pub mod project;
 #[cfg(test)]

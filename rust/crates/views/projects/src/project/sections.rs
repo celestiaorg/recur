@@ -713,7 +713,7 @@ impl ProjectView {
             copy_files = copy_files.child(list);
         }
 
-        let mini = |e: &Option<gpui_kit::Entity<crate::mini::MiniScriptEditor>>| {
+        let mini = |e: &Option<gpui_kit::Entity<recur_view_core::mini::MiniScriptEditor>>| {
             e.clone()
                 .map(|e| e.into_any_element())
                 .unwrap_or_else(|| div().into_any_element())
@@ -730,7 +730,10 @@ impl ProjectView {
             .pt(px(10.))
             .pb(px(8.));
         let narrow = recur_ui::set::narrow(window);
-        let ids: Vec<(u64, gpui_kit::Entity<crate::mini::MiniScriptEditor>)> = self
+        let ids: Vec<(
+            u64,
+            gpui_kit::Entity<recur_view_core::mini::MiniScriptEditor>,
+        )> = self
             .run_rows
             .iter()
             .map(|r| (r.id, r.editor.clone()))

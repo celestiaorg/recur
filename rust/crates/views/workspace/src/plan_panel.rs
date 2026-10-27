@@ -18,7 +18,6 @@ use gpui_kit::{
 use recur_agent::display::todos::{Todo, parse_todos};
 use recur_content::{MarkdownClass, MarkdownView, Sheet};
 use recur_domain::{Plan, PlanStep, Workspace};
-use recur_editor::view::{EditorEvent, EditorOptions, EditorView};
 use recur_engine::view::artifacts::ArtifactRef;
 use recur_engine::view::chat::AgentMsg;
 use recur_engine::view::loop_cockpit::FeedSess;
@@ -30,6 +29,7 @@ use recur_ui::widgets::ToastKind;
 use recur_ui::{IconName, Theme, icon};
 use recur_view_chat::chat::OpenArtifact;
 use recur_view_chat::session_feed::SessionFeed;
+use recur_view_core::mini::{MiniChange, MiniLang, MiniProps, MiniScriptEditor};
 use recur_view_core::state::WorkspaceSeed;
 use recur_view_core::{AppState, ViewContext, call, toast};
 use recur_view_observatory::artifacts_panel::{ArtifactsPanel, ArtifactsPanelEvent};
@@ -175,7 +175,7 @@ pub struct PlanPanel {
     pub(crate) editing: bool,
     selected_artifact: String,
     summary: Entity<TextareaState>,
-    body: Option<Entity<EditorView>>,
+    body: Option<Entity<MiniScriptEditor>>,
     body_draft: String,
     drafts: Vec<StepDraft>,
     rows: HashMap<String, StepRow>,
@@ -206,6 +206,12 @@ impl PlanPanel {
     }
 
     /// The rendered plan body's text.
+    /// The body editor while editing (`None` otherwise) and the draft a save submits.
+    #[cfg(test)]
+    pub(crate) fn test_body_editor(&self) -> (Option<Entity<MiniScriptEditor>>, String) {
+        (self.body.clone(), self.body_draft.clone())
+    }
+
     pub(crate) fn test_body_text(&self, cx: &gpui_kit::App) -> String {
         self.markdown
             .read(cx)
@@ -611,16 +617,20 @@ impl PlanPanel {
             .update(cx, |a, cx| a.set_value(summary, window, cx));
         style_area(&self.summary, cx);
         self.body_draft = body.clone();
+        // `<MiniScriptEditor lang="md" minLines={6} fill>`.
+        let state = self.state.clone();
         let editor = cx.new(|cx| {
-            let mut opts = EditorOptions::new("plan.md", &body);
-            opts.prefs = mini_prefs(&opts.prefs);
-            opts.pane = format!("plan-{}", self.ws_id);
-            EditorView::new(opts, window, cx)
+            let props = MiniProps {
+                lang: MiniLang::Md,
+                placeholder: "Relevant files, approach, edge cases, definition of done".into(),
+                min_lines: 6,
+                fill: true,
+                ..Default::default()
+            };
+            MiniScriptEditor::new(&state, &body, props, window, cx)
         });
-        let sub = cx.guarded_subscribe(&editor, |p, _, ev: &EditorEvent, _| {
-            if let EditorEvent::DocChanged(text) = ev {
-                p.body_draft = text.clone();
-            }
+        let sub = cx.guarded_subscribe(&editor, |p, _, MiniChange(text): &MiniChange, _| {
+            p.body_draft = text.clone();
         });
         self._subs.push(sub);
         self.body = Some(editor);
@@ -645,7 +655,7 @@ impl PlanPanel {
             return;
         }
         if let Some(b) = self.body.clone() {
-            self.body_draft = b.update(cx, |e, cx| e.get_doc(cx));
+            self.body_draft = b.read(cx).value(cx);
         }
         let summary_draft = self.summary.read(cx).value().to_string();
         let body = self.body_draft.trim().to_string();
@@ -897,18 +907,6 @@ impl PlanPanel {
 
     fn sessions(&self, cx: &gpui_kit::App) -> Vec<FeedSess> {
         self.feed.read(cx).sessions.clone()
-    }
-}
-
-/// The plan body editor's chrome (`MiniScriptEditor` with `lang="md"`, `fill`).
-fn mini_prefs(base: &recur_editor::prefs::EditorPrefs) -> recur_editor::prefs::EditorPrefs {
-    recur_editor::prefs::EditorPrefs {
-        line_numbers: true,
-        line_wrapping: true,
-        fold_gutter: false,
-        diff_gutter: false,
-        scroll_past_end: false,
-        ..base.clone()
     }
 }
 

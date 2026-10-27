@@ -24,7 +24,7 @@ use recur_ui::widgets::{IconPicked, IconPicker, Select, SelectEvent, ToastKind, 
 use recur_view_core::run::project_runs;
 use recur_view_core::{ViewContext, ViewName, call, toast};
 
-use crate::mini::{MiniChange, MiniLang, MiniProps, MiniScriptEditor};
+use recur_view_core::mini::{MiniChange, MiniLang, MiniProps, MiniScriptEditor};
 use recur_view_widgets::schedules::ScheduledPrompts;
 
 /// A section of the project page.

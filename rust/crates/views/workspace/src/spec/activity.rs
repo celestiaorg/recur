@@ -652,6 +652,24 @@ async fn plan_panel_shows_the_workspace_checklist_and_agent_todos(cx: &mut TestA
         todos.first().map(|t| t.content.as_str()),
         Some("Wire Plan panel")
     );
+
+    // Editing mounts the shared `MiniScriptEditor` (`lang="md"`, `fill`) on the plan's body,
+    // and what is typed there is the draft a save submits.
+    h.cx.update(|window, cx| panel.update(cx, |p, cx| p.start_edit(window, cx)));
+    h.settle();
+    let (editor, _) = h.cx.update(|_, cx| panel.read(cx).test_body_editor());
+    let editor = editor.expect("the body editor");
+    let seeded = h.cx.update(|_, cx| editor.read(cx).value(cx));
+    assert!(seeded.starts_with("Merge specialist cards"), "{seeded}");
+    h.cx.update(|window, cx| editor.update(cx, |e, cx| e.focus(window, cx)));
+    h.settle();
+    h.cx.simulate_input("!");
+    // The editor publishes its text on a debounce.
+    h.cx.executor()
+        .advance_clock(std::time::Duration::from_secs(1));
+    h.settle();
+    let (_, draft) = h.cx.update(|_, cx| panel.read(cx).test_body_editor());
+    assert!(draft.starts_with("!Merge specialist cards"), "{draft}");
 }
 
 // ---- closed chat recents ----

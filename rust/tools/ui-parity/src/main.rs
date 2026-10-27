@@ -183,7 +183,7 @@ fn build(name: &str, window: &mut Window, cx: &mut gpui_kit::App) -> Option<AnyV
     recur_editor::gallery::build(name, window, cx).or_else(|| gallery::build(name, window, cx))
 }
 
-fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
+fn render(specs: &[SceneSpec], out: &Path, bench: Option<usize>) -> Result<()> {
     std::fs::create_dir_all(out)?;
     // A scene is captured from the frames it is built in: markdown renders there, not on a
     // worker the headless app does not wait for (the test harnesses do the same).
@@ -200,6 +200,7 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
         cx.set_global(scene_host());
     });
     for spec in specs {
+        recur_ui::layout_root::take_settle_frames();
         cx.update(|cx| {
             Theme::set(spec.theme_id(), cx);
             recur_ui::motion::freeze(spec.animation_time.map(Duration::from_millis), cx);
@@ -298,6 +299,38 @@ fn render(specs: &[SceneSpec], out: &Path) -> Result<()> {
         }
         cx.run_until_parked();
         cx.update_window(any, |_, window, cx| window.render_frame(cx))?;
+        if bench.is_some() {
+            println!(
+                "settle {:40} layout root settle requests while building: {}",
+                spec.name,
+                recur_ui::layout_root::take_settle_frames()
+            );
+        }
+        if let Some(frames) = bench {
+            // Full frames (a refresh draws every view, caching off): warm up, then time each.
+            for _ in 0..3 {
+                cx.update_window(any, |_, window, cx| window.render_frame(cx))?;
+            }
+            recur_ui::guard::take_measure_count();
+            recur_ui::layout_root::take_settle_frames();
+            let mut times = Vec::with_capacity(frames);
+            for _ in 0..frames {
+                let t = std::time::Instant::now();
+                cx.update_window(any, |_, window, cx| window.render_frame(cx))?;
+                times.push(t.elapsed().as_secs_f64() * 1000.);
+            }
+            let measures = recur_ui::guard::take_measure_count() as usize / frames.max(1);
+            let settles = recur_ui::layout_root::take_settle_frames();
+            times.sort_by(f64::total_cmp);
+            println!(
+                "bench {:40} median {:7.2}ms  p90 {:7.2}ms  measures/frame {}  settle requests {}",
+                spec.name,
+                times[times.len() / 2],
+                times[times.len() * 9 / 10],
+                measures,
+                settles
+            );
+        }
         let shot = cx
             .capture_screenshot(any)
             .with_context(|| format!("capture {}", spec.name))?;
@@ -678,7 +711,15 @@ fn main() -> Result<()> {
         bail!("scenes without a Rust builder: {unknown:?}");
     }
     match cmd {
-        "render" => render(&specs, &root().join("out/candidate")),
+        "render" => render(&specs, &root().join("out/candidate"), None),
+        // Times full frames of each scene: `bench [frames] [scene…]`.
+        "bench" => {
+            let frames = std::env::var("UI_PARITY_BENCH_FRAMES")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(20);
+            render(&specs, &root().join("out/bench"), Some(frames))
+        }
         "diff" => {
             if !diff(&specs)? {
                 bail!("scenes over tolerance (heatmaps in out/diff)");
@@ -686,13 +727,13 @@ fn main() -> Result<()> {
             Ok(())
         }
         "check" => {
-            render(&specs, &root().join("out/candidate"))?;
+            render(&specs, &root().join("out/candidate"), None)?;
             if !diff(&specs)? {
                 bail!("scenes over tolerance (heatmaps in out/diff)");
             }
             Ok(())
         }
-        other => bail!("unknown command {other}; use render, diff or check"),
+        other => bail!("unknown command {other}; use render, diff, check or bench"),
     }
 }
 

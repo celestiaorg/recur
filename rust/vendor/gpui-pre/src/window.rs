@@ -5732,6 +5732,21 @@ impl Window {
         self.layout_engine = Some(layout_engine);
     }
 
+    /// [`Window::layout_bounds`] before GPUI snapped the edges to device pixels: where a box
+    /// at a fractional position really is.
+    pub fn layout_bounds_unsnapped(&mut self, layout_id: LayoutId) -> Bounds<Pixels> {
+        self.invalidator.debug_assert_prepaint();
+
+        let scale_factor = self.scale_factor();
+        let mut bounds = self
+            .layout_engine
+            .as_mut()
+            .unwrap()
+            .layout_bounds_unsnapped(layout_id, scale_factor);
+        bounds.origin += self.pixel_snap_point(self.element_offset());
+        bounds
+    }
+
     /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by
     /// GPUI itself automatically in order to pass your element its `Bounds` automatically.
     ///

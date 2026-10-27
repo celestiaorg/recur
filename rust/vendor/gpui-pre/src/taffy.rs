@@ -389,6 +389,17 @@ impl TaffyLayoutEngine {
         self.absolute_layout_bounds.insert(id, bounds);
         bounds
     }
+
+    /// The node's border box before snapping, in the space of `layout_bounds`.
+    pub fn layout_bounds_unsnapped(&mut self, id: LayoutId, scale_factor: f32) -> Bounds<Pixels> {
+        self.layout_bounds(id, scale_factor);
+        let origin = self.absolute_outer_origins[&id];
+        let size = self.taffy.layout(id.into()).expect(EXPECT_MESSAGE).size;
+        Bounds {
+            origin: origin.map(|v| Pixels(v / scale_factor)),
+            size: Size::from(size).map(|v: f32| Pixels(v / scale_factor)),
+        }
+    }
 }
 
 /// A unique identifier for a layout node, generated when requesting a layout from Taffy

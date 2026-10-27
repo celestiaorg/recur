@@ -9,11 +9,9 @@
 //! GPUI snaps each edge to device pixels from its unrounded window position, and a root lays out
 //! from an already snapped origin, so content below a fractional offset would round its edges
 //! differently from the same content laid out in place (and lose [`TIE_NUDGE`](crate::style::TIE_NUDGE)).
-//! The box reads its unrounded edges off probe markers placed a fraction of a device pixel past
-//! each edge, and lays the content out shifted by the difference, so every edge lands where the
-//! in-place layout puts it. A marker only says whether the edge plus its offset rounds up, so
-//! each frame places [`STEPS`] markers across the whole pixel and as many inside the interval the
-//! last frame left, narrowing it until it is far finer than the tie nudge.
+//! The box reads its unrounded edges from layout (`Window::layout_bounds_unsnapped`, vendored
+//! gpui-pre) and lays the content out shifted by the difference, so every edge lands where the
+//! in-place layout puts it.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -49,11 +47,6 @@ pub fn take_settle_frames() -> u64 {
     SETTLE_FRAMES.swap(0, std::sync::atomic::Ordering::Relaxed)
 }
 
-/// Markers per edge and per pass: each frame narrows an edge's interval this many times.
-const STEPS: usize = 24;
-/// Narrower than this (device px) an edge is settled.
-const SETTLED: f32 = 1e-4;
-
 pub struct LayoutRoot {
     id: ElementId,
     style: StyleRefinement,
@@ -84,73 +77,6 @@ impl IntoElement for LayoutRoot {
 }
 
 /// Where an edge's unrounded position sits past its snapped one, in device px: in `(lo, hi]`.
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Span {
-    lo: f32,
-    hi: f32,
-}
-
-impl Default for Span {
-    fn default() -> Self {
-        Span { lo: -0.5, hi: 0.5 }
-    }
-}
-
-impl Span {
-    /// The thresholds to test this frame: the whole pixel, then the interval left last frame. A
-    /// settled edge only checks its interval's ends, and starts over if it moved past one.
-    fn thresholds(self) -> Vec<f32> {
-        let n = STEPS as f32;
-        let mut t: Vec<f32> = if self.settled() {
-            vec![self.lo, self.hi]
-        } else {
-            (1..STEPS).map(|k| -0.5 + k as f32 / n).collect()
-        };
-        if !self.settled() && self.hi - self.lo < 1. - 1e-6 {
-            t.extend((0..=STEPS).map(|j| self.lo + (self.hi - self.lo) * j as f32 / n));
-        }
-        t.retain(|t| t.abs() < 0.5 - 1e-5);
-        t
-    }
-
-    /// The interval `results` (threshold, edge past it) leave.
-    fn narrowed(results: &[(f32, bool)]) -> Span {
-        let mut s = Span::default();
-        for &(t, past) in results {
-            if past {
-                s.lo = s.lo.max(t);
-            } else {
-                s.hi = s.hi.min(t);
-            }
-        }
-        s
-    }
-
-    fn mid(self) -> f32 {
-        (self.lo + self.hi) / 2.
-    }
-
-    fn settled(self) -> bool {
-        self.hi - self.lo < SETTLED
-    }
-}
-
-#[derive(Clone, Copy, Default)]
-struct Edges {
-    left: Span,
-    top: Span,
-    right: Span,
-    bottom: Span,
-}
-
-/// The markers this frame placed, with the threshold each tests.
-pub struct Probes {
-    left: Vec<(f32, LayoutId)>,
-    top: Vec<(f32, LayoutId)>,
-    right: Vec<(f32, LayoutId)>,
-    bottom: Vec<(f32, LayoutId)>,
-}
-
 fn node(style: Style, children: &[LayoutId], window: &mut Window, cx: &mut App) -> LayoutId {
     window.request_layout(style, children.iter().copied(), cx)
 }
@@ -172,45 +98,36 @@ fn spacer(len: f32, vertical: bool, dp: f32, window: &mut Window, cx: &mut App) 
     node(s, &[], window, cx)
 }
 
-/// A zero-size marker `offset` px inside the box from one of its edges, along one axis.
-fn probe(
-    offset: f32,
-    vertical: bool,
-    far: bool,
-    dp: f32,
-    window: &mut Window,
-    cx: &mut App,
-) -> (LayoutId, LayoutId) {
-    let m = Style {
-        flex_shrink: 0.,
-        ..Default::default()
-    };
-    let marker = node(m, &[], window, cx);
-    let gap = spacer(offset, vertical, dp, window, cx);
-    let mut s = Style {
-        display: gpui_kit::Display::Flex,
-        position: Position::Absolute,
-        flex_direction: if vertical {
-            FlexDirection::Column
-        } else {
-            FlexDirection::Row
-        },
-        ..Default::default()
-    };
-    let kids = if far {
-        s.inset.right = px(0.).into();
-        s.inset.bottom = px(0.).into();
-        [marker, gap]
-    } else {
-        s.inset.left = px(0.).into();
-        s.inset.top = px(0.).into();
-        [gap, marker]
-    };
-    (node(s, &kids, window, cx), marker)
+/// A box's snapped device edges and how far its unrounded edges sit past them (device px).
+struct Fractions {
+    x0: f32,
+    y0: f32,
+    left: f32,
+    top: f32,
+    /// Unrounded width and height, px.
+    w: f32,
+    h: f32,
+}
+
+impl Fractions {
+    fn read(layout: LayoutId, bounds: Bounds<Pixels>, window: &mut Window) -> Fractions {
+        let s = window.scale_factor();
+        let dev = |v: Pixels| (f32::from(v) * s).round();
+        let (x0, y0) = (dev(bounds.origin.x), dev(bounds.origin.y));
+        let u = window.layout_bounds_unsnapped(layout);
+        Fractions {
+            x0,
+            y0,
+            left: f32::from(u.origin.x) * s - x0,
+            top: f32::from(u.origin.y) * s - y0,
+            w: f32::from(u.size.width),
+            h: f32::from(u.size.height),
+        }
+    }
 }
 
 impl Element for LayoutRoot {
-    type RequestLayoutState = Probes;
+    type RequestLayoutState = LayoutId;
     type PrepaintState = ();
 
     fn id(&self) -> Option<ElementId> {
@@ -223,59 +140,26 @@ impl Element for LayoutRoot {
 
     fn request_layout(
         &mut self,
-        id: Option<&GlobalElementId>,
+        _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
         cx: &mut App,
-    ) -> (LayoutId, Probes) {
-        let edges = id.map_or_else(Edges::default, |id| {
-            window.with_element_state::<Edges, _>(id, |s, _| {
-                let s = s.unwrap_or_default();
-                (s, s)
-            })
-        });
-        let dp = 1. / window.scale_factor();
-        let mut children = Vec::new();
-        let mut place = |span: Span, vertical: bool, far: bool, window: &mut Window| {
-            span.thresholds()
-                .into_iter()
-                .map(|t| {
-                    // A near edge past `t` rounds up with a marker `0.5 - t` inside it; a far
-                    // edge past `t` stays up with a marker `t + 0.5` inside it.
-                    let offset = if far { t + 0.5 } else { 0.5 - t };
-                    let (wrap, marker) = probe(offset * dp, vertical, far, dp, window, cx);
-                    children.push(wrap);
-                    (t, marker)
-                })
-                .collect::<Vec<_>>()
-        };
-        let left = place(edges.left, false, false, window);
-        let top = place(edges.top, true, false, window);
-        let right = place(edges.right, false, true, window);
-        let bottom = place(edges.bottom, true, true, window);
+    ) -> (LayoutId, LayoutId) {
         let mut style = Style::default();
         style.refine(&self.style);
         if style.position != Position::Absolute {
             style.position = Position::Relative;
         }
-        let layout = window.request_layout(style, children, cx);
-        (
-            layout,
-            Probes {
-                left,
-                top,
-                right,
-                bottom,
-            },
-        )
+        let layout = window.request_layout(style, [], cx);
+        (layout, layout)
     }
 
     fn prepaint(
         &mut self,
-        id: Option<&GlobalElementId>,
+        _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         bounds: Bounds<Pixels>,
-        probes: &mut Probes,
+        layout: &mut LayoutId,
         window: &mut Window,
         cx: &mut App,
     ) {
@@ -283,54 +167,10 @@ impl Element for LayoutRoot {
             return;
         };
         let s = window.scale_factor();
-        let dev = |v: Pixels| (f32::from(v) * s).round();
-        let (x0, y0) = (dev(bounds.origin.x), dev(bounds.origin.y));
-        let (x1, y1) = (
-            dev(bounds.origin.x + bounds.size.width),
-            dev(bounds.origin.y + bounds.size.height),
-        );
-        let read = |list: &[(f32, LayoutId)],
-                    snapped: f32,
-                    far: bool,
-                    vertical: bool,
-                    window: &mut Window| {
-            let results: Vec<(f32, bool)> = list
-                .iter()
-                .map(|&(t, marker)| {
-                    let o = window.layout_bounds(marker).origin;
-                    let v = dev(if vertical { o.y } else { o.x });
-                    // A near marker rounds up, and a far one stays up, when the edge is past `t`.
-                    let past = if far {
-                        v > snapped - 0.5
-                    } else {
-                        v > snapped + 0.5
-                    };
-                    (t, past)
-                })
-                .collect();
-            Span::narrowed(&results)
-        };
-        let edges = Edges {
-            left: read(&probes.left, x0, false, false, window),
-            top: read(&probes.top, y0, false, true, window),
-            right: read(&probes.right, x1, true, false, window),
-            bottom: read(&probes.bottom, y1, true, true, window),
-        };
-        if let Some(id) = id {
-            window.with_element_state::<Edges, _>(id, |_, _| ((), edges));
-        }
-        let settled = [edges.left, edges.top, edges.right, edges.bottom]
-            .iter()
-            .all(|e| e.settled());
-        if !settled {
-            settle_frame(window, None, cx);
-        }
-        // Unrounded edges in device px, and the content's unrounded size in px.
-        let (ux0, uy0) = (x0 + edges.left.mid(), y0 + edges.top.mid());
-        let (ux1, uy1) = (x1 + edges.right.mid(), y1 + edges.bottom.mid());
-        let (w, h) = (((ux1 - ux0) / s).max(0.), ((uy1 - uy0) / s).max(0.));
-        // The root starts one device px before the snapped corner, so the shift is positive.
-        let (sx, sy) = (edges.left.mid() + 1., edges.top.mid() + 1.);
+        let edges = Fractions::read(*layout, bounds, window);
+        let (x0, y0) = (edges.x0, edges.y0);
+        let (sx, sy) = (edges.left + 1., edges.top + 1.);
+        let (w, h) = (edges.w, edges.h);
         let dp = 1. / s;
         // The content box sits at the shift and takes the unrounded size, both as percentages
         // of the root (authored lengths would round to device pixels), and lays out once: no
@@ -358,7 +198,7 @@ impl Element for LayoutRoot {
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         _: Bounds<Pixels>,
-        _: &mut Probes,
+        _: &mut LayoutId,
         _: &mut (),
         window: &mut Window,
         cx: &mut App,
@@ -434,7 +274,6 @@ struct Place {
     /// The content's unrounded width and the root's snapped width, px.
     w: f32,
     root_w: f32,
-    bottom: Span,
 }
 
 /// What a [`cached_block`] and its view share: the place the block computed this frame, the
@@ -443,7 +282,7 @@ struct Place {
 pub struct BlockSlot {
     place: std::cell::Cell<Option<Place>>,
     rendered: std::cell::Cell<Option<Place>>,
-    measured: std::cell::Cell<Option<(f32, Span)>>,
+    measured: std::cell::Cell<Option<f32>>,
     markers: Rc<RefCell<BottomMarkers>>,
 }
 
@@ -453,7 +292,6 @@ pub fn block_content(slot: &Rc<BlockSlot>, child: impl IntoElement, window: &Win
         return div().w_full().child(child).into_any_element();
     };
     slot.rendered.set(Some(p));
-    slot.markers.borrow_mut().thresholds = p.bottom.thresholds();
     let dp = 1. / window.scale_factor();
     let mut content = div()
         .absolute()
@@ -476,21 +314,14 @@ pub fn block_content(slot: &Rc<BlockSlot>, child: impl IntoElement, window: &Win
         .into_any_element()
 }
 
-/// The content's unrounded height under its root's top spacer of `sy` device px, and where its
-/// bottom sits past its snapped position, read off the markers of the last layout.
-fn read_bottom(m: &BottomMarkers, sy: f32, window: &mut Window) -> Option<(f32, Span)> {
+/// The content's unrounded height under its root's top spacer of `sy` device px, read off the
+/// markers of the last layout.
+fn read_bottom(m: &BottomMarkers, sy: f32, window: &mut Window) -> Option<f32> {
     let (o, at) = (m.origin?, m.at?);
-    let s = window.scale_factor();
-    let dev = |v: Pixels| (f32::from(v) * s).round();
-    let base = dev(window.layout_bounds(o).origin.y);
-    let rb = dev(window.layout_bounds(at).origin.y) - base;
-    let results: Vec<(f32, bool)> = m
-        .under
-        .iter()
-        .map(|&(t, mk)| (t, dev(window.layout_bounds(mk).origin.y) - base > rb + 0.5))
-        .collect();
-    let bottom = Span::narrowed(&results);
-    Some(((rb + bottom.mid() - sy) / s, bottom))
+    let y =
+        |id: LayoutId, window: &mut Window| f32::from(window.layout_bounds_unsnapped(id).origin.y);
+    let dp = 1. / window.scale_factor();
+    Some(y(at, window) - y(o, window) - sy * dp)
 }
 
 /// GPUI's snap of a device-px coordinate: half pixels toward zero.
@@ -511,24 +342,17 @@ impl IntoElement for LayoutBlock {
 
 #[derive(Clone, Copy, Default)]
 struct BlockState {
-    left: Span,
-    top: Span,
-    right: Span,
-    /// Where the content's bottom sits past its snapped position.
-    bottom: Span,
     /// The content's unrounded height, px (`None` before the first layout).
     height: Option<f32>,
 }
 
 /// Markers in the content's own layout: one at its root's origin (every reading is relative to
-/// it: a bounds read after the root's prepaint lacks the root's offset), one at the content's
-/// bottom, then one per threshold under it.
+/// it: a bounds read after the root's prepaint lacks the root's offset) and one at the content's
+/// bottom.
 #[derive(Default)]
 struct BottomMarkers {
-    thresholds: Vec<f32>,
     origin: Option<LayoutId>,
     at: Option<LayoutId>,
-    under: Vec<(f32, LayoutId)>,
 }
 
 /// Records the content root's origin.
@@ -618,10 +442,7 @@ marker_element!(Origin, |o: &mut Origin,
 marker_element!(Bottom, |b: &mut Bottom,
                          window: &mut Window,
                          cx: &mut App| {
-    let dp = 1. / window.scale_factor();
-    let below = || Style {
-        display: gpui_kit::Display::Flex,
-        flex_direction: FlexDirection::Column,
+    let below = Style {
         position: Position::Absolute,
         inset: gpui_kit::Edges {
             top: gpui_kit::relative(1.).into(),
@@ -630,19 +451,8 @@ marker_element!(Bottom, |b: &mut Bottom,
         },
         ..Default::default()
     };
-    let mut m = b.0.borrow_mut();
-    let thresholds = m.thresholds.clone();
     let at = zero(window, cx);
-    let mut kids = vec![node(below(), &[at], window, cx)];
-    m.at = Some(at);
-    m.under.clear();
-    for t in thresholds {
-        // The bottom is past `t` when a marker `0.5 - t` under it rounds up.
-        let mk = zero(window, cx);
-        let gap = spacer((0.5 - t) * dp, true, dp, window, cx);
-        kids.push(node(below(), &[gap, mk], window, cx));
-        m.under.push((t, mk));
-    }
+    b.0.borrow_mut().at = Some(at);
     let wrap = Style {
         position: Position::Absolute,
         size: gpui_kit::Size {
@@ -651,7 +461,8 @@ marker_element!(Bottom, |b: &mut Bottom,
         },
         ..Default::default()
     };
-    (node(wrap, &kids, window, cx), ())
+    let below = node(below, &[at], window, cx);
+    (node(wrap, &[below], window, cx), ())
 });
 
 impl IntoElement for Measure {
@@ -717,11 +528,9 @@ impl Element for Measure {
     }
 }
 
-pub struct BlockProbes {
+pub struct BlockLayout {
     state: BlockState,
-    left: Vec<(f32, LayoutId)>,
-    top: Vec<(f32, LayoutId)>,
-    right: Vec<(f32, LayoutId)>,
+    layout: LayoutId,
 }
 
 impl LayoutBlock {
@@ -730,16 +539,8 @@ impl LayoutBlock {
         id: Option<&GlobalElementId>,
         state: BlockState,
         root: AnyElement,
-        view: Option<gpui_kit::EntityId>,
         window: &mut Window,
-        cx: &mut App,
     ) {
-        let settled = [state.left, state.top, state.right, state.bottom]
-            .iter()
-            .all(|e| e.settled());
-        if !settled {
-            settle_frame(window, view, cx);
-        }
         if let Some(id) = id {
             window.with_element_state::<BlockState, _>(id, |_, _| ((), state));
         }
@@ -748,7 +549,7 @@ impl LayoutBlock {
 }
 
 impl Element for LayoutBlock {
-    type RequestLayoutState = BlockProbes;
+    type RequestLayoutState = BlockLayout;
     type PrepaintState = ();
 
     fn id(&self) -> Option<ElementId> {
@@ -765,7 +566,7 @@ impl Element for LayoutBlock {
         _: Option<&InspectorElementId>,
         window: &mut Window,
         cx: &mut App,
-    ) -> (LayoutId, BlockProbes) {
+    ) -> (LayoutId, BlockLayout) {
         let state = id.map_or_else(BlockState::default, |id| {
             window.with_element_state::<BlockState, _>(id, |s, _| {
                 let s = s.unwrap_or_default();
@@ -774,22 +575,6 @@ impl Element for LayoutBlock {
         });
         let scale = window.scale_factor();
         let dp = 1. / scale;
-        let mut probes = Vec::new();
-        let mut place = |span: Span, vertical: bool, far: bool, window: &mut Window| {
-            span.thresholds()
-                .into_iter()
-                .map(|t| {
-                    let offset = if far { t + 0.5 } else { 0.5 - t };
-                    let (wrap, marker) = probe(offset * dp, vertical, far, dp, window, cx);
-                    probes.push(wrap);
-                    (t, marker)
-                })
-                .collect::<Vec<_>>()
-        };
-        let left = place(state.left, false, false, window);
-        let top = place(state.top, true, false, window);
-        let right = place(state.right, false, true, window);
-        self.markers.borrow_mut().thresholds = state.bottom.thresholds();
         // Whole device pixels in the box, the rest in a spacer under it.
         let h = state.height.unwrap_or(self.estimate).max(0.);
         let whole = (h * scale).floor() / scale;
@@ -800,7 +585,7 @@ impl Element for LayoutBlock {
         };
         boxed.size.width = gpui_kit::relative(1.).into();
         boxed.size.height = px(whole).into();
-        let mut kids = vec![node(boxed, &probes, window, cx)];
+        let mut kids = vec![node(boxed, &[], window, cx)];
         if h - whole > 1e-4 {
             kids.push(spacer(h - whole, true, dp, window, cx));
         }
@@ -811,15 +596,8 @@ impl Element for LayoutBlock {
             ..Default::default()
         };
         outer.size.width = gpui_kit::relative(1.).into();
-        (
-            node(outer, &kids, window, cx),
-            BlockProbes {
-                state,
-                left,
-                top,
-                right,
-            },
-        )
+        let layout = node(outer, &kids, window, cx);
+        (layout, BlockLayout { state, layout })
     }
 
     fn prepaint(
@@ -827,7 +605,7 @@ impl Element for LayoutBlock {
         id: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         bounds: Bounds<Pixels>,
-        probes: &mut BlockProbes,
+        block: &mut BlockLayout,
         window: &mut Window,
         cx: &mut App,
     ) {
@@ -836,37 +614,11 @@ impl Element for LayoutBlock {
         };
         let s = window.scale_factor();
         let dp = 1. / s;
-        let dev = |v: Pixels| (f32::from(v) * s).round();
-        let (x0, y0) = (dev(bounds.origin.x), dev(bounds.origin.y));
-        let x1 = dev(bounds.origin.x + bounds.size.width);
-        let read = |list: &[(f32, LayoutId)],
-                    snapped: f32,
-                    far: bool,
-                    vertical: bool,
-                    window: &mut Window| {
-            let results: Vec<(f32, bool)> = list
-                .iter()
-                .map(|&(t, marker)| {
-                    let o = window.layout_bounds(marker).origin;
-                    let v = dev(if vertical { o.y } else { o.x });
-                    (
-                        t,
-                        if far {
-                            v > snapped - 0.5
-                        } else {
-                            v > snapped + 0.5
-                        },
-                    )
-                })
-                .collect();
-            Span::narrowed(&results)
-        };
-        let mut state = probes.state;
-        state.left = read(&probes.left, x0, false, false, window);
-        state.top = read(&probes.top, y0, false, true, window);
-        state.right = read(&probes.right, x1, true, false, window);
-        let (sx, sy) = (state.left.mid() + 1., state.top.mid() + 1.);
-        let w = ((x1 + state.right.mid()) - (x0 + state.left.mid())) / s;
+        let edges = Fractions::read(block.layout, bounds, window);
+        let (x0, y0) = (edges.x0, edges.y0);
+        let mut state = block.state;
+        let (sx, sy) = (edges.left + 1., edges.top + 1.);
+        let w = edges.w;
         let aw = (w + sx * dp).max(1e-6);
         let origin = gpui_kit::point(px(x0 / s - dp), px(y0 / s - dp));
         let child = match child {
@@ -877,7 +629,6 @@ impl Element for LayoutBlock {
                     sy,
                     w,
                     root_w: round_half_toward_zero(aw * s) / s,
-                    bottom: state.bottom,
                 };
                 slot.place.set(Some(place));
                 let h = state.height.unwrap_or(self.estimate).max(0.);
@@ -897,17 +648,16 @@ impl Element for LayoutBlock {
                 // A view replayed from its cache keeps the place it rendered at: render it
                 // again at this one on the next frame.
                 let mut settle = slot.rendered.get() != Some(place);
-                if let Some((height, bottom)) = slot.measured.take() {
-                    state.bottom = bottom;
-                    if state.height.is_none_or(|h| (h - height).abs() > 1e-3) {
-                        state.height = Some(height);
-                        settle = true;
-                    }
+                if let Some(height) = slot.measured.take()
+                    && state.height.is_none_or(|h| (h - height).abs() > 1e-3)
+                {
+                    state.height = Some(height);
+                    settle = true;
                 }
                 if settle {
                     settle_frame(window, Some(entity), cx);
                 }
-                self.finish(id, state, root, Some(entity), window, cx);
+                self.finish(id, state, root, window);
                 return;
             }
         };
@@ -938,17 +688,15 @@ impl Element for LayoutBlock {
             cx,
         );
         root.prepaint_at(origin, window, cx);
-        // The content's bottom in its root's device pixels: snapped at the marker on it, its
-        // fraction from the markers under it.
+        // The content's unrounded height, read off the marker at its bottom.
         let read = read_bottom(&self.markers.borrow(), sy, window);
-        if let Some((height, bottom)) = read {
-            state.bottom = bottom;
-            if state.height.is_none_or(|h| (h - height).abs() > 1e-3) {
-                state.height = Some(height);
-                settle_frame(window, None, cx);
-            }
+        if let Some(height) = read
+            && state.height.is_none_or(|h| (h - height).abs() > 1e-3)
+        {
+            state.height = Some(height);
+            settle_frame(window, None, cx);
         }
-        self.finish(id, state, root, None, window, cx);
+        self.finish(id, state, root, window);
     }
 
     fn paint(
@@ -956,7 +704,7 @@ impl Element for LayoutBlock {
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         _: Bounds<Pixels>,
-        _: &mut BlockProbes,
+        _: &mut BlockLayout,
         _: &mut (),
         window: &mut Window,
         cx: &mut App,
@@ -964,60 +712,6 @@ impl Element for LayoutBlock {
         if let Some(root) = self.root.as_mut() {
             root.paint(window, cx);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Thresholds read against a known fraction, as the markers would round.
-    fn frame(span: Span, d: f32) -> Span {
-        let results: Vec<(f32, bool)> = span.thresholds().into_iter().map(|t| (t, d > t)).collect();
-        Span::narrowed(&results)
-    }
-
-    #[test]
-    fn an_edge_settles_finer_than_the_tie_nudge_in_three_frames() {
-        let nudge = 2. * crate::style::TIE_NUDGE;
-        for d in [-0.4372_f32, -0.01, nudge, 0.2031, 0.4999] {
-            let mut s = Span::default();
-            for _ in 0..3 {
-                s = frame(s, d);
-            }
-            assert!(s.lo < d && d <= s.hi, "{d} outside {s:?}");
-            assert!(s.hi - s.lo < nudge / 4., "{d}: {s:?}");
-        }
-    }
-
-    #[test]
-    fn a_settled_edge_holds_on_two_markers_and_reopens_when_it_moves() {
-        let mut s = Span::default();
-        for _ in 0..3 {
-            s = frame(s, 0.1);
-        }
-        assert!(s.settled());
-        assert_eq!(s.thresholds().len(), 2);
-        assert_eq!(frame(s, 0.1), s);
-        let moved = frame(s, 0.3);
-        assert!(!moved.settled() && moved.lo < 0.3 && 0.3 <= moved.hi);
-        let mut s = moved;
-        for _ in 0..3 {
-            s = frame(s, 0.3);
-        }
-        assert!(s.settled() && s.lo < 0.3 && 0.3 <= s.hi);
-    }
-
-    #[test]
-    fn a_moved_edge_starts_over_from_the_whole_pixel() {
-        let mut s = Span::default();
-        for _ in 0..3 {
-            s = frame(s, 0.1);
-        }
-        let s = frame(s, -0.3);
-        assert!(s.lo < -0.3 && -0.3 <= s.hi && !s.settled());
-        let s = frame(s, -0.3);
-        assert!(s.lo < -0.3 && -0.3 <= s.hi && s.hi - s.lo <= 1. / STEPS as f32 + 1e-6);
     }
 }
 

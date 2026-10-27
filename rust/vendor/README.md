@@ -19,6 +19,10 @@ Anything else (a notify reaching a non-isolated view, a notify of a non-view ent
 
 `Window::request_measured_layout_exact` is `request_measured_layout` without ceiling the measured size to device pixels. Box edges are still snapped after layout, so a box placed after a fractional size keeps the offset WebKit gives it, in the same pass. `recur_ui::exact::measured` uses it for text and the chat's flows (`taffy.rs` `NodeContext::exact`).
 
+### Unsnapped bounds
+
+`Window::layout_bounds_unsnapped` is `layout_bounds` before the edges snap to device pixels (`taffy.rs` keeps the unrounded origins it snaps from). `recur_ui::layout_root` reads a layout root's or block's fractional edges from it, so content laid out as its own root lands where in-place layout puts it, in one frame.
+
 ### Contained panics
 
 A panic must not unwind into a platform callback: AppKit, GCD and GLib frames cannot be unwound through, so the process aborts. Recur's own guards (`recur_ui::guard`) contain renders and the callbacks Recur wraps; the patch contains the rest inside GPUI (`src/unwind.rs`):
@@ -36,7 +40,7 @@ An isolated view's size comes from its `style`, never from its content, and anyt
 
 ### Upgrading
 
-gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way rust/vendor/gpui-pre.patch` and fix what moved. The patch touches `taffy.rs` (exact measured sizes), `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
+gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way rust/vendor/gpui-pre.patch` and fix what moved. The patch touches `taffy.rs` (exact measured sizes, unsnapped bounds), `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
 
 Regenerate the patch after editing the vendored source:
 

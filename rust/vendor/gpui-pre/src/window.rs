@@ -5696,10 +5696,10 @@ impl Window {
             .request_measured_layout(style, rem_size, scale_factor, false, measure)
     }
 
-    /// [`Window::request_measured_layout`], keeping the measured width as the closure returns
-    /// it instead of ceiling it to device pixels (the height still ceils). Box edges are still
-    /// snapped after layout, so a leaf placed after a fractional width keeps its exact offset.
-    pub fn request_measured_layout_exact_width<F>(&mut self, style: Style, measure: F) -> LayoutId
+    /// [`Window::request_measured_layout`], keeping the measured size as the closure returns it
+    /// instead of ceiling it to device pixels. Box edges are still snapped after layout, so a
+    /// box placed after a fractional size keeps its exact offset.
+    pub fn request_measured_layout_exact<F>(&mut self, style: Style, measure: F) -> LayoutId
     where
         F: Fn(Size<Option<Pixels>>, Size<AvailableSpace>, &mut Window, &mut App) -> Size<Pixels>
             + 'static,

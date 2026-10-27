@@ -1679,7 +1679,6 @@ impl Laid {
 
 pub struct TextState {
     layout: Rc<RefCell<Option<Laid>>>,
-    exact: Option<crate::exact::ExactCell>,
     /// A single unwrapped line's exact width, which sized the box.
     natural: Option<f32>,
     /// The max-content width layout measured, when it asked (a shrink-to-fit box).
@@ -1811,7 +1810,7 @@ impl Element for Text {
 
     fn request_layout(
         &mut self,
-        id: Option<&GlobalElementId>,
+        _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
         cx: &mut App,
@@ -1878,7 +1877,6 @@ impl Element for Text {
                     window.request_layout(style, leaves, cx),
                     TextState {
                         layout,
-                        exact: None,
                         natural: Some(w),
                         max_content,
                         probes,
@@ -1887,17 +1885,10 @@ impl Element for Text {
                 );
             }
         }
-        let exact = crate::exact::exact_cell(id, window);
-        let guess = layout
-            .borrow()
-            .as_ref()
-            .map_or(0., |l| l.unwrapped_height(clamp));
-        let mut leaves = crate::exact::measured(
+        let mut leaves: SmallVec<[LayoutId; 6]> = SmallVec::new();
+        leaves.push(crate::exact::measured(
             style.min_size.width,
-            exact.as_ref(),
-            guess,
             window,
-            cx,
             move |known, available, window| {
                 if counted {
                     crate::guard::count_measure();
@@ -1923,7 +1914,7 @@ impl Element for Text {
                 measured_w.set(Some(size.0));
                 size
             },
-        );
+        ));
         let offsets = layout
             .borrow()
             .as_ref()
@@ -1934,7 +1925,6 @@ impl Element for Text {
             window.request_layout(style, leaves, cx),
             TextState {
                 layout,
-                exact,
                 natural: None,
                 max_content,
                 probes,
@@ -1973,7 +1963,6 @@ impl Element for Text {
                 self.ellipsis,
                 window,
             );
-            crate::exact::settle(state.exact.as_ref(), laid.measured().1, window, cx);
             if !self.links.is_empty() {
                 hits = link_hitboxes(laid, bounds, self.align, &self.links, window);
             }
@@ -2109,7 +2098,6 @@ impl TextStack {
 }
 
 pub struct StackState {
-    exact: Option<crate::exact::ExactCell>,
     probes: Vec<(Probe, LayoutId)>,
     snapped: Snapped,
 }
@@ -2128,7 +2116,7 @@ impl Element for TextStack {
 
     fn request_layout(
         &mut self,
-        id: Option<&GlobalElementId>,
+        _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
         cx: &mut App,
@@ -2145,19 +2133,10 @@ impl Element for TextStack {
             .iter()
             .map(|(g, t)| (*g, t.white_space, t.anywhere, t.clamp, t.ellipsis))
             .collect();
-        let exact = crate::exact::exact_cell(id, window);
-        let guess = self
-            .blocks
-            .iter()
-            .zip(self.layouts.borrow().iter())
-            .map(|((gap, t), l)| gap + l.unwrapped_height(t.clamp))
-            .sum();
-        let mut leaves = crate::exact::measured(
+        let mut leaves: SmallVec<[LayoutId; 6]> = SmallVec::new();
+        leaves.push(crate::exact::measured(
             px(0.).into(),
-            exact.as_ref(),
-            guess,
             window,
-            cx,
             move |known, available, window| {
                 let mut layouts = layouts.borrow_mut();
                 let width = known.width.map(f32::from).or(match available.width {
@@ -2183,7 +2162,7 @@ impl Element for TextStack {
                 }
                 (w, h)
             },
-        );
+        ));
         let mut offsets = Vec::new();
         let mut top = 0.;
         for ((gap, t), l) in self.blocks.iter().zip(self.layouts.borrow().iter()) {
@@ -2200,7 +2179,6 @@ impl Element for TextStack {
         (
             window.request_layout(Style::default(), leaves, cx),
             StackState {
-                exact,
                 probes,
                 snapped: Vec::new(),
             },
@@ -2214,17 +2192,10 @@ impl Element for TextStack {
         bounds: Bounds<Pixels>,
         state: &mut StackState,
         window: &mut Window,
-        cx: &mut App,
+        _: &mut App,
     ) -> Vec<Vec<(usize, gpui_kit::Hitbox)>> {
         let mut layouts = self.layouts.borrow_mut();
         self.relayout(&mut layouts, Some(bounds.size.width.into()), true, window);
-        let h = self
-            .blocks
-            .iter()
-            .zip(layouts.iter())
-            .map(|((gap, _), laid)| gap + laid.measured().1)
-            .sum();
-        crate::exact::settle(state.exact.as_ref(), h, window, cx);
         state.snapped = resolve_probes(&state.probes, window);
         let mut y = f32::from(bounds.origin.y);
         let mut hits = Vec::new();

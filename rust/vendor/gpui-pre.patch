@@ -297,15 +297,15 @@ index be378132..1914983e 100644
          self.layer_stack.pop();
          self.paint_operations.push(PaintOperation::EndLayer);
 diff --git a/rust/vendor/gpui-pre/src/taffy.rs b/rust/vendor/gpui-pre/src/taffy.rs
-index b9e583a8..e79acbe1 100644
+index b9e583a8..a26d48b3 100644
 --- a/rust/vendor/gpui-pre/src/taffy.rs
 +++ b/rust/vendor/gpui-pre/src/taffy.rs
 @@ -27,6 +27,8 @@ type NodeMeasureFn = StackSafe<Box<MeasureFn>>;
  
  struct NodeContext {
      measure: NodeMeasureFn,
-+    /// Keep the measured width unrounded (`Window::request_measured_layout_exact_width`).
-+    exact_width: bool,
++    /// Keep the measured size unrounded (`Window::request_measured_layout_exact`).
++    exact: bool,
  }
  pub struct TaffyLayoutEngine {
      taffy: TaffyTree<NodeContext>,
@@ -313,36 +313,34 @@ index b9e583a8..e79acbe1 100644
          style: Style,
          rem_size: Pixels,
          scale_factor: f32,
-+        exact_width: bool,
++        exact: bool,
          measure: impl FnMut(
              Size<Option<Pixels>>,
              Size<AvailableSpace>,
-@@ -101,7 +104,13 @@ impl TaffyLayoutEngine {
+@@ -101,7 +104,10 @@ impl TaffyLayoutEngine {
          let measure = StackSafe::new(measure);
  
          self.taffy
 -            .new_leaf_with_context(taffy_style, NodeContext { measure })
 +            .new_leaf_with_context(
 +                taffy_style,
-+                NodeContext {
-+                    measure,
-+                    exact_width,
-+                },
++                NodeContext { measure, exact },
 +            )
              .expect(EXPECT_MESSAGE)
              .into()
      }
-@@ -261,7 +270,12 @@ impl TaffyLayoutEngine {
+@@ -261,7 +267,13 @@ impl TaffyLayoutEngine {
  
                      let measured_size: Size<Pixels> =
                          (node_context.measure)(known_dimensions, available_space, window, cx);
 -                    snap_measured_size_to_device_pixels(measured_size, scale_factor).into()
-+                    let mut snapped =
-+                        snap_measured_size_to_device_pixels(measured_size, scale_factor);
-+                    if node_context.exact_width {
-+                        snapped.width = measured_size.width.0.max(0.0) * scale_factor;
++                    if node_context.exact {
++                        measured_size
++                            .map(|d| d.0.max(0.0) * scale_factor)
++                            .into()
++                    } else {
++                        snap_measured_size_to_device_pixels(measured_size, scale_factor).into()
 +                    }
-+                    snapped.into()
                  },
              )
              .expect(EXPECT_MESSAGE);
@@ -920,7 +918,7 @@ index 081edd9a..d15cd1e6 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..e168b7f2 100644
+index 1214b035..faf015f7 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
 @@ -999,6 +999,16 @@ impl ElementIdStack {
@@ -1590,10 +1588,10 @@ index 1214b035..e168b7f2 100644
 +            .request_measured_layout(style, rem_size, scale_factor, false, measure)
 +    }
 +
-+    /// [`Window::request_measured_layout`], keeping the measured width as the closure returns
-+    /// it instead of ceiling it to device pixels (the height still ceils). Box edges are still
-+    /// snapped after layout, so a leaf placed after a fractional width keeps its exact offset.
-+    pub fn request_measured_layout_exact_width<F>(&mut self, style: Style, measure: F) -> LayoutId
++    /// [`Window::request_measured_layout`], keeping the measured size as the closure returns it
++    /// instead of ceiling it to device pixels. Box edges are still snapped after layout, so a
++    /// box placed after a fractional size keeps its exact offset.
++    pub fn request_measured_layout_exact<F>(&mut self, style: Style, measure: F) -> LayoutId
 +    where
 +        F: Fn(Size<Option<Pixels>>, Size<AvailableSpace>, &mut Window, &mut App) -> Size<Pixels>
 +            + 'static,

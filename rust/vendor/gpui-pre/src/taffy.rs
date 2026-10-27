@@ -27,8 +27,8 @@ type NodeMeasureFn = StackSafe<Box<MeasureFn>>;
 
 struct NodeContext {
     measure: NodeMeasureFn,
-    /// Keep the measured width unrounded (`Window::request_measured_layout_exact_width`).
-    exact_width: bool,
+    /// Keep the measured size unrounded (`Window::request_measured_layout_exact`).
+    exact: bool,
 }
 pub struct TaffyLayoutEngine {
     taffy: TaffyTree<NodeContext>,
@@ -89,7 +89,7 @@ impl TaffyLayoutEngine {
         style: Style,
         rem_size: Pixels,
         scale_factor: f32,
-        exact_width: bool,
+        exact: bool,
         measure: impl FnMut(
             Size<Option<Pixels>>,
             Size<AvailableSpace>,
@@ -106,10 +106,7 @@ impl TaffyLayoutEngine {
         self.taffy
             .new_leaf_with_context(
                 taffy_style,
-                NodeContext {
-                    measure,
-                    exact_width,
-                },
+                NodeContext { measure, exact },
             )
             .expect(EXPECT_MESSAGE)
             .into()
@@ -270,12 +267,13 @@ impl TaffyLayoutEngine {
 
                     let measured_size: Size<Pixels> =
                         (node_context.measure)(known_dimensions, available_space, window, cx);
-                    let mut snapped =
-                        snap_measured_size_to_device_pixels(measured_size, scale_factor);
-                    if node_context.exact_width {
-                        snapped.width = measured_size.width.0.max(0.0) * scale_factor;
+                    if node_context.exact {
+                        measured_size
+                            .map(|d| d.0.max(0.0) * scale_factor)
+                            .into()
+                    } else {
+                        snap_measured_size_to_device_pixels(measured_size, scale_factor).into()
                     }
-                    snapped.into()
                 },
             )
             .expect(EXPECT_MESSAGE);

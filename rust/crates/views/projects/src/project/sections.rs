@@ -614,7 +614,19 @@ impl ProjectView {
                     .font_family(recur_ui::fonts::MONO)
                     .text_size(px(12.))
                     .line_height(relative(1.45))
-                    .child(gpui_kit::base::input::Textarea::new(&self.copy_files)),
+                    .child(gpui_kit::base::input::Textarea::new(&self.copy_files))
+                    .when(self.copy_files.read(cx).value().is_empty(), |d| {
+                        d.child(
+                            div().absolute().top(px(9.)).left(px(12.)).right(px(12.)).child(
+                                text(super::COPY_FILES_PLACEHOLDER)
+                                    .pre_wrap()
+                                    .mono()
+                                    .size(12.)
+                                    .leading(1.45)
+                                    .color(t.faint),
+                            ),
+                        )
+                    }),
                 1.,
                 gpui_kit::Focusable::focus_handle(self.copy_files.read(cx), cx),
                 window,

@@ -299,7 +299,7 @@ pub(crate) fn run_name_key(id: u64) -> String {
 impl ProjectView {
     pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let copy_files =
-            cx.new(|cx| TextareaState::new(window, cx).placeholder("# .env*\n# **/.env.local"));
+            cx.new(|cx| TextareaState::new(window, cx).placeholder(COPY_FILES_PLACEHOLDER));
         let branch_sel = cx.new(|cx| {
             Select::new(Vec::new(), window, cx)
                 .label("Default branch")
@@ -1188,9 +1188,12 @@ impl ProjectView {
     }
 }
 
+/// The Files to copy placeholder, which the section draws as recur-ui text.
+pub(crate) const COPY_FILES_PLACEHOLDER: &str = "# .env*\n# **/.env.local";
+
 pub(crate) fn style_area(area: &Entity<TextareaState>, cx: &mut App) {
     let t = recur_ui::Theme::of(cx).tokens;
-    recur_ui::style::style_textarea(area, t.faint, cx);
+    recur_ui::style::style_textarea(area, t.faint.with_alpha(0.001), cx);
 }
 
 impl ProjectView {

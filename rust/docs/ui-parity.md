@@ -221,8 +221,8 @@ Every other scene allows no hard pixels. Rows marked *open* are not yet proven u
 | `briefing/schedule-editor`, `briefing/schedule-editor-once`, `briefing/schedule-editor-paper` | 59, 29, 63 | The cron expression and date fields (*open*: typed input text) |
 | `projects/general`, `projects/general-tall`, `projects/general-paper` | 57, 57, 85 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) |
 | `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 13, 48, 1, 2, 26 | The typed query and, in `goto-empty`, a 1px row under the input a device pixel off (*open*) |
-| `projects/run`, `projects/run-tall` | 185, 253 | The Files to copy placeholder, which gpui-base's textarea draws (*open*: typed input text) |
-| `projects/run-resized` | 251 | `projects/run`'s, plus the focused box's amber border at its rounded corners and the page's classic thumb on the taller page (scroll height across a rounding boundary) |
+| `projects/run`, `projects/run-tall` | 18, 86 | Curved-edge coverage at the run cards' corners (*open*) |
+| `projects/run-resized` | 84 | `projects/run`'s, plus the focused box's amber border at its rounded corners and the page's classic thumb on the taller page (scroll height across a rounding boundary) |
 
 ## Results
 

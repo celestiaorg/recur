@@ -224,6 +224,16 @@ mod tests {
             Some("https://github.com/bo/fork.git")
         );
         assert_eq!(fork_remote_url("app", "bo", "app"), None);
+        for (input, want) in [
+            ("git@github.com:celestiaorg/recur.git", Some("git@github.com:auricom/recur.git")),
+            ("https://github.com/celestiaorg/recur", Some("https://github.com/auricom/recur.git")),
+            ("https://github.com/celestiaorg/recur.git/\n", Some("https://github.com/auricom/recur.git")),
+            ("ssh://git@github.com/celestiaorg/recur.git", Some("ssh://git@github.com/auricom/recur.git")),
+            ("/tmp/x/celestiaorg/recur.git", Some("/tmp/x/auricom/recur.git")),
+            ("recur", None),
+        ] {
+            assert_eq!(fork_remote_url(input, "auricom", "recur").as_deref(), want, "{input}");
+        }
     }
 
     #[test]

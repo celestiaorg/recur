@@ -383,6 +383,59 @@ mod tests {
         assert_eq!(got[0].state, REVIEW_STATE_APPROVED);
     }
 
+    fn rows(raw: &str) -> Vec<PrListRow> {
+        parse_list(raw)
+            .unwrap()
+            .into_iter()
+            .map(ListedPr::into_row)
+            .collect()
+    }
+
+    #[test]
+    fn parse_github_pr_list() {
+        use crate::model::{GROUP_OPEN, GROUP_YOU, listed_attention_reasons, listed_state_group};
+        let rows = rows(
+            r#"[{"number": 12, "title": "Add OAuth", "url": "https://github.com/acme/app/pull/12",
+             "headRefName": "feat/oauth", "baseRefName": "main",
+             "author": {"login": "sam"}, "isDraft": false, "createdAt": "2026-08-01T09:00:00Z", "updatedAt": "2026-08-21T12:00:00Z",
+             "additions": 10, "deletions": 2, "changedFiles": 3, "reviewDecision": "REVIEW_REQUIRED",
+             "reviewRequests": [{"login": "avery"}], "assignees": [], "state": "OPEN"}]"#,
+        );
+        let r = &rows[0];
+        assert_eq!((r.number, r.author_login.as_str()), (12, "sam"));
+        assert_eq!(r.created_at, "2026-08-01T09:00:00Z");
+        assert_eq!(
+            listed_attention_reasons(r, "avery"),
+            [recur_domain::ATTENTION_REVIEW_REQUESTED]
+        );
+        assert!(listed_attention_reasons(r, "sam").is_empty());
+        assert_eq!(listed_state_group(r, "avery"), ("Review required", GROUP_YOU));
+        assert_eq!(listed_state_group(r, "other"), ("Review required", GROUP_OPEN));
+    }
+
+    #[test]
+    fn listed_checks_ok_reads_conclusion_not_name() {
+        let ok = |raw: &str| {
+            let r = &rows(&format!(r#"[{{"number":1,"statusCheckRollup":{raw}}}]"#))[0];
+            (r.checks_ok, r.has_checks)
+        };
+        assert_eq!(ok(r#"[{"name":"Error","conclusion":"success"}]"#), (true, true));
+        assert_eq!(ok(r#"[{"conclusion":"FAILURE"}]"#), (false, true));
+        assert_eq!(ok("null"), (true, false));
+        for pending in [
+            r#"[{"name":"build","status":"IN_PROGRESS","conclusion":null}]"#,
+            r#"[{"context":"license","state":"PENDING"}]"#,
+            r#"[{"name":"lint","status":"QUEUED"}]"#,
+        ] {
+            assert_eq!(ok(pending), (true, true), "{pending}");
+        }
+        let fail = &rows(r#"[{"number":1,"statusCheckRollup":[{"name":"build","conclusion":"FAILURE"}]}]"#)[0];
+        assert_eq!(
+            (fail.checks.len(), fail.checks[0].status.as_str(), fail.checks[0].passed),
+            (1, "fail", false)
+        );
+    }
+
     #[test]
     fn rollup_checks_from_array_or_nodes() {
         let rows = parse_list(

@@ -194,6 +194,16 @@ fn with_runs(runs: &[(&str, &str)]) -> impl FnOnce(&mut recur_services::mock::Se
     }
 }
 
+/// The dock's own chords: ⌘ on macOS; on Linux Ctrl+Shift, since the terminal keeps Ctrl chords
+/// (`dock_key`, as `TerminalDock.svelte`).
+fn dock_chord(key: &str) -> String {
+    if cfg!(target_os = "macos") {
+        format!("cmd-{key}")
+    } else {
+        format!("ctrl-shift-{key}")
+    }
+}
+
 fn dock_tabs(h: &mut H) -> Vec<(String, String, bool)> {
     h.read(|o, cx| {
         o.dock
@@ -387,18 +397,18 @@ async fn cmd_t_and_cmd_w_open_and_close_tabs_while_the_dock_is_focused(cx: &mut 
     open_dock(&mut h);
     h.click("term-pane:sess-1");
     assert!(term_lit(&mut h));
-    h.keys("cmd-t");
+    h.keys(&dock_chord("t"));
     h.wait(100);
     assert_eq!(dock_tabs(&mut h).len(), 2);
     assert_eq!(active_term(&mut h), "sess-2");
-    h.keys("cmd-w");
+    h.keys(&dock_chord("w"));
     h.wait(100);
     assert_eq!(dock_tabs(&mut h).len(), 1);
     assert_eq!(t.calls("CloseTerminal").len(), 1);
     // Focus elsewhere: the chords leave the dock alone.
     h.focus_editor();
     h.update(|o, window, cx| window.focus(&o.main_focus, cx));
-    h.keys("cmd-t");
+    h.keys(&dock_chord("t"));
     h.wait(100);
     assert_eq!(dock_tabs(&mut h).len(), 1);
 }
@@ -409,7 +419,7 @@ async fn cmd_f_opens_the_terminal_find_bar_while_the_dock_is_focused(cx: &mut Te
     let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
     open_dock(&mut h);
     h.click("term-pane:sess-1");
-    h.keys("cmd-f");
+    h.keys(&dock_chord("f"));
     let open = h.read(|o, cx| o.dock.as_ref().is_some_and(|(_, d)| d.read(cx).find_open));
     assert!(open);
 }
@@ -425,16 +435,16 @@ async fn opt_cmd_arrows_rotate_through_tabs_while_the_dock_is_focused(cx: &mut T
     assert_eq!(dock_tabs(&mut h).len(), 3);
     assert_eq!(active_term(&mut h), "sess-3");
     h.click("term-pane:sess-3");
-    h.keys("cmd-alt-left");
+    h.keys("secondary-alt-left");
     assert_eq!(active_term(&mut h), "sess-2");
-    h.keys("cmd-alt-left");
+    h.keys("secondary-alt-left");
     assert_eq!(active_term(&mut h), "sess-1");
-    h.keys("cmd-alt-left");
+    h.keys("secondary-alt-left");
     assert_eq!(active_term(&mut h), "sess-3");
-    h.keys("cmd-alt-right");
+    h.keys("secondary-alt-right");
     assert_eq!(active_term(&mut h), "sess-1");
     h.update(|o, window, cx| window.focus(&o.main_focus, cx));
-    h.keys("cmd-alt-right");
+    h.keys("secondary-alt-right");
     assert_eq!(active_term(&mut h), "sess-1");
 }
 
@@ -442,7 +452,7 @@ async fn opt_cmd_arrows_rotate_through_tabs_while_the_dock_is_focused(cx: &mut T
 async fn the_active_tab_underline_tracks_which_panel_has_focus(cx: &mut TestAppContext) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
-    h.keys("cmd-p");
+    h.keys("secondary-p");
     h.type_text("main.go");
     h.wait(100);
     assert!(h.has("qo-row:0"));
@@ -464,7 +474,7 @@ async fn the_active_tab_underline_tracks_which_panel_has_focus(cx: &mut TestAppC
 async fn cmd_1_2_3_focus_agent_editor_and_terminal(cx: &mut TestAppContext) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
-    h.keys("cmd-3");
+    h.keys("secondary-3");
     h.wait(400);
     assert!(dock_open(&mut h));
     let focused = h.cx.update(|window, cx| {
@@ -476,10 +486,10 @@ async fn cmd_1_2_3_focus_agent_editor_and_terminal(cx: &mut TestAppContext) {
     });
     assert!(focused);
     assert!(term_lit(&mut h));
-    h.keys("cmd-2");
+    h.keys("secondary-2");
     assert!(!term_lit(&mut h));
     h.events.borrow_mut().clear();
-    h.keys("cmd-1");
+    h.keys("secondary-1");
     h.wait(100);
     assert!(h.has("obs-left"));
     assert!(
@@ -491,7 +501,7 @@ async fn cmd_1_2_3_focus_agent_editor_and_terminal(cx: &mut TestAppContext) {
     // From another left panel, ⌘1 switches back to the agent.
     h.click("panel-toggle:findings");
     h.events.borrow_mut().clear();
-    h.keys("cmd-1");
+    h.keys("secondary-1");
     h.wait(100);
     assert_eq!(
         h.read(|o, _| o.left_kind),
@@ -608,14 +618,16 @@ async fn hiding_the_editor_opens_the_terminal_when_it_was_closed(cx: &mut TestAp
 }
 
 #[gpui::test]
+// Linux: the second ⌥⌃E reaches the focused terminal, which keeps Ctrl chords (as xterm.js does).
+#[cfg_attr(not(target_os = "macos"), ignore)]
 async fn opt_cmd_e_toggles_editor_visibility(cx: &mut TestAppContext) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
-    h.keys("cmd-alt-e");
+    h.keys("secondary-alt-e");
     h.wait(100);
     assert!(h.read(|o, cx| o.editor_tucked(cx)));
     assert!(dock_open(&mut h));
-    h.keys("cmd-alt-e");
+    h.keys("secondary-alt-e");
     assert!(!h.read(|o, cx| o.editor_tucked(cx)));
 }
 
@@ -675,7 +687,7 @@ async fn switching_workspaces_restores_the_last_focused_chrome_not_the_terminal(
 ) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
-    h.keys("cmd-p");
+    h.keys("secondary-p");
     h.type_text("main.go");
     h.wait(100);
     h.keys("enter");
@@ -930,7 +942,7 @@ async fn find_opens_on_cmd_f_counts_matches_and_closes_on_escape(cx: &mut TestAp
     term_out(&mut h, "sess-1", "hello world\r\nHello again\r\n");
     h.wait(100);
     h.click("term-pane:sess-1");
-    h.keys("cmd-f");
+    h.keys(&dock_chord("f"));
     let find = |h: &mut H| {
         h.read(|o, cx| {
             o.dock
@@ -946,7 +958,7 @@ async fn find_opens_on_cmd_f_counts_matches_and_closes_on_escape(cx: &mut TestAp
     h.type_text("hello");
     h.wait(100);
     assert_eq!(find(&mut h).1, "1 / 2");
-    h.keys("cmd-alt-c");
+    h.keys("secondary-alt-c");
     h.wait(100);
     assert_eq!(find(&mut h).1, "1 / 1");
     h.keys("escape");

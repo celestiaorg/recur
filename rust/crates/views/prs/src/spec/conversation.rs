@@ -26,7 +26,7 @@ fn comment_body(s: &mut S, id: &str) -> Option<String> {
 
 /// Replace the focused field's text, as `fill` does.
 fn fill(s: &mut S, text: &str) {
-    s.keys("cmd-a");
+    s.keys("secondary-a");
     s.type_text(text);
 }
 
@@ -112,7 +112,7 @@ fn edits_the_github_pr_title_and_an_owned_comment_and_quote_replies(cx: &mut Tes
     s.click("cmt-more:gh-description");
     s.click("menuitem:Edit");
     fill(&mut s, "Retitled description for checkout OAuth.");
-    s.keys("cmd-enter");
+    s.keys("secondary-enter");
     assert_eq!(
         comment_body(&mut s, "gh-description").as_deref(),
         Some("Retitled description for checkout OAuth.")
@@ -121,7 +121,7 @@ fn edits_the_github_pr_title_and_an_owned_comment_and_quote_replies(cx: &mut Tes
     s.click("cmt-more:c1");
     s.click("menuitem:Edit");
     fill(&mut s, "Edited: confirm secrets.init() still runs first.");
-    s.keys("cmd-enter");
+    s.keys("secondary-enter");
     assert_eq!(
         comment_body(&mut s, "c1").as_deref(),
         Some("Edited: confirm secrets.init() still runs first.")

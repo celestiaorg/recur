@@ -279,7 +279,7 @@ fn opening_and_cancelling_the_new_workspace_dialog_does_not_complete_the_first_t
     let mut s = with(cx, |_| {}, opts);
     s.get_started();
     assert_eq!(s.current_step(), 3);
-    s.keys("cmd-n");
+    s.keys("secondary-n");
     assert!(s.has("v-newtask"));
     assert_eq!(s.current_step(), 3);
     s.keys("escape");
@@ -319,7 +319,7 @@ fn the_plain_workspace_shortcut_still_uses_the_remembered_mode(cx: &mut TestAppC
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.newWorkspaceMode", "plan".to_string());
     let mut s = boot(cx, |_| {}, MockOptions::default(), storage);
-    s.keys("cmd-n");
+    s.keys("secondary-n");
     assert!(s.has("v-newtask"));
     assert_eq!(s.new_task_text(), "");
     assert!(s.has("sel:Mode=Plan"));

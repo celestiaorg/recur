@@ -203,10 +203,10 @@ async fn set_settings_uses_cached_catalog() {
         .providers
         .cursor
         .remember_models(cursor_models(&[("composer-2.5", "Composer 2.5")]));
-    write(
-        fx.root.join("cursor-bridge/bin/cursor-sdk-bridge"),
-        "#!/bin/sh\n",
-    );
+    let bridge = fx.root.join("cursor-bridge/bin/cursor-sdk-bridge");
+    write(&bridge, "#!/bin/sh\n");
+    // Executable, so Cursor is runnable here without a host Codex.
+    std::fs::set_permissions(&bridge, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
     let mut set = fx.s.settings.get_settings().await.unwrap();
     set.cursor_api_key = "sk-x".into();
     set.disabled_providers = vec![PROVIDER_CLAUDE_CODE.into()];

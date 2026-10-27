@@ -23,7 +23,7 @@ impl S<'_> {
     }
 
     fn open_new_task(&mut self) {
-        self.keys("cmd-n");
+        self.keys("secondary-n");
         assert!(self.has("v-newtask"), "New workspace open");
     }
 
@@ -381,7 +381,7 @@ fn slash_menu_offers_prompts_and_skills_and_at_searches_the_project(cx: &mut Tes
     s.keys("escape");
     assert!(!s.has("chat-mention"));
     assert!(s.has("v-newtask"));
-    s.keys("cmd-a backspace");
+    s.keys("secondary-a backspace");
     s.type_text("@PROG");
     assert!(s.until(|s| s.has("chat-mention")));
     assert!(s.until(|s| s.has("mention:PROGRESS.md")));
@@ -462,7 +462,7 @@ fn empty_cmd_enter_from_the_focused_composer_creates_a_workspace(cx: &mut TestAp
     let mut s = plain(cx);
     s.open_new_task();
     assert!(s.until(|s| s.has("nt-go:on")));
-    s.keys("cmd-enter");
+    s.keys("secondary-enter");
     assert!(s.until(|s| !s.has("v-newtask")));
     assert_eq!(s.view(), ViewName::Briefing);
 }

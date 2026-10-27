@@ -41,7 +41,7 @@ fn focus_preview(view: &Entity<FilePreview>, cx: &mut VisualTestContext) {
 
 /// `typeFind`: replace the query.
 fn type_find(cx: &mut VisualTestContext, q: &str) {
-    cx.simulate_keystrokes("cmd-a backspace");
+    cx.simulate_keystrokes("secondary-a backspace");
     cx.simulate_input(q);
     cx.run_until_parked();
 }
@@ -69,7 +69,7 @@ fn opens_a_find_bar_and_counts_markdown_matches(cx: &mut TestAppContext) {
     type_find(cx, "hello");
     assert_eq!(count(&view, cx), "1 / 2");
     // The regexp toggle (the second of three).
-    cx.simulate_keystrokes("alt-cmd-r");
+    cx.simulate_keystrokes("alt-secondary-r");
     cx.run_until_parked();
     type_find(cx, "H.llo");
     assert_eq!(count(&view, cx), "1 / 2");
@@ -85,7 +85,7 @@ fn opens_on_cmd_f_and_closes_on_escape(cx: &mut TestAppContext) {
         "notes.md",
     );
     focus_preview(&view, cx);
-    cx.simulate_keystrokes("cmd-f");
+    cx.simulate_keystrokes("secondary-f");
     cx.run_until_parked();
     assert!(open(&view, cx));
     type_find(cx, "needle");
@@ -101,7 +101,7 @@ fn does_not_intercept_cmd_f_when_inactive(cx: &mut TestAppContext) {
     let (view, cx) = mount(cx, PreviewKind::Markdown, "needle", "notes.md");
     cx.update(|window, cx| view.update(cx, |v, cx| v.set_active(false, window, cx)));
     focus_preview(&view, cx);
-    cx.simulate_keystrokes("cmd-f");
+    cx.simulate_keystrokes("secondary-f");
     cx.run_until_parked();
     assert!(!open(&view, cx));
 }
@@ -118,7 +118,7 @@ fn does_not_open_find_for_svg_previews(cx: &mut TestAppContext) {
     cx.update(|window, cx| view.update(cx, |v, cx| assert!(!v.toggle_search(window, cx))));
     assert!(!open(&view, cx));
     focus_preview(&view, cx);
-    cx.simulate_keystrokes("cmd-f");
+    cx.simulate_keystrokes("secondary-f");
     cx.run_until_parked();
     assert!(!open(&view, cx));
 }

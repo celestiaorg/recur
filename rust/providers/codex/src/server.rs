@@ -557,7 +557,12 @@ sleep 30
             ..Default::default()
         };
         let err = Server::start(&cfg, &Ctx::default()).await.err().unwrap();
-        assert_eq!(err, "codex initialize: codex rpc -32001: EOF");
+        // The child can exit before the request is written (Linux: broken pipe) or after.
+        assert!(
+            err == "codex initialize: codex rpc -32001: EOF"
+                || err == "codex initialize: write: broken pipe",
+            "{err}"
+        );
         let missing = ServerConfig {
             bin: dir.path().join("nope").to_string_lossy().into_owned(),
             home: dir.path().join("home"),

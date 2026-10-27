@@ -36,7 +36,7 @@ const NAMES: [&str; 5] = ["dev", "test:go", "test:frontend", "check", "tidy"];
 fn cmd_r_opens_the_run_palette_and_enter_runs_the_selected_command(cx: &mut TestAppContext) {
     let t = Calls::default();
     let mut s = mount(cx, &t, &[("dev", "pnpm dev --port $RECUR_PORT")]);
-    s.keys("cmd-r");
+    s.keys("secondary-r");
     assert!(s.has("run-palette"));
     assert!(s.input_focused());
     assert_eq!(s.rows("run-row:", &["dev"]), ["dev:sel"]);
@@ -52,13 +52,13 @@ fn cmd_r_opens_the_run_palette_and_enter_runs_the_selected_command(cx: &mut Test
 fn the_run_palette_filters_to_matching_commands_as_you_type(cx: &mut TestAppContext) {
     let t = Calls::default();
     let mut s = mount(cx, &t, &FIVE);
-    s.keys("cmd-r");
+    s.keys("secondary-r");
     assert!(s.input_focused());
     assert_eq!(s.rows("run-row:", &NAMES).len(), 5);
     s.type_text("tid");
     assert_eq!(s.rows("run-row:", &NAMES), ["tidy:sel"]);
     s.keys("escape");
-    s.keys("cmd-r");
+    s.keys("secondary-r");
     assert!(s.input_focused());
     assert_eq!(s.rows("run-row:", &NAMES).len(), 5);
     s.keys("down down down");
@@ -72,11 +72,11 @@ fn the_run_palette_filters_to_matching_commands_as_you_type(cx: &mut TestAppCont
 fn the_run_palette_takes_digits_and_escape_like_open_in(cx: &mut TestAppContext) {
     let t = Calls::default();
     let mut s = mount(cx, &t, &[("dev", "pnpm dev --port $RECUR_PORT")]);
-    s.keys("cmd-r");
+    s.keys("secondary-r");
     assert!(s.input_focused());
     s.keys("escape");
     assert!(!s.has("run-palette"));
-    s.keys("cmd-r");
+    s.keys("secondary-r");
     assert!(s.input_focused());
     s.keys("1");
     assert!(!s.has("run-palette"));
@@ -84,6 +84,8 @@ fn the_run_palette_takes_digits_and_escape_like_open_in(cx: &mut TestAppContext)
 }
 
 #[gpui::test]
+// Linux: the run's terminal takes focus and keeps Ctrl+R (reverse search), as xterm.js does.
+#[cfg_attr(not(target_os = "macos"), ignore)]
 fn cmd_shift_r_opens_the_stop_palette_when_several_commands_are_running(cx: &mut TestAppContext) {
     let t = Calls::default();
     let mut s = mount(
@@ -94,23 +96,23 @@ fn cmd_shift_r_opens_the_stop_palette_when_several_commands_are_running(cx: &mut
             ("test", "go test ./..."),
         ],
     );
-    s.keys("cmd-r");
+    s.keys("secondary-r");
     assert!(s.has("run-palette"));
     assert!(s.input_focused());
     s.keys("1");
     assert!(s.until(|s| running(s) == ["dev"]));
-    s.keys("cmd-r");
+    s.keys("secondary-r");
     assert!(s.has("run-palette"));
     assert!(s.input_focused());
     s.keys("2");
     assert!(s.until(|s| running(s).len() == 2));
-    s.keys("cmd-shift-r");
+    s.keys("secondary-shift-r");
     assert!(s.has("stop-dev"));
     assert!(s.input_focused());
     assert!(s.has("stop-dev") && s.has("stop-test") && s.has("stop-__all__"));
     s.keys("escape");
     assert!(!s.has("stop-dev"));
-    s.keys("cmd-shift-r");
+    s.keys("secondary-shift-r");
     assert!(s.has("stop-dev"));
     assert!(s.input_focused());
     s.keys("1");
@@ -122,9 +124,9 @@ fn cmd_shift_r_opens_the_stop_palette_when_several_commands_are_running(cx: &mut
 fn cmd_enter_and_the_pin_make_a_run_the_project_default(cx: &mut TestAppContext) {
     let t = Calls::default();
     let mut s = mount(cx, &t, &FIVE);
-    s.keys("cmd-r");
+    s.keys("secondary-r");
     s.keys("down down");
-    s.keys("cmd-enter");
+    s.keys("secondary-enter");
     assert!(s.until(
         |s| s.rows("run-row:", &NAMES).first().map(String::as_str) == Some("test:frontend:sel")
     ));

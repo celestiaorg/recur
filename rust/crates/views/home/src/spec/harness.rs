@@ -126,7 +126,7 @@ impl S<'_> {
     /// Clicks `sel`, focusing the field inside it, selects all and types `s` (`fill`).
     pub fn fill(&mut self, sel: &str, s: &str) {
         self.click(sel);
-        self.cx.simulate_keystrokes("cmd-a backspace");
+        self.cx.simulate_keystrokes("secondary-a backspace");
         self.type_text(s);
     }
 

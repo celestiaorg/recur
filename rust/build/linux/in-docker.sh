@@ -18,11 +18,14 @@ if [ "$(uname -s)" = Linux ]; then
   cd "$ROOT/rust" && exec "$@"
 fi
 docker info >/dev/null 2>&1 || { echo "Docker (or OrbStack) is required to build for Linux" >&2; exit 1; }
+# One job per 2 GB of VM memory: test binaries link in parallel and each ld
+# holds a few GB, which a Docker VM with a core per GB runs out of.
+JOBS=$(( $(docker info --format '{{.MemTotal}}') / 2147483648 ))
 IMAGE="recur-next-linux-build:$ARCH"
 docker build -q --platform "linux/$ARCH" -t "$IMAGE" -f "$ROOT/rust/build/linux/Dockerfile" "$ROOT/rust/build/linux" >/dev/null
-exec docker run --rm --platform "linux/$ARCH" \
+exec docker run --rm --init --platform "linux/$ARCH" \
   -v "$ROOT:/app" \
-  -v "recur-next-cargo-$ARCH:/usr/local/cargo/registry" \
-  -v "recur-next-target-$ARCH:/target" \
-  -e CARGO_TARGET_DIR=/target -e ARCH -e VERSION -e RECUR_NEXT_UPDATE_URL \
+  -v "recur-next-linux-cargo-$ARCH:/usr/local/cargo/registry" \
+  -v "recur-next-linux-target-$ARCH:/target" \
+  -e CARGO_TARGET_DIR=/target -e CARGO_BUILD_JOBS="$JOBS" -e ARCH -e VERSION -e RECUR_NEXT_UPDATE_URL \
   "$IMAGE" "$@"

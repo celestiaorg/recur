@@ -183,7 +183,9 @@ jobs:
       - run: >-
           sudo apt-get update && sudo apt-get install -y
           libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev
-          libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev xvfb
+          libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev xvfb ripgrep libxml2-utils
+      # Tests commit in temp repos; the runner's hostname gives git no identity.
+      - run: git config --global user.name ci && git config --global user.email ci@example.com
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust

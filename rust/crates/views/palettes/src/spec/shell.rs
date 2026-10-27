@@ -22,7 +22,7 @@ fn go_to_palette_opens_on_cmd_k_and_searches(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     // The titlebar has no search field: ⌘K and Navigate → Go to… open the palette.
     assert!(!s.has("tb-search"));
-    s.keys("cmd-k");
+    s.keys("secondary-k");
     assert!(s.has("palette"));
     assert!(s.input_focused());
     s.type_text("pull");
@@ -35,7 +35,7 @@ fn go_to_palette_opens_on_cmd_k_and_searches(cx: &mut TestAppContext) {
 #[gpui::test]
 fn go_to_palette_scrolls_selection_into_view_with_arrow_keys(cx: &mut TestAppContext) {
     let mut s = plain(cx);
-    s.keys("cmd-k");
+    s.keys("secondary-k");
     let labels = s.read(|st| {
         let mut l: Vec<String> = [
             "New workspace",
@@ -88,7 +88,7 @@ fn go_to_palette_scrolls_selection_into_view_with_arrow_keys(cx: &mut TestAppCon
 #[gpui::test]
 fn keyboard_shortcuts_opens_on_cmd_shift_slash_and_filters(cx: &mut TestAppContext) {
     let mut s = plain(cx);
-    s.keys("cmd-shift-/");
+    s.keys("secondary-shift-/");
     assert!(s.has("shortcuts-panel"));
     assert!(s.has("sc-row:Go to (workspaces / PRs)"));
     assert!(s.has("sc-row:Run command / snippets"));
@@ -119,7 +119,7 @@ fn go_to_palette_matches_a_loop_by_project_id_and_a_pr_by_number(cx: &mut TestAp
             p.number,
         )
     });
-    s.keys("cmd-k");
+    s.keys("secondary-k");
     s.type_text(&project);
     assert!(row(&mut s, "pal-row:", &loop_goal));
     s.fill(&format!("#{pr_number}"));
@@ -130,7 +130,7 @@ fn go_to_palette_matches_a_loop_by_project_id_and_a_pr_by_number(cx: &mut TestAp
 fn open_in_palette_opens_from_the_titlebar_and_cmd_o_on_a_workspace(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     // Off a workspace ⌘O does nothing.
-    s.keys("cmd-o");
+    s.keys("secondary-o");
     assert!(!s.has("open-in-palette"));
     s.open_workspace(ACTIVE_ID);
     assert_eq!(s.view(), ViewName::Detail);
@@ -142,7 +142,7 @@ fn open_in_palette_opens_from_the_titlebar_and_cmd_o_on_a_workspace(cx: &mut Tes
     assert!(row(&mut s, "oi-row:", "copy-path"));
     s.keys("escape");
     assert!(!s.has("open-in-palette"));
-    s.keys("cmd-o");
+    s.keys("secondary-o");
     assert!(s.has("open-in-palette"));
     assert!(s.until(|s| row(s, "oi-row:", "finder")));
     s.click_row("oi-row:finder");
@@ -167,7 +167,7 @@ fn open_in_palette_pins_a_default_app_to_the_top_of_the_list(cx: &mut TestAppCon
     );
     assert_eq!(s.storage("recur.openInDefault").as_deref(), Some("cursor"));
     s.keys("escape");
-    s.keys("cmd-o");
+    s.keys("secondary-o");
     assert!(s.until(|s| s.rows("oi-row:", &ids).len() == 4));
     assert_eq!(s.rows("oi-row:", &ids)[0], "cursor:sel");
 }
@@ -182,11 +182,11 @@ fn open_in_keys_pick_digits_and_cmd_enter_makes_the_default(cx: &mut TestAppCont
     );
     let mut s = boot(cx, |_| {}, opts);
     s.open_workspace(ACTIVE_ID);
-    s.keys("cmd-o");
+    s.keys("secondary-o");
     let ids = ["finder", "cursor", "terminal", "copy-path"];
     assert!(s.until(|s| s.rows("oi-row:", &ids).len() == 4));
     s.keys("down down");
-    s.keys("cmd-enter");
+    s.keys("secondary-enter");
     assert_eq!(
         s.storage("recur.openInDefault").as_deref(),
         Some("terminal")

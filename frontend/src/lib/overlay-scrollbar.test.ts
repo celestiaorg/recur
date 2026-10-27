@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { overlayScrollbar, overlayThumb, scrollFromTrack } from './overlay-scrollbar'
 
 describe('overlayThumb', () => {
@@ -27,6 +27,8 @@ describe('scrollFromTrack', () => {
 })
 
 describe('overlayScrollbar', () => {
+  afterEach(() => vi.useRealTimers())
+
   function mount(scrollHeight = 400, clientHeight = 200) {
     const shell = document.createElement('div')
     const el = document.createElement('div')
@@ -50,6 +52,70 @@ describe('overlayScrollbar', () => {
     expect(el.scrollTop).toBe(200)
     sb.dispatchEvent(new PointerEvent('pointermove', { clientY: 50 }))
     expect(el.scrollTop).toBe(0)
+    cleanup()
+  })
+
+  test('scroll alone does not light the strip', () => {
+    const { el, sb, cleanup } = mount()
+    el.dispatchEvent(new Event('scroll'))
+    expect(sb.classList.contains('on')).toBe(false)
+    cleanup()
+  })
+
+  test('scroll keeps the strip lit while hovered', () => {
+    const { el, sb, cleanup } = mount()
+    sb.dispatchEvent(new PointerEvent('pointerenter'))
+    el.dispatchEvent(new Event('scroll'))
+    expect(sb.classList.contains('on')).toBe(true)
+    cleanup()
+  })
+
+  test('scroll keeps the strip lit while grabbed', () => {
+    const { el, sb, cleanup } = mount()
+    sb.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientY: 150 }))
+    el.dispatchEvent(new Event('scroll'))
+    expect(sb.classList.contains('on')).toBe(true)
+    cleanup()
+  })
+
+  test('pane without overflow stays inert on hover', () => {
+    const { sb, cleanup } = mount(200, 200)
+    sb.dispatchEvent(new PointerEvent('pointerenter'))
+    expect(sb.classList.contains('live')).toBe(false)
+    expect(sb.classList.contains('on')).toBe(false)
+    cleanup()
+  })
+
+  test('hover on one bar does not light another', () => {
+    const a = mount()
+    const b = mount()
+    a.sb.dispatchEvent(new PointerEvent('pointerenter'))
+    expect(a.sb.classList.contains('on')).toBe(true)
+    expect(b.sb.classList.contains('on')).toBe(false)
+    a.cleanup()
+    b.cleanup()
+  })
+
+  test('drag stays lit until pointerup', () => {
+    vi.useFakeTimers()
+    const { sb, cleanup } = mount()
+    sb.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientY: 150 }))
+    vi.advanceTimersByTime(5000)
+    expect(sb.classList.contains('on')).toBe(true)
+    sb.dispatchEvent(new PointerEvent('pointerup'))
+    vi.advanceTimersByTime(700)
+    expect(sb.classList.contains('on')).toBe(false)
+    cleanup()
+  })
+
+  test('enter, leave, enter within one tick stays lit', () => {
+    vi.useFakeTimers()
+    const { sb, cleanup } = mount()
+    sb.dispatchEvent(new PointerEvent('pointerenter'))
+    sb.dispatchEvent(new PointerEvent('pointerleave'))
+    sb.dispatchEvent(new PointerEvent('pointerenter'))
+    vi.advanceTimersByTime(5000)
+    expect(sb.classList.contains('on')).toBe(true)
     cleanup()
   })
 

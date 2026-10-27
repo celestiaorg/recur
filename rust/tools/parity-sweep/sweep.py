@@ -320,17 +320,19 @@ def check_svelte():
 
 
 def rust_tests():
-    names, mentions = set(), set()
+    names, mentions, located = set(), set(), set()
     attr = re.compile(r"#\[(?:[\w:]*test|rstest)\b[^\]]*\]\s*(?:#\[[^\]]*\]\s*)*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)")
     for p in rs_files("crates", "providers", "tools"):
         src = read(p)
-        names |= set(attr.findall(src))
+        found = set(attr.findall(src))
+        names |= found
+        located |= {f"{p.relative_to(RUST)}::{n}" for n in found}
         mentions |= set(re.findall(r"\b(Test[A-Z]\w*)", src))
-    return names, mentions
+    return names, mentions, located
 
 
 def check_gotests():
-    names, mentions = rust_tests()
+    names, mentions, located = rust_tests()
     table = {}
     for line in read(HERE / "go-tests.tsv").splitlines():
         if line and not line.startswith("#"):
@@ -348,7 +350,7 @@ def check_gotests():
                 target = table[key]
                 if target.startswith("n/a:") and len(target) > 6:
                     na += 1
-                elif target.split("::")[-1] in names:
+                elif target in located:
                     mapped += 1
                 else:
                     gap("gotests", f"{key}: go-tests.tsv names `{target}`, which is not a Rust test")

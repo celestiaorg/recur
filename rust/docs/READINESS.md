@@ -30,7 +30,39 @@ The final audit used the sweep to find gaps rather than trust earlier ticks:
 
 ### Gate, packages and real data
 
-RESULTS
+Run in the foreground on an M-series Mac (macOS 26.3) on 2026-10-27, at the commits that close this audit:
+
+| Step | Result |
+|---|---|
+| `cargo fmt --all --check` | clean |
+| `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings` | clean |
+| `cargo test --workspace --all-features --locked` | 5,650 passed, 0 failed, 10 ignored |
+| `wails3 task check:rust:parity` | all six checks ok (table above) |
+| `wails3 task test:rust:ui-parity` | 271 WebKit references captured, every scene within tolerance |
+| `wails3 task linux:test:rust` (arm64 container) | fmt and clippy clean; 5,636 passed, 0 failed |
+| `wails3 task linux:package:rust` | tarball, `.deb` and `.rpm` built |
+| `wails3 task linux:smoke:rust` | passed (three runs in a row after the fix below) |
+| `UNIVERSAL=true wails3 task package:rust` | `Recur Next.app` (arm64 + x86_64), DMG and zip; the Intel `recur-cli` runs under Rosetta |
+| `wails3 task smoke:package:rust` | install, `recur-next` link and `recur-next .` pass; native notification delivery fails on this machine (below) |
+| Real-data smoke (`real_data_smoke`, release), each range on a fresh `cp -Rc` of a copy of a real data dir (25 projects, 1,142 workspaces, 291 PRs), one at a time on a quiet machine | all four PASS: 0 panics, 0 error toasts, 0 stalls, 0 over budget |
+
+The four ranges, run back to back with `RECUR_SMOKE_KEY_ROUNDS=4`:
+
+| Range | Time | Worst per-field keystroke median |
+|---|---|---|
+| workspaces 1-285 | 703s | 6.7ms (commit message) |
+| workspaces 286-570 | 125s | 3.8ms (commit message) |
+| workspaces 571-855 | 207s | 5.1ms (line note) |
+| workspaces 856-1142, every PR on each tab, Settings, Briefing, Issues, Schedules, palettes, a streamed turn | 2,884s | 7.4ms (PR comment) |
+
+The streamed turn ran in a regular workspace, as it should: the earlier pick was a PR chat host that settles and archives once idle, as in Go.
+
+Two fixes came out of this run:
+
+- **The boot notice could be dropped.** The desktop subscribed to app events inside a spawned task, so `start()` could publish the Cursor bridge notice first (one `linux:smoke:rust` run in two missed it). It now subscribes before boot publishes.
+- **`UNIVERSAL=true package:rust` failed** because the script ran cargo from the repo root, where rustup does not see `rust/rust-toolchain.toml`, so the Intel codec build had no `llvm-tools`. It now builds from `rust/`.
+
+`smoke:package:rust`'s notification check fails here with and without those changes, ad-hoc or signed with a local identity: usernoted logs `Failed to find or validate client of identifier build.recur.next` for every launch and refuses the authorization request, so the app falls back to `osascript`, which usernoted delivers. The notification reaches the user; the native path needs a check on a second Mac (try by hand, item 5).
 
 ## Known differences from the Go app
 
@@ -75,7 +107,7 @@ The specs and scenes cover behavior and look; these need a person, real accounts
 2. **Real agent turns** with each provider you use (Claude Code, Codex, Cursor, a compatible endpoint): a turn with tool calls and a permission prompt, Stop mid-turn, steer while running, switch modes mid-turn, a Loop run through to an opened PR, and an `ask_user` question answered from the inbox.
 3. **GitHub.** Sync PRs, comment, reply on a line, react, approve, request changes, merge (and a failed merge's toast), Fix checks, and create a workspace from a PR.
 4. **Typing feel.** Type fast in the chat composer, a commit message, a line note and a PR comment on your largest workspace; scroll a long transcript and a big review. The budget is 20ms a key; anything you can feel is a bug.
-5. **Native integration.** Drag files from Finder onto the chat and the terminal; the menu bar and its accelerators; the dock badge; a notification click; `recur-next .` from a terminal; dark / light system switching; full screen; a second monitor at a different scale.
+5. **Native integration.** Drag files from Finder onto the chat and the terminal; the menu bar and its accelerators; the dock badge; a notification shown as Recur Next (not Script Editor) and its click; `recur-next .` from a terminal; dark / light system switching; full screen; a second monitor at a different scale.
 6. **VoiceOver.** The sidebar's icon buttons (Settings, Get started, Add project) and the chat composer read their names.
 7. **An Intel Mac** (or Rosetta): open a WebM and an Ogg attachment in the Observatory and the lightbox.
 8. **Linux** (Debian 13 / Ubuntu 24.04+, `.deb` or tarball): the HTML preview (hover, a `<select>`, typing), Mermaid and PDF previews, notifications, and Ctrl chords in the terminal.

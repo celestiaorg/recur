@@ -1190,7 +1190,12 @@ internal/lsp.TestCloseAfterStopEventsDoesNotPanic	crates/lsp/src/session.rs::clo
 internal/lsp.TestConcurrentSendStopAndCloseDoesNotPanic	crates/lsp/src/session.rs::concurrent_send_stop_and_close
 internal/lsp.TestLookupVuePairsTypeScript	crates/lsp/src/servers.rs::lookup_vue_pairs_typescript
 internal/lsp.TestWriteReadFrameRoundTrip	crates/lsp/src/frame.rs::write_read_round_trip
+internal/lsp/managed.TestEnsureGoplsUsesEnvOverride	crates/lsp/tests/env_serial.rs::env_overrides_win
+internal/lsp/managed.TestEnsureRuffUsesEnvOverride	crates/lsp/tests/env_serial.rs::env_overrides_win
+internal/lsp/managed.TestMarksmanAssetForHost	crates/lsp/src/managed/tests.rs::host_assets_have_digests
+internal/lsp/managed.TestRuffAssetForHost	crates/lsp/src/managed/tests.rs::host_assets_have_digests
 internal/lsp/managed.TestRustAnalyzerAssetForHost	crates/lsp/src/managed/tests.rs::host_assets_have_digests
+internal/lsp/managed.TestTaploAssetForHost	crates/lsp/src/managed/tests.rs::host_assets_have_digests
 internal/lsp/managed.TestVuePluginPath	crates/lsp/src/managed/tests.rs::vue_plugin_path_cases
 internal/mcp.TestNamesFromAllowedTools	crates/mcp/src/server_tests.rs::names_from_allowed_tools_scopes
 internal/observe.TestProjectFindingsOntoDiff	crates/code/src/observe/tests.rs::project_findings_onto_diff_range

@@ -173,6 +173,19 @@ async fn session_cards_render_chronologically_and_expand_to_the_full_transcript(
     assert!(msgs[0].body.contains("Reviewing the diff"));
     assert!(text_shown(&mut h, &rv, "Reviewing the diff"));
 
+    // The card's transcript selects with the chat's: select all copies its messages too.
+    let at = gpui::point(body.left() + gpui::px(40.), body.top() + gpui::px(12.));
+    h.click_at(at, gpui::Modifiers::none());
+    h.keys("secondary-a");
+    h.keys("secondary-c");
+    let copied =
+        h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()))
+            .unwrap_or_default();
+    assert!(
+        copied.contains("Reviewing the diff against the base branch."),
+        "{copied:?}"
+    );
+
     // The tool call renders as a card; expanding shows the full command and result.
     let i = tool_ix(&msgs, "Bash");
     assert_eq!(msgs[i].description, "Compile check");
@@ -630,6 +643,18 @@ async fn plan_panel_shows_the_workspace_checklist_and_agent_todos(cx: &mut TestA
     let panel = h.read(|v, _| v.plan_panel.clone());
     let body = h.cx.update(|_, cx| panel.read(cx).test_body_text(cx));
     assert!(body.contains("Keep agent todos distinct"), "{body}");
+    // The rendered body selects and copies, as the page does.
+    let scroll = h.bounds("plan-body-scroll").expect("the body");
+    h.click_at(
+        gpui::point(scroll.left() + gpui::px(40.), scroll.top() + gpui::px(20.)),
+        gpui::Modifiers::none(),
+    );
+    h.keys("secondary-a");
+    h.keys("secondary-c");
+    let copied =
+        h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()))
+            .unwrap_or_default();
+    assert!(copied.contains("Keep agent todos distinct"), "{copied:?}");
 
     h.click("tab-chip:plan-tab-todos");
     let title =

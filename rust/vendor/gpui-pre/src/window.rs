@@ -1071,6 +1071,8 @@ pub(crate) struct Frame {
     /// replays it, so an isolated view can draw again in place.
     cached_views: Vec<CachedViewRecord>,
     island_ids: FxHashSet<EntityId>,
+    /// Cached views this frame replayed from the last instead of rendering.
+    pub(crate) replayed_views: FxHashSet<EntityId>,
     /// The root's content and the size it was laid out at.
     root: Option<(Range<PrepaintStateIndex>, Range<PaintIndex>, Size<Pixels>)>,
 }
@@ -1232,6 +1234,7 @@ impl Frame {
             tab_stops: TabStopMap::default(),
             cached_views: Vec::new(),
             island_ids: FxHashSet::default(),
+            replayed_views: FxHashSet::default(),
             root: None,
         }
     }
@@ -1293,6 +1296,7 @@ impl Frame {
         self.tab_stops.clear();
         self.cached_views.clear();
         self.island_ids.clear();
+        self.replayed_views.clear();
         self.root = None;
         self.focus = None;
 
@@ -5760,6 +5764,17 @@ impl Window {
         let mut layout_engine = self.layout_engine.take().unwrap();
         layout_engine.compute_layout(layout_id, available_space, self, cx);
         self.layout_engine = Some(layout_engine);
+    }
+
+    /// The views being drawn, outermost first, ending with [`Window::current_view`].
+    pub fn view_stack(&self) -> &[EntityId] {
+        &self.rendered_entity_stack
+    }
+
+    /// Whether the frame being drawn replayed `view` (a cached view reused from the last
+    /// frame, its elements' prepaint and paint not run) rather than rendering it.
+    pub fn replayed_view(&self, view: EntityId) -> bool {
+        self.next_frame.replayed_views.contains(&view)
     }
 
     /// [`Window::layout_bounds`] before GPUI snapped the edges to device pixels: where a box

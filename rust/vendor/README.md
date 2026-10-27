@@ -19,6 +19,10 @@ Anything else (a notify reaching a non-isolated view, a notify of a non-view ent
 
 `Window::request_measured_layout_exact` is `request_measured_layout` without ceiling the measured size to device pixels. Box edges are still snapped after layout, so a box placed after a fractional size keeps the offset WebKit gives it, in the same pass. `recur_ui::exact::measured` uses it for text and the chat's flows (`taffy.rs` `NodeContext::exact`).
 
+### Replayed views
+
+`Window::replayed_view(id)` says whether the frame being drawn replayed a cached view instead of rendering it, and `Window::view_stack` lists the views being drawn. `recur_ui::selection` keeps the items of a replayed view in a scope that spans cached views (a PR conversation's items, a transcript's session cards), whose texts do not register again while they replay.
+
 ### Unsnapped bounds
 
 `Window::layout_bounds_unsnapped` is `layout_bounds` before the edges snap to device pixels (`taffy.rs` keeps the unrounded origins it snaps from). `recur_ui::layout_root` reads a layout root's or block's fractional edges from it, so content laid out as its own root lands where in-place layout puts it, in one frame.

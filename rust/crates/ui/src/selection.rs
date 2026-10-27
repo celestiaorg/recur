@@ -10,8 +10,9 @@
 //! `"\n\n"` after a paragraph with a bottom margin); ⌘A selects all.
 //!
 //! The scope collects its items afresh each time it prepaints, and keeps them while a cached
-//! view replays it (a replay reuses the same geometry). A cached view that misses re-renders
-//! everything inside it, so put the scope inside the cached view whose content it covers.
+//! view replays it (a replay reuses the same geometry), or while a cached view inside it
+//! replays (`Window::replayed_view`, vendored gpui-pre): a scope can span cached views, a
+//! transcript's session cards or a PR conversation's items.
 //! Document order is geometric: top to bottom, then left to right, which is DOM order for the
 //! surfaces that use it. When the selection changes, the views holding its items are
 //! notified, so a replayed paint never shows a stale highlight.
@@ -42,6 +43,10 @@ struct Item {
     bounds: Bounds<Pixels>,
     sep: &'static str,
     view: Option<EntityId>,
+    /// The views drawing the item when it registered, outermost first.
+    stack: Vec<EntityId>,
+    /// The scope's pass that registered it last.
+    pass: u64,
     geom: Rc<dyn Geometry>,
 }
 
@@ -61,6 +66,9 @@ enum Granularity {
 #[derive(Default)]
 pub struct State {
     items: HashMap<u64, Item>,
+    /// Counts the scope's prepaints; an item from an earlier pass stays while a cached view
+    /// holding it replays (its elements do not prepaint, so it does not register again).
+    pass: u64,
     anchor: Option<Pos>,
     focus: Option<Pos>,
     /// The anchor's span for word and item granularity (the drag extends from it).
@@ -89,14 +97,18 @@ pub fn register(
         return;
     };
     let view = window.current_view();
+    let stack = window.view_stack().to_vec();
     scope.update(cx, |s, _| {
         s.ranges.take();
+        let pass = s.pass;
         s.items.insert(
             key,
             Item {
                 bounds,
                 sep,
                 view: Some(view),
+                stack,
+                pass,
                 geom,
             },
         );
@@ -485,7 +497,12 @@ impl Element for Host {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, ()) {
-        let mut style = gpui_kit::Style::default();
+        // A flex column, so a pane inside that fills its parent (`flex_1`) still does.
+        let mut style = gpui_kit::Style {
+            display: gpui_kit::Display::Flex,
+            flex_direction: gpui_kit::FlexDirection::Column,
+            ..Default::default()
+        };
         style.size.width = gpui_kit::relative(1.).into();
         style.size.height = gpui_kit::relative(1.).into();
         let child = self.child.request_layout(window, cx);
@@ -501,10 +518,30 @@ impl Element for Host {
         window: &mut Window,
         cx: &mut App,
     ) {
-        self.state.update(cx, |s, _| s.items.clear());
+        self.state.update(cx, |s, _| s.pass += 1);
         STACK.with(|s| s.borrow_mut().push(self.state.clone()));
         self.child.prepaint(window, cx);
         STACK.with(|s| s.borrow_mut().pop());
+        // Keep what a replayed cached view holds (same bounds, so the same geometry), drop
+        // the rest of the last pass: a view that rendered registered its items again.
+        self.state.update(cx, |s, _| {
+            let pass = s.pass;
+            let rendered: std::collections::HashSet<EntityId> = s
+                .items
+                .values()
+                .filter(|it| it.pass == pass)
+                .filter_map(|it| it.view)
+                .collect();
+            let before = s.items.len();
+            s.items.retain(|_, it| {
+                it.pass == pass
+                    || (!it.view.is_some_and(|v| rendered.contains(&v))
+                        && it.stack.iter().any(|v| window.replayed_view(*v)))
+            });
+            if s.items.len() != before {
+                s.ranges.take();
+            }
+        });
     }
 
     fn paint(

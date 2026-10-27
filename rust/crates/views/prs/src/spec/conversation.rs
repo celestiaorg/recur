@@ -337,4 +337,9 @@ fn the_description_selects_and_copies_its_markdown(cx: &mut TestAppContext) {
         copied.contains("Adds Apple and Google sign-in"),
         "{copied:?}"
     );
+    // One selection spans the description and the timeline's comments (each a cached view).
+    assert!(
+        copied.contains("testing again"),
+        "select all stops at the description: {copied:?}"
+    );
 }

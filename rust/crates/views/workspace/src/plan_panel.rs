@@ -1117,6 +1117,7 @@ impl PlanPanel {
             };
             let mut scroll = div()
                 .id("plan-body-scroll")
+                .debug_selector(|| "plan-body-scroll".into())
                 .track_scroll(&self.body_scroll)
                 .overflow_y_scroll()
                 .size_full();
@@ -1146,7 +1147,10 @@ impl PlanPanel {
                     .relative()
                     .flex_1()
                     .min_h_0()
-                    .child(scroll)
+                    .child({
+                        let sel = recur_ui::selection::state("plan-body-selection", window, cx);
+                        recur_ui::selection::scope(&sel, false, scroll, cx)
+                    })
                     .children(edge_fades(&self.body_scroll, backdrop)),
             );
         }

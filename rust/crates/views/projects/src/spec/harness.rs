@@ -57,7 +57,7 @@ fn leak(s: &str) -> &'static str {
 /// The module state a page load starts without.
 fn fresh_modules(cx: &mut gpui_kit::App) {
     recur_view_briefing::issues::reset_saved_view(cx);
-    cx.set_global(recur_view_briefing::schedule_expanded::ScheduleExpanded::default());
+    cx.set_global(recur_view_widgets::schedule_expanded::ScheduleExpanded::default());
 }
 
 pub fn boot<'a>(

@@ -25,7 +25,7 @@ use recur_view_core::run::project_runs;
 use recur_view_core::{ViewContext, ViewName, call, toast};
 
 use crate::mini::{MiniChange, MiniLang, MiniProps, MiniScriptEditor};
-use recur_view_briefing::schedules::ScheduledPrompts;
+use recur_view_widgets::schedules::ScheduledPrompts;
 
 /// A section of the project page.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

@@ -29,10 +29,10 @@ use recur_view_core::modes::{
 use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_icon_name, pr_lifecycle};
 use recur_view_core::{AppState, ScheduleEditorRequest, ViewContext};
 
-use crate::schedule_expanded::{self, ScheduleExpanded};
-use crate::style::{
+use crate::list_chrome::{
     bucket_head, empty, empty_desc, filter_seg, filters_bar, hsla, ibrow, ity, seg_count_btn,
 };
+use crate::schedule_expanded::{self, ScheduleExpanded};
 
 /// `REMOVE_ARM_MS`.
 const REMOVE_ARM: Duration = Duration::from_secs(3);
@@ -806,7 +806,7 @@ impl ScheduledPrompts {
             titled(
                 SharedString::from(format!("sc-live-{id}")),
                 "Running",
-                recur_view_widgets::chrome::running_dot(window, cx),
+                crate::chrome::running_dot(window, cx),
             )
             .into_any_element()
         } else {
@@ -1381,7 +1381,7 @@ impl ScheduledPrompts {
                     titled(
                         SharedString::from(format!("sc-run-sd-{}", w.id)),
                         "Agent running",
-                        recur_view_widgets::chrome::running_dot(window, cx),
+                        crate::chrome::running_dot(window, cx),
                     )
                     .into_any_element()
                 } else if let Some(l) = life {
@@ -1519,7 +1519,7 @@ impl ScheduledPrompts {
                 title_spans = title_spans.child(titled(
                     SharedString::from(format!("sc-unread-{wid}")),
                     sidebar_unread_title(unseen, parked_n),
-                    crate::style::unread_chip(unread, cx),
+                    crate::list_chrome::unread_chip(unread, cx),
                 ));
             }
             let mut main = div().flex_1().min_w_0().child(title_spans);
@@ -1702,16 +1702,16 @@ impl ScheduledPrompts {
             );
         }
         if self.filtered() && visible == 0 {
-            let clear = crate::style::clear_button("sc-clear", cx).on_click(cx.guarded_listener(
-                |v, _, _, cx| {
+            let clear = crate::list_chrome::clear_button("sc-clear", cx).on_click(
+                cx.guarded_listener(|v, _, _, cx| {
                     v.project_filter.clear();
                     v.state_filter = StateFilter::All;
                     if let Some(sel) = &v.project_select {
                         sel.update(cx, |s, cx| s.set_values(Vec::new(), cx));
                     }
                     cx.notify();
-                },
-            ));
+                }),
+            );
             return Some(
                 empty(
                     Some(IconName::Filter),

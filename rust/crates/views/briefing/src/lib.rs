@@ -4,19 +4,18 @@
 //!
 //! # Embedding
 //!
-//! Call [`register`] after `recur_view_chat::register`. Project settings embed
-//! [`schedules::ScheduledPrompts`] for one project.
+//! Call [`register`] after `recur_view_chat::register`. The Schedules list and its chrome
+//! are `recur_view_widgets::schedules` and `list_chrome`, which project settings embed too.
 
 pub mod briefing;
 #[cfg(feature = "gallery")]
 pub mod gallery;
 pub mod issues;
-pub mod schedule_expanded;
-pub mod schedules;
-pub mod style;
 
 use gpui_kit::AppContext as _;
 use recur_view_core::{ViewContext, ViewName, ViewRegistry};
+use recur_view_widgets::list_chrome as style;
+use recur_view_widgets::{schedule_expanded, schedules};
 
 /// Registers the Briefing (Inbox), Issues and Schedules routes.
 pub fn register(r: &mut ViewRegistry) {

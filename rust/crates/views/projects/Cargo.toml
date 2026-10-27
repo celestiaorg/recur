@@ -15,7 +15,6 @@ gallery = [
     "recur-ui/gallery",
     "recur-content/gallery",
     "recur-view-chat/gallery",
-    "recur-view-briefing/gallery",
     "dep:serde",
 ]
 
@@ -35,8 +34,8 @@ chrono.workspace = true
 chrono-tz.workspace = true
 base64.workspace = true
 recur-view-core.workspace = true
+recur-view-widgets.workspace = true
 recur-view-chat.workspace = true
-recur-view-briefing.workspace = true
 serde = { workspace = true, optional = true }
 serde_json.workspace = true
 futures.workspace = true
@@ -49,6 +48,7 @@ objc2-foundation.workspace = true
 objc2-app-kit = { workspace = true, features = ["NSColorPanel", "NSColor", "NSColorSpace", "NSPanel", "NSWindow", "NSResponder", "NSView"] }
 
 [dev-dependencies]
+recur-view-briefing.workspace = true
 recur-view-review = { workspace = true, features = ["gallery"] }
 recur-view-observatory = { workspace = true, features = ["gallery"] }
 recur-view-workspace = { workspace = true, features = ["gallery"] }

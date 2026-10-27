@@ -8250,6 +8250,7 @@ dependencies = [
  "recur-view-prs",
  "recur-view-review",
  "recur-view-settings",
+ "recur-view-widgets",
  "recur-view-workspace",
  "serde",
  "serde_json",
@@ -8358,6 +8359,7 @@ dependencies = [
 name = "recur-view-widgets"
 version = "0.0.0"
 dependencies = [
+ "chrono",
  "gpui-kit",
  "gpui-pre",
  "recur-code",

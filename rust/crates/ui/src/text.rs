@@ -1687,6 +1687,8 @@ pub struct TextState {
     /// The box's own layout node, whose unrounded origin the probes are resolved from.
     node: Option<LayoutId>,
     snapped: Snapped,
+    /// The box's unrounded left edge.
+    left: Option<Pixels>,
 }
 
 /// An offset from the text box's top (`Y`) or left (`X`) edge to probe.
@@ -1846,6 +1848,7 @@ impl Element for Text {
                         probes,
                         node: Some(node),
                         snapped: Vec::new(),
+                        left: None,
                     },
                 );
             }
@@ -1895,6 +1898,7 @@ impl Element for Text {
                 probes,
                 node: Some(node),
                 snapped: Vec::new(),
+                left: None,
             },
         )
     }
@@ -1948,6 +1952,9 @@ impl Element for Text {
             );
         }
         state.snapped = resolve_probes(&state.probes, state.node, window);
+        state.left = state
+            .node
+            .map(|n| window.layout_bounds_unsnapped(n).origin.x);
         hits
     }
 
@@ -1980,11 +1987,16 @@ impl Element for Text {
         let align = self.align;
         let at = (0., state.snapped.as_slice());
         let hovered = paint_links(&self.links, hits, window);
+        // Glyphs are placed from the box's unrounded left edge, as WebKit positions them.
+        let glyph_bounds = Bounds {
+            origin: point(state.left.unwrap_or(bounds.origin.x), bounds.origin.y),
+            size: bounds.size,
+        };
         if clip {
             window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
                 paint_lines(
                     laid,
-                    bounds,
+                    glyph_bounds,
                     at,
                     align,
                     self.mask.as_ref(),
@@ -1995,7 +2007,7 @@ impl Element for Text {
         } else {
             paint_lines(
                 laid,
-                bounds,
+                glyph_bounds,
                 at,
                 align,
                 self.mask.as_ref(),

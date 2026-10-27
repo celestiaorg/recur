@@ -728,3 +728,27 @@ async fn the_local_pr_subject() {
     );
     te.close().await;
 }
+
+#[test]
+fn every_chat_mode_can_ask_permission() {
+    let off = recur_domain::Settings {
+        bypass_permissions: false,
+        ..Default::default()
+    };
+    for mode in ["ask", "plan", "review", "agent", ""] {
+        let shape = chat_mode_shape(mode, &off, false);
+        assert_eq!(shape.permission, recur_domain::PERMISSION_MODE_ASK, "{mode}");
+        assert!(shape.mcp, "{mode} needs the MCP endpoint for its prompts");
+    }
+    let on = recur_domain::Settings {
+        bypass_permissions: true,
+        ..Default::default()
+    };
+    for mode in ["ask", "plan", "review", "agent"] {
+        assert_eq!(
+            chat_mode_shape(mode, &on, false).permission,
+            recur_domain::PERMISSION_MODE_BYPASS,
+            "{mode}"
+        );
+    }
+}

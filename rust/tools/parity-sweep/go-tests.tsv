@@ -304,6 +304,7 @@ internal/engine.TestAnswerAskUserRemovesPending	crates/engine/src/ask_user/tests
 internal/engine.TestAnswerChatOwnedEscalationNoLiveLoop	crates/engine/src/loops/tests/escalation.rs::answer_chat_owned_escalation_skips_terminal
 internal/engine.TestAppChatSelectionPersistsAskMode	crates/engine/src/app_chat/tests.rs::app_chat_selection_persists
 internal/engine.TestApplyChatTabOrder	crates/engine/src/chat/tests/tabs.rs::apply_chat_tab_order_cases
+internal/engine.TestApplyCommentHygiene	crates/engine/src/composer/skills_tests.rs::comment_hygiene_on_write_capable_turns_only
 internal/engine.TestApplyGHAvatarsUsesAppIcon	crates/forge/src/github/tests.rs::avatars
 internal/engine.TestApplyGitHubChecksTabURLs	crates/forge/src/github/tests.rs::checks_tab_urls
 internal/engine.TestApplyListedGitHubPRKeepsLocalBehindBase	crates/engine/src/prs/tests/sync.rs::apply_keeps_local_behind_base
@@ -398,6 +399,7 @@ internal/engine.TestClaudeParallelToolUsesEachPersist	crates/engine/src/turn/tes
 internal/engine.TestClaudeProviderDisabledFails	crates/engine/src/turn/tests.rs::disabled_provider_reason_is_the_turn_error, providers/claude/src/lib.rs::availability_and_identity
 internal/engine.TestClaudeRepeatedToolUseYieldsOneStep	crates/engine/src/turn/tests.rs::repeated_tool_use_yields_one_step
 internal/engine.TestClaudeRunnerAppendsRoleNotReplace	providers/claude/src/args.rs::appends_role_not_replace
+internal/engine.TestClaudeRunnerArgsApply1MContext	providers/claude/src/args.rs::model_effort_and_context
 internal/engine.TestClaudeRunnerArgsCompletionTurn	providers/claude/src/args.rs::completion_turn
 internal/engine.TestClaudeRunnerArgsDisallowedEditTools	providers/claude/src/args.rs::disallowed_edit_tools_in_argv
 internal/engine.TestClaudeRunnerArgsForkSession	providers/claude/src/args.rs::fork_session
@@ -468,6 +470,7 @@ internal/engine.TestComposeWorkspaceID	crates/engine/src/workspace/tests.rs::com
 internal/engine.TestContextWindowForMessageClaudeDockFlag	crates/engine/src/turn/transcript/tests.rs::context_window_rules
 internal/engine.TestContextWindowForMessageCursorSessionModel	crates/engine/src/turn/transcript/tests.rs::context_window_rules, providers/cursor/src/provider/tests.rs::context_window_for_a_session_model
 internal/engine.TestConvergeRoundWindow	crates/engine/src/loops/tests/walker.rs::converge_round_window_cases
+internal/engine.TestCountableFindingsNamedLevelsOnly	crates/engine/src/guard/tests.rs::findings_bar_counts
 internal/engine.TestCreateAndPresentArtifactEvents	crates/engine/src/artifacts/tests.rs::create_and_present_events
 internal/engine.TestCreateGitHubPRCapsTitleAt256Runes	crates/forge/src/github/tests.rs::create_caps_title_at_256_chars
 internal/engine.TestCreateGitHubPRDoesNotRetryNonTitleError	crates/forge/src/github/tests.rs::create_does_not_retry_other_errors
@@ -887,6 +890,7 @@ internal/engine.TestMultiWorkspaceChats	crates/engine/src/chat/tests/tabs.rs::pa
 internal/engine.TestNewWorkspaceIDAvoidsExisting	crates/engine/src/workspace/tests.rs::new_workspace_id_avoids_existing_and_deleting
 internal/engine.TestNilInjectedRunnerFailsClosed	crates/engine/src/turn/tests.rs::nil_pin_fails_closed
 internal/engine.TestNonClaudeProviderTurnIsMirrored	crates/engine/src/turn/tests.rs::non_claude_turn_is_mirrored_under_its_provider
+internal/engine.TestNoteToolArgsSkipsNonEmptyAndEmptyPayload	crates/engine/src/host/chat_tests.rs::note_tool_args_backfills_empty_tool_use
 internal/engine.TestOwnerRepoFromRemoteURL	crates/forge/src/github/repo.rs::owner_repo_from_remote_urls
 internal/engine.TestPRConversationMinIntervalLetsOpenPRRefresh	crates/engine/src/prs/tests/thread.rs::conversation_min_interval_lets_open_pr_refresh
 internal/engine.TestPRFallbackIntro	crates/engine/src/golden_e3_tests.rs::pr_text_matches_go
@@ -1122,6 +1126,8 @@ internal/engine.TestSetPRDraftLocalPersistsFlag	crates/engine/src/prs/tests/thre
 internal/engine.TestSettingsCodexConfigured	crates/domain/src/settings.rs::permissions_and_credentials
 internal/engine.TestSettingsCursorConfigured	crates/domain/src/settings.rs::permissions_and_credentials
 internal/engine.TestSettingsPerModeProviders	crates/domain/src/settings.rs::loop_role_accessors_alias_modes, crates/domain/src/settings.rs::workspace_title_model_and_uses_provider
+internal/engine.TestSettingsPermissionMode	crates/domain/src/settings.rs::permissions_and_credentials
+internal/engine.TestSettingsPermissionModeIsGlobal	crates/domain/src/settings.rs::permissions_and_credentials, crates/engine/src/chat/tests/switch_mode.rs::every_chat_mode_can_ask_permission
 internal/engine.TestSettledLoopTabNotLockedBySiblingLoop	crates/engine/src/chat/tests/moved.rs::a_settled_loop_tab_is_not_locked_by_a_sibling_loop
 internal/engine.TestShutdownCompletedTurnGoesIdle	crates/engine/src/chat/tests/recover.rs::a_turn_that_completed_during_quit_goes_idle
 internal/engine.TestShutdownLeavesChatWorkingForRecover	crates/engine/src/chat/tests/recover.rs::quit_leaves_a_chat_working_for_recover

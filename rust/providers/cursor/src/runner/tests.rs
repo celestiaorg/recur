@@ -1850,3 +1850,22 @@ async fn auth_and_missing_result_errors() {
             .any(|e| matches!(e, AgentEvent::Text { text, .. } if text == "half"))
     );
 }
+
+#[test]
+fn wrap_attached_images_for_cursor_orders_by_marker() {
+    let (m1, m2) = (marker("img_a"), marker("img_b"));
+    let input = format!("before {m1} mid {m2} after");
+    let img = |id: &str, data: &str| recur_agent::UserImage {
+        id: id.into(),
+        mime: "image/png".into(),
+        data: data.into(),
+        ..Default::default()
+    };
+    let imgs = [img("img_b", "BB"), img("img_a", "AA")];
+    let got = wrap_attached_images_for_cursor(&input, &imgs);
+    assert!(got.contains("<system_instruction>"));
+    assert!(got.contains(&format!("{m1} is image 1 (first attached image)")));
+    assert!(got.contains(&format!("{m2} is image 2 (second attached image)")));
+    assert!(got.contains(&input), "markers stay in the body");
+    assert_eq!(wrap_attached_images_for_cursor(&input, &[]), input);
+}

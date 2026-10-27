@@ -536,3 +536,29 @@ async fn reengage_keeps_prompt_action_goal_display() {
     release_slots(&t, slots);
     t.close().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn apply_goal_images_sets_planner_spec() {
+    let runner = CaptureScript::new(|_| maestro_fixture("plan-img", "OK."));
+    let t = TestEngine::new(Some(runner.provider()));
+    let (ws, _repo) = scratch(&t, "scratch").await;
+    let m = marker("img1");
+    send_with(
+        &t,
+        &ws,
+        "PA",
+        &format!("look at this {m}"),
+        &[png("img1", "shot.png")],
+        "",
+    )
+    .await;
+    wait_for(Duration::from_secs(10), "the planner turn", || {
+        !runner.with_role(AgentRole::Maestro).is_empty()
+    })
+    .await;
+    let planner = runner.with_role(AgentRole::Maestro).remove(0);
+    assert_eq!(planner.images.len(), 1, "{:?}", planner.images);
+    assert_eq!(planner.images[0].id, "img1");
+    assert!(planner.prompt.contains(&m), "{}", planner.prompt);
+    t.close().await;
+}

@@ -679,6 +679,8 @@ internal/engine.TestFlattenUserMessageHidesImageFirstForkWithoutDisplayText	crat
 internal/engine.TestFlattenUserMessageKeepsQuotedForkLeadAfterImage	crates/engine/src/turn/transcript/tests.rs::keeps_quoted_fork_lead_after_image
 internal/engine.TestFlattenUserMessagePrefersDisplayText	crates/engine/src/turn/transcript/tests.rs::flatten_prefers_display_text
 internal/engine.TestFlattenUserMessageRestoresMarkers	crates/engine/src/turn/transcript/tests.rs::flatten_restores_markers
+internal/engine.TestFlattenUserMessageSkipsModeSwitchContinue	crates/engine/src/turn/transcript/tests.rs::skips_retry_and_mode_switch_rows
+internal/engine.TestFlattenUserMessageSkipsRetrySentinel	crates/engine/src/turn/transcript/tests.rs::skips_retry_and_mode_switch_rows
 internal/engine.TestFlattenUserMessageSkipsWireAfterDisplayText	crates/engine/src/turn/transcript/tests.rs::flatten_skips_wire_after_display_text
 internal/engine.TestFlattenUserMessageStripsForkPreambleWithoutDisplayText	crates/engine/src/turn/transcript/tests.rs::strips_fork_preamble_without_display
 internal/engine.TestForkChatImageSendHidesInjectedTranscript	crates/engine/src/chat/tests/fork.rs::an_image_send_on_a_fork_hides_the_injected_transcript
@@ -830,6 +832,7 @@ internal/engine.TestLoopCommitMessage	crates/engine/src/turn/oneshot_tests.rs::l
 internal/engine.TestLoopFinishedLegacyEmptyChatCode	crates/engine/src/attention/tests.rs::loop_finished_legacy_empty_chat_code_badges_ma
 internal/engine.TestLoopFinishedLegacyEmptyClosedMA	crates/engine/src/attention/tests.rs::loop_finished_legacy_empty_does_not_follow_pa_owner
 internal/engine.TestLoopFinishedVersusCloseLeavesNoOrphanInbox	crates/engine/src/chat/tests/moved.rs::loop_finished_racing_close_leaves_no_orphan_row
+internal/engine.TestLoopGoalImagesIgnoresSharedDirectory	crates/engine/src/turn/transcript/tests.rs::loop_goal_images_prefer_the_recorded_set
 internal/engine.TestLoopGoalImagesUsesEngageTurnNotFirstChat	crates/engine/src/loops/tests/engage.rs::loop_goal_images_use_engage_turn_not_first_chat
 internal/engine.TestLoopWrapUpHTML	crates/engine/src/loops/tests/wrap_up.rs::loop_wrap_up_html_cases
 internal/engine.TestMCPConfigJSONUserMCP	providers/claude/src/args.rs::mcp_config
@@ -1231,6 +1234,7 @@ internal/engine.TestWrapAttachedArtifactMentionsScrubsInstructionClose	crates/en
 internal/engine.TestWrapAttachedArtifactMentionsUnknownTitleIsProse	crates/engine/src/composer/artifacts_tests.rs::unknown_and_duplicate_titles_are_prose
 internal/engine.TestWrapAttachedFileMentions	crates/engine/src/composer/files_tests.rs::wraps_with_sizes
 internal/engine.TestWrapAttachedFileMentionsColumnSpan	crates/engine/src/composer/files_tests.rs::column_span_notes
+internal/engine.TestWrapAttachedImagesForCursor	providers/cursor/src/runner/tests.rs::wrap_attached_images_for_cursor_orders_by_marker
 internal/engine.TestWrapAttachedTerminalMentionsMarksExited	crates/engine/src/composer/terminals_tests.rs::exited_note
 internal/engine.TestWrapAttachedTerminalMentionsNilManager	crates/engine/src/composer/terminals_tests.rs::no_source_is_a_no_op
 internal/engine.TestWrapAttachedTerminalMentionsSnapshot	crates/engine/src/composer/terminals_tests.rs::real_shell_snapshot_and_exit

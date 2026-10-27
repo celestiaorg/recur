@@ -1949,9 +1949,14 @@ impl Element for Text {
             // A box as wide as its line can lose up to a device pixel when GPUI snaps its two
             // edges; the line still fits it, as it does in WebKit's unrounded layout.
             let mut width = f32::from(bounds.size.width);
-            if let Some(n) = state.natural
+            let dp = 1. / window.scale_factor();
+            let natural = state.natural.or_else(|| {
+                laid.relayout(None, self.white_space, self.anywhere, self.clamp, false, window);
+                Some(laid.measured().0)
+            });
+            if let Some(n) = natural
                 && n > width
-                && n <= width + 1. / window.scale_factor()
+                && n <= width + dp
             {
                 width = n;
             }

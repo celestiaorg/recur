@@ -64,8 +64,10 @@ pub fn exact_cell(id: Option<&GlobalElementId>, window: &mut Window) -> Option<E
     )
 }
 
-fn snap(v: f32, scale: f32) -> f32 {
-    (v * scale).round() / scale
+/// `v` ceiled to a LayoutUnit (1/64 px), as WebKit stores an inline width
+/// (`LayoutUnit::fromFloatCeil`); a value already on that grid stays.
+fn lu_ceil(v: f32) -> f32 {
+    ((v * 64.) - 1e-3).ceil() / 64.
 }
 
 /// `v` floored to the device grid.
@@ -73,8 +75,9 @@ pub fn floor_dp(v: f32, scale: f32) -> f32 {
     ((v * scale) + 1e-3).floor() / scale
 }
 
-/// The leaves of a custom measured box whose exact height reaches layout. GPUI ceils measured
-/// sizes to device pixels, so the measured leaf reports its height floored to the device grid
+/// The leaves of a custom measured box whose exact size reaches layout. Its width stays as
+/// measured (ceiled to a LayoutUnit). GPUI ceils a measured height to device pixels, so the
+/// measured leaf reports its height floored to the device grid
 /// and a spacer (a 1dp-wide `aspect_ratio` leaf) adds the remainder. The remainder is known
 /// only before layout: it is the height from `exact` (the last frame, see [`settle`]) or
 /// `guess` until then. Put the leaves in a block (`Style::default()`) container.
@@ -90,11 +93,13 @@ pub fn measured(
 ) -> SmallVec<[LayoutId; 6]> {
     let mut leaf_style = Style::default();
     leaf_style.min_size.width = min_width;
-    let leaf = window.request_measured_layout(leaf_style, move |known, available, window, _| {
-        let (w, h) = measure(known, available, window);
-        let scale = window.scale_factor();
-        size(px(snap(w, scale)), px(floor_dp(h, scale)))
-    });
+    let leaf = window.request_measured_layout_exact_width(
+        leaf_style,
+        move |known, available, window, _| {
+            let (w, h) = measure(known, available, window);
+            size(px(lu_ceil(w)), px(floor_dp(h, window.scale_factor())))
+        },
+    );
     let mut leaves = SmallVec::new();
     leaves.push(leaf);
     let scale = window.scale_factor();

@@ -296,6 +296,56 @@ index be378132..1914983e 100644
      pub fn pop_layer(&mut self) {
          self.layer_stack.pop();
          self.paint_operations.push(PaintOperation::EndLayer);
+diff --git a/rust/vendor/gpui-pre/src/taffy.rs b/rust/vendor/gpui-pre/src/taffy.rs
+index b9e583a8..e79acbe1 100644
+--- a/rust/vendor/gpui-pre/src/taffy.rs
++++ b/rust/vendor/gpui-pre/src/taffy.rs
+@@ -27,6 +27,8 @@ type NodeMeasureFn = StackSafe<Box<MeasureFn>>;
+ 
+ struct NodeContext {
+     measure: NodeMeasureFn,
++    /// Keep the measured width unrounded (`Window::request_measured_layout_exact_width`).
++    exact_width: bool,
+ }
+ pub struct TaffyLayoutEngine {
+     taffy: TaffyTree<NodeContext>,
+@@ -87,6 +89,7 @@ impl TaffyLayoutEngine {
+         style: Style,
+         rem_size: Pixels,
+         scale_factor: f32,
++        exact_width: bool,
+         measure: impl FnMut(
+             Size<Option<Pixels>>,
+             Size<AvailableSpace>,
+@@ -101,7 +104,13 @@ impl TaffyLayoutEngine {
+         let measure = StackSafe::new(measure);
+ 
+         self.taffy
+-            .new_leaf_with_context(taffy_style, NodeContext { measure })
++            .new_leaf_with_context(
++                taffy_style,
++                NodeContext {
++                    measure,
++                    exact_width,
++                },
++            )
+             .expect(EXPECT_MESSAGE)
+             .into()
+     }
+@@ -261,7 +270,12 @@ impl TaffyLayoutEngine {
+ 
+                     let measured_size: Size<Pixels> =
+                         (node_context.measure)(known_dimensions, available_space, window, cx);
+-                    snap_measured_size_to_device_pixels(measured_size, scale_factor).into()
++                    let mut snapped =
++                        snap_measured_size_to_device_pixels(measured_size, scale_factor);
++                    if node_context.exact_width {
++                        snapped.width = measured_size.width.0.max(0.0) * scale_factor;
++                    }
++                    snapped.into()
+                 },
+             )
+             .expect(EXPECT_MESSAGE);
 diff --git a/rust/vendor/gpui-pre/src/test.rs b/rust/vendor/gpui-pre/src/test.rs
 index c1c8e666..3f68ea13 100644
 --- a/rust/vendor/gpui-pre/src/test.rs
@@ -433,6 +483,76 @@ index f0bf1211..63bc94d8 100644
 +fn clip<T>(list: &[T], start: usize, end: usize) -> &[T] {
 +    let end = end.min(list.len());
 +    &list[start.min(end)..end]
++}
+diff --git a/rust/vendor/gpui-pre/src/unwind.rs b/rust/vendor/gpui-pre/src/unwind.rs
+new file mode 100644
+index 00000000..44678d5d
+--- /dev/null
++++ b/rust/vendor/gpui-pre/src/unwind.rs
+@@ -0,0 +1,64 @@
++//! Recur: panic containment (`rust/vendor/README.md`, "Contained panics").
++//!
++//! A panic must not unwind into a platform callback (AppKit, GCD and GLib frames cannot be
++//! unwound through, so the process aborts). Element listeners and `canvas` closures run under
++//! [`contain`]; task futures under [`Recorded`], whose panic the task system keeps and
++//! re-raises in an awaiter. Entity and window updates restore their lease and window before an
++//! unwind leaves them (`App::update_entity_erased`, `App::update_window_erased`).
++
++use std::cell::RefCell;
++use std::future::Future;
++use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
++use std::pin::Pin;
++use std::task::{Context, Poll};
++
++thread_local! {
++    static CONTAINED: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
++}
++
++/// The panics contained on this thread since the last call, as `site: message`. GPUI tests fail
++/// when a test leaves any; a test that panics on purpose takes them.
++pub fn take_contained_panics() -> Vec<String> {
++    CONTAINED.with_borrow_mut(std::mem::take)
++}
++
++fn record(site: &str, payload: &(dyn std::any::Any + Send)) {
++    let message = payload
++        .downcast_ref::<&str>()
++        .map(|s| s.to_string())
++        .or_else(|| payload.downcast_ref::<String>().cloned())
++        .unwrap_or_else(|| "non-string panic".into());
++    log::error!("gpui: contained a panic in {site}: {message}");
++    CONTAINED.with_borrow_mut(|c| c.push(format!("{site}: {message}")));
++}
++
++/// Runs `f`; a panic is recorded and dropped, so the caller carries on as if `f` returned
++/// nothing.
++pub(crate) fn contain<R>(site: &str, f: impl FnOnce() -> R) -> Option<R> {
++    match catch_unwind(AssertUnwindSafe(f)) {
++        Ok(r) => Some(r),
++        Err(payload) => {
++            record(site, &*payload);
++            None
++        }
++    }
++}
++
++/// A task's future: a panic in a poll is recorded and resumed for the task to keep.
++pub(crate) struct Recorded<F>(pub(crate) F);
++
++impl<F: Future> Future for Recorded<F> {
++    type Output = F::Output;
++
++    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<F::Output> {
++        // SAFETY: the inner future is structurally pinned and never moved out.
++        let inner = unsafe { self.map_unchecked_mut(|r| &mut r.0) };
++        match catch_unwind(AssertUnwindSafe(|| inner.poll(cx))) {
++            Ok(p) => p,
++            Err(payload) => {
++                record("a task", &*payload);
++                resume_unwind(payload)
++            }
++        }
++    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/view.rs b/rust/vendor/gpui-pre/src/view.rs
 index 081edd9a..d15cd1e6 100644
@@ -800,7 +920,7 @@ index 081edd9a..d15cd1e6 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..359e0319 100644
+index 1214b035..e168b7f2 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
 @@ -999,6 +999,16 @@ impl ElementIdStack {
@@ -1462,7 +1582,34 @@ index 1214b035..359e0319 100644
      /// Creates a new painting layer for the specified bounds. A "layer" is a batch
      /// of geometry that are non-overlapping and have the same draw order. This is typically used
      /// for performance reasons.
-@@ -5947,7 +6393,9 @@ impl Window {
+@@ -5247,7 +5693,25 @@ impl Window {
+         self.layout_engine
+             .as_mut()
+             .unwrap()
+-            .request_measured_layout(style, rem_size, scale_factor, measure)
++            .request_measured_layout(style, rem_size, scale_factor, false, measure)
++    }
++
++    /// [`Window::request_measured_layout`], keeping the measured width as the closure returns
++    /// it instead of ceiling it to device pixels (the height still ceils). Box edges are still
++    /// snapped after layout, so a leaf placed after a fractional width keeps its exact offset.
++    pub fn request_measured_layout_exact_width<F>(&mut self, style: Style, measure: F) -> LayoutId
++    where
++        F: Fn(Size<Option<Pixels>>, Size<AvailableSpace>, &mut Window, &mut App) -> Size<Pixels>
++            + 'static,
++    {
++        self.invalidator.debug_assert_prepaint();
++
++        let rem_size = self.rem_size();
++        let scale_factor = self.scale_factor();
++        self.layout_engine
++            .as_mut()
++            .unwrap()
++            .request_measured_layout(style, rem_size, scale_factor, true, measure)
+     }
+ 
+     /// Compute the layout for the given id within the given available space.
+@@ -5947,7 +6411,9 @@ impl Window {
          // special purposes, such as detecting events outside of a given Bounds.
          for listener in &mut mouse_listeners {
              let listener = listener.as_mut().unwrap();
@@ -1473,7 +1620,7 @@ index 1214b035..359e0319 100644
              if !cx.propagate_event {
                  break;
              }
-@@ -5957,7 +6405,9 @@ impl Window {
+@@ -5957,7 +6423,9 @@ impl Window {
          if cx.propagate_event {
              for listener in mouse_listeners.iter_mut().rev() {
                  let listener = listener.as_mut().unwrap();
@@ -1484,7 +1631,7 @@ index 1214b035..359e0319 100644
                  if !cx.propagate_event {
                      break;
                  }
-@@ -6268,7 +6718,9 @@ impl Window {
+@@ -6268,7 +6736,9 @@ impl Window {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
  
              for key_listener in node.key_listeners.clone() {
@@ -1495,7 +1642,7 @@ index 1214b035..359e0319 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6280,7 +6732,9 @@ impl Window {
+@@ -6280,7 +6750,9 @@ impl Window {
              // Handle low level key events
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for key_listener in node.key_listeners.clone() {
@@ -1506,7 +1653,7 @@ index 1214b035..359e0319 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6300,7 +6754,7 @@ impl Window {
+@@ -6300,7 +6772,7 @@ impl Window {
          for node_id in dispatch_path.iter().rev() {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for listener in node.modifiers_changed_listeners.clone() {
@@ -1515,7 +1662,7 @@ index 1214b035..359e0319 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6503,7 +6957,9 @@ impl Window {
+@@ -6503,7 +6975,9 @@ impl Window {
              for listener in &global_listeners {
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -1526,7 +1673,7 @@ index 1214b035..359e0319 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -6537,7 +6993,9 @@ impl Window {
+@@ -6537,7 +7011,9 @@ impl Window {
                  if action_type == any_action.type_id() {
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -1537,7 +1684,7 @@ index 1214b035..359e0319 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6561,7 +7019,9 @@ impl Window {
+@@ -6561,7 +7037,9 @@ impl Window {
                      cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -1548,7 +1695,7 @@ index 1214b035..359e0319 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6582,7 +7042,9 @@ impl Window {
+@@ -6582,7 +7060,9 @@ impl Window {
  
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -1559,7 +1706,7 @@ index 1214b035..359e0319 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -7317,7 +7779,9 @@ impl Window {
+@@ -7317,7 +7797,9 @@ impl Window {
          state_type: TypeId,
      ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
          let key = (global_id.clone(), state_type);

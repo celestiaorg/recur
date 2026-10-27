@@ -5693,7 +5693,25 @@ impl Window {
         self.layout_engine
             .as_mut()
             .unwrap()
-            .request_measured_layout(style, rem_size, scale_factor, measure)
+            .request_measured_layout(style, rem_size, scale_factor, false, measure)
+    }
+
+    /// [`Window::request_measured_layout`], keeping the measured width as the closure returns
+    /// it instead of ceiling it to device pixels (the height still ceils). Box edges are still
+    /// snapped after layout, so a leaf placed after a fractional width keeps its exact offset.
+    pub fn request_measured_layout_exact_width<F>(&mut self, style: Style, measure: F) -> LayoutId
+    where
+        F: Fn(Size<Option<Pixels>>, Size<AvailableSpace>, &mut Window, &mut App) -> Size<Pixels>
+            + 'static,
+    {
+        self.invalidator.debug_assert_prepaint();
+
+        let rem_size = self.rem_size();
+        let scale_factor = self.scale_factor();
+        self.layout_engine
+            .as_mut()
+            .unwrap()
+            .request_measured_layout(style, rem_size, scale_factor, true, measure)
     }
 
     /// Compute the layout for the given id within the given available space.

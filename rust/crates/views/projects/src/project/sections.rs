@@ -318,6 +318,7 @@ impl ProjectView {
                 letter.update(cx, |s, cx| {
                     s.set_text_align(gpui_kit::TextAlign::Center, cx)
                 });
+                recur_ui::style::set_field_shape(&letter, false, gpui_kit::TextAlign::Center, cx);
                 div()
                     .flex()
                     .debug_selector(|| "inp:Avatar letter".into())

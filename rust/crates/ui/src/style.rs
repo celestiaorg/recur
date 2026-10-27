@@ -972,11 +972,22 @@ pub fn text_field(
         .size(size)
         .line_height(LineHeight::Normal)
         .measure(None, window);
-    let placeholder = input
-        .read(cx)
-        .value()
-        .is_empty()
-        .then(|| placeholder.clone());
+    let state = input.read(cx);
+    let placeholder = state.value().is_empty().then(|| placeholder.clone());
+    // The typed value is recur-ui text where the placeholder sits, as WebKit's inner editor
+    // places both; gpui-base keeps the caret and selection (its glyphs are hidden).
+    let value = cx
+        .try_global::<FieldLooks>()
+        .and_then(|c| c.0.get(&input.entity_id()).copied())
+        .filter(|l| !state.value().is_empty() && !l.masked)
+        .and_then(|l| {
+            Some((
+                state.value().clone(),
+                l.fg?,
+                l.align,
+                state.scroll_offset().x,
+            ))
+        });
     div()
         .relative()
         .flex_1()
@@ -995,7 +1006,7 @@ pub fn text_field(
             d.child(
                 div().absolute().top_0().left_0().child(
                     text(p)
-                        .family(family)
+                        .family(family.clone())
                         .size(size)
                         .line_height(LineHeight::Normal)
                         .color(placeholder_color)
@@ -1004,6 +1015,79 @@ pub fn text_field(
                 ),
             )
         })
+        .when_some(value, |d, (v, fg, align, scroll_x)| {
+            let at = div().absolute().top_0();
+            let at = match align {
+                gpui_kit::TextAlign::Left => at.left(scroll_x),
+                gpui_kit::TextAlign::Right => at.right(-scroll_x),
+                gpui_kit::TextAlign::Center => at.left_0().right_0().flex().justify_center(),
+            };
+            d.child(
+                div().absolute().inset_0().overflow_hidden().child(
+                    at.child(
+                        text(v)
+                            .family(family)
+                            .size(size)
+                            .line_height(LineHeight::Normal)
+                            .color(fg)
+                            .nowrap()
+                            .field(),
+                    ),
+                ),
+            )
+        })
+}
+
+/// How [`text_field`] draws each input's value: the color [`style_text_input_fg`] gave it, and
+/// what gpui-base keeps private (masking, alignment; [`set_field_shape`]).
+#[derive(Clone, Copy)]
+struct FieldLook {
+    fg: Option<Color>,
+    masked: bool,
+    align: gpui_kit::TextAlign,
+}
+
+impl Default for FieldLook {
+    fn default() -> Self {
+        FieldLook {
+            fg: None,
+            masked: false,
+            align: gpui_kit::TextAlign::Left,
+        }
+    }
+}
+
+#[derive(Default)]
+struct FieldLooks(std::collections::HashMap<gpui_kit::EntityId, FieldLook>);
+
+impl gpui_kit::Global for FieldLooks {}
+
+fn update_field_look(input: &Entity<InputState>, cx: &mut App, f: impl FnOnce(&mut FieldLook)) {
+    let id = input.entity_id();
+    let looks = &mut cx.default_global::<FieldLooks>().0;
+    let fresh = !looks.contains_key(&id);
+    f(looks.entry(id).or_default());
+    if fresh {
+        cx.observe_release(input, move |_, cx| {
+            if cx.has_global::<FieldLooks>() {
+                cx.global_mut::<FieldLooks>().0.remove(&id);
+            }
+        })
+        .detach();
+    }
+}
+
+/// Tell [`text_field`] how `input` is masked and aligned, which gpui-base does not expose.
+pub fn set_field_shape(
+    input: &Entity<InputState>,
+    masked: bool,
+    align: gpui_kit::TextAlign,
+    cx: &mut App,
+) {
+    update_field_look(input, cx, |l| {
+        l.masked = masked;
+        l.align = align;
+    });
 }
 
 /// `.inp`: the bordered settings field, mono 12px, `--pane` on `--line` (amber 50% while
@@ -1050,8 +1134,30 @@ pub fn style_text_input(input: &Entity<InputState>, cx: &mut App) {
 
 /// [`style_text_input`] with the typed text in `fg` (a field whose color follows its state).
 pub fn style_text_input_fg(input: &Entity<InputState>, fg: Color, cx: &mut App) {
+    style_field_editor(input, fg, true, cx);
+}
+
+/// [`style_text_input`] for a field on a translucent layer (the terminal dock's frost), where
+/// WebKit draws the value without font smoothing: gpui-base's own glyphs, which are unsmoothed.
+pub fn style_text_input_unsmoothed(input: &Entity<InputState>, cx: &mut App) {
+    let fg = tokens(cx).text;
+    style_field_editor(input, fg, false, cx);
+}
+
+fn style_field_editor(input: &Entity<InputState>, fg: Color, overlay: bool, cx: &mut App) {
     let t = tokens(cx);
     let hidden: Hsla = t.text.with_alpha(0.001).into();
+    let mut masked = false;
+    update_field_look(input, cx, |l| {
+        l.fg = overlay.then_some(fg);
+        masked = l.masked;
+    });
+    // Masked text stays gpui-base's (bullets); `text_field` draws everything else.
+    let shown = if masked || !overlay {
+        fg.into()
+    } else {
+        hidden
+    };
     let caret = if crate::motion::is_frozen(cx) {
         hidden
     } else {
@@ -1059,7 +1165,7 @@ pub fn style_text_input_fg(input: &Entity<InputState>, fg: Color, cx: &mut App) 
     };
     input.update(cx, |s, _| {
         s.set_editor_style(InputEditorStyle {
-            foreground: fg.into(),
+            foreground: shown,
             muted_foreground: hidden,
             background: Hsla::transparent_black(),
             border: Hsla::transparent_black(),

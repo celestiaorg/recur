@@ -22,6 +22,7 @@ pub struct Field {
     pending: Option<String>,
     at_focus: String,
     masked: std::cell::Cell<bool>,
+    align_right: bool,
     _sub: Subscription,
 }
 
@@ -48,6 +49,7 @@ impl Field {
             }
             s
         });
+        crate::style::set_field_shape(&input, opts.masked, align(opts.align_right), cx);
         let sub = cx.guarded_subscribe_in(
             &input,
             window,
@@ -69,6 +71,7 @@ impl Field {
             pending: None,
             at_focus: String::new(),
             masked: std::cell::Cell::new(opts.masked),
+            align_right: opts.align_right,
             _sub: sub,
         }
     }
@@ -131,10 +134,19 @@ impl Field {
             self.masked.set(masked);
             self.input
                 .update(cx, |s, cx| s.set_masked(masked, window, cx));
+            crate::style::set_field_shape(&self.input, masked, align(self.align_right), cx);
         }
     }
 
     pub fn is_focused(&self, window: &Window, cx: &gpui_kit::App) -> bool {
         gpui_kit::Focusable::focus_handle(self.input.read(cx), cx).is_focused(window)
+    }
+}
+
+fn align(right: bool) -> gpui_kit::TextAlign {
+    if right {
+        gpui_kit::TextAlign::Right
+    } else {
+        gpui_kit::TextAlign::Left
     }
 }

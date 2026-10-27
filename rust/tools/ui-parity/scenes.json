@@ -526,7 +526,7 @@
           "wait": 300
         }
       ],
-      "hardTolerance": 59
+      "hardTolerance": 41
     },
     {
       "name": "editor/vim",
@@ -1599,7 +1599,7 @@
       "height": 480,
       "theme": "default",
       "tolerance": 20390,
-      "hardTolerance": 15
+      "hardTolerance": 10
     },
     {
       "name": "file-preview/markdown",
@@ -1897,7 +1897,7 @@
     {"name": "observatory/terminal-max", "width": 1280, "height": 800, "theme": "default", "tolerance": 38720, "steps": [{"click": [975, 560]}, {"wait": 300}], "hardTolerance": 2},
     {"name": "observatory/quick-open", "width": 1280, "height": 800, "theme": "default", "tolerance": 38320, "steps": [{"key": "Meta+p"}, {"wait": 300}]},
     {"name": "observatory/artifacts", "width": 1280, "height": 800, "theme": "default", "tolerance": 35220, "steps": [{"click": [1221, 19]}, {"wait": 300}]},
-    {"name": "observatory/pdf", "width": 1280, "height": 1000, "theme": "default", "tolerance": 65870, "hardTolerance": 262},
+    {"name": "observatory/pdf", "width": 1280, "height": 1000, "theme": "default", "tolerance": 65870, "hardTolerance": 257},
     {"name": "observatory/image", "width": 1280, "height": 800, "theme": "default", "tolerance": 9440},
     {"name": "observatory/commit", "width": 1280, "height": 800, "theme": "default", "tolerance": 39850, "steps": [{"click": [1076, 19]}, {"wait": 300}]}
   ],
@@ -1941,8 +1941,8 @@
     {"name": "prs/people-detail", "theme": "default", "width": 1280, "height": 800, "tolerance": 21850, "hardTolerance": 1, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "detail", "steps": [{"move": [868, 93]}, {"move": [870, 93]}, {"wait": 200}]}
   ],
   "settings": [
-    {"name": "settings/general", "width": 1280, "height": 800, "theme": "default", "tolerance": 7850, "hardTolerance": 8, "fixture": "base", "section": "general"},
-    {"name": "settings/general-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 8070, "hardTolerance": 15, "fixture": "base", "section": "general"},
+    {"name": "settings/general", "width": 1280, "height": 800, "theme": "default", "tolerance": 7850, "hardTolerance": 2, "fixture": "base", "section": "general"},
+    {"name": "settings/general-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 8070, "hardTolerance": 13, "fixture": "base", "section": "general"},
     {"name": "settings/appearance", "width": 1280, "height": 800, "theme": "default", "tolerance": 13390, "hardTolerance": 22, "fixture": "base", "section": "appearance"},
     {"name": "settings/appearance-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 13790, "hardTolerance": 15, "fixture": "base", "section": "appearance"},
     {"name": "settings/editor", "width": 1280, "height": 800, "theme": "default", "tolerance": 8810, "fixture": "base", "section": "editor"},
@@ -1975,18 +1975,18 @@
     {"name": "settings/themes-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 7190, "fixture": "base", "section": "bundle-themes"},
     {"name": "settings/snippets", "width": 1280, "height": 800, "theme": "default", "tolerance": 7940, "fixture": "base", "section": "bundle-snippets"},
     {"name": "settings/snippets-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 7920, "fixture": "base", "section": "bundle-snippets"},
-    {"name": "settings/compat-modal", "width": 1280, "height": 800, "theme": "default", "tolerance": 12100, "hardTolerance": 114, "fixture": "base", "section": "agent", "act": "compat-modal"},
-    {"name": "settings/compat-modal-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 58320, "hardTolerance": 206, "fixture": "base", "section": "agent", "act": "compat-modal"},
+    {"name": "settings/compat-modal", "width": 1280, "height": 800, "theme": "default", "tolerance": 12100, "hardTolerance": 55, "fixture": "base", "section": "agent", "act": "compat-modal"},
+    {"name": "settings/compat-modal-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 58320, "hardTolerance": 102, "fixture": "base", "section": "agent", "act": "compat-modal"},
     {"name": "settings/cursor-install", "width": 1280, "height": 800, "theme": "default", "tolerance": 9250, "hardTolerance": 13, "fixture": "cursor", "section": "agent", "act": "install"},
     {"name": "settings/cursor-install-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 14970, "hardTolerance": 15, "fixture": "cursor", "section": "agent", "act": "install"},
     {"name": "settings/policy-menu", "width": 1280, "height": 800, "theme": "default", "tolerance": 9890, "fixture": "base", "section": "loops", "steps": [{"click": [700, 203]}]},
     {"name": "settings/policy-menu-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 10040, "hardTolerance": 9, "fixture": "base", "section": "loops", "steps": [{"click": [700, 203]}]},
     {"name": "settings/policy-tip", "width": 1280, "height": 800, "theme": "default", "tolerance": 8190, "fixture": "base", "section": "loops", "steps": [{"click": [773, 203]}]},
     {"name": "settings/policy-tip-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 8730, "hardTolerance": 14, "fixture": "base", "section": "loops", "steps": [{"click": [773, 203]}]},
-    {"name": "settings/usage", "width": 1280, "height": 800, "theme": "default", "tolerance": 8270, "hardTolerance": 8, "fixture": "usage", "section": "general", "steps": [{"click": [222, 753]}]},
-    {"name": "settings/usage-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 23400, "hardTolerance": 38, "fixture": "usage", "section": "general", "steps": [{"click": [222, 753]}]},
-    {"name": "settings/keybinding-menu", "width": 1280, "height": 800, "theme": "default", "tolerance": 34190, "hardTolerance": 16, "fixture": "base", "section": "general", "act": "keybinding-menu"},
-    {"name": "settings/keybinding-menu-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 13800, "hardTolerance": 15, "fixture": "base", "section": "general", "act": "keybinding-menu"}
+    {"name": "settings/usage", "width": 1280, "height": 800, "theme": "default", "tolerance": 8270, "hardTolerance": 2, "fixture": "usage", "section": "general", "steps": [{"click": [222, 753]}]},
+    {"name": "settings/usage-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 23600, "hardTolerance": 36, "fixture": "usage", "section": "general", "steps": [{"click": [222, 753]}]},
+    {"name": "settings/keybinding-menu", "width": 1280, "height": 800, "theme": "default", "tolerance": 34190, "hardTolerance": 10, "fixture": "base", "section": "general", "act": "keybinding-menu"},
+    {"name": "settings/keybinding-menu-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 13800, "hardTolerance": 13, "fixture": "base", "section": "general", "act": "keybinding-menu"}
   ],
   "home": [
     {"name": "home/welcome", "width": 1280, "height": 800, "theme": "default", "tolerance": 3470, "hardTolerance": 11, "fixture": "first-run", "route": "welcome"},
@@ -1995,7 +1995,7 @@
     {"name": "home/welcome-done", "width": 1280, "height": 800, "theme": "default", "tolerance": 7550, "fixture": "base", "route": "welcome"},
     {"name": "home/new-project", "width": 1280, "height": 800, "theme": "default", "tolerance": 4040, "fixture": "base", "route": "newproject"},
     {"name": "home/new-project-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 4350, "fixture": "base", "route": "newproject"},
-    {"name": "home/new-project-path", "width": 1280, "height": 800, "theme": "default", "tolerance": 7370, "hardTolerance": 189, "fixture": "base", "route": "newproject", "steps": [{"type": "/Users/dev/code/storefront"}, {"wait": 400}]},
+    {"name": "home/new-project-path", "width": 1280, "height": 800, "theme": "default", "tolerance": 7370, "hardTolerance": 102, "fixture": "base", "route": "newproject", "steps": [{"type": "/Users/dev/code/storefront"}, {"wait": 400}]},
     {"name": "home/new-task", "width": 1280, "height": 800, "theme": "default", "tolerance": 5160, "fixture": "base", "route": "newtask"},
     {"name": "home/new-task-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 5380, "fixture": "base", "route": "newtask"},
     {"name": "home/new-task-loop", "width": 1280, "height": 800, "theme": "default", "tolerance": 4100, "fixture": "base", "route": "newtask", "storage": {"recur.newWorkspaceMode": "loop"}},
@@ -2019,14 +2019,14 @@
     {"name": "briefing/schedules", "width": 1280, "height": 800, "theme": "default", "tolerance": 8000, "hardTolerance": 20, "fixture": "schedules", "route": "schedules"},
     {"name": "briefing/schedules-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 8040, "hardTolerance": 22, "fixture": "schedules", "route": "schedules"},
     {"name": "briefing/inbox-narrow", "width": 1000, "height": 760, "theme": "default", "tolerance": 5800, "fixture": "base", "route": "briefing"},
-    {"name": "briefing/schedule-editor", "width": 1280, "height": 800, "theme": "default", "tolerance": 14620, "hardTolerance": 126, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]},
+    {"name": "briefing/schedule-editor", "width": 1280, "height": 800, "theme": "default", "tolerance": 14620, "hardTolerance": 81, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]},
     {"name": "briefing/schedule-editor-once", "width": 1280, "height": 800, "theme": "default", "tolerance": 13470, "hardTolerance": 51, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"click": [370, 391]}, {"click": [475, 460]}, {"click": [424, 391]}, {"type": "12"}, {"key": "ArrowRight"}, {"type": "31"}, {"key": "ArrowRight"}, {"type": "2030"}, {"click": [514, 391]}, {"type": "7"}, {"key": "ArrowRight"}, {"type": "45"}, {"key": "ArrowRight"}, {"type": "p"}, {"move": [1180, 760]}, {"wait": 300}]},
-    {"name": "briefing/schedule-editor-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 16160, "hardTolerance": 119, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]}
+    {"name": "briefing/schedule-editor-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 16160, "hardTolerance": 85, "fixture": "schedules", "route": "schedules", "steps": [{"click": [297, 61]}, {"move": [1180, 760]}, {"wait": 400}]}
   ],
   "projects": [
-    {"name": "projects/general", "width": 1280, "height": 800, "theme": "default", "tolerance": 8940, "hardTolerance": 58, "fixture": "base", "route": "project:storefront"},
-    {"name": "projects/general-tall", "width": 1280, "height": 1500, "theme": "default", "tolerance": 9480, "hardTolerance": 58, "fixture": "base", "route": "project:storefront"},
-    {"name": "projects/general-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 9170, "hardTolerance": 111, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/general", "width": 1280, "height": 800, "theme": "default", "tolerance": 8940, "hardTolerance": 57, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/general-tall", "width": 1280, "height": 1500, "theme": "default", "tolerance": 9480, "hardTolerance": 57, "fixture": "base", "route": "project:storefront"},
+    {"name": "projects/general-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 9170, "hardTolerance": 85, "fixture": "base", "route": "project:storefront"},
     {"name": "projects/run", "width": 1280, "height": 800, "theme": "default", "tolerance": 27550, "hardTolerance": 185, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 760]}, {"wait": 500}]},
     {"name": "projects/run-resized", "width": 1280, "height": 800, "theme": "default", "tolerance": 27550, "hardTolerance": 251, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1204, 369]}, {"down": [1204, 369]}, {"move": [1204, 400]}, {"move": [1204, 431]}, {"up": [1204, 431]}, {"move": [1180, 760]}, {"wait": 500}]},
     {"name": "projects/run-tall", "width": 1280, "height": 1800, "theme": "default", "tolerance": 62300, "hardTolerance": 253, "fixture": "base", "route": "project:storefront", "steps": [{"click": [328, 185]}, {"move": [1180, 1760]}, {"wait": 500}]},
@@ -2039,8 +2039,8 @@
   "palettes": [
     {"name": "palettes/goto", "width": 1280, "height": 800, "theme": "default", "tolerance": 5220, "fixture": "base", "route": "palette"},
     {"name": "palettes/goto-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 5670, "fixture": "base", "route": "palette"},
-    {"name": "palettes/goto-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 4570, "hardTolerance": 19, "fixture": "base", "route": "palette", "steps": [{"type": "check"}, {"wait": 300}]},
-    {"name": "palettes/goto-empty", "width": 1280, "height": 800, "theme": "default", "tolerance": 4080, "hardTolerance": 56, "fixture": "base", "route": "palette", "steps": [{"type": "zzzz"}, {"wait": 300}]},
+    {"name": "palettes/goto-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 4570, "hardTolerance": 13, "fixture": "base", "route": "palette", "steps": [{"type": "check"}, {"wait": 300}]},
+    {"name": "palettes/goto-empty", "width": 1280, "height": 800, "theme": "default", "tolerance": 4080, "hardTolerance": 48, "fixture": "base", "route": "palette", "steps": [{"type": "zzzz"}, {"wait": 300}]},
     {"name": "palettes/commands", "width": 1280, "height": 800, "theme": "default", "tolerance": 3400, "fixture": "base", "route": "commands:src/main.go:source.go", "storage": {"recur.commandUsage": "{\"recur.text.sort-lines-asc\":{\"count\":3,\"lastUsed\":1767225600000},\"recur.text.uppercase\":{\"count\":1,\"lastUsed\":1767139200000}}"}},
     {"name": "palettes/commands-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 3680, "fixture": "base", "route": "commands:src/main.go:source.go", "storage": {"recur.commandUsage": "{\"recur.text.sort-lines-asc\":{\"count\":3,\"lastUsed\":1767225600000},\"recur.text.uppercase\":{\"count\":1,\"lastUsed\":1767139200000}}"}},
     {"name": "palettes/commands-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 3320, "hardTolerance": 1, "fixture": "base", "route": "commands:src/main.go:source.go", "steps": [{"type": "sort"}]},
@@ -2049,13 +2049,13 @@
     {"name": "palettes/open-in-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 7960, "fixture": "base", "route": "openin:LOOP-2231", "steps": [{"wait": 400}, {"type": "cur"}]},
     {"name": "palettes/run", "width": 1280, "height": 800, "theme": "default", "tolerance": 13780, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}]},
     {"name": "palettes/run-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 14430, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}]},
-    {"name": "palettes/run-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 10450, "hardTolerance": 1, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}, {"type": "test"}]},
+    {"name": "palettes/run-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 10450, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}, {"type": "test"}]},
     {"name": "palettes/stop", "width": 1280, "height": 800, "theme": "default", "tolerance": 9600, "fixture": "palette-runs", "route": "stop:LOOP-2231", "steps": [{"wait": 400}]},
     {"name": "palettes/syntax", "width": 1280, "height": 800, "theme": "default", "tolerance": 4430, "fixture": "base", "route": "syntax:src/main.go"},
     {"name": "palettes/syntax-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 4660, "fixture": "base", "route": "syntax:src/main.go"},
     {"name": "palettes/syntax-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 3970, "hardTolerance": 2, "fixture": "base", "route": "syntax:src/main.go", "steps": [{"type": "pyth"}]},
     {"name": "palettes/shortcuts", "width": 1280, "height": 800, "theme": "default", "tolerance": 5880, "fixture": "base", "route": "shortcuts"},
     {"name": "palettes/shortcuts-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 6330, "fixture": "base", "route": "shortcuts"},
-    {"name": "palettes/shortcuts-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 5340, "hardTolerance": 35, "fixture": "base", "route": "shortcuts", "steps": [{"type": "terminal"}]}
+    {"name": "palettes/shortcuts-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 5340, "hardTolerance": 26, "fixture": "base", "route": "shortcuts", "steps": [{"type": "terminal"}]}
   ]
 }

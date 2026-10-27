@@ -304,6 +304,7 @@ async fn text_selects_across_messages(cx: &mut TestAppContext) {
     h.cx.simulate_mouse_up(to, gpui::MouseButton::Left, m);
     h.cx.run_until_parked();
     h.keys("secondary-c");
-    let copied = h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
+    let copied =
+        h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
     assert_eq!(copied.as_deref(), Some("Fix the bug\nDone.\n\nIt works."));
 }

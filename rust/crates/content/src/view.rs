@@ -958,7 +958,10 @@ mod tests {
         }
     }
 
-    struct Selecting(Entity<MarkdownView>, Option<Entity<recur_ui::selection::State>>);
+    struct Selecting(
+        Entity<MarkdownView>,
+        Option<Entity<recur_ui::selection::State>>,
+    );
 
     impl Render for Selecting {
         fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

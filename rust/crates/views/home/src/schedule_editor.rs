@@ -59,35 +59,36 @@ pub fn local_time_zone() -> String {
     iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".into())
 }
 
-/// `timeZoneOptions`: the IANA zones plus UTC, the local zone and the draft's (so an edit
+/// `Intl.supportedValuesOf('timeZone')` as WebKit lists it: the canonical IANA zones with a
+/// region, plus `UTC` (ECMA-402 folds `Etc/UTC` and `Etc/GMT` into it; `CST6CDT` and the
+/// other region-less zones are links since tzdata 2024b), sorted.
+pub fn supported_time_zones() -> &'static [String] {
+    static ZONES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    ZONES.get_or_init(|| {
+        let mut zones: Vec<String> = icu_time::zone::iana::IanaParserExtended::new()
+            .iter_all()
+            .map(|z| z.canonical)
+            .filter(|z| z.contains('/') && !matches!(*z, "Etc/UTC" | "Etc/GMT"))
+            .map(str::to_string)
+            .chain(["UTC".to_string()])
+            .collect();
+        zones.sort();
+        zones.dedup();
+        zones
+    })
+}
+
+/// `timeZoneOptions`: the runtime's zones plus UTC, the local zone and the draft's (so an edit
 /// round-trips), sorted, labeled without underscores and grouped by region.
 pub fn time_zone_options(draft_zone: &str, local: &str) -> Vec<(String, String, String)> {
-    // simplify: `Intl.supportedValuesOf('timeZone')` lists canonical zones only; chrono-tz has
-    // no canonical flag, so the region-prefixed names stand in (backward links such as
-    // `US/Eastern` and `Etc/*` drop out). Upgrade: a canonical-zone table in recur_domain.
-    const REGIONS: [&str; 10] = [
-        "Africa",
-        "America",
-        "Antarctica",
-        "Arctic",
-        "Asia",
-        "Atlantic",
-        "Australia",
-        "Europe",
-        "Indian",
-        "Pacific",
-    ];
-    let mut zones: std::collections::BTreeSet<String> = chrono_tz::TZ_VARIANTS
-        .iter()
-        .map(|z| z.name().to_string())
-        .filter(|n| n.split_once('/').is_some_and(|(r, _)| REGIONS.contains(&r)))
-        .collect();
-    zones.insert("UTC".into());
+    let mut zones: std::collections::BTreeSet<&str> =
+        supported_time_zones().iter().map(String::as_str).collect();
+    zones.insert("UTC");
     if !local.is_empty() {
-        zones.insert(local.to_string());
+        zones.insert(local);
     }
     if !draft_zone.is_empty() {
-        zones.insert(draft_zone.to_string());
+        zones.insert(draft_zone);
     }
     zones
         .into_iter()
@@ -97,7 +98,7 @@ pub fn time_zone_options(draft_zone: &str, local: &str) -> Vec<(String, String, 
                 Some((r, _)) => r.to_string(),
                 None => "Other".into(),
             };
-            (z, label, group)
+            (z.to_string(), label, group)
         })
         .collect()
 }
@@ -1424,9 +1425,18 @@ mod tests {
         assert!(z.iter().any(|(v, _, g)| v == "UTC" && g == "Other"));
         assert!(z.iter().any(|(v, _, _)| v == "Mars/Base"));
         assert!(!z.iter().any(|(v, _, _)| v.starts_with("US/")));
+        assert!(z.iter().any(|(v, _, g)| v == "Etc/GMT+5" && g == "Etc"));
         let mut sorted = z.clone();
         sorted.sort();
         assert_eq!(z, sorted);
+    }
+
+    /// `tools/ui-parity/time-zones.mjs` writes the golden from WebKit's `Intl`.
+    #[test]
+    fn zones_match_webkit_intl() {
+        let golden: Vec<String> =
+            serde_json::from_str(include_str!("../tests/golden/time-zones.json")).unwrap();
+        assert_eq!(supported_time_zones(), golden.as_slice());
     }
 
     #[test]

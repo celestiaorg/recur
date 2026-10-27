@@ -149,6 +149,7 @@ markup5ever_rcdom = "0.3"
 
 # ICU root collation: the UI's `localeCompare` / `Intl.Collator` ordering.
 icu_collator = "2"
+icu_time = "2.3"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

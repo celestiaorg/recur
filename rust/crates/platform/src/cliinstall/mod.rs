@@ -306,12 +306,10 @@ fn quote_exec(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::unix::fs::PermissionsExt;
 
     fn write_exec(path: &Path, body: &str) {
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(path, body).expect("write");
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+        recur_exec::write_executable(path, body, 0o755).expect("write");
     }
 
     #[test]

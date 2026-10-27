@@ -585,6 +585,13 @@ impl ProjectView {
             is_new,
         );
         style_area(&self.copy_files, cx);
+        // `.inp:focus`.
+        let copy_border =
+            if gpui_kit::Focusable::focus_handle(self.copy_files.read(cx), cx).is_focused(window) {
+                recur_ui::color::rgba(242, 179, 61, 0.5)
+            } else {
+                t.line
+            };
         let err_meta = !self.copy_preview.error.is_empty() && !self.copy_preview.loading;
         let loading = self.copy_preview.loading;
         let mut copy_files = div()
@@ -594,8 +601,9 @@ impl ProjectView {
             .w_full()
             .pt(px(10.))
             .pb(px(8.))
-            .child(
-                recur_ui::style::card(t.pane, t.line, 6.)
+            .child(recur_ui::resize::vertical(
+                "copy-files-pat",
+                recur_ui::style::card(t.pane, copy_border, 6.)
                     .debug_selector(|| "inp:Files to copy".into())
                     .w_full()
                     .min_h(px(88.))
@@ -606,7 +614,11 @@ impl ProjectView {
                     .text_size(px(12.))
                     .line_height(relative(1.45))
                     .child(gpui_kit::base::input::Textarea::new(&self.copy_files)),
-            )
+                1.,
+                gpui_kit::Focusable::focus_handle(self.copy_files.read(cx), cx),
+                window,
+                cx,
+            ))
             .child(
                 div()
                     .debug_selector({

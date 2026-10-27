@@ -8,14 +8,13 @@
 //! Native views sit above GPUI's drawing, so overlays do not cover the page (see
 //! `ui-parity.md`).
 
-#[cfg(target_os = "macos")]
 use futures::StreamExt as _;
-#[cfg(target_os = "macos")]
 use futures::channel::mpsc;
 use gpui_kit::{
     Bounds, Context, EventEmitter, IntoElement, ParentElement, Pixels, Render, Styled, Task,
     Window, canvas, div,
 };
+#[cfg(not(target_os = "linux"))]
 use recur_ui::Theme;
 use serde_json::{Value, json};
 
@@ -42,6 +41,9 @@ pub enum HtmlPreviewEvent {
 /// `window.parent` for the page: its `postMessage` goes to the host.
 pub const BRIDGE_JS: &str = r#"(function(){var post=function(d){try{window.webkit.messageHandlers.recur.postMessage(JSON.stringify(d))}catch(e){}};try{Object.defineProperty(window,'parent',{value:{postMessage:post},configurable:false})}catch(e){}})();"#;
 
+#[cfg(target_os = "linux")]
+type Laid = Option<(Bounds<Pixels>, f32)>;
+
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub struct HtmlPreview {
     path: String,
@@ -50,6 +52,20 @@ pub struct HtmlPreview {
     parked: bool,
     #[cfg(target_os = "macos")]
     web: Option<mac::Page>,
+    #[cfg(target_os = "linux")]
+    gtk: Option<crate::html_gtk::Page>,
+    /// The Linux page's latest snapshot, and images to release after the next draw.
+    #[cfg(target_os = "linux")]
+    frame: Option<std::sync::Arc<gpui_kit::RenderImage>>,
+    #[cfg(target_os = "linux")]
+    stale: Vec<std::sync::Arc<gpui_kit::RenderImage>>,
+    /// The page's laid-out box and scale, to resize it when the box changes.
+    #[cfg(target_os = "linux")]
+    laid: std::rc::Rc<std::cell::Cell<Laid>>,
+    #[cfg(target_os = "linux")]
+    cursor: gpui_kit::CursorStyle,
+    #[cfg(target_os = "linux")]
+    focus: gpui_kit::FocusHandle,
     srcdoc: String,
     _messages: Option<Task<()>>,
 }
@@ -72,6 +88,18 @@ impl HtmlPreview {
             parked: false,
             #[cfg(target_os = "macos")]
             web: None,
+            #[cfg(target_os = "linux")]
+            gtk: None,
+            #[cfg(target_os = "linux")]
+            frame: None,
+            #[cfg(target_os = "linux")]
+            stale: Vec::new(),
+            #[cfg(target_os = "linux")]
+            laid: Default::default(),
+            #[cfg(target_os = "linux")]
+            cursor: gpui_kit::CursorStyle::Arrow,
+            #[cfg(target_os = "linux")]
+            focus: cx.focus_handle(),
             srcdoc: String::new(),
             _messages: None,
         };
@@ -101,11 +129,77 @@ impl HtmlPreview {
                 }
             }));
         }
+        #[cfg(target_os = "linux")]
+        {
+            use crate::html_gtk::{Page, PageEvent};
+            let (tx, mut rx) = mpsc::unbounded::<PageEvent>();
+            match &self.gtk {
+                Some(page) => page.load(&self.srcdoc, tx),
+                None => {
+                    self.gtk = Page::new(&self.srcdoc, tx);
+                    self.laid.set(None);
+                }
+            }
+            self._messages = Some(cx.spawn(async move |this, cx| {
+                while let Some(ev) = rx.next().await {
+                    if this.update(cx, |p, cx| p.on_page_event(ev, cx)).is_err() {
+                        break;
+                    }
+                }
+            }));
+        }
         cx.notify();
     }
 
     pub fn set_parked(&mut self, parked: bool) {
         self.parked = parked;
+        #[cfg(target_os = "linux")]
+        if let Some(page) = &self.gtk {
+            page.set_active(!parked);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn on_page_event(&mut self, ev: crate::html_gtk::PageEvent, cx: &mut Context<Self>) {
+        use crate::html_gtk::PageEvent;
+        match ev {
+            PageEvent::Frame {
+                width,
+                height,
+                bgra,
+            } => {
+                if let Some(buf) = image::RgbaImage::from_raw(width, height, bgra) {
+                    let img = std::sync::Arc::new(gpui_kit::RenderImage::new(smallvec::smallvec![
+                        image::Frame::new(buf)
+                    ]));
+                    if let Some(old) = self.frame.replace(img) {
+                        self.stale.push(old);
+                    }
+                    cx.notify();
+                }
+            }
+            PageEvent::Message(msg) => self.on_message(&msg, cx),
+            PageEvent::Reply(Value::String(s)) if s.starts_with('\u{1}') => {
+                // A copy: the page's selection.
+                cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(s[1..].to_string()));
+            }
+            PageEvent::Reply(Value::String(cursor)) => {
+                let next = match cursor.as_str() {
+                    "pointer" => gpui_kit::CursorStyle::PointingHand,
+                    "text" => gpui_kit::CursorStyle::IBeam,
+                    "grab" => gpui_kit::CursorStyle::OpenHand,
+                    "grabbing" => gpui_kit::CursorStyle::ClosedHand,
+                    "crosshair" => gpui_kit::CursorStyle::Crosshair,
+                    "not-allowed" => gpui_kit::CursorStyle::OperationNotAllowed,
+                    _ => gpui_kit::CursorStyle::Arrow,
+                };
+                if next != self.cursor {
+                    self.cursor = next;
+                    cx.notify();
+                }
+            }
+            PageEvent::Reply(_) => {}
+        }
     }
 
     fn post(&self, data: Value) {
@@ -113,17 +207,19 @@ impl HtmlPreview {
         if let Some(page) = &self.web {
             page.dispatch(&data);
         }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(target_os = "linux")]
+        if let Some(page) = &self.gtk {
+            page.dispatch(&data);
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         let _ = data;
     }
 
-    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     fn restore(&mut self) {
         let (top, left) = self.attachment.restore(&self.scroll.borrow());
         self.post(json!({ "type": PREVIEW_IFRAME_RESTORE, "top": top, "left": left }));
     }
 
-    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     fn on_message(&mut self, raw: &str, cx: &mut Context<Self>) {
         if raw == "\u{0}loaded" {
             // `iframe.onload`: restore, and let find re-query.
@@ -177,8 +273,166 @@ impl HtmlPreview {
     }
 }
 
+#[cfg(target_os = "linux")]
 impl HtmlPreview {
-    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
+    /// One event for the page's input shim, at `pos` in window coordinates.
+    fn send(&self, mut ev: Value, pos: Option<gpui_kit::Point<Pixels>>, m: &gpui_kit::Modifiers) {
+        let (Some(page), Some((b, _))) = (&self.gtk, self.laid.get()) else {
+            return;
+        };
+        if let Some(p) = pos {
+            ev["x"] = json!(f32::from(p.x - b.left()));
+            ev["y"] = json!(f32::from(p.y - b.top()));
+        }
+        ev["ctrl"] = json!(m.control);
+        ev["shift"] = json!(m.shift);
+        ev["alt"] = json!(m.alt);
+        ev["meta"] = json!(m.platform);
+        page.input(&ev);
+    }
+
+    fn render_page(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
+        use gpui_kit::{
+            InteractiveElement as _, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent,
+            MouseUpEvent, ScrollWheelEvent,
+        };
+        use recur_ui::guard::Guarded as _;
+        for img in self.stale.drain(..) {
+            let _ = window.drop_image(img);
+        }
+        if let Some(page) = &self.gtk {
+            page.set_active(!self.parked);
+        }
+        let laid = self.laid.clone();
+        let entity = cx.entity().downgrade();
+        let frame = self.frame.clone();
+        let place = canvas(
+            move |b, window, cx| {
+                let scale = window.scale_factor();
+                if laid.get() != Some((b, scale)) {
+                    laid.set(Some((b, scale)));
+                    if let Some(e) = entity.upgrade() {
+                        e.update(cx, |p: &mut HtmlPreview, _| {
+                            if let Some(page) = &p.gtk {
+                                page.resize(
+                                    f32::from(b.size.width),
+                                    f32::from(b.size.height),
+                                    scale,
+                                );
+                            }
+                        });
+                    }
+                }
+            },
+            move |b, _, window, _| {
+                if let Some(img) = frame.clone() {
+                    let _ = window.paint_image(b, b, gpui_kit::Corners::default(), img, 0, false);
+                }
+            },
+        )
+        .size_full();
+        let button = |b: MouseButton| match b {
+            MouseButton::Right => 2,
+            MouseButton::Middle => 1,
+            _ => 0,
+        };
+        div()
+            .id("html-preview")
+            .debug_selector(|| "html-preview".into())
+            .track_focus(&self.focus)
+            .key_context("TextEntry")
+            .flex_1()
+            .min_h_0()
+            .size_full()
+            .bg(gpui_kit::white())
+            .cursor(self.cursor)
+            .child(place)
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.guarded_listener(move |p, e: &MouseDownEvent, window, cx| {
+                    window.focus(&p.focus, cx);
+                    p.send(
+                        json!({"type": "down", "button": button(e.button), "detail": e.click_count}),
+                        Some(e.position),
+                        &e.modifiers,
+                    );
+                }),
+            )
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.guarded_listener(move |p, e: &MouseUpEvent, _, _| {
+                    p.send(
+                        json!({"type": "up", "button": button(e.button), "detail": e.click_count}),
+                        Some(e.position),
+                        &e.modifiers,
+                    );
+                }),
+            )
+            .on_mouse_move(cx.guarded_listener(|p, e: &MouseMoveEvent, _, _| {
+                let buttons = u8::from(e.pressed_button == Some(MouseButton::Left));
+                p.send(
+                    json!({"type": "move", "buttons": buttons}),
+                    Some(e.position),
+                    &e.modifiers,
+                );
+            }))
+            .on_scroll_wheel(cx.guarded_listener(|p, e: &ScrollWheelEvent, window, _| {
+                let d = e.delta.pixel_delta(window.line_height());
+                p.send(
+                    json!({"type": "wheel", "dx": -f32::from(d.x), "dy": -f32::from(d.y)}),
+                    Some(e.position),
+                    &e.modifiers,
+                );
+            }))
+            .on_key_down(cx.guarded_listener(|p, e: &KeyDownEvent, _, cx| {
+                let k = &e.keystroke;
+                let cmd = k.modifiers.secondary();
+                let key = match k.key.as_str() {
+                    "space" => " ".to_string(),
+                    "enter" => "Enter".into(),
+                    "backspace" => "Backspace".into(),
+                    "delete" => "Delete".into(),
+                    "tab" => "Tab".into(),
+                    "escape" => "Escape".into(),
+                    "up" => "ArrowUp".into(),
+                    "down" => "ArrowDown".into(),
+                    "left" => "ArrowLeft".into(),
+                    "right" => "ArrowRight".into(),
+                    "pageup" => "PageUp".into(),
+                    "pagedown" => "PageDown".into(),
+                    "home" => "Home".into(),
+                    "end" => "End".into(),
+                    other => k.key_char.clone().unwrap_or_else(|| other.to_string()),
+                };
+                let mut ev = json!({"type": "key", "key": key});
+                if cmd && k.key == "c" {
+                    ev["copy"] = json!(true);
+                } else if cmd && k.key == "a" {
+                    ev["selectAll"] = json!(true);
+                } else if cmd && k.key == "v" {
+                    let text = cx
+                        .read_from_clipboard()
+                        .and_then(|c| c.text())
+                        .unwrap_or_default();
+                    ev["paste"] = json!(text);
+                } else if cmd {
+                    return;
+                }
+                p.send(ev, None, &k.modifiers);
+                cx.stop_propagation();
+            }))
+            .into_any_element()
+    }
+}
+
+impl HtmlPreview {
+    #[cfg(target_os = "linux")]
+    fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
+        self.render_page(window, cx)
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         let t = Theme::of(cx).tokens;
         #[cfg(target_os = "macos")]
         let page = self.web.as_ref().map(|p| p.handle());
@@ -202,6 +456,7 @@ impl HtmlPreview {
             .size_full()
             .bg(gpui_kit::white())
             .child(place)
+            .into_any_element()
     }
 }
 

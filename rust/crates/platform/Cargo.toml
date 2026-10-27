@@ -41,6 +41,7 @@ block2.workspace = true
 dispatch2.workspace = true
 
 [dev-dependencies]
+recur-exec.workspace = true
 tempfile.workspace = true
 
 [lints]

@@ -666,7 +666,7 @@ impl AgentChat {
             image_loading: HashMap::new(),
             fork_anchor: Rc::default(),
             composer_geom: Rc::default(),
-            meter: cx.new(|_| crate::meter::ContextMeter::new()),
+            meter: cx.new(|cx| crate::meter::ContextMeter::new(cx)),
             selecting: false,
             skill_index: Vec::new(),
             skill_index_key: String::new(),

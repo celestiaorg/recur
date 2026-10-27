@@ -997,7 +997,19 @@ impl Observatory {
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let tree = self.render_files_tree(window, cx);
-        let mut bar = statusbar(cx).px(px(6.)).gap(px(2.));
+        let (bar_w, sp_w) = (
+            f32::from(self.bounds.files_status.get().size.width),
+            f32::from(self.bounds.files_status_sp.get().size.width),
+        );
+        if self.files_status_wrap.update(bar_w, sp_w) {
+            cx.notify();
+        }
+        let wrap = self.files_status_wrap;
+        let mut bar = statusbar(cx)
+            .px(px(6.))
+            .gap(px(2.))
+            .relative()
+            .child(crate::geometry::probe(&self.bounds.files_status));
         if in_side {
             bar = bar.pr(px(crate::style::WIN_CORNER_PAD));
         } else if self.state.read(cx).rail_collapsed {
@@ -1047,16 +1059,23 @@ impl Observatory {
                     cx,
                 ));
         } else {
-            bar = bar.child(crate::style::foot_text("Browse only"));
+            bar = bar.child(wrap.text(crate::style::foot_text("Browse only")));
         }
-        bar = bar.child(div().flex_1());
+        bar = bar.child(
+            div()
+                .relative()
+                .flex_1()
+                .child(crate::geometry::probe(&self.bounds.files_status_sp)),
+        );
         let dirty = self.working_dirty_count();
         let findings = self.open_findings_count();
         if dirty > 0 {
             bar = bar.child(
                 crate::style::linkish("obs-dirty-link", Some(t.amber), cx)
                     .debug_selector(|| "obs-dirty-link".into())
-                    .child(crate::style::link_text(format!("{dirty} dirty")).weight(600.))
+                    .child(
+                        wrap.text(crate::style::link_text(format!("{dirty} dirty")).weight(600.)),
+                    )
                     .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.select_code_panel(recur_view_core::prefs::CodePanelKey::Scm, window, cx)
                     })),
@@ -1069,11 +1088,13 @@ impl Observatory {
             bar = bar.child(
                 crate::style::linkish("obs-findings-link", Some(t.amber), cx)
                     .child(
-                        crate::style::link_text(format!(
-                            "{findings} finding{}",
-                            if findings == 1 { "" } else { "s" }
-                        ))
-                        .weight(600.),
+                        wrap.text(
+                            crate::style::link_text(format!(
+                                "{findings} finding{}",
+                                if findings == 1 { "" } else { "s" }
+                            ))
+                            .weight(600.),
+                        ),
                     )
                     .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.select_code_panel(

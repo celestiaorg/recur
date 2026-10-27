@@ -49,7 +49,8 @@ fn fixture(name: &str) -> Value {
 }
 
 /// `route`: `palette`, `commands:{path}:{scope}`, `shortcuts`, `openin:{workspace}`,
-/// `run:{workspace}` or `syntax:{path}`. A path stands in for the focused editor. Open in and
+/// `run:{workspace}`, `stop:{workspace}` (three runs started: test, dev, check) or
+/// `syntax:{path}`. A path stands in for the focused editor. Open in and
 /// Run open 300ms after the workspace (a scene `wait` lets the clock reach it), once git status
 /// is in.
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
@@ -58,6 +59,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     recur_view_observatory::gallery::reset(cx);
     let mut registry = ViewRegistry::default();
     crate::register(&mut registry);
+    recur_view_chat::register(&mut registry);
     let route = scene.route.clone();
     let navigate: recur_app::gallery::SceneHook = Box::new(move |state, cx| {
         let mut parts = route.splitn(3, ':');
@@ -73,7 +75,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
                 "palette" => s.toggle_go_palette(cx),
                 "commands" => s.toggle_commands_palette(cx),
                 "shortcuts" => s.toggle_shortcuts(cx),
-                "openin" | "run" => s.open_workspace(&arg, false, cx),
+                "openin" | "run" | "stop" => s.open_workspace(&arg, false, cx),
                 "syntax" => s.open_syntax_mode_picker(cx),
                 _ => {}
             }
@@ -92,6 +94,16 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
                 "openin" => s.toggle_open_in(cx),
                 "run" => {
                     s.open_run_menu(&id, cx);
+                }
+                "stop" => {
+                    for (name, session) in [
+                        ("test", "run-test"),
+                        ("dev", "run-dev"),
+                        ("check", "run-check"),
+                    ] {
+                        s.set_run_session(&id, name, session, cx);
+                    }
+                    s.open_stop_menu(&id, cx);
                 }
                 _ => {}
             })

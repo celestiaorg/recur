@@ -74,6 +74,20 @@ pub(crate) fn glyph_key(g: &Glyph, font: &FontKey, m: &CellMetrics) -> GlyphKey 
     let dotted = g
         .underline
         .is_some_and(|u| u.style == UnderlineStyle::Dotted);
+    // CellColorResolver: `x * cellWidth % (round(lineWidth) * 2)` for a dotted underline, and
+    // when that is 0, a shade pattern's phase.
+    let mut variant_offset = 0;
+    if dotted {
+        let period = (m.underline_width().round() * 2.0) as u32;
+        variant_offset = (g.col as u32 * m.cell_width as u32) % period;
+    }
+    if variant_offset == 0 {
+        variant_offset = u32::from(custom_glyphs::pattern_variant(
+            g.codepoint,
+            g.col as f32 * m.cell_width,
+            g.row as f32 * m.cell_height,
+        ));
+    }
     GlyphKey {
         font: font.clone(),
         text: g.text.clone(),
@@ -81,13 +95,7 @@ pub(crate) fn glyph_key(g: &Glyph, font: &FontKey, m: &CellMetrics) -> GlyphKey 
         italic: g.italic,
         fg: g.fg,
         underline: g.underline.map(|u| (u.style, u.color)),
-        // CellColorResolver: `x * cellWidth % (round(lineWidth) * 2)`.
-        variant_offset: if dotted {
-            let period = (m.underline_width().round() * 2.0) as u32;
-            (g.col as u32 * m.cell_width as u32) % period
-        } else {
-            0
-        },
+        variant_offset,
         strikethrough: g.strikethrough,
         overline: g.overline,
         width: g.width,

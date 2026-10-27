@@ -50,6 +50,7 @@ url.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+recur-exec.workspace = true
 recur-agent = { workspace = true, features = ["testing"] }
 recur-engine = { workspace = true, features = ["testing"] }
 recur-forge = { workspace = true, features = ["testing"] }

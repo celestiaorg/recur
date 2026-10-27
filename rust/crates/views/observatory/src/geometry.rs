@@ -29,6 +29,11 @@ pub struct Geometry {
     /// The editor status bar, and its `.sp` spacer (zero wide once the items overflow).
     pub status: BoundsCell,
     pub status_sp: BoundsCell,
+    /// The review's and the explorer's status bars and spacers, likewise.
+    pub review_status: BoundsCell,
+    pub review_status_sp: BoundsCell,
+    pub files_status: BoundsCell,
+    pub files_status_sp: BoundsCell,
 }
 
 /// An absolutely positioned probe that records its parent's bounds at prepaint.

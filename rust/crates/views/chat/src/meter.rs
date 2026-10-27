@@ -105,11 +105,11 @@ pub struct ContextMeter {
 }
 
 impl ContextMeter {
-    pub fn new() -> Self {
+    pub fn new(cx: &gpui_kit::App) -> Self {
         ContextMeter {
             usage: None,
             open: false,
-            epoch: Instant::now(),
+            epoch: recur_ui::motion::now(cx),
             _sub: None,
         }
     }
@@ -133,12 +133,6 @@ impl ContextMeter {
             self.open = false;
             cx.notify();
         }
-    }
-}
-
-impl Default for ContextMeter {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

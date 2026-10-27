@@ -705,8 +705,7 @@ fn resolve_root_info_missing_worktree_does_not_fall_back() {
 fn write_file_is_atomic_and_preserves_mode() {
     let root = tmp();
     let script = root.path().join("run.sh");
-    fs::write(&script, "#!/bin/sh\necho old\n").unwrap();
-    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    recur_exec::write_executable(&script, "#!/bin/sh\necho old\n", 0o755).unwrap();
     write_file(root.path(), "run.sh", "#!/bin/sh\necho new\n").unwrap();
     assert_eq!(
         fs::read_to_string(&script).unwrap(),

@@ -6,6 +6,8 @@ pub mod emoji;
 #[cfg(feature = "gallery")]
 pub mod gallery;
 pub mod html;
+#[cfg(target_os = "linux")]
+pub mod html_gtk;
 pub mod image_menu;
 pub mod images;
 pub mod js;
@@ -21,6 +23,7 @@ pub mod render;
 pub mod sanitize_lsp;
 pub mod streaming;
 pub mod svg;
+pub mod video;
 pub mod view;
 pub mod webhost;
 

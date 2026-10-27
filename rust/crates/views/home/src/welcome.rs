@@ -296,7 +296,7 @@ impl WelcomeView {
             (s.view == ViewName::Welcome, s.settings.is_some())
         };
         if on && self.shown_at.is_none() {
-            self.shown_at = Some(Instant::now());
+            self.shown_at = Some(recur_ui::motion::now(cx));
         } else if !on {
             self.shown_at = None;
             self.explore_at = None;
@@ -1284,7 +1284,7 @@ impl WelcomeView {
         self.toggles(cx);
         let step = self.current_step(cx);
         if step == 4 && self.explore_at.is_none() && on {
-            self.explore_at = Some(Instant::now());
+            self.explore_at = Some(recur_ui::motion::now(cx));
         }
         let shown_at = self.shown_at;
 

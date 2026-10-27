@@ -55,11 +55,11 @@ pub struct MainOverlay {
 }
 
 impl MainOverlay {
-    pub(crate) fn new(state: Entity<AppState>, ws_id: String) -> Self {
+    pub(crate) fn new(state: Entity<AppState>, ws_id: String, cx: &gpui_kit::App) -> Self {
         MainOverlay {
             state,
             ws_id,
-            started: Instant::now(),
+            started: recur_ui::motion::now(cx),
         }
     }
 }

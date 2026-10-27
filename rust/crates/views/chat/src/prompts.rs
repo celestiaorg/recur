@@ -108,7 +108,7 @@ impl PermissionPrompts {
             }),
             None => {
                 let state = self.state.clone();
-                let card = cx.new(|_| PermissionCard::new(req, false, state));
+                let card = cx.new(|cx| PermissionCard::new(req, false, state, cx));
                 card.update(cx, |c, cx| c.set_where(where_label, queued, cx));
                 self.card_sub = Some(cx.guarded_subscribe(
                     &card,

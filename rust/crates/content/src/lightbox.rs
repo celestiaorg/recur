@@ -33,6 +33,8 @@ pub struct AttachmentLightbox {
     src: String,
     name: String,
     image: Option<Decoded>,
+    /// `video`: the clip plays here instead of an image.
+    video: Option<Entity<crate::video::VideoPlayer>>,
     actual: bool,
     copied: bool,
     copy_timer: Option<Task<()>>,
@@ -91,6 +93,7 @@ impl AttachmentLightbox {
             src,
             name,
             image,
+            video: None,
             actual: false,
             copied: false,
             copy_timer: None,
@@ -99,6 +102,47 @@ impl AttachmentLightbox {
             focus,
             _load: load,
         }
+    }
+
+    /// The lightbox on a video file (`video`, `autoplay`, `currentTime = startTime` once
+    /// its metadata loads), as the Observatory's zoom opens it.
+    pub fn video(
+        path: std::path::PathBuf,
+        name: String,
+        start: f64,
+        on_close: OnClose,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let player = cx.new(|cx| {
+            crate::video::VideoPlayer::new(
+                path.clone(),
+                crate::video::VideoOptions {
+                    autoplay: true,
+                    start,
+                    radius: 8.,
+                    ring: false,
+                    shadow: true,
+                },
+                cx,
+            )
+        });
+        let mut lb = Self::new(
+            path.to_string_lossy().into_owned(),
+            name,
+            None,
+            on_close,
+            window,
+            cx,
+        );
+        lb._load = None;
+        lb.video = Some(player);
+        lb
+    }
+
+    /// The video's `currentTime`, for the host to resume from.
+    pub fn video_position(&self, cx: &App) -> Option<f64> {
+        self.video.as_ref().map(|v| v.read(cx).position())
     }
 
     pub fn src(&self) -> &str {
@@ -310,6 +354,20 @@ impl AttachmentLightbox {
                             .child(picture),
                     ),
             );
+        let scroll = match &self.video {
+            // `.chat-att-lb-img` on a `<video>`: fitted inside the 32px padding.
+            Some(v) => div()
+                .id("lb-scroll")
+                .absolute()
+                .inset_0()
+                .p(px(32.))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.guarded_listener(|lb, _, window, cx| lb.close(window, cx)),
+                )
+                .child(v.clone()),
+            None => scroll,
+        };
         let copy_glyph = if self.copied {
             icon(IconName::Check)
                 .stroke_width(2.4)
@@ -325,11 +383,13 @@ impl AttachmentLightbox {
             .right(px(16.))
             .flex()
             .gap(px(8.))
-            .child(
-                self.button("lb-copy", copy_title, copy_glyph, cx, |lb, _, cx| {
-                    lb.copy(cx)
-                }),
-            )
+            .when(self.video.is_none(), |d| {
+                d.child(
+                    self.button("lb-copy", copy_title, copy_glyph, cx, |lb, _, cx| {
+                        lb.copy(cx)
+                    }),
+                )
+            })
             .child(
                 self.button(
                     "lb-close",

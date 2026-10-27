@@ -281,7 +281,7 @@ impl Sidebar {
         }
         let tree = self.tree(cx);
         let layout = self.layout(&tree);
-        let now = Instant::now();
+        let now = recur_ui::motion::now(cx);
         let mut to: Vec<(String, f32)> = Vec::new();
         if group {
             to.extend(
@@ -462,7 +462,7 @@ impl Sidebar {
             return;
         }
         d.settle = Some(Settle {
-            at: Instant::now(),
+            at: recur_ui::motion::now(cx),
             from: d.pos,
             to,
         });

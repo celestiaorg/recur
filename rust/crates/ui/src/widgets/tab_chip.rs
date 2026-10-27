@@ -17,7 +17,7 @@ use gpui_kit::{
 };
 use std::cell::Cell;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// The busy wash cycle (`tab-busy-wash 1.8s linear infinite`).
 pub const BUSY_WASH: Duration = Duration::from_millis(1800);
@@ -234,8 +234,8 @@ impl TabChip {
         let body_fg = if wash { t.text } else { fg };
         let body_bounds: Rc<Cell<Option<Bounds<Pixels>>>> = Rc::default();
         let mask: Option<AlphaMask> = wash.then(|| {
-            let start =
-                window.use_keyed_state((self.id.clone(), "wash"), cx, |_, _| Instant::now());
+            let now = crate::motion::now(cx);
+            let start = window.use_keyed_state((self.id.clone(), "wash"), cx, move |_, _| now);
             let started = *start.read(cx);
             let elapsed = motion::elapsed(started, cx);
             if !motion::is_frozen(cx) {

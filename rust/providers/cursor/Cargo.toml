@@ -30,6 +30,7 @@ tracing.workspace = true
 zip.workspace = true
 
 [dev-dependencies]
+recur-exec.workspace = true
 recur-agent = { workspace = true, features = ["testing"] }
 pretty_assertions.workspace = true
 

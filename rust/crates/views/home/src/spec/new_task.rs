@@ -538,3 +538,24 @@ fn tab_belongs_to_the_slash_menu_while_it_is_open(cx: &mut TestAppContext) {
     assert_eq!(s.focused(), Some("Prompt"));
     assert!(!menu(&mut s), "the menu took the Tab");
 }
+
+/// `a11y-keys.spec.ts` "select menus ignore a stationary cursor during keyboard nav": a menu
+/// reopened with the keyboard under a parked pointer keeps the keyboard's row active.
+#[gpui::test]
+fn select_menus_ignore_a_stationary_cursor_during_keyboard_nav(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_new_task();
+    s.click("sel:Repository=storefront");
+    let last = s
+        .bounds("sel-opt:marketing-site")
+        .expect("last option")
+        .center();
+    s.keys("escape");
+    assert!(!s.has("sel-opt:marketing-site"));
+    // Park the pointer where a different option will appear, then reopen with the keyboard.
+    s.cx.simulate_mouse_move(last, None, gpui::Modifiers::none());
+    s.keys("enter");
+    assert!(s.has("sel-opt:marketing-site"), "Enter reopens the menu");
+    assert!(s.has("sel-opt-active:storefront"));
+    assert!(!s.has("sel-opt-active:marketing-site"));
+}

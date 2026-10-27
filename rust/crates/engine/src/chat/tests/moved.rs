@@ -44,15 +44,13 @@ fn write(path: &std::path::Path, body: &str) {
 fn install_fresh_session_prompts(fx: &Fx) {
     let root = std::path::Path::new(&fx.eng().bundle_roots().default_dir).join("ChatTest");
     let script = root.join("src").join("act.sh");
-    write(
+    std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+    recur_exec::write_executable(
         &script,
         "#!/bin/sh\nprintf '%s\\n' '{\"prompt\":\"WIRE\",\"display\":\"Act\"}'\n",
-    );
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
+        0o755,
+    )
+    .unwrap();
     write(
         &root.join("bundle.toml"),
         r#"[bundle]

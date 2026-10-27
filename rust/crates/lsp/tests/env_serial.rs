@@ -21,10 +21,8 @@ impl Drop for EnvGuard {
 }
 
 fn fake(dir: &std::path::Path, name: &str) -> String {
-    use std::os::unix::fs::PermissionsExt;
     let p = dir.join(name);
-    std::fs::write(&p, "#!/bin/sh\n").unwrap();
-    std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+    recur_exec::write_executable(&p, "#!/bin/sh\n", 0o755).unwrap();
     p.to_string_lossy().into_owned()
 }
 

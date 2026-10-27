@@ -88,7 +88,7 @@ impl Fade {
         if on != self.on {
             self.from = self.value(cx);
             self.on = on;
-            self.at = Some(Instant::now());
+            self.at = Some(recur_ui::motion::now(cx));
             self.dur = dur;
         }
     }
@@ -240,7 +240,7 @@ impl Sidebar {
             slide: Fade::new(false),
             body_bounds: None,
             rail_bounds: None,
-            epoch: Instant::now(),
+            epoch: recur_ui::motion::now(cx),
             _subscriptions: subs,
         };
         this.seed_collapse(cx);

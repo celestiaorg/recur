@@ -461,7 +461,9 @@ pub struct Observatory {
     pub(crate) split_resizing: bool,
     /// The editor status bar's width when its items stopped fitting on one line each; they
     /// wrap (`.obs-statusbar` items shrink to min-content) until the bar is wider again.
-    pub(crate) status_wrap: Option<f32>,
+    pub(crate) status_wrap: crate::style::StatusWrap,
+    pub(crate) review_status_wrap: crate::style::StatusWrap,
+    pub(crate) files_status_wrap: crate::style::StatusWrap,
 
     // ---- editors and previews ----
     pub(crate) main_editor: Option<Entity<EditorView>>,
@@ -478,6 +480,8 @@ pub struct Observatory {
     pub(crate) preview_scroll: recur_content::SharedScroll,
     pub(crate) image: crate::media::MediaPane,
     pub(crate) media_zoom: Option<Entity<recur_content::AttachmentLightbox>>,
+    /// The video pane's player (`paneVideo`), for the selected video file.
+    pub(crate) video: Option<Entity<recur_content::video::VideoPlayer>>,
     pub(crate) editor_subs: Vec<Subscription>,
     pub(crate) editor_fullscreen: bool,
     pub(crate) window_was_fullscreen: bool,
@@ -744,7 +748,9 @@ impl Observatory {
             focused_pane: Pane::Main,
             split_pct: storage_split,
             split_resizing: false,
-            status_wrap: None,
+            status_wrap: Default::default(),
+            review_status_wrap: Default::default(),
+            files_status_wrap: Default::default(),
             main_editor: None,
             split_editor: None,
             merge_editor: None,
@@ -758,6 +764,7 @@ impl Observatory {
             )),
             image: Default::default(),
             media_zoom: None,
+            video: None,
             editor_subs: Vec::new(),
             editor_fullscreen: false,
             window_was_fullscreen: false,

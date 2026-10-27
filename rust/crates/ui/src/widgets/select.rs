@@ -535,7 +535,7 @@ impl Select {
 
     fn open_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.open = true;
-        self.opened_at = Some(Instant::now());
+        self.opened_at = Some(crate::motion::now(cx));
         self.query = SharedString::default();
         self.search.update(cx, |s, cx| s.set_value("", window, cx));
         let first = self.options.iter().position(|o| self.selected(&o.value));
@@ -555,7 +555,7 @@ impl Select {
             return;
         }
         self.open = false;
-        self.closed_at = Some(Instant::now());
+        self.closed_at = Some(crate::motion::now(cx));
         self.active = None;
         self.query = SharedString::default();
         if restore_focus {
@@ -993,7 +993,12 @@ impl Select {
             .relative()
             .when(sm && !self.ghost, |d| d.min_w(px(132.)))
             .when_some(tr.max_width, |d, w| d.flex_none().min_w_0().max_w(px(w)))
-            .child(button);
+            // `title={shown}`.
+            .child(crate::tooltip::titled(
+                ("sel-title", cx.entity_id().as_u64() as usize),
+                self.display(),
+                button,
+            ));
         if self.open
             && let Some(menu) = self.menu(window, cx)
         {
@@ -1084,7 +1089,15 @@ impl Select {
                 .text_color(t.text)
                 .text_size(px(12.5))
                 .cursor_pointer()
-                .when(active, |d| d.bg(t.pane))
+                .when(active, |d| {
+                    // `data-active` for specs.
+                    let label = o.label.clone();
+                    d.bg(t.pane).child(
+                        div()
+                            .absolute()
+                            .debug_selector(move || format!("sel-opt-active:{label}")),
+                    )
+                })
                 .child(if on {
                     icon(IconName::Check)
                         .stroke_width(2.4)

@@ -20,10 +20,14 @@ use recur_engine::view::loops::{
     fallback_loops, fallback_policies,
 };
 use recur_ui::fonts::weight;
+use recur_ui::logic::date_time::Kind as DateTimeKind;
 use recur_ui::shadow::with_shadow;
 use recur_ui::style::{MODAL_SHADOW, button_label, modal_panel, modal_scrim, nt_esc_hint, outline};
 use recur_ui::text::{LineHeight, Span, Text, TextStyled, span, text};
-use recur_ui::widgets::{PicBox, Select, SelectEvent, SelectOption, TriggerStyle, project_pic};
+use recur_ui::widgets::{
+    DateTimeEvent, DateTimeField, DateTimeStyle, PicBox, Select, SelectEvent, SelectOption,
+    TriggerStyle, project_pic,
+};
 use recur_ui::{IconName, Theme, icon};
 use recur_view_chat::pickers::{LoopPolicyEvent, LoopPolicyPickers, ModelPickers, PickerEvent};
 use recur_view_core::format::format_medium_short_in;
@@ -59,35 +63,36 @@ pub fn local_time_zone() -> String {
     iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".into())
 }
 
-/// `timeZoneOptions`: the IANA zones plus UTC, the local zone and the draft's (so an edit
+/// `Intl.supportedValuesOf('timeZone')` as WebKit lists it: the canonical IANA zones with a
+/// region, plus `UTC` (ECMA-402 folds `Etc/UTC` and `Etc/GMT` into it; `CST6CDT` and the
+/// other region-less zones are links since tzdata 2024b), sorted.
+pub fn supported_time_zones() -> &'static [String] {
+    static ZONES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    ZONES.get_or_init(|| {
+        let mut zones: Vec<String> = icu_time::zone::iana::IanaParserExtended::new()
+            .iter_all()
+            .map(|z| z.canonical)
+            .filter(|z| z.contains('/') && !matches!(*z, "Etc/UTC" | "Etc/GMT"))
+            .map(str::to_string)
+            .chain(["UTC".to_string()])
+            .collect();
+        zones.sort();
+        zones.dedup();
+        zones
+    })
+}
+
+/// `timeZoneOptions`: the runtime's zones plus UTC, the local zone and the draft's (so an edit
 /// round-trips), sorted, labeled without underscores and grouped by region.
 pub fn time_zone_options(draft_zone: &str, local: &str) -> Vec<(String, String, String)> {
-    // simplify: `Intl.supportedValuesOf('timeZone')` lists canonical zones only; chrono-tz has
-    // no canonical flag, so the region-prefixed names stand in (backward links such as
-    // `US/Eastern` and `Etc/*` drop out). Upgrade: a canonical-zone table in recur_domain.
-    const REGIONS: [&str; 10] = [
-        "Africa",
-        "America",
-        "Antarctica",
-        "Arctic",
-        "Asia",
-        "Atlantic",
-        "Australia",
-        "Europe",
-        "Indian",
-        "Pacific",
-    ];
-    let mut zones: std::collections::BTreeSet<String> = chrono_tz::TZ_VARIANTS
-        .iter()
-        .map(|z| z.name().to_string())
-        .filter(|n| n.split_once('/').is_some_and(|(r, _)| REGIONS.contains(&r)))
-        .collect();
-    zones.insert("UTC".into());
+    let mut zones: std::collections::BTreeSet<&str> =
+        supported_time_zones().iter().map(String::as_str).collect();
+    zones.insert("UTC");
     if !local.is_empty() {
-        zones.insert(local.to_string());
+        zones.insert(local);
     }
     if !draft_zone.is_empty() {
-        zones.insert(draft_zone.to_string());
+        zones.insert(draft_zone);
     }
     zones
         .into_iter()
@@ -97,7 +102,7 @@ pub fn time_zone_options(draft_zone: &str, local: &str) -> Vec<(String, String, 
                 Some((r, _)) => r.to_string(),
                 None => "Other".into(),
             };
-            (z, label, group)
+            (z.to_string(), label, group)
         })
         .collect()
 }
@@ -209,8 +214,8 @@ pub struct ScheduleEditor {
     return_focus: Option<FocusHandle>,
     prompt: Entity<TextareaState>,
     cron: Entity<InputState>,
-    date: Entity<InputState>,
-    time: Entity<InputState>,
+    date: Entity<DateTimeField>,
+    time: Entity<DateTimeField>,
     repo_sel: Entity<Select>,
     branch_sel: Entity<Select>,
     repeat_sel: Entity<Select>,
@@ -230,6 +235,20 @@ pub struct ScheduleEditor {
 impl Focusable for ScheduleEditor {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus.clone()
+    }
+}
+
+/// `.sc-in[type=date|time]`: 12px, 6px padding in a 24px box, `--muted` until hovered or
+/// focused, with a dark picker (`color-scheme: dark`).
+fn sc_dt_style(lit: bool, cx: &App) -> DateTimeStyle {
+    let t = Theme::of(cx).tokens;
+    DateTimeStyle {
+        color: if lit { t.text } else { t.muted },
+        size: 12.,
+        tabular: false,
+        pad_x: 6.,
+        height: 24.,
+        dark: true,
     }
 }
 
@@ -286,8 +305,12 @@ impl ScheduleEditor {
         let field =
             |window: &mut Window, cx: &mut Context<Self>| cx.new(|cx| InputState::new(window, cx));
         let cron = field(window, cx);
-        let date = field(window, cx);
-        let time = field(window, cx);
+        let date = cx.new(|cx| {
+            DateTimeField::new("sc-date", DateTimeKind::Date, sc_dt_style(false, cx), cx)
+        });
+        let time = cx.new(|cx| {
+            DateTimeField::new("sc-time", DateTimeKind::Time, sc_dt_style(false, cx), cx)
+        });
         let mk =
             |label: &'static str, searchable: bool, window: &mut Window, cx: &mut Context<Self>| {
                 cx.new(|cx| {
@@ -361,20 +384,20 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.guarded_subscribe(&date, |this, f, ev: &InputEvent, cx| {
-                if matches!(ev, InputEvent::Change)
-                    && let Some(d) = this.draft.as_mut()
-                {
-                    d.date = f.read(cx).value().to_string();
+            cx.guarded_subscribe(&date, |this, _, ev: &DateTimeEvent, cx| {
+                let DateTimeEvent::Change(v) = ev;
+                if let Some(d) = this.draft.as_mut() {
+                    d.date = v.clone();
                     this.preview_effect(cx);
+                    cx.notify();
                 }
             }),
-            cx.guarded_subscribe(&time, |this, f, ev: &InputEvent, cx| {
-                if matches!(ev, InputEvent::Change)
-                    && let Some(d) = this.draft.as_mut()
-                {
-                    d.time = f.read(cx).value().to_string();
+            cx.guarded_subscribe(&time, |this, _, ev: &DateTimeEvent, cx| {
+                let DateTimeEvent::Change(v) = ev;
+                if let Some(d) = this.draft.as_mut() {
+                    d.time = v.clone();
                     this.preview_effect(cx);
+                    cx.notify();
                 }
             }),
             cx.guarded_subscribe(&repo_sel, |this, _, ev: &SelectEvent, cx| {
@@ -660,8 +683,8 @@ impl ScheduleEditor {
         self.prompt
             .update(cx, |s, cx| s.set_value(prompt, window, cx));
         self.cron.update(cx, |s, cx| s.set_value(cron, window, cx));
-        self.date.update(cx, |s, cx| s.set_value(date, window, cx));
-        self.time.update(cx, |s, cx| s.set_value(time, window, cx));
+        self.date.update(cx, |s, cx| s.set_value(&date, cx));
+        self.time.update(cx, |s, cx| s.set_value(&time, cx));
         self.branch_key = None;
         self.preview_key = None;
         self.seen_settings = Some(settings);
@@ -801,8 +824,8 @@ impl ScheduleEditor {
         v.push(self.prompt.read(cx).focus_handle(cx));
         v.push(self.repeat_sel.focus_handle(cx));
         if d.cadence == "once" {
-            v.push(self.date.read(cx).focus_handle(cx));
-            v.push(self.time.read(cx).focus_handle(cx));
+            v.extend(self.date.read(cx).focus_handles());
+            v.extend(self.time.read(cx).focus_handles());
         } else {
             v.push(self.cron.read(cx).focus_handle(cx));
             v.push(self.help_focus.clone());
@@ -831,6 +854,7 @@ impl ScheduleEditor {
         ]
         .iter()
         .any(|s| s.read(cx).is_open())
+            || self.date.read(cx).picker_open()
             || self.loop_pickers.read(cx).is_open(cx)
             || self.model_pickers.read(cx).is_open(cx)
     }
@@ -997,15 +1021,13 @@ impl ScheduleEditor {
         });
         recur_ui::style::style_textarea(&self.prompt, t.faint, cx);
         // `.sc-in` is `--muted` until hovered or focused.
-        for (name, f) in [
-            ("cron", &self.cron),
-            ("date", &self.date),
-            ("time", &self.time),
-        ] {
-            let lit =
-                self.hover_field == Some(name) || f.read(cx).focus_handle(cx).is_focused(window);
-            let fg = if lit { t.text } else { t.muted };
-            recur_ui::style::style_text_input_fg(f, fg, cx);
+        let lit = self.hover_field == Some("cron")
+            || self.cron.read(cx).focus_handle(cx).is_focused(window);
+        recur_ui::style::style_text_input_fg(&self.cron, if lit { t.text } else { t.muted }, cx);
+        for (name, f) in [("date", &self.date), ("time", &self.time)] {
+            let lit = self.hover_field == Some(name) || f.read(cx).is_focused(window);
+            let style = sc_dt_style(lit, cx);
+            f.update(cx, |f, cx| f.set_style(style, cx));
         }
     }
 
@@ -1161,35 +1183,24 @@ impl ScheduleEditor {
             .min_w_0()
             .child(div().flex_none().child(self.repeat_sel.clone()));
         if d.cadence == "once" {
-            // simplify: WebKit's `type=date` / `type=time` segmented pickers are plain
-            // `YYYY-MM-DD` / `HH:MM` fields. Upgrade: a date / time field in recur_ui.
-            when = when
-                .child(
-                    sc_in(
-                        &self.date,
-                        "YYYY-MM-DD",
-                        false,
-                        None,
-                        self.hover_field == Some("date"),
-                        window,
-                        cx,
-                    )
-                    .debug_selector(|| "inp:Date".into())
-                    .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| m.hover(*h, "date", cx))),
-                )
-                .child(
-                    sc_in(
-                        &self.time,
-                        "HH:MM",
-                        false,
-                        None,
-                        self.hover_field == Some("time"),
-                        window,
-                        cx,
-                    )
-                    .debug_selector(|| "inp:Time".into())
-                    .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| m.hover(*h, "time", cx))),
+            for (name, f, label) in [
+                ("date", &self.date, "inp:Date"),
+                ("time", &self.time, "inp:Time"),
+            ] {
+                let lit = self.hover_field == Some(name) || f.read(cx).is_focused(window);
+                when = when.child(
+                    div()
+                        .id(name)
+                        .debug_selector(move || label.into())
+                        .flex_none()
+                        .rounded(px(6.))
+                        .when(lit, |d| d.bg(Hsla::from(t.pane_2)))
+                        .child(f.clone())
+                        .on_hover(
+                            cx.guarded_listener(move |m, h: &bool, _, cx| m.hover(*h, name, cx)),
+                        ),
                 );
+            }
         } else {
             // `.sc-cron { width: 24ch }` in the mono face, padding included (`border-box`).
             let ch = recur_ui::font_metrics::zero_advance(&recur_ui::fonts::Family::Mono, 12.);
@@ -1424,9 +1435,18 @@ mod tests {
         assert!(z.iter().any(|(v, _, g)| v == "UTC" && g == "Other"));
         assert!(z.iter().any(|(v, _, _)| v == "Mars/Base"));
         assert!(!z.iter().any(|(v, _, _)| v.starts_with("US/")));
+        assert!(z.iter().any(|(v, _, g)| v == "Etc/GMT+5" && g == "Etc"));
         let mut sorted = z.clone();
         sorted.sort();
         assert_eq!(z, sorted);
+    }
+
+    /// `tools/ui-parity/time-zones.mjs` writes the golden from WebKit's `Intl`.
+    #[test]
+    fn zones_match_webkit_intl() {
+        let golden: Vec<String> =
+            serde_json::from_str(include_str!("../tests/golden/time-zones.json")).unwrap();
+        assert_eq!(supported_time_zones(), golden.as_slice());
     }
 
     #[test]

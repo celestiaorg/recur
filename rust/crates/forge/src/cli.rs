@@ -354,15 +354,8 @@ fn wrap<S: AsRef<str>>(program: &'static str, args: &[S], o: Outcome) -> Result<
 /// Writes an executable script (tests use it as a fake `gh`).
 #[cfg(test)]
 pub(crate) fn write_script(dir: &Path, name: &str, body: &str) -> PathBuf {
-    use std::io::Write;
     let path = dir.join(name);
-    let mut f = std::fs::File::create(&path).expect("create script");
-    f.write_all(body.as_bytes()).expect("write script");
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("chmod");
-    }
+    recur_exec::write_executable(&path, body, 0o755).expect("write script");
     path
 }
 

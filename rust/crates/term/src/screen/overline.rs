@@ -141,6 +141,11 @@ macro_rules! delegate {
 
 impl<L: EventListener> Handler for Overlined<'_, L> {
     fn terminal_attribute(&mut self, attr: Attr) {
+        // vte reads SGR 21 (its only `CancelBold`) as "not bold", xterm.js as a double underline.
+        let attr = match attr {
+            Attr::CancelBold => Attr::DoubleUnderline,
+            a => a,
+        };
         self.0.terminal_attribute(attr);
         self.mark();
     }

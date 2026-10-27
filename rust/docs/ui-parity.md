@@ -57,7 +57,7 @@ The grid does not draw through `recur_ui::text`: xterm.js does not lay text out 
 
 - **Atlas.** `TextureAtlas._drawToCache` per glyph: a device-pixel canvas `cellWidth · max(len, 2) + 4` wide and `cellHeight + 8` tall, text at the 4px padding on the ideographic baseline through CoreText (`CTFontDrawGlyphs`, as WebKit's canvas does) with the bundled faces (`recur_ui::fonts::FACES`) or the installed font of the stack, WebKit's 14° synthetic oblique for italics, then underline styles, overline and strikethrough stroked as the atlas does (including the context line width the overline leaves for the strikethrough's half-pixel offset). The texels are cropped by `_findGlyphBoundingBox` and pass through the unpremultiply / premultiply / unpremultiply of `getImageData`, `putImageData` and the texture upload.
 - **Compositing.** WebGL clears to the palette background, fills the background runs, blends glyph texels in cell order with `SRC_ALPHA, ONE_MINUS_SRC_ALPHA` on colour and alpha (so glyph edges leave the canvas partly transparent), draws the cursor, and WebKit composites the canvas as premultiplied over `.xterm`'s background. A glyph edge of coverage `a` therefore carries an extra `a(1 - a)` of that background, which no straight-alpha GPU blend can add over an arbitrary colour (it saturates on bright channels). `tiles.rs` runs the same 8-bit math on the CPU per row and paints each row as an image; a row's tile depends on it and its two neighbours (rasters spill a few pixels) and is cached by content, so scrolling and unchanged rows reuse tiles. Glyph overhang left of a cell whose resolved background (colour and background flags) differs from the previous cell's is clipped, as `GlyphRenderer` does.
-- **Above the canvas.** Link underlines, the IME composition and the scrollbar slider are GPUI primitives over the tiles, as they are separate layers over the canvas in the web pane. Custom glyphs (box drawing, blocks, powerline), which xterm draws into the atlas, are painted procedurally over the tiles with their decorations in the tiles; no scene covers them yet (`PARITY.md`).
+- **Above the canvas.** Link underlines, the IME composition and the scrollbar slider are GPUI primitives over the tiles, as they are separate layers over the canvas in the web pane. Custom glyphs (box drawing, blocks, shades, powerline, braille) are drawn into the atlas canvas as `CustomGlyphRasterizer.ts` draws them, with the same canvas calls on CoreGraphics (`custom_glyphs::Canvas`), so they composite like text (`terminal/glyphs`).
 
 ## Shell scenes
 
@@ -229,7 +229,9 @@ Every other scene allows no hard pixels.
 | `briefing/schedule-editor`, `briefing/schedule-editor-paper` | 126, 119 | The cron expression, which gpui-base's editor draws (typed input text, above), and the state segment behind the scrim (as `briefing/schedules`) |
 | `projects/general`, `projects/general-tall`, `projects/general-paper` | 58, 58, 117 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) and the rail glow |
 | `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/run-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 19, 56, 1, 1, 2, 35 | The typed query, which gpui-base's editor draws (typed input text, above) |
-| `projects/run`, `projects/run-tall` | 223, 291 | The Files to copy placeholder, which gpui-base's textarea draws (typed input text, above), and its resize grip, which GPUI's textarea does not have (`PARITY.md` follow-up) |
+| `palettes/stop` | 42 | The footer's `↵` keycap ends a device pixel late: `↵` comes from a fallback face whose advance differs from WebKit's, as the `✓` follow-up in `PARITY.md` |
+| `projects/run`, `projects/run-tall` | 185, 253 | The Files to copy placeholder, which gpui-base's textarea draws (typed input text, above) |
+| `projects/run-resized` | 251 | `projects/run`'s, plus the focused box's amber border at its rounded corners (GPUI anti-aliases the border arc where WebKit clips once) and the page's classic thumb on the taller page (scroll height across a rounding boundary) |
 
 ## Results
 
@@ -476,8 +478,9 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `projects/general` | 58 | 4796 | 3327 | 8940 | 58 |
 | `projects/general-tall` | 58 | 5023 | 3591 | 9480 | 58 |
 | `projects/general-paper` | 117 | 4744 | 3586 | 9170 | 117 |
-| `projects/run` | 223 | 22799 | 2244 | 27550 | 223 |
-| `projects/run-tall` | 291 | 53587 | 3048 | 62300 | 291 |
+| `projects/run` | 185 | 22799 | 2168 | 27550 | 185 |
+| `projects/run-resized` | 251 | 11992 | 2306 | 27550 | 251 |
+| `projects/run-tall` | 253 | 53587 | 2972 | 62300 | 253 |
 | `projects/schedules` | 0 | 4790 | 1426 | 6840 | 0 |
 | `projects/prs` | 0 | 29441 | 2317 | 34940 | 0 |
 | `projects/skills` | 0 | 3551 | 1262 | 5300 | 0 |

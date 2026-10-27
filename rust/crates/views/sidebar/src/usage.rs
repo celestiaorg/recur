@@ -340,7 +340,7 @@ impl UsageMeter {
 
     /// A ring's shown percent, tweened toward `pct`.
     fn tweened(&mut self, key: &str, pct: f64, cx: &App) -> f64 {
-        let now = Instant::now();
+        let now = recur_ui::motion::now(cx);
         let slot = match self.rings.iter_mut().find(|r| r.0 == key) {
             Some(slot) => slot,
             None => {

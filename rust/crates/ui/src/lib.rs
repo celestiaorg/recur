@@ -14,8 +14,12 @@ pub mod assets;
 #[cfg(target_os = "macos")]
 mod cg_raster;
 pub mod color;
+#[cfg(test)]
+mod color_chooser_spec;
 #[cfg(target_os = "macos")]
 mod ct_text;
+#[cfg(test)]
+mod date_time_spec;
 pub mod exact;
 pub mod field;
 pub mod file_icons;
@@ -36,6 +40,10 @@ pub mod layout_root;
 pub mod logic;
 pub mod motion;
 pub mod pane;
+pub mod resize;
+pub mod selection;
+#[cfg(test)]
+mod selection_spec;
 pub mod set;
 pub mod shadow;
 pub mod style;

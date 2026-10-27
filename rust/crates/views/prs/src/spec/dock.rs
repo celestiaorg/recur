@@ -95,6 +95,12 @@ fn selected_agent_chat_tab_stays_in_view_when_opening_a_pr(cx: &mut TestAppConte
             f32::from(b.right().min(dock.right())) - f32::from(b.origin.x.max(dock.origin.x));
         overlap > 24.
     };
+    // After a round trip through another route, the strip shows its active chip whole.
+    let inside = |s: &mut S, code: &str| {
+        let chip = s.chip(code).expect(code);
+        let b = s.bounds(&chip).unwrap();
+        b.left() >= dock.left() && b.right() <= dock.right()
+    };
     s.click_chip("PA9");
     assert_eq!(s.dock_active(), "PA9");
     assert!(s.until(|s| visible(s, "PA9")));
@@ -112,16 +118,15 @@ fn selected_agent_chat_tab_stays_in_view_when_opening_a_pr(cx: &mut TestAppConte
     s.click("nav-inbox");
     assert_eq!(s.view(), ViewName::Briefing);
     s.open_pr("gh-tab-scroll");
-    // Which chip the strip shows after a round trip through another route is a `PARITY.md`
-    // follow-up (the parked shell lays its strip out at the workspace's width); the
-    // selection itself must survive.
     assert_eq!(s.dock_active(), "PA9");
+    assert!(s.until(|s| inside(s, "PA9")));
 
     hide_dock(&mut s);
     s.click("nav-inbox");
     s.open_pr("gh-tab-scroll");
     s.click("button:Show left panel");
     assert_eq!(s.dock_active(), "PA9");
+    assert!(s.until(|s| inside(s, "PA9")));
 }
 
 #[gpui::test]

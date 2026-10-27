@@ -42,7 +42,7 @@ recur-view-settings = { workspace = true, features = ["gallery"], optional = tru
 serde = { workspace = true, optional = true }
 serde_json.workspace = true
 futures.workspace = true
-chrono-tz.workspace = true
+icu_time.workspace = true
 iana-time-zone.workspace = true
 image = { workspace = true, features = ["png"] }
 smallvec.workspace = true

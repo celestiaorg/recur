@@ -554,3 +554,62 @@ fn schedule_dashboard_bulk_removes_selected_workspaces(cx: &mut TestAppContext) 
     assert!(s.has("sc-run:sched-bulk-live"));
     assert!(!s.has("sc-runs-all:Select all=Select all"));
 }
+
+/// `<input type=date|time>` in the editor: fields take arrows, digits and AM/PM letters and
+/// Backspace as WebKit's do (en-US: `M/d/y`, `h:mm a`), and the draft follows the composed
+/// value, empty while a field is.
+#[gpui::test]
+fn once_takes_its_date_and_time_from_segmented_fields(cx: &mut TestAppContext) {
+    let mut s = with(cx, |_| {}, MockOptions::default());
+    open_project(&mut s, "storefront");
+    s.click("set-nav:Schedules");
+    assert!(s.until(|s| s.has("empty:No schedules yet")));
+    s.click("sc-new");
+    s.click("sel:Repeat=Cron");
+    s.click("sel-opt:Once");
+    let e = editor(&mut s);
+    let draft = |s: &mut S| {
+        s.cx.update(|_, cx| {
+            e.read(cx)
+                .draft()
+                .map(|d| (d.date.clone(), d.time.clone()))
+                .expect("draft")
+        })
+    };
+    assert_eq!(draft(&mut s), (String::new(), "09:00".into()));
+
+    s.click("sc-date:field0");
+    if cfg!(not(target_os = "macos")) {
+        // The click opened WebKitGTK's calendar popover, which takes the keys until Escape.
+        assert!(s.has("sc-date-calendar"));
+        s.keys("escape");
+        assert!(s.has("sc-modal:New schedule"));
+    }
+    s.type_text("12");
+    s.keys("right");
+    s.type_text("31");
+    s.keys("/");
+    s.type_text("2030");
+    assert_eq!(draft(&mut s).0, "2030-12-31");
+    s.keys("left left up");
+    assert_eq!(draft(&mut s).0, "2030-01-31", "December wraps to January");
+    s.keys("backspace");
+    assert_eq!(draft(&mut s).0, "", "an empty month empties the value");
+    s.keys("down");
+    assert_eq!(draft(&mut s).0, "2030-12-31");
+
+    s.click("sc-time:field0");
+    s.type_text("7");
+    s.keys("right");
+    s.type_text("45");
+    s.keys("right");
+    s.type_text("p");
+    assert_eq!(draft(&mut s).1, "19:45");
+    s.keys("up");
+    assert_eq!(draft(&mut s).1, "07:45");
+    s.keys("escape");
+    assert!(
+        !s.has("sc-modal:New schedule"),
+        "Escape with no picker open closes the dialog"
+    );
+}

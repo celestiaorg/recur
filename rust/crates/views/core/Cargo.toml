@@ -22,6 +22,7 @@ serde_json.workspace = true
 futures.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
+indexmap.workspace = true
 
 [dev-dependencies]
 parking_lot.workspace = true

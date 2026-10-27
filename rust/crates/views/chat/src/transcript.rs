@@ -1537,13 +1537,17 @@ impl AgentChat {
                 .iter()
                 .enumerate()
                 .map(|(pi, p)| match p {
-                    BubblePart::Text(s) => flow(
-                        SharedString::from(format!("{id}-p{pi}")),
-                        s.clone(),
-                        Vec::new(),
-                        style.clone(),
-                    )
-                    .into_any_element(),
+                    BubblePart::Text(s) => {
+                        let fid = format!("{id}-p{pi}");
+                        flow(
+                            SharedString::from(fid.clone()),
+                            s.clone(),
+                            Vec::new(),
+                            style.clone(),
+                        )
+                        .selectable(select_key(&fid))
+                        .into_any_element()
+                    }
                     other => match self.bubble_atom(
                         other,
                         SharedString::from(format!("{id}-a{pi}")),
@@ -1601,15 +1605,12 @@ impl AgentChat {
                 }
             }
         }
-        flow(
-            SharedString::from(format!("{id}-flow")),
-            content,
-            atoms,
-            style,
-        )
-        .fit_content()
-        .trailing_space(trailing_space)
-        .into_any_element()
+        let fid = format!("{id}-flow");
+        flow(SharedString::from(fid.clone()), content, atoms, style)
+            .selectable(select_key(&fid))
+            .fit_content()
+            .trailing_space(trailing_space)
+            .into_any_element()
     }
 
     fn user_bubble(
@@ -1808,4 +1809,11 @@ fn loc_for_digest(file: &str, line: i64, end_line: i64) -> String {
         return format!("{file}:{line}-{end_line}");
     }
     format!("{file}:{line}")
+}
+
+fn select_key(id: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    id.hash(&mut h);
+    h.finish()
 }

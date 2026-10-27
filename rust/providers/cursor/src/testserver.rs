@@ -288,11 +288,9 @@ while True:
 
 /// Writes the fake launcher at `dir/cursor-sdk-bridge`.
 pub(crate) fn write_fake_bridge(dir: &std::path::Path) -> std::path::PathBuf {
-    use std::os::unix::fs::PermissionsExt;
     std::fs::create_dir_all(dir).expect("mkdir");
     let bin = dir.join("cursor-sdk-bridge");
-    std::fs::write(&bin, FAKE_BRIDGE).expect("write fake bridge");
-    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+    recur_exec::write_executable(&bin, FAKE_BRIDGE, 0o755).expect("write fake bridge");
     bin
 }
 

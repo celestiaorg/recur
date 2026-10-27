@@ -93,9 +93,7 @@ fn install_fake_gh_checks(bin: &str, payload: &str) -> EnvGuard {
 }
 
 fn write_exe(path: &str, body: &str) {
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::write(path, body).unwrap();
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    recur_exec::write_executable(path, body, 0o755).unwrap();
 }
 
 fn prepend_path(dir: &str) -> EnvGuard {

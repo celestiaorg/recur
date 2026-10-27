@@ -192,7 +192,7 @@ impl QuestionCard {
             question_md,
             context_md,
             option_md,
-            mounted: Instant::now(),
+            mounted: recur_ui::motion::now(cx),
             _subs: subs,
         }
     }
@@ -381,17 +381,24 @@ impl QuestionCard {
                 .size(12.)
                 .line_height(LineHeight::Scale(1.4))
                 .measure(None, window);
-            recur_ui::style::card(t.bg, field_border, 6.)
-                .flex_1()
-                .min_w_0()
-                .min_h(px(4.2 * 12. + 12. + 2.))
-                .px(px(8.))
-                .py(px(6.))
-                .text_size(px(12.))
-                .line_height(px(lm.height))
-                .text_color(hsla(t.text))
-                .child(self.notes_view.element(lm.height, cx))
-                .into_any_element()
+            recur_ui::resize::vertical(
+                "ask-notes",
+                recur_ui::style::card(t.bg, field_border, 6.)
+                    .flex_1()
+                    .min_w_0()
+                    .min_h(px(4.2 * 12. + 12. + 2.))
+                    .px(px(8.))
+                    .py(px(6.))
+                    .text_size(px(12.))
+                    .line_height(px(lm.height))
+                    .text_color(hsla(t.text))
+                    .child(self.notes_view.element(lm.height, cx)),
+                1.,
+                self.notes.read(cx).focus_handle(cx),
+                window,
+                cx,
+            )
+            .into_any_element()
         } else {
             let ph = SharedString::from(if self.question.options.is_empty() {
                 "Your answer…"

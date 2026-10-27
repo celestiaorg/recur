@@ -170,6 +170,11 @@ struct State {
     /// What the last reveal saw: the active key, its chip's width and the chip count. The web
     /// strip reveals on a key change, a chip resize or a chip list mutation, not every frame.
     revealed: Option<(SharedString, f32, usize)>,
+    /// The active chip's left and the strip's width at the last reveal, and whether they have
+    /// held for a frame since mount. The web's first reveal reads the settled layout; until
+    /// it settles here, a move re-reveals.
+    revealed_at: (f32, f32),
+    settled: bool,
     drag: Drag,
 }
 
@@ -187,6 +192,8 @@ impl Default for State {
             anim: None,
             wheeled: None,
             revealed: None,
+            revealed_at: (0., 0.),
+            settled: false,
             last_write: None,
             drag: Drag::default(),
         }
@@ -495,7 +502,8 @@ impl TabStrip {
         {
             let state = state.clone();
             strip = strip.on_scroll_wheel(move |_, window, cx| {
-                state.update(cx, |s, _| s.wheeled = Some(Instant::now()));
+                let now = crate::motion::now(cx);
+                state.update(cx, |s, _| s.wheeled = Some(now));
                 window.refresh();
             });
         }
@@ -622,6 +630,7 @@ fn scrollbar(scroll: &ScrollHandle, color: crate::color::Color) -> AnyElement {
 fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window, cx: &mut App) {
     let reduced = motion::reduced(cx);
     let order: Vec<SharedString> = state.read(cx).drag.order.clone();
+    let now = crate::motion::now(cx);
     state.update(cx, |s, _| {
         let scroll_left = -f32::from(s.scroll.offset().x);
         let max = f32::from(s.scroll.max_offset().x);
@@ -673,19 +682,25 @@ fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window
         ) else {
             return;
         };
+        let view = s.scroll.bounds();
+        let client = f32::from(view.size.width);
+        // Scroll children report their unscrolled (content) bounds.
+        let child_left = f32::from(child.left() - view.left());
         let seen = (key.clone(), f32::from(child.size.width), order.len());
         let same = s
             .revealed
             .as_ref()
             .is_some_and(|(k, w, n)| *k == seen.0 && (w - seen.1).abs() < 0.5 && *n == seen.2);
-        if same && !user_reveal {
+        let (l, c) = s.revealed_at;
+        let held = (l - child_left).abs() < 0.5 && (c - client).abs() < 0.5;
+        if same && held {
+            s.settled = true;
+        }
+        if same && (held || s.settled) && !user_reveal {
             return;
         }
         s.revealed = Some(seen);
-        let view = s.scroll.bounds();
-        let client = f32::from(view.size.width);
-        // Scroll children report their unscrolled (content) bounds.
-        let child_left = f32::from(child.left() - view.left());
+        s.revealed_at = (child_left, client);
         let next = next_strip_scroll_left(
             scroll_left,
             client,
@@ -705,7 +720,7 @@ fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window
             s.scroll.set_offset(point(px(-next), px(0.)));
             s.last_write = Some(next);
         } else if s.anim.is_none_or(|(_, to, _)| (to - next).abs() >= 1.) {
-            s.anim = Some((scroll_left, next, Instant::now()));
+            s.anim = Some((scroll_left, next, now));
         }
     });
     let anim = state.read(cx).anim;
@@ -781,7 +796,7 @@ fn chip_lefts(s: &State) -> HashMap<SharedString, f32> {
     out
 }
 
-fn reorder_by_pointer_x(s: &mut State, x: f32) {
+fn reorder_by_pointer_x(s: &mut State, x: f32, now: Instant) {
     let Some(from) = s.drag.from.clone() else {
         return;
     };
@@ -807,7 +822,6 @@ fn reorder_by_pointer_x(s: &mut State, x: f32) {
     // FLIP: slide every moved chip from where it was.
     let before = chip_lefts(s);
     let start_x = item_bounds(s, 0).map_or(0., |b| f32::from(b.left()));
-    let now = Instant::now();
     let mut x0 = start_x;
     for key in &next {
         let k = if *key == from {
@@ -918,19 +932,21 @@ fn track(
             0.
         };
         if step != 0. {
+            let now = crate::motion::now(cx);
             state.update(cx, |s, _| {
                 let cur = -f32::from(s.scroll.offset().x);
                 let max = f32::from(s.scroll.max_offset().x);
                 let next = (cur + step).clamp(0., max);
                 s.scroll.set_offset(point(px(-next), px(0.)));
                 s.last_write = Some(next);
-                reorder_by_pointer_x(s, pointer_x);
+                reorder_by_pointer_x(s, pointer_x, now);
             });
             window.request_animation_frame();
         }
     }
     let st = state.clone();
     window.on_mouse_event(move |e: &MouseMoveEvent, _, window, cx| {
+        let now = crate::motion::now(cx);
         let changed = st.update(cx, |s, _| {
             let Some(p) = &s.drag.press else { return false };
             if !s.drag.active {
@@ -945,7 +961,7 @@ fn track(
             }
             s.drag.pos = e.position - p.offset;
             s.drag.pointer_x = e.position.x.into();
-            reorder_by_pointer_x(s, e.position.x.into());
+            reorder_by_pointer_x(s, e.position.x.into(), now);
             true
         });
         if changed {
@@ -957,6 +973,7 @@ fn track(
         if e.button != MouseButton::Left {
             return;
         }
+        let now = crate::motion::now(cx);
         st.update(cx, |s, _| {
             if !s.drag.active {
                 s.drag.press = None;
@@ -971,7 +988,7 @@ fn track(
                 .and_then(|k| chip_index(&s.drag.order, k))
                 .and_then(|i| item_bounds(s, i))
                 .map_or(s.drag.pos, |b| b.origin);
-            s.drag.settle = Some((s.drag.pos, target, Instant::now()));
+            s.drag.settle = Some((s.drag.pos, target, now));
         });
         window.refresh();
     });
@@ -1016,6 +1033,58 @@ mod tests {
             restore_strip_order(&["c", "a", "b", "d"], &["c", "a", "b"], k),
             ["c", "a", "b", "d"]
         );
+    }
+
+    struct Mount {
+        scroll: ScrollHandle,
+        width: f32,
+    }
+
+    impl gpui_kit::Render for Mount {
+        fn render(&mut self, _: &mut Window, _: &mut gpui_kit::Context<Self>) -> impl IntoElement {
+            let mut strip = tab_strip("strip", "Tabs")
+                .active_key("t5")
+                .scroll_handle(self.scroll.clone());
+            for i in 0..10 {
+                let chip = crate::widgets::tab_chip::tab_chip(format!("t{i}"), "settings.rs");
+                strip = strip.tab(format!("t{i}"), chip);
+            }
+            div().w(px(self.width)).child(strip)
+        }
+    }
+
+    /// The strip's width settles a frame after mount: the reveal follows it, as the web's
+    /// first reveal reads the settled layout.
+    #[gpui_kit::test]
+    fn the_mount_reveal_follows_the_strip_while_its_layout_settles(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            crate::init(cx);
+        });
+        let scroll = ScrollHandle::new();
+        let (root, cx) = cx.add_window_view(|_, _| Mount {
+            scroll: scroll.clone(),
+            width: 200.,
+        });
+        cx.update(|_, cx| {
+            root.update(cx, |m, cx| {
+                m.width = 300.;
+                cx.notify();
+            })
+        });
+        for _ in 0..30 {
+            cx.executor()
+                .advance_clock(std::time::Duration::from_millis(16));
+            cx.update(|window, _| window.refresh());
+            cx.run_until_parked();
+        }
+        let view = scroll.bounds();
+        let chip = scroll.bounds_for_item(5).expect("chip");
+        let want = f32::from(chip.right() - view.left() - view.size.width).trunc();
+        assert!(want > 0.);
+        assert_eq!(-f32::from(scroll.offset().x), want);
     }
 
     #[test]

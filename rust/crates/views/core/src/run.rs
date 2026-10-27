@@ -95,7 +95,8 @@ pub struct RunDevRequest {
     pub nonce: u64,
 }
 
-type ByName = BTreeMap<String, String>;
+/// Run names in start order, as `runSessionBy`'s object keys keep insertion order.
+type ByName = indexmap::IndexMap<String, String>;
 
 /// Run sessions per workspace. In memory only: the PTY outlives a closed dock, so this
 /// survives unmount.
@@ -138,7 +139,7 @@ fn clear_in(
         Some(s) if session.is_none_or(|want| want == s) => {}
         _ => return false,
     }
-    by.remove(name);
+    by.shift_remove(name);
     if by.is_empty() {
         map.remove(ws);
     }
@@ -320,6 +321,26 @@ mod tests {
             pinned_run: pinned.into(),
             ..Project::default()
         }
+    }
+
+    /// `runningRuns` lists runs in start order (`runSessionBy`'s object keys), not by name.
+    #[test]
+    fn running_runs_keep_start_order() {
+        let mut r = RunStore::default();
+        r.set_run_session("ws", "test", "s1");
+        r.set_run_session("ws", "dev", "s2");
+        r.set_run_session("ws", "check", "s3");
+        r.set_run_session("ws", "test", "s4");
+        let names = |r: &RunStore| -> Vec<String> {
+            r.running_runs("ws").into_iter().map(|(n, _)| n).collect()
+        };
+        assert_eq!(
+            names(&r),
+            ["test", "dev", "check"],
+            "a restart keeps its place"
+        );
+        r.clear_run_session("ws", "dev", None);
+        assert_eq!(names(&r), ["test", "check"]);
     }
 
     #[test]

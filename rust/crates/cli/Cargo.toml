@@ -25,6 +25,7 @@ tokio.workspace = true
 yaml-rust2.workspace = true
 
 [dev-dependencies]
+recur-exec.workspace = true
 tokio-util.workspace = true
 
 [lints]

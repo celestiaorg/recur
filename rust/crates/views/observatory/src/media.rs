@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use gpui_kit::{App, AppContext as _, Context, Window};
+use gpui_kit::{App, AppContext as _, Context, Entity, Window};
 use recur_content::images::{Decoded, ImageCache, ImageLoader};
 use recur_content::{AttachmentLightbox, PdfPreview};
 use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
@@ -317,8 +317,63 @@ impl Observatory {
 
     /// The video pane's zoom: GPUI has no media element, so the file opens in the system
     /// player.
-    pub(crate) fn zoom_video(&mut self, cx: &mut Context<Self>) {
-        let Some(f) = self.file.clone() else { return };
-        self.open_external(&f.path, cx);
+    /// `paneVideo`: the player for the selected video, kept while the same file shows.
+    pub(crate) fn video_player(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> Option<Entity<recur_content::video::VideoPlayer>> {
+        let f = self.file.as_ref()?;
+        let abs = if is_abs_filesystem_path(&f.path) {
+            std::path::PathBuf::from(&f.path)
+        } else {
+            std::path::Path::new(&self.workspace_root(cx)).join(&f.path)
+        };
+        if let Some(v) = &self.video
+            && v.read(cx).path() == abs
+        {
+            return Some(v.clone());
+        }
+        let v = cx.new(|cx| {
+            recur_content::video::VideoPlayer::new(
+                abs,
+                recur_content::video::VideoOptions::default(),
+                cx,
+            )
+        });
+        self.video = Some(v.clone());
+        Some(v)
+    }
+
+    /// `zoomVideo`: pause the pane and play on in the lightbox from the same time; closing it
+    /// puts the pane at the lightbox's time.
+    pub(crate) fn zoom_video(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let (Some(f), Some(v)) = (self.file.clone(), self.video.clone()) else {
+            return;
+        };
+        let (path, start) = v.update(cx, |p, cx| {
+            p.pause(cx);
+            (p.path().to_path_buf(), p.position())
+        });
+        let weak = self.weak.clone();
+        let on_close = std::rc::Rc::new(move |_: &mut Window, cx: &mut App| {
+            let Some(o) = weak.upgrade() else { return };
+            let lb = o.update(cx, |o, cx| {
+                cx.notify();
+                o.media_zoom.take()
+            });
+            // The lightbox is mid-update while it closes: read its time once that ends.
+            let Some(lb) = lb else { return };
+            cx.defer(move |cx| {
+                let t = lb.read(cx).video_position(cx);
+                let v = o.read(cx).video.clone();
+                if let (Some(t), Some(v)) = (t, v) {
+                    v.update(cx, |p, cx| p.seek(t, cx));
+                }
+            });
+        });
+        let lb = cx
+            .new(|cx| AttachmentLightbox::video(path, f.path.clone(), start, on_close, window, cx));
+        self.media_zoom = Some(lb);
+        cx.notify();
     }
 }

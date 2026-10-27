@@ -49,7 +49,7 @@ impl AgentChat {
             .cards
             .permissions
             .entry(req.id.clone())
-            .or_insert_with(|| cx.new(|_| PermissionCard::new(req.clone(), true, state)))
+            .or_insert_with(|| cx.new(|cx| PermissionCard::new(req.clone(), true, state, cx)))
             .clone();
         if card.read(cx).request != *req {
             let r = req.clone();

@@ -65,96 +65,134 @@ fn is_pattern(cp: u32) -> bool {
     lookup(cp).is_some_and(|parts| parts.iter().any(|p| matches!(p.kind, K::Pattern(_))))
 }
 
-struct Ctx<'a> {
-    window: &'a mut Window,
-    origin: Point<Pixels>,
-    dpr: f32,
-    color: Hsla,
+/// A path segment in device pixels on the y-down canvas.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Seg {
+    Move(f32, f32),
+    Line(f32, f32),
+    /// Control point, end.
+    Quad(f32, f32, f32, f32),
+    /// Two control points, end.
+    Cubic(f32, f32, f32, f32, f32, f32),
+    /// An SVG arc from the current point (`drawSvgArc`); `phi` in degrees.
+    Arc {
+        rx: f32,
+        ry: f32,
+        phi: f32,
+        large: bool,
+        sweep: bool,
+        x: f32,
+        y: f32,
+    },
+    /// `arc(x, y, r, 0, 2π)`.
+    Circle(f32, f32, f32),
+    Close,
 }
 
-impl Ctx<'_> {
-    fn pt(&self, x: f32, y: f32) -> Point<Pixels> {
-        point(
-            self.origin.x + px(x / self.dpr),
-            self.origin.y + px(y / self.dpr),
-        )
-    }
+pub(crate) enum Clip<'a> {
+    Rect(f32, f32, f32, f32),
+    /// A clip path's `M` / `L` points.
+    Polygon(&'a [(f32, f32)]),
+}
 
-    fn rect(&mut self, x: f32, y: f32, w: f32, h: f32) {
-        let b = Bounds::new(self.pt(x, y), size(px(w / self.dpr), px(h / self.dpr)));
-        self.window.paint_quad(fill(b, self.color));
-    }
-
-    fn clip_cell<R>(
+/// The canvas 2D calls the rasterizer makes, in device pixels, filled in the glyph colour.
+pub(crate) trait Canvas {
+    fn fill_rect(&mut self, x: f32, y: f32, w: f32, h: f32);
+    /// Fills the path (non-zero), or strokes it at `stroke` device pixels.
+    fn draw_path(&mut self, path: &[Seg], stroke: Option<f32>);
+    /// Runs `f` inside a `save()`, `clip()`, `restore()`.
+    fn clipped(&mut self, clip: Clip<'_>, f: &mut dyn FnMut(&mut dyn Canvas));
+    /// `drawPatternChar`: `rows` repeated from the canvas origin, shifted left and up by the
+    /// variant's bits, filling the rectangle. `key` identifies the pattern for caching.
+    #[allow(clippy::too_many_arguments)]
+    fn pattern(
         &mut self,
+        key: (u32, usize),
+        rows: &[&[f32]],
         x: f32,
         y: f32,
         w: f32,
         h: f32,
-        f: impl for<'b> FnOnce(&mut Ctx<'b>) -> R,
-    ) -> R {
-        let bounds = Bounds::new(self.pt(x, y), size(px(w / self.dpr), px(h / self.dpr)));
-        let origin = self.origin;
-        let (dpr, color) = (self.dpr, self.color);
-        self.window
-            .with_content_mask(Some(ContentMask { bounds }), |window| {
-                f(&mut Ctx {
-                    window,
-                    origin,
-                    dpr,
-                    color,
-                })
-            })
-    }
+        variant: u8,
+    );
+}
 
-    fn draw(&mut self, b: PathBuilder) {
-        if let Ok(path) = b.build() {
-            self.window.paint_path(path, self.color);
+/// The atlas configuration the rasterizer reads, in device pixels.
+#[derive(Clone, Copy)]
+pub(crate) struct Dims {
+    pub cell_w: f32,
+    pub cell_h: f32,
+    pub char_w: f32,
+    pub char_h: f32,
+    /// CSS pixels.
+    pub font_size: f32,
+    pub dpr: f32,
+}
+
+impl From<&CellMetrics> for Dims {
+    fn from(m: &CellMetrics) -> Self {
+        Self {
+            cell_w: m.cell_width,
+            cell_h: m.cell_height,
+            char_w: m.char_width,
+            char_h: m.char_height,
+            font_size: m.font_size,
+            dpr: m.dpr,
         }
     }
 }
 
-/// Paints `cp` into the cell at `origin` if it has a custom definition. Returns false otherwise.
-pub(crate) fn paint(
-    window: &mut Window,
+/// `CellColorResolver`'s variant for shade patterns at a cell's device position: bit 1 shifts
+/// the pattern a pixel left, bit 0 a pixel up, so odd cell sizes tile seamlessly.
+pub(crate) fn pattern_variant(cp: u32, x: f32, y: f32) -> u8 {
+    if is_pattern(cp) {
+        ((x.round() % 2.0) as u8) * 2 + (y.round() % 2.0) as u8
+    } else {
+        0
+    }
+}
+
+/// `tryDrawCustomGlyph`: draws `cp` with its cell's top-left at `(x0, y0)`. False when `cp` has
+/// no custom definition.
+pub(crate) fn draw(
+    canvas: &mut dyn Canvas,
     cp: u32,
-    origin: Point<Pixels>,
-    _width: usize,
-    m: &CellMetrics,
-    color: Hsla,
+    x0: f32,
+    y0: f32,
+    d: &Dims,
+    variant: u8,
 ) -> bool {
     let Some(parts) = lookup(cp) else {
         return false;
     };
-    let mut cx = Ctx {
-        window,
-        origin,
-        dpr: m.dpr,
-        color,
-    };
-    let col_x = (f32::from(origin.x) * m.dpr).round();
-    let row_y = (f32::from(origin.y) * m.dpr).round();
-    let variant = if is_pattern(cp) {
-        ((col_x % 2.0) as u8) * 2 + (row_y % 2.0) as u8
-    } else {
-        0
-    };
     for (i, part) in parts.iter().enumerate() {
-        let (mut x, mut y, mut w, mut h) = (0.0, 0.0, m.cell_width, m.cell_height);
+        let (mut x, mut y, mut w, mut h) = (x0, y0, d.cell_w, d.cell_h);
         if part.char_scale {
-            w = m.char_width;
-            h = m.char_height;
-            x = (m.cell_width - m.char_width) / 2.0;
-            y = (m.cell_height - m.char_height) / 2.0;
+            w = d.char_w;
+            h = d.char_h;
+            x += (d.cell_w - d.char_w) / 2.0;
+            y += (d.cell_h - d.char_h) / 2.0;
         }
-        draw_part(&mut cx, cp, i, part, x, y, w, h, m, variant);
+        match part.clip {
+            Some(ins) => {
+                let poly: Vec<(f32, f32)> = ins
+                    .iter()
+                    .filter(|i| (i.cmd == b'M' || i.cmd == b'L') && i.args.len() >= 2)
+                    .filter_map(|i| Some((x + i.args[0]?[0] * w, y + i.args[1]?[0] * h)))
+                    .collect();
+                canvas.clipped(Clip::Polygon(&poly), &mut |c| {
+                    draw_part(c, cp, i, part, x, y, w, h, d, variant)
+                });
+            }
+            None => draw_part(canvas, cp, i, part, x, y, w, h, d, variant),
+        }
     }
     true
 }
 
 #[allow(clippy::too_many_arguments)]
 fn draw_part(
-    cx: &mut Ctx,
+    cx: &mut dyn Canvas,
     cp: u32,
     index: usize,
     part: &P,
@@ -162,72 +200,63 @@ fn draw_part(
     y: f32,
     w: f32,
     h: f32,
-    m: &CellMetrics,
+    d: &Dims,
     variant: u8,
 ) {
+    let dpr = d.dpr;
     match &part.kind {
         K::Octants(boxes) => {
             let (xe, ye) = (w / 8.0, h / 8.0);
             for b in *boxes {
-                cx.rect(x + b[0] * xe, y + b[1] * ye, b[2] * xe, b[3] * ye);
+                cx.fill_rect(x + b[0] * xe, y + b[1] * ye, b[2] * xe, b[3] * ye);
             }
         }
-        K::Pattern(rows) => draw_pattern(cx, cp, index, rows, part.clip, x, y, w, h, variant),
+        K::Pattern(rows) => cx.pattern((cp, index), rows, x, y, w, h, variant),
         K::PathFn(ins) => {
-            let (xp, yp) = (0.15, 0.15 / m.cell_height * m.cell_width);
-            cx.clip_cell(x, y, w, h, |cx| {
-                let dpr = cx.dpr;
-                let b = svg_path(
-                    ins,
-                    xp,
-                    yp,
-                    |v, axis| translate(v, axis, w, h, x, y, true, 0.0, 0.0, dpr),
-                    false,
-                    cx.origin,
-                    dpr,
-                );
-                cx.draw(style(b, part.stroke_width));
-            });
+            let (xp, yp) = (0.15, 0.15 / d.cell_h * d.cell_w);
+            let path = svg_path(
+                ins,
+                xp,
+                yp,
+                |v, axis| translate(v, axis, w, h, x, y, true, 0.0, 0.0, dpr),
+                false,
+            );
+            let stroke = part.stroke_width.map(|s| s * dpr);
+            cx.clipped(Clip::Rect(x, y, w, h), &mut |c| c.draw_path(&path, stroke));
         }
         K::Path(ins) => {
-            let b = svg_path(
+            let path = svg_path(
                 ins,
                 0.0,
                 0.0,
                 |v, axis| if axis == 0 { x + v * w } else { y + v * h },
                 true,
-                cx.origin,
-                cx.dpr,
             );
-            cx.draw(style(b, part.stroke_width));
+            cx.draw_path(&path, part.stroke_width.map(|s| s * dpr));
         }
         // xterm draws the "negative" shape in the atlas background colour, which is fully
         // transparent when `allowTransparency` is on (as in Recur's pane): only the fill shows.
-        K::PathNegative => cx.rect(x, y, w, h),
+        K::PathNegative => cx.fill_rect(x, y, w, h),
         K::Vector {
-            d,
+            d: ins,
             stroke,
             left_padding,
             right_padding,
         } => {
-            let css_line = m.font_size / 12.0;
+            let css_line = d.font_size / 12.0;
             let (lp, rp) = (
                 left_padding * (css_line / 2.0),
                 right_padding * (css_line / 2.0),
             );
-            cx.clip_cell(x, y, w, h, |cx| {
-                let dpr = cx.dpr;
-                let b = svg_path(
-                    d,
-                    0.0,
-                    0.0,
-                    |v, axis| translate(v, axis, w, h, x, y, false, lp, rp, dpr),
-                    false,
-                    cx.origin,
-                    dpr,
-                );
-                cx.draw(style(b, stroke.then_some(css_line)));
-            });
+            let path = svg_path(
+                ins,
+                0.0,
+                0.0,
+                |v, axis| translate(v, axis, w, h, x, y, false, lp, rp, dpr),
+                false,
+            );
+            let stroke = stroke.then_some(css_line * dpr);
+            cx.clipped(Clip::Rect(x, y, w, h), &mut |c| c.draw_path(&path, stroke));
         }
         K::Braille(pattern) => {
             const DOTS: [(f32, f32); 8] = [
@@ -245,30 +274,12 @@ fn draw_part(
             let ye = h * 0.8 / 8.0;
             let r = xe.min(ye);
             for (bit, (dx, dy)) in DOTS.iter().enumerate() {
-                if pattern & (1 << bit) == 0 {
-                    continue;
+                if pattern & (1 << bit) != 0 {
+                    let (ccx, ccy) = (x + (dx + 1.0) * xe, y + pad_y + (dy + 1.0) * ye);
+                    cx.draw_path(&[Seg::Circle(ccx, ccy, r)], None);
                 }
-                let (ccx, ccy) = (x + (dx + 1.0) * xe, y + pad_y + (dy + 1.0) * ye);
-                let mut b =
-                    PathBuilder::fill().with_style(PathStyle::Fill(FillOptions::non_zero()));
-                let radii = point(px(r / cx.dpr), px(r / cx.dpr));
-                b.move_to(cx.pt(ccx + r, ccy));
-                b.arc_to(radii, px(0.0), false, true, cx.pt(ccx - r, ccy));
-                b.arc_to(radii, px(0.0), false, true, cx.pt(ccx + r, ccy));
-                b.close();
-                cx.draw(b);
             }
         }
-    }
-}
-
-/// Stroke width in CSS pixels (`lineWidth = devicePixelRatio * width` on the device canvas).
-fn style(b: PathBuilder, stroke: Option<f32>) -> PathBuilder {
-    match stroke {
-        Some(w) => b.with_style(PathStyle::Stroke(
-            gpui_kit::StrokeOptions::default().with_line_width(w),
-        )),
-        None => b.with_style(PathStyle::Fill(FillOptions::non_zero())),
     }
 }
 
@@ -303,25 +314,16 @@ fn translate(
 
 /// Builds a canvas path from instructions. `full` enables the commands only the PATH type
 /// understands (H, V, A); the other types skip them, as the canvas code logs and continues.
-fn svg_path(
-    ins: &[I],
-    xp: f32,
-    yp: f32,
-    map: impl Fn(f32, usize) -> f32,
-    full: bool,
-    origin: Point<Pixels>,
-    dpr: f32,
-) -> PathBuilder {
-    let mut b = PathBuilder::fill();
+fn svg_path(ins: &[I], xp: f32, yp: f32, map: impl Fn(f32, usize) -> f32, full: bool) -> Vec<Seg> {
+    let mut b = Vec::new();
     let (mut cur_x, mut cur_y, mut ctl_x, mut ctl_y) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
     let mut last = b' ';
     let mut open = false;
     let lin = |a: &Option<[f32; 3]>| a.map(|c| c[0] + c[1] * xp + c[2] * yp);
-    let to_pt = |x: f32, y: f32| point(origin.x + px(x / dpr), origin.y + px(y / dpr));
     for i in ins {
         if i.cmd == b'Z' {
             if open {
-                b.close();
+                b.push(Seg::Close);
                 open = false;
             }
             last = b'Z';
@@ -336,7 +338,7 @@ fn svg_path(
             } else {
                 cur_x = map(v, 0);
             }
-            b.line_to(to_pt(cur_x, cur_y));
+            b.push(Seg::Line(cur_x, cur_y));
             ctl_x = cur_x;
             ctl_y = cur_y;
             last = i.cmd;
@@ -353,17 +355,15 @@ fn svg_path(
             let (x2, y2) = (map(a[5], 0), map(a[6], 1));
             let rx = (map(a[0], 0) - map(0.0, 0)).abs();
             let ry = (map(a[1], 1) - map(0.0, 1)).abs();
-            if rx == 0.0 || ry == 0.0 {
-                b.line_to(to_pt(x2, y2));
-            } else {
-                b.arc_to(
-                    point(px(rx / dpr), px(ry / dpr)),
-                    px(a[2]),
-                    a[3] != 0.0,
-                    a[4] != 0.0,
-                    to_pt(x2, y2),
-                );
-            }
+            b.push(Seg::Arc {
+                rx,
+                ry,
+                phi: a[2],
+                large: a[3] != 0.0,
+                sweep: a[4] != 0.0,
+                x: x2,
+                y: y2,
+            });
             cur_x = x2;
             cur_y = y2;
             continue;
@@ -376,16 +376,16 @@ fn svg_path(
             .collect();
         match i.cmd {
             b'M' => {
-                b.move_to(to_pt(v[0], v[1]));
+                b.push(Seg::Move(v[0], v[1]));
                 open = true;
                 (cur_x, cur_y, ctl_x, ctl_y) = (v[0], v[1], v[0], v[1]);
             }
             b'L' => {
-                b.line_to(to_pt(v[0], v[1]));
+                b.push(Seg::Line(v[0], v[1]));
                 (cur_x, cur_y, ctl_x, ctl_y) = (v[0], v[1], v[0], v[1]);
             }
             b'Q' if v.len() >= 4 => {
-                b.curve_to(to_pt(v[2], v[3]), to_pt(v[0], v[1]));
+                b.push(Seg::Quad(v[0], v[1], v[2], v[3]));
                 (ctl_x, ctl_y, cur_x, cur_y) = (v[0], v[1], v[2], v[3]);
             }
             b'T' => {
@@ -394,11 +394,11 @@ fn svg_path(
                 } else {
                     (cur_x, cur_y)
                 };
-                b.curve_to(to_pt(v[0], v[1]), to_pt(cpx, cpy));
+                b.push(Seg::Quad(cpx, cpy, v[0], v[1]));
                 (ctl_x, ctl_y, cur_x, cur_y) = (cpx, cpy, v[0], v[1]);
             }
             b'C' if v.len() >= 6 => {
-                b.cubic_bezier_to(to_pt(v[4], v[5]), to_pt(v[0], v[1]), to_pt(v[2], v[3]));
+                b.push(Seg::Cubic(v[0], v[1], v[2], v[3], v[4], v[5]));
                 (ctl_x, ctl_y, cur_x, cur_y) = (v[2], v[3], v[4], v[5]);
             }
             _ => continue,
@@ -408,81 +408,209 @@ fn svg_path(
     b
 }
 
+/// Paints `cp` into the cell at `origin` as GPUI primitives. Returns false when `cp` has no
+/// custom definition.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+pub(crate) fn paint(
+    window: &mut Window,
+    cp: u32,
+    origin: Point<Pixels>,
+    _width: usize,
+    m: &CellMetrics,
+    color: Hsla,
+) -> bool {
+    let d = Dims::from(m);
+    let variant = pattern_variant(cp, f32::from(origin.x) * m.dpr, f32::from(origin.y) * m.dpr);
+    draw(
+        &mut Gpui {
+            window,
+            origin,
+            dpr: m.dpr,
+            color,
+            polygon: None,
+        },
+        cp,
+        0.0,
+        0.0,
+        &d,
+        variant,
+    )
+}
+
+/// The canvas as GPUI quads, paths and images, relative to a cell origin. GPUI clips to
+/// rectangles only, so a clip polygon applies to patterns (the only parts that carry one).
+struct Gpui<'a> {
+    window: &'a mut Window,
+    origin: Point<Pixels>,
+    dpr: f32,
+    color: Hsla,
+    polygon: Option<Vec<(f32, f32)>>,
+}
+
+impl Gpui<'_> {
+    fn pt(&self, x: f32, y: f32) -> Point<Pixels> {
+        point(
+            self.origin.x + px(x / self.dpr),
+            self.origin.y + px(y / self.dpr),
+        )
+    }
+
+    fn bounds(&self, x: f32, y: f32, w: f32, h: f32) -> Bounds<Pixels> {
+        Bounds::new(self.pt(x, y), size(px(w / self.dpr), px(h / self.dpr)))
+    }
+}
+
+impl Canvas for Gpui<'_> {
+    fn fill_rect(&mut self, x: f32, y: f32, w: f32, h: f32) {
+        let b = self.bounds(x, y, w, h);
+        self.window.paint_quad(fill(b, self.color));
+    }
+
+    fn draw_path(&mut self, path: &[Seg], stroke: Option<f32>) {
+        let mut b = PathBuilder::fill();
+        for seg in path {
+            match *seg {
+                Seg::Move(x, y) => {
+                    b.move_to(self.pt(x, y));
+                }
+                Seg::Line(x, y) => {
+                    b.line_to(self.pt(x, y));
+                }
+                Seg::Quad(cx, cy, x, y) => {
+                    b.curve_to(self.pt(x, y), self.pt(cx, cy));
+                }
+                Seg::Cubic(c1x, c1y, c2x, c2y, x, y) => {
+                    b.cubic_bezier_to(self.pt(x, y), self.pt(c1x, c1y), self.pt(c2x, c2y));
+                }
+                Seg::Arc {
+                    rx,
+                    ry,
+                    phi,
+                    large,
+                    sweep,
+                    x,
+                    y,
+                } => {
+                    if rx == 0.0 || ry == 0.0 {
+                        b.line_to(self.pt(x, y));
+                    } else {
+                        let radii = point(px(rx.abs() / self.dpr), px(ry.abs() / self.dpr));
+                        b.arc_to(radii, px(phi), large, sweep, self.pt(x, y));
+                    }
+                }
+                Seg::Circle(cx, cy, r) => {
+                    let radii = point(px(r / self.dpr), px(r / self.dpr));
+                    b.move_to(self.pt(cx + r, cy));
+                    b.arc_to(radii, px(0.0), false, true, self.pt(cx - r, cy));
+                    b.arc_to(radii, px(0.0), false, true, self.pt(cx + r, cy));
+                    b.close();
+                }
+                Seg::Close => b.close(),
+            }
+        }
+        let b = match stroke {
+            Some(w) => b.with_style(PathStyle::Stroke(
+                gpui_kit::StrokeOptions::default().with_line_width(w / self.dpr),
+            )),
+            None => b.with_style(PathStyle::Fill(FillOptions::non_zero())),
+        };
+        if let Ok(path) = b.build() {
+            self.window.paint_path(path, self.color);
+        }
+    }
+
+    fn clipped(&mut self, clip: Clip<'_>, f: &mut dyn FnMut(&mut dyn Canvas)) {
+        match clip {
+            Clip::Rect(x, y, w, h) => {
+                let bounds = self.bounds(x, y, w, h);
+                let (origin, dpr, color) = (self.origin, self.dpr, self.color);
+                let polygon = self.polygon.clone();
+                self.window
+                    .with_content_mask(Some(ContentMask { bounds }), |window| {
+                        f(&mut Gpui {
+                            window,
+                            origin,
+                            dpr,
+                            color,
+                            polygon,
+                        })
+                    });
+            }
+            Clip::Polygon(poly) => {
+                let outer = self.polygon.replace(poly.to_vec());
+                f(self);
+                self.polygon = outer;
+            }
+        }
+    }
+
+    fn pattern(
+        &mut self,
+        key: (u32, usize),
+        rows: &[&[f32]],
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        variant: u8,
+    ) {
+        let (iw, ih) = (w.round().max(1.0) as u32, h.round().max(1.0) as u32);
+        let rgba = gpui_kit::Rgba::from(self.color);
+        let color = u32::from_be_bytes([
+            (rgba.r * 255.0).round() as u8,
+            (rgba.g * 255.0).round() as u8,
+            (rgba.b * 255.0).round() as u8,
+            (rgba.a * 255.0).round() as u8,
+        ]);
+        let polygon = self.polygon.as_deref();
+        let image = PATTERNS.with(|cache| {
+            cache
+                .borrow_mut()
+                .entry((key.0, key.1, iw, ih, variant, color))
+                .or_insert_with(|| {
+                    let (dx, dy) = (u32::from((variant >> 1) & 1), u32::from(variant & 1));
+                    let (pw, ph) = (rows[0].len() as u32, rows.len() as u32);
+                    let mut img = image::RgbaImage::new(iw, ih);
+                    for py in 0..ih {
+                        for pxl in 0..iw {
+                            let on = rows[((py + dy) % ph) as usize][((pxl + dx) % pw) as usize];
+                            let inside = polygon.is_none_or(|poly| {
+                                point_in_polygon(poly, x + pxl as f32 + 0.5, y + py as f32 + 0.5)
+                            });
+                            let a = if inside {
+                                (on * rgba.a * 255.0).round() as u8
+                            } else {
+                                0
+                            };
+                            // RenderImage frames are BGRA.
+                            img.put_pixel(
+                                pxl,
+                                py,
+                                image::Rgba([
+                                    (rgba.b * 255.0).round() as u8,
+                                    (rgba.g * 255.0).round() as u8,
+                                    (rgba.r * 255.0).round() as u8,
+                                    a,
+                                ]),
+                            );
+                        }
+                    }
+                    Arc::new(RenderImage::new(vec![image::Frame::new(img)]))
+                })
+                .clone()
+        });
+        let bounds = self.bounds(x, y, w, h);
+        let _ = self
+            .window
+            .paint_image(bounds, bounds, Corners::default(), image, 0, false);
+    }
+}
+
 /// Codepoint, part, cell width, cell height, variant, colour.
 type PatternKey = (u32, usize, u32, u32, u8, u32);
 
 thread_local! {
     static PATTERNS: RefCell<HashMap<PatternKey, Arc<RenderImage>>> = RefCell::new(HashMap::new());
-}
-
-#[allow(clippy::too_many_arguments)]
-fn draw_pattern(
-    cx: &mut Ctx,
-    cp: u32,
-    index: usize,
-    rows: &[&[f32]],
-    clip: Option<&[I]>,
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-    variant: u8,
-) {
-    let (iw, ih) = (w.round().max(1.0) as u32, h.round().max(1.0) as u32);
-    let rgba = gpui_kit::Rgba::from(cx.color);
-    let color = u32::from_be_bytes([
-        (rgba.r * 255.0).round() as u8,
-        (rgba.g * 255.0).round() as u8,
-        (rgba.b * 255.0).round() as u8,
-        (rgba.a * 255.0).round() as u8,
-    ]);
-    let key = (cp, index, iw, ih, variant, color);
-    let polygon: Option<Vec<(f32, f32)>> = clip.map(|ins| {
-        ins.iter()
-            .filter(|i| (i.cmd == b'M' || i.cmd == b'L') && i.args.len() >= 2)
-            .filter_map(|i| Some((i.args[0]?[0] * w, i.args[1]?[0] * h)))
-            .collect()
-    });
-    let image = PATTERNS.with(|cache| {
-        cache
-            .borrow_mut()
-            .entry(key)
-            .or_insert_with(|| {
-                let (dx, dy) = (u32::from((variant >> 1) & 1), u32::from(variant & 1));
-                let (pw, ph) = (rows[0].len() as u32, rows.len() as u32);
-                let mut img = image::RgbaImage::new(iw, ih);
-                for py in 0..ih {
-                    for pxl in 0..iw {
-                        let on = rows[((py + dy) % ph) as usize][((pxl + dx) % pw) as usize];
-                        let inside = polygon.as_ref().is_none_or(|poly| {
-                            point_in_polygon(poly, pxl as f32 + 0.5, py as f32 + 0.5)
-                        });
-                        let a = if inside {
-                            (on * rgba.a * 255.0).round() as u8
-                        } else {
-                            0
-                        };
-                        // RenderImage frames are BGRA.
-                        img.put_pixel(
-                            pxl,
-                            py,
-                            image::Rgba([
-                                (rgba.b * 255.0).round() as u8,
-                                (rgba.g * 255.0).round() as u8,
-                                (rgba.r * 255.0).round() as u8,
-                                a,
-                            ]),
-                        );
-                    }
-                }
-                Arc::new(RenderImage::new(vec![image::Frame::new(img)]))
-            })
-            .clone()
-    });
-    let bounds = Bounds::new(cx.pt(x, y), size(px(w / cx.dpr), px(h / cx.dpr)));
-    let _ = cx
-        .window
-        .paint_image(bounds, bounds, Corners::default(), image, 0, false);
 }
 
 fn point_in_polygon(poly: &[(f32, f32)], x: f32, y: f32) -> bool {

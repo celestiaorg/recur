@@ -2,7 +2,6 @@
 //! in their own test binary, serialized by [`ENV_LOCK`].
 
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -47,8 +46,7 @@ fn block<F: std::future::Future>(f: F) -> F::Output {
 
 fn script(path: &Path) {
     fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(path, "#!/bin/sh\n").unwrap();
-    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+    recur_exec::write_executable(path, "#!/bin/sh\n", 0o755).unwrap();
 }
 
 #[test]

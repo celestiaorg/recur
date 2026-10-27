@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 recur-domain.workspace = true
+recur-exec.workspace = true
 futures.workspace = true
 hex.workspace = true
 include_dir.workspace = true

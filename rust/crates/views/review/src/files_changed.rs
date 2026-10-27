@@ -1414,8 +1414,12 @@ impl StackPane {
     fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         match self.files.upgrade() {
             Some(files) => {
-                recur_ui::style::cached_root(files.update(cx, |f, cx| f.stack_element(window, cx)))
-                    .into_any_element()
+                // Code selects across rows and files, as the page selects across the stack.
+                let sel = recur_ui::selection::state("review-selection", window, cx);
+                let stack = recur_ui::style::cached_root(
+                    files.update(cx, |f, cx| f.stack_element(window, cx)),
+                );
+                recur_ui::selection::scope(&sel, false, stack, cx)
             }
             None => div().into_any_element(),
         }

@@ -546,8 +546,7 @@ mod tests {
         let d = data.path().to_str().unwrap();
         let bin = data.path().join("bin");
         fs::create_dir_all(&bin).unwrap();
-        fs::write(bin.join(BIN_NAME), "#!/bin/sh\n").unwrap();
-        fs::set_permissions(bin.join(BIN_NAME), fs::Permissions::from_mode(0o755)).unwrap();
+        recur_exec::write_executable(bin.join(BIN_NAME), "#!/bin/sh\n", 0o755).unwrap();
         fs::write(bin.join(VERSION_FILE_NAME), "0.0.1\n").unwrap();
         assert_ne!(managed_version(d), RELEASE_VERSION);
         assert!(is_executable_file(bin.join(BIN_NAME).to_str().unwrap()));

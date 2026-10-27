@@ -159,7 +159,7 @@ impl ToastStore {
             ttl,
             replace: opts.replace,
             on_dismiss: opts.on_dismiss,
-            shown_at: Instant::now(),
+            shown_at: crate::motion::now(cx),
         });
         self.arm(id, ttl, cx);
         cx.notify();
@@ -208,7 +208,7 @@ impl ToastStore {
             ttl,
             replace: None,
             on_dismiss: None,
-            shown_at: Instant::now(),
+            shown_at: crate::motion::now(cx),
         });
         self.arm(id, ttl, cx);
         cx.notify();

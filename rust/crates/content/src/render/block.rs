@@ -77,6 +77,8 @@ pub struct Env<'a> {
     pub highlights: &'a HashMap<usize, Vec<(Range<usize>, bool)>>,
     pub focused_image: Option<usize>,
     pub handlers: &'a Handlers,
+    /// Salts the document's selection keys, unique among documents in one selection scope.
+    pub select: u64,
 }
 
 type Handler<T> = Rc<dyn Fn(T, &mut Window, &mut App)>;
@@ -181,6 +183,13 @@ impl Build<'_, '_> {
     fn text_id(&mut self) -> ElementId {
         self.n.text += 1;
         ElementId::from(("md-t", self.n.text))
+    }
+
+    fn select_key(&self) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        (self.env.select, self.n.text).hash(&mut h);
+        h.finish()
     }
 
     /// The spans for a block's inline content, as recur-ui text, and their resolved runs (for
@@ -303,7 +312,8 @@ impl Build<'_, '_> {
         (out, runs, links)
     }
 
-    fn text(&mut self, inl: &Inline, flow: Flow, _block: usize) -> Text {
+    /// `sep` follows the block's text when a copy continues past it.
+    fn text(&mut self, inl: &Inline, flow: Flow, sep: &'static str) -> Text {
         self.n.text += 1;
         let block = self.n.text;
         let has_break = inl.pieces.iter().any(|p| matches!(p, Piece::Break));
@@ -311,6 +321,7 @@ impl Build<'_, '_> {
         let (spans, runs, link_ranges) = self.spans(inl, flow, block);
         let mut t = Text::from_spans(spans)
             .id(ElementId::from(("md-t", block)))
+            .selectable(self.select_key(), sep)
             .ui()
             .size(flow.size)
             .weight(flow.weight)
@@ -385,7 +396,7 @@ impl Build<'_, '_> {
     }
 
     /// An inline formatting context (a paragraph or an anonymous block).
-    fn inline_block(&mut self, nodes: &[Node], flow: Flow) -> AnyElement {
+    fn inline_block(&mut self, nodes: &[Node], flow: Flow, sep: &'static str) -> AnyElement {
         let inl = inline::collect(
             nodes,
             InlineCx {
@@ -396,7 +407,6 @@ impl Build<'_, '_> {
             },
         );
         self.n.block += 1;
-        let block = self.n.block;
         if inl.images_only() {
             return self.image_row(&inl, flow);
         }
@@ -420,7 +430,7 @@ impl Build<'_, '_> {
                 .collect(),
             links: inl.links.clone(),
         };
-        let text = self.text(&text_only, flow, block);
+        let text = self.text(&text_only, flow, sep);
         let m = checkbox.map(|_| text.measure(None, self.window).2);
         let mut el = div().relative().flex().flex_col().child(self.tracked(text));
         if let (Some(checked), Some(m)) = (checkbox, m) {
@@ -553,7 +563,7 @@ impl Build<'_, '_> {
         match it {
             Item::Block(e, pos) => self.block(e, flow, *pos),
             Item::Inline(run) => Some(Laid {
-                el: self.inline_block(run, flow),
+                el: self.inline_block(run, flow, "\n"),
                 mt: 0.,
                 mb: 0.,
             }),
@@ -578,7 +588,7 @@ impl Build<'_, '_> {
                     mb = 0.;
                 }
                 Laid {
-                    el: self.inline_block(&e.children, flow),
+                    el: self.inline_block(&e.children, flow, copy_sep(mb, fs)),
                     mt,
                     mb,
                 }
@@ -604,10 +614,11 @@ impl Build<'_, '_> {
                     weight: 650.,
                     lists: flow.lists,
                 };
+                let mb = lu(h.margin_bottom * em);
                 Laid {
-                    el: self.inline_block(&e.children, hf),
+                    el: self.inline_block(&e.children, hf, copy_sep(mb, size)),
                     mt,
-                    mb: lu(h.margin_bottom * em),
+                    mb,
                 }
             }
             "ul" | "ol" => self.list(e, flow, pos),
@@ -813,8 +824,10 @@ impl Build<'_, '_> {
         if spans.is_empty() {
             spans.push(span(""));
         }
+        let id = self.text_id();
         let text = Text::from_spans(spans)
-            .id(self.text_id())
+            .id(id)
+            .selectable(self.select_key(), "\n")
             .family(Family::Stack("Menlo".into(), Vec::new()))
             .size(flow.size)
             .leading(flow.leading)
@@ -931,7 +944,7 @@ impl Build<'_, '_> {
                 pieces: vec![Piece::Text(file, inline::RunStyle::base(flow.ink))],
                 links: Vec::new(),
             };
-            let label = self.text(&label, flow, 0);
+            let label = self.text(&label, flow, "\n");
             let mut col = div().flex().flex_col().child(label);
             if let Some(p) = pre {
                 let pre_el = self.pre(&p, flow, false);
@@ -1104,7 +1117,8 @@ impl Build<'_, '_> {
                     },
                 );
                 self.n.block += 1;
-                let text = self.text(&inl, cf, self.n.block);
+                let sep = if ci + 1 == cells.len() { "\n" } else { "\t" };
+                let text = self.text(&inl, cf, sep);
                 let tid = self.n.text;
                 let (maxc, minc) = if self.dry {
                     (0., 0.)
@@ -1461,4 +1475,10 @@ fn checkbox_box(checked: bool, top: f32, t: &Tokens, window: &Window) -> AnyElem
         .child(vgap(top.max(0.), window))
         .child(control)
         .into_any_element()
+}
+
+/// WebKit's copy adds a blank line after a paragraph or heading whose bottom margin is at
+/// least half its font size (`shouldEmitExtraNewlineForNode`).
+fn copy_sep(mb: f32, size: f32) -> &'static str {
+    if mb * 2. >= size { "\n\n" } else { "\n" }
 }

@@ -774,11 +774,7 @@ fn manager_for(t: &TestEngine, repo: &str) -> recur_git::Manager {
 async fn preserve_child_work_failure_keeps_worktree() {
     let repo = init_repo();
     let hook = Path::new(&repo.path).join(".git/hooks/pre-commit");
-    std::fs::write(&hook, "#!/bin/sh\nexit 1\n").unwrap();
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    recur_exec::write_executable(&hook, "#!/bin/sh\nexit 1\n", 0o755).unwrap();
     let dirty = Path::new(&repo.path).join("wip.txt");
     std::fs::write(&dirty, "unfinished\n").unwrap();
     let t = TestEngine::new(None);

@@ -420,7 +420,7 @@ impl EditorView {
             scroll_left: 0.0,
             pending_scroll: None,
             frame: None,
-            blink_start: std::time::Instant::now(),
+            blink_start: recur_ui::motion::now(cx),
             blink_epoch: 0,
             blink_task: None,
             has_focus: false,
@@ -1022,7 +1022,7 @@ impl EditorView {
     /// Caret blink (`drawSelection({ cursorBlinkRate })`): solid for a
     /// period after activity, then on/off halves.
     pub(crate) fn restart_blink(&mut self, cx: &mut Context<Self>) {
-        self.blink_start = std::time::Instant::now();
+        self.blink_start = recur_ui::motion::now(cx);
         self.blink_epoch += 1;
         let rate = self.metrics.cursor_blink_ms;
         if rate == 0 || !self.has_focus || recur_ui::motion::is_frozen(cx) {

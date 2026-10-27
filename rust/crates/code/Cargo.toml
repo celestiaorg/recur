@@ -33,6 +33,7 @@ objc2-foundation.workspace = true
 objc2-app-kit.workspace = true
 
 [dev-dependencies]
+recur-exec.workspace = true
 pretty_assertions.workspace = true
 serde.workspace = true
 tempfile.workspace = true

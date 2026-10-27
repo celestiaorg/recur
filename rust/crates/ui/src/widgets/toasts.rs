@@ -348,6 +348,7 @@ fn close_button(
     let hover_bg = ask.then(|| t.text.fade(0.08));
     let b = div()
         .id(("tclose", id))
+        .debug_selector(|| "tclose".into())
         .flex_none()
         .text_color(t.faint)
         .cursor_pointer()

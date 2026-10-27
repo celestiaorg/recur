@@ -1027,11 +1027,17 @@ async fn opens_an_escalated_loop_into_loop_chat_with_an_inline_question(cx: &mut
     s.open(ESCALATED);
     assert!(s.has("ask-kicker:Maestro needs a decision"));
     s.click("ask-opt:Token bucket with refill");
-    assert!(!s.has("ask-kicker:Maestro needs a decision"), "the card closes");
+    assert!(
+        !s.has("ask-kicker:Maestro needs a decision"),
+        "the card closes"
+    );
     let c = calls.lock().clone();
     assert_eq!(c.len(), 1);
     assert_eq!(c[0][0], ESCALATED);
-    assert!(c[0].iter().any(|v| v == "Token bucket with refill"), "{c:?}");
+    assert!(
+        c[0].iter().any(|v| v == "Token bucket with refill"),
+        "{c:?}"
+    );
     assert!(me(&mut s, "Token bucket with refill"));
 }
 
@@ -1052,7 +1058,10 @@ async fn plan_approval_notes_option_waits_for_the_text_box(cx: &mut TestAppConte
     let mut s = plain(cx, opts);
     s.open(ESCALATED);
     s.click("ask-opt:Proceed with my notes");
-    assert!(s.has("ask-opt-sel:Proceed with my notes"), "the notes option stays selected");
+    assert!(
+        s.has("ask-opt-sel:Proceed with my notes"),
+        "the notes option stays selected"
+    );
     assert!(s.has("ask-answer:off"), "Answer waits for the notes");
     assert!(calls.lock().is_empty());
     for ch in "use ncurses for the board".chars() {
@@ -1063,6 +1072,23 @@ async fn plan_approval_notes_option_waits_for_the_text_box(cx: &mut TestAppConte
     let c = calls.lock().clone();
     assert_eq!(c.len(), 1, "{c:?}");
     assert!(c[0].iter().any(|v| v == "Proceed with my notes"), "{c:?}");
-    assert!(c[0].iter().any(|v| v == "use ncurses for the board"), "{c:?}");
-    assert!(me(&mut s, "Proceed with my notes — use ncurses for the board"));
+    assert!(
+        c[0].iter().any(|v| v == "use ncurses for the board"),
+        "{c:?}"
+    );
+    assert!(me(
+        &mut s,
+        "Proceed with my notes — use ncurses for the board"
+    ));
+}
+
+#[gpui::test]
+async fn opens_a_working_loop_into_the_unified_workspace_view(cx: &mut TestAppContext) {
+    let mut s = plain(cx, MockOptions::default());
+    s.open(ACTIVE);
+    assert!(s.has("v-detail") && s.has("obs-left"));
+    assert!(
+        s.has("tab-chip:chat-tab-MA:on") || s.has("tab-chip:chat-tab-MA"),
+        "the dock leads with the Loop tab"
+    );
 }

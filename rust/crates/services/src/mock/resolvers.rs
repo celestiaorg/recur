@@ -1375,7 +1375,15 @@ pub(super) fn base() -> Table {
         let pid = get(&p, "id").cloned();
         for x in &mut s.projects {
             if get(x, "id").cloned() == pid {
-                *x = js::spread(&[x, &p]);
+                // The argument is a whole Project in Go JSON, so a flag it omits is false.
+                let cleared: serde_json::Map<String, Value> = x
+                    .as_object()
+                    .into_iter()
+                    .flatten()
+                    .filter(|(k, v)| v.is_boolean() && get(&p, k).is_none())
+                    .map(|(k, _)| (k.clone(), Value::Bool(false)))
+                    .collect();
+                *x = js::spread(&[x, &Value::Object(cleared), &p]);
             }
         }
         let found = s

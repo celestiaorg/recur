@@ -213,7 +213,7 @@ Every other scene allows no hard pixels. These are the known minor differences; 
 | `prs/actions-merged` | 14 | The classic thumb is a pixel shorter: GPUI lays the merged conversation out 989.5px tall where WebKit has 989.28, and `scrollHeight` rounds across the boundary; the avatar edge |
 | `settings/general`, `settings/usage`, `settings/keybinding-menu` | 2, 2, 10 | Field corners at a fractional height (the nav search box), and a pixel of the concurrency field's value |
 | `settings/*-paper` (general, appearance, mcp, cursor-install, policy-menu, policy-tip, usage, keybinding-menu) | 9 to 36 | Curved-edge coverage at popover, card and field corners over the light page; `appearance` and `cursor-install` add the page's classic thumb across a rounding boundary (as `prs/actions-merged`) |
-| `settings/appearance`, `settings/cursor-install` | 22, 13 | The page's classic thumb across a rounding boundary (as `prs/actions-merged`, *open*) and the Nord card's top corners |
+| `settings/appearance`, `settings/cursor-install` | 22, 13 | The page's classic thumb across a rounding boundary (as `prs/actions-merged`) and the Nord card's top corners |
 | `settings/compat-modal`, `settings/compat-modal-paper` | 55, 102 | Glyph-top pixels of the modal's prefilled field values and, on paper, the panel's corners |
 | `home/welcome`, `home/welcome-modes` | 11 | Curved-edge coverage where the rows' rounded ends meet the list's border arc |
 | `home/new-project-path` | 102 | The focused field's corners and the typed path |

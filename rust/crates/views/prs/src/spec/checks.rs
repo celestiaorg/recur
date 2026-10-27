@@ -321,3 +321,4 @@ fn tab_panes_fade_at_the_top_only_after_scroll(cx: &mut TestAppContext) {
     assert!(s.has("fl-body"));
     assert!(s.has("diffscroll"));
 }
+

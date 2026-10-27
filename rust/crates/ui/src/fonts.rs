@@ -67,6 +67,13 @@ mod fontconfig {
     }
 }
 
+/// CSS `ui-monospace`: WebKit's monospaced system font (SF Mono) on macOS, whose hidden family
+/// a CoreText cascade entry reaches by name. WebKitGTK has no `ui-monospace`.
+#[cfg(target_os = "macos")]
+const UI_MONOSPACE: &str = ".SF NS Mono";
+#[cfg(not(target_os = "macos"))]
+const UI_MONOSPACE: &str = "";
+
 /// A CSS `font-family` stack used by the web UI.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Family {
@@ -96,7 +103,11 @@ impl Family {
     fn fallbacks(&self) -> Vec<String> {
         match self {
             Family::Ui => vec![system_family().to_string()],
-            Family::Mono => vec!["SF Mono".into(), "Menlo".into()],
+            Family::Mono => [UI_MONOSPACE, "SF Mono", "Menlo"]
+                .into_iter()
+                .filter(|f| !f.is_empty())
+                .map(Into::into)
+                .collect(),
             Family::Display => vec![UI.into(), system_family().to_string()],
             Family::System => vec![],
             Family::Stack(_, rest) => rest.iter().map(|s| s.to_string()).collect(),

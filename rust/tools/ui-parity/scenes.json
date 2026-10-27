@@ -1861,15 +1861,14 @@
       "height": 760,
       "theme": "default",
       "tolerance": 7490,
-      "hardTolerance": 95
+      "hardTolerance": 18
     },
     {
       "name": "review/thread-paper",
       "width": 900,
       "height": 760,
       "theme": "paper",
-      "tolerance": 7320,
-      "hardTolerance": 69
+      "tolerance": 7320
     },
     {
       "name": "review/commits",

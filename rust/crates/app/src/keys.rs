@@ -70,6 +70,22 @@ impl Shell {
         } else if cmd_or_ctrl(k) && key_is(k, "o") && !m.shift && !m.alt {
             state.update(cx, |s, cx| s.toggle_open_in(cx));
             true
+        } else if !crate::menu::NATIVE_MENU_ACCELERATORS
+            && cmd_or_ctrl(k)
+            && m.alt
+            && key_is(k, "b")
+            && self.panel_toggle_enabled(m.shift, cx)
+        {
+            // ⌥⌘B / ⌥⌘⇧B: the left / right panel, as the menu's accelerators are on macOS
+            // (focus outside the Observatory, such as the PR dock's toggle, never reaches its
+            // own handler).
+            let name = if m.shift {
+                "toggle-right-panel"
+            } else {
+                "toggle-left-panel"
+            };
+            self.emit_menu_action(name, window, cx);
+            true
         } else if cmd_or_ctrl(k) && key_is(k, "b") {
             state.update(cx, |s, cx| s.toggle_rail(cx));
             true
@@ -113,6 +129,16 @@ impl Shell {
         if handled {
             cx.stop_propagation();
         }
+    }
+
+    fn panel_toggle_enabled(&self, right: bool, cx: &Context<Self>) -> bool {
+        let menu = &self.state.read(cx).menu_state;
+        if right {
+            menu.toggle_right_panel
+        } else {
+            menu.toggle_left_panel
+        }
+        .unwrap_or(false)
     }
 
     fn run_shortcut(&mut self, stop: bool, cx: &mut Context<Self>) -> bool {

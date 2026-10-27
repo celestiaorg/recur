@@ -1146,8 +1146,23 @@ const CODE_LH: f32 = 1.6;
 
 impl DiffFile {
     /// The `.cd` cell's text; an empty cell has no line box.
-    fn code_cell(&self, html: &str, kind: &str, id: SharedString, cx: &App) -> Option<Text> {
-        (!html.is_empty()).then(|| self.code_text(html, kind, id, cx))
+    /// A row cell's key in the review's selection scope: the file, the line and the cell.
+    fn sel_key(&self, i: usize, cell: u8) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        (&self.props.file.path, i, cell).hash(&mut h);
+        h.finish()
+    }
+
+    fn code_cell(
+        &self,
+        html: &str,
+        kind: &str,
+        id: SharedString,
+        sel: u64,
+        cx: &App,
+    ) -> Option<Text> {
+        (!html.is_empty()).then(|| self.code_text(html, kind, id, cx).selectable(sel, "\n"))
     }
 
     fn code_text(&self, html: &str, kind: &str, id: SharedString, cx: &App) -> Text {
@@ -1183,6 +1198,7 @@ impl DiffFile {
         open_n: i64,
         drafting: bool,
         key: &str,
+        sel: u64,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
@@ -1205,7 +1221,9 @@ impl DiffFile {
                     LineHeight::Scale(CODE_LH),
                 )
                 .color(color)
-                .align(Align::Right),
+                .align(Align::Right)
+                // `.hline .ln` is `user-select: none`, but WebKit still copies its text.
+                .selectable(sel, "\n"),
             )
             .on_click(move |ev, window, cx| {
                 let Some(open) = open.clone() else { return };
@@ -1428,6 +1446,7 @@ impl DiffFile {
                 open_line_no(&l),
                 flags.drafting,
                 &format!("o{key}"),
+                self.sel_key(i, 0),
                 cx,
             ))
             .child(self.ln_cell(
@@ -1435,6 +1454,7 @@ impl DiffFile {
                 open_line_no(&l),
                 flags.drafting,
                 &format!("n{key}"),
+                self.sel_key(i, 1),
                 cx,
             ))
             .child(
@@ -1446,6 +1466,7 @@ impl DiffFile {
                         &l.code_html,
                         &l.r#type,
                         SharedString::from(format!("cd-{key}")),
+                        self.sel_key(i, 2),
                         cx,
                     )),
             );
@@ -1513,7 +1534,8 @@ impl DiffFile {
                         .size(CODE_PX)
                         .line_height(LineHeight::Scale(CODE_LH))
                         .color(t.indigo)
-                        .truncate(),
+                        .truncate()
+                        .selectable(self.sel_key(i, 7), "\n"),
                 ),
             )
             .on_click(cx.guarded_listener(move |d, _, _, cx| d.toggle_hunk(i, cx)))
@@ -1580,7 +1602,14 @@ impl DiffFile {
             })
             .when_some(Self::row_bg(&l.r#type, flags, cx), |d, c| d.bg(hsla(c)))
             .children(Self::row_marks(flags, 38., cx))
-            .child(self.ln_cell(&num, open_line_no(&l), flags.drafting, &key, cx))
+            .child(self.ln_cell(
+                &num,
+                open_line_no(&l),
+                flags.drafting,
+                &key,
+                self.sel_key(i, if right { 5 } else { 3 }),
+                cx,
+            ))
             .child(
                 div()
                     .flex_1()
@@ -1590,6 +1619,7 @@ impl DiffFile {
                         &l.code_html,
                         &l.r#type,
                         SharedString::from(format!("cd-{key}")),
+                        self.sel_key(i, if right { 6 } else { 4 }),
                         cx,
                     )),
             );

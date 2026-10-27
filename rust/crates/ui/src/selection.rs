@@ -8,16 +8,17 @@
 //! ⌘C copies the selected text of each item in document order, joined by the separator each
 //! item declares (`"\n"` between cells and rows, as WebKit copies grid items); ⌘A selects all.
 //!
-//! Items persist across frames (a cached view replays its paint without prepainting its text
-//! again) and leave when their text element is dropped. Document order is geometric: top to
-//! bottom, then left to right, which is DOM order for the surfaces that use it. When the
-//! selection changes, the views holding affected items are notified, so a replayed paint never
-//! shows a stale highlight.
+//! The scope collects its items afresh each time it prepaints, and keeps them while a cached
+//! view replays it (a replay reuses the same geometry). A cached view that misses re-renders
+//! everything inside it, so put the scope inside the cached view whose content it covers.
+//! Document order is geometric: top to bottom, then left to right, which is DOM order for the
+//! surfaces that use it. When the selection changes, the views holding its items are
+//! notified, so a replayed paint never shows a stale highlight.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::Range;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 use gpui_kit::{
     AnyElement, App, Bounds, ClipboardItem, Element, ElementId, Entity, EntityId, FocusHandle,
@@ -40,8 +41,6 @@ struct Item {
     bounds: Bounds<Pixels>,
     sep: &'static str,
     view: Option<EntityId>,
-    /// The element's layout; the item leaves once it is dropped.
-    alive: Weak<dyn std::any::Any>,
     geom: Rc<dyn Geometry>,
 }
 
@@ -68,6 +67,8 @@ pub struct State {
     drag: Option<Granularity>,
     disabled: bool,
     handle: Option<FocusHandle>,
+    /// Each selected item's range, computed once per change of items or selection.
+    ranges: RefCell<Option<HashMap<u64, Range<usize>>>>,
 }
 
 thread_local! {
@@ -79,7 +80,6 @@ pub fn register(
     key: u64,
     sep: &'static str,
     bounds: Bounds<Pixels>,
-    alive: Weak<dyn std::any::Any>,
     geom: Rc<dyn Geometry>,
     window: &Window,
     cx: &mut App,
@@ -89,13 +89,13 @@ pub fn register(
     };
     let view = window.current_view();
     scope.update(cx, |s, _| {
+        s.ranges.take();
         s.items.insert(
             key,
             Item {
                 bounds,
                 sep,
                 view: Some(view),
-                alive,
                 geom,
             },
         );
@@ -121,18 +121,9 @@ fn order(b: &Bounds<Pixels>) -> (i64, i64) {
 }
 
 impl State {
-    fn prune(&mut self) {
-        self.items.retain(|_, it| it.alive.strong_count() > 0);
-    }
-
     /// Live items in document order.
     fn ordered(&self) -> Vec<(u64, &Item)> {
-        let mut v: Vec<(u64, &Item)> = self
-            .items
-            .iter()
-            .filter(|(_, it)| it.alive.strong_count() > 0)
-            .map(|(k, it)| (*k, it))
-            .collect();
+        let mut v: Vec<(u64, &Item)> = self.items.iter().map(|(k, it)| (*k, it)).collect();
         v.sort_by_key(|(k, it)| (order(&it.bounds), *k));
         v
     }
@@ -152,16 +143,26 @@ impl State {
     }
 
     fn range_of(&self, key: u64) -> Option<Range<usize>> {
+        self.anchor?;
+        let mut cache = self.ranges.borrow_mut();
+        let ranges = cache.get_or_insert_with(|| self.all_ranges());
+        ranges.get(&key).cloned()
+    }
+
+    fn all_ranges(&self) -> HashMap<u64, Range<usize>> {
         let ordered = self.ordered();
-        let ((si, so), (ei, eo)) = self.span(&ordered)?;
-        let i = ordered.iter().position(|(k, _)| *k == key)?;
-        if i < si || i > ei || (si == ei && so == eo) {
-            return None;
+        let mut out = HashMap::new();
+        let Some(((si, so), (ei, eo))) = self.span(&ordered) else {
+            return out;
+        };
+        for (i, (key, item)) in ordered.iter().enumerate().take(ei + 1).skip(si) {
+            let start = if i == si { so } else { 0 };
+            let end = if i == ei { eo } else { item.geom.text().len() };
+            if start < end {
+                out.insert(*key, start..end);
+            }
         }
-        let len = ordered[i].1.geom.text().len();
-        let start = if i == si { so } else { 0 };
-        let end = if i == ei { eo } else { len };
-        (start < end).then_some(start..end)
+        out
     }
 
     /// The nearest item to `p`: the one containing it, else the closest line above or below.
@@ -350,7 +351,7 @@ fn notify_views(views: &[EntityId], cx: &mut App) {
 
 fn select_all(state: &Entity<State>, cx: &mut App) {
     let views = state.update(cx, |s, _| {
-        s.prune();
+        s.ranges.take();
         let ordered = s.ordered();
         if let (Some((first, _)), Some((last, item))) = (ordered.first(), ordered.last()) {
             let (first, last, len) = (*first, *last, item.geom.text().len());
@@ -378,7 +379,7 @@ fn press(state: &Entity<State>, e: &MouseDownEvent, window: &mut Window, cx: &mu
         _ => Granularity::Item,
     };
     let views = state.update(cx, |s, _| {
-        s.prune();
+        s.ranges.take();
         let before = s.views();
         let Some(p) = s.hit(e.position) else {
             s.anchor = None;
@@ -405,6 +406,7 @@ fn press(state: &Entity<State>, e: &MouseDownEvent, window: &mut Window, cx: &mu
 
 fn drag_to(state: &Entity<State>, p: Point<Pixels>, cx: &mut App) {
     let views = state.update(cx, |s, _| {
+        s.ranges.take();
         let (Some(g), Some((a0, a1))) = (s.drag, s.anchor_span) else {
             return Vec::new();
         };
@@ -432,6 +434,7 @@ fn drag_to(state: &Entity<State>, p: Point<Pixels>, cx: &mut App) {
 /// Clears the selection (a press outside the scope).
 pub fn clear(state: &Entity<State>, cx: &mut App) {
     let views = state.update(cx, |s, _| {
+        s.ranges.take();
         if s.anchor.is_none() {
             return Vec::new();
         }
@@ -491,6 +494,7 @@ impl Element for Host {
         window: &mut Window,
         cx: &mut App,
     ) {
+        self.state.update(cx, |s, _| s.items.clear());
         STACK.with(|s| s.borrow_mut().push(self.state.clone()));
         self.child.prepaint(window, cx);
         STACK.with(|s| s.borrow_mut().pop());

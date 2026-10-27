@@ -421,7 +421,7 @@ fn span_rects(
 
 /// A selectable text's geometry for its scope, read from its current layout.
 struct SelectGeometry {
-    layout: std::rc::Weak<RefCell<Option<Laid>>>,
+    layout: Rc<RefCell<Option<Laid>>>,
     bounds: Bounds<Pixels>,
     align: Align,
 }
@@ -456,16 +456,14 @@ impl SelectGeometry {
 impl crate::selection::Geometry for SelectGeometry {
     fn text(&self) -> String {
         self.layout
-            .upgrade()
-            .and_then(|l| l.borrow().as_ref().map(|l| l.key.content.to_string()))
+            .borrow()
+            .as_ref()
+            .map(|l| l.key.content.to_string())
             .unwrap_or_default()
     }
 
     fn offset_at(&self, pt: gpui_kit::Point<Pixels>) -> usize {
-        let Some(rc) = self.layout.upgrade() else {
-            return 0;
-        };
-        let slot = rc.borrow();
+        let slot = self.layout.borrow();
         let Some(laid) = slot.as_ref() else { return 0 };
         let lines = self.lines(laid);
         let y = f32::from(pt.y);
@@ -495,10 +493,7 @@ impl crate::selection::Geometry for SelectGeometry {
     }
 
     fn rects(&self, r: Range<usize>) -> Vec<Bounds<Pixels>> {
-        let Some(rc) = self.layout.upgrade() else {
-            return Vec::new();
-        };
-        let slot = rc.borrow();
+        let slot = self.layout.borrow();
         let Some(laid) = slot.as_ref() else {
             return Vec::new();
         };
@@ -1953,14 +1948,12 @@ impl Element for Text {
             }
         }
         if let Some((key, sep)) = self.selectable {
-            let alive: Rc<dyn std::any::Any> = state.layout.clone();
             crate::selection::register(
                 key,
                 sep,
                 bounds,
-                Rc::downgrade(&alive),
                 Rc::new(SelectGeometry {
-                    layout: Rc::downgrade(&state.layout),
+                    layout: state.layout.clone(),
                     bounds,
                     align: self.align,
                 }),
@@ -1986,7 +1979,7 @@ impl Element for Text {
             && let Some(r) = crate::selection::selected(key, cx)
         {
             let g = SelectGeometry {
-                layout: Rc::downgrade(&state.layout),
+                layout: state.layout.clone(),
                 bounds,
                 align: self.align,
             };

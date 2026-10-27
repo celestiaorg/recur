@@ -289,8 +289,14 @@ async fn drag_on_the_comment_control_selects_a_multiline_finding(cx: &mut TestAp
             Reply::value(f)
         });
     let (mut h, host) = surface(cx, opts, |_| {});
+    h.cx.update(|_, cx| cx.write_to_clipboard(gpui::ClipboardItem::new_string("before".into())));
     h.drag("addc:src/main.go:right:2", "addc:src/main.go:right:4");
     assert!(h.has("finding-note-input"));
+    // `.diff-file.selecting { user-select: none }`: the drag selected lines, not text.
+    h.cx.simulate_keystrokes("secondary-c");
+    let clip =
+        h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
+    assert_eq!(clip.as_deref(), Some("before"));
     let df = host
         .read_with(h.cx, |hst, cx| {
             hst.surface
@@ -450,4 +456,42 @@ fn a_reload_that_finds_the_same_diff_does_not_notify(cx: &mut TestAppContext) {
     h.cx.update(|_, cx| files.update(cx, |f, cx| f.load(cx)));
     h.cx.run_until_parked();
     assert_eq!(n.get(), 0);
+}
+
+/// Code selects across diff rows as WebKit selects across `.hline` grid cells, and ⌘C copies
+/// the same text (line-number cells included, empty ones adding nothing).
+#[gpui::test]
+async fn code_selects_across_rows_and_copies_like_webkit(cx: &mut TestAppContext) {
+    let opts = MockOptions::default().resolver("DiffVsBase", |_, _, _| {
+        Reply::value(main_go_lines(json!([
+            {"old": "", "new": "", "type": "hunk", "codeHtml": "@@ -1,1 +1,4 @@"},
+            {"old": "1", "new": "1", "type": "ctx", "codeHtml": "package main"},
+            {"old": "", "new": "2", "type": "add", "codeHtml": "func a() {}"},
+            {"old": "", "new": "3", "type": "add", "codeHtml": "func b() {}"},
+            {"old": "", "new": "4", "type": "add", "codeHtml": "func c() {}"},
+        ])))
+    });
+    let (mut h, _host) = surface(cx, opts, |_| {});
+    let r2 = h.bounds("hline:src/main.go:add:right:2").expect("row 2");
+    let r4 = h.bounds("hline:src/main.go:add:right:4").expect("row 4");
+    // From the start of row 2's code (two 46px gutters, 14px padding) to past row 4's end.
+    let from = gpui::point(r2.left() + gpui::px(46. + 46. + 14. + 0.5), r2.center().y);
+    let to = gpui::point(r4.right() - gpui::px(40.), r4.center().y);
+    let m = gpui::Modifiers::none();
+    h.cx.simulate_mouse_move(from, None, m);
+    h.cx.simulate_mouse_down(from, gpui::MouseButton::Left, m);
+    for i in 1..=4 {
+        let p = from + (to - from) * (i as f32 / 4.);
+        h.cx.simulate_mouse_move(p, Some(gpui::MouseButton::Left), m);
+        h.cx.run_until_parked();
+    }
+    h.cx.simulate_mouse_up(to, gpui::MouseButton::Left, m);
+    h.cx.run_until_parked();
+    h.keys("secondary-c");
+    let copied =
+        h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
+    assert_eq!(
+        copied.as_deref(),
+        Some("func a() {}\n3\nfunc b() {}\n4\nfunc c() {}")
+    );
 }

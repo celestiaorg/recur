@@ -1,8 +1,9 @@
 //! The chat's two halves as their own views, so typing never re-renders the transcript.
 //!
 //! GPUI re-renders every view that is not behind a cached boundary on each frame. The
-//! transcript is a cached [`TranscriptPane`]: it re-renders when the chat notifies (any
-//! transcript, props or store change) or when its scroller moves, and is reused otherwise.
+//! transcript is an isolated [`TranscriptPane`] sized by the chat (`flex_1`): it re-renders when
+//! the chat notifies (any transcript, props or store change), and alone when its scroller moves
+//! or a scroll step changes what it shows ([`AgentChat::notify_transcript`]).
 //! The composer is a [`DockPane`], an isolated view at the height its content measures
 //! ([`Fit`]): composer-only edits notify it through [`AgentChat::notify_dock`], which redraws
 //! the dock alone; the chat redraws when the dock's height changes.

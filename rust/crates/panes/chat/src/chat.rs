@@ -1577,7 +1577,7 @@ impl AgentChat {
         if self.near_bottom && (top - max).abs() > 0.5 && self.pending_scroll.is_none() {
             self.pin_bottom();
             self.seen_scroll_top = max;
-            cx.notify();
+            self.notify_transcript(cx);
         }
         if self.ignore_swap_scroll > 0 && !moved {
             self.ignore_swap_scroll = self.ignore_swap_scroll.saturating_sub(1);
@@ -1632,7 +1632,7 @@ impl AgentChat {
         {
             self.restore_attempts += 1;
             self.near_bottom = false;
-            cx.notify();
+            self.notify_transcript(cx);
             return;
         }
         if gate == ScrollRestoreGate::Apply {
@@ -1702,7 +1702,7 @@ impl AgentChat {
         }
         if next != self.chat_hydrated {
             self.chat_hydrated = next;
-            cx.notify();
+            self.notify_transcript(cx);
         }
     }
 

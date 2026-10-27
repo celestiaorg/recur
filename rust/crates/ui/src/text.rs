@@ -12,9 +12,8 @@
 use crate::fonts::{Family, tabular_nums};
 use gpui_kit::{
     App, AvailableSpace, BorderStyle, Bounds, DefiniteLength, Element, ElementId, FontFeatures,
-    FontId, GlobalElementId, Hsla, InspectorElementId, IntoElement, LayoutId, Pixels,
-    SharedString, StrikethroughStyle, Style, TextRun, UnderlineStyle, Window, point, px, quad,
-    size,
+    FontId, GlobalElementId, Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString,
+    StrikethroughStyle, Style, TextRun, UnderlineStyle, Window, point, px, quad, size,
 };
 use smallvec::SmallVec;
 use std::cell::{Cell, RefCell};
@@ -1832,7 +1831,8 @@ impl Element for Text {
                 && w > 0.
                 && h > 2. * dp
             {
-                let leaf = crate::exact::measured(gpui_kit::Length::Auto, window, move |_, _, _| (w, h));
+                let leaf =
+                    crate::exact::measured(gpui_kit::Length::Auto, window, move |_, _, _| (w, h));
                 let probes = layout
                     .borrow()
                     .as_ref()

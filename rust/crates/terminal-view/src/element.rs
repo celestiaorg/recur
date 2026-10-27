@@ -15,6 +15,7 @@ use recur_term::screen::{Frame, Rgba};
 
 #[cfg(target_os = "macos")]
 use crate::atlas::FontKey;
+#[cfg(not(target_os = "macos"))]
 use crate::custom_glyphs;
 use crate::font::{CellMetrics, mono_font_stack};
 #[cfg(target_os = "macos")]
@@ -251,16 +252,6 @@ impl Element for TerminalElement {
                     &p.atlas_font,
                     p.frame.background,
                 );
-                for g in &p.frame.glyphs {
-                    custom_glyphs::paint(
-                        window,
-                        g.codepoint,
-                        cell(g.col, g.row),
-                        g.width,
-                        &m,
-                        gpui_color(g.fg),
-                    );
-                }
             }
             #[cfg(not(target_os = "macos"))]
             {

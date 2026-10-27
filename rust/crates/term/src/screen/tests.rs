@@ -885,3 +885,23 @@ fn overline_handler_delegates_everything_else() {
         assert_eq!(screen_out, bare_out, "{name:?}");
     }
 }
+
+#[test]
+fn sgr_21_is_a_double_underline_and_sgr_5_draws_steady() {
+    let mut s = screen(12, 1);
+    s.feed(b"\x1b[1ma\x1b[21mb\x1b[24mc\x1b[5md\x1b[25me\x1b[6mf\x1b[0m");
+    let f = s.frame(false, false);
+    let style = |x| find_glyph(&f, x, 0).underline.map(|u| u.style);
+    assert_eq!(style(1), Some(UnderlineStyle::Double), "xterm.js: SGR 21");
+    assert!(find_glyph(&f, 1, 0).bold, "SGR 21 leaves bold on");
+    assert_eq!(style(2), None);
+    // Recur leaves xterm.js's `blinkIntervalDuration` at 0, which turns text blink off: SGR 5
+    // and 6 set an attribute nothing draws, in either phase of the cursor blink.
+    let plain = find_glyph(&s.frame(false, true), 0, 0).clone();
+    for x in 3..6 {
+        for phase in [false, true] {
+            let g = find_glyph(&s.frame(true, phase), x, 0).clone();
+            assert_eq!((g.fg, g.text.len()), (plain.fg, 1));
+        }
+    }
+}

@@ -34,7 +34,7 @@ pub(crate) struct GlyphKey {
     pub overline: bool,
     /// Cell width of the text (`wcwidth`).
     pub width: usize,
-    /// The text is a custom glyph painted procedurally; only the decorations are drawn here.
+    /// The text is a custom glyph (`custom_glyphs`), drawn with canvas paths instead of the font.
     pub custom: bool,
 }
 
@@ -96,7 +96,22 @@ thread_local! {
 /// placed by the character box (`char.top`); custom glyphs are drawn in cell coordinates.
 pub(crate) fn canvas_origin(key: &GlyphKey, m: &CellMetrics) -> (i64, i64) {
     let top = if key.custom { 0 } else { m.char_top as i64 };
-    (-(PADDING as i64), top - PADDING as i64)
+    let pad = padding(key) as i64;
+    (-pad, top - pad)
+}
+
+/// `isRestrictedPowerlineGlyph`: drawn at the canvas origin and cropped to the cell.
+fn restricted(key: &GlyphKey) -> bool {
+    let mut chars = key.text.chars();
+    matches!(
+        (chars.next(), chars.next()),
+        (Some('\u{E0B0}'..='\u{E0B7}'), None)
+    )
+}
+
+/// Where the glyph is drawn in the canvas (left and top padding).
+fn padding(key: &GlyphKey) -> usize {
+    if restricted(key) { 0 } else { PADDING }
 }
 
 /// The raster for `key`, drawn on first use. `None` for an empty glyph.
@@ -135,7 +150,11 @@ fn rasterize(key: &GlyphKey) -> Option<Raster> {
     let width = (allowed + PADDING).max(f.cell_w as usize * 4 + PAD * 2);
     let height = f.cell_h as usize + PAD * 4;
     let px = draw(key, width, height)?;
-    let (left, top, right, bottom) = bounding_box(&px, width, allowed, height)?;
+    let (left, top, right, bottom) = if restricted(key) {
+        bounding_box(&px, width, f.cell_w as usize, f.cell_h as usize, 0)?
+    } else {
+        bounding_box(&px, width, allowed, height, PADDING)?
+    };
     let (w, h) = (right - left + 1, bottom - top + 1);
     // getImageData, putImageData into the atlas page, then the straight texImage2D upload.
     let texel = |c: u8, a: u8| unpremultiply(premultiply(unpremultiply(c, a), a), a);
@@ -162,12 +181,14 @@ fn rasterize(key: &GlyphKey) -> Option<Raster> {
 }
 
 /// `_findGlyphBoundingBox`: rows with coverage within the allowed width, columns with coverage
-/// up to `PADDING` past it. `None` for an empty glyph (`checkCompletelyTransparent`).
+/// up to `padding` past it. `None` for an empty glyph (`checkCompletelyTransparent`). A
+/// restricted powerline glyph searches the cell only.
 fn bounding_box(
     px: &[u8],
     width: usize,
     allowed: usize,
     height: usize,
+    padding: usize,
 ) -> Option<(usize, usize, usize, usize)> {
     if px.chunks_exact(4).all(|p| p[3] == 0) {
         return None;
@@ -180,10 +201,10 @@ fn bounding_box(
         .rev()
         .find(|&y| (0..allowed).any(|x| a(x, y) != 0))
         .unwrap_or(height);
-    let left = (0..PADDING + allowed)
+    let left = (0..padding + allowed)
         .find(|&x| (0..height).any(|y| a(x, y) != 0))
         .unwrap_or(0);
-    let right = (PADDING..PADDING + allowed)
+    let right = (padding..padding + allowed)
         .rev()
         .find(|&x| (0..height).any(|y| a(x, y) != 0))
         .unwrap_or(allowed);
@@ -196,6 +217,7 @@ fn draw(key: &GlyphKey, width: usize, height: usize) -> Option<Vec<u8>> {
 
 mod mac {
     use super::*;
+    use crate::custom_glyphs::{self, Canvas, Clip, Dims, Seg};
     use core_foundation::attributed_string::CFMutableAttributedString;
     use core_foundation::base::{CFRange, TCFType};
     use core_foundation::string::CFString;
@@ -275,7 +297,7 @@ mod mac {
         cx.set_should_subpixel_quantize_fonts(true);
         cx.set_line_cap(CGLineCap::CGLineCapButt);
 
-        let padding = PADDING as f64;
+        let padding = super::padding(key) as f64;
         let char_h = f.char_h as f64;
         let char_w = f.char_w as f64;
         let cell_w = f.cell_w as f64;
@@ -292,6 +314,23 @@ mod mac {
         // The context line width the strikethrough's offset reads: canvas default 1, or the
         // overline's (it sets the width without saving the state).
         let mut ctx_line_width = 1.0;
+
+        if key.custom {
+            cx.set_rgb_fill_color(fill.0, fill.1, fill.2, fill.3);
+            cx.set_rgb_stroke_color(fill.0, fill.1, fill.2, fill.3);
+            let cp = key.text.chars().next().map_or(0, u32::from);
+            let dims = Dims {
+                cell_w: f.cell_w as f32,
+                cell_h: f.cell_h as f32,
+                char_w: f.char_w as f32,
+                char_h: f.char_h as f32,
+                font_size: f.font_size(),
+                dpr: f.dpr(),
+            };
+            let variant = (key.variant_offset & 3) as u8;
+            let p = padding as f32;
+            custom_glyphs::draw(&mut Cg { cx: &cx, fill }, cp, p, p, &dims, variant);
+        }
 
         if let Some((style, color)) = key.underline {
             let lw = f.line_width();
@@ -436,6 +475,214 @@ mod mac {
             out.extend_from_slice(&data[row * stride..row * stride + width * 4]);
         }
         Some(out)
+    }
+
+    /// The canvas as a CoreGraphics context, as WebKit's canvas 2D draws on macOS.
+    struct Cg<'a> {
+        cx: &'a CGContext,
+        fill: (f64, f64, f64, f64),
+    }
+
+    #[allow(unsafe_code)]
+    unsafe extern "C" {
+        fn CGContextAddArc(
+            c: core_graphics::sys::CGContextRef,
+            x: f64,
+            y: f64,
+            radius: f64,
+            start: f64,
+            end: f64,
+            clockwise: i32,
+        );
+    }
+
+    impl Cg<'_> {
+        /// `ctx.arc` / `ctx.ellipse` as WebKit's `Path::addEllipse` builds it: a unit arc under
+        /// translate, rotate and scale (the current path is not part of the saved state).
+        #[allow(clippy::too_many_arguments)]
+        fn ellipse(&self, x: f64, y: f64, rx: f64, ry: f64, phi: f64, a0: f64, a1: f64, ccw: bool) {
+            self.cx.save();
+            self.cx.translate(x, y);
+            self.cx.rotate(phi);
+            self.cx.scale(rx, ry);
+            // A `CGContextRef`'s address is the context pointer (`ForeignTypeRef::as_ptr`).
+            let ptr: *const core_graphics::context::CGContextRef = &**self.cx;
+            // SAFETY: the context is a live bitmap context owned by the caller.
+            #[allow(unsafe_code)]
+            unsafe {
+                CGContextAddArc(ptr as _, 0.0, 0.0, 1.0, a0, a1, i32::from(ccw));
+            }
+            self.cx.restore();
+        }
+
+        /// `drawSvgArc`: the SVG endpoint arc as a canvas ellipse.
+        #[allow(clippy::too_many_arguments)]
+        fn svg_arc(
+            &self,
+            (x1, y1): (f64, f64),
+            rx: f64,
+            ry: f64,
+            phi: f64,
+            large: bool,
+            sweep: bool,
+            (x2, y2): (f64, f64),
+        ) {
+            if rx == 0.0 || ry == 0.0 {
+                self.cx.add_line_to_point(x2, y2);
+                return;
+            }
+            let (mut rx, mut ry) = (rx.abs(), ry.abs());
+            let (cos, sin) = (phi.cos(), phi.sin());
+            let (dx, dy) = ((x1 - x2) / 2.0, (y1 - y2) / 2.0);
+            let x1p = cos * dx + sin * dy;
+            let y1p = -sin * dx + cos * dy;
+            let lambda = x1p * x1p / (rx * rx) + y1p * y1p / (ry * ry);
+            if lambda > 1.0 {
+                rx *= lambda.sqrt();
+                ry *= lambda.sqrt();
+            }
+            let (rx2, ry2) = (rx * rx, ry * ry);
+            let sq = ((rx2 * ry2 - rx2 * y1p * y1p - ry2 * x1p * x1p)
+                / (rx2 * y1p * y1p + ry2 * x1p * x1p))
+                .max(0.0);
+            let coef = if large == sweep { -1.0 } else { 1.0 } * sq.sqrt();
+            let cxp = coef * (rx * y1p / ry);
+            let cyp = coef * -(ry * x1p / rx);
+            let cx = cos * cxp - sin * cyp + (x1 + x2) / 2.0;
+            let cy = sin * cxp + cos * cyp + (y1 + y2) / 2.0;
+            let start = ((y1p - cyp) / ry).atan2((x1p - cxp) / rx);
+            let mut delta = ((-y1p - cyp) / ry).atan2((-x1p - cxp) / rx) - start;
+            if !sweep && delta > 0.0 {
+                delta -= std::f64::consts::TAU;
+            } else if sweep && delta < 0.0 {
+                delta += std::f64::consts::TAU;
+            }
+            self.ellipse(cx, cy, rx, ry, phi, start, start + delta, !sweep);
+        }
+    }
+
+    impl Canvas for Cg<'_> {
+        fn fill_rect(&mut self, x: f32, y: f32, w: f32, h: f32) {
+            self.cx.fill_rect(rect(x, y, w, h));
+        }
+
+        fn draw_path(&mut self, path: &[Seg], stroke: Option<f32>) {
+            let cx = self.cx;
+            cx.begin_path();
+            let (mut cur, mut start) = ((0.0, 0.0), (0.0, 0.0));
+            for seg in path {
+                match *seg {
+                    Seg::Move(x, y) => {
+                        cx.move_to_point(x.into(), y.into());
+                        (cur, start) = ((x.into(), y.into()), (x.into(), y.into()));
+                    }
+                    Seg::Line(x, y) => {
+                        cx.add_line_to_point(x.into(), y.into());
+                        cur = (x.into(), y.into());
+                    }
+                    Seg::Quad(qx, qy, x, y) => {
+                        cx.add_quad_curve_to_point(qx.into(), qy.into(), x.into(), y.into());
+                        cur = (x.into(), y.into());
+                    }
+                    Seg::Cubic(c1x, c1y, c2x, c2y, x, y) => {
+                        cx.add_curve_to_point(
+                            c1x.into(),
+                            c1y.into(),
+                            c2x.into(),
+                            c2y.into(),
+                            x.into(),
+                            y.into(),
+                        );
+                        cur = (x.into(), y.into());
+                    }
+                    Seg::Arc {
+                        rx,
+                        ry,
+                        phi,
+                        large,
+                        sweep,
+                        x,
+                        y,
+                    } => {
+                        let end = (x.into(), y.into());
+                        let phi = f64::from(phi).to_radians();
+                        self.svg_arc(cur, rx.into(), ry.into(), phi, large, sweep, end);
+                        cur = end;
+                    }
+                    Seg::Circle(x, y, r) => {
+                        let (x, y, r) = (f64::from(x), f64::from(y), f64::from(r));
+                        self.ellipse(x, y, r, r, 0.0, 0.0, std::f64::consts::TAU, false);
+                        cur = (x + r, y);
+                    }
+                    Seg::Close => {
+                        cx.close_path();
+                        cur = start;
+                    }
+                }
+            }
+            match stroke {
+                Some(w) => {
+                    cx.set_line_width(w.into());
+                    cx.stroke_path();
+                }
+                None => cx.fill_path(),
+            }
+        }
+
+        fn clipped(&mut self, clip: Clip<'_>, f: &mut dyn FnMut(&mut dyn Canvas)) {
+            self.cx.save();
+            match clip {
+                Clip::Rect(x, y, w, h) => self.cx.clip_to_rect(rect(x, y, w, h)),
+                Clip::Polygon(poly) => {
+                    self.cx.begin_path();
+                    for (i, &(x, y)) in poly.iter().enumerate() {
+                        if i == 0 {
+                            self.cx.move_to_point(x.into(), y.into());
+                        } else {
+                            self.cx.add_line_to_point(x.into(), y.into());
+                        }
+                    }
+                    self.cx.clip();
+                }
+            }
+            f(self);
+            self.cx.restore();
+        }
+
+        fn pattern(
+            &mut self,
+            _: (u32, usize),
+            rows: &[&[f32]],
+            x: f32,
+            y: f32,
+            w: f32,
+            h: f32,
+            variant: u8,
+        ) {
+            // The pattern repeats from the canvas origin, translated by `-dx, -dy`.
+            let (dx, dy) = (usize::from((variant >> 1) & 1), usize::from(variant & 1));
+            let (pw, ph) = (rows[0].len(), rows.len());
+            let (x0, y0) = (x.round() as usize, y.round() as usize);
+            let (w, h) = (w.round() as usize, h.round() as usize);
+            let (r, g, b, a) = self.fill;
+            for py in y0..y0 + h {
+                for px in x0..x0 + w {
+                    let on = f64::from(rows[(py + dy) % ph][(px + dx) % pw]);
+                    if on > 0.0 {
+                        self.cx.set_rgb_fill_color(r, g, b, a * on);
+                        self.cx.fill_rect(rect(px as f32, py as f32, 1.0, 1.0));
+                    }
+                }
+            }
+            self.cx.set_rgb_fill_color(r, g, b, a);
+        }
+    }
+
+    fn rect(x: f32, y: f32, w: f32, h: f32) -> CGRect {
+        CGRect::new(
+            &CGPoint::new(x.into(), y.into()),
+            &CGSize::new(w.into(), h.into()),
+        )
     }
 
     /// `computeNextVariantOffset`.

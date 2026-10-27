@@ -44,6 +44,9 @@ pub struct Atom {
     pub el: AnyElement,
     pub width: f32,
     pub height: f32,
+    /// What a selection across the atom copies (a chip's label, as WebKit copies its text;
+    /// empty for an image).
+    pub copy: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -682,11 +685,10 @@ impl Flow {
         self
     }
 
-    /// Selectable in the enclosing `recur_ui::selection` scope, under a stable `key`.
-    // simplify: a flow with chips stays unselectable (a chip has no copy text in the content);
-    // give chips their text to select across them.
+    /// Selectable in the enclosing `recur_ui::selection` scope, under a stable `key`. A
+    /// selection across a chip copies the chip's [`Atom::copy`].
     pub fn selectable(mut self, key: u64) -> Self {
-        self.selectable = Some(key).filter(|_| self.atoms.is_empty());
+        self.selectable = Some(key);
         self
     }
 
@@ -953,6 +955,7 @@ impl Element for Flow {
         if let Some(key) = self.selectable {
             let geom = Rc::new(Selectable {
                 layout: state.layout.clone(),
+                copies: self.atoms.iter().map(|a| a.copy.clone()).collect(),
                 bounds,
             });
             recur_ui::selection::register(key, "\n", bounds, geom, window, cx);
@@ -978,6 +981,7 @@ impl Element for Flow {
         {
             let g = Selectable {
                 layout: state.layout.clone(),
+                copies: self.atoms.iter().map(|a| a.copy.clone()).collect(),
                 bounds,
             };
             let color = recur_ui::selection::highlight(cx);
@@ -993,15 +997,72 @@ impl Element for Flow {
 
 struct Selectable {
     layout: Rc<RefCell<Option<FlowLayout>>>,
+    /// Each atom's copy text, in content order.
+    copies: Vec<String>,
     bounds: Bounds<Pixels>,
+}
+
+/// The selection's text is the content with each atom replaced by its copy text; these map
+/// offsets between that text and the layout's content. An offset inside a chip's text maps to
+/// the chip's start (`ceil: false`) or end.
+impl Selectable {
+    fn segments(&self, content: &str) -> Vec<(usize, usize, usize)> {
+        // (layout offset of the atom, copy offset of its text, copy length)
+        let mut out = Vec::new();
+        let mut shift = 0isize;
+        let mut k = 0;
+        for (b, ch) in content.char_indices() {
+            if ch == ATOM {
+                let len = self.copies.get(k).map_or(0, String::len);
+                out.push((b, (b as isize + shift) as usize, len));
+                shift += len as isize - ATOM_LEN as isize;
+                k += 1;
+            }
+        }
+        out
+    }
+
+    fn to_copy(&self, content: &str, at: usize) -> usize {
+        let mut shift = 0isize;
+        for (b, _, len) in self.segments(content) {
+            if b >= at {
+                break;
+            }
+            shift += len as isize - ATOM_LEN as isize;
+        }
+        (at as isize + shift).max(0) as usize
+    }
+
+    fn to_layout(&self, content: &str, at: usize, ceil: bool) -> usize {
+        let mut shift = 0isize;
+        for (b, c, len) in self.segments(content) {
+            if at <= c {
+                break;
+            }
+            if at < c + len {
+                return if ceil { b + ATOM_LEN } else { b };
+            }
+            shift += len as isize - ATOM_LEN as isize;
+        }
+        ((at as isize - shift).max(0) as usize).min(content.len())
+    }
 }
 
 impl recur_ui::selection::Geometry for Selectable {
     fn text(&self) -> String {
-        self.layout
-            .borrow()
-            .as_ref()
-            .map_or_else(String::new, |l| l.content.clone())
+        self.layout.borrow().as_ref().map_or_else(String::new, |l| {
+            let mut out = String::new();
+            let mut k = 0;
+            for ch in l.content.chars() {
+                if ch == ATOM {
+                    out.push_str(self.copies.get(k).map_or("", String::as_str));
+                    k += 1;
+                } else {
+                    out.push(ch);
+                }
+            }
+            out
+        })
     }
 
     fn offset_at(&self, p: gpui_kit::Point<Pixels>) -> usize {
@@ -1010,13 +1071,16 @@ impl recur_ui::selection::Geometry for Selectable {
             if p.y < o.y {
                 return 0;
             }
-            l.hit(f32::from(p.x - o.x), f32::from(p.y - o.y))
+            let at = l.hit(f32::from(p.x - o.x), f32::from(p.y - o.y));
+            self.to_copy(&l.content, at)
         })
     }
 
     fn rects(&self, range: Range<usize>) -> Vec<Bounds<Pixels>> {
         let o = self.bounds.origin;
         self.layout.borrow().as_ref().map_or_else(Vec::new, |l| {
+            let range = self.to_layout(&l.content, range.start, false)
+                ..self.to_layout(&l.content, range.end, true);
             l.rects(range)
                 .into_iter()
                 .map(|(x, y, w, h)| Bounds {

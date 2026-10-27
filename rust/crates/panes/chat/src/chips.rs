@@ -231,7 +231,7 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         let amber = (amber_a(0.28), amber_a(0.08));
         let amber_hover = Some((amber_a(0.45), amber_a(0.14)));
-        let (el, w, h): (AnyElement, f32, f32) = match part {
+        let (el, w, h, copy): (AnyElement, f32, f32, String) = match part {
             BubblePart::Text(_) => return None,
             BubblePart::File { path, dir: true } => {
                 let (chip, w) = self.bubble_chip(
@@ -252,6 +252,7 @@ impl AgentChat {
                         .into_any_element(),
                     w,
                     26.,
+                    file_mention_label(path),
                 )
             }
             BubblePart::File { path, .. } => {
@@ -287,7 +288,7 @@ impl AgentChat {
                 } else {
                     chip.into_any_element()
                 };
-                (el, w, 26.)
+                (el, w, 26., file_mention_label(path))
             }
             BubblePart::Skill(name) => {
                 let (chip, w) = self.bubble_chip(
@@ -303,7 +304,7 @@ impl AgentChat {
                     window,
                     cx,
                 );
-                (chip.into_any_element(), w, 26.)
+                (chip.into_any_element(), w, 26., name.clone())
             }
             BubblePart::Terminal(tid) => {
                 let title = self.terminal_title_for(tid, cx);
@@ -317,10 +318,11 @@ impl AgentChat {
                 } else {
                     title.clone()
                 };
+                let label = terminal_mention_label(&chip_wire, &title);
                 let (chip, w) = self.bubble_chip(
                     id,
                     ico14(IconName::Terminal, t.muted),
-                    terminal_mention_label(&chip_wire, &title),
+                    label.clone(),
                     amber.0,
                     amber.1,
                     amber_hover,
@@ -339,6 +341,7 @@ impl AgentChat {
                         .into_any_element(),
                     w,
                     26.,
+                    label,
                 )
             }
             BubblePart::Artifact(aid) => {
@@ -362,10 +365,11 @@ impl AgentChat {
                 } else {
                     title.clone()
                 };
+                let label = artifact_mention_label(&chip_wire, &title);
                 let (chip, w) = self.bubble_chip(
                     id,
                     ico14(icon_name, t.muted),
-                    artifact_mention_label(&chip_wire, &title),
+                    label.clone(),
                     amber.0,
                     amber.1,
                     amber_hover,
@@ -384,6 +388,7 @@ impl AgentChat {
                         .into_any_element(),
                     w,
                     26.,
+                    label,
                 )
             }
             BubblePart::Image { src, name, .. } => {
@@ -422,13 +427,14 @@ impl AgentChat {
                         ),
                     )
                     .into_any_element();
-                (el, bw, bh)
+                (el, bw, bh, String::new())
             }
         };
         Some(Atom {
             el,
             width: w,
             height: h,
+            copy,
         })
     }
 
@@ -730,6 +736,7 @@ impl AgentChat {
             el: div().flex().px(px(2.)).child(el).into_any_element(),
             width: w,
             height: h,
+            copy: String::new(),
         })
     }
 

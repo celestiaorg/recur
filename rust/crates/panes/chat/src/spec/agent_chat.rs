@@ -308,3 +308,31 @@ async fn text_selects_across_messages(cx: &mut TestAppContext) {
         h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
     assert_eq!(copied.as_deref(), Some("Fix the bug\nDone.\n\nIt works."));
 }
+
+#[gpui::test]
+async fn text_selects_across_a_file_chip_and_copies_its_label(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    h.set_messages(vec![AgentMsg {
+        me: true,
+        body: "see @docs/notes.md please".into(),
+        ts: Some(1),
+        ..Default::default()
+    }]);
+    let me = h.bounds("me:see @docs/notes.md please").expect("bubble");
+    let from = gpui::point(me.left() + gpui::px(12.5), me.center().y);
+    let to = gpui::point(me.right() - gpui::px(12.5), me.center().y);
+    let m = gpui::Modifiers::none();
+    h.cx.simulate_mouse_move(from, None, m);
+    h.cx.simulate_mouse_down(from, gpui::MouseButton::Left, m);
+    for i in 1..=4 {
+        let p = from + (to - from) * (i as f32 / 4.);
+        h.cx.simulate_mouse_move(p, Some(gpui::MouseButton::Left), m);
+        h.cx.run_until_parked();
+    }
+    h.cx.simulate_mouse_up(to, gpui::MouseButton::Left, m);
+    h.cx.run_until_parked();
+    h.keys("secondary-c");
+    let copied =
+        h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
+    assert_eq!(copied.as_deref(), Some("see notes.md please"));
+}

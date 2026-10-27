@@ -1602,6 +1602,7 @@ impl AgentChat {
                                 .into_any_element(),
                             width: a.width,
                             height: a.height,
+                            copy: a.copy,
                         });
                     }
                 }

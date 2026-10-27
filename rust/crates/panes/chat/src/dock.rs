@@ -288,6 +288,7 @@ impl AgentChat {
                     el: div().into_any_element(),
                     width: 0.,
                     height: 0.,
+                    copy: String::new(),
                 }),
             }
         }

@@ -255,6 +255,9 @@ pub struct Text {
     layout: Rc<RefCell<Option<Laid>>>,
     /// The view that built this element, while layouts are counted (`guard::count_layouts`).
     owner: Option<&'static str>,
+    /// Selectable inside a [`crate::selection`] scope: its key, and the separator copied before
+    /// its text.
+    selectable: Option<(u64, &'static str)>,
 }
 
 /// What clicking an inline link span does.
@@ -287,6 +290,7 @@ impl Text {
             links: Vec::new(),
             layout: Rc::default(),
             owner: crate::guard::layout_owner(),
+            selectable: None,
         }
     }
 
@@ -324,6 +328,12 @@ impl Text {
         self
     }
     /// `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`.
+    /// Selectable across elements in the enclosing [`crate::selection`] scope. `key` must be
+    /// stable and unique in the scope; `sep` goes before this text when a copy joins items.
+    pub fn selectable(mut self, key: u64, sep: &'static str) -> Self {
+        self.selectable = Some((key, sep));
+        self
+    }
     pub fn truncate(mut self) -> Self {
         self.white_space = WhiteSpace::NoWrap;
         self.ellipsis = true;
@@ -407,6 +417,107 @@ fn span_rects(
         }
     }
     out
+}
+
+/// A selectable text's geometry for its scope, read from its current layout.
+struct SelectGeometry {
+    layout: std::rc::Weak<RefCell<Option<Laid>>>,
+    bounds: Bounds<Pixels>,
+    align: Align,
+}
+
+impl SelectGeometry {
+    /// Each line with its paragraph, global byte range, top, height and left edge.
+    fn lines(&self, laid: &Laid) -> Vec<(usize, Range<usize>, f32, f32, f32)> {
+        let box_w = f32::from(self.bounds.size.width);
+        laid.lines
+            .iter()
+            .map(|line| {
+                let p = &laid.paras[line.para];
+                let offset = match self.align {
+                    Align::Left => 0.,
+                    Align::Center => (box_w - line.width) / 2.,
+                    Align::Right => box_w - line.width,
+                };
+                let left =
+                    f32::from(self.bounds.origin.x) + offset - p.line_start(line.range.start);
+                (
+                    line.para,
+                    p.range.start + line.range.start..p.range.start + line.range.end,
+                    f32::from(self.bounds.origin.y) + line.top,
+                    line.height,
+                    left,
+                )
+            })
+            .collect()
+    }
+}
+
+impl crate::selection::Geometry for SelectGeometry {
+    fn text(&self) -> String {
+        self.layout
+            .upgrade()
+            .and_then(|l| l.borrow().as_ref().map(|l| l.key.content.to_string()))
+            .unwrap_or_default()
+    }
+
+    fn offset_at(&self, pt: gpui_kit::Point<Pixels>) -> usize {
+        let Some(rc) = self.layout.upgrade() else {
+            return 0;
+        };
+        let slot = rc.borrow();
+        let Some(laid) = slot.as_ref() else { return 0 };
+        let lines = self.lines(laid);
+        let y = f32::from(pt.y);
+        let Some(line) = lines.iter().find(|l| y < l.2 + l.3).or(lines.last()) else {
+            return 0;
+        };
+        let (para, range, top, _, left) = line.clone();
+        if y < top {
+            // Above the text: its start, as WebKit places a caret above the first line.
+            return range.start;
+        }
+        let p = &laid.paras[para];
+        let x = f32::from(pt.x) - left;
+        // The char boundary nearest `x` within the line.
+        let mut best = (range.start, f32::INFINITY);
+        for &(b, ex) in &p.edges {
+            let g = p.range.start + b;
+            if g < range.start || g > range.end {
+                continue;
+            }
+            let d = (ex - x).abs();
+            if d < best.1 {
+                best = (g, d);
+            }
+        }
+        best.0
+    }
+
+    fn rects(&self, r: Range<usize>) -> Vec<Bounds<Pixels>> {
+        let Some(rc) = self.layout.upgrade() else {
+            return Vec::new();
+        };
+        let slot = rc.borrow();
+        let Some(laid) = slot.as_ref() else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for (para, range, top, height, left) in self.lines(laid) {
+            let (s, e) = (r.start.max(range.start), r.end.min(range.end));
+            if s >= e && !(r.start <= range.start && r.end > range.end) {
+                continue;
+            }
+            let p = &laid.paras[para];
+            let x0 = left + p.x_at(s.min(e) - p.range.start);
+            let x1 = left + p.x_at(e - p.range.start);
+            out.push(Bounds::from_corners(
+                point(px(x0), px(top)),
+                point(px(x1.max(x0)), px(top + height)),
+            ));
+        }
+        out
+    }
 }
 
 /// Hitboxes for the link spans of a laid block.
@@ -1841,6 +1952,22 @@ impl Element for Text {
                 hits = link_hitboxes(laid, bounds, self.align, &self.links, window);
             }
         }
+        if let Some((key, sep)) = self.selectable {
+            let alive: Rc<dyn std::any::Any> = state.layout.clone();
+            crate::selection::register(
+                key,
+                sep,
+                bounds,
+                Rc::downgrade(&alive),
+                Rc::new(SelectGeometry {
+                    layout: Rc::downgrade(&state.layout),
+                    bounds,
+                    align: self.align,
+                }),
+                window,
+                cx,
+            );
+        }
         state.snapped = resolve_probes(&state.probes, window);
         hits
     }
@@ -1853,8 +1980,21 @@ impl Element for Text {
         state: &mut TextState,
         hits: &mut Vec<(usize, gpui_kit::Hitbox)>,
         window: &mut Window,
-        _: &mut App,
+        cx: &mut App,
     ) {
+        if let Some((key, _)) = self.selectable
+            && let Some(r) = crate::selection::selected(key, cx)
+        {
+            let g = SelectGeometry {
+                layout: Rc::downgrade(&state.layout),
+                bounds,
+                align: self.align,
+            };
+            let color = crate::selection::highlight(cx);
+            for b in crate::selection::Geometry::rects(&g, r) {
+                window.paint_quad(gpui_kit::fill(b, color));
+            }
+        }
         let slot = state.layout.borrow();
         let Some(laid) = slot.as_ref() else { return };
         let clip = self.ellipsis || self.clamp.is_some();

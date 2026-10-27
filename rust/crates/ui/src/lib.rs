@@ -41,6 +41,9 @@ pub mod logic;
 pub mod motion;
 pub mod pane;
 pub mod resize;
+pub mod selection;
+#[cfg(test)]
+mod selection_spec;
 pub mod set;
 pub mod shadow;
 pub mod style;

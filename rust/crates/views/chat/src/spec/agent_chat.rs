@@ -272,3 +272,38 @@ async fn final_reply_stays_visible_when_compaction_follows_the_turn(cx: &mut Tes
     assert!(h.has(&format!("steps-head:{head}")));
     assert!(h.assistant(reply));
 }
+
+#[gpui::test]
+async fn text_selects_across_messages(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    h.set_messages(vec![
+        AgentMsg {
+            me: true,
+            body: "Fix the bug".into(),
+            ts: Some(1),
+            ..Default::default()
+        },
+        AgentMsg {
+            body: "Done.\n\nIt works.".into(),
+            ts: Some(2),
+            ..Default::default()
+        },
+    ]);
+    let me = h.bounds("me:Fix the bug").expect("bubble");
+    let reply = h.bounds("assistant:Done.").expect("reply");
+    let from = gpui::point(me.left() + gpui::px(12.5), me.center().y);
+    let to = gpui::point(reply.right() - gpui::px(1.), reply.bottom() - gpui::px(2.));
+    let m = gpui::Modifiers::none();
+    h.cx.simulate_mouse_move(from, None, m);
+    h.cx.simulate_mouse_down(from, gpui::MouseButton::Left, m);
+    for i in 1..=4 {
+        let p = from + (to - from) * (i as f32 / 4.);
+        h.cx.simulate_mouse_move(p, Some(gpui::MouseButton::Left), m);
+        h.cx.run_until_parked();
+    }
+    h.cx.simulate_mouse_up(to, gpui::MouseButton::Left, m);
+    h.cx.run_until_parked();
+    h.keys("secondary-c");
+    let copied = h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
+    assert_eq!(copied.as_deref(), Some("Fix the bug\nDone.\n\nIt works."));
+}

@@ -650,6 +650,7 @@ impl MarkdownView {
             highlights: &self.highlights,
             focused_image: None,
             handlers: &handlers,
+            select: cx.entity_id().as_u64(),
         };
         let flow = crate::render::block::Flow {
             size: sheet.size,
@@ -955,6 +956,48 @@ mod tests {
         fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
             recur_ui::guard::view(self, window, cx, Self::render_view)
         }
+    }
+
+    struct Selecting(Entity<MarkdownView>, Option<Entity<recur_ui::selection::State>>);
+
+    impl Render for Selecting {
+        fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let sel = recur_ui::selection::state("md-sel", window, cx);
+            self.1 = Some(sel.clone());
+            let col = div().w(px(400.)).child(self.0.clone());
+            recur_ui::selection::scope(&sel, false, col, cx)
+        }
+    }
+
+    /// Select all copies the blocks as WebKit's selection does (measured in Playwright's
+    /// WebKit with the `.chat-canvas` margins): a blank line after a paragraph whose bottom
+    /// margin is at least half its font size, a newline after other blocks, tabs between
+    /// table cells, and no list markers.
+    #[gpui::test]
+    fn select_all_copies_blocks_as_webkit_does(cx: &mut gpui::TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+        });
+        let md = "## Title\n\nFirst para with **bold**.\n\nSecond para.\n\n- one\n- two\n  - nested\n\n1. uno\n\n```\nlet a = 1;\nlet b = 2;\n```\n\n> quoted\n\n| h1 | h2 |\n|---|---|\n| a | b |\n\nend";
+        let (root, cx) = cx.add_window_view(|_, cx| {
+            Selecting(
+                cx.new(|cx| MarkdownView::new(md, MarkdownClass::ChatCanvas, false, cx)),
+                None,
+            )
+        });
+        cx.run_until_parked();
+        cx.simulate_click(gpui_kit::point(px(10.), px(10.)), gpui::Modifiers::none());
+        cx.simulate_keystrokes("secondary-a secondary-c");
+        let copied = cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
+        assert_eq!(
+            copied.as_deref(),
+            Some(
+                "Title\nFirst para with bold.\n\nSecond para.\n\none\ntwo\nnested\nuno\nlet a = 1;\nlet b = 2;\nquoted\nh1\th2\na\tb\nend"
+            )
+        );
+        let held = root.read_with(cx, |r, _| r.1.clone()).expect("scope");
+        assert!(cx.update(|_, cx| held.read(cx).has_selection()));
     }
 
     /// Hit-testing and find rects come from the mirror, so its lines must be the ones the

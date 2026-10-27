@@ -303,23 +303,24 @@ impl AgentChat {
             // `.chat-scroll` keeps WebKit's classic scrollbar, which takes layout width
             // while the transcript overflows.
             let pad = if compact { 18. } else { 28. };
+            let area = recur_ui::widgets::scrollbar::scroll_area(id)
+                .track(&self.scroll)
+                .child(
+                    div()
+                        .debug_selector(|| "chat-scroll".into())
+                        .pt(px(if compact { 18. } else { 26. }))
+                        .px(px(pad))
+                        .pb(px(8.))
+                        .child(col),
+                );
+            // Text selects across messages, as the page selects across the transcript.
+            let sel = recur_ui::selection::state("chat-selection", window, cx);
             div()
                 .flex_1()
                 .min_h_0()
                 .flex()
                 .flex_col()
-                .child(
-                    recur_ui::widgets::scrollbar::scroll_area(id)
-                        .track(&self.scroll)
-                        .child(
-                            div()
-                                .debug_selector(|| "chat-scroll".into())
-                                .pt(px(if compact { 18. } else { 26. }))
-                                .px(px(pad))
-                                .pb(px(8.))
-                                .child(col),
-                        ),
-                )
+                .child(recur_ui::selection::scope(&sel, false, area, cx))
                 .into_any_element()
         };
         let main = div()

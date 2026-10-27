@@ -255,7 +255,7 @@ pub struct Text {
     layout: Rc<RefCell<Option<Laid>>>,
     /// The view that built this element, while layouts are counted (`guard::count_layouts`).
     owner: Option<&'static str>,
-    /// Selectable inside a [`crate::selection`] scope: its key, and the separator copied before
+    /// Selectable inside a [`crate::selection`] scope: its key, and the separator copied after
     /// its text.
     selectable: Option<(u64, &'static str)>,
 }
@@ -327,13 +327,13 @@ impl Text {
         self.anywhere = true;
         self
     }
-    /// `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`.
     /// Selectable across elements in the enclosing [`crate::selection`] scope. `key` must be
-    /// stable and unique in the scope; `sep` goes before this text when a copy joins items.
+    /// stable and unique in the scope; `sep` follows this text when a copy joins it to more.
     pub fn selectable(mut self, key: u64, sep: &'static str) -> Self {
         self.selectable = Some((key, sep));
         self
     }
+    /// `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`.
     pub fn truncate(mut self) -> Self {
         self.white_space = WhiteSpace::NoWrap;
         self.ellipsis = true;

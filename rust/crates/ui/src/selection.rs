@@ -5,8 +5,9 @@
 //! scope as it prepaints. The scope turns presses and drags into a selection (anchor and focus,
 //! each an item and a byte offset; double click selects a word, triple click the item, Shift
 //! extends), and each item paints its share in the app's `::selection` color under its glyphs.
-//! ⌘C copies the selected text of each item in document order, joined by the separator each
-//! item declares (`"\n"` between cells and rows, as WebKit copies grid items); ⌘A selects all.
+//! ⌘C copies the selected text of each item in document order, each followed by the separator
+//! it declares when more follows (`"\n"` after a cell or row, as WebKit copies grid items,
+//! `"\n\n"` after a paragraph with a bottom margin); ⌘A selects all.
 //!
 //! The scope collects its items afresh each time it prepaints, and keeps them while a cached
 //! view replays it (a replay reuses the same geometry). A cached view that misses re-renders
@@ -218,13 +219,14 @@ impl State {
         )
     }
 
-    /// The selected text, each item's part joined by the separator it declares.
+    /// The selected text, each item's part followed by its separator when another follows.
     pub fn text(&self) -> String {
         let ordered = self.ordered();
         let Some(((si, so), (ei, eo))) = self.span(&ordered) else {
             return String::new();
         };
         let mut out = String::new();
+        let mut sep = "";
         for (i, (_, item)) in ordered.iter().enumerate().take(ei + 1).skip(si) {
             let text = item.geom.text();
             let start = if i == si { so } else { 0 };
@@ -234,9 +236,10 @@ impl State {
                 continue;
             }
             if !out.is_empty() {
-                out.push_str(item.sep);
+                out.push_str(sep);
             }
             out.push_str(part);
+            sep = item.sep;
         }
         out
     }

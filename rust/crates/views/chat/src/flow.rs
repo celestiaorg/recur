@@ -677,6 +677,7 @@ pub struct Flow {
     out: Option<Rc<RefCell<Option<FlowLayout>>>>,
     /// The band of the block (its y range) that can show; only lines in it are placed.
     visible: Option<Range<f32>>,
+    selectable: Option<u64>,
 }
 
 pub fn flow(
@@ -695,6 +696,7 @@ pub fn flow(
         min_height: 0.,
         out: None,
         visible: None,
+        selectable: None,
     }
 }
 
@@ -721,6 +723,14 @@ impl Flow {
     /// draft in the composer lays out and paints its visible lines, not all of them.
     pub fn visible(mut self, band: Range<f32>) -> Self {
         self.visible = Some(band);
+        self
+    }
+
+    /// Selectable in the enclosing `recur_ui::selection` scope, under a stable `key`.
+    // simplify: a flow with chips stays unselectable (a chip has no copy text in the content);
+    // give chips their text to select across them.
+    pub fn selectable(mut self, key: u64) -> Self {
+        self.selectable = Some(key).filter(|_| self.atoms.is_empty());
         self
     }
 
@@ -984,6 +994,13 @@ impl Element for Flow {
             state.placed.0.set(Some(width));
             cx.notify(window.current_view());
         }
+        if let Some(key) = self.selectable {
+            let geom = Rc::new(Selectable {
+                layout: state.layout.clone(),
+                bounds,
+            });
+            recur_ui::selection::register(key, "\n", bounds, geom, window, cx);
+        }
         for c in &mut state.children {
             c.prepaint(window, cx);
         }
@@ -993,15 +1010,65 @@ impl Element for Flow {
         &mut self,
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
-        _: Bounds<Pixels>,
+        bounds: Bounds<Pixels>,
         state: &mut FlowState,
         _: &mut (),
         window: &mut Window,
         cx: &mut App,
     ) {
+        if let Some(r) = self
+            .selectable
+            .and_then(|key| recur_ui::selection::selected(key, cx))
+        {
+            let g = Selectable {
+                layout: state.layout.clone(),
+                bounds,
+            };
+            let color = recur_ui::selection::highlight(cx);
+            for b in recur_ui::selection::Geometry::rects(&g, r) {
+                window.paint_quad(gpui_kit::fill(b, color));
+            }
+        }
         for c in &mut state.children {
             c.paint(window, cx);
         }
+    }
+}
+
+struct Selectable {
+    layout: Rc<RefCell<Option<FlowLayout>>>,
+    bounds: Bounds<Pixels>,
+}
+
+impl recur_ui::selection::Geometry for Selectable {
+    fn text(&self) -> String {
+        self.layout
+            .borrow()
+            .as_ref()
+            .map_or_else(String::new, |l| l.content.clone())
+    }
+
+    fn offset_at(&self, p: gpui_kit::Point<Pixels>) -> usize {
+        let o = self.bounds.origin;
+        self.layout.borrow().as_ref().map_or(0, |l| {
+            if p.y < o.y {
+                return 0;
+            }
+            l.hit(f32::from(p.x - o.x), f32::from(p.y - o.y))
+        })
+    }
+
+    fn rects(&self, range: Range<usize>) -> Vec<Bounds<Pixels>> {
+        let o = self.bounds.origin;
+        self.layout.borrow().as_ref().map_or_else(Vec::new, |l| {
+            l.rects(range)
+                .into_iter()
+                .map(|(x, y, w, h)| Bounds {
+                    origin: gpui_kit::point(o.x + px(x), o.y + px(y)),
+                    size: gpui_kit::size(px(w), px(h)),
+                })
+                .collect()
+        })
     }
 }
 

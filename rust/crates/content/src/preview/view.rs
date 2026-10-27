@@ -632,7 +632,7 @@ impl Drop for FilePreview {
 impl FilePreview {
     fn render_view(
         &mut self,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
@@ -663,27 +663,33 @@ impl FilePreview {
                 .into_any_element()
         };
         let surface = match &self.surface {
-            Surface::Markdown(v) => div()
-                .id("file-preview-md")
-                .track_scroll(&self.handle)
-                .relative()
-                .flex_1()
-                .min_h_0()
-                .overflow_scroll()
-                .bg(t.bg)
-                .flex()
-                .flex_col()
-                .child(track)
-                .child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .pt(px(28.))
-                        .pb(px(48.))
-                        .px(px(32.))
-                        .child(v.clone()),
-                )
-                .into_any_element(),
+            Surface::Markdown(v) => {
+                let scroller = div()
+                    .id("file-preview-md")
+                    .track_scroll(&self.handle)
+                    .relative()
+                    .size_full()
+                    .overflow_scroll()
+                    .bg(t.bg)
+                    .flex()
+                    .flex_col()
+                    .child(track)
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .pt(px(28.))
+                            .pb(px(48.))
+                            .px(px(32.))
+                            .child(v.clone()),
+                    );
+                let sel = recur_ui::selection::state("file-preview-selection", window, cx);
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .child(recur_ui::selection::scope(&sel, false, scroller, cx))
+                    .into_any_element()
+            }
             Surface::Svg(tree) => {
                 let img = tree.clone().map(|img| svg_img(img, t.line));
                 div()

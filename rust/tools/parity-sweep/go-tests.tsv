@@ -850,7 +850,7 @@ internal/engine.TestNonClaudeProviderTurnIsMirrored	crates/engine/src/turn/tests
 internal/engine.TestOwnerRepoFromRemoteURL	crates/forge/src/github/repo.rs::owner_repo_from_remote_urls
 internal/engine.TestPRConversationMinIntervalLetsOpenPRRefresh	crates/engine/src/prs/tests/thread.rs::conversation_min_interval_lets_open_pr_refresh
 internal/engine.TestPRNumberFromURL	crates/forge/src/github/repo.rs::pr_urls
-internal/engine.TestPRReviewCapabilities	crates/domain/src/pr.rs::conversation_lock_and_edit_details
+internal/engine.TestPRReviewCapabilities	crates/domain/src/pr.rs::conversation_lock_and_edit_details, crates/domain/src/pr.rs::approve_review_rules, crates/domain/src/pr.rs::comment_edit_delete_resolve
 internal/engine.TestParkChatTurnIfSkipsNewerTurn	crates/engine/src/ask_user/tests.rs::park_if_skips_newer_turn
 internal/engine.TestParkChatTurnIfSkipsStoppedTurn	crates/engine/src/chat/tests/switch_mode.rs::a_park_skips_a_stopped_turn
 internal/engine.TestParkedChatHasNoTurnFooter	crates/engine/src/chat/tests/cancel.rs::a_parked_chat_has_no_turn_footer
@@ -1260,7 +1260,7 @@ internal/lsp/managed.TestTaploAssetForHost	crates/lsp/src/managed/tests.rs::host
 internal/lsp/managed.TestVuePluginPath	crates/lsp/src/managed/tests.rs::vue_plugin_path_cases
 internal/mcp.TestConcurrentToolCallsRaceClean	crates/mcp/src/server_tests.rs::concurrent_tool_calls_keep_attribution
 internal/mcp.TestNamesFromAllowedTools	crates/mcp/src/server_tests.rs::names_from_allowed_tools_scopes
-internal/mcp.TestRegisterScopesToolsListAndCall	crates/mcp/src/server_tests.rs::claude_binding_advertises_and_allows_permission_request
+internal/mcp.TestRegisterScopesToolsListAndCall	crates/mcp/src/server_tests.rs::claude_binding_advertises_and_allows_permission_request, crates/mcp/src/server_tests.rs::cursor_binding_omits_permission_request, crates/mcp/src/server_tests.rs::empty_scope_advertises_nothing_and_refuses_calls
 internal/observe.TestProjectFindingsOntoDiff	crates/code/src/observe/tests.rs::project_findings_onto_diff_range
 internal/openipc.TestCallDialError	crates/platform/src/openipc.rs::dial_error_classification
 internal/openipc.TestClaimConcurrent	crates/platform/src/openipc.rs::concurrent_claims_have_one_winner

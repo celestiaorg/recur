@@ -16,7 +16,7 @@ Checks:
   svelte    every .svelte file is a ticked PARITY.md row naming a Rust path that exists, in a
             crate the desktop links; every view crate with `register` is registered by the desktop
   gotests   every Go `func TestX` has a Rust test named snake_case(X), a Rust source that names
-            `TestX`, or a row in go-tests.tsv (a Rust test that exists, or `n/a: <reason>`)
+            `TestX`, or a row in go-tests.tsv (Rust tests that exist, comma-separated, or `n/a: <reason>`)
 """
 
 import json
@@ -350,10 +350,11 @@ def check_gotests():
                 target = table[key]
                 if target.startswith("n/a:") and len(target) > 6:
                     na += 1
-                elif target in located:
+                elif all(t.strip() in located for t in target.split(",")):
                     mapped += 1
                 else:
-                    gap("gotests", f"{key}: go-tests.tsv names `{target}`, which is not a Rust test")
+                    missing = [t.strip() for t in target.split(",") if t.strip() not in located]
+                    gap("gotests", f"{key}: go-tests.tsv names `{', '.join(missing)}`, not a Rust test")
             elif snake(t[4:]) in names or t in mentions:
                 mapped += 1
             else:

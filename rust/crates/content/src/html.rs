@@ -42,6 +42,7 @@ pub enum HtmlPreviewEvent {
 /// `window.parent` for the page: its `postMessage` goes to the host.
 pub const BRIDGE_JS: &str = r#"(function(){var post=function(d){try{window.webkit.messageHandlers.recur.postMessage(JSON.stringify(d))}catch(e){}};try{Object.defineProperty(window,'parent',{value:{postMessage:post},configurable:false})}catch(e){}})();"#;
 
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub struct HtmlPreview {
     path: String,
     scroll: SharedScroll,
@@ -116,11 +117,13 @@ impl HtmlPreview {
         let _ = data;
     }
 
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     fn restore(&mut self) {
         let (top, left) = self.attachment.restore(&self.scroll.borrow());
         self.post(json!({ "type": PREVIEW_IFRAME_RESTORE, "top": top, "left": left }));
     }
 
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     fn on_message(&mut self, raw: &str, cx: &mut Context<Self>) {
         if raw == "\u{0}loaded" {
             // `iframe.onload`: restore, and let find re-query.

@@ -2,7 +2,6 @@
 //! `#rrggbb` while it stays open (WebKit fires `input` the same way).
 
 use std::rc::Rc;
-use std::time::Duration;
 
 use gpui_kit::{App, Window};
 
@@ -61,7 +60,7 @@ pub fn open(hex: &str, on_pick: OnPick, window: &mut Window, cx: &mut App) {
         .spawn(cx, async move |cx| {
             loop {
                 cx.background_executor()
-                    .timer(Duration::from_millis(60))
+                    .timer(std::time::Duration::from_millis(60))
                     .await;
                 let live = cx
                     .update(|_, cx| cx.default_global::<PanelGen>().0 == generation)
@@ -90,7 +89,9 @@ pub fn open(hex: &str, on_pick: OnPick, window: &mut Window, cx: &mut App) {
 pub fn open(_hex: &str, _on_pick: OnPick, _window: &mut Window, _cx: &mut App) {}
 
 /// The open panel's session; a newer `open` retires the older poll.
+#[cfg(target_os = "macos")]
 #[derive(Default)]
 struct PanelGen(u64);
 
+#[cfg(target_os = "macos")]
 impl gpui_kit::Global for PanelGen {}

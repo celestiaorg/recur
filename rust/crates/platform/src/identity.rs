@@ -72,6 +72,37 @@ mod tests {
         );
     }
 
+    fn plist_keys(plist: &str) -> Vec<&str> {
+        plist
+            .split("<key>")
+            .skip(1)
+            .filter_map(|s| s.split("</key>").next())
+            .collect()
+    }
+
+    fn plist_string<'a>(plist: &'a str, key: &str) -> &'a str {
+        let rest = &plist[plist.find(&format!("<key>{key}</key>")).expect(key)..];
+        let start = rest.find("<string>").expect(key) + "<string>".len();
+        &rest[start..start + rest[start..].find("</string>").expect(key)]
+    }
+
+    #[test]
+    fn info_plist_carries_the_go_apps_keys_under_this_identity() {
+        let go = include_str!("../../../../build/darwin/Info.plist");
+        let next = include_str!("../../../build/darwin/Info.plist");
+        assert_eq!(plist_keys(next), plist_keys(go));
+        assert_eq!(plist_string(next, "CFBundleIdentifier"), BUNDLE_ID);
+        assert_eq!(plist_string(next, "CFBundleName"), APP_NAME);
+        for key in [
+            "CFBundleExecutable",
+            "CFBundleIconFile",
+            "CFBundleIconName",
+            "LSMinimumSystemVersion",
+        ] {
+            assert_eq!(plist_string(next, key), plist_string(go, key), "{key}");
+        }
+    }
+
     #[test]
     fn env_reader_matches_pure_helper() {
         let want = label_from(std::env::var(INSTANCE_LABEL_ENV).ok().as_deref());

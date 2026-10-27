@@ -737,7 +737,11 @@ fn every_chat_mode_can_ask_permission() {
     };
     for mode in ["ask", "plan", "review", "agent", ""] {
         let shape = chat_mode_shape(mode, &off, false);
-        assert_eq!(shape.permission, recur_domain::PERMISSION_MODE_ASK, "{mode}");
+        assert_eq!(
+            shape.permission,
+            recur_domain::PERMISSION_MODE_ASK,
+            "{mode}"
+        );
         assert!(shape.mcp, "{mode} needs the MCP endpoint for its prompts");
     }
     let on = recur_domain::Settings {

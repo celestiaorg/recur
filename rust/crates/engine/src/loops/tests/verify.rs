@@ -230,11 +230,15 @@ async fn verify_on_reject_reenters_converge() {
         )
         .await
         .unwrap();
-    wait_for(Duration::from_secs(40), "on_reject loop to open a PR", || {
-        t.store
-            .workspace(&id)
-            .is_some_and(|l| l.state == WorkspaceState::PrOpen)
-    })
+    wait_for(
+        Duration::from_secs(40),
+        "on_reject loop to open a PR",
+        || {
+            t.store
+                .workspace(&id)
+                .is_some_and(|l| l.state == WorkspaceState::PrOpen)
+        },
+    )
     .await;
     assert!(
         runner.state.lock().qa_runs >= 2,

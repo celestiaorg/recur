@@ -733,7 +733,10 @@ fn transcript_clears_pending_on_empty_result() {
         ];
         let items = flat(&msgs, "");
         let tool = items.iter().find(|i| i.kind == "tool").expect("tool item");
-        assert!(!tool.result_pending, "result {result:?} left the call pending");
+        assert!(
+            !tool.result_pending,
+            "result {result:?} left the call pending"
+        );
     }
 }
 

@@ -724,7 +724,8 @@ async fn check_cursor_bridge_notifies_when_behind_pin() {
     let n = fx.events.by_name("notify");
     let last = n.last().expect("a notify");
     assert!(
-        last.payload_json().contains("Cursor bridge update available"),
+        last.payload_json()
+            .contains("Cursor bridge update available"),
         "{}",
         last.payload_json()
     );

@@ -409,8 +409,14 @@ mod tests {
             [recur_domain::ATTENTION_REVIEW_REQUESTED]
         );
         assert!(listed_attention_reasons(r, "sam").is_empty());
-        assert_eq!(listed_state_group(r, "avery"), ("Review required", GROUP_YOU));
-        assert_eq!(listed_state_group(r, "other"), ("Review required", GROUP_OPEN));
+        assert_eq!(
+            listed_state_group(r, "avery"),
+            ("Review required", GROUP_YOU)
+        );
+        assert_eq!(
+            listed_state_group(r, "other"),
+            ("Review required", GROUP_OPEN)
+        );
     }
 
     #[test]
@@ -419,7 +425,10 @@ mod tests {
             let r = &rows(&format!(r#"[{{"number":1,"statusCheckRollup":{raw}}}]"#))[0];
             (r.checks_ok, r.has_checks)
         };
-        assert_eq!(ok(r#"[{"name":"Error","conclusion":"success"}]"#), (true, true));
+        assert_eq!(
+            ok(r#"[{"name":"Error","conclusion":"success"}]"#),
+            (true, true)
+        );
         assert_eq!(ok(r#"[{"conclusion":"FAILURE"}]"#), (false, true));
         assert_eq!(ok("null"), (true, false));
         for pending in [
@@ -429,9 +438,15 @@ mod tests {
         ] {
             assert_eq!(ok(pending), (true, true), "{pending}");
         }
-        let fail = &rows(r#"[{"number":1,"statusCheckRollup":[{"name":"build","conclusion":"FAILURE"}]}]"#)[0];
+        let fail = &rows(
+            r#"[{"number":1,"statusCheckRollup":[{"name":"build","conclusion":"FAILURE"}]}]"#,
+        )[0];
         assert_eq!(
-            (fail.checks.len(), fail.checks[0].status.as_str(), fail.checks[0].passed),
+            (
+                fail.checks.len(),
+                fail.checks[0].status.as_str(),
+                fail.checks[0].passed
+            ),
             (1, "fail", false)
         );
     }

@@ -352,7 +352,10 @@ async fn real_headline_e2e() {
     t.close().await;
 }
 
-async fn pr_open_loop(runner: &Arc<ConvergeRunner>, task: &str) -> (TestEngine, String, crate::testing::TempRepo) {
+async fn pr_open_loop(
+    runner: &Arc<ConvergeRunner>,
+    task: &str,
+) -> (TestEngine, String, crate::testing::TempRepo) {
     let t = TestEngine::new(Some(runner.provider()));
     let repo = init_repo();
     let proj = crate::testing::add_project(&t.store, &repo.path);
@@ -376,7 +379,13 @@ async fn send_back_clears_then_re_adds_inbox() {
     let (t, id, _repo) = pr_open_loop(&runner, "send-back task").await;
     let pr = t.store.pr_by_workspace(&id).expect("a PR");
     let row = format!("ib-pr-{}", pr.id);
-    let has_row = |t: &TestEngine| t.store.inbox().unwrap_or_default().iter().any(|i| i.id == row);
+    let has_row = |t: &TestEngine| {
+        t.store
+            .inbox()
+            .unwrap_or_default()
+            .iter()
+            .any(|i| i.id == row)
+    };
     assert!(has_row(&t), "a ready PR has its inbox row");
     let (_, ok) = t
         .engine
@@ -392,7 +401,8 @@ async fn send_back_clears_then_re_adds_inbox() {
 async fn send_back_keeps_persisted_plan() {
     let runner = ConvergeRunner::new(&[0, 0]);
     let (t, id, _repo) = pr_open_loop(&runner, "Add a marker to work.txt").await;
-    let plan = "Summary: add a marker to work.txt.\n\nSteps:\n1. Touch work.txt and add the marker line";
+    let plan =
+        "Summary: add a marker to work.txt.\n\nSteps:\n1. Touch work.txt and add the marker line";
     t.store
         .update_workspace(&id, |w| w.definition_of_done = plan.into());
     let pr = t.store.pr_by_workspace(&id).expect("a PR");
@@ -407,7 +417,10 @@ async fn send_back_keeps_persisted_plan() {
     assert_eq!(ws.state, WorkspaceState::PrOpen);
     assert_eq!(ws.definition_of_done, plan, "send back keeps the plan");
     let specs = runner.state.lock().specs.clone();
-    for s in specs[before..].iter().filter(|s| s.role == AgentRole::Coder) {
+    for s in specs[before..]
+        .iter()
+        .filter(|s| s.role == AgentRole::Coder)
+    {
         assert!(
             !s.prompt.contains("Maestro-distilled") && !s.prompt.contains("sent it back"),
             "{}",
@@ -497,7 +510,11 @@ async fn model_settings_wire_to_agent_turns() {
         assert!(!turns.is_empty(), "no {role:?} turns");
         for s in turns {
             assert_eq!(s.model, model, "{role:?}");
-            assert_eq!(s.flags.get("effort").map(String::as_str), Some(effort), "{role:?}");
+            assert_eq!(
+                s.flags.get("effort").map(String::as_str),
+                Some(effort),
+                "{role:?}"
+            );
         }
     }
     t.close().await;

@@ -52,7 +52,10 @@ fn model_catalog_always_has_claude_code() {
     assert!(!groups.is_empty(), "catalogue is empty");
     assert_eq!(groups[0].provider, PROVIDER_CLAUDE_CODE);
     assert_eq!(groups[0].label, "Claude Code");
-    assert!(!groups[0].models.is_empty(), "Claude Code group has no models");
+    assert!(
+        !groups[0].models.is_empty(),
+        "Claude Code group has no models"
+    );
 }
 
 #[test]

@@ -273,7 +273,11 @@ mod tests {
         assert_eq!(sgr_cancels(b"1;2;221;222"), (true, true));
         assert_eq!(sgr_cancels(b"221;1"), (false, false), "a later 1 wins");
         assert_eq!(sgr_cancels(b"222;0"), (false, false));
-        assert_eq!(sgr_cancels(b"38;5;221"), (false, false), "a colour argument");
+        assert_eq!(
+            sgr_cancels(b"38;5;221"),
+            (false, false),
+            "a colour argument"
+        );
         assert_eq!(sgr_cancels(b"221:3"), (true, false));
     }
 

@@ -1374,7 +1374,11 @@ fn cursor_meter_subtracts_usage_at_summary() {
     for (_, tokens) in &c {
         assert_eq!(*tokens, 200_000, "300k cumulative clamped to the window");
     }
-    assert_eq!(t.result().usage.context_used(), 30_000, "post-summary delta");
+    assert_eq!(
+        t.result().usage.context_used(),
+        30_000,
+        "post-summary delta"
+    );
 }
 
 #[test]

@@ -216,7 +216,11 @@ impl UsageMeter {
         } else {
             let mut list = div().flex().flex_col().gap(px(14.));
             for (i, p) in rows.iter().enumerate() {
-                let mut prov = div().flex().flex_col();
+                let prov_id = p.id.clone();
+                let mut prov = div()
+                    .flex()
+                    .flex_col()
+                    .debug_selector(move || format!("use-prov:{prov_id}"));
                 if i > 0 {
                     prov = prov
                         .pt(px(14.))
@@ -275,6 +279,7 @@ impl UsageMeter {
                     prov = prov.child(
                         div()
                             .id("use-cursor-link")
+                            .debug_selector(|| "use-cursor-link".into())
                             .mt(px(8.))
                             .cursor_pointer()
                             .on_click(cx.guarded_listener(move |m, _, _, cx| {
@@ -299,7 +304,8 @@ impl UsageMeter {
                         } else {
                             format_usage_pct(w.used_pct)
                         };
-                        let mut win = div().mt(px(6.)).child(
+                        let sel = format!("use-win:{}:{}:{value}", p.id, w.label);
+                        let mut win = div().mt(px(6.)).debug_selector(move || sel).child(
                             div()
                                 .flex()
                                 .justify_between()
@@ -328,7 +334,13 @@ impl UsageMeter {
                             );
                         }
                         if !w.detail.is_empty() && w.id != "extra" {
-                            win = win.child(div().mt(px(2.)).child(small(&w.detail, t.faint)));
+                            let sel = format!("use-detail:{}:{}", p.id, w.detail);
+                            win = win.child(
+                                div()
+                                    .mt(px(2.))
+                                    .debug_selector(move || sel)
+                                    .child(small(&w.detail, t.faint)),
+                            );
                         }
                         if w.resets_at != 0 {
                             let now = std::time::SystemTime::now()
@@ -416,6 +428,7 @@ impl UsageMeter {
                 .child(with_shadow(
                     recur_ui::style::card(t.pane_2, t.line_bright, 9.)
                         .id("use-pop")
+                        .debug_selector(|| "use-pop".into())
                         .w(px(300.))
                         .max_h(px(max_h))
                         .overflow_y_scroll()
@@ -481,6 +494,7 @@ impl UsageMeter {
         let open = self.open;
         let mut btn = div()
             .id("use-btn")
+            .debug_selector(|| "use-btn".into())
             .track_focus(&self.focus)
             .role(gpui_kit::Role::Button)
             .aria_label(label)
@@ -522,8 +536,10 @@ impl UsageMeter {
                         (shown, ring_color(r.pct, cx))
                     })
                     .collect();
+                let chip_id = chip.id.clone();
                 btn = btn.child(
                     div()
+                        .debug_selector(move || format!("use-chip:{chip_id}"))
                         .flex()
                         .items_center()
                         .gap(px(3.))

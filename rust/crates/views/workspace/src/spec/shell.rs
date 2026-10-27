@@ -1003,3 +1003,66 @@ async fn hiding_the_left_panel_still_works_after_visiting_the_linked_pr(cx: &mut
     s.click("obs-left-toggle");
     assert!(s.has("obs-left"));
 }
+
+// ---- escalated loops: the question is an inline card in the Loop chat ----
+
+const ESCALATED: &str = "LOOP-2218";
+
+fn answers(calls: &Arc<Mutex<Vec<Vec<Value>>>>) -> MockOptions {
+    let log = calls.clone();
+    MockOptions::default().resolver("AnswerEscalation", move |a, _, _| {
+        log.lock().push(a.to_vec());
+        Reply::value(json!({}))
+    })
+}
+
+fn me(s: &mut S, body: &str) -> bool {
+    s.has(&format!("me:{}", recur_view_chat::chat::debug_key(body)))
+}
+
+#[gpui::test]
+async fn opens_an_escalated_loop_into_loop_chat_with_an_inline_question(cx: &mut TestAppContext) {
+    let calls: Arc<Mutex<Vec<Vec<Value>>>> = Arc::default();
+    let mut s = plain(cx, answers(&calls));
+    s.open(ESCALATED);
+    assert!(s.has("ask-kicker:Maestro needs a decision"));
+    s.click("ask-opt:Token bucket with refill");
+    assert!(!s.has("ask-kicker:Maestro needs a decision"), "the card closes");
+    let c = calls.lock().clone();
+    assert_eq!(c.len(), 1);
+    assert_eq!(c[0][0], ESCALATED);
+    assert!(c[0].iter().any(|v| v == "Token bucket with refill"), "{c:?}");
+    assert!(me(&mut s, "Token bucket with refill"));
+}
+
+#[gpui::test]
+async fn plan_approval_notes_option_waits_for_the_text_box(cx: &mut TestAppContext) {
+    let calls: Arc<Mutex<Vec<Vec<Value>>>> = Arc::default();
+    let opts = answers(&calls).resolver("GetEscalation", |_, _, _| {
+        Reply::value(json!({
+            "id": "esc-plan", "workspaceId": ESCALATED, "status": "open",
+            "question": "Review the plan before I start coding.",
+            "context": "1. Create go.mod\n2. Add the game loop",
+            "options": [
+                {"text": "Approve and proceed", "tag": "recommended", "desc": "Start coding to this plan as written."},
+                {"text": "Proceed with my notes", "tag": "notes", "desc": "Add guidance in the text box — I fold it into the plan and start."}
+            ]
+        }))
+    });
+    let mut s = plain(cx, opts);
+    s.open(ESCALATED);
+    s.click("ask-opt:Proceed with my notes");
+    assert!(s.has("ask-opt-sel:Proceed with my notes"), "the notes option stays selected");
+    assert!(s.has("ask-answer:off"), "Answer waits for the notes");
+    assert!(calls.lock().is_empty());
+    for ch in "use ncurses for the board".chars() {
+        s.cx.simulate_input(&ch.to_string());
+    }
+    s.settle();
+    s.click("ask-answer:on");
+    let c = calls.lock().clone();
+    assert_eq!(c.len(), 1, "{c:?}");
+    assert!(c[0].iter().any(|v| v == "Proceed with my notes"), "{c:?}");
+    assert!(c[0].iter().any(|v| v == "use ncurses for the board"), "{c:?}");
+    assert!(me(&mut s, "Proceed with my notes — use ncurses for the board"));
+}

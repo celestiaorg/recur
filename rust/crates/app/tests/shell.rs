@@ -761,3 +761,59 @@ fn reload_bundles_rereads_the_catalog_and_reports_skipped_bundles(cx: &mut TestA
         "Bundles reloaded, 2 skipped (see Settings → Bundles)"
     ));
 }
+
+#[gpui_kit::test]
+fn sidebar_usage_meter_opens_a_popover_with_quota_bars(cx: &mut TestAppContext) {
+    let usage = json!({
+        "fetchedAt": 1767225600000_i64, "stale": false,
+        "providers": [
+            {"id": "claude-code", "name": "Claude", "email": "dev@example.com",
+             "source": "Claude Code login", "sourceId": "claude_login",
+             "windows": [
+                {"id": "five_hour", "label": "5-hour", "usedPct": 12},
+                {"id": "seven_day", "label": "7-day", "usedPct": 34},
+                {"id": "seven_day_fable", "label": "Fable (7-day)", "usedPct": 41}]},
+            {"id": "codex", "name": "Codex", "email": "codex@example.com",
+             "source": "ChatGPT login", "sourceId": "chatgpt",
+             "windows": [
+                {"id": "five_hour", "label": "5-hour", "usedPct": 100},
+                {"id": "seven_day", "label": "7-day", "usedPct": 16},
+                {"id": "billing", "label": "Monthly", "usedPct": 100, "detail": "500 of 500 credits"}]},
+            {"id": "cursor", "name": "Cursor", "error": "No Cursor usage session", "hint": "Connect in Settings."}
+        ]
+    });
+    let (u1, u2) = (usage.clone(), usage);
+    let opts = MockOptions::default()
+        .resolver("GetProviderUsage", move |_, _, _| Reply::value(u1.clone()))
+        .resolver("RefreshProviderUsage", move |_, _, _| Reply::value(u2.clone()));
+    let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
+    assert!(h.has("use-chip:claude-code") && h.has("use-chip:codex"));
+    assert!(!h.has("use-chip:cursor"), "two chips");
+    h.click("use-btn");
+    assert!(h.has("use-pop"));
+    for sel in [
+        "use-prov:claude-code",
+        "use-win:claude-code:7-day:34.0%",
+        "use-win:claude-code:Fable (7-day):41.0%",
+        "use-prov:codex",
+        "use-win:codex:Monthly:100.0%",
+        "use-detail:codex:500 of 500 credits",
+        "use-cursor-link",
+    ] {
+        assert!(h.has(sel), "missing {sel}");
+    }
+}
+
+#[gpui_kit::test]
+fn working_copy_row_has_no_hover_actions(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), MockOptions::default()),
+        LocalStorage::in_memory(),
+    );
+    h.hover("main:storefront");
+    assert!(h.has("main:storefront"));
+    for id in SEED_LOOPS {
+        assert!(!h.has(&format!("rm:{id}")) && !h.has(&format!("pr:{id}")));
+    }
+}

@@ -307,6 +307,10 @@ impl QuestionCard {
                             .gap(px(8.))
                             .min_w_0()
                             .flex_1()
+                            .debug_selector({
+                                let k = self.kicker.clone();
+                                move || format!("ask-kicker:{k}")
+                            })
                             .child(
                                 label(self.kicker.clone(), Family::Ui, 12.5, 600.).color(t.text),
                             ),
@@ -328,8 +332,14 @@ impl QuestionCard {
                 } else {
                     (t.line_bright, recur_ui::color::TRANSPARENT)
                 };
+                let opt_sel = format!(
+                    "ask-opt{}:{}",
+                    if sel { "-sel" } else { "" },
+                    opt.text
+                );
                 let mut btn = div()
                     .id(SharedString::from(format!("{id}-opt-{i}")))
+                    .debug_selector(move || opt_sel)
                     .flex()
                     .flex_col()
                     .items_start()
@@ -445,6 +455,9 @@ impl QuestionCard {
         };
         let answer = div()
             .id(SharedString::from(format!("{id}-answer")))
+            .debug_selector(move || {
+                format!("ask-answer:{}", if can_answer { "on" } else { "off" })
+            })
             .flex_none()
             .self_end()
             .px(px(12.))

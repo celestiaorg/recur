@@ -36,6 +36,7 @@ pub mod layout_root;
 pub mod logic;
 pub mod motion;
 pub mod pane;
+pub mod resize;
 pub mod set;
 pub mod shadow;
 pub mod style;

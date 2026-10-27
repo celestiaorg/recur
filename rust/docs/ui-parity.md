@@ -229,7 +229,8 @@ Every other scene allows no hard pixels.
 | `briefing/schedule-editor`, `briefing/schedule-editor-paper` | 126, 119 | The cron expression, which gpui-base's editor draws (typed input text, above), and the state segment behind the scrim (as `briefing/schedules`) |
 | `projects/general`, `projects/general-tall`, `projects/general-paper` | 58, 58, 117 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) and the rail glow |
 | `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/run-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 19, 56, 1, 1, 2, 35 | The typed query, which gpui-base's editor draws (typed input text, above) |
-| `projects/run`, `projects/run-tall` | 223, 291 | The Files to copy placeholder, which gpui-base's textarea draws (typed input text, above), and its resize grip, which GPUI's textarea does not have (`PARITY.md` follow-up) |
+| `projects/run`, `projects/run-tall` | 185, 253 | The Files to copy placeholder, which gpui-base's textarea draws (typed input text, above) |
+| `projects/run-resized` | 251 | `projects/run`'s, plus the focused box's amber border at its rounded corners (GPUI anti-aliases the border arc where WebKit clips once) and the page's classic thumb on the taller page (scroll height across a rounding boundary) |
 
 ## Results
 
@@ -476,8 +477,9 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `projects/general` | 58 | 4796 | 3327 | 8940 | 58 |
 | `projects/general-tall` | 58 | 5023 | 3591 | 9480 | 58 |
 | `projects/general-paper` | 117 | 4744 | 3586 | 9170 | 117 |
-| `projects/run` | 223 | 22799 | 2244 | 27550 | 223 |
-| `projects/run-tall` | 291 | 53587 | 3048 | 62300 | 291 |
+| `projects/run` | 185 | 22799 | 2168 | 27550 | 185 |
+| `projects/run-resized` | 251 | 11992 | 2306 | 27550 | 251 |
+| `projects/run-tall` | 253 | 53587 | 2972 | 62300 | 253 |
 | `projects/schedules` | 0 | 4790 | 1426 | 6840 | 0 |
 | `projects/prs` | 0 | 29441 | 2317 | 34940 | 0 |
 | `projects/skills` | 0 | 3551 | 1262 | 5300 | 0 |

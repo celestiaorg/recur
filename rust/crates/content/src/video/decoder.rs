@@ -1,5 +1,6 @@
 //! The platform media pipeline behind [`super::VideoPlayer`]: AVFoundation on macOS (the
-//! frameworks WebKit plays `<video>` through there) and GStreamer elsewhere (WebKitGTK's).
+//! frameworks WebKit plays `<video>` through there), with `webm` for the WebM and Ogg files
+//! WebKit decodes itself, and GStreamer elsewhere (WebKitGTK's).
 //! Either way frames come out as BGRA bytes for a GPUI image and audio goes to the system.
 
 use std::path::Path;
@@ -25,8 +26,73 @@ pub struct Status {
     pub ended: bool,
 }
 
+/// AVFoundation, or the WebM / Ogg decoder for what it does not open (`webm`, Apple silicon:
+/// its codec libraries ship for arm64 only).
 #[cfg(target_os = "macos")]
-pub use mac::Decoder;
+pub enum Decoder {
+    Av(mac::Decoder),
+    #[cfg(target_arch = "aarch64")]
+    Xiph(super::webm::Decoder),
+}
+
+#[cfg(target_os = "macos")]
+impl Decoder {
+    pub fn open(path: &Path) -> Option<Self> {
+        #[cfg(target_arch = "aarch64")]
+        if super::webm::sniff(path) {
+            return super::webm::Decoder::open(path).map(Decoder::Xiph);
+        }
+        mac::Decoder::open(path).map(Decoder::Av)
+    }
+
+    pub fn status(&self) -> Status {
+        match self {
+            Decoder::Av(d) => d.status(),
+            #[cfg(target_arch = "aarch64")]
+            Decoder::Xiph(d) => d.status(),
+        }
+    }
+
+    pub fn frame(&mut self) -> Option<Frame> {
+        match self {
+            Decoder::Av(d) => d.frame(),
+            #[cfg(target_arch = "aarch64")]
+            Decoder::Xiph(d) => d.frame(),
+        }
+    }
+
+    pub fn play(&mut self) {
+        match self {
+            Decoder::Av(d) => d.play(),
+            #[cfg(target_arch = "aarch64")]
+            Decoder::Xiph(d) => d.play(),
+        }
+    }
+
+    pub fn pause(&mut self) {
+        match self {
+            Decoder::Av(d) => d.pause(),
+            #[cfg(target_arch = "aarch64")]
+            Decoder::Xiph(d) => d.pause(),
+        }
+    }
+
+    pub fn seek(&mut self, seconds: f64) {
+        match self {
+            Decoder::Av(d) => d.seek(seconds),
+            #[cfg(target_arch = "aarch64")]
+            Decoder::Xiph(d) => d.seek(seconds),
+        }
+    }
+
+    pub fn set_muted(&self, muted: bool) {
+        match self {
+            Decoder::Av(d) => d.set_muted(muted),
+            #[cfg(target_arch = "aarch64")]
+            Decoder::Xiph(d) => d.set_muted(muted),
+        }
+    }
+}
 
 #[cfg(not(target_os = "macos"))]
 pub use gst::Decoder;

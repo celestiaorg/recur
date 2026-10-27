@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev \
     libfontconfig-dev libfreetype-dev libvulkan-dev libzstd-dev libssl-dev \
     libgtk-4-dev libwebkitgtk-6.0-dev \
-    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good gstreamer1.0-libav \
+    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
     xvfb xauth fonts-dejavu-core ripgrep git nodejs procps golang-go python3 libxml2-utils \
     && rm -rf /var/lib/apt/lists/*
 

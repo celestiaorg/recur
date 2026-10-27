@@ -32,7 +32,7 @@ contents:
     dst: /usr/share/applications/build.recur.next.desktop
 
 # GTK 4 and WebKitGTK 6.0 for Mermaid and PDF, GStreamer and its decoders for video
-# (WebKitGTK plays <video> through the same); xkbcommon and xcb for GPUI's
+# (WebKitGTK plays <video> through the same; -bad carries dav1d for AV1); xkbcommon and xcb for GPUI's
 # X11 backend. GPUI loads Wayland and Vulkan at runtime. The HTTP client reads
 # the system CA store at startup.
 depends:
@@ -42,6 +42,7 @@ depends:
   - libgstreamer1.0-0
   - libgstreamer-plugins-base1.0-0
   - gstreamer1.0-plugins-good
+  - gstreamer1.0-plugins-bad
   - gstreamer1.0-libav
   - libxkbcommon0
   - libxkbcommon-x11-0
@@ -57,6 +58,7 @@ overrides:
       - gstreamer1
       - gstreamer1-plugins-base
       - gstreamer1-plugins-good
+      - gstreamer1-plugins-bad-free
       - gstreamer1-plugin-libav
       - libxkbcommon
       - libxkbcommon-x11

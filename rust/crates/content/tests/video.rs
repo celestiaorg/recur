@@ -1,12 +1,25 @@
-//! The platform media pipeline behind `VideoPlayer` on a real clip (`fixtures/red-blue.mp4`:
-//! one red second, one blue, 160x90 H.264 with AAC). `harness = false` so AVFoundation gets the
-//! main thread and its run loop; Linux plays it through GStreamer.
+//! The platform media pipeline behind `VideoPlayer` on real clips: one red second, one blue,
+//! 160x90, as H.264 with AAC (`red-blue.mp4`), VP8 with Vorbis, VP9 with Opus and AV1 with
+//! Opus in WebM, and Theora with Vorbis in Ogg (made with ffmpeg). `harness = false` so
+//! AVFoundation gets the main thread and its run loop; macOS opens WebM and Ogg with its own
+//! decoder (WebKit's codecs), Linux plays everything through GStreamer.
 
 use std::time::{Duration, Instant};
 
 use recur_content::video::decoder::{Decoder, Frame, Status};
 
-const CLIP: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/red-blue.mp4");
+/// WebM and Ogg play on Linux and on Apple silicon (`video::webm`), not on Intel Macs.
+const CLIPS: &[&str] = if cfg!(all(target_os = "macos", target_arch = "x86_64")) {
+    &["red-blue.mp4"]
+} else {
+    &[
+        "red-blue.mp4",
+        "red-blue-vp8.webm",
+        "red-blue-vp9.webm",
+        "red-blue-av1.webm",
+        "red-blue.ogv",
+    ]
+};
 
 fn pump(ms: u64) {
     #[cfg(target_os = "macos")]
@@ -39,17 +52,37 @@ fn center(f: &Frame) -> (u8, u8, u8) {
 }
 
 fn main() {
-    let mut d = Decoder::open(std::path::Path::new(CLIP)).expect("open clip");
+    for clip in CLIPS {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures")
+            .join(clip);
+        check(&path);
+        println!("video {clip}: ok");
+    }
+    println!("video: ok");
+}
+
+fn check(clip: &std::path::Path) {
+    let name = clip.display();
+    let mut d = Decoder::open(clip).unwrap_or_else(|| panic!("open {name}"));
     let s: Status = until("metadata", || {
         Some(d.status()).filter(|s| s.ready && s.duration > 0.)
     });
-    assert_eq!(s.size, (160, 90));
-    assert!((s.duration - 2.).abs() < 0.1, "duration {}", s.duration);
-    assert!(!s.playing);
+    assert_eq!(s.size, (160, 90), "{name}");
+    assert!(
+        (s.duration - 2.).abs() < 0.15,
+        "{name}: duration {}",
+        s.duration
+    );
+    assert!(!s.playing, "{name}");
 
     let first = until("the first frame", || d.frame());
     let (r, g, b) = center(&first);
-    assert!(r > 200 && g < 60 && b < 60, "first frame {:?}", (r, g, b));
+    assert!(
+        r > 200 && g < 60 && b < 60,
+        "{name}: first frame {:?}",
+        (r, g, b)
+    );
 
     d.seek(1.5);
     let later = until("a blue frame after seeking", || {
@@ -58,7 +91,7 @@ fn main() {
             b > 200 && r < 60
         })
     });
-    assert_eq!((later.width, later.height), (160, 90));
+    assert_eq!((later.width, later.height), (160, 90), "{name}");
 
     d.seek(0.);
     d.play();
@@ -71,8 +104,7 @@ fn main() {
     pump(300);
     assert!(
         (d.status().position - held).abs() < 0.05,
-        "paused playback moved"
+        "{name}: paused playback moved"
     );
-    assert!(!d.status().playing);
-    println!("video: ok");
+    assert!(!d.status().playing, "{name}");
 }

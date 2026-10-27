@@ -42,6 +42,17 @@ block2.workspace = true
 raw-window-handle.workspace = true
 include_dir.workspace = true
 
+# WebM and Ogg (`video::webm`). The codec crates ship static libraries for Apple silicon only.
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+matroska-demuxer.workspace = true
+ogg.workspace = true
+lewton.workspace = true
+theora-rs.workspace = true
+shiguredo_libvpx.workspace = true
+shiguredo_aom.workspace = true
+shiguredo_opus.workspace = true
+cpal.workspace = true
+
 [target.'cfg(target_os = "linux")'.dependencies]
 gstreamer.workspace = true
 gstreamer-app.workspace = true

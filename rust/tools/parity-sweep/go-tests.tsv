@@ -1202,10 +1202,12 @@ internal/mcp.TestNamesFromAllowedTools	crates/mcp/src/server_tests.rs::names_fro
 internal/mcp.TestRegisterScopesToolsListAndCall	crates/mcp/src/server_tests.rs::claude_binding_advertises_and_allows_permission_request
 internal/observe.TestProjectFindingsOntoDiff	crates/code/src/observe/tests.rs::project_findings_onto_diff_range
 internal/openipc.TestCallDialError	crates/platform/src/openipc.rs::dial_error_classification
+internal/openipc.TestClaimConcurrent	crates/platform/src/openipc.rs::concurrent_claims_have_one_winner
 internal/openipc.TestClaimSecondGetsErrHeld	crates/platform/src/openipc.rs::second_claim_is_held
 internal/openipc.TestClaimServeListenerRoundTrip	crates/platform/src/openipc.rs::claim_then_serve_listener_round_trip
 internal/openipc.TestRetryable	crates/platform/src/openipc.rs::retryable_responses
 internal/openipc.TestServeListenerStopWaitsForHandler	crates/platform/src/openipc.rs::stop_waits_for_in_flight_handler
+internal/osfonts.TestMonospaceFamiliesExcludesArial	crates/platform/src/osfonts.rs::excludes_proportional_faces
 internal/osfonts.TestMonospaceFamiliesIncludesInconsolataWhenPresent	crates/platform/src/osfonts.rs::includes_inconsolata_when_present
 internal/power.TestKeeperCloseRefusesRestart	crates/platform/src/power.rs::close_refuses_restart
 internal/power.TestKeeperSetTrueFalse	crates/platform/src/power.rs::set_true_false
@@ -1230,8 +1232,10 @@ internal/runconfig.TestRunCmdOutputTimeoutReturnsCtxErr	crates/project/src/runco
 internal/shortid.TestIsValid	crates/domain/src/shortid.rs::is_valid_cases
 internal/shortid.TestNew	crates/domain/src/shortid.rs::new_distinct
 internal/shortid.TestRejectMax	crates/domain/src/shortid.rs::reject_max_cases
+internal/simplify.TestAppliesToChat	crates/engine/src/simplify/text.rs::applies_to_agent_and_plan
 internal/simplify.TestInstructions	providers/compatible/src/golden_tests.rs::instructions_match_go
 internal/store.TestFillMissingPRTimes	crates/store/src/tests/store_tests.rs::fill_missing_pr_times_rules
+internal/store.TestMigrateLegacyWorktrees	crates/store/src/tests/path_tests.rs::default_worktrees_dir_migrates_legacy_entries
 internal/store.TestRecurSkillsDir	crates/store/src/tests/path_tests.rs::recur_skills_dir_under_home
 internal/store.TestTeeAppLogEmptyRootIsNoop	crates/store/src/applog.rs::empty_root_is_noop
 internal/store.TestTeeAppLogFailOpen	crates/store/src/applog.rs::unopenable_root_fails_open
@@ -1239,6 +1243,7 @@ internal/store.TestTeeAppLogPreservesMultilinePrintf	crates/store/src/applog.rs:
 internal/store.TestTeeAppLogRotatesOversizedFile	crates/store/src/applog.rs::rotates_oversized_file_on_open
 internal/store.TestTeeAppLogWritesAndRestores	crates/store/src/applog.rs::tee_writes_file_and_previous_and_cleans_up
 internal/term.TestClampSize	crates/term/src/manager_tests.rs::clamp_size_bounds
+internal/term.TestCollectAndWrapNeedsManager	crates/term/src/plain.rs::empty_input_defaults
 internal/term.TestGroupGone	crates/term/src/process.rs::group_gone_tracks_a_real_group
 internal/term.TestOSC7ParserAcceptsLocalhostAndHostname	crates/term/src/osc7.rs::accepts_localhost_and_hostname
 internal/term.TestOSC7ParserCarriesSplitSequence	crates/term/src/osc7.rs::carries_split_sequence
@@ -1265,6 +1270,7 @@ internal/term.TestTailPlainSpinnerDoesNotEvictError	crates/term/src/plain.rs::sp
 internal/term.TestTailPlainStripsCSIAndKeepsText	crates/term/src/plain.rs::strips_csi_and_keeps_text
 internal/usage.TestClaudeAccessNeedsRefresh	crates/usage/src/tests.rs::claude_access_needs_refresh_cases
 internal/usage.TestCodexMonthlyUsageURL	crates/usage/src/tests.rs::codex_monthly_url
+internal/usage.TestCopySnapshotIndependence	n/a: guards Go slice aliasing in copySnapshot; a Rust Snapshot's Clone owns its Vecs, so a copy cannot alias the original
 internal/usage.TestCursorAPIKeyNeedsRefresh	crates/usage/src/tests.rs::cursor_api_key_needs_refresh_cases
 internal/usage.TestDefaultCursorTokenReadsConnectFile	crates/usage/src/tests.rs::cursor_auth_files
 internal/usage.TestFetchClaudeDoesNotRetry403	crates/usage/src/tests.rs::fetch_claude_does_not_retry_403

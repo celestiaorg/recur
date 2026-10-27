@@ -188,6 +188,42 @@ pub fn link_text(s: impl Into<SharedString>) -> Text {
     foot_text(s).align(recur_ui::text::Align::Center)
 }
 
+/// `.obs-statusbar` items shrink to their min-content width once the bar overflows. Nowrap
+/// text keeps each item's exact width until the bar's `.sp` spacer is gone; then items wrap
+/// until the bar is wider than where that began.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct StatusWrap(Option<f32>);
+
+impl StatusWrap {
+    /// Follows the bar's and its spacer's last widths; true when the mode changed.
+    pub fn update(&mut self, bar: f32, spacer: f32) -> bool {
+        match self.0 {
+            None if bar > 0. && spacer < 0.25 => {
+                self.0 = Some(bar);
+                true
+            }
+            Some(w0) if bar > w0 + 0.5 => {
+                self.0 = None;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    pub fn on(&self) -> bool {
+        self.0.is_some()
+    }
+
+    /// An item's text: wrapping while the bar overflows.
+    pub fn text(&self, t: Text) -> Text {
+        if self.on() {
+            t.white_space(recur_ui::text::WhiteSpace::Normal)
+        } else {
+            t
+        }
+    }
+}
+
 /// `.obs-statusbar .sep`: a dot at half opacity.
 pub fn foot_sep(cx: &App) -> AnyElement {
     let t = tokens(cx);
@@ -281,4 +317,22 @@ pub fn native_checkbox(on: bool) -> AnyElement {
             d.child(recur_ui::svg_markup(MARK.to_string()).size(px(12.)))
         })
         .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::StatusWrap;
+
+    #[test]
+    fn status_items_wrap_once_the_spacer_is_gone_until_the_bar_widens() {
+        let mut w = StatusWrap::default();
+        assert!(!w.update(600., 40.), "room to spare");
+        assert!(w.update(420., 0.), "the spacer is gone: wrap");
+        assert!(w.on());
+        assert!(!w.update(420.4, 0.), "a sub-pixel change keeps wrapping");
+        assert!(!w.update(380., 0.));
+        assert!(w.update(421., 0.), "wider than where wrapping began");
+        assert!(!w.on());
+        assert!(!w.update(0., 0.), "an unmeasured bar never wraps");
+    }
 }

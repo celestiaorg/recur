@@ -54,11 +54,16 @@ impl Observatory {
     fn status_pane_body(&mut self, _: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let corner = self.status_corner;
         if self.main_surface(cx) == MainSurface::Review {
-            return self.render_review_status(corner, cx);
+            let wrapped = self.review_status_wrap.on();
+            let bar = self.render_review_status(corner, cx);
+            if self.review_status_wrap.on() != wrapped {
+                cx.notify();
+            }
+            return bar;
         }
-        let wrapped = self.status_wrap.is_some();
+        let wrapped = self.status_wrap.on();
         let bar = self.render_editor_status(corner, cx);
-        if self.status_wrap.is_some() != wrapped {
+        if self.status_wrap.on() != wrapped {
             cx.notify();
         }
         bar
@@ -971,25 +976,11 @@ impl Observatory {
             f32::from(self.bounds.status.get().size.width),
             f32::from(self.bounds.status_sp.get().size.width),
         );
-        match self.status_wrap {
-            None if bar_w > 0. && sp_w < 0.25 => {
-                self.status_wrap = Some(bar_w);
-                cx.notify();
-            }
-            Some(w0) if bar_w > w0 + 0.5 => {
-                self.status_wrap = None;
-                cx.notify();
-            }
-            _ => {}
+        if self.status_wrap.update(bar_w, sp_w) {
+            cx.notify();
         }
-        let wrap = self.status_wrap.is_some();
-        let w = move |t: recur_ui::text::Text| {
-            if wrap {
-                t.white_space(recur_ui::text::WhiteSpace::Normal)
-            } else {
-                t
-            }
-        };
+        let wrap = self.status_wrap;
+        let w = move |t: recur_ui::text::Text| wrap.text(t);
         let active = self.active_path().to_string();
         let lang = self.status_language(cx);
         let st = self.git_status.get(&active).cloned().unwrap_or_default();
@@ -1046,7 +1037,7 @@ impl Observatory {
                         .size(11.)
                         .line_height(LineHeight::Scale(1.))
                         .color(t.muted)
-                        .white_space(if wrap {
+                        .white_space(if wrap.on() {
                             recur_ui::text::WhiteSpace::Normal
                         } else {
                             recur_ui::text::WhiteSpace::NoWrap
@@ -1177,15 +1168,26 @@ impl Observatory {
         } else {
             format!("vs {}", if base.is_empty() { "HEAD" } else { &base })
         };
+        let (bar_w, sp_w) = (
+            f32::from(self.bounds.review_status.get().size.width),
+            f32::from(self.bounds.review_status_sp.get().size.width),
+        );
+        if self.review_status_wrap.update(bar_w, sp_w) {
+            cx.notify();
+        }
+        let wrap = self.review_status_wrap;
+        let w = move |t: recur_ui::text::Text| wrap.text(t);
         let mut bar = statusbar(cx)
             .debug_selector(|| "obs-review-status".into())
+            .relative()
+            .child(crate::geometry::probe(&self.bounds.review_status))
             .when(corner.0, |d| d.pl(px(crate::style::WIN_CORNER_PAD)))
             .when(corner.1, |d| d.pr(px(crate::style::WIN_CORNER_PAD)))
-            .child(foot_text(format!(
+            .child(w(foot_text(format!(
                 "{} file{}",
                 b.file_count,
                 if b.file_count == 1 { "" } else { "s" }
-            )))
+            ))))
             .child(foot_sep(cx))
             .child(
                 div()
@@ -1200,29 +1202,34 @@ impl Observatory {
             )
             .child(foot_sep(cx))
             .child(
-                div().ml(px(8.)).child(
-                    text(scope)
-                        .mono()
-                        .size(11.)
-                        .line_height(LineHeight::Scale(1.))
-                        .color(t.muted)
-                        .nowrap(),
-                ),
+                div().ml(px(8.)).child(w(text(scope)
+                    .mono()
+                    .size(11.)
+                    .line_height(LineHeight::Scale(1.))
+                    .color(t.muted)
+                    .nowrap())),
             );
         let n = self.open_findings_count();
         if n > 0 {
             bar = bar.child(foot_sep(cx)).child(
                 linkish("review-findings", Some(t.amber), cx)
-                    .child(
-                        link_text(format!("{n} finding{}", if n == 1 { "" } else { "s" }))
-                            .weight(600.),
-                    )
+                    .child(w(link_text(format!(
+                        "{n} finding{}",
+                        if n == 1 { "" } else { "s" }
+                    ))
+                    .weight(600.)))
                     .on_click(cx.guarded_listener(|o, _, window, cx| {
                         o.select_code_panel(CodePanelKey::Findings, window, cx)
                     })),
             );
         }
-        bar.into_any_element()
+        bar.child(
+            div()
+                .relative()
+                .flex_1()
+                .child(crate::geometry::probe(&self.bounds.review_status_sp)),
+        )
+        .into_any_element()
     }
 
     /// `.obs-main`, with the dock below, beside or overlaying it.
@@ -1267,8 +1274,10 @@ impl Observatory {
         let review_status = self.main_surface(cx) == MainSurface::Review;
         let status = if hidden {
             None
-        } else if editor_status && self.status_wrap.is_some() {
+        } else if editor_status && self.status_wrap.on() {
             Some(self.render_editor_status(corner, cx))
+        } else if review_status && self.review_status_wrap.on() {
+            Some(self.render_review_status(corner, cx))
         } else if editor_status || review_status {
             self.status_corner = corner;
             let pane = self

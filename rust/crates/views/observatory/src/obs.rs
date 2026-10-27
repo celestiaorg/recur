@@ -461,7 +461,9 @@ pub struct Observatory {
     pub(crate) split_resizing: bool,
     /// The editor status bar's width when its items stopped fitting on one line each; they
     /// wrap (`.obs-statusbar` items shrink to min-content) until the bar is wider again.
-    pub(crate) status_wrap: Option<f32>,
+    pub(crate) status_wrap: crate::style::StatusWrap,
+    pub(crate) review_status_wrap: crate::style::StatusWrap,
+    pub(crate) files_status_wrap: crate::style::StatusWrap,
 
     // ---- editors and previews ----
     pub(crate) main_editor: Option<Entity<EditorView>>,
@@ -746,7 +748,9 @@ impl Observatory {
             focused_pane: Pane::Main,
             split_pct: storage_split,
             split_resizing: false,
-            status_wrap: None,
+            status_wrap: Default::default(),
+            review_status_wrap: Default::default(),
+            files_status_wrap: Default::default(),
             main_editor: None,
             split_editor: None,
             merge_editor: None,

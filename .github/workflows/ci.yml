@@ -169,10 +169,88 @@ jobs:
       - run: wails3 task lint:rust
       - run: wails3 task test:rust
 
+  # The Rust port on Linux: GPUI's X11/Wayland backend and WebKitGTK 6.0 for
+  # Mermaid and PDF. Those tests open WebKitGTK, so they run under Xvfb, with
+  # WebKit's sandbox off (the runner's AppArmor blocks bubblewrap's namespaces).
+  rust-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v7
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y
+          libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev
+          libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev xvfb ripgrep libxml2-utils
+      # Tests commit in temp repos; the runner's hostname gives git no identity.
+      - run: git config --global user.name ci && git config --global user.email ci@example.com
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      - run: xvfb-run -a cargo test --workspace --all-features --locked
+        env:
+          WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"
+
+  # Ad-hoc signed arm64 Recur Next.app in a DMG, plus the updater zip.
+  package-rust-mac:
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: package
+      - run: wails3 task package:rust
+      - run: hdiutil verify "rust/target/package/Recur Next.dmg"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: RecurNext-macos-arm64
+          path: rust/target/package/Recur Next.dmg
+          retention-days: 14
+
+  # rust/target/package/recur-next-linux-amd64.{tar.gz,deb,rpm}, installed and
+  # launched in a clean Debian 13 container by linux:smoke:rust.
+  package-rust-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y
+          libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev
+          libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev
+      - uses: ./.github/actions/setup
+        with:
+          node: "false"
+          wails: "true"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: package
+      - run: wails3 task linux:package:rust
+      - run: wails3 task linux:smoke:rust
+      - uses: actions/upload-artifact@v7
+        with:
+          name: RecurNext-linux-amd64
+          path: |
+            rust/target/package/recur-next-linux-amd64.tar.gz
+            rust/target/package/recur-next-linux-amd64.deb
+            rust/target/package/recur-next-linux-amd64.rpm
+          retention-days: 14
+
   ci-success:
     name: CI success
     if: always()
-    needs: [go-mac, go-race, bundles, frontend, e2e, package-mac, go-linux, package-linux, rust-mac]
+    needs: [go-mac, go-race, bundles, frontend, e2e, package-mac, go-linux, package-linux, rust-mac, rust-linux, package-rust-mac, package-rust-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any required job failed or was cancelled

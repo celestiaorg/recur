@@ -108,7 +108,7 @@ fn open_file(h: &mut H, path: &str) {
 
 fn type_at_end(h: &mut H, text: &str) {
     h.focus_editor();
-    h.keys("cmd-end");
+    h.keys("secondary-end");
     h.type_text(text);
 }
 
@@ -135,7 +135,7 @@ async fn grammar_loads_lazily_typing_marks_dirty_synchronously_save_clears_it(
     // Synchronous: no emit debounce needed for the dot.
     assert!(dirty(&mut h, "src/main.go"));
     assert!(modified(&mut h));
-    h.keys("cmd-s");
+    h.keys("secondary-s");
     h.wait(100);
     assert!(!dirty(&mut h, "src/main.go"));
     assert!(h.active_tab("src/main.go"));
@@ -172,7 +172,7 @@ async fn the_files_explorer_shows_the_same_unsaved_dot_as_the_editor_tab(cx: &mu
     assert!(!h.has("obs-unsaved:src/main.go"));
     type_at_end(&mut h, " // edit");
     assert!(h.has("obs-unsaved:src/main.go"));
-    h.keys("cmd-s");
+    h.keys("secondary-s");
     h.wait(100);
     assert!(!h.has("obs-unsaved:src/main.go"));
 }
@@ -186,9 +186,9 @@ async fn save_writes_the_live_buffer_even_when_typed_inside_the_debounce_window(
     let mut h = mount(cx, opts, |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     h.focus_editor();
-    h.keys("cmd-end");
+    h.keys("secondary-end");
     h.cx.simulate_input("X");
-    h.keys("cmd-s");
+    h.keys("secondary-s");
     h.wait(100);
     assert!(!dirty(&mut h, "src/main.go"));
     let w = writes.lock().clone();
@@ -320,7 +320,7 @@ async fn tab_switch_restores_the_saved_buffer(cx: &mut TestAppContext) {
     let mut h = mount(cx, go_files(&f, MockOptions::default()), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     type_at_end(&mut h, "KEEPME");
-    h.keys("cmd-s");
+    h.keys("secondary-s");
     h.wait(100);
     assert!(!dirty(&mut h, "src/main.go"));
     open_file(&mut h, "src/other.go");
@@ -401,7 +401,12 @@ async fn caret_and_scroll_survive_an_app_restart(
     );
     open_file(&mut h, "src/main.go");
     h.focus_editor();
-    h.keys("cmd-down");
+    // Document end: ⌘↓ is CodeMirror's macOS binding, Ctrl+End elsewhere.
+    h.keys(if cfg!(target_os = "macos") {
+        "cmd-down"
+    } else {
+        "ctrl-end"
+    });
     let line = h.read(|o, _| o.cursor_line);
     assert!(line == 80 || line == 81, "{line}");
     let top = h.read(|o, cx| {
@@ -536,7 +541,7 @@ async fn the_preview_chip_survives_an_app_restart(
 #[gpui::test]
 async fn quick_open_filters_the_file_index(cx: &mut TestAppContext) {
     let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
-    h.keys("cmd-p");
+    h.keys("secondary-p");
     assert!(h.has("quick-open"));
     h.type_text("main");
     h.wait(100);
@@ -560,7 +565,7 @@ async fn quick_open_hydrates_the_picked_file_without_a_read_failed_toast(cx: &mu
         h.read(|o, _| o.right_kind),
         recur_view_core::prefs::CodePanelKey::Search
     );
-    h.keys("cmd-p");
+    h.keys("secondary-p");
     h.type_text("other");
     h.wait(100);
     h.keys("enter");
@@ -607,7 +612,7 @@ async fn quick_open_scrolls_the_explorer_to_the_selected_file_when_files_is_show
     };
     assert!(!visible(&mut h));
     for _ in 0..2 {
-        h.keys("cmd-p");
+        h.keys("secondary-p");
         h.type_text("f39");
         h.wait(100);
         h.keys("enter");
@@ -646,7 +651,7 @@ async fn reverting_a_restored_stash_clears_the_unsaved_marker(cx: &mut TestAppCo
     click_tab(&mut h, "src/main.go");
     assert!(h.editor_doc().contains('X'));
     h.focus_editor();
-    h.keys("cmd-end");
+    h.keys("secondary-end");
     h.keys("backspace");
     assert!(!dirty(&mut h, "src/main.go"));
     assert!(!modified(&mut h));
@@ -715,7 +720,7 @@ async fn restoring_a_stash_warns_when_disk_changed_while_the_tab_was_away(cx: &m
     let doc = h.editor_doc();
     assert!(doc.contains("KEEPME") && !doc.contains("AGENT_EDIT"));
     h.focus_editor();
-    h.keys("cmd-end");
+    h.keys("secondary-end");
     for _ in 0.."KEEPME".len() {
         h.keys("backspace");
     }
@@ -796,7 +801,7 @@ async fn opening_a_restored_stash_in_the_split_pane_warns_when_disk_moved(
         h.click("view-mode:Code");
     }
     h.focus_editor();
-    h.keys("cmd-\\");
+    h.keys("secondary-\\");
     assert!(h.read(|o, _| o.split_open));
     h.click("obs-editor-pane:split");
     click_tab(&mut h, "src/other.go");
@@ -829,7 +834,7 @@ async fn cmd_f_in_the_split_editor_stays_out_of_the_preview_find(cx: &mut TestAp
         let f = gpui_kit::Focusable::focus_handle(split.read(cx), cx);
         window.focus(&f, cx);
     });
-    h.keys("cmd-f");
+    h.keys("secondary-f");
     let (editor_find, preview_find) = h.read(|o, cx| {
         (
             o.split_editor

@@ -481,10 +481,10 @@ fn alt_cmd_arrows_cycle_workspaces_in_sidebar_order(cx: &mut TestAppContext) {
     let (first, second) = (rows[0].0.clone(), rows[1].0.clone());
     h.click(&format!("hit:{first}"));
     assert!(h.has(&format!("on:{first}")));
-    h.keys("alt-cmd-down");
+    h.keys("alt-secondary-down");
     assert!(h.has(&format!("on:{second}")));
     assert!(!h.has(&format!("on:{first}")));
-    h.keys("alt-cmd-up");
+    h.keys("alt-secondary-up");
     assert!(h.has(&format!("on:{first}")));
 }
 
@@ -503,18 +503,18 @@ fn alt_cmd_arrows_peek_a_collapsed_project_and_recollapse_unless_you_dwell(
     h.wait(50);
     assert!(h.has("on:main:payments"));
 
-    h.keys("alt-cmd-up");
-    h.keys("alt-cmd-down");
+    h.keys("alt-secondary-up");
+    h.keys("alt-secondary-down");
     assert!(h.has("on:main:payments"));
     assert!(
         !h.has("main:storefront"),
         "a pass-through peek re-collapses"
     );
 
-    h.keys("alt-cmd-up");
+    h.keys("alt-secondary-up");
     assert!(h.has("main:storefront"), "landing peeks the project open");
     h.wait(1200);
-    h.keys("alt-cmd-down");
+    h.keys("alt-secondary-down");
     assert!(h.has("main:storefront"), "a dwell keeps it open");
     assert_eq!(h.seed_project("storefront")["open"], true);
 }
@@ -580,7 +580,7 @@ fn rename_commits_on_enter(cx: &mut TestAppContext) {
     );
     h.hover("gh:g-a");
     h.click("gh-rename:g-a");
-    h.keys("cmd-a");
+    h.keys("secondary-a");
     h.cx.simulate_input("Agency");
     h.keys("enter");
     assert!(!h.has("gh-input:g-a"));
@@ -615,7 +615,7 @@ fn shift_cmd_n_creates_a_blank_workspace_without_the_modal(cx: &mut TestAppConte
         }))
     });
     let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
-    h.keys("shift-cmd-n");
+    h.keys("shift-secondary-n");
     assert!(!h.read(|s| s.overlays.new_task));
     assert_eq!(h.view(), ViewName::Briefing);
     {
@@ -638,7 +638,7 @@ fn window_shortcuts_work_with_nothing_focused(cx: &mut TestAppContext) {
     );
     h.cx.update(|window, cx| window.blur(cx));
     h.settle();
-    h.keys("cmd-k");
+    h.keys("secondary-k");
     assert!(h.read(|s| s.overlays.palette));
 }
 

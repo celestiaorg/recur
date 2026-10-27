@@ -417,7 +417,7 @@ fn the_menu_action_and_cmd_comma_open_settings(cx: &mut TestAppContext) {
     s.section("Data");
     s.click("nav-pr");
     assert_ne!(s.view(), recur_view_core::ViewName::Settings);
-    s.keys("cmd-,");
+    s.keys("secondary-,");
     assert_eq!(s.view(), recur_view_core::ViewName::Settings);
     assert!(s.has("v-settings:on"));
 }

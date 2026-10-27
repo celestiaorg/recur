@@ -53,7 +53,7 @@ fn bundles_can_disable_a_will_save_command(cx: &mut TestAppContext) {
     s.click("obs-node:file:src/main.go");
     s.click("obs-editor-pane:main");
     s.type_text(" ");
-    s.keys("backspace cmd-s");
+    s.keys("backspace secondary-s");
     assert!(s.until(|_| !writes.lock().is_empty()));
     let first = writes.lock()[0].clone();
     assert!(

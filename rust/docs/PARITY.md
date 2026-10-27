@@ -8,8 +8,15 @@ Legend: `[ ]` not started, `[~]` in progress, `[x]` ported and verified.
 
 Gaps found while porting that are not yet owned by a slice. Each must be closed before promotion.
 
-- [ ] **Linux: Mermaid and PDF.** `recur-content` runs mermaid.js and pdf.js in a hidden WebKit page on macOS only; Linux builds show an error in their place. Add the WebKitGTK 6.0 path (the Go app already depends on it).
-- [ ] **Linux build and CI.** Nothing in `rust/` is built or tested on Linux yet. Add a `rust-linux` CI job (Ubuntu 24.04) and fix what it finds.
+- [x] **Linux: Mermaid and PDF.** `recur-content` runs mermaid.js and pdf.js in a hidden WebKitGTK 6.0 page on its own `recur-webkit` thread (`webhost.rs` `gtk`). `tests/webkit.rs` renders both on each platform and checks the Linux PDF canvas against macOS's.
+- [x] **Linux build and CI.** The workspace builds, lints and tests on Linux (`linux:test:rust` in Docker; the `rust-linux` CI job on Ubuntu 24.04). `package-rust-mac` and `package-rust-linux` build the packages (ARCHITECTURE.md "Packaging").
+- [ ] **Linux: HTML preview.** Blank on Linux: GTK 4 cannot embed a WebKitGTK widget in GPUI's window. Draw an offscreen WebKitGTK page (snapshots plus forwarded input) or open a separate window.
+- [ ] **Linux: system UI font.** GPUI's Linux backend maps `.SystemUIFont` to IBM Plex Sans; WebKitGTK and the Go app use fontconfig's `system-ui`. Resolve `Family::System` through fontconfig on Linux, so the UI and the Mermaid labels (measured by WebKitGTK) use the Go app's face.
+- [ ] **Linux: color panel.** No system color dialog off macOS (`recur_view_projects::color_panel`); the Go app gets GTK's from `<input type=color>`.
+- [ ] **HTTP client without a CA store.** `reqwest::Client::new()` panics at startup when the system has no CA certificates (a minimal Debian without `ca-certificates`). The Linux packages depend on `ca-certificates`; the app should fail those requests instead.
+- [ ] **Linux: ⌥⌘B from the PR dock toggle.** With focus on the PR dock's toggle, Ctrl+Alt+B falls through to the shell's Ctrl+B (rail) instead of the left panel; the menu accelerator covers it on macOS (`spec::dock::the_chat_panel_can_be_hidden_and_shown_like_the_observatory` is ignored on Linux).
+- [ ] **Grep without ripgrep skips a dot-named root.** `recur_code::search_opts` applies `skip_dir` to the walk root too (Go's `search.go` does the same), so the agent Grep fallback finds nothing in a worktree such as `/tmp/.tmpXXXX`. Exempt the root as `files.rs` does.
+- [ ] **Release workflow for Recur Next.** `release.yml` ships only the Go app. Add the Rust app's universal signed DMG and zip, the Linux packages, and a signed `manifest.json` of its own for `RECUR_NEXT_UPDATE_URL`.
 - [x] **`recur_ui::text`: inline code chip at a wrap start** keeps its left padding on the previous line (`file-preview/markdown`, 514 hard pixels). A line that starts at an inline box now starts at its left margin edge (and the content mirror follows); `file-preview/markdown` is at 0.
 - [x] **`overlays/palette`:** keycaps at fractional offsets in a scrolled list and the list thumb's end land one device pixel off (388 hard pixels). The scrim's `11vh` top and the panel's `64vh` cap rounded (the list lost its scrollbar and every row moved); both are exact now, the footer rounds its corners and placeholders follow WebKit's text-field line. At 0.
 - [x] **Chat: TypeScript prompt modules.** `recur-desktop`'s `macro_runtime` runs them (and macros) in persistent node workers with the `macro-worker.ts` contracts, installed through `PromptCatalog::set_runners` and `AppState::set_macro_runner`.
@@ -1420,7 +1427,7 @@ Frontend unit tests (`vitest`, 170 files) are logic specs for the matching `lib/
 - [ ] `internal/store/migrations/*.sql` applied by `recur-store` (same files, same order, same `schema_migrations` bookkeeping)
 - [x] `frontend/src/lib/file-icons` icon font and mapping (embedded fonts, `icondb.js`, `icons.css`, `dotenv-fix.css`, `atom-octicons.css`, `colors.css`; WOFF/WOFF2 decoded with `wuff`)
 - [x] lucide icon set used by `lib/icons.ts` (`assets/icons/lucide/*.svg`, 1776 icons with `lucide.json`)
-- [ ] `build/` app icons, Info.plist keys, URL schemes, Linux `.desktop` entry
+- [x] `build/` app icons, Info.plist keys, URL schemes, Linux `.desktop` entry: `rust/build/darwin/Info.plist` carries every key of the Go plist under `build.recur.next` (tested in `recur_platform::identity`; the Go app declares no URL schemes or document types), the `.app` reuses `build/darwin/icons.icns` / `Assets.car`, and `rust/build/linux/build.recur.next.desktop` is the packaged entry
 
 ## CLI
 

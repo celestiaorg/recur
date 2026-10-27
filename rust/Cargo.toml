@@ -124,6 +124,11 @@ raw-window-handle = "0.6"
 objc2-user-notifications = "0.3"
 block2 = "0.6"
 dispatch2 = "0.3"
+# Linux: the hidden WebKit pages recur-content runs mermaid.js and pdf.js in (WebKitGTK 6.0, as
+# the Go app links). Re-exports gtk4, glib, gio and soup3.
+webkit6 = "0.6"
+# webkit6 0.6 names `gtk::Accessible`, which gtk4 0.11 gates behind GTK 4.10.
+gtk4 = { version = "0.11", features = ["v4_10"] }
 tempfile = "3"
 pretty_assertions = "1"
 hex = "0.4"

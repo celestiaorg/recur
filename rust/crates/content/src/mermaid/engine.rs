@@ -1,11 +1,13 @@
 //! The mermaid.js host: mermaid 11.16.1 (the build the web UI ships, vendored under
-//! `assets/mermaid`) in a hidden WKWebView. Mermaid lays diagrams out from DOM text
+//! `assets/mermaid`) in a hidden WKWebView (WebKitGTK on Linux). Mermaid lays diagrams out from DOM text
 //! measurement, so it runs in WebKit itself and measures exactly as the app's webview did; the
 //! diagram it returns is drawn natively. The page loads nothing (CSP `default-src 'none'`),
 //! keeps no data (non-persistent store) and is never on screen.
 
 /// The page mermaid runs in: the app's web fonts (the files `frontend/index.html` loads, as
-/// recur-ui bundles them) and `body` font, which mermaid's text measurement inherits.
+/// recur-ui bundles them) and `body` font, which mermaid's text measurement inherits. The page
+/// is the WKWebView frame's 1024×768 in CSS, so layouts that read the container (gantt) see
+/// the same width where the webview has no size of its own (WebKitGTK, never allocated).
 pub fn page() -> String {
     use base64::Engine as _;
     let mut faces = String::new();
@@ -16,7 +18,7 @@ pub fn page() -> String {
         ));
     }
     format!(
-        r#"<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-eval'; style-src 'unsafe-inline'; img-src data:; font-src data:"><style>{faces}*{{box-sizing:border-box}}html,body{{margin:0;height:100%;overflow:hidden}}body{{font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.45}}</style></head><body><div id="m"></div></body></html>"#
+        r#"<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-eval'; style-src 'unsafe-inline'; img-src data:; font-src data:"><style>{faces}*{{box-sizing:border-box}}html,body{{margin:0;width:1024px;height:768px;overflow:hidden}}body{{font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.45}}</style></head><body><div id="m"></div></body></html>"#
     )
 }
 
@@ -130,7 +132,12 @@ pub static HOST: crate::webhost::Host = crate::webhost::Host {
     name: "Mermaid",
     #[cfg(target_os = "macos")]
     make: mac::make,
+    #[cfg(target_os = "linux")]
+    make: gtk::make,
 };
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+const MERMAID_JS: &str = include_str!("../../assets/mermaid/mermaid.min.js");
 
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
@@ -143,14 +150,12 @@ mod mac {
         WKWebsiteDataStore,
     };
 
-    const MERMAID_JS: &str = include_str!("../../assets/mermaid/mermaid.min.js");
-
     pub fn make(mtm: MainThreadMarker) -> Retained<WKWebView> {
         // SAFETY: WebKit objects are created and used on the main thread (`mtm`).
         unsafe {
             let config = WKWebViewConfiguration::new(mtm);
             config.setWebsiteDataStore(&WKWebsiteDataStore::nonPersistentDataStore(mtm));
-            let source = NSString::from_str(&format!("{MERMAID_JS}\n{}", super::HOST_JS));
+            let source = NSString::from_str(&format!("{}\n{}", super::MERMAID_JS, super::HOST_JS));
             let script = WKUserScript::initWithSource_injectionTime_forMainFrameOnly(
                 WKUserScript::alloc(mtm),
                 &source,
@@ -163,5 +168,31 @@ mod mac {
             web.loadHTMLString_baseURL(&NSString::from_str(&super::page()), None);
             web
         }
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod gtk {
+    use webkit6::prelude::*;
+    use webkit6::{
+        NetworkSession, UserContentInjectedFrames, UserContentManager, UserScript,
+        UserScriptInjectionTime, WebView,
+    };
+
+    pub fn make() -> WebView {
+        let scripts = UserContentManager::new();
+        scripts.add_script(&UserScript::new(
+            &format!("{}\n{}", super::MERMAID_JS, super::HOST_JS),
+            UserContentInjectedFrames::TopFrame,
+            UserScriptInjectionTime::End,
+            &[],
+            &[],
+        ));
+        let web = WebView::builder()
+            .network_session(&NetworkSession::new_ephemeral())
+            .user_content_manager(&scripts)
+            .build();
+        web.load_html(&super::page(), None);
+        web
     }
 }

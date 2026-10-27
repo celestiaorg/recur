@@ -1,0 +1,24 @@
+# Throwaway Linux desktop for trying the Rust port from a Mac
+# (wails3 task linux:run:rust): build/linux/Dockerfile.desktop's Xvfb + openbox
+# + noVNC, plus GPUI's runtime libraries and Mesa's software Vulkan (Xvfb has
+# no GPU). Built with build/linux as its context to reuse the Go desktop's
+# entrypoint, which runs /srv/recur/recur.
+FROM debian:trixie
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgtk-4-1 libwebkitgtk-6.0-4 \
+    libxkbcommon0 libxkbcommon-x11-0 libxcb1 libwayland-client0 libvulkan1 mesa-vulkan-drivers \
+    xvfb openbox x11vnc novnc websockify dbus-x11 dunst libnotify-bin \
+    fonts-dejavu-core ca-certificates curl git bash procps xdg-utils nodejs ripgrep \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -m 1777 -p /tmp/.X11-unix \
+    && useradd -m -s /bin/bash dev
+
+COPY desktop-entrypoint.sh /usr/local/bin/desktop-entrypoint
+USER dev
+WORKDIR /home/dev
+ENV SHELL=/bin/bash \
+    # Docker blocks the user namespaces WebKit's bubblewrap sandbox needs.
+    WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 \
+    GTK_A11Y=none
+ENTRYPOINT ["/usr/local/bin/desktop-entrypoint"]

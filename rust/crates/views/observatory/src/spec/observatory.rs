@@ -100,11 +100,11 @@ async fn save_keeps_the_file_tab_selected(cx: &mut TestAppContext) {
     open_main_go(&mut h);
     h.click("view-mode:Code");
     h.focus_editor();
-    h.keys("cmd-end");
+    h.keys("secondary-end");
     h.type_text(" // edit");
     h.wait(300);
     assert!(h.read(|o, _| o.tab_is_dirty("src/main.go")));
-    h.keys("cmd-s");
+    h.keys("secondary-s");
     h.wait(300);
     assert!(h.active_tab("src/main.go"));
     assert!(!h.read(|o, _| o.tab_is_dirty("src/main.go")));
@@ -135,7 +135,7 @@ async fn will_save_runs_the_gofmt_transform_before_write_file(cx: &mut TestAppCo
     h.type_text(" ");
     h.keys("backspace");
     h.wait(100);
-    h.keys("cmd-s");
+    h.keys("secondary-s");
     h.wait(500);
     let w = writes.lock().clone();
     assert!(!w.is_empty());
@@ -286,9 +286,9 @@ async fn cmd_shift_v_cycles_the_view_chip_through_diff_and_code(cx: &mut TestApp
     open_main_go(&mut h);
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Diff);
     assert!(h.read(|o, _| o.merge_editor.is_some()));
-    h.keys("cmd-shift-v");
+    h.keys("secondary-shift-v");
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Code);
-    h.keys("cmd-shift-v");
+    h.keys("secondary-shift-v");
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Diff);
     assert!(h.read(|o, _| o.merge_editor.is_some()));
 }
@@ -470,12 +470,12 @@ async fn cmd_shift_v_cycles_code_diff_and_preview(cx: &mut TestAppContext) {
     h.click("obs-node:file:README.md");
     assert!(h.has("view-mode:Preview"));
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Diff);
-    h.keys("cmd-shift-v");
+    h.keys("secondary-shift-v");
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Preview);
     assert!(h.read(|o, _| o.file_preview.is_some()));
-    h.keys("cmd-shift-v");
+    h.keys("secondary-shift-v");
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Code);
-    h.keys("cmd-shift-v");
+    h.keys("secondary-shift-v");
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Diff);
     assert!(h.read(|o, _| o.merge_editor.is_some()));
 }
@@ -880,8 +880,8 @@ async fn refocusing_the_editor_on_an_artifact_tab_does_not_outline_it_from_disk(
     );
     h.wait(100);
     assert!(h.active_tab("scratch://artifact-art-outline-1.md"));
-    h.keys("cmd-1");
-    h.keys("cmd-2");
+    h.keys("secondary-1");
+    h.keys("secondary-2");
     let in_main =
         h.cx.update(|window, cx| h.obs.read(cx).main_focus.contains_focused(window, cx));
     assert!(in_main);
@@ -953,7 +953,7 @@ async fn artifact_rename_via_context_menu_and_hover_trash_delete(cx: &mut TestAp
     h.right_click("art-row:art-rename-1");
     assert!(h.has("art-ctx-rename") && h.has("art-ctx-reveal") && h.has("art-ctx-delete"));
     h.click("art-ctx-rename");
-    h.keys("cmd-a");
+    h.keys("secondary-a");
     h.type_text("New name");
     h.keys("enter");
     h.wait(100);
@@ -1127,7 +1127,7 @@ async fn file_tab_close_all_asks_once_for_dirty_tabs_and_cancel_keeps_them(
     );
     open_two(&mut h);
     h.focus_editor();
-    h.keys("cmd-end");
+    h.keys("secondary-end");
     h.type_text(" // edit");
     h.update(|o, window, cx| {
         o.open_path(crate::OpenRequest::new("src/main.go"), window, cx)
@@ -1135,7 +1135,7 @@ async fn file_tab_close_all_asks_once_for_dirty_tabs_and_cancel_keeps_them(
     });
     assert!(h.editor_doc().contains("package main"));
     h.focus_editor();
-    h.keys("cmd-end");
+    h.keys("secondary-end");
     h.type_text(" // edit");
     h.wait(300);
     assert!(h.read(|o, _| o.tab_is_dirty("src/main.go") && o.tab_is_dirty("src/other.go")));
@@ -1167,13 +1167,13 @@ async fn opt_cmd_r_toggles_review_from_the_editor_not_while_files_is_focused(
             window.focus(&f, cx);
         }
     });
-    h.keys("cmd-alt-r");
+    h.keys("secondary-alt-r");
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
     assert!(h.has("obs-review-host"));
-    h.keys("cmd-alt-r");
+    h.keys("secondary-alt-r");
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
     h.update(|o, window, cx| window.focus(&o.files_focus, cx));
-    h.keys("cmd-alt-r");
+    h.keys("secondary-alt-r");
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
 }
 

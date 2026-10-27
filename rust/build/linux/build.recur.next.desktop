@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Recur Next
+Comment=Run autonomous AI coding loops locally.
+Exec=/opt/recur-next/recur
+Icon=/opt/recur-next/recur.png
+Categories=Development;
+Terminal=false
+StartupWMClass=build.recur.next

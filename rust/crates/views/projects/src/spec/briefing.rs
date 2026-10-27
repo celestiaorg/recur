@@ -301,7 +301,7 @@ fn go_to_palette_reaches_briefing(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     s.click("nav-pr");
     assert_eq!(s.view(), ViewName::Pr);
-    s.keys("cmd-k");
+    s.keys("secondary-k");
     assert!(s.has("palette"));
     s.type_text("Inbox");
     s.click("pal-row:Inbox:sel");

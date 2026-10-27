@@ -153,6 +153,72 @@ tasks:
     cmds:
       - cargo test --workspace
 
+  package:rust:
+    summary: Packages the Rust port as rust/target/package/Recur Next.app, .dmg and updater .zip (macOS; UNIVERSAL=true, SIGN_IDENTITY / KEYCHAIN_PROFILE / RECUR_SIGN_IDENTITY as darwin:sign, RECUR_NEXT_UPDATE_URL turns on the updater; see rust/build/darwin/package.sh)
+    platforms: [darwin]
+    deps:
+      - task: common:generate:icons
+      - task: common:generate:help-skill
+    cmds:
+      - rust/build/darwin/package.sh
+    env:
+      VERSION: '{{.VERSION}}'
+
+  linux:test:rust:
+    summary: rustfmt, clippy and the Rust port's tests on Linux (natively on Linux, in rust/build/linux/Dockerfile elsewhere; WebKitGTK tests under xvfb-run)
+    cmds:
+      - rust/build/linux/in-docker.sh sh -c 'cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features --locked -- -D warnings && xvfb-run -a cargo test --workspace --all-features --locked'
+    env:
+      ARCH: '{{.ARCH | default ARCH}}'
+
+  linux:build:rust:
+    summary: Release Linux build of the Rust port into rust/target/package/recur-next-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts, see rust/build/linux/in-docker.sh)
+    deps:
+      - task: common:generate:help-skill
+    cmds:
+      - rust/build/linux/in-docker.sh build/linux/build.sh
+    env:
+      ARCH: '{{.ARCH | default ARCH}}'
+      VERSION: '{{.VERSION}}'
+
+  linux:package:rust:
+    summary: Packages rust/target/package/recur-next-linux-<arch>.tar.gz, .deb and .rpm (install to /opt/recur-next with /usr/bin/recur-next and the build.recur.next menu entry, beside the Go app's packages)
+    vars:
+      TARGET_ARCH: '{{.ARCH | default ARCH}}'
+      PKG: 'recur-next-linux-{{.TARGET_ARCH}}'
+    cmds:
+      - task: linux:build:rust
+        vars:
+          ARCH: '{{.TARGET_ARCH}}'
+      - tar --no-xattrs -C rust/target/package -czf "rust/target/package/{{.PKG}}.tar.gz" "{{.PKG}}"
+      - for: [deb, rpm]
+        cmd: GOARCH={{.TARGET_ARCH}} RECUR_VERSION={{.VERSION}} PKG_DIR="rust/target/package/{{.PKG}}" wails3 tool package -name "{{.PKG}}" -format {{.ITEM}} -config rust/build/linux/nfpm.yaml -out rust/target/package
+
+  linux:run:rust:
+    summary: Builds the Rust port for Linux and runs it (natively on Linux; elsewhere on a Docker desktop at http://127.0.0.1:6081 via noVNC, see rust/build/linux/run-desktop.sh)
+    vars:
+      TARGET_ARCH: '{{.ARCH | default ARCH}}'
+    cmds:
+      - task: linux:build:rust
+        vars:
+          ARCH: '{{.TARGET_ARCH}}'
+      - '{{if eq OS "linux"}}rust/target/package/recur-next-linux-{{.TARGET_ARCH}}/recur{{else}}rust/build/linux/run-desktop.sh{{end}}'
+    env:
+      ARCH: '{{.TARGET_ARCH}}'
+
+  linux:smoke:rust:
+    summary: Installs the linux:package:rust .deb and tarball in a clean Debian 13 container and checks paths, the recur-next link, the menu entry, `recur-next .` and a notification (see rust/build/linux/smoke.sh)
+    cmds:
+      - rust/build/linux/smoke.sh
+    env:
+      ARCH: '{{.ARCH | default ARCH}}'
+
+  smoke:package:rust:
+    summary: Installs rust/target/package/Recur Next.dmg into a sandbox, launches it, and checks the recur-next link, `recur-next .` and a native notification (macOS; see rust/build/darwin/smoke.sh)
+    platforms: [darwin]
+    cmds:
+      - rust/build/darwin/smoke.sh
+
   smoke:rust:
     summary: Boots the Rust desktop on a sandbox built from a Recur data dir (read only) and drives every view; `wails3 task smoke:rust DATA="<data dir>" [SANDBOX=<dir>]` (see rust/crates/desktop/examples/real_data_smoke.rs)
     dir: rust

@@ -26,6 +26,8 @@ pub(crate) fn paint(
     if mac::paint(window, font_id, face, glyph, size, origin, color) {
         return;
     }
+    #[cfg(not(target_os = "macos"))]
+    let _ = face;
     // A glyph the atlas cannot rasterize paints nothing, as in the browser.
     let _ = window.paint_glyph(origin, font_id, glyph, px(size), color);
 }

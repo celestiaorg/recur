@@ -181,7 +181,7 @@ fn schedules_save_run_pause_edit_and_delete(cx: &mut TestAppContext) {
     s.click("sc-help:false");
     assert!(s.has("sc-tip"));
     assert!(s.has("sel:Mode=Ask"));
-    s.keys("cmd-.");
+    s.keys("secondary-.");
     assert!(s.has("sel:Mode=Plan"));
     s.click("sel:Mode=Plan");
     for m in ["Ask", "Plan", "Agent", "Review", "Loop"] {
@@ -246,7 +246,7 @@ fn schedules_save_run_pause_edit_and_delete(cx: &mut TestAppContext) {
     assert!(s.until(|s| s.has("sel:Model flags=Low")));
     assert!(s.has("sc-simplify:off"));
     s.click("sc-prompt");
-    s.keys("cmd-a backspace");
+    s.keys("secondary-a backspace");
     s.type_text("Find missing integration tests");
     s.click("sel:Mode=Plan");
     s.click("sel-opt:Loop");
@@ -407,7 +407,7 @@ fn main_navigation_shows_schedules_across_projects_and_restores_after_reload(
     s.keys("escape");
     assert!(!s.has("v-schedule-editor"));
     // Command palette action.
-    s.keys("cmd-k");
+    s.keys("secondary-k");
     s.type_text("New schedule");
     s.click("pal-row:New schedule:sel");
     assert!(s.has("sc-modal:New schedule"));

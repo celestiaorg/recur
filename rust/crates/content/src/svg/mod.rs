@@ -42,6 +42,7 @@ pub fn parse(svg: &str) -> Result<usvg::Tree, String> {
 
 /// Whether the tree needs resvg's full pipeline (filters, masks, patterns, blend modes,
 /// spread methods other than pad).
+#[cfg(target_os = "macos")]
 fn needs_full_pipeline(g: &usvg::Group) -> bool {
     if !g.filters().is_empty() || g.mask().is_some() || g.blend_mode() != usvg::BlendMode::Normal {
         return true;

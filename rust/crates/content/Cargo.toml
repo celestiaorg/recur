@@ -40,10 +40,20 @@ block2.workspace = true
 raw-window-handle.workspace = true
 include_dir.workspace = true
 
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit6.workspace = true
+gtk4.workspace = true
+include_dir.workspace = true
+
 [dev-dependencies]
 pretty_assertions.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 recur-content = { path = ".", features = ["gallery"] }
+
+# Mermaid and pdf.js in the platform WebKit; on its own main thread for WKWebView.
+[[test]]
+name = "webkit"
+harness = false
 
 [lints]
 workspace = true

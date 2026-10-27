@@ -206,7 +206,7 @@ impl S<'_> {
 
     /// `fill`: select all in the focused field and type `s`.
     pub fn fill(&mut self, s: &str) {
-        self.cx.simulate_keystrokes("cmd-a backspace");
+        self.cx.simulate_keystrokes("secondary-a backspace");
         self.type_text(s);
     }
 

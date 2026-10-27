@@ -198,11 +198,14 @@ fn managed_pins_match_go() {
         ("rustAnalyzer", managed::rust_analyzer_asset(&p)),
         ("taplo", managed::taplo_asset(&p)),
     ];
+    // `hostAssets` was recorded on an arm64 Mac.
     for (key, got) in assets {
         let got = got
             .map(str::to_owned)
             .unwrap_or_else(|e| format!("error: {e}"));
-        assert_eq!(got, g["hostAssets"][key].as_str().unwrap(), "{key}");
+        if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+            assert_eq!(got, g["hostAssets"][key].as_str().unwrap(), "{key}");
+        }
     }
     let env = &g["env"];
     for (got, key) in [

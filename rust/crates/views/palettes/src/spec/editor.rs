@@ -61,7 +61,7 @@ fn run_command_palette_runs_sort_lines_ascending_on_the_open_buffer(cx: &mut Tes
     let mut s = boot(cx, |_| {}, file_opts(&calls));
     sort_lines_runner(&mut s);
     open_main_go(&mut s);
-    s.keys("cmd-shift-p");
+    s.keys("secondary-shift-p");
     assert!(s.has("cmd-palette"));
     assert!(s.input_focused());
     s.type_text("Sort Lines Ascending");
@@ -71,7 +71,7 @@ fn run_command_palette_runs_sort_lines_ascending_on_the_open_buffer(cx: &mut Tes
     s.wait(300);
     // The replacement stays selected and the editor has focus again: Save works without a
     // click.
-    s.keys("cmd-s");
+    s.keys("secondary-s");
     assert!(s.until(|_| !calls.named("WriteFile").is_empty()));
     let written = calls
         .named("WriteFile")
@@ -86,7 +86,7 @@ fn run_command_palette_runs_sort_lines_ascending_on_the_open_buffer(cx: &mut Tes
     // The run counts for Recent.
     let usage = s.storage("recur.commandUsage").unwrap_or_default();
     assert!(usage.contains("recur.text.sort-lines-asc"), "{usage}");
-    s.keys("cmd-shift-p");
+    s.keys("secondary-shift-p");
     assert!(s.has("rc-group:Recent"));
     assert_eq!(
         s.rows("rc-row:", &["Sort Lines Ascending", "Uppercase"])
@@ -152,13 +152,13 @@ fn run_command_palette_inserts_a_snippet_with_its_tab_trigger_hint(cx: &mut Test
     let calls = Calls::default();
     let mut s = boot(cx, |_| {}, file_opts(&calls));
     open_main_go(&mut s);
-    s.keys("cmd-shift-p");
+    s.keys("secondary-shift-p");
     assert!(s.until(|s| s.has("rc-group:Go")));
     s.type_text("ife");
     assert!(s.has("rc-row:If Err:sel"));
     s.keys("enter");
     s.wait(300);
-    s.keys("cmd-s");
+    s.keys("secondary-s");
     assert!(s.until(|_| !calls.named("WriteFile").is_empty()));
     let written = calls
         .named("WriteFile")

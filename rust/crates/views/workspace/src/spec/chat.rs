@@ -271,9 +271,9 @@ async fn busy_follow_ups(cx: &mut TestAppContext, queue_follow_ups: bool) {
     h.keys("enter");
     assert!(h.has("chat-stop"));
     let (steer, queue) = if queue_follow_ups {
-        ("cmd-enter", "enter")
+        ("secondary-enter", "enter")
     } else {
-        ("enter", "cmd-enter")
+        ("enter", "secondary-enter")
     };
     h.fill("steer now");
     h.keys(steer);
@@ -353,13 +353,13 @@ async fn cmd_z_undoes_one_typing_burst_at_a_time_including_shift_enter(cx: &mut 
     h.keys("shift-enter");
     h.type_text("next");
 
-    h.keys("cmd-z");
+    h.keys("secondary-z");
     assert_eq!(lines(&mut h), ["hello world", ""]);
-    h.keys("cmd-z");
+    h.keys("secondary-z");
     assert_eq!(lines(&mut h), ["hello world"]);
-    h.keys("cmd-z");
+    h.keys("secondary-z");
     assert_eq!(lines(&mut h), ["hello"]);
-    h.keys("cmd-shift-z");
+    h.keys("secondary-shift-z");
     assert_eq!(lines(&mut h), ["hello world"]);
 }
 
@@ -704,7 +704,7 @@ async fn cmd_shift_backspace_stops_an_in_flight_turn_when_the_agent_panel_is_foc
     send_click(&mut h);
     assert!(h.has("chat-stop"));
     h.focus_composer();
-    h.keys("cmd-shift-backspace");
+    h.keys("secondary-shift-backspace");
     assert!(h.has("chat-stopped"));
     assert_eq!(flat(&cancelled), [format!("{WS}:MA")]);
 }

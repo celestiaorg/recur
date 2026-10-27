@@ -15,8 +15,7 @@ Checks:
   cli       every cobra `Use:` in internal/cli is a command in recur-cli
   svelte    every .svelte file is a ticked PARITY.md row naming a Rust path that exists, in a
             crate the desktop links; every view crate with `register` is registered by the desktop
-  gotests   every Go `func TestX` has a Rust test named snake_case(X), a Rust source that names
-            `TestX`, or a row in go-tests.tsv (Rust tests that exist, comma-separated, or `n/a: <reason>`)
+  gotests   every Go `func TestX` has a Rust test named snake_case(X) or a row in go-tests.tsv (Rust tests that exist, comma-separated, or `n/a: <reason>`)
 """
 
 import json
@@ -320,19 +319,18 @@ def check_svelte():
 
 
 def rust_tests():
-    names, mentions, located = set(), set(), set()
+    names, located = set(), set()
     attr = re.compile(r"#\[(?:[\w:]*test|rstest)\b[^\]]*\]\s*(?:#\[[^\]]*\]\s*)*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)")
     for p in rs_files("crates", "providers", "tools"):
         src = read(p)
         found = set(attr.findall(src))
         names |= found
         located |= {f"{p.relative_to(RUST)}::{n}" for n in found}
-        mentions |= set(re.findall(r"\b(Test[A-Z]\w*)", src))
-    return names, mentions, located
+    return names, located
 
 
 def check_gotests():
-    names, mentions, located = rust_tests()
+    names, located = rust_tests()
     table = {}
     for line in read(HERE / "go-tests.tsv").splitlines():
         if line and not line.startswith("#"):
@@ -355,7 +353,7 @@ def check_gotests():
                 else:
                     missing = [t.strip() for t in target.split(",") if t.strip() not in located]
                     gap("gotests", f"{key}: go-tests.tsv names `{', '.join(missing)}`, not a Rust test")
-            elif snake(t[4:]) in names or t in mentions:
+            elif snake(t[4:]) in names:
                 mapped += 1
             else:
                 gap("gotests", f"{key}: no Rust test `{snake(t[4:])}` and no go-tests.tsv row")

@@ -918,7 +918,13 @@ impl AgentChat {
         head.into_any_element()
     }
 
-    pub(crate) fn tc_label(&self, s: impl Into<SharedString>, color: Color) -> AnyElement {
+    /// The row's label, selectable in the transcript under `key`.
+    pub(crate) fn tc_label(
+        &self,
+        key: &str,
+        s: impl Into<SharedString>,
+        color: Color,
+    ) -> AnyElement {
         // The label leads the baseline group, so its pad moves every baseline-aligned item.
         div()
             .flex_none()
@@ -930,12 +936,14 @@ impl AgentChat {
                     .weight(600.)
                     .line_height(LineHeight::Scale(1.45))
                     .color(color)
-                    .truncate(),
+                    .truncate()
+                    .selectable(crate::transcript::select_key(&format!("{key}:label")), "\n"),
             )
             .into_any_element()
     }
 
-    fn tc_meta(&self, s: impl Into<SharedString>, color: Color) -> AnyElement {
+    /// Meta text beside the label, selectable under `key`.
+    fn tc_meta(&self, key: &str, s: impl Into<SharedString>, color: Color) -> AnyElement {
         div()
             .flex_1()
             .min_w_0()
@@ -946,7 +954,8 @@ impl AgentChat {
                     .size(11.)
                     .line_height(LineHeight::Scale(1.45))
                     .color(color)
-                    .truncate(),
+                    .truncate()
+                    .selectable(crate::transcript::select_key(key), "\n"),
             )
             .into_any_element()
     }
@@ -980,7 +989,7 @@ impl AgentChat {
         let group = SharedString::from(format!("{id}-g"));
         let mut kids: Vec<AnyElement> = vec![
             self.tc_ico(&group, v.icon(), t.muted, expandable, open),
-            self.tc_label(v.label(), t.text),
+            self.tc_label(key, v.label(), t.text),
         ];
         let finding_row = v.is_report_finding() || v.is_update_finding();
         if finding_row {
@@ -1139,7 +1148,7 @@ impl AgentChat {
         }
         let meta = v.meta();
         if !meta.is_empty() && meta != file && v.shows_meta(open) {
-            kids.push(self.tc_meta(meta, t.faint));
+            kids.push(self.tc_meta(&format!("{key}:meta"), meta, t.faint));
         }
         if m.result_error {
             kids.push(
@@ -3076,12 +3085,20 @@ impl AgentChat {
         let group = SharedString::from(format!("{id}-g"));
         let mut kids = vec![
             self.tc_ico(&group, StepIcon::Think, t.faint, expandable, open),
-            self.tc_label(if m.streaming { "Thinking" } else { "Thought" }, t.muted),
+            self.tc_label(
+                key,
+                if m.streaming { "Thinking" } else { "Thought" },
+                t.muted,
+            ),
         ];
         if expandable && !open {
-            kids.push(self.tc_meta(thinking_preview(m), t.faint));
+            kids.push(self.tc_meta(&format!("{key}:preview"), thinking_preview(m), t.faint));
         } else if !expandable && m.tokens > 0 {
-            kids.push(self.tc_meta(format!("~{} tokens", m.tokens), t.faint));
+            kids.push(self.tc_meta(
+                &format!("{key}:tokens"),
+                format!("~{} tokens", m.tokens),
+                t.faint,
+            ));
         }
         let k = key.to_string();
         let head = self.tc_head(
@@ -3178,6 +3195,7 @@ impl AgentChat {
         let mut kids = vec![
             self.tc_ico(&group, StepIcon::Compact, t.amber, expandable, open),
             self.tc_label(
+                key,
                 if m.compacting {
                     "Compacting context"
                 } else {
@@ -3187,7 +3205,11 @@ impl AgentChat {
             ),
         ];
         if m.tokens > 0 {
-            kids.push(self.tc_meta(format!("was {}", format_tokens(m.tokens)), t.faint));
+            kids.push(self.tc_meta(
+                &format!("{key}:was"),
+                format!("was {}", format_tokens(m.tokens)),
+                t.faint,
+            ));
         }
         let k = key.to_string();
         let head = self.tc_head(
@@ -3228,6 +3250,7 @@ impl AgentChat {
         let mut kids = vec![
             self.tc_ico(&group, StepIcon::Fallback, t.amber, false, false),
             self.tc_label(
+                &id,
                 format!(
                     "Fell back to {}",
                     if m.body.is_empty() {
@@ -3240,7 +3263,11 @@ impl AgentChat {
             ),
         ];
         if !m.description.is_empty() {
-            kids.push(self.tc_meta(format!("from {}", m.description), t.faint));
+            kids.push(self.tc_meta(
+                &format!("{id}:from"),
+                format!("from {}", m.description),
+                t.faint,
+            ));
         }
         let head = self.tc_head(id, false, kids, None, cx);
         div().rounded(px(7.)).child(head).into_any_element()
@@ -3286,7 +3313,7 @@ impl AgentChat {
                 .justify_center()
                 .child(icon(IconName::Activity).size(px(14.)).color(hsla(t.muted)))
                 .into_any_element(),
-            self.tc_label(label_s, t.muted),
+            self.tc_label(key, label_s, t.muted),
             div().flex_1().min_w_0().child(meta).into_any_element(),
         ];
         let head = self.tc_head(id, false, kids, None, cx);
@@ -3314,7 +3341,7 @@ impl AgentChat {
         let expandable = !m.body.is_empty();
         let open = expandable && self.row_is_open(key, false);
         let id = SharedString::from(format!("nr-{}-{key}", self.props.reset_key));
-        let kids = vec![self.tc_label(prose_preview(&m.body), t.text)];
+        let kids = vec![self.tc_label(key, prose_preview(&m.body), t.text)];
         let k = key.to_string();
         let head = self.tc_head(
             id,

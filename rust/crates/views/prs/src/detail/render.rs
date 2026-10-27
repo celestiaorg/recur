@@ -621,6 +621,9 @@ impl PrDetail {
         let t = Theme::of(cx).tokens;
         let top = -f32::from(scroll.offset().y);
         let fade = is_scrolled_from_top(top, SCROLL_FADE_SLACK);
+        let area = recur_ui::widgets::scroll_area(SharedString::from(format!("prpane-{id}")))
+            .track(scroll)
+            .child(content);
         div()
             .debug_selector(move || format!("prpane:{id}{}", if fade { ":fade-top" } else { "" }))
             .relative()
@@ -628,11 +631,7 @@ impl PrDetail {
             .min_h_0()
             .flex()
             .bg(hsla(t.bg))
-            .child(
-                recur_ui::widgets::scroll_area(SharedString::from(format!("prpane-{id}")))
-                    .track(scroll)
-                    .child(content),
-            )
+            .child(area)
             .when(fade, |d| d.child(top_fade(cx)))
             .into_any_element()
     }
@@ -864,8 +863,9 @@ impl PrDetail {
             .on_mouse_down(
                 MouseButton::Left,
                 cx.guarded_listener(|d, _, window, cx| {
-                    // `onPRChromeMouseDown`: park focus on the column so the tabs light up.
-                    if !d.dock_focus.contains_focused(window, cx) {
+                    // `onPRChromeMouseDown`: park focus on the column so the tabs light up,
+                    // unless the press started a text selection (which focuses its scope).
+                    if !d.dock_focus.contains_focused(window, cx) && !window.default_prevented() {
                         window.focus(&d.col_focus, cx);
                     }
                 }),

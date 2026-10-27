@@ -336,3 +336,37 @@ async fn text_selects_across_a_file_chip_and_copies_its_label(cx: &mut TestAppCo
         h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
     assert_eq!(copied.as_deref(), Some("see notes.md please"));
 }
+
+#[gpui::test]
+async fn select_all_copies_tool_rows(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    h.set_messages(vec![
+        AgentMsg {
+            me: true,
+            body: "Look".into(),
+            ts: Some(1),
+            ..Default::default()
+        },
+        tool("Read", "a.ts", "ok", 2),
+        AgentMsg {
+            body: "Done.".into(),
+            ts: Some(3),
+            ..Default::default()
+        },
+    ]);
+    let me = h.bounds("me:Look").expect("bubble");
+    let at = gpui::point(me.left() + gpui::px(12.5), me.center().y);
+    h.cx.simulate_click(at, gpui::Modifiers::none());
+    h.keys("secondary-a");
+    h.keys("secondary-c");
+    let copied =
+        h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()))
+            .unwrap_or_default();
+    let label = h.read(|c| {
+        let msgs = c.transcript();
+        crate::tools::ToolView::new(&msgs[1], c.tool_data.cx()).label()
+    });
+    assert!(copied.starts_with("Look\n"), "{copied:?}");
+    assert!(copied.contains(&label), "{label:?} in {copied:?}");
+    assert!(copied.ends_with("Done."), "{copied:?}");
+}

@@ -317,3 +317,24 @@ fn review_events_stand_out_and_have_no_reaction_picker(cx: &mut TestAppContext) 
     assert!(s.has("cmt-review-badge:ok"));
     assert!(!s.has("rxn-add:gh-review-empty"));
 }
+
+#[gpui::test]
+fn the_description_selects_and_copies_its_markdown(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_pr("482");
+    let desc = s.bounds("cmt-desc").expect("description");
+    // On the body text, right of the avatar column.
+    let at = gpui::point(desc.left() + gpui::px(80.), desc.bottom() - gpui::px(40.));
+    let m = gpui::Modifiers::none();
+    s.cx.simulate_mouse_down(at, gpui::MouseButton::Left, m);
+    s.cx.simulate_mouse_up(at, gpui::MouseButton::Left, m);
+    s.keys("secondary-a");
+    s.keys("secondary-c");
+    let copied =
+        s.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()))
+            .unwrap_or_default();
+    assert!(
+        copied.contains("Adds Apple and Google sign-in"),
+        "{copied:?}"
+    );
+}

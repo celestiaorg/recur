@@ -686,6 +686,7 @@ impl AgentChat {
                 )
                 .into_any_element(),
             self.tc_label(
+                &fid,
                 if name.is_empty() {
                     code.clone()
                 } else {
@@ -1814,7 +1815,7 @@ fn loc_for_digest(file: &str, line: i64, end_line: i64) -> String {
     format!("{file}:{line}")
 }
 
-fn select_key(id: &str) -> u64 {
+pub(crate) fn select_key(id: &str) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
     id.hash(&mut h);

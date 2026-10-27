@@ -34,6 +34,7 @@ pub mod pr;
 pub mod pr_commits;
 pub mod pr_list_filter;
 pub mod prefs;
+pub mod provider_usage;
 pub mod run;
 pub mod shell_state;
 pub mod snippets;

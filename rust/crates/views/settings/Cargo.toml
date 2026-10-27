@@ -30,7 +30,6 @@ recur-editor.workspace = true
 recur-view-core.workspace = true
 recur-view-widgets.workspace = true
 recur-view-chat.workspace = true
-recur-view-sidebar.workspace = true
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true

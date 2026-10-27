@@ -193,36 +193,27 @@ impl EditorEnv {
                     Vec::new()
                 }
             };
+            // Every grammar is read here, off the UI thread and concurrently, before any is
+            // registered: the catalog's loader is then a lookup, and a grammar that embeds
+            // another finds it when it compiles.
+            let texts = futures::future::join_all(
+                grammars
+                    .iter()
+                    .map(|g| services.bundle.read_grammar(&g.scope_name)),
+            )
+            .await;
             let _ = this.update(cx, |env, cx| {
                 {
                     let mut tm = env.tm.borrow_mut();
                     if reload {
                         tm.catalog.forget_bundle_contribs();
                     }
-                    for g in &grammars {
+                    for (g, text) in grammars.iter().zip(texts) {
                         let Some(info) = grammar_info(g) else {
                             continue;
                         };
-                        let scope = g.scope_name.clone();
-                        let services = services.clone();
-                        let cache: Rc<RefCell<Option<Option<String>>>> = Rc::default();
-                        tm.catalog.add_grammar(
-                            info,
-                            Rc::new(move || {
-                                if let Some(text) = cache.borrow().clone() {
-                                    return text;
-                                }
-                                // simplify: the catalog's loader is synchronous, so the grammar
-                                // read blocks once per scope (a local file read behind the
-                                // bridge). Upgrade: an async loader in recur_textmate.
-                                let text = futures::executor::block_on(
-                                    services.bundle.read_grammar(&scope),
-                                )
-                                .ok();
-                                *cache.borrow_mut() = Some(text.clone());
-                                text
-                            }),
-                        );
+                        let text = text.ok();
+                        tm.catalog.add_grammar(info, Rc::new(move || text.clone()));
                     }
                 }
                 env.grammars_ready = true;
@@ -323,5 +314,51 @@ impl EditorEnv {
     /// The language label for the status bar (`languageLabelForPath`).
     pub fn language_label(&self, path: &str) -> String {
         self.tm.borrow().catalog.language_label_for_path(path)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use gpui::TestAppContext;
+    use recur_services::mock::{MockBridge, MockOptions, Release, Reply};
+
+    use super::*;
+    use crate::LocalStorage;
+
+    /// Grammar reads are in flight while the UI thread runs on: nothing blocks on them, and
+    /// the grammars register once every read has landed.
+    #[gpui::test]
+    fn grammars_load_without_blocking_the_ui_thread(cx: &mut TestAppContext) {
+        let held: Arc<Mutex<Vec<(String, Release)>>> = Arc::default();
+        let h = held.clone();
+        let bridge = MockBridge::fresh(MockOptions::default().resolver(
+            "ReadGrammar",
+            move |args, _, _| {
+                let (reply, release) = Reply::deferred();
+                let scope = args[0].as_str().unwrap_or_default().to_string();
+                h.lock().unwrap().push((scope, release));
+                reply
+            },
+        ));
+        let env = cx.update(|cx| {
+            let state = AppState::install(bridge.services(), LocalStorage::in_memory(), cx);
+            editor_env(&state, cx)
+        });
+        cx.run_until_parked();
+        let pending = std::mem::take(&mut *held.lock().unwrap());
+        assert!(!pending.is_empty(), "every grammar is read up front");
+        assert!(!env.read_with(cx, |e, _| e.grammars_ready));
+        let first = pending[0].0.clone();
+        for (scope, release) in pending {
+            release.send(Reply::value(serde_json::json!(format!(
+                "{{\"scopeName\": \"{scope}\", \"patterns\": []}}"
+            ))));
+        }
+        cx.run_until_parked();
+        assert!(env.read_with(cx, |e, _| e.grammars_ready));
+        let loaded = env.update(cx, |e, _| e.tm.borrow_mut().catalog.load_grammar(&first));
+        assert!(loaded, "{first} compiles from the text read up front");
     }
 }
